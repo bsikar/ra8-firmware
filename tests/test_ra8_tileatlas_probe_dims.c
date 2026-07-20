@@ -32,18 +32,18 @@
 
 /** @brief Fixture sizes and the geometry the crafted headers declare. */
 enum : uint32_t {
-  k_p_hdr_cap    = 64U,   /**< Crafted-header staging capacity.        */
-  k_p_sniff_min  = 12U,   /**< Bytes the probe needs to sniff at all.   */
-  k_p_png_ihdr   = 24U,   /**< Bytes needed to reach both IHDR fields.  */
-  k_p_w          = 640U,  /**< Declared width in the PNG/WebP headers.  */
-  k_p_h          = 400U,  /**< Declared height in the PNG/WebP headers. */
-  k_p_over_dim   = 40000U, /**< A dimension past the atlas cap.         */
-  k_p_ihdr_w_ofs = 16U,   /**< PNG IHDR width field offset.             */
-  k_p_ihdr_h_ofs = 20U,   /**< PNG IHDR height field offset.            */
-  k_p_byte_mask  = 0xFFU, /**< Low-byte mask.                           */
-  k_p_sh8        = 8U,    /**< Byte shift.                              */
-  k_p_sh16       = 16U,   /**< Half-word shift.                         */
-  k_p_sh24       = 24U,   /**< Three-byte shift.                        */
+  k_p_hdr_cap    = 64U,    /**< Crafted-header staging capacity.         */
+  k_p_sniff_min  = 12U,    /**< Bytes the probe needs to sniff at all.   */
+  k_p_png_ihdr   = 24U,    /**< Bytes needed to reach both IHDR fields.  */
+  k_p_w          = 640U,   /**< Declared width in the PNG/WebP headers.  */
+  k_p_h          = 400U,   /**< Declared height in the PNG/WebP headers. */
+  k_p_over_dim   = 40000U, /**< A dimension past the atlas cap.          */
+  k_p_ihdr_w_ofs = 16U,    /**< PNG IHDR width field offset.             */
+  k_p_ihdr_h_ofs = 20U,    /**< PNG IHDR height field offset.            */
+  k_p_byte_mask  = 0xFFU,  /**< Low-byte mask.                           */
+  k_p_sh8        = 8U,     /**< Byte shift.                              */
+  k_p_sh16       = 16U,    /**< Half-word shift.                         */
+  k_p_sh24       = 24U,    /**< Three-byte shift.                        */
 };
 
 /** @brief The eight-byte PNG signature. */
@@ -254,8 +254,8 @@ static void test_probe_jpeg_dispatch(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   (void)memset(hdr, 0, sizeof(hdr));
-  hdr[0] = 0xFFU; /* MAGIC-OK: JPEG SOI marker, first byte  */
-  hdr[1] = 0xD8U; /* MAGIC-OK: JPEG SOI marker, second byte */
+  hdr[0]             = 0xFFU; /* MAGIC-OK: JPEG SOI marker, first byte  */
+  hdr[1]             = 0xD8U; /* MAGIC-OK: JPEG SOI marker, second byte */
   const ra8_err_t rc = ra8_tileatlas_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h);
   /* Whatever the reader concludes about a headerless JPEG, the probe must not
    * have treated it as an unrecognised container. */
