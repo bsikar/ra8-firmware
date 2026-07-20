@@ -113,6 +113,10 @@ RA8_GATE_REGISTRY=(
   "annotations|fast|RA8_* annotation attributes (libclang)"
   "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
   "lint-py-shell|fast|ruff + shellcheck + shfmt"
+  "lint-cmake|fast|cmake-format + cmake-lint over every listfile"
+  "lint-yaml|fast|yamllint + actionlint over the workflows"
+  "lint-make|fast|Makefile structure, headers and portable ROOT"
+  "lint-ld|fast|linker-script structure, headers and symbol closure"
   "cite-check|fast|HUM citation validator (strict)"
   "roadmap-stats|fast|ROADMAP summary stats"
   "sbom|fast|CycloneDX SBOM freshness"
@@ -797,6 +801,91 @@ gate_lint_py_shell() (
   # from "checked nothing".
   python3 scripts/utils/check_shell.py --selftest
   python3 scripts/utils/check_shell.py --require
+)
+
+# --- lint-cmake -----------------------------------------------------------
+# 283 first-party listfiles decide what is compiled with which flags -- #309
+# found host tools silently building firmware sources with -w. cmake-format is
+# the formatter (dry-run: any reformat is a failure) and cmake-lint the linter;
+# both come from cmakelang, pinned so the gate and the runner cannot disagree
+# about a rule. Config and the reasoning for every widened name pattern live
+# in .cmake-format.yaml.
+gate_lint_cmake() (
+  set -e
+  require_cmd cmake-format "pip install --user cmakelang==0.6.13"
+  require_cmd cmake-lint "ships with cmakelang; check the cmakelang install"
+
+  local files
+  mapfile -t files < <(
+    git ls-files |
+      grep -Ev '^(libs/third_party/|libs/fonts/)' |
+      grep -E '(CMakeLists\.txt|\.cmake)$'
+  )
+  if [[ ${#files[@]} -eq 0 ]]; then
+    echo "ERROR: no CMake listfiles found; refusing to report success." >&2
+    return 1
+  fi
+  echo "lint-cmake: ${#files[@]} listfiles"
+
+  # Both directions of the formatter, asserted before the real run: a
+  # deliberately misformatted listfile must be rejected, and the formatter's
+  # own output must be accepted.
+  bash scripts/utils/lint_selftest.sh cmake
+
+  printf '%s\n' "${files[@]}" | xargs -r -P "$(cpu_count)" -n 20 cmake-format --check
+  printf '%s\n' "${files[@]}" | xargs -r cmake-lint
+)
+
+# --- lint-yaml ------------------------------------------------------------
+# The workflow YAML decides which gates run at all -- #357 found two that never
+# ran on dev pushes. yamllint covers structure and style; actionlint covers the
+# Actions schema specifically (invalid `on:` triggers, bad ${{ }} expressions,
+# unknown runner labels), which is the class of defect behind #357.
+gate_lint_yaml() (
+  set -e
+  require_cmd yamllint "pip install --user yamllint==1.37.1"
+  require_cmd actionlint \
+    "https://github.com/rhysd/actionlint/releases (pinned to 1.7.7)"
+
+  local files
+  mapfile -t files < <(
+    git ls-files |
+      grep -Ev '^(libs/third_party/|libs/fonts/)' |
+      grep -E '\.(yml|yaml)$'
+  )
+  if [[ ${#files[@]} -eq 0 ]]; then
+    echo "ERROR: no YAML files found; refusing to report success." >&2
+    return 1
+  fi
+  echo "lint-yaml: ${#files[@]} files"
+
+  bash scripts/utils/lint_selftest.sh yaml
+
+  yamllint --strict "${files[@]}"
+  actionlint
+)
+
+# --- lint-make ------------------------------------------------------------
+# checkmake was evaluated and rejected -- its .PHONY parser reads only the
+# first physical line of a continued declaration, so its one applicable rule
+# misreports this tree. check_makefiles.py implements the rules correctly; the
+# full reasoning and the reduced test case are in its module docstring.
+gate_lint_make() (
+  set -e
+  python3 scripts/utils/check_makefiles.py --selftest
+  python3 scripts/utils/check_makefiles.py
+)
+
+# --- lint-ld --------------------------------------------------------------
+# No linter exists for the GNU ld script language, so this enforces what is
+# mechanically checkable without linking: licence header, ENTRY, MEMORY
+# regions, region closure, formatting, and that every g_ra8_ls_* symbol C
+# references is defined by some script. See the module docstring for what was
+# deliberately left unenforceable and why.
+gate_lint_ld() (
+  set -e
+  python3 scripts/utils/check_linker_scripts.py --selftest
+  python3 scripts/utils/check_linker_scripts.py
 )
 
 # --- cite-check -----------------------------------------------------------

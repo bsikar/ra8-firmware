@@ -51,6 +51,9 @@ target; the "status" column flags the known skews.
 | `shfmt` | **3.13.1** | 3.13.1 | (install per section 3.4) | Mac CONVERGED |
 | `shellcheck` | **0.11.0** | 0.11.x (Homebrew) | (install per section 3.4) | confirm patch |
 | `cppcheck` | **2.13** (Ubuntu 24.04) | 2.21 (Homebrew) | 2.13 (built from source, `/usr/local/bin`) | Mac 2.21 emits VERSION-SPECIFIC FALSE POSITIVES -- do NOT use the Mac's; see 3.3 |
+| `cmake-format` / `cmake-lint` | **0.6.13** (`cmakelang`, `firmware.yml` + devcontainer) | (install per section 3.5) | 0.6.13 (`~/.local/bin`) | CONVERGED -- see 3.5 |
+| `yamllint` | **1.37.1** | (install per section 3.5) | 1.37.1 (`~/.local/bin`) | CONVERGED -- see 3.5 |
+| `actionlint` | **1.7.7** | (install per section 3.5) | 1.7.7 (`~/.local/bin`) | CONVERGED -- see 3.5 |
 | `gcovr` | 8.6 (pip) | 8.6 | 8.6 (`~/.local/bin` + `/usr/bin`) | CONVERGED |
 
 ---
@@ -127,6 +130,30 @@ profile, so a plain `ssh dev '<cmd>'` does not see any of the three while
 `ssh dev 'bash -lc "<cmd>"'` does -- the gate then fails on a missing tool that
 is in fact installed. The same trap changes which `clang-tidy` and `gcovr` you
 get (#333). Always use `bash -lc`.
+
+### 3.5 cmake-format / cmake-lint / yamllint / actionlint
+
+The `lint-cmake` and `lint-yaml` gates (#362) pin `cmakelang`==**0.6.13**
+(which provides both `cmake-format` and `cmake-lint`), `yamllint`==**1.37.1**
+and `actionlint` **v1.7.7**. All four are installed on the dev box in
+`~/.local/bin`, baked into the devcontainer image, and provisioned on the
+runner by the "Install the config-as-code linters" step in `firmware.yml`.
+Keep those three places in step when moving a pin.
+
+Install on a fresh box:
+
+```sh
+python3 -m pip install --user cmakelang==0.6.13 yamllint==1.37.1
+curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz \
+  | tar -xz -C ~/.local/bin actionlint
+```
+
+Both gates call `require_cmd`, so a missing tool FAILS the gate -- it never
+skips. The same `bash -lc` login-shell rule as 3.4 applies.
+
+Configuration lives at the repo root: `.cmake-format.yaml` (shared by the
+formatter and the linter) and `.yamllint.yaml`, plus `.github/actionlint.yaml`
+for the self-hosted runner labels. Each records WHY any default was widened.
 
 ### 3.5 ccache: shared across agents, bypassed for instrumented builds
 
