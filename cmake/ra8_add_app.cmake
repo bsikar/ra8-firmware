@@ -308,15 +308,15 @@ macro(ra8_add_app)
             ${RA8_REPO_ROOT}/libs/ra8_epub/src)
     endif()
 
-    # ra8_tileatlas transcodes JPEG/PNG sources into JOF tile atlases (#231).
+    # ra8_jof transcodes JPEG/PNG sources into JOF tile atlases (#231).
     # Its PNG decoder inflates through the vendored miniz and its tile codec
     # reuses ra8_io_compress, so wire the miniz + ra8_io includes when an app
-    # pulls in ra8_tileatlas. The miniz *implementation* TU comes from the
+    # pulls in ra8_jof. The miniz *implementation* TU comes from the
     # ra8_epub block above or the bare-miniz block below -- an app using
-    # ra8_tileatlas lists one of those alongside it. The single compress TU is
+    # ra8_jof lists one of those alongside it. The single compress TU is
     # added directly when the app does not already link the whole ra8_io
     # fabric.
-    if("ra8_tileatlas" IN_LIST _RA8_APP_LIBS)
+    if("ra8_jof" IN_LIST _RA8_APP_LIBS)
         list(APPEND _ra8_lib_inc
             ${RA8_REPO_ROOT}/libs/third_party/miniz
             ${RA8_REPO_ROOT}/libs/ra8_io/inc)
@@ -325,15 +325,15 @@ macro(ra8_add_app)
         endif()
         # #290 normalize-on-import: the producer normalises WebP manifest images
         # to JOF too, so it calls the ra8_webp facade (the WebP arm lives in
-        # ra8_tileatlas_produce_webp.c: ra8_ta_priv_webp_transcode). Compile the
+        # ra8_jof_produce_webp.c: ra8_jof_priv_webp_transcode). Compile the
         # facade sources here when the app did
         # not already list ra8_webp explicitly (the LIBS loop globs them then).
         # The vendored libwebp decoder itself is wired by the shared block below.
         list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_webp/inc)
         if(NOT "ra8_webp" IN_LIST _RA8_APP_LIBS)
-            file(GLOB_RECURSE _ra8_ta_webp_facade CONFIGURE_DEPENDS
+            file(GLOB_RECURSE _ra8_jof_webp_facade CONFIGURE_DEPENDS
                 ${RA8_REPO_ROOT}/libs/ra8_webp/src/*.c)
-            list(APPEND _ra8_lib_extra ${_ra8_ta_webp_facade})
+            list(APPEND _ra8_lib_extra ${_ra8_jof_webp_facade})
         endif()
     endif()
 
@@ -342,16 +342,16 @@ macro(ra8_add_app)
     # include root, -DRA8_WEBP_USE_ARENA, the SOUP warning flags -- lives in
     # cmake/ra8_webp_vendor.cmake and is NOT restated here: open-coding it is
     # what left the recipe unreachable from a standalone host tool, which is why
-    # tools/ra8_fmt and tools/media_dl each faked ra8_ta_priv_webp_transcode()
+    # tools/ra8_fmt and tools/media_dl each faked ra8_jof_priv_webp_transcode()
     # rather than compile the decoder that was already in the tree.
     #
     # ra8_webp's own .c facade/arena are globbed by the LIBS loop above (or by
-    # the ra8_tileatlas block); only the vendored TUs + include root are wired
+    # the ra8_jof block); only the vendored TUs + include root are wired
     # here. Wired whenever ra8_webp is requested directly OR pulled in
-    # transitively by ra8_tileatlas (#290), and only once so the two paths never
+    # transitively by ra8_jof (#290), and only once so the two paths never
     # double-add the libwebp sources.
     set(_ra8_webp_vendor "")
-    if(("ra8_webp" IN_LIST _RA8_APP_LIBS) OR ("ra8_tileatlas" IN_LIST _RA8_APP_LIBS))
+    if(("ra8_webp" IN_LIST _RA8_APP_LIBS) OR ("ra8_jof" IN_LIST _RA8_APP_LIBS))
         include(${RA8_REPO_ROOT}/cmake/ra8_webp_vendor.cmake)
         ra8_webp_vendor_sources(_ra8_webp_vendor ${RA8_REPO_ROOT})
         list(APPEND _ra8_lib_extra ${_ra8_webp_vendor})

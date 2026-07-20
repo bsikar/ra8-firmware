@@ -14,7 +14,7 @@
  * scrolling, with no page boundaries. On RA8D2/RA8P1 there is no hardware
  * JPEG decoder and a single slice can decode to tens of megabytes, so the
  * strip is normalised at import into the shared **JOF band-tile atlas**
- * (`ra8_tileatlas.h`): a longstrip band is simply a JOF tile the full image
+ * (`ra8_jof.h`): a longstrip band is simply a JOF tile the full image
  * width (`tile_w == width`, one tile column), so the JOF tile index **is**
  * the band index -- byte offset + exact height per band -- giving O(1) random
  * access to any scroll position with a single bounded read + decode. No
@@ -48,14 +48,14 @@
  *
  * ## Untrusted content (fail-closed)
  * The atlas arrives from untrusted EPUB/CBZ content. `ra8_longstrip_open()`
- * validates the geometry through `ra8_tileatlas_parse()` and additionally
+ * validates the geometry through `ra8_jof_parse()` and additionally
  * rejects any atlas that is not a single full-width band column, so the O(1)
  * band math can never index outside the grid.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
- * @see ra8_tileatlas.h    The band-tile atlas format + reader this rides on.
+ * @see ra8_jof.h    The band-tile atlas format + reader this rides on.
  * @see ra8_tile_cache.h   The LRU decode-on-miss band cache.
  * @since 0.1.0
  */
@@ -69,8 +69,8 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_jof.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 
 /**
  * @enum ra8_longstrip_limits_t
@@ -126,8 +126,8 @@ typedef ra8_err_t (*ra8_longstrip_blit_fn)(void*          ctx,
  * @details Bind ::ra8_longstrip_tile_decode as the tile cache's `decode` and a
  *          pointer to this struct as its `decode_ctx`. The cache then pages any
  *          band in with one bounded JOF tile read. `scratch` is the deflate
- *          staging buffer required only for `k_ra8_tileatlas_codec_deflate`
- *          atlases (size it with `ra8_tileatlas_stored_bound()` over the band
+ *          staging buffer required only for `k_ra8_jof_codec_deflate`
+ *          atlases (size it with `ra8_jof_stored_bound()` over the band
  *          payload); a raw-codec atlas may leave it NULL / zero.
  *
  * @invariant `pread` serves the same atlas `info` was parsed from.
@@ -135,11 +135,11 @@ typedef ra8_err_t (*ra8_longstrip_blit_fn)(void*          ctx,
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tileatlas_pread_fn pread;       /**< Atlas backing read seam.        */
-  void*                  pread_ctx;   /**< Context for `pread`.            */
-  ra8_tileatlas_info_t   info;        /**< Parsed atlas geometry.          */
-  uint8_t*               scratch;     /**< Deflate staging (codec 1 only). */
-  uint32_t               scratch_cap; /**< Capacity of `scratch`.          */
+  ra8_jof_pread_fn pread;       /**< Atlas backing read seam.        */
+  void*            pread_ctx;   /**< Context for `pread`.            */
+  ra8_jof_info_t   info;        /**< Parsed atlas geometry.          */
+  uint8_t*         scratch;     /**< Deflate staging (codec 1 only). */
+  uint32_t         scratch_cap; /**< Capacity of `scratch`.          */
 } ra8_longstrip_decode_ctx_t;
 
 /**
@@ -147,7 +147,7 @@ typedef struct {
  * @brief One-shot configuration handed to ::ra8_longstrip_open.
  *
  * @details The atlas is reached through `pread`/`pread_ctx`/`atlas_size`
- *          (same seam ::ra8_tileatlas_parse uses). `cache` is a tile cache the
+ *          (same seam ::ra8_jof_parse uses). `cache` is a tile cache the
  *          caller has already initialised with ::ra8_longstrip_tile_decode over
  *          the SAME atlas; `image_id` is the cache key namespace for this
  *          strip. The viewport is the on-screen window in pixels; `blit`
@@ -158,15 +158,15 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tileatlas_pread_fn pread;      /**< Atlas backing read seam.            */
-  void*                  pread_ctx;  /**< Context for `pread`.                */
-  uint64_t               atlas_size; /**< Atlas byte length (for parse).      */
-  ra8_tile_cache_t*      cache;      /**< Band cache (decode-on-miss = JOF).  */
-  uint32_t               image_id;   /**< Tile-cache key namespace for strip. */
-  uint16_t               viewport_w; /**< On-screen viewport width, pixels.   */
-  uint16_t               viewport_h; /**< On-screen viewport height, pixels.  */
-  ra8_longstrip_blit_fn  blit;       /**< Band composite sink.                */
-  void*                  blit_ctx;   /**< Context for `blit`.                 */
+  ra8_jof_pread_fn      pread;      /**< Atlas backing read seam.            */
+  void*                 pread_ctx;  /**< Context for `pread`.                */
+  uint64_t              atlas_size; /**< Atlas byte length (for parse).      */
+  ra8_tile_cache_t*     cache;      /**< Band cache (decode-on-miss = JOF).  */
+  uint32_t              image_id;   /**< Tile-cache key namespace for strip. */
+  uint16_t              viewport_w; /**< On-screen viewport width, pixels.   */
+  uint16_t              viewport_h; /**< On-screen viewport height, pixels.  */
+  ra8_longstrip_blit_fn blit;       /**< Band composite sink.                */
+  void*                 blit_ctx;   /**< Context for `blit`.                 */
 } ra8_longstrip_cfg_t;
 
 /**
@@ -183,7 +183,7 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tileatlas_info_t  info;       /**< Parsed atlas geometry.                 */
+  ra8_jof_info_t        info;       /**< Parsed atlas geometry.                 */
   uint32_t              canvas_w;   /**< Strip width, pixels (== info.width).   */
   uint32_t              canvas_h;   /**< Strip height, pixels (== info.height). */
   uint16_t              band_h;     /**< Band height, pixels (== info.tile_h).  */
@@ -221,7 +221,7 @@ typedef struct {
 /**
  * @brief JOF-backed ::ra8_tile_decode_fn: page one band in on a cache miss.
  *
- * @details Adapts ::ra8_tile_cache's decode-on-miss to `ra8_tileatlas_read_tile`:
+ * @details Adapts ::ra8_tile_cache's decode-on-miss to `ra8_jof_read_tile`:
  *          the tile key's `(tile_x, tile_y)` select the band (`tile_x` is
  *          always 0 for a longstrip column), and the tile is read + decoded into
  *          the cache cell in bounded RAM. Bind this as the cache's `decode`
@@ -238,7 +238,7 @@ typedef struct {
  * @retval k_ra8_ok               Band decoded into @p cell.
  * @retval k_ra8_err_null_ptr     @p ctx, @p key, @p cell, @p out_w or @p out_h
  *                                is NULL.
- * @retval other                  Propagated from `ra8_tileatlas_read_tile()`.
+ * @retval other                  Propagated from `ra8_jof_read_tile()`.
  *
  * @pre @p ctx->info was parsed over @p ctx->pread's atlas.
  * @pre @p cell holds @p cell_bytes writable bytes.
@@ -259,7 +259,7 @@ typedef struct {
  * @brief Open a longstrip strip over a parsed + validated JOF atlas.
  *
  * @details
- * Parses the atlas through `ra8_tileatlas_parse()` and then fail-closed
+ * Parses the atlas through `ra8_jof_parse()` and then fail-closed
  * rejects anything that is not a single full-width band column
  * (`tile_w == width` and `tile_cols == 1`), because the O(1) `y -> band`
  * math relies on one band per row. On success the virtual-canvas geometry is
@@ -274,7 +274,7 @@ typedef struct {
  *                                     (`pread`, `cache`, `blit`) is NULL.
  * @retval k_ra8_err_invalid_arg       `viewport_w` or `viewport_h` is zero.
  * @retval k_ra8_err_not_supported     Atlas is not a full-width band column.
- * @retval other                       Propagated from `ra8_tileatlas_parse()`.
+ * @retval other                       Propagated from `ra8_jof_parse()`.
  *
  * @pre @p cfg->cache was initialised with ::ra8_longstrip_tile_decode over the
  *      SAME atlas @p cfg->pread serves.

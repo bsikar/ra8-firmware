@@ -19,7 +19,7 @@
  *   - bounded resident memory: the tile cache never holds more than its cell
  *     budget regardless of strip height or scroll distance.
  *
- * The atlas is built with the raw codec (codec 0), so `ra8_tileatlas_read_tile`
+ * The atlas is built with the raw codec (codec 0), so `ra8_jof_read_tile`
  * needs no deflate scratch and the decode path is exercised end to end without
  * pulling the compressor -- the same reader the deflate path uses.
  *
@@ -31,9 +31,9 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_jof.h"
 #include "ra8_longstrip.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 #include "unity_minimal.h"
 
 /**
@@ -136,7 +136,7 @@ static void t_wt_put_u32(uint8_t* p, uint32_t v)
  *
  * @details Emits header + N raw band payloads + index + footer per the JOF
  *          layout, with `tile_w == width` (one full-width band column). The
- *          result is validated by `ra8_tileatlas_parse()` in the tests, so a
+ *          result is validated by `ra8_jof_parse()` in the tests, so a
  *          builder bug is caught by the reader's fail-closed checks.
  *
  * @return Total atlas byte length.
@@ -155,7 +155,7 @@ static uint32_t t_wt_build_strip(void)
   t_wt_put_u16(&hdr[8], (uint16_t)width); /* tile_w == width */
   t_wt_put_u16(&hdr[10], (uint16_t)band_h);
   hdr[12] = (uint8_t)k_t_wt_bpp;
-  hdr[13] = (uint8_t)k_ra8_tileatlas_codec_raw;
+  hdr[13] = (uint8_t)k_ra8_jof_codec_raw;
   t_wt_put_u32(&hdr[16], bands);
 
   uint32_t off = (uint32_t)k_t_hdr_bytes;
@@ -192,7 +192,7 @@ static uint32_t t_wt_build_strip(void)
  * Harness wiring: memstore pread, tile cache, decode ctx, recording blit.
  * ------------------------------------------------------------------------- */
 
-static ra8_tileatlas_memstore_t   s_store;
+static ra8_jof_memstore_t         s_store;
 static ra8_longstrip_decode_ctx_t s_dctx;
 static ra8_tile_cache_t           s_cache;
 
@@ -253,15 +253,14 @@ static ra8_err_t t_wt_blit(void*          ctx,
 static void t_wt_open(ra8_longstrip_t* wt)
 {
   const uint32_t total = t_wt_build_strip();
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
+  s_store              = (ra8_jof_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
 
-  s_dctx.pread       = ra8_tileatlas_memstore_pread;
+  s_dctx.pread       = ra8_jof_memstore_pread;
   s_dctx.pread_ctx   = &s_store;
   s_dctx.scratch     = nullptr;
   s_dctx.scratch_cap = 0U;
   /* Parse once so the decode ctx carries validated geometry. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &s_store, total, &s_dctx.info));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_parse(ra8_jof_memstore_pread, &s_store, total, &s_dctx.info));
 
   const ra8_tile_cache_cfg_t ccfg = {.cell_mem     = s_cells,
                                      .cell_bytes   = (uint32_t)k_t_wt_band_bytes,
@@ -275,7 +274,7 @@ static void t_wt_open(ra8_longstrip_t* wt)
                                      .decode_ctx   = &s_dctx};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_init(&s_cache, &ccfg));
 
-  const ra8_longstrip_cfg_t wcfg = {.pread      = ra8_tileatlas_memstore_pread,
+  const ra8_longstrip_cfg_t wcfg = {.pread      = ra8_jof_memstore_pread,
                                     .pread_ctx  = &s_store,
                                     .atlas_size = total,
                                     .cache      = &s_cache,
@@ -302,7 +301,7 @@ static void t_wt_open(ra8_longstrip_t* wt)
  * V1+V2 prove w's independent influence; V1+V3 prove h's. N+1 = 3 vectors.
  *
  * The full-width band-column check `if (info.tile_w != info.width)` is a single
- * condition (not compound): `ra8_tileatlas_parse` derives tile_cols as
+ * condition (not compound): `ra8_jof_parse` derives tile_cols as
  * ceil(width / tile_w), so tile_w == width already implies tile_cols == 1 and a
  * separate `tile_cols != 1` test could never independently flip the outcome. Its
  * false branch is the valid strip (V1 here); its true branch is
@@ -319,7 +318,7 @@ static void t_open_validates(void)
   TEST_ASSERT_EQ(k_t_wt_max_scroll, wt.max_scroll);
 
   const uint32_t      total = s_store.len;
-  ra8_longstrip_cfg_t cfg   = {.pread      = ra8_tileatlas_memstore_pread,
+  ra8_longstrip_cfg_t cfg   = {.pread      = ra8_jof_memstore_pread,
                                .pread_ctx  = &s_store,
                                .atlas_size = total,
                                .cache      = &s_cache,
@@ -355,7 +354,7 @@ static void t_open_validates(void)
  * two branches are the valid strip (false; covered by open_validates_inputs V1)
  * and this narrow-tile atlas (tile_w = width/2 => tile_w != width true). A
  * separate `tile_cols != 1` test was removed as provably redundant --
- * `ra8_tileatlas_parse` derives tile_cols as ceil(width / tile_w), so
+ * `ra8_jof_parse` derives tile_cols as ceil(width / tile_w), so
  * tile_w == width already forces tile_cols == 1 and tile_cols could never
  * independently flip the outcome (its true arm is a strict subset of this one).
  */
@@ -375,7 +374,7 @@ static void t_open_rejects_non_band(void)
   t_wt_put_u16(&s_atlas[8], tw);
   t_wt_put_u16(&s_atlas[10], th);
   s_atlas[12]          = 1U; /* gray8 (bpp 1) keeps the atlas tiny */
-  s_atlas[13]          = (uint8_t)k_ra8_tileatlas_codec_raw;
+  s_atlas[13]          = (uint8_t)k_ra8_jof_codec_raw;
   const uint32_t cols  = (uint32_t)((width + tw - 1U) / tw);
   const uint32_t rows  = (uint32_t)((height + th - 1U) / th);
   const uint32_t tiles = cols * rows;
@@ -401,8 +400,8 @@ static void t_open_rejects_non_band(void)
   t_wt_put_u32(&s_atlas[off + 8U], total);
   (void)memcpy(&s_atlas[off + 12U], "JOFE", 4U);
 
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
-  const ra8_longstrip_cfg_t cfg = {.pread      = ra8_tileatlas_memstore_pread,
+  s_store = (ra8_jof_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
+  const ra8_longstrip_cfg_t cfg = {.pread      = ra8_jof_memstore_pread,
                                    .pread_ctx  = &s_store,
                                    .atlas_size = total,
                                    .cache      = &s_cache,

@@ -1,5 +1,5 @@
 /**
- * @file ra8_tileatlas_png_internal.h
+ * @file ra8_jof_png_internal.h
  * @brief Module-private declarations shared by the two PNG decoder units.
  * @ingroup grp_ereader
  *
@@ -10,12 +10,12 @@
  * The streaming PNG decoder is split to stay under the maintainability line
  * cap:
  *
- *   - `ra8_tileatlas_png_chunk.c` -- byte source helpers plus the chunk
+ *   - `ra8_jof_png_chunk.c` -- byte source helpers plus the chunk
  *     layer: signature/IHDR prologue, PLTE/tRNS parsing, ancillary skipping
  *     and the post-IDAT walk to IEND.
- *   - `ra8_tileatlas_png.c`       -- the pixel layer: geometry binding, the
+ *   - `ra8_jof_png.c`       -- the pixel layer: geometry binding, the
  *     tinfl inflate loop, scanline unfiltering/translation and the public
- *     `ra8_ta_priv_png_rows()` entry.
+ *     `ra8_jof_priv_png_rows()` entry.
  *
  * This header carries the shared decode-state type, the structural
  * constants, and the chunk-layer prototypes the pixel layer drives.
@@ -33,7 +33,7 @@
 #include "miniz.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas_internal.h"
+#include "ra8_jof_internal.h"
 
 /**
  * @enum ra8_png_const_t
@@ -100,11 +100,11 @@ typedef enum : uint8_t {
  * @invariant `rowfill <= rowlen` and `rows_done <= h` at all times.
  */
 typedef struct {
-  ra8_tileatlas_pull_fn pull;     /**< Sequential byte source. */
-  void*                 pull_ctx; /**< Context for `pull`.     */
-  ra8_ta_geom_fn        on_geom;  /**< Producer geometry hook. */
-  ra8_ta_rows_fn        on_rows;  /**< Producer row sink.      */
-  void*                 cb_ctx;   /**< Producer context.       */
+  ra8_jof_pull_fn pull;     /**< Sequential byte source. */
+  void*           pull_ctx; /**< Context for `pull`.     */
+  ra8_jof_geom_fn on_geom;  /**< Producer geometry hook. */
+  ra8_jof_rows_fn on_rows;  /**< Producer row sink.      */
+  void*           cb_ctx;   /**< Producer context.       */
 
   uint16_t w;          /**< Image width, pixels.                 */
   uint16_t h;          /**< Image height, pixels.                */
@@ -139,8 +139,8 @@ typedef struct {
 } ra8_png_state_t;
 
 /* ---------------------------------------------------------------------------
- * Chunk-layer primitives (defined in ra8_tileatlas_png_chunk.c, driven by
- * the pixel layer in ra8_tileatlas_png.c).
+ * Chunk-layer primitives (defined in ra8_jof_png_chunk.c, driven by
+ * the pixel layer in ra8_jof_png.c).
  * ---------------------------------------------------------------------------
  */
 
@@ -161,7 +161,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_pull_exact(ra8_png_state_t* st, uint8_t* buf, uint32_t len);
+RA8_PRIV ra8_err_t ra8_jof_png_priv_pull_exact(ra8_png_state_t* st, uint8_t* buf, uint32_t len);
 
 /**
  * @brief Discard exactly @p len source bytes (unknown / ancillary chunks).
@@ -179,7 +179,7 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_pull_exact(ra8_png_state_t* st, uint8_t* buf,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_skip(ra8_png_state_t* st, uint32_t len);
+RA8_PRIV ra8_err_t ra8_jof_png_priv_skip(ra8_png_state_t* st, uint32_t len);
 
 /**
  * @brief Read one 8-byte chunk header (length + type, both big-endian).
@@ -198,9 +198,9 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_skip(ra8_png_state_t* st, uint32_t len);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_chunk_hdr(ra8_png_state_t* st,
-                                             uint32_t*        out_len,
-                                             uint32_t*        out_type);
+RA8_PRIV ra8_err_t ra8_jof_png_priv_chunk_hdr(ra8_png_state_t* st,
+                                              uint32_t*        out_len,
+                                              uint32_t*        out_type);
 
 /**
  * @brief Verify the 8-byte signature, then parse + validate the IHDR.
@@ -219,7 +219,7 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_chunk_hdr(ra8_png_state_t* st,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_prologue(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h);
+RA8_PRIV ra8_err_t ra8_jof_png_priv_prologue(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h);
 
 /**
  * @brief Dispatch one pre-IDAT chunk (PLTE / tRNS / ancillary / stray IEND).
@@ -238,7 +238,7 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_prologue(ra8_png_state_t* st, uint16_t max_w,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_pre_idat(ra8_png_state_t* st, uint32_t len, uint32_t type);
+RA8_PRIV ra8_err_t ra8_jof_png_priv_pre_idat(ra8_png_state_t* st, uint32_t len, uint32_t type);
 
 /**
  * @brief Walk the post-IDAT chunks until IEND (ancillary chunks skipped).
@@ -258,4 +258,4 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_pre_idat(ra8_png_state_t* st, uint32_t len, u
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_finish(ra8_png_state_t* st);
+RA8_PRIV ra8_err_t ra8_jof_png_priv_finish(ra8_png_state_t* st);

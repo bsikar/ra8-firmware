@@ -1,5 +1,5 @@
 /**
- * @file ra8_tileatlas_produce.h
+ * @file ra8_jof_produce.h
  * @brief Import-time transcode producer: JPEG/PNG/WebP -> JOF band-tile atlas
  *        in bounded RAM (#231, #290 normalize-on-import).
  * @ingroup grp_ereader
@@ -8,8 +8,8 @@
  * [Ring 4 / Domain] {World: NS}
  *
  * @details
- * `ra8_tileatlas_produce()` turns an arbitrary encoded source image into the
- * JOF atlas (`ra8_tileatlas.h`) -- the single on-device normalized format --
+ * `ra8_jof_produce()` turns an arbitrary encoded source image into the
+ * JOF atlas (`ra8_jof.h`) -- the single on-device normalized format --
  * so render time only ever touches one codec regardless of source. The tile
  * codec is lossless DEFLATE (never a second lossy re-encode of the decoded
  * pixels), so no source ever loses quality on import.
@@ -33,7 +33,7 @@
  * cannot be decoded with a bounded output window the way JPEG/PNG stripe out.
  * A WebP source is therefore normalized through the same JOF tile path but at
  * a whole-frame memory cost: the caller supplies a second `webp_work` arena
- * (sized by `ra8_tileatlas_webp_work_bytes()`) that holds the compressed
+ * (sized by `ra8_jof_webp_work_bytes()`) that holds the compressed
  * source, the decoded RGBA frame and libwebp's scratch. `webp_work == NULL`
  * fail-closed rejects any WebP source as `k_ra8_err_not_supported`, so a
  * streaming-only caller pays nothing. The JOF output is byte-identical to the
@@ -41,7 +41,7 @@
  * converges every source codec on one representation.
  *
  * Resident working set (all carved from the caller's single `work` arena;
- * `ra8_tileatlas_work_bytes()` computes the exact requirement):
+ * `ra8_jof_work_bytes()` computes the exact requirement):
  *   - deflate scratch (one `tdefl_compressor`, codec 1 only),
  *   - the decoder set (JPEG: 128 KiB input window + one MCU-row stripe;
  *     PNG: inflate state + 64 KiB ring + three row buffers),
@@ -71,7 +71,7 @@
  * index for an O(1) scroll seek -- and it costs the writer, because the tile
  * stage then grows to a whole band.
  *
- * @see ra8_tileatlas.h  The output format + reader.
+ * @see ra8_jof.h  The output format + reader.
  * @see @ref md_docs_2formats_2JOF  Format specification. This header and its
  *      implementation are **normative** for the producer memory contract
  *      (carve set, arena sizing, fail-closed conditions); section 5.1 of the
@@ -89,10 +89,10 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
+#include "ra8_jof.h"
 
 /**
- * @typedef ra8_tileatlas_pull_fn
+ * @typedef ra8_jof_pull_fn
  * @brief Forward byte source for the producer (DIP seam).
  *
  * @details Strictly sequential, single pass: each call appends the next
@@ -108,14 +108,14 @@ extern "C" {
  * @return k_ra8_ok on success; any error aborts the transcode.
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_tileatlas_pull_fn)(void* ctx, uint8_t* buf, size_t cap, size_t* got);
+typedef ra8_err_t (*ra8_jof_pull_fn)(void* ctx, uint8_t* buf, size_t cap, size_t* got);
 
 /**
- * @typedef ra8_tileatlas_sink_fn
+ * @typedef ra8_jof_sink_fn
  * @brief Append-only byte sink for the produced atlas (DIP seam).
  *
  * @details Bytes arrive strictly in atlas order (header, tiles, index,
- *          footer); the sink never seeks. `ra8_tileatlas_memstore_sink()`
+ *          footer); the sink never seeks. `ra8_jof_memstore_sink()`
  *          is the RAM-backed reference implementation; an `ra8_fs` file
  *          writer wraps `ra8_fs_write` identically. Any error return
  *          aborts the transcode with that code.
@@ -126,21 +126,21 @@ typedef ra8_err_t (*ra8_tileatlas_pull_fn)(void* ctx, uint8_t* buf, size_t cap, 
  * @return k_ra8_ok on success; any error aborts the transcode.
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_tileatlas_sink_fn)(void* ctx, const uint8_t* buf, size_t len);
+typedef ra8_err_t (*ra8_jof_sink_fn)(void* ctx, const uint8_t* buf, size_t len);
 
 /**
- * @struct ra8_tileatlas_produce_cfg_t
+ * @struct ra8_jof_produce_cfg_t
  * @brief Producer configuration: source, sink, tile geometry and work arena.
  *
  * @details `max_width`/`max_height` are the caller's fail-closed budget caps
- *          (0 selects the format cap ::k_ra8_tileatlas_max_dim); a source
+ *          (0 selects the format cap ::k_ra8_jof_max_dim); a source
  *          exceeding them aborts with `k_ra8_err_invalid_size` before any
  *          pixel decodes. The producer carves every internal buffer from
- *          `work`; size it with `ra8_tileatlas_work_bytes()` over the same
+ *          `work`; size it with `ra8_jof_work_bytes()` over the same
  *          caps. The arena is the RAM high-water by construction.
  *
  * `webp_work`/`webp_work_cap` are the *optional* whole-frame arena for WebP
- * sources (`ra8_tileatlas_webp_work_bytes()` sizes it): the streaming JPEG/PNG
+ * sources (`ra8_jof_webp_work_bytes()` sizes it): the streaming JPEG/PNG
  * pixel path always lives in `work`, while a WebP decode additionally needs the
  * compressed source, the decoded RGBA frame and libwebp scratch, none of which
  * fit the streaming budget. Leave `webp_work` NULL to fail-closed reject WebP
@@ -148,25 +148,25 @@ typedef ra8_err_t (*ra8_tileatlas_sink_fn)(void* ctx, const uint8_t* buf, size_t
  *
  * @invariant `tile_w`/`tile_h` are non-zero and `work` covers `work_cap`.
  * @invariant `webp_work` is NULL, or it covers `webp_work_cap` bytes.
- * @see ra8_tileatlas_work_bytes()
- * @see ra8_tileatlas_webp_work_bytes()
+ * @see ra8_jof_work_bytes()
+ * @see ra8_jof_webp_work_bytes()
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tileatlas_pull_fn pull;          /**< Encoded-source byte stream.                   */
-  void*                 pull_ctx;      /**< Context for `pull`.                           */
-  ra8_tileatlas_sink_fn sink;          /**< Atlas byte sink (append-only).                */
-  void*                 sink_ctx;      /**< Context for `sink`.                           */
-  uint16_t              tile_w;        /**< Tile width, pixels (>= 1).                    */
-  uint16_t              tile_h;        /**< Tile height, pixels (>= 1).                   */
-  uint8_t               codec;         /**< ::ra8_tileatlas_codec_t member.               */
-  uint16_t              max_width;     /**< Width budget cap (0 = format cap).            */
-  uint16_t              max_height;    /**< Height budget cap (0 = format cap).           */
-  uint8_t*              work;          /**< Streaming working arena (JPEG/PNG + tiles).   */
-  size_t                work_cap;      /**< Arena size; see ra8_tileatlas_work_bytes().   */
-  uint8_t*              webp_work;     /**< Whole-frame arena for WebP; NULL disables it. */
-  size_t                webp_work_cap; /**< WebP arena size; see webp_work_bytes().       */
-} ra8_tileatlas_produce_cfg_t;
+  ra8_jof_pull_fn pull;          /**< Encoded-source byte stream.                   */
+  void*           pull_ctx;      /**< Context for `pull`.                           */
+  ra8_jof_sink_fn sink;          /**< Atlas byte sink (append-only).                */
+  void*           sink_ctx;      /**< Context for `sink`.                           */
+  uint16_t        tile_w;        /**< Tile width, pixels (>= 1).                    */
+  uint16_t        tile_h;        /**< Tile height, pixels (>= 1).                   */
+  uint8_t         codec;         /**< ::ra8_jof_codec_t member.                     */
+  uint16_t        max_width;     /**< Width budget cap (0 = format cap).            */
+  uint16_t        max_height;    /**< Height budget cap (0 = format cap).           */
+  uint8_t*        work;          /**< Streaming working arena (JPEG/PNG + tiles).   */
+  size_t          work_cap;      /**< Arena size; see ra8_jof_work_bytes().         */
+  uint8_t*        webp_work;     /**< Whole-frame arena for WebP; NULL disables it. */
+  size_t          webp_work_cap; /**< WebP arena size; see webp_work_bytes().       */
+} ra8_jof_produce_cfg_t;
 
 /**
  * @brief Compute the work-arena size the producer needs for given caps.
@@ -176,7 +176,7 @@ typedef struct {
  * inflate state + ring + rows) with the band, tile stage, compressed-tile
  * bound, deflate scratch and tile index for the given budget caps, plus
  * per-carve alignment slack. Passing the same caps here and in the config
- * guarantees `ra8_tileatlas_produce()` never fails on arena exhaustion for
+ * guarantees `ra8_jof_produce()` never fails on arena exhaustion for
  * an in-budget source.
  *
  * @param[in] max_width  Largest source width to support (>= 1, <= cap).
@@ -185,8 +185,8 @@ typedef struct {
  * @param[in] tile_h     Tile height the producer will use (>= 1).
  *
  * @return Required arena size in bytes, or 0 on nonsense inputs.
- * @retval 0   An argument was zero or exceeded ::k_ra8_tileatlas_max_dim,
- *             or the tile grid would exceed ::k_ra8_tileatlas_max_tiles.
+ * @retval 0   An argument was zero or exceeded ::k_ra8_jof_max_dim,
+ *             or the tile grid would exceed ::k_ra8_jof_max_tiles.
  * @retval >0  Byte size to allocate for `work`.
  *
  * @pre Arguments describe the caller's real budget caps.
@@ -194,11 +194,11 @@ typedef struct {
  * @post No state mutated.
  * @post A `work_cap` of the returned size never exhausts mid-transcode.
  * @note Thread-safe (pure).
- * @see ra8_tileatlas_produce()
+ * @see ra8_jof_produce()
  * @since 0.1.0
  */
 [[nodiscard]] uint32_t
-ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_w, uint16_t tile_h);
+ra8_jof_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_w, uint16_t tile_h);
 
 /**
  * @brief Compute the whole-frame `webp_work` arena a WebP source needs (#290).
@@ -209,9 +209,9 @@ ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_
  * compressed source (up to @p max_src_bytes), the decoded RGBA8888 frame
  * (`max_width * max_height * 4`) and libwebp's decode scratch (a further
  * whole-frame-scale allocation plus slack). Sizing with the same caps used in
- * the produce config guarantees `ra8_tileatlas_produce()` never fails on WebP
+ * the produce config guarantees `ra8_jof_produce()` never fails on WebP
  * arena exhaustion for an in-cap WebP source. This is *separate* from
- * `ra8_tileatlas_work_bytes()`: that arena stays small (the streaming tile
+ * `ra8_jof_work_bytes()`: that arena stays small (the streaming tile
  * path); only WebP-capable callers pay the whole-frame cost here.
  *
  * @param[in] max_width     Largest WebP source width to support (>= 1).
@@ -230,22 +230,22 @@ ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_
  * @post A `webp_work_cap` of the returned size never exhausts mid-decode for an
  *       in-cap WebP source of at most @p max_src_bytes compressed bytes.
  * @note Thread-safe (pure).
- * @see ra8_tileatlas_produce()
+ * @see ra8_jof_produce()
  * @since 0.1.0
  */
 [[nodiscard]] uint32_t
-ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_bytes);
+ra8_jof_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_bytes);
 
 /**
  * @brief Read a source image's pixel dimensions without decoding its body.
  *
  * @details
- * Sniffs the same three magics `ra8_tileatlas_produce()` dispatches on (JPEG
+ * Sniffs the same three magics `ra8_jof_produce()` dispatches on (JPEG
  * SOI, PNG signature, WebP RIFF+WEBP) and returns the declared geometry from
  * the matching header: the JPEG SOF, the PNG IHDR, or the WebP VP8/VP8L header
  * via ::ra8_webp_get_info. Callers need this *before* producing, because the
  * work-arena sizes and the tile width are all functions of the geometry --
- * ::ra8_tileatlas_work_bytes and ::ra8_tileatlas_webp_work_bytes both take it
+ * ::ra8_jof_work_bytes and ::ra8_jof_webp_work_bytes both take it
  * as input.
  *
  * The probe shares the producer's magic constants and accepts exactly the set
@@ -264,12 +264,12 @@ ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t 
  * @retval k_ra8_err_not_supported Too short to sniff, header truncated, or the
  *                                 magic is not JPEG / PNG / WebP.
  * @retval k_ra8_err_invalid_size  A dimension is zero or exceeds
- *                                 ::k_ra8_tileatlas_max_dim.
+ *                                 ::k_ra8_jof_max_dim.
  * @retval other                   Propagated from the per-format reader.
  *
  * @pre @p data holds @p len readable bytes.
  * @pre @p out_w and @p out_h point at writable storage.
- * @post On k_ra8_ok both `*out_w` and `*out_h` are in `[1, k_ra8_tileatlas_max_dim]`.
+ * @post On k_ra8_ok both `*out_w` and `*out_h` are in `[1, k_ra8_jof_max_dim]`.
  * @post On any error neither output is relied upon and no state is mutated.
  *
  * @note Thread-safe (pure; reads only the caller's buffer).
@@ -277,18 +277,18 @@ ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t 
  * @par Example:
  * @code
  * uint16_t w = 0U, h = 0U;
- * if (ra8_tileatlas_probe_dims(src, src_len, &w, &h) == k_ra8_ok) {
- *   const uint32_t work = ra8_tileatlas_work_bytes(w, h, w, tile_h);
+ * if (ra8_jof_probe_dims(src, src_len, &w, &h) == k_ra8_ok) {
+ *   const uint32_t work = ra8_jof_work_bytes(w, h, w, tile_h);
  * }
  * @endcode
  *
- * @see ra8_tileatlas_produce()
- * @see ra8_tileatlas_work_bytes()
- * @see ra8_tileatlas_webp_work_bytes()
+ * @see ra8_jof_produce()
+ * @see ra8_jof_work_bytes()
+ * @see ra8_jof_webp_work_bytes()
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
-ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h);
+ra8_jof_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h);
 
 /**
  * @brief Transcode one encoded JPEG/PNG/WebP source into a JOF atlas (#231,
@@ -309,7 +309,7 @@ ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint1
  * Either way the rows are accumulated into one band, each tile is cut +
  * encoded through the configured (lossless) codec, and header / tiles / index /
  * footer are appended to the sink in one forward pass. On success `out_info`
- * describes the finished atlas exactly as `ra8_tileatlas_parse()` would report
+ * describes the finished atlas exactly as `ra8_jof_parse()` would report
  * it, and the atlas is byte-identical across source codecs that decode to the
  * same pixels.
  *
@@ -335,34 +335,33 @@ ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint1
  * @retval other                       Propagated from pull / sink.
  *
  * @pre @p cfg->work covers `work_cap` bytes sized per
- *      `ra8_tileatlas_work_bytes()`.
+ *      `ra8_jof_work_bytes()`.
  * @pre @p cfg->pull delivers the encoded source strictly in order, once.
  * @post On success the sink holds one complete, parseable JOF atlas.
  * @post On any error the sink holds a partial atlas that must be discarded
- *       (it will fail `ra8_tileatlas_parse()` -- no torn atlas is readable).
+ *       (it will fail `ra8_jof_parse()` -- no torn atlas is readable).
  * @note Not thread-safe (module-static decoder contexts).
  *
  * @par Example:
  * @code
- * ra8_tileatlas_memstore_t store = { .buf = sdram_buf, .cap = sizeof sdram_buf };
- * ra8_tileatlas_produce_cfg_t cfg = {
+ * ra8_jof_memstore_t store = { .buf = sdram_buf, .cap = sizeof sdram_buf };
+ * ra8_jof_produce_cfg_t cfg = {
  *   .pull = epub_entry_pull, .pull_ctx = &cursor,
- *   .sink = ra8_tileatlas_memstore_sink, .sink_ctx = &store,
+ *   .sink = ra8_jof_memstore_sink, .sink_ctx = &store,
  *   .tile_w = 256, .tile_h = 256,
- *   .codec = k_ra8_tileatlas_codec_deflate,
+ *   .codec = k_ra8_jof_codec_deflate,
  *   .max_width = 8192, .max_height = 16384,
  *   .work = arena, .work_cap = sizeof arena,
  * };
- * ra8_tileatlas_info_t info;
- * ra8_err_t err = ra8_tileatlas_produce(&cfg, &info);
+ * ra8_jof_info_t info;
+ * ra8_err_t err = ra8_jof_produce(&cfg, &info);
  * @endcode
  *
- * @see ra8_tileatlas_parse()      Validate / reopen the produced atlas.
- * @see ra8_tileatlas_read_tile()  Page tiles back in bounded RAM.
+ * @see ra8_jof_parse()      Validate / reopen the produced atlas.
+ * @see ra8_jof_read_tile()  Page tiles back in bounded RAM.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_tileatlas_produce(const ra8_tileatlas_produce_cfg_t* cfg,
-                                              ra8_tileatlas_info_t*              out_info);
+[[nodiscard]] ra8_err_t ra8_jof_produce(const ra8_jof_produce_cfg_t* cfg, ra8_jof_info_t* out_info);
 
 #ifdef __cplusplus
 }

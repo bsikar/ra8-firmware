@@ -22,7 +22,7 @@
 #include "mdl_export.h"
 #include "mdl_extract.h"
 #include "miniz.h"
-#include "ra8_tileatlas.h"
+#include "ra8_jof.h"
 #include "tiny_jpeg_fixture.h"
 #include "unity_minimal.h"
 
@@ -263,17 +263,17 @@ static void test_export_jof_roundtrip(void)
   (void)fseek(f, 0, SEEK_END);
   const long sz = ftell(f);
   (void)fseek(f, 0, SEEK_SET);
-  TEST_ASSERT(sz > (long)k_ra8_tileatlas_hdr_bytes);
+  TEST_ASSERT(sz > (long)k_ra8_jof_hdr_bytes);
   uint8_t* buf = (uint8_t*)malloc((size_t)sz);
   TEST_ASSERT_NOT_NULL(buf);
   TEST_ASSERT(fread(buf, 1U, (size_t)sz, f) == (size_t)sz);
   (void)fclose(f);
 
-  const size_t mlen = (size_t)k_ra8_tileatlas_magic_len;
-  TEST_ASSERT(memcmp(buf + k_ra8_tileatlas_ofs_magic, "JOF1", mlen) == 0);
+  const size_t mlen = (size_t)k_ra8_jof_magic_len;
+  TEST_ASSERT(memcmp(buf + k_ra8_jof_ofs_magic, "JOF1", mlen) == 0);
   TEST_ASSERT(memcmp(buf + ((size_t)sz - mlen), "JOFE", mlen) == 0);
   /* webtoon-native: a single full-width tile column (tile_w == width). */
-  TEST_ASSERT_EQ(rd_u16(buf + k_ra8_tileatlas_ofs_width), rd_u16(buf + k_ra8_tileatlas_ofs_tile_w));
+  TEST_ASSERT_EQ(rd_u16(buf + k_ra8_jof_ofs_width), rd_u16(buf + k_ra8_jof_ofs_tile_w));
   free(buf);
 
   (void)unlink(jpg);

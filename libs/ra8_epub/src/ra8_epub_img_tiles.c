@@ -9,11 +9,11 @@
  * bytes in a caller-owned bounded scratch). Atlas sources are either stored
  * archive entries (windowed with `ra8_epub_entry_pread`) or external pread
  * seams (SDRAM/SD stores filled by the import path in
- * `ra8_epub_img_import.c`). Tile decode itself is `ra8_tileatlas_read_tile()`
+ * `ra8_epub_img_import.c`). Tile decode itself is `ra8_jof_read_tile()`
  * -- one bounded read plus one bounded inflate per miss.
  *
  * Guarded on `__has_include`: the pure `ra8_epub` core (and epub-only apps
- * that never pull in `ra8_mem`/`ra8_tileatlas`) still link with this TU empty.
+ * that never pull in `ra8_mem`/`ra8_jof`) still link with this TU empty.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -25,7 +25,7 @@
 /* Compile the binder only where the ra8_mem tile cache and the atlas reader
  * are on the include path (ra8_reflow / ra8_mem consumers and the host test
  * build). Otherwise empty. */
-#if __has_include("ra8_tile_cache.h") && __has_include("ra8_tileatlas.h")
+#if __has_include("ra8_tile_cache.h") && __has_include("ra8_jof.h")
 
 #include "ra8_epub_img_tiles.h"
 
@@ -38,8 +38,8 @@
 #include "ra8_epub.h"
 #include "ra8_epub_entry.h"
 #include "ra8_err.h"
+#include "ra8_jof.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_epub_img_tiles";
@@ -76,7 +76,7 @@ static int32_t priv_find(const ra8_epub_tile_binder_t* binder, uint32_t image_id
 }
 
 /**
- * @brief ::ra8_tileatlas_pread_fn adapter over a stored archive entry.
+ * @brief ::ra8_jof_pread_fn adapter over a stored archive entry.
  * @details @p ctx is the owning ::ra8_epub_tile_source_t; the read windows
  *          the entry's uncompressed bytes via `ra8_epub_entry_pread`.
  * @param[in]  ctx    The book-backed source.
@@ -137,7 +137,7 @@ static ra8_err_t priv_measure_entry(ra8_epub_book_t* book, const char* path, uin
 /**
  * @brief Tile-cache decode-on-miss trampoline (::ra8_tile_decode_fn).
  * @details Resolves the key's image and decodes the tile off its backing via
- *          `ra8_tileatlas_read_tile()` (entry pread for book-backed sources,
+ *          `ra8_jof_read_tile()` (entry pread for book-backed sources,
  *          the external seam otherwise). A tile or its stored stream that
  *          exceeds the cell/scratch budget maps to `k_ra8_err_no_mem`,
  *          preserving the binder's documented contract.
@@ -169,20 +169,20 @@ static ra8_err_t priv_tile_decode(void*                 ctx,
   if (si < 0) {
     return k_ra8_err_not_found; /* GCOVR_EXCL_LINE -- get() rejects unregistered ids before the cache */
   }
-  ra8_epub_tile_source_t*      src   = &binder->sources[si];
-  const ra8_tileatlas_pread_fn pread = (src->book != nullptr) ? priv_entry_pread : src->pread;
-  void*                        pctx  = (src->book != nullptr) ? (void*)src : src->pread_ctx;
-  const ra8_err_t              err   = ra8_tileatlas_read_tile(pread,
-                                                               pctx,
-                                                               &src->info,
-                                                               key->tile_x,
-                                                               key->tile_y,
-                                                               binder->scratch,
-                                                               binder->scratch_cap,
-                                                               cell,
-                                                               cell_bytes,
-                                                               out_w,
-                                                               out_h);
+  ra8_epub_tile_source_t* src   = &binder->sources[si];
+  const ra8_jof_pread_fn  pread = (src->book != nullptr) ? priv_entry_pread : src->pread;
+  void*                   pctx  = (src->book != nullptr) ? (void*)src : src->pread_ctx;
+  const ra8_err_t         err   = ra8_jof_read_tile(pread,
+                                                    pctx,
+                                                    &src->info,
+                                                    key->tile_x,
+                                                    key->tile_y,
+                                                    binder->scratch,
+                                                    binder->scratch_cap,
+                                                    cell,
+                                                    cell_bytes,
+                                                    out_w,
+                                                    out_h);
   if (err == k_ra8_err_invalid_size) {
     return k_ra8_err_no_mem; /* tile exceeds the cell / scratch budget */
   }
@@ -270,7 +270,7 @@ static ra8_err_t priv_fill_book_source(ra8_epub_tile_source_t* src,
   (void)memcpy(src->path, path, plen + 1U);
   ra8_err_t err = priv_measure_entry(book, path, &src->total_size);
   if (err == k_ra8_ok) {
-    err = ra8_tileatlas_parse(priv_entry_pread, src, src->total_size, &src->info);
+    err = ra8_jof_parse(priv_entry_pread, src, src->total_size, &src->info);
   }
   if (err != k_ra8_ok) {
     (void)memset(src, 0, sizeof(*src));
@@ -305,7 +305,7 @@ ra8_err_t ra8_epub_tile_binder_add(ra8_epub_tile_binder_t* binder,
 }
 
 ra8_err_t ra8_epub_tile_binder_add_ext(ra8_epub_tile_binder_t* binder,
-                                       ra8_tileatlas_pread_fn  pread,
+                                       ra8_jof_pread_fn        pread,
                                        void*                   pread_ctx,
                                        uint64_t                total_size,
                                        uint32_t                image_id)
@@ -322,7 +322,7 @@ ra8_err_t ra8_epub_tile_binder_add_ext(ra8_epub_tile_binder_t* binder,
   src->pread_ctx  = pread_ctx;
   src->total_size = total_size;
   src->image_id   = image_id;
-  err             = ra8_tileatlas_parse(pread, pread_ctx, total_size, &src->info);
+  err             = ra8_jof_parse(pread, pread_ctx, total_size, &src->info);
   if (err != k_ra8_ok) {
     (void)memset(src, 0, sizeof(*src));
     return err;
@@ -333,7 +333,7 @@ ra8_err_t ra8_epub_tile_binder_add_ext(ra8_epub_tile_binder_t* binder,
 
 ra8_err_t ra8_epub_tile_binder_info(const ra8_epub_tile_binder_t* binder,
                                     uint32_t                      image_id,
-                                    ra8_tileatlas_info_t*         out_info)
+                                    ra8_jof_info_t*               out_info)
 {
   RA8_CHECK_NULL_PTR(binder, s_tag, "binder must not be nullptr");
   RA8_CHECK_NULL_PTR(out_info, s_tag, "out_info must not be nullptr");
@@ -357,7 +357,7 @@ ra8_err_t ra8_epub_tile_binder_get(ra8_epub_tile_binder_t* binder,
   if (si < 0) {
     return k_ra8_err_not_found;
   }
-  const ra8_tileatlas_info_t* info = &binder->sources[si].info;
+  const ra8_jof_info_t* info = &binder->sources[si].info;
   if (tile_x >= info->tile_cols) {
     return k_ra8_err_out_of_range;
   }
@@ -483,4 +483,4 @@ ra8_err_t ra8_epub_reflow_img_load(void*           ctx,
  * EPUB image-tile binder is unused here. A single typedef keeps the
  * translation unit non-empty. */
 typedef int ra8_epub_img_tiles_unused_translation_unit_t;
-#endif /* __has_include("ra8_tile_cache.h") && __has_include("ra8_tileatlas.h") */
+#endif /* __has_include("ra8_tile_cache.h") && __has_include("ra8_jof.h") */

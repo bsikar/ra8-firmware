@@ -85,7 +85,7 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 static uint32_t
-t_mg_reparse_warm_delta(const ra8_vmem_t* vm, ra8_vmem_stream_t* st, ra8_tileatlas_info_t* info)
+t_mg_reparse_warm_delta(const ra8_vmem_t* vm, ra8_vmem_stream_t* st, ra8_jof_info_t* info)
 {
   uint32_t before = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(vm, nullptr, &before, nullptr));
@@ -120,13 +120,13 @@ t_mg_reparse_warm_delta(const ra8_vmem_t* vm, ra8_vmem_stream_t* st, ra8_tileatl
 static void test_manga_stream_metadata_scan_resistance(void)
 {
   TEST_BEGIN("manga stream: bookmarked chapter metadata survives a cross-chapter flood");
-  ra8_vsource_t        vs      = {};
-  ra8_vsource_obj_t    objs[1] = {};
-  ra8_vmem_t           vm      = {};
-  ra8_vmem_stream_t    st      = {};
-  ra8_tile_cache_t     tc      = {};
-  t_mg_decode_ctx_t    dc      = {};
-  ra8_tileatlas_info_t info    = {};
+  ra8_vsource_t     vs      = {};
+  ra8_vsource_obj_t objs[1] = {};
+  ra8_vmem_t        vm      = {};
+  ra8_vmem_stream_t st      = {};
+  ra8_tile_cache_t  tc      = {};
+  t_mg_decode_ctx_t dc      = {};
+  ra8_jof_info_t    info    = {};
   (void)t_mg_setup((uint32_t)k_mg_scan_atlases, 0U, &vs, objs, &vm, &st, &tc, &dc, &info);
   t_mg_hw_t hw = {};
 
@@ -186,13 +186,13 @@ static void test_manga_stream_metadata_scan_resistance(void)
  */
 static uint32_t t_mg_tune_misses(uint8_t protected_pct)
 {
-  ra8_vsource_t        vs      = {};
-  ra8_vsource_obj_t    objs[1] = {};
-  ra8_vmem_t           vm      = {};
-  ra8_vmem_stream_t    st      = {};
-  ra8_tile_cache_t     tc      = {};
-  t_mg_decode_ctx_t    dc      = {};
-  ra8_tileatlas_info_t info    = {};
+  ra8_vsource_t     vs      = {};
+  ra8_vsource_obj_t objs[1] = {};
+  ra8_vmem_t        vm      = {};
+  ra8_vmem_stream_t st      = {};
+  ra8_tile_cache_t  tc      = {};
+  t_mg_decode_ctx_t dc      = {};
+  ra8_jof_info_t    info    = {};
   (void)
     t_mg_setup((uint32_t)k_mg_tune_atlases, protected_pct, &vs, objs, &vm, &st, &tc, &dc, &info);
   t_mg_hw_t hw = {};

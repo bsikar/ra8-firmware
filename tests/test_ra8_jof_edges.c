@@ -1,5 +1,5 @@
 /**
- * @file test_ra8_tileatlas_edges.c
+ * @file test_ra8_jof_edges.c
  * @brief Partial-edge-tile round-trip and tile-distinctness guards (#231, #289).
  *
  * @details
@@ -41,8 +41,8 @@
 
 #include "miniz.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
 /**
@@ -96,7 +96,7 @@ static uint8_t s_work[k_te_work_cap];
 /** @brief Atlas memstore backing. */
 static uint8_t s_store_buf[k_te_store_cap];
 /** @brief The atlas store under test. */
-static ra8_tileatlas_memstore_t s_store;
+static ra8_jof_memstore_t s_store;
 /** @brief Tile page-back buffer. */
 static uint8_t s_cell[k_te_cell_cap];
 /** @brief Stored-tile staging for the deflate codec. */
@@ -224,7 +224,7 @@ typedef struct {
   size_t         pos; /**< Read cursor.   */
 } t_pull_ctx_t;
 
-/** @brief ::ra8_tileatlas_pull_fn over a ::t_pull_ctx_t. */
+/** @brief ::ra8_jof_pull_fn over a ::t_pull_ctx_t. */
 static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   t_pull_ctx_t* p    = (t_pull_ctx_t*)ctx;
@@ -239,7 +239,7 @@ static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 /**
  * @brief Transcode ::s_src into ::s_store with the 32x32 tiling under test.
  * @param[out] info Receives the produced atlas geometry (non-NULL).
- * @return Result code from `ra8_tileatlas_produce()`.
+ * @return Result code from `ra8_jof_produce()`.
  * @retval k_ra8_ok The store holds a complete atlas.
  * @pre ::s_src holds the built PNG.
  * @pre @p info is writable.
@@ -248,25 +248,25 @@ static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  * @note Not thread-safe (shared fixtures).
  * @since 0.1.0
  */
-static ra8_err_t t_produce(ra8_tileatlas_info_t* info)
+static ra8_err_t t_produce(ra8_jof_info_t* info)
 {
   static t_pull_ctx_t pull;
   pull    = (t_pull_ctx_t){.d = s_src, .n = s_src_len, .pos = 0U};
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_pull,
     .pull_ctx   = &pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = (uint16_t)k_te_tile,
     .tile_h     = (uint16_t)k_te_tile,
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec      = (uint8_t)k_ra8_jof_codec_deflate,
     .max_width  = (uint16_t)k_te_w,
     .max_height = (uint16_t)k_te_h,
     .work       = s_work,
     .work_cap   = (size_t)k_te_work_cap,
   };
-  return ra8_tileatlas_produce(&cfg, info);
+  return ra8_jof_produce(&cfg, info);
 }
 
 /**
@@ -322,34 +322,34 @@ static uint16_t t_want_h(uint16_t ty)
  * @since 0.1.0
  */
 static void
-t_read(const ra8_tileatlas_info_t* info, uint16_t tx, uint16_t ty, uint16_t* out_w, uint16_t* out_h)
+t_read(const ra8_jof_info_t* info, uint16_t tx, uint16_t ty, uint16_t* out_w, uint16_t* out_h)
 {
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                         &s_store,
-                                         info,
-                                         tx,
-                                         ty,
-                                         s_scratch,
-                                         (uint32_t)sizeof(s_scratch),
-                                         s_cell,
-                                         (uint32_t)sizeof(s_cell),
-                                         out_w,
-                                         out_h));
+                 ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                   &s_store,
+                                   info,
+                                   tx,
+                                   ty,
+                                   s_scratch,
+                                   (uint32_t)sizeof(s_scratch),
+                                   s_cell,
+                                   (uint32_t)sizeof(s_cell),
+                                   out_w,
+                                   out_h));
 }
 
 /**
  * @test edge tiles report and decode their clamped extents
  *
- * @details Property 1: `ra8_tileatlas_tile_dims()` and the decoder must agree
+ * @details Property 1: `ra8_jof_tile_dims()` and the decoder must agree
  *          on the clamped extent for every tile, including the corner tile that
  *          is partial in both axes.
  */
 static void t_edge_dims(void)
 {
-  TEST_BEGIN("tileatlas_edges: clamped extents in both axes");
+  TEST_BEGIN("jof_edges: clamped extents in both axes");
   t_build_png();
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, t_produce(&info));
   TEST_ASSERT_EQ(k_te_cols, info.tile_cols);
   TEST_ASSERT_EQ(k_te_rows, info.tile_rows);
@@ -358,7 +358,7 @@ static void t_edge_dims(void)
     for (uint16_t tx = 0U; tx < info.tile_cols; tx++) {
       uint16_t tw = 0U;
       uint16_t th = 0U;
-      TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_tile_dims(&info, tx, ty, &tw, &th));
+      TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_tile_dims(&info, tx, ty, &tw, &th));
       TEST_ASSERT_EQ(t_want_w(tx), tw);
       TEST_ASSERT_EQ(t_want_h(ty), th);
       uint16_t gw = 0U;
@@ -368,7 +368,7 @@ static void t_edge_dims(void)
       TEST_ASSERT_EQ(t_want_h(ty), gh);
     }
   }
-  TEST_END("tileatlas_edges: clamped extents in both axes");
+  TEST_END("jof_edges: clamped extents in both axes");
 }
 
 /**
@@ -380,9 +380,9 @@ static void t_edge_dims(void)
  */
 static void t_edge_roundtrip(void)
 {
-  TEST_BEGIN("tileatlas_edges: round-trip pixels at true canvas positions");
+  TEST_BEGIN("jof_edges: round-trip pixels at true canvas positions");
   t_build_png();
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, t_produce(&info));
   for (uint16_t ty = 0U; ty < info.tile_rows; ty++) {
     for (uint16_t tx = 0U; tx < info.tile_cols; tx++) {
@@ -398,7 +398,7 @@ static void t_edge_roundtrip(void)
       }
     }
   }
-  TEST_END("tileatlas_edges: round-trip pixels at true canvas positions");
+  TEST_END("jof_edges: round-trip pixels at true canvas positions");
 }
 
 /**
@@ -413,9 +413,9 @@ static void t_edge_roundtrip(void)
  */
 static void t_edge_distinct(void)
 {
-  TEST_BEGIN("tileatlas_edges: distinct tiles hold distinct payloads");
+  TEST_BEGIN("jof_edges: distinct tiles hold distinct payloads");
   t_build_png();
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, t_produce(&info));
   for (uint32_t n = 0U; n < info.tile_count; n++) {
     uint16_t tw = 0U;
@@ -430,7 +430,7 @@ static void t_edge_distinct(void)
       TEST_ASSERT(!same_px); /* duplicated payload -> duplication in the FILE */
     }
   }
-  TEST_END("tileatlas_edges: distinct tiles hold distinct payloads");
+  TEST_END("jof_edges: distinct tiles hold distinct payloads");
 }
 
 /**
@@ -443,6 +443,6 @@ int32_t main(void)
   t_edge_dims();
   t_edge_roundtrip();
   t_edge_distinct();
-  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas_edges.c\n");
+  (void)fprintf(stderr, "[OK  ] test_ra8_jof_edges.c\n");
   return 0;
 }

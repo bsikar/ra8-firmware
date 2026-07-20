@@ -37,8 +37,8 @@ mkdir -p \
   "${CORPUS_ROOT}/fuzz_ra8_reflow_xml" \
   "${CORPUS_ROOT}/fuzz_ra8_stbtt" \
   "${CORPUS_ROOT}/fuzz_ra8_webp" \
-  "${CORPUS_ROOT}/fuzz_ra8_tileatlas" \
-  "${CORPUS_ROOT}/fuzz_ra8_tileatlas_produce" \
+  "${CORPUS_ROOT}/fuzz_ra8_jof" \
+  "${CORPUS_ROOT}/fuzz_ra8_jof_produce" \
   "${CORPUS_ROOT}/fuzz_ra8_unarch_xz" \
   "${CORPUS_ROOT}/fuzz_ra8_unarch_tar" \
   "${CORPUS_ROOT}/fuzz_ra8_unarch_gzip" \
@@ -340,12 +340,12 @@ cp "${ROOT}/tests/fixtures/webp/fixture_tall.webp" "${WEBP_DIR}/seed_tall.webp"
 printf 'RIFF\x08\x00\x00\x00WEBP' >"${WEBP_DIR}/seed_truncated.bin"
 
 # -----------------------------------------------------------------------------
-# fuzz_ra8_tileatlas -- one hand-built valid JOF raw-codec atlas (16x16
+# fuzz_ra8_jof -- one hand-built valid JOF raw-codec atlas (16x16
 # gray8, 8x8 tiles) so the reader starts past the header validation, plus a
 # truncated header the parser must reject cleanly.
 # -----------------------------------------------------------------------------
-RTA_DIR="${CORPUS_ROOT}/fuzz_ra8_tileatlas"
-python3 - "${RTA_DIR}" <<'PY'
+JOF_DIR="${CORPUS_ROOT}/fuzz_ra8_jof"
+python3 - "${JOF_DIR}" <<'PY'
 import os
 import struct
 import sys
@@ -380,11 +380,11 @@ with open(os.path.join(OUTDIR, "seed_truncated.bin"), "wb") as fh:
 PY
 
 # -----------------------------------------------------------------------------
-# fuzz_ra8_tileatlas_produce -- a small gray8 PNG and a small baseline JPEG
+# fuzz_ra8_jof_produce -- a small gray8 PNG and a small baseline JPEG
 # (both real decodable sources for immediate stripe-decoder coverage) plus a
 # bare PNG signature the sniffer accepts but the chunk walk must reject.
 # -----------------------------------------------------------------------------
-RTAP_DIR="${CORPUS_ROOT}/fuzz_ra8_tileatlas_produce"
+RTAP_DIR="${CORPUS_ROOT}/fuzz_ra8_jof_produce"
 python3 - "${RTAP_DIR}" <<'PY'
 import os
 import struct

@@ -1,7 +1,7 @@
 # JOF -- The Jump-Offset Band-Tile Atlas
 
 **Magic:** `JOF1` (header), `JOFE` (footer) &nbsp;|&nbsp;
-**Library:** `libs/ra8_tileatlas` &nbsp;|&nbsp;
+**Library:** `libs/ra8_jof` &nbsp;|&nbsp;
 **Extension:** `.jof` &nbsp;|&nbsp;
 **Issues:** #231 (full-resolution pages), #289 (longstrip scroll), #290 (codec policy), #319 (rename from RTA1)
 
@@ -196,9 +196,9 @@ atlas unless stated otherwise.
 | 16 | 4 | `tile_count` | Must equal `tile_cols * tile_rows`. `1 .. 65536` |
 | 20 | 12 | `reserved2` | Must be all `0` |
 
-The offsets above are mirrored by the `k_ra8_tileatlas_ofs_*` enumerators in
-`ra8_tileatlas.h`, which are what the code actually indexes with. The limits
-are `ra8_tileatlas_limits_t`.
+The offsets above are mirrored by the `k_ra8_jof_ofs_*` enumerators in
+`ra8_jof.h`, which are what the code actually indexes with. The limits
+are `ra8_jof_limits_t`.
 
 The grid dimensions are **derived, not stored**:
 
@@ -284,7 +284,7 @@ truncation even when the caller's idea of the file length is wrong.
 
 ## 4. Algorithms
 
-### 4.1 Producing (`ra8_tileatlas_produce()` -- host *or* device)
+### 4.1 Producing (`ra8_jof_produce()` -- host *or* device)
 
 The same function runs in both places. On the host it is driven by
 `ra8_fmt convert` / `tools/media_dl`; on the device it is driven by
@@ -311,11 +311,11 @@ digraph produce {
 @enddot
 
 The only backward write is step 6, into a fixed 32-byte window at offset 0. A
-pure append-only sink (`ra8_tileatlas_memstore_sink`, or a ZIP store entry) can
+pure append-only sink (`ra8_jof_memstore_sink`, or a ZIP store entry) can
 do this by keeping those 32 bytes addressable; everything else is strictly
 forward.
 
-### 4.2 Parsing (`ra8_tileatlas_parse()`)
+### 4.2 Parsing (`ra8_jof_parse()`)
 
 Parsing is cheap and touches only 48 bytes of the file. It reads the 32-byte
 header at offset 0 and the 16-byte footer at `total_size - 16`, then
@@ -324,7 +324,7 @@ cross-checks, in order:
 1. Both magics (`JOF1` at the head, `JOFE` at the tail).
 2. `total_size` is large enough to hold header + footer, and within the
    `uint32` cap.
-3. Geometry is non-zero and within `ra8_tileatlas_limits_t`.
+3. Geometry is non-zero and within `ra8_jof_limits_t`.
 4. `bpp` is 1, 3 or 4; `codec` is 0 or 1.
 5. Both reserved runs are entirely zero.
 6. `tile_cols`/`tile_rows` derived by ceil-division; `tile_count == cols * rows`
@@ -336,11 +336,11 @@ cross-checks, in order:
 Note what parse does **not** do: it does not validate individual index entries.
 The index can be up to 512 KiB, which is larger than any bounded parse buffer
 the device is willing to hold. Per-tile offsets and lengths are validated
-**per read**, by `ra8_tileatlas_read_tile()`, at the moment they are used. This
+**per read**, by `ra8_jof_read_tile()`, at the moment they are used. This
 is a deliberate split -- validate structure eagerly, validate contents lazily
 but always before use.
 
-### 4.3 Reading one tile (`ra8_tileatlas_read_tile()`)
+### 4.3 Reading one tile (`ra8_jof_read_tile()`)
 
 ```
   1. Range-check tile_x, tile_y against the grid.
@@ -361,7 +361,7 @@ Step 5 is the security-critical one and step 7 is the correctness-critical one.
 Together they mean a corrupt index can waste a read but cannot produce pixels
 the caller will misinterpret.
 
-`ra8_tileatlas_stored_bound()` sizes the scratch buffer. For deflate it returns
+`ra8_jof_stored_bound()` sizes the scratch buffer. For deflate it returns
 `raw + raw/8 + 256`, the safe over-estimate of miniz's worst-case expansion on
 incompressible input -- because DEFLATE on random data is slightly *larger*
 than the input, and a scratch buffer sized at exactly `raw` would fail on a
@@ -382,7 +382,7 @@ impossible.
 **Resident cost of reading a tile is `scratch_cap + out_cap`, and nothing
 else.** It does not depend on the image dimensions, the tile count, or the file
 size. The index is *not* held resident -- each read fetches its own 8-byte
-entry. The parsed `ra8_tileatlas_info_t` is 24 bytes.
+entry. The parsed `ra8_jof_info_t` is 24 bytes.
 
 For a 256 x 256 RGB888 tile:
 
@@ -422,7 +422,7 @@ digraph residency {
 @enddot
 
 Zero heap throughout (NASA P10 Rule 3): the caller owns `scratch` and `out_px`,
-sizes them from `ra8_tileatlas_stored_bound()`, and the reader never allocates.
+sizes them from `ra8_jof_stored_bound()`, and the reader never allocates.
 
 ### 5.1 Memory behaviour of the writer
 
@@ -451,7 +451,7 @@ digraph produce_streaming {
        fillcolor="#f0f0f0", color="#888888"];
 
   subgraph cluster_arena {
-    label="cfg.work -- ONE fixed arena, sized up front by ra8_tileatlas_work_bytes()";
+    label="cfg.work -- ONE fixed arena, sized up front by ra8_jof_work_bytes()";
     fontsize=11; fontname="Helvetica-Bold";
     color="#5f9e72"; style="rounded"; bgcolor="#eef7f0";
     dec  [label="stripe decoder\nJPEG: 128 KiB window\n+ one MCU-row stripe\nPNG: ring + 3 rows",
@@ -491,11 +491,11 @@ transcodes without ever being resident.** The 800 x 12260 longstrip decodes to
 The producer **allocates nothing**. Every byte of state -- decoder buffers,
 band, tile stage, compressor scratch, tile index -- is carved by an internal
 bump allocator from one caller-supplied buffer, `cfg.work`. That is the entire
-RAM cost, and `ra8_tileatlas_work_bytes()` computes it exactly, up front, from
+RAM cost, and `ra8_jof_work_bytes()` computes it exactly, up front, from
 the caller's budget caps:
 
 ```c
-uint32_t need = ra8_tileatlas_work_bytes(max_w, max_h, tile_w, tile_h);
+uint32_t need = ra8_jof_work_bytes(max_w, max_h, tile_w, tile_h);
 ```
 
 A caller therefore knows *before starting* whether an import fits. If the arena
@@ -526,7 +526,7 @@ not two.** Write the arena as the computed requirement for the declared cap:
 ```c
 /* Not "2 MiB looks about right" -- the return of the sizing function for the
  * cap this caller actually advertises. */
-uint32_t need = ra8_tileatlas_work_bytes(max_w, max_h, tile_w, tile_h);
+uint32_t need = ra8_jof_work_bytes(max_w, max_h, tile_w, tile_h);
 ```
 
 The reason this matters more than it looks is a subtlety in *when* an
@@ -579,7 +579,7 @@ fail when it drifts from the cap beside it:
   It catches "raised the cap, forgot the arena" at build time. It cannot
   certify a *sufficient* arena -- it is a lower bound, not the total;
 - a **host test** asserting the arena against the real
-  `ra8_tileatlas_work_bytes()` return. This is the exact, authoritative check,
+  `ra8_jof_work_bytes()` return. This is the exact, authoritative check,
   and it is the one that runs in CI;
 - a **boot-time** re-check of the same call, so a mismatch that somehow reaches
   silicon reports a hard failure instead of silently under-delivering.
@@ -636,7 +636,7 @@ or a JPEG MCU row, a VP8L pixel can depend on a pixel thousands of rows back.
 
 So a WebP source is normalised through the *same* JOF tile path, but the decode
 in front of it is whole-frame, and it is paid for out of a **second, separate**
-arena sized by `ra8_tileatlas_webp_work_bytes()`. That arena holds three things
+arena sized by `ra8_jof_webp_work_bytes()`. That arena holds three things
 at once: the compressed source, the decoded RGBA8888 frame, and libwebp's
 internal scratch.
 
@@ -696,7 +696,7 @@ and it is a thin one -- there is no separate device transcoder:
    pulled straight out of the ZIP entry in bounded chunks -- stored or
    deflated, decompressed on the fly, **never staged whole**.
 3. **Produce.** It forwards the caller's knobs verbatim into
-   `ra8_tileatlas_produce_cfg_t`: `tile_w`, `tile_h`, `codec`, `max_width`,
+   `ra8_jof_produce_cfg_t`: `tile_w`, `tile_h`, `codec`, `max_width`,
    `max_height`, `work` / `work_cap`, and `webp_work` / `webp_work_cap`.
 4. **Register.** The finished atlas is bound into the tile binder through the
    store's `pread` seam. The entry cursor is always closed, with the first
@@ -707,17 +707,17 @@ The arena is entirely the application's, arriving through
 `ra8_epub_atlas_import_cfg_t`. The e-reader application places it in external
 SDRAM -- which is the real answer to "we can't allocate more". The device does
 not allocate; it is *given* a fixed arena at build time, sized by
-`ra8_tileatlas_work_bytes()` for the caps that application intends to support,
+`ra8_jof_work_bytes()` for the caps that application intends to support,
 and any source outside those caps is refused rather than accommodated.
 
 > **Normative split.** The wire format in [section 3](#3-wire-format) is
 > normative here -- this document defines the bytes. The producer's *memory
-> contract* is normative in **`ra8_tileatlas_produce.h`**: the carve set,
+> contract* is normative in **`ra8_jof_produce.h`**: the carve set,
 > the arena sizing functions and the fail-closed conditions are defined by
 > that header and its implementation, and this section is explanatory. If the
 > two ever disagree, the header wins and this section is the bug. Every figure
 > in section 5.1 is a computed return value of
-> `ra8_tileatlas_work_bytes()` / `ra8_tileatlas_webp_work_bytes()`.
+> `ra8_jof_work_bytes()` / `ra8_jof_webp_work_bytes()`.
 
 ---
 
@@ -929,7 +929,7 @@ rejection, not a crash.
 | Wrong `JOFE` footer magic | Truncation goes undetected | Rejected; the head/tail pair must both match |
 | Truncated file | Reads past the end | `total_size` must equal the caller's backing size; the pread seam reports short reads and they fail closed |
 | `width`/`height` = 0 | Division by zero computing `tile_cols` | Non-zero is checked before any ceil-division |
-| `width`/`height` > 32768 | Loop bound explosion, integer overflow in area | Capped by `ra8_tileatlas_limits_t` |
+| `width`/`height` > 32768 | Loop bound explosion, integer overflow in area | Capped by `ra8_jof_limits_t` |
 | `tile_count` != `cols * rows` | Index shorter than the reader assumes | Cross-checked in header *and* footer |
 | `tile_count` > 65536 | 512 KiB+ index, unbounded loop | Capped |
 | Non-zero reserved bytes | A future field silently reinterpreted | Required to be zero; rejected otherwise |
@@ -1016,16 +1016,16 @@ no dual-version reader and there should never be one.
 
 | Revision | Status | Notes |
 |----------|--------|-------|
-| `JOF1` | Current | Initial format. Previously named **RTA1** (`ra8_tileatlas`, "RA8 Tile Atlas"); renamed to JOF under issue #319 to name the *access pattern* rather than the library. The byte layout did not change in the rename -- only the magic and the library identifier. |
+| `JOF1` | Current | Initial format. Previously named **RTA1** -- "RA8 Tile Atlas", after the library that then carried it, `ra8_tileatlas`. Issue #319 renamed the magic to JOF to name the *access pattern* rather than the library; the library itself followed to `ra8_jof`, since its entire API is JOF operations. The byte layout did not change in either rename -- only the magic and the library identifier. |
 
 ---
 
 ## See also
 
-- `ra8_tileatlas.h` -- reader API, offset enums, limits
-- `ra8_tileatlas_produce.h` -- import-time transcode producer, and the
+- `ra8_jof.h` -- reader API, offset enums, limits
+- `ra8_jof_produce.h` -- import-time transcode producer, and the
   **normative** contract for the writer memory model described in section 5.1
-  (`ra8_tileatlas_work_bytes()`, `ra8_tileatlas_webp_work_bytes()`)
+  (`ra8_jof_work_bytes()`, `ra8_jof_webp_work_bytes()`)
 - `ra8_epub_img_tiles.h` / `ra8_epub_tile_binder_import()` -- device-side
   import driver
 - `ra8_epub_img_tiles.h` -- EPUB tile-cache binder over this format

@@ -124,13 +124,13 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_reflow/src/ra8_reflow_svg_shape.c | 2 | priv_grad_eval | `if ((p >= o0) && (p <= o1)) {` | Annotated deactivation: the loop is entered only when p >... |
 | libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c | 3 | priv_decode_numeric | `if ((i < avail) && ((src[i] == 'x') \|\| (src[i] == 'X'))) {` | Annotated deactivation: the sole caller ra8_reflow_tok_de... |
 | libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c | 3 | priv_decode_numeric | `if ((digits == 0U) \|\| (i >= avail) \|\| (src[i] != ';')) {` | Annotated deactivation: the scan loop above exits with i ... |
-| libs/ra8_tileatlas/src/ra8_tileatlas_png.c | 2 | png_inflate_step | `if ((it->in_pos == it->in_avail) && (st->source_done == 0...` | Annotated deactivation: refill-first loop structure; ente... |
-| libs/ra8_tileatlas/src/ra8_tileatlas_png.c | 2 | png_inflate_step | `if ((in_sz == 0U) && (out_sz == 0U)) {` | Annotated deactivation: zero-progress stall guard, defens... |
-| libs/ra8_tileatlas/src/ra8_tileatlas_png.c | 2 | png_inflate_step | `if ((it->stalls > 1U) \|\| (st->source_done != 0U)) {` | Annotated deactivation: inner arm of the non-constructibl... |
-| libs/ra8_tileatlas/src/ra8_tileatlas_produce.c | 2 | priv_carve_pixel_path | `if ((band_bytes > (uint64_t)UINT32_MAX) \|\| (stage_bytes...` | Annotated deactivation: stage_bytes = tw_eff*th_eff*bpp w... |
-| libs/ra8_tileatlas/src/ra8_tileatlas_produce.c | 3 | priv_flush_band | `if ((st->geom_done == 0U) \|\| (width != st->w) \|\| (cha...` | Annotated deactivation: row-sink contract guard; both in-... |
-| libs/ra8_tileatlas/src/ra8_tileatlas_produce.c | 3 | priv_flush_band | `if ((nrows == 0U) \|\| ((uint32_t)y0 != st->rows_seen) \|\|` | Annotated deactivation: row-ordering contract guard; the ... |
-| libs/ra8_tileatlas/src/ra8_tileatlas_produce.c | 2 | priv_epilogue | `if ((st->geom_done == 0U) \|\| (st->rows_seen != (uint32_...` | Annotated deactivation: post-decode contract guard; both ... |
+| libs/ra8_jof/src/ra8_jof_png.c | 2 | png_inflate_step | `if ((it->in_pos == it->in_avail) && (st->source_done == 0...` | Annotated deactivation: refill-first loop structure; ente... |
+| libs/ra8_jof/src/ra8_jof_png.c | 2 | png_inflate_step | `if ((in_sz == 0U) && (out_sz == 0U)) {` | Annotated deactivation: zero-progress stall guard, defens... |
+| libs/ra8_jof/src/ra8_jof_png.c | 2 | png_inflate_step | `if ((it->stalls > 1U) \|\| (st->source_done != 0U)) {` | Annotated deactivation: inner arm of the non-constructibl... |
+| libs/ra8_jof/src/ra8_jof_produce.c | 2 | priv_carve_pixel_path | `if ((band_bytes > (uint64_t)UINT32_MAX) \|\| (stage_bytes...` | Annotated deactivation: stage_bytes = tw_eff*th_eff*bpp w... |
+| libs/ra8_jof/src/ra8_jof_produce.c | 3 | priv_flush_band | `if ((st->geom_done == 0U) \|\| (width != st->w) \|\| (cha...` | Annotated deactivation: row-sink contract guard; both in-... |
+| libs/ra8_jof/src/ra8_jof_produce.c | 3 | priv_flush_band | `if ((nrows == 0U) \|\| ((uint32_t)y0 != st->rows_seen) \|\|` | Annotated deactivation: row-ordering contract guard; the ... |
+| libs/ra8_jof/src/ra8_jof_produce.c | 2 | priv_epilogue | `if ((st->geom_done == 0U) \|\| (st->rows_seen != (uint32_...` | Annotated deactivation: post-decode contract guard; both ... |
 | libs/ra8_touch_cal/src/ra8_touch_cal.c | 2 | internal_clip32 | `if (!ok_u \|\| !ok_v) {` | Annotated deactivation: TU-local helper internal_clip32 s... |
 | libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c | 2 | ra8_wdt_supervisor_tick | `if (will_refresh && (s_state.refresh != nullptr)) {` | Annotated deactivation: ra8_wdt_supervisor_tick refresh d... |
 
@@ -143,11 +143,11 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_xml_shim | 72 | 54 | 4 | 14 |
 | mg_reader | 11 | 1 | 4 | 6 |
 | ra8_psa_crypto_sim | 6 | 1 | 5 | 0 |
-| ra8_tileatlas_produce | 19 | 15 | 1 | 3 |
+| ra8_jof_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
 | ra8_reflow_svg_shape | 15 | 12 | 3 | 0 |
 | ra8_epub_open | 7 | 4 | 0 | 3 |
-| ra8_tileatlas_png | 7 | 4 | 1 | 2 |
+| ra8_jof_png | 7 | 4 | 1 | 2 |
 | ra8_reflow_css | 26 | 24 | 1 | 1 |
 | ra8_reflow_css_cascade | 23 | 21 | 2 | 0 |
 | ra8_reflow_css_rules | 21 | 19 | 2 | 0 |
@@ -230,7 +230,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_i2c_peripheral | 5 | 5 | 0 | 0 |
 | ra8_rar5 | 5 | 5 | 0 | 0 |
 | ra8_rar5_tables | 5 | 5 | 0 | 0 |
-| ra8_tileatlas_png_chunk | 5 | 5 | 0 | 0 |
+| ra8_jof_png_chunk | 5 | 5 | 0 | 0 |
 | ra8_usb_haud | 5 | 5 | 0 | 0 |
 | ra8_usb_hcdc_ecm | 5 | 5 | 0 | 0 |
 | ra8_usb_pprn | 5 | 5 | 0 | 0 |
@@ -259,7 +259,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_eth_gwca_queue | 3 | 3 | 0 | 0 |
 | ra8_jpeg_sw_stream | 3 | 3 | 0 | 0 |
 | ra8_sdmmc_spi | 3 | 3 | 0 | 0 |
-| ra8_tileatlas | 3 | 3 | 0 | 0 |
+| ra8_jof | 3 | 3 | 0 | 0 |
 | ra8_touch | 3 | 3 | 0 | 0 |
 | ra8_ui | 3 | 3 | 0 | 0 |
 | ra8_usb_hmsc | 3 | 3 | 0 | 0 |
@@ -289,7 +289,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_sci_dma_isr | 2 | 2 | 0 | 0 |
 | ra8_sdhi | 2 | 2 | 0 | 0 |
 | ra8_spi_b_dma | 2 | 2 | 0 | 0 |
-| ra8_tileatlas_produce_webp | 2 | 2 | 0 | 0 |
+| ra8_jof_produce_webp | 2 | 2 | 0 | 0 |
 | ra8_tsn | 2 | 2 | 0 | 0 |
 | ra8_usb_composite | 2 | 2 | 0 | 0 |
 | ra8_usb_hcdc | 2 | 2 | 0 | 0 |
@@ -357,9 +357,9 @@ Sorted by (uncovered + partial) descending, then total descending.
 |--------|----------:|--------:|--------:|------:|
 | ra8_epub_xml_shim | 14 | 4 | 54 | 72 |
 | mg_reader | 6 | 4 | 1 | 11 |
-| ra8_tileatlas_produce | 3 | 1 | 15 | 19 |
+| ra8_jof_produce | 3 | 1 | 15 | 19 |
 | ra8_epub_open | 3 | 0 | 4 | 7 |
-| ra8_tileatlas_png | 2 | 1 | 4 | 7 |
+| ra8_jof_png | 2 | 1 | 4 | 7 |
 | ra8_ble | 2 | 0 | 6 | 8 |
 | ra8_rabook_xml_shim | 1 | 1 | 3 | 5 |
 | ra8_reflow_css | 1 | 1 | 24 | 26 |
