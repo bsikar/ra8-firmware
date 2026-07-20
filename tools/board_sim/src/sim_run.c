@@ -402,7 +402,7 @@ static void run_loop_record(run_loop_t* st)
                     cfg->rotate_deg,
                     cfg->win_title);
     enum : uint16_t {
-      k_rec_path_cap = 1024U, /**< Recorded-frame path: <record_dir>/frame_NNNNNN.ppm. */
+      k_rec_path_cap = 1024U, /**< Recorded-frame path: `record_dir/frame_NNNNNN.ppm`. */
     };
     char fpath[k_rec_path_cap];
     (void)snprintf(fpath,

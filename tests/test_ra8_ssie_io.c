@@ -22,12 +22,31 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum ssie_io_count_t
+ * @brief Element count of the source buffer the FIFO-write arms hand over.
+ *
+ * @details
+ * Deliberately larger than the 32-entry transmit FIFO so a write is bounded by
+ * the space the FIFO reports, not by how much data the caller supplied -- with
+ * two entries pre-staged the driver must write exactly 30. Sized to the
+ * smallest type that holds it rather than sharing ::ssie_io_test_lit_t's
+ * `uint32_t`, which would make every `uint8_t` index narrower than its bound.
+ *
+ * @invariant Exceeds the SSIE transmit-FIFO depth.
+ *
+ * @see ssie_io_test_lit_t
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ssie_src_words = 40U, /**< Source words offered to a FIFO write. */
+} ssie_io_count_t;
+
+/**
  * @enum ssie_io_test_lit_t
  * @brief Named constants for the register stamp patterns and literal
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_ssie_io_lit_40             = 40,           /**< Ssie IO literal 40.            */
   k_ssie_io_lit_xaa00          = 0xAA00U,      /**< Ssie IO literal 0xAA00.        */
   k_ssie_io_lit_99             = 99U,          /**< Ssie IO literal 99.            */
   k_ssie_io_cfg_tx_dma_channel = 0xFFU,        /**< Ssie IO config tx DMA channel. */
@@ -99,8 +118,8 @@ static void test_write_buffer(void)
   /* Pretend the FIFO has 2 entries already; depth is 32, so we
    * should write only 30. */
   reg->SSIFSR = (uint32_t)(2U << (uint8_t)k_ra8_ssie_shift_tdc);
-  uint32_t buf[k_ssie_io_lit_40];
-  for (uint8_t i = 0U; i < k_ssie_io_lit_40; i++) {
+  uint32_t buf[k_ssie_src_words];
+  for (uint8_t i = 0U; i < (uint8_t)k_ssie_src_words; i++) {
     buf[i] = k_ssie_io_lit_xaa00 + i;
     /* keep TDC at 2 so the loop sees space (sim mmap is just RAM). */
   }
