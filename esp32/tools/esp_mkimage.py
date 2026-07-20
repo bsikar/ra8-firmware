@@ -45,49 +45,49 @@ SPDX-License-Identifier: MIT
 """
 
 import hashlib
-import os
 import struct
 import sys
+from pathlib import Path
 
 # --- Espressif image constants (see module verification-status note) ---------
-ESP_IMAGE_MAGIC = 0xE9        # header byte 0 (esptool image-format doc)
-ESP_CHECKSUM_SEED = 0xEF      # XOR seed for the segment checksum
-ESP_IMAGE_HEADER_LEN = 24     # bytes in the fixed image header
-ESP_SEGMENT_ALIGN = 16        # checksum lands on this boundary
-SHA256_LEN = 32               # appended digest length
+ESP_IMAGE_MAGIC = 0xE9  # header byte 0 (esptool image-format doc)
+ESP_CHECKSUM_SEED = 0xEF  # XOR seed for the segment checksum
+ESP_IMAGE_HEADER_LEN = 24  # bytes in the fixed image header
+ESP_SEGMENT_ALIGN = 16  # checksum lands on this boundary
+SHA256_LEN = 32  # appended digest length
 
-CHIP_ID_ESP32C6 = 0x000D      # esp_chip_id_t: ESP32-C6 = 13 (esp_app_format.h)
-FLASH_MODE_DIO = 0x02         # header byte 2 (spi mode)            # [CONFIRM]
-FLASH_FREQ_40M = 0x00         # header byte 3, low nibble           # [CONFIRM]
-FLASH_SIZE_2MB = 0x10         # header byte 3, high nibble          # [CONFIRM]
-HASH_APPENDED = 0x01          # header byte 23: SHA-256 is appended
-MIN_CHIP_REV_FULL = 0x0000    # accept any silicon revision (major*100+minor)
-MAX_CHIP_REV_FULL = 0xFFFF    # accept any silicon revision
+CHIP_ID_ESP32C6 = 0x000D  # esp_chip_id_t: ESP32-C6 = 13 (esp_app_format.h)
+FLASH_MODE_DIO = 0x02  # header byte 2 (spi mode)            # [CONFIRM]
+FLASH_FREQ_40M = 0x00  # header byte 3, low nibble           # [CONFIRM]
+FLASH_SIZE_2MB = 0x10  # header byte 3, high nibble          # [CONFIRM]
+HASH_APPENDED = 0x01  # header byte 23: SHA-256 is appended
+MIN_CHIP_REV_FULL = 0x0000  # accept any silicon revision (major*100+minor)
+MAX_CHIP_REV_FULL = 0xFFFF  # accept any silicon revision
 
 # --- Spike load geometry (matches boot/esp32c6.ld) ---------------------------
-HP_SRAM_BASE = 0x40800000     # TRM Ch "System and Memory"          # [CONFIRM]
+HP_SRAM_BASE = 0x40800000  # TRM Ch "System and Memory"          # [CONFIRM]
 
 
 def build_image_header(segment_count, entry_addr):
     """Return the 24-byte Espressif image header for a C6 app image."""
     freq_size = (FLASH_SIZE_2MB & 0xF0) | (FLASH_FREQ_40M & 0x0F)
     header = bytearray()
-    header.append(ESP_IMAGE_MAGIC)                       # 0x00 magic
-    header.append(segment_count & 0xFF)                  # 0x01 segment count
-    header.append(FLASH_MODE_DIO & 0xFF)                 # 0x02 spi mode
-    header.append(freq_size & 0xFF)                      # 0x03 freq | size
-    header += struct.pack("<I", entry_addr)              # 0x04 entry point
-    header.append(0x00)                                  # 0x08 wp pin (disabled)
-    header += bytes(3)                                   # 0x09 spi pin drive[3]
-    header += struct.pack("<H", CHIP_ID_ESP32C6)         # 0x0C chip id
-    header.append(0x00)                                  # 0x0E min rev (legacy)
-    header += struct.pack("<H", MIN_CHIP_REV_FULL)       # 0x0F min rev full
-    header += struct.pack("<H", MAX_CHIP_REV_FULL)       # 0x11 max rev full
-    header += bytes(4)                                   # 0x13 reserved[4]
-    header.append(HASH_APPENDED & 0xFF)                  # 0x17 hash appended
+    header.append(ESP_IMAGE_MAGIC)  # 0x00 magic
+    header.append(segment_count & 0xFF)  # 0x01 segment count
+    header.append(FLASH_MODE_DIO & 0xFF)  # 0x02 spi mode
+    header.append(freq_size & 0xFF)  # 0x03 freq | size
+    header += struct.pack("<I", entry_addr)  # 0x04 entry point
+    header.append(0x00)  # 0x08 wp pin (disabled)
+    header += bytes(3)  # 0x09 spi pin drive[3]
+    header += struct.pack("<H", CHIP_ID_ESP32C6)  # 0x0C chip id
+    header.append(0x00)  # 0x0E min rev (legacy)
+    header += struct.pack("<H", MIN_CHIP_REV_FULL)  # 0x0F min rev full
+    header += struct.pack("<H", MAX_CHIP_REV_FULL)  # 0x11 max rev full
+    header += bytes(4)  # 0x13 reserved[4]
+    header.append(HASH_APPENDED & 0xFF)  # 0x17 hash appended
     if len(header) != ESP_IMAGE_HEADER_LEN:
-        raise ValueError("image header is %d bytes, expected %d"
-                         % (len(header), ESP_IMAGE_HEADER_LEN))
+        message = f"image header is {len(header)} bytes, expected {ESP_IMAGE_HEADER_LEN}"
+        raise ValueError(message)
     return bytes(header)
 
 
@@ -119,37 +119,42 @@ def pack(payload, load_addr, entry_addr):
     return bytes(body)
 
 
+ARGV_INPUT = 1
+ARGV_OUTPUT = 2
+
+
 def default_paths():
     """Return (input, output) defaults relative to this script's esp32/ dir."""
-    here = os.path.dirname(os.path.abspath(__file__))
-    esp32_dir = os.path.dirname(here)
-    build_dir = os.path.join(esp32_dir, "build")
-    return (os.path.join(build_dir, "esp32c6-blink.bin"),
-            os.path.join(build_dir, "esp32c6-blink.app.bin"))
+    build_dir = Path(__file__).resolve().parent.parent / "build"
+    return (
+        str(build_dir / "esp32c6-blink.bin"),
+        str(build_dir / "esp32c6-blink.app.bin"),
+    )
 
 
 def main(argv):
     """Read the input .bin, pack it, write the .app.bin, print a summary."""
     default_in, default_out = default_paths()
-    input_path = argv[1] if len(argv) > 1 else default_in
-    output_path = argv[2] if len(argv) > 2 else default_out
+    input_path = argv[ARGV_INPUT] if len(argv) > ARGV_INPUT else default_in
+    output_path = argv[ARGV_OUTPUT] if len(argv) > ARGV_OUTPUT else default_out
 
-    if not os.path.isfile(input_path):
-        sys.stderr.write("esp_mkimage: input not found: %s\n" % input_path)
+    if not Path(input_path).is_file():
+        sys.stderr.write(f"esp_mkimage: input not found: {input_path}\n")
         sys.stderr.write("esp_mkimage: build it first with 'make -C esp32'\n")
         return 1
 
-    with open(input_path, "rb") as handle:
+    with Path(input_path).open("rb") as handle:
         payload = handle.read()
 
     image = pack(payload, HP_SRAM_BASE, HP_SRAM_BASE)
-    with open(output_path, "wb") as handle:
+    with Path(output_path).open("wb") as handle:
         handle.write(image)
 
-    print("esp_mkimage: %s (%d bytes) -> %s (%d bytes)"
-          % (input_path, len(payload), output_path, len(image)))
-    print("esp_mkimage: 1 segment @ 0x%08x, entry 0x%08x, magic 0x%02x, "
-          "SHA-256 appended" % (HP_SRAM_BASE, HP_SRAM_BASE, ESP_IMAGE_MAGIC))
+    print(f"esp_mkimage: {input_path} ({len(payload)} bytes) -> {output_path} ({len(image)} bytes)")
+    print(
+        f"esp_mkimage: 1 segment @ 0x{HP_SRAM_BASE:08x}, entry 0x{HP_SRAM_BASE:08x}, "
+        f"magic 0x{ESP_IMAGE_MAGIC:02x}, SHA-256 appended"
+    )
     print("esp_mkimage: NOTE header layout is [CONFIRM] vs the C6 TRM / esptool")
     return 0
 

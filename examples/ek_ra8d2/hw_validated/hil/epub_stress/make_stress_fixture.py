@@ -20,6 +20,7 @@
 # Usage:  python3 make_stress_fixture.py
 import io
 import zipfile
+from pathlib import Path
 
 N_CHAPTERS = 60  # spine length; must stay < k_ra8_epub_max_chapters (64)
 N_RESOURCES = 60  # extra manifest-only files (push the archive file count up)
@@ -39,20 +40,18 @@ CONTAINER_XML = (
 def build_opf() -> str:
     items = [
         '    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>',
-        '    <item id="cover" href="cover.png" media-type="image/png" '
-        'properties="cover-image"/>',
+        '    <item id="cover" href="cover.png" media-type="image/png" properties="cover-image"/>',
     ]
     spine = []
     for i in range(N_CHAPTERS):
         items.append(
-            f'    <item id="ch{i}" href="ch{i}.xhtml" '
-            'media-type="application/xhtml+xml"/>'
+            f'    <item id="ch{i}" href="ch{i}.xhtml" media-type="application/xhtml+xml"/>'
         )
         spine.append(f'    <itemref idref="ch{i}"/>')
-    for i in range(N_RESOURCES):
-        items.append(
-            f'    <item id="res{i}" href="res{i}.css" media-type="text/css"/>'
-        )
+    items.extend(
+        f'    <item id="res{i}" href="res{i}.css" media-type="text/css"/>'
+        for i in range(N_RESOURCES)
+    )
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" '
@@ -65,20 +64,19 @@ def build_opf() -> str:
         '    <meta name="cover" content="cover"/>\n'
         "  </metadata>\n"
         "  <manifest>\n" + "\n".join(items) + "\n  </manifest>\n"
-        "  <spine toc=\"ncx\">\n" + "\n".join(spine) + "\n  </spine>\n"
+        '  <spine toc="ncx">\n' + "\n".join(spine) + "\n  </spine>\n"
         "</package>\n"
     )
 
 
 def build_ncx() -> str:
-    points = []
-    for i in range(N_CHAPTERS):
-        points.append(
-            f'    <navPoint id="np{i}" playOrder="{i + 1}">\n'
-            f"      <navLabel><text>Chapter {i + 1}</text></navLabel>\n"
-            f'      <content src="ch{i}.xhtml"/>\n'
-            "    </navPoint>"
-        )
+    points = [
+        f'    <navPoint id="np{i}" playOrder="{i + 1}">\n'
+        f"      <navLabel><text>Chapter {i + 1}</text></navLabel>\n"
+        f'      <content src="ch{i}.xhtml"/>\n'
+        "    </navPoint>"
+        for i in range(N_CHAPTERS)
+    ]
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">\n'
@@ -90,6 +88,8 @@ def build_ncx() -> str:
 
 
 # A real 1x1 PNG (so cover resolution + a real decodable image are present).
+# Hand-aligned PNG byte table, twelve bytes per row -- keep the rows intact.
+# fmt: off
 COVER_PNG = bytes(
     [
         0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
@@ -100,6 +100,7 @@ COVER_PNG = bytes(
         0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
     ]
 )
+# fmt: on
 
 
 def build_epub() -> bytes:
@@ -170,7 +171,7 @@ def bake_header(epub: bytes) -> str:
 
 def main():
     epub = build_epub()
-    with open("epub_stress_fixture.h", "w", encoding="ascii") as f:
+    with Path("epub_stress_fixture.h").open("w", encoding="ascii") as f:
         f.write(bake_header(epub))
     print(f"wrote epub_stress_fixture.h ({len(epub)} epub bytes)")
 

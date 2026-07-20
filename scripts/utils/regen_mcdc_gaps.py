@@ -204,7 +204,7 @@ def resolve_function(rel_path: str, target_line: int) -> str:  # noqa: PLR0912  
         return "(file scope)"
     try:
         text = abs_path.read_text(encoding="utf-8", errors="replace")
-    except Exception:
+    except OSError:
         return "(file scope)"
     src_lines = text.splitlines()
     # Walk forward, tracking brace depth and the most recent name at depth 0.
@@ -333,7 +333,7 @@ def _function_body_lines(rel_path: str, target_line: int) -> list[str]:  # noqa:
         return []
     try:
         text = abs_path.read_text(encoding="utf-8", errors="replace")
-    except Exception:
+    except OSError:
         return []
     lines = text.splitlines()
     # Walk forward; remember the last `{` at depth 0->1 transition.
@@ -382,7 +382,7 @@ def _enclosing_static_priv_name(rel_path: str, target_line: int) -> str | None: 
         return None
     try:
         text = abs_path.read_text(encoding="utf-8", errors="replace")
-    except Exception:
+    except OSError:
         return None
     lines = text.splitlines()
     depth = 0
@@ -445,7 +445,7 @@ def _line_annotation(rel_path: str, line: int) -> str | None:
         return None
     try:
         text = abs_path.read_text(encoding="utf-8", errors="replace")
-    except Exception:
+    except OSError:
         return None
     src_lines = text.splitlines()
     if line - 1 >= len(src_lines):

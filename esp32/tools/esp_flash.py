@@ -21,13 +21,13 @@ Default image is build/esp32c6-blink.bin (resolved relative to this script).
 SPDX-License-Identifier: MIT
 """
 
-import os
 import shutil
 import sys
+from pathlib import Path
 
-DEFAULT_BAUD = 460800          # ROM download console baud for flashing # [CONFIRM]
+DEFAULT_BAUD = 460800  # ROM download console baud for flashing # [CONFIRM]
 DEFAULT_CHIP = "esp32c6"
-HP_SRAM_BASE = 0x40800000      # RAM-app load address (see boot/esp32c6.ld)
+HP_SRAM_BASE = 0x40800000  # RAM-app load address (see boot/esp32c6.ld)
 
 
 def default_image():
@@ -37,9 +37,8 @@ def default_image():
     esp_mkimage.py output), not a flat objcopy .bin -- handing it the flat
     binary fails the 0xE9 magic check before any byte reaches the chip.
     """
-    here = os.path.dirname(os.path.abspath(__file__))
-    esp32_dir = os.path.dirname(here)
-    return os.path.join(esp32_dir, "build", "esp32c6-blink.app.bin")
+    esp32_dir = Path(__file__).resolve().parent.parent
+    return str(esp32_dir / "build" / "esp32c6-blink.app.bin")
 
 
 def parse_args(argv):
@@ -68,22 +67,26 @@ def main(argv):
     image, port, run = parse_args(argv)
 
     print("esp_flash: ROADMAP -- our-own ROM SLIP downloader is not implemented yet.")
-    print("esp_flash: target chip %s, RAM-app load 0x%08x" % (DEFAULT_CHIP, HP_SRAM_BASE))
-    print("esp_flash: image %s" % image)
+    print(f"esp_flash: target chip {DEFAULT_CHIP}, RAM-app load 0x{HP_SRAM_BASE:08x}")
+    print(f"esp_flash: image {image}")
 
-    if not os.path.isfile(image):
-        print("esp_flash: (image not built yet -- run 'make -C esp32' then"
-              " 'python3 tools/esp_mkimage.py' first)")
+    if not Path(image).is_file():
+        print(
+            "esp_flash: (image not built yet -- run 'make -C esp32' then"
+            " 'python3 tools/esp_mkimage.py' first)"
+        )
 
     esptool = shutil.which("esptool.py") or shutil.which("esptool")
     if esptool is None:
         print("esp_flash: esptool not found on PATH; install it for the interim transport.")
     else:
         port_arg = port if port is not None else "<PORT>"
-        print("esp_flash: interim transport available: %s" % esptool)
+        print(f"esp_flash: interim transport available: {esptool}")
         print("esp_flash: it would run ->")
-        print("  %s --chip %s --port %s --baud %d load_ram %s"
-              % (esptool, DEFAULT_CHIP, port_arg, DEFAULT_BAUD, image))
+        print(
+            f"  {esptool} --chip {DEFAULT_CHIP} --port {port_arg} "
+            f"--baud {DEFAULT_BAUD} load_ram {image}"
+        )
 
     if run:
         print("esp_flash: --run is a no-op in the stub (no chip is driven yet).")

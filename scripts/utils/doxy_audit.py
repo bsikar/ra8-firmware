@@ -636,7 +636,7 @@ def definition_carries_block(raw: str, src_no_comments: str, name: str) -> bool:
 def audit_file(path: Path):  # noqa: PLR0912 PLR0915  # audit-dispatch, splitting hurts readability
     try:
         raw = path.read_text(encoding="utf-8", errors="replace")
-    except Exception:
+    except OSError:
         return []
     src_no_comments = strip_comments(raw)
 
