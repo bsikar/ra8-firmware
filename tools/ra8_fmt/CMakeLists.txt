@@ -89,7 +89,10 @@ target_include_directories(ra8_fmt PRIVATE
     ${FW_ROOT}/libs/ra8_mem/inc
     ${FW_ROOT}/libs/third_party/miniz
 )
-target_compile_options(ra8_fmt PRIVATE -Wall -Wextra)
+# First-party sources carry the project warning bar (NASA Power of 10
+# Rule 10) here exactly as they do in the ARM and host-test builds; only
+# vendored SOUP is compiled quietly.
+target_compile_options(ra8_fmt PRIVATE -Wall -Wextra -Werror)
 
 # miniz type-puns through byte buffers; match the host-test build's handling.
 set_source_files_properties(${RA8_FMT_THIRD_PARTY_SRC}

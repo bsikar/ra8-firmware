@@ -24,8 +24,11 @@ set_source_files_properties(${MDL_MINIZ} PROPERTIES
 
 # The JOF exporter reuses the firmware's own JOF producer + streaming
 # JPEG decoder host-side (RA8_SIMULATOR_MODE), so a .jof the CLI writes is
-# byte-identical to one the RA8 produces. Compiled quietly: the repo lints these
-# via its own build, not this tool's scope.
+# byte-identical to one the RA8 produces. These are hand-written first-party
+# files, so they carry the project warning bar (-Wall -Wextra -Werror) from the
+# target below like every other build that compiles them -- NOT the `-w` that
+# SOUP gets. Compiling them quietly here hid host-only findings the ARM build
+# never sees, which is what a 64-bit host build is for (#309).
 set(FW ${CMAKE_CURRENT_SOURCE_DIR}/../../libs)
 set(MDL_JOF_SRC
   ${FW}/ra8_jof/src/ra8_jof.c
@@ -40,8 +43,6 @@ set(MDL_JOF_SRC
   ${FW}/ra8_core/src/ra8_log.c
   ${FW}/ra8_core/src/ra8_error_handler.c
   ${FW}/ra8_core/src/ra8_decomp_limits.c)
-set_source_files_properties(${MDL_JOF_SRC} PROPERTIES
-  COMPILE_OPTIONS "-w;-fno-strict-aliasing")
 set(MDL_JOF_INC
   ${FW}/ra8_jof/inc ${FW}/ra8_jof/src
   ${FW}/ra8_hal/inc ${FW}/ra8_hal/src
@@ -83,7 +84,7 @@ target_compile_definitions(media_dl PRIVATE
   _GNU_SOURCE
   RA8_SIMULATOR_MODE
   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
-target_compile_options(media_dl PRIVATE -Wall -Wextra)
+target_compile_options(media_dl PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(media_dl PRIVATE CURL::libcurl)
 ra8_webp_attach(media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
@@ -109,6 +110,6 @@ target_compile_definitions(test_media_dl PRIVATE
   _GNU_SOURCE
   RA8_SIMULATOR_MODE
   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
-target_compile_options(test_media_dl PRIVATE -Wall -Wextra)
+target_compile_options(test_media_dl PRIVATE -Wall -Wextra -Werror)
 ra8_webp_attach(test_media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 add_test(NAME test_media_dl COMMAND test_media_dl)
