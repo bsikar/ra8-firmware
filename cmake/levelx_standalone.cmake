@@ -33,15 +33,16 @@
 # Idempotency guard: the same per-app build can include this file more than once
 # (top-level CMakeLists plus a standalone per-app build); only the first runs.
 if(DEFINED _RA8_LEVELX_STANDALONE_INCLUDED)
-    return()
+  return()
 endif()
 set(_RA8_LEVELX_STANDALONE_INCLUDED TRUE)
 
 option(RA8_USE_LEVELX_STANDALONE
-    "Enable the vendored LevelX NOR library in standalone (no-ThreadX) mode" OFF)
+       "Enable the vendored LevelX NOR library in standalone (no-ThreadX) mode" OFF
+)
 
 if(NOT RA8_USE_LEVELX_STANDALONE)
-    return()
+  return()
 endif()
 
 # LevelX's ThreadX-coupled build and its standalone build cannot coexist in one
@@ -49,34 +50,39 @@ endif()
 # define every LevelX symbol. Surface that clearly instead of a confusing link
 # error.
 if(RA8_USE_LEVELX)
-    message(FATAL_ERROR
-        "RA8_USE_LEVELX_STANDALONE and RA8_USE_LEVELX are mutually exclusive: "
-        "both compile libs/third_party/levelx/common/src/lx_nor_*.c. Pick one "
-        "LevelX build mode per app.")
+  message(
+    FATAL_ERROR
+      "RA8_USE_LEVELX_STANDALONE and RA8_USE_LEVELX are mutually exclusive: "
+      "both compile libs/third_party/levelx/common/src/lx_nor_*.c. Pick one "
+      "LevelX build mode per app."
+  )
 endif()
 
 # Resolve the repo root so this file works whether included from the top-level
 # CMakeLists.txt or from a standalone per-app build.
-get_filename_component(_RA8_LXS_REPO_ROOT
-    "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+get_filename_component(_RA8_LXS_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
 set(_RA8_LXS_VENDOR_DIR "${_RA8_LXS_REPO_ROOT}/libs/third_party/levelx")
 set(_RA8_LXS_COMMON_INC "${_RA8_LXS_VENDOR_DIR}/common/inc")
 set(_RA8_LXS_COMMON_SRC "${_RA8_LXS_VENDOR_DIR}/common/src")
 
 if(NOT EXISTS "${_RA8_LXS_COMMON_INC}/lx_api.h")
-    message(FATAL_ERROR
-        "RA8_USE_LEVELX_STANDALONE=ON but LevelX vendor tree is missing at "
-        "${_RA8_LXS_VENDOR_DIR}.")
+  message(FATAL_ERROR "RA8_USE_LEVELX_STANDALONE=ON but LevelX vendor tree is missing at "
+                      "${_RA8_LXS_VENDOR_DIR}."
+  )
 endif()
 
 # Glob the LevelX NOR-only sources (the NAND tree is unused), then drop the
 # upstream simulator: this build supplies its own NOR driver, and the simulator
 # ships another `_lx_nor_flash_simulator_*` definition that would clash.
-file(GLOB _RA8_LXS_NOR_SOURCES CONFIGURE_DEPENDS
-    "${_RA8_LXS_COMMON_SRC}/lx_nor_*.c")
-list(FILTER _RA8_LXS_NOR_SOURCES
-     EXCLUDE REGEX ".*/lx_nor_flash_simulator\\.c$")
+file(GLOB _RA8_LXS_NOR_SOURCES CONFIGURE_DEPENDS "${_RA8_LXS_COMMON_SRC}/lx_nor_*.c")
+list(
+  FILTER
+  _RA8_LXS_NOR_SOURCES
+  EXCLUDE
+  REGEX
+  ".*/lx_nor_flash_simulator\\.c$"
+)
 
 # Compile the LevelX NOR sources standalone. The object library is private to
 # this scope; consumers link the `levelx_standalone` INTERFACE target below.

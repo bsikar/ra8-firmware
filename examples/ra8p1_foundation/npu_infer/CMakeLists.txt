@@ -24,15 +24,19 @@ cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(npu_infer LANGUAGES C ASM)
+  project(npu_infer LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME npu_infer STACK_BYTES 3072 USES tflite_micro
-           DESCRIPTION "RA8P1 Ethos-U55 inference runtime: quantize + IRQ + TFLite-micro (R7KA8P1KFLCAC)")
+ra8_add_app(
+  NAME npu_infer
+  STACK_BYTES 3072
+  USES tflite_micro
+  DESCRIPTION "RA8P1 Ethos-U55 inference runtime: quantize + IRQ + TFLite-micro (R7KA8P1KFLCAC)"
+)

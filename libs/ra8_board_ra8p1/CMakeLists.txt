@@ -20,14 +20,8 @@
 cmake_minimum_required(VERSION 3.20)
 
 if(NOT TARGET ra8_board_ra8p1)
-    add_library(ra8_board_ra8p1 INTERFACE)
-    target_include_directories(ra8_board_ra8p1 INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/inc
-    )
-    file(GLOB RA8_BOARD_RA8P1_SOURCES CONFIGURE_DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
-    )
-    target_sources(ra8_board_ra8p1 INTERFACE
-        ${RA8_BOARD_RA8P1_SOURCES}
-    )
+  add_library(ra8_board_ra8p1 INTERFACE)
+  target_include_directories(ra8_board_ra8p1 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+  file(GLOB RA8_BOARD_RA8P1_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
+  target_sources(ra8_board_ra8p1 INTERFACE ${RA8_BOARD_RA8P1_SOURCES})
 endif()

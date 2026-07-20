@@ -19,14 +19,8 @@
 cmake_minimum_required(VERSION 3.20)
 
 if(NOT TARGET ra8_board_ek_ra8d2)
-    add_library(ra8_board_ek_ra8d2 INTERFACE)
-    target_include_directories(ra8_board_ek_ra8d2 INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/inc
-    )
-    file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
-    )
-    target_sources(ra8_board_ek_ra8d2 INTERFACE
-        ${RA8_BOARD_EK_RA8D2_SOURCES}
-    )
+  add_library(ra8_board_ek_ra8d2 INTERFACE)
+  target_include_directories(ra8_board_ek_ra8d2 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+  file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
+  target_sources(ra8_board_ek_ra8d2 INTERFACE ${RA8_BOARD_EK_RA8D2_SOURCES})
 endif()

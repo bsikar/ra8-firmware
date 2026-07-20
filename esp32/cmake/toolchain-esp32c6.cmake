@@ -15,17 +15,33 @@ set(CMAKE_SYSTEM_PROCESSOR riscv32)
 # Single HP RISC-V core: rv32imac, ilp32 ABI, little-endian.
 set(ESP32C6_ARCH_FLAGS "-march=rv32imac -mabi=ilp32")
 
-set(CMAKE_C_COMPILER   riscv64-elf-gcc)
+set(CMAKE_C_COMPILER riscv64-elf-gcc)
 set(CMAKE_ASM_COMPILER riscv64-elf-gcc)
-set(CMAKE_OBJCOPY      riscv64-elf-objcopy CACHE FILEPATH "objcopy")
-set(CMAKE_OBJDUMP      riscv64-elf-objdump CACHE FILEPATH "objdump")
+set(CMAKE_OBJCOPY
+    riscv64-elf-objcopy
+    CACHE FILEPATH "objcopy"
+)
+set(CMAKE_OBJDUMP
+    riscv64-elf-objdump
+    CACHE FILEPATH "objdump"
+)
 
 # Freestanding, no host libc/startup; the linker script + start.S own the runtime.
-set(CMAKE_C_FLAGS_INIT
-    "${ESP32C6_ARCH_FLAGS} -std=c23 -nostdlib -ffreestanding -Os -Wall -Wextra -Werror -ffunction-sections -fdata-sections")
+set(_esp32c6_c_flags
+    -std=c23
+    -nostdlib
+    -ffreestanding
+    -Os
+    -Wall
+    -Wextra
+    -Werror
+    -ffunction-sections
+    -fdata-sections
+)
+string(JOIN " " _esp32c6_c_flags_str ${_esp32c6_c_flags})
+set(CMAKE_C_FLAGS_INIT "${ESP32C6_ARCH_FLAGS} ${_esp32c6_c_flags_str}")
 set(CMAKE_ASM_FLAGS_INIT "${ESP32C6_ARCH_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS_INIT
-    "${ESP32C6_ARCH_FLAGS} -nostdlib -Wl,--gc-sections")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "${ESP32C6_ARCH_FLAGS} -nostdlib -Wl,--gc-sections")
 
 # We are cross-compiling: never run target binaries during CMake's compiler checks.
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)

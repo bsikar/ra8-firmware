@@ -66,23 +66,25 @@
 # so an early `return()` alone would leave the cache silently active on exactly
 # the build that must not use it. Clearing is unconditional and idempotent.
 if(RA8_COVERAGE OR RA8_MCDC)
-    foreach(_lang C CXX ASM)
-        unset(CMAKE_${_lang}_COMPILER_LAUNCHER CACHE)
-        unset(CMAKE_${_lang}_COMPILER_LAUNCHER)
-    endforeach()
-    message(STATUS "ccache: DISABLED for this build (coverage/MC-DC instrumentation)")
-    return()
+  foreach(_lang C CXX ASM)
+    unset(CMAKE_${_lang}_COMPILER_LAUNCHER CACHE)
+    unset(CMAKE_${_lang}_COMPILER_LAUNCHER)
+  endforeach()
+  message(STATUS "ccache: DISABLED for this build (coverage/MC-DC instrumentation)")
+  return()
 endif()
 
 find_program(RA8_CCACHE_PROGRAM ccache)
 if(NOT RA8_CCACHE_PROGRAM)
-    message(STATUS "ccache: not found, building without a compiler cache")
-    return()
+  message(STATUS "ccache: not found, building without a compiler cache")
+  return()
 endif()
 
 foreach(_lang C CXX ASM)
-    set(CMAKE_${_lang}_COMPILER_LAUNCHER "${RA8_CCACHE_PROGRAM}"
-        CACHE STRING "ccache launcher for ${_lang}" FORCE)
+  set(CMAKE_${_lang}_COMPILER_LAUNCHER
+      "${RA8_CCACHE_PROGRAM}"
+      CACHE STRING "ccache launcher for ${_lang}" FORCE
+  )
 endforeach()
 
 message(STATUS "ccache: ENABLED via ${RA8_CCACHE_PROGRAM}")

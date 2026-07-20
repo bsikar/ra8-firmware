@@ -28,24 +28,16 @@ cmake_minimum_required(VERSION 3.20)
 # Only define the STATIC target when the Mbed TLS dependency is wired up.
 # The host unit-test build globs the source directly and skips this branch.
 if(TARGET mbedtls)
-    add_library(ra8_tls STATIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_tls.c
-    )
+  add_library(ra8_tls STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_tls.c)
 
-    target_include_directories(ra8_tls PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/inc
-    )
+  target_include_directories(ra8_tls PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
-    target_link_libraries(ra8_tls PUBLIC
-        ra8_core
-        mbedtls
-        mbedtls_port_ra8_config
-    )
+  target_link_libraries(ra8_tls PUBLIC ra8_core mbedtls mbedtls_port_ra8_config)
 
-    # tf-psa-crypto headers are exposed transitively by `mbedtls`; the
-    # explicit link keeps the dependency graph honest if a future split
-    # changes the propagation rules.
-    if(TARGET tfpsacrypto)
-        target_link_libraries(ra8_tls PUBLIC tfpsacrypto)
-    endif()
+  # tf-psa-crypto headers are exposed transitively by `mbedtls`; the
+  # explicit link keeps the dependency graph honest if a future split
+  # changes the propagation rules.
+  if(TARGET tfpsacrypto)
+    target_link_libraries(ra8_tls PUBLIC tfpsacrypto)
+  endif()
 endif()

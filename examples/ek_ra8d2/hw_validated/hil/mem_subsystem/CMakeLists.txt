@@ -19,13 +19,13 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(mem_subsystem LANGUAGES C ASM)
+  project(mem_subsystem LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -33,6 +33,9 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # ra8_arena, ra8_tile_cache, ra8_vmem / ra8_vsource / ra8_vmem_stream) and adds
 # libs/ra8_mem/inc to the include path. ra8_board_ek_ra8d2 supplies the SCI
 # console the banner is printed on.
-ra8_add_app(NAME mem_subsystem STACK_BYTES 4096
-           DESCRIPTION "Drives each ra8_mem layer in isolation: slab/arena reset, tile-cache eviction, vmem_stream windows (#263)"
-           LIBS ra8_mem ra8_board_ek_ra8d2)
+ra8_add_app(
+  NAME mem_subsystem
+  STACK_BYTES 4096
+  DESCRIPTION "Drives each ra8_mem layer: slab reset, tile eviction, vmem windows (#263)"
+  LIBS ra8_mem ra8_board_ek_ra8d2
+)

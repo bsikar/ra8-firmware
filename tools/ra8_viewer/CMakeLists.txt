@@ -25,7 +25,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(ra8_viewer LANGUAGES C)
 if(APPLE)
-    enable_language(OBJC)
+  enable_language(OBJC)
 endif()
 
 set(CMAKE_C_STANDARD 23)
@@ -44,8 +44,8 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 # the CBZ backend uses miniz's default (malloc) allocator, so no ra8_epub source
 # is needed -- only its header (ra8_epub_miniz_alloc.h) sits on the include path.
 # ---------------------------------------------------------------------------
-file(GLOB RA8_COMIC_SRC  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_comic/src/*.c)
-file(GLOB RA8_GFX_SRC    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
+file(GLOB RA8_COMIC_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_comic/src/*.c)
+file(GLOB RA8_GFX_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 # ra8_comic pulls in the gzip/xz/tar wrapped-container decoders (ra8_unarch),
 # and ra8_unarch_xz sits on the vendored xz-embedded decoder.
 file(GLOB RA8_UNARCH_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_unarch/src/*.c)
@@ -73,26 +73,23 @@ set(RA8_REFLOW_SRC
     ${FW_ROOT}/libs/ra8_reflow/src/ra8_reflow_svg_xform.c
 )
 set(RA8_CORE_SRC
-    ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
-    ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
+    ${FW_ROOT}/libs/ra8_core/src/ra8_log.c ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
 )
-file(GLOB RA8_XZ_EMBEDDED_SRC CONFIGURE_DEPENDS
-    ${FW_ROOT}/libs/third_party/xz_embedded/*.c)
-set(RA8_THIRD_PARTY_SRC
-    ${FW_ROOT}/libs/third_party/miniz/miniz.c
-    ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c
-    ${RA8_XZ_EMBEDDED_SRC}
+file(GLOB RA8_XZ_EMBEDDED_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/third_party/xz_embedded/*.c)
+set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/libs/third_party/miniz/miniz.c
+                        ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c ${RA8_XZ_EMBEDDED_SRC}
 )
 
-add_library(ra8_reader STATIC
-    ${RA8_COMIC_SRC}
-    ${RA8_GFX_SRC}
-    ${RA8_UNARCH_SRC}
-    ${RA8_LONGSTRIP_SRC}
-    ${RA8_REFLOW_SRC}
-    ${RA8_CORE_SRC}
-    ${RA8_THIRD_PARTY_SRC}
+add_library(
+  ra8_reader STATIC
+  ${RA8_COMIC_SRC}
+  ${RA8_GFX_SRC}
+  ${RA8_UNARCH_SRC}
+  ${RA8_LONGSTRIP_SRC}
+  ${RA8_REFLOW_SRC}
+  ${RA8_CORE_SRC}
+  ${RA8_THIRD_PARTY_SRC}
 )
 target_compile_definitions(ra8_reader PUBLIC RA8_SIMULATOR_MODE)
 # The firmware sources in this archive are first-party and carry the project
@@ -100,25 +97,28 @@ target_compile_definitions(ra8_reader PUBLIC RA8_SIMULATOR_MODE)
 # host-test builds. The vendored decoders below override it with -w, which is
 # where warning suppression legitimately stops.
 target_compile_options(ra8_reader PRIVATE -Wall -Wextra -Werror)
-target_include_directories(ra8_reader PUBLIC
-    ${FW_ROOT}/libs/ra8_core/inc
-    ${FW_ROOT}/libs/ra8_gfx/inc
-    ${FW_ROOT}/libs/ra8_comic/inc
-    ${FW_ROOT}/libs/ra8_reflow/inc
-    ${FW_ROOT}/libs/ra8_epub/inc
-    ${FW_ROOT}/libs/ra8_unarch/inc
-    ${FW_ROOT}/libs/ra8_longstrip/inc
-    ${FW_ROOT}/libs/ra8_jof/inc
-    ${FW_ROOT}/libs/ra8_io/inc
-    ${FW_ROOT}/libs/ra8_mem/inc
-    ${FW_ROOT}/libs/third_party/miniz
-    ${FW_ROOT}/libs/third_party/stb
-    ${FW_ROOT}/libs/third_party/xz_embedded
+target_include_directories(
+  ra8_reader
+  PUBLIC ${FW_ROOT}/libs/ra8_core/inc
+         ${FW_ROOT}/libs/ra8_gfx/inc
+         ${FW_ROOT}/libs/ra8_comic/inc
+         ${FW_ROOT}/libs/ra8_reflow/inc
+         ${FW_ROOT}/libs/ra8_epub/inc
+         ${FW_ROOT}/libs/ra8_unarch/inc
+         ${FW_ROOT}/libs/ra8_longstrip/inc
+         ${FW_ROOT}/libs/ra8_jof/inc
+         ${FW_ROOT}/libs/ra8_io/inc
+         ${FW_ROOT}/libs/ra8_mem/inc
+         ${FW_ROOT}/libs/third_party/miniz
+         ${FW_ROOT}/libs/third_party/stb
+         ${FW_ROOT}/libs/third_party/xz_embedded
 )
 # The vendored decoders (miniz, stb_image) type-pun through byte buffers; silence
 # their warnings and disable strict aliasing exactly as the host-test build does.
-set_source_files_properties(${RA8_THIRD_PARTY_SRC} ${RA8_XZ_EMBEDDED_SRC}
-    PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing")
+set_source_files_properties(
+  ${RA8_THIRD_PARTY_SRC} ${RA8_XZ_EMBEDDED_SRC} PROPERTIES COMPILE_OPTIONS
+                                                           "-w;-fno-strict-aliasing"
+)
 
 # ---------------------------------------------------------------------------
 # ra8_viewer: the viewer executable -- C core + Cocoa window backend.
@@ -129,32 +129,32 @@ set_source_files_properties(${RA8_THIRD_PARTY_SRC} ${RA8_XZ_EMBEDDED_SRC}
 # two is ever compiled, so they never compete for the same symbols -- the same
 # arrangement tools/board_sim uses for board_view.m.
 if(APPLE)
-    set(RA8_VIEWER_VIEW_SRC src/ra8_viewer_view.m)
+  set(RA8_VIEWER_VIEW_SRC src/ra8_viewer_view.m)
 else()
-    set(RA8_VIEWER_VIEW_SRC src/ra8_viewer_view_stub.c)
+  set(RA8_VIEWER_VIEW_SRC src/ra8_viewer_view_stub.c)
 endif()
 
 # The reader core is one module split across four TUs (see
 # src/ra8_viewer_reader_internal.h): public API + dispatch, the comic engine, the
 # JOF long-strip engine, and the shared RGB565 / PPM writer.
-add_executable(ra8_viewer
-    src/main.c
-    src/ra8_viewer_reader.c
-    src/ra8_viewer_comic.c
-    src/ra8_viewer_jof.c
-    src/ra8_viewer_ppm.c
-    ${RA8_VIEWER_VIEW_SRC}
+add_executable(
+  ra8_viewer
+  src/main.c
+  src/ra8_viewer_reader.c
+  src/ra8_viewer_comic.c
+  src/ra8_viewer_jof.c
+  src/ra8_viewer_ppm.c
+  ${RA8_VIEWER_VIEW_SRC}
 )
 target_include_directories(ra8_viewer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 target_link_libraries(ra8_viewer PRIVATE ra8_reader)
 target_compile_options(ra8_viewer PRIVATE -Wall -Wextra -Werror)
 
 if(APPLE)
-    set_source_files_properties(src/ra8_viewer_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
-    target_link_libraries(ra8_viewer PRIVATE "-framework Cocoa" "-framework QuartzCore")
+  set_source_files_properties(src/ra8_viewer_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+  target_link_libraries(ra8_viewer PRIVATE "-framework Cocoa" "-framework QuartzCore")
 else()
-    # The SVG rasteriser calls sinf/cosf/tanf/sqrtf/atan2f. macOS keeps those in
-    # libSystem; every other POSIX host needs libm named explicitly.
-    target_link_libraries(ra8_viewer PRIVATE m)
+  # The SVG rasteriser calls sinf/cosf/tanf/sqrtf/atan2f. macOS keeps those in
+  # libSystem; every other POSIX host needs libm named explicitly.
+  target_link_libraries(ra8_viewer PRIVATE m)
 endif()
-

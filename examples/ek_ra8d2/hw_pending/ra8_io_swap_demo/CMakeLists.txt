@@ -12,13 +12,13 @@ cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ra8_io_swap_demo LANGUAGES C ASM)
+  project(ra8_io_swap_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -28,6 +28,9 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # linked). This app writes its own two-backend swap engine inline (no shared
 # round-trip helper), so no EXTRA_SRCS are needed. Boot files come from the shared
 # libs/ra8_board_ek_ra8d2/boot copy (no local vector_table.c). (#155/#264)
-ra8_add_app(NAME ra8_io_swap_demo STACK_BYTES 4096
-           DESCRIPTION "ra8_io capstone: two block-dev backends (RAM + xSPI) swapped behind one vtable -> FAT -> VFS -> stdio retargeted to UART + RAM (#155/#264)"
-           LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal)
+ra8_add_app(
+  NAME ra8_io_swap_demo
+  STACK_BYTES 4096
+  DESCRIPTION "ra8_io capstone: RAM + xSPI block devs swapped behind one vtable (#155/#264)"
+  LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal
+)

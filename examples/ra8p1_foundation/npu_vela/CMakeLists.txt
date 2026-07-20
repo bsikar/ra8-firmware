@@ -24,18 +24,21 @@ cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(npu_vela LANGUAGES C ASM)
+  project(npu_vela LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME npu_vela STACK_BYTES 2400
-           DESCRIPTION "RA8P1 Ethos-U55 Vela-blob loader end-to-end (R7KA8P1KFLCAC)")
+ra8_add_app(
+  NAME npu_vela
+  STACK_BYTES 2400
+  DESCRIPTION "RA8P1 Ethos-U55 Vela-blob loader end-to-end (R7KA8P1KFLCAC)"
+)
 
 # The generated golden model container header lives in tools/vela/generated/.
 target_include_directories(npu_vela.elf PRIVATE "${_d}/tools/vela/generated")

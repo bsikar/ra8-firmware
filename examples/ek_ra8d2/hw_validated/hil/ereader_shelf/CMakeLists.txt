@@ -16,12 +16,12 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ereader_shelf LANGUAGES C CXX ASM)
+  project(ereader_shelf LANGUAGES C CXX ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -32,10 +32,24 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # ra8_comic opens CBZ (ZIP) + CBR (RAR) comic archives and streams page images
 # for the full-page comic reader (sh_comic.c, #236); it reuses ra8_epub's
 # miniz-with-ZIP + static pool, already a dep here.
-ra8_add_app(NAME ereader_shelf STACK_BYTES 16384
-           DESCRIPTION "Hybrid baked+SD e-reader: shelf, covers, TOC, full reader + CBZ/CBR comics (1024x600 panel)"
-           LIBS ra8_gfx ra8_display_pal ra8_box ra8_ui ra8_book ra8_fs ra8_sdmmc_spi ra8_epub ra8_reflow
-                ra8_comic ra8_board_ek_ra8d2 ra8_io_bus)
+ra8_add_app(
+  NAME ereader_shelf
+  STACK_BYTES 16384
+  DESCRIPTION
+    "Hybrid baked+SD e-reader: shelf, covers, TOC, full reader + CBZ/CBR comics (1024x600 panel)"
+  LIBS ra8_gfx
+       ra8_display_pal
+       ra8_box
+       ra8_ui
+       ra8_book
+       ra8_fs
+       ra8_sdmmc_spi
+       ra8_epub
+       ra8_reflow
+       ra8_comic
+       ra8_board_ek_ra8d2
+       ra8_io_bus
+)
 
 # Pin the reader's optimisation level to -Og on this target, independent of the
 # configured build type. Two facts force this:
