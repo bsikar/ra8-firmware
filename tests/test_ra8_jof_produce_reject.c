@@ -1,14 +1,14 @@
 /**
- * @file test_ra8_tileatlas_produce_reject.c
+ * @file test_ra8_jof_produce_reject.c
  * @brief Producer entry-point rejection vectors: format sniff, pull failure,
  *        config guards, PNG IHDR malformations and starved budgets (#231).
  *
  * @details
- * Complements `test_ra8_tileatlas_produce.c` (happy paths, byte parity and the
- * bounded-RAM high-water proof), `test_ra8_tileatlas_produce_guards.c` (the
+ * Complements `test_ra8_jof_produce.c` (happy paths, byte parity and the
+ * bounded-RAM high-water proof), `test_ra8_jof_produce_guards.c` (the
  * producer's *internal* calculator and carve guards) and
- * `test_ra8_tileatlas_png_hostile.c` (hostile PNG *streams* through the decoder):
- * this suite drives `ra8_tileatlas_produce()` itself with untrusted input and
+ * `test_ra8_jof_png_hostile.c` (hostile PNG *streams* through the decoder):
+ * this suite drives `ra8_jof_produce()` itself with untrusted input and
  * asserts every rejection is fail-closed with the contracted error code. EPUB
  * and CBZ content is attacker-controlled, so a producer that limps on past a
  * malformed header is a defect, not a robustness feature.
@@ -31,8 +31,8 @@
 
 #include "miniz.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
 /** @brief Truncated-JPEG probe fed to the producer. */
@@ -136,7 +136,7 @@ static uint8_t s_work[k_t_work_cap];
 /** @brief Memstore backing. */
 static uint8_t s_store_buf[k_t_store_cap];
 /** @brief The atlas store under test. */
-static ra8_tileatlas_memstore_t s_store;
+static ra8_jof_memstore_t s_store;
 
 /**
  * @struct t_pull_t
@@ -149,7 +149,7 @@ typedef struct {
   size_t         chunk; /**< Max bytes per pull (0=all). */
 } t_pull_t;
 
-/** @brief ::ra8_tileatlas_pull_fn over a ::t_pull_t. */
+/** @brief ::ra8_jof_pull_fn over a ::t_pull_t. */
 static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   t_pull_t*    p    = (t_pull_t*)ctx;
@@ -310,15 +310,15 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
 
 /** @brief Run the producer over `s_src` into a fresh memstore. */
 static ra8_err_t
-produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_tileatlas_info_t* info)
+produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_info_t* info)
 {
   static t_pull_t s_pull;
   s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_pull,
     .pull_ctx   = &s_pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = tile_w,
     .tile_h     = tile_h,
@@ -328,7 +328,7 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_tilea
     .work       = s_work,
     .work_cap   = (size_t)k_t_work_small,
   };
-  return ra8_tileatlas_produce(&cfg, info);
+  return ra8_jof_produce(&cfg, info);
 }
 
 /**
@@ -345,11 +345,11 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_tilea
  */
 static void expect_produce_err(ra8_err_t want)
 {
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(want,
                  produce((uint16_t)k_t_tile,
                          (uint16_t)k_t_tile,
-                         (uint8_t)k_ra8_tileatlas_codec_deflate,
+                         (uint8_t)k_ra8_jof_codec_deflate,
                          0U,
                          &info));
 }
@@ -383,31 +383,31 @@ static void produce_reject_sniff(void)
  */
 static void produce_reject_pull_and_cfg(void)
 {
-  ra8_tileatlas_info_t info = {};
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  ra8_jof_info_t info = {};
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull     = t_pull_fail,
     .pull_ctx = NULL,
-    .sink     = ra8_tileatlas_memstore_sink,
+    .sink     = ra8_jof_memstore_sink,
     .sink_ctx = &s_store,
     .tile_w   = (uint16_t)k_t_tile,
     .tile_h   = (uint16_t)k_t_tile,
-    .codec    = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec    = (uint8_t)k_ra8_jof_codec_deflate,
     .work     = s_work,
     .work_cap = (size_t)k_t_work_small,
   };
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_tileatlas_produce(&cfg, &info));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_jof_produce(&cfg, &info));
   /* Config guards. */
-  ra8_tileatlas_produce_cfg_t bad = cfg;
+  ra8_jof_produce_cfg_t bad = cfg;
   bad.tile_w                      = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tileatlas_produce(&bad, &info));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad       = cfg;
   bad.codec = (uint8_t)k_t_codec_invalid;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tileatlas_produce(&bad, &info));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad      = cfg;
   bad.pull = NULL;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_produce(&bad, &info));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_produce(&cfg, NULL));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_produce(&bad, &info));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_produce(&cfg, NULL));
 }
 
 /**
@@ -479,20 +479,20 @@ static void produce_reject_budget(void)
     png_build(k_t_png_w, k_t_png_h, 0U, false);
     static t_pull_t s_pull;
     s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-    ra8_tileatlas_info_t              info = {};
-    const ra8_tileatlas_produce_cfg_t cfg  = {
+    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+    ra8_jof_info_t              info = {};
+    const ra8_jof_produce_cfg_t cfg  = {
       .pull     = t_pull,
       .pull_ctx = &s_pull,
-      .sink     = ra8_tileatlas_memstore_sink,
+      .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,
       .tile_h   = (uint16_t)k_t_tile,
-      .codec    = (uint8_t)k_ra8_tileatlas_codec_deflate,
+      .codec    = (uint8_t)k_ra8_jof_codec_deflate,
       .work     = s_work,
       .work_cap = (size_t)k_t_work_starved,
     };
-    TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_tileatlas_produce(&cfg, &info));
+    TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_produce(&cfg, &info));
   }
   /* Sink runs out of room (store cap tiny) -> no_mem propagates. */
   {
@@ -500,20 +500,20 @@ static void produce_reject_budget(void)
     static t_pull_t s_pull;
     s_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
     s_store =
-      (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
-    ra8_tileatlas_info_t              info = {};
-    const ra8_tileatlas_produce_cfg_t cfg  = {
+      (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
+    ra8_jof_info_t              info = {};
+    const ra8_jof_produce_cfg_t cfg  = {
       .pull     = t_pull,
       .pull_ctx = &s_pull,
-      .sink     = ra8_tileatlas_memstore_sink,
+      .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,
       .tile_h   = (uint16_t)k_t_tile,
-      .codec    = (uint8_t)k_ra8_tileatlas_codec_deflate,
+      .codec    = (uint8_t)k_ra8_jof_codec_deflate,
       .work     = s_work,
       .work_cap = (size_t)k_t_work_small,
     };
-    TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_tileatlas_produce(&cfg, &info));
+    TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_jof_produce(&cfg, &info));
   }
 }
 
@@ -563,6 +563,6 @@ static void test_produce_reject(void)
 int32_t main(void)
 {
   test_produce_reject();
-  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas_produce_reject.c\n");
+  (void)fprintf(stderr, "[OK  ] test_ra8_jof_produce_reject.c\n");
   return 0;
 }

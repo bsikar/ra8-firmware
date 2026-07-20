@@ -117,7 +117,7 @@ static void t_mg_crosscheck_raw(ra8_vmem_stream_t* st, uint32_t page, uint32_t b
 static uint32_t t_mg_skim_forward_pages(ra8_vmem_stream_t*    st,
                                         ra8_tile_cache_t*     tc,
                                         t_mg_hw_t*            hw,
-                                        ra8_tileatlas_info_t* info)
+                                        ra8_jof_info_t* info)
 {
   uint32_t touched = 0U;
   for (uint32_t p = 1U; p <= (uint32_t)k_mg_fwd_pages; ++p) {
@@ -164,7 +164,7 @@ static uint32_t t_mg_seek_across_volume(uint32_t              atlas_count,
                                         ra8_vmem_stream_t*    st,
                                         ra8_tile_cache_t*     tc,
                                         t_mg_hw_t*            hw,
-                                        ra8_tileatlas_info_t* info)
+                                        ra8_jof_info_t* info)
 {
   const uint32_t total_bands = atlas_count * (uint32_t)k_mg_bands;
   for (uint32_t s = 0U; s < (uint32_t)k_mg_samples; ++s) {

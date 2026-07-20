@@ -4,7 +4,7 @@
  *
  * @details
  * The JOF arm of the chapter exporter, split out of mdl_export.c because it is
- * the only format that reaches into the firmware's `ra8_tileatlas` producer --
+ * the only format that reaches into the firmware's `ra8_jof` producer --
  * a whole decode (JPEG / PNG / WebP) and encode stack that the ZIP and tar
  * writers have no use for. Producing through the firmware's own code is the
  * point: a container this tool writes is byte-identical to one the board would
@@ -37,8 +37,8 @@
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 
 /**
  * @enum mdl_jof_geom_t
@@ -185,7 +185,7 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
  * @post On success `*out_work` is nullptr (non-WebP) or owned by the caller.
  * @post On failure `*out_work` is nullptr and nothing was allocated.
  * @note Not thread-safe; the caller owns and must free `*out_work`.
- * @see ra8_tileatlas_webp_work_bytes()
+ * @see ra8_jof_webp_work_bytes()
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
@@ -200,7 +200,7 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
   if (!jof_is_webp(src, slen)) {
     return k_ra8_ok;
   }
-  const uint32_t need = ra8_tileatlas_webp_work_bytes(w, h, (uint32_t)slen);
+  const uint32_t need = ra8_jof_webp_work_bytes(w, h, (uint32_t)slen);
   if (need == 0U) {
     return k_ra8_err_invalid_size;
   }
@@ -226,12 +226,12 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
   uint16_t h = 0U;
   /* Probe through the producer's own dispatch, so every format the producer can
    * decode (JPEG, PNG, WebP) is a format this exporter can size and write. */
-  if (ra8_tileatlas_probe_dims(src, slen, &w, &h) != k_ra8_ok) {
+  if (ra8_jof_probe_dims(src, slen, &w, &h) != k_ra8_ok) {
     free(src);
     return k_ra8_err_not_supported;
   }
   const uint16_t tile_h   = (h < (uint16_t)k_jof_band_h) ? h : (uint16_t)k_jof_band_h;
-  const uint32_t work_cap = ra8_tileatlas_work_bytes(w, h, w, tile_h);
+  const uint32_t work_cap = ra8_jof_work_bytes(w, h, w, tile_h);
   uint8_t*       work     = (work_cap > 0U) ? (uint8_t*)malloc(work_cap) : nullptr;
   FILE*          out      = (work != nullptr) ? fopen(out_path, "wb") : nullptr;
   if (out == nullptr) {
@@ -250,21 +250,21 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
     return carve_rc;
   }
   jof_pull_ctx_t              pull = {.data = src, .len = slen, .pos = 0U};
-  ra8_tileatlas_produce_cfg_t cfg  = {.pull          = jof_pull,
+  ra8_jof_produce_cfg_t cfg  = {.pull          = jof_pull,
                                       .pull_ctx      = &pull,
                                       .sink          = jof_sink,
                                       .sink_ctx      = out,
                                       .tile_w        = w,
                                       .tile_h        = tile_h,
-                                      .codec         = (uint8_t)k_ra8_tileatlas_codec_deflate,
+                                      .codec         = (uint8_t)k_ra8_jof_codec_deflate,
                                       .max_width     = w,
                                       .max_height    = h,
                                       .work          = work,
                                       .work_cap      = work_cap,
                                       .webp_work     = webp_work,
                                       .webp_work_cap = webp_cap};
-  ra8_tileatlas_info_t        info = {};
-  rc                               = ra8_tileatlas_produce(&cfg, &info);
+  ra8_jof_info_t        info = {};
+  rc                               = ra8_jof_produce(&cfg, &info);
   (void)fclose(out);
   free(work);
   free(webp_work);

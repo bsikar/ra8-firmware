@@ -6,7 +6,7 @@
  * The chapter exporter is one logical module split across two translation
  * units: the container writers and the format dispatch (mdl_export.c), and the
  * JOF tile-atlas exporter (mdl_export_jof.c). The JOF arm is the only one that
- * pulls in the firmware's `ra8_tileatlas` producer -- a whole decode/encode
+ * pulls in the firmware's `ra8_jof` producer -- a whole decode/encode
  * stack the archive writers never touch -- so it owns its own translation unit
  * and its own includes rather than widening the dependency surface of every
  * other format.
@@ -67,7 +67,7 @@ typedef enum : uint16_t {
  * @details
  * Transcodes each listed page in place: `page.jpg` becomes `page.jof` beside
  * it, leaving the source file untouched. Each page is produced through the
- * firmware's own `ra8_tileatlas` producer, so a container this tool writes is
+ * firmware's own `ra8_jof` producer, so a container this tool writes is
  * byte-identical to one the board would produce from the same source, and the
  * full-width band geometry is the shape `ra8_longstrip` scrolls.
  *
