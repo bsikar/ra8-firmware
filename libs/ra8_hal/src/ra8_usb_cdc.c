@@ -189,6 +189,21 @@ static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
   return err;
 }
 
+/* GCOVR_EXCL_START -- reachable only once the SIE has actually landed a
+ * control-OUT packet in the DCP bank, which the host register window cannot
+ * produce. ra8_usb_dcp_out_arm() clears the DCP BRDY latch as its first act
+ * (BRDYSTS is write-0-to-clear on silicon; the host model is plain memory, so
+ * the write simply stores the cleared bit), and only real hardware receiving a
+ * host OUT token sets it again. ra8_usb_dcp_out_read() therefore reports
+ * k_ra8_err_no_data on every one of the bounded poll's iterations, and this
+ * helper is never entered from any host-side input.
+ *
+ * This is NOT the blanket exclusion the former stub carried: that one covered
+ * the first 236 lines of the file and was justified by the helper's caller
+ * being hard-wired to fail. The data stage is implemented now, and the
+ * exclusion is scoped to the one helper whose entry condition is a physical
+ * bus event. The decode itself is covered on silicon by the usb_cdc_echo HIL
+ * app, which reports the host's requested baud back over the same link. */
 /**
  * @brief Apply a host SET_LINE_CODING payload to the cached CDC line coding.
  *
@@ -210,21 +225,6 @@ static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
  * @note Not thread-safe; call only from the USB control-transfer context.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- reachable only once the SIE has actually landed a
- * control-OUT packet in the DCP bank, which the host register window cannot
- * produce. ra8_usb_dcp_out_arm() clears the DCP BRDY latch as its first act
- * (BRDYSTS is write-0-to-clear on silicon; the host model is plain memory, so
- * the write simply stores the cleared bit), and only real hardware receiving a
- * host OUT token sets it again. ra8_usb_dcp_out_read() therefore reports
- * k_ra8_err_no_data on every one of the bounded poll's iterations, and this
- * helper is never entered from any host-side input.
- *
- * This is NOT the blanket exclusion the former stub carried: that one covered
- * the first 236 lines of the file and was justified by the helper's caller
- * being hard-wired to fail. The data stage is implemented now, and the
- * exclusion is scoped to the one helper whose entry condition is a physical
- * bus event. The decode itself is covered on silicon by the usb_cdc_echo HIL
- * app, which reports the host's requested baud back over the same link. */
 RA8_INTERNAL
 static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
 {
