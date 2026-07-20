@@ -42,7 +42,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_reflow_xml_u_20 = 20,
+  k_reflow_xml_u_20 = 20, /**< Log2 of the fuzz input-size cap (1 MiB). */
 } reflow_xml_uint8_const_t;
 
 /*

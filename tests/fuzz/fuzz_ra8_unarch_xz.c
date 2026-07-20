@@ -34,7 +34,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_unarch_xz_u_20 = 20,
+  k_unarch_xz_u_20 = 20, /**< Log2 of the decompression arena size (1 MiB). */
 } unarch_xz_uint8_const_t;
 
 /**
@@ -47,8 +47,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_unarch_xz_u_1024      = 1024U,
-  k_unarch_xz_scratch_kib = 320U, /**< Decoder scratch arena size, in KiB. */
+  k_unarch_xz_u_1024      = 1024U, /**< Bytes per KiB, scaling the scratch arena. */
+  k_unarch_xz_scratch_kib = 320U,  /**< Decoder scratch arena size, in KiB.       */
 } unarch_xz_uint16_const_t;
 
 /** @brief Decode destination arena (bounds every honest stream too). */

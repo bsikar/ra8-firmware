@@ -35,7 +35,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_unarch_gzip_u_20 = 20,
+  k_unarch_gzip_u_20 = 20, /**< Log2 of the decompression arena size (1 MiB). */
 } unarch_gzip_uint8_const_t;
 
 /** @brief Decode destination arena (bounds every honest member too). */

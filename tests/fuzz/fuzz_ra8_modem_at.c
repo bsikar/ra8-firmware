@@ -36,7 +36,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_modem_at_default_timeout_ms_50 = 50U,
+  k_modem_at_default_timeout_ms_50 =
+    50U, /**< Modem AT default per-command timeout, in milliseconds. */
 } modem_at_uint8_const_t;
 
 enum : uint16_t {

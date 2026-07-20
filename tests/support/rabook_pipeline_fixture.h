@@ -41,14 +41,21 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_rabook_pipeline_fixture_put_u32_le_10 = 10,
-  k_rabook_pipeline_fixture_put_u32_le_14 = 14,
-  k_rabook_pipeline_fixture_put_u32_le_18 = 18,
-  k_rabook_pipeline_fixture_put_u32_le_22 = 22,
-  k_rabook_pipeline_fixture_put_u32_le_34 = 34,
-  k_rabook_pipeline_fixture_put_u32_le_40 = 40U,
-  k_rabook_pipeline_fixture_v_24          = 24U,
-  k_rabook_pipeline_fixture_v_ff          = 0xFFU,
+  k_rabook_pipeline_fixture_put_u32_le_10 =
+    10, /**< BMP file-header offset of the pixel-data offset field. */
+  k_rabook_pipeline_fixture_put_u32_le_14 =
+    14, /**< BMP file-header offset of the DIB header size field. */
+  k_rabook_pipeline_fixture_put_u32_le_18 = 18, /**< BMP DIB offset of the image width field. */
+  k_rabook_pipeline_fixture_put_u32_le_22 =
+    22, /**< BMP DIB offset of the image height field (bottom-up). */
+  k_rabook_pipeline_fixture_put_u32_le_34 = 34, /**< BMP DIB offset of the raw image size field. */
+  k_rabook_pipeline_fixture_put_u32_le_40 =
+    40U, /**< BITMAPINFOHEADER size in bytes, written as the DIB header size. */
+  k_rabook_pipeline_fixture_le32_hi_shift =
+    24U,                                   /**< Top-byte shift of a little-endian 32-bit field. */
+  k_rabook_pipeline_fixture_bmp_bpp = 24U, /**< BMP bits per pixel: 24bpp BGR, no palette.      */
+  k_rabook_pipeline_fixture_v_ff =
+    0xFFU, /**< Low-byte mask while serialising a little-endian 32-bit field. */
   k_rabook_pipeline_fixture_small_bmp_cap = 128, /**< Minimal in-test BMP buffer capacity. */
   k_rabook_pipeline_fixture_bmp_off_planes =
     26, /**< BMP DIB header offset of the colour-plane count. */
@@ -66,7 +73,7 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_rabook_pipeline_fixture_u_1024 = 1024U,
+  k_rabook_pipeline_fixture_u_1024 = 1024U, /**< Bytes per KiB, sizing the BMP staging buffer. */
 } rabook_pipeline_fixture_uint16_const_t;
 
 /* -------------------------------------------------------------------------- */
@@ -417,7 +424,7 @@ static inline void put_u32_le(uint8_t* p, uint32_t v)
   p[0] = (uint8_t)(v & k_rabook_pipeline_fixture_v_ff);
   p[1] = (uint8_t)((v >> 8U) & k_rabook_pipeline_fixture_v_ff);
   p[2] = (uint8_t)((v >> 16U) & k_rabook_pipeline_fixture_v_ff);
-  p[3] = (uint8_t)((v >> k_rabook_pipeline_fixture_v_24) & k_rabook_pipeline_fixture_v_ff);
+  p[3] = (uint8_t)((v >> k_rabook_pipeline_fixture_le32_hi_shift) & k_rabook_pipeline_fixture_v_ff);
 }
 
 /**
@@ -453,7 +460,7 @@ static inline size_t make_bmp(uint8_t* out, uint16_t w, uint16_t h, uint8_t gray
   put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_18, w); /* width              */
   put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_22, h); /* height (bottom-up) */
   out[k_rabook_pipeline_fixture_bmp_off_planes] = 1U;
-  out[k_rabook_pipeline_fixture_bmp_off_bpp]    = k_rabook_pipeline_fixture_v_24;
+  out[k_rabook_pipeline_fixture_bmp_off_bpp]    = k_rabook_pipeline_fixture_bmp_bpp;
   put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_34, data); /* raw image size */
   for (uint32_t y = 0U; y < (uint32_t)h; y++) {
     uint8_t* px = out + hdr + ((size_t)y * row);
