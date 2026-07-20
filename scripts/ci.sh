@@ -1325,6 +1325,14 @@ fi
 if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   export HOME=/tmp
   git config --global --add safe.directory "$REPO_ROOT" >/dev/null 2>&1 || true
+  # When the host tree is a linked worktree its git objects live in the main
+  # repo's git dir, bind-mounted separately at its host path (see the
+  # RA8_CI_GIT_COMMON_DIR block below). Git checks ownership of THAT directory
+  # too, and the container runs as root against files owned by the host user,
+  # so it needs its own exemption or discovery fails before `git archive`.
+  if [[ -n "${RA8_CI_GIT_COMMON_DIR:-}" ]]; then
+    git config --global --add safe.directory "$RA8_CI_GIT_COMMON_DIR" >/dev/null 2>&1 || true
+  fi
   run_suite_on_snapshot "${RA8_CI_FAST:-$fast}"
   exit $?
 fi
@@ -1419,6 +1427,36 @@ else
   echo "==> reusing cached image $IMAGE_TAG (--rebuild / REBUILD=1 to refresh)"
 fi
 
+# Linked git worktrees: mount the main repo's git dir too (#334).
+#
+# In a linked worktree -- an agent workspace from `make ws-new`, or a
+# .claude/worktrees/* tree -- `.git` is a FILE holding "gitdir: <path>" that
+# points into the MAIN repo's git directory. That directory is outside this
+# bind mount, so the in-container `git archive HEAD` saw no repository at all
+# and the suite died before its first gate with "fatal: not a git repository"
+# followed by "tar: This does not look like a tar archive".
+#
+# That made the isolation pattern agents are told to use (one workspace each,
+# so concurrent runs stop clobbering one another) incompatible with the only
+# toolchain-correct way to run the gates, and pushed agents onto native runs
+# where clang-tidy / gcovr / shellcheck / shfmt all differ from CI (#333).
+#
+# Mounting the common git dir at the SAME absolute path it has on the host is
+# what makes the pointer resolve identically inside and outside. It stays
+# read-only like the worktree itself: `git archive` only reads.
+WORKTREE_RUN_ARGS=()
+_git_common="$(cd "$REPO_ROOT" && cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .git)" 2>/dev/null && pwd || true)"
+case "${_git_common:-}" in
+  "" | "$REPO_ROOT"/*) ;; # ordinary checkout: the git dir is already inside the mount
+  *)
+    echo "==> linked worktree detected; also mounting $_git_common (read-only)"
+    WORKTREE_RUN_ARGS=(
+      -v "$_git_common":"$_git_common":ro
+      -e RA8_CI_GIT_COMMON_DIR="$_git_common"
+    )
+    ;;
+esac
+
 echo "==> running CI gates in container (runtime=${RUNTIME_CMD[*]} fast=$fast)"
 # The host repo is bind-mounted READ-ONLY: the in-container step extracts a
 # clean `git archive HEAD` into a throwaway dir and builds there, so the host
@@ -1438,6 +1476,7 @@ exec "${RUNTIME_CMD[@]}" run --rm \
   -e HOME=/tmp \
   -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}" \
   -v "$REPO_ROOT":/workspace:ro \
+  ${WORKTREE_RUN_ARGS[@]+"${WORKTREE_RUN_ARGS[@]}"} \
   -w /workspace \
   "$IMAGE_TAG" \
   bash scripts/ci.sh
