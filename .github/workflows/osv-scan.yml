@@ -1,5 +1,6 @@
 # SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate: osv-scan).
 # See .github/workflows/firmware.yml for the design note.
+---
 name: osv-scan
 
 on:

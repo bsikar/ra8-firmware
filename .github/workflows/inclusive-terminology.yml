@@ -1,6 +1,7 @@
 # SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh (gates:
 # inclusive-terminology, inclusive-terminology-commits). See
 # .github/workflows/firmware.yml for the design note.
+---
 name: inclusive-terminology
 
 on:
@@ -22,7 +23,9 @@ jobs:
     runs-on: self-hosted
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       # fetch-depth: 0 so the commit-message gate can walk the full push/PR
       # range; ci.sh derives that range from the event payload itself.
