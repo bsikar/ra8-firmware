@@ -18,7 +18,7 @@
 SHELL     := /bin/bash
 
 APP        := threadx_ble_mesh_node
-ROOT       := $(abspath $(CURDIR)/../../..)
+ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build
 ELF        := $(BUILD_DIR)/$(APP).elf

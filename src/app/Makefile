@@ -7,6 +7,8 @@
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make clean       # rm -rf src/app/build
 #
+# Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
 
 SHELL     := /bin/bash
 

@@ -11,6 +11,8 @@
 #   make flash      -> (roadmap) esp_flash.py downloads to a connected C6
 #   make sim        -> (roadmap) host-side simulator run
 #   make clean
+# Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
 
 CROSS   := riscv64-elf-
 CC      := $(CROSS)gcc
