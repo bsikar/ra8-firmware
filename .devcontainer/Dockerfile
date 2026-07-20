@@ -192,6 +192,33 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && ccache --version
 
+# ruff / shellcheck / shfmt -- the three tools the `lint-py-shell` gate needs.
+#
+# Without them that gate could never pass in this container. It does not skip
+# (check_ruff.py / check_shell.py are invoked with --require, and a gate whose
+# dependency is absent must FAIL) -- so the containerised `make ci`, which is
+# the documented macOS path, reported FAIL on every run no matter what the tree
+# contained. CI itself was green because the self-hosted Linux runners have
+# these installed natively, which is exactly the local-green/CI-red divergence
+# in reverse and just as misleading.
+#
+# Versions are pinned to what CI resolves, so the gate cannot disagree with the
+# runner about a lint rule. Keep these in step with docs/TOOLCHAIN.md section
+# 3.4 and with whatever the runners install.
+ARG RUFF_VERSION=0.15.19
+ARG SHELLCHECK_VERSION=0.11.0
+ARG SHFMT_VERSION=3.13.1
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
+      ruff==${RUFF_VERSION} \
+    && curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
+       | tar -xJ -C /tmp \
+    && install -m 0755 "/tmp/shellcheck-v${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin/shellcheck \
+    && rm -rf "/tmp/shellcheck-v${SHELLCHECK_VERSION}" \
+    && curl -fsSL -o /usr/local/bin/shfmt \
+       "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64" \
+    && chmod 0755 /usr/local/bin/shfmt \
+    && ruff --version && shellcheck --version | grep '^version:' && shfmt --version
+
 # Create a non-root user so post-create scripts run as a human.
 # Ubuntu 24.04 ships a pre-existing UID/GID 1000 (`ubuntu`); remove it
 # first so we can claim the same id and have file ownership match the
