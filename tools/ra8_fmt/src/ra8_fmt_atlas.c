@@ -149,6 +149,57 @@ static ra8_err_t fmt_atlas_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got
   return k_ra8_ok;
 }
 
+/**
+ * @brief Carve the whole-frame WebP work arena, if the source is a WebP.
+ * @details WebP is not stripe-decodable, so its producer arm needs one arena
+ *          holding the compressed source, the decoded RGBA frame and libwebp's
+ *          scratch simultaneously. JPEG and PNG stream and would pay that
+ *          whole-frame cost for nothing, so the arena is carved only when the
+ *          source really is a WebP. For every other codec this reports success
+ *          having produced a NULL arena, which is exactly the producer's
+ *          fail-closed "reject WebP" signal.
+ * @param[in]  src      Encoded source blob to sniff.
+ * @param[in]  max_w    Width cap in pixels used to size the arena.
+ * @param[in]  max_h    Height cap in pixels used to size the arena.
+ * @param[out] out_work Receives the arena, or nullptr for a non-WebP source.
+ * @param[out] out_cap  Receives the arena size in bytes, or 0.
+ * @return Result code.
+ * @retval k_ra8_ok           Non-WebP source, or arena carved successfully.
+ * @retval k_ra8_err_invalid_size The caps do not admit a WebP of this size.
+ * @retval k_ra8_err_no_mem   The host allocator refused the arena.
+ * @pre @p src points at an initialised blob.
+ * @pre @p out_work and @p out_cap are writable.
+ * @post On success `*out_work` is nullptr (non-WebP) or owned by the caller.
+ * @post On failure `*out_work` is nullptr and nothing was allocated.
+ * @note Not thread-safe; the caller owns and must free `*out_work`.
+ * @see ra8_tileatlas_webp_work_bytes()
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t fmt_atlas_carve_webp(const ra8_fmt_blob_t* src,
+                                      uint16_t              max_w,
+                                      uint16_t              max_h,
+                                      uint8_t**             out_work,
+                                      size_t*               out_cap)
+{
+  *out_work = nullptr;
+  *out_cap  = 0U;
+  if (!ra8_fmt_atlas_is_webp(src)) {
+    return k_ra8_ok;
+  }
+  const uint32_t need = ra8_tileatlas_webp_work_bytes(max_w, max_h, (uint32_t)src->len);
+  if (need == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  uint8_t* mem = (uint8_t*)malloc((size_t)need);
+  if (mem == nullptr) {
+    return k_ra8_err_no_mem;
+  }
+  *out_work = mem;
+  *out_cap  = (size_t)need;
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
@@ -187,27 +238,13 @@ ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
     free(sink);
     return k_ra8_err_no_mem;
   }
-  /* WebP is not stripe-decodable, so its arm needs a second whole-frame arena
-   * holding the compressed source, the decoded RGBA frame and libwebp's
-   * scratch at once. Carve it only for WebP sources: JPEG and PNG stream and
-   * would pay the whole-frame cost for nothing. A NULL arena is the producer's
-   * fail-closed "reject WebP" signal, which is correct for the other codecs. */
-  uint8_t* webp_work     = nullptr;
-  size_t   webp_work_cap = 0U;
-  if (ra8_fmt_atlas_is_webp(src)) {
-    const uint32_t need = ra8_tileatlas_webp_work_bytes(max_w, max_h, (uint32_t)src->len);
-    if (need == 0U) {
-      free(work);
-      free(sink);
-      return k_ra8_err_invalid_size;
-    }
-    webp_work = (uint8_t*)malloc((size_t)need);
-    if (webp_work == nullptr) {
-      free(work);
-      free(sink);
-      return k_ra8_err_no_mem;
-    }
-    webp_work_cap = (size_t)need;
+  uint8_t*        webp_work     = nullptr;
+  size_t          webp_work_cap = 0U;
+  const ra8_err_t carve_rc = fmt_atlas_carve_webp(src, max_w, max_h, &webp_work, &webp_work_cap);
+  if (carve_rc != k_ra8_ok) {
+    free(work);
+    free(sink);
+    return carve_rc;
   }
   ra8_tileatlas_memstore_t          store = {.buf = sink, .cap = sink_cap, .len = 0U};
   fmt_pull_ctx_t                    pull  = {.data = src->bytes, .len = src->len, .pos = 0U};
