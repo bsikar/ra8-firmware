@@ -35,3 +35,8 @@ add_executable(mkfontimg
 target_include_directories(mkfontimg PRIVATE
     ${_repo}/libs/ra8_fs/inc
     ${_repo}/libs/ra8_core/inc)
+
+# First-party sources carry the project warning bar (NASA Power of 10
+# Rule 10) here exactly as they do in the ARM and host-test builds; only
+# vendored SOUP is compiled quietly.
+target_compile_options(mkfontimg PRIVATE -Wall -Wextra -Werror)
