@@ -4,6 +4,7 @@
 # This workflow is separate from firmware.yml and has been missed by a "local
 # green" run before, which is exactly why the ci-parity gate walks EVERY
 # workflow file rather than firmware.yml alone.
+---
 name: coverage
 
 on:
@@ -33,7 +34,9 @@ jobs:
     runs-on: self-hosted
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
 

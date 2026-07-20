@@ -14,6 +14,7 @@
 # mcdc gate's -fprofile link path needs); the gate's preflight probe proves
 # that before spending the budget, so a de-provisioned runner fails in seconds
 # with an actionable message instead of after hours.
+---
 name: fuzz-nightly
 
 on:

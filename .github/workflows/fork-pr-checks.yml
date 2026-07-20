@@ -19,6 +19,7 @@
 # so executing the PR's own copy of these scripts is bounded to the throwaway
 # hosted VM. Do NOT convert this to `pull_request_target`: that would run with
 # the base repo's secrets in scope against fork-controlled code.
+---
 name: fork-pr-checks
 
 on:
@@ -39,7 +40,9 @@ jobs:
     # INVERSE of the self-hosted guard: run ONLY when this is a PR whose head
     # branch lives in a DIFFERENT repo (a fork). Same-repo PRs and pushes are
     # covered by the self-hosted suite and are skipped here.
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name != github.repository
     steps:
       - uses: actions/checkout@v4
 

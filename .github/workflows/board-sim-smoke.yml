@@ -19,6 +19,7 @@
 #
 # This workflow is separate from firmware.yml and has been missed by a "local
 # green" run before, which is why the ci-parity gate walks EVERY workflow file.
+---
 name: board-sim-smoke
 
 on:
@@ -41,7 +42,9 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     # Two board_sim_smoke.sh passes (boot smoke over every app + the ra8_io
     # fabric gate) plus the emulator build. Now that ~100 example apps link the
     # ra8_board_ek_ra8d2 BSP, the per-app build is a touch heavier and the job
@@ -89,7 +92,9 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 30
     # ENFORCING. Every hw_validated/hil app now runs and passes in board_sim:
     # sil_all.sh is 147 passed / 0 failed / 0 skipped. The former modelling gaps

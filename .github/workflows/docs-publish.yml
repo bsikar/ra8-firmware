@@ -18,6 +18,7 @@
 #
 # One-time repo setup (owner): Settings -> Pages -> Build and deployment ->
 # Source = "Deploy from a branch", Branch = gh-pages / (root).
+---
 name: docs-publish
 
 on:

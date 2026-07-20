@@ -1,5 +1,6 @@
 # SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate: hil-all).
 # See .github/workflows/firmware.yml for the design note.
+---
 name: hil
 
 # Hardware-in-the-loop CI.  Runs on the Raspberry Pi 5 self-hosted runner
@@ -22,40 +23,40 @@ name: hil
 # `push:` and `pull_request:` blocks below. The job can still be launched by
 # hand at any time via `workflow_dispatch` (Actions tab -> Run workflow).
 on:
-#  push:
-#    branches: [main]
-#    paths:
-#      - 'examples/ek_ra8d2/hw_validated/**'
-#      - 'libs/ra8_board_ek_ra8d2/**'
-#      - 'libs/ra8_core/**'
-#      - 'libs/ra8_hal/**'
-#      - 'libs/ra8_net_pal/**'
-#      - 'libs/ra8_nsc/**'
-#      - 'libs/ra8_usb_pal/**'
-#      - 'port/threadx/**'
-#      - 'port/usbx/**'
-#      - 'src/**'
-#      - 'cmake/**'
-#      - 'scripts/hil_*.sh'
-#      - 'scripts/usb_*.py'
-#      - '.github/workflows/hil.yml'
-#  pull_request:
-#    branches: [main]
-#    paths:
-#      - 'examples/ek_ra8d2/hw_validated/**'
-#      - 'libs/ra8_board_ek_ra8d2/**'
-#      - 'libs/ra8_core/**'
-#      - 'libs/ra8_hal/**'
-#      - 'libs/ra8_net_pal/**'
-#      - 'libs/ra8_nsc/**'
-#      - 'libs/ra8_usb_pal/**'
-#      - 'port/threadx/**'
-#      - 'port/usbx/**'
-#      - 'src/**'
-#      - 'cmake/**'
-#      - 'scripts/hil_*.sh'
-#      - 'scripts/usb_*.py'
-#      - '.github/workflows/hil.yml'
+  #  push:
+  #    branches: [main]
+  #    paths:
+  #      - 'examples/ek_ra8d2/hw_validated/**'
+  #      - 'libs/ra8_board_ek_ra8d2/**'
+  #      - 'libs/ra8_core/**'
+  #      - 'libs/ra8_hal/**'
+  #      - 'libs/ra8_net_pal/**'
+  #      - 'libs/ra8_nsc/**'
+  #      - 'libs/ra8_usb_pal/**'
+  #      - 'port/threadx/**'
+  #      - 'port/usbx/**'
+  #      - 'src/**'
+  #      - 'cmake/**'
+  #      - 'scripts/hil_*.sh'
+  #      - 'scripts/usb_*.py'
+  #      - '.github/workflows/hil.yml'
+  #  pull_request:
+  #    branches: [main]
+  #    paths:
+  #      - 'examples/ek_ra8d2/hw_validated/**'
+  #      - 'libs/ra8_board_ek_ra8d2/**'
+  #      - 'libs/ra8_core/**'
+  #      - 'libs/ra8_hal/**'
+  #      - 'libs/ra8_net_pal/**'
+  #      - 'libs/ra8_nsc/**'
+  #      - 'libs/ra8_usb_pal/**'
+  #      - 'port/threadx/**'
+  #      - 'port/usbx/**'
+  #      - 'src/**'
+  #      - 'cmake/**'
+  #      - 'scripts/hil_*.sh'
+  #      - 'scripts/usb_*.py'
+  #      - '.github/workflows/hil.yml'
   workflow_dispatch:
 
 concurrency:

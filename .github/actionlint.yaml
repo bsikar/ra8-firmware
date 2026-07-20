@@ -1,0 +1,18 @@
+# actionlint configuration -- actionlint 1.7.7, the pin the lint-yaml gate,
+# the devcontainer image and the CI runners all install.
+#
+# actionlint validates runs-on labels against the set GitHub hosts. Every job
+# in this repository runs on a SELF-HOSTED runner, so the custom labels have
+# to be declared here or each one is reported as unknown. Declaring them is
+# what makes the rule useful rather than noisy: a typo'd label now fails the
+# gate instead of silently scheduling a job onto a runner that never picks it
+# up, which is the same class of never-runs defect as #357.
+---
+self-hosted-runner:
+  labels:
+    # The Linux x86_64 build/test fleet.
+    - Linux
+    - X64
+    # The bench runner with the EK-RA8D2 attached (.github/workflows/hil.yml).
+    - hil
+    - ra8d2

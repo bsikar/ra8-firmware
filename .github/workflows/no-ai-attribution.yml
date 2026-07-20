@@ -1,6 +1,7 @@
 # SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh (gates:
 # no-ai-attribution, no-ai-attribution-commits). See
 # .github/workflows/firmware.yml for the design note.
+---
 name: no-ai-attribution
 
 on:
@@ -22,7 +23,9 @@ jobs:
     runs-on: self-hosted
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,7 +40,9 @@ jobs:
     runs-on: self-hosted
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       # Secondary enforcement: the file scanner above cannot see commit
       # messages (trailers live in git metadata, not tracked files). The gate
