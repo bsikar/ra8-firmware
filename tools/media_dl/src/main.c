@@ -151,7 +151,7 @@ RA8_INTERNAL static void last_segment(const char* url, char* out, size_t cap)
                     ((c >= '0') && (c <= '9')) || (c == '.') || (c == '-') || (c == '_');
     /* Both arms are already char-valued; the cast is only undoing the integer
      * promotion the conditional operator applies to them. */
-    out[n]        = (char)(ok ? c : '_');
+    out[n] = (char)(ok ? c : '_');
     ++n;
   }
   out[n] = '\0';
