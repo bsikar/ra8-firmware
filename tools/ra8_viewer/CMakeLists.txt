@@ -95,6 +95,11 @@ add_library(ra8_reader STATIC
     ${RA8_THIRD_PARTY_SRC}
 )
 target_compile_definitions(ra8_reader PUBLIC RA8_SIMULATOR_MODE)
+# The firmware sources in this archive are first-party and carry the project
+# warning bar (NASA Power of 10 Rule 10) here exactly as they do in the ARM and
+# host-test builds. The vendored decoders below override it with -w, which is
+# where warning suppression legitimately stops.
+target_compile_options(ra8_reader PRIVATE -Wall -Wextra -Werror)
 target_include_directories(ra8_reader PUBLIC
     ${FW_ROOT}/libs/ra8_core/inc
     ${FW_ROOT}/libs/ra8_gfx/inc
@@ -118,6 +123,17 @@ set_source_files_properties(${RA8_THIRD_PARTY_SRC} ${RA8_XZ_EMBEDDED_SRC}
 # ---------------------------------------------------------------------------
 # ra8_viewer: the viewer executable -- C core + Cocoa window backend.
 # ---------------------------------------------------------------------------
+# The window backend is the only platform-specific piece. Cocoa on macOS; off
+# the APPLE path a headless stand-in supplies the identical C ABI and reports
+# "no window" so main.c takes its existing headless branch. Exactly one of the
+# two is ever compiled, so they never compete for the same symbols -- the same
+# arrangement tools/board_sim uses for board_view.m.
+if(APPLE)
+    set(RA8_VIEWER_VIEW_SRC src/ra8_viewer_view.m)
+else()
+    set(RA8_VIEWER_VIEW_SRC src/ra8_viewer_view_stub.c)
+endif()
+
 # The reader core is one module split across four TUs (see
 # src/ra8_viewer_reader_internal.h): public API + dispatch, the comic engine, the
 # JOF long-strip engine, and the shared RGB565 / PPM writer.
@@ -127,14 +143,18 @@ add_executable(ra8_viewer
     src/ra8_viewer_comic.c
     src/ra8_viewer_jof.c
     src/ra8_viewer_ppm.c
-    src/ra8_viewer_view.m
+    ${RA8_VIEWER_VIEW_SRC}
 )
 target_include_directories(ra8_viewer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 target_link_libraries(ra8_viewer PRIVATE ra8_reader)
-target_compile_options(ra8_viewer PRIVATE -Wall -Wextra)
+target_compile_options(ra8_viewer PRIVATE -Wall -Wextra -Werror)
 
 if(APPLE)
     set_source_files_properties(src/ra8_viewer_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
     target_link_libraries(ra8_viewer PRIVATE "-framework Cocoa" "-framework QuartzCore")
+else()
+    # The SVG rasteriser calls sinf/cosf/tanf/sqrtf/atan2f. macOS keeps those in
+    # libSystem; every other POSIX host needs libm named explicitly.
+    target_link_libraries(ra8_viewer PRIVATE m)
 endif()
 
