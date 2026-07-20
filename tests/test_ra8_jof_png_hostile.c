@@ -239,7 +239,7 @@ static uint32_t make_zlib(uint32_t w, uint32_t h, uint8_t filter, uint8_t* out)
 /** @brief Run the producer over the crafted source; return its code. */
 static ra8_err_t craft_produce(size_t fail_at)
 {
-  static t_pull_t                 s_pull;
+  static t_pull_t           s_pull;
   static ra8_jof_memstore_t s_store;
   s_pull  = (t_pull_t){.pos = 0U, .fail_at = fail_at};
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
@@ -264,7 +264,7 @@ static ra8_err_t craft_produce(size_t fail_at)
 static ra8_err_t
 craft_produce_with(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t work_cap)
 {
-  static t_pull_t                 s_pull;
+  static t_pull_t           s_pull;
   static ra8_jof_memstore_t s_store;
   s_pull  = (t_pull_t){.pos = 0U, .fail_at = 0U};
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
@@ -893,7 +893,7 @@ static void test_png_hostile_direct_seam(void)
 {
   TEST_BEGIN("png hostile: direct seam (signature + null guards)");
   static uint8_t  s_arena[k_t_arena_kib * k_t_kib];
-  ra8_jof_bump_t   bump = {.base = s_arena, .cap = sizeof(s_arena), .off = 0U};
+  ra8_jof_bump_t  bump = {.base = s_arena, .cap = sizeof(s_arena), .off = 0U};
   static t_pull_t s_pull;
 
   /* Transport fails during the signature read. */

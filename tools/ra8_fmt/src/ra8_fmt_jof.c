@@ -246,15 +246,15 @@ ra8_err_t ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t*     src,
-                                       uint16_t                  max_w,
-                                       uint16_t                  max_h,
-                                       uint16_t                  tile_w,
-                                       uint16_t                  tile_h,
-                                       uint8_t                   codec,
-                                       uint32_t                  work_cap,
-                                       ra8_jof_memstore_t* store,
-                                       ra8_jof_info_t*     out_info)
+static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t* src,
+                                       uint16_t              max_w,
+                                       uint16_t              max_h,
+                                       uint16_t              tile_w,
+                                       uint16_t              tile_h,
+                                       uint8_t               codec,
+                                       uint32_t              work_cap,
+                                       ra8_jof_memstore_t*   store,
+                                       ra8_jof_info_t*       out_info)
 {
   uint8_t* work = (uint8_t*)malloc((size_t)work_cap);
   if (work == nullptr) {
@@ -267,21 +267,21 @@ static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t*     src,
     free(work);
     return carve_rc;
   }
-  fmt_pull_ctx_t                    pull = {.data = src->bytes, .len = src->len, .pos = 0U};
+  fmt_pull_ctx_t              pull = {.data = src->bytes, .len = src->len, .pos = 0U};
   const ra8_jof_produce_cfg_t cfg  = {.pull          = fmt_jof_pull,
-                                            .pull_ctx      = &pull,
-                                            .sink          = ra8_jof_memstore_sink,
-                                            .sink_ctx      = store,
-                                            .tile_w        = tile_w,
-                                            .tile_h        = tile_h,
-                                            .codec         = codec,
-                                            .max_width     = 0U,
-                                            .max_height    = 0U,
-                                            .work          = work,
-                                            .work_cap      = work_cap,
-                                            .webp_work     = webp_work,
-                                            .webp_work_cap = webp_cap};
-  const ra8_err_t                   rc   = ra8_jof_produce(&cfg, out_info);
+                                      .pull_ctx      = &pull,
+                                      .sink          = ra8_jof_memstore_sink,
+                                      .sink_ctx      = store,
+                                      .tile_w        = tile_w,
+                                      .tile_h        = tile_h,
+                                      .codec         = codec,
+                                      .max_width     = 0U,
+                                      .max_height    = 0U,
+                                      .work          = work,
+                                      .work_cap      = work_cap,
+                                      .webp_work     = webp_work,
+                                      .webp_work_cap = webp_cap};
+  const ra8_err_t             rc   = ra8_jof_produce(&cfg, out_info);
   free(work);
   free(webp_work);
   return rc;
@@ -294,7 +294,7 @@ ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
                                 uint16_t              tile_h,
                                 uint8_t               codec,
                                 ra8_fmt_blob_t*       out_atlas,
-                                ra8_jof_info_t* out_info)
+                                ra8_jof_info_t*       out_info)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(out_atlas, s_tag, "out_atlas must not be nullptr");
@@ -312,7 +312,7 @@ ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
     return k_ra8_err_no_mem;
   }
   ra8_jof_memstore_t store = {.buf = sink, .cap = sink_cap, .len = 0U};
-  const ra8_err_t          rc =
+  const ra8_err_t    rc =
     fmt_jof_run_produce(src, max_w, max_h, tile_w, tile_h, codec, work_cap, &store, out_info);
   if (rc != k_ra8_ok) {
     free(sink);
@@ -338,17 +338,10 @@ ra8_err_t ra8_fmt_jof_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* o
     (void)fprintf(opts->report, "ra8_fmt: cannot decode source image (rc=%d)\n", (int)rc);
     return rc;
   }
-  const uint16_t       band = (h < (uint16_t)k_fmt_jof_band_h) ? h : (uint16_t)k_fmt_jof_band_h;
-  ra8_fmt_blob_t       atlas = {};
+  const uint16_t band  = (h < (uint16_t)k_fmt_jof_band_h) ? h : (uint16_t)k_fmt_jof_band_h;
+  ra8_fmt_blob_t atlas = {};
   ra8_jof_info_t info  = {};
-  rc                         = ra8_fmt_jof_produce(src,
-                                                     w,
-                                                     h,
-                                                     w,
-                                                     band,
-                                                     (uint8_t)k_ra8_jof_codec_deflate,
-                                                     &atlas,
-                                                     &info);
+  rc = ra8_fmt_jof_produce(src, w, h, w, band, (uint8_t)k_ra8_jof_codec_deflate, &atlas, &info);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "ra8_fmt: transcode failed (rc=%d)\n", (int)rc);
     return rc;

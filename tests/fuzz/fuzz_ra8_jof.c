@@ -67,10 +67,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   }
   memcpy(s_backing, data, size);
   static ra8_jof_memstore_t s_store;
-  s_store = (ra8_jof_memstore_t){.buf = s_backing, .cap = size, .len = size};
+  s_store             = (ra8_jof_memstore_t){.buf = s_backing, .cap = size, .len = size};
   ra8_jof_info_t info = {};
-  if (ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)size, &info) !=
-      k_ra8_ok) {
+  if (ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)size, &info) != k_ra8_ok) {
     return 0;
   }
   uint32_t decoded = 0U;
@@ -81,16 +80,16 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
       uint16_t w = 0U;
       uint16_t h = 0U;
       (void)ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                    &s_store,
-                                    &info,
-                                    tx,
-                                    ty,
-                                    s_scratch,
-                                    (uint32_t)sizeof(s_scratch),
-                                    s_cell,
-                                    (uint32_t)sizeof(s_cell),
-                                    &w,
-                                    &h);
+                              &s_store,
+                              &info,
+                              tx,
+                              ty,
+                              s_scratch,
+                              (uint32_t)sizeof(s_scratch),
+                              s_cell,
+                              (uint32_t)sizeof(s_cell),
+                              &w,
+                              &h);
       decoded++;
     }
   }

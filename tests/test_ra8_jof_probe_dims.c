@@ -126,12 +126,9 @@ static void test_probe_null_guards(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   make_png(hdr, k_p_w, k_p_h);
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_jof_probe_dims(nullptr, (size_t)k_p_png_ihdr, &w, &h));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, nullptr, &h));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_probe_dims(nullptr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, nullptr, &h));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, nullptr));
   TEST_END("probe_dims: three null-pointer guards");
 }
 
@@ -205,17 +202,13 @@ static void test_probe_range_guard(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   make_png(hdr, 0U, k_p_h);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   make_png(hdr, k_p_w, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   make_png(hdr, k_p_over_dim, k_p_h);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   make_png(hdr, k_p_w, k_p_over_dim);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   TEST_END("probe_dims: zero and over-cap geometry");
 }
 
@@ -247,14 +240,12 @@ static void test_probe_unknown_magic(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   (void)memset(hdr, (int)k_p_filler, sizeof(hdr));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
   /* RIFF container, but the form type is AVI -- only the first fourCC matches. */
   (void)memset(hdr, 0, sizeof(hdr));
   (void)memcpy(&hdr[0], s_riff_tag, sizeof(s_riff_tag));
   (void)memcpy(&hdr[k_p_form_ofs], s_avi_tag, sizeof(s_avi_tag));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
   /* Both fourCCs match, so priv_is_webp() is true and the WebP arm is taken;
    * the body is not a decodable bitstream, so the reader -- not the container
    * sniff -- reports the failure. This is the vector that varies only the
@@ -301,8 +292,7 @@ static void test_probe_jpeg_dispatch(void)
   /* SOI's first byte alone is not SOI: varying only the second condition must
    * drop out of the JPEG arm and fall through to the unsupported tail. */
   hdr[1] = 0x00U;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
   TEST_END("probe_dims: JPEG SOI dispatch arm");
 }
 

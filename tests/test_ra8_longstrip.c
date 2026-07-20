@@ -31,9 +31,9 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_jof.h"
 #include "ra8_longstrip.h"
 #include "ra8_tile_cache.h"
-#include "ra8_jof.h"
 #include "unity_minimal.h"
 
 /** @brief JOF1 footer layout: three u32 fields, then the JOFE magic. */
@@ -316,7 +316,7 @@ static uint32_t t_wt_build_strip(void)
  * Harness wiring: memstore pread, tile cache, decode ctx, recording blit.
  * ------------------------------------------------------------------------- */
 
-static ra8_jof_memstore_t   s_store;
+static ra8_jof_memstore_t         s_store;
 static ra8_longstrip_decode_ctx_t s_dctx;
 static ra8_tile_cache_t           s_cache;
 
@@ -377,15 +377,14 @@ static ra8_err_t t_wt_blit(void*          ctx,
 static void t_wt_open(ra8_longstrip_t* wt)
 {
   const uint32_t total = t_wt_build_strip();
-  s_store = (ra8_jof_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
+  s_store              = (ra8_jof_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
 
   s_dctx.pread       = ra8_jof_memstore_pread;
   s_dctx.pread_ctx   = &s_store;
   s_dctx.scratch     = nullptr;
   s_dctx.scratch_cap = 0U;
   /* Parse once so the decode ctx carries validated geometry. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jof_parse(ra8_jof_memstore_pread, &s_store, total, &s_dctx.info));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_parse(ra8_jof_memstore_pread, &s_store, total, &s_dctx.info));
 
   const ra8_tile_cache_cfg_t ccfg = {.cell_mem     = s_cells,
                                      .cell_bytes   = (uint32_t)k_t_wt_band_bytes,
