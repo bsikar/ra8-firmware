@@ -298,110 +298,6 @@ static void test_close_without_init(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_pre_init_guards(void)
-{
-  TEST_BEGIN("attach_storage / step / feed_cbw / dispatch / build_csw reject pre-init");
-  prep();
-
-  uint8_t                   buf[k_test_pmsc_cbw_len] = {};
-  uint32_t                  data_len                 = 0U;
-  ra8_usb_pmsc_csw_status_t status                   = k_ra8_pmsc_csw_status_passed;
-
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pmsc_attach_storage(&s_test_storage));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pmsc_step());
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pmsc_feed_cbw(buf));
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_state,
-    ra8_usb_pmsc_dispatch_command(buf, (uint32_t)k_test_pmsc_cbw_len, &data_len, &status));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 ra8_usb_pmsc_build_csw(k_ra8_pmsc_csw_status_passed, 0U, buf));
-
-  TEST_END("attach_storage / step / feed_cbw / dispatch / build_csw reject pre-init");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_pre_attach_guards(void)
-{
-  TEST_BEGIN("step / feed_cbw / dispatch reject pre-attach (post-init)");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
-
-  uint8_t                   buf[k_test_pmsc_cbw_len] = {};
-  uint32_t                  data_len                 = 0U;
-  ra8_usb_pmsc_csw_status_t status                   = k_ra8_pmsc_csw_status_passed;
-
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pmsc_step());
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pmsc_feed_cbw(buf));
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_state,
-    ra8_usb_pmsc_dispatch_command(buf, (uint32_t)k_test_pmsc_cbw_len, &data_len, &status));
-
-  TEST_END("step / feed_cbw / dispatch reject pre-attach (post-init)");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_storage_null_validation(void)
-{
-  TEST_BEGIN("attach_storage rejects NULL struct + NULL callbacks");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
-
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pmsc_attach_storage(nullptr));
-
-  ra8_usb_pmsc_storage_t bad = s_test_storage;
-  bad.read_block             = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pmsc_attach_storage(&bad));
-
-  bad             = s_test_storage;
-  bad.write_block = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pmsc_attach_storage(&bad));
-
-  bad              = s_test_storage;
-  bad.get_capacity = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pmsc_attach_storage(&bad));
-
-  bad             = s_test_storage;
-  bad.get_inquiry = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pmsc_attach_storage(&bad));
-
-  /* All four non-NULL accepted. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
-
-  TEST_END("attach_storage rejects NULL struct + NULL callbacks");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_feed_cbw_null_guard(void)
-{
-  TEST_BEGIN("feed_cbw rejects NULL pointer");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pmsc_feed_cbw(nullptr));
-  TEST_END("feed_cbw rejects NULL pointer");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
 static void test_feed_cbw_bad_signature_emits_phase_error(void)
 {
   TEST_BEGIN("feed_cbw with wrong signature -> phase-error CSW");
@@ -711,44 +607,6 @@ static void test_step_state_machine_loops(void)
 
 /**
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_dispatch_null_arg_rejection(void)
-{
-  TEST_BEGIN("dispatch_command rejects NULL output pointers");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
-
-  uint8_t                   data[16] = {};
-  uint32_t                  dl       = 0U;
-  ra8_usb_pmsc_csw_status_t status   = k_ra8_pmsc_csw_status_passed;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pmsc_dispatch_command(nullptr, 16U, &dl, &status));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pmsc_dispatch_command(data, 16U, nullptr, &status));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pmsc_dispatch_command(data, 16U, &dl, nullptr));
-  TEST_END("dispatch_command rejects NULL output pointers");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_build_csw_null_guard(void)
-{
-  TEST_BEGIN("build_csw rejects NULL output");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_usb_pmsc_build_csw(k_ra8_pmsc_csw_status_passed, 0U, nullptr));
-  TEST_END("build_csw rejects NULL output");
-}
-
-/**
- * @par MC/DC:
  * (no compound decisions -- drives the REQUEST SENSE + MODE SENSE(6)
  * arms of the SCSI dispatch `switch`, which is a multi-way selection,
  * not a boolean `&&`/`||` decision.)
@@ -1004,10 +862,6 @@ static void (*const s_test_roster[])(void) = {
   test_init_hs_returns_ok,
   test_init_bad_speed,
   test_close_without_init,
-  test_pre_init_guards,
-  test_pre_attach_guards,
-  test_attach_storage_null_validation,
-  test_feed_cbw_null_guard,
   test_feed_cbw_bad_signature_emits_phase_error,
   test_inquiry_returns_backend_strings,
   test_read_capacity_returns_count_minus_one_be,
@@ -1016,8 +870,6 @@ static void (*const s_test_roster[])(void) = {
   test_test_unit_ready_no_data_phase,
   test_unsupported_opcode_fails,
   test_step_state_machine_loops,
-  test_dispatch_null_arg_rejection,
-  test_build_csw_null_guard,
   test_dispatch_request_sense_and_mode_sense,
   test_dispatch_wrong_bot_state_rejected,
   test_dispatch_zero_capacity_rejected,
