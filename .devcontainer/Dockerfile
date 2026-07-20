@@ -219,6 +219,33 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages \
     && chmod 0755 /usr/local/bin/shfmt \
     && ruff --version && shellcheck --version | grep '^version:' && shfmt --version
 
+# cmake-format / cmake-lint / yamllint / actionlint -- the tools the lint-cmake
+# and lint-yaml gates need. Same reasoning as the block above: both gates call
+# require_cmd and FAIL rather than skip, so without these the containerised
+# `make ci` could never pass while CI stayed green on the self-hosted runners
+# that have them natively.
+#
+# Versions are pinned to what the runners install (see the "Install the
+# config-as-code linters" step in .github/workflows/firmware.yml). Keep the
+# three in step.
+ARG CMAKELANG_VERSION=0.6.13
+ARG YAMLLINT_VERSION=1.37.1
+ARG ACTIONLINT_VERSION=1.7.7
+RUN set -eux; \
+    python3 -m pip install --no-cache-dir --break-system-packages \
+      "cmakelang==${CMAKELANG_VERSION}" "yamllint==${YAMLLINT_VERSION}"; \
+    case "$(uname -m)" in \
+      x86_64)  alarch=amd64 ;; \
+      aarch64) alarch=arm64 ;; \
+      *) echo "unsupported host arch $(uname -m) for actionlint" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL \
+      "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_${alarch}.tar.gz" \
+      | tar -xz -C /usr/local/bin actionlint; \
+    chmod 0755 /usr/local/bin/actionlint; \
+    cmake-format --version; cmake-lint --version; \
+    yamllint --version; actionlint --version
+
 # Create a non-root user so post-create scripts run as a human.
 # Ubuntu 24.04 ships a pre-existing UID/GID 1000 (`ubuntu`); remove it
 # first so we can claim the same id and have file ownership match the
