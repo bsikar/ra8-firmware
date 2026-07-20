@@ -48,7 +48,7 @@ typedef enum : uint8_t {
 } png_chunk_frame_t;
 
 /**
- * @enum tileatlas_produce_webp_uint8_const_t
+ * @enum jof_produce_webp_uint8_const_t
  * @brief Named uint8_t constants used by this file.
  *
  * @details
@@ -60,10 +60,10 @@ typedef enum : uint8_t {
   k_png_shift24   = 24U,   /**< Shift selecting a 32-bit field's top byte. */
   k_png_byte_mask = 0xFFU, /**< Low-byte mask.                             */
   k_png_ihdr_len  = 13U,   /**< IHDR payload length.                       */
-} tileatlas_produce_webp_uint8_const_t;
+} jof_produce_webp_uint8_const_t;
 
 /**
- * @enum tileatlas_produce_webp_ihdr_off_t
+ * @enum jof_produce_webp_ihdr_off_t
  * @brief Byte offsets of the fields this fixture sets inside a PNG IHDR.
  *
  * @details Width and height are big-endian 32-bit fields; this fixture's
@@ -75,7 +75,7 @@ typedef enum : uint8_t {
   k_png_ihdr_off_height_lo = 7U, /**< Low byte of the 32-bit height. */
   k_png_ihdr_off_bitdepth  = 8U, /**< Bits per sample.               */
   k_png_ihdr_off_colortype = 9U, /**< PNG colour-type code.          */
-} tileatlas_produce_webp_ihdr_off_t;
+} jof_produce_webp_ihdr_off_t;
 
 /* ------------------------------------------------------------------------- */
 /* Committed WebP fixtures under tests/fixtures/webp/, embedded inline. */
@@ -361,7 +361,7 @@ static void build_rgba_png(void)
  * @note Not thread-safe (reads the shared ::s_cell).
  * @since 0.1.0
  */
-static void assert_golden_tile(const ra8_tileatlas_info_t* info,
+static void assert_golden_tile(const ra8_jof_info_t* info,
                                uint32_t                    x0,
                                uint32_t                    y0,
                                uint16_t                    w,
