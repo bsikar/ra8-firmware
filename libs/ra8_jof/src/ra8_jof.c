@@ -1,11 +1,11 @@
 /**
- * @file ra8_tileatlas.c
+ * @file ra8_jof.c
  * @brief JOF atlas reader: parse/validate + bounded per-tile decode (#231).
  *
  * @details
- * Implements the fail-closed structural validation (`ra8_tileatlas_parse`)
- * and the bounded decode-one-tile primitive (`ra8_tileatlas_read_tile`)
- * documented in `ra8_tileatlas.h`. Deflate tiles inflate through the
+ * Implements the fail-closed structural validation (`ra8_jof_parse`)
+ * and the bounded decode-one-tile primitive (`ra8_jof_read_tile`)
+ * documented in `ra8_jof.h`. Deflate tiles inflate through the
  * zero-heap `ra8_io_decompress()`; raw tiles are a single positioned read.
  * The memstore helpers give tests and apps a RAM-backed sink/pread pair.
  *
@@ -16,7 +16,7 @@
  * {World: NS}
  */
 
-#include "ra8_tileatlas.h"
+#include "ra8_jof.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -28,36 +28,36 @@
 #include "ra8_io_compress.h"
 
 /** @brief Module log tag. */
-static const char* const s_tag = "ra8_tileatlas";
+static const char* const s_tag = "ra8_jof";
 
 /** @brief Header magic bytes ("JOF1"). */
-static const uint8_t s_magic_hdr[k_ra8_tileatlas_magic_len] = {'J', 'O', 'F', '1'};
+static const uint8_t s_magic_hdr[k_ra8_jof_magic_len] = {'J', 'O', 'F', '1'};
 
 /** @brief Footer magic bytes ("JOFE"). */
-static const uint8_t s_magic_ftr[k_ra8_tileatlas_magic_len] = {'J', 'O', 'F', 'E'};
+static const uint8_t s_magic_ftr[k_ra8_jof_magic_len] = {'J', 'O', 'F', 'E'};
 
 /**
- * @enum ra8_tileatlas_le_t
+ * @enum ra8_jof_le_t
  * @brief Little-endian assembly constants for the header/footer fields.
  */
 typedef enum : uint8_t {
-  k_ra8_ta_le_b0   = 0U,  /**< Byte 0 (LSB) offset. */
-  k_ra8_ta_le_b1   = 1U,  /**< Byte 1 offset.       */
-  k_ra8_ta_le_b2   = 2U,  /**< Byte 2 offset.       */
-  k_ra8_ta_le_b3   = 3U,  /**< Byte 3 (MSB) offset. */
-  k_ra8_ta_le_sh8  = 8U,  /**< 8-bit shift.         */
-  k_ra8_ta_le_sh16 = 16U, /**< 16-bit shift.        */
-  k_ra8_ta_le_sh24 = 24U, /**< 24-bit shift.        */
-} ra8_tileatlas_le_t;
+  k_ra8_jof_le_b0   = 0U,  /**< Byte 0 (LSB) offset. */
+  k_ra8_jof_le_b1   = 1U,  /**< Byte 1 offset.       */
+  k_ra8_jof_le_b2   = 2U,  /**< Byte 2 offset.       */
+  k_ra8_jof_le_b3   = 3U,  /**< Byte 3 (MSB) offset. */
+  k_ra8_jof_le_sh8  = 8U,  /**< 8-bit shift.         */
+  k_ra8_jof_le_sh16 = 16U, /**< 16-bit shift.        */
+  k_ra8_jof_le_sh24 = 24U, /**< 24-bit shift.        */
+} ra8_jof_le_t;
 
 /**
- * @enum ra8_tileatlas_bound_t
+ * @enum ra8_jof_bound_t
  * @brief Worst-case stored-stream expansion terms (see the header contract).
  */
 typedef enum : uint16_t {
-  k_ra8_ta_bound_div = 8U,   /**< Expansion denominator (raw / 8). */
-  k_ra8_ta_bound_add = 256U, /**< Fixed expansion margin, bytes.   */
-} ra8_tileatlas_bound_t;
+  k_ra8_jof_bound_div = 8U,   /**< Expansion denominator (raw / 8). */
+  k_ra8_jof_bound_add = 256U, /**< Fixed expansion margin, bytes.   */
+} ra8_jof_bound_t;
 
 /* ---------------------------------------------------------------------------
  * Small pure helpers.
@@ -81,8 +81,8 @@ typedef enum : uint16_t {
 RA8_INTERNAL
 static uint16_t priv_rd_u16(const uint8_t* buf, uint8_t off)
 {
-  return (uint16_t)((uint16_t)buf[off + k_ra8_ta_le_b0] |
-                    (uint16_t)((uint16_t)buf[off + k_ra8_ta_le_b1] << k_ra8_ta_le_sh8));
+  return (uint16_t)((uint16_t)buf[off + k_ra8_jof_le_b0] |
+                    (uint16_t)((uint16_t)buf[off + k_ra8_jof_le_b1] << k_ra8_jof_le_sh8));
 }
 
 /**
@@ -102,10 +102,10 @@ static uint16_t priv_rd_u16(const uint8_t* buf, uint8_t off)
 RA8_INTERNAL
 static uint32_t priv_rd_u32(const uint8_t* buf, uint8_t off)
 {
-  return (uint32_t)buf[off + k_ra8_ta_le_b0] |
-         ((uint32_t)buf[off + k_ra8_ta_le_b1] << k_ra8_ta_le_sh8) |
-         ((uint32_t)buf[off + k_ra8_ta_le_b2] << k_ra8_ta_le_sh16) |
-         ((uint32_t)buf[off + k_ra8_ta_le_b3] << k_ra8_ta_le_sh24);
+  return (uint32_t)buf[off + k_ra8_jof_le_b0] |
+         ((uint32_t)buf[off + k_ra8_jof_le_b1] << k_ra8_jof_le_sh8) |
+         ((uint32_t)buf[off + k_ra8_jof_le_b2] << k_ra8_jof_le_sh16) |
+         ((uint32_t)buf[off + k_ra8_jof_le_b3] << k_ra8_jof_le_sh24);
 }
 
 /**
@@ -148,11 +148,8 @@ static uint32_t priv_ceil_div(uint32_t n, uint32_t d)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_pread_exact(ra8_tileatlas_pread_fn pread,
-                                  void*                  pread_ctx,
-                                  uint64_t               off,
-                                  uint8_t*               buf,
-                                  size_t                 len)
+static ra8_err_t
+priv_pread_exact(ra8_jof_pread_fn pread, void* pread_ctx, uint64_t off, uint8_t* buf, size_t len)
 {
   size_t          got = 0U;
   const ra8_err_t err = pread(pread_ctx, off, buf, len, &got);
@@ -170,11 +167,11 @@ static ra8_err_t priv_pread_exact(ra8_tileatlas_pread_fn pread,
  * ---------------------------------------------------------------------------
  */
 
-ra8_err_t ra8_tileatlas_memstore_sink(void* ctx, const uint8_t* buf, size_t len)
+ra8_err_t ra8_jof_memstore_sink(void* ctx, const uint8_t* buf, size_t len)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  ra8_tileatlas_memstore_t* store = (ra8_tileatlas_memstore_t*)ctx;
+  ra8_jof_memstore_t* store = (ra8_jof_memstore_t*)ctx;
   RA8_CHECK_NULL_PTR(store->buf, s_tag, "store->buf must not be nullptr");
   if (len > (store->cap - store->len)) {
     return k_ra8_err_no_mem;
@@ -184,14 +181,13 @@ ra8_err_t ra8_tileatlas_memstore_sink(void* ctx, const uint8_t* buf, size_t len)
   return k_ra8_ok;
 }
 
-ra8_err_t
-ra8_tileatlas_memstore_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t* got)
+ra8_err_t ra8_jof_memstore_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t* got)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   RA8_CHECK_NULL_PTR(got, s_tag, "got must not be nullptr");
-  *got                            = 0U;
-  ra8_tileatlas_memstore_t* store = (ra8_tileatlas_memstore_t*)ctx;
+  *got                      = 0U;
+  ra8_jof_memstore_t* store = (ra8_jof_memstore_t*)ctx;
   RA8_CHECK_NULL_PTR(store->buf, s_tag, "store->buf must not be nullptr");
   if (offset >= (uint64_t)store->len) {
     return k_ra8_ok; /* at/after end: 0-byte read, mirrors entry pread */
@@ -217,7 +213,7 @@ ra8_tileatlas_memstore_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t le
  * @return Result code.
  * @retval k_ra8_ok                    Geometry fields legal.
  * @retval k_ra8_err_validation_failed A field is zero, over-cap, or illegal.
- * @pre @p hdr holds ::k_ra8_tileatlas_hdr_bytes bytes.
+ * @pre @p hdr holds ::k_ra8_jof_hdr_bytes bytes.
  * @pre @p info is writable.
  * @post On success width/height/tile geometry + bpp/codec are populated.
  * @post On failure @p info is partially written and must not be used.
@@ -225,24 +221,24 @@ ra8_tileatlas_memstore_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t le
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_parse_hdr_fields(const uint8_t* hdr, ra8_tileatlas_info_t* info)
+static ra8_err_t priv_parse_hdr_fields(const uint8_t* hdr, ra8_jof_info_t* info)
 {
-  info->width  = priv_rd_u16(hdr, (uint8_t)k_ra8_tileatlas_ofs_width);
-  info->height = priv_rd_u16(hdr, (uint8_t)k_ra8_tileatlas_ofs_height);
-  info->tile_w = priv_rd_u16(hdr, (uint8_t)k_ra8_tileatlas_ofs_tile_w);
-  info->tile_h = priv_rd_u16(hdr, (uint8_t)k_ra8_tileatlas_ofs_tile_h);
-  info->bpp    = hdr[k_ra8_tileatlas_ofs_bpp];
-  info->codec  = hdr[k_ra8_tileatlas_ofs_codec];
+  info->width  = priv_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_width);
+  info->height = priv_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_height);
+  info->tile_w = priv_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_tile_w);
+  info->tile_h = priv_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_tile_h);
+  info->bpp    = hdr[k_ra8_jof_ofs_bpp];
+  info->codec  = hdr[k_ra8_jof_ofs_codec];
   if (info->width == 0U) {
     return k_ra8_err_validation_failed;
   }
-  if ((uint32_t)info->width > (uint32_t)k_ra8_tileatlas_max_dim) {
+  if ((uint32_t)info->width > (uint32_t)k_ra8_jof_max_dim) {
     return k_ra8_err_validation_failed;
   }
   if (info->height == 0U) {
     return k_ra8_err_validation_failed;
   }
-  if ((uint32_t)info->height > (uint32_t)k_ra8_tileatlas_max_dim) {
+  if ((uint32_t)info->height > (uint32_t)k_ra8_jof_max_dim) {
     return k_ra8_err_validation_failed;
   }
   if (info->tile_w == 0U) {
@@ -253,10 +249,10 @@ static ra8_err_t priv_parse_hdr_fields(const uint8_t* hdr, ra8_tileatlas_info_t*
   }
   /* bpp 1 (gray8), 3 (RGB888) or 4 (RGBA8888); 2 is not a defined layout. */
   if ((info->bpp == 0U) || (info->bpp == 2U) ||
-      ((uint32_t)info->bpp > (uint32_t)k_ra8_tileatlas_bpp_max)) {
+      ((uint32_t)info->bpp > (uint32_t)k_ra8_jof_bpp_max)) {
     return k_ra8_err_validation_failed;
   }
-  if (info->codec > (uint8_t)k_ra8_tileatlas_codec_deflate) {
+  if (info->codec > (uint8_t)k_ra8_jof_codec_deflate) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;
@@ -269,7 +265,7 @@ static ra8_err_t priv_parse_hdr_fields(const uint8_t* hdr, ra8_tileatlas_info_t*
  * @return Result code.
  * @retval k_ra8_ok                    All reserved bytes are zero.
  * @retval k_ra8_err_validation_failed A reserved byte is non-zero.
- * @pre @p hdr holds ::k_ra8_tileatlas_hdr_bytes bytes.
+ * @pre @p hdr holds ::k_ra8_jof_hdr_bytes bytes.
  * @pre The fixed-field region has already been parsed.
  * @post No state mutated.
  * @post Return depends solely on the reserved bytes.
@@ -279,15 +275,12 @@ static ra8_err_t priv_parse_hdr_fields(const uint8_t* hdr, ra8_tileatlas_info_t*
 RA8_INTERNAL
 static ra8_err_t priv_check_reserved(const uint8_t* hdr)
 {
-  for (uint8_t i = (uint8_t)k_ra8_tileatlas_ofs_reserved;
-       i < (uint8_t)k_ra8_tileatlas_ofs_tile_count;
-       ++i) {
+  for (uint8_t i = (uint8_t)k_ra8_jof_ofs_reserved; i < (uint8_t)k_ra8_jof_ofs_tile_count; ++i) {
     if (hdr[i] != 0U) {
       return k_ra8_err_validation_failed;
     }
   }
-  for (uint8_t i = (uint8_t)k_ra8_tileatlas_ofs_reserved2; i < (uint8_t)k_ra8_tileatlas_hdr_bytes;
-       ++i) {
+  for (uint8_t i = (uint8_t)k_ra8_jof_ofs_reserved2; i < (uint8_t)k_ra8_jof_hdr_bytes; ++i) {
     if (hdr[i] != 0U) {
       return k_ra8_err_validation_failed;
     }
@@ -298,7 +291,7 @@ static ra8_err_t priv_check_reserved(const uint8_t* hdr)
 /**
  * @brief Cross-check grid, tile-count, footer and index-window invariants.
  * @details The compound decisions here carry MC/DC vectors in
- *          `test_ra8_tileatlas.c` (hostile-atlas suite).
+ *          `test_ra8_jof.c` (hostile-atlas suite).
  * @param[in,out] info       Geometry (grid fields written here).
  * @param[in]     hdr_count  Header tile-count field.
  * @param[in]     ftr        The 16 footer bytes.
@@ -307,42 +300,40 @@ static ra8_err_t priv_check_reserved(const uint8_t* hdr)
  * @retval k_ra8_ok                    All invariants hold; info completed.
  * @retval k_ra8_err_validation_failed A cross-check failed.
  * @pre @p info holds validated header geometry fields.
- * @pre @p ftr holds ::k_ra8_tileatlas_footer_bytes bytes.
+ * @pre @p ftr holds ::k_ra8_jof_footer_bytes bytes.
  * @post On success grid/tile_count/index_off/total_size are populated.
  * @post On failure @p info must not be used.
  * @note Thread-safe (pure over its inputs).
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_check_cross(ra8_tileatlas_info_t* info,
-                                  uint32_t              hdr_count,
-                                  const uint8_t*        ftr,
-                                  uint64_t              total_size)
+static ra8_err_t
+priv_check_cross(ra8_jof_info_t* info, uint32_t hdr_count, const uint8_t* ftr, uint64_t total_size)
 {
   const uint32_t cols = priv_ceil_div(info->width, info->tile_w);
   const uint32_t rows = priv_ceil_div(info->height, info->tile_h);
   const uint32_t want = cols * rows;
-  if (want > (uint32_t)k_ra8_tileatlas_max_tiles) {
+  if (want > (uint32_t)k_ra8_jof_max_tiles) {
     return k_ra8_err_validation_failed;
   }
   if (hdr_count != want) {
     return k_ra8_err_validation_failed;
   }
-  const uint32_t ftr_count = priv_rd_u32(ftr, (uint8_t)k_ra8_tileatlas_ftr_tile_count);
-  const uint32_t ftr_total = priv_rd_u32(ftr, (uint8_t)k_ra8_tileatlas_ftr_total_size);
-  const uint32_t index_off = priv_rd_u32(ftr, (uint8_t)k_ra8_tileatlas_ftr_index_off);
+  const uint32_t ftr_count = priv_rd_u32(ftr, (uint8_t)k_ra8_jof_ftr_tile_count);
+  const uint32_t ftr_total = priv_rd_u32(ftr, (uint8_t)k_ra8_jof_ftr_total_size);
+  const uint32_t index_off = priv_rd_u32(ftr, (uint8_t)k_ra8_jof_ftr_index_off);
   if (ftr_count != want) {
     return k_ra8_err_validation_failed;
   }
   if ((uint64_t)ftr_total != total_size) {
     return k_ra8_err_validation_failed;
   }
-  if (index_off < (uint32_t)k_ra8_tileatlas_hdr_bytes) {
+  if (index_off < (uint32_t)k_ra8_jof_hdr_bytes) {
     return k_ra8_err_validation_failed;
   }
   const uint64_t index_end = (uint64_t)index_off +
-                             ((uint64_t)want * (uint64_t)k_ra8_tileatlas_index_entry) +
-                             (uint64_t)k_ra8_tileatlas_footer_bytes;
+                             ((uint64_t)want * (uint64_t)k_ra8_jof_index_entry) +
+                             (uint64_t)k_ra8_jof_footer_bytes;
   if (index_end != total_size) {
     return k_ra8_err_validation_failed;
   }
@@ -366,7 +357,7 @@ static ra8_err_t priv_check_cross(ra8_tileatlas_info_t* info,
  * @retval k_ra8_ok                    Header structurally valid.
  * @retval k_ra8_err_validation_failed Magic / geometry / reserved rejection.
  * @retval other                       Propagated from @p pread.
- * @pre @p hdr covers ::k_ra8_tileatlas_hdr_bytes bytes.
+ * @pre @p hdr covers ::k_ra8_jof_hdr_bytes bytes.
  * @pre The backing size was validated by the caller.
  * @post On success the header geometry fields are populated.
  * @post On failure @p out_info must not be used.
@@ -374,16 +365,16 @@ static ra8_err_t priv_check_cross(ra8_tileatlas_info_t* info,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_parse_header_region(ra8_tileatlas_pread_fn pread,
-                                          void*                  pread_ctx,
-                                          uint8_t*               hdr,
-                                          ra8_tileatlas_info_t*  out_info)
+static ra8_err_t priv_parse_header_region(ra8_jof_pread_fn pread,
+                                          void*            pread_ctx,
+                                          uint8_t*         hdr,
+                                          ra8_jof_info_t*  out_info)
 {
-  ra8_err_t err = priv_pread_exact(pread, pread_ctx, 0U, hdr, (size_t)k_ra8_tileatlas_hdr_bytes);
+  ra8_err_t err = priv_pread_exact(pread, pread_ctx, 0U, hdr, (size_t)k_ra8_jof_hdr_bytes);
   if (err != k_ra8_ok) {
     return err;
   }
-  if (memcmp(&hdr[k_ra8_tileatlas_ofs_magic], s_magic_hdr, sizeof(s_magic_hdr)) != 0) {
+  if (memcmp(&hdr[k_ra8_jof_ofs_magic], s_magic_hdr, sizeof(s_magic_hdr)) != 0) {
     return k_ra8_err_validation_failed;
   }
   err = priv_parse_hdr_fields(hdr, out_info);
@@ -393,36 +384,35 @@ static ra8_err_t priv_parse_header_region(ra8_tileatlas_pread_fn pread,
   return priv_check_reserved(hdr);
 }
 
-ra8_err_t ra8_tileatlas_parse(ra8_tileatlas_pread_fn pread,
-                              void*                  pread_ctx,
-                              uint64_t               total_size,
-                              ra8_tileatlas_info_t*  out_info)
+ra8_err_t ra8_jof_parse(ra8_jof_pread_fn pread,
+                        void*            pread_ctx,
+                        uint64_t         total_size,
+                        ra8_jof_info_t*  out_info)
 {
   RA8_CHECK_NULL_PTR(pread, s_tag, "pread must not be nullptr");
   RA8_CHECK_NULL_PTR(out_info, s_tag, "out_info must not be nullptr");
-  const uint64_t min_size =
-    (uint64_t)k_ra8_tileatlas_hdr_bytes + (uint64_t)k_ra8_tileatlas_footer_bytes;
+  const uint64_t min_size = (uint64_t)k_ra8_jof_hdr_bytes + (uint64_t)k_ra8_jof_footer_bytes;
   if ((total_size < min_size) || (total_size > (uint64_t)UINT32_MAX)) {
     return k_ra8_err_invalid_size;
   }
-  uint8_t   hdr[k_ra8_tileatlas_hdr_bytes] = {};
-  ra8_err_t err = priv_parse_header_region(pread, pread_ctx, hdr, out_info);
+  uint8_t   hdr[k_ra8_jof_hdr_bytes] = {};
+  ra8_err_t err                      = priv_parse_header_region(pread, pread_ctx, hdr, out_info);
   if (err != k_ra8_ok) {
     return err;
   }
-  uint8_t ftr[k_ra8_tileatlas_footer_bytes] = {};
+  uint8_t ftr[k_ra8_jof_footer_bytes] = {};
   err = priv_pread_exact(pread,
                          pread_ctx,
-                         total_size - (uint64_t)k_ra8_tileatlas_footer_bytes,
+                         total_size - (uint64_t)k_ra8_jof_footer_bytes,
                          ftr,
                          sizeof(ftr));
   if (err != k_ra8_ok) {
     return err;
   }
-  if (memcmp(&ftr[k_ra8_tileatlas_ftr_magic], s_magic_ftr, sizeof(s_magic_ftr)) != 0) {
+  if (memcmp(&ftr[k_ra8_jof_ftr_magic], s_magic_ftr, sizeof(s_magic_ftr)) != 0) {
     return k_ra8_err_validation_failed;
   }
-  const uint32_t hdr_count = priv_rd_u32(hdr, (uint8_t)k_ra8_tileatlas_ofs_tile_count);
+  const uint32_t hdr_count = priv_rd_u32(hdr, (uint8_t)k_ra8_jof_ofs_tile_count);
   return priv_check_cross(out_info, hdr_count, ftr, total_size);
 }
 
@@ -431,11 +421,11 @@ ra8_err_t ra8_tileatlas_parse(ra8_tileatlas_pread_fn pread,
  * ---------------------------------------------------------------------------
  */
 
-ra8_err_t ra8_tileatlas_tile_dims(const ra8_tileatlas_info_t* info,
-                                  uint16_t                    tile_x,
-                                  uint16_t                    tile_y,
-                                  uint16_t*                   out_w,
-                                  uint16_t*                   out_h)
+ra8_err_t ra8_jof_tile_dims(const ra8_jof_info_t* info,
+                            uint16_t              tile_x,
+                            uint16_t              tile_y,
+                            uint16_t*             out_w,
+                            uint16_t*             out_h)
 {
   RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");
   RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
@@ -455,10 +445,10 @@ ra8_err_t ra8_tileatlas_tile_dims(const ra8_tileatlas_info_t* info,
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_tileatlas_stored_bound()` -- raw + raw/8 + 256. */
-uint32_t ra8_tileatlas_stored_bound(uint32_t raw_bytes)
+/** @brief Implementation of `ra8_jof_stored_bound()` -- raw + raw/8 + 256. */
+uint32_t ra8_jof_stored_bound(uint32_t raw_bytes)
 {
-  return raw_bytes + (raw_bytes / (uint32_t)k_ra8_ta_bound_div) + (uint32_t)k_ra8_ta_bound_add;
+  return raw_bytes + (raw_bytes / (uint32_t)k_ra8_jof_bound_div) + (uint32_t)k_ra8_jof_bound_add;
 }
 
 /**
@@ -466,7 +456,7 @@ uint32_t ra8_tileatlas_stored_bound(uint32_t raw_bytes)
  * @details The tile-stream window must lie fully inside
  *          `[header end, index start)` -- a hostile index cannot alias the
  *          header, the index, or the footer. The compound decision carries
- *          MC/DC vectors in `test_ra8_tileatlas.c`.
+ *          MC/DC vectors in `test_ra8_jof.c`.
  * @param[in]  pread      Backing read seam.
  * @param[in]  pread_ctx  Context for @p pread.
  * @param[in]  info       Parsed atlas geometry.
@@ -485,24 +475,23 @@ uint32_t ra8_tileatlas_stored_bound(uint32_t raw_bytes)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_index_entry(ra8_tileatlas_pread_fn      pread,
-                                  void*                       pread_ctx,
-                                  const ra8_tileatlas_info_t* info,
-                                  uint32_t                    n,
-                                  uint32_t*                   out_off,
-                                  uint32_t*                   out_len)
+static ra8_err_t priv_index_entry(ra8_jof_pread_fn      pread,
+                                  void*                 pread_ctx,
+                                  const ra8_jof_info_t* info,
+                                  uint32_t              n,
+                                  uint32_t*             out_off,
+                                  uint32_t*             out_len)
 {
-  uint8_t        entry[k_ra8_tileatlas_index_entry] = {};
-  const uint64_t eoff =
-    (uint64_t)info->index_off + ((uint64_t)n * (uint64_t)k_ra8_tileatlas_index_entry);
+  uint8_t        entry[k_ra8_jof_index_entry] = {};
+  const uint64_t eoff = (uint64_t)info->index_off + ((uint64_t)n * (uint64_t)k_ra8_jof_index_entry);
   const ra8_err_t err = priv_pread_exact(pread, pread_ctx, eoff, entry, sizeof(entry));
   if (err != k_ra8_ok) {
     return err;
   }
-  const uint32_t toff = priv_rd_u32(entry, (uint8_t)k_ra8_tileatlas_idx_ofs_offset);
-  const uint32_t tlen = priv_rd_u32(entry, (uint8_t)k_ra8_tileatlas_idx_ofs_length);
+  const uint32_t toff = priv_rd_u32(entry, (uint8_t)k_ra8_jof_idx_ofs_offset);
+  const uint32_t tlen = priv_rd_u32(entry, (uint8_t)k_ra8_jof_idx_ofs_length);
   const uint64_t tend = (uint64_t)toff + (uint64_t)tlen;
-  if ((toff < (uint32_t)k_ra8_tileatlas_hdr_bytes) || (tend > (uint64_t)info->index_off)) {
+  if ((toff < (uint32_t)k_ra8_jof_hdr_bytes) || (tend > (uint64_t)info->index_off)) {
     return k_ra8_err_validation_failed;
   }
   *out_off = toff;
@@ -539,17 +528,17 @@ static ra8_err_t priv_index_entry(ra8_tileatlas_pread_fn      pread,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_decode_stream(ra8_tileatlas_pread_fn      pread,
-                                    void*                       pread_ctx,
-                                    const ra8_tileatlas_info_t* info,
-                                    uint32_t                    toff,
-                                    uint32_t                    tlen,
-                                    uint32_t                    payload,
-                                    uint8_t*                    scratch,
-                                    uint32_t                    scratch_cap,
-                                    uint8_t*                    out_px)
+static ra8_err_t priv_decode_stream(ra8_jof_pread_fn      pread,
+                                    void*                 pread_ctx,
+                                    const ra8_jof_info_t* info,
+                                    uint32_t              toff,
+                                    uint32_t              tlen,
+                                    uint32_t              payload,
+                                    uint8_t*              scratch,
+                                    uint32_t              scratch_cap,
+                                    uint8_t*              out_px)
 {
-  if (info->codec == (uint8_t)k_ra8_tileatlas_codec_raw) {
+  if (info->codec == (uint8_t)k_ra8_jof_codec_raw) {
     if (tlen != payload) {
       return k_ra8_err_validation_failed;
     }
@@ -596,14 +585,14 @@ static ra8_err_t priv_decode_stream(ra8_tileatlas_pread_fn      pread,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fetch_decode(ra8_tileatlas_pread_fn      pread,
-                                   void*                       pread_ctx,
-                                   const ra8_tileatlas_info_t* info,
-                                   uint32_t                    n,
-                                   uint32_t                    payload,
-                                   uint8_t*                    scratch,
-                                   uint32_t                    scratch_cap,
-                                   uint8_t*                    out_px)
+static ra8_err_t priv_fetch_decode(ra8_jof_pread_fn      pread,
+                                   void*                 pread_ctx,
+                                   const ra8_jof_info_t* info,
+                                   uint32_t              n,
+                                   uint32_t              payload,
+                                   uint8_t*              scratch,
+                                   uint32_t              scratch_cap,
+                                   uint8_t*              out_px)
 {
   uint32_t        toff = 0U;
   uint32_t        tlen = 0U;
@@ -623,7 +612,7 @@ static ra8_err_t priv_fetch_decode(ra8_tileatlas_pread_fn      pread,
 }
 
 /**
- * @brief Reject any NULL `ra8_tileatlas_read_tile` pointer argument.
+ * @brief Reject any NULL `ra8_jof_read_tile` pointer argument.
  * @details Split out so the public entry stays under the statement budget.
  * @param[in] pread  Backing read seam to validate.
  * @param[in] info   Atlas geometry pointer to validate.
@@ -641,11 +630,11 @@ static ra8_err_t priv_fetch_decode(ra8_tileatlas_pread_fn      pread,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_read_args_ok(ra8_tileatlas_pread_fn      pread,
-                                   const ra8_tileatlas_info_t* info,
-                                   const uint8_t*              out_px,
-                                   const uint16_t*             out_w,
-                                   const uint16_t*             out_h)
+static ra8_err_t priv_read_args_ok(ra8_jof_pread_fn      pread,
+                                   const ra8_jof_info_t* info,
+                                   const uint8_t*        out_px,
+                                   const uint16_t*       out_w,
+                                   const uint16_t*       out_h)
 {
   RA8_CHECK_NULL_PTR(pread, s_tag, "pread must not be nullptr");
   RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");
@@ -655,17 +644,17 @@ static ra8_err_t priv_read_args_ok(ra8_tileatlas_pread_fn      pread,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_tileatlas_read_tile(ra8_tileatlas_pread_fn      pread,
-                                  void*                       pread_ctx,
-                                  const ra8_tileatlas_info_t* info,
-                                  uint16_t                    tile_x,
-                                  uint16_t                    tile_y,
-                                  uint8_t*                    scratch,
-                                  uint32_t                    scratch_cap,
-                                  uint8_t*                    out_px,
-                                  uint32_t                    out_cap,
-                                  uint16_t*                   out_w,
-                                  uint16_t*                   out_h)
+ra8_err_t ra8_jof_read_tile(ra8_jof_pread_fn      pread,
+                            void*                 pread_ctx,
+                            const ra8_jof_info_t* info,
+                            uint16_t              tile_x,
+                            uint16_t              tile_y,
+                            uint8_t*              scratch,
+                            uint32_t              scratch_cap,
+                            uint8_t*              out_px,
+                            uint32_t              out_cap,
+                            uint16_t*             out_w,
+                            uint16_t*             out_h)
 {
   const ra8_err_t nz = priv_read_args_ok(pread, info, out_px, out_w, out_h);
   if (nz != k_ra8_ok) {
@@ -673,7 +662,7 @@ ra8_err_t ra8_tileatlas_read_tile(ra8_tileatlas_pread_fn      pread,
   }
   uint16_t  tw  = 0U;
   uint16_t  th  = 0U;
-  ra8_err_t err = ra8_tileatlas_tile_dims(info, tile_x, tile_y, &tw, &th);
+  ra8_err_t err = ra8_jof_tile_dims(info, tile_x, tile_y, &tw, &th);
   if (err != k_ra8_ok) {
     return err;
   }

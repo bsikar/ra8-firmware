@@ -1,17 +1,17 @@
 /**
- * @file test_ra8_tileatlas_png_hostile.c
+ * @file test_ra8_jof_png_hostile.c
  * @brief Hostile-stream corpus for the streaming PNG decoder: every
  *        fail-closed arm of the chunk and pixel layers (#231).
  *
  * @details
- * Complements `test_ra8_tileatlas_produce.c` (which proves the happy paths
+ * Complements `test_ra8_jof_produce.c` (which proves the happy paths
  * byte-for-byte): this suite hand-crafts pathological PNG byte streams --
  * bad filters, out-of-range palette indices, row-count lies, truncations at
  * every chunk phase, oversize fields, empty-IDAT floods, chunk-budget
  * exhaustion, streams that end mid-zlib, and trailing garbage -- and drives
  * each to its contracted rejection through the real producer entry. A few
  * arms only a failing transport can reach are driven through the module
- * seam `ra8_ta_priv_png_rows()` directly (the CLAUDE.md "test access to
+ * seam `ra8_jof_priv_png_rows()` directly (the CLAUDE.md "test access to
  * internal symbols" allowance).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -25,9 +25,9 @@
 
 #include "miniz.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_internal.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_internal.h"
+#include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
 /** @brief Corpus geometry + buffer sizing. */
@@ -62,7 +62,7 @@ typedef struct {
   size_t fail_at; /**< Byte offset that returns an error (0 = never). */
 } t_pull_t;
 
-/** @brief ::ra8_tileatlas_pull_fn over `s_src` with failure injection. */
+/** @brief ::ra8_jof_pull_fn over `s_src` with failure injection. */
 static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   t_pull_t* p = (t_pull_t*)ctx;
@@ -164,39 +164,39 @@ static uint32_t make_zlib(uint32_t w, uint32_t h, uint8_t filter, uint8_t* out)
 /** @brief Run the producer over the crafted source; return its code. */
 static ra8_err_t craft_produce(size_t fail_at)
 {
-  static t_pull_t                 pull;
-  static ra8_tileatlas_memstore_t store;
+  static t_pull_t           pull;
+  static ra8_jof_memstore_t store;
   pull  = (t_pull_t){.pos = 0U, .fail_at = fail_at};
-  store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_pull,
     .pull_ctx   = &pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &store,
     .tile_w     = (uint16_t)k_t_tile,
     .tile_h     = (uint16_t)k_t_tile,
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_raw,
+    .codec      = (uint8_t)k_ra8_jof_codec_raw,
     .max_width  = 512U,
     .max_height = 512U,
     .work       = s_work,
     .work_cap   = sizeof(s_work),
   };
-  ra8_tileatlas_info_t info = {};
-  return ra8_tileatlas_produce(&cfg, &info);
+  ra8_jof_info_t info = {};
+  return ra8_jof_produce(&cfg, &info);
 }
 
 /** @brief Run the producer with custom tile geometry / codec / arena size. */
 static ra8_err_t
 craft_produce_with(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t work_cap)
 {
-  static t_pull_t                 pull;
-  static ra8_tileatlas_memstore_t store;
+  static t_pull_t           pull;
+  static ra8_jof_memstore_t store;
   pull  = (t_pull_t){.pos = 0U, .fail_at = 0U};
-  store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_pull,
     .pull_ctx   = &pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &store,
     .tile_w     = tile_w,
     .tile_h     = tile_h,
@@ -206,8 +206,8 @@ craft_produce_with(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t work_
     .work       = s_work,
     .work_cap   = work_cap,
   };
-  ra8_tileatlas_info_t info = {};
-  return ra8_tileatlas_produce(&cfg, &info);
+  ra8_jof_info_t info = {};
+  return ra8_jof_produce(&cfg, &info);
 }
 
 /**
@@ -475,7 +475,7 @@ static void test_png_hostile_budgets(void)
  * @par MC/DC:
  * (drives the producer geometry hook's tile-grid cap and the pixel-path
  * arena exhaustion, both single-condition rejections behind the compound
- * cap decision already vectored in test_ra8_tileatlas_produce.c.)
+ * cap decision already vectored in test_ra8_jof_produce.c.)
  */
 static void test_png_hostile_geometry(void)
 {
@@ -499,7 +499,7 @@ static void test_png_hostile_geometry(void)
   put_chunk("IDAT", zbig, (uint32_t)zl);
   put_chunk("IEND", nullptr, 0U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 craft_produce_with(1U, 1U, (uint8_t)k_ra8_tileatlas_codec_raw, sizeof(s_work)));
+                 craft_produce_with(1U, 1U, (uint8_t)k_ra8_jof_codec_raw, sizeof(s_work)));
 
   /* Arena large enough for the deflate scratch but not the PNG carve set
    * (the pixel-path bind fails, not the codec scratch). */
@@ -511,7 +511,7 @@ static void test_png_hostile_geometry(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  craft_produce_with((uint16_t)k_t_tile,
                                     (uint16_t)k_t_tile,
-                                    (uint8_t)k_ra8_tileatlas_codec_deflate,
+                                    (uint8_t)k_ra8_jof_codec_deflate,
                                     340U * 1024U /* deflate scratch fits; ring set no */));
   TEST_END("png hostile: grid cap + pixel-path arena exhaustion");
 }
@@ -710,7 +710,7 @@ static void test_png_hostile_residue(void)
   TEST_END("png hostile: partial-row + past-window IDAT residue");
 }
 
-/** @brief No-op ::ra8_ta_geom_fn for the direct-seam arms. */
+/** @brief No-op ::ra8_jof_geom_fn for the direct-seam arms. */
 static ra8_err_t t_geom_ok(void* ctx, uint16_t width, uint16_t height, uint8_t channels)
 {
   (void)ctx;
@@ -720,7 +720,7 @@ static ra8_err_t t_geom_ok(void* ctx, uint16_t width, uint16_t height, uint8_t c
   return k_ra8_ok;
 }
 
-/** @brief No-op ::ra8_ta_rows_fn for the direct-seam arms. */
+/** @brief No-op ::ra8_jof_rows_fn for the direct-seam arms. */
 static ra8_err_t t_rows_ok(void*          ctx,
                            const uint8_t* px,
                            uint16_t       width,
@@ -750,7 +750,7 @@ static void test_png_hostile_direct_seam(void)
 {
   TEST_BEGIN("png hostile: direct seam (signature + null guards)");
   static uint8_t  arena[512U * 1024U];
-  ra8_ta_bump_t   bump = {.base = arena, .cap = sizeof(arena), .off = 0U};
+  ra8_jof_bump_t  bump = {.base = arena, .cap = sizeof(arena), .off = 0U};
   static t_pull_t pull;
 
   /* Transport fails during the signature read. */
@@ -760,7 +760,7 @@ static void test_png_hostile_direct_seam(void)
   pull = (t_pull_t){.pos = 0U, .fail_at = 2U};
   TEST_ASSERT_EQ(
     k_ra8_err_hw_error,
-    ra8_ta_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
+    ra8_jof_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
 
   /* Wrong signature bytes. */
   s_src_len                = 0U;
@@ -769,21 +769,21 @@ static void test_png_hostile_direct_seam(void)
   pull = (t_pull_t){.pos = 0U, .fail_at = 0U};
   TEST_ASSERT_EQ(
     k_ra8_err_protocol_error,
-    ra8_ta_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
+    ra8_jof_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
 
   /* Null guards on the seam itself: pull, bump, and each hook in turn. */
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_ta_priv_png_rows(nullptr, &pull, &bump, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
+    ra8_jof_priv_png_rows(nullptr, &pull, &bump, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_ta_priv_png_rows(t_pull, &pull, nullptr, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
+    ra8_jof_priv_png_rows(t_pull, &pull, nullptr, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_ta_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, nullptr, t_rows_ok, nullptr));
+    ra8_jof_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, nullptr, t_rows_ok, nullptr));
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_ta_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, t_geom_ok, nullptr, nullptr));
+    ra8_jof_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, t_geom_ok, nullptr, nullptr));
   TEST_END("png hostile: direct seam (signature + null guards)");
 }
 
@@ -809,6 +809,6 @@ int32_t main(void)
   test_png_hostile_palette_arms();
   test_png_hostile_residue();
   test_png_hostile_direct_seam();
-  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas_png_hostile.c\n");
+  (void)fprintf(stderr, "[OK  ] test_ra8_jof_png_hostile.c\n");
   return 0;
 }

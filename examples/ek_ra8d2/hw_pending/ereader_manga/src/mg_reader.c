@@ -26,8 +26,8 @@
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
+#include "ra8_jof.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 
 /** @brief Log tag for the reader's null-pointer guards. */
 static const char k_mg_tag[] = "mg_reader";
@@ -532,15 +532,15 @@ ra8_err_t mg_tile_decode(void*                 ctx,
   RA8_CHECK_NULL_PTR(ctx, k_mg_tag, "src");
   RA8_CHECK_NULL_PTR(key, k_mg_tag, "key");
   const mg_tile_src_t* src = (const mg_tile_src_t*)ctx;
-  return ra8_tileatlas_read_tile(src->pread,
-                                 src->pread_ctx,
-                                 src->info,
-                                 key->tile_x,
-                                 key->tile_y,
-                                 src->scratch,
-                                 src->scratch_cap,
-                                 cell,
-                                 cell_bytes,
-                                 out_w,
-                                 out_h);
+  return ra8_jof_read_tile(src->pread,
+                           src->pread_ctx,
+                           src->info,
+                           key->tile_x,
+                           key->tile_y,
+                           src->scratch,
+                           src->scratch_cap,
+                           cell,
+                           cell_bytes,
+                           out_w,
+                           out_h);
 }

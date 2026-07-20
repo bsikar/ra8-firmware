@@ -14,7 +14,7 @@ actual reader screen.
    SDRAM + the 1024x600 RGB565 GLCDC panel through `ra8_display_pal`
    (`k_display_backend_lcd_ra8_glcdc`); `ra8_gfx` is bound to the panel FB.
 2. **A tall colourful strip.** 16 bands of 1024 x 280 (a 1024 x 4480 canvas). The
-   strip is a JOF band-tile atlas (`ra8_tileatlas`, one full-width band
+   strip is a JOF band-tile atlas (`ra8_jof`, one full-width band
    column), but only its header + index + footer are materialised (~176 bytes):
    each band's pixels are painted **procedurally** on a tile-cache miss -- a
    vivid palette hue with a top->bottom brightness gradient and a white seam

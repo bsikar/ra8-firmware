@@ -1,5 +1,5 @@
 /**
- * @file ra8_tileatlas_produce_webp.c
+ * @file ra8_jof_produce_webp.c
  * @brief Transcode producer: whole-frame WebP arm (#290 normalize-on-import).
  *
  * @details
@@ -11,10 +11,10 @@
  * the caller's separate `webp_work` arena: the compressed source, the decoded
  * RGBA frame and libwebp's scratch are all resident at once, fail-closed on
  * any shortfall, no downscaling. Once decoded the frame is banded out through
- * the shared band accumulator (`ra8_ta_priv_on_rows()`), so the emitted atlas
+ * the shared band accumulator (`ra8_jof_priv_on_rows()`), so the emitted atlas
  * bytes are identical to the streaming arms for the same pixels. This arm is
- * dispatched from `ra8_tileatlas_produce.c` and shares the producer state and
- * geometry / rows / prefix-pull seams through `ra8_tileatlas_internal.h`; it
+ * dispatched from `ra8_jof_produce.c` and shares the producer state and
+ * geometry / rows / prefix-pull seams through `ra8_jof_internal.h`; it
  * allocates nothing on the heap (libwebp scratch is drawn from `webp_work`
  * through the `ra8_webp` bump arena).
  *
@@ -30,13 +30,13 @@
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas_internal.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof_internal.h"
+#include "ra8_jof_produce.h"
 #include "ra8_webp.h"
 #include "ra8_webp_arena.h"
 
 /**
- * @enum ra8_ta_webp_const_t
+ * @enum ra8_jof_webp_const_t
  * @brief WebP whole-frame arena sizing constants (`webp_work` layout).
  *
  * @details The WebP decode holds the compressed source, the decoded RGBA frame
@@ -46,23 +46,23 @@
  *          decode closed -- it can never overrun.
  */
 typedef enum : uint32_t {
-  k_ra8_ta_webp_bpp           = 4U,                 /**< WebP decodes to RGBA8888.      */
-  k_ra8_ta_webp_scratch_mult  = 2U,                 /**< Scratch >= this * frame bytes. */
-  k_ra8_ta_webp_scratch_slack = 1U * 1024U * 1024U, /**< Fixed scratch slack (bytes).   */
-} ra8_ta_webp_const_t;
+  k_ra8_jof_webp_bpp           = 4U,                 /**< WebP decodes to RGBA8888.      */
+  k_ra8_jof_webp_scratch_mult  = 2U,                 /**< Scratch >= this * frame bytes. */
+  k_ra8_jof_webp_scratch_slack = 1U * 1024U * 1024U, /**< Fixed scratch slack (bytes).   */
+} ra8_jof_webp_const_t;
 
-uint32_t
-ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_bytes)
+uint32_t ra8_jof_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_bytes)
 {
   if ((max_width == 0U) || ((uint32_t)max_width > (uint32_t)k_ra8_webp_max_dim) ||
       (max_height == 0U) || ((uint32_t)max_height > (uint32_t)k_ra8_webp_max_dim) ||
       (max_src_bytes == 0U)) {
     return 0U;
   }
-  const uint64_t frame = (uint64_t)max_width * (uint64_t)max_height * (uint64_t)k_ra8_ta_webp_bpp;
+  const uint64_t frame = (uint64_t)max_width * (uint64_t)max_height * (uint64_t)k_ra8_jof_webp_bpp;
   const uint64_t scratch =
-    ((uint64_t)k_ra8_ta_webp_scratch_mult * frame) + (uint64_t)k_ra8_ta_webp_scratch_slack;
-  const uint64_t total = (uint64_t)max_src_bytes + frame + scratch + (uint64_t)k_ra8_ta_carve_slack;
+    ((uint64_t)k_ra8_jof_webp_scratch_mult * frame) + (uint64_t)k_ra8_jof_webp_scratch_slack;
+  const uint64_t total =
+    (uint64_t)max_src_bytes + frame + scratch + (uint64_t)k_ra8_jof_carve_slack;
   if (total > (uint64_t)UINT32_MAX) {
     return 0U;
   }
@@ -92,12 +92,12 @@ ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t 
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_webp_pull_all(ra8_ta_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t* out_len)
+priv_webp_pull_all(ra8_jof_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t* out_len)
 {
   size_t len = 0U;
   while (len < cap) {
     size_t          got = 0U;
-    const ra8_err_t err = ra8_ta_priv_prefix_pull(pfx, &dst[len], cap - len, &got);
+    const ra8_err_t err = ra8_jof_priv_prefix_pull(pfx, &dst[len], cap - len, &got);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -114,7 +114,7 @@ priv_webp_pull_all(ra8_ta_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t* 
 
 /**
  * @brief Band a decoded RGBA frame through the shared tile path.
- * @details Feeds the whole-frame RGBA buffer to ::ra8_ta_priv_on_rows in
+ * @details Feeds the whole-frame RGBA buffer to ::ra8_jof_priv_on_rows in
  *          `tile_h` slices, so the WebP path reuses the identical
  *          band/cut/encode/sink machinery as the streaming decoders
  *          (byte-identical output).
@@ -124,8 +124,8 @@ priv_webp_pull_all(ra8_ta_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t* 
  * @param[in]     h     Frame height, pixels.
  * @return Result code.
  * @retval k_ra8_ok Every row was fed; bands flushed as they filled.
- * @retval other    Propagated from ::ra8_ta_priv_on_rows.
- * @pre `ra8_ta_priv_on_geom()` has fired (`geom_done == 1`) with these w/h/4bpp.
+ * @retval other    Propagated from ::ra8_jof_priv_on_rows.
+ * @pre `ra8_jof_priv_on_geom()` has fired (`geom_done == 1`) with these w/h/4bpp.
  * @pre @p frame holds `h * w * 4` readable bytes.
  * @post On success `rows_seen == h`; the last partial band is left for the
  *       epilogue to flush.
@@ -135,19 +135,19 @@ priv_webp_pull_all(ra8_ta_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t* 
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_webp_feed(ra8_ta_prod_state_t* st, const uint8_t* frame, uint16_t w, uint16_t h)
+priv_webp_feed(ra8_jof_prod_state_t* st, const uint8_t* frame, uint16_t w, uint16_t h)
 {
-  const uint32_t stride = (uint32_t)w * (uint32_t)k_ra8_ta_webp_bpp;
+  const uint32_t stride = (uint32_t)w * (uint32_t)k_ra8_jof_webp_bpp;
   const uint32_t th     = (uint32_t)st->cfg->tile_h;
   uint32_t       y      = 0U;
   while (y < (uint32_t)h) {
     const uint32_t  nrows = (((uint32_t)h - y) < th) ? ((uint32_t)h - y) : th;
-    const ra8_err_t err   = ra8_ta_priv_on_rows(st,
-                                                &frame[(size_t)y * (size_t)stride],
-                                                w,
-                                                (uint16_t)y,
-                                                (uint16_t)nrows,
-                                                (uint8_t)k_ra8_ta_webp_bpp);
+    const ra8_err_t err   = ra8_jof_priv_on_rows(st,
+                                                 &frame[(size_t)y * (size_t)stride],
+                                                 w,
+                                                 (uint16_t)y,
+                                                 (uint16_t)nrows,
+                                                 (uint8_t)k_ra8_jof_webp_bpp);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -156,7 +156,7 @@ priv_webp_feed(ra8_ta_prod_state_t* st, const uint8_t* frame, uint16_t w, uint16
   return k_ra8_ok;
 }
 
-RA8_PRIV ra8_err_t ra8_ta_priv_webp_transcode(ra8_ta_prod_state_t* st, ra8_ta_prefix_pull_t* pfx)
+RA8_PRIV ra8_err_t ra8_jof_priv_webp_transcode(ra8_jof_prod_state_t* st, ra8_jof_prefix_pull_t* pfx)
 {
   uint8_t* const arena = st->cfg->webp_work;
   if (arena == nullptr) {
@@ -174,13 +174,13 @@ RA8_PRIV ra8_err_t ra8_ta_priv_webp_transcode(ra8_ta_prod_state_t* st, ra8_ta_pr
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_ta_priv_on_geom(st, (uint16_t)w, (uint16_t)h, (uint8_t)k_ra8_ta_webp_bpp);
+  err = ra8_jof_priv_on_geom(st, (uint16_t)w, (uint16_t)h, (uint8_t)k_ra8_jof_webp_bpp);
   if (err != k_ra8_ok) {
     return err;
   }
-  const size_t   mask    = (size_t)k_ra8_ta_bump_align - 1U;
+  const size_t   mask    = (size_t)k_ra8_jof_bump_align - 1U;
   const size_t   used    = (src_len + mask) & ~mask;
-  const uint64_t frame64 = (uint64_t)w * (uint64_t)h * (uint64_t)k_ra8_ta_webp_bpp;
+  const uint64_t frame64 = (uint64_t)w * (uint64_t)h * (uint64_t)k_ra8_jof_webp_bpp;
   if ((used >= acap) || (frame64 >= (uint64_t)(acap - used))) {
     return k_ra8_err_invalid_size; /* no room for frame + at least some scratch */
   }
@@ -192,7 +192,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_webp_transcode(ra8_ta_prod_state_t* st, ra8_ta_pr
                                              src_len,
                                              &wa,
                                              frame,
-                                             (size_t)w * (size_t)k_ra8_ta_webp_bpp,
+                                             (size_t)w * (size_t)k_ra8_jof_webp_bpp,
                                              frame_n,
                                              nullptr,
                                              nullptr);

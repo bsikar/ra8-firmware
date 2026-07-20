@@ -32,7 +32,7 @@
 #include "ra8_err.h"
 #include "ra8_fmt.h"
 #include "ra8_fmt_internal.h"
-#include "ra8_tileatlas.h"
+#include "ra8_jof.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_fmt_atlas_ver";
@@ -62,12 +62,12 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t*             ref;   /**< Reference raster (single-tile encode). */
-  size_t               refn;  /**< Reference raster byte count.           */
-  uint8_t*             got;   /**< Banded raster under test.              */
-  size_t               gotn;  /**< Banded raster byte count.              */
-  ra8_tileatlas_info_t rinfo; /**< Reference atlas geometry.              */
-  ra8_tileatlas_info_t ginfo; /**< Banded atlas geometry.                 */
+  uint8_t*       ref;   /**< Reference raster (single-tile encode). */
+  size_t         refn;  /**< Reference raster byte count.           */
+  uint8_t*       got;   /**< Banded raster under test.              */
+  size_t         gotn;  /**< Banded raster byte count.              */
+  ra8_jof_info_t rinfo; /**< Reference atlas geometry.              */
+  ra8_jof_info_t ginfo; /**< Banded atlas geometry.                 */
 } fmt_ver_pair_t;
 
 /**
@@ -210,7 +210,7 @@ static ra8_err_t priv_encode_roundtrip(const ra8_fmt_blob_t* src,
                                        uint16_t              tile_h,
                                        uint8_t**             out_px,
                                        size_t*               out_n,
-                                       ra8_tileatlas_info_t* info)
+                                       ra8_jof_info_t*       info)
 {
   ra8_fmt_blob_t atlas = {};
   ra8_err_t      rc    = ra8_fmt_atlas_produce(src,
@@ -218,7 +218,7 @@ static ra8_err_t priv_encode_roundtrip(const ra8_fmt_blob_t* src,
                                                max_h,
                                                tile_w,
                                                tile_h,
-                                               (uint8_t)k_ra8_tileatlas_codec_deflate,
+                                               (uint8_t)k_ra8_jof_codec_deflate,
                                                &atlas,
                                                info);
   if (rc != k_ra8_ok) {
@@ -298,13 +298,13 @@ ra8_err_t ra8_fmt_atlas_verify(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* 
   if (rc != k_ra8_ok) {
     return rc;
   }
-  uint8_t* const             ref   = pair.ref;
-  uint8_t* const             got   = pair.got;
-  const size_t               refn  = pair.refn;
-  const size_t               gotn  = pair.gotn;
-  const ra8_tileatlas_info_t rinfo = pair.rinfo;
-  const ra8_tileatlas_info_t ginfo = pair.ginfo;
-  size_t                     diffs = (refn != gotn) ? refn : 0U;
+  uint8_t* const       ref   = pair.ref;
+  uint8_t* const       got   = pair.got;
+  const size_t         refn  = pair.refn;
+  const size_t         gotn  = pair.gotn;
+  const ra8_jof_info_t rinfo = pair.rinfo;
+  const ra8_jof_info_t ginfo = pair.ginfo;
+  size_t               diffs = (refn != gotn) ? refn : 0U;
   if (refn == gotn) {
     diffs = priv_diff_rasters(ref,
                               got,

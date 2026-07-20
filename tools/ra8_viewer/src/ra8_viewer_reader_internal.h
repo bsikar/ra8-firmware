@@ -30,9 +30,9 @@
 #include "ra8_comic.h"
 #include "ra8_err.h"
 #include "ra8_img_arena.h"
+#include "ra8_jof.h"
 #include "ra8_longstrip.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 #include "ra8_viewer_reader.h"
 
 #ifdef __cplusplus
@@ -113,7 +113,7 @@ typedef struct {
  */
 typedef struct {
   uint8_t*                   atlas;      /**< Whole `.jof` file (owned).              */
-  ra8_tileatlas_memstore_t   store;      /**< Memstore pread over @ref atlas.         */
+  ra8_jof_memstore_t         store;      /**< Memstore pread over @ref atlas.         */
   ra8_longstrip_decode_ctx_t dctx;       /**< Decode ctx: pread + parsed info + scr.  */
   ra8_tile_cache_t           cache;      /**< Band cache (uses the arrays below).     */
   ra8_longstrip_t            strip;      /**< Opened long-strip document.             */

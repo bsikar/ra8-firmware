@@ -6,7 +6,7 @@
  *          fling state machine, bounded directional prefetch and the visible
  *          band composite. The whole file is pure integer arithmetic over the
  *          parsed atlas geometry plus calls into `ra8_tile_cache` (band paging)
- *          and `ra8_tileatlas` (per-band decode) -- no MMIO, so it runs
+ *          and `ra8_jof` (per-band decode) -- no MMIO, so it runs
  *          identically on the target, in board_sim and on the unit-test host.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -24,8 +24,8 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_jof.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 
 /** @brief Component tag for `RA8_CHECK_*` log lines. */
 static const char* const s_tag = "ra8_longstrip";
@@ -63,17 +63,17 @@ ra8_err_t ra8_longstrip_tile_decode(void*                 ctx,
   RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
   RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
   ra8_longstrip_decode_ctx_t* dc = (ra8_longstrip_decode_ctx_t*)ctx;
-  return ra8_tileatlas_read_tile(dc->pread,
-                                 dc->pread_ctx,
-                                 &dc->info,
-                                 key->tile_x,
-                                 key->tile_y,
-                                 dc->scratch,
-                                 dc->scratch_cap,
-                                 cell,
-                                 cell_bytes,
-                                 out_w,
-                                 out_h);
+  return ra8_jof_read_tile(dc->pread,
+                           dc->pread_ctx,
+                           &dc->info,
+                           key->tile_x,
+                           key->tile_y,
+                           dc->scratch,
+                           dc->scratch_cap,
+                           cell,
+                           cell_bytes,
+                           out_w,
+                           out_h);
 }
 
 /**
@@ -98,9 +98,8 @@ ra8_err_t ra8_longstrip_tile_decode(void*                 ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_longstrip_bind(ra8_longstrip_t*            wt,
-                                const ra8_longstrip_cfg_t*  cfg,
-                                const ra8_tileatlas_info_t* info)
+static void
+priv_longstrip_bind(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg, const ra8_jof_info_t* info)
 {
   wt->info       = *info;
   wt->canvas_w   = info->width;
@@ -164,13 +163,13 @@ ra8_err_t ra8_longstrip_open(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg
   if ((cfg->viewport_w == 0U) || (cfg->viewport_h == 0U)) {
     return k_ra8_err_invalid_arg;
   }
-  ra8_tileatlas_info_t info = {};
-  const ra8_err_t err = ra8_tileatlas_parse(cfg->pread, cfg->pread_ctx, cfg->atlas_size, &info);
+  ra8_jof_info_t  info = {};
+  const ra8_err_t err  = ra8_jof_parse(cfg->pread, cfg->pread_ctx, cfg->atlas_size, &info);
   if (err != k_ra8_ok) {
     return err;
   }
   /* A longstrip strip is one full-width band column; anything else is not a
-   * scrollable strip. `ra8_tileatlas_parse` derives tile_cols as
+   * scrollable strip. `ra8_jof_parse` derives tile_cols as
    * ceil(width / tile_w), so `tile_w == width` already implies tile_cols == 1
    * -- the full-width test alone is necessary and sufficient. */
   if (info.tile_w != info.width) {

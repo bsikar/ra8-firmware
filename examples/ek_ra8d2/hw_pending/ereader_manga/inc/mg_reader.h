@@ -8,7 +8,7 @@
  * @details
  * The presentation model for the ereader_manga demo: a viewport onto a page
  * far larger than the 1024x600 panel, backed by a JOF tile atlas
- * (``ra8_tileatlas``) paged through a small fixed-budget tile cache
+ * (``ra8_jof``) paged through a small fixed-budget tile cache
  * (``ra8_tile_cache``). The reader owns no hardware -- it draws into a
  * caller-supplied RGB565 framebuffer through ``ra8_gfx`` and reads decoded
  * tiles through the cache -- so the identical render runs on the cross-built
@@ -38,8 +38,8 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_jof.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 
 /**
  * @enum mg_layout_t
@@ -99,11 +99,11 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  const ra8_tileatlas_info_t* info;        /**< Parsed atlas geometry.         */
-  ra8_tileatlas_pread_fn      pread;       /**< Atlas positioned-read seam.    */
-  void*                       pread_ctx;   /**< Context for @c pread.          */
-  uint8_t*                    scratch;     /**< Deflate stored-stream staging. */
-  uint32_t                    scratch_cap; /**< Capacity of @c scratch.        */
+  const ra8_jof_info_t* info;        /**< Parsed atlas geometry.         */
+  ra8_jof_pread_fn      pread;       /**< Atlas positioned-read seam.    */
+  void*                 pread_ctx;   /**< Context for @c pread.          */
+  uint8_t*              scratch;     /**< Deflate stored-stream staging. */
+  uint32_t              scratch_cap; /**< Capacity of @c scratch.        */
 } mg_tile_src_t;
 
 /**
@@ -113,12 +113,12 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint16_t*                   fb;       /**< RGB565 framebuffer (panel). */
-  int32_t                     fb_w;     /**< Framebuffer width, pixels.  */
-  int32_t                     fb_h;     /**< Framebuffer height, pixels. */
-  ra8_tile_cache_t*           cache;    /**< Tile cache over the atlas.  */
-  const ra8_tileatlas_info_t* info;     /**< Parsed atlas geometry.      */
-  uint32_t                    image_id; /**< Tile-cache key image id.    */
+  uint16_t*             fb;       /**< RGB565 framebuffer (panel). */
+  int32_t               fb_w;     /**< Framebuffer width, pixels.  */
+  int32_t               fb_h;     /**< Framebuffer height, pixels. */
+  ra8_tile_cache_t*     cache;    /**< Tile cache over the atlas.  */
+  const ra8_jof_info_t* info;     /**< Parsed atlas geometry.      */
+  uint32_t              image_id; /**< Tile-cache key image id.    */
 } mg_reader_cfg_t;
 
 /**
@@ -159,7 +159,7 @@ typedef struct {
  * @retval k_ra8_err_null_ptr     @p r, @p cfg, or a required @p cfg field NULL.
  * @retval k_ra8_err_invalid_size @p cfg geometry is zero / smaller than the fb.
  *
- * @pre @p cfg->info came from a successful ``ra8_tileatlas_parse``.
+ * @pre @p cfg->info came from a successful ``ra8_jof_parse``.
  * @pre @p cfg->fb covers `fb_w * fb_h` RGB565 pixels.
  * @post On success the viewport is clamped inside the page.
  * @post On any error @p r is left unbound.
@@ -314,7 +314,7 @@ typedef struct {
  *
  * @details Matches ::ra8_tile_decode_fn. Reads @p key->tile_x / tile_y and
  *          reads that tile out of the atlas through
- *          ``ra8_tileatlas_read_tile`` (raw copy or deflate inflate) into
+ *          ``ra8_jof_read_tile`` (raw copy or deflate inflate) into
  *          @p cell, reporting the tile's clamped dimensions.
  *
  * @param[in]  ctx        A ::mg_tile_src_t* bound at cache init.
@@ -327,7 +327,7 @@ typedef struct {
  * @return ra8_err_t k_ra8_ok on success, or the read-tile error verbatim.
  * @retval k_ra8_ok           Tile decoded into @p cell.
  * @retval k_ra8_err_null_ptr A required pointer was NULL.
- * @retval k_ra8_err_*        Propagated from ``ra8_tileatlas_read_tile``.
+ * @retval k_ra8_err_*        Propagated from ``ra8_jof_read_tile``.
  *
  * @pre @p ctx points at a live ::mg_tile_src_t.
  * @pre @p cell holds @p cell_bytes writable bytes.

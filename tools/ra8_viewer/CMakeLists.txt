@@ -51,13 +51,13 @@ file(GLOB RA8_GFX_SRC    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 file(GLOB RA8_UNARCH_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_unarch/src/*.c)
 
 # ra8_longstrip renders the firmware-native `.jof` vertical-scroll tile atlas the
-# downloader writes: the strip parses through ra8_tileatlas (DEFLATE tiles inflate
+# downloader writes: the strip parses through ra8_jof (DEFLATE tiles inflate
 # via ra8_io_compress over the already-linked miniz), pages through the ra8_mem
 # tile cache (+ its keycache), and composites bands via ra8_longstrip. Only the
 # READ path is needed (no producer / PNG / webp), so name the exact members.
 set(RA8_LONGSTRIP_SRC
     ${FW_ROOT}/libs/ra8_longstrip/src/ra8_longstrip.c
-    ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas.c
+    ${FW_ROOT}/libs/ra8_jof/src/ra8_jof.c
     ${FW_ROOT}/libs/ra8_io/src/ra8_io_compress.c
     ${FW_ROOT}/libs/ra8_mem/src/ra8_tile_cache.c
     ${FW_ROOT}/libs/ra8_mem/src/ra8_keycache.c
@@ -103,7 +103,7 @@ target_include_directories(ra8_reader PUBLIC
     ${FW_ROOT}/libs/ra8_epub/inc
     ${FW_ROOT}/libs/ra8_unarch/inc
     ${FW_ROOT}/libs/ra8_longstrip/inc
-    ${FW_ROOT}/libs/ra8_tileatlas/inc
+    ${FW_ROOT}/libs/ra8_jof/inc
     ${FW_ROOT}/libs/ra8_io/inc
     ${FW_ROOT}/libs/ra8_mem/inc
     ${FW_ROOT}/libs/third_party/miniz

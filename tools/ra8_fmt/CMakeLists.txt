@@ -32,17 +32,17 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
 # ---------------------------------------------------------------------------
-# The exact firmware members the tool calls: the tile-atlas producer (with its
+# The exact firmware members the tool calls: the JOF producer (with its
 # JPEG / PNG / WebP front ends) and reader, plus the compression seam they sit
 # on. Naming members rather than globbing keeps the HAL and peripheral layers
 # out of a host tool.
 # ---------------------------------------------------------------------------
 set(RA8_FMT_FW_SRC
-    ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas.c
-    ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas_produce.c
-    ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c
-    ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas_png.c
-    ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c
+    ${FW_ROOT}/libs/ra8_jof/src/ra8_jof.c
+    ${FW_ROOT}/libs/ra8_jof/src/ra8_jof_produce.c
+    ${FW_ROOT}/libs/ra8_jof/src/ra8_jof_produce_webp.c
+    ${FW_ROOT}/libs/ra8_jof/src/ra8_jof_png.c
+    ${FW_ROOT}/libs/ra8_jof/src/ra8_jof_png_chunk.c
     ${FW_ROOT}/libs/ra8_io/src/ra8_io_compress.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
@@ -80,10 +80,10 @@ target_include_directories(ra8_fmt PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${FW_ROOT}/libs/ra8_core/inc
-    ${FW_ROOT}/libs/ra8_tileatlas/inc
+    ${FW_ROOT}/libs/ra8_jof/inc
     ${FW_ROOT}/libs/ra8_hal/inc
     ${FW_ROOT}/libs/ra8_hal/src
-    ${FW_ROOT}/libs/ra8_tileatlas/src
+    ${FW_ROOT}/libs/ra8_jof/src
     ${FW_ROOT}/libs/ra8_io/inc
     ${FW_ROOT}/libs/ra8_book/inc
     ${FW_ROOT}/libs/ra8_mem/inc

@@ -76,8 +76,7 @@ static void t_mg_crosscheck_raw(ra8_vmem_stream_t* st, uint32_t page, uint32_t b
 {
   static uint8_t raw[(size_t)k_mg_payload];
   const uint64_t abs = ((uint64_t)page * (uint64_t)k_mg_atlas_size) +
-                       (uint64_t)k_ra8_tileatlas_hdr_bytes +
-                       ((uint64_t)band * (uint64_t)k_mg_payload);
+                       (uint64_t)k_ra8_jof_hdr_bytes + ((uint64_t)band * (uint64_t)k_mg_payload);
   const size_t   got = ra8_vmem_stream_read(st, abs, raw, (size_t)k_mg_payload);
   TEST_ASSERT_EQ(k_mg_payload, got);
   for (uint32_t i = 0U; i < (uint32_t)k_mg_payload; i += (uint32_t)k_mg_pix_stride) {
@@ -119,7 +118,7 @@ static uint32_t t_mg_run_manga_pattern(uint32_t           atlas_count,
                                        ra8_tile_cache_t*  tc,
                                        t_mg_hw_t*         hw)
 {
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
 
   /* 1. Cover scroll: read every band of atlas 0 top-to-bottom (the flood). */
   for (uint32_t band = 0U; band < (uint32_t)k_mg_bands; ++band) {
@@ -190,14 +189,14 @@ static uint32_t t_mg_run_manga_pattern(uint32_t           atlas_count,
  */
 static void t_mg_gate_size(uint32_t atlas_count, uint64_t target)
 {
-  ra8_vsource_t        vs      = {};
-  ra8_vsource_obj_t    objs[1] = {};
-  ra8_vmem_t           vm      = {};
-  ra8_vmem_stream_t    st      = {};
-  ra8_tile_cache_t     tc      = {};
-  t_mg_decode_ctx_t    dc      = {};
-  ra8_tileatlas_info_t info    = {};
-  const uint64_t       vol     = t_mg_setup(atlas_count, 0U, &vs, objs, &vm, &st, &tc, &dc, &info);
+  ra8_vsource_t     vs      = {};
+  ra8_vsource_obj_t objs[1] = {};
+  ra8_vmem_t        vm      = {};
+  ra8_vmem_stream_t st      = {};
+  ra8_tile_cache_t  tc      = {};
+  t_mg_decode_ctx_t dc      = {};
+  ra8_jof_info_t    info    = {};
+  const uint64_t    vol     = t_mg_setup(atlas_count, 0U, &vs, objs, &vm, &st, &tc, &dc, &info);
 
   /* The modelled volume genuinely spans the cited manga scale. */
   TEST_ASSERT(vol >= target);
@@ -244,7 +243,7 @@ static void t_mg_gate_size(uint32_t atlas_count, uint64_t target)
  *
  * @par MC/DC:
  * (integration gate: the compound decisions inside the JOF reader, page cache,
- * and tile cache carry their vectors in test_ra8_tileatlas*.c, test_ra8_vmem.c,
+ * and tile cache carry their vectors in test_ra8_jof*.c, test_ra8_vmem.c,
  * and test_ra8_keycache.c; here the oracles are bounded residency + a reference
  * byte compare, both single-condition.)
  */

@@ -1,14 +1,14 @@
 /**
- * @file fuzz_ra8_tileatlas.c
+ * @file fuzz_ra8_jof.c
  * @brief libFuzzer harness for the JOF atlas reader (#231).
  *
  * @details
  * A tile atlas can arrive pre-baked inside a downloaded EPUB (the
  * `ra8_epub_tile_binder_add()` in-place path), which makes the atlas bytes
  * themselves attacker-controlled. This harness treats the raw fuzz input as
- * an atlas backing store: `ra8_tileatlas_parse()` validates the structure,
+ * an atlas backing store: `ra8_jof_parse()` validates the structure,
  * then every tile of an accepted atlas is decoded through
- * `ra8_tileatlas_read_tile()` into fixed buffers. An ASan / UBSan diagnostic
+ * `ra8_jof_read_tile()` into fixed buffers. An ASan / UBSan diagnostic
  * here is a real out-of-bounds access or integer overflow in the header /
  * footer / index validation or the raw/deflate tile decode. Every random
  * input is expected to fail the parse closed without crashing.
@@ -26,7 +26,7 @@
 
 #include "fuzz_entry.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
+#include "ra8_jof.h"
 
 /** @brief Harness sizing: page-back buffers for one worst-case tile. */
 enum : uint32_t {
@@ -68,11 +68,10 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     return 0;
   }
   memcpy(s_backing, data, size);
-  static ra8_tileatlas_memstore_t store;
-  store = (ra8_tileatlas_memstore_t){.buf = s_backing, .cap = size, .len = size};
-  ra8_tileatlas_info_t info = {};
-  if (ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &store, (uint64_t)size, &info) !=
-      k_ra8_ok) {
+  static ra8_jof_memstore_t store;
+  store               = (ra8_jof_memstore_t){.buf = s_backing, .cap = size, .len = size};
+  ra8_jof_info_t info = {};
+  if (ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)size, &info) != k_ra8_ok) {
     return 0;
   }
   uint32_t decoded = 0U;
@@ -82,17 +81,17 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
          tx++) {
       uint16_t w = 0U;
       uint16_t h = 0U;
-      (void)ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                    &store,
-                                    &info,
-                                    tx,
-                                    ty,
-                                    s_scratch,
-                                    (uint32_t)sizeof(s_scratch),
-                                    s_cell,
-                                    (uint32_t)sizeof(s_cell),
-                                    &w,
-                                    &h);
+      (void)ra8_jof_read_tile(ra8_jof_memstore_pread,
+                              &store,
+                              &info,
+                              tx,
+                              ty,
+                              s_scratch,
+                              (uint32_t)sizeof(s_scratch),
+                              s_cell,
+                              (uint32_t)sizeof(s_cell),
+                              &w,
+                              &h);
       decoded++;
     }
   }

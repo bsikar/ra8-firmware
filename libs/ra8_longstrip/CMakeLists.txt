@@ -1,7 +1,7 @@
 #
 # libs/ra8_longstrip -- continuous vertical-scroll (longstrip / manhwa) reading
 # mode (#289). A thin scroll/geometry engine over the JOF band-tile atlas
-# (#231, libs/ra8_tileatlas): a longstrip band is one full-width JOF tile
+# (#231, libs/ra8_jof): a longstrip band is one full-width JOF tile
 # column, so the tile index IS the band index -- O(1) seek to any scroll-y.
 #
 # Layout:
@@ -10,7 +10,7 @@
 #   src/ra8_longstrip.c   pure-integer implementation (no MMIO -- runs identically
 #                       on target, board_sim and the unit-test host)
 #
-# Dependencies: ra8_core (err/check/log), ra8_tileatlas (parse + per-band
+# Dependencies: ra8_core (err/check/log), ra8_jof (parse + per-band
 # decode), ra8_mem (ra8_tile_cache band paging). The composite is a DIP blit
 # seam, so ra8_longstrip does NOT depend on ra8_gfx/ra8_drw; the caller binds the
 # software (ra8_gfx_blit) or DRW-accelerated blitter.

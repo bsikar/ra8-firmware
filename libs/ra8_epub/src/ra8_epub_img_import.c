@@ -7,7 +7,7 @@
  * Implements `ra8_epub_tile_binder_import()`: resolve a manifest image href,
  * register it in place when the entry already is a stored JOF atlas, or
  * stream its encoded JPEG/PNG/WebP bytes through the bounded transcode producer
- * (`ra8_tileatlas_produce`) into the caller's atlas store and register the
+ * (`ra8_jof_produce`) into the caller's atlas store and register the
  * result. Every source codec normalizes to the one JOF container on import
  * (#290). Either way the binder afterwards serves the image's full-resolution
  * tiles decode-on-demand -- the #231 goal for pages larger than SDRAM.
@@ -22,7 +22,7 @@
  * {World: NS}
  */
 
-#if __has_include("ra8_tile_cache.h") && __has_include("ra8_tileatlas.h")
+#if __has_include("ra8_tile_cache.h") && __has_include("ra8_jof.h")
 
 #include <stddef.h>
 #include <stdint.h>
@@ -34,8 +34,8 @@
 #include "ra8_epub_entry.h"
 #include "ra8_epub_img_tiles.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_epub_img_import";
@@ -53,7 +53,7 @@ static const uint8_t s_atlas_magic[k_ra8_epub_import_magic_len] = {'J', 'O', 'F'
 
 /**
  * @struct ra8_epub_entry_pull_t
- * @brief ::ra8_tileatlas_pull_fn adapter over a streaming entry cursor.
+ * @brief ::ra8_jof_pull_fn adapter over a streaming entry cursor.
  *
  * @details Wraps `ra8_epub_entry_read` so the producer can pull the encoded
  *          source image straight off the archive (deflated or stored) in
@@ -137,7 +137,7 @@ static ra8_err_t priv_classify(ra8_epub_book_t* book, const char* href, bool* ou
  * @return Result code.
  * @retval k_ra8_ok Atlas produced into the store.
  * @retval other    Propagated from the cursor / producer / store.
- * @pre @p cfg->work is sized per `ra8_tileatlas_work_bytes()`.
+ * @pre @p cfg->work is sized per `ra8_jof_work_bytes()`.
  * @pre @p href resolves to an archive entry.
  * @post On success the store holds one complete atlas.
  * @post No entry cursor remains open.
@@ -148,7 +148,7 @@ RA8_INTERNAL
 static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
                                 const char*                        href,
                                 const ra8_epub_atlas_import_cfg_t* cfg,
-                                ra8_tileatlas_info_t*              out_info)
+                                ra8_jof_info_t*                    out_info)
 {
   ra8_epub_entry_pull_t pull = {};
   uint64_t              size = 0U;
@@ -156,7 +156,7 @@ static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
   if (err != k_ra8_ok) {
     return err;
   }
-  const ra8_tileatlas_produce_cfg_t pcfg = {
+  const ra8_jof_produce_cfg_t pcfg = {
     .pull          = priv_entry_pull,
     .pull_ctx      = &pull,
     .sink          = cfg->store.sink,
@@ -171,7 +171,7 @@ static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
     .webp_work     = cfg->webp_work,
     .webp_work_cap = cfg->webp_work_cap,
   };
-  err                       = ra8_tileatlas_produce(&pcfg, out_info);
+  err                       = ra8_jof_produce(&pcfg, out_info);
   const ra8_err_t close_err = ra8_epub_entry_close(&pull.reader);
   return (err != k_ra8_ok) ? err : close_err;
 }
@@ -230,8 +230,8 @@ ra8_err_t ra8_epub_tile_binder_import(ra8_epub_tile_binder_t*            binder,
   if (is_atlas) {
     return ra8_epub_tile_binder_add(binder, book, href, image_id); /* in-place */
   }
-  ra8_tileatlas_info_t info = {};
-  err                       = priv_transcode(book, href, cfg, &info);
+  ra8_jof_info_t info = {};
+  err                 = priv_transcode(book, href, cfg, &info);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -247,4 +247,4 @@ ra8_err_t ra8_epub_tile_binder_import(ra8_epub_tile_binder_t*            binder,
  * the import wiring is unused here. A single typedef keeps the translation
  * unit non-empty. */
 typedef int ra8_epub_img_import_unused_translation_unit_t;
-#endif /* __has_include("ra8_tile_cache.h") && __has_include("ra8_tileatlas.h") */
+#endif /* __has_include("ra8_tile_cache.h") && __has_include("ra8_jof.h") */

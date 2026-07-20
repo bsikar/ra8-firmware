@@ -15,7 +15,7 @@
  * never resident:
  *
  *   1. **Tile binder** (`ra8_epub_tile_binder_*`): pages JOF tile atlases
- *      (`ra8_tileatlas.h` -- the display-native band-tile format shared with
+ *      (`ra8_jof.h` -- the display-native band-tile format shared with
  *      the longstrip scroll #289 and the #290 codec policy) through
  *      ::ra8_tile_cache, decode-on-demand keyed by `(image_id, tile_x,
  *      tile_y)`. An atlas backs onto either a *stored* archive entry
@@ -27,7 +27,7 @@
  *   2. **Import-time transcode** (`ra8_epub_tile_binder_import()`): the
  *      #231 producer wired to the open path. Resolves a manifest href,
  *      streams the encoded JPEG/PNG (or, with a `webp_work` arena, WebP)
- *      through `ra8_tileatlas_produce()` into a caller-supplied atlas store,
+ *      through `ra8_jof_produce()` into a caller-supplied atlas store,
  *      and registers the result -- after which a page larger than SDRAM at
  *      native resolution renders full-res via decode-on-demand tiles. Every
  *      source codec converges on the one JOF container (#290). An entry that
@@ -43,8 +43,8 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
- * @see ra8_tileatlas.h          The JOF atlas format + reader.
- * @see ra8_tileatlas_produce.h  The import-time transcode producer.
+ * @see ra8_jof.h          The JOF atlas format + reader.
+ * @see ra8_jof_produce.h  The import-time transcode producer.
  * @since 0.1.0
  */
 
@@ -59,9 +59,9 @@ extern "C" {
 
 #include "ra8_epub.h"
 #include "ra8_err.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
 
 /**
  * @enum ra8_epub_tile_limits_t
@@ -86,13 +86,13 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_epub_book_t*       book; /**< Owning book, or NULL for an external atlas. */
-  char                   path[k_ra8_epub_max_path_len]; /**< Entry path (book-backed only).     */
-  ra8_tileatlas_pread_fn pread;                         /**< External atlas read seam, or NULL. */
-  void*                  pread_ctx;                     /**< Context for `pread`.               */
-  uint64_t               total_size;                    /**< Atlas byte length (backing size).  */
-  uint32_t               image_id; /**< Tile-cache key namespace for this image. */
-  ra8_tileatlas_info_t   info;     /**< Parsed + validated atlas geometry.       */
+  ra8_epub_book_t* book; /**< Owning book, or NULL for an external atlas. */
+  char             path[k_ra8_epub_max_path_len]; /**< Entry path (book-backed only).           */
+  ra8_jof_pread_fn pread;                         /**< External atlas read seam, or NULL.       */
+  void*            pread_ctx;                     /**< Context for `pread`.                     */
+  uint64_t         total_size;                    /**< Atlas byte length (backing size).        */
+  uint32_t         image_id;                      /**< Tile-cache key namespace for this image. */
+  ra8_jof_info_t   info;                          /**< Parsed + validated atlas geometry.       */
 } ra8_epub_tile_source_t;
 
 /**
@@ -100,7 +100,7 @@ typedef struct {
  * @brief Binds up to ::k_ra8_epub_tile_max_sources images to one tile cache.
  *
  * @details Owns a ::ra8_tile_cache whose decode-on-miss reads + decodes one
- *          JOF tile through `ra8_tileatlas_read_tile()`. Caller-owned;
+ *          JOF tile through `ra8_jof_read_tile()`. Caller-owned;
  *          zero-initialise before `ra8_epub_tile_binder_init()`.
  *
  * @invariant Every valid `sources[i]` has a distinct `image_id`.
@@ -137,7 +137,7 @@ typedef struct {
  *
  * @details The import path writes the transcoded atlas through `sink` and
  *          registers the image over `pread`; both must address the same
- *          backing bytes. `ra8_tileatlas_memstore_t` provides a matching
+ *          backing bytes. `ra8_jof_memstore_t` provides a matching
  *          RAM-backed pair.
  *
  * @invariant `sink` and `pread` address the same backing store.
@@ -145,10 +145,10 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tileatlas_sink_fn  sink;      /**< Append-only atlas writer.          */
-  void*                  sink_ctx;  /**< Context for `sink`.                */
-  ra8_tileatlas_pread_fn pread;     /**< Read-back seam for the same bytes. */
-  void*                  pread_ctx; /**< Context for `pread`.               */
+  ra8_jof_sink_fn  sink;      /**< Append-only atlas writer.          */
+  void*            sink_ctx;  /**< Context for `sink`.                */
+  ra8_jof_pread_fn pread;     /**< Read-back seam for the same bytes. */
+  void*            pread_ctx; /**< Context for `pread`.               */
 } ra8_epub_atlas_store_t;
 
 /**
@@ -156,12 +156,12 @@ typedef struct {
  * @brief Import-time transcode knobs: tile geometry, budget caps, work arena
  *        and the destination store.
  *
- * @details Mirrors the producer configuration (`ra8_tileatlas_produce.h`)
+ * @details Mirrors the producer configuration (`ra8_jof_produce.h`)
  *          minus the source, which the import path streams from the archive
- *          entry itself. Size `work` with `ra8_tileatlas_work_bytes()` over
+ *          entry itself. Size `work` with `ra8_jof_work_bytes()` over
  *          the same caps. `webp_work` is the optional whole-frame arena for
  *          WebP manifest images (size it with
- *          `ra8_tileatlas_webp_work_bytes()`); leave it NULL to fail-closed
+ *          `ra8_jof_webp_work_bytes()`); leave it NULL to fail-closed
  *          reject WebP entries the way JPEG/PNG-only importers always did.
  *
  * @invariant `tile_w`/`tile_h` non-zero; `work` covers `work_cap`.
@@ -170,16 +170,16 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint16_t               tile_w;        /**< Tile width, pixels (>= 1).                         */
-  uint16_t               tile_h;        /**< Tile height, pixels (>= 1).                        */
-  uint8_t                codec;         /**< ::ra8_tileatlas_codec_t member.                    */
-  uint16_t               max_width;     /**< Width budget cap (0 = format cap).                 */
-  uint16_t               max_height;    /**< Height budget cap (0 = format cap).                */
-  uint8_t*               work;          /**< Producer streaming work arena (JPEG/PNG).          */
-  size_t                 work_cap;      /**< Arena size (ra8_tileatlas_work_bytes()).           */
-  uint8_t*               webp_work;     /**< WebP whole-frame arena, or NULL to reject WebP.    */
-  size_t                 webp_work_cap; /**< WebP arena size (ra8_tileatlas_webp_work_bytes()). */
-  ra8_epub_atlas_store_t store;         /**< Destination atlas store.                           */
+  uint16_t               tile_w;        /**< Tile width, pixels (>= 1).                      */
+  uint16_t               tile_h;        /**< Tile height, pixels (>= 1).                     */
+  uint8_t                codec;         /**< ::ra8_jof_codec_t member.                       */
+  uint16_t               max_width;     /**< Width budget cap (0 = format cap).              */
+  uint16_t               max_height;    /**< Height budget cap (0 = format cap).             */
+  uint8_t*               work;          /**< Producer streaming work arena (JPEG/PNG).       */
+  size_t                 work_cap;      /**< Arena size (ra8_jof_work_bytes()).              */
+  uint8_t*               webp_work;     /**< WebP whole-frame arena, or NULL to reject WebP. */
+  size_t                 webp_work_cap; /**< WebP arena size (ra8_jof_webp_work_bytes()).    */
+  ra8_epub_atlas_store_t store;         /**< Destination atlas store.                        */
 } ra8_epub_atlas_import_cfg_t;
 
 /**
@@ -191,7 +191,7 @@ typedef struct {
  * ignored (the binder sets them); all other fields (cell memory + geometry +
  * key/dim/meta arrays + hash buckets) are the caller's and must out-live the
  * binder. @p scratch stages one stored (compressed) tile during a deflate
- * decode-on-miss: size it with `ra8_tileatlas_stored_bound()` over the cell
+ * decode-on-miss: size it with `ra8_jof_stored_bound()` over the cell
  * size; a binder serving only raw atlases may pass NULL/0.
  *
  * @param[out] binder      Binder to populate (zero-initialised by the caller).
@@ -222,7 +222,7 @@ typedef struct {
  *
  * @details
  * Resolves @p path (OPF-relative, then archive-rooted), measures the entry,
- * and validates the atlas structure via `ra8_tileatlas_parse()` over the
+ * and validates the atlas structure via `ra8_jof_parse()` over the
  * entry pread seam. The entry must be *stored* (uncompressed) in the ZIP so
  * tiles can be windowed with positioned reads. After this, tiles of the
  * image are fetched with `ra8_epub_tile_binder_get()` keyed by @p image_id.
@@ -261,7 +261,7 @@ typedef struct {
  * The external seam serves atlases that live outside the archive: an SDRAM
  * memstore or SD file filled by the import-time transcode
  * (`ra8_epub_tile_binder_import()` calls this itself), or any other backing.
- * The atlas structure is validated via `ra8_tileatlas_parse()` before the
+ * The atlas structure is validated via `ra8_jof_parse()` before the
  * source is accepted.
  *
  * @param[in,out] binder     Initialised binder.
@@ -288,7 +288,7 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_epub_tile_binder_add_ext(ra8_epub_tile_binder_t* binder,
-                                                     ra8_tileatlas_pread_fn  pread,
+                                                     ra8_jof_pread_fn        pread,
                                                      void*                   pread_ctx,
                                                      uint64_t                total_size,
                                                      uint32_t                image_id);
@@ -303,7 +303,7 @@ typedef struct {
  *      (`ra8_epub_tile_binder_add()`) -- the host-baked fast path, no
  *      transcode and no store writes.
  *   2. Otherwise streams the entry's encoded bytes through
- *      `ra8_tileatlas_produce()` (JPEG/PNG in bounded stripes so the whole
+ *      `ra8_jof_produce()` (JPEG/PNG in bounded stripes so the whole
  *      decoded image is never resident; WebP whole-frame through the
  *      `cfg->webp_work` arena) into @p cfg->store, then registers the produced
  *      atlas via `ra8_epub_tile_binder_add_ext()`.
@@ -334,7 +334,7 @@ typedef struct {
  * @retval other                       Propagated from the reader / store.
  *
  * @pre @p binder came from `ra8_epub_tile_binder_init()`.
- * @pre @p cfg->work is sized per `ra8_tileatlas_work_bytes()`.
+ * @pre @p cfg->work is sized per `ra8_jof_work_bytes()`.
  * @post On success the image's tiles are servable by @p image_id.
  * @post On any error the source table is unchanged (a partial store write
  *       is abandoned and must be reset by the caller before reuse).
@@ -369,7 +369,7 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t ra8_epub_tile_binder_info(const ra8_epub_tile_binder_t* binder,
                                                   uint32_t                      image_id,
-                                                  ra8_tileatlas_info_t*         out_info);
+                                                  ra8_jof_info_t*               out_info);
 
 /**
  * @brief Get (and pin) one decoded tile of a registered image (#231).
@@ -377,7 +377,7 @@ typedef struct {
  * @details
  * Builds the tile-cache key `(image_id, tile_x, tile_y)` and fetches it through
  * the owned cache. On a miss the tile's stored stream is read off the atlas
- * backing and decoded into one cache cell (`ra8_tileatlas_read_tile()`); on a
+ * backing and decoded into one cache cell (`ra8_jof_read_tile()`); on a
  * hit the cell is reused. The returned pixels are tightly packed
  * (`out_tile->width * bpp` bytes per row) and stay valid until
  * `ra8_epub_tile_binder_put()`. Edge tiles report their true (smaller) size.

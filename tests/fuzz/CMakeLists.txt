@@ -94,8 +94,8 @@ set(RA8_FUZZ_TARGETS
     fuzz_ra8_stbtt
     fuzz_ra8_rar
     fuzz_ra8_webp
-    fuzz_ra8_tileatlas
-    fuzz_ra8_tileatlas_produce
+    fuzz_ra8_jof
+    fuzz_ra8_jof_produce
     fuzz_ra8_unarch_xz
     fuzz_ra8_unarch_tar
     fuzz_ra8_unarch_gzip
@@ -147,7 +147,7 @@ foreach(_t ${RA8_FUZZ_TARGETS})
       ${FW_ROOT}/libs/ra8_comic/inc
       ${FW_ROOT}/libs/ra8_unarch/inc
       ${FW_ROOT}/libs/ra8_webp/inc
-      ${FW_ROOT}/libs/ra8_tileatlas/inc
+      ${FW_ROOT}/libs/ra8_jof/inc
       ${FW_ROOT}/libs/third_party/stb
       ${FW_ROOT}/libs/third_party/xz_embedded
       # tests/ root: shared test fixtures (e.g. eth_frame_fixture.h,

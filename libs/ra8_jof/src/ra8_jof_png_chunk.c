@@ -1,13 +1,13 @@
 /**
- * @file ra8_tileatlas_png_chunk.c
+ * @file ra8_jof_png_chunk.c
  * @brief PNG chunk layer for the streaming decoder: prologue, palette
  *        tables, ancillary skipping and the post-IDAT walk (#231).
  *
  * @details
  * The byte-source primitives and every chunk-structure concern of the
  * bounded-RAM PNG decoder live here; the pixel layer (inflate + unfilter +
- * translate) drives them from `ra8_tileatlas_png.c` through the prototypes
- * in `ra8_tileatlas_png_internal.h`. All structural anomalies fail closed:
+ * translate) drives them from `ra8_jof_png.c` through the prototypes
+ * in `ra8_jof_png_internal.h`. All structural anomalies fail closed:
  * this parser feeds on untrusted EPUB content. Spec citations reference the
  * W3C PNG specification (second edition), abbreviated `PNG sec N`.
  *
@@ -24,8 +24,8 @@
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas_internal.h"
-#include "ra8_tileatlas_png_internal.h"
+#include "ra8_jof_internal.h"
+#include "ra8_jof_png_internal.h"
 
 /** @brief PNG signature (PNG sec 5.2). */
 static const uint8_t s_png_sig[k_ra8_png_sig_bytes] =
@@ -48,7 +48,7 @@ static const uint8_t s_png_sig[k_ra8_png_sig_bytes] =
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_pull_exact(ra8_png_state_t* st, uint8_t* buf, uint32_t len)
+RA8_PRIV ra8_err_t ra8_jof_png_priv_pull_exact(ra8_png_state_t* st, uint8_t* buf, uint32_t len)
 {
   uint32_t done = 0U;
   while (done < len) {
@@ -81,14 +81,14 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_pull_exact(ra8_png_state_t* st, uint8_t* buf,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_skip(ra8_png_state_t* st, uint32_t len)
+RA8_PRIV ra8_err_t ra8_jof_png_priv_skip(ra8_png_state_t* st, uint32_t len)
 {
   uint8_t  scratch[k_ra8_png_skip_chunk];
   uint32_t left = len;
   while (left > 0U) {
     const uint32_t take =
       (left < (uint32_t)k_ra8_png_skip_chunk) ? left : (uint32_t)k_ra8_png_skip_chunk;
-    const ra8_err_t err = ra8_ta_png_priv_pull_exact(st, scratch, take);
+    const ra8_err_t err = ra8_jof_png_priv_pull_exact(st, scratch, take);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -114,12 +114,12 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_skip(ra8_png_state_t* st, uint32_t len)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_chunk_hdr(ra8_png_state_t* st,
-                                             uint32_t*        out_len,
-                                             uint32_t*        out_type)
+RA8_PRIV ra8_err_t ra8_jof_png_priv_chunk_hdr(ra8_png_state_t* st,
+                                              uint32_t*        out_len,
+                                              uint32_t*        out_type)
 {
   uint8_t         hdr[k_ra8_png_chunk_hdr] = {};
-  const ra8_err_t err                      = ra8_ta_png_priv_pull_exact(st, hdr, sizeof(hdr));
+  const ra8_err_t err                      = ra8_jof_png_priv_pull_exact(st, hdr, sizeof(hdr));
   if (err != k_ra8_ok) {
     return err;
   }
@@ -252,7 +252,7 @@ static ra8_err_t png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t ma
 {
   uint32_t  len  = 0U;
   uint32_t  type = 0U;
-  ra8_err_t err  = ra8_ta_png_priv_chunk_hdr(st, &len, &type);
+  ra8_err_t err  = ra8_jof_png_priv_chunk_hdr(st, &len, &type);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -260,7 +260,7 @@ static ra8_err_t png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t ma
     return k_ra8_err_protocol_error;
   }
   uint8_t ihdr[k_ra8_png_ihdr_len] = {};
-  err                              = ra8_ta_png_priv_pull_exact(st, ihdr, sizeof(ihdr));
+  err                              = ra8_jof_png_priv_pull_exact(st, ihdr, sizeof(ihdr));
   if (err != k_ra8_ok) {
     return err;
   }
@@ -268,7 +268,7 @@ static ra8_err_t png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t ma
   if (err != k_ra8_ok) {
     return err;
   }
-  return ra8_ta_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
+  return ra8_jof_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
 }
 
 /**
@@ -295,13 +295,13 @@ static ra8_err_t png_parse_plte(ra8_png_state_t* st, uint32_t len)
       (len > (uint32_t)k_ra8_png_plte_max) || (st->has_plte != 0U)) {
     return k_ra8_err_validation_failed;
   }
-  const ra8_err_t err = ra8_ta_png_priv_pull_exact(st, st->palette, len);
+  const ra8_err_t err = ra8_jof_png_priv_pull_exact(st, st->palette, len);
   if (err != k_ra8_ok) {
     return err;
   }
   st->plte_count = (uint16_t)(len / (uint32_t)k_ra8_png_ch_3);
   st->has_plte   = 1U;
-  return ra8_ta_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
+  return ra8_jof_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
 }
 
 /**
@@ -332,13 +332,13 @@ static ra8_err_t png_parse_trns(ra8_png_state_t* st, uint32_t len)
   if ((len > (uint32_t)k_ra8_png_trns_max) || (st->has_plte == 0U) || (st->has_trns != 0U)) {
     return k_ra8_err_validation_failed;
   }
-  const ra8_err_t err = ra8_ta_png_priv_pull_exact(st, st->trns, len);
+  const ra8_err_t err = ra8_jof_png_priv_pull_exact(st, st->trns, len);
   if (err != k_ra8_ok) {
     return err;
   }
   st->trns_count = (uint16_t)len;
   st->has_trns   = 1U;
-  return ra8_ta_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
+  return ra8_jof_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
 }
 
 /**
@@ -357,10 +357,10 @@ static ra8_err_t png_parse_trns(ra8_png_state_t* st, uint32_t len)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_prologue(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h)
+RA8_PRIV ra8_err_t ra8_jof_png_priv_prologue(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h)
 {
   uint8_t         sig[k_ra8_png_sig_bytes] = {};
-  const ra8_err_t err                      = ra8_ta_png_priv_pull_exact(st, sig, sizeof(sig));
+  const ra8_err_t err                      = ra8_jof_png_priv_pull_exact(st, sig, sizeof(sig));
   if (err != k_ra8_ok) {
     return err;
   }
@@ -386,7 +386,7 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_prologue(ra8_png_state_t* st, uint16_t max_w,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_pre_idat(ra8_png_state_t* st, uint32_t len, uint32_t type)
+RA8_PRIV ra8_err_t ra8_jof_png_priv_pre_idat(ra8_png_state_t* st, uint32_t len, uint32_t type)
 {
   if (type == (uint32_t)k_ra8_png_type_plte) {
     return png_parse_plte(st, len);
@@ -397,7 +397,7 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_pre_idat(ra8_png_state_t* st, uint32_t len, u
   if (type == (uint32_t)k_ra8_png_type_iend) {
     return k_ra8_err_protocol_error; /* IEND before any IDAT */
   }
-  return ra8_ta_png_priv_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
+  return ra8_jof_png_priv_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
 }
 
 /**
@@ -418,16 +418,16 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_pre_idat(ra8_png_state_t* st, uint32_t len, u
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_png_priv_finish(ra8_png_state_t* st)
+RA8_PRIV ra8_err_t ra8_jof_png_priv_finish(ra8_png_state_t* st)
 {
   uint32_t len  = st->pending_len;
   uint32_t type = st->pending_type;
   if (st->pending_valid == 0U) {
-    ra8_err_t err = ra8_ta_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes); /* last IDAT's CRC */
+    ra8_err_t err = ra8_jof_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes); /* last IDAT's CRC */
     if (err != k_ra8_ok) {
       return err;
     }
-    err = ra8_ta_png_priv_chunk_hdr(st, &len, &type);
+    err = ra8_jof_png_priv_chunk_hdr(st, &len, &type);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -439,11 +439,11 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_finish(ra8_png_state_t* st)
     if (type == (uint32_t)k_ra8_png_type_idat) {
       return k_ra8_err_protocol_error; /* IDAT after the stream completed */
     }
-    ra8_err_t err = ra8_ta_png_priv_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
+    ra8_err_t err = ra8_jof_png_priv_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = ra8_ta_png_priv_chunk_hdr(st, &len, &type);
+    err = ra8_jof_png_priv_chunk_hdr(st, &len, &type);
     if (err != k_ra8_ok) {
       return err;
     }

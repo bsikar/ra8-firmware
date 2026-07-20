@@ -16,7 +16,7 @@
  *      bind ``ra8_gfx`` to the 1024x600 RGB565 framebuffer in SDRAM.
  *   2. Transcode the baked 1536x2048 grayscale PNG page
  *      (``mg_page_fixture.h``) into a JOF tile atlas with
- *      ``ra8_tileatlas_produce`` -- one bounded band at a time, the decoded
+ *      ``ra8_jof_produce`` -- one bounded band at a time, the decoded
  *      page never resident whole -- into an SDRAM memstore.
  *   3. Serve the atlas through a deliberately small (4-cell) ``ra8_tile_cache``
  *      so a viewport spanning more tiles than the cache holds forces LRU
@@ -53,13 +53,13 @@
 #include "ra8_io_i2c_bus.h"
 #include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_isr.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "ra8_mstp.h"
 #include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_sdramc.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
 #include "ra8_time.h"
 #include "ra8_touch.h"
 
@@ -80,7 +80,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum mg_atlas_t
- * @brief Tile-atlas produce + cache budget (page geometry rides in the fixture).
+ * @brief JOF produce + cache budget (page geometry rides in the fixture).
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -101,7 +101,7 @@ typedef enum : uint32_t {
 
 /*
  * ::k_mg_work_bytes is DERIVED, never hand-picked: it is exactly
- * `ra8_tileatlas_work_bytes(k_mg_cap_edge, k_mg_cap_edge, k_mg_tile_edge,
+ * `ra8_jof_work_bytes(k_mg_cap_edge, k_mg_cap_edge, k_mg_tile_edge,
  * k_mg_tile_edge)` -- the producer's own worst-case arena requirement for the
  * cap this app advertises, taken at the format's maximum 4 bpp. A round number
  * here is how the advertised cap and the real capability drift apart: a 2 MiB
@@ -113,7 +113,7 @@ typedef enum : uint32_t {
  *     requirement, so raising ::k_mg_cap_edge without re-deriving the arena
  *     fails the build;
  *   - `tests/test_app_ereader_manga.c` asserts the arena against the real
- *     `ra8_tileatlas_work_bytes()` return, which is the exact and
+ *     `ra8_jof_work_bytes()` return, which is the exact and
  *     authoritative check, and runs in CI;
  *   - `mg_build_atlas()` re-checks the same call at boot, so a mismatch that
  *     somehow reaches silicon reports `FAIL atlas` instead of silently
@@ -122,10 +122,10 @@ typedef enum : uint32_t {
  * static_assert can only catch an under-sized arena, never certify a
  * sufficient one -- that is the test's and the boot check's job.
  */
-static_assert((uint64_t)k_mg_work_bytes >= ((uint64_t)k_mg_cap_edge * (uint64_t)k_mg_tile_edge *
-                                            (uint64_t)k_ra8_tileatlas_bpp_max),
+static_assert((uint64_t)k_mg_work_bytes >=
+                ((uint64_t)k_mg_cap_edge * (uint64_t)k_mg_tile_edge * (uint64_t)k_ra8_jof_bpp_max),
               "work arena is below the producer band term for the advertised cap: re-derive "
-              "k_mg_work_bytes from ra8_tileatlas_work_bytes() for k_mg_cap_edge");
+              "k_mg_work_bytes from ra8_jof_work_bytes() for k_mg_cap_edge");
 
 /**
  * @enum mg_fb_t
@@ -176,9 +176,9 @@ static display_handle_t* s_display = nullptr;
 static display_fb_t s_fb;
 
 /** @brief The atlas memstore (sink + pread pair over s_store_buf). */
-static ra8_tileatlas_memstore_t s_store;
+static ra8_jof_memstore_t s_store;
 /** @brief Parsed atlas geometry after produce. */
-static ra8_tileatlas_info_t s_info;
+static ra8_jof_info_t s_info;
 /** @brief Tile-cache state paging the atlas. */
 static ra8_tile_cache_t s_cache;
 /** @brief Decode-on-miss context bound into the cache. */
@@ -365,19 +365,19 @@ static bool mg_build_atlas(void)
    * up until some in-budget source happened to be wide enough or deep enough in
    * bpp to exhaust it; asking the producer for its own requirement up front
    * turns that latent capability lie into a deterministic boot failure. */
-  const uint32_t need = ra8_tileatlas_work_bytes((uint16_t)k_mg_cap_edge,
-                                                 (uint16_t)k_mg_cap_edge,
-                                                 (uint16_t)k_mg_tile_edge,
-                                                 (uint16_t)k_mg_tile_edge);
+  const uint32_t need = ra8_jof_work_bytes((uint16_t)k_mg_cap_edge,
+                                           (uint16_t)k_mg_cap_edge,
+                                           (uint16_t)k_mg_tile_edge,
+                                           (uint16_t)k_mg_tile_edge);
   if ((need == 0U) || (need > (uint32_t)sizeof(s_work))) {
     return false;
   }
   s_png_cursor = (mg_png_cursor_t){.data = k_mg_png, .len = k_mg_png_len, .pos = 0U};
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  s_store      = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull     = mg_png_pull,
     .pull_ctx = &s_png_cursor,
-    .sink     = ra8_tileatlas_memstore_sink,
+    .sink     = ra8_jof_memstore_sink,
     .sink_ctx = &s_store,
     .tile_w   = (uint16_t)k_mg_tile_edge,
     .tile_h   = (uint16_t)k_mg_tile_edge,
@@ -387,25 +387,24 @@ static bool mg_build_atlas(void)
      * the streaming-larger-than-RAM property the tile cache exists for. On the
      * 1 GHz M85 a 64 KiB-tile inflate is microseconds; the cost only shows under
      * the board_sim CPU emulator, where boot still completes well inside budget. */
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec      = (uint8_t)k_ra8_jof_codec_deflate,
     .max_width  = (uint16_t)k_mg_cap_edge,
     .max_height = (uint16_t)k_mg_cap_edge,
     .work       = s_work,
     .work_cap   = sizeof(s_work),
     .webp_work  = nullptr,
   };
-  if (ra8_tileatlas_produce(&cfg, &s_info) != k_ra8_ok) {
+  if (ra8_jof_produce(&cfg, &s_info) != k_ra8_ok) {
     return false;
   }
-  return ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &s_store, s_store.len, &s_info) ==
-         k_ra8_ok;
+  return ra8_jof_parse(ra8_jof_memstore_pread, &s_store, s_store.len, &s_info) == k_ra8_ok;
 }
 
 /** @brief Wire the tile cache (decode-on-miss = read_tile) over the atlas. */
 static bool mg_setup_cache(void)
 {
   s_tile_src = (mg_tile_src_t){.info        = &s_info,
-                               .pread       = ra8_tileatlas_memstore_pread,
+                               .pread       = ra8_jof_memstore_pread,
                                .pread_ctx   = &s_store,
                                .scratch     = s_scratch,
                                .scratch_cap = (uint32_t)sizeof(s_scratch)};

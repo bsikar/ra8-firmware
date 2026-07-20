@@ -7,7 +7,7 @@
  * as a 6x8 grid of 256px tiles. Each tile is a distinct solid gray with a
  * black inner frame and a big blocky "C<col>R<row>" label, so panning the
  * viewport across the page visibly changes which labels are on screen. The
- * page is the source ra8_tileatlas_produce() transcodes into a JOF atlas
+ * page is the source ra8_jof_produce() transcodes into a JOF atlas
  * at boot; it decodes to identical pixels on host, board_sim and silicon.
  *
  * Regenerate: python3 scripts/utils/gen_manga_page_fixture.py

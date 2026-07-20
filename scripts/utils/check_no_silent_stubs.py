@@ -11,8 +11,8 @@ fails at runtime (or, worse, silently succeeds having done nothing).
 
 ``tools/ra8_fmt/webp_stub.c`` and ``tools/media_dl/webp_stub.c`` were the
 motivating case.  Each defined the real symbol
-``ra8_ta_priv_webp_transcode()``, discarded both arguments and returned
-``k_ra8_err_not_supported`` -- purely so the tile-atlas producer would link
+``ra8_jof_priv_webp_transcode()``, discarded both arguments and returned
+``k_ra8_err_not_supported`` -- purely so the JOF producer would link
 without compiling the vendored libwebp decoder.  A complete WebP decoder was
 already vendored, wrapped, tested and fuzzed in this very repository; the tools
 just were not compiling it.  Both tools shipped a WebP feature that could never

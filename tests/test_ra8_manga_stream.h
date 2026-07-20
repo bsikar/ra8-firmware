@@ -16,7 +16,7 @@
  *   ra8_tile_cache (LRU, decoded bands)          <- Layer 3b (#231)
  *     |  miss -> decode
  *     v
- *   ra8_tileatlas_read_tile (real JOF reader)   <- the #231/#289 band format
+ *   ra8_jof_read_tile (real JOF reader)   <- the #231/#289 band format
  *     |  pread
  *     v
  *   ra8_vmem_stream_read (byte stream)           <- Layer 2 helper (#151)
@@ -57,9 +57,9 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_jof.h"
 #include "ra8_keycache.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 #include "ra8_vmem.h"
 #include "ra8_vmem_stream.h"
 #include "ra8_vsource.h"
@@ -96,18 +96,17 @@ static_assert((uint32_t)k_mg_payload ==
               "payload must equal tile_w * tile_h * bpp");
 static_assert((uint32_t)k_mg_bands == (uint32_t)k_mg_img_h / (uint32_t)k_mg_tile_h,
               "band count must equal img_h / tile_h");
-static_assert((uint32_t)k_mg_index_off == (uint32_t)k_ra8_tileatlas_hdr_bytes +
-                                            ((uint32_t)k_mg_bands * (uint32_t)k_mg_payload),
+static_assert((uint32_t)k_mg_index_off ==
+                (uint32_t)k_ra8_jof_hdr_bytes + ((uint32_t)k_mg_bands * (uint32_t)k_mg_payload),
               "index_off must trail the header + all band streams");
-static_assert((uint32_t)k_mg_index_len ==
-                (uint32_t)k_mg_bands * (uint32_t)k_ra8_tileatlas_index_entry,
+static_assert((uint32_t)k_mg_index_len == (uint32_t)k_mg_bands * (uint32_t)k_ra8_jof_index_entry,
               "index_len must be bands * index-entry size");
 static_assert((uint32_t)k_mg_atlas_size == (uint32_t)k_mg_index_off + (uint32_t)k_mg_index_len +
-                                             (uint32_t)k_ra8_tileatlas_footer_bytes,
+                                             (uint32_t)k_ra8_jof_footer_bytes,
               "atlas size must be index_off + index + footer");
-static_assert((uint32_t)k_mg_img_h <= (uint32_t)k_ra8_tileatlas_max_dim,
+static_assert((uint32_t)k_mg_img_h <= (uint32_t)k_ra8_jof_max_dim,
               "strip height must be within the JOF dimension cap");
-static_assert((uint32_t)k_mg_bands <= (uint32_t)k_ra8_tileatlas_max_tiles,
+static_assert((uint32_t)k_mg_bands <= (uint32_t)k_ra8_jof_max_tiles,
               "band count must be within the JOF tile cap");
 
 /**
@@ -185,9 +184,9 @@ typedef enum : uint32_t {
 } t_mg_probe_t;
 
 /** @brief JOF header magic ("JOF1"). */
-static const uint8_t s_mg_magic_hdr[k_ra8_tileatlas_magic_len] = {'J', 'O', 'F', '1'};
+static const uint8_t s_mg_magic_hdr[k_ra8_jof_magic_len] = {'J', 'O', 'F', '1'};
 /** @brief JOF footer magic ("JOFE"). */
-static const uint8_t s_mg_magic_ftr[k_ra8_tileatlas_magic_len] = {'J', 'O', 'F', 'E'};
+static const uint8_t s_mg_magic_ftr[k_ra8_jof_magic_len] = {'J', 'O', 'F', 'E'};
 
 /* --- Fixed-budget cache storage (the asserted RAM high-water). ------------- */
 
@@ -229,14 +228,14 @@ typedef struct {
  * @brief Tile-cache decode context: the stream + the shared parsed geometry.
  *
  * @details All atlases share one geometry, so the tile decoder reuses a single
- *          parsed ::ra8_tileatlas_info_t and derives each atlas's base offset
+ *          parsed ::ra8_jof_info_t and derives each atlas's base offset
  *          from the tile key's `image_id` (the page/atlas index).
  *
  * @since 0.1.0
  */
 typedef struct {
-  ra8_vmem_stream_t*          st;   /**< Volume byte stream.           */
-  const ra8_tileatlas_info_t* info; /**< Shared parsed atlas geometry. */
+  ra8_vmem_stream_t*    st;   /**< Volume byte stream.           */
+  const ra8_jof_info_t* info; /**< Shared parsed atlas geometry. */
 } t_mg_decode_ctx_t;
 
 /**
@@ -314,7 +313,7 @@ static uint8_t t_mg_le_byte(uint32_t v, uint32_t j)
  * @return The header byte at @p off.
  * @retval 0-255 The assembled header byte (0 for reserved positions).
  *
- * @pre `off < k_ra8_tileatlas_hdr_bytes`.
+ * @pre `off < k_ra8_jof_hdr_bytes`.
  * @pre The geometry enums match the parsed atlas.
  * @post No state is modified.
  * @post The bytes reproduce a valid JOF header for this geometry.
@@ -324,30 +323,30 @@ static uint8_t t_mg_le_byte(uint32_t v, uint32_t j)
  */
 static uint8_t t_mg_hdr_byte(uint32_t off)
 {
-  if (off < (uint32_t)k_ra8_tileatlas_magic_len) {
+  if (off < (uint32_t)k_ra8_jof_magic_len) {
     return s_mg_magic_hdr[off];
   }
-  if (off < (uint32_t)k_ra8_tileatlas_ofs_height) {
-    return t_mg_le_byte((uint32_t)k_mg_img_w, off - (uint32_t)k_ra8_tileatlas_ofs_width);
+  if (off < (uint32_t)k_ra8_jof_ofs_height) {
+    return t_mg_le_byte((uint32_t)k_mg_img_w, off - (uint32_t)k_ra8_jof_ofs_width);
   }
-  if (off < (uint32_t)k_ra8_tileatlas_ofs_tile_w) {
-    return t_mg_le_byte((uint32_t)k_mg_img_h, off - (uint32_t)k_ra8_tileatlas_ofs_height);
+  if (off < (uint32_t)k_ra8_jof_ofs_tile_w) {
+    return t_mg_le_byte((uint32_t)k_mg_img_h, off - (uint32_t)k_ra8_jof_ofs_height);
   }
-  if (off < (uint32_t)k_ra8_tileatlas_ofs_tile_h) {
-    return t_mg_le_byte((uint32_t)k_mg_tile_w, off - (uint32_t)k_ra8_tileatlas_ofs_tile_w);
+  if (off < (uint32_t)k_ra8_jof_ofs_tile_h) {
+    return t_mg_le_byte((uint32_t)k_mg_tile_w, off - (uint32_t)k_ra8_jof_ofs_tile_w);
   }
-  if (off < (uint32_t)k_ra8_tileatlas_ofs_bpp) {
-    return t_mg_le_byte((uint32_t)k_mg_tile_h, off - (uint32_t)k_ra8_tileatlas_ofs_tile_h);
+  if (off < (uint32_t)k_ra8_jof_ofs_bpp) {
+    return t_mg_le_byte((uint32_t)k_mg_tile_h, off - (uint32_t)k_ra8_jof_ofs_tile_h);
   }
-  if (off == (uint32_t)k_ra8_tileatlas_ofs_bpp) {
+  if (off == (uint32_t)k_ra8_jof_ofs_bpp) {
     return (uint8_t)k_mg_bpp;
   }
-  if (off == (uint32_t)k_ra8_tileatlas_ofs_codec) {
-    return (uint8_t)k_ra8_tileatlas_codec_raw;
+  if (off == (uint32_t)k_ra8_jof_ofs_codec) {
+    return (uint8_t)k_ra8_jof_codec_raw;
   }
-  if ((off >= (uint32_t)k_ra8_tileatlas_ofs_tile_count) &&
-      (off < ((uint32_t)k_ra8_tileatlas_ofs_tile_count + (uint32_t)sizeof(uint32_t)))) {
-    return t_mg_le_byte((uint32_t)k_mg_bands, off - (uint32_t)k_ra8_tileatlas_ofs_tile_count);
+  if ((off >= (uint32_t)k_ra8_jof_ofs_tile_count) &&
+      (off < ((uint32_t)k_ra8_jof_ofs_tile_count + (uint32_t)sizeof(uint32_t)))) {
+    return t_mg_le_byte((uint32_t)k_mg_bands, off - (uint32_t)k_ra8_jof_ofs_tile_count);
   }
   return 0U; /* reserved runs at ofs_reserved and ofs_reserved2 */
 }
@@ -364,7 +363,7 @@ static uint8_t t_mg_hdr_byte(uint32_t off)
  * @return The index-entry byte.
  * @retval 0-255 The assembled offset/length byte.
  *
- * @pre `n < k_mg_bands` and `j < k_ra8_tileatlas_index_entry`.
+ * @pre `n < k_mg_bands` and `j < k_ra8_jof_index_entry`.
  * @pre The generator matches the tile-stream placement.
  * @post No state is modified.
  * @post The entry points at `[32 + n*payload, +payload)`.
@@ -374,11 +373,11 @@ static uint8_t t_mg_hdr_byte(uint32_t off)
  */
 static uint8_t t_mg_idx_byte(uint32_t n, uint32_t j)
 {
-  if (j < (uint32_t)k_ra8_tileatlas_idx_ofs_length) {
-    const uint32_t toff = (uint32_t)k_ra8_tileatlas_hdr_bytes + (n * (uint32_t)k_mg_payload);
-    return t_mg_le_byte(toff, j - (uint32_t)k_ra8_tileatlas_idx_ofs_offset);
+  if (j < (uint32_t)k_ra8_jof_idx_ofs_length) {
+    const uint32_t toff = (uint32_t)k_ra8_jof_hdr_bytes + (n * (uint32_t)k_mg_payload);
+    return t_mg_le_byte(toff, j - (uint32_t)k_ra8_jof_idx_ofs_offset);
   }
-  return t_mg_le_byte((uint32_t)k_mg_payload, j - (uint32_t)k_ra8_tileatlas_idx_ofs_length);
+  return t_mg_le_byte((uint32_t)k_mg_payload, j - (uint32_t)k_ra8_jof_idx_ofs_length);
 }
 
 /**
@@ -392,7 +391,7 @@ static uint8_t t_mg_idx_byte(uint32_t n, uint32_t j)
  * @return The footer byte.
  * @retval 0-255 The assembled footer byte.
  *
- * @pre `off < k_ra8_tileatlas_footer_bytes`.
+ * @pre `off < k_ra8_jof_footer_bytes`.
  * @pre The geometry enums match the parsed atlas.
  * @post No state is modified.
  * @post The footer closes a valid JOF atlas of this geometry.
@@ -402,16 +401,16 @@ static uint8_t t_mg_idx_byte(uint32_t n, uint32_t j)
  */
 static uint8_t t_mg_ftr_byte(uint32_t off)
 {
-  if (off < (uint32_t)k_ra8_tileatlas_ftr_tile_count) {
-    return t_mg_le_byte((uint32_t)k_mg_index_off, off - (uint32_t)k_ra8_tileatlas_ftr_index_off);
+  if (off < (uint32_t)k_ra8_jof_ftr_tile_count) {
+    return t_mg_le_byte((uint32_t)k_mg_index_off, off - (uint32_t)k_ra8_jof_ftr_index_off);
   }
-  if (off < (uint32_t)k_ra8_tileatlas_ftr_total_size) {
-    return t_mg_le_byte((uint32_t)k_mg_bands, off - (uint32_t)k_ra8_tileatlas_ftr_tile_count);
+  if (off < (uint32_t)k_ra8_jof_ftr_total_size) {
+    return t_mg_le_byte((uint32_t)k_mg_bands, off - (uint32_t)k_ra8_jof_ftr_tile_count);
   }
-  if (off < (uint32_t)k_ra8_tileatlas_ftr_magic) {
-    return t_mg_le_byte((uint32_t)k_mg_atlas_size, off - (uint32_t)k_ra8_tileatlas_ftr_total_size);
+  if (off < (uint32_t)k_ra8_jof_ftr_magic) {
+    return t_mg_le_byte((uint32_t)k_mg_atlas_size, off - (uint32_t)k_ra8_jof_ftr_total_size);
   }
-  return s_mg_magic_ftr[off - (uint32_t)k_ra8_tileatlas_ftr_magic];
+  return s_mg_magic_ftr[off - (uint32_t)k_ra8_jof_ftr_magic];
 }
 
 /**
@@ -438,19 +437,19 @@ static uint8_t t_mg_vol_byte(uint64_t abs)
 {
   const uint64_t k     = abs / (uint64_t)k_mg_atlas_size;
   const uint32_t local = (uint32_t)(abs - (k * (uint64_t)k_mg_atlas_size));
-  if (local < (uint32_t)k_ra8_tileatlas_hdr_bytes) {
+  if (local < (uint32_t)k_ra8_jof_hdr_bytes) {
     return t_mg_hdr_byte(local);
   }
   if (local < (uint32_t)k_mg_index_off) {
-    const uint32_t rel  = local - (uint32_t)k_ra8_tileatlas_hdr_bytes;
+    const uint32_t rel  = local - (uint32_t)k_ra8_jof_hdr_bytes;
     const uint32_t band = rel / (uint32_t)k_mg_payload;
     const uint32_t i    = rel - (band * (uint32_t)k_mg_payload);
     return t_mg_payload_byte(k, band, i);
   }
   if (local < ((uint32_t)k_mg_index_off + (uint32_t)k_mg_index_len)) {
     const uint32_t rel = local - (uint32_t)k_mg_index_off;
-    const uint32_t n   = rel / (uint32_t)k_ra8_tileatlas_index_entry;
-    const uint32_t j   = rel - (n * (uint32_t)k_ra8_tileatlas_index_entry);
+    const uint32_t n   = rel / (uint32_t)k_ra8_jof_index_entry;
+    const uint32_t j   = rel - (n * (uint32_t)k_ra8_jof_index_entry);
     return t_mg_idx_byte(n, j);
   }
   return t_mg_ftr_byte(local - ((uint32_t)k_mg_index_off + (uint32_t)k_mg_index_len));
@@ -515,7 +514,7 @@ static ra8_err_t t_mg_atlas_pread(void* ctx, uint64_t offset, uint8_t* buf, size
  * @brief Tile-cache decode-on-miss: decode one band through the real JOF reader.
  *
  * @details Derives the atlas base from the tile key's `image_id` (page index)
- *          and reads the band (tile row) with ::ra8_tileatlas_read_tile over the
+ *          and reads the band (tile row) with ::ra8_jof_read_tile over the
  *          page-cache byte stream. Raw codec, so no deflate scratch is needed.
  *
  * @param[in]  ctx        A ::t_mg_decode_ctx_t (stream + shared geometry).
@@ -547,17 +546,17 @@ static ra8_err_t t_mg_tile_decode(void*                 ctx,
   const t_mg_decode_ctx_t* dc = (const t_mg_decode_ctx_t*)ctx;
   t_mg_atlas_pread_t       ap = {.st   = dc->st,
                                  .base = (uint64_t)key->image_id * (uint64_t)k_mg_atlas_size};
-  return ra8_tileatlas_read_tile(t_mg_atlas_pread,
-                                 &ap,
-                                 dc->info,
-                                 key->tile_x,
-                                 key->tile_y,
-                                 nullptr,
-                                 0U,
-                                 cell,
-                                 cell_bytes,
-                                 out_w,
-                                 out_h);
+  return ra8_jof_read_tile(t_mg_atlas_pread,
+                           &ap,
+                           dc->info,
+                           key->tile_x,
+                           key->tile_y,
+                           nullptr,
+                           0U,
+                           cell,
+                           cell_bytes,
+                           out_w,
+                           out_h);
 }
 
 /** @brief Count resident (valid) page-cache frames -- the raw residency probe. */
@@ -683,11 +682,10 @@ static void t_mg_touch_band(ra8_tile_cache_t* tc, uint32_t page, uint32_t band, 
  *
  * @since 0.1.0
  */
-static void t_mg_open_page(ra8_vmem_stream_t* st, uint32_t page, ra8_tileatlas_info_t* info)
+static void t_mg_open_page(ra8_vmem_stream_t* st, uint32_t page, ra8_jof_info_t* info)
 {
   t_mg_atlas_pread_t ap = {.st = st, .base = (uint64_t)page * (uint64_t)k_mg_atlas_size};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_tileatlas_parse(t_mg_atlas_pread, &ap, (uint64_t)k_mg_atlas_size, info));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_parse(t_mg_atlas_pread, &ap, (uint64_t)k_mg_atlas_size, info));
   TEST_ASSERT_EQ(k_mg_img_w, info->width);
   TEST_ASSERT_EQ(k_mg_img_h, info->height);
   TEST_ASSERT_EQ(k_mg_bands, info->tile_count);
@@ -724,15 +722,15 @@ static void t_mg_open_page(ra8_vmem_stream_t* st, uint32_t page, ra8_tileatlas_i
  *
  * @since 0.1.0
  */
-static uint64_t t_mg_setup(uint32_t              atlas_count,
-                           uint8_t               protected_pct,
-                           ra8_vsource_t*        vs,
-                           ra8_vsource_obj_t*    objs,
-                           ra8_vmem_t*           vm,
-                           ra8_vmem_stream_t*    st,
-                           ra8_tile_cache_t*     tc,
-                           t_mg_decode_ctx_t*    dc,
-                           ra8_tileatlas_info_t* info)
+static uint64_t t_mg_setup(uint32_t           atlas_count,
+                           uint8_t            protected_pct,
+                           ra8_vsource_t*     vs,
+                           ra8_vsource_obj_t* objs,
+                           ra8_vmem_t*        vm,
+                           ra8_vmem_stream_t* st,
+                           ra8_tile_cache_t*  tc,
+                           t_mg_decode_ctx_t* dc,
+                           ra8_jof_info_t*    info)
 {
   const uint64_t vol = (uint64_t)atlas_count * (uint64_t)k_mg_atlas_size;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(vs, objs, 1U));

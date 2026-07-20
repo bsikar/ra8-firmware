@@ -1,9 +1,9 @@
 /**
- * @file ra8_tileatlas_png.c
+ * @file ra8_jof_png.c
  * @brief Streaming PNG scanline decoder for the transcode producer (#231).
  *
  * @details
- * Implements `ra8_ta_priv_png_rows()`: a bounded-RAM, pull-based PNG decoder
+ * Implements `ra8_jof_priv_png_rows()`: a bounded-RAM, pull-based PNG decoder
  * that never holds the whole image. IDAT deflate data inflates through
  * miniz `tinfl` into a 64 KiB power-of-two ring (the LZ dictionary), bytes
  * drain into a single scanline assembly buffer, each completed scanline is
@@ -32,12 +32,12 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_jof_internal.h"
+#include "ra8_jof_png_internal.h"
 #include "ra8_log.h"
-#include "ra8_tileatlas_internal.h"
-#include "ra8_tileatlas_png_internal.h"
 
 /** @brief Module log tag. */
-static const char* const s_tag = "ra8_ta_png";
+static const char* const s_tag = "ra8_jof_png";
 
 /** @brief Module-static decode state (decoder documented not thread-safe). */
 static ra8_png_state_t s_png;
@@ -277,7 +277,7 @@ static ra8_err_t png_consume_rows(ra8_png_state_t* st, const uint8_t* src, uint3
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t png_bind_geometry(ra8_png_state_t* st, ra8_ta_bump_t* bump)
+static ra8_err_t png_bind_geometry(ra8_png_state_t* st, ra8_jof_bump_t* bump)
 {
   if (st->color_type == (uint8_t)k_ra8_png_color_pal) {
     if (st->has_plte == 0U) {
@@ -298,12 +298,12 @@ static ra8_err_t png_bind_geometry(ra8_png_state_t* st, ra8_ta_bump_t* bump)
   st->rowlen = 1U + ((uint32_t)st->w * (uint32_t)st->src_ch);
   /* The bump allocator returns 8-byte-aligned void* carves, which satisfies
    * the inflate context's alignment. */
-  st->inflator = (tinfl_decompressor*)ra8_ta_priv_bump_take(bump, sizeof(tinfl_decompressor));
-  st->ring     = ra8_ta_priv_bump_take(bump, (size_t)k_ra8_png_ring_bytes);
-  st->inbuf    = ra8_ta_priv_bump_take(bump, (size_t)k_ra8_png_inbuf_bytes);
-  st->rowbuf   = ra8_ta_priv_bump_take(bump, (size_t)st->rowlen);
-  st->prevrow  = ra8_ta_priv_bump_take(bump, (size_t)(st->rowlen - 1U));
-  st->xlat     = ra8_ta_priv_bump_take(bump, (size_t)st->w * (size_t)st->dst_ch);
+  st->inflator = (tinfl_decompressor*)ra8_jof_priv_bump_take(bump, sizeof(tinfl_decompressor));
+  st->ring     = ra8_jof_priv_bump_take(bump, (size_t)k_ra8_png_ring_bytes);
+  st->inbuf    = ra8_jof_priv_bump_take(bump, (size_t)k_ra8_png_inbuf_bytes);
+  st->rowbuf   = ra8_jof_priv_bump_take(bump, (size_t)st->rowlen);
+  st->prevrow  = ra8_jof_priv_bump_take(bump, (size_t)(st->rowlen - 1U));
+  st->xlat     = ra8_jof_priv_bump_take(bump, (size_t)st->w * (size_t)st->dst_ch);
   if ((st->inflator == nullptr) || (st->ring == nullptr) || (st->inbuf == nullptr) ||
       (st->rowbuf == nullptr) || (st->prevrow == nullptr) || (st->xlat == nullptr)) {
     return k_ra8_err_invalid_size;
@@ -341,7 +341,7 @@ static ra8_err_t png_refill_input(ra8_png_state_t* st, uint32_t* out_avail)
       const uint32_t  take = (st->idat_rem < (uint32_t)k_ra8_png_inbuf_bytes)
                                ? st->idat_rem
                                : (uint32_t)k_ra8_png_inbuf_bytes;
-      const ra8_err_t err  = ra8_ta_png_priv_pull_exact(st, st->inbuf, take);
+      const ra8_err_t err  = ra8_jof_png_priv_pull_exact(st, st->inbuf, take);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -350,13 +350,13 @@ static ra8_err_t png_refill_input(ra8_png_state_t* st, uint32_t* out_avail)
       return k_ra8_ok;
     }
     /* Current IDAT exhausted: skip its CRC, look at the next chunk. */
-    ra8_err_t err = ra8_ta_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
+    ra8_err_t err = ra8_jof_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
     if (err != k_ra8_ok) {
       return err;
     }
     uint32_t len  = 0U;
     uint32_t type = 0U;
-    err           = ra8_ta_png_priv_chunk_hdr(st, &len, &type);
+    err           = ra8_jof_png_priv_chunk_hdr(st, &len, &type);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -518,7 +518,7 @@ static ra8_err_t png_inflate_idat(ra8_png_state_t* st, uint32_t first_len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t png_run_idat(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint32_t len)
+static ra8_err_t png_run_idat(ra8_png_state_t* st, ra8_jof_bump_t* bump, uint32_t len)
 {
   ra8_err_t err = png_bind_geometry(st, bump);
   if (err != k_ra8_ok) {
@@ -528,7 +528,7 @@ static ra8_err_t png_run_idat(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint32_t
   if (err != k_ra8_ok) {
     return err;
   }
-  return ra8_ta_png_priv_finish(st);
+  return ra8_jof_png_priv_finish(st);
 }
 
 /**
@@ -552,23 +552,23 @@ static ra8_err_t png_run_idat(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint32_t
  */
 RA8_INTERNAL
 static ra8_err_t
-png_walk_chunks(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint16_t max_w, uint16_t max_h)
+png_walk_chunks(ra8_png_state_t* st, ra8_jof_bump_t* bump, uint16_t max_w, uint16_t max_h)
 {
-  ra8_err_t err = ra8_ta_png_priv_prologue(st, max_w, max_h);
+  ra8_err_t err = ra8_jof_png_priv_prologue(st, max_w, max_h);
   if (err != k_ra8_ok) {
     return err;
   }
   for (uint32_t guard = 0U; guard < (uint32_t)k_ra8_png_max_chunks; guard++) {
     uint32_t len  = 0U;
     uint32_t type = 0U;
-    err           = ra8_ta_png_priv_chunk_hdr(st, &len, &type);
+    err           = ra8_jof_png_priv_chunk_hdr(st, &len, &type);
     if (err != k_ra8_ok) {
       return err;
     }
     if (type == (uint32_t)k_ra8_png_type_idat) {
       return png_run_idat(st, bump, len);
     }
-    err = ra8_ta_png_priv_pre_idat(st, len, type);
+    err = ra8_jof_png_priv_pre_idat(st, len, type);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -576,14 +576,14 @@ png_walk_chunks(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint16_t max_w, uint16
   return k_ra8_err_protocol_error; /* chunk budget exhausted (hostile) */
 }
 
-RA8_PRIV ra8_err_t ra8_ta_priv_png_rows(ra8_tileatlas_pull_fn pull,
-                                        void*                 pull_ctx,
-                                        ra8_ta_bump_t*        bump,
-                                        uint16_t              max_w,
-                                        uint16_t              max_h,
-                                        ra8_ta_geom_fn        on_geom,
-                                        ra8_ta_rows_fn        on_rows,
-                                        void*                 cb_ctx)
+RA8_PRIV ra8_err_t ra8_jof_priv_png_rows(ra8_jof_pull_fn pull,
+                                         void*           pull_ctx,
+                                         ra8_jof_bump_t* bump,
+                                         uint16_t        max_w,
+                                         uint16_t        max_h,
+                                         ra8_jof_geom_fn on_geom,
+                                         ra8_jof_rows_fn on_rows,
+                                         void*           cb_ctx)
 {
   RA8_CHECK_NULL_PTR(pull, s_tag, "pull must not be nullptr");
   RA8_CHECK_NULL_PTR(bump, s_tag, "bump must not be nullptr");

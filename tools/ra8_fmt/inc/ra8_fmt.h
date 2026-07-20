@@ -34,7 +34,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
- * @see ra8_tileatlas.h  The band-tile atlas this tool was first built to debug.
+ * @see ra8_jof.h  The band-tile atlas this tool was first built to debug.
  * @since 0.1.0
  */
 
@@ -55,7 +55,7 @@
  *          before eliding, so dumping a 65536-tile atlas cannot flood a
  *          terminal.
  *
- * @invariant `k_ra8_fmt_max_dump_rows <= k_ra8_tileatlas_max_tiles`.
+ * @invariant `k_ra8_fmt_max_dump_rows <= k_ra8_jof_max_tiles`.
  * @since 0.1.0
  */
 typedef enum : uint32_t {

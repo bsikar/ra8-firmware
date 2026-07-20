@@ -2,7 +2,7 @@
 
 This section specifies every **first-party binary format** this firmware
 produces or consumes. It exists because the code alone is a poor teacher: you
-can read `ra8_tileatlas_parse()` and learn *what* the bytes are without ever
+can read `ra8_jof_parse()` and learn *what* the bytes are without ever
 learning *why* they are arranged that way, and the "why" is where all the
 device constraints live.
 
@@ -35,7 +35,7 @@ artifact, and only earns an entry here).
 
 | Magic | Format | Home | Producer | Specification |
 |-------|--------|------|----------|---------------|
-| `JOF1` / `JOFE` | Jump-Offset band-tile atlas | `libs/ra8_tileatlas` | `ra8_tileatlas_produce()`, `ra8_fmt convert` | @ref md_docs_2formats_2JOF |
+| `JOF1` / `JOFE` | Jump-Offset band-tile atlas | `libs/ra8_jof` | `ra8_jof_produce()`, `ra8_fmt convert` | @ref md_docs_2formats_2JOF |
 | `RBKC` | Chunked `.rabook` container | `libs/ra8_book` | `tools/epub_compile` | @ref md_docs_2formats_2RBKC |
 | `RCBZ` | Per-page comic container | `libs/ra8_book` | `tools/epub_compile/cbz_container.py` | @ref md_docs_2formats_2RCBZ |
 | `NPU1` | `.npub` Ethos-U55 model container | `libs/ra8_hal` | `tools/vela/vela_gen.py` | @ref md_docs_2formats_2NPU1 |

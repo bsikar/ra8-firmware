@@ -124,12 +124,12 @@ behind a Cloudflare JS challenge will not work (no challenge solver yet).
 | `cbt.xz` | tar, then the external `xz` CLI (CRC32 check, 1 MiB dict) | `xz` on PATH |
 | `cbr` | the external `rar` CLI | `rar` on PATH |
 | `epub` | a valid EPUB3 of the pages via vendored miniz (`ra8_epub` opens it) | nothing |
-| `jof` | per-page native JOF tile atlas via the firmware `ra8_tileatlas` producer -- a full-width column (`tile_w == width`) the `ra8_longstrip` engine opens directly | nothing |
+| `jof` | per-page native JOF tile atlas via the firmware `ra8_jof` producer -- a full-width column (`tile_w == width`) the `ra8_longstrip` engine opens directly | nothing |
 | `rabook` | build a CBZ, then `tools/epub_compile/cbz_compile.py` -> the RBKC `.rabook` | `python3` + Pillow |
 
 `cbz`/`cbt`/`cbt.gz`/`epub`/`jof` are fully self-contained (in-tree/vendored
 code, no system library or external process): `epub` is hand-built with miniz,
-and `jof` reuses the firmware's own `ra8_tileatlas_produce` host-side, so a
+and `jof` reuses the firmware's own `ra8_jof_produce` host-side, so a
 `.jof` the CLI writes is byte-identical to one the RA8 produces (webtoon
 column). `cbt.xz` / `cbr` / `rabook` are optional -- they shell out to `xz` /
 `rar` / `python3` only when producing that format and report clearly if the tool
