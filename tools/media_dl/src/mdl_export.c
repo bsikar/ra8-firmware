@@ -22,7 +22,7 @@
  * its own translation unit rather than widening this one's dependencies. This
  * file still dispatches to it, via mdl_export_jof() in mdl_export_internal.h.
  */
-/* glibc gates posix_spawn_file_actions_addchdir_np() and `environ` behind
+/* glibc gates its posix_spawn chdir file-action and `environ` behind
  * _GNU_SOURCE. It is defined by the build (tools/media_dl/CMakeLists.txt and
  * the tools pass of scripts/clang_tidy.sh) rather than here, because a
  * feature-test macro only works if it precedes EVERY system header -- including
@@ -172,6 +172,40 @@ RA8_INTERNAL static char* const* spawn_environ(void)
 #else
   /* Declared by <unistd.h> under _GNU_SOURCE, which the build defines. */
   return environ;
+#endif
+}
+
+/**
+ * @brief Set a spawn file-actions' working directory, whichever spelling exists.
+ *
+ * @details `posix_spawn_file_actions_addchdir()` is POSIX.1-2024. macOS 26
+ *          provides it and marks the older `_np` name deprecated; glibc 2.36
+ *          provides only `_np` and does not declare the standard name. The
+ *          build probes for the standard spelling (see this tool's
+ *          CMakeLists.txt) and defines MDL_HAVE_POSIX_SPAWN_ADDCHDIR when it
+ *          is present, so one source serves both without a platform guess.
+ *
+ * @param[in,out] actions Initialised file-actions object to extend.
+ * @param[in]     dir     Directory the spawned child starts in (non-NULL).
+ *
+ * @return 0 on success, else an errno value from the underlying call.
+ * @retval 0 The chdir action was appended.
+ *
+ * @pre @p actions has been through posix_spawn_file_actions_init().
+ * @pre @p dir is a NUL-terminated path.
+ * @post On success @p actions carries a chdir to @p dir.
+ * @post @p dir is not retained beyond the call.
+ *
+ * @note Thread-safe: operates only on the caller's @p actions.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int spawn_addchdir(posix_spawn_file_actions_t* actions, const char* dir)
+{
+#ifdef MDL_HAVE_POSIX_SPAWN_ADDCHDIR
+  return posix_spawn_file_actions_addchdir(actions, dir);
+#else
+  return posix_spawn_file_actions_addchdir_np(actions, dir);
 #endif
 }
 
@@ -414,10 +448,7 @@ RA8_INTERNAL static ra8_err_t export_cbr(const char* dir, const char* out_path)
 {
   posix_spawn_file_actions_t actions;
   (void)posix_spawn_file_actions_init(&actions);
-  /* The _np spelling is the portable one in practice: glibc ships only this
-   * form (behind _GNU_SOURCE) and macOS ships both, whereas the unsuffixed
-   * POSIX.1-2024 name does not exist on glibc at all. */
-  (void)posix_spawn_file_actions_addchdir_np(&actions, dir);
+  (void)spawn_addchdir(&actions, dir);
   const char* const argv[] = {"rar", "a", "-ep1", "-idq", out_path, ".", nullptr};
   pid_t             pid    = 0;
   const int         rc =
