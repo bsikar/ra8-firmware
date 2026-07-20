@@ -97,6 +97,15 @@ if [[ "${GATE_MODE}" -eq 1 ]]; then
   OVERRIDES+=$'GRAPHICAL_HIERARCHY=NO\nDIRECTORY_GRAPH=NO\n'
 fi
 
+# Start from an empty output tree. Doxygen overwrites what it regenerates but
+# never removes what it no longer produces, so a rebuild at a different base
+# leaves orphan pages and orphan dot_inline_dotgraph_*.svg files behind. Anything
+# that reads this directory to decide whether the docs are correct -- notably
+# check_doc_diagrams.py -- would then be measuring a mixture of two builds, and
+# leftover renders can just as easily mask a diagram the current tree drops as
+# invent one it does not. Cleaning here makes "what is in this directory" mean
+# exactly "what this build produced".
+rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
 cd "${ROOT_DIR}"
 
@@ -128,6 +137,13 @@ if [[ ! -f "${INDEX_HTML}" ]]; then
   echo "build_docs.sh: ERROR -- expected ${INDEX_HTML} was not produced." >&2
   exit 1
 fi
+
+# Record which authored diagram set this build rendered. check_doc_diagrams.py
+# compares the fingerprint back against the working tree and refuses to judge
+# output it cannot attribute to the tree under test, so a half-stale directory
+# reports "rebuild" instead of an invented count mismatch -- or, worse, a pass
+# built on an orphan render.
+python3 "${SCRIPT_DIR}/utils/check_doc_diagrams.py" --write-stamp --html "${OUTPUT_HTML}"
 
 if [[ "${OPEN_AFTER}" -eq 1 ]]; then
   if command -v open >/dev/null 2>&1; then
