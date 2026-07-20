@@ -39,7 +39,7 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ota_cov_mocks_i_a5        = 0xA5U,
+  k_ota_cov_mocks_i_a5 = 0xA5U, /**< XOR key generating the deterministic mock image pattern. */
   k_ota_cov_mocks_nibble_mask = 0x0FU, /**< Low-nibble mask while hex-encoding a digest byte. */
   k_ota_cov_mocks_sig_seed    = 0xC0U, /**< First byte of the synthetic signature ramp.       */
 } ota_cov_mocks_uint8_const_t;
