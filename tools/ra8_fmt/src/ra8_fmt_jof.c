@@ -1,5 +1,5 @@
 /**
- * @file ra8_fmt_atlas.c
+ * @file ra8_fmt_jof.c
  * @brief JOF band-tile atlas verbs for `ra8_fmt`: convert, inspect, verify.
  *
  * @details
@@ -46,25 +46,25 @@
 #include "ra8_jof_produce.h"
 
 /** @brief Module log tag. */
-static const char* const s_tag = "ra8_fmt_atlas";
+static const char* const s_tag = "ra8_fmt_jof";
 
 /**
- * @enum ra8_fmt_atlas_const_t
+ * @enum ra8_fmt_jof_const_t
  * @brief Atlas verb sizing and reporting constants.
- * @details `k_fmt_atlas_band_h` mirrors the band height `tools/media_dl` picks,
+ * @details `k_fmt_jof_band_h` mirrors the band height `tools/media_dl` picks,
  *          so a container this tool produces is byte-comparable with a
  *          downloaded one. The FNV-1a constants hash tile payloads for the
  *          duplicate check.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_fmt_atlas_band_h    = 256U,        /**< Band height, matching media_dl.     */
+  k_fmt_jof_band_h      = 256U,        /**< Band height, matching media_dl.     */
   k_fmt_fnv_offset      = 2166136261U, /**< FNV-1a 32-bit offset basis.         */
   k_fmt_fnv_prime       = 16777619U,   /**< FNV-1a 32-bit prime.                */
   k_fmt_webp_riff_ofs   = 0U,          /**< Offset of the "RIFF" fourCC.        */
   k_fmt_webp_fourcc_ofs = 8U,          /**< Offset of the "WEBP" fourCC.        */
   k_fmt_webp_head_len   = 12U,         /**< Bytes needed to sniff both fourCCs. */
-} ra8_fmt_atlas_const_t;
+} ra8_fmt_jof_const_t;
 
 /** @brief WebP RIFF container tag (source head bytes 0..3). */
 static const uint8_t s_fmt_webp_riff[4] = {'R', 'I', 'F', 'F'}; /* MAGIC-OK: RIFF fourCC */
@@ -88,11 +88,11 @@ static const uint8_t s_fmt_webp_webp[4] = {'W', 'E', 'B', 'P'}; /* MAGIC-OK: WEB
  * @post No state is mutated.
  * @post A false result leaves the JPEG / PNG probes free to claim the source.
  * @note Pure; thread-safe.
- * @see ra8_fmt_atlas_probe()
+ * @see ra8_fmt_jof_probe()
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool ra8_fmt_atlas_is_webp(const ra8_fmt_blob_t* src)
+static bool ra8_fmt_jof_is_webp(const ra8_fmt_blob_t* src)
 {
   if ((src == nullptr) || (src->bytes == nullptr) || (src->len < (size_t)k_fmt_webp_head_len)) {
     return false;
@@ -109,7 +109,7 @@ static bool ra8_fmt_atlas_is_webp(const ra8_fmt_blob_t* src)
  * @details Feeds `ra8_jof_produce()` from a slurped blob rather than a
  *          file, so the same bytes can be replayed for the second encode.
  * @invariant `pos <= len` at all times.
- * @see fmt_atlas_pull()
+ * @see fmt_jof_pull()
  * @since 0.1.0
  */
 typedef struct {
@@ -136,7 +136,7 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t fmt_atlas_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+static ra8_err_t fmt_jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   fmt_pull_ctx_t* s = (fmt_pull_ctx_t*)ctx;
   size_t          n = s->len - s->pos;
@@ -176,15 +176,15 @@ static ra8_err_t fmt_atlas_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t fmt_atlas_carve_webp(const ra8_fmt_blob_t* src,
-                                      uint16_t              max_w,
-                                      uint16_t              max_h,
-                                      uint8_t**             out_work,
-                                      size_t*               out_cap)
+static ra8_err_t fmt_jof_carve_webp(const ra8_fmt_blob_t* src,
+                                    uint16_t              max_w,
+                                    uint16_t              max_h,
+                                    uint8_t**             out_work,
+                                    size_t*               out_cap)
 {
   *out_work = nullptr;
   *out_cap  = 0U;
-  if (!ra8_fmt_atlas_is_webp(src)) {
+  if (!ra8_fmt_jof_is_webp(src)) {
     return k_ra8_ok;
   }
   const uint32_t need = ra8_jof_webp_work_bytes(max_w, max_h, (uint32_t)src->len);
@@ -200,7 +200,7 @@ static ra8_err_t fmt_atlas_carve_webp(const ra8_fmt_blob_t* src,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h)
+ra8_err_t ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
@@ -211,14 +211,14 @@ ra8_err_t ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16
   return ra8_jof_probe_dims(src->bytes, src->len, out_w, out_h);
 }
 
-ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
-                                uint16_t              max_w,
-                                uint16_t              max_h,
-                                uint16_t              tile_w,
-                                uint16_t              tile_h,
-                                uint8_t               codec,
-                                ra8_fmt_blob_t*       out_atlas,
-                                ra8_jof_info_t*       out_info)
+ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
+                              uint16_t              max_w,
+                              uint16_t              max_h,
+                              uint16_t              tile_w,
+                              uint16_t              tile_h,
+                              uint8_t               codec,
+                              ra8_fmt_blob_t*       out_atlas,
+                              ra8_jof_info_t*       out_info)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(out_atlas, s_tag, "out_atlas must not be nullptr");
@@ -230,7 +230,7 @@ ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
   }
   /* The atlas can expand slightly over the source for incompressible input;
    * size the sink from the decoded worst case plus the index and trailer. */
-  const size_t sink_cap = ra8_fmt_atlas_sink_cap(src->len);
+  const size_t sink_cap = ra8_fmt_jof_sink_cap(src->len);
   uint8_t*     work     = (uint8_t*)malloc(work_cap);
   uint8_t*     sink     = (uint8_t*)malloc(sink_cap);
   if ((work == nullptr) || (sink == nullptr)) {
@@ -240,7 +240,7 @@ ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
   }
   uint8_t*        webp_work     = nullptr;
   size_t          webp_work_cap = 0U;
-  const ra8_err_t carve_rc = fmt_atlas_carve_webp(src, max_w, max_h, &webp_work, &webp_work_cap);
+  const ra8_err_t carve_rc      = fmt_jof_carve_webp(src, max_w, max_h, &webp_work, &webp_work_cap);
   if (carve_rc != k_ra8_ok) {
     free(work);
     free(sink);
@@ -248,7 +248,7 @@ ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
   }
   ra8_jof_memstore_t          store = {.buf = sink, .cap = sink_cap, .len = 0U};
   fmt_pull_ctx_t              pull  = {.data = src->bytes, .len = src->len, .pos = 0U};
-  const ra8_jof_produce_cfg_t cfg   = {.pull          = fmt_atlas_pull,
+  const ra8_jof_produce_cfg_t cfg   = {.pull          = fmt_jof_pull,
                                        .pull_ctx      = &pull,
                                        .sink          = ra8_jof_memstore_sink,
                                        .sink_ctx      = &store,
@@ -273,7 +273,7 @@ ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_fmt_atlas_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t ra8_fmt_jof_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
@@ -283,15 +283,15 @@ ra8_err_t ra8_fmt_atlas_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
   }
   uint16_t  w  = 0U;
   uint16_t  h  = 0U;
-  ra8_err_t rc = ra8_fmt_atlas_probe(src, &w, &h);
+  ra8_err_t rc = ra8_fmt_jof_probe(src, &w, &h);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "ra8_fmt: cannot decode source image (rc=%d)\n", (int)rc);
     return rc;
   }
-  const uint16_t band  = (h < (uint16_t)k_fmt_atlas_band_h) ? h : (uint16_t)k_fmt_atlas_band_h;
+  const uint16_t band  = (h < (uint16_t)k_fmt_jof_band_h) ? h : (uint16_t)k_fmt_jof_band_h;
   ra8_fmt_blob_t atlas = {};
   ra8_jof_info_t info  = {};
-  rc = ra8_fmt_atlas_produce(src, w, h, w, band, (uint8_t)k_ra8_jof_codec_deflate, &atlas, &info);
+  rc = ra8_fmt_jof_produce(src, w, h, w, band, (uint8_t)k_ra8_jof_codec_deflate, &atlas, &info);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "ra8_fmt: transcode failed (rc=%d)\n", (int)rc);
     return rc;
@@ -310,7 +310,7 @@ ra8_err_t ra8_fmt_atlas_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
   return rc;
 }
 
-bool ra8_fmt_atlas_sniff(const ra8_fmt_blob_t* src)
+bool ra8_fmt_jof_sniff(const ra8_fmt_blob_t* src)
 {
   return ra8_fmt_magic_is(src, "JOF1"); /* MAGIC-OK: the JOF header fourCC */
 }
