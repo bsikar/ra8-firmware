@@ -43,9 +43,10 @@ select = [
   "EM",        # flake8-errmsg
   # --- added by #360 -------------------------------------------------------
   # A blind `except Exception` in a gate swallows the very failure the gate
-  # exists to report. Measured 9: six were file-read catch-alls now narrowed to
-  # OSError; the remaining three are genuine process boundaries carrying a
-  # reasoned per-line noqa.
+  # exists to report. Measured 9, all resolved: five were file-read catch-alls
+  # now narrowed to OSError (read_text(errors="replace") cannot raise anything
+  # else), and four are genuine thread/RPC boundaries carrying a reasoned
+  # per-line noqa.
   "BLE",
   # Families that measured ZERO findings across all 96 first-party files.
   # Selecting them costs nothing today and closes the defect class for good.
