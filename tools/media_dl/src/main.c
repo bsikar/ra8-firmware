@@ -149,7 +149,9 @@ RA8_INTERNAL static void last_segment(const char* url, char* out, size_t cap)
     const char c  = url[i];
     const bool ok = ((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z')) ||
                     ((c >= '0') && (c <= '9')) || (c == '.') || (c == '-') || (c == '_');
-    out[n]        = ok ? c : '_';
+    /* Both arms are already char-valued; the cast is only undoing the integer
+     * promotion the conditional operator applies to them. */
+    out[n]        = (char)(ok ? c : '_');
     ++n;
   }
   out[n] = '\0';
