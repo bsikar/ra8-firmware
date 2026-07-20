@@ -143,6 +143,67 @@ every push hook).
 
 ---
 
+## Working on the shared verification box
+
+Several agents share one Linux box. Two rules keep them from destroying each
+other's work; both are `make` targets, so neither depends on anyone
+remembering a convention.
+
+### Get your own checkout: `make ws-new`
+
+**Never work directly in `~/ra8-firmware`, and never improvise your own
+checkout.** Improvised trees (`~/ra8-296`, `~/ra8-base`, `~/wt-land296`) are
+exactly how two agents had their working directories clobbered mid-run,
+corrupting a baseline measurement and a SIL run.
+
+```sh
+make ws-new NAME=my-task            # isolated worktree at ~/ra8-ws/my-task
+make ws-new NAME=my-task REF=origin/main   # ...off a different ref
+cd ~/ra8-ws/my-task && make ci      # gates run here, unmodified
+make ws-free NAME=my-task           # give it back when done
+```
+
+`make ws-list` shows what exists, `make ws-doctor` checks the environment
+(container runtime, ccache, disk). Workspaces are linked git worktrees, so they
+cost a checkout rather than a clone and share the object store -- a branch
+committed in one is immediately visible in all of them.
+
+You do not have to clean up: `scripts/agent_workspace.sh reap` runs from a
+systemd timer and again on every `ws-new`, and it refuses to delete a tree that
+is in use, dirty, or holding commits that are not on any remote branch. Build
+output never lands in the workspace at all (the containerised suite builds
+inside a `--rm` container), so there is nothing to `rm -rf` before a coverage
+run.
+
+`make ci` works from a workspace: `scripts/ci.sh` detects a linked worktree and
+bind-mounts the main repo's git directory alongside it, so the in-container
+`git archive HEAD` resolves (#334).
+
+### Do not poll GitHub: `make ci-status`
+
+**Do not run `gh run watch`.** The REST quota is 5000/hour and it is *shared* by
+every agent on the box; ~18 concurrent watchers exhausted it twice in one day,
+after which no agent could tell "still running" from "broken".
+
+One shared daemon (`scripts/ci_monitor.sh daemon`, installed via
+`install-service`) polls once per interval for all workflows and writes a local
+status file. Read it instead -- any number of agents can, at zero quota cost:
+
+```sh
+make ci-status              # newest sha on dev
+make ci-status SHA=<sha>    # a specific commit
+make ci-quota               # how much budget is left
+```
+
+Exit codes are `0` PASS, `1` FAIL, `3` **UNKNOWN**. UNKNOWN is a real answer and
+means "no verdict could be established" -- quota exhausted, daemon down, status
+file stale, sha not seen yet. **Never report UNKNOWN as either a pass or a
+failure.** When the quota is gone,
+`bash scripts/ci_monitor.sh runner-status --sha <sha>` reads outcomes off the
+runner box over ssh and costs nothing.
+
+---
+
 ## Subagents & Swarms
 
 This repository utilizes specialized custom project subagents under `.claude/agents/` <!-- AI-OK: reference to .claude directory --> to perform focused, token-efficient audits. These reviewers are configured for specific compliance checking, allowing the main agent to delegate verification tasks:

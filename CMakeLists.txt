@@ -53,6 +53,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
     endif()
 endif()
 
+# Compiler cache for the host-side targets configured from this listfile
+# (board_sim, tools/). The cross builds get it from cmake/toolchain-ra8d2.cmake
+# and the host unit tests from tests/CMakeLists.txt -- see cmake/ccache.cmake
+# for why all three inclusion points are needed.
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
+
 # C Standard - C23 (GNU2x)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
