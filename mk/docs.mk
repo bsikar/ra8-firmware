@@ -1,4 +1,5 @@
 # mk/docs.mk -- documentation + reports.
+# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 
 .PHONY: docs docs-push dashboard app-sizes audit-init

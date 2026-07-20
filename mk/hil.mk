@@ -1,5 +1,6 @@
 # mk/hil.mk -- hardware: local J-Link flash/debug/ozone, remote Pi HIL, OpenOCD.
 # The RA8_FLASH/RA8_DEBUG/RA8_OZONE app lists come from the top Makefile.
+# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 
 .PHONY: $(RA8_FLASH) $(RA8_DEBUG) $(RA8_OZONE) flash-help debug-help ozone-help \

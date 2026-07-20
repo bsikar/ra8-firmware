@@ -2,6 +2,7 @@
 #
 # App-list variables (RA8_APPS, RA8_APP_DIR_<app>, ...) are defined in the top
 # Makefile before this file is included, so every module sees them.
+# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 
 .PHONY: default apps clean compile_commands build-all $(RA8_APPS)

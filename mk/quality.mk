@@ -1,6 +1,7 @@
 # mk/quality.mk -- format, lint, tests, coverage, MISRA, static analysis, CI.
 # Shared vars (TESTS_DIR, TESTS_BUILD*, EK_APPS, CLANG_FORMAT, ...) come from the
 # top Makefile.
+# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 
 .PHONY: format check tidy cppcheck magic ascii version \
