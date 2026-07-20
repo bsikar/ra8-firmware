@@ -1,5 +1,5 @@
 /**
- * @file ra8_fmt_atlas_inspect.c
+ * @file ra8_fmt_jof_inspect.c
  * @brief JOF structure dump, duplicate detection and round-trip verification.
  *
  * @details
@@ -34,7 +34,7 @@
 #include "ra8_jof.h"
 
 /** @brief Module log tag. */
-static const char* const s_tag = "ra8_fmt_atlas_ins";
+static const char* const s_tag = "ra8_fmt_jof_ins";
 
 /**
  * @enum ra8_fmt_ins_const_t
@@ -85,7 +85,7 @@ typedef struct {
   uint32_t scratch_cap; /**< Capacity of `scratch`.     */
 } fmt_decode_buf_t;
 
-size_t ra8_fmt_atlas_sink_cap(size_t src_len)
+size_t ra8_fmt_jof_sink_cap(size_t src_len)
 {
   const size_t scaled = src_len * (size_t)k_fmt_sink_scale;
   return (scaled < (size_t)k_fmt_sink_floor) ? (size_t)k_fmt_sink_floor : scaled;
@@ -410,7 +410,7 @@ static ra8_err_t priv_collect_tiles(const ra8_fmt_blob_t* atlas,
   return rc;
 }
 
-ra8_err_t ra8_fmt_atlas_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
@@ -456,10 +456,10 @@ ra8_err_t ra8_fmt_atlas_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
   return verdict;
 }
 
-ra8_err_t ra8_fmt_atlas_reassemble(const ra8_fmt_blob_t* atlas,
-                                   const ra8_jof_info_t* info,
-                                   uint8_t**             out_px,
-                                   size_t*               out_len)
+ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
+                                 const ra8_jof_info_t* info,
+                                 uint8_t**             out_px,
+                                 size_t*               out_len)
 {
   RA8_CHECK_NULL_PTR(atlas, s_tag, "atlas must not be nullptr");
   RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");

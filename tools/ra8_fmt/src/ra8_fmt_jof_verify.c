@@ -1,5 +1,5 @@
 /**
- * @file ra8_fmt_atlas_verify.c
+ * @file ra8_fmt_jof_verify.c
  * @brief JOF round-trip verification: banded encode versus untiled reference.
  *
  * @details
@@ -35,7 +35,7 @@
 #include "ra8_jof.h"
 
 /** @brief Module log tag. */
-static const char* const s_tag = "ra8_fmt_atlas_ver";
+static const char* const s_tag = "ra8_fmt_jof_ver";
 
 /**
  * @enum ra8_fmt_ver_const_t
@@ -58,7 +58,7 @@ typedef enum : uint32_t {
  *          `got` from the banded encode under test. Equal content is the pass
  *          condition.
  * @invariant `ref != nullptr` implies `refn > 0`; likewise for `got`/`gotn`.
- * @see ra8_fmt_atlas_verify()
+ * @see ra8_fmt_jof_verify()
  * @since 0.1.0
  */
 typedef struct {
@@ -213,25 +213,25 @@ static ra8_err_t priv_encode_roundtrip(const ra8_fmt_blob_t* src,
                                        ra8_jof_info_t*       info)
 {
   ra8_fmt_blob_t atlas = {};
-  ra8_err_t      rc    = ra8_fmt_atlas_produce(src,
-                                               max_w,
-                                               max_h,
-                                               tile_w,
-                                               tile_h,
-                                               (uint8_t)k_ra8_jof_codec_deflate,
-                                               &atlas,
-                                               info);
+  ra8_err_t      rc    = ra8_fmt_jof_produce(src,
+                                             max_w,
+                                             max_h,
+                                             tile_w,
+                                             tile_h,
+                                             (uint8_t)k_ra8_jof_codec_deflate,
+                                             &atlas,
+                                             info);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = ra8_fmt_atlas_reassemble(&atlas, info, out_px, out_n);
+  rc = ra8_fmt_jof_reassemble(&atlas, info, out_px, out_n);
   ra8_fmt_blob_free(&atlas);
   return rc;
 }
 
 /**
  * @brief Encode the source both ways and report the geometry line.
- * @details Splits the two round-trips out of ::ra8_fmt_atlas_verify so that
+ * @details Splits the two round-trips out of ::ra8_fmt_jof_verify so that
  *          entry point stays within the statement budget. The reference is one
  *          whole-image tile; the subject is banded at ::k_fmt_ver_band_h.
  * @param[in]  src   Source image bytes (non-NULL).
@@ -252,7 +252,7 @@ priv_encode_pair(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts, fmt_ver_
 {
   uint16_t  w  = 0U;
   uint16_t  h  = 0U;
-  ra8_err_t rc = ra8_fmt_atlas_probe(src, &w, &h);
+  ra8_err_t rc = ra8_fmt_jof_probe(src, &w, &h);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "verify: cannot read source dimensions (rc=%d)\n", (int)rc);
     return rc;
@@ -289,7 +289,7 @@ priv_encode_pair(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts, fmt_ver_
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_fmt_atlas_verify(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t ra8_fmt_jof_verify(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");

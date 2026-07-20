@@ -60,9 +60,9 @@ add_executable(ra8_fmt
     src/main.c
     src/ra8_fmt_util.c
     src/ra8_fmt_registry.c
-    src/ra8_fmt_atlas.c
-    src/ra8_fmt_atlas_inspect.c
-    src/ra8_fmt_atlas_verify.c
+    src/ra8_fmt_jof.c
+    src/ra8_fmt_jof_inspect.c
+    src/ra8_fmt_jof_verify.c
     src/ra8_fmt_book.c
     ${RA8_FMT_FW_SRC}
     ${RA8_FMT_JPEG_SRC}
