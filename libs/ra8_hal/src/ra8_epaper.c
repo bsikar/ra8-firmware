@@ -486,8 +486,9 @@ RA8_INTERNAL
  *
  * @details
  * The controller's ``arg0`` bitfield numbers formats 2/3/4/8 bpp as
- * 0/1/2/3. 1 bpp has no code of its own: bi-level data rides the 8 bpp
- * path with bitmap mode armed, so it maps to the 8 bpp code here.
+ * 0/1/2/3. 1 bpp has no code of its own, so it maps to the 8 bpp code
+ * here. See ::ra8_epaper_wire_pf_t for why that mapping on its own does
+ * not constitute a working 1 bpp path.
  *
  * @param[in] pf Driver-side pixel format.
  * @return The two-bit code for ``arg0``.
