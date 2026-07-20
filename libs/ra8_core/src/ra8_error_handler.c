@@ -80,6 +80,7 @@ RA8_INTERNAL static inline void internal_bkpt(void)
 #endif
 }
 
+#ifndef RA8_SIMULATOR_MODE
 /**
  * @brief Architectural `__WFI` wrapper used inside the halt loop.
  *
@@ -87,7 +88,13 @@ RA8_INTERNAL static inline void internal_bkpt(void)
  *          exception. Used inside the post-fault halt loop so the MCU
  *          is not burning power spinning.
  *
- * @pre Build is not `RA8_SIMULATOR_MODE` (no-op on the host).
+ *          The whole definition -- not just its body -- sits inside the
+ *          non-simulator guard because the sole call site is the firmware
+ *          halt loop below, which is itself compiled only off the simulator
+ *          path. A host build that kept an empty definition would carry a
+ *          function nothing calls, which -Wunused-function reports.
+ *
+ * @pre Build is not `RA8_SIMULATOR_MODE` (the host does not compile this).
  * @pre Called from the halt loop after IRQs have been masked.
  * @post CPU enters WFI sleep until any exception wakes it.
  * @post No register state modified.
@@ -98,10 +105,9 @@ RA8_INTERNAL static inline void internal_bkpt(void)
  */
 RA8_INTERNAL static inline void internal_wfi(void)
 {
-#ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("wfi");
-#endif
 }
+#endif
 
 /**
  * @brief Fatal-error trap: log and halt the system.
