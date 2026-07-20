@@ -51,6 +51,14 @@ typedef enum : uint16_t {
   k_ec_magic_bytes = 4U,      /**< Magic length, for the MC/DC sweep.      */
   k_ec_magic_flip  = 0xFFU,   /**< XOR mask that guarantees a mismatch.    */
   k_ec_bad_schema  = 99U,     /**< Schema version from a future writer.    */
+  k_ec_erased_byte = 0xFFU,   /**< Value an erased extra-MRAM byte reads
+                                   back as; the mock store fills with it so
+                                   an unprovisioned read is indistinguishable
+                                   from real blank silicon.                */
+  k_ec_reserved_flip = 0x80U, /**< Single-bit XOR applied inside the
+                                   reserved growth span, proving the CRC
+                                   covers the whole body and not just the
+                                   payload.                                */
 } epd_cal_test_const_t;
 
 /**
@@ -110,7 +118,7 @@ static ra8_err_t mock_nv_read(void* ctx, uint8_t* dst, size_t len)
   if (s_store.present) {
     (void)memcpy(dst, s_store.blob, len);
   } else {
-    (void)memset(dst, 0xFF, len); /* blank extra-MRAM reads as all-ones */
+    (void)memset(dst, (int)k_ec_erased_byte, len); /* blank extra-MRAM reads as all-ones */
   }
   return k_ra8_ok;
 }
@@ -258,7 +266,7 @@ static void test_record_integrity_and_versioning(void)
   ec_reset();
   ra8_epd_cal_record_t out              = {};
   uint8_t              blank[k_ec_blob] = {};
-  (void)memset(blank, 0xFF, sizeof(blank));
+  (void)memset(blank, (int)k_ec_erased_byte, sizeof(blank));
   /* Blank (never provisioned) storage: magic absent -> "not found", which
    * is what lets the resolver tell "unprovisioned" from "corrupted". */
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_epd_cal_deserialize(blank, sizeof(blank), &out));
@@ -295,7 +303,7 @@ static void test_record_integrity_and_versioning(void)
    * the whole body, not just the payload. */
   uint8_t reserved_hit[k_ec_blob] = {};
   (void)memcpy(reserved_hit, good, sizeof(reserved_hit));
-  reserved_hit[k_ra8_epd_cal_off_reserved1] ^= 0x80U;
+  reserved_hit[k_ra8_epd_cal_off_reserved1] ^= (uint8_t)k_ec_reserved_flip;
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
                  ra8_epd_cal_deserialize(reserved_hit, sizeof(reserved_hit), &out));
   TEST_END("epd_cal: record integrity + schema versioning");
