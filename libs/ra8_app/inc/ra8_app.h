@@ -34,13 +34,27 @@
  * from the registry so it can never drift from the real focus / membership.
  *
  * @par State Machine
- * @startuml
- *  [*]        --> Unmounted
- *  Unmounted  --> Background : ra8_app_register (mount / init)
- *  Background --> Foreground : ra8_app_launch (focus / on_enter)
- *  Foreground --> Background : ra8_app_launch(other) (suspend / on_leave)
- *  Background --> Unmounted  : ra8_app_uninstall (unmount / deinit)
- * @enduml
+ * @dot
+ * digraph ra8_app_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Unmounted [label="Unmounted"];
+ *   Background [label="Background"];
+ *   Foreground [label="Foreground"];
+ *
+ *   __start -> Unmounted;
+ *   Unmounted -> Background [label="ra8_app_register (mount /\\ninit)"];
+ *   Background -> Foreground [label="ra8_app_launch (focus /\\non_enter)"];
+ *   Foreground -> Background [label="ra8_app_launch(other)\\n(suspend / on_leave)"];
+ *   Background -> Unmounted [label="ra8_app_uninstall (unmount /\\ndeinit)"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

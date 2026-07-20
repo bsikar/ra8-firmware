@@ -653,17 +653,34 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * CPU to sleep -- peripherals stay clocked.
  *
  * @par State Machine
- * @startuml
- * [*] --> Active
- * Active --> CPUSleep: enter_sleep(SLEEP)
- * Active --> CPUDeepSleep: enter_sleep(DEEP_SLEEP)
- * Active --> SoftwareStandby: enter_sleep(SOFTWARE_STD)
- * Active --> DeepStandby: enter_sleep(DEEP_STANDBY_*)
- * CPUSleep --> Active: any IRQ
- * CPUDeepSleep --> Active: any IRQ
- * SoftwareStandby --> Active: WUPEN-armed IRQ
- * DeepStandby --> Reset: WUPEN/DPSIER-armed IRQ (reset state)
- * @enduml
+ * @dot
+ * digraph ra8_lpm_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Active [label="Active"];
+ *   CPUSleep [label="CPUSleep"];
+ *   CPUDeepSleep [label="CPUDeepSleep"];
+ *   SoftwareStandby [label="SoftwareStandby"];
+ *   DeepStandby [label="DeepStandby"];
+ *   Reset [label="Reset"];
+ *
+ *   __start -> Active;
+ *   Active -> CPUSleep [label="enter_sleep(SLEEP)"];
+ *   Active -> CPUDeepSleep [label="enter_sleep(DEEP_SLEEP)"];
+ *   Active -> SoftwareStandby [label="enter_sleep(SOFTWARE_STD)"];
+ *   Active -> DeepStandby [label="enter_sleep(DEEP_STANDBY_*)"];
+ *   CPUSleep -> Active [label="any IRQ"];
+ *   CPUDeepSleep -> Active [label="any IRQ"];
+ *   SoftwareStandby -> Active [label="WUPEN-armed IRQ"];
+ *   DeepStandby -> Reset [label="WUPEN/DPSIER-armed IRQ\\n(reset state)"];
+ * }
+ * @enddot
  *
  * @param[in] mode Target sleep mode (sleep / deep-sleep /
  *                 software-standby / deep-standby 1..3).

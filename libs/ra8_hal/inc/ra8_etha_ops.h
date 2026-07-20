@@ -291,16 +291,31 @@ void ra8_etha_dispatch(ra8_etha_port_t port);
  *
  * @note State machine: RESET -> CONFIG -> OPERATION; OPERATION -> DISABLE.
  * @par State Machine
- * @startuml
- * [*] --> RESET
- * RESET --> CONFIG: EAMC.OPC=2
- * CONFIG --> OPERATION: EAMC.OPC=3
- * OPERATION --> DISABLE: EAMC.OPC=1
- * DISABLE --> OPERATION: EAMC.OPC=3
- * CONFIG --> RESET: EAMC.OPC=0
- * OPERATION --> RESET: EAMC.OPC=0
- * DISABLE --> RESET: EAMC.OPC=0
- * @enduml
+ * @dot
+ * digraph ra8_etha_ops_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   RESET [label="RESET"];
+ *   CONFIG [label="CONFIG"];
+ *   OPERATION [label="OPERATION"];
+ *   DISABLE [label="DISABLE"];
+ *
+ *   __start -> RESET;
+ *   RESET -> CONFIG [label="EAMC.OPC=2"];
+ *   CONFIG -> OPERATION [label="EAMC.OPC=3"];
+ *   OPERATION -> DISABLE [label="EAMC.OPC=1"];
+ *   DISABLE -> OPERATION [label="EAMC.OPC=3"];
+ *   CONFIG -> RESET [label="EAMC.OPC=0"];
+ *   OPERATION -> RESET [label="EAMC.OPC=0"];
+ *   DISABLE -> RESET [label="EAMC.OPC=0"];
+ * }
+ * @enddot
  * @see ra8_etha_get_status
  * @since 0.1.0
  */

@@ -17,13 +17,27 @@
  * above it so ``cite_check.py`` can validate provenance.
  *
  * @par State Machine
- * @startuml
- * [*] --> reset
- * reset --> initialized: ra8_drw_init
- * initialized --> stopped: ra8_drw_enter_stop
- * stopped --> initialized: ra8_drw_exit_stop
- * initialized --> reset: ra8_drw_deinit
- * @enduml
+ * @dot
+ * digraph ra8_drw_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   reset [label="reset"];
+ *   initialized [label="initialized"];
+ *   stopped [label="stopped"];
+ *
+ *   __start -> reset;
+ *   reset -> initialized [label="ra8_drw_init"];
+ *   initialized -> stopped [label="ra8_drw_enter_stop"];
+ *   stopped -> initialized [label="ra8_drw_exit_stop"];
+ *   initialized -> reset [label="ra8_drw_deinit"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

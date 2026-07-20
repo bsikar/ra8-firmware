@@ -19,13 +19,27 @@
  * above the access, per project policy.
  *
  * @par State Machine
- * @startuml
- * [*] --> Gated : reset
- * Gated  --> Idle    : init()
- * Idle   --> Active  : start_receive()
- * Active --> Idle    : stop_receive()
- * Idle   --> Gated   : deinit()
- * @enduml
+ * @dot
+ * digraph ra8_mipi_csi_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Gated [label="Gated"];
+ *   Idle [label="Idle"];
+ *   Active [label="Active"];
+ *
+ *   __start -> Gated [label="reset"];
+ *   Gated -> Idle [label="init()"];
+ *   Idle -> Active [label="start_receive()"];
+ *   Active -> Idle [label="stop_receive()"];
+ *   Idle -> Gated [label="deinit()"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

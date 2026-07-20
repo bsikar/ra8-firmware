@@ -129,7 +129,7 @@ RA8_GATE_REGISTRY=(
   "build-cross|slow|cross-build every example app"
   "sg-offsets|slow|NSC SG-veneer slot offsets in the linked secure ELF"
   "stack-usage|slow|aggregate -fstack-usage frames"
-  "docs|slow|Doxygen warning gate"
+  "docs|slow|Doxygen warning gate + authored-diagram render check"
   "board-sim-smoke|slow|board_sim boot smoke over the example apps"
   "board-sim-io-fabric|slow|ra8_io fabric demos in board_sim"
   "sil-integration|slow|every HIL app booted in board_sim against its hil.conf"
@@ -867,7 +867,6 @@ gate_docs() (
     grep -v "tag INCLUDE_PATH:" |
     grep -v "is not a readable file or directory" |
     grep -v "found more than one .mainpage comment block" |
-    grep -v "ignoring .startuml command because PLANTUML_JAR_PATH is not set" |
     grep -v "End of list marker found without any preceding list items" |
     grep -v "Invalid list item found" |
     grep -v "Found unknown command" |
@@ -880,6 +879,13 @@ gate_docs() (
     echo "$relevant_warnings"
     return 1
   fi
+  # A clean warning log does NOT mean the diagrams rendered. Doxygen drops an
+  # authored diagram silently in several ways (HAVE_DOT=NO, a dot layout that
+  # produces an empty SVG, a block doxygen never parsed), and the page still
+  # publishes HTTP 200 with its prose intact. This counts what actually reached
+  # the generated HTML and compares it against the source. It runs here, inside
+  # the docs gate, because this is where the built HTML it inspects exists.
+  python3 scripts/utils/check_doc_diagrams.py --html build/docs-gate/html
 )
 
 # --- board-sim-smoke ------------------------------------------------------
@@ -1042,7 +1048,15 @@ gate_hil_all() (
 # workflow's step and no unreviewed `run:` body hides inside it.
 gate_docs_publish() (
   set -e
+  # Same hard dependency as the docs gate, and it matters more here: without
+  # `dot`, build_docs.sh degrades to text-only output and this gate would
+  # force-push a diagram-free site over the live one, succeeding the whole way.
+  # The publish path is exactly where a silent degradation does the damage.
+  require_cmd dot
   make docs
+  # Verify the site about to be published actually contains its diagrams,
+  # against the real output tree `make docs` just wrote.
+  python3 scripts/utils/check_doc_diagrams.py --html build/docs/html
   bash scripts/publish_docs.sh
 )
 

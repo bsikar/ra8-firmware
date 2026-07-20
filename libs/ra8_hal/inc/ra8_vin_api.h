@@ -59,13 +59,27 @@ extern "C" {
  * before `ra8_vin_capture_start`.
  *
  * @par State Machine
- * @startuml
- * [*] --> uninitialized
- * uninitialized --> initialized: ra8_vin_init
- * initialized --> capturing: ra8_vin_capture_start
- * capturing --> initialized: ra8_vin_capture_stop
- * initialized --> uninitialized: ra8_vin_deinit
- * @enduml
+ * @dot
+ * digraph ra8_vin_api_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   uninitialized [label="uninitialized"];
+ *   initialized [label="initialized"];
+ *   capturing [label="capturing"];
+ *
+ *   __start -> uninitialized;
+ *   uninitialized -> initialized [label="ra8_vin_init"];
+ *   initialized -> capturing [label="ra8_vin_capture_start"];
+ *   capturing -> initialized [label="ra8_vin_capture_stop"];
+ *   initialized -> uninitialized [label="ra8_vin_deinit"];
+ * }
+ * @enddot
  *
  * @param[in] cfg Non-NULL configuration descriptor.
  *

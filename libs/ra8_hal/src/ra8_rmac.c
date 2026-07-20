@@ -26,14 +26,30 @@
  * Every register access carries a HUM Ch 33 citation.
  *
  * @par State Machine
- * @startuml
- * [*] --> RESET     : ra8_rmac_init()
- * RESET   --> CONFIG : caller programs MRMAC etc.
- * CONFIG  --> RUN    : ETHA enters OPERATION mode
- * RUN     --> SLEEP  : ra8_rmac_set_lpi(true)
- * SLEEP   --> RUN    : ra8_rmac_set_lpi(false)
- * RUN     --> STOPPED: ra8_rmac_deinit()
- * @enduml
+ * @dot
+ * digraph ra8_rmac_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   RESET [label="RESET"];
+ *   CONFIG [label="CONFIG"];
+ *   RUN [label="RUN"];
+ *   SLEEP [label="SLEEP"];
+ *   STOPPED [label="STOPPED"];
+ *
+ *   __start -> RESET [label="ra8_rmac_init()"];
+ *   RESET -> CONFIG [label="caller programs MRMAC etc."];
+ *   CONFIG -> RUN [label="ETHA enters OPERATION mode"];
+ *   RUN -> SLEEP [label="ra8_rmac_set_lpi(true)"];
+ *   SLEEP -> RUN [label="ra8_rmac_set_lpi(false)"];
+ *   RUN -> STOPPED [label="ra8_rmac_deinit()"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

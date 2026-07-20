@@ -26,18 +26,34 @@
  *
  * ## State machine
  *
- * @startuml
- * [*] --> Uninit
- * Uninit --> Configured : ra8_cnecc_init
- * Configured --> Active : ra8_cnecc_enable_instance
- * Active --> Configured : ra8_cnecc_disable_instance
- * Configured --> TestMode : ra8_cnecc_inject_fault
- * TestMode --> Configured : ra8_cnecc_test_mode_disable
- * Active --> Standby : ra8_cnecc_enter_standby
- * Standby --> Active : ra8_cnecc_exit_standby
- * Configured --> Uninit : ra8_cnecc_deinit
- * Active --> Uninit : ra8_cnecc_deinit
- * @enduml
+ * @dot
+ * digraph ra8_cnecc_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Uninit [label="Uninit"];
+ *   Configured [label="Configured"];
+ *   Active [label="Active"];
+ *   TestMode [label="TestMode"];
+ *   Standby [label="Standby"];
+ *
+ *   __start -> Uninit;
+ *   Uninit -> Configured [label="ra8_cnecc_init"];
+ *   Configured -> Active [label="ra8_cnecc_enable_instance"];
+ *   Active -> Configured [label="ra8_cnecc_disable_instance"];
+ *   Configured -> TestMode [label="ra8_cnecc_inject_fault"];
+ *   TestMode -> Configured [label="ra8_cnecc_test_mode_disable"];
+ *   Active -> Standby [label="ra8_cnecc_enter_standby"];
+ *   Standby -> Active [label="ra8_cnecc_exit_standby"];
+ *   Configured -> Uninit [label="ra8_cnecc_deinit"];
+ *   Active -> Uninit [label="ra8_cnecc_deinit"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

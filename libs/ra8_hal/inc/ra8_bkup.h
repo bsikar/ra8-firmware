@@ -266,11 +266,24 @@ typedef void (*ra8_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  *
  * @par State Machine
  * Driver-state transitions enforced by this entry point:
- * @startuml
- * [*] --> Off
- * Off    --> Armed     : ra8_bkup_init(cfg)
- * Armed  --> Off       : ra8_bkup_deinit()
- * @enduml
+ * @dot
+ * digraph ra8_bkup_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Off [label="Off"];
+ *   Armed [label="Armed"];
+ *
+ *   __start -> Off;
+ *   Off -> Armed [label="ra8_bkup_init(cfg)"];
+ *   Armed -> Off [label="ra8_bkup_deinit()"];
+ * }
+ * @enddot
  *
  * @param[in] cfg Non-NULL configuration descriptor.
  *

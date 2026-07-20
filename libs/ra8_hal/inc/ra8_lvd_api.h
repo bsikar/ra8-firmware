@@ -75,13 +75,28 @@ extern "C" {
  * @post DET flag in PVDmSR is cleared (write-0-to-clear semantics).
  *
  * @par State Machine
- * @startuml
- * [*] --> Disabled : reset
- * Disabled --> Configured : channel_init
- * Configured --> Stabilising : PVDE = 1
- * Stabilising --> Active : t_d(E-A) elapsed + CMPE = 1
- * Active --> Disabled : channel_deinit
- * @enduml
+ * @dot
+ * digraph ra8_lvd_api_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Disabled [label="Disabled"];
+ *   Configured [label="Configured"];
+ *   Stabilising [label="Stabilising"];
+ *   Active [label="Active"];
+ *
+ *   __start -> Disabled [label="reset"];
+ *   Disabled -> Configured [label="channel_init"];
+ *   Configured -> Stabilising [label="PVDE = 1"];
+ *   Stabilising -> Active [label="t_d(E-A) elapsed + CMPE = 1"];
+ *   Active -> Disabled [label="channel_deinit"];
+ * }
+ * @enddot
  *
  * @note Thread safety: not thread-safe.
  * @see ra8_lvd_channel_deinit

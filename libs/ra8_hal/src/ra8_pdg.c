@@ -20,14 +20,29 @@
  * ``k_ra8_pdg_channel_count`` = 4.
  *
  * @par State Machine
- * @startuml
- * [*] --> Stopped: module-stop bit asserted
- * Stopped --> Reset: ra8_pdg_init unlocks MSTPD6
- * Reset --> Locking: DLLEN <- 1
- * Locking --> Running: 20 us elapsed (DLL locked)
- * Running --> Reset: ra8_pdg_set_frange
- * Running --> Stopped: ra8_pdg_deinit
- * @enduml
+ * @dot
+ * digraph ra8_pdg_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Stopped [label="Stopped"];
+ *   Reset [label="Reset"];
+ *   Locking [label="Locking"];
+ *   Running [label="Running"];
+ *
+ *   __start -> Stopped [label="module-stop bit asserted"];
+ *   Stopped -> Reset [label="ra8_pdg_init unlocks MSTPD6"];
+ *   Reset -> Locking [label="DLLEN <- 1"];
+ *   Locking -> Running [label="20 us elapsed (DLL locked)"];
+ *   Running -> Reset [label="ra8_pdg_set_frange"];
+ *   Running -> Stopped [label="ra8_pdg_deinit"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
