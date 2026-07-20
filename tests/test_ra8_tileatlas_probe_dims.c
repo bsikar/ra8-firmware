@@ -163,8 +163,8 @@ static void test_probe_png(void)
   uint16_t h                = 0U;
   make_png(hdr, k_p_w, k_p_h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
-  TEST_ASSERT_EQ((uint16_t)k_p_w, w);
-  TEST_ASSERT_EQ((uint16_t)k_p_h, h);
+  TEST_ASSERT_EQ(k_p_w, w);
+  TEST_ASSERT_EQ(k_p_h, h);
   /* One byte short of the height field: sniffable, but the IHDR is cut. */
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_tileatlas_probe_dims(hdr, (size_t)(k_p_png_ihdr - 1U), &w, &h));
