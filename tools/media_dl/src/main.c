@@ -776,7 +776,14 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
   }
   const char* ext = mdl_format_ext(format);
   char        out[PATH_MAX];
-  (void)snprintf(out, sizeof(out), "%s.%s", abs, ext);
+  /* `abs` is itself PATH_MAX, so appending ".<ext>" can overrun `out`.
+   * snprintf would silently truncate and we would then package the chapter
+   * into a path that is not the one asked for; report it instead. */
+  const int n = snprintf(out, sizeof(out), "%s.%s", abs, ext);
+  if ((n < 0) || ((size_t)n >= sizeof(out))) {
+    (void)fprintf(stderr, "media_dl: output path for '%s' is too long\n", dir);
+    return 1;
+  }
   const ra8_err_t rc = mdl_export_chapter(format, abs, out);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: pack '%s' as .%s FAILED (err 0x%X)\n", dir, ext, (unsigned)rc);
