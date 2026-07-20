@@ -76,6 +76,15 @@ STARTUML_DOC_ALLOWLIST = (
     "docs/formats/BINARY_FORMATS.md",
 )
 
+#: Written into the generated HTML tree by build_docs.sh once a build finishes.
+#: Its contents are the fingerprint of the authored diagram set that build saw,
+#: which is what lets this gate tell "output built from the tree under test"
+#: apart from "whatever HTML was lying around".
+STAMP_NAME = ".ra8-diagram-stamp"
+
+#: Index of the optional stamp-mode field in a selftest case tuple.
+STAMP_MODE_FIELD = 4
+
 DOT_OPEN = re.compile(r"^\s*(?:\*\s?)?@dot\s*$")
 DOT_CLOSE = re.compile(r"^\s*(?:\*\s?)?@enddot\s*$")
 SVG_REF = re.compile(r"dot_inline_dotgraph_[0-9a-f]+\.svg")
@@ -234,9 +243,61 @@ def scan_html(html_dir: Path):
     return referenced, live, findings
 
 
+def source_fingerprint(blocks: dict[str, list[str]]) -> str:
+    """Fingerprint the authored diagram set, order-independently."""
+    digest = hashlib.sha256()
+    for key in sorted(blocks):
+        digest.update(key.encode("utf-8"))
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def check_stamp(html_dir: Path, blocks: dict[str, list[str]]) -> list[Finding]:
+    """Refuse to judge output that was not built from the tree under test.
+
+    Doxygen never deletes what it no longer produces, so a directory can hold a
+    mixture of two builds. That is dangerous in both directions: an orphan
+    render can mask a diagram the current tree drops, and a diagram added since
+    the last build looks dropped. Rather than trusting the caller to have
+    rebuilt, compare the authored diagram set against the fingerprint the build
+    recorded.
+    """
+    stamp = html_dir / STAMP_NAME
+    if not stamp.is_file():
+        return [
+            Finding(
+                str(html_dir),
+                "no build stamp -- this HTML was not produced by scripts/build_docs.sh, "
+                "so it cannot be trusted to reflect the current tree. Rebuild with "
+                "'bash scripts/build_docs.sh --gate'.",
+            )
+        ]
+    recorded = stamp.read_text(encoding="utf-8").strip()
+    current = source_fingerprint(blocks)
+    if recorded != current:
+        return [
+            Finding(
+                str(html_dir),
+                "stale output -- the authored diagram set has changed since this "
+                f"HTML was built (stamp {recorded[:12]}, tree {current[:12]}). "
+                "Rebuild with 'bash scripts/build_docs.sh --gate'; do not judge "
+                "the diagrams from a mixture of two builds.",
+            )
+        ]
+    return []
+
+
 def check(root: Path, html_dir: Path) -> list[Finding]:
     """Run every rule and return the accumulated findings."""
     blocks, findings = scan_sources(root)
+
+    # Freshness first: every count below is meaningless against stale output,
+    # and reporting a bogus count mismatch is how a gate teaches people to
+    # `rm -rf` and re-run until green.
+    stale = check_stamp(html_dir, blocks)
+    if stale:
+        return findings + stale
+
     _referenced, live, html_findings = scan_html(html_dir)
     findings += html_findings
 
@@ -249,12 +310,25 @@ def check(root: Path, html_dir: Path) -> list[Finding]:
             "",
         ]
         if n_src > n_live:
+            # Report SOURCE files, never rendered-SVG filenames. Doxygen names
+            # each SVG after a hash of its own normalised copy of the block, and
+            # that normalisation is not reproducible from the source text, so an
+            # SVG name cannot be attributed back to the block that produced it.
+            # Printing one anyway names a file the author never touched, which
+            # is exactly what made this hard to read the first time it fired.
+            per_file: dict[str, int] = {}
+            for origins in blocks.values():
+                for origin in origins:
+                    per_file[origin.rsplit(":", 1)[0]] = (
+                        per_file.get(origin.rsplit(":", 1)[0], 0) + 1
+                    )
             detail.append(f"  {n_src - n_live} authored diagram(s) did not reach the HTML.")
-            detail.append("  Authored blocks, by origin:")
-            detail.extend(
-                f"    - {', '.join(blocks[key])}"
-                for key in sorted(blocks, key=lambda k: blocks[k][0])
-            )
+            detail.append("  Authored @dot blocks by source file:")
+            detail.extend(f"    {count:3d}  {path}" for path, count in sorted(per_file.items()))
+            detail.append("")
+            detail.append("  The build is fresh (stamp matched), so a block in one of these")
+            detail.append("  files was parsed but not rendered. Check it for a dot syntax")
+            detail.append("  error, or a node count over DOT_GRAPH_MAX_NODES.")
         else:
             detail.append(
                 "  More rendered diagrams than authored blocks -- a scan root "
@@ -370,10 +444,42 @@ def selftest() -> int:
             {"p.html": "<html></html>"},
             True,
         ),
+        # --- the gate must REFUSE output it cannot attribute to this tree ----
+        # Stale output is dangerous in both directions, and the dangerous one
+        # is a leftover render MASKING a diagram the current tree drops. Both
+        # of these would otherwise "pass" on the counts alone.
+        (
+            "stale: leftover render masks a dropped diagram",
+            # Two blocks authored; only one is rendered, but a leftover SVG
+            # from an older build makes the count add up.
+            {"docs/x.md": _md(g1, g2)},
+            {"p.html": _page(s1), s1: _svg(True), s2: _svg(True)},
+            True,
+            "wrong",
+        ),
+        (
+            "stale: output predates a newly added diagram",
+            {"docs/x.md": _md(g1, g2)},
+            {"p.html": _page(s1, s2), s1: _svg(True), s2: _svg(True)},
+            True,
+            "wrong",
+        ),
+        (
+            "unknown provenance: no build stamp at all",
+            {"docs/x.md": _md(g1)},
+            {"p.html": _page(s1), s1: _svg(True)},
+            True,
+            "missing",
+        ),
     ]
 
     failures = 0
-    for name, sources, html, expect_fire in cases:
+    for case in cases:
+        name, sources, html, expect_fire = case[:4]
+        # How the build stamp is seeded. "good" models a directory that
+        # build_docs.sh has just written; the others model output that was not
+        # built from the tree under test.
+        stamp_mode = case[STAMP_MODE_FIELD] if len(case) > STAMP_MODE_FIELD else "good"
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "repo"
             hdir = Path(td) / "html"
@@ -384,6 +490,13 @@ def selftest() -> int:
                 path.write_text(text, encoding="utf-8")
             for rel, text in html.items():
                 (hdir / rel).write_text(text, encoding="utf-8")
+
+            if stamp_mode == "good":
+                seen, _ = scan_sources(root)
+                (hdir / STAMP_NAME).write_text(source_fingerprint(seen), encoding="utf-8")
+            elif stamp_mode == "wrong":
+                (hdir / STAMP_NAME).write_text("0" * 64, encoding="utf-8")
+            # "missing" writes nothing at all.
 
             fired = bool(check(root, hdir))
             if fired != expect_fire:
@@ -417,6 +530,12 @@ def main() -> int:
     parser.add_argument(
         "--selftest", action="store_true", help="run synthetic both-direction fixtures and exit"
     )
+    parser.add_argument(
+        "--write-stamp",
+        action="store_true",
+        help="record the authored diagram fingerprint into the HTML tree "
+        "(called by scripts/build_docs.sh once a build finishes)",
+    )
     args = parser.parse_args()
 
     if args.selftest:
@@ -441,15 +560,35 @@ def main() -> int:
         )
         return 2
 
+    if args.write_stamp:
+        blocks, _ = scan_sources(REPO_ROOT)
+        (html_dir / STAMP_NAME).write_text(source_fingerprint(blocks), encoding="utf-8")
+        sys.stdout.write(
+            f"check_doc_diagrams.py: stamped {len(blocks)} authored diagram(s) "
+            f"into {html_dir.relative_to(REPO_ROOT)}.\n"
+        )
+        return 0
+
     findings = check(REPO_ROOT, html_dir)
     if findings:
         sys.stderr.write("check_doc_diagrams.py: FAILED\n\n")
         for finding in findings:
             sys.stderr.write(f"  {finding}\n")
-        sys.stderr.write(
-            "\nAn authored diagram that does not reach the HTML is invisible "
-            "to every reader of the published site.\n"
-        )
+        # Keep the closing advice truthful. A provenance failure means "this
+        # measurement is not valid yet", not "a diagram is missing" -- telling
+        # someone their diagrams are gone when the real answer is "rebuild" is
+        # how a gate earns a reputation for crying wolf.
+        if any("stale output" in f.message or "no build stamp" in f.message for f in findings):
+            sys.stderr.write(
+                "\nNothing was measured: the generated HTML does not correspond "
+                "to the current tree.\nRebuild and re-run before drawing any "
+                "conclusion about the diagrams.\n"
+            )
+        else:
+            sys.stderr.write(
+                "\nAn authored diagram that does not reach the HTML is invisible "
+                "to every reader of the published site.\n"
+            )
         return 1
 
     blocks, _ = scan_sources(REPO_ROOT)
