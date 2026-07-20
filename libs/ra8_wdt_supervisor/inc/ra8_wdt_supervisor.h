@@ -50,8 +50,8 @@
  *   Uninit -> Initialized [label="ra8_wdt_supervisor_init"];
  *   Initialized -> Initialized [label="register_thread / checkin"];
  *   Initialized -> Running [label="ra8_wdt_supervisor_start"];
- *   Running -> Running [label="tick (all threads alive ->\\nrefresh WDT)"];
- *   Running -> Stalled [label="any thread overdue (no\\nrefresh issued)"];
+ *   Running -> Running [label="tick (all threads alive ->\nrefresh WDT)"];
+ *   Running -> Stalled [label="any thread overdue (no\nrefresh issued)"];
  *   Stalled -> __end [label="WDT underflow / chip reset"];
  * }
  * @enddot

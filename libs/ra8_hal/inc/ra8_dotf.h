@@ -87,10 +87,10 @@
  *   RESET -> IDLE [label="ra8_dotf_init"];
  *   IDLE -> KEY_STAGED [label="ra8_dotf_install_key"];
  *   KEY_STAGED -> IV_STAGED [label="ra8_dotf_set_iv"];
- *   IV_STAGED -> REGION_SET [label="ra8_dotf_set_region /\\nselect_region"];
+ *   IV_STAGED -> REGION_SET [label="ra8_dotf_set_region /\nselect_region"];
  *   REGION_SET -> ARMED [label="ra8_dotf_enable"];
  *   ARMED -> REGION_SET [label="ra8_dotf_disable"];
- *   ARMED -> ARMED [label="ra8_dotf_rotate_key\\n(re-stage + re-arm)"];
+ *   ARMED -> ARMED [label="ra8_dotf_rotate_key\n(re-stage + re-arm)"];
  *   ARMED -> RESET [label="ra8_dotf_deinit"];
  * }
  * @enddot

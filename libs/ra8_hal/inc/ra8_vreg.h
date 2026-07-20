@@ -73,11 +73,11 @@
  *   __start -> Reset;
  *   Reset -> LDO [label="ra8_vreg_init(LDO)"];
  *   Reset -> DCDC [label="ra8_vreg_init(DCDC)"];
- *   LDO -> DCDC [label="ra8_vreg_set_mode(DCDC) --\\n22 us blocking"];
- *   DCDC -> LDO [label="ra8_vreg_set_mode(LDO) -- 60\\nus blocking"];
+ *   LDO -> DCDC [label="ra8_vreg_set_mode(DCDC) --\n22 us blocking"];
+ *   DCDC -> LDO [label="ra8_vreg_set_mode(LDO) -- 60\nus blocking"];
  *   LDO -> Standby [label="ra8_vreg_enter_standby()"];
- *   DCDC -> Standby [label="k_ra8_err_invalid_state\\n(must switch to LDO first)"];
- *   Standby -> LDO [label="ra8_vreg_exit_standby() (or\\nDCDC if cached)"];
+ *   DCDC -> Standby [label="k_ra8_err_invalid_state\n(must switch to LDO first)"];
+ *   Standby -> LDO [label="ra8_vreg_exit_standby() (or\nDCDC if cached)"];
  *   LDO -> __end [label="ra8_vreg_deinit()"];
  *   DCDC -> __end [label="ra8_vreg_deinit()"];
  * }
