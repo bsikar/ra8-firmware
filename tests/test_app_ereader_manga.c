@@ -32,9 +32,9 @@
 #include "../examples/ek_ra8d2/hw_pending/ereader_manga/mg_page_fixture.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
-#include "ra8_tile_cache.h"
 #include "ra8_jof.h"
 #include "ra8_jof_produce.h"
+#include "ra8_tile_cache.h"
 #include "unity_minimal.h"
 
 /**
@@ -139,20 +139,19 @@ static void setup_reader(void)
   png_cursor_t cur = {.data = k_mg_png, .len = k_mg_png_len, .pos = 0U};
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t pcfg = {.pull       = png_pull,
-                                            .pull_ctx   = &cur,
-                                            .sink       = ra8_jof_memstore_sink,
-                                            .sink_ctx   = &s_store,
-                                            .tile_w     = (uint16_t)k_t_tile_edge,
-                                            .tile_h     = (uint16_t)k_t_tile_edge,
-                                            .codec      = (uint8_t)k_ra8_jof_codec_deflate,
-                                            .max_width  = (uint16_t)k_t_cap_edge,
-                                            .max_height = (uint16_t)k_t_cap_edge,
-                                            .work       = s_work,
-                                            .work_cap   = sizeof(s_work),
-                                            .webp_work  = NULL};
+                                      .pull_ctx   = &cur,
+                                      .sink       = ra8_jof_memstore_sink,
+                                      .sink_ctx   = &s_store,
+                                      .tile_w     = (uint16_t)k_t_tile_edge,
+                                      .tile_h     = (uint16_t)k_t_tile_edge,
+                                      .codec      = (uint8_t)k_ra8_jof_codec_deflate,
+                                      .max_width  = (uint16_t)k_t_cap_edge,
+                                      .max_height = (uint16_t)k_t_cap_edge,
+                                      .work       = s_work,
+                                      .work_cap   = sizeof(s_work),
+                                      .webp_work  = NULL};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_produce(&pcfg, &s_info));
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jof_parse(ra8_jof_memstore_pread, &s_store, s_store.len, &s_info));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_parse(ra8_jof_memstore_pread, &s_store, s_store.len, &s_info));
   s_tile_src                      = (mg_tile_src_t){.info        = &s_info,
                                                     .pread       = ra8_jof_memstore_pread,
                                                     .pread_ctx   = &s_store,
@@ -212,9 +211,9 @@ static void test_manga_work_arena_covers_advertised_cap(void)
 {
   TEST_BEGIN("ereader_manga: work arena covers the advertised produce cap");
   const uint32_t need = ra8_jof_work_bytes((uint16_t)k_t_cap_edge,
-                                                 (uint16_t)k_t_cap_edge,
-                                                 (uint16_t)k_t_tile_edge,
-                                                 (uint16_t)k_t_tile_edge);
+                                           (uint16_t)k_t_cap_edge,
+                                           (uint16_t)k_t_tile_edge,
+                                           (uint16_t)k_t_tile_edge);
   (void)fprintf(stderr,
                 "[INFO] ereader-manga arena: cap=%ux%u tile=%u need=%u have=%u\n",
                 (unsigned)k_t_cap_edge,
@@ -226,8 +225,7 @@ static void test_manga_work_arena_covers_advertised_cap(void)
   TEST_ASSERT(need != 0U);
   TEST_ASSERT(sizeof(s_work) >= (size_t)need);
   /* Vector 2: nonsense geometry returns 0, which the boot guard rejects. */
-  TEST_ASSERT_EQ(0U,
-                 ra8_jof_work_bytes((uint16_t)k_t_cap_edge, (uint16_t)k_t_cap_edge, 0U, 0U));
+  TEST_ASSERT_EQ(0U, ra8_jof_work_bytes((uint16_t)k_t_cap_edge, (uint16_t)k_t_cap_edge, 0U, 0U));
   /* Vector 3: the previously shipped 2 MiB arena does NOT cover this cap --
    * the defect this test exists to keep fixed. */
   TEST_ASSERT(need > (2U * 1024U * 1024U));
@@ -285,16 +283,16 @@ static void test_manga_fixture_pattern(void)
   /* Tile (0,0): black inner frame at the corner, solid gray fill left of label. */
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                         &s_store,
-                                         &s_info,
-                                         0U,
-                                         0U,
-                                         s_scratch,
-                                         (uint32_t)sizeof(s_scratch),
-                                         s_probe_cell,
-                                         (uint32_t)sizeof(s_probe_cell),
-                                         &tw,
-                                         &th));
+                                   &s_store,
+                                   &s_info,
+                                   0U,
+                                   0U,
+                                   s_scratch,
+                                   (uint32_t)sizeof(s_scratch),
+                                   s_probe_cell,
+                                   (uint32_t)sizeof(s_probe_cell),
+                                   &tw,
+                                   &th));
   TEST_ASSERT_EQ(k_t_tile_edge, tw);
   TEST_ASSERT_EQ(k_t_tile_edge, th);
   TEST_ASSERT_EQ(k_t_gray_edge, s_probe_cell[0U]);                /* top-left frame pixel   */
@@ -302,16 +300,16 @@ static void test_manga_fixture_pattern(void)
   /* Tile (5,7): the bottom-right tile carries its own distinct fill gray. */
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                         &s_store,
-                                         &s_info,
-                                         5U,
-                                         7U,
-                                         s_scratch,
-                                         (uint32_t)sizeof(s_scratch),
-                                         s_probe_cell,
-                                         (uint32_t)sizeof(s_probe_cell),
-                                         &tw,
-                                         &th));
+                                   &s_store,
+                                   &s_info,
+                                   5U,
+                                   7U,
+                                   s_scratch,
+                                   (uint32_t)sizeof(s_scratch),
+                                   s_probe_cell,
+                                   (uint32_t)sizeof(s_probe_cell),
+                                   &tw,
+                                   &th));
   TEST_ASSERT_EQ(k_t_gray_c5r7, s_probe_cell[(128U * tw) + 10U]);
   TEST_END("ereader_manga: decoded tile matches the baked page pattern");
 }

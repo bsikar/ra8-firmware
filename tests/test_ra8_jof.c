@@ -292,8 +292,7 @@ static void assert_tile_pixels(uint32_t x0, uint32_t y0, uint16_t w, uint16_t h)
 static void test_jof_roundtrip(void)
 {
   TEST_BEGIN("jof: raw + deflate round-trip, byte parity");
-  const uint8_t codecs[2] = {(uint8_t)k_ra8_jof_codec_raw,
-                             (uint8_t)k_ra8_jof_codec_deflate};
+  const uint8_t codecs[2] = {(uint8_t)k_ra8_jof_codec_raw, (uint8_t)k_ra8_jof_codec_deflate};
   for (uint32_t ci = 0U; ci < 2U; ci++) {
     build_atlas(codecs[ci]);
     ra8_jof_info_t info = {};
@@ -310,16 +309,16 @@ static void test_jof_roundtrip(void)
         uint16_t h = 0U;
         TEST_ASSERT_EQ(k_ra8_ok,
                        ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                               &s_store,
-                                               &info,
-                                               tx,
-                                               ty,
-                                               s_scratch,
-                                               (uint32_t)sizeof(s_scratch),
-                                               s_cell,
-                                               (uint32_t)sizeof(s_cell),
-                                               &w,
-                                               &h));
+                                         &s_store,
+                                         &info,
+                                         tx,
+                                         ty,
+                                         s_scratch,
+                                         (uint32_t)sizeof(s_scratch),
+                                         s_cell,
+                                         (uint32_t)sizeof(s_cell),
+                                         &w,
+                                         &h));
         const uint32_t x0 = (uint32_t)tx * k_t_tile;
         const uint32_t y0 = (uint32_t)ty * k_t_tile;
         TEST_ASSERT_EQ(clamped_tile_dim(k_t_img_w, x0), w);
@@ -349,13 +348,10 @@ static void hostile_header_size_and_magic(ra8_jof_info_t* info)
 {
   /* Undersize + oversize backing. */
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_jof_parse(ra8_jof_memstore_pread, &s_store, 4U, info));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_jof_parse(ra8_jof_memstore_pread,
-                                     &s_store,
-                                     ((uint64_t)UINT32_MAX) + 64U,
-                                     info));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_parse(ra8_jof_memstore_pread, &s_store, 4U, info));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ra8_jof_parse(ra8_jof_memstore_pread, &s_store, ((uint64_t)UINT32_MAX) + 64U, info));
 
   /* Header magic. */
   flip(0U);
@@ -473,11 +469,9 @@ static void hostile_header_footer(ra8_jof_info_t* info)
 static void hostile_header_null_guards(ra8_jof_info_t* info)
 {
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_parse(NULL, &s_store, (uint64_t)s_store.len, info));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_jof_parse(NULL, &s_store, (uint64_t)s_store.len, info));
-  TEST_ASSERT_EQ(
-    k_ra8_err_null_ptr,
-    ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)s_store.len, NULL));
+                 ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)s_store.len, NULL));
 }
 
 /**
@@ -536,26 +530,26 @@ static void test_jof_hostile_header(void)
  * @since 0.1.0
  */
 static ra8_err_t hostile_read_tile(ra8_jof_info_t* info,
-                                   uint16_t              col,
-                                   uint16_t              row,
-                                   uint8_t*              scratch,
-                                   uint32_t              scratch_cap,
-                                   uint8_t*              out,
-                                   uint32_t              out_cap,
-                                   uint16_t*             w,
-                                   uint16_t*             h)
+                                   uint16_t        col,
+                                   uint16_t        row,
+                                   uint8_t*        scratch,
+                                   uint32_t        scratch_cap,
+                                   uint8_t*        out,
+                                   uint32_t        out_cap,
+                                   uint16_t*       w,
+                                   uint16_t*       h)
 {
   return ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                 &s_store,
-                                 info,
-                                 col,
-                                 row,
-                                 scratch,
-                                 scratch_cap,
-                                 out,
-                                 out_cap,
-                                 w,
-                                 h);
+                           &s_store,
+                           info,
+                           col,
+                           row,
+                           scratch,
+                           scratch_cap,
+                           out,
+                           out_cap,
+                           w,
+                           h);
 }
 
 /**
@@ -573,10 +567,10 @@ static void test_jof_hostile_tiles(void)
 {
   TEST_BEGIN("jof: hostile tile streams / index entries rejected");
   ra8_jof_info_t info = {};
-  uint16_t             w    = 0U;
-  uint16_t             h    = 0U;
-  const uint32_t       scap = (uint32_t)sizeof(s_scratch);
-  const uint32_t       ccap = (uint32_t)sizeof(s_cell);
+  uint16_t       w    = 0U;
+  uint16_t       h    = 0U;
+  const uint32_t scap = (uint32_t)sizeof(s_scratch);
+  const uint32_t ccap = (uint32_t)sizeof(s_cell);
 
   /* Vector 2: entry offset points into the header. */
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
@@ -640,9 +634,9 @@ static void test_jof_hostile_tiles(void)
 static void test_jof_memstore(void)
 {
   TEST_BEGIN("jof: memstore sink/pread bounds");
-  uint8_t                  tiny_buf[8] = {};
+  uint8_t            tiny_buf[8] = {};
   ra8_jof_memstore_t tiny        = {.buf = tiny_buf, .cap = sizeof(tiny_buf), .len = 0U};
-  const uint8_t            five[5]     = {1U, 2U, 3U, 4U, 5U};
+  const uint8_t      five[5]     = {1U, 2U, 3U, 4U, 5U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&tiny, five, sizeof(five)));
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_jof_memstore_sink(&tiny, five, sizeof(five)));
   TEST_ASSERT_EQ(5U, tiny.len);

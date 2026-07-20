@@ -346,12 +346,9 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_i
 static void expect_produce_err(ra8_err_t want)
 {
   ra8_jof_info_t info = {};
-  TEST_ASSERT_EQ(want,
-                 produce((uint16_t)k_t_tile,
-                         (uint16_t)k_t_tile,
-                         (uint8_t)k_ra8_jof_codec_deflate,
-                         0U,
-                         &info));
+  TEST_ASSERT_EQ(
+    want,
+    produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, (uint8_t)k_ra8_jof_codec_deflate, 0U, &info));
 }
 
 /**
@@ -399,7 +396,7 @@ static void produce_reject_pull_and_cfg(void)
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_jof_produce(&cfg, &info));
   /* Config guards. */
   ra8_jof_produce_cfg_t bad = cfg;
-  bad.tile_w                      = 0U;
+  bad.tile_w                = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad       = cfg;
   bad.codec = (uint8_t)k_t_codec_invalid;
@@ -498,9 +495,8 @@ static void produce_reject_budget(void)
   {
     png_build(k_t_png_w, k_t_png_h, 0U, false);
     static t_pull_t s_pull;
-    s_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store =
-      (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
+    s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
     ra8_jof_info_t              info = {};
     const ra8_jof_produce_cfg_t cfg  = {
       .pull     = t_pull,

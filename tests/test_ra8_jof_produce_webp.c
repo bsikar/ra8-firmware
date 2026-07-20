@@ -213,10 +213,10 @@ static uint8_t t_pix(uint32_t x, uint32_t y, uint32_t c)
  * @note Not thread-safe (shared work arenas).
  * @since 0.1.0
  */
-static ra8_err_t produce_webp(const uint8_t*            src,
-                              size_t                    src_len,
-                              uint8_t*                  webp_work,
-                              size_t                    webp_cap,
+static ra8_err_t produce_webp(const uint8_t*      src,
+                              size_t              src_len,
+                              uint8_t*            webp_work,
+                              size_t              webp_cap,
                               ra8_jof_memstore_t* store,
                               ra8_jof_info_t*     info)
 {
@@ -361,11 +361,8 @@ static void build_rgba_png(void)
  * @note Not thread-safe (reads the shared ::s_cell).
  * @since 0.1.0
  */
-static void assert_golden_tile(const ra8_jof_info_t* info,
-                               uint32_t                    x0,
-                               uint32_t                    y0,
-                               uint16_t                    w,
-                               uint16_t                    h)
+static void
+assert_golden_tile(const ra8_jof_info_t* info, uint32_t x0, uint32_t y0, uint16_t w, uint16_t h)
 {
   for (uint32_t r = 0U; r < h; r++) {
     for (uint32_t c = 0U; c < w; c++) {
@@ -396,16 +393,16 @@ static void check_golden_tiles(ra8_jof_memstore_t* store, const ra8_jof_info_t* 
       uint16_t h = 0U;
       TEST_ASSERT_EQ(k_ra8_ok,
                      ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                             store,
-                                             info,
-                                             tx,
-                                             ty,
-                                             s_scratch,
-                                             (uint32_t)sizeof(s_scratch),
-                                             s_cell,
-                                             (uint32_t)sizeof(s_cell),
-                                             &w,
-                                             &h));
+                                       store,
+                                       info,
+                                       tx,
+                                       ty,
+                                       s_scratch,
+                                       (uint32_t)sizeof(s_scratch),
+                                       s_cell,
+                                       (uint32_t)sizeof(s_cell),
+                                       &w,
+                                       &h));
       const uint32_t x0 = (uint32_t)tx * info->tile_w;
       const uint32_t y0 = (uint32_t)ty * info->tile_h;
       assert_golden_tile(info, x0, y0, w, h);
@@ -478,9 +475,8 @@ static void test_webp_lossless_golden(void)
   TEST_ASSERT_EQ(k_t_grid, info.tile_count);
 
   ra8_jof_info_t reparsed = {};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)store.len, &reparsed));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)store.len, &reparsed));
   TEST_ASSERT(ta_info_equal(&info, &reparsed));
   check_golden_tiles(&store, &info);
   TEST_END("produce webp: lossless -> JOF golden pixels + sized arena");
@@ -511,7 +507,7 @@ static void test_webp_png_byte_identical(void)
 
   build_rgba_png();
   static t_mem_pull_t s_pull;
-  s_pull                                = (t_mem_pull_t){.d = s_png, .n = s_png_len, .pos = 0U};
+  s_pull                          = (t_mem_pull_t){.d = s_png, .n = s_png_len, .pos = 0U};
   ra8_jof_memstore_t          sb  = {.buf = s_store_b, .cap = sizeof(s_store_b), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_mem_pull,
@@ -565,24 +561,23 @@ static void test_webp_lossy_path(void)
   TEST_ASSERT_EQ(k_t_dim, info.width);
   TEST_ASSERT_EQ(k_t_dim, info.height);
   ra8_jof_info_t reparsed = {};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)store.len, &reparsed));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)store.len, &reparsed));
   /* One tile pages back at the tile bpp (content is lossy, not compared). */
   uint16_t w = 0U;
   uint16_t h = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                         &store,
-                                         &info,
-                                         0U,
-                                         0U,
-                                         s_scratch,
-                                         (uint32_t)sizeof(s_scratch),
-                                         s_cell,
-                                         (uint32_t)sizeof(s_cell),
-                                         &w,
-                                         &h));
+                                   &store,
+                                   &info,
+                                   0U,
+                                   0U,
+                                   s_scratch,
+                                   (uint32_t)sizeof(s_scratch),
+                                   s_cell,
+                                   (uint32_t)sizeof(s_cell),
+                                   &w,
+                                   &h));
   TEST_ASSERT_EQ(k_t_tile, w);
   TEST_ASSERT_EQ(k_t_tile, h);
   TEST_END("produce webp: lossy VP8 -> valid JOF1");

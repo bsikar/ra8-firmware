@@ -36,9 +36,9 @@
 #include "mdl_export_internal.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
-#include "ra8_log.h"
 #include "ra8_jof.h"
 #include "ra8_jof_produce.h"
+#include "ra8_log.h"
 
 /**
  * @enum mdl_jof_geom_t
