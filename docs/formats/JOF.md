@@ -1016,7 +1016,7 @@ no dual-version reader and there should never be one.
 
 | Revision | Status | Notes |
 |----------|--------|-------|
-| `JOF1` | Current | Initial format. Previously named **RTA1** -- "RA8 Tile Atlas", after the library that then carried it, `ra8_jof`. Issue #319 renamed the magic to JOF to name the *access pattern* rather than the library; the library itself followed to `ra8_jof`, since its entire API is JOF operations. The byte layout did not change in either rename -- only the magic and the library identifier. |
+| `JOF1` | Current | Initial format. Previously named **RTA1** -- "RA8 Tile Atlas", after the library that then carried it, `ra8_tileatlas`. Issue #319 renamed the magic to JOF to name the *access pattern* rather than the library; the library itself followed to `ra8_jof`, since its entire API is JOF operations. The byte layout did not change in either rename -- only the magic and the library identifier. |
 
 ---
 
