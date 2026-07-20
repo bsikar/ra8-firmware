@@ -517,6 +517,75 @@ The resident working set, for the 800 x 12260 longstrip at `tile_h = 256`
 | Alignment slack | 128 | per-carve rounding |
 | **Total** | **3 049 592** | **~2.91 MiB** |
 
+#### Size the arena from the function, never from a round number
+
+A fixed-arena caller declares two things: the caps it advertises (`max_width` /
+`max_height`) and the arena it provides (`work_cap`). **These are one decision,
+not two.** Write the arena as the computed requirement for the declared cap:
+
+```c
+/* Not "2 MiB looks about right" -- the return of the sizing function for the
+ * cap this caller actually advertises. */
+uint32_t need = ra8_tileatlas_work_bytes(max_w, max_h, tile_w, tile_h);
+```
+
+The reason this matters more than it looks is a subtlety in *when* an
+under-sized arena is discovered. The producer carves from the **decoded**
+geometry, not from the caps -- a source narrower than `max_width`, or one that
+decodes to 1 bpp instead of the format's maximum 4, uses far less than the
+sizing function reserves. So an arena that is too small for the advertised cap
+does **not** fail on every source. It fails only on one wide enough, or deep
+enough in bpp, to exhaust it. Everything else imports fine, and the caps read
+as if they were honoured.
+
+That makes an under-sized arena a **latent capability lie** rather than an
+obvious bug: the caller advertises a cap it will fail closed on. It is still
+fail-closed -- `k_ra8_err_invalid_size`, no overrun, no torn atlas, which is
+why it can sit undetected -- but the declared capability is not the delivered
+one.
+
+The gap is not small. At `tile_w = tile_h = 256`:
+
+| Advertised cap | Arena actually required |
+|---|---:|
+| 1 016 x 1 016 | 2 097 144 (8 bytes under 2 MiB) |
+| 1 024 x 1 024 | 2 105 720 |
+| 1 536 x 1 536 | 2 654 744 |
+| 2 048 x 2 048 | **3 203 832** (~3.06 MiB) |
+| 4 096 x 4 096 | 5 400 824 |
+
+A round 2 MiB arena backs a declared cap of just **1 016 px**. A caller that
+pairs 2 MiB with a declared 2 048 is over-claiming by a factor of two in each
+axis -- and `examples/ek_ra8d2/hw_pending/ereader_manga` shipped exactly that
+pairing until the arena was re-derived. The carve set for that 2 048 cap:
+
+| Carve | Bytes | What sets it |
+|---|---:|---|
+| Decoder set (worst of JPEG / PNG) | 229 376 | JPEG wins here: 128 KiB window + `2048 x 16 x 3` stripe |
+| Band accumulator | 2 097 152 | `2048 x 256 x 4` -- the dominant term |
+| Tile stage | 262 144 | `256 x 256 x 4` |
+| Compressed-tile bound | 295 168 | `stage + stage/8 + 256` |
+| Tile index | 512 | 8 bytes x 64 tiles |
+| Deflate scratch | 319 352 | one `tdefl_compressor` |
+| Alignment slack | 128 | per-carve rounding |
+| **Total** | **3 203 832** | **~3.06 MiB** |
+
+Because the firmware cannot call the sizing function at compile time, a
+static arena has to hold a literal -- so pin that literal with checks that
+fail when it drifts from the cap beside it:
+
+- a `static_assert` on the **band term** (`cap x tile_h x bpp_max`), which is a
+  strict lower bound on the full requirement and needs only public constants.
+  It catches "raised the cap, forgot the arena" at build time. It cannot
+  certify a *sufficient* arena -- it is a lower bound, not the total;
+- a **host test** asserting the arena against the real
+  `ra8_tileatlas_work_bytes()` return. This is the exact, authoritative check,
+  and it is the one that runs in CI;
+- a **boot-time** re-check of the same call, so a mismatch that somehow reaches
+  silicon reports a hard failure instead of silently under-delivering.
+
+`tests/test_app_ereader_manga.c` is the worked instance of all three.
+
 #### What the ceiling actually depends on
 
 The header describes this arena as "independent of the image". That is the
