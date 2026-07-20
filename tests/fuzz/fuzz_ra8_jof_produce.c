@@ -1,11 +1,11 @@
 /**
- * @file fuzz_ra8_tileatlas_produce.c
+ * @file fuzz_ra8_jof_produce.c
  * @brief libFuzzer harness for the #231 import-time transcode producer.
  *
  * @details
  * The producer's source bytes are an image inside a downloaded EPUB -- fully
  * attacker-controlled initial-access content. This harness feeds the raw
- * fuzz input to the exact firmware import path -- `ra8_tileatlas_produce()`
+ * fuzz input to the exact firmware import path -- `ra8_jof_produce()`
  * over the streaming JPEG stripe decoder and the streaming PNG scanline
  * decoder -- with a fixed work arena and a bounded memstore sink, the same
  * zero-heap strategy the firmware uses. An ASan / UBSan diagnostic here is a
@@ -28,8 +28,8 @@
 
 #include "fuzz_entry.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 
 /** @brief Harness sizing: caps chosen so hostile headers stay cheap. */
 enum : uint32_t {
@@ -55,7 +55,7 @@ typedef struct {
   size_t         pos; /**< Read cursor. */
 } fuzz_pull_t;
 
-/** @brief ::ra8_tileatlas_pull_fn over the fuzz input. */
+/** @brief ::ra8_jof_pull_fn over the fuzz input. */
 static ra8_err_t fuzz_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   fuzz_pull_t* p    = (fuzz_pull_t*)ctx;
@@ -93,14 +93,14 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   }
   static fuzz_pull_t pull;
   pull = (fuzz_pull_t){.d = data, .n = size, .pos = 0U};
-  static ra8_tileatlas_memstore_t store;
-  store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static ra8_jof_memstore_t store;
+  store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   /* First input byte picks the codec so both encode paths stay hot. */
-  const uint8_t                     codec = (uint8_t)(data[0] & 0x01U);
-  const ra8_tileatlas_produce_cfg_t cfg   = {
+  const uint8_t               codec = (uint8_t)(data[0] & 0x01U);
+  const ra8_jof_produce_cfg_t cfg   = {
     .pull       = fuzz_pull,
     .pull_ctx   = &pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &store,
     .tile_w     = (uint16_t)k_fuzz_ta_tile,
     .tile_h     = (uint16_t)k_fuzz_ta_tile,
@@ -110,7 +110,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     .work       = s_work,
     .work_cap   = sizeof(s_work),
   };
-  ra8_tileatlas_info_t info = {};
-  (void)ra8_tileatlas_produce(&cfg, &info);
+  ra8_jof_info_t info = {};
+  (void)ra8_jof_produce(&cfg, &info);
   return 0;
 }

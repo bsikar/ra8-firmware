@@ -1,5 +1,5 @@
 /**
- * @file test_ra8_tileatlas_produce.c
+ * @file test_ra8_jof_produce.c
  * @brief Host tests for the import-time transcode producer: JPEG/PNG ->
  *        JOF, byte parity, bounded RAM high-water, hostile sources (#231).
  *
@@ -10,7 +10,7 @@
  * an encoder wholly independent of the decoder under test; the PNG builder
  * is additionally cross-checked against the vendored stb_image decode).
  * Parity oracle: every produced tile is paged back through
- * `ra8_tileatlas_read_tile()` and compared byte-for-byte against a direct
+ * `ra8_jof_read_tile()` and compared byte-for-byte against a direct
  * whole decode of the same source -- for JPEG that reference is
  * `ra8_jpeg_sw_decode()` (a *stripe decode vs whole decode* equivalence),
  * for PNG the generator pattern itself.
@@ -32,9 +32,9 @@
 #include "miniz.h"
 #include "ra8_err.h"
 #include "ra8_img_arena.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "ra8_jpeg_sw.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
 #include "stb_image.h"
 #include "unity_minimal.h"
 
@@ -68,7 +68,7 @@ static uint8_t s_work[8U * 1024U * 1024U];
 /** @brief Memstore backing. */
 static uint8_t s_store_buf[k_t_store_cap];
 /** @brief The atlas store under test. */
-static ra8_tileatlas_memstore_t s_store;
+static ra8_jof_memstore_t s_store;
 /** @brief Tile page-back buffer. */
 static uint8_t s_cell[k_t_cell_cap];
 /** @brief Stored-tile staging. */
@@ -93,7 +93,7 @@ typedef struct {
   size_t         chunk; /**< Max bytes per pull (0=all). */
 } t_pull_t;
 
-/** @brief ::ra8_tileatlas_pull_fn over a ::t_pull_t. */
+/** @brief ::ra8_jof_pull_fn over a ::t_pull_t. */
 static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   t_pull_t*    p    = (t_pull_t*)ctx;
@@ -291,15 +291,15 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
 
 /** @brief Run the producer over `s_src` into a fresh memstore. */
 static ra8_err_t
-produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_tileatlas_info_t* info)
+produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_info_t* info)
 {
   static t_pull_t pull;
   pull    = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_pull,
     .pull_ctx   = &pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = tile_w,
     .tile_h     = tile_h,
@@ -309,7 +309,7 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_tilea
     .work       = s_work,
     .work_cap   = (size_t)k_t_work_small,
   };
-  return ra8_tileatlas_produce(&cfg, info);
+  return ra8_jof_produce(&cfg, info);
 }
 
 /**
@@ -324,24 +324,24 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_tilea
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void check_tiles(const ra8_tileatlas_info_t* info, uint8_t ctx_ct)
+static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
 {
   for (uint16_t ty = 0U; ty < info->tile_rows; ty++) {
     for (uint16_t tx = 0U; tx < info->tile_cols; tx++) {
       uint16_t w = 0U;
       uint16_t h = 0U;
       TEST_ASSERT_EQ(k_ra8_ok,
-                     ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                             &s_store,
-                                             info,
-                                             tx,
-                                             ty,
-                                             s_scratch,
-                                             (uint32_t)sizeof(s_scratch),
-                                             s_cell,
-                                             (uint32_t)sizeof(s_cell),
-                                             &w,
-                                             &h));
+                     ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                       &s_store,
+                                       info,
+                                       tx,
+                                       ty,
+                                       s_scratch,
+                                       (uint32_t)sizeof(s_scratch),
+                                       s_cell,
+                                       (uint32_t)sizeof(s_cell),
+                                       &w,
+                                       &h));
       const uint32_t x0 = (uint32_t)tx * info->tile_w;
       const uint32_t y0 = (uint32_t)ty * info->tile_h;
       for (uint32_t r = 0U; r < h; r++) {
@@ -423,23 +423,18 @@ static void test_produce_png_colortypes(void)
     stbi_image_free(px); /* alloc-allow: stb backed by ra8_img_arena */
     ra8_img_arena_unbind();
 
-    ra8_tileatlas_info_t info = {};
-    TEST_ASSERT_EQ(k_ra8_ok,
-                   produce((uint16_t)k_t_tile,
-                           (uint16_t)k_t_tile,
-                           (uint8_t)k_ra8_tileatlas_codec_deflate,
-                           0U,
-                           &info));
+    ra8_jof_info_t info = {};
+    TEST_ASSERT_EQ(
+      k_ra8_ok,
+      produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, (uint8_t)k_ra8_jof_codec_deflate, 0U, &info));
     TEST_ASSERT_EQ(cases[i].bpp, info.bpp);
     TEST_ASSERT_EQ(k_t_png_w, info.width);
     TEST_ASSERT_EQ(k_t_png_h, info.height);
     /* Reparse from the store: producer-reported info == parsed info. */
-    ra8_tileatlas_info_t reparsed = {};
-    TEST_ASSERT_EQ(k_ra8_ok,
-                   ra8_tileatlas_parse(ra8_tileatlas_memstore_pread,
-                                       &s_store,
-                                       (uint64_t)s_store.len,
-                                       &reparsed));
+    ra8_jof_info_t reparsed = {};
+    TEST_ASSERT_EQ(
+      k_ra8_ok,
+      ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)s_store.len, &reparsed));
     TEST_ASSERT_EQ(0, memcmp(&info, &reparsed, sizeof(info)));
     check_tiles(&info, cases[i].ct);
   }
@@ -486,11 +481,10 @@ static void test_produce_jpeg_parity(void)
   TEST_ASSERT_EQ(k_t_jpg_w, rw);
   TEST_ASSERT_EQ(k_t_jpg_h, rh);
 
-  const uint8_t codecs[2] = {(uint8_t)k_ra8_tileatlas_codec_raw,
-                             (uint8_t)k_ra8_tileatlas_codec_deflate};
+  const uint8_t codecs[2] = {(uint8_t)k_ra8_jof_codec_raw, (uint8_t)k_ra8_jof_codec_deflate};
   const size_t  chunks[2] = {0U, 7U}; /* whole pulls, then a dribble stress */
   for (uint32_t i = 0U; i < 2U; i++) {
-    ra8_tileatlas_info_t info = {};
+    ra8_jof_info_t info = {};
     TEST_ASSERT_EQ(k_ra8_ok,
                    produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, codecs[i], chunks[i], &info));
     TEST_ASSERT_EQ(3U, info.bpp);
@@ -508,7 +502,7 @@ static void test_produce_jpeg_parity(void)
  *          the decoded image is at least 5x that set, and that the full resident
  *          set stays inside the RAM budget.
  *
- * @return The `ra8_tileatlas_work_bytes` working-set size in bytes.
+ * @return The `ra8_jof_work_bytes` working-set size in bytes.
  * @pre The shared source/store buffers are available.
  * @post `s_src` holds the big test PNG; all budget invariants held.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -518,10 +512,10 @@ static uint32_t produce_bounded_budget(void)
 {
   png_build(k_t_big_w, k_t_big_h, 0U, false, false);
   const uint64_t decoded = (uint64_t)k_t_big_w * (uint64_t)k_t_big_h;
-  const uint32_t need    = ra8_tileatlas_work_bytes((uint16_t)k_t_big_w,
-                                                    (uint16_t)k_t_big_h,
-                                                    (uint16_t)k_t_big_tile,
-                                                    (uint16_t)k_t_big_tile);
+  const uint32_t need    = ra8_jof_work_bytes((uint16_t)k_t_big_w,
+                                              (uint16_t)k_t_big_h,
+                                              (uint16_t)k_t_big_tile,
+                                              (uint16_t)k_t_big_tile);
   TEST_ASSERT(need > 0U);
   TEST_ASSERT(need <= (uint32_t)sizeof(s_work));
   /* The regime under test: decoded image >= 5x the whole working set. */
@@ -543,7 +537,7 @@ static uint32_t produce_bounded_budget(void)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void produce_bounded_check_corners(const ra8_tileatlas_info_t* info)
+static void produce_bounded_check_corners(const ra8_jof_info_t* info)
 {
   const uint16_t corners[4][2] = {
     {0U, 0U},
@@ -554,17 +548,17 @@ static void produce_bounded_check_corners(const ra8_tileatlas_info_t* info)
     uint16_t w = 0U;
     uint16_t h = 0U;
     TEST_ASSERT_EQ(k_ra8_ok,
-                   ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                           &s_store,
-                                           info,
-                                           corners[i][0],
-                                           corners[i][1],
-                                           s_scratch,
-                                           (uint32_t)sizeof(s_scratch),
-                                           s_cell,
-                                           (uint32_t)sizeof(s_cell),
-                                           &w,
-                                           &h));
+                   ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                     &s_store,
+                                     info,
+                                     corners[i][0],
+                                     corners[i][1],
+                                     s_scratch,
+                                     (uint32_t)sizeof(s_scratch),
+                                     s_cell,
+                                     (uint32_t)sizeof(s_cell),
+                                     &w,
+                                     &h));
     const uint32_t x0 = (uint32_t)corners[i][0] * info->tile_w;
     const uint32_t y0 = (uint32_t)corners[i][1] * info->tile_h;
     for (uint32_t r = 0U; r < h; r += 37U) {
@@ -597,22 +591,22 @@ static void test_produce_bounded_ram(void)
 
   static t_pull_t pull;
   pull    = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_pull,
     .pull_ctx   = &pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = (uint16_t)k_t_big_tile,
     .tile_h     = (uint16_t)k_t_big_tile,
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec      = (uint8_t)k_ra8_jof_codec_deflate,
     .max_width  = (uint16_t)k_t_big_w,
     .max_height = (uint16_t)k_t_big_h,
     .work       = s_work,
     .work_cap   = need,
   };
-  ra8_tileatlas_info_t info = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_produce(&cfg, &info));
+  ra8_jof_info_t info = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_produce(&cfg, &info));
   TEST_ASSERT_EQ(k_t_big_w, info.width);
   TEST_ASSERT_EQ(k_t_big_h, info.height);
   TEST_ASSERT_EQ((k_t_big_w / k_t_big_tile) * (k_t_big_h / k_t_big_tile), info.tile_count);
@@ -633,13 +627,10 @@ static void test_produce_bounded_ram(void)
  */
 static void expect_produce_err(ra8_err_t want)
 {
-  ra8_tileatlas_info_t info = {};
-  TEST_ASSERT_EQ(want,
-                 produce((uint16_t)k_t_tile,
-                         (uint16_t)k_t_tile,
-                         (uint8_t)k_ra8_tileatlas_codec_deflate,
-                         0U,
-                         &info));
+  ra8_jof_info_t info = {};
+  TEST_ASSERT_EQ(
+    want,
+    produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, (uint8_t)k_ra8_jof_codec_deflate, 0U, &info));
 }
 
 /**
@@ -673,31 +664,31 @@ static void produce_hostile_sniff(void)
  */
 static void produce_hostile_pull_and_cfg(void)
 {
-  ra8_tileatlas_info_t info = {};
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  ra8_jof_info_t info = {};
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull     = t_pull_fail,
     .pull_ctx = NULL,
-    .sink     = ra8_tileatlas_memstore_sink,
+    .sink     = ra8_jof_memstore_sink,
     .sink_ctx = &s_store,
     .tile_w   = (uint16_t)k_t_tile,
     .tile_h   = (uint16_t)k_t_tile,
-    .codec    = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec    = (uint8_t)k_ra8_jof_codec_deflate,
     .work     = s_work,
     .work_cap = (size_t)k_t_work_small,
   };
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_tileatlas_produce(&cfg, &info));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_jof_produce(&cfg, &info));
   /* Config guards. */
-  ra8_tileatlas_produce_cfg_t bad = cfg;
-  bad.tile_w                      = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tileatlas_produce(&bad, &info));
+  ra8_jof_produce_cfg_t bad = cfg;
+  bad.tile_w                = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad       = cfg;
   bad.codec = 9U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tileatlas_produce(&bad, &info));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad      = cfg;
   bad.pull = NULL;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_produce(&bad, &info));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_produce(&cfg, NULL));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_produce(&bad, &info));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_produce(&cfg, NULL));
 }
 
 /**
@@ -771,40 +762,40 @@ static void produce_hostile_budget(void)
     png_build(k_t_png_w, k_t_png_h, 0U, false, false);
     static t_pull_t pull;
     pull    = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-    ra8_tileatlas_info_t              info = {};
-    const ra8_tileatlas_produce_cfg_t cfg  = {
+    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+    ra8_jof_info_t              info = {};
+    const ra8_jof_produce_cfg_t cfg  = {
       .pull     = t_pull,
       .pull_ctx = &pull,
-      .sink     = ra8_tileatlas_memstore_sink,
+      .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,
       .tile_h   = (uint16_t)k_t_tile,
-      .codec    = (uint8_t)k_ra8_tileatlas_codec_deflate,
+      .codec    = (uint8_t)k_ra8_jof_codec_deflate,
       .work     = s_work,
       .work_cap = 64U * 1024U,
     };
-    TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_tileatlas_produce(&cfg, &info));
+    TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_produce(&cfg, &info));
   }
   /* Sink runs out of room (store cap tiny) -> no_mem propagates. */
   {
     png_build(k_t_png_w, k_t_png_h, 0U, false, false);
     static t_pull_t pull;
     pull    = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = 64U, .len = 0U};
-    ra8_tileatlas_info_t              info = {};
-    const ra8_tileatlas_produce_cfg_t cfg  = {
+    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = 64U, .len = 0U};
+    ra8_jof_info_t              info = {};
+    const ra8_jof_produce_cfg_t cfg  = {
       .pull     = t_pull,
       .pull_ctx = &pull,
-      .sink     = ra8_tileatlas_memstore_sink,
+      .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,
       .tile_h   = (uint16_t)k_t_tile,
-      .codec    = (uint8_t)k_ra8_tileatlas_codec_deflate,
+      .codec    = (uint8_t)k_ra8_jof_codec_deflate,
       .work     = s_work,
       .work_cap = (size_t)k_t_work_small,
     };
-    TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_tileatlas_produce(&cfg, &info));
+    TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_jof_produce(&cfg, &info));
   }
 }
 
@@ -857,18 +848,18 @@ static void test_produce_hostile(void)
 static void test_produce_work_bytes(void)
 {
   TEST_BEGIN("produce: work-arena calculator bounds");
-  TEST_ASSERT(ra8_tileatlas_work_bytes(1024U, 1024U, 128U, 128U) > 0U);
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_work_bytes(0U, 1024U, 128U, 128U));
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_work_bytes(40000U, 1024U, 128U, 128U));
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_work_bytes(1024U, 0U, 128U, 128U));
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_work_bytes(1024U, 40000U, 128U, 128U));
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_work_bytes(1024U, 1024U, 0U, 128U));
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_work_bytes(1024U, 1024U, 128U, 0U));
+  TEST_ASSERT(ra8_jof_work_bytes(1024U, 1024U, 128U, 128U) > 0U);
+  TEST_ASSERT_EQ(0U, ra8_jof_work_bytes(0U, 1024U, 128U, 128U));
+  TEST_ASSERT_EQ(0U, ra8_jof_work_bytes(40000U, 1024U, 128U, 128U));
+  TEST_ASSERT_EQ(0U, ra8_jof_work_bytes(1024U, 0U, 128U, 128U));
+  TEST_ASSERT_EQ(0U, ra8_jof_work_bytes(1024U, 40000U, 128U, 128U));
+  TEST_ASSERT_EQ(0U, ra8_jof_work_bytes(1024U, 1024U, 0U, 128U));
+  TEST_ASSERT_EQ(0U, ra8_jof_work_bytes(1024U, 1024U, 128U, 0U));
   /* Tile-count cap: 32768x32768 at 1x1 tiles is way past 65536 tiles. */
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_work_bytes(32768U, 32768U, 1U, 1U));
+  TEST_ASSERT_EQ(0U, ra8_jof_work_bytes(32768U, 32768U, 1U, 1U));
   /* Monotone-ish sanity: a taller band costs more arena. */
-  TEST_ASSERT(ra8_tileatlas_work_bytes(1024U, 1024U, 128U, 256U) >
-              ra8_tileatlas_work_bytes(1024U, 1024U, 128U, 64U));
+  TEST_ASSERT(ra8_jof_work_bytes(1024U, 1024U, 128U, 256U) >
+              ra8_jof_work_bytes(1024U, 1024U, 128U, 64U));
   TEST_END("produce: work-arena calculator bounds");
 }
 
@@ -889,6 +880,6 @@ int32_t main(void)
   test_produce_bounded_ram();
   test_produce_hostile();
   test_produce_work_bytes();
-  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas_produce.c\n");
+  (void)fprintf(stderr, "[OK  ] test_ra8_jof_produce.c\n");
   return 0;
 }

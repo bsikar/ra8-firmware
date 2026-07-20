@@ -31,7 +31,7 @@
 #include "ra8_err.h"
 #include "ra8_fmt.h"
 #include "ra8_fmt_internal.h"
-#include "ra8_tileatlas.h"
+#include "ra8_jof.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_fmt_atlas_ins";
@@ -72,7 +72,7 @@ typedef struct {
 /**
  * @struct fmt_decode_buf_t
  * @brief Reusable decode buffers so inspection allocates once, not per tile.
- * @details `ra8_tileatlas_read_tile` needs a pixel destination and (for the
+ * @details `ra8_jof_read_tile` needs a pixel destination and (for the
  *          deflate codec) a stored-stream staging buffer. Both are sized from
  *          the atlas geometry and shared across every tile.
  * @invariant `cell_cap >= tile_w * tile_h * bpp` for the atlas being read.
@@ -130,7 +130,7 @@ static uint32_t priv_fnv1a(const uint8_t* buf, size_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_print_geom(FILE* out, const ra8_tileatlas_info_t* info, size_t len)
+static void priv_print_geom(FILE* out, const ra8_jof_info_t* info, size_t len)
 {
   (void)fprintf(out, "JOF atlas: %zu bytes\n", len);
   (void)fprintf(out, "  image      : %u x %u px\n", (unsigned)info->width, (unsigned)info->height);
@@ -143,7 +143,7 @@ static void priv_print_geom(FILE* out, const ra8_tileatlas_info_t* info, size_t 
   (void)fprintf(out,
                 "  codec      : %u (%s)\n",
                 (unsigned)info->codec,
-                (info->codec == (uint8_t)k_ra8_tileatlas_codec_deflate) ? "deflate" : "raw");
+                (info->codec == (uint8_t)k_ra8_jof_codec_deflate) ? "deflate" : "raw");
   (void)fprintf(out, "  tile_count : %u\n", (unsigned)info->tile_count);
   (void)fprintf(out, "  index_off  : %u\n", (unsigned)info->index_off);
   (void)fprintf(out, "  total_size : %u\n", (unsigned)info->total_size);
@@ -166,7 +166,7 @@ static void priv_print_geom(FILE* out, const ra8_tileatlas_info_t* info, size_t 
  * @param[in]  idx   Tile index in row-major order.
  * @param[in]  buf   Reusable decode buffers (non-NULL).
  * @param[in,out] rec Record whose `hash` and `uniform` are filled.
- * @return Result code propagated from `ra8_tileatlas_read_tile()`.
+ * @return Result code propagated from `ra8_jof_read_tile()`.
  * @retval k_ra8_ok Tile decoded; hash and uniformity recorded.
  * @pre `rec->tw`/`rec->th`/`rec->payload` are already set.
  * @pre @p buf covers this atlas's worst-case tile.
@@ -176,26 +176,26 @@ static void priv_print_geom(FILE* out, const ra8_tileatlas_info_t* info, size_t 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_tile_content(const ra8_fmt_blob_t*       atlas,
-                                   const ra8_tileatlas_info_t* info,
-                                   uint32_t                    idx,
-                                   const fmt_decode_buf_t*     buf,
-                                   fmt_tile_rec_t*             rec)
+static ra8_err_t priv_tile_content(const ra8_fmt_blob_t*   atlas,
+                                   const ra8_jof_info_t*   info,
+                                   uint32_t                idx,
+                                   const fmt_decode_buf_t* buf,
+                                   fmt_tile_rec_t*         rec)
 {
-  ra8_tileatlas_memstore_t store = {.buf = atlas->bytes, .cap = atlas->len, .len = atlas->len};
-  uint16_t                 tw    = 0U;
-  uint16_t                 th    = 0U;
-  const ra8_err_t          rc = ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                                        &store,
-                                                        info,
-                                                        (uint16_t)(idx % (uint32_t)info->tile_cols),
-                                                        (uint16_t)(idx / (uint32_t)info->tile_cols),
-                                                        buf->scratch,
-                                                        buf->scratch_cap,
-                                                        buf->cell,
-                                                        buf->cell_cap,
-                                                        &tw,
-                                                        &th);
+  ra8_jof_memstore_t store = {.buf = atlas->bytes, .cap = atlas->len, .len = atlas->len};
+  uint16_t           tw    = 0U;
+  uint16_t           th    = 0U;
+  const ra8_err_t    rc    = ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                               &store,
+                                               info,
+                                               (uint16_t)(idx % (uint32_t)info->tile_cols),
+                                               (uint16_t)(idx / (uint32_t)info->tile_cols),
+                                               buf->scratch,
+                                               buf->scratch_cap,
+                                               buf->cell,
+                                               buf->cell_cap,
+                                               &tw,
+                                               &th);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -226,20 +226,20 @@ static ra8_err_t priv_tile_content(const ra8_fmt_blob_t*       atlas,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_tile_rec(const ra8_fmt_blob_t*       atlas,
-                               const ra8_tileatlas_info_t* info,
-                               uint32_t                    idx,
-                               fmt_tile_rec_t*             rec)
+static ra8_err_t priv_tile_rec(const ra8_fmt_blob_t* atlas,
+                               const ra8_jof_info_t* info,
+                               uint32_t              idx,
+                               fmt_tile_rec_t*       rec)
 {
-  const size_t ent = (size_t)info->index_off + ((size_t)idx * (size_t)k_ra8_tileatlas_index_entry);
-  if ((ent + (size_t)k_ra8_tileatlas_index_entry) > atlas->len) {
+  const size_t ent = (size_t)info->index_off + ((size_t)idx * (size_t)k_ra8_jof_index_entry);
+  if ((ent + (size_t)k_ra8_jof_index_entry) > atlas->len) {
     return k_ra8_err_validation_failed;
   }
-  rec->offset         = ra8_fmt_rd_u32(&atlas->bytes[ent + (size_t)k_ra8_tileatlas_idx_ofs_offset]);
-  rec->length         = ra8_fmt_rd_u32(&atlas->bytes[ent + (size_t)k_ra8_tileatlas_idx_ofs_length]);
+  rec->offset         = ra8_fmt_rd_u32(&atlas->bytes[ent + (size_t)k_ra8_jof_idx_ofs_offset]);
+  rec->length         = ra8_fmt_rd_u32(&atlas->bytes[ent + (size_t)k_ra8_jof_idx_ofs_length]);
   const uint16_t  tx  = (uint16_t)(idx % (uint32_t)info->tile_cols);
   const uint16_t  ty  = (uint16_t)(idx / (uint32_t)info->tile_cols);
-  const ra8_err_t drc = ra8_tileatlas_tile_dims(info, tx, ty, &rec->tw, &rec->th);
+  const ra8_err_t drc = ra8_jof_tile_dims(info, tx, ty, &rec->tw, &rec->th);
   if (drc != k_ra8_ok) {
     return drc;
   }
@@ -379,16 +379,16 @@ static void priv_print_table(FILE* out, const fmt_tile_rec_t* recs, uint32_t cou
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_collect_tiles(const ra8_fmt_blob_t*       atlas,
-                                    const ra8_tileatlas_info_t* info,
-                                    fmt_tile_rec_t*             recs,
-                                    const ra8_fmt_opts_t*       opts)
+static ra8_err_t priv_collect_tiles(const ra8_fmt_blob_t* atlas,
+                                    const ra8_jof_info_t* info,
+                                    fmt_tile_rec_t*       recs,
+                                    const ra8_fmt_opts_t* opts)
 {
   const uint32_t   tmax = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
   fmt_decode_buf_t buf  = {.cell        = (uint8_t*)malloc((size_t)tmax),
                            .cell_cap    = tmax,
                            .scratch     = nullptr,
-                           .scratch_cap = ra8_tileatlas_stored_bound(tmax)};
+                           .scratch_cap = ra8_jof_stored_bound(tmax)};
   buf.scratch           = (uint8_t*)malloc((size_t)buf.scratch_cap);
   if ((buf.cell == nullptr) || (buf.scratch == nullptr)) {
     free(buf.cell);
@@ -414,10 +414,9 @@ ra8_err_t ra8_fmt_atlas_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
-  ra8_tileatlas_memstore_t store = {.buf = src->bytes, .cap = src->len, .len = src->len};
-  ra8_tileatlas_info_t     info  = {};
-  ra8_err_t                rc =
-    ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &store, (uint64_t)src->len, &info);
+  ra8_jof_memstore_t store = {.buf = src->bytes, .cap = src->len, .len = src->len};
+  ra8_jof_info_t     info  = {};
+  ra8_err_t          rc = ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)src->len, &info);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "JOF parse FAILED (rc=%d) -- container is invalid\n", (int)rc);
     ra8_fmt_hex_dump(opts->report,
@@ -448,7 +447,7 @@ ra8_err_t ra8_fmt_atlas_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
     priv_print_table(opts->report, recs, info.tile_count);
   }
   const ra8_err_t verdict =
-    priv_check_table(recs, info.tile_count, (uint32_t)k_ra8_tileatlas_hdr_bytes, opts->report);
+    priv_check_table(recs, info.tile_count, (uint32_t)k_ra8_jof_hdr_bytes, opts->report);
   free(recs);
   (void)fprintf(opts->report,
                 "verdict: %s\n",
@@ -457,24 +456,24 @@ ra8_err_t ra8_fmt_atlas_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
   return verdict;
 }
 
-ra8_err_t ra8_fmt_atlas_reassemble(const ra8_fmt_blob_t*       atlas,
-                                   const ra8_tileatlas_info_t* info,
-                                   uint8_t**                   out_px,
-                                   size_t*                     out_len)
+ra8_err_t ra8_fmt_atlas_reassemble(const ra8_fmt_blob_t* atlas,
+                                   const ra8_jof_info_t* info,
+                                   uint8_t**             out_px,
+                                   size_t*               out_len)
 {
   RA8_CHECK_NULL_PTR(atlas, s_tag, "atlas must not be nullptr");
   RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");
   RA8_CHECK_NULL_PTR(out_px, s_tag, "out_px must not be nullptr");
   RA8_CHECK_NULL_PTR(out_len, s_tag, "out_len must not be nullptr");
-  *out_px                         = nullptr;
-  ra8_tileatlas_memstore_t store  = {.buf = atlas->bytes, .cap = atlas->len, .len = atlas->len};
-  const size_t             stride = (size_t)info->width * (size_t)info->bpp;
-  const size_t             raster = stride * (size_t)info->height;
-  const uint32_t tile_max  = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
-  const uint32_t scratch_c = ra8_tileatlas_stored_bound(tile_max);
-  uint8_t*       px        = (uint8_t*)calloc(raster, 1U);
-  uint8_t*       cell      = (uint8_t*)malloc((size_t)tile_max);
-  uint8_t*       scratch   = (uint8_t*)malloc((size_t)scratch_c);
+  *out_px                   = nullptr;
+  ra8_jof_memstore_t store  = {.buf = atlas->bytes, .cap = atlas->len, .len = atlas->len};
+  const size_t       stride = (size_t)info->width * (size_t)info->bpp;
+  const size_t       raster = stride * (size_t)info->height;
+  const uint32_t tile_max   = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
+  const uint32_t scratch_c  = ra8_jof_stored_bound(tile_max);
+  uint8_t*       px         = (uint8_t*)calloc(raster, 1U);
+  uint8_t*       cell       = (uint8_t*)malloc((size_t)tile_max);
+  uint8_t*       scratch    = (uint8_t*)malloc((size_t)scratch_c);
   if ((px == nullptr) || (cell == nullptr) || (scratch == nullptr)) {
     free(px);
     free(cell);
@@ -486,17 +485,17 @@ ra8_err_t ra8_fmt_atlas_reassemble(const ra8_fmt_blob_t*       atlas,
     for (uint32_t tx = 0U; (rc == k_ra8_ok) && (tx < info->tile_cols); ++tx) {
       uint16_t tw = 0U;
       uint16_t th = 0U;
-      rc          = ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                            &store,
-                                            info,
-                                            (uint16_t)tx,
-                                            (uint16_t)ty,
-                                            scratch,
-                                            scratch_c,
-                                            cell,
-                                            tile_max,
-                                            &tw,
-                                            &th);
+      rc          = ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                      &store,
+                                      info,
+                                      (uint16_t)tx,
+                                      (uint16_t)ty,
+                                      scratch,
+                                      scratch_c,
+                                      cell,
+                                      tile_max,
+                                      &tw,
+                                      &th);
       if (rc != k_ra8_ok) {
         break;
       }

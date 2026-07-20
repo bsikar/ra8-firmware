@@ -16,7 +16,7 @@
  *
  * @par Integration (#290 normalize-on-import):
  * The JOF tile producer consumes this facade
- * (`ra8_tileatlas_produce()` -> `priv_webp_transcode`): a WebP manifest image
+ * (`ra8_jof_produce()` -> `priv_webp_transcode`): a WebP manifest image
  * is decoded whole-frame here and banded into the one normalized band-tile
  * format, so render time touches a single codec regardless of source. The
  * small-image (non-tiled) `ra8_reflow` / `ra8_img` inline raster dispatch does

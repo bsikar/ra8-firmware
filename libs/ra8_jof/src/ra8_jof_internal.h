@@ -1,5 +1,5 @@
 /**
- * @file ra8_tileatlas_internal.h
+ * @file ra8_jof_internal.h
  * @brief Module-private seams shared by the producer translation units.
  * @ingroup grp_ereader
  *
@@ -10,11 +10,11 @@
  * The producer is split across translation units to keep each under the
  * maintainability line cap:
  *
- *   - `ra8_tileatlas_produce.c`      -- sniff/dispatch, band accumulator,
+ *   - `ra8_jof_produce.c`      -- sniff/dispatch, band accumulator,
  *     tile cut + encode + sink, index/footer emission, JPEG/PNG arms.
- *   - `ra8_tileatlas_produce_webp.c` -- the whole-frame WebP arm (#290):
- *     `ra8_tileatlas_webp_work_bytes()` and `ra8_ta_priv_webp_transcode()`.
- *   - `ra8_tileatlas_png.c`          -- the streaming PNG scanline decoder.
+ *   - `ra8_jof_produce_webp.c` -- the whole-frame WebP arm (#290):
+ *     `ra8_jof_webp_work_bytes()` and `ra8_jof_priv_webp_transcode()`.
+ *   - `ra8_jof_png.c`          -- the streaming PNG scanline decoder.
  *
  * This header carries the bump allocator over the caller's work arena, the
  * geometry/rows callback contracts the PNG decoder reports through (the JPEG
@@ -34,18 +34,18 @@
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof_produce.h"
 
 /**
- * @enum ra8_ta_bump_const_t
+ * @enum ra8_jof_bump_const_t
  * @brief Bump-allocator alignment constants.
  */
 typedef enum : uint8_t {
-  k_ra8_ta_bump_align = 8U, /**< Every carve is 8-byte aligned. */
-} ra8_ta_bump_const_t;
+  k_ra8_jof_bump_align = 8U, /**< Every carve is 8-byte aligned. */
+} ra8_jof_bump_const_t;
 
 /**
- * @struct ra8_ta_bump_t
+ * @struct ra8_jof_bump_t
  * @brief Linear (bump) allocator over the caller's work arena.
  *
  * @details Carves 8-byte-aligned regions front to back; exhaustion is the
@@ -59,7 +59,7 @@ typedef struct {
   uint8_t* base; /**< Arena base (caller's work buffer). */
   size_t   cap;  /**< Arena capacity, bytes.             */
   size_t   off;  /**< First free byte.                   */
-} ra8_ta_bump_t;
+} ra8_jof_bump_t;
 
 /**
  * @brief Carve @p len 8-byte-aligned bytes from the bump arena.
@@ -79,10 +79,10 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void* ra8_ta_priv_bump_take(ra8_ta_bump_t* bump, size_t len);
+RA8_PRIV void* ra8_jof_priv_bump_take(ra8_jof_bump_t* bump, size_t len);
 
 /**
- * @typedef ra8_ta_geom_fn
+ * @typedef ra8_jof_geom_fn
  * @brief Producer geometry hook: fires once when the source dimensions and
  *        output channel count are known, before any pixel row is emitted.
  *
@@ -93,10 +93,10 @@ RA8_PRIV void* ra8_ta_priv_bump_take(ra8_ta_bump_t* bump, size_t len);
  * @return k_ra8_ok to continue; any error aborts the decode with that code.
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_ta_geom_fn)(void* ctx, uint16_t width, uint16_t height, uint8_t channels);
+typedef ra8_err_t (*ra8_jof_geom_fn)(void* ctx, uint16_t width, uint16_t height, uint8_t channels);
 
 /**
- * @typedef ra8_ta_rows_fn
+ * @typedef ra8_jof_rows_fn
  * @brief Producer row sink: receives decoded pixel rows strictly in order.
  *
  * @param[in] ctx      Producer context.
@@ -108,12 +108,12 @@ typedef ra8_err_t (*ra8_ta_geom_fn)(void* ctx, uint16_t width, uint16_t height, 
  * @return k_ra8_ok to continue; any error aborts the decode with that code.
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_ta_rows_fn)(void*          ctx,
-                                    const uint8_t* px,
-                                    uint16_t       width,
-                                    uint16_t       y0,
-                                    uint16_t       nrows,
-                                    uint8_t        channels);
+typedef ra8_err_t (*ra8_jof_rows_fn)(void*          ctx,
+                                     const uint8_t* px,
+                                     uint16_t       width,
+                                     uint16_t       y0,
+                                     uint16_t       nrows,
+                                     uint8_t        channels);
 
 /**
  * @brief Streaming PNG scanline decode: pull bytes in, emit rows in order.
@@ -153,31 +153,31 @@ typedef ra8_err_t (*ra8_ta_rows_fn)(void*          ctx,
  * @retval other                       Propagated from pull / the hooks.
  *
  * @pre @p pull delivers the PNG from its first signature byte.
- * @pre @p bump has capacity per `ra8_tileatlas_work_bytes()`.
+ * @pre @p bump has capacity per `ra8_jof_work_bytes()`.
  * @post On success exactly `height` rows were emitted, in order.
  * @post On any error emission stops; the transcode aborts.
  * @note Not thread-safe (module-static inflate context).
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_priv_png_rows(ra8_tileatlas_pull_fn pull,
-                                        void*                 pull_ctx,
-                                        ra8_ta_bump_t*        bump,
-                                        uint16_t              max_w,
-                                        uint16_t              max_h,
-                                        ra8_ta_geom_fn        on_geom,
-                                        ra8_ta_rows_fn        on_rows,
-                                        void*                 cb_ctx);
+RA8_PRIV ra8_err_t ra8_jof_priv_png_rows(ra8_jof_pull_fn pull,
+                                         void*           pull_ctx,
+                                         ra8_jof_bump_t* bump,
+                                         uint16_t        max_w,
+                                         uint16_t        max_h,
+                                         ra8_jof_geom_fn on_geom,
+                                         ra8_jof_rows_fn on_rows,
+                                         void*           cb_ctx);
 
 /**
- * @enum ra8_ta_carve_const_t
+ * @enum ra8_jof_carve_const_t
  * @brief Carve-sizing constant shared by both work-arena calculators.
  */
 typedef enum : uint32_t {
-  k_ra8_ta_carve_slack = 128U, /**< Alignment slack folded into every arena sizing. */
-} ra8_ta_carve_const_t;
+  k_ra8_jof_carve_slack = 128U, /**< Alignment slack folded into every arena sizing. */
+} ra8_jof_carve_const_t;
 
 /**
- * @struct ra8_ta_prefix_pull_t
+ * @struct ra8_jof_prefix_pull_t
  * @brief Pull adapter that replays the sniffed head bytes, then delegates.
  *
  * @details The producer must peek the source magic before choosing a decoder,
@@ -190,15 +190,15 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  const uint8_t*        head;      /**< Sniffed bytes to replay. */
-  size_t                head_len;  /**< Sniffed byte count.      */
-  size_t                pos;       /**< Replay cursor.           */
-  ra8_tileatlas_pull_fn inner;     /**< Real source.             */
-  void*                 inner_ctx; /**< Context for the source.  */
-} ra8_ta_prefix_pull_t;
+  const uint8_t*  head;      /**< Sniffed bytes to replay. */
+  size_t          head_len;  /**< Sniffed byte count.      */
+  size_t          pos;       /**< Replay cursor.           */
+  ra8_jof_pull_fn inner;     /**< Real source.             */
+  void*           inner_ctx; /**< Context for the source.  */
+} ra8_jof_prefix_pull_t;
 
 /**
- * @struct ra8_ta_prod_state_t
+ * @struct ra8_jof_prod_state_t
  * @brief Whole transcode state (module-static instance in the producer TU).
  *
  * @details One static instance mirrors the decoder pattern; every sized buffer
@@ -210,9 +210,9 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const ra8_tileatlas_produce_cfg_t* cfg;        /**< Caller configuration.    */
-  ra8_ta_bump_t                      bump_store; /**< Arena allocator state.   */
-  ra8_ta_bump_t*                     bump;       /**< Arena allocator (owned). */
+  const ra8_jof_produce_cfg_t* cfg;        /**< Caller configuration.    */
+  ra8_jof_bump_t               bump_store; /**< Arena allocator state.   */
+  ra8_jof_bump_t*              bump;       /**< Arena allocator (owned). */
 
   uint16_t cap_w; /**< Effective width cap.  */
   uint16_t cap_h; /**< Effective height cap. */
@@ -237,16 +237,16 @@ typedef struct {
   uint32_t band_fill;  /**< Rows currently in the band.      */
   uint32_t tiles_done; /**< Tiles encoded + recorded so far. */
   uint32_t written;    /**< Atlas bytes sunk so far.         */
-} ra8_ta_prod_state_t;
+} ra8_jof_prod_state_t;
 
 /**
  * @brief Pull adapter: replay the sniffed head, then delegate to the source.
  *
  * @details Serves the replay bytes first, then transparently delegates to the
- *          inner source. Matches ::ra8_tileatlas_pull_fn so it can be passed
+ *          inner source. Matches ::ra8_jof_pull_fn so it can be passed
  *          as the pull seam to any decoder.
  *
- * @param[in]  ctx A ::ra8_ta_prefix_pull_t.
+ * @param[in]  ctx A ::ra8_jof_prefix_pull_t.
  * @param[out] buf Destination buffer.
  * @param[in]  cap Capacity of @p buf.
  * @param[out] got Bytes delivered.
@@ -262,7 +262,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got);
+RA8_PRIV ra8_err_t ra8_jof_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got);
 
 /**
  * @brief Bind the source geometry: validate caps, carve buffers, emit header.
@@ -270,9 +270,9 @@ RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, 
  * @details Fires once per transcode (from any decoder arm). Rejects, fail
  *          closed: dimensions above the caps, a tile grid above the format
  *          cap, and any carve the arena cannot fit. On success the 32-byte
- *          JOF header has been sunk. Matches ::ra8_ta_geom_fn.
+ *          JOF header has been sunk. Matches ::ra8_jof_geom_fn.
  *
- * @param[in] ctx      The producer state (::ra8_ta_prod_state_t).
+ * @param[in] ctx      The producer state (::ra8_jof_prod_state_t).
  * @param[in] width    Source width, pixels.
  * @param[in] height   Source height, pixels.
  * @param[in] channels Output bytes per pixel (1, 3 or 4).
@@ -290,10 +290,10 @@ RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, 
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_priv_on_geom(void*    ctx,
-                                       uint16_t width,
-                                       uint16_t height,
-                                       uint8_t  channels);
+RA8_PRIV ra8_err_t ra8_jof_priv_on_geom(void*    ctx,
+                                        uint16_t width,
+                                        uint16_t height,
+                                        uint8_t  channels);
 
 /**
  * @brief Row sink shared by every decoder arm: accumulate, flush full bands.
@@ -301,9 +301,9 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_geom(void*    ctx,
  * @details Enforces the strict in-order row contract (`y0 == rows_seen`), then
  *          copies the delivered rows into the band, flushing a tile row every
  *          time the band fills. A row group may span a band boundary; the copy
- *          loop splits it. Matches ::ra8_ta_rows_fn.
+ *          loop splits it. Matches ::ra8_jof_rows_fn.
  *
- * @param[in] ctx      The producer state (::ra8_ta_prod_state_t).
+ * @param[in] ctx      The producer state (::ra8_jof_prod_state_t).
  * @param[in] px       Decoded row pixels.
  * @param[in] width    Row width, pixels.
  * @param[in] y0       Image row of the first delivered row.
@@ -322,21 +322,21 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_geom(void*    ctx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_priv_on_rows(void*          ctx,
-                                       const uint8_t* px,
-                                       uint16_t       width,
-                                       uint16_t       y0,
-                                       uint16_t       nrows,
-                                       uint8_t        channels);
+RA8_PRIV ra8_err_t ra8_jof_priv_on_rows(void*          ctx,
+                                        const uint8_t* px,
+                                        uint16_t       width,
+                                        uint16_t       y0,
+                                        uint16_t       nrows,
+                                        uint8_t        channels);
 
 /**
  * @brief Transcode a WebP source into the JOF tile path (whole-frame, #290).
  *
  * @details Pulls the whole compressed source into `cfg->webp_work`, reads its
- *          geometry, binds it as a 4-bpp source through ::ra8_ta_priv_on_geom,
+ *          geometry, binds it as a 4-bpp source through ::ra8_jof_priv_on_geom,
  *          carves the decoded RGBA frame and libwebp scratch after the source
  *          bytes, decodes heap-free through the `ra8_webp` facade, and bands
- *          the frame out through ::ra8_ta_priv_on_rows. Every carve is
+ *          the frame out through ::ra8_jof_priv_on_rows. Every carve is
  *          bounds-checked; any shortfall fails closed. WebP is not
  *          stripe-decodable (its lossless mode back-references the whole
  *          frame), so it carries an honest whole-frame memory cost isolated in
@@ -353,11 +353,12 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_rows(void*          ctx,
  * @retval k_ra8_err_validation_failed Corrupt WebP or the scratch exhausted.
  * @retval other                       Propagated from the pull / facade / rows.
  *
- * @pre `ra8_ta_priv_prefix_pull` replays the sniffed head before the source.
+ * @pre `ra8_jof_priv_prefix_pull` replays the sniffed head before the source.
  * @pre The dispatcher confirmed the RIFF+WEBP head.
  * @post On success every source row reached the band accumulator.
  * @post On error the transcode aborts.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_priv_webp_transcode(ra8_ta_prod_state_t* st, ra8_ta_prefix_pull_t* pfx);
+RA8_PRIV ra8_err_t ra8_jof_priv_webp_transcode(ra8_jof_prod_state_t*  st,
+                                               ra8_jof_prefix_pull_t* pfx);

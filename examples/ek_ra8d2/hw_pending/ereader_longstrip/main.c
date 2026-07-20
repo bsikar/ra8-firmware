@@ -15,7 +15,7 @@
  * Pipeline: boot clocks/MSTP/SysTick/console/LEDs, bring up external SDRAM + the
  * 1024x600 RGB565 GLCDC panel via `ra8_display_pal`
  * (`k_display_backend_lcd_ra8_glcdc`), bind `ra8_gfx` to the panel FB, then
- * build a tall colourful strip as a JOF band-tile atlas (`ra8_tileatlas`, one
+ * build a tall colourful strip as a JOF band-tile atlas (`ra8_jof`, one
  * full-width band column). Only the atlas header + index + footer are
  * materialised (~176 bytes); each band's pixels are painted PROCEDURALLY on a
  * cache miss (a vivid palette hue + a top->bottom brightness gradient + a white
@@ -58,12 +58,12 @@
 #include "ra8_io_i2c_bus.h"
 #include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_isr.h"
+#include "ra8_jof.h"
 #include "ra8_longstrip.h"
 #include "ra8_mstp.h"
 #include "ra8_panel_timing.h"
 #include "ra8_sdramc.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 #include "ra8_time.h"
 #include "ra8_touch.h"
 
@@ -119,7 +119,7 @@ typedef enum : uint32_t {
  * @enum ls_atlas_t
  * @brief JOF metadata-only atlas layout (procedural bands -> no pixel region).
  *
- * @details `ra8_tileatlas_parse` reads only the header + footer and validates
+ * @details `ra8_jof_parse` reads only the header + footer and validates
  *          `index_off + tiles*8 + 16 == total`, never the pixel bytes, so the
  *          index is placed immediately after the header and the whole atlas is
  *          just header + index + footer. Band pixels are synthesised on demand
@@ -280,9 +280,9 @@ static ra8_tile_dims_t     s_dims[(size_t)k_ls_cells];      /**< Cache dim stora
 static ra8_keycache_cell_t s_meta[(size_t)k_ls_cells];      /**< Cache link metadata. */
 static int32_t             s_buckets[(size_t)k_ls_buckets]; /**< Cache hash buckets.  */
 
-static ra8_tileatlas_memstore_t s_store; /**< Atlas backing-read seam.        */
-static ra8_tile_cache_t         s_cache; /**< Band cache (procedural decode). */
-static ra8_longstrip_t          s_strip; /**< Opened longstrip scroll state.  */
+static ra8_jof_memstore_t s_store; /**< Atlas backing-read seam.        */
+static ra8_tile_cache_t   s_cache; /**< Band cache (procedural decode). */
+static ra8_longstrip_t    s_strip; /**< Opened longstrip scroll state.  */
 
 /**
  * @struct ls_paint_ctx_t
@@ -526,7 +526,7 @@ static void ls_put_u32(uint8_t* p, uint32_t v)
  * @brief Build the metadata-only JOF band-tile atlas; return its byte length.
  *
  * @details Emits only the header, the tile index (immediately after the header,
- *          so there is no pixel region) and the footer. `ra8_tileatlas_parse`
+ *          so there is no pixel region) and the footer. `ra8_jof_parse`
  *          validates `index_off + tiles*8 + 16 == total` and never reads the
  *          pixel bytes, so the strip parses with band pixels supplied later by
  *          ::ls_band_decode.
@@ -552,7 +552,7 @@ static uint32_t ls_build_atlas(void)
   ls_put_u16(&s_atlas[8], (uint16_t)width); /* tile_w == width (band column) */
   ls_put_u16(&s_atlas[10], (uint16_t)band_h);
   s_atlas[12] = (uint8_t)k_ls_bpp;
-  s_atlas[13] = (uint8_t)k_ra8_tileatlas_codec_raw;
+  s_atlas[13] = (uint8_t)k_ra8_jof_codec_raw;
   ls_put_u32(&s_atlas[16], bands);
 
   const uint32_t index_off = (uint32_t)k_ls_hdr_bytes; /* no pixel region */
@@ -686,12 +686,11 @@ static ra8_err_t ls_blit(void*          ctx,
 /** @brief Wire the memstore/painter/cache and open the strip; halt on failure. */
 static void ls_open_strip(uint32_t total)
 {
-  s_store =
-    (ra8_tileatlas_memstore_t){.buf = s_atlas, .cap = (size_t)k_ls_atlas_total, .len = total};
-  s_paint                         = (ls_paint_ctx_t){.width    = (uint32_t)k_ls_canvas_w,
-                                                     .canvas_h = (uint32_t)k_ls_canvas_h,
-                                                     .band_h   = (uint16_t)k_ls_band_h,
-                                                     .bpp      = (uint8_t)k_ls_bpp};
+  s_store = (ra8_jof_memstore_t){.buf = s_atlas, .cap = (size_t)k_ls_atlas_total, .len = total};
+  s_paint = (ls_paint_ctx_t){.width    = (uint32_t)k_ls_canvas_w,
+                             .canvas_h = (uint32_t)k_ls_canvas_h,
+                             .band_h   = (uint16_t)k_ls_band_h,
+                             .bpp      = (uint8_t)k_ls_bpp};
   const ra8_tile_cache_cfg_t ccfg = {.cell_mem     = s_cells,
                                      .cell_bytes   = (uint32_t)k_ls_band_bytes,
                                      .cell_count   = (uint32_t)k_ls_cells,
@@ -705,7 +704,7 @@ static void ls_open_strip(uint32_t total)
   if (ra8_tile_cache_init(&s_cache, &ccfg) != k_ra8_ok) {
     app_panic_halt();
   }
-  const ra8_longstrip_cfg_t lcfg = {.pread      = ra8_tileatlas_memstore_pread,
+  const ra8_longstrip_cfg_t lcfg = {.pread      = ra8_jof_memstore_pread,
                                     .pread_ctx  = &s_store,
                                     .atlas_size = total,
                                     .cache      = &s_cache,

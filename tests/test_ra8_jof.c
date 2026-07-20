@@ -1,12 +1,12 @@
 /**
- * @file test_ra8_tileatlas.c
+ * @file test_ra8_jof.c
  * @brief Host tests for the JOF atlas reader: structural validation, tile
  *        decode, memstore, and hostile-input rejection (#231).
  *
  * @details
  * Builds atlases by hand (header / tile streams / index / footer serialized
- * field by field) so every validation branch in `ra8_tileatlas_parse()` and
- * `ra8_tileatlas_read_tile()` can be driven with a surgically corrupted
+ * field by field) so every validation branch in `ra8_jof_parse()` and
+ * `ra8_jof_read_tile()` can be driven with a surgically corrupted
  * atlas. Round-trips both codecs (raw + deflate) and proves byte parity
  * between paged tiles and the generator pattern.
  *
@@ -21,7 +21,7 @@
 
 #include "ra8_err.h"
 #include "ra8_io_compress.h"
-#include "ra8_tileatlas.h"
+#include "ra8_jof.h"
 #include "unity_minimal.h"
 
 /** @brief Test atlas geometry + buffer sizing. */
@@ -42,7 +42,7 @@ enum : uint32_t {
 /** @brief Memstore backing bytes. */
 static uint8_t s_store_buf[k_t_store_cap];
 /** @brief The store under test. */
-static ra8_tileatlas_memstore_t s_store;
+static ra8_jof_memstore_t s_store;
 /** @brief Tile output buffer. */
 static uint8_t s_cell[k_t_cell_cap];
 /** @brief Deflate staging scratch. */
@@ -64,7 +64,7 @@ static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
 static void put_u16(uint16_t v)
 {
   const uint8_t b[2] = {(uint8_t)(v & 0xFFU), (uint8_t)(v >> 8U)};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_memstore_sink(&s_store, b, sizeof(b)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&s_store, b, sizeof(b)));
 }
 
 /** @brief Append little-endian u32 to the store (hand producer). */
@@ -74,13 +74,13 @@ static void put_u32(uint32_t v)
                         (uint8_t)((v >> 8U) & 0xFFU),
                         (uint8_t)((v >> 16U) & 0xFFU),
                         (uint8_t)((v >> 24U) & 0xFFU)};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_memstore_sink(&s_store, b, sizeof(b)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&s_store, b, sizeof(b)));
 }
 
 /** @brief Append raw bytes to the store (hand producer). */
 static void put_bytes(const uint8_t* p, size_t n)
 {
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_memstore_sink(&s_store, p, n));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&s_store, p, n));
 }
 
 /**
@@ -140,7 +140,7 @@ static uint32_t build_atlas_encode_tile(uint32_t x0, uint32_t y0, uint8_t codec)
       }
     }
   }
-  if (codec == (uint8_t)k_ra8_tileatlas_codec_raw) {
+  if (codec == (uint8_t)k_ra8_jof_codec_raw) {
     put_bytes(s_tilebuf, o);
     return o;
   }
@@ -159,7 +159,7 @@ static uint32_t build_atlas_encode_tile(uint32_t x0, uint32_t y0, uint8_t codec)
 
 /**
  * @brief Hand-build a full JOF atlas of the pattern into the memstore.
- * @param[in] codec ::ra8_tileatlas_codec_t member to encode tiles with.
+ * @param[in] codec ::ra8_jof_codec_t member to encode tiles with.
  * @pre The shared store buffers are available.
  * @pre @p codec is raw or deflate.
  * @post `s_store` holds a structurally complete atlas.
@@ -169,7 +169,7 @@ static uint32_t build_atlas_encode_tile(uint32_t x0, uint32_t y0, uint8_t codec)
  */
 static void build_atlas(uint8_t codec)
 {
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const uint32_t cols  = (k_t_img_w + k_t_tile - 1U) / k_t_tile;
   const uint32_t rows  = (k_t_img_h + k_t_tile - 1U) / k_t_tile;
   const uint32_t count = cols * rows;
@@ -202,13 +202,13 @@ static void build_atlas(uint8_t codec)
 }
 
 /** @brief Parse the store under test into @p info, returning the code. */
-static ra8_err_t parse_store(ra8_tileatlas_info_t* info)
+static ra8_err_t parse_store(ra8_jof_info_t* info)
 {
-  return ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &s_store, (uint64_t)s_store.len, info);
+  return ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)s_store.len, info);
 }
 
 /**
- * @test test_tileatlas_roundtrip
+ * @test test_jof_roundtrip
  * @brief Both codecs round-trip: every tile pages back byte-identical to the
  *        generator pattern, edge tiles clamped.
  *
@@ -216,14 +216,13 @@ static ra8_err_t parse_store(ra8_tileatlas_info_t* info)
  * (byte-parity oracle over the full tile grid; the reader's compound
  * decisions get their vectors in the hostile-atlas tests below.)
  */
-static void test_tileatlas_roundtrip(void)
+static void test_jof_roundtrip(void)
 {
-  TEST_BEGIN("tileatlas: raw + deflate round-trip, byte parity");
-  const uint8_t codecs[2] = {(uint8_t)k_ra8_tileatlas_codec_raw,
-                             (uint8_t)k_ra8_tileatlas_codec_deflate};
+  TEST_BEGIN("jof: raw + deflate round-trip, byte parity");
+  const uint8_t codecs[2] = {(uint8_t)k_ra8_jof_codec_raw, (uint8_t)k_ra8_jof_codec_deflate};
   for (uint32_t ci = 0U; ci < 2U; ci++) {
     build_atlas(codecs[ci]);
-    ra8_tileatlas_info_t info = {};
+    ra8_jof_info_t info = {};
     TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
     TEST_ASSERT_EQ(k_t_img_w, info.width);
     TEST_ASSERT_EQ(k_t_img_h, info.height);
@@ -236,17 +235,17 @@ static void test_tileatlas_roundtrip(void)
         uint16_t w = 0U;
         uint16_t h = 0U;
         TEST_ASSERT_EQ(k_ra8_ok,
-                       ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                               &s_store,
-                                               &info,
-                                               tx,
-                                               ty,
-                                               s_scratch,
-                                               (uint32_t)sizeof(s_scratch),
-                                               s_cell,
-                                               (uint32_t)sizeof(s_cell),
-                                               &w,
-                                               &h));
+                       ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                         &s_store,
+                                         &info,
+                                         tx,
+                                         ty,
+                                         s_scratch,
+                                         (uint32_t)sizeof(s_scratch),
+                                         s_cell,
+                                         (uint32_t)sizeof(s_cell),
+                                         &w,
+                                         &h));
         const uint32_t x0 = (uint32_t)tx * k_t_tile;
         const uint32_t y0 = (uint32_t)ty * k_t_tile;
         TEST_ASSERT_EQ(((k_t_img_w - x0) < k_t_tile) ? (k_t_img_w - x0) : k_t_tile, w);
@@ -261,7 +260,7 @@ static void test_tileatlas_roundtrip(void)
       }
     }
   }
-  TEST_END("tileatlas: raw + deflate round-trip, byte parity");
+  TEST_END("jof: raw + deflate round-trip, byte parity");
 }
 
 /** @brief Corrupt one byte of the stored atlas at @p off (XOR flip). */
@@ -279,17 +278,14 @@ static void flip(size_t off)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void hostile_header_size_and_magic(ra8_tileatlas_info_t* info)
+static void hostile_header_size_and_magic(ra8_jof_info_t* info)
 {
   /* Undersize + oversize backing. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &s_store, 4U, info));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_tileatlas_parse(ra8_tileatlas_memstore_pread,
-                                     &s_store,
-                                     ((uint64_t)UINT32_MAX) + 64U,
-                                     info));
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_parse(ra8_jof_memstore_pread, &s_store, 4U, info));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ra8_jof_parse(ra8_jof_memstore_pread, &s_store, ((uint64_t)UINT32_MAX) + 64U, info));
 
   /* Header magic. */
   flip(0U);
@@ -305,23 +301,23 @@ static void hostile_header_size_and_magic(ra8_tileatlas_info_t* info)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void hostile_header_dims(ra8_tileatlas_info_t* info)
+static void hostile_header_dims(ra8_jof_info_t* info)
 {
   /* Zero width / height / tile_w / tile_h. */
   const uint8_t zero_fields[4] = {4U, 6U, 8U, 10U};
   for (uint32_t i = 0U; i < 4U; i++) {
-    build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+    build_atlas((uint8_t)k_ra8_jof_codec_raw);
     s_store_buf[zero_fields[i]]      = 0U;
     s_store_buf[zero_fields[i] + 1U] = 0U;
     TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
   }
 
   /* Over-cap dimensions (33000 > 32768). */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[4] = (uint8_t)(33000U & 0xFFU);
   s_store_buf[5] = (uint8_t)(33000U >> 8U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[6] = (uint8_t)(33000U & 0xFFU);
   s_store_buf[7] = (uint8_t)(33000U >> 8U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
@@ -336,31 +332,31 @@ static void hostile_header_dims(ra8_tileatlas_info_t* info)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void hostile_header_encoding(ra8_tileatlas_info_t* info)
+static void hostile_header_encoding(ra8_jof_info_t* info)
 {
   /* bpp MC/DC vectors 2..4 (vector 1 is the valid round-trip above). */
   const uint8_t bad_bpp[3] = {0U, 2U, 5U};
   for (uint32_t i = 0U; i < 3U; i++) {
-    build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+    build_atlas((uint8_t)k_ra8_jof_codec_raw);
     s_store_buf[12] = bad_bpp[i];
     TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
   }
 
   /* Unknown codec. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[13] = 2U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
 
   /* Non-zero reserved bytes (both runs). */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[14] = 1U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[25] = 1U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
 
   /* Header tile-count mismatch. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[16] = 7U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
 }
@@ -374,24 +370,24 @@ static void hostile_header_encoding(ra8_tileatlas_info_t* info)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void hostile_header_footer(ra8_tileatlas_info_t* info)
+static void hostile_header_footer(ra8_jof_info_t* info)
 {
   /* Footer corruption: magic, count, total, index_off. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   flip(s_store.len - 1U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   flip(s_store.len - (size_t)k_t_ftr + 4U); /* footer tile count */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   flip(s_store.len - (size_t)k_t_ftr + 8U); /* footer total size */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   flip(s_store.len - (size_t)k_t_ftr); /* index offset */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
 
   /* Index offset below the header start. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[s_store.len - (size_t)k_t_ftr]      = 8U;
   s_store_buf[s_store.len - (size_t)k_t_ftr + 1U] = 0U;
   s_store_buf[s_store.len - (size_t)k_t_ftr + 2U] = 0U;
@@ -408,18 +404,16 @@ static void hostile_header_footer(ra8_tileatlas_info_t* info)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void hostile_header_null_guards(ra8_tileatlas_info_t* info)
+static void hostile_header_null_guards(ra8_jof_info_t* info)
 {
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_parse(NULL, &s_store, (uint64_t)s_store.len, info));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_tileatlas_parse(NULL, &s_store, (uint64_t)s_store.len, info));
-  TEST_ASSERT_EQ(
-    k_ra8_err_null_ptr,
-    ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &s_store, (uint64_t)s_store.len, NULL));
+                 ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)s_store.len, NULL));
 }
 
 /**
- * @test test_tileatlas_hostile_header
+ * @test test_jof_hostile_header
  * @brief Every header/footer/cross-check rejection fires fail-closed.
  *
  * @par MC/DC:
@@ -436,10 +430,10 @@ static void hostile_header_null_guards(ra8_tileatlas_info_t* info)
  * - Vector 2: size = 4            -> true  (varies condition 1)
  * - Vector 3: size = 2^32 + 64    -> true  (varies condition 2)
  */
-static void test_tileatlas_hostile_header(void)
+static void test_jof_hostile_header(void)
 {
-  TEST_BEGIN("tileatlas: hostile header / footer / cross-checks rejected");
-  ra8_tileatlas_info_t info = {};
+  TEST_BEGIN("jof: hostile header / footer / cross-checks rejected");
+  ra8_jof_info_t info = {};
 
   hostile_header_size_and_magic(&info);
   hostile_header_dims(&info);
@@ -447,13 +441,13 @@ static void test_tileatlas_hostile_header(void)
   hostile_header_footer(&info);
   hostile_header_null_guards(&info);
 
-  TEST_END("tileatlas: hostile header / footer / cross-checks rejected");
+  TEST_END("jof: hostile header / footer / cross-checks rejected");
 }
 
 /**
  * @brief Read tile (@p col, @p row) from the store under test via the memstore.
  *
- * @details Thin wrapper over `ra8_tileatlas_read_tile` binding the shared
+ * @details Thin wrapper over `ra8_jof_read_tile` binding the shared
  *          memstore reader and store so the hostile-tile vectors vary only the
  *          grid coordinate and the scratch / output budgets.
  *
@@ -467,37 +461,37 @@ static void test_tileatlas_hostile_header(void)
  * @param[out] w           Receives the tile width in pixels.
  * @param[out] h           Receives the tile height in pixels.
  *
- * @return The `ra8_tileatlas_read_tile` result code.
+ * @return The `ra8_jof_read_tile` result code.
  * @pre `s_store` holds a parsed atlas.
  * @post No state beyond @p out / @p w / @p h is modified.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static ra8_err_t hostile_read_tile(ra8_tileatlas_info_t* info,
-                                   uint16_t              col,
-                                   uint16_t              row,
-                                   uint8_t*              scratch,
-                                   uint32_t              scratch_cap,
-                                   uint8_t*              out,
-                                   uint32_t              out_cap,
-                                   uint16_t*             w,
-                                   uint16_t*             h)
+static ra8_err_t hostile_read_tile(ra8_jof_info_t* info,
+                                   uint16_t        col,
+                                   uint16_t        row,
+                                   uint8_t*        scratch,
+                                   uint32_t        scratch_cap,
+                                   uint8_t*        out,
+                                   uint32_t        out_cap,
+                                   uint16_t*       w,
+                                   uint16_t*       h)
 {
-  return ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                 &s_store,
-                                 info,
-                                 col,
-                                 row,
-                                 scratch,
-                                 scratch_cap,
-                                 out,
-                                 out_cap,
-                                 w,
-                                 h);
+  return ra8_jof_read_tile(ra8_jof_memstore_pread,
+                           &s_store,
+                           info,
+                           col,
+                           row,
+                           scratch,
+                           scratch_cap,
+                           out,
+                           out_cap,
+                           w,
+                           h);
 }
 
 /**
- * @test test_tileatlas_hostile_tiles
+ * @test test_jof_hostile_tiles
  * @brief Per-tile stream corruption is rejected at read time, fail-closed.
  *
  * @par MC/DC:
@@ -507,45 +501,45 @@ static ra8_err_t hostile_read_tile(ra8_tileatlas_info_t* info,
  * - Vector 2: toff = 8                     -> true  (varies condition 1)
  * - Vector 3: tlen inflated past the index -> true  (varies condition 2)
  */
-static void test_tileatlas_hostile_tiles(void)
+static void test_jof_hostile_tiles(void)
 {
-  TEST_BEGIN("tileatlas: hostile tile streams / index entries rejected");
-  ra8_tileatlas_info_t info = {};
-  uint16_t             w    = 0U;
-  uint16_t             h    = 0U;
-  const uint32_t       scap = (uint32_t)sizeof(s_scratch);
-  const uint32_t       ccap = (uint32_t)sizeof(s_cell);
+  TEST_BEGIN("jof: hostile tile streams / index entries rejected");
+  ra8_jof_info_t info = {};
+  uint16_t       w    = 0U;
+  uint16_t       h    = 0U;
+  const uint32_t scap = (uint32_t)sizeof(s_scratch);
+  const uint32_t ccap = (uint32_t)sizeof(s_cell);
 
   /* Vector 2: entry offset points into the header. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
   s_store_buf[info.index_off] = 8U; /* entry 0 offset lo byte */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
 
   /* Vector 3: entry length runs past the tile-stream region. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
   s_store_buf[info.index_off + 6U] = 0xFFU; /* entry 0 length high bytes */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
 
   /* Raw codec: stored length != payload. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_raw);
+  build_atlas((uint8_t)k_ra8_jof_codec_raw);
   TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
   s_store_buf[info.index_off + 4U] ^= 0x01U; /* off-by-one length */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
 
   /* Deflate codec: corrupt stream body -> inflate failure. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_deflate);
+  build_atlas((uint8_t)k_ra8_jof_codec_deflate);
   TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
   flip((size_t)k_t_hdr + 2U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
 
   /* Deflate codec: scratch too small for the stored stream. */
-  build_atlas((uint8_t)k_ra8_tileatlas_codec_deflate);
+  build_atlas((uint8_t)k_ra8_jof_codec_deflate);
   TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  hostile_read_tile(&info, 0U, 0U, s_scratch, 2U, s_cell, ccap, &w, &h));
@@ -562,41 +556,41 @@ static void test_tileatlas_hostile_tiles(void)
     k_ra8_err_out_of_range,
     hostile_read_tile(&info, (uint16_t)info.tile_cols, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
-                 ra8_tileatlas_tile_dims(&info, 0U, (uint16_t)info.tile_rows, &w, &h));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_tile_dims(NULL, 0U, 0U, &w, &h));
-  TEST_END("tileatlas: hostile tile streams / index entries rejected");
+                 ra8_jof_tile_dims(&info, 0U, (uint16_t)info.tile_rows, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_tile_dims(NULL, 0U, 0U, &w, &h));
+  TEST_END("jof: hostile tile streams / index entries rejected");
 }
 
 /**
- * @test test_tileatlas_memstore
+ * @test test_jof_memstore
  * @brief The memstore sink/pread pair enforces its bounds.
  *
  * @par MC/DC:
  * (single-condition guards: full-store append, at/after-end read, and the
  * NULL rejections -- one vector each.)
  */
-static void test_tileatlas_memstore(void)
+static void test_jof_memstore(void)
 {
-  TEST_BEGIN("tileatlas: memstore sink/pread bounds");
-  uint8_t                  tiny_buf[8] = {};
-  ra8_tileatlas_memstore_t tiny        = {.buf = tiny_buf, .cap = sizeof(tiny_buf), .len = 0U};
-  const uint8_t            five[5]     = {1U, 2U, 3U, 4U, 5U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_memstore_sink(&tiny, five, sizeof(five)));
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_tileatlas_memstore_sink(&tiny, five, sizeof(five)));
+  TEST_BEGIN("jof: memstore sink/pread bounds");
+  uint8_t            tiny_buf[8] = {};
+  ra8_jof_memstore_t tiny        = {.buf = tiny_buf, .cap = sizeof(tiny_buf), .len = 0U};
+  const uint8_t      five[5]     = {1U, 2U, 3U, 4U, 5U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&tiny, five, sizeof(five)));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_jof_memstore_sink(&tiny, five, sizeof(five)));
   TEST_ASSERT_EQ(5U, tiny.len);
   uint8_t out[8] = {};
   size_t  got    = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_memstore_pread(&tiny, 3U, out, sizeof(out), &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_pread(&tiny, 3U, out, sizeof(out), &got));
   TEST_ASSERT_EQ(2U, got);
   TEST_ASSERT_EQ(4U, out[0]);
   TEST_ASSERT_EQ(5U, out[1]);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_memstore_pread(&tiny, 9U, out, sizeof(out), &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_pread(&tiny, 9U, out, sizeof(out), &got));
   TEST_ASSERT_EQ(0U, got);
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_memstore_sink(NULL, five, 1U));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_memstore_pread(NULL, 0U, out, 1U, &got));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_memstore_sink(NULL, five, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_memstore_pread(NULL, 0U, out, 1U, &got));
   /* Bound sanity: always payload + margin. */
-  TEST_ASSERT(ra8_tileatlas_stored_bound(1000U) >= 1256U);
-  TEST_END("tileatlas: memstore sink/pread bounds");
+  TEST_ASSERT(ra8_jof_stored_bound(1000U) >= 1256U);
+  TEST_END("jof: memstore sink/pread bounds");
 }
 
 /**
@@ -611,10 +605,10 @@ static void test_tileatlas_memstore(void)
  */
 int32_t main(void)
 {
-  test_tileatlas_roundtrip();
-  test_tileatlas_hostile_header();
-  test_tileatlas_hostile_tiles();
-  test_tileatlas_memstore();
-  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas.c\n");
+  test_jof_roundtrip();
+  test_jof_hostile_header();
+  test_jof_hostile_tiles();
+  test_jof_memstore();
+  (void)fprintf(stderr, "[OK  ] test_ra8_jof.c\n");
   return 0;
 }

@@ -4,7 +4,7 @@
 # media_dl -- native host CLI for the RA8 e-reader's comic/manga/manhwa/webtoon
 # downloader. Builds for the DEV MACHINE (x86_64 / arm64), NOT the ARM target:
 # it links the firmware's platform-agnostic pieces (currently the ra8_err
-# contract; ra8_tileatlas / ra8_fs to follow) behind dependency-inversion seams
+# contract; ra8_jof / ra8_fs to follow) behind dependency-inversion seams
 # and injects a host libcurl backend for the network. The logic above the seam
 # is the same code the RA8 will run once the ESP32-C6 radio backend exists.
 cmake_minimum_required(VERSION 3.20)
@@ -22,17 +22,17 @@ set(MDL_MINIZ ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz/miniz.c)
 set_source_files_properties(${MDL_MINIZ} PROPERTIES
   COMPILE_OPTIONS "-w;-fno-strict-aliasing")
 
-# The JOF exporter reuses the firmware's own tile-atlas producer + streaming
+# The JOF exporter reuses the firmware's own JOF producer + streaming
 # JPEG decoder host-side (RA8_SIMULATOR_MODE), so a .jof the CLI writes is
 # byte-identical to one the RA8 produces. Compiled quietly: the repo lints these
 # via its own build, not this tool's scope.
 set(FW ${CMAKE_CURRENT_SOURCE_DIR}/../../libs)
 set(MDL_JOF_SRC
-  ${FW}/ra8_tileatlas/src/ra8_tileatlas.c
-  ${FW}/ra8_tileatlas/src/ra8_tileatlas_produce.c
-  ${FW}/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c
-  ${FW}/ra8_tileatlas/src/ra8_tileatlas_png.c
-  ${FW}/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c
+  ${FW}/ra8_jof/src/ra8_jof.c
+  ${FW}/ra8_jof/src/ra8_jof_produce.c
+  ${FW}/ra8_jof/src/ra8_jof_produce_webp.c
+  ${FW}/ra8_jof/src/ra8_jof_png.c
+  ${FW}/ra8_jof/src/ra8_jof_png_chunk.c
   ${FW}/ra8_hal/src/ra8_jpeg_sw.c
   ${FW}/ra8_hal/src/ra8_jpeg_sw_decode.c
   ${FW}/ra8_hal/src/ra8_jpeg_sw_stream.c
@@ -43,7 +43,7 @@ set(MDL_JOF_SRC
 set_source_files_properties(${MDL_JOF_SRC} PROPERTIES
   COMPILE_OPTIONS "-w;-fno-strict-aliasing")
 set(MDL_JOF_INC
-  ${FW}/ra8_tileatlas/inc ${FW}/ra8_tileatlas/src
+  ${FW}/ra8_jof/inc ${FW}/ra8_jof/src
   ${FW}/ra8_hal/inc ${FW}/ra8_hal/src
   ${FW}/ra8_io/inc)
 

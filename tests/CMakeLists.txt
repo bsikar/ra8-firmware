@@ -210,7 +210,7 @@ set(RA8_XZ_THIRD_PARTY
     ${FW_ROOT}/libs/third_party/xz_embedded/xz_dec_lzma2.c
     ${FW_ROOT}/libs/third_party/xz_embedded/xz_dec_stream.c
 )
-file(GLOB_RECURSE RA8_TILEATLAS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tileatlas/src/*.c)
+file(GLOB_RECURSE RA8_JOF_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_jof/src/*.c)
 file(GLOB_RECURSE RA8_LONGSTRIP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_longstrip/src/*.c)
 # ra8_reflow has two implementations: v1 (hand-rolled, default) and v2
 # (LiteHTML-backed, RA8_REFLOW_USE_LITEHTML=ON). Only one set is compiled.
@@ -315,7 +315,7 @@ add_library(ra8_core_hal OBJECT
     ${RA8_EPUB_CPP_SOURCES}
     ${RA8_COMIC_SOURCES}
     ${RA8_UNARCH_SOURCES}
-    ${RA8_TILEATLAS_SOURCES}
+    ${RA8_JOF_SOURCES}
     ${RA8_LONGSTRIP_SOURCES}
     ${RA8_REFLOW_C_SOURCES}
     ${RA8_REFLOW_CPP_SOURCES}
@@ -390,7 +390,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_epub/inc
     ${FW_ROOT}/libs/ra8_comic/inc
     ${FW_ROOT}/libs/ra8_unarch/inc
-    ${FW_ROOT}/libs/ra8_tileatlas/inc
+    ${FW_ROOT}/libs/ra8_jof/inc
 
     ${FW_ROOT}/libs/ra8_longstrip/inc
     ${FW_ROOT}/libs/ra8_reflow/inc
@@ -447,7 +447,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_epub/src
     ${FW_ROOT}/libs/ra8_comic/src
     ${FW_ROOT}/libs/ra8_unarch/src
-    ${FW_ROOT}/libs/ra8_tileatlas/src
+    ${FW_ROOT}/libs/ra8_jof/src
 
     ${FW_ROOT}/libs/ra8_longstrip/src
     ${FW_ROOT}/libs/ra8_reflow/src
@@ -640,7 +640,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_epub/inc
     ${FW_ROOT}/libs/ra8_comic/inc
     ${FW_ROOT}/libs/ra8_unarch/inc
-    ${FW_ROOT}/libs/ra8_tileatlas/inc
+    ${FW_ROOT}/libs/ra8_jof/inc
 
     ${FW_ROOT}/libs/ra8_longstrip/inc
     ${FW_ROOT}/libs/ra8_reflow/inc
@@ -688,7 +688,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_epub/src
     ${FW_ROOT}/libs/ra8_comic/src
     ${FW_ROOT}/libs/ra8_unarch/src
-    ${FW_ROOT}/libs/ra8_tileatlas/src
+    ${FW_ROOT}/libs/ra8_jof/src
 
     ${FW_ROOT}/libs/ra8_longstrip/src
     ${FW_ROOT}/libs/ra8_reflow/src
@@ -796,7 +796,7 @@ endforeach()
 # test_app_ereader_manga: the ereader_manga host twin drives the app's shared
 # pan/zoom presentation model directly, so compile the app's src/mg_reader.c into
 # the test target (and expose its inc/) -- the tested render IS the production
-# render. The tile-atlas / gfx / tile-cache libraries it calls already come from
+# render. The JOF / gfx / tile-cache libraries it calls already come from
 # the ra8_core_hal object library the auto-glob linked.
 # ---------------------------------------------------------------------------
 if(TARGET test_app_ereader_manga)

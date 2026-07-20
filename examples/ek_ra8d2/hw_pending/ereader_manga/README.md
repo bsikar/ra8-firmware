@@ -1,7 +1,7 @@
 # ereader_manga -- viewable pan/zoom manga reader (Demo B)
 
 A **viewable** reader for a page far larger than the 1024x600 panel. The baked
-page is transcoded into a JOF band-tile atlas (`libs/ra8_tileatlas`) and paged
+page is transcoded into a JOF band-tile atlas (`libs/ra8_jof`) and paged
 **decode-on-demand** through a small `ra8_tile_cache`, with the viewport being
 the GLCDC panel itself. Navigation is discrete **tap-zones** (board_sim's GT911
 model has no gestures): the four screen edges pan the viewport, a centre tap
@@ -13,11 +13,11 @@ toggles zoom.
    (`ra8_display_pal` with `k_display_backend_lcd_ra8_glcdc`), and binds
    `ra8_gfx` to the RGB565 framebuffer in SDRAM.
 2. Transcodes the baked **1536x2048** grayscale PNG page (`mg_page_fixture.h`,
-   larger than the screen) through `ra8_tileatlas_produce` into a 6x8 = **48**
+   larger than the screen) through `ra8_jof_produce` into a 6x8 = **48**
    deflate-coded 256x256 tile JOF atlas in an SDRAM memstore -- one bounded
    band at a time, the decoded page never resident whole.
 3. Serves the atlas through a deliberately small **4-cell** `ra8_tile_cache`
-   (decode-on-miss = one bounded `ra8_tileatlas_read_tile` inflate into the
+   (decode-on-miss = one bounded `ra8_jof_read_tile` inflate into the
    pinned cell), so a viewport spanning more tiles than the cache holds forces
    LRU eviction every frame.
 4. Renders the current viewport crop to the panel with the shared `mg_reader`:

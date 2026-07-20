@@ -1,6 +1,6 @@
 /**
- * @file test_ra8_tileatlas_probe_dims.c
- * @brief Geometry-probe vectors for `ra8_tileatlas_probe_dims()` (#290).
+ * @file test_ra8_jof_probe_dims.c
+ * @brief Geometry-probe vectors for `ra8_jof_probe_dims()` (#290).
  *
  * @details
  * The probe is the seam that lets a caller size a source before the producer
@@ -26,8 +26,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
 /** @brief Fixture sizes and the geometry the crafted headers declare. */
@@ -110,12 +110,9 @@ static void test_probe_null_guards(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   make_png(hdr, k_p_w, k_p_h);
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_tileatlas_probe_dims(nullptr, (size_t)k_p_png_ihdr, &w, &h));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_png_ihdr, nullptr, &h));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_probe_dims(nullptr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, nullptr, &h));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, nullptr));
   TEST_END("probe_dims: three null-pointer guards");
 }
 
@@ -137,9 +134,9 @@ static void test_probe_too_short(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   make_png(hdr, k_p_w, k_p_h);
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_tileatlas_probe_dims(hdr, 0U, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_jof_probe_dims(hdr, 0U, &w, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)(k_p_sniff_min - 1U), &w, &h));
+                 ra8_jof_probe_dims(hdr, (size_t)(k_p_sniff_min - 1U), &w, &h));
   TEST_END("probe_dims: below the sniff window");
 }
 
@@ -162,12 +159,12 @@ static void test_probe_png(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   make_png(hdr, k_p_w, k_p_h);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   TEST_ASSERT_EQ(k_p_w, w);
   TEST_ASSERT_EQ(k_p_h, h);
   /* One byte short of the height field: sniffable, but the IHDR is cut. */
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)(k_p_png_ihdr - 1U), &w, &h));
+                 ra8_jof_probe_dims(hdr, (size_t)(k_p_png_ihdr - 1U), &w, &h));
   TEST_END("probe_dims: PNG IHDR arm and its truncation guard");
 }
 
@@ -189,17 +186,13 @@ static void test_probe_range_guard(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   make_png(hdr, 0U, k_p_h);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   make_png(hdr, k_p_w, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   make_png(hdr, k_p_over_dim, k_p_h);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   make_png(hdr, k_p_w, k_p_over_dim);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   TEST_END("probe_dims: zero and over-cap geometry");
 }
 
@@ -231,20 +224,18 @@ static void test_probe_unknown_magic(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   (void)memset(hdr, 0x5AU, sizeof(hdr));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
   /* RIFF container, but the form type is AVI -- only the first fourCC matches. */
   (void)memset(hdr, 0, sizeof(hdr));
   (void)memcpy(&hdr[0], "RIFF", 4U);
   (void)memcpy(&hdr[8], "AVI ", 4U);
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
   /* Both fourCCs match, so priv_is_webp() is true and the WebP arm is taken;
    * the body is not a decodable bitstream, so the reader -- not the container
    * sniff -- reports the failure. This is the vector that varies only the
    * second fourCC against the AVI case above. */
   (void)memcpy(&hdr[8], "WEBP", 4U);
-  TEST_ASSERT(ra8_tileatlas_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h) != k_ra8_ok);
+  TEST_ASSERT(ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h) != k_ra8_ok);
   TEST_END("probe_dims: unknown magic and RIFF-but-not-WEBP");
 }
 
@@ -279,15 +270,14 @@ static void test_probe_jpeg_dispatch(void)
   (void)memset(hdr, 0, sizeof(hdr));
   hdr[0]             = 0xFFU; /* MAGIC-OK: JPEG SOI marker, first byte  */
   hdr[1]             = 0xD8U; /* MAGIC-OK: JPEG SOI marker, second byte */
-  const ra8_err_t rc = ra8_tileatlas_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h);
+  const ra8_err_t rc = ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h);
   /* Whatever the reader concludes about a headerless JPEG, the probe must not
    * have treated it as an unrecognised container. */
   TEST_ASSERT(rc != k_ra8_err_not_supported);
   /* SOI's first byte alone is not SOI: varying only the second condition must
    * drop out of the JPEG arm and fall through to the unsupported tail. */
   hdr[1] = 0x00U;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
   TEST_END("probe_dims: JPEG SOI dispatch arm");
 }
 
@@ -309,6 +299,6 @@ int32_t main(void)
   test_probe_range_guard();
   test_probe_unknown_magic();
   test_probe_jpeg_dispatch();
-  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas_probe_dims.c\n");
+  (void)fprintf(stderr, "[OK  ] test_ra8_jof_probe_dims.c\n");
   return 0;
 }

@@ -33,11 +33,11 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # is tap-zone only (GT911 via the ra8_io_bus I2C facade): bottom third = page
 # down, top third = page up, centre = toggle chrome.
 #
-# ra8_tileatlas's reader references ra8_io_decompress (deflate tiles), which
-# inflates through the vendored miniz -- the ra8_add_app tileatlas special-case
+# ra8_jof's reader references ra8_io_decompress (deflate tiles), which
+# inflates through the vendored miniz -- the ra8_add_app jof special-case
 # links ra8_io_compress.c, and bare `miniz` supplies the implementation TU. This
 # app builds a raw-codec atlas header only (procedural bands), so decompress is
 # never called at runtime, only linked.
 ra8_add_app(NAME ereader_longstrip STACK_BYTES 16384
            DESCRIPTION "Viewable #289 demo: tall colourful vertical-scroll strip on the 1024x600 GLCDC panel, tap-zone paging + scroll rail (sim-viewable)"
-           LIBS ra8_longstrip ra8_tileatlas ra8_mem ra8_gfx ra8_display_pal ra8_io_bus miniz)
+           LIBS ra8_longstrip ra8_jof ra8_mem ra8_gfx ra8_display_pal ra8_io_bus miniz)

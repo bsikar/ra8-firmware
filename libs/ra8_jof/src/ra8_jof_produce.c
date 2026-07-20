@@ -1,18 +1,18 @@
 /**
- * @file ra8_tileatlas_produce.c
+ * @file ra8_jof_produce.c
  * @brief Transcode producer: sniff, decode, tile, encode, emit (#231, #290).
  *
  * @details
- * Implements `ra8_tileatlas_produce()` and `ra8_tileatlas_work_bytes()`. The
+ * Implements `ra8_jof_produce()` and `ra8_jof_work_bytes()`. The
  * producer owns the band accumulator (one tile row of decoded pixels), the
  * tile cut + intra-encode + sink stage, and the trailing index/footer
  * emission; the pixel rows arrive from `ra8_jpeg_sw_decode_stripes()` (JPEG)
- * or `ra8_ta_priv_png_rows()` (PNG), both bounded-RAM by construction. Every
+ * or `ra8_jof_priv_png_rows()` (PNG), both bounded-RAM by construction. Every
  * streaming buffer is carved from the caller's `work` arena through the bump
  * allocator -- the producer allocates nothing on the heap. The whole-frame
  * WebP arm (#290) is dispatched here but lives in the sibling
- * `ra8_tileatlas_produce_webp.c`, sharing the producer state and the
- * geometry / rows / prefix-pull seams through `ra8_tileatlas_internal.h`.
+ * `ra8_jof_produce_webp.c`, sharing the producer state and the
+ * geometry / rows / prefix-pull seams through `ra8_jof_internal.h`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -21,7 +21,7 @@
  * {World: NS}
  */
 
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof_produce.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -31,58 +31,58 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_compress.h"
+#include "ra8_jof.h"
+#include "ra8_jof_internal.h"
 #include "ra8_jpeg_sw.h"
 #include "ra8_log.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_internal.h"
 #include "ra8_webp.h"
 
 /** @brief Module log tag. */
-static const char* const s_tag = "ra8_ta_prod";
+static const char* const s_tag = "ra8_jof_prod";
 
 /**
- * @enum ra8_ta_prod_const_t
+ * @enum ra8_jof_prod_const_t
  * @brief Producer sizing and sniffing constants.
  */
 typedef enum : uint32_t {
-  k_ra8_ta_sniff_bytes     = 12U,    /**< Magic bytes pulled up front (WebP needs 12). */
-  k_ra8_ta_png_sig_len     = 8U,     /**< PNG signature length.                        */
-  k_ra8_ta_jpeg_soi_first  = 0xFFU,  /**< JPEG SOI first byte.                         */
-  k_ra8_ta_jpeg_soi_second = 0xD8U,  /**< JPEG SOI second byte.                        */
-  k_ra8_ta_webp_fourcc_ofs = 8U,     /**< Offset of the "WEBP" fourCC.                 */
-  k_ra8_ta_png_ring        = 65536U, /**< PNG inflate ring carve (bytes).              */
-  k_ra8_ta_png_inbuf       = 4096U,  /**< PNG input-buffer carve (bytes).              */
-  k_ra8_ta_byte_mask       = 0xFFU,  /**< Low-byte mask.                               */
-  k_ra8_ta_le_sh8          = 8U,     /**< Little-endian shift.                         */
-  k_ra8_ta_le_sh16         = 16U,    /**< Little-endian shift.                         */
-  k_ra8_ta_le_sh24         = 24U,    /**< Little-endian shift.                         */
-  k_ra8_ta_png_ihdr_w      = 16U,    /**< PNG IHDR width field offset (big-endian).    */
-  k_ra8_ta_png_ihdr_h      = 20U,    /**< PNG IHDR height field offset (big-endian).   */
-  k_ra8_ta_png_ihdr_end    = 24U,    /**< Bytes needed to read both IHDR fields.       */
-} ra8_ta_prod_const_t;
+  k_ra8_jof_sniff_bytes     = 12U,    /**< Magic bytes pulled up front (WebP needs 12). */
+  k_ra8_jof_png_sig_len     = 8U,     /**< PNG signature length.                        */
+  k_ra8_jof_jpeg_soi_first  = 0xFFU,  /**< JPEG SOI first byte.                         */
+  k_ra8_jof_jpeg_soi_second = 0xD8U,  /**< JPEG SOI second byte.                        */
+  k_ra8_jof_webp_fourcc_ofs = 8U,     /**< Offset of the "WEBP" fourCC.                 */
+  k_ra8_jof_png_ring        = 65536U, /**< PNG inflate ring carve (bytes).              */
+  k_ra8_jof_png_inbuf       = 4096U,  /**< PNG input-buffer carve (bytes).              */
+  k_ra8_jof_byte_mask       = 0xFFU,  /**< Low-byte mask.                               */
+  k_ra8_jof_le_sh8          = 8U,     /**< Little-endian shift.                         */
+  k_ra8_jof_le_sh16         = 16U,    /**< Little-endian shift.                         */
+  k_ra8_jof_le_sh24         = 24U,    /**< Little-endian shift.                         */
+  k_ra8_jof_png_ihdr_w      = 16U,    /**< PNG IHDR width field offset (big-endian).    */
+  k_ra8_jof_png_ihdr_h      = 20U,    /**< PNG IHDR height field offset (big-endian).   */
+  k_ra8_jof_png_ihdr_end    = 24U,    /**< Bytes needed to read both IHDR fields.       */
+} ra8_jof_prod_const_t;
 
 /** @brief Module-static producer state (producer documented not thread-safe). */
-static ra8_ta_prod_state_t s_prod;
+static ra8_jof_prod_state_t s_prod;
 
 /** @brief PNG signature for source sniffing (mirrors the PNG decoder unit). */
-static const uint8_t s_prod_png_sig[k_ra8_ta_png_sig_len] =
+static const uint8_t s_prod_png_sig[k_ra8_jof_png_sig_len] =
   {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU}; /* MAGIC-OK: the 8 spec signature bytes */
 
 /** @brief WebP RIFF container tag (source head bytes 0..3). */
-static const uint8_t s_prod_webp_riff[k_ra8_tileatlas_magic_len] =
+static const uint8_t s_prod_webp_riff[k_ra8_jof_magic_len] =
   {'R', 'I', 'F', 'F'}; /* MAGIC-OK: the RIFF container fourCC */
 
 /** @brief WebP form-type fourCC (source head bytes 8..11). */
-static const uint8_t s_prod_webp_webp[k_ra8_tileatlas_magic_len] =
+static const uint8_t s_prod_webp_webp[k_ra8_jof_magic_len] =
   {'W', 'E', 'B', 'P'}; /* MAGIC-OK: the WEBP form-type fourCC */
 
-/** @brief Implementation of `ra8_ta_priv_bump_take()` -- aligned linear carve. */
-RA8_PRIV void* ra8_ta_priv_bump_take(ra8_ta_bump_t* bump, size_t len)
+/** @brief Implementation of `ra8_jof_priv_bump_take()` -- aligned linear carve. */
+RA8_PRIV void* ra8_jof_priv_bump_take(ra8_jof_bump_t* bump, size_t len)
 {
   if ((bump == nullptr) || (len == 0U)) {
     return nullptr;
   }
-  const size_t mask    = (size_t)k_ra8_ta_bump_align - 1U;
+  const size_t mask    = (size_t)k_ra8_jof_bump_align - 1U;
   const size_t aligned = (bump->off + mask) & ~mask;
   if ((aligned > bump->cap) || (len > (bump->cap - aligned))) {
     return nullptr;
@@ -111,8 +111,8 @@ RA8_PRIV void* ra8_ta_priv_bump_take(ra8_ta_bump_t* bump, size_t len)
 RA8_INTERNAL
 static void priv_wr_u16(uint8_t* buf, uint16_t v)
 {
-  buf[0] = (uint8_t)(v & (uint16_t)k_ra8_ta_byte_mask);
-  buf[1] = (uint8_t)((uint32_t)v >> k_ra8_ta_le_sh8);
+  buf[0] = (uint8_t)(v & (uint16_t)k_ra8_jof_byte_mask);
+  buf[1] = (uint8_t)((uint32_t)v >> k_ra8_jof_le_sh8);
 }
 
 /**
@@ -130,10 +130,10 @@ static void priv_wr_u16(uint8_t* buf, uint16_t v)
 RA8_INTERNAL
 static void priv_wr_u32(uint8_t* buf, uint32_t v)
 {
-  buf[0] = (uint8_t)(v & (uint32_t)k_ra8_ta_byte_mask);
-  buf[1] = (uint8_t)((v >> k_ra8_ta_le_sh8) & (uint32_t)k_ra8_ta_byte_mask);
-  buf[2] = (uint8_t)((v >> k_ra8_ta_le_sh16) & (uint32_t)k_ra8_ta_byte_mask);
-  buf[3] = (uint8_t)((v >> k_ra8_ta_le_sh24) & (uint32_t)k_ra8_ta_byte_mask);
+  buf[0] = (uint8_t)(v & (uint32_t)k_ra8_jof_byte_mask);
+  buf[1] = (uint8_t)((v >> k_ra8_jof_le_sh8) & (uint32_t)k_ra8_jof_byte_mask);
+  buf[2] = (uint8_t)((v >> k_ra8_jof_le_sh16) & (uint32_t)k_ra8_jof_byte_mask);
+  buf[3] = (uint8_t)((v >> k_ra8_jof_le_sh24) & (uint32_t)k_ra8_jof_byte_mask);
 }
 
 /**
@@ -154,7 +154,7 @@ static void priv_wr_u32(uint8_t* buf, uint32_t v)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_sink(ra8_ta_prod_state_t* st, const uint8_t* buf, size_t len)
+static ra8_err_t priv_sink(ra8_jof_prod_state_t* st, const uint8_t* buf, size_t len)
 {
   if ((uint64_t)len > ((uint64_t)UINT32_MAX - (uint64_t)st->written)) {
     return k_ra8_err_invalid_size;
@@ -172,9 +172,9 @@ static ra8_err_t priv_sink(ra8_ta_prod_state_t* st, const uint8_t* buf, size_t l
  * ---------------------------------------------------------------------------
  */
 
-RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+RA8_PRIV ra8_err_t ra8_jof_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
-  ra8_ta_prefix_pull_t* pfx = (ra8_ta_prefix_pull_t*)ctx;
+  ra8_jof_prefix_pull_t* pfx = (ra8_jof_prefix_pull_t*)ctx;
   if (pfx->pos < pfx->head_len) {
     const size_t left = pfx->head_len - pfx->pos;
     const size_t take = (cap < left) ? cap : left;
@@ -193,7 +193,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, 
 
 /**
  * @brief Serialize + sink the 32-byte JOF header from the bound geometry.
- * @details Serializes every geometry field per the JOF layout table in ra8_tileatlas.h.
+ * @details Serializes every geometry field per the JOF layout table in ra8_jof.h.
  * @param[in,out] st Producer state (`written` advances via the sink).
  * @return Result code.
  * @retval k_ra8_ok The header is the first 32 atlas bytes.
@@ -206,20 +206,20 @@ RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_emit_header(ra8_ta_prod_state_t* st)
+static ra8_err_t priv_emit_header(ra8_jof_prod_state_t* st)
 {
-  uint8_t hdr[k_ra8_tileatlas_hdr_bytes] = {};
-  hdr[0]                                 = 'J';
-  hdr[1]                                 = 'O';
-  hdr[2]                                 = 'F';
-  hdr[3]                                 = '1';
-  priv_wr_u16(&hdr[k_ra8_tileatlas_ofs_width], st->w);
-  priv_wr_u16(&hdr[k_ra8_tileatlas_ofs_height], st->h);
-  priv_wr_u16(&hdr[k_ra8_tileatlas_ofs_tile_w], st->cfg->tile_w);
-  priv_wr_u16(&hdr[k_ra8_tileatlas_ofs_tile_h], st->cfg->tile_h);
-  hdr[k_ra8_tileatlas_ofs_bpp]   = st->bpp;
-  hdr[k_ra8_tileatlas_ofs_codec] = st->cfg->codec;
-  priv_wr_u32(&hdr[k_ra8_tileatlas_ofs_tile_count], st->tile_count);
+  uint8_t hdr[k_ra8_jof_hdr_bytes] = {};
+  hdr[0]                           = 'J';
+  hdr[1]                           = 'O';
+  hdr[2]                           = 'F';
+  hdr[3]                           = '1';
+  priv_wr_u16(&hdr[k_ra8_jof_ofs_width], st->w);
+  priv_wr_u16(&hdr[k_ra8_jof_ofs_height], st->h);
+  priv_wr_u16(&hdr[k_ra8_jof_ofs_tile_w], st->cfg->tile_w);
+  priv_wr_u16(&hdr[k_ra8_jof_ofs_tile_h], st->cfg->tile_h);
+  hdr[k_ra8_jof_ofs_bpp]   = st->bpp;
+  hdr[k_ra8_jof_ofs_codec] = st->cfg->codec;
+  priv_wr_u32(&hdr[k_ra8_jof_ofs_tile_count], st->tile_count);
   return priv_sink(st, hdr, sizeof(hdr));
 }
 
@@ -239,7 +239,7 @@ static ra8_err_t priv_emit_header(ra8_ta_prod_state_t* st)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_carve_pixel_path(ra8_ta_prod_state_t* st)
+static ra8_err_t priv_carve_pixel_path(ra8_jof_prod_state_t* st)
 {
   const uint16_t tw          = st->cfg->tile_w;
   const uint16_t th          = st->cfg->tile_h;
@@ -247,20 +247,20 @@ static ra8_err_t priv_carve_pixel_path(ra8_ta_prod_state_t* st)
   const uint32_t tw_eff      = (tw < st->w) ? tw : st->w;
   const uint32_t th_eff      = (th < st->h) ? th : st->h;
   const uint64_t stage_bytes = (uint64_t)tw_eff * (uint64_t)th_eff * (uint64_t)st->bpp;
-  // mcdc-deactivated: stage_bytes = tw_eff*th_eff*bpp with tw_eff <= w and th_eff <= tile_h, so stage_bytes <= w*tile_h*bpp = band_bytes always; the stage-overflow arm cannot flip independently of the band arm (which tests/test_ra8_tileatlas_produce_guards.c drives true via a 32768-wide RGBA source and a 65535-tall tile).
+  // mcdc-deactivated: stage_bytes = tw_eff*th_eff*bpp with tw_eff <= w and th_eff <= tile_h, so stage_bytes <= w*tile_h*bpp = band_bytes always; the stage-overflow arm cannot flip independently of the band arm (which tests/test_ra8_jof_produce_guards.c drives true via a 32768-wide RGBA source and a 65535-tall tile).
   if ((band_bytes > (uint64_t)UINT32_MAX) || (stage_bytes > (uint64_t)UINT32_MAX)) {
     return k_ra8_err_invalid_size;
   }
-  st->band  = ra8_ta_priv_bump_take(st->bump, (size_t)band_bytes);
-  st->stage = ra8_ta_priv_bump_take(st->bump, (size_t)stage_bytes);
+  st->band  = ra8_jof_priv_bump_take(st->bump, (size_t)band_bytes);
+  st->stage = ra8_jof_priv_bump_take(st->bump, (size_t)stage_bytes);
   st->idx =
-    ra8_ta_priv_bump_take(st->bump, (size_t)st->tile_count * (size_t)k_ra8_tileatlas_index_entry);
+    ra8_jof_priv_bump_take(st->bump, (size_t)st->tile_count * (size_t)k_ra8_jof_index_entry);
   if ((st->band == nullptr) || (st->stage == nullptr) || (st->idx == nullptr)) {
     return k_ra8_err_invalid_size;
   }
-  if (st->cfg->codec == (uint8_t)k_ra8_tileatlas_codec_deflate) {
-    st->cmp_cap = ra8_tileatlas_stored_bound((uint32_t)stage_bytes);
-    st->cmp     = ra8_ta_priv_bump_take(st->bump, (size_t)st->cmp_cap);
+  if (st->cfg->codec == (uint8_t)k_ra8_jof_codec_deflate) {
+    st->cmp_cap = ra8_jof_stored_bound((uint32_t)stage_bytes);
+    st->cmp     = ra8_jof_priv_bump_take(st->bump, (size_t)st->cmp_cap);
     if (st->cmp == nullptr) {
       return k_ra8_err_invalid_size;
     }
@@ -273,7 +273,7 @@ static ra8_err_t priv_carve_pixel_path(ra8_ta_prod_state_t* st)
  * @details Fires once per transcode (from either decoder). Rejects, fail
  *          closed: dimensions above the caps, a tile grid above the format
  *          cap, and any carve the arena cannot fit. On success the 32-byte
- *          RTA1 header has been sunk.
+ *          JOF header has been sunk.
  * @param[in] ctx      The producer state.
  * @param[in] width    Source width, pixels.
  * @param[in] height   Source height, pixels.
@@ -290,9 +290,12 @@ static ra8_err_t priv_carve_pixel_path(ra8_ta_prod_state_t* st)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_ta_priv_on_geom(void* ctx, uint16_t width, uint16_t height, uint8_t channels)
+RA8_PRIV ra8_err_t ra8_jof_priv_on_geom(void*    ctx,
+                                        uint16_t width,
+                                        uint16_t height,
+                                        uint8_t  channels)
 {
-  ra8_ta_prod_state_t* st = (ra8_ta_prod_state_t*)ctx;
+  ra8_jof_prod_state_t* st = (ra8_jof_prod_state_t*)ctx;
   if (st->geom_done != 0U) {
     return k_ra8_err_invalid_state;
   }
@@ -301,7 +304,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_geom(void* ctx, uint16_t width, uint16_t heigh
   }
   const uint32_t cols = ((uint32_t)width + st->cfg->tile_w - 1U) / st->cfg->tile_w;
   const uint32_t rows = ((uint32_t)height + st->cfg->tile_h - 1U) / st->cfg->tile_h;
-  if ((cols * rows) > (uint32_t)k_ra8_tileatlas_max_tiles) {
+  if ((cols * rows) > (uint32_t)k_ra8_jof_max_tiles) {
     return k_ra8_err_invalid_size;
   }
   st->w          = width;
@@ -343,11 +346,11 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_geom(void* ctx, uint16_t width, uint16_t heigh
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_encode_tile(ra8_ta_prod_state_t* st, uint32_t payload)
+static ra8_err_t priv_encode_tile(ra8_jof_prod_state_t* st, uint32_t payload)
 {
   const uint8_t* out_bytes = st->stage;
   uint32_t       out_len   = payload;
-  if (st->cfg->codec == (uint8_t)k_ra8_tileatlas_codec_deflate) {
+  if (st->cfg->codec == (uint8_t)k_ra8_jof_codec_deflate) {
     uint32_t clen = 0U;
     if (ra8_io_compress(st->stage, payload, st->cmp, st->cmp_cap, st->dfl, st->dfl_len, &clen) !=
         k_ra8_ok) {
@@ -356,9 +359,9 @@ static ra8_err_t priv_encode_tile(ra8_ta_prod_state_t* st, uint32_t payload)
     out_bytes = st->cmp;
     out_len   = clen;
   }
-  uint8_t* entry = &st->idx[(size_t)st->tiles_done * (size_t)k_ra8_tileatlas_index_entry];
-  priv_wr_u32(&entry[k_ra8_tileatlas_idx_ofs_offset], st->written);
-  priv_wr_u32(&entry[k_ra8_tileatlas_idx_ofs_length], out_len);
+  uint8_t* entry = &st->idx[(size_t)st->tiles_done * (size_t)k_ra8_jof_index_entry];
+  priv_wr_u32(&entry[k_ra8_jof_idx_ofs_offset], st->written);
+  priv_wr_u32(&entry[k_ra8_jof_idx_ofs_length], out_len);
   const ra8_err_t err = priv_sink(st, out_bytes, (size_t)out_len);
   if (err != k_ra8_ok) {
     return err;
@@ -385,7 +388,7 @@ static ra8_err_t priv_encode_tile(ra8_ta_prod_state_t* st, uint32_t payload)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_flush_band(ra8_ta_prod_state_t* st, uint32_t th)
+static ra8_err_t priv_flush_band(ra8_jof_prod_state_t* st, uint32_t th)
 {
   const uint32_t stride = (uint32_t)st->w * (uint32_t)st->bpp;
   for (uint32_t tx = 0U; tx < (uint32_t)st->tile_cols; tx++) {
@@ -407,14 +410,14 @@ static ra8_err_t priv_flush_band(ra8_ta_prod_state_t* st, uint32_t th)
   return k_ra8_ok;
 }
 
-RA8_PRIV ra8_err_t ra8_ta_priv_on_rows(void*          ctx,
-                                       const uint8_t* px,
-                                       uint16_t       width,
-                                       uint16_t       y0,
-                                       uint16_t       nrows,
-                                       uint8_t        channels)
+RA8_PRIV ra8_err_t ra8_jof_priv_on_rows(void*          ctx,
+                                        const uint8_t* px,
+                                        uint16_t       width,
+                                        uint16_t       y0,
+                                        uint16_t       nrows,
+                                        uint8_t        channels)
 {
-  ra8_ta_prod_state_t* st = (ra8_ta_prod_state_t*)ctx;
+  ra8_jof_prod_state_t* st = (ra8_jof_prod_state_t*)ctx;
   RA8_CHECK_NULL_PTR(px, s_tag, "px must not be nullptr");
   // mcdc-deactivated: row-sink contract guard; both in-tree decoders fire the geometry hook before any row (a failed hook aborts the decode) and pass their bound width/channels verbatim into every on_rows call, so no public-API source can flip geom_done/width/channels here independently.
   if ((st->geom_done == 0U) || (width != st->w) || (channels != st->bpp)) {
@@ -451,7 +454,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_rows(void*          ctx,
 
 /**
  * @brief JPEG geometry adapter: bind geometry, then carve the MCU stripe.
- * @details Wraps ::ra8_ta_priv_on_geom for `ra8_jpeg_sw_decode_stripes()`, which
+ * @details Wraps ::ra8_jof_priv_on_geom for `ra8_jpeg_sw_decode_stripes()`, which
  *          additionally needs a caller-owned stripe buffer sized
  *          `width * stripe_rows * channels`.
  * @param[in]  ctx            The producer state.
@@ -464,7 +467,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_rows(void*          ctx,
  * @return Result code.
  * @retval k_ra8_ok               Geometry bound; stripe carved.
  * @retval k_ra8_err_invalid_size Caps exceeded or arena exhausted.
- * @retval other                  Propagated from ::ra8_ta_priv_on_geom.
+ * @retval other                  Propagated from ::ra8_jof_priv_on_geom.
  * @pre @p out_stripe / @p out_stripe_cap are writable.
  * @pre `st->bump` has the JPEG carve set available.
  * @post On success the stripe buffer is bound for the scan.
@@ -481,13 +484,13 @@ static ra8_err_t priv_jpeg_geom(void*     ctx,
                                 uint8_t** out_stripe,
                                 uint32_t* out_stripe_cap)
 {
-  ra8_ta_prod_state_t* st  = (ra8_ta_prod_state_t*)ctx;
-  const ra8_err_t      err = ra8_ta_priv_on_geom(ctx, width, height, channels);
+  ra8_jof_prod_state_t* st  = (ra8_jof_prod_state_t*)ctx;
+  const ra8_err_t       err = ra8_jof_priv_on_geom(ctx, width, height, channels);
   if (err != k_ra8_ok) {
     return err;
   }
   const uint32_t cap = (uint32_t)width * (uint32_t)stripe_rows * (uint32_t)channels;
-  uint8_t*       buf = ra8_ta_priv_bump_take(st->bump, (size_t)cap);
+  uint8_t*       buf = ra8_jof_priv_bump_take(st->bump, (size_t)cap);
   if (buf == nullptr) {
     return k_ra8_err_invalid_size;
   }
@@ -518,27 +521,25 @@ static ra8_err_t priv_jpeg_geom(void*     ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_finish(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* out_info)
+static ra8_err_t priv_finish(ra8_jof_prod_state_t* st, ra8_jof_info_t* out_info)
 {
   if (st->tiles_done != st->tile_count) {
     return k_ra8_err_validation_failed;
   }
   const uint32_t index_off = st->written;
-  ra8_err_t      err =
-    priv_sink(st, st->idx, (size_t)st->tile_count * (size_t)k_ra8_tileatlas_index_entry);
+  ra8_err_t err = priv_sink(st, st->idx, (size_t)st->tile_count * (size_t)k_ra8_jof_index_entry);
   if (err != k_ra8_ok) {
     return err;
   }
-  uint8_t ftr[k_ra8_tileatlas_footer_bytes] = {};
-  priv_wr_u32(&ftr[k_ra8_tileatlas_ftr_index_off], index_off);
-  priv_wr_u32(&ftr[k_ra8_tileatlas_ftr_tile_count], st->tile_count);
-  priv_wr_u32(&ftr[k_ra8_tileatlas_ftr_total_size],
-              st->written + (uint32_t)k_ra8_tileatlas_footer_bytes);
-  ftr[k_ra8_tileatlas_ftr_magic]      = 'J';
-  ftr[k_ra8_tileatlas_ftr_magic + 1U] = 'O';
-  ftr[k_ra8_tileatlas_ftr_magic + 2U] = 'F';
-  ftr[k_ra8_tileatlas_ftr_magic + 3U] = 'E';
-  err                                 = priv_sink(st, ftr, sizeof(ftr));
+  uint8_t ftr[k_ra8_jof_footer_bytes] = {};
+  priv_wr_u32(&ftr[k_ra8_jof_ftr_index_off], index_off);
+  priv_wr_u32(&ftr[k_ra8_jof_ftr_tile_count], st->tile_count);
+  priv_wr_u32(&ftr[k_ra8_jof_ftr_total_size], st->written + (uint32_t)k_ra8_jof_footer_bytes);
+  ftr[k_ra8_jof_ftr_magic]      = 'J';
+  ftr[k_ra8_jof_ftr_magic + 1U] = 'O';
+  ftr[k_ra8_jof_ftr_magic + 2U] = 'F';
+  ftr[k_ra8_jof_ftr_magic + 3U] = 'E';
+  err                           = priv_sink(st, ftr, sizeof(ftr));
   if (err != k_ra8_ok) {
     return err;
   }
@@ -571,22 +572,22 @@ static ra8_err_t priv_finish(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* out_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_check_cfg(const ra8_tileatlas_produce_cfg_t* cfg)
+static ra8_err_t priv_check_cfg(const ra8_jof_produce_cfg_t* cfg)
 {
   if ((cfg->tile_w == 0U) || (cfg->tile_h == 0U)) {
     return k_ra8_err_invalid_arg;
   }
-  if (cfg->codec > (uint8_t)k_ra8_tileatlas_codec_deflate) {
+  if (cfg->codec > (uint8_t)k_ra8_jof_codec_deflate) {
     return k_ra8_err_invalid_arg;
   }
   return k_ra8_ok;
 }
 
 uint32_t
-ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_w, uint16_t tile_h)
+ra8_jof_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_w, uint16_t tile_h)
 {
-  if ((max_width == 0U) || ((uint32_t)max_width > (uint32_t)k_ra8_tileatlas_max_dim) ||
-      (max_height == 0U) || ((uint32_t)max_height > (uint32_t)k_ra8_tileatlas_max_dim)) {
+  if ((max_width == 0U) || ((uint32_t)max_width > (uint32_t)k_ra8_jof_max_dim) ||
+      (max_height == 0U) || ((uint32_t)max_height > (uint32_t)k_ra8_jof_max_dim)) {
     return 0U;
   }
   if ((tile_w == 0U) || (tile_h == 0U)) {
@@ -594,25 +595,25 @@ ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_
   }
   const uint64_t cols = ((uint64_t)max_width + tile_w - 1U) / tile_w;
   const uint64_t rows = ((uint64_t)max_height + tile_h - 1U) / tile_h;
-  if ((cols * rows) > (uint64_t)k_ra8_tileatlas_max_tiles) {
+  if ((cols * rows) > (uint64_t)k_ra8_jof_max_tiles) {
     return 0U;
   }
-  const uint64_t bpp = (uint64_t)k_ra8_tileatlas_bpp_max;
+  const uint64_t bpp = (uint64_t)k_ra8_jof_bpp_max;
   const uint64_t jpeg_set =
     (uint64_t)k_ra8_jpeg_sw_stream_min_window +
     ((uint64_t)max_width * (uint64_t)k_ra8_jpeg_sw_stream_mcu_rows_max * 3U);
-  const uint64_t png_set = (uint64_t)sizeof(tinfl_decompressor) + (uint64_t)k_ra8_ta_png_ring +
-                           (uint64_t)k_ra8_ta_png_inbuf + (3U * ((uint64_t)max_width * bpp)) + 2U;
+  const uint64_t png_set = (uint64_t)sizeof(tinfl_decompressor) + (uint64_t)k_ra8_jof_png_ring +
+                           (uint64_t)k_ra8_jof_png_inbuf + (3U * ((uint64_t)max_width * bpp)) + 2U;
   const uint64_t dec_set = (jpeg_set > png_set) ? jpeg_set : png_set;
   const uint64_t band    = (uint64_t)max_width * (uint64_t)tile_h * bpp;
   const uint64_t tw_eff  = ((uint64_t)tile_w < (uint64_t)max_width) ? tile_w : max_width;
   const uint64_t th_eff  = ((uint64_t)tile_h < (uint64_t)max_height) ? tile_h : max_height;
   const uint64_t stage   = tw_eff * th_eff * bpp;
-  const uint64_t cmp     = (uint64_t)ra8_tileatlas_stored_bound((uint32_t)stage);
-  const uint64_t index_bytes = cols * rows * (uint64_t)k_ra8_tileatlas_index_entry;
+  const uint64_t cmp     = (uint64_t)ra8_jof_stored_bound((uint32_t)stage);
+  const uint64_t index_bytes = cols * rows * (uint64_t)k_ra8_jof_index_entry;
   const uint64_t dfl         = (uint64_t)k_ra8_io_compress_scratch_bytes;
   const uint64_t total =
-    dec_set + band + stage + cmp + index_bytes + dfl + (uint64_t)k_ra8_ta_carve_slack;
+    dec_set + band + stage + cmp + index_bytes + dfl + (uint64_t)k_ra8_jof_carve_slack;
   if ((stage > (uint64_t)UINT32_MAX) || (total > (uint64_t)UINT32_MAX)) {
     return 0U;
   }
@@ -637,23 +638,21 @@ ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_init_state(ra8_ta_prod_state_t* st, const ra8_tileatlas_produce_cfg_t* cfg)
+static ra8_err_t priv_init_state(ra8_jof_prod_state_t* st, const ra8_jof_produce_cfg_t* cfg)
 {
   (void)memset(st, 0, sizeof(*st));
   st->cfg        = cfg;
-  st->bump_store = (ra8_ta_bump_t){.base = cfg->work, .cap = cfg->work_cap, .off = 0U};
+  st->bump_store = (ra8_jof_bump_t){.base = cfg->work, .cap = cfg->work_cap, .off = 0U};
   st->bump       = &st->bump_store;
-  st->cap_w =
-    ((cfg->max_width != 0U) && ((uint32_t)cfg->max_width < (uint32_t)k_ra8_tileatlas_max_dim))
-      ? cfg->max_width
-      : (uint16_t)k_ra8_tileatlas_max_dim;
-  st->cap_h =
-    ((cfg->max_height != 0U) && ((uint32_t)cfg->max_height < (uint32_t)k_ra8_tileatlas_max_dim))
-      ? cfg->max_height
-      : (uint16_t)k_ra8_tileatlas_max_dim;
-  if (cfg->codec == (uint8_t)k_ra8_tileatlas_codec_deflate) {
+  st->cap_w = ((cfg->max_width != 0U) && ((uint32_t)cfg->max_width < (uint32_t)k_ra8_jof_max_dim))
+                ? cfg->max_width
+                : (uint16_t)k_ra8_jof_max_dim;
+  st->cap_h = ((cfg->max_height != 0U) && ((uint32_t)cfg->max_height < (uint32_t)k_ra8_jof_max_dim))
+                ? cfg->max_height
+                : (uint16_t)k_ra8_jof_max_dim;
+  if (cfg->codec == (uint8_t)k_ra8_jof_codec_deflate) {
     st->dfl_len = (uint32_t)k_ra8_io_compress_scratch_bytes;
-    st->dfl     = ra8_ta_priv_bump_take(st->bump, (size_t)st->dfl_len);
+    st->dfl     = ra8_jof_priv_bump_take(st->bump, (size_t)st->dfl_len);
     if (st->dfl == nullptr) {
       return k_ra8_err_invalid_size;
     }
@@ -665,12 +664,12 @@ static ra8_err_t priv_init_state(ra8_ta_prod_state_t* st, const ra8_tileatlas_pr
  * @brief Pull the sniff head (both formats need at least these bytes).
  * @details Loops the pull seam until the fixed sniff length arrives (bounded by that length).
  * @param[in]  cfg  Caller configuration.
- * @param[out] head Receives ::k_ra8_ta_sniff_bytes source bytes.
+ * @param[out] head Receives ::k_ra8_jof_sniff_bytes source bytes.
  * @return Result code.
  * @retval k_ra8_ok                 Head filled.
  * @retval k_ra8_err_protocol_error The source is too short to be an image.
  * @retval other                    Propagated from the pull callback.
- * @pre @p head holds ::k_ra8_ta_sniff_bytes writable bytes.
+ * @pre @p head holds ::k_ra8_jof_sniff_bytes writable bytes.
  * @pre The source is positioned at byte 0.
  * @post On success the head bytes are consumed from the source.
  * @post On error the transcode aborts.
@@ -678,13 +677,13 @@ static ra8_err_t priv_init_state(ra8_ta_prod_state_t* st, const ra8_tileatlas_pr
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_sniff_head(const ra8_tileatlas_produce_cfg_t* cfg, uint8_t* head)
+static ra8_err_t priv_sniff_head(const ra8_jof_produce_cfg_t* cfg, uint8_t* head)
 {
   size_t head_len = 0U;
-  while (head_len < (size_t)k_ra8_ta_sniff_bytes) {
+  while (head_len < (size_t)k_ra8_jof_sniff_bytes) {
     size_t          got = 0U;
     const ra8_err_t err =
-      cfg->pull(cfg->pull_ctx, &head[head_len], (size_t)k_ra8_ta_sniff_bytes - head_len, &got);
+      cfg->pull(cfg->pull_ctx, &head[head_len], (size_t)k_ra8_jof_sniff_bytes - head_len, &got);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -699,8 +698,8 @@ static ra8_err_t priv_sniff_head(const ra8_tileatlas_produce_cfg_t* cfg, uint8_t
 /**
  * @brief Dispatch the sniffed source to the matching decoder.
  * @details The compound sniff decision carries MC/DC vectors in
- *          `test_ra8_tileatlas_produce.c` (JPEG head), the PNG head vector, and
- *          `test_ra8_tileatlas_produce_webp.c` (WebP RIFF+WEBP head, plus the
+ *          `test_ra8_jof_produce.c` (JPEG head), the PNG head vector, and
+ *          `test_ra8_jof_produce_webp.c` (WebP RIFF+WEBP head, plus the
  *          RIFF-without-WEBP fail-closed vector).
  * @param[in,out] st   Producer state.
  * @param[in]     head The sniffed source head.
@@ -719,35 +718,35 @@ static ra8_err_t priv_sniff_head(const ra8_tileatlas_produce_cfg_t* cfg, uint8_t
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_dispatch(ra8_ta_prod_state_t* st, const uint8_t* head, ra8_ta_prefix_pull_t* pfx)
+priv_dispatch(ra8_jof_prod_state_t* st, const uint8_t* head, ra8_jof_prefix_pull_t* pfx)
 {
-  if ((head[0] == (uint8_t)k_ra8_ta_jpeg_soi_first) &&
-      (head[1] == (uint8_t)k_ra8_ta_jpeg_soi_second)) {
-    uint8_t* window = ra8_ta_priv_bump_take(st->bump, (size_t)k_ra8_jpeg_sw_stream_min_window);
+  if ((head[0] == (uint8_t)k_ra8_jof_jpeg_soi_first) &&
+      (head[1] == (uint8_t)k_ra8_jof_jpeg_soi_second)) {
+    uint8_t* window = ra8_jof_priv_bump_take(st->bump, (size_t)k_ra8_jpeg_sw_stream_min_window);
     if (window == nullptr) {
       return k_ra8_err_invalid_size;
     }
-    return ra8_jpeg_sw_decode_stripes(ra8_ta_priv_prefix_pull,
+    return ra8_jpeg_sw_decode_stripes(ra8_jof_priv_prefix_pull,
                                       pfx,
                                       window,
                                       (uint32_t)k_ra8_jpeg_sw_stream_min_window,
                                       priv_jpeg_geom,
-                                      ra8_ta_priv_on_rows,
+                                      ra8_jof_priv_on_rows,
                                       st);
   }
   if (memcmp(head, s_prod_png_sig, sizeof(s_prod_png_sig)) == 0) {
-    return ra8_ta_priv_png_rows(ra8_ta_priv_prefix_pull,
-                                pfx,
-                                st->bump,
-                                st->cap_w,
-                                st->cap_h,
-                                ra8_ta_priv_on_geom,
-                                ra8_ta_priv_on_rows,
-                                st);
+    return ra8_jof_priv_png_rows(ra8_jof_priv_prefix_pull,
+                                 pfx,
+                                 st->bump,
+                                 st->cap_w,
+                                 st->cap_h,
+                                 ra8_jof_priv_on_geom,
+                                 ra8_jof_priv_on_rows,
+                                 st);
   }
   if ((memcmp(head, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
-      (memcmp(&head[k_ra8_ta_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) == 0)) {
-    return ra8_ta_priv_webp_transcode(st, pfx);
+      (memcmp(&head[k_ra8_jof_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) == 0)) {
+    return ra8_jof_priv_webp_transcode(st, pfx);
   }
   return k_ra8_err_not_supported; /* not a JPEG/PNG/WebP source */
 }
@@ -769,19 +768,19 @@ priv_dispatch(ra8_ta_prod_state_t* st, const uint8_t* head, ra8_ta_prefix_pull_t
 RA8_INTERNAL
 static uint32_t priv_rd_be32(const uint8_t* buf)
 {
-  return ((uint32_t)buf[0] << k_ra8_ta_le_sh24) | ((uint32_t)buf[1] << k_ra8_ta_le_sh16) |
-         ((uint32_t)buf[2] << k_ra8_ta_le_sh8) | (uint32_t)buf[3];
+  return ((uint32_t)buf[0] << k_ra8_jof_le_sh24) | ((uint32_t)buf[1] << k_ra8_jof_le_sh16) |
+         ((uint32_t)buf[2] << k_ra8_jof_le_sh8) | (uint32_t)buf[3];
 }
 
 /**
  * @brief True if the sniff window carries the WebP RIFF container magic.
  * @details A WebP file is a RIFF container whose form type is "WEBP", so both
  *          fourCCs must match -- a bare "RIFF" is some other RIFF payload.
- * @param[in] data Source bytes (at least ::k_ra8_ta_sniff_bytes readable).
+ * @param[in] data Source bytes (at least ::k_ra8_jof_sniff_bytes readable).
  * @return Whether both fourCCs matched.
  * @retval true  The source is a WebP RIFF container.
  * @retval false Either fourCC differs.
- * @pre @p data holds ::k_ra8_ta_sniff_bytes readable bytes.
+ * @pre @p data holds ::k_ra8_jof_sniff_bytes readable bytes.
  * @pre The caller has already excluded the JPEG and PNG signatures.
  * @post No state is mutated.
  * @post The result depends only on the first twelve source bytes.
@@ -792,7 +791,8 @@ RA8_INTERNAL
 static bool priv_is_webp(const uint8_t* data)
 {
   return (memcmp(data, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
-         (memcmp(&data[k_ra8_ta_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) == 0);
+         (memcmp(&data[k_ra8_jof_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) ==
+          0);
 }
 
 /**
@@ -817,17 +817,17 @@ static bool priv_is_webp(const uint8_t* data)
 RA8_INTERNAL
 static ra8_err_t priv_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* out_h)
 {
-  if (len < (size_t)k_ra8_ta_png_ihdr_end) {
+  if (len < (size_t)k_ra8_jof_png_ihdr_end) {
     return k_ra8_err_not_supported; /* IHDR truncated */
   }
-  *out_w = priv_rd_be32(&data[k_ra8_ta_png_ihdr_w]);
-  *out_h = priv_rd_be32(&data[k_ra8_ta_png_ihdr_h]);
+  *out_w = priv_rd_be32(&data[k_ra8_jof_png_ihdr_w]);
+  *out_h = priv_rd_be32(&data[k_ra8_jof_png_ihdr_h]);
   return k_ra8_ok;
 }
 
 /**
  * @brief Sniff the container, read its declared geometry and range-check it.
- * @details The probing algorithm behind ::ra8_tileatlas_probe_dims, split from
+ * @details The probing algorithm behind ::ra8_jof_probe_dims, split from
  *          it so the public entry carries only the null-pointer contract. The
  *          dispatch order mirrors ::priv_dispatch, which is what keeps "the
  *          caller can size it" and "the producer will decode it" in step.
@@ -836,7 +836,7 @@ static ra8_err_t priv_png_dims(const uint8_t* data, size_t len, uint32_t* out_w,
  *          reader already range-checks against its own frame limits and writes
  *          the 16-bit outputs itself, so it returns without a second check.
  *          PNG and WebP yield 32-bit values that still have to be proved
- *          non-zero and within ::k_ra8_tileatlas_max_dim before narrowing.
+ *          non-zero and within ::k_ra8_jof_max_dim before narrowing.
  * @param[in]  data  Encoded source bytes.
  * @param[in]  len   Readable length of @p data in bytes.
  * @param[out] out_w Receives the source width in pixels.
@@ -857,13 +857,13 @@ static ra8_err_t priv_png_dims(const uint8_t* data, size_t len, uint32_t* out_w,
 RA8_INTERNAL
 static ra8_err_t priv_probe_sniff(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
 {
-  if (len < (size_t)k_ra8_ta_sniff_bytes) {
+  if (len < (size_t)k_ra8_jof_sniff_bytes) {
     return k_ra8_err_not_supported; /* too short to carry any accepted magic */
   }
   uint32_t w = 0U;
   uint32_t h = 0U;
-  if ((data[0] == (uint8_t)k_ra8_ta_jpeg_soi_first) &&
-      (data[1] == (uint8_t)k_ra8_ta_jpeg_soi_second)) {
+  if ((data[0] == (uint8_t)k_ra8_jof_jpeg_soi_first) &&
+      (data[1] == (uint8_t)k_ra8_jof_jpeg_soi_second)) {
     return ra8_jpeg_sw_get_dimensions(data, (uint32_t)len, out_w, out_h);
   }
   if (memcmp(data, s_prod_png_sig, sizeof(s_prod_png_sig)) == 0) {
@@ -879,8 +879,8 @@ static ra8_err_t priv_probe_sniff(const uint8_t* data, size_t len, uint16_t* out
   } else {
     return k_ra8_err_not_supported; /* not a JPEG/PNG/WebP source */
   }
-  if ((w == 0U) || (h == 0U) || (w > (uint32_t)k_ra8_tileatlas_max_dim) ||
-      (h > (uint32_t)k_ra8_tileatlas_max_dim)) {
+  if ((w == 0U) || (h == 0U) || (w > (uint32_t)k_ra8_jof_max_dim) ||
+      (h > (uint32_t)k_ra8_jof_max_dim)) {
     return k_ra8_err_invalid_size;
   }
   *out_w = (uint16_t)w;
@@ -888,8 +888,7 @@ static ra8_err_t priv_probe_sniff(const uint8_t* data, size_t len, uint16_t* out
   return k_ra8_ok;
 }
 
-ra8_err_t
-ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
+ra8_err_t ra8_jof_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
 {
   RA8_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
   RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
@@ -915,7 +914,7 @@ ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint1
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_epilogue(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* out_info)
+static ra8_err_t priv_epilogue(ra8_jof_prod_state_t* st, ra8_jof_info_t* out_info)
 {
   // mcdc-deactivated: post-decode contract guard; both in-tree decoders return success only after the geometry hook fired and every declared row was delivered (short/hostile streams abort inside the decoder), so neither condition can be flipped through the public producer entry.
   if ((st->geom_done == 0U) || (st->rows_seen != (uint32_t)st->h)) {
@@ -932,7 +931,7 @@ static ra8_err_t priv_epilogue(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* ou
 }
 
 /**
- * @brief Reject any NULL `ra8_tileatlas_produce` argument or seam.
+ * @brief Reject any NULL `ra8_jof_produce` argument or seam.
  * @details Split out so the public entry stays under the statement budget.
  * @param[in] cfg      Producer configuration to validate.
  * @param[in] out_info Output pointer to validate.
@@ -947,8 +946,8 @@ static ra8_err_t priv_epilogue(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* ou
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_produce_args_ok(const ra8_tileatlas_produce_cfg_t* cfg,
-                                      const ra8_tileatlas_info_t*        out_info)
+static ra8_err_t priv_produce_args_ok(const ra8_jof_produce_cfg_t* cfg,
+                                      const ra8_jof_info_t*        out_info)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   RA8_CHECK_NULL_PTR(out_info, s_tag, "out_info must not be nullptr");
@@ -958,8 +957,7 @@ static ra8_err_t priv_produce_args_ok(const ra8_tileatlas_produce_cfg_t* cfg,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_tileatlas_produce(const ra8_tileatlas_produce_cfg_t* cfg,
-                                ra8_tileatlas_info_t*              out_info)
+ra8_err_t ra8_jof_produce(const ra8_jof_produce_cfg_t* cfg, ra8_jof_info_t* out_info)
 {
   ra8_err_t err = priv_produce_args_ok(cfg, out_info);
   if (err != k_ra8_ok) {
@@ -969,17 +967,17 @@ ra8_err_t ra8_tileatlas_produce(const ra8_tileatlas_produce_cfg_t* cfg,
   if (err != k_ra8_ok) {
     return err;
   }
-  ra8_ta_prod_state_t* st = &s_prod;
-  err                     = priv_init_state(st, cfg);
+  ra8_jof_prod_state_t* st = &s_prod;
+  err                      = priv_init_state(st, cfg);
   if (err != k_ra8_ok) {
     return err;
   }
-  uint8_t head[k_ra8_ta_sniff_bytes] = {};
-  err                                = priv_sniff_head(cfg, head);
+  uint8_t head[k_ra8_jof_sniff_bytes] = {};
+  err                                 = priv_sniff_head(cfg, head);
   if (err != k_ra8_ok) {
     return err;
   }
-  ra8_ta_prefix_pull_t pfx = {
+  ra8_jof_prefix_pull_t pfx = {
     .head      = head,
     .head_len  = sizeof(head),
     .pos       = 0U,

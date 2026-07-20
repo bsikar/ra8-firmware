@@ -1,5 +1,5 @@
 /**
- * @file test_ra8_tileatlas_produce_webp.c
+ * @file test_ra8_jof_produce_webp.c
  * @brief Host tests for WebP normalize-on-import: WebP -> JOF through the
  *        #231 producer, byte-consistent tiles, cross-format convergence, and
  *        fail-closed hostile handling (#290).
@@ -7,7 +7,7 @@
  * @details
  * The #290 goal is that every source codec converges on one on-device format:
  * these tests drive a committed lossless (VP8L) and lossy (VP8) WebP through
- * `ra8_tileatlas_produce()` and prove:
+ * `ra8_jof_produce()` and prove:
  *
  *   1. **Golden pixels** -- the lossless WebP's decoded RGBA tiles page back
  *      byte-exact to its deterministic source pattern
@@ -38,8 +38,8 @@
 
 #include "miniz.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------------- */
@@ -126,7 +126,7 @@ typedef struct {
   size_t         pos; /**< Read cursor.   */
 } t_mem_pull_t;
 
-/** @brief ::ra8_tileatlas_pull_fn over a ::t_mem_pull_t. */
+/** @brief ::ra8_jof_pull_fn over a ::t_mem_pull_t. */
 static ra8_err_t t_mem_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   t_mem_pull_t* p    = (t_mem_pull_t*)ctx;
@@ -173,24 +173,24 @@ static uint8_t t_pix(uint32_t x, uint32_t y, uint32_t c)
  * @note Not thread-safe (shared work arenas).
  * @since 0.1.0
  */
-static ra8_err_t produce_webp(const uint8_t*            src,
-                              size_t                    src_len,
-                              uint8_t*                  webp_work,
-                              size_t                    webp_cap,
-                              ra8_tileatlas_memstore_t* store,
-                              ra8_tileatlas_info_t*     info)
+static ra8_err_t produce_webp(const uint8_t*      src,
+                              size_t              src_len,
+                              uint8_t*            webp_work,
+                              size_t              webp_cap,
+                              ra8_jof_memstore_t* store,
+                              ra8_jof_info_t*     info)
 {
   static t_mem_pull_t pull;
   pull   = (t_mem_pull_t){.d = src, .n = src_len, .pos = 0U};
-  *store = (ra8_tileatlas_memstore_t){.buf = store->buf, .cap = store->cap, .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  *store = (ra8_jof_memstore_t){.buf = store->buf, .cap = store->cap, .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull          = t_mem_pull,
     .pull_ctx      = &pull,
-    .sink          = ra8_tileatlas_memstore_sink,
+    .sink          = ra8_jof_memstore_sink,
     .sink_ctx      = store,
     .tile_w        = (uint16_t)k_t_tile,
     .tile_h        = (uint16_t)k_t_tile,
-    .codec         = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec         = (uint8_t)k_ra8_jof_codec_deflate,
     .max_width     = (uint16_t)k_t_dim,
     .max_height    = (uint16_t)k_t_dim,
     .work          = s_work,
@@ -198,7 +198,7 @@ static ra8_err_t produce_webp(const uint8_t*            src,
     .webp_work     = webp_work,
     .webp_work_cap = webp_cap,
   };
-  return ra8_tileatlas_produce(&cfg, info);
+  return ra8_jof_produce(&cfg, info);
 }
 
 /**
@@ -283,24 +283,24 @@ static void build_rgba_png(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void check_golden_tiles(ra8_tileatlas_memstore_t* store, const ra8_tileatlas_info_t* info)
+static void check_golden_tiles(ra8_jof_memstore_t* store, const ra8_jof_info_t* info)
 {
   for (uint16_t ty = 0U; ty < info->tile_rows; ty++) {
     for (uint16_t tx = 0U; tx < info->tile_cols; tx++) {
       uint16_t w = 0U;
       uint16_t h = 0U;
       TEST_ASSERT_EQ(k_ra8_ok,
-                     ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                             store,
-                                             info,
-                                             tx,
-                                             ty,
-                                             s_scratch,
-                                             (uint32_t)sizeof(s_scratch),
-                                             s_cell,
-                                             (uint32_t)sizeof(s_cell),
-                                             &w,
-                                             &h));
+                     ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                       store,
+                                       info,
+                                       tx,
+                                       ty,
+                                       s_scratch,
+                                       (uint32_t)sizeof(s_scratch),
+                                       s_cell,
+                                       (uint32_t)sizeof(s_cell),
+                                       &w,
+                                       &h));
       const uint32_t x0 = (uint32_t)tx * info->tile_w;
       const uint32_t y0 = (uint32_t)ty * info->tile_h;
       for (uint32_t r = 0U; r < h; r++) {
@@ -323,7 +323,7 @@ static void check_golden_tiles(ra8_tileatlas_memstore_t* store, const ra8_tileat
  * @test test_webp_lossless_golden
  * @brief A lossless WebP normalizes to JOF whose tiles page back byte-exact to
  *        the source pattern, with the `webp_work` arena sized by
- *        `ra8_tileatlas_webp_work_bytes()` proving the sizing guarantee.
+ *        `ra8_jof_webp_work_bytes()` proving the sizing guarantee.
  *
  * @par MC/DC:
  * Decision (WebP sniff): `RIFF(head[0..3]) && WEBP(head[8..11])` (2 conditions)
@@ -335,12 +335,12 @@ static void test_webp_lossless_golden(void)
 {
   TEST_BEGIN("produce webp: lossless -> JOF golden pixels + sized arena");
   const uint32_t need =
-    ra8_tileatlas_webp_work_bytes((uint16_t)k_t_dim, (uint16_t)k_t_dim, sizeof(k_webp_lossless));
+    ra8_jof_webp_work_bytes((uint16_t)k_t_dim, (uint16_t)k_t_dim, sizeof(k_webp_lossless));
   TEST_ASSERT(need > 0U);
   TEST_ASSERT(need <= sizeof(s_webp_work));
 
-  ra8_tileatlas_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
-  ra8_tileatlas_info_t     info  = {};
+  ra8_jof_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
+  ra8_jof_info_t     info  = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  produce_webp(k_webp_lossless,
                               sizeof(k_webp_lossless),
@@ -353,10 +353,9 @@ static void test_webp_lossless_golden(void)
   TEST_ASSERT_EQ(k_t_dim, info.height);
   TEST_ASSERT_EQ(k_t_grid, info.tile_count);
 
-  ra8_tileatlas_info_t reparsed = {};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &store, (uint64_t)store.len, &reparsed));
+  ra8_jof_info_t reparsed = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)store.len, &reparsed));
   TEST_ASSERT_EQ(0, memcmp(&info, &reparsed, sizeof(info)));
   check_golden_tiles(&store, &info);
   TEST_END("produce webp: lossless -> JOF golden pixels + sized arena");
@@ -375,8 +374,8 @@ static void test_webp_lossless_golden(void)
 static void test_webp_png_byte_identical(void)
 {
   TEST_BEGIN("produce webp: lossless WebP atlas == RGBA PNG atlas (byte-identical)");
-  ra8_tileatlas_memstore_t sa = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
-  ra8_tileatlas_info_t     ia = {};
+  ra8_jof_memstore_t sa = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
+  ra8_jof_info_t     ia = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  produce_webp(k_webp_lossless,
                               sizeof(k_webp_lossless),
@@ -387,23 +386,23 @@ static void test_webp_png_byte_identical(void)
 
   build_rgba_png();
   static t_mem_pull_t pull;
-  pull                                  = (t_mem_pull_t){.d = s_png, .n = s_png_len, .pos = 0U};
-  ra8_tileatlas_memstore_t          sb  = {.buf = s_store_b, .cap = sizeof(s_store_b), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  pull                            = (t_mem_pull_t){.d = s_png, .n = s_png_len, .pos = 0U};
+  ra8_jof_memstore_t          sb  = {.buf = s_store_b, .cap = sizeof(s_store_b), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_mem_pull,
     .pull_ctx   = &pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &sb,
     .tile_w     = (uint16_t)k_t_tile,
     .tile_h     = (uint16_t)k_t_tile,
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec      = (uint8_t)k_ra8_jof_codec_deflate,
     .max_width  = (uint16_t)k_t_dim,
     .max_height = (uint16_t)k_t_dim,
     .work       = s_work,
     .work_cap   = sizeof(s_work),
   };
-  ra8_tileatlas_info_t ib = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_produce(&cfg, &ib));
+  ra8_jof_info_t ib = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_produce(&cfg, &ib));
 
   /* Same reported geometry AND the same atlas bytes, end to end. */
   TEST_ASSERT_EQ(0, memcmp(&ia, &ib, sizeof(ia)));
@@ -428,8 +427,8 @@ static void test_webp_png_byte_identical(void)
 static void test_webp_lossy_path(void)
 {
   TEST_BEGIN("produce webp: lossy VP8 -> valid JOF1");
-  ra8_tileatlas_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
-  ra8_tileatlas_info_t     info  = {};
+  ra8_jof_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
+  ra8_jof_info_t     info  = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  produce_webp(k_webp_lossy,
                               sizeof(k_webp_lossy),
@@ -440,25 +439,24 @@ static void test_webp_lossy_path(void)
   TEST_ASSERT_EQ(k_t_bpp, info.bpp);
   TEST_ASSERT_EQ(k_t_dim, info.width);
   TEST_ASSERT_EQ(k_t_dim, info.height);
-  ra8_tileatlas_info_t reparsed = {};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &store, (uint64_t)store.len, &reparsed));
+  ra8_jof_info_t reparsed = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)store.len, &reparsed));
   /* One tile pages back at the tile bpp (content is lossy, not compared). */
   uint16_t w = 0U;
   uint16_t h = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                         &store,
-                                         &info,
-                                         0U,
-                                         0U,
-                                         s_scratch,
-                                         (uint32_t)sizeof(s_scratch),
-                                         s_cell,
-                                         (uint32_t)sizeof(s_cell),
-                                         &w,
-                                         &h));
+                 ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                   &store,
+                                   &info,
+                                   0U,
+                                   0U,
+                                   s_scratch,
+                                   (uint32_t)sizeof(s_scratch),
+                                   s_cell,
+                                   (uint32_t)sizeof(s_cell),
+                                   &w,
+                                   &h));
   TEST_ASSERT_EQ(k_t_tile, w);
   TEST_ASSERT_EQ(k_t_tile, h);
   TEST_END("produce webp: lossy VP8 -> valid JOF1");
@@ -475,7 +473,7 @@ static void test_webp_lossy_path(void)
  * to `k_ra8_err_not_supported` (pairs with test_webp_lossless_golden's true
  * vector to prove cond 2 independently flips the outcome).
  *
- * Decision B (transcode arena room, in `ra8_ta_priv_webp_transcode`):
+ * Decision B (transcode arena room, in `ra8_jof_priv_webp_transcode`):
  * `if ((used >= acap) || (frame64 >= (uint64_t)(acap - used)))` (2 conditions):
  * - V1: acap large -> false (both false: the decode proceeds; covered by
  *   test_webp_lossless_golden / test_webp_png_byte_identical / lossy).
@@ -488,8 +486,8 @@ static void test_webp_lossy_path(void)
 static void test_webp_hostile(void)
 {
   TEST_BEGIN("produce webp: hostile / unsupported WebP fail closed");
-  ra8_tileatlas_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
-  ra8_tileatlas_info_t     info  = {};
+  ra8_jof_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
+  ra8_jof_info_t     info  = {};
 
   /* A valid WebP but no webp_work arena: WebP disabled -> not_supported. */
   TEST_ASSERT_EQ(
@@ -558,15 +556,15 @@ static void test_webp_hostile(void)
 static void test_webp_work_bytes(void)
 {
   TEST_BEGIN("produce webp: work-arena calculator bounds");
-  TEST_ASSERT(ra8_tileatlas_webp_work_bytes(512U, 512U, 4096U) > 0U);
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_webp_work_bytes(0U, 512U, 4096U));
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_webp_work_bytes(9000U, 512U, 4096U));
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_webp_work_bytes(512U, 0U, 4096U));
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_webp_work_bytes(512U, 9000U, 4096U));
-  TEST_ASSERT_EQ(0U, ra8_tileatlas_webp_work_bytes(512U, 512U, 0U));
+  TEST_ASSERT(ra8_jof_webp_work_bytes(512U, 512U, 4096U) > 0U);
+  TEST_ASSERT_EQ(0U, ra8_jof_webp_work_bytes(0U, 512U, 4096U));
+  TEST_ASSERT_EQ(0U, ra8_jof_webp_work_bytes(9000U, 512U, 4096U));
+  TEST_ASSERT_EQ(0U, ra8_jof_webp_work_bytes(512U, 0U, 4096U));
+  TEST_ASSERT_EQ(0U, ra8_jof_webp_work_bytes(512U, 9000U, 4096U));
+  TEST_ASSERT_EQ(0U, ra8_jof_webp_work_bytes(512U, 512U, 0U));
   /* A wider frame costs strictly more arena (frame term dominates). */
-  TEST_ASSERT(ra8_tileatlas_webp_work_bytes(1024U, 512U, 4096U) >
-              ra8_tileatlas_webp_work_bytes(512U, 512U, 4096U));
+  TEST_ASSERT(ra8_jof_webp_work_bytes(1024U, 512U, 4096U) >
+              ra8_jof_webp_work_bytes(512U, 512U, 4096U));
   TEST_END("produce webp: work-arena calculator bounds");
 }
 
@@ -587,6 +585,6 @@ int32_t main(void)
   test_webp_lossy_path();
   test_webp_hostile();
   test_webp_work_bytes();
-  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas_produce_webp.c\n");
+  (void)fprintf(stderr, "[OK  ] test_ra8_jof_produce_webp.c\n");
   return 0;
 }

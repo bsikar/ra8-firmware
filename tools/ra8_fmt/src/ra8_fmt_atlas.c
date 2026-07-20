@@ -3,7 +3,7 @@
  * @brief JOF band-tile atlas verbs for `ra8_fmt`: convert, inspect, verify.
  *
  * @details
- * Wraps the firmware's own `ra8_tileatlas` producer and reader so the tool
+ * Wraps the firmware's own `ra8_jof` producer and reader so the tool
  * exercises exactly the code the board runs -- a bug reproduced here is a bug
  * on silicon, and a clean result here exonerates the file.
  *
@@ -42,8 +42,8 @@
 #include "ra8_err.h"
 #include "ra8_fmt.h"
 #include "ra8_fmt_internal.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_fmt_atlas";
@@ -75,7 +75,7 @@ static const uint8_t s_fmt_webp_webp[4] = {'W', 'E', 'B', 'P'}; /* MAGIC-OK: WEB
 /**
  * @brief Test whether a source blob carries the WebP RIFF container head.
  * @details Mirrors the producer's own dispatch sniff in
- *          `ra8_tileatlas_produce.c` -- both fourCCs must match, so a non-WebP
+ *          `ra8_jof_produce.c` -- both fourCCs must match, so a non-WebP
  *          RIFF (WAVE, AVI) is rejected rather than handed to the WebP arm.
  *          The tool uses this for two decisions that must agree: which probe
  *          reads the dimensions, and whether to carve the whole-frame arena.
@@ -106,7 +106,7 @@ static bool ra8_fmt_atlas_is_webp(const ra8_fmt_blob_t* src)
 /**
  * @struct fmt_pull_ctx_t
  * @brief Read cursor over an in-RAM encoded source image (producer pull seam).
- * @details Feeds `ra8_tileatlas_produce()` from a slurped blob rather than a
+ * @details Feeds `ra8_jof_produce()` from a slurped blob rather than a
  *          file, so the same bytes can be replayed for the second encode.
  * @invariant `pos <= len` at all times.
  * @see fmt_atlas_pull()
@@ -120,7 +120,7 @@ typedef struct {
 
 /**
  * @brief Producer pull callback: hand over the next source bytes.
- * @details Matching `ra8_tileatlas_pull_fn`; reports `*got == 0` at the end of
+ * @details Matching `ra8_jof_pull_fn`; reports `*got == 0` at the end of
  *          the blob, which the producer treats as end-of-source.
  * @param[in]  ctx Read cursor (a ::fmt_pull_ctx_t*).
  * @param[out] buf Destination buffer.
@@ -172,7 +172,7 @@ static ra8_err_t fmt_atlas_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got
  * @post On success `*out_work` is nullptr (non-WebP) or owned by the caller.
  * @post On failure `*out_work` is nullptr and nothing was allocated.
  * @note Not thread-safe; the caller owns and must free `*out_work`.
- * @see ra8_tileatlas_webp_work_bytes()
+ * @see ra8_jof_webp_work_bytes()
  * @since 0.1.0
  */
 RA8_INTERNAL
@@ -187,7 +187,7 @@ static ra8_err_t fmt_atlas_carve_webp(const ra8_fmt_blob_t* src,
   if (!ra8_fmt_atlas_is_webp(src)) {
     return k_ra8_ok;
   }
-  const uint32_t need = ra8_tileatlas_webp_work_bytes(max_w, max_h, (uint32_t)src->len);
+  const uint32_t need = ra8_jof_webp_work_bytes(max_w, max_h, (uint32_t)src->len);
   if (need == 0U) {
     return k_ra8_err_invalid_size;
   }
@@ -208,7 +208,7 @@ ra8_err_t ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16
   /* The producer owns the format dispatch, so it owns the geometry probe too:
    * delegating keeps "the tool can size it" and "the producer will decode it"
    * from drifting apart. */
-  return ra8_tileatlas_probe_dims(src->bytes, src->len, out_w, out_h);
+  return ra8_jof_probe_dims(src->bytes, src->len, out_w, out_h);
 }
 
 ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
@@ -218,13 +218,13 @@ ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
                                 uint16_t              tile_h,
                                 uint8_t               codec,
                                 ra8_fmt_blob_t*       out_atlas,
-                                ra8_tileatlas_info_t* out_info)
+                                ra8_jof_info_t*       out_info)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(out_atlas, s_tag, "out_atlas must not be nullptr");
   RA8_CHECK_NULL_PTR(out_info, s_tag, "out_info must not be nullptr");
   *out_atlas              = (ra8_fmt_blob_t){};
-  const uint32_t work_cap = ra8_tileatlas_work_bytes(max_w, max_h, tile_w, tile_h);
+  const uint32_t work_cap = ra8_jof_work_bytes(max_w, max_h, tile_w, tile_h);
   if (work_cap == 0U) {
     return k_ra8_err_invalid_size;
   }
@@ -246,22 +246,22 @@ ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
     free(sink);
     return carve_rc;
   }
-  ra8_tileatlas_memstore_t          store = {.buf = sink, .cap = sink_cap, .len = 0U};
-  fmt_pull_ctx_t                    pull  = {.data = src->bytes, .len = src->len, .pos = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg   = {.pull          = fmt_atlas_pull,
-                                             .pull_ctx      = &pull,
-                                             .sink          = ra8_tileatlas_memstore_sink,
-                                             .sink_ctx      = &store,
-                                             .tile_w        = tile_w,
-                                             .tile_h        = tile_h,
-                                             .codec         = codec,
-                                             .max_width     = 0U,
-                                             .max_height    = 0U,
-                                             .work          = work,
-                                             .work_cap      = work_cap,
-                                             .webp_work     = webp_work,
-                                             .webp_work_cap = webp_work_cap};
-  const ra8_err_t                   rc    = ra8_tileatlas_produce(&cfg, out_info);
+  ra8_jof_memstore_t          store = {.buf = sink, .cap = sink_cap, .len = 0U};
+  fmt_pull_ctx_t              pull  = {.data = src->bytes, .len = src->len, .pos = 0U};
+  const ra8_jof_produce_cfg_t cfg   = {.pull          = fmt_atlas_pull,
+                                       .pull_ctx      = &pull,
+                                       .sink          = ra8_jof_memstore_sink,
+                                       .sink_ctx      = &store,
+                                       .tile_w        = tile_w,
+                                       .tile_h        = tile_h,
+                                       .codec         = codec,
+                                       .max_width     = 0U,
+                                       .max_height    = 0U,
+                                       .work          = work,
+                                       .work_cap      = work_cap,
+                                       .webp_work     = webp_work,
+                                       .webp_work_cap = webp_work_cap};
+  const ra8_err_t             rc    = ra8_jof_produce(&cfg, out_info);
   free(work);
   free(webp_work);
   if (rc != k_ra8_ok) {
@@ -288,17 +288,10 @@ ra8_err_t ra8_fmt_atlas_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
     (void)fprintf(opts->report, "ra8_fmt: cannot decode source image (rc=%d)\n", (int)rc);
     return rc;
   }
-  const uint16_t       band = (h < (uint16_t)k_fmt_atlas_band_h) ? h : (uint16_t)k_fmt_atlas_band_h;
-  ra8_fmt_blob_t       atlas = {};
-  ra8_tileatlas_info_t info  = {};
-  rc                         = ra8_fmt_atlas_produce(src,
-                                                     w,
-                                                     h,
-                                                     w,
-                                                     band,
-                                                     (uint8_t)k_ra8_tileatlas_codec_deflate,
-                                                     &atlas,
-                                                     &info);
+  const uint16_t band  = (h < (uint16_t)k_fmt_atlas_band_h) ? h : (uint16_t)k_fmt_atlas_band_h;
+  ra8_fmt_blob_t atlas = {};
+  ra8_jof_info_t info  = {};
+  rc = ra8_fmt_atlas_produce(src, w, h, w, band, (uint8_t)k_ra8_jof_codec_deflate, &atlas, &info);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "ra8_fmt: transcode failed (rc=%d)\n", (int)rc);
     return rc;

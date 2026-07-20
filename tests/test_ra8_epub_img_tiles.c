@@ -5,7 +5,7 @@
  *
  * @details
  * Turns the #231 invariants into CI gates. Atlases are produced in-test by the
- * real transcode producer (`ra8_tileatlas_produce`) from synthesized PNG
+ * real transcode producer (`ra8_jof_produce`) from synthesized PNG
  * sources, stored (uncompressed) inside an EPUB opened by *streaming*, and
  * paged through a deliberately tiny 8-cell tile cache with byte parity against
  * the generator pattern -- proving:
@@ -33,10 +33,10 @@
 #include "ra8_epub.h"
 #include "ra8_epub_img_tiles.h"
 #include "ra8_err.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "ra8_reflow_types.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
 #include "unity_minimal.h"
 
 /**
@@ -86,7 +86,7 @@ static uint8_t s_edge_buf[k_store_cap];
 /** @brief Import-path memstore backing. */
 static uint8_t s_imp_buf[k_store_cap];
 /** @brief Import-path memstore. */
-static ra8_tileatlas_memstore_t s_imp_store;
+static ra8_jof_memstore_t s_imp_store;
 /** @brief Producer work arena. */
 static uint8_t s_work[k_work_cap];
 /** @brief Synthesized PNG scratch. */
@@ -213,7 +213,7 @@ typedef struct {
   size_t pos; /**< Read cursor into `s_png`. */
 } mem_pull_t;
 
-/** @brief ::ra8_tileatlas_pull_fn over `s_png`. */
+/** @brief ::ra8_jof_pull_fn over `s_png`. */
 static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   mem_pull_t*  p    = (mem_pull_t*)ctx;
@@ -229,7 +229,7 @@ static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  * @brief Bake one atlas: synthesize a PNG of ::pix, run the real producer.
  * @param[in]  w     Source width, pixels.
  * @param[in]  h     Source height, pixels.
- * @param[in]  codec ::ra8_tileatlas_codec_t member.
+ * @param[in]  codec ::ra8_jof_codec_t member.
  * @param[out] store Destination memstore (backing already bound).
  * @pre @p store->buf covers its cap; the shared work arena is free.
  * @pre The geometry fits the ::k_png_cap synthesis buffers.
@@ -238,15 +238,15 @@ static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_tileatlas_memstore_t* store)
+static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_jof_memstore_t* store)
 {
   png_build(w, h);
   static mem_pull_t pull;
-  pull                                  = (mem_pull_t){.pos = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  pull                            = (mem_pull_t){.pos = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull       = png_pull,
     .pull_ctx   = &pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = store,
     .tile_w     = (uint16_t)k_tile,
     .tile_h     = (uint16_t)k_tile,
@@ -256,8 +256,8 @@ static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_tileatlas_mems
     .work       = s_work,
     .work_cap   = sizeof(s_work),
   };
-  ra8_tileatlas_info_t info = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_produce(&cfg, &info));
+  ra8_jof_info_t info = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_produce(&cfg, &info));
   TEST_ASSERT_EQ(store->len, info.total_size);
 }
 
@@ -286,10 +286,10 @@ static void zip_add_hostile(mz_zip_archive* zip)
 
 static void build_archive(void)
 {
-  ra8_tileatlas_memstore_t big  = {.buf = s_big_buf, .cap = sizeof(s_big_buf), .len = 0U};
-  ra8_tileatlas_memstore_t edge = {.buf = s_edge_buf, .cap = sizeof(s_edge_buf), .len = 0U};
-  bake_atlas(k_big_w, k_big_h, (uint8_t)k_ra8_tileatlas_codec_deflate, &big);
-  bake_atlas(k_edge_w, k_edge_h, (uint8_t)k_ra8_tileatlas_codec_raw, &edge);
+  ra8_jof_memstore_t big  = {.buf = s_big_buf, .cap = sizeof(s_big_buf), .len = 0U};
+  ra8_jof_memstore_t edge = {.buf = s_edge_buf, .cap = sizeof(s_edge_buf), .len = 0U};
+  bake_atlas(k_big_w, k_big_h, (uint8_t)k_ra8_jof_codec_deflate, &big);
+  bake_atlas(k_edge_w, k_edge_h, (uint8_t)k_ra8_jof_codec_raw, &edge);
   for (size_t i = 0U; i < (size_t)k_fig_bytes; ++i) {
     s_fig[i] = (uint8_t)((i * 13U) + 7U);
   }
@@ -447,13 +447,13 @@ static void test_tile_paging_bounded(void)
   init_binder(&binder);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_add(&binder, &book, "big.rta", k_id_big));
 
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_info(&binder, k_id_big, &info));
   TEST_ASSERT_EQ(k_big_w, info.width);
   TEST_ASSERT_EQ(k_big_h, info.height);
   TEST_ASSERT_EQ((k_big_w / k_tile), info.tile_cols);
   TEST_ASSERT_EQ((k_big_h / k_tile), info.tile_rows);
-  TEST_ASSERT_EQ(k_ra8_tileatlas_codec_deflate, info.codec);
+  TEST_ASSERT_EQ(k_ra8_jof_codec_deflate, info.codec);
 
   /* Measure only the tile-paging backing reads (not the ZIP open / header). */
   g_peak = 0U;
@@ -511,11 +511,11 @@ static void test_tile_edges(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_init(&binder, &storage, nullptr, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_add(&binder, &book, "edge.rta", k_id_edge));
 
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_info(&binder, k_id_edge, &info));
   TEST_ASSERT_EQ(2U, info.tile_cols); /* ceil(100/64) */
   TEST_ASSERT_EQ(2U, info.tile_rows); /* ceil(70/64)  */
-  TEST_ASSERT_EQ(k_ra8_tileatlas_codec_raw, info.codec);
+  TEST_ASSERT_EQ(k_ra8_jof_codec_raw, info.codec);
 
   const uint32_t rem_w = k_edge_w - k_tile;                /* 36          */
   const uint32_t rem_h = k_edge_h - k_tile;                /* 6           */
@@ -557,13 +557,13 @@ static void import_error_arms(ra8_epub_tile_binder_t*            binder,
                  ra8_epub_tile_binder_import(binder, book, "ch1.xhtml", 41U, base));
   ra8_epub_atlas_import_cfg_t small = *base;
   small.max_width                   = 16U;
-  ra8_tileatlas_memstore_t fresh    = {.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
+  ra8_jof_memstore_t fresh          = {.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
   small.store.sink_ctx              = &fresh;
   small.store.pread_ctx             = &fresh;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_epub_tile_binder_import(binder, book, "page1.png", 42U, &small));
   ra8_epub_atlas_import_cfg_t tiny      = *base;
-  ra8_tileatlas_memstore_t    tinystore = {.buf = s_imp_buf, .cap = 64U, .len = 0U};
+  ra8_jof_memstore_t          tinystore = {.buf = s_imp_buf, .cap = 64U, .len = 0U};
   tiny.store.sink_ctx                   = &tinystore;
   tiny.store.pread_ctx                  = &tinystore;
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
@@ -583,25 +583,25 @@ static void test_import_transcode(void)
   ra8_epub_tile_binder_t binder = {};
   init_binder(&binder);
 
-  s_imp_store = (ra8_tileatlas_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
+  s_imp_store = (ra8_jof_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
   ra8_epub_atlas_import_cfg_t cfg = {
     .tile_w     = (uint16_t)k_tile,
     .tile_h     = (uint16_t)k_tile,
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec      = (uint8_t)k_ra8_jof_codec_deflate,
     .max_width  = (uint16_t)k_big_w,
     .max_height = (uint16_t)k_big_h,
     .work       = s_work,
     .work_cap   = sizeof(s_work),
-    .store      = {.sink      = ra8_tileatlas_memstore_sink,
+    .store      = {.sink      = ra8_jof_memstore_sink,
                    .sink_ctx  = &s_imp_store,
-                   .pread     = ra8_tileatlas_memstore_pread,
+                   .pread     = ra8_jof_memstore_pread,
                    .pread_ctx = &s_imp_store},
   };
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_epub_tile_binder_import(&binder, &book, "page1.png", k_id_imp, &cfg));
   TEST_ASSERT(s_imp_store.len > 0U); /* the producer really ran */
 
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_info(&binder, k_id_imp, &info));
   TEST_ASSERT_EQ(k_imp_w, info.width);
   TEST_ASSERT_EQ(k_imp_h, info.height);
@@ -640,18 +640,18 @@ static void test_import_classify_arms(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "tiles.epub", &book));
   ra8_epub_tile_binder_t binder = {};
   init_binder(&binder);
-  s_imp_store = (ra8_tileatlas_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
+  s_imp_store = (ra8_jof_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
   const ra8_epub_atlas_import_cfg_t cfg = {
     .tile_w     = (uint16_t)k_tile,
     .tile_h     = (uint16_t)k_tile,
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec      = (uint8_t)k_ra8_jof_codec_deflate,
     .max_width  = (uint16_t)k_big_w,
     .max_height = (uint16_t)k_big_h,
     .work       = s_work,
     .work_cap   = sizeof(s_work),
-    .store      = {.sink      = ra8_tileatlas_memstore_sink,
+    .store      = {.sink      = ra8_jof_memstore_sink,
                    .sink_ctx  = &s_imp_store,
-                   .pread     = ra8_tileatlas_memstore_pread,
+                   .pread     = ra8_jof_memstore_pread,
                    .pread_ctx = &s_imp_store},
   };
 
@@ -693,18 +693,18 @@ static void test_import_passthrough(void)
 
   ra8_epub_tile_binder_t binder = {};
   init_binder(&binder);
-  s_imp_store = (ra8_tileatlas_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
+  s_imp_store = (ra8_jof_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
   const ra8_epub_atlas_import_cfg_t cfg = {
     .tile_w     = (uint16_t)k_tile,
     .tile_h     = (uint16_t)k_tile,
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .codec      = (uint8_t)k_ra8_jof_codec_deflate,
     .max_width  = (uint16_t)k_big_w,
     .max_height = (uint16_t)k_big_h,
     .work       = s_work,
     .work_cap   = sizeof(s_work),
-    .store      = {.sink      = ra8_tileatlas_memstore_sink,
+    .store      = {.sink      = ra8_jof_memstore_sink,
                    .sink_ctx  = &s_imp_store,
-                   .pread     = ra8_tileatlas_memstore_pread,
+                   .pread     = ra8_jof_memstore_pread,
                    .pread_ctx = &s_imp_store},
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_import(&binder, &book, "big.rta", k_id_big, &cfg));
@@ -776,8 +776,8 @@ static void test_tile_binder_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_epub_tile_binder_add(&binder, &book, "edge.rta", 200U));
 
   /* info / get / put guards. */
-  ra8_tileatlas_info_t info = {};
-  ra8_tile_t           t    = {};
+  ra8_jof_info_t info = {};
+  ra8_tile_t     t    = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_info(nullptr, k_id_big, &info));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_info(&binder, k_id_big, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_epub_tile_binder_info(&binder, 999U, &info));

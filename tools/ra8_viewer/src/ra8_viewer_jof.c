@@ -4,7 +4,7 @@
  *
  * @details
  * Drives ra8_longstrip over an ra8_tile_cache for the firmware-native `.jof`
- * tile atlas the downloader writes with `ra8_tileatlas_produce`. The whole atlas
+ * tile atlas the downloader writes with `ra8_jof_produce`. The whole atlas
  * is slurped into memory and read back through a memstore pread, so the engine
  * sees exactly the demand-paged interface it uses on the board; DEFLATE bands
  * are decoded on cache miss into a fixed pool of LRU cells.
@@ -25,9 +25,9 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_jof.h"
 #include "ra8_longstrip.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
 #include "ra8_viewer_reader.h"
 #include "ra8_viewer_reader_internal.h"
 
@@ -142,7 +142,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
     return k_ra8_err_not_found;
   }
   r->jof.atlas = buf;
-  r->jof.store = (ra8_tileatlas_memstore_t){.buf = buf, .cap = sz, .len = sz};
+  r->jof.store = (ra8_jof_memstore_t){.buf = buf, .cap = sz, .len = sz};
   return k_ra8_ok;
 }
 
@@ -184,10 +184,10 @@ viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes)
  * @post On ::k_ra8_ok `r->jof.strip` is ready to scroll and render.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t viewer_jof_wire(ra8_viewer_reader_t*        r,
-                                              const ra8_tileatlas_info_t* info,
-                                              size_t                      band_bytes,
-                                              uint32_t                    cell_count)
+RA8_INTERNAL static ra8_err_t viewer_jof_wire(ra8_viewer_reader_t*  r,
+                                              const ra8_jof_info_t* info,
+                                              size_t                band_bytes,
+                                              uint32_t              cell_count)
 {
   viewer_jof_t* w     = &r->jof;
   w->dctx.scratch     = w->scratch;
@@ -211,7 +211,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_wire(ra8_viewer_reader_t*        r,
   w->viewport_h = (uint32_t)k_ra8_viewer_fb_height;
   w->x_off      = 0;
 
-  const ra8_longstrip_cfg_t wcfg = {.pread      = ra8_tileatlas_memstore_pread,
+  const ra8_longstrip_cfg_t wcfg = {.pread      = ra8_jof_memstore_pread,
                                     .pread_ctx  = &w->store,
                                     .atlas_size = r->file.size,
                                     .cache      = &w->cache,
@@ -265,14 +265,14 @@ ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r)
     return rc;
   }
 
-  w->dctx.pread     = ra8_tileatlas_memstore_pread;
+  w->dctx.pread     = ra8_jof_memstore_pread;
   w->dctx.pread_ctx = &w->store;
-  rc = ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &w->store, r->file.size, &w->dctx.info);
+  rc                = ra8_jof_parse(ra8_jof_memstore_pread, &w->store, r->file.size, &w->dctx.info);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  const ra8_tileatlas_info_t info = w->dctx.info;
-  const size_t band_bytes         = (size_t)info.tile_w * (size_t)info.tile_h * (size_t)info.bpp;
+  const ra8_jof_info_t info       = w->dctx.info;
+  const size_t         band_bytes = (size_t)info.tile_w * (size_t)info.tile_h * (size_t)info.bpp;
   if (band_bytes == 0U) {
     return k_ra8_err_invalid_size;
   }

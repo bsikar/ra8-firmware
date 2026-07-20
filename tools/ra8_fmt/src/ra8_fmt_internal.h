@@ -24,7 +24,7 @@
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fmt.h"
-#include "ra8_tileatlas.h"
+#include "ra8_jof.h"
 
 /**
  * @brief Compute a safe memory-sink capacity for an atlas built from a source.
@@ -52,7 +52,7 @@
  * @brief Transcode one source image into an in-RAM JOF atlas.
  *
  * @details The shared encode step behind the atlas `convert` and `verify`
- *          verbs: drives the firmware `ra8_tileatlas_produce()` from a slurped
+ *          verbs: drives the firmware `ra8_jof_produce()` from a slurped
  *          blob into a memory sink, so the produced bytes can be written out or
  *          immediately read back without touching the filesystem.
  *
@@ -61,7 +61,7 @@
  * @param[in]  max_h     Height cap for the work-arena sizing, pixels.
  * @param[in]  tile_w    Tile width to request, pixels.
  * @param[in]  tile_h    Tile height to request, pixels.
- * @param[in]  codec     ::ra8_tileatlas_codec_t member.
+ * @param[in]  codec     ::ra8_jof_codec_t member.
  * @param[out] out_atlas Receives the owned atlas bytes (caller frees).
  * @param[out] out_info  Receives the produced atlas geometry.
  *
@@ -86,7 +86,7 @@
                                               uint16_t              tile_h,
                                               uint8_t               codec,
                                               ra8_fmt_blob_t*       out_atlas,
-                                              ra8_tileatlas_info_t* out_info);
+                                              ra8_jof_info_t*       out_info);
 
 /**
  * @brief Read a source image's pixel dimensions from its container header.
@@ -108,7 +108,7 @@
  *
  * @pre @p src holds a PNG or JPEG source.
  * @pre @p out_w and @p out_h are writable.
- * @post On success both outputs are in `[1, k_ra8_tileatlas_max_dim]`.
+ * @post On success both outputs are in `[1, k_ra8_jof_max_dim]`.
  * @post On any error neither output is relied upon.
  * @note Thread-safe (pure over its input).
  * @since 0.1.0
@@ -134,7 +134,7 @@ ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h)
  * @retval k_ra8_ok               Raster reassembled into `*out_px`.
  * @retval k_ra8_err_null_ptr     A required pointer is NULL.
  * @retval k_ra8_err_no_mem       An allocation failed.
- * @retval other                  Propagated from `ra8_tileatlas_read_tile()`.
+ * @retval other                  Propagated from `ra8_jof_read_tile()`.
  *
  * @pre @p info came from a successful parse over @p atlas.
  * @pre @p out_px and @p out_len are writable.
@@ -143,10 +143,10 @@ ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_atlas_reassemble(const ra8_fmt_blob_t*       atlas,
-                                                 const ra8_tileatlas_info_t* info,
-                                                 uint8_t**                   out_px,
-                                                 size_t*                     out_len);
+[[nodiscard]] ra8_err_t ra8_fmt_atlas_reassemble(const ra8_fmt_blob_t* atlas,
+                                                 const ra8_jof_info_t* info,
+                                                 uint8_t**             out_px,
+                                                 size_t*               out_len);
 
 /**
  * @brief JOF `convert` verb: one source image to one `.jof` atlas.

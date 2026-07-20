@@ -24,7 +24,7 @@
 # monolithic target. A host tool that hand-lists firmware sources therefore had no
 # way to say "and WebP too" short of re-deriving all four parts by hand -- so
 # tools/ra8_fmt and tools/media_dl instead each defined a do-nothing
-# ra8_ta_priv_webp_transcode() that returned k_ra8_err_not_supported purely to
+# ra8_jof_priv_webp_transcode() that returned k_ra8_err_not_supported purely to
 # satisfy the linker. Both tools linked clean, advertised WebP, and failed at
 # runtime on every WebP source. This module removes the reason those stubs existed:
 # the recipe now has exactly one definition that firmware apps, the host test
@@ -101,9 +101,9 @@ endfunction()
 # and the first-party facade to <target>, wire the include roots, and apply the
 # SOUP flags to exactly the vendored TUs.
 #
-# Callers that also compile the ra8_tileatlas producer get its WebP arm
-# (ra8_tileatlas_produce_webp.c) satisfied by this facade -- that arm is the
-# ra8_ta_priv_webp_transcode() definition, and compiling it alongside this call is
+# Callers that also compile the ra8_jof producer get its WebP arm
+# (ra8_jof_produce_webp.c) satisfied by this facade -- that arm is the
+# ra8_jof_priv_webp_transcode() definition, and compiling it alongside this call is
 # what makes WebP sources actually transcode rather than fail closed.
 function(ra8_webp_attach target repo_root)
     if(NOT TARGET ${target})

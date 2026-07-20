@@ -5,7 +5,7 @@
  *
  * @details
  * Runs the app's exact presentation pipeline against the app's exact fixture:
- * transcode the baked 1536x2048 grayscale PNG through `ra8_tileatlas_produce`
+ * transcode the baked 1536x2048 grayscale PNG through `ra8_jof_produce`
  * into a JOF atlas, page it through a small `ra8_tile_cache`, and render the
  * initial 1:1 top-left viewport with the shared `mg_reader` into a 1024x600
  * RGB565 framebuffer. Every stage is a deterministic integer pipeline, so the
@@ -32,9 +32,9 @@
 #include "../examples/ek_ra8d2/hw_pending/ereader_manga/mg_page_fixture.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "ra8_tile_cache.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_produce.h"
 #include "unity_minimal.h"
 
 /** @brief The app's geometry + budget constants (kept in lockstep with main.c). */
@@ -91,9 +91,9 @@ static uint8_t s_work[k_t_work];
 static uint8_t s_store_buf[k_t_store];
 
 /** @brief The atlas memstore. */
-static ra8_tileatlas_memstore_t s_store;
+static ra8_jof_memstore_t s_store;
 /** @brief Parsed atlas geometry. */
-static ra8_tileatlas_info_t s_info;
+static ra8_jof_info_t s_info;
 /** @brief Tile cache paging the atlas. */
 static ra8_tile_cache_t s_cache;
 /** @brief Decode-on-miss context. */
@@ -129,24 +129,23 @@ static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 static void setup_reader(void)
 {
   t_png_cursor cur = {.data = k_mg_png, .len = k_mg_png_len, .pos = 0U};
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t pcfg = {.pull       = png_pull,
-                                            .pull_ctx   = &cur,
-                                            .sink       = ra8_tileatlas_memstore_sink,
-                                            .sink_ctx   = &s_store,
-                                            .tile_w     = (uint16_t)k_t_tile_edge,
-                                            .tile_h     = (uint16_t)k_t_tile_edge,
-                                            .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
-                                            .max_width  = (uint16_t)k_t_cap_edge,
-                                            .max_height = (uint16_t)k_t_cap_edge,
-                                            .work       = s_work,
-                                            .work_cap   = sizeof(s_work),
-                                            .webp_work  = NULL};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_produce(&pcfg, &s_info));
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &s_store, s_store.len, &s_info));
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t pcfg = {.pull       = png_pull,
+                                      .pull_ctx   = &cur,
+                                      .sink       = ra8_jof_memstore_sink,
+                                      .sink_ctx   = &s_store,
+                                      .tile_w     = (uint16_t)k_t_tile_edge,
+                                      .tile_h     = (uint16_t)k_t_tile_edge,
+                                      .codec      = (uint8_t)k_ra8_jof_codec_deflate,
+                                      .max_width  = (uint16_t)k_t_cap_edge,
+                                      .max_height = (uint16_t)k_t_cap_edge,
+                                      .work       = s_work,
+                                      .work_cap   = sizeof(s_work),
+                                      .webp_work  = NULL};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_produce(&pcfg, &s_info));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_parse(ra8_jof_memstore_pread, &s_store, s_store.len, &s_info));
   s_tile_src                      = (mg_tile_src_t){.info        = &s_info,
-                                                    .pread       = ra8_tileatlas_memstore_pread,
+                                                    .pread       = ra8_jof_memstore_pread,
                                                     .pread_ctx   = &s_store,
                                                     .scratch     = s_scratch,
                                                     .scratch_cap = (uint32_t)sizeof(s_scratch)};
@@ -179,7 +178,7 @@ static void setup_reader(void)
  *        requirement for the cap the app advertises.
  *
  * @details
- * `ra8_tileatlas_produce()` carves its band, tile stage and compressed-tile
+ * `ra8_jof_produce()` carves its band, tile stage and compressed-tile
  * bound from the *decoded* geometry, so an arena that is too small for the
  * advertised `max_width`/`max_height` does not fail on every source -- only on
  * one wide enough, or deep enough in bpp, to exhaust it. That makes an
@@ -203,10 +202,10 @@ static void setup_reader(void)
 static void test_manga_work_arena_covers_advertised_cap(void)
 {
   TEST_BEGIN("ereader_manga: work arena covers the advertised produce cap");
-  const uint32_t need = ra8_tileatlas_work_bytes((uint16_t)k_t_cap_edge,
-                                                 (uint16_t)k_t_cap_edge,
-                                                 (uint16_t)k_t_tile_edge,
-                                                 (uint16_t)k_t_tile_edge);
+  const uint32_t need = ra8_jof_work_bytes((uint16_t)k_t_cap_edge,
+                                           (uint16_t)k_t_cap_edge,
+                                           (uint16_t)k_t_tile_edge,
+                                           (uint16_t)k_t_tile_edge);
   (void)fprintf(stderr,
                 "[INFO] ereader-manga arena: cap=%ux%u tile=%u need=%u have=%u\n",
                 (unsigned)k_t_cap_edge,
@@ -218,8 +217,7 @@ static void test_manga_work_arena_covers_advertised_cap(void)
   TEST_ASSERT(need != 0U);
   TEST_ASSERT(sizeof(s_work) >= (size_t)need);
   /* Vector 2: nonsense geometry returns 0, which the boot guard rejects. */
-  TEST_ASSERT_EQ(0U,
-                 ra8_tileatlas_work_bytes((uint16_t)k_t_cap_edge, (uint16_t)k_t_cap_edge, 0U, 0U));
+  TEST_ASSERT_EQ(0U, ra8_jof_work_bytes((uint16_t)k_t_cap_edge, (uint16_t)k_t_cap_edge, 0U, 0U));
   /* Vector 3: the previously shipped 2 MiB arena does NOT cover this cap --
    * the defect this test exists to keep fixed. */
   TEST_ASSERT(need > (2U * 1024U * 1024U));
@@ -234,7 +232,7 @@ static void test_manga_work_arena_covers_advertised_cap(void)
  *
  * @par MC/DC:
  * (integration gate: the compound decisions in the producer, atlas reader and
- * tile cache carry their vectors in test_ra8_tileatlas*.c / test_ra8_tile_cache*;
+ * tile cache carry their vectors in test_ra8_jof*.c / test_ra8_tile_cache*;
  * here the oracle is the end-to-end golden framebuffer hash.)
  */
 static void test_manga_render_golden(void)
@@ -266,7 +264,7 @@ static void test_manga_render_golden(void)
  *
  * @par MC/DC:
  * (fixture-integrity check; the read_tile decode decisions are covered in
- * test_ra8_tileatlas.c. Here the oracle is the known solid-fill / frame pixels.)
+ * test_ra8_jof.c. Here the oracle is the known solid-fill / frame pixels.)
  */
 static void test_manga_fixture_pattern(void)
 {
@@ -276,34 +274,34 @@ static void test_manga_fixture_pattern(void)
   uint16_t th = 0U;
   /* Tile (0,0): black inner frame at the corner, solid gray fill left of label. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                         &s_store,
-                                         &s_info,
-                                         0U,
-                                         0U,
-                                         s_scratch,
-                                         (uint32_t)sizeof(s_scratch),
-                                         s_probe_cell,
-                                         (uint32_t)sizeof(s_probe_cell),
-                                         &tw,
-                                         &th));
+                 ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                   &s_store,
+                                   &s_info,
+                                   0U,
+                                   0U,
+                                   s_scratch,
+                                   (uint32_t)sizeof(s_scratch),
+                                   s_probe_cell,
+                                   (uint32_t)sizeof(s_probe_cell),
+                                   &tw,
+                                   &th));
   TEST_ASSERT_EQ(k_t_tile_edge, tw);
   TEST_ASSERT_EQ(k_t_tile_edge, th);
   TEST_ASSERT_EQ(k_t_gray_edge, s_probe_cell[0U]);                /* top-left frame pixel   */
   TEST_ASSERT_EQ(k_t_gray_c0r0, s_probe_cell[(128U * tw) + 10U]); /* fill left of the label */
   /* Tile (5,7): the bottom-right tile carries its own distinct fill gray. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                         &s_store,
-                                         &s_info,
-                                         5U,
-                                         7U,
-                                         s_scratch,
-                                         (uint32_t)sizeof(s_scratch),
-                                         s_probe_cell,
-                                         (uint32_t)sizeof(s_probe_cell),
-                                         &tw,
-                                         &th));
+                 ra8_jof_read_tile(ra8_jof_memstore_pread,
+                                   &s_store,
+                                   &s_info,
+                                   5U,
+                                   7U,
+                                   s_scratch,
+                                   (uint32_t)sizeof(s_scratch),
+                                   s_probe_cell,
+                                   (uint32_t)sizeof(s_probe_cell),
+                                   &tw,
+                                   &th));
   TEST_ASSERT_EQ(k_t_gray_c5r7, s_probe_cell[(128U * tw) + 10U]);
   TEST_END("ereader_manga: decoded tile matches the baked page pattern");
 }

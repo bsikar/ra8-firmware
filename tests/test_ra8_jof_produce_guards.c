@@ -1,15 +1,15 @@
 /**
- * @file test_ra8_tileatlas_produce_guards.c
+ * @file test_ra8_jof_produce_guards.c
  * @brief Producer guard-arm MC/DC vectors: work-arena calculator overflow,
  *        bump-carve guards, config/cap clamps, decoder-driven geometry
  *        rejections and the carve-boundary sweep (#231).
  *
  * @details
- * Complements `test_ra8_tileatlas_produce.c` (happy paths + parity) and
- * `test_ra8_tileatlas_png_hostile.c` (hostile PNG streams): this suite
+ * Complements `test_ra8_jof_produce.c` (happy paths + parity) and
+ * `test_ra8_jof_png_hostile.c` (hostile PNG streams): this suite
  * drives the producer's own guard decisions to both outcomes -- the 64-bit
- * overflow checks in `ra8_tileatlas_work_bytes()` and the band carve, the
- * `ra8_ta_priv_bump_take()` argument/exhaustion guards through the module
+ * overflow checks in `ra8_jof_work_bytes()` and the band carve, the
+ * `ra8_jof_priv_bump_take()` argument/exhaustion guards through the module
  * seam (the CLAUDE.md "test access to internal symbols" allowance), the
  * tile-geometry and cap-clamp arms of the configuration path, the
  * geometry-hook rejections only a hostile JPEG SOF can reach, and an
@@ -27,9 +27,9 @@
 
 #include "miniz.h"
 #include "ra8_err.h"
-#include "ra8_tileatlas.h"
-#include "ra8_tileatlas_internal.h"
-#include "ra8_tileatlas_produce.h"
+#include "ra8_jof.h"
+#include "ra8_jof_internal.h"
+#include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
 /** @brief Suite geometry + buffer sizing. */
@@ -67,7 +67,7 @@ typedef struct {
   size_t pos; /**< Read cursor. */
 } g_pull_t;
 
-/** @brief ::ra8_tileatlas_pull_fn over `s_src`. */
+/** @brief ::ra8_jof_pull_fn over `s_src`. */
 static ra8_err_t g_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   g_pull_t*    p    = (g_pull_t*)ctx;
@@ -170,31 +170,31 @@ static void build_jpeg_sof(uint32_t w, uint32_t h)
 }
 
 /** @brief Run the producer over the crafted source with explicit knobs. */
-static ra8_err_t produce_with(uint16_t              tile_w,
-                              uint16_t              tile_h,
-                              uint16_t              max_w,
-                              uint16_t              max_h,
-                              size_t                work_cap,
-                              ra8_tileatlas_info_t* out_info)
+static ra8_err_t produce_with(uint16_t        tile_w,
+                              uint16_t        tile_h,
+                              uint16_t        max_w,
+                              uint16_t        max_h,
+                              size_t          work_cap,
+                              ra8_jof_info_t* out_info)
 {
-  static g_pull_t                 pull;
-  static ra8_tileatlas_memstore_t store;
+  static g_pull_t           pull;
+  static ra8_jof_memstore_t store;
   pull  = (g_pull_t){.pos = 0U};
-  store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_tileatlas_produce_cfg_t cfg = {
+  store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_jof_produce_cfg_t cfg = {
     .pull       = g_pull,
     .pull_ctx   = &pull,
-    .sink       = ra8_tileatlas_memstore_sink,
+    .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &store,
     .tile_w     = tile_w,
     .tile_h     = tile_h,
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_raw,
+    .codec      = (uint8_t)k_ra8_jof_codec_raw,
     .max_width  = max_w,
     .max_height = max_h,
     .work       = s_work,
     .work_cap   = work_cap,
   };
-  return ra8_tileatlas_produce(&cfg, out_info);
+  return ra8_jof_produce(&cfg, out_info);
 }
 
 /**
@@ -211,17 +211,17 @@ static ra8_err_t produce_with(uint16_t              tile_w,
 static void test_guards_work_bytes_overflow(void)
 {
   TEST_BEGIN("produce guards: work-arena calculator overflow arms");
-  TEST_ASSERT(ra8_tileatlas_work_bytes(1024U, 1024U, 128U, 128U) > 0U);
+  TEST_ASSERT(ra8_jof_work_bytes(1024U, 1024U, 128U, 128U) > 0U);
   TEST_ASSERT_EQ(0U,
-                 ra8_tileatlas_work_bytes((uint16_t)k_g_max_dim,
-                                          (uint16_t)k_g_max_dim,
-                                          (uint16_t)k_g_max_dim,
-                                          (uint16_t)k_g_max_dim));
+                 ra8_jof_work_bytes((uint16_t)k_g_max_dim,
+                                    (uint16_t)k_g_max_dim,
+                                    (uint16_t)k_g_max_dim,
+                                    (uint16_t)k_g_max_dim));
   TEST_ASSERT_EQ(0U,
-                 ra8_tileatlas_work_bytes((uint16_t)k_g_max_dim,
-                                          (uint16_t)k_g_max_dim,
-                                          (uint16_t)(k_g_max_dim / 2U),
-                                          (uint16_t)k_g_max_dim));
+                 ra8_jof_work_bytes((uint16_t)k_g_max_dim,
+                                    (uint16_t)k_g_max_dim,
+                                    (uint16_t)(k_g_max_dim / 2U),
+                                    (uint16_t)k_g_max_dim));
   TEST_END("produce guards: work-arena calculator overflow arms");
 }
 
@@ -243,18 +243,18 @@ static void test_guards_bump_take(void)
 {
   TEST_BEGIN("produce guards: bump-carve argument + exhaustion arms");
   static uint8_t backing[64];
-  ra8_ta_bump_t  bump = {.base = backing, .cap = sizeof(backing), .off = 0U};
+  ra8_jof_bump_t bump = {.base = backing, .cap = sizeof(backing), .off = 0U};
 
-  TEST_ASSERT(ra8_ta_priv_bump_take(&bump, 8U) != nullptr);
-  TEST_ASSERT_EQ((void*)nullptr, ra8_ta_priv_bump_take(nullptr, 8U));
-  TEST_ASSERT_EQ((void*)nullptr, ra8_ta_priv_bump_take(&bump, 0U));
+  TEST_ASSERT(ra8_jof_priv_bump_take(&bump, 8U) != nullptr);
+  TEST_ASSERT_EQ((void*)nullptr, ra8_jof_priv_bump_take(nullptr, 8U));
+  TEST_ASSERT_EQ((void*)nullptr, ra8_jof_priv_bump_take(&bump, 0U));
 
   /* Length overruns the remainder (aligned stays inside). */
-  TEST_ASSERT_EQ((void*)nullptr, ra8_ta_priv_bump_take(&bump, sizeof(backing)));
+  TEST_ASSERT_EQ((void*)nullptr, ra8_jof_priv_bump_take(&bump, sizeof(backing)));
 
   /* Alignment alone overruns a nearly-full arena. */
-  ra8_ta_bump_t tight = {.base = backing, .cap = 7U, .off = 5U};
-  TEST_ASSERT_EQ((void*)nullptr, ra8_ta_priv_bump_take(&tight, 1U));
+  ra8_jof_bump_t tight = {.base = backing, .cap = 7U, .off = 5U};
+  TEST_ASSERT_EQ((void*)nullptr, ra8_jof_priv_bump_take(&tight, 1U));
   TEST_END("produce guards: bump-carve argument + exhaustion arms");
 }
 
@@ -276,7 +276,7 @@ static void test_guards_bump_take(void)
 static void test_guards_cfg_and_caps(void)
 {
   TEST_BEGIN("produce guards: tile-geometry + format-cap clamp arms");
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
   build_gray_png(16U, 16U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, produce_with(8U, 0U, 512U, 512U, sizeof(s_work), &info));
 
@@ -307,7 +307,7 @@ static void test_guards_cfg_and_caps(void)
 static void test_guards_jpeg_geometry(void)
 {
   TEST_BEGIN("produce guards: hostile JPEG SOF geometry arms");
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
 
   build_jpeg_sof(0U, 16U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, produce_with(8U, 8U, 512U, 512U, sizeof(s_work), &info));
@@ -341,7 +341,7 @@ static void test_guards_band_overflow(void)
   const uint8_t one = 0U;
   put_chunk("IDAT", &one, 1U);
   put_chunk("IEND", nullptr, 0U);
-  ra8_tileatlas_info_t info = {};
+  ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_size,
     produce_with((uint16_t)k_g_max_dim, (uint16_t)k_g_band_tile, 0U, 0U, sizeof(s_work), &info));
@@ -367,15 +367,15 @@ static void test_guards_carve_sweep(void)
 {
   TEST_BEGIN("produce guards: carve-boundary sweep (bind + pixel path)");
   build_gray_png(k_g_dim, k_g_dim);
-  const uint32_t need = ra8_tileatlas_work_bytes((uint16_t)k_g_dim,
-                                                 (uint16_t)k_g_dim,
-                                                 (uint16_t)k_g_tile,
-                                                 (uint16_t)k_g_tile);
+  const uint32_t need = ra8_jof_work_bytes((uint16_t)k_g_dim,
+                                           (uint16_t)k_g_dim,
+                                           (uint16_t)k_g_tile,
+                                           (uint16_t)k_g_tile);
   TEST_ASSERT(need > 0U);
   TEST_ASSERT(need <= (uint32_t)sizeof(s_work));
 
-  ra8_tileatlas_info_t info    = {};
-  bool                 seen_ok = false;
+  ra8_jof_info_t info    = {};
+  bool           seen_ok = false;
   for (uint32_t cap = (uint32_t)k_g_step; cap <= need; cap += (uint32_t)k_g_step) {
     const ra8_err_t err = produce_with((uint16_t)k_g_tile,
                                        (uint16_t)k_g_tile,
@@ -422,6 +422,6 @@ int32_t main(void)
   test_guards_jpeg_geometry();
   test_guards_band_overflow();
   test_guards_carve_sweep();
-  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas_produce_guards.c\n");
+  (void)fprintf(stderr, "[OK  ] test_ra8_jof_produce_guards.c\n");
   return 0;
 }
