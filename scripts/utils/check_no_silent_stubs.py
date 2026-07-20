@@ -215,22 +215,20 @@ def classify_body(body: str, params: str) -> str | None:
     if len(returns) != 1:
         return None
     declared = param_names(params)
-    if declared:
-        # Takes parameters: at least one must actually be discarded. That is
-        # what separates "ignores its inputs" from a handler that legitimately
-        # returns module state.
-        if not (set(discards) & declared):
-            return None
-    else:
-        # Takes NO parameters, so "discards every parameter" is vacuously true
-        # and the discard test above cannot speak. Only a canned-error return
-        # qualifies here: `ra8_widget_calibrate(void) { return
-        # k_ra8_err_not_supported; }` is every bit the stub its one-argument
-        # form is, but a bare `return s_state;` getter is module state and must
-        # stay silent. Requiring an empty discard list keeps a body that pokes
-        # at file-scope names out of the "pure canned return" shape.
-        if discards or returns[0] not in CANNED_ERRORS:
-            return None
+    # Takes parameters: at least one must actually be discarded. That is what
+    # separates "ignores its inputs" from a handler that legitimately returns
+    # module state.
+    if declared and not (set(discards) & declared):
+        return None
+    # Takes NO parameters, so "discards every parameter" is vacuously true and
+    # the discard test above cannot speak. Only a canned-error return qualifies
+    # here: `ra8_widget_calibrate(void) { return k_ra8_err_not_supported; }` is
+    # every bit the stub its one-argument form is, but a bare `return s_state;`
+    # getter is module state and must stay silent. Requiring an empty discard
+    # list keeps a body that pokes at file-scope names out of the "pure canned
+    # return" shape.
+    if not declared and (discards or returns[0] not in CANNED_ERRORS):
+        return None
     return returns[0]
 
 
@@ -326,8 +324,9 @@ def first_party_sources(explicit: list[str]) -> list[Path]:
     if explicit:
         return [Path(p) for p in explicit]
     try:
-        listed = subprocess.run(
-            ["git", "ls-files", "-z", "--", *[f"{root}/**/*.c" for root in ROOTS]],
+        pathspec = [f"{root}/**/*.c" for root in ROOTS]
+        listed = subprocess.run(  # noqa: S603  # fixed argv, no shell
+            ["git", "ls-files", "-z", "--", *pathspec],  # noqa: S607  # trusted: fixed git argv
             capture_output=True,
             text=True,
             check=True,
