@@ -54,18 +54,34 @@
  * ## State machine
  *
  * @par State Machine
- * @startuml
- * [*] --> Reset
- * Reset --> LDO       : ra8_vreg_init(LDO)
- * Reset --> DCDC      : ra8_vreg_init(DCDC)
- * LDO   --> DCDC      : ra8_vreg_set_mode(DCDC) -- 22 us blocking
- * DCDC  --> LDO       : ra8_vreg_set_mode(LDO) -- 60 us blocking
- * LDO   --> Standby   : ra8_vreg_enter_standby()
- * DCDC  --> Standby   : k_ra8_err_invalid_state (must switch to LDO first)
- * Standby --> LDO     : ra8_vreg_exit_standby() (or DCDC if cached)
- * LDO   --> [*]       : ra8_vreg_deinit()
- * DCDC  --> [*]       : ra8_vreg_deinit()
- * @enduml
+ * @dot
+ * digraph ra8_vreg_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *   __end [shape=doublecircle, width=0.20, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Reset [label="Reset"];
+ *   LDO [label="LDO"];
+ *   DCDC [label="DCDC"];
+ *   Standby [label="Standby"];
+ *
+ *   __start -> Reset;
+ *   Reset -> LDO [label="ra8_vreg_init(LDO)"];
+ *   Reset -> DCDC [label="ra8_vreg_init(DCDC)"];
+ *   LDO -> DCDC [label="ra8_vreg_set_mode(DCDC) --\\n22 us blocking"];
+ *   DCDC -> LDO [label="ra8_vreg_set_mode(LDO) -- 60\\nus blocking"];
+ *   LDO -> Standby [label="ra8_vreg_enter_standby()"];
+ *   DCDC -> Standby [label="k_ra8_err_invalid_state\\n(must switch to LDO first)"];
+ *   Standby -> LDO [label="ra8_vreg_exit_standby() (or\\nDCDC if cached)"];
+ *   LDO -> __end [label="ra8_vreg_deinit()"];
+ *   DCDC -> __end [label="ra8_vreg_deinit()"];
+ * }
+ * @enddot
  *
  * | From   | To      | Function                  | Allowed?      |
  * |--------|---------|---------------------------|---------------|

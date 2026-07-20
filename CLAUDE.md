@@ -550,10 +550,21 @@ in the `.c`** must NOT duplicate that block.
 - `@since` - Version introduced
 
 **State Machines - Required Documentation:**
-- `@startuml` state diagram showing all transitions
+- `@dot` state diagram showing all transitions (a Graphviz `digraph`)
 - Each state documented with entry/exit actions
 - Transition conditions and guards
 - State transition table in `@par` section
+
+**Use `@dot`, never `@startuml`.** PlantUML needs `PLANTUML_JAR_PATH` and a JVM;
+neither is configured, and no other part of this bare-metal tree wants a Java
+dependency. Doxygen therefore ignored every `@startuml` block and warned once
+per block -- and the `docs` gate filtered that warning away, so 24 mandated
+state diagrams rendered nowhere for the life of the tree while this file
+required the construct that produced them. Graphviz is already a hard
+dependency of both the `docs` and `docs-publish` gates and renders reliably, so
+`@dot` is the mechanism that actually works. `scripts/utils/check_doc_diagrams.py`
+now rejects `@startuml` and fails when an authored `@dot` block does not reach
+the generated HTML.
 
 ### Example: Complete Function Documentation
 

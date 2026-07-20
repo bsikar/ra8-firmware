@@ -11,8 +11,10 @@
 # verified) into build/tools/, which persists in the self-hosted runner's
 # workspace, so later runs are offline. The runner's distro doxygen is never
 # used -- the in-tree HTML templates and theme are only valid for the pinned
-# version. graphviz is optional -- build_docs.sh falls back to text-only
-# output when `dot` is absent.
+# version. graphviz is REQUIRED, not optional: build_docs.sh falls back to
+# text-only output when `dot` is absent, which would publish a diagram-free
+# site over the live one. The docs-publish gate hard-requires `dot` and then
+# verifies the built tree actually contains its diagrams before pushing.
 #
 # One-time repo setup (owner): Settings -> Pages -> Build and deployment ->
 # Source = "Deploy from a branch", Branch = gh-pages / (root).

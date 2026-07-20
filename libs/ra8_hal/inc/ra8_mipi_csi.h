@@ -37,15 +37,30 @@
  * ``ra8_mipi_csi_init`` and tear it down after ``ra8_mipi_csi_deinit``.
  *
  * @par State Machine
- * @startuml
- * [*] --> Gated : reset
- * Gated  --> Idle    : init()    [MSTP on, RXEN=0]
- * Idle   --> Active  : start_receive() [RXEN=1]
- * Active --> Idle    : stop_receive()  [RXEN=0, VSRST]
- * Idle   --> Gated   : deinit()
- * Idle   --> Stopped : enter_stop()
- * Stopped --> Idle   : exit_stop()
- * @enduml
+ * @dot
+ * digraph ra8_mipi_csi_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Gated [label="Gated"];
+ *   Idle [label="Idle"];
+ *   Active [label="Active"];
+ *   Stopped [label="Stopped"];
+ *
+ *   __start -> Gated [label="reset"];
+ *   Gated -> Idle [label="init() [MSTP on, RXEN=0]"];
+ *   Idle -> Active [label="start_receive() [RXEN=1]"];
+ *   Active -> Idle [label="stop_receive() [RXEN=0,\\nVSRST]"];
+ *   Idle -> Gated [label="deinit()"];
+ *   Idle -> Stopped [label="enter_stop()"];
+ *   Stopped -> Idle [label="exit_stop()"];
+ * }
+ * @enddot
  *
  * @par Header layout
  * This is a thin umbrella header. The public API is split across the

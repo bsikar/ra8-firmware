@@ -207,13 +207,28 @@ ra8_etha_configure_cut_through(ra8_etha_port_t port, uint16_t qd, uint8_t dqd);
  *
  * @note Gate-control entries each program EATASGL0/EATASGL1 in turn.
  * @par State Machine
- * @startuml
- * [*] --> Idle
- * Idle --> Loading: ra8_etha_set_tas_schedule
- * Loading --> Committing: EATASC.TASCC=1
- * Committing --> Active: EATASRIRM.TASRR observed cleared
- * Active --> Idle: EATASC.TASE=0
- * @enduml
+ * @dot
+ * digraph ra8_etha_shaper_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Idle [label="Idle"];
+ *   Loading [label="Loading"];
+ *   Committing [label="Committing"];
+ *   Active [label="Active"];
+ *
+ *   __start -> Idle;
+ *   Idle -> Loading [label="ra8_etha_set_tas_schedule"];
+ *   Loading -> Committing [label="EATASC.TASCC=1"];
+ *   Committing -> Active [label="EATASRIRM.TASRR observed\\ncleared"];
+ *   Active -> Idle [label="EATASC.TASE=0"];
+ * }
+ * @enddot
  * @see ra8_etha_get_status
  * @since 0.1.0
  */

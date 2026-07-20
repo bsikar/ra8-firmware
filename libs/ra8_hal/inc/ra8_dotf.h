@@ -66,17 +66,34 @@
  *
  * @par State Machine
  *
- * @startuml
- *  [*] --> RESET
- *  RESET --> IDLE             : ra8_dotf_init
- *  IDLE  --> KEY_STAGED       : ra8_dotf_install_key
- *  KEY_STAGED --> IV_STAGED   : ra8_dotf_set_iv
- *  IV_STAGED  --> REGION_SET  : ra8_dotf_set_region / select_region
- *  REGION_SET --> ARMED       : ra8_dotf_enable
- *  ARMED      --> REGION_SET  : ra8_dotf_disable
- *  ARMED      --> ARMED       : ra8_dotf_rotate_key (re-stage + re-arm)
- *  ARMED      --> RESET       : ra8_dotf_deinit
- * @enduml
+ * @dot
+ * digraph ra8_dotf_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   RESET [label="RESET"];
+ *   IDLE [label="IDLE"];
+ *   KEY_STAGED [label="KEY_STAGED"];
+ *   IV_STAGED [label="IV_STAGED"];
+ *   REGION_SET [label="REGION_SET"];
+ *   ARMED [label="ARMED"];
+ *
+ *   __start -> RESET;
+ *   RESET -> IDLE [label="ra8_dotf_init"];
+ *   IDLE -> KEY_STAGED [label="ra8_dotf_install_key"];
+ *   KEY_STAGED -> IV_STAGED [label="ra8_dotf_set_iv"];
+ *   IV_STAGED -> REGION_SET [label="ra8_dotf_set_region /\\nselect_region"];
+ *   REGION_SET -> ARMED [label="ra8_dotf_enable"];
+ *   ARMED -> REGION_SET [label="ra8_dotf_disable"];
+ *   ARMED -> ARMED [label="ra8_dotf_rotate_key\\n(re-stage + re-arm)"];
+ *   ARMED -> RESET [label="ra8_dotf_deinit"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

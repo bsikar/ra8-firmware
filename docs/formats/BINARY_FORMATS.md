@@ -242,9 +242,12 @@ person extending this section does the same thing:
   binary image asset. If you ever add one, set `IMAGE_PATH` in the `Doxyfile` in
   the same commit -- otherwise `@image` silently finds nothing.
 
-**Do not use `@startuml` on these pages.** `PLANTUML_JAR_PATH` is not configured,
-so doxygen ignores every `@startuml` block in the tree -- they render nowhere
-today. Use `@dot`, which does.
+**Do not use `@startuml` anywhere in the tree.** `PLANTUML_JAR_PATH` is not
+configured and no JVM is provisioned, so doxygen ignores every `@startuml`
+block -- they render nowhere. Use `@dot`, which does.
+`scripts/utils/check_doc_diagrams.py` enforces both halves: it rejects
+`@startuml` outright, and it fails when the number of authored `@dot` blocks
+does not match the number of diagrams that actually reached the generated HTML.
 
 ---
 

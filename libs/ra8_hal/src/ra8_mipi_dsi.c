@@ -29,22 +29,33 @@
  *   /\* HUM Ch 65.X "name", p NNNN *\/
  *
  * @par State Machine
- * @startuml
- *  state idle
- *  state initialized
- *  state hs_clock_running
- *  state video_running
- *  state ulps
- *  [*] --> idle
- *  idle --> initialized        : ra8_mipi_dsi_init()
- *  initialized --> hs_clock_running : ra8_mipi_dsi_hs_clock_start()
- *  hs_clock_running --> video_running : ra8_mipi_dsi_video_start()
- *  hs_clock_running --> ulps   : ra8_mipi_dsi_ulps_enter()
- *  ulps --> hs_clock_running   : ra8_mipi_dsi_ulps_exit()
- *  video_running --> hs_clock_running : ra8_mipi_dsi_video_stop()
- *  hs_clock_running --> initialized : ra8_mipi_dsi_hs_clock_stop()
- *  initialized --> idle        : ra8_mipi_dsi_deinit()
- * @enduml
+ * @dot
+ * digraph ra8_mipi_dsi_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   idle [label="idle"];
+ *   initialized [label="initialized"];
+ *   hs_clock_running [label="hs_clock_running"];
+ *   video_running [label="video_running"];
+ *   ulps [label="ulps"];
+ *
+ *   __start -> idle;
+ *   idle -> initialized [label="ra8_mipi_dsi_init()"];
+ *   initialized -> hs_clock_running [label="ra8_mipi_dsi_hs_clock_start()"];
+ *   hs_clock_running -> video_running [label="ra8_mipi_dsi_video_start()"];
+ *   hs_clock_running -> ulps [label="ra8_mipi_dsi_ulps_enter()"];
+ *   ulps -> hs_clock_running [label="ra8_mipi_dsi_ulps_exit()"];
+ *   video_running -> hs_clock_running [label="ra8_mipi_dsi_video_stop()"];
+ *   hs_clock_running -> initialized [label="ra8_mipi_dsi_hs_clock_stop()"];
+ *   initialized -> idle [label="ra8_mipi_dsi_deinit()"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

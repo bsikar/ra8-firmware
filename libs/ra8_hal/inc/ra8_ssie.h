@@ -45,22 +45,40 @@
  * -- no code copied.
  *
  * @par State Machine
- * @startuml
- * [*] --> Closed
- * Closed --> Idle : init() (MSTP+SSIRST)
- * Idle --> Tx : start(TX)
- * Idle --> Rx : start(RX)
- * Idle --> TxRx : start(TX|RX)
- * Tx --> Idle : stop()
- * Rx --> Idle : stop()
- * TxRx --> Idle : stop()
- * Tx --> Error : TUIRQ
- * Rx --> Error : ROIRQ
- * Error --> Idle : start_recovery()
- * Idle --> Stopped : enter_stop()
- * Stopped --> Idle : exit_stop()
- * Idle --> Closed : deinit()
- * @enduml
+ * @dot
+ * digraph ra8_ssie_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Closed [label="Closed"];
+ *   Idle [label="Idle"];
+ *   Tx [label="Tx"];
+ *   Rx [label="Rx"];
+ *   TxRx [label="TxRx"];
+ *   Error [label="Error"];
+ *   Stopped [label="Stopped"];
+ *
+ *   __start -> Closed;
+ *   Closed -> Idle [label="init() (MSTP+SSIRST)"];
+ *   Idle -> Tx [label="start(TX)"];
+ *   Idle -> Rx [label="start(RX)"];
+ *   Idle -> TxRx [label="start(TX|RX)"];
+ *   Tx -> Idle [label="stop()"];
+ *   Rx -> Idle [label="stop()"];
+ *   TxRx -> Idle [label="stop()"];
+ *   Tx -> Error [label="TUIRQ"];
+ *   Rx -> Error [label="ROIRQ"];
+ *   Error -> Idle [label="start_recovery()"];
+ *   Idle -> Stopped [label="enter_stop()"];
+ *   Stopped -> Idle [label="exit_stop()"];
+ *   Idle -> Closed [label="deinit()"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -84,17 +84,32 @@ extern "C" {
  * @post For host mode, ``DPHYSFR.PLLSF`` reads 1.
  *
  * @par State Machine
- * @startuml
- * [*] --> Off
- * Off: MSTPCRC bit set, regs unreachable
- * Off --> Idle: init step 1 (mstp clear)
- * Idle --> LdoUp: PWRSEN=1
- * LdoUp --> PllRun: PLLSTP=0 (host)
- * LdoUp --> Run: DPHYEN=1 (device)
- * PllRun --> Run: DPHYEN=1 (host)
- * Run --> Off: deinit
- * Run --> LdoUp: pll_stop
- * @enduml
+ * @dot
+ * digraph ra8_mipi_phy_api_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Off [label="Off\\nMSTPCRC bit set, regs\\nunreachable"];
+ *   Idle [label="Idle"];
+ *   LdoUp [label="LdoUp"];
+ *   PllRun [label="PllRun"];
+ *   Run [label="Run"];
+ *
+ *   __start -> Off;
+ *   Off -> Idle [label="init step 1 (mstp clear)"];
+ *   Idle -> LdoUp [label="PWRSEN=1"];
+ *   LdoUp -> PllRun [label="PLLSTP=0 (host)"];
+ *   LdoUp -> Run [label="DPHYEN=1 (device)"];
+ *   PllRun -> Run [label="DPHYEN=1 (host)"];
+ *   Run -> Off [label="deinit"];
+ *   Run -> LdoUp [label="pll_stop"];
+ * }
+ * @enddot
  *
  * @note Thread safety: not thread-safe.
  * @see ra8_mipi_phy_deinit
