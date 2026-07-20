@@ -1,4 +1,19 @@
 # Shared ShellCheck configuration -- gives editors/IDEs the same baseline as
-# the CI gate (scripts/utils/check_shell.py runs `shellcheck --severity=warning`).
-# Tighten to `info` or `style` over time as the backlog shrinks.
-severity=warning
+# the CI gate (scripts/utils/check_shell.py). Keep the two in step: the gate
+# passes these same settings explicitly on the command line so a stale or
+# missing .shellcheckrc can never silently weaken CI.
+#
+# `style` is the tightest severity ShellCheck offers -- nothing is dropped by
+# level. The `enable=` lines below are opt-in checks that no severity setting
+# reaches; each is fixable in place. Two further opt-in checks
+# (check-set-e-suppressed, check-extra-masked-returns) are deliberately off --
+# see SHELLCHECK_DISABLED_OPTIONAL in scripts/utils/check_shell.py for the
+# measurements behind that call.
+severity=style
+
+enable=avoid-negated-conditions
+enable=avoid-nullary-conditions
+enable=check-unassigned-uppercase
+enable=deprecate-which
+enable=quote-safe-variables
+enable=useless-use-of-cat

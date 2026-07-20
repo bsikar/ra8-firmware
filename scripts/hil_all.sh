@@ -98,6 +98,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HIL_DIR="${REPO_ROOT}/examples/ek_ra8d2/hw_validated/hil"
 # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+# shellcheck source=scripts/lib/rig_env.sh
 source "${REPO_ROOT}/scripts/lib/rig_env.sh"
 rig_require JLINK_SN
 PI_HOST="${PI_HOST:-}"
@@ -114,8 +115,6 @@ LOCAL_PI=0
 if rig_is_local_pi; then
   LOCAL_PI=1
 fi
-pi_run() { if ((LOCAL_PI)); then bash -c "$*"; else ssh "$PI_HOST" "$@"; fi; }
-
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -372,11 +371,11 @@ for app in "${APPS[@]}"; do
     # Detect Pi vs dev-machine (same heuristic as hil_flash.sh)
     if ((LOCAL_PI)); then
       rfp-cli -d ra -t "jlink:${JLINK_SN}" -if swd -s 1000000 -erase-chip \
-        >/tmp/hil_all_post_init_${app}.log 2>&1 || true
+        >"/tmp/hil_all_post_init_${app}.log" 2>&1 || true
     else
       ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" \
         "rfp-cli -d ra -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip" \
-        >/tmp/hil_all_post_init_${app}.log 2>&1 || true
+        >"/tmp/hil_all_post_init_${app}.log" 2>&1 || true
     fi
     if grep -q "Operation successful" "/tmp/hil_all_post_init_${app}.log" 2>/dev/null; then
       echo -e "${GREEN}[hil_all]${NC} ${app}: post-test Initialize OK"

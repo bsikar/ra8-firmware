@@ -22,7 +22,10 @@
 set -euo pipefail
 
 # Rig config (PI_HOST) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST
 
 GREEN='\033[0;32m'
@@ -97,10 +100,12 @@ else
 
   echo -e "${YELLOW}[hil_tapo]${NC} board plug, uploading tapo_control.py..."
   REMOTE_DIR="/tmp/hil_tapo_$$"
+  # shellcheck disable=SC2029  # $REMOTE_DIR is chosen locally; the Pi cannot know it.
   ssh "$PI_HOST" "mkdir -p $REMOTE_DIR"
   scp -q "$TAPO_SCRIPT" "$SECRETS_SCRIPT" "$ENV_FILE" "$PI_HOST:$REMOTE_DIR/"
 
   echo -e "${YELLOW}[hil_tapo]${NC} board plug, running: $CMD"
+  # shellcheck disable=SC2029  # $REMOTE_DIR and $CMD are local values naming the remote dir and the action.
   ssh "$PI_HOST" "cd $REMOTE_DIR && python3 tapo_control.py board $CMD; rm -rf $REMOTE_DIR"
 fi
 

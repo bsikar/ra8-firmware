@@ -29,7 +29,10 @@
 set -euo pipefail
 
 # Rig config (PI_HOST) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST
 HUB_PORT_USBHS=1
 HUB_PORT_USBFS=4
@@ -43,6 +46,7 @@ if rig_is_local_pi; then
   LOCAL_PI=1
 fi
 # Wrappers: run something on the Pi (locally if we ARE the Pi, else via SSH).
+# shellcheck disable=SC2029  # the caller composes the remote command; forwarding it verbatim is the point.
 pi_run() { if ((LOCAL_PI)); then bash -c "$*"; else ssh "$PI_HOST" "$@"; fi; }
 pi_cp() { if ((LOCAL_PI)); then cp "$1" "$2"; else scp -q "$1" "${PI_HOST}:${2}"; fi; }
 
@@ -227,14 +231,17 @@ run_one_controller() {
   # because the device's USBFS PHY does not resync to a hub-side data
   # toggle. Both achieve the same outcome: device forced to re-run
   # chapter-9 enumeration without losing firmware state.
-  local soft_arg=""
+  # An array, not a string: an unquoted "" would pass hil_ppps.sh a spurious
+  # empty argument, and quoting it would pass "" as a real argv entry.
+  local soft_arg=()
   if [[ "$ppps_mode" == "soft" ]]; then
-    soft_arg="--soft"
+    soft_arg=(--soft)
   fi
   echo -e "${YELLOW}[USB-${name}]${NC} step 5 -- re-enumeration on port ${hub_port} (${ppps_mode})"
   local reenum_ok=0
   for attempt in $(seq 1 "${PPPS_REENUM_RETRIES}"); do
-    bash scripts/hil_ppps.sh ${soft_arg} cycle "${hub_port}" >/dev/null 2>&1 || true
+    bash scripts/hil_ppps.sh ${soft_arg[@]+"${soft_arg[@]}"} cycle "${hub_port}" \
+      >/dev/null 2>&1 || true
     if wait_for_enum "${vidpid}" "${hub_port}" "${ENUM_WAIT_S}"; then
       echo -e "${GREEN}[USB-${name}]${NC} re-enumeration OK (attempt ${attempt})"
       reenum_ok=1
@@ -247,7 +254,7 @@ run_one_controller() {
     rc=1
   fi
 
-  return $rc
+  return "$rc"
 }
 
 overall=0
@@ -289,4 +296,4 @@ if ((overall == 0)); then
 else
   echo -e "${RED}[hil_usb_test DONE]${NC} at least one USB test FAILED"
 fi
-exit $overall
+exit "$overall"

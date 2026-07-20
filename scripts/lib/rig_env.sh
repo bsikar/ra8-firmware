@@ -25,6 +25,13 @@ if [ -f "$_rig_root/.env" ]; then
 fi
 unset _rig_root
 
+# Declare the .env-provided contract explicitly. These are set by the `. .env`
+# above when it exists; defaulting them to empty here keeps every consumer safe
+# under `set -u` (an absent .env must reach rig_require's helpful message, not
+# an unbound-variable abort) and states the interface in one place.
+PI_HOST="${PI_HOST:-}"
+JLINK_SN="${JLINK_SN:-}"
+
 # The device name is not maintainer-specific; default it here, allow override.
 JLINK_DEVICE="${JLINK_DEVICE:-R7KA8D2KF_CPU0}"
 

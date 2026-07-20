@@ -16,7 +16,10 @@ export PATH="$HOME/opt/arm-gnu-toolchain/bin:$PATH"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Rig config (PI_HOST) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST
 PI="$PI_HOST"
 REMOTE_DIR="/tmp/hil-dev-$$"
@@ -50,6 +53,7 @@ echo "[hil-dev] Building ${#HIL_APPS[@]} uart apps..."
 make -j"$(nproc)" -C "$ROOT" "${HIL_APPS[@]}"
 
 echo "[hil-dev] Creating workspace on star: $REMOTE_DIR"
+# shellcheck disable=SC2029  # $REMOTE_DIR is chosen locally; the Pi cannot know it.
 ssh "$PI" "mkdir -p $REMOTE_DIR/scripts"
 
 echo "[hil-dev] Uploading scripts..."
@@ -60,6 +64,7 @@ echo "[hil-dev] Uploading hex files..."
 for app in "${HIL_APPS[@]}"; do
   hex="$ROOT/$UART_DIR/$app/build/$app.hex"
   if [[ -f "$hex" ]]; then
+    # shellcheck disable=SC2029  # $REMOTE_DIR/$UART_DIR/$app are local values naming the remote staging dir.
     ssh "$PI" "mkdir -p $REMOTE_DIR/$UART_DIR/$app/build"
     scp "$hex" "$PI:$REMOTE_DIR/$UART_DIR/$app/build/$app.hex"
   else
@@ -71,10 +76,12 @@ echo "[hil-dev] Running suite on star..."
 SUITE_CMD="cd $REMOTE_DIR && bash scripts/hil_suite.sh --uart /dev/ttyACM0"
 [[ -n "$ONLY" ]] && SUITE_CMD+=" --only $ONLY"
 
+# shellcheck disable=SC2029  # $SUITE_CMD is the command this script composed locally to run there.
 ssh "$PI" "$SUITE_CMD"
 rc=$?
 
 echo "[hil-dev] Cleaning up remote workspace..."
+# shellcheck disable=SC2029  # $REMOTE_DIR is chosen locally; the Pi cannot know it.
 ssh "$PI" "rm -rf $REMOTE_DIR"
 
-exit $rc
+exit "$rc"

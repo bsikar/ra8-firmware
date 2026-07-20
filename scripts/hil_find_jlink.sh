@@ -66,7 +66,8 @@ if [ "$FOUND" -eq 0 ]; then
 fi
 
 if [ "$FOUND" -eq 0 ]; then
-  printf "${YELLOW}No J-Link probe found.${NC} Check the USB cable and board power, then retry.\n" >&2
+  printf '%sNo J-Link probe found.%s Check the USB cable and board power, then retry.\n' \
+    "${YELLOW}" "${NC}" >&2
   printf "The serial is also shown in Ozone / J-Flash Lite (the emulator picker lists it).\n" >&2
   exit 1
 fi

@@ -105,7 +105,8 @@ if [[ "${1:-}" == "--selftest" ]]; then
   echo "    dependency probe OK ($_st_cc accepts -fcoverage-mcdc)"
 
   _st_tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-mcdc-selftest.XXXXXXXX")"
-  # shellcheck disable=SC2064
+  # shellcheck disable=SC2064  # expand $_st_tmp now: the trap must not depend
+  # on the variable still being set when it fires.
   trap "rm -rf '$_st_tmp'" EXIT
 
   # Direction 1 -- FIRES: a cache written by a different compiler is wiped.

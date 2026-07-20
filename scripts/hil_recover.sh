@@ -30,7 +30,10 @@
 set -uo pipefail
 
 # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST JLINK_SN
 MAX_ATTEMPTS=5
 BAUD="115200"
@@ -134,7 +137,7 @@ internal_try_flash() {
   local log="/tmp/hil_recover_jlink_${APP}.log"
 
   scp -q "$STRIPPED_HEX" "${PI_HOST}:${remote_hex}" 2>/dev/null || {
-    printf "(cannot reach Pi ${PI_HOST})\n"
+    printf '(cannot reach Pi %s)\n' "${PI_HOST}"
     return 1
   }
 

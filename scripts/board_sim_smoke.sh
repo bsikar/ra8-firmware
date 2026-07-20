@@ -574,8 +574,12 @@ for app in "${apps[@]}"; do
     fail=1
     continue
   fi
-  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output
-  extra="$(sim_extra_args "$app")"
+  # sim_extra_args prints zero or more whitespace-separated flags; read them
+  # into an array so each flag becomes exactly one argv entry instead of
+  # relying on word-splitting. The ${extra[@]+...} guard at each use site
+  # keeps an empty array from tripping `set -u` under bash 3.2 (macOS).
+  extra=()
+  read -r -a extra <<<"$(sim_extra_args "$app")"
   # Dual-core ITM-verdict apps (see $dualcore_itm_apps): boot the single M85 .elf
   # (its Cortex-M33 image rides inside as a .cpu1_image PT_LOAD, so board_sim
   # spins up the second engine automatically). BOARD_SIM_STOP_ON ends the run at
@@ -853,7 +857,7 @@ for app in "${apps[@]}"; do
   case " $selfpark_banner_apps " in
     *" $app "*)
       want="$(uart_expect "$app")"
-      spout="$(BOARD_SIM_STOP_ON="$want" BOARD_SIM_WALL_S=300 "$sim" "$elf" $extra 2>&1 || true)"
+      spout="$(BOARD_SIM_STOP_ON="$want" BOARD_SIM_WALL_S=300 "$sim" "$elf" ${extra[@]+"${extra[@]}"} 2>&1 || true)"
       if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$spout"; then
         echo "FAULT (during deep-idle run)"
         fail=1
@@ -886,9 +890,9 @@ for app in "${apps[@]}"; do
   tick_want="$(uart_expect "$app")"
   for _t in $(seq 1 "$tick_tries"); do
     if [ -n "$tick_stop" ]; then
-      out="$(BOARD_SIM_STOP_ON="$tick_stop" BOARD_SIM_WALL_S=0 "$sim" "$elf" $extra 2>&1 || true)"
+      out="$(BOARD_SIM_STOP_ON="$tick_stop" BOARD_SIM_WALL_S=0 "$sim" "$elf" ${extra[@]+"${extra[@]}"} 2>&1 || true)"
     else
-      out="$(BOARD_SIM_WALL_S=300 "$sim" "$elf" $extra 2>&1 || true)"
+      out="$(BOARD_SIM_WALL_S=300 "$sim" "$elf" ${extra[@]+"${extra[@]}"} 2>&1 || true)"
     fi
     grep -qF "$tick_want" <<<"$out" && break
   done
@@ -934,8 +938,7 @@ for app in "${apps[@]}"; do
   case " $render_assert_apps " in
     *" $app "*)
       ppm="$(mktemp)"
-      # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output
-      "$sim" "$elf" --ppm "$ppm" $extra >/dev/null 2>&1 || true
+      "$sim" "$elf" --ppm "$ppm" ${extra[@]+"${extra[@]}"} >/dev/null 2>&1 || true
       colors="$(count_ppm_colors "$ppm")"
       rm -f "$ppm"
       if [ "${colors:-0}" -lt "$min_render_colors" ]; then
