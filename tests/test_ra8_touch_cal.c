@@ -35,7 +35,6 @@
  * The collinear triples exist to make the least-squares system singular.
  */
 typedef enum : int16_t {
-  k_t_cal_points   = 5,    /**< Calibration points the solver requires.      */
   k_t_collinear_r1 = 100,  /**< Second raw point of the collinear triple.    */
   k_t_collinear_r2 = 200,  /**< Third raw point; 0/100/200 lie on one line.  */
   k_t_collinear_s1 = 10,   /**< Second screen point of the collinear triple. */
@@ -44,6 +43,26 @@ typedef enum : int16_t {
                                 transform must clip to 0.                      */
   k_t_above_range  = 9999, /**< Input past the screen edge, clipped to w-1. */
 } t_tc_sample_t;
+
+/**
+ * @enum t_tc_count_t
+ * @brief The fixed calibration-point count.
+ *
+ * @details
+ * Kept out of ::t_tc_sample_t and sized to the smallest type that holds it,
+ * rather than inheriting that enum's `int16_t` width from the sample
+ * magnitudes it groups. The distinction is load-bearing, not cosmetic: this
+ * constant is an array extent and a loop upper bound, so an `int16_t` width
+ * makes every `uint8_t` index narrower than the bound it is compared against.
+ *
+ * @invariant Equals the extent of every `ra8_touch_cal_point_t[]` in this file.
+ *
+ * @see t_tc_sample_t
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_t_cal_points = 5, /**< Calibration points the solver requires. */
+} t_tc_count_t;
 
 /**
  * @enum t_tc_screen_t
