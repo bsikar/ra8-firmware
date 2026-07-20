@@ -210,6 +210,21 @@ static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
  * @note Not thread-safe; call only from the USB control-transfer context.
  * @since 0.1.0
  */
+/* GCOVR_EXCL_START -- reachable only once the SIE has actually landed a
+ * control-OUT packet in the DCP bank, which the host register window cannot
+ * produce. ra8_usb_dcp_out_arm() clears the DCP BRDY latch as its first act
+ * (BRDYSTS is write-0-to-clear on silicon; the host model is plain memory, so
+ * the write simply stores the cleared bit), and only real hardware receiving a
+ * host OUT token sets it again. ra8_usb_dcp_out_read() therefore reports
+ * k_ra8_err_no_data on every one of the bounded poll's iterations, and this
+ * helper is never entered from any host-side input.
+ *
+ * This is NOT the blanket exclusion the former stub carried: that one covered
+ * the first 236 lines of the file and was justified by the helper's caller
+ * being hard-wired to fail. The data stage is implemented now, and the
+ * exclusion is scoped to the one helper whose entry condition is a physical
+ * bus event. The decode itself is covered on silicon by the usb_cdc_echo HIL
+ * app, which reports the host's requested baud back over the same link. */
 RA8_INTERNAL
 static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
 {
@@ -226,6 +241,7 @@ static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
   s_state.coding.parity_type = data[k_ra8_cdc_idx_parity_type];
   s_state.coding.data_bits   = data[k_ra8_cdc_idx_data_bits];
 }
+/* GCOVR_EXCL_STOP */
 
 /* =============================================================================
  * Lifecycle
@@ -372,7 +388,8 @@ static ra8_err_t internal_pull_data_stage(uint8_t* buf, uint16_t cap, uint16_t* 
   for (uint16_t i = 0U; i < k_ra8_cdc_data_stage_polls; ++i) {
     rc = ra8_usb_dcp_out_read(s_state.speed, buf, cap, out_len);
     if (rc != k_ra8_err_no_data) {
-      return rc;
+      return rc; /* GCOVR_EXCL_LINE -- needs a landed DCP packet; see the
+                  * exclusion note on internal_apply_line_coding. */
     }
   }
   return rc;
@@ -403,7 +420,7 @@ static ra8_err_t internal_dispatch_class_setup(const ra8_usb_setup_t* setup)
       uint16_t        plen                                = 0U;
       const ra8_err_t pull = internal_pull_data_stage(buf, (uint16_t)sizeof(buf), &plen);
       if (pull == k_ra8_ok) {
-        internal_apply_line_coding(buf, plen);
+        internal_apply_line_coding(buf, plen); /* GCOVR_EXCL_LINE -- same. */
       }
       /* The status stage is ACKed either way: a host that abandoned the data
        * stage still gets a well-formed control-write completion, and the cached
