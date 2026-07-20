@@ -212,32 +212,34 @@ ra8_err_t ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t
 }
 
 /**
- * @brief Describe and run one tile-atlas produce job over caller-owned buffers.
+ * @brief Run one tile-atlas produce job, owning every scratch arena it needs.
  *
  * @details
- * Assembles the ::ra8_jof_produce_cfg_t -- the pull seam over @p src, the
- * memstore sink, the tiling parameters and both work arenas -- and runs the
- * producer. Owns no memory: every buffer is supplied and released by the caller,
- * which is what keeps the allocation/cleanup paths in one place.
+ * Carves the producer's two scratch arenas -- the streaming work arena, and the
+ * whole-frame WebP arena that only a WebP source needs -- assembles the
+ * ::ra8_jof_produce_cfg_t around them, runs the producer, and releases
+ * both on every exit path. The caller therefore owns exactly one buffer (the
+ * sink it hands back to its own caller) instead of juggling three, which is
+ * what keeps the entry point's cleanup legible.
  *
- * @param[in]     src           Source image bytes to tile.
- * @param[in]     tile_w        Tile width in pixels.
- * @param[in]     tile_h        Tile height in pixels.
- * @param[in]     codec         Per-tile codec selector.
- * @param[out]    work          Producer work arena.
- * @param[in]     work_cap      Capacity of @p work in bytes.
- * @param[out]    webp_work     Whole-frame WebP arena, or nullptr for a
- *                              stripe-decodable source.
- * @param[in]     webp_work_cap Capacity of @p webp_work in bytes, or 0.
- * @param[in,out] store         Memstore the produced atlas is written into.
- * @param[out]    out_info      Receives the produced atlas geometry.
+ * @param[in]     src       Source image bytes to tile.
+ * @param[in]     max_w     Width cap in pixels, sizing the WebP arena.
+ * @param[in]     max_h     Height cap in pixels, sizing the WebP arena.
+ * @param[in]     tile_w    Tile width in pixels.
+ * @param[in]     tile_h    Tile height in pixels.
+ * @param[in]     codec     Per-tile codec selector.
+ * @param[in]     work_cap  Work-arena size, from ::ra8_jof_work_bytes.
+ * @param[in,out] store     Memstore the produced atlas is written into.
+ * @param[out]    out_info  Receives the produced atlas geometry.
  * @return Producer result.
- * @retval k_ra8_ok The atlas was produced into @p store.
+ * @retval k_ra8_ok               The atlas was produced into @p store.
+ * @retval k_ra8_err_no_mem       An arena could not be allocated.
+ * @retval k_ra8_err_invalid_size The caps do not admit a WebP of this size.
  *
- * @pre Every pointer argument except @p webp_work is non-null.
+ * @pre Every pointer argument is non-null.
  * @pre @p work_cap is the value ::ra8_jof_work_bytes returned.
  * @post On success @p store->len is the produced atlas length.
- * @post No memory is allocated or freed here.
+ * @post Both scratch arenas are released, on success and on every failure.
  *
  * @note Not thread-safe.
  * @see fmt_jof_carve_webp()
@@ -245,16 +247,26 @@ ra8_err_t ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t
  */
 RA8_INTERNAL
 static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t*     src,
+                                       uint16_t                  max_w,
+                                       uint16_t                  max_h,
                                        uint16_t                  tile_w,
                                        uint16_t                  tile_h,
                                        uint8_t                   codec,
-                                       uint8_t*                  work,
                                        uint32_t                  work_cap,
-                                       uint8_t*                  webp_work,
-                                       size_t                    webp_work_cap,
                                        ra8_jof_memstore_t* store,
                                        ra8_jof_info_t*     out_info)
 {
+  uint8_t* work = (uint8_t*)malloc((size_t)work_cap);
+  if (work == nullptr) {
+    return k_ra8_err_no_mem;
+  }
+  uint8_t*        webp_work = nullptr;
+  size_t          webp_cap  = 0U;
+  const ra8_err_t carve_rc  = fmt_jof_carve_webp(src, max_w, max_h, &webp_work, &webp_cap);
+  if (carve_rc != k_ra8_ok) {
+    free(work);
+    return carve_rc;
+  }
   fmt_pull_ctx_t                    pull = {.data = src->bytes, .len = src->len, .pos = 0U};
   const ra8_jof_produce_cfg_t cfg  = {.pull          = fmt_jof_pull,
                                             .pull_ctx      = &pull,
@@ -268,47 +280,11 @@ static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t*     src,
                                             .work          = work,
                                             .work_cap      = work_cap,
                                             .webp_work     = webp_work,
-                                            .webp_work_cap = webp_work_cap};
-  return ra8_jof_produce(&cfg, out_info);
-}
-
-/**
- * @brief Acquire the producer's work arena and atlas sink, all or nothing.
- *
- * @details
- * Both buffers are needed for a produce run, so a partial allocation frees
- * whatever succeeded rather than leaving the caller to unwind a half-acquired
- * pair on a path that cannot use it.
- *
- * @param[in]  work_cap Work-arena size in bytes.
- * @param[in]  sink_cap Atlas-sink size in bytes.
- * @param[out] work     Receives the work arena, or NULL on failure.
- * @param[out] sink     Receives the sink buffer, or NULL on failure.
- * @return Whether both allocations succeeded.
- * @retval true  Both buffers are owned by the caller.
- * @retval false Nothing is allocated; both out-pointers are NULL.
- *
- * @pre @p work and @p sink are non-null.
- * @pre @p work_cap is non-zero (the caller rejected a zero-size job).
- * @post On success the caller owns both buffers and must free them.
- * @post On failure no allocation outlives the call.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static bool fmt_jof_alloc_bufs(uint32_t work_cap, size_t sink_cap, uint8_t** work, uint8_t** sink)
-{
-  *work = (uint8_t*)malloc(work_cap);
-  *sink = (uint8_t*)malloc(sink_cap);
-  if ((*work != nullptr) && (*sink != nullptr)) {
-    return true;
-  }
-  free(*work);
-  free(*sink);
-  *work = nullptr;
-  *sink = nullptr;
-  return false;
+                                            .webp_work_cap = webp_cap};
+  const ra8_err_t                   rc   = ra8_jof_produce(&cfg, out_info);
+  free(work);
+  free(webp_work);
+  return rc;
 }
 
 ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
@@ -331,32 +307,13 @@ ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
   /* The atlas can expand slightly over the source for incompressible input;
    * size the sink from the decoded worst case plus the index and trailer. */
   const size_t sink_cap = ra8_fmt_jof_sink_cap(src->len);
-  uint8_t*     work     = nullptr;
-  uint8_t*     sink     = nullptr;
-  if (!fmt_jof_alloc_bufs(work_cap, sink_cap, &work, &sink)) {
+  uint8_t*     sink     = (uint8_t*)malloc(sink_cap);
+  if (sink == nullptr) {
     return k_ra8_err_no_mem;
   }
-  uint8_t*        webp_work     = nullptr;
-  size_t          webp_work_cap = 0U;
-  const ra8_err_t carve_rc = fmt_jof_carve_webp(src, max_w, max_h, &webp_work, &webp_work_cap);
-  if (carve_rc != k_ra8_ok) {
-    free(work);
-    free(sink);
-    return carve_rc;
-  }
   ra8_jof_memstore_t store = {.buf = sink, .cap = sink_cap, .len = 0U};
-  const ra8_err_t          rc    = fmt_jof_run_produce(src,
-                                                         tile_w,
-                                                         tile_h,
-                                                         codec,
-                                                         work,
-                                                         work_cap,
-                                                         webp_work,
-                                                         webp_work_cap,
-                                                         &store,
-                                                         out_info);
-  free(work);
-  free(webp_work);
+  const ra8_err_t          rc =
+    fmt_jof_run_produce(src, max_w, max_h, tile_w, tile_h, codec, work_cap, &store, out_info);
   if (rc != k_ra8_ok) {
     free(sink);
     return rc;
