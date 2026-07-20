@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **205**
-- Total compound decisions in scope: **1064**
-- Decisions at 100% MC/DC (`yes`): **977**
-- Decisions partially covered (`partial`): **52**
-- Decisions fully uncovered (`no`): **35**
-- Coverage rate (yes / total): **91.82%**
+- Source files with at least one decision: **210**
+- Total compound decisions in scope: **1089**
+- Decisions at 100% MC/DC (`yes`): **992**
+- Decisions partially covered (`partial`): **56**
+- Decisions fully uncovered (`no`): **41**
+- Coverage rate (yes / total): **91.09%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **87**
-- Reachable-condition denominator (total - deactivated): **977**
-- **Reachable MC/DC rate**: **100.00%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1002**
+- **Reachable MC/DC rate**: **99.00%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -29,6 +29,16 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 
 | File | Conds | Function | Excerpt | Status |
 |------|------:|----------|---------|--------|
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_offsets | `if (((rx % s) != 0) \|\| ((ry % s) != 0)) {` | no |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_offsets | `if ((px < 0) \|\| (px >= r->fb_w)) {` | no |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_offsets | `if ((py < (int32_t)k_mg_statusbar_h) \|\| (py >= r->fb_h)) {` | no |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_clamp | `if ((sy < reg[1]) \|\| (sy >= reg[3])) {` | partial |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_clamp | `if ((sx < reg[0]) \|\| (sx >= reg[2])) {` | no |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_append_uint | `while ((v > 0U) && (n < (uint32_t)k_mg_dec_max)) {` | partial |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_append_uint | `for (uint32_t i = 0U; (i < n) && (pos < (cap - 1U)); ++i) {` | partial |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 3 | mg_append_str | `for (uint32_t i = 0U; (i < (uint32_t)k_mg_str_max) && (s[i] != '\0') && (pos ...` | partial |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_reader_init | `if ((cfg->fb_w <= 0) \|\| (cfg->fb_h <= (int32_t)k_mg_statusbar_h)) {` | no |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 4 | mg_reader_init | `if ((cfg->info->width == 0U) \|\| (cfg->info->height == 0U) \|\| (cfg->info->...` | no |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -39,7 +49,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_app/src/ra8_app.c | 2 | (file scope) | `if ((next != nullptr) && (next->vt->on_enter != nullptr)) {` | Annotated deactivation: next=reg->apps[target] with targe... |
 | libs/ra8_box/src/ra8_box.c | 2 | internal_iter_live | `return (link != (int32_t)k_ra8_box_none) && (guard < count);` | Annotated deactivation: guard<count is an acyclic-tree cy... |
 | libs/ra8_core/src/ra8_log.c | 2 | internal_itm_put_u32 | `while (value != 0U && i < k_ra8_u32_max_digits) {` | Annotated deactivation: digit-buffer bound; uint32_t max ... |
-| libs/ra8_dfu/src/ra8_rot.c | 2 | internal_verify_sig | `if ((psa_err != k_ra8_ok) && (psa_err != k_ra8_err_exists...` | Annotated deactivation: DO-178C 6.4.4.3 -- under RA8_SIMU... |
+| libs/ra8_dfu/src/ra8_rot.c | 2 | internal_ct_equal | `if ((psa_err != k_ra8_ok) && (psa_err != k_ra8_err_exists...` | Annotated deactivation: DO-178C 6.4.4.3 -- under RA8_SIMU... |
 | libs/ra8_epub/src/ra8_epub_fs.c | 3 | priv_fs_stream_read | `if (io == nullptr \|\| io->file == nullptr \|\| buf == nu...` | TU-local static helper `priv_fs_stream_read` -- defensive... |
 | libs/ra8_epub/src/ra8_epub_open.c | 2 | priv_dirname | `if (dst == nullptr \|\| cap == 0U) {` | TU-local static helper `priv_dirname` -- defensive NULL g... |
 | libs/ra8_epub/src/ra8_epub_open.c | 2 | priv_stream_read | `if (sm == nullptr \|\| sm->read == nullptr) {` | TU-local static helper `priv_stream_read` -- defensive NU... |
@@ -86,6 +96,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_hal/src/ra8_spi_b.c | 2 | internal_apply_bit_width | `if ((tx == nullptr) && (rx == nullptr)) {` | Annotated deactivation: TU-local helper internal_apply_bi... |
 | libs/ra8_hal/src/ra8_usb_cdc.c | 2 | internal_apply_line_coding | `if ((data == nullptr) \|\| (len < k_ra8_cdc_line_coding_l...` | Annotated deactivation: TU-local helper internal_apply_li... |
 | libs/ra8_hal/src/ra8_vin.c | 2 | internal_mc_rmw | `if (((mc_now & k_ra8_vin_mc_me) != 0UL) \|\| ((fc_now & k...` | Annotated deactivation: ra8_vin idle-state guard; MC.ME (... |
+| libs/ra8_longstrip/src/ra8_longstrip.c | 2 | ra8_longstrip_tick | `if ((wt->velocity == 0) \|\| wt_fling_should_stop(wt)) {` | Pointer(s) ['wt'] already null-checked upstream in the sa... |
 | libs/ra8_net_pal/src/ra8_net_pal.c | 2 | internal_eth_event | `if ((s_state.event_fn != nullptr) && (pal_mask != k_ra8_n...` | Annotated deactivation: TU-local helper internal_eth_even... |
 | libs/ra8_psa_crypto/src/ra8_psa_crypto_sim.c | 2 | ra8_psa_sim_sha256_oneshot | `for (size_t i = 0U; (i < key_len) && (off < sizeof(buf));...` | Defensive scratch-buffer bound: input length is capped by... |
 | libs/ra8_psa_crypto/src/ra8_psa_crypto_sim.c | 2 | ra8_psa_sim_sha256_oneshot | `for (size_t i = 0U; (i < nonce_len) && (off < sizeof(buf)...` | Defensive scratch-buffer bound: input length is capped by... |
@@ -122,7 +133,6 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_tileatlas/src/ra8_tileatlas_produce.c | 2 | priv_epilogue | `if ((st->geom_done == 0U) \|\| (st->rows_seen != (uint32_...` | Annotated deactivation: post-decode contract guard; both ... |
 | libs/ra8_touch_cal/src/ra8_touch_cal.c | 2 | internal_clip32 | `if (!ok_u \|\| !ok_v) {` | Annotated deactivation: TU-local helper internal_clip32 s... |
 | libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c | 2 | ra8_wdt_supervisor_tick | `if (will_refresh && (s_state.refresh != nullptr)) {` | Annotated deactivation: ra8_wdt_supervisor_tick refresh d... |
-| libs/ra8_longstrip/src/ra8_longstrip.c | 2 | ra8_longstrip_tick | `if ((wt->velocity == 0) \|\| wt_fling_should_stop(wt)) {` | Pointer(s) ['wt'] already null-checked upstream in the sa... |
 
 ## Per-module gap counts (full table)
 
@@ -131,9 +141,10 @@ Sorted by (uncovered + partial) descending, then total descending.
 | Module | Total | Covered | Partial | Uncovered |
 |--------|------:|--------:|--------:|----------:|
 | ra8_epub_xml_shim | 72 | 54 | 4 | 14 |
+| mg_reader | 11 | 1 | 4 | 6 |
 | ra8_psa_crypto_sim | 6 | 1 | 5 | 0 |
+| ra8_tileatlas_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
-| ra8_tileatlas_produce | 16 | 12 | 1 | 3 |
 | ra8_reflow_svg_shape | 15 | 12 | 3 | 0 |
 | ra8_epub_open | 7 | 4 | 0 | 3 |
 | ra8_tileatlas_png | 7 | 4 | 1 | 2 |
@@ -161,11 +172,11 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_mipi_dsi_dispatch | 6 | 5 | 1 | 0 |
 | ra8_reflow_layout_table | 6 | 5 | 1 | 0 |
 | ra8_rot | 6 | 5 | 0 | 1 |
+| ra8_longstrip | 5 | 4 | 1 | 0 |
 | ra8_box | 4 | 3 | 1 | 0 |
 | ra8_fs_fat_name | 4 | 3 | 1 | 0 |
 | ra8_reflow_render | 4 | 3 | 1 | 0 |
 | ra8_usb_cdc | 4 | 3 | 0 | 1 |
-| ra8_longstrip | 4 | 3 | 1 | 0 |
 | ra8_ceu | 3 | 2 | 1 | 0 |
 | ra8_epub_fs | 3 | 2 | 0 | 1 |
 | ra8_mipi_phy_timing | 3 | 2 | 1 | 0 |
@@ -177,7 +188,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_chapter | 20 | 20 | 0 | 0 |
 | ra8_reflow_svg | 20 | 20 | 0 | 0 |
 | ra8_mipi_phy | 19 | 19 | 0 | 0 |
-| ra8_mipi_dsi | 16 | 16 | 0 | 0 |
 | ra8_psa_crypto | 15 | 15 | 0 | 0 |
 | ra8_etha | 13 | 13 | 0 | 0 |
 | ra8_book_xhtml | 12 | 12 | 0 | 0 |
@@ -187,7 +197,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_reflow_svg_xform | 11 | 11 | 0 | 0 |
 | ra8_reflow_tokenize_attr | 11 | 11 | 0 | 0 |
 | ra8_ble_gatt | 10 | 10 | 0 | 0 |
-| ra8_epaper | 8 | 8 | 0 | 0 |
+| ra8_mipi_dsi_cmd | 10 | 10 | 0 | 0 |
+| ra8_epaper_geom | 8 | 8 | 0 | 0 |
 | ra8_fs_fat_mount | 8 | 8 | 0 | 0 |
 | ra8_pdg | 8 | 8 | 0 | 0 |
 | ra8_reflow_layout | 8 | 8 | 0 | 0 |
@@ -205,6 +216,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_dfu_boot | 6 | 6 | 0 | 0 |
 | ra8_epub_miniz_alloc | 6 | 6 | 0 | 0 |
 | ra8_i2c | 6 | 6 | 0 | 0 |
+| ra8_mipi_dsi | 6 | 6 | 0 | 0 |
 | ra8_sci | 6 | 6 | 0 | 0 |
 | ra8_sdmmc_spi_io | 6 | 6 | 0 | 0 |
 | ra8_ssie | 6 | 6 | 0 | 0 |
@@ -227,6 +239,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_ble_gatt_client | 4 | 4 | 0 | 0 |
 | ra8_dfu_program | 4 | 4 | 0 | 0 |
 | ra8_drw_draw | 4 | 4 | 0 | 0 |
+| ra8_epaper | 4 | 4 | 0 | 0 |
+| ra8_epd_cal | 4 | 4 | 0 | 0 |
 | ra8_flash_config | 4 | 4 | 0 | 0 |
 | ra8_gfx_text_glyph | 4 | 4 | 0 | 0 |
 | ra8_lvd | 4 | 4 | 0 | 0 |
@@ -259,6 +273,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_board_ek_ra8d2_audio_usb | 2 | 2 | 0 | 0 |
 | ra8_comic_wrapped | 2 | 2 | 0 | 0 |
 | ra8_display_pal_policy | 2 | 2 | 0 | 0 |
+| ra8_epaper_devinfo | 2 | 2 | 0 | 0 |
 | ra8_epub_img_import | 2 | 2 | 0 | 0 |
 | ra8_fs_fat_dir | 2 | 2 | 0 | 0 |
 | ra8_i3c_i2c_peripheral | 2 | 2 | 0 | 0 |
@@ -341,7 +356,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | Module | Uncovered | Partial | Covered | Total |
 |--------|----------:|--------:|--------:|------:|
 | ra8_epub_xml_shim | 14 | 4 | 54 | 72 |
-| ra8_tileatlas_produce | 3 | 1 | 12 | 16 |
+| mg_reader | 6 | 4 | 1 | 11 |
+| ra8_tileatlas_produce | 3 | 1 | 15 | 19 |
 | ra8_epub_open | 3 | 0 | 4 | 7 |
 | ra8_tileatlas_png | 2 | 1 | 4 | 7 |
 | ra8_ble | 2 | 0 | 6 | 8 |
