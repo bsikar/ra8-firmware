@@ -1457,6 +1457,35 @@ case "${_git_common:-}" in
     ;;
 esac
 
+# Persistent compiler cache for the containerised path.
+#
+# Without this the cache is pointless here: HOME is /tmp inside the container
+# and --rm takes it away, so every run would start cold and cmake/ccache.cmake
+# would be wiring in a launcher whose cache never survives. A host directory
+# mounted read-write is what lets a second `make ci` -- by any agent, from any
+# workspace -- hit objects the first one compiled. It cannot carry stale state
+# forward: a changed input is simply a different cache key.
+#
+# CCACHE_BASEDIR + CCACHE_NOHASHDIR are load-bearing, not tuning. Each run
+# builds in a fresh mktemp snapshot, so without path normalisation every
+# compilation hashes differently and the hit rate is flat zero.
+#
+# Absent or unwritable cache dir: run without it rather than fail. A cache is
+# an optimisation, and a missing one must never turn a gate red.
+CCACHE_RUN_ARGS=()
+CCACHE_HOST_DIR="${RA8_CCACHE_DIR:-/var/cache/ccache-ra8}"
+if [[ -d "$CCACHE_HOST_DIR" && -w "$CCACHE_HOST_DIR" ]]; then
+  CCACHE_RUN_ARGS=(
+    -v "$CCACHE_HOST_DIR":/ccache
+    -e CCACHE_DIR=/ccache
+    -e CCACHE_BASEDIR=/
+    -e CCACHE_NOHASHDIR=1
+    -e "CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime,locale,time_macros"
+    -e CCACHE_MAXSIZE="${RA8_CCACHE_MAXSIZE:-20G}"
+  )
+  echo "==> compiler cache: $CCACHE_HOST_DIR -> /ccache"
+fi
+
 echo "==> running CI gates in container (runtime=${RUNTIME_CMD[*]} fast=$fast)"
 # The host repo is bind-mounted READ-ONLY: the in-container step extracts a
 # clean `git archive HEAD` into a throwaway dir and builds there, so the host
@@ -1477,6 +1506,7 @@ exec "${RUNTIME_CMD[@]}" run --rm \
   -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}" \
   -v "$REPO_ROOT":/workspace:ro \
   ${WORKTREE_RUN_ARGS[@]+"${WORKTREE_RUN_ARGS[@]}"} \
+  ${CCACHE_RUN_ARGS[@]+"${CCACHE_RUN_ARGS[@]}"} \
   -w /workspace \
   "$IMAGE_TAG" \
   bash scripts/ci.sh
