@@ -1,0 +1,382 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Structural and formatting checker for GNU ld linker scripts.
+
+WHY THIS EXISTS INSTEAD OF AN OFF-THE-SHELF LINTER
+==================================================
+There is no linter for the GNU ld script language. Nothing on the scale of
+cmake-lint, yamllint or actionlint exists for `.ld`: the language is defined
+only by the ld manual and its bison grammar, it has no published style guide,
+and the one adjacent tool -- `ld --verbose` -- validates a script solely as a
+side effect of attempting a real link, so it needs a full object set and a
+target toolchain and reports nothing about the file as a file.
+
+Leaving the type unenforced was not an option (84 first-party scripts decide
+where every byte of this firmware lands), so this file enforces what IS
+mechanically checkable about a linker script without linking it:
+
+  LD001  licence header      -- SPDX-License-Identifier and a Copyright line.
+  LD002  ENTRY declared      -- exactly one ENTRY(symbol) outside comments.
+  LD003  MEMORY block        -- a MEMORY {} block declaring >= 1 region, each
+                                with both ORIGIN and LENGTH.
+  LD004  region closure      -- every region named by an output-section
+                                placement (`> REGION`, `AT> REGION`) is one of
+                                the regions MEMORY declares. A typo here is an
+                                ld hard error, but ONLY for an app something
+                                actually links; this reaches the scripts no
+                                job builds.
+  LD005  formatting          -- 7-bit ASCII, LF endings, a final newline, no
+                                tab indentation, no trailing whitespace.
+  LD006  symbol closure      -- every g_ra8_ls_* symbol a first-party C source
+                                references is defined by at least one
+                                first-party linker script. That catches a link
+                                error which would otherwise surface only in
+                                whichever app happens to pull the TU in -- and
+                                for a script no CI job links, never at all.
+
+The REVERSE direction (a script defines a g_ra8_ls_* nothing in C names) is
+deliberately NOT a finding, and that is a statement about what is enforceable
+rather than an exemption. A linker script legitimately exports boundary
+symbols with no C consumer at all: g_ra8_ls_exidx_start/end delimit the
+unwind table for the runtime, g_ra8_ls_noinit_start is documented in
+ra8_crashlog.h purely as a GDB inspection point, and several are read only by
+ASSERT() expressions elsewhere in the script or by whoever is reading the .map
+file. "Unused" for such a symbol is not decidable from the source tree, so a
+rule asserting it would be guessing -- it fired on 28 healthy symbols when
+tried. What IS decidable is the direction above, and that is what runs.
+
+LD006 is whole-tree, so it is reported once rather than per file.
+
+Run with --selftest to prove the rules fire on a deliberately malformed script
+and stay quiet on a legal-but-tricky one.
+"""
+
+from __future__ import annotations
+
+import argparse
+import pathlib
+import re
+import subprocess
+import sys
+import tempfile
+
+SYMBOL_PREFIX = "g_ra8_ls_"
+EXCLUDED_PREFIXES = ("libs/third_party/", "libs/fonts/")
+
+# A comment in an ld script is /* ... */ only -- there is no line-comment form.
+_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+
+def strip_comments(text: str) -> str:
+    """Blank out comment bodies, preserving newlines so line numbers hold."""
+
+    def blank(m: re.Match[str]) -> str:
+        return re.sub(r"[^\n]", " ", m.group(0))
+
+    return _COMMENT.sub(blank, text)
+
+
+def repo_files(root: pathlib.Path, pattern: str) -> list[pathlib.Path]:
+    out = subprocess.run(  # noqa: S603  # fixed argv, no shell
+        ["git", "-C", str(root), "ls-files", pattern],  # noqa: S607  # git from PATH is intended
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    return [root / p for p in out if not p.startswith(EXCLUDED_PREFIXES)]
+
+
+class Finding:
+    def __init__(self, path: pathlib.Path, line: int, code: str, msg: str) -> None:
+        self.path, self.line, self.code, self.msg = path, line, code, msg
+
+    def __str__(self) -> str:
+        return f"{self.path}:{self.line}: [{self.code}] {self.msg}"
+
+
+def check_file(  # noqa: PLR0912  # flat rule-dispatch table; splitting it hides the rule list
+    path: pathlib.Path,
+    raw: bytes,
+) -> list[Finding]:
+    findings: list[Finding] = []
+
+    def add(line: int, code: str, msg: str) -> None:
+        findings.append(Finding(path, line, code, msg))
+
+    # --- LD005 formatting (operates on the raw bytes) ----------------------
+    try:
+        text = raw.decode("ascii")
+    except UnicodeDecodeError as exc:
+        bad_line = raw[: exc.start].count(b"\n") + 1
+        add(bad_line, "LD005", f"non-ASCII byte 0x{raw[exc.start]:02x}")
+        text = raw.decode("ascii", errors="replace")
+
+    if b"\r\n" in raw:
+        add(raw.split(b"\r\n")[0].count(b"\n") + 1, "LD005", "CRLF line ending")
+    if raw and not raw.endswith(b"\n"):
+        add(text.count("\n") + 1, "LD005", "no final newline")
+
+    lines = text.splitlines()
+    for i, ln in enumerate(lines, 1):
+        if ln.startswith("\t") or re.match(r"^ *\t", ln):
+            add(i, "LD005", "tab indentation (this tree indents ld scripts with spaces)")
+        if ln != ln.rstrip():
+            add(i, "LD005", "trailing whitespace")
+
+    # --- LD001 licence header ---------------------------------------------
+    head = "\n".join(lines[:60])
+    if "SPDX-License-Identifier:" not in head:
+        add(1, "LD001", "no SPDX-License-Identifier in the first 60 lines")
+    if not re.search(r"Copyright \(c\) \d{4}", head):
+        add(1, "LD001", "no 'Copyright (c) <year>' line in the first 60 lines")
+
+    code = strip_comments(text)
+
+    # --- LD002 ENTRY -------------------------------------------------------
+    entries = re.findall(r"\bENTRY\s*\(\s*([A-Za-z_.$][\w.$]*)\s*\)", code)
+    if not entries:
+        add(1, "LD002", "no ENTRY(symbol) declaration")
+    elif len(entries) > 1:
+        add(1, "LD002", f"{len(entries)} ENTRY declarations, expected exactly 1")
+
+    # --- LD003 MEMORY ------------------------------------------------------
+    regions: set[str] = set()
+    mem_blocks = re.findall(r"\bMEMORY\s*\{(.*?)\n\}", code, re.DOTALL)
+    if not mem_blocks:
+        add(1, "LD003", "no MEMORY { } block")
+    for block in mem_blocks:
+        for m in re.finditer(r"^\s*([A-Za-z_][\w]*)\s*(\([rwxail!]+\))?\s*:", block, re.MULTILINE):
+            name = m.group(1)
+            regions.add(name)
+        if not regions:
+            add(1, "LD003", "MEMORY block declares no regions")
+    for name in sorted(regions):
+        decl = re.search(
+            rf"^\s*{re.escape(name)}\s*(\([rwxail!]+\))?\s*:([^\n]*)$",
+            code,
+            re.MULTILINE,
+        )
+        if decl and not ("ORIGIN" in decl.group(2) and "LENGTH" in decl.group(2)):
+            line = code[: decl.start()].count("\n") + 1
+            add(line, "LD003", f"region '{name}' lacks ORIGIN and/or LENGTH")
+
+    # --- LD004 region closure ---------------------------------------------
+    for m in re.finditer(r"(?:AT)?>\s*([A-Za-z_][\w]*)", code):
+        name = m.group(1)
+        if name in regions:
+            continue
+        line = code[: m.start()].count("\n") + 1
+        add(line, "LD004", f"output section placed in undeclared region '{name}'")
+
+    return findings
+
+
+def defined_symbols(text: str) -> set[str]:
+    code = strip_comments(text)
+    found: set[str] = set()
+    # `sym = expr;`, `PROVIDE(sym = expr)`, `PROVIDE_HIDDEN(sym = expr)`
+    for m in re.finditer(rf"\b({SYMBOL_PREFIX}\w+)\s*=", code):
+        found.add(m.group(1))
+    return found
+
+
+def referenced_symbols(text: str) -> set[str]:
+    # Drop C comments so a symbol named only in prose does not count as a use.
+    stripped = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    stripped = re.sub(r"//[^\n]*", " ", stripped)
+    return set(re.findall(rf"\b{SYMBOL_PREFIX}\w+", stripped))
+
+
+def closure_problems(defined: dict[str, list[str]], referenced: dict[str, list[str]]) -> list[str]:
+    """Pure half of LD006 so --selftest can drive it without a repo."""
+    problems: list[str] = []
+    for sym, users in sorted(referenced.items()):
+        if sym not in defined:
+            problems.append(
+                f"[LD006] '{sym}' is referenced by C but no linker script "
+                f"defines it (first use: {users[0]})"
+            )
+    return problems
+
+
+def check_symbol_closure(root: pathlib.Path) -> list[str]:
+    defined: dict[str, list[str]] = {}
+    for p in repo_files(root, "*.ld"):
+        for s in defined_symbols(p.read_text(encoding="ascii", errors="replace")):
+            defined.setdefault(s, []).append(str(p.relative_to(root)))
+
+    referenced: dict[str, list[str]] = {}
+    for pattern in ("*.c", "*.h", "*.cpp", "*.hpp"):
+        for p in repo_files(root, pattern):
+            text = p.read_text(encoding="ascii", errors="replace")
+            if SYMBOL_PREFIX not in text:
+                continue
+            for s in referenced_symbols(text):
+                referenced.setdefault(s, []).append(str(p.relative_to(root)))
+
+    return closure_problems(defined, referenced)
+
+
+# ---------------------------------------------------------------------------
+# selftest
+# ---------------------------------------------------------------------------
+MALFORMED = """\
+/* A linker script with no licence header. */
+MEMORY
+{
+    FLASH (rx) : ORIGIN = 0x00000000
+    RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
+}
+SECTIONS
+{
+\t.text : { *(.text) } > FLSAH
+    .data : { *(.data) } > RAM
+}
+"""
+
+# Legal but deliberately awkward: ENTRY and a bogus region name appear inside
+# comments, a region name is a substring of another, and the header sits below
+# a long banner. Nothing here is a real finding.
+TRICKY = """\
+/*
+ * A perfectly legal script that mentions ENTRY(bogus_reset) and a
+ * region called NOWHERE inside this comment, and places nothing in
+ * either. It also talks about > NOWHERE as prose.
+ *
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+ENTRY(Reset_Handler)
+
+MEMORY
+{
+    RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 64K
+    RAM_EXT (rwx) : ORIGIN = 0x60000000, LENGTH = 8M
+}
+
+SECTIONS
+{
+    .text : { *(.text) } > RAM_EXT
+    .data : { *(.data) } > RAM AT> RAM_EXT
+}
+"""
+
+
+def selftest() -> int:  # noqa: PLR0912  # flat list of both-direction assertions
+    rc = 0
+    with tempfile.TemporaryDirectory() as td:
+        bad = pathlib.Path(td) / "malformed.ld"
+        bad.write_bytes(MALFORMED.encode())
+        got = check_file(bad, bad.read_bytes())
+        codes = {f.code for f in got}
+        expected = {"LD001", "LD002", "LD003", "LD004", "LD005"}
+        missing = expected - codes
+        if missing:
+            print(f"SELFTEST FAIL: malformed.ld did not report {sorted(missing)}")
+            for f in got:
+                print(f"    got: {f}")
+            rc = 1
+        else:
+            print(f"selftest: malformed.ld -> {len(got)} findings {sorted(codes)} OK")
+
+        good = pathlib.Path(td) / "tricky.ld"
+        good.write_bytes(TRICKY.encode())
+        got = check_file(good, good.read_bytes())
+        if got:
+            print("SELFTEST FAIL: tricky.ld should be clean but reported:")
+            for f in got:
+                print(f"    {f}")
+            rc = 1
+        else:
+            print("selftest: tricky.ld -> 0 findings OK")
+
+    # --- LD006, both directions -------------------------------------------
+    ld_text = (
+        "/* mentions g_ra8_ls_in_comment_only, which is NOT a definition */\n"
+        "g_ra8_ls_alpha = .;\n"
+        "PROVIDE(g_ra8_ls_beta = 0x20000000);\n"
+    )
+    c_text = (
+        "/* prose naming g_ra8_ls_prose_only must not count as a use */\n"
+        "// nor g_ra8_ls_slash_comment\n"
+        "extern uint32_t g_ra8_ls_alpha;\n"
+        "extern uint32_t g_ra8_ls_missing;\n"
+    )
+    got_def = defined_symbols(ld_text)
+    if got_def != {"g_ra8_ls_alpha", "g_ra8_ls_beta"}:
+        print(f"SELFTEST FAIL: defined_symbols -> {sorted(got_def)}")
+        rc = 1
+    else:
+        print("selftest: defined_symbols ignores comment mentions OK")
+
+    got_ref = referenced_symbols(c_text)
+    if got_ref != {"g_ra8_ls_alpha", "g_ra8_ls_missing"}:
+        print(f"SELFTEST FAIL: referenced_symbols -> {sorted(got_ref)}")
+        rc = 1
+    else:
+        print("selftest: referenced_symbols ignores comment mentions OK")
+
+    defined = {s: ["fake.ld"] for s in got_def}
+    referenced = {s: ["fake.c"] for s in got_ref}
+    problems = closure_problems(defined, referenced)
+    if len(problems) != 1 or "g_ra8_ls_missing" not in problems[0]:
+        print(f"SELFTEST FAIL: closure_problems -> {problems}")
+        rc = 1
+    else:
+        print("selftest: closure fires on an undefined symbol OK")
+
+    if closure_problems({"g_ra8_ls_a": ["x.ld"]}, {"g_ra8_ls_a": ["x.c"]}):
+        print("SELFTEST FAIL: closure fired on a fully-resolved symbol")
+        rc = 1
+    else:
+        print("selftest: closure quiet when every symbol resolves OK")
+
+    return rc
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--selftest", action="store_true", help="assert both directions")
+    ap.add_argument("paths", nargs="*", help="scripts to check (default: all tracked)")
+    args = ap.parse_args()
+
+    if args.selftest:
+        return selftest()
+
+    root = pathlib.Path(
+        subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607  # git from PATH is intended
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    )
+
+    paths = [pathlib.Path(p) for p in args.paths] or repo_files(root, "*.ld")
+    if not paths:
+        print("ERROR: no linker scripts found; refusing to report success.", file=sys.stderr)
+        return 1
+
+    findings: list[Finding] = []
+    for p in paths:
+        findings.extend(check_file(p, p.read_bytes()))
+
+    problems = check_symbol_closure(root) if not args.paths else []
+
+    for f in findings:
+        print(f)
+    for pr in problems:
+        print(pr)
+
+    total = len(findings) + len(problems)
+    if total:
+        print(f"\n{total} linker-script finding(s) in {len(paths)} file(s)")
+        return 1
+    print(f"linker scripts clean ({len(paths)} files)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

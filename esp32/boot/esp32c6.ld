@@ -15,6 +15,9 @@
  *   __stack_top        initial sp (top of the .stack region)
  *   __bss_start/__bss_end    zero-fill range
  *   __data_lma/__data_start/__data_end   .data copy range
+ *
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 OUTPUT_ARCH(riscv)
