@@ -47,7 +47,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_unity_minimal_val_64 = 64,
+  k_unity_minimal_detail_cap = 64, /**< Per-assertion detail string capacity. */
 } unity_minimal_uint8_const_t;
 
 /**
@@ -137,7 +137,7 @@ static inline void ra8_test_assert_true(bool cond, const char* detail, const cha
 static inline void ra8_test_assert_eq(int64_t expected, int64_t actual, const char* file, int line)
 {
   if (expected != actual) {
-    char detail[k_unity_minimal_val_64];
+    char detail[k_unity_minimal_detail_cap];
     (void)snprintf(detail, sizeof detail, "expected %" PRId64 ", got %" PRId64, expected, actual);
     ra8_test_fail(file, line, detail);
   }
