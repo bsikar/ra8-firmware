@@ -768,7 +768,6 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
   return k_ra8_ok;
 }
 
-/** @brief Transcode one JPEG / PNG / WebP page to a `.jof` full-width-column atlas. */
 /**
  * @brief Carve the whole-frame WebP work arena for a WebP page (no-op otherwise).
  * @details WebP cannot stream, so its producer arm needs one arena holding the
@@ -820,6 +819,7 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
   return k_ra8_ok;
 }
 
+/** @brief Transcode one JPEG / PNG / WebP page to a `.jof` full-width-column atlas. */
 RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
 {
   uint8_t*  src  = nullptr;
