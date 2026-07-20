@@ -46,6 +46,149 @@ REPORT_DIR="${RA8_MCDC_REPORT_DIR:-$REPO_ROOT/build/mcdc-report}"
 THRESHOLD="${RA8_MCDC_THRESHOLD:-100}"
 
 # ---------------------------------------------------------------------------
+# The #346 guard, as a function so --selftest can drive the REAL thing rather
+# than a lookalike of it.
+#
+# Wipes $1 when it was configured by a compiler other than $2. See the call
+# site at step [1/5] for why a stale CMake cache is not merely inefficient
+# here but silently produces an uninstrumented build.
+# ---------------------------------------------------------------------------
+mcdc_purge_stale_build_dir() {
+  local build_dir="$1" want_cc="$2" cached_cc
+  [[ -f "$build_dir/CMakeCache.txt" ]] || return 0
+  cached_cc="$(sed -n 's/^CMAKE_C_COMPILER:[^=]*=//p' "$build_dir/CMakeCache.txt")"
+  # Compare RESOLVED paths on both sides. CMake always caches a full path,
+  # while callers pass whatever was in $CC -- gate_mcdc passes the bare name
+  # "clang-18". A raw string compare therefore reports "compiler changed" on
+  # every single run and wipes a perfectly good tree each time, which is the
+  # over-firing half of this guard and just as wrong as never firing.
+  want_cc="$(command -v "$want_cc" 2>/dev/null || printf '%s' "$want_cc")"
+  cached_cc="$(command -v "$cached_cc" 2>/dev/null || printf '%s' "$cached_cc")"
+  if [[ "$cached_cc" != "$want_cc" ]]; then
+    echo "==> build dir was configured with '$cached_cc', now using"
+    echo "    '$want_cc' -- wiping $build_dir so the cached"
+    echo "    -fcoverage-mcdc probe cannot survive the compiler change."
+    rm -rf "$build_dir"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# --selftest: prove the guard above still works, in BOTH directions, plus a
+# dependency probe. Wired into gate_mcdc AHEAD of the real run.
+#
+# #346 was a guard that did not exist; the class of bug is a guard that stops
+# matching and keeps printing green. Asserting the property beats remembering
+# it, so this runs every time the gate does.
+# ---------------------------------------------------------------------------
+if [[ "${1:-}" == "--selftest" ]]; then
+  echo "==> mcdc_report.sh self-test"
+
+  # Dependency probe. A gate whose tool is absent must FAIL, never skip.
+  _st_fail=0
+  for _tool in cmake sed; do
+    command -v "$_tool" >/dev/null 2>&1 || {
+      echo "ERROR: required tool '$_tool' is not on PATH." >&2
+      _st_fail=1
+    }
+  done
+  _st_cc="${CC:-$(command -v clang-18 2>/dev/null || command -v clang 2>/dev/null || true)}"
+  if [[ -z "$_st_cc" ]]; then
+    echo "ERROR: no clang on PATH; MC/DC cannot be measured at all." >&2
+    _st_fail=1
+  elif ! echo 'int main(void){return 0;}' |
+    "$_st_cc" -x c - -fprofile-instr-generate -fcoverage-mapping \
+      -fcoverage-mcdc -o /dev/null 2>/dev/null; then
+    echo "ERROR: $_st_cc does not accept the -fcoverage-mcdc flag trio." >&2
+    _st_fail=1
+  fi
+  [[ "$_st_fail" -eq 0 ]] || exit 1
+  echo "    dependency probe OK ($_st_cc accepts -fcoverage-mcdc)"
+
+  _st_tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-mcdc-selftest.XXXXXXXX")"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$_st_tmp'" EXIT
+
+  # Direction 1 -- FIRES: a cache written by a different compiler is wiped.
+  # This is exactly the suite's shape: coverage configures with gcc, mcdc
+  # then wants clang.
+  mkdir -p "$_st_tmp/stale"
+  printf 'CMAKE_C_COMPILER:FILEPATH=/usr/bin/gcc-13\n' \
+    >"$_st_tmp/stale/CMakeCache.txt"
+  mcdc_purge_stale_build_dir "$_st_tmp/stale" /usr/bin/clang-18 >/dev/null
+  if [[ -f "$_st_tmp/stale/CMakeCache.txt" ]]; then
+    echo "ERROR: mcdc self-test FAILED (direction 1)." >&2
+    echo "       A build dir cached by gcc-13 SURVIVED a reconfigure with" >&2
+    echo "       clang-18. The #346 guard has stopped firing: the cached" >&2
+    echo "       RA8_HAVE_CLANG_MCDC=no would be reused, the build would" >&2
+    echo "       come out uninstrumented, and the gate would die at the" >&2
+    echo "       merge step blaming the tests." >&2
+    exit 1
+  fi
+  echo "    direction 1 OK (stale gcc-13 cache wiped for clang-18)"
+
+  # Direction 2 -- STAYS SILENT: same compiler, cache preserved. The
+  # legal-but-tricky case. A guard that wipes unconditionally would pass
+  # direction 1 while throwing away every incremental build, so assert the
+  # negative too.
+  mkdir -p "$_st_tmp/fresh"
+  printf 'CMAKE_C_COMPILER:FILEPATH=/usr/bin/clang-18\n' \
+    >"$_st_tmp/fresh/CMakeCache.txt"
+  printf 'artifact\n' >"$_st_tmp/fresh/keepme"
+  mcdc_purge_stale_build_dir "$_st_tmp/fresh" /usr/bin/clang-18 >/dev/null
+  if [[ ! -f "$_st_tmp/fresh/keepme" ]]; then
+    echo "ERROR: mcdc self-test FAILED (direction 2)." >&2
+    echo "       A build dir cached by the SAME compiler was wiped. The" >&2
+    echo "       guard is over-firing and discards every incremental build." >&2
+    exit 1
+  fi
+  echo "    direction 2 OK (matching clang-18 cache preserved)"
+
+  # Direction 2b -- the SAME compiler spelled two different ways. CMake caches
+  # a resolved full path; gate_mcdc passes the bare name "clang-18". A string
+  # compare calls those different and wipes the tree on EVERY run. This case
+  # is not hypothetical -- the first cut of this guard did exactly that, and
+  # direction 2 above missed it because both sides were full paths.
+  _st_bare="$(basename "$_st_cc")"
+  _st_resolved="$(command -v "$_st_bare" 2>/dev/null || printf '%s' "$_st_bare")"
+  mkdir -p "$_st_tmp/spelling"
+  printf 'CMAKE_C_COMPILER:FILEPATH=%s\n' "$_st_resolved" \
+    >"$_st_tmp/spelling/CMakeCache.txt"
+  printf 'artifact\n' >"$_st_tmp/spelling/keepme"
+  mcdc_purge_stale_build_dir "$_st_tmp/spelling" "$_st_bare" >/dev/null
+  if [[ ! -f "$_st_tmp/spelling/keepme" ]]; then
+    echo "ERROR: mcdc self-test FAILED (direction 2b)." >&2
+    echo "       Cache holds '$_st_resolved' and the caller passed the" >&2
+    echo "       equivalent bare name '$_st_bare', yet the tree was wiped." >&2
+    echo "       The guard compares unresolved strings, so it fires on every" >&2
+    echo "       run and no incremental build ever survives." >&2
+    exit 1
+  fi
+  echo "    direction 2b OK ('$_st_bare' == '$_st_resolved', cache preserved)"
+
+  # Direction 3 -- the CMake layer: RA8_MCDC=ON with a compiler that has no
+  # -fcoverage-mcdc must FAIL AT CONFIGURE, not degrade to plain gcov. This
+  # is the half of #346 that turned a configure problem into a merge-step
+  # red herring. Only assert it when a suitable gcc is actually present.
+  _st_gcc="$(command -v gcc-13 2>/dev/null || command -v gcc 2>/dev/null || true)"
+  if [[ -n "$_st_gcc" ]] && ! echo 'int main(void){return 0;}' |
+    "$_st_gcc" -x c - -fcoverage-mcdc -o /dev/null 2>/dev/null; then
+    if cmake -B "$_st_tmp/cfg" -S "$REPO_ROOT/tests" \
+      -DCMAKE_C_COMPILER="$_st_gcc" \
+      -DRA8_MCDC=ON -Wno-dev >"$_st_tmp/cfg.log" 2>&1; then
+      echo "ERROR: mcdc self-test FAILED (direction 3)." >&2
+      echo "       tests/ configured RA8_MCDC=ON with $_st_gcc, which has" >&2
+      echo "       no -fcoverage-mcdc, and SUCCEEDED. It must fail at" >&2
+      echo "       configure instead of silently building uninstrumented." >&2
+      exit 1
+    fi
+    echo "    direction 3 OK (RA8_MCDC=ON + non-MC/DC compiler fails configure)"
+  fi
+
+  echo "==> mcdc_report.sh self-test PASSED"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
 # macOS shim: the host test harness uses MAP_FIXED below 4 GiB for the
 # simulated MMIO region; macOS arm64 SIGKILLs the process. Re-exec
 # inside the project's Linux devcontainer just like
@@ -194,16 +337,40 @@ echo "    threshold     = ${THRESHOLD}%"
 echo ""
 
 if [[ $HAVE_MCDC -eq 0 ]]; then
-  echo "WARNING: $CC_BIN does NOT support -fcoverage-mcdc."
-  echo "         DO-178C Level B MC/DC cannot be measured with this compiler."
-  echo "         Install clang >= 18 (brew install llvm / apt install clang-18)."
-  echo "         Continuing with the configured fallback for completeness..."
-  echo ""
+  # Stop here rather than configure a build that cannot measure MC/DC. The
+  # configure step would now FATAL_ERROR anyway (tests/CMakeLists.txt), but
+  # saying it plainly at the point the compiler was chosen beats a CMake
+  # backtrace, and this script's own probe is what already knows the answer.
+  echo "ERROR: $CC_BIN does NOT support -fcoverage-mcdc." >&2
+  echo "       DO-178C Level B MC/DC cannot be measured with this compiler," >&2
+  echo "       so this run stops instead of producing a report that looks" >&2
+  echo "       like MC/DC and is not." >&2
+  echo "       Install clang >= 18 (brew install llvm / apt install clang-18)." >&2
+  echo "       To explore plain decision/condition coverage on a gcc-only" >&2
+  echo "       box, configure tests/ by hand with -DRA8_MCDC_ALLOW_FALLBACK=ON." >&2
+  exit 1
 fi
 
 # ---------------------------------------------------------------------------
 # 1. Configure
+#
+# Wipe the tree when a PREVIOUS configure pinned a different compiler (#346).
+#
+# tests/CMakeLists.txt probes -fcoverage-mcdc with check_c_compiler_flag, whose
+# answer lands in the CACHED variable RA8_HAVE_CLANG_MCDC. The default build
+# dir is tests/build-cov, which the coverage gate configures FIRST in the same
+# suite -- with gcc-13, which has no -fcoverage-mcdc, so the probe caches "no".
+# Re-configuring here with clang-18 makes CMake notice the compiler changed and
+# re-run, but the cached probe answer is REUSED: the fallback branch is taken,
+# the build gets plain --coverage instead of the clang MC/DC trio, and no
+# .profraw can ever be emitted. The gate then died four steps later at the
+# merge, blaming the tests for crashing when they had all passed.
+#
+# scripts/coverage.sh has carried this exact guard for the same exact reason;
+# this script simply never got it.
 # ---------------------------------------------------------------------------
+mcdc_purge_stale_build_dir "$BUILD_DIR" "$CC_BIN"
+
 echo "==> [1/5] Configuring tests/ with RA8_MCDC=ON"
 cmake -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
   -DCMAKE_C_COMPILER="$CC_BIN" \
@@ -272,7 +439,19 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   done < <(find "$PROFRAW_DIR" -name '*.profraw' -print0)
 
   if [[ ${#PROFRAW_FILES[@]} -eq 0 ]]; then
-    echo "no .profraw files emitted -- did the test binaries crash?" >&2
+    # Do NOT blame the tests here. When they all passed (the usual case) the
+    # binaries plainly ran, and a passing binary that emits no .profraw was
+    # never instrumented in the first place -- the failure is at CONFIGURE
+    # time, several steps back. The original wording ("did the test binaries
+    # crash?") sent #346 four steps away from its cause.
+    echo "ERROR: no .profraw files were emitted." >&2
+    echo "       The tests are not the problem: an instrumented binary" >&2
+    echo "       writes its profile on exit, so zero .profraw means the" >&2
+    echo "       build was never instrumented with -fprofile-instr-generate." >&2
+    echo "       Check the [1/5] configure step above -- if it reported" >&2
+    echo "       'Falling back to plain gcov', the cached -fcoverage-mcdc" >&2
+    echo "       probe in $BUILD_DIR was answered by a" >&2
+    echo "       different compiler (#346). Remove that directory and re-run." >&2
     exit 1
   fi
 
