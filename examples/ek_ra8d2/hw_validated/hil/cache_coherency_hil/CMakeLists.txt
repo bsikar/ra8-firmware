@@ -23,18 +23,22 @@ cmake_minimum_required(VERSION 3.20)
 # to apply the shared VERSION and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(cache_coherency_hil LANGUAGES C ASM)
+  project(cache_coherency_hil LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME cache_coherency_hil STACK_BYTES 2200
-           DESCRIPTION "M85<->M33 cache-coherency HIL validator (D-cache ON, non-cacheable shared SRAM) for RA8D2")
+ra8_add_app(
+  NAME cache_coherency_hil
+  STACK_BYTES 2200
+  DESCRIPTION
+    "M85<->M33 cache-coherency HIL validator (D-cache ON, non-cacheable shared SRAM) for RA8D2"
+)
 
 # Turn ON the Cortex-M85 D-cache / I-cache + MPU boot path for THIS app only.
 # The shared boot (libs/ra8_board_ek_ra8d2/boot/system_init.c) is compiled
@@ -57,6 +61,7 @@ target_compile_definitions(cache_coherency_hil.elf PRIVATE RA8_LOG_LEVEL=RA8_LOG
 # linker_script.ld pins .cpu1_image at ORIGIN(MRAM_CPU1) (0x020C0000).
 #############################################################################
 ra8_add_cpu1_image(
-    PARENT  cache_coherency_hil
-    NAME    cache_coherency_hil_cpu1
-    SOURCES cpu1_main.c)
+  PARENT cache_coherency_hil
+  NAME cache_coherency_hil_cpu1
+  SOURCES cpu1_main.c
+)

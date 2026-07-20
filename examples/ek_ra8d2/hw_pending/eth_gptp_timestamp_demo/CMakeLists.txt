@@ -19,14 +19,19 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(eth_gptp_timestamp_demo LANGUAGES C ASM)
+  project(eth_gptp_timestamp_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME eth_gptp_timestamp_demo STACK_BYTES 2200 LIBS ra8_board_ek_ra8d2 DESCRIPTION "gPTP / IEEE 1588 hardware-timestamp clock demo for RA8D2")
+ra8_add_app(
+  NAME eth_gptp_timestamp_demo
+  STACK_BYTES 2200
+  LIBS ra8_board_ek_ra8d2
+  DESCRIPTION "gPTP / IEEE 1588 hardware-timestamp clock demo for RA8D2"
+)

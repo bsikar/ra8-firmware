@@ -23,14 +23,14 @@
 # more than once if both the top-level CMakeLists.txt and a
 # standalone-app build want it; only the first include should run.
 if(DEFINED _RA8_FILEX_INCLUDED)
-    return()
+  return()
 endif()
 set(_RA8_FILEX_INCLUDED TRUE)
 
 option(RA8_USE_FILEX "Enable the vendored FileX FAT file system" OFF)
 
 if(NOT RA8_USE_FILEX)
-    return()
+  return()
 endif()
 
 # FileX's protection macros call `tx_mutex_get` / `tx_mutex_put`, so
@@ -40,41 +40,39 @@ endif()
 # error rather than letting the linker complain about missing
 # `_tx_*` symbols.
 if(NOT RA8_USE_THREADX)
-    message(FATAL_ERROR
-        "RA8_USE_FILEX=ON requires RA8_USE_THREADX=ON. FileX's protection "
-        "macros call tx_mutex_get / tx_mutex_put. Enable both options "
-        "(or include cmake/threadx.cmake before cmake/filex.cmake).")
+  message(
+    FATAL_ERROR
+      "RA8_USE_FILEX=ON requires RA8_USE_THREADX=ON. FileX's protection "
+      "macros call tx_mutex_get / tx_mutex_put. Enable both options "
+      "(or include cmake/threadx.cmake before cmake/filex.cmake)."
+  )
 endif()
 
 # Resolve the repo root so this file works whether it is included
 # from the top-level CMakeLists.txt or from a standalone per-app build.
-get_filename_component(_RA8_FILEX_REPO_ROOT
-    "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+get_filename_component(_RA8_FILEX_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
-set(_RA8_FILEX_VENDOR_DIR  "${_RA8_FILEX_REPO_ROOT}/libs/third_party/filex")
-set(_RA8_FILEX_COMMON_INC  "${_RA8_FILEX_VENDOR_DIR}/common/inc")
-set(_RA8_FILEX_COMMON_SRC  "${_RA8_FILEX_VENDOR_DIR}/common/src")
-set(_RA8_FILEX_PORT_INC    "${_RA8_FILEX_VENDOR_DIR}/ports/cortex_m33/gnu/inc")
+set(_RA8_FILEX_VENDOR_DIR "${_RA8_FILEX_REPO_ROOT}/libs/third_party/filex")
+set(_RA8_FILEX_COMMON_INC "${_RA8_FILEX_VENDOR_DIR}/common/inc")
+set(_RA8_FILEX_COMMON_SRC "${_RA8_FILEX_VENDOR_DIR}/common/src")
+set(_RA8_FILEX_PORT_INC "${_RA8_FILEX_VENDOR_DIR}/ports/cortex_m33/gnu/inc")
 
 if(NOT EXISTS "${_RA8_FILEX_COMMON_INC}/fx_api.h")
-    message(FATAL_ERROR
-        "RA8_USE_FILEX=ON but FileX vendor tree is missing at "
-        "${_RA8_FILEX_VENDOR_DIR}.")
+  message(FATAL_ERROR "RA8_USE_FILEX=ON but FileX vendor tree is missing at "
+                      "${_RA8_FILEX_VENDOR_DIR}."
+  )
 endif()
 
 # Glob FileX common sources. Vendor upstream owns this list; we do
 # not curate it. CONFIGURE_DEPENDS forces a re-glob if any source is
 # added or removed.
-file(GLOB _RA8_FILEX_COMMON_SOURCES CONFIGURE_DEPENDS
-    "${_RA8_FILEX_COMMON_SRC}/*.c")
+file(GLOB _RA8_FILEX_COMMON_SOURCES CONFIGURE_DEPENDS "${_RA8_FILEX_COMMON_SRC}/*.c")
 
 # Keep the FileX object library private to this scope. Apps consume
 # the `filex` INTERFACE target which bundles include dirs + sources.
 add_library(filex_objs OBJECT ${_RA8_FILEX_COMMON_SOURCES})
 
-target_include_directories(filex_objs PUBLIC
-    ${_RA8_FILEX_COMMON_INC}
-    ${_RA8_FILEX_PORT_INC})
+target_include_directories(filex_objs PUBLIC ${_RA8_FILEX_COMMON_INC} ${_RA8_FILEX_PORT_INC})
 
 # fx_port.h pulls in tx_api.h (via #include "tx_api.h"), so FileX's
 # own TU compile needs to see ThreadX's include dirs. Inherit them
@@ -84,18 +82,14 @@ target_link_libraries(filex_objs PRIVATE threadx)
 # Vendor sources predate -Wpedantic / -Werror cleanliness. Drop the
 # warning surface to a permissive baseline so the rest of the tree
 # can keep -Werror without forking the upstream code.
-target_compile_options(filex_objs PRIVATE
-    -w)
+target_compile_options(filex_objs PRIVATE -w)
 
 add_library(filex INTERFACE)
 target_sources(filex INTERFACE $<TARGET_OBJECTS:filex_objs>)
-target_include_directories(filex INTERFACE
-    ${_RA8_FILEX_COMMON_INC}
-    ${_RA8_FILEX_PORT_INC})
+target_include_directories(filex INTERFACE ${_RA8_FILEX_COMMON_INC} ${_RA8_FILEX_PORT_INC})
 target_link_libraries(filex INTERFACE threadx)
 
 # Now pull in our ra8_sdhi <-> FileX shim.
-add_subdirectory(${_RA8_FILEX_REPO_ROOT}/port/filex
-                 ${CMAKE_BINARY_DIR}/port_filex)
+add_subdirectory(${_RA8_FILEX_REPO_ROOT}/port/filex ${CMAKE_BINARY_DIR}/port_filex)
 
 message(STATUS "FileX enabled: ${_RA8_FILEX_VENDOR_DIR}")

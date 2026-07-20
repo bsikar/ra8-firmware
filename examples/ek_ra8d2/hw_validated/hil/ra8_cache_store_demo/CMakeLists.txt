@@ -18,13 +18,13 @@ cmake_minimum_required(VERSION 3.20)
 # case to apply the shared VERSION and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ra8_cache_store_demo LANGUAGES C ASM)
+  project(ra8_cache_store_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -33,7 +33,10 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # RAM-backed NOR driver (src/lx_nor_ram.c) instead. LIBS ra8_cache_store pulls
 # in the persistent key->blob store; the demo core + RAM driver under src/ are
 # globbed automatically.
-ra8_add_app(NAME ra8_cache_store_demo STACK_BYTES 2200
-           DESCRIPTION "ra8_cache_store on-media render/glyph cache demo for RA8D2"
-           USES levelx_standalone
-           LIBS ra8_cache_store ra8_board_ek_ra8d2)
+ra8_add_app(
+  NAME ra8_cache_store_demo
+  STACK_BYTES 2200
+  DESCRIPTION "ra8_cache_store on-media render/glyph cache demo for RA8D2"
+  USES levelx_standalone
+  LIBS ra8_cache_store ra8_board_ek_ra8d2
+)

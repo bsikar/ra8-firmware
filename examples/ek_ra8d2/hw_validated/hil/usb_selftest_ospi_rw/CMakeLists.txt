@@ -19,18 +19,20 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(usb_selftest_ospi_rw LANGUAGES C ASM)
+  project(usb_selftest_ospi_rw LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME usb_selftest_ospi_rw STACK_BYTES 4000
-           DESCRIPTION "USB self-loop: HS host WRITE(10)s + reads back a RAM-backed FS device"
-           USES threadx usbx
-           LIBS ra8_board_ek_ra8d2
-          )
+ra8_add_app(
+  NAME usb_selftest_ospi_rw
+  STACK_BYTES 4000
+  DESCRIPTION "USB self-loop: HS host WRITE(10)s + reads back a RAM-backed FS device"
+  USES threadx usbx
+  LIBS ra8_board_ek_ra8d2
+)

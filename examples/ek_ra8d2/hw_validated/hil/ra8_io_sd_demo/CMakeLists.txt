@@ -19,13 +19,13 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ra8_io_sd_demo LANGUAGES C ASM)
+  project(ra8_io_sd_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -33,7 +33,14 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # self-contained copy of the helper rather than reaching into the hw_pending tree;
 # it differs from the RAM / SDRAM / OSPI demos only by the SD-SPI transport
 # bring-up + its one backend bind line + its own PASS banner (#155).
-ra8_add_app(NAME ra8_io_sd_demo STACK_BYTES 4096
-           DESCRIPTION "ra8_io swappable SD-over-SPI backend (#155/#156): VFS round-trip on microSD"
-           LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal ra8_board_ek_ra8d2
-           EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ra8_io_roundtrip.c)
+ra8_add_app(
+  NAME ra8_io_sd_demo
+  STACK_BYTES 4096
+  DESCRIPTION "ra8_io swappable SD-over-SPI backend (#155/#156): VFS round-trip on microSD"
+  LIBS ra8_io
+       ra8_fs
+       ra8_sdmmc_spi
+       ra8_usb_pal
+       ra8_board_ek_ra8d2
+  EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ra8_io_roundtrip.c
+)

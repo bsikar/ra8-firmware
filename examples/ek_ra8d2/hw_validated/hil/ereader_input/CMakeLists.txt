@@ -19,15 +19,19 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ereader_input LANGUAGES C ASM)
+  project(ereader_input LANGUAGES C ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME ereader_input STACK_BYTES 4096
-           DESCRIPTION "Headless ra8_ui hit-test + nav push/pop via synthetic input -> banner over UART (#118 HIL)"
-           LIBS ra8_ui ra8_board_ek_ra8d2)
+ra8_add_app(
+  NAME ereader_input
+  STACK_BYTES 4096
+  DESCRIPTION
+    "Headless ra8_ui hit-test + nav push/pop via synthetic input -> banner over UART (#118 HIL)"
+  LIBS ra8_ui ra8_board_ek_ra8d2
+)

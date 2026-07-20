@@ -21,21 +21,24 @@ cmake_minimum_required(VERSION 3.20)
 # the standalone case to apply the shared VERSION and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    # CXX is required for the CPU1 image: it links the EPUB front end whose XML
-    # shim + tinyxml2 are C++ (#149 stage a0). The aggregate repo build already
-    # enables CXX at the root; this is only for the standalone `cmake -S .`.
-    project(compile_on_m33 LANGUAGES C CXX ASM)
+  # CXX is required for the CPU1 image: it links the EPUB front end whose XML
+  # shim + tinyxml2 are C++ (#149 stage a0). The aggregate repo build already
+  # enables CXX at the root; this is only for the standalone `cmake -S .`.
+  project(compile_on_m33 LANGUAGES C CXX ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME compile_on_m33 STACK_BYTES 4096
-           DESCRIPTION "Dual-core (M85 + M33): the M33 runs the RABOOK1 emitter back-end; the M85 validates the blob (#149b)")
+ra8_add_app(
+  NAME compile_on_m33
+  STACK_BYTES 4096
+  DESCRIPTION "Dual-core M85 + M33: M33 runs the RABOOK1 emitter, M85 validates (#149b)"
+)
 
 # The M85 image needs only ra8_book_validate plus the header-only ra8_book.h inline
 # accessors, so link the single dependency-clean ra8_book.c core directly -- NOT
@@ -59,21 +62,22 @@ target_include_directories(compile_on_m33.elf PRIVATE ${RA8_REPO_ROOT}/libs/ra8_
 # dragged into the second core (it would otherwise resolve to internal_ra8_log_*).
 #############################################################################
 ra8_add_cpu1_image(
-    PARENT   compile_on_m33
-    NAME     compile_on_m33_cpu1
-    SOURCES  cpu1_main.c
-    INCLUDES ${RA8_REPO_ROOT}/libs/ra8_book/inc
-             ${RA8_REPO_ROOT}/libs/ra8_hal/inc
-             ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/inc
-             ${RA8_REPO_ROOT}/libs/ra8_epub/inc
-             ${RA8_REPO_ROOT}/libs/ra8_epub/src
-             ${RA8_REPO_ROOT}/libs/ra8_mem/inc
-             ${RA8_REPO_ROOT}/libs/ra8_reflow/inc
-             ${RA8_REPO_ROOT}/libs/ra8_img/inc
-             ${RA8_REPO_ROOT}/libs/ra8_fs/inc
-             ${RA8_REPO_ROOT}/libs/third_party/miniz
-             ${RA8_REPO_ROOT}/libs/third_party/tinyxml2
-             ${RA8_REPO_ROOT}/libs/third_party/stb)
+  PARENT compile_on_m33
+  NAME compile_on_m33_cpu1
+  SOURCES cpu1_main.c
+  INCLUDES ${RA8_REPO_ROOT}/libs/ra8_book/inc
+           ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+           ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/inc
+           ${RA8_REPO_ROOT}/libs/ra8_epub/inc
+           ${RA8_REPO_ROOT}/libs/ra8_epub/src
+           ${RA8_REPO_ROOT}/libs/ra8_mem/inc
+           ${RA8_REPO_ROOT}/libs/ra8_reflow/inc
+           ${RA8_REPO_ROOT}/libs/ra8_img/inc
+           ${RA8_REPO_ROOT}/libs/ra8_fs/inc
+           ${RA8_REPO_ROOT}/libs/third_party/miniz
+           ${RA8_REPO_ROOT}/libs/third_party/tinyxml2
+           ${RA8_REPO_ROOT}/libs/third_party/stb
+)
 
 # #149 stage a1 -- the M33 runs the REAL text/CSS/SVG EPUB->RABOOK1 compile. It
 # links the EPUB front end (miniz ZIP + tinyxml2 XHTML) plus the rabook pipeline
@@ -84,41 +88,54 @@ ra8_add_cpu1_image(
 # ra8_rabook_compile_from_epub is unreferenced and --gc-sections drops it, so
 # ra8_fs.c is not linked either (only ra8_fs.h is on the include path).
 if(TARGET compile_on_m33_cpu1.elf)
-    file(GLOB _c1_epub_c   CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_epub/src/*.c)
-    file(GLOB _c1_epub_cpp CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_epub/src/*.cpp)
-    target_sources(compile_on_m33_cpu1.elf PRIVATE
-        ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
-        # ra8_epub now guards its ZIP entries through the shared decompression
-        # limits policy (ra8_epub_zip_guard.c -> ra8_decomp_limits_*); the M33
-        # image hand-picks its sources, so link the core policy TU explicitly.
-        ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
-        ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_compile.c
-        ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_gray4.c
-        ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.cpp
-        ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c
-        ${_c1_epub_c}
-        ${_c1_epub_cpp}
-        ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c
-        ${RA8_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp)
-    # MINIZ_NO_STDIO/NO_TIME on EVERY TU that includes miniz.h (miniz.c + ra8_epub)
-    # so the header ABI matches and miniz.c's fopen/utime file path (absent on
-    # bare-metal newlib) is dropped -- ra8_epub uses only the in-memory reader.
-    target_compile_definitions(compile_on_m33_cpu1.elf PRIVATE
-        RA8_LOG_LEVEL=0 MINIZ_NO_STDIO MINIZ_NO_TIME RA8_RABOOK_NO_RASTER)
-    # The vendored miniz.c / tinyxml2.cpp cannot satisfy the first-party -Werror
-    # set; -w them (the first-party ra8_epub/rabook .c/.cpp keep the full gate).
-    # miniz ALSO needs the same -fno-strict-aliasing the M85 SOUP build uses, or
-    # the M33 blob diverges from the byte-identical M85 path (a prior host
-    # divergence was exactly miniz strict-aliasing UB under -Os).
-    set_property(SOURCE ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c
-        APPEND PROPERTY COMPILE_OPTIONS -w -fno-strict-aliasing)
-    set_property(SOURCE ${RA8_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
-        APPEND PROPERTY COMPILE_OPTIONS -w)
-    # Force-keep the parser/emitter entry points the linker would otherwise
-    # --gc-sections away (cpu1_main.c only calls the emitter PoC), so the .map
-    # measures the real text/CSS/SVG back-end cost against the 256 KiB budget.
-    target_link_options(compile_on_m33_cpu1.elf PRIVATE
-        -Wl,--undefined=ra8_epub_open
-        -Wl,--undefined=ra8_rabook_xml_parse_chapter
-        -Wl,--undefined=ra8_rabook_finalize)
+  file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_epub/src/*.c)
+  file(GLOB _c1_epub_cpp CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_epub/src/*.cpp)
+  target_sources(
+    compile_on_m33_cpu1.elf
+    PRIVATE ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+            # ra8_epub now guards its ZIP entries through the shared decompression
+            # limits policy (ra8_epub_zip_guard.c -> ra8_decomp_limits_*); the M33
+            # image hand-picks its sources, so link the core policy TU explicitly.
+            ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
+            ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_compile.c
+            ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_gray4.c
+            ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.cpp
+            ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c
+            ${_c1_epub_c}
+            ${_c1_epub_cpp}
+            ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c
+            ${RA8_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
+  )
+  # MINIZ_NO_STDIO/NO_TIME on EVERY TU that includes miniz.h (miniz.c + ra8_epub)
+  # so the header ABI matches and miniz.c's fopen/utime file path (absent on
+  # bare-metal newlib) is dropped -- ra8_epub uses only the in-memory reader.
+  target_compile_definitions(
+    compile_on_m33_cpu1.elf PRIVATE RA8_LOG_LEVEL=0 MINIZ_NO_STDIO MINIZ_NO_TIME
+                                    RA8_RABOOK_NO_RASTER
+  )
+  # The vendored miniz.c / tinyxml2.cpp cannot satisfy the first-party -Werror
+  # set; -w them (the first-party ra8_epub/rabook .c/.cpp keep the full gate).
+  # miniz ALSO needs the same -fno-strict-aliasing the M85 SOUP build uses, or
+  # the M33 blob diverges from the byte-identical M85 path (a prior host
+  # divergence was exactly miniz strict-aliasing UB under -Os).
+  set_property(
+    SOURCE ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c
+    APPEND
+    PROPERTY COMPILE_OPTIONS -w -fno-strict-aliasing
+  )
+  set_property(
+    SOURCE ${RA8_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
+    APPEND
+    PROPERTY COMPILE_OPTIONS -w
+  )
+  # Force-keep the parser/emitter entry points the linker would otherwise
+  # --gc-sections away (cpu1_main.c only calls the emitter PoC), so the .map
+  # measures the real text/CSS/SVG back-end cost against the 256 KiB budget.
+  target_link_options(
+    compile_on_m33_cpu1.elf
+    PRIVATE
+    -Wl,--undefined=ra8_epub_open
+    -Wl,--undefined=ra8_rabook_xml_parse_chapter
+    -Wl,--undefined=ra8_rabook_finalize
+  )
 endif()

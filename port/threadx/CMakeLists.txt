@@ -16,8 +16,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 if(NOT DEFINED RA8_REPO_ROOT)
-    get_filename_component(RA8_REPO_ROOT
-                           "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+  get_filename_component(RA8_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 endif()
 
 include(${RA8_REPO_ROOT}/cmake/threadx.cmake)

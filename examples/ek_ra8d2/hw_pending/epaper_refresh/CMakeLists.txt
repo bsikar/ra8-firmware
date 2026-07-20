@@ -19,13 +19,13 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(epaper_refresh LANGUAGES C ASM)
+  project(epaper_refresh LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -34,6 +34,9 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # resolution policy that decides whether this panel may be driven at all
 # (INV-VCOM-1) -- without it the driver refuses every refresh, by design.
 # The ra8_epaper HAL driver is globbed in with ra8_hal automatically.
-ra8_add_app(NAME epaper_refresh STACK_BYTES 4096
-           DESCRIPTION "IT8951 e-paper full + partial refresh via the display PAL (#256)"
-           LIBS ra8_display_pal ra8_epd_cal ra8_io_bus)
+ra8_add_app(
+  NAME epaper_refresh
+  STACK_BYTES 4096
+  DESCRIPTION "IT8951 e-paper full + partial refresh via the display PAL (#256)"
+  LIBS ra8_display_pal ra8_epd_cal ra8_io_bus
+)

@@ -47,54 +47,57 @@
 # The vendored libwebp decoder (SOUP). Only the decode-only subset is vendored --
 # src/enc/ carries headers alone -- so a recursive *.c glob is exactly that subset.
 function(ra8_webp_vendor_sources out_var repo_root)
-    set(_root "${repo_root}/libs/third_party/libwebp")
-    if(NOT EXISTS "${_root}")
-        message(FATAL_ERROR
-            "ra8_webp_vendor_sources(): vendored libwebp missing at ${_root}")
-    endif()
-    file(GLOB_RECURSE _srcs CONFIGURE_DEPENDS ${_root}/src/*.c)
-    if(NOT _srcs)
-        message(FATAL_ERROR
-            "ra8_webp_vendor_sources(): no decoder TUs under ${_root}/src")
-    endif()
-    set(${out_var} ${_srcs} PARENT_SCOPE)
+  set(_root "${repo_root}/libs/third_party/libwebp")
+  if(NOT EXISTS "${_root}")
+    message(FATAL_ERROR "ra8_webp_vendor_sources(): vendored libwebp missing at ${_root}")
+  endif()
+  file(GLOB_RECURSE _srcs CONFIGURE_DEPENDS ${_root}/src/*.c)
+  if(NOT _srcs)
+    message(FATAL_ERROR "ra8_webp_vendor_sources(): no decoder TUs under ${_root}/src")
+  endif()
+  set(${out_var}
+      ${_srcs}
+      PARENT_SCOPE
+  )
 endfunction()
 
 # The first-party facade (ra8_webp.c) and its bump arena (ra8_webp_arena.c).
 # Held to the full project warning bar -- these never take the SOUP flags.
 function(ra8_webp_facade_sources out_var repo_root)
-    set(_root "${repo_root}/libs/ra8_webp")
-    if(NOT EXISTS "${_root}")
-        message(FATAL_ERROR
-            "ra8_webp_facade_sources(): ra8_webp facade missing at ${_root}")
-    endif()
-    file(GLOB_RECURSE _srcs CONFIGURE_DEPENDS ${_root}/src/*.c)
-    if(NOT _srcs)
-        message(FATAL_ERROR
-            "ra8_webp_facade_sources(): no facade TUs under ${_root}/src")
-    endif()
-    set(${out_var} ${_srcs} PARENT_SCOPE)
+  set(_root "${repo_root}/libs/ra8_webp")
+  if(NOT EXISTS "${_root}")
+    message(FATAL_ERROR "ra8_webp_facade_sources(): ra8_webp facade missing at ${_root}")
+  endif()
+  file(GLOB_RECURSE _srcs CONFIGURE_DEPENDS ${_root}/src/*.c)
+  if(NOT _srcs)
+    message(FATAL_ERROR "ra8_webp_facade_sources(): no facade TUs under ${_root}/src")
+  endif()
+  set(${out_var}
+      ${_srcs}
+      PARENT_SCOPE
+  )
 endfunction()
 
 # Include roots. libwebp's ROOT (not its src/) is the include dir: the codec
 # includes its own headers as "src/webp/decode.h".
 function(ra8_webp_includes out_var repo_root)
-    set(${out_var}
-        ${repo_root}/libs/third_party/libwebp
-        ${repo_root}/libs/ra8_webp/inc
-        ${repo_root}/libs/ra8_webp/src
-        PARENT_SCOPE)
+  set(${out_var}
+      ${repo_root}/libs/third_party/libwebp ${repo_root}/libs/ra8_webp/inc
+      ${repo_root}/libs/ra8_webp/src
+      PARENT_SCOPE
+  )
 endfunction()
 
 # Parts 3 + 4 of the recipe, applied to the vendored TUs only. RA8_WEBP_USE_ARENA
 # is load-bearing for the zero-heap property, not a tuning knob -- see
 # docs/SOUP/libwebp.md.
 function(ra8_webp_apply_soup_flags)
-    if(NOT ARGN)
-        message(FATAL_ERROR "ra8_webp_apply_soup_flags(): no sources given")
-    endif()
-    set_source_files_properties(${ARGN} PROPERTIES
-        COMPILE_OPTIONS "-w;-fno-strict-aliasing;-DRA8_WEBP_USE_ARENA")
+  if(NOT ARGN)
+    message(FATAL_ERROR "ra8_webp_apply_soup_flags(): no sources given")
+  endif()
+  set_source_files_properties(
+    ${ARGN} PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing;-DRA8_WEBP_USE_ARENA"
+  )
 endfunction()
 
 # One-call path for a standalone consumer (host tools): add the vendored decoder
@@ -106,13 +109,13 @@ endfunction()
 # ra8_jof_priv_webp_transcode() definition, and compiling it alongside this call is
 # what makes WebP sources actually transcode rather than fail closed.
 function(ra8_webp_attach target repo_root)
-    if(NOT TARGET ${target})
-        message(FATAL_ERROR "ra8_webp_attach(): '${target}' is not a target")
-    endif()
-    ra8_webp_vendor_sources(_vendor ${repo_root})
-    ra8_webp_facade_sources(_facade ${repo_root})
-    ra8_webp_includes(_incs ${repo_root})
-    target_sources(${target} PRIVATE ${_vendor} ${_facade})
-    target_include_directories(${target} PRIVATE ${_incs})
-    ra8_webp_apply_soup_flags(${_vendor})
+  if(NOT TARGET ${target})
+    message(FATAL_ERROR "ra8_webp_attach(): '${target}' is not a target")
+  endif()
+  ra8_webp_vendor_sources(_vendor ${repo_root})
+  ra8_webp_facade_sources(_facade ${repo_root})
+  ra8_webp_includes(_incs ${repo_root})
+  target_sources(${target} PRIVATE ${_vendor} ${_facade})
+  target_include_directories(${target} PRIVATE ${_incs})
+  ra8_webp_apply_soup_flags(${_vendor})
 endfunction()

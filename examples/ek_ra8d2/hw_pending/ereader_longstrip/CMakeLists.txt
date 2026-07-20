@@ -12,13 +12,13 @@ cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ereader_longstrip LANGUAGES C ASM)
+  project(ereader_longstrip LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -38,6 +38,15 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # links ra8_io_compress.c, and bare `miniz` supplies the implementation TU. This
 # app builds a raw-codec atlas header only (procedural bands), so decompress is
 # never called at runtime, only linked.
-ra8_add_app(NAME ereader_longstrip STACK_BYTES 16384
-           DESCRIPTION "Viewable #289 demo: tall colourful vertical-scroll strip on the 1024x600 GLCDC panel, tap-zone paging + scroll rail (sim-viewable)"
-           LIBS ra8_longstrip ra8_jof ra8_mem ra8_gfx ra8_display_pal ra8_io_bus miniz)
+ra8_add_app(
+  NAME ereader_longstrip
+  STACK_BYTES 16384
+  DESCRIPTION "Vertical-scroll strip on the GLCDC panel, tap-zone paging (#289)"
+  LIBS ra8_longstrip
+       ra8_jof
+       ra8_mem
+       ra8_gfx
+       ra8_display_pal
+       ra8_io_bus
+       miniz
+)

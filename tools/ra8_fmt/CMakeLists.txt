@@ -49,24 +49,24 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
 )
 set(RA8_FMT_JPEG_SRC
-    ${FW_ROOT}/libs/ra8_hal/src/ra8_jpeg_sw.c
-    ${FW_ROOT}/libs/ra8_hal/src/ra8_jpeg_sw_decode.c
+    ${FW_ROOT}/libs/ra8_hal/src/ra8_jpeg_sw.c ${FW_ROOT}/libs/ra8_hal/src/ra8_jpeg_sw_decode.c
     ${FW_ROOT}/libs/ra8_hal/src/ra8_jpeg_sw_stream.c
 )
 
 set(RA8_FMT_THIRD_PARTY_SRC ${FW_ROOT}/libs/third_party/miniz/miniz.c)
 
-add_executable(ra8_fmt
-    src/main.c
-    src/ra8_fmt_util.c
-    src/ra8_fmt_registry.c
-    src/ra8_fmt_jof.c
-    src/ra8_fmt_jof_inspect.c
-    src/ra8_fmt_jof_verify.c
-    src/ra8_fmt_book.c
-    ${RA8_FMT_FW_SRC}
-    ${RA8_FMT_JPEG_SRC}
-    ${RA8_FMT_THIRD_PARTY_SRC}
+add_executable(
+  ra8_fmt
+  src/main.c
+  src/ra8_fmt_util.c
+  src/ra8_fmt_registry.c
+  src/ra8_fmt_jof.c
+  src/ra8_fmt_jof_inspect.c
+  src/ra8_fmt_jof_verify.c
+  src/ra8_fmt_book.c
+  ${RA8_FMT_FW_SRC}
+  ${RA8_FMT_JPEG_SRC}
+  ${RA8_FMT_THIRD_PARTY_SRC}
 )
 
 # WebP decode (vendored libwebp + the ra8_webp facade), so the producer's WebP
@@ -76,18 +76,19 @@ add_executable(ra8_fmt
 include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
 ra8_webp_attach(ra8_fmt ${FW_ROOT})
 target_compile_definitions(ra8_fmt PRIVATE RA8_SIMULATOR_MODE)
-target_include_directories(ra8_fmt PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${FW_ROOT}/libs/ra8_core/inc
-    ${FW_ROOT}/libs/ra8_jof/inc
-    ${FW_ROOT}/libs/ra8_hal/inc
-    ${FW_ROOT}/libs/ra8_hal/src
-    ${FW_ROOT}/libs/ra8_jof/src
-    ${FW_ROOT}/libs/ra8_io/inc
-    ${FW_ROOT}/libs/ra8_book/inc
-    ${FW_ROOT}/libs/ra8_mem/inc
-    ${FW_ROOT}/libs/third_party/miniz
+target_include_directories(
+  ra8_fmt
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${FW_ROOT}/libs/ra8_core/inc
+          ${FW_ROOT}/libs/ra8_jof/inc
+          ${FW_ROOT}/libs/ra8_hal/inc
+          ${FW_ROOT}/libs/ra8_hal/src
+          ${FW_ROOT}/libs/ra8_jof/src
+          ${FW_ROOT}/libs/ra8_io/inc
+          ${FW_ROOT}/libs/ra8_book/inc
+          ${FW_ROOT}/libs/ra8_mem/inc
+          ${FW_ROOT}/libs/third_party/miniz
 )
 # First-party sources carry the project warning bar (NASA Power of 10
 # Rule 10) here exactly as they do in the ARM and host-test builds; only
@@ -95,5 +96,6 @@ target_include_directories(ra8_fmt PRIVATE
 target_compile_options(ra8_fmt PRIVATE -Wall -Wextra -Werror)
 
 # miniz type-puns through byte buffers; match the host-test build's handling.
-set_source_files_properties(${RA8_FMT_THIRD_PARTY_SRC}
-    PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing")
+set_source_files_properties(
+  ${RA8_FMT_THIRD_PARTY_SRC} PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
+)

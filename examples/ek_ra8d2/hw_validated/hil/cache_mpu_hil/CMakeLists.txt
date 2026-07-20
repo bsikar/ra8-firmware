@@ -20,17 +20,22 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(cache_mpu_hil LANGUAGES C ASM)
+  project(cache_mpu_hil LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME cache_mpu_hil STACK_BYTES 2200 LIBS ra8_board_ek_ra8d2 DESCRIPTION "M85 L1 cache + MPU enabled HIL self-test for RA8D2")
+ra8_add_app(
+  NAME cache_mpu_hil
+  STACK_BYTES 2200
+  LIBS ra8_board_ek_ra8d2
+  DESCRIPTION "M85 L1 cache + MPU enabled HIL self-test for RA8D2"
+)
 
 # Turn on the shared boot's cache + MPU bring-up for THIS app only. The shared
 # boot (libs/ra8_board_ek_ra8d2/boot/system_init.c) is compiled into each app's

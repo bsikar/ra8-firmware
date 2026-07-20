@@ -19,14 +19,18 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(gpt_three_phase_demo LANGUAGES C ASM)
+  project(gpt_three_phase_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME gpt_three_phase_demo STACK_BYTES 2200 DESCRIPTION "gpt_three_phase_demo firmware for RA8D2")
+ra8_add_app(
+  NAME gpt_three_phase_demo
+  STACK_BYTES 2200
+  DESCRIPTION "gpt_three_phase_demo firmware for RA8D2"
+)

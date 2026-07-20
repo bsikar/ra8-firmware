@@ -24,13 +24,9 @@ get_filename_component(_repo "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 # tool keeps linking as the library gains/renames TUs.
 file(GLOB _ra8_fs_srcs CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/*.c)
 
-add_executable(mkbookimg
-    ${CMAKE_CURRENT_SOURCE_DIR}/mkbookimg.c
-    ${_ra8_fs_srcs})
+add_executable(mkbookimg ${CMAKE_CURRENT_SOURCE_DIR}/mkbookimg.c ${_ra8_fs_srcs})
 
-target_include_directories(mkbookimg PRIVATE
-    ${_repo}/libs/ra8_fs/inc
-    ${_repo}/libs/ra8_core/inc)
+target_include_directories(mkbookimg PRIVATE ${_repo}/libs/ra8_fs/inc ${_repo}/libs/ra8_core/inc)
 
 # First-party sources carry the project warning bar (NASA Power of 10
 # Rule 10) here exactly as they do in the ARM and host-test builds; only

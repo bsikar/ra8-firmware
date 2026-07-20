@@ -12,13 +12,13 @@ cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ra8_ftl_demo LANGUAGES C ASM)
+  project(ra8_ftl_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -26,6 +26,13 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # so those libs are listed to satisfy their includes. ra8_ftl wraps the MRAM
 # backend (ra8_io_blockdev_mram, ra8_flash_extra_mram_write/erase in ra8_hal) to
 # present a wear-levelled free-overwrite block device.
-ra8_add_app(NAME ra8_ftl_demo STACK_BYTES 4096
-           DESCRIPTION "FTL wear-levelling + checkpoint power-cycle survival over on-chip extra MRAM (#258)"
-           LIBS ra8_io ra8_ftl ra8_fs ra8_sdmmc_spi ra8_usb_pal)
+ra8_add_app(
+  NAME ra8_ftl_demo
+  STACK_BYTES 4096
+  DESCRIPTION "FTL wear-levelling + checkpoint power-cycle survival over on-chip extra MRAM (#258)"
+  LIBS ra8_io
+       ra8_ftl
+       ra8_fs
+       ra8_sdmmc_spi
+       ra8_usb_pal
+)

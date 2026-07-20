@@ -24,16 +24,19 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(touch_cal LANGUAGES C ASM)
+  project(touch_cal LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME touch_cal STACK_BYTES 4096
-           LIBS ra8_touch_cal ra8_io_bus ra8_display_pal ra8_board_ek_ra8d2
-           DESCRIPTION "N-point affine touch calibration (GT911 + GLCDC) for RA8D2")
+ra8_add_app(
+  NAME touch_cal
+  STACK_BYTES 4096
+  LIBS ra8_touch_cal ra8_io_bus ra8_display_pal ra8_board_ek_ra8d2
+  DESCRIPTION "N-point affine touch calibration (GT911 + GLCDC) for RA8D2"
+)

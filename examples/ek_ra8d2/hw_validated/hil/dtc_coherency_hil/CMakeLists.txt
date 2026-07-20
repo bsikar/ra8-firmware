@@ -20,17 +20,22 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(dtc_coherency_hil LANGUAGES C ASM)
+  project(dtc_coherency_hil LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME dtc_coherency_hil STACK_BYTES 2200 LIBS ra8_board_ek_ra8d2 DESCRIPTION "dtc_coherency_hil firmware for RA8D2")
+ra8_add_app(
+  NAME dtc_coherency_hil
+  STACK_BYTES 2200
+  LIBS ra8_board_ek_ra8d2
+  DESCRIPTION "dtc_coherency_hil firmware for RA8D2"
+)
 
 # Turn ON the Cortex-M85 D-cache / I-cache + MPU boot path for THIS app only.
 # The shared boot (libs/ra8_board_ek_ra8d2/boot/system_init.c) is compiled

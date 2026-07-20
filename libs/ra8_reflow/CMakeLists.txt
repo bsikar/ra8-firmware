@@ -40,15 +40,13 @@
 # either the v1 src/*.c globs or the v2/ra8_reflow_v2.cpp source.
 
 option(RA8_REFLOW_USE_LITEHTML
-  "Build the LiteHTML-backed v2 ra8_reflow engine instead of the v1 hand-rolled one"
-  OFF
+       "Build the LiteHTML-backed v2 ra8_reflow engine instead of the v1 hand-rolled one" OFF
 )
 
 if(RA8_REFLOW_USE_LITEHTML)
-    message(STATUS "ra8_reflow: using v2 (LiteHTML) engine")
+  message(STATUS "ra8_reflow: using v2 (LiteHTML) engine")
 else()
-    message(STATUS "ra8_reflow: using v1 (hand-rolled) engine [default]")
+  message(STATUS "ra8_reflow: using v1 (hand-rolled) engine [default]")
 endif()
 
 # Consumers reach into inc/ + src/ (or v2/) directly.
-
