@@ -750,10 +750,6 @@ static void test_link_status_triggers_resync(void)
 }
 
 /**
- * @brief Test entry point -- runs every white-box coverage case.
- * @return 0 on success (Unity aborts the process on any failure).
- */
-/**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
  *
@@ -786,6 +782,10 @@ static void (*const s_test_roster[])(void) = {
   test_link_status_triggers_resync,
 };
 
+/**
+ * @brief Test entry point -- runs every white-box coverage case.
+ * @return 0 on success (Unity aborts the process on any failure).
+ */
 int32_t main(void)
 {
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {

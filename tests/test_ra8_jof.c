@@ -239,15 +239,6 @@ static ra8_err_t parse_store(ra8_jof_info_t* info)
 }
 
 /**
- * @test test_jof_roundtrip
- * @brief Both codecs round-trip: every tile pages back byte-identical to the
- *        generator pattern, edge tiles clamped.
- *
- * @par MC/DC:
- * (byte-parity oracle over the full tile grid; the reader's compound
- * decisions get their vectors in the hostile-atlas tests below.)
- */
-/**
  * @brief Tile extent at @p origin, clamped to the image edge.
  * @param[in] img_dim Image extent along the axis, in pixels.
  * @param[in] origin  Tile origin along the same axis, in pixels.
@@ -289,6 +280,15 @@ static void assert_tile_pixels(uint32_t x0, uint32_t y0, uint16_t w, uint16_t h)
   }
 }
 
+/**
+ * @test test_jof_roundtrip
+ * @brief Both codecs round-trip: every tile pages back byte-identical to the
+ *        generator pattern, edge tiles clamped.
+ *
+ * @par MC/DC:
+ * (byte-parity oracle over the full tile grid; the reader's compound
+ * decisions get their vectors in the hostile-atlas tests below.)
+ */
 static void test_jof_roundtrip(void)
 {
   TEST_BEGIN("jof: raw + deflate round-trip, byte parity");

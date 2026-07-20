@@ -306,18 +306,6 @@ static void test_status_bar_render(void)
 }
 
 /**
- * @test ra8_widget_status_bar guard + init arms.
- *
- * @par MC/DC:
- * - `internal_sb_render` `rule_h <= 0` true arm (rule_h 0 -> bg + labels, no rule
- *   fill); its second guard `fill_rect == NULL` true arm (rule wanted but no
- *   backend fill -> no rule).
- * - `internal_sb_label` `text == NULL` true arm (NULL left + right -> no text);
- *   `draw_text == NULL` true arm (no text backend -> fill only).
- * - `paint == NULL` / `sb == NULL` render guards -> nothing drawn.
- * - init NULL guards.
- */
-/**
  * @brief Render / input guard arms for `status_bar` (the bulk of the case).
  *
  * @details
@@ -379,6 +367,18 @@ static void status_bar_guard_arms(void)
   w.vt->render(&w);
 }
 
+/**
+ * @test ra8_widget_status_bar guard + init arms.
+ *
+ * @par MC/DC:
+ * - `internal_sb_render` `rule_h <= 0` true arm (rule_h 0 -> bg + labels, no rule
+ *   fill); its second guard `fill_rect == NULL` true arm (rule wanted but no
+ *   backend fill -> no rule).
+ * - `internal_sb_label` `text == NULL` true arm (NULL left + right -> no text);
+ *   `draw_text == NULL` true arm (no text backend -> fill only).
+ * - `paint == NULL` / `sb == NULL` render guards -> nothing drawn.
+ * - init NULL guards.
+ */
 static void test_status_bar_guards(void)
 {
   TEST_BEGIN("ra8_widget_status_bar: guard + init arms");

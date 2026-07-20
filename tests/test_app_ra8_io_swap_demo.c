@@ -148,36 +148,6 @@ static bool swap_capture_ok(ra8_err_t rep_e, uint32_t captured)
 }
 
 /**
- * @brief Host mirror of `swap_run_one`: FAT/VFS round-trip over one block device.
- *
- * @details Bridges @p bd to `ra8_fs`, formats + mounts a FAT12 volume, registers
- *          it in the VFS under @p name, writes then reads back @p len bytes at
- *          @p file through the streaming VFS file API, byte-compares via
- *          ::swap_verdict, then unregisters + unmounts. Progress markers are
- *          emitted into @p log. Every file handle and mount is released on the
- *          success path.
- *
- * @param[in]  bd   Pre-bound block device (RAM or xSPI).
- * @param[in]  name VFS volume name (no ':' or '/').
- * @param[in]  label FAT volume label literal.
- * @param[in]  file Full "<name>:/..." VFS path.
- * @param[in]  len  Payload length to round-trip (<= ::k_t_payload).
- * @param[out] log  Stream to write progress markers into.
- *
- * @return ra8_err_t Error code (k_ra8_ok on a byte-exact round-trip).
- * @retval k_ra8_ok                    The volume mounted and round-tripped.
- * @retval k_ra8_err_checksum_mismatch The read-back length or bytes differed.
- * @retval (other)                    The first failing fabric step's code.
- *
- * @pre @p bd, @p name, @p file, and @p log are non-NULL and @p bd is reachable.
- * @pre @p len is at most ::k_t_payload.
- * @post On success @p file held the verified payload and the mount is torn down.
- * @post No file handle or mount is left open on the success path.
- *
- * @note Not thread-safe; single-caller test context.
- * @since 0.1.0
- */
-/**
  * @brief Format, mount and VFS-publish one block device.
  *
  * @param[in,out] bd    Block device to bring up.

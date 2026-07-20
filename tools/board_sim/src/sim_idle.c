@@ -25,42 +25,6 @@
 #include "sim_run.h"
 
 /**
- * @brief True if @p pc sits in a wait-for-interrupt spin (the core is idle).
- *
- * @details Reports whether the core at @p pc is parked in a loop that can only
- * make progress once an interrupt arrives -- genuine idle, where the next thing
- * that can happen is the periodic SysTick. Two cases are recognised:
- *   1. The instruction AT @p pc is itself a halt: `b .` (0xE7FE, branch-to-self)
- *      or `wfi` (0xBF30).
- *   2. @p pc is ENCLOSED by a wait-for-interrupt poll loop: scanning forward a
- *      few halfwords finds an unconditional backward `b.n` (the loop back-edge)
- *      whose target is at or before @p pc (so the loop wraps around @p pc), and
- *      the loop body holds a `wfi` or a `cpsie i` -- the "re-enable interrupts
- *      and poll" idiom ThreadX's __tx_ts_wait uses (cpsid/ldr/str/cbnz/cpsie/
- *      b .-N, spinning on execute_ptr until a tick makes a thread runnable).
- *
- * The enclosing-loop test is deliberately tight: it requires the back-edge to
- * bracket @p pc, so STRAIGHT-LINE code is never matched even when it sits in
- * memory next to an idle loop (an ISR returns via `bx lr`, not a backward
- * branch over itself -- matching a nearby opcode would wrongly truncate it).
- * A compute/busy loop is also excluded: it exits on a conditional branch and
- * never re-enables interrupts mid-loop, so it carries no wfi/cpsie wait. The
- * run loop uses this to cap the idle chunk's budget to ::k_idle_spin_insns
- * instead of spinning a full ::k_run_chunk_insns to reach the same already-armed
- * tick. Tick COUNT is unchanged; only idle wall-time is skipped.
- *
- * @param[in,out] uc Unicorn engine (instructions are read from its memory).
- * @param[in]     pc Program counter to inspect (Thumb bit ignored).
- * @return true if @p pc is on, or enclosed by, a wait-for-interrupt idle loop.
- *
- * @pre @p uc has the code region containing @p pc mapped.
- * @pre @p pc is halfword-aligned once the Thumb bit is cleared.
- * @post @p uc is unchanged (a read-only probe).
- * @note Detection only; advancing time stays the run loop's job, so the tick
- *       count -- and every tick-based sleep/heartbeat deadline -- is preserved.
- * @since 0.1.0
- */
-/**
  * @brief Does the halfword at @p at close a tight idle loop around @p aligned?
  *
  * @details
@@ -115,6 +79,42 @@ static bool idle_back_edge(uc_engine* uc, uint32_t at, uint16_t hw, uint32_t ali
   return false; /* tight loop but no wait signature -- a busy loop, not idle */
 }
 
+/**
+ * @brief True if @p pc sits in a wait-for-interrupt spin (the core is idle).
+ *
+ * @details Reports whether the core at @p pc is parked in a loop that can only
+ * make progress once an interrupt arrives -- genuine idle, where the next thing
+ * that can happen is the periodic SysTick. Two cases are recognised:
+ *   1. The instruction AT @p pc is itself a halt: `b .` (0xE7FE, branch-to-self)
+ *      or `wfi` (0xBF30).
+ *   2. @p pc is ENCLOSED by a wait-for-interrupt poll loop: scanning forward a
+ *      few halfwords finds an unconditional backward `b.n` (the loop back-edge)
+ *      whose target is at or before @p pc (so the loop wraps around @p pc), and
+ *      the loop body holds a `wfi` or a `cpsie i` -- the "re-enable interrupts
+ *      and poll" idiom ThreadX's __tx_ts_wait uses (cpsid/ldr/str/cbnz/cpsie/
+ *      b .-N, spinning on execute_ptr until a tick makes a thread runnable).
+ *
+ * The enclosing-loop test is deliberately tight: it requires the back-edge to
+ * bracket @p pc, so STRAIGHT-LINE code is never matched even when it sits in
+ * memory next to an idle loop (an ISR returns via `bx lr`, not a backward
+ * branch over itself -- matching a nearby opcode would wrongly truncate it).
+ * A compute/busy loop is also excluded: it exits on a conditional branch and
+ * never re-enables interrupts mid-loop, so it carries no wfi/cpsie wait. The
+ * run loop uses this to cap the idle chunk's budget to ::k_idle_spin_insns
+ * instead of spinning a full ::k_run_chunk_insns to reach the same already-armed
+ * tick. Tick COUNT is unchanged; only idle wall-time is skipped.
+ *
+ * @param[in,out] uc Unicorn engine (instructions are read from its memory).
+ * @param[in]     pc Program counter to inspect (Thumb bit ignored).
+ * @return true if @p pc is on, or enclosed by, a wait-for-interrupt idle loop.
+ *
+ * @pre @p uc has the code region containing @p pc mapped.
+ * @pre @p pc is halfword-aligned once the Thumb bit is cleared.
+ * @post @p uc is unchanged (a read-only probe).
+ * @note Detection only; advancing time stays the run loop's job, so the tick
+ *       count -- and every tick-based sleep/heartbeat deadline -- is preserved.
+ * @since 0.1.0
+ */
 bool idle_spin_at(uc_engine* uc, uint32_t pc)
 {
   const uint32_t aligned = pc & ~1U;

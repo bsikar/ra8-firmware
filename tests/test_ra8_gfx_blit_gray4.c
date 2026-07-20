@@ -93,7 +93,7 @@ static void test_blit_gray4_1to1(void)
   TEST_END("gray4 1:1 blit reproduces every pixel");
 }
 
-/**
+/*
  * @par MC/DC:
  * (no compound decision under test -- verifies integer 2x block replication)
  */

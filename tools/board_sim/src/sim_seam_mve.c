@@ -225,7 +225,7 @@ static void on_mve_vstrw(uc_engine* uc, uint64_t address, uint32_t size, void* u
   (void)uc_emu_stop(uc);
 }
 
-/** @brief Scan the loaded image for VSTRW.32 sites and hook each one. */
+/* @brief Scan the loaded image for VSTRW.32 sites and hook each one. */
 /**
  * @struct mve_scan_ctx_t
  * @brief Running state threaded through the per-segment MVE scan.

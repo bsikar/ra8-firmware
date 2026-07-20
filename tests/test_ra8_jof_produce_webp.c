@@ -241,7 +241,7 @@ static ra8_err_t produce_webp(const uint8_t*            src,
   return ra8_jof_produce(&cfg, info);
 }
 
-/**
+/*
  * @brief Build an 8-bit RGBA (colour type 6) PNG of the golden pattern.
  * @details Filter 0 (none) on every row; IDAT via miniz `mz_compress`; CRCs via
  *          `mz_crc32`. Produces the exact RGBA pixels the lossless WebP decodes

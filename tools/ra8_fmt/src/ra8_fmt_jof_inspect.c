@@ -474,7 +474,6 @@ ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* o
  * @param[in]  tw     Decoded tile width in pixels, already edge-clamped.
  * @param[in]  th     Decoded tile height in pixels, already edge-clamped.
  * @return None.
- * @retval None Void.
  *
  * @pre All pointer arguments are non-null.
  * @pre The tile at (@p tx, @p ty) with extent @p tw by @p th lies inside @p px.

@@ -221,7 +221,7 @@ static void fill_status_hw(board_status_t* st, const char* app_name)
   board_sd_info(&st->sd_attached, &st->sd_bytes, &st->sd_fat_bits, &st->sd_label);
 }
 
-/** @brief Snapshot the tabbed-console metadata and the active scrollback window. */
+/* @brief Snapshot the tabbed-console metadata and the active scrollback window. */
 /**
  * @brief Populate the console tab-bar metadata in @p st.
  *
@@ -546,20 +546,6 @@ static void panel_rstrip(char* s)
 }
 
 /**
- * @brief Load a panel descriptor (name / width / height) from a TOML-ish file.
- *
- * @details
- * A flat ``key = value`` panel descriptor (see ``tools/board_sim/panels/``), so
- * the board emulator becomes whatever display a config describes -- not just the
- * EK-RA8D2 1024x600. Dependency-free bounded parser (strncmp / strtol, no
- * dynamic allocation beyond the FILE handle); blank lines and '#' comments are
- * ignored and quotes are stripped from the name.
- *
- * @param[in]  path Panel config path.
- * @param[out] out  Filled descriptor on success.
- * @return true if a valid width/height were parsed.
- */
-/**
  * @brief Split one config line into a trimmed `key` / `value` pair, in place.
  *
  * @details
@@ -661,6 +647,20 @@ static void panel_apply_kv(board_panel_t* out, const char* key, const char* val)
   }
 }
 
+/**
+ * @brief Load a panel descriptor (name / width / height) from a TOML-ish file.
+ *
+ * @details
+ * A flat ``key = value`` panel descriptor (see ``tools/board_sim/panels/``), so
+ * the board emulator becomes whatever display a config describes -- not just the
+ * EK-RA8D2 1024x600. Dependency-free bounded parser (strncmp / strtol, no
+ * dynamic allocation beyond the FILE handle); blank lines and '#' comments are
+ * ignored and quotes are stripped from the name.
+ *
+ * @param[in]  path Panel config path.
+ * @param[out] out  Filled descriptor on success.
+ * @return true if a valid width/height were parsed.
+ */
 bool load_panel(const char* path, board_panel_t* out)
 {
   (void)memset(out, 0, sizeof(*out));

@@ -764,10 +764,6 @@ static void test_descendant(void)
 }
 
 /**
- * @brief Test entry point.
- * @return 0 on success; unity macros exit(1) on the first failure.
- */
-/**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
  *
@@ -806,6 +802,10 @@ static void (*const s_test_roster[])(void) = {
   test_null_guards,
 };
 
+/**
+ * @brief Test entry point.
+ * @return 0 on success; unity macros exit(1) on the first failure.
+ */
 int32_t main(void)
 {
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {

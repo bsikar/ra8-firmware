@@ -540,7 +540,7 @@ static void test_ptp_filter(void)
   TEST_END("rmac ptp filter");
 }
 
-/** @brief Stamp every RMAC statistics counter with a unique pattern so
+/* @brief Stamp every RMAC statistics counter with a unique pattern so
  *  ::test_read_stats can verify each ra8_rmac_stats_t field is wired to
  *  the right register. */
 /**

@@ -307,7 +307,7 @@ static void prof_insn_hook(uc_engine* uc, uint64_t address, uint32_t size, void*
   }
 }
 
-/** @brief Write the captured call chains as a speedscope "sampled" profile JSON. */
+/* @brief Write the captured call chains as a speedscope "sampled" profile JSON. */
 /**
  * @brief Write the speedscope `shared.frames` array: one entry per symbol.
  *

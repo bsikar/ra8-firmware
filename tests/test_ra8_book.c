@@ -196,17 +196,6 @@ static void setup_mock_book_strings(mock_book_t* b, mock_book_offsets_t* off)
 }
 
 /**
- * @brief Wire the mock book's chapter, node, attribute, stylesheet and image tables.
- *
- * @param[in,out] b   Mock book whose structural tables are populated.
- * @param[in]     off Interned string offsets from setup_mock_book_strings.
- *
- * @pre setup_mock_book_strings(@p b, @p off) already ran.
- * @post All structural tables and the cover-image index are set.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-/**
  * @brief Populate the mock book's single chapter record.
  * @param[out] b   Mock book to populate.
  * @param[in]  off String-table offsets the record points at.
@@ -315,6 +304,17 @@ static void setup_mock_images(mock_book_t* b, const mock_book_offsets_t* off)
   b->hdr.cover_image_index = 0;
 }
 
+/**
+ * @brief Wire the mock book's chapter, node, attribute, stylesheet and image tables.
+ *
+ * @param[in,out] b   Mock book whose structural tables are populated.
+ * @param[in]     off Interned string offsets from setup_mock_book_strings.
+ *
+ * @pre setup_mock_book_strings(@p b, @p off) already ran.
+ * @post All structural tables and the cover-image index are set.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
 static void setup_mock_book_structs(mock_book_t* b, const mock_book_offsets_t* off)
 {
   setup_mock_chapter(b, off);
