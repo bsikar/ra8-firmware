@@ -97,8 +97,10 @@ static bool ra8_fmt_atlas_is_webp(const ra8_fmt_blob_t* src)
   if ((src == nullptr) || (src->bytes == nullptr) || (src->len < (size_t)k_fmt_webp_head_len)) {
     return false;
   }
-  return (memcmp(&src->bytes[k_fmt_webp_riff_ofs], s_fmt_webp_riff, sizeof(s_fmt_webp_riff)) == 0) &&
-         (memcmp(&src->bytes[k_fmt_webp_fourcc_ofs], s_fmt_webp_webp, sizeof(s_fmt_webp_webp)) == 0);
+  return (memcmp(&src->bytes[k_fmt_webp_riff_ofs], s_fmt_webp_riff, sizeof(s_fmt_webp_riff)) ==
+          0) &&
+         (memcmp(&src->bytes[k_fmt_webp_fourcc_ofs], s_fmt_webp_webp, sizeof(s_fmt_webp_webp)) ==
+          0);
 }
 
 /**
