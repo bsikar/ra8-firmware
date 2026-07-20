@@ -58,7 +58,18 @@
 # scripts/clang_tidy.sh and tests/build_tests.sh already pass -DRA8_COVERAGE=OFF
 # for the same underlying reason, so the only builds this opts out are the two
 # that genuinely want instrumentation.
+#
+# The opt-out CLEARS the launcher rather than merely declining to set it. A
+# build directory is reused across configures, and the launcher is a FORCEd
+# cache entry: a tree once configured with instrumentation off would keep the
+# launcher in its CMakeCache.txt when later reconfigured with RA8_COVERAGE=ON,
+# so an early `return()` alone would leave the cache silently active on exactly
+# the build that must not use it. Clearing is unconditional and idempotent.
 if(RA8_COVERAGE OR RA8_MCDC)
+    foreach(_lang C CXX ASM)
+        unset(CMAKE_${_lang}_COMPILER_LAUNCHER CACHE)
+        unset(CMAKE_${_lang}_COMPILER_LAUNCHER)
+    endforeach()
     message(STATUS "ccache: DISABLED for this build (coverage/MC-DC instrumentation)")
     return()
 endif()
