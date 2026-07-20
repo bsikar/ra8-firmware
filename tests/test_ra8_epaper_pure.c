@@ -53,7 +53,7 @@ typedef enum : uint32_t {
   k_ra8_epaper_test_lut_word0     = 12U,         /**< First LUT-name word slot
                                                       in the GET_DEV_INFO
                                                       descriptor.             */
-  k_ra8_epaper_test_lut_word1     = 13U,         /**< Second LUT-name word.   */
+  k_ra8_epaper_test_lut_word1     = 13U,         /**< Second LUT-name word. */
   k_ra8_epaper_test_offgrid_w     = 40U,         /**< Span that clamps to an
                                                       off-grid width.         */
 } ra8_epaper_pure_const_t;
@@ -288,8 +288,7 @@ static void test_align_area_clamp_mcdc(void)
                  ra8_epaper_align_area(&v2, k_ra8_epaper_pf_1bpp, k_ra8_epaper_test_panel_32));
 
   /* Vector 3 -- x_hi > x_lo but the clamped span is off-grid. */
-  ra8_epaper_area_t v3 = {
-    .x = 0U, .y = 0U, .width = k_ra8_epaper_test_offgrid_w, .height = 1U};
+  ra8_epaper_area_t v3 = {.x = 0U, .y = 0U, .width = k_ra8_epaper_test_offgrid_w, .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_epaper_align_area(&v3, k_ra8_epaper_pf_1bpp, k_ra8_epaper_test_panel_40));
 

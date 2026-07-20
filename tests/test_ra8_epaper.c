@@ -101,7 +101,7 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_epaper_align_panel_w     = 1448U, /**< Panel width the arms align against. */
+  k_epaper_align_panel_w     = 1448U, /**< Panel width the arms align against.  */
   k_epaper_align_unaligned_x = 17U,   /**< X inside a block, so it rounds down. */
   k_epaper_align_block_x     = 40U,   /**< X inside the second block.           */
   k_epaper_align_span_w      = 40U,   /**< Width that spans two whole blocks.   */
@@ -576,8 +576,10 @@ static void test_area_alignment(void)
   const ra8_epaper_area_t ok = {.x = 32U, .y = 0U, .width = 64U, .height = 1U};
   TEST_ASSERT(ra8_epaper_area_is_aligned(&ok, k_ra8_epaper_pf_1bpp));
   /* V2: x misaligned. */
-  const ra8_epaper_area_t bad_x = {
-    .x = k_epaper_align_unaligned_x, .y = 0U, .width = 64U, .height = 1U};
+  const ra8_epaper_area_t bad_x = {.x      = k_epaper_align_unaligned_x,
+                                   .y      = 0U,
+                                   .width  = 64U,
+                                   .height = 1U};
   TEST_ASSERT(!ra8_epaper_area_is_aligned(&bad_x, k_ra8_epaper_pf_1bpp));
   /* V3: width misaligned. */
   const ra8_epaper_area_t bad_w = {.x = 32U, .y = 0U, .width = 3U, .height = 1U};
@@ -590,31 +592,37 @@ static void test_area_alignment(void)
   TEST_ASSERT(!ra8_epaper_area_is_aligned(nullptr, k_ra8_epaper_pf_1bpp));
 
   /* align_area grows outward so the caller's rectangle stays covered. */
-  ra8_epaper_area_t grow = {
-    .x = k_epaper_align_unaligned_x, .y = 0U, .width = 3U, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&grow, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
+  ra8_epaper_area_t grow = {.x = k_epaper_align_unaligned_x, .y = 0U, .width = 3U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_align_area(&grow, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
   TEST_ASSERT_EQ(0U, grow.x);
   TEST_ASSERT_EQ(32U, grow.width);
   TEST_ASSERT(ra8_epaper_area_is_aligned(&grow, k_ra8_epaper_pf_1bpp));
 
-  ra8_epaper_area_t spanning = {
-    .x = k_epaper_align_block_x, .y = 0U, .width = k_epaper_align_span_w, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&spanning, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
+  ra8_epaper_area_t spanning = {.x      = k_epaper_align_block_x,
+                                .y      = 0U,
+                                .width  = k_epaper_align_span_w,
+                                .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_align_area(&spanning, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
   TEST_ASSERT_EQ(32U, spanning.x);
   TEST_ASSERT_EQ(64U, spanning.width); /* covers 40..80 */
 
   /* Non-1bpp is a no-op. */
-  ra8_epaper_area_t noop = {
-    .x = k_epaper_align_unaligned_x, .y = 0U, .width = 3U, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&noop, k_ra8_epaper_pf_4bpp, k_epaper_align_panel_w));
+  ra8_epaper_area_t noop = {.x = k_epaper_align_unaligned_x, .y = 0U, .width = 3U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_align_area(&noop, k_ra8_epaper_pf_4bpp, k_epaper_align_panel_w));
   TEST_ASSERT_EQ(17U, noop.x);
 
   /* Refusals. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_align_area(nullptr, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_epaper_align_area(nullptr, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
   ra8_epaper_area_t any = {.x = 0U, .y = 0U, .width = 32U, .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_align_area(&any, k_ra8_epaper_pf_1bpp, 0U));
-  ra8_epaper_area_t outside = {
-    .x = k_epaper_align_past_edge_x, .y = 0U, .width = 32U, .height = 1U};
+  ra8_epaper_area_t outside = {.x      = k_epaper_align_past_edge_x,
+                               .y      = 0U,
+                               .width  = 32U,
+                               .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_epaper_align_area(&outside, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
   TEST_END("epaper MC/DC: 1bpp 32px X/width alignment");
