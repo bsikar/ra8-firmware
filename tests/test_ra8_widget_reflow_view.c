@@ -228,18 +228,6 @@ static void test_reflow_view_link(void)
 }
 
 /**
- * @test ra8_widget_reflow_view render + input + init guard arms.
- *
- * @par MC/DC:
- * `internal_rv_render`: `paint == NULL` false-of-clear arm (no bg clear); the
- * render guard `ops == NULL || render_page == NULL` both true arms (render_page
- * NULL, then ops NULL); `v == NULL` true arm (nothing). `internal_rv_link` guard
- * `ops == NULL || follow_link == NULL` both true arms (ops NULL, then
- * follow_link NULL) -- each falls through to a page turn. `internal_rv_on_input`:
- * `kind != touch` true (button declined); `v == NULL` true (declined). Plus init
- * NULL guards.
- */
-/**
  * @brief Build the guard fixture: a paint-less reflow view over @p ops.
  * @param[out] w   Widget to initialise and give a 200x300 rect.
  * @param[out] rv  View state to point @p w at.
@@ -260,6 +248,18 @@ rv_init_guard_view(ra8_widget_t* w, ra8_widget_reflow_view_t* rv, ra8_widget_ref
   w->rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_view_w, .h = k_t_view_h};
 }
 
+/**
+ * @test ra8_widget_reflow_view render + input + init guard arms.
+ *
+ * @par MC/DC:
+ * `internal_rv_render`: `paint == NULL` false-of-clear arm (no bg clear); the
+ * render guard `ops == NULL || render_page == NULL` both true arms (render_page
+ * NULL, then ops NULL); `v == NULL` true arm (nothing). `internal_rv_link` guard
+ * `ops == NULL || follow_link == NULL` both true arms (ops NULL, then
+ * follow_link NULL) -- each falls through to a page turn. `internal_rv_on_input`:
+ * `kind != touch` true (button declined); `v == NULL` true (declined). Plus init
+ * NULL guards.
+ */
 static void test_reflow_view_render_guards(void)
 {
   TEST_BEGIN("ra8_widget_reflow_view: render guards");

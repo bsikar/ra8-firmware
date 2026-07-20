@@ -669,16 +669,6 @@ static void test_mcdc_scan_addr_err(void)
 }
 
 /**
- * @brief Run every test case in this translation unit.
- *
- * @return 0 when all cases pass (Unity aborts the process on failure).
- *
- * @pre The ``ra8_sim_mmap`` constructor has installed the MMIO windows.
- * @post Every registered case has executed.
- * @note Thread safety: single-threaded test harness.
- * @since 0.1.0
- */
-/**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
  *
@@ -698,6 +688,16 @@ static void (*const s_test_roster[])(void) = {
   test_write_timeout,    test_read_timeout,    test_mcdc_scan_addr_err,
 };
 
+/**
+ * @brief Run every test case in this translation unit.
+ *
+ * @return 0 when all cases pass (Unity aborts the process on failure).
+ *
+ * @pre The ``ra8_sim_mmap`` constructor has installed the MMIO windows.
+ * @post Every registered case has executed.
+ * @note Thread safety: single-threaded test harness.
+ * @since 0.1.0
+ */
 int main(void)
 {
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {

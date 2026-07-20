@@ -215,22 +215,6 @@ static uint8_t t_paeth(uint8_t a, uint8_t b, uint8_t c)
 }
 
 /**
- * @brief Fill `s_raw` with filtered scanlines of the pattern.
- * @param[in] w          Image width, pixels.
- * @param[in] h          Image height, pixels.
- * @param[in] ch         Source channels (1 gray, 2 GA, 3 RGB, 4 RGBA).
- * @param[in] palette    When true, bytes are palette indices `(x+y) % 5`.
- * @param[in] use_filters When true, rows cycle filter types 0..4.
- * @return Filtered byte count in `s_raw`.
- * @retval >0 `h * (1 + w * ch)` bytes.
- * @pre `s_raw` covers the filtered size.
- * @pre @p ch is 1, 2, 3 or 4.
- * @post `s_raw` holds spec-filtered scanlines of the pattern.
- * @post No other state mutated.
- * @note Not thread-safe (shared scratch).
- * @since 0.1.0
- */
-/**
  * @brief Value of one source pixel channel, for either colour model.
  *
  * @details
@@ -341,6 +325,22 @@ png_filter_row(uint8_t* row, uint32_t rowb, uint32_t y, uint32_t ch, uint8_t f, 
   }
 }
 
+/**
+ * @brief Fill `s_raw` with filtered scanlines of the pattern.
+ * @param[in] w          Image width, pixels.
+ * @param[in] h          Image height, pixels.
+ * @param[in] ch         Source channels (1 gray, 2 GA, 3 RGB, 4 RGBA).
+ * @param[in] palette    When true, bytes are palette indices `(x+y) % 5`.
+ * @param[in] use_filters When true, rows cycle filter types 0..4.
+ * @return Filtered byte count in `s_raw`.
+ * @retval >0 `h * (1 + w * ch)` bytes.
+ * @pre `s_raw` covers the filtered size.
+ * @pre @p ch is 1, 2, 3 or 4.
+ * @post `s_raw` holds spec-filtered scanlines of the pattern.
+ * @post No other state mutated.
+ * @note Not thread-safe (shared scratch).
+ * @since 0.1.0
+ */
 static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bool use_filters)
 {
   const uint32_t rowb = w * ch;
@@ -448,18 +448,6 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_i
 }
 
 /**
- * @brief Page every tile of the produced atlas and compare with an expected-
- *        pixel oracle.
- * @param[in] info   Produced atlas geometry.
- * @param[in] ctx_ct PNG colour type driving the oracle (0xFF = JPEG ref).
- * @pre The memstore holds the produced atlas.
- * @pre @p info matches the store contents.
- * @post Every tile byte was compared (test exits on mismatch).
- * @post The store is unmodified.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Expected sample at (@p x, @p y, @p ch) for PNG colour type @p ctx_ct.
  *
  * @details
@@ -546,6 +534,18 @@ static void check_tile_pixels(const ra8_jof_info_t* info,
   }
 }
 
+/**
+ * @brief Page every tile of the produced atlas and compare with an expected-
+ *        pixel oracle.
+ * @param[in] info   Produced atlas geometry.
+ * @param[in] ctx_ct PNG colour type driving the oracle (0xFF = JPEG ref).
+ * @pre The memstore holds the produced atlas.
+ * @pre @p info matches the store contents.
+ * @post Every tile byte was compared (test exits on mismatch).
+ * @post The store is unmodified.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
 {
   for (uint16_t ty = 0U; ty < info->tile_rows; ty++) {

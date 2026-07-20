@@ -646,17 +646,6 @@ static void test_intern_name_too_long_arms_mcdc(void)
 }
 
 /**
- * @brief Test executable entry point -- runs the parser MC/DC vectors.
- *
- * @return 0 on success (all tests passed).
- *
- * @pre Host environment provides stderr.
- * @post Every parse-side decision family above has executed its vectors.
- *
- * @note Not thread-safe (single-threaded test runner).
- * @since 0.1.0
- */
-/**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
  *
@@ -691,6 +680,17 @@ static void (*const s_test_roster[])(void) = {
   test_intern_name_too_long_arms_mcdc,
 };
 
+/**
+ * @brief Test executable entry point -- runs the parser MC/DC vectors.
+ *
+ * @return 0 on success (all tests passed).
+ *
+ * @pre Host environment provides stderr.
+ * @post Every parse-side decision family above has executed its vectors.
+ *
+ * @note Not thread-safe (single-threaded test runner).
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {

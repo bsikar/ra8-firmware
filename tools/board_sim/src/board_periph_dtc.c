@@ -195,8 +195,6 @@ typedef struct {
  * @param[in]  uc      Unicorn engine holding the emulated memory.
  * @param[in]  ti_addr 16-byte-aligned address of the TI block.
  * @param[out] out     Receives the decoded descriptor.
- * @return None.
- * @retval None Void.
  * @pre @p uc and @p out are non-null.
  * @pre @p ti_addr is mapped in the emulated address space.
  * @post Every field of @p out is written.
@@ -263,8 +261,6 @@ static uint32_t dtc_unit_count(const dtc_ti_t* ti)
  * @param[in] ti    Decoded descriptor supplying the addresses and modes.
  * @param[in] units Unit count to move (bounded by ::dtc_unit_count).
  * @param[in] unit  Unit width in bytes (1, 2 or 4).
- * @return None.
- * @retval None Void.
  * @pre @p uc and @p ti are non-null.
  * @pre @p unit is 1, 2 or 4, so the scratch buffer cannot overrun.
  * @post @p units units have been written at the destination.

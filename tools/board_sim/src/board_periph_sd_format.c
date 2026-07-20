@@ -151,7 +151,7 @@ void sd_label_field(uint8_t* dst, const char* label)
   }
 }
 
-/** @brief Format an empty FAT16 volume; returns the chosen sectors-per-cluster. */
+/* @brief Format an empty FAT16 volume; returns the chosen sectors-per-cluster. */
 /**
  * @brief Solve the FAT16 cluster size and FAT length for @p total_sectors.
  *

@@ -419,16 +419,7 @@ static ra8_err_t tc_open_std(ra8_comic_t* c, ra8_comic_page_t* pages, char* name
                         (uint32_t)k_tc_name_cap);
 }
 
-/**
- * @test test_comic_facade_edges
- * @brief The facade's NULL-reader accessors, unopened page_info, zero-capacity
- *        opens, a short magic read, and the ZIP-magic discrimination legs.
- *
- * @par MC/DC:
- * (no compound decisions under test -- each accessor guard, capacity guard, and
- * magic-byte comparison is an independent single-condition check.)
- */
-/**
+/*
  * @brief Archive signature bytes fed to the facade's magic discriminator.
  *
  * @details
@@ -447,6 +438,15 @@ static const uint8_t k_tc_sig_pk_other[] = {'P', 'K', 0x01, 0x02, 'j', 'u', 'n',
 /** @brief ZIP end-of-central-directory signature ("PK\\x05\\x06"). */
 static const uint8_t k_tc_sig_eocd[] = {'P', 'K', 0x05, 0x06};
 
+/**
+ * @test test_comic_facade_edges
+ * @brief The facade's NULL-reader accessors, unopened page_info, zero-capacity
+ *        opens, a short magic read, and the ZIP-magic discrimination legs.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- each accessor guard, capacity guard, and
+ * magic-byte comparison is an independent single-condition check.)
+ */
 static void test_comic_facade_edges(void)
 {
   TEST_BEGIN("comic: facade guards + magic discrimination");

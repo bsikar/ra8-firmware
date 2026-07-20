@@ -117,16 +117,6 @@ static void bcx_fill_blob(void)
 }
 
 /**
- * @brief Pack an RBKC container over ::s_blob with real zlib chunk streams.
- * @details Splits the blob into `chunk_bytes` slices, `mz_compress2`s each at
- *          the tool's compression level, and assembles header + table +
- *          streams into @p out. When @p short_last is true the final stream
- *          compresses only ::k_bcx_short_span of the last slice's bytes -- a
- *          *valid* stream that inflates to the wrong span, for the
- *          produced-length mismatch leg.
- * @return Packed container length in bytes.
- */
-/**
  * @brief Deflate every chunk of ::s_blob, recording lengths and offsets.
  *
  * @details
@@ -641,6 +631,16 @@ static void test_ra8_book_chunked_read_guards(void)
   TEST_END("ra8_book_chunked_read guards");
 }
 
+/**
+ * @brief Pack an RBKC container over ::s_blob with real zlib chunk streams.
+ * @details Splits the blob into `chunk_bytes` slices, `mz_compress2`s each at
+ *          the tool's compression level, and assembles header + table +
+ *          streams into @p out. When @p short_last is true the final stream
+ *          compresses only ::k_bcx_short_span of the last slice's bytes -- a
+ *          *valid* stream that inflates to the wrong span, for the
+ *          produced-length mismatch leg.
+ * @return Packed container length in bytes.
+ */
 int main(void)
 {
   test_ra8_book_chunked_open_happy();

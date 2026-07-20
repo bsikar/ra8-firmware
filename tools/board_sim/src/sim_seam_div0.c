@@ -311,30 +311,6 @@ void div0_patch_sites(uc_engine* uc)
 }
 
 /**
- * @brief Scan the image for UDIV/SDIV sites so the div-0 trap can arm later.
- *
- * @details
- * Walks the ELF32 PT_LOAD executable segments on 2-byte boundaries for the
- * UDIV/SDIV encoding (::udiv_sdiv_decode), recording each site's VMA (p_vaddr
- * based, so a ramfunc is tracked at its execution address) and its original
- * halfwords. Nothing is patched here; the always-on SCB control-write watcher
- * (::on_scb_ctrl_write) overwrites the sites with UDF via ::div0_patch_sites only
- * if the firmware sets CCR.DIV_0_TRP. Tracked for every core (UDIV/SDIV exist on
- * the M85 and the M33 alike). A scan false-positive is harmless: the site is only
- * ever patched after opt-in, and ::emulate_div0_patched re-decodes before acting.
- *
- * @param[in] elf In-memory ELF image (still alive at call time).
- * @param[in] len Length of @p elf in bytes.
- * @return Nothing.
- *
- * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
- * @pre @p len is the true byte length of @p elf.
- * @post ::s_div0_site holds up to ::k_div0_sites_max tracked divide sites.
- * @post No site is patched yet (armed later by on_scb_ctrl_write).
- * @note Not thread-safe; call once during setup before the run loop.
- * @since 0.1.0
- */
-/**
  * @brief Record every UDIV/SDIV site in one executable segment.
  *
  * @details
@@ -381,6 +357,30 @@ static bool div0_scan_segment(const elf_exec_segment_t* seg, void* ctx)
   return true;
 }
 
+/**
+ * @brief Scan the image for UDIV/SDIV sites so the div-0 trap can arm later.
+ *
+ * @details
+ * Walks the ELF32 PT_LOAD executable segments on 2-byte boundaries for the
+ * UDIV/SDIV encoding (::udiv_sdiv_decode), recording each site's VMA (p_vaddr
+ * based, so a ramfunc is tracked at its execution address) and its original
+ * halfwords. Nothing is patched here; the always-on SCB control-write watcher
+ * (::on_scb_ctrl_write) overwrites the sites with UDF via ::div0_patch_sites only
+ * if the firmware sets CCR.DIV_0_TRP. Tracked for every core (UDIV/SDIV exist on
+ * the M85 and the M33 alike). A scan false-positive is harmless: the site is only
+ * ever patched after opt-in, and ::emulate_div0_patched re-decodes before acting.
+ *
+ * @param[in] elf In-memory ELF image (still alive at call time).
+ * @param[in] len Length of @p elf in bytes.
+ * @return Nothing.
+ *
+ * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
+ * @pre @p len is the true byte length of @p elf.
+ * @post ::s_div0_site holds up to ::k_div0_sites_max tracked divide sites.
+ * @post No site is patched yet (armed later by on_scb_ctrl_write).
+ * @note Not thread-safe; call once during setup before the run loop.
+ * @since 0.1.0
+ */
 void div0_seam_install(const uint8_t* elf, long len)
 {
   s_div0_site_n = 0U;

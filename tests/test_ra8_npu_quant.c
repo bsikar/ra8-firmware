@@ -18,10 +18,6 @@
 #include "ra8_npu_quant.h"
 #include "unity_minimal.h"
 
-/**
- * @enum t_quant_t
- * @brief Quantised sample values and the out-parameter seed.
- */
 /** @brief Negative scale factor; a quantiser must reject a non-positive scale. */
 static const float k_t_scale_negative = 0.5F;
 
@@ -50,6 +46,10 @@ static const float k_t_input_over_cap = 5.0e6F;
 /** @brief Pre-set dequantised output; a zero-count call must leave it. */
 static const float k_t_float_seed = 7.0F;
 
+/**
+ * @enum t_quant_t
+ * @brief Quantised sample values and the out-parameter seed.
+ */
 typedef enum : int16_t {
   k_t_input_positive = 10, /**< A positive int8 input; paired with -4 so the
                                 arm covers both signs in one vector.           */

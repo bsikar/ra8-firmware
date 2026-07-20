@@ -171,16 +171,6 @@ static void t_wt_put_u32(uint8_t* p, uint32_t v)
 }
 
 /**
- * @brief Build a raw (codec 0) JOF1 band-tile atlas for the synthetic strip.
- *
- * @details Emits header + N raw band payloads + index + footer per the JOF1
- *          layout, with `tile_w == width` (one full-width band column). The
- *          result is validated by `ra8_jof_parse()` in the tests, so a
- *          builder bug is caught by the reader's fail-closed checks.
- *
- * @return Total atlas byte length.
- */
-/**
  * @brief Write the JOF1 atlas header for the band-tiled strip fixture.
  *
  * @param[in] width  Strip width in pixels (also the tile width).
@@ -297,6 +287,16 @@ static uint32_t t_wt_write_index_and_footer(uint32_t        off,
   return total;
 }
 
+/**
+ * @brief Build a raw (codec 0) JOF1 band-tile atlas for the synthetic strip.
+ *
+ * @details Emits header + N raw band payloads + index + footer per the JOF1
+ *          layout, with `tile_w == width` (one full-width band column). The
+ *          result is validated by `ra8_jof_parse()` in the tests, so a
+ *          builder bug is caught by the reader's fail-closed checks.
+ *
+ * @return Total atlas byte length.
+ */
 static uint32_t t_wt_build_strip(void)
 {
   const uint32_t width  = (uint32_t)k_t_wt_width;
@@ -472,18 +472,6 @@ static void t_open_validates(void)
 }
 
 /**
- * @test open_rejects_non_band_atlas
- *
- * @par MC/DC:
- * Single-condition guard `if (info.tile_w != info.width)` (no compound): the
- * two branches are the valid strip (false; covered by open_validates_inputs V1)
- * and this narrow-tile atlas (tile_w = width/2 => tile_w != width true). A
- * separate `tile_cols != 1` test was removed as provably redundant --
- * `ra8_jof_parse` derives tile_cols as ceil(width / tile_w), so
- * tile_w == width already forces tile_cols == 1 and tile_cols could never
- * independently flip the outcome (its true arm is a strict subset of this one).
- */
-/**
  * @brief Build a two-column JOF1 atlas -- the shape a long strip must reject.
  *
  * @details
@@ -536,6 +524,18 @@ static uint32_t t_wt_build_two_column_atlas(void)
   return t_wt_write_index_and_footer(off, tiles, offs, lens);
 }
 
+/**
+ * @test open_rejects_non_band_atlas
+ *
+ * @par MC/DC:
+ * Single-condition guard `if (info.tile_w != info.width)` (no compound): the
+ * two branches are the valid strip (false; covered by open_validates_inputs V1)
+ * and this narrow-tile atlas (tile_w = width/2 => tile_w != width true). A
+ * separate `tile_cols != 1` test was removed as provably redundant --
+ * `ra8_jof_parse` derives tile_cols as ceil(width / tile_w), so
+ * tile_w == width already forces tile_cols == 1 and tile_cols could never
+ * independently flip the outcome (its true arm is a strict subset of this one).
+ */
 static void t_open_rejects_non_band(void)
 {
   TEST_BEGIN("open_rejects_non_band_atlas");

@@ -224,7 +224,6 @@ static bool priv_hdr_sanity(FILE*       out,
  * @param[in] chunks      Declared chunk count.
  * @param[in] reserved    Reserved header word.
  * @return None.
- * @retval None Void.
  *
  * @pre @p out is non-null.
  * @pre The values were read from a header of at least the minimum length.

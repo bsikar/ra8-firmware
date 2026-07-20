@@ -695,7 +695,7 @@ static void test_hmac_sha256_inc_rfc4231_1(void)
   TEST_END("rsip hmac sha256 incremental rfc4231 case 1");
 }
 
-/**
+/*
  * @brief HMAC-SHA-256 with an oversized key (forces SHA collapse to 32 bytes).
   *
   * @par MC/DC:

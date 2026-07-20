@@ -303,16 +303,6 @@ static void test_book_grid_input(void)
 }
 
 /**
- * @test ra8_widget_book_grid render + input + init guard arms.
- *
- * @par MC/DC:
- * `internal_bg_render`: `count == 0` true (bg only) and `books == NULL` true
- * (bg only); `paint == NULL` / `g == NULL` true (nothing). `internal_bg_card`
- * `draw_text == NULL` true (no labels). `internal_bg_on_input`: `count == 0`
- * true (declined); `on_open == NULL` false-callback (still records selected);
- * `g == NULL` true (declined). Plus init NULL guards.
- */
-/**
  * @brief Render / input guard arms for `book_grid` (the bulk of the case).
  *
  * @details
@@ -376,6 +366,16 @@ static void book_grid_guard_arms(void)
   TEST_ASSERT_EQ(false, w.vt->on_input(&w, &t));
 }
 
+/**
+ * @test ra8_widget_book_grid render + input + init guard arms.
+ *
+ * @par MC/DC:
+ * `internal_bg_render`: `count == 0` true (bg only) and `books == NULL` true
+ * (bg only); `paint == NULL` / `g == NULL` true (nothing). `internal_bg_card`
+ * `draw_text == NULL` true (no labels). `internal_bg_on_input`: `count == 0`
+ * true (declined); `on_open == NULL` false-callback (still records selected);
+ * `g == NULL` true (declined). Plus init NULL guards.
+ */
 static void test_book_grid_guards(void)
 {
   TEST_BEGIN("ra8_widget_book_grid: render + input + init guards");

@@ -56,7 +56,6 @@ typedef enum : uint16_t {
     600U, /**< Bytes of filler presented as a non-archive, past any header the sniffer might read so the rejection is on content rather than length. */
 } comic_cbt_fixture2_t;
 
-/** @brief Named double constant used by this file. */
 /**
  * @enum comic_cbt_tcb_octal_0644_t
  * @brief Named octal mode bits used by this file.

@@ -210,6 +210,7 @@ static const uint8_t k_sos_444_cr_fail[] = {
  * hardware state is touched.
  *
  * @param[out]    dst Destination stream buffer (>= `*off + n` bytes).
+ * @param[in]     cap Capacity of @p dst in bytes; the append is asserted to fit.
  * @param[in,out] off Running write cursor; advanced by `n` on return.
  * @param[in]     seg Source fragment (non-NULL, `n` readable bytes).
  * @param[in]     n   Fragment length in bytes.
