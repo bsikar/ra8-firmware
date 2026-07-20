@@ -326,9 +326,15 @@ RestartSec=30
 WantedBy=default.target
 EOF
   systemctl --user daemon-reload
-  systemctl --user enable --now ra8-ci-monitor.service
-  echo "installed ra8-ci-monitor.service"
-  systemctl --user status ra8-ci-monitor.service --no-pager 2>/dev/null | head -8
+  systemctl --user enable ra8-ci-monitor.service
+  # RESTART, not `enable --now`. `--now` starts a stopped unit and does nothing
+  # at all to a running one, so re-running install-service after fixing this
+  # script left the OLD code running out of $stable with no indication -- the
+  # exact silent drift the stable-copy comment above exists to prevent. The
+  # daemon is a poller; dropping one cycle to restart it costs nothing.
+  systemctl --user restart ra8-ci-monitor.service
+  echo "installed and (re)started ra8-ci-monitor.service"
+  systemctl --user status ra8-ci-monitor.service --no-pager 2>/dev/null | head -6
 }
 
 # Zero-quota fallback: read job outcomes off the runner box itself.
