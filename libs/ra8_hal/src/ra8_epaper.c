@@ -132,8 +132,17 @@ typedef enum : uint32_t {
  * Deliberately distinct from ::ra8_epaper_pixel_format_t: the controller
  * numbers its formats 2 bpp = 0, 3 bpp = 1, 4 bpp = 2, 8 bpp = 3, which
  * is neither the bit depth nor the driver's selector ordering. 1 bpp has
- * no code of its own -- the controller consumes bi-level data through the
- * 8 bpp path with the bitmap-mode register armed.
+ * no code of its own, so it maps onto the 8 bpp code here.
+ *
+ * @warning That mapping alone is NOT a working 1 bpp path. The controller
+ *          only interprets bi-level data as bi-level while its bitmap-mode
+ *          register bit is armed, and this driver does not arm it: the
+ *          arm/restore window spans ``ra8_epaper_load_image`` through the
+ *          end of ::ra8_epaper_display_area, so leaving it armed would
+ *          corrupt the next 4/8 bpp update. Until that cross-call state is
+ *          designed and bench-checked, ::k_ra8_epaper_pf_1bpp exercises
+ *          only the 32-pixel alignment contract; no production caller
+ *          selects it, and the display PAL packs 4 bpp.
  */
 typedef enum : uint16_t {
   k_ra8_epaper_wire_pf_2bpp = 0U, /**< 2 bits per pixel. */

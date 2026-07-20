@@ -1283,7 +1283,7 @@ target_include_directories(test_cache_store_demo PRIVATE
   ${FW_ROOT}/libs/ra8_reflow/inc
   ${FW_ROOT}/libs/ra8_webp/inc
   ${FW_ROOT}/libs/ra8_touch_cal/inc
-    ${FW_ROOT}/libs/ra8_epd_cal/inc
+  ${FW_ROOT}/libs/ra8_epd_cal/inc
   ${FW_ROOT}/libs/ra8_mpu/inc
   ${FW_ROOT}/libs/ra8_psa_crypto/inc
   ${FW_ROOT}/libs/ra8_wdt_supervisor/inc

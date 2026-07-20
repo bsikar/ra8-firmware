@@ -553,15 +553,6 @@ static void test_init_ladder_legs(void)
 }
 
 /**
- * @test test_load_image_api_legs
- *
- * @par MC/DC:
- * (no compound decisions on the exercised legs -- each LISAR write, the
- * LD_IMG_AREA command, the argument block and the pixel stream are guarded by
- * a single-condition ``err`` check; the size decision is covered by
- * ::test_validate_and_size_mcdc.)
- */
-/**
  * @brief Run one 8 bpp ``load_image`` with the transfer counter armed.
  *
  * @details
@@ -590,6 +581,15 @@ cov_load_at_fault(uint32_t fault, const ra8_epaper_area_t* area, const uint8_t* 
                                    k_ra8_epaper_endian_little);
 }
 
+/**
+ * @test test_load_image_api_legs
+ *
+ * @par MC/DC:
+ * (no compound decisions on the exercised legs -- each LISAR write, the
+ * LD_IMG_AREA command, the argument block and the pixel stream are guarded by
+ * a single-condition ``err`` check; the size decision is covered by
+ * ::test_validate_and_size_mcdc.)
+ */
 static void test_load_image_api_legs(void)
 {
   TEST_BEGIN("load_image: fault LISAR lo/hi, cmd, args, and pixel stream");
