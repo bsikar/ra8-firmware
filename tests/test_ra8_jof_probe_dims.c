@@ -50,6 +50,9 @@ enum : uint32_t {
   k_p_form_ofs   = 8U,     /**< Offset of the RIFF form-type fourCC. */
 };
 
+/** @brief The two-byte JPEG Start-Of-Image marker. */
+static const uint8_t s_jpeg_soi[2] = {0xFFU, 0xD8U}; /* MAGIC-OK: JPEG SOI marker */
+
 /** @brief RIFF container tag, as raw bytes (unterminated, exactly 4 wide). */
 static const uint8_t s_riff_tag[4] = {'R', 'I', 'F', 'F'}; /* MAGIC-OK: RIFF fourCC */
 
@@ -290,8 +293,7 @@ static void test_probe_jpeg_dispatch(void)
   uint16_t w                = 0U;
   uint16_t h                = 0U;
   (void)memset(hdr, 0, sizeof(hdr));
-  hdr[0]             = 0xFFU; /* MAGIC-OK: JPEG SOI marker, first byte  */
-  hdr[1]             = 0xD8U; /* MAGIC-OK: JPEG SOI marker, second byte */
+  (void)memcpy(hdr, s_jpeg_soi, sizeof(s_jpeg_soi));
   const ra8_err_t rc = ra8_jof_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h);
   /* Whatever the reader concludes about a headerless JPEG, the probe must not
    * have treated it as an unrecognised container. */

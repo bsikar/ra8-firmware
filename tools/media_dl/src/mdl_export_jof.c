@@ -213,6 +213,78 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Produce one page's atlas into an already-open output file.
+ *
+ * @details
+ * Carves the producer's two scratch arenas -- the streaming work arena, and the
+ * whole-frame arena only a WebP page needs -- runs the producer, and releases
+ * both on every exit path. Splitting this out of jof_one() means each function
+ * owns one kind of resource: this one owns the scratch, jof_one() owns the
+ * source buffer and the output file.
+ *
+ * @param[in]     src      Encoded page bytes.
+ * @param[in]     slen     Length of @p src in bytes.
+ * @param[in]     w        Decoded page width in pixels.
+ * @param[in]     h        Decoded page height in pixels.
+ * @param[in]     tile_h   Band height for this page.
+ * @param[in]     work_cap Work-arena size, from ::ra8_jof_work_bytes.
+ * @param[in,out] out      Open output file the atlas is written to.
+ *
+ * @return Producer result.
+ * @retval k_ra8_ok               The atlas was written to @p out.
+ * @retval k_ra8_err_no_mem       An arena could not be allocated.
+ * @retval k_ra8_err_invalid_size The geometry admits no WebP arena.
+ *
+ * @pre @p src holds @p slen readable bytes and @p out is open for writing.
+ * @pre @p work_cap is non-zero.
+ * @post Both scratch arenas are released, on success and on every failure.
+ * @post Nothing is written to @p out beyond what the producer emitted.
+ *
+ * @note Not thread-safe.
+ * @see jof_carve_webp()
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t* src,
+                                               size_t         slen,
+                                               uint16_t       w,
+                                               uint16_t       h,
+                                               uint16_t       tile_h,
+                                               uint32_t       work_cap,
+                                               FILE*          out)
+{
+  uint8_t* work = (uint8_t*)malloc((size_t)work_cap);
+  if (work == nullptr) {
+    return k_ra8_err_no_mem;
+  }
+  uint8_t*        webp_work = nullptr;
+  size_t          webp_cap  = 0U;
+  const ra8_err_t carve_rc  = jof_carve_webp(src, slen, w, h, &webp_work, &webp_cap);
+  if (carve_rc != k_ra8_ok) {
+    free(work);
+    return carve_rc;
+  }
+  jof_pull_ctx_t        pull = {.data = src, .len = slen, .pos = 0U};
+  ra8_jof_produce_cfg_t cfg  = {.pull          = jof_pull,
+                                .pull_ctx      = &pull,
+                                .sink          = jof_sink,
+                                .sink_ctx      = out,
+                                .tile_w        = w,
+                                .tile_h        = tile_h,
+                                .codec         = (uint8_t)k_ra8_jof_codec_deflate,
+                                .max_width     = w,
+                                .max_height    = h,
+                                .work          = work,
+                                .work_cap      = work_cap,
+                                .webp_work     = webp_work,
+                                .webp_work_cap = webp_cap};
+  ra8_jof_info_t        info = {};
+  const ra8_err_t       rc   = ra8_jof_produce(&cfg, &info);
+  free(work);
+  free(webp_work);
+  return rc;
+}
+
 /** @brief Transcode one JPEG / PNG / WebP page to a `.jof` full-width-column atlas. */
 RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
 {
@@ -232,42 +304,17 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
   }
   const uint16_t tile_h   = (h < (uint16_t)k_jof_band_h) ? h : (uint16_t)k_jof_band_h;
   const uint32_t work_cap = ra8_jof_work_bytes(w, h, w, tile_h);
-  uint8_t*       work     = (work_cap > 0U) ? (uint8_t*)malloc(work_cap) : nullptr;
-  FILE*          out      = (work != nullptr) ? fopen(out_path, "wb") : nullptr;
+  if (work_cap == 0U) {
+    free(src);
+    return k_ra8_err_invalid_size;
+  }
+  FILE* out = fopen(out_path, "wb");
   if (out == nullptr) {
-    free(work);
     free(src);
-    return (work_cap == 0U) ? k_ra8_err_invalid_size : k_ra8_fail;
+    return k_ra8_fail;
   }
-  uint8_t*        webp_work = nullptr;
-  size_t          webp_cap  = 0U;
-  const ra8_err_t carve_rc  = jof_carve_webp(src, slen, w, h, &webp_work, &webp_cap);
-  if (carve_rc != k_ra8_ok) {
-    (void)fclose(out);
-    (void)remove(out_path);
-    free(work);
-    free(src);
-    return carve_rc;
-  }
-  jof_pull_ctx_t              pull = {.data = src, .len = slen, .pos = 0U};
-  ra8_jof_produce_cfg_t cfg  = {.pull          = jof_pull,
-                                      .pull_ctx      = &pull,
-                                      .sink          = jof_sink,
-                                      .sink_ctx      = out,
-                                      .tile_w        = w,
-                                      .tile_h        = tile_h,
-                                      .codec         = (uint8_t)k_ra8_jof_codec_deflate,
-                                      .max_width     = w,
-                                      .max_height    = h,
-                                      .work          = work,
-                                      .work_cap      = work_cap,
-                                      .webp_work     = webp_work,
-                                      .webp_work_cap = webp_cap};
-  ra8_jof_info_t        info = {};
-  rc                               = ra8_jof_produce(&cfg, &info);
+  rc = jof_produce_page(src, slen, w, h, tile_h, work_cap, out);
   (void)fclose(out);
-  free(work);
-  free(webp_work);
   free(src);
   if (rc != k_ra8_ok) {
     (void)remove(out_path);

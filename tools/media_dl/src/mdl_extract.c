@@ -21,7 +21,9 @@ typedef enum : uint16_t {
 /** @brief ASCII lower-case (locale-independent). */
 RA8_INTERNAL static char lc(char c)
 {
-  return ((c >= 'A') && (c <= 'Z')) ? (char)(c + ('a' - 'A')) : c;
+  /* The conditional operator promotes both arms to int, so the cast belongs
+   * on the whole expression; both arms are already char-valued. */
+  return (char)(((c >= 'A') && (c <= 'Z')) ? (c + ('a' - 'A')) : c);
 }
 
 /** @brief True if `c` ends an HTML attribute token on its left side. */

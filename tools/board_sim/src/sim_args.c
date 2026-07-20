@@ -315,7 +315,8 @@ static void args_attach_blank_sd(const char* spec)
   const long num  = strtol(spec, &endp, (int)k_strtol_base10);
   uint64_t   mult =
     (uint64_t)k_sectors_per_mib * (uint64_t)k_bytes_per_sector; /* default unit: MiB. */
-  const char unit = ((endp != nullptr) && (*endp != '\0')) ? (char)tolower((int)*endp) : 'm';
+  /* Cast the whole conditional: it promotes both arms to int. */
+  const char unit = (char)(((endp != nullptr) && (*endp != '\0')) ? tolower((int)*endp) : 'm');
   if (unit == 'k') {
     mult = (uint64_t)k_size_kib;
   } else if (unit == 'g') {

@@ -240,7 +240,7 @@ static void setup_with(const ra8_usb_pmsc_storage_t* storage)
  */
 static void seed_rw_cdb(uint32_t lba, uint16_t block_count)
 {
-  for (uint8_t i = 0U; i < k_ra8_pmsc_cdb_max_len; ++i) {
+  for (uint16_t i = 0U; i < (uint16_t)k_ra8_pmsc_cdb_max_len; ++i) {
     s_usb_pmsc_state.cbw_cdb[i] = 0U;
   }
   s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_msb] =
