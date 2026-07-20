@@ -773,6 +773,58 @@ static uint32_t priv_rd_be32(const uint8_t* buf)
          ((uint32_t)buf[2] << k_ra8_ta_le_sh8) | (uint32_t)buf[3];
 }
 
+/**
+ * @brief True if the sniff window carries the WebP RIFF container magic.
+ * @details A WebP file is a RIFF container whose form type is "WEBP", so both
+ *          fourCCs must match -- a bare "RIFF" is some other RIFF payload.
+ * @param[in] data Source bytes (at least ::k_ra8_ta_sniff_bytes readable).
+ * @return Whether both fourCCs matched.
+ * @retval true  The source is a WebP RIFF container.
+ * @retval false Either fourCC differs.
+ * @pre @p data holds ::k_ra8_ta_sniff_bytes readable bytes.
+ * @pre The caller has already excluded the JPEG and PNG signatures.
+ * @post No state is mutated.
+ * @post The result depends only on the first twelve source bytes.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static bool priv_is_webp(const uint8_t* data)
+{
+  return (memcmp(data, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
+         (memcmp(&data[k_ra8_ta_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) == 0);
+}
+
+/**
+ * @brief Read the pixel geometry out of a PNG IHDR chunk.
+ * @details IHDR is fixed at the head of every PNG, so the width and height sit
+ *          at constant offsets; both are big-endian per the specification.
+ * @param[in]  data  Source bytes beginning with the PNG signature.
+ * @param[in]  len   Readable length of @p data in bytes.
+ * @param[out] out_w Receives the declared width in pixels.
+ * @param[out] out_h Receives the declared height in pixels.
+ * @return Result code.
+ * @retval k_ra8_ok                Geometry read.
+ * @retval k_ra8_err_not_supported The source is too short to hold a full IHDR.
+ * @pre @p data starts with the eight-byte PNG signature.
+ * @pre @p out_w and @p out_h are writable.
+ * @post On success both outputs hold the IHDR fields verbatim, unvalidated.
+ * @post On failure neither output is written.
+ * @note Pure apart from the outputs; thread-safe.
+ * @see priv_rd_be32()
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* out_h)
+{
+  if (len < (size_t)k_ra8_ta_png_ihdr_end) {
+    return k_ra8_err_not_supported; /* IHDR truncated */
+  }
+  *out_w = priv_rd_be32(&data[k_ra8_ta_png_ihdr_w]);
+  *out_h = priv_rd_be32(&data[k_ra8_ta_png_ihdr_h]);
+  return k_ra8_ok;
+}
+
 ra8_err_t
 ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
 {
@@ -789,14 +841,11 @@ ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint1
     return ra8_jpeg_sw_get_dimensions(data, (uint32_t)len, out_w, out_h);
   }
   if (memcmp(data, s_prod_png_sig, sizeof(s_prod_png_sig)) == 0) {
-    if (len < (size_t)k_ra8_ta_png_ihdr_end) {
-      return k_ra8_err_not_supported; /* IHDR truncated */
+    const ra8_err_t rc = priv_png_dims(data, len, &w, &h);
+    if (rc != k_ra8_ok) {
+      return rc;
     }
-    w = priv_rd_be32(&data[k_ra8_ta_png_ihdr_w]);
-    h = priv_rd_be32(&data[k_ra8_ta_png_ihdr_h]);
-  } else if ((memcmp(data, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
-             (memcmp(&data[k_ra8_ta_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) ==
-              0)) {
+  } else if (priv_is_webp(data)) {
     const ra8_err_t rc = ra8_webp_get_info(data, len, &w, &h);
     if (rc != k_ra8_ok) {
       return rc;
