@@ -769,6 +769,57 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
 }
 
 /** @brief Transcode one JPEG / PNG / WebP page to a `.jof` full-width-column atlas. */
+/**
+ * @brief Carve the whole-frame WebP work arena for a WebP page (no-op otherwise).
+ * @details WebP cannot stream, so its producer arm needs one arena holding the
+ *          compressed source, the decoded RGBA frame and libwebp's scratch at
+ *          once. JPEG and PNG stream, so they would pay that whole-frame cost
+ *          for nothing; the arena is carved only when the page really is a
+ *          WebP. Reporting success with a NULL arena is the producer's
+ *          fail-closed "reject WebP" signal, correct for the other codecs.
+ * @param[in]  src      Page bytes to sniff.
+ * @param[in]  slen     Length of @p src in bytes.
+ * @param[in]  w        Decoded page width in pixels.
+ * @param[in]  h        Decoded page height in pixels.
+ * @param[out] out_work Receives the arena, or nullptr for a non-WebP page.
+ * @param[out] out_cap  Receives the arena size in bytes, or 0.
+ * @return Result code.
+ * @retval k_ra8_ok               Non-WebP page, or arena carved successfully.
+ * @retval k_ra8_err_invalid_size The geometry does not admit a WebP arena.
+ * @retval k_ra8_err_no_mem       The host allocator refused the arena.
+ * @pre @p src holds @p slen readable bytes.
+ * @pre @p out_work and @p out_cap are writable.
+ * @post On success `*out_work` is nullptr (non-WebP) or owned by the caller.
+ * @post On failure `*out_work` is nullptr and nothing was allocated.
+ * @note Not thread-safe; the caller owns and must free `*out_work`.
+ * @see ra8_tileatlas_webp_work_bytes()
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
+                                             size_t         slen,
+                                             uint16_t       w,
+                                             uint16_t       h,
+                                             uint8_t**      out_work,
+                                             size_t*        out_cap)
+{
+  *out_work = nullptr;
+  *out_cap  = 0U;
+  if (!jof_is_webp(src, slen)) {
+    return k_ra8_ok;
+  }
+  const uint32_t need = ra8_tileatlas_webp_work_bytes(w, h, (uint32_t)slen);
+  if (need == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  uint8_t* mem = (uint8_t*)malloc((size_t)need);
+  if (mem == nullptr) {
+    return k_ra8_err_no_mem;
+  }
+  *out_work = mem;
+  *out_cap  = (size_t)need;
+  return k_ra8_ok;
+}
+
 RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
 {
   uint8_t*  src  = nullptr;
@@ -794,22 +845,15 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
     free(src);
     return (work_cap == 0U) ? k_ra8_err_invalid_size : k_ra8_fail;
   }
-  /* WebP cannot stream, so its arm needs a whole-frame arena (source + RGBA
-   * frame + libwebp scratch). Carve it only when the page really is WebP:
-   * JPEG and PNG stream and would pay the whole-frame cost for nothing. */
-  uint8_t* webp_work     = nullptr;
-  size_t   webp_work_cap = 0U;
-  if (jof_is_webp(src, slen)) {
-    const uint32_t need = ra8_tileatlas_webp_work_bytes(w, h, (uint32_t)slen);
-    webp_work           = (need > 0U) ? (uint8_t*)malloc((size_t)need) : nullptr;
-    if (webp_work == nullptr) {
-      (void)fclose(out);
-      (void)remove(out_path);
-      free(work);
-      free(src);
-      return (need == 0U) ? k_ra8_err_invalid_size : k_ra8_err_no_mem;
-    }
-    webp_work_cap = (size_t)need;
+  uint8_t*        webp_work = nullptr;
+  size_t          webp_cap  = 0U;
+  const ra8_err_t carve_rc  = jof_carve_webp(src, slen, w, h, &webp_work, &webp_cap);
+  if (carve_rc != k_ra8_ok) {
+    (void)fclose(out);
+    (void)remove(out_path);
+    free(work);
+    free(src);
+    return carve_rc;
   }
   jof_pull_ctx_t              pull = {.data = src, .len = slen, .pos = 0U};
   ra8_tileatlas_produce_cfg_t cfg  = {.pull          = jof_pull,
@@ -824,7 +868,7 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
                                       .work          = work,
                                       .work_cap      = work_cap,
                                       .webp_work     = webp_work,
-                                      .webp_work_cap = webp_work_cap};
+                                      .webp_work_cap = webp_cap};
   ra8_tileatlas_info_t        info = {};
   rc                               = ra8_tileatlas_produce(&cfg, &info);
   (void)fclose(out);
