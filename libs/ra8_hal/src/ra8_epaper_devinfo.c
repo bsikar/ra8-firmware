@@ -105,8 +105,13 @@ static void internal_ra8_epaper_unpack_ver_word(uint16_t word, char* dst)
     (hi >= (uint8_t)k_ra8_epaper_di_ascii_min) && (hi < (uint8_t)k_ra8_epaper_di_ascii_max);
   const bool lo_p =
     (lo >= (uint8_t)k_ra8_epaper_di_ascii_min) && (lo < (uint8_t)k_ra8_epaper_di_ascii_max);
-  dst[0] = hi_p ? (char)hi : '\0';
-  dst[1] = lo_p ? (char)lo : '\0';
+  /* Cast the whole conditional, not each arm: the usual arithmetic
+   * conversions give the ternary type `int`, so casting only the value arm
+   * still leaves an implicit int -> char narrowing at the assignment. Both
+   * arms are bounded by the printable-ASCII test above (0x20 .. 0x7E), so
+   * every value is representable in a signed char. */
+  dst[0] = (char)(hi_p ? hi : 0U);
+  dst[1] = (char)(lo_p ? lo : 0U);
 }
 
 /**
