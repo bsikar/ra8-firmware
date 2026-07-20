@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_jof_produce.c
  * @brief Host tests for the import-time transcode producer: JPEG/PNG ->
- *        JOF, byte parity, bounded RAM high-water, hostile sources (#231).
+ *        JOF, byte parity and the bounded-RAM high-water proof (#231).
  *
  * @details
  * Sources are synthesized in-test from deterministic pixel patterns:
@@ -19,6 +19,10 @@
  * more than 5x the producer's entire working set and asserts the fixed-
  * buffer budget held -- the #231 "larger than the working set at native
  * resolution" property, proven at host scale.
+ *
+ * The producer's rejection vectors (format sniff, pull failure, config guards,
+ * PNG IHDR malformations, starved budgets) live in the sibling
+ * `test_ra8_jof_produce_reject.c`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -38,44 +42,27 @@
 #include "stb_image.h"
 #include "unity_minimal.h"
 
-/** @brief Truncated-JPEG probe fed to the producer. */
-typedef enum : uint16_t {
-  k_tap_fill_jpeg_body = 0xAAU, /**< Filler body after the SOI marker. */
-  k_tap_jpeg_body_len  = 32U,   /**< Filler bytes written.             */
-} tap_probe_t;
-
 /**
  * @enum t_png_off_t
- * @brief PNG byte positions the builder writes and the hostile arms corrupt.
+ * @brief PNG byte positions the in-test builder writes.
  *
  * @details
- * `k_t_chunk_*` / `k_t_ihdr_*` are relative to a chunk or its payload;
- * `k_t_src_*` are absolute offsets into `s_src`, where IHDR starts at 16
- * (8 sig + 4 len + 4 type). `_b<N>` is the `N`-th byte of a big-endian
- * 32-bit field, most-significant first.
+ * `k_t_chunk_*` / `k_t_ihdr_*` are relative to a chunk or its payload.
+ * `_b<N>` is the `N`-th byte of a big-endian 32-bit field, most-significant
+ * first. The absolute `s_src` offsets that the rejection arms corrupt live
+ * with those arms in `test_ra8_jof_produce_reject.c`.
  */
 typedef enum : uint8_t {
-  k_t_be32_hi_shift     = 24U,   /**< Top-byte shift of a big-endian 32-bit field.     */
-  k_t_byte_mask         = 0xFFU, /**< Low-byte mask while serialising one.             */
-  k_t_png_ihdr_len      = 13U,   /**< IHDR payload length, fixed by the spec.          */
-  k_t_chunk_crc_b1      = 9U,    /**< Chunk CRC byte 1, past the chunk payload.        */
-  k_t_chunk_crc_b2      = 10U,   /**< Chunk CRC byte 2.                                */
-  k_t_chunk_crc_b3      = 11U,   /**< Chunk CRC byte 3 (least significant).            */
-  k_t_chunk_overhead    = 12U,   /**< Chunk cost past payload: 4 len + 4 type + 4 CRC. */
-  k_t_ihdr_off_h_b1     = 5U,    /**< Height byte 1 in the IHDR payload.               */
-  k_t_ihdr_off_h_b3     = 7U,    /**< Height byte 3 in the IHDR payload.               */
-  k_t_ihdr_off_ct       = 9U,    /**< Colour-type byte in the IHDR payload.            */
-  k_t_src_off_w_b0      = 16U,   /**< Width byte 0 (most significant) in s_src.        */
-  k_t_src_off_w_b1      = 17U,   /**< Width byte 1.                                    */
-  k_t_src_off_w_b2      = 18U,   /**< Width byte 2.                                    */
-  k_t_src_off_w_b3      = 19U,   /**< Width byte 3 (least significant).                */
-  k_t_src_off_h_b0      = 20U,   /**< Height byte 0 (most significant).                */
-  k_t_src_off_h_b1      = 21U,   /**< Height byte 1.                                   */
-  k_t_src_off_h_b2      = 22U,   /**< Height byte 2.                                   */
-  k_t_src_off_h_b3      = 23U,   /**< Height byte 3 (least significant).               */
-  k_t_src_off_depth     = 24U,   /**< Bit-depth byte; 16 here must be rejected.        */
-  k_t_src_off_ct        = 25U,   /**< Colour-type byte.                                */
-  k_t_src_off_interlace = 28U,   /**< Interlace byte; non-zero must be rejected.       */
+  k_t_be32_hi_shift  = 24U,   /**< Top-byte shift of a big-endian 32-bit field.     */
+  k_t_byte_mask      = 0xFFU, /**< Low-byte mask while serialising one.             */
+  k_t_png_ihdr_len   = 13U,   /**< IHDR payload length, fixed by the spec.          */
+  k_t_chunk_crc_b1   = 9U,    /**< Chunk CRC byte 1, past the chunk payload.        */
+  k_t_chunk_crc_b2   = 10U,   /**< Chunk CRC byte 2.                                */
+  k_t_chunk_crc_b3   = 11U,   /**< Chunk CRC byte 3 (least significant).            */
+  k_t_chunk_overhead = 12U,   /**< Chunk cost past payload: 4 len + 4 type + 4 CRC. */
+  k_t_ihdr_off_h_b1  = 5U,    /**< Height byte 1 in the IHDR payload.               */
+  k_t_ihdr_off_h_b3  = 7U,    /**< Height byte 3 in the IHDR payload.               */
+  k_t_ihdr_off_ct    = 9U,    /**< Colour-type byte in the IHDR payload.            */
 } t_png_off_t;
 
 /**
@@ -100,21 +87,14 @@ typedef enum : uint8_t {
   k_t_alpha_opaque  = 255U, /**< Alpha synthesized for entries past tRNS.              */
 } t_pattern_t;
 
-/** @brief Stimulus values that steer the hostile and budget-starved paths. */
+/** @brief Stimulus values that steer the parity probes and arena sizing. */
 typedef enum : uint16_t {
-  k_t_probe_row_step    = 37U,   /**< Row stride when spot-checking a decoded tile. */
-  k_t_probe_col_step    = 41U,   /**< Column stride; co-prime with the row stride
-                                      so the probe walks the whole tile.        */
-  k_t_starved_store_cap = 64U,   /**< Memstore cap too small for the atlas, forcing
-                                      the sink's no-memory path.                */
-  k_t_codec_invalid     = 9U,    /**< Codec id outside the enum; the config guard must reject it. */
-  k_t_hostile_sniff_len = 34U,   /**< Length of the not-a-PNG/JPEG blob fed to the sniffer.   */
-  k_t_hostile_lead_byte = 0xFFU, /**< Its leading byte: starts like a JPEG marker, then junk. */
-  k_t_ct_jpeg_ref       = 0xFFU, /**< Pseudo colour-type selecting the stb JPEG
-                                      reference over the synthetic pattern.     */
-  k_t_plte_bad_len      = 14U,   /**< PLTE length not divisible by 3, tripping the
-                                      indivisible-length guard.                 */
-  k_t_kib               = 1024U, /**< Bytes per KiB, for sizing the producer work arena. */
+  k_t_probe_row_step = 37U,   /**< Row stride when spot-checking a decoded tile. */
+  k_t_probe_col_step = 41U,   /**< Column stride; co-prime with the row stride
+                                   so the probe walks the whole tile.        */
+  k_t_ct_jpeg_ref    = 0xFFU, /**< Pseudo colour-type selecting the stb JPEG
+                                   reference over the synthetic pattern.     */
+  k_t_kib            = 1024U, /**< Bytes per KiB, for sizing the producer work arena. */
 } t_probe_t;
 
 /** @brief Test geometry + buffer sizing. */
@@ -185,21 +165,6 @@ static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
   p->pos += take;
   *got = take;
   return k_ra8_ok;
-}
-
-/** @brief Failing pull source (error propagation check). */
-/* The pointer parameters below cannot be const: this mock implements a
- * function-pointer interface (the DI seam under test), so its signature is
- * fixed by the typedef it is assigned to -- adding const changes the
- * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
-static ra8_err_t t_pull_fail(void* ctx, uint8_t* buf, size_t cap, size_t* got)
-{
-  (void)ctx;
-  (void)buf;
-  (void)cap;
-  *got = 0U;
-  return k_ra8_err_hw_error;
 }
 
 /** @brief Deterministic pattern channel at (x, y, c). */
@@ -714,7 +679,7 @@ static void test_produce_png_colortypes(void)
  * - Vector 1: valid JPEG head          -> true  (this test)
  * - Vector 2: PNG head (0x89, 'P')     -> false via condition 1 (PNG test)
  * - Vector 3: crafted 0xFF, 0x00 head  -> false via condition 2
- *   (test_produce_hostile's bad-magic case)
+ *   (test_produce_reject's bad-magic case, in the sibling reject suite)
  */
 static void test_produce_jpeg_parity(void)
 {
@@ -879,223 +844,6 @@ static void test_produce_bounded_ram(void)
 }
 
 /**
- * @brief Corrupt-source helper: expect @p want from producing `s_src`.
- * @param[in] want Expected error code.
- * @pre `s_src`/`s_src_len` hold the hostile source.
- * @pre The shared store buffers are free.
- * @post The producer returned @p want (test exits otherwise).
- * @post Shared state may hold a partial atlas (discarded).
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void expect_produce_err(ra8_err_t want)
-{
-  ra8_jof_info_t info = {};
-  TEST_ASSERT_EQ(want,
-                 produce((uint16_t)k_t_tile,
-                         (uint16_t)k_t_tile,
-                         (uint8_t)k_ra8_jof_codec_deflate,
-                         0U,
-                         &info));
-}
-
-/**
- * @brief Reject a non-PNG/JPEG source and a too-short-to-sniff source.
- * @pre The shared source/store buffers are available.
- * @post Both malformed sniff inputs returned their rejection code.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void produce_hostile_sniff(void)
-{
-  /* Not a JPEG/PNG at all (0xFF then junk: sniff condition-2 vector). */
-  s_src[0] = k_t_hostile_lead_byte;
-  s_src[1] = 0x00U;
-  memset(&s_src[2], k_tap_fill_jpeg_body, (size_t)k_tap_jpeg_body_len);
-  s_src_len = k_t_hostile_sniff_len;
-  expect_produce_err(k_ra8_err_not_supported);
-  /* Too short to sniff. */
-  s_src_len = 4U;
-  expect_produce_err(k_ra8_err_protocol_error);
-}
-
-/**
- * @brief Propagate a pull failure and reject the config-guard vectors.
- * @pre The shared source/store buffers are available.
- * @post The pull error and each bad-config guard returned their codes.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void produce_hostile_pull_and_cfg(void)
-{
-  ra8_jof_info_t info = {};
-  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_jof_produce_cfg_t cfg = {
-    .pull     = t_pull_fail,
-    .pull_ctx = NULL,
-    .sink     = ra8_jof_memstore_sink,
-    .sink_ctx = &s_store,
-    .tile_w   = (uint16_t)k_t_tile,
-    .tile_h   = (uint16_t)k_t_tile,
-    .codec    = (uint8_t)k_ra8_jof_codec_deflate,
-    .work     = s_work,
-    .work_cap = (size_t)k_t_work_small,
-  };
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_jof_produce(&cfg, &info));
-  /* Config guards. */
-  ra8_jof_produce_cfg_t bad = cfg;
-  bad.tile_w                      = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
-  bad       = cfg;
-  bad.codec = (uint8_t)k_t_codec_invalid;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
-  bad      = cfg;
-  bad.pull = NULL;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_produce(&bad, &info));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_produce(&cfg, NULL));
-}
-
-/**
- * @brief Reject the unsupported / out-of-range PNG IHDR malformations.
- * @pre The shared source/store buffers are available.
- * @post Interlace, depth, colour-type, geometry and chunk faults were rejected.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void produce_hostile_png_ihdr(void)
-{
-  /* Interlaced PNG (IHDR interlace byte at sig 8 + chunk hdr 8 + offset 12). */
-  png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_t_src_off_interlace] = 1U;
-  expect_produce_err(k_ra8_err_not_supported);
-  /* 16-bit depth. */
-  png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_t_src_off_depth] = 16U;
-  expect_produce_err(k_ra8_err_not_supported);
-  /* Unknown colour type. */
-  png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_t_src_off_ct] = k_t_plte_entries;
-  expect_produce_err(k_ra8_err_not_supported);
-  /* Oversize width / height vs the caps (big-endian IHDR fields). */
-  png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_t_src_off_w_b0] = 0x00U;
-  s_src[k_t_src_off_w_b1] = 0x01U;
-  s_src[k_t_src_off_w_b2] = 0x00U;
-  s_src[k_t_src_off_w_b3] = 0x00U; /* width = 65536 */
-  expect_produce_err(k_ra8_err_invalid_size);
-  png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_t_src_off_h_b0] = 0x00U;
-  s_src[k_t_src_off_h_b1] = 0x01U;
-  s_src[k_t_src_off_h_b2] = 0x00U;
-  s_src[k_t_src_off_h_b3] = 0x00U; /* height = 65536 */
-  expect_produce_err(k_ra8_err_invalid_size);
-  /* Zero width (PNG IHDR direct-geometry vector). */
-  png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_t_src_off_w_b0] = 0U;
-  s_src[k_t_src_off_w_b1] = 0U;
-  s_src[k_t_src_off_w_b2] = 0U;
-  s_src[k_t_src_off_w_b3] = 0U;
-  expect_produce_err(k_ra8_err_invalid_size);
-  /* Truncated IDAT (cut the source in half). */
-  png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src_len = s_src_len / 2U;
-  expect_produce_err(k_ra8_err_protocol_error);
-  /* Palette image with no PLTE: strip it by renaming the chunk type. */
-  png_build(k_t_png_w, k_t_png_h, 3U, false, false);
-  memcpy(&s_src[8U + 8U + (size_t)k_t_png_ihdr_len + 4U + 4U], "yLTE", 4U); /* PLTE -> ancillary */
-  expect_produce_err(k_ra8_err_validation_failed);
-  /* tRNS on a non-palette image. */
-  png_build(k_t_png_w, k_t_png_h, 3U, true, false);
-  s_src[k_t_src_off_ct] = 2U; /* IHDR says RGB but tRNS+PLTE follow: tRNS now rejects */
-  expect_produce_err(k_ra8_err_not_supported);
-}
-
-/**
- * @brief Propagate the work-arena-too-small and sink-out-of-room budget faults.
- * @pre The shared source/store buffers are available.
- * @post Under-budgeted work and sink both propagated their error codes.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void produce_hostile_budget(void)
-{
-  /* Work arena too small (fail-closed budget). */
-  {
-    png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-    static t_pull_t s_pull;
-    s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-    ra8_jof_info_t              info = {};
-    const ra8_jof_produce_cfg_t cfg  = {
-      .pull     = t_pull,
-      .pull_ctx = &s_pull,
-      .sink     = ra8_jof_memstore_sink,
-      .sink_ctx = &s_store,
-      .tile_w   = (uint16_t)k_t_tile,
-      .tile_h   = (uint16_t)k_t_tile,
-      .codec    = (uint8_t)k_ra8_jof_codec_deflate,
-      .work     = s_work,
-      .work_cap = (size_t)64U * 1024U,
-    };
-    TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_produce(&cfg, &info));
-  }
-  /* Sink runs out of room (store cap tiny) -> no_mem propagates. */
-  {
-    png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-    static t_pull_t s_pull;
-    s_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store =
-      (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
-    ra8_jof_info_t              info = {};
-    const ra8_jof_produce_cfg_t cfg  = {
-      .pull     = t_pull,
-      .pull_ctx = &s_pull,
-      .sink     = ra8_jof_memstore_sink,
-      .sink_ctx = &s_store,
-      .tile_w   = (uint16_t)k_t_tile,
-      .tile_h   = (uint16_t)k_t_tile,
-      .codec    = (uint8_t)k_ra8_jof_codec_deflate,
-      .work     = s_work,
-      .work_cap = (size_t)k_t_work_small,
-    };
-    TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_jof_produce(&cfg, &info));
-  }
-}
-
-/**
- * @test test_produce_hostile
- * @brief Hostile / unsupported sources are rejected fail-closed with the
- *        contracted codes -- this is untrusted EPUB content.
- *
- * @par MC/DC:
- * Decision (geometry caps): `width == 0 || width > cap_w || height == 0 ||
- * height > cap_h` (4 conditions)
- * - Vector 1: in-cap dims       -> false (parity tests above)
- * - Vector 2: width > cap_w     -> true  (oversize-width case here)
- * - Vector 3: height > cap_h    -> true  (oversize-height case here)
- * (width==0 / height==0 are unreachable through both decoders -- each
- * rejects zero dims in its own header parse -- and are covered by the
- * producer's direct-geometry unit vectors in the PNG IHDR cases.)
- *
- * Decision (PLTE accept): `len == 0 || len % 3 != 0 || len > 768 ||
- * has_plte` (4 conditions) -- vectors: valid PLTE (parity tests), len
- * indivisible by 3, oversize PLTE, duplicate PLTE.
- */
-static void test_produce_hostile(void)
-{
-  TEST_BEGIN("produce: hostile / unsupported sources fail closed");
-  produce_hostile_sniff();
-  produce_hostile_pull_and_cfg();
-  produce_hostile_png_ihdr();
-  produce_hostile_budget();
-  /* PLTE MC/DC vectors: indivisible length, oversize, duplicate. */
-  png_build(k_t_png_w, k_t_png_h, 3U, false, false);
-  s_src[8U + 8U + k_t_png_ihdr_len + 4U + 3U] = k_t_plte_bad_len; /* PLTE length 15 -> 14 */
-  expect_produce_err(k_ra8_err_validation_failed);
-  TEST_END("produce: hostile / unsupported sources fail closed");
-}
-
-/**
  * @test test_produce_work_bytes
  * @brief The arena calculator rejects nonsense inputs and scales sanely.
  *
@@ -1141,7 +889,6 @@ int32_t main(void)
   test_produce_png_colortypes();
   test_produce_jpeg_parity();
   test_produce_bounded_ram();
-  test_produce_hostile();
   test_produce_work_bytes();
   (void)fprintf(stderr, "[OK  ] test_ra8_jof_produce.c\n");
   return 0;
