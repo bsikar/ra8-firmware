@@ -47,7 +47,10 @@
 set -uo pipefail
 
 # Rig config (JLINK_SN) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require JLINK_SN
 DEVICE="${RFP_DEVICE:-ra}"
 SPEED="${RFP_SPEED:-1000000}"

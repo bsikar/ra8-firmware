@@ -306,12 +306,11 @@ verdict_uart() { # <app> <elf> <result_file>
   fi
   # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
   # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
-  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
-  extra="$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
-  # shellcheck disable=SC2086  # intentional word-split of $extra.
+  extra=()
+  read -r -a extra <<<"$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
   out="$(BOARD_SIM_STOP_ON="$expect" BOARD_SIM_WALL_S="$SIL_UART_WALL_S" \
     BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_UART_MAX_CHUNKS}" \
-    "$SIL_SIM" "$elf" $extra 2>&1 || true)"
+    "$SIL_SIM" "$elf" ${extra[@]+"${extra[@]}"} 2>&1 || true)"
   fault="$(sil_fault_line "$out")"
   if [ -n "$fault" ]; then
     sil_emit "$rf" FAIL "$app" "$fault"
@@ -356,12 +355,11 @@ verdict_eth_tcp() { # <app> <elf> <result_file>
   fi
   # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
   # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
-  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
-  extra="$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
-  # shellcheck disable=SC2086  # intentional word-split of $extra.
+  extra=()
+  read -r -a extra <<<"$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
   out="$(BOARD_SIM_STOP_ON="$expect" BOARD_SIM_WALL_S="$SIL_UART_WALL_S" \
     BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_UART_MAX_CHUNKS}" \
-    "$SIL_SIM" "$elf" $extra 2>&1 || true)"
+    "$SIL_SIM" "$elf" ${extra[@]+"${extra[@]}"} 2>&1 || true)"
   fault="$(sil_fault_line "$out")"
   if [ -n "$fault" ]; then
     sil_emit "$rf" FAIL "$app" "$fault"
@@ -400,14 +398,13 @@ verdict_alive() { # <app> <elf> <result_file>
   local extra out fault
   # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
   # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
-  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
-  extra="$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
+  extra=()
+  read -r -a extra <<<"$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
   # An empty BOARD_SIM_STOP_ON is treated as "disabled" by board_sim, so this
   # both STOP_ONs a named banner (fast) and runs to the budget when none is set.
-  # shellcheck disable=SC2086  # intentional word-split of $extra.
   out="$(BOARD_SIM_STOP_ON="$expect" BOARD_SIM_WALL_S="$SIL_UART_WALL_S" \
     BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_UART_MAX_CHUNKS}" \
-    "$SIL_SIM" "$elf" $extra 2>&1 || true)"
+    "$SIL_SIM" "$elf" ${extra[@]+"${extra[@]}"} 2>&1 || true)"
   fault="$(sil_fault_line "$out")"
   if [ -n "$fault" ]; then
     sil_emit "$rf" FAIL "$app" "$fault (not alive)"
@@ -421,6 +418,9 @@ verdict_alive() { # <app> <elf> <result_file>
     sil_emit "$rf" FAIL "$app" "alive but UART lacks '${expect}'"
     return
   fi
+  # shellcheck disable=SC2016  # the quotes are inside a ${var:+...} alternate,
+  # where they are literal output and ${expect} still expands. Verified: a set
+  # $expect renders "uart 'foo'", an empty one renders nothing.
   sil_emit "$rf" PASS "$app" "alive (no give-up fault)${expect:+, uart '${expect}'}"
 }
 
@@ -445,12 +445,11 @@ verdict_memprobe() { # <app> <elf> <result_file>
   # self-provision a book onto a blank --sd-new card before the counter moves).
   # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
   # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
-  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
-  extra="$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
-  # shellcheck disable=SC2086  # intentional word-split of $extra.
+  extra=()
+  read -r -a extra <<<"$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
   out="$(BOARD_SIM_WALL_S="$SIL_PROBE_WALL_S" \
     BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_PROBE_MAX_CHUNKS}" \
-    "$SIL_SIM" "$elf" "${args[@]}" $extra 2>&1 || true)"
+    "$SIL_SIM" "$elf" "${args[@]}" ${extra[@]+"${extra[@]}"} 2>&1 || true)"
   fault="$(sil_fault_line "$out")"
   if [ -n "$fault" ]; then
     sil_emit "$rf" FAIL "$app" "$fault"

@@ -34,7 +34,10 @@
 set -euo pipefail
 
 # Rig config (JLINK_SN) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require JLINK_SN
 JLINK_DEVICE="R7KA8D2KF_CPU0"
 JLINK_SPEED="1000"
@@ -66,7 +69,8 @@ while [[ $# -gt 0 ]]; do
       usage
       ;;
     *)
-      [[ -z "$APP" ]] && APP="$1" || usage
+      if [[ -n "$APP" ]]; then usage; fi
+      APP="$1"
       shift
       ;;
   esac
@@ -303,9 +307,11 @@ run_uart_scrape() {
 sym_addr() { # sym_addr <symbol> -> prints hex addr, or empty
   # Check the main ELF and, for two-project TrustZone apps, the Non-Secure
   # ELF (where the NS-resident bench globals live).
-  local elfs="$ELF"
-  [[ -f "${APP_DIR}/build/${APP}_ns.elf" ]] && elfs="$elfs ${APP_DIR}/build/${APP}_ns.elf"
-  arm-none-eabi-nm --print-size $elfs |
+  local elfs=("$ELF")
+  if [[ -f "${APP_DIR}/build/${APP}_ns.elf" ]]; then
+    elfs+=("${APP_DIR}/build/${APP}_ns.elf")
+  fi
+  arm-none-eabi-nm --print-size "${elfs[@]}" |
     awk -v s="$1" '$NF==s && !f {print $1; f=1}'
 }
 run_memprobe() {

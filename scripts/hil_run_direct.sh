@@ -45,7 +45,10 @@
 set -euo pipefail
 
 # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST JLINK_SN
 JLINK_DEVICE="R7KA8D2KF_CPU0"
 
@@ -179,6 +182,7 @@ if ((LOCAL_PI == 0)); then
   REMOTE_ENV=""
   [[ "${HIL_EXPECT_SHORT_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_SHORT_OK=1 "
   [[ "${HIL_EXPECT_OVERLAP_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_OVERLAP_OK=1 "
+  # shellcheck disable=SC2029  # ${REMOTE_ENV}/${REMOTE_ARGS} are composed locally for the piped copy of this script.
   ssh "$PI_HOST" "${REMOTE_ENV}bash -s -- ${REMOTE_ARGS}" <"$0"
   exit $?
 fi

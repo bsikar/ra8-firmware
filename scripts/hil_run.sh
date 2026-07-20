@@ -25,7 +25,10 @@
 set -euo pipefail
 
 # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST JLINK_SN
 JLINK_DEVICE="R7KA8D2KF_CPU0"
 

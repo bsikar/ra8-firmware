@@ -25,6 +25,7 @@ FW_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Optional J-Link serial from the gitignored .env (see .env.example). Only
 # needed to disambiguate multiple probes; single-probe machines can omit it.
+# shellcheck source=scripts/lib/rig_env.sh
 source "$SCRIPT_DIR/lib/rig_env.sh"
 
 GREEN='\033[0;32m'
