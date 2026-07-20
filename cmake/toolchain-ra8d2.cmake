@@ -44,6 +44,22 @@ set(CMAKE_C_COMPILER_WORKS 1)
 set(CMAKE_CXX_COMPILER_WORKS 1)
 
 # -----------------------------------------------------------------------------
+# Compiler cache for EVERY cross build
+# -----------------------------------------------------------------------------
+# This has to be here and not only in the top-level CMakeLists. Apps are built
+# standalone -- `make <app>` configures examples/<app>/ with this toolchain file
+# and never processes the root listfile -- which is exactly how
+# build_all_examples.sh and the CI build-cross job build all ~200 of them.
+# Including cmake/ccache.cmake from the root alone therefore left the largest
+# and most repetitive compile workload in the project with no cache at all: a
+# full cross build was observed running with the ccache counters frozen.
+#
+# The toolchain file is the one place every cross build passes through,
+# whatever the entry point. toolchain-ra8p1.cmake includes this file verbatim,
+# so the RA8P1 cross builds are covered by the same line.
+include("${CMAKE_CURRENT_LIST_DIR}/ccache.cmake")
+
+# -----------------------------------------------------------------------------
 # Pin the cross-compiler major version (#178)
 # -----------------------------------------------------------------------------
 # Codegen correctness on the attacker-facing miniz ZIP inflater is
