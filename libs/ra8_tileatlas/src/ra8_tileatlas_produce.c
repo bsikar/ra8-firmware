@@ -855,10 +855,7 @@ static ra8_err_t priv_png_dims(const uint8_t* data, size_t len, uint32_t* out_w,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_probe_sniff(const uint8_t* data,
-                                  size_t         len,
-                                  uint16_t*      out_w,
-                                  uint16_t*      out_h)
+static ra8_err_t priv_probe_sniff(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
 {
   if (len < (size_t)k_ra8_ta_sniff_bytes) {
     return k_ra8_err_not_supported; /* too short to carry any accepted magic */
