@@ -46,7 +46,7 @@
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] size_t ra8_fmt_jof_sink_cap(size_t src_len);
+RA8_PRIV [[nodiscard]] size_t ra8_fmt_jof_sink_cap(size_t src_len);
 
 /**
  * @brief Transcode one source image into an in-RAM JOF atlas.
@@ -79,14 +79,14 @@
  * @note Not thread-safe (the producer keeps module-static state).
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
-                                            uint16_t              max_w,
-                                            uint16_t              max_h,
-                                            uint16_t              tile_w,
-                                            uint16_t              tile_h,
-                                            uint8_t               codec,
-                                            ra8_fmt_blob_t*       out_atlas,
-                                            ra8_jof_info_t*       out_info);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
+                                                     uint16_t              max_w,
+                                                     uint16_t              max_h,
+                                                     uint16_t              tile_w,
+                                                     uint16_t              tile_h,
+                                                     uint8_t               codec,
+                                                     ra8_fmt_blob_t*       out_atlas,
+                                                     ra8_jof_info_t*       out_info);
 
 /**
  * @brief Read a source image's pixel dimensions from its container header.
@@ -113,7 +113,7 @@
  * @note Thread-safe (pure over its input).
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
+RA8_PRIV [[nodiscard]] ra8_err_t
 ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
 
 /**
@@ -143,10 +143,10 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
-                                               const ra8_jof_info_t* info,
-                                               uint8_t**             out_px,
-                                               size_t*               out_len);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
+                                                        const ra8_jof_info_t* info,
+                                                        uint8_t**             out_px,
+                                                        size_t*               out_len);
 
 /**
  * @brief JOF `convert` verb: one source image to one `.jof` atlas.
@@ -155,7 +155,8 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @return k_ra8_ok when the atlas was written to `opts->out_path`.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_jof_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_convert(const ra8_fmt_blob_t* src,
+                                                     const ra8_fmt_opts_t* opts);
 
 /**
  * @brief JOF `inspect` verb: dump header, tile table, footer and verdict.
@@ -164,7 +165,8 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @return k_ra8_ok when the container validated clean.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src,
+                                                     const ra8_fmt_opts_t* opts);
 
 /**
  * @brief JOF `verify` verb: banded encode versus untiled reference raster.
@@ -173,7 +175,8 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @return k_ra8_ok when the banded raster matched the reference exactly.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_jof_verify(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_verify(const ra8_fmt_blob_t* src,
+                                                    const ra8_fmt_opts_t* opts);
 
 /**
  * @brief Report whether a blob carries the JOF header magic.
@@ -181,7 +184,7 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @return `true` when the first four bytes are "JOF1".
  * @since 0.1.0
  */
-[[nodiscard]] bool ra8_fmt_jof_sniff(const ra8_fmt_blob_t* src);
+RA8_PRIV [[nodiscard]] bool ra8_fmt_jof_sniff(const ra8_fmt_blob_t* src);
 
 /**
  * @brief Report whether a blob carries the RBKC rabook container magic.
@@ -189,7 +192,7 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @return `true` when the first four bytes are "RBKC".
  * @since 0.1.0
  */
-[[nodiscard]] bool ra8_fmt_rabook_sniff(const ra8_fmt_blob_t* src);
+RA8_PRIV [[nodiscard]] bool ra8_fmt_rabook_sniff(const ra8_fmt_blob_t* src);
 
 /**
  * @brief RABOOK `inspect` verb: dump the chunk inventory and section table.
@@ -198,8 +201,8 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @return k_ra8_ok when the container validated clean.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_rabook_inspect(const ra8_fmt_blob_t* src,
-                                               const ra8_fmt_opts_t* opts);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_rabook_inspect(const ra8_fmt_blob_t* src,
+                                                        const ra8_fmt_opts_t* opts);
 
 /**
  * @brief Report whether a blob carries the RCBZ container magic.
@@ -207,7 +210,7 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @return `true` when the first four bytes are "RCBZ".
  * @since 0.1.0
  */
-[[nodiscard]] bool ra8_fmt_cbz_sniff(const ra8_fmt_blob_t* src);
+RA8_PRIV [[nodiscard]] bool ra8_fmt_cbz_sniff(const ra8_fmt_blob_t* src);
 
 /**
  * @brief RCBZ `inspect` verb: dump the page directory with offsets and lengths.
@@ -216,4 +219,5 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @return k_ra8_ok when the container validated clean.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_cbz_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_cbz_inspect(const ra8_fmt_blob_t* src,
+                                                     const ra8_fmt_opts_t* opts);
