@@ -1,10 +1,11 @@
 # Ruff configuration for first-party Python (every tracked *.py in the tree).
 #
 # Lint + format are gated in CI via scripts/utils/check_ruff.py, which fails on
-# ANY finding. There is no baseline and no grandfathering: a suppressed backlog
-# is a tree that reads green over unfixed findings, which is the failure mode
-# #360 exists to remove. The gate derives its file list from `git ls-files`, so
-# a new directory is covered the day it appears.
+# ANY finding. There is no baseline and no grandfathering; the tree must be
+# clean. #360 was a SCOPE defect, not a suppression one: the gate hardcoded its
+# target list and so never saw seven first-party files, while reporting a clean
+# tree. It derives the list from `git ls-files` now, so a new directory is
+# covered the day it appears.
 #
 # Every family below was MEASURED across the tree before being selected, and
 # every finding it produced was fixed rather than exempted. Families that are
