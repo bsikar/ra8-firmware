@@ -825,12 +825,41 @@ static ra8_err_t priv_png_dims(const uint8_t* data, size_t len, uint32_t* out_w,
   return k_ra8_ok;
 }
 
-ra8_err_t
-ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
+/**
+ * @brief Sniff the container, read its declared geometry and range-check it.
+ * @details The probing algorithm behind ::ra8_tileatlas_probe_dims, split from
+ *          it so the public entry carries only the null-pointer contract. The
+ *          dispatch order mirrors ::priv_dispatch, which is what keeps "the
+ *          caller can size it" and "the producer will decode it" in step.
+ *
+ *          JPEG is answered by ::ra8_jpeg_sw_get_dimensions directly: that
+ *          reader already range-checks against its own frame limits and writes
+ *          the 16-bit outputs itself, so it returns without a second check.
+ *          PNG and WebP yield 32-bit values that still have to be proved
+ *          non-zero and within ::k_ra8_tileatlas_max_dim before narrowing.
+ * @param[in]  data  Encoded source bytes.
+ * @param[in]  len   Readable length of @p data in bytes.
+ * @param[out] out_w Receives the source width in pixels.
+ * @param[out] out_h Receives the source height in pixels.
+ * @return Result code.
+ * @retval k_ra8_ok                Geometry probed and within range.
+ * @retval k_ra8_err_not_supported Too short to sniff, or not JPEG/PNG/WebP.
+ * @retval k_ra8_err_invalid_size  A dimension is zero or over the atlas cap.
+ * @retval other                   Propagated from the per-format reader.
+ * @pre @p data holds @p len readable bytes.
+ * @pre @p out_w and @p out_h are non-null and writable.
+ * @post On success both outputs hold a non-zero, in-range dimension.
+ * @post On any error neither output is written.
+ * @note Not thread-safe beyond its arguments.
+ * @see priv_png_dims(), priv_is_webp(), ra8_webp_get_info()
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_probe_sniff(const uint8_t* data,
+                                  size_t         len,
+                                  uint16_t*      out_w,
+                                  uint16_t*      out_h)
 {
-  RA8_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
   if (len < (size_t)k_ra8_ta_sniff_bytes) {
     return k_ra8_err_not_supported; /* too short to carry any accepted magic */
   }
@@ -860,6 +889,15 @@ ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint1
   *out_w = (uint16_t)w;
   *out_h = (uint16_t)h;
   return k_ra8_ok;
+}
+
+ra8_err_t
+ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
+{
+  RA8_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
+  return priv_probe_sniff(data, len, out_w, out_h);
 }
 
 /**
