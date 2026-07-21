@@ -36,10 +36,25 @@ Exemptions:
 
 from __future__ import annotations
 
-import re
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from line_citation_lex import (
+    CITATION_RE,
+    CITES_OK_RE,
+    DOCS_REFERENCE_RE,
+    MOVED_FROM_RE,
+    THIRD_PARTY_RE,
+    all_tracked_files,
+    find_comment_spans,
+    is_exempt,
+    line_of_offset,
+)
+from line_citation_lex import is_in_scope as _lex_in_scope
 
 # Strict: cleanup wave landed; gate now blocks any new line-citation
 # violation. See docs/CITATION_POLICY.md for the rule and the
@@ -50,10 +65,8 @@ WARN_ONLY_MODE = False
 MAX_SNIPPET_LEN = 120
 SNIPPET_TRUNCATE_LEN = 117
 
-SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
 DOC_SCAN_ROOTS = ("docs/", "")  # "" => repo root (top-level *.md / *.txt)
 EXCLUDE_PREFIXES = ("libs/third_party/", "docs/reference/")
-SOURCE_EXTS = (".c", ".h", ".cpp", ".hpp", ".cc")
 DOC_EXTS = (".md", ".txt")
 TOOL_OUTPUT_TOKENS = (
     "cppcheck",
@@ -64,12 +77,6 @@ TOOL_OUTPUT_TOKENS = (
     "objdump",
     "readelf",
 )
-
-CITATION_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_/.-]*\.(?:c|h|cpp|hpp|cc):\d+\b")
-CITES_OK_RE = re.compile(r"CITES-OK:\s*(\S.*?)\s*$")
-MOVED_FROM_RE = re.compile(r"moved from\s+\S+:\d+\s+to\b", re.IGNORECASE)
-DOCS_REFERENCE_RE = re.compile(r"\bdocs/reference/")
-THIRD_PARTY_RE = re.compile(r"\blibs/third_party/")
 
 
 def staged_files() -> list[str]:
@@ -87,34 +94,9 @@ def staged_files() -> list[str]:
     return [line for line in out.splitlines() if line]
 
 
-def all_tracked_files() -> list[str]:
-    """Every tracked path, for the whole-tree sweep.
-
-    The whole-tree mode is what CI runs; the staged mode above is the
-    pre-commit hook's. They differ only in this enumeration, so a rule can
-    never apply in one and not the other.
-    """
-    out = subprocess.run(
-        ["git", "ls-files"],  # noqa: S607  # trusted: fixed git argv
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
-    return [line for line in out.splitlines() if line]
-
-
 def is_in_scope(path: str) -> bool:
-    """Whether a source path is subject to the in-tree line-citation ban.
-
-    Three conditions, all required: a source extension, a location under one
-    of the scan roots, and no excluded prefix. The root test is what keeps
-    vendored trees out without needing to name each of their files.
-    """
-    if not path.endswith(SOURCE_EXTS):
-        return False
-    if not any(path.startswith(r) for r in SCAN_ROOTS):
-        return False
-    return not any(path.startswith(p) for p in EXCLUDE_PREFIXES)
+    """Whether a source path is subject to the ban, with this tool's exclusions."""
+    return _lex_in_scope(path, EXCLUDE_PREFIXES)
 
 
 def is_doc_in_scope(path: str) -> bool:
@@ -208,73 +190,6 @@ def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
     return violations
 
 
-def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
-    """Byte spans of every C/C++ comment, block and line.
-
-    String-literal aware, enough to skip ``"//foo"`` and ``"/* */"`` -- without
-    that a URL or a format string in code would be treated as a comment and
-    any citation-shaped text inside it reported.
-
-    Returns ``(start, end)`` offsets so the caller can test whether a match
-    fell inside a comment, which is the only place a citation counts.
-    """
-    spans: list[tuple[int, int]] = []
-    i = 0
-    n = len(text)
-    while i < n:
-        ch = text[i]
-        # String literal
-        if ch == '"':
-            i += 1
-            while i < n and text[i] != '"':
-                if text[i] == "\\" and i + 1 < n:
-                    i += 2
-                    continue
-                if text[i] == "\n":
-                    break
-                i += 1
-            i += 1
-            continue
-        if ch == "'":
-            i += 1
-            while i < n and text[i] != "'":
-                if text[i] == "\\" and i + 1 < n:
-                    i += 2
-                    continue
-                if text[i] == "\n":
-                    break
-                i += 1
-            i += 1
-            continue
-        if ch == "/" and i + 1 < n:
-            if text[i + 1] == "/":
-                start = i
-                while i < n and text[i] != "\n":
-                    i += 1
-                spans.append((start, i))
-                continue
-            if text[i + 1] == "*":
-                start = i
-                i += 2
-                while i + 1 < n and not (text[i] == "*" and text[i + 1] == "/"):
-                    i += 1
-                i = min(n, i + 2)
-                spans.append((start, i))
-                continue
-        i += 1
-    return spans
-
-
-def line_of_offset(text: str, offset: int) -> int:
-    """1-based line number containing a byte offset.
-
-    Counts newlines before the offset, so it stays correct on the
-    comment-blanked view, whose newlines are preserved for exactly this
-    reason.
-    """
-    return text.count("\n", 0, offset) + 1
-
-
 def line_text(text: str, line_no: int) -> str:
     """The text of a 1-based line, or "" when the number is out of range.
 
@@ -306,20 +221,7 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
             line_no = line_of_offset(text, abs_off)
             matched = m.group(0)
             line = line_text(text, line_no)
-            # Exemptions
-            if "SPDX-License-Identifier" in line:
-                continue
-            stripped = line.lstrip()
-            if stripped.startswith("#include"):
-                continue
-            if DOCS_REFERENCE_RE.search(matched) or DOCS_REFERENCE_RE.search(line):
-                continue
-            if THIRD_PARTY_RE.search(matched) or THIRD_PARTY_RE.search(line):
-                continue
-            cok = CITES_OK_RE.search(line)
-            if cok and cok.group(1).strip():
-                continue
-            if MOVED_FROM_RE.search(line):
+            if is_exempt(matched, line):
                 continue
             snippet = line.strip()
             if len(snippet) > MAX_SNIPPET_LEN:
@@ -328,7 +230,48 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
     return violations
 
 
-def main() -> int:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
+def _files_to_scan() -> list[str]:
+    """The file set for this run: staged paths, else the whole tree.
+
+    Falling back to the whole tree when nothing is staged is deliberate -- a
+    hook invocation with an empty index must not report a clean tree having
+    looked at no files.
+    """
+    if "--all" in sys.argv:
+        return all_tracked_files()
+    staged = staged_files()
+    return staged or all_tracked_files()
+
+
+def _report_violations(
+    repo_root: Path,
+    paths: list[str],
+    scan: Callable[[Path], list[tuple[int, str, str]]],
+    per_file_counts: dict[str, int],
+) -> int:
+    """Print every violation ``scan`` finds under ``paths``; return the count.
+
+    Takes the scanner as a parameter because source files and documentation
+    are lexed differently but reported identically -- two copies of the
+    reporting loop is how the two report formats drift apart.
+    """
+    total = 0
+    for f in paths:
+        path = repo_root / f
+        if not path.is_file():
+            continue
+        viols = scan(path)
+        if not viols:
+            continue
+        per_file_counts[f] = len(viols)
+        for line_no, matched, snippet in viols:
+            print(f"{f}:{line_no}: line-citation found ('{matched}'): {snippet}")
+            print("       fix: replace with function/symbol name, or add `// CITES-OK: <reason>`")
+            total += 1
+    return total
+
+
+def main() -> int:
     """Reject in-tree citations that name a file by line number.
 
     The rule exists because ``libs/foo.c:123`` goes stale the moment anything
@@ -351,45 +294,14 @@ def main() -> int:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts rea
         ).stdout.strip()
     )
 
-    full_scan = "--all" in sys.argv
-    if full_scan:
-        files = all_tracked_files()
-    else:
-        files = staged_files()
-        if not files:
-            files = all_tracked_files()
-            full_scan = True
-
-    src_files = [f for f in files if is_in_scope(f)]
-    doc_files = [f for f in files if is_doc_in_scope(f)]
-
+    files = _files_to_scan()
     total_violations = 0
     per_file_counts: dict[str, int] = {}
-    for f in src_files:
-        path = repo_root / f
-        if not path.is_file():
-            continue
-        viols = scan_file(path)
-        if not viols:
-            continue
-        per_file_counts[f] = len(viols)
-        for line_no, matched, snippet in viols:
-            print(f"{f}:{line_no}: line-citation found ('{matched}'): {snippet}")
-            print("       fix: replace with function/symbol name, or add `// CITES-OK: <reason>`")
-            total_violations += 1
-
-    for f in doc_files:
-        path = repo_root / f
-        if not path.is_file():
-            continue
-        viols = scan_doc_file(path)
-        if not viols:
-            continue
-        per_file_counts[f] = len(viols)
-        for line_no, matched, snippet in viols:
-            print(f"{f}:{line_no}: line-citation found ('{matched}'): {snippet}")
-            print("       fix: replace with function/symbol name, or add `// CITES-OK: <reason>`")
-            total_violations += 1
+    for scan, paths in (
+        (scan_file, [f for f in files if is_in_scope(f)]),
+        (scan_doc_file, [f for f in files if is_doc_in_scope(f)]),
+    ):
+        total_violations += _report_violations(repo_root, paths, scan, per_file_counts)
 
     if total_violations == 0:
         return 0
