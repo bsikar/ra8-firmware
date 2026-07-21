@@ -34,8 +34,8 @@ static const char* const s_tag = "ux_hcd_ra8_usb";
  * @brief Bridge-singleton state.
  */
 typedef struct {
-  ra8_usb_hcd_state_t    state; /**< Bridge run-state.       */
-  ra8_usb_speed_t        speed; /**< Controller this drives. */
+  ra8_usb_hcd_state_t   state; /**< Bridge run-state.       */
+  ra8_usb_speed_t       speed; /**< Controller this drives. */
   struct UX_HCD_STRUCT* owner; /**< Back-pointer into USBX. */
 } ra8_usb_hcd_t;
 
@@ -153,8 +153,8 @@ static unsigned int internal_endpoint_create(struct UX_ENDPOINT_STRUCT* ep)
   }
 
   ra8_usb_ep_dir_t dir = ((ep_addr & (uint8_t)k_ra8_usb_hcd_ep_addr_dir_in_bit) != 0U)
-                          ? k_ra8_usb_ep_dir_in
-                          : k_ra8_usb_ep_dir_out;
+                           ? k_ra8_usb_ep_dir_in
+                           : k_ra8_usb_ep_dir_out;
 
   ra8_usb_ep_type_t type;
   switch ((uint8_t)ep->ux_endpoint_descriptor.bmAttributes & 0x03U) {
@@ -172,11 +172,12 @@ static unsigned int internal_endpoint_create(struct UX_ENDPOINT_STRUCT* ep)
   }
 
   return (ra8_usb_configure_endpoint(s_hcd.speed,
-                                    pipe,
-                                    (uint8_t)(ep_addr & (uint8_t)k_ra8_usb_hcd_ep_addr_num_mask),
-                                    dir,
-                                    type,
-                                    (uint16_t)ep->ux_endpoint_descriptor.wMaxPacketSize) == k_ra8_ok)
+                                     pipe,
+                                     (uint8_t)(ep_addr & (uint8_t)k_ra8_usb_hcd_ep_addr_num_mask),
+                                     dir,
+                                     type,
+                                     (uint16_t)ep->ux_endpoint_descriptor.wMaxPacketSize) ==
+          k_ra8_ok)
            ? UX_SUCCESS
            : UX_ERROR;
 }
@@ -229,7 +230,8 @@ static unsigned int internal_control_xfer(struct UX_TRANSFER_STRUCT* tr)
       }
       tr->ux_transfer_request_actual_length = len;
     } else {
-      if (ra8_usb_queue_in(s_hcd.speed, 0U, tr->ux_transfer_request_data_pointer, len) != k_ra8_ok) {
+      if (ra8_usb_queue_in(s_hcd.speed, 0U, tr->ux_transfer_request_data_pointer, len) !=
+          k_ra8_ok) {
         return UX_TRANSFER_ERROR;
       }
       tr->ux_transfer_request_actual_length = len;
@@ -273,7 +275,8 @@ static unsigned int internal_bulk_xfer(struct UX_TRANSFER_STRUCT* tr, uint8_t ep
     tr->ux_transfer_request_actual_length = len;
   } else {
     const uint16_t len = (uint16_t)tr->ux_transfer_request_requested_length;
-    if (ra8_usb_queue_in(s_hcd.speed, pipe, tr->ux_transfer_request_data_pointer, len) != k_ra8_ok) {
+    if (ra8_usb_queue_in(s_hcd.speed, pipe, tr->ux_transfer_request_data_pointer, len) !=
+        k_ra8_ok) {
       return UX_TRANSFER_ERROR;
     }
     tr->ux_transfer_request_actual_length = len;

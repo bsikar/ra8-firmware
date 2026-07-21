@@ -63,7 +63,7 @@ static UINT priv_status_from_ra8_err(ra8_err_t err)
 /* Handle ``FX_DRIVER_INIT``: bring the SDHI controller up -- see implementation for details. */
 static void priv_handle_init(FX_MEDIA* media)
 {
-  ra8_err_t err                  = ra8_sdhi_init((uint8_t)k_fx_sdhi_instance);
+  ra8_err_t err                 = ra8_sdhi_init((uint8_t)k_fx_sdhi_instance);
   media->fx_media_driver_status = priv_status_from_ra8_err(err);
   /* The SDHI driver always operates on 512-byte logical blocks; advertise
    * that to FileX so it sizes its sector cache correctly. */
@@ -74,51 +74,51 @@ static void priv_handle_init(FX_MEDIA* media)
 /* Handle ``FX_DRIVER_UNINIT``: power the SDHI controller down -- see implementation for details. */
 static void priv_handle_uninit(FX_MEDIA* media)
 {
-  ra8_err_t err                  = ra8_sdhi_deinit((uint8_t)k_fx_sdhi_instance);
+  ra8_err_t err                 = ra8_sdhi_deinit((uint8_t)k_fx_sdhi_instance);
   media->fx_media_driver_status = priv_status_from_ra8_err(err);
 }
 
 /* Handle ``FX_DRIVER_READ``: copy ``n`` sectors from card to FileX buffer -- see implementation for details. */
 static void priv_handle_read(FX_MEDIA* media)
 {
-  uint32_t lba                  = (uint32_t)media->fx_media_driver_logical_sector;
-  uint32_t cnt                  = (uint32_t)media->fx_media_driver_sectors;
-  ra8_err_t err                  = ra8_sdhi_read_block((uint8_t)k_fx_sdhi_instance,
-                                                     lba,
-                                                     (uint8_t*)media->fx_media_driver_buffer,
-                                                     cnt);
+  uint32_t  lba                 = (uint32_t)media->fx_media_driver_logical_sector;
+  uint32_t  cnt                 = (uint32_t)media->fx_media_driver_sectors;
+  ra8_err_t err                 = ra8_sdhi_read_block((uint8_t)k_fx_sdhi_instance,
+                                                      lba,
+                                                      (uint8_t*)media->fx_media_driver_buffer,
+                                                      cnt);
   media->fx_media_driver_status = priv_status_from_ra8_err(err);
 }
 
 /* Handle ``FX_DRIVER_WRITE``: push ``n`` sectors from FileX buffer to card -- see implementation for details. */
 static void priv_handle_write(FX_MEDIA* media)
 {
-  uint32_t lba                  = (uint32_t)media->fx_media_driver_logical_sector;
-  uint32_t cnt                  = (uint32_t)media->fx_media_driver_sectors;
-  ra8_err_t err                  = ra8_sdhi_write_block((uint8_t)k_fx_sdhi_instance,
-                                                      lba,
-                                                      (const uint8_t*)media->fx_media_driver_buffer,
-                                                      cnt);
+  uint32_t  lba = (uint32_t)media->fx_media_driver_logical_sector;
+  uint32_t  cnt = (uint32_t)media->fx_media_driver_sectors;
+  ra8_err_t err = ra8_sdhi_write_block((uint8_t)k_fx_sdhi_instance,
+                                       lba,
+                                       (const uint8_t*)media->fx_media_driver_buffer,
+                                       cnt);
   media->fx_media_driver_status = priv_status_from_ra8_err(err);
 }
 
 /* Handle ``FX_DRIVER_BOOT_READ``: read sector 0 into the FileX buffer -- see implementation for details. */
 static void priv_handle_boot_read(FX_MEDIA* media)
 {
-  ra8_err_t err                  = ra8_sdhi_read_block((uint8_t)k_fx_sdhi_instance,
-                                                     (uint32_t)k_fx_sdhi_boot_lba,
-                                                     (uint8_t*)media->fx_media_driver_buffer,
-                                                     (uint32_t)k_fx_sdhi_boot_count);
+  ra8_err_t err                 = ra8_sdhi_read_block((uint8_t)k_fx_sdhi_instance,
+                                                      (uint32_t)k_fx_sdhi_boot_lba,
+                                                      (uint8_t*)media->fx_media_driver_buffer,
+                                                      (uint32_t)k_fx_sdhi_boot_count);
   media->fx_media_driver_status = priv_status_from_ra8_err(err);
 }
 
 /* Handle ``FX_DRIVER_BOOT_WRITE``: write the FileX buffer to sector 0 -- see implementation for details. */
 static void priv_handle_boot_write(FX_MEDIA* media)
 {
-  ra8_err_t err                  = ra8_sdhi_write_block((uint8_t)k_fx_sdhi_instance,
-                                                      (uint32_t)k_fx_sdhi_boot_lba,
-                                                      (const uint8_t*)media->fx_media_driver_buffer,
-                                                      (uint32_t)k_fx_sdhi_boot_count);
+  ra8_err_t err = ra8_sdhi_write_block((uint8_t)k_fx_sdhi_instance,
+                                       (uint32_t)k_fx_sdhi_boot_lba,
+                                       (const uint8_t*)media->fx_media_driver_buffer,
+                                       (uint32_t)k_fx_sdhi_boot_count);
   media->fx_media_driver_status = priv_status_from_ra8_err(err);
 }
 

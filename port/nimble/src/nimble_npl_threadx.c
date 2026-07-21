@@ -33,18 +33,17 @@
  */
 
 #include "nimble_npl_threadx.h"
-#include "nimble_transport_stubs.h"
 
 #include <stdint.h>
 #include <string.h>
 
+#include "nimble_transport_stubs.h"
 #include "tx_api.h"
 
 /* =============================================================================
  * NPL public API forward decls (matches upstream nimble/nimble_npl.h)
  * =============================================================================
  */
-
 
 /* =============================================================================
  * Generic helpers

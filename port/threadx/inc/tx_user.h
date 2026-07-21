@@ -38,9 +38,9 @@
 /** @brief TX TIMER TICKS PER SECOND. */
 #define TX_TIMER_TICKS_PER_SECOND (1000)
 /** @brief TX MAX PRIORITIES. */
-#define TX_MAX_PRIORITIES         (32)
+#define TX_MAX_PRIORITIES (32)
 /** @brief TX MINIMUM STACK. */
-#define TX_MINIMUM_STACK          (512)
+#define TX_MINIMUM_STACK (512)
 
 /* Performance / size knobs (see ThreadX user-guide chapter 4). */
 /** @brief TX TIMER PROCESS IN ISR. */

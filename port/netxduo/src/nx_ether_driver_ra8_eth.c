@@ -102,11 +102,11 @@ typedef enum : uint8_t {
  * magic numbers the casts would otherwise contain.
  */
 typedef enum : uint8_t {
-  k_nx_ra8_eth_msw_shift_byte0 = 8U, /**< Nx RA8 Ethernet msw shift byte0. */
+  k_nx_ra8_eth_msw_shift_byte0 = 8U,  /**< Nx RA8 Ethernet msw shift byte0. */
   k_nx_ra8_eth_lsw_shift_byte2 = 24U, /**< Nx RA8 Ethernet lsw shift byte2. */
   k_nx_ra8_eth_lsw_shift_byte3 = 16U, /**< Nx RA8 Ethernet lsw shift byte3. */
-  k_nx_ra8_eth_lsw_shift_byte4 = 8U, /**< Nx RA8 Ethernet lsw shift byte4. */
-  k_nx_ra8_eth_lsw_shift_byte5 = 0U, /**< Nx RA8 Ethernet lsw shift byte5. */
+  k_nx_ra8_eth_lsw_shift_byte4 = 8U,  /**< Nx RA8 Ethernet lsw shift byte4. */
+  k_nx_ra8_eth_lsw_shift_byte5 = 0U,  /**< Nx RA8 Ethernet lsw shift byte5. */
 } nx_ra8_eth_mac_word_shift_t;
 
 /**
@@ -249,18 +249,18 @@ void nx_ether_driver_ra8_eth_set_mac(const uint8_t mac[6])
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t dispatch_total;       /**< total dispatches into the driver.          */
-  uint32_t init_total;           /**< NX_LINK_INITIALIZE dispatches.             */
-  uint32_t enable_total;         /**< NX_LINK_ENABLE dispatches.                 */
-  uint32_t send_total;           /**< NX_LINK_PACKET_SEND/_BROADCAST dispatches. */
-  uint32_t rx_total;             /**< NX_LINK_DEFERRED_PROCESSING dispatches.    */
-  uint32_t status_total;         /**< NX_LINK_GET_STATUS dispatches.             */
-  uint32_t last_cmd;             /**< Most recent driver command code.           */
-  uint32_t init_last_status;     /**< Last NetX status priv_handle_init set.     */
-  uint32_t send_last_status;     /**< Last NetX status priv_handle_send set.     */
-  uint32_t enable_last_link_up;  /**< 1 = last set_link_state was UP.            */
-  uint32_t init_ra8_eth_open_err; /**< Last ra8_eth_open return code. */
-  uint32_t init_iface_null_hits; /**< Times INITIALIZE saw a NULL interface. */
+  uint32_t dispatch_total;        /**< total dispatches into the driver.          */
+  uint32_t init_total;            /**< NX_LINK_INITIALIZE dispatches.             */
+  uint32_t enable_total;          /**< NX_LINK_ENABLE dispatches.                 */
+  uint32_t send_total;            /**< NX_LINK_PACKET_SEND/_BROADCAST dispatches. */
+  uint32_t rx_total;              /**< NX_LINK_DEFERRED_PROCESSING dispatches.    */
+  uint32_t status_total;          /**< NX_LINK_GET_STATUS dispatches.             */
+  uint32_t last_cmd;              /**< Most recent driver command code.           */
+  uint32_t init_last_status;      /**< Last NetX status priv_handle_init set.     */
+  uint32_t send_last_status;      /**< Last NetX status priv_handle_send set.     */
+  uint32_t enable_last_link_up;   /**< 1 = last set_link_state was UP.            */
+  uint32_t init_ra8_eth_open_err; /**< Last ra8_eth_open return code.             */
+  uint32_t init_iface_null_hits;  /**< Times INITIALIZE saw a NULL interface.     */
 } nx_ether_diag_t;
 
 /**
@@ -290,9 +290,9 @@ volatile nx_ether_diag_t g_nx_ether_diag = {};
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_nx_ra8_eth_worker_stack_bytes  = 4096U, /**< Nx RA8 Ethernet worker stack bytes. */
-  k_nx_ra8_eth_worker_priority     = 4U, /**< Nx RA8 Ethernet worker priority.     */
-  k_nx_ra8_eth_worker_period_ticks = 1U, /**< Nx RA8 Ethernet worker period ticks. */
+  k_nx_ra8_eth_worker_stack_bytes  = 4096U, /**< Nx RA8 Ethernet worker stack bytes.  */
+  k_nx_ra8_eth_worker_priority     = 4U,    /**< Nx RA8 Ethernet worker priority.     */
+  k_nx_ra8_eth_worker_period_ticks = 1U,    /**< Nx RA8 Ethernet worker period ticks. */
 } nx_ra8_eth_worker_t;
 
 static TX_THREAD s_rx_thread;
@@ -447,7 +447,7 @@ static void priv_rx_drain(void)
     return;
   }
   while (1) {
-    uint32_t got = 0U;
+    uint32_t  got = 0U;
     ra8_err_t err = ra8_eth_read(s_rx_staging, (uint32_t)sizeof(s_rx_staging), &got);
     if (err != k_ra8_ok) {
       break;
@@ -570,12 +570,14 @@ static void priv_handle_init(NX_IP_DRIVER* req)
   /* Push the MAC into the interface struct so NetX subsystems that
    * read it later (ARP, sender-MAC stamping) see the right value. */
   {
-    ULONG msw = ((ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_0] << (ULONG)k_nx_ra8_eth_msw_shift_byte0) |
-                (ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_1];
-    ULONG lsw = ((ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_2] << (ULONG)k_nx_ra8_eth_lsw_shift_byte2) |
-                ((ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_3] << (ULONG)k_nx_ra8_eth_lsw_shift_byte3) |
-                ((ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_4] << (ULONG)k_nx_ra8_eth_msw_shift_byte0) |
-                (ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_5];
+    ULONG msw =
+      ((ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_0] << (ULONG)k_nx_ra8_eth_msw_shift_byte0) |
+      (ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_1];
+    ULONG lsw =
+      ((ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_2] << (ULONG)k_nx_ra8_eth_lsw_shift_byte2) |
+      ((ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_3] << (ULONG)k_nx_ra8_eth_lsw_shift_byte3) |
+      ((ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_4] << (ULONG)k_nx_ra8_eth_msw_shift_byte0) |
+      (ULONG)s_local_mac[k_nx_ra8_eth_mac_byte_5];
     iface->nx_interface_physical_address_msw = msw;
     iface->nx_interface_physical_address_lsw = lsw;
   }
@@ -704,9 +706,9 @@ static void priv_handle_send(NX_IP_DRIVER* req)
   s_tx_staging[k_nx_ra8_eth_mac_byte_4] =
     (uint8_t)((lsw >> (ULONG)k_nx_ra8_eth_lsw_shift_byte4) & (ULONG)k_nx_ra8_eth_byte_mask);
   s_tx_staging[k_nx_ra8_eth_mac_byte_5]        = (uint8_t)(lsw & (ULONG)k_nx_ra8_eth_byte_mask);
-  s_tx_staging[6]                             = s_local_mac[k_nx_ra8_eth_mac_byte_0];
+  s_tx_staging[6]                              = s_local_mac[k_nx_ra8_eth_mac_byte_0];
   s_tx_staging[k_nx_ra8_eth_hdr_src_mac_byte1] = s_local_mac[k_nx_ra8_eth_mac_byte_1];
-  s_tx_staging[8]                             = s_local_mac[k_nx_ra8_eth_mac_byte_2];
+  s_tx_staging[8]                              = s_local_mac[k_nx_ra8_eth_mac_byte_2];
   s_tx_staging[k_nx_ra8_eth_hdr_src_mac_byte3] = s_local_mac[k_nx_ra8_eth_mac_byte_3];
   s_tx_staging[k_nx_ra8_eth_hdr_src_mac_byte4] = s_local_mac[k_nx_ra8_eth_mac_byte_4];
   s_tx_staging[k_nx_ra8_eth_hdr_src_mac_byte5] = s_local_mac[k_nx_ra8_eth_mac_byte_5];
@@ -776,7 +778,7 @@ static void priv_handle_deferred_rx(NX_IP_DRIVER* req)
   /* Drain the descriptor ring. ra8_eth_read returns k_ra8_err_no_data
    * when the ring is empty -- that is the loop exit. */
   while (1) {
-    uint32_t got = 0U;
+    uint32_t  got = 0U;
     ra8_err_t err = ra8_eth_read(s_rx_staging, (uint32_t)sizeof(s_rx_staging), &got);
     if (err != k_ra8_ok || got == 0U) {
       break;

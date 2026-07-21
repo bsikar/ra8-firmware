@@ -24,11 +24,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_elc_regs.h"
-#include "ra8_usb_regs.h"
 #include "ra8_check.h"
+#include "ra8_elc_regs.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
+#include "ra8_usb_regs.h"
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -456,7 +456,8 @@ static void internal_usbhs_isr(void* ctx)
  */
 ra8_elc_event_t internal_pick_event(ra8_usb_speed_t speed)
 {
-  return (speed == k_ra8_usb_speed_hs) ? k_ra8_elc_event_usbhs_int_resume : k_ra8_elc_event_usbfs_int;
+  return (speed == k_ra8_usb_speed_hs) ? k_ra8_elc_event_usbhs_int_resume
+                                       : k_ra8_elc_event_usbfs_int;
 }
 
 /**
