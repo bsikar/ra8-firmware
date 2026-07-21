@@ -35,13 +35,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import contextlib
-import csv
-import json
 import re
 import sys
-from collections import defaultdict
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # ---------------------------------------------------------------------------
 # Locations
@@ -196,33 +194,26 @@ def parse_mcdc_txt(path: Path):
 FUNC_DEF_RE = re.compile(r"^[A-Za-z_][\w\s\*\(\),:<>]*?\b([A-Za-z_]\w*)\s*\([^;]*?\)\s*\{?\s*$")
 
 
-def resolve_function(rel_path: str, target_line: int) -> str:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
-    """Best-effort function name lookup. Returns "(file scope)" if the
-    decision is not inside a function (e.g. file-scope initializer)."""
-    abs_path = REPO_ROOT / rel_path
-    if not abs_path.exists():
-        return "(file scope)"
-    try:
-        text = abs_path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return "(file scope)"
-    src_lines = text.splitlines()
-    # Walk forward, tracking brace depth and the most recent name at depth 0.
-    depth = 0
-    last_name_at_depth0 = None
-    func_stack: list[tuple[str, int]] = []  # (name, depth_when_opened)
-    in_block_comment = False
-    for i, raw in enumerate(src_lines, start=1):
-        line = raw
-        # strip block comments crudely
-        if in_block_comment:
+class _CommentStripper:
+    """Blank comments and string literals, one line at a time.
+
+    Crude by design and stateful across lines, because the caller is walking
+    the file to track brace depth and needs every line in order. A real parse
+    would be better, but this runs over llvm-cov output for files that may not
+    even compile in isolation.
+    """
+
+    def __init__(self) -> None:
+        self.in_block = False
+
+    def strip(self, line: str) -> str:
+        """Return ``line`` with comments and string literals removed."""
+        if self.in_block:
             end = line.find("*/")
             if end == -1:
-                line = ""
-            else:
-                line = line[end + 2 :]
-                in_block_comment = False
-        # strip /* ... */ on same line
+                return ""
+            line = line[end + 2 :]
+            self.in_block = False
         while True:
             s = line.find("/*")
             if s == -1:
@@ -230,40 +221,67 @@ def resolve_function(rel_path: str, target_line: int) -> str:  # noqa: PLR0912  
             e = line.find("*/", s + 2)
             if e == -1:
                 line = line[:s]
-                in_block_comment = True
+                self.in_block = True
                 break
             line = line[:s] + line[e + 2 :]
-        # strip // comments
         s = line.find("//")
         if s != -1:
             line = line[:s]
-        # strip strings (very rough)
-        line = re.sub(r'"(?:\\.|[^"\\])*"', '""', line)
+        return re.sub(r'"(?:\\.|[^"\\])*"', '""', line)
 
-        # If we're at depth 0, look for a function-definition signature.
-        # Heuristic: ID followed by ( ... ) and an open brace either on
-        # this line or on a subsequent line before any other open brace.
+
+def _function_signature(line: str) -> str | None:
+    """Return the function name if ``line`` opens a definition at file scope.
+
+    Heuristic: an identifier followed by a parameter list, rejecting the
+    control-flow keywords that have the same shape.
+    """
+    stripped = line.strip()
+    if stripped.startswith(("if", "while", "for", "switch", "return", "do", "}")):
+        return None
+    m = FUNC_DEF_RE.match(stripped)
+    return m.group(1) if m else None
+
+
+def _track_braces(line: str, depth: int, pending: str | None, stack: list) -> int:
+    """Advance brace depth over ``line``, pushing/popping the function stack."""
+    for ch in line:
+        if ch == "{":
+            if depth == 0 and pending is not None:
+                stack.append((pending, depth))
+            depth += 1
+        elif ch == "}":
+            depth = max(depth - 1, 0)
+            if stack and depth <= stack[-1][1]:
+                stack.pop()
+    return depth
+
+
+def resolve_function(rel_path: str, target_line: int) -> str:
+    """Best-effort function name lookup for a decision at ``target_line``.
+
+    Returns "(file scope)" when the decision is not inside a function (e.g. a
+    file-scope initializer), or when the file cannot be read.
+    """
+    abs_path = REPO_ROOT / rel_path
+    if not abs_path.exists():
+        return "(file scope)"
+    try:
+        text = abs_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return "(file scope)"
+
+    stripper = _CommentStripper()
+    depth = 0
+    pending: str | None = None
+    stack: list[tuple[str, int]] = []  # (name, depth_when_opened)
+    for i, raw in enumerate(text.splitlines(), start=1):
+        line = stripper.strip(raw)
         if depth == 0:
-            m = FUNC_DEF_RE.match(line.strip())
-            if m and not line.strip().startswith(
-                ("if", "while", "for", "switch", "return", "do", "}")
-            ):
-                last_name_at_depth0 = m.group(1)
-
-        # Count braces and update depth + function stack
-        for ch in line:
-            if ch == "{":
-                if depth == 0 and last_name_at_depth0 is not None:
-                    func_stack.append((last_name_at_depth0, depth))
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                depth = max(depth, 0)
-                if func_stack and depth <= func_stack[-1][1]:
-                    func_stack.pop()
-
+            pending = _function_signature(line) or pending
+        depth = _track_braces(line, depth, pending, stack)
         if i == target_line:
-            return func_stack[-1][0] if func_stack else "(file scope)"
+            return stack[-1][0] if stack else "(file scope)"
 
     return "(file scope)"
 
@@ -615,8 +633,9 @@ def module_of(rel_path: str) -> str:
 
 # ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
-def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts readability
+
+
+def main() -> int:
     if not MCDC_TXT.exists():
         print(
             f"error: {MCDC_TXT} not found. Run `make mcdc` first to generate"
@@ -642,329 +661,24 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
         deact, rationale = is_deactivated_decision(src, ln, excerpt)
         classified.append((src, ln, n, func, excerpt, covered, deact, rationale))
 
-    # Write CSV (gap-only). The `line` column has been replaced with
-    # `decision_text_snippet` per project citation policy: line numbers
-    # drift on every reformat and produce stale anchors. The text-derived
-    # slug is grep-able and survives reformatting.
-    with CSV_OUT.open("w", encoding="ascii", newline="") as fh:
-        w = csv.writer(fh, lineterminator="\n")
-        w.writerow(
-            [
-                "source_file",
-                "decision_text_snippet",
-                "condition_count",
-                "function_name",
-                "decision_excerpt",
-                "covered",
-                "deactivated",
-                "deactivation_rationale",
-            ]
-        )
-        for src, _ln, n, func, excerpt, covered, deact, rationale in classified:
-            w.writerow(
-                [
-                    src,
-                    decision_snippet(excerpt),
-                    n,
-                    func,
-                    excerpt,
-                    covered,
-                    "true" if deact else "false",
-                    rationale,
-                ]
-            )
+    # Imported here, not at module scope: mcdc_report reads this module's
+    # constants and helpers, so a top-level import either way is a cycle.
+    import mcdc_report  # noqa: PLC0415  # avoid import cycle
 
-    # Module roll-up (counts every decision, gap or not).
-    per_module: dict[str, list[float]] = defaultdict(list)
-    for src, _ln, _n, _e, pct in all_decisions:
-        per_module[module_of(src)].append(pct)
+    mcdc_report.write_gap_csv(classified)
+    h = mcdc_report.headline(all_decisions, classified)
+    mcdc_report.write_markdown(mcdc_report.module_rows(all_decisions), h)
+    mcdc_report.write_deactivations(h)
+    mcdc_report.write_gate_json(h)
+    mcdc_report.write_per_file_json(all_decisions, classified)
 
-    rows = []
-    for mod, pcts in per_module.items():
-        total = len(pcts)
-        covered = sum(1 for p in pcts if p >= MCDC_FULL_PCT)
-        partial = sum(1 for p in pcts if MCDC_ZERO_PCT < p < MCDC_FULL_PCT)
-        uncov = sum(1 for p in pcts if p == MCDC_ZERO_PCT)
-        rows.append((mod, total, covered, partial, uncov))
-
-    # Sort by uncovered+partial desc, then total desc, then name.
-    rows.sort(key=lambda r: (-(r[3] + r[4]), -r[1], r[0]))
-
-    # Build the markdown header. Preserve the existing prose; only the
-    # numeric blocks get rewritten.
-    total_dec = len(all_decisions)
-    yes_dec = sum(1 for d in all_decisions if d[4] >= MCDC_FULL_PCT)
-    partial_dec = sum(1 for d in all_decisions if MCDC_ZERO_PCT < d[4] < MCDC_FULL_PCT)
-    no_dec = sum(1 for d in all_decisions if d[4] == MCDC_ZERO_PCT)
-    files_seen = len({d[0] for d in all_decisions})
-    rate = (100.0 * yes_dec / total_dec) if total_dec else 0.0
-
-    deactivated_rows = [r for r in classified if r[6]]
-    reachable_rows = [r for r in classified if not r[6]]
-    # Reachable-only MC/DC: treat deactivated decisions as if they were
-    # at 100% (they are exempted under DO-178C 6.4.4.3 with documented
-    # rationale in docs/MCDC_DEACTIVATIONS.md). The denominator is
-    # unchanged; the numerator counts every covered decision plus every
-    # documented-deactivated decision.
-    deact_count = len(deactivated_rows)
-    reachable_total = total_dec - deact_count
-    reachable_covered = yes_dec
-    reachable_rate = (100.0 * reachable_covered / reachable_total) if reachable_total else 100.0
-
-    md_lines: list[str] = []
-    md_lines.append("# MC/DC Coverage Gap Audit")
-    md_lines.append("")
-    md_lines.append(
-        "Live audit of compound boolean decisions reported by"
-        " `llvm-cov show --show-mcdc` for first-party sources"
-        " (`libs/`, `src/`, `port/`, excluding `libs/third_party/`)."
-        " Regenerated from `build/mcdc-report/mcdc.txt` by"
-        " `scripts/fix/regen_mcdc_gaps.py`; do not edit by hand."
-    )
-    md_lines.append("")
-    md_lines.append("## Methodology")
-    md_lines.append("")
-    md_lines.append("- Source of truth: `build/mcdc-report/mcdc.txt` (output of `make mcdc`).")
-    md_lines.append(
-        '- A decision is one llvm-cov "MC/DC Decision Region".'
-        " Condition count is taken from the `Number of Conditions:`"
-        " field that llvm-cov emits for that region."
-    )
-    md_lines.append("- Coverage status (`covered` column):")
-    md_lines.append(
-        "  - `yes` -- llvm-cov reports 100.00% MC/DC for the decision."
-        " Excluded from the CSV (CSV is gap-only)."
-    )
-    md_lines.append(
-        "  - `partial` -- 0 < MC/DC % < 100. The decision was exercised"
-        " but at least one independence pair is missing."
-    )
-    md_lines.append(
-        "  - `no` -- MC/DC % == 0. The decision was never evaluated under instrumentation."
-    )
-    md_lines.append("")
-    md_lines.append("## Top-line Numbers")
-    md_lines.append("")
-    md_lines.append(f"- Source files with at least one decision: **{files_seen}**")
-    md_lines.append(f"- Total compound decisions in scope: **{total_dec}**")
-    md_lines.append(f"- Decisions at 100% MC/DC (`yes`): **{yes_dec}**")
-    md_lines.append(f"- Decisions partially covered (`partial`): **{partial_dec}**")
-    md_lines.append(f"- Decisions fully uncovered (`no`): **{no_dec}**")
-    md_lines.append(f"- Coverage rate (yes / total): **{rate:.2f}%**")
-    md_lines.append(f"- Deactivated gap conditions (DO-178C 6.4.4.3): **{deact_count}**")
-    md_lines.append(
-        f"- Reachable-condition denominator (total - deactivated): **{reachable_total}**"
-    )
-    md_lines.append(
-        f"- **Reachable MC/DC rate**: **{reachable_rate:.2f}%**"
-        " -- this is the gate threshold (100% required)."
-    )
-    md_lines.append("")
-    md_lines.append(
-        "See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog."
-    )
-    md_lines.append("")
-    md_lines.append("## Reachable gaps (require new MC/DC test vectors)")
-    md_lines.append("")
-    md_lines.append("| File | Conds | Function | Excerpt | Status |")
-    md_lines.append("|------|------:|----------|---------|--------|")
-    for src, _ln, n, func, excerpt, covered, _deact, _rat in reachable_rows[:TABLE_ROW_CAP]:
-        ex = _truncate_md_cell(
-            excerpt.replace("|", "\\|"), EXCERPT_MAX_REACHABLE, EXCERPT_TRUNC_REACHABLE
-        )
-        md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {covered} |")
-    if len(reachable_rows) > TABLE_ROW_CAP:
-        overflow = len(reachable_rows) - TABLE_ROW_CAP
-        md_lines.append(f"| ... | | | | *({overflow} more rows in CSV)* | |")
-    md_lines.append("")
-    md_lines.append("## Deactivated gaps (DO-178C 6.4.4.3 exempted)")
-    md_lines.append("")
-    md_lines.append(
-        "These conditions are unreachable on any public-API path and"
-        " are therefore exempted from the MC/DC gate. Each row carries"
-        " the rationale used by the auto-classifier; humans may extend"
-        " the per-condition narrative in `docs/MCDC_DEACTIVATIONS.md`."
-    )
-    md_lines.append("")
-    md_lines.append("| File | Conds | Function | Excerpt | Rationale |")
-    md_lines.append("|------|------:|----------|---------|-----------|")
-    for src, _ln, n, func, excerpt, _covered, _deact, rationale in deactivated_rows:
-        ex = _truncate_md_cell(
-            excerpt.replace("|", "\\|"), EXCERPT_MAX_DEACTIVATED, EXCERPT_TRUNC_DEACTIVATED
-        )
-        rt = _truncate_md_cell(
-            rationale.replace("|", "\\|"), EXCERPT_MAX_DEACTIVATED, EXCERPT_TRUNC_DEACTIVATED
-        )
-        md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {rt} |")
-    md_lines.append("")
-    md_lines.append("## Per-module gap counts (full table)")
-    md_lines.append("")
-    md_lines.append("Sorted by (uncovered + partial) descending, then total descending.")
-    md_lines.append("")
-    md_lines.append("| Module | Total | Covered | Partial | Uncovered |")
-    md_lines.append("|--------|------:|--------:|--------:|----------:|")
-    for mod, total, covered, partial, uncov in rows:
-        md_lines.append(f"| {mod} | {total} | {covered} | {partial} | {uncov} |")
-    md_lines.append("")
-    md_lines.append("## Top 30 modules with at least one uncovered decision")
-    md_lines.append("")
-    md_lines.append("| Module | Uncovered | Partial | Covered | Total |")
-    md_lines.append("|--------|----------:|--------:|--------:|------:|")
-    uncov_only = [r for r in rows if r[4] > 0]
-    uncov_only.sort(key=lambda r: (-r[4], -r[3], r[0]))
-    for mod, total, covered, partial, uncov in uncov_only[:30]:
-        md_lines.append(f"| {mod} | {uncov} | {partial} | {covered} | {total} |")
-    md_lines.append("")
-    md_lines.append("---")
-    md_lines.append("")
-    md_lines.append(
-        "*Regenerated from the live `make mcdc` report. See"
-        " `docs/MCDC_GAPS.csv` for the full per-decision table"
-        " including decision-text snippets and excerpts.*"
-    )
-    md_lines.append("")
-
-    MD_OUT.write_text("\n".join(md_lines), encoding="ascii")
-
-    # ----------------------------------------------------------------
-    # docs/MCDC_DEACTIVATIONS.md -- per-condition catalog. The auto-
-    # generated entries can be extended by hand below the marker.
-    # ----------------------------------------------------------------
-    deact_lines: list[str] = []
-    deact_lines.append("# MC/DC Deactivated-Condition Catalog")
-    deact_lines.append("")
-    deact_lines.append(
-        "This file documents every MC/DC condition that has been"
-        " classified as **deactivated** under **DO-178C 6.4.4.3"
-        ' ("deactivated code")**. Deactivated conditions are exempted'
-        " from the 100% MC/DC gate because the public-API contract"
-        " makes them unreachable; they remain in the source for"
-        " defense-in-depth, fault-injection robustness, and to give"
-        " static analyzers a clear local invariant to anchor on."
-    )
-    deact_lines.append("")
-    deact_lines.append("## Policy")
-    deact_lines.append("")
-    deact_lines.append(
-        "DO-178C 6.4.4.3 permits structural-coverage exemption for code"
-        " that is intentionally not reachable in the operational"
-        " configuration, provided each instance is (a) identified, (b)"
-        " justified by a documented rationale, and (c) accompanied by"
-        " upstream evidence that the exemption holds. The"
-        " auto-classifier in `scripts/fix/regen_mcdc_gaps.py`"
-        " enumerates every such condition; this catalog records the"
-        " upstream guard or contract that makes each one unreachable."
-    )
-    deact_lines.append("")
-    deact_lines.append(
-        "Equivalent industry references: IEC 61508-3:2010 7.4.7"
-        " (defensive-programming code), ISO 26262-6:2018 9.4.5"
-        " (deactivated branches)."
-    )
-    deact_lines.append("")
-    deact_lines.append("## Auto-generated entries")
-    deact_lines.append("")
-    deact_lines.append(
-        "Generated by `scripts/fix/regen_mcdc_gaps.py` from"
-        " `build/mcdc-report/mcdc.txt`. Do not edit by hand above the"
-        " `<!-- MANUAL -->` marker; manual narrative may be added below"
-        " the marker for a specific condition by appending its"
-        " `file::function::snippet` anchor (line numbers are not used:"
-        " they drift on every reformat)."
-    )
-    deact_lines.append("")
-    if not deactivated_rows:
-        deact_lines.append("(no deactivated conditions detected)")
-        deact_lines.append("")
-    else:
-        for src, _ln, n, func, excerpt, covered, _deact, rationale in deactivated_rows:
-            slug = decision_snippet(excerpt)
-            anchor = f"{src}::{func}::{slug}"
-            deact_lines.append(f"### {anchor}")
-            deact_lines.append("")
-            deact_lines.append(f"- **Function**: `{func}`")
-            deact_lines.append(f"- **Conditions in decision**: {n}")
-            deact_lines.append(f"- **Current llvm-cov status**: {covered}")
-            deact_lines.append(f"- **Source line**: `{excerpt.strip()}`")
-            deact_lines.append(f"- **Rationale**: {rationale}")
-            deact_lines.append(
-                "- **DO-178C 6.4.4.3 basis**: defensive guard whose"
-                " upstream contract is enforced on every public-API"
-                " entry."
-            )
-            deact_lines.append("")
-    deact_lines.append("<!-- MANUAL -->")
-    deact_lines.append("")
-    deact_lines.append("## Manual narrative (per anchor)")
-    deact_lines.append("")
-    deact_lines.append(
-        "_Add expanded justification here keyed by the"
-        " `file::function::snippet` anchor above when the"
-        " auto-generated rationale is"
-        " insufficient. Anything below this marker is preserved across"
-        " regenerations only if you commit it -- the regenerator"
-        " currently overwrites the entire file; future revisions may"
-        " split the manual section into a sibling file._"
-    )
-    deact_lines.append("")
-    DEACT_MD_OUT.write_text("\n".join(deact_lines), encoding="ascii")
-
-    # Stash key counts for the gate script to read without re-parsing.
-    gate_json = REPO_ROOT / "build" / "mcdc-report" / "gate.json"
-    with contextlib.suppress(OSError):
-        gate_json.write_text(
-            "{\n"
-            f'  "total_decisions": {total_dec},\n'
-            f'  "covered_decisions": {yes_dec},\n'
-            f'  "deactivated_decisions": {deact_count},\n'
-            f'  "reachable_total": {reachable_total},\n'
-            f'  "reachable_covered": {reachable_covered},\n'
-            f'  "reachable_rate": {reachable_rate:.4f},\n'
-            f'  "absolute_rate": {rate:.4f}\n'
-            "}\n",
-            encoding="ascii",
-        )
-
-    # Per-file decision roll-up for the per-file MC/DC floor
-    # (scripts/checks/check_mcdc_floor.py). This mirrors how gcovr's
-    # coverage.json feeds check_coverage_floor.py: emit raw per-file decision
-    # counts and let the floor script compute the reachable rate + apply the
-    # threshold. `total`/`covered` come from every decision llvm-cov reported
-    # for the file; `deactivated` is the subset of that file's gap decisions
-    # the classifier exempted under DO-178C 6.4.4.3.
-    per_file: dict[str, dict[str, int]] = defaultdict(
-        lambda: {"total": 0, "covered": 0, "deactivated": 0}
-    )
-    for src, _ln, _n, _e, pct in all_decisions:
-        per_file[src]["total"] += 1
-        if pct >= MCDC_FULL_PCT:
-            per_file[src]["covered"] += 1
-    for row in classified:
-        if row[6]:  # deactivated
-            per_file[row[0]]["deactivated"] += 1
-
-    per_file_json = REPO_ROOT / "build" / "mcdc-report" / "mcdc_per_file.json"
-    per_file_entries = [
-        {
-            "file": src,
-            "total_decisions": rec["total"],
-            "covered_decisions": rec["covered"],
-            "deactivated_decisions": rec["deactivated"],
-        }
-        for src, rec in sorted(per_file.items())
-    ]
-    with contextlib.suppress(OSError):
-        per_file_json.write_text(
-            json.dumps({"files": per_file_entries}, indent=2) + "\n",
-            encoding="ascii",
-        )
-
+    gap_rows = [d for d in all_decisions if d[4] < MCDC_FULL_PCT]
     print(
         f"Wrote {CSV_OUT.relative_to(REPO_ROOT)} ({len(gap_rows)} gap rows;"
-        f" {deact_count} deactivated, {len(reachable_rows)} reachable),"
+        f" {h['deact_count']} deactivated, {len(h['reachable_rows'])} reachable),"
         f" {MD_OUT.relative_to(REPO_ROOT)},"
         f" {DEACT_MD_OUT.relative_to(REPO_ROOT)}."
-        f" Absolute MC/DC: {rate:.2f}%; reachable MC/DC: {reachable_rate:.2f}%."
+        f" Absolute MC/DC: {h['rate']:.2f}%; reachable MC/DC: {h['reachable_rate']:.2f}%."
     )
     return 0
 

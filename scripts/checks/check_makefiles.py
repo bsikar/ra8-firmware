@@ -172,39 +172,53 @@ class Finding:
         return f"{self.path}:{self.line}: [{self.code}] {self.msg}"
 
 
-def check_file(  # noqa: PLR0912  # flat rule-dispatch table; splitting it hides the rule list
-    path: pathlib.Path,
-    raw: bytes,
-    is_app_makefile: bool,
-) -> list[Finding]:
+def _check_formatting(path: pathlib.Path, raw: bytes) -> tuple[list[Finding], str]:
+    """MK004 -- encoding, line endings, trailing whitespace, final newline."""
     findings: list[Finding] = []
-
-    def add(line, code, msg):
-        findings.append(Finding(path, line, code, msg))
-
     try:
         text = raw.decode("ascii")
     except UnicodeDecodeError as exc:
-        add(raw[: exc.start].count(b"\n") + 1, "MK004", f"non-ASCII byte 0x{raw[exc.start]:02x}")
+        findings.append(
+            Finding(
+                path,
+                raw[: exc.start].count(b"\n") + 1,
+                "MK004",
+                f"non-ASCII byte 0x{raw[exc.start]:02x}",
+            )
+        )
         text = raw.decode("ascii", errors="replace")
 
     if b"\r\n" in raw:
-        add(1, "MK004", "CRLF line ending")
+        findings.append(Finding(path, 1, "MK004", "CRLF line ending"))
     if raw and not raw.endswith(b"\n"):
-        add(text.count("\n") + 1, "MK004", "no final newline")
+        findings.append(Finding(path, text.count("\n") + 1, "MK004", "no final newline"))
+    findings.extend(
+        Finding(path, i, "MK004", "trailing whitespace")
+        for i, ln in enumerate(text.splitlines(), 1)
+        if ln != ln.rstrip()
+    )
+    return findings, text
 
-    for i, ln in enumerate(text.splitlines(), 1):
-        if ln != ln.rstrip():
-            add(i, "MK004", "trailing whitespace")
 
+def _check_licence(path: pathlib.Path, text: str) -> list[Finding]:
+    """MK001 -- SPDX identifier and copyright line in the file head."""
     head = "\n".join(text.splitlines()[:40])
+    findings: list[Finding] = []
     if "SPDX-License-Identifier:" not in head:
-        add(1, "MK001", "no SPDX-License-Identifier in the first 40 lines")
+        findings.append(
+            Finding(path, 1, "MK001", "no SPDX-License-Identifier in the first 40 lines")
+        )
     if not re.search(r"Copyright \(c\) \d{4}", head):
-        add(1, "MK001", "no 'Copyright (c) <year>' line in the first 40 lines")
+        findings.append(
+            Finding(path, 1, "MK001", "no 'Copyright (c) <year>' line in the first 40 lines")
+        )
+    return findings
 
-    # --- MK002 ------------------------------------------------------------
+
+def _check_phony(path: pathlib.Path, text: str) -> list[Finding]:
+    """MK002 -- a target that names no file must be declared .PHONY."""
     phony = phony_names(text)
+    findings: list[Finding] = []
     seen: set[str] = set()
     for lineno, name, recipe in declared_targets(text):
         if name in seen:
@@ -215,19 +229,26 @@ def check_file(  # noqa: PLR0912  # flat rule-dispatch table; splitting it hides
         if "$@" in recipe:
             continue  # the recipe writes the file this target names
         if name not in phony:
-            add(lineno, "MK002", f"target '{name}' names no file but is not .PHONY")
+            findings.append(
+                Finding(path, lineno, "MK002", f"target '{name}' names no file but is not .PHONY")
+            )
+    return findings
 
-    # --- MK003 ------------------------------------------------------------
-    if is_app_makefile:
-        for lineno, line, is_recipe in logical_lines(text):
-            if is_recipe:
-                continue
-            m = re.match(r"^ROOT\s*:?=\s*(.+)$", line)
-            if not m:
-                continue
-            value = m.group(1).strip()
-            if GIT_ROOT_FORM not in value:
-                add(
+
+def _check_root_derivation(path: pathlib.Path, text: str) -> list[Finding]:
+    """MK003 -- an app Makefile derives ROOT from git, not a fixed '..' depth."""
+    findings: list[Finding] = []
+    for lineno, line, is_recipe in logical_lines(text):
+        if is_recipe:
+            continue
+        m = re.match(r"^ROOT\s*:?=\s*(.+)$", line)
+        if not m:
+            continue
+        value = m.group(1).strip()
+        if GIT_ROOT_FORM not in value:
+            findings.append(
+                Finding(
+                    path,
                     lineno,
                     "MK003",
                     "ROOT is derived from a fixed '..' depth "
@@ -235,6 +256,21 @@ def check_file(  # noqa: PLR0912  # flat rule-dispatch table; splitting it hides
                     "rev-parse --show-toplevel) so moving the app between "
                     "tiers cannot silently break it",
                 )
+            )
+    return findings
+
+
+def check_file(path: pathlib.Path, raw: bytes, is_app_makefile: bool) -> list[Finding]:
+    """Every Makefile rule, one function per finding code.
+
+    The rule list is the call sequence below: MK004 formatting, MK001 licence,
+    MK002 .PHONY, and MK003 ROOT derivation (app Makefiles only).
+    """
+    findings, text = _check_formatting(path, raw)
+    findings += _check_licence(path, text)
+    findings += _check_phony(path, text)
+    if is_app_makefile:
+        findings += _check_root_derivation(path, text)
     return findings
 
 

@@ -289,88 +289,120 @@ def _is_ignored(is_float: bool, value: float) -> bool:
     return int(value) in IGNORED_INT
 
 
-def _scan_file(path: Path) -> list[tuple[int, int, str]]:  # noqa: PLR0912, PLR0915  # parser/gate dispatch, splitting hurts readability
-    """Return a list of (line, column, literal) for every magic number
-    in `path`."""
+class _SuppressionState:
+    """Tracks clang-tidy NOLINT scope across the lines of one file.
+
+    Honours the project's own readability-magic-numbers waivers, so a literal
+    this gate would flag but clang-tidy is already told to ignore is not
+    reported twice under two different names.
+    """
+
+    def __init__(self) -> None:
+        self.in_region = False  # inside a magic-relevant NOLINTBEGIN/END block
+        self.skip_next = False  # previous line was a magic-relevant NOLINTNEXTLINE
+
+    def suppresses(self, raw: str) -> bool:
+        """True when ``raw`` is inside, or is itself, a NOLINT suppression."""
+        m_beg = _NOLINT_BEGIN_RE.search(raw)
+        if m_beg and _nolint_applies(m_beg.group(1)):
+            self.in_region = True
+        m_end = _NOLINT_END_RE.search(raw)
+        if m_end and _nolint_applies(m_end.group(1)):
+            self.in_region = False
+        if self.in_region or m_beg or m_end:
+            return True
+        if self.skip_next:
+            self.skip_next = False
+            return True
+        m_nl = _NOLINT_NEXT_RE.search(raw)
+        if m_nl and _nolint_applies(m_nl.group(1)):
+            self.skip_next = True
+            return True
+        m_inl = _NOLINT_INLINE_RE.search(raw)
+        return bool(m_inl and _nolint_applies(m_inl.group(1)))
+
+
+class _EnumState:
+    """Tracks brace depth inside an enum body.
+
+    Literals inside an enum ARE the named constants this gate exists to
+    require, so the body is skipped rather than reported.
+    """
+
+    def __init__(self) -> None:
+        self.depth = 0
+        self.pending = False  # saw `enum`, awaiting its `{`
+
+    def inside(self, code_line: str) -> bool:
+        """Advance the tracker over ``code_line``; True if it is enum body."""
+        if self.depth == 0 and re.search(r"\benum\b", code_line):
+            self.pending = True
+        if not (self.pending or self.depth > 0):
+            return False
+        opens = code_line.count("{")
+        closes = code_line.count("}")
+        if self.pending and opens > 0:
+            self.pending = False
+            self.depth += opens - closes
+            return True  # the `... enum ... {` line itself is a definition
+        self.depth = max(self.depth + opens - closes, 0)
+        return self.depth > 0
+
+
+def _line_literals(code_line: str) -> list[tuple[int, str]]:
+    """Return (column, literal) for every magic number on one line of code."""
+    out: list[tuple[int, str]] = []
+    for m in _NUM_RE.finditer(code_line):
+        start = m.start()
+        if start > 0 and _IDENT_BEFORE.match(code_line[start - 1]):
+            continue
+        if _is_array_dimension(code_line, start, m.end()):
+            continue
+        is_float, value = _literal_value(m)
+        if _is_ignored(is_float, value):
+            continue
+        if is_float and _CONST_FLOAT_DEF.search(code_line) and _FLOAT_TYPE.search(code_line):
+            continue  # named const float/double definition
+        out.append((start + 1, m.group(0)))
+    return out
+
+
+def _skip_line(code_line: str, orig_line: str, enums: _EnumState) -> bool:
+    """True when this line cannot hold a reportable literal."""
+    if enums.inside(code_line):
+        return True
+    stripped = code_line.lstrip()
+    # Preprocessor directives are governed by other gates.
+    if stripped.startswith("#"):
+        return True
+    # Pure data rows of a const lookup table are not logic.
+    if stripped and _DATA_ROW_RE.match(code_line):
+        return True
+    # Per-line opt-out (checked against the original source line).
+    return OPT_OUT in orig_line
+
+
+def _scan_file(path: Path) -> list[tuple[int, int, str]]:
+    """Return a list of (line, column, literal) for every magic number in `path`."""
     try:
         text = path.read_text()
     except (OSError, UnicodeDecodeError):
         return []
 
-    code = _strip_comments_and_strings(text)
-    code_lines = code.splitlines()
+    code_lines = _strip_comments_and_strings(text).splitlines()
     orig_lines = text.splitlines()
 
     violations: list[tuple[int, int, str]] = []
-    enum_depth = 0  # brace depth while inside an enum body
-    enum_pending = False  # saw `enum` keyword, awaiting its `{`
-    nolint_region = False  # inside a magic-relevant NOLINTBEGIN/END block
-    nolint_next = False  # previous line was a magic-relevant NOLINTNEXTLINE
+    nolint = _SuppressionState()
+    enums = _EnumState()
 
     for idx, code_line in enumerate(code_lines):
-        stripped = code_line.lstrip()
         raw = orig_lines[idx] if idx < len(orig_lines) else ""
-
-        # --- clang-tidy NOLINT suppression (honours the project's own
-        # readability-magic-numbers waivers) ---------------------------
-        m_beg = _NOLINT_BEGIN_RE.search(raw)
-        if m_beg and _nolint_applies(m_beg.group(1)):
-            nolint_region = True
-        m_end = _NOLINT_END_RE.search(raw)
-        if m_end and _nolint_applies(m_end.group(1)):
-            nolint_region = False
-        if nolint_region or m_beg or m_end:
+        if nolint.suppresses(raw):
             continue
-        if nolint_next:
-            nolint_next = False
+        if _skip_line(code_line, raw, enums):
             continue
-        m_nl = _NOLINT_NEXT_RE.search(raw)
-        if m_nl and _nolint_applies(m_nl.group(1)):
-            nolint_next = True
-            continue
-        m_inl = _NOLINT_INLINE_RE.search(raw)
-        if m_inl and _nolint_applies(m_inl.group(1)):
-            continue
-
-        # Update enum tracking on the raw (comment-stripped) line.
-        if enum_depth == 0 and re.search(r"\benum\b", code_line):
-            enum_pending = True
-        if enum_pending or enum_depth > 0:
-            opens = code_line.count("{")
-            closes = code_line.count("}")
-            if enum_pending and opens > 0:
-                enum_pending = False
-                enum_depth += opens - closes
-                continue  # the `... enum ... {` line itself is a definition
-            enum_depth += opens - closes
-            enum_depth = max(enum_depth, 0)
-            if enum_depth > 0:
-                continue  # inside enum body: literals are definitions
-
-        # Preprocessor directives are governed by other gates.
-        if stripped.startswith("#"):
-            continue
-
-        # Pure data rows of a const lookup table are not logic.
-        if stripped and _DATA_ROW_RE.match(code_line):
-            continue
-
-        # Per-line opt-out (checked against the original source line).
-        if idx < len(orig_lines) and OPT_OUT in orig_lines[idx]:
-            continue
-
-        for m in _NUM_RE.finditer(code_line):
-            start = m.start()
-            if start > 0 and _IDENT_BEFORE.match(code_line[start - 1]):
-                continue
-            if _is_array_dimension(code_line, start, m.end()):
-                continue
-            is_float, value = _literal_value(m)
-            if _is_ignored(is_float, value):
-                continue
-            if is_float and _CONST_FLOAT_DEF.search(code_line) and _FLOAT_TYPE.search(code_line):
-                continue  # named const float/double definition
-            violations.append((idx + 1, start + 1, m.group(0)))
+        violations.extend((idx + 1, col, lit) for col, lit in _line_literals(code_line))
 
     return violations
 
