@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ra8_io_xspi_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ra8_io_xspi_demo/main.c
  * @brief ra8_io fabric over OSPI NOR flash (epic #155, #156) on the EK-RA8D2.
  *
  * @details
@@ -11,7 +11,7 @@
  * block-device backend hides this behind the block vtable: an arbitrary
  * 512-byte block write triggers a whole-4-KiB-sector read-modify-write inside
  * the backend. The ra8_fs + VFS layers above are identical to the other FAT
- * demos and shared through `common/ra8_io_roundtrip.{h,c}`; this app differs only
+ * demos and shared through `ra8_io_roundtrip.{h,c}` (a self-contained local copy); this app differs only
  * by the OSPI controller bring-up (`ra8_xspi_init`) plus the ONE backend bind
  * line (`ra8_io_blockdev_xspi_init`) and its own PASS banner.
  *
@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -172,6 +173,13 @@ static void demo_setup_or_halt(void)
  */
 static ra8_err_t demo_run(void)
 {
+  /* Route the 12 OCTA bus pins and strobe the IS25LX512M RESET_L BEFORE the
+   * controller comes up. ra8_xspi_init only programs CGC/MSTP and the OSPI
+   * controller registers -- without this the pins stay GPIO, no clock, CS or
+   * data ever reaches the flash, and the mount reads a floating bus and fails
+   * with Error=1281 (0x501). Silicon-confirmed; threadx_levelx_demo, which
+   * passes on the bench, uses the same helper in the same order. */
+  RA8_RETURN_ON_ERROR(ra8_board_xspi_pins_init(), s_tag, "xspi pins");
   RA8_RETURN_ON_ERROR(ra8_xspi_init((uint8_t)k_demo_xspi_inst, k_ra8_xspi_lio_1s1s1s),
                       s_tag,
                       "xspi init");
