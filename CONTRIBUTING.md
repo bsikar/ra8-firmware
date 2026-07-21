@@ -249,7 +249,7 @@ verification baseline and paste its results into the issue:**
 * **Local unit-test suite** -- `make test`. Expect `100% tests passed`.
 * **CI gate suite** -- the jobs in `.github/workflows/firmware.yml`,
   runnable locally: cross-build every app
-  (`bash scripts/build/all_examples.sh`), clang-tidy
+  (`bash scripts/builders/all_examples.sh`), clang-tidy
   (`bash scripts/checks/clang_tidy.sh --check`), clang-format
   (`bash scripts/checks/format_code.sh --check`), and the citation / ASCII
   checks under `scripts/checks/`.

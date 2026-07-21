@@ -150,7 +150,7 @@ libs/ra8_book/inc/ra8_book_library.h
 # committed @generated fixture, like the epub/rabook parity fixtures): its
 # cover-thumbnail bytes are architecture-dependent to regenerate (libjpeg
 # SIMD decode rounding differs x86 vs arm64), so the SIL fb-hash golden pins
-# the committed bytes. Regenerate only deliberately (scripts/build/books.sh)
+# the committed bytes. Regenerate only deliberately (scripts/builders/books.sh)
 # and re-pin the golden in the same change.
 # Host SD-card images built by tools/mkbookimg (test fixtures).
 *.img

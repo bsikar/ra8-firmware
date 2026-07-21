@@ -109,7 +109,7 @@ mkdir -p "$REPORT_DIR"
 # Pin a C23-capable host compiler. CMake otherwise defaults to a bare "cc",
 # which on the Debian 12 dev box is gcc 12 and cannot parse this codebase's
 # C23 typed enums -- the same selection the host-test build uses.
-# shellcheck source=scripts/build/select_host_compiler.sh
+# shellcheck source=scripts/builders/select_host_compiler.sh
 . "$SCRIPT_DIR/../build/select_host_compiler.sh"
 ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
 

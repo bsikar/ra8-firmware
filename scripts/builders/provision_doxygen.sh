@@ -21,7 +21,7 @@
 # Prints the absolute path of the doxygen binary on stdout; all progress
 # and error text goes to stderr. Intended usage:
 #
-#   DOXYGEN_BIN="$(bash scripts/build/provision_doxygen.sh)"
+#   DOXYGEN_BIN="$(bash scripts/builders/provision_doxygen.sh)"
 #
 # When bumping the pin: update PINNED_VERSION and the three sha256 values
 # below, re-vendor a doxygen-awesome release that supports the new version,

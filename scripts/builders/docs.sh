@@ -3,13 +3,13 @@
 # build_docs.sh -- generate the ra8-firmware Doxygen HTML documentation.
 #
 # Usage:
-#   bash scripts/build/docs.sh         -- build into build/docs/html/
-#   bash scripts/build/docs.sh --open  -- build, then open index.html
-#   bash scripts/build/docs.sh --gate  -- warning-gate build into
+#   bash scripts/builders/docs.sh         -- build into build/docs/html/
+#   bash scripts/builders/docs.sh --open  -- build, then open index.html
+#   bash scripts/builders/docs.sh --gate  -- warning-gate build into
 #                                         build/docs-gate/ (used by CI)
 #
 # Always builds with the project-pinned doxygen release, resolved (and
-# downloaded on first use) by scripts/build/provision_doxygen.sh. The
+# downloaded on first use) by scripts/builders/provision_doxygen.sh. The
 # in-tree HTML header template and the vendored doxygen-awesome theme are
 # only valid for that exact version -- see docs/DOCS.md.
 #

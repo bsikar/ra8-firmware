@@ -114,7 +114,7 @@ three weeks.
   six new apps in one batch (Sweep 7).
 - **Tooling**: `tools/ra8_qe` JSON-driven configurator (Renesas QE-style),
   `scripts/dev/openocd` GPL alternative to the SEGGER flash/debug path,
-  `scripts/build/all_examples.sh`, Doxygen build target, roadmap dashboard,
+  `scripts/builders/all_examples.sh`, Doxygen build target, roadmap dashboard,
   cppcheck/MISRA helpers, `make example-<name>` targets, `make test-docker`
   for macOS host-test runtime, and `VERSION`-driven `@since` consistency
   checking.

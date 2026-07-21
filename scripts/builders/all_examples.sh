@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# scripts/build/all_examples.sh -- build every examples/<app> target.
+# scripts/builders/all_examples.sh -- build every examples/<app> target.
 #
 # Iterates each top-level examples/<app>/ directory containing a main.c,
 # invokes `make <app>` from the repo root, captures pass/fail per app,
 # prints a summary table at the end, and exits non-zero on any failure.
 #
 # Usage:
-#   bash scripts/build/all_examples.sh
+#   bash scripts/builders/all_examples.sh
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT

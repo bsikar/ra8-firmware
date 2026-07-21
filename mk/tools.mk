@@ -96,7 +96,7 @@ mcp:
 # `make books` -- regenerate content/compiled/*.rabook from content/library/*.epub
 # (Git LFS) plus the manifest header. See tools/epub_compile/.
 books:
-	bash scripts/build/books.sh
+	bash scripts/builders/books.sh
 
 # `make bench-cache` -- the #147/#160/#208 cache-bench toolchain: build + run the
 # host tools that exercise the real L1/L2/L3 caches. CC is forwarded so CI can

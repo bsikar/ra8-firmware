@@ -970,7 +970,11 @@ ra8-firmware/
                                Kept out of checks/ so that stays read-only.
     gen/                       Produce a committed artifact from a source of
                                truth (fonts, fixtures, SBOM, nav trees)
-    build/                     Produce a build output (apps, docs, books)
+    builders/                  Produce a build output (apps, docs, books).
+                               NOT named build/: .gitignore's `build/` pattern
+                               matches any directory of that name at any depth,
+                               so a new file there would be silently untracked,
+                               and 13 checkers exclude the `/build/` fragment.
     report/                    Tell me about the tree; never fails on content
     hil/                       Hardware-in-the-loop bench
       lib/                     Shared rig shell libraries

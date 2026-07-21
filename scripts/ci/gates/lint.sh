@@ -61,12 +61,12 @@ gate_lint_cmake() (
   require_cmd cmake-format "pip install --user cmakelang==0.6.13"
   require_cmd cmake-lint "ships with cmakelang; check the cmakelang install"
 
-  # Scope comes from lint_scope.py, which is also what check_lint_coverage.py
+  # Scope comes from lint_targets.py, which is also what check_lint_coverage.py
   # asks when it verifies that every CMake listfile is covered. One definition,
   # two readers -- an inline `git ls-files | grep` here would be a second copy
   # of the coverage map and would drift from the coverage gate on first edit.
   local files
-  mapfile -t files < <(python3 scripts/checks/lint_scope.py cmake)
+  mapfile -t files < <(python3 scripts/checks/lint_targets.py cmake)
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "ERROR: no CMake listfiles found; refusing to report success." >&2
     return 1
@@ -93,9 +93,9 @@ gate_lint_yaml() (
   require_cmd actionlint \
     "https://github.com/rhysd/actionlint/releases (pinned to 1.7.7)"
 
-  # Scope comes from lint_scope.py -- see the note in gate_lint_cmake.
+  # Scope comes from lint_targets.py -- see the note in gate_lint_cmake.
   local files
-  mapfile -t files < <(python3 scripts/checks/lint_scope.py yaml)
+  mapfile -t files < <(python3 scripts/checks/lint_targets.py yaml)
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "ERROR: no YAML files found; refusing to report success." >&2
     return 1

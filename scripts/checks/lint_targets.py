@@ -50,9 +50,18 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 EXCLUDED_PREFIXES = (
     "libs/third_party/",
     "libs/fonts/",
-    "port/threadx/",
     "tools/vela/generated/",
 )
+
+# Prefixes excluded for SOME languages only. A vendored tree is SOUP for the
+# language whose sources it carries, but the build glue that compiles it is
+# ours and is linted like any other first-party listfile: port/threadx/ holds
+# vendored ThreadX C, and a CMakeLists.txt we wrote and hold to the cmake gate.
+# Excluding the directory wholesale -- which this module originally did -- would
+# have silently dropped that listfile out of the cmake scope.
+LANGUAGE_EXCLUDED_PREFIXES = {
+    "c": ("port/threadx/",),
+}
 
 # Path fragments that mark build output rather than source.
 EXCLUDED_FRAGMENTS = ("/build/", "/build-cov/", "/_deps/", "node_modules/")
@@ -122,10 +131,11 @@ def _tracked() -> list[str]:
     return [rel for rel in proc.stdout.split("\0") if rel]
 
 
-def _excluded(rel: str) -> bool:
-    return rel.startswith(EXCLUDED_PREFIXES) or any(
-        frag in f"/{rel}" for frag in EXCLUDED_FRAGMENTS
-    )
+def _excluded(rel: str, lang: str | None = None) -> bool:
+    if rel.startswith(EXCLUDED_PREFIXES) or any(frag in f"/{rel}" for frag in EXCLUDED_FRAGMENTS):
+        return True
+    extra = LANGUAGE_EXCLUDED_PREFIXES.get(lang or "", ())
+    return bool(extra) and rel.startswith(extra)
 
 
 def _shebang_lang(path: Path) -> str | None:
@@ -149,10 +159,8 @@ def _shebang_lang(path: Path) -> str | None:
     return None
 
 
-def language_of(rel: str, root: Path = REPO_ROOT) -> str | None:
-    """The language of one repo-relative path, or None if it is not code."""
-    if _excluded(rel):
-        return None
+def _raw_language(rel: str, root: Path) -> str | None:
+    """The language a path's name implies, before any exclusion is applied."""
     path = Path(rel)
     if path.name in BASENAME_LANG:
         return BASENAME_LANG[path.name]
@@ -162,6 +170,21 @@ def language_of(rel: str, root: Path = REPO_ROOT) -> str | None:
     if path.suffix:
         return None  # a suffix we know is not code (.md, .json, .pdf, ...)
     return _shebang_lang(root / rel)
+
+
+def language_of(rel: str, root: Path = REPO_ROOT) -> str | None:
+    """The language of one repo-relative path, or None if it is not code.
+
+    The language is resolved BEFORE exclusion, because exclusion is now
+    per-language: a vendored tree can be SOUP for its sources and still hold
+    first-party build glue.
+    """
+    if _excluded(rel):
+        return None
+    lang = _raw_language(rel, root)
+    if lang is None or _excluded(rel, lang):
+        return None
+    return lang
 
 
 def files_for(languages: tuple[str, ...] = LANGUAGES) -> dict[str, list[str]]:

@@ -34,7 +34,7 @@ fi
 # Pin a C23-capable host compiler. CMake otherwise defaults to a bare "cc",
 # which on the Debian 12 dev box is gcc 12 and cannot parse this codebase's
 # C23 typed enums -- the same selection the host-test build uses.
-# shellcheck source=scripts/build/select_host_compiler.sh
+# shellcheck source=scripts/builders/select_host_compiler.sh
 # Prefer gcc (matches CI's gcov pipeline); fall back to clang where the host
 # gcc is too old for C23 (the dev box ships gcc 12).
 . "$SCRIPT_DIR/../build/select_host_compiler.sh"

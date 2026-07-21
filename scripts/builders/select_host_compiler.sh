@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/build/select_host_compiler.sh -- shared C23-capable host-compiler
+# scripts/builders/select_host_compiler.sh -- shared C23-capable host-compiler
 # selection (and the matching gcov tool) for the host-test and coverage builds.
 #
 # C23 fixed-underlying-type enums ("typedef enum : uint8_t") require clang >= 17
