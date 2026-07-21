@@ -60,8 +60,6 @@ target_compile_options(
 )
 add_test(NAME test_ra8_rsip_devsec_failclosed COMMAND test_ra8_rsip_devsec_failclosed)
 
-
-
 # ---------------------------------------------------------------------------
 # T5-04: real-backend crypto known-answer test. The rest of the host build
 # compiles ra8_psa_crypto.c under RA8_SIMULATOR_MODE (a deterministic AES-GCM
@@ -138,4 +136,3 @@ if(RA8_REFLOW_USE_LITEHTML)
   #  endif()
   add_test(NAME test_ra8_reflow_v2 COMMAND test_ra8_reflow_v2)
 endif()
-

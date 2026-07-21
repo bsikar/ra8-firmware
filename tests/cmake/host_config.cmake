@@ -214,4 +214,3 @@ else()
   # instead (ra8_sim_mmap_install still checks overlap at runtime).
   add_link_options(-no-pie -Wl,-Ttext-segment=0x70000000)
 endif()
-

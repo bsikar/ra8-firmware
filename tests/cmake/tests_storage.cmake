@@ -12,7 +12,6 @@
 # same directory scope, so every variable and target defined here is visible
 # to the driver and to the fragments included after it.
 
-
 # ---------------------------------------------------------------------------
 # exFAT host test (#85 read support / #93 leading-slash open regression).
 # Standalone: links ONLY ra8_fs_fat.c (no ra8_core_hal -> no ra8_time
