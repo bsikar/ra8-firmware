@@ -8,7 +8,8 @@
 SIM_PANEL ?= ek_ra8d2
 PANEL     ?= $(SIM_PANEL)
 
-.PHONY: $(RA8_SIM) sim-help sim-matrix sil sil-all sil-only ereader-gui \
+.PHONY: $(RA8_SIM) sim-help sim-matrix sim-matrix-triage sim-matrix-baseline \
+        sil sil-all sil-only ereader-gui \
         ereader-golden ereader-golden-update
 
 # `make sim-<app> [PANEL=<name>]` -- cross-build the app, boot its REAL .elf on
@@ -132,9 +133,22 @@ sim-help:
 	@echo "  BOARD_SIM_IDLE_STOP=N, BOARD_SIM_USB_STOP=N, BOARD_SIM_STOP_ON='<substr>'"
 
 # `make sim-matrix` -- build + boot EVERY ek_ra8d2 example on the emulator and
-# report a per-app boot/fault/halt table + coverage %.
+# report a per-app boot/fault/halt/truncated table + coverage %. Runs one worker
+# per core; MATRIX_JOBS=1 forces serial (the verdicts are identical either way).
 sim-matrix:
 	bash scripts/sim/matrix.sh $(APPS)
+
+# `make sim-matrix-triage` -- group the last sweep's failures by cause, so the
+# burn-down has tranches rather than a bare total.
+sim-matrix-triage:
+	bash scripts/sim/matrix_triage.sh
+
+# `make sim-matrix-baseline` -- lock in progress after burning failures down.
+# The board-sim-matrix gate ratchets against this baseline: growth fails,
+# shrinking is free, and the end state is an empty baseline.
+sim-matrix-baseline:
+	bash scripts/sim/matrix.sh $(APPS) || true
+	python3 scripts/checks/matrix_ratchet.py --update
 
 # SIL (simulator-in-the-loop): boot EVERY hw_validated/hil app headless and
 # assert its hil.conf expectation, in parallel. No board required.
