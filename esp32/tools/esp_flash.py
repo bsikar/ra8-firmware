@@ -21,6 +21,8 @@ Default image is build/esp32c6-blink.bin (resolved relative to this script).
 SPDX-License-Identifier: MIT
 """
 
+from __future__ import annotations
+
 import shutil
 import sys
 from pathlib import Path
@@ -30,7 +32,7 @@ DEFAULT_CHIP = "esp32c6"
 HP_SRAM_BASE = 0x40800000  # RAM-app load address (see boot/esp32c6.ld)
 
 
-def default_image():
+def default_image() -> str:
     """Return the default .app.bin path relative to this script's esp32/ dir.
 
     NOTE: ``esptool load_ram`` parses the Espressif image container (the
@@ -41,7 +43,7 @@ def default_image():
     return str(esp32_dir / "build" / "esp32c6-blink.app.bin")
 
 
-def parse_args(argv):
+def parse_args(argv: list[str]) -> tuple[str, str | None, bool]:
     """Return (image, port, run) from a tiny hand-rolled argument scan."""
     image = None
     port = None
@@ -62,7 +64,7 @@ def parse_args(argv):
     return (image, port, run)
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     """Report the roadmap flashing plan; optionally show the esptool command."""
     image, port, run = parse_args(argv)
 

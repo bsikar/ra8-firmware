@@ -67,6 +67,43 @@ select = [
   "FURB",      # refurb (modernization)
   "TRY",       # tryceratops (exception hygiene)
   "EM",         # flake8-errmsg
+  # --- added by #365 -------------------------------------------------------
+  # pydocstyle, google convention (see [tool.ruff.lint.pydocstyle] for why that
+  # convention and not the other two). Measured 366 at selection time; all 366
+  # were WRITTEN, not exempted, and there is no per-file-ignore for D anywhere
+  # in this file.
+  #
+  # The split from #360 was never about size. A docstring that restates the
+  # signature is worse than none, because it makes an unaudited function look
+  # audited -- the same defect CLAUDE.md rejects for C definition-site comments
+  # and docs/STYLE_GUIDE.md bans as the pointer-only form. So each of the 236
+  # missing docstrings had to say what its function's NAME does not already
+  # say: its contract, what its inputs constrain, how it fails.
+  #
+  # These files implement every CI gate in the repo, so the ones worth having
+  # are the ones a green run does not distinguish from a real pass -- the
+  # FATAL-on-empty-scan guards in check_file_size / check_function_size /
+  # check_lint_coverage / lint_targets, and, in the other direction,
+  # stack_usage_check exiting 0 both when it finds no .su files and when they
+  # parse to zero functions.
+  "D",
+  # --- added by #372 -------------------------------------------------------
+  # Type annotations. Measured 431 at selection time (ANN001 265, ANN201 106,
+  # ANN202 47, ANN204 9, ANN401 4) -- higher than the 377 #363 recorded,
+  # because #359's decomposition created new signatures. All 431 were
+  # annotated; none suppressed.
+  #
+  # The recorded reason for dropping this was scheduling, not merit, and the
+  # merit argument held: ANN is the family that catches a checker silently
+  # accepting the wrong type, and these checkers are what the tree's
+  # correctness rests on. It caught one here -- parse_cbz_container returns a
+  # 3-tuple where its neighbours return 2, which a docstring-led annotation
+  # got wrong until the runtime shapes were checked.
+  #
+  # ANN401 got real types rather than Any respelled: a JSON-RPC id is
+  # `str | int | None` per the 2.0 spec, and the MCP selftest's request-builder
+  # kwargs are `object` -- stored and serialised, never inspected.
+  "ANN",
   # --- added by #363 -------------------------------------------------------
   # Private-member access. The reason previously recorded here -- "this repo's
   # own tests reaching into modules it owns" -- was simply wrong: all 15
@@ -133,6 +170,41 @@ ignore = [
 # If python-kasa ever grows a public seam for this, delete the line.
 "scripts/hil/tapo_control.py" = ["SLF001"]
 
+[tool.ruff.lint.pydocstyle]
+# MEASURED across all 143 first-party Python files before choosing, the same
+# way every other family here was decided:
+#
+#     convention   findings
+#      google        366     <- selected
+#      pep257        408
+#      numpy         508
+#
+# The count is not the argument, though; three things decided it.
+#
+# 1. It is the convention the tree ALREADY uses. 17 files write Google-style
+#    `Args:` / `Returns:` sections; exactly one (gray4_kernel.py) uses Sphinx
+#    `:param:` field lists, and none uses numpy's `Parameters` blocks. Picking
+#    google ratifies the majority instead of relabelling it.
+#
+# 2. numpy is actively wrong here. It enables D406/D407, which demand a
+#    dashed underline under every section name -- 58 findings apiece, and
+#    every one of them would rewrite those 17 existing Google-style files into
+#    a layout nothing in this tree uses.
+#
+# 3. pep257 declines to have the opinion that matters. It disables BOTH D212
+#    and D213, so it says nothing about where a multi-line summary starts;
+#    google enables D212 and pins the summary to the opening line, which is
+#    what every docstring in the tree already does. Locking in existing
+#    consistency is worth more than a lower number.
+#
+# pep257 and numpy would additionally have added D401 (75 findings,
+# non-imperative mood). That is dropped WITH the convention rather than
+# separately: the rule is a first-word stem check, and it cannot tell a
+# deliberate descriptive summary ("Whether a directory is build output") from
+# a mood error. The house style here is descriptive, so 75 findings would have
+# bought rewording and no defect.
+convention = "google"
+
 [tool.ruff.lint.pylint]
 # Pinned explicitly rather than inherited, so a ruff default change cannot
 # silently move this project's limit.
@@ -190,18 +262,12 @@ max-complexity = 15
 # over from the previous pass -- a stale number is how a dropped family stops
 # being a decision and becomes an omission.
 #
-#   ANN (377) type annotations -- tracked in #372 (ANN001 227, ANN201 106, ANN202 33, ANN204 9,
-#             ANN401 2) across 27 files. This is the one family below whose
-#             reason is scheduling rather than merit, and it is recorded as
-#             such: annotations on the files implementing the CI gates are
-#             real value and this SHOULD be adopted. It is held back only
-#             because 132 of the 377 are in tools/epub_compile/ and most of
-#             the rest in scripts/checks/ -- the two trees being rewritten
-#             right now by the scripts/ restructure and the tools/ docstring
-#             pass. Landing 377 signature edits across those same files
-#             produces merge conflicts, not type safety. Adopt it as the next
-#             lint change once both land; nothing is hidden behind it in the
-#             meantime, since an unselected family suppresses nothing.
+# Two families have LEFT this list rather than being re-justified: D (#365) and
+# ANN (#372) are both selected above, with their measurements recorded there.
+# D401 is the one rule that arrived with them and was dropped; its reasoning
+# lives in [tool.ruff.lint.pydocstyle], because it is a consequence of the
+# convention choice rather than an independent decision.
+#
 #   T20 (584) flake8-print, 89 files. Re-checked against the specific worry
 #             that LIBRARY code is printing where it should return or log:
 #             every first-party .py that contains a top-level `print(` is
@@ -211,15 +277,6 @@ max-complexity = 15
 #             There is no library-printing defect here to catch, so the
 #             remedy would be 87 per-file-ignores describing the tree as it
 #             already is. Printing IS the output mechanism of a CLI tool.
-#   D   (455) pydocstyle, google convention (D103 179, D205 57, D413 56,
-#             D209 35, D401 34, D212 31, D102 19, D100 13) across 96 files.
-#             Re-measured after #368 landed the tools/ and examples/ half of
-#             #365 and #374 added the lint-coverage gate's three modules.
-#             Unchanged reasoning: 215 of them are "this helper has no
-#             docstring", and writing 215 in one mechanical pass produces
-#             exactly the restating boilerplate docs/STYLE_GUIDE.md bans on
-#             the C side. Needs per-function judgment, so it is its own
-#             change -- and one is in flight for tools/, tests/ and examples/.
 #   FBT001/FBT002 (13) boolean-trap, definition side. FBT003 IS now selected
 #             (see above). The definition-side half is dropped on merit after
 #             reading all 12: the rule cannot distinguish a mode flag from a
