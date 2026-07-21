@@ -57,6 +57,7 @@ FUNC_DEF_DENYLIST = {
 
 
 def all_tracked_files() -> list[str]:
+    """Every tracked path, from git rather than a directory walk."""
     out = subprocess.run(
         ["git", "ls-files"],  # noqa: S607  # trusted: fixed git argv
         check=True,
@@ -67,6 +68,12 @@ def all_tracked_files() -> list[str]:
 
 
 def is_in_scope(path: str) -> bool:
+    """Whether a path is scanned for in-tree line citations.
+
+    Requires a source extension, a location under a scan root, and no
+    excluded prefix -- the root test keeps vendored trees out without naming
+    their files.
+    """
     if not path.endswith(SOURCE_EXTS):
         return False
     if not any(path.startswith(r) for r in SCAN_ROOTS):
@@ -75,6 +82,14 @@ def is_in_scope(path: str) -> bool:
 
 
 def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
+    """Byte spans of every C/C++ comment, block and line.
+
+    String-literal aware, so a ``//`` inside a quoted string is not treated as
+    a comment -- without that, any URL in code would open a phantom comment
+    and swallow the rest of the line.
+
+    Returns ``(start, end)`` offsets; a citation only counts inside one.
+    """
     spans: list[tuple[int, int]] = []
     i = 0
     n = len(text)
@@ -122,6 +137,7 @@ def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # 
 
 
 def line_of_offset(text: str, offset: int) -> int:
+    """1-based line number containing a byte offset."""
     return text.count("\n", 0, offset) + 1
 
 
@@ -150,6 +166,12 @@ _FILE_CACHE: dict[Path, list[str]] = {}
 
 
 def file_lines(path: Path) -> list[str] | None:
+    """Cached line list for a file, or None when it cannot be read.
+
+    Cached because resolving the enclosing function for each citation re-reads
+    the same few files repeatedly; the cache turns that quadratic re-read into
+    one read per file.
+    """
     if path in _FILE_CACHE:
         return _FILE_CACHE[path]
     try:
@@ -186,6 +208,12 @@ def resolve_target(repo_root: Path, citation_path: str, citation_line: int) -> s
 
 
 def main() -> int:
+    """List every in-tree ``file:line`` citation with the function that encloses it.
+
+    A migration aid, not a gate: check_line_citations is what FAILS on these,
+    and this prints the same set together with the symbol name each one should
+    be rewritten to cite. Exits 0 regardless of what it finds.
+    """
     repo_root = Path(
         subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],  # noqa: S607  # trusted: fixed git argv

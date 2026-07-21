@@ -94,18 +94,25 @@ SELF_EXEMPT_FILES: frozenset[str] = frozenset(
 
 
 def _is_skip_dir(name: str) -> bool:
+    """Whether a directory is build output and therefore skipped.
+
+    Matches the ``build-*`` family by prefix so CMake variant directories are
+    excluded without being enumerated.
+    """
     if name in SKIP_DIR_NAMES:
         return True
     return bool(name.startswith("build-") or name == "build")
 
 
 def should_scan(path: Path) -> bool:
+    """Whether a file's basename or suffix puts it in scope."""
     if path.name in SCAN_BASENAMES:
         return True
     return path.suffix in SCAN_EXTS
 
 
 def iter_source_files(root: Path) -> list[Path]:
+    """Every in-scope file beneath the configured scan roots."""
     out: list[Path] = []
     for scan_root in SCAN_ROOTS:
         base = root / scan_root
@@ -125,6 +132,12 @@ def iter_source_files(root: Path) -> list[Path]:
 
 
 def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str]]:
+    """Report every "Wave N" session reference in one file.
+
+    Self-exempt files are skipped whole: this checker and the policy doc must
+    spell the banned pattern to describe it, and tagging every such line
+    individually would bury them.
+    """
     rel = path.relative_to(root)
     if str(rel) in SELF_EXEMPT_FILES:
         return []
@@ -142,6 +155,14 @@ def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str]]:
 
 
 def main() -> int:
+    """Ban session-bookkeeping "Wave N" references from the tree.
+
+    These leak an internal working chronology into source that outlives it: a
+    future reader cannot resolve "see Wave 43b" to anything, whereas the
+    function, symbol or HUM section the fix touched stays findable.
+
+    Returns 1 listing each reference, 0 when the tree is clean.
+    """
     root = Path(__file__).resolve().parents[2]
     files = iter_source_files(root)
     findings: list[tuple[Path, int, str]] = []
