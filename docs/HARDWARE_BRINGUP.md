@@ -143,7 +143,7 @@ is justified.
 Hand-flashing 26 apps and eyeballing the halt-PC (as the early-May tables
 below were generated) does not scale. The authoritative HIL sweep lives
 on the Pi 5 self-hosted runner (`.github/workflows/hil.yml`) and is
-driven by `scripts/hil_all.sh`, which auto-discovers every app under
+driven by `scripts/hil/all.sh`, which auto-discovers every app under
 `examples/ek_ra8d2/hw_validated/hil/` and verifies each one against its
 `hil.conf` manifest. The mode-specific helpers (`hil_run_direct.sh` for
 UART scrape, `hil_usb_test.sh` for USB CDC echo, `hil_jlink_memprobe.sh`
@@ -700,7 +700,7 @@ Probe: on-board J-Link OB SN 1086567198 -> EK-RA8D2 v1, JLinkExe v9.38a.
 Per-app procedure (halt-PC classification, executed manually -- the
 since-retired developer-laptop smoke harness hung in this environment):
 
-1. `bash scripts/flash.sh examples/ek_ra8d2/<app>/build/<app>.hex` (30s
+1. `bash scripts/dev/flash.sh examples/ek_ra8d2/<app>/build/<app>.hex` (30s
    timeout per flash).
 2. `sleep 5` to let init code settle.
 3. `JLinkExe` script: `device R7KA8D2KF_CPU0; si 1; speed 4000;
@@ -782,7 +782,7 @@ Probe: on-board J-Link OB SN 1086567198 -> EK-RA8D2 v1, JLinkExe v9.38a.
 Per-app procedure identical to the evening sweep (executed manually --
 no automated sweep target in this environment):
 
-1. `bash scripts/flash.sh examples/ek_ra8d2/<app>/build/<app>.hex` (30s
+1. `bash scripts/dev/flash.sh examples/ek_ra8d2/<app>/build/<app>.hex` (30s
    timeout per flash).
 2. `sleep 5` (`sleep 8` for `usb_hid_device` so macOS has time to start
    the enumeration handshake) to let init code settle.

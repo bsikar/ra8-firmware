@@ -52,7 +52,7 @@ verdict never depends on a timing value.
 banner with no panel. The gate command is:
 
 ```
-bash scripts/board_sim_smoke.sh epaper_refresh
+bash scripts/sim/smoke.sh epaper_refresh
 ```
 
 Expected: `OK (IT8951 e-paper: epaper: PASS)`. The emulator's end-of-run summary

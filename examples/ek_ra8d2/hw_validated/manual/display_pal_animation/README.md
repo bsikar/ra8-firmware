@@ -47,6 +47,6 @@ which lets you exercise the link/wiring before the IT8951 driver lands.
 ```
 cd examples/ek_ra8d2/hw_validated/manual/display_pal_animation
 make           # cross-compile build/display_pal_animation.elf / .hex
-make flash     # JLinkExe via scripts/flash.sh (HIL: bash scripts/hil_flash.sh display_pal_animation)
+make flash     # JLinkExe via scripts/dev/flash.sh (HIL: bash scripts/hil/flash.sh display_pal_animation)
 make ozone     # SEGGER Ozone GUI debug
 ```

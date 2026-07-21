@@ -18,7 +18,7 @@
 #       -DCMAKE_BUILD_TYPE=RelWithDebInfo
 #   cmake --build build/shared_libs --parallel
 #
-# scripts/build_all_examples.sh drives this automatically.
+# scripts/build/all_examples.sh drives this automatically.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT

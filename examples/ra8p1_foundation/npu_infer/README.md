@@ -42,4 +42,4 @@ checkable byte-for-byte in the emulator here, while the TFLite-micro
 end-to-end on silicon later.
 
 SIL-only: there is no RA8P1 HIL rig, so this app is discovered by
-`scripts/sil_all.sh` (board_sim) but not by `scripts/hil_all.sh`.
+`scripts/sim/sil_all.sh` (board_sim) but not by `scripts/hil/all.sh`.

@@ -4,7 +4,7 @@
  *
  * @details
  * GENERATED FILE -- regenerate with:
- *     python3 scripts/utils/gen_unarch_xz_fixture.py
+ *     python3 scripts/gen/gen_unarch_xz_fixture.py
  * See that script for the fixture inventory and rationale. The LCG payload
  * of `k_fx_xz_crc64_4k` is re-derivable in C: byte i is
  * `(state >> 16) & 0xFF` after `state = 1103515245 * state + 12345`

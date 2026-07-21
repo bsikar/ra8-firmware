@@ -26,7 +26,7 @@
  * ``ra8_mipi_dsi_internal.h``.
  *
  * Every register access carries a HUM Ch 65 citation in the form
- * required by `scripts/utils/cite_check.py`:
+ * required by `scripts/checks/cite_check.py`:
  *
  *   /\* HUM Ch 65.X "name", p NNNN *\/
  *

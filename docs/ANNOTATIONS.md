@@ -16,7 +16,7 @@ Every example in this document references targets by **function name**
 or **symbol name** -- never by line number -- per
 [`docs/CITATION_POLICY.md`](CITATION_POLICY.md). The
 `RA8_MCDC_DEACTIVATED(reason)` macro additionally enforces this rule
-mechanically: the citation gate (`scripts/utils/check_line_citations.py`)
+mechanically: the citation gate (`scripts/checks/check_line_citations.py`)
 rejects any reason text containing a `<file>.<ext>:<line>` token.
 
 ## Reference
@@ -74,7 +74,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 - **Purpose:** TrustZone Secure-to-Non-Secure entry-point veneer; pairs
   with `__attribute__((cmse_nonsecure_entry))`. Lives in `.gnu.sgstubs`.
 - **Enforcement:**
-  - `scripts/utils/check_world_tags.py` restricts `cmse_nonsecure_entry`
+  - `scripts/checks/check_world_tags.py` restricts `cmse_nonsecure_entry`
     to files under `libs/ra8_nsc/`.
  - libclang checker verifies every pointer parameter passes
     through a `RA8_NSC_CHECK_NS_RANGE_*` helper before being dereferenced.
@@ -106,7 +106,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 ### 7. `RA8_NASA_RULE_3_OK`
 
 - **Purpose:** documented exception to NASA P10 Rule 3 (no dynamic alloc).
-- **Enforcement:** `scripts/utils/check_no_dynamic_alloc.py` plus
+- **Enforcement:** `scripts/checks/check_no_dynamic_alloc.py` plus
   libclang call-graph walk. Untagged callers of tagged functions must
   themselves be tagged or carry a deviation entry.
 - **Example:**
@@ -121,9 +121,9 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 - **Purpose:** mark a decision as MC/DC-deactivated, replacing the
   legacy `// mcdc-deactivated:` line comment.
 - **Enforcement:**
-  - `scripts/utils/check_line_citations.py` rejects any reason text
+  - `scripts/checks/check_line_citations.py` rejects any reason text
     containing a `<file>.<ext>:<line>` token.
-  - `scripts/utils/regen_mcdc_gaps.py` tallies `RA8_MCDC_DEACTIVATED`
+  - `scripts/fix/regen_mcdc_gaps.py` tallies `RA8_MCDC_DEACTIVATED`
     annotations into `docs/MCDC_DEACTIVATIONS.md`.
 - **Example:**
 
@@ -136,7 +136,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 ### 9. `RA8_MAX_STACK(bytes)`
 
 - **Purpose:** per-function stack-frame budget.
-- **Enforcement:** `scripts/utils/stack_usage_check.py` cross-checks
+- **Enforcement:** `scripts/checks/stack_usage_check.py` cross-checks
   against GCC `-fstack-usage` `.su` files.
 - **Example:**
 
@@ -304,7 +304,7 @@ cleanly.
 ## Enforcement script
 
 The static enforcement framework lives at
-[`scripts/utils/check_annotations.py`](../scripts/utils/check_annotations.py).
+[`scripts/checks/check_annotations.py`](../scripts/checks/check_annotations.py).
 It walks the AST of every C/C++ TU under `libs/`, `src/`, `examples/`,
 `tests/`, and `port/` via the Python `libclang` bindings and applies
 the rules documented above, plus the linkage rule below. Excluded
@@ -368,19 +368,19 @@ test fails on exactly that mutation.
 
 ```sh
 # Report violations (exits non-zero, same as --check)
-python3 scripts/utils/check_annotations.py
+python3 scripts/checks/check_annotations.py
 
 # CI gate -- quiet, exits non-zero on any non-informational violation
-python3 scripts/utils/check_annotations.py --check
+python3 scripts/checks/check_annotations.py --check
 
 # Or via the convenience target
 make check-annotations
 
 # Dump every annotated symbol in the project (no enforcement)
-python3 scripts/utils/check_annotations.py --list
+python3 scripts/checks/check_annotations.py --list
 
 # Regression-test the checker itself against synthetic TUs
-python3 scripts/utils/check_annotations.py --selftest
+python3 scripts/checks/check_annotations.py --selftest
 ```
 
 ### Dependency

@@ -5,7 +5,7 @@
 
 Rewrites the single `s_rot_root_pubkey[...]` initialiser in ra8_rot.c from a C
 header emitted by `tools/rot_sign.py keygen --pubkey-c`. The provisioning
-ceremony (scripts/rot_provision.sh) and the re-key flow (scripts/rot_keystore.py
+ceremony (scripts/secrets/rot_provision.sh) and the re-key flow (scripts/secrets/rot_keystore.py
 rekey) both call this, so the patch logic lives in exactly one place -- two
 copies of it drifting is how a board gets provisioned with a key that does not
 match the one images are signed with.

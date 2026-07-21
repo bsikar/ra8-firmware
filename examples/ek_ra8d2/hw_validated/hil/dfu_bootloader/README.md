@@ -126,7 +126,7 @@ copy-to-run were validated locally over the J-Link OB:
 - **Unattended HIL gates** (`hil.conf`, `HIL_MODE=alive`). The dedicated
   [`dfu_copy_to_run`](../dfu_copy_to_run) app *always* copies-to-run, so its alive
   pass (PC in the SRAM run window) is an unambiguous copy-to-run proof. This
-  bootloader's own alive gate (`scripts/hil_run_local.sh dfu_bootloader`) asserts
+  bootloader's own alive gate (`scripts/hil/run_local.sh dfu_bootloader`) asserts
   PC in code, CycleCnt advancing, CFSR/HFSR clean, not in a fault spinner -- it
   passes whether the boot copies-to-run a valid slot or falls back to the DFU
   device. Local run: `PASS` with `PC=0x22020010` (it copied-to-run the valid slot
@@ -135,5 +135,5 @@ copy-to-run were validated locally over the J-Link OB:
 ## Recovery
 
 The bootloader region is never erased by DFU, so a normal SWD re-flash of this
-app (`scripts/flash.sh` / `make flash`) always recovers the board. A bad slot is
+app (`scripts/dev/flash.sh` / `make flash`) always recovers the board. A bad slot is
 self-healing (CRC fails -> the older valid slot boots).

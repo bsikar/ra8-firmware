@@ -27,7 +27,7 @@ resets -- a sim/silicon equivalence check.
 
 ```
 make reflow_content
-scripts/hil_run_local.sh reflow_content      # flash + scrape the banner
+scripts/hil/run_local.sh reflow_content      # flash + scrape the banner
 ```
 
 ## Result (validated 2026-06-18, board_sim + host)
@@ -37,7 +37,7 @@ reflow-content-hil: boot
 reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5
 ```
 
-`scripts/board_sim_smoke.sh reflow_content` PASS; the identical host run
+`scripts/sim/smoke.sh reflow_content` PASS; the identical host run
 produces the same hashes -- byte-for-byte agreement.
 
 ## Updating the baseline

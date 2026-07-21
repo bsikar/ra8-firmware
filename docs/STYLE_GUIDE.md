@@ -121,9 +121,9 @@ Minimums per CLAUDE.md and the pre-commit hook:
 ## Comment formatting
 
 Spacing inside single-line block comments is enforced by
-`scripts/utils/check_comment_format.py`, which runs as part of `make format`
+`scripts/checks/check_comment_format.py`, which runs as part of `make format`
 (applies) and `make check` (verifies), and so gates pre-commit and CI through
-`scripts/format_code.sh`. The rules:
+`scripts/checks/format_code.sh`. The rules:
 
 - **One space after the opener.** `/*text` -> `/* text`; the Doxygen member
   form gets `/**< text` (never `/**<text`).
@@ -291,7 +291,7 @@ The format is:
 /* HUM Ch X.Y "Section name" p NNNN-MMMM */      (page range)
 ```
 
-`scripts/utils/cite_check.py` walks every `.c` / `.h` and verifies
+`scripts/checks/cite_check.py` walks every `.c` / `.h` and verifies
 that each cite's chapter exists in `docs/reference/CHAPTER_MAP.md`
 and the page falls within the chapter's range.
 
@@ -372,7 +372,7 @@ all 10 with a single intentional deviation:
 | 4 | Functions ~60 lines max. | Compliant. clang-tidy `LineThreshold = 60` enforces. NOLINT only for legitimately linear HUM-spec init paths. |
 | 5 | Two assertions per function. | Compliant. Use `RA8_CHECK_NULL_PTR` for preconditions, output bounds checks for postconditions. |
 | 6 | Smallest scope. | Compliant. File-scope vars are `static`; loop counters live in the `for`-statement. |
-| 7 | Check all return values. | Compliant. `RA8_RETURN_ON_ERROR` macro propagates; `(void)` casts mark explicit ignores -- but never at a TrustZone boot boundary. A C23 `(void)` cast suppresses `[[nodiscard]]` by ISO rule, so `-Werror` cannot police it; `scripts/utils/check_tz_boundary_discard.py` therefore bans `(void)`-cast discards of `ra8_tz_secure_boot_*()` calls everywhere and of any `ra8_*()` call inside a boot TU (a `.c` defining `SystemInit` / `ra8_trustzone_init`). |
+| 7 | Check all return values. | Compliant. `RA8_RETURN_ON_ERROR` macro propagates; `(void)` casts mark explicit ignores -- but never at a TrustZone boot boundary. A C23 `(void)` cast suppresses `[[nodiscard]]` by ISO rule, so `-Werror` cannot police it; `scripts/checks/check_tz_boundary_discard.py` therefore bans `(void)`-cast discards of `ra8_tz_secure_boot_*()` calls everywhere and of any `ra8_*()` call inside a boot TU (a `.c` defining `SystemInit` / `ra8_trustzone_init`). |
 | 8 | Limit preprocessor use. | Compliant. C23 typed enums replace `#define` for constants; macros only for duplicated code, conditional compilation, build flags. |
 | 9 | Restrict pointer use. | **Intentional deviation.** Function pointers are allowed for Dependency Inversion. |
 | 10 | Compile clean with max warnings. | Compliant. `-Wall -Wextra -Werror -fshort-enums`; CI fails on any warning. |
@@ -429,4 +429,4 @@ to run in:
  */
 ```
 
-`scripts/utils/check_world_tags.py` enforces it at commit time.
+`scripts/checks/check_world_tags.py` enforces it at commit time.

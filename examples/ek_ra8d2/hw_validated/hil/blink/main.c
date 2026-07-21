@@ -45,7 +45,7 @@ typedef enum : uint32_t {
  * @brief HIL liveness counter -- incremented each time the LED toggles.
  *
  * @details
- * scripts/hil_jlink_memprobe.sh halts the chip via SWD, reads this
+ * scripts/hil/jlink_memprobe.sh halts the chip via SWD, reads this
  * counter, lets the chip run for N seconds, halts again, and asserts
  * the counter advanced by >= HIL_PROBE_MIN_ADVANCE. This is a much
  * stronger gate than HIL_MODE=alive (which only checks PC is in MRAM

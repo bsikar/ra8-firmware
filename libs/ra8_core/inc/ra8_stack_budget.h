@@ -8,7 +8,7 @@
  * (NASA Power-of-10 Rule 3). This project caps individual stack frames
  * at 2048 bytes via the per-target `-Wstack-usage=N` warning attached
  * by `cmake/ra8_warnings.cmake`, and aggregates a project-wide report
- * via `scripts/utils/stack_usage_check.py`. See `docs/STACK_USAGE.md`
+ * via `scripts/checks/stack_usage_check.py`. See `docs/STACK_USAGE.md`
  * for the full procedure.
  *
  * When a function legitimately needs more stack than its module's
@@ -74,7 +74,7 @@
  *          app's `CMakeLists.txt` must be raised in lockstep.
  *
  * @see docs/STACK_USAGE.md  Full deviation procedure.
- * @see scripts/utils/stack_usage_check.py  Project-wide aggregator.
+ * @see scripts/checks/stack_usage_check.py  Project-wide aggregator.
  *
  * @since 0.1.0
  */

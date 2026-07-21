@@ -48,7 +48,7 @@ whole page is shown, so an edge tap is a no-op until a centre tap returns to 1:1
 ## Fixture provenance
 
 `mg_page_fixture.h` is **@generated** by
-`scripts/utils/gen_manga_page_fixture.py`: a 1536x2048 8-bit grayscale PNG (all
+`scripts/gen/gen_manga_page_fixture.py`: a 1536x2048 8-bit grayscale PNG (all
 rows filter 0, IDAT `zlib.compress(..., 9)`) laid out as a 6x8 grid of 256px
 tiles, each a distinct solid gray with a black inner frame and a big blocky
 `C<col>R<row>` label -- so panning visibly changes which labels are on screen.
@@ -56,7 +56,7 @@ Solid tile blocks compress to ~20 KB of PNG, small enough to bake into the 1 MB
 code MRAM. The host twin re-decodes a tile and byte-checks its frame + fill
 grays against the generator, so fixture and reader cannot drift apart silently.
 
-Regenerate with `python3 scripts/utils/gen_manga_page_fixture.py`.
+Regenerate with `python3 scripts/gen/gen_manga_page_fixture.py`.
 
 ## Status
 

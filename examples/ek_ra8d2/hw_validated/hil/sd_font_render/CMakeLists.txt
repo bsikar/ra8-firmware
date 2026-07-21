@@ -50,10 +50,10 @@ set(_ra8_baked_font_c "${CMAKE_CURRENT_BINARY_DIR}/ra8_font_literata_latin1.c")
 add_custom_command(
   OUTPUT "${_ra8_baked_font_c}"
   COMMAND
-    ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/utils/font_to_c.py"
+    ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/gen/font_to_c.py"
     "${_d}/libs/fonts/literata_latin1.ttf" "${_ra8_baked_font_c}" g_ra8_font_literata_latin1
     literata_latin1.h
-  DEPENDS "${_d}/libs/fonts/literata_latin1.ttf" "${_d}/scripts/utils/font_to_c.py"
+  DEPENDS "${_d}/libs/fonts/literata_latin1.ttf" "${_d}/scripts/gen/font_to_c.py"
   COMMENT "Generating baked Latin-1 font array (sd_font_render)"
 )
 target_sources(sd_font_render.elf PRIVATE "${_ra8_baked_font_c}")

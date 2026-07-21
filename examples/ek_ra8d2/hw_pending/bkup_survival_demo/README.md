@@ -56,7 +56,7 @@ as a per-app `OFS1` / `OFS1_SEC` option-byte override.
 
 **On-silicon verification is BLOCKED on option-byte programming.** The
 option bytes live in the `.option_setting_*` sections at `0x0300A100+`.
-`scripts/hil_flash.sh` deliberately strips them (J-Link RAMCode times out on
+`scripts/hil/flash.sh` deliberately strips them (J-Link RAMCode times out on
 option bytes), `rfp-cli -p` rejects the region (`E3000110: operation not
 supported`), and `JLinkExe loadfile` fails (`Writing target memory failed`)
 because the board is in the Secure Debug (SSD) DLM state, which restricts
@@ -105,7 +105,7 @@ SRAM cell).
 ## On-silicon bench plan
 
 1. `make bkup_survival_demo`, then flash the EK-RA8D2 **including the option
-   bytes** so `OFS1.PVDAS = 0` (LVD0) reaches silicon -- `scripts/hil_flash.sh`
+   bytes** so `OFS1.PVDAS = 0` (LVD0) reaches silicon -- `scripts/hil/flash.sh`
    strips `.option_setting_*`, so use a full-image / option-byte flash (e.g.
    Renesas Flash Programmer or e2 studio) for the `OFS1` word. Without this
    the window stays `rw=BAD` regardless of firmware (see Root cause above).

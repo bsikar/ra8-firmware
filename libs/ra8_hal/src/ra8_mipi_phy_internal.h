@@ -10,7 +10,7 @@
  * @details
  * The MIPI D-PHY driver is implemented across more than one translation
  * unit so that no single file exceeds the
- * ``scripts/utils/check_file_size.py`` cap. The lifecycle / power / mode /
+ * ``scripts/checks/check_file_size.py`` cap. The lifecycle / power / mode /
  * lane / status / IRQ path lives in ``ra8_mipi_phy.c``; the bulky HUM
  * Tables 64.2 (DSI) / 64.3 (CSI) timing matrix, its lookup walker, the
  * PLL-frequency arithmetic helper, and the ``ra8_mipi_phy_select_timing``

@@ -17,7 +17,7 @@ per-violation list lives in [`docs/MISRA_GAPS.csv`](../MISRA_GAPS.csv).
 - Architectural ring + TrustZone-world tagging:
   [`docs/RING_AND_WORLD.md`](../RING_AND_WORLD.md).
 - Audit driver script:
-  [`scripts/utils/misra_check.sh`](../../scripts/utils/misra_check.sh).
+  [`scripts/checks/misra_check_inner.sh`](../../scripts/checks/misra_check_inner.sh).
 - Per-tool qualification dossier:
   [`docs/qualification/TOOL_QUALIFICATION.md`](TOOL_QUALIFICATION.md).
 - IEC 61508-3:2010 section 7.4.4 ("Use of language subset") -- the
@@ -166,7 +166,7 @@ controls:
   functions.
 - **No `goto` / `setjmp` / dynamic-allocation cleanup paths** (NASA
   Power-of-10 Rules 1 and 3, enforced by the pre-commit hooks
-  `scripts/git/pre-commit` and `scripts/utils/check_no_dynamic_alloc.py`).
+  `scripts/git/pre-commit` and `scripts/checks/check_no_dynamic_alloc.py`).
   Early return therefore cannot leak resources because there are no
   resources to leak.
 
@@ -247,7 +247,7 @@ mis-reads it.
   Mandatory-rule check for 17.3.
 - The host unit-test build provides a second independent compiler
   pass.
-- `scripts/utils/check_world_tags.py` and the pre-commit
+- `scripts/checks/check_world_tags.py` and the pre-commit
   clang-tidy run additionally enforce header inclusion hygiene.
 
 ### Standards basis
@@ -478,7 +478,7 @@ A second class of 8.4 false positive arises for the `port/`
 directory: the prototypes for `ble_npl_*` (NimBLE) and `sys_*`
 (lwIP) live in third-party headers under `libs/third_party/`, which
 are intentionally excluded from the audit (per
-`scripts/utils/misra_check.sh` `--suppress=*:libs/third_party/*`).
+`scripts/checks/misra_check_inner.sh` `--suppress=*:libs/third_party/*`).
 The `port/` translation units therefore appear to define functions
 with no prior declaration, but the declaration genuinely exists --
 the auditor was instructed not to look at it.
@@ -613,10 +613,10 @@ translation unit cannot silently disarm the boundary.
 The intent of Rule 20.5 -- that a macro's meaning be unambiguous at
 every use site -- is met more strongly here than by the rule itself:
 
-- `scripts/utils/check_nsc_cmse.sh` compiles every NSC translation
+- `scripts/checks/check_nsc_cmse.sh` compiles every NSC translation
   unit under `-mcmse` with `-Wall -Wextra -Werror`, so a macro clash
   of this class fails the gate rather than warning past it.
-- `scripts/utils/check_sg_offsets.py` inspects the linked Secure ELF
+- `scripts/checks/check_sg_offsets.py` inspects the linked Secure ELF
   and asserts the SG veneer slot offsets still match the `k_sg_off_*`
   enum the Non-Secure image reaches them by. A dropped veneer fails
   this gate at the object level, not merely at the source level.

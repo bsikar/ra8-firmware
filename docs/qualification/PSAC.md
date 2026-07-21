@@ -42,7 +42,7 @@ from the RA8D2 group. The configuration is summarised in
 The chip-level reference is the Renesas Hardware User's Manual
 R01UH1065EJ, committed under [`../reference/`](../reference/). All
 register-level code in this tree cites a section of that manual via
-`@cite` doxygen tags audited by `scripts/utils/cite_check.py`.
+`@cite` doxygen tags audited by `scripts/checks/cite_check.py`.
 
 ### 1.2 Intended use
 
@@ -78,7 +78,7 @@ nothing in the lifecycle assumes an authority is already in the loop.
 The codebase is partitioned into seven architectural rings documented
 in [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md). Each translation
 unit declares its ring with a doxygen tag (`@ring` 0..6) which is
-audited by `scripts/utils/check_world_tags.py` (currently in WARN
+audited by `scripts/checks/check_world_tags.py` (currently in WARN
 mode, scheduled to flip to STRICT during Phase 4). The rings are:
 
 - Ring 0 -- silicon register definitions (`libs/ra8_hal/inc/ra8d2_*_regs.h`).

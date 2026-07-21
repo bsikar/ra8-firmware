@@ -10,7 +10,7 @@
  * page is the source ra8_jof_produce() transcodes into a JOF atlas
  * at boot; it decodes to identical pixels on host, board_sim and silicon.
  *
- * Regenerate: python3 scripts/utils/gen_manga_page_fixture.py
+ * Regenerate: python3 scripts/gen/gen_manga_page_fixture.py
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

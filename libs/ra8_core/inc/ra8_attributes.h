@@ -70,7 +70,7 @@ extern "C" {
  * by arm-none-eabi-gcc, where these macros are already comments -- pinning
  * cppcheck to that arm analyses the code that actually ships, and keeps the
  * annotation visible to clang-tidy and to the libclang annotation gate
- * (`scripts/utils/check_annotations.py`), neither of which defines
+ * (`scripts/checks/check_annotations.py`), neither of which defines
  * `__CPPCHECK__`. Suppressing the rules or absorbing the findings into the
  * MISRA baseline instead would blind the ratchet to real defects in every
  * annotated file.
@@ -352,7 +352,7 @@ extern "C" {
  * @param bytes Integer literal: maximum stack-frame size in bytes.
  *
  * @par Enforcement:
- * `scripts/utils/stack_usage_check.py` cross-checks against `.su` files.
+ * `scripts/checks/stack_usage_check.py` cross-checks against `.su` files.
  *
  * @par Example:
  * @code

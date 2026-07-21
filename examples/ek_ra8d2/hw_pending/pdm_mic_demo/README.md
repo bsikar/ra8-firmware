@@ -61,7 +61,7 @@ register reset values), written explicitly in `k_pdm_demo_cfg`.
 ```
 cd examples/ek_ra8d2/hw_pending/pdm_mic_demo
 make                 # -> build/pdm_mic_demo.elf / .hex
-bash ../../../../scripts/hil_flash.sh pdm_mic_demo
+bash ../../../../scripts/hil/flash.sh pdm_mic_demo
 # scrape SCI8 console @115200:
 ssh star 'stty -F /dev/ttyACM0 115200 raw -echo; timeout 8 cat /dev/ttyACM0 | grep -a "pdm: rms="'
 ```

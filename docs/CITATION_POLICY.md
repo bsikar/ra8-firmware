@@ -18,7 +18,7 @@ Use the function or symbol name instead:
 - `ra8_dmac::internal_mode_to_dmtmd`
 - `see ra8_pid_step in libs/ra8_pid/src/ra8_pid.c`
 
-The pre-commit gate `scripts/utils/check_line_citations.py` enforces
+The pre-commit gate `scripts/checks/check_line_citations.py` enforces
 this rule strictly: any new in-tree `<file>:<line>` reference inside
 a C/C++ comment, Markdown doc, or plain-text doc is rejected at commit
 time. The `// CITES-OK: <reason>` per-line marker is the only opt-out.
@@ -55,8 +55,8 @@ exempt automatically.
 
 ## Tooling
 
-- Gate: `scripts/utils/check_line_citations.py` -- pre-commit
+- Gate: `scripts/checks/check_line_citations.py` -- pre-commit
   enforcement. Pass `--all` to scan the whole tree.
-- Extractor: `scripts/utils/extract_line_citations.py` -- emits CSV
+- Extractor: `scripts/checks/extract_line_citations.py` -- emits CSV
   of every violation with the enclosing function and a suggested
   `<file>::<func>` replacement. Used by cleanup agents.

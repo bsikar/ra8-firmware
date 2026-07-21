@@ -29,7 +29,7 @@ From the repo root:
 
 ```sh
 make threadx_canfd_demo
-bash scripts/flash.sh build/threadx_canfd_demo/threadx_canfd_demo.hex
+bash scripts/dev/flash.sh build/threadx_canfd_demo/threadx_canfd_demo.hex
 ```
 
 ## BSP usage

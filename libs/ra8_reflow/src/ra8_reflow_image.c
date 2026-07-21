@@ -297,7 +297,7 @@ ra8_err_t ra8_img_decode_blit(ra8_img_arena_t* arena,
   int sy   = 0;
   int comp = 0;
   /* The stb call stays on one line so the no-alloc audit
-     (scripts/utils/check_no_dynamic_alloc.py) finds its opt-out on the flagged
+     (scripts/checks/check_no_dynamic_alloc.py) finds its opt-out on the flagged
      call line; clang-format would otherwise wrap it across many lines. */
   // clang-format off: the allocation opt-out comment must stay on the flagged call line.
   uint8_t* const pixels = stbi_load_from_memory(bytes, (int)len, &sx, &sy, &comp, (int)k_ra8_img_req_rgb); /* alloc-allow: stb is backed by the fixed ra8_img_arena (zero-heap), not malloc */

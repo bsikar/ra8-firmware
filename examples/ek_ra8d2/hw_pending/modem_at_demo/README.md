@@ -41,7 +41,7 @@ script. Only `main.c` is app-specific.
 
 ```
 make            # -> build/modem_at_demo.elf / .hex / .bin
-make flash      # JLinkExe load via scripts/flash.sh
+make flash      # JLinkExe load via scripts/dev/flash.sh
 make clean
 ```
 
@@ -62,7 +62,7 @@ tools/board_sim/build/board_sim build/modem_at_demo.elf --modem
 above -- including a `+CREG` URC on `AT+CREG=1` and a `+CME ERROR: 4` for the
 unsupported command -- so `ra8_modem_at -> ra8_sci` runs byte-for-byte as on
 silicon (SIM == HIL for the AT protocol; only the RF link is unmodelled).
-`scripts/board_sim_smoke.sh modem_at_demo` gates it to the PASS banner.
+`scripts/sim/smoke.sh modem_at_demo` gates it to the PASS banner.
 
 The compound decisions (registration OK, signal valid, per-step expected
 outcome, overall verdict) are host-tested with MC/DC in

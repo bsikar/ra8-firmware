@@ -78,6 +78,6 @@ Success is the `... sd:/LOGS/A.TXT 512 bytes PASS` console line with no
 > validation above is what is automated.
 
 1. Plug a PMOD MicroSD into Pmod2 (J25) with a **disposable** microSD inserted.
-2. `make flash` (J-Link OB via `scripts/flash.sh`).
+2. `make flash` (J-Link OB via `scripts/dev/flash.sh`).
 3. Open the J-Link OB CDC console at 115200 8N1.
 4. Scrape for `sd:/LOGS/A.TXT 512 bytes PASS`.

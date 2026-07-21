@@ -70,7 +70,7 @@ BOARD_SIM_WALL_S=15 BOARD_SIM_IDLE_STOP=1 \
 
 ```sh
 make            # cross-compile
-make flash      # JLinkExe load via scripts/flash.sh
+make flash      # JLinkExe load via scripts/dev/flash.sh
 ```
 
 Bare EK-RA8D2 only -- no shields or external hardware.

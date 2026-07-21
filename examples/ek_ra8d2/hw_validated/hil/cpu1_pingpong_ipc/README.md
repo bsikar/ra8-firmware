@@ -26,7 +26,7 @@ NSC alias regions point at the unused 0x10000000 and 0x12000000 IDAU
 ranges, NOT at the actual `.gnu.sgstubs` location inside lower MRAM.
 But TrustZone bring-up on this chip has a documented record of
 hard-locking the DAP when the SAU partition is wrong, and recovery
-needs `scripts/hil_recover.sh`. **Do not flash blind.**
+needs `scripts/hil/recover.sh`. **Do not flash blind.**
 
 ## What's compile-verified
 
@@ -53,9 +53,9 @@ needs `scripts/hil_recover.sh`. **Do not flash blind.**
 
 ## Bench checklist (human operator)
 
-1. Flash via `scripts/hil_flash.sh` (NOT `scripts/flash.sh`, per the
+1. Flash via `scripts/hil/flash.sh` (NOT `scripts/dev/flash.sh`, per the
    project memory note about flashing going through the Pi).
-2. Have `scripts/hil_recover.sh` warm in a second terminal.
+2. Have `scripts/hil/recover.sh` warm in a second terminal.
 3. JTAG read `0x40008610` -- IPCSAR must read 0x00050000.
 4. JTAG read `g_cpu1_pingpong_ipc_ipcsar_post` -- same value.
 5. JTAG read `g_cpu1_pingpong_ipc_tz_step` -- must be 6

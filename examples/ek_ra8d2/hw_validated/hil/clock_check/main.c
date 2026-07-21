@@ -70,7 +70,7 @@ typedef enum : uint32_t {
  *        frequency exactly.
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving the CGC bring-up not only completed without
  * faulting but also produced the targeted PLL1P-derived clock tree.

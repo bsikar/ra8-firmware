@@ -56,7 +56,7 @@ You need two toolchains:
 
 * **Host clang/gcc** for the unit-test build. The supported path is the
   project's Ubuntu 24.04 dev container, invoked through
-  [`scripts/test-docker.sh`](scripts/test-docker.sh). On macOS you
+  [`scripts/ci/test-docker.sh`](scripts/ci/test-docker.sh). On macOS you
   need [Colima](https://github.com/abiosoft/colima) (or Docker Desktop)
   running because the host test simulator uses `mmap(MAP_FIXED, ...)`
   at MCU peripheral addresses, which macOS arm64 refuses below 4 GiB.
@@ -67,18 +67,18 @@ You need two toolchains:
 
 CMake and clang-tidy/clang-format are pulled into the dev container
 automatically, so the easiest workflow is "make changes, then
-`bash scripts/test-docker.sh`".
+`bash scripts/ci/test-docker.sh`".
 
 ## 4. Daily workflow
 
 ```text
-edit -> bash scripts/format_code.sh -> bash scripts/test-docker.sh -> git commit
+edit -> bash scripts/checks/format_code.sh -> bash scripts/ci/test-docker.sh -> git commit
 ```
 
-* `scripts/format_code.sh` runs clang-format over every C/H file the
+* `scripts/checks/format_code.sh` runs clang-format over every C/H file the
   project owns. Always run it before committing -- the pre-commit hook
   rejects the commit otherwise.
-* `scripts/test-docker.sh` runs the full host-side test suite inside
+* `scripts/ci/test-docker.sh` runs the full host-side test suite inside
   the project's pinned Ubuntu 24.04 image. This is the only sanctioned
   way to run tests on macOS hosts.
 * `git commit` triggers `scripts/git/pre-commit` (formatting,
@@ -150,31 +150,31 @@ The short version:
 has its own policy document; click through before disagreeing with a
 finding:
 
-* clang-format (`scripts/format_code.sh`).
-* clang-tidy (`scripts/clang_tidy.sh`) -- enforces NASA Power-of-10
+* clang-format (`scripts/checks/format_code.sh`).
+* clang-tidy (`scripts/checks/clang_tidy.sh`) -- enforces NASA Power-of-10
   Rule 4 (function length), naming conventions, magic-number bans, and
   the C23 typed-enum requirement. See [`docs/STATIC_ANALYSIS.md`](docs/STATIC_ANALYSIS.md).
 * ASCII character check -- non-ASCII bytes in source files are
-  rejected (`scripts/utils/fix-encoding.py --check`).
-* Doxygen audit (`scripts/utils/doxy_audit.py`) -- every function in
+  rejected (`scripts/fix/fix-encoding.py --check`).
+* Doxygen audit (`scripts/checks/doxy_audit.py`) -- every function in
   `libs/`, `src/`, `port/` must carry the full required tag set
   documented in `CLAUDE.md`.
-* Citation check (`scripts/utils/cite_check.py`) -- register-level
+* Citation check (`scripts/checks/cite_check.py`) -- register-level
   changes must cite the Hardware User's Manual section. See
   [`docs/CITATION_POLICY.md`](docs/CITATION_POLICY.md).
-* Ring + World tag check (`scripts/utils/check_world_tags.py`) --
+* Ring + World tag check (`scripts/checks/check_world_tags.py`) --
   every public header must declare its architectural ring and
   TrustZone world. See [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md).
-* Roadmap stats refresh (`scripts/utils/roadmap_stats.py`).
+* Roadmap stats refresh (`scripts/report/roadmap_stats.py`).
 * Obsolete-standards check
-  (`scripts/utils/check_obsolete_standards.py`) -- references to
+  (`scripts/checks/check_obsolete_standards.py`) -- references to
   superseded safety standards are rejected; use the current
   DO-178C / IEC 61508 / ISO 26262 spelling instead.
 * MC/DC block check -- new compound decisions need the matching test
   block.
 * Stack-usage soft warning -- any function over 2 KB or with dynamic
   stack use is reported (currently warning-only for third-party SOUP).
-* AI-attribution ban (`scripts/utils/check_no_ai_attribution.py`) --
+* AI-attribution ban (`scripts/checks/check_no_ai_attribution.py`) --
   rejects `Co-Authored-By: Claude`, "Generated with Claude Code", and <!-- AI-OK: quoting the banned footer -->
   similar footers anywhere in the tree. Re-run independently in CI by
   `.github/workflows/no-ai-attribution.yml`. See
@@ -188,7 +188,7 @@ finding:
 * **No AI attribution.** Do not add `Co-Authored-By: Claude`, <!-- AI-OK: quoting the banned footer -->
   "Generated with Claude Code", or similar footers. Treat every commit <!-- AI-OK: quoting the banned footer -->
   as if a human wrote it. This is a hard rule. The pre-commit gate
-  `scripts/utils/check_no_ai_attribution.py` extends the rule to in-tree
+  `scripts/checks/check_no_ai_attribution.py` extends the rule to in-tree
   files; see `docs/AI_ATTRIBUTION_POLICY.md`.
 * **No destructive git ops without an explicit ask.** Never push
   `--force` to `main`, never run `git reset --hard` on someone else's
@@ -196,7 +196,7 @@ finding:
 * **One logical change per commit.** Fuzz harnesses, documentation
   updates, and HAL refactors should land as separate commits even when
   authored in the same session.
-* **Run the full test suite locally** (`bash scripts/test-docker.sh`)
+* **Run the full test suite locally** (`bash scripts/ci/test-docker.sh`)
   before opening a PR. CI runs the same image, so a green local run is
   a strong signal.
 * **No backward-compatibility shims.** Update every call site in the
@@ -237,7 +237,7 @@ how it was done.
   example many RMAC statistics counters are clear-on-read, so a
   baseline read followed by a post-event read yields the exact
   delta). Paste both reads.
-* **Bench scripts.** The exact `scripts/hil_*.sh` invocations used.
+* **Bench scripts.** The exact `scripts/hil/*.sh` invocations used.
 
 ### Rule out environment error first (required)
 
@@ -249,11 +249,11 @@ verification baseline and paste its results into the issue:**
 * **Local unit-test suite** -- `make test`. Expect `100% tests passed`.
 * **CI gate suite** -- the jobs in `.github/workflows/firmware.yml`,
   runnable locally: cross-build every app
-  (`bash scripts/build_all_examples.sh`), clang-tidy
-  (`bash scripts/clang_tidy.sh --check`), clang-format
-  (`bash scripts/format_code.sh --check`), and the citation / ASCII
-  checks under `scripts/utils/`.
-* **HIL suite** (hardware bugs) -- `bash scripts/hil_all.sh`, which
+  (`bash scripts/build/all_examples.sh`), clang-tidy
+  (`bash scripts/checks/clang_tidy.sh --check`), clang-format
+  (`bash scripts/checks/format_code.sh --check`), and the citation / ASCII
+  checks under `scripts/checks/`.
+* **HIL suite** (hardware bugs) -- `bash scripts/hil/all.sh`, which
   flashes and verifies every app under
   `examples/ek_ra8d2/hw_validated/hil/` on the board. A green HIL run
   proves the J-Link, the flash path, the UART/USB plumbing, and the

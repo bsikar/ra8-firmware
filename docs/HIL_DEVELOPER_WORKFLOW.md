@@ -14,24 +14,24 @@ the EK-RA8D2 wired to it. The runner exists -- this is not a
 deferred / planned workflow.
 
 The authoritative driver is
-[`scripts/hil_all.sh`](../scripts/hil_all.sh) (invoked from
+[`scripts/hil/all.sh`](../scripts/hil/all.sh) (invoked from
 [`.github/workflows/hil.yml`](../.github/workflows/hil.yml)), which
 auto-discovers every app under
 `examples/ek_ra8d2/hw_validated/hil/` and verifies each app against
 its `hil.conf` manifest. The per-mode helper scripts are:
 
-- `scripts/hil_run_direct.sh` -- UART scrape (`HIL_MODE=uart_scrape`).
-- `scripts/hil_usb_test.sh` -- USB CDC echo (`HIL_MODE=usb_cdc`).
-- `scripts/hil_jlink_memprobe.sh` -- live counter probe
+- `scripts/hil/run_direct.sh` -- UART scrape (`HIL_MODE=uart_scrape`).
+- `scripts/hil/usb_test.sh` -- USB CDC echo (`HIL_MODE=usb_cdc`).
+- `scripts/hil/jlink_memprobe.sh` -- live counter probe
   (`HIL_MODE=jlink_memprobe`).
-- `scripts/hil_eth_tcp.sh` -- ethernet socket echo
+- `scripts/hil/eth_tcp.sh` -- ethernet socket echo
   (`HIL_MODE=hil_eth_tcp`).
-- `scripts/hil_check_alive.sh` -- fault-recovery demo
+- `scripts/hil/check_alive.sh` -- fault-recovery demo
   (`HIL_MODE=alive`).
 
-Flashing always goes through `scripts/hil_flash.sh`, which ships
+Flashing always goes through `scripts/hil/flash.sh`, which ships
 auto-recovery for the AHB-AP-gated / TrustZone-locked / LPM-stuck
-failure modes (see `scripts/hil_dlm_reset.sh` for the full DLM
+failure modes (see `scripts/hil/dlm_reset.sh` for the full DLM
 recovery flow).
 
 ## Pre-push checklist (HIL-equipped contributors)
@@ -47,15 +47,15 @@ runner), you can pre-check your changes before pushing:
    below).
 3. Run the HIL driver locally:
    ```sh
-   bash scripts/hil_all.sh
+   bash scripts/hil/all.sh
    ```
    Subsets and per-mode runs are documented at the top of
-   `scripts/hil_all.sh`.
+   `scripts/hil/all.sh`.
 4. For HIL-suite-managed apps under
    `examples/ek_ra8d2/hw_validated/hil/`, run the same per-app
-   helper the CI runs (`scripts/hil_run_direct.sh`,
-   `scripts/hil_usb_test.sh`, `scripts/hil_jlink_memprobe.sh`,
-   `scripts/hil_eth_tcp.sh`, `scripts/hil_check_alive.sh`) directly.
+   helper the CI runs (`scripts/hil/run_direct.sh`,
+   `scripts/hil/usb_test.sh`, `scripts/hil/jlink_memprobe.sh`,
+   `scripts/hil/eth_tcp.sh`, `scripts/hil/check_alive.sh`) directly.
 
 Contributors **without** an EK-RA8D2 may still open PRs; the host
 unit-test build (`make test`) and the cross-build CI
@@ -103,11 +103,11 @@ J-Link USB driver is not installed.
 
 - [`HIL_SUITE.md`](HIL_SUITE.md) -- the authoritative HIL contract,
   per-app table, modes, and Pi-runner infrastructure.
-- [`scripts/hil_all.sh`](../scripts/hil_all.sh) -- the
+- [`scripts/hil/all.sh`](../scripts/hil/all.sh) -- the
   HIL-suite driver invoked from CI.
-- [`scripts/hil_flash.sh`](../scripts/hil_flash.sh) -- the
+- [`scripts/hil/flash.sh`](../scripts/hil/flash.sh) -- the
   authoritative flash path with auto-recovery.
-- [`scripts/hil_dlm_reset.sh`](../scripts/hil_dlm_reset.sh) -- DLM
+- [`scripts/hil/dlm_reset.sh`](../scripts/hil/dlm_reset.sh) -- DLM
   recovery for the AHB-AP-gated / TrustZone-locked failure modes.
 - [`.github/workflows/hil.yml`](../.github/workflows/hil.yml) -- the
   Pi-attached HIL gate.

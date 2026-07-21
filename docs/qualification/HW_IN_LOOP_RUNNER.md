@@ -271,7 +271,7 @@ VLAN as the development LAN.
 
 ### Hung flash
 
-Symptom: `scripts/flash.sh` runs for > 60 s and the job hits the
+Symptom: `scripts/dev/flash.sh` runs for > 60 s and the job hits the
 `timeout-minutes: 30` cap.
 
 Diagnose:

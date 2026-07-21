@@ -32,7 +32,7 @@ FAIL banner and halts on a BKPT before the PASS line.
 
 ```
 make keyboard
-scripts/hil_run_local.sh keyboard      # flash + scrape the banner
+scripts/hil/run_local.sh keyboard      # flash + scrape the banner
 ```
 
 ## Result (validated 2026-06-19, board_sim)
@@ -42,7 +42,7 @@ keyboard-hil: boot
 kbd: q=Hi 9 commit=1 taps=7 PASS
 ```
 
-`scripts/board_sim_smoke.sh keyboard` PASS (final PC in the `main` WFI idle
+`scripts/sim/smoke.sh keyboard` PASS (final PC in the `main` WFI idle
 loop; 7 synthetic taps routed through `ra8_kbd_hit` -> `ra8_kbd_apply`). The
 widget logic -- case toggle, the 123/ABC layer switch, digits, edits -- is
 covered on the host by `tests/test_ra8_keyboard.c` (ASan + MC/DC for the

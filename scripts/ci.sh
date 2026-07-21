@@ -30,7 +30,7 @@
 # fifth time would only reset the clock; removing the second copy ends it.
 #
 # The residual hole is someone adding a raw `run:` step straight to a workflow,
-# re-creating a second home for check logic. scripts/utils/check_ci_parity.py
+# re-creating a second home for check logic. scripts/ci/check_ci_parity.py
 # closes it: it parses every workflow and fails when a step runs anything other
 # than a registered gate, unless the step is explicitly tagged
 # `# ci-parity: infra` -- and infra steps may not invoke checkers. It runs as
@@ -371,8 +371,8 @@ gate_ci_parity() (
   set -e
   require_python_mod yaml "pip install pyyaml (the CI runners ship it)"
   suite_errexit_selftest
-  python3 scripts/utils/check_ci_parity.py --selftest
-  python3 scripts/utils/check_ci_parity.py
+  python3 scripts/ci/check_ci_parity.py --selftest
+  python3 scripts/ci/check_ci_parity.py
 )
 
 # Assert that run_suite() still reports FAIL for a gate that fails PART-WAY
@@ -531,7 +531,7 @@ commit_range_selftest() (
 gate_ascii() (
   set -e
   for dir in src libs tests examples port scripts tools docs; do
-    python3 scripts/utils/fix-encoding.py --check "$dir"
+    python3 scripts/fix/fix-encoding.py --check "$dir"
   done
 )
 
@@ -542,7 +542,7 @@ gate_copyright() (
   while IFS= read -r line; do files+=("$line"); done < <(
     git ls-files '*.c' '*.h' '*.cpp' '*.hpp' '*.cmake' '*.sh' '*.py' 'CMakeLists.txt'
   )
-  python3 scripts/utils/check-copyright.py "${files[@]}"
+  python3 scripts/checks/check-copyright.py "${files[@]}"
 )
 
 # --- since ----------------------------------------------------------------
@@ -552,7 +552,7 @@ gate_since() (
   while IFS= read -r line; do files+=("$line"); done < <(
     git ls-files 'libs/ra8_*/inc/*.h'
   )
-  python3 scripts/utils/check-since-version.py "${files[@]}"
+  python3 scripts/checks/check-since-version.py "${files[@]}"
 )
 
 # --- hil-sil-parity -------------------------------------------------------
@@ -561,12 +561,12 @@ gate_since() (
 # sil_all.sh's run set, or declares a HIL_MODE board_sim cannot check.
 # Hardware-free, so an added HIL app cannot escape SIM coverage.
 gate_hil_sil_parity() {
-  python3 scripts/utils/check_hil_sil_parity.py
+  python3 scripts/checks/check_hil_sil_parity.py
 }
 
 # --- no-ai-attribution ----------------------------------------------------
 gate_no_ai_attribution() {
-  python3 scripts/utils/check_no_ai_attribution.py
+  python3 scripts/checks/check_no_ai_attribution.py
 }
 
 # --- no-ai-attribution-commits --------------------------------------------
@@ -601,7 +601,7 @@ gate_no_ai_attribution_commits() (
 
 # --- inclusive-terminology ------------------------------------------------
 gate_inclusive_terminology() {
-  python3 scripts/utils/check_inclusive_terminology.py
+  python3 scripts/checks/check_inclusive_terminology.py
 }
 
 # --- inclusive-terminology-commits ----------------------------------------
@@ -616,7 +616,7 @@ gate_inclusive_terminology_commits() (
   range="$(ci_commit_range)"
   echo "Scanning commit messages in: $range (history repo: $repo)"
   git -C "$repo" log "$range" --format=%B |
-    python3 scripts/utils/check_inclusive_terminology_commits.py
+    python3 scripts/checks/check_inclusive_terminology_commits.py
 )
 
 # --- format ---------------------------------------------------------------
@@ -624,7 +624,7 @@ gate_format() (
   set -e
   local cf
   cf="$(pick_clang_format)"
-  CLANG_FORMAT="$cf" bash scripts/format_code.sh --check --verbose
+  CLANG_FORMAT="$cf" bash scripts/checks/format_code.sh --check --verbose
 )
 
 # --- pre-commit-checks ----------------------------------------------------
@@ -632,61 +632,61 @@ gate_format() (
 # way scripts/git/pre-commit invokes it.
 gate_pre_commit_checks() (
   set -e
-  python3 scripts/utils/check_obsolete_standards.py
-  python3 scripts/utils/check_world_tags.py --strict
-  python3 scripts/utils/check_mcdc_block.py
+  python3 scripts/checks/check_obsolete_standards.py
+  python3 scripts/checks/check_world_tags.py --strict
+  python3 scripts/checks/check_mcdc_block.py
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
-  python3 scripts/utils/check_no_dynamic_alloc.py --all
-  python3 scripts/utils/check_no_ai_attribution.py
+  python3 scripts/checks/check_no_dynamic_alloc.py --all
+  python3 scripts/checks/check_no_ai_attribution.py
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /
   # FX_NULL / NX_NULL are exempted.
-  python3 scripts/utils/check_no_null.py --all
+  python3 scripts/checks/check_no_null.py --all
   # NASA P10 Rule 4 -- every function fits in <=60 lines. Independent of the
   # clang-tidy compile-db, so it covers cross-compiled TUs the host tidy build
   # never sees (ThreadX/USBX/NetX/HAL register code).
-  python3 scripts/utils/check_function_size.py
+  python3 scripts/checks/check_function_size.py
   # Maintainability cap -- no single .c/.h over 1000 lines. Complements the
   # per-function Rule 4 gate, which a god-file of short bodies can pass while
   # still being unreviewable.
-  python3 scripts/utils/check_file_size.py
+  python3 scripts/checks/check_file_size.py
   # A header under a src/ directory is module-private and must be named
   # *_internal.h. A non-internal src/ header is a misfiled public interface
   # (belongs in inc/) or an unmarked private one.
-  python3 scripts/utils/check_header_file_placement.py
+  python3 scripts/checks/check_header_file_placement.py
   # The EK-RA8D2 pinout is a board fact owned by libs/ra8_board_ek_ra8d2.
   # Forbid the (port << 8 | pin) idiom in examples so the USB-pin duplication
   # #251 fixed (identical pins copy-pasted across 29 apps) cannot come back.
-  python3 scripts/utils/check_example_board_pins.py
+  python3 scripts/checks/check_example_board_pins.py
   # ra8_core is the foundation lib: it must depend on nothing above itself.
-  python3 scripts/utils/check_core_layering.py
+  python3 scripts/checks/check_core_layering.py
   # Every first-party source file ends in a trailing newline. Complements
   # .clang-format InsertNewlineAtEOF (C/C++ only) by covering scripts and
   # config-as-code.
-  python3 scripts/utils/check_final_newline.py
+  python3 scripts/checks/check_final_newline.py
   # No magic numbers. clang-tidy's readability-magic-numbers only sees files
   # in the host compile-db (no example main.c, no ARM-only #ifdef paths),
   # which is how ra8_delay_ms(500U) slipped past CI.
-  python3 scripts/utils/check_magic_numbers.py
+  python3 scripts/checks/check_magic_numbers.py
   # C23 [[...]] attribute syntax tree-wide (GNU __attribute__((...)) is
   # rejected except for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
   # which clang has no portable [[gnu::]] spelling for).
-  python3 scripts/utils/check_no_gnu_attribute.py
+  python3 scripts/checks/check_no_gnu_attribute.py
   # No silent ra8_err_t discards at TrustZone boot boundaries. A C23
   # (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can never catch
   # a discarded ra8_cgc_init() right before a BLXNS (#191).
-  python3 scripts/utils/check_tz_boundary_discard.py
+  python3 scripts/checks/check_tz_boundary_discard.py
   # Ban the numbered session-bookkeeping tags from comments and docs.
-  python3 scripts/utils/check_no_wave_references.py
+  python3 scripts/checks/check_no_wave_references.py
   # Every RA8_NSC_VENEER declared in ra8_nsc.h must have a definition -- a
   # decl with no def advertises an NS->S trust-boundary entry point that does
   # not exist.
-  python3 scripts/utils/check_nsc_veneer_defs.py
+  python3 scripts/checks/check_nsc_veneer_defs.py
   # Every insecure placeholder-crypto body (deterministic TRNG, forgeable
   # key-import MAC, plain-SRAM key vault, non-cryptographic RSIP key-wrap)
   # must sit behind the RA8_INSECURE_STUB_CRYPTO / RA8_SIMULATOR_MODE guard
   # with a fail-closed #else, so a release image that forgot to swap in real
   # crypto fails closed instead of shipping the stub (#180).
-  python3 scripts/utils/check_stub_crypto_guarded.py
+  python3 scripts/checks/check_stub_crypto_guarded.py
   # No function may exist only to satisfy the linker. Two narrowly-calibrated
   # rules: SHADOW (a do-nothing second definition of a symbol implemented for
   # real elsewhere -- the tools/*/webp_stub.c case, which made both host tools
@@ -698,28 +698,28 @@ gate_pre_commit_checks() (
   # --selftest runs first and asserts the detector both fires and stays silent
   # on the right inputs, so a detector that quietly stopped matching cannot
   # pass as clean.
-  python3 scripts/utils/check_no_silent_stubs.py --selftest
-  python3 scripts/utils/check_no_silent_stubs.py
+  python3 scripts/checks/check_no_silent_stubs.py --selftest
+  python3 scripts/checks/check_no_silent_stubs.py
   # A HAL peripheral driver must not guard bare CPU asm
   # (wfi/dsb/isb/nop/cpsie/cpsid/reset-spin) on RA8_SIMULATOR_MODE -- those
   # route through libs/ra8_hal/inc/ra8_hw_intrinsics.h +
   # tests/mocks/ra8_host_asm_stub.c so the driver stays branch-free and
   # coverage lands on the shipping path (#293).
-  python3 scripts/utils/check_no_driver_asm_guard.py
+  python3 scripts/checks/check_no_driver_asm_guard.py
   # The in-tree line-number citation ban: reference a symbol, never a file
   # plus line number, since line numbers rot.
-  python3 scripts/utils/check_line_citations.py
+  python3 scripts/checks/check_line_citations.py
   # Per-app SystemInit boot init-order audit.
-  python3 scripts/utils/audit_init_order.py
+  python3 scripts/checks/audit_init_order.py
   # Every newly added compound boolean decision must arrive with MC/DC
   # vectors. This is the local counterpart of the mcdc gate's baseline
   # comparison: catching the gap at the decision keeps the baseline from
   # sliding in the first place. It was in the hand-maintained local suite but
   # never in the workflow, which is the same drift in the other direction --
   # now that the workflow calls this gate, both sides run it.
-  python3 scripts/utils/check_new_compound_has_mcdc.py
+  python3 scripts/checks/check_new_compound_has_mcdc.py
   # OSHWA inclusive-terminology gate over first-party sources.
-  python3 scripts/utils/check_inclusive_terminology.py
+  python3 scripts/checks/check_inclusive_terminology.py
   # MAXIMUM-documentation gate: every function -- including statics -- carries
   # the full Doxygen tag set.
   #
@@ -730,27 +730,27 @@ gate_pre_commit_checks() (
   # both directions: every defect class fires, and the legal-but-tricky forms
   # (a .c definition whose header owns the contract, a static forward
   # prototype, `else if`, inline asm) stay clean.
-  python3 scripts/utils/doxy_audit.py --selftest
-  python3 scripts/utils/doxy_audit.py --check
+  python3 scripts/checks/doxy_audit.py --selftest
+  python3 scripts/checks/doxy_audit.py --check
   # ... and for aggregate members: every enum value, struct/union member, and
   # macro across the first-party tree carries a doc comment.
-  python3 scripts/utils/doxy_audit.py --members --check
+  python3 scripts/checks/doxy_audit.py --members --check
   # Every hw_validated/hil app must be instrumented (a probed counter +
   # HIL_MODE=jlink_memprobe) or explicitly HIL_FAULT_EXPECTED -- a bare
   # HIL_MODE=alive proves nothing.
-  python3 scripts/utils/check_hil_alive_policy.py
+  python3 scripts/checks/check_hil_alive_policy.py
   # Every scripts/... path named anywhere in the tree resolves to a file that
   # exists. A git mv inside scripts/ silently breaks doc links, hook comments
   # and workflow steps -- no build error, no test failure, and ci-fast has
   # already missed exactly that. The selftest runs first: a path checker that
   # stopped matching would report a clean tree, which is worse than no gate.
-  python3 scripts/utils/check_script_references.py --selftest
-  python3 scripts/utils/check_script_references.py
+  python3 scripts/checks/check_script_references.py --selftest
+  python3 scripts/checks/check_script_references.py
   # Reject explicit integer casts inside TEST_ASSERT_EQ arguments. The macro
   # widens both args to int64_t, so an outer (int)/(uint32_t) cast is
   # redundant and latently buggy (a (int) cast on a uint32_t enum truncates
   # before the widening).
-  python3 scripts/utils/check_assert_casts.py tests/*.c
+  python3 scripts/checks/check_assert_casts.py tests/*.c
 )
 
 # --- annotations ----------------------------------------------------------
@@ -765,8 +765,8 @@ gate_annotations() (
   require_python_mod clang.cindex \
     "CI installs libclang==18.1.1; add it to .devcontainer/Dockerfile too."
   # Regression-test the checker itself before trusting its verdict.
-  python3 scripts/utils/check_annotations.py --selftest
-  python3 scripts/utils/check_annotations.py --check
+  python3 scripts/checks/check_annotations.py --selftest
+  python3 scripts/checks/check_annotations.py --check
 )
 
 # --- doc-attachment -------------------------------------------------------
@@ -783,8 +783,8 @@ gate_doc_attachment() (
   # verdict: every defect class must fire, and the legal-but-tricky forms
   # (@copydoc, the CLAUDE.md definition-site one-liner, macro-generated
   # declarations, documented //#define options) must not.
-  python3 scripts/utils/check_doc_attachment.py --selftest
-  python3 scripts/utils/check_doc_attachment.py --check
+  python3 scripts/checks/check_doc_attachment.py --selftest
+  python3 scripts/checks/check_doc_attachment.py --check
 )
 
 # --- lint-py-shell --------------------------------------------------------
@@ -800,15 +800,15 @@ gate_lint_py_shell() (
   # linted at all while the gate reported a clean tree. Scope is derived from
   # `git ls-files` now, and gutting the select list turns the selftest red
   # instead of turning the tree green.
-  python3 scripts/utils/check_ruff.py --selftest
-  python3 scripts/utils/check_ruff.py --require
+  python3 scripts/checks/check_ruff.py --selftest
+  python3 scripts/checks/check_ruff.py --require
   # --selftest FIRST, then the tree. It asserts the shell checker still fires on
   # every class it claims to enforce (a relaxed severity or a dropped opt-in
   # check turns one of those green) and still stays quiet on the tricky-but-
   # correct forms this tree uses. Without it, "0 findings" is indistinguishable
   # from "checked nothing".
-  python3 scripts/utils/check_shell.py --selftest
-  python3 scripts/utils/check_shell.py --require
+  python3 scripts/checks/check_shell.py --selftest
+  python3 scripts/checks/check_shell.py --require
   # The narrow, first-party form of ShellCheck's SC2310. That opt-in check is
   # unsatisfiable here -- measured 90 findings, and the only two source forms
   # it ACCEPTS are worse than the ones it rejects: `set +e; fn; rc=$?; set -e`
@@ -818,8 +818,8 @@ gate_lint_py_shell() (
   # has two or more failable commands is invoked with its status masked, which
   # is the shape that once reduced this whole gate suite to "did each gate's
   # LAST command succeed". --selftest first, both directions, as ever.
-  python3 scripts/utils/check_errexit_masking.py --selftest
-  python3 scripts/utils/check_errexit_masking.py
+  python3 scripts/checks/check_errexit_masking.py --selftest
+  python3 scripts/checks/check_errexit_masking.py
 )
 
 # --- lint-cmake -----------------------------------------------------------
@@ -839,7 +839,7 @@ gate_lint_cmake() (
   # two readers -- an inline `git ls-files | grep` here would be a second copy
   # of the coverage map and would drift from the coverage gate on first edit.
   local files
-  mapfile -t files < <(python3 scripts/utils/lint_scope.py cmake)
+  mapfile -t files < <(python3 scripts/checks/lint_scope.py cmake)
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "ERROR: no CMake listfiles found; refusing to report success." >&2
     return 1
@@ -849,7 +849,7 @@ gate_lint_cmake() (
   # Both directions of the formatter, asserted before the real run: a
   # deliberately misformatted listfile must be rejected, and the formatter's
   # own output must be accepted.
-  bash scripts/utils/lint_selftest.sh cmake
+  bash scripts/checks/lint_selftest.sh cmake
 
   printf '%s\n' "${files[@]}" | xargs -r -P "$(cpu_count)" -n 20 cmake-format --check
   printf '%s\n' "${files[@]}" | xargs -r cmake-lint
@@ -868,14 +868,14 @@ gate_lint_yaml() (
 
   # Scope comes from lint_scope.py -- see the note in gate_lint_cmake.
   local files
-  mapfile -t files < <(python3 scripts/utils/lint_scope.py yaml)
+  mapfile -t files < <(python3 scripts/checks/lint_scope.py yaml)
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "ERROR: no YAML files found; refusing to report success." >&2
     return 1
   fi
   echo "lint-yaml: ${#files[@]} files"
 
-  bash scripts/utils/lint_selftest.sh yaml
+  bash scripts/checks/lint_selftest.sh yaml
 
   yamllint --strict "${files[@]}"
   actionlint
@@ -888,8 +888,8 @@ gate_lint_yaml() (
 # full reasoning and the reduced test case are in its module docstring.
 gate_lint_make() (
   set -e
-  python3 scripts/utils/check_makefiles.py --selftest
-  python3 scripts/utils/check_makefiles.py
+  python3 scripts/checks/check_makefiles.py --selftest
+  python3 scripts/checks/check_makefiles.py
 )
 
 # --- lint-ld --------------------------------------------------------------
@@ -900,8 +900,8 @@ gate_lint_make() (
 # deliberately left unenforceable and why.
 gate_lint_ld() (
   set -e
-  python3 scripts/utils/check_linker_scripts.py --selftest
-  python3 scripts/utils/check_linker_scripts.py
+  python3 scripts/checks/check_linker_scripts.py --selftest
+  python3 scripts/checks/check_linker_scripts.py
 )
 
 # --- lint-coverage --------------------------------------------------------
@@ -924,8 +924,8 @@ gate_lint_ld() (
 # stays quiet on legitimately exempt files and on new files of a covered type.
 gate_lint_coverage() (
   set -e
-  python3 scripts/utils/check_lint_coverage.py --selftest
-  python3 scripts/utils/check_lint_coverage.py
+  python3 scripts/checks/check_lint_coverage.py --selftest
+  python3 scripts/checks/check_lint_coverage.py
 )
 
 # --- cite-check -----------------------------------------------------------
@@ -934,13 +934,13 @@ gate_lint_coverage() (
 # every MMIO access HAVE a cite?) surfaces a large libs/ra8_hal backlog and is
 # not yet gate-clean, so it is deliberately not wired blocking.
 gate_cite_check() {
-  python3 scripts/utils/cite_check.py --strict
+  python3 scripts/checks/cite_check.py --strict
 }
 
 # --- roadmap-stats --------------------------------------------------------
 gate_roadmap_stats() {
   if [[ -f docs/ROADMAP.md ]]; then
-    python3 scripts/utils/roadmap_stats.py --check
+    python3 scripts/report/roadmap_stats.py --check
   else
     echo "no docs/ROADMAP.md -- skipping roadmap_stats"
   fi
@@ -952,7 +952,7 @@ gate_roadmap_stats() {
 # tree drifted from the registry -- an uncatalogued SOUP directory, or a
 # version macro that disagrees with the recorded version.
 gate_sbom() {
-  python3 scripts/utils/gen_sbom.py --check
+  python3 scripts/gen/gen_sbom.py --check
 }
 
 # --- nsc-cmse -------------------------------------------------------------
@@ -964,7 +964,7 @@ gate_nsc_cmse() (
   set -e
   use_pinned_arm_toolchain
   require_arm_gcc_m85
-  bash scripts/utils/check_nsc_cmse.sh
+  bash scripts/checks/check_nsc_cmse.sh
 )
 
 # --- cppcheck -------------------------------------------------------------
@@ -1009,13 +1009,13 @@ gate_cppcheck() (
 gate_misra() (
   set -e
   require_cmd cppcheck
-  bash scripts/utils/misra_check.sh
-  python3 scripts/utils/misra_ratchet.py --check
+  bash scripts/checks/misra_check_inner.sh
+  python3 scripts/checks/misra_ratchet.py --check
 )
 
 # --- tidy -----------------------------------------------------------------
 gate_tidy() {
-  bash scripts/clang_tidy.sh --check --verbose
+  bash scripts/checks/clang_tidy.sh --check --verbose
 }
 
 # --- unit-tests -----------------------------------------------------------
@@ -1047,7 +1047,7 @@ gate_ubsan() (
 gate_coverage() (
   set -e
   require_cmd gcovr
-  bash scripts/coverage.sh --gate
+  bash scripts/checks/coverage.sh --gate
 )
 
 # --- coverage-report ------------------------------------------------------
@@ -1057,8 +1057,8 @@ gate_coverage() (
 gate_coverage_report() (
   set -e
   require_cmd gcovr
-  bash scripts/utils/coverage_report.sh --in-container
-  python3 scripts/utils/check_coverage.py
+  bash scripts/report/coverage_report.sh --in-container
+  python3 scripts/checks/check_coverage.py
 )
 
 # --- mcdc -----------------------------------------------------------------
@@ -1077,10 +1077,10 @@ gate_mcdc() (
   # by the coverage gate's gcc-13 cached "-fcoverage-mcdc: no", so the build
   # came out uninstrumented and the gate died at the merge step blaming the
   # tests for crashing when all 540 had passed.
-  CC=clang-18 CXX=clang++-18 bash scripts/utils/mcdc_report.sh --selftest
+  CC=clang-18 CXX=clang++-18 bash scripts/report/mcdc_report.sh --selftest
 
   CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
-    bash scripts/utils/mcdc_report.sh --in-container | tee mcdc-output.log
+    bash scripts/report/mcdc_report.sh --in-container | tee mcdc-output.log
 
   local summary="build/mcdc-report/summary.txt"
   local baseline_file="${MCDC_BASELINE_FILE:-.github/mcdc-baseline.txt}"
@@ -1115,7 +1115,7 @@ gate_mcdc() (
     echo "      OR reduce the decision count. Do NOT lower the baseline file"
     echo "      to make this pass."
     echo ""
-    echo "      scripts/utils/check_new_compound_has_mcdc.py is supposed to"
+    echo "      scripts/checks/check_new_compound_has_mcdc.py is supposed to"
     echo "      catch this locally; if a regression reached CI, either the hook"
     echo "      was bypassed or a citation in an existing test drifted out of"
     echo "      the +/- 25-line tolerance window. See docs/MCDC.md."
@@ -1169,7 +1169,7 @@ gate_tools_build() (
 
   # Prove the flag detector fires and stays quiet BEFORE trusting its verdict.
   # A checker asserted in neither direction reports success forever.
-  python3 scripts/utils/check_tool_warning_flags.py --selftest
+  python3 scripts/checks/check_tool_warning_flags.py --selftest
 
   local root="$REPO_ROOT/build/tools-build"
   local jobs
@@ -1218,7 +1218,7 @@ gate_tools_build() (
   done
 
   # --- the warning bar actually reached every first-party TU --------------
-  python3 scripts/utils/check_tool_warning_flags.py \
+  python3 scripts/checks/check_tool_warning_flags.py \
     "$root/media_dl/compile_commands.json" \
     "$root/ra8_viewer/compile_commands.json" \
     "$root/ra8_fmt/compile_commands.json" \
@@ -1236,7 +1236,7 @@ gate_build_cross() (
   set -e
   use_pinned_arm_toolchain
   require_cmd arm-none-eabi-gcc
-  RA8_STRICT_TOOLCHAIN=1 bash scripts/build_all_examples.sh
+  RA8_STRICT_TOOLCHAIN=1 bash scripts/build/all_examples.sh
 )
 
 # --- sg-offsets -----------------------------------------------------------
@@ -1256,7 +1256,7 @@ gate_sg_offsets() (
     return 1
   fi
   echo "check_sg_offsets: inspecting $elf"
-  python3 scripts/utils/check_sg_offsets.py "$elf"
+  python3 scripts/checks/check_sg_offsets.py "$elf"
 )
 
 # --- stack-usage ----------------------------------------------------------
@@ -1272,7 +1272,7 @@ gate_stack_usage() (
     echo "                   first (this gate reads its output)." >&2
     return 1
   fi
-  python3 scripts/utils/stack_usage_check.py --strict
+  python3 scripts/checks/stack_usage_check.py --strict
 )
 
 # --- docs -----------------------------------------------------------------
@@ -1288,7 +1288,7 @@ gate_docs() (
   # this check that surfaces as a dozen confusing warnings about the .md files
   # rather than the one true cause. Fail on the real reason instead.
   require_cmd dot
-  bash scripts/build_docs.sh --gate
+  bash scripts/build/docs.sh --gate
   local log="build/docs-gate/doxygen-warnings.log"
   if [[ ! -f "$log" ]]; then
     echo "FAIL: doxygen warning log not produced at $log" >&2
@@ -1328,7 +1328,7 @@ gate_docs() (
   # publishes HTTP 200 with its prose intact. This counts what actually reached
   # the generated HTML and compares it against the source. It runs here, inside
   # the docs gate, because this is where the built HTML it inspects exists.
-  python3 scripts/utils/check_doc_diagrams.py --html build/docs-gate/html
+  python3 scripts/checks/check_doc_diagrams.py --html build/docs-gate/html
 )
 
 # --- board-sim-smoke ------------------------------------------------------
@@ -1339,7 +1339,7 @@ gate_docs() (
 gate_board_sim_smoke() (
   set -e
   use_pinned_arm_toolchain
-  bash scripts/board_sim_smoke.sh
+  bash scripts/sim/smoke.sh
 )
 
 # --- board-sim-io-fabric --------------------------------------------------
@@ -1352,7 +1352,7 @@ gate_board_sim_smoke() (
 gate_board_sim_io_fabric() (
   set -e
   use_pinned_arm_toolchain
-  bash scripts/board_sim_smoke.sh \
+  bash scripts/sim/smoke.sh \
     ra8_io_demo ra8_io_sdram_demo ra8_io_compress_demo \
     ra8_io_sd_demo ra8_io_sdhi_demo ra8_io_xspi_demo ra8_io_mram_demo \
     ra8_io_fsfmt_demo ra8_io_cache_demo
@@ -1373,7 +1373,7 @@ gate_sil_integration() (
   # the fixture is tracked; assert it is present so a future re-gitignore
   # fails loudly here instead of as a confusing app FAIL.
   test -s examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h
-  bash scripts/sil_all.sh -j "$(cpu_count)"
+  bash scripts/sim/sil_all.sh -j "$(cpu_count)"
 )
 
 # --- mcdc-delta-base (manual) ---------------------------------------------
@@ -1391,7 +1391,7 @@ gate_mcdc_delta_base() (
   (
     cd "$tree"
     CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
-      bash scripts/utils/mcdc_report.sh --in-container
+      bash scripts/report/mcdc_report.sh --in-container
   ) || echo "base-branch MC/DC build failed -- the delta will be PR-only"
   if [[ -f "$tree/build/mcdc-report/summary.txt" ]]; then
     cp "$tree/build/mcdc-report/summary.txt" base-summary.txt
@@ -1402,7 +1402,7 @@ gate_mcdc_delta_base() (
 )
 
 # --- osv-scan (manual) ----------------------------------------------------
-# Two legs (scripts/utils/osv_scan.sh): the SBOM purl leg, and the commit leg
+# Two legs (scripts/checks/osv_scan.sh): the SBOM purl leg, and the commit leg
 # that resolves GIT-range advisories for the git-vendored C/C++ SOUP. Exits 1
 # on any finding. Downloads a version-pinned, sha256-verified scanner, so it
 # needs the network and is scheduled weekly rather than run per push.
@@ -1412,12 +1412,12 @@ gate_osv_scan() (
   local version="${OSV_SCANNER_VERSION:?set OSV_SCANNER_VERSION}"
   local sha256="${OSV_SCANNER_SHA256:?set OSV_SCANNER_SHA256}"
   # The scan is only as good as the SBOM it reads; refuse to scan a stale one.
-  python3 scripts/utils/gen_sbom.py --check
+  python3 scripts/gen/gen_sbom.py --check
   curl -fsSL -o osv-scanner \
     "https://github.com/google/osv-scanner/releases/download/v${version}/osv-scanner_linux_amd64"
   echo "${sha256}  osv-scanner" | sha256sum -c -
   chmod +x osv-scanner
-  bash scripts/utils/osv_scan.sh --scanner ./osv-scanner --output-dir osv-report
+  bash scripts/checks/osv_scan.sh --scanner ./osv-scanner --output-dir osv-report
 )
 
 # --- fuzz-sweep (manual) --------------------------------------------------
@@ -1441,7 +1441,7 @@ gate_fuzz_sweep() (
     return 1
   fi
   echo "Registered harnesses:"
-  bash scripts/utils/run_fuzz.sh --list
+  bash scripts/checks/run_fuzz.sh --list
   # Compiler probe: the same trivial -fsanitize=fuzzer link run_fuzz.sh
   # performs during auto-selection, done explicitly so a de-provisioned runner
   # is diagnosed in seconds instead of after hours.
@@ -1463,17 +1463,17 @@ gate_fuzz_sweep() (
     return 1
   fi
   echo "libFuzzer-capable compiler: $found"
-  bash scripts/utils/run_fuzz.sh --all "$budget" 2>&1 | tee fuzz-nightly.log
+  bash scripts/checks/run_fuzz.sh --all "$budget" 2>&1 | tee fuzz-nightly.log
 )
 
 # --- hil-all (manual) -----------------------------------------------------
-# Drives scripts/hil_all.sh, which auto-discovers every app under
+# Drives scripts/hil/all.sh, which auto-discovers every app under
 # examples/ek_ra8d2/hw_validated/hil/ and verifies each via its hil.conf
 # manifest. Needs the bench EK-RA8D2 attached to the Pi 5 runner.
 gate_hil_all() (
   set -e
   require_cmd arm-none-eabi-gcc
-  bash scripts/hil_all.sh --list
+  bash scripts/hil/all.sh --list
   # hil_all.sh builds them itself, but doing it explicitly first gives clearer
   # logs when a build (not a flash) fails.
   local apps=() line
@@ -1482,7 +1482,7 @@ gate_hil_all() (
       -exec basename {} \;
   )
   make -j"$(cpu_count)" "${apps[@]}"
-  bash scripts/hil_all.sh --skip-build
+  bash scripts/hil/all.sh --skip-build
 )
 
 # --- docs-publish (manual) ------------------------------------------------
@@ -1499,8 +1499,8 @@ gate_docs_publish() (
   make docs
   # Verify the site about to be published actually contains its diagrams,
   # against the real output tree `make docs` just wrote.
-  python3 scripts/utils/check_doc_diagrams.py --html build/docs/html
-  bash scripts/publish_docs.sh
+  python3 scripts/checks/check_doc_diagrams.py --html build/docs/html
+  bash scripts/build/publish_docs.sh
 )
 
 # ===========================================================================
@@ -1518,7 +1518,7 @@ registry_names() {
   done
 }
 
-# Machine-readable dump consumed by scripts/utils/check_ci_parity.py. Also
+# Machine-readable dump consumed by scripts/ci/check_ci_parity.py. Also
 # self-verifies that every registered name has a function behind it, so a
 # typo'd registry row is caught here rather than at gate-run time.
 list_gates() {
@@ -1833,7 +1833,7 @@ if ! command -v "${RUNTIME_CMD[0]}" >/dev/null 2>&1; then
 fi
 
 # On macOS the project uses colima (no Docker Desktop license). Auto-start it,
-# matching scripts/test-docker.sh. podman on macOS uses its own VM instead.
+# matching scripts/ci/test-docker.sh. podman on macOS uses its own VM instead.
 if [[ "$(uname -s)" == "Darwin" && "$RUNTIME_NAME" == "docker" ]]; then
   if ! command -v colima >/dev/null 2>&1; then
     echo "error: colima not on PATH. Install: brew install colima" >&2

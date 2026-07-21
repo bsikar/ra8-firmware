@@ -56,7 +56,7 @@ ARG ARM_GCC_SHA256_AARCH64=c8824bffd057afce2259f7618254e840715f33523a3d4e4294f47
 # fail loudly -- clang-tidy emits clang-diagnostic-error and never lints that
 # TU -- so keep this list in step with the runner install step in
 # .github/workflows/firmware.yml and the pkg-config probe in
-# scripts/clang_tidy.sh.
+# scripts/checks/clang_tidy.sh.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
@@ -156,7 +156,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends clang-format-22 \
     && rm -rf /var/lib/apt/lists/*
 
-# libclang Python bindings -- what scripts/utils/check_annotations.py walks the
+# libclang Python bindings -- what scripts/checks/check_annotations.py walks the
 # AST with. Pinned to the same version firmware.yml installs for its
 # "Annotation-attribute gate (libclang)" step so `make ci` sees the same AST as
 # CI. The wheel bundles its own libclang.so, so this is independent of the

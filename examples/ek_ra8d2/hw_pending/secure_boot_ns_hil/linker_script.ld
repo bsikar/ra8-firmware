@@ -419,7 +419,7 @@ ASSERT(g_ra8_ls_ebss + g_ra8_ls_stack_size <= g_ra8_ls_stack_top,
  * g_ra8_ls_sgstubs_start + <slot offset> because ld rewrites every cmse symbol
  * reference inside one secure image onto the secure body. The slot offsets are
  * verified AFTER the link (where the symbol table holds the true SG-stub
- * addresses) by scripts/utils/check_sg_offsets.py, run as a POST_BUILD step in
+ * addresses) by scripts/checks/check_sg_offsets.py, run as a POST_BUILD step in
  * this app's CMakeLists.txt -- a linker ASSERT cannot be used because the cmse
  * symbol resolves to __acle_se_* in script context. */
 

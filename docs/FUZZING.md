@@ -35,7 +35,7 @@ the device (network, modem, removable media):
 Add a new harness by dropping `tests/fuzz/fuzz_ra8_<x>.c` next to the
 existing files and listing it in `tests/fuzz/CMakeLists.txt`
 (`RA8_FUZZ_TARGETS`). That registry is the single source of truth:
-`scripts/utils/run_fuzz.sh --list` parses it, cross-checks it against
+`scripts/checks/run_fuzz.sh --list` parses it, cross-checks it against
 the `tests/fuzz/fuzz_ra8_*.c` sources (drift in either direction is a
 hard error), and both `make fuzz` and the nightly CI sweep consume it
 through that script -- there is no second list to update.
@@ -46,7 +46,7 @@ through that script -- there is no second list to update.
 
     make fuzz
 
-This delegates to `scripts/utils/run_fuzz.sh --all`, which configures
+This delegates to `scripts/checks/run_fuzz.sh --all`, which configures
 `tests/build-fuzz/` with `-DRA8_FUZZ=ON`, builds every harness, then
 runs each one with `-max_total_time=30 -runs=10000`. The target build
 is skipped when no source changed; subsequent invocations only re-run
@@ -60,14 +60,14 @@ trivial targets finish before the wall budget):
 
 ### Long-form session on one target
 
-    bash scripts/utils/run_fuzz.sh fuzz_ra8_jpeg_sw 600
+    bash scripts/checks/run_fuzz.sh fuzz_ra8_jpeg_sw 600
 
 The script reuses the same `tests/build-fuzz/` tree and writes any
 crash inputs to `tests/build-fuzz/crashes/<target>/`.
 
 ### Sweep every harness with one budget
 
-    bash scripts/utils/run_fuzz.sh --all 300
+    bash scripts/checks/run_fuzz.sh --all 300
 
 Unlike a shell loop over single-target runs, `--all` keeps going after
 a crashing target (so one crash cannot mask another), then exits
@@ -97,7 +97,7 @@ The host test simulator (`tests/mocks/ra8_sim_mmap.c`) installs RAM at
 the same MCU peripheral addresses via `mmap(MAP_FIXED, 0x40000000)`.
 macOS arm64 refuses MAP_FIXED below 4 GiB, so all host tests --
 including these fuzz harnesses -- run inside the project's existing
-Ubuntu 24.04 devcontainer (`scripts/test-docker.sh`). The fuzz CMake
+Ubuntu 24.04 devcontainer (`scripts/ci/test-docker.sh`). The fuzz CMake
 file drops AddressSanitizer when configured on macOS so the build
 still succeeds for development, but for a real fuzz session use the
 Linux container:
@@ -132,15 +132,15 @@ than random bytes lets libFuzzer reach interesting parser states in
 seconds rather than minutes, which is the difference between the
 30-second smoke run finding a regression and missing it.
 
-The seeds are (re-)materialised by `scripts/utils/init_fuzz_corpora.sh`,
+The seeds are (re-)materialised by `scripts/checks/init_fuzz_corpora.sh`,
 which is invoked automatically by `make fuzz` and by
-`scripts/utils/run_fuzz.sh` before each session. The script is
+`scripts/checks/run_fuzz.sh` before each session. The script is
 idempotent: it overwrites the seed files in place but does not touch
 crash reproducers added by the fuzzer or by hand.
 
 | Target              | Seeds | Generation                                                          |
 |---------------------|-------|---------------------------------------------------------------------|
-| `fuzz_ra8_jpeg_sw`   | 5     | `scripts/utils/gen_jpeg_fixture.py` at five (W,H) sizes             |
+| `fuzz_ra8_jpeg_sw`   | 5     | `scripts/gen/gen_jpeg_fixture.py` at five (W,H) sizes             |
 | `fuzz_ra8_epub`      | 2     | Hand-crafted minimal EPUB ZIPs via Python `zipfile`                 |
 | `fuzz_ra8_modem_at`  | 10    | Plain-text AT response strings (`OK`, `+CSQ:`, `+CME ERROR:`, ...)  |
 | `fuzz_ra8_ble_att`   | 4     | Hand-built ATT PDUs (FIND_INFO, READ_BY_TYPE, READ, WRITE)          |

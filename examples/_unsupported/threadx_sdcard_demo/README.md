@@ -35,7 +35,7 @@ Two ThreadX threads, each blinking a different LED at a different rate:
 ```sh
 cd examples/threadx_sdcard_demo
 make             # produces build/threadx_sdcard_demo.elf / .hex / .bin
-make flash       # JLinkExe load via scripts/flash.sh
+make flash       # JLinkExe load via scripts/dev/flash.sh
 make ozone       # SEGGER Ozone debugger
 ```
 

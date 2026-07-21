@@ -33,7 +33,7 @@
  * sets ``OFS1 = 0xFFFFFFF0`` in ``CMakeLists.txt``. Bench debugger reads with
  * the default ``OFS1 = 0xFFFFFFFF`` (LVD0 off) show the whole VBATT area held
  * in ``VBATT_POR`` reset (``VBPORF = 1``) with every write dropped -- ``rw=BAD``.
- * The current HIL flash path (``scripts/hil_flash.sh``) strips the ``.option_
+ * The current HIL flash path (``scripts/hil/flash.sh``) strips the ``.option_
  * setting_*`` sections, so the ``OFS1`` change does not reach silicon through
  * it; on-silicon ``rw=ok`` needs a full-image / option-byte flash (see README).
  *

@@ -181,7 +181,7 @@ def main(argv):
         " *          on demand) plus a gray8 cover thumbnail the shelf blits without any",
         " *          boot-time inflation. Regenerate with tools/bake_library.py (the",
         " *          thumbnail bytes are architecture-dependent to regenerate; see",
-        " *          scripts/build_books.sh -- re-pin the fb golden when re-baking).",
+        " *          scripts/build/books.sh -- re-pin the fb golden when re-baking).",
         " *",
         " * @copyright Copyright (c) 2026 Brighton Sikarskie",
         " * SPDX-License-Identifier: MIT",

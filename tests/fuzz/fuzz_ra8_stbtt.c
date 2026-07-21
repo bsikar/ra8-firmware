@@ -17,7 +17,7 @@
  * ra8_stbtt bump arena the firmware links, so no host heap is involved.
  *
  * Build via tests/fuzz/CMakeLists.txt with -DRA8_FUZZ=ON.
- * Run for a longer fuzz session via scripts/utils/run_fuzz.sh.
+ * Run for a longer fuzz session via scripts/checks/run_fuzz.sh.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

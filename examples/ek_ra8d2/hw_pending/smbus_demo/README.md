@@ -33,7 +33,7 @@ halts on a BKPT before the PASS line, so the gate is exact.
 
 ```
 make smbus_demo
-scripts/hil_run_local.sh smbus_demo      # flash + scrape the banner
+scripts/hil/run_local.sh smbus_demo      # flash + scrape the banner
 ```
 
 ## Result (validated 2026-06-19, board_sim)
@@ -45,7 +45,7 @@ $ board_sim smbus_demo.elf
   I3C/I2C LSM6DSO: 2 register read(s) answered (WHO_AM_I + samples)
 ```
 
-`scripts/board_sim_smoke.sh smbus_demo` PASS -- board_sim models the LSM6DSO on
+`scripts/sim/smoke.sh smbus_demo` PASS -- board_sim models the LSM6DSO on
 the modelled IIC_B bus, so the SMBus transactions return through the genuine
 `ra8_smbus -> ra8_i3c -> GT911/IMU` I2C path (no stub) and the banner is
 deterministic. The SMBus PEC CRC-8 helper is covered on the host by

@@ -48,7 +48,7 @@ Liskov-substitutable "twin I2C backends" property the facade exists to provide.
 `tools/board_sim` (`board_periph_i2c.c`) models the IIC_B controller bus (the
 GT911 answers `PRODUCT_ID`) AND plays the **external** I2C controller that
 drives the firmware's target role, so BOTH halves run headless: the controller
-reads `id0=0x39` and the peripheral count is non-zero. `scripts/sil_all.sh`
+reads `id0=0x39` and the peripheral count is non-zero. `scripts/sim/sil_all.sh`
 gates the `iic_b facade: up` banner with no board attached, and
 `check_hil_sil_parity` keeps this app in the SIL set.
 
@@ -64,7 +64,7 @@ target role.
 ```sh
 make                 # cross-compile build/iic_b_facade_demo.elf
 make flash           # program the EK-RA8D2 over J-Link
-bash ../../../../../scripts/sil_all.sh --only iic_b_facade_demo   # headless SIL gate
+bash ../../../../../scripts/sim/sil_all.sh --only iic_b_facade_demo   # headless SIL gate
 ```
 
 ## Bench setup (full peripheral verification)

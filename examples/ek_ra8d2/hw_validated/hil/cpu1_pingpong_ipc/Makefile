@@ -10,7 +10,7 @@
 # this app needs is Secure-only, so the secure-boot path is mandatory.
 # This app is hw_pending: bench validation is NOT performed by the
 # host; flashing is left to a human operator who can recover via
-# scripts/hil_recover.sh if the SAU layout turns out to brick the
+# scripts/hil/recover.sh if the SAU layout turns out to brick the
 # chip (see memory/project_sau_sgstubs_brick.md).
 #
 # Copyright (c) 2026 Brighton Sikarskie
@@ -39,9 +39,9 @@ help:
 	@echo "$(APP) make targets:"
 	@echo "  build / all  cross-compile $(APP).elf / .hex / .bin (default)"
 	@echo "  clean        rm -rf $(BUILD_DIR)"
-	@echo "  flash        scripts/flash.sh $(HEX)  (BENCH ONLY -- brick risk)"
-	@echo "  ozone        scripts/ozone.sh $(ELF)"
-	@echo "  debug        scripts/debug.sh $(ELF)"
+	@echo "  flash        scripts/dev/flash.sh $(HEX)  (BENCH ONLY -- brick risk)"
+	@echo "  ozone        scripts/dev/ozone.sh $(ELF)"
+	@echo "  debug        scripts/dev/debug.sh $(ELF)"
 	@echo "  size         arm-none-eabi-size on the ELF"
 
 build: $(ELF)
@@ -59,15 +59,15 @@ clean:
 
 flash:
 	@test -f $(HEX) || { echo "No $(HEX) -- run 'make build' first"; exit 1; }
-	bash $(ROOT)/scripts/flash.sh $(HEX)
+	bash $(ROOT)/scripts/dev/flash.sh $(HEX)
 
 ozone:
 	@test -f $(ELF) || { echo "No $(ELF) -- run 'make build' first"; exit 1; }
-	bash $(ROOT)/scripts/ozone.sh $(ELF)
+	bash $(ROOT)/scripts/dev/ozone.sh $(ELF)
 
 debug:
 	@test -f $(ELF) || { echo "No $(ELF) -- run 'make build' first"; exit 1; }
-	bash $(ROOT)/scripts/debug.sh $(ELF)
+	bash $(ROOT)/scripts/dev/debug.sh $(ELF)
 
 size:
 	@test -f $(ELF) || { echo "No $(ELF) -- run 'make build' first"; exit 1; }

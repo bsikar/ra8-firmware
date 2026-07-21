@@ -1,6 +1,6 @@
 # Ruff configuration for first-party Python (every tracked *.py in the tree).
 #
-# Lint + format are gated in CI via scripts/utils/check_ruff.py, which fails on
+# Lint + format are gated in CI via scripts/checks/check_ruff.py, which fails on
 # ANY finding. There is no baseline and no grandfathering; the tree must be
 # clean. #360 was a SCOPE defect, not a suppression one: the gate hardcoded its
 # target list and so never saw seven first-party files, while reporting a clean

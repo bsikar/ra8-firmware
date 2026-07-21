@@ -101,7 +101,7 @@ add_custom_command(
   COMMAND ${CMAKE_OBJCOPY} --remove-section=.option_setting* -O ihex
           $<TARGET_FILE:tz_threadx_demo.elf> tz_threadx_demo_secure.hex
   COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:tz_threadx_demo_ns.elf> tz_threadx_demo_ns.hex
-  COMMAND ${RA8_REPO_ROOT}/scripts/utils/merge_ihex.py tz_threadx_demo_secure.hex
+  COMMAND ${RA8_REPO_ROOT}/scripts/gen/merge_ihex.py tz_threadx_demo_secure.hex
           tz_threadx_demo_ns.hex tz_threadx_demo.hex
   VERBATIM
   COMMENT "Merging Secure + Non-Secure images into tz_threadx_demo.hex"

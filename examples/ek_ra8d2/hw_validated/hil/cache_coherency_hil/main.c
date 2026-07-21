@@ -81,7 +81,7 @@ typedef enum : uint32_t {
  *        M85 -> M33 -> M85 round-trip (echo == pong_base + round).
  *
  * @details
- * Read externally by ``scripts/hil_jlink_memprobe.sh`` via SWD. The
+ * Read externally by ``scripts/hil/jlink_memprobe.sh`` via SWD. The
  * probe asserts this counter advances by >= ::k_cache_coherency_rounds
  * across its sample window, proving the Cortex-M33 was released and is
  * servicing the non-cacheable shared block coherently with the M85

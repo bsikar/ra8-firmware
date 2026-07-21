@@ -13,13 +13,13 @@ in a key store (below).
 
 ## Key store: two backends
 
-`scripts/rot_keystore.py` keeps a **versioned, tagged history** of every RoT key
+`scripts/secrets/rot_keystore.py` keeps a **versioned, tagged history** of every RoT key
 so you can create new credentials whenever you want and still recover any prior
 key. It picks a backend automatically (override with `--backend`):
 
 | Backend | What it is | For whom |
 |---------|-----------|----------|
-| `openbao` | The team OpenBao server you already run (the k3s pod at `BAO_ADDR`), KV v2 with native versioning. Reached over HTTP by `scripts/openbao_client.py` -- **nothing is spun up locally**. | Maintainers with vault access. |
+| `openbao` | The team OpenBao server you already run (the k3s pod at `BAO_ADDR`), KV v2 with native versioning. Reached over HTTP by `scripts/secrets/openbao_client.py` -- **nothing is spun up locally**. | Maintainers with vault access. |
 | `local` | A 0700 directory (`RA8_ROT_STORE_DIR`, default `~/.config/ra8/rot`) holding one PEM per version plus `history.json`. | Anyone who clones the repo -- **no OpenBao needed**, same spirit as the `.env` fallback. |
 
 `auto` uses OpenBao when it is configured **and** reachable, else falls back to
@@ -31,7 +31,7 @@ the public SPKI), `algorithm`, `created_at` (UTC), `git_commit`, and a `note`.
 The vault address + AppRole identity come from the same 0600 creds file the HIL
 tooling uses -- `~/.config/hil/openbao.env` (override with `HIL_OPENBAO_ENV`);
 it holds how to reach the vault, never the secrets themselves. See
-`scripts/openbao_client.py` for the full key list. The RoT-specific path is
+`scripts/secrets/openbao_client.py` for the full key list. The RoT-specific path is
 `BAO_ROT_SECRET_PATH` (default `ra8d2/rot-signing-key`) under `BAO_KV_MOUNT`.
 
 The AppRole policy must allow `create`/`update`/`read` on
@@ -41,26 +41,26 @@ The AppRole policy must allow `create`/`update`/`read` on
 
 ```sh
 # First-time ceremony: generate a key, provision the pubkey, and store it.
-scripts/rot_provision.sh --patch --store
+scripts/secrets/rot_provision.sh --patch --store
 
 # Store an existing working key as a new version.
-scripts/rot_keystore.py store --key ~/ra8d2-rot-signing-key.pem
+scripts/secrets/rot_keystore.py store --key ~/ra8d2-rot-signing-key.pem
 
 # See every version and its tags.
-scripts/rot_keystore.py history
+scripts/secrets/rot_keystore.py history
 
 # Which backend is active + the latest version.
-scripts/rot_keystore.py status
+scripts/secrets/rot_keystore.py status
 
 # Recover a specific version's private key.
-scripts/rot_keystore.py get --version 2 --out /tmp/rot-v2.pem
+scripts/secrets/rot_keystore.py get --version 2 --out /tmp/rot-v2.pem
 
 # Re-key: back up the outgoing key, generate + tag a new one, provision it,
 # and install it as the working key. Then re-flash the device.
-scripts/rot_keystore.py rekey --patch --note "annual rotation"
+scripts/secrets/rot_keystore.py rekey --patch --note "annual rotation"
 
 # Force the no-vault path (e.g. for a fresh clone with no OpenBao access).
-scripts/rot_keystore.py --backend local status
+scripts/secrets/rot_keystore.py --backend local status
 ```
 
 `rekey` never loses a key: it stores the outgoing working key first, so the

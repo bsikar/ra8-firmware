@@ -58,7 +58,7 @@ static const char* s_tag = "ROT";
  *
  * @warning Do not modify at runtime; the key is the trust anchor.
  * @note    Provisioned NIST P-256 root public key from the signing-key ceremony
- *          (scripts/rot_provision.sh). The matching private key is held out of
+ *          (scripts/secrets/rot_provision.sh). The matching private key is held out of
  *          tree and signs every launched image via tools/rot_sign.py. Public-key
  *          SHA-256 fingerprint:
  *          e7080738d869454f203979242990e7982209dfc40485fd870b859478cecf4ac0.

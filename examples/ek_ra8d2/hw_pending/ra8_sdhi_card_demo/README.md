@@ -55,7 +55,7 @@ Under `tools/board_sim`, the native SDHI host-controller model
 The gate command is:
 
 ```
-bash scripts/board_sim_smoke.sh ra8_sdhi_card_demo
+bash scripts/sim/smoke.sh ra8_sdhi_card_demo
 ```
 
 Expected output: `ra8_sdhi_card_demo: native SDHI block round-trip PASS`.  The
