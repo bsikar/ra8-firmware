@@ -55,15 +55,15 @@ from pathlib import Path
 from typing import NoReturn
 from zipfile import ZipFile
 
-from epub_compile import (
+from PIL import Image
+from rabook_blob import BlobBuilder
+from rabook_format import (
     CONTAINER_CHUNK_BYTES,
     FLAG_RTL,
     IMG_GRAY4,
     MAGIC,
-    BlobBuilder,
     wrap_container,
 )
-from PIL import Image
 
 # Page entries accepted from the archive (decoded via Pillow).
 IMAGE_EXTS = frozenset({".png", ".jpg", ".jpeg", ".webp", ".bmp"})
