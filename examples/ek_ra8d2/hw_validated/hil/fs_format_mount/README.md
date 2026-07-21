@@ -88,7 +88,7 @@ fsfmt: FS EXFAT FORMAT+MOUNT PASS
 fsfmt: FS FORMAT+MOUNT ALL PASS
 ```
 
-The same gate runs under `scripts/board_sim_smoke.sh fs_format_mount` (it stops
+The same gate runs under `scripts/sim/smoke.sh fs_format_mount` (it stops
 on the `PASS` banner with a bounded chunk/wall budget).
 
 ## Run on the bench (real silicon)
@@ -98,8 +98,8 @@ on the `PASS` banner with a bounded chunk/wall budget).
 
 1. Plug a PMOD MicroSD into Pmod2 (J25) with a **disposable** microSD card
    inserted (this erases it).
-2. `make flash` (J-Link OB via `scripts/flash.sh`).
-3. Open the J-Link OB CDC console at 115200 8N1 (`scripts/debug.sh` or any
+2. `make flash` (J-Link OB via `scripts/dev/flash.sh`).
+3. Open the J-Link OB CDC console at 115200 8N1 (`scripts/dev/debug.sh` or any
    serial terminal on the CDC port).
 4. The HIL runner scrapes for `FS FORMAT+MOUNT ALL PASS` (see `hil.conf`).
 

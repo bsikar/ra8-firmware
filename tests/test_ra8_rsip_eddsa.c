@@ -21,7 +21,7 @@
  *    assert that a simulator Ed25519 operation lands on
  *    ``k_ra8_rsip_asym_op_eddsa_*`` and NEVER on
  *    ``k_ra8_rsip_asym_op_ecdsa_sign``; the production fail-closed #else is
- *    proven by ``scripts/utils/check_stub_crypto_guarded.py`` and the ARM
+ *    proven by ``scripts/checks/check_stub_crypto_guarded.py`` and the ARM
  *    cross-build.
  * 2. RSA (``ra8_rsip_rsa_sign`` / ``..._verify`` / ``..._encrypt`` /
  *    ``..._decrypt``) has no documented RSIP register backend either

@@ -8,7 +8,7 @@
  * @details
  * This translation unit holds the bulky portion of the MIPI D-PHY driver
  * that ``ra8_mipi_phy.c`` delegates to so that neither file exceeds the
- * ``scripts/utils/check_file_size.py`` cap. It owns:
+ * ``scripts/checks/check_file_size.py`` cap. It owns:
  *
  *  - The flattened representations of HUM Table 64.2 (D-PHY timing setting
  *    DSI mode, p 3831-3834) and HUM Table 64.3 (D-PHY timing setting CSI

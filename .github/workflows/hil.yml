@@ -8,7 +8,7 @@ name: hil
 # to it: J-Link OB on /dev/ttyACM0 (SWD + VCOM, 115200 baud), USBFS on
 # J11 -> hub port 4, USBHS on J7 -> hub port 1.
 #
-# The hil-all gate drives scripts/hil_all.sh, which auto-discovers every app
+# The hil-all gate drives scripts/hil/all.sh, which auto-discovers every app
 # under examples/ek_ra8d2/hw_validated/hil/ and verifies each via its hil.conf
 # manifest (uart_scrape, usb_cdc, or alive). Adding a new app to that
 # directory automatically pulls it into CI as soon as it has a hil.conf.
@@ -37,8 +37,8 @@ on:
   #      - 'port/usbx/**'
   #      - 'src/**'
   #      - 'cmake/**'
-  #      - 'scripts/hil_*.sh'
-  #      - 'scripts/usb_*.py'
+  #      - 'scripts/hil/**'
+  #      - 'scripts/hil/usb/**'
   #      - '.github/workflows/hil.yml'
   #  pull_request:
   #    branches: [main]
@@ -54,8 +54,8 @@ on:
   #      - 'port/usbx/**'
   #      - 'src/**'
   #      - 'cmake/**'
-  #      - 'scripts/hil_*.sh'
-  #      - 'scripts/usb_*.py'
+  #      - 'scripts/hil/**'
+  #      - 'scripts/hil/usb/**'
   #      - '.github/workflows/hil.yml'
   workflow_dispatch:
 

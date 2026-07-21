@@ -30,7 +30,7 @@ Artifacts land under `build/` (`tz_secure_only_usb_fs.elf` / `.hex` / `.bin`).
 make flash
 ```
 
-Drives `JLinkExe -device R7KA8D2KF_CPU0 -if SWD` via `scripts/flash.sh`
+Drives `JLinkExe -device R7KA8D2KF_CPU0 -if SWD` via `scripts/dev/flash.sh`
 and loads the `.hex` into MRAM at `0x02000000`.
 
 ## Verify
@@ -44,10 +44,10 @@ and loads the `.hex` into MRAM at `0x02000000`.
 
 2. Round-trip a payload through bulk OUT/IN:
    ```sh
-   python3 scripts/usb/usb_cdc_echo_test.py --tty /dev/cu.usbmodem000000011
+   python3 scripts/hil/usb/cdc_echo_test.py --tty /dev/cu.usbmodem000000011
    ```
    Expect `OK: round-tripped 10 bytes`. Auto-detect form:
-   `python3 scripts/usb/usb_cdc_echo_test.py --auto fs`.
+   `python3 scripts/hil/usb/cdc_echo_test.py --auto fs`.
 
 3. (Optional) Inspect the descriptor:
    ```sh
@@ -65,7 +65,7 @@ and loads the `.hex` into MRAM at `0x02000000`.
 
 Test script:
 ```
-$ python3 scripts/usb/usb_cdc_echo_test.py --tty /dev/cu.usbmodem000000011
+$ python3 scripts/hil/usb/cdc_echo_test.py --tty /dev/cu.usbmodem000000011
 OK: round-tripped 10 bytes
 ```
 

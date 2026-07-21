@@ -34,13 +34,13 @@ regex catches that fast.
 make mem_subsystem                       # cross-compile -> build/mem_subsystem.elf
 tools/board_sim/build/board_sim \
     examples/ek_ra8d2/hw_validated/hil/mem_subsystem/build/mem_subsystem.elf
-bash scripts/sil_all.sh --only mem_subsystem   # headless board_sim gate
+bash scripts/sim/sil_all.sh --only mem_subsystem   # headless board_sim gate
 make hil-flash APP=mem_subsystem         # flash the Pi-attached board + scrape UART
 ```
 
 ## Status: SIL-validated (board_sim)
 
-`scripts/sil_all.sh --only mem_subsystem` passes: board_sim boots the ELF headless
+`scripts/sim/sil_all.sh --only mem_subsystem` passes: board_sim boots the ELF headless
 and scrapes the exact banner above. Because every layer is pure computation with
 no register access, board_sim (Unicorn executing the real Cortex-M85 instruction
 stream) reproduces the silicon result exactly -- the only modelled peripherals are

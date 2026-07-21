@@ -35,7 +35,7 @@ Two ThreadX threads, each blinking a different LED at a different rate:
 ```sh
 cd examples/wdt_supervisor_demo
 make             # produces build/wdt_supervisor_demo.elf / .hex / .bin
-make flash       # JLinkExe load via scripts/flash.sh
+make flash       # JLinkExe load via scripts/dev/flash.sh
 make ozone       # SEGGER Ozone debugger
 ```
 

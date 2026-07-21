@@ -1,5 +1,5 @@
 # Shared ShellCheck configuration -- gives editors/IDEs the same baseline as
-# the CI gate (scripts/utils/check_shell.py). Keep the two in step: the gate
+# the CI gate (scripts/checks/check_shell.py). Keep the two in step: the gate
 # passes these same settings explicitly on the command line so a stale or
 # missing .shellcheckrc can never silently weaken CI.
 #
@@ -7,10 +7,10 @@
 # level. The `enable=` lines below are opt-in checks that no severity setting
 # reaches; each is fixable in place. Five further opt-in checks are
 # deliberately off -- see SHELLCHECK_DISABLED_OPTIONAL in
-# scripts/utils/check_shell.py for the re-measured counts and the reason for
+# scripts/checks/check_shell.py for the re-measured counts and the reason for
 # each. The one that matters, check-set-e-suppressed (SC2310), is
 # unsatisfiable here for reasons recorded there; the defect class it targets
-# is covered instead by scripts/utils/check_errexit_masking.py, which is a
+# is covered instead by scripts/checks/check_errexit_masking.py, which is a
 # gate and fires on any first-party function invoked with its status masked.
 severity=style
 

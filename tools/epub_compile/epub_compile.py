@@ -92,7 +92,7 @@ def wrap_container(blob, chunk_bytes=CONTAINER_CHUNK_BYTES):
 # zoom time (the planned press-and-hold loupe re-magnifies small manga text).
 # 0 means no clamp. Pass --max-edge N to opt into a long-edge clamp where the
 # smaller blob is worth it (e.g. TFT-class baked fixtures -- see
-# scripts/build_books.sh). FS dithering stays off because its high-frequency
+# scripts/builders/books.sh). FS dithering stays off because its high-frequency
 # noise defeats DEFLATE (the renderer can dither at draw time if desired).
 MAX_IMAGE_EDGE = 0
 # When true, drop all images (text-only). Yields a tiny inflated blob that fits

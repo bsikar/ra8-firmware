@@ -143,7 +143,7 @@ add_custom_command(
   COMMAND ${CMAKE_OBJCOPY} --remove-section=.option_setting* -O ihex
           $<TARGET_FILE:ra8d2-ereader.elf> ra8d2-ereader_secure.hex
   COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:ra8d2-ereader_ns.elf> ra8d2-ereader_ns.hex
-  COMMAND ${RA8_REPO_ROOT}/scripts/utils/merge_ihex.py ra8d2-ereader_secure.hex ra8d2-ereader_ns.hex
+  COMMAND ${RA8_REPO_ROOT}/scripts/gen/merge_ihex.py ra8d2-ereader_secure.hex ra8d2-ereader_ns.hex
           ra8d2-ereader.hex
   VERBATIM
   COMMENT "Merging Secure + Non-Secure images into ra8d2-ereader.hex"

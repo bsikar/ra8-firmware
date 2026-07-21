@@ -8,7 +8,7 @@ to the SCI8 console as `[netx] echoed N bytes from a.b.c.d`.
 ## How it is gated
 
 - **HIL (real hardware, Pi as the peer)**: `HIL_MODE=hil_eth_tcp` in
-  `hil.conf` drives `scripts/hil_eth_tcp.sh` -- the Pi assigns itself
+  `hil.conf` drives `scripts/hil/eth_tcp.sh` -- the Pi assigns itself
   `192.168.1.1` on its USB-Ethernet adapter, opens TCP to the board,
   sends `HIL_PAYLOAD_BYTES` random bytes, and asserts a byte-exact
   echo. The 256-byte payload sits inside the bench-proven
@@ -16,7 +16,7 @@ to the SCI8 console as `[netx] echoed N bytes from a.b.c.d`.
   600+ bytes hits the accepted large-frame TX silicon limitation, so
   the driver keeps its MTU=128 clamp).
 
-- **SIL (board_sim, no hardware)**: `scripts/sil_all.sh` boots the
+- **SIL (board_sim, no hardware)**: `scripts/sim/sil_all.sh` boots the
   same `.elf` headless. board_sim ships the peer in-process --
   `tools/board_sim` models the R-Switch register cluster
   (`board_periph_eth.c`) and its virtual host `board_net`

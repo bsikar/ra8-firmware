@@ -7,7 +7,7 @@
 # fresh commit each run, so it never accumulates generated-HTML history.
 #
 # `make docs` builds with the project-pinned doxygen release: on first use
-# scripts/utils/provision_doxygen.sh downloads the official binary (sha256
+# scripts/builders/provision_doxygen.sh downloads the official binary (sha256
 # verified) into build/tools/, which persists in the self-hosted runner's
 # workspace, so later runs are offline. The runner's distro doxygen is never
 # used -- the in-tree HTML templates and theme are only valid for the pinned

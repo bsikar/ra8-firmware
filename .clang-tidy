@@ -15,7 +15,7 @@
 #   cmake --build build/tidy
 #
 # Or via script:
-#   bash scripts/clang_tidy.sh --check
+#   bash scripts/checks/clang_tidy.sh --check
 
 #
 # Disabled checks (each line carries the rationale for why it is off,

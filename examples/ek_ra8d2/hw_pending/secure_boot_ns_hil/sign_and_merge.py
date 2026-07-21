@@ -20,7 +20,7 @@ the build still succeeds. Run this script by hand (``--key <path>``) once the ke
 is available, or set ``RA8_ROT_KEY`` before the build.
 
 It shells out to ``objcopy`` (bin<->ihex), ``tools/rot_sign.py`` (sign), and
-``scripts/utils/merge_ihex.py`` (merge); no third-party Python packages.
+``scripts/gen/merge_ihex.py`` (merge); no third-party Python packages.
 """
 
 import argparse
@@ -172,7 +172,7 @@ def main() -> int:
     parser.add_argument("--ns-elf", required=True, help="Non-Secure ELF")
     parser.add_argument("--objcopy", required=True, help="arm-none-eabi-objcopy path")
     parser.add_argument("--rot-sign", required=True, help="tools/rot_sign.py path")
-    parser.add_argument("--merge", required=True, help="scripts/utils/merge_ihex.py path")
+    parser.add_argument("--merge", required=True, help="scripts/gen/merge_ihex.py path")
     parser.add_argument("--out-genuine", required=True, help="output genuine merged hex")
     parser.add_argument("--out-tampered", required=True, help="output tampered merged hex")
     parser.add_argument("--key", default="", help="RoT private-key PEM (empty -> degrade)")

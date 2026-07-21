@@ -74,7 +74,7 @@ ReflowComments: false
 # clang-format owns the START column of trailing comments (aligns each block's
 # /**< to the widest code + one space). The closing */ end-alignment and the
 # in-comment spacing (one space after /*, one before */) are owned by the
-# post-pass scripts/utils/check_comment_format.py, which only touches the
+# post-pass scripts/checks/check_comment_format.py, which only touches the
 # comment interior -- clang-format leaves interiors alone (ReflowComments:
 # false), so the two never fight. See docs/STYLE_GUIDE.md.
 AlignTrailingComments: true

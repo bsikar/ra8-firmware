@@ -101,7 +101,7 @@ a stuck enumeration never reaches. Pair it with `--dump-sym <global>` (print a
 32-bit global after the run) and `--stop-sym <global> <N>` (end the run the
 instant a 32-bit global reaches `N` -- the counter analog of
 `BOARD_SIM_STOP_ON`; the sim resets every counter to 0 on boot, so this is how
-`scripts/sil_all.sh` verifies a `jlink_memprobe` progress counter without a
+`scripts/sim/sil_all.sh` verifies a `jlink_memprobe` progress counter without a
 debugger) and the headless run-bounding env vars for post-mortems:
 `BOARD_SIM_MAX_CHUNKS` (chunk budget), `BOARD_SIM_WALL_S`
 (wall-clock floor), `BOARD_SIM_IDLE_STOP=N` (stop once observable state is
@@ -256,7 +256,7 @@ only if you exceed the registry capacity.
   `--usb-in <str>` the bulk bytes round-trip back through the device's echo
   (`sent N OUT, read N IN`). Final PC sits in the ThreadX run loop, not a panic.
   This is now a **regression gate** across all three device classes:
-  `scripts/board_sim_smoke.sh usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device
+  `scripts/sim/smoke.sh usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device
   usb_msc_device` asserts the `device CONFIGURED` milestone for CDC-ACM, HID
   (boot mouse), and MSC (BOT/SCSI + a sector read), so a change that breaks USB
   enumeration fails the smoke suite -- no hardware needed. The gate earned its
@@ -292,7 +292,7 @@ only if you exceed the registry capacity.
   sectors), so the host's `ra8_fs` can create, read back, rename, and unlink a
   file: the app runs its full nine-step ladder (write `USBTEST.TXT`, verify the
   payload, rename to `USBDONE.TXT`, unlink) and prints `ra8d2 fileops: ALL FILE
-  OPS PASSED`. All three host apps are gated: `scripts/board_sim_smoke.sh
+  OPS PASSED`. All three host apps are gated: `scripts/sim/smoke.sh
   usb_host_keyboard usb_host_msc_browse usb_host_file_ops` asserts each PASS
   banner. The seam picks the virtual device's class + writability from the
   firmware's linked host stack (`ra8_usb_hmsc_*` -> disk, `fileops_backend_write`
@@ -313,7 +313,7 @@ only if you exceed the registry capacity.
 
 ## Example coverage
 
-Every EK-RA8D2 example was booted on the emulator (`scripts/board_sim_smoke.sh`
+Every EK-RA8D2 example was booted on the emulator (`scripts/sim/smoke.sh`
 gates a bare-metal subset in CI). **72 of 75 run to their main loop and produce
 their expected output.** The three that do not are one honest category:
 

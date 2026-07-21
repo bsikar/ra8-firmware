@@ -11,7 +11,7 @@ companion to the machine-readable SBOM at
 the per-component qualification catalog under [`docs/SOUP/`](docs/SOUP/).
 
 Both this file and the SBOM are generated/checked from one registry in
-[`scripts/utils/gen_sbom.py`](scripts/utils/gen_sbom.py); when you re-vendor
+[`scripts/gen/gen_sbom.py`](scripts/gen/gen_sbom.py); when you re-vendor
 a component, update that registry and run `make sbom`.
 
 > Closes the aggregation half of recon seed **T5-14** (SOUP-5). The
@@ -242,7 +242,7 @@ moment a binary is shared.
 4. **CVE monitoring only covers commit-pinned components (SOUP-3).** The
    weekly [`osv-scan.yml`](.github/workflows/osv-scan.yml) workflow runs the
    pinned `osv-scanner` release against the SBOM and against every recorded
-   upstream commit (`scripts/utils/osv_scan.sh`). OSV.dev resolves C/C++
+   upstream commit (`scripts/checks/osv_scan.sh`). OSV.dev resolves C/C++
    advisories by GIT commit range only -- GitHub purls do not resolve -- so
    the ten version-only components (ThreadX family, Mbed TLS, TF-PSA-Crypto,
    miniz, TinyXML-2, stb) are NOT commit-queried until they gain pins under
@@ -277,9 +277,9 @@ component cannot ship without updating both artifacts.
 
 - [`docs/sbom/ra8-firmware.cdx.json`](docs/sbom/ra8-firmware.cdx.json) -- the
   CycloneDX 1.5 SBOM (machine-readable; feed to `osv-scanner`).
-- [`scripts/utils/gen_sbom.py`](scripts/utils/gen_sbom.py) -- the generator /
+- [`scripts/gen/gen_sbom.py`](scripts/gen/gen_sbom.py) -- the generator /
   validator and its component registry.
-- [`scripts/utils/osv_scan.sh`](scripts/utils/osv_scan.sh) +
+- [`scripts/checks/osv_scan.sh`](scripts/checks/osv_scan.sh) +
   [`.github/workflows/osv-scan.yml`](.github/workflows/osv-scan.yml) -- the
   weekly OSV CVE scan (SBOM purl leg + pinned-commit leg).
 - [`docs/SOUP/`](docs/SOUP/) -- per-component qualification (service history,

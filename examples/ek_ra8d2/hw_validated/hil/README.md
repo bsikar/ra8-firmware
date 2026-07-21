@@ -24,7 +24,7 @@ required to add a new app.
 
 ### UART-scrape (output on SCI8 -> `/dev/ttyACM0`)
 
-`scripts/hil_suite.sh` flashes the app, opens `/dev/ttyACM0`, and
+`scripts/hil/suite.sh` flashes the app, opens `/dev/ttyACM0`, and
 asserts an expected string appears within a per-app timeout.
 
 | App | Expected UART string | Timeout |
@@ -55,7 +55,7 @@ asserts an expected string appears within a per-app timeout.
 The board's two USB jacks (J7 HS, J11 FS) are cabled **to each other** and one
 image runs BOTH roles, so the whole USB data path is validated on-chip with no
 PC -- the preferred HIL transport (it exercises the host stack AND the device
-stack together). `scripts/hil_run_local.sh <app>` flashes, then scrapes the pass
+stack together). `scripts/hil/run_local.sh <app>` flashes, then scrapes the pass
 banner on SCI8. Device-mode apps that need a separate USB host to verify live in
 [`../manual/`](../manual/).
 

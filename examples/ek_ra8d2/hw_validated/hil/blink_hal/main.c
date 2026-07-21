@@ -50,7 +50,7 @@ typedef enum : uint32_t {
  * @brief HIL liveness counter -- incremented each main-loop iteration.
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD; the script
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD; the script
  * halts the chip, samples this value, lets the chip run for N seconds,
  * halts again, and asserts the delta >= HIL_PROBE_MIN_ADVANCE. Catches
  * the "PC is in MRAM but main loop never iterated" failure mode that

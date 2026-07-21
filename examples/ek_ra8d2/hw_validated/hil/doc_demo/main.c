@@ -67,7 +67,7 @@ static void doc_demo_panic_halt(void)
  *        the hardware DOC sum matched the software reference sum.
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving the DOC peripheral actually computed the
  * same chained-add result as the portable software reference (the

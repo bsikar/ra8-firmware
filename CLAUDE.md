@@ -108,11 +108,15 @@ from another branch or in-source CMake junk cannot skew a gate here.
 
 ### Adding a gate
 
-1. Add one row to `RA8_GATE_REGISTRY` in `scripts/ci.sh`.
-2. Write the matching `gate_<name>` function (dashes become underscores).
+1. Add one row to `RA8_GATE_REGISTRY` in `scripts/ci.sh` -- still the only
+   list of what gates exist.
+2. Write the matching `gate_<name>` function (dashes become underscores) in the
+   themed fragment under `scripts/ci/gates/` that fits it. Those files are
+   SOURCED by `ci.sh`, never executed, and hold bodies only: a second registry
+   in one of them would recreate exactly the drift this design prevents.
 3. Add `run: bash scripts/ci.sh --gate <name>` to a workflow job.
 
-`scripts/utils/check_ci_parity.py` (the `ci-parity` gate) fails if you do
+`scripts/ci/check_ci_parity.py` (the `ci-parity` gate) fails if you do
 either half without the other: a registered-but-unscheduled gate would pass
 locally and never run in CI, and an unregistered gate name in a workflow is a
 typo or a missing function. It also rejects any raw `run:` check body in a
@@ -168,7 +172,7 @@ make ws-free NAME=my-task           # give it back when done
 cost a checkout rather than a clone and share the object store -- a branch
 committed in one is immediately visible in all of them.
 
-You do not have to clean up: `scripts/agent_workspace.sh reap` runs from a
+You do not have to clean up: `scripts/dev/agent_workspace.sh reap` runs from a
 systemd timer and again on every `ws-new`, and it refuses to delete a tree that
 is in use, dirty, or holding commits that are not on any remote branch. Build
 output never lands in the workspace at all (the containerised suite builds
@@ -185,7 +189,7 @@ bind-mounts the main repo's git directory alongside it, so the in-container
 every agent on the box; ~18 concurrent watchers exhausted it twice in one day,
 after which no agent could tell "still running" from "broken".
 
-One shared daemon (`scripts/ci_monitor.sh daemon`, installed via
+One shared daemon (`scripts/ci/monitor.sh daemon`, installed via
 `install-service`) polls once per interval for all workflows and writes a local
 status file. Read it instead -- any number of agents can, at zero quota cost:
 
@@ -199,7 +203,7 @@ Exit codes are `0` PASS, `1` FAIL, `3` **UNKNOWN**. UNKNOWN is a real answer and
 means "no verdict could be established" -- quota exhausted, daemon down, status
 file stale, sha not seen yet. **Never report UNKNOWN as either a pass or a
 failure.** When the quota is gone,
-`bash scripts/ci_monitor.sh runner-status --sha <sha>` reads outcomes off the
+`bash scripts/ci/monitor.sh runner-status --sha <sha>` reads outcomes off the
 runner box over ssh and costs nothing.
 
 ---
@@ -219,7 +223,7 @@ This repository utilizes specialized custom project subagents under `.claude/age
 - **HUM Citations Validation (`@citation-reviewer`)**:
   - **Purpose**: Meticulously audits direct register accesses to verify that each is immediately preceded by a valid Hardware User's Manual (HUM) citation, and strictly bans in-tree line-number citations.
   - **When to Trigger**: On any modification to register structures, inline register accessors, or HAL drivers interacting with MMIO (e.g. under `libs/ra8_hal/`).
-  - **Scope**: Checks for properly formatted `/* HUM Ch ... */` comments. Uses the `haiku` model and has `Bash` access to run the global verification script (`python3 scripts/utils/cite_check.py --strict`).
+  - **Scope**: Checks for properly formatted `/* HUM Ch ... */` comments. Uses the `haiku` model and has `Bash` access to run the global verification script (`python3 scripts/checks/cite_check.py --strict`).
 
 ### Agent Collaboration Protocol
 
@@ -297,7 +301,7 @@ plainly exists.
 
 ### Enforcement
 
-`scripts/utils/check_no_silent_stubs.py` runs in the `pre-commit-checks` gate
+`scripts/checks/check_no_silent_stubs.py` runs in the `pre-commit-checks` gate
 (so it is covered by `make ci` / `make ci-native` and the matching workflow job)
 and in the `scripts/git/pre-commit` hook. It fails on two narrowly-calibrated
 patterns:
@@ -399,7 +403,7 @@ Forbidden patterns include:
 - Co-Authored-By or generated-by footers in code comments <!-- AI-OK: policy description -->
 - Author lines naming an AI assistant
 
-The pre-commit gate `scripts/utils/check_no_ai_attribution.py` enforces this strictly. See `docs/AI_ATTRIBUTION_POLICY.md` for the full rules.
+The pre-commit gate `scripts/checks/check_no_ai_attribution.py` enforces this strictly. See `docs/AI_ATTRIBUTION_POLICY.md` for the full rules.
 
 ---
 
@@ -697,7 +701,7 @@ per block -- and the `docs` gate filtered that warning away, so 24 mandated
 state diagrams rendered nowhere for the life of the tree while this file
 required the construct that produced them. Graphviz is already a hard
 dependency of both the `docs` and `docs-publish` gates and renders reliably, so
-`@dot` is the mechanism that actually works. `scripts/utils/check_doc_diagrams.py`
+`@dot` is the mechanism that actually works. `scripts/checks/check_doc_diagrams.py`
 now rejects `@startuml` and fails when an authored `@dot` block does not reach
 the generated HTML.
 
@@ -817,7 +821,7 @@ never call it.
 
 ### Enforcement
 
-- `scripts/utils/check_annotations.py` -- checks annotations against the real
+- `scripts/checks/check_annotations.py` -- checks annotations against the real
   libclang call graph, and enforces the table above: every non-`static`
   definition in first-party code must carry a linkage annotation, be declared
   in a header that is not an `*_internal.h`, be a hardware vector-table entry,
@@ -832,7 +836,7 @@ never call it.
   `ra8_attributes.h` actually emits: a rule keyed on a spelling no macro
   produces matches nothing and reports success forever, and four rules were in
   that state at once.
-- `scripts/utils/check_nsc_cmse.sh` -- compiles every `libs/ra8_nsc` TU under
+- `scripts/checks/check_nsc_cmse.sh` -- compiles every `libs/ra8_nsc` TU under
   `-mcmse` with `-Wall -Wextra -Werror`. The warning flags are load-bearing:
   a bare `-fsyntax-only` run is what let the veneer clash above go unnoticed.
 
@@ -949,15 +953,38 @@ ra8-firmware/
     ra8_nsc/                    TrustZone NSC veneers
     ra8_net_pal/, ra8_usb_pal/   Platform abstraction layers
   tests/                       Host-side unit tests (standard gcc/clang, not cross-compiled)
-  scripts/
-    flash.sh                   Takes a .hex path argument; per-app Makefiles call it
-    ozone.sh                   Takes an .elf path argument
-    debug.sh                   Takes an .elf path argument
-    format_code.sh             clang-format wrapper (auto-discovers app dirs)
-    clang_tidy.sh              clang-tidy wrapper (auto-discovers app dirs)
+  scripts/                     Organised by the QUESTION a script answers, not by
+                               subsystem, so each file has one plausible home.
+    ci.sh                      The ONE CI entry point. RA8_GATE_REGISTRY lives
+                               here; every workflow calls
+                               `bash scripts/ci.sh --gate <name>`.
+    ci/                        CI runner helpers + check_ci_parity.py
+      gates/*.sh               Gate BODIES, sourced by ci.sh. Split by theme so
+                               no file carries 1100 lines; still exactly one
+                               registry and one body per gate.
+    checks/                    "Is the tree OK?" -- read-only, exits non-zero
+                               when it is not. Every check_*.py, plus the
+                               third-party analyser drivers (clang-tidy,
+                               cppcheck, MISRA, iwyu, scan-build, fuzz).
+    fix/                       "Make the tree OK" -- these WRITE to source.
+                               Kept out of checks/ so that stays read-only.
+    gen/                       Produce a committed artifact from a source of
+                               truth (fonts, fixtures, SBOM, nav trees)
+    builders/                  Produce a build output (apps, docs, books).
+                               NOT named build/: .gitignore's `build/` pattern
+                               matches any directory of that name at any depth,
+                               so a new file there would be silently untracked,
+                               and 13 checkers exclude the `/build/` fragment.
+    report/                    Tell me about the tree; never fails on content
+    hil/                       Hardware-in-the-loop bench
+      lib/                     Shared rig shell libraries
+      usb/                     USB bench harnesses (need a board attached)
+    sim/                       board_sim smoke/matrix + the SIL suite
+    dev/                       Inner loop on a developer's desk: flash, debug,
+                               ozone, openocd, agent workspaces
+    secrets/                   Key material and credential handling (RoT, OpenBao)
     git/
       pre-commit               Pre-commit hook (ASCII, format, tidy, C23 patterns)
-    utils/                     check-since-version, cite_check, check_world_tags, ...
   docs/
     reference/                 Committed datasheets and manuals (PDFs)
   .github/workflows/           CI

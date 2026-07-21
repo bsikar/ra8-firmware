@@ -163,7 +163,7 @@ static TX_THREAD                   s_thread;
  *        every LED-toggle iteration.
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving:
  *   1. ra8_mpu_configure(&s_mpu_cfg) returned k_ra8_ok and the three-

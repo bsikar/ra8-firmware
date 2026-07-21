@@ -3,7 +3,7 @@
 This document explains how to generate, browse, and maintain the
 project's API reference, which is produced by Doxygen from the
 in-tree source comments. The configuration file is the top-level
-`Doxyfile`; the wrapper script is `scripts/build_docs.sh`; the
+`Doxyfile`; the wrapper script is `scripts/builders/docs.sh`; the
 canonical entry point is `make docs`.
 
 ## Generating the HTML
@@ -16,11 +16,11 @@ make docs && open build/docs/html/index.html   # macOS
 make docs && xdg-open build/docs/html/index.html  # Linux
 ```
 
-`make docs` is a thin wrapper around `bash scripts/build_docs.sh`,
+`make docs` is a thin wrapper around `bash scripts/builders/docs.sh`,
 which in turn:
 
 1. Resolves the **project-pinned doxygen release** via
-   `scripts/utils/provision_doxygen.sh`. On first use the official
+   `scripts/builders/provision_doxygen.sh`. On first use the official
    release binary is downloaded (sha256-verified) into
    `build/tools/`; later runs reuse that copy offline. A `doxygen`
    already on PATH is only used when it matches the pin exactly.
@@ -58,7 +58,7 @@ individual lines. To update the theme:
    `LICENSE` with the same-named file from the chosen upstream
    release tag.
 2. Check the release's supported doxygen range; move the pin in
-   `scripts/utils/provision_doxygen.sh` if required (update the
+   `scripts/builders/provision_doxygen.sh` if required (update the
    version, tag, and all three artifact sha256 values).
 3. Regenerate `docs/doxygen_theme/header.html`: run
    `doxygen -w html header.html footer.html style.css Doxyfile`
@@ -74,7 +74,7 @@ To open the freshly-built HTML in a browser without a separate
 command, pass `--open`:
 
 ```sh
-bash scripts/build_docs.sh --open
+bash scripts/builders/docs.sh --open
 ```
 
 ## What gets indexed
@@ -100,7 +100,7 @@ documented under `docs/SOUP/` instead, not via Doxygen. So is
 
 The repository is private while the docs site is public, so GitHub
 Actions status badges in Markdown would render as broken images for
-site visitors. `scripts/utils/doxygen_md_filter.py` (wired via
+site visitors. `scripts/gen/doxygen_md_filter.py` (wired via
 `FILTER_PATTERNS`) strips them from every Markdown page at
 docs-build time; they remain in the files on github.com.
 
@@ -178,9 +178,9 @@ same pinned doxygen:
 - `.github/workflows/docs-publish.yml` -- on every push to `main`
   (and manual dispatch), runs `make docs` and force-publishes
   `build/docs/html/` to the orphan `gh-pages` branch via
-  `scripts/publish_docs.sh`.
+  `scripts/builders/publish_docs.sh`.
 - The `Doxygen warnings` job in `.github/workflows/firmware.yml` --
-  runs `bash scripts/build_docs.sh --gate` (separate
+  runs `bash scripts/builders/docs.sh --gate` (separate
   `build/docs-gate/` output tree, private members extracted, no
   graphs) and fails on non-benign warnings.
 

@@ -130,10 +130,10 @@ hand-traced decisions, and so on.
 |---------------------------------|--------------------------------------------------------------------|
 | Vendor                          | SEGGER Microcontroller GmbH                                        |
 | Tool version pinned             | JLinkExe v9.38a (per `docs/HARDWARE_BRINGUP.md`).                  |
-| Intended use                    | Programming MRAM (`scripts/flash.sh`) and halting / register-      |
-|                                 | dumping the CPU during the smoke sweep                             |
-|                                 | (`scripts/hw_smoke_test.sh`). Ozone debugger backend               |
-|                                 | (`scripts/ozone.sh`).                                              |
+| Intended use                    | Programming MRAM (`scripts/dev/flash.sh`) and halting / register-      |
+|                                 | dumping the CPU during the HIL sweep                               |
+|                                 | (`scripts/hil/all.sh`). Ozone debugger backend                     |
+|                                 | (`scripts/dev/ozone.sh`).                                              |
 | TQL classification              | **TQL-5**                                                          |
 | DO-330 Criterion                | Criterion 3.                                                       |
 | Qualification basis             | The tool is read / write to the device's MRAM and to its debug    |
@@ -160,7 +160,7 @@ hand-traced decisions, and so on.
 | Vendor                          | In-house (Brighton Sikarskie / project author)                     |
 | Tool version pinned             | Git-managed; HEAD `402253ef` ships the pre-commit gate as          |
 |                                 | `scripts/git/pre-commit` plus per-check helpers under              |
-|                                 | `scripts/utils/`.                                                  |
+|                                 | `scripts/checks/`.                                                 |
 | Intended use                    | Block any commit that violates ASCII-only, clang-format,           |
 |                                 | clang-tidy, cppcheck (without MISRA addon), no-dynamic-allocation, |
 |                                 | world-tag balance, since-version stamping, or obsolete-standards   |
@@ -175,7 +175,7 @@ hand-traced decisions, and so on.
 |                                 | server-side gate. The check inputs (source files) are              |
 |                                 | configuration-managed via git.                                     |
 | Compensating verification       | (a) Server-side CI re-runs every gate. (b) Each helper script     |
-|                                 | carries its own host test under `scripts/utils/` where             |
+|                                 | carries its own host test under `scripts/checks/` where             |
 |                                 | applicable. (c) The `check_obsolete_standards.py` script is the   |
 |                                 | sole gatekeeper for the "no obsolete-standard names" rule and is  |
 |                                 | exercised by every commit that touches `docs/`.                    |
@@ -228,7 +228,7 @@ output is downstream-verified.
 | `arm-none-eabi-addr2line`     | Smoke-test PC resolution             | Cross-checked against ELF symbol table when       |
 |                               |                                      | classification is ambiguous.                      |
 | `python3` (audit scripts)     | Doxygen / MC/DC / MISRA gap reports  | Output reviewed by hand; helper scripts under     |
-|                               |                                      | `scripts/utils/` carry their own host tests.      |
+|                               |                                      | `scripts/checks/` carry their own host tests.     |
 
 No tool in the chain currently requires TQL-1 because none of them
 emit certified production code without a downstream verification
@@ -251,7 +251,7 @@ tests (25/26 EVM apps covered).
 | llvm-profdata              | Bundled with clang version pin.                                   |
 | cmake / make               | Major-version bump.                                               |
 | arm-none-eabi-addr2line    | Bundled with arm-none-eabi-gcc version pin.                       |
-| python3                    | Per-PR for any helper-script change; tracked in `scripts/utils/`. |
+| python3                    | Per-PR for any helper-script change; tracked in `scripts/checks/`. |
 
 ## 9. Change log
 
