@@ -1,19 +1,30 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
-#
-# Generate epub_cover_fixture.h: a minimal, deterministic EPUB3 whose manifest
-# declares a real PNG cover image (properties="cover-image"). The on-device
-# ereader_cover gate opens this blob in memory with ra8_epub_open(), pulls
-# the cover bytes with ra8_epub_get_cover_image(), decodes + scales + blits them
-# with ra8_img_decode_blit(), and CRC-gates the framebuffer.
-#
-# The output is pure 7-bit ASCII (a C array of the .epub bytes), baked at 16
-# bytes per row so clang-format leaves it byte-identical (no reflow). Re-run
-# after changing the cover to refresh the fixture; then re-read the CRC the
-# board prints and update hil.conf.
-#
-# Usage:  python3 make_cover_fixture.py
+"""Generate epub_cover_fixture.h: a minimal EPUB3 with a real PNG cover.
+
+The manifest declares the cover with `properties="cover-image"`, and the
+on-device ereader_cover gate exercises the whole chain against it: open the
+blob in memory with `ra8_epub_open()`, pull the cover bytes with
+`ra8_epub_get_cover_image()`, decode, scale and blit with
+`ra8_img_decode_blit()`, then CRC-gate the framebuffer.
+
+The cover is a REAL RGB PNG, and that is the point of this fixture existing
+alongside tests/test_ra8_epub.c. That test uses a 4-byte stand-in, which
+exercises only the byte-copy path and never the decoder. Here stb_image has to
+actually decode something.
+
+Output is pure 7-bit ASCII -- a C array of the .epub bytes -- baked at 16 bytes
+per row so clang-format leaves it byte-identical rather than reflowing it.
+
+Changing the cover changes the framebuffer CRC. Re-run this, then read the CRC
+the board prints and update hil.conf in the SAME change, or the gate fails on a
+fixture that is perfectly correct.
+
+Usage:
+    python3 make_cover_fixture.py
+"""
+
 import io
 import zipfile
 from pathlib import Path
@@ -29,6 +40,19 @@ BANDS = [(0xC0, 0x10, 0x20), (0x18, 0x90, 0x30), (0x20, 0x40, 0xC0), (0xD0, 0xA0
 
 
 def make_cover_png() -> bytes:
+    """Encode the deterministic 96x144 four-band portrait cover as PNG.
+
+    The 2:3 aspect is a real book-cover ratio, so the gate exercises the
+    scaler's aspect handling rather than a convenient square.
+
+    `optimize=False` is required, not a default: Pillow's optimizer picks filter
+    and compression settings that vary across builds, which would change the
+    baked bytes -- and therefore the pinned framebuffer CRC -- on a machine with
+    a different Pillow. Without it the fixture is not reproducible.
+
+    Returns:
+        Encoded PNG bytes, identical across runs and across Pillow builds.
+    """
     img = Image.new("RGB", (COVER_W, COVER_H))
     px = img.load()
     band_h = COVER_H // len(BANDS)
@@ -83,6 +107,19 @@ CH1_XHTML = (
 
 
 def make_epub() -> bytes:
+    """Assemble the minimal EPUB3 archive in memory and return its bytes.
+
+    Reproducible byte for byte: every entry carries a fixed 2026-01-01
+    timestamp and fixed permissions, so regenerating on a clean tree yields an
+    identical header and an empty diff.
+
+    Two entries are ZIP_STORED. `mimetype` must be first and uncompressed per
+    the EPUB spec -- readers check it at a fixed offset -- and the cover PNG is
+    stored because deflating already-compressed PNG data only grows it.
+
+    Returns:
+        The complete .epub archive as bytes.
+    """
     cover_png = make_cover_png()
     out = io.BytesIO()
     fixed = (2026, 1, 1, 0, 0, 0)
@@ -104,6 +141,21 @@ def make_epub() -> bytes:
 
 
 def bake_header(epub: bytes) -> str:
+    """Render the EPUB bytes as a C header with a `static const uint8_t` table.
+
+    The array is sized from a generated `enum : size_t`, so the declared length
+    and the data cannot drift apart.
+
+    The table sits inside a `clang-format off`/`on` guard at 16 bytes per row.
+    That is what keeps the formatter from reflowing thousands of bytes and
+    turning every regeneration into a large spurious diff.
+
+    Args:
+        epub: Archive bytes to bake, emitted as `0xNN`.
+
+    Returns:
+        The complete header source, pure 7-bit ASCII.
+    """
     rows = []
     for i in range(0, len(epub), 16):
         chunk = epub[i : i + 16]
@@ -139,6 +191,16 @@ def bake_header(epub: bytes) -> str:
 
 
 def main():
+    """Regenerate epub_cover_fixture.h in the CURRENT working directory.
+
+    The output path is relative, so run this from the app directory that owns
+    the fixture; anywhere else it writes a stray header instead of updating the
+    committed one.
+
+    Remember the two-step: this refreshes the fixture, but the framebuffer CRC
+    in hil.conf is pinned separately and must be re-read from the board and
+    updated in the same change.
+    """
     epub = make_epub()
     header = bake_header(epub)
     with Path("epub_cover_fixture.h").open("w", encoding="ascii") as f:
