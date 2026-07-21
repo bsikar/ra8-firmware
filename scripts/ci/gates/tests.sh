@@ -1,0 +1,133 @@
+# shellcheck shell=bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# scripts/ci/gates/tests.sh -- Host test execution and its coverage gates.
+#
+# SOURCED, NEVER EXECUTED. scripts/ci.sh sources every file in this directory
+# and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
+# gates exist -- stays there too. These files hold gate BODIES only, so there
+# is still exactly one home for a gate's definition and exactly one command
+# for a workflow to call (bash scripts/ci.sh --gate <name>). Adding a second
+# registry here would recreate the drift the single-definition rule exists to
+# prevent.
+#
+# Gates in this file: unit-tests, ubsan, coverage, coverage-report, mcdc, cache-bench
+
+# --- unit-tests -----------------------------------------------------------
+gate_unit_tests() (
+  set -e
+  # build_tests.sh defaults to `${CMAKE:-cmake}` and run_tests.sh drives ctest.
+  # Without a guard an absent toolchain surfaces as a bare "command not found"
+  # deep in a build log; name the missing dependency at the gate boundary
+  # instead. A gate must never be able to report "nothing to run" as success.
+  require_cmd cmake "apt-get install -y cmake"
+  require_cmd ctest "ships with cmake; check the cmake install"
+  bash tests/build_tests.sh
+  bash tests/run_tests.sh
+)
+
+# --- ubsan ----------------------------------------------------------------
+# The whole host suite rebuilt under -fsanitize=undefined in its own tree with
+# UBSAN_OPTIONS=halt_on_error=1, so any undefined behaviour is a hard test
+# failure. Pin the compiler like the coverage gate does: the ambient `gcc`
+# changes with the runner image, and -Wconversion findings are
+# compiler-version-specific.
+gate_ubsan() (
+  set -e
+  require_cmd gcc-13 "the UBSan gate pins gcc-13 to match CI"
+  CC=gcc-13 CXX=g++-13 make ubsan
+)
+
+# --- coverage -------------------------------------------------------------
+gate_coverage() (
+  set -e
+  require_cmd gcovr
+  bash scripts/checks/coverage.sh --gate
+)
+
+# --- coverage-report ------------------------------------------------------
+# The plain statement + branch flow from docs/COVERAGE.md, ratcheted against
+# .github/coverage-baseline.txt. Independent of the MC/DC pipeline.
+# --in-container is a no-op marker that skips the script's macOS branch.
+gate_coverage_report() (
+  set -e
+  require_cmd gcovr
+  bash scripts/report/coverage_report.sh --in-container
+  python3 scripts/checks/check_coverage.py
+)
+
+# --- mcdc -----------------------------------------------------------------
+# clang-18 source-based coverage with -fcoverage-mcdc, gated against
+# .github/mcdc-baseline.txt so coverage can never regress.
+#
+# RA8_MCDC_THRESHOLD=0 disables mcdc_report.sh's own per-file gate; the
+# project-wide baseline comparison below is the actual quality bar.
+gate_mcdc() (
+  set -e
+  set -o pipefail
+  require_cmd clang-18 "the MC/DC gate pins clang-18 to match CI"
+
+  # Prove the build-dir freshness guard still fires BEFORE spending twenty
+  # minutes measuring nothing. #346: an inherited tests/build-cov configured
+  # by the coverage gate's gcc-13 cached "-fcoverage-mcdc: no", so the build
+  # came out uninstrumented and the gate died at the merge step blaming the
+  # tests for crashing when all 540 had passed.
+  CC=clang-18 CXX=clang++-18 bash scripts/report/mcdc_report.sh --selftest
+
+  CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
+    bash scripts/report/mcdc_report.sh --in-container | tee mcdc-output.log
+
+  local summary="build/mcdc-report/summary.txt"
+  local baseline_file="${MCDC_BASELINE_FILE:-.github/mcdc-baseline.txt}"
+  if [[ ! -f "$summary" ]]; then
+    echo "FAIL: MC/DC summary not produced at $summary" >&2
+    return 1
+  fi
+  if [[ ! -f "$baseline_file" ]]; then
+    echo "FAIL: baseline file $baseline_file missing" >&2
+    return 1
+  fi
+  local baseline total_line measured drop
+  baseline="$(tr -d '[:space:]' <"$baseline_file")"
+  total_line="$(grep -E '^TOTAL' "$summary" | tail -1 || true)"
+  if [[ -z "$total_line" ]]; then
+    echo "FAIL: no TOTAL row in $summary" >&2
+    tail -40 "$summary" || true
+    return 1
+  fi
+  # Last percentage column on the TOTAL row is the MC/DC %.
+  measured="$(echo "$total_line" | grep -oE '[0-9]+\.[0-9]+%' | tail -1 | tr -d '%')"
+  if [[ -z "$measured" ]]; then
+    echo "FAIL: could not parse MC/DC % from TOTAL row: $total_line" >&2
+    return 1
+  fi
+  printf 'Measured MC/DC: %s%%   Baseline: %s%%\n' "$measured" "$baseline"
+  drop="$(awk -v m="$measured" -v b="$baseline" 'BEGIN{print (m+0 < b+0) ? 1 : 0}')"
+  if [[ "$drop" -eq 1 ]]; then
+    echo "FAIL: MC/DC coverage ${measured}% dropped below baseline ${baseline}%"
+    echo ""
+    echo "      Either add MC/DC test vectors for the new compound decisions"
+    echo "      OR reduce the decision count. Do NOT lower the baseline file"
+    echo "      to make this pass."
+    echo ""
+    echo "      scripts/checks/check_new_compound_has_mcdc.py is supposed to"
+    echo "      catch this locally; if a regression reached CI, either the hook"
+    echo "      was bypassed or a citation in an existing test drifted out of"
+    echo "      the +/- 25-line tolerance window. See docs/MCDC.md."
+    return 1
+  fi
+  echo "PASS: MC/DC coverage holds the baseline."
+)
+
+# --- cache-bench ----------------------------------------------------------
+# #147/#160: builds + runs cache_bench (the SLRU decision record), reader_vmem
+# (drives the real ra8_vmem with a reader workload and emits a
+# cache_bench-consumable trace) and glyph_bench (sweeps the real glyph atlas),
+# re-confirming SLRU on the captured reader trace on every push. clang-18
+# accepts the C23 typed-enum / nullptr syntax the bench tools and ra8_mem use.
+gate_cache_bench() (
+  set -e
+  require_cmd clang-18 "the cache-bench gate pins clang-18 to match CI"
+  CC=clang-18 make bench-cache
+)
