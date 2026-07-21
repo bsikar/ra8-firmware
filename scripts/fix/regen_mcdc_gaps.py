@@ -196,33 +196,26 @@ def parse_mcdc_txt(path: Path):
 FUNC_DEF_RE = re.compile(r"^[A-Za-z_][\w\s\*\(\),:<>]*?\b([A-Za-z_]\w*)\s*\([^;]*?\)\s*\{?\s*$")
 
 
-def resolve_function(rel_path: str, target_line: int) -> str:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
-    """Best-effort function name lookup. Returns "(file scope)" if the
-    decision is not inside a function (e.g. file-scope initializer)."""
-    abs_path = REPO_ROOT / rel_path
-    if not abs_path.exists():
-        return "(file scope)"
-    try:
-        text = abs_path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return "(file scope)"
-    src_lines = text.splitlines()
-    # Walk forward, tracking brace depth and the most recent name at depth 0.
-    depth = 0
-    last_name_at_depth0 = None
-    func_stack: list[tuple[str, int]] = []  # (name, depth_when_opened)
-    in_block_comment = False
-    for i, raw in enumerate(src_lines, start=1):
-        line = raw
-        # strip block comments crudely
-        if in_block_comment:
+class _CommentStripper:
+    """Blank comments and string literals, one line at a time.
+
+    Crude by design and stateful across lines, because the caller is walking
+    the file to track brace depth and needs every line in order. A real parse
+    would be better, but this runs over llvm-cov output for files that may not
+    even compile in isolation.
+    """
+
+    def __init__(self) -> None:
+        self.in_block = False
+
+    def strip(self, line: str) -> str:
+        """Return ``line`` with comments and string literals removed."""
+        if self.in_block:
             end = line.find("*/")
             if end == -1:
-                line = ""
-            else:
-                line = line[end + 2 :]
-                in_block_comment = False
-        # strip /* ... */ on same line
+                return ""
+            line = line[end + 2 :]
+            self.in_block = False
         while True:
             s = line.find("/*")
             if s == -1:
@@ -230,40 +223,67 @@ def resolve_function(rel_path: str, target_line: int) -> str:  # noqa: PLR0912  
             e = line.find("*/", s + 2)
             if e == -1:
                 line = line[:s]
-                in_block_comment = True
+                self.in_block = True
                 break
             line = line[:s] + line[e + 2 :]
-        # strip // comments
         s = line.find("//")
         if s != -1:
             line = line[:s]
-        # strip strings (very rough)
-        line = re.sub(r'"(?:\\.|[^"\\])*"', '""', line)
+        return re.sub(r'"(?:\\.|[^"\\])*"', '""', line)
 
-        # If we're at depth 0, look for a function-definition signature.
-        # Heuristic: ID followed by ( ... ) and an open brace either on
-        # this line or on a subsequent line before any other open brace.
+
+def _function_signature(line: str) -> str | None:
+    """Return the function name if ``line`` opens a definition at file scope.
+
+    Heuristic: an identifier followed by a parameter list, rejecting the
+    control-flow keywords that have the same shape.
+    """
+    stripped = line.strip()
+    if stripped.startswith(("if", "while", "for", "switch", "return", "do", "}")):
+        return None
+    m = FUNC_DEF_RE.match(stripped)
+    return m.group(1) if m else None
+
+
+def _track_braces(line: str, depth: int, pending: str | None, stack: list) -> int:
+    """Advance brace depth over ``line``, pushing/popping the function stack."""
+    for ch in line:
+        if ch == "{":
+            if depth == 0 and pending is not None:
+                stack.append((pending, depth))
+            depth += 1
+        elif ch == "}":
+            depth = max(depth - 1, 0)
+            if stack and depth <= stack[-1][1]:
+                stack.pop()
+    return depth
+
+
+def resolve_function(rel_path: str, target_line: int) -> str:
+    """Best-effort function name lookup for a decision at ``target_line``.
+
+    Returns "(file scope)" when the decision is not inside a function (e.g. a
+    file-scope initializer), or when the file cannot be read.
+    """
+    abs_path = REPO_ROOT / rel_path
+    if not abs_path.exists():
+        return "(file scope)"
+    try:
+        text = abs_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return "(file scope)"
+
+    stripper = _CommentStripper()
+    depth = 0
+    pending: str | None = None
+    stack: list[tuple[str, int]] = []  # (name, depth_when_opened)
+    for i, raw in enumerate(text.splitlines(), start=1):
+        line = stripper.strip(raw)
         if depth == 0:
-            m = FUNC_DEF_RE.match(line.strip())
-            if m and not line.strip().startswith(
-                ("if", "while", "for", "switch", "return", "do", "}")
-            ):
-                last_name_at_depth0 = m.group(1)
-
-        # Count braces and update depth + function stack
-        for ch in line:
-            if ch == "{":
-                if depth == 0 and last_name_at_depth0 is not None:
-                    func_stack.append((last_name_at_depth0, depth))
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                depth = max(depth, 0)
-                if func_stack and depth <= func_stack[-1][1]:
-                    func_stack.pop()
-
+            pending = _function_signature(line) or pending
+        depth = _track_braces(line, depth, pending, stack)
         if i == target_line:
-            return func_stack[-1][0] if func_stack else "(file scope)"
+            return stack[-1][0] if stack else "(file scope)"
 
     return "(file scope)"
 
