@@ -110,7 +110,7 @@ mkdir -p "$REPORT_DIR"
 # which on the Debian 12 dev box is gcc 12 and cannot parse this codebase's
 # C23 typed enums -- the same selection the host-test build uses.
 # shellcheck source=scripts/builders/select_host_compiler.sh
-. "$SCRIPT_DIR/../build/select_host_compiler.sh"
+. "$SCRIPT_DIR/../builders/select_host_compiler.sh"
 ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
 
 # CMake refuses to change CMAKE_C_COMPILER on an existing cache; if a prior
