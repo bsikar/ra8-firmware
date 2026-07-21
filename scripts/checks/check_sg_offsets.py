@@ -58,6 +58,24 @@ def read_symbols(elf: str, nm: str) -> dict[str, int]:
 
 
 def main() -> int:
+    """Verify the secure-gateway veneers sit at their pinned offsets in an ELF.
+
+    The offsets are ABI: non-secure code reaches the secure world by branching
+    into the SG region at a fixed distance from its base, so a veneer moving
+    silently redirects a call to a different entry point. Only the offset from
+    BASE_SYMBOL is compared, never absolute addresses, since the region as a
+    whole is free to relocate between builds.
+
+    Symbol values are masked with THUMB_MASK before subtracting -- every Thumb
+    function symbol carries bit 0 set, and comparing raw values would make
+    every offset off by one.
+
+    An ELF with no veneers is skipped and exits 0, which is correct for a
+    non-TrustZone build rather than a silent pass: absent veneers cannot drift.
+
+    Returns 0 when every offset matches or no veneers are present, 1 on drift
+    or a missing symbol, 2 when ``nm`` could not be run at all.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("elf")
     ap.add_argument("--nm", default="arm-none-eabi-nm")

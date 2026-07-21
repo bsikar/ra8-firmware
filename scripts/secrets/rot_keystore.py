@@ -1,32 +1,37 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-#
-# rot_keystore.py -- versioned, tagged store for root-of-trust signing keys.
-#
-# Keeps a HISTORY of every RoT signing key so you can create new credentials
-# whenever you want and still recover any prior key -- with or without the team
-# OpenBao vault. Two backends, auto-selected (override with --backend):
-#
-#   openbao  KV v2 at BAO_KV_MOUNT / BAO_ROT_SECRET_PATH (default
-#            secret / ra8d2/rot-signing-key). Native versioning = the history.
-#            Reachability + identity come from openbao_client.py.
-#   local    a 0700 directory (RA8_ROT_STORE_DIR, default ~/.config/ra8/rot)
-#            holding one PEM per version plus history.json. This is the
-#            "no vault" path: cloning the repo and doing RoT work needs nothing
-#            but this script and openssl.
-#
-# Every stored version is tagged with: fingerprint (SHA-256 of the public SPKI,
-# matching rot_provision.sh), algorithm, created_at (UTC), git_commit, note.
-#
-# Commands:
-#   store   [--key PEM] [--note TEXT] [--backend B]   persist a key as a new version
-#   get     [--version N] [--out PEM] [--backend B]   recover a version's private key
-#   history [--backend B]                             list every version + its tags
-#   status  [--backend B]                             active backend + latest version
-#   rekey   [--patch] [--note TEXT] [--out PEM] [--backend B]
-#           generate a NEW key, back up the current one, store + tag the new
-#           version, optionally provision it into ra8_rot.c, install as working key
+"""Versioned, tagged store for root-of-trust signing keys.
+
+Keeps a HISTORY of every RoT signing key so you can create new credentials
+whenever you want and still recover any prior key -- with or without the team
+OpenBao vault. Two backends, auto-selected (override with --backend):
+
+  openbao  KV v2 at BAO_KV_MOUNT / BAO_ROT_SECRET_PATH (default
+           secret / ra8d2/rot-signing-key). Native versioning = the history.
+           Reachability + identity come from openbao_client.py.
+  local    a 0700 directory (RA8_ROT_STORE_DIR, default ~/.config/ra8/rot)
+           holding one PEM per version plus history.json. This is the
+           "no vault" path: cloning the repo and doing RoT work needs nothing
+           but this script and openssl.
+
+The two backend classes are interchangeable by construction -- same ``store``
+/ ``get`` / ``history`` / ``name`` surface -- so every command below works
+identically whichever one ``select_backend`` returns, and losing vault access
+degrades the tool rather than breaking it.
+
+Every stored version is tagged with: fingerprint (SHA-256 of the public SPKI,
+matching rot_provision.sh), algorithm, created_at (UTC), git_commit, note.
+
+Commands:
+  store   [--key PEM] [--note TEXT] [--backend B]   persist a key as a new version
+  get     [--version N] [--out PEM] [--backend B]   recover a version's private key
+  history [--backend B]                             list every version + its tags
+  status  [--backend B]                             active backend + latest version
+  rekey   [--patch] [--note TEXT] [--out PEM] [--backend B]
+          generate a NEW key, back up the current one, store + tag the new
+          version, optionally provision it into ra8_rot.c, install as working key
+"""
 
 from __future__ import annotations
 
@@ -97,6 +102,13 @@ class LocalBackend:
     """File-backed versioned store for operators without the OpenBao vault."""
 
     def __init__(self) -> None:
+        """Resolve the store directory and create it 0700 if it does not exist.
+
+        Constructing the backend is what creates the directory, so every other
+        method may assume it is present. The 0700 mode is applied at creation
+        rather than checked afterwards: these are private signing keys, and a
+        store that was briefly world-readable has already leaked.
+        """
         override = os.environ.get("RA8_ROT_STORE_DIR", "").strip()
         self.dir = Path(override) if override else (Path.home() / ".config" / "ra8" / "rot")
         self.dir.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -104,6 +116,12 @@ class LocalBackend:
 
     @property
     def name(self) -> str:
+        """Human-readable backend identity, including the resolved directory.
+
+        Printed by every command so the operator can see WHICH store was
+        written -- the directory is environment-overridable, and a rekey into
+        an unexpected store is the mistake worth making visible.
+        """
         return f"local ({self.dir})"
 
     def _load(self) -> list[dict]:
@@ -116,6 +134,20 @@ class LocalBackend:
         self.index.chmod(0o600)
 
     def store(self, pem: str, tags: dict[str, str]) -> int:
+        """Persist ``pem`` as a new version and return that version number.
+
+        Idempotent against the newest entry: re-storing a key whose fingerprint
+        already matches the latest version returns that version instead of
+        appending a duplicate. ``rekey`` relies on this -- it backs up the
+        outgoing working key on every run, and without the check a repeated
+        rekey would inflate the history with copies of the same key.
+
+        Note it compares only the LAST entry, so re-storing a key that was
+        current several versions ago does create a new version. That is
+        intended: returning to an older key is a real event worth recording.
+
+        Both the PEM and the index are written 0600.
+        """
         entries = self._load()
         if entries and entries[-1]["fingerprint"] == tags["fingerprint"]:
             return int(entries[-1]["version"])
@@ -129,6 +161,12 @@ class LocalBackend:
         return version
 
     def get(self, version: int | None) -> str:
+        """Return the private-key PEM for ``version``, or the newest when None.
+
+        Raises OpenBaoError -- not a local-specific exception -- for both an
+        empty store and an unknown version, so callers can handle failures from
+        either backend with one except clause.
+        """
         entries = self._load()
         if not entries:
             msg = "local store is empty"
@@ -144,6 +182,11 @@ class LocalBackend:
         return (self.dir / entry["file"]).read_text(encoding="ascii")
 
     def history(self) -> list[dict]:
+        """Every stored version, oldest first, as tag dicts.
+
+        Ordering is the contract the callers depend on: ``status`` and
+        ``store`` both read ``[-1]`` as "the current key".
+        """
         return self._load()
 
 
@@ -151,14 +194,35 @@ class OpenBaoBackend:
     """KV v2-backed versioned store; the vault's own versioning is the history."""
 
     def __init__(self, client: OpenBaoClient) -> None:
+        """Bind this backend to an already-constructed, configured vault client.
+
+        The client is injected rather than built here so ``select_backend`` can
+        test reachability (and fall back to local) before committing to the
+        vault path -- this constructor performs no I/O and cannot fail.
+        """
         self.client = client
         self.path = os.environ.get("BAO_ROT_SECRET_PATH", "ra8d2/rot-signing-key")
 
     @property
     def name(self) -> str:
+        """Human-readable backend identity: vault address, mount and secret path.
+
+        Includes the address so an operator can see which vault was written
+        when several environments are configured.
+        """
         return f"openbao ({self.client.addr}, {self.client.mount}/{self.path})"
 
     def store(self, pem: str, tags: dict[str, str]) -> int:
+        """Write ``pem`` as a new KV v2 version and return that version number.
+
+        Fingerprint-idempotent against the newest version, exactly as the local
+        backend is, so ``rekey`` does not accumulate duplicate versions of the
+        same key whichever store is active.
+
+        Metadata is rewritten on every store. That is deliberate: it costs one
+        request and keeps the purpose/algorithm annotation correct even if the
+        secret was first created by hand or by an older version of this tool.
+        """
         latest = self.history()
         if latest and latest[-1]["fingerprint"] == tags["fingerprint"]:
             return int(latest[-1]["version"])
@@ -170,6 +234,12 @@ class OpenBaoBackend:
         return version
 
     def get(self, version: int | None) -> str:
+        """Return the private-key PEM for ``version``, or the newest when None.
+
+        A version that exists but carries no ``pem`` field raises rather than
+        returning empty: that shape means the secret was written by something
+        other than this tool, and handing back "" would look like a key.
+        """
         data = self.client.kv_get(self.path, version=version)
         if "pem" not in data:
             msg = f"no RoT key at version {version or 'latest'}"
@@ -177,6 +247,17 @@ class OpenBaoBackend:
         return data["pem"]
 
     def history(self) -> list[dict]:
+        """Every live vault version, oldest first, flattened to local-backend shape.
+
+        Deleted and destroyed versions are dropped, so the list holds only
+        versions whose PEM can still be recovered -- ``[-1]`` therefore means
+        "current key" for both backends, and ``status`` needs no special case.
+
+        Costs one request per surviving version, because KV v2 metadata carries
+        no user fields; the tag values live in each version's data. Missing tags
+        degrade to "?" rather than raising, so a hand-written secret still
+        lists.
+        """
         meta = self.client.kv_metadata(self.path)
         versions = meta.get("versions", {})
         out: list[dict] = []
@@ -245,6 +326,15 @@ def _keygen(key_path: Path, pubkey_c: Path) -> None:
 
 
 def cmd_store(args: argparse.Namespace) -> int:
+    """Persist an existing key file as a new version, tagging it as it goes.
+
+    Tags are computed here rather than by the backend, so a key stored locally
+    and the same key stored in the vault carry identical fingerprint, algorithm
+    and git_commit metadata -- which is what lets the two histories be compared.
+
+    Exits (rather than returning non-zero) when the key file is absent: there
+    is nothing partial to report.
+    """
     backend = select_backend(args.backend)
     key = Path(args.key)
     if not key.exists():
@@ -255,6 +345,13 @@ def cmd_store(args: argparse.Namespace) -> int:
 
 
 def cmd_get(args: argparse.Namespace) -> int:
+    """Recover a stored private key to a file or to stdout.
+
+    ``--out`` writes 0600; without it the PEM goes to stdout, which is the
+    pipe-friendly path and deliberately leaves protecting the key to the
+    caller (redirecting it into a world-readable file is the caller's choice
+    to make, not something this can detect).
+    """
     backend = select_backend(args.backend)
     pem = backend.get(args.version)
     if args.out:
@@ -268,12 +365,25 @@ def cmd_get(args: argparse.Namespace) -> int:
 
 
 def cmd_history(args: argparse.Namespace) -> int:
+    """List every version in the active backend with its tags, oldest first.
+
+    Reports only the backend actually selected -- it does not merge the local
+    and vault histories, which are independent stores whose version numbers
+    are not comparable. Pass ``--backend`` twice over to see both.
+    """
     backend = select_backend(args.backend)
     _print_history(backend.history())
     return 0
 
 
 def cmd_status(args: argparse.Namespace) -> int:
+    """Print which backend auto-selection resolved to, and its newest version.
+
+    The quickest way to answer "would a rekey right now write to the vault or
+    to my local store?" -- worth checking first, since that decision depends
+    on live vault reachability and so can differ between two runs on one
+    machine.
+    """
     backend = select_backend(args.backend)
     rows = backend.history()
     print(f"backend: {backend.name}")
@@ -286,6 +396,24 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 
 def cmd_rekey(args: argparse.Namespace) -> int:
+    """Generate a new signing key, preserving the outgoing one, and install it.
+
+    Ordering is the safety property, and it is why this is one command rather
+    than a documented sequence: the CURRENT working key is stored first, before
+    anything is generated or overwritten. Every later step can fail without
+    having destroyed a key, whereas generating first and backing up afterwards
+    has a window in which the only copy of the old key is the file about to be
+    overwritten.
+
+    The new keypair is generated inside a temporary directory that is removed
+    on exit, so the private key exists in exactly two places afterwards: the
+    backend, and the working-key path.
+
+    ``--patch`` additionally rewrites the public key baked into ra8_rot.c. That
+    is a source change, and after it the device must be re-flashed -- the new
+    public key is then the only one it will trust, so a device left on the old
+    image will reject everything signed with the new key.
+    """
     backend = select_backend(args.backend)
     working = Path(args.out)
     # 1. Preserve the outgoing working key first, so no key is ever lost.

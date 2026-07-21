@@ -250,6 +250,20 @@ def _report(findings: list[tuple[str, int, int, str]]) -> None:
 
 
 def main(argv: list[str]) -> int:
+    """Fail any function over the Rule 4 cap, or with ``--selftest`` prove the gate fires.
+
+    Walks source text rather than ``compile_commands.json``, which is the
+    whole reason this exists alongside clang-tidy's identical rule: the host
+    unit-test build emits no entry for an ARM-cross-compiled TU, so the
+    clang-tidy version silently exempted most of port/ and every example main.
+
+    An empty target set exits 2, not 0 -- an empty scan means the derived
+    enumeration broke, and a size gate reporting success over zero files is
+    the failure this pair of checkers was rewritten to stop having.
+
+    Returns 0 when every function is within the cap, 1 when one or more exceed
+    it, and 2 when there was nothing to scan.
+    """
     args = argv[1:]
     if "--selftest" in args:
         return _selftest()

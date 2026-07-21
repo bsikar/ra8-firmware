@@ -408,6 +408,21 @@ def selftest(ruff: str) -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Run ruff's lint and format checks over every tracked first-party Python file.
+
+    A missing ruff is handled two ways ON PURPOSE. Bare, it prints a notice
+    and exits 0, so a contributor without ruff installed is not blocked by a
+    local hook. Under ``--require``, ``--selftest`` or ``--list-files`` it
+    exits 1 instead -- CI passes ``--require`` precisely so that an absent
+    linter fails the build rather than skipping the gate silently.
+
+    ``--list-files`` exists for check_lint_coverage.py, which asks each checker
+    to report its own post-exclusion scope rather than restating it. That is
+    what keeps the two from disagreeing about which files are covered.
+
+    Returns 0 when lint and format are both clean, 1 on any finding, on a
+    failing selftest, or on a missing ruff in a mode that requires it.
+    """
     args = argv[1:]
     ruff = _find_ruff()
     if not ruff:

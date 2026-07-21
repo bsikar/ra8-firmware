@@ -118,6 +118,16 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
+    """Fail any header under a ``src/`` directory not named ``*_internal.h``.
+
+    The scanned count reported on success is the number of headers actually
+    UNDER a src/ directory, not the number handed in: everything else is
+    filtered out first, so passing the whole staged file list is normal and
+    the printed total will legitimately be far smaller than argv.
+
+    Returns 1 listing each misplaced header, 0 when every src/ header is
+    module-private or when nothing in scope reached the filter.
+    """
     targets = _enumerate_targets(argv[1:])
     if not targets:
         print("check_header_file_placement.py: no headers to scan", file=sys.stderr)
