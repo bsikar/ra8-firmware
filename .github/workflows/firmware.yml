@@ -381,13 +381,20 @@ jobs:
       - run: bash scripts/ci.sh --gate lint-make
       - run: bash scripts/ci.sh --gate lint-ld
       - run: bash scripts/ci.sh --gate lint-asm
-      - name: Install hadolint
+      - name: Install hadolint and zsh
         run: |
-          # ci-parity: infra -- provisions the pinned hadolint binary on the
-          # runner; runs no project check. The lint-devcontainer gate calls
-          # require_cmd, so a still-missing binary FAILS the gate rather than
-          # skipping it. zsh is preinstalled on the runner image.
+          # ci-parity: infra -- provisions the pinned hadolint binary and zsh
+          # on the runner; runs no project check. The lint-devcontainer gate
+          # calls require_cmd for both, so a still-missing tool FAILS the gate
+          # rather than skipping it.
+          #
+          # zsh is NOT preinstalled: this step used to assert it was, and the
+          # gate went red the moment anything upstream of it stopped failing
+          # first. The gate needs `zsh -n` to syntax-check the devcontainer
+          # zshrc, which is the only real option -- ShellCheck refuses zsh.
           set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends zsh
           mkdir -p "$RUNNER_TEMP/dockerbin"
           curl -fsSL -o "$RUNNER_TEMP/dockerbin/hadolint" \
             https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Linux-x86_64
