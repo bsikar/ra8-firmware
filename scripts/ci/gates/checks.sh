@@ -39,21 +39,25 @@ gate_pre_commit_checks() (
   # and the extensionless git hooks, which no suffix-driven scope has ever
   # seen. Both --selftests assert every parser in both directions.
   #
-  # The selftests are ENFORCED here. The tree-wide scans are NOT yet, because
-  # widening the scope revealed work that has not been done: 8 files over the
-  # 1000-line cap and 52 functions over the 60-line cap. Turning the scans on
-  # before that work lands would just make the suite red for everyone.
+  # The FILE cap is now ENFORCING. All 8 offenders the widened scope revealed
+  # were split by responsibility -- check_annotations, check_doc_attachment,
+  # doxy_audit, ra8_mcp, epub_compile, tests/CMakeLists.txt, sim/smoke.sh and
+  # cmake/ra8_add_app.cmake -- with no waiver list and no narrowed scope.
   #
-  # This is a NAMED, VISIBLE gap with a fixed exit condition -- delete this
-  # comment and uncomment the two scans -- deliberately chosen over the
-  # alternatives: a waiver list would grandfather 60 offenders permanently,
+  # The FUNCTION cap is not yet: 37 functions remain over 60 lines (was 53;
+  # the file splits closed 16). Turning it on before that work lands would
+  # just make the suite red for everyone.
+  #
+  # This is a NAMED, VISIBLE gap with a fixed exit condition -- close the 37
+  # and uncomment the one remaining scan -- deliberately chosen over the
+  # alternatives: a waiver list would grandfather the offenders permanently,
   # and narrowing the scope back to C would restore the exact defect #359
   # exists to fix while reporting green. Tracked in #359, which stays open
-  # until both scans are enforcing.
+  # until BOTH scans are enforcing.
   python3 scripts/checks/check_function_size.py --selftest
   python3 scripts/checks/check_file_size.py --selftest
+  python3 scripts/checks/check_file_size.py
   # python3 scripts/checks/check_function_size.py
-  # python3 scripts/checks/check_file_size.py
   # A header under a src/ directory is module-private and must be named
   # *_internal.h. A non-internal src/ header is a misfiled public interface
   # (belongs in inc/) or an unmarked private one.
