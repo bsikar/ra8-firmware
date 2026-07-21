@@ -2,7 +2,7 @@
 # Per-app Makefile for the `ota_ab_orchestration` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_validated/hil/ota_ab_orchestration/
+#   cd examples/ek_ra8d2/hw_pending/ota_ab_orchestration/
 #   make             # configure + build -> build/ota_ab_orchestration.elf
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
