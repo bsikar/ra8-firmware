@@ -57,11 +57,16 @@ gate_board_sim_matrix() (
   set -e
   use_pinned_arm_toolchain
   bash scripts/sim/matrix.sh --selftest
+  bash scripts/sim/matrix_triage.sh --selftest
   python3 scripts/checks/matrix_ratchet.py --selftest
   # matrix.sh exits non-zero whenever the sweep is not perfectly clean, which is
   # the right default for a human running it by hand but is NOT this gate's
   # verdict -- the ratchet is. Capture the report either way, then judge.
   bash scripts/sim/matrix.sh || true
+  # Print the remaining failures grouped by CAUSE before the verdict, so every
+  # run of the gate leaves a burn-down plan in the log rather than a bare count
+  # someone has to go re-derive. Diagnostic: it must not decide the gate.
+  bash scripts/sim/matrix_triage.sh || true
   python3 scripts/checks/matrix_ratchet.py --check
 )
 
