@@ -172,12 +172,14 @@ class Finding:
     """One unresolved reference: where it was written and what it said."""
 
     def __init__(self, rel_file: str, line_no: int, token: str, reason: str) -> None:
+        """Record one unresolvable script reference and why it failed."""
         self.rel_file = rel_file
         self.line_no = line_no
         self.token = token
         self.reason = reason
 
     def __str__(self) -> str:
+        """Render as ``path:line: token -- reason`` -- editor-jumpable."""
         return f"{self.rel_file}:{self.line_no}: {self.token} -- {self.reason}"
 
 
@@ -484,6 +486,15 @@ def _selftest() -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Verify every ``scripts/`` path named anywhere in the tree still resolves.
+
+    A stale script reference fails only when someone runs it, which may be
+    months after the rename that broke it -- and in a Makefile or workflow
+    that is a broken build for whoever is unlucky, not for whoever moved the
+    file. This turns that into a build-time error at the moment of the move.
+
+    Returns 1 listing each dangling reference, 0 when all resolve.
+    """
     if "--selftest" in argv[1:]:
         return _selftest()
 

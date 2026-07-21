@@ -115,6 +115,11 @@ def render_summary(
     total_boxes: int,
     ticked_boxes: int,
 ) -> str:
+    """Render the summary block that sits between the ROADMAP.md markers.
+
+    Emits the BEGIN/END markers as part of the block, so the result can be
+    substituted wholesale and the markers can never be lost by a rewrite.
+    """
     total_drivers = sum(counts.values())
     pct = ticked_boxes / total_boxes * 100.0 if total_boxes else 0.0
     return "\n".join(
@@ -132,6 +137,14 @@ def render_summary(
 
 
 def rewrite(text: str, summary: str) -> str:
+    """Replace the marked summary region of ROADMAP.md with ``summary``.
+
+    Raises when either marker is missing rather than appending: without them
+    there is no way to know which part of the file is generated, and guessing
+    would eventually overwrite hand-written prose.
+
+    Everything outside the markers is preserved byte-for-byte.
+    """
     if BEGIN_MARK not in text or END_MARK not in text:
         msg = "ROADMAP.md is missing the BEGIN/END SUMMARY markers"
         raise ValueError(msg)
@@ -141,6 +154,11 @@ def rewrite(text: str, summary: str) -> str:
 
 
 def main(argv: list[str]) -> int:
+    """Recompute the roadmap summary, or with ``--check`` verify it is current.
+
+    ``--check`` exits 1 when the file would change and writes nothing, so CI
+    detects a stale summary instead of quietly regenerating it.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--check",
