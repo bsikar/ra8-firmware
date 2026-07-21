@@ -106,6 +106,15 @@ ALLOWED_TOKENS = {"UX_NULL", "TX_NULL", "FX_NULL", "NX_NULL"}
 
 
 def find_violations(path: pathlib.Path) -> list[tuple[int, str]]:
+    """Report every use of ``NULL`` in one file.
+
+    C23 spells the null pointer constant ``nullptr``, which is typed; ``NULL``
+    is a macro that expands to an untyped 0 and so silently satisfies an
+    integer parameter. That is the defect this catches, not the spelling.
+
+    Returns ``(line_no, line_text)`` per finding; an unreadable file yields an
+    empty list rather than raising.
+    """
     violations: list[tuple[int, str]] = []
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -140,12 +149,14 @@ def find_violations(path: pathlib.Path) -> list[tuple[int, str]]:
 
 
 def needs_check(path: pathlib.Path) -> bool:
+    """Whether a path is first-party C subject to the nullptr rule."""
     if path.suffix.lower() not in EXTENSIONS:
         return False
     return not any(part in EXCLUDED_PARTS for part in path.parts)
 
 
 def iter_all_files() -> Iterable[pathlib.Path]:
+    """Every checkable file beneath the root directories, for the ``--all`` sweep."""
     for root in ROOT_DIRS:
         rp = pathlib.Path(root)
         if not rp.is_dir():
@@ -156,6 +167,13 @@ def iter_all_files() -> Iterable[pathlib.Path]:
 
 
 def main() -> int:
+    """Fail on any use of ``NULL`` where C23 ``nullptr`` is required.
+
+    ``--all`` sweeps the tree; otherwise only the named files are checked,
+    which is how the pre-commit hook stays fast.
+
+    Returns 1 listing each use, 0 when clean.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--all", action="store_true", help="scan all tracked source files")
     parser.add_argument(

@@ -53,6 +53,12 @@ _MIN_DUNDER_LEN = 4
 
 
 def _strip_us(name: str) -> str:
+    """Strip the surrounding double underscores from an attribute name.
+
+    ``__packed__`` and ``packed`` are the same attribute to GCC, so both
+    spellings must normalise to one before comparison or half of them would
+    slip past.
+    """
     if len(name) > _MIN_DUNDER_LEN and name.startswith("__") and name.endswith("__"):
         return name[2:-2]
     return name
@@ -89,6 +95,7 @@ def _is_comment_pos(line: str, pos: int) -> bool:
 
 
 def discover() -> list[str]:
+    """Every first-party source file, for the whole-tree sweep."""
     out: list[str] = []
     for root in ROOTS:
         base = Path(root)
@@ -104,6 +111,13 @@ def discover() -> list[str]:
 
 
 def check_file(path: str) -> list[tuple[int, str]]:
+    """Report every legacy ``__attribute__((...))`` in one file.
+
+    The tree uses the C23 ``[[...]]`` form. Note the two spellings that CANNOT
+    migrate and are excluded rather than reported -- ``interrupt`` and the
+    CMSE ``cmse_nonsecure_entry`` -- neither of which has a standard-attribute
+    equivalent the toolchain accepts.
+    """
     findings: list[tuple[int, str]] = []
     try:
         text = Path(path).read_text(encoding="utf-8")
@@ -129,6 +143,15 @@ def check_file(path: str) -> list[tuple[int, str]]:
 
 
 def main() -> int:
+    """Fail on GNU ``__attribute__`` syntax where the C23 form is available.
+
+    Position matters for the C23 form -- it must precede the declaration
+    specifiers rather than follow them -- which is why this is a migration
+    worth finishing rather than a style preference: the two spellings do not
+    sit in the same place, so mixed usage reads inconsistently.
+
+    Returns 1 listing each occurrence, 0 when clean.
+    """
     args = [a for a in sys.argv[1:] if not a.startswith("-")]
     files = args or discover()
     total = 0

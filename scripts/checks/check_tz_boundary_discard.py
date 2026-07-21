@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""check_tz_boundary_discard.py -- ban silent error discards at TrustZone
-boot boundaries.
+"""Ban silent error discards at TrustZone boot boundaries.
 
 C23 makes an explicit ``(void)`` cast the sanctioned suppression for a
 ``[[nodiscard]]`` diagnostic, so ``-Wall -Wextra -Werror`` can never flag
@@ -83,6 +82,7 @@ def _is_comment_pos(line: str, pos: int) -> bool:
 
 
 def discover() -> list[str]:
+    """Every boot-boundary source file, for the whole-tree sweep."""
     out: list[str] = []
     for root in ROOTS:
         base = Path(root)
@@ -130,6 +130,15 @@ def check_file(path: str) -> list[tuple[int, str, str]]:
 
 
 def main() -> int:
+    """Fail when a TrustZone boot-boundary call discards its ra8_err_t.
+
+    These call sites are the worst place in the tree to drop a status: a
+    failed SAU or MPU configuration returns an error and then, ignored, hands
+    control to the non-secure world with the boundary not actually in force.
+    The build links, the board boots, and the isolation is simply absent.
+
+    Returns 1 listing each discard, 0 when clean.
+    """
     args = [a for a in sys.argv[1:] if not a.startswith("-")]
     files = args or discover()
     total = 0
