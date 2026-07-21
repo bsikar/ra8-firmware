@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/ota_ab_orchestration/main.c
+ * @file examples/ek_ra8d2/hw_pending/ota_ab_orchestration/main.c
  * @brief A/B OTA orchestration demo: stage -> verify -> commit / rollback over MRAM.
  *
  * @par Tag

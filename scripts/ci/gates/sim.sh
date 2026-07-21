@@ -35,14 +35,21 @@ gate_board_sim_smoke() (
 # same VFS API (block device -> ra8_fs FAT format/mount -> VFS mkdir + nested
 # file round-trip), plus the format registry, the LRU sector cache, and the
 # DEFLATE stream, asserted by each demo's PASS banner. Covers RAM/SRAM,
-# external SDRAM, SD-over-SPI, native SDHI, OSPI NOR (erase-before-write) and
-# on-chip MRAM (program/erase).
+# external SDRAM, SD-over-SPI, native SDHI and OSPI NOR (erase-before-write).
+#
+# ra8_io_mram_demo is deliberately NOT in this list (#170): it targets a
+# general-purpose data-flash at 0x2700_0000 that the RA8D2 does not have (HUM
+# Ch 5 Figure 5.2 p 237 calls the region "Extra MRAM (option-setting memory)";
+# HUM Ch 59.7.4.5 Table 59.15 p 3592 enumerates the legal MACI Program targets
+# and they are all option-setting / OTP). The bench returns Error=516 with the
+# sequencer command-locked, board_sim now reproduces that rejection, and a gate
+# that asserted its PASS banner was claiming a storage backend the part lacks.
 gate_board_sim_io_fabric() (
   set -e
   use_pinned_arm_toolchain
   bash scripts/sim/smoke.sh \
     ra8_io_demo ra8_io_sdram_demo ra8_io_compress_demo \
-    ra8_io_sd_demo ra8_io_sdhi_demo ra8_io_xspi_demo ra8_io_mram_demo \
+    ra8_io_sd_demo ra8_io_sdhi_demo ra8_io_xspi_demo \
     ra8_io_fsfmt_demo ra8_io_cache_demo
 )
 

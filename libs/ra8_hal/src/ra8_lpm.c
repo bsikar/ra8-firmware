@@ -43,11 +43,13 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_intrinsics.h"
 #include "ra8_log.h"
 #include "ra8_lpm_regs.h"
+#include "ra8_register_protection.h"
 
 /**
  * @var s_tag
@@ -642,6 +644,85 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs)
   } else {
     *p = (uint8_t)(*p & (uint8_t)~k_ra8_lpm_clock_stop_mask);
   }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Poll a PDCTRGD status flag until it reads the wanted level.
+ *
+ * @param[in] mask    ``k_ra8_lpm_pdctr_*_mask`` bit to watch.
+ * @param[in] want_set ``true`` to wait for set, ``false`` for clear.
+ * @param[in] limit   Iteration bound (NASA Rule 2).
+ *
+ * @return ``k_ra8_ok`` if the flag reached the level, else
+ *         ``k_ra8_err_hw_timeout``.
+ *
+ * @pre limit > 0.
+ * @pre mask names exactly one PDCTRGD bit.
+ * @post No register is written.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_pdctrgd_wait(uint8_t mask, bool want_set, uint32_t limit)
+{
+  for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+    /* HUM Ch 11.2.14 "PDCTRGD : Graphics Power Domain Control Register", p 452 */
+    const bool is_set = ((*ra8_lpm_sysc_reg8(k_ra8_lpm_pdctrgd_off) & mask) != 0U);
+    if (is_set == want_set) { /* GCOVR_EXCL_BR_LINE */
+      return k_ra8_ok;
+    }
+  }
+  return k_ra8_err_hw_timeout;
+}
+
+[[nodiscard]] ra8_err_t ra8_lpm_graphics_power_on(uint32_t timeout_iters)
+{
+  if (timeout_iters == 0U) {
+    ra8_log_error(s_tag, "graphics_power_on: timeout_iters == 0");
+    return k_ra8_err_invalid_arg;
+  }
+
+  /* HUM Ch 11.2.14 "PDCTRGD : Graphics Power Domain Control Register", p 452 */
+  /* Already powered (PDPGSF = 0)? Nothing to do -- keeps the call idempotent
+   * so several graphics drivers may each run it from their own init. */
+  if ((*ra8_lpm_sysc_reg8(k_ra8_lpm_pdctrgd_off) & (uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask) == 0U) {
+    return k_ra8_ok;
+  }
+
+  /* HUM Ch 11.5.1 p 480: "when using the power gating function, it should be
+   * set MOCOCR.MCSTP to 0 (MOCO is operated) in advance". MOCOCR is PRC0, so
+   * start it inside a CGC unlock window rather than relying on the caller. */
+  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
+  {
+    /* HUM Ch 9.2.18 "MOCOCR : MOCO Control Register", p 346 */
+    volatile uint8_t* mococr = ra8_lpm_sysc_reg8(k_ra8_lpm_mococr_off);
+    *mococr                  = (uint8_t)(*mococr & (uint8_t)~k_ra8_lpm_clock_stop_mask);
+  }
+
+  /* HUM Ch 11.2.14 p 452: "the PDDE bit should be set from 1 to 0, after
+   * confirmed that the PDCSF = 0 and PDPGSF = 1". */
+  ra8_err_t err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdcsf_mask, false, timeout_iters);
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF busy"); /* GCOVR_EXCL_BR_LINE */
+  err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask, true, timeout_iters);
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDPGSF"); /* GCOVR_EXCL_BR_LINE */
+
+  /* PDCTRGD is PRC1-protected (HUM Ch 13.1 Table 13.1 p 521): without the
+   * unlock the clear is silently discarded and the domain stays dark. */
+  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_lpm)
+  {
+    /* HUM Ch 11.2.14 "PDCTRGD : Graphics Power Domain Control Register", p 452 */
+    /* PDDE = 0 powers the domain ON (the polarity is inverted). */
+    *ra8_lpm_sysc_reg8(k_ra8_lpm_pdctrgd_off) = 0U;
+  }
+
+  /* Gating finished when the controller is idle and the domain is not gated. */
+  err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdcsf_mask, false, timeout_iters);
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF stuck"); /* GCOVR_EXCL_BR_LINE */
+  err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask, false, timeout_iters);
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: still gated"); /* GCOVR_EXCL_BR_LINE */
+
+  ra8_log_info(s_tag, "graphics power domain on");
   return k_ra8_ok;
 }
 
