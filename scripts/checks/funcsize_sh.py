@@ -34,7 +34,7 @@ _PAIRS = {"{": "}", "(": ")"}
 
 
 def _strip_inert(line: str) -> str:
-    """Blank out quoted spans and trailing comments, keeping length irrelevant.
+    r"""Blank out quoted spans and trailing comments, keeping length irrelevant.
 
     Only the delimiters matter downstream, so quoted text is replaced rather
     than removed. Escapes are honoured so ``\\"`` does not end a string.

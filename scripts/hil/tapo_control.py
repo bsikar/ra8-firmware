@@ -1,33 +1,40 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-#
-# tapo_control.py -- Control a Tapo smart plug on the HIL rig.  The rig has two
-# independently switched plugs:
-#
-#   board -- powers the EK-RA8D2 target board.
-#   pi    -- powers the Raspberry Pi HIL host itself.  Driven directly from the
-#            developer workstation so the Pi can be power-cycled when wedged.
-#
-# Recent TP15 firmware (>= 1.4) speaks TP-Link's TPAP protocol, which is not
-# UDP-discoverable; the connection parameters are therefore pinned explicitly
-# and discovery is skipped, so a plug is reached by address alone.  Credentials
-# and per-plug addresses are resolved by hil_secrets.populate_env(), which
-# prefers a self-hosted OpenBao vault and falls back to <repo-root>/.env (or
-# ~/.tapo.env) so the plug stays controllable even when OpenBao or the k3s
-# cluster is down.  The resolved values land in the environment as:
-#
-#   TAPO_USER, TAPO_PASS          -- shared Tapo account
-#   TAPO_BOARD_IP, TAPO_BOARD_MAC -- board plug
-#   TAPO_PI_IP,    TAPO_PI_MAC    -- Pi plug
-#
-# OpenBao consumer credentials (BAO_ADDR, ROLE_ID, SECRET_ID) live outside the
-# repo in ~/.config/hil/openbao.env; see scripts/hil/secrets.py for details.
-#
-# Usage:
-#   python3 scripts/hil/tapo_control.py <board|pi> [status|on|off|cycle]
-#
-# cycle powers the outlet off, waits 5 seconds, then powers it back on.
+"""Control a Tapo smart plug on the HIL rig.
+
+The rig has two independently switched plugs:
+
+  board -- powers the EK-RA8D2 target board.
+  pi    -- powers the Raspberry Pi HIL host itself.  Driven directly from the
+           developer workstation so the Pi can be power-cycled when wedged.
+
+Recent TP15 firmware (>= 1.4) speaks TP-Link's TPAP protocol, which is not
+UDP-discoverable; the connection parameters are therefore pinned explicitly
+and discovery is skipped, so a plug is reached by address alone.  That is why
+this module reaches into python-kasa internals -- the library exposes no
+public seam for either -- and why it carries the tree's only SLF001 per-file
+ignore.
+
+Credentials and per-plug addresses are resolved by hil_secrets.populate_env(),
+which prefers a self-hosted OpenBao vault and falls back to <repo-root>/.env
+(or ~/.tapo.env) so the plug stays controllable even when OpenBao or the k3s
+cluster is down.  The resolved values land in the environment as:
+
+  TAPO_USER, TAPO_PASS          -- shared Tapo account
+  TAPO_BOARD_IP, TAPO_BOARD_MAC -- board plug
+  TAPO_PI_IP,    TAPO_PI_MAC    -- Pi plug
+
+OpenBao consumer credentials (BAO_ADDR, ROLE_ID, SECRET_ID) live outside the
+repo in ~/.config/hil/openbao.env; see scripts/hil/secrets.py for details.
+
+Usage:
+  python3 scripts/hil/tapo_control.py <board|pi> [status|on|off|cycle]
+
+cycle powers the outlet off, waits 5 seconds, then powers it back on.
+"""
+
+from __future__ import annotations
 
 import asyncio
 import contextlib
@@ -118,6 +125,17 @@ async def _get_device(ip: str, mac: str, creds: Credentials) -> SmartDevice:
 
 
 async def main() -> None:
+    """Run one plug command: status (the default), on, off, or cycle.
+
+    Both the target and the command are validated against fixed sets before
+    any network call, so a typo prints usage instead of reaching a plug --
+    which matters when the two targets are "the board" and "the machine
+    running the HIL suite", and the wrong one cuts power to the host.
+
+    Every required credential is resolved through ``_require``, so a missing
+    environment variable fails immediately and by name rather than surfacing
+    later as an authentication error against the plug.
+    """
     if len(sys.argv) <= _ARGV_TARGET or sys.argv[_ARGV_TARGET] not in _TARGETS:
         _usage()
     target = sys.argv[_ARGV_TARGET]

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-fix_wave_references.py -- conservative auto-fix for "Wave N" session refs.
+"""fix_wave_references.py -- conservative auto-fix for "Wave N" session refs.
 
 Companion to check_no_wave_references.py. Walks every tracked source/doc
 file under the same scan roots and rewrites obvious session-bookkeeping
@@ -146,14 +145,26 @@ WAVE_RE = re.compile(r"\b[Ww]ave[\s_\-]?\d+[A-Za-z]?\b")
 
 
 def _is_skip_dir(name: str) -> bool:
+    """Whether a directory name is build output or otherwise out of scope.
+
+    Matches the ``build-*`` family by prefix as well as the exact names, so a
+    CMake variant directory (build-cov, build-fuzz) is skipped without being
+    listed individually.
+    """
     return name in SKIP_DIR_NAMES or name == "build" or name.startswith("build-")
 
 
 def should_scan(p: Path) -> bool:
+    """Whether this file's name or suffix puts it in scope.
+
+    Basename is checked as well as suffix so extensionless files the tree
+    cares about (CMakeLists.txt, Makefile) are not missed.
+    """
     return p.name in SCAN_BASENAMES or p.suffix in SCAN_EXTS
 
 
 def iter_files(root: Path) -> list[Path]:
+    """Every in-scope file beneath the configured scan roots."""
     out: list[Path] = []
     for sr in SCAN_ROOTS:
         base = root / sr
@@ -173,6 +184,13 @@ def iter_files(root: Path) -> list[Path]:
 
 
 def rewrite_line(line: str) -> str:
+    """Delete session-bookkeeping "Wave N" references from one line.
+
+    Whitespace cleanup is deliberately conservative -- only the trailing and
+    doubled spaces the deletion itself introduced. These references sit inside
+    prose, and reflowing the surrounding sentence would produce a diff far
+    larger than the edit being made.
+    """
     for rx, sub in REWRITES:
         line = rx.sub(sub, line)
     # Conservative: only clean up trailing whitespace and double-spaces
@@ -181,6 +199,7 @@ def rewrite_line(line: str) -> str:
 
 
 def rewrite(text: str) -> str:
+    """Rewrite only the lines naming a wave, leaving the rest byte-identical."""
     out = []
     for ln in text.splitlines():
         if WAVE_RE.search(ln):
@@ -191,6 +210,11 @@ def rewrite(text: str) -> str:
 
 
 def main() -> int:
+    """Report, or with ``--apply`` perform, the wave-reference deletion.
+
+    Dry-run by default. Returns 0 when nothing needed rewriting and 1 when
+    something did, so the dry run doubles as the gate.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write changes back (default: dry-run)")
     args = ap.parse_args()

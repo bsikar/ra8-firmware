@@ -58,6 +58,7 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import yaml
@@ -146,7 +147,7 @@ def load_registry() -> dict[str, str]:
     return registry
 
 
-def iter_run_steps(workflow: Path):
+def iter_run_steps(workflow: Path) -> Iterator[tuple[str, str, str]]:
     """Yield ``(job_name, step_label, run_body)`` for every ``run:`` step."""
     with workflow.open(encoding="utf-8") as handle:
         doc = yaml.safe_load(handle)
@@ -272,6 +273,19 @@ def check_workflows(registry: dict[str, str]) -> tuple[list[str], set[str]]:
 
 
 def main() -> int:
+    """Verify the gate registry and the workflows describe the same set of gates.
+
+    Catches both halves of the drift, which fail in opposite directions: a
+    gate registered but never scheduled passes locally and never runs in CI,
+    while a workflow naming an unregistered gate is a typo or a missing
+    function. Either way the tree looks greener than it is.
+
+    Also rejects raw check bodies written inline in a workflow, since that is
+    how a second, drifting home for check logic gets created. A step that only
+    provisions the runner must declare itself as infrastructure.
+
+    Returns 0 when registry and workflows agree, 1 otherwise.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--selftest",

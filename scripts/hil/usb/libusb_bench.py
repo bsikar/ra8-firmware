@@ -1,30 +1,37 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-#
-# usb_libusb_bench.py -- measure raw bulk-transfer throughput against a
-# CDC-ACM echo device, BYPASSING the kernel's cdc_acm driver. This is
-# the right tool for asking "what is the device firmware actually
-# capable of, separate from cdc_acm overhead?"
-#
-# How it works:
-#   1. Detach the cdc_acm kernel driver from the bulk interface.
-#   2. Claim the data interface via libusb.
-#   3. Submit asynchronous bulk-OUT transfers back-to-back and a pool of
-#      bulk-IN transfers, both deep enough that the firmware never sees
-#      the host idle.
-#   4. Measure wall time for the whole round-trip.
-#
-# Re-attaches cdc_acm on exit (clean unmount), so the device shows up
-# as /dev/ttyACMx again immediately afterwards.
-#
-# Usage:
-#   sudo python3 usb_libusb_bench.py --vidpid 1209:000c [--bytes 1048576]
+"""Measure raw bulk throughput to a CDC-ACM device, bypassing cdc_acm.
+
+The right tool for asking "what is the device firmware actually capable of,
+separate from kernel driver overhead?". ``stream_bench.py`` measures the same
+link through /dev/ttyACM*, so comparing the two attributes any shortfall to
+cdc_acm rather than to the firmware.
+
+How it works:
+  1. Detach the cdc_acm kernel driver from the bulk interface.
+  2. Claim the data interface via libusb.
+  3. Write and read bulk transfers back-to-back so the firmware never sees
+     the host idle.
+  4. Measure wall time for the whole round-trip.
+
+Re-attaches cdc_acm on exit via a finally block, so the device comes back as
+/dev/ttyACMx even if the benchmark fails partway -- leaving it detached would
+strand the port until replug.
+
+Requires root, since detaching a kernel driver does.
+
+Usage:
+  sudo python3 libusb_bench.py --vidpid 1209:000c [--bytes 1048576]
+"""
+
+from __future__ import annotations
 
 import argparse
 import contextlib
 import sys
 import time
+from typing import NoReturn
 
 import usb.core
 import usb.util
@@ -35,10 +42,20 @@ USB_TRANSFER_TYPE_MASK = 0x03  # mask to extract transfer type from bmAttributes
 USB_EP_DIR_IN_BIT = 0x80  # bEndpointAddress direction bit: 1 = IN
 
 
-def find_bulk_endpoints(dev):
-    """Return (cfg, interface_num, ep_out_addr, ep_in_addr) for the first
-    bulk-pair interface we find on `dev`. CDC ACM puts the bulk pair on
-    the *data* interface (class 0x0a), not on the comm interface."""
+def find_bulk_endpoints(dev: usb.core.Device) -> tuple[int, int, int, int] | None:
+    """Locate the first interface carrying a bulk IN/OUT pair.
+
+    Searches only CDC DATA interfaces (class 0x0A). That restriction is the
+    point: CDC ACM splits the function across a comm interface and a data
+    interface, and the bulk pair lives on the data one -- scanning every
+    interface would match the comm interface's interrupt endpoint first.
+
+    An interface offering only one direction is skipped rather than returned
+    half-filled, since the echo bench needs both.
+
+    Returns ``(cfg_value, interface_num, ep_out_addr, ep_in_addr)``, or None
+    when the device exposes no such interface.
+    """
     cfg = dev.get_active_configuration()
     for intf in cfg:
         if intf.bInterfaceClass != CDC_DATA_INTERFACE_CLASS:
@@ -57,7 +74,7 @@ def find_bulk_endpoints(dev):
     return None
 
 
-def _open_device(vidpid):
+def _open_device(vidpid: str) -> tuple[usb.core.Device, int, int, int]:
     """Find the device and its CDC-data bulk endpoints, or exit(2)."""
     vid_s, pid_s = vidpid.split(":")
     dev = usb.core.find(idVendor=int(vid_s, 16), idProduct=int(pid_s, 16))
@@ -76,7 +93,7 @@ def _open_device(vidpid):
     return dev, intf_num, ep_out, ep_in
 
 
-def _detach_kernel_driver(dev, intf_num):
+def _detach_kernel_driver(dev: usb.core.Device, intf_num: int) -> None:
     """Unbind cdc_acm from the comm+data interface pair so libusb can claim it."""
     for i in (intf_num - 1, intf_num):
         try:
@@ -87,7 +104,9 @@ def _detach_kernel_driver(dev, intf_num):
             print(f"Kernel-driver detach on intf {i} ignored: {e}")
 
 
-def _pump(dev, ep_out, ep_in, payload, urb_size):
+def _pump(
+    dev: usb.core.Device, ep_out: int, ep_in: int, payload: bytes, urb_size: int
+) -> tuple[int, bytearray, float]:
     """Chunked write+read until both directions have moved the whole payload."""
     total_bytes = len(payload)
     sent = 0
@@ -108,7 +127,7 @@ def _pump(dev, ep_out, ep_in, payload, urb_size):
     return sent, recv, time.monotonic() - start
 
 
-def _report(sent, recv, payload, elapsed):
+def _report(sent: int, recv: bytes | bytearray, payload: bytes, elapsed: float) -> bool:
     """Print throughput and integrity; return True when the echo matched."""
     total_bytes = len(payload)
     oneway = total_bytes / elapsed if elapsed > 0 else 0.0
@@ -128,8 +147,25 @@ def _report(sent, recv, payload, elapsed):
     return ok
 
 
-def bench(vidpid, total_bytes, urb_size, parallel_out, parallel_in):  # noqa: ARG001  # parallel_* reserved for future async batching
-    """Single-threaded synchronous bulk echo bench over raw libusb."""
+def bench(
+    vidpid: str,
+    total_bytes: int,
+    urb_size: int,
+    parallel_out: int,  # noqa: ARG001  # accepted, unused: reserved for async batching
+    parallel_in: int,  # noqa: ARG001  # accepted, unused: reserved for async batching
+) -> NoReturn:
+    """Run one synchronous bulk echo benchmark over raw libusb, then exit.
+
+    Never returns -- exits 0 when the echo matched, 1 when it did not.
+
+    The kernel driver is re-attached in a finally block, so an exception or a
+    failed run still leaves the device usable as /dev/ttyACMx; without that a
+    crash here would strand the port until it was physically replugged.
+
+    ``parallel_out`` / ``parallel_in`` are accepted and deliberately unused:
+    the transfer loop is single-buffered today, and the parameters exist so
+    the async variant can land without a CLI change.
+    """
     dev, intf_num, ep_out, ep_in = _open_device(vidpid)
     _detach_kernel_driver(dev, intf_num)
     try:
@@ -146,7 +182,16 @@ def bench(vidpid, total_bytes, urb_size, parallel_out, parallel_in):  # noqa: AR
                 dev.attach_kernel_driver(i)
 
 
-def main():
+def main() -> NoReturn:
+    """Parse the command line and run one libusb bulk echo benchmark.
+
+    Never returns: ``bench`` exits with the verdict (0 clean, 1 integrity
+    failure, 2 device not found or no bulk endpoints).
+
+    ``--parallel-out`` / ``--parallel-in`` are accepted and currently unused;
+    the transfer loop is synchronous. They are kept so the async batching
+    variant can land without changing this tool's command line.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--vidpid", required=True, help="VID:PID, e.g. 1209:000c")
     ap.add_argument("--bytes", type=int, default=1048576)

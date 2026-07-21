@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Structural and formatting checker for this tree's Makefiles.
+r"""Structural and formatting checker for this tree's Makefiles.
 
 WHY NOT checkmake
 =================
@@ -75,6 +75,15 @@ _SPECIAL = re.compile(r"^\.[A-Z]")
 
 
 def repo_files(root: pathlib.Path) -> list[pathlib.Path]:
+    """Every tracked Makefile and .mk fragment, as absolute paths.
+
+    Derived from ``git ls-files`` rather than a directory walk, so an
+    untracked or ignored Makefile in a build tree is never scanned and a
+    newly-tracked one is picked up with no list to update.
+
+    Matches on the exact basename ``Makefile`` or a ``.mk`` suffix -- notably
+    NOT ``Makefile.am`` or similar, which this tree does not use.
+    """
     out = subprocess.run(  # noqa: S603  # fixed argv, no shell
         ["git", "-C", str(root), "ls-files"],  # noqa: S607  # git from PATH is intended
         capture_output=True,
@@ -91,7 +100,7 @@ def repo_files(root: pathlib.Path) -> list[pathlib.Path]:
 
 
 def logical_lines(text: str) -> list[tuple[int, str, bool]]:
-    """Join backslash continuations into (lineno, text, is_recipe) triples.
+    r"""Join backslash continuations into (lineno, text, is_recipe) triples.
 
     Continuation joining is the piece checkmake gets wrong, so the selftest
     pins it hardest. `is_recipe` records whether the FIRST physical line began
@@ -120,6 +129,15 @@ def logical_lines(text: str) -> list[tuple[int, str, bool]]:
 
 
 def phony_names(text: str) -> set[str]:
+    """Every target named by any ``.PHONY`` line, unioned across the file.
+
+    Recipe lines are skipped, so a ``.PHONY`` echoed inside a recipe body is
+    not mistaken for a declaration.
+
+    Unioned rather than last-wins because make itself accumulates ``.PHONY``
+    across every occurrence; treating the last line as authoritative would
+    report already-declared targets as missing.
+    """
     names: set[str] = set()
     for _, line, is_recipe in logical_lines(text):
         if is_recipe:
@@ -165,10 +183,19 @@ def declared_targets(text: str) -> list[tuple[int, str, str]]:
 
 
 class Finding:
-    def __init__(self, path, line, code, msg):
+    """One rule violation, carrying the code the selftest asserts on.
+
+    ``code`` (MK001, MK002, ...) is the stable identity: the selftest asserts
+    on codes rather than on message text, so the wording can be improved
+    without silently disarming the test.
+    """
+
+    def __init__(self, path: pathlib.Path, line: int, code: str, msg: str) -> None:
+        """Record one finding; all four fields are required and none is derived."""
         self.path, self.line, self.code, self.msg = path, line, code, msg
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Render as ``path:line: [CODE] message`` -- editor-jumpable."""
         return f"{self.path}:{self.line}: [{self.code}] {self.msg}"
 
 
@@ -326,6 +353,15 @@ mytool: alpha
 
 
 def selftest() -> int:
+    """Prove the checker still fires on a malformed Makefile and spares a good one.
+
+    Asserted in BOTH directions on purpose: a detector whose patterns stopped
+    matching would report a clean tree forever, and only the must-fire half
+    catches that, while only the must-not-fire half catches a rule that
+    became indiscriminate.
+
+    Returns 0 when both directions hold, 1 otherwise.
+    """
     rc = 0
     with tempfile.TemporaryDirectory() as td:
         bad = pathlib.Path(td) / "Makefile"
@@ -379,6 +415,19 @@ def selftest() -> int:
 
 
 def main() -> int:
+    """Check every tracked Makefile, or run one of the two introspection modes.
+
+    With no positional paths the scan covers every tracked Makefile; naming
+    paths narrows it, which is how the pre-commit hook passes only what is
+    staged.
+
+    ``--list-files`` prints the scope and exits 0 without checking anything.
+    It exists so check_lint_coverage.py can ASK this gate what it covers
+    instead of restating the answer, which is what keeps the two from
+    disagreeing.
+
+    Returns 0 when every scanned file is clean, 1 on any finding.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--selftest", action="store_true")
     # Scope introspection for check_lint_coverage.py: print what this gate

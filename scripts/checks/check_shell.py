@@ -393,6 +393,20 @@ def _report(checks: Findings, fmt: list[str]) -> None:
 
 
 def main(argv: list[str]) -> int:
+    """Run shellcheck and shfmt over every tracked shell script.
+
+    Both tools are REQUIRED, not optional: a missing one fails the gate rather
+    than reducing its scope, because a checker that quietly stops checking is
+    indistinguishable from a clean tree.
+
+    ``--list-files`` reports the covered scope for check_lint_coverage.py and
+    is deliberately independent of whether either tool is installed -- the
+    question is what this gate covers, and a missing binary must not shrink
+    the answer to nothing.
+
+    Returns 0 when clean, non-zero on findings, a formatting difference, or a
+    missing tool.
+    """
     if "--selftest" in argv[1:]:
         with tempfile.TemporaryDirectory() as td:
             return selftest(Path(td))

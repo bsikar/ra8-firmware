@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_no_dynamic_alloc.py -- enforce NASA Power-of-10 Rule 3
-("no dynamic memory after initialization") on RA8D2 firmware code.
+"""Enforce NASA Power-of-10 Rule 3 -- no dynamic memory after init.
+
+Applies to RA8D2 firmware code.
 
 Flags two classes of violation:
 
@@ -41,7 +41,7 @@ Inline suppression:
   Append `alloc-allow: <reason>` on the same line. The reason is
   mandatory; bare `alloc-allow` with no reason is itself rejected.
 
-  Example:
+Example:
       void* p = malloc(64); /* alloc-allow: bringup scratch, removed in v0.2 */
 
 Usage:
@@ -124,6 +124,11 @@ MIN_ARGC_WITH_ARG = 2
 
 
 def _scan_dirs() -> list[pathlib.Path]:
+    """The firmware directories this rule governs.
+
+    Deliberately narrower than the whole tree: host tools and tests may
+    allocate freely, and Rule 3 is a statement about what runs on the target.
+    """
     out: list[pathlib.Path] = []
     libs = REPO_ROOT / "libs"
     if libs.is_dir():
@@ -174,6 +179,11 @@ def _strip_comments(text: str) -> str:
 
 
 def check(path: pathlib.Path) -> list[str]:
+    """Report every dynamic-allocation call in one firmware file.
+
+    An unreadable file yields an empty list rather than raising, so one bad
+    file cannot abort the sweep.
+    """
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
@@ -207,10 +217,19 @@ def check(path: pathlib.Path) -> list[str]:
 
 
 def collect_repo_paths() -> list[pathlib.Path]:
+    """Every in-scope firmware source file, for the whole-tree sweep."""
     return [p for d in SCAN_DIRS for p in d.rglob("*") if _is_in_scope(p)]
 
 
 def main() -> int:
+    """Fail when firmware calls malloc, free or a relative.
+
+    The rule targets the target image only -- host tools and tests are out of
+    scope -- because the hazard is heap exhaustion and fragmentation on a
+    device with no allocation-failure path, not allocation as such.
+
+    Returns 1 listing each call site, 0 when the firmware is clean.
+    """
     if len(sys.argv) >= MIN_ARGC_WITH_ARG and sys.argv[1] == "--all":
         paths = collect_repo_paths()
     elif len(sys.argv) >= MIN_ARGC_WITH_ARG:

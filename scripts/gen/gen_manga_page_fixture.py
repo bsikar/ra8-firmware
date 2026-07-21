@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
-# gen_manga_page_fixture.py -- bake the ereader_manga demo page fixture.
-#
-# Emits examples/ek_ra8d2/hw_pending/ereader_manga/mg_page_fixture.h: one large
-# 8-bit grayscale PNG (bigger than the 1024x600 panel) whose content is a
-# deterministic tile grid -- each 256x256 tile is a distinct solid gray with a
-# black inner frame and a big blocky "CcRr" label -- so that panning the
-# viewport across the page visibly changes which labels are on screen. The page
-# is the source ra8_jof_produce() transcodes into a JOF atlas at boot;
-# it decodes to the same pixels on host, board_sim and silicon, so the render
-# hash in the app banner is identical everywhere.
-#
-# Solid tile blocks + sparse labels compress to a few KiB of PNG, which keeps
-# the baked .rodata blob small enough to sit in the 1 MB code MRAM alongside the
-# firmware.
-#
-# Regenerate:
-#   python3 scripts/gen/gen_manga_page_fixture.py
-#
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+"""Bake the ereader_manga demo page fixture.
+
+Emits examples/ek_ra8d2/hw_pending/ereader_manga/mg_page_fixture.h: one large
+8-bit grayscale PNG (bigger than the 1024x600 panel) whose content is a
+deterministic tile grid -- each 256x256 tile is a distinct solid gray with a
+black inner frame and a big blocky "CcRr" label -- so that panning the
+viewport across the page visibly changes which labels are on screen. The page
+is the source ra8_jof_produce() transcodes into a JOF atlas at boot;
+it decodes to the same pixels on host, board_sim and silicon, so the render
+hash in the app banner is identical everywhere.
+
+Solid tile blocks + sparse labels compress to a few KiB of PNG, which keeps
+the baked .rodata blob small enough to sit in the 1 MB code MRAM alongside the
+firmware.
+
+Regenerate:
+  python3 scripts/gen/gen_manga_page_fixture.py
+"""
+
+from __future__ import annotations
 
 import struct
 import zlib
@@ -54,7 +56,7 @@ GLYPH_W = 5
 GLYPH_H = 7
 
 
-def tile_gray(col, row):
+def tile_gray(col: int, row: int) -> int:
     """Distinct, well-separated gray for tile (col, row)."""
     idx = (col * 3 + row * 5) % 12
     return 60 + idx * 16  # 60..236
@@ -63,10 +65,15 @@ def tile_gray(col, row):
 class Page:
     """A flat 8-bit grayscale page the drawing helpers paint into."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Allocate the full page, zero-filled -- i.e. black until tiles are drawn.
+
+        Every pixel is overwritten by ``build``, so the initial value is not
+        load-bearing; it matters only if a caller draws tiles selectively.
+        """
         self.px = bytearray(PAGE_W * PAGE_H)
 
-    def draw_glyph(self, x0, y0, ch, scale, val):
+    def draw_glyph(self, x0: int, y0: int, ch: str, scale: int, val: int) -> None:
         """Blit one scaled blocky glyph at (x0, y0) into the page."""
         rows = FONT.get(ch)
         if rows is None:
@@ -82,7 +89,7 @@ class Page:
                         if 0 <= x < PAGE_W and 0 <= y < PAGE_H:
                             self.px[y * PAGE_W + x] = val
 
-    def draw_label(self, tx, ty, col, row):
+    def draw_label(self, tx: int, ty: int, col: int, row: int) -> None:
         """Draw 'C<col>R<row>' centred in tile (tx,ty), black on the tile fill."""
         label = f"C{col}R{row}"
         text_w = len(label) * (GLYPH_W + 1) * LABEL_SCALE
@@ -92,7 +99,7 @@ class Page:
             gx0 = x0 + i * (GLYPH_W + 1) * LABEL_SCALE
             self.draw_glyph(gx0, y0, ch, LABEL_SCALE, 0)
 
-    def draw_tile(self, col, row):
+    def draw_tile(self, col: int, row: int) -> None:
         """Fill one tile with its solid gray, a black frame, and its label."""
         tx = col * TILE
         ty = row * TILE
@@ -110,7 +117,7 @@ class Page:
                 self.px[y * PAGE_W + tx + TILE - 1 - t] = 0
         self.draw_label(tx, ty, col, row)
 
-    def build(self):
+    def build(self) -> bytearray:
         """Paint every tile and return the raw grayscale pixel buffer."""
         for row in range(ROWS):
             for col in range(COLS):
@@ -118,14 +125,14 @@ class Page:
         return self.px
 
 
-def png_chunk(tag, data):
+def png_chunk(tag: bytes, data: bytes) -> bytes:
     """Wrap one PNG chunk (length + tag + data + CRC-32)."""
     out = struct.pack(">I", len(data)) + tag + data
     crc = zlib.crc32(tag + data) & 0xFFFFFFFF
     return out + struct.pack(">I", crc)
 
 
-def encode_png(px):
+def encode_png(px: bytes | bytearray) -> bytes:
     """8-bit grayscale PNG (color type 0), filter type 0 (None) on every row."""
     raw = bytearray()
     for y in range(PAGE_H):
@@ -141,7 +148,7 @@ def encode_png(px):
     )
 
 
-def emit_header(png):
+def emit_header(png: bytes) -> tuple[Path, int]:
     """Write the generated pure-ASCII C header holding the baked PNG bytes."""
     root = Path(__file__).resolve().parents[2]
     dst = root / "examples" / "ek_ra8d2" / "hw_pending" / "ereader_manga" / "mg_page_fixture.h"
@@ -183,7 +190,18 @@ def emit_header(png):
     return dst, len(png)
 
 
-def main():
+def main() -> None:
+    """Paint the page, encode it as PNG, and overwrite the baked C header.
+
+    Takes no arguments and writes to a path derived from this file's location,
+    so it always targets the ereader_manga app in the same checkout -- running
+    it from anywhere regenerates the same fixture rather than one relative to
+    the working directory.
+
+    The write is unconditional; the fixture being deterministic is what makes
+    that safe, since regenerating an unchanged page leaves the file
+    byte-identical and git sees no diff.
+    """
     px = Page().build()
     png = encode_png(px)
     dst, n = emit_header(png)

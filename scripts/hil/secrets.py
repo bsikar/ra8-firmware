@@ -1,28 +1,33 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-#
-# hil_secrets.py -- Resolve the HIL Tapo secrets, preferring the self-hosted
-# OpenBao vault (talked to over HTTP by openbao_client.py -- the existing k3s
-# pod at BAO_ADDR, nothing spun up locally) and falling back to the local .env
-# so the smart plugs stay controllable even when OpenBao or the k3s cluster is
-# down.
-#
-# Resolution order (first that yields ALL required keys wins):
-#   1. OpenBao -- AppRole login, then read a KV v2 secret. Attempted only when
-#                 the consumer credentials file exists and the server answers
-#                 within a short timeout.
-#   2. .env    -- python-dotenv into the process environment (the unchanged
-#                 legacy behaviour); also the fallback for ANY OpenBao failure.
-#
-# The OpenBao consumer credentials live OUTSIDE the repo in a 0600 file at
-# ~/.config/hil/openbao.env (override the path with HIL_OPENBAO_ENV). It holds
-# how to reach the vault and the AppRole identity -- never the Tapo secrets
-# themselves. See openbao_client.py for the shared keys; hil-specific:
-#   BAO_SECRET_PATH   secret path under the mount (default "ra8d2/tapo")
-#
-# populate_env() never raises on an OpenBao error: it always returns a source
-# string ("openbao", "dotenv", or "none") and leaves the .env-derived
-# environment intact for fallback.
+"""Resolve the HIL Tapo secrets from OpenBao, falling back to a local .env.
+
+Prefers the self-hosted OpenBao vault (talked to over HTTP by
+openbao_client.py -- the existing k3s pod at BAO_ADDR, nothing spun up
+locally) and falls back to the local .env so the smart plugs stay
+controllable even when OpenBao or the k3s cluster is down.
+
+Resolution order (first that yields ALL required keys wins):
+  1. OpenBao -- AppRole login, then read a KV v2 secret. Attempted only when
+                the consumer credentials file exists and the server answers
+                within a short timeout.
+  2. .env    -- python-dotenv into the process environment (the unchanged
+                legacy behaviour); also the fallback for ANY OpenBao failure.
+
+Note "ALL required keys": a partial OpenBao read is treated as a miss and
+falls through, rather than leaving some keys vault-sourced and others stale
+from the environment.
+
+The OpenBao consumer credentials live OUTSIDE the repo in a 0600 file at
+~/.config/hil/openbao.env (override the path with HIL_OPENBAO_ENV). It holds
+how to reach the vault and the AppRole identity -- never the Tapo secrets
+themselves. See openbao_client.py for the shared keys; hil-specific:
+  BAO_SECRET_PATH   secret path under the mount (default "ra8d2/tapo")
+
+populate_env() never raises on an OpenBao error: it always returns a source
+string ("openbao", "dotenv", or "none") and leaves the .env-derived
+environment intact for fallback.
+"""
 
 from __future__ import annotations
 

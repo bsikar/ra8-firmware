@@ -17,6 +17,8 @@ the command-line parameters alone, which is why this can run on any machine
 without checking binaries into the tree.
 """
 
+from __future__ import annotations
+
 import sys
 
 try:
@@ -35,7 +37,7 @@ EXIT_USAGE = 2
 JPEG_QUALITY = 90
 
 
-def make_page(idx, count, w, h):
+def make_page(idx: int, count: int, w: int, h: int) -> Image.Image:
     """Render one synthetic page whose pixels encode its own index.
 
     Three overlaid features, each with a job:
@@ -80,7 +82,7 @@ def make_page(idx, count, w, h):
     return img
 
 
-def main():
+def main() -> None:
     """Write COUNT synthetic pages into OUTDIR, from `OUTDIR COUNT W H` in argv.
 
     Pages are saved as baseline JPEG named `page_0001.jpg` upward, 1-based and

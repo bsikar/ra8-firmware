@@ -1,28 +1,28 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-#
-# openbao_client.py -- shared HTTP client for the EXISTING OpenBao server.
-#
-# This does NOT run, embed, or spin up a vault. It is a thin urllib client
-# (no `bao` CLI needed) that talks to the OpenBao server you already run --
-# the k3s pod reached at BAO_ADDR (e.g. http://100.64.0.1:32200). It performs
-# AppRole login plus KV v2 read / write / metadata, so the same operator
-# identity backs both the HIL Tapo secrets (hil_secrets.py) and the
-# root-of-trust key store (rot_keystore.py). No server = fall back to the
-# local path (see rot_keystore.py's `local` backend / the .env pattern).
-#
-# Consumer config comes from an operator-controlled 0600 creds file (default
-# ~/.config/hil/openbao.env, override with HIL_OPENBAO_ENV) or the matching
-# environment variables (e.g. CI injecting GitHub Actions secrets):
-#
-#   BAO_ADDR          base URL, e.g. http://100.64.0.1:32200
-#   ROLE_ID           AppRole role id
-#   SECRET_ID         AppRole secret id
-#   BAO_APPROLE_PATH  auth mount        (default "approle")
-#   BAO_KV_MOUNT      KV v2 mount        (default "secret")
-#
-# The file never holds the secrets themselves -- only how to reach the vault
-# and the AppRole identity.
+"""Shared HTTP client for the EXISTING OpenBao server.
+
+This does NOT run, embed, or spin up a vault. It is a thin urllib client
+(no `bao` CLI needed) that talks to the OpenBao server you already run --
+the k3s pod reached at BAO_ADDR (e.g. http://100.64.0.1:32200). It performs
+AppRole login plus KV v2 read / write / metadata, so the same operator
+identity backs both the HIL Tapo secrets (hil_secrets.py) and the
+root-of-trust key store (rot_keystore.py). No server = fall back to the
+local path (see rot_keystore.py's `local` backend / the .env pattern).
+
+Consumer config comes from an operator-controlled 0600 creds file (default
+~/.config/hil/openbao.env, override with HIL_OPENBAO_ENV) or the matching
+environment variables (e.g. CI injecting GitHub Actions secrets):
+
+  BAO_ADDR          base URL, e.g. http://100.64.0.1:32200
+  ROLE_ID           AppRole role id
+  SECRET_ID         AppRole secret id
+  BAO_APPROLE_PATH  auth mount        (default "approle")
+  BAO_KV_MOUNT      KV v2 mount        (default "secret")
+
+The file never holds the secrets themselves -- only how to reach the vault
+and the AppRole identity.
+"""
 
 from __future__ import annotations
 
@@ -99,6 +99,13 @@ class OpenBaoClient:
     """AppRole-authenticated KV v2 client for a single OpenBao server."""
 
     def __init__(self, cfg: dict[str, str] | None = None) -> None:
+        """Read connection settings from ``cfg``, or from the environment when None.
+
+        Performs NO I/O and never raises on a missing setting -- every field
+        defaults to empty. Reachability is a separate question answered by
+        ``configured`` and ``login``, which is what lets a caller construct a
+        client and then decide to fall back to a local store instead.
+        """
         cfg = cfg if cfg is not None else load_config()
         self.addr = cfg.get("BAO_ADDR", "").rstrip("/")
         self.role_id = cfg.get("ROLE_ID", "")

@@ -79,6 +79,19 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
+    """Fail any example that spells a board pin as an inline ``(port << 8) | pin``.
+
+    The match is textual, on the encoding SHAPE rather than on known pin
+    values, because the defect #251 found was the same four USB-FS pins
+    copy-pasted across 29 apps under a dozen different local names -- a value
+    allowlist would have had to know all twelve names, while the shift-or
+    pattern catches the next one regardless of what it is called.
+
+    Undecodable bytes are replaced rather than raising, so one bad file cannot
+    abort the sweep; encoding is check-encoding's gate, not this one's.
+
+    Returns 1 listing each site, 0 when clean or when argv filtered to nothing.
+    """
     targets = _enumerate_targets(argv[1:])
     if not targets:
         print("check_example_board_pins.py: no files to scan", file=sys.stderr)

@@ -45,6 +45,8 @@ Run::
 Exit status: 0 if every stub TU is guarded fail-closed, 1 otherwise.
 """
 
+from __future__ import annotations
+
 import re
 import sys
 from pathlib import Path
@@ -81,7 +83,7 @@ def is_guard_open(line: str) -> bool:
     )
 
 
-def find_guard_region(lines: list[str]):
+def find_guard_region(lines: list[str]) -> tuple[int, int, int] | None:
     """Locate the guard's (#if, #else, #endif) 0-based line indices.
 
     Returns ``(if_idx, else_idx, endif_idx)`` or ``None`` when the guard opener
@@ -157,6 +159,16 @@ def check_file(rel: str, token: str) -> list[str]:
 
 
 def main() -> int:
+    """Verify every placeholder-crypto TU is guarded fail-closed.
+
+    These TUs hold deliberately insecure stand-ins for real crypto. The guard
+    must make the ``#else`` half -- the branch taken when the real
+    implementation is absent -- refuse to build or fail closed, so a
+    misconfiguration cannot silently ship the placeholder as if it were the
+    algorithm.
+
+    Returns 1 listing each unguarded TU, 0 when all are fail-closed.
+    """
     all_problems: list[str] = []
     for rel, token in STUB_TUS.items():
         all_problems.extend(check_file(rel, token))

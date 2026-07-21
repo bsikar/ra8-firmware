@@ -314,6 +314,20 @@ def _scan_file(path: Path) -> list[tuple[int, str, str]]:
 
 
 def main() -> int:
+    """Scan every in-scope file for AI-attribution tokens and report each hit.
+
+    Exemption works at two levels, and they are not interchangeable. A handful
+    of files -- the policy document, this checker -- must spell the banned
+    tokens on nearly every line, so they are exempted WHOLE, by resolved path,
+    to avoid littering them with per-line tags. Everywhere else the only
+    escape is a per-line ``AI-OK: <reason>`` on the quoting line itself.
+
+    Paths are compared after ``resolve()`` so a symlinked or relative spelling
+    of an exempt file still matches; comparing the raw path would let the same
+    file be scanned or skipped depending on how it was reached.
+
+    Returns 1 with each hit printed as ``path:line``, 0 when the tree is clean.
+    """
     # Self-exempt files legitimately spell the banned tokens; they are
     # matched explicitly so every internal line need not carry AI-OK.
     self_exempt_resolved = {q.resolve() for q in SELF_EXEMPT_FILES}

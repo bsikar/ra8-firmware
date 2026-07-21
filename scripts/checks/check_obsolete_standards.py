@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_obsolete_standards.py -- Reject references to obsolete safety standards.
+"""check_obsolete_standards.py -- Reject references to obsolete safety standards.
 
 Per the project's IEC 61508 SIL 3 / DO-178C target (CLAUDE.md):
 
@@ -54,6 +53,16 @@ def staged_files() -> list[str]:
 
 
 def scannable(path: Path) -> bool:
+    """Decide whether a staged path is subject to the obsolete-standard scan.
+
+    Three subtractions, in order of cost: a path that no longer exists (staged
+    as a deletion, so there is nothing to read), an explicitly whitelisted
+    file, and anything under a ``third_party`` directory -- vendored code may
+    cite whatever standard it was written against and is not ours to correct.
+
+    Suffix is matched case-insensitively, so a ``.MD`` or ``.YAML`` cannot
+    duck the scan on spelling alone.
+    """
     if not path.is_file():
         return False
     if str(path) in WHITELIST:
@@ -79,6 +88,18 @@ def scannable(path: Path) -> bool:
 
 
 def main() -> int:
+    """Fail any STAGED file citing a superseded safety standard (e.g. DO-178B).
+
+    Scope is the git index, not the working tree or the whole repository: this
+    runs as a pre-commit hook, so it polices what is about to be committed and
+    deliberately says nothing about pre-existing citations elsewhere.
+
+    Only the first matching pattern per line is recorded, so a line naming two
+    obsolete standards is reported once -- the fix is to rewrite the line, and
+    a second finding on it would just be noise.
+
+    Returns 1 with each offending line quoted, 0 when the staged set is clean.
+    """
     findings: list[tuple[str, int, str]] = []
     for name in staged_files():
         path = Path(name)

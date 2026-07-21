@@ -207,6 +207,18 @@ def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, by
 
 
 def main(argv: list[str]) -> int:  # noqa: PLR0911  # CLI gate; each return maps to a distinct exit code
+    """Echo-test one CDC tty and map the outcome onto a three-way exit code.
+
+    The exit codes are the interface the HIL suite consumes, and they separate
+    the two failures that get confused: 3 means the test could not RUN (no
+    tty given, auto-detect failed, path absent, non-ASCII payload, I/O error)
+    while 1 and 2 mean it ran and the device failed it -- 1 for silence within
+    the timeout, 2 for data that came back different. A rig problem therefore
+    never reads as a firmware problem.
+
+    Returns 0 on an exact round-trip, 1 on timeout, 2 on mismatch, 3 on any
+    setup failure.
+    """
     parser = argparse.ArgumentParser(
         description="Round-trip echo test for the EK-RA8D2 USB CDC demos.",
     )

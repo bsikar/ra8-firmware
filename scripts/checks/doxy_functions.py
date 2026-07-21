@@ -164,6 +164,20 @@ def parse_args(args_text: str) -> list[str]:
 
 
 def is_returning_void(ret: str) -> bool:
+    """Whether a return-type string denotes plain ``void``.
+
+    Answers the question behind the "documents a return value it cannot have"
+    check, so it has to be tolerant of how the type was written: whitespace is
+    collapsed and ``static`` / ``inline`` / ``extern`` / ``__attribute__((...))``
+    are stripped before comparing.
+
+    A pointer return is never void, which is checked BEFORE the name match --
+    otherwise ``void *`` would read as void and every allocator in the tree
+    would be reported for documenting its return.
+
+    The trailing-word test also accepts a qualified spelling such as
+    ``const void``.
+    """
     r = ret.strip()
     # collapse whitespace
     r = re.sub(r"\s+", " ", r)
@@ -325,7 +339,7 @@ def _severity(missing: list[str]) -> str:
     return "low"
 
 
-def audit_file(path: Path):
+def audit_file(path: Path) -> list[tuple[str, int, str, str, str]]:
     """Return one row per function in ``path``: (file, line, name, missing, severity)."""
     try:
         raw = path.read_text(encoding="utf-8", errors="replace")

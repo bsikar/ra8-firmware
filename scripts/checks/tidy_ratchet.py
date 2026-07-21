@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-tidy_ratchet.py -- clang-tidy ratchet gate (compare vs committed baseline).
+"""tidy_ratchet.py -- clang-tidy ratchet gate (compare vs committed baseline).
 
 WHY THIS EXISTS
 ---------------
@@ -261,6 +260,18 @@ def selftest() -> int:
 
 
 def main() -> int:
+    """Ratchet clang-tidy findings against the committed baseline.
+
+    A ratchet, not a floor: ``--check`` fails when the count RISES, and
+    ``--update`` lowers the baseline once findings are fixed. The baseline can
+    therefore only move downward, which is what stops a large legacy count
+    from being permanently accepted.
+
+    ``--selftest`` asserts the comparison still fires, so a ratchet that
+    stopped detecting growth cannot pass as clean.
+
+    Returns 0 when the count is at or below the baseline, 1 when it grew.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("log", nargs="?", help="clang-tidy output to compare")
     parser.add_argument("--check", action="store_true", help="gate against the baseline")

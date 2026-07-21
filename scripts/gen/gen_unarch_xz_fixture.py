@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-gen_unarch_xz_fixture.py -- regenerate tests/unarch_xz_fixture.h.
+"""gen_unarch_xz_fixture.py -- regenerate tests/unarch_xz_fixture.h.
 
 The XZ decoder tests (tests/test_ra8_unarch_xz.c) need real .xz streams
 with controlled properties: integrity-check type (CRC32 / CRC64 / SHA-256),
@@ -92,6 +91,13 @@ def cbt_tar() -> bytes:
 
 
 def main() -> int:
+    """Emit the xz decoder fixtures covering each supported integrity check.
+
+    Generates one stream per check type (CRC32, CRC64, SHA256) and per
+    dictionary size, because the decoder's bounds handling differs by both --
+    a fixture set covering only the default would leave the fail-closed paths
+    unexercised.
+    """
     small = b"hello xz stream, bounded and fail-closed\n" * 8
     dict_64k = 1 << 16
     dict_8m = 1 << 23

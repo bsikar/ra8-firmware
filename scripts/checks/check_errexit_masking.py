@@ -114,7 +114,7 @@ _KEYWORD_RE = re.compile(r"^(if|elif|while|until|for|case|then|do|else|fi|done|e
 
 
 def _tokens(body: str) -> list[str]:
-    """Split a function body into statements at separator positions.
+    r"""Split a function body into statements at separator positions.
 
     Newlines and `;` only separate at paren depth zero: a multi-line array
     literal (`local -a args=(\n  --hex ...\n)`) is ONE assignment, not one

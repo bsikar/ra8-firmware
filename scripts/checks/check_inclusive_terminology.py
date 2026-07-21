@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-check_inclusive_terminology.py -- inclusive-terminology gate for ra8-firmware.
+"""check_inclusive_terminology.py -- inclusive-terminology gate for ra8-firmware.
 
 Bans the legacy master/slave/MOSI/MISO/SS vocabulary from FIRST-PARTY source
 under libs/, src/, examples/, tests/, port/, scripts/, docs/, and the top-
@@ -145,8 +144,13 @@ LEGACY_OK_RE: re.Pattern[str] = re.compile(r"LEGACY-OK\s*:")
 
 
 def identifier_violation(line: str) -> str | None:
-    """Return the offending identifier if the line names a first-party
-    symbol embedding a legacy `master`/`slave` component, else None.
+    """The offending identifier when a line names a symbol with legacy terminology.
+
+    Checks IDENTIFIERS, not prose: a comment discussing the legacy term --
+    often required when mapping a vendor document onto our names -- is fine,
+    while a symbol carrying it is not, because the symbol propagates.
+
+    Returns None when the line is clean.
 
     Vendor-namespace identifiers and hardware register-bit names are
     skipped: they are upstream contracts spelled verbatim, not symbols
@@ -195,6 +199,7 @@ SELF_EXEMPT_FILES: frozenset[str] = frozenset(
 
 
 def should_scan(path: Path) -> bool:
+    """Whether a file is in scope, by directory, basename and suffix."""
     parts = set(path.parts)
     if parts & SKIP_DIR_NAMES:
         return False
@@ -204,6 +209,11 @@ def should_scan(path: Path) -> bool:
 
 
 def _is_skip_dir(name: str) -> bool:
+    """Whether a directory is build output and therefore skipped.
+
+    Matches the ``build-*`` family by prefix so CMake variant directories are
+    excluded without being enumerated.
+    """
     if name in SKIP_DIR_NAMES:
         return True
     # Glob-style: any CMake/build artefact dir like build-fuzz, build-bench.
@@ -211,6 +221,7 @@ def _is_skip_dir(name: str) -> bool:
 
 
 def iter_source_files(root: Path) -> list[Path]:
+    """Every in-scope file beneath the configured scan roots."""
     out: list[Path] = []
     for scan_root in SCAN_ROOTS:
         base = root / scan_root
@@ -230,6 +241,11 @@ def iter_source_files(root: Path) -> list[Path]:
 
 
 def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str, str]]:
+    """Report every legacy-terminology identifier in one file.
+
+    Self-exempt files -- this checker, the terminology policy -- are skipped
+    whole, since they must name the banned terms to define them.
+    """
     rel = path.relative_to(root)
     rel_str = str(rel)
     if rel_str in SELF_EXEMPT_FILES:
@@ -258,6 +274,15 @@ def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str, str]]:
 
 
 def main() -> int:
+    """Enforce OSHWA-inclusive terminology on first-party identifiers.
+
+    Scoped to identifiers rather than all text on purpose: vendor manuals and
+    external APIs still use the legacy terms, and comments mapping our names
+    onto theirs are required elsewhere in this tree. The rule governs what
+    this codebase NAMES, not what it may mention.
+
+    Returns 1 listing each offending symbol, 0 when the tree is clean.
+    """
     root = Path(__file__).resolve().parents[2]
     files = iter_source_files(root)
     findings: list[tuple[Path, int, str, str]] = []

@@ -11,6 +11,8 @@ CBZ, and the EPUB3 properties="cover-image" cover resolves.
 SPDX-License-Identifier: MIT
 """
 
+from __future__ import annotations
+
 import io
 import posixpath
 import sys
@@ -18,6 +20,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 from epub_pipeline import compile_epub
+from rabook_blob import BlobBuilder
 from rabook_format import IMG_GRAY4, NIL, NODE_ELEMENT, wrap_container
 
 # --- fixed-layout selftest (issue #196) ---------------------------------------
@@ -31,25 +34,25 @@ from rabook_format import IMG_GRAY4, NIL, NODE_ELEMENT, wrap_container
 FIXED_LAYOUT_FIXTURE = ("tests", "fixtures", "rabook_fixed_layout")
 
 
-def _fl_fail(message):
+def _fl_fail(message: str) -> None:
     """Print a failure to stderr and raise SystemExit(1) (no traceback)."""
     sys.stderr.write(f"epub_compile.py: {message}\n")
     raise SystemExit(1)
 
 
-def _fl_require(cond, what):
+def _fl_require(cond: bool, what: str) -> None:
     """Exit non-zero unless `cond` holds (a checkable assert for the selftest)."""
     if not cond:
         _fl_fail(f"selftest FAILED: {what}")
 
 
-def _fl_str(bb, off):
+def _fl_str(bb: BlobBuilder, off: int) -> str:
     """Resolve a string-pool offset in builder `bb` back to text."""
     raw = bb.sp.buf
     return bytes(raw[off : raw.index(b"\x00", off)]).decode("utf-8")
 
 
-def _fl_find_image(bb, root_idx):
+def _fl_find_image(bb: BlobBuilder, root_idx: int) -> tuple[str, dict[str, str]] | None:
     """DFS a chapter DOM for the first <img>/<image>; return (tag, attrs) or None.
 
     Handles both the bare <img src> page and the <svg><image xlink:href> wrapper
@@ -75,7 +78,7 @@ def _fl_find_image(bb, root_idx):
     return None
 
 
-def _fl_zip_dir(directory):
+def _fl_zip_dir(directory: Path) -> io.BytesIO:
     """Zip a directory tree in memory (sorted for determinism); return BytesIO."""
     buf = io.BytesIO()
     with ZipFile(buf, "w") as zf:
@@ -86,7 +89,7 @@ def _fl_zip_dir(directory):
     return buf
 
 
-def _fl_build_equivalent_cbz(page_images):
+def _fl_build_equivalent_cbz(page_images: dict[str, bytes]) -> io.BytesIO:
     """Zip `{basename: png_bytes}` into a CBZ (flat image entries); return BytesIO."""
     buf = io.BytesIO()
     with ZipFile(buf, "w") as zf:
@@ -96,7 +99,7 @@ def _fl_build_equivalent_cbz(page_images):
     return buf
 
 
-def _check_page_tables(bb, meta):
+def _check_page_tables(bb: BlobBuilder, meta: dict[str, str]) -> None:
     """The one-image-per-page SHAPE: spine order, manifest ids, cover."""
     want_pages = ["text/page1.xhtml", "text/page2.xhtml", "text/page3.xhtml"]
     _fl_require(meta["title"] == "Fixed Layout Spike (#196)", "title interned")
@@ -115,7 +118,7 @@ def _check_page_tables(bb, meta):
     )
 
 
-def _check_page_elements(bb):
+def _check_page_elements(bb: BlobBuilder) -> None:
     """Each page's image element, and the img-src vs manifest-id gap.
 
     The gap is asserted in both directions on purpose: the verbatim `src` must
@@ -143,7 +146,7 @@ def _check_page_elements(bb):
         _fl_require(normalised in image_ids, f"normalised src recovers the manifest id [{i}]")
 
 
-def selftest():
+def selftest() -> int:
     """Compile the committed fixed-layout fixture and check the #196 contract.
 
     Zips tests/fixtures/rabook_fixed_layout/ in memory, compiles it, then:

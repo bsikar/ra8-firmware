@@ -9,12 +9,18 @@ bug in the tool, not in the book.
 SPDX-License-Identifier: MIT
 """
 
+from __future__ import annotations
+
 import posixpath
+from typing import TYPE_CHECKING
 from xml.etree import ElementTree as ET
+
+if TYPE_CHECKING:
+    from zipfile import ZipFile
 
 
 # --- EPUB unpacking -----------------------------------------------------------
-def opf_localname(tag):
+def opf_localname(tag: str | None) -> str | None:
     """Strip the `{namespace}` prefix ElementTree prepends to a tag name.
 
     OPF, NCX and XHTML documents all declare namespaces, and publishers use
@@ -31,7 +37,9 @@ def opf_localname(tag):
     return tag.split("}", 1)[1] if tag and tag[0] == "{" else tag
 
 
-def parse_opf(zf):
+def parse_opf(
+    zf: ZipFile,
+) -> tuple[str, dict[str, str], dict[str, tuple[str, str, str]], list[str], str | None]:
     """Read container.xml and the OPF package it points at.
 
     Walks the OPF once with `iter()` rather than following its schema, so
@@ -106,11 +114,13 @@ def parse_opf(zf):
     return opf_dir, meta, manifest, spine, cover_id
 
 
-def parse_toc(zf, opf_dir, manifest):
+def parse_toc(
+    zf: ZipFile, opf_dir: str, manifest: dict[str, tuple[str, str, str]]
+) -> dict[str, str]:
     """Map a normalized doc path -> TOC label, from the EPUB3 nav or EPUB2 NCX."""
     labels = {}
 
-    def resolve(href):
+    def resolve(href: str) -> str:
         return posixpath.normpath(posixpath.join(opf_dir, href.split("#", 1)[0]))
 
     nav_href = next((h for (h, _m, p) in manifest.values() if "nav" in p), None)

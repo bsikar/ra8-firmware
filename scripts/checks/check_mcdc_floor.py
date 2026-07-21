@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-check_mcdc_floor.py -- per-file MC/DC FLOOR gate (no allowlist).
+"""check_mcdc_floor.py -- per-file MC/DC FLOOR gate (no allowlist).
 
 Per CLAUDE.md "IEC 61508 SIL 3 / DO-178C Level B" every compound boolean
 decision in first-party code must be covered to full Modified
@@ -69,13 +68,15 @@ per the CLAUDE.md coding-standards scope, so exempt from the floor too."""
 
 
 def normalize(path: str) -> str:
-    """Return a repo-root-relative POSIX path for the JSON `file` field,
-    which may be absolute or already relative.
+    """Normalise a coverage-JSON ``file`` field to a repo-relative POSIX path.
+
+    The field may arrive absolute or already relative, so both are handled.
 
     The absolute-path split marker is derived from the checkout directory
     basename (`REPO_ROOT.name`, itself resolved from this file's location)
     rather than a hardcoded project name, so the gate strips the prefix
-    correctly from any clone regardless of what the repo directory is named."""
+    correctly from any clone regardless of what the repo directory is named.
+    """
     p = path.replace("\\", "/")
     marker = "/" + REPO_ROOT.name + "/"
     if marker in p:
@@ -95,7 +96,8 @@ def file_reachable(entry: dict) -> tuple[int, int]:
 
     Deactivated decisions (DO-178C 6.4.4.3) are removed from the denominator;
     covered decisions are never deactivated, so the numerator is just the
-    count of decisions at 100% MC/DC."""
+    count of decisions at 100% MC/DC.
+    """
     total = int(entry.get("total_decisions", 0))
     covered = int(entry.get("covered_decisions", 0))
     deactivated = int(entry.get("deactivated_decisions", 0))
@@ -104,8 +106,14 @@ def file_reachable(entry: dict) -> tuple[int, int]:
 
 
 def main() -> int:
-    """Load the per-file MC/DC JSON and fail if any in-scope file is below
-    the reachable floor."""
+    """Fail when any in-scope file sits below the reachable MC/DC floor.
+
+    The floor is REACHABLE coverage, not absolute: decisions classified as
+    deactivated are excluded, so the number this gates is what tests could
+    actually cover rather than a figure no test can ever reach.
+
+    A missing JSON report exits 1 rather than passing vacuously.
+    """
     if not MCDC_JSON.is_file():
         print(
             f"check_mcdc_floor.py: ERROR -- {MCDC_JSON} not found; "

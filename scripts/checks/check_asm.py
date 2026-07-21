@@ -76,6 +76,7 @@ import argparse
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 REPO_ROOT = Path(
@@ -122,6 +123,11 @@ def strip_comments(text: str) -> str:
     """
 
     def blank(match: re.Match[str]) -> str:
+        """Replace a comment's characters with spaces, keeping its newlines.
+
+        Preserving length and line breaks is what lets every later rule report
+        accurate line and column numbers against the blanked view.
+        """
         return re.sub(r"[^\n]", " ", match.group(0))
 
     text = re.sub(r"/\*.*?\*/", blank, text, flags=re.DOTALL)
@@ -132,13 +138,15 @@ class Finding:
     """One rule violation, reported as path:line: [CODE] message."""
 
     def __init__(self, rel: str, line: int, code: str, msg: str) -> None:
+        """Record one finding; all four fields are required and none is derived."""
         self.rel, self.line, self.code, self.msg = rel, line, code, msg
 
     def __str__(self) -> str:
+        """Render as ``rel:line: [CODE] message`` -- editor-jumpable."""
         return f"{self.rel}:{self.line}: [{self.code}] {self.msg}"
 
 
-def _check_format(raw: bytes, add) -> str:
+def _check_format(raw: bytes, add: Callable[[int, str, str], None]) -> str:
     """AS005, operating on the raw bytes. Returns the decoded text."""
     try:
         text = raw.decode("ascii")
@@ -157,7 +165,7 @@ def _check_format(raw: bytes, add) -> str:
     return text
 
 
-def _check_exports(code_lines: list[str], add) -> None:
+def _check_exports(code_lines: list[str], add: Callable[[int, str, str], None]) -> None:
     """AS003: every exported symbol has a type, a size and a label."""
     exports: dict[str, int] = {}
     typed: set[str] = set()
@@ -190,6 +198,7 @@ def check_file(rel: str, raw: bytes) -> list[Finding]:
     findings: list[Finding] = []
 
     def add(line: int, code: str, msg: str) -> None:
+        """Append one finding, closing over this file's relative path."""
         findings.append(Finding(rel, line, code, msg))
 
     text = _check_format(raw, add)
@@ -246,6 +255,12 @@ def targets() -> list[str]:
 
 
 def _expect(cond: bool, label: str, failures: list[str]) -> None:
+    """Record one selftest assertion and print its pass/fail line.
+
+    Accumulates into ``failures`` instead of raising, so one failing
+    assertion does not hide the ones after it -- the value of a
+    both-direction selftest is the whole picture, not the first breakage.
+    """
     print(f"  [{'ok' if cond else 'FAIL'}] {label}")
     if not cond:
         failures.append(label)
@@ -366,6 +381,14 @@ def selftest() -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Check every tracked assembly file, or run the selftest / scope listing.
+
+    Assembly is the one language in the tree with no formatter and no
+    compiler-side style enforcement, so these structural rules are the only
+    thing standing between a .S file and arbitrary layout.
+
+    Returns 0 when clean, 1 on any finding or a failing selftest.
+    """
     ap = argparse.ArgumentParser(description="Structural checker for GNU assembler sources")
     ap.add_argument("--selftest", action="store_true", help="assert every rule, both directions")
     ap.add_argument("--list-files", action="store_true", help="print the scanned file list")

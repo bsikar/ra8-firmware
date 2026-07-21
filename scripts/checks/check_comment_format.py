@@ -372,6 +372,20 @@ def _first_diff_lines(old: str, new: str, limit: int = 4) -> list[tuple[int, str
 
 
 def main(argv: list[str]) -> int:
+    """Report, or with ``--fix`` rewrite, comment blocks whose interior is misaligned.
+
+    Three modes, checked in that order: ``--selftest`` runs the built-in
+    battery and ignores everything else on the line, ``--fix`` rewrites in
+    place and reports how many files changed, and the default reports offenders
+    and fails. Only ``--fix`` writes; the default mode leaves the tree alone.
+
+    A file that cannot be decoded as UTF-8 is skipped silently rather than
+    failed -- comment alignment is not the gate that should adjudicate
+    encoding, and check-encoding already owns that and would report it twice.
+
+    Returns 0 when clean or when ``--fix`` rewrote everything it found, 1 when
+    the default mode found a file needing a rewrite.
+    """
     args = argv[1:]
     if "--selftest" in args:
         return _selftest()

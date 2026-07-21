@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-fix_doxy_file_tags.py
-=====================
+r"""Rewrite stale Doxygen ``@file`` tags to match each file's real path.
 
 Rewrites stale ``@file`` (or ``\file``) Doxygen tags inside per-app boot
 files so that the tag matches the file's actual repository-relative path.
@@ -55,6 +53,7 @@ FILE_TAG_RE = re.compile(r"([@\\])file\s+([^\s\*]+)")
 
 
 def iter_target_files() -> list[Path]:
+    """Every per-app boot file that may carry a stale ``@file`` tag."""
     targets: list[Path] = []
     for root in SCAN_ROOTS:
         if not root.is_dir():
@@ -75,6 +74,11 @@ def fix_file(file_path: Path, check_only: bool) -> bool:
     desired = desired_tag_path(file_path)
 
     def repl(match: re.Match[str]) -> str:
+        """Rewrite one ``@file`` tag, preserving its ``@``/backslash prefix.
+
+        Returns the match untouched when the tag is already correct, so an
+        up-to-date file is left byte-identical and shows no diff.
+        """
         prefix = match.group(1)
         current = match.group(2)
         if current == desired:
@@ -94,6 +98,14 @@ def fix_file(file_path: Path, check_only: bool) -> bool:
 
 
 def main() -> int:
+    """Fix stale ``@file`` tags, or with ``--check`` report them without writing.
+
+    The cost of a stale tag is silent: doxygen refuses to emit a per-file page
+    for the mismatched file and warns once, so the page simply goes missing
+    from the generated site rather than anything failing.
+
+    Returns 1 when any tag was stale (in either mode), 0 when all match.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--check",

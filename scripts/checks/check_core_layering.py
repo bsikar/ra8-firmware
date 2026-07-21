@@ -102,6 +102,20 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
+    """Fail if anything in the foundation lib includes a header another lib owns.
+
+    ra8_core sits at the bottom of the stack, so an include pointing UP at a
+    higher lib is a dependency inversion that would make the foundation
+    unbuildable on its own. A header owned by several libs INCLUDING ra8_core
+    is fine -- that is a shared name, not an upward edge -- which is why
+    ownership is compared as a set difference rather than by first match.
+
+    Paths given on argv are filtered down to those under libs/ra8_core before
+    scanning, so pointing this at the whole staged file list is safe and cheap.
+
+    Returns 1 with the offending include sites listed, 0 when no upward edge
+    exists or when the argv filter left nothing under the foundation lib.
+    """
     targets = _enumerate_targets(argv[1:])
     if not targets:
         print("check_core_layering.py: no ra8_core files to scan", file=sys.stderr)

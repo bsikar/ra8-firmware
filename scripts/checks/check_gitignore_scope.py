@@ -96,10 +96,17 @@ class Finding:
     """One unanchored directory pattern."""
 
     def __init__(self, lineno: int, pattern: str) -> None:
+        """Record one unanchored .gitignore pattern and where it was written."""
         self.lineno = lineno
         self.pattern = pattern
 
     def __str__(self) -> str:
+        """Render the finding together with its remediation.
+
+        The message carries the fix rather than just the diagnosis, because
+        the failure mode is silent -- an unanchored pattern matches at every
+        depth and hides files nobody meant to ignore.
+        """
         return (
             f".gitignore:{self.lineno}: [GI001] '{self.pattern}' has no leading slash "
             "and no interior slash, so git matches it at EVERY depth.\n"
@@ -147,6 +154,12 @@ def scan(text: str) -> list[Finding]:
 
 
 def _expect(cond: bool, label: str, failures: list[str]) -> None:
+    """Record one selftest assertion and print its pass/fail line.
+
+    Accumulates into ``failures`` instead of raising, so one failing
+    assertion does not hide the ones after it -- the value of a
+    both-direction selftest is the whole picture, not the first breakage.
+    """
     print(f"  [{'ok' if cond else 'FAIL'}] {label}")
     if not cond:
         failures.append(label)
@@ -226,6 +239,16 @@ def selftest() -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Reject .gitignore patterns that match at every directory depth.
+
+    A slashless pattern such as ``build`` matches ANY directory of that name
+    anywhere in the tree, which is how a first-party source directory under
+    ``scripts/build/`` -- PATHREF-OK: #359 has since renamed it away -- became
+    invisible to git and to every gate at once (#377).  Anchoring makes the
+    intended scope explicit.
+
+    Returns 0 when every pattern is anchored or justified, 1 otherwise.
+    """
     ap = argparse.ArgumentParser(description="Reject unanchored .gitignore directory patterns")
     ap.add_argument("--selftest", action="store_true", help="assert both directions")
     args = ap.parse_args(argv[1:])

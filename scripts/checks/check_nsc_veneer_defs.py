@@ -65,6 +65,20 @@ def is_defined(name: str, sources: list[Path]) -> bool:
 
 
 def main() -> int:
+    """Fail when a declared RA8_NSC_VENEER has no definition in the NSC sources.
+
+    The asymmetry is the point: an undefined veneer is a TrustZone entry point
+    the public header advertises to the non-secure world and the secure world
+    cannot service. That is a trust hazard, not a link error to be discovered
+    later, so it is checked at the declaration rather than left to the linker.
+
+    A missing header exits 1 rather than 0 -- with nothing to parse there are
+    zero declarations, and "zero declared, zero missing" would pass while
+    verifying nothing.
+
+    Returns 0 when every declaration has a definition, 1 on a phantom veneer
+    or a missing header.
+    """
     if not HEADER.is_file():
         print(f"check_nsc_veneer_defs.py: header not found: {HEADER}", file=sys.stderr)
         return 1

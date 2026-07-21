@@ -1,32 +1,30 @@
 #!/usr/bin/env python3
-#
-# scripts/gen/font_to_c.py -- emit a C source file embedding a binary font
-# blob as a `const unsigned char[]` array plus its length, for baking a font
-# into internal flash (.rodata).
-#
-# Dependency-free (stdlib only) so it runs at build time on any host without a
-# venv. The generated .c is written to the build directory and is NOT committed,
-# which keeps the large hex array out of the QC gates (magic-numbers / format).
-#
-# Usage:
-#   font_to_c.py <input-font> <output.c> <symbol_name> <header_name>
-#
-# The output defines, against the declarations in <header_name> (one header per
-# baked font, named after the font -- e.g. literata_latin1.h):
-#   const unsigned char <symbol_name>[]  = { ... };
-#   const unsigned int  <symbol_name>_len = <N>;
-#
-# The Latin-1 subset checked in at libs/fonts/literata_latin1.ttf was produced
-# with fonttools (in a throwaway venv) from libs/fonts/Literata-Regular.ttf
-# (Literata Regular, SIL OFL 1.1, googlefonts/literata):
-#   pyftsubset Literata-Regular.ttf \
-#     --unicodes='0020-00FF,2013,2014,2018,2019,201C,201D,2026' \
-#     --output-file=literata_latin1.ttf \
-#     --no-hinting --desubroutinize --glyph-names --notdef-outline
-#
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
-#
+"""Emit a C source file embedding a binary font blob as a byte array.
+
+Dependency-free (stdlib only) so it runs at build time on any host without a
+venv. The generated .c is written to the build directory and is NOT committed,
+which keeps the large hex array out of the QC gates (magic-numbers / format).
+
+Usage:
+  font_to_c.py <input-font> <output.c> <symbol_name> <header_name>
+
+The output defines, against the declarations in <header_name> (one header per
+baked font, named after the font -- e.g. literata_latin1.h):
+  const unsigned char <symbol_name>[]  = { ... };
+  const unsigned int  <symbol_name>_len = <N>;
+
+The Latin-1 subset checked in at libs/fonts/literata_latin1.ttf was produced
+with fonttools (in a throwaway venv) from libs/fonts/Literata-Regular.ttf
+(Literata Regular, SIL OFL 1.1, googlefonts/literata):
+  pyftsubset Literata-Regular.ttf \
+    --unicodes='0020-00FF,2013,2014,2018,2019,201C,201D,2026' \
+    --output-file=literata_latin1.ttf \
+    --no-hinting --desubroutinize --glyph-names --notdef-outline
+
+Copyright (c) 2026 Brighton Sikarskie
+SPDX-License-Identifier: MIT
+"""
+
 import pathlib
 import sys
 
@@ -35,6 +33,14 @@ EXPECTED_ARGC = 5
 
 
 def main() -> int:
+    """Convert a font file to a C array, or exit 2 on a usage error.
+
+    Rejects an EMPTY input rather than emitting a zero-length array: a
+    zero-length font links cleanly and fails only at render time, where the
+    cause is far from the effect.
+
+    Returns 0 on success, 2 on wrong argument count.
+    """
     if len(sys.argv) != EXPECTED_ARGC:
         sys.stderr.write(
             "usage: font_to_c.py <input-font> <output.c> <symbol_name> <header_name>\n"
