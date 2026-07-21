@@ -46,6 +46,8 @@ to the direct #212 transcode.
 SPDX-License-Identifier: MIT
 """
 
+from __future__ import annotations
+
 import argparse
 import io
 import struct

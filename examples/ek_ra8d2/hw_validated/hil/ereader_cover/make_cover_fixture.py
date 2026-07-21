@@ -25,6 +25,8 @@ Usage:
     python3 make_cover_fixture.py
 """
 
+from __future__ import annotations
+
 import io
 import zipfile
 from pathlib import Path
@@ -124,7 +126,7 @@ def make_epub() -> bytes:
     out = io.BytesIO()
     fixed = (2026, 1, 1, 0, 0, 0)
 
-    def add(zf, name, data, store=False):
+    def add(zf: zipfile.ZipFile, name: str, data: bytes | str, store: bool = False) -> None:
         info = zipfile.ZipInfo(name, date_time=fixed)
         info.compress_type = zipfile.ZIP_STORED if store else zipfile.ZIP_DEFLATED
         info.external_attr = 0o600 << 16
@@ -190,7 +192,7 @@ def bake_header(epub: bytes) -> str:
     )
 
 
-def main():
+def main() -> int:
     """Regenerate epub_cover_fixture.h in the CURRENT working directory.
 
     The output path is relative, so run this from the app directory that owns

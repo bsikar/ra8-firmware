@@ -44,6 +44,8 @@ flag, the cover index, preserved dimensions, and the chapter DOM shape.
 SPDX-License-Identifier: MIT
 """
 
+from __future__ import annotations
+
 import argparse
 import io
 import posixpath
