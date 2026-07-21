@@ -36,12 +36,12 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR_REL="build/host-cov"
 HTML_DIR_REL="build/coverage-html"
 
-run_native() {
-  local repo="$1"
-  local build="$repo/$BUILD_DIR_REL"
-  local html="$repo/$HTML_DIR_REL"
-  local info="$build/coverage.info"
-  local info_filtered="$build/coverage.filtered.info"
+# Steps 1-3: configure the host-test build with coverage instrumentation,
+# build it, and run ctest. ctest failures are tolerated on purpose -- a red
+# test still produces .gcda files, and a coverage report of a partly-failing
+# suite is more useful than no report at all.
+_cov_build_and_test() {
+  local repo="$1" build="$2"
 
   echo "==> [1/6] Configuring host tests with RA8_COVERAGE=ON"
   cmake -B "$build" -S "$repo/tests" \
@@ -55,6 +55,13 @@ run_native() {
 
   echo "==> [3/6] Running ctest"
   (cd "$build" && ctest --output-on-failure) | tail -20 || true
+}
+
+# Steps 4-5: turn the .gcda files into a filtered lcov tracefile. Vendored
+# code, the tests themselves and system headers are removed -- they are not
+# the thing under measurement.
+_cov_capture() {
+  local build="$1" info="$2" info_filtered="$3"
 
   echo "==> [4/6] Capturing coverage with lcov"
   # --ignore-errors keeps lcov tolerant across gcc/lcov version skew.
@@ -75,6 +82,11 @@ run_native() {
     --rc lcov_branch_coverage=1 \
     --ignore-errors unused,empty,inconsistent \
     --quiet 2>&1 | tail -10 || true
+}
+
+# Step 6: render the HTML report and print the summary.
+_cov_report() {
+  local info_filtered="$1" html="$2"
 
   echo "==> [6/6] Generating HTML report"
   rm -rf "$html"
@@ -89,6 +101,7 @@ run_native() {
   echo ""
   echo "==> Coverage summary:"
   # lcov --summary writes to stderr; capture it and pretty-print.
+  local summary
   summary="$(lcov --summary "$info_filtered" \
     --rc lcov_branch_coverage=1 \
     --ignore-errors inconsistent,empty 2>&1 || true)"
@@ -96,6 +109,18 @@ run_native() {
 
   echo ""
   echo "HTML report: $html/index.html"
+}
+
+run_native() {
+  local repo="$1"
+  local build="$repo/$BUILD_DIR_REL"
+  local html="$repo/$HTML_DIR_REL"
+  local info="$build/coverage.info"
+  local info_filtered="$build/coverage.filtered.info"
+
+  _cov_build_and_test "$repo" "$build"
+  _cov_capture "$build" "$info" "$info_filtered"
+  _cov_report "$info_filtered" "$html"
 }
 
 if [[ "$(uname -s)" == "Darwin" ]]; then

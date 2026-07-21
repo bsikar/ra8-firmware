@@ -27,17 +27,22 @@ import csv
 import re
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
-SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
-EXCLUDE_PREFIXES = ("libs/third_party/",)
-SOURCE_EXTS = (".c", ".h", ".cpp", ".hpp", ".cc")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-CITATION_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_/.-]*\.(?:c|h|cpp|hpp|cc)):(\d+)\b")
-CITES_OK_RE = re.compile(r"CITES-OK:\s*(\S.*?)\s*$")
-MOVED_FROM_RE = re.compile(r"moved from\s+\S+:\d+\s+to\b", re.IGNORECASE)
-DOCS_REFERENCE_RE = re.compile(r"\bdocs/reference/")
-THIRD_PARTY_RE = re.compile(r"\blibs/third_party/")
+from line_citation_lex import (
+    CITATION_RE,
+    all_tracked_files,
+    find_comment_spans,
+    is_exempt,
+    line_of_offset,
+)
+from line_citation_lex import is_in_scope as _lex_in_scope
+
+EXCLUDE_PREFIXES = ("libs/third_party/",)
+
 
 # Heuristic: a function definition has a return type, name, params, and
 # an opening brace either on the signature line or on the next line.
@@ -54,91 +59,6 @@ FUNC_DEF_DENYLIST = {
     "typeof",
     "do",
 }
-
-
-def all_tracked_files() -> list[str]:
-    """Every tracked path, from git rather than a directory walk."""
-    out = subprocess.run(
-        ["git", "ls-files"],  # noqa: S607  # trusted: fixed git argv
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
-    return [line for line in out.splitlines() if line]
-
-
-def is_in_scope(path: str) -> bool:
-    """Whether a path is scanned for in-tree line citations.
-
-    Requires a source extension, a location under a scan root, and no
-    excluded prefix -- the root test keeps vendored trees out without naming
-    their files.
-    """
-    if not path.endswith(SOURCE_EXTS):
-        return False
-    if not any(path.startswith(r) for r in SCAN_ROOTS):
-        return False
-    return not any(path.startswith(p) for p in EXCLUDE_PREFIXES)
-
-
-def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
-    """Byte spans of every C/C++ comment, block and line.
-
-    String-literal aware, so a ``//`` inside a quoted string is not treated as
-    a comment -- without that, any URL in code would open a phantom comment
-    and swallow the rest of the line.
-
-    Returns ``(start, end)`` offsets; a citation only counts inside one.
-    """
-    spans: list[tuple[int, int]] = []
-    i = 0
-    n = len(text)
-    while i < n:
-        ch = text[i]
-        if ch == '"':
-            i += 1
-            while i < n and text[i] != '"':
-                if text[i] == "\\" and i + 1 < n:
-                    i += 2
-                    continue
-                if text[i] == "\n":
-                    break
-                i += 1
-            i += 1
-            continue
-        if ch == "'":
-            i += 1
-            while i < n and text[i] != "'":
-                if text[i] == "\\" and i + 1 < n:
-                    i += 2
-                    continue
-                if text[i] == "\n":
-                    break
-                i += 1
-            i += 1
-            continue
-        if ch == "/" and i + 1 < n:
-            if text[i + 1] == "/":
-                start = i
-                while i < n and text[i] != "\n":
-                    i += 1
-                spans.append((start, i))
-                continue
-            if text[i + 1] == "*":
-                start = i
-                i += 2
-                while i + 1 < n and not (text[i] == "*" and text[i + 1] == "/"):
-                    i += 1
-                i = min(n, i + 2)
-                spans.append((start, i))
-                continue
-        i += 1
-    return spans
-
-
-def line_of_offset(text: str, offset: int) -> int:
-    """1-based line number containing a byte offset."""
-    return text.count("\n", 0, offset) + 1
 
 
 def enclosing_function(lines: list[str], target_line: int) -> str:
@@ -207,6 +127,43 @@ def resolve_target(repo_root: Path, citation_path: str, citation_line: int) -> s
     return f"{target.name}::{func}"
 
 
+def is_in_scope(path: str) -> bool:
+    """Whether a source path is subject to the ban, with this tool's exclusions."""
+    return _lex_in_scope(path, EXCLUDE_PREFIXES)
+
+
+def _rows_for_file(repo_root: Path, rel: str) -> Iterator[list[object]]:
+    """Yield one CSV row per non-exempt line-citation in ``rel``.
+
+    Exemptions come from line_citation_lex.is_exempt -- the same predicate the
+    gate applies -- so this aid cannot list work the gate does not want, nor
+    miss work it does. It used to carry its own hand-copied cascade.
+    """
+    path = repo_root / rel
+    if not path.is_file():
+        return
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return
+    lines = text.splitlines()
+    for start, end in find_comment_spans(text):
+        for m in CITATION_RE.finditer(text[start:end]):
+            line_no = line_of_offset(text, start + m.start())
+            matched = m.group(0)
+            line = lines[line_no - 1] if 1 <= line_no <= len(lines) else ""
+            if is_exempt(matched, line):
+                continue
+            yield [
+                rel,
+                line_no,
+                matched,
+                enclosing_function(lines, line_no),
+                resolve_target(repo_root, m.group(1), int(m.group(2))),
+                line.strip(),
+            ]
+
+
 def main() -> int:
     """List every in-tree ``file:line`` citation with the function that encloses it.
 
@@ -239,53 +196,9 @@ def main() -> int:
 
     rows = 0
     for f in files:
-        path = repo_root / f
-        if not path.is_file():
-            continue
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        lines = text.splitlines()
-        spans = find_comment_spans(text)
-        for start, end in spans:
-            comment = text[start:end]
-            for m in CITATION_RE.finditer(comment):
-                abs_off = start + m.start()
-                line_no = line_of_offset(text, abs_off)
-                matched = m.group(0)
-                cite_path = m.group(1)
-                cite_line = int(m.group(2))
-                line = lines[line_no - 1] if 1 <= line_no <= len(lines) else ""
-                # Apply the same exemptions as the gate
-                if "SPDX-License-Identifier" in line:
-                    continue
-                stripped = line.lstrip()
-                if stripped.startswith("#include"):
-                    continue
-                if DOCS_REFERENCE_RE.search(matched) or DOCS_REFERENCE_RE.search(line):
-                    continue
-                if THIRD_PARTY_RE.search(matched) or THIRD_PARTY_RE.search(line):
-                    continue
-                cok = CITES_OK_RE.search(line)
-                if cok and cok.group(1).strip():
-                    continue
-                if MOVED_FROM_RE.search(line):
-                    continue
-                enclosing = enclosing_function(lines, line_no)
-                suggested = resolve_target(repo_root, cite_path, cite_line)
-                snippet = line.strip()
-                writer.writerow(
-                    [
-                        f,
-                        line_no,
-                        matched,
-                        enclosing,
-                        suggested,
-                        snippet,
-                    ]
-                )
-                rows += 1
+        for row in _rows_for_file(repo_root, f):
+            writer.writerow(row)
+            rows += 1
 
     print(f"# {rows} rows", file=sys.stderr)
     return 0

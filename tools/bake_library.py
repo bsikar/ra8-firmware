@@ -143,6 +143,103 @@ def emit_array(name: str, data: bytes) -> str:
     return "\n".join(out)
 
 
+def _load_books(specs: list[str]) -> list[tuple[bytes, str, str, tuple | None]]:
+    """Read every `<path>|<title>|<author>` spec into a blob + metadata tuple.
+
+    The `|` separator is unescaped, so a title containing a pipe splits into
+    the wrong fields and raises rather than silently baking a mangled shelf.
+    """
+    books = []
+    for spec in specs:
+        path, title, author = spec.split("|")
+        with Path(path).open("rb") as f:
+            blob = f.read()
+        books.append((blob, title, author, decode_cover_thumb(blob)))
+    return books
+
+
+def _header_preamble() -> list[str]:
+    """The generated-file banner, include guard and includes."""
+    return [
+        "/**",
+        " * @file library.h",
+        " * @generated tools/bake_library.py -- do not edit by hand.",
+        " * @brief Baked full .rabook blobs + pre-decoded cover thumbnails (generated).",
+        " * @details Each entry is the chunked RBKC container (ra8_book_open inflates it",
+        " *          on demand) plus a gray8 cover thumbnail the shelf blits without any",
+        " *          boot-time inflation. Regenerate with tools/bake_library.py (the",
+        " *          thumbnail bytes are architecture-dependent to regenerate; see",
+        " *          scripts/builders/books.sh -- re-pin the fb golden when re-baking).",
+        " *",
+        " * @copyright Copyright (c) 2026 Brighton Sikarskie",
+        " * SPDX-License-Identifier: MIT",
+        " *",
+        " * @since Version 0.1.0",
+        " */",
+        "#pragma once",
+        "",
+        "#include <stdint.h>",
+        "",
+        "// NOLINTBEGIN(readability-magic-numbers)",
+    ]
+
+
+def _emit_book_arrays(
+    books: list[tuple[bytes, str, str, tuple | None]],
+) -> tuple[list[str], list[tuple]]:
+    """Emit one byte array per blob (and per thumbnail), in shelf order.
+
+    Returns ``(lines, names)``; ``names`` feeds the table below and carries the
+    symbol names just emitted, so the two cannot disagree about what exists.
+    """
+    parts: list[str] = []
+    names: list[tuple] = []
+    for i, (data, title, author, thumb) in enumerate(books):
+        blob_name = f"k_lib_blob{i:02d}"
+        parts.append(f'/** @brief "{title}" by {author} -- {len(data)} bytes. */')
+        parts.append(emit_array(blob_name, data))
+        thumb_name, tw, th = "nullptr", 0, 0
+        if thumb is not None:
+            tbytes, tw, th = thumb
+            thumb_name = f"k_lib_thumb{i:02d}"
+            parts.append(f"/** @brief Cover thumbnail for {blob_name} ({tw}x{th} gray8). */")
+            parts.append(emit_array(thumb_name, tbytes))
+        names.append((blob_name, len(data), title, author, thumb_name, tw, th))
+        parts.append("")
+    return parts, names
+
+
+def _emit_library_table(count: int, names: list[tuple]) -> list[str]:
+    """Emit the library_book_t struct, the count enum and the shelf table.
+
+    Command-line order is shelf order, and this preserves it.
+    """
+    parts = [
+        "/** @brief One openable baked book: compressed blob + cover thumbnail + metadata. */",
+        "typedef struct {",
+        "  const uint8_t* blob;     /**< RBKC container start.           */",
+        "  uint32_t       len;      /**< Container length in bytes.      */",
+        "  const uint8_t* thumb;    /**< gray8 cover thumbnail, or NULL. */",
+        "  uint16_t       thumb_w;  /**< Thumbnail width in pixels.      */",
+        "  uint16_t       thumb_h;  /**< Thumbnail height in pixels.     */",
+        "  const char*    title;    /**< Display title.                  */",
+        "  const char*    author;   /**< Display author.                 */",
+        "} library_book_t;",
+        "",
+        "typedef enum : uint16_t {",
+        f"  k_library_count = {count}U,",
+        "} library_count_t;",
+        "",
+        "static const library_book_t k_library[k_library_count] = {",
+    ]
+    for blob_name, n, title, author, thumb_name, tw, th in names:
+        t = title.replace('"', '\\"')
+        a = author.replace('"', '\\"')
+        parts.append(f'    {{ {blob_name}, {n}U, {thumb_name}, {tw}U, {th}U, "{t}", "{a}" }},')
+    parts.extend(["};", "// NOLINTEND(readability-magic-numbers)", ""])
+    return parts
+
+
 def main(argv: list[str]) -> int:
     """Bake every `<path>|<title>|<author>` spec into the output header.
 
@@ -168,72 +265,9 @@ def main(argv: list[str]) -> int:
         sys.stderr.write("usage: bake_library.py <out.h> <rabook>|<title>|<author> ...\n")
         return 2
     out_path = argv[1]
-    books = []
-    for spec in argv[2:]:
-        path, title, author = spec.split("|")
-        with Path(path).open("rb") as f:
-            blob = f.read()
-        books.append((blob, title, author, decode_cover_thumb(blob)))
-    parts = [
-        "/**",
-        " * @file library.h",
-        " * @generated tools/bake_library.py -- do not edit by hand.",
-        " * @brief Baked full .rabook blobs + pre-decoded cover thumbnails (generated).",
-        " * @details Each entry is the chunked RBKC container (ra8_book_open inflates it",
-        " *          on demand) plus a gray8 cover thumbnail the shelf blits without any",
-        " *          boot-time inflation. Regenerate with tools/bake_library.py (the",
-        " *          thumbnail bytes are architecture-dependent to regenerate; see",
-        " *          scripts/builders/books.sh -- re-pin the fb golden when re-baking).",
-        " *",
-        " * @copyright Copyright (c) 2026 Brighton Sikarskie",
-        " * SPDX-License-Identifier: MIT",
-        " *",
-        " * @since Version 0.1.0",
-        " */",
-        "#pragma once",
-        "",
-        "#include <stdint.h>",
-        "",
-        "// NOLINTBEGIN(readability-magic-numbers)",
-    ]
-    names = []
-    for i, (data, title, author, thumb) in enumerate(books):
-        blob_name = f"k_lib_blob{i:02d}"
-        parts.append(f'/** @brief "{title}" by {author} -- {len(data)} bytes. */')
-        parts.append(emit_array(blob_name, data))
-        thumb_name, tw, th = "nullptr", 0, 0
-        if thumb is not None:
-            tbytes, tw, th = thumb
-            thumb_name = f"k_lib_thumb{i:02d}"
-            parts.append(f"/** @brief Cover thumbnail for {blob_name} ({tw}x{th} gray8). */")
-            parts.append(emit_array(thumb_name, tbytes))
-        names.append((blob_name, len(data), title, author, thumb_name, tw, th))
-        parts.append("")
-    parts.append(
-        "/** @brief One openable baked book: compressed blob + cover thumbnail + metadata. */"
-    )
-    parts.append("typedef struct {")
-    parts.append("  const uint8_t* blob;     /**< RBKC container start.           */")
-    parts.append("  uint32_t       len;      /**< Container length in bytes.      */")
-    parts.append("  const uint8_t* thumb;    /**< gray8 cover thumbnail, or NULL. */")
-    parts.append("  uint16_t       thumb_w;  /**< Thumbnail width in pixels.      */")
-    parts.append("  uint16_t       thumb_h;  /**< Thumbnail height in pixels.     */")
-    parts.append("  const char*    title;    /**< Display title.                  */")
-    parts.append("  const char*    author;   /**< Display author.                 */")
-    parts.append("} library_book_t;")
-    parts.append("")
-    parts.append("typedef enum : uint16_t {")
-    parts.append(f"  k_library_count = {len(books)}U,")
-    parts.append("} library_count_t;")
-    parts.append("")
-    parts.append("static const library_book_t k_library[k_library_count] = {")
-    for blob_name, n, title, author, thumb_name, tw, th in names:
-        t = title.replace('"', '\\"')
-        a = author.replace('"', '\\"')
-        parts.append(f'    {{ {blob_name}, {n}U, {thumb_name}, {tw}U, {th}U, "{t}", "{a}" }},')
-    parts.append("};")
-    parts.append("// NOLINTEND(readability-magic-numbers)")
-    parts.append("")
+    books = _load_books(argv[2:])
+    arrays, names = _emit_book_arrays(books)
+    parts = [*_header_preamble(), *arrays, *_emit_library_table(len(books), names)]
     with Path(out_path).open("w") as f:
         f.write("\n".join(parts))
     sys.stderr.write(

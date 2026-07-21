@@ -17,7 +17,18 @@
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
 # way scripts/git/pre-commit invokes it.
-gate_pre_commit_checks() (
+#
+# The suite is grouped into helpers below rather than written as one 150-line
+# body. The grouping is CONTIGUOUS and the execution order is unchanged: these
+# checks are independent of one another, but the order decides which failure a
+# developer sees first, and reordering them would churn that for no gain. Each
+# helper is its own `( set -e; ... )` subshell, so the first failing check in a
+# group still aborts the whole gate.
+
+# Constructs that may not appear in first-party source at all: superseded
+# standards, missing TrustZone world tags, MC/DC block markers, heap use after
+# init (NASA P10 Rule 3), AI attribution, and the C NULL macro.
+_pcc_banned_constructs() (
   set -e
   python3 scripts/checks/check_obsolete_standards.py
   python3 scripts/checks/check_world_tags.py --strict
@@ -28,37 +39,38 @@ gate_pre_commit_checks() (
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /
   # FX_NULL / NX_NULL are exempted.
   python3 scripts/checks/check_no_null.py --all
-  # NASA P10 Rule 4 -- every function fits in <=60 lines. Independent of the
-  # clang-tidy compile-db, so it covers cross-compiled TUs the host tidy build
-  # never sees (ThreadX/USBX/NetX/HAL register code).
-  #
-  # Both checkers were rewritten under #359: their scope is now derived from
-  # git ls-files plus per-file language detection rather than a hardcoded
-  # root/suffix list that had quietly stopped describing the tree, so they
-  # cover Python, shell, CMake, YAML, Make and linker scripts as well as C --
-  # and the extensionless git hooks, which no suffix-driven scope has ever
-  # seen. Both --selftests assert every parser in both directions.
-  #
-  # The FILE cap is now ENFORCING. All 8 offenders the widened scope revealed
-  # were split by responsibility -- check_annotations, check_doc_attachment,
-  # doxy_audit, ra8_mcp, epub_compile, tests/CMakeLists.txt, sim/smoke.sh and
-  # cmake/ra8_add_app.cmake -- with no waiver list and no narrowed scope.
-  #
-  # The FUNCTION cap is not yet: 29 functions remain over 60 lines, down from
-  # 53. The file splits closed 16 and the #373 complexity work closed another
-  # 8. Turning it on before the rest lands would make the suite red for
-  # everyone.
-  #
-  # This is a NAMED, VISIBLE gap with a fixed exit condition -- close the 29
-  # and uncomment the one remaining scan -- deliberately chosen over the
-  # alternatives: a waiver list would grandfather the offenders permanently,
-  # and narrowing the scope back to C would restore the exact defect #359
-  # exists to fix while reporting green. Tracked in #359, which stays open
-  # until BOTH scans are enforcing.
+)
+
+# The two size caps. NASA P10 Rule 4 -- every function fits in <=60 lines --
+# plus the 1000-line file cap. Independent of the clang-tidy compile-db, so
+# they cover cross-compiled TUs the host tidy build never sees
+# (ThreadX/USBX/NetX/HAL register code).
+#
+# Both checkers were rewritten under #359: their scope is now derived from
+# git ls-files plus per-file language detection rather than a hardcoded
+# root/suffix list that had quietly stopped describing the tree, so they
+# cover Python, shell, CMake, YAML, Make and linker scripts as well as C --
+# and the extensionless git hooks, which no suffix-driven scope has ever
+# seen. Both --selftests assert every parser in both directions.
+#
+# BOTH caps are now ENFORCING. Every offender the widened scope revealed was
+# split by responsibility -- 8 files, then the 31 remaining oversized
+# functions -- with no waiver list and no narrowed scope. The two rejected
+# alternatives are worth naming, because both report green: a waiver list
+# would grandfather the offenders permanently, and narrowing the scope back to
+# C would restore the exact defect #359 exists to fix.
+_pcc_size_caps() (
+  set -e
   python3 scripts/checks/check_function_size.py --selftest
   python3 scripts/checks/check_file_size.py --selftest
   python3 scripts/checks/check_file_size.py
-  # python3 scripts/checks/check_function_size.py
+  python3 scripts/checks/check_function_size.py
+)
+
+# Where things are allowed to live: header placement, board-fact ownership,
+# library layering, and the scope of .gitignore patterns.
+_pcc_tree_structure() (
+  set -e
   # A header under a src/ directory is module-private and must be named
   # *_internal.h. A non-internal src/ header is a misfiled public interface
   # (belongs in inc/) or an unmarked private one.
@@ -77,6 +89,12 @@ gate_pre_commit_checks() (
   # asking the question can catch it (#377).
   python3 scripts/checks/check_gitignore_scope.py --selftest
   python3 scripts/checks/check_gitignore_scope.py
+)
+
+# How source is written: trailing newline, named constants, C23 attribute
+# spelling, no silently-discarded error codes, no session-bookkeeping tags.
+_pcc_source_form() (
+  set -e
   # Every first-party source file ends in a trailing newline. Complements
   # .clang-format InsertNewlineAtEOF (C/C++ only) by covering scripts and
   # config-as-code.
@@ -95,6 +113,12 @@ gate_pre_commit_checks() (
   python3 scripts/checks/check_tz_boundary_discard.py
   # Ban the numbered session-bookkeeping tags from comments and docs.
   python3 scripts/checks/check_no_wave_references.py
+)
+
+# Security invariants that a compiler cannot express: the NS->S entry surface,
+# the placeholder-crypto guard, linker-only stubs, and driver asm guards.
+_pcc_security_invariants() (
+  set -e
   # Every RA8_NSC_VENEER declared in ra8_nsc.h must have a definition -- a
   # decl with no def advertises an NS->S trust-boundary entry point that does
   # not exist.
@@ -124,6 +148,12 @@ gate_pre_commit_checks() (
   # tests/mocks/ra8_host_asm_stub.c so the driver stays branch-free and
   # coverage lands on the shipping path (#293).
   python3 scripts/checks/check_no_driver_asm_guard.py
+)
+
+# Documentation completeness, cross-reference integrity, and the test-side
+# discipline rules (MC/DC arrival, HIL instrumentation, assert casts).
+_pcc_docs_and_tests() (
+  set -e
   # The in-tree line-number citation ban: reference a symbol, never a file
   # plus line number, since line numbers rot.
   python3 scripts/checks/check_line_citations.py
@@ -169,6 +199,16 @@ gate_pre_commit_checks() (
   # redundant and latently buggy (a (int) cast on a uint32_t enum truncates
   # before the widening).
   python3 scripts/checks/check_assert_casts.py tests/*.c
+)
+
+gate_pre_commit_checks() (
+  set -e
+  _pcc_banned_constructs
+  _pcc_size_caps
+  _pcc_tree_structure
+  _pcc_source_form
+  _pcc_security_invariants
+  _pcc_docs_and_tests
 )
 
 # --- annotations ----------------------------------------------------------

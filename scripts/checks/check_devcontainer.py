@@ -73,6 +73,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lint_coverage_rules import EXT_CLASS, NAME_CLASS
+from selftest_assert import expect, report
 
 REPO_ROOT = Path(
     subprocess.run(
@@ -254,18 +255,6 @@ def require_tools() -> int:
     return 0
 
 
-def _expect(cond: bool, label: str, failures: list[str]) -> None:
-    """Record one selftest assertion and print its pass/fail line.
-
-    Accumulates into ``failures`` instead of raising, so one failing
-    assertion does not hide the ones after it -- the value of a
-    both-direction selftest is the whole picture, not the first breakage.
-    """
-    print(f"  [{'ok' if cond else 'FAIL'}] {label}")
-    if not cond:
-        failures.append(label)
-
-
 GOOD_DOCKERFILE = b"""FROM ubuntu:24.04
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN echo hello
@@ -287,6 +276,78 @@ fi
 BAD_ZSHRC = b"if [[ -r ~/.p10k.zsh ]; then\n  source ~/.p10k.zsh\n"
 
 
+def _assert_dockerfile(root: Path, failures: list[str]) -> None:
+    """Assert hadolint fires on a bad Dockerfile and is silent on a clean one."""
+    (root / ".devcontainer/Dockerfile").write_bytes(GOOD_DOCKERFILE)
+    got = check_one(".devcontainer/Dockerfile", root)
+    expect(not got, f"a clean Dockerfile yields no findings (got {got})", failures)
+
+    (root / ".devcontainer/Dockerfile").write_bytes(BAD_DOCKERFILE)
+    got = check_one(".devcontainer/Dockerfile", root)
+    blob = " ".join(f.msg for f in got)
+    expect(any(f.code == "DC002" for f in got), "hadolint fires on a bad Dockerfile", failures)
+    expect("DL3020" in blob, "  ... reporting DL3020 (ADD instead of COPY)", failures)
+    expect("DL4006" in blob, "  ... reporting DL4006 (pipe without pipefail)", failures)
+
+
+def _assert_zshrc(root: Path, failures: list[str]) -> None:
+    """Assert zsh -n fires on a broken zshrc and accepts zsh-only syntax.
+
+    The negative case is the whole reason this file's class is ``zsh`` and not
+    ``shell``: bash cannot parse either of those lines, so checking them with
+    bash would report a syntax error in a correct file.
+    """
+    (root / ".devcontainer/zshrc").write_bytes(GOOD_ZSHRC)
+    got = check_one(".devcontainer/zshrc", root)
+    expect(not got, f"a clean zshrc yields no findings (got {got})", failures)
+
+    (root / ".devcontainer/zshrc").write_bytes(BAD_ZSHRC)
+    got = check_one(".devcontainer/zshrc", root)
+    expect(
+        any(f.code == "DC003" for f in got),
+        "zsh -n fires on a zshrc with a syntax error",
+        failures,
+    )
+
+    (root / ".devcontainer/zshrc").write_bytes(
+        b'H=${(%):-%n}\nplugins=(git gh docker)\nprint -r -- "$H ${#plugins}"\n'
+    )
+    got = check_one(".devcontainer/zshrc", root)
+    expect(
+        not got,
+        f"zsh-specific syntax is accepted, not flagged (got {got})",
+        failures,
+    )
+
+
+def _assert_format_rules(failures: list[str]) -> None:
+    """Assert each DC001 byte-level formatting rule fires on its own payload."""
+    for payload, want, label in (
+        (b"FROM x\n\tRUN y\n", "tab indentation", "tab indentation fires DC001"),
+        (b"FROM x   \n", "trailing whitespace", "trailing whitespace fires DC001"),
+        (b"FROM x", "no final newline", "a missing final newline fires DC001"),
+        (b"FROM x\r\ny\n", "CRLF", "a CRLF ending fires DC001"),
+        (b"FROM \xc2\xa9\n", "non-ASCII", "a non-ASCII byte fires DC001"),
+    ):
+        got = check_format("f", payload)
+        expect(any(want in f.msg for f in got), label, failures)
+
+
+def _assert_scope(failures: list[str]) -> None:
+    """Assert the real scope resolves both files and excludes the vendored theme."""
+    found = targets()
+    expect(
+        len(found) >= FILE_FLOOR,
+        f"the real scope resolves both files (got {found})",
+        failures,
+    )
+    expect(
+        ".devcontainer/p10k.zsh" not in found,
+        "the vendored p10k theme config stays out of scope",
+        failures,
+    )
+
+
 def selftest() -> int:
     """Assert both linters fire on broken input and stay quiet on good input."""
     print("check_devcontainer.py --selftest")
@@ -298,75 +359,12 @@ def selftest() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / ".devcontainer").mkdir()
+        _assert_dockerfile(root, failures)
+        _assert_zshrc(root, failures)
+        _assert_format_rules(failures)
 
-        # --- Dockerfile, both directions ---------------------------------
-        (root / ".devcontainer/Dockerfile").write_bytes(GOOD_DOCKERFILE)
-        got = check_one(".devcontainer/Dockerfile", root)
-        _expect(not got, f"a clean Dockerfile yields no findings (got {got})", failures)
-
-        (root / ".devcontainer/Dockerfile").write_bytes(BAD_DOCKERFILE)
-        got = check_one(".devcontainer/Dockerfile", root)
-        blob = " ".join(f.msg for f in got)
-        _expect(any(f.code == "DC002" for f in got), "hadolint fires on a bad Dockerfile", failures)
-        _expect("DL3020" in blob, "  ... reporting DL3020 (ADD instead of COPY)", failures)
-        _expect("DL4006" in blob, "  ... reporting DL4006 (pipe without pipefail)", failures)
-
-        # --- zshrc, both directions --------------------------------------
-        (root / ".devcontainer/zshrc").write_bytes(GOOD_ZSHRC)
-        got = check_one(".devcontainer/zshrc", root)
-        _expect(not got, f"a clean zshrc yields no findings (got {got})", failures)
-
-        (root / ".devcontainer/zshrc").write_bytes(BAD_ZSHRC)
-        got = check_one(".devcontainer/zshrc", root)
-        _expect(
-            any(f.code == "DC003" for f in got),
-            "zsh -n fires on a zshrc with a syntax error",
-            failures,
-        )
-
-        # zsh-only syntax must NOT be reported: this is the whole reason the
-        # class is not `shell`. bash cannot parse either of these lines.
-        (root / ".devcontainer/zshrc").write_bytes(
-            b'H=${(%):-%n}\nplugins=(git gh docker)\nprint -r -- "$H ${#plugins}"\n'
-        )
-        got = check_one(".devcontainer/zshrc", root)
-        _expect(
-            not got,
-            f"zsh-specific syntax is accepted, not flagged (got {got})",
-            failures,
-        )
-
-        # --- DC001 formatting, each rule ---------------------------------
-        for payload, want, label in (
-            (b"FROM x\n\tRUN y\n", "tab indentation", "tab indentation fires DC001"),
-            (b"FROM x   \n", "trailing whitespace", "trailing whitespace fires DC001"),
-            (b"FROM x", "no final newline", "a missing final newline fires DC001"),
-            (b"FROM x\r\ny\n", "CRLF", "a CRLF ending fires DC001"),
-            (b"FROM \xc2\xa9\n", "non-ASCII", "a non-ASCII byte fires DC001"),
-        ):
-            got = check_format("f", payload)
-            _expect(any(want in f.msg for f in got), label, failures)
-
-    # --- scope resolution -------------------------------------------------
-    found = targets()
-    _expect(
-        len(found) >= FILE_FLOOR,
-        f"the real scope resolves both files (got {found})",
-        failures,
-    )
-    _expect(
-        ".devcontainer/p10k.zsh" not in found,
-        "the vendored p10k theme config stays out of scope",
-        failures,
-    )
-
-    if failures:
-        print(f"\nSELFTEST FAILED: {len(failures)} assertion(s)", file=sys.stderr)
-        for item in failures:
-            print(f"  {item}", file=sys.stderr)
-        return 1
-    print("selftest: all assertions held (both directions).")
-    return 0
+    _assert_scope(failures)
+    return report(failures)
 
 
 def main(argv: list[str]) -> int:

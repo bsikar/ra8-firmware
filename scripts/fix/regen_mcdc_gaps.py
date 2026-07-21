@@ -489,7 +489,119 @@ def _line_annotation(rel_path: str, line: int) -> str | None:
     return None
 
 
-def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[bool, str]:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, splitting hurts readability
+# Rules that decide from the decision TEXT alone: a regex, and the rationale
+# recorded when it matches. Data, not control flow -- five sequential
+# `if RE.search(excerpt): return (True, "...")` blocks said nothing that this
+# table does not, and hid how many rules there are. Order is preserved: the
+# first match wins, exactly as the if-cascade did.
+#
+# The two rules NOT in this table are the ones that cannot decide from the
+# excerpt: they have to read the surrounding function, so they are functions.
+_TEXTUAL_DEACTIVATION_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
+    # ((p == NULL) && (p_len != 0)) -- a defensive contract check. The public
+    # API documents the contract (caller-side @pre); the only path that
+    # exercises the AND-chain's second condition is a deliberately malformed
+    # call that the public API rejects upstream.
+    (
+        LEN_NULL_PAIR_RE,
+        "Defensive null+len contract: (ptr == NULL) && (len != 0)"
+        " is rejected upstream by the public-API @pre clause.",
+    ),
+    # `for (...; off < sizeof(buf); ...)` defensive bound. The fixed-size
+    # scratch buffer is sized to the documented input caps; the bound
+    # condition can only flip if the caller violates the contract.
+    (
+        DEFENSIVE_OFF_RE,
+        "Defensive scratch-buffer bound: input length is capped"
+        " by the public-API contract; second condition unreachable.",
+    ),
+    # Structurally-redundant `x != V || (x == V && ...)` where the second
+    # clause's leading condition is the negation of the first. llvm-cov counts
+    # the inner equality as a separate condition, but no vector can flip it
+    # independently of the OR's leading inequality. The remaining two
+    # conditions ARE testable (and are tested).
+    (
+        STRUCT_REDUNDANT_RE,
+        "Structurally-redundant condition: `x == V` inside the"
+        " second clause is the negation of the first OR-clause's"
+        " `x != V` and cannot be flipped independently.",
+    ),
+    # 4-condition exhaustive-enum OR set membership.
+    # `(x==E1)||(x==E2)||(x==E3)||(x==E4)` with upstream enum validation.
+    # MC/DC's all-false vector requires `x` outside the enum range, which is
+    # rejected before this decision.
+    (
+        ENUM_OR_SET_RE,
+        "Exhaustive enum-set OR: 4-way mode equality. The"
+        " all-false MC/DC vector requires an out-of-range enum"
+        " value, which is rejected by an upstream enum guard.",
+    ),
+    # Segment-length corruption guard inside a bounded parser. The buffer
+    # length is contract-validated by the public API; the second clause only
+    # fires on intentionally-malformed input, documented as undefined.
+    (
+        SEGLEN_BOUND_RE,
+        "Defensive segment-length bound in a bounded parser:"
+        " buffer length is contract-validated upstream; the"
+        " malformed-input branch is exempted under DO-178C 6.4.4.3.",
+    ),
+)
+
+
+def _deactivated_by_priv_null(rel_path: str, line: int, excerpt: str) -> str | None:
+    """Rationale when this is a NULL guard inside a TU-local static helper.
+
+    Project convention: such helpers are only called from inside the same TU,
+    where the public-API entry point has already validated every pointer via
+    RA8_CHECK_NULL_PTR. The null guard is defensive duplication, so the
+    all-NULL MC/DC vector is rejected upstream.
+
+    Needs the enclosing function's name, which the excerpt does not carry --
+    which is why this is a function and not a row in the table above.
+    """
+    if not PRIV_NULL_OR_RE.search(excerpt):
+        return None
+    fname = _enclosing_static_priv_name(rel_path, line)
+    if fname is None:
+        return None
+    return (
+        f"TU-local static helper `{fname}` -- defensive NULL"
+        " guard duplicates the public-API entry-point check,"
+        " which has already rejected NULL on every reachable"
+        " call path."
+    )
+
+
+def _deactivated_by_upstream_guard(rel_path: str, line: int, excerpt: str) -> str | None:
+    """Rationale when every pointer here was already null-checked in this function.
+
+    Reads the enclosing function body looking for an earlier
+    RA8_CHECK_NULL_PTR or `if (p == NULL) return ...` covering EVERY pointer
+    the decision tests. Partial coverage is not enough: one unguarded pointer
+    means the vector is still reachable.
+    """
+    null_tokens = [m.group(1).split("->")[0].split(".")[0] for m in NULL_TOKEN_RE.finditer(excerpt)]
+    if not null_tokens:
+        return None
+    body = _function_body_lines(rel_path, line)
+    if not body:
+        return None
+    text = "\n".join(body)
+    guards: set[str] = set()
+    for m in GUARD_NULL_RE.finditer(text):
+        name = m.group(1) or m.group(2)
+        if name:
+            guards.add(name)
+    shadowed = [n for n in null_tokens if n in guards]
+    if not shadowed or len(shadowed) != len(null_tokens):
+        return None
+    return (
+        f"Pointer(s) {sorted(set(shadowed))} already null-checked"
+        " upstream in the same function body."
+    )
+
+
+def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[bool, str]:
     """Classify one decision as deactivated code, with the rationale why.
 
     Deliberately conservative: it reports deactivated only on positive
@@ -501,101 +613,20 @@ def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[boo
 
     Returns ``(deactivated, rationale)``.
     """
-    # Pattern 0: explicit per-line opt-in annotation.
+    # Explicit per-line opt-in annotation outranks every inferred rule.
     annot = _line_annotation(rel_path, line)
     if annot is not None:
         return (True, f"Annotated deactivation: {annot}")
-    # Pattern 1: ((p == NULL) && (p_len != 0)) -- a defensive contract
-    # check. The public API documents the contract (caller-side @pre);
-    # the only path that exercises the AND-chain's second condition is
-    # a deliberately malformed call that the public API rejects upstream.
-    if LEN_NULL_PAIR_RE.search(excerpt):
-        return (
-            True,
-            "Defensive null+len contract: (ptr == NULL) && (len != 0)"
-            " is rejected upstream by the public-API @pre clause.",
-        )
-    # Pattern 2: `for (...; off < sizeof(buf); ...)` defensive bound.
-    # The fixed-size scratch buffer is sized to the documented input
-    # caps; the bound condition can only flip if the caller violates
-    # the contract.
-    if DEFENSIVE_OFF_RE.search(excerpt):
-        return (
-            True,
-            "Defensive scratch-buffer bound: input length is capped"
-            " by the public-API contract; second condition unreachable.",
-        )
-    # Pattern 2b: Structurally-redundant `x != V || (x == V && ...)`
-    # where the second clause's leading condition is the negation of
-    # the first. llvm-cov counts the inner equality as a separate
-    # condition, but no vector can flip it independently of the OR's
-    # leading inequality. The remaining two conditions ARE testable
-    # (and are tested), so the gap is the unreachable third condition.
-    if STRUCT_REDUNDANT_RE.search(excerpt):
-        return (
-            True,
-            "Structurally-redundant condition: `x == V` inside the"
-            " second clause is the negation of the first OR-clause's"
-            " `x != V` and cannot be flipped independently.",
-        )
-    # Pattern 2c: 4-condition exhaustive-enum OR set membership.
-    # `(x==E1)||(x==E2)||(x==E3)||(x==E4)` with upstream enum
-    # validation. MC/DC's all-false vector requires `x` outside
-    # the enum range, which is rejected before this decision.
-    if ENUM_OR_SET_RE.search(excerpt):
-        return (
-            True,
-            "Exhaustive enum-set OR: 4-way mode equality. The"
-            " all-false MC/DC vector requires an out-of-range enum"
-            " value, which is rejected by an upstream enum guard.",
-        )
-    # Pattern 2d: Segment-length corruption guard inside a bounded
-    # parser. The buffer length is contract-validated by the public
-    # API; the second clause only fires on intentionally-malformed
-    # input which is documented as undefined behaviour.
-    if SEGLEN_BOUND_RE.search(excerpt):
-        return (
-            True,
-            "Defensive segment-length bound in a bounded parser:"
-            " buffer length is contract-validated upstream; the"
-            " malformed-input branch is exempted under DO-178C 6.4.4.3.",
-        )
-    # Pattern 2e: `(p == NULL || q == NULL)` inside a static priv_/internal_
-    # TU-local helper. Project convention: such helpers are only called
-    # from inside the same TU, where the public-API entry point has
-    # already validated every pointer via RA8_CHECK_NULL_PTR. The null
-    # guard is defensive duplication; the all-NULL MC/DC vector is
-    # rejected upstream.
-    if PRIV_NULL_OR_RE.search(excerpt):
-        fname = _enclosing_static_priv_name(rel_path, line)
-        if fname is not None:
-            return (
-                True,
-                f"TU-local static helper `{fname}` -- defensive NULL"
-                " guard duplicates the public-API entry-point check,"
-                " which has already rejected NULL on every reachable"
-                " call path.",
-            )
-    # Pattern 3: `(p == NULL) || ...` where `p` was already checked
-    # earlier in the same function via RA8_CHECK_NULL_PTR or
-    # `if (p == NULL) return ...`.
-    null_tokens = [m.group(1).split("->")[0].split(".")[0] for m in NULL_TOKEN_RE.finditer(excerpt)]
-    if null_tokens:
-        body = _function_body_lines(rel_path, line)
-        if body:
-            text = "\n".join(body)
-            guards: set[str] = set()
-            for m in GUARD_NULL_RE.finditer(text):
-                name = m.group(1) or m.group(2)
-                if name:
-                    guards.add(name)
-            shadowed = [n for n in null_tokens if n in guards]
-            if shadowed and len(shadowed) == len(null_tokens):
-                return (
-                    True,
-                    f"Pointer(s) {sorted(set(shadowed))} already null-checked"
-                    " upstream in the same function body.",
-                )
+
+    for pattern, rationale in _TEXTUAL_DEACTIVATION_RULES:
+        if pattern.search(excerpt):
+            return (True, rationale)
+
+    for rule in (_deactivated_by_priv_null, _deactivated_by_upstream_guard):
+        rationale = rule(rel_path, line, excerpt)
+        if rationale is not None:
+            return (True, rationale)
+
     return (False, "")
 
 

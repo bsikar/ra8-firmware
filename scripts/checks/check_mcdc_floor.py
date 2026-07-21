@@ -105,6 +105,49 @@ def file_reachable(entry: dict) -> tuple[int, int]:
     return covered, reachable_total
 
 
+def _collect_offenders(
+    files: list[dict],
+) -> tuple[list[tuple[float, str, int, int]], int]:
+    """Return ``(offenders, checked)`` for every in-scope file with a decision.
+
+    A file with no reachable decision is skipped rather than counted as a pass:
+    it has nothing to measure, and scoring it 100% would dilute the floor.
+    """
+    offenders: list[tuple[float, str, int, int]] = []
+    checked = 0
+    for entry in files:
+        rel = normalize(entry.get("file", ""))
+        if not in_scope(rel):
+            continue
+        covered, reachable_total = file_reachable(entry)
+        if reachable_total <= 0:
+            continue
+        checked += 1
+        pct = 100.0 * covered / reachable_total
+        if pct < FLOOR_PCT:
+            offenders.append((pct, rel, covered, reachable_total))
+    return offenders, checked
+
+
+def _report_offenders(offenders: list[tuple[float, str, int, int]]) -> None:
+    """Print the below-floor table, worst first, with the remedy."""
+    offenders.sort()
+    print(
+        f"check_mcdc_floor.py: {len(offenders)} first-party file(s) below "
+        f"the {FLOOR_PCT:.0f}% reachable-MC/DC floor (NO allowlist):"
+    )
+    print("  mc/dc  covered/reachable  file")
+    for pct, rel, covered, reachable_total in offenders:
+        print(f"  {pct:5.1f}%  {covered:5d}/{reachable_total:<5d}       {rel}")
+    print(
+        "Fix each at the root -- add the missing MC/DC vector (N+1 vectors "
+        "for N conditions; see docs/MCDC.md), or, if the gap is genuinely "
+        "unreachable on any public-API path, catalogue it with a "
+        "`// mcdc-deactivated:` rationale per DO-178C 6.4.4.3. Do NOT add "
+        "an allowlist."
+    )
+
+
 def main() -> int:
     """Fail when any in-scope file sits below the reachable MC/DC floor.
 
@@ -132,19 +175,7 @@ def main() -> int:
         print("check_mcdc_floor.py: ERROR -- MC/DC JSON has no files.")
         return 1
 
-    offenders: list[tuple[float, str, int, int]] = []
-    checked = 0
-    for entry in files:
-        rel = normalize(entry.get("file", ""))
-        if not in_scope(rel):
-            continue
-        covered, reachable_total = file_reachable(entry)
-        if reachable_total <= 0:
-            continue
-        checked += 1
-        pct = 100.0 * covered / reachable_total
-        if pct < FLOOR_PCT:
-            offenders.append((pct, rel, covered, reachable_total))
+    offenders, checked = _collect_offenders(files)
 
     if checked == 0:
         print(
@@ -153,21 +184,7 @@ def main() -> int:
         return 1
 
     if offenders:
-        offenders.sort()
-        print(
-            f"check_mcdc_floor.py: {len(offenders)} first-party file(s) below "
-            f"the {FLOOR_PCT:.0f}% reachable-MC/DC floor (NO allowlist):"
-        )
-        print("  mc/dc  covered/reachable  file")
-        for pct, rel, covered, reachable_total in offenders:
-            print(f"  {pct:5.1f}%  {covered:5d}/{reachable_total:<5d}       {rel}")
-        print(
-            "Fix each at the root -- add the missing MC/DC vector (N+1 vectors "
-            "for N conditions; see docs/MCDC.md), or, if the gap is genuinely "
-            "unreachable on any public-API path, catalogue it with a "
-            "`// mcdc-deactivated:` rationale per DO-178C 6.4.4.3. Do NOT add "
-            "an allowlist."
-        )
+        _report_offenders(offenders)
         return 1
 
     print(
