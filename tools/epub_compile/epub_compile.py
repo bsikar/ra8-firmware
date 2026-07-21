@@ -33,7 +33,7 @@ from rabook_blob import MAX_IMAGE_EDGE
 from rabook_format import CONTAINER_CHUNK_BYTES, wrap_container
 
 
-def main():
+def main() -> int:
     """Parse the command line, compile, and write the container to disk.
 
     Two modes: `--selftest` runs the issue #196 fixed-layout self-check and

@@ -11,6 +11,8 @@ transliterated) to satisfy the repository encoding policy.
 SPDX-License-Identifier: MIT
 """
 
+from __future__ import annotations
+
 import argparse
 import struct
 import unicodedata
@@ -18,7 +20,7 @@ import zlib
 from pathlib import Path
 
 
-def ascii_only(text):
+def ascii_only(text: str) -> str:
     """Fold text to 7-bit ASCII that is safe inside a C string literal.
 
     NFKD decomposition first, so an accented letter splits into a plain letter
@@ -44,7 +46,7 @@ def ascii_only(text):
     return out.replace('"', "'").replace("\\", "")
 
 
-def unwrap_container(data):
+def unwrap_container(data: bytes) -> bytes:
     """Inflate a chunked RBKC .rabook container back to its flat blob.
 
     Keep in sync with ra8_book_container_t in libs/ra8_book/inc/ra8_book.h:
@@ -69,7 +71,7 @@ def unwrap_container(data):
     return blob
 
 
-def read_meta(path):
+def read_meta(path: Path) -> dict[str, object]:
     """Inflate one .rabook and extract the fields the manifest header needs.
 
     Reads the whole container into memory and inflates all of it just to reach
@@ -105,7 +107,7 @@ def read_meta(path):
     h = struct.unpack("<8s23I", flat[:100])
     string_off = h[19]
 
-    def s(off):
+    def s(off: int) -> str:
         start = string_off + off
         end = flat.index(b"\x00", start)
         return flat[start:end].decode("utf-8", "replace")
@@ -157,7 +159,7 @@ _HEADER_PREAMBLE = (
 )
 
 
-def _generated_constants(entries, biggest):
+def _generated_constants(entries: list[dict[str, object]], biggest: int) -> list[str]:
     """The two C23 typed enums whose values come from the scanned books."""
     return [
         "/**",
@@ -182,7 +184,7 @@ def _generated_constants(entries, biggest):
     ]
 
 
-def _generated_table(entries):
+def _generated_table(entries: list[dict[str, object]]) -> list[str]:
     """The book table itself, one initialiser row per book."""
     lines = [
         "/** @brief The bundled book index. Generated; data table, magic numbers ok. */",
@@ -198,7 +200,7 @@ def _generated_table(entries):
     return lines
 
 
-def _build_header_lines(entries):
+def _build_header_lines(entries: list[dict[str, object]]) -> tuple[list[str], int]:
     """Return the C header lines for the given book entries, and the worst-case size."""
     biggest = max((e["inflated_size"] for e in entries), default=0)
     lines = [
@@ -209,7 +211,7 @@ def _build_header_lines(entries):
     return lines, biggest
 
 
-def main():
+def main() -> int:
     """Scan a directory of .rabook files and write the generated C header.
 
     Books are ordered by filename, and that order fixes the indices in
