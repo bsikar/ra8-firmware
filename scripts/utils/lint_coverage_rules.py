@@ -307,7 +307,7 @@ KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
         "asm",
         2,
-        "#367",
+        "#371",
         "no assembler linter or formatter exists in this tree; 2 hand-written "
         "startup TUs (esp32 boot, ThreadX low-level init)",
         lambda c: c.cls == "asm",
@@ -315,7 +315,7 @@ KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
         "firmware-tu-no-cross-compile-db",
         435,
-        "#368",
+        "#369",
         "examples/, port/ and esp32/ are cross-compiled firmware. clang-tidy "
         "parses against the HOST compile_commands.json, which carries no ARM "
         "flags, per-app includes or vendor RTOS paths -- pointing it at these "
@@ -327,7 +327,7 @@ KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
         "rtos-tu-no-compile-db",
         3,
-        "#368",
+        "#369",
         "host-buildable trees still contain TUs that include ThreadX/NetX/USBX "
         "vendor headers the host compile database does not carry",
         lambda c: c.cls == "c-family" and includes_rtos_header(c.text),
@@ -335,7 +335,7 @@ KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
         "cxx-objc-not-in-tidy-scope",
         12,
-        "#369",
+        "#370",
         "clang_tidy.sh collects only *.c and *.h, so first-party C++ shims and "
         "the two Objective-C host views are unlinted. The .m files additionally "
         "need a macOS runner",
@@ -347,7 +347,7 @@ KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
         "dockerfile",
         1,
-        "#370",
+        "#371",
         "hadolint is not provisioned on the runner; the devcontainer that pins "
         "every CI tool version is itself unlinted and unformatted",
         lambda c: c.cls == "dockerfile",
@@ -355,7 +355,7 @@ KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
         "zsh",
         1,
-        "#370",
+        "#371",
         "shellcheck refuses zsh input and there is no zsh formatter in the tree; "
         "the devcontainer zshrc is unchecked",
         lambda c: c.cls == "zsh",
