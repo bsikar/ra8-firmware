@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_mcdc_block.py -- Require @par MC/DC blocks on tests of compound decisions.
+r"""check_mcdc_block.py -- Require @par MC/DC blocks on tests of compound decisions.
 
 Per CLAUDE.md "IEC 61508 SIL 3 / DO-178C Level B Qualification":
 
@@ -63,7 +62,8 @@ def staged_test_files() -> list[Path]:
 def preceding_doxygen_block(lines: list[str], func_lineno: int) -> str:
     """Return the text of the doxygen `/** ... */` block immediately
     preceding the function definition on line ``func_lineno`` (1-based),
-    or empty string if none."""
+    or empty string if none.
+    """
     end = func_lineno - 2  # zero-based index of line just above the function
     while end >= 0 and not lines[end].strip():
         end -= 1

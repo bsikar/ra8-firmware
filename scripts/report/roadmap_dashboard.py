@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-roadmap_dashboard.py -- generate a human-friendly roadmap dashboard.
+"""roadmap_dashboard.py -- generate a human-friendly roadmap dashboard.
 
 This consumer reads docs/ROADMAP.md using the same conventions as
 scripts/report/roadmap_stats.py:

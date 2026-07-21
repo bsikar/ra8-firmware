@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_tz_boundary_discard.py -- ban silent error discards at TrustZone
+"""check_tz_boundary_discard.py -- ban silent error discards at TrustZone
 boot boundaries.
 
 C23 makes an explicit ``(void)`` cast the sanctioned suppression for a

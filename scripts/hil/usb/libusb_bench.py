@@ -38,7 +38,8 @@ USB_EP_DIR_IN_BIT = 0x80  # bEndpointAddress direction bit: 1 = IN
 def find_bulk_endpoints(dev):
     """Return (cfg, interface_num, ep_out_addr, ep_in_addr) for the first
     bulk-pair interface we find on `dev`. CDC ACM puts the bulk pair on
-    the *data* interface (class 0x0a), not on the comm interface."""
+    the *data* interface (class 0x0a), not on the comm interface.
+    """
     cfg = dev.get_active_configuration()
     for intf in cfg:
         if intf.bInterfaceClass != CDC_DATA_INTERFACE_CLASS:

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-check-copyright.py -- enforce MIT SPDX + Brighton Sikarskie copyright
+"""check-copyright.py -- enforce MIT SPDX + Brighton Sikarskie copyright
 headers on every C / header / CMake / shell / python file.
 
 Exits non-zero if any file is missing a header. Run from the pre-

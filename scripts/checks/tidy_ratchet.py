@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-tidy_ratchet.py -- clang-tidy ratchet gate (compare vs committed baseline).
+"""tidy_ratchet.py -- clang-tidy ratchet gate (compare vs committed baseline).
 
 WHY THIS EXISTS
 ---------------

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-extract_line_citations.py -- Emit a CSV of in-tree line citations.
+"""extract_line_citations.py -- Emit a CSV of in-tree line citations.
 
 Companion to scripts/checks/check_line_citations.py. Walks the same set
 of files (libs/, src/, tests/, examples/, port/), finds every

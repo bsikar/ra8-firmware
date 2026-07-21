@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-fix_wave_references.py -- conservative auto-fix for "Wave N" session refs.
+"""fix_wave_references.py -- conservative auto-fix for "Wave N" session refs.
 
 Companion to check_no_wave_references.py. Walks every tracked source/doc
 file under the same scan roots and rewrites obvious session-bookkeeping

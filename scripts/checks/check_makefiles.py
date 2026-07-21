@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Structural and formatting checker for this tree's Makefiles.
+r"""Structural and formatting checker for this tree's Makefiles.
 
 WHY NOT checkmake
 =================
@@ -91,7 +91,7 @@ def repo_files(root: pathlib.Path) -> list[pathlib.Path]:
 
 
 def logical_lines(text: str) -> list[tuple[int, str, bool]]:
-    """Join backslash continuations into (lineno, text, is_recipe) triples.
+    r"""Join backslash continuations into (lineno, text, is_recipe) triples.
 
     Continuation joining is the piece checkmake gets wrong, so the selftest
     pins it hardest. `is_recipe` records whether the FIRST physical line began

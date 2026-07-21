@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_no_dynamic_alloc.py -- enforce NASA Power-of-10 Rule 3
+"""check_no_dynamic_alloc.py -- enforce NASA Power-of-10 Rule 3
 ("no dynamic memory after initialization") on RA8D2 firmware code.
 
 Flags two classes of violation:
@@ -41,7 +40,7 @@ Inline suppression:
   Append `alloc-allow: <reason>` on the same line. The reason is
   mandatory; bare `alloc-allow` with no reason is itself rejected.
 
-  Example:
+Example:
       void* p = malloc(64); /* alloc-allow: bringup scratch, removed in v0.2 */
 
 Usage:

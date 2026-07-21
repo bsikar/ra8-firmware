@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Per-app size visualizer for ra8-firmware.
+"""Per-app size visualizer for ra8-firmware.
 
 Walks every examples/ek_ra8d2/<app>/build/<app>.elf, runs
 `arm-none-eabi-size --format=sysv` on it, parses the output, and
@@ -92,7 +91,8 @@ def find_size_tool() -> str | None:
 
 def collect_elfs() -> list[Path]:
     """Return every examples/ek_ra8d2/<app>/build/<app>.elf that
-    exists on disk."""
+    exists on disk.
+    """
     out: list[Path] = []
     if not APPS_DIR.is_dir():
         return out
@@ -111,7 +111,8 @@ _BYTES_PER_KIB = 1024  # binary kilobyte
 
 def run_size(size_tool: str, elf: Path) -> AppSizes:
     """Run `arm-none-eabi-size --format=sysv` and bucket the
-    section sizes into text / data / bss totals."""
+    section sizes into text / data / bss totals.
+    """
     result = subprocess.run(  # noqa: S603  # trusted: size_tool comes from shutil.which
         [size_tool, "--format=sysv", str(elf)],
         check=True,

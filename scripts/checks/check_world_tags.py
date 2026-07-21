@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_world_tags.py -- enforce TrustZone world tags on Ring 3+ files.
+"""check_world_tags.py -- enforce TrustZone world tags on Ring 3+ files.
 
 Every file in Ring 3 (HAL) and above carries two tags in its file
 header:
@@ -70,7 +69,8 @@ APP_BOOT_FILES = {
 
 def discover_app_dirs() -> tuple[str, ...]:
     """Return every examples/<tier>/<app>/ relative path that has
-    main.c + CMakeLists.txt."""
+    main.c + CMakeLists.txt.
+    """
     out: list[str] = []
     examples_root = REPO_ROOT / "examples"
     if not examples_root.is_dir():
@@ -175,7 +175,8 @@ def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]
 
 def _to_repo_relative(path: pathlib.Path) -> str:
     """Best-effort repo-relative path. Falls back to as-given when
-    the file lives outside REPO_ROOT (e.g. in a unit-test sandbox)."""
+    the file lives outside REPO_ROOT (e.g. in a unit-test sandbox).
+    """
     try:
         return str(path.resolve().relative_to(REPO_ROOT))
     except ValueError:

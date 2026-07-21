@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-check_no_wave_references.py -- ban session-bookkeeping "Wave N" references.
+r"""check_no_wave_references.py -- ban session-bookkeeping "Wave N" references.
 
 Rationale: comments and commit messages that cite "Wave 70 fixed FRDY" or
 "see Wave 43b" leak internal session bookkeeping into the source tree.

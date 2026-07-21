@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_line_citations.py -- Reject in-tree source citations with line numbers.
+"""check_line_citations.py -- Reject in-tree source citations with line numbers.
 
 Per CLAUDE.md "Code Style / Comment citations":
 
@@ -190,7 +189,8 @@ def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
 def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     """Return list of (start, end) byte offsets that lie inside C/C++
     comments. Block comments and line comments. String literal aware
-    enough to skip `"//foo"` and `"/* */"`."""
+    enough to skip `"//foo"` and `"/* */"`.
+    """
     spans: list[tuple[int, int]] = []
     i = 0
     n = len(text)

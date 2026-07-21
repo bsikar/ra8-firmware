@@ -68,7 +68,8 @@ def strip_comments(src: str) -> str:
 
 def find_preceding_doxy(src: str, func_offset: int):
     """Return (block_text, has_block) for the doxygen block immediately
-    preceding func_offset, or ("", False) if none."""
+    preceding func_offset, or ("", False) if none.
+    """
     # walk backward over whitespace
     j = func_offset - 1
     while j >= 0 and src[j] in " \t\n\r":

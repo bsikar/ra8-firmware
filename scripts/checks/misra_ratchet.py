@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-misra_ratchet.py -- MISRA-C 2012 ratchet gate (compare vs committed baseline).
+"""misra_ratchet.py -- MISRA-C 2012 ratchet gate (compare vs committed baseline).
 
 `scripts/checks/misra_check_inner.sh` (make misra) runs cppcheck + the bundled
 misra.py addon and writes one finding per line to `build/misra/results.txt`.
@@ -80,7 +79,7 @@ def cppcheck_version() -> str:
 
 
 def load_results(path: Path) -> tuple[Counter[tuple[str, str]], dict[tuple[str, str], list[str]]]:
-    """Parse the misra_check.sh TSV into per-(file, rule) counts + raw lines.
+    r"""Parse the misra_check.sh TSV into per-(file, rule) counts + raw lines.
 
     Each row is `rule \\t severity \\t file \\t line \\t message`. Rows that
     do not split into five columns are ignored (defensive: the awk parser in
