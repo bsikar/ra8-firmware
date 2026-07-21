@@ -650,16 +650,27 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs)
 /**
  * @brief Poll a PDCTRGD status flag until it reads the wanted level.
  *
+ * @details
+ * Busy-polls the graphics power-domain status register until the watched
+ * bit reaches @p want_set, or until @p limit iterations have elapsed. The
+ * loop is bounded by an iteration count rather than by wall time so the
+ * wait carries a statically provable bound (NASA Rule 2); the HAL exposes
+ * no timed primitive at this layer. The poll is read-only, so unlike the
+ * PDCTRGD write paths it needs no PRCR unlock window.
+ *
  * @param[in] mask    ``k_ra8_lpm_pdctr_*_mask`` bit to watch.
  * @param[in] want_set ``true`` to wait for set, ``false`` for clear.
  * @param[in] limit   Iteration bound (NASA Rule 2).
  *
  * @return ``k_ra8_ok`` if the flag reached the level, else
  *         ``k_ra8_err_hw_timeout``.
+ * @retval k_ra8_ok The watched bit read @p want_set within @p limit polls.
+ * @retval k_ra8_err_hw_timeout The bit never reached @p want_set.
  *
  * @pre limit > 0.
  * @pre mask names exactly one PDCTRGD bit.
  * @post No register is written.
+ * @post At most @p limit reads of PDCTRGD were issued.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
