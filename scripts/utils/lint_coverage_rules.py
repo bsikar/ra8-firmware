@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Classification tables and provider descriptors for ``check_lint_coverage.py``.
 
 This module is DATA plus pure helpers: it says what kinds of file exist in this
