@@ -67,10 +67,20 @@ build failure	BUILD FAIL|NO ELF
 EOF
 }
 
-# Classify one app's emulator output into a cause label.
-classify_cause() { # app -> label on stdout
-  local app="$1" out="" label="" pattern=""
+# Classify one app into a cause label, from its VERDICT and its emulator output.
+classify_cause() { # app [verdict] -> label on stdout
+  local app="$1" verdict="${2:-}" out="" label="" pattern=""
   local f="$run_dir/$app.out"
+  # TRUNCATED is a verdict, not a signature. The run is killed by the outer
+  # `timeout`, so board_sim never gets to print a distinguishing line and the
+  # captured output looks like a healthy run that simply stops. Reading the
+  # verdict is the only honest way to attribute it -- on the first CI run both
+  # truncations landed in "unclassified" for exactly this reason, which is the
+  # bucket meaning "nobody knows", not "no verdict was reached".
+  if [ "$verdict" = "TRUNCATED" ]; then
+    printf 'wall-clock truncation -- NO verdict reached\n'
+    return 0
+  fi
   [ -f "$f" ] && out="$(cat "$f")"
   while IFS=$'\t' read -r label pattern; do
     [ -z "$label" ] && continue
@@ -111,18 +121,26 @@ REAL
   cat >"$probe_dir/weird_app.out" <<'REAL'
 board_sim: something nobody has seen before
 REAL
-  while IFS=$'\t' read -r app want; do
-    got="$(classify_cause "$app")"
+  while IFS=$'\t' read -r app vd want; do
+    got="$(classify_cause "$app" "$vd")"
     if [ "$got" != "$want" ]; then
       echo "  FAIL classify_cause($app) = '$got', expected '$want'"
       sel_fail=1
     fi
   done <<EOF
-mve_app	MVE/Helium store (#396)
-threadx_app	ThreadX scheduler entry
-unmapped_app	unmapped access
-weird_app	unclassified
+mve_app	FAULT	MVE/Helium store (#396)
+threadx_app	FAULT	ThreadX scheduler entry
+unmapped_app	FAULT	unmapped access
+weird_app	FAULT	unclassified
+mve_app	TRUNCATED	wall-clock truncation -- NO verdict reached
+weird_app	TRUNCATED	wall-clock truncation -- NO verdict reached
 EOF
+  # The two TRUNCATED rows above are the load-bearing ones. A truncated run is
+  # killed by the outer timeout, so its captured output looks like a healthy
+  # run and carries no distinguishing marker -- the first fixture even carries
+  # a real MVE fault signature. The verdict must still win, or a run that
+  # reached no verdict gets attributed to whatever its partial output happened
+  # to contain, which is worse than saying "unclassified".
   # The greedy-rule regression, asserted directly: both fixtures above carry an
   # ordinary "MVE (Helium) ... emulated" telemetry line, and they must still
   # land in DIFFERENT buckets. If a future rule keys on that line, every app
@@ -162,7 +180,7 @@ while read -r app verdict; do
     *) continue ;;
   esac
   n_fail=$((n_fail + 1))
-  cause="$(classify_cause "$app")"
+  cause="$(classify_cause "$app" "$verdict")"
   cause_n["$cause"]=$((${cause_n["$cause"]:-0} + 1))
   cause_apps["$cause"]="${cause_apps["$cause"]:-}${app} "
 done <"$report"
