@@ -59,24 +59,43 @@ SHELLCHECK_ENABLE = (
     "useless-use-of-cat",
 )
 
-# Deliberately NOT enabled, with the measured reason. Recorded here so the next
-# person does not have to re-derive it:
+# Deliberately NOT enabled. Re-measured for #363 on the first-party shell files
+# at ShellCheck 0.11.0, on top of the severity + opt-in set above:
 #
-#   check-set-e-suppressed (SC2310/SC2311) -- fires on ANY function invoked in a
-#     condition, including a bare one-line predicate AND the recommended
-#     rewrite of the pattern it is warning about. There is no source form that
-#     both captures a function's status and satisfies it, so enabling it would
-#     mean ~90 inline disables rather than ~90 fixes. The specific regression it
-#     would guard (a gate body continuing past a mid-body failure) is already
-#     asserted at runtime by suite_errexit_selftest in scripts/ci.sh, which
-#     tests the real runner instead of a lint approximation.
-#   check-extra-masked-returns (SC2312) -- ~150 sites, overwhelmingly on
-#     commands that cannot fail (uname, date, basename, id -un) or inside
-#     process substitutions that have no single-statement rewrite. Tracked
-#     separately rather than churned through here.
-#   require-variable-braces / require-double-brackets / add-default-case --
-#     pure presentation; the first alone is ~2800 sites, and `[` is correct in
-#     the POSIX-sh scripts in this tree.
+#   check-set-e-suppressed (SC2310/SC2311) -- 90 findings / 24 files.
+#     Unsatisfiable by construction, and verified form by form: it fires on
+#     `fn || rc=$?`, on the rewrite its own help text recommends
+#     (`if fn; then rc=0; else rc=$?; fi`), on a bare one-line predicate, on
+#     `! fn` and on `fn && ...`. The only two forms it ACCEPTS are worse than
+#     the ones it rejects -- `set +e; fn; rc=$?; set -e` passes while a
+#     brace-bodied callee still runs past a mid-body failure, and
+#     `( fn ); rc=$?` passes while aborting the parent outright. Enabling it
+#     would mean ~90 inline disables and would push authors toward the form it
+#     cannot see. The signal is real, so it is covered instead by
+#     scripts/utils/check_errexit_masking.py, which fires only where a
+#     first-party function with two or more failable commands is invoked with
+#     its status masked. The runtime regression for the specific gate-suite
+#     failure remains asserted by suite_errexit_selftest in scripts/ci.sh.
+#   check-extra-masked-returns (SC2312) -- 163 findings / 34 files.
+#     Overwhelmingly command substitutions on commands that cannot meaningfully
+#     fail (uname, date -Iseconds, basename, id -un) or inside `< <(...)`
+#     process substitutions with no single-statement rewrite. Fixing them means
+#     hoisting each into a preceding assignment: some of that is worth doing and
+#     some is pure motion, and a blanket enable cannot tell the two apart. The
+#     subset that actually matters -- masking a FUNCTION's status -- is exactly
+#     what check_errexit_masking.py now covers.
+#   require-variable-braces (SC2250) -- 2901 findings / 60 files.
+#     Presentation. `$var` and `${var}` are identical outside the
+#     disambiguation cases, which ShellCheck already flags separately at the
+#     level of correctness.
+#   require-double-brackets (SC2292) -- 176 findings / 21 files.
+#     Presentation, and actively wrong here: `[` is correct in the POSIX-sh
+#     scripts in this tree, so this would push them toward bash-only for no
+#     behavioural gain.
+#   add-default-case (SC2249) -- 56 findings / 15 files.
+#     A default case is right for a dispatch on external input, which this tree
+#     already writes; it is noise on an exhaustive match over a fixed internal
+#     enum, and the check cannot distinguish them.
 SHELLCHECK_DISABLED_OPTIONAL = (
     "check-set-e-suppressed",
     "check-extra-masked-returns",
@@ -147,7 +166,7 @@ def _has_shell_shebang(rel: str) -> bool:
     return any(tok in line for tok in ("bash", "zsh", "/sh", "env sh"))
 
 
-def _scripts() -> list[str]:
+def first_party_scripts() -> list[str]:
     """First-party shell scripts: by ``*.sh`` suffix OR by shebang.
 
     The shebang sweep is not hypothetical. Every git hook in ``scripts/git/``
@@ -374,7 +393,7 @@ def main(argv: list[str]) -> int:
     # and shfmt are installed: the question is what this gate COVERS, and a
     # missing tool must not silently shrink the answer to nothing.
     if "--list-files" in argv[1:]:
-        print("\n".join(_scripts()))
+        print("\n".join(first_party_scripts()))
         return 0
 
     sc_tool = _find("SHELLCHECK", "shellcheck")
@@ -390,7 +409,7 @@ def main(argv: list[str]) -> int:
         print(msg + " -- skipping (install to enforce locally).")
         sys.exit(0)
 
-    files = _scripts()
+    files = first_party_scripts()
     if not files:
         print("check_shell.py: no shell scripts to scan")
         return 0
