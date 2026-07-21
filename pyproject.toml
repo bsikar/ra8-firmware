@@ -45,7 +45,7 @@ select = [
   # --- added by #363 -------------------------------------------------------
   # Private-member access. The reason previously recorded here -- "this repo's
   # own tests reaching into modules it owns" -- was simply wrong: all 15
-  # measured findings were scripts/tapo_control.py reaching into the
+  # measured findings were scripts/hil/tapo_control.py reaching into the
   # THIRD-PARTY python-kasa library's internals, which is the most upgrade-
   # fragile coupling in the Python tree and exactly what SLF exists to surface.
   # It is deliberate and unavoidable (see the per-file-ignore below), but it
@@ -102,7 +102,7 @@ ignore = [
 # than as 15 inline noqa lines so the coupling reads as one documented fact
 # about the driver, and so the rule keeps firing everywhere else in the tree.
 # If python-kasa ever grows a public seam for this, delete the line.
-"scripts/tapo_control.py" = ["SLF001"]
+"scripts/hil/tapo_control.py" = ["SLF001"]
 
 [tool.ruff.lint.pylint]
 # Pinned explicitly rather than inherited, so a ruff default change cannot
@@ -128,7 +128,7 @@ max-branches = 12
 #             such: annotations on the files implementing the CI gates are
 #             real value and this SHOULD be adopted. It is held back only
 #             because 132 of the 377 are in tools/epub_compile/ and most of
-#             the rest in scripts/utils/ -- the two trees being rewritten
+#             the rest in scripts/checks/ -- the two trees being rewritten
 #             right now by the scripts/ restructure and the tools/ docstring
 #             pass. Landing 377 signature edits across those same files
 #             produces merge conflicts, not type safety. Adopt it as the next
@@ -146,7 +146,7 @@ max-branches = 12
 #   C90  (54) mccabe complexity, 28 files. Tracked in #373. Full sweep, so the next person
 #             picks a threshold from data: 10 -> 54, 12 -> 37, 15 -> 15,
 #             20 -> 5, 25 -> 2, 30 -> 1. Held back for sequencing, not taste:
-#             48 of the 54 are in scripts/utils/, and the worst offenders
+#             48 of the 54 are in scripts/checks/, and the worst offenders
 #             (doxy_audit 7, regen_mcdc_gaps 5, check_annotations 5,
 #             check_doc_attachment 2) are precisely the files #359 is
 #             splitting for the function-size cap. Complexity and function
