@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_no_null.py -- enforce the C23 nullptr-only rule on first-party code.
+"""check_no_null.py -- enforce the C23 nullptr-only rule on first-party code.
 
 Project policy: production code (libs/, src/, port/, examples/<app>/) must
 use ``nullptr`` instead of ``NULL`` for null pointer constants. This script

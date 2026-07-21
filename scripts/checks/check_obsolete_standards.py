@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_obsolete_standards.py -- Reject references to obsolete safety standards.
+"""check_obsolete_standards.py -- Reject references to obsolete safety standards.
 
 Per the project's IEC 61508 SIL 3 / DO-178C target (CLAUDE.md):
 

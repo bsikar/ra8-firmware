@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-scripts/fix/regen_mcdc_gaps.py -- regenerate docs/MCDC_GAPS.csv and the
+"""scripts/fix/regen_mcdc_gaps.py -- regenerate docs/MCDC_GAPS.csv and the
 summary header of docs/MCDC_GAPS.md from the LIVE llvm-cov MC/DC report
 (build/mcdc-report/mcdc.txt + summary.txt).
 
@@ -109,7 +108,8 @@ def _repo_relative(path: str) -> str:
     lives in, so REPO_ROOT is exactly that prefix in every environment
     (`/work` in the devcontainer, the clone dir on a bare checkout, the runner
     workspace in CI). The `/work` and first-party-root fallbacks only guard the
-    unlikely case of a symlinked or relocated object path."""
+    unlikely case of a symlinked or relocated object path.
+    """
     p = path.replace("\\", "/")
     root = str(REPO_ROOT).replace("\\", "/").rstrip("/") + "/"
     if p.startswith(root):
@@ -345,7 +345,8 @@ ENUM_OR_SET_RE = re.compile(
 
 def _function_body_lines(rel_path: str, target_line: int) -> list[str]:  # noqa: PLR0911  # multiple early returns for distinct error/sentinel paths
     """Return source lines from the start of the enclosing function up
-    to (but not including) `target_line`. Empty list if not found."""
+    to (but not including) `target_line`. Empty list if not found.
+    """
     abs_path = REPO_ROOT / rel_path
     if not abs_path.exists():
         return []
@@ -483,7 +484,8 @@ def _line_annotation(rel_path: str, line: int) -> str | None:
 
 def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[bool, str]:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, splitting hurts readability
     """Return (deactivated?, rationale) for a single decision at
-    (rel_path, line) with source text `excerpt`."""
+    (rel_path, line) with source text `excerpt`.
+    """
     # Pattern 0: explicit per-line opt-in annotation.
     annot = _line_annotation(rel_path, line)
     if annot is not None:
