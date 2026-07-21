@@ -134,6 +134,35 @@ RA8_PRIV uint64_t sim_mve_emulated_count(void);
  */
 RA8_PRIV void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len);
 
+/**
+ * @brief Emulate a register-form Armv8.1-M long shift (LSLL/ASRL) that trapped.
+ *
+ * @details
+ * The register form (\`lsll r0, r1, ip\`) aliases to an ORR.W whose Rm field is
+ * SP, which the core refuses outright, so unlike the immediate form it arrives
+ * here as a genuine undefined-instruction trap rather than silently
+ * mis-executing. Decodes the site, applies the shift to the {RdaHi:RdaLo} pair
+ * with correct 64-bit host arithmetic -- the amount is the SIGNED low byte of
+ * Rm, so a negative value shifts the other way -- writes the pair back and
+ * advances PC past the 4-byte instruction. Flags are untouched because the
+ * aliased ORRS never executed.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   Address of the trapping instruction.
+ * @param[in]     code The 4 instruction bytes at @p pc.
+ * @return true when @p code was a register-form long shift and was emulated.
+ * @retval true  Registers written and PC advanced; caller should stop+relaunch.
+ * @retval false Not a register-form long shift; try the next handler.
+ * @pre @p code holds the 4 bytes the core failed to decode at @p pc.
+ * @pre @p uc is stopped inside the invalid-instruction hook.
+ * @post On true, PC is @p pc + 4 and the register pair holds the result.
+ * @post On false, no engine state is modified.
+ * @note Not thread-safe; called from the single-threaded run loop.
+ * @see long_shift_seam_install()  Handles the immediate form, which never traps.
+ * @since 0.1.0
+ */
+RA8_PRIV bool emulate_long_shift_reg(uc_engine* uc, uint32_t pc, const uint8_t code[4]);
+
 /** @brief UDIV/SDIV decode masks + fault field bits for the div-0 seam. */
 typedef enum : uint32_t {
   k_div0_hw1_mask     = 0xFFF0U,     /**< hw1[15:4] selects the divide opcode.    */
