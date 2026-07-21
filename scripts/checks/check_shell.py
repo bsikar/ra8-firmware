@@ -37,6 +37,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # relative path -> {SC code: count}
@@ -108,10 +112,6 @@ EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/fonts/",
     "port/threadx/",
-    "/build/",
-    "/build-cov/",
-    "/_deps/",
-    "node_modules/",
 )
 
 
@@ -191,7 +191,8 @@ def first_party_scripts() -> list[str]:
     out = [
         rel
         for rel in known.union(by_shebang)
-        if not any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS)
+        if not is_build_output_path(rel)
+        and not any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS)
     ]
     return sorted(out)
 

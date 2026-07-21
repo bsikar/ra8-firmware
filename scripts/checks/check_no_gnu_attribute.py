@@ -36,9 +36,13 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
 ROOTS = ("libs", "src", "tests", "examples", "port", "tools")
 EXTS = (".c", ".h", ".cpp", ".hpp")
-EXEMPT_DIRS = ("/third_party/", "/fonts/", "/build/", "/build-")
+EXEMPT_DIRS = ("/third_party/", "/fonts/")
 ALLOWED = {"interrupt", "cmse_nonsecure_entry", "cmse_nonsecure_call"}
 
 ATTR_RE = re.compile(r"__attribute__\s*\(\(")
@@ -94,7 +98,7 @@ def discover() -> list[str]:
         for ext in EXTS:
             for f in base.rglob(f"*{ext}"):
                 s = str(f)
-                if any(d in s for d in EXEMPT_DIRS):
+                if is_build_output_path(s) or any(d in s for d in EXEMPT_DIRS):
                     continue
                 out.append(s)
     return out
@@ -130,7 +134,11 @@ def main() -> int:
     files = args or discover()
     total = 0
     for path in sorted(set(files)):
-        if not path.endswith(EXTS) or any(d in path for d in EXEMPT_DIRS):
+        if (
+            not path.endswith(EXTS)
+            or is_build_output_path(path)
+            or any(d in path for d in EXEMPT_DIRS)
+        ):
             continue
         for ln, snippet in check_file(path):
             print(
