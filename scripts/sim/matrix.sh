@@ -94,7 +94,15 @@ build_timeout="${BUILD_TIMEOUT:-240}"
 # (see the DETERMINISM note) the chunk budget always terminates the run, so this
 # exists only to catch a pathological hang. Sizing it tight would put a
 # wall-clock bound back in charge of the verdict, which is the bug being fixed.
-run_timeout="${RUN_TIMEOUT:-600}"
+#
+# 600s was too tight and proved the point against itself. On the CI runner --
+# slower per chunk than a dev box, and running this sweep alongside two other
+# board_sim jobs -- usb_printer_vendor and i2c_peripheral_responder exceeded it
+# and were reported TRUNCATED: no verdict, because a WALL-CLOCK bound beat the
+# deterministic one. Correctly reported, but the bound was mine and wrong. The
+# same two apps complete their full 4000 chunks in ~70s on an idle box, so this
+# is now sized for roughly an order of magnitude of runner contention.
+run_timeout="${RUN_TIMEOUT:-1800}"
 # The deterministic bound: outer chunks, one SysTick each. Instruction-counted,
 # so it is identical on an idle box and a loaded one.
 max_chunks="${MAX_CHUNKS:-4000}"
