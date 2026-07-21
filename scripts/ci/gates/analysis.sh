@@ -61,9 +61,50 @@ gate_misra() (
 )
 
 # --- tidy -----------------------------------------------------------------
-gate_tidy() {
-  bash scripts/checks/clang_tidy.sh --check --verbose
-}
+# clang-tidy over every first-party C, C++ and Objective-C file.
+#
+# Needs the cross-compiler as well as clang-tidy: since #369 the firmware pass
+# parses examples/, port/ and esp32/ against a CROSS-COMPILE compile database
+# that scripts/builders/build_cross_compile_db.py produces by really
+# configuring the RA8D2 / RA8P1 builds. require_arm_gcc_m85 makes an absent or
+# too-old toolchain a hard failure -- if this degraded to skipping the firmware
+# pass, the gate would go green having analysed barely half the tree, which is
+# the exact failure #369 existed to describe.
+#
+# The verdict comes from tidy_ratchet.py, not from clang-tidy's exit status.
+# #369 and #370 brought a large, never-before-analysed surface into scope, and
+# it arrived carrying pre-existing findings. The ratchet freezes exactly those
+# in a committed baseline and fails on any INCREASE -- so the new surface is
+# genuinely gated, and code with no baseline entry (all of libs/, src/, tools/)
+# still hard-fails on its first finding exactly as before.
+#
+# Exit code 2 from clang_tidy.sh means the script could not do its job (no
+# compile database, a failed configure, a scope regression). That must fail
+# immediately and must NEVER reach the ratchet: an infrastructure failure that
+# produced no findings would otherwise read as a clean run.
+gate_tidy() (
+  set -e
+  use_pinned_arm_toolchain
+  require_arm_gcc_m85
+  require_cmd cmake
+  bash scripts/checks/clang_tidy.sh --selftest
+  python3 scripts/checks/tidy_ratchet.py --selftest
+
+  local log rc
+  log="$(mktemp)"
+  rc=0
+  bash scripts/checks/clang_tidy.sh --check --verbose >"$log" 2>&1 || rc=$?
+  cat "$log"
+  if [ "$rc" -ge 2 ]; then
+    echo "ERROR: clang_tidy.sh could not run (exit $rc); not ratcheting." >&2
+    rm -f "$log"
+    return 1
+  fi
+  python3 scripts/checks/tidy_ratchet.py --check "$log"
+  rc=$?
+  rm -f "$log"
+  return "$rc"
+)
 
 # --- nsc-cmse -------------------------------------------------------------
 # Compiles every libs/ra8_nsc TU under -mcmse with -Wall -Wextra -Werror. The
