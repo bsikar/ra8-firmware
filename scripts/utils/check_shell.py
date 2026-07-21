@@ -111,26 +111,17 @@ def _find(env_var: str, name: str) -> str | None:
     return shutil.which(name)
 
 
-def _scripts() -> list[str]:
-    """First-party shell scripts: git-visible ``*.sh`` minus vendored trees.
+def _git_ls(*pathspec: str) -> list[str]:
+    """Tracked plus untracked-but-not-ignored paths matching `pathspec`.
 
-    Enumerates via ``git ls-files`` (tracked plus untracked-but-not-ignored)
-    instead of a filesystem walk so locally present, git-excluded trees
-    (``.git/info/exclude`` entries such as ``recon/`` vendor drops) never
-    enter the gate -- a raw ``rglob`` scanned them and failed commits on
-    third-party findings CI can never see.
+    Enumerates via ``git ls-files`` instead of a filesystem walk so locally
+    present, git-excluded trees (``.git/info/exclude`` entries such as
+    ``recon/`` vendor drops) never enter the gate -- a raw ``rglob`` scanned
+    them and failed commits on third-party findings CI can never see.
     """
     git_tool = shutil.which("git") or "git"
     proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-        [
-            git_tool,
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "--",
-            "*.sh",
-        ],
+        [git_tool, "ls-files", "--cached", "--others", "--exclude-standard", "--", *pathspec],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -140,11 +131,41 @@ def _scripts() -> list[str]:
         sys.stderr.write(proc.stderr)
         sys.stderr.write(f"git ls-files failed (exit {proc.returncode})\n")
         sys.exit(2)
-    out = []
-    for line in proc.stdout.splitlines():
-        rel = line.strip()
-        if rel and not any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS):
-            out.append(rel)
+    return [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
+
+
+def _has_shell_shebang(rel: str) -> bool:
+    """True when `rel` opens with a ``#!`` line naming sh, bash or zsh."""
+    try:
+        with (REPO_ROOT / rel).open("rb") as handle:
+            first = handle.readline(200)
+    except OSError:
+        return False
+    if not first.startswith(b"#!"):
+        return False
+    line = first.decode("utf-8", errors="replace")
+    return any(tok in line for tok in ("bash", "zsh", "/sh", "env sh"))
+
+
+def _scripts() -> list[str]:
+    """First-party shell scripts: by ``*.sh`` suffix OR by shebang.
+
+    The shebang sweep is not hypothetical. Every git hook in ``scripts/git/``
+    -- pre-commit, pre-push, commit-msg, post-merge, post-commit,
+    post-checkout -- is an extensionless bash script, so a suffix-only scope
+    left the hooks that enforce this entire tree as the only shell in it that
+    nothing shellchecked or shfmt'd. That is the #296/#332/#358/#359/#360
+    defect class exactly: a scope narrower than the thing it claims to cover,
+    reporting clean.
+    """
+    by_suffix = _git_ls("*.sh")
+    known = set(by_suffix)
+    by_shebang = [rel for rel in _git_ls() if rel not in known and _has_shell_shebang(rel)]
+    out = [
+        rel
+        for rel in known.union(by_shebang)
+        if not any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS)
+    ]
     return sorted(out)
 
 
@@ -348,6 +369,14 @@ def main(argv: list[str]) -> int:
         with tempfile.TemporaryDirectory() as td:
             return selftest(Path(td))
 
+    # Scope introspection for check_lint_coverage.py -- see the note in
+    # check_ruff.py's main(). Deliberately independent of whether shellcheck
+    # and shfmt are installed: the question is what this gate COVERS, and a
+    # missing tool must not silently shrink the answer to nothing.
+    if "--list-files" in argv[1:]:
+        print("\n".join(_scripts()))
+        return 0
+
     sc_tool = _find("SHELLCHECK", "shellcheck")
     fmt_tool = _find("SHFMT", "shfmt")
     if not sc_tool or not fmt_tool:
@@ -357,9 +386,9 @@ def main(argv: list[str]) -> int:
         msg = f"check_shell.py: {missing} not found"
         if "--require" in argv[1:]:
             sys.stderr.write(msg + " (--require set)\n")
-            return 1
+            sys.exit(1)
         print(msg + " -- skipping (install to enforce locally).")
-        return 0
+        sys.exit(0)
 
     files = _scripts()
     if not files:

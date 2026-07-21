@@ -339,6 +339,9 @@ def selftest() -> int:  # noqa: PLR0912  # flat list of both-direction assertion
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--selftest", action="store_true", help="assert both directions")
+    # Scope introspection for check_lint_coverage.py: print what this gate
+    # would scan, so the coverage gate can ask rather than restate the scope.
+    ap.add_argument("--list-files", action="store_true", help="print the scanned file list")
     ap.add_argument("paths", nargs="*", help="scripts to check (default: all tracked)")
     args = ap.parse_args()
 
@@ -358,6 +361,10 @@ def main() -> int:
     if not paths:
         print("ERROR: no linker scripts found; refusing to report success.", file=sys.stderr)
         return 1
+
+    if args.list_files:
+        print("\n".join(sorted(str(p.relative_to(root)) for p in paths)))
+        return 0
 
     findings: list[Finding] = []
     for p in paths:

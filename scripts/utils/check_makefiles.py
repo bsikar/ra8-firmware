@@ -345,6 +345,9 @@ def selftest() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--selftest", action="store_true")
+    # Scope introspection for check_lint_coverage.py: print what this gate
+    # would scan, so the coverage gate can ask rather than restate the scope.
+    ap.add_argument("--list-files", action="store_true", help="print the scanned file list")
     ap.add_argument("paths", nargs="*")
     args = ap.parse_args()
 
@@ -360,6 +363,10 @@ def main() -> int:
         ).stdout.strip()
     )
     paths = [pathlib.Path(p) for p in args.paths] or repo_files(root)
+
+    if args.list_files:
+        print("\n".join(sorted(str(p.relative_to(root)) for p in paths)))
+        return 0
     if not paths:
         print("ERROR: no Makefiles found; refusing to report success.", file=sys.stderr)
         return 1
