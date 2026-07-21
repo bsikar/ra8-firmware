@@ -50,8 +50,11 @@ BASELINE_FILE = REPO_ROOT / ".github" / "coverage-baseline.txt"
 
 
 def parse_baseline(path: Path) -> tuple[float, float]:
-    """Read two numbers (statement %, branch %) from baseline file,
-    skipping comment lines that start with `#`.
+    """Read the (statement %, branch %) pair from the baseline file.
+
+    Comment lines are skipped so the baseline can carry a note explaining why
+    a number is where it is -- which is the difference between a ratchet and
+    an unexplained constant.
     """
     for line in path.read_text(encoding="utf-8").splitlines():
         s = line.strip()
@@ -65,8 +68,10 @@ def parse_baseline(path: Path) -> tuple[float, float]:
 
 
 def parse_cobertura(path: Path) -> tuple[float, float]:
-    """Read line-rate and branch-rate from Cobertura XML root element.
-    Both attributes are 0..1 floats; convert to percent.
+    """Read line-rate and branch-rate from the Cobertura XML root element.
+
+    Both attributes are 0..1 floats in the report and are converted to percent
+    here, so every comparison downstream is in one unit.
     """
     tree = ET.parse(path)  # noqa: S314  # trusted CI-generated Cobertura XML, not user input
     root = tree.getroot()
@@ -76,6 +81,15 @@ def parse_cobertura(path: Path) -> tuple[float, float]:
 
 
 def main() -> int:
+    """Gate coverage against the committed baseline.
+
+    A missing baseline or a missing coverage XML each exit 1 rather than being
+    treated as "nothing to compare": either one means the measurement did not
+    happen, and passing on absent evidence is what this gate exists to
+    prevent.
+
+    Returns 0 when coverage meets the baseline, 1 otherwise.
+    """
     if not BASELINE_FILE.exists():
         print(f"[ERROR] baseline file missing: {BASELINE_FILE}", file=sys.stderr)
         return 1

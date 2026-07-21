@@ -68,8 +68,9 @@ per the CLAUDE.md coding-standards scope, so exempt from the floor too."""
 
 
 def normalize(path: str) -> str:
-    """Return a repo-root-relative POSIX path for the JSON `file` field,
-    which may be absolute or already relative.
+    """Normalise a coverage-JSON ``file`` field to a repo-relative POSIX path.
+
+    The field may arrive absolute or already relative, so both are handled.
 
     The absolute-path split marker is derived from the checkout directory
     basename (`REPO_ROOT.name`, itself resolved from this file's location)
@@ -105,8 +106,13 @@ def file_reachable(entry: dict) -> tuple[int, int]:
 
 
 def main() -> int:
-    """Load the per-file MC/DC JSON and fail if any in-scope file is below
-    the reachable floor.
+    """Fail when any in-scope file sits below the reachable MC/DC floor.
+
+    The floor is REACHABLE coverage, not absolute: decisions classified as
+    deactivated are excluded, so the number this gates is what tests could
+    actually cover rather than a figure no test can ever reach.
+
+    A missing JSON report exits 1 rather than passing vacuously.
     """
     if not MCDC_JSON.is_file():
         print(

@@ -46,6 +46,11 @@ MCDC_TAG_RE = re.compile(r"@par\s+MC/DC\s*:", re.IGNORECASE)
 
 
 def staged_test_files() -> list[Path]:
+    """Staged test files, excluding deletions.
+
+    Scoped to the index because this runs as a pre-commit hook: it polices
+    what is about to be committed, not the tests already in the tree.
+    """
     out = subprocess.run(
         ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],  # noqa: S607  # trusted: fixed git argv
         check=True,
@@ -60,9 +65,12 @@ def staged_test_files() -> list[Path]:
 
 
 def preceding_doxygen_block(lines: list[str], func_lineno: int) -> str:
-    """Return the text of the doxygen `/** ... */` block immediately
-    preceding the function definition on line ``func_lineno`` (1-based),
-    or empty string if none.
+    """Text of the doxygen block immediately above a 1-based function line.
+
+    Blank lines between the block and the function are tolerated, so ordinary
+    spacing does not detach a block from what it documents.
+
+    Returns "" when no block precedes the function.
     """
     end = func_lineno - 2  # zero-based index of line just above the function
     while end >= 0 and not lines[end].strip():
@@ -80,6 +88,16 @@ def preceding_doxygen_block(lines: list[str], func_lineno: int) -> str:
 
 
 def main() -> int:
+    """Require a ``@par MC/DC:`` block on every newly-staged test of a compound decision.
+
+    The block is where a test states its vector pattern and its independence
+    argument. Without it a test can exercise a compound decision and still
+    prove nothing about MC/DC -- it looks like coverage, and the distinction
+    is exactly what DO-178C Level B turns on.
+
+    Returns 1 listing each test missing the block, 0 when the staged set is
+    clean.
+    """
     findings: list[tuple[str, int, str]] = []
     for path in staged_test_files():
         text = path.read_text(encoding="utf-8", errors="ignore")

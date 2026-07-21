@@ -47,8 +47,9 @@ per the CLAUDE.md coding-standards scope, so exempt from the floor too."""
 
 
 def normalize(path: str) -> str:
-    """Return a repo-root-relative POSIX path for the gcovr `file` field,
-    which may be absolute or already relative.
+    """Normalise a gcovr ``file`` field to a repo-root-relative POSIX path.
+
+    The field may arrive absolute or already relative, so both are handled.
 
     The absolute-path split marker is derived from the checkout directory
     basename (`REPO_ROOT.name`, itself resolved from this file's location)

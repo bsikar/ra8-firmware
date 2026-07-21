@@ -383,6 +383,15 @@ def _main_realbook(argv: list[str]) -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Generate one of the three .rabook byte-identity parity fixtures.
+
+    Three modes -- default, ``--realbook`` and ``--downscale`` -- each baking a
+    different EPUB through the compiler and emitting the expected output as a
+    C header. The firmware then asserts it reproduces those bytes exactly,
+    which is what proves the host compiler and the on-device one agree.
+
+    Returns 0 on success, non-zero on a usage error.
+    """
     if len(argv) >= 2 and argv[1] == "--downscale":  # noqa: PLR2004 -- mode flag
         return _main_downscale(argv)
     if len(argv) >= 2 and argv[1] == "--realbook":  # noqa: PLR2004 -- mode flag

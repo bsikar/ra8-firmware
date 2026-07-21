@@ -40,6 +40,14 @@ def data_records(path: str) -> list[str]:
 
 
 def main() -> int:
+    """Concatenate the data records of two Intel HEX files into one image.
+
+    Merges RECORDS rather than text: each input's EOF record is dropped and a
+    single one is emitted at the end, so the result is a valid image instead
+    of two files with a terminator in the middle that most loaders stop at.
+
+    Returns 0 on success, 2 on a usage error, 1 on an unreadable input.
+    """
     if len(sys.argv) != _EXPECTED_ARGC:
         print("usage: merge_ihex.py <in_a.hex> <in_b.hex> <out.hex>", file=sys.stderr)
         return 2
