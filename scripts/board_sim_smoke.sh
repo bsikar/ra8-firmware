@@ -870,24 +870,34 @@ for app in "${apps[@]}"; do
       continue
       ;;
   esac
-  # Run the app on board_sim. The periodic-tick apps (see $periodic_tick_apps)
-  # run with the CPU-time wall-clock guard DISABLED (BOARD_SIM_WALL_S=0) so the
-  # run is bounded only by the deterministic instruction-counted chunk budget,
-  # never by host CPU-time -- which is what made the banner flake under CI load
-  # (#168). BOARD_SIM_STOP_ON ends the run the instant the banner prints (chunk
-  # ~20) so disabling the guard does not let a genuinely-stuck app run long. The
-  # banner is therefore emitted on every run regardless of host load; a small
-  # retry stays as cheap insurance only. Every other app runs once with the
-  # normal 300 s guard.
+  # Run the app on board_sim. EVERY app with a known banner runs with the
+  # CPU-time wall-clock guard DISABLED (BOARD_SIM_WALL_S=0), so the run is
+  # bounded only by the deterministic instruction-counted chunk budget and never
+  # by host CPU-time. BOARD_SIM_STOP_ON ends the run the instant the banner
+  # prints, so disabling the guard cannot let a genuinely-stuck app run long:
+  # such an app is still bounded by k_run_max_chunks (40000), deterministically.
+  #
+  # #168 diagnosed this and fixed it for $periodic_tick_apps only. The root
+  # cause is not specific to those three apps: board_sim's guard is CPU-time
+  # (clock()), so under host load Unicorn's TCG re-translation burns the budget
+  # faster than wall time and TRUNCATES the run before the (deterministic)
+  # banner prints. Any app on the WALL_S>0 path can therefore fail as
+  # "DID NOT REACH THE RUN BUDGET" purely because the box was busy -- which is
+  # exactly what dtc_transfer_demo did on c43ba074a while three agents loaded
+  # the runner host, passing on the runs either side of it with an identical
+  # binary. 57 of the 60 banner-carrying apps were still on that path.
+  #
+  # An app with no banner has no stop condition to key on, so it keeps the 300 s
+  # guard; its chunk budget still bounds it.
+  tick_want="$(uart_expect "$app")"
   tick_tries=1
-  tick_stop=""
+  tick_stop="$tick_want"
   case " $periodic_tick_apps " in
     *" $app "*)
+      # Free-running timer polls: retry stays as cheap insurance only.
       tick_tries=3
-      tick_stop="$(uart_expect "$app")"
       ;;
   esac
-  tick_want="$(uart_expect "$app")"
   for _t in $(seq 1 "$tick_tries"); do
     if [ -n "$tick_stop" ]; then
       out="$(BOARD_SIM_STOP_ON="$tick_stop" BOARD_SIM_WALL_S=0 "$sim" "$elf" ${extra[@]+"${extra[@]}"} 2>&1 || true)"
