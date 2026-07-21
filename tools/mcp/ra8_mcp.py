@@ -345,9 +345,9 @@ _GATES: dict[str, list[str]] = {
     "cppcheck": ["make", "cppcheck"],
     "check-annotations": ["make", "check-annotations"],
     "mcdc": ["make", "mcdc"],
-    "cite-check": ["python3", "scripts/utils/cite_check.py", "--warn"],
-    "ai-attribution": ["python3", "scripts/utils/check_no_ai_attribution.py"],
-    "inclusive": ["python3", "scripts/utils/check_inclusive_terminology.py"],
+    "cite-check": ["python3", "scripts/checks/cite_check.py", "--warn"],
+    "ai-attribution": ["python3", "scripts/checks/check_no_ai_attribution.py"],
+    "inclusive": ["python3", "scripts/checks/check_inclusive_terminology.py"],
 }
 
 
@@ -375,13 +375,13 @@ def tool_coverage(args: dict[str, Any]) -> str:
 def tool_sim_app(args: dict[str, Any]) -> str:
     """Boot one app's real ``.elf`` on the board_sim Unicorn emulator -- no hardware.
 
-    Runs ``scripts/board_sim_smoke.sh <app>`` headlessly: it builds the app + the
+    Runs ``scripts/sim/smoke.sh <app>`` headlessly: it builds the app + the
     emulator, runs the firmware, and asserts it reaches its run budget without
     faulting -- plus its real peripheral UART banner where known. Returns the
     per-app verdict + log tail. The single way to exercise an app without a board.
     """
     app = require_app(str(args.get("app", "")).strip())
-    return run_command(["bash", "scripts/board_sim_smoke.sh", app["name"]], timeout=900)
+    return run_command(["bash", "scripts/sim/smoke.sh", app["name"]], timeout=900)
 
 
 def _capture(argv: list[str], timeout: int = 20) -> str:

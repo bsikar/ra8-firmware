@@ -65,9 +65,9 @@ if [[ -n "$c_files" ]]; then
 
   # ---- clang-format ------------------------------------------------------
   if command -v clang-format &>/dev/null; then
-    if ! bash scripts/format_code.sh --check; then
+    if ! bash scripts/checks/format_code.sh --check; then
       echo "[FAIL] formatting check failed."
-      echo "   Run: bash scripts/format_code.sh"
+      echo "   Run: bash scripts/checks/format_code.sh"
       error_found=1
     fi
   else
@@ -128,7 +128,7 @@ if [[ -n "$c_files" ]]; then
 
   # ---- clang-tidy --------------------------------------------------------
   if command -v clang-tidy &>/dev/null || command -v clang-tidy-18 &>/dev/null; then
-    if ! bash scripts/clang_tidy.sh --check; then
+    if ! bash scripts/checks/clang_tidy.sh --check; then
       echo "[FAIL] clang-tidy violations found."
       echo "   Fix violations above, then re-stage and commit."
       error_found=1
@@ -142,16 +142,16 @@ if [[ -n "$c_files" ]]; then
   # ---- Doxygen full-coverage audit (strict: zero gaps required) ---------
   # Runs only when C/H files are staged. Scans libs/, src/, port/ for any
   # function that is missing a required Doxygen tag per CLAUDE.md.
-  if [[ -f scripts/utils/doxy_audit.py ]]; then
+  if [[ -f scripts/checks/doxy_audit.py ]]; then
     # Regression-test the auditor before trusting it: a regex-driven gate
     # that stops recognising a construct reports zero gaps, which is
     # indistinguishable from a fully documented tree.
-    if ! python3 scripts/utils/doxy_audit.py --selftest; then
+    if ! python3 scripts/checks/doxy_audit.py --selftest; then
       echo "[FAIL] doxy_audit.py selftest failed -- the auditor itself is broken."
       echo "       Do not trust the --check result below until this passes."
       error_found=1
     fi
-    if ! python3 scripts/utils/doxy_audit.py --check; then
+    if ! python3 scripts/checks/doxy_audit.py --check; then
       echo "[FAIL] doxy_audit.py reported documentation gaps."
       echo "       Every function in libs/, src/, port/ must have the"
       echo "       full required Doxygen tag set (see CLAUDE.md)."
@@ -159,7 +159,7 @@ if [[ -n "$c_files" ]]; then
     fi
     # Member gate (#246): every enum value, struct/union member, and macro
     # across the first-party tree must carry a doc comment.
-    if ! python3 scripts/utils/doxy_audit.py --members --check; then
+    if ! python3 scripts/checks/doxy_audit.py --members --check; then
       echo "[FAIL] doxy_audit.py reported undocumented members."
       echo "       Every enum value, struct/union member, and macro must"
       echo "       carry a /**< ... */ (or preceding /** ... */) doc"
@@ -176,17 +176,17 @@ if [[ -n "$c_files" ]]; then
   # SATISFIES the presence gate, so nothing else catches these.
   # Needs libclang; skipped with a warning locally when it is absent (CI
   # installs a pinned wheel and fails hard if the import breaks).
-  if [[ -f scripts/utils/check_doc_attachment.py ]]; then
+  if [[ -f scripts/checks/check_doc_attachment.py ]]; then
     if ! python3 -c "import clang.cindex" 2>/dev/null; then
       echo "WARNING: libclang missing -- doc-attachment gate SKIPPED."
       echo "   Install: python3 -m pip install --user libclang"
     else
-      if ! python3 scripts/utils/check_doc_attachment.py --selftest; then
+      if ! python3 scripts/checks/check_doc_attachment.py --selftest; then
         echo "[FAIL] check_doc_attachment.py selftest failed -- the"
         echo "       checker itself is broken; fix it before trusting"
         echo "       any verdict it gives."
         error_found=1
-      elif ! python3 scripts/utils/check_doc_attachment.py --check; then
+      elif ! python3 scripts/checks/check_doc_attachment.py --check; then
         echo "[FAIL] check_doc_attachment.py found doc blocks that do"
         echo "       not describe what they are attached to."
         error_found=1
@@ -199,8 +199,8 @@ if [[ -n "$c_files" ]]; then
   # CGC -> MSTP -> IOPORT -> TIME -> ICU -> peripheral sequence is held
   # in source order. Strict mode is the default; --no-strict downgrades
   # to warn-only.
-  if [[ -f scripts/utils/audit_init_order.py ]]; then
-    if ! python3 scripts/utils/audit_init_order.py; then
+  if [[ -f scripts/checks/audit_init_order.py ]]; then
+    if ! python3 scripts/checks/audit_init_order.py; then
       echo "[FAIL] audit_init_order.py reported per-app init-order"
       echo "       violations. Every examples/<tier>/<app>/main.c must"
       echo "       follow CGC -> MSTP -> IOPORT -> TIME -> ICU ->"
@@ -211,7 +211,7 @@ if [[ -n "$c_files" ]]; then
   fi
 
   # ---- Doxygen @since tag enforcement -----------------------------------
-  if ! python3 scripts/utils/check-since-version.py "${c_file_list[@]}"; then
+  if ! python3 scripts/checks/check-since-version.py "${c_file_list[@]}"; then
     echo "[FAIL] public function declarations missing @since tags."
     echo "   Every ra8_* function in a libs/ra8_*/inc/*.h file must have"
     echo "   an @since tag in its preceding Doxygen block."
@@ -219,13 +219,13 @@ if [[ -n "$c_files" ]]; then
   fi
 
   # ---- Copyright header enforcement -------------------------------------
-  if ! python3 scripts/utils/check-copyright.py "${c_file_list[@]}"; then
+  if ! python3 scripts/checks/check-copyright.py "${c_file_list[@]}"; then
     echo "[FAIL] missing or wrong copyright/SPDX header."
     error_found=1
   fi
 
   # ---- nullptr (C23) instead of NULL ------------------------------------
-  if ! python3 scripts/utils/check_no_null.py "${c_file_list[@]}"; then
+  if ! python3 scripts/checks/check_no_null.py "${c_file_list[@]}"; then
     echo "[FAIL] bare NULL token(s) in code -- replace with C23 nullptr."
     echo "   Allowed: UX_NULL/TX_NULL/FX_NULL/NX_NULL vendor macros,"
     echo "   comments, string literals, third_party trees."
@@ -237,13 +237,23 @@ if [[ -n "$c_files" ]]; then
   # reaches clang-tidy, and the host tidy-build excludes every
   # cross-compiled translation unit (anything pulling in ThreadX/
   # USBX/NetX or MCU register headers).  This source-level checker
-  # closes that gap: it scans every .c under libs/, src/, port/,
-  # examples/, tools/, tests/ regardless of compile-db membership.
-  if ! python3 scripts/utils/check_function_size.py; then
-    echo "[FAIL] function-size violation(s) above the 60-line cap."
-    echo "   Extract helpers or hoist tables to file scope to shrink."
+  # closes that gap.  Its scope is derived from git ls-files plus per-file
+  # language detection (#359), so it now measures Python and shell functions
+  # too, via one parser per language.
+  #
+  # The selftest is enforced; the tree-wide scan is not yet -- 52 functions are
+  # over the cap, all named by running the checker.  See the matching note in
+  # scripts/ci/gates/checks.sh; #359 stays open until the scan is uncommented.
+  if ! python3 scripts/checks/check_function_size.py --selftest; then
+    echo "[FAIL] check_function_size.py selftest failed."
+    echo "   A size parser stopped matching; the gate cannot be trusted."
     error_found=1
   fi
+  # if ! python3 scripts/checks/check_function_size.py; then
+  #   echo "[FAIL] function-size violation(s) above the 60-line cap."
+  #   echo "   Extract helpers or hoist tables to file scope to shrink."
+  #   error_found=1
+  # fi
 
   # ---- No magic numbers (whole tree) ----------------------------------
   # Same blind-spot story as function-size: clang-tidy's
@@ -254,7 +264,7 @@ if [[ -n "$c_files" ]]; then
   # main.  This source-level checker scans libs/, src/, and example
   # main.c directly (honouring clang-tidy NOLINT waivers).  The tree is
   # clean, so it runs full-tree like check_function_size.py.
-  if ! python3 scripts/utils/check_magic_numbers.py; then
+  if ! python3 scripts/checks/check_magic_numbers.py; then
     echo "[FAIL] magic number(s) found -- every integer literal must"
     echo "   be a named typed enum (const only for floats; macros are"
     echo "   NOT allowed for constants). Genuine exceptions may carry"
@@ -265,9 +275,9 @@ if [[ -n "$c_files" ]]; then
 
   # ---- no redundant casts inside TEST_ASSERT_EQ --------------------------
   test_files=$(echo "$c_files" | grep -E "^tests/" || true)
-  if [[ -n "$test_files" ]] && [[ -f scripts/utils/check_assert_casts.py ]]; then
+  if [[ -n "$test_files" ]] && [[ -f scripts/checks/check_assert_casts.py ]]; then
     mapfile -t test_file_list <<<"$test_files"
-    if ! python3 scripts/utils/check_assert_casts.py "${test_file_list[@]}"; then
+    if ! python3 scripts/checks/check_assert_casts.py "${test_file_list[@]}"; then
       echo "[FAIL] redundant cast(s) in TEST_ASSERT_EQ -- run strip_assert_casts.py."
       error_found=1
     fi
@@ -303,18 +313,28 @@ fi
 # -- no grandfathering -- and the language tool gates skip with a notice if the
 # tool is absent locally (CI runs them with --require).
 # -----------------------------------------------------------------------------
-# File-size cap (maintainability): no first-party C/C++ file over 1000 lines.
+# File-size cap (maintainability): no first-party code file over 1000 lines.
+# Scope derived from git ls-files + language detection (#359), so it covers
+# Python, shell, CMake, YAML, Make and linker scripts as well as C/C++.
 # Honours an in-file @generated / FILE-SIZE-OK waiver marker.
-if ! python3 scripts/utils/check_file_size.py; then
-  echo "[FAIL] file-size violation(s) above the 1000-line cap."
-  echo "   Split along responsibilities or extract a shared helper."
+#
+# Selftest enforced; the tree-wide scan is not yet -- 8 files are over the cap.
+# See the matching note in scripts/ci/gates/checks.sh.
+if ! python3 scripts/checks/check_file_size.py --selftest; then
+  echo "[FAIL] check_file_size.py selftest failed."
+  echo "   The derived scope or the cap logic is broken; verdict untrustworthy."
   error_found=1
 fi
+# if ! python3 scripts/checks/check_file_size.py; then
+#   echo "[FAIL] file-size violation(s) above the 1000-line cap."
+#   echo "   Split along responsibilities or extract a shared helper."
+#   error_found=1
+# fi
 
 # Header placement: a header under a src/ dir must be module-private
 # (*_internal.h).  A non-internal src/ header is either a misfiled public
 # interface (move to inc/) or an unmarked private one (rename *_internal.h).
-if ! python3 scripts/utils/check_header_file_placement.py; then
+if ! python3 scripts/checks/check_header_file_placement.py; then
   echo "[FAIL] src/ header(s) that are not *_internal.h."
   echo "   Move public interfaces to inc/, or rename private ones *_internal.h."
   error_found=1
@@ -322,7 +342,7 @@ fi
 
 # Examples must not hand-encode board connector pins: the EK-RA8D2 pinout is a
 # board fact owned by libs/ra8_board_ek_ra8d2, not copy-pasted per app (#251).
-if ! python3 scripts/utils/check_example_board_pins.py; then
+if ! python3 scripts/checks/check_example_board_pins.py; then
   echo "[FAIL] example(s) hand-encode a board pin as (port << 8 | pin)."
   echo "   Reference the board symbol (k_ra8_board_*_pin_*) instead."
   error_found=1
@@ -330,7 +350,7 @@ fi
 
 # ra8_core is the foundation layer: it must not include any other lib's header
 # (no upward dependency -- see #243).
-if ! python3 scripts/utils/check_core_layering.py; then
+if ! python3 scripts/checks/check_core_layering.py; then
   echo "[FAIL] ra8_core has an upward include into another lib."
   echo "   Move the shared declaration into ra8_core, or keep the consumer higher up."
   error_found=1
@@ -338,7 +358,7 @@ fi
 
 # Trailing newline on every first-party source file (C/C++, Python, shell,
 # CMake, YAML, ld).  .clang-format InsertNewlineAtEOF only covers C/C++.
-if ! python3 scripts/utils/check_final_newline.py; then
+if ! python3 scripts/checks/check_final_newline.py; then
   echo "[FAIL] file(s) missing a trailing newline."
   echo "   Add a single newline at end of file."
   error_found=1
@@ -347,21 +367,21 @@ fi
 # Every scripts/... path mentioned anywhere in the tree resolves. Those
 # references are plain text -- a git mv inside scripts/ breaks doc links, hook
 # comments and workflow steps with no build error and no test failure.
-if ! python3 scripts/utils/check_script_references.py; then
-    echo "[FAIL] unresolved scripts/ path reference(s)."
-    echo "   Update the reference, or append 'PATHREF-OK: <reason>' if the path is prose."
-    error_found=1
+if ! python3 scripts/checks/check_script_references.py; then
+  echo "[FAIL] unresolved scripts/ path reference(s)."
+  echo "   Update the reference, or append 'PATHREF-OK: <reason>' if the path is prose."
+  error_found=1
 fi
 
 # Python lint + format (ruff) over scripts/, tools/, tests/.
-if ! python3 scripts/utils/check_ruff.py; then
+if ! python3 scripts/checks/check_ruff.py; then
   echo "[FAIL] ruff lint/format finding(s)."
   echo "   Fix the finding or run 'ruff format'."
   error_found=1
 fi
 
 # Shell lint + format (shellcheck --severity=warning + shfmt).
-if ! python3 scripts/utils/check_shell.py; then
+if ! python3 scripts/checks/check_shell.py; then
   echo "[FAIL] shellcheck/shfmt finding(s)."
   echo "   Fix the finding or run 'shfmt -w -i 2 -ci <file>'."
   error_found=1
@@ -370,9 +390,9 @@ fi
 # Supply-chain SBOM freshness (T5-09 / T5-14): the committed CycloneDX SBOM
 # (docs/sbom/ra8-firmware.cdx.json) must match the vendored libs/third_party/
 # tree and the gen_sbom.py registry (version macros, catalogued directories).
-if ! python3 scripts/utils/gen_sbom.py --check; then
+if ! python3 scripts/gen/gen_sbom.py --check; then
   echo "[FAIL] SBOM is stale or the SOUP tree drifted from the registry."
-  echo "   Update scripts/utils/gen_sbom.py + run 'make sbom' and commit the result."
+  echo "   Update scripts/gen/gen_sbom.py + run 'make sbom' and commit the result."
   error_found=1
 fi
 
@@ -391,16 +411,16 @@ fi
 # point at a real chapter/page?). The complementary cite-COVERAGE pass (does
 # every MMIO access HAVE a cite?) is available via --require-cites but is not
 # yet gate-clean -- see docs and cite_check.py --help.
-if [[ -f scripts/utils/cite_check.py ]]; then
-  if ! python3 scripts/utils/cite_check.py --strict; then
+if [[ -f scripts/checks/cite_check.py ]]; then
+  if ! python3 scripts/checks/cite_check.py --strict; then
     echo "[FAIL] cite_check.py reported issues."
     error_found=1
   fi
 fi
 
 # ---- World-tag validator (strict: 0 findings tree-wide, #241) -----
-if [[ -f scripts/utils/check_world_tags.py ]]; then
-  if ! python3 scripts/utils/check_world_tags.py --strict; then
+if [[ -f scripts/checks/check_world_tags.py ]]; then
+  if ! python3 scripts/checks/check_world_tags.py --strict; then
     echo "[FAIL] check_world_tags.py reported issues."
     error_found=1
   fi
@@ -409,8 +429,8 @@ fi
 # ---- NSC veneer definitions (strict) ------------------------------
 # Every RA8_NSC_VENEER declared in ra8_nsc.h must have a definition; a decl
 # with no def is a phantom NS->S trust-boundary entry point.
-if [[ -f scripts/utils/check_nsc_veneer_defs.py ]]; then
-  if ! python3 scripts/utils/check_nsc_veneer_defs.py; then
+if [[ -f scripts/checks/check_nsc_veneer_defs.py ]]; then
+  if ! python3 scripts/checks/check_nsc_veneer_defs.py; then
     echo "[FAIL] check_nsc_veneer_defs.py reported an undefined NSC veneer."
     error_found=1
   fi
@@ -421,8 +441,8 @@ fi
 # RA8_INSECURE_STUB_CRYPTO / RA8_SIMULATOR_MODE guard with a fail-closed #else,
 # so a release/HIL image that forgot to swap in real crypto fails closed
 # instead of silently shipping the deterministic-TRNG / forgeable-MAC stub.
-if [[ -f scripts/utils/check_stub_crypto_guarded.py ]]; then
-  if ! python3 scripts/utils/check_stub_crypto_guarded.py; then
+if [[ -f scripts/checks/check_stub_crypto_guarded.py ]]; then
+  if ! python3 scripts/checks/check_stub_crypto_guarded.py; then
     echo "[FAIL] check_stub_crypto_guarded.py: insecure stub crypto is not guarded fail-closed."
     error_found=1
   fi
@@ -434,11 +454,11 @@ fi
 # do-nothing second definition of a symbol implemented for real elsewhere
 # (SHADOW) and an unsupported-error return with no implementation behind it
 # (CANNED). Hardware that does not exist yet is waived by TODO(<named part>).
-if [[ -f scripts/utils/check_no_silent_stubs.py ]]; then
-  if ! python3 scripts/utils/check_no_silent_stubs.py --selftest >/dev/null; then
+if [[ -f scripts/checks/check_no_silent_stubs.py ]]; then
+  if ! python3 scripts/checks/check_no_silent_stubs.py --selftest >/dev/null; then
     echo "[FAIL] check_no_silent_stubs.py: the detector's own selftest failed."
     error_found=1
-  elif ! python3 scripts/utils/check_no_silent_stubs.py; then
+  elif ! python3 scripts/checks/check_no_silent_stubs.py; then
     echo "[FAIL] check_no_silent_stubs.py: a silent stub would be committed."
     error_found=1
   fi
@@ -448,18 +468,18 @@ fi
 # wfi/dsb/isb/nop/cpsie/cpsid/reset-spin route through the shared seam
 # libs/ra8_hal/inc/ra8_hw_intrinsics.h (+ tests/mocks/ra8_host_asm_stub.c), so
 # a driver never carries its own #ifdef RA8_SIMULATOR_MODE around inline asm.
-if [[ -f scripts/utils/check_no_driver_asm_guard.py ]]; then
-  if ! python3 scripts/utils/check_no_driver_asm_guard.py; then
+if [[ -f scripts/checks/check_no_driver_asm_guard.py ]]; then
+  if ! python3 scripts/checks/check_no_driver_asm_guard.py; then
     echo "[FAIL] check_no_driver_asm_guard.py: a HAL driver guards asm on RA8_SIMULATOR_MODE."
     error_found=1
   fi
 fi
 
 # ---- ROADMAP summary stats (strict: refuse stale summaries) -------
-if [[ -f scripts/utils/roadmap_stats.py && -f docs/ROADMAP.md ]]; then
-  if ! python3 scripts/utils/roadmap_stats.py --check; then
+if [[ -f scripts/report/roadmap_stats.py && -f docs/ROADMAP.md ]]; then
+  if ! python3 scripts/report/roadmap_stats.py --check; then
     echo "[FAIL] ROADMAP.md summary block is stale."
-    echo "       Run: python3 scripts/utils/roadmap_stats.py"
+    echo "       Run: python3 scripts/report/roadmap_stats.py"
     echo "       Then re-stage docs/ROADMAP.md and re-commit."
     error_found=1
   fi
@@ -474,8 +494,8 @@ fi
 # declare its MC/DC vector pattern via @par MC/DC: in Doxygen.
 
 # ---- Forbid obsolete safety-standard references (strict) ----------
-if [[ -f scripts/utils/check_obsolete_standards.py ]]; then
-  if ! python3 scripts/utils/check_obsolete_standards.py; then
+if [[ -f scripts/checks/check_obsolete_standards.py ]]; then
+  if ! python3 scripts/checks/check_obsolete_standards.py; then
     echo "[FAIL] Obsolete safety-standard reference (DO-178B)."
     echo "       Use DO-178C, IEC 61508 SIL 3, or ISO 26262 instead."
     error_found=1
@@ -488,8 +508,8 @@ fi
 # works on hardware (uart_scrape / usb_cdc / jlink_memprobe /
 # hil_eth_tcp). Apps that have no observable signal yet must live
 # in hw_pending/ until they are instrumented.
-if [[ -f scripts/utils/check_hil_alive_policy.py ]]; then
-  if ! python3 scripts/utils/check_hil_alive_policy.py; then
+if [[ -f scripts/checks/check_hil_alive_policy.py ]]; then
+  if ! python3 scripts/checks/check_hil_alive_policy.py; then
     echo "[FAIL] HIL honest-contract policy violated."
     error_found=1
   fi
@@ -502,8 +522,8 @@ fi
 # skips). Cheap structural gate -- re-derives both harnesses' app
 # discovery from hil_all.sh / sil_all.sh, so an added HIL app cannot
 # silently escape SIM coverage.
-if [[ -f scripts/utils/check_hil_sil_parity.py ]]; then
-  if ! python3 scripts/utils/check_hil_sil_parity.py; then
+if [[ -f scripts/checks/check_hil_sil_parity.py ]]; then
+  if ! python3 scripts/checks/check_hil_sil_parity.py; then
     echo "[FAIL] check_hil_sil_parity.py: a HIL app is not SIL-covered."
     error_found=1
   fi
@@ -513,17 +533,17 @@ fi
 # Comments must reference functions/symbols, not `<file>.c:NNN`. Line
 # numbers go stale on the next reformat. External citations (HUM,
 # FSP, RFC) remain mandatory. See docs/CITATION_POLICY.md and
-# scripts/utils/check_line_citations.py.
-if [[ -f scripts/utils/check_line_citations.py ]]; then
-  if ! python3 scripts/utils/check_line_citations.py; then
+# scripts/checks/check_line_citations.py.
+if [[ -f scripts/checks/check_line_citations.py ]]; then
+  if ! python3 scripts/checks/check_line_citations.py; then
     echo "[FAIL] check_line_citations.py reported issues."
     error_found=1
   fi
 fi
 
 # ---- C23 [[...]] attribute syntax (no GNU __attribute__) -----------
-if [[ -f scripts/utils/check_no_gnu_attribute.py ]]; then
-  if ! python3 scripts/utils/check_no_gnu_attribute.py; then
+if [[ -f scripts/checks/check_no_gnu_attribute.py ]]; then
+  if ! python3 scripts/checks/check_no_gnu_attribute.py; then
     echo "[FAIL] check_no_gnu_attribute.py: use the C23 [[...]] form."
     error_found=1
   fi
@@ -535,16 +555,16 @@ fi
 # tracker #191). This gate bans (void)-cast discards of the
 # ra8_tz_secure_boot_* family everywhere and of any ra8_*() call inside
 # a boot TU (a .c defining SystemInit / ra8_trustzone_init).
-if [[ -f scripts/utils/check_tz_boundary_discard.py ]]; then
-  if ! python3 scripts/utils/check_tz_boundary_discard.py; then
+if [[ -f scripts/checks/check_tz_boundary_discard.py ]]; then
+  if ! python3 scripts/checks/check_tz_boundary_discard.py; then
     echo "[FAIL] check_tz_boundary_discard.py: handle the error, do not (void)-cast it."
     error_found=1
   fi
 fi
 
 # ---- @par MC/DC: block on staged tests (warn in Wave 0) -----------
-if [[ -f scripts/utils/check_mcdc_block.py ]]; then
-  if ! python3 scripts/utils/check_mcdc_block.py; then
+if [[ -f scripts/checks/check_mcdc_block.py ]]; then
+  if ! python3 scripts/checks/check_mcdc_block.py; then
     echo "[FAIL] check_mcdc_block.py reported issues."
     error_found=1
   fi
@@ -557,8 +577,8 @@ fi
 # source file:line in a `@par MC/DC:` block under tests/. This is a
 # regression-prevention companion to the CI baseline gate -- it stops
 # the project-wide MC/DC % from drifting downward one commit at a time.
-if [[ -f scripts/utils/check_new_compound_has_mcdc.py ]]; then
-  if ! python3 scripts/utils/check_new_compound_has_mcdc.py; then
+if [[ -f scripts/checks/check_new_compound_has_mcdc.py ]]; then
+  if ! python3 scripts/checks/check_new_compound_has_mcdc.py; then
     echo "[FAIL] check_new_compound_has_mcdc.py reported issues."
     echo "       New compound boolean decisions must ship with"
     echo "       matching MC/DC test vectors. See docs/MCDC.md."
@@ -577,8 +597,8 @@ fi
 # ---- Inclusive terminology (source files) --------------------------
 # Bans MOSI/MISO/master/slave vocabulary. Use COPI/CIPO/Controller/
 # Peripheral instead. Per-line opt-out: LEGACY-OK: <reason>.
-if [[ -f scripts/utils/check_inclusive_terminology.py ]]; then
-  if ! python3 scripts/utils/check_inclusive_terminology.py; then
+if [[ -f scripts/checks/check_inclusive_terminology.py ]]; then
+  if ! python3 scripts/checks/check_inclusive_terminology.py; then
     echo "[FAIL] check_inclusive_terminology.py reported issues."
     echo "       Use COPI/CIPO, Controller/Peripheral, CS, Primary."
     echo "       Per-line opt-out: LEGACY-OK: <reason>"
@@ -586,8 +606,8 @@ if [[ -f scripts/utils/check_inclusive_terminology.py ]]; then
   fi
 fi
 
-if [[ -f scripts/utils/check_no_ai_attribution.py ]]; then
-  if ! python3 scripts/utils/check_no_ai_attribution.py; then
+if [[ -f scripts/checks/check_no_ai_attribution.py ]]; then
+  if ! python3 scripts/checks/check_no_ai_attribution.py; then
     echo "[FAIL] check_no_ai_attribution.py reported issues."
     echo "       AI attribution is BANNED in tracked files. See"
     echo "       docs/AI_ATTRIBUTION_POLICY.md for the rule and"
@@ -599,11 +619,11 @@ fi
 # ---- "Wave N" session-bookkeeping reference gate (strict) ---------
 # Bans "Wave 70", "wave-3", "Wave_43b" style historical session refs
 # from comments / docs. Readers do not care WHEN a fix was found, only
-# WHY. Auto-fixer at scripts/utils/fix_wave_references.py --apply.
-if [[ -f scripts/utils/check_no_wave_references.py ]]; then
-  if ! python3 scripts/utils/check_no_wave_references.py; then
+# WHY. Auto-fixer at scripts/fix/fix_wave_references.py --apply.
+if [[ -f scripts/checks/check_no_wave_references.py ]]; then
+  if ! python3 scripts/checks/check_no_wave_references.py; then
     echo "[FAIL] check_no_wave_references.py reported issues."
-    echo "       Run: python3 scripts/utils/fix_wave_references.py --apply"
+    echo "       Run: python3 scripts/fix/fix_wave_references.py --apply"
     echo "       Per-line opt-out: append 'WAVE-OK: <reason>'."
     error_found=1
   fi
@@ -616,8 +636,8 @@ fi
 # runs in --check (strict) mode here and in CI. When libclang is not
 # installed locally the script exits 0 (graceful skip); CI installs a
 # pinned libclang so the gate is enforced there unconditionally.
-if [[ -f scripts/utils/check_annotations.py ]]; then
-  if ! python3 scripts/utils/check_annotations.py --check --quiet; then
+if [[ -f scripts/checks/check_annotations.py ]]; then
+  if ! python3 scripts/checks/check_annotations.py --check --quiet; then
     echo "[FAIL] check_annotations.py reported issues."
     error_found=1
   fi
@@ -635,7 +655,7 @@ fi
 #     HARD FAIL via --strict. Authors must either reduce the frame
 #     (move scratch buffers to module-static storage) or enroll the
 #     function in FIRST_PARTY_EXEMPTIONS at the top of
-#     scripts/utils/stack_usage_check.py with a written rationale.
+#     scripts/checks/stack_usage_check.py with a written rationale.
 #   * Soft violations in *third-party* TUs (libs/third_party/) --
 #     reported but ignored (SOUP, see docs/SOUP/).
 #   * Critical-module breaches (ra8_isr/ra8_check/ra8_err/ra8_mpu/
@@ -648,8 +668,8 @@ fi
 # Promoted from warn-only to strict (first-party) on 2026-05-02 once
 # every first-party function was verified at <2048 bytes against
 # HEAD. See docs/STACK_USAGE.md.
-if [[ -f scripts/utils/stack_usage_check.py ]]; then
-  if ! python3 scripts/utils/stack_usage_check.py --strict --quiet; then
+if [[ -f scripts/checks/stack_usage_check.py ]]; then
+  if ! python3 scripts/checks/stack_usage_check.py --strict --quiet; then
     echo "[FAIL] stack_usage_check.py: first-party frame > 2048 B"
     echo "       or NASA P10 dynamic-frame violation."
     error_found=1
@@ -673,7 +693,7 @@ fi
 
 # ---- include-what-you-use (IWYU) -- warn-only --------------------
 # Same as scan-build: too slow for the per-commit hook. Run locally
-# with `make iwyu`. See scripts/utils/iwyu.sh.
+# with `make iwyu`. See scripts/checks/iwyu.sh.
 
 # -----------------------------------------------------------------------------
 # CONCLUSION

@@ -76,7 +76,7 @@ typedef enum : uint8_t {
  *        no-match ID gets rejected by the acceptance filter).
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving the acceptance-filter slots really gate the
  * RX FIFO (alive-mode could only prove the chip didn't crash, not

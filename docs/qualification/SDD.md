@@ -44,7 +44,7 @@ Per [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md):
 | 6    | Application      | [`../../examples/ek_ra8d2/`](../../examples/ek_ra8d2/) (27 apps)             | REQ-APP-XXX       |
 
 Higher rings may include lower-ring headers freely; the inverse is a
-layering violation rejected by `scripts/utils/check_world_tags.py`.
+layering violation rejected by `scripts/checks/check_world_tags.py`.
 This is the design-rule basis for IEC 61508-3 Clause 7.4.3.
 
 ### 1.2 TrustZone-M worlds
@@ -210,7 +210,7 @@ Per-task stack sizes are declared in
 [`../../libs/ra8_core/inc/ra8_stack_budget.h`](../../libs/ra8_core/inc/ra8_stack_budget.h)
 and reproduced in [`../STACK_USAGE.md`](../STACK_USAGE.md). The
 `-fstack-usage` outputs (`*.su` files) are aggregated by
-`scripts/utils/stack_usage_check.py`. Build fails if any function
+`scripts/checks/stack_usage_check.py`. Build fails if any function
 exceeds its declared bucket (REQ-PERF-008).
 
 ### 3.3 Persistent storage
@@ -238,8 +238,8 @@ EEPROM-backed parameter file is in scope (PSAC Section 7.4).
 
 Cross-ring calls SHALL go from a higher ring to a strictly lower ring
 (N -> M with M < N). The check is enforced by
-`scripts/utils/check_world_tags.py` reading the per-file `[Ring X / ...]`
-header tags. `scripts/utils/cite_check.py` audits the corresponding
+`scripts/checks/check_world_tags.py` reading the per-file `[Ring X / ...]`
+header tags. `scripts/checks/cite_check.py` audits the corresponding
 `@cite HUM-Ch-NN` references on Ring 2/3 TUs.
 
 ### 4.2 Public API contracts
@@ -327,7 +327,7 @@ the IWDT if any task is `overdue`. Test:
 
 Every Ring 3 driver cites the HUM section it implements via an
 `@cite HUM-Ch-NN` doxygen tag, audited by
-`scripts/utils/cite_check.py`. Examples:
+`scripts/checks/cite_check.py`. Examples:
 
 | Driver        | Algorithm / sequence                                | HUM reference                       |
 |---------------|------------------------------------------------------|-------------------------------------|

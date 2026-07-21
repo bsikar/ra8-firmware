@@ -53,7 +53,7 @@ re-arm.
 
 ```
 make battery_monitor_demo
-scripts/hil_run_local.sh battery_monitor_demo      # flash + scrape the banner
+scripts/hil/run_local.sh battery_monitor_demo      # flash + scrape the banner
 ```
 
 ## Simulator: battery control + on-screen gauge
@@ -85,7 +85,7 @@ $ board_sim battery_monitor_demo.elf --battery 55 --charge
 [uart] SCI8: battery: soc=55% chg=Y PASS
 ```
 
-`scripts/board_sim_smoke.sh battery_monitor_demo` PASS -- board_sim models the
+`scripts/sim/smoke.sh battery_monitor_demo` PASS -- board_sim models the
 fuel gauge on the modelled IIC_B bus, so the SOC + CRATE reads return through the
 genuine `ra8_smbus -> ra8_i3c` I2C path (no stub) and the banner is deterministic.
 

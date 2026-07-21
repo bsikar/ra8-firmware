@@ -50,4 +50,4 @@ clean:
 # `make build-all` -- cross-compile every firmware app (CI's "Cross-build all
 # apps" job); per-app logs in build/build_all_examples/.
 build-all:
-	bash scripts/build_all_examples.sh
+	bash scripts/build/all_examples.sh

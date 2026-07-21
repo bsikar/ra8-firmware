@@ -60,7 +60,7 @@ else
   # single largest gate unable to use ccache at all.
   #
   # Nothing loses coverage by this: the coverage gate has its own build tree
-  # (scripts/coverage.sh -> build/coverage) and passes -DRA8_COVERAGE=ON
+  # (scripts/checks/coverage.sh -> build/coverage) and passes -DRA8_COVERAGE=ON
   # explicitly, and the MC/DC mode above is likewise explicit. scripts/
   # clang_tidy.sh already passes -DRA8_COVERAGE=OFF for the same reason; this
   # makes the fast host-test build agree with it.
@@ -71,8 +71,8 @@ fi
 # Auto-select a C23-capable host compiler (clang >= 17 or gcc >= 13) when the
 # caller has not pinned one. Shared with the coverage builds via the helper so
 # the whole host-test tooling agrees on the compiler.
-# shellcheck source=scripts/utils/select_host_compiler.sh
-. "$SCRIPT_DIR/../scripts/utils/select_host_compiler.sh"
+# shellcheck source=scripts/build/select_host_compiler.sh
+. "$SCRIPT_DIR/../scripts/build/select_host_compiler.sh"
 ra8_select_host_compiler || exit 1
 echo "    using CC=$CC CXX=$CXX"
 

@@ -341,7 +341,7 @@ person extending this section does the same thing:
 **Do not use `@startuml` anywhere in the tree.** `PLANTUML_JAR_PATH` is not
 configured and no JVM is provisioned, so doxygen ignores every `@startuml`
 block -- they render nowhere. Use `@dot`, which does.
-`scripts/utils/check_doc_diagrams.py` enforces both halves: it rejects
+`scripts/checks/check_doc_diagrams.py` enforces both halves: it rejects
 `@startuml` outright, and it fails when the number of authored `@dot` blocks
 does not match the number of diagrams that actually reached the generated HTML.
 

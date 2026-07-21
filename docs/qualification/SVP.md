@@ -40,7 +40,7 @@ into a verification-activity register.
 | 3     | HLR compatible with target computer              | `docs/MEMORY_MAP.md`, `cmake/toolchain-ra8d2.cmake`                                               | Hardware-in-the-loop CI not yet wired (Phase 6 of roadmap).      |
 | 4     | HLR verifiable                                   | Each `@brief` accompanied by `@param`/`@retval`/`@pre`/`@post` per `CLAUDE.md` Doxygen rules      | Closed: 0 functions with gaps (2747 audited).                    |
 | 5     | HLR conform to standards                         | `docs/STYLE_GUIDE.md`, `docs/MISRA.md`, pre-commit hook                                           | MISRA backlog tracked in `docs/qualification/MISRA_DEVIATIONS.md`.|
-| 6     | HLR traceable to system reqs                     | `scripts/utils/cite_check.py` (HUM citation validator)                                            | Bidirectional trace matrix not yet generated.                    |
+| 6     | HLR traceable to system reqs                     | `scripts/checks/cite_check.py` (HUM citation validator)                                            | Bidirectional trace matrix not yet generated.                    |
 | 7     | Algorithms are accurate                          | `tests/test_*.c` requirements-based tests                                                         | Coverage of algorithm corner cases tracked via MC/DC gap list.   |
 
 ### 1.2 Table A-4 -- Verification of outputs of software design process
@@ -49,13 +49,13 @@ into a verification-activity register.
 |------:|----------------------------------------|-------------------------------------------------------------------------|------------------------------------------------------------------|
 | 1     | LLR comply with HLR                    | Per-module headers under `libs/*/inc/` cross-reference `docs/`          | Trace matrix pending.                                            |
 | 2     | LLR are accurate, consistent           | `clang-tidy` naming + complexity gates                                  | Threshold tuning ongoing.                                        |
-| 3     | LLR compatible with target computer    | `docs/STACK_USAGE.md`, `-Wstack-usage` gate, `.su` aggregator           | Heap proof: `scripts/utils/check_no_dynamic_alloc.py` already gates. |
+| 3     | LLR compatible with target computer    | `docs/STACK_USAGE.md`, `-Wstack-usage` gate, `.su` aggregator           | Heap proof: `scripts/checks/check_no_dynamic_alloc.py` already gates. |
 | 4     | LLR verifiable                         | `tests/test_<module>.c` per module                                      | 25 of 26 EVM apps have host integration tests today.             |
 | 5     | LLR conform to standards               | `.clang-format`, `.clang-tidy`, `docs/STYLE_GUIDE.md`                   | Pre-commit enforces; CI mirrors.                                 |
-| 6     | LLR traceable to HLR                   | `scripts/utils/cite_check.py` HUM page-citation tags                    | Bidirectional trace matrix pending.                              |
+| 6     | LLR traceable to HLR                   | `scripts/checks/cite_check.py` HUM page-citation tags                    | Bidirectional trace matrix pending.                              |
 | 7     | Algorithms are accurate                | Targeted unit tests (`tests/test_ra8_*_mcdc.c` class)                    | MC/DC reachable = 100.00% (gate met); absolute = 92.29%.         |
 | 8     | Software architecture compat with HLR  | `docs/RING_AND_WORLD.md`, `docs/MEMORY_MAP.md`                          | Section 8 (Partitioning) below.                                  |
-| 9     | Software architecture consistent       | `scripts/utils/check_world_tags.py`                                     | Strict mode pending (currently `--warn`).                        |
+| 9     | Software architecture consistent       | `scripts/checks/check_world_tags.py`                                     | Strict mode pending (currently `--warn`).                        |
 | 10    | Software architecture compat with target| Cross-build matrix in `.github/workflows/firmware.yml::build-cross`     | HW-in-the-loop pending.                                          |
 | 11    | Software architecture verifiable       | Module-level integration tests under `tests/`                           | See Phase 5.                                                     |
 | 12    | Software architecture conforms to std  | NASA P10 + SOLID-for-C policy in `CLAUDE.md`                            | Manual review only; no automated structural check yet.           |
@@ -66,7 +66,7 @@ into a verification-activity register.
 | Obj # | Subject                                  | Evidence                                                                                  | Gap                                                              |
 |------:|------------------------------------------|-------------------------------------------------------------------------------------------|------------------------------------------------------------------|
 | 1     | Source code complies with LLR            | Source under `libs/`, `src/`, `examples/`                                                 | Trace matrix pending.                                            |
-| 2     | Source code complies with architecture   | `scripts/utils/check_world_tags.py`, `docs/RING_AND_WORLD.md`                             | Strict mode pending.                                             |
+| 2     | Source code complies with architecture   | `scripts/checks/check_world_tags.py`, `docs/RING_AND_WORLD.md`                             | Strict mode pending.                                             |
 | 3     | Source code is verifiable                | Host test corpus under `tests/` (190 `test_*.c` files; 190/190 PASS)                      | Test-to-source ratio sustained above 1:1.                        |
 | 4     | Source code conforms to standards        | clang-format, clang-tidy, cppcheck (with MISRA addon via `make misra`)                    | MISRA backlog under deviation register.                          |
 | 5     | Source code is traceable to LLR          | Doxygen `@see` cross-references                                                           | Audit script not yet automated.                                  |
@@ -94,7 +94,7 @@ into a verification-activity register.
 | 3     | Test coverage of HLR achieved            | `make test`, `tests/test_*.c` requirements-based tests                                    | Trace matrix pending.                                            |
 | 4     | Test coverage of LLR achieved            | Same as 3 plus per-module decision tests                                                  | Same as 3.                                                       |
 | 5     | Test coverage of structure achieved -- MC/DC | `make mcdc` (clang-18 `-fcoverage-mcdc`), `docs/MCDC.md`, baseline at `.github/mcdc-baseline.txt` | Reachable = 100.00% (gate met); absolute = 92.29%; 58 conditions deactivated under DO-178C 6.4.4.3. |
-| 6     | Test coverage of structure achieved -- branch | gcovr branch coverage gated at 90/90 by `scripts/coverage.sh --gate`                  | Pass today.                                                      |
+| 6     | Test coverage of structure achieved -- branch | gcovr branch coverage gated at 90/90 by `scripts/checks/coverage.sh --gate`                  | Pass today.                                                      |
 | 7     | Test coverage of structure achieved -- statement | Same as 6.                                                                         | Pass today.                                                      |
 | 8     | Test coverage of structure -- data coupling and control coupling | Manual review during PR; no tool automation yet               | Documented as residual risk.                                     |
 | 9     | Verification of additional code          | SOUP register under `docs/SOUP/` covers 14 third-party components                         | Per-component re-review cadence enforced (12 months).            |
@@ -125,21 +125,21 @@ repository is:
 | Document review       | Diff review on `docs/**/*.md`                           | Per PR             |
 | Coding-standard check | `clang-format`, `clang-tidy`, `cppcheck` (pre-commit + CI) | Per commit + per PR |
 | Naming + complexity   | `.clang-tidy` LineThreshold = 60 (NASA P10 Rule 4)      | Per commit         |
-| Header hygiene        | `scripts/utils/check-since-version.py`, `scripts/utils/check-copyright.py` | Per commit |
-| World-tag review      | `scripts/utils/check_world_tags.py` (warn mode today)   | Per commit         |
-| HUM citation review   | `scripts/utils/cite_check.py` (warn mode today)         | Per commit         |
+| Header hygiene        | `scripts/checks/check-since-version.py`, `scripts/checks/check-copyright.py` | Per commit |
+| World-tag review      | `scripts/checks/check_world_tags.py` (warn mode today)   | Per commit         |
+| HUM citation review   | `scripts/checks/cite_check.py` (warn mode today)         | Per commit         |
 
 ### 2.2 Analyses
 
 | Activity                          | Tool / artifact                                                                | Cadence            |
 |-----------------------------------|--------------------------------------------------------------------------------|--------------------|
-| MISRA-C 2012 conformance          | cppcheck-misra via `scripts/utils/misra_check.sh` (`make misra`)               | Quarterly + on PR  |
+| MISRA-C 2012 conformance          | cppcheck-misra via `scripts/checks/misra_check_inner.sh` (`make misra`)               | Quarterly + on PR  |
 | Static analysis                   | `cppcheck --enable=warning,style,performance,portability` (CI + pre-commit)    | Per commit + per PR |
-| Stack-usage bound                 | `-Wstack-usage`, `-fstack-usage`, `scripts/utils/stack_usage_check.py`         | Per build          |
-| No dynamic allocation (NASA P10 #3) | `scripts/utils/check_no_dynamic_alloc.py`                                    | Per commit         |
-| Obsolete-standard reference scan  | `scripts/utils/check_obsolete_standards.py` (rejects superseded safety-standard references) | Per commit |
-| Doxygen completeness audit        | `scripts/utils/doxy_audit.py` -> `docs/DOXYGEN_GAPS.md`                           | On demand          |
-| MC/DC vector pattern declaration  | `scripts/utils/check_mcdc_block.py`                                            | Per commit         |
+| Stack-usage bound                 | `-Wstack-usage`, `-fstack-usage`, `scripts/checks/stack_usage_check.py`         | Per build          |
+| No dynamic allocation (NASA P10 #3) | `scripts/checks/check_no_dynamic_alloc.py`                                    | Per commit         |
+| Obsolete-standard reference scan  | `scripts/checks/check_obsolete_standards.py` (rejects superseded safety-standard references) | Per commit |
+| Doxygen completeness audit        | `scripts/checks/doxy_audit.py` -> `docs/DOXYGEN_GAPS.md`                           | On demand          |
+| MC/DC vector pattern declaration  | `scripts/checks/check_mcdc_block.py`                                            | Per commit         |
 | SOUP qualification basis review   | One Markdown file per component under `docs/SOUP/`                             | Annual per file    |
 
 ### 2.3 Tests
@@ -148,8 +148,8 @@ repository is:
 |-----------------------------------|--------------------------------------------------------------------------------|--------------------|
 | Host unit tests                   | `tests/build_tests.sh`, `tests/run_tests.sh`, ctest                            | Per commit + per PR |
 | Cross-compile sanity              | `firmware.yml::build-cross` matrix over every example app                      | Per PR             |
-| MC/DC measurement                 | `scripts/utils/mcdc_report.sh` (`make mcdc`); clang-18 `-fcoverage-mcdc`       | Per PR             |
-| Branch / statement coverage       | `scripts/coverage.sh --gate` (gcovr 90/90)                                     | Per PR             |
+| MC/DC measurement                 | `scripts/report/mcdc_report.sh` (`make mcdc`); clang-18 `-fcoverage-mcdc`       | Per PR             |
+| Branch / statement coverage       | `scripts/checks/coverage.sh --gate` (gcovr 90/90)                                     | Per PR             |
 | HW-in-the-loop smoke              | `make smoke` (docs/HARDWARE_BRINGUP.md)                                        | Manual today; CI in roadmap Phase 6 |
 
 ### 2.4 Simulation
@@ -243,7 +243,7 @@ as possible.
 | Target board          | EK-RA8D2 (Renesas part 968-K7EKA8D2S01001BE) revision v1               |
 | MCU                   | Renesas R7KA8D2KFLCAC, Cortex-M85 + Cortex-M33                         |
 | Debug probe           | On-board SEGGER J-Link OB, serial number 1086567198                    |
-| Flash tool            | `JLinkExe` invoked via `scripts/flash.sh`                              |
+| Flash tool            | `JLinkExe` invoked via `scripts/dev/flash.sh`                              |
 | Smoke harness         | `make smoke` -> `build/smoke/results.md`                               |
 | PC resolution         | `arm-none-eabi-addr2line` against the per-app ELF                      |
 
@@ -257,7 +257,7 @@ runner is out of scope.
 
 ### 5.1 Statement and branch coverage
 
-- Tool: `gcovr` driven by `scripts/coverage.sh --gate`.
+- Tool: `gcovr` driven by `scripts/checks/coverage.sh --gate`.
 - Gate: 90% line + 90% branch (the script's `--gate` mode).
 - CI job: `firmware.yml::coverage`.
 - Artifact: `build/coverage/coverage/` HTML report uploaded per CI run
@@ -268,7 +268,7 @@ runner is out of scope.
 - Tool: clang-18 `-fcoverage-mcdc` (per `docs/MCDC.md`); fallback to
   gcc-14 `-fcondition-coverage` is **not** DO-178C-compliant and is
   used only on developer machines without modern clang.
-- Driver: `scripts/utils/mcdc_report.sh` (`make mcdc`).
+- Driver: `scripts/report/mcdc_report.sh` (`make mcdc`).
 - CI job: `firmware.yml::mcdc`.
 - Gate: cannot regress below baseline at `.github/mcdc-baseline.txt`.
 - Per-PR feedback: `firmware.yml::coverage-comment` posts a
@@ -362,7 +362,7 @@ configuration that enforces the partition is in each app's
 
 | Property to verify                                      | Evidence                                                              |
 |---------------------------------------------------------|------------------------------------------------------------------------|
-| Each function carries a world tag (S, NS, or NSC)       | `scripts/utils/check_world_tags.py` (warn mode today; strict planned)  |
+| Each function carries a world tag (S, NS, or NSC)       | `scripts/checks/check_world_tags.py` (warn mode today; strict planned)  |
 | Secure-side state is unreachable from NS without veneer | `libs/ra8_nsc/` veneers + SAU config review                            |
 | Veneer set is closed (no unintentional NSC exposure)    | Linker-script review; `arm-none-eabi-nm` of the secure ELF             |
 | Secure faults trap to the secure exception handler      | `examples/*/secure_exception.c` per-app handler + smoke fault-injection|

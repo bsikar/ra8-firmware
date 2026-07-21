@@ -39,7 +39,7 @@ TESTS_DIR         := $(ROOT)/tests
 TESTS_BUILD       := $(TESTS_DIR)/build
 TESTS_BUILD_COV   := $(TESTS_DIR)/build-cov
 TESTS_BUILD_UBSAN := $(TESTS_DIR)/build-ubsan
-# Legacy tidy build dir kept so `bash scripts/clang_tidy.sh` keeps working.
+# Legacy tidy build dir kept so `bash scripts/checks/clang_tidy.sh` keeps working.
 TIDY_BUILD        := $(ROOT)/build/tidy
 
 CMAKE        ?= cmake

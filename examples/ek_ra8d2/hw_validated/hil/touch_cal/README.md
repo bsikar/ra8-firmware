@@ -42,7 +42,7 @@ tap arrived. `hil.conf` asserts that substring and lists `verify=FAIL` /
 
 ```
 make touch_cal
-scripts/hil_run_local.sh touch_cal      # flash + scrape the bring-up sentinel
+scripts/hil/run_local.sh touch_cal      # flash + scrape the bring-up sentinel
 ```
 
 ## SIM==HIL
@@ -70,7 +70,7 @@ $ board_sim touch_cal.elf --touch-seq 420:520,3868:520,3868:3968,420:3968,2148:2
 The five raw points are the five targets pushed through a synthetic panel
 transform (`raw = screen*8 + offset`), so the fit recovers the inverse exactly
 and every corrected coordinate lands on its target (`maxerr=0`). `hil.conf`
-declares that `--touch-seq` as `HIL_SIM_ARGS`, so `scripts/sil_all.sh` runs the
+declares that `--touch-seq` as `HIL_SIM_ARGS`, so `scripts/sim/sil_all.sh` runs the
 whole calibration headless with **0 skips** and `check_hil_sil_parity.py` keeps
 the app SIM-visible. On a bare automated bench with no finger the read shim
 times out and the app reports `cal=SKIP got=0`, but `touchcal: ready` still

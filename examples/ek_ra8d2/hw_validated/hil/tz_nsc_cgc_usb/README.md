@@ -74,7 +74,7 @@ On-chip readout while it runs (J-Link halt):
 
 ```sh
 make tz_nsc_cgc_usb                            # two-project build -> merged hex
-bash scripts/hil_run_local.sh tz_nsc_cgc_usb   # flash + HIL gate (local Mac)
+bash scripts/hil/run_local.sh tz_nsc_cgc_usb   # flash + HIL gate (local Mac)
 ```
 
 The HIL gate (`hil.conf`) flashes, dwells while the host enumerates, then passes

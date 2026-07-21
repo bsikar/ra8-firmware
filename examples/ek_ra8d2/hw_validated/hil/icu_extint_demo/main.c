@@ -111,7 +111,7 @@ int32_t main(void)
     icu_extint_demo_panic_halt();
   }
 
-  /* HIL boot banner -- scraped by scripts/hil_run_direct.sh to confirm
+  /* HIL boot banner -- scraped by scripts/hil/run_direct.sh to confirm
    * the CGC + SCI + ICU bring-up reached the main poll loop. */
   (void)ra8_board_uart_console_write(k_icu_extint_demo_msg_boot,
                                      (size_t)(sizeof(k_icu_extint_demo_msg_boot) - 1U));

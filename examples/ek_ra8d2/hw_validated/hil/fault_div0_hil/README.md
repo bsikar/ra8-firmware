@@ -51,7 +51,7 @@ the shared decoder prints `[EXC] ERROR: exception=6` +
 SCI8 VCOM console -- proof `CCR.DIV_0_TRP` is set (T2-01) and the frame
 decoder runs on hardware (T2-02). Recorded on tracker issue #191.
 
-**Simulator-in-the-loop (`scripts/sil_all.sh`):** board_sim models the
+**Simulator-in-the-loop (`scripts/sim/sil_all.sh`):** board_sim models the
 divide-by-zero trap faithfully. Its CPU-model seam scans the image for
 every `UDIV`/`SDIV` site and -- **only after** the firmware sets
 `CCR.DIV_0_TRP` (watched via the SCB control-register write hook) --

@@ -4,7 +4,7 @@
 # Standalone use:
 #   cd src/app/
 #   make             # configure + build -> src/app/build/ra8d2-ereader.elf
-#   make flash       # JLinkExe load via scripts/flash.sh
+#   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make clean       # rm -rf src/app/build
 #
 # Copyright (c) 2026 Brighton Sikarskie
@@ -31,7 +31,7 @@ help:
 	@echo "$(APP) make targets:"
 	@echo "  build / all  cross-compile $(APP).elf / .hex (default)"
 	@echo "  clean        rm -rf $(BUILD_DIR)"
-	@echo "  flash        scripts/flash.sh $(HEX)"
+	@echo "  flash        scripts/dev/flash.sh $(HEX)"
 	@echo "  size         arm-none-eabi-size on the ELF"
 
 build: $(ELF)
@@ -48,7 +48,7 @@ clean:
 
 flash:
 	@test -f $(HEX) || { echo "No $(HEX) -- run 'make build' first"; exit 1; }
-	bash $(ROOT)/scripts/flash.sh $(HEX)
+	bash $(ROOT)/scripts/dev/flash.sh $(HEX)
 
 size:
 	@test -f $(ELF) || { echo "No $(ELF) -- run 'make build' first"; exit 1; }

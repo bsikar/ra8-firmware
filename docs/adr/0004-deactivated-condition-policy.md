@@ -59,7 +59,7 @@ The candidates considered:
 * The project maintains a **machine-generated deactivation list**
   at `docs/MCDC_DEACTIVATIONS.md` (human-readable) +
   `docs/MCDC_GAPS.csv` (machine-readable).
-* The regen script `scripts/utils/regen_mcdc_gaps.py`
+* The regen script `scripts/fix/regen_mcdc_gaps.py`
   walks every gap reported by `clang -fcoverage-mcdc`, classifies
   each one against a fixed taxonomy:
 
@@ -74,7 +74,7 @@ The candidates considered:
 * **The regen script is the source of truth.** It is not edited
   by hand. Authors who add a defensive guard run
 
-      python3 scripts/utils/regen_mcdc_gaps.py
+      python3 scripts/fix/regen_mcdc_gaps.py
 
   and inspect the diff. Any new entry classified
   `MISSING-TEST` requires the author to either (a) write the
@@ -134,7 +134,7 @@ The candidates considered:
   decisions (do not edit by hand).
 * `docs/MCDC_GAPS.md`, `docs/MCDC_GAPS.csv` -- generated open-gap
   reports.
-* `scripts/utils/regen_mcdc_gaps.py` -- the regen + classifier.
+* `scripts/fix/regen_mcdc_gaps.py` -- the regen + classifier.
 * ADR-0001 -- the qualification target that creates this
   obligation in the first place.
 * ADR-0003 -- the test-seam pattern that lets MC/DC vectors

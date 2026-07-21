@@ -12,7 +12,7 @@
  *   - each stub TU wraps its insecure body in
  *     `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)` with a
  *     fail-closed #else (every entry point returns k_ra8_err_not_supported),
- *   - scripts/utils/check_stub_crypto_guarded.py fails the build at gate time if
+ *   - scripts/checks/check_stub_crypto_guarded.py fails the build at gate time if
  *     any insecure body escapes that guard.
  *
  * This ctest runs in the host build, which compiles the stub TUs under

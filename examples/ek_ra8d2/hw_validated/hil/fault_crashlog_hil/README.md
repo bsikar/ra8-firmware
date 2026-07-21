@@ -65,7 +65,7 @@ then the synthesised fault is recorded and read back
 `.noinit` record with its software CRC-32 and boot-loop counter (T2-03).
 Recorded on tracker issue #191.
 
-**Simulator-in-the-loop (`scripts/sil_all.sh`):** board_sim **cold-loads**
+**Simulator-in-the-loop (`scripts/sim/sil_all.sh`):** board_sim **cold-loads**
 the image on every run, so it proves the boot bring-up, the peek / claim /
 safe-mode logic, and the synthesised in-process write+readback -- the
 `recorded+readback exc=6` gate `hil.conf` asserts. Two legs are proven

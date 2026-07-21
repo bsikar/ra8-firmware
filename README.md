@@ -55,7 +55,7 @@ make hil-find-jlink     # prints your J-Link serial to paste into .env
 - The `make hil-*` targets drive the maintainer's bench rig (a Pi plus Tapo
   smart plugs); they will not work elsewhere without your own `.env` and rig.
 
-**Bricked board?** `bash scripts/hil_dlm_reset_local.sh recover` mass-erases an
+**Bricked board?** `bash scripts/hil/dlm_reset_local.sh recover` mass-erases an
 EK-RA8D2 wired to this machine and returns it to the factory default
 (all-Secure, OEM_PL2). Run `... check` first to confirm the probe can reach it.
 

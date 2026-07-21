@@ -96,7 +96,7 @@ mcp:
 # `make books` -- regenerate content/compiled/*.rabook from content/library/*.epub
 # (Git LFS) plus the manifest header. See tools/epub_compile/.
 books:
-	bash scripts/build_books.sh
+	bash scripts/build/books.sh
 
 # `make bench-cache` -- the #147/#160/#208 cache-bench toolchain: build + run the
 # host tools that exercise the real L1/L2/L3 caches. CC is forwarded so CI can
@@ -128,7 +128,7 @@ RABOOK_REALBOOK_SRC      ?= tests/fixtures/rabook_realbook
 RABOOK_REALBOOK_FIXTURE  ?= tests/rabook_realbook_fixture.h
 RABOOK_DOWNSCALE_FIXTURE ?= tests/rabook_downscale_parity_fixture.h
 rabook-golden-update:
-	python3 scripts/utils/rabook_parity_gen.py $(RABOOK_PARITY_SRC) $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33)
-	python3 scripts/utils/rabook_parity_gen.py --realbook $(RABOOK_REALBOOK_SRC) $(RABOOK_REALBOOK_FIXTURE)
-	python3 scripts/utils/rabook_parity_gen.py --downscale $(RABOOK_DOWNSCALE_FIXTURE)
+	python3 scripts/gen/rabook_parity_gen.py $(RABOOK_PARITY_SRC) $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33)
+	python3 scripts/gen/rabook_parity_gen.py --realbook $(RABOOK_REALBOOK_SRC) $(RABOOK_REALBOOK_FIXTURE)
+	python3 scripts/gen/rabook_parity_gen.py --downscale $(RABOOK_DOWNSCALE_FIXTURE)
 	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33) $(RABOOK_REALBOOK_FIXTURE) $(RABOOK_DOWNSCALE_FIXTURE)

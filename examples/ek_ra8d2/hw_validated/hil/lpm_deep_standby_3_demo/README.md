@@ -39,9 +39,9 @@ behaviour needs benchwork to confirm.
 ## Bench verification
 
 1. `make lpm_deep_standby_3_demo`
-2. Flash via the Pi-bound HIL flasher: `bash scripts/hil_flash.sh
+2. Flash via the Pi-bound HIL flasher: `bash scripts/hil/flash.sh
    examples/ek_ra8d2/hw_validated/hil/lpm_deep_standby_3_demo/build/lpm_deep_standby_3_demo.hex`
-3. Run the HIL gate from the repo root: `bash scripts/hil_run.sh
+3. Run the HIL gate from the repo root: `bash scripts/hil/run.sh
    lpm_deep_standby_3_demo`
 4. If SOSC is alive, watch the banner repeat at ~0.2 Hz on the
    J-Link CDC console.

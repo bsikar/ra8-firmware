@@ -29,7 +29,7 @@ matches the host / board_sim run.
 
 ```
 make ereader_input
-scripts/hil_run_local.sh ereader_input      # flash + scrape the banner
+scripts/hil/run_local.sh ereader_input      # flash + scrape the banner
 ```
 
 ## Result (validated 2026-06-18, board_sim + host)
@@ -39,4 +39,4 @@ ui-hil: boot
 ui-hil: taps=7 hits=5 nav_ok=1 PASS
 ```
 
-`scripts/board_sim_smoke.sh ereader_input` PASS.
+`scripts/sim/smoke.sh ereader_input` PASS.

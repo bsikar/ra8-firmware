@@ -108,7 +108,7 @@ static TX_THREAD                   s_thread_rx;
  *        transmit (TX thread) or per accepted RX frame (RX thread).
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving real CAN-FD frames are flowing on the
  * internal-loopback path under ThreadX.
