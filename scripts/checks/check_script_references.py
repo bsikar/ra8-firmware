@@ -138,6 +138,24 @@ _TOKEN_RE = re.compile(
     r"((?:\.\./)*" + re.escape(ROOT_PREFIX) + r"/[A-Za-z0-9_./*?{}$@,+\\-]+)"
 )
 
+# A sibling-directory reference built from segments rather than written as a
+# ``scripts/...`` path: ``. "$SCRIPT_DIR/../builders/select_host_compiler.sh"``.
+# _TOKEN_RE cannot see these -- there is no ``scripts/`` token anywhere in the
+# line -- and that blind spot took ``dev`` red once already. The incident: a
+# rename moved the builder directory, and the ``# shellcheck source=`` directive
+# one line above the sourcing line WAS rewritten, because it spells the path out
+# in full. The sourcing line itself kept its segment-built reference to the old
+# directory and failed only when the gate ran, in CI, after the merge.
+#
+# The variable is conventionally the citing script's own directory
+# (``SCRIPT_DIR``, ``SCRIPTDIR``, ``HERE``, ``DIR``), so the reference resolves
+# against the citing file's parent. That convention is the whole basis for
+# resolving these, so the variable name must match it -- an arbitrary
+# ``$SOMEWHERE_ELSE/../x`` is left alone rather than guessed at.
+_SIBLING_RE = re.compile(
+    r"\$\{?(SCRIPT_DIR|SCRIPTDIR|SCRIPT_ROOT|HERE|DIR)\}?/((?:\.\./)+[A-Za-z0-9_./-]+)"
+)
+
 # Trailing characters that are punctuation in the citing text, never part of a
 # filename. A trailing ``/`` is meaningful (directory) and is NOT stripped.
 _TRAILING_JUNK = ".,;:!?)`'\"|>"
@@ -309,6 +327,43 @@ def _scan_text(rel_file: str, text: str, root: Path = REPO_ROOT) -> list[Finding
             reason = _classify(base, rest, token)
             if reason is not None:
                 findings.append(Finding(rel_file, line_no, token, reason))
+        findings.extend(_scan_sibling_refs(rel_file, line, line_no, root))
+    return findings
+
+
+def _scan_sibling_refs(rel_file: str, line: str, line_no: int, root: Path) -> list[Finding]:
+    """Unresolved sibling-directory references in one line.
+
+    The shape matched is ``$SCRIPT_DIR/../somedir/file``  PATHREF-OK: shape.
+
+    Only files under ``scripts/`` are considered: the convention that the
+    variable holds the citing script's own directory is what makes the
+    reference resolvable, and it is a convention of this tree's scripts. A hit
+    elsewhere would be a guess.
+    """
+    if not rel_file.startswith(ROOT_PREFIX + "/"):
+        return []
+    findings: list[Finding] = []
+    citing_dir = (root / rel_file).parent
+    for match in _SIBLING_RE.finditer(line):
+        rest = match.group(2)
+        if any(ch in rest for ch in (*_INTERPOLATION_CHARS, *_GLOB_CHARS)):
+            continue
+        target = (citing_dir / rest).resolve()
+        if target.exists():
+            continue
+        try:
+            shown = target.relative_to(root.resolve()).as_posix()
+        except ValueError:
+            shown = target.as_posix()
+        findings.append(
+            Finding(
+                rel_file,
+                line_no,
+                f"${match.group(1)}/{rest}",
+                f"resolves to {shown}, which does not exist",
+            )
+        )
     return findings
 
 

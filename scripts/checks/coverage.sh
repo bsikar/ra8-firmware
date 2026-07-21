@@ -37,7 +37,7 @@ fi
 # shellcheck source=scripts/builders/select_host_compiler.sh
 # Prefer gcc (matches CI's gcov pipeline); fall back to clang where the host
 # gcc is too old for C23 (the dev box ships gcc 12).
-. "$SCRIPT_DIR/../build/select_host_compiler.sh"
+. "$SCRIPT_DIR/../builders/select_host_compiler.sh"
 ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
 
 # CMake refuses to change CMAKE_C_COMPILER on an existing cache; if a prior
