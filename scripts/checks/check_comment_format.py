@@ -436,125 +436,133 @@ def main(argv: list[str]) -> int:
 # ---------------------------------------------------------------------------
 # Built-in test battery (run via --selftest; mirrors the user's examples).
 # ---------------------------------------------------------------------------
-def _selftest() -> int:
-    cases: list[tuple[str, str, str]] = []
+# --- selftest fixtures ------------------------------------------------------
+# The table below is DATA. It lives at module scope because a function wrapping
+# a 90-line literal is still a 90-line function -- the size rule measures the
+# body either way -- and because chopping one cohesive spec into arbitrary
+# sub-tables would cost a reader the ability to scan every rule at once.
+# Each entry is (name, input, expected output).
 
+# Rule 4: align a run of trailing comments to the longest (which gets 1 space).
+_RUN_IN = (
+    "enum {\n"
+    "  a = 0x01U, /**< Sync event: VSYNC start. */\n"
+    "  b = 0x08U, /**< End of Transmission packet. */\n"
+    "};\n"
+)
+_RUN_OUT = (
+    "enum {\n"
+    "  a = 0x01U, /**< Sync event: VSYNC start.    */\n"
+    "  b = 0x08U, /**< End of Transmission packet. */\n"
+    "};\n"
+)
+
+# Over-padded run gets tightened so the longest has exactly one space.
+_OVER_IN = "enum {\n  a = 1, /**< short.        */\n  b = 2, /**< longer text.  */\n};\n"
+_OVER_OUT = "enum {\n  a = 1, /**< short.       */\n  b = 2, /**< longer text. */\n};\n"
+
+# The leading spaces (clang-format's start-column alignment) are preserved
+# verbatim, and comments at different start columns are not cross-aligned --
+# only the comment interior and the */ end column are this pass's business.
+_SEP_IN = "  k_a = 1,   /**< x.*/\n  k_bb = 2, /**< yy. */\n"
+_SEP_OUT = "  k_a = 1,   /**< x. */\n  k_bb = 2, /**< yy. */\n"
+
+# A code-only line breaks the run; the standalone doc line collapses to one
+# space; the trailing comments keep their (clang-owned) leading spaces.
+_BREAK_IN = (
+    "enum {\n"
+    "  a = 1U,  /**< one.   */\n"
+    "  b = 2U,  /**< two.   */\n"
+    "  c = (1U << 9),\n"
+    "  /**< composite.                    */\n"
+    "};\n"
+)
+_BREAK_OUT = (
+    "enum {\n"
+    "  a = 1U,  /**< one. */\n"
+    "  b = 2U,  /**< two. */\n"
+    "  c = (1U << 9),\n"
+    "  /**< composite. */\n"
+    "};\n"
+)
+
+# Column-limit guard: end-alignment that would reach the limit splits the run
+# instead, so a short comment is never padded out to a far column (which would
+# make clang-format collapse the leading alignment). `a` is tightened to one
+# space rather than aligned to the long sibling's */.
+_LONG_C = "x" * 84
+_CAP_IN = f"  a = 1, /**< short.        */\n  b = 2, /**< {_LONG_C}. */\n"
+_CAP_OUT = f"  a = 1, /**< short. */\n  b = 2, /**< {_LONG_C}. */\n"
+
+# Safety: multi-line block comment interior untouched.
+_MULTI = "/**\n * @brief foo.*/bar\n * body\n */\nint x;\n"
+
+_SELFTEST_CASES: tuple[tuple[str, str, str], ...] = (
     # Rule 1: space after the opener.
-    cases.append(("space after /*", "int x; /*hi */\n", "int x; /* hi */\n"))
+    ("space after /*", "int x; /*hi */\n", "int x; /* hi */\n"),
     # Rule 2: space before */.
-    cases.append(("space before */", "int x; /* hi*/\n", "int x; /* hi */\n"))
-    cases.append(
-        (
-            "doxy member . */",
-            "bool e; /**< DSISETR.EOTPEN.*/\n",
-            "bool e; /**< DSISETR.EOTPEN. */\n",
-        )
-    )
+    ("space before */", "int x; /* hi*/\n", "int x; /* hi */\n"),
+    (
+        "doxy member . */",
+        "bool e; /**< DSISETR.EOTPEN.*/\n",
+        "bool e; /**< DSISETR.EOTPEN. */\n",
+    ),
     # Rule 3: >=1 space before a trailing comment.
-    cases.append(("space before comment", "int x;/* hi */\n", "int x; /* hi */\n"))
-
-    # Rule 4: align a run of trailing comments to the longest (which gets 1 space).
-    run_in = (
-        "enum {\n"
-        "  a = 0x01U, /**< Sync event: VSYNC start. */\n"
-        "  b = 0x08U, /**< End of Transmission packet. */\n"
-        "};\n"
-    )
-    run_out = (
-        "enum {\n"
-        "  a = 0x01U, /**< Sync event: VSYNC start.    */\n"
-        "  b = 0x08U, /**< End of Transmission packet. */\n"
-        "};\n"
-    )
-    cases.append(("align run to longest", run_in, run_out))
-
-    # Over-padded run gets tightened so the longest has exactly one space.
-    over_in = "enum {\n  a = 1, /**< short.        */\n  b = 2, /**< longer text.  */\n};\n"
-    over_out = "enum {\n  a = 1, /**< short.       */\n  b = 2, /**< longer text. */\n};\n"
-    cases.append(("tighten over-padded run", over_in, over_out))
-
-    # The leading spaces (clang-format's start-column alignment) are preserved
-    # verbatim, and comments at different start columns are not cross-aligned --
-    # only the comment interior and the */ end column are this pass's business.
-    sep_in = "  k_a = 1,   /**< x.*/\n  k_bb = 2, /**< yy. */\n"
-    sep_out = "  k_a = 1,   /**< x. */\n  k_bb = 2, /**< yy. */\n"
-    cases.append(("leading preserved, columns separate", sep_in, sep_out))
-
-    # A code-only line breaks the run; the standalone doc line collapses to one
-    # space; the trailing comments keep their (clang-owned) leading spaces.
-    break_in = (
-        "enum {\n"
-        "  a = 1U,  /**< one.   */\n"
-        "  b = 2U,  /**< two.   */\n"
-        "  c = (1U << 9),\n"
-        "  /**< composite.                    */\n"
-        "};\n"
-    )
-    break_out = (
-        "enum {\n"
-        "  a = 1U,  /**< one. */\n"
-        "  b = 2U,  /**< two. */\n"
-        "  c = (1U << 9),\n"
-        "  /**< composite. */\n"
-        "};\n"
-    )
-    cases.append(("code line breaks run", break_in, break_out))
-
-    # Column-limit guard: end-alignment that would reach the limit splits the run
-    # instead, so a short comment is never padded out to a far column (which would
-    # make clang-format collapse the leading alignment). `a` is tightened to one
-    # space rather than aligned to the long sibling's */.
-    long_c = "x" * 84
-    cap_in = f"  a = 1, /**< short.        */\n  b = 2, /**< {long_c}. */\n"
-    cap_out = f"  a = 1, /**< short. */\n  b = 2, /**< {long_c}. */\n"
-    cases.append(("column-limit splits run", cap_in, cap_out))
-
+    ("space before comment", "int x;/* hi */\n", "int x; /* hi */\n"),
+    ("align run to longest", _RUN_IN, _RUN_OUT),
+    ("tighten over-padded run", _OVER_IN, _OVER_OUT),
+    ("leading preserved, columns separate", _SEP_IN, _SEP_OUT),
+    ("code line breaks run", _BREAK_IN, _BREAK_OUT),
+    ("column-limit splits run", _CAP_IN, _CAP_OUT),
     # Safety: never touch text inside string literals.
-    cases.append(("string with /* */", 'const char* s = "/*x*/";\n', 'const char* s = "/*x*/";\n'))
-    cases.append(("string with */", 'puts("a*/b");\n', 'puts("a*/b");\n'))
+    ("string with /* */", 'const char* s = "/*x*/";\n', 'const char* s = "/*x*/";\n'),
+    ("string with */", 'puts("a*/b");\n', 'puts("a*/b");\n'),
     # Safety: never touch // line comments.
-    cases.append(("line comment left alone", "int x; // a*/b\n", "int x; // a*/b\n"))
-    # Safety: multi-line block comment interior untouched.
-    multi = "/**\n * @brief foo.*/bar\n * body\n */\nint x;\n"
-    cases.append(("multiline block untouched", multi, multi))
+    ("line comment left alone", "int x; // a*/b\n", "int x; // a*/b\n"),
+    ("multiline block untouched", _MULTI, _MULTI),
     # Safety: banners untouched.
-    cases.append(
-        ("banner untouched", "/******** section ********/\n", "/******** section ********/\n")
-    )
-    cases.append(("empty comment untouched", "x; /**/\n", "x; /**/\n"))
+    ("banner untouched", "/******** section ********/\n", "/******** section ********/\n"),
+    ("empty comment untouched", "x; /**/\n", "x; /**/\n"),
     # Safety: C++ raw string with */ inside is not a comment.
-    cases.append(("raw string untouched", 'auto s = R"(a*/b/*c)";\n', 'auto s = R"(a*/b/*c)";\n'))
+    ("raw string untouched", 'auto s = R"(a*/b/*c)";\n', 'auto s = R"(a*/b/*c)";\n'),
     # Internal double-space (manual sub-column alignment) is preserved.
-    cases.append(
-        (
-            "internal spacing kept",
-            "x = 1; /**< VBTBPSR  Ch 12.2 p 509.*/\n",
-            "x = 1; /**< VBTBPSR  Ch 12.2 p 509. */\n",
-        )
-    )
+    (
+        "internal spacing kept",
+        "x = 1; /**< VBTBPSR  Ch 12.2 p 509.*/\n",
+        "x = 1; /**< VBTBPSR  Ch 12.2 p 509. */\n",
+    ),
     # Inline mid-code comments (code follows the */) are left byte-for-byte
     # alone -- clang-format owns the spacing around them; rewriting them fights
     # it (e.g. clang then wants a space between */ and the next token).
-    cases.append(("inline arg-label spaced", "f(a, /* tag= */ b);\n", "f(a, /* tag= */ b);\n"))
-    cases.append(("inline arg-label tight", "f(a, /*tag=*/b);\n", "f(a, /*tag=*/b);\n"))
-    cases.append(("inline then trailing", "f(/*a*/x); /*hi*/\n", "f(/*a*/x); /* hi */\n"))
+    ("inline arg-label spaced", "f(a, /* tag= */ b);\n", "f(a, /* tag= */ b);\n"),
+    ("inline arg-label tight", "f(a, /*tag=*/b);\n", "f(a, /*tag=*/b);\n"),
+    ("inline then trailing", "f(/*a*/x); /*hi*/\n", "f(/*a*/x); /* hi */\n"),
+)
 
-    failures = 0
-    for name, src, want in cases:
-        got = fix_text(src)
-        if got != want:
-            failures += 1
-            sys.stderr.write(f"[FAIL] {name}\n   want: {want!r}\n   got:  {got!r}\n")
-            continue
-        # Idempotency: a second pass must change nothing.
-        if fix_text(got) != got:
-            failures += 1
-            sys.stderr.write(f"[FAIL] {name}: not idempotent\n")
 
+def _check_case(name: str, src: str, want: str) -> int:
+    """Run one rewrite case; return the number of failures it produced (0 or 1).
+
+    Idempotency is asserted alongside correctness because this pass runs in a
+    formatter loop: a rule that keeps changing its own output would churn every
+    file on every run.
+    """
+    got = fix_text(src)
+    if got != want:
+        sys.stderr.write(f"[FAIL] {name}\n   want: {want!r}\n   got:  {got!r}\n")
+        return 1
+    if fix_text(got) != got:
+        sys.stderr.write(f"[FAIL] {name}: not idempotent\n")
+        return 1
+    return 0
+
+
+def _selftest() -> int:
+    failures = sum(_check_case(*case) for case in _SELFTEST_CASES)
     if failures:
         sys.stderr.write(f"check_comment_format.py: selftest FAILED ({failures} case(s)).\n")
         return 2
-    print(f"check_comment_format.py: selftest passed ({len(cases)} cases).")
+    print(f"check_comment_format.py: selftest passed ({len(_SELFTEST_CASES)} cases).")
     return 0
 
 

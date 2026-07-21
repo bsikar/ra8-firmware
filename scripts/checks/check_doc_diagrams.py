@@ -56,6 +56,7 @@ import sys
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -86,9 +87,6 @@ STARTUML_DOC_ALLOWLIST = (
 #: which is what lets this gate tell "output built from the tree under test"
 #: apart from "whatever HTML was lying around".
 STAMP_NAME = ".ra8-diagram-stamp"
-
-#: Index of the optional stamp-mode field in a selftest case tuple.
-STAMP_MODE_FIELD = 4
 
 DOT_OPEN = re.compile(r"^\s*(?:\*\s?)?@dot\s*$")
 DOT_CLOSE = re.compile(r"^\s*(?:\*\s?)?@enddot\s*$")
@@ -391,155 +389,264 @@ def _hashed(body: str) -> str:
     return f"dot_inline_dotgraph_{digest}.svg"
 
 
+# --- selftest fixtures ------------------------------------------------------
+# The cases below are DATA, not logic, and they live at module scope for that
+# reason: wrapping a 100-line table in a function only moves the length, since
+# the size gate measures a function body whether it holds statements or a list
+# literal. Splitting the table itself into arbitrary chunks would scatter one
+# cohesive spec across several names for no reader's benefit.
+
+_G1 = "digraph a { x -> y; }"
+_G2 = "digraph b { p -> q; }"
+_S1, _S2 = _hashed(_G1), _hashed(_G2)
+
+_DUP_HEADER = (
+    "/**\n * @dot\n" + "\n".join(" * " + ln for ln in _G1.splitlines()) + "\n * @enddot\n */\n"
+)
+
+
+class _DiagramCase(NamedTuple):
+    """One selftest scenario: a fixture tree and the verdict the gate must reach.
+
+    Replaces the positional tuples this table used to hold, where the optional
+    fifth field was read as ``case[STAMP_MODE_FIELD] if len(case) > ...``. The
+    named default says the same thing without an index constant.
+    """
+
+    name: str
+    """Human-readable scenario name, printed in the per-case verdict line."""
+    sources: dict[str, str]
+    """Repo-relative source path -> file text, materialised under ``repo/``."""
+    html: dict[str, str]
+    """Doxygen-output-relative path -> file text, materialised under ``html/``."""
+    expect_fire: bool
+    """True when the gate MUST report a finding for this tree."""
+    stamp_mode: str = "good"
+    """How the build stamp is seeded: ``good`` / ``wrong`` / ``missing``."""
+
+
+_SELFTEST_CASES: tuple[_DiagramCase, ...] = (
+    # --- the gate must STAY SILENT on correct output ------------------
+    _DiagramCase(
+        "correct: 2 authored, 2 rendered",
+        {"docs/x.md": _md(_G1, _G2)},
+        {"p.html": _page(_S1, _S2), _S1: _svg(nodes=True), _S2: _svg(nodes=True)},
+        expect_fire=False,
+    ),
+    _DiagramCase(
+        "correct: one block embedded on two pages",
+        {"docs/x.md": _md(_G1)},
+        {"a.html": _page(_S1), "b.html": _page(_S1), _S1: _svg(nodes=True)},
+        expect_fire=False,
+    ),
+    _DiagramCase(
+        "correct: identical blocks share one SVG",
+        {"docs/x.md": _md(_G1), "libs/y.h": _DUP_HEADER},
+        {"p.html": _page(_S1), _S1: _svg(nodes=True)},
+        expect_fire=False,
+    ),
+    # --- the gate must FIRE when a diagram is dropped -----------------
+    _DiagramCase(
+        "dropped: 2 authored, 1 rendered",
+        {"docs/x.md": _md(_G1, _G2)},
+        {"p.html": _page(_S1), _S1: _svg(nodes=True)},
+        expect_fire=True,
+    ),
+    _DiagramCase(
+        "dropped: every diagram missing (HAVE_DOT=NO)",
+        {"docs/x.md": _md(_G1, _G2)},
+        {"p.html": "<html><body>no diagrams</body></html>"},
+        expect_fire=True,
+    ),
+    _DiagramCase(
+        "empty: rendered SVG has no nodes",
+        {"docs/x.md": _md(_G1)},
+        {"p.html": _page(_S1), _S1: _svg(nodes=False)},
+        expect_fire=True,
+    ),
+    _DiagramCase(
+        "double-escaped: label renders a literal backslash-n",
+        {"docs/x.md": _md(_G1)},
+        {"p.html": _page(_S1), _S1: _svg(nodes=True, label="ra8_init\\nstep two")},
+        expect_fire=True,
+    ),
+    _DiagramCase(
+        "missing: referenced SVG absent from disk",
+        {"docs/x.md": _md(_G1)},
+        {"p.html": _page(_S1)},
+        expect_fire=True,
+    ),
+    _DiagramCase(
+        "startuml: banned construct present",
+        {"docs/x.md": "@startuml\n[*] --> A\n@enduml\n"},
+        {"p.html": "<html></html>"},
+        expect_fire=True,
+    ),
+    _DiagramCase(
+        "unbalanced: @dot never closed",
+        {"docs/x.md": "@dot\ndigraph z { a -> b; }\n"},
+        {"p.html": "<html></html>"},
+        expect_fire=True,
+    ),
+    # --- the gate must REFUSE output it cannot attribute to this tree ----
+    # Stale output is dangerous in both directions, and the dangerous one
+    # is a leftover render MASKING a diagram the current tree drops. Both
+    # of these would otherwise "pass" on the counts alone.
+    _DiagramCase(
+        "stale: leftover render masks a dropped diagram",
+        # Two blocks authored; only one is rendered, but a leftover SVG
+        # from an older build makes the count add up.
+        {"docs/x.md": _md(_G1, _G2)},
+        {"p.html": _page(_S1), _S1: _svg(nodes=True), _S2: _svg(nodes=True)},
+        expect_fire=True,
+        stamp_mode="wrong",
+    ),
+    _DiagramCase(
+        "stale: output predates a newly added diagram",
+        {"docs/x.md": _md(_G1, _G2)},
+        {"p.html": _page(_S1, _S2), _S1: _svg(nodes=True), _S2: _svg(nodes=True)},
+        expect_fire=True,
+        stamp_mode="wrong",
+    ),
+    _DiagramCase(
+        "unknown provenance: no build stamp at all",
+        {"docs/x.md": _md(_G1)},
+        {"p.html": _page(_S1), _S1: _svg(nodes=True)},
+        expect_fire=True,
+        stamp_mode="missing",
+    ),
+)
+
+
+def _materialise_case(case: _DiagramCase, td: str) -> tuple[Path, Path]:
+    """Write one case's fixture tree under ``td`` and seed its build stamp.
+
+    Returns ``(repo_root, html_dir)``. The stamp is what lets the gate tell
+    output built from the tree under test from output that was not: "good"
+    models a directory build_docs.sh has just written, "wrong" a stale render,
+    "missing" output of unknown provenance.
+    """
+    root = Path(td) / "repo"
+    hdir = Path(td) / "html"
+    hdir.mkdir(parents=True)
+    for rel, text in case.sources.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    for rel, text in case.html.items():
+        (hdir / rel).write_text(text, encoding="utf-8")
+
+    if case.stamp_mode == "good":
+        seen, _ = scan_sources(root)
+        (hdir / STAMP_NAME).write_text(source_fingerprint(seen), encoding="utf-8")
+    elif case.stamp_mode == "wrong":
+        (hdir / STAMP_NAME).write_text("0" * 64, encoding="utf-8")
+    # "missing" writes nothing at all.
+    return root, hdir
+
+
+def _run_case(case: _DiagramCase) -> bool:
+    """Run one case in a throwaway tree; True when the gate behaved as specified."""
+    with tempfile.TemporaryDirectory() as td:
+        root, hdir = _materialise_case(case, td)
+        fired = bool(check(root, hdir))
+    if fired == case.expect_fire:
+        verdict = "fires" if case.expect_fire else "silent"
+        sys.stdout.write(f"  ok ({verdict:6s}) {case.name}\n")
+        return True
+    want = "FIRE" if case.expect_fire else "stay silent"
+    got = "fired" if fired else "stayed silent"
+    sys.stderr.write(f"  selftest FAIL [{case.name}]: expected the gate to {want}, it {got}\n")
+    return False
+
+
 def selftest() -> int:
     """Prove the gate fires when a diagram is dropped and is silent when not."""
-    g1 = "digraph a { x -> y; }"
-    g2 = "digraph b { p -> q; }"
-    s1, s2 = _hashed(g1), _hashed(g2)
-
-    dup_header = (
-        "/**\n * @dot\n" + "\n".join(" * " + ln for ln in g1.splitlines()) + "\n * @enddot\n */\n"
-    )
-
-    cases = [
-        # --- the gate must STAY SILENT on correct output ------------------
-        (
-            "correct: 2 authored, 2 rendered",
-            {"docs/x.md": _md(g1, g2)},
-            {"p.html": _page(s1, s2), s1: _svg(nodes=True), s2: _svg(nodes=True)},
-            False,
-        ),
-        (
-            "correct: one block embedded on two pages",
-            {"docs/x.md": _md(g1)},
-            {"a.html": _page(s1), "b.html": _page(s1), s1: _svg(nodes=True)},
-            False,
-        ),
-        (
-            "correct: identical blocks share one SVG",
-            {"docs/x.md": _md(g1), "libs/y.h": dup_header},
-            {"p.html": _page(s1), s1: _svg(nodes=True)},
-            False,
-        ),
-        # --- the gate must FIRE when a diagram is dropped -----------------
-        (
-            "dropped: 2 authored, 1 rendered",
-            {"docs/x.md": _md(g1, g2)},
-            {"p.html": _page(s1), s1: _svg(nodes=True)},
-            True,
-        ),
-        (
-            "dropped: every diagram missing (HAVE_DOT=NO)",
-            {"docs/x.md": _md(g1, g2)},
-            {"p.html": "<html><body>no diagrams</body></html>"},
-            True,
-        ),
-        (
-            "empty: rendered SVG has no nodes",
-            {"docs/x.md": _md(g1)},
-            {"p.html": _page(s1), s1: _svg(nodes=False)},
-            True,
-        ),
-        (
-            "double-escaped: label renders a literal backslash-n",
-            {"docs/x.md": _md(g1)},
-            {"p.html": _page(s1), s1: _svg(nodes=True, label="ra8_init\\nstep two")},
-            True,
-        ),
-        (
-            "missing: referenced SVG absent from disk",
-            {"docs/x.md": _md(g1)},
-            {"p.html": _page(s1)},
-            True,
-        ),
-        (
-            "startuml: banned construct present",
-            {"docs/x.md": "@startuml\n[*] --> A\n@enduml\n"},
-            {"p.html": "<html></html>"},
-            True,
-        ),
-        (
-            "unbalanced: @dot never closed",
-            {"docs/x.md": "@dot\ndigraph z { a -> b; }\n"},
-            {"p.html": "<html></html>"},
-            True,
-        ),
-        # --- the gate must REFUSE output it cannot attribute to this tree ----
-        # Stale output is dangerous in both directions, and the dangerous one
-        # is a leftover render MASKING a diagram the current tree drops. Both
-        # of these would otherwise "pass" on the counts alone.
-        (
-            "stale: leftover render masks a dropped diagram",
-            # Two blocks authored; only one is rendered, but a leftover SVG
-            # from an older build makes the count add up.
-            {"docs/x.md": _md(g1, g2)},
-            {"p.html": _page(s1), s1: _svg(nodes=True), s2: _svg(nodes=True)},
-            True,
-            "wrong",
-        ),
-        (
-            "stale: output predates a newly added diagram",
-            {"docs/x.md": _md(g1, g2)},
-            {"p.html": _page(s1, s2), s1: _svg(nodes=True), s2: _svg(nodes=True)},
-            True,
-            "wrong",
-        ),
-        (
-            "unknown provenance: no build stamp at all",
-            {"docs/x.md": _md(g1)},
-            {"p.html": _page(s1), s1: _svg(nodes=True)},
-            True,
-            "missing",
-        ),
-    ]
-
-    failures = 0
-    for case in cases:
-        name, sources, html, expect_fire = case[:4]
-        # How the build stamp is seeded. "good" models a directory that
-        # build_docs.sh has just written; the others model output that was not
-        # built from the tree under test.
-        stamp_mode = case[STAMP_MODE_FIELD] if len(case) > STAMP_MODE_FIELD else "good"
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td) / "repo"
-            hdir = Path(td) / "html"
-            hdir.mkdir(parents=True)
-            for rel, text in sources.items():
-                path = root / rel
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(text, encoding="utf-8")
-            for rel, text in html.items():
-                (hdir / rel).write_text(text, encoding="utf-8")
-
-            if stamp_mode == "good":
-                seen, _ = scan_sources(root)
-                (hdir / STAMP_NAME).write_text(source_fingerprint(seen), encoding="utf-8")
-            elif stamp_mode == "wrong":
-                (hdir / STAMP_NAME).write_text("0" * 64, encoding="utf-8")
-            # "missing" writes nothing at all.
-
-            fired = bool(check(root, hdir))
-            if fired != expect_fire:
-                want = "FIRE" if expect_fire else "stay silent"
-                got = "fired" if fired else "stayed silent"
-                sys.stderr.write(
-                    f"  selftest FAIL [{name}]: expected the gate to {want}, it {got}\n"
-                )
-                failures += 1
-            else:
-                verdict = "fires" if expect_fire else "silent"
-                sys.stdout.write(f"  ok ({verdict:6s}) {name}\n")
-
-    total = len(cases)
+    failures = sum(1 for case in _SELFTEST_CASES if not _run_case(case))
+    total = len(_SELFTEST_CASES)
     if failures:
         sys.stderr.write(f"check_doc_diagrams.py: selftest FAILED ({failures}/{total} cases).\n")
         return 2
-    fires = sum(1 for case in cases if case[3])
+    fires = sum(1 for case in _SELFTEST_CASES if case.expect_fire)
     sys.stdout.write(
         f"check_doc_diagrams.py: selftest PASSED ({total} cases -- "
         f"{fires} assert the gate fires, {total - fires} assert it does not).\n"
     )
     return 0
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for this gate."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--html", default="build/docs-gate/html", help="generated HTML directory to inspect"
+    )
+    parser.add_argument(
+        "--selftest", action="store_true", help="run synthetic both-direction fixtures and exit"
+    )
+    parser.add_argument(
+        "--write-stamp",
+        action="store_true",
+        help="record the authored diagram fingerprint into the HTML tree "
+        "(called by scripts/builders/docs.sh once a build finishes)",
+    )
+    return parser
+
+
+def _graphviz_present() -> bool:
+    """True when graphviz ``dot`` is on PATH; writes the FATAL message when not.
+
+    A gate whose dependency is absent must FAIL, never silently pass: without
+    ``dot`` every authored diagram is dropped, and this gate cannot tell that
+    apart from a build that was never run.
+    """
+    if shutil.which("dot") is not None:
+        return True
+    sys.stderr.write(
+        "check_doc_diagrams.py: FATAL -- graphviz 'dot' is not on PATH.\n"
+        "Every authored diagram is dropped without it, and this gate "
+        "cannot tell that apart from a build that was never run.\n"
+    )
+    return False
+
+
+def _resolve_html_dir(raw: str) -> Path | None:
+    """Resolve ``raw`` against the repo root; None (with a message) if absent."""
+    html_dir = Path(raw)
+    if not html_dir.is_absolute():
+        html_dir = REPO_ROOT / html_dir
+    if html_dir.is_dir():
+        return html_dir
+    sys.stderr.write(
+        f"check_doc_diagrams.py: FATAL -- no generated HTML at {html_dir}.\n"
+        "Build the docs first (scripts/builders/docs.sh --gate).\n"
+    )
+    return None
+
+
+def _report_findings(findings: list[Finding]) -> None:
+    """Print every finding, then advice matched to what actually went wrong.
+
+    Kept separate from the decision to fail because the closing advice must
+    stay truthful: a provenance failure means "this measurement is not valid
+    yet", not "a diagram is missing". Telling someone their diagrams are gone
+    when the real answer is "rebuild" is how a gate earns a reputation for
+    crying wolf.
+    """
+    sys.stderr.write("check_doc_diagrams.py: FAILED\n\n")
+    for finding in findings:
+        sys.stderr.write(f"  {finding}\n")
+    if any("stale output" in f.message or "no build stamp" in f.message for f in findings):
+        sys.stderr.write(
+            "\nNothing was measured: the generated HTML does not correspond "
+            "to the current tree.\nRebuild and re-run before drawing any "
+            "conclusion about the diagrams.\n"
+        )
+    else:
+        sys.stderr.write(
+            "\nAn authored diagram that does not reach the HTML is invisible "
+            "to every reader of the published site.\n"
+        )
 
 
 def main() -> int:
@@ -559,41 +666,15 @@ def main() -> int:
 
     Returns 0 when every authored diagram is present, 1 on any finding.
     """
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--html", default="build/docs-gate/html", help="generated HTML directory to inspect"
-    )
-    parser.add_argument(
-        "--selftest", action="store_true", help="run synthetic both-direction fixtures and exit"
-    )
-    parser.add_argument(
-        "--write-stamp",
-        action="store_true",
-        help="record the authored diagram fingerprint into the HTML tree "
-        "(called by scripts/builders/docs.sh once a build finishes)",
-    )
-    args = parser.parse_args()
+    args = _build_parser().parse_args()
 
     if args.selftest:
         return selftest()
 
-    # A gate whose dependency is absent must FAIL, never silently pass.
-    if shutil.which("dot") is None:
-        sys.stderr.write(
-            "check_doc_diagrams.py: FATAL -- graphviz 'dot' is not on PATH.\n"
-            "Every authored diagram is dropped without it, and this gate "
-            "cannot tell that apart from a build that was never run.\n"
-        )
+    if not _graphviz_present():
         return 2
-
-    html_dir = Path(args.html)
-    if not html_dir.is_absolute():
-        html_dir = REPO_ROOT / html_dir
-    if not html_dir.is_dir():
-        sys.stderr.write(
-            f"check_doc_diagrams.py: FATAL -- no generated HTML at {html_dir}.\n"
-            "Build the docs first (scripts/builders/docs.sh --gate).\n"
-        )
+    html_dir = _resolve_html_dir(args.html)
+    if html_dir is None:
         return 2
 
     if args.write_stamp:
@@ -607,24 +688,7 @@ def main() -> int:
 
     findings = check(REPO_ROOT, html_dir)
     if findings:
-        sys.stderr.write("check_doc_diagrams.py: FAILED\n\n")
-        for finding in findings:
-            sys.stderr.write(f"  {finding}\n")
-        # Keep the closing advice truthful. A provenance failure means "this
-        # measurement is not valid yet", not "a diagram is missing" -- telling
-        # someone their diagrams are gone when the real answer is "rebuild" is
-        # how a gate earns a reputation for crying wolf.
-        if any("stale output" in f.message or "no build stamp" in f.message for f in findings):
-            sys.stderr.write(
-                "\nNothing was measured: the generated HTML does not correspond "
-                "to the current tree.\nRebuild and re-run before drawing any "
-                "conclusion about the diagrams.\n"
-            )
-        else:
-            sys.stderr.write(
-                "\nAn authored diagram that does not reach the HTML is invisible "
-                "to every reader of the published site.\n"
-            )
+        _report_findings(findings)
         return 1
 
     blocks, _ = scan_sources(REPO_ROOT)

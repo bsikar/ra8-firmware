@@ -71,6 +71,7 @@ from lint_coverage_rules import (
     exemption_reason,
     validate_tables,
 )
+from selftest_assert import expect, report
 
 REPO_ROOT = Path(
     subprocess.run(
@@ -457,10 +458,105 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
     return files, claimed
 
 
-def _expect(cond: bool, label: str, failures: list[str]) -> None:
-    print(f"  [{'ok' if cond else 'FAIL'}] {label}")
-    if not cond:
-        failures.append(label)
+def _assert_quiet(files: list[str], claimed: dict[str, set[str]], failures: list[str]) -> None:
+    """Assert the model stays silent on trees that are genuinely covered.
+
+    Split out along the QUIET / MUST-FIRE boundary this suite already drew in
+    comments: the two directions share only the fixture, and a reader checking
+    "does a covered tree pass?" should not have to step over the fires cases.
+    """
+    base = evaluate(files, claimed)
+    expect(base.ok, "a fully-covered tree passes", failures)
+    expect(
+        base.exempt == EXPECTED_FIXTURE_EXEMPT,
+        f"exempt paths counted, not flagged (got {base.exempt})",
+        failures,
+    )
+
+    plus = [*files, "libs/ra8_core/src/ra8_new.c"]
+    claimed2 = {k: set(v) for k, v in claimed.items()}
+    claimed2["clang-tidy"].add("libs/ra8_core/src/ra8_new.c")
+    claimed2["clang-format"].add("libs/ra8_core/src/ra8_new.c")
+    expect(
+        evaluate(plus, claimed2).ok,
+        "a new file of a covered type in a covered dir stays quiet",
+        failures,
+    )
+
+
+def _assert_fires(files: list[str], claimed: dict[str, set[str]], failures: list[str]) -> None:
+    """Assert the model fires on each distinct way coverage can be lost."""
+    rust = evaluate([*files, "tools/agent/src/main.rs"], claimed)
+    expect(
+        rust.unclassified == ["tools/agent/src/main.rs"],
+        "an unclassified file type (.rs) fires",
+        failures,
+    )
+
+    orphan = evaluate([*files, "newdir/thing.c"], claimed)
+    expect(
+        sorted({r for r, _, _ in orphan.uncovered}) == ["newdir/thing.c"]
+        and len(orphan.uncovered) == BOTH_ROLES,
+        "a code file in a directory no checker enumerates fires (lint AND format)",
+        failures,
+    )
+
+    narrowed = {k: set(v) for k, v in claimed.items()}
+    narrowed["clang-format"].discard("libs/ra8_core/inc/ra8_err.h")
+    drop = evaluate(files, narrowed)
+    expect(
+        drop.uncovered == [("libs/ra8_core/inc/ra8_err.h", "c-family", FORMAT)],
+        "narrowing a checker's scan list fires on the file that dropped out",
+        failures,
+    )
+
+    missing_py = {k: set(v) for k, v in claimed.items()}
+    missing_py["ruff"] = set()
+    expect(
+        len(evaluate(files, missing_py).uncovered) == BOTH_ROLES,
+        "a provider that returns nothing fires for both its roles",
+        failures,
+    )
+
+
+def _assert_ratchet(files: list[str], claimed: dict[str, set[str]], failures: list[str]) -> None:
+    """Assert the recorded-gap ratchet holds, and that closed gaps really closed.
+
+    Separate from the plain must-fire cases because these test a different
+    mechanism: not "is this file covered?" but "has a gap we agreed to tolerate
+    grown, and did the gaps we claim to have closed actually close?".
+    """
+    # 3 unclaimed .m files exceed the recorded 2 of objc-needs-macos-runner
+    # (#370); one does not.
+    many = [f"tools/ra8_x/src/v{n}.m" for n in range(3)]
+    grew = evaluate([*files, *many], claimed)
+    expect(bool(grew.gap_growth), "a known gap that grows fires the ratchet", failures)
+    expect(
+        not evaluate([*files, many[0]], claimed).gap_growth,
+        "a known gap at or under its recorded count stays quiet",
+        failures,
+    )
+    # C++ is no longer a recorded gap: #370's C++ half is closed by the C++
+    # pass in clang_tidy.sh, so an unclaimed .cpp is now a plain violation.
+    # This asserts that half really was closed rather than merely deleted from
+    # the table -- the same assertion shape #371 left behind for .S below.
+    orphan_cxx = evaluate([*files, "libs/ra8_x/src/orphan.cpp"], claimed)
+    expect(
+        sorted({r for r, _, _ in orphan_cxx.uncovered}) == ["libs/ra8_x/src/orphan.cpp"]
+        and not orphan_cxx.gap_growth,
+        "an unclaimed .cpp is a violation now, not a recorded gap",
+        failures,
+    )
+    # A .S file is no longer a recorded gap: #371 gave assembly a checker, so an
+    # unclaimed one is now a plain violation. This asserts the gap really was
+    # closed rather than merely deleted from the table.
+    orphan_asm = evaluate([*files, "newdir/boot.S"], claimed)
+    expect(
+        sorted({r for r, _, _ in orphan_asm.uncovered}) == ["newdir/boot.S"]
+        and not orphan_asm.gap_growth,
+        "an unclaimed .S is a violation now, not a recorded gap",
+        failures,
+    )
 
 
 def selftest() -> int:
@@ -476,103 +572,16 @@ def selftest() -> int:
     failures: list[str] = []
 
     problems = validate_tables()
-    _expect(not problems, f"classification tables self-consistent ({problems})", failures)
+    expect(not problems, f"classification tables self-consistent ({problems})", failures)
 
-    # --- QUIET direction -------------------------------------------------
     files, claimed = _fixture()
-    base = evaluate(files, claimed)
-    _expect(base.ok, "a fully-covered tree passes", failures)
-    _expect(
-        base.exempt == EXPECTED_FIXTURE_EXEMPT,
-        f"exempt paths counted, not flagged (got {base.exempt})",
-        failures,
-    )
+    _assert_quiet(files, claimed, failures)
+    _assert_fires(files, claimed, failures)
+    _assert_ratchet(files, claimed, failures)
 
-    plus = [*files, "libs/ra8_core/src/ra8_new.c"]
-    claimed2 = {k: set(v) for k, v in claimed.items()}
-    claimed2["clang-tidy"].add("libs/ra8_core/src/ra8_new.c")
-    claimed2["clang-format"].add("libs/ra8_core/src/ra8_new.c")
-    _expect(
-        evaluate(plus, claimed2).ok,
-        "a new file of a covered type in a covered dir stays quiet",
-        failures,
-    )
-
-    # --- MUST-FIRE direction ---------------------------------------------
-    rust = evaluate([*files, "tools/agent/src/main.rs"], claimed)
-    _expect(
-        rust.unclassified == ["tools/agent/src/main.rs"],
-        "an unclassified file type (.rs) fires",
-        failures,
-    )
-
-    orphan = evaluate([*files, "newdir/thing.c"], claimed)
-    _expect(
-        sorted({r for r, _, _ in orphan.uncovered}) == ["newdir/thing.c"]
-        and len(orphan.uncovered) == BOTH_ROLES,
-        "a code file in a directory no checker enumerates fires (lint AND format)",
-        failures,
-    )
-
-    narrowed = {k: set(v) for k, v in claimed.items()}
-    narrowed["clang-format"].discard("libs/ra8_core/inc/ra8_err.h")
-    drop = evaluate(files, narrowed)
-    _expect(
-        drop.uncovered == [("libs/ra8_core/inc/ra8_err.h", "c-family", FORMAT)],
-        "narrowing a checker's scan list fires on the file that dropped out",
-        failures,
-    )
-
-    missing_py = {k: set(v) for k, v in claimed.items()}
-    missing_py["ruff"] = set()
-    _expect(
-        len(evaluate(files, missing_py).uncovered) == BOTH_ROLES,
-        "a provider that returns nothing fires for both its roles",
-        failures,
-    )
-
-    # 3 unclaimed .m files exceed the recorded 2 of objc-needs-macos-runner
-    # (#370); one does not.
-    many = [f"tools/ra8_x/src/v{n}.m" for n in range(3)]
-    grew = evaluate([*files, *many], claimed)
-    _expect(bool(grew.gap_growth), "a known gap that grows fires the ratchet", failures)
-    _expect(
-        not evaluate([*files, many[0]], claimed).gap_growth,
-        "a known gap at or under its recorded count stays quiet",
-        failures,
-    )
-    # C++ is no longer a recorded gap: #370's C++ half is closed by the C++
-    # pass in clang_tidy.sh, so an unclaimed .cpp is now a plain violation.
-    # This asserts that half really was closed rather than merely deleted from
-    # the table -- the same assertion shape #371 left behind for .S below.
-    orphan_cxx = evaluate([*files, "libs/ra8_x/src/orphan.cpp"], claimed)
-    _expect(
-        sorted({r for r, _, _ in orphan_cxx.uncovered}) == ["libs/ra8_x/src/orphan.cpp"]
-        and not orphan_cxx.gap_growth,
-        "an unclaimed .cpp is a violation now, not a recorded gap",
-        failures,
-    )
-    # A .S file is no longer a recorded gap: #371 gave assembly a checker, so an
-    # unclaimed one is now a plain violation. This asserts the gap really was
-    # closed rather than merely deleted from the table.
-    orphan_asm = evaluate([*files, "newdir/boot.S"], claimed)
-    _expect(
-        sorted({r for r, _, _ in orphan_asm.uncovered}) == ["newdir/boot.S"]
-        and not orphan_asm.gap_growth,
-        "an unclaimed .S is a violation now, not a recorded gap",
-        failures,
-    )
-
-    if failures:
-        print(f"\nSELFTEST FAILED: {len(failures)} assertion(s)", file=sys.stderr)
-        for f in failures:
-            print(f"  {f}", file=sys.stderr)
-        return 1
-    print("selftest: all assertions held (both directions).")
-    return 0
+    return report(failures)
 
 
-# ---------------------------------------------------------------------------
 def run_check(show_matrix: bool) -> int:
     """Verify every tracked code file is claimed by at least one checker.
 
