@@ -287,8 +287,8 @@ def _crosscheck_desktop_tool(src: bytes, golden: bytes) -> None:
     """
     import io as _io  # noqa: PLC0415 -- lazy: only the --downscale mode needs PIL
 
-    from epub_compile import BlobBuilder  # noqa: PLC0415 -- lazy import (needs sys.path)
     from PIL import Image  # noqa: PLC0415 -- lazy import (Pillow only for this mode)
+    from rabook_blob import BlobBuilder  # noqa: PLC0415 -- lazy import (needs sys.path)
 
     png = _io.BytesIO()
     Image.frombytes("L", (_DS_SRC_W, _DS_SRC_H), src).save(png, "PNG")

@@ -215,7 +215,85 @@ HUM_ON_LINE_RE = re.compile(r"\bHUM\b")
 MAX_CITE_LOOKUP_LINES = 40
 
 
-def blank_comments_and_strings(text: str) -> str:  # noqa: PLR0912 PLR0915  # char-by-char state machine, splitting hurts readability
+class _Blanker:
+    """Character state machine blanking comment and literal interiors.
+
+    One method per state. The machine is the whole algorithm, so it is
+    expressed as states rather than as one loop with a state variable and
+    four branches -- each method's contract is "consume from i, return the
+    next state and index", which is checkable a state at a time.
+    """
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.out = list(text)
+        self.n = len(text)
+
+    def _peek(self, i: int) -> str:
+        return self.text[i + 1] if i + 1 < self.n else ""
+
+    def _blank(self, i: int, count: int = 1) -> None:
+        for k in range(i, min(i + count, self.n)):
+            self.out[k] = " "
+
+    def _code(self, i: int, c: str) -> tuple[str, int]:
+        nxt = self._peek(i)
+        if c == "/" and nxt == "/":
+            self._blank(i, 2)
+            return "line_comment", i + 2
+        if c == "/" and nxt == "*":
+            self._blank(i, 2)
+            return "block_comment", i + 2
+        if c == '"':
+            return "string", i + 1
+        if c == "'":
+            return "char", i + 1
+        return "code", i + 1
+
+    def _line_comment(self, i: int, c: str) -> tuple[str, int]:
+        if c == "\n":
+            return "code", i + 1
+        self._blank(i)
+        return "line_comment", i + 1
+
+    def _block_comment(self, i: int, c: str) -> tuple[str, int]:
+        if c == "*" and self._peek(i) == "/":
+            self._blank(i, 2)
+            return "code", i + 2
+        if c != "\n":
+            self._blank(i)
+        return "block_comment", i + 1
+
+    def _literal(self, i: int, c: str, state: str) -> tuple[str, int]:
+        closer = '"' if state == "string" else "'"
+        if c == "\\":
+            self._blank(i)
+            if i + 1 < self.n and self.text[i + 1] != "\n":
+                self._blank(i + 1)
+            return state, i + 2
+        if c == closer:
+            return "code", i + 1
+        if c != "\n":
+            self._blank(i)
+        return state, i + 1
+
+    def run(self) -> str:
+        """Drive the machine over the whole text and return the blanked copy."""
+        state, i = "code", 0
+        while i < self.n:
+            c = self.text[i]
+            if state == "code":
+                state, i = self._code(i, c)
+            elif state == "line_comment":
+                state, i = self._line_comment(i, c)
+            elif state == "block_comment":
+                state, i = self._block_comment(i, c)
+            else:  # string or char literal
+                state, i = self._literal(i, c, state)
+        return "".join(self.out)
+
+
+def blank_comments_and_strings(text: str) -> str:
     """Return `text` with comment and string interiors replaced by spaces.
 
     Newlines and total length are preserved so per-line indexing still lines
@@ -223,60 +301,7 @@ def blank_comments_and_strings(text: str) -> str:  # noqa: PLR0912 PLR0915  # ch
     ``channel-index -> MSTP id`` or a log string like ``"SCR->CTL"`` from
     being misread as a register access.
     """
-    out = list(text)
-    i = 0
-    n = len(text)
-    state = "code"  # code | line_comment | block_comment | string | char
-    while i < n:
-        c = text[i]
-        nxt = text[i + 1] if i + 1 < n else ""
-        if state == "code":
-            if c == "/" and nxt == "/":
-                out[i] = out[i + 1] = " "
-                state = "line_comment"
-                i += 2
-            elif c == "/" and nxt == "*":
-                out[i] = out[i + 1] = " "
-                state = "block_comment"
-                i += 2
-            elif c == '"':
-                state = "string"
-                i += 1
-            elif c == "'":
-                state = "char"
-                i += 1
-            else:
-                i += 1
-        elif state == "line_comment":
-            if c == "\n":
-                state = "code"
-            else:
-                out[i] = " "
-            i += 1
-        elif state == "block_comment":
-            if c == "*" and nxt == "/":
-                out[i] = out[i + 1] = " "
-                state = "code"
-                i += 2
-            else:
-                if c != "\n":
-                    out[i] = " "
-                i += 1
-        else:  # string or char literal
-            closer = '"' if state == "string" else "'"
-            if c == "\\":
-                out[i] = " "
-                if i + 1 < n and text[i + 1] != "\n":
-                    out[i + 1] = " "
-                i += 2
-            elif c == closer:
-                state = "code"
-                i += 1
-            else:
-                if c != "\n":
-                    out[i] = " "
-                i += 1
-    return "".join(out)
+    return _Blanker(text).run()
 
 
 def _is_access_line(blanked_line: str) -> bool:

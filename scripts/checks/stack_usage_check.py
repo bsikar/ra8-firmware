@@ -287,7 +287,8 @@ def print_top_n(entries: list, n: int) -> None:
         print(f"{r.bytes_:>8}  {r.qualifier:<16}  {r.app}/{r.func}  ({r.tu})")
 
 
-def main(argv: list) -> int:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, splitting hurts readability
+def _build_parser() -> argparse.ArgumentParser:
+    """Every command-line option this gate accepts."""
     parser = argparse.ArgumentParser(
         description="Aggregate gcc .su files into a project-wide report."
     )
@@ -327,7 +328,85 @@ def main(argv: list) -> int:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, s
             "FIRST_PARTY_EXEMPTIONS at the top of this script."
         ),
     )
-    args = parser.parse_args(argv)
+    return parser
+
+
+def _report_strict(soft: list, frame_limit: int) -> int:
+    """Promote a first-party soft violation into a hard failure.
+
+    Third-party SOUP stays exempt; a first-party function with a justified
+    large frame must be enrolled in FIRST_PARTY_EXEMPTIONS with a rationale.
+    """
+    offenders = []
+    for e in soft:
+        if not is_first_party(e.tu):
+            continue
+        allowed = exemption_for(e.tu, e.func)
+        if allowed > 0 and e.bytes_ <= allowed:
+            continue
+        offenders.append(e)
+    if not offenders:
+        return 0
+    print(
+        f"\nSTRICT first-party violations: "
+        f"{len(offenders)} function(s) exceed "
+        f"{frame_limit} bytes and are not exempt:"
+    )
+    for e in sorted(offenders, key=lambda r: r.bytes_, reverse=True):
+        print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
+    print(
+        "\nFix: either reduce the frame size (move scratch "
+        "buffers to module-static storage) or enroll the "
+        "function in FIRST_PARTY_EXEMPTIONS at the top of "
+        "scripts/checks/stack_usage_check.py with a written "
+        "rationale."
+    )
+    return 1
+
+
+def _report_critical(critical: list) -> None:
+    """Print the critical-module frame breaches."""
+    print(
+        f"\nCRITICAL-PATH violations "
+        f"(>{CRITICAL_FRAME_LIMIT} bytes or dynamic in "
+        f"{','.join(CRITICAL_MODULES)}):"
+    )
+    for e in sorted(critical, key=lambda r: r.bytes_, reverse=True):
+        print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
+
+
+def _report_dynamic(all_entries: list) -> int:
+    """NASA P10 Rule 3: a `dynamic` qualifier is a VLA or alloca.
+
+    Forbidden in this firmware regardless of frame size, in any module, and
+    the gate applies even in --warn-only mode. No deviation procedure.
+    """
+    dyn = [e for e in all_entries if e.is_dynamic]
+    if not dyn:
+        return 0
+    print(
+        f"\nNASA P10 Rule 3 violation: "
+        f"{len(dyn)} function(s) carry a `dynamic` qualifier "
+        f"(VLA or alloca). Forbidden in this firmware -- "
+        f"replace with a fixed-size buffer or an enum-bounded "
+        f"static array."
+    )
+    for e in sorted(dyn, key=lambda r: r.bytes_, reverse=True):
+        print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
+    return 1
+
+
+def _collect_entries(repo_root: Path, su_files: list) -> list:
+    """Parse every .su file into entries tagged with their owning app."""
+    all_entries = []
+    for su in su_files:
+        app = app_name_for(su, repo_root)
+        all_entries.extend(parse_su(su, app))
+    return all_entries
+
+
+def main(argv: list) -> int:
+    args = _build_parser().parse_args(argv)
 
     repo_root = args.repo_root.resolve()
     su_files = find_su_files(repo_root)
@@ -345,11 +424,7 @@ def main(argv: list) -> int:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, s
         )
         return 0
 
-    all_entries = []
-    for su in su_files:
-        app = app_name_for(su, repo_root)
-        all_entries.extend(parse_su(su, app))
-
+    all_entries = _collect_entries(repo_root, su_files)
     if not all_entries:
         print("stack_usage_check: parsed 0 functions; .su files empty?", file=sys.stderr)
         return 0
@@ -376,65 +451,15 @@ def main(argv: list) -> int:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, s
         for e in sorted(soft, key=lambda r: r.bytes_, reverse=True):
             print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
 
-    # --- Strict gate for first-party code -----------------------------------
-    # Promotes any soft violation in a first-party TU into a hard
-    # failure unless the (tu, func) pair is in FIRST_PARTY_EXEMPTIONS.
-    if args.strict:
-        offenders = []
-        for e in soft:
-            if not is_first_party(e.tu):
-                continue
-            allowed = exemption_for(e.tu, e.func)
-            if allowed > 0 and e.bytes_ <= allowed:
-                continue
-            offenders.append(e)
-        if offenders:
-            print(
-                f"\nSTRICT first-party violations: "
-                f"{len(offenders)} function(s) exceed "
-                f"{args.frame_limit} bytes and are not exempt:"
-            )
-            for e in sorted(offenders, key=lambda r: r.bytes_, reverse=True):
-                print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
-            print(
-                "\nFix: either reduce the frame size (move scratch "
-                "buffers to module-static storage) or enroll the "
-                "function in FIRST_PARTY_EXEMPTIONS at the top of "
-                "scripts/checks/stack_usage_check.py with a written "
-                "rationale."
-            )
-            return 1
+    if args.strict and _report_strict(soft, args.frame_limit):
+        return 1
 
     if critical:
-        print(
-            f"\nCRITICAL-PATH violations "
-            f"(>{CRITICAL_FRAME_LIMIT} bytes or dynamic in "
-            f"{','.join(CRITICAL_MODULES)}):"
-        )
-        for e in sorted(critical, key=lambda r: r.bytes_, reverse=True):
-            print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
+        _report_critical(critical)
         if not args.warn_only:
             return 1
 
-    # NASA Power-of-10 Rule 3 hard gate: a `dynamic` qualifier means
-    # the function uses a VLA or `alloca()`. Both are forbidden in
-    # this firmware regardless of frame size, in any module, and the
-    # gate applies even in --warn-only mode (i.e. always-on for
-    # pre-commit). No deviation procedure is offered.
-    dyn = [e for e in all_entries if e.is_dynamic]
-    if dyn:
-        print(
-            f"\nNASA P10 Rule 3 violation: "
-            f"{len(dyn)} function(s) carry a `dynamic` qualifier "
-            f"(VLA or alloca). Forbidden in this firmware -- "
-            f"replace with a fixed-size buffer or an enum-bounded "
-            f"static array."
-        )
-        for e in sorted(dyn, key=lambda r: r.bytes_, reverse=True):
-            print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
-        return 1
-
-    return 0
+    return _report_dynamic(all_entries)
 
 
 if __name__ == "__main__":
