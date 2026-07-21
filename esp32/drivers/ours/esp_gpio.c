@@ -26,7 +26,7 @@
  * @invariant `ready` is true for the lifetime of the singleton.
  */
 typedef struct esp_gpio_ctx {
-    bool ready; /**< Marks the singleton as constructed (used for validation). */
+  bool ready; /**< Marks the singleton as constructed (used for validation). */
 } esp_gpio_ctx_t;
 
 /**
@@ -45,8 +45,9 @@ static esp_gpio_ctx_t s_esp_gpio_ctx = {.ready = true};
  * @post Exactly one bit is set.
  * @since 0.1.0 (spike)
  */
-static inline uint32_t esp_gpio_pin_mask(uint8_t pin) {
-    return ((uint32_t)1u) << pin;
+static inline uint32_t esp_gpio_pin_mask(uint8_t pin)
+{
+  return ((uint32_t)1u) << pin;
 }
 
 /**
@@ -71,17 +72,18 @@ static inline uint32_t esp_gpio_pin_mask(uint8_t pin) {
  *       blink pin (GPIO8) is in the works-at-reset set.
  * @since 0.1.0 (spike)
  */
-static esp_err_t esp_gpio_ours_init(void* ctx, uint8_t pin) {
-    esp_gpio_ctx_t* self = (esp_gpio_ctx_t*)ctx;
-    if (self == nullptr) {
-        return k_esp_err_null_ptr;
-    }
-    if (pin > k_esp_gpio_pin_max) {
-        return k_esp_err_invalid_arg;
-    }
-    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.5 GPIO_ENABLE_W1TS_REG p 272 */
-    esp_gpio_regs()->ENABLE_W1TS = esp_gpio_pin_mask(pin);
-    return k_esp_ok;
+static esp_err_t esp_gpio_ours_init(void* ctx, uint8_t pin)
+{
+  esp_gpio_ctx_t* self = (esp_gpio_ctx_t*)ctx;
+  if (self == nullptr) {
+    return k_esp_err_null_ptr;
+  }
+  if (pin > k_esp_gpio_pin_max) {
+    return k_esp_err_invalid_arg;
+  }
+  /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.5 GPIO_ENABLE_W1TS_REG p 272 */
+  esp_gpio_regs()->ENABLE_W1TS = esp_gpio_pin_mask(pin);
+  return k_esp_ok;
 }
 
 /**
@@ -97,17 +99,18 @@ static esp_err_t esp_gpio_ours_init(void* ctx, uint8_t pin) {
  * @post The pin output latch bit is set.
  * @since 0.1.0 (spike)
  */
-static esp_err_t esp_gpio_ours_set(void* ctx, uint8_t pin) {
-    esp_gpio_ctx_t* self = (esp_gpio_ctx_t*)ctx;
-    if (self == nullptr) {
-        return k_esp_err_null_ptr;
-    }
-    if (pin > k_esp_gpio_pin_max) {
-        return k_esp_err_invalid_arg;
-    }
-    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.2 GPIO_OUT_W1TS_REG p 271 */
-    esp_gpio_regs()->OUT_W1TS = esp_gpio_pin_mask(pin);
-    return k_esp_ok;
+static esp_err_t esp_gpio_ours_set(void* ctx, uint8_t pin)
+{
+  esp_gpio_ctx_t* self = (esp_gpio_ctx_t*)ctx;
+  if (self == nullptr) {
+    return k_esp_err_null_ptr;
+  }
+  if (pin > k_esp_gpio_pin_max) {
+    return k_esp_err_invalid_arg;
+  }
+  /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.2 GPIO_OUT_W1TS_REG p 271 */
+  esp_gpio_regs()->OUT_W1TS = esp_gpio_pin_mask(pin);
+  return k_esp_ok;
 }
 
 /**
@@ -123,17 +126,18 @@ static esp_err_t esp_gpio_ours_set(void* ctx, uint8_t pin) {
  * @post The pin output latch bit is cleared.
  * @since 0.1.0 (spike)
  */
-static esp_err_t esp_gpio_ours_clear(void* ctx, uint8_t pin) {
-    esp_gpio_ctx_t* self = (esp_gpio_ctx_t*)ctx;
-    if (self == nullptr) {
-        return k_esp_err_null_ptr;
-    }
-    if (pin > k_esp_gpio_pin_max) {
-        return k_esp_err_invalid_arg;
-    }
-    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.3 GPIO_OUT_W1TC_REG p 271 */
-    esp_gpio_regs()->OUT_W1TC = esp_gpio_pin_mask(pin);
-    return k_esp_ok;
+static esp_err_t esp_gpio_ours_clear(void* ctx, uint8_t pin)
+{
+  esp_gpio_ctx_t* self = (esp_gpio_ctx_t*)ctx;
+  if (self == nullptr) {
+    return k_esp_err_null_ptr;
+  }
+  if (pin > k_esp_gpio_pin_max) {
+    return k_esp_err_invalid_arg;
+  }
+  /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.3 GPIO_OUT_W1TC_REG p 271 */
+  esp_gpio_regs()->OUT_W1TC = esp_gpio_pin_mask(pin);
+  return k_esp_ok;
 }
 
 /**
@@ -149,25 +153,26 @@ static esp_err_t esp_gpio_ours_clear(void* ctx, uint8_t pin) {
  * @post The pin output latch bit is the complement of its prior value.
  * @since 0.1.0 (spike)
  */
-static esp_err_t esp_gpio_ours_toggle(void* ctx, uint8_t pin) {
-    esp_gpio_ctx_t* self = (esp_gpio_ctx_t*)ctx;
-    if (self == nullptr) {
-        return k_esp_err_null_ptr;
-    }
-    if (pin > k_esp_gpio_pin_max) {
-        return k_esp_err_invalid_arg;
-    }
-    const uint32_t mask = esp_gpio_pin_mask(pin);
-    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.1 GPIO_OUT_REG p 270 */
-    const uint32_t current = esp_gpio_regs()->OUT;
-    if ((current & mask) != 0u) {
-        /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.3 GPIO_OUT_W1TC_REG p 271 */
-        esp_gpio_regs()->OUT_W1TC = mask;
-    } else {
-        /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.2 GPIO_OUT_W1TS_REG p 271 */
-        esp_gpio_regs()->OUT_W1TS = mask;
-    }
-    return k_esp_ok;
+static esp_err_t esp_gpio_ours_toggle(void* ctx, uint8_t pin)
+{
+  esp_gpio_ctx_t* self = (esp_gpio_ctx_t*)ctx;
+  if (self == nullptr) {
+    return k_esp_err_null_ptr;
+  }
+  if (pin > k_esp_gpio_pin_max) {
+    return k_esp_err_invalid_arg;
+  }
+  const uint32_t mask = esp_gpio_pin_mask(pin);
+  /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.1 GPIO_OUT_REG p 270 */
+  const uint32_t current = esp_gpio_regs()->OUT;
+  if ((current & mask) != 0u) {
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.3 GPIO_OUT_W1TC_REG p 271 */
+    esp_gpio_regs()->OUT_W1TC = mask;
+  } else {
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.2 GPIO_OUT_W1TS_REG p 271 */
+    esp_gpio_regs()->OUT_W1TS = mask;
+  }
+  return k_esp_ok;
 }
 
 /**
@@ -176,13 +181,14 @@ static esp_err_t esp_gpio_ours_toggle(void* ctx, uint8_t pin) {
  * @note `const` so it lives in .rodata; `ctx` points at @ref s_esp_gpio_ctx.
  */
 static const esp_gpio_ops_t s_esp_gpio_ours_ops = {
-    .ctx = &s_esp_gpio_ctx,
-    .init = esp_gpio_ours_init,
-    .set = esp_gpio_ours_set,
-    .clear = esp_gpio_ours_clear,
-    .toggle = esp_gpio_ours_toggle,
+  .ctx    = &s_esp_gpio_ctx,
+  .init   = esp_gpio_ours_init,
+  .set    = esp_gpio_ours_set,
+  .clear  = esp_gpio_ours_clear,
+  .toggle = esp_gpio_ours_toggle,
 };
 
-const esp_gpio_ops_t* esp_gpio_ours_ops(void) {
-    return &s_esp_gpio_ours_ops;
+const esp_gpio_ops_t* esp_gpio_ours_ops(void)
+{
+  return &s_esp_gpio_ours_ops;
 }

@@ -117,6 +117,7 @@ RA8_GATE_REGISTRY=(
   "lint-yaml|fast|yamllint + actionlint over the workflows"
   "lint-make|fast|Makefile structure, headers and portable ROOT"
   "lint-ld|fast|linker-script structure, headers and symbol closure"
+  "lint-coverage|fast|every code file is claimed by a linter and a formatter"
   "cite-check|fast|HUM citation validator (strict)"
   "roadmap-stats|fast|ROADMAP summary stats"
   "sbom|fast|CycloneDX SBOM freshness"
@@ -815,12 +816,12 @@ gate_lint_cmake() (
   require_cmd cmake-format "pip install --user cmakelang==0.6.13"
   require_cmd cmake-lint "ships with cmakelang; check the cmakelang install"
 
+  # Scope comes from lint_scope.py, which is also what check_lint_coverage.py
+  # asks when it verifies that every CMake listfile is covered. One definition,
+  # two readers -- an inline `git ls-files | grep` here would be a second copy
+  # of the coverage map and would drift from the coverage gate on first edit.
   local files
-  mapfile -t files < <(
-    git ls-files |
-      grep -Ev '^(libs/third_party/|libs/fonts/)' |
-      grep -E '(CMakeLists\.txt|\.cmake)$'
-  )
+  mapfile -t files < <(python3 scripts/utils/lint_scope.py cmake)
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "ERROR: no CMake listfiles found; refusing to report success." >&2
     return 1
@@ -847,12 +848,9 @@ gate_lint_yaml() (
   require_cmd actionlint \
     "https://github.com/rhysd/actionlint/releases (pinned to 1.7.7)"
 
+  # Scope comes from lint_scope.py -- see the note in gate_lint_cmake.
   local files
-  mapfile -t files < <(
-    git ls-files |
-      grep -Ev '^(libs/third_party/|libs/fonts/)' |
-      grep -E '\.(yml|yaml)$'
-  )
+  mapfile -t files < <(python3 scripts/utils/lint_scope.py yaml)
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "ERROR: no YAML files found; refusing to report success." >&2
     return 1
@@ -886,6 +884,30 @@ gate_lint_ld() (
   set -e
   python3 scripts/utils/check_linker_scripts.py --selftest
   python3 scripts/utils/check_linker_scripts.py
+)
+
+# --- lint-coverage --------------------------------------------------------
+# The meta-gate: it does not lint anything itself, it proves that everything
+# else does. Enumerates every file from `git ls-files`, classifies it by name /
+# extension / shebang, then asks each checker above -- in its own --list-files
+# mode -- which files it claims, and fails when a code file is claimed by no
+# linter or no formatter, or when a file type has no classification rule at all.
+#
+# "Is everything linted?" was previously answerable only by hand-auditing each
+# checker's scan list. That audit ran five times and was wrong five times
+# (#296, #332, #358, #359, #360), every time because a hardcoded root list had
+# stopped matching the tree while the checker still reported clean. This gate
+# makes the answer mechanical, and makes a NEW language landing in the tree
+# (.rs, .ts, .proto) go red until somebody decides how it is checked.
+#
+# --selftest FIRST, as everywhere else: it asserts the gate still fires on a
+# planted unclassified type, on a code file in a directory no checker
+# enumerates, and on a checker whose scan list was narrowed -- and that it
+# stays quiet on legitimately exempt files and on new files of a covered type.
+gate_lint_coverage() (
+  set -e
+  python3 scripts/utils/check_lint_coverage.py --selftest
+  python3 scripts/utils/check_lint_coverage.py
 )
 
 # --- cite-check -----------------------------------------------------------

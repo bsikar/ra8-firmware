@@ -403,17 +403,28 @@ def main(argv: list[str]) -> int:
     ruff = _find_ruff()
     if not ruff:
         msg = "check_ruff.py: ruff not found"
-        if "--require" in args or "--selftest" in args:
-            sys.stderr.write(msg + " -- required by --require/--selftest\n")
-            return 1
+        if "--require" in args or "--selftest" in args or "--list-files" in args:
+            sys.stderr.write(msg + " -- required by --require/--selftest/--list-files\n")
+            sys.exit(1)
         print(msg + " -- skipping (install ruff to enforce locally).")
-        return 0
+        sys.exit(0)
 
     if "--selftest" in args:
         return selftest(ruff)
 
     tracked = _tracked_python_files()
     files = _checked_files(ruff, tracked) if tracked else []
+
+    # Scope introspection for check_lint_coverage.py: report exactly the files
+    # this gate would lint and format, after ruff's own exclusions. The
+    # coverage gate asks every checker this rather than restating its scope,
+    # so the two cannot disagree about what is covered.
+    # Repo-relative: ruff reports absolute paths, and every other checker's
+    # list mode speaks repo-relative paths.
+    if "--list-files" in args:
+        print("\n".join(sorted(_rel(f) for f in files)))
+        return 0
+
     if len(files) < FILE_FLOOR:
         sys.stderr.write(
             f"check_ruff.py: FATAL -- only {len(files)} Python file(s) in scope, "

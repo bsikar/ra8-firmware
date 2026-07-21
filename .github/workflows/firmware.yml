@@ -380,6 +380,9 @@ jobs:
       - run: bash scripts/ci.sh --gate lint-yaml
       - run: bash scripts/ci.sh --gate lint-make
       - run: bash scripts/ci.sh --gate lint-ld
+      # Runs after every other lint gate in this job: it asks each of them what
+      # they scan and proves nothing in the tree falls between them.
+      - run: bash scripts/ci.sh --gate lint-coverage
       - run: bash scripts/ci.sh --gate cite-check
       - run: bash scripts/ci.sh --gate sbom
       - run: bash scripts/ci.sh --gate roadmap-stats

@@ -24,11 +24,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_elc_regs.h"
-#include "ra8_usb_regs.h"
 #include "ra8_check.h"
+#include "ra8_elc_regs.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
+#include "ra8_usb_regs.h"
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -268,9 +268,9 @@ static void internal_dvst_record_history(uint16_t dvsq)
     entry_state = (uint8_t)(_ux_system_slave->ux_system_slave_device.ux_slave_device_state &
                             (unsigned long)k_dcd_trace_nibble);
   }
-  const uint8_t packed =
-    (uint8_t)((uint8_t)((dvsq >> (uint8_t)k_ra8_int0_dvsq_shift) << (uint8_t)k_dcd_trace_nib_shift) |
-              entry_state);
+  const uint8_t packed            = (uint8_t)((uint8_t)((dvsq >> (uint8_t)k_ra8_int0_dvsq_shift)
+                                                        << (uint8_t)k_dcd_trace_nib_shift) |
+                                              entry_state);
   s_dvst_state_history[dvst_slot] = packed;
   s_dvst_state_history_count++;
   internal_trace_event((uint8_t)k_dcd_trace_kind_dvst, packed, 0U);

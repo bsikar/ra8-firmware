@@ -27,7 +27,7 @@
  * @brief Output pin the spike blinks.
  */
 typedef enum : uint8_t {
-    /*
+  /*
      * GPIO8 is the DevKitC/DevKitM "user LED" but it is an ADDRESSABLE WS2812
      * on the RMT peripheral, not a plain GPIO. Driving it as a push-pull output
      * will not light it correctly; the real LED-pin mapping is a bench confirm.
@@ -37,7 +37,7 @@ typedef enum : uint8_t {
      * Never pick GPIO16/GPIO17 here: they are U0TXD/U0RXD at reset -- the
      * ROM console this spike prints its banner through.
      */
-    k_app_blink_pin = 8, /**< Generic output pin toggled by the blink loop. */
+  k_app_blink_pin = 8, /**< Generic output pin toggled by the blink loop. */
 } app_pin_t;
 
 /**
@@ -45,9 +45,9 @@ typedef enum : uint8_t {
  * @brief Application-level constants (no magic numbers).
  */
 typedef enum : uint32_t {
-    k_app_uart_baud = 115200u,  /**< Console baud passed to uart init(). */
-    k_app_delay_iters = 2000000u, /**< Busy-wait iterations between toggles (crude). */
-    k_app_blink_cycles = 20u,   /**< Bounded number of toggle cycles. */
+  k_app_uart_baud    = 115200u,  /**< Console baud passed to uart init().           */
+  k_app_delay_iters  = 2000000u, /**< Busy-wait iterations between toggles (crude). */
+  k_app_blink_cycles = 20u,      /**< Bounded number of toggle cycles.              */
 } app_cfg_t;
 
 /**
@@ -60,10 +60,11 @@ typedef enum : uint32_t {
  * @note Wall-clock duration is unspecified; real timing is a roadmap timer.
  * @since 0.1.0 (spike)
  */
-static void app_delay(uint32_t iters) {
-    for (volatile uint32_t i = 0u; i < iters; ++i) {
-        /* Intentionally empty: the volatile counter is the delay. */
-    }
+static void app_delay(uint32_t iters)
+{
+  for (volatile uint32_t i = 0u; i < iters; ++i) {
+    /* Intentionally empty: the volatile counter is the delay. */
+  }
 }
 
 /**
@@ -79,29 +80,30 @@ static void app_delay(uint32_t iters) {
  *       null-guards below because the spike has no recovery path.
  * @since 0.1.0 (spike)
  */
-void app_main(void) {
-    const esp_gpio_ops_t* gpio = esp_gpio_ours_ops();
-    const esp_uart_ops_t* uart = esp_uart_ours_ops();
+void app_main(void)
+{
+  const esp_gpio_ops_t* gpio = esp_gpio_ours_ops();
+  const esp_uart_ops_t* uart = esp_uart_ours_ops();
 
-    /* Two separate guards (not a compound decision) so no MC/DC vector is owed. */
-    if (gpio == nullptr) {
-        return;
-    }
-    if (uart == nullptr) {
-        return;
-    }
+  /* Two separate guards (not a compound decision) so no MC/DC vector is owed. */
+  if (gpio == nullptr) {
+    return;
+  }
+  if (uart == nullptr) {
+    return;
+  }
 
-    (void)uart->init(uart->ctx, k_app_uart_baud);
-    (void)gpio->init(gpio->ctx, k_app_blink_pin);
+  (void)uart->init(uart->ctx, k_app_uart_baud);
+  (void)gpio->init(gpio->ctx, k_app_blink_pin);
 
-    static const char banner[] = "esp32c6: hello from our-own HAL\n";
-    (void)uart->write(uart->ctx, (const uint8_t*)banner, sizeof(banner) - 1u);
+  static const char banner[] = "esp32c6: hello from our-own HAL\n";
+  (void)uart->write(uart->ctx, (const uint8_t*)banner, sizeof(banner) - 1u);
 
-    for (uint32_t cycle = 0u; cycle < k_app_blink_cycles; ++cycle) {
-        (void)gpio->toggle(gpio->ctx, k_app_blink_pin);
-        (void)uart->write(uart->ctx, (const uint8_t*)".", 1u);
-        app_delay(k_app_delay_iters);
-    }
+  for (uint32_t cycle = 0u; cycle < k_app_blink_cycles; ++cycle) {
+    (void)gpio->toggle(gpio->ctx, k_app_blink_pin);
+    (void)uart->write(uart->ctx, (const uint8_t*)".", 1u);
+    app_delay(k_app_delay_iters);
+  }
 
-    (void)uart->flush(uart->ctx);
+  (void)uart->flush(uart->ctx);
 }

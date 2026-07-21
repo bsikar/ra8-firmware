@@ -24,11 +24,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_elc_regs.h"
-#include "ra8_usb_regs.h"
 #include "ra8_check.h"
+#include "ra8_elc_regs.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
+#include "ra8_usb_regs.h"
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -412,7 +412,7 @@ static void internal_dvst_dispatch_if_new(volatile r_usb_regs_t* reg,
     s_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_usbreq_unchanged;
     return;
   }
-  ra8_usb_setup_t setup  = {};
+  ra8_usb_setup_t setup = {};
   setup.bm_request_type = (uint8_t)(usbreq_live & k_setup_byte_mask);
   setup.b_request       = (uint8_t)((usbreq_live >> k_setup_byte_shift) & k_setup_byte_mask);
   setup.w_value         = usbval_live;

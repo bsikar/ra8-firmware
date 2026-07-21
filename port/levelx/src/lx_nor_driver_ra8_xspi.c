@@ -41,10 +41,10 @@
 #include <stdint.h>
 
 #include "lx_api.h"
-#include "ra8_pfs_regs.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
+#include "ra8_pfs_regs.h"
 #include "ra8_port_constants.h"
 #include "ra8_time.h"
 #include "ra8_xspi.h"
@@ -179,8 +179,8 @@ static UINT priv_nor_read(ULONG* flash_address, ULONG* destination, ULONG words)
   if ((flash_address == LX_NULL) || (destination == LX_NULL) || (words == 0U)) {
     return (UINT)LX_ERROR;
   }
-  uint32_t offset = priv_flash_offset_bytes(flash_address);
-  uint32_t bytes  = (uint32_t)words * k_ra8_lx_nor_word_bytes;
+  uint32_t  offset = priv_flash_offset_bytes(flash_address);
+  uint32_t  bytes  = (uint32_t)words * k_ra8_lx_nor_word_bytes;
   ra8_err_t err =
     ra8_xspi_flash_read((uint8_t)k_ra8_lx_xspi_instance, offset, (uint8_t*)destination, bytes);
   if (err != k_ra8_ok) {
@@ -224,8 +224,8 @@ static UINT priv_nor_write(ULONG* flash_address, ULONG* source, ULONG words)
   if ((flash_address == LX_NULL) || (source == LX_NULL) || (words == 0U)) {
     return (UINT)LX_ERROR;
   }
-  uint32_t offset = priv_flash_offset_bytes(flash_address);
-  uint32_t bytes  = (uint32_t)words * k_ra8_lx_nor_word_bytes;
+  uint32_t  offset = priv_flash_offset_bytes(flash_address);
+  uint32_t  bytes  = (uint32_t)words * k_ra8_lx_nor_word_bytes;
   ra8_err_t err =
     ra8_xspi_flash_program((uint8_t)k_ra8_lx_xspi_instance, offset, (const uint8_t*)source, bytes);
   if (err != k_ra8_ok) {
@@ -269,7 +269,7 @@ static UINT priv_nor_block_erase(ULONG block, ULONG erase_count)
   if (block >= (ULONG)k_ra8_lx_nor_total_blocks) {
     return (UINT)LX_ERROR;
   }
-  uint32_t offset = (uint32_t)block * k_ra8_lx_nor_block_bytes;
+  uint32_t  offset = (uint32_t)block * k_ra8_lx_nor_block_bytes;
   ra8_err_t err    = ra8_xspi_flash_erase_sector((uint8_t)k_ra8_lx_xspi_instance, offset);
   if (err != k_ra8_ok) {
     return (UINT)LX_ERROR;
@@ -316,11 +316,11 @@ static UINT priv_nor_block_erased_verify(ULONG block)
     if (chunk_words > (uint32_t)LX_NOR_SECTOR_SIZE) {
       chunk_words = (uint32_t)LX_NOR_SECTOR_SIZE;
     }
-    uint32_t chunk_bytes = chunk_words * k_ra8_lx_nor_word_bytes;
+    uint32_t  chunk_bytes = chunk_words * k_ra8_lx_nor_word_bytes;
     ra8_err_t err         = ra8_xspi_flash_read((uint8_t)k_ra8_lx_xspi_instance,
-                                              offset,
-                                              (uint8_t*)s_ra8_lx_nor_sector_buffer,
-                                              chunk_bytes);
+                                                offset,
+                                                (uint8_t*)s_ra8_lx_nor_sector_buffer,
+                                                chunk_bytes);
     if (err != k_ra8_ok) {
       return (UINT)LX_ERROR;
     }
@@ -545,18 +545,18 @@ typedef struct {
  * @since 0.1.0
  */
 static const ra8_xspi_pin_ref_t s_ra8_xspi_pin_refs[k_ra8_xspi_pin_count] = {
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_4}, /**< CS,  P104. */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_8}, /**< CK,  P808. */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_1}, /**< DQS, P801. */
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_0}, /**< DQ0, P100. */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_3}, /**< DQ1, P803. */
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_3}, /**< DQ2, P103. */
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_1}, /**< DQ3, P101. */
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_2}, /**< DQ4, P102. */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_0}, /**< DQ5, P800. */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_2}, /**< DQ6, P802. */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_4}, /**< DQ7, P804. */
-  {0xFFU, 0xFFU},                              /**< Reserved sentinel. */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_4}, /**< CS,  P104.         */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_8}, /**< CK,  P808.         */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_1}, /**< DQS, P801.         */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_0}, /**< DQ0, P100.         */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_3}, /**< DQ1, P803.         */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_3}, /**< DQ2, P103.         */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_1}, /**< DQ3, P101.         */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_2}, /**< DQ4, P102.         */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_0}, /**< DQ5, P800.         */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_2}, /**< DQ6, P802.         */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_4}, /**< DQ7, P804.         */
+  {0xFFU, 0xFFU},                                /**< Reserved sentinel. */
 };
 
 /** @brief Constants for the diagnostic xSPI pin-state capture. */
@@ -587,8 +587,8 @@ typedef enum : uint8_t {
 static void priv_capture_xspi_pin_state(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_xspi_pin_count; i++) {
-    const uint8_t port                      = s_ra8_xspi_pin_refs[i].port;
-    const uint8_t pin                       = s_ra8_xspi_pin_refs[i].pin;
+    const uint8_t port                       = s_ra8_xspi_pin_refs[i].port;
+    const uint8_t pin                        = s_ra8_xspi_pin_refs[i].pin;
     g_ra8_xspi_pin_observed[i].port          = port;
     g_ra8_xspi_pin_observed[i].pin           = pin;
     g_ra8_xspi_pin_observed[i].psel_observed = (uint8_t)k_ra8_lx_pin_unobserved;
@@ -601,7 +601,7 @@ static void priv_capture_xspi_pin_state(void)
     if (pfs == nullptr) {
       continue;
     }
-    const uint32_t raw                = *pfs;
+    const uint32_t raw                 = *pfs;
     g_ra8_xspi_pin_observed[i].pfs_raw = raw;
     g_ra8_xspi_pin_observed[i].psel_observed =
       (uint8_t)((raw >> (uint32_t)k_ra8_pfs_bit_psel0) & (uint32_t)k_ra8_lx_pfs_psel_mask);
@@ -798,8 +798,8 @@ static UINT priv_reset_phase_1s(void)
 static UINT priv_probe_rdid(void)
 {
   g_ra8_xspi_rdid_observed.stage = (uint32_t)k_ra8_xspi_stage_rdid;
-  uint32_t       jedec_id       = 0U;
-  const ra8_err_t rid_err        = ra8_xspi_flash_read_id((uint8_t)k_ra8_lx_xspi_instance, &jedec_id);
+  uint32_t        jedec_id       = 0U;
+  const ra8_err_t rid_err = ra8_xspi_flash_read_id((uint8_t)k_ra8_lx_xspi_instance, &jedec_id);
   g_ra8_xspi_rdid_observed.rid_err  = (uint32_t)rid_err;
   g_ra8_xspi_rdid_observed.jedec_id = jedec_id;
   if (rid_err != k_ra8_ok) {
@@ -877,7 +877,7 @@ static UINT priv_bus_init_once(void)
   }
 
   g_ra8_xspi_rdid_observed.stage = (uint32_t)k_ra8_xspi_stage_done;
-  s_xspi_bus_ready              = true;
+  s_xspi_bus_ready               = true;
   return (UINT)LX_SUCCESS;
 }
 
