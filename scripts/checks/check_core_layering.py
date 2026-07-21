@@ -32,13 +32,17 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LIBS_ROOT = REPO_ROOT / "libs"
 
 FOUNDATION_LIB = "ra8_core"
 SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp")
 INCLUDE_RE = re.compile(r'#\s*include\s*[<"]([^">]+)[">]')
-EXCLUDE_FRAGMENTS = ("/third_party/", "/fonts/", "/build/")
+EXCLUDE_FRAGMENTS = ("/third_party/", "/fonts/")
 
 # A lib header path under libs/ is <module>/<inc|src>/...: at least the module
 # component and the inc/src component must be present to attribute an owner.
@@ -53,7 +57,7 @@ def _header_owners() -> dict[str, set[str]]:
     owners: dict[str, set[str]] = {}
     for header in LIBS_ROOT.rglob("*.h"):
         text = str(header)
-        if any(frag in text for frag in EXCLUDE_FRAGMENTS):
+        if is_build_output_path(text) or any(frag in text for frag in EXCLUDE_FRAGMENTS):
             continue
         rel = header.relative_to(LIBS_ROOT).parts
         # rel[0] is the lib module; only count headers under a lib's inc/ or src/
