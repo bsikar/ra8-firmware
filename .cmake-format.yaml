@@ -11,6 +11,7 @@
 # licence header. That breaks the copyright gate and the SPDX convention, an
 # SPDX identifier being valid only on a line of its own. cmake-format owns
 # code layout in this tree; comment CONTENT stays with the author.
+---
 parse:
   # The repo defines its own commands in cmake/. Without their keyword
   # signatures cmake-format treats every argument as positional and explodes
