@@ -108,8 +108,12 @@ from another branch or in-source CMake junk cannot skew a gate here.
 
 ### Adding a gate
 
-1. Add one row to `RA8_GATE_REGISTRY` in `scripts/ci.sh`.
-2. Write the matching `gate_<name>` function (dashes become underscores).
+1. Add one row to `RA8_GATE_REGISTRY` in `scripts/ci.sh` -- still the only
+   list of what gates exist.
+2. Write the matching `gate_<name>` function (dashes become underscores) in the
+   themed fragment under `scripts/ci/gates/` that fits it. Those files are
+   SOURCED by `ci.sh`, never executed, and hold bodies only: a second registry
+   in one of them would recreate exactly the drift this design prevents.
 3. Add `run: bash scripts/ci.sh --gate <name>` to a workflow job.
 
 `scripts/ci/check_ci_parity.py` (the `ci-parity` gate) fails if you do
@@ -949,15 +953,34 @@ ra8-firmware/
     ra8_nsc/                    TrustZone NSC veneers
     ra8_net_pal/, ra8_usb_pal/   Platform abstraction layers
   tests/                       Host-side unit tests (standard gcc/clang, not cross-compiled)
-  scripts/
-    flash.sh                   Takes a .hex path argument; per-app Makefiles call it
-    ozone.sh                   Takes an .elf path argument
-    debug.sh                   Takes an .elf path argument
-    format_code.sh             clang-format wrapper (auto-discovers app dirs)
-    clang_tidy.sh              clang-tidy wrapper (auto-discovers app dirs)
+  scripts/                     Organised by the QUESTION a script answers, not by
+                               subsystem, so each file has one plausible home.
+    ci.sh                      The ONE CI entry point. RA8_GATE_REGISTRY lives
+                               here; every workflow calls
+                               `bash scripts/ci.sh --gate <name>`.
+    ci/                        CI runner helpers + check_ci_parity.py
+      gates/*.sh               Gate BODIES, sourced by ci.sh. Split by theme so
+                               no file carries 1100 lines; still exactly one
+                               registry and one body per gate.
+    checks/                    "Is the tree OK?" -- read-only, exits non-zero
+                               when it is not. Every check_*.py, plus the
+                               third-party analyser drivers (clang-tidy,
+                               cppcheck, MISRA, iwyu, scan-build, fuzz).
+    fix/                       "Make the tree OK" -- these WRITE to source.
+                               Kept out of checks/ so that stays read-only.
+    gen/                       Produce a committed artifact from a source of
+                               truth (fonts, fixtures, SBOM, nav trees)
+    build/                     Produce a build output (apps, docs, books)
+    report/                    Tell me about the tree; never fails on content
+    hil/                       Hardware-in-the-loop bench
+      lib/                     Shared rig shell libraries
+      usb/                     USB bench harnesses (need a board attached)
+    sim/                       board_sim smoke/matrix + the SIL suite
+    dev/                       Inner loop on a developer's desk: flash, debug,
+                               ozone, openocd, agent workspaces
+    secrets/                   Key material and credential handling (RoT, OpenBao)
     git/
       pre-commit               Pre-commit hook (ASCII, format, tidy, C23 patterns)
-    utils/                     check-since-version, cite_check, check_world_tags, ...
   docs/
     reference/                 Committed datasheets and manuals (PDFs)
   .github/workflows/           CI
