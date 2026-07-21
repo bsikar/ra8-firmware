@@ -49,6 +49,8 @@ typedef enum : uint32_t {
   k_cs_op_csinv  = 2U,      /**< op == 10: Rd = c ? Rn : ~Rm.         */
   k_cs_op_csneg  = 3U,      /**< op == 11: Rd = c ? Rn : -Rm.         */
   k_cs_insn_len  = 4U,      /**< Both halfwords: 4 bytes.             */
+  k_cs_reg_sp    = 13U,     /**< SP: reserved as a CSEL operand.      */
+  k_cs_reg_pc    = 15U,     /**< PC: reserved as a CSEL operand.      */
 } cond_select_t;
 
 /* APSR condition-flag bit positions inside xPSR. */
@@ -143,6 +145,27 @@ static bool cond_holds(uint32_t cond, uint32_t xpsr)
  * @param[in]     code The 4 instruction bytes already read at @p pc.
  * @return true if a conditional-select was recognised, executed, and PC advanced.
  */
+/**
+ * @brief Report whether @p reg is reserved as a conditional-select operand.
+ *
+ * @details SP and PC make CSEL/CSINC/CSINV/CSNEG UNPREDICTABLE, so no compiler
+ * emits them and their presence means the decode window landed on a different
+ * instruction entirely.
+ *
+ * @param[in] reg Register index [0, 15].
+ * @return true when @p reg is SP or PC.
+ * @retval true  @p reg is SP (13) or PC (15).
+ * @retval false @p reg is a general-purpose operand register.
+ * @pre @p reg was masked to four bits by the caller.
+ * @post No state is modified (pure predicate).
+ * @note Not thread-safe by inheritance only; the predicate itself is pure.
+ * @since 0.1.0
+ */
+static bool cs_reserved_reg(uint32_t reg)
+{
+  return (reg == (uint32_t)k_cs_reg_sp) || (reg == (uint32_t)k_cs_reg_pc);
+}
+
 static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
 {
   const uint16_t hw1 = (uint16_t)(code[0] | ((uint16_t)code[1] << 8));
@@ -156,6 +179,16 @@ static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
   const uint32_t rd   = (uint32_t)((hw2 >> 8) & (uint32_t)k_lo4_mask);
   const uint32_t cond = (uint32_t)((hw2 >> 4) & (uint32_t)k_lo4_mask);
   const uint32_t rm   = (uint32_t)(hw2 & (uint32_t)k_lo4_mask);
+
+  /* The Armv8.1-M long shifts share this family's 0xEA5n prefix and put 0b1101
+   * (SP) or 0b1111 (PC) in what reads here as Rm, so a register-form long shift
+   * such as LSLL r2, r3, r8 (EA52 830D) satisfies every condition above -- it
+   * would execute here as CSEL r3, r2, sp, EQ and silently corrupt r3. Reserved
+   * operands mean this is not a conditional select; fall through and let the
+   * long-shift seam claim it. */
+  if (cs_reserved_reg(rn) || cs_reserved_reg(rd) || cs_reserved_reg(rm)) {
+    return false;
+  }
 
   uint32_t xpsr = 0U;
   uint32_t vn   = 0U;
@@ -345,6 +378,74 @@ static bool emulate_lob(uc_engine* uc, uint32_t pc, const uint8_t code[4])
   return false;
 }
 
+/**
+ * @brief Emulate one Armv8.1-M instruction Unicorn's M33 core does not provide.
+ *
+ * @details
+ * The RA8D2 firmware is built for Cortex-M85 (Armv8.1-M) but the nearest core
+ * Unicorn offers is M33 (Armv8-M), so the conditional selects, the barriers,
+ * Helium, the register-form long shifts and the hardware loops all arrive as
+ * undefined instructions. Each handler writes its result and advances PC; the
+ * caller stops the engine so the chunked run loop relaunches from the new PC.
+ * Split out of ::dispatch_insn_seam, which keeps the two seams that are about
+ * board_sim's own machinery (a patched divide, a security scrub) rather than a
+ * missing instruction.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   Address of the trapping instruction.
+ * @param[in]     code The 4 instruction bytes at @p pc.
+ * @return true when a handler claimed and emulated the instruction.
+ * @retval true  PC has advanced; the caller must stop and relaunch.
+ * @retval false No handler recognised @p code.
+ * @pre @p code holds the bytes the core failed to decode at @p pc.
+ * @pre @p uc is stopped inside the invalid-instruction hook.
+ * @post On true, PC points past the emulated instruction.
+ * @note Not thread-safe; called from the single-threaded run loop.
+ * @since 0.1.0
+ */
+static bool dispatch_armv81_seam(uc_engine* uc, uint32_t pc, const uint8_t code[4])
+{
+  /* The RA8D2 firmware is built for Cortex-M85 (Armv8.1-M); the nearest core
+   * Unicorn offers is M33 (Armv8-M), which lacks the conditional-select family.
+   * GCC emits those for branchless index math on the touch path, so
+   * execute them here. emulate_cond_select writes Rd and advances PC past the
+   * 4-byte instruction; then uc_emu_stop so the chunked run loop relaunches from
+   * the new PC -- editing PC and continuing in-place corrupts Unicorn's block /
+   * Thumb state (it then misdecodes the next valid instruction), so the
+   * stop-then-relaunch contract the SysTick / touch stubs use is required here. */
+  if (emulate_cond_select(uc, pc, code)) {
+    return true; /* handled -- run loop resumes at the advanced PC */
+  }
+
+  /* Older Unicorn builds (the runner's 2.0.1) trap DSB/DMB/ISB as invalid; a
+   * barrier is a NOP in this emulator, so advance past it and relaunch. */
+  if (emulate_barrier(uc, pc, code)) {
+    return true; /* handled -- run loop resumes past the barrier */
+  }
+
+  /* MVE (Helium): the M85 has it, Unicorn's M33 does not, so the auto-vectoriser's
+   * Helium ops trap here. Emulate the handled subset and relaunch past it. */
+  if (emulate_mve(uc, pc, code)) {
+    return true; /* handled -- run loop resumes past the MVE instruction */
+  }
+
+  /* Armv8.1-M long shift, REGISTER form (LSLL/ASRL by Rm). Its encoding aliases
+   * to an ORR.W with Rm == SP, which the core refuses rather than
+   * mis-executing, so it lands here as a real trap. (The immediate form aliases
+   * to an ORRS the core happily executes with a wrong result, so that one is
+   * repaired by the code-hook seam in sim_seam_longshift.c instead.) */
+  if (emulate_long_shift_reg(uc, pc, code)) {
+    return true; /* handled -- run loop resumes past the long shift */
+  }
+
+  /* Low-Overhead-Branch (DLS/LE): the M85's hardware-loop ops, absent on the M33.
+   * Emulate the loop counter / branch and relaunch. */
+  if (emulate_lob(uc, pc, code)) {
+    return true; /* handled -- run loop resumes at the loop top or past the loop */
+  }
+  return false;
+}
+
 /** @brief Try each Armv8.1-M / security seam in turn; true (and stop) if handled. */
 static bool dispatch_insn_seam(uc_engine* uc, uint32_t pc, const uint8_t code[4])
 {
@@ -364,38 +465,9 @@ static bool dispatch_insn_seam(uc_engine* uc, uint32_t pc, const uint8_t code[4]
     return true;
   }
 
-  /* The RA8D2 firmware is built for Cortex-M85 (Armv8.1-M); the nearest core
-   * Unicorn offers is M33 (Armv8-M), which lacks the conditional-select family.
-   * GCC emits those for branchless index math on the touch path, so
-   * execute them here. emulate_cond_select writes Rd and advances PC past the
-   * 4-byte instruction; then uc_emu_stop so the chunked run loop relaunches from
-   * the new PC -- editing PC and continuing in-place corrupts Unicorn's block /
-   * Thumb state (it then misdecodes the next valid instruction), so the
-   * stop-then-relaunch contract the SysTick / touch stubs use is required here. */
-  if (emulate_cond_select(uc, pc, code)) {
+  if (dispatch_armv81_seam(uc, pc, code)) {
     (void)uc_emu_stop(uc);
-    return true; /* handled -- run loop resumes at the advanced PC */
-  }
-
-  /* Older Unicorn builds (the runner's 2.0.1) trap DSB/DMB/ISB as invalid; a
-   * barrier is a NOP in this emulator, so advance past it and relaunch. */
-  if (emulate_barrier(uc, pc, code)) {
-    (void)uc_emu_stop(uc);
-    return true; /* handled -- run loop resumes past the barrier */
-  }
-
-  /* MVE (Helium): the M85 has it, Unicorn's M33 does not, so the auto-vectoriser's
-   * Helium ops trap here. Emulate the handled subset and relaunch past it. */
-  if (emulate_mve(uc, pc, code)) {
-    (void)uc_emu_stop(uc);
-    return true; /* handled -- run loop resumes past the MVE instruction */
-  }
-
-  /* Low-Overhead-Branch (DLS/LE): the M85's hardware-loop ops, absent on the M33.
-   * Emulate the loop counter / branch and relaunch. */
-  if (emulate_lob(uc, pc, code)) {
-    (void)uc_emu_stop(uc);
-    return true; /* handled -- run loop resumes at the loop top or past the loop */
+    return true; /* handled -- run loop resumes past the emulated instruction */
   }
   return false;
 }
