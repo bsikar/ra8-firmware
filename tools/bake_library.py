@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
-# Bake a set of compiled .rabook files into a C header of MRAM-resident byte
-# arrays plus a lookup table. Each blob is the chunked RBKC container as
-# produced by tools/epub_compile; the firmware inflates it into SDRAM on demand
-# via ra8_book_open(). Full books (with cover + inline images) are kept compressed
-# in MRAM and only expanded when opened, so several fit alongside the firmware.
-#
-# Each book's cover is also pre-decoded here into a gray8 thumbnail (matching the
-# firmware's sh_image_decode_gray8 exactly) and embedded, so boot draws the shelf
-# without inflating a single book -- inflation only happens when a book is opened.
-#
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
-#
-# Usage: bake_library.py <out.h> <rabook>|<title>|<author> [<rabook>|<title>|<author> ...]
+# Copyright (c) 2026 Brighton Sikarskie
+"""Bake compiled .rabook files into a C header of MRAM-resident byte arrays.
+
+Each blob is embedded as the chunked RBKC container tools/epub_compile emits --
+still compressed. The firmware inflates one into SDRAM only when
+`ra8_book_open()` is called, which is what lets several full books (covers and
+inline images included) sit alongside the firmware in MRAM at all.
+
+Cover thumbnails are the reason this tool does more than embed bytes. Each
+book's cover is pre-decoded here into a gray8 thumbnail, matching the firmware's
+`sh_image_decode_gray8` exactly, so boot can draw the whole shelf without
+inflating a single book. If the two decoders ever diverge, the shelf renders
+differently before and after a book is opened.
+
+The emitted thumbnail bytes are architecture-dependent to regenerate, so
+re-baking moves the framebuffer golden -- see scripts/build_books.sh, and re-pin
+the golden in the same change.
+
+Usage:
+    bake_library.py <out.h> <rabook>|<title>|<author> [<rabook>|<title>|<author> ...]
+"""
+
 import struct
 import sys
 import zlib
@@ -100,6 +109,25 @@ def decode_cover_thumb(blob):
 
 
 def emit_array(name, data):
+    """Render bytes as a 4-byte-aligned `static const uint8_t` C array.
+
+    The `alignas(4)` is not cosmetic: the firmware casts into these blobs to
+    read the container's 32-bit header fields, and an unaligned load faults on
+    the target. Every byte is emitted with a `U` suffix and lines are wrapped
+    near ARRAY_LINE_LIMIT characters -- a soft limit, checked after appending,
+    so a line may overrun by one element's width.
+
+    Output is deterministic for identical input, which is what lets the
+    generated header be committed and diffed.
+
+    Args:
+        name: C identifier for the array; used unquoted and unvalidated.
+        data: Bytes to emit. Empty input still yields a well-formed (if
+            zero-length, and therefore not valid C) array.
+
+    Returns:
+        The declaration as a newline-joined string, no trailing newline.
+    """
     out = [f"alignas(4) static const uint8_t {name}[{len(data)}U] = {{"]
     line = "  "
     for b in data:
@@ -114,6 +142,26 @@ def emit_array(name, data):
 
 
 def main(argv):
+    """Bake every `<path>|<title>|<author>` spec into the output header.
+
+    Title and author are passed on the command line rather than read from the
+    blob because the baked shelf shows them before any book is inflated -- the
+    metadata inside the container is not reachable without inflating it.
+
+    The `|` separator is unescaped, so a title containing a pipe splits into the
+    wrong fields and raises. Books appear in the header in command-line order,
+    and that order is the shelf order.
+
+    Args:
+        argv: Full argument vector INCLUDING the program name at index 0.
+
+    Returns:
+        0 on success, 2 on a usage error.
+
+    Raises:
+        ValueError: A spec did not split into exactly three fields.
+        OSError: A .rabook path could not be read, or the header not written.
+    """
     if len(argv) < MIN_ARGV_COUNT:
         sys.stderr.write("usage: bake_library.py <out.h> <rabook>|<title>|<author> ...\n")
         return 2

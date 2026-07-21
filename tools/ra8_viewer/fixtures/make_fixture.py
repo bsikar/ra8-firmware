@@ -39,6 +39,27 @@ def _font(size):
 
 
 def make_page(bg, fg, label):
+    """Render one portrait demo page: gradient, border, banner and page number.
+
+    The output is intentionally busy. A flat page would render identically
+    whether the viewer decoded it correctly, scaled it wrongly, or filled the
+    frame with a solid error color; the gradient, the inset border and the
+    360pt numeral each make a different class of rendering bug visible by eye.
+
+    Not pixel-reproducible across machines: `_font` picks the first available
+    system face and falls back to Pillow's builtin, so glyph shapes differ by
+    host. Do not hash these pages -- they are a visual proof, not a golden.
+
+    Args:
+        bg: Background RGB triple. Each channel must be at least GRADIENT_DEPTH,
+            or the shading underflows past 0 and Pillow rejects the color.
+        fg: Foreground RGB triple for the border and all text.
+        label: Page-number text, drawn centred at 360pt. Practically one or two
+            characters; longer strings overflow the page.
+
+    Returns:
+        An RGB Pillow Image, PAGE_W by PAGE_H.
+    """
     img = Image.new("RGB", (PAGE_W, PAGE_H), bg)
     draw = ImageDraw.Draw(img)
     for y in range(PAGE_H):
@@ -61,6 +82,19 @@ def make_page(bg, fg, label):
 
 
 def main():
+    """Render every page in PAGES and zip them into sample.cbz beside this file.
+
+    Output lands next to the script rather than in the working directory, so the
+    fixture is regenerated in place wherever it is run from. An existing
+    sample.cbz is overwritten.
+
+    Each PNG is written to disk, added to the archive, then unlinked -- the
+    intermediates are a zipfile.write() requirement, not artifacts, and only
+    sample.cbz survives. A crash mid-loop leaves stray page*.png behind.
+
+    Page order in the archive is PAGES order, which is what the viewer reads as
+    reading order.
+    """
     cbz = HERE / "sample.cbz"
     with zipfile.ZipFile(cbz, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, bg, fg, label in PAGES:

@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
-#
-# Generate imgfmt_fixtures.h: small deterministic BMP and GIF test images for
-# the ereader_imgfmt gate -- the last two stb_image formats the firmware
-# links (STBI_ONLY_BMP / STBI_ONLY_GIF) that lacked an example. PNG and JPEG
-# already have ereader_image / ereader_jpeg.
-#
-# Each image is a 40x30 four-quadrant pattern; the on-device gate decodes both
-# through ra8_img_decode_blit (zero-heap) into a 160x120 framebuffer and CRC-
-# gates each. Output is pure 7-bit ASCII, baked at 16 bytes per row so
-# clang-format leaves it byte-identical.
-#
-# Usage:  python3 make_imgfmt_fixtures.py
+"""Generate imgfmt_fixtures.h: deterministic BMP and GIF images for the gate.
+
+These close a coverage hole. The firmware links four stb_image formats, and
+STBI_ONLY_BMP and STBI_ONLY_GIF were the two with no example exercising them --
+PNG and JPEG already have ereader_image and ereader_jpeg. A decoder nobody
+calls is a decoder nobody knows is broken.
+
+The on-device ereader_imgfmt gate decodes both through `ra8_img_decode_blit`
+(zero-heap) into a 160x120 framebuffer and CRC-gates each independently, so a
+regression in one format cannot be masked by the other passing.
+
+Determinism is the requirement that shapes everything here: the CRCs are pinned
+in the gate, so a fixture that varied run to run would break the gate rather
+than detect anything. Output is pure 7-bit ASCII at 16 bytes per row inside a
+clang-format-off guard, so the formatter leaves it byte-identical.
+
+Usage:
+    python3 make_imgfmt_fixtures.py
+"""
+
 import io
 from pathlib import Path
 
@@ -23,6 +31,22 @@ QUAD = [(0xC0, 0x10, 0x20), (0x18, 0x90, 0x30), (0x20, 0x40, 0xC0), (0xD0, 0xA0,
 
 
 def make_image(layout: str) -> Image.Image:
+    """Render a 40x30 RGB test pattern in one of two layouts.
+
+    The two layouts exist so BMP and GIF decode to DIFFERENT pixels and
+    therefore pin two different CRCs. Identical images would let a gate pass
+    while decoding the wrong buffer -- a copy-paste bug in the gate would be
+    invisible.
+
+    Colors come from QUAD, chosen to be far apart so GIF's 4-color adaptive
+    palette reproduces them exactly rather than approximating.
+
+    Args:
+        layout: "quad" for four quadrants, anything else for horizontal bands.
+
+    Returns:
+        A 40x30 RGB Pillow Image.
+    """
     # Two distinct patterns so the BMP and GIF decode to different pixels and
     # therefore pin two different CRCs (each path independently gated).
     img = Image.new("RGB", (W, H))
@@ -38,6 +62,24 @@ def make_image(layout: str) -> Image.Image:
 
 
 def encode(fmt: str) -> bytes:
+    """Render and encode the test image for one format.
+
+    Pairs each format with its own layout -- BMP gets quadrants, anything else
+    gets bands -- so the two fixtures never collide. GIF is additionally
+    converted to a 4-color adaptive palette: GIF is palette-only anyway, and
+    pinning the color count keeps the encoder from choosing a different palette
+    size and shifting the bytes.
+
+    Args:
+        fmt: A Pillow format name, in practice "BMP" or "GIF". Any other value
+            takes the bands layout and is passed to Pillow unchanged.
+
+    Returns:
+        The encoded image bytes; identical across runs for a given format.
+
+    Raises:
+        KeyError: Pillow does not know `fmt`.
+    """
     # BMP gets the quadrant layout; GIF gets horizontal bands.
     img = make_image("quad" if fmt == "BMP" else "bands")
     out = io.BytesIO()
@@ -49,6 +91,24 @@ def encode(fmt: str) -> bytes:
 
 
 def bake_array(name: str, data: bytes) -> str:
+    """Render bytes as a C length enum plus a `static const uint8_t` array.
+
+    The length is emitted as `enum : size_t` and used to size the array, so the
+    declared size and the data can never disagree.
+
+    The table is wrapped in `clang-format off`/`on` and laid out 16 bytes per
+    row. That keeps the formatter from reflowing it, which is what makes a
+    regenerated fixture diff empty when nothing actually changed.
+
+    Args:
+        name: Lowercase stem for the identifiers; produces `k_<name>` and
+            `k_<name>_len`, and is upper-cased for the doc comments. Used
+            unquoted, so it must already be a valid C identifier fragment.
+        data: Bytes to bake.
+
+    Returns:
+        The declarations as C source text.
+    """
     rows = []
     for i in range(0, len(data), 16):
         chunk = data[i : i + 16]
@@ -68,6 +128,17 @@ def bake_array(name: str, data: bytes) -> str:
 
 
 def main():
+    """Regenerate imgfmt_fixtures.h in the CURRENT working directory.
+
+    The path is relative, so run this from the app directory that owns the
+    fixture; elsewhere it writes a stray header rather than updating the
+    committed one.
+
+    Regenerating changes the baked bytes only if Pillow's encoders change. If it
+    does, the CRCs pinned in the on-device gate no longer match and must be
+    re-pinned in the same commit -- otherwise the gate fails on a fixture that
+    is actually correct.
+    """
     bmp = encode("BMP")
     gif = encode("GIF")
     header = (
