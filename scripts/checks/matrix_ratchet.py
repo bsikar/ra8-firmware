@@ -139,41 +139,85 @@ def load_baseline(path: Path) -> dict[str, str]:
     Returns:
         The recorded debt, empty when the file does not exist.
     """
+    return _parse_baseline(path)[0]
+
+
+def load_baseline_causes(path: Path) -> dict[str, str]:
+    """Return the {app: cause} notes recorded alongside the baseline verdicts.
+
+    Args:
+        path: The baseline file.
+
+    Returns:
+        The recorded causes; apps without one are absent.
+    """
+    return _parse_baseline(path)[1]
+
+
+def _parse_baseline(path: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Parse the baseline into ({app: verdict}, {app: cause}).
+
+    A row is `app<TAB>verdict` or `app<TAB>verdict<TAB>cause`. The cause is
+    optional so a machine-written baseline stays valid, but it is the whole
+    reason the third column exists -- see `write_baseline`.
+
+    Args:
+        path: The baseline file.
+
+    Returns:
+        The recorded verdicts and causes, both empty when the file is absent.
+    """
     if not path.exists():
-        return {}
-    recorded: dict[str, str] = {}
+        return {}, {}
+    verdicts: dict[str, str] = {}
+    causes: dict[str, str] = {}
     for raw in path.read_text(encoding="utf-8").splitlines():
         if not raw.strip() or raw.startswith("#"):
             continue
         cols = raw.split("\t")
-        if len(cols) != BASELINE_COLUMNS:
+        if len(cols) not in (BASELINE_COLUMNS, BASELINE_COLUMNS + 1):
             sys.stderr.write(f"matrix_ratchet.py: ERROR -- malformed baseline row: {raw!r}\n")
             sys.exit(1)
-        app, verdict = cols
-        recorded[app] = verdict
-    return recorded
+        verdicts[cols[0]] = cols[1]
+        if len(cols) == BASELINE_COLUMNS + 1 and cols[2].strip():
+            causes[cols[0]] = cols[2].strip()
+    return verdicts, causes
 
 
-def write_baseline(path: Path, debt: dict[str, str]) -> None:
-    """Rewrite the baseline from a measured debt map.
+def write_baseline(path: Path, debt: dict[str, str], causes: dict[str, str] | None = None) -> None:
+    """Rewrite the baseline from a measured debt map, keeping recorded causes.
+
+    Each row carries an optional third column naming WHY the app is failing.
+    Without it a future reader sees a bare count and cannot tell recorded debt
+    from an unexamined allowlist -- which is the failure mode this whole gate
+    was built against. `--update` therefore carries the existing cause forward
+    for any app still in debt rather than regenerating a comment-free file.
 
     Args:
         path: The baseline file to write.
         debt: The {app: verdict} debt to record.
+        causes: Optional {app: cause} notes to preserve.
     """
+    causes = causes or {}
     lines = [
         "# board_sim example-matrix baseline -- see scripts/checks/matrix_ratchet.py",
         "#",
-        "# Recorded debt from `bash scripts/sim/matrix.sh`, one `app<TAB>verdict` row",
-        "# each. This is a RATCHET: growth fails, shrinking is free, and the end",
-        "# state is an EMPTY file. It is not an allowlist -- no row here is a",
-        "# permanent exemption, and every one is work still owed.",
+        "# Recorded debt from `bash scripts/sim/matrix.sh`, one",
+        "# `app<TAB>verdict<TAB>cause` row each. This is a RATCHET: growth fails,",
+        "# shrinking is free, and the end state is an EMPTY file. It is not an",
+        "# allowlist -- no row here is a permanent exemption, and every one is work",
+        "# still owed. The cause column is not decoration: a number nobody can",
+        "# explain is indistinguishable from one nobody has looked at.",
         "#",
-        "# Re-baseline after burning debt down:",
+        "# MEASURE THIS ON THE CI RUNNER, NEVER ON A DEVELOPER BOX -- see #400.",
+        "#",
+        "# Re-baseline after burning debt down (causes are carried forward):",
         "#   bash scripts/sim/matrix.sh; python3 scripts/checks/matrix_ratchet.py --update",
         f"# total: {len(debt)}",
     ]
-    lines.extend(f"{app}\t{verdict}" for app, verdict in sorted(debt.items()))
+    for app, verdict in sorted(debt.items()):
+        cause = causes.get(app, "")
+        lines.append(f"{app}\t{verdict}\t{cause}" if cause else f"{app}\t{verdict}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -282,8 +326,19 @@ def update(report_file: Path = REPORT_FILE, baseline_file: Path = BASELINE_FILE)
         sys.stderr.write(f"matrix_ratchet.py: FATAL -- no report at {report_file}.\n")
         return 1
     debt = debt_of(parse_report(report_file.read_text(encoding="utf-8")))
-    write_baseline(baseline_file, debt)
+    # Carry every recorded cause forward, so re-baselining after a burn-down
+    # cannot silently strip the explanations off the apps that remain.
+    causes = load_baseline_causes(baseline_file)
+    write_baseline(baseline_file, debt, causes)
+    missing = sorted(app for app in debt if app not in causes)
     print(f"matrix_ratchet.py: baseline rewritten -- {len(debt)} failing example(s).")
+    if missing:
+        print(
+            f"matrix_ratchet.py: {len(missing)} entr(y/ies) have no recorded cause: "
+            f"{', '.join(missing)}\n"
+            "  Add one as a third TAB-separated column. Debt nobody can explain\n"
+            "  reads as an allowlist the first time someone else looks at it."
+        )
     return 0
 
 
@@ -360,6 +415,20 @@ def _selftest_ratchet(tmp: Path) -> list[str]:
     # Direction 4 -- MUST FAIL: a missing report is never a silent pass.
     if check(tmp / "absent.txt", baseline) == 0:
         failures.append("a MISSING report passed instead of failing loudly")
+
+    # Causes must SURVIVE a re-baseline. If --update strips them, the file
+    # decays into a bare list of app names on the next burn-down and stops
+    # being distinguishable from an allowlist.
+    write_baseline(baseline, {"broken_app": "FAULT"}, {"broken_app": "a recorded reason"})
+    if load_baseline_causes(baseline).get("broken_app") != "a recorded reason":
+        failures.append("write_baseline() did not persist the cause column")
+    report.write_text("broken_app                 FAULT\nother_app                  FAULT\n")
+    update(report, baseline)
+    kept = load_baseline_causes(baseline)
+    if kept.get("broken_app") != "a recorded reason":
+        failures.append("--update dropped the recorded cause of a still-failing app")
+    if load_baseline(baseline).get("other_app") != "FAULT":
+        failures.append("--update did not record a newly-failing app")
     return failures
 
 
