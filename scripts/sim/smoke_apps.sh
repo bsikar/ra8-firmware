@@ -132,11 +132,22 @@ sd_format_apps="fs_format_mount"
 sd_io_apps="ra8_io_sd_demo ra8_io_sdhi_demo ra8_sdhi_card_demo"
 
 # On-chip non-volatile ra8_io apps (no CLI flag -- board_sim models the medium
-# internally): OSPI NOR (ra8_io_xspi_demo, erase-before-write 4 KiB RMW) and the
-# on-chip extra MRAM (ra8_io_mram_demo, MACI program/erase via board_periph_mram).
-# Both idle forever after their PASS banner, so STOP_ON ends the run the moment
-# it prints. Asserts via uart_expect().
-xspi_io_apps="ra8_io_xspi_demo ra8_io_mram_demo"
+# internally): OSPI NOR (ra8_io_xspi_demo, erase-before-write 4 KiB RMW). It
+# idles forever after its PASS banner, so STOP_ON ends the run the moment it
+# prints. Asserts via uart_expect().
+#
+# ra8_io_mram_demo was here and has been REMOVED (#170). It targets a
+# general-purpose data-flash at 0x2700_0000 that this silicon does not have:
+# HUM Ch 5 Figure 5.2 p 237 labels the region "Extra MRAM (option-setting
+# memory)", HUM Ch 59.7.4.5 Table 59.15 p 3592 lists every legal MACI Program
+# target (all option-setting / OTP, 0x02E0_7600..0x02E1_79F0), and 0x2700_0000
+# appears nowhere in the manual. The bench returns Error=516 with the sequencer
+# command-locked, and board_periph_mram.c now reproduces that rejection instead
+# of writing the payload into mapped RAM. So the demo cannot pass, and asserting
+# a PASS banner for it made this gate claim a storage backend the part does not
+# have. Its hil.conf carries the full evidence and the delete-or-repoint
+# decision; re-add here only if it is ever repointed at real storage.
+xspi_io_apps="ra8_io_xspi_demo"
 
 # IT8951 e-paper apps (#256): board_sim attaches a modelled IT8951 controller on
 # SPI_B with --eink (board_periph_eink.c), which answers HRDY, the GET_DEV_INFO
@@ -345,7 +356,10 @@ uart_expect() { # app -> expected UART substring on stdout
     ra8_io_sdhi_demo) printf 'ra8_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
     ra8_sdhi_card_demo) printf 'ra8_sdhi_card_demo: native SDHI block round-trip PASS' ;;
     ra8_io_xspi_demo) printf 'ra8_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
-    ra8_io_mram_demo) printf 'block erase/program/read on extra MRAM PASS' ;;
+    # ra8_io_mram_demo intentionally has NO expectation: the extra-MRAM data
+    # region it targets does not exist on this silicon (#170 -- see the
+    # xspi_io_apps note above and the app's hil.conf), so it cannot print a PASS
+    # banner in the emulator or on the bench. It is no longer run by any gate.
     epaper_refresh) printf 'epaper: PASS' ;;
     modem_at_demo) printf 'modem: rssi=17 reg=1 attach=1 cme=ok PASS' ;;
     ra8_io_fsfmt_demo) printf 'ra8_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS' ;;
