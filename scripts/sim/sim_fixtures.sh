@@ -47,15 +47,23 @@ sim_extra_args() { # <app> -> extra board_sim args on stdout (may be empty)
       # blank FAT32 card so the host reads a valid MBR (0x55AA) + filesystem.
       printf -- '--sd-new 64:fat32'
       ;;
-    import_reader | ereader_shelf | ereader_cover | ereader_comic)
-      # Work against a library on the card. Without one import_reader asserts at
-      # "FAIL sd init" and traps, which the breadth matrix recorded as a FAULT
-      # against the APP rather than against the missing card. With a blank card
-      # it reaches "card ready" and "volume mounted" and then fails at
+    import_reader)
+      # Imports a book onto the card. Without one it asserts at "FAIL sd init"
+      # and traps, which the breadth matrix recorded as a FAULT against the APP
+      # rather than against the missing card. With a blank card it reaches
+      # "card ready" and "volume mounted" and then fails at
       # "FAIL import compile" -- a real finding about the app, which is the
       # point: the harness has to supply the device before its verdict means
       # anything. A pre-populated library fixture (cf. sd_font_render's baked
       # FONT.OTF card) would take it further still.
+      #
+      # ereader_shelf / ereader_cover / ereader_comic are deliberately NOT here.
+      # They were added alongside import_reader on the assumption that "reads a
+      # library" implies "needs a card", and that guess broke ereader_shelf: it
+      # serves books from baked MRAM and its asserted banner contains sd=0, so
+      # attaching a blank card changed what it reported and failed the SIL gate.
+      # Adding a device an app does not ask for is the same class of harness
+      # error as withholding one it needs.
       printf -- '--sd-new 64:fat32'
       ;;
     sd_font_render)
