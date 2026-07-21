@@ -453,7 +453,9 @@ def _resource_dirs_on_disk() -> list[pathlib.Path]:
 
 def _probe_is_clean(extra: list[str]) -> bool:
     """True when ``#include <stddef.h>`` parses without a fatal error."""
-    probe = REPO_ROOT / "scripts" / "utils" / ".ra8_annotations_probe.c"
+    # Alongside this checker, wherever it lives -- a hardcoded directory
+    # here becomes a FileNotFoundError the moment the file moves.
+    probe = pathlib.Path(__file__).resolve().parent / ".ra8_annotations_probe.c"
     try:
         probe.write_text("#include <stddef.h>\n#include <stdint.h>\nsize_t ra8_probe(void);\n")
         tu = cindex.Index.create().parse(

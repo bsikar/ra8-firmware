@@ -367,8 +367,8 @@ def _format_stdin_would_reformat(ruff: str, source: str, filename: str) -> bool:
 # Virtual filenames handed to `ruff --stdin-filename`. Ruff resolves per-file
 # configuration against the name, so it has to look like a first-party .py
 # path; nothing is ever created on disk at either location.
-BAD_FIXTURE_NAME = "scripts/utils/ruff_selftest_bad.py"  # PATHREF-OK: virtual
-GOOD_FIXTURE_NAME = "scripts/utils/ruff_selftest_good.py"  # PATHREF-OK: virtual
+BAD_FIXTURE_NAME = "scripts/checks/ruff_selftest_bad.py"  # PATHREF-OK: virtual
+GOOD_FIXTURE_NAME = "scripts/checks/ruff_selftest_good.py"  # PATHREF-OK: virtual
 FMT_FIXTURE_NAME = "scripts/ruff_fmt_bad.py"  # PATHREF-OK: virtual
 
 
