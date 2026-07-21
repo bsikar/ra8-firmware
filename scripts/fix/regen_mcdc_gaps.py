@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""scripts/fix/regen_mcdc_gaps.py -- regenerate docs/MCDC_GAPS.csv and the
-summary header of docs/MCDC_GAPS.md from the LIVE llvm-cov MC/DC report
-(build/mcdc-report/mcdc.txt + summary.txt).
+"""Regenerate the MC/DC gap tables from the live llvm-cov report.
+
+Rewrites docs/MCDC_GAPS.csv and the summary header of docs/MCDC_GAPS.md from
+build/mcdc-report/mcdc.txt + summary.txt.
 
 Each row carries a `deactivated` boolean classifying whether the
 remaining uncovered MC/DC condition is reachable through the public
@@ -36,6 +37,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -100,8 +102,7 @@ FILE_HEADER_RE = re.compile(r"^([^\s:][^:]*\.(?:c|h|cpp|hpp)):\s*$")
 
 
 def _repo_relative(path: str) -> str:
-    """Return `path` (an absolute build-time source path llvm-cov printed) as a
-    repo-root-relative POSIX path.
+    """Convert an absolute build-time source path to a repo-relative POSIX one.
 
     Stripping REPO_ROOT is deterministic and location-independent: CMake
     compiles with absolute source paths rooted at the tree the script itself
@@ -125,7 +126,7 @@ COND_COUNT_RE = re.compile(r"\|\s+Number of Conditions:\s+(\d+)")
 PCT_RE = re.compile(r"\|\s+MC/DC Coverage for Decision:\s+([0-9.]+)%")
 
 
-def parse_mcdc_txt(path: Path):
+def parse_mcdc_txt(path: Path) -> Iterator[tuple[str, int, int, str, float]]:
     """Yield (rel_path, line, cond_count, source_excerpt, pct_float).
 
     Only emits one record per decision. The source excerpt is taken from
@@ -344,8 +345,11 @@ ENUM_OR_SET_RE = re.compile(
 
 
 def _function_body_lines(rel_path: str, target_line: int) -> list[str]:  # noqa: PLR0911  # multiple early returns for distinct error/sentinel paths
-    """Return source lines from the start of the enclosing function up
-    to (but not including) `target_line`. Empty list if not found.
+    """Source lines from the enclosing function's start up to ``target_line``.
+
+    Excludes the target line itself, since the caller is looking for what
+    guards the decision, not the decision. Returns an empty list when no
+    enclosing function can be identified.
     """
     abs_path = REPO_ROOT / rel_path
     if not abs_path.exists():
@@ -387,10 +391,11 @@ PRIV_NULL_OR_RE = re.compile(
 
 
 def _enclosing_static_priv_name(rel_path: str, target_line: int) -> str | None:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
-    """Return the function name iff the enclosing function is declared
-    `static` and named with the project's TU-private convention
-    (`priv_*` or `internal_*`), OR is inside a C++ anonymous namespace
-    (`namespace { ... }`) which is the C++-equivalent TU-local scope.
+    """Name of the enclosing function iff it is TU-local, else None.
+
+    TU-local means declared ``static`` and named by the project's private
+    convention (``priv_*`` or ``internal_*``), or inside a C++ anonymous
+    namespace, which is the C++ equivalent scope.
 
     These helpers are called only from inside the TU; their NULL
     guards are defensive contract-checks duplicating the public-API
@@ -452,8 +457,10 @@ def _enclosing_static_priv_name(rel_path: str, target_line: int) -> str | None: 
 
 
 def _line_annotation(rel_path: str, line: int) -> str | None:
-    """Return rationale string if the source line (or the line directly
-    preceding it) carries an `mcdc-deactivated: <text>` annotation.
+    """Rationale from an ``mcdc-deactivated:`` annotation, or None.
+
+    Accepts the annotation on the decision's own line or the one directly
+    above it, so it can be written wherever it reads best.
 
     Two recognized syntaxes (case-insensitive):
       * `... // mcdc-deactivated: <rationale>` on the decision line.
@@ -483,8 +490,16 @@ def _line_annotation(rel_path: str, line: int) -> str | None:
 
 
 def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[bool, str]:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, splitting hurts readability
-    """Return (deactivated?, rationale) for a single decision at
-    (rel_path, line) with source text `excerpt`.
+    """Classify one decision as deactivated code, with the rationale why.
+
+    Deliberately conservative: it reports deactivated only on positive
+    evidence (an explicit annotation, or a guard in a TU-local function that
+    an upstream check already enforces). An undecidable decision stays
+    classified as reachable, so the gap count errs toward overstating the
+    work rather than quietly excusing it -- which is the only safe direction
+    under DO-178C 6.4.4.3.
+
+    Returns ``(deactivated, rationale)``.
     """
     # Pattern 0: explicit per-line opt-in annotation.
     annot = _line_annotation(rel_path, line)
@@ -589,8 +604,7 @@ def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[boo
 #                        src/<group>/<module>.c     -> <module>
 # ---------------------------------------------------------------------------
 def decision_snippet(excerpt: str, max_chars: int = 40) -> str:
-    """Build a stable text-derived anchor fragment from a decision's
-    source line.
+    """Build a stable text-derived anchor fragment for a decision.
 
     Citation policy forbids `file:line` references because line numbers
     drift on every reformat. Instead we hash the decision into a short,
@@ -622,6 +636,11 @@ def decision_snippet(excerpt: str, max_chars: int = 40) -> str:
 
 
 def module_of(rel_path: str) -> str:
+    """Module name for a source path: the basename with its extension dropped.
+
+    Groups a header and its implementation under one module, which is what
+    makes the per-module gap counts add up the way a reader expects.
+    """
     name = Path(rel_path).name
     if name.endswith(".c"):
         name = name[:-2]
@@ -638,6 +657,18 @@ def module_of(rel_path: str) -> str:
 
 
 def main() -> int:
+    """Rebuild the MC/DC gap tables from the live coverage report.
+
+    Refuses to run when build/mcdc-report/mcdc.txt is absent rather than
+    emitting empty tables: a zero-gap report generated from no data would
+    read exactly like full MC/DC coverage.
+
+    Reads the LIVE report every time and never merges with the existing CSV,
+    so a decision that has since been covered disappears from the tables
+    instead of lingering as a stale row.
+
+    Returns 1 when the report is missing, 0 after a successful regeneration.
+    """
     if not MCDC_TXT.exists():
         print(
             f"error: {MCDC_TXT} not found. Run `make mcdc` first to generate"
