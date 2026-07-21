@@ -1,29 +1,37 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-#
-# stage_slot_image.py -- wrap a raw application binary into a dfu_bootloader
-# slot image: the body at the slot base, plus the 32-byte image header in the
-# slot's LAST page (slot_base + 0x6FFE0). Emits an Intel HEX you can flash with
-# J-Link (loadfile) to stage a slot WITHOUT a USB host, e.g. to bench-validate
-# the bootloader's copy-to-run path. The real operator path is dfu-util: the
-# bootloader itself writes the header on DFU commit, so for that path you only
-# need the body binary, not the header.
-#
-# Copy-to-run: the bootloader copies the slot body to the fixed SRAM run base
-# (RUN_BASE) and launches it there, so the SAME image boots from either slot --
-# stage the identical app.bin to slot a OR slot b.
-#
-# The header layout and CRC must match libs/ra8_dfu (header-last):
-#   magic(u32=0x52413844) seq(u32) img_len(u32, mult of 32)
-#   img_crc32(u32 = CRC32 over [slot_base, slot_base+img_len)) entry(u32=RUN_BASE)
-#   reserved(12 bytes, 0). CRC32 is the standard reflected zlib polynomial.
-#
-# Usage:
-#   stage_slot_image.py --payload app.bin --slot a [--seq 1] --out slotA.hex
-#
-# The application MUST be linked at the SRAM run base (ORIGIN = RUN_BASE), NOT at
-# a slot base; see this app's README "One image, either slot (copy-to-run)".
+"""Wrap a raw application binary into a dfu_bootloader slot image.
+
+Produces the body at the slot base plus the 32-byte image header in the slot's
+LAST page (slot_base + 0x6FFE0), emitted as an Intel HEX that J-Link `loadfile`
+can flash. That stages a slot WITHOUT a USB host -- the bench path for
+validating the bootloader's copy-to-run behaviour.
+
+This is NOT the operator path. Operators use dfu-util, and the bootloader
+writes the header itself on DFU commit, so that path needs only the body
+binary and never this tool.
+
+Copy-to-run is why one image works in either slot: the bootloader copies the
+slot body to the fixed SRAM run base (RUN_BASE) and launches it there, so the
+IDENTICAL app.bin can be staged to slot a or slot b. The consequence is a hard
+requirement on the input -- the application MUST be linked at the SRAM run base
+(ORIGIN = RUN_BASE), NOT at a slot base. An image linked at a slot base stages
+and flashes cleanly and then faults on launch. See this app's README, "One
+image, either slot (copy-to-run)".
+
+The header layout and CRC must stay in lock-step with libs/ra8_dfu
+(header-last)::
+
+    magic(u32 = 0x52413844) seq(u32) img_len(u32, multiple of 32)
+    img_crc32(u32, CRC32 over [slot_base, slot_base + img_len))
+    entry(u32 = RUN_BASE) reserved(12 bytes, zero)
+
+CRC32 is the standard reflected zlib polynomial.
+
+Usage:
+    stage_slot_image.py --payload app.bin --slot a [--seq 1] --out slotA.hex
+"""
 
 import argparse
 import struct
@@ -56,6 +64,21 @@ def ihex_records(data: bytes, base: int) -> list:
 
 
 def main() -> int:
+    """Build the slot image from the command line and write the Intel HEX.
+
+    Pads the payload to a PAGE multiple, computes the CRC over the padded body,
+    and places the header in the slot's last page. Body and header land at
+    absolute addresses derived from `--slot`, so the output HEX is
+    slot-specific even though the payload is not.
+
+    `--seq` selects which slot the bootloader prefers at boot: the higher
+    sequence number wins. Staging an image with a sequence at or below the other
+    slot's produces a valid image the bootloader will simply not choose --
+    which looks exactly like a flash that did not take.
+
+    Returns:
+        0 on success, non-zero on a usage or validation failure.
+    """
     ap = argparse.ArgumentParser(description="Stage a dfu_bootloader slot image.")
     ap.add_argument(
         "--payload", required=True, help="raw app binary, linked at the SRAM run base 0x22020000"
