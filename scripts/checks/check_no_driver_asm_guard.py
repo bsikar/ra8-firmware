@@ -127,6 +127,16 @@ def check_file(path: Path) -> list[str]:
 
 
 def main() -> int:
+    """Fail any HAL driver that guards bare CPU asm on RA8_SIMULATOR_MODE.
+
+    A missing driver directory exits 1 rather than 0. That is deliberate: this
+    gate has a single hardcoded scan root, so the directory vanishing means
+    the tree moved under it, and the one thing it must not do is report a
+    clean sweep of somewhere that does not exist.
+
+    Returns 0 when every driver routes its CPU primitives through
+    ra8_hw_intrinsics.h, 1 on a violation or a missing driver directory.
+    """
     if not DRIVER_DIR.is_dir():
         print(f"check_no_driver_asm_guard.py: driver dir not found: {DRIVER_DIR}")
         return 1

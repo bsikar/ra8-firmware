@@ -107,6 +107,18 @@ def run(targets: list[Path], strict: bool) -> int:
 
 
 def main() -> int:
+    """Report Doxygen blocks that describe something other than what they precede.
+
+    ``--check`` is what makes this a gate: without it findings are printed and
+    the process still exits 0, which is the advisory mode used while a module
+    is being cleaned up. CI must pass ``--check`` or the step cannot fail.
+
+    With no positional paths the scan covers every first-party root, so the
+    argument list narrows the sweep and never widens it.
+
+    Returns 0 when clean, when running advisory-only, or after a passing
+    ``--selftest``; 1 on a finding under ``--check`` or a failing selftest.
+    """
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--check", action="store_true", help="CI gate: exit 1 on any finding")
     ap.add_argument("--selftest", action="store_true", help="run the synthetic fixtures")

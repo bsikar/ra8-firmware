@@ -76,6 +76,21 @@ def _parse_kv(conf: pathlib.Path) -> dict[str, str]:
 
 
 def main() -> int:
+    """Fail any hw_validated HIL app whose hil.conf does not assert a real outcome.
+
+    The rule being enforced is that ``HIL_MODE=alive`` proves only that the
+    board did not hang -- it cannot distinguish a working app from one that
+    booted and did nothing. It is therefore allowed under hw_validated/ only
+    when ``HIL_FAULT_EXPECTED=1``, i.e. when not faulting IS the assertion.
+    Any other app claiming validation must scrape a banner or probe a symbol,
+    or move to hw_pending/.
+
+    A missing HIL_MODE is treated as a violation rather than a default, since
+    a silently defaulted mode is how an unasserted app would slip in.
+
+    Returns 1 with one remediation-bearing message per offending hil.conf, 0
+    when every conf under hw_validated/hil/ declares an asserting mode.
+    """
     repo_root = pathlib.Path(__file__).resolve().parents[2]
     violations: list[str] = []
 
