@@ -89,7 +89,13 @@ sim_dir="$ROOT/tools/board_sim"
 report="$ROOT/build/board_sim_matrix.txt"
 mkdir -p "$ROOT/build"
 
-build_timeout="${BUILD_TIMEOUT:-240}"
+# The per-app build backstop. Like the run backstop below this is a HANG guard,
+# not a bound: it must never be the thing that decides an app's verdict. 240s
+# was tight enough to be exactly that -- eight heavy USB / ThreadX / TLS apps
+# flipped to BUILD_FAIL on CI purely because neighbouring emulators had gotten
+# slower. The build now runs in its own phase (see the two-phase note), so this
+# only has to cover a genuinely stuck compile.
+build_timeout="${BUILD_TIMEOUT:-900}"
 # The outer run backstop. Deliberately generous: with the CPU-time guard off
 # (see the DETERMINISM note) the chunk budget always terminates the run, so this
 # exists only to catch a pathological hang. Sizing it tight would put a
@@ -128,6 +134,12 @@ jobs="${MATRIX_JOBS:-$(detect_jobs)}"
 # corrupt a row mid-line (the row is printed without a trailing newline until
 # its verdict is known); stdout stays the clean, parseable table + summary.
 log() { printf 'board_sim matrix: %s\n' "$*" >&2; }
+
+# Which apps need a board_sim device (a card) attached. Shared with sil_all.sh
+# so the knowledge has one home -- see the header of that file for why booting a
+# card-dependent app without a card is worse than skipping it.
+# shellcheck source=scripts/sim/sim_fixtures.sh
+. "$ROOT/scripts/sim/sim_fixtures.sh"
 
 # The board_sim exit codes this classifier keys on, named so the tests below
 # read as intent rather than digits. The full space is in sim_run.h: 0 clean,
@@ -193,12 +205,29 @@ app_src_dir() { # name -> source dir on stdout (empty if not found)
     -not -path '*/build-sim/*' 2>/dev/null | head -1
 }
 
-# True if the app links a SEPARATE Non-Secure executable (a `--ns` recipe). Such
-# two-image TrustZone apps cannot boot through this single-image path. The
-# in-tree signal is a dedicated NS-image linker script (`ns_image.ld`); a bare
-# `ns_main.c` does NOT count (some apps, e.g. cpu1_pingpong_ipc, compile it into
-# the single secure image and embed cpu1, so they run fine here).
-is_two_image_ns() { # src-dir -> 0 (true) if it needs --ns
+# Two-image TrustZone apps link a SEPARATE Non-Secure executable beside the
+# secure one and boot with `--ns <ns-elf>`. They used to be reported SPECIAL
+# here -- excluded from the coverage number as "cannot run through this
+# single-image path" -- and that stopped being true: board_sim gained the
+# two-image path (NS-elf load across the BLXNS / VTOR_NS seam), sil_all.sh has
+# been driving it through the same `<app>_ns.elf` convention for a while, and
+# tz_nsc_cgc_usb passes in the SIL suite on every run.
+#
+# So the exclusion was a stale label on three runnable apps, quietly held out
+# of the metric that exists to say whether every example runs. They are run.
+# The empty result means "no NS image was built", which is a real finding
+# rather than a category, so it is reported instead of silently skipped.
+ns_elf_args() { # secure-elf -> "--ns <ns-elf>" on stdout (empty when single-image)
+  local ns="${1%.elf}_ns.elf"
+  if [ -f "$ns" ]; then
+    printf -- '--ns %s' "$ns"
+  fi
+}
+
+# True if the app's source declares a dedicated NS image (an `ns_image.ld`). A
+# bare `ns_main.c` does NOT count: some apps (e.g. cpu1_pingpong_ipc) compile it
+# into the single secure image and embed cpu1, so they are ordinary here.
+is_two_image_ns() { # src-dir -> 0 (true) if it links a separate NS image
   local dir="$1"
   [ -n "$dir" ] || return 1
   [ -f "$dir/ns_image.ld" ]
@@ -221,51 +250,101 @@ is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
   return 1
 }
 
-# -- --run-one <app>: the parallel worker. ------------------------------------
-# Build one app into its own per-app build dir, boot it, classify it, and write
-# `<verdict><TAB><display text>` to $run_dir/<app>.result. It ALWAYS exits 0 --
-# the verdict lives in the file, never in the exit status -- so one broken app
-# cannot abort the pool and silently truncate the sweep.
+# -- The two-phase worker pool. -----------------------------------------------
+# The sweep runs as TWO pools -- every app is built, and only then is any app
+# booted -- rather than one pool where each worker builds-then-boots.
 #
-# Running the sweep in parallel is only sound BECAUSE of the determinism fix
-# above, and the dependency runs the other way too: board_sim's CPU-time guard
+# That separation is not tidiness, it is the same determinism rule applied to
+# the build. In the interleaved form the compilers competed with the emulators
+# for the box, so `make`'s wall-clock BUILD_TIMEOUT became load-sensitive: on
+# CI, widening the run backstop let the slow apps run longer, and eight heavy
+# USB / ThreadX / TLS apps that had built fine minutes earlier were reported
+# BUILD_FAIL at the same commit. A verdict that changes because a NEIGHBOURING
+# app got slower is precisely the defect this gate was written to remove, just
+# relocated from the run bound to the build bound.
+#
+# Split, each phase contends only with itself: compiles run flat out with no
+# emulator stealing the CPU, and the boots run with no compiler doing the same.
+#
+# Running the boots in parallel at all is sound only BECAUSE of the determinism
+# fix, and the dependency runs the other way too: board_sim's CPU-time guard
 # inflates under N-way parallelism (N Unicorn JITs contend for cache and
 # memory, so a fixed instruction count burns more CPU-seconds), so with the
 # guard armed an app's verdict would change with -j. Bounding purely by the
 # instruction-counted chunk budget makes every verdict a function of the
 # instruction stream alone -- identical serially and at any -j. sil_all.sh
 # reached the same conclusion for the same reason.
-run_one() {
-  local app="$1"
-  local rf="$run_dir/$app.result"
-  local src_dir elf note=""
-  src_dir="$(app_src_dir "$app")"
-
-  # Two-image TrustZone (--ns) apps need their dedicated recipe -> SPECIAL.
-  if is_two_image_ns "$src_dir"; then
-    printf 'SPECIAL\tSPECIAL (two-image TrustZone -- needs --ns; detected ns_image.ld)\n' >"$rf"
-    return 0
-  fi
+# Build one app and resolve what board_sim needs to boot it. Writes the failing
+# result itself and returns non-zero when there is nothing to run; on success
+# echoes `<elf>\t<note>\t<ns-args...>` for run_one to consume.
+build_and_resolve() { # app src-dir result-file -> "elf<TAB>note<TAB>ns args"
+  local app="$1" src_dir="$2" rf="$3"
+  local elf note="" ns=""
   if [ -z "$src_dir" ] || ! timeout "$build_timeout" make -C "$src_dir" build \
     >"$run_dir/$app.build.log" 2>&1; then
     printf 'BUILD_FAIL\tBUILD FAIL (see %s)\n' "$run_dir/$app.build.log" >"$rf"
-    return 0
+    return 1
   fi
   elf="$src_dir/build/$app.elf"
   if [ ! -f "$elf" ]; then
     printf 'NO_ELF\tNO ELF\n' >"$rf"
-    return 0
+    return 1
+  fi
+  # Two-image TrustZone apps boot the Non-Secure image alongside the secure one.
+  # A declared NS image whose ELF is absent after a successful build is NOT a
+  # category to skip -- it means the NS half did not get built, so say so.
+  if is_two_image_ns "$src_dir"; then
+    ns="$(ns_elf_args "$elf")"
+    if [ -z "$ns" ]; then
+      printf 'NO_ELF\tNO NS ELF (ns_image.ld declares a Non-Secure image; %s_ns.elf was not built)\n' \
+        "$app" >"$rf"
+      return 1
+    fi
+    note=" [two-image TrustZone -- booted with --ns]"
   fi
   if is_dualcore_embedded "$elf" "$src_dir"; then
     note=" [dual-core embedded cpu1 image]"
   fi
+  printf '%s\t%s\t%s\n' "$elf" "$note" "$ns"
+}
+
+# Phase 1 worker: build one app and record what phase 2 needs to boot it.
+build_one() {
+  local app="$1"
+  local rf="$run_dir/$app.result"
+  local src_dir resolved
+  src_dir="$(app_src_dir "$app")"
+  # build_and_resolve writes the BUILD_FAIL / NO_ELF result itself; a failed
+  # app simply has no .built file, so phase 2 never boots it.
+  resolved="$(build_and_resolve "$app" "$src_dir" "$rf")" || return 0
+  printf '%s\n' "$resolved" >"$run_dir/$app.built"
+  log "$(printf '%-30s built' "$app")"
+}
+
+# Phase 2 worker: boot the already-built app and classify it.
+run_one() {
+  local app="$1"
+  local rf="$run_dir/$app.result"
+  local elf note ns
+  # No .built file means phase 1 already recorded a failing result for this
+  # app. Do not re-judge it, and never fall through to a boot with no ELF.
+  [ -f "$run_dir/$app.built" ] || return 0
+  IFS=$'\t' read -r elf note ns <"$run_dir/$app.built"
+  local -a ns_args=()
+  [ -n "$ns" ] && read -r -a ns_args <<<"$ns"
+  # Devices this app needs attached (a blank card, usually). Withholding one
+  # does not make the app fail honestly -- it makes it assert on a failed init,
+  # which the matrix would then record as the APP's fault.
+  local -a dev_args=()
+  read -r -a dev_args <<<"$(sim_extra_args "$app")"
   local out rc verdict
   # BOARD_SIM_WALL_S=0 DISABLES board_sim's CPU-time guard, leaving the run
   # bounded only by the instruction-counted chunk budget -- the deterministic
   # bound. See the DETERMINISM note in the header. The outer `timeout` is a hang
   # backstop only; if it ever fires the run is reported TRUNCATED, not judged.
   out="$(BOARD_SIM_MAX_CHUNKS="$max_chunks" BOARD_SIM_WALL_S=0 \
-    timeout "$run_timeout" "$sim" "$elf" 2>&1)"
+    timeout "$run_timeout" "$sim" "$elf" ${ns_args[@]+"${ns_args[@]}"} \
+    ${dev_args[@]+"${dev_args[@]}"} 2>&1)"
   rc=$?
   verdict="$(classify_run "$out" "$rc")"
   # Keep the emulator output for anything that did not come out clean. The
@@ -292,12 +371,16 @@ run_one() {
   return 0
 }
 
-# Re-exec entry point for the xargs pool below (a fully isolated process per
-# app, so nothing is shared and the verdict cannot depend on the pool).
-if [ "${1:-}" = "--run-one" ]; then
-  run_dir="${MATRIX_RUN_DIR:?--run-one needs MATRIX_RUN_DIR}"
-  sim="${MATRIX_SIM:?--run-one needs MATRIX_SIM}"
-  run_one "$2"
+# Re-exec entry points for the two xargs pools below (a fully isolated process
+# per app, so nothing is shared and the verdict cannot depend on the pool).
+if [ "${1:-}" = "--build-one" ] || [ "${1:-}" = "--run-one" ]; then
+  run_dir="${MATRIX_RUN_DIR:?worker needs MATRIX_RUN_DIR}"
+  sim="${MATRIX_SIM:?worker needs MATRIX_SIM}"
+  if [ "$1" = "--build-one" ]; then
+    build_one "$2"
+  else
+    run_one "$2"
+  fi
   exit 0
 fi
 
@@ -433,7 +516,13 @@ rm -rf "$run_dir"
 mkdir -p "$run_dir"
 export MATRIX_RUN_DIR="$run_dir" MATRIX_SIM="$sim"
 export BUILD_TIMEOUT RUN_TIMEOUT MAX_CHUNKS
-log "booting ${#apps[@]} example(s), -j $jobs ..."
+# Phase 1: build everything, with nothing else running. Phase 2: boot
+# everything, with no compiler running. See the two-phase note above -- the
+# split is what keeps the build's wall-clock timeout from becoming a verdict.
+log "building ${#apps[@]} example(s), -j $jobs ..."
+printf '%s\n' "${apps[@]}" | grep -v '^$' |
+  xargs -P "$jobs" -I{} bash "$ROOT/scripts/sim/matrix.sh" --build-one {} || true
+log "booting $(find "$run_dir" -name '*.built' | wc -l | tr -d ' ') built example(s), -j $jobs ..."
 printf '%s\n' "${apps[@]}" | grep -v '^$' |
   xargs -P "$jobs" -I{} bash "$ROOT/scripts/sim/matrix.sh" --run-one {} || true
 
@@ -475,27 +564,38 @@ for app in "${skipped_apps[@]}"; do
 done
 
 # -- Honest summary. ----------------------------------------------------------
-# runnable = apps we actually attempt to boot (total minus the SPECIAL two-image
-# apps). SKIPPED (_unsupported) are not part of n_total. The headline coverage
-# counts ONLY genuinely-verified OK runs (a clean run-to-budget); HALT, UNKNOWN,
-# FAULT and BUILD failures are all reported explicitly so the number is honest.
+# The arithmetic is printed so it RECONCILES on its face. A reader previously
+# had to work out why the report holds 214 rows while the total says 204 (the
+# ek_ra8d2 tier is 204; the 10 _unsupported rows are additional), and an
+# unexplained gap between two counts is exactly where an unnoticed exclusion
+# lives -- clang_tidy.sh matched 14 of 218 apps and reported clean for months
+# on that principle. Every discovered example is now accounted for in a line
+# that adds up, and the buckets that are NOT boot-verified are named.
 runnable=$((n_total - n_special))
+accounted=$((n_ok + n_fault + n_trunc + n_halt + n_unknown + n_build + n_special))
 echo ""
 echo "board_sim matrix coverage:"
-echo "  total examples : $n_total"
-echo "  special (--ns) : $n_special  (two-image TrustZone -- dedicated recipe)"
-echo "  skipped (unsup): $n_skipped  (_unsupported tier -- external hardware)"
-echo "  build failed   : $n_build"
-echo "  faulted        : $n_fault"
-echo "  truncated      : $n_trunc  (wall-clock bound hit -- NO verdict, not a pass or a fail)"
-echo "  halted/parked  : $n_halt"
-echo "  unknown/review : $n_unknown"
-echo "  booted OK      : $n_ok"
+echo "  ek_ra8d2 examples : $n_total   (the tier this gate measures)"
+echo "  + _unsupported    : $n_skipped   (separate tier, needs external hardware -- never booted)"
+echo "  = report rows     : $((n_total + n_skipped))"
+echo ""
+echo "  build failed      : $n_build"
+echo "  faulted           : $n_fault"
+echo "  truncated         : $n_trunc   (wall-clock bound hit -- NO verdict, not a pass or a fail)"
+echo "  halted/parked     : $n_halt"
+echo "  unknown/review    : $n_unknown"
+echo "  special (not run) : $n_special   (declared a Non-Secure image that was not built)"
+echo "  booted OK         : $n_ok"
+if [ "$accounted" -ne "$n_total" ]; then
+  # Every example must land in exactly one bucket. If this ever fires, an app
+  # was discovered and then counted nowhere -- the silent-gap failure mode.
+  echo "  !! ACCOUNTING BUG : $accounted bucketed vs $n_total discovered -- an example is uncounted"
+fi
 if [ "$runnable" -gt 0 ]; then
   pct=$((n_ok * 100 / runnable))
-  echo "  boot coverage  : ${pct}% verified-OK of runnable (${n_ok}/${runnable})"
+  echo "  boot coverage     : ${pct}% verified-OK of runnable (${n_ok}/${runnable})"
 fi
-echo "  report written : $report"
+echo "  report written    : $report"
 
 # Exit status. This script REPORTS; the enforcing gate is the ratchet that
 # consumes $report (scripts/checks/matrix_ratchet.py, wired as the
