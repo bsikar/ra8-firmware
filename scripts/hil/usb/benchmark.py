@@ -193,7 +193,8 @@ def test_throughput_chunked(fd, flags, total_bytes, chunk_bytes, label):
     verify integrity, repeat. Measures sustainable end-to-end echo rate.
     Single-buffered chunk-by-chunk avoids the device-side IN FIFO overflow
     that a free-running "write all, then read all" would cause for any
-    payload larger than the bulk-IN max-packet size."""
+    payload larger than the bulk-IN max-packet size.
+    """
     print(f"=== Test: chunked throughput {label} ({total_bytes}B in {chunk_bytes}B chunks) ===")
     drain(fd, flags)
     rng = random.Random(RANDOM_SEED_CHUNKED)  # noqa: S311  # non-crypto test data

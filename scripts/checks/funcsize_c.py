@@ -48,7 +48,7 @@ _CONTROL_PREFIXES = (
 
 
 def _brace_delta(line: str, in_block_comment: bool) -> tuple[int, int, bool]:
-    """Count net ``{`` / ``}`` on `line`, skipping braces that sit inside
+    r"""Count net ``{`` / ``}`` on `line`, skipping braces that sit inside
     string literals, character literals, or comments.
 
     A naive ``line.count("{")`` miscounts every brace that appears in a
@@ -198,7 +198,8 @@ def _measure_body(lines: list[str], brace_idx: int, n: int) -> int:
 
 def scan(path: Path, threshold: int) -> list[tuple[int, int, str]]:
     """Return a list of (function_start_line, length, signature) tuples
-    for every function in `path` whose body exceeds `threshold`."""
+    for every function in `path` whose body exceeds `threshold`.
+    """
     try:
         text = path.read_text()
     except (OSError, UnicodeDecodeError):

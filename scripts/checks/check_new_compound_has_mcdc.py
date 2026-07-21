@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_new_compound_has_mcdc.py -- Reject staged commits that introduce a new
+"""check_new_compound_has_mcdc.py -- Reject staged commits that introduce a new
 compound boolean decision (`&&` / `||`) without an accompanying MC/DC test.
 
 Per CLAUDE.md "IEC 61508 SIL 3 / DO-178C Level B Qualification" and
@@ -126,7 +125,8 @@ def staged_files(
     *, suffix: str | None = None, prefixes: tuple[str, ...] | None = None
 ) -> list[str]:
     """Return staged file paths (added/copied/modified/renamed) optionally
-    filtered by suffix and/or path prefix."""
+    filtered by suffix and/or path prefix.
+    """
     out = _git("diff", "--cached", "--name-only", "--diff-filter=ACMR")
     paths: list[str] = []
     for p in out.splitlines():
@@ -142,7 +142,8 @@ def staged_files(
 
 def staged_blob(path: str) -> str:
     """Return the staged (index) version of `path`, or empty string if
-    the file is not in the index."""
+    the file is not in the index.
+    """
     try:
         return _git("show", f":0:{path}")
     except subprocess.CalledProcessError:
@@ -151,7 +152,8 @@ def staged_blob(path: str) -> str:
 
 def head_blob(path: str) -> str:
     """Return the HEAD version of `path`, or empty string if the file
-    does not exist in HEAD (newly added)."""
+    does not exist in HEAD (newly added).
+    """
     try:
         return _git("show", f"HEAD:{path}")
     except subprocess.CalledProcessError:
@@ -167,7 +169,8 @@ def rename_map() -> dict[str, str]:
     unchanged and are already covered by MC/DC vectors. Diffing the staged
     file against its pre-rename HEAD content restores correct "new vs
     existing" detection -- genuinely new decisions in a renamed file are
-    still caught."""
+    still caught.
+    """
     # 40% similarity: a rename that also renames many interior symbols
     # (e.g. ra8_iic_b_* -> internal_i3c_i2c_*) scores well below git's
     # default 50% threshold, so use a lower bar to still pair it with its
@@ -190,7 +193,8 @@ def rename_map() -> dict[str, str]:
 
 def _scrub(line: str) -> str:
     """Strip comment / string / char-literal contents from a single line
-    so that downstream regex matches do not fire on tokens inside them."""
+    so that downstream regex matches do not fire on tokens inside them.
+    """
     line = STRING_LITERAL_RE.sub('""', line)
     line = CHAR_LITERAL_RE.sub("''", line)
     line = BLOCK_COMMENT_RE.sub("", line)
@@ -200,7 +204,8 @@ def _scrub(line: str) -> str:
 def compound_decision_lines(text: str) -> set[tuple[int, str]]:
     """Return the set of (line_no, scrubbed_line) tuples in `text` that
     contain at least one compound boolean operator outside of
-    comments/strings. Line numbers are 1-based."""
+    comments/strings. Line numbers are 1-based.
+    """
     found: set[tuple[int, str]] = set()
     for idx, raw in enumerate(text.splitlines(), start=1):
         # Preprocessor directives (`#if` / `#elif` / `#define` ...) are
@@ -250,7 +255,8 @@ def collect_test_citations() -> list[tuple[str, str]]:
     """Walk every `tests/test_*.c` file in the working tree (which
     includes both staged additions and already-committed tests) and
     return the ``(source_path, function_name)`` `path@function` citations
-    found inside `@par MC/DC:` Doxygen blocks."""
+    found inside `@par MC/DC:` Doxygen blocks.
+    """
     symbol_cites: list[tuple[str, str]] = []
     tests_dir = Path("tests")
     if not tests_dir.is_dir():
@@ -276,7 +282,8 @@ def enclosing_function(src_text: str, decision_line: int) -> str | None:
     blocks keep their brace at end-of-line (``if (...) {``) and nested
     scopes are indented. So the nearest preceding line that is exactly
     ``{`` is the enclosing function's opening brace; the function name is
-    the last identifier before the ``(`` in the signature above it."""
+    the last identifier before the ``(`` in the signature above it.
+    """
     lines = src_text.splitlines()
     idx = decision_line - 1
     if idx < 0 or idx >= len(lines):
@@ -309,7 +316,8 @@ def has_matching_citation(
     symbol_cites: list[tuple[str, str]],
 ) -> bool:
     """Return True if the decision at ``src_path:src_line`` is cited by a
-    ``path@function`` citation naming its enclosing function."""
+    ``path@function`` citation naming its enclosing function.
+    """
     fn = enclosing_function(src_text, src_line)
     if fn is None:
         return False

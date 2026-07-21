@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-fix-encoding.py -- normalise source files to pure 7-bit ASCII.
+"""fix-encoding.py -- normalise source files to pure 7-bit ASCII.
 
 Walks a file or directory, replacing common non-ASCII Unicode
 characters with their ASCII equivalents (em-dash -> --, smart

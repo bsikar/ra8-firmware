@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-fix_inclusive_terminology.py -- conservative auto-fix for legacy spellings.
+"""fix_inclusive_terminology.py -- conservative auto-fix for legacy spellings.
 
 Companion to check_inclusive_terminology.py. Walks tracked source/docs and
 rewrites the most common comment/identifier patterns to their inclusive

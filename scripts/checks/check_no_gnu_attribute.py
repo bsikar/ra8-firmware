@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_no_gnu_attribute.py -- enforce the C23 [[...]] attribute syntax.
+"""check_no_gnu_attribute.py -- enforce the C23 [[...]] attribute syntax.
 
 Per CLAUDE.md, first-party code uses the standard C23 attribute-specifier
 form [[...]] (e.g. [[gnu::weak]], [[noreturn]], [[maybe_unused]],

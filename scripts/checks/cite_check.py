@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-cite_check.py -- validate Hardware User's Manual citations in source.
+"""cite_check.py -- validate Hardware User's Manual citations in source.
 
 This script scans C / header files for in-line annotations of the form
 

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_annotations.py -- libclang-based annotation enforcement.
+"""check_annotations.py -- libclang-based annotation enforcement.
 
 This script walks the AST of every C / C++ translation unit under
 ``libs/``, ``src/``, ``examples/``, ``tests/``, ``port/`` and

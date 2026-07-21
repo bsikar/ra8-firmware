@@ -134,7 +134,8 @@ _NOLINT_INLINE_RE = re.compile(r"NOLINT(?!BEGIN|END|NEXTLINE)(?:\(([^)]*)\))?")
 def _nolint_applies(arg: str | None) -> bool:
     """Return True if a NOLINT marker with arg list `arg` suppresses the
     magic-number check.  A bare ``NOLINT`` (arg is None/empty) suppresses
-    every check, so it applies too."""
+    every check, so it applies too.
+    """
     if arg is None or arg.strip() == "":
         return True
     return any(name in arg for name in MAGIC_CHECK_NAMES)
@@ -191,7 +192,8 @@ _FLOAT_TYPE = re.compile(r"\b(float|double)\b")
 
 def _strip_comments_and_strings(text: str) -> str:
     """Replace comment and string/char-literal bytes with spaces while
-    preserving newlines (and therefore line and column positions)."""
+    preserving newlines (and therefore line and column positions).
+    """
     out: list[str] = []
     i = 0
     n = len(text)
@@ -234,7 +236,8 @@ def _strip_comments_and_strings(text: str) -> str:
 
 def _literal_value(match: re.Match) -> tuple[bool, float]:
     """Return (is_float, value) for a numeric-literal match, or
-    (False, NaN) if it should be ignored as un-parseable."""
+    (False, NaN) if it should be ignored as un-parseable.
+    """
     raw = match.group(0)
     group = match.lastgroup
     # Strip only true literal suffixes -- and never strip `f` from a hex
@@ -265,7 +268,8 @@ def _literal_value(match: re.Match) -> tuple[bool, float]:
 def _is_array_dimension(code_line: str, start: int, end: int) -> bool:
     """Return True if the literal at [start, end) is the sole content of a
     ``[ ... ]`` on a declaration line -- an array dimension, which
-    clang-tidy does not treat as a magic number."""
+    clang-tidy does not treat as a magic number.
+    """
     i = start - 1
     while i >= 0 and code_line[i].isspace():
         i -= 1

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-roadmap_stats.py -- rewrite the Summary block in docs/ROADMAP.md.
+"""roadmap_stats.py -- rewrite the Summary block in docs/ROADMAP.md.
 
 The Summary block sits between two HTML-comment markers that this
 script owns:

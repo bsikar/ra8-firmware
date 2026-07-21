@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-check_coverage.py -- gate plain statement+branch coverage against a baseline.
+"""check_coverage.py -- gate plain statement+branch coverage against a baseline.
 
 Per CLAUDE.md "IEC 61508 SIL 3 / DO-178C Level B Qualification":
 
@@ -52,7 +51,8 @@ BASELINE_FILE = REPO_ROOT / ".github" / "coverage-baseline.txt"
 
 def parse_baseline(path: Path) -> tuple[float, float]:
     """Read two numbers (statement %, branch %) from baseline file,
-    skipping comment lines that start with `#`."""
+    skipping comment lines that start with `#`.
+    """
     for line in path.read_text(encoding="utf-8").splitlines():
         s = line.strip()
         if not s or s.startswith("#"):
@@ -66,7 +66,8 @@ def parse_baseline(path: Path) -> tuple[float, float]:
 
 def parse_cobertura(path: Path) -> tuple[float, float]:
     """Read line-rate and branch-rate from Cobertura XML root element.
-    Both attributes are 0..1 floats; convert to percent."""
+    Both attributes are 0..1 floats; convert to percent.
+    """
     tree = ET.parse(path)  # noqa: S314  # trusted CI-generated Cobertura XML, not user input
     root = tree.getroot()
     line_rate = float(root.attrib["line-rate"]) * 100.0
