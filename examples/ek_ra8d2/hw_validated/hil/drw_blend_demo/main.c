@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/drw_blend_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/drw_blend_demo/main.c
  * @brief DRW 2D-engine blit + per-pixel alpha-blend headless CRC demo (EK-RA8D2)
  *
  * @par Tag
