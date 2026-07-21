@@ -149,16 +149,27 @@ typedef enum : uint32_t {
   k_cpu1_probe_pre_val   = 0xAAAAAAAAUL, /**< Written before each IPC read.    */
 } cpu1_probe_val_t;
 
-[[noreturn]] static void cpu1_main(void)
+/**
+ * @brief Programme CPU1's SAU and enable it.
+ *
+ * @details CPU1's M33 has its own SAU with 8 regions (SAU_TYPE.SREGION=8).
+ *          Out of reset SAU is disabled and the IDAU default treats
+ *          bit-28-clear as Secure. This programmes explicit NS regions for
+ *          the peripheral window, the NS SRAM (which now also holds the CPU1
+ *          SRAM bank), and the CPU1 MRAM image, then enables the SAU.
+ * @pre Called from cpu1_main before any NS peripheral or IPC access.
+ * @pre The M33 is still running with its reset-default SAU (disabled).
+ * @post Regions 0-3 are programmed and SAU_CTRL.ENABLE is set.
+ * @post k_cpu1_probe_sau_addr holds k_cpu1_probe_sau_val, so a bench
+ *       post-mortem can tell this stage completed.
+ * @note Not thread-safe; single-threaded boot context by construction.
+ * @warning Overlapping SAU regions resolve to Secure, which the permanent-NS
+ *          M33 cannot reach -- which is why one region covers both the shared
+ *          markers and the CPU1 bank rather than two overlapping ones.
+ * @since 0.1.0
+ */
+static void cpu1_sau_init(void)
 {
-  *(volatile uint32_t*)k_cpu1_probe_main_addr =
-    (uint32_t)k_cpu1_probe_main_val; /* cpu1_main entry */
-
-  /* CPU1's M33 has its own SAU with 8 regions (SAU_TYPE.SREGION=8).
-   * Out of reset SAU is disabled and IDAU default treats bit-28-clear
-   * as Secure. Programme explicit NS regions for the peripheral
-   * window, the NS SRAM (which now also holds the CPU1 SRAM bank), and
-   * the CPU1 MRAM image, then enable the SAU. */
   /* Region 0: peripherals NS alias (0x50000000-0x5FFFFFE0). */
   *(volatile uint32_t*)k_cpu1_sau_rnr_addr  = 0x00000000UL;                        /* SAU_RNR  */
   *(volatile uint32_t*)k_cpu1_sau_rbar_addr = (uint32_t)k_cpu1_sau_periph_ns_base; /* SAU_RBAR */
@@ -185,6 +196,14 @@ typedef enum : uint32_t {
   __asm__ volatile("dsb 0xf" ::: "memory");
   __asm__ volatile("isb 0xf" ::: "memory");
   *(volatile uint32_t*)k_cpu1_probe_sau_addr = (uint32_t)k_cpu1_probe_sau_val; /* SAU configured */
+}
+
+[[noreturn]] static void cpu1_main(void)
+{
+  *(volatile uint32_t*)k_cpu1_probe_main_addr =
+    (uint32_t)k_cpu1_probe_main_val; /* cpu1_main entry */
+
+  cpu1_sau_init();
 
   while (1) {
     *(volatile uint32_t*)k_cpu1_probe_iter_addr += 1U; /* loop iter counter */

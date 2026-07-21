@@ -447,6 +447,104 @@ void nav_walk(const XMLElement* ordered_list, ra8_epub_book_t* book, std::uint8_
   }
 }
 
+/**
+ * @brief Copy the Dublin Core metadata block into `book`.
+ *
+ * The canonical unique id is the `<dc:identifier>` whose id matches the
+ * package's `unique-identifier` attribute, which is why `package` is needed
+ * here as well as `metadata`.
+ */
+void parse_metadata(const XMLElement* package, const XMLElement* metadata, ra8_epub_book_t* book)
+{
+  const XMLElement* title = find_child(metadata, "title");
+  if (title != nullptr) {
+    copy_bounded(book->title, k_ra8_epub_meta_len, title->GetText());
+  }
+  const XMLElement* creator = find_child(metadata, "creator");
+  if (creator != nullptr) {
+    copy_bounded(book->author, k_ra8_epub_meta_len, creator->GetText());
+  }
+  const XMLElement* language = find_child(metadata, "language");
+  if (language != nullptr) {
+    copy_bounded(book->language, k_ra8_epub_meta_len, language->GetText());
+  }
+  const char* uid = package->Attribute("unique-identifier");
+  copy_bounded(book->identifier, k_ra8_epub_meta_len, find_identifier(metadata, uid));
+}
+
+/**
+ * @brief Resolve the cover image href and record it on `book`.
+ *
+ * Prefers the EPUB 3 `properties="cover-image"` marker; falls back to the
+ * legacy `<meta name="cover" content="ID">` plus a manifest lookup.
+ */
+void parse_cover(const XMLElement* metadata, const XMLElement* manifest, ra8_epub_book_t* book)
+{
+  const char* cover_href = find_cover_by_properties(manifest);
+  if (cover_href == nullptr) {
+    cover_href = find_cover_by_meta(metadata, manifest);
+  }
+  if (cover_href != nullptr) {
+    copy_bounded(book->cover_path, k_ra8_epub_max_path_len, cover_href);
+  }
+}
+
+/**
+ * @brief Record the spine's chapter hrefs on `book`, in document order.
+ *
+ * An `<itemref>` with no `idref`, or one naming a manifest item that does not
+ * exist, is skipped rather than treated as fatal: a reader that drops one
+ * broken entry is more useful than one that refuses the whole book.
+ *
+ * @return k_ra8_ok, or k_ra8_err_no_mem when the spine exceeds
+ *         k_ra8_epub_max_chapters.
+ */
+ra8_err_t parse_spine(const XMLElement* manifest, const XMLElement* spine, ra8_epub_book_t* book)
+{
+  uint16_t count = 0U;
+  for (const XMLElement* itemref = spine->FirstChildElement("itemref"); itemref != nullptr;
+       itemref                   = itemref->NextSiblingElement("itemref")) {
+    const char* idref = itemref->Attribute("idref");
+    if (idref == nullptr) {
+      continue;
+    }
+    const char* href = manifest_href_by_id(manifest, idref);
+    if (href == nullptr) {
+      continue;
+    }
+    if (count >= k_ra8_epub_max_chapters) {
+      return k_ra8_err_no_mem;
+    }
+    copy_bounded(book->chapter_paths[count], k_ra8_epub_max_path_len, href);
+    ++count;
+  }
+  book->chapter_count = count;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Record which document carries the table of contents.
+ *
+ * Prefers the EPUB 3 nav document (manifest `properties="nav"`); falls back
+ * to the EPUB 2 NCX referenced by the spine's `toc` attribute. The TOC
+ * document itself is extracted and parsed by the caller (open path).
+ */
+void parse_toc_source(const XMLElement* manifest, const XMLElement* spine, ra8_epub_book_t* book)
+{
+  const char* nav_href = find_nav_manifest_href(manifest);
+  if (nav_href != nullptr) {
+    copy_bounded(book->toc_path, k_ra8_epub_max_path_len, nav_href);
+    book->toc_kind = static_cast<std::uint8_t>(k_ra8_epub_toc_nav);
+    return;
+  }
+  const char* toc_id   = spine->Attribute("toc");
+  const char* ncx_href = (toc_id != nullptr) ? manifest_href_by_id(manifest, toc_id) : nullptr;
+  if (ncx_href != nullptr) {
+    copy_bounded(book->toc_path, k_ra8_epub_max_path_len, ncx_href);
+    book->toc_kind = static_cast<std::uint8_t>(k_ra8_epub_toc_ncx);
+  }
+}
+
 } /* namespace */
 
 extern "C" ra8_err_t ra8_epub_xml_parse_container(const uint8_t*               xml_bytes,
@@ -509,22 +607,7 @@ ra8_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t
   /* ---- metadata block (Dublin Core) ----------------------------------- */
   const XMLElement* metadata = find_child(package, "metadata");
   if (metadata != nullptr) {
-    const XMLElement* title = find_child(metadata, "title");
-    if (title != nullptr) {
-      copy_bounded(book->title, k_ra8_epub_meta_len, title->GetText());
-    }
-    const XMLElement* creator = find_child(metadata, "creator");
-    if (creator != nullptr) {
-      copy_bounded(book->author, k_ra8_epub_meta_len, creator->GetText());
-    }
-    const XMLElement* language = find_child(metadata, "language");
-    if (language != nullptr) {
-      copy_bounded(book->language, k_ra8_epub_meta_len, language->GetText());
-    }
-    /* The canonical unique id is the <dc:identifier> whose id matches the
-     * package's unique-identifier attribute. */
-    const char* uid = package->Attribute("unique-identifier");
-    copy_bounded(book->identifier, k_ra8_epub_meta_len, find_identifier(metadata, uid));
+    parse_metadata(package, metadata, book);
   }
 
   /* ---- manifest ------------------------------------------------------- */
@@ -534,15 +617,7 @@ ra8_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t
     return k_ra8_err_validation_failed;
   }
 
-  /* Cover: prefer EPUB3 properties="cover-image"; fall back to legacy
-   * <meta name="cover" content="ID"> + manifest lookup. */
-  const char* cover_href = find_cover_by_properties(manifest);
-  if (cover_href == nullptr) {
-    cover_href = find_cover_by_meta(metadata, manifest);
-  }
-  if (cover_href != nullptr) {
-    copy_bounded(book->cover_path, k_ra8_epub_max_path_len, cover_href);
-  }
+  parse_cover(metadata, manifest, book);
 
   /* ---- embedded fonts (#109): record manifest font hrefs -------------- */
   collect_font_items(manifest, book);
@@ -551,41 +626,13 @@ ra8_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t
   collect_manifest_items(manifest, book);
 
   /* ---- spine (chapters in document order) ----------------------------- */
-  uint16_t count = 0U;
-  for (const XMLElement* itemref = spine->FirstChildElement("itemref"); itemref != nullptr;
-       itemref                   = itemref->NextSiblingElement("itemref")) {
-    const char* idref = itemref->Attribute("idref");
-    if (idref == nullptr) {
-      continue;
-    }
-    const char* href = manifest_href_by_id(manifest, idref);
-    if (href == nullptr) {
-      continue;
-    }
-    if (count >= k_ra8_epub_max_chapters) {
-      return k_ra8_err_no_mem;
-    }
-    copy_bounded(book->chapter_paths[count], k_ra8_epub_max_path_len, href);
-    ++count;
+  const ra8_err_t spine_err = parse_spine(manifest, spine, book);
+  if (spine_err != k_ra8_ok) {
+    return spine_err;
   }
-  book->chapter_count = count;
 
   /* ---- table-of-contents source --------------------------------------- */
-  /* Prefer the EPUB 3 nav document (manifest properties="nav"); fall back
-   * to the EPUB 2 NCX referenced by the spine's `toc` attribute. The TOC
-   * document itself is extracted and parsed by the caller (open path). */
-  const char* nav_href = find_nav_manifest_href(manifest);
-  if (nav_href != nullptr) {
-    copy_bounded(book->toc_path, k_ra8_epub_max_path_len, nav_href);
-    book->toc_kind = static_cast<std::uint8_t>(k_ra8_epub_toc_nav);
-  } else {
-    const char* toc_id   = spine->Attribute("toc");
-    const char* ncx_href = (toc_id != nullptr) ? manifest_href_by_id(manifest, toc_id) : nullptr;
-    if (ncx_href != nullptr) {
-      copy_bounded(book->toc_path, k_ra8_epub_max_path_len, ncx_href);
-      book->toc_kind = static_cast<std::uint8_t>(k_ra8_epub_toc_ncx);
-    }
-  }
+  parse_toc_source(manifest, spine, book);
   return k_ra8_ok;
 }
 

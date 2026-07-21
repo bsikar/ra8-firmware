@@ -568,6 +568,69 @@ def selftest(tmp: Path) -> int:
     return 0
 
 
+def _scan_set_is_usable(files: list[Path]) -> bool:
+    """Whether the resolved scan set can be trusted; prints FATAL when not.
+
+    Fail loudly rather than silently passing on a broken scan: a gate that
+    reports success because it looked at nothing is worse than no gate. The
+    roots resolve relative to the current directory, so running this from
+    anywhere but the repository root finds nothing.
+    """
+    if not files:
+        print(
+            "check_no_silent_stubs.py: FATAL -- no first-party sources found.\n"
+            f"Expected .c files under {', '.join(ROOTS)} relative to the current\n"
+            "directory. Run this from the repository root.",
+            file=sys.stderr,
+        )
+        return False
+    missing = [str(p) for p in files if not p.is_file()]
+    if missing:
+        print(
+            "check_no_silent_stubs.py: FATAL -- these paths do not exist:\n  "
+            + "\n  ".join(missing),
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
+def _report_violations(violations: list[tuple[str, dict]]) -> None:
+    """List every stub found, then explain what each rule means and how to fix it.
+
+    The trailing prose is long on purpose: both rules reject code that
+    compiles, links and looks deliberate, so a bare file:line would leave a
+    reader with no idea why the gate objects.
+    """
+    print(
+        f"check_no_silent_stubs.py: {len(violations)} silent stub(s) found:\n",
+        file=sys.stderr,
+    )
+    for rule, f in sorted(violations, key=lambda v: (v[1]["path"], v[1]["line"])):
+        print(f"  [{rule}] {f['path']}:{f['line']}  {f['name']}()", file=sys.stderr)
+        if rule == "SHADOW":
+            for other in f["shadows"]:
+                print(f"           real implementation lives in {other}", file=sys.stderr)
+        else:
+            print(f"           discards its arguments, returns {f['returns']}", file=sys.stderr)
+    print(
+        "\n[SHADOW] A second, do-nothing definition of a symbol that is really\n"
+        "implemented elsewhere in this tree. Whichever one the linker picks, the\n"
+        "build silently disables working code. Compile the real implementation\n"
+        "instead of redefining the symbol -- if it did not link, fix the build\n"
+        "recipe, do not fake the symbol.\n"
+        "\n[CANNED] The function reports that an operation was refused when no\n"
+        "implementation exists at all. Implement it, or delete it and update\n"
+        "every call site in the same change.\n"
+        "\nIf -- and only if -- the capability is blocked on hardware that does\n"
+        "not physically exist yet, mark it with a TODO naming the missing part:\n"
+        "  TODO(ESP32-C6 radio module ordered, not yet on the bench)\n"
+        "A bare TODO with no named dependency is not a waiver, and no waiver is\n"
+        "available when a real implementation already exists in the tree.",
+        file=sys.stderr,
+    )
+
+
 def main(argv: list[str]) -> int:
     """Scan first-party C for SHADOW and CANNED stubs, or run the detector selftest.
 
@@ -598,23 +661,7 @@ def main(argv: list[str]) -> int:
             return selftest(Path(td))
 
     files = first_party_sources(args.files)
-    # Fail loudly rather than silently passing on a broken scan: a gate that
-    # reports success because it looked at nothing is worse than no gate.
-    if not files:
-        print(
-            "check_no_silent_stubs.py: FATAL -- no first-party sources found.\n"
-            f"Expected .c files under {', '.join(ROOTS)} relative to the current\n"
-            "directory. Run this from the repository root.",
-            file=sys.stderr,
-        )
-        return 1
-    missing = [str(p) for p in files if not p.is_file()]
-    if missing:
-        print(
-            "check_no_silent_stubs.py: FATAL -- these paths do not exist:\n  "
-            + "\n  ".join(missing),
-            file=sys.stderr,
-        )
+    if not _scan_set_is_usable(files):
         return 1
 
     violations = analyse(files)
@@ -622,33 +669,7 @@ def main(argv: list[str]) -> int:
         print(f"check_no_silent_stubs.py: OK ({len(files)} files scanned, no silent stubs)")
         return 0
 
-    print(
-        f"check_no_silent_stubs.py: {len(violations)} silent stub(s) found:\n",
-        file=sys.stderr,
-    )
-    for rule, f in sorted(violations, key=lambda v: (v[1]["path"], v[1]["line"])):
-        print(f"  [{rule}] {f['path']}:{f['line']}  {f['name']}()", file=sys.stderr)
-        if rule == "SHADOW":
-            for other in f["shadows"]:
-                print(f"           real implementation lives in {other}", file=sys.stderr)
-        else:
-            print(f"           discards its arguments, returns {f['returns']}", file=sys.stderr)
-    print(
-        "\n[SHADOW] A second, do-nothing definition of a symbol that is really\n"
-        "implemented elsewhere in this tree. Whichever one the linker picks, the\n"
-        "build silently disables working code. Compile the real implementation\n"
-        "instead of redefining the symbol -- if it did not link, fix the build\n"
-        "recipe, do not fake the symbol.\n"
-        "\n[CANNED] The function reports that an operation was refused when no\n"
-        "implementation exists at all. Implement it, or delete it and update\n"
-        "every call site in the same change.\n"
-        "\nIf -- and only if -- the capability is blocked on hardware that does\n"
-        "not physically exist yet, mark it with a TODO naming the missing part:\n"
-        "  TODO(ESP32-C6 radio module ordered, not yet on the bench)\n"
-        "A bare TODO with no named dependency is not a waiver, and no waiver is\n"
-        "available when a real implementation already exists in the tree.",
-        file=sys.stderr,
-    )
+    _report_violations(violations)
     return 1
 
 
