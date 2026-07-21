@@ -242,9 +242,10 @@ def main(argv: list[str]) -> int:
     """Reject .gitignore patterns that match at every directory depth.
 
     A slashless pattern such as ``build`` matches ANY directory of that name
-    anywhere in the tree, which is how a first-party ``scripts/build/``
-    became invisible to git and to every gate at once (#377). Anchoring makes
-    the intended scope explicit.
+    anywhere in the tree, which is how a first-party source directory under
+    ``scripts/build/`` -- PATHREF-OK: #359 has since renamed it away -- became
+    invisible to git and to every gate at once (#377).  Anchoring makes the
+    intended scope explicit.
 
     Returns 0 when every pattern is anchored or justified, 1 otherwise.
     """
