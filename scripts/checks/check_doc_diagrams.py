@@ -267,9 +267,9 @@ def check_stamp(html_dir: Path, blocks: dict[str, list[str]]) -> list[Finding]:
         return [
             Finding(
                 str(html_dir),
-                "no build stamp -- this HTML was not produced by scripts/build/docs.sh, "
+                "no build stamp -- this HTML was not produced by scripts/builders/docs.sh, "
                 "so it cannot be trusted to reflect the current tree. Rebuild with "
-                "'bash scripts/build/docs.sh --gate'.",
+                "'bash scripts/builders/docs.sh --gate'.",
             )
         ]
     recorded = stamp.read_text(encoding="utf-8").strip()
@@ -280,7 +280,7 @@ def check_stamp(html_dir: Path, blocks: dict[str, list[str]]) -> list[Finding]:
                 str(html_dir),
                 "stale output -- the authored diagram set has changed since this "
                 f"HTML was built (stamp {recorded[:12]}, tree {current[:12]}). "
-                "Rebuild with 'bash scripts/build/docs.sh --gate'; do not judge "
+                "Rebuild with 'bash scripts/builders/docs.sh --gate'; do not judge "
                 "the diagrams from a mixture of two builds.",
             )
         ]
@@ -534,7 +534,7 @@ def main() -> int:
         "--write-stamp",
         action="store_true",
         help="record the authored diagram fingerprint into the HTML tree "
-        "(called by scripts/build/docs.sh once a build finishes)",
+        "(called by scripts/builders/docs.sh once a build finishes)",
     )
     args = parser.parse_args()
 
@@ -556,7 +556,7 @@ def main() -> int:
     if not html_dir.is_dir():
         sys.stderr.write(
             f"check_doc_diagrams.py: FATAL -- no generated HTML at {html_dir}.\n"
-            "Build the docs first (scripts/build/docs.sh --gate).\n"
+            "Build the docs first (scripts/builders/docs.sh --gate).\n"
         )
         return 2
 

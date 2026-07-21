@@ -71,8 +71,8 @@ fi
 # Auto-select a C23-capable host compiler (clang >= 17 or gcc >= 13) when the
 # caller has not pinned one. Shared with the coverage builds via the helper so
 # the whole host-test tooling agrees on the compiler.
-# shellcheck source=scripts/build/select_host_compiler.sh
-. "$SCRIPT_DIR/../scripts/build/select_host_compiler.sh"
+# shellcheck source=scripts/builders/select_host_compiler.sh
+. "$SCRIPT_DIR/../scripts/builders/select_host_compiler.sh"
 ra8_select_host_compiler || exit 1
 echo "    using CC=$CC CXX=$CXX"
 

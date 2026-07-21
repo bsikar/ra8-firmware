@@ -583,7 +583,7 @@ macro(ra8_add_app)
 
   # ---- prebuilt universal-library fast path (CI cross-build) ------------
   # When RA8_SHARED_LIB_ARCHIVE points at a prebuilt libra8_shared_<board>.a
-  # (scripts/build/all_examples.sh sets it for the "Cross-build all apps"
+  # (scripts/builders/all_examples.sh sets it for the "Cross-build all apps"
   # gate), link that archive instead of recompiling the ~180 universal
   # first-party sources (ra8_core / ra8_hal / ra8_net_pal / ra8_usb_pal /
   # board / secure_app) into THIS executable -- they are compiled once for

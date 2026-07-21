@@ -34,10 +34,11 @@ being discovered by the sixth hand audit.
 LAYOUT AGNOSTICISM IS A DESIGN REQUIREMENT
 ------------------------------------------
 Checkers are located by BASENAME through ``git ls-files``, not by a hardcoded
-path. ``scripts/`` is actively being reorganised into subdirectories; a gate
-that hardcoded ``scripts/utils/check_ruff.py`` would break on the move and, far
-worse, could be "fixed" by dropping the provider -- silently shrinking
-coverage. Finding the checker by name means a move is invisible here and a
+path. ``scripts/`` was reorganised into subdirectories in #359 and every
+checker this gate resolves changed directory; the basename lookup carried that
+move without a single edit. A gate that hardcoded full paths would have broken
+on it and -- far worse -- could then have been "fixed" by dropping the
+provider, silently shrinking coverage. By name, a MOVE is invisible and a
 DELETION is loud.
 
 USAGE
@@ -123,8 +124,8 @@ PROVIDERS: tuple[Provider, ...] = (
     Provider("clang-format", (FORMAT,), ("c-family",), "format_code.sh", ("--list-files",), "bash"),
     Provider("ruff", (LINT, FORMAT), ("python",), "check_ruff.py", ("--list-files",)),
     Provider("shellcheck+shfmt", (LINT, FORMAT), ("shell",), "check_shell.py", ("--list-files",)),
-    Provider("cmake-lint+format", (LINT, FORMAT), ("cmake",), "lint_scope.py", ("cmake",)),
-    Provider("yamllint+actionlint", (LINT, FORMAT), ("yaml",), "lint_scope.py", ("yaml",)),
+    Provider("cmake-lint+format", (LINT, FORMAT), ("cmake",), "lint_targets.py", ("cmake",)),
+    Provider("yamllint+actionlint", (LINT, FORMAT), ("yaml",), "lint_targets.py", ("yaml",)),
     Provider("check_makefiles", (LINT, FORMAT), ("make",), "check_makefiles.py", ("--list-files",)),
     Provider(
         "check_linker_scripts",
@@ -394,7 +395,7 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
     files = [
         "libs/ra8_core/src/ra8_err.c",
         "libs/ra8_core/inc/ra8_err.h",
-        "scripts/utils/check_thing.py",
+        "scripts/checks/check_thing.py",  # PATHREF-OK: synthetic fixture
         "scripts/git/pre-commit",
         "CMakeLists.txt",
         "Makefile",
@@ -408,7 +409,7 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
     claimed = {
         "clang-tidy": {"libs/ra8_core/src/ra8_err.c", "libs/ra8_core/inc/ra8_err.h"},
         "clang-format": {"libs/ra8_core/src/ra8_err.c", "libs/ra8_core/inc/ra8_err.h"},
-        "ruff": {"scripts/utils/check_thing.py"},
+        "ruff": {"scripts/checks/check_thing.py"},  # PATHREF-OK: synthetic
         "shellcheck+shfmt": {"scripts/git/pre-commit"},
         "cmake-lint+format": {"CMakeLists.txt"},
         "yamllint+actionlint": {".github/workflows/firmware.yml"},

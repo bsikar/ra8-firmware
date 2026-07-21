@@ -147,7 +147,7 @@ class StackEntry:
         )
 
 
-# The CI cross-build fast path (scripts/build/all_examples.sh) compiles the
+# The CI cross-build fast path (scripts/builders/all_examples.sh) compiles the
 # universal first-party library set (ra8_core / ra8_hal / ra8_net_pal /
 # ra8_usb_pal / board / secure_app) ONCE into a static archive under
 # build/shared_libs/ instead of recompiling it into every app, so those

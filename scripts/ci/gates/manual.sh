@@ -138,7 +138,7 @@ gate_docs_publish() (
   # Verify the site about to be published actually contains its diagrams,
   # against the real output tree `make docs` just wrote.
   python3 scripts/checks/check_doc_diagrams.py --html build/docs/html
-  bash scripts/build/publish_docs.sh
+  bash scripts/builders/publish_docs.sh
 )
 
 # ===========================================================================
