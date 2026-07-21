@@ -86,8 +86,11 @@ EXCERPT_MAX_LEN = 160  # Maximum characters shown from a violating line before t
 EXCERPT_TRUNCATE_LEN = 157  # Length of truncated body (leaves room for "...").
 
 # Self-exempt files that legitimately spell the banned tokens.
+# This checker is derived from __file__, not spelled out: a hand-written
+# "scripts/<dir>/check_no_ai_attribution.py" stops matching the moment the file
+# moves, and the gate then reports its own rule table as a violation.
 SELF_EXEMPT_FILES = {
-    REPO_ROOT / "scripts" / "utils" / "check_no_ai_attribution.py",
+    Path(__file__).resolve(),
     REPO_ROOT / "docs" / "AI_ATTRIBUTION_POLICY.md",
 }
 
