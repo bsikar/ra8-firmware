@@ -157,12 +157,12 @@ def is_exempt(matched: str, line: str) -> bool:
     THE single definition of the exemption cascade, shared by the gate and the
     migration aid so the two cannot describe different trees.
 
-    Exempt when the citation is part of a licence identifier or an ``#include``
-    (neither is a prose reference), names a vendor manual or vendored code
-    (not ours to re-cite), records where something moved from (history, not a
-    live pointer), or carries an explicit ``CITES-OK:`` waiver WITH a reason --
-    an empty marker waives nothing, the same rule the gitignore-scope gate
-    applies to its own marker.
+    Exempt when the citation is part of a licence identifier or an include
+    directive (neither is a prose reference), names a vendor manual or vendored
+    code (not ours to re-cite), records where something moved from (history,
+    not a live pointer), or carries an explicit `CITES-OK: <reason>` waiver
+    whose reason is non-empty -- a bare marker waives nothing, the same rule
+    the gitignore-scope gate applies to its own marker.
     """
     if "SPDX-License-Identifier" in line:
         return True
