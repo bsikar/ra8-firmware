@@ -41,11 +41,26 @@ report="$ROOT/build/board_sim_matrix.txt"
 # restated. An app that matches nothing lands in "unclassified", which is
 # printed loudly: an unattributed fault is exactly what this tool exists to
 # eliminate, so it must never be silently absorbed into a neighbouring bucket.
+#
+# EVERY pattern below is matched against REAL captured board_sim output, and
+# two things about that are load-bearing:
+#
+#   * board_sim prints the MVE store family BYTE-WISE and little-endian --
+#     `INVALID INSN @ 0x02007D72: bytes 80 ED 31 7F` -- whereas #396 names the
+#     same instruction halfword-wise as `ED80 7F31`. A rule written from the
+#     issue text matches nothing at all.
+#   * "MVE" and "Helium" on their own are NOT fault signatures. board_sim
+#     prints `MVE (Helium) : N instruction(s) emulated` as ordinary telemetry
+#     on any app that uses a vector op, so a rule keyed on those words matches
+#     every failing app and attributes none of them. The first version of this
+#     table did exactly that -- it put all 43 failures in one bucket and looked
+#     like it had worked, which is why the selftest below now asserts against
+#     real output shapes rather than strings invented to match the rules.
 triage_rules() {
   cat <<'EOF'
-MVE/Helium store (#396)	ED80 7F31|coproc.*0b1111|coprocessor 1111
-MVE/Helium other	MVE|Helium|vstr|vldr
-invalid instruction	INVALID INSN
+MVE/Helium store (#396)	INVALID INSN.*bytes 80 ED 31 7F
+ThreadX scheduler entry	Unhandled CPU exception \(UC_ERR_EXCEPTION\)
+other invalid instruction	INVALID INSN
 unmapped access	UNMAPPED|mmio_map failed
 BKPT / assert give-up	executed a BKPT
 build failure	BUILD FAIL|NO ELF
@@ -76,9 +91,26 @@ if [ "${1:-}" = "--selftest" ]; then
   probe_dir="$(mktemp -d)"
   real_run_dir="$run_dir"
   run_dir="$probe_dir"
-  printf 'board_sim: INVALID INSN ED80 7F31 @ 0x0200\n' >"$probe_dir/mve_app.out"
-  printf 'board_sim: UNMAPPED read @ 0x40000000\n' >"$probe_dir/unmapped_app.out"
-  printf 'board_sim: something nobody has seen before\n' >"$probe_dir/weird_app.out"
+  # VERBATIM board_sim output, copied from a real sweep -- not strings written
+  # to satisfy the table. The distinction is the whole point: the first version
+  # of these rules passed a selftest built from invented text while matching
+  # every real failure into one bucket.
+  cat >"$probe_dir/mve_app.out" <<'REAL'
+  INVALID INSN @ 0x02007D72: bytes 80 ED 31 7F
+board_sim: stopped -- Invalid instruction (UC_ERR_INSN_INVALID)
+  MVE (Helium)  : 1240 instruction(s) emulated (M85 vector ops the M33 core lacks)
+REAL
+  cat >"$probe_dir/threadx_app.out" <<'REAL'
+board_sim: stopped -- Unhandled CPU exception (UC_ERR_EXCEPTION)
+  final PC      : 0x02000226
+  MVE (Helium)  : 88 instruction(s) emulated (M85 vector ops the M33 core lacks)
+REAL
+  cat >"$probe_dir/unmapped_app.out" <<'REAL'
+board_sim: UNMAPPED read @ 0x40000000
+REAL
+  cat >"$probe_dir/weird_app.out" <<'REAL'
+board_sim: something nobody has seen before
+REAL
   while IFS=$'\t' read -r app want; do
     got="$(classify_cause "$app")"
     if [ "$got" != "$want" ]; then
@@ -87,9 +119,18 @@ if [ "${1:-}" = "--selftest" ]; then
     fi
   done <<EOF
 mve_app	MVE/Helium store (#396)
+threadx_app	ThreadX scheduler entry
 unmapped_app	unmapped access
 weird_app	unclassified
 EOF
+  # The greedy-rule regression, asserted directly: both fixtures above carry an
+  # ordinary "MVE (Helium) ... emulated" telemetry line, and they must still
+  # land in DIFFERENT buckets. If a future rule keys on that line, every app
+  # collapses into one cause and this fires.
+  if [ "$(classify_cause mve_app)" = "$(classify_cause threadx_app)" ]; then
+    echo "  FAIL two distinct causes collapsed into one bucket (a rule is too greedy)"
+    sel_fail=1
+  fi
   # Must-fire direction: an unknown signature must NOT be absorbed into a real
   # bucket. If this ever starts matching, the rules have grown too greedy and
   # the triage stops being evidence.
