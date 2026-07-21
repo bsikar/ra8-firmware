@@ -164,7 +164,7 @@ def _measure_body(lines: list[str], brace_idx: int, n: int) -> int:
     # immediately; assuming depth 1 ran the tracker past it and swallowed the
     # whole enclosing scope -- a C++ constructor with an initialiser list and a
     # `{}` body was reported as its entire 124-line class.
-    opens, closes, in_block_comment_seed = _brace_delta(lines[brace_idx], False)
+    opens, closes, in_block_comment_seed = _brace_delta(lines[brace_idx], in_block_comment=False)
     depth = opens - closes
     if depth <= 0:
         return brace_idx + 1
