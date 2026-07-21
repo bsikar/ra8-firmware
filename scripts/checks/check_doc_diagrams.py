@@ -56,6 +56,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 #: Roots scanned for authored diagram blocks.  Mirrors the CLAUDE.md scope
@@ -66,7 +70,7 @@ SCAN_ROOTS = ("docs", "libs", "src", "port", "examples", "tools", "tests")
 SCAN_SUFFIXES = (".md", ".c", ".h", ".cpp", ".hpp", ".dox")
 
 #: Path fragments marking vendored or generated trees, which are out of scope.
-EXCLUDED = ("third_party", "/build/", "/generated/", "doxygen_theme")
+EXCLUDED = ("third_party", "/generated/", "doxygen_theme")
 
 #: Files allowed to name the banned construct while documenting the rule.
 #: They describe the policy; they do not carry a renderable block.
@@ -94,7 +98,7 @@ COMMENT_LEADER = re.compile(r"^\s*\*\s?")
 
 def in_scope(path: Path) -> bool:
     posix = path.as_posix()
-    if any(frag in posix for frag in EXCLUDED):
+    if is_build_output_path(posix) or any(frag in posix for frag in EXCLUDED):
         return False
     return path.suffix in SCAN_SUFFIXES
 

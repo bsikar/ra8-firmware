@@ -63,8 +63,81 @@ LANGUAGE_EXCLUDED_PREFIXES = {
     "c": ("port/threadx/",),
 }
 
-# Path fragments that mark build output rather than source.
-EXCLUDED_FRAGMENTS = ("/build/", "/build-cov/", "/_deps/", "node_modules/")
+# ---------------------------------------------------------------------------
+# BUILD OUTPUT -- the single definition, shared by every checker in this tree.
+#
+# This used to be thirteen copies of the substring ``"/build/"``, one per
+# checker, and the substring is the defect (#377). ``"/build/" in path`` cannot
+# tell ``tools/board_sim/build/`` -- genuine CMake output -- from a first-party
+# source directory that happens to be called ``build``. When #359's
+# reorganisation created ``scripts/build/``, every file in it  # PATHREF-OK: #359
+# became invisible to shellcheck, shfmt and the rest, while every gate still
+# reported
+# a clean tree. The bare ``build/`` line in .gitignore did the same thing to
+# git, so a NEW file there would never have been added at all; the six that
+# survived did so only because ``git mv`` moves already-tracked files.
+#
+# The replacement is a repo-relative PATH check rather than a substring match.
+# A build directory counts as build output only where a build tree is actually
+# produced: at the repo root, or under one of the roots below. Anywhere else,
+# a directory named ``build`` is ordinary source and is linted like any other.
+#
+# .gitignore carries the matching anchored patterns, and
+# ``check_gitignore_scope.py`` fails on any new unanchored directory pattern,
+# so the two halves cannot drift back apart.
+# ---------------------------------------------------------------------------
+
+# Top-level directories beneath which a per-target build tree legitimately
+# appears, at any depth. Deliberately NOT "any directory anywhere": that is the
+# behaviour being removed. `scripts/`, `libs/`, `src/inc/` and friends are
+# absent because nothing builds into them, so a `build` directory appearing
+# there is source and must stay visible to the checkers.
+BUILD_TREE_ROOTS = frozenset(
+    {
+        "docs",  # docs/build/ -- generated Doxygen HTML
+        "esp32",  # esp32/build/ -- esp32/Makefile writes here
+        "examples",  # examples/**/<app>/build/ -- per-app CMake output
+        "local-poc",  # local-poc/**/build/ -- git-excluded PoC tree
+        "port",  # port/**/build/
+        "src",  # src/app/build/
+        "tests",  # tests/build/, tests/build-cov/, tests/build-fuzz/
+        "tools",  # tools/<tool>/build/ -- host tool output
+    }
+)
+
+# Directory names owned by a tool, which can never be a first-party source
+# directory and are therefore matched at ANY depth. This is the ONLY
+# depth-agnostic rule left, and every name in it is reserved by the tool that
+# creates it: CMake writes CMakeFiles/ and _deps/, CPython writes __pycache__/,
+# npm writes node_modules/. Nobody can legitimately author a source directory
+# with one of these names, so matching them anywhere cannot swallow source.
+TOOL_OUTPUT_DIR_NAMES = frozenset({"CMakeFiles", "_deps", "__pycache__", "node_modules"})
+
+
+def is_build_dir_name(name: str) -> bool:
+    """True when one path COMPONENT names a build tree.
+
+    Exact ``build``, or a ``build-`` / ``build_`` / ``cmake-build-`` prefix.
+    The separator is required: ``builders`` starts with ``build`` and is NOT a
+    build directory, which is precisely the collision a ``build*`` glob would
+    reintroduce.
+    """
+    return name == "build" or name.startswith(("build-", "build_", "cmake-build-"))
+
+
+def is_build_output(rel: str) -> bool:
+    """True when repo-relative `rel` lives inside a build tree.
+
+    Directory components only -- a FILE called ``build`` is not a build tree.
+    """
+    parts = rel.split("/")
+    for index, part in enumerate(parts[:-1]):
+        if part in TOOL_OUTPUT_DIR_NAMES:
+            return True
+        if is_build_dir_name(part) and (index == 0 or parts[0] in BUILD_TREE_ROOTS):
+            return True
+    return False
+
 
 # suffix -> language
 SUFFIX_LANG = {
@@ -108,6 +181,22 @@ SHEBANG_LANG = {
 LANGUAGES = ("c", "python", "shell", "cmake", "yaml", "make", "ld")
 
 
+def is_build_output_path(path: object) -> bool:
+    """``is_build_output`` for a str or Path that may be absolute.
+
+    The checkers hold a mix of absolute paths, repo-relative paths and
+    slash-wrapped forms. Normalising here keeps every call site a single
+    predicate instead of thirteen hand-rolled substring tuples (#377).
+    """
+    text = str(path).replace("\\", "/").strip("/")
+    root = str(REPO_ROOT).replace("\\", "/").strip("/")
+    if text.startswith(root + "/"):
+        text = text[len(root) + 1 :]
+    elif text.startswith("./"):
+        text = text[2:]
+    return is_build_output(text)
+
+
 def _tracked() -> list[str]:
     """Tracked plus untracked-but-not-ignored paths, from git itself."""
     proc = subprocess.run(
@@ -132,7 +221,7 @@ def _tracked() -> list[str]:
 
 
 def _excluded(rel: str, lang: str | None = None) -> bool:
-    if rel.startswith(EXCLUDED_PREFIXES) or any(frag in f"/{rel}" for frag in EXCLUDED_FRAGMENTS):
+    if rel.startswith(EXCLUDED_PREFIXES) or is_build_output(rel):
         return True
     extra = LANGUAGE_EXCLUDED_PREFIXES.get(lang or "", ())
     return bool(extra) and rel.startswith(extra)

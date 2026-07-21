@@ -70,6 +70,10 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Under ``examples/`` only the application ``main.c`` is scanned -- this
@@ -99,7 +103,6 @@ EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/fonts/",
     "port/threadx/",
-    "/build/",
     "tests/",
 )
 
@@ -374,7 +377,7 @@ def _scan_file(path: Path) -> list[tuple[int, int, str]]:  # noqa: PLR0912, PLR0
 
 def _is_excluded(path: Path) -> bool:
     p = str(path)
-    return any(frag in p for frag in EXCLUDE_FRAGMENTS)
+    return is_build_output_path(p) or any(frag in p for frag in EXCLUDE_FRAGMENTS)
 
 
 def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:

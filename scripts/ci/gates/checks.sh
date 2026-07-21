@@ -64,6 +64,14 @@ gate_pre_commit_checks() (
   python3 scripts/checks/check_example_board_pins.py
   # ra8_core is the foundation lib: it must depend on nothing above itself.
   python3 scripts/checks/check_core_layering.py
+  # No .gitignore directory pattern may match at arbitrary depth. `build/` did,
+  # for the life of the tree: any directory named `build` was silently
+  # unaddable, and nearly lost the files moved into scripts/build/  # PATHREF-OK: #359
+  # and would have lost a seventh outright. The failure is invisible in both
+  # directions -- git declines to add and says nothing -- so nothing but a gate
+  # asking the question can catch it (#377).
+  python3 scripts/checks/check_gitignore_scope.py --selftest
+  python3 scripts/checks/check_gitignore_scope.py
   # Every first-party source file ends in a trailing newline. Complements
   # .clang-format InsertNewlineAtEOF (C/C++ only) by covering scripts and
   # config-as-code.

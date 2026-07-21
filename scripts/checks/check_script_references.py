@@ -69,6 +69,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # The path prefix this gate validates. See the "Scope" note in the module
@@ -85,10 +89,6 @@ EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/fonts/",
     "port/threadx/",
-    "/build/",
-    "/build-cov/",
-    "/_deps/",
-    "node_modules/",
     "tools/vela/generated/",
 )
 
@@ -207,7 +207,7 @@ def _git_ls_files(root: Path) -> list[str]:
 
 
 def _is_excluded(rel: str) -> bool:
-    return any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS)
+    return is_build_output_path(rel) or any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS)
 
 
 def _scannable(rel: str) -> bool:
