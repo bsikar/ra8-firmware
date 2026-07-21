@@ -5,12 +5,12 @@
 .PHONY: docs docs-push dashboard app-sizes audit-init
 
 docs:
-	bash scripts/build/docs.sh
+	bash scripts/builders/docs.sh
 
 # `make docs-push` -- build the Doxygen HTML and force-publish it to gh-pages
-# (the same script CI runs on push to main). See scripts/build/publish_docs.sh.
+# (the same script CI runs on push to main). See scripts/builders/publish_docs.sh.
 docs-push: docs
-	bash scripts/build/publish_docs.sh
+	bash scripts/builders/publish_docs.sh
 
 dashboard:
 	python3 scripts/report/roadmap_dashboard.py

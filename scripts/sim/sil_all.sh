@@ -228,7 +228,7 @@ build_shelf_library() {
   local hdr="${HIL_DIR}/ereader_shelf/library.h"
   [ -f "$hdr" ] && return 0
   echo -e "${CYAN}[sil_all]${NC} generating ereader_shelf library.h (build_books.sh --shelf-only) ..."
-  if ! bash "${REPO_ROOT}/scripts/build/books.sh" --shelf-only >/tmp/sil_books.log 2>&1; then
+  if ! bash "${REPO_ROOT}/scripts/builders/books.sh" --shelf-only >/tmp/sil_books.log 2>&1; then
     echo -e "${YELLOW}[sil_all]${NC} could not generate ereader_shelf library.h (see" \
       "/tmp/sil_books.log); ereader_shelf will report a build failure" >&2
   fi

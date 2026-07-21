@@ -115,7 +115,7 @@ gate_build_cross() (
   set -e
   use_pinned_arm_toolchain
   require_cmd arm-none-eabi-gcc
-  RA8_STRICT_TOOLCHAIN=1 bash scripts/build/all_examples.sh
+  RA8_STRICT_TOOLCHAIN=1 bash scripts/builders/all_examples.sh
 )
 
 # --- docs -----------------------------------------------------------------
@@ -131,7 +131,7 @@ gate_docs() (
   # this check that surfaces as a dozen confusing warnings about the .md files
   # rather than the one true cause. Fail on the real reason instead.
   require_cmd dot
-  bash scripts/build/docs.sh --gate
+  bash scripts/builders/docs.sh --gate
   local log="build/docs-gate/doxygen-warnings.log"
   if [[ ! -f "$log" ]]; then
     echo "FAIL: doxygen warning log not produced at $log" >&2
