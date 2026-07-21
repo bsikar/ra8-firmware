@@ -84,6 +84,36 @@ typedef enum : uint32_t {
 } ns_ipc_sta_mask_t;
 
 /**
+ * @enum ns_pingpong_step_t
+ * @brief Progress markers written to ``g_ns_pingpong_step``.
+ * @details The bench reads this word over J-Link to see how far the NS image
+ *          got. Values ascend with execution order, so a dump alone says
+ *          where it stopped.
+ * @invariant Values ascend in execution order.
+ * @see ns_pingpong_marker_t
+ */
+typedef enum : uint32_t {
+  k_ns_step_bss_zeroed  = 1U, /**< .bss zeroed, entry marker stamped.  */
+  k_ns_step_channels_up = 2U, /**< Both IPC channels cold-initialised. */
+  k_ns_step_tx_start    = 3U, /**< About to write the ping.            */
+  k_ns_step_tx_done     = 5U, /**< Survived the TX write.              */
+  k_ns_step_rx_timeout  = 6U, /**< TX succeeded, RX timed out.         */
+  k_ns_step_rx_word     = 7U, /**< RX returned a word.                 */
+} ns_pingpong_step_t;
+
+/**
+ * @enum ns_pingpong_marker_t
+ * @brief Sentinel written to ``g_ns_pingpong_entry_marker``.
+ * @details Stamped AFTER the .bss zero so the bench can tell "BLXNS reached
+ *          NS" apart from "the marker happened to land back at 0".
+ * @invariant Not a plausible uninitialised-SRAM pattern.
+ * @see ns_pingpong_step_t
+ */
+typedef enum : uint32_t {
+  k_ns_entry_marker = 0xCAFEBABEUL, /**< NS entry was reached. */
+} ns_pingpong_marker_t;
+
+/**
  * @enum ns_ipc_clr_mask_t
  * @brief CLR register bits we use for init / status clear.
  *
@@ -355,27 +385,27 @@ extern uint32_t g_ra8_ls_ns_bss_end;
 
   /* Stamp the entry marker AFTER the bss zero so the bench can tell
    * "BLXNS reached NS" apart from "marker happened to land back at 0". */
-  g_ns_pingpong_entry_marker = 0xCAFEBABEUL;
+  g_ns_pingpong_entry_marker = (uint32_t)k_ns_entry_marker;
 
-  g_ns_pingpong_step = 1U;
+  g_ns_pingpong_step = (uint32_t)k_ns_step_bss_zeroed;
 
   /* Cold-init the CPU0-owned channels. */
   ns_ipc_channel_reset((uintptr_t)k_ns_ipc_ch0_addr);
   ns_ipc_channel_reset((uintptr_t)k_ns_ipc_ch2_addr);
-  g_ns_pingpong_step = 2U;
+  g_ns_pingpong_step = (uint32_t)k_ns_step_channels_up;
 
   for (;;) {
-    g_ns_pingpong_step = 3U;
+    g_ns_pingpong_step = (uint32_t)k_ns_step_tx_start;
     ns_ipc_send((uintptr_t)k_ns_ipc_ch2_addr, (uint32_t)k_ns_magic_ping);
-    g_ns_pingpong_step = 5U; /* survived the TX write */
+    g_ns_pingpong_step = (uint32_t)k_ns_step_tx_done;
 
     uint32_t got = 0U;
     if (ns_ipc_recv((uintptr_t)k_ns_ipc_ch0_addr, &got) != 0U) {
-      g_ns_pingpong_step = 6U; /* TX OK, RX timed out */
+      g_ns_pingpong_step = (uint32_t)k_ns_step_rx_timeout;
       g_ns_pingpong_mismatch += 1U;
       continue;
     }
-    g_ns_pingpong_step     = 7U; /* RX got a word */
+    g_ns_pingpong_step     = (uint32_t)k_ns_step_rx_word;
     g_ns_pingpong_last_rxd = got;
     if (got != (uint32_t)k_ns_magic_pong) {
       g_ns_pingpong_mismatch += 1U;
