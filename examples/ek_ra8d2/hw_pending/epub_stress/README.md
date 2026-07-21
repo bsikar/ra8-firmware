@@ -64,7 +64,7 @@ the shared 96 KiB arena, no fault):
 ## Regenerating the fixture
 
 ```
-cd examples/ek_ra8d2/hw_validated/hil/epub_stress
+cd examples/ek_ra8d2/hw_pending/epub_stress
 python3 make_stress_fixture.py   # rewrites epub_stress_fixture.h
 ```
 
@@ -72,5 +72,5 @@ python3 make_stress_fixture.py   # rewrites epub_stress_fixture.h
 
 ```
 make epub_stress
-make -C examples/ek_ra8d2/hw_validated/hil/epub_stress flash
+make -C examples/ek_ra8d2/hw_pending/epub_stress flash
 ```

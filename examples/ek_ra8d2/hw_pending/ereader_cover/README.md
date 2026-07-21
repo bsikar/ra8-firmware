@@ -55,7 +55,7 @@ the board_sim CRC gate plus those on-silicon precedents cover it end to end.
 ## Regenerating the fixture
 
 ```
-cd examples/ek_ra8d2/hw_validated/hil/ereader_cover
+cd examples/ek_ra8d2/hw_pending/ereader_cover
 python3 make_cover_fixture.py     # rewrites epub_cover_fixture.h (needs Pillow)
 ```
 
@@ -66,5 +66,5 @@ After changing the cover, re-read the CRC the board prints and update the
 
 ```
 make ereader_cover
-make -C examples/ek_ra8d2/hw_validated/hil/ereader_cover flash
+make -C examples/ek_ra8d2/hw_pending/ereader_cover flash
 ```
