@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: no magic numbers -- every integer literal must live in a named
-typed enum; floating-point constants (which C enums cannot hold) use a
+"""Gate: no magic numbers -- every integer literal belongs in a named enum.
+
+Floating-point constants (which C enums cannot hold) use a
 ``const``.  Macros are NOT an acceptable home for an integer constant
 (CLAUDE.md "Constants and Macros": enums always, macros only for code
 de-duplication, conditional compilation, or build-configuration flags).
@@ -132,9 +133,11 @@ _NOLINT_INLINE_RE = re.compile(r"NOLINT(?!BEGIN|END|NEXTLINE)(?:\(([^)]*)\))?")
 
 
 def _nolint_applies(arg: str | None) -> bool:
-    """Return True if a NOLINT marker with arg list `arg` suppresses the
-    magic-number check.  A bare ``NOLINT`` (arg is None/empty) suppresses
-    every check, so it applies too.
+    """Whether a NOLINT marker suppresses the magic-number check specifically.
+
+    A bare ``NOLINT`` with no argument list suppresses EVERY check, so it
+    counts here too -- reading it as "suppresses some other check" would let
+    a blanket suppression silently cover this one.
     """
     if arg is None or arg.strip() == "":
         return True
@@ -191,8 +194,11 @@ _FLOAT_TYPE = re.compile(r"\b(float|double)\b")
 
 
 def _strip_comments_and_strings(text: str) -> str:
-    """Replace comment and string/char-literal bytes with spaces while
-    preserving newlines (and therefore line and column positions).
+    """Blank comment and literal bytes to spaces, preserving every position.
+
+    Newlines survive, so line AND column numbers reported against the blanked
+    view remain valid for the original source -- this gate reports columns,
+    not just lines, so length preservation is required and not merely tidy.
     """
     out: list[str] = []
     i = 0
@@ -235,8 +241,14 @@ def _strip_comments_and_strings(text: str) -> str:
 
 
 def _literal_value(match: re.Match) -> tuple[bool, float]:
-    """Return (is_float, value) for a numeric-literal match, or
-    (False, NaN) if it should be ignored as un-parseable.
+    """Decode a numeric-literal match to ``(is_float, value)``.
+
+    Returns ``(False, NaN)`` for anything un-parseable, and the caller treats
+    NaN as "do not flag" -- an unrecognised literal form is not evidence of a
+    magic number.
+
+    Suffix stripping is type-aware: ``f`` is never stripped from a hex
+    literal, where it is a digit (0xAF) rather than a float suffix.
     """
     raw = match.group(0)
     group = match.lastgroup
@@ -266,9 +278,11 @@ def _literal_value(match: re.Match) -> tuple[bool, float]:
 
 
 def _is_array_dimension(code_line: str, start: int, end: int) -> bool:
-    """Return True if the literal at [start, end) is the sole content of a
-    ``[ ... ]`` on a declaration line -- an array dimension, which
-    clang-tidy does not treat as a magic number.
+    """Whether a literal is an array dimension rather than a magic number.
+
+    True only when it is the SOLE content of a ``[ ... ]`` on a declaration
+    line. Matching clang-tidy's treatment here is deliberate: two gates
+    disagreeing about the same literal is worse than either rule alone.
     """
     i = start - 1
     while i >= 0 and code_line[i].isspace():
@@ -474,6 +488,14 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
+    """Fail on integer literals that should be named typed enums.
+
+    Reports column as well as line, which is why the whole scan runs over a
+    length-preserving blanked view of the source rather than a stripped one.
+
+    Returns 1 listing each literal, 0 when clean or when argv filtered to
+    nothing.
+    """
     targets = _enumerate_targets(argv[1:])
     if not targets:
         print("check_magic_numbers.py: no files to scan", file=sys.stderr)

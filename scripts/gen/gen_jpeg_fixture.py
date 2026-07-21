@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
-#
-# scripts/gen/gen_jpeg_fixture.py -- emit a minimal baseline JPEG
-# (SOI / APP0 / DQT / SOF0 / DHT / SOS / RST-free entropy / EOI) as
-# raw bytes on stdout or to a file. Used to seed the libFuzzer corpus
-# for tests/fuzz/fuzz_ra8_jpeg_sw.
-#
-# This generator only needs to satisfy the parser in libs/ra8_hal/src/
-# ra8_jpeg_sw.c well enough for the fuzzer to start from real coverage:
-# valid SOI, valid SOF0 with parseable WxH, and either valid entropy
-# bytes or an EOI marker right after SOS. The generator does NOT have
-# to produce a visually decodable image.
-#
-# Usage:
-#     python3 scripts/gen/gen_jpeg_fixture.py --width 8 --height 8 -o seed.jpg
+"""Emit a minimal baseline JPEG to seed the libFuzzer corpus.
+
+This generator only needs to satisfy the parser in libs/ra8_hal/src/
+ra8_jpeg_sw.c well enough for the fuzzer to start from real coverage:
+valid SOI, valid SOF0 with parseable WxH, and either valid entropy
+bytes or an EOI marker right after SOS. The generator does NOT have
+to produce a visually decodable image.
+
+Usage:
+    python3 scripts/gen/gen_jpeg_fixture.py --width 8 --height 8 -o seed.jpg
+"""
 
 import argparse
 import struct
@@ -81,6 +78,11 @@ def build_minimal_jpeg(width: int, height: int) -> bytes:
 
 
 def main() -> int:
+    """Emit one baseline JPEG of the requested size to stdout or a file.
+
+    Defaults to stdout (``-``) so the fixture can be piped straight into a
+    corpus directory without a temporary file.
+    """
     parser = argparse.ArgumentParser(
         description="Emit a minimal baseline JPEG seed for the libFuzzer corpus."
     )

@@ -90,8 +90,10 @@ def find_size_tool() -> str | None:
 
 
 def collect_elfs() -> list[Path]:
-    """Return every examples/ek_ra8d2/<app>/build/<app>.elf that
-    exists on disk.
+    """Every built app ELF currently on disk.
+
+    Reports what HAS been built rather than what could be: an app that was
+    never compiled is simply absent from the size table, not zero-sized.
     """
     out: list[Path] = []
     if not APPS_DIR.is_dir():
@@ -110,8 +112,11 @@ _BYTES_PER_KIB = 1024  # binary kilobyte
 
 
 def run_size(size_tool: str, elf: Path) -> AppSizes:
-    """Run `arm-none-eabi-size --format=sysv` and bucket the
-    section sizes into text / data / bss totals.
+    """Bucket one ELF's sections into text / data / bss totals.
+
+    Uses the sysv format because the default Berkeley output collapses
+    sections into fixed columns; sysv lists each section by name, which is
+    what allows the buckets to be assigned by name rather than by position.
     """
     result = subprocess.run(  # noqa: S603  # trusted: size_tool comes from shutil.which
         [size_tool, "--format=sysv", str(elf)],

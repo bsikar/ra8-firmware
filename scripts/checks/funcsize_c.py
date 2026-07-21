@@ -48,8 +48,7 @@ _CONTROL_PREFIXES = (
 
 
 def _brace_delta(line: str, in_block_comment: bool) -> tuple[int, int, bool]:
-    r"""Count net ``{`` / ``}`` on `line`, skipping braces that sit inside
-    string literals, character literals, or comments.
+    r"""Net brace delta for one line, ignoring braces inside literals and comments.
 
     A naive ``line.count("{")`` miscounts every brace that appears in a
     textual constant -- a JSON/CSS/JS blob written as a C string literal
@@ -124,8 +123,9 @@ def _looks_like_function_body_open(prev: str) -> bool:
 
 
 def _function_signature_start(lines: list[str], brace_idx: int) -> int:
-    """Walk backward from the line containing the opening ``{`` to find
-    where the function signature began.
+    """Find the line where the function signature began.
+
+    Walks backward from the line carrying the opening ``{``.
 
     Heuristic: keep walking while previous lines look like continuation
     of the same declaration (no terminator like ``;``, ``}``, ``*/``
@@ -146,8 +146,9 @@ def _function_signature_start(lines: list[str], brace_idx: int) -> int:
 
 
 def _measure_body(lines: list[str], brace_idx: int, n: int) -> int:
-    """Return the line index one past the function body whose opening ``{`` is
-    on ``lines[brace_idx]``.
+    """Line index one past the end of the function body.
+
+    The body is the one whose opening ``{`` sits on ``lines[brace_idx]``.
 
     Tracks brace depth from the opening ``{``, ignoring braces that sit inside
     string / character literals or comments (via `_brace_delta`).  A
@@ -197,8 +198,10 @@ def _measure_body(lines: list[str], brace_idx: int, n: int) -> int:
 
 
 def scan(path: Path, threshold: int) -> list[tuple[int, int, str]]:
-    """Return a list of (function_start_line, length, signature) tuples
-    for every function in `path` whose body exceeds `threshold`.
+    """Every function in ``path`` whose body exceeds ``threshold`` lines.
+
+    Returns ``(function_start_line, length, signature)`` per offender; an
+    unreadable file yields an empty list rather than raising.
     """
     try:
         text = path.read_text()
