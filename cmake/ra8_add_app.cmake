@@ -72,6 +72,12 @@
 # caller's dir -- inside a macro CMAKE_CURRENT_LIST_DIR is the caller's.
 set(_RA8_ADD_APP_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
+# The two largest phases of ra8_add_app() live beside this file, one per
+# question they answer (#359). Included once here; both define a macro that
+# ra8_add_app() calls, so the expanded result is the code that was inline.
+include(${_RA8_ADD_APP_DIR}/ra8_app/sources.cmake)
+include(${_RA8_ADD_APP_DIR}/ra8_app/vendored.cmake)
+
 # Declare one cross-compiled example application.
 #
 # Generates the .elf/.hex/.bin targets, links the shared library set plus
@@ -96,12 +102,6 @@ set(_RA8_ADD_APP_DIR "${CMAKE_CURRENT_LIST_DIR}")
 # author has to go and find. The waiver is per-file and deliberate; the
 # global ceilings in .cmake-format.yaml stay at cmakelang defaults so no
 # other listfile inherits it.
-# The two largest phases of ra8_add_app() live beside this file, one per
-# question they answer (#359). Included once here; both define a macro that
-# ra8_add_app() calls, so the expanded result is the code that was inline.
-include(${_RA8_ADD_APP_DIR}/ra8_app/sources.cmake)
-include(${_RA8_ADD_APP_DIR}/ra8_app/vendored.cmake)
-
 macro(ra8_add_app)
   cmake_parse_arguments(
     _RA8_APP

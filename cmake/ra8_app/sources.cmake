@@ -16,6 +16,18 @@
 # vendored SOUP each one drags in), and the narrow warning-suppression sets
 # those vendored TUs need. The per-TU compile options that CONSUME those sets
 # live in vendored.cmake, and run after the executable exists.
+# Collect every source this app compiles.
+#
+# cmake-lint: disable=R0912,R0915
+#
+# The branch and statement ceilings are waived here for the same reason
+# ra8_add_app() waives them, and the reason survives the move: these branches
+# ARE the library matrix -- one arm per library an app can name in LIBS, plus
+# the vendored SOUP each of those drags in. Splitting further would not remove
+# a branch, it would scatter one table across several files, and "which
+# sources does LIBS ra8_reflow pull in" would stop being answerable by reading
+# one list. The waiver is per-file; the global ceilings in .cmake-format.yaml
+# stay at cmakelang defaults so no other listfile inherits it.
 macro(_ra8_app_collect_sources)
   # ---- sources: per-app main, shared-or-local boot ----------------------
   set(_ra8_src ${CMAKE_CURRENT_SOURCE_DIR}/main.c)
