@@ -28,6 +28,10 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
 # Repo root = two parents up from this file (scripts/checks/<this>).
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -69,12 +73,8 @@ TEXT_EXTS = {
 
 # Always-skip path fragments.
 SKIP_FRAGMENTS = (
-    "/build/",
-    "/_deps/",
     "/third_party/",
-    "/node_modules/",
     "/.git/",
-    "/__pycache__/",
     "/docs/doxygen/html/",
     "/docs/doxygen/xml/",
     "/docs/doxygen/latex/",
@@ -287,7 +287,7 @@ def _iter_files() -> Iterable[Path]:
             for fn in filenames:
                 p = Path(dirpath) / fn
                 rel = "/" + str(p.relative_to(REPO_ROOT)) + "/"
-                if any(frag in rel for frag in SKIP_FRAGMENTS):
+                if is_build_output_path(p) or any(frag in rel for frag in SKIP_FRAGMENTS):
                     continue
                 if p.suffix.lower() not in TEXT_EXTS:
                     continue

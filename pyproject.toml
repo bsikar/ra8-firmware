@@ -15,7 +15,32 @@
 [tool.ruff]
 line-length = 100
 target-version = "py39"
-extend-exclude = ["libs/third_party", "libs/fonts", "build", "build-cov", "_deps"]
+# Vendored trees, plus the build output ruff would otherwise descend into on an
+# ad-hoc `ruff check .`. The gated path never relies on these: check_ruff.py
+# derives its file list from scripts/checks/lint_targets.py, whose
+# is_build_output() is the single definition of "this is build output" shared
+# with the other checkers and with .gitignore (#377).
+#
+# Note what is NOT here: a bare `build`. Ruff matches a slashless pattern
+# against every path COMPONENT, so `build` excluded any directory of that name
+# at any depth -- and because check_ruff.py passes --force-exclude, ruff drops
+# such a file even when it is named explicitly on the command line. A
+# first-party `scripts/build/foo.py` -- PATHREF-OK: #359 renamed it -- would have
+# been handed to ruff by the gate
+# and silently skipped. `_deps` and `__pycache__` stay slashless on purpose:
+# CMake and CPython reserve those names, so they cannot collide with source.
+extend-exclude = [
+  "libs/third_party",
+  "libs/fonts",
+  "_deps",
+  "__pycache__",
+  "/build",
+  "docs/build",
+  "esp32/build",
+  "tests/build",
+  "tests/build-cov",
+  "tests/build-fuzz",
+]
 
 [tool.ruff.lint]
 select = [

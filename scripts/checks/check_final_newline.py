@@ -29,6 +29,10 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 SOURCE_SUFFIXES = (
@@ -56,12 +60,7 @@ EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/fonts/",
     "port/threadx/",
-    "/build/",
-    "/build-cov/",
-    "/_deps/",
     "_unsupported/",
-    "__pycache__/",
-    "node_modules/",
 )
 
 
@@ -75,7 +74,7 @@ def _ends_in_newline(path: Path) -> bool:
 
 
 def _is_excluded(path: Path) -> bool:
-    return any(frag in str(path) for frag in EXCLUDE_FRAGMENTS)
+    return is_build_output_path(path) or any(frag in str(path) for frag in EXCLUDE_FRAGMENTS)
 
 
 def _is_source(path: Path) -> bool:
