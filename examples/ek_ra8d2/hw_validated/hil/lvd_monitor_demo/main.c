@@ -63,19 +63,18 @@ typedef enum : uint32_t {
   k_lvd_demo_stab_ms   = 1U,      /**< t_d(E-A) settle before 1st read. */
 } lvd_demo_config_t;
 
-/**
- * @brief PRCR write values to (un)lock the PVD protection group.
+/* PRCR write values to (un)lock the PVD protection group. Not a Doxygen block:
+ * it documents constants that live in ra8_lvd's headers, not the declaration
+ * that follows it.
  *
- * @details
  * The PVD control registers (PVD1CMPCR / PVD1CR0 / PVD1CR1 / PVD1SR /
- * PVD1FCR) are write-protected by ``PRCR.PRC3``. Each PVD register page
- * carries the note "Set the PRCR.PRC3 bit to 1 (write enabled) before
- * rewriting this register" (HUM Ch 8.2.2 p 303, Ch 8.2.4 p 305, Ch 8.2.6
- * p 307, Ch 8.2.7 p 307). PRCR is R_SYSTEM + 0x3FA; bit 15:8 is the
- * mandatory 0xA5 key and ``k_ra8_prcr_grp3_pvd`` (0x0008) is the PRC3
- * group bit, so ``k_ra8_prcr_unlock_pvd`` (0xA508) enables writes and
- * ``k_ra8_prcr_lock_all`` (the key alone) relocks.
- */
+ * PVD1FCR) are write-protected by PRCR.PRC3. Each PVD register page carries
+ * the note "Set the PRCR.PRC3 bit to 1 (write enabled) before rewriting this
+ * register" (HUM Ch 8.2.2 p 303, Ch 8.2.4 p 305, Ch 8.2.6 p 307, Ch 8.2.7
+ * p 307). PRCR is R_SYSTEM + 0x3FA; bits 15:8 are the mandatory 0xA5 key and
+ * k_ra8_prcr_grp3_pvd (0x0008) is the PRC3 group bit, so
+ * k_ra8_prcr_unlock_pvd (0xA508) enables writes and k_ra8_prcr_lock_all (the
+ * key alone) relocks. */
 
 /** @brief Output line tags (2.80 V == k_ra8_lvd_pvdlvl_2_80v). */
 static const uint8_t k_lvd_demo_ok_msg[]  = "lvd: pvd1 thr=2.80V mon=above det=0 ok=Y\r\n";
