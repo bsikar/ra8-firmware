@@ -110,11 +110,11 @@ static void test_lvd_app_status_decode(void)
 static void test_lvd_app_prcr_unlock_word(void)
 {
   TEST_BEGIN("lvd_monitor_demo: PRCR unlock = key | PRC3 (0xA508)");
-  const uint16_t composed = (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp2_osc);
+  const uint16_t composed = (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp3_pvd);
   TEST_ASSERT_EQ(k_t_lvd_prcr_unlock, composed);
   /* Key byte present and PRC3 (bit 3) set. */
   TEST_ASSERT_EQ(k_ra8_prcr_key, (composed & 0xFF00U));
-  TEST_ASSERT((composed & (uint16_t)k_ra8_prcr_grp2_osc) != 0U);
+  TEST_ASSERT((composed & (uint16_t)k_ra8_prcr_grp3_pvd) != 0U);
   /* Relock word drops every group bit but keeps the key. */
   TEST_ASSERT_EQ(k_ra8_prcr_key, k_ra8_prcr_lock_all);
   TEST_END("lvd_monitor_demo: PRCR unlock = key | PRC3 (0xA508)");

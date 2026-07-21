@@ -54,7 +54,7 @@ typedef enum : uint64_t {
 /** @brief ICU IELSR layout -- ra8_ielsr_bit_t / ra8_ielsr_mask_t. */
 typedef enum : uint32_t {
   k_ielsr_iels_mask = 0x000003FFU, /**< IELS event-select field [9:0].    */
-  k_ielsr_ir_bit    = 16U,         /**< IR interrupt status flag (RW1C).  */
+  k_ielsr_ir_bit    = 16U,         /**< IR interrupt status flag (W0C).   */
   k_ielsr_ir_mask   = 0x00010000U, /**< IR bit mask.                      */
   k_ielsr_dtce_mask = 0x01000000U, /**< DTCE: DTC activation enable [24]. */
 } ielsr_field_t;
@@ -333,7 +333,7 @@ void board_periph_icu_raise_event(uc_engine* uc, uint16_t event)
     if ((s_ielsr[slot] & (uint32_t)k_ielsr_iels_mask) != (uint32_t)event) {
       continue;
     }
-    s_ielsr[slot] |= (uint32_t)k_ielsr_ir_mask; /* latch IR (RW1C by handler) */
+    s_ielsr[slot] |= (uint32_t)k_ielsr_ir_mask; /* latch IR (W0C by handler) */
     if (nvic_enabled(uc, slot)) {
       nvic_set_pending(uc, slot);
       irq_ring_push(slot);
@@ -375,17 +375,27 @@ static uint64_t icu_read(uint64_t addr)
   return (slot < (uint32_t)k_icu_ielsr_cnt) ? s_ielsr[slot] : 0U;
 }
 
-/** @brief Dispatch an ICU IELSR write; IR is RW1C, the IELS/DTCE bits are RW. */
+/** @brief Dispatch an ICU IELSR write; IR is W0C, the IELS/DTCE bits are RW. */
 static void icu_write(uint64_t addr, uint32_t value)
 {
   const uint32_t slot = icu_ielsr_slot(addr);
   if (slot >= (uint32_t)k_icu_ielsr_cnt) {
     return;
   }
-  /* IR (bit 16) is write-one-to-clear: a written 1 clears the latched flag, a
-   * written 0 leaves it. Every other bit takes the written value. */
+  /* IR (bit 16) is WRITE-ZERO-to-clear, not write-one-to-clear: HUM Ch 14.2.17
+   * p 547, "IR flag (Interrupt Status Flag)" -> [Clearing condition] -- "the IR
+   * flag is cleared to 0 by writing 0". A written 0 clears the latched flag; a
+   * written 1 leaves it set. Every other bit takes the written value.
+   *
+   * This model had the polarity inverted (RW1C), which silently satisfied a
+   * driver that ORed a 1 into IR to "clear" it -- a write real silicon ignores.
+   * The emulator therefore ran every ISR-driven app cleanly while the bench
+   * live-locked in an interrupt storm (#170: lpm_periodic_idle emitted no UART
+   * at all, stuck in IRQ0_Handler with IELSR0 = 0x00010080). Modelling the real
+   * polarity makes the sim reproduce that storm, so the bug cannot hide here
+   * again. */
   const uint32_t ir_now  = s_ielsr[slot] & (uint32_t)k_ielsr_ir_mask;
-  const uint32_t ir_keep = ((value & (uint32_t)k_ielsr_ir_mask) != 0U) ? 0U : ir_now;
+  const uint32_t ir_keep = ((value & (uint32_t)k_ielsr_ir_mask) != 0U) ? ir_now : 0U;
   s_ielsr[slot]          = (value & ~(uint32_t)k_ielsr_ir_mask) | ir_keep;
 }
 

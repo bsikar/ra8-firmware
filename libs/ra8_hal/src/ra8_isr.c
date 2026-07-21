@@ -367,12 +367,23 @@ void ra8_isr_dispatch(uint16_t slot)
   const ra8_isr_handler_t handler = s_slots[slot].handler;
   void* const             ctx     = s_slots[slot].ctx;
 
-  /* Clear IELSR.IR via the accessor in ra8_icu_regs.h. Writing
-   * the IR bit follows the HUM 14.2 "write-one-to-clear" rule. */
+  /* Clear IELSR.IR via the accessor in ra8_icu_regs.h. The IR flag is
+   * WRITE-ZERO-to-clear, not write-one-to-clear: HUM Ch 14.2.17 p 547 states
+   * under "IR flag (Interrupt Status Flag)" -> [Clearing condition] that "the
+   * IR flag is cleared to 0 by writing 0". ORing a 1 into the bit -- which
+   * this did until issue #170 -- therefore cannot ever clear it. The ICU then
+   * re-asserts the request the instant the handler returns and the core
+   * live-locks in an interrupt storm that starves the main loop. Bench-proven
+   * on an EK-RA8D2: lpm_periodic_idle sat in IRQ0_Handler with
+   * IELSR0 = 0x00010080 (IR set) and emitted no UART at all; writing IR = 0
+   * through J-Link released it and the app printed immediately.
+   *
+   * Read-modify-write with the IR bit masked OFF: every other field (IELS,
+   * DTCE) keeps its value and only IR receives the clearing zero. */
   volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
   if (ielsr != nullptr) { /* GCOVR_EXCL_BR_LINE -- validated above */
-    /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 524 */
-    *ielsr = *ielsr | ((uint32_t)1U << k_ra8_ielsr_ir_bit);
+    /* HUM Ch 14.2.17 "IELSRn : Interrupt Controller Unit Event Link Setting Register n", p 546-547 */
+    *ielsr = *ielsr & ~((uint32_t)1U << k_ra8_ielsr_ir_bit);
   }
 
   if (handler != nullptr) {
