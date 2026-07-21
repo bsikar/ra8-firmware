@@ -27,7 +27,6 @@ project(
   DESCRIPTION "Host-compiled unit tests for ra8-firmware"
 )
 
-
 # ---------------------------------------------------------------------------
 # Layout (#359)
 # ---------------------------------------------------------------------------
@@ -58,7 +57,6 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_crypto.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_npu.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_xml.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_storage.cmake)
-
 
 # ---------------------------------------------------------------------------
 # Optional libFuzzer harnesses (opt-in via -DRA8_FUZZ=ON; clang-only).

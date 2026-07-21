@@ -13,7 +13,6 @@
 # same directory scope, so every variable and target defined here is visible
 # to the driver and to the fragments included after it.
 
-
 add_library(
   ra8_core_hal OBJECT
   ${RA8_CORE_SOURCES}
@@ -309,4 +308,3 @@ if(RA8_FUZZ)
     target_link_libraries(ra8_core_hal_fuzz PUBLIC litehtml gumbo)
   endif()
 endif()
-

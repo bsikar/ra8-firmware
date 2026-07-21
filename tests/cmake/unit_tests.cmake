@@ -224,7 +224,6 @@ foreach(src ${RA8_TEST_SOURCES})
   ra8_add_test(${name})
 endforeach()
 
-
 # ---------------------------------------------------------------------------
 # test_app_ereader_manga: the ereader_manga host twin drives the app's shared
 # pan/zoom presentation model directly, so compile the app's src/mg_reader.c into
@@ -241,4 +240,3 @@ if(TARGET test_app_ereader_manga)
     test_app_ereader_manga PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_manga/inc
   )
 endif()
-
