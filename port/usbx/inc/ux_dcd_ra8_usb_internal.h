@@ -69,10 +69,10 @@ typedef struct {
  * @brief Bridge-singleton state.
  */
 typedef struct {
-  ra8_usb_dcd_state_t          state;                            /**< Bridge run-state.       */
-  ra8_usb_speed_t              speed;                            /**< Controller this drives. */
-  struct UX_SLAVE_DCD_STRUCT* owner;                            /**< Back-pointer into USBX. */
-  ra8_usb_dcd_pipe_slot_t      pipes[k_ux_dcd_ra8_usb_max_pipes]; /**< DCP + PIPE1..9. */
+  ra8_usb_dcd_state_t         state;                             /**< Bridge run-state.       */
+  ra8_usb_speed_t             speed;                             /**< Controller this drives. */
+  struct UX_SLAVE_DCD_STRUCT* owner;                             /**< Back-pointer into USBX. */
+  ra8_usb_dcd_pipe_slot_t     pipes[k_ux_dcd_ra8_usb_max_pipes]; /**< DCP + PIPE1..9.         */
 } ra8_usb_dcd_t;
 
 /* Orphan bulk-OUT holding buffer. A host OUT packet can land in the
