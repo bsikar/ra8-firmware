@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-#
-# usb_stream_bench.py -- measure sustained one-way and round-trip throughput
-# on a CDC ACM device WITHOUT the chunk-at-a-time serialization that the
-# correctness benchmark uses.  This is the right tool for asking "what is
-# the actual line rate?"
-#
-# Methodology:
-#   * Writer thread fires the whole payload back-to-back, no waits.
-#   * Reader thread drains in tight non-blocking select() loop, no sleeps.
-#   * Wall-time runs from first byte written to last byte received.
-#
-# Usage:
-#   python3 usb_stream_bench.py <device> [--bytes N]
-#
-# Prints one-way wire throughput (bytes/elapsed) plus a sanity check that
-# every byte echoed back matches what was sent.
+"""Measure sustained CDC ACM throughput without per-chunk serialization.
+
+This is the right tool for asking "what is the actual line rate?".
+``benchmark.py`` deliberately waits for each chunk to echo before sending the
+next, which bounds it by round-trip latency rather than bandwidth; this one
+keeps the pipe full and so measures the link.
+
+Methodology:
+  * Writer thread fires the whole payload back-to-back, no waits.
+  * Reader thread drains in a tight non-blocking select() loop, no sleeps.
+  * Wall-time runs from first byte written to last byte received.
+
+Because both directions are in flight at once, the device must be able to
+absorb the whole payload; this is a throughput measurement, not the
+correctness gate.
+
+Usage:
+  python3 stream_bench.py <device> [--bytes N]
+
+Prints one-way wire throughput (bytes/elapsed) plus a sanity check that
+every byte echoed back matches what was sent.
+"""
+
+from __future__ import annotations
 
 import argparse
 import contextlib
@@ -28,9 +36,20 @@ import termios
 import threading
 import time
 from pathlib import Path
+from typing import NoReturn
 
 
-def open_raw(device):
+def open_raw(device: str) -> int:
+    """Open a tty in fully raw mode and return the blocking fd.
+
+    Clears every line-discipline transformation, ICRNL above all: on a
+    byte-exact echo measurement it would rewrite 0x0D to 0x0A and show up as
+    device-side corruption.
+
+    Unlike the correctness benchmark's version this returns the fd alone and
+    leaves O_NONBLOCK SET, because every reader and writer here is driven by
+    select() and never wants to block.
+    """
     fd = os.open(device, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
     attr = termios.tcgetattr(fd)
     attr[2] |= termios.CLOCAL
@@ -51,7 +70,7 @@ def open_raw(device):
     return fd
 
 
-def _drain(fd, window_s=0.3):
+def _drain(fd: int, window_s: float = 0.3) -> None:
     """Discard anything already buffered so the timing starts clean."""
     end = time.monotonic() + window_s
     while time.monotonic() < end:
@@ -61,10 +80,12 @@ def _drain(fd, window_s=0.3):
                 os.read(fd, 4096)
 
 
-def _spawn_writer(fd, payload, sent, err):
+def _spawn_writer(
+    fd: int, payload: bytes, sent: list[int], err: list[tuple[str, Exception]]
+) -> threading.Thread:
     """Start the background writer that keeps the bulk-OUT pipe full."""
 
-    def writer():
+    def writer() -> None:
         try:
             while sent[0] < len(payload):
                 _, w, _ = select.select([], [fd], [], 1.0)
@@ -80,7 +101,7 @@ def _spawn_writer(fd, payload, sent, err):
     return th
 
 
-def _read_back(fd, want, deadline):
+def _read_back(fd: int, want: int, deadline: float) -> bytearray:
     """Read until ``want`` bytes have arrived or ``deadline`` passes."""
     recv = bytearray()
     while len(recv) < want and time.monotonic() < deadline:
@@ -93,7 +114,7 @@ def _read_back(fd, want, deadline):
     return recv
 
 
-def _report_mismatch(recv, payload, total_bytes):
+def _report_mismatch(recv: bytes | bytearray, payload: bytes, total_bytes: int) -> None:
     """Print the first differing offset, with context on both sides."""
     n = min(len(recv), len(payload))
     for i in range(n):
@@ -107,7 +128,9 @@ def _report_mismatch(recv, payload, total_bytes):
         print(f"    short read: got {len(recv)}/{total_bytes}")
 
 
-def _report_throughput(sent, recv, payload, total_bytes, elapsed):
+def _report_throughput(
+    sent: int, recv: bytes | bytearray, payload: bytes, total_bytes: int, elapsed: float
+) -> bool:
     """Print the timing and integrity verdict. Returns True when clean."""
     ok = bytes(recv) == payload[: len(recv)] and len(recv) == total_bytes
     oneway = (total_bytes / elapsed) if elapsed > 0 else 0.0
@@ -121,7 +144,7 @@ def _report_throughput(sent, recv, payload, total_bytes, elapsed):
     return ok
 
 
-def stream_echo(device, total_bytes):
+def stream_echo(device: str, total_bytes: int) -> bool:
     """Full-duplex echo bench: a writer thread fills OUT while we drain IN."""
     fd = open_raw(device)
     _drain(fd)
@@ -143,7 +166,16 @@ def stream_echo(device, total_bytes):
     return _report_throughput(sent[0], recv, payload, total_bytes, elapsed)
 
 
-def find_cdc_device():
+def find_cdc_device() -> str | None:
+    """Find the first /dev/ttyACM* whose USB vendor id is pid.codes (0x1209).
+
+    Matches on vendor id via udevadm rather than on device name order, since
+    ttyACM numbering depends on enumeration order and a J-Link or another
+    board can take ttyACM0.
+
+    Returns the device path, or None when no matching device is present --
+    the caller distinguishes that from a test failure.
+    """
     dev_dir = Path("/dev")
     for entry in sorted(dev_dir.iterdir()):
         if not entry.name.startswith("ttyACM"):
@@ -160,7 +192,15 @@ def find_cdc_device():
     return None
 
 
-def main():
+def main() -> NoReturn:
+    """Stream-benchmark one CDC ACM device and exit with the verdict.
+
+    Never returns. Exit 2 means no device was found (a rig fault), 1 means the
+    echoed data did not match or the writer thread raised, 0 means clean.
+
+    Default payload is 64 KiB, large enough to amortise start-up cost while
+    still fitting comfortably in the 30 s read deadline on a slow link.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("device", nargs="?", default=None)
     ap.add_argument("--bytes", type=int, default=65536)
