@@ -29,8 +29,8 @@
  * @brief Static loop bounds for the UART TX path (NASA P10 Rule 2).
  */
 typedef enum : uint32_t {
-    k_esp_uart_tx_spin_max = 1000000u, /**< Max FIFO-room poll iterations before timeout. */
-    k_esp_uart_write_max = 4096u,      /**< Max bytes accepted by one write() call.       */
+  k_esp_uart_tx_spin_max = 1000000u, /**< Max FIFO-room poll iterations before timeout. */
+  k_esp_uart_write_max   = 4096u,    /**< Max bytes accepted by one write() call.       */
 } esp_uart_bounds_t;
 
 /**
@@ -39,8 +39,8 @@ typedef enum : uint32_t {
  * @invariant `initialized` is false until init() succeeds, true thereafter.
  */
 typedef struct esp_uart_ctx {
-    bool initialized; /**< Set by init(); gates the TX entry points.                      */
-    uint32_t baud;    /**< Baud recorded at init() (informational; ROM owns the divisor). */
+  bool     initialized; /**< Set by init(); gates the TX entry points.                      */
+  uint32_t baud;        /**< Baud recorded at init() (informational; ROM owns the divisor). */
 } esp_uart_ctx_t;
 
 /**
@@ -58,10 +58,11 @@ static esp_uart_ctx_t s_esp_uart0_ctx = {.initialized = false, .baud = 0u};
  * @post The returned value is masked to the TXFIFO_CNT field width.
  * @since 0.1.0 (spike)
  */
-static uint32_t esp_uart_txfifo_count(void) {
-    /* TRM Ch 27.7.1 "UART Registers" Reg 27.21 UART_STATUS_REG p 769 */
-    const uint32_t status = esp_uart0()->STATUS;
-    return (status >> k_esp_uart_txfifo_cnt_shift) & k_esp_uart_txfifo_cnt_mask;
+static uint32_t esp_uart_txfifo_count(void)
+{
+  /* TRM Ch 27.7.1 "UART Registers" Reg 27.21 UART_STATUS_REG p 769 */
+  const uint32_t status = esp_uart0()->STATUS;
+  return (status >> k_esp_uart_txfifo_cnt_shift) & k_esp_uart_txfifo_cnt_mask;
 }
 
 /**
@@ -79,17 +80,18 @@ static uint32_t esp_uart_txfifo_count(void) {
  * @note The divisor is owned by the ROM; @p baud is recorded, not programmed.
  * @since 0.1.0 (spike)
  */
-static esp_err_t esp_uart_ours_init(void* ctx, uint32_t baud) {
-    esp_uart_ctx_t* self = (esp_uart_ctx_t*)ctx;
-    if (self == nullptr) {
-        return k_esp_err_null_ptr;
-    }
-    if (baud == 0u) {
-        return k_esp_err_invalid_arg;
-    }
-    self->baud = baud;
-    self->initialized = true;
-    return k_esp_ok;
+static esp_err_t esp_uart_ours_init(void* ctx, uint32_t baud)
+{
+  esp_uart_ctx_t* self = (esp_uart_ctx_t*)ctx;
+  if (self == nullptr) {
+    return k_esp_err_null_ptr;
+  }
+  if (baud == 0u) {
+    return k_esp_err_invalid_arg;
+  }
+  self->baud        = baud;
+  self->initialized = true;
+  return k_esp_ok;
 }
 
 /**
@@ -107,31 +109,32 @@ static esp_err_t esp_uart_ours_init(void* ctx, uint32_t baud) {
  * @post The poll loop ran at most @ref k_esp_uart_tx_spin_max iterations.
  * @since 0.1.0 (spike)
  */
-static esp_err_t esp_uart_ours_putc(void* ctx, uint8_t byte) {
-    esp_uart_ctx_t* self = (esp_uart_ctx_t*)ctx;
-    if (self == nullptr) {
-        return k_esp_err_null_ptr;
+static esp_err_t esp_uart_ours_putc(void* ctx, uint8_t byte)
+{
+  esp_uart_ctx_t* self = (esp_uart_ctx_t*)ctx;
+  if (self == nullptr) {
+    return k_esp_err_null_ptr;
+  }
+  if (!self->initialized) {
+    return k_esp_err_invalid_arg;
+  }
+  bool has_room = false;
+  for (uint32_t spins = 0u; spins < k_esp_uart_tx_spin_max; ++spins) {
+    if (esp_uart_txfifo_count() < k_esp_uart_fifo_depth) {
+      has_room = true;
+      break;
     }
-    if (!self->initialized) {
-        return k_esp_err_invalid_arg;
-    }
-    bool has_room = false;
-    for (uint32_t spins = 0u; spins < k_esp_uart_tx_spin_max; ++spins) {
-        if (esp_uart_txfifo_count() < k_esp_uart_fifo_depth) {
-            has_room = true;
-            break;
-        }
-    }
-    if (!has_room) {
-        return k_esp_err_timeout;
-    }
-    /*
+  }
+  if (!has_room) {
+    return k_esp_err_timeout;
+  }
+  /*
      * TRM Ch 27.4.2 "UART FIFO" p 734 -- hardware detects a write to
      * UART_FIFO_REG (offset: Reg 27.1 p 753) and routes the data to the TX
      * FIFO via a bypass, even though the register's summary access type is RO.
      */
-    esp_uart0()->FIFO = (uint32_t)byte;
-    return k_esp_ok;
+  esp_uart0()->FIFO = (uint32_t)byte;
+  return k_esp_ok;
 }
 
 /**
@@ -150,24 +153,25 @@ static esp_err_t esp_uart_ours_putc(void* ctx, uint8_t byte) {
  * @post The loop ran at most @ref k_esp_uart_write_max iterations.
  * @since 0.1.0 (spike)
  */
-static esp_err_t esp_uart_ours_write(void* ctx, const uint8_t* data, size_t len) {
-    esp_uart_ctx_t* self = (esp_uart_ctx_t*)ctx;
-    if (self == nullptr) {
-        return k_esp_err_null_ptr;
+static esp_err_t esp_uart_ours_write(void* ctx, const uint8_t* data, size_t len)
+{
+  esp_uart_ctx_t* self = (esp_uart_ctx_t*)ctx;
+  if (self == nullptr) {
+    return k_esp_err_null_ptr;
+  }
+  if (data == nullptr) {
+    return k_esp_err_null_ptr;
+  }
+  if (len > k_esp_uart_write_max) {
+    return k_esp_err_invalid_arg;
+  }
+  for (size_t i = 0u; i < len; ++i) {
+    const esp_err_t err = esp_uart_ours_putc(ctx, data[i]);
+    if (err != k_esp_ok) {
+      return err;
     }
-    if (data == nullptr) {
-        return k_esp_err_null_ptr;
-    }
-    if (len > k_esp_uart_write_max) {
-        return k_esp_err_invalid_arg;
-    }
-    for (size_t i = 0u; i < len; ++i) {
-        const esp_err_t err = esp_uart_ours_putc(ctx, data[i]);
-        if (err != k_esp_ok) {
-            return err;
-        }
-    }
-    return k_esp_ok;
+  }
+  return k_esp_ok;
 }
 
 /**
@@ -184,20 +188,21 @@ static esp_err_t esp_uart_ours_write(void* ctx, const uint8_t* data, size_t len)
  * @post The poll loop ran at most @ref k_esp_uart_tx_spin_max iterations.
  * @since 0.1.0 (spike)
  */
-static esp_err_t esp_uart_ours_flush(void* ctx) {
-    esp_uart_ctx_t* self = (esp_uart_ctx_t*)ctx;
-    if (self == nullptr) {
-        return k_esp_err_null_ptr;
+static esp_err_t esp_uart_ours_flush(void* ctx)
+{
+  esp_uart_ctx_t* self = (esp_uart_ctx_t*)ctx;
+  if (self == nullptr) {
+    return k_esp_err_null_ptr;
+  }
+  if (!self->initialized) {
+    return k_esp_err_invalid_arg;
+  }
+  for (uint32_t spins = 0u; spins < k_esp_uart_tx_spin_max; ++spins) {
+    if (esp_uart_txfifo_count() == 0u) {
+      return k_esp_ok;
     }
-    if (!self->initialized) {
-        return k_esp_err_invalid_arg;
-    }
-    for (uint32_t spins = 0u; spins < k_esp_uart_tx_spin_max; ++spins) {
-        if (esp_uart_txfifo_count() == 0u) {
-            return k_esp_ok;
-        }
-    }
-    return k_esp_err_timeout;
+  }
+  return k_esp_err_timeout;
 }
 
 /**
@@ -206,13 +211,14 @@ static esp_err_t esp_uart_ours_flush(void* ctx) {
  * @note `const` so it lives in .rodata; `ctx` points at @ref s_esp_uart0_ctx.
  */
 static const esp_uart_ops_t s_esp_uart_ours_ops = {
-    .ctx = &s_esp_uart0_ctx,
-    .init = esp_uart_ours_init,
-    .putc = esp_uart_ours_putc,
-    .write = esp_uart_ours_write,
-    .flush = esp_uart_ours_flush,
+  .ctx   = &s_esp_uart0_ctx,
+  .init  = esp_uart_ours_init,
+  .putc  = esp_uart_ours_putc,
+  .write = esp_uart_ours_write,
+  .flush = esp_uart_ours_flush,
 };
 
-const esp_uart_ops_t* esp_uart_ours_ops(void) {
-    return &s_esp_uart_ours_ops;
+const esp_uart_ops_t* esp_uart_ours_ops(void)
+{
+  return &s_esp_uart_ours_ops;
 }

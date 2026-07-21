@@ -24,11 +24,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_elc_regs.h"
-#include "ra8_usb_regs.h"
 #include "ra8_check.h"
+#include "ra8_elc_regs.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
+#include "ra8_usb_regs.h"
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -732,9 +732,9 @@ void internal_handle_ctrl_out_data(ra8_usb_speed_t speed)
 
   uint16_t rx = 0U;
   if (ra8_usb_dcp_out_read(speed,
-                          tr->ux_slave_transfer_request_data_pointer,
-                          s_ctrl_out_wlen,
-                          &rx) != k_ra8_ok) {
+                           tr->ux_slave_transfer_request_data_pointer,
+                           s_ctrl_out_wlen,
+                           &rx) != k_ra8_ok) {
     return;
   }
   tr->ux_slave_transfer_request_actual_length = rx;
