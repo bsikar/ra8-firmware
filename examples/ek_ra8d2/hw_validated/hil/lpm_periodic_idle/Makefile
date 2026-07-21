@@ -2,7 +2,7 @@
 # Per-app Makefile for the `lpm_periodic_idle` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_pending/lpm_periodic_idle/
+#   cd examples/ek_ra8d2/hw_validated/hil/lpm_periodic_idle/
 #   make             # configure + build -> build/lpm_periodic_idle.elf
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/lpm_periodic_idle/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/lpm_periodic_idle/main.c
  * @brief Periodic-app deep-idle loop: wake-do-work-standby on ULPT0 self-wake
  *
  * @par Tag

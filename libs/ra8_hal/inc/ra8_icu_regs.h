@@ -262,7 +262,7 @@ static inline volatile uint8_t* ra8_icu_irqcr(uint8_t irq_num)
  */
 typedef enum : uint8_t {
   k_ra8_ielsr_iels_shift = 0U,  /**< IELS event-select shift, bits [9:0]. */
-  k_ra8_ielsr_ir_bit     = 16U, /**< IR interrupt status flag (RW1C).     */
+  k_ra8_ielsr_ir_bit     = 16U, /**< IR interrupt status flag (W0C).      */
   k_ra8_ielsr_dtce_bit   = 24U, /**< DTCE: DTC activation enable.         */
 } ra8_ielsr_bit_t;
 

@@ -123,5 +123,5 @@ Build / flash:
 
 ```
 make bkup_survival_demo
-make -C examples/ek_ra8d2/hw_pending/bkup_survival_demo flash
+make -C examples/ek_ra8d2/hw_validated/hil/bkup_survival_demo flash
 ```

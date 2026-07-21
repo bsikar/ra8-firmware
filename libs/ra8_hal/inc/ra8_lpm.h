@@ -134,6 +134,21 @@ typedef struct {
  * @enum ra8_lpm_clock_t
  * @brief Selector for ``ra8_lpm_set_clock_stop`` / ``ra8_lpm_get_clock_stop``.
  */
+/**
+ * @enum ra8_lpm_pd_timeout_t
+ * @brief Poll bound for ``ra8_lpm_graphics_power_on`` flag waits.
+ *
+ * @details
+ * Power-gating a domain completes in microseconds (HUM Ch 11.5.1 p 480),
+ * so this bound is generous by orders of magnitude at any core clock; it
+ * exists to satisfy NASA Rule 2 rather than to encode a real deadline.
+ *
+ * @see ra8_lpm_graphics_power_on
+ */
+typedef enum : uint32_t {
+  k_ra8_lpm_pd_timeout_default = 100000U, /**< Default power-gate poll bound. */
+} ra8_lpm_pd_timeout_t;
+
 typedef enum : uint8_t {
   k_ra8_lpm_clock_moco  = 0U, /**< Middle-Speed On-Chip Oscillator. */
   k_ra8_lpm_clock_hoco  = 1U, /**< High-Speed On-Chip Oscillator.   */
@@ -568,6 +583,73 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_lpm_set_clock_stop(ra8_lpm_clock_t clock, bool stop);
+
+/**
+ * @brief Power the graphics domain on (DRW / GLCDC / MIPI DSI+CSI / VIN).
+ *
+ * @details
+ * Clears ``PDCTRGD.PDDE`` so the graphics power domain leaves its gated
+ * reset state, then waits for the controller to report the transition
+ * complete. HUM Ch 11.5.1 Table 11.7 p 480 lists the domain contents:
+ * MIPI DSI, MIPI CSI, VIN, **DRW** and GLCDC. HUM Ch 11.2.14 p 452 gives
+ * the register a reset value of ``0x81`` -- ``PDPGSF`` = 1 (gated off) and
+ * ``PDDE`` = 1 (power off) -- so **every one of those peripherals is
+ * unpowered out of reset** and cancelling module-stop alone is not enough
+ * to make one respond.
+ *
+ * This was the whole of issue #247: the D/AVE 2D engine had never
+ * rasterised a pixel on real silicon because nothing ever powered its
+ * domain. Bench evidence on an EK-RA8D2 -- with ``PDCTRGD`` at its ``0x81``
+ * reset value the DRW ``HWREVISION`` register reads ``0x00000000``; after
+ * this call it reads ``0x0FBE0107``.
+ *
+ * Sequence (HUM Ch 11.2.14 p 452 + Ch 11.5.1 p 480):
+ *  1. MOCO must already be running -- "when using the power gating
+ *     function, it should be set MOCOCR.MCSTP to 0 (MOCO is operated) in
+ *     advance". The call starts MOCO itself so the caller cannot forget.
+ *  2. ``PDDE`` may be moved 1 -> 0 only "after confirmed that the
+ *     PDCSF = 0 and PDPGSF = 1", so both flags are polled first.
+ *  3. Clear ``PDDE`` (the register is PRC1-protected, so the write runs
+ *     inside an ``RA8_PROTECTED_WRITE`` window).
+ *  4. Wait for ``PDCSF`` = 0 and ``PDPGSF`` = 0 -- gating finished, the
+ *     domain is live.
+ *
+ * Idempotent: if the domain is already powered (``PDPGSF`` = 0) the
+ * function returns ``k_ra8_ok`` without touching the register, so several
+ * graphics drivers may each call it during their own init.
+ *
+ * @param[in] timeout_iters Poll-loop bound for each flag wait; must be
+ *                          non-zero. Bounds the loop for NASA Rule 2.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok              Domain powered and gating complete.
+ * @retval k_ra8_err_invalid_arg ``timeout_iters`` was 0.
+ * @retval k_ra8_err_hw_timeout  A status flag never reached its target
+ *                               state within ``timeout_iters``.
+ *
+ * @pre ``timeout_iters`` > 0.
+ * @pre Single-threaded init context (the polls block the CPU).
+ * @post On success ``PDCTRGD.PDPGSF`` == 0 and ``PDCTRGD.PDCSF`` == 0.
+ * @post On success MOCO is running (``MOCOCR.MCSTP`` == 0).
+ *
+ * @note Thread safety: not thread-safe.
+ * @note Must run before any DRW / GLCDC / MIPI / VIN register access;
+ *       reads of an unpowered domain return 0 and writes are lost.
+ *
+ * @par Example:
+ * @code
+ * (void)ra8_lpm_graphics_power_on(k_ra8_lpm_pd_timeout_default);
+ * (void)ra8_drw_init(&drw_cfg);
+ * @endcode
+ *
+ * @see ra8_lpm_set_clock_stop()  Starts the MOCO this call depends on
+ * @since 0.1.0
+ *
+ * @par NASA Power of 10 Compliance:
+ * - Rule 2: both poll loops bounded by ``timeout_iters``.
+ * - Rule 5: 1 precondition check + 2 postcondition polls.
+ */
+[[nodiscard]] ra8_err_t ra8_lpm_graphics_power_on(uint32_t timeout_iters);
 
 /**
  * @brief Read the per-oscillator stop bit.

@@ -111,6 +111,9 @@ typedef enum : uint16_t {
   k_ra8_lpm_dpsiegr1_off = 0xA2CU, /**< DPSIEGR1 (8b)  -- HUM Ch 11.2.35 p 463. */
   k_ra8_lpm_dpsiegr2_off = 0xA30U, /**< DPSIEGR2 (8b)  -- HUM Ch 11.2.36 p 463. */
 
+  /* --- SYSC: power-domain gating control ------------------------------ */
+  k_ra8_lpm_pdctrgd_off = 0x110U, /**< PDCTRGD  (8b)  -- HUM Ch 11.2.14 p 452. */
+
   /* --- SYSC: per-oscillator stop bits (CGC sub-block, same SYSC base) -- */
   k_ra8_lpm_mosccr_off = 0x032U, /**< MOSCCR   (8b)  -- HUM Ch 9.2.13 p 343. */
   k_ra8_lpm_hococr_off = 0x036U, /**< HOCOCR   (8b)  -- HUM Ch 9.2.16 p 345. */
@@ -335,6 +338,28 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_ra8_lpm_clock_stop_mask = 0x01U, /**< STOP @ bit 0 in every OCR. */
 } ra8_lpm_clock_stop_bits_t;
+
+/**
+ * @enum ra8_lpm_pdctr_bits_t
+ * @brief PDCTRGD power-gating field masks (HUM Ch 11.2.14 p 452).
+ *
+ * @details
+ * The graphics power domain covers MIPI DSI, MIPI CSI, VIN, **DRW** and
+ * GLCDC (HUM Ch 11.5.1 Table 11.7 p 480). Its reset value is @c 0x81 --
+ * @c PDPGSF = 1 (domain gated OFF) and @c PDDE = 1 (power off the target
+ * domain) -- so every one of those peripherals is unpowered until firmware
+ * clears @c PDDE. Bench-confirmed on an EK-RA8D2: with @c PDCTRGD = 0x81
+ * the DRW @c HWREVISION register reads @c 0x00000000; after clearing
+ * @c PDDE it reads @c 0x0FBE0107.
+ *
+ * @c PDDE polarity is inverted relative to the obvious reading: 0 powers
+ * the domain ON, 1 powers it OFF.
+ */
+typedef enum : uint8_t {
+  k_ra8_lpm_pdctr_pdde_mask   = 0x01U, /**< PDDE   @ bit 0: 1 = powered OFF. */
+  k_ra8_lpm_pdctr_pdcsf_mask  = 0x40U, /**< PDCSF  @ bit 6: control busy.    */
+  k_ra8_lpm_pdctr_pdpgsf_mask = 0x80U, /**< PDPGSF @ bit 7: 1 = gated off.   */
+} ra8_lpm_pdctr_bits_t;
 
 /**
  * @enum ra8_lpm_dpsier_idx_t

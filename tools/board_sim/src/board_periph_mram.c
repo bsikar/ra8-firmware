@@ -33,6 +33,20 @@
  * ONLY the 0x40 opener, which is why board_sim round-tripped the firmware's
  * (wrong) config-set write and masked the on-silicon blank-MRAM ECC fault.
  *
+ * @par There is no data-flash at 0x2700_0000 (#170)
+ * The premise above -- that @c 0x27000000 is an "extra-MRAM data region" the
+ * Program command can target -- is **false on this silicon**, and modelling it
+ * as ordinary RAM is what kept @c ra8_io_mram_demo green here while the bench
+ * returned @c Error=516. HUM Ch 5 Figure 5.2 p 237 labels the Extra MRAM
+ * "(option-setting memory)"; the RA8D2 has no user EEPROM / data-flash array,
+ * and @c 0x2700_0000 appears nowhere in the manual. HUM Ch 59.7.4.5 Table 59.15
+ * p 3592 enumerates every legal Program target and they all lie in
+ * @c 0x02E0_7600..0x02E1_79F0 (FSBL, measurement report, code certificate,
+ * general-purpose OTP, PBPS, POFSPS, REVOKE, HUK-zeroize enable, anti-rollback
+ * counter). ::maci_commit now refuses anything outside that window and latches
+ * the command-locked state, matching a by-hand J-Link reproduction on an
+ * EK-RA8D2 (MSTATR = 0x0080C000, MASTAT = 0x18).
+ *
  * Two register windows are intercepted (the controller block at 0x4013C000 and
  * the MACI command area at 0x40120000); both share one module-static state.
  *
@@ -100,7 +114,43 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_mram_mentryr_pe_bit = 0x0080U,     /**< MENTRYR.MENTRY status bit.      */
   k_mram_mstatr_mrdy    = 0x00008000U, /**< MSTATR.MRDY (command complete). */
+  k_mram_mstatr_ilglerr = 0x00004000U, /**< MSTATR.ILGLERR  (illegal).      */
+  k_mram_mstatr_ilgcom  = 0x00800000U, /**< MSTATR.ILGCOMERR (illegal cmd). */
 } mram_status_t;
+
+/** @brief MASTAT bits latched when the sequencer rejects a command. */
+typedef enum : uint32_t {
+  k_mram_off_mastat   = 0x0010UL, /**< MASTAT : extra-MRAM access status. */
+  k_mram_mastat_mreae = 0x08U,    /**< Extra MRAM access error.           */
+  k_mram_mastat_cmdlk = 0x10U,    /**< Command-locked state latched.      */
+} mram_mastat_t;
+
+/**
+ * @brief Legal MSADDR window for the MACI Program command (HUM Table 59.15).
+ *
+ * @details
+ * HUM Ch 59.7.4.5 p 3592, Table 59.15 "Address used by Program command"
+ * enumerates every address the Program command accepts, and they are all
+ * inside the Extra MRAM option-setting memory: FSBL setting
+ * (@c 0x02E0_7600), start address of measurement report / code certificate,
+ * general-purpose OTP, PBPS / PBPS_SEC, POFSPS, REVOKE, Zeroization HUK
+ * Enable and the anti-rollback counter setting -- spanning
+ * @c 0x02E0_7600 to @c 0x02E1_79F0.
+ *
+ * There is deliberately NO general-purpose data-flash target. HUM Ch 5
+ * Figure 5.2 p 237 labels this region "Extra MRAM (option-setting memory)";
+ * the RA8D2 has no user EEPROM / data-flash array, and the address
+ * @c 0x2700_0000 that @c ra8_flash_extra_mram_write targets appears nowhere
+ * in the manual. A Program aimed outside this window is rejected by the
+ * sequencer as an illegal command -- bench-confirmed on an EK-RA8D2, where
+ * the by-hand sequence @c MSADDR=0x27000000, 0xE8, 0x08, 8x0xFFFF, 0xD0
+ * leaves @c MSTATR = 0x0080C000 (ILGCOMERR | ILGLERR | MRDY) and
+ * @c MASTAT = 0x18 (CMDLK | MREAE).
+ */
+typedef enum : uint32_t {
+  k_mram_pgm_lo = 0x02E07600UL, /**< First legal Program MSADDR. */
+  k_mram_pgm_hi = 0x02E179F0UL, /**< Last legal Program MSADDR.  */
+} mram_pgm_window_t;
 
 /** @brief MACI command opcodes the extra-MRAM program / config-set stream uses. */
 typedef enum : uint32_t {
@@ -128,14 +178,15 @@ typedef enum : uint32_t {
 
 /** @brief MRAM model state: register shadow + MACI collection + counters. */
 typedef struct {
-  uint32_t regs[k_mram_reg_words];      /**< 0x4013E000 window shadow.        */
-  uint32_t pgm_regs[k_mrpgm_words];     /**< 0x4013F000 code-MRAM P/E shadow. */
-  uint32_t msaddr;                      /**< Latched MACI target address.     */
-  uint8_t  payload[k_mram_payload_max]; /**< Collected config-set bytes.      */
-  uint32_t payload_len;                 /**< Bytes collected this command.    */
-  uint8_t  maci_state;                  /**< ::maci_state_t collection state. */
-  uint8_t  pe_active;                   /**< 1 => program/erase mode entered. */
-  uint32_t programs;                    /**< Config-set program commands.     */
+  uint32_t regs[k_mram_reg_words];      /**< 0x4013E000 window shadow.         */
+  uint32_t pgm_regs[k_mrpgm_words];     /**< 0x4013F000 code-MRAM P/E shadow.  */
+  uint32_t msaddr;                      /**< Latched MACI target address.      */
+  uint8_t  payload[k_mram_payload_max]; /**< Collected config-set bytes.       */
+  uint32_t payload_len;                 /**< Bytes collected this command.     */
+  uint8_t  maci_state;                  /**< ::maci_state_t collection state.  */
+  uint8_t  pe_active;                   /**< 1 => program/erase mode entered.  */
+  uint32_t programs;                    /**< Config-set program commands.      */
+  uint32_t rejected;                    /**< Programs refused: MSADDR illegal. */
 } mram_state_t;
 
 static mram_state_t s_mram;
@@ -175,10 +226,43 @@ static void mram_reg_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t
   }
 }
 
+/**
+ * @brief Latch the command-locked state the sequencer enters on rejection.
+ *
+ * @details
+ * HUM Ch 59.7.4.4 p 3590: once the extra-MRAM sequencer is command-locked,
+ * "MACI commands cannot be accepted" until a Status Clear or Forced Stop
+ * releases it. Sets the same bits a real rejection leaves behind so firmware
+ * reading MSTATR / MASTAT in the emulator sees the bench values.
+ */
+static void maci_reject(void)
+{
+  s_mram.regs[(uint32_t)k_mram_off_mstatr / 4U] |=
+    (uint32_t)k_mram_mstatr_ilgcom | (uint32_t)k_mram_mstatr_ilglerr;
+  s_mram.regs[(uint32_t)k_mram_off_mastat / 4U] |=
+    (uint32_t)k_mram_mastat_cmdlk | (uint32_t)k_mram_mastat_mreae;
+  s_mram.rejected++;
+}
+
 /** @brief Commit the collected command payload to the mapped MRAM region. */
 static void maci_commit(uc_engine* uc)
 {
   if (s_mram.payload_len == 0U) {
+    return;
+  }
+  /* HUM Ch 59.7.4.5 Table 59.15 p 3592: the Program command only accepts the
+   * option-setting / OTP addresses in [k_mram_pgm_lo, k_mram_pgm_hi]. Anything
+   * else -- notably the 0x2700_0000 "extra-MRAM data area" that exists in no
+   * RA8D2 memory map -- is an illegal command on silicon. This model used to
+   * write it straight through to mapped RAM, which let ra8_io_mram_demo round
+   * trip in the emulator while the bench returned Error=516 (#170). Reject it
+   * here so the sim reports the bench result. */
+  if (s_mram.msaddr < (uint32_t)k_mram_pgm_lo) {
+    maci_reject();
+    return;
+  }
+  if (s_mram.msaddr > (uint32_t)k_mram_pgm_hi) {
+    maci_reject();
     return;
   }
   (void)uc_mem_write(uc, (uint64_t)s_mram.msaddr, s_mram.payload, (size_t)s_mram.payload_len);
@@ -271,6 +355,16 @@ static void mram_reset(void)
 /** @brief End-of-run MRAM section: MACI program-command count (only if used). */
 static void mram_report(void)
 {
+  if (s_mram.rejected != 0U) {
+    /* Loud: a Program aimed outside HUM Table 59.15's option-setting window
+     * is an illegal command on silicon (command-locked, MSTATR.ILGCOMERR). */
+    (void)fprintf(stderr,
+                  "  Extra-MRAM    : %u MACI program commands, %u REJECTED "
+                  "(MSADDR outside HUM Table 59.15 option-setting window)\n",
+                  s_mram.programs,
+                  s_mram.rejected);
+    return;
+  }
   if (s_mram.programs == 0U) {
     return;
   }

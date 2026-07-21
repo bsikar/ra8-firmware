@@ -53,6 +53,7 @@
 #include "ra8_drw_regs.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
+#include "ra8_lpm.h"
 #include "ra8_mstp.h"
 
 /**
@@ -327,6 +328,18 @@ void internal_program_rect_limiters(const ra8_drw_rect_t* rect)
 [[nodiscard]] ra8_err_t ra8_drw_init(const ra8_drw_config_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+
+  /* The DRW lives in the GRAPHICS POWER DOMAIN, which is gated OFF out of
+   * reset (PDCTRGD = 0x81: PDPGSF = 1, PDDE = 1 -- HUM Ch 11.2.14 p 452;
+   * domain contents in HUM Ch 11.5.1 Table 11.7 p 480). Cancelling
+   * module-stop is NOT sufficient: with the domain dark every DRW register
+   * reads 0 and every write is lost, which is exactly why the engine never
+   * rasterised a pixel on silicon (#247) while board_sim -- modelling no
+   * power domain -- rendered happily. Power the domain first.
+   * Bench evidence: HWREVISION reads 0x00000000 before this call and
+   * 0x0FBE0107 after it. */
+  const ra8_err_t pd_err = ra8_lpm_graphics_power_on((uint32_t)k_ra8_lpm_pd_timeout_default);
+  RA8_RETURN_ON_ERROR(pd_err, s_tag, "drw_init: graphics power"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 11.2.8 "MSTPCRC: Module Stop Control Register C", p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_drw);
