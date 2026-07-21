@@ -68,8 +68,11 @@ APP_BOOT_FILES = {
 
 
 def discover_app_dirs() -> tuple[str, ...]:
-    """Return every examples/<tier>/<app>/ relative path that has
-    main.c + CMakeLists.txt.
+    """Every examples/<tier>/<app>/ path holding both main.c and CMakeLists.txt.
+
+    Requiring BOTH is what distinguishes a real app directory from a shared
+    subdirectory that merely contains sources, so the app set is derived
+    rather than listed.
     """
     out: list[str] = []
     examples_root = REPO_ROOT / "examples"
@@ -114,12 +117,21 @@ NSC_ENTRY_RE = re.compile(r"__attribute__\s*\(\s*\(\s*cmse_nonsecure_entry\s*\)\
 
 
 def is_legacy_exempt(rel_path: str) -> bool:
+    """Whether a path predates the World-tag requirement and is grandfathered.
+
+    A prefix list, deliberately finite and not extended: it records what was
+    already in the tree when the rule landed. New code has no route into it,
+    so the exemption shrinks as those files are tagged and never grows.
+    """
     return any(rel_path.startswith(p) for p in LEGACY_RING3_EXEMPT_PREFIXES)
 
 
 def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
-    """Files in Ring 1 (BSP) and Ring 2 (Core) skip the {World: ...}
-    requirement -- both rings are Secure-only by definition.
+    """Whether a file sits in Ring 1 (BSP) or Ring 2 (Core).
+
+    Both rings are Secure-only by definition, so a ``{World: ...}`` tag would
+    be restating the ring rather than adding information -- which is why they
+    are exempt from the requirement rather than required to say "S".
     """
     if rel_path.startswith("libs/ra8_core/"):
         return True
@@ -136,9 +148,12 @@ def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
 
 
 def file_is_in_ring3_plus(rel_path: str) -> bool:
-    """Anything under project-owned Ring 3+ firmware code: libs/ra8_hal/,
-    libs/ra8_*_pal/, libs/ra8_nsc/, src/secure_app/, tests/, and per-app
-    main.c (Ring 6 application code).
+    """Whether a file is project-owned Ring 3+ code, where the World tag is required.
+
+    Covers libs/ra8_hal/, libs/ra8_*_pal/, libs/ra8_nsc/, src/secure_app/,
+    tests/, and per-app main.c (Ring 6 application code). These are the rings
+    that can run in either TrustZone world, which is precisely why each file
+    must declare which one it is written for.
     """
     if rel_path.startswith("libs/ra8_hal/"):
         return True
@@ -155,6 +170,11 @@ def file_is_in_ring3_plus(rel_path: str) -> bool:
 
 
 def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]:
+    """Expand a mixed list of files and directories into source files.
+
+    A path that does not exist is skipped silently rather than raising, so a
+    stale entry in a caller's list cannot abort the sweep.
+    """
     for t in targets:
         if not t.exists():
             continue
@@ -174,8 +194,11 @@ def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]
 
 
 def _to_repo_relative(path: pathlib.Path) -> str:
-    """Best-effort repo-relative path. Falls back to as-given when
-    the file lives outside REPO_ROOT (e.g. in a unit-test sandbox).
+    """Repo-relative path, falling back to the path as given.
+
+    The fallback matters for the selftest, which runs on fixtures in a
+    temporary directory outside REPO_ROOT; without it the helper would raise
+    there and the gate could not be tested in isolation.
     """
     try:
         return str(path.resolve().relative_to(REPO_ROOT))
@@ -184,6 +207,15 @@ def _to_repo_relative(path: pathlib.Path) -> str:
 
 
 def check_file(path: pathlib.Path) -> list[str]:
+    """Report a missing or malformed ``{World: ...}`` tag in one file.
+
+    Ring membership decides whether the tag is required at all, so the ring
+    tests run before the tag is looked for -- a Ring 2 file with no tag is
+    correct, not a finding.
+
+    Returns one message per finding; an empty list means the file is fine or
+    out of scope.
+    """
     findings: list[str] = []
     rel = _to_repo_relative(path)
 
@@ -244,6 +276,19 @@ def check_file(path: pathlib.Path) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
+    """Check that every Ring 3+ source declares which TrustZone world it targets.
+
+    The tag exists because the same source can be compiled into the Secure or
+    the Non-secure image, and nothing in the file otherwise says which was
+    intended -- so a file that quietly ends up in the wrong world produces a
+    build that links and faults at runtime.
+
+    With no paths the scan covers libs/, src/ and tests/; naming paths narrows
+    it for the pre-commit hook.
+
+    Returns 1 listing each untagged file, 0 when every in-scope file declares
+    a world.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "paths",

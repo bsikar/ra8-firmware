@@ -78,6 +78,12 @@ def strip_comments(text: str) -> str:
 
 
 def repo_files(root: pathlib.Path, pattern: str) -> list[pathlib.Path]:
+    """Tracked files matching a git pathspec, minus the vendored prefixes.
+
+    Uses ``git ls-files`` rather than glob so untracked build artefacts and
+    ignored copies are never scanned -- a stale generated .ld in a build tree
+    would otherwise be held to the same rules as an authored one.
+    """
     out = subprocess.run(  # noqa: S603  # fixed argv, no shell
         ["git", "-C", str(root), "ls-files", pattern],  # noqa: S607  # git from PATH is intended
         capture_output=True,
@@ -88,10 +94,19 @@ def repo_files(root: pathlib.Path, pattern: str) -> list[pathlib.Path]:
 
 
 class Finding:
+    """One linker-script rule violation, identified by its LDxxx code.
+
+    ``code`` is the stable identity the selftest asserts on, so message
+    wording can be improved without disarming the test that proves the rule
+    still fires.
+    """
+
     def __init__(self, path: pathlib.Path, line: int, code: str, msg: str) -> None:
+        """Record one finding; all four fields are required and none is derived."""
         self.path, self.line, self.code, self.msg = path, line, code, msg
 
     def __str__(self) -> str:
+        """Render as ``path:line: [CODE] message`` -- editor-jumpable."""
         return f"{self.path}:{self.line}: [{self.code}] {self.msg}"
 
 
@@ -213,6 +228,15 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
 
 
 def defined_symbols(text: str) -> set[str]:
+    """Linker symbols this script DEFINES, in any of the three spellings.
+
+    Recognises ``sym = expr;``, ``PROVIDE(sym = expr)`` and
+    ``PROVIDE_HIDDEN(sym = expr)`` alike, since all three make the symbol
+    available to C and the closure check must not care which was used.
+
+    Runs on the comment-blanked view, so a symbol named only in a comment is
+    not counted as defined.
+    """
     code = strip_comments(text)
     found: set[str] = set()
     # `sym = expr;`, `PROVIDE(sym = expr)`, `PROVIDE_HIDDEN(sym = expr)`
@@ -222,6 +246,12 @@ def defined_symbols(text: str) -> set[str]:
 
 
 def referenced_symbols(text: str) -> set[str]:
+    """Linker symbols a C/C++ file REFERENCES, by prefix match.
+
+    Comments are dropped first so a symbol discussed in prose does not count
+    as a use -- otherwise documenting a symbol would keep it alive in the
+    closure check forever.
+    """
     # Drop C comments so a symbol named only in prose does not count as a use.
     stripped = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
     stripped = re.sub(r"//[^\n]*", " ", stripped)
@@ -241,6 +271,14 @@ def closure_problems(defined: dict[str, list[str]], referenced: dict[str, list[s
 
 
 def check_symbol_closure(root: pathlib.Path) -> list[str]:
+    """LD006 -- cross-check symbols defined in .ld files against their uses in C.
+
+    A whole-tree question by nature: a symbol is defined in one file and used
+    in another, so unlike the per-file rules this cannot be answered from a
+    staged subset and always scans everything.
+
+    Returns one message per problem; an empty list means the closure holds.
+    """
     defined: dict[str, list[str]] = {}
     for p in repo_files(root, "*.ld"):
         for s in defined_symbols(p.read_text(encoding="ascii", errors="replace")):
@@ -393,6 +431,17 @@ def selftest() -> int:
 
 
 def main() -> int:
+    """Check every tracked linker script, or run the selftest / scope listing.
+
+    Note the asymmetry: the per-file LD001-LD005 rules honour a positional
+    path list, but the LD006 symbol closure always scans the whole tree
+    because a definition and its use live in different files. Passing paths
+    therefore narrows part of this gate and not all of it.
+
+    ``--list-files`` prints the scope and exits 0 for check_lint_coverage.py.
+
+    Returns 0 when clean, 1 on any finding or a failing selftest.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--selftest", action="store_true", help="assert both directions")
     # Scope introspection for check_lint_coverage.py: print what this gate
