@@ -359,7 +359,18 @@ cmd_reap() {
   local ws verdict reaped=0
   for ws in "$RA8_WS_ROOT"/*; do
     [[ -d "$ws" ]] || continue
-    verdict="$(is_reapable "$ws" "$ttl" || true)"
+    # errexit off around the CALL, re-armed INSIDE the substitution. `|| true`
+    # here would put is_reapable into bash's inherited ignore-errors state,
+    # which propagates into the substitution subshell and cannot be cleared
+    # there -- a mid-body failure would then yield a partial verdict that
+    # still looks like a decision. Now it yields an empty one, and an empty
+    # verdict is not `reapable-*`, so the workspace is kept.
+    set +e
+    verdict="$(
+      set -e
+      is_reapable "$ws" "$ttl"
+    )"
+    set -e
     if [[ "$verdict" == reapable-* ]]; then
       git -C "$RA8_WS_UPSTREAM" worktree remove --force "$ws" 2>/dev/null || rm -rf "$ws"
       rm -f "$RA8_WS_ROOT/.meta/$(basename "$ws")"

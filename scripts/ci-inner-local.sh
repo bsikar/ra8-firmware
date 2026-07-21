@@ -81,7 +81,16 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     done
     return 1
   }
-  cf="$(pick_clang_format || true)"
+  # errexit off around the CALL, re-armed INSIDE the substitution -- see the
+  # note in agent_workspace.sh. An empty $cf is already handled below, so a
+  # mid-body failure lands on the explicit error path instead of silently
+  # selecting whatever the last candidate happened to echo.
+  set +e
+  cf="$(
+    set -e
+    pick_clang_format
+  )"
+  set -e
   if [[ -z "$cf" ]]; then
     echo "ERROR: no clang-format binary found in the container." >&2
     exit 1
