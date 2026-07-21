@@ -15,7 +15,7 @@ inflating a single book. If the two decoders ever diverge, the shelf renders
 differently before and after a book is opened.
 
 The emitted thumbnail bytes are architecture-dependent to regenerate, so
-re-baking moves the framebuffer golden -- see scripts/build_books.sh, and re-pin
+re-baking moves the framebuffer golden -- see scripts/build/books.sh, and re-pin
 the golden in the same change.
 
 Usage:
