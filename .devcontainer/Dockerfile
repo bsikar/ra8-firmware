@@ -36,6 +36,17 @@ FROM ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Every RUN below runs under bash with pipefail (hadolint DL4006).
+#
+# This is not a style preference. Docker defaults RUN to `/bin/sh -c`, where a
+# pipeline reports only the LAST command's status -- so the eight
+# `curl -fsSL <url> | tar -x` lines in this file would report success when the
+# download failed and the tarball was empty, silently producing an image whose
+# pinned tool is simply absent. That is the same failure this tree already
+# gates against in shell (scripts/checks/check_errexit_masking.py) and the same
+# reason `make ci` must fail rather than skip on a missing tool.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Exact noble versions of the audit-flagged toolchain (see the posture note
 # above). Bump these together when intentionally moving the pinned toolchain.
 ARG CPPCHECK_VERSION=2.13.0-2ubuntu3
@@ -245,6 +256,28 @@ RUN set -eux; \
     chmod 0755 /usr/local/bin/actionlint; \
     cmake-format --version; cmake-lint --version; \
     yamllint --version; actionlint --version
+
+# hadolint -- the tool the `lint-devcontainer` gate needs to lint THIS file.
+#
+# Same reasoning as the two blocks above: the gate calls require_cmd and FAILS
+# rather than skipping, so without this the containerised `make ci` could never
+# pass. Pinned to what the runner installs (see the "Install hadolint" step in
+# .github/workflows/firmware.yml); keep the two in step. Rule configuration
+# lives in .hadolint.yaml at the repo root.
+#
+# zsh needs no block here: it is already installed above for the interactive
+# shell, and `zsh -n` is all the zshrc check requires.
+ARG HADOLINT_VERSION=2.14.0
+RUN set -eux; \
+    case "$(uname -m)" in \
+      x86_64)  harch=x86_64 ;; \
+      aarch64) harch=arm64 ;; \
+      *) echo "unsupported host arch $(uname -m) for hadolint" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL -o /usr/local/bin/hadolint \
+      "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-${harch}"; \
+    chmod 0755 /usr/local/bin/hadolint; \
+    hadolint --version
 
 # Create a non-root user so post-create scripts run as a human.
 # Ubuntu 24.04 ships a pre-existing UID/GID 1000 (`ubuntu`); remove it

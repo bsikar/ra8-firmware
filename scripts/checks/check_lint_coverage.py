@@ -134,6 +134,14 @@ PROVIDERS: tuple[Provider, ...] = (
         "check_linker_scripts.py",
         ("--list-files",),
     ),
+    Provider("check_asm", (LINT, FORMAT), ("asm",), "check_asm.py", ("--list-files",)),
+    Provider(
+        "hadolint+zsh",
+        (LINT, FORMAT),
+        ("dockerfile", "zsh"),
+        "check_devcontainer.py",
+        ("--list-files",),
+    ),
 )
 
 
@@ -400,6 +408,9 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "CMakeLists.txt",
         "Makefile",
         "examples/app/linker_script.ld",
+        "esp32/boot/start.S",
+        ".devcontainer/Dockerfile",
+        ".devcontainer/zshrc",
         ".github/workflows/firmware.yml",
         "README.md",
         "libs/third_party/miniz/miniz.c",
@@ -415,6 +426,8 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "yamllint+actionlint": {".github/workflows/firmware.yml"},
         "check_makefiles": {"Makefile"},
         "check_linker_scripts": {"examples/app/linker_script.ld"},
+        "check_asm": {"esp32/boot/start.S"},
+        "hadolint+zsh": {".devcontainer/Dockerfile", ".devcontainer/zshrc"},
     }
     return files, claimed
 
@@ -485,11 +498,24 @@ def selftest() -> int:
         failures,
     )
 
-    grew = evaluate([*files, "a/x.S", "b/y.S", "c/z.S"], claimed)
+    # 13 unclaimed .cpp files exceed the recorded 12 of
+    # cxx-objc-not-in-tidy-scope (#370); one does not.
+    many = [f"libs/ra8_x/src/f{n}.cpp" for n in range(13)]
+    grew = evaluate([*files, *many], claimed)
     _expect(bool(grew.gap_growth), "a known gap that grows fires the ratchet", failures)
     _expect(
-        not evaluate([*files, "a/x.S"], claimed).gap_growth,
+        not evaluate([*files, many[0]], claimed).gap_growth,
         "a known gap at or under its recorded count stays quiet",
+        failures,
+    )
+    # A .S file is no longer a recorded gap: #371 gave assembly a checker, so an
+    # unclaimed one is now a plain violation. This asserts the gap really was
+    # closed rather than merely deleted from the table.
+    orphan_asm = evaluate([*files, "newdir/boot.S"], claimed)
+    _expect(
+        sorted({r for r, _, _ in orphan_asm.uncovered}) == ["newdir/boot.S"]
+        and not orphan_asm.gap_growth,
+        "an unclaimed .S is a violation now, not a recorded gap",
         failures,
     )
 

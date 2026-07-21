@@ -12,7 +12,8 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: lint-py-shell, lint-cmake, lint-yaml, lint-make, lint-ld, lint-coverage
+# Gates in this file: lint-py-shell, lint-cmake, lint-yaml, lint-make,
+# lint-ld, lint-asm, lint-devcontainer, lint-coverage
 
 # --- lint-py-shell --------------------------------------------------------
 # --require: fail (never skip) when a tool is missing. These gates fail on ANY
@@ -129,6 +130,40 @@ gate_lint_ld() (
   set -e
   python3 scripts/checks/check_linker_scripts.py --selftest
   python3 scripts/checks/check_linker_scripts.py
+)
+
+# --- lint-asm -------------------------------------------------------------
+# No linter exists for GNU `as` -- searched for, not assumed; see the module
+# docstring for what was evaluated and rejected. Assembling would cover one of
+# the two files and would have to SKIP the other (they are Armv8.1-M and
+# rv32imac, and only arm-none-eabi is provisioned), and a gate that skips is
+# the defect this suite exists to remove. So this enforces what is checkable
+# about assembly as text: licence header, an explicit .section, `.type` /
+# `.size` / a label behind every exported symbol, `.syntax unified` on ARM,
+# and formatting. The header rule alone closed a real hole -- check-copyright.py
+# has never covered .S, so esp32/boot/start.S carried no SPDX at all.
+gate_lint_asm() (
+  set -e
+  python3 scripts/checks/check_asm.py --selftest
+  python3 scripts/checks/check_asm.py
+)
+
+# --- lint-devcontainer ----------------------------------------------------
+# .devcontainer/Dockerfile pins every tool version CI resolves, so a defect in
+# it changes what every other gate runs -- and it was linted by nothing until
+# #371. hadolint found DL4006 on its first run: eight `curl | tar` pipelines
+# under `/bin/sh -c`, where a failed download still reported success and built
+# an image with the pinned tool absent. The zshrc is checked with `zsh -n`,
+# which is the only real option: ShellCheck refuses zsh, and running it as
+# --shell=bash reports errors that are not errors on the file's own
+# `${(%):-%n}` and `plugins=(...)`.
+gate_lint_devcontainer() (
+  set -e
+  require_cmd hadolint \
+    "https://github.com/hadolint/hadolint/releases (pinned to 2.14.0)"
+  require_cmd zsh "apt-get install zsh (already in the devcontainer image)"
+  python3 scripts/checks/check_devcontainer.py --selftest
+  python3 scripts/checks/check_devcontainer.py
 )
 
 # --- lint-coverage --------------------------------------------------------
