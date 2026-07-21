@@ -48,6 +48,7 @@ FIRMWARE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # ---------------------------------------------------------------------------
 FIX_MODE=false
 VERBOSE=false
+LIST_ONLY=false
 BUILD_DIR=""
 
 # ---------------------------------------------------------------------------
@@ -78,6 +79,13 @@ parse_args() {
         ;;
       --verbose | -v)
         VERBOSE=true
+        shift
+        ;;
+      # Scope introspection for check_lint_coverage.py: print exactly the file
+      # list this script would lint, so the coverage gate can ask what is
+      # covered rather than keep a second copy of the answer.
+      --list-files)
+        LIST_ONLY=true
         shift
         ;;
       --help | -h)
@@ -166,32 +174,50 @@ collect_source_files() {
   # The ONLY exemptions are vendored SOUP (libs/third_party/) and generated
   # font data (libs/fonts/), matching the CLAUDE.md exemption list. Build trees
   # and CMake-fetched deps are excluded because they are not source.
-  local roots=("$FIRMWARE_DIR/libs" "$FIRMWARE_DIR/src" "$FIRMWARE_DIR/tests"
-    "$FIRMWARE_DIR/tools")
-  local entry
-  for entry in "$FIRMWARE_DIR"/examples/*/*/main.c; do
-    [[ -f "$entry" ]] || continue
-    # examples/host/* are macOS-only dev tools whose AppKit/host includes
-    # are not in the host test compile_commands.json -- skip them.
-    case "$entry" in */examples/host/*) continue ;; esac
-    roots+=("$(dirname "$entry")")
-  done
-  # ThreadX/NetX/USBX application TUs (e.g. src/app/ns_main.c) include vendor
-  # headers (tx_api.h, ...) that the host test compile_commands.json does not
-  # carry, so clang-tidy parses them with default flags and fails to find the
-  # include. They are firmware NS app code, not host-linkable -- skip them the
-  # same way examples/host/* is skipped above.
-  find "${roots[@]}" \
-    \( -name '*.c' -o -name '*.h' \) \
-    ! -path '*/build/*' \
-    ! -path '*/build-*/*' \
-    ! -path '*/_deps/*' \
-    ! -path '*/third_party/*' \
-    ! -path '*/libs/fonts/*' \
-    2>/dev/null |
+  #
+  # Scope is derived from `git ls-files`, NOT from a directory glob. The
+  # previous revision globbed `examples/*/*/main.c` to find app directories,
+  # which matched only the 14 apps sitting exactly three levels deep while the
+  # tree's actual layout is examples/<tier>/.../<app>/, up to five deep. That
+  # is the #296 / #332 / #358 / #359 / #360 defect: a scan list that silently
+  # stopped matching the tree. Deriving from git means a new directory at any
+  # depth is picked up the day it lands.
+  #
+  # WHAT THIS GATE CAN MEANINGFULLY LINT
+  # ------------------------------------
+  # clang-tidy parses against the HOST compile_commands.json produced by the
+  # unit-test build. That database describes host-buildable first-party code:
+  # libs/, src/, tests/ and tools/. It carries no ARM target flags, no
+  # per-app include directories and no vendor RTOS paths.
+  #
+  # Pointing it at firmware TUs anyway was measured rather than assumed: doing
+  # so surfaced 135 findings across 96 files, and EVERY ONE was a
+  # clang-diagnostic-error -- 'sh_app.h' file not found, unknown mbedtls
+  # config types, RA8_BOUNDED_LOOP failing to expand. Not one was an
+  # actionable style finding. Linting a cross-compiled TU against a host
+  # database produces noise, not signal, so the boundary below is a real
+  # technical constraint and not a convenience.
+  #
+  # examples/, port/ and esp32/ therefore need a CROSS-COMPILE compile
+  # database before they can be linted at all. That is tracked as a recorded
+  # gap in check_lint_coverage.py -- counted, issue-linked and ratcheted, so
+  # it stays visible until it is closed instead of being invisible as before.
+  cd "$FIRMWARE_DIR" || return 1
+  git ls-files --cached --others --exclude-standard |
+    grep -E '\.(c|h)$' |
+    grep -E '^(libs|src|tests|tools)/' |
+    # Vendored SOUP and generated font tables -- the CLAUDE.md exemption list.
+    grep -Ev '^(libs/third_party/|libs/fonts/|tools/vela/generated/)' |
+    # Build trees and CMake-fetched deps are not source.
+    grep -Ev '(^|/)(build|build-[^/]*|_deps)/' |
     while IFS= read -r f; do
+      # ThreadX/NetX/USBX application TUs (e.g. src/app/ns_main.c) include
+      # vendor headers (tx_api.h, ...) that the host test
+      # compile_commands.json does not carry, so clang-tidy parses them with
+      # default flags and fails to find the include. They are firmware NS app
+      # code, not host-linkable -- skip them the same way examples/host/* is.
       grep -qlE '#\s*include\s*[<"](tx_api|nx_api|ux_api)\.h[">]' "$f" 2>/dev/null && continue
-      printf '%s\n' "$f"
+      printf '%s/%s\n' "$FIRMWARE_DIR" "$f"
     done || true
 }
 
@@ -565,6 +591,15 @@ run_clang_tidy() {
 
 main() {
   parse_args "$@"
+
+  # --list-files answers "what do you cover?" and must not need clang-tidy
+  # installed or a configured build tree: a missing tool would otherwise
+  # shrink the reported scope to nothing, which is the exact failure this gate
+  # family exists to prevent. Paths are printed repo-relative.
+  if [[ "$LIST_ONLY" == "true" ]]; then
+    collect_source_files | sed "s|^$FIRMWARE_DIR/||"
+    exit 0
+  fi
 
   local clang_tidy
   clang_tidy="$(find_clang_tidy)"
