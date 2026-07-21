@@ -429,6 +429,8 @@ smoke_build_app() {
   # into an array so each flag becomes exactly one argv entry instead of
   # relying on word-splitting. The ${extra[@]+...} guard at each use site
   # keeps an empty array from tripping `set -u` under bash 3.2 (macOS).
+  extra=()
+  read -r -a extra <<<"$(sim_extra_args "$app")"
   return 0
 }
 
