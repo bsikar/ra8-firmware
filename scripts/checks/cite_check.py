@@ -450,20 +450,8 @@ def check_file(
     return findings
 
 
-def main(argv: list[str]) -> int:
-    """Verify every register access carries a Hardware User's Manual citation.
-
-    The rule exists because a register write with no citation cannot be
-    reviewed: the reader has no way to confirm the bit pattern against the
-    manual, and a wrong one produces hardware that misbehaves rather than
-    code that fails to build.
-
-    Citations are looked for only in COMMENTS, which is why the source is
-    scanned through the blanking pass above -- a manual section number
-    appearing in a string literal is not a citation.
-
-    Returns 0 when every access is cited, 1 otherwise.
-    """
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for this gate."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "paths",
@@ -494,7 +482,44 @@ def main(argv: list[str]) -> int:
         default=str(CHAPTER_MAP_PATH),
         help=f"path to CHAPTER_MAP.md (default: {CHAPTER_MAP_PATH})",
     )
-    args = parser.parse_args(argv)
+    return parser
+
+
+def _report_findings(
+    findings: list[str], file_count: int, *, strict: bool, require_cites: bool
+) -> None:
+    """Print every finding and a one-line summary naming the mode it ran in.
+
+    The summary splits the two passes apart when --require-cites is on: an
+    uncited MMIO access and a malformed citation are different defects, and a
+    single total hides which one a reader has to go and fix.
+    """
+    for line in findings:
+        print(line, file=sys.stderr)
+    verdict = "strict" if strict else "warn"
+    total = len(findings)
+    head = f"cite_check.py: {total} finding(s) across {file_count} file(s) [{verdict}]"
+    if require_cites:
+        uncited = sum(1 for line in findings if "MMIO access without preceding HUM cite" in line)
+        head += f" ({uncited} uncited-access, {total - uncited} cite-validation)"
+    print(head, file=sys.stderr)
+
+
+def main(argv: list[str]) -> int:
+    """Verify every register access carries a Hardware User's Manual citation.
+
+    The rule exists because a register write with no citation cannot be
+    reviewed: the reader has no way to confirm the bit pattern against the
+    manual, and a wrong one produces hardware that misbehaves rather than
+    code that fails to build.
+
+    Citations are looked for only in COMMENTS, which is why the source is
+    scanned through the blanking pass above -- a manual section number
+    appearing in a string literal is not a citation.
+
+    Returns 0 when every access is cited, 1 otherwise.
+    """
+    args = _build_parser().parse_args(argv)
 
     if args.warn and args.strict:
         print("cite_check.py: --warn and --strict are mutually exclusive", file=sys.stderr)
@@ -521,17 +546,7 @@ def main(argv: list[str]) -> int:
         findings.extend(check_file(f, chapters, require_cites=args.require_cites))
 
     if findings:
-        for line in findings:
-            print(line, file=sys.stderr)
-        verdict = "strict" if strict else "warn"
-        total = len(findings)
-        head = f"cite_check.py: {total} finding(s) across {file_count} file(s) [{verdict}]"
-        if args.require_cites:
-            uncited = sum(
-                1 for line in findings if "MMIO access without preceding HUM cite" in line
-            )
-            head += f" ({uncited} uncited-access, {total - uncited} cite-validation)"
-        print(head, file=sys.stderr)
+        _report_findings(findings, file_count, strict=strict, require_cites=args.require_cites)
         return 1 if strict else 0
 
     print(
