@@ -1,327 +1,272 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: NASA Power-of-10 Rule 4 -- functions shall fit in one display
-page (~60 source lines).
+"""Gate: NASA Power-of-10 Rule 4 -- a function fits in one display page (60 lines).
 
-The project's `.clang-tidy` already configures
-``readability-function-size.LineThreshold: 60``, but clang-tidy only
-checks files that are present in the build's ``compile_commands.json``.
-Because the host unit-test build (where ``clang_tidy.sh`` runs) drops
-every ARM-cross-compiled translation unit -- anything that pulls in
-ThreadX, USBX, NetX, GLCDC register headers, or MCU intrinsics --
-those files never see a clang-tidy pass.  Around 90% of ``port/``,
-large parts of ``libs/ra8_hal/``, and every cross-compiled example
-``main.c`` were silently exempt.
+The project's ``.clang-tidy`` configures ``readability-function-size``, but
+clang-tidy only sees files present in ``compile_commands.json``.  The host
+unit-test build drops every ARM-cross-compiled translation unit, so ~90% of
+``port/``, much of ``libs/ra8_hal/``, and every example ``main.c`` were exempt.
+This checker walks source text directly so the rule reaches all of it.
 
-This checker is a backstop that walks the source text directly so the
-gate is enforced for **every** ``.c`` file under ``libs/``, ``src/``,
-``port/``, ``examples/``, ``tools/``, and ``tests/`` regardless of which
-compile database it ended up in.  Third-party vendor trees
-(``libs/third_party/``, ``port/threadx/``) are excluded -- those are SOUP
-and their function sizes are the upstream maintainer's call, not ours.
+Scope is derived, not listed (#359)
+-----------------------------------
+The scope was a hand-written ``SCAN_ROOTS`` tuple that omitted ``scripts/``,
+and the parser understood only C -- so Rule 4 had never applied to a single
+Python or shell function.  Scope now comes from :mod:`lint_targets`
+(``git ls-files`` + per-file language detection), and the measurement is
+delegated to one parser per language:
+
+    :mod:`funcsize_c`   C / C++ -- textual brace tracking
+    :mod:`funcsize_py`  Python  -- a real ``ast`` parse
+    :mod:`funcsize_sh`  shell   -- textual, both ``{}`` and subshell ``()`` bodies
+
+Is 60 the right cap for Python and shell?
+-----------------------------------------
+Yes, and the number is deliberately NOT re-derived per language.  Rule 4's
+rationale is that a function fits on one screen so a reviewer holds all of it
+at once.  That is a claim about *display lines*, and a screen is the same
+height whatever the file extension.  Picking a different number per language
+would say the rationale is about something else.
+
+The tempting alternative -- lean on ruff's ``PLR0915`` (statement count) and
+skip a line cap for Python -- was measured and rejected.  ``PLR0915`` at its
+configured 50 reports **zero** findings on this tree, while 41 Python
+functions exceed 60 lines.  The two do not measure the same thing: a
+multi-line call, dict literal or ``with`` header is one statement spanning
+many lines, so a statement cap is far weaker than a line cap and cannot stand
+in for it.  ``PLR0915`` stays at 50 as a complementary bound on dense
+one-liner-heavy functions; this gate owns the display-page rule.  (``PLR0912``
+branches=12 reports zero and is likewise complementary.  ``C90`` mccabe is a
+different rule again -- 52 findings, a restructuring campaign rather than a
+size cap -- and remains unselected.)
+
+What is counted is normalised so all three languages measure the same span:
+the function body, with its documented contract excluded.  In C the Doxygen
+block sits above the signature and is already outside the span.  In Python the
+docstring is the body's first statement, so it is subtracted -- otherwise this
+gate would penalise documentation in exactly the repository that mandates it.
+Blank lines and comments are inside the span in C, so they stay inside it
+everywhere.
 
 Run::
 
     check_function_size.py                      # scan the whole tree
     check_function_size.py path/to/file.c ...   # scan listed files
+    check_function_size.py --selftest           # prove it fires and stays quiet
 
-Exit 0 if every function is at or below the threshold, exit 1 (with a
-diagnostic table) if any function is over.
+Exit 0 if every function is at or below the threshold, exit 1 otherwise.
 """
 
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterable
+import tempfile
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import funcsize_c
+import funcsize_py
+import funcsize_sh
+from lint_targets import REPO_ROOT, files_for, language_of
 
-# NASA Power-of-10 Rule 4: ~60 source lines per function.  Matches the
-# value in ``.clang-tidy`` (readability-function-size.LineThreshold).
+# NASA Power-of-10 Rule 4: ~60 source lines per function. Matches the value in
+# ``.clang-tidy`` (readability-function-size.LineThreshold).
 THRESHOLD_LINES = 60
 
 # Maximum signature length printed in the diagnostic table before truncation.
 SIG_DISPLAY_MAX = 70
-SIG_DISPLAY_TRUNCATED = SIG_DISPLAY_MAX - 3  # reserve three chars for "..."
 
-# Directories to scan when called with no argument.
-SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "tests")
+# Languages this gate can measure, and who measures them. A language absent
+# here is simply not checked -- CMake, YAML, Make and linker scripts have no
+# function construct this rule is about.
+PARSERS = {
+    "c": funcsize_c.scan,
+    "python": funcsize_py.scan,
+    "shell": funcsize_sh.scan,
+}
 
-# Path fragments that exclude the file from the scan.  Vendor / build
-# trees are intentionally exempt; generated Vela model blobs are machine
-# output; ``_unsupported/`` examples are kept off the bench pending
-# hardware bring-up.
-EXCLUDE_FRAGMENTS = (
-    "libs/third_party/",
-    "port/threadx/",
-    "tools/vela/generated/",
-    "/build/",
-    "_unsupported/",
+# Per-app boot boilerplate is copied verbatim into every app and is dominated
+# by vector-table initialisers; flagging it would bury real findings.
+BOOT_BOILERPLATE = frozenset(
+    {"vector_table.c", "system_init.c", "secure_exception.c", "trustzone_init.c"}
+)
+
+EXCLUDE_FRAGMENTS = ("_unsupported/",)
+
+
+def _rel(path: Path) -> str:
+    if path.is_absolute() and path.is_relative_to(REPO_ROOT):
+        return str(path.relative_to(REPO_ROOT))
+    return str(path)
+
+
+def _skipped(rel: str) -> bool:
+    return Path(rel).name in BOOT_BOILERPLATE or any(
+        frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS
+    )
+
+
+def scan_paths(paths: list[Path]) -> list[tuple[str, int, int, str]]:
+    """Return (file, start_line, length, signature) for every over-cap function."""
+    findings: list[tuple[str, int, int, str]] = []
+    for path in paths:
+        rel = _rel(path)
+        lang = language_of(rel)
+        parser = PARSERS.get(lang)
+        if parser is None or _skipped(rel):
+            continue
+        for start, length, signature in parser(path, THRESHOLD_LINES):
+            findings.append((rel, start, length, signature))
+    findings.sort(key=lambda f: (-f[2], f[0]))
+    return findings
+
+
+def _targets_from_args(args: list[str]) -> list[Path]:
+    out: list[Path] = []
+    for raw in args:
+        path = Path(raw)
+        if not path.is_absolute():
+            path = REPO_ROOT / path
+        if path.is_dir():
+            out.extend(p for p in path.rglob("*") if p.is_file())
+        else:
+            out.append(path)
+    return out
+
+
+def _all_targets() -> list[Path]:
+    grouped = files_for(tuple(PARSERS))
+    return [REPO_ROOT / rel for paths in grouped.values() for rel in paths]
+
+
+# ---------------------------------------------------------------------------
+# Selftest -- asserts BOTH directions, per language, before the real scan.
+# ---------------------------------------------------------------------------
+
+_LONG = THRESHOLD_LINES + 5
+
+_C_OVER = "void f(void)\n{\n" + "  x();\n" * _LONG + "}\n"
+_C_UNDER = "void f(void)\n{\n" + "  x();\n" * 5 + "}\n"
+_C_STRING_BRACE = 'void f(void)\n{\n  const char* s = "{";\n' + "  x();\n" * 5 + "}\n"
+# An empty one-line body inside a long enclosing scope. Assuming the opening
+# line contributes depth 1 made the tracker swallow the whole class.
+_CXX_EMPTY_BODY = (
+    "class C {\npublic:\n  C(int a)\n      : a_(a)\n  {}\n" + "  void g();\n" * _LONG + "};\n"
+)
+
+_PY_OVER = "def f():\n" + "    x = 1\n" * _LONG
+_PY_UNDER = "def f():\n" + "    x = 1\n" * 5
+_PY_DOCSTRING = 'def f():\n    """\n' + "    doc\n" * _LONG + '    """\n' + "    x = 1\n" * 5
+_PY_NESTED = "def outer():\n    def inner():\n" + "        x = 1\n" * _LONG + "    return inner\n"
+
+_SH_OVER = "f() {\n" + "  x\n" * _LONG + "}\n"
+_SH_UNDER = "f() {\n" + "  x\n" * 5 + "}\n"
+_SH_SUBSHELL_OVER = "f() (\n  set -e\n" + "  x\n" * _LONG + ")\n"
+_SH_SUBSHELL_UNDER = "f() (\n  set -e\n" + "  x\n" * 5 + ")\n"
+# A short function whose heredoc is full of stray closing braces. If the
+# heredoc body were counted, depth would hit zero early and the function
+# would measure a handful of lines -- or run away past its real end.
+_SH_HEREDOC = "f() {\n  cat <<EOF\n" + "  }\n" * 5 + "EOF\n" + "  x\n" * 5 + "}\n"
+_SH_HEREDOC_LONG = "f() {\n  cat <<EOF\n" + "  }\n" * _LONG + "EOF\n" + "  x\n" * 5 + "}\n"
+
+# (filename, body, expected finding count, what the case proves)
+_CASES: tuple[tuple[str, str, int, str], ...] = (
+    ("over.c", _C_OVER, 1, "C: a long function fires"),
+    ("under.c", _C_UNDER, 0, "C: a short function is clean"),
+    ("brace.c", _C_STRING_BRACE, 0, "C: a brace in a string literal is not a scope"),
+    ("empty.cpp", _CXX_EMPTY_BODY, 0, "C++: a one-line {} body does not swallow its class"),
+    ("over.py", _PY_OVER, 1, "Python: a long function fires"),
+    ("under.py", _PY_UNDER, 0, "Python: a short function is clean"),
+    ("doc.py", _PY_DOCSTRING, 0, "Python: a long docstring does not make a function long"),
+    ("nested.py", _PY_NESTED, 2, "Python: a nested function and its parent both count"),
+    ("over.sh", _SH_OVER, 1, "shell: a long brace-body function fires"),
+    ("under.sh", _SH_UNDER, 0, "shell: a short brace-body function is clean"),
+    ("sub_over.sh", _SH_SUBSHELL_OVER, 1, "shell: a long subshell body fires"),
+    ("sub_under.sh", _SH_SUBSHELL_UNDER, 0, "shell: a short subshell body is clean"),
+    ("heredoc.sh", _SH_HEREDOC, 0, "shell: braces inside a heredoc close no scope"),
+    (
+        "heredoc_long.sh",
+        _SH_HEREDOC_LONG,
+        1,
+        "shell: a long function is still caught through a heredoc",
+    ),
+    ("over.md", _PY_OVER, 0, "a non-code file is out of scope"),
 )
 
 
-# Heuristic: a top-level function body opens with ``{`` on its own line
-# (or, less commonly, at the end of the signature line).  The signature
-# spans the lines immediately above ``{`` whose first non-whitespace
-# character is *not* a control-flow keyword.
-_CONTROL_PREFIXES = (
-    "if ",
-    "if(",
-    "for ",
-    "for(",
-    "while ",
-    "while(",
-    "switch ",
-    "switch(",
-    "else",
-    "do ",
-    "do{",
-    "do\t",
-    "//",
-    "/*",
-    "*",
-    "}",
-)
+def _selftest() -> int:
+    """Assert every parser fires and stays quiet, and that the scope is live.
 
-
-def _brace_delta(line: str, in_block_comment: bool) -> tuple[int, int, bool]:
-    """Count net ``{`` / ``}`` on `line`, skipping braces that sit inside
-    string literals, character literals, or comments.
-
-    A naive ``line.count("{")`` miscounts every brace that appears in a
-    textual constant -- a JSON/CSS/JS blob written as a C string literal
-    (``"{\\"$schema\\":..."``) or a ``case '{':`` character literal in a
-    tokenizer.  Those braces do not open a real scope, so counting them
-    runs the depth tracker off the true closing ``}`` and reports a short
-    function (e.g. ``prof_write_speedscope``, 49 lines) as hundreds of
-    lines.  This scanner walks the line character by character and ignores
-    any brace that is not live C punctuation.
-
-    Only ``in_block_comment`` persists across lines: C string and character
-    literals do not span source lines in this codebase (no backslash-newline
-    line-continued literals -- adjacent string concatenation is used
-    instead), so they are always resolved within the one line.
-
-    Returns ``(opens, closes, in_block_comment_after)``.
+    Three textual parsers drive this gate. A parser that stops recognising a
+    construct takes that construct's offenders with it and the gate reports a
+    clean tree -- so each language is asserted in both directions here, and
+    the gate body runs this before the real scan.
     """
-    opens = 0
-    closes = 0
-    i = 0
-    n = len(line)
-    # "" while outside a literal; otherwise the opening quote (`"` or `'`).
-    # Unifying string and character literals keeps the branch count down.
-    in_quote = ""
-    while i < n:
-        c = line[i]
-        if in_block_comment:
-            if c == "*" and i + 1 < n and line[i + 1] == "/":
-                in_block_comment = False
-                i += 2
-                continue
-            i += 1
-            continue
-        if in_quote:
-            if c == "\\":  # skip the escaped character (e.g. \" or \\)
-                i += 2
-                continue
-            if c == in_quote:
-                in_quote = ""
-            i += 1
-            continue
-        # Outside any literal or comment: interpret the punctuation.
-        if c == "/" and i + 1 < n and line[i + 1] == "/":
-            break  # line comment: the remainder of the line is inert
-        if c == "/" and i + 1 < n and line[i + 1] == "*":
-            in_block_comment = True
-            i += 2
-            continue
-        if c in ('"', "'"):
-            in_quote = c
-        elif c == "{":
-            opens += 1
-        elif c == "}":
-            closes += 1
-        i += 1
-    return opens, closes, in_block_comment
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        for name, body, expected, description in _CASES:
+            path = root / name
+            path.write_text(body)
+            got = len(scan_paths([path]))
+            path.unlink()
+            if got != expected:
+                failures.append(f"  FAIL {description}: expected {expected}, got {got}")
+
+    grouped = files_for(tuple(PARSERS))
+    for lang, paths in grouped.items():
+        if not paths:
+            failures.append(f"  FAIL live scope: language {lang!r} resolved to zero files")
+
+    if failures:
+        print("check_function_size.py: --selftest FAILED", file=sys.stderr)
+        print("\n".join(failures), file=sys.stderr)
+        return 1
+    print(
+        f"check_function_size.py: --selftest OK ({len(_CASES)} cases across "
+        f"{len(PARSERS)} parser(s), both directions; live scope "
+        f"{sum(len(p) for p in grouped.values())} file(s))"
+    )
+    return 0
 
 
-def _looks_like_function_body_open(prev: str) -> bool:
-    """Return True if `prev` is the last line of a function signature.
-
-    Function signatures end in ``)`` (possibly followed by a trailing
-    space).  Macros and control statements that open a brace also end
-    in ``)`` -- those are filtered out by the caller via the keyword
-    check.
-    """
-    stripped = prev.rstrip()
-    if not stripped.endswith(")"):
-        return False
-    head = prev.lstrip()
-    return all(not head.startswith(prefix) for prefix in _CONTROL_PREFIXES)
-
-
-def _function_signature_start(lines: list[str], brace_idx: int) -> int:
-    """Walk backward from the line containing the opening ``{`` to find
-    where the function signature began.
-
-    Heuristic: keep walking while previous lines look like continuation
-    of the same declaration (no terminator like ``;``, ``}``, ``*/``
-    on the previous line).  Stop once we hit a blank line, a
-    terminator, or the start of the file.
-    """
-    i = brace_idx - 1
-    while i > 0:
-        prev = lines[i - 1].rstrip()
-        if (not prev) or prev.endswith((";", "}", "*/")):
-            break
-        # Stop on preprocessor directives -- `#pragma` and `#if` blocks
-        # sit between functions and are not part of any signature.
-        if prev.lstrip().startswith("#"):
-            break
-        i -= 1
-    return i
-
-
-def _measure_body(lines: list[str], brace_idx: int, n: int) -> int:
-    """Return the line index one past the function body whose opening ``{`` is
-    on ``lines[brace_idx]``.
-
-    Tracks brace depth from the opening ``{``, ignoring braces that sit inside
-    string / character literals or comments (via `_brace_delta`).  A
-    preprocessor-conditional arm stack keeps a brace opened in a *later*
-    ``#elif``/``#else`` arm from double-counting a brace the first arm already
-    opened -- only one arm is ever compiled, so counting both would run the
-    depth off the true closing ``}`` (e.g. the poll-vs-direct
-    ``#if RA8_SIMULATOR_MODE { ... #else { ... #endif`` idiom).  Each stack
-    entry is False in the first arm and True once an ``#elif``/``#else`` is
-    seen; brace deltas are applied only while every entry is False.
-    """
-    depth = 1
-    j = brace_idx + 1
-    cpp_arms: list[bool] = []
-    # Block comments straddle lines, so their state persists across the body
-    # scan; string / character literals are always resolved within one line.
-    in_block_comment = False
-    while j < n and depth > 0:
-        if not in_block_comment:
-            stripped = lines[j].lstrip()
-            if stripped.startswith("#"):
-                directive = stripped[1:].lstrip()
-                if directive.startswith("endif"):
-                    if cpp_arms:
-                        cpp_arms.pop()
-                elif directive.startswith(("else", "elif")):
-                    if cpp_arms:
-                        cpp_arms[-1] = True
-                elif directive.startswith("if"):  # if / ifdef / ifndef
-                    cpp_arms.append(False)
-                j += 1
-                continue
-        opens, closes, in_block_comment = _brace_delta(lines[j], in_block_comment)
-        if not any(cpp_arms):
-            depth += opens
-            depth -= closes
-        j += 1
-    return j
-
-
-def _scan_file(path: Path) -> list[tuple[int, int, str]]:
-    """Return a list of (function_start_line, length, signature) tuples
-    for every function in `path` whose body exceeds the threshold."""
-    try:
-        text = path.read_text()
-    except (OSError, UnicodeDecodeError):
-        return []
-
-    lines = text.splitlines()
-    violations: list[tuple[int, int, str]] = []
-    i = 0
-    n = len(lines)
-    while i < n:
-        line = lines[i].lstrip()
-        if line.startswith("{") and i > 0 and _looks_like_function_body_open(lines[i - 1]):
-            sig_start = _function_signature_start(lines, i)
-            j = _measure_body(lines, i, n)
-            length = j - i
-            if length > THRESHOLD_LINES:
-                signature = lines[sig_start].strip()
-                # 1-based line for editor friendliness.
-                violations.append((sig_start + 1, length, signature))
-            i = j
-            continue
-        i += 1
-    return violations
-
-
-def _is_excluded(path: Path) -> bool:
-    p = str(path)
-    return any(frag in p for frag in EXCLUDE_FRAGMENTS)
-
-
-def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
-    """Resolve the list of files to scan from CLI arguments."""
-    args = list(arg_paths)
-    if args:
-        out: list[Path] = []
-        for raw in args:
-            p = Path(raw)
-            if not p.is_absolute():
-                p = REPO_ROOT / p
-            if p.is_dir():
-                out.extend(p.rglob("*.c"))
-            elif p.suffix == ".c":
-                out.append(p)
-        return [p for p in out if not _is_excluded(p)]
-
-    out = []
-    for root in SCAN_ROOTS:
-        out.extend((REPO_ROOT / root).rglob("*.c"))
-    return [p for p in out if not _is_excluded(p)]
+def _report(findings: list[tuple[str, int, int, str]]) -> None:
+    print(
+        f"check_function_size.py: {len(findings)} function(s) exceed the "
+        f"{THRESHOLD_LINES}-line cap (NASA P10 Rule 4):\n",
+        file=sys.stderr,
+    )
+    print("  lines  location", file=sys.stderr)
+    for rel, start, length, signature in findings:
+        shown = signature
+        if len(shown) > SIG_DISPLAY_MAX:
+            shown = shown[: SIG_DISPLAY_MAX - 3] + "..."
+        print(f"  {length:5d}  {rel}:{start}  {shown}", file=sys.stderr)
+    print(
+        "\nExtract a helper, or split the function along its responsibilities.",
+        file=sys.stderr,
+    )
 
 
 def main(argv: list[str]) -> int:
-    targets = _enumerate_targets(argv[1:])
+    args = argv[1:]
+    if "--selftest" in args:
+        return _selftest()
+
+    targets = _targets_from_args(args) if args else _all_targets()
     if not targets:
-        print("check_function_size.py: no files to scan", file=sys.stderr)
-        return 0
+        print("check_function_size.py: FATAL -- no files to scan", file=sys.stderr)
+        return 2
 
-    findings: list[tuple[int, str, int, str]] = []
-    for path in targets:
-        for line_no, length, signature in _scan_file(path):
-            rel = path.relative_to(REPO_ROOT) if path.is_relative_to(REPO_ROOT) else path
-            findings.append((length, str(rel), line_no, signature))
-
+    findings = scan_paths(targets)
     if not findings:
         print(
             f"check_function_size.py: {len(targets)} file(s) scanned, "
             f"no functions over {THRESHOLD_LINES} lines."
         )
         return 0
-
-    findings.sort(reverse=True)
-    print(
-        f"check_function_size.py: {len(findings)} function(s) exceed the "
-        f"{THRESHOLD_LINES}-line cap (NASA P10 Rule 4):\n",
-        file=sys.stderr,
-    )
-    print("  lines  file:line  signature", file=sys.stderr)
-    for length, path, line_no, signature in findings:
-        # Trim the signature so the table stays readable on an 80-col
-        # terminal -- the file:line anchor is enough to jump to it.
-        sig = (
-            signature
-            if len(signature) <= SIG_DISPLAY_MAX
-            else signature[:SIG_DISPLAY_TRUNCATED] + "..."
-        )
-        print(f"  {length:5d}  {path}:{line_no}  {sig}", file=sys.stderr)
-    print(
-        "\nEach function must fit in one display page (<=60 lines).  Extract "
-        "helpers or hoist compile-time tables to file scope to shrink the "
-        "body.",
-        file=sys.stderr,
-    )
+    _report(findings)
     return 1
 
 
