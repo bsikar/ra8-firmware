@@ -1,0 +1,244 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# ra8_add_test(), and the auto-glob that registers one executable per
+# tests/test_*.c.
+#
+# Everything registered here builds with the standard host profile. A test
+# needing anything else -- a device gate, a real crypto backend, C++, or a
+# standalone library subset -- is defined in one of the tests_*.cmake
+# fragments and REMOVE_ITEM-ed from the glob above.
+#
+# Included from tests/CMakeLists.txt. CMake include() is textual within the
+# same directory scope, so every variable and target defined here is visible
+# to the driver and to the fragments included after it.
+
+# Enable ctest so `cmake --build . --target test` and bash helpers work.
+enable_testing()
+
+# ---------------------------------------------------------------------------
+# Unit tests -- one executable per test_*.c file. Each test links
+# against the ra8_core_hal OBJECT library and runs standalone.
+# ---------------------------------------------------------------------------
+
+# Declare one host unit-test executable.
+#
+# Builds <name> from <name>.c linked against the ra8_core_hal OBJECT
+# library, applies the host warning profile, and registers it with ctest.
+#
+#   name                       test basename, without the .c suffix
+function(ra8_add_test name)
+  add_executable(${name} ${name}.c $<TARGET_OBJECTS:ra8_core_hal>)
+  target_compile_options(
+    ${name}
+    PRIVATE -Wall
+            -Wextra
+            -Werror
+            -Wno-unused-function
+            -Wno-unused-parameter
+            -Wno-unused-variable
+            -Wno-address-of-packed-member
+  )
+  set_target_properties(${name} PROPERTIES LINKER_LANGUAGE CXX)
+  target_include_directories(
+    ${name}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+            ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_hal/inc
+            ${FW_ROOT}/libs/ra8_net_pal/inc
+            ${FW_ROOT}/libs/ra8_modem_at/inc
+            ${FW_ROOT}/libs/ra8_ble_host/inc
+            ${FW_ROOT}/libs/ra8_usb_pal/inc
+            ${FW_ROOT}/libs/ra8_fs/inc
+            ${FW_ROOT}/libs/ra8_io/inc
+            ${FW_ROOT}/libs/ra8_ftl/inc
+            ${FW_ROOT}/libs/ra8_mem/inc
+            ${FW_ROOT}/libs/ra8_sdmmc_spi/inc
+            ${FW_ROOT}/libs/ra8_sdfont/inc
+            ${FW_ROOT}/libs/ra8_gfx/inc
+            ${FW_ROOT}/libs/ra8_ui/inc
+            ${FW_ROOT}/libs/ra8_keyboard/inc
+            ${FW_ROOT}/libs/ra8_box/inc
+            ${FW_ROOT}/libs/ra8_book/inc
+            ${FW_ROOT}/libs/ra8_rabook_compile/inc
+            ${FW_ROOT}/libs/ra8_rabook_import/inc
+            ${FW_ROOT}/libs/ra8_batt/inc
+            ${FW_ROOT}/libs/ra8_widget/inc
+            ${FW_ROOT}/libs/ra8_app/inc
+            ${FW_ROOT}/libs/ra8_tls/inc
+            ${FW_ROOT}/libs/ra8_nsc/inc
+            ${FW_ROOT}/libs/ra8_ota/inc
+            ${FW_ROOT}/libs/ra8_dfu/inc
+            ${FW_ROOT}/libs/ra8_display_pal/inc
+            ${FW_ROOT}/libs/ra8_power_profile/inc
+            ${FW_ROOT}/libs/ra8_epub/inc
+            ${FW_ROOT}/libs/ra8_comic/inc
+            ${FW_ROOT}/libs/ra8_unarch/inc
+            ${FW_ROOT}/libs/ra8_jof/inc
+            ${FW_ROOT}/libs/ra8_longstrip/inc
+            ${FW_ROOT}/libs/ra8_reflow/inc
+            ${FW_ROOT}/libs/ra8_webp/inc
+            ${FW_ROOT}/libs/ra8_touch_cal/inc
+            ${FW_ROOT}/libs/ra8_epd_cal/inc
+            ${FW_ROOT}/libs/ra8_mpu/inc
+            ${FW_ROOT}/libs/ra8_psa_crypto/inc
+            ${FW_ROOT}/libs/ra8_wdt_supervisor/inc
+            ${FW_ROOT}/libs/ra8_board_ek_ra8d2/inc
+            ${FW_ROOT}/libs/ra8_lsm6dso/inc
+            ${FW_ROOT}/libs/ra8_tz_secure_boot/inc
+            ${FW_ROOT}/port/threadx/inc
+            ${FW_ROOT}/libs/third_party/miniz
+            ${FW_ROOT}/libs/third_party/tinyxml2
+            ${FW_ROOT}/libs/third_party/stb
+            ${FW_ROOT}/libs/third_party/xz_embedded
+            ${FW_ROOT}/src/secure_app
+            ${FW_ROOT}/src/secure_app/inc
+            # Per-module src/ for MC/DC test access (see CLAUDE.md).
+            ${FW_ROOT}/libs/ra8_core/src
+            ${FW_ROOT}/libs/ra8_hal/src
+            ${FW_ROOT}/libs/ra8_net_pal/src
+            ${FW_ROOT}/libs/ra8_modem_at/src
+            ${FW_ROOT}/libs/ra8_ble_host/src
+            ${FW_ROOT}/libs/ra8_tls/src
+            ${FW_ROOT}/libs/ra8_usb_pal/src
+            ${FW_ROOT}/libs/ra8_fs/src
+            ${FW_ROOT}/libs/ra8_io/src
+            ${FW_ROOT}/libs/ra8_ftl/src
+            ${FW_ROOT}/libs/ra8_sdmmc_spi/src
+            ${FW_ROOT}/libs/ra8_gfx/src
+            ${FW_ROOT}/libs/ra8_nsc/src
+            ${FW_ROOT}/libs/ra8_ota/src
+            ${FW_ROOT}/libs/ra8_dfu/src
+            ${FW_ROOT}/libs/ra8_display_pal/src
+            ${FW_ROOT}/libs/ra8_power_profile/src
+            ${FW_ROOT}/libs/ra8_touch_cal/src
+            ${FW_ROOT}/libs/ra8_epd_cal/src
+            ${FW_ROOT}/libs/ra8_mpu/src
+            ${FW_ROOT}/libs/ra8_psa_crypto/src
+            ${FW_ROOT}/libs/ra8_wdt_supervisor/src
+            ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src
+            ${FW_ROOT}/libs/ra8_lsm6dso/src
+            ${FW_ROOT}/libs/ra8_epub/src
+            ${FW_ROOT}/libs/ra8_comic/src
+            ${FW_ROOT}/libs/ra8_unarch/src
+            ${FW_ROOT}/libs/ra8_jof/src
+            ${FW_ROOT}/libs/ra8_longstrip/src
+            ${FW_ROOT}/libs/ra8_reflow/src
+            ${FW_ROOT}/libs/ra8_tz_secure_boot/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+  )
+  #  if(APPLE)
+  #    target_link_options(${name} PRIVATE
+  #      "-Wl,-pagezero_size,0x4000"
+  #      "-Wl,-segalign,0x4000"
+  #    )
+  #  endif()
+  if(RA8_REFLOW_USE_LITEHTML)
+    # ra8_core_hal is an OBJECT library, so link deps don't propagate
+    # automatically; bind litehtml/gumbo directly into each test exe
+    # so the v2 adapter's symbols resolve.
+    target_link_libraries(${name} PRIVATE litehtml gumbo)
+  endif()
+  add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+# Auto-discover every test_*.c file in this directory and register it
+# via ra8_add_test(). Dropping a new test_foo.c file is enough -- no
+# manual list edit required. (CONFIGURE_DEPENDS means CMake re-globs
+# on the next build if the directory contents changed.)
+file(GLOB RA8_TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/test_*.c)
+
+# v1's test_ra8_reflow.c and its split sibling test_ra8_reflow_api_mcdc.c
+# assert on glyph-array internals that v2 deliberately does not populate
+# (shared fixture: tests/support/reflow_v1_test_util.h); drop them under
+# v2 and add the C++ v2 test below in their place.
+if(RA8_REFLOW_USE_LITEHTML)
+  list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_reflow.c)
+  list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_reflow_api_mcdc.c)
+endif()
+
+# test_coverage_compile_all.c is the coverage aggregator: a single
+# no-op TU whose only purpose is to force every first-party source
+# to be linked with the active coverage instrumentation flags so
+# llvm-cov / gcovr can compute uniform repository-wide coverage.
+# It contributes zero functional test value, so we exclude it from
+# the fast `make test` flow (RA8_MCDC=OFF) and only build it when
+# `RA8_MCDC=ON`.
+if(NOT RA8_MCDC)
+  list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_coverage_compile_all.c)
+endif()
+
+# test_psa_real_kat.c links the REAL crypto backend (TF-PSA-Crypto), not the
+# sim'd ra8_core_hal, so it is registered by hand below rather than through the
+# ra8_add_test() auto-glob (which would splice in the RA8_SIMULATOR_MODE build).
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_psa_real_kat.c)
+
+# test_ra8_cache_store.c needs the vendored LevelX NOR sources + a RAM NOR
+# simulator + LX_STANDALONE_ENABLE, so it is registered by hand below rather
+# than through the ra8_add_test() auto-glob.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_cache_store.c)
+
+# test_cache_store_demo.c (issue #257) compiles the ra8_cache_store_demo example
+# core + RAM NOR driver from examples/ plus the vendored LevelX NOR sources with
+# LX_STANDALONE_ENABLE, so it is registered by hand below rather than through the
+# ra8_add_test() auto-glob.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_cache_store_demo.c)
+
+# test_ra8_rsip_devsec_failclosed.c (issue #216) must compile ra8_rsip_devsec.c
+# with the stub-crypto guard flags UNDEFINED so the production fail-closed #else
+# is the body under test. The rest of the host build force-defines
+# RA8_SIMULATOR_MODE, so it is registered by hand below rather than through the
+# ra8_add_test() auto-glob (which would splice in the RA8_SIMULATOR_MODE build).
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_rsip_devsec_failclosed.c)
+
+# test_ra8_npu.c (issue #221) drives the Arm Ethos-U55 NPU driver, whose body in
+# ra8_npu.c is device-gated behind RA8_HAS_NPU (RA8P1-only). The shared ra8_core_hal
+# object library is compiled for the default RA8D2, so its ra8_npu.c is an EMPTY
+# TU with no NPU symbols. It is registered by hand below with -DRA8_DEVICE_RA8P1
+# (which makes ra8_device.h define RA8_HAS_NPU) so a live ra8_npu.c is compiled and
+# linked; the auto-glob would build it for the RA8D2 and fail to resolve the NPU
+# API. This is the same "compile one TU under a different device profile" pattern
+# as test_ra8_rsip_devsec_failclosed above.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_npu.c)
+
+# test_ra8_ethosu_shim.c (issue #228) drives the Arm ethos-u-core-driver -> ra8_npu
+# adapter (ra8_ethosu_shim.c), whose body -- like ra8_npu.c -- is device-gated behind
+# RA8_HAS_NPU (RA8P1-only). The shared ra8_core_hal object library is compiled for the
+# default RA8D2, so its ra8_ethosu_shim.c / ra8_npu.c are EMPTY TUs. It is registered by
+# hand below with -DRA8_DEVICE_RA8P1 (same pattern as test_ra8_npu) so live adapter +
+# driver bodies are compiled and linked; the auto-glob would build it for the RA8D2 and
+# fail to resolve the ethosu_* / ra8_npu_* API.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_ethosu_shim.c)
+
+# test_ra8_npu_loader.c (issue #227) drives the .npub Vela-blob loader
+# (ra8_npu_loader.c), which -- like ra8_npu.c -- is device-gated behind
+# RA8_HAS_NPU (RA8P1-only) and turns a committed golden model container
+# (tools/vela/generated/ra8_npu_model_addk_sim.h) into an ra8_npu_job_t. It is
+# registered by hand below with -DRA8_DEVICE_RA8P1 (same pattern as test_ra8_npu)
+# so the live loader + driver bodies compile and link; the auto-glob would build
+# it for the RA8D2 and fail to resolve the ra8_npu_* API.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_npu_loader.c)
+
+foreach(src ${RA8_TEST_SOURCES})
+  get_filename_component(name ${src} NAME_WE)
+  ra8_add_test(${name})
+endforeach()
+
+
+# ---------------------------------------------------------------------------
+# test_app_ereader_manga: the ereader_manga host twin drives the app's shared
+# pan/zoom presentation model directly, so compile the app's src/mg_reader.c into
+# the test target (and expose its inc/) -- the tested render IS the production
+# render. The JOF / gfx / tile-cache libraries it calls already come from
+# the ra8_core_hal object library the auto-glob linked.
+# ---------------------------------------------------------------------------
+if(TARGET test_app_ereader_manga)
+  target_sources(
+    test_app_ereader_manga
+    PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c
+  )
+  target_include_directories(
+    test_app_ereader_manga PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_manga/inc
+  )
+endif()
+
