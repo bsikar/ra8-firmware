@@ -13,11 +13,13 @@ default; downscaling is opt-in via --max-edge (issue #210).
 SPDX-License-Identifier: MIT
 """
 
+from __future__ import annotations
+
 import io
 import struct
 import zlib
 
-from epub_dom import StringPool
+from epub_dom import DomNode, StringPool
 from gray4_kernel import gray4_downscale, gray4_encode, gray4_output_dims
 from PIL import Image
 from rabook_format import (
@@ -46,7 +48,7 @@ SKIP_IMAGES = False
 class BlobBuilder:
     """Accumulates the node/attr/chapter/image tables and emits the blob."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create empty tables with no cover and no feature flags set.
 
         `cover_index` starts at NIL rather than 0 because 0 is a valid image
@@ -65,7 +67,7 @@ class BlobBuilder:
         self.flags = 0  # ra8_book_flag_t bits (e.g. FLAG_RTL); 0 for EPUB text
 
     # -- DOM serialization ----------------------------------------------------
-    def add_text(self, text):
+    def add_text(self, text: str) -> int:
         """Append a text node and return its index in the node table.
 
         The node is emitted with no children, no attributes and no sibling
@@ -93,7 +95,7 @@ class BlobBuilder:
         )
         return idx
 
-    def add_element(self, elem):
+    def add_element(self, elem: DomNode) -> int:
         """Flatten a DomBuilder subtree into the node/attr tables, depth first.
 
         The element's own record is reserved before its children are walked, so
@@ -144,7 +146,7 @@ class BlobBuilder:
                 self.nodes[cur]["next_sibling"] = nxt
         return idx
 
-    def add_chapter(self, root_elem, title, href):
+    def add_chapter(self, root_elem: DomNode, title: str, href: str) -> None:
         """Flatten one spine document and register it as the next chapter.
 
         Chapters are stored in call order, and that order IS the reading order
@@ -163,7 +165,7 @@ class BlobBuilder:
         self.chapters.append((self.sp.intern(title), self.sp.intern(href), root_idx))
 
     # -- assets ---------------------------------------------------------------
-    def add_stylesheet(self, css_text):
+    def add_stylesheet(self, css_text: str) -> None:
         """Store a stylesheet verbatim, scoped to the whole book.
 
         The source text is kept uninterpreted -- no minification, no parsing,
@@ -181,7 +183,7 @@ class BlobBuilder:
         """
         self.stylesheets.append((self.sp.intern(css_text), NIL))
 
-    def add_raster_image(self, href, data, max_image_edge=MAX_IMAGE_EDGE):
+    def add_raster_image(self, href: str, data: bytes, max_image_edge: int = MAX_IMAGE_EDGE) -> int:
         """Transcode an encoded raster image to panel-native 4bpp and store it.
 
         This is the one place content changes form, because the e-ink panel is
@@ -261,7 +263,7 @@ class BlobBuilder:
         self.images.append((self.sp.intern(href), width, height, IMG_GRAY4, raw, len(raw)))
         return len(self.images) - 1
 
-    def add_svg_image(self, href, data):
+    def add_svg_image(self, href: str, data: bytes) -> int:
         """Store SVG source unchanged, as vector data the device rasterizes.
 
         Unlike `add_raster_image` this does not transcode: SVG stays vector so
@@ -285,7 +287,7 @@ class BlobBuilder:
         return len(self.images) - 1
 
     # -- serialization --------------------------------------------------------
-    def _pack_tables(self):
+    def _pack_tables(self) -> tuple[bytes, bytes, bytes, bytes]:
         """Pack the four fixed-width record tables: chapters, nodes, attrs, styles."""
         chap = b"".join(struct.pack("<3I", *c) for c in self.chapters)
         node = b"".join(
@@ -306,7 +308,7 @@ class BlobBuilder:
         style = b"".join(struct.pack("<2I", *s) for s in self.stylesheets)
         return chap, node, attr, style
 
-    def _pack_images(self):
+    def _pack_images(self) -> tuple[bytes, bytes]:
         """Pack the image table and its payload pool.
 
         The pool is built first so every image record can carry a resolved
@@ -323,7 +325,7 @@ class BlobBuilder:
             )
         return b"".join(records), pool
 
-    def serialize(self, meta):
+    def serialize(self, meta: dict[str, str]) -> bytes:
         """Pack every table into the final RABOOK1 blob and return its bytes.
 
         Sections are laid out in a fixed order -- chapters, nodes, attrs,

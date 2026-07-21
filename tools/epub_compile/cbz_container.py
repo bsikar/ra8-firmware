@@ -52,7 +52,7 @@ import struct
 import sys
 import zlib
 from pathlib import Path
-from typing import NoReturn
+from typing import IO, NoReturn
 from zipfile import ZipFile
 
 from cbz_compile import is_page_entry, natural_key
@@ -75,7 +75,7 @@ FLAG_MASK_KNOWN = FLAG_RTL
 ZLIB_LEVEL = 9
 
 
-def transcode_page(name, data, max_image_edge=0):
+def transcode_page(name: str, data: bytes, max_image_edge: int = 0) -> tuple[bytes, int, int, int]:
     """Pre-decode one page to panel-native 4bpp via the #212 transcode.
 
     Reuses ``BlobBuilder.add_raster_image`` -- the exact gray4 quantize + pack
@@ -88,7 +88,7 @@ def transcode_page(name, data, max_image_edge=0):
     return raw, width, height, fmt
 
 
-def wrap_cbz_container(pages, flags=0):
+def wrap_cbz_container(pages: list[tuple[bytes, int, int, int]], flags: int = 0) -> bytes:
     """Assemble the RCBZ container from a list of pre-decoded pages.
 
     ``pages`` is a list of ``(raw_bytes, width, height, format)``. Each page's
@@ -113,7 +113,9 @@ def wrap_cbz_container(pages, flags=0):
     return header + off_table + meta_table + b"".join(streams)
 
 
-def compile_cbz_container(src, *, rtl=False, max_image_edge=0):
+def compile_cbz_container(
+    src: str | Path | IO[bytes], *, rtl: bool = False, max_image_edge: int = 0
+) -> tuple[bytes, list[str], list[tuple[bytes, int, int, int]]]:
     """Walk a CBZ central directory and build the RCBZ container.
 
     ``src`` is a path or file object. Returns ``(container_bytes, page_names,
@@ -139,7 +141,7 @@ def compile_cbz_container(src, *, rtl=False, max_image_edge=0):
     return wrap_cbz_container(pages, flags), names, pages
 
 
-def parse_cbz_container(data):
+def parse_cbz_container(data: bytes) -> tuple[int, int, list[tuple[bytes, int, int, int]]]:
     """Inverse view of ``wrap_cbz_container`` for tests and inspection.
 
     Validates the magic, reserved word, offset monotonicity and every stream's
@@ -185,7 +187,7 @@ def _require(cond: bool, what: str) -> None:
         _fail(f"selftest FAILED: {what}")
 
 
-def _selftest_build_cbz():
+def _selftest_build_cbz() -> tuple[io.BytesIO, dict[str, tuple[int, int]]]:
     """Build the in-memory fixture CBZ: 3 pages + entries the filter must drop."""
     dims = {"vol1/p1.png": (7, 5), "vol1/p2.jpeg": (4, 9), "vol1/p10.png": (3, 3)}
     buf = io.BytesIO()
@@ -205,7 +207,9 @@ def _selftest_build_cbz():
     return buf, dims
 
 
-def _selftest_check(container, pages, dims):
+def _selftest_check(
+    container: bytes, pages: list[tuple[bytes, int, int, int]], dims: dict[str, tuple[int, int]]
+) -> None:
     """Re-parse a compiled container and check page order, dims, and rasters."""
     want = ["vol1/p1.png", "vol1/p2.jpeg", "vol1/p10.png"]
     page_count, flags, parsed = parse_cbz_container(container)
@@ -222,7 +226,7 @@ def _selftest_check(container, pages, dims):
         _require(len(raster) == ((w * h) + 1) // 2, f"4bpp packed size [{name}]")
 
 
-def _selftest():
+def _selftest() -> int:
     """Round-trip self-check; exits non-zero on the first failed check."""
     fixture, dims = _selftest_build_cbz()
     want = ["vol1/p1.png", "vol1/p2.jpeg", "vol1/p10.png"]
@@ -246,7 +250,7 @@ def _selftest():
     return 0
 
 
-def main():
+def main() -> int:
     """Parse the command line and write the RCBZ container to disk.
 
     `--selftest` short-circuits and ignores the positional arguments; otherwise

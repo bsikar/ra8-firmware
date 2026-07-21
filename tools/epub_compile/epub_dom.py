@@ -9,7 +9,14 @@ the renderer happens to understand today.
 SPDX-License-Identifier: MIT
 """
 
+from __future__ import annotations
+
 from html.parser import HTMLParser
+
+#: One DOM node: either an element (``tag`` / ``attrs`` / ``children``) or a
+#: text run (``text``). Kept as a plain dict rather than a class because the
+#: whole tree is walked once and flattened straight into the blob tables.
+DomNode = dict
 
 VOID_TAGS = {
     "area",
@@ -32,7 +39,7 @@ VOID_TAGS = {
 class StringPool:
     """De-duplicating UTF-8 string pool; offset 0 is always the empty string."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Start an empty pool and intern "" so offset 0 is the empty string.
 
         That first intern is load-bearing, not a convenience: the blob format
@@ -44,7 +51,7 @@ class StringPool:
         self._map = {}
         self.intern("")
 
-    def intern(self, text):
+    def intern(self, text: str | None) -> int:
         """Return the pool offset of `text`, appending it only if new.
 
         De-duplication is by exact UTF-8 bytes, so two strings that differ only
@@ -84,7 +91,7 @@ class DomBuilder(HTMLParser):
     preserved exactly; inline <svg> becomes ordinary elements.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Seed the tree with a synthetic `#root` element and open the stack.
 
         The sentinel root exists so `handle_data`/`handle_starttag` never have
@@ -96,7 +103,7 @@ class DomBuilder(HTMLParser):
         self.root = {"tag": "#root", "attrs": [], "children": []}
         self.stack = [self.root]
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         """Append an element to the current parent and descend into it.
 
         Void tags (`<br>`, `<img>`, ...) are appended but NOT pushed, because
@@ -114,7 +121,7 @@ class DomBuilder(HTMLParser):
         if tag not in VOID_TAGS:
             self.stack.append(node)
 
-    def handle_startendtag(self, tag, attrs):
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         """Append a self-closing element (`<foo/>`) without descending.
 
         HTMLParser routes the self-closed spelling here instead of through
@@ -128,7 +135,7 @@ class DomBuilder(HTMLParser):
         """
         self.stack[-1]["children"].append({"tag": tag, "attrs": attrs, "children": []})
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self, tag: str) -> None:
         """Close the innermost open element with this name.
 
         Any elements left open inside it are discarded from the stack.
@@ -147,7 +154,7 @@ class DomBuilder(HTMLParser):
                 del self.stack[i:]
                 return
 
-    def handle_data(self, data):
+    def handle_data(self, data: str) -> None:
         """Attach a text run to the current parent, dropping only empty runs.
 
         Whitespace is deliberately kept: the device-side renderer performs its
@@ -165,7 +172,7 @@ class DomBuilder(HTMLParser):
             self.stack[-1]["children"].append({"text": data})
 
 
-def find_first(node, tag):
+def find_first(node: DomNode, tag: str) -> DomNode | None:
     """Depth-first search for the first element with the given tag name."""
     for child in node.get("children", []):
         if child.get("tag") == tag:
