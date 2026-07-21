@@ -39,6 +39,10 @@ smoke_verdict_dualcore_itm() {
     echo "DUAL-CORE FAIL (no ITM verdict '$dc_want' -- M33 did not run?)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # EPUB-import apps (see $import_reader_apps): attach the baked EPUB card and
@@ -65,6 +69,10 @@ smoke_verdict_import_reader() {
     echo "IMPORT FAIL (did not reach the PASS banner)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # I2C/I3C target-mode apps (see $i3c_target_apps): the firmware is the
@@ -86,6 +94,10 @@ smoke_verdict_i3c_target() {
     echo "I2C TARGET FAIL (no accepted transaction / echo mismatch)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # USB device-enumeration apps: the virtual host drives chapter-9; assert the
@@ -108,6 +120,10 @@ smoke_verdict_usb_enum() {
     echo "USB ENUM FAIL (device did not reach CONFIGURED)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # Live-SD USB MSC device app (see $usb_msc_sd_apps): attach the 64 MiB
@@ -144,6 +160,10 @@ smoke_verdict_usb_msc_sd() {
     echo "MSC LIVE-SD FAIL (capacity/sector-read mismatch vs the ${img_blocks}-block card)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # USB host-mode apps: the firmware's host stack enumerates board_sim's virtual
@@ -167,6 +187,10 @@ smoke_verdict_usb_host() {
     echo "USB HOST FAIL (host did not reach its PASS banner)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # microSD FORMAT apps: attach a blank 64 MiB card with --sd-new (the app
@@ -197,6 +221,10 @@ smoke_verdict_sd_format() {
     echo "FS FORMAT FAIL (did not reach ALL PASS banner)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # microSD ra8_io apps: blank FAT16 card via --sd-new, assert the app banner.
@@ -214,6 +242,10 @@ smoke_verdict_sd_io() {
     echo "RA8_IO SD FAIL (did not reach the PASS banner)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # OSPI-NOR ra8_io app: no card needed (OSPI is modelled internally), but the
@@ -232,6 +264,10 @@ smoke_verdict_xspi_io() {
     echo "RA8_IO on-chip-NV FAIL (did not reach the PASS banner)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # IT8951 e-paper app (see $eink_apps): attach the modelled controller with
@@ -254,6 +290,10 @@ smoke_verdict_eink() {
     echo "EINK FAIL (did not reach the PASS banner)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # Cellular AT-modem app (see $modem_apps): attach the modelled AT modem on
@@ -276,6 +316,10 @@ smoke_verdict_modem() {
     echo "MODEM FAIL (did not reach the PASS banner)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # Deep-idle self-parking app (see $selfpark_banner_apps): stop at the PASS
@@ -295,6 +339,10 @@ smoke_verdict_selfpark_banner() {
     echo "DEEP-IDLE FAIL (did not reach the '$want' banner)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # Verdict for the button class (see $button_apps in smoke_apps.sh).
@@ -308,6 +356,10 @@ smoke_verdict_button() {
     echo "BUTTON NO-OP (pc=$pc; --button did not light LED1)"
     fail=1
   fi
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # Verdict for the render assert class (see $render_assert_apps in smoke_apps.sh).
@@ -336,6 +388,10 @@ smoke_verdict_render_assert() {
       ;;
   esac
   echo "OK (pc=$pc, render=$colors colors)"
+  # Explicit: this helper's result is the line it printed, never $?.
+  # A trailing conditional's status leaking out here is what aborted
+  # the caller mid-app and printed a name with no verdict.
+  return 0
 }
 
 # Build one app and locate its ELF. Sets the global $elf and $extra; assigns
@@ -460,6 +516,12 @@ smoke_capture_run() {
     fi
     grep -qF "$tick_want" <<<"$out" && break
   done
+  # The loop's status is the last `grep && break`, i.e. "did the banner match
+  # on the final attempt". That is NOT this function's result -- capturing a
+  # run always succeeds; judging it is smoke_assert_run's job. Returning the
+  # grep status here made `set -e` abort the caller mid-line, printing an app
+  # name with no verdict. Never let a conditional leak out as a return value.
+  return 0
 }
 
 # Assert the app printed its expected SCI banner. Returns 0 when the app HAS a
