@@ -60,6 +60,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from selftest_assert import expect, report
+
 REPO_ROOT = Path(
     subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],  # noqa: S607 -- trusted: fixed git argv
@@ -153,89 +157,87 @@ def scan(text: str) -> list[Finding]:
     return findings
 
 
-def _expect(cond: bool, label: str, failures: list[str]) -> None:
-    """Record one selftest assertion and print its pass/fail line.
+def _assert_fires(failures: list[str]) -> None:
+    """Assert an unanchored directory pattern fires -- the #377 defect shape."""
+    got = scan("build/\n")
+    expect(
+        [f.pattern for f in got] == ["build/"],
+        "a bare 'build/' fires (the #377 landmine)",
+        failures,
+    )
+    expect(
+        [f.pattern for f in scan("output/\nra/\nDebug/\n")] == ["output/", "ra/", "Debug/"],
+        "every plausible source name fires (output/, ra/, Debug/)",
+        failures,
+    )
+    expect(
+        [f.lineno for f in scan("# a comment\n\nbuild/\n")] == [3],
+        "the reported line number is the pattern's own",
+        failures,
+    )
 
-    Accumulates into ``failures`` instead of raising, so one failing
-    assertion does not hide the ones after it -- the value of a
-    both-direction selftest is the whole picture, not the first breakage.
+
+def _assert_quiet(failures: list[str]) -> None:
+    """Assert every legal anchoring form stays quiet.
+
+    Split from the fires cases because these are what stop the rule being
+    unusable: a gate that flags correct anchoring gets switched off, and then
+    the defect it exists to catch comes straight back.
     """
-    print(f"  [{'ok' if cond else 'FAIL'}] {label}")
-    if not cond:
-        failures.append(label)
+    expect(not scan("/build/\n"), "a root-anchored '/build/' stays quiet", failures)
+    expect(
+        not scan("/examples/**/build/\n"),
+        "a root-scoped '/examples/**/build/' stays quiet",
+        failures,
+    )
+    expect(not scan("tests/Unity/\n"), "an interior slash anchors the pattern", failures)
+    expect(
+        not scan("CMakeFiles/\n__pycache__/\nnode_modules/\n"),
+        "tool-reserved names stay quiet unanchored",
+        failures,
+    )
+    expect(not scan("*.o\n*.elf\n"), "file patterns are out of scope", failures)
+    expect(not scan("!libs/third_party/**/ra/\n"), "a negation stays quiet", failures)
+    expect(
+        not scan(f"# {MARKER} media_dl writes it relative to its own cwd\ndownloads/\n"),
+        "an explicit marker with a reason stays quiet",
+        failures,
+    )
+
+
+def _assert_marker_discipline(failures: list[str]) -> None:
+    """Assert the waiver marker needs a reason and cannot leak past its block.
+
+    A marker that waives the rule without saying why, or that keeps waiving it
+    for every pattern below, is how an explicit exemption turns into a silent
+    blanket one.
+    """
+    expect(
+        bool(scan(f"# {MARKER}\ndownloads/\n")),
+        "an EMPTY marker reason does NOT waive the rule",
+        failures,
+    )
+    expect(
+        [f.pattern for f in scan(f"# {MARKER} ok\ndownloads/\n\nbuild/\n")] == ["build/"],
+        "a marker does not leak past its own comment block",
+        failures,
+    )
+    real = (REPO_ROOT / ".gitignore").read_text()
+    expect(
+        len([ln for ln in real.split("\n") if ln.strip()]) >= PATTERN_FLOOR,
+        "the real .gitignore was actually read (floor check)",
+        failures,
+    )
 
 
 def selftest() -> int:
     """Assert the rule fires on the real defect and stays quiet on legal forms."""
     print("check_gitignore_scope.py --selftest")
     failures: list[str] = []
-
-    # --- MUST-FIRE: the exact shape that caused #377 ----------------------
-    got = scan("build/\n")
-    _expect(
-        [f.pattern for f in got] == ["build/"],
-        "a bare 'build/' fires (the #377 landmine)",
-        failures,
-    )
-    _expect(
-        [f.pattern for f in scan("output/\nra/\nDebug/\n")] == ["output/", "ra/", "Debug/"],
-        "every plausible source name fires (output/, ra/, Debug/)",
-        failures,
-    )
-    _expect(
-        [f.lineno for f in scan("# a comment\n\nbuild/\n")] == [3],
-        "the reported line number is the pattern's own",
-        failures,
-    )
-
-    # --- QUIET: every legal form ------------------------------------------
-    _expect(not scan("/build/\n"), "a root-anchored '/build/' stays quiet", failures)
-    _expect(
-        not scan("/examples/**/build/\n"),
-        "a root-scoped '/examples/**/build/' stays quiet",
-        failures,
-    )
-    _expect(not scan("tests/Unity/\n"), "an interior slash anchors the pattern", failures)
-    _expect(
-        not scan("CMakeFiles/\n__pycache__/\nnode_modules/\n"),
-        "tool-reserved names stay quiet unanchored",
-        failures,
-    )
-    _expect(not scan("*.o\n*.elf\n"), "file patterns are out of scope", failures)
-    _expect(not scan("!libs/third_party/**/ra/\n"), "a negation stays quiet", failures)
-    _expect(
-        not scan(f"# {MARKER} media_dl writes it relative to its own cwd\ndownloads/\n"),
-        "an explicit marker with a reason stays quiet",
-        failures,
-    )
-
-    # --- the marker must carry a reason, and must not leak ----------------
-    _expect(
-        bool(scan(f"# {MARKER}\ndownloads/\n")),
-        "an EMPTY marker reason does NOT waive the rule",
-        failures,
-    )
-    _expect(
-        [f.pattern for f in scan(f"# {MARKER} ok\ndownloads/\n\nbuild/\n")] == ["build/"],
-        "a marker does not leak past its own comment block",
-        failures,
-    )
-
-    # --- the real file must be clean --------------------------------------
-    real = (REPO_ROOT / ".gitignore").read_text()
-    _expect(
-        len([ln for ln in real.split("\n") if ln.strip()]) >= PATTERN_FLOOR,
-        "the real .gitignore was actually read (floor check)",
-        failures,
-    )
-
-    if failures:
-        print(f"\nSELFTEST FAILED: {len(failures)} assertion(s)", file=sys.stderr)
-        for item in failures:
-            print(f"  {item}", file=sys.stderr)
-        return 1
-    print("selftest: all assertions held (both directions).")
-    return 0
+    _assert_fires(failures)
+    _assert_quiet(failures)
+    _assert_marker_discipline(failures)
+    return report(failures)
 
 
 def main(argv: list[str]) -> int:

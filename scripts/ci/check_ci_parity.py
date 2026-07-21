@@ -205,6 +205,56 @@ def classify_step(body: str) -> tuple[str, list[str], str | None]:
     return "raw", gates, reason
 
 
+def _check_gate_step(
+    where: str, gates: list[str], registry: dict[str, str], scheduled: set[str]
+) -> list[str]:
+    """Check one `--gate` step, recording the gates it schedules.
+
+    A workflow naming a gate the registry does not define is a typo or a
+    missing function: the step would fail at run time, having checked nothing.
+    """
+    errors: list[str] = []
+    for gate in gates:
+        if gate not in registry:
+            errors.append(
+                f"{where}\n"
+                f"    runs unregistered gate '{gate}'.\n"
+                f"    Add a row to RA8_GATE_REGISTRY in scripts/ci.sh and\n"
+                f"    write the matching gate_{gate.replace('-', '_')}() function."
+            )
+        else:
+            scheduled.add(gate)
+    return errors
+
+
+def _check_infra_step(where: str, body: str, reason: str | None) -> list[str]:
+    """Check one step that claims to be infrastructure rather than a check.
+
+    The claim has to be earned twice: the reason must actually say what the
+    step provisions, and the body must not invoke anything gate-shaped. A
+    check does not become infrastructure by being labelled one.
+    """
+    errors: list[str] = []
+    if reason is None or len(reason) < MIN_REASON_CHARS:
+        errors.append(
+            f"{where}\n"
+            f"    is tagged `# ci-parity: infra` but the reason is missing or\n"
+            f"    too terse. Write what the step provisions and why it runs no\n"
+            f"    project check."
+        )
+    for pattern, why in FORBIDDEN_IN_INFRA:
+        hit = pattern.search(body)
+        if hit:
+            errors.append(
+                f"{where}\n"
+                f"    is tagged `# ci-parity: infra` but {why}: {hit.group(0)!r}.\n"
+                f"    A check does not become infrastructure by being labelled one.\n"
+                f"    Move it into a gate function in scripts/ci.sh and call it\n"
+                f"    with `bash scripts/ci.sh --gate <name>`."
+            )
+    return errors
+
+
 def check_workflows(registry: dict[str, str]) -> tuple[list[str], set[str]]:
     """Return ``(errors, scheduled_gate_names)``."""
     errors: list[str] = []
@@ -225,36 +275,11 @@ def check_workflows(registry: dict[str, str]) -> tuple[list[str], set[str]]:
             kind, gates, reason = classify_step(body)
 
             if kind == "gate":
-                for gate in gates:
-                    if gate not in registry:
-                        errors.append(
-                            f"{where}\n"
-                            f"    runs unregistered gate '{gate}'.\n"
-                            f"    Add a row to RA8_GATE_REGISTRY in scripts/ci.sh and\n"
-                            f"    write the matching gate_{gate.replace('-', '_')}() function."
-                        )
-                    else:
-                        scheduled.add(gate)
+                errors.extend(_check_gate_step(where, gates, registry, scheduled))
                 continue
 
             if kind == "infra":
-                if reason is None or len(reason) < MIN_REASON_CHARS:
-                    errors.append(
-                        f"{where}\n"
-                        f"    is tagged `# ci-parity: infra` but the reason is missing or\n"
-                        f"    too terse. Write what the step provisions and why it runs no\n"
-                        f"    project check."
-                    )
-                for pattern, why in FORBIDDEN_IN_INFRA:
-                    hit = pattern.search(body)
-                    if hit:
-                        errors.append(
-                            f"{where}\n"
-                            f"    is tagged `# ci-parity: infra` but {why}: {hit.group(0)!r}.\n"
-                            f"    A check does not become infrastructure by being labelled one.\n"
-                            f"    Move it into a gate function in scripts/ci.sh and call it\n"
-                            f"    with `bash scripts/ci.sh --gate <name>`."
-                        )
+                errors.extend(_check_infra_step(where, body, reason))
                 continue
 
             errors.append(

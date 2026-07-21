@@ -206,19 +206,8 @@ def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, by
     return 0, received
 
 
-def main(argv: list[str]) -> int:  # noqa: PLR0911  # CLI gate; each return maps to a distinct exit code
-    """Echo-test one CDC tty and map the outcome onto a three-way exit code.
-
-    The exit codes are the interface the HIL suite consumes, and they separate
-    the two failures that get confused: 3 means the test could not RUN (no
-    tty given, auto-detect failed, path absent, non-ASCII payload, I/O error)
-    while 1 and 2 mean it ran and the device failed it -- 1 for silence within
-    the timeout, 2 for data that came back different. A rig problem therefore
-    never reads as a firmware problem.
-
-    Returns 0 on an exact round-trip, 1 on timeout, 2 on mismatch, 3 on any
-    setup failure.
-    """
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for this HIL probe."""
     parser = argparse.ArgumentParser(
         description="Round-trip echo test for the EK-RA8D2 USB CDC demos.",
     )
@@ -242,20 +231,48 @@ def main(argv: list[str]) -> int:  # noqa: PLR0911  # CLI gate; each return maps
         default=DEFAULT_TIMEOUT_S,
         help="Seconds to wait for the echo (default: %(default)s).",
     )
-    args = parser.parse_args(argv)
+    return parser
 
+
+def _resolve_tty(args: argparse.Namespace) -> str | None:
+    """Resolve the tty to test, or None (having said why) if it cannot be.
+
+    Every failure here is a RIG problem, not a firmware one, which is why the
+    caller maps them all to exit 3 rather than to a test failure.
+    """
     tty_path = args.tty
     if not tty_path and args.auto:
         tty_path = auto_detect(args.auto)
         if not tty_path:
             print(f"ERROR: could not auto-detect EK-RA8D2 {args.auto.upper()} tty", file=sys.stderr)
-            return 3
+            return None
         print(f"auto-detected: {tty_path}")
     if not tty_path:
         print("ERROR: must pass --tty or --auto {fs,hs}", file=sys.stderr)
-        return 3
+        return None
     if not Path(tty_path).exists():
         print(f"ERROR: tty does not exist: {tty_path}", file=sys.stderr)
+        return None
+    return tty_path
+
+
+def main(argv: list[str]) -> int:
+    """Echo-test one CDC tty and map the outcome onto a three-way exit code.
+
+    The exit codes are the interface the HIL suite consumes, and they separate
+    the two failures that get confused: 3 means the test could not RUN (no
+    tty given, auto-detect failed, path absent, non-ASCII payload, I/O error)
+    while 1 and 2 mean it ran and the device failed it -- 1 for silence within
+    the timeout, 2 for data that came back different. A rig problem therefore
+    never reads as a firmware problem.
+
+    Returns 0 on an exact round-trip, 1 on timeout, 2 on mismatch, 3 on any
+    setup failure.
+    """
+    args = _build_parser().parse_args(argv)
+
+    tty_path = _resolve_tty(args)
+    if tty_path is None:
         return 3
 
     try:
