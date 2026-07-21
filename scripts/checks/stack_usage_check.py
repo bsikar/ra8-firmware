@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""stack_usage_check.py -- aggregate gcc -fstack-usage `.su` files into a
-project-wide stack-bound report.
+"""Aggregate gcc ``-fstack-usage`` .su files into a project-wide stack report.
 
 Background
 ----------
@@ -107,6 +106,12 @@ FIRST_PARTY_EXEMPTIONS = (
 
 
 def is_first_party(tu_path: str) -> bool:
+    """Whether a .su translation-unit path is ours rather than vendored SOUP.
+
+    Decided by path fragment against the vendored trees, because the TU path
+    inside a .su is whatever the compiler was given and is not reliably
+    repo-relative -- a prefix test would miss an absolute one.
+    """
     return not any(frag in tu_path for frag in THIRD_PARTY_PATH_FRAGMENTS)
 
 
@@ -125,9 +130,25 @@ _SU_LINE = re.compile(
 
 
 class StackEntry:
+    """One function's stack frame, as reported by a single line of a .su file.
+
+    ``tu`` is the path the COMPILER recorded, not where the .su was found. The
+    two diverge for the shared-library archive, and the gates key off ``tu``
+    precisely so that a critical-path frame is caught wherever it was built.
+    """
+
     __slots__ = ("app", "bytes_", "func", "qualifier", "su_file", "tu")
 
-    def __init__(self, app, tu, func, bytes_, qualifier, su_file):  # noqa: PLR0913  # data class init, all fields are required
+    def __init__(  # noqa: PLR0913  # data class init, all fields are required
+        self,
+        app: str,
+        tu: str,
+        func: str,
+        bytes_: int,
+        qualifier: str,
+        su_file: Path,
+    ) -> None:
+        """Record one parsed .su line; every field is required and none is derived."""
         self.app = app
         self.tu = tu
         self.func = func
@@ -137,10 +158,27 @@ class StackEntry:
 
     @property
     def is_dynamic(self) -> bool:
+        """Whether gcc reported this frame as dynamically sized.
+
+        The qualifier is a comma-separated set, so it is split and matched as a
+        whole token rather than by substring -- a compound qualifier must be
+        decomposed, not pattern-matched.
+
+        ``dynamic,bounded`` counts as dynamic here even though gcc could bound
+        it. That is the conservative reading and it is deliberate: a bounded
+        dynamic frame still has no single compile-time size to put in a
+        worst-case stack budget, so it is surfaced for a human to judge.
+        """
         return "dynamic" in self.qualifier.split(",")
 
     @property
     def is_critical(self) -> bool:
+        """Whether this frame belongs to a module held to the tighter 256-byte limit.
+
+        Matches the module name in the TU path OR in the function name, since a
+        critical-path function can be defined in a differently-named TU; either
+        hit is enough to pull the frame under the stricter budget.
+        """
         return any(m in self.tu for m in CRITICAL_MODULES) or any(
             m in self.func for m in CRITICAL_MODULES
         )
@@ -187,6 +225,16 @@ def find_su_files(repo_root: Path) -> list:
 
 
 def app_name_for(su_file: Path, repo_root: Path) -> str:
+    """Attribute a .su file to the app whose build tree produced it.
+
+    Used only for GROUPING the per-app reports. The critical-path and
+    first-party gates deliberately key off the TU path recorded inside the .su
+    instead, so a shared-library frame is still judged correctly despite being
+    filed under a synthetic app name.
+
+    Returns "unknown" rather than raising for a .su outside both known roots:
+    an unattributable file should still appear in the aggregate report.
+    """
     # Archive .su files live under build/shared_libs/, not examples/. Attribute
     # them to a synthetic app so the per-app report groups them; the
     # critical-path and first-party gates key off the real TU path (e.g.
@@ -212,6 +260,15 @@ def app_name_for(su_file: Path, repo_root: Path) -> str:
 
 
 def parse_su(su_file: Path, app: str) -> list:
+    """Parse one .su file into StackEntry records, skipping anything unrecognised.
+
+    Every failure mode here is a silent skip -- an unreadable file, a line that
+    does not match the .su grammar, a byte count that is not an integer. That
+    tolerance suits a format gcc owns and may extend, but note the consequence:
+    if the .su grammar ever changed wholesale this would return no entries, and
+    ``main`` reports a parse of zero functions as success. The gate would go
+    quiet rather than fail. Nothing currently detects that.
+    """
     entries = []
     try:
         text = su_file.read_text(encoding="utf-8", errors="replace")
@@ -242,6 +299,12 @@ def parse_su(su_file: Path, app: str) -> list:
 
 
 def write_csv(out_path: Path, entries: list) -> None:
+    """Write the flat machine-readable report of every parsed frame.
+
+    Written with ``newline=""`` as the csv module requires, and in ASCII so a
+    non-ASCII symbol name fails here rather than producing a file the rest of
+    the ASCII-only toolchain cannot read.
+    """
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="ascii", newline="") as fh:
         writer = csv.writer(fh)
@@ -251,6 +314,11 @@ def write_csv(out_path: Path, entries: list) -> None:
 
 
 def write_per_app(out_dir: Path, entries: list) -> None:
+    """Write one human-readable report per app, biggest frame first.
+
+    Sorted descending because these files are read to answer "what should I
+    shrink?", so the answer belongs at the top rather than after a scroll.
+    """
     by_app = defaultdict(list)
     for e in entries:
         by_app[e.app].append(e)
@@ -266,7 +334,15 @@ def write_per_app(out_dir: Path, entries: list) -> None:
                 fh.write(f"{r.bytes_:>8}  {r.qualifier:<16}  {r.func}  {r.tu}\n")
 
 
-def find_violations(entries: list, frame_limit: int):
+def find_violations(entries: list, frame_limit: int) -> tuple[list, list]:
+    """Partition entries into critical-path and soft breaches.
+
+    The two buckets are mutually exclusive by construction: a critical-path
+    frame is judged ONLY against the 256-byte limit and never also counted as
+    a soft breach, so one oversized function cannot be reported twice.
+
+    Returns ``(critical, soft)``.
+    """
     critical = []
     soft = []
     for e in entries:
@@ -279,6 +355,12 @@ def find_violations(entries: list, frame_limit: int):
 
 
 def print_top_n(entries: list, n: int) -> None:
+    """Print the ``n`` largest frames across every app to stdout.
+
+    Ranks the whole corpus rather than each app separately, which is what makes
+    it useful on a CI log: the worst frame in the tree surfaces even when it
+    lives in an app nobody was looking at.
+    """
     ranked = sorted(entries, key=lambda r: r.bytes_, reverse=True)[:n]
     print(f"\nTop {len(ranked)} stack-frame offenders across all apps:")
     print(f"{'bytes':>8}  {'qualifier':<16}  app/function  (tu)")
@@ -405,6 +487,25 @@ def _collect_entries(repo_root: Path, su_files: list) -> list:
 
 
 def main(argv: list) -> int:
+    """Aggregate every .su file, write the reports, and gate on the violations.
+
+    Read the no-input paths carefully before trusting a green run: no .su files
+    found, or .su files that parse to zero functions, BOTH exit 0. The reason
+    is pre-commit ergonomics -- a fresh clone has no build tree, and forcing a
+    full app build inside the hook would cost minutes per commit -- but the
+    consequence is that this gate passes vacuously unless something was built
+    with ``-fstack-usage`` first. A green result here is only evidence when the
+    printed function count is non-zero.
+
+    Severity is tiered rather than uniform. Critical-path modules breach at 256
+    bytes, everything else at ``--frame-limit`` (2048), and a ``dynamic``
+    qualifier anywhere is a P10 Rule 3 violation regardless of size --
+    that last check runs on ALL entries and is the one thing ``--warn-only``
+    cannot downgrade.
+
+    Returns 1 on a strict-mode soft breach, an un-waived critical breach, or
+    any dynamic frame; 0 otherwise.
+    """
     args = _build_parser().parse_args(argv)
 
     repo_root = args.repo_root.resolve()
