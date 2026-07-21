@@ -24,9 +24,36 @@
 #     are run, not skipped, and the detection is logged so nothing is silent.
 #   * An app that runs to the budget but prints neither a clean-budget marker
 #     nor a fault/halt marker is UNKNOWN (needs review), never assumed OK.
-#   * board_sim's exit code is captured and factored in: a non-zero exit (or a
-#     124 timeout) is FAULT and can never read OK, independent of stdout text.
+#   * board_sim's exit code is captured and factored in: a fault exit can never
+#     read OK, independent of stdout text.
+#   * A run cut short by a WALL-CLOCK bound is TRUNCATED -- a distinct third
+#     state, never folded into OK or FAULT. See the determinism note below.
 #   * The _unsupported tier needs external hardware and is listed as SKIPPED.
+#
+# DETERMINISM (#394). This matrix is a RATCHETED GATE, so the same ELF must
+# yield the same verdict on an idle box and on a loaded one. Two wall-clock
+# bounds used to leak host load into the verdict:
+#
+#   1. board_sim's own CPU-time guard (BOARD_SIM_WALL_S, a clock() budget).
+#      Measured on usb_printer_vendor, three back-to-back runs of ONE binary
+#      truncated at chunk 2473, 3237 and 3460 of 4000 -- a 40% spread with
+#      identical UART output. Whether the app reached its budget (OK) or was
+#      cut short therefore tracked how busy the host was, and the app flipped
+#      OK -> FAULT across a change that touched nothing it uses. This is the
+#      #168 mechanism exactly: Unicorn's TCG re-translation burns CPU-time
+#      under load, so the guard fires earlier the busier the box is.
+#   2. The outer `timeout` on the board_sim process, likewise wall-clock.
+#
+# The instruction-counted chunk budget is the deterministic bound, so the runs
+# below set BOARD_SIM_WALL_S=0 -- which truly DISABLES the CPU-time guard
+# (#168) -- and are bounded by chunks alone. The outer `timeout` stays only as
+# a hang backstop and is sized so it is never the effective bound.
+#
+# Because a wall-clock stop can no longer be mistaken for a result, a run that
+# hits one is reported TRUNCATED rather than guessed at. An app that did not
+# reach its budget has produced NO VERDICT, and saying so is the honest output;
+# folding it into FAULT invents a failure, and folding it into OK invents a
+# pass. That is the touch_demo empty-verdict lesson and the #168 lesson both.
 #
 # Usage:
 #   scripts/sim/matrix.sh                 # every ek_ra8d2 example
@@ -61,13 +88,132 @@ report="$ROOT/build/board_sim_matrix.txt"
 mkdir -p "$ROOT/build"
 
 build_timeout="${BUILD_TIMEOUT:-240}"
-run_timeout="${RUN_TIMEOUT:-90}"
+# The outer run backstop. Deliberately generous: with the CPU-time guard off
+# (see the DETERMINISM note) the chunk budget always terminates the run, so this
+# exists only to catch a pathological hang. Sizing it tight would put a
+# wall-clock bound back in charge of the verdict, which is the bug being fixed.
+run_timeout="${RUN_TIMEOUT:-600}"
+# The deterministic bound: outer chunks, one SysTick each. Instruction-counted,
+# so it is identical on an idle box and a loaded one.
+max_chunks="${MAX_CHUNKS:-4000}"
 
 # A diagnostic line (to stderr) so detection/discovery decisions are never
 # silent. stderr keeps these off the stdout per-app table, which would otherwise
 # corrupt a row mid-line (the row is printed without a trailing newline until
 # its verdict is known); stdout stays the clean, parseable table + summary.
 log() { printf 'board_sim matrix: %s\n' "$*" >&2; }
+
+# The board_sim exit codes this classifier keys on, named so the tests below
+# read as intent rather than digits. The full space is in sim_run.h: 0 clean,
+# 1 emulation fault, 2 BKPT, 3 CPU-time guard. 1 and 2 need no name here --
+# they fall through the generic non-zero FAULT rule.
+readonly k_rc_ok=0        # clean run-to-budget
+readonly k_rc_wall=3      # board_sim's own CPU-time guard fired
+readonly k_rc_timeout=124 # the outer `timeout` fired
+
+# Classify one run from board_sim's stdout AND its exit code.
+classify_run() { # out rc -> OK|FAULT|TRUNCATED|HALT|UNKNOWN
+  local out="$1" rc="$2"
+  # TRUNCATED is tested FIRST, before the non-zero-exit FAULT rule below, because
+  # both wall-clock statuses are non-zero and would otherwise be absorbed into
+  # FAULT -- which is precisely the bug: a load-dependent stop reported as a
+  # deterministic failure. A truncated run produced NO VERDICT about the app.
+  #
+  # With BOARD_SIM_WALL_S=0 the sim's own guard cannot fire, so in practice only
+  # the outer backstop can land here; both are still recognised so that a caller
+  # who re-enables the guard cannot silently reintroduce the flake.
+  if [ "$rc" -eq "$k_rc_wall" ] || [ "$rc" -eq "$k_rc_timeout" ]; then
+    echo TRUNCATED
+    return
+  fi
+  # Belt-and-suspenders: board_sim prints this whenever it cut a run short on
+  # CPU-time, so the text is honoured even if the status did not reach us.
+  if grep -q "TRUNCATED by the wall-clock guard" <<<"$out"; then
+    echo TRUNCATED
+    return
+  fi
+  # (4)(5) A remaining non-zero exit (fault / BKPT) is FAULT and can never be OK
+  # -- do not trust stdout strings alone (an emulation error outside the marker
+  # set below is still caught here).
+  if [ "$rc" -ne "$k_rc_ok" ]; then
+    echo FAULT
+    return
+  fi
+  # Belt-and-suspenders: a known fault marker in stdout is FAULT even if the
+  # exit code did not (yet) reflect it.
+  if grep -qE "INVALID INSN|UNMAPPED|executed a BKPT|FAULT|mmio_map failed" <<<"$out"; then
+    echo FAULT
+    return
+  fi
+  # rc == 0 and no fault marker: a recognised clean-budget marker is a genuine OK.
+  if grep -qE "EXECUTED to the run budget|device CONFIGURED|PASS" <<<"$out"; then
+    echo OK
+    return
+  fi
+  # A firmware park / halt loop: booted, then gave up or finished a self-test.
+  if grep -qE "parked|halt loop|reached .*_halt" <<<"$out"; then
+    echo HALT
+    return
+  fi
+  # (3) Ran to here (rc==0) with neither a clean-budget nor a halt marker: do
+  # NOT assume OK. Tag UNKNOWN for human review so a broken example -- one that
+  # boots but produces no recognised evidence -- cannot read green.
+  echo UNKNOWN
+}
+
+# -- --selftest: prove the CLASSIFIER is wired before trusting a sweep. -------
+#
+# This gate's failure mode is a wrong verdict, and the specific wrong verdict
+# that cost real work is a wall-clock truncation reported as FAULT (#394): the
+# run was cut short by host load, the app was never judged, and the matrix
+# called it broken. The inverse mislabel -- truncation reported as OK -- is the
+# #168 bug in its original form. Both directions are asserted here, against the
+# real classify_run, so a future edit that folds TRUNCATED back into either
+# neighbour fails immediately instead of at the next flake.
+#
+# It runs BEFORE the emulator build so it costs nothing and cannot be skipped
+# by a build failure.
+if [ "${1:-}" = "--selftest" ]; then
+  sel_fail=0
+  # want<TAB>rc<TAB>stdout -- one row per classifier path, both directions.
+  while IFS=$'\t' read -r want rc text; do
+    [ -z "$want" ] && continue
+    got="$(classify_run "$text" "$rc")"
+    if [ "$got" != "$want" ]; then
+      echo "  FAIL classify_run(rc=$rc, '$text') = $got, expected $want"
+      sel_fail=1
+    fi
+  done <<EOF
+TRUNCATED	3	EXECUTED to the run budget
+TRUNCATED	124	EXECUTED to the run budget
+TRUNCATED	0	  => board_sim TRUNCATED by the wall-clock guard at chunk 2473 of 4000
+FAULT	1	INVALID INSN @ 0x02007D72
+FAULT	2	firmware executed a BKPT
+FAULT	0	UNMAPPED read
+OK	0	  => firmware EXECUTED to the run budget (no invalid opcode / fault).
+HALT	0	firmware parked
+UNKNOWN	0	some app chatter with no recognised marker
+EOF
+  # The two rows above that carry rc=3/124 WITH a clean-budget banner are the
+  # load-bearing ones: they are exactly the shape usb_printer_vendor produced,
+  # and they must never read OK (invented pass) or FAULT (invented failure).
+  #
+  # Must-fire direction: assert the harness itself can detect a wrong answer,
+  # so a table that silently stopped being compared cannot report success.
+  if [ "$(classify_run 'EXECUTED to the run budget' 3)" = "OK" ]; then
+    echo "  FAIL a truncated run classified OK -- the #168 mislabel is back"
+    sel_fail=1
+  fi
+  probe="$(classify_run 'nothing here' 99)"
+  if [ "$probe" != "FAULT" ]; then
+    echo "  FAIL an unrecognised non-zero status did not fall through to FAULT (got $probe)"
+    sel_fail=1
+  fi
+  if [ "$sel_fail" -eq 0 ]; then
+    echo "scripts/sim/matrix.sh --selftest: OK (truncation is its own state, both directions)"
+  fi
+  exit "$sel_fail"
+fi
 
 # -- Build the emulator, and HARD-CHECK it. -----------------------------------
 # If board_sim does not configure + build into a runnable binary, $sim would be
@@ -133,6 +279,7 @@ fi
 n_total=0
 n_ok=0
 n_fault=0
+n_trunc=0
 n_halt=0
 n_build=0
 n_special=0
@@ -174,39 +321,6 @@ is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
   return 1
 }
 
-# Classify one run from board_sim's stdout AND its exit code.
-classify_run() { # out rc -> OK|FAULT|HALT|UNKNOWN
-  local out="$1" rc="$2"
-  # (4)(5) board_sim returns non-zero on fault / BKPT / timeout (124) and 0 only
-  # on a clean run-to-budget. A non-zero exit is FAULT and can never be OK -- do
-  # not trust stdout strings alone (an emulation error outside the marker set
-  # below is still caught here).
-  if [ "$rc" -ne 0 ]; then
-    echo FAULT
-    return
-  fi
-  # Belt-and-suspenders: a known fault marker in stdout is FAULT even if the
-  # exit code did not (yet) reflect it.
-  if grep -qE "INVALID INSN|UNMAPPED|executed a BKPT|FAULT|mmio_map failed" <<<"$out"; then
-    echo FAULT
-    return
-  fi
-  # rc == 0 and no fault marker: a recognised clean-budget marker is a genuine OK.
-  if grep -qE "EXECUTED to the run budget|device CONFIGURED|PASS" <<<"$out"; then
-    echo OK
-    return
-  fi
-  # A firmware park / halt loop: booted, then gave up or finished a self-test.
-  if grep -qE "parked|halt loop|reached .*_halt" <<<"$out"; then
-    echo HALT
-    return
-  fi
-  # (3) Ran to here (rc==0) with neither a clean-budget nor a halt marker: do
-  # NOT assume OK. Tag UNKNOWN for human review so a broken example -- one that
-  # boots but produces no recognised evidence -- cannot read green.
-  echo UNKNOWN
-}
-
 # -- Per-app matrix. ----------------------------------------------------------
 for app in "${apps[@]}"; do
   [ -z "$app" ] && continue
@@ -245,7 +359,11 @@ for app in "${apps[@]}"; do
     log "detected dual-core embedded cpu1 image in '$app' -- running via single-image path"
   fi
 
-  out="$(BOARD_SIM_MAX_CHUNKS=4000 BOARD_SIM_WALL_S=60 \
+  # BOARD_SIM_WALL_S=0 DISABLES board_sim's CPU-time guard, leaving the run
+  # bounded only by the instruction-counted chunk budget -- the deterministic
+  # bound. See the DETERMINISM note in the header. The outer `timeout` is a hang
+  # backstop only; if it ever fires the run is reported TRUNCATED, not judged.
+  out="$(BOARD_SIM_MAX_CHUNKS="$max_chunks" BOARD_SIM_WALL_S=0 \
     timeout "$run_timeout" "$sim" "$elf" 2>&1)"
   rc=$?
   verdict="$(classify_run "$out" "$rc")"
@@ -257,6 +375,10 @@ for app in "${apps[@]}"; do
     FAULT)
       echo "FAULT (rc=$rc -- board_sim model gap or firmware bug)$note"
       n_fault=$((n_fault + 1))
+      ;;
+    TRUNCATED)
+      echo "TRUNCATED (rc=$rc -- wall-clock bound hit before chunk $max_chunks; NO VERDICT)$note"
+      n_trunc=$((n_trunc + 1))
       ;;
     HALT)
       echo "HALT (parked -- self-test done or panic)$note"
@@ -291,6 +413,7 @@ echo "  special (--ns) : $n_special  (two-image TrustZone -- dedicated recipe)"
 echo "  skipped (unsup): $n_skipped  (_unsupported tier -- external hardware)"
 echo "  build failed   : $n_build"
 echo "  faulted        : $n_fault"
+echo "  truncated      : $n_trunc  (wall-clock bound hit -- NO verdict, not a pass or a fail)"
 echo "  halted/parked  : $n_halt"
 echo "  unknown/review : $n_unknown"
 echo "  booted OK      : $n_ok"
@@ -300,7 +423,14 @@ if [ "$runnable" -gt 0 ]; then
 fi
 echo "  report written : $report"
 
-# Non-zero exit if anything build-failed, faulted, or is UNKNOWN (not verified),
-# so this can gate CI later. SPECIAL and SKIPPED do not fail the gate; HALT
-# booted to budget and does not fail it either.
-[ "$n_build" -eq 0 ] && [ "$n_fault" -eq 0 ] && [ "$n_unknown" -eq 0 ]
+# Exit status. This script REPORTS; the enforcing gate is the ratchet that
+# consumes $report (scripts/checks/matrix_ratchet.py, wired as the
+# board-sim-matrix gate), because a bare "any fault fails" rule would have to
+# stay unwired until the last of the 46 known faults is burned down -- which is
+# how a gate ends up measuring nothing for a year.
+#
+# A non-zero status here still means "the sweep did not come out clean", which
+# is what a human running it by hand wants. TRUNCATED counts: it is not a pass.
+# SPECIAL and SKIPPED do not fail; HALT reached its budget and does not either.
+[ "$n_build" -eq 0 ] && [ "$n_fault" -eq 0 ] && [ "$n_unknown" -eq 0 ] &&
+  [ "$n_trunc" -eq 0 ]
