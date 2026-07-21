@@ -58,8 +58,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORT_FILE = REPO_ROOT / "build" / "board_sim_matrix.txt"
 BASELINE_FILE = REPO_ROOT / ".github" / "board-sim-matrix-baseline.txt"
 
-MAX_DETAIL_LINES = 25
-"""Cap on offending apps echoed before the report truncates."""
+MAX_DETAIL_LINES = 250
+"""Cap on offending apps echoed before the report truncates.
+
+Deliberately above the example count. The first run of this gate on a new
+machine has an empty baseline, so EVERY failing app is "new" -- and that
+listing is what the baseline is then built from. A cap that truncated it
+would make the gate's own bootstrap output unusable.
+"""
 
 BASELINE_COLUMNS = 2
 """Column count of one baseline row: app, verdict."""

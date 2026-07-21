@@ -1,0 +1,20 @@
+# board_sim example-matrix baseline -- see scripts/checks/matrix_ratchet.py
+#
+# Recorded debt from `bash scripts/sim/matrix.sh`, one `app<TAB>verdict` row
+# each. This is a RATCHET: growth fails, shrinking is free, and the end
+# state is an EMPTY file. It is not an allowlist -- no row here is a
+# permanent exemption, and every one is work still owed.
+#
+# Re-baseline after burning debt down:
+#   bash scripts/sim/matrix.sh; python3 scripts/checks/matrix_ratchet.py --update
+#
+# MEASURE THIS ON THE CI RUNNER, NEVER ON A DEVELOPER BOX. The two disagree
+# by more than the tolerance of this gate: on the shared dev box the whole
+# ThreadX family faults in board_sim at _tx_thread_schedule while the same
+# commit is green on the self-hosted runner (and three more apps -- epub_parse,
+# epub_stress, import_reader -- hit the #396 MVE store on that box's Unicorn
+# build alone). A baseline taken there would record ~40 apps as expected-to-fail
+# that CI runs clean, and because the ratchet only ever objects to GROWTH, every
+# one of them could then break for real without the gate noticing. That is
+# baseline-as-grandfather, which is the thing this design refuses to be.
+# total: 0
