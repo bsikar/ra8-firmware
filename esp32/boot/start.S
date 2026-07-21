@@ -14,6 +14,9 @@
  *   6. wfi spin forever if app_main returns
  *
  * rv32imac / ilp32. No TRM register access here -- pure architectural setup.
+ *
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
     .section .text.boot, "ax", @progbits
