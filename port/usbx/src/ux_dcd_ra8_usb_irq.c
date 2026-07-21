@@ -24,11 +24,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_elc_regs.h"
-#include "ra8_usb_regs.h"
 #include "ra8_check.h"
+#include "ra8_elc_regs.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
+#include "ra8_usb_regs.h"
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -272,7 +272,7 @@ static void internal_irq_auto_echo(uint8_t i)
 {
   if (s_dcd_auto_echo_enable != 0U && i == s_dcd_auto_echo_out_pipe &&
       s_dcd.pipes[i].dir_in == 0U) {
-    uint16_t       len = (uint16_t)k_ux_dcd_ra8_usb_auto_echo_max;
+    uint16_t        len = (uint16_t)k_ux_dcd_ra8_usb_auto_echo_max;
     const ra8_err_t qo =
       ra8_usb_queue_out(s_dcd.speed, i, s_dcd_auto_echo_buf, &len, /* rearm */ true);
     if (qo == k_ra8_ok && len > 0U) {
@@ -562,12 +562,12 @@ static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_t i)
     if (want > mps) {
       want = mps;
     }
-    uint16_t       len    = want;
+    uint16_t        len    = want;
     const ra8_err_t qo_err = ra8_usb_queue_out(s_dcd.speed,
-                                             i,
-                                             &tr->ux_slave_transfer_request_data_pointer[got],
-                                             &len,
-                                             /* rearm */ false);
+                                               i,
+                                               &tr->ux_slave_transfer_request_data_pointer[got],
+                                               &len,
+                                               /* rearm */ false);
     if (qo_err != k_ra8_ok) {
       if (i == 2U) {
         s_diag.irq_walk_pipe2_no_data++;

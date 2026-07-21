@@ -23,11 +23,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_elc_regs.h"
-#include "ra8_usb_regs.h"
 #include "ra8_check.h"
+#include "ra8_elc_regs.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
+#include "ra8_usb_regs.h"
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -112,8 +112,8 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
   }
 
   ra8_usb_ep_dir_t  dir = ((ep_addr & (uint8_t)k_ra8_usb_ep_addr_dir_in_bit) != 0U)
-                           ? k_ra8_usb_ep_dir_in
-                           : k_ra8_usb_ep_dir_out;
+                            ? k_ra8_usb_ep_dir_in
+                            : k_ra8_usb_ep_dir_out;
   ra8_usb_ep_type_t type;
   switch ((uint8_t)ep->ux_slave_endpoint_descriptor.bmAttributes & 0x03U) {
     case 0x02U:
@@ -130,11 +130,11 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
   }
 
   if (ra8_usb_configure_endpoint(s_dcd.speed,
-                                pipe,
-                                (uint8_t)(ep_addr & (uint8_t)k_ra8_usb_ep_addr_num_mask),
-                                dir,
-                                type,
-                                (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize) !=
+                                 pipe,
+                                 (uint8_t)(ep_addr & (uint8_t)k_ra8_usb_ep_addr_num_mask),
+                                 dir,
+                                 type,
+                                 (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize) !=
       k_ra8_ok) {
     s_diag.ep_create_fail++;
     return UX_ERROR;

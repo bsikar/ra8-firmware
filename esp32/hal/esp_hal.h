@@ -39,10 +39,10 @@
  * @invariant `k_esp_ok` is always zero so `if (err)` reads as "failed".
  */
 typedef enum : uint8_t {
-    k_esp_ok              = 0, /**< Operation succeeded.                              */
-    k_esp_err_invalid_arg = 1, /**< A caller-supplied argument was out of range.      */
-    k_esp_err_null_ptr    = 2, /**< A required pointer argument was `nullptr`.        */
-    k_esp_err_timeout     = 3, /**< A bounded hardware wait expired (Rule 2 cap hit). */
+  k_esp_ok              = 0, /**< Operation succeeded.                              */
+  k_esp_err_invalid_arg = 1, /**< A caller-supplied argument was out of range.      */
+  k_esp_err_null_ptr    = 2, /**< A required pointer argument was `nullptr`.        */
+  k_esp_err_timeout     = 3, /**< A bounded hardware wait expired (Rule 2 cap hit). */
 } esp_err_t;
 
 /**
@@ -65,15 +65,15 @@ typedef enum : uint8_t {
  * @see esp_gpio_ours_ops
  */
 typedef struct esp_gpio_ops {
-    void* ctx; /**< Opaque backend state; passed back to every call. */
-    /** @brief Configure @p pin as a driven output. @return esp_err_t. */
-    esp_err_t (*init)(void* ctx, uint8_t pin);
-    /** @brief Drive @p pin high. @return esp_err_t. */
-    esp_err_t (*set)(void* ctx, uint8_t pin);
-    /** @brief Drive @p pin low. @return esp_err_t. */
-    esp_err_t (*clear)(void* ctx, uint8_t pin);
-    /** @brief Invert the current output level of @p pin. @return esp_err_t. */
-    esp_err_t (*toggle)(void* ctx, uint8_t pin);
+  void* ctx; /**< Opaque backend state; passed back to every call. */
+  /** @brief Configure @p pin as a driven output. @return esp_err_t. */
+  esp_err_t (*init)(void* ctx, uint8_t pin);
+  /** @brief Drive @p pin high. @return esp_err_t. */
+  esp_err_t (*set)(void* ctx, uint8_t pin);
+  /** @brief Drive @p pin low. @return esp_err_t. */
+  esp_err_t (*clear)(void* ctx, uint8_t pin);
+  /** @brief Invert the current output level of @p pin. @return esp_err_t. */
+  esp_err_t (*toggle)(void* ctx, uint8_t pin);
 } esp_gpio_ops_t;
 
 /**
@@ -96,15 +96,15 @@ typedef struct esp_gpio_ops {
  * @see esp_uart_ours_ops
  */
 typedef struct esp_uart_ops {
-    void* ctx; /**< Opaque backend state; passed back to every call. */
-    /** @brief Bring the UART up at @p baud (bits/s). @return esp_err_t. */
-    esp_err_t (*init)(void* ctx, uint32_t baud);
-    /** @brief Transmit a single @p byte (blocking, bounded). @return esp_err_t. */
-    esp_err_t (*putc)(void* ctx, uint8_t byte);
-    /** @brief Transmit @p len bytes from @p data. @return esp_err_t. */
-    esp_err_t (*write)(void* ctx, const uint8_t* data, size_t len);
-    /** @brief Block (bounded) until the TX FIFO has fully drained. @return esp_err_t. */
-    esp_err_t (*flush)(void* ctx);
+  void* ctx; /**< Opaque backend state; passed back to every call. */
+  /** @brief Bring the UART up at @p baud (bits/s). @return esp_err_t. */
+  esp_err_t (*init)(void* ctx, uint32_t baud);
+  /** @brief Transmit a single @p byte (blocking, bounded). @return esp_err_t. */
+  esp_err_t (*putc)(void* ctx, uint8_t byte);
+  /** @brief Transmit @p len bytes from @p data. @return esp_err_t. */
+  esp_err_t (*write)(void* ctx, const uint8_t* data, size_t len);
+  /** @brief Block (bounded) until the TX FIFO has fully drained. @return esp_err_t. */
+  esp_err_t (*flush)(void* ctx);
 } esp_uart_ops_t;
 
 /*

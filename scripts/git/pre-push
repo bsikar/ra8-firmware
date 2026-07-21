@@ -29,11 +29,11 @@ PUSH_REFS="$(cat)"
 # NOTE: `git push --no-verify` skips this whole hook INCLUDING the LFS
 # upload -- after such a push run `git lfs push origin <branch>` by hand.
 # ----------------------------------------------------------------------
-if command -v git-lfs > /dev/null 2>&1; then
-    if ! printf '%s\n' "$PUSH_REFS" | git lfs pre-push "$@"; then
-        echo "[FAIL] pre-push: git lfs pre-push failed -- LFS objects were NOT uploaded." >&2
-        exit 1
-    fi
+if command -v git-lfs >/dev/null 2>&1; then
+  if ! printf '%s\n' "$PUSH_REFS" | git lfs pre-push "$@"; then
+    echo "[FAIL] pre-push: git lfs pre-push failed -- LFS objects were NOT uploaded." >&2
+    exit 1
+  fi
 fi
 
 # ----------------------------------------------------------------------
@@ -43,39 +43,41 @@ fi
 # (rebase, cherry-pick, branch import) before they leave the laptop.
 # ----------------------------------------------------------------------
 ai_attr_violation=0
-while read -r local_ref local_oid remote_ref remote_oid; do
-    [[ -z "$local_oid" || "$local_oid" == "0000000000000000000000000000000000000000" ]] && continue
-    if [[ "$remote_oid" == "0000000000000000000000000000000000000000" ]]; then
-        # New branch -- check the last 100 commits as a budget cap.
-        range="${local_oid}~100..${local_oid}"
-    else
-        range="${remote_oid}..${local_oid}"
+# local_ref / remote_ref are unused here -- `_` discards them so the
+# positional read still lines up with git's four-field pre-push stdin.
+while read -r _ local_oid _ remote_oid; do
+  [[ -z "$local_oid" || "$local_oid" == "0000000000000000000000000000000000000000" ]] && continue
+  if [[ "$remote_oid" == "0000000000000000000000000000000000000000" ]]; then
+    # New branch -- check the last 100 commits as a budget cap.
+    range="${local_oid}~100..${local_oid}"
+  else
+    range="${remote_oid}..${local_oid}"
+  fi
+  while read -r sha; do
+    [[ -z "$sha" ]] && continue
+    msg="$(git log -1 --format=%B "$sha")"
+    # Per-commit opt-out.
+    if echo "$msg" | grep -qiE '^[[:space:]]*AI-OK:'; then
+      continue
     fi
-    while read -r sha; do
-        [[ -z "$sha" ]] && continue
-        msg="$(git log -1 --format=%B "$sha")"
-        # Per-commit opt-out.
-        if echo "$msg" | grep -qiE '^[[:space:]]*AI-OK:'; then
-            continue
-        fi
-        # Canonical AI-tool brand list -- mirror of scripts/git/commit-msg.
-        AI_BRANDS='(Claude|Anthropic|OpenAI|GPT|ChatGPT|Codex|Copilot|GitHub Copilot|Cursor|Cursor Composer|Aider|Continue|Cody|Sourcegraph Cody|Tabnine|Codeium|Windsurf|Devin|Cognition|Replit|Ghostwriter|CodeWhisperer|Q Developer|Cline|Roo Code|Roo Cline|JetBrains AI|Gemini|Bard|Llama|Mistral|Mixtral|DeepSeek|Qwen|Phind|Perplexity|Pieces|Sweep|Smol|SmolAgents|Phi|Grok|xAI|Inflection|Pi|Character\.AI|Hugging ?Face|Ollama|LM ?Studio|llama\.cpp|Stability AI|Midjourney|DALL-?E|Sora|Runway|Suno)'
-        if echo "$msg" | grep -qiE "^[[:space:]]*Co-Authored-By:[[:space:]]*${AI_BRANDS}" ||
-           echo "$msg" | grep -qiE "(Generated|Authored|Created|Written|Refactored|Reviewed|Coded|Implemented) (by|with|using) ${AI_BRANDS}" ||
-           echo "$msg" | grep -qE '🤖[[:space:]]+(Generated|Created|Authored)[[:space:]]+(with|by)' ||
-           echo "$msg" | grep -qiE '\bclaude\.ai\b|\bclaude code\b|\bchatgpt\b|\bcopilot\b|\bcursor\.(sh|com)\b|\bcodeium\b|\bwindsurf\b|\baider\b|\btabnine\b|\bcontinue\.dev\b|\bcody\.dev\b|\bdevin\.ai\b|\breplit ghostwriter\b|\bcodewhisperer\b|\bq developer\b|\bperplexity\.ai\b|\bcline\b' ||
-           echo "$msg" | grep -qiE "@(anthropic\.com|openai\.com|cursor\.(sh|com|so)|codeium\.com|tabnine\.com|aider\.chat|continue\.dev|sourcegraph\.com|perplexity\.ai|mistral\.ai|huggingface\.co|deepseek\.com|x\.ai|character\.ai|stability\.ai|midjourney\.com|runwayml\.com|suno\.ai|jetbrains-ai\.com)\b" ||
-           echo "$msg" | grep -qiE '\[bot\]\b' ||
-           git log -1 --format='%an %ae %cn %ce' "$sha" | grep -qiE "@(anthropic\.com|openai\.com|cursor\.(sh|com|so)|codeium\.com|tabnine\.com|aider\.chat|continue\.dev|perplexity\.ai|mistral\.ai|huggingface\.co|deepseek\.com|x\.ai|character\.ai|stability\.ai|midjourney\.com|runwayml\.com|suno\.ai|jetbrains-ai\.com)\b" ||
-           git log -1 --format='%an %cn' "$sha" | grep -qiE '\[bot\]\b'; then
-            echo "[FAIL] pre-push: commit ${sha} carries AI attribution. Rewrite message before pushing." >&2
-            echo "       (per-commit opt-out: include 'AI-OK: <reason>' line)" >&2
-            ai_attr_violation=1
-        fi
-    done < <(git rev-list "$range" 2>/dev/null || true)
-done <<< "$PUSH_REFS"
+    # Canonical AI-tool brand list -- mirror of scripts/git/commit-msg.
+    AI_BRANDS='(Claude|Anthropic|OpenAI|GPT|ChatGPT|Codex|Copilot|GitHub Copilot|Cursor|Cursor Composer|Aider|Continue|Cody|Sourcegraph Cody|Tabnine|Codeium|Windsurf|Devin|Cognition|Replit|Ghostwriter|CodeWhisperer|Q Developer|Cline|Roo Code|Roo Cline|JetBrains AI|Gemini|Bard|Llama|Mistral|Mixtral|DeepSeek|Qwen|Phind|Perplexity|Pieces|Sweep|Smol|SmolAgents|Phi|Grok|xAI|Inflection|Pi|Character\.AI|Hugging ?Face|Ollama|LM ?Studio|llama\.cpp|Stability AI|Midjourney|DALL-?E|Sora|Runway|Suno)'
+    if echo "$msg" | grep -qiE "^[[:space:]]*Co-Authored-By:[[:space:]]*${AI_BRANDS}" ||
+      echo "$msg" | grep -qiE "(Generated|Authored|Created|Written|Refactored|Reviewed|Coded|Implemented) (by|with|using) ${AI_BRANDS}" ||
+      echo "$msg" | grep -qE '🤖[[:space:]]+(Generated|Created|Authored)[[:space:]]+(with|by)' ||
+      echo "$msg" | grep -qiE '\bclaude\.ai\b|\bclaude code\b|\bchatgpt\b|\bcopilot\b|\bcursor\.(sh|com)\b|\bcodeium\b|\bwindsurf\b|\baider\b|\btabnine\b|\bcontinue\.dev\b|\bcody\.dev\b|\bdevin\.ai\b|\breplit ghostwriter\b|\bcodewhisperer\b|\bq developer\b|\bperplexity\.ai\b|\bcline\b' ||
+      echo "$msg" | grep -qiE "@(anthropic\.com|openai\.com|cursor\.(sh|com|so)|codeium\.com|tabnine\.com|aider\.chat|continue\.dev|sourcegraph\.com|perplexity\.ai|mistral\.ai|huggingface\.co|deepseek\.com|x\.ai|character\.ai|stability\.ai|midjourney\.com|runwayml\.com|suno\.ai|jetbrains-ai\.com)\b" ||
+      echo "$msg" | grep -qiE '\[bot\]\b' ||
+      git log -1 --format='%an %ae %cn %ce' "$sha" | grep -qiE "@(anthropic\.com|openai\.com|cursor\.(sh|com|so)|codeium\.com|tabnine\.com|aider\.chat|continue\.dev|perplexity\.ai|mistral\.ai|huggingface\.co|deepseek\.com|x\.ai|character\.ai|stability\.ai|midjourney\.com|runwayml\.com|suno\.ai|jetbrains-ai\.com)\b" ||
+      git log -1 --format='%an %cn' "$sha" | grep -qiE '\[bot\]\b'; then
+      echo "[FAIL] pre-push: commit ${sha} carries AI attribution. Rewrite message before pushing." >&2
+      echo "       (per-commit opt-out: include 'AI-OK: <reason>' line)" >&2
+      ai_attr_violation=1
+    fi
+  done < <(git rev-list "$range" 2>/dev/null || true)
+done <<<"$PUSH_REFS"
 if [[ "$ai_attr_violation" -ne 0 ]]; then
-    exit 1
+  exit 1
 fi
 
 # ----------------------------------------------------------------------
@@ -100,16 +102,16 @@ fi
 #   git push --no-verify       skip every push hook (this whole file)
 # ----------------------------------------------------------------------
 if [[ "${SKIP_CI_PUSH:-0}" == "1" ]]; then
-    echo "[skip] pre-push: SKIP_CI_PUSH=1 -- NOT running 'make ci'." >&2
+  echo "[skip] pre-push: SKIP_CI_PUSH=1 -- NOT running 'make ci'." >&2
 else
-    echo "[pre-push] running 'make ci' (CI gates, in the devcontainer)..." >&2
-    echo "           emergency bypass: SKIP_CI_PUSH=1 git push" >&2
-    if ! make -C "$ROOT_DIR" ci; then
-        echo "[FAIL] pre-push: 'make ci' failed -- push blocked." >&2
-        echo "       Fix the red gate(s) above, or bypass with:" >&2
-        echo "         SKIP_CI_PUSH=1 git push   (emergency only)" >&2
-        exit 1
-    fi
+  echo "[pre-push] running 'make ci' (CI gates, in the devcontainer)..." >&2
+  echo "           emergency bypass: SKIP_CI_PUSH=1 git push" >&2
+  if ! make -C "$ROOT_DIR" ci; then
+    echo "[FAIL] pre-push: 'make ci' failed -- push blocked." >&2
+    echo "       Fix the red gate(s) above, or bypass with:" >&2
+    echo "         SKIP_CI_PUSH=1 git push   (emergency only)" >&2
+    exit 1
+  fi
 fi
 
 exit 0

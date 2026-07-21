@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 # Default values
 CHECK_ONLY=false
 VERBOSE=false
-EXTENSIONS=("*.c" "*.h" "*.cpp" "*.hpp" "*.cc" "*.cxx" "*.hh" "*.hxx" "*.m")
+LIST_ONLY=false
 
 # Pin the clang-format binary via env var so CI can lock to a specific
 # major version (Ubuntu 24.04 ships v18 by default; Homebrew on macOS
@@ -26,9 +26,6 @@ EXTENSIONS=("*.c" "*.h" "*.cpp" "*.hpp" "*.cc" "*.cxx" "*.hh" "*.hxx" "*.m")
 # version they invoke. Default to plain `clang-format` for backward
 # compatibility on developer machines.
 CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
-# Scan every top-level dir except infrastructure / vendor / build trees.
-# build/docs/cmake/scripts/fsp/.git/etc. are excluded via -not -path in find_source_files.
-DIRECTORIES=()
 
 # Print usage information
 usage() {
@@ -97,6 +94,13 @@ parse_args() {
         VERBOSE=true
         shift
         ;;
+      # Scope introspection for check_lint_coverage.py: print exactly the file
+      # list this script would format, so the coverage gate can ask what is
+      # covered rather than keep a second copy of the answer.
+      --list-files)
+        LIST_ONLY=true
+        shift
+        ;;
       -h | --help)
         usage
         exit 0
@@ -110,56 +114,25 @@ parse_args() {
   done
 }
 
-# Auto-discover scan dirs: libs/, src/, tests/, plus every examples/<app>/ and
-# tools/<tool>/ directory. The recursive find inside each dir picks up nested
-# sources (e.g. tools/board_sim/{inc,src}); the build/ dir is excluded below.
-discover_source_dirs() {
-  local out=()
-  for entry in libs src tests; do
-    [ -d "$entry" ] && out+=("$entry")
-  done
-  if [ -d examples ]; then
-    for app in examples/*/*; do
-      [ -d "$app" ] && out+=("$app")
-    done
-  fi
-  if [ -d tools ]; then
-    for tool in tools/*; do
-      [ -d "$tool" ] && out+=("$tool")
-    done
-  fi
-  printf '%s\n' "${out[@]}"
-}
-
-# Find all source files
+# Find all source files.
+#
+# Scope is derived from `git ls-files`, NOT from a directory list. The previous
+# revision walked a hand-maintained set of roots (libs, src, tests,
+# examples/*/*, tools/*) and so formatted nothing under port/ or esp32/ -- 43
+# first-party C files that no formatter had ever touched, carrying 477
+# clang-format violations. That is the #296 / #332 / #358 / #359 / #360 defect
+# class: a scan list narrower than the tree, reporting "All files are properly
+# formatted".
+#
+# Deriving from git means a new top-level directory is covered the day it is
+# added, with no list to remember. Vendored and generated trees are excluded by
+# path prefix below, matching the CLAUDE.md exemption list.
 find_source_files() {
-  local files=()
-
-  if [ "${#DIRECTORIES[@]}" -eq 0 ]; then
-    IFS=$'\n' read -d '' -r -a DIRECTORIES < <(discover_source_dirs && printf '\0')
-  fi
-
-  for dir in "${DIRECTORIES[@]}"; do
-    if [ ! -d "$dir" ]; then
-      if [ "$VERBOSE" = true ]; then
-        print_warning "Directory '$dir' not found, skipping..."
-      fi
-      continue
-    fi
-
-    for ext in "${EXTENSIONS[@]}"; do
-      while IFS= read -r -d '' file; do
-        files+=("$file")
-      done < <(find "$dir" -name "$ext" -type f \
-        -not -path "*/build/*" \
-        -not -path "*/build-*/*" \
-        -not -path "*/_deps/*" \
-        -not -path "*/third_party/*" \
-        -print0 2>/dev/null)
-    done
-  done
-
-  printf '%s\n' "${files[@]}"
+  git ls-files --cached --others --exclude-standard |
+    grep -E '\.(c|h|cpp|hpp|cc|cxx|hh|hxx|m)$' |
+    grep -Ev '^(libs/third_party/|libs/fonts/|tools/vela/generated/)' |
+    grep -Ev '(^|/)(build|build-[^/]*|_deps)/' |
+    sort
 }
 
 # Check formatting of files
@@ -279,17 +252,23 @@ main() {
 
   parse_args "$@"
 
+  # --list-files answers "what do you cover?" and must not need a formatter
+  # installed: a missing clang-format would otherwise shrink the reported
+  # scope to nothing, which is the failure mode this whole gate family exists
+  # to prevent.
+  if [ "$LIST_ONLY" = true ]; then
+    find_source_files
+    exit 0
+  fi
+
   check_clang_format
   check_clang_format_config
 
-  # Discover top-level source dirs first so the status print can name them.
-  IFS=$'\n' read -d '' -r -a DIRECTORIES < <(discover_source_dirs && printf '\0')
-  print_status "Searching for source files in: ${DIRECTORIES[*]}"
   IFS=$'\n' read -d '' -r -a source_files < <(find_source_files && printf '\0')
 
   if [ ${#source_files[@]} -eq 0 ]; then
-    print_warning "No source files found!"
-    exit 0
+    print_error "No source files found -- refusing to report success."
+    exit 1
   fi
 
   if [ "$VERBOSE" = true ]; then
