@@ -366,6 +366,26 @@ def _decls_between(all_decls: list[Cursor], first: Cursor, second: Cursor) -> bo
     return any(lo < c.location.line < hi and c.spelling != first.spelling for c in all_decls)
 
 
+def _own_function_decls(
+    tu: TranslationUnit, cindex: ModuleType, own_file: str
+) -> dict[str, list[Cursor]]:
+    """Group this file's own function declarations by symbol name.
+
+    Cursors from #included headers are dropped by comparing REAL paths, so a
+    symlinked or relatively-spelled include cannot smuggle a declaration in and
+    make an out-of-file prototype look like an in-file forward declaration.
+    """
+    decls: dict[str, list[Cursor]] = {}
+    for cursor in tu.cursor.walk_preorder():
+        if cursor.kind != cindex.CursorKind.FUNCTION_DECL:
+            continue
+        loc = cursor.location.file
+        if loc is None or os.path.realpath(loc.name) != own_file:
+            continue
+        decls.setdefault(cursor.spelling, []).append(cursor)
+    return decls
+
+
 def check_forward_decl_blocks(
     tu: TranslationUnit, cindex: ModuleType, path: str, own_file: str, text: str
 ) -> list[Finding]:
@@ -378,14 +398,7 @@ def check_forward_decl_blocks(
     """
     attached = blocks_by_attach_line(text)
     decl_text = text.splitlines()
-    decls: dict[str, list] = {}
-    for cursor in tu.cursor.walk_preorder():
-        if cursor.kind != cindex.CursorKind.FUNCTION_DECL:
-            continue
-        loc = cursor.location.file
-        if loc is None or os.path.realpath(loc.name) != own_file:
-            continue
-        decls.setdefault(cursor.spelling, []).append(cursor)
+    decls = _own_function_decls(tu, cindex, own_file)
 
     all_decls = sorted(
         (c for group in decls.values() for c in group), key=lambda c: c.location.line
