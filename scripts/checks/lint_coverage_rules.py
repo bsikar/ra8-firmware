@@ -307,14 +307,6 @@ class Gap:
 
 KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
-        "asm",
-        2,
-        "#371",
-        "no assembler linter or formatter exists in this tree; 2 hand-written "
-        "startup TUs (esp32 boot, ThreadX low-level init)",
-        lambda c: c.cls == "asm",
-    ),
-    Gap(
         "firmware-tu-no-cross-compile-db",
         435,
         "#369",
@@ -345,22 +337,6 @@ KNOWN_GAPS: tuple[Gap, ...] = (
             c.cls == "c-family"
             and c.rel.rsplit(".", 1)[-1] in ("cpp", "cc", "cxx", "hpp", "hh", "hxx", "m")
         ),
-    ),
-    Gap(
-        "dockerfile",
-        1,
-        "#371",
-        "hadolint is not provisioned on the runner; the devcontainer that pins "
-        "every CI tool version is itself unlinted and unformatted",
-        lambda c: c.cls == "dockerfile",
-    ),
-    Gap(
-        "zsh",
-        1,
-        "#371",
-        "shellcheck refuses zsh input and there is no zsh formatter in the tree; "
-        "the devcontainer zshrc is unchecked",
-        lambda c: c.cls == "zsh",
     ),
 )
 
