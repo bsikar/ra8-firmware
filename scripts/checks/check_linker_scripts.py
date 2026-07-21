@@ -95,62 +95,79 @@ class Finding:
         return f"{self.path}:{self.line}: [{self.code}] {self.msg}"
 
 
-def check_file(  # noqa: PLR0912  # flat rule-dispatch table; splitting it hides the rule list
-    path: pathlib.Path,
-    raw: bytes,
-) -> list[Finding]:
+def _check_formatting(path: pathlib.Path, raw: bytes) -> tuple[list[Finding], str]:
+    """LD005 -- encoding, line endings, indentation, trailing whitespace.
+
+    Returns the findings and the decoded text, because the decode is where a
+    non-ASCII byte is discovered and the rest of the checks need the result.
+    """
     findings: list[Finding] = []
-
-    def add(line: int, code: str, msg: str) -> None:
-        findings.append(Finding(path, line, code, msg))
-
-    # --- LD005 formatting (operates on the raw bytes) ----------------------
     try:
         text = raw.decode("ascii")
     except UnicodeDecodeError as exc:
         bad_line = raw[: exc.start].count(b"\n") + 1
-        add(bad_line, "LD005", f"non-ASCII byte 0x{raw[exc.start]:02x}")
+        findings.append(Finding(path, bad_line, "LD005", f"non-ASCII byte 0x{raw[exc.start]:02x}"))
         text = raw.decode("ascii", errors="replace")
 
     if b"\r\n" in raw:
-        add(raw.split(b"\r\n")[0].count(b"\n") + 1, "LD005", "CRLF line ending")
+        line = raw.split(b"\r\n")[0].count(b"\n") + 1
+        findings.append(Finding(path, line, "LD005", "CRLF line ending"))
     if raw and not raw.endswith(b"\n"):
-        add(text.count("\n") + 1, "LD005", "no final newline")
+        findings.append(Finding(path, text.count("\n") + 1, "LD005", "no final newline"))
 
-    lines = text.splitlines()
-    for i, ln in enumerate(lines, 1):
+    for i, ln in enumerate(text.splitlines(), 1):
         if ln.startswith("\t") or re.match(r"^ *\t", ln):
-            add(i, "LD005", "tab indentation (this tree indents ld scripts with spaces)")
+            findings.append(
+                Finding(
+                    path, i, "LD005", "tab indentation (this tree indents ld scripts with spaces)"
+                )
+            )
         if ln != ln.rstrip():
-            add(i, "LD005", "trailing whitespace")
+            findings.append(Finding(path, i, "LD005", "trailing whitespace"))
+    return findings, text
 
-    # --- LD001 licence header ---------------------------------------------
+
+def _check_licence(path: pathlib.Path, lines: list[str]) -> list[Finding]:
+    """LD001 -- SPDX identifier and copyright line in the file head."""
     head = "\n".join(lines[:60])
+    findings: list[Finding] = []
     if "SPDX-License-Identifier:" not in head:
-        add(1, "LD001", "no SPDX-License-Identifier in the first 60 lines")
+        findings.append(
+            Finding(path, 1, "LD001", "no SPDX-License-Identifier in the first 60 lines")
+        )
     if not re.search(r"Copyright \(c\) \d{4}", head):
-        add(1, "LD001", "no 'Copyright (c) <year>' line in the first 60 lines")
+        findings.append(
+            Finding(path, 1, "LD001", "no 'Copyright (c) <year>' line in the first 60 lines")
+        )
+    return findings
 
-    code = strip_comments(text)
 
-    # --- LD002 ENTRY -------------------------------------------------------
+def _check_entry(path: pathlib.Path, code: str) -> list[Finding]:
+    """LD002 -- exactly one ENTRY(symbol) declaration."""
     entries = re.findall(r"\bENTRY\s*\(\s*([A-Za-z_.$][\w.$]*)\s*\)", code)
     if not entries:
-        add(1, "LD002", "no ENTRY(symbol) declaration")
-    elif len(entries) > 1:
-        add(1, "LD002", f"{len(entries)} ENTRY declarations, expected exactly 1")
+        return [Finding(path, 1, "LD002", "no ENTRY(symbol) declaration")]
+    if len(entries) > 1:
+        return [Finding(path, 1, "LD002", f"{len(entries)} ENTRY declarations, expected exactly 1")]
+    return []
 
-    # --- LD003 MEMORY ------------------------------------------------------
+
+def _check_memory(path: pathlib.Path, code: str) -> tuple[list[Finding], set[str]]:
+    """LD003 -- a MEMORY block whose every region carries ORIGIN and LENGTH.
+
+    Also returns the declared region names, which LD004 needs to decide
+    whether an output section lands somewhere that exists.
+    """
+    findings: list[Finding] = []
     regions: set[str] = set()
     mem_blocks = re.findall(r"\bMEMORY\s*\{(.*?)\n\}", code, re.DOTALL)
     if not mem_blocks:
-        add(1, "LD003", "no MEMORY { } block")
+        findings.append(Finding(path, 1, "LD003", "no MEMORY { } block"))
     for block in mem_blocks:
         for m in re.finditer(r"^\s*([A-Za-z_][\w]*)\s*(\([rwxail!]+\))?\s*:", block, re.MULTILINE):
-            name = m.group(1)
-            regions.add(name)
+            regions.add(m.group(1))
         if not regions:
-            add(1, "LD003", "MEMORY block declares no regions")
+            findings.append(Finding(path, 1, "LD003", "MEMORY block declares no regions"))
     for name in sorted(regions):
         decl = re.search(
             rf"^\s*{re.escape(name)}\s*(\([rwxail!]+\))?\s*:([^\n]*)$",
@@ -159,16 +176,39 @@ def check_file(  # noqa: PLR0912  # flat rule-dispatch table; splitting it hides
         )
         if decl and not ("ORIGIN" in decl.group(2) and "LENGTH" in decl.group(2)):
             line = code[: decl.start()].count("\n") + 1
-            add(line, "LD003", f"region '{name}' lacks ORIGIN and/or LENGTH")
+            findings.append(
+                Finding(path, line, "LD003", f"region '{name}' lacks ORIGIN and/or LENGTH")
+            )
+    return findings, regions
 
-    # --- LD004 region closure ---------------------------------------------
+
+def _check_region_closure(path: pathlib.Path, code: str, regions: set[str]) -> list[Finding]:
+    """LD004 -- every output section is placed in a region MEMORY declares."""
+    findings: list[Finding] = []
     for m in re.finditer(r"(?:AT)?>\s*([A-Za-z_][\w]*)", code):
         name = m.group(1)
         if name in regions:
             continue
         line = code[: m.start()].count("\n") + 1
-        add(line, "LD004", f"output section placed in undeclared region '{name}'")
+        findings.append(
+            Finding(path, line, "LD004", f"output section placed in undeclared region '{name}'")
+        )
+    return findings
 
+
+def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
+    """Every linker-script rule, one function per finding code.
+
+    The rule list is the call sequence below: LD005 formatting, LD001 licence,
+    LD002 ENTRY, LD003 MEMORY, LD004 region closure.
+    """
+    findings, text = _check_formatting(path, raw)
+    findings += _check_licence(path, text.splitlines())
+    code = strip_comments(text)
+    findings += _check_entry(path, code)
+    memory_findings, regions = _check_memory(path, code)
+    findings += memory_findings
+    findings += _check_region_closure(path, code, regions)
     return findings
 
 
@@ -264,7 +304,8 @@ SECTIONS
 """
 
 
-def selftest() -> int:  # noqa: PLR0912  # flat list of both-direction assertions
+def _selftest_fixtures() -> int:
+    """The two whole-file fixtures: every code must fire, nothing may over-fire."""
     rc = 0
     with tempfile.TemporaryDirectory() as td:
         bad = pathlib.Path(td) / "malformed.ld"
@@ -291,8 +332,12 @@ def selftest() -> int:  # noqa: PLR0912  # flat list of both-direction assertion
             rc = 1
         else:
             print("selftest: tricky.ld -> 0 findings OK")
+    return rc
 
-    # --- LD006, both directions -------------------------------------------
+
+def _selftest_symbol_scan() -> tuple[int, set[str], set[str]]:
+    """LD006 halves: a symbol named only in a comment is neither defined nor used."""
+    rc = 0
     ld_text = (
         "/* mentions g_ra8_ls_in_comment_only, which is NOT a definition */\n"
         "g_ra8_ls_alpha = .;\n"
@@ -317,7 +362,12 @@ def selftest() -> int:  # noqa: PLR0912  # flat list of both-direction assertion
         rc = 1
     else:
         print("selftest: referenced_symbols ignores comment mentions OK")
+    return rc, got_def, got_ref
 
+
+def _selftest_closure(got_def: set[str], got_ref: set[str]) -> int:
+    """LD006 closure, both directions: fires on a gap, silent when resolved."""
+    rc = 0
     defined = {s: ["fake.ld"] for s in got_def}
     referenced = {s: ["fake.c"] for s in got_ref}
     problems = closure_problems(defined, referenced)
@@ -332,8 +382,14 @@ def selftest() -> int:  # noqa: PLR0912  # flat list of both-direction assertion
         rc = 1
     else:
         print("selftest: closure quiet when every symbol resolves OK")
-
     return rc
+
+
+def selftest() -> int:
+    """Assert every finding code fires, and that none of them over-fires."""
+    rc = _selftest_fixtures()
+    scan_rc, got_def, got_ref = _selftest_symbol_scan()
+    return rc | scan_rc | _selftest_closure(got_def, got_ref)
 
 
 def main() -> int:
