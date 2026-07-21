@@ -83,8 +83,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # every app and is full of sequential IRQ-slot indices and fixed vector
 # addresses; flagging it would bury real application magic numbers under
 # ~200 boilerplate hits per app.  Pass such a file explicitly to scan it.
-EXAMPLES_GLOB = "main.c"
-
 # Per-app boot boilerplate -- copied verbatim into every app under examples/
 # AND src/app/, and full of sequential IRQ-slot indices and fixed vector
 # addresses. Exempt by filename anywhere (not just examples/), matching the
@@ -434,11 +432,19 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
     # ignored) instead of a filesystem walk keeps gitignored artifacts out:
     # a raw rglob scanned stray CMake compiler-probe files under app
     # build-*/ dirs and the .claude/worktrees checkouts, failing commits on
-    # files CI can never see. The only carve-out is under examples/, where
-    # the per-app boot boilerplate (vector_table.c, system_init.c, ...) is
-    # copied verbatim and full of vector/IRQ-slot indices; there only the
-    # application main.c is scanned. Vendor trees are dropped via
-    # EXCLUDE_FRAGMENTS.
+    # files CI can never see. The per-app boot boilerplate (vector_table.c,
+    # system_init.c, ...) is copied verbatim into every app and is full of
+    # vector/IRQ-slot indices, so it is dropped BY FILENAME via
+    # BOOT_BOILERPLATE. Vendor trees are dropped via EXCLUDE_FRAGMENTS.
+    #
+    # There is deliberately no longer an "examples/ scans only main.c" rule.
+    # BOOT_BOILERPLATE already names the copied boot files precisely, so that
+    # extra filename test protected nothing -- it silently dropped every OTHER
+    # example TU: each app's src/*.c, plus cpu1_main.c, ns_main.c and ns_usb.c.
+    # 47 real magic numbers were sitting in those files, among them a whole
+    # block of hand-addressed Armv8-M SAU registers, while this gate reported
+    # the tree clean. Scope by what a file IS, never by what it is named
+    # (the #296 / #332 / #358 / #369 defect family).
     git_tool = shutil.which("git") or "git"
     proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
         [git_tool, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.c"],
@@ -457,9 +463,6 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
         if not rel:
             continue
         c = REPO_ROOT / rel
-        parts = Path(rel).parts
-        if parts and parts[0] == "examples" and c.name != EXAMPLES_GLOB:
-            continue
         if c.name in BOOT_BOILERPLATE:
             continue
         out.append(c)

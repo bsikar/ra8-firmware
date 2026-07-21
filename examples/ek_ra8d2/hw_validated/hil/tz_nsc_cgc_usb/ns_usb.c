@@ -65,11 +65,28 @@
 extern volatile uint32_t g_tz_nsc_cgc_usb_match;
 
 /**
+ * @enum tz_usb_state_t
+ * @brief USBX bring-up progress breadcrumbs written to ::g_tz_usb_state.
+ * @details Each value means "execution got this far". On any bring-up error
+ *          the variable freezes at the failing step, so a single J-Link read
+ *          localises the stall without a debugger session.
+ * @invariant Values ascend in bring-up order, starting from the implicit 0
+ *            (nothing attempted yet) that zero-initialised .bss provides.
+ * @see g_tz_usb_state
+ */
+typedef enum : uint32_t {
+  k_tz_usb_state_stack_up   = 1U, /**< USBX stack initialised.           */
+  k_tz_usb_state_cdc_ready  = 2U, /**< CDC-ACM class registered.         */
+  k_tz_usb_state_dcd_ready  = 3U, /**< DCD bridge installed.             */
+  k_tz_usb_state_attached   = 4U, /**< Device attached (D+ pull-up on).  */
+  k_tz_usb_state_dispatched = 5U, /**< Entered the polled-dispatch loop. */
+} tz_usb_state_t;
+
+/**
  * @var g_tz_usb_state
  * @brief USBX bring-up progress breadcrumb (localises a stall under J-Link).
- * @details 0 = before stack-up; 1 = USBX stack up; 2 = CDC class registered;
- *          3 = DCD bridge installed; 4 = device attached (D+ pull-up on);
- *          5 = in the polled-dispatch loop.
+ * @details Takes the ::tz_usb_state_t values; 0 means stack-up was never
+ *          reached.
  * @note Read externally by J-Link only.
  * @since 0.1.0
  */
@@ -523,29 +540,29 @@ static VOID ns_usb_worker(ULONG arg)
   if (ns_usbx_stack_up() != UX_SUCCESS) {
     return;
   }
-  g_tz_usb_state = 1U;
+  g_tz_usb_state = (uint32_t)k_tz_usb_state_stack_up;
 
   if (ns_cdc_class_register() != UX_SUCCESS) {
     return;
   }
-  g_tz_usb_state = 2U;
+  g_tz_usb_state = (uint32_t)k_tz_usb_state_cdc_ready;
 
   if (ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs) != k_ra8_ok) {
     return;
   }
-  g_tz_usb_state = 3U;
+  g_tz_usb_state = (uint32_t)k_tz_usb_state_dcd_ready;
 
   if (ra8_usb_device_attach(k_ra8_usb_speed_fs, true) != k_ra8_ok) {
     return;
   }
-  g_tz_usb_state = 4U;
+  g_tz_usb_state = (uint32_t)k_tz_usb_state_attached;
 
   /* Polled controller service: drives bus reset, chapter-9 SETUP, and the
    * bulk auto-echo (all inside ra8_usb_dispatch -> internal_event_cb ->
    * ux_dcd_ra8_usb_irq). Time-sliced against ::ns_host_worker at the same
    * priority, so this yields each tick and the host's transfers land inside the
    * dispatch service window. */
-  g_tz_usb_state = 5U;
+  g_tz_usb_state = (uint32_t)k_tz_usb_state_dispatched;
   while (1) {
     ra8_usb_dispatch(k_ra8_usb_speed_fs);
     g_tz_usb_intsts_or |= (uint32_t)ra8_usb_intsts0_snapshot(k_ra8_usb_speed_fs);
