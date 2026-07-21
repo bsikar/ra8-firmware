@@ -292,7 +292,7 @@ correctly at every build.
 - arm-none-eabi-gcc `-std=gnu23 -Wmissing-braces -Werror` (cross
   build) and host gcc / clang in the unit-test build both validate
   every aggregate initializer at compile time.
-- `scripts/utils/check_c23_zero_init.py` (pre-commit) actively
+- `scripts/git/pre-commit` actively
   *forbids* the legacy `= {0}` form and *requires* C23 `= {}`,
   giving an inverse check that complements the disabled cppcheck
   rule.

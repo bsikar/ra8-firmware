@@ -99,7 +99,7 @@ Product audits are the periodic refresh of the gap registers:
 
 | Audit                  | Refresh tool / artifact                                                  | Cadence              |
 |------------------------|--------------------------------------------------------------------------|----------------------|
-| Doxygen completeness   | `scripts/utils/doxy_audit` -> `docs/DOXYGEN_GAPS.csv` + `docs/DOXYGEN_GAPS.md` | Per release    |
+| Doxygen completeness   | `scripts/utils/doxy_audit.py` -> `docs/DOXYGEN_GAPS.csv` + `docs/DOXYGEN_GAPS.md` | Per release    |
 | MC/DC coverage         | `make mcdc` -> `build/mcdc-report/summary.txt` + `docs/MCDC_GAPS.md`     | Per PR (CI) + per release |
 | MISRA conformance      | `make misra` -> `build/misra/results.txt` + `docs/MISRA_GAPS.csv`        | Quarterly            |
 | Stack usage            | `make stack-usage` -> `build/stack_usage.csv`                            | Per release          |

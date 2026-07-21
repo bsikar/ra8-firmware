@@ -103,8 +103,9 @@ def _tracked_python_files() -> list[str]:
     in a directory nobody remembered to list.
 
     The shebang sweep exists because ``*.py`` alone is a scope that can be
-    escaped by accident: an executable ``scripts/foo`` with a python shebang
-    and no extension is a Python file this project's rules apply to, and a
+    escaped by accident: an executable ``scripts/foo``  PATHREF-OK: placeholder
+    with a python shebang and no extension is a Python file this project's
+    rules apply to, and a
     glob-only list would never see it. There are none today -- which is
     exactly when to close the hole, rather than after one appears and sits
     unlinted.
@@ -363,23 +364,31 @@ def _format_stdin_would_reformat(ruff: str, source: str, filename: str) -> bool:
     return proc.returncode == 1
 
 
+# Virtual filenames handed to `ruff --stdin-filename`. Ruff resolves per-file
+# configuration against the name, so it has to look like a first-party .py
+# path; nothing is ever created on disk at either location.
+BAD_FIXTURE_NAME = "scripts/utils/ruff_selftest_bad.py"  # PATHREF-OK: virtual
+GOOD_FIXTURE_NAME = "scripts/utils/ruff_selftest_good.py"  # PATHREF-OK: virtual
+FMT_FIXTURE_NAME = "scripts/ruff_fmt_bad.py"  # PATHREF-OK: virtual
+
+
 def selftest(ruff: str) -> int:
     """Prove the configured rule set fires where it must and is quiet where it must."""
     failures: list[str] = []
 
-    fired = _lint_stdin(ruff, BAD_FIXTURE, "scripts/utils/ruff_selftest_bad.py")
+    fired = _lint_stdin(ruff, BAD_FIXTURE, BAD_FIXTURE_NAME)
     for family, code in sorted(EXPECTED_CODES.items()):
         if code not in fired:
             failures.append(f"  must-fire: {family} did not report {code} on the bad fixture")
 
-    quiet = _lint_stdin(ruff, GOOD_FIXTURE, "scripts/utils/ruff_selftest_good.py")
+    quiet = _lint_stdin(ruff, GOOD_FIXTURE, GOOD_FIXTURE_NAME)
     failures.extend(f"  must-stay-quiet: good fixture reported {code}" for code in sorted(quiet))
 
     # The formatter half of the gate needs the same proof: a mangled fixture
     # must be seen as needing a rewrite, and the clean one must not be.
-    if not _format_stdin_would_reformat(ruff, "x = {  'a' :1,'b':2 }\n", "scripts/fmt_bad.py"):
+    if not _format_stdin_would_reformat(ruff, "x = {  'a' :1,'b':2 }\n", FMT_FIXTURE_NAME):
         failures.append("  must-fire: `ruff format --check` accepted a mangled fixture")
-    if _format_stdin_would_reformat(ruff, GOOD_FIXTURE, "scripts/utils/ruff_selftest_good.py"):
+    if _format_stdin_would_reformat(ruff, GOOD_FIXTURE, GOOD_FIXTURE_NAME):
         failures.append("  must-stay-quiet: `ruff format --check` rejected the clean fixture")
 
     if failures:

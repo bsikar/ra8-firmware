@@ -739,6 +739,13 @@ gate_pre_commit_checks() (
   # HIL_MODE=jlink_memprobe) or explicitly HIL_FAULT_EXPECTED -- a bare
   # HIL_MODE=alive proves nothing.
   python3 scripts/utils/check_hil_alive_policy.py
+  # Every scripts/... path named anywhere in the tree resolves to a file that
+  # exists. A git mv inside scripts/ silently breaks doc links, hook comments
+  # and workflow steps -- no build error, no test failure, and ci-fast has
+  # already missed exactly that. The selftest runs first: a path checker that
+  # stopped matching would report a clean tree, which is worse than no gate.
+  python3 scripts/utils/check_script_references.py --selftest
+  python3 scripts/utils/check_script_references.py
   # Reject explicit integer casts inside TEST_ASSERT_EQ arguments. The macro
   # widens both args to int64_t, so an outer (int)/(uint32_t) cast is
   # redundant and latently buggy (a (int) cast on a uint32_t enum truncates
