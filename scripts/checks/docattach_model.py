@@ -110,6 +110,12 @@ class Finding:
     detail: str
 
     def render(self) -> str:
+        """One aligned report line for this finding.
+
+        The leading two spaces are part of the format: findings are printed
+        under a summary header, and the indent is what visually subordinates
+        them to it.
+        """
         return f"  {self.path}:{self.line}  {self.code}  {self.symbol}  --  {self.detail}"
 
 
