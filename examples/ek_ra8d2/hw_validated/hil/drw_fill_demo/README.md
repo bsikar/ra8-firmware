@@ -76,5 +76,5 @@ Build / flash:
 
 ```
 make drw_fill_demo
-make -C examples/ek_ra8d2/hw_pending/drw_fill_demo flash
+make -C examples/ek_ra8d2/hw_validated/hil/drw_fill_demo flash
 ```
