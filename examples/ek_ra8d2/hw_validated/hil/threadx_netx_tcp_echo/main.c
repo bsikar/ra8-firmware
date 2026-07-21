@@ -540,7 +540,7 @@ static void demo_thread_entry(ULONG thread_input)
     return;
   }
   demo_print("[netx] listening on TCP/7 at 192.168.1.42\r\n");
-  /* HIL probe banner -- parsed by scripts/hil_eth_tcp.sh after flashing
+  /* HIL probe banner -- parsed by scripts/hil/eth_tcp.sh after flashing
    * to discover the static IPv4 address the firmware responds at, plus
    * an explicit "ready" mark so the host knows to start probing. */
   demo_print("eth: ip=192.168.1.42 port=7 proto=tcp\r\n");

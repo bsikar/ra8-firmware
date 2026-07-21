@@ -43,7 +43,7 @@ Pmod1 shares pins with the Octo-SPI bus; set the board's Pmod1 / OSPI mux
 ```sh
 cd examples/ek_ra8d2/hw_pending/lin_commander_hil
 make            # -> build/lin_commander_hil.elf / .hex / .bin
-make flash      # JLinkExe load via scripts/flash.sh
+make flash      # JLinkExe load via scripts/dev/flash.sh
 make ozone      # SEGGER Ozone GUI debugger
 ```
 

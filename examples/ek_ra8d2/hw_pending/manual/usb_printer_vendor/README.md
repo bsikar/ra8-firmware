@@ -54,7 +54,7 @@ The emulated chapter-9 host walks the enumeration script against the polled
 responder and the run reaches `device CONFIGURED`:
 
 ```
-scripts/board_sim_smoke.sh usb_printer_vendor
+scripts/sim/smoke.sh usb_printer_vendor
 ```
 
 This is the automated gate: it proves the descriptors, the polled EP0 SETUP

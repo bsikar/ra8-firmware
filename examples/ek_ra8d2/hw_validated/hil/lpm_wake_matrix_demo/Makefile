@@ -4,7 +4,7 @@
 # Standalone use:
 #   cd examples/lpm_wake_matrix_demo/
 #   make             # configure + build -> examples/lpm_wake_matrix_demo/build/lpm_wake_matrix_demo.elf
-#   make flash       # JLinkExe load via scripts/flash.sh
+#   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
 #   make clean       # rm -rf examples/lpm_wake_matrix_demo/build
 #
@@ -37,9 +37,9 @@ help:
 	@echo "$(APP) make targets:"
 	@echo "  build / all  cross-compile $(APP).elf / .hex / .bin (default)"
 	@echo "  clean        rm -rf $(BUILD_DIR)"
-	@echo "  flash        scripts/flash.sh $(HEX)"
-	@echo "  ozone        scripts/ozone.sh $(ELF)"
-	@echo "  debug        scripts/debug.sh $(ELF)"
+	@echo "  flash        scripts/dev/flash.sh $(HEX)"
+	@echo "  ozone        scripts/dev/ozone.sh $(ELF)"
+	@echo "  debug        scripts/dev/debug.sh $(ELF)"
 	@echo "  size         arm-none-eabi-size on the ELF"
 
 build: $(ELF)
@@ -56,15 +56,15 @@ clean:
 
 flash:
 	@test -f $(HEX) || { echo "No $(HEX) -- run 'make build' first"; exit 1; }
-	bash $(ROOT)/scripts/flash.sh $(HEX)
+	bash $(ROOT)/scripts/dev/flash.sh $(HEX)
 
 ozone:
 	@test -f $(ELF) || { echo "No $(ELF) -- run 'make build' first"; exit 1; }
-	bash $(ROOT)/scripts/ozone.sh $(ELF)
+	bash $(ROOT)/scripts/dev/ozone.sh $(ELF)
 
 debug:
 	@test -f $(ELF) || { echo "No $(ELF) -- run 'make build' first"; exit 1; }
-	bash $(ROOT)/scripts/debug.sh $(ELF)
+	bash $(ROOT)/scripts/dev/debug.sh $(ELF)
 
 size:
 	@test -f $(ELF) || { echo "No $(ELF) -- run 'make build' first"; exit 1; }

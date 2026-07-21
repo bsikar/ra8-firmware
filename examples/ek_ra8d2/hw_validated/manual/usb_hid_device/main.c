@@ -213,7 +213,7 @@ static UX_SLAVE_CLASS_HID* s_hid_class = UX_NULL;
  * @brief HIL liveness counter -- incremented on every successful
  *        ``_ux_device_class_hid_event_set`` (a HID report queued to
  *        the host).
- * @details Read externally via SWD by scripts/hil_jlink_memprobe.sh.
+ * @details Read externally via SWD by scripts/hil/jlink_memprobe.sh.
  *          If the host has enumerated the device and the worker is
  *          pumping reports, this advances at the jiggle-period
  *          cadence (~50 Hz). If USBX bring-up failed or the host

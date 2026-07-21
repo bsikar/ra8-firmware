@@ -38,7 +38,7 @@ The candidate bars considered:
 The pre-2011 revision of DO-178 was superseded by DO-178C in December
 2011 and is therefore deliberately excluded from this project's
 documentation and tests (see
-`scripts/utils/check_obsolete_standards.py`, which fails the
+`scripts/checks/check_obsolete_standards.py`, which fails the
 pre-commit hook on any new reference to the obsolete revision).
 
 ## Decision
@@ -87,7 +87,7 @@ In practice this means:
 ### Negative
 
 * Every new compound boolean decision requires a paired test;
-  see `scripts/utils/check_new_compound_has_mcdc.py`. This raises
+  see `scripts/checks/check_new_compound_has_mcdc.py`. This raises
   the cost of a one-line change from "type the change" to "type
   the change + author N+1 vectors".
 * Third-party code (`libs/third_party/`) cannot meet the bar by

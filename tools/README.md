@@ -100,7 +100,7 @@ with a `run` target.
 
 ## Regression gate
 
-- `scripts/board_sim_smoke.sh` -- boots each display app on the emulator and
+- `scripts/sim/smoke.sh` -- boots each display app on the emulator and
   asserts it runs to its main loop without faulting (no invalid opcode / unmapped
   access, not parked in the panic-halt loop), and for the chrome UI app renders one
   frame and asserts the panel drew rich content.

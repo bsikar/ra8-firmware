@@ -74,7 +74,7 @@ typedef enum : uint8_t {
  *        TX -> internal loopback -> RX round-trip.
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving the CAN_FD peripheral actually moved frames
  * through its internal loopback (the alive-mode check could only

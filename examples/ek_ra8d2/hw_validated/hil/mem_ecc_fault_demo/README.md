@@ -34,7 +34,7 @@ latches `SRAMESR` on the `bypass -> verify` `SRAMCRn` sequence, so
 reporting + clear plumbing is proven end to end:
 
 ```
-bash scripts/board_sim_smoke.sh mem_ecc_fault_demo
+bash scripts/sim/smoke.sh mem_ecc_fault_demo
 ```
 
 ## Why it is `hw_pending`
@@ -58,7 +58,7 @@ silicon-only and gate promotion out of `hw_pending`:
 
 ```
 make                                         # cross-compile the .elf/.hex/.bin
-bash scripts/board_sim_smoke.sh mem_ecc_fault_demo   # headless detection gate
+bash scripts/sim/smoke.sh mem_ecc_fault_demo   # headless detection gate
 make flash                                   # JLink load (on the bench)
 ```
 

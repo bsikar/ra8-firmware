@@ -83,7 +83,7 @@ follow `usb_msc_mram_hs` once the FS path is hardware-validated.
 
 ## board_sim gate (no hardware)
 
-`scripts/board_sim_smoke.sh usb_msc_sdcard` builds a 64 MiB FAT32 card
+`scripts/sim/smoke.sh usb_msc_sdcard` builds a 64 MiB FAT32 card
 image with `tools/mkbookimg`, attaches it with `--sd`, and lets
 board_sim's virtual USB host (#67) enumerate the device and drive the
 MSC BOT script (INQUIRY, READ CAPACITY(10), READ(10) of sector 0)

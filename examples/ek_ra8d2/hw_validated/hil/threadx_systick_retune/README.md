@@ -50,7 +50,7 @@ CPUCLK0 = 1 GHz) for observability.
 
 board_sim runs the identical ARM retune path -- the SYST_RVR write lands
 in the emulated System Control Space and reads back -- so the board_sim
-gate (`scripts/sil_all.sh`) verdict equals the on-hardware probe: SIM ==
+gate (`scripts/sim/sil_all.sh`) verdict equals the on-hardware probe: SIM ==
 HIL.
 
 ## Build / flash
@@ -58,7 +58,7 @@ HIL.
 ```sh
 cd examples/ek_ra8d2/hw_validated/hil/threadx_systick_retune
 make             # produces build/threadx_systick_retune.elf / .hex / .bin
-make flash       # JLinkExe load via scripts/flash.sh
+make flash       # JLinkExe load via scripts/dev/flash.sh
 make ozone       # SEGGER Ozone debugger
 ```
 

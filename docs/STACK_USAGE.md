@@ -68,7 +68,7 @@ no `alloca()`). `bounded` is acceptable when the bound is enum-derived.
 
 ## The aggregator
 
-`scripts/utils/stack_usage_check.py` walks every `.su` file under any
+`scripts/checks/stack_usage_check.py` walks every `.su` file under any
 per-app `build*/` tree beneath `examples/` (apps nest 2-4 levels deep,
 e.g. `examples/ek_ra8d2/hw_validated/hil/<app>/build/`), parses every
 frame, and emits:
@@ -149,7 +149,7 @@ zero critical-path-module breaches.
 ## Pre-commit gate
 
 `scripts/git/pre-commit` invokes
-`scripts/utils/stack_usage_check.py --strict --quiet` on every commit.
+`scripts/checks/stack_usage_check.py --strict --quiet` on every commit.
 Behaviour:
 
 * If no `.su` files exist yet (fresh clone) the gate is a no-op so
@@ -158,7 +158,7 @@ Behaviour:
   in any file outside `libs/third_party/`) -- HARD FAIL. The author
   must either reduce the frame (move scratch buffers to module-static
   storage) or enroll the function in `FIRST_PARTY_EXEMPTIONS` at the
-  top of `scripts/utils/stack_usage_check.py` with a written
+  top of `scripts/checks/stack_usage_check.py` with a written
   rationale. Strict-mode promotion happened on 2026-05-02 once every
   first-party function was verified at <2048 bytes against HEAD.
 * **Soft violations in third-party SOUP** (`libs/third_party/`) --

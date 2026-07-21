@@ -43,7 +43,7 @@ and silicon -- a sim/silicon equivalence check.
 
 ```
 make bscan_selftest
-scripts/hil_run_local.sh bscan_selftest      # flash + scrape the banner
+scripts/hil/run_local.sh bscan_selftest      # flash + scrape the banner
 ```
 
 The gate (`hil.conf`, `uart_scrape`) asserts the PASS line and fails on
@@ -56,7 +56,7 @@ bscan-selftest: boot
 bscan: idcode=085DA447 checks=17 PASS
 ```
 
-`scripts/board_sim_smoke.sh bscan_selftest` PASS (final PC in the `main` WFI
+`scripts/sim/smoke.sh bscan_selftest` PASS (final PC in the `main` WFI
 idle loop; all 17 checks passed). The driver's logic is shared with the
 host unit tests in `tests/test_ra8_bscan.c`, so the same contract is covered
 two ways: host unit tests (logic) + board_sim (the firmware ELF, byte-for-byte

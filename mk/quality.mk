@@ -12,35 +12,35 @@
         ci ci-fast ci-native ci-native-fast ci-list ci-gate
 
 format:
-	bash scripts/format_code.sh
+	bash scripts/checks/format_code.sh
 
 check:
-	bash scripts/format_code.sh --check
+	bash scripts/checks/format_code.sh --check
 
 tidy:
-	bash scripts/clang_tidy.sh --check
+	bash scripts/checks/clang_tidy.sh --check
 
 # `make cppcheck` -- local parity with the CI cppcheck gate.
 cppcheck:
-	bash scripts/cppcheck.sh
+	bash scripts/checks/cppcheck.sh
 
 # `make magic` -- full-tree magic-number gate (backstops clang-tidy's
 # readability-magic-numbers, which only sees files in the host compile-db).
 magic:
-	python3 scripts/utils/check_magic_numbers.py
+	python3 scripts/checks/check_magic_numbers.py
 
 ascii:
 	@for dir in src libs tests examples port scripts tools docs; do \
-		python3 scripts/utils/fix-encoding.py --check "$$dir" || exit 1; \
+		python3 scripts/fix/fix-encoding.py --check "$$dir" || exit 1; \
 	done
 	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c $(ROOT)/examples/*/*/*/*/main.c; do \
 		[ -f "$$d" ] || continue; \
-		python3 scripts/utils/fix-encoding.py --check "$$(dirname $$d)" || exit 1; \
+		python3 scripts/fix/fix-encoding.py --check "$$(dirname $$d)" || exit 1; \
 	done
 
 version:
 	@echo "project VERSION: $$(cat VERSION)"
-	@python3 scripts/utils/check-since-version.py --all
+	@python3 scripts/checks/check-since-version.py --all
 
 # Host unit tests (tests/build/). On macOS the firmware host tests SIGKILL
 # (MAP_FIXED below 4 GiB) -- use `make ci` / `make test-docker` for a faithful run.
@@ -49,7 +49,7 @@ test:
 	bash $(TESTS_DIR)/run_tests.sh
 
 test-docker:
-	bash scripts/test-docker.sh
+	bash scripts/ci/test-docker.sh
 
 # `make ubsan` -- host suite under UBSan (separate tests/build-ubsan/ tree).
 ubsan:
@@ -63,32 +63,32 @@ ctest:
 	ctest --test-dir $(TESTS_BUILD) --output-on-failure
 
 coverage:
-	bash scripts/utils/coverage_report.sh
-	python3 scripts/utils/check_coverage.py
+	bash scripts/report/coverage_report.sh
+	python3 scripts/checks/check_coverage.py
 
 mcdc:
-	bash scripts/utils/mcdc_report.sh
+	bash scripts/report/mcdc_report.sh
 
 # MISRA-C 2012 audit (see docs/MISRA.md).
 misra:
-	bash scripts/utils/misra_check.sh
+	bash scripts/checks/misra_check_inner.sh
 
 misra-check: misra
-	python3 scripts/utils/misra_ratchet.py --check
+	python3 scripts/checks/misra_ratchet.py --check
 
 misra-baseline: misra
-	python3 scripts/utils/misra_ratchet.py --update
+	python3 scripts/checks/misra_ratchet.py --update
 
 # Clang Static Analyzer (scan-build). Strict variant is the CI-gating entry.
 scan-build:
-	bash scripts/utils/scan_build.sh
+	bash scripts/checks/scan_build.sh
 
 scan-build-strict:
-	bash scripts/utils/scan_build.sh --strict
+	bash scripts/checks/scan_build.sh --strict
 
 # include-what-you-use (IWYU). Warn-only today.
 iwyu:
-	bash scripts/utils/iwyu.sh
+	bash scripts/checks/iwyu.sh
 
 # `make fuzz` -- build every libFuzzer harness (clang only) + smoke-run each.
 FUZZ_SECONDS ?= 30
@@ -97,7 +97,7 @@ FUZZ_CC      ?=
 FUZZ_CXX     ?=
 fuzz:
 	@CC="$(FUZZ_CC)" CXX="$(FUZZ_CXX)" FUZZ_RUNS="$(FUZZ_RUNS)" \
-	  bash scripts/utils/run_fuzz.sh --all "$(FUZZ_SECONDS)"
+	  bash scripts/checks/run_fuzz.sh --all "$(FUZZ_SECONDS)"
 
 # `make bench` -- host-side performance microbenchmarks (opt-in -DRA8_BENCH=ON,
 # own build tree). See docs/PERFORMANCE.md.
@@ -119,22 +119,22 @@ bench:
 
 # Stack-usage proof: build every EVM app + aggregate the -fstack-usage report.
 stack-usage: $(EK_APPS)
-	python3 scripts/utils/stack_usage_check.py --top 10
+	python3 scripts/checks/stack_usage_check.py --top 10
 
 # Annotation-attribute enforcement (the 19 ra8_* rules; docs/ANNOTATIONS.md).
 check-annotations:
-	python3 scripts/utils/check_annotations.py --check
+	python3 scripts/checks/check_annotations.py --check
 
 # `make nsc-cmse-check` -- compile every libs/ra8_nsc veneer under -mcmse.
 nsc-cmse-check:
-	bash scripts/utils/check_nsc_cmse.sh
+	bash scripts/checks/check_nsc_cmse.sh
 
 # Third-party SBOM (docs/sbom/) regenerate + drift gate.
 sbom:
-	python3 scripts/utils/gen_sbom.py
+	python3 scripts/gen/gen_sbom.py
 
 sbom-check:
-	python3 scripts/utils/gen_sbom.py --check
+	python3 scripts/gen/gen_sbom.py --check
 
 # `make vela-check` -- regenerate the Ethos-U55 model header + diff vs the golden
 # (issue #227; no Vela toolchain needed). See tools/vela/README.md.

@@ -38,9 +38,9 @@ expected to pass automated HIL on a real board. This demo has been
 compile-verified but the human still has to:
 
 1. `make lpm_deep_sleep_demo`
-2. Flash via the Pi-bound HIL flasher: `bash scripts/hil_flash.sh
+2. Flash via the Pi-bound HIL flasher: `bash scripts/hil/flash.sh
    examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/build/lpm_deep_sleep_demo.hex`
-3. Run the HIL gate from the repo root: `bash scripts/hil_run.sh
+3. Run the HIL gate from the repo root: `bash scripts/hil/run.sh
    lpm_deep_sleep_demo`
 4. Confirm pass / fail.
 

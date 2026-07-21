@@ -17,7 +17,7 @@ hardware HIL probe AND the gap below is resolved.
 |-----|-----------------|
 | i3c_i2c_peripheral_demo | I2C/I3C peripheral mode needs an external controller to talk to; the bench has no controller wired up. |
 | imu_lsm6dso_demo | Needs an LSM6DSO IMU on the I2C/I3C bus; not fitted. |
-| manual/usb_msc_sdcard | Serves the live full-capacity Pmod2 SD card as a WRITABLE USB drive (#206 items 1-2). `scripts/board_sim_smoke.sh usb_msc_sdcard` proves the transport headlessly (enumeration + READ CAPACITY equal to the card image's block count + a 512-byte sector-0 read through the USB pipe), but #206 item 3 -- a real PC host copying a file on, unmounting, re-mounting, and verifying (multi-block WRITE(10) streaks, flush semantics, FS metadata updates) -- needs a human at a PC on J11; see the app README's bench procedure. |
+| manual/usb_msc_sdcard | Serves the live full-capacity Pmod2 SD card as a WRITABLE USB drive (#206 items 1-2). `scripts/sim/smoke.sh usb_msc_sdcard` proves the transport headlessly (enumeration + READ CAPACITY equal to the card image's block count + a 512-byte sector-0 read through the USB pipe), but #206 item 3 -- a real PC host copying a file on, unmounting, re-mounting, and verifying (multi-block WRITE(10) streaks, flush semantics, FS metadata updates) -- needs a human at a PC on J11; see the app README's bench procedure. |
 
 ### Blocked by a module / firmware gap
 

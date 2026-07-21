@@ -54,7 +54,7 @@ typedef enum : uint8_t {
  *        duty value was accepted by ``ra8_gpt_set_duty``.
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving the GPT peripheral is actually counting
  * (not just that we configured it without faulting). If the GPT were

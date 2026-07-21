@@ -47,12 +47,12 @@ ozone-help:
 	@echo "  make debug-<app>             plain gdb via J-Link (see make debug-help)"
 	@echo "  list apps:  make apps"
 
-# Remote HIL (board on the Pi rig, driven over SSH). See scripts/hil_*.sh.
+# Remote HIL (board on the Pi rig, driven over SSH). See scripts/hil/.
 hil:
-	bash scripts/hil_dev.sh
+	bash scripts/hil/dev.sh
 
 hil-help:
-	@echo "HIL -- hardware-in-the-loop (board on the Pi rig, driven over SSH; see scripts/hil_*.sh)"
+	@echo "HIL -- hardware-in-the-loop (board on the Pi rig, driven over SSH; see scripts/hil/)"
 	@echo ""
 	@echo "  make hil                        full HIL suite from this machine (build+flash+verify)"
 	@echo "  make hil-flash APP=<app>        build + flash to the Pi-attached board"
@@ -69,49 +69,49 @@ hil-help:
 
 hil-flash:
 	@test -n "$(APP)" || { echo "usage: make hil-flash APP=<app>"; exit 2; }
-	bash scripts/hil_flash.sh $(APP)
+	bash scripts/hil/flash.sh $(APP)
 
 hil-recover:
 	@test -n "$(APP)" || { echo "usage: make hil-recover APP=<app>"; exit 2; }
-	bash scripts/hil_recover.sh $(APP)
+	bash scripts/hil/recover.sh $(APP)
 
 hil-flash-retry:
 	@test -n "$(APP)" || { echo "usage: make hil-flash-retry APP=<app>"; exit 2; }
-	bash scripts/hil_flash_retry.sh $(APP)
+	bash scripts/hil/flash_retry.sh $(APP)
 
 hil-erase:
-	bash scripts/hil_erase.sh
+	bash scripts/hil/erase.sh
 
 hil-dlm-reset:
-	bash scripts/hil_dlm_reset.sh
+	bash scripts/hil/dlm_reset.sh
 
 hil-reflash:
 	@test -n "$(APP)" || { echo "usage: make hil-reflash APP=<app>"; exit 2; }
-	bash scripts/hil_reflash.sh $(APP)
+	bash scripts/hil/reflash.sh $(APP)
 
 hil-probe:
-	bash scripts/hil_probe.sh
+	bash scripts/hil/probe.sh
 
 hil-find-jlink:
-	bash scripts/hil_find_jlink.sh
+	bash scripts/hil/find_jlink.sh
 
 hil-suite:
-	bash scripts/hil_suite.sh
+	bash scripts/hil/suite.sh
 
 hil-all:
-	bash scripts/hil_all.sh
+	bash scripts/hil/all.sh
 
 hil-tapo:
-	bash scripts/hil_tapo.sh $(or $(TARGET),board) $(or $(CMD),status)
+	bash scripts/hil/tapo.sh $(or $(TARGET),board) $(or $(CMD),status)
 
 hil-ppps:
-	bash scripts/hil_ppps.sh $(or $(CMD),cycle)
+	bash scripts/hil/ppps.sh $(or $(CMD),cycle)
 
 flash-ocd:
 	@test -n "$(APP)" || { echo "usage: make flash-ocd APP=<app>"; exit 2; }
 	$(MAKE) $(APP)
-	bash scripts/openocd_flash.sh $(RA8_APP_DIR_$(APP))/build/$(APP).hex
+	bash scripts/dev/openocd_flash.sh $(RA8_APP_DIR_$(APP))/build/$(APP).hex
 
 debug-ocd:
 	@test -n "$(APP)" || { echo "usage: make debug-ocd APP=<app>"; exit 2; }
-	bash scripts/openocd_debug.sh $(RA8_APP_DIR_$(APP))/build/$(APP).elf
+	bash scripts/dev/openocd_debug.sh $(RA8_APP_DIR_$(APP))/build/$(APP).elf

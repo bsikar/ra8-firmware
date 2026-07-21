@@ -78,7 +78,7 @@ extern "C" {
  * Secure-world form: carries both the architectural
  * ``cmse_nonsecure_entry`` attribute (which emits the secure-gateway
  * veneer) and the ``ra8_nsc_veneer`` annotation consumed by
- * ``scripts/utils/check_annotations.py``. The annotation is written
+ * ``scripts/checks/check_annotations.py``. The annotation is written
  * first because ``[[clang::annotate]]`` is a C23 attribute and must
  * precede the declaration specifiers; the GNU-style attribute follows.
  */

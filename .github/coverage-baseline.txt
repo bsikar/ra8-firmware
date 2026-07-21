@@ -9,7 +9,7 @@
 # gcovr 7.0). Filter: libs/ra8_* + src/, excluding libs/third_party/
 # and tests/.
 #
-# scripts/utils/check_coverage.py rejects any new build whose
+# scripts/checks/check_coverage.py rejects any new build whose
 # statement OR branch percentage drops below these numbers. Bump
 # them upward only -- never relax the gate.
 89.9 81.1

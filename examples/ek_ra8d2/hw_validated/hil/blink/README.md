@@ -41,7 +41,7 @@ cmake -S examples/ek_ra8d2/hw_validated/hil/blink -B examples/ek_ra8d2/hw_valida
       -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake \
       -DCMAKE_BUILD_TYPE=Release
 cmake --build examples/ek_ra8d2/hw_validated/hil/blink/build
-bash scripts/flash.sh examples/ek_ra8d2/hw_validated/hil/blink/build/blink.hex
+bash scripts/dev/flash.sh examples/ek_ra8d2/hw_validated/hil/blink/build/blink.hex
 ```
 
 ## Debugging

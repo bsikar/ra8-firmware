@@ -134,16 +134,16 @@ sim-help:
 # `make sim-matrix` -- build + boot EVERY ek_ra8d2 example on the emulator and
 # report a per-app boot/fault/halt table + coverage %.
 sim-matrix:
-	bash scripts/board_sim_matrix.sh $(APPS)
+	bash scripts/sim/matrix.sh $(APPS)
 
 # SIL (simulator-in-the-loop): boot EVERY hw_validated/hil app headless and
 # assert its hil.conf expectation, in parallel. No board required.
 sil sil-all:
-	bash scripts/sil_all.sh $(if $(SIL_JOBS),-j $(SIL_JOBS),)
+	bash scripts/sim/sil_all.sh $(if $(SIL_JOBS),-j $(SIL_JOBS),)
 
 sil-only:
 	@test -n "$(APP)" || { echo "usage: make sil-only APP=<app>"; exit 2; }
-	bash scripts/sil_all.sh --only $(APP)
+	bash scripts/sim/sil_all.sh --only $(APP)
 
 # E-reader chrome golden-image regression gate (issue #84).
 EREADER_GOLDEN_ELF := $(RA8_APP_DIR_ereader_ui)/build/ereader_ui.elf
@@ -151,13 +151,13 @@ EREADER_GOLDEN_DIR := $(ROOT)/tests/golden/ereader_chrome
 ereader-golden: ereader_ui
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
-	python3 scripts/utils/ereader_golden.py check \
+	python3 scripts/gen/ereader_golden.py check \
 		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/board_sim \
 		--golden-dir $(EREADER_GOLDEN_DIR) --out-dir /tmp/ereader_golden_out
 
 ereader-golden-update: ereader_ui
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
-	python3 scripts/utils/ereader_golden.py update \
+	python3 scripts/gen/ereader_golden.py update \
 		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/board_sim \
 		--golden-dir $(EREADER_GOLDEN_DIR)

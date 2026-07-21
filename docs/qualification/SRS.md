@@ -116,7 +116,7 @@ The authoritative chip-level reference is the Renesas Hardware User's
 Manual (HUM) **R01UH1065EJ**, committed under
 [`../reference/`](../reference/). Every register-level requirement in
 Section 4 cites a HUM chapter via the source file's `@cite` doxygen
-tags, audited by `scripts/utils/cite_check.py`.
+tags, audited by `scripts/checks/cite_check.py`.
 
 ### 2.2 Memory map summary
 
@@ -226,7 +226,7 @@ target and on the host test runner.
 | REQ-CORE-009     | A central exception entry point SHALL exist for HardFault / BusFault / UsageFault / MemManage / SecureFault.                           | `libs/ra8_core/inc/ra8_exception.h`, `libs/ra8_core/src/ra8_exception.c` | `tests/test_ra8_exception.c`      |
 | REQ-CORE-010     | A central error handler SHALL provide a single bottleneck (`ra8_error_handler`) that logs context and halts in a controlled way.        | `libs/ra8_core/inc/ra8_error_handler.h`, `libs/ra8_core/src/ra8_error_handler.c` | `tests/test_ra8_error_handler.c` |
 | REQ-CORE-011     | An infrastructure init function SHALL bring up logging, time, pin validator, and register-protection before any HAL driver runs.        | `libs/ra8_core/inc/ra8_infrastructure.h`, `libs/ra8_core/src/ra8_infrastructure.c` | `tests/test_ra8_infrastructure.c` |
-| REQ-CORE-012     | A `sbrk` trap SHALL refuse all heap allocation requests at link time (NASA P10 Rule 3).                                                | `libs/ra8_core/src/ra8_sbrk_trap.c`                               | (compile-time) `scripts/utils/check_no_dynamic_alloc.py` |
+| REQ-CORE-012     | A `sbrk` trap SHALL refuse all heap allocation requests at link time (NASA P10 Rule 3).                                                | `libs/ra8_core/src/ra8_sbrk_trap.c`                               | (compile-time) `scripts/checks/check_no_dynamic_alloc.py` |
 | REQ-CORE-013     | A static stack-budget header SHALL declare per-task stack sizes in one place.                                                          | `libs/ra8_core/inc/ra8_stack_budget.h`                            | TBD (manual review against `docs/STACK_USAGE.md`) |
 | REQ-CORE-014     | All bit-shift / mask / GPIO constants used by Ring-2/3 code SHALL be declared as typed enums in a single core header per concern.       | `libs/ra8_core/inc/ra8_bit_constants.h`, `ra8_gpio_constants.h`, `ra8_port_constants.h`, `ra8_time_constants.h` | `tests/test_ra8_bit_constants.c`, `tests/test_ra8_port_constants.c` |
 
@@ -435,7 +435,7 @@ recorded.
 |------------------|-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
 | REQ-SAFE-001     | P10 Rule 1 -- no `goto`, `setjmp`/`longjmp`, recursion.                                              | clang-tidy + manual review (`CLAUDE.md` "NASA Power of 10")                                                    | TBD (lint-only)                                               |
 | REQ-SAFE-002     | P10 Rule 2 -- all loops carry a statically provable upper bound.                                     | clang-tidy LineThreshold = 60; manual review                                                                    | TBD                                                           |
-| REQ-SAFE-003     | P10 Rule 3 -- zero dynamic allocation after init.                                                    | `libs/ra8_core/src/ra8_sbrk_trap.c` + `scripts/utils/check_no_dynamic_alloc.py`                                  | (compile-time gate)                                           |
+| REQ-SAFE-003     | P10 Rule 3 -- zero dynamic allocation after init.                                                    | `libs/ra8_core/src/ra8_sbrk_trap.c` + `scripts/checks/check_no_dynamic_alloc.py`                                  | (compile-time gate)                                           |
 | REQ-SAFE-004     | P10 Rule 4 -- functions <= ~60 source lines.                                                         | `.clang-tidy` LineThreshold = 60                                                                               | (lint gate)                                                   |
 | REQ-SAFE-005     | P10 Rule 5 -- minimum 2 validation checks per function.                                                | `RA8_CHECK_*` macros in `libs/ra8_core/inc/ra8_check.h`                                                            | per-driver test files exercise the precondition path           |
 | REQ-SAFE-006     | P10 Rule 6 -- variables declared at the smallest possible scope.                                       | clang-tidy + manual review                                                                                       | TBD                                                           |
@@ -462,8 +462,8 @@ here as a software requirement so the SVP can pick it up.
 
 | ID               | Requirement                                                                                          | Source                                                                                                          | Test / artefact                                       |
 |------------------|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|
-| REQ-SAFE-016 | First-party reachable MC/DC SHALL reach 100 % per IEC 61508-3 Annex C / DO-178C 6.4.4.2; deactivated conditions per DO-178C 6.4.4.3 are exempted. **Met (100.00 % reachable, 92.29 % absolute, 2026-05-03).** | `make mcdc` driver `scripts/utils/mcdc_report.sh`; deactivations in `docs/MCDC_DEACTIVATIONS.md` | `build/mcdc-report/`, gate at `.github/mcdc-baseline.txt` |
-| REQ-SAFE-017     | First-party branch + statement coverage SHALL reach 90/90 (IEC 61508 Annex C minimum).                | `scripts/coverage.sh --gate`                                                                                     | CI job `firmware.yml::coverage`                       |
+| REQ-SAFE-016 | First-party reachable MC/DC SHALL reach 100 % per IEC 61508-3 Annex C / DO-178C 6.4.4.2; deactivated conditions per DO-178C 6.4.4.3 are exempted. **Met (100.00 % reachable, 92.29 % absolute, 2026-05-03).** | `make mcdc` driver `scripts/report/mcdc_report.sh`; deactivations in `docs/MCDC_DEACTIVATIONS.md` | `build/mcdc-report/`, gate at `.github/mcdc-baseline.txt` |
+| REQ-SAFE-017     | First-party branch + statement coverage SHALL reach 90/90 (IEC 61508 Annex C minimum).                | `scripts/checks/coverage.sh --gate`                                                                                     | CI job `firmware.yml::coverage`                       |
 | REQ-SAFE-018     | The architecture SHALL provide ECC-protected SRAM (IEC 61508-2 hardware integrity contribution).      | `libs/ra8_hal/src/ra8_sram.c` (ECC enable)                                                                         | `tests/test_ra8_sram.c`                                |
 | REQ-SAFE-019     | An IWDT SHALL be enabled in production builds and refreshed by `ra8_wdt_supervisor`.                   | `libs/ra8_hal/src/ra8_iwdt.c`, `libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c`                                   | `tests/test_ra8_iwdt.c`, `tests/test_ra8_wdt_supervisor.c` |
 | REQ-SAFE-020     | A documented SOUP register SHALL list every third-party component with re-review cadence <= 12 months. | `docs/SOUP/`                                                                                                     | `docs/SOUP/README.md` index                            |
@@ -487,7 +487,7 @@ runner is out of scope per `docs/CERTIFICATION_SCOPE.md`).
 | REQ-PERF-005     | Ethernet TX throughput on 100BASE-TX SHALL exceed 80 Mbit/s for 1500-byte frames.                      | `libs/ra8_hal/src/ra8_etha.c`                                                                                       | TBD-MEASURE (`examples/ek_ra8d2/ethernet_tcp_echo/`)   |
 | REQ-PERF-006     | GLCDC SHALL refresh the EK-RA8D2 1024x600 panel at >= 60 Hz with two layers.                            | `libs/ra8_hal/src/ra8_glcdc.c`                                                                                       | `examples/ek_ra8d2/lcd_demo/`                          |
 | REQ-PERF-007     | OTA commit SHALL complete in <= 2 s for a 256 KiB image excluding network transfer.                    | `libs/ra8_ota/src/ra8_ota.c`, `src/secure_app/ota_commit.c`                                                          | `tests/test_ra8_ota.c`, `tests/test_secure_app_ota_commit.c` |
-| REQ-PERF-008     | Static stack budget per task SHALL not exceed values declared in `libs/ra8_core/inc/ra8_stack_budget.h`. | `-Wstack-usage`, `scripts/utils/stack_usage_check.py`                                                              | (build-time gate); `docs/STACK_USAGE.md`               |
+| REQ-PERF-008     | Static stack budget per task SHALL not exceed values declared in `libs/ra8_core/inc/ra8_stack_budget.h`. | `-Wstack-usage`, `scripts/checks/stack_usage_check.py`                                                              | (build-time gate); `docs/STACK_USAGE.md`               |
 
 ---
 
@@ -519,7 +519,7 @@ User's Manual (R20UT5523EG0101) committed under
 The full forward-trace from REQ-XXX to source + test is the per-row
 "Source" + "Test" columns in Section 4 through Section 7. The
 backward-trace (file -> requirements) is generated on demand by
-`scripts/utils/cite_check.py` walking the `@cite` doxygen tags. Both
+`scripts/checks/cite_check.py` walking the `@cite` doxygen tags. Both
 directions are required by IEC 61508-3 Clause 7.4.4.6 and DO-178C
 Section 6.5 (Traceability Data).
 

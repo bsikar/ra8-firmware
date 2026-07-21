@@ -28,7 +28,7 @@ but `open=OK` still holds).
 
 ```
 make touch_demo
-scripts/hil_run_local.sh touch_demo      # flash + scrape the bring-up banner
+scripts/hil/run_local.sh touch_demo      # flash + scrape the bring-up banner
 ```
 
 ## Result (validated 2026-06-19, board_sim)
@@ -44,7 +44,7 @@ $ board_sim touch_demo.elf --click 250 250
   I3C/I2C GT911 : 1 touch frame(s) drained via ra8_touch -> I3C
 ```
 
-`scripts/board_sim_smoke.sh touch_demo` PASS -- the harness arms `--click 250
+`scripts/sim/smoke.sh touch_demo` PASS -- the harness arms `--click 250
 250` (1:1 on the default panel) and asserts the full
 `touch: open=OK pts=1 x=250 y=250` banner, gating the GT911 path end to end
 (`ra8_touch -> ra8_i3c -> GT911` decode). The driver is the same one

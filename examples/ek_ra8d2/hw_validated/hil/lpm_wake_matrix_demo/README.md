@@ -33,9 +33,9 @@ in well under a second so the 15 s timeout is generous.
 ## Bench verification
 
 1. `make lpm_wake_matrix_demo`
-2. Flash via the Pi-bound HIL flasher: `bash scripts/hil_flash.sh
+2. Flash via the Pi-bound HIL flasher: `bash scripts/hil/flash.sh
    examples/ek_ra8d2/hw_validated/hil/lpm_wake_matrix_demo/build/lpm_wake_matrix_demo.hex`
-3. Run the HIL gate from the repo root: `bash scripts/hil_run.sh
+3. Run the HIL gate from the repo root: `bash scripts/hil/run.sh
    lpm_wake_matrix_demo`
 
 The `g_lpm_wake_matrix_armed` symbol is also exposed for SWD

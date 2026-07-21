@@ -30,7 +30,7 @@ equivalence check.
 
 ```
 make ereader_link
-scripts/hil_run_local.sh ereader_link      # flash + scrape the banner
+scripts/hil/run_local.sh ereader_link      # flash + scrape the banner
 ```
 
 ## Result (validated 2026-06-18, board_sim + host)
@@ -40,7 +40,7 @@ ereader-link-hil: boot
 ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE
 ```
 
-`scripts/board_sim_smoke.sh ereader_link` runs the firmware ELF on the
+`scripts/sim/smoke.sh ereader_link` runs the firmware ELF on the
 emulated RA8D2 and scrapes the banner (PASS). The identical layout + nav run on
 host produces the same `geom=5B90D1EE` -- byte-for-byte agreement.
 

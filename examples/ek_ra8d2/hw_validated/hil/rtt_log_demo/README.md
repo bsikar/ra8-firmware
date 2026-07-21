@@ -48,7 +48,7 @@ board_sim models the RTT host side (`board_periph_rtt.c`): it scans
 the emulated SRAM for the `"SEGGER RTT"` control-block ID exactly as
 the J-Link OB does, drains up-buffer 0 (respecting the ring wrap and
 storing the advanced read offset back), and echoes each completed
-line to the console as `[rtt] ...`. `scripts/sil_all.sh` therefore
+line to the console as `[rtt] ...`. `scripts/sim/sil_all.sh` therefore
 checks this app's `hil.conf` banner headlessly, just like a
 `uart_scrape` app:
 
