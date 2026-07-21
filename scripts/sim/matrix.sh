@@ -179,6 +179,115 @@ classify_run() { # out rc -> OK|FAULT|TRUNCATED|HALT|UNKNOWN
   echo UNKNOWN
 }
 
+# Resolve an app's source directory from its leaf name (build dirs excluded).
+app_src_dir() { # name -> source dir on stdout (empty if not found)
+  find examples -type d -name "$1" -not -path '*/build/*' \
+    -not -path '*/build-sim/*' 2>/dev/null | head -1
+}
+
+# True if the app links a SEPARATE Non-Secure executable (a `--ns` recipe). Such
+# two-image TrustZone apps cannot boot through this single-image path. The
+# in-tree signal is a dedicated NS-image linker script (`ns_image.ld`); a bare
+# `ns_main.c` does NOT count (some apps, e.g. cpu1_pingpong_ipc, compile it into
+# the single secure image and embed cpu1, so they run fine here).
+is_two_image_ns() { # src-dir -> 0 (true) if it needs --ns
+  local dir="$1"
+  [ -n "$dir" ] || return 1
+  [ -f "$dir/ns_image.ld" ]
+}
+
+# True if the app is a dual-core build whose Cortex-M33 image is EMBEDDED in the
+# single ELF (board_sim auto-boots it). Detected by a `cpu1_reset_handler`
+# export in the built ELF, or a `linker_script_cpu1.ld` in the source dir.
+is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
+  local elf="$1" dir="$2" nm_syms=""
+  if [ -n "$dir" ] && [ -f "$dir/linker_script_cpu1.ld" ]; then
+    return 0
+  fi
+  if [ -n "$elf" ] && [ -f "$elf" ]; then
+    nm_syms="$(arm-none-eabi-nm "$elf" 2>/dev/null || true)"
+    if grep -q 'cpu1_reset_handler' <<<"$nm_syms"; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
+# -- --run-one <app>: the parallel worker. ------------------------------------
+# Build one app into its own per-app build dir, boot it, classify it, and write
+# `<verdict><TAB><display text>` to $run_dir/<app>.result. It ALWAYS exits 0 --
+# the verdict lives in the file, never in the exit status -- so one broken app
+# cannot abort the pool and silently truncate the sweep.
+#
+# Running the sweep in parallel is only sound BECAUSE of the determinism fix
+# above, and the dependency runs the other way too: board_sim's CPU-time guard
+# inflates under N-way parallelism (N Unicorn JITs contend for cache and
+# memory, so a fixed instruction count burns more CPU-seconds), so with the
+# guard armed an app's verdict would change with -j. Bounding purely by the
+# instruction-counted chunk budget makes every verdict a function of the
+# instruction stream alone -- identical serially and at any -j. sil_all.sh
+# reached the same conclusion for the same reason.
+run_one() {
+  local app="$1"
+  local rf="$run_dir/$app.result"
+  local src_dir elf note=""
+  src_dir="$(app_src_dir "$app")"
+
+  # Two-image TrustZone (--ns) apps need their dedicated recipe -> SPECIAL.
+  if is_two_image_ns "$src_dir"; then
+    printf 'SPECIAL\tSPECIAL (two-image TrustZone -- needs --ns; detected ns_image.ld)\n' >"$rf"
+    return 0
+  fi
+  if [ -z "$src_dir" ] || ! timeout "$build_timeout" make -C "$src_dir" build \
+    >"$run_dir/$app.build.log" 2>&1; then
+    printf 'BUILD_FAIL\tBUILD FAIL (see %s)\n' "$run_dir/$app.build.log" >"$rf"
+    return 0
+  fi
+  elf="$src_dir/build/$app.elf"
+  if [ ! -f "$elf" ]; then
+    printf 'NO_ELF\tNO ELF\n' >"$rf"
+    return 0
+  fi
+  if is_dualcore_embedded "$elf" "$src_dir"; then
+    note=" [dual-core embedded cpu1 image]"
+  fi
+  local out rc verdict
+  # BOARD_SIM_WALL_S=0 DISABLES board_sim's CPU-time guard, leaving the run
+  # bounded only by the instruction-counted chunk budget -- the deterministic
+  # bound. See the DETERMINISM note in the header. The outer `timeout` is a hang
+  # backstop only; if it ever fires the run is reported TRUNCATED, not judged.
+  out="$(BOARD_SIM_MAX_CHUNKS="$max_chunks" BOARD_SIM_WALL_S=0 \
+    timeout "$run_timeout" "$sim" "$elf" 2>&1)"
+  rc=$?
+  verdict="$(classify_run "$out" "$rc")"
+  # Keep the emulator output for anything that did not come out clean. The
+  # burn-down needs a CAUSE per app, not a total: without this the sweep knew
+  # 46 examples faulted and could say nothing about why, so the debt had a
+  # number and no plan. scripts/sim/matrix_triage.sh groups these.
+  if [ "$verdict" != "OK" ] && [ "$verdict" != "HALT" ]; then
+    printf '%s\n' "$out" >"$run_dir/$app.out"
+  fi
+  case "$verdict" in
+    OK) printf 'OK\tOK (boots + runs to budget)%s\n' "$note" >"$rf" ;;
+    FAULT) printf 'FAULT\tFAULT (rc=%s -- board_sim model gap or firmware bug)%s\n' \
+      "$rc" "$note" >"$rf" ;;
+    TRUNCATED) printf 'TRUNCATED\tTRUNCATED (rc=%s -- wall-clock bound hit before chunk %s; NO VERDICT)%s\n' \
+      "$rc" "$max_chunks" "$note" >"$rf" ;;
+    HALT) printf 'HALT\tHALT (parked -- self-test done or panic)%s\n' "$note" >"$rf" ;;
+    *) printf 'UNKNOWN\tUNKNOWN (ran to budget, no clean/halt marker -- REVIEW)%s\n' "$note" >"$rf" ;;
+  esac
+  return 0
+}
+
+# Re-exec entry point for the xargs pool below (a fully isolated process per
+# app, so nothing is shared and the verdict cannot depend on the pool).
+if [ "${1:-}" = "--run-one" ]; then
+  run_dir="${MATRIX_RUN_DIR:?--run-one needs MATRIX_RUN_DIR}"
+  sim="${MATRIX_SIM:?--run-one needs MATRIX_SIM}"
+  run_one "$2"
+  exit 0
+fi
+
 # -- --selftest: prove the CLASSIFIER is wired before trusting a sweep. -------
 #
 # This gate's failure mode is a wrong verdict, and the specific wrong verdict
@@ -304,115 +413,6 @@ n_special=0
 n_unknown=0
 n_skipped=0
 : >"$report"
-
-# Resolve an app's source directory from its leaf name (build dirs excluded).
-app_src_dir() { # name -> source dir on stdout (empty if not found)
-  find examples -type d -name "$1" -not -path '*/build/*' \
-    -not -path '*/build-sim/*' 2>/dev/null | head -1
-}
-
-# True if the app links a SEPARATE Non-Secure executable (a `--ns` recipe). Such
-# two-image TrustZone apps cannot boot through this single-image path. The
-# in-tree signal is a dedicated NS-image linker script (`ns_image.ld`); a bare
-# `ns_main.c` does NOT count (some apps, e.g. cpu1_pingpong_ipc, compile it into
-# the single secure image and embed cpu1, so they run fine here).
-is_two_image_ns() { # src-dir -> 0 (true) if it needs --ns
-  local dir="$1"
-  [ -n "$dir" ] || return 1
-  [ -f "$dir/ns_image.ld" ]
-}
-
-# True if the app is a dual-core build whose Cortex-M33 image is EMBEDDED in the
-# single ELF (board_sim auto-boots it). Detected by a `cpu1_reset_handler`
-# export in the built ELF, or a `linker_script_cpu1.ld` in the source dir.
-is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
-  local elf="$1" dir="$2" nm_syms=""
-  if [ -n "$dir" ] && [ -f "$dir/linker_script_cpu1.ld" ]; then
-    return 0
-  fi
-  if [ -n "$elf" ] && [ -f "$elf" ]; then
-    nm_syms="$(arm-none-eabi-nm "$elf" 2>/dev/null || true)"
-    if grep -q 'cpu1_reset_handler' <<<"$nm_syms"; then
-      return 0
-    fi
-  fi
-  return 1
-}
-
-# -- --run-one <app>: the parallel worker. ------------------------------------
-# Build one app into its own per-app build dir, boot it, classify it, and write
-# `<verdict><TAB><display text>` to $run_dir/<app>.result. It ALWAYS exits 0 --
-# the verdict lives in the file, never in the exit status -- so one broken app
-# cannot abort the pool and silently truncate the sweep.
-#
-# Running the sweep in parallel is only sound BECAUSE of the determinism fix
-# above, and the dependency runs the other way too: board_sim's CPU-time guard
-# inflates under N-way parallelism (N Unicorn JITs contend for cache and
-# memory, so a fixed instruction count burns more CPU-seconds), so with the
-# guard armed an app's verdict would change with -j. Bounding purely by the
-# instruction-counted chunk budget makes every verdict a function of the
-# instruction stream alone -- identical serially and at any -j. sil_all.sh
-# reached the same conclusion for the same reason.
-run_one() {
-  local app="$1"
-  local rf="$run_dir/$app.result"
-  local src_dir elf note=""
-  src_dir="$(app_src_dir "$app")"
-
-  # Two-image TrustZone (--ns) apps need their dedicated recipe -> SPECIAL.
-  if is_two_image_ns "$src_dir"; then
-    printf 'SPECIAL\tSPECIAL (two-image TrustZone -- needs --ns; detected ns_image.ld)\n' >"$rf"
-    return 0
-  fi
-  if [ -z "$src_dir" ] || ! timeout "$build_timeout" make -C "$src_dir" build \
-    >"$run_dir/$app.build.log" 2>&1; then
-    printf 'BUILD_FAIL\tBUILD FAIL (see %s)\n' "$run_dir/$app.build.log" >"$rf"
-    return 0
-  fi
-  elf="$src_dir/build/$app.elf"
-  if [ ! -f "$elf" ]; then
-    printf 'NO_ELF\tNO ELF\n' >"$rf"
-    return 0
-  fi
-  if is_dualcore_embedded "$elf" "$src_dir"; then
-    note=" [dual-core embedded cpu1 image]"
-  fi
-  local out rc verdict
-  # BOARD_SIM_WALL_S=0 DISABLES board_sim's CPU-time guard, leaving the run
-  # bounded only by the instruction-counted chunk budget -- the deterministic
-  # bound. See the DETERMINISM note in the header. The outer `timeout` is a hang
-  # backstop only; if it ever fires the run is reported TRUNCATED, not judged.
-  out="$(BOARD_SIM_MAX_CHUNKS="$max_chunks" BOARD_SIM_WALL_S=0 \
-    timeout "$run_timeout" "$sim" "$elf" 2>&1)"
-  rc=$?
-  verdict="$(classify_run "$out" "$rc")"
-  # Keep the emulator output for anything that did not come out clean. The
-  # burn-down needs a CAUSE per app, not a total: without this the sweep knew
-  # 46 examples faulted and could say nothing about why, so the debt had a
-  # number and no plan. scripts/sim/matrix_triage.sh groups these.
-  if [ "$verdict" != "OK" ] && [ "$verdict" != "HALT" ]; then
-    printf '%s\n' "$out" >"$run_dir/$app.out"
-  fi
-  case "$verdict" in
-    OK) printf 'OK\tOK (boots + runs to budget)%s\n' "$note" >"$rf" ;;
-    FAULT) printf 'FAULT\tFAULT (rc=%s -- board_sim model gap or firmware bug)%s\n' \
-      "$rc" "$note" >"$rf" ;;
-    TRUNCATED) printf 'TRUNCATED\tTRUNCATED (rc=%s -- wall-clock bound hit before chunk %s; NO VERDICT)%s\n' \
-      "$rc" "$max_chunks" "$note" >"$rf" ;;
-    HALT) printf 'HALT\tHALT (parked -- self-test done or panic)%s\n' "$note" >"$rf" ;;
-    *) printf 'UNKNOWN\tUNKNOWN (ran to budget, no clean/halt marker -- REVIEW)%s\n' "$note" >"$rf" ;;
-  esac
-  return 0
-}
-
-# Re-exec entry point for the xargs pool below (a fully isolated process per
-# app, so nothing is shared and the verdict cannot depend on the pool).
-if [ "${1:-}" = "--run-one" ]; then
-  run_dir="${MATRIX_RUN_DIR:?--run-one needs MATRIX_RUN_DIR}"
-  sim="${MATRIX_SIM:?--run-one needs MATRIX_SIM}"
-  run_one "$2"
-  exit 0
-fi
 
 # -- Per-app matrix. ----------------------------------------------------------
 run_dir="$ROOT/build/board_sim_matrix"
