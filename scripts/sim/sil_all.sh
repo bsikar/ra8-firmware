@@ -149,42 +149,14 @@ SIL_PROBE_MAX_CHUNKS="${SIL_PROBE_MAX_CHUNKS:-150000}"
 SIL_PROBE_WALL_S="${SIL_PROBE_WALL_S:-0}"
 
 # -----------------------------------------------------------------------------
-# Per-app board_sim extra arguments.
-#
-# A few apps need a device attached the way scripts/sim/smoke.sh attaches
-# it. Most only need a blank card: board_sim's --sd-new builds one in-process
-# (no external image), which is all the ra8_io / TrustZone / format / EPUB-import
-# apps require -- they format + write (or self-provision) their own files. The
-# one app that must READ a pre-populated card (sd_font_render, which loads a
-# FONT.OTF) gets the shared image build_font_card() bakes once for the whole run.
+# Per-app board_sim extra arguments -- sim_extra_args() lives in
+# scripts/sim/sim_fixtures.sh, shared with scripts/sim/matrix.sh so that "this
+# app needs a card" is recorded in exactly one place. It used to live here
+# alone, and the breadth matrix consequently booted card-dependent apps with no
+# card and blamed them for it.
 # -----------------------------------------------------------------------------
-sim_extra_args() { # <app> -> extra board_sim args on stdout (may be empty)
-  case "$1" in
-    ra8_io_sd_demo | ra8_io_sdhi_demo | ra8_sdhi_card_demo | tz_secure_only_sd)
-      # Format + round-trip a file on a blank FAT16 card.
-      printf -- '--sd-new 64:fat16'
-      ;;
-    fs_format_mount | epub_open | epub_toc | pagecache)
-      # These self-provision (books) or reformat (FAT12/16/32/exFAT) a blank
-      # card themselves; a 64 MiB FAT32 --sd-new card is all board_sim must
-      # attach, per each app's own board_sim recipe.
-      printf -- '--sd-new 64:fat32'
-      ;;
-    usb_selftest_microsd)
-      # USB self-loop that exposes the Pmod2 microSD as a read-only USB drive:
-      # on real hardware a FAT card is inserted; in SIL board_sim provisions a
-      # blank FAT32 card so the host reads a valid MBR (0x55AA) + filesystem.
-      printf -- '--sd-new 64:fat32'
-      ;;
-    sd_font_render)
-      # Reads FONT.OTF off the card (does not provision one), so it needs a
-      # pre-populated image -- baked once by the parent into SIL_FONT_IMG. Empty
-      # if the bake was skipped/failed; the app then fails with a clear reason.
-      [ -n "${SIL_FONT_IMG:-}" ] && printf -- '--sd %s' "$SIL_FONT_IMG"
-      ;;
-    *) : ;;
-  esac
-}
+# shellcheck source=scripts/sim/sim_fixtures.sh
+. "${REPO_ROOT}/scripts/sim/sim_fixtures.sh"
 
 # Per-app instruction-chunk cap override for the few compute-heavy apps whose
 # legitimate banner lands past the low global cap. Kept here (not in the app's
