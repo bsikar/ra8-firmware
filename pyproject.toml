@@ -118,7 +118,7 @@ max-branches = 12
 
 # ---------------------------------------------------------------------------
 # Deliberately NOT selected. Every count below was RE-MEASURED for #363 against
-# the current tree (121 first-party Python files, ruff 0.15.19), not carried
+# the current tree (124 first-party Python files, ruff 0.15.19), not carried
 # over from the previous pass -- a stale number is how a dropped family stops
 # being a decision and becomes an omission.
 #
@@ -134,7 +134,7 @@ max-branches = 12
 #             produces merge conflicts, not type safety. Adopt it as the next
 #             lint change once both land; nothing is hidden behind it in the
 #             meantime, since an unselected family suppresses nothing.
-#   T20 (554) flake8-print, 87 files. Re-checked against the specific worry
+#   T20 (584) flake8-print, 89 files. Re-checked against the specific worry
 #             that LIBRARY code is printing where it should return or log:
 #             every first-party .py that contains a top-level `print(` is
 #             either an executable script or carries a `__main__` guard, and
@@ -155,16 +155,16 @@ max-branches = 12
 #             conflicts rather than simpler code. #359 owns the size axis and
 #             its threshold; select C90 at ruff's default 10 against the
 #             decomposed tree afterwards.
-#   D   (442) pydocstyle, google convention (D103 171, D205 57, D413 56,
-#             D209 35, D212 31, D401 31, D102 18, D100 13) across 93 files.
+#   D   (455) pydocstyle, google convention (D103 179, D205 57, D413 56,
+#             D209 35, D401 34, D212 31, D102 19, D100 13) across 96 files.
 #             Re-measured after #368 landed the tools/ and examples/ half of
-#             #365, which is why D103 fell from 215.
+#             #365 and #374 added the lint-coverage gate's three modules.
 #             Unchanged reasoning: 215 of them are "this helper has no
 #             docstring", and writing 215 in one mechanical pass produces
 #             exactly the restating boilerplate docs/STYLE_GUIDE.md bans on
 #             the C side. Needs per-function judgment, so it is its own
 #             change -- and one is in flight for tools/, tests/ and examples/.
-#   FBT001/FBT002 (11) boolean-trap, definition side. FBT003 IS now selected
+#   FBT001/FBT002 (13) boolean-trap, definition side. FBT003 IS now selected
 #             (see above). The definition-side half is dropped on merit after
 #             reading all 12: the rule cannot distinguish a mode flag from a
 #             boolean SUBJECT, and most of these are the latter --
