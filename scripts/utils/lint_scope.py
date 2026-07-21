@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Single definition of the file scope for the cmake and yaml lint gates.
 
 Both scopes used to be inline ``git ls-files | grep -Ev ... | grep -E ...``
