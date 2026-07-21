@@ -74,7 +74,7 @@ microSD card, then `make flash` and watch the panel. The card need not carry
 + SD font read + reflow), then asserts `g_sfr_heartbeat` advances steadily. The
 idle loop bumps that counter **only** after a clean render -- every failure stage
 parks in `sfr_panic_halt`, freezing it -- so a steady advance proves the whole
-pipeline ran. Run locally with `scripts/hil_run_local.sh sd_font_render`.
+pipeline ran. Run locally with `scripts/hil/run_local.sh sd_font_render`.
 
 ## Diagnostics
 

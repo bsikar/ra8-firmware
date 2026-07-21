@@ -87,6 +87,6 @@ Success is the `... sd:/LOGS/A.TXT 512 bytes PASS` console line with no
 > validation above is what is automated.
 
 1. Wire a microSD card to the port-4 SDHI bus with a **disposable** card inserted.
-2. `make flash` (J-Link OB via `scripts/flash.sh`).
+2. `make flash` (J-Link OB via `scripts/dev/flash.sh`).
 3. Open the J-Link OB CDC console at 115200 8N1.
 4. Scrape for `sd:/LOGS/A.TXT 512 bytes PASS`.

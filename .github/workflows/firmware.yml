@@ -7,7 +7,7 @@
 # executes the exact same functions these jobs execute.
 #
 # Adding a check here as a raw `run:` block would re-create the drift this
-# design removed, so scripts/utils/check_ci_parity.py (the `ci-parity` gate)
+# design removed, so scripts/ci/check_ci_parity.py (the `ci-parity` gate)
 # rejects any step that is neither a registered gate nor tagged
 # `# ci-parity: infra -- <reason>`. Infra steps may not invoke project checks.
 #
@@ -128,7 +128,7 @@ jobs:
   # ---------------------------------------------------------------------------
   # clang-tidy over EVERY first-party root: libs/, src/, examples/*/*/main.c,
   # tests/ and tools/ (#296). Only vendored SOUP (libs/third_party/) and the
-  # generated font data (libs/fonts/) are exempt. scripts/clang_tidy.sh owns
+  # generated font data (libs/fonts/) are exempt. scripts/checks/clang_tidy.sh owns
   # the scope and hard-fails if any of those roots collects zero files, so a
   # future narrowing cannot silently shrink what this job checks.
   #

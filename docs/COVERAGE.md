@@ -49,7 +49,7 @@ Statement  <  Branch  <  Decision  <  Condition  <  MC/DC  <  Multiple-Condition
 make coverage
 ```
 
-This wraps `scripts/utils/coverage_report.sh`, which:
+This wraps `scripts/report/coverage_report.sh`, which:
 
 1. Configures `tests/build-cov/` with `cmake -DRA8_COVERAGE=ON
    -DRA8_MCDC=OFF`.
@@ -65,7 +65,7 @@ This wraps `scripts/utils/coverage_report.sh`, which:
 After the report is generated, `make coverage` also runs the gate:
 
 ```sh
-python3 scripts/utils/check_coverage.py
+python3 scripts/checks/check_coverage.py
 ```
 
 ## On macOS
@@ -102,7 +102,7 @@ whitespace-separated numbers:
 <statement_pct> <branch_pct>
 ```
 
-`scripts/utils/check_coverage.py` enforces:
+`scripts/checks/check_coverage.py` enforces:
 
 - statement coverage MUST NOT drop below baseline (slack 0.5pp)
 - branch coverage MUST NOT drop below baseline (slack 0.5pp)
@@ -127,6 +127,6 @@ and runs the gate.
 
 - `docs/MCDC.md` -- the DO-178C Level B MC/DC flow
 - `docs/MCDC_GAPS.md` -- per-file MC/DC coverage gap list
-- `scripts/utils/coverage_report.sh` -- coverage report generator
-- `scripts/utils/check_coverage.py` -- coverage gate
+- `scripts/report/coverage_report.sh` -- coverage report generator
+- `scripts/checks/check_coverage.py` -- coverage gate
 - `.github/coverage-baseline.txt` -- baseline numbers

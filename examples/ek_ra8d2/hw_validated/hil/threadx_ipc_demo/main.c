@@ -123,7 +123,7 @@ static const uint8_t k_ipc_demo_recv_msg[] = "[ipc_demo] <- pong\r\n";
  *
  * @details
  * Bumped by ``ipc_consumer_thread`` on every successful
- * ``tx_queue_receive``. Read externally by ``scripts/hil_jlink_memprobe.sh``
+ * ``tx_queue_receive``. Read externally by ``scripts/hil/jlink_memprobe.sh``
  * to gate the demo independent of UART scraping.
  *
  * @note Read externally by J-Link only; firmware never reads back.

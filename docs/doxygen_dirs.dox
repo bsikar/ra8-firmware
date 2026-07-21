@@ -19,7 +19,7 @@
 
 /*
  * NOTE: the repo-root @dir src lives in the generated docs/generated/nav_dirs.dox
- * (emitted by scripts/utils/gen_doxygen_nav.py with an absolute path). A plain
+ * (emitted by scripts/gen/gen_doxygen_nav.py with an absolute path). A plain
  * "@dir src" here is ambiguous because many example apps carry a nested src/.
  */
 
@@ -76,7 +76,7 @@
  * @brief Developer and CI tooling: build/flash/debug wrappers, the HIL bench
  *        rig control (Tapo power, J-Link, RTT), the OpenBao secret client and
  *        root-of-trust key store, and the check_*.py quality gates under
- *        scripts/utils that CI and the git hooks enforce.
+ *        scripts/checks that CI and the git hooks enforce.
  */
 
 /**

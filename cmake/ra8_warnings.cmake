@@ -73,7 +73,7 @@ function(ra8_target_enable_project_warnings target)
   #   * -Wstack-usage=N -- the build-time gate. Any function whose
   #     compile-time stack frame exceeds N bytes triggers -Werror.
   #   * -fstack-usage   -- gcc emits a `<file>.su` next to each `.o`,
-  #     consumed by scripts/utils/stack_usage_check.py to aggregate
+  #     consumed by scripts/checks/stack_usage_check.py to aggregate
   #     a project-wide report and to gate the critical-path modules
   #     (ra8_isr, ra8_check, ra8_err, ra8_mpu, ra8_cgc, ra8_pfs).
   if(NOT DEFINED RA8_WARN_STACK_USAGE_BYTES OR RA8_WARN_STACK_USAGE_BYTES STREQUAL "")
@@ -85,7 +85,7 @@ function(ra8_target_enable_project_warnings target)
   # false-positive generator (e.g. ra8_book / ra8_reflow XML walkers). The
   # real target stack budget is enforced by the firmware build, which
   # passes its per-app STACK_USAGE_BYTES, plus the .su aggregation in
-  # scripts/utils/stack_usage_check.py over the ARM `.su` files.
+  # scripts/checks/stack_usage_check.py over the ARM `.su` files.
   if(NOT RA8_WARN_STACK_USAGE_BYTES STREQUAL "0")
     target_compile_options(
       ${target} PRIVATE $<$<COMPILE_LANG_AND_ID:C,GNU>:-Wstack-usage=${RA8_WARN_STACK_USAGE_BYTES}>

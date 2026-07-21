@@ -26,7 +26,7 @@ LevelX integration); this one exercises the FileX FAT API itself.
 
 ```
 make threadx_filex_demo
-bash scripts/hil_run_local.sh threadx_filex_demo   # flash + scrape the banner
+bash scripts/hil/run_local.sh threadx_filex_demo   # flash + scrape the banner
 ```
 
 No card, no jumpers -- the flash is soldered on the board, so this runs

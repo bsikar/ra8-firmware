@@ -36,7 +36,7 @@
  *   - Replacing tinyxml2 with a hand-rolled scanner is on the roadmap
  *     (see `docs/ROADMAP.md`).
  *
- * Anyone reviewing the no-alloc audit (`scripts/utils/check_no_dynamic_alloc.py`)
+ * Anyone reviewing the no-alloc audit (`scripts/checks/check_no_dynamic_alloc.py`)
  * should expect to see allocations charged to this TU at runtime; the
  * rest of `libs/ra8_epub` is alloc-free.
  *

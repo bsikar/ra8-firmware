@@ -45,7 +45,7 @@ banner so the gate stays deterministic. The "GLCDC is programmed" proof is the
 
 ```
 make glcdc_render
-scripts/hil_run_local.sh glcdc_render      # flash + scrape the banner
+scripts/hil/run_local.sh glcdc_render      # flash + scrape the banner
 ```
 
 ## board_sim validation (2026-06-20)

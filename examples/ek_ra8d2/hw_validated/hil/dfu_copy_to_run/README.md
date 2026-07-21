@@ -28,7 +28,7 @@ code, CycleCnt advancing, CFSR/HFSR clean, not parked in a fault spinner) is a
 *specific* proof that copy-to-run executed:
 
 ```
-scripts/hil_run_local.sh dfu_copy_to_run
+scripts/hil/run_local.sh dfu_copy_to_run
 ```
 
 If the launch's run-target check ever failed, control returns and parks in

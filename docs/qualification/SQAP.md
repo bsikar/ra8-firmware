@@ -77,16 +77,16 @@ tools, all of which run on every commit and every PR:
 
 | Audit                                | Tool / artifact                                                                  |
 |--------------------------------------|----------------------------------------------------------------------------------|
-| Roadmap progress audit               | `scripts/utils/roadmap_stats.py --check` (refuses stale ROADMAP summaries)       |
+| Roadmap progress audit               | `scripts/report/roadmap_stats.py --check` (refuses stale ROADMAP summaries)       |
 | Pre-commit gate audit                | `scripts/git/pre-commit` exit status; CI mirror in `pre-commit-checks` job       |
 | Coding-standard audit                | `clang-format`, `clang-tidy`, `cppcheck`                                         |
 | MISRA-C 2012 process audit           | `make misra` quarterly + `docs/MISRA.md` baseline table                          |
-| World-tag (architecture) audit       | `scripts/utils/check_world_tags.py`                                              |
-| Obsolete-standards audit             | `scripts/utils/check_obsolete_standards.py` (rejects superseded safety-standard references) |
-| MC/DC vector pattern audit on tests  | `scripts/utils/check_mcdc_block.py`                                              |
-| HUM citation audit                   | `scripts/utils/cite_check.py`                                                    |
-| Doxygen `@since` audit               | `scripts/utils/check-since-version.py`                                           |
-| Copyright header audit               | `scripts/utils/check-copyright.py`                                               |
+| World-tag (architecture) audit       | `scripts/checks/check_world_tags.py`                                              |
+| Obsolete-standards audit             | `scripts/checks/check_obsolete_standards.py` (rejects superseded safety-standard references) |
+| MC/DC vector pattern audit on tests  | `scripts/checks/check_mcdc_block.py`                                              |
+| HUM citation audit                   | `scripts/checks/cite_check.py`                                                    |
+| Doxygen `@since` audit               | `scripts/checks/check-since-version.py`                                           |
+| Copyright header audit               | `scripts/checks/check-copyright.py`                                               |
 
 A failed gate is the audit finding. The CI log is the audit record;
 the corrective-action loop is the developer's response on the same
@@ -99,7 +99,7 @@ Product audits are the periodic refresh of the gap registers:
 
 | Audit                  | Refresh tool / artifact                                                  | Cadence              |
 |------------------------|--------------------------------------------------------------------------|----------------------|
-| Doxygen completeness   | `scripts/utils/doxy_audit` -> `docs/DOXYGEN_GAPS.csv` + `docs/DOXYGEN_GAPS.md` | Per release    |
+| Doxygen completeness   | `scripts/checks/doxy_audit.py` -> `docs/DOXYGEN_GAPS.csv` + `docs/DOXYGEN_GAPS.md` | Per release    |
 | MC/DC coverage         | `make mcdc` -> `build/mcdc-report/summary.txt` + `docs/MCDC_GAPS.md`     | Per PR (CI) + per release |
 | MISRA conformance      | `make misra` -> `build/misra/results.txt` + `docs/MISRA_GAPS.csv`        | Quarterly            |
 | Stack usage            | `make stack-usage` -> `build/stack_usage.csv`                            | Per release          |

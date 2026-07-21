@@ -2,7 +2,7 @@
 
 > **Hard rule, no exceptions.** Zero AI attribution anywhere in this
 > codebase. The pre-commit gate
-> `scripts/utils/check_no_ai_attribution.py` enforces this STRICTLY.
+> `scripts/checks/check_no_ai_attribution.py` enforces this STRICTLY.
 
 This is a personal, hand-written firmware project. Every line of code,
 every test, every comment, every doc page is presented as the work of a
@@ -57,7 +57,7 @@ volatile uint32_t* base = (uint32_t*)k_ra8_gpt0_base;
 ```
 # ALLOWED: the project's own filename
 See CLAUDE.md for the full rule.
-ln -s ../../scripts/git/pre-commit .git/hooks/pre-commit
+ln -s ../../scripts/git/pre-commit .git/hooks/pre-commit  PATHREF-OK: symlink target is relative to .git/hooks/, not to this document
 
 # ALLOWED: the .claude config directory referenced as a path
 EXCLUDE_DIRS=("build" ".git" ".claude")
@@ -88,7 +88,7 @@ reason (i.e. "I just wanted to write Claude here" is not acceptable).
 
 ## How the gate works
 
-`scripts/utils/check_no_ai_attribution.py` walks every file under
+`scripts/checks/check_no_ai_attribution.py` walks every file under
 `libs/`, `src/`, `tests/`, `examples/`, `port/`, `scripts/`, `docs/`,
 plus the top-level `CLAUDE.md`, `CONTRIBUTING.md`, and `README.md`. For
 each text file with a recognised extension (`.c`, `.h`, `.md`, `.py`,

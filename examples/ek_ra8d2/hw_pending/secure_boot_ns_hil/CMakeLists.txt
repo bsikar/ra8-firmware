@@ -146,7 +146,7 @@ add_custom_command(
   COMMAND
     python3 ${CMAKE_CURRENT_SOURCE_DIR}/sign_and_merge.py --secure-hex secure_boot_ns_hil_secure.hex
     --ns-elf $<TARGET_FILE:secure_boot_ns_hil_ns.elf> --objcopy ${CMAKE_OBJCOPY} --rot-sign
-    ${_d}/tools/rot_sign.py --merge ${_d}/scripts/utils/merge_ihex.py --out-genuine
+    ${_d}/tools/rot_sign.py --merge ${_d}/scripts/gen/merge_ihex.py --out-genuine
     secure_boot_ns_hil.hex --out-tampered secure_boot_ns_hil_tampered.hex --key ${_sbns_key}
   VERBATIM
   COMMENT "Signing NS image + merging Secure+NS -> secure_boot_ns_hil.hex (+_tampered)"

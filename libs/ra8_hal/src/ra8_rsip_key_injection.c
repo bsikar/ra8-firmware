@@ -47,7 +47,7 @@ static const char* s_tag = "RSIP_KI";
  * simulation or an explicitly-declared insecure dev/eval image. A real
  * production/HIL image (neither flag set) compiles the #else branch, where
  * every entry point hard-errors so keys are never wrapped or validated with the
- * stub. scripts/utils/check_stub_crypto_guarded.py enforces the guard.
+ * stub. scripts/checks/check_stub_crypto_guarded.py enforces the guard.
  */
 #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
 

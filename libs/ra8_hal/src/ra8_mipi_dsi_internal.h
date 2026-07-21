@@ -10,7 +10,7 @@
  * @details
  * The MIPI DSI-2 host driver is implemented across more than one
  * translation unit so that no single file exceeds the
- * ``scripts/utils/check_file_size.py`` cap. The configuration / link /
+ * ``scripts/checks/check_file_size.py`` cap. The configuration / link /
  * sequence-channel path lives in ``ra8_mipi_dsi.c``; the status, IRQ
  * dispatch, video-mode, and convenience surfaces live in
  * ``ra8_mipi_dsi_dispatch.c``. A handful of file-scope mutable state

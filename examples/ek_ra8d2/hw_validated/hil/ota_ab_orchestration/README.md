@@ -52,12 +52,12 @@ make                 # cross-compile build/ota_ab_orchestration.elf / .hex / .bi
 Simulator (headless, no board):
 
 ```sh
-scripts/board_sim_smoke.sh ota_ab_orchestration     # or: scripts/sil_all.sh
+scripts/sim/smoke.sh ota_ab_orchestration     # or: scripts/sim/sil_all.sh
 ```
 
-The `hil.conf` (`HIL_MODE=uart_scrape`) is checked by both `scripts/hil_all.sh`
-(bench) and `scripts/sil_all.sh` (simulator), and the SIM==HIL parity gate
-(`scripts/utils/check_hil_sil_parity.py`) enforces that this app is exercised in
+The `hil.conf` (`HIL_MODE=uart_scrape`) is checked by both `scripts/hil/all.sh`
+(bench) and `scripts/sim/sil_all.sh` (simulator), and the SIM==HIL parity gate
+(`scripts/checks/check_hil_sil_parity.py`) enforces that this app is exercised in
 both.
 
 ## Not brick-territory

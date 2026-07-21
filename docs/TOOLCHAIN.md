@@ -107,7 +107,7 @@ For ordinary code they agree (verified: 22.1.7 output passes 22.1.8's
 Handling: format on the Mac for speed, then **verify format on the dev box
 (22.1.8) before every push** (section 4). Exact 22.1.8 is not readily installable
 on macOS arm64 (LLVM 22 is a pre-release snapshot); revisit if Homebrew catches
-up. `scripts/format_code.sh` honors `CLANG_FORMAT=<binary>`.
+up. `scripts/checks/format_code.sh` honors `CLANG_FORMAT=<binary>`.
 
 ### 3.3 cppcheck: Mac 2.21 vs CI/dev 2.13
 

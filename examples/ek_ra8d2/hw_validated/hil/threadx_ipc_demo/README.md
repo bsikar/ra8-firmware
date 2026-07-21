@@ -52,7 +52,7 @@ Without that peer the demo still runs cleanly: every iteration prints
 
 ```sh
 make build           # cross-compile to threadx_ipc_demo.elf / .hex / .bin
-make flash           # JLink load via scripts/flash.sh
+make flash           # JLink load via scripts/dev/flash.sh
 make ozone           # SEGGER Ozone GUI debugger
 make clean
 ```

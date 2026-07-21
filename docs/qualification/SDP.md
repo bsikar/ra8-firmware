@@ -62,7 +62,7 @@ system. Requirements are captured in two places:
 - Per-feature design notes under `docs/` (e.g.
   [`../ARCHITECTURE.md`](../ARCHITECTURE.md)).
 - Function-level `@brief` / `@param` / `@retval` / `@pre` / `@post`
-  blocks, audited by `scripts/utils/doxy_audit.py`.
+  blocks, audited by `scripts/checks/doxy_audit.py`.
 
 This is consistent with DO-178C Section 11.9 (software requirements
 data) being an aggregate of design notes plus the source-of-truth
@@ -82,7 +82,7 @@ acceptance gate met).
 Every register-level write must cite the Renesas Hardware User's
 Manual R01UH1065EJ section that authorises the bit pattern. Citations
 use the `@cite` doxygen tag and are audited by
-`scripts/utils/cite_check.py` (currently in WARN mode).
+`scripts/checks/cite_check.py` (currently in WARN mode).
 
 ---
 
@@ -104,7 +104,7 @@ use the `@cite` doxygen tag and are audited by
 | `clang` >= 18              | Host MC/DC instrumentation (`-fcoverage-mcdc`) | clang-22 in dev container |
 | `llvm-profdata`/`llvm-cov` | MC/DC measurement                          | matches clang        |
 | `cppcheck` 2.20+           | MISRA-C 2012 audit + general static check  | host                 |
-| `python3`                  | Audit scripts under `scripts/utils/`       | 3.11+                |
+| `python3`                  | Audit scripts under `scripts/checks/`      | 3.11+                |
 | `JLinkExe`                 | Flash + halt + register dump               | SEGGER v9.38a        |
 | `gdb-multiarch`            | Interactive debug                          | host                 |
 
@@ -150,7 +150,7 @@ Per [`../../CLAUDE.md`](../../CLAUDE.md) "Development Approach", every
 source file in `src/` and `libs/` is hand-written against the Renesas
 Hardware User's Manual R01UH1065EJ. Renesas FSP source is reference-
 only and is **not** copied into this tree. The cite-check script
-(`scripts/utils/cite_check.py`) verifies that register-level
+(`scripts/checks/cite_check.py`) verifies that register-level
 translation units carry HUM citations.
 
 ### 3.2 Vendor SOUP behind PAL layers
@@ -170,7 +170,7 @@ first-party platform abstraction layer (`libs/ra8_*_pal/`,
 ### 3.3 No dynamic allocation in firmware
 
 NASA Power-of-10 Rule 3 is enforced by
-[`../../scripts/utils/check_no_dynamic_alloc.py`](../../scripts/utils/check_no_dynamic_alloc.py)
+[`../../scripts/checks/check_no_dynamic_alloc.py`](../../scripts/checks/check_no_dynamic_alloc.py)
 in the pre-commit hook. The xorshift32 `rand()` override added in
 commit `6d2ebbfac` is the canonical example of how third-party calls
 into newlib heap functions are intercepted (see
@@ -325,7 +325,7 @@ tests for every EVM app.
 ### 6.3 MC/DC measurement
 
 `make mcdc` invokes
-[`../../scripts/utils/mcdc_report.sh`](../../scripts/utils/mcdc_report.sh)
+[`../../scripts/report/mcdc_report.sh`](../../scripts/report/mcdc_report.sh)
 which builds tests with `clang -fcoverage-mcdc`, runs each test
 binary with `LLVM_PROFILE_FILE` set, merges via `llvm-profdata
 merge -sparse`, and renders the report under `build/mcdc-report/`.
@@ -339,11 +339,14 @@ catalogued as deactivated under DO-178C 6.4.4.3 in
 
 ### 6.4 Hardware smoke
 
-`make smoke` invokes
-[`../../scripts/hw_smoke_test.sh`](../../scripts/hw_smoke_test.sh)
-which flashes every EVM app, halts the chip, dumps registers, and
-classifies the resolved PC as PASS / WIP / FAIL / NOBUILD / UNKNOWN
-per the rubric in [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md).
+`make hil-all` invokes
+[`../../scripts/hil/all.sh`](../../scripts/hil/all.sh)
+which auto-discovers every app under
+`examples/ek_ra8d2/hw_validated/hil/` carrying a `hil.conf`, flashes
+each to the bench board, and verifies it by the mode that `hil.conf`
+declares (`uart_scrape`, `jlink_memprobe`, `usb_cdc`, `usb_hid`,
+`usb_msc`, ...). An app under `hil/` with no `hil.conf` fails the run
+rather than being skipped.
 Hardware-in-the-loop is a developer-laptop pre-push step (see
 [`../HIL_DEVELOPER_WORKFLOW.md`](../HIL_DEVELOPER_WORKFLOW.md)); a
 self-hosted runner is **not** in scope.
@@ -351,7 +354,7 @@ self-hosted runner is **not** in scope.
 ### 6.5 MISRA-C 2012
 
 `make misra` invokes
-[`../../scripts/utils/misra_check.sh`](../../scripts/utils/misra_check.sh)
+[`../../scripts/checks/misra_check_inner.sh`](../../scripts/checks/misra_check_inner.sh)
 which runs cppcheck with the MISRA addon and writes
 `build/misra/results.txt`. Current advisory baseline: **1271 unique
 findings** (down from 1371 after D-004 closure; see
@@ -364,8 +367,8 @@ project policy in [`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md)).
 
 ### 6.6 Stack-usage analysis
 
-`scripts/utils/check_stack_usage.sh` plus
-`scripts/utils/stack_usage_check.py` analyse the per-function
+`scripts/checks/check_stack_usage.sh` plus
+`scripts/checks/stack_usage_check.py` analyse the per-function
 `.su` files emitted by `arm-none-eabi-gcc -fstack-usage`. Results
 roll up into [`../STACK_USAGE.md`](../STACK_USAGE.md). This satisfies
 IEC 61508-3 Annex B (control of coding-time error sources, stack
@@ -373,7 +376,7 @@ overflow).
 
 ### 6.7 Doxygen audit
 
-`scripts/utils/doxy_audit.py` walks `libs/`, `src/`, `port/` (third
+`scripts/checks/doxy_audit.py` walks `libs/`, `src/`, `port/` (third
 party excluded) and reports per-function missing-tag counts to
 [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md). Current gap: **0 functions
 with gaps** out of 2747 audited (Phase 3 acceptance gate met).
@@ -401,16 +404,16 @@ Source: [`../../scripts/git/pre-commit`](../../scripts/git/pre-commit).
 | ASCII-only encoding                              | inline check in pre-commit hook                            |
 | C23 typed-enum + zero-init pattern               | inline check in pre-commit hook                            |
 | Defensive macro paren                            | inline check in pre-commit hook                            |
-| clang-format                                     | `scripts/format_code.sh --check`                           |
-| clang-tidy                                       | `scripts/clang_tidy.sh --check`                            |
-| `@since` tag presence                            | `scripts/utils/check-since-version.py`                     |
-| Copyright header presence                        | `scripts/utils/check-copyright.py`                         |
+| clang-format                                     | `scripts/checks/format_code.sh --check`                           |
+| clang-tidy                                       | `scripts/checks/clang_tidy.sh --check`                            |
+| `@since` tag presence                            | `scripts/checks/check-since-version.py`                     |
+| Copyright header presence                        | `scripts/checks/check-copyright.py`                         |
 | cppcheck (general)                               | `cppcheck --enable=warning,style,performance,portability`  |
-| HUM citations (WARN)                             | `scripts/utils/cite_check.py --warn`                       |
-| Ring/world tags (WARN)                           | `scripts/utils/check_world_tags.py --warn`                 |
-| Roadmap stats freshness                          | `scripts/utils/roadmap_stats.py --check`                   |
-| Obsolete-standard references                     | `scripts/utils/check_obsolete_standards.py`                |
-| MC/DC-blocking pattern check                     | `scripts/utils/check_mcdc_block.py`                        |
+| HUM citations (WARN)                             | `scripts/checks/cite_check.py --warn`                       |
+| Ring/world tags (WARN)                           | `scripts/checks/check_world_tags.py --warn`                 |
+| Roadmap stats freshness                          | `scripts/report/roadmap_stats.py --check`                   |
+| Obsolete-standard references                     | `scripts/checks/check_obsolete_standards.py`                |
+| MC/DC-blocking pattern check                     | `scripts/checks/check_mcdc_block.py`                        |
 
 ### 7.2 CI gates (GitHub Actions, mandatory)
 
@@ -427,7 +430,7 @@ of every EVM app. Hardware-in-the-loop is added in Phase 6.
 | `make mcdc` end-to-end                      | per Phase-1/2 sprint   | dev      |
 | `make misra`                                | quarterly              | dev      |
 | `make smoke` full sweep                     | per hardware session   | dev      |
-| `scripts/utils/doxy_audit.py` regen         | per Phase-3 sprint     | dev      |
+| `scripts/checks/doxy_audit.py` regen         | per Phase-3 sprint     | dev      |
 | SOUP re-review                              | <= 12 months per entry | dev      |
 | Stack-usage report regen                    | per HAL change         | dev      |
 

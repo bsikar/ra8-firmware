@@ -43,7 +43,7 @@ After the first render the app folds an FNV-1a-32 over the whole 1024x600 panel
 framebuffer and prints it. The FB bytes are written identically whether or not a
 panel is attached, so the hash is the same on the unit-test host, in board_sim,
 and on silicon (SIM == HIL). `hil.conf` pins the banner; the board-sim smoke gate
-(`scripts/board_sim_smoke.sh`) asserts it in CI. The full validation is the
+(`scripts/sim/smoke.sh`) asserts it in CI. The full validation is the
 rendered panel itself.
 
 ## View / drive

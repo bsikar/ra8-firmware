@@ -49,7 +49,7 @@ typedef enum : uint32_t {
  *        erase -> program -> read-back -> compare round-trip.
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving the Octo-SPI flash peripheral actually wrote
  * and read back matching bytes (the alive-mode check could only prove

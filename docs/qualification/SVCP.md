@@ -152,7 +152,7 @@ the `blink_hal` shape harness).
 
 | Test ID         | Source                            | Subject                                        |
 |-----------------|-----------------------------------|------------------------------------------------|
-| HW-SMOKE-EVM-001| `scripts/hw_smoke_test.sh`        | All 26 apps under `examples/ek_ra8d2/`         |
+| HW-HIL-EVM-001  | `scripts/hil/all.sh`              | Every `hil.conf` app under `examples/ek_ra8d2/hw_validated/hil/` |
 
 ### 1.6 Coverage forcing test
 
@@ -186,7 +186,7 @@ the `blink_hal` shape harness).
 **Procedure VP-MCDC-001.**
 
 1. From the repository root, run `make mcdc`. This wraps
-   `scripts/utils/mcdc_report.sh`, which:
+   `scripts/report/mcdc_report.sh`, which:
    1. Configures `tests/` with `cmake -S tests -B tests/build-cov
       -DRA8_MCDC=ON`.
    2. Builds every host test with the clang flag trio
@@ -216,19 +216,17 @@ and DO-178C section 6.4.4.2.
    the host via the on-board J-Link OB USB port. Confirm `JLinkExe
    -device R7KA8D2KF_CPU0 -if SWD -speed 4000 -autoconnect 1` returns
    chip ID without error.
-2. From the repository root, run `make smoke`. This top-level target:
-   1. Builds every app under `examples/ek_ra8d2/` (the EVM tier).
-   2. Invokes `scripts/hw_smoke_test.sh`, which for each app:
-      - Calls `scripts/flash.sh examples/ek_ra8d2/<app>/build/<app>.hex`
-        to program MRAM.
-      - Sleeps `--settle` seconds (default 5; 8 for `usb_hid_device`).
-      - Drives a `JLinkExe` script that connects, halts the CPU,
-        and dumps registers.
-      - Resolves the captured PC via `arm-none-eabi-addr2line -f
-        -e <elf> 0x<PC>`.
-      - Classifies the result.
-3. Per-app log: `build/smoke/<app>.log`. Aggregate Markdown
-   table: `build/smoke/results.md`.
+2. From the repository root, run `make hil-all`. This top-level target
+   invokes `scripts/hil/all.sh`, which for each discovered app:
+      - Builds the app and calls `scripts/hil/flash.sh` to program MRAM.
+      - Sources the app's `hil.conf` to learn its verification mode.
+      - Verifies per mode: scrapes the SCI console for `HIL_EXPECT`
+        (`uart_scrape`), halts and reads a probed progress counter
+        (`jlink_memprobe`), or confirms host-side enumeration
+        (`usb_cdc` / `usb_hid` / `usb_msc`).
+      - Classifies the app PASS / FAIL, honouring `HIL_FAULT_EXPECTED`.
+3. Per-app logs are written under `/tmp/hil_all_*`; the aggregate
+   PASS / FAIL table is printed to the console at the end of the run.
 
 ### Pass / WIP / FAIL classification rule
 
@@ -249,7 +247,7 @@ TQL classifications in `docs/qualification/TOOL_QUALIFICATION.md`.
 **Procedure VP-MISRA-001.**
 
 1. From the repository root, run `make misra`. This wraps
-   `scripts/utils/misra_check.sh`:
+   `scripts/checks/misra_check_inner.sh`:
    1. Walks `libs/`, `src/`, and `port/` (excluding
       `libs/third_party/`).
    2. Invokes `cppcheck --addon=misra` with project-wide includes
@@ -267,11 +265,11 @@ TQL classifications in `docs/qualification/TOOL_QUALIFICATION.md`.
    and does not yet support `--std=c23`. A qualified commercial
    checker (LDRA, Helix QAC, Polyspace) is required before SOI-3.
 
-## 6. Test procedure -- Doxygen audit (`scripts/utils/doxy_audit.py`)
+## 6. Test procedure -- Doxygen audit (`scripts/checks/doxy_audit.py`)
 
 **Procedure VP-DOXY-001.**
 
-1. From the repository root, run `python3 scripts/utils/doxy_audit.py`.
+1. From the repository root, run `python3 scripts/checks/doxy_audit.py`.
 2. The script audits every C / C++ function under `libs/`, `src/`,
    and `port/` against the Doxygen Documentation Requirements in
    `CLAUDE.md`. It writes:

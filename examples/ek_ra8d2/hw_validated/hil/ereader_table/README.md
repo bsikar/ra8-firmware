@@ -25,7 +25,7 @@ identical on host, `board_sim`, and silicon -- a sim/silicon equivalence check.
 
 ```
 make ereader_table
-scripts/hil_run_local.sh ereader_table      # flash + scrape the banner
+scripts/hil/run_local.sh ereader_table      # flash + scrape the banner
 ```
 
 ## Result (validated 2026-06-18, board_sim + host)
@@ -35,7 +35,7 @@ ereader-table-hil: boot
 ereader-table-hil: glyphs=172 geom=E3181EE6
 ```
 
-`scripts/board_sim_smoke.sh ereader_table` PASS; the identical host layout
+`scripts/sim/smoke.sh ereader_table` PASS; the identical host layout
 produces the same `geom=E3181EE6` -- byte-for-byte agreement.
 
 ## Updating the baseline

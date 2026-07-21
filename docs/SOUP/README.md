@@ -93,7 +93,7 @@ in sync with it:
   machine-readable CycloneDX 1.5 SBOM (feed to `osv-scanner`).
 
 Both are generated and validated by
-[`../../scripts/utils/gen_sbom.py`](../../scripts/utils/gen_sbom.py)
+[`../../scripts/gen/gen_sbom.py`](../../scripts/gen/gen_sbom.py)
 (`make sbom` / `make sbom-check`); its component registry is the single
 source of truth for the version / license / purl / provenance fields. When
 you bump or re-vendor a component here, update that registry and run
@@ -102,7 +102,7 @@ pre-commit hook).
 
 Commit-pinned components are additionally scanned for published CVEs every
 week: `.github/workflows/osv-scan.yml` downloads a pinned `osv-scanner`
-release and runs [`../../scripts/utils/osv_scan.sh`](../../scripts/utils/osv_scan.sh),
+release and runs [`../../scripts/checks/osv_scan.sh`](../../scripts/checks/osv_scan.sh),
 which queries OSV.dev both with the SBOM purls and with each recorded
 upstream commit (the form OSV actually resolves for git-vendored C/C++).
 

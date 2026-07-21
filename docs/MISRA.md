@@ -88,7 +88,7 @@ The first audit was run on 2026-05-02 against `libs/`, `src/`, and
 ```sh
 make misra
 # or directly
-bash scripts/utils/misra_check.sh
+bash scripts/checks/misra_check_inner.sh
 ```
 
 * Source files scanned: 158 `.c` translation units (plus headers).
@@ -182,7 +182,7 @@ The triage below tracks that decision per top-violated rule.
    `.github/workflows/firmware.yml` re-runs the audit on every push /
    PR and fails when any per-file-per-rule finding count rises above
    the committed baseline (`.github/misra-baseline.txt`, compared by
-   `scripts/utils/misra_ratchet.py`). Counts are keyed on
+   `scripts/checks/misra_ratchet.py`). Counts are keyed on
    `(file, rule)` rather than raw `file:line` findings so ordinary
    line drift does not churn the baseline; the accepted coarseness is
    that a new violation offset by a simultaneous fix of the same rule
@@ -206,10 +206,10 @@ The triage below tracks that decision per top-violated rule.
 
 | Asset                                | Purpose |
 |--------------------------------------|---------|
-| `scripts/utils/misra_check.sh`       | This audit. Generates `build/misra/results.txt` and prints per-rule tally. Invoked by `make misra`. |
-| `scripts/utils/misra_ratchet.py`     | Ratchet comparator: fails on any (file, rule) count above `.github/misra-baseline.txt`; `--update` regenerates the baseline. Invoked by `make misra-check` / `make misra-baseline` and the `misra` CI job. |
+| `scripts/checks/misra_check_inner.sh`       | This audit. Generates `build/misra/results.txt` and prints per-rule tally. Invoked by `make misra`. |
+| `scripts/checks/misra_ratchet.py`     | Ratchet comparator: fails on any (file, rule) count above `.github/misra-baseline.txt`; `--update` regenerates the baseline. Invoked by `make misra-check` / `make misra-baseline` and the `misra` CI job. |
 | `.github/misra-baseline.txt`         | Committed per-file-per-rule finding counts + the generating cppcheck version. |
-| `scripts/misra_check.sh`             | Older baseline-gated MISRA-C 2023 wrapper -- complementary, not redundant. |
+| `scripts/checks/misra_check.sh`             | Older baseline-gated MISRA-C 2023 wrapper -- complementary, not redundant. |
 | `.cppcheck-suppressions`             | Project-wide suppressions; new MISRA deviations will be added here with justification comments per the existing convention. |
 | `docs/MISRA_GAPS.csv`                | Capped per-violation list (1000 rows + tail summary). |
 | `build/misra/results.txt`            | Full TSV per-violation list (regenerated each audit). |

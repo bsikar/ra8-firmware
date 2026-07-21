@@ -24,7 +24,7 @@
  */
 /* glibc gates its posix_spawn chdir file-action and `environ` behind
  * _GNU_SOURCE. It is defined by the build (tools/media_dl/CMakeLists.txt and
- * the tools pass of scripts/clang_tidy.sh) rather than here, because a
+ * the tools pass of scripts/checks/clang_tidy.sh) rather than here, because a
  * feature-test macro only works if it precedes EVERY system header -- including
  * ones pulled in ahead of this file -- which only the compile line can guarantee. */
 #include "mdl_export.h"

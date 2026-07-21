@@ -66,7 +66,7 @@ upstream commit; `apps/` omitted).
 
 The pinned commit is queried against OSV.dev weekly by
 `.github/workflows/osv-scan.yml` (commit-range GIT queries via
-`scripts/utils/osv_scan.sh`); a published advisory affecting the pin
+`scripts/checks/osv_scan.sh`); a published advisory affecting the pin
 fails the scheduled run.
 
 ## Last review date

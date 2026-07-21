@@ -34,7 +34,7 @@ find_program(CMAKE_SIZE ${TOOLCHAIN_PREFIX}size HINTS ${_ra8_pinned_tc_bin} REQU
 find_program(CMAKE_AR ${TOOLCHAIN_PREFIX}ar HINTS ${_ra8_pinned_tc_bin} REQUIRED)
 find_program(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}ranlib HINTS ${_ra8_pinned_tc_bin} REQUIRED)
 # CMAKE_NM is consumed by the TrustZone app's post-build SG-veneer offset gate
-# (scripts/utils/check_sg_offsets.py) so it reads the SAME cross nm as the link.
+# (scripts/checks/check_sg_offsets.py) so it reads the SAME cross nm as the link.
 find_program(CMAKE_NM ${TOOLCHAIN_PREFIX}nm HINTS ${_ra8_pinned_tc_bin} REQUIRED)
 
 # Don't try to run the compiler on the host to test it -- it can't produce

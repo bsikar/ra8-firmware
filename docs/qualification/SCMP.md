@@ -78,21 +78,21 @@ explicit design goal:
 
 | Path                                       | Description                                          |
 |--------------------------------------------|------------------------------------------------------|
-| `scripts/utils/mcdc_report.sh`             | MC/DC measurement and gate.                          |
-| `scripts/utils/misra_check.sh`             | MISRA-C 2012 advisory audit.                         |
-| `scripts/utils/stack_usage_check.py`       | Stack-bound aggregator.                              |
-| `scripts/utils/cite_check.py`              | HUM citation validator.                              |
-| `scripts/utils/check_world_tags.py`        | TrustZone world-tag enforcement.                     |
-| `scripts/utils/check_obsolete_standards.py`| Rejects superseded safety-standard references.       |
-| `scripts/utils/check_no_dynamic_alloc.py`  | NASA P10 Rule 3 enforcement.                         |
-| `scripts/utils/check_mcdc_block.py`        | `@par MC/DC:` block enforcement on tests.            |
-| `scripts/utils/check-since-version.py`     | Doxygen `@since` enforcement.                        |
-| `scripts/utils/check-copyright.py`         | Copyright + SPDX header enforcement.                 |
-| `scripts/utils/roadmap_stats.py`           | ROADMAP.md summary block freshness gate.             |
-| `scripts/coverage.sh`                      | gcovr coverage gate.                                 |
-| `scripts/format_code.sh`                   | clang-format wrapper.                                |
-| `scripts/clang_tidy.sh`                    | clang-tidy wrapper.                                  |
-| `scripts/flash.sh`                         | J-Link flash wrapper (HW operations).                |
+| `scripts/report/mcdc_report.sh`             | MC/DC measurement and gate.                          |
+| `scripts/checks/misra_check_inner.sh`             | MISRA-C 2012 advisory audit.                         |
+| `scripts/checks/stack_usage_check.py`       | Stack-bound aggregator.                              |
+| `scripts/checks/cite_check.py`              | HUM citation validator.                              |
+| `scripts/checks/check_world_tags.py`        | TrustZone world-tag enforcement.                     |
+| `scripts/checks/check_obsolete_standards.py`| Rejects superseded safety-standard references.       |
+| `scripts/checks/check_no_dynamic_alloc.py`  | NASA P10 Rule 3 enforcement.                         |
+| `scripts/checks/check_mcdc_block.py`        | `@par MC/DC:` block enforcement on tests.            |
+| `scripts/checks/check-since-version.py`     | Doxygen `@since` enforcement.                        |
+| `scripts/checks/check-copyright.py`         | Copyright + SPDX header enforcement.                 |
+| `scripts/report/roadmap_stats.py`           | ROADMAP.md summary block freshness gate.             |
+| `scripts/checks/coverage.sh`                      | gcovr coverage gate.                                 |
+| `scripts/checks/format_code.sh`                   | clang-format wrapper.                                |
+| `scripts/checks/clang_tidy.sh`                    | clang-tidy wrapper.                                  |
+| `scripts/dev/flash.sh`                         | J-Link flash wrapper (HW operations).                |
 | `scripts/git/pre-commit`                   | Pre-commit hook (the authoritative gate suite).      |
 
 ### 1.6 Documentation
@@ -383,7 +383,7 @@ A bit-exact rebuild of any historical state is achieved by:
 
 ### 7.2 Flash procedure
 
-- Tool: `JLinkExe` invoked via `scripts/flash.sh <hex-path>`.
+- Tool: `JLinkExe` invoked via `scripts/dev/flash.sh <hex-path>`.
 - Probe: on-board J-Link OB SN 1086567198 on the EK-RA8D2.
 - Verification: the J-Link `verify` command is the post-flash
   readback. A flash run that fails verify is treated as a load

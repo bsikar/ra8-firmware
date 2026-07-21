@@ -58,7 +58,7 @@ Status markers:
 
 Sections under each peripheral copy the 14-checkbox template
 verbatim. The `Summary` block at the top is rewritten
-deterministically by `scripts/utils/roadmap_stats.py` in
+deterministically by `scripts/report/roadmap_stats.py` in
 pre-commit -- do not hand-edit it.
 
 ## Summary
@@ -132,10 +132,10 @@ Status: `[x]` DONE. Track of deliverables themselves; the
 - [x] `docs/reference/CHAPTER_MAP.md` -- HUM chapter -> page-range map, hand-verified, Security/TrustZone section.
 - [x] `docs/ARCHITECTURE.md` -- six-ring diagram, world matrix, dependency rule, decision flowchart.
 - [x] `docs/ROADMAP.md` -- this file.
-- [x] `scripts/utils/build_chapter_map.sh` -- pdftotext-driven chapter extractor.
-- [x] `scripts/utils/cite_check.py` -- HUM citation validator (warn mode).
-- [x] `scripts/utils/check_world_tags.py` -- `{World: ...}` tag validator.
-- [x] `scripts/utils/roadmap_stats.py` -- summary block rewriter.
+- [x] `scripts/gen/build_chapter_map.sh` -- pdftotext-driven chapter extractor.
+- [x] `scripts/checks/cite_check.py` -- HUM citation validator (warn mode).
+- [x] `scripts/checks/check_world_tags.py` -- `{World: ...}` tag validator.
+- [x] `scripts/report/roadmap_stats.py` -- summary block rewriter.
 - [x] `scripts/git/pre-commit` extended with cite_check + check_world_tags + roadmap_stats hooks.
 - [x] promoted to `[x]` DONE in the wave table (verify-gates pass succeeded: 41/41 ctests, 98.0% lines / 92.3% branches coverage, cross-build ELF in budget, 0 doxygen warnings).
 
@@ -1406,7 +1406,7 @@ All previously-tracked roadmap items closed. The repository is at the
   `stack_usage_check.py` (warn-only, expected SOFT findings in
   `libs/third_party/miniz` and `libs/ra8_epub` only).
 - **Test suite**: 190/190 host tests passing
-  (`bash scripts/test-docker.sh`).
+  (`bash scripts/ci/test-docker.sh`).
 - **Reachable MC/DC**: 100.00% (`make mcdc` --
   473/473 reachable decisions covered, 58 deactivated decisions
   documented in `docs/MCDC_DEACTIVATIONS.md`); absolute MC/DC 89.08%.

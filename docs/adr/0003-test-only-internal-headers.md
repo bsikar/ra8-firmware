@@ -65,7 +65,7 @@ musl's `__*` namespace, some CMSIS driver test suites).
   "test-only, do not call from production".
 * **MC/DC tests cite the source file:line** of the compound
   decision in their `@par MC/DC:` block. The static gate
-  `scripts/utils/check_new_compound_has_mcdc.py` matches
+  `scripts/checks/check_new_compound_has_mcdc.py` matches
   newly-added `&&`/`||` against test functions whose
   `@par MC/DC:` block names the same source location, so a
   helper exposed via internal header still satisfies the
@@ -112,9 +112,9 @@ musl's `__*` namespace, some CMSIS driver test suites).
   prefix definition).
 * `docs/RING_AND_WORLD.md` -- header tagging system that gates
   who can include what.
-* `scripts/utils/check_world_tags.py` -- the include-policy
+* `scripts/checks/check_world_tags.py` -- the include-policy
   enforcer.
-* `scripts/utils/check_new_compound_has_mcdc.py` -- the static
+* `scripts/checks/check_new_compound_has_mcdc.py` -- the static
   gate that ties new compound decisions to test vectors via
   source citation.
 * `docs/MCDC.md` -- how MC/DC vectors cite the helpers they

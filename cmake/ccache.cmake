@@ -55,7 +55,7 @@
 # the cache would be a poor trade for build time on a gate that runs once per
 # push. MC/DC (clang source-based profiles) is excluded for the same reason.
 #
-# scripts/clang_tidy.sh and tests/build_tests.sh already pass -DRA8_COVERAGE=OFF
+# scripts/checks/clang_tidy.sh and tests/build_tests.sh already pass -DRA8_COVERAGE=OFF
 # for the same underlying reason, so the only builds this opts out are the two
 # that genuinely want instrumentation.
 #

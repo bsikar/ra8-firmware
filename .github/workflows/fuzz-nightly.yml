@@ -5,7 +5,7 @@
 # harness ~30 seconds -- enough to catch a build break, not enough to find
 # parser bugs. This workflow deep-runs every registered harness (the
 # RA8_FUZZ_TARGETS registry in tests/fuzz/CMakeLists.txt, consumed through
-# scripts/utils/run_fuzz.sh --all) with a real per-target budget, fails on
+# scripts/checks/run_fuzz.sh --all) with a real per-target budget, fails on
 # any crash, and uploads the crash reproducers from tests/build-fuzz/crashes/.
 #
 # libFuzzer is clang-only. run_fuzz.sh auto-selects the first clang on PATH

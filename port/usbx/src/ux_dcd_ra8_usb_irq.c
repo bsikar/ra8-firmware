@@ -248,7 +248,7 @@ static void internal_irq_record_snapshot(uint16_t intsts0)
  *
  * THROUGHPUT NOTE.
  * On hardware this echo loop sustains ~2.66 MB/s one-way at HS and
- * ~360 KB/s at FS (measured via scripts/usb_stream_bench.py against
+ * ~360 KB/s at FS (measured via scripts/hil/usb/stream_bench.py against
  * Linux cdc_acm). That is ~66 % of the per-microframe scheduling
  * ceiling for HS (4 MB/s at 1 packet/125 us microframe) and ~35 % of
  * FS bulk wire. The bottleneck is NOT this code path -- it is the

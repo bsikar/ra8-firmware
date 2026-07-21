@@ -561,7 +561,7 @@ macro(ra8_add_app)
       # budget, but an inherent property of the vendored decoder we cannot shrink
       # without editing SOUP. The blanket -w hid this too; suppress only the
       # warning here. -fstack-usage still emits the .su data, so the real
-      # project-wide stack-bound proof (scripts/utils/stack_usage_check.py over
+      # project-wide stack-bound proof (scripts/checks/stack_usage_check.py over
       # the ARM .su files) still sees these frames.
       -Wno-stack-usage
   )
@@ -583,7 +583,7 @@ macro(ra8_add_app)
 
   # ---- prebuilt universal-library fast path (CI cross-build) ------------
   # When RA8_SHARED_LIB_ARCHIVE points at a prebuilt libra8_shared_<board>.a
-  # (scripts/build_all_examples.sh sets it for the "Cross-build all apps"
+  # (scripts/builders/all_examples.sh sets it for the "Cross-build all apps"
   # gate), link that archive instead of recompiling the ~180 universal
   # first-party sources (ra8_core / ra8_hal / ra8_net_pal / ra8_usb_pal /
   # board / secure_app) into THIS executable -- they are compiled once for
@@ -938,7 +938,7 @@ function(ra8_add_cpu1_image)
   # emitted no .su stack data. Apply the same first-party warning set the M85
   # build uses (kept in step with cmake/ra8_warnings.cmake) plus -Wstack-usage
   # + -fstack-usage so cpu1_main.c is held to the same safety bar and feeds the
-  # .su aggregator (scripts/utils/stack_usage_check.py).
+  # .su aggregator (scripts/checks/stack_usage_check.py).
   #
   # Applied PER-SOURCE to the helper SOURCES -- NOT target-level -- on purpose:
   # an app may bolt extra translation units onto the CPU1 elf with its own

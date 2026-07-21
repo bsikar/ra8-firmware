@@ -17,7 +17,7 @@ cmake_minimum_required(VERSION 3.20)
 #
 # Or via:
 #
-#     bash scripts/clang_tidy.sh --check
+#     bash scripts/checks/clang_tidy.sh --check
 #
 
 project(
@@ -66,7 +66,7 @@ option(RA8_MCDC "Emit clang source-based coverage with MC/DC (DO-178C Level B)" 
 #
 # We probe the host compiler at configure time. If MC/DC is available
 # we wire it in for first-party sources only (third_party/ is opted
-# out -- see scripts/utils/mcdc_report.sh for the SOUP exemption
+# out -- see scripts/report/mcdc_report.sh for the SOUP exemption
 # policy). If MC/DC is unavailable we fall back to gcc 14's
 # `-fcondition-coverage` (decision/condition coverage, NOT MC/DC) and
 # print a loud warning so callers know they are NOT measuring MC/DC.

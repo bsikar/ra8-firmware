@@ -37,7 +37,7 @@ From the repo root:
 
 ```sh
 make threadx_mpu_partition_demo
-bash scripts/flash.sh build/threadx_mpu_partition_demo/threadx_mpu_partition_demo.hex
+bash scripts/dev/flash.sh build/threadx_mpu_partition_demo/threadx_mpu_partition_demo.hex
 ```
 
 ## BSP usage

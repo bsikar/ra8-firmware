@@ -32,7 +32,7 @@ sim/silicon equivalence check.
 
 ```
 make ereader_chrome
-scripts/hil_run_local.sh ereader_chrome      # flash + scrape the banner
+scripts/hil/run_local.sh ereader_chrome      # flash + scrape the banner
 ```
 
 ## Result (validated 2026-06-18, EK-RA8D2 + J-Link OB)

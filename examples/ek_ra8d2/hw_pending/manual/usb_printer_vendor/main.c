@@ -40,7 +40,7 @@
  * - **board_sim (SIL, headless):** the emulated chapter-9 host walks the
  *   enumeration script against the polled responder; the run reaches
  *   ``device CONFIGURED``. Gated by
- *   ``scripts/board_sim_smoke.sh usb_printer_vendor``.
+ *   ``scripts/sim/smoke.sh usb_printer_vendor``.
  * - **Hardware (TODO):** the print-job -> UART echo needs a real host print
  *   subsystem (CUPS / usblp) driving the printer interface, and the vendor
  *   bulk loopback needs a host-side libusb script; both are marked

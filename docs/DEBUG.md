@@ -30,13 +30,13 @@ regardless of tier.
 make blink
 
 # Flash
-./scripts/flash.sh <app-dir>/build/<app>.hex
+./scripts/dev/flash.sh <app-dir>/build/<app>.hex
 
 # Debug (CLI, JLinkGDBServer + arm-none-eabi-gdb)
-./scripts/debug.sh <app-dir>/build/<app>.elf
+./scripts/dev/debug.sh <app-dir>/build/<app>.elf
 
 # Debug (GUI, Ozone)
-./scripts/ozone.sh <app-dir>/build/<app>.elf
+./scripts/dev/ozone.sh <app-dir>/build/<app>.elf
 ```
 
 Per-app Makefiles wrap these:
@@ -70,20 +70,20 @@ brew install --cask gcc-arm-embedded   # for arm-none-eabi-gdb
 
 ```sh
 make blink
-./scripts/openocd_flash.sh <app-dir>/build/<app>.hex
+./scripts/dev/openocd_flash.sh <app-dir>/build/<app>.hex
 ```
 
 Under the hood:
 
 ```sh
-openocd -f scripts/openocd/ek-ra8d2.cfg \
+openocd -f scripts/dev/openocd/ek-ra8d2.cfg \
         -c "program <app-dir>/build/<app>.hex verify reset exit"
 ```
 
 ### Debug
 
 ```sh
-./scripts/openocd_debug.sh <app-dir>/build/<app>.elf
+./scripts/dev/openocd_debug.sh <app-dir>/build/<app>.elf
 ```
 
 This starts `openocd` in the background (GDB server on `localhost:3333`)
@@ -95,7 +95,7 @@ that drive gdb themselves):
 
 ```sh
 # Terminal 1
-openocd -f scripts/openocd/ek-ra8d2.cfg
+openocd -f scripts/dev/openocd/ek-ra8d2.cfg
 
 # Terminal 2
 arm-none-eabi-gdb <app-dir>/build/<app>.elf \
@@ -108,13 +108,13 @@ arm-none-eabi-gdb <app-dir>/build/<app>.elf \
 
 ## Known limitations of the OpenOCD path
 
-The board config at `scripts/openocd/ek-ra8d2.cfg` documents these inline,
+The board config at `scripts/dev/openocd/ek-ra8d2.cfg` documents these inline,
 but in summary:
 
 - **MRAM flash driver.** The RA8D2 boots from MRAM at `0x02000000`. There is
   no upstream OpenOCD driver for the RA-series MRAM controller yet. RAM-resident
   loads (and `load` from gdb into SRAM) work today; persistent MRAM
-  programming may fall back to the SEGGER path (`scripts/flash.sh`) until a
+  programming may fall back to the SEGGER path (`scripts/dev/flash.sh`) until a
   driver lands. See the `TODO: confirm MRAM unlock` block in the cfg.
 - **Cortex-M85 CPUID.** OpenOCD 0.12+ recognises the M85; older builds will
   attach but log "Cortex-M unknown".

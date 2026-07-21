@@ -16,7 +16,7 @@
 #
 # Per-harness longer sessions:
 #
-#     bash scripts/utils/run_fuzz.sh fuzz_ra8_jpeg_sw 600
+#     bash scripts/checks/run_fuzz.sh fuzz_ra8_jpeg_sw 600
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -158,13 +158,13 @@ add_custom_target(
 )
 
 # Seed corpora live under tests/fuzz/corpus/<target>/ and are
-# (re-)materialised by scripts/utils/init_fuzz_corpora.sh. Both
-# `make fuzz` and scripts/utils/run_fuzz.sh invoke that script
+# (re-)materialised by scripts/checks/init_fuzz_corpora.sh. Both
+# `make fuzz` and scripts/checks/run_fuzz.sh invoke that script
 # before running a harness, then pass the corpus directory as a
 # positional argument to libFuzzer. See docs/FUZZING.md.
 add_custom_target(
   ra8_fuzz_seed_corpora
-  COMMAND bash ${FW_ROOT}/scripts/utils/init_fuzz_corpora.sh
+  COMMAND bash ${FW_ROOT}/scripts/checks/init_fuzz_corpora.sh
   WORKING_DIRECTORY ${FW_ROOT}
   COMMENT "Seeding libFuzzer corpora under tests/fuzz/corpus/"
 )

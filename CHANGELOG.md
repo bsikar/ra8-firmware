@@ -113,8 +113,8 @@ three weeks.
   IPC/audio/clock samples. Hardware-flashable example sweeps added
   six new apps in one batch (Sweep 7).
 - **Tooling**: `tools/ra8_qe` JSON-driven configurator (Renesas QE-style),
-  `scripts/openocd` GPL alternative to the SEGGER flash/debug path,
-  `scripts/build_all_examples.sh`, Doxygen build target, roadmap dashboard,
+  `scripts/dev/openocd` GPL alternative to the SEGGER flash/debug path,
+  `scripts/builders/all_examples.sh`, Doxygen build target, roadmap dashboard,
   cppcheck/MISRA helpers, `make example-<name>` targets, `make test-docker`
   for macOS host-test runtime, and `VERSION`-driven `@since` consistency
   checking.
@@ -234,7 +234,7 @@ three weeks.
 - **CI / dev infrastructure**: `make test-docker` for macOS host-test
   runtime via colima; per-app boot refactor; pre-commit hook covers ASCII,
   format, tidy, and C23 patterns; `cite_check`, `check_world_tags`, and
-  `check-since-version` utilities under `scripts/utils/`.
+  `check-since-version` utilities under `scripts/checks/`.
 - **Coverage gate + Doxygen build + test backfill** landed as the closure
   pass for the v0.1.0 baseline.
 - **Wave-N milestone references** stripped from source comments and docs in
