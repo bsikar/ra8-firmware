@@ -80,8 +80,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-HIL_ALL = REPO_ROOT / "scripts" / "hil_all.sh"
-SIL_ALL = REPO_ROOT / "scripts" / "sil_all.sh"
+HIL_ALL = REPO_ROOT / "scripts" / "hil" / "all.sh"
+SIL_ALL = REPO_ROOT / "scripts" / "sim" / "sil_all.sh"
 
 # hil_discover_apps() skips this file when walking a hil/ directory.
 DISCOVERY_SKIP = "README.md"
