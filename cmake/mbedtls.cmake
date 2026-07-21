@@ -120,7 +120,7 @@ if(NOT EXISTS "${_RA8_TFPSA_CORE_DIR}/psa_crypto_driver_wrappers.h")
       "RA8_USE_MBEDTLS=ON but the generated PSA driver wrapper header "
       "${_RA8_TFPSA_CORE_DIR}/psa_crypto_driver_wrappers.h is missing. "
       "Regenerate it via "
-      "`python scripts/generate_driver_wrappers.py <out>` from the "  # PATHREF-OK: tf-psa-crypto upstream tree, not this repo
+      "`python scripts/generate_driver_wrappers.py <out>` from the " # PATHREF-OK: upstream tree
       "tf-psa-crypto source tree (requires the `framework` git "
       "submodule + jsonschema + jinja2)."
   )
