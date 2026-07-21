@@ -51,8 +51,9 @@ import re
 import struct
 import sys
 import zlib
+from collections.abc import Callable
 from pathlib import Path
-from typing import NoReturn
+from typing import IO, NoReturn
 from zipfile import ZipFile
 
 from PIL import Image
@@ -87,7 +88,7 @@ CONT_TABLE_OFF = 24
 CONT_ENTRY_BYTES = 8
 
 
-def natural_key(name):
+def natural_key(name: str) -> list[int | str]:
     """Sort key ordering embedded integers numerically (page2 < page10).
 
     ``re.split`` with a capturing digit group always alternates non-digit and
@@ -97,7 +98,7 @@ def natural_key(name):
     return [int(tok) if tok.isdigit() else tok.lower() for tok in re.split(r"(\d+)", name)]
 
 
-def is_page_entry(name):
+def is_page_entry(name: str) -> bool:
     """Whether an archive entry is a readable page image.
 
     Rejects directory entries, hidden/AppleDouble files (``.foo``, ``._foo``),
@@ -113,7 +114,7 @@ def is_page_entry(name):
     return posixpath.splitext(base)[1].lower() in IMAGE_EXTS
 
 
-def page_dom(name):
+def page_dom(name: str) -> dict[str, object]:
     """One page's synthetic chapter DOM: ``<body><img src=NAME alt=BASE/></body>``.
 
     Mirrors the fixed-layout EPUB shape so ``ra8_reflow``'s existing image path
@@ -128,7 +129,14 @@ def page_dom(name):
     return {"tag": "body", "attrs": [], "children": [img]}
 
 
-def compile_cbz(src, *, title="", author="", rtl=False, max_image_edge=0):
+def compile_cbz(
+    src: str | Path | IO[bytes],
+    *,
+    title: str = "",
+    author: str = "",
+    rtl: bool = False,
+    max_image_edge: int = 0,
+) -> tuple[bytes, dict[str, str], BlobBuilder]:
     """Compile a CBZ (path or file object) to a flat RABOOK1 blob.
 
     Returns ``(blob, meta, builder)`` like ``epub_compile.compile_epub``.
@@ -175,7 +183,7 @@ def _require(cond: bool, what: str) -> None:
         _fail(f"selftest FAILED: {what}")
 
 
-def unwrap_container(data):
+def unwrap_container(data: bytes) -> bytes:
     """Inverse of ``wrap_container``: inflate an RBKC file back to the flat blob."""
     if data[:CONT_MAGIC_LEN] != CONT_MAGIC:
         msg = "bad container magic"
@@ -193,7 +201,9 @@ def unwrap_container(data):
     return blob
 
 
-def _parse_blob(blob):
+def _parse_blob(
+    blob: bytes,
+) -> tuple[dict[str, int], list[tuple], list[tuple], Callable[[int], str]]:
     """Decode the header + chapter/node/attr/image tables for the selftest."""
     fields = struct.unpack_from(HEADER_FMT, blob, 0)
     hdr = {
@@ -213,7 +223,7 @@ def _parse_blob(blob):
         "crc32": fields[23],
     }
 
-    def string_at(off):
+    def string_at(off: int) -> str:
         start = hdr["string_off"] + off
         return blob[start : blob.index(b"\x00", start)].decode("utf-8")
 
@@ -228,12 +238,12 @@ def _parse_blob(blob):
     return hdr, chapters, images, string_at
 
 
-def _node_at(blob, node_off, idx):
+def _node_at(blob: bytes, node_off: int, idx: int) -> tuple:
     """Unpack DOM node ``idx`` from the node table."""
     return struct.unpack_from(NODE_FMT, blob, node_off + (idx * NODE_BYTES))
 
 
-def _selftest_build_cbz():
+def _selftest_build_cbz() -> tuple[io.BytesIO, dict[str, tuple[int, int]]]:
     """Build the in-memory fixture CBZ: 3 pages + entries the filter must drop."""
     dims = {"vol1/p1.png": (7, 5), "vol1/p2.jpeg": (4, 9), "vol1/p10.png": (3, 3)}
     buf = io.BytesIO()
@@ -253,7 +263,7 @@ def _selftest_build_cbz():
     return buf, dims
 
 
-def _selftest_check_pages(blob, dims):
+def _selftest_check_pages(blob: bytes, dims: dict[str, tuple[int, int]]) -> None:
     """Check page order, cover, dims, packing, and the per-page DOM shape."""
     hdr, chapters, images, string_at = _parse_blob(blob)
     want = ["vol1/p1.png", "vol1/p2.jpeg", "vol1/p10.png"]
@@ -285,7 +295,7 @@ def _selftest_check_pages(blob, dims):
         _require(pairs.get("src") == name, f"img src == image id [{i}]")
 
 
-def _selftest():
+def _selftest() -> int:
     """Round-trip self-check; exits non-zero on the first failed check."""
     fixture, dims = _selftest_build_cbz()
     blob, meta, bb = compile_cbz(fixture, title="SelfTest Manga", rtl=True)
@@ -311,7 +321,7 @@ def _selftest():
     return 0
 
 
-def main():
+def main() -> int:
     """Parse the command line and write the RBKC-wrapped .rabook to disk.
 
     `--selftest` short-circuits everything else and ignores the positional

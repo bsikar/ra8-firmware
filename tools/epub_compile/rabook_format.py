@@ -40,7 +40,7 @@ CONTAINER_MAGIC = b"RBKC"
 CONTAINER_CHUNK_BYTES = 65536
 
 
-def wrap_container(blob, chunk_bytes=CONTAINER_CHUNK_BYTES):
+def wrap_container(blob: bytes, chunk_bytes: int = CONTAINER_CHUNK_BYTES) -> bytes:
     """Wrap a flat RABOOK1 blob in the chunked RBKC container."""
     if not blob:
         msg = "empty blob"
