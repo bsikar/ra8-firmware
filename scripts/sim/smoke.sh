@@ -42,6 +42,28 @@ sim_dir="$ROOT/tools/board_sim"
 # shellcheck source=scripts/sim/smoke_run.sh
 . "$ROOT/scripts/sim/smoke_run.sh"
 
+# An app must never present as a BLANK. If the runner dies mid-app -- a helper
+# leaking a conditional's status under `set -e`, a stray `exit`, anything --
+# the app name has already been printed with no newline and the suite exits
+# non-zero having said nothing about which app or why. That is strictly worse
+# than a loud failure: it is unactionable, and with a zero exit it would be a
+# silent false green.
+#
+# touch_demo shipped exactly that. This trap turns the blank into a named
+# runner defect, so the failure mode can only ever be legible.
+smoke_current_app=""
+smoke_abort_guard() {
+  local rc=$?
+  if [ -n "$smoke_current_app" ]; then
+    printf '\n'
+    echo "NO VERDICT for '$smoke_current_app' -- the runner exited (status $rc) without"
+    echo "  producing a result line. This is a RUNNER defect, not an app failure:"
+    echo "  a helper leaked a conditional's status and 'set -e' aborted mid-app."
+    echo "  Run 'scripts/sim/smoke.sh --selftest' -- it asserts this class."
+  fi
+  return 0
+}
+
 # --selftest: prove the gate is WIRED before trusting a green run.
 #
 # This gate's failure mode is not a wrong verdict, it is a missing one. Every
@@ -98,6 +120,64 @@ if [ "${1:-}" = "--selftest" ]; then
     sel_fail=1
   fi
   unset 'SMOKE_CLASS_VERDICTS[${#SMOKE_CLASS_VERDICTS[@]}-1]'
+  # --- a runner helper must not leak a conditional's status as its own ----
+  #
+  # smoke_capture_run's retry loop ends in `grep -qF "$want" && break`. INLINE
+  # that failure is exempt from `set -e` (it is a non-final command of an &&
+  # list). Behind a FUNCTION boundary the same status becomes the function's
+  # return value, and calling it as a plain statement aborts the caller
+  # mid-line: the app name is already printed, the verdict never is, and the
+  # suite exits 1 with no diagnosis at all.
+  #
+  # That is not hypothetical -- it is what the smoke.sh split shipped, and
+  # touch_demo hit it in CI. Assert the helper returns 0 when the banner does
+  # NOT match, which is the case that produced the blank.
+  probe_rc=0
+  (
+    sim=/bin/echo
+    elf=""
+    extra=()
+    uart_expect() { echo "a-banner-no-run-will-ever-print"; }
+    periodic_tick_apps=""
+    set +e
+    smoke_capture_run "probe_app" >/dev/null 2>&1
+    exit $?
+  ) || probe_rc=$?
+  if [ "$probe_rc" -ne 0 ]; then
+    echo "  FAIL smoke_capture_run returned $probe_rc when the banner did not match;"
+    echo "       behind a function boundary that aborts the caller mid-line, so the"
+    echo "       app prints its name and NO verdict (the touch_demo blank)"
+    sel_fail=1
+  fi
+
+  # --- the blank itself must be impossible --------------------------------
+  #
+  # Even if some future helper reintroduces the leak, an app may not present
+  # as an empty line. Drive the abort guard directly: a runner that dies with
+  # an app in flight has to name it.
+  guard_out="$(
+    smoke_current_app="probe_app"
+    smoke_abort_guard 2>&1 || true
+  )"
+  case "$guard_out" in
+    *"NO VERDICT for 'probe_app'"*) ;;
+    *)
+      echo "  FAIL the abort guard did not name the in-flight app; a runner death"
+      echo "       would present as a blank line again. Got: '$guard_out'"
+      sel_fail=1
+      ;;
+  esac
+  # ...and must stay silent when no app is in flight, or every clean run ends
+  # with a spurious failure report.
+  quiet_out="$(
+    smoke_current_app=""
+    smoke_abort_guard 2>&1 || true
+  )"
+  if [ -n "$quiet_out" ]; then
+    echo "  FAIL the abort guard fired with no app in flight: '$quiet_out'"
+    sel_fail=1
+  fi
+
   if [ "$sel_fail" -ne 0 ]; then
     echo "smoke.sh: --selftest FAILED"
     exit 1
@@ -180,8 +260,13 @@ for app in "${apps[@]}"; do
 done
 
 fail=0
+
+trap smoke_abort_guard EXIT
+
 for app in "${apps[@]}"; do
+  smoke_current_app="$app"
   smoke_run_app "$app"
+  smoke_current_app=""
 done
 
 [ -n "$sd_image" ] && rm -f "$sd_image"
