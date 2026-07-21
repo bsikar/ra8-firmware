@@ -21,6 +21,8 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
+from typing import TYPE_CHECKING
 
 from docattach_lex import (
     _blank_comments_and_literals,
@@ -31,6 +33,9 @@ from docattach_lex import (
 from docattach_model import DocBlock, DocTags, Finding, parse_tags
 from docattach_scope import REPO_ROOT
 
+if TYPE_CHECKING:  # pragma: no cover -- libclang is imported at runtime by _require_libclang
+    from clang.cindex import Cursor, TranslationUnit
+
 #: A symbol must appear at least this many times (declaration + definition)
 #: before a forward-declaration-vs-definition split can even exist.
 MIN_REDECLARATIONS = 2
@@ -39,7 +44,7 @@ MIN_REDECLARATIONS = 2
 # ---------------------------------------------------------------------------
 # libclang
 # ---------------------------------------------------------------------------
-def _require_libclang():
+def _require_libclang() -> ModuleType:
     """Import libclang or exit(2).
 
     Deliberately fatal.  ``check_annotations.py`` used to ``exit(0)`` here,
@@ -60,7 +65,7 @@ def _require_libclang():
     return cindex
 
 
-def _include_args(cindex) -> list[str]:  # noqa: ARG001  # kept for signature parity
+def _include_args(cindex: ModuleType) -> list[str]:  # noqa: ARG001  # kept for signature parity
     """``-I`` flags for every first-party header root."""
     roots: list[Path] = []
     for pattern in (
@@ -80,7 +85,7 @@ def _include_args(cindex) -> list[str]:  # noqa: ARG001  # kept for signature pa
 # ---------------------------------------------------------------------------
 # AST pass
 # ---------------------------------------------------------------------------
-def _param_names(cursor, cindex) -> list[str]:
+def _param_names(cursor: Cursor, cindex: ModuleType) -> list[str]:
     """Named parameters of a function cursor, in order."""
     return [
         a.spelling
@@ -89,7 +94,7 @@ def _param_names(cursor, cindex) -> list[str]:
     ]
 
 
-def _is_macro_expanded(cursor) -> bool:
+def _is_macro_expanded(cursor: Cursor) -> bool:
     """True when the declaration came out of a macro expansion.
 
     X-macro tables and declaration-generating macros produce cursors whose
@@ -102,7 +107,9 @@ def _is_macro_expanded(cursor) -> bool:
         return False
 
 
-def typedef_names_for_anonymous(tu, cindex, own_file: str) -> dict[tuple[int, int], str]:
+def typedef_names_for_anonymous(
+    tu: TranslationUnit, cindex: ModuleType, own_file: str
+) -> dict[tuple[int, int], str]:
     """Map each anonymous record/enum's location to the typedef that names it.
 
     ``typedef struct { ... } sim_args_t;`` -- the C23 shape this codebase uses
@@ -128,7 +135,7 @@ def typedef_names_for_anonymous(tu, cindex, own_file: str) -> dict[tuple[int, in
     return out
 
 
-def _display_name(cursor, anon_names: dict[tuple[int, int], str]) -> str:
+def _display_name(cursor: Cursor, anon_names: dict[tuple[int, int], str]) -> str:
     """The name a doc block would reasonably use for ``cursor``."""
     spelling = cursor.spelling or ""
     if spelling and "(unnamed" not in spelling and "(anonymous" not in spelling:
@@ -150,7 +157,9 @@ class FileCtx:
     decl_text: list[str]
 
 
-def _check_names(cursor, ctx: FileCtx, tags: DocTags, name: str, line: int) -> list[Finding]:
+def _check_names(
+    cursor: Cursor, ctx: FileCtx, tags: DocTags, name: str, line: int
+) -> list[Finding]:
     """DOC005 -- the block names one symbol while sitting on another."""
     findings: list[Finding] = []
     for kind, ref in tags.explicit_refs:
@@ -189,7 +198,7 @@ def _check_names(cursor, ctx: FileCtx, tags: DocTags, name: str, line: int) -> l
     return findings
 
 
-def check_symbol(cursor, ctx: FileCtx) -> list[Finding]:
+def check_symbol(cursor: Cursor, ctx: FileCtx) -> list[Finding]:
     """Run every attachment check for one documented declaration.
 
     Attachment is resolved **positionally** (``attached``), never via
@@ -225,7 +234,9 @@ def check_symbol(cursor, ctx: FileCtx) -> list[Finding]:
     return findings
 
 
-def _check_signature(cursor, ctx: FileCtx, tags: DocTags, name: str, line: int) -> list[Finding]:
+def _check_signature(
+    cursor: Cursor, ctx: FileCtx, tags: DocTags, name: str, line: int
+) -> list[Finding]:
     """DOC001/DOC002/DOC003 -- the block's claims against the real signature."""
     cindex, path = ctx.cindex, ctx.path
     findings: list[Finding] = []
@@ -308,7 +319,7 @@ DECL_PREFIX_RE = re.compile(
 )
 
 
-def _decl_block(cursor, attached: dict[int, DocBlock], lines: list[str]) -> DocBlock | None:
+def _decl_block(cursor: Cursor, attached: dict[int, DocBlock], lines: list[str]) -> DocBlock | None:
     """The doc block lexically preceding ``cursor``, or None.
 
     A declaration can start well above ``cursor.location.line``.  libclang's
@@ -338,7 +349,7 @@ def _decl_block(cursor, attached: dict[int, DocBlock], lines: list[str]) -> DocB
     return None
 
 
-def _ref_in_declaration(cursor, ref: str, decl_text: list[str]) -> bool:
+def _ref_in_declaration(cursor: Cursor, ref: str, decl_text: list[str]) -> bool:
     """True when ``ref`` appears in the source lines ``cursor`` spans."""
     try:
         lo = cursor.extent.start.line
@@ -349,13 +360,35 @@ def _ref_in_declaration(cursor, ref: str, decl_text: list[str]) -> bool:
     return any(pat.search(ln) for ln in decl_text[lo - 1 : hi])
 
 
-def _decls_between(all_decls: list, first, second) -> bool:
+def _decls_between(all_decls: list[Cursor], first: Cursor, second: Cursor) -> bool:
     """True when some *other* function is declared between ``first`` and ``second``."""
     lo, hi = first.location.line, second.location.line
     return any(lo < c.location.line < hi and c.spelling != first.spelling for c in all_decls)
 
 
-def check_forward_decl_blocks(tu, cindex, path: str, own_file: str, text: str) -> list[Finding]:
+def _own_function_decls(
+    tu: TranslationUnit, cindex: ModuleType, own_file: str
+) -> dict[str, list[Cursor]]:
+    """Group this file's own function declarations by symbol name.
+
+    Cursors from #included headers are dropped by comparing REAL paths, so a
+    symlinked or relatively-spelled include cannot smuggle a declaration in and
+    make an out-of-file prototype look like an in-file forward declaration.
+    """
+    decls: dict[str, list[Cursor]] = {}
+    for cursor in tu.cursor.walk_preorder():
+        if cursor.kind != cindex.CursorKind.FUNCTION_DECL:
+            continue
+        loc = cursor.location.file
+        if loc is None or os.path.realpath(loc.name) != own_file:
+            continue
+        decls.setdefault(cursor.spelling, []).append(cursor)
+    return decls
+
+
+def check_forward_decl_blocks(
+    tu: TranslationUnit, cindex: ModuleType, path: str, own_file: str, text: str
+) -> list[Finding]:
     """DOC006 -- a block on a forward declaration whose definition is bare.
 
     Scoped to a single file on purpose.  A block on a *header* declaration with
@@ -365,14 +398,7 @@ def check_forward_decl_blocks(tu, cindex, path: str, own_file: str, text: str) -
     """
     attached = blocks_by_attach_line(text)
     decl_text = text.splitlines()
-    decls: dict[str, list] = {}
-    for cursor in tu.cursor.walk_preorder():
-        if cursor.kind != cindex.CursorKind.FUNCTION_DECL:
-            continue
-        loc = cursor.location.file
-        if loc is None or os.path.realpath(loc.name) != own_file:
-            continue
-        decls.setdefault(cursor.spelling, []).append(cursor)
+    decls = _own_function_decls(tu, cindex, own_file)
 
     all_decls = sorted(
         (c for group in decls.values() for c in group), key=lambda c: c.location.line
@@ -424,7 +450,7 @@ def check_forward_decl_blocks(tu, cindex, path: str, own_file: str, text: str) -
     return findings
 
 
-def check_file(path: Path, cindex, args: list[str]) -> list[Finding]:
+def check_file(path: Path, cindex: ModuleType, args: list[str]) -> list[Finding]:
     """Run the lexical + AST checks over one file."""
     # Ad-hoc runs may name a file outside the repo (bisecting a historical
     # revision into a scratch dir, for one); fall back to the absolute path
@@ -454,7 +480,9 @@ def check_file(path: Path, cindex, args: list[str]) -> list[Finding]:
     return _dedupe(findings)
 
 
-def _check_declarations(tu, cindex, rel: str, own: str, text: str) -> list[Finding]:
+def _check_declarations(
+    tu: TranslationUnit, cindex: ModuleType, rel: str, own: str, text: str
+) -> list[Finding]:
     """Run the per-symbol checks over every declaration this file owns."""
     interesting = {
         cindex.CursorKind.FUNCTION_DECL,

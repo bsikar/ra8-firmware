@@ -8,8 +8,11 @@ compiler proves nothing about the compiler that ships.
 SPDX-License-Identifier: MIT
 """
 
+from __future__ import annotations
+
 import posixpath
 import sys
+from pathlib import Path
 from zipfile import ZipFile
 
 from epub_dom import DomBuilder, find_first
@@ -17,7 +20,11 @@ from epub_package import parse_opf, parse_toc
 from rabook_blob import MAX_IMAGE_EDGE, SKIP_IMAGES, BlobBuilder
 
 
-def compile_epub(path, max_image_edge=MAX_IMAGE_EDGE, skip_images=SKIP_IMAGES):
+def compile_epub(
+    path: str | Path,
+    max_image_edge: int = MAX_IMAGE_EDGE,
+    skip_images: bool = SKIP_IMAGES,
+) -> tuple[bytes, dict[str, str], BlobBuilder]:
     """Compile one EPUB into an inflated .rabook blob.
 
     Assembles in dependency order -- stylesheets, then images (so the cover
@@ -60,7 +67,7 @@ def compile_epub(path, max_image_edge=MAX_IMAGE_EDGE, skip_images=SKIP_IMAGES):
         labels = parse_toc(zf, opf_dir, manifest)
         names = set(zf.namelist())
 
-        def resolve(href):
+        def resolve(href: str) -> str:
             return posixpath.normpath(posixpath.join(opf_dir, href))
 
         # stylesheets (verbatim)

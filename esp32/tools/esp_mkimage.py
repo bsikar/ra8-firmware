@@ -68,7 +68,7 @@ MAX_CHIP_REV_FULL = 0xFFFF  # accept any silicon revision
 HP_SRAM_BASE = 0x40800000  # TRM Ch "System and Memory"          # [CONFIRM]
 
 
-def build_image_header(segment_count, entry_addr):
+def build_image_header(segment_count: int, entry_addr: int) -> bytes:
     """Return the 24-byte Espressif image header for a C6 app image."""
     freq_size = (FLASH_SIZE_2MB & 0xF0) | (FLASH_FREQ_40M & 0x0F)
     header = bytearray()
@@ -91,12 +91,12 @@ def build_image_header(segment_count, entry_addr):
     return bytes(header)
 
 
-def build_segment(load_addr, data):
+def build_segment(load_addr: int, data: bytes) -> bytes:
     """Return one segment: 8-byte header (load_addr, len) followed by data."""
     return struct.pack("<II", load_addr, len(data)) + data
 
 
-def segment_checksum(segments):
+def segment_checksum(segments: list[tuple[int, bytes]]) -> int:
     """XOR every segment data byte, seeded with ESP_CHECKSUM_SEED."""
     checksum = ESP_CHECKSUM_SEED
     for _load_addr, data in segments:
@@ -105,7 +105,7 @@ def segment_checksum(segments):
     return checksum & 0xFF
 
 
-def pack(payload, load_addr, entry_addr):
+def pack(payload: bytes, load_addr: int, entry_addr: int) -> bytes:
     """Pack a single-segment app image and return the container bytes."""
     segments = [(load_addr, payload)]
     body = bytearray(build_image_header(len(segments), entry_addr))
@@ -123,7 +123,7 @@ ARGV_INPUT = 1
 ARGV_OUTPUT = 2
 
 
-def default_paths():
+def default_paths() -> tuple[str, str]:
     """Return (input, output) defaults relative to this script's esp32/ dir."""
     build_dir = Path(__file__).resolve().parent.parent / "build"
     return (
@@ -132,7 +132,7 @@ def default_paths():
     )
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     """Read the input .bin, pack it, write the .app.bin, print a summary."""
     default_in, default_out = default_paths()
     input_path = argv[ARGV_INPUT] if len(argv) > ARGV_INPUT else default_in

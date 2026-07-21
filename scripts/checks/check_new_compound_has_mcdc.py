@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_new_compound_has_mcdc.py -- Reject staged commits that introduce a new
-compound boolean decision (`&&` / `||`) without an accompanying MC/DC test.
+"""Reject staged commits adding a compound decision with no MC/DC test.
+
+A new compound boolean decision (`&&` / `||`) in production code must arrive
+with an accompanying MC/DC test vector set.
 
 Per CLAUDE.md "IEC 61508 SIL 3 / DO-178C Level B Qualification" and
 docs/MCDC.md, every compound boolean decision in production code under
@@ -125,8 +126,11 @@ def _git(*args: str) -> str:
 def staged_files(
     *, suffix: str | None = None, prefixes: tuple[str, ...] | None = None
 ) -> list[str]:
-    """Return staged file paths (added/copied/modified/renamed) optionally
-    filtered by suffix and/or path prefix."""
+    """Staged file paths, optionally filtered by suffix and path prefix.
+
+    Covers added, copied, modified and renamed entries -- deletions are
+    excluded, since a removed file has no decision left to cover.
+    """
     out = _git("diff", "--cached", "--name-only", "--diff-filter=ACMR")
     paths: list[str] = []
     for p in out.splitlines():
@@ -141,8 +145,12 @@ def staged_files(
 
 
 def staged_blob(path: str) -> str:
-    """Return the staged (index) version of `path`, or empty string if
-    the file is not in the index."""
+    """The staged (index) content of ``path``, or "" when it is not staged.
+
+    Reads the INDEX rather than the working tree, so unstaged edits sitting
+    alongside a staged change cannot make the gate judge content that is not
+    about to be committed.
+    """
     try:
         return _git("show", f":0:{path}")
     except subprocess.CalledProcessError:
@@ -150,8 +158,11 @@ def staged_blob(path: str) -> str:
 
 
 def head_blob(path: str) -> str:
-    """Return the HEAD version of `path`, or empty string if the file
-    does not exist in HEAD (newly added)."""
+    """The HEAD content of ``path``, or "" when the file is newly added.
+
+    The empty string is the meaningful case: it makes every decision in a new
+    file count as new, which is the intended reading.
+    """
     try:
         return _git("show", f"HEAD:{path}")
     except subprocess.CalledProcessError:
@@ -167,7 +178,8 @@ def rename_map() -> dict[str, str]:
     unchanged and are already covered by MC/DC vectors. Diffing the staged
     file against its pre-rename HEAD content restores correct "new vs
     existing" detection -- genuinely new decisions in a renamed file are
-    still caught."""
+    still caught.
+    """
     # 40% similarity: a rename that also renames many interior symbols
     # (e.g. ra8_iic_b_* -> internal_i3c_i2c_*) scores well below git's
     # default 50% threshold, so use a lower bar to still pair it with its
@@ -189,8 +201,12 @@ def rename_map() -> dict[str, str]:
 
 
 def _scrub(line: str) -> str:
-    """Strip comment / string / char-literal contents from a single line
-    so that downstream regex matches do not fire on tokens inside them."""
+    """Blank comment, string and char-literal contents in one line.
+
+    Without this a ``&&`` inside a string literal or an explanatory comment
+    would register as a compound decision, so the gate would demand MC/DC
+    vectors for prose.
+    """
     line = STRING_LITERAL_RE.sub('""', line)
     line = CHAR_LITERAL_RE.sub("''", line)
     line = BLOCK_COMMENT_RE.sub("", line)
@@ -198,9 +214,12 @@ def _scrub(line: str) -> str:
 
 
 def compound_decision_lines(text: str) -> set[tuple[int, str]]:
-    """Return the set of (line_no, scrubbed_line) tuples in `text` that
-    contain at least one compound boolean operator outside of
-    comments/strings. Line numbers are 1-based."""
+    """Every line holding a compound boolean operator outside comments and strings.
+
+    Returns a set of ``(line_no, scrubbed_line)`` with 1-based line numbers.
+    The scrubbed text rather than the raw line is carried so the same decision
+    compares equal across a comment-only edit.
+    """
     found: set[tuple[int, str]] = set()
     for idx, raw in enumerate(text.splitlines(), start=1):
         # Preprocessor directives (`#if` / `#elif` / `#define` ...) are
@@ -225,8 +244,9 @@ def compound_decision_lines(text: str) -> set[tuple[int, str]]:
 
 
 def new_decisions(staged_text: str, head_text: str) -> list[tuple[int, str]]:
-    """Return the list of (line_no, normalized_line) in staged_text that
-    represent NEW compound boolean decisions not present in head_text.
+    """Compound decisions present in the staged text but not in HEAD.
+
+    Returns ``(line_no, normalized_line)`` for each.
 
     A decision is considered "not new" if the SAME normalized scrubbed
     line text appears anywhere in head_text (regardless of line number),
@@ -247,10 +267,12 @@ def new_decisions(staged_text: str, head_text: str) -> list[tuple[int, str]]:
 
 
 def collect_test_citations() -> list[tuple[str, str]]:
-    """Walk every `tests/test_*.c` file in the working tree (which
-    includes both staged additions and already-committed tests) and
-    return the ``(source_path, function_name)`` `path@function` citations
-    found inside `@par MC/DC:` Doxygen blocks."""
+    """Every ``path@function`` citation inside a ``@par MC/DC:`` block.
+
+    Walks the WORKING TREE copy of ``tests/test_*.c``, not the index, so a
+    test staged in this same commit counts -- which is the normal case, since
+    the decision and its vectors land together.
+    """
     symbol_cites: list[tuple[str, str]] = []
     tests_dir = Path("tests")
     if not tests_dir.is_dir():
@@ -268,15 +290,15 @@ def collect_test_citations() -> list[tuple[str, str]]:
 
 
 def enclosing_function(src_text: str, decision_line: int) -> str | None:
-    """Return the name of the function that encloses a 1-based source
-    line, or None if it cannot be determined.
+    """Name of the function enclosing a 1-based source line, or None.
 
     Relies on the repo's clang-format style: a function-definition body
     opens with ``{`` alone on its own line at column 0, whereas control
     blocks keep their brace at end-of-line (``if (...) {``) and nested
     scopes are indented. So the nearest preceding line that is exactly
     ``{`` is the enclosing function's opening brace; the function name is
-    the last identifier before the ``(`` in the signature above it."""
+    the last identifier before the ``(`` in the signature above it.
+    """
     lines = src_text.splitlines()
     idx = decision_line - 1
     if idx < 0 or idx >= len(lines):
@@ -308,8 +330,15 @@ def has_matching_citation(
     src_text: str,
     symbol_cites: list[tuple[str, str]],
 ) -> bool:
-    """Return True if the decision at ``src_path:src_line`` is cited by a
-    ``path@function`` citation naming its enclosing function."""
+    """Whether some test cites the enclosing function of this decision.
+
+    Matches at FUNCTION granularity, not line granularity: a citation names
+    ``path@function``, so adding a second decision to an already-cited
+    function satisfies the gate. That is deliberate -- line-exact citations
+    would churn on every edit above the decision -- but it does mean this
+    gate proves a vector set exists for the function, not that the new
+    decision itself is individually covered.
+    """
     fn = enclosing_function(src_text, src_line)
     if fn is None:
         return False
@@ -322,6 +351,18 @@ def has_matching_citation(
 
 
 def main() -> int:
+    """Fail the commit when a newly-staged compound decision has no MC/DC citation.
+
+    Scope is the staged set, so this judges what is about to be committed and
+    says nothing about compound decisions already in the tree -- backfilling
+    those is check_mcdc_floor's job, not this gate's.
+
+    Renamed files are diffed against their PRE-RENAME HEAD content, which is
+    what stops a ``git mv`` from making every decision in the moved file look
+    new and demanding re-citation of already-covered logic.
+
+    Returns 1 listing each uncited decision, 0 when the staged set adds none.
+    """
     prod_files = staged_files(suffix=".c", prefixes=PROD_PREFIXES)
     if not prod_files:
         return 0

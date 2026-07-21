@@ -22,6 +22,8 @@ The color test is a floor, not a fingerprint: it catches blank output, not
 wrong-but-colorful output.
 """
 
+from __future__ import annotations
+
 import sys
 
 try:
@@ -46,7 +48,7 @@ DEFAULT_MIN_COLORS = 2
 COLOR_CAP = 1 << 20
 
 
-def main():
+def main() -> int:
     """Check the PPM named in argv and map the verdict onto an exit status.
 
     Reads `FILE.ppm [MIN_COLORS]` from `sys.argv`. MIN_COLORS defaults to 2 --

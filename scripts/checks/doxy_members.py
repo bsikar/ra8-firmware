@@ -24,7 +24,7 @@ _AGG_KW_RE = re.compile(r"\b(enum|struct|union)\b")
 _AGG_TERMINATORS = frozenset(";=,}")
 
 
-def find_aggregate_bodies(code: str):  # noqa: PLR0912  # char scanner; a helper per branch hurts clarity
+def find_aggregate_bodies(code: str) -> list[tuple[str, int, int]]:  # noqa: PLR0912  # char scanner; a helper per branch hurts clarity
     """Locate enum/struct/union *definitions* (those with a ``{ ... }`` body).
 
     ``code`` must be the blanked code-only view so keywords/braces inside
@@ -96,7 +96,14 @@ def member_name(kind: str, seg_code: str) -> str:
     return ids[-1] if ids else "(anon)"
 
 
-def audit_aggregate(kind, code, comments, open_idx, close_idx, rel):  # noqa: PLR0913  # body slice
+def audit_aggregate(  # noqa: PLR0913  # body slice
+    kind: str,
+    code: str,
+    comments: list[tuple[int, int, str | None]],
+    open_idx: int,
+    close_idx: int,
+    rel: str,
+) -> list[tuple[str, int, str, str, str]]:
     """Yield offender rows for undocumented members of one aggregate body.
 
     A member is documented when it carries either a preceding doc block
@@ -147,7 +154,9 @@ def audit_aggregate(kind, code, comments, open_idx, close_idx, rel):  # noqa: PL
 _DEFINE_RE = re.compile(r"^[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)", re.MULTILINE)
 
 
-def _preceding_doc_run(comments, code, upto):
+def _preceding_doc_run(
+    comments: list[tuple[int, int, str | None]], code: str, upto: int
+) -> tuple[list[tuple[int, int]], bool]:
     """Concatenated raw text + has-pre flag for the doc run just above ``upto``.
 
     Walks the contiguous run of comments immediately preceding ``upto`` (only
@@ -169,7 +178,9 @@ def _preceding_doc_run(comments, code, upto):
     return spans, has_pre
 
 
-def audit_macros(raw, code, comments, rel):
+def audit_macros(
+    raw: str, code: str, comments: list[tuple[int, int, str | None]], rel: str
+) -> list[tuple[str, int, str, str, str]]:
     """Yield offender rows for macros lacking a ``@brief``/``@def`` doc block."""
     rows = []
     for m in _DEFINE_RE.finditer(code):
@@ -186,7 +197,7 @@ def audit_macros(raw, code, comments, rel):
     return rows
 
 
-def audit_members_file(path: Path):
+def audit_members_file(path: Path) -> list[tuple[str, int, str, str, str]]:
     """Return member/enum/macro offender rows for one first-party file."""
     try:
         raw = path.read_text(encoding="utf-8", errors="replace")

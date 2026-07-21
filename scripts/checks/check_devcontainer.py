@@ -100,9 +100,11 @@ class Finding:
     """One rule violation, reported as path:line: [CODE] message."""
 
     def __init__(self, rel: str, line: int, code: str, msg: str) -> None:
+        """Record one finding; all four fields are required and none is derived."""
         self.rel, self.line, self.code, self.msg = rel, line, code, msg
 
     def __str__(self) -> str:
+        """Render as ``rel:line: [CODE] message`` -- editor-jumpable."""
         return f"{self.rel}:{self.line}: [{self.code}] {self.msg}"
 
 
@@ -143,6 +145,7 @@ def check_format(rel: str, raw: bytes) -> list[Finding]:
     findings: list[Finding] = []
 
     def add(line: int, msg: str) -> None:
+        """Append one DC001 finding, closing over this file's relative path."""
         findings.append(Finding(rel, line, "DC001", msg))
 
     try:
@@ -252,6 +255,12 @@ def require_tools() -> int:
 
 
 def _expect(cond: bool, label: str, failures: list[str]) -> None:
+    """Record one selftest assertion and print its pass/fail line.
+
+    Accumulates into ``failures`` instead of raising, so one failing
+    assertion does not hide the ones after it -- the value of a
+    both-direction selftest is the whole picture, not the first breakage.
+    """
     print(f"  [{'ok' if cond else 'FAIL'}] {label}")
     if not cond:
         failures.append(label)
@@ -361,6 +370,14 @@ def selftest() -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Lint and format-check the devcontainer definition.
+
+    The devcontainer is what gives the Mac an Ubuntu userland to run the CI
+    suite in, so a broken definition does not fail loudly -- it makes `make
+    ci` unable to run at all, on the one platform that cannot verify natively.
+
+    Returns 0 when clean, 1 on any finding or a failing selftest.
+    """
     ap = argparse.ArgumentParser(description="Lint and format-check the devcontainer files")
     ap.add_argument("--selftest", action="store_true", help="assert both directions")
     ap.add_argument("--list-files", action="store_true", help="print the scanned file list")

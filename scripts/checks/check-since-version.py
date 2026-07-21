@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check-since-version.py -- enforce ``@since`` Doxygen tags AND
-verify their values match the project ``VERSION`` file.
+"""Enforce ``@since`` Doxygen tags and check their values against VERSION.
+
+Both halves matter: a missing tag is a documentation gap, and a tag naming a
+version the project never released is worse, because it looks authoritative.
 
 Two checks combined:
 
@@ -87,6 +88,12 @@ SINCE_VALUE = re.compile(r"@since\s+(?:Version\s+)?([0-9]+(?:\.[0-9]+){1,2}[a-z]
 
 
 def read_project_version() -> str:
+    """Read the single version string from the VERSION file.
+
+    Raises rather than defaulting when the file is missing: every ``@since``
+    comparison is against this value, so a default would silently validate
+    every tag in the tree against a number nobody chose.
+    """
     if not VERSION_FILE.is_file():
         msg = f"error: {VERSION_FILE} missing -- create it with a single semver line"
         raise SystemExit(msg)
@@ -133,10 +140,21 @@ def check_values(path: pathlib.Path, project_version: str) -> list[str]:
 
 
 def is_under_lib_inc(path: pathlib.Path) -> bool:
+    """Whether this is a public library header, where ``@since`` is mandatory.
+
+    The tag is required only on the public contract: an ``inc/`` header of an
+    ``ra8_*`` library. Implementation files carry no API promise, so demanding
+    a version tag on them would be noise.
+    """
     return "libs/ra8_" in str(path) and path.suffix == ".h" and "/inc/" in str(path)
 
 
 def is_scannable(path: pathlib.Path) -> bool:
+    """Whether a path is a source file this gate reads at all.
+
+    A path staged as a deletion no longer exists and is filtered here, so the
+    caller need not distinguish removal from modification.
+    """
     if not path.is_file():
         return False
     if path.suffix not in SOURCE_SUFFIXES:
@@ -148,6 +166,12 @@ def is_scannable(path: pathlib.Path) -> bool:
 
 
 def collect_repo_paths() -> list[pathlib.Path]:
+    """Every scannable source file under the configured scan roots.
+
+    Backs the ``--all`` whole-tree sweep; without the flag the gate reads only
+    the paths it was handed, which is how the pre-commit hook keeps a commit
+    from paying for the full tree.
+    """
     out: list[pathlib.Path] = []
     for d in SCAN_DIRS:
         root = REPO_ROOT / d
@@ -157,6 +181,14 @@ def collect_repo_paths() -> list[pathlib.Path]:
 
 
 def main() -> int:
+    """Check ``@since`` tags on public headers, staged files or the whole tree.
+
+    Resolves the project version FIRST, before any scanning, so a malformed
+    VERSION file fails immediately rather than after a full sweep whose
+    verdict would have been meaningless anyway.
+
+    Returns 0 when every public declaration carries a correct tag, 1 otherwise.
+    """
     project_version = read_project_version()
 
     if len(sys.argv) >= 2 and sys.argv[1] == "--all":  # noqa: PLR2004  # argv[1] presence check

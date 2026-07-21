@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-check_coverage_floor.py -- per-file line-coverage FLOOR gate (no allowlist).
+"""check_coverage_floor.py -- per-file line-coverage FLOOR gate (no allowlist).
 
 Per CLAUDE.md "IEC 61508 SIL 3 / DO-178C Level B" and the project's
 "no grandfather" coverage policy: EVERY first-party translation unit must
@@ -48,13 +47,15 @@ per the CLAUDE.md coding-standards scope, so exempt from the floor too."""
 
 
 def normalize(path: str) -> str:
-    """Return a repo-root-relative POSIX path for the gcovr `file` field,
-    which may be absolute or already relative.
+    """Normalise a gcovr ``file`` field to a repo-root-relative POSIX path.
+
+    The field may arrive absolute or already relative, so both are handled.
 
     The absolute-path split marker is derived from the checkout directory
     basename (`REPO_ROOT.name`, itself resolved from this file's location)
     rather than a hardcoded project name, so the gate strips the prefix
-    correctly from any clone regardless of what the repo directory is named."""
+    correctly from any clone regardless of what the repo directory is named.
+    """
     p = path.replace("\\", "/")
     marker = "/" + REPO_ROOT.name + "/"
     if marker in p:
@@ -76,7 +77,8 @@ def file_line_pct(entry: dict) -> tuple[int, int]:
     host input can reach) are dropped from BOTH the numerator and denominator,
     exactly as gcovr's own `line_total` does -- so an honest exclusion neither
     helps nor hurts, it simply is not counted. This makes the floor agree with
-    the aggregate gate's per-file line-rate rather than a naive covered/len."""
+    the aggregate gate's per-file line-rate rather than a naive covered/len.
+    """
     lines = [ln for ln in entry.get("lines", []) if not ln.get("gcovr/excluded", False)]
     total = len(lines)
     covered = sum(1 for ln in lines if ln.get("count", 0) > 0)
