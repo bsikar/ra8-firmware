@@ -57,28 +57,28 @@ def find_bulk_endpoints(dev):
     return None
 
 
-def bench(vidpid, total_bytes, urb_size, parallel_out, parallel_in):  # noqa: ARG001, PLR0912, PLR0915  # parallel_* reserved for future async batching; branchy dispatch
+def _open_device(vidpid):
+    """Find the device and its CDC-data bulk endpoints, or exit(2)."""
     vid_s, pid_s = vidpid.split(":")
-    vid = int(vid_s, 16)
-    pid = int(pid_s, 16)
-
-    dev = usb.core.find(idVendor=vid, idProduct=pid)
+    dev = usb.core.find(idVendor=int(vid_s, 16), idProduct=int(pid_s, 16))
     if dev is None:
         print(f"No device with vid:pid {vidpid}")
         sys.exit(2)
     print(
         f"Found {dev.manufacturer or '?'} / {dev.product or '?'} bus {dev.bus} addr {dev.address}"
     )
-
     info = find_bulk_endpoints(dev)
     if info is None:
         print("No CDC-data bulk endpoints found.")
         sys.exit(2)
     cfg_val, intf_num, ep_out, ep_in = info
     print(f"cfg={cfg_val} intf={intf_num} ep_out=0x{ep_out:02x} ep_in=0x{ep_in:02x}")
+    return dev, intf_num, ep_out, ep_in
 
-    # Detach cdc_acm if it's bound to this interface.
-    for i in (intf_num - 1, intf_num):  # comm + data
+
+def _detach_kernel_driver(dev, intf_num):
+    """Unbind cdc_acm from the comm+data interface pair so libusb can claim it."""
+    for i in (intf_num - 1, intf_num):
         try:
             if dev.is_kernel_driver_active(i):
                 print(f"Detaching kernel driver from interface {i}")
@@ -86,58 +86,57 @@ def bench(vidpid, total_bytes, urb_size, parallel_out, parallel_in):  # noqa: AR
         except (NotImplementedError, usb.core.USBError) as e:  # noqa: PERF203  # short 2-iter loop; inline try is clearest
             print(f"Kernel-driver detach on intf {i} ignored: {e}")
 
+
+def _pump(dev, ep_out, ep_in, payload, urb_size):
+    """Chunked write+read until both directions have moved the whole payload."""
+    total_bytes = len(payload)
+    sent = 0
+    recv = bytearray()
+    start = time.monotonic()
+    deadline = start + 30.0
+    while sent < total_bytes or len(recv) < total_bytes:
+        if sent < total_bytes:
+            with contextlib.suppress(usb.core.USBTimeoutError):
+                sent += dev.write(ep_out, payload[sent : sent + urb_size], timeout=1000)
+        with contextlib.suppress(usb.core.USBTimeoutError):
+            got = dev.read(ep_in, urb_size, timeout=50)
+            if got:
+                recv += bytes(got)
+        if time.monotonic() > deadline:
+            print("TIMEOUT")
+            break
+    return sent, recv, time.monotonic() - start
+
+
+def _report(sent, recv, payload, elapsed):
+    """Print throughput and integrity; return True when the echo matched."""
+    total_bytes = len(payload)
+    oneway = total_bytes / elapsed if elapsed > 0 else 0.0
+    ok = bytes(recv) == payload[: len(recv)] and len(recv) == total_bytes
+    print(f"sent={sent}  recv={len(recv)}  elapsed={elapsed:.3f}s")
+    print(f"one-way throughput : {oneway / 1024:9.1f} KB/s  ({oneway / 1e6 * 8:.2f} Mbps)")
+    print(f"aggregate          : {2 * oneway / 1024:9.1f} KB/s  ({2 * oneway / 1e6 * 8:.2f} Mbps)")
+    print(f"integrity          : {'OK' if ok else 'FAIL'}")
+    if not ok:
+        for i in range(min(len(recv), len(payload))):
+            if recv[i] != payload[i]:
+                lo, hi = max(0, i - 8), min(len(recv), i + 16)
+                print(f"  first mismatch at offset {i}")
+                print(f"    expected: {payload[lo:hi].hex()}")
+                print(f"    received: {bytes(recv[lo:hi]).hex()}")
+                break
+    return ok
+
+
+def bench(vidpid, total_bytes, urb_size, parallel_out, parallel_in):  # noqa: ARG001  # parallel_* reserved for future async batching
+    """Single-threaded synchronous bulk echo bench over raw libusb."""
+    dev, intf_num, ep_out, ep_in = _open_device(vidpid)
+    _detach_kernel_driver(dev, intf_num)
     try:
         usb.util.claim_interface(dev, intf_num)
-
-        # Build a recognisable pseudo-random payload.
         payload = bytes((i * 131 + 17) & 0xFF for i in range(total_bytes))
-
-        # Single-threaded synchronous IO with chunked write+read; rely on
-        # libusb's per-transfer kernel buffering. urb_size is the chunk
-        # we submit at a time. Larger = more pipelining.
-        sent = 0
-        recv = bytearray()
-        start = time.monotonic()
-        deadline = start + 30.0
-
-        while sent < total_bytes or len(recv) < total_bytes:
-            # Try to keep `parallel_out` bytes outstanding.
-            if sent < total_bytes:
-                chunk = payload[sent : sent + urb_size]
-                try:
-                    n = dev.write(ep_out, chunk, timeout=1000)
-                    sent += n
-                except usb.core.USBTimeoutError:
-                    pass
-            # Drain as much as available.
-            try:
-                got = dev.read(ep_in, urb_size, timeout=50)
-                if got:
-                    recv += bytes(got)
-            except usb.core.USBTimeoutError:
-                pass
-            if time.monotonic() > deadline:
-                print("TIMEOUT")
-                break
-        elapsed = time.monotonic() - start
-        oneway = total_bytes / elapsed if elapsed > 0 else 0.0
-        ok = bytes(recv) == payload[: len(recv)] and len(recv) == total_bytes
-
-        print(f"sent={sent}  recv={len(recv)}  elapsed={elapsed:.3f}s")
-        print(f"one-way throughput : {oneway / 1024:9.1f} KB/s  ({oneway / 1e6 * 8:.2f} Mbps)")
-        print(
-            f"aggregate          : {2 * oneway / 1024:9.1f} KB/s  ({2 * oneway / 1e6 * 8:.2f} Mbps)"
-        )
-        print(f"integrity          : {'OK' if ok else 'FAIL'}")
-        if not ok:
-            for i in range(min(len(recv), len(payload))):
-                if recv[i] != payload[i]:
-                    lo, hi = max(0, i - 8), min(len(recv), i + 16)
-                    print(f"  first mismatch at offset {i}")
-                    print(f"    expected: {payload[lo:hi].hex()}")
-                    print(f"    received: {bytes(recv[lo:hi]).hex()}")
-                    break
-        sys.exit(0 if ok else 1)
+        sent, recv, elapsed = _pump(dev, ep_out, ep_in, payload, urb_size)
+        sys.exit(0 if _report(sent, recv, payload, elapsed) else 1)
     finally:
         with contextlib.suppress(Exception):
             usb.util.release_interface(dev, intf_num)
