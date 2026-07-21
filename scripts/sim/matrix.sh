@@ -56,9 +56,11 @@
 # pass. That is the touch_demo empty-verdict lesson and the #168 lesson both.
 #
 # Usage:
-#   scripts/sim/matrix.sh                 # every ek_ra8d2 example
+#   scripts/sim/matrix.sh                 # every ek_ra8d2 example, -j = cores
 #   scripts/sim/matrix.sh blink dtc_transfer_demo   # explicit subset
-#   BUILD_TIMEOUT=240 RUN_TIMEOUT=90 scripts/sim/matrix.sh
+#   scripts/sim/matrix.sh --selftest      # assert the classifier, build nothing
+#   MATRIX_JOBS=1 scripts/sim/matrix.sh   # serial (identical verdicts, slower)
+#   BUILD_TIMEOUT=240 RUN_TIMEOUT=600 MAX_CHUNKS=4000 scripts/sim/matrix.sh
 #
 # Output: a per-app table on stdout plus a coverage summary, and a machine-
 # readable report at $ROOT/build/board_sim_matrix.txt.
@@ -96,6 +98,22 @@ run_timeout="${RUN_TIMEOUT:-600}"
 # The deterministic bound: outer chunks, one SysTick each. Instruction-counted,
 # so it is identical on an idle box and a loaded one.
 max_chunks="${MAX_CHUNKS:-4000}"
+
+# Parallel workers. The sweep builds and boots ~200 images; serially that is
+# hours, which is not a per-push gate. Each app is an independent build dir and
+# an independent board_sim process, and -- because verdicts are bounded by the
+# instruction-counted chunk budget rather than by CPU-time -- the verdict is
+# identical at any -j. Parallelism is therefore free of the usual risk here:
+# it can change the wall time and nothing else.
+detect_jobs() { # -> host core count, or 4 when it cannot be determined
+  local n=""
+  n="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || printf '')"
+  case "$n" in
+    '' | *[!0-9]*) printf '4\n' ;;
+    *) printf '%s\n' "$n" ;;
+  esac
+}
+jobs="${MATRIX_JOBS:-$(detect_jobs)}"
 
 # A diagnostic line (to stderr) so detection/discovery decisions are never
 # silent. stderr keeps these off the stdout per-app table, which would otherwise
@@ -321,44 +339,45 @@ is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
   return 1
 }
 
-# -- Per-app matrix. ----------------------------------------------------------
-for app in "${apps[@]}"; do
-  [ -z "$app" ] && continue
-  n_total=$((n_total + 1))
-  printf '  %-26s ' "$app"
-
+# -- --run-one <app>: the parallel worker. ------------------------------------
+# Build one app into its own per-app build dir, boot it, classify it, and write
+# `<verdict><TAB><display text>` to $run_dir/<app>.result. It ALWAYS exits 0 --
+# the verdict lives in the file, never in the exit status -- so one broken app
+# cannot abort the pool and silently truncate the sweep.
+#
+# Running the sweep in parallel is only sound BECAUSE of the determinism fix
+# above, and the dependency runs the other way too: board_sim's CPU-time guard
+# inflates under N-way parallelism (N Unicorn JITs contend for cache and
+# memory, so a fixed instruction count burns more CPU-seconds), so with the
+# guard armed an app's verdict would change with -j. Bounding purely by the
+# instruction-counted chunk budget makes every verdict a function of the
+# instruction stream alone -- identical serially and at any -j. sil_all.sh
+# reached the same conclusion for the same reason.
+run_one() {
+  local app="$1"
+  local rf="$run_dir/$app.result"
+  local src_dir elf note=""
   src_dir="$(app_src_dir "$app")"
 
   # Two-image TrustZone (--ns) apps need their dedicated recipe -> SPECIAL.
   if is_two_image_ns "$src_dir"; then
-    echo "SPECIAL (two-image TrustZone -- needs --ns; detected ns_image.ld)"
-    printf '%-26s SPECIAL\n' "$app" >>"$report"
-    n_special=$((n_special + 1))
-    continue
+    printf 'SPECIAL\tSPECIAL (two-image TrustZone -- needs --ns; detected ns_image.ld)\n' >"$rf"
+    return 0
   fi
-
-  if ! timeout "$build_timeout" make "$app" >"/tmp/matrix_build_$app.log" 2>&1; then
-    echo "BUILD FAIL (see /tmp/matrix_build_$app.log)"
-    printf '%-26s BUILD_FAIL\n' "$app" >>"$report"
-    n_build=$((n_build + 1))
-    continue
+  if [ -z "$src_dir" ] || ! timeout "$build_timeout" make -C "$src_dir" build \
+    >"$run_dir/$app.build.log" 2>&1; then
+    printf 'BUILD_FAIL\tBUILD FAIL (see %s)\n' "$run_dir/$app.build.log" >"$rf"
+    return 0
   fi
-  elf="$(find examples -path "*/$app/build/$app.elf" 2>/dev/null | head -1)"
-  if [ -z "$elf" ]; then
-    echo "NO ELF"
-    printf '%-26s NO_ELF\n' "$app" >>"$report"
-    n_build=$((n_build + 1))
-    continue
+  elf="$src_dir/build/$app.elf"
+  if [ ! -f "$elf" ]; then
+    printf 'NO_ELF\tNO ELF\n' >"$rf"
+    return 0
   fi
-
-  # Dual-core embedded-image apps run through the normal path (board_sim boots
-  # the embedded cpu1 image). Detect + log it so nothing is silently special.
-  note=""
   if is_dualcore_embedded "$elf" "$src_dir"; then
     note=" [dual-core embedded cpu1 image]"
-    log "detected dual-core embedded cpu1 image in '$app' -- running via single-image path"
   fi
-
+  local out rc verdict
   # BOARD_SIM_WALL_S=0 DISABLES board_sim's CPU-time guard, leaving the run
   # bounded only by the instruction-counted chunk budget -- the deterministic
   # bound. See the DETERMINISM note in the header. The outer `timeout` is a hang
@@ -368,28 +387,63 @@ for app in "${apps[@]}"; do
   rc=$?
   verdict="$(classify_run "$out" "$rc")"
   case "$verdict" in
-    OK)
-      echo "OK (boots + runs to budget)$note"
-      n_ok=$((n_ok + 1))
-      ;;
-    FAULT)
-      echo "FAULT (rc=$rc -- board_sim model gap or firmware bug)$note"
-      n_fault=$((n_fault + 1))
-      ;;
-    TRUNCATED)
-      echo "TRUNCATED (rc=$rc -- wall-clock bound hit before chunk $max_chunks; NO VERDICT)$note"
-      n_trunc=$((n_trunc + 1))
-      ;;
-    HALT)
-      echo "HALT (parked -- self-test done or panic)$note"
-      n_halt=$((n_halt + 1))
-      ;;
-    UNKNOWN)
-      echo "UNKNOWN (ran to budget, no clean/halt marker -- REVIEW)$note"
-      n_unknown=$((n_unknown + 1))
-      ;;
+    OK) printf 'OK\tOK (boots + runs to budget)%s\n' "$note" >"$rf" ;;
+    FAULT) printf 'FAULT\tFAULT (rc=%s -- board_sim model gap or firmware bug)%s\n' \
+      "$rc" "$note" >"$rf" ;;
+    TRUNCATED) printf 'TRUNCATED\tTRUNCATED (rc=%s -- wall-clock bound hit before chunk %s; NO VERDICT)%s\n' \
+      "$rc" "$max_chunks" "$note" >"$rf" ;;
+    HALT) printf 'HALT\tHALT (parked -- self-test done or panic)%s\n' "$note" >"$rf" ;;
+    *) printf 'UNKNOWN\tUNKNOWN (ran to budget, no clean/halt marker -- REVIEW)%s\n' "$note" >"$rf" ;;
   esac
+  return 0
+}
+
+# Re-exec entry point for the xargs pool below (a fully isolated process per
+# app, so nothing is shared and the verdict cannot depend on the pool).
+if [ "${1:-}" = "--run-one" ]; then
+  run_dir="${MATRIX_RUN_DIR:?--run-one needs MATRIX_RUN_DIR}"
+  sim="${MATRIX_SIM:?--run-one needs MATRIX_SIM}"
+  run_one "$2"
+  exit 0
+fi
+
+# -- Per-app matrix. ----------------------------------------------------------
+run_dir="$ROOT/build/board_sim_matrix"
+rm -rf "$run_dir"
+mkdir -p "$run_dir"
+export MATRIX_RUN_DIR="$run_dir" MATRIX_SIM="$sim"
+export BUILD_TIMEOUT RUN_TIMEOUT MAX_CHUNKS
+log "booting ${#apps[@]} example(s), -j $jobs ..."
+printf '%s\n' "${apps[@]}" | grep -v '^$' |
+  xargs -P "$jobs" -I{} bash "$ROOT/scripts/sim/matrix.sh" --run-one {} || true
+
+# Aggregate in DISCOVERY order so the table and the report are byte-identical
+# regardless of -j -- the parallelism must not reach the output either.
+for app in "${apps[@]}"; do
+  [ -z "$app" ] && continue
+  n_total=$((n_total + 1))
+  printf '  %-26s ' "$app"
+  rf="$run_dir/$app.result"
+  if [ ! -f "$rf" ]; then
+    # A worker that produced no file crashed. That is a missing verdict, and a
+    # missing verdict is never a pass -- count it where it will be seen.
+    echo "UNKNOWN (worker produced no result -- crashed?)"
+    printf '%-26s UNKNOWN\n' "$app" >>"$report"
+    n_unknown=$((n_unknown + 1))
+    continue
+  fi
+  verdict="$(cut -f1 "$rf")"
+  cut -f2- "$rf"
   printf '%-26s %s\n' "$app" "$verdict" >>"$report"
+  case "$verdict" in
+    OK) n_ok=$((n_ok + 1)) ;;
+    FAULT) n_fault=$((n_fault + 1)) ;;
+    TRUNCATED) n_trunc=$((n_trunc + 1)) ;;
+    HALT) n_halt=$((n_halt + 1)) ;;
+    SPECIAL) n_special=$((n_special + 1)) ;;
+    BUILD_FAIL | NO_ELF) n_build=$((n_build + 1)) ;;
+    *) n_unknown=$((n_unknown + 1)) ;;
+  esac
 done
 
 # -- The _unsupported tier: listed as SKIPPED, never built or run. ------------
