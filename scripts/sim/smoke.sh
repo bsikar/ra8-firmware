@@ -191,9 +191,9 @@ if [ "${1:-}" = "--selftest" ]; then
   # the argv smoke_capture_run hands the simulator.
   args_out="$(
     set +e
-    # shellcheck disable=SC2317  # invoked indirectly, via smoke_build_app
+    # shellcheck disable=SC2317,SC2329  # shadows the real make; invoked indirectly by smoke_build_app
     make() { return 0; }
-    # shellcheck disable=SC2317  # shadows the real find for this probe only
+    # shellcheck disable=SC2317,SC2329  # shadows the real find; invoked indirectly by smoke_build_app
     find() { echo "examples/probe/build/probe.elf"; }
     sim_extra_args() { printf -- '--ra8-selftest-sentinel 7'; }
     uart_expect() { echo ""; }
