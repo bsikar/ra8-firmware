@@ -386,6 +386,13 @@ run_one() {
     timeout "$run_timeout" "$sim" "$elf" 2>&1)"
   rc=$?
   verdict="$(classify_run "$out" "$rc")"
+  # Keep the emulator output for anything that did not come out clean. The
+  # burn-down needs a CAUSE per app, not a total: without this the sweep knew
+  # 46 examples faulted and could say nothing about why, so the debt had a
+  # number and no plan. scripts/sim/matrix_triage.sh groups these.
+  if [ "$verdict" != "OK" ] && [ "$verdict" != "HALT" ]; then
+    printf '%s\n' "$out" >"$run_dir/$app.out"
+  fi
   case "$verdict" in
     OK) printf 'OK\tOK (boots + runs to budget)%s\n' "$note" >"$rf" ;;
     FAULT) printf 'FAULT\tFAULT (rc=%s -- board_sim model gap or firmware bug)%s\n' \
