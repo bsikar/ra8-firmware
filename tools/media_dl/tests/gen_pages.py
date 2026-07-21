@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
-#
-# Generate synthetic, non-copyright page images for the media_dl integration
-# harness (integration.sh). Every page is a distinct, high-contrast pattern so
-# the downstream "did the viewer actually render something" check is meaningful:
-# a solid page would decode fine yet tell us nothing, so each page here carries
-# multiple colors AND differs from its neighbours (a per-page moving band + the
-# page index rendered as a bar code of blocks). No fonts, no network, no repo
-# fixtures -- fully reproducible from these parameters alone.
+"""Generate synthetic, non-copyright page images for the media_dl harness.
+
+Feeds integration.sh. Every page is a distinct, high-contrast pattern, and both
+properties are what make the downstream checks meaningful:
+
+* Multiple colors per page, so `check_ppm.py`'s "did the viewer render
+  anything" test can distinguish a real frame from a blank fill. A solid page
+  would decode fine and prove nothing.
+* Every page different from its neighbours, so an export that silently drops or
+  duplicates a page cannot pass -- identical pages would compare equal.
+
+No fonts, no network, no committed fixtures: the whole set is reproducible from
+the command-line parameters alone, which is why this can run on any machine
+without checking binaries into the tree.
+"""
+
 import sys
 
 try:
@@ -28,6 +36,32 @@ JPEG_QUALITY = 90
 
 
 def make_page(idx, count, w, h):
+    """Render one synthetic page whose pixels encode its own index.
+
+    Three overlaid features, each with a job:
+
+    * A two-tone diagonal split, whose color is a function of `idx`. The large
+      flat regions survive JPEG quantization, so the distinct-color count holds
+      up after a lossy round trip.
+    * A horizontal band whose vertical position interpolates `idx` across the
+      page. This is what makes any two pages differ visibly.
+    * A block "bar code" of the 1-based page number along the top edge, so a
+      human looking at a dumped frame can read which page it is.
+
+    Deterministic: the same arguments always produce identical pixels.
+
+    Args:
+        idx: 0-based page index; must be < `count` for the band to stay on the
+            page.
+        count: Total pages, used only to scale the band. A `count` of 1 pins
+            the band to the top rather than dividing by zero.
+        w: Page width in pixels.
+        h: Page height in pixels. Both must be large enough for the derived
+            feature sizes (`h // 20`, `w // 14`) to be non-zero.
+
+    Returns:
+        An RGB Pillow Image.
+    """
     # Two-tone diagonal split gives a large, JPEG-robust set of distinct colors.
     img = Image.new("RGB", (w, h), (250, 250, 250))
     d = ImageDraw.Draw(img)
@@ -47,6 +81,25 @@ def make_page(idx, count, w, h):
 
 
 def main():
+    """Write COUNT synthetic pages into OUTDIR, from `OUTDIR COUNT W H` in argv.
+
+    Pages are saved as baseline JPEG named `page_0001.jpg` upward, 1-based and
+    zero-padded so a plain lexical sort matches page order. JPEG rather than PNG
+    is deliberate: real scraped pages are JPEG, so this exercises the actual
+    decode paths (the viewer probe and the jof producer) instead of a format
+    they never see in production.
+
+    OUTDIR must already exist; it is not created. Existing pages are
+    overwritten, and pages from a previous larger run are NOT removed, so a
+    reused directory can end up with stale extra pages.
+
+    Returns:
+        EXIT_OK, or EXIT_USAGE when too few arguments were given.
+
+    Raises:
+        ValueError: COUNT, W or H is not an integer.
+        OSError: OUTDIR does not exist or is not writable.
+    """
     if len(sys.argv) < ARGV_REQUIRED:
         sys.stderr.write("usage: gen_pages.py OUTDIR COUNT W H\n")
         return EXIT_USAGE

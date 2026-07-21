@@ -1,23 +1,30 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
-#
-# Generate epub_stress_fixture.h: a synthetic large-STRUCTURE EPUB3 that
-# reproduces the on-device miniz+tinyxml2 shared-arena pressure of a big
-# real-world book (#144 bug 1) without shipping a copyrighted 7 MB novel.
-#
-# The pool pressure during ra8_epub_open() comes from (a) miniz's central
-# directory (proportional to the file COUNT) and (b) tinyxml2's DOM of the OPF
-# (proportional to the number of manifest/spine items) -- NOT the total byte
-# size. So this fixture packs many tiny files: 60 chapters (spine, under the
-# k_ra8_epub_max_chapters=64 cap) + 60 extra manifest resources + an NCX with 60
-# navPoints + a cover. ~120 archive entries / a ~20 KB OPF -- comparable to the
-# 108-file, 41-chapter real book -- yet only tens of KB total, so it bakes into
-# MRAM and opens in memory like epub_parse.
-#
-# Output is pure 7-bit ASCII, 16 bytes/row inside a clang-format-off guard.
-#
-# Usage:  python3 make_stress_fixture.py
+"""Generate epub_stress_fixture.h, a synthetic large-STRUCTURE EPUB3.
+
+Reproduces the on-device miniz+tinyxml2 shared-arena pressure of a big
+real-world book (#144 bug 1) without shipping a copyrighted 7 MB novel.
+
+The insight the fixture is built on: pool pressure during `ra8_epub_open()`
+comes from miniz's central directory, proportional to the archive's FILE COUNT,
+and from tinyxml2's DOM of the OPF, proportional to the number of
+manifest/spine items. It does NOT come from total byte size. So this packs many
+tiny files instead of a few large ones -- 60 chapters (the spine, deliberately
+under the k_ra8_epub_max_chapters=64 cap), 60 extra manifest-only resources, an
+NCX with 60 navPoints, and a cover. That is ~120 archive entries and a ~20 KB
+OPF, comparable to the 108-file, 41-chapter real book, in tens of KB total. It
+therefore bakes into MRAM and opens in memory like epub_parse.
+
+Raise the byte size and the fixture gets no more stressful; raise the entry
+count and it does.
+
+Output is pure 7-bit ASCII, 16 bytes per row inside a clang-format-off guard.
+
+Usage:
+    python3 make_stress_fixture.py
+"""
+
 import io
 import zipfile
 from pathlib import Path
@@ -38,6 +45,20 @@ CONTAINER_XML = (
 
 
 def build_opf() -> str:
+    """Build the OPF package document -- the main tinyxml2 DOM pressure source.
+
+    Emits every chapter as both a manifest item and a spine itemref, plus the
+    manifest-only CSS resources that inflate the file count without adding
+    spine entries. The resulting element count is what the on-device tinyxml2
+    DOM has to hold, so this function's output size IS the stress being tested.
+
+    Declares EPUB3 `properties="cover-image"` and the legacy
+    `<meta name="cover">` both, so the fixture exercises either cover-resolution
+    path a reader might take.
+
+    Returns:
+        The complete OPF as ASCII-safe text.
+    """
     items = [
         '    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>',
         '    <item id="cover" href="cover.png" media-type="image/png" properties="cover-image"/>',
@@ -70,6 +91,16 @@ def build_opf() -> str:
 
 
 def build_ncx() -> str:
+    """Build the EPUB2 NCX table of contents, one navPoint per chapter.
+
+    An EPUB3 fixture does not need an NCX, and that is exactly why it is here:
+    real books ship one for backward compatibility, and it adds another
+    60-element XML document the parser must handle. `playOrder` is 1-based
+    while the chapter hrefs are 0-based, matching how real books number them.
+
+    Returns:
+        The complete NCX as ASCII-safe text.
+    """
     points = [
         f'    <navPoint id="np{i}" playOrder="{i + 1}">\n'
         f"      <navLabel><text>Chapter {i + 1}</text></navLabel>\n"
@@ -104,6 +135,20 @@ COVER_PNG = bytes(
 
 
 def build_epub() -> bytes:
+    """Assemble the whole EPUB archive in memory and return its bytes.
+
+    Byte-for-byte reproducible: every entry is written with a fixed 2026-01-01
+    timestamp and fixed permissions, so re-running the generator on a clean tree
+    produces an identical header and an empty diff. Without the pinned
+    timestamps the baked fixture would churn on every regeneration.
+
+    Two entries are ZIP_STORED rather than deflated. `mimetype` must be stored
+    first and uncompressed per the EPUB spec, and the 1x1 cover PNG is stored
+    because deflating an already-compressed PNG would only grow it.
+
+    Returns:
+        The complete .epub archive as bytes.
+    """
     out = io.BytesIO()
     fixed = (2026, 1, 1, 0, 0, 0)
 
@@ -131,6 +176,23 @@ def build_epub() -> bytes:
 
 
 def bake_header(epub: bytes) -> str:
+    """Render the EPUB bytes as a C header with a `static const uint8_t` table.
+
+    The array is sized by a generated `enum : size_t` rather than a `[]`, so the
+    firmware gets the length as a compile-time constant and the two can never
+    disagree.
+
+    The byte table is wrapped in `clang-format off`/`on`. That is load-bearing,
+    not cosmetic: the formatter would otherwise reflow tens of thousands of
+    bytes into its own line width and the generator would no longer own the
+    file's shape, making every regeneration a large spurious diff.
+
+    Args:
+        epub: The archive bytes to bake, emitted 16 per row as `0xNN`.
+
+    Returns:
+        The complete header source, pure 7-bit ASCII.
+    """
     rows = []
     for i in range(0, len(epub), 16):
         chunk = epub[i : i + 16]
@@ -170,6 +232,16 @@ def bake_header(epub: bytes) -> str:
 
 
 def main():
+    """Regenerate epub_stress_fixture.h in the CURRENT working directory.
+
+    The output path is relative, so this must be run from the app directory that
+    owns the fixture -- running it elsewhere silently writes a stray header
+    there instead of updating the committed one.
+
+    Writes with `encoding="ascii"`, so any non-ASCII that crept into the
+    generated text raises here rather than producing a file the encoding gate
+    would later reject.
+    """
     epub = build_epub()
     with Path("epub_stress_fixture.h").open("w", encoding="ascii") as f:
         f.write(bake_header(epub))

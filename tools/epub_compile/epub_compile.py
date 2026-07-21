@@ -121,11 +121,37 @@ class StringPool:
     """De-duplicating UTF-8 string pool; offset 0 is always the empty string."""
 
     def __init__(self):
+        """Start an empty pool and intern "" so offset 0 is the empty string.
+
+        That first intern is load-bearing, not a convenience: the blob format
+        uses offset 0 as its "no string" sentinel (an absent title, a text node
+        on an element record). Constructing the pool without it would put real
+        text at offset 0 and make every such sentinel read back as that text.
+        """
         self.buf = bytearray()
         self._map = {}
         self.intern("")
 
     def intern(self, text):
+        """Return the pool offset of `text`, appending it only if new.
+
+        De-duplication is by exact UTF-8 bytes, so two strings that differ only
+        in Unicode normalisation get separate slots. `None` is folded to "" and
+        therefore always yields offset 0, which lets callers pass a missing
+        metadata field straight through without a guard.
+
+        Offsets are stable for the life of the pool: entries are only appended,
+        never moved or removed. Callers may hold an offset across later
+        `intern()` calls -- but NOT across a snapshot of `buf`, which is why
+        `BlobBuilder.serialize()` interns the metadata strings before it copies
+        the buffer.
+
+        Args:
+            text: String to intern, or None for the empty string.
+
+        Returns:
+            Byte offset of the NUL-terminated UTF-8 copy within `buf`.
+        """
         if text is None:
             text = ""
         raw = text.encode("utf-8")
@@ -147,26 +173,82 @@ class DomBuilder(HTMLParser):
     """
 
     def __init__(self):
+        """Seed the tree with a synthetic `#root` element and open the stack.
+
+        The sentinel root exists so `handle_data`/`handle_starttag` never have
+        to special-case an empty stack: a document with leading text, or one
+        with several top-level elements, still has somewhere to attach. It is
+        also the fallback chapter root when `compile_epub` finds no `<body>`.
+        """
         super().__init__(convert_charrefs=True)
         self.root = {"tag": "#root", "attrs": [], "children": []}
         self.stack = [self.root]
 
     def handle_starttag(self, tag, attrs):
+        """Append an element to the current parent and descend into it.
+
+        Void tags (`<br>`, `<img>`, ...) are appended but NOT pushed, because
+        XHTML in the wild spells them both `<br>` and `<br/>`; pushing them
+        would leave the stack permanently deeper on the unclosed spelling and
+        nest every following sibling inside the void element.
+
+        Args:
+            tag: Lowercased tag name from HTMLParser.
+            attrs: HTMLParser's (name, value) pairs, preserved verbatim -- order
+                and duplicates included, since the blob stores them as written.
+        """
         node = {"tag": tag, "attrs": attrs, "children": []}
         self.stack[-1]["children"].append(node)
         if tag not in VOID_TAGS:
             self.stack.append(node)
 
     def handle_startendtag(self, tag, attrs):
+        """Append a self-closing element (`<foo/>`) without descending.
+
+        HTMLParser routes the self-closed spelling here instead of through
+        `handle_starttag` + `handle_endtag`, so this must not push the stack.
+        It applies to any tag, not just the void set -- `<div/>` and inline
+        `<svg><path/></svg>` both arrive here.
+
+        Args:
+            tag: Lowercased tag name.
+            attrs: (name, value) pairs, preserved verbatim.
+        """
         self.stack[-1]["children"].append({"tag": tag, "attrs": attrs, "children": []})
 
     def handle_endtag(self, tag):
+        """Close the innermost open element with this name.
+
+        Any elements left open inside it are discarded from the stack.
+        Scanning inward rather than popping one frame lets malformed markup
+        (`<p><b>text</p>`) close correctly: the unclosed `<b>` is dropped from
+        the stack along with `<p>`, but its already-attached subtree survives in
+        the tree. A stray end tag with no matching open element is ignored
+        rather than raising -- index 0 is excluded from the scan so the
+        synthetic `#root` can never be popped.
+
+        Args:
+            tag: Lowercased tag name being closed.
+        """
         for i in range(len(self.stack) - 1, 0, -1):
             if self.stack[i]["tag"] == tag:
                 del self.stack[i:]
                 return
 
     def handle_data(self, data):
+        """Attach a text run to the current parent, dropping only empty runs.
+
+        Whitespace is deliberately kept: the device-side renderer performs its
+        own CSS whitespace collapsing, and stripping here would destroy the
+        single significant space between two inline elements. Because
+        `convert_charrefs=True`, entities have already been resolved to Unicode
+        by the time this is called, and one logical text run may still arrive
+        split across several calls -- each becomes its own text node, which the
+        renderer treats identically to one merged node.
+
+        Args:
+            data: Decoded character data.
+        """
         if data:
             self.stack[-1]["children"].append({"text": data})
 
@@ -186,6 +268,14 @@ class BlobBuilder:
     """Accumulates the node/attr/chapter/image tables and emits the blob."""
 
     def __init__(self):
+        """Create empty tables with no cover and no feature flags set.
+
+        `cover_index` starts at NIL rather than 0 because 0 is a valid image
+        index; a book whose cover is never resolved must serialize as "no
+        cover", not as "the first image". `flags` starts clear because the
+        firmware validator rejects any bit outside the mask it knows, so bits
+        are only ever set deliberately by a caller.
+        """
         self.sp = StringPool()
         self.nodes = []  # list of dicts (see _emit_node)
         self.attrs = []  # list of (name_off, value_off)
@@ -197,6 +287,19 @@ class BlobBuilder:
 
     # -- DOM serialization ----------------------------------------------------
     def add_text(self, text):
+        """Append a text node and return its index in the node table.
+
+        The node is emitted with no children, no attributes and no sibling
+        link: `add_element` owns stitching `next_sibling` once it knows the full
+        child list. Node indices are dense and assigned in creation order, and a
+        node's index is final once returned.
+
+        Args:
+            text: Character data; interned, so repeated runs cost one pool slot.
+
+        Returns:
+            Index of the new node in `self.nodes`.
+        """
         idx = len(self.nodes)
         self.nodes.append(
             {
@@ -212,6 +315,25 @@ class BlobBuilder:
         return idx
 
     def add_element(self, elem):
+        """Flatten a DomBuilder subtree into the node/attr tables, depth first.
+
+        The element's own record is reserved before its children are walked, so
+        a parent always has a lower index than its descendants -- the device
+        reader relies on that ordering to walk the tree without a stack.
+        Attributes of one element are written contiguously, which is why the
+        record stores only `first_attr` plus a count.
+
+        Recursion depth tracks markup nesting depth, so `compile_epub` raises
+        the interpreter recursion limit before calling this; a deeply nested
+        document would otherwise die with RecursionError rather than a
+        diagnostic.
+
+        Args:
+            elem: DomBuilder node dict with "tag", "attrs" and "children".
+
+        Returns:
+            Index of the element's own node record.
+        """
         first_attr = NIL
         acount = 0
         if elem["attrs"]:
@@ -244,14 +366,81 @@ class BlobBuilder:
         return idx
 
     def add_chapter(self, root_elem, title, href):
+        """Flatten one spine document and register it as the next chapter.
+
+        Chapters are stored in call order, and that order IS the reading order
+        the device presents -- callers must therefore iterate the OPF spine, not
+        the manifest (whose order is arbitrary).
+
+        Args:
+            root_elem: Subtree to flatten, normally the document's `<body>`.
+            title: TOC label, or "" when the TOC has no entry for this
+                document. An untitled chapter is legitimate and displays as
+                blank rather than being skipped.
+            href: Manifest-relative href, kept so the reader can resolve
+                intra-book links back to a chapter index.
+        """
         root_idx = self.add_element(root_elem)
         self.chapters.append((self.sp.intern(title), self.sp.intern(href), root_idx))
 
     # -- assets ---------------------------------------------------------------
     def add_stylesheet(self, css_text):
+        """Store a stylesheet verbatim, scoped to the whole book.
+
+        The source text is kept uninterpreted -- no minification, no parsing,
+        no dropping of rules the device renderer does not implement yet. That
+        is the fidelity rule: a rule the renderer learns later must not need the
+        book recompiled.
+
+        The scope field is written as NIL (book-wide) rather than a chapter
+        index. EPUB per-document `<link rel="stylesheet">` scoping is not
+        modelled; every sheet applies everywhere, so two documents with
+        conflicting sheets will both see both.
+
+        Args:
+            css_text: Stylesheet source, already decoded to text.
+        """
         self.stylesheets.append((self.sp.intern(css_text), NIL))
 
     def add_raster_image(self, href, data, max_image_edge=MAX_IMAGE_EDGE):
+        """Transcode an encoded raster image to panel-native 4bpp and store it.
+
+        This is the one place content changes form, because the e-ink panel is
+        physically 4bpp. Colour is flattened to luminance, quantized to 16 grey
+        levels with dithering OFF (dithered noise survives neither the panel's
+        own dynamics nor a later downscale), and packed two pixels per byte,
+        high nibble first. An odd width leaves the final byte's low nibble zero.
+
+        Two quantization paths exist and they are NOT interchangeable:
+
+        - Downscaling (`max_image_edge` non-zero) resamples and packs with
+          `gray4_kernel`, the exact integer kernel `ra8_rabook_gray4_*` runs on
+          device. That keeps a downscaled image byte-identical host-vs-device
+          (issue #213) and stable across Pillow versions.
+        - The default no-downscale path uses Pillow's palette quantize. It is
+          byte-frozen: goldens in this tree hash its output, so changing it
+          changes committed fixtures.
+
+        Pixels are stored uncompressed. The container DEFLATEs the whole blob
+        once, so per-image compression would only double-compress, and after the
+        single inflate-on-open these bytes are handed to the panel with no
+        decode step at all.
+
+        Args:
+            href: Manifest href, interned as the lookup id the DOM's `<img
+                src>` is matched against.
+            data: Encoded source bytes in any format Pillow opens.
+            max_image_edge: Opt-in long-edge cap in pixels (issue #210). 0 --
+                the default -- preserves source resolution, which is what makes
+                the manga zoom loupe possible.
+
+        Returns:
+            Index of the image in `self.images`, for `cover_index` or a DOM ref.
+
+        Raises:
+            OSError: `data` is not a decodable image.
+            ValueError: Pillow rejected the decoded image.
+        """
         im = Image.open(io.BytesIO(data)).convert("L")
         w, h = im.size
         if max_image_edge:
@@ -294,11 +483,55 @@ class BlobBuilder:
         return len(self.images) - 1
 
     def add_svg_image(self, href, data):
+        """Store SVG source unchanged, as vector data the device rasterizes.
+
+        Unlike `add_raster_image` this does not transcode: SVG stays vector so
+        it can be rendered at whatever size the reflowed layout gives it. The
+        bytes are not parsed or validated here either, so a malformed SVG
+        reaches the device and is rejected there rather than at compile time.
+
+        Width and height are written as 0 because an SVG has no fixed pixel
+        size; the renderer takes its dimensions from the document's own
+        viewBox. Consumers must branch on the IMG_SVG format tag before trusting
+        the dimension fields.
+
+        Args:
+            href: Manifest href, interned as the image's lookup id.
+            data: Raw SVG bytes, stored verbatim.
+
+        Returns:
+            Index of the image in `self.images`.
+        """
         self.images.append((self.sp.intern(href), 0, 0, IMG_SVG, data, len(data)))
         return len(self.images) - 1
 
     # -- serialization --------------------------------------------------------
     def serialize(self, meta):
+        """Pack every table into the final RABOOK1 blob and return its bytes.
+
+        Sections are laid out in a fixed order -- chapters, nodes, attrs,
+        styles, images, string pool, image pool -- each section's offset
+        computed from the running total, and all of it described by a 100-byte
+        header. The image pool is built before the header so the image records
+        can carry resolved payload offsets. The trailing CRC32 covers the body
+        only, never the header, since the header holds the CRC field itself.
+
+        Order matters in one non-obvious way: the four metadata strings are
+        interned BEFORE `self.sp.buf` is snapshotted. They frequently appear
+        nowhere in the DOM, so interning them later -- during the header pack --
+        would append past the captured copy and leave the header pointing at
+        offsets that do not exist in the emitted blob.
+
+        The result is the inflated blob. `wrap_container` applies the chunked
+        RBKC compression that actually goes on disk.
+
+        Args:
+            meta: Dict with "title", "author", "language" and "identifier";
+                all four must be present, and "" is the valid "unknown" value.
+
+        Returns:
+            Complete little-endian blob: 100-byte header followed by the body.
+        """
         chap = b"".join(struct.pack("<3I", *c) for c in self.chapters)
         node = b"".join(
             struct.pack(
@@ -383,10 +616,51 @@ class BlobBuilder:
 
 # --- EPUB unpacking -----------------------------------------------------------
 def opf_localname(tag):
+    """Strip the `{namespace}` prefix ElementTree prepends to a tag name.
+
+    OPF, NCX and XHTML documents all declare namespaces, and publishers use
+    different prefixes and even different namespace URIs for the same vocabulary.
+    Matching on the local name alone is what lets the parsers below accept real
+    EPUBs instead of only spec-perfect ones.
+
+    Args:
+        tag: An ElementTree tag, namespaced or not. None and "" pass through.
+
+    Returns:
+        The local name, or `tag` unchanged when it carries no namespace.
+    """
     return tag.split("}", 1)[1] if tag and tag[0] == "{" else tag
 
 
 def parse_opf(zf):
+    """Read container.xml and the OPF package it points at.
+
+    Walks the OPF once with `iter()` rather than following its schema, so
+    elements in unexpected parents are still found. Metadata fields take the
+    FIRST value seen and ignore later ones, which is how a book with several
+    `<dc:creator>` entries yields one author.
+
+    Cover resolution follows the device's precedence exactly: an EPUB3 manifest
+    item whose `properties` contains "cover-image" wins, and the legacy EPUB2
+    `<meta name="cover">` is only the fallback. The substring test mirrors
+    `ra8_epub_xml_shim.cpp` `find_cover_by_properties()` byte for byte, so the
+    host `.rabook` and an on-device compile agree on the cover -- which matters
+    for EPUB3-only fixed-layout comics that ship no legacy meta (issue #196).
+
+    Args:
+        zf: Open ZipFile for the EPUB.
+
+    Returns:
+        Tuple of (opf_dir, meta, manifest, spine, cover_id): the OPF's directory
+        for resolving relative hrefs, the four metadata strings (each "" if
+        absent), manifest id -> (href, media_type, properties), spine idrefs in
+        reading order, and the cover's manifest id or None.
+
+    Raises:
+        KeyError: The EPUB has no META-INF/container.xml.
+        xml.etree.ElementTree.ParseError: container.xml or the OPF is not
+            well-formed XML.
+    """
     container = ET.fromstring(zf.read("META-INF/container.xml"))  # noqa: S314  # trusted local EPUB input
     rootfile = None
     for el in container.iter():
@@ -475,6 +749,41 @@ def parse_toc(zf, opf_dir, manifest):
 
 
 def compile_epub(path, max_image_edge=MAX_IMAGE_EDGE, skip_images=SKIP_IMAGES):
+    """Compile one EPUB into an inflated .rabook blob.
+
+    Assembles in dependency order -- stylesheets, then images (so the cover
+    index is known), then spine chapters -- and takes each chapter's `<body>`
+    subtree, falling back to the whole document when there is none.
+
+    The pass is deliberately lenient, because a book that fails to open is worse
+    than a book missing one asset. A manifest entry absent from the zip is
+    skipped; an image Pillow cannot decode is skipped; a spine idref with no
+    manifest entry is skipped. All four are silent. The consequence worth
+    knowing at 2am: a corrupt EPUB compiles successfully into a blob with
+    missing content rather than reporting an error.
+
+    Recursion limit: `add_element` recurses per level of markup nesting, so the
+    limit is raised to 100000 here. This mutates interpreter global state and is
+    not restored.
+
+    Args:
+        path: Path to the source .epub.
+        max_image_edge: Long-edge downscale cap in pixels; 0 preserves source
+            resolution. See `BlobBuilder.add_raster_image` for why the two
+            paths are not byte-equivalent.
+        skip_images: Drop every image, producing a text-only blob small enough
+            to bake into MRAM as a fixture. The cover is dropped too.
+
+    Returns:
+        Tuple of (blob, meta, bb): the serialized inflated blob, the metadata
+        dict, and the BlobBuilder itself so callers can report table sizes.
+
+    Raises:
+        KeyError: Malformed EPUB with no container.xml.
+        xml.etree.ElementTree.ParseError: container.xml or the OPF is not
+            well-formed. A broken TOC is tolerated; a broken OPF is not.
+        zipfile.BadZipFile: `path` is not a zip archive.
+    """
     sys.setrecursionlimit(100000)
     bb = BlobBuilder()
     with ZipFile(path) as zf:
@@ -687,6 +996,21 @@ def selftest():
 
 
 def main():
+    """Parse the command line, compile, and write the container to disk.
+
+    Two modes: `--selftest` runs the issue #196 fixed-layout self-check and
+    ignores the positional arguments entirely, otherwise both input and output
+    are required. The output written is the RBKC-wrapped container, not the raw
+    blob -- `--chunk-bytes` must equal the reader's `ra8_vmem` frame size or the
+    device cannot page the book.
+
+    Errors are not caught here. A malformed EPUB surfaces as a traceback rather
+    than a diagnostic; the exception type names the failing stage.
+
+    Returns:
+        0 on success. Non-zero exits arrive as SystemExit from argparse or the
+        selftest, not through this return.
+    """
     ap = argparse.ArgumentParser(description="Compile an EPUB into a .rabook blob.")
     ap.add_argument("input", nargs="?", help="source .epub")
     ap.add_argument("output", nargs="?", help="destination .rabook")

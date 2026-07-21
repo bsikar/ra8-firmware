@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-ra8_mcp.py -- a Model Context Protocol (MCP) server for this firmware repo.
+"""A Model Context Protocol (MCP) server for this firmware repo.
 
 This server gives an MCP-aware assistant live, structured context about the
 ra8-firmware tree -- the firmware app catalogue, build / test / quality
@@ -768,6 +767,16 @@ PROMPT_INDEX: dict[str, dict[str, Any]] = {p["name"]: p for p in PROMPTS}
 
 
 def handle_prompts_list() -> dict[str, Any]:
+    """Answer MCP `prompts/list` with the catalogue's public fields.
+
+    Deliberately projects each entry rather than returning it whole: `template`
+    is server-side detail, and shipping it would leak the prompt text to every
+    client that merely enumerates.
+
+    Returns:
+        `{"prompts": [...]}` with name, description and arguments per entry, in
+        PROMPTS order.
+    """
     listed = [
         {"name": p["name"], "description": p["description"], "arguments": p["arguments"]}
         for p in PROMPTS
@@ -776,6 +785,27 @@ def handle_prompts_list() -> dict[str, Any]:
 
 
 def handle_prompts_get(params: dict[str, Any]) -> dict[str, Any]:
+    """Answer MCP `prompts/get` by substituting arguments into a template.
+
+    Every declared argument is substituted, and a missing one becomes "" rather
+    than an error -- so a partially-filled prompt renders with a gap instead of
+    failing the call. Only declared arguments are passed to `format()`, so an
+    undeclared extra in `params` is ignored, and a `{placeholder}` in the
+    template with no matching declared argument raises.
+
+    Args:
+        params: JSON-RPC params; "name" selects the prompt, "arguments" is an
+            optional name -> value mapping whose values are coerced to str.
+
+    Returns:
+        `{"description": ..., "messages": [...]}` with one user-role text
+        message.
+
+    Raises:
+        ValueError: No prompt by that name, or the template referenced a
+            placeholder that is not a declared argument. `dispatch` converts
+            this into a JSON-RPC error response.
+    """
     name = str(params.get("name", ""))
     prompt = PROMPT_INDEX.get(name)
     if prompt is None:
@@ -799,14 +829,57 @@ def handle_prompts_get(params: dict[str, Any]) -> dict[str, Any]:
 # JSON-RPC dispatch
 # ---------------------------------------------------------------------------
 def _result(request_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
+    """Wrap `payload` as a JSON-RPC 2.0 success response.
+
+    Args:
+        request_id: The originating request's id, echoed verbatim -- the client
+            matches responses by it, so it must not be normalised.
+        payload: The method's result object.
+
+    Returns:
+        A response envelope carrying `result`.
+    """
     return {"jsonrpc": "2.0", "id": request_id, "result": payload}
 
 
 def _error(request_id: Any, code: int, message: str) -> dict[str, Any]:
+    """Wrap a failure as a JSON-RPC 2.0 error response.
+
+    This is protocol-level failure -- an unknown method, malformed JSON. A tool
+    that runs and fails is NOT this: `handle_tools_call` returns a successful
+    response carrying `isError: true`, so the model sees the failure text
+    instead of the transport swallowing it.
+
+    Args:
+        request_id: The originating request's id, echoed verbatim. None when
+            the request was unparseable enough to have no id.
+        code: JSON-RPC error code (-32601 unknown method, -32603 internal).
+        message: Human-readable text; reaches the client as-is.
+
+    Returns:
+        A response envelope carrying `error`.
+    """
     return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
 
 
 def handle_initialize(params: dict[str, Any]) -> dict[str, Any]:
+    """Answer the MCP `initialize` handshake and declare server capabilities.
+
+    Echoes the client's requested `protocolVersion` back rather than asserting
+    the server's own, which keeps a client on a newer spec revision from being
+    refused over a version string alone. The fallback applies only when the
+    client omits the field or sends an empty one.
+
+    All three capability objects are advertised empty: this server supports
+    tools, resources and prompts but none of their optional sub-features (no
+    list-changed notifications, no subscriptions).
+
+    Args:
+        params: JSON-RPC params from the client's initialize request.
+
+    Returns:
+        Protocol version, capability map, and server name/version.
+    """
     requested = str(params.get("protocolVersion") or PROTOCOL_VERSION_DEFAULT)
     return {
         "protocolVersion": requested,
@@ -816,6 +889,14 @@ def handle_initialize(params: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_tools_list() -> dict[str, Any]:
+    """Answer MCP `tools/list` with the catalogue's client-visible fields.
+
+    Projects each entry to name, description and inputSchema; `handler` is a
+    Python callable and is neither serialisable nor the client's business.
+
+    Returns:
+        `{"tools": [...]}` in TOOLS order.
+    """
     listed = [
         {"name": t["name"], "description": t["description"], "inputSchema": t["inputSchema"]}
         for t in TOOLS
@@ -824,6 +905,28 @@ def handle_tools_list() -> dict[str, Any]:
 
 
 def handle_tools_call(params: dict[str, Any]) -> dict[str, Any]:
+    """Answer MCP `tools/call` by running the named handler.
+
+    Every failure here is reported as a SUCCESSFUL JSON-RPC response carrying
+    `isError: true`, never as a protocol error. That is the MCP contract for
+    tool failure and it is what puts the message in front of the model: a
+    transport-level error would be handled by the client and the model would
+    only see that something went wrong, not what.
+
+    Unknown tool, argument rejection (ValueError) and any other handler
+    exception are therefore all caught. The catch-all is a deliberate RPC
+    boundary -- an unhandled exception would otherwise kill the stdio loop and
+    take the whole session down over one bad tool call -- and it logs the repr
+    to stderr so the traceback-worthy detail is not lost.
+
+    Args:
+        params: JSON-RPC params; "name" selects the tool, "arguments" is
+            forwarded to the handler unvalidated (schema enforcement is the
+            handler's job).
+
+    Returns:
+        `{"content": [{"type": "text", ...}], "isError": bool}`.
+    """
     name = str(params.get("name", ""))
     tool = TOOL_INDEX.get(name)
     if tool is None:
@@ -841,6 +944,16 @@ def handle_tools_call(params: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_resources_list() -> dict[str, Any]:
+    """Answer MCP `resources/list` with the catalogue's descriptive fields.
+
+    Projects out `reader`, the callable that actually loads each resource's
+    text. Listing is therefore cheap and touches no files -- content is only
+    read when the client asks for a specific URI.
+
+    Returns:
+        `{"resources": [...]}` with uri, name, description and mimeType, in
+        RESOURCES order.
+    """
     listed = [
         {
             "uri": r["uri"],
@@ -854,6 +967,28 @@ def handle_resources_list() -> dict[str, Any]:
 
 
 def handle_resources_read(params: dict[str, Any]) -> dict[str, Any]:
+    """Answer MCP `resources/read` by invoking the URI's reader.
+
+    Lookup is exact-match against the registered URI; there is no prefix or
+    glob matching, so a client cannot reach a file the catalogue does not name.
+    That is the read boundary for this server.
+
+    The reader runs on every call with no caching, so the client always sees
+    the file's current contents rather than a snapshot from server start.
+
+    Args:
+        params: JSON-RPC params; "uri" selects the resource.
+
+    Returns:
+        `{"contents": [{"uri", "mimeType", "text"}]}` -- a single-element list,
+        as this server has no multi-part resources.
+
+    Raises:
+        ValueError: URI is not in the catalogue; `dispatch` turns it into a
+            JSON-RPC error.
+        OSError: The reader could not read its backing file -- a registered
+            resource whose file has been moved or deleted.
+    """
     uri = str(params.get("uri", ""))
     resource = RESOURCE_INDEX.get(uri)
     if resource is None:
@@ -1081,6 +1216,24 @@ def which(name: str) -> bool:
 
 
 def main(argv: list[str]) -> int:
+    """Run the server, or the in-process self-test with `--selftest`.
+
+    With no flags this blocks in `serve()` reading JSON-RPC from stdin until
+    EOF, which is the normal mode: an MCP client spawns this as a subprocess and
+    speaks the stdio transport to it. Running it from a terminal looks like a
+    hang -- it is waiting for a request.
+
+    `--selftest` exercises the dispatcher without a client or a board, so it is
+    safe to run anywhere and is what CI invokes.
+
+    Args:
+        argv: Argument list WITHOUT the program name (callers pass
+            `sys.argv[1:]`).
+
+    Returns:
+        Process exit status: 0 on clean shutdown or a passing self-test, 1 on a
+        failing one.
+    """
     parser = argparse.ArgumentParser(description="MCP server for ra8-firmware.")
     parser.add_argument(
         "--selftest", action="store_true", help="run the in-process dispatcher self-test and exit"
