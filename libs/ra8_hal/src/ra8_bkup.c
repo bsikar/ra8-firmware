@@ -74,10 +74,17 @@
 #include "ra8_register_protection.h"
 
 /**
- * @var s_tag
+ * @var s_bkup_tag
  * @brief Log tag used for this driver's diagnostics.
+ *
+ * @details
+ * Defined once here and shared with the tamper and security TUs through
+ * ``ra8_bkup_internal.h``, so the whole driver logs under one identity.
+ *
+ * @note Read-only after definition.
+ * @since 0.1.0
  */
-static const char* s_tag = "BKUP";
+const char* s_bkup_tag = "BKUP";
 
 /**
  * @var s_bkup_fn
@@ -211,9 +218,9 @@ static void internal_vbae_access_settle(void)
 
 [[nodiscard]] ra8_err_t ra8_bkup_init(const ra8_bkup_config_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg, s_bkup_tag, "cfg must not be nullptr");
   const ra8_err_t v_err = internal_validate_cfg(cfg);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "bkup_init: cfg out of range"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_bkup_tag, "bkup_init: cfg out of range"); /* GCOVR_EXCL_BR_LINE */
 
   /* All of VBTBPCR1 / VBTBPCR2 / VBTBER / VBTBPSR / VBTADSR sit behind PRC1
    * (HUM Ch 13.1 Table 13.1 p 521); one window covers the whole bring-up. */
@@ -256,7 +263,7 @@ static void internal_vbae_access_settle(void)
   }
 
   s_bkup_initialized = true;
-  ra8_log_info(s_tag, "bkup_init");
+  ra8_log_info(s_bkup_tag, "bkup_init");
   return k_ra8_ok;
 }
 
@@ -274,7 +281,7 @@ static void internal_vbae_access_settle(void)
   }
 
   s_bkup_initialized = false;
-  ra8_log_info(s_tag, "bkup_deinit");
+  ra8_log_info(s_bkup_tag, "bkup_deinit");
   return k_ra8_ok;
 }
 
@@ -324,13 +331,13 @@ static void internal_vbae_access_settle(void)
   }
 
   s_bkup_initialized = true;
-  ra8_log_info(s_tag, "bkup_cold_start_init");
+  ra8_log_info(s_bkup_tag, "bkup_cold_start_init");
   return k_ra8_ok;
 }
 
 [[nodiscard]] ra8_err_t ra8_bkup_warm_start_check(bool* needs_reinit, uint32_t timeout_iters)
 {
-  RA8_CHECK_NULL_PTR(needs_reinit, s_tag, "needs_reinit must not be nullptr");
+  RA8_CHECK_NULL_PTR(needs_reinit, s_bkup_tag, "needs_reinit must not be nullptr");
   if (timeout_iters == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -405,7 +412,7 @@ static void internal_vbae_access_settle(void)
   }
 
   s_bkup_initialized = true;
-  ra8_log_info(s_tag, "bkup_no_switch_init");
+  ra8_log_info(s_bkup_tag, "bkup_no_switch_init");
   return k_ra8_ok;
 }
 
@@ -416,7 +423,7 @@ static void internal_vbae_access_settle(void)
 
 [[nodiscard]] ra8_err_t ra8_bkup_get_status(ra8_bkup_status_t* out)
 {
-  RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  RA8_CHECK_NULL_PTR(out, s_bkup_tag, "out must not be nullptr");
 
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   const uint8_t bpsr = *ra8_bkup_vbtbpsr();
@@ -460,13 +467,13 @@ static void internal_vbae_access_settle(void)
 
 [[nodiscard]] ra8_err_t ra8_bkup_read_word(uint8_t word_index, uint32_t* out)
 {
-  RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  RA8_CHECK_NULL_PTR(out, s_bkup_tag, "out must not be nullptr");
   if ((uint16_t)word_index >= k_ra8_bkup_word_count) {
     return k_ra8_err_invalid_arg;
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint32_t* slot = ra8_bkup_vbtbkr_word(word_index);
-  RA8_CHECK_NULL_PTR(slot, s_tag, "vbtbkr word slot mapping failed");
+  RA8_CHECK_NULL_PTR(slot, s_bkup_tag, "vbtbkr word slot mapping failed");
   *out = *slot;
   return k_ra8_ok;
 }
@@ -478,7 +485,7 @@ static void internal_vbae_access_settle(void)
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint32_t* slot = ra8_bkup_vbtbkr_word(word_index);
-  RA8_CHECK_NULL_PTR(slot, s_tag, "vbtbkr word slot mapping failed");
+  RA8_CHECK_NULL_PTR(slot, s_bkup_tag, "vbtbkr word slot mapping failed");
   /* VBTBKRn is PRC1-protected: unprotected stores are silently dropped
    * (HUM Ch 13.1 Table 13.1 p 521). */
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_lpm)
@@ -490,13 +497,13 @@ static void internal_vbae_access_settle(void)
 
 [[nodiscard]] ra8_err_t ra8_bkup_read_byte(uint16_t index, uint8_t* out)
 {
-  RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  RA8_CHECK_NULL_PTR(out, s_bkup_tag, "out must not be nullptr");
   if (index >= k_ra8_bkup_reg_count) {
     return k_ra8_err_invalid_arg;
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint8_t* slot = ra8_bkup_vbtbkr(index);
-  RA8_CHECK_NULL_PTR(slot, s_tag, "vbtbkr byte slot mapping failed");
+  RA8_CHECK_NULL_PTR(slot, s_bkup_tag, "vbtbkr byte slot mapping failed");
   *out = *slot;
   return k_ra8_ok;
 }
@@ -508,7 +515,7 @@ static void internal_vbae_access_settle(void)
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint8_t* slot = ra8_bkup_vbtbkr(index);
-  RA8_CHECK_NULL_PTR(slot, s_tag, "vbtbkr byte slot mapping failed");
+  RA8_CHECK_NULL_PTR(slot, s_bkup_tag, "vbtbkr byte slot mapping failed");
   /* VBTBKRn is PRC1-protected (HUM Ch 13.1 Table 13.1 p 521). */
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_lpm)
   {
@@ -553,7 +560,7 @@ static void internal_vbae_access_settle(void)
 
 [[nodiscard]] ra8_err_t ra8_bkup_get_voltage_monitor_enabled(bool* enabled_out)
 {
-  RA8_CHECK_NULL_PTR(enabled_out, s_tag, "enabled_out must not be nullptr");
+  RA8_CHECK_NULL_PTR(enabled_out, s_bkup_tag, "enabled_out must not be nullptr");
   /* HUM Ch 12.2.5 "VBATTMNSELR : Battery Backup Voltage Monitor Function Select Register", p 503 */
   *enabled_out = ((*ra8_bkup_vbattmnselr() & k_ra8_bkup_vbattmnselr_mask_vbtmnsel) != 0U);
   return k_ra8_ok;

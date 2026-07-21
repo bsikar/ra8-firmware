@@ -35,16 +35,11 @@
 #include <stdint.h>
 
 #include "ra8_bkup.h"
+#include "ra8_bkup_internal.h"
 #include "ra8_bkup_regs.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_register_protection.h"
-
-/**
- * @var s_tag
- * @brief Log tag used for this driver's diagnostics.
- */
-static const char* s_tag = "BKUP";
 
 /* =============================================================================
  * Internal helpers
@@ -108,11 +103,11 @@ static ra8_err_t internal_validate_security_cfg(const ra8_bkup_security_config_t
     return k_ra8_err_invalid_arg;
   }
   ra8_err_t err = internal_validate_boundary(cfg->saba);
-  RA8_RETURN_ON_ERROR(err, s_tag, "security_apply: saba bad"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_bkup_tag, "security_apply: saba bad"); /* GCOVR_EXCL_BR_LINE */
   err = internal_validate_boundary(cfg->pabas);
-  RA8_RETURN_ON_ERROR(err, s_tag, "security_apply: pabas bad"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_bkup_tag, "security_apply: pabas bad"); /* GCOVR_EXCL_BR_LINE */
   err = internal_validate_boundary(cfg->pabans);
-  RA8_RETURN_ON_ERROR(err, s_tag, "security_apply: pabans bad"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_bkup_tag, "security_apply: pabans bad"); /* GCOVR_EXCL_BR_LINE */
   return k_ra8_ok;
 }
 
@@ -123,9 +118,9 @@ static ra8_err_t internal_validate_security_cfg(const ra8_bkup_security_config_t
 
 [[nodiscard]] ra8_err_t ra8_bkup_security_apply(const ra8_bkup_security_config_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_tag, "security cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg, s_bkup_tag, "security cfg must not be nullptr");
   const ra8_err_t v_err = internal_validate_security_cfg(cfg);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "security_apply: cfg bad"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_bkup_tag, "security_apply: cfg bad"); /* GCOVR_EXCL_BR_LINE */
 
   /* BBFSAR / VBRSABAR / VBRPABARS / VBRPABARNS are security-attribution
    * registers, so they sit behind PRC4 -- not the PRC1 that guards the rest
@@ -146,7 +141,7 @@ static ra8_err_t internal_validate_security_cfg(const ra8_bkup_security_config_t
 
 [[nodiscard]] ra8_err_t ra8_bkup_security_get(ra8_bkup_security_config_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_tag, "security cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg, s_bkup_tag, "security cfg must not be nullptr");
   /* HUM Ch 12.2.1 "BBFSAR : Battery Backup Function Security Attribute Register", p 500 */
   cfg->bbfsar = (uint32_t)(*ra8_bkup_bbfsar() & k_ra8_bkup_bbfsar_mask_all);
   /* HUM Ch 12.2.2 "VBRSABAR : VBATT Backup Register Security Attribute Boundary Address Register", p 502 */

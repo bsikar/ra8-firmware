@@ -439,8 +439,10 @@ libs/ra8_hal/src/ra8_acmphs.c	misra-c2012-8.4	8
 libs/ra8_hal/src/ra8_agt.c	misra-c2012-15.5	37
 libs/ra8_hal/src/ra8_agt.c	misra-c2012-8.4	8
 libs/ra8_hal/src/ra8_bkup.c	misra-c2012-14.2	4
-libs/ra8_hal/src/ra8_bkup.c	misra-c2012-15.5	64
+libs/ra8_hal/src/ra8_bkup.c	misra-c2012-15.5	40
 libs/ra8_hal/src/ra8_bkup.c	misra-c2012-8.9	2
+libs/ra8_hal/src/ra8_bkup_security.c	misra-c2012-15.5	11
+libs/ra8_hal/src/ra8_bkup_tamper.c	misra-c2012-15.5	13
 libs/ra8_hal/src/ra8_ble.c	misra-c2012-15.5	28
 libs/ra8_hal/src/ra8_ble.c	misra-c2012-17.8	1
 libs/ra8_hal/src/ra8_ble.c	misra-c2012-8.4	11
