@@ -56,8 +56,9 @@ from typing import NoReturn
 from zipfile import ZipFile
 
 from cbz_compile import is_page_entry, natural_key
-from epub_compile import FLAG_RTL, IMG_GRAY4, BlobBuilder
 from PIL import Image
+from rabook_blob import BlobBuilder
+from rabook_format import FLAG_RTL, IMG_GRAY4
 
 # --- RCBZ wire layout (keep in lockstep with libs/ra8_book/inc/ra8_cbz_container.h) ---
 CONTAINER_MAGIC = b"RCBZ"
