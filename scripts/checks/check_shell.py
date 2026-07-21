@@ -120,7 +120,7 @@ def _shellcheck_args() -> list[str]:
     return [
         # -x follows `# shellcheck source=<path>` directives instead of only
         # guessing the target from the sourcing script's own directory. Without
-        # it, a helper sourced across directories (`. "$SCRIPT_DIR/../build/
+        # it, a helper sourced across directories (`. "$SCRIPT_DIR/../builders/
         # select_host_compiler.sh"`) is unresolvable, and every variable that
         # helper exports is then reported as referenced-but-never-assigned --
         # findings about the analysis, not about the code. Measured: -x adds
