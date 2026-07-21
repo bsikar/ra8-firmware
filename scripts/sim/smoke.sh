@@ -178,6 +178,42 @@ if [ "${1:-}" = "--selftest" ]; then
     sel_fail=1
   fi
 
+  # --- per-app extra args must actually REACH the simulator ---------------
+  #
+  # sim_extra_args() is what injects --sd / --button / --click / --reboot. If
+  # its result stops being read into $extra, every app that depends on an
+  # injected stimulus still builds, still runs, and still gets a verdict --
+  # a WRONG one, because the stimulus never arrived. touch_demo reported
+  # "UART MISMATCH" for exactly that reason after the split dropped the two
+  # lines that populate $extra, while the comment explaining them survived.
+  #
+  # Drive the whole path: a sentinel flag out of sim_extra_args must appear in
+  # the argv smoke_capture_run hands the simulator.
+  args_out="$(
+    set +e
+    # shellcheck disable=SC2317  # invoked indirectly, via smoke_build_app
+    make() { return 0; }
+    # shellcheck disable=SC2317  # shadows the real find for this probe only
+    find() { echo "examples/probe/build/probe.elf"; }
+    sim_extra_args() { printf -- '--ra8-selftest-sentinel 7'; }
+    uart_expect() { echo ""; }
+    periodic_tick_apps=""
+    sim=/bin/echo
+    smoke_build_app "probe_app" >/dev/null 2>&1
+    smoke_capture_run "probe_app" >/dev/null 2>&1
+    printf '%s' "$out"
+  )"
+  case "$args_out" in
+    *"--ra8-selftest-sentinel 7"*) ;;
+    *)
+      echo "  FAIL sim_extra_args output never reached the simulator argv."
+      echo "       Apps needing --sd / --button / --click still run and still get a"
+      echo "       verdict, but without their stimulus -- a wrong PASS or a"
+      echo "       mystery MISMATCH. Got argv: '$args_out'"
+      sel_fail=1
+      ;;
+  esac
+
   if [ "$sel_fail" -ne 0 ]; then
     echo "smoke.sh: --selftest FAILED"
     exit 1
