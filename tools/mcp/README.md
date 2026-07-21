@@ -12,10 +12,26 @@ authoritative project docs -- to any MCP-aware assistant. The point is to give
 the assistant *live, structured* context about what the repo can actually do,
 instead of it re-deriving everything from loose markdown each session.
 
-It is a single self-contained script, `ra8_mcp.py`, with **zero third-party
-dependencies**: it speaks the MCP stdio transport (newline-delimited JSON-RPC
-2.0) using only the Python standard library, so there is nothing to install.
-That matches the rest of the repo's hand-written, minimal-dependency tooling.
+It has **zero third-party dependencies**: it speaks the MCP stdio transport
+(newline-delimited JSON-RPC 2.0) using only the Python standard library, so
+there is nothing to install. That matches the rest of the repo's hand-written,
+minimal-dependency tooling.
+
+`ra8_mcp.py` is the entry point a client launches; the server is split across
+sibling modules beside it, one per layer:
+
+| Module | Responsibility |
+|--------|----------------|
+| `ra8_mcp.py` | CLI, the stdio read/write loop |
+| `mcp_protocol.py` | JSON-RPC framing and the MCP method handlers |
+| `mcp_tools.py` | every tool, and the schema that advertises it |
+| `mcp_content.py` | resources (documents) and prompts (canned tasks) |
+| `mcp_util.py` | subprocess capture, file reads, app discovery |
+| `mcp_selftest.py` | in-process dispatcher checks |
+
+A tool's schema and its handler stay in one file deliberately: if the two
+disagree the server still starts and still lists the tool, and it fails only
+when a client happens to call it. `mcp_selftest.py` cross-checks them.
 
 ## Quick check
 
