@@ -27,15 +27,20 @@ from mcp_protocol import (
 from mcp_tools import TOOL_INDEX
 
 
-def _req(method: str, **params: Any) -> dict[str, Any]:
-    """One JSON-RPC request. The id is filled in by the runner."""
+def _req(method: str, **params: object) -> dict[str, object]:
+    """One JSON-RPC request. The id is filled in by the runner.
+
+    Values are typed ``object`` rather than ``Any``: they are stored and later
+    JSON-serialised, never inspected here, so ``object`` states the real
+    contract while ``Any`` would merely switch checking off.
+    """
     out: dict[str, Any] = {"jsonrpc": "2.0", "method": method}
     if params:
         out["params"] = params
     return out
 
 
-def _call(name: str, **arguments: Any) -> dict[str, Any]:
+def _call(name: str, **arguments: object) -> dict[str, object]:
     """A tools/call request for ``name``."""
     return _req("tools/call", name=name, arguments=arguments)
 

@@ -245,6 +245,13 @@ class Report:
     """Outcome of one evaluation."""
 
     def __init__(self) -> None:
+        """Start an empty report with every failure bucket distinct.
+
+        The buckets are kept separate rather than merged into one findings
+        list because they fail for different reasons and carry different
+        remedies -- an unclassified file type needs a rule, an uncovered file
+        needs a checker, and gap growth needs the gap closed.
+        """
         self.unclassified: list[str] = []
         self.uncovered: list[tuple[str, str, str]] = []
         self.gap_growth: list[str] = []
@@ -254,6 +261,12 @@ class Report:
 
     @property
     def ok(self) -> bool:
+        """Whether the report is clean across every failing bucket.
+
+        Note ``gap_sizes`` and ``exempt`` are deliberately NOT consulted: a
+        recorded gap of unchanged size is the accepted state, and only its
+        GROWTH is a failure.
+        """
         return not (self.unclassified or self.uncovered or self.gap_growth)
 
 
@@ -342,6 +355,12 @@ def evaluate(files: list[str], claimed: dict[str, set[str]]) -> Report:
 # Reporting
 # ---------------------------------------------------------------------------
 def print_matrix(report: Report, claimed: dict[str, set[str]]) -> None:
+    """Print the class-by-provider coverage matrix.
+
+    The human-readable answer to "which checker claims this file type?", which
+    is the question that goes unasked until a whole language turns out to have
+    had no checker at all.
+    """
     by_class: dict[str, list[str]] = {}
     for prov in PROVIDERS:
         for cls in prov.classes:
@@ -367,6 +386,12 @@ def print_matrix(report: Report, claimed: dict[str, set[str]]) -> None:
 
 
 def print_failures(report: Report) -> None:
+    """Print each failing bucket to stderr, capped per bucket.
+
+    Capped because a newly-added file type can produce hundreds of identical
+    findings, and the first few plus a count communicate the same thing
+    without burying the other buckets.
+    """
     if report.unclassified:
         print("\nUNCLASSIFIED FILE TYPES -- no rule says how these are checked:", file=sys.stderr)
         for rel in report.unclassified[:MAX_SHOWN]:
@@ -439,6 +464,14 @@ def _expect(cond: bool, label: str, failures: list[str]) -> None:
 
 
 def selftest() -> int:
+    """Prove the coverage model both fires and stays quiet, against fixtures.
+
+    Validates the classification tables first: a rule keyed on a class no
+    provider claims, or a provider claiming a class that does not exist,
+    makes every later answer meaningless.
+
+    Returns 0 when both directions hold, 1 otherwise.
+    """
     print("check_lint_coverage.py --selftest")
     failures: list[str] = []
 
@@ -541,6 +574,16 @@ def selftest() -> int:
 
 # ---------------------------------------------------------------------------
 def run_check(show_matrix: bool) -> int:
+    """Verify every tracked code file is claimed by at least one checker.
+
+    Enforces a FILE FLOOR before anything else and exits 2 below it. That is
+    the load-bearing part: if the enumeration collapses, every file is
+    trivially covered and the gate reports perfect coverage precisely because
+    it saw nothing -- the exact failure mode it exists to detect in others.
+
+    Returns 0 when every file is covered, 1 on a coverage failure, 2 when the
+    enumeration is too small to trust.
+    """
     tracked = git_files()
     if len(tracked) < FILE_FLOOR:
         sys.stderr.write(
@@ -586,6 +629,7 @@ def run_check(show_matrix: bool) -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Run the lint-coverage gate, its selftest, or print the coverage matrix."""
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--selftest", action="store_true", help="assert both directions")
     ap.add_argument("--matrix", action="store_true", help="print the coverage matrix")

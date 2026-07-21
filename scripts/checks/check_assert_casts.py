@@ -40,6 +40,21 @@ def _has_leading_cast(text: str) -> bool:
 
 
 def check(path: Path) -> list[str]:
+    """Report TEST_ASSERT_EQ arguments that OPEN with a redundant integer cast.
+
+    Only a cast in leading position counts, on either argument. A cast deeper
+    in the expression is left alone deliberately -- there it is usually load
+    bearing (narrowing a wider intermediate), whereas an outer one is applied
+    to a value the macro is about to widen to int64_t anyway.
+
+    The macro's two arguments are split at the first comma seen at paren depth
+    zero, so a comma inside a nested call or a compound literal does not shift
+    the second argument. An invocation with no such comma is skipped rather
+    than reported: that is a syntax error, and the compiler names it better.
+
+    Returns one preformatted ``path:line: message`` per violation, in file
+    order; an empty list means clean.
+    """
     content = path.read_text(encoding="ascii", errors="replace")
     violations = []
     macro_len = len(_MACRO)
@@ -84,6 +99,16 @@ def check(path: Path) -> list[str]:
 
 
 def main() -> int:
+    """Scan the files named on argv and print every finding to stdout.
+
+    This gate takes its targets from the caller (the pre-commit hook passes
+    the staged C files) and has no discovery mode: an empty argv is a usage
+    error and exits 1, NOT a clean tree. A checker that treats "no files" as
+    success is the failure mode this repo keeps finding in its own tooling.
+
+    Returns 0 only when every named file is clean; 1 on any violation and on
+    the empty-argv usage error.
+    """
     paths = [Path(p) for p in sys.argv[1:]]
     if not paths:
         print("usage: check_assert_casts.py <file> [...]", file=sys.stderr)

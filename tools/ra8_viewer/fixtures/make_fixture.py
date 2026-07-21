@@ -8,6 +8,8 @@ large page number and framing) and zips them into sample.cbz, so the viewer has 
 real archive to render for the rendering proof. Requires only Pillow.
 """
 
+from __future__ import annotations
+
 import zipfile
 from pathlib import Path
 
@@ -31,14 +33,14 @@ FONT_CANDIDATES = (
 GRADIENT_DEPTH = 20
 
 
-def _font(size):
+def _font(size: int) -> ImageFont.ImageFont:
     for path in FONT_CANDIDATES:
         if path.exists():
             return ImageFont.truetype(str(path), size)
     return ImageFont.load_default()
 
 
-def make_page(bg, fg, label):
+def make_page(bg: tuple[int, int, int], fg: tuple[int, int, int], label: str) -> Image.Image:
     """Render one portrait demo page: gradient, border, banner and page number.
 
     The output is intentionally busy. A flat page would render identically
@@ -81,7 +83,7 @@ def make_page(bg, fg, label):
     return img
 
 
-def main():
+def main() -> None:
     """Render every page in PAGES and zip them into sample.cbz beside this file.
 
     Output lands next to the script rather than in the working directory, so the

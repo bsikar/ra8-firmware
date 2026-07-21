@@ -54,6 +54,7 @@ import re
 import shutil
 import sys
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -97,13 +98,24 @@ COMMENT_LEADER = re.compile(r"^\s*\*\s?")
 
 
 def in_scope(path: Path) -> bool:
+    """Whether a file is scanned for diagram blocks.
+
+    Build output is excluded via the shared is_build_output_path predicate
+    rather than a local substring test, so this gate and the size gates cannot
+    disagree about what counts as generated (#377).
+    """
     posix = path.as_posix()
     if is_build_output_path(posix) or any(frag in posix for frag in EXCLUDED):
         return False
     return path.suffix in SCAN_SUFFIXES
 
 
-def iter_sources(root: Path):
+def iter_sources(root: Path) -> Iterator[Path]:
+    """Yield every in-scope source file beneath the configured scan roots.
+
+    Symlinks are skipped, so a link pointing back into the tree cannot make
+    one diagram body appear at two origins and read as a duplicate.
+    """
     for top in SCAN_ROOTS:
         base = root / top
         if not base.is_dir():
@@ -131,11 +143,13 @@ def normalise(body_lines: list[str]) -> str:
 class Finding:
     """One rule violation, rendered as ``where: message``."""
 
-    def __init__(self, where: str, message: str):
+    def __init__(self, where: str, message: str) -> None:
+        """Record one finding at ``where`` (a ``path:line``) with its message."""
         self.where = where
         self.message = message
 
     def __str__(self) -> str:
+        """Render as ``path:line: message`` -- editor-jumpable."""
         return f"{self.where}: {self.message}"
 
 
@@ -154,7 +168,7 @@ def _scan_startuml(rel: str, lines: list[str]) -> list[Finding]:
     ]
 
 
-def _scan_dot_blocks(rel: str, lines: list[str], blocks: dict[str, list[str]]):
+def _scan_dot_blocks(rel: str, lines: list[str], blocks: dict[str, list[str]]) -> list[Finding]:
     """Collect ``@dot`` bodies into ``blocks``; return marker findings."""
     findings: list[Finding] = []
     open_at: int | None = None
@@ -182,7 +196,9 @@ def _scan_dot_blocks(rel: str, lines: list[str], blocks: dict[str, list[str]]):
     return findings
 
 
-def scan_sources(root: Path, files=None):
+def scan_sources(
+    root: Path, files: list[Path] | None = None
+) -> tuple[dict[str, list[str]], list[Finding]]:
     """Return ``(blocks, findings)``; ``blocks`` maps normalised body -> origins."""
     blocks: dict[str, list[str]] = {}
     findings: list[Finding] = []
@@ -201,7 +217,7 @@ def scan_sources(root: Path, files=None):
     return blocks, findings
 
 
-def scan_html(html_dir: Path):
+def scan_html(html_dir: Path) -> tuple[set[str], set[str], list[Finding]]:
     """Return ``(referenced, live, findings)`` for diagrams under ``html_dir``."""
     findings: list[Finding] = []
     referenced: set[str] = set()
@@ -527,6 +543,22 @@ def selftest() -> int:
 
 
 def main() -> int:
+    """Verify every authored diagram actually reached the generated HTML.
+
+    The gate this replaces was the cautionary case: 24 mandated state diagrams
+    used ``@startuml``, doxygen ignored every one of them for want of a
+    PlantUML jar, and the docs gate filtered the resulting warning away -- so
+    the diagrams rendered nowhere for the life of the tree while the style
+    rules demanded them. Hence two rules here rather than one: reject
+    ``@startuml`` outright, and prove each authored ``@dot`` body appears in
+    the output.
+
+    ``--write-stamp`` records the authored fingerprint after a docs build and
+    checks nothing; the build script calls it, and CI must not, or the stamp
+    is written from the same run it is supposed to validate.
+
+    Returns 0 when every authored diagram is present, 1 on any finding.
+    """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "--html", default="build/docs-gate/html", help="generated HTML directory to inspect"

@@ -177,6 +177,16 @@ def body_span(text: str, brace_idx: int) -> tuple[int, int] | None:
 
 
 def param_names(params: str) -> set[str]:
+    """Extract the declared parameter NAMES from a C parameter list.
+
+    Feeds the discard test in ``classify_body``, which has to know whether a
+    ``(void)x;`` names a real parameter or some unrelated local -- so what is
+    wanted here is the identifiers, with the types thrown away.
+
+    ``void`` as the whole list yields the empty set rather than a name, which
+    is what makes a zero-parameter function fall out as "discards everything
+    it was given" and stay eligible for the CANNED rule.
+    """
     names: set[str] = set()
     for raw_part in params.split(","):
         part = raw_part.strip()
@@ -559,6 +569,21 @@ def selftest(tmp: Path) -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Scan first-party C for SHADOW and CANNED stubs, or run the detector selftest.
+
+    An empty source set is FATAL rather than clean, and the message says to run
+    from the repository root: the roots are resolved relative to the current
+    directory, so invoking this from elsewhere finds nothing and would
+    otherwise report a stub-free tree it never opened.
+
+    CI runs ``--selftest`` before the scan for the same reason in the other
+    direction -- a detector whose patterns stopped matching would also report
+    a clean tree, and only an assertion in both directions can tell the two
+    apart.
+
+    Returns 0 when no stub is found, 1 on a finding, on an empty source set,
+    on a named file that does not exist, or on a failing selftest.
+    """
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("files", nargs="*", help="specific files to scan")
     ap.add_argument(

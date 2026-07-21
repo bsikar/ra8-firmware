@@ -110,6 +110,20 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
+    """Fail any first-party source file that does not end in a newline.
+
+    Exists because the two existing mechanisms are not gates: .editorconfig's
+    ``insert_final_newline`` is honoured only by editors, and clang-format's
+    ``InsertNewlineAtEOF`` only reaches C/C++ that goes through the formatter,
+    leaving Python, shell, CMake and YAML unenforced.
+
+    Unlike the size gates, an empty target set exits 0 rather than FATAL: the
+    caller here is the pre-commit hook passing a staged file list, which
+    legitimately filters to nothing when a commit touches only excluded paths.
+
+    Returns 1 with each offending path listed, 0 when clean or when there was
+    nothing in scope.
+    """
     targets = _enumerate_targets(argv[1:])
     if not targets:
         print("check_final_newline.py: no files to scan", file=sys.stderr)

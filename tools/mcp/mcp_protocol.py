@@ -40,12 +40,13 @@ ERR_INTERNAL = -32603
 # ---------------------------------------------------------------------------
 # JSON-RPC dispatch
 # ---------------------------------------------------------------------------
-def _result(request_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
+def _result(request_id: str | int | None, payload: dict[str, Any]) -> dict[str, Any]:
     """Wrap `payload` as a JSON-RPC 2.0 success response.
 
     Args:
         request_id: The originating request's id, echoed verbatim -- the client
-            matches responses by it, so it must not be normalised.
+            matches responses by it, so it must not be normalised. JSON-RPC 2.0
+            permits a string, a number or null, and nothing else.
         payload: The method's result object.
 
     Returns:
@@ -54,7 +55,7 @@ def _result(request_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
     return {"jsonrpc": "2.0", "id": request_id, "result": payload}
 
 
-def _error(request_id: Any, code: int, message: str) -> dict[str, Any]:
+def _error(request_id: str | int | None, code: int, message: str) -> dict[str, Any]:
     """Wrap a failure as a JSON-RPC 2.0 error response.
 
     This is protocol-level failure -- an unknown method, malformed JSON. A tool

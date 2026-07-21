@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_line_citations.py -- Reject in-tree source citations with line numbers.
+"""check_line_citations.py -- Reject in-tree source citations with line numbers.
 
 Per CLAUDE.md "Code Style / Comment citations":
 
@@ -74,6 +73,11 @@ THIRD_PARTY_RE = re.compile(r"\blibs/third_party/")
 
 
 def staged_files() -> list[str]:
+    """Paths added, copied, modified or renamed in the index.
+
+    Deletions are filtered out: a removed file has no citation left to check,
+    and reading its blob would fail.
+    """
     out = subprocess.run(
         ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],  # noqa: S607  # trusted: fixed git argv
         check=True,
@@ -84,6 +88,12 @@ def staged_files() -> list[str]:
 
 
 def all_tracked_files() -> list[str]:
+    """Every tracked path, for the whole-tree sweep.
+
+    The whole-tree mode is what CI runs; the staged mode above is the
+    pre-commit hook's. They differ only in this enumeration, so a rule can
+    never apply in one and not the other.
+    """
     out = subprocess.run(
         ["git", "ls-files"],  # noqa: S607  # trusted: fixed git argv
         check=True,
@@ -94,6 +104,12 @@ def all_tracked_files() -> list[str]:
 
 
 def is_in_scope(path: str) -> bool:
+    """Whether a source path is subject to the in-tree line-citation ban.
+
+    Three conditions, all required: a source extension, a location under one
+    of the scan roots, and no excluded prefix. The root test is what keeps
+    vendored trees out without needing to name each of their files.
+    """
     if not path.endswith(SOURCE_EXTS):
         return False
     if not any(path.startswith(r) for r in SCAN_ROOTS):
@@ -131,8 +147,13 @@ def _line_is_tool_exempt(line: str) -> bool:
 
 
 def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
-    """Scan a markdown/text doc file. Returns list of (line_no,
-    matched_text, snippet) violations.
+    """Scan a markdown or plain-text doc for stale-prone line citations.
+
+    Returns a list of ``(line_no, matched_text, snippet)`` violations.
+
+    Docs need far more exemptions than source does, because a doc legitimately
+    QUOTES tool output that contains ``file:line`` -- which is a transcript,
+    not a citation the reader is meant to follow.
 
     Exemptions:
       * Fenced code blocks whose info-string contains a tool name.
@@ -188,9 +209,15 @@ def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
 
 
 def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
-    """Return list of (start, end) byte offsets that lie inside C/C++
-    comments. Block comments and line comments. String literal aware
-    enough to skip `"//foo"` and `"/* */"`."""
+    """Byte spans of every C/C++ comment, block and line.
+
+    String-literal aware, enough to skip ``"//foo"`` and ``"/* */"`` -- without
+    that a URL or a format string in code would be treated as a comment and
+    any citation-shaped text inside it reported.
+
+    Returns ``(start, end)`` offsets so the caller can test whether a match
+    fell inside a comment, which is the only place a citation counts.
+    """
     spans: list[tuple[int, int]] = []
     i = 0
     n = len(text)
@@ -239,10 +266,22 @@ def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # 
 
 
 def line_of_offset(text: str, offset: int) -> int:
+    """1-based line number containing a byte offset.
+
+    Counts newlines before the offset, so it stays correct on the
+    comment-blanked view, whose newlines are preserved for exactly this
+    reason.
+    """
     return text.count("\n", 0, offset) + 1
 
 
 def line_text(text: str, line_no: int) -> str:
+    """The text of a 1-based line, or "" when the number is out of range.
+
+    Returns empty rather than raising so a finding reported at a line past
+    EOF (possible on a truncated read) still prints instead of aborting the
+    sweep.
+    """
     lines = text.splitlines()
     if 1 <= line_no <= len(lines):
         return lines[line_no - 1]
@@ -290,6 +329,19 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
 
 
 def main() -> int:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
+    """Reject in-tree citations that name a file by line number.
+
+    The rule exists because ``libs/foo.c:123`` goes stale the moment anything
+    above line 123 changes, and nothing detects that it has: the reference
+    still parses, still looks precise, and now points at the wrong line.
+    Function and symbol names survive edits, so they are what must be cited.
+
+    External HUM citations are unaffected -- the manual has stable page
+    numbers, and citing them is mandatory elsewhere in the tree.
+
+    Returns 1 listing each stale-prone citation, 0 when the scanned set is
+    clean.
+    """
     repo_root = Path(
         subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],  # noqa: S607  # trusted: fixed git argv

@@ -206,6 +206,13 @@ def render_markdown(audits: list[AppAudit], repo_root: Path) -> str:
 
 
 def main() -> int:
+    """Report the firmware's initialisation order for review.
+
+    An audit rather than a gate: it describes the order it finds and does not
+    encode an expected one, because the correct order is a design judgement
+    that changes with the peripheral set. Read the output; do not expect it
+    to fail on its own.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--repo-root",

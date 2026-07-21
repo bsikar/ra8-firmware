@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-check_annotations.py -- libclang-based annotation enforcement.
+"""check_annotations.py -- libclang-based annotation enforcement.
 
 This script walks the AST of every C / C++ translation unit under
 ``libs/``, ``src/``, ``examples/``, ``tests/``, ``port/`` and
@@ -191,6 +190,19 @@ def _report(violations: list[Violation], summary: str, *, quiet: bool) -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Run the annotation gate, or one of its three inspection modes.
+
+    Naming paths on the command line deliberately DOWNGRADES the run rather
+    than narrowing it: parse-integrity and the linkage rule are both
+    whole-tree properties, so with an explicit file list they are skipped and
+    a warning goes to stderr. That mode is for iterating on one file. The gate
+    proper must be invoked with no paths, or it reports a clean tree having
+    parsed a fraction of it -- the exact failure this checker exists to catch
+    in other tools.
+
+    Returns 0 when nothing fatal was found; a warn-only violation is printed
+    as INFO and still exits 0, so only a real rule breach fails the build.
+    """
     args = _parse_args(argv)
 
     if args.selftest:

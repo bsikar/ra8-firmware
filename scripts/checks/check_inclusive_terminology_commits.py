@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-check_inclusive_terminology_commits.py -- inclusive-terminology gate for
-commit message text passed on stdin.
+"""Inclusive-terminology gate for commit message text read from stdin.
 
 Called by the inclusive-terminology CI workflow to verify that no commit
 message on a push or PR contains banned legacy SPI/I2C terminology.

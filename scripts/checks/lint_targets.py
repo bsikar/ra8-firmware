@@ -287,6 +287,15 @@ def files_for(languages: tuple[str, ...] = LANGUAGES) -> dict[str, list[str]]:
 
 
 def main(argv: list[str]) -> int:
+    """Print the first-party file list, optionally filtered by language.
+
+    Exits non-zero printing NOTHING when a requested language resolves to zero
+    files. That is the contract the size gates depend on: an empty list must
+    be distinguishable from a clean tree, or a broken enumeration reads as
+    success.
+
+    Returns 0 with the paths on stdout, 1 on an unknown or empty language.
+    """
     args = argv[1:]
     if "--list" in args:
         print("\n".join(LANGUAGES))

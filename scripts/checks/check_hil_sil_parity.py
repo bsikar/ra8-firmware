@@ -335,6 +335,21 @@ def _report_parse_errors(errors: list[str]) -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Fail when the HIL app set and the SIL app set have drifted apart.
+
+    A model-build failure short-circuits ahead of every parity check and is
+    reported on its own: if the two sets could not be derived, any verdict
+    about their agreement would be an artefact of the broken parse rather than
+    a fact about the tree.
+
+    ``--list`` prints the derived sets and modes and always exits 0. It is a
+    debugging aid, explicitly NOT a gate -- CI must invoke this bare, or the
+    step passes without ever comparing anything.
+
+    Returns 0 when parity holds or under ``--list``, 1 on drift (an app
+    missing a hil.conf, a set mismatch, or an unsupported mode) or on a
+    model-build error.
+    """
     parser = argparse.ArgumentParser(
         prog="check_hil_sil_parity.py",
         description="Gate: every HIL app is also exercised in the simulator (SIM==HIL).",

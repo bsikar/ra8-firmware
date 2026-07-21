@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""
-cite_check.py -- validate Hardware User's Manual citations in source.
+"""cite_check.py -- validate Hardware User's Manual citations in source.
 
 This script scans C / header files for in-line annotations of the form
 
@@ -225,18 +224,35 @@ class _Blanker:
     """
 
     def __init__(self, text: str) -> None:
+        """Prepare a mutable blanking buffer over ``text``.
+
+        ``out`` starts as a character-for-character copy so blanking preserves
+        every offset -- line and column numbers reported against the blanked
+        view stay valid for the original.
+        """
         self.text = text
         self.out = list(text)
         self.n = len(text)
 
     def _peek(self, i: int) -> str:
+        """The character after ``i``, or "" at end of text.
+
+        Returning "" rather than raising lets every two-character token test
+        (``//``, ``/*``, ``*/``) run unguarded at the last position.
+        """
         return self.text[i + 1] if i + 1 < self.n else ""
 
     def _blank(self, i: int, count: int = 1) -> None:
+        """Overwrite ``count`` characters with spaces, clamped to the end."""
         for k in range(i, min(i + count, self.n)):
             self.out[k] = " "
 
     def _code(self, i: int, c: str) -> tuple[str, int]:
+        """Step the scanner through ordinary code, returning ``(next_state, index)``.
+
+        Code itself is left intact; this only recognises where a comment or
+        literal begins and hands control to the matching state.
+        """
         nxt = self._peek(i)
         if c == "/" and nxt == "/":
             self._blank(i, 2)
@@ -251,12 +267,18 @@ class _Blanker:
         return "code", i + 1
 
     def _line_comment(self, i: int, c: str) -> tuple[str, int]:
+        """Blank a ``//`` comment, ending at the newline, which is preserved."""
         if c == "\n":
             return "code", i + 1
         self._blank(i)
         return "line_comment", i + 1
 
     def _block_comment(self, i: int, c: str) -> tuple[str, int]:
+        """Blank a ``/* */`` comment, preserving its interior newlines.
+
+        Keeping the newlines is what holds line numbers stable across a
+        multi-line comment.
+        """
         if c == "*" and self._peek(i) == "/":
             self._blank(i, 2)
             return "code", i + 2
@@ -265,6 +287,12 @@ class _Blanker:
         return "block_comment", i + 1
 
     def _literal(self, i: int, c: str, state: str) -> tuple[str, int]:
+        """Blank a string or char literal, honouring backslash escapes.
+
+        An escaped closer must not end the literal, and a line continuation
+        inside one must not be mistaken for its end -- both are why this
+        consumes the escaped character rather than only the backslash.
+        """
         closer = '"' if state == "string" else "'"
         if c == "\\":
             self._blank(i)
@@ -423,6 +451,19 @@ def check_file(
 
 
 def main(argv: list[str]) -> int:
+    """Verify every register access carries a Hardware User's Manual citation.
+
+    The rule exists because a register write with no citation cannot be
+    reviewed: the reader has no way to confirm the bit pattern against the
+    manual, and a wrong one produces hardware that misbehaves rather than
+    code that fails to build.
+
+    Citations are looked for only in COMMENTS, which is why the source is
+    scanned through the blanking pass above -- a manual section number
+    appearing in a string literal is not a citation.
+
+    Returns 0 when every access is cited, 1 otherwise.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "paths",

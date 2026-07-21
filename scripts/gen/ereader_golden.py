@@ -113,10 +113,23 @@ def render_panel(board_sim: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
 
 
 def golden_path(golden_dir: Path, name: str) -> Path:
+    """Path of one screen's golden image, gzip-compressed.
+
+    One naming rule shared by the update and check paths, so the two can never
+    disagree about which file a screen owns.
+    """
     return golden_dir / f"{name}.ppm.gz"
 
 
 def do_update(args: argparse.Namespace) -> int:
+    """Re-render every screen and overwrite its golden image.
+
+    Accepts whatever the simulator currently produces as correct, so it must
+    only be run when the change in output is understood and intended -- this
+    is the operation that can silently bless a rendering regression.
+
+    Returns 0.
+    """
     args.golden_dir.mkdir(parents=True, exist_ok=True)
     for name, extra in SCREENS:
         panel = render_panel(args.board_sim, args.elf, extra)
@@ -126,6 +139,14 @@ def do_update(args: argparse.Namespace) -> int:
 
 
 def do_check(args: argparse.Namespace) -> int:
+    """Re-render every screen and compare it against its golden image.
+
+    A MISSING golden counts as a failure rather than being created on the fly;
+    silently generating it would make the first run of a new screen pass
+    against no reference at all.
+
+    Returns the number of failing screens (0 when every screen matches).
+    """
     failures = 0
     for name, extra in SCREENS:
         gpath = golden_path(args.golden_dir, name)
@@ -154,6 +175,12 @@ def do_check(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    """Dispatch to the golden-image check or update mode.
+
+    The mode is a required positional with no default, deliberately: defaulting
+    to ``update`` would let a careless invocation overwrite the references it
+    was meant to test against.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("check", "update"))
     parser.add_argument("--elf", type=Path, required=True, help="cross-built ereader_ui.elf")
