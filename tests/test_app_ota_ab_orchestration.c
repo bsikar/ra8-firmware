@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors
- * examples/ek_ra8d2/hw_validated/hil/ota_ab_orchestration/main.c. The
+ * examples/ek_ra8d2/hw_pending/ota_ab_orchestration/main.c. The
  * ra8_ota state machine itself is owned + covered by its own unit tests
  * (test_ra8_ota*.c); this test pins down the app-level contract the demo relies
  * on:
