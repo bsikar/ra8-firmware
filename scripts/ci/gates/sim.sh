@@ -12,7 +12,8 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: board-sim-smoke, board-sim-io-fabric, sil-integration
+# Gates in this file: board-sim-smoke, board-sim-matrix, board-sim-io-fabric,
+#                     sil-integration
 
 # --- board-sim-smoke ------------------------------------------------------
 # board_sim (tools/board_sim) boots the real cross-compiled .elf on an
@@ -28,6 +29,40 @@ gate_board_sim_smoke() (
   # from the generic path while the check it exists for never happens.
   bash scripts/sim/smoke.sh --selftest
   bash scripts/sim/smoke.sh
+)
+
+# --- board-sim-matrix -----------------------------------------------------
+# The BREADTH gate to board-sim-smoke's depth: every example under
+# examples/ek_ra8d2/ is built and booted on the emulator, and the failing count
+# is ratcheted DOWNWARD against a committed baseline. Growth fails; shrinking
+# is free (and prints a re-baseline notice).
+#
+# This measures #67's own headline success criterion -- "every example runs in
+# the simulator". matrix.sh has existed and been well-formed for months while
+# being invoked by NOTHING: not ci.sh, not a workflow, not the Makefile. That
+# is this repo's dominant defect class applied to the epic's definition of
+# done, which is why the fix is an enforcing gate and not a report.
+#
+# It is a ratchet rather than "zero faults", because a zero-faults rule would
+# have to stay unwired until the last known fault is burned down -- i.e. it
+# would measure nothing in the meantime, which is the same hole in a new shape.
+# It is not an allowlist: no baseline row is a permanent exemption and the end
+# state is an empty baseline.
+#
+# SPEED. This boots ~200 images and is firmly in the `slow` class; see the
+# runtime note in matrix.sh. --selftest runs FIRST and costs nothing, so a
+# classifier that stopped distinguishing truncation from failure is caught
+# before the expensive sweep rather than after it.
+gate_board_sim_matrix() (
+  set -e
+  use_pinned_arm_toolchain
+  bash scripts/sim/matrix.sh --selftest
+  python3 scripts/checks/matrix_ratchet.py --selftest
+  # matrix.sh exits non-zero whenever the sweep is not perfectly clean, which is
+  # the right default for a human running it by hand but is NOT this gate's
+  # verdict -- the ratchet is. Capture the report either way, then judge.
+  bash scripts/sim/matrix.sh || true
+  python3 scripts/checks/matrix_ratchet.py --check
 )
 
 # --- board-sim-io-fabric --------------------------------------------------
