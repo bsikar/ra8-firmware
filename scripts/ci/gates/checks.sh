@@ -44,12 +44,12 @@ gate_pre_commit_checks() (
   # doxy_audit, ra8_mcp, epub_compile, tests/CMakeLists.txt, sim/smoke.sh and
   # cmake/ra8_add_app.cmake -- with no waiver list and no narrowed scope.
   #
-  # The FUNCTION cap is not yet: 30 functions remain over 60 lines, down from
+  # The FUNCTION cap is not yet: 29 functions remain over 60 lines, down from
   # 53. The file splits closed 16 and the #373 complexity work closed another
-  # 7. Turning it on before the rest lands would make the suite red for
+  # 8. Turning it on before the rest lands would make the suite red for
   # everyone.
   #
-  # This is a NAMED, VISIBLE gap with a fixed exit condition -- close the 30
+  # This is a NAMED, VISIBLE gap with a fixed exit condition -- close the 29
   # and uncomment the one remaining scan -- deliberately chosen over the
   # alternatives: a waiver list would grandfather the offenders permanently,
   # and narrowing the scope back to C would restore the exact defect #359
