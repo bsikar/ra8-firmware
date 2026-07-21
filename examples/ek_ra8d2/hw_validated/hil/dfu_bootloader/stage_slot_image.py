@@ -63,22 +63,8 @@ def ihex_records(data: bytes, base: int) -> list:
     return out
 
 
-def main() -> int:
-    """Build the slot image from the command line and write the Intel HEX.
-
-    Pads the payload to a PAGE multiple, computes the CRC over the padded body,
-    and places the header in the slot's last page. Body and header land at
-    absolute addresses derived from `--slot`, so the output HEX is
-    slot-specific even though the payload is not.
-
-    `--seq` selects which slot the bootloader prefers at boot: the higher
-    sequence number wins. Staging an image with a sequence at or below the other
-    slot's produces a valid image the bootloader will simply not choose --
-    which looks exactly like a flash that did not take.
-
-    Returns:
-        0 on success, non-zero on a usage or validation failure.
-    """
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for the slot stager."""
     ap = argparse.ArgumentParser(description="Stage a dfu_bootloader slot image.")
     ap.add_argument(
         "--payload", required=True, help="raw app binary, linked at the SRAM run base 0x22020000"
@@ -99,34 +85,61 @@ def main() -> int:
         help="ra8_rot_trailer_t size in bytes (only with --signed)",
     )
     ap.add_argument("--out", required=True, help="output Intel HEX path")
-    args = ap.parse_args()
+    return ap
 
-    base = SLOT_BASE[args.slot]
+
+def _build_slot_body(args: argparse.Namespace) -> tuple[int, int, bytes] | None:
+    """Return ``(img_len, crc, slot_bytes)``, or None after reporting a fault.
+
+    The two layouts differ in what the header covers. A plain payload is
+    FF-padded to a page multiple and the CRC spans all of it. A signed slot is
+    ``[body][ra8_rot_trailer_t]``: the header's img_len and CRC cover the BODY
+    only, and the trailer is staged contiguously right after it so the RoT
+    launch gate finds it at ``slot_base + img_len`` (see ra8_rot_trailer_after).
+    The bootloader copies only img_len body bytes to the run base.
+    """
     raw = bytearray(Path(args.payload).read_bytes())
-
-    if args.signed:
-        # Signed slot = [body][ra8_rot_trailer_t]. The header img_len + CRC cover the
-        # BODY only; the trailer is staged contiguously right after it so the RoT
-        # launch gate reads it at slot_base + img_len (see ra8_rot_trailer_after).
-        # The bootloader copies only img_len body bytes to the run base.
-        if len(raw) <= args.trailer_size:
-            sys.stderr.write(f"error: signed image {len(raw)}B <= trailer {args.trailer_size}B\n")
-            return 2
-        img_len = len(raw) - args.trailer_size
-        if img_len % PAGE != 0:
-            sys.stderr.write(
-                f"error: signed body {img_len}B is not a multiple of {PAGE} "
-                f"-- sign a page-aligned body\n"
-            )
-            return 2
-        crc = zlib.crc32(bytes(raw[:img_len])) & 0xFFFFFFFF
-        slot = bytes(raw)
-    else:
+    if not args.signed:
         if len(raw) % PAGE != 0:
             raw += b"\xff" * (PAGE - (len(raw) % PAGE))
-        img_len = len(raw)
-        crc = zlib.crc32(bytes(raw)) & 0xFFFFFFFF
-        slot = bytes(raw)
+        return len(raw), zlib.crc32(bytes(raw)) & 0xFFFFFFFF, bytes(raw)
+
+    if len(raw) <= args.trailer_size:
+        sys.stderr.write(f"error: signed image {len(raw)}B <= trailer {args.trailer_size}B\n")
+        return None
+    img_len = len(raw) - args.trailer_size
+    if img_len % PAGE != 0:
+        sys.stderr.write(
+            f"error: signed body {img_len}B is not a multiple of {PAGE} "
+            f"-- sign a page-aligned body\n"
+        )
+        return None
+    return img_len, zlib.crc32(bytes(raw[:img_len])) & 0xFFFFFFFF, bytes(raw)
+
+
+def main() -> int:
+    """Build the slot image from the command line and write the Intel HEX.
+
+    Pads the payload to a PAGE multiple, computes the CRC over the padded body,
+    and places the header in the slot's last page. Body and header land at
+    absolute addresses derived from `--slot`, so the output HEX is
+    slot-specific even though the payload is not.
+
+    `--seq` selects which slot the bootloader prefers at boot: the higher
+    sequence number wins. Staging an image with a sequence at or below the other
+    slot's produces a valid image the bootloader will simply not choose --
+    which looks exactly like a flash that did not take.
+
+    Returns:
+        0 on success, non-zero on a usage or validation failure.
+    """
+    args = _build_parser().parse_args()
+
+    base = SLOT_BASE[args.slot]
+    built = _build_slot_body(args)
+    if built is None:
+        return 2
+    img_len, crc, slot = built
 
     if len(slot) > HDR_OFFSET:
         sys.stderr.write(f"error: slot content {len(slot)} bytes exceeds capacity {HDR_OFFSET}\n")

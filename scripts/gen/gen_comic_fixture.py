@@ -185,18 +185,19 @@ def encode_png(gray: bytes | bytearray) -> bytes:
     return sig + png_chunk(b"IHDR", ihdr) + png_chunk(b"IDAT", idat) + png_chunk(b"IEND", b"")
 
 
-def build_cbz(pngs: list[bytes]) -> bytes:
-    """Minimal deterministic ZIP writer (DEFLATE members) that miniz reads."""
-    files = []
-    local = bytearray()
-    central = bytearray()
-    for idx, data in enumerate(pngs):
-        name = f"page{idx + 1:02d}.png".encode("ascii")
-        comp = zlib.compressobj(ZLIB_BEST, zlib.DEFLATED, DEFLATE_RAW_WBITS)
-        body = comp.compress(data) + comp.flush()
-        crc = zlib.crc32(data) & 0xFFFFFFFF
-        offset = len(local)
-        local += struct.pack(
+def _zip_local_entry(idx: int, data: bytes) -> tuple[bytes, tuple[bytes, int, int, int, int]]:
+    """Deflate one page and return its local-header record plus its directory entry.
+
+    The offset in the returned entry is relative to the start of the local
+    section, so the caller must add records in the same order it later writes
+    the central directory -- a ZIP whose offsets disagree is unreadable.
+    """
+    name = f"page{idx + 1:02d}.png".encode("ascii")
+    comp = zlib.compressobj(ZLIB_BEST, zlib.DEFLATED, DEFLATE_RAW_WBITS)
+    body = comp.compress(data) + comp.flush()
+    crc = zlib.crc32(data) & 0xFFFFFFFF
+    record = (
+        struct.pack(
             "<IHHHHHIIIHH",
             ZIP_LOCAL_MAGIC,
             ZIP_VERSION,
@@ -210,10 +211,17 @@ def build_cbz(pngs: list[bytes]) -> bytes:
             len(name),
             0,
         )
-        local += name + body
-        files.append((name, crc, len(body), len(data), offset))
-    for name, crc, csize, usize, offset in files:
-        central += struct.pack(
+        + name
+        + body
+    )
+    return record, (name, crc, len(body), len(data), 0)
+
+
+def _zip_central_record(entry: tuple[bytes, int, int, int, int]) -> bytes:
+    """Central-directory record for one already-written local entry."""
+    name, crc, csize, usize, offset = entry
+    return (
+        struct.pack(
             "<IHHHHHHIIIHHHHHII",
             ZIP_CENTRAL_MAGIC,
             ZIP_VERSION,
@@ -233,20 +241,39 @@ def build_cbz(pngs: list[bytes]) -> bytes:
             0,
             offset,
         )
-        central += name
-    cd_off = len(local)
-    eocd = struct.pack(
+        + name
+    )
+
+
+def _zip_eocd(count: int, central_len: int, cd_off: int) -> bytes:
+    """End-of-central-directory record closing the archive."""
+    return struct.pack(
         "<IHHHHIIH",
         ZIP_EOCD_MAGIC,
         0,
         0,
-        len(files),
-        len(files),
-        len(central),
+        count,
+        count,
+        central_len,
         cd_off,
         0,
     )
-    return bytes(local) + bytes(central) + eocd
+
+
+def build_cbz(pngs: list[bytes]) -> bytes:
+    """Minimal deterministic ZIP writer (DEFLATE members) that miniz reads."""
+    files: list[tuple[bytes, int, int, int, int]] = []
+    local = bytearray()
+    for idx, data in enumerate(pngs):
+        offset = len(local)
+        record, entry = _zip_local_entry(idx, data)
+        local += record
+        files.append((*entry[:4], offset))
+    central = bytearray()
+    for entry in files:
+        central += _zip_central_record(entry)
+    cd_off = len(local)
+    return bytes(local) + bytes(central) + _zip_eocd(len(files), len(central), cd_off)
 
 
 def emit_header(path: str | Path, cbz: bytes) -> None:
