@@ -1,36 +1,36 @@
 #!/usr/bin/env python3
-# gen_doxygen_nav.py -- generate the Doxygen navigation trees for ra8-firmware.
-#
-# Doxygen renders markdown files (docs/*.md and every example README.md) as
-# "pages", never as entries in the Files/directory tree -- so the sidebar's
-# directory view is code-only, and the human-readable docs + per-app READMEs
-# can only be reached through the "pages" tab. This script builds that pages
-# tab to MIRROR THE ON-DISK DIRECTORY TREE instead of an invented taxonomy, so
-# navigation reads the same way everywhere (browse by directory) and can never
-# drift from the repo:
-#
-#   1. "Documentation" -- the docs/ subtree. Every docs/*.md is a leaf and
-#      every docs/<subdir> (adr, SOUP, qualification, reference, ...) is a
-#      sub-node, recursively, exactly as they sit on disk. No doc-to-section
-#      map: a new page or a new subdir just appears; a removed one just leaves.
-#
-#   2. "Examples" -- the examples/ subtree. Every app appears under its real
-#      hardware-validation tier directory (hw_validated/hil, hw_validated/manual,
-#      hw_pending, _unsupported, ra8p1_foundation, ...), each carrying the
-#      one-line description from its own README. Moving an app between tiers on
-#      disk moves it in the nav with no edit here.
-#
-# The only hand-maintained data left is a set of PRETTY-TITLE maps (tier and
-# docs-subdir display names); every one degrades gracefully -- an unmapped
-# directory falls back to a prettified name and still renders, never breaks and
-# never lists a removed item.
-#
-# The generated .dox files are written under docs/generated/ (gitignored) and
-# consumed by the main Doxyfile. build_docs.sh runs this before doxygen, so the
-# navigation can never drift from the tree.
-#
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Generate the Doxygen navigation trees, mirroring the on-disk layout.
+
+Doxygen renders markdown files (docs/*.md and every example README.md) as
+"pages", never as entries in the Files/directory tree -- so the sidebar's
+directory view is code-only, and the human-readable docs + per-app READMEs
+can only be reached through the "pages" tab. This script builds that pages
+tab to MIRROR THE ON-DISK DIRECTORY TREE instead of an invented taxonomy, so
+navigation reads the same way everywhere (browse by directory) and can never
+drift from the repo:
+
+  1. "Documentation" -- the docs/ subtree. Every docs/*.md is a leaf and
+     every docs/<subdir> (adr, SOUP, qualification, reference, ...) is a
+     sub-node, recursively, exactly as they sit on disk. No doc-to-section
+     map: a new page or a new subdir just appears; a removed one just leaves.
+
+  2. "Examples" -- the examples/ subtree. Every app appears under its real
+     hardware-validation tier directory (hw_validated/hil, hw_validated/manual,
+     hw_pending, _unsupported, ra8p1_foundation, ...), each carrying the
+     one-line description from its own README. Moving an app between tiers on
+     disk moves it in the nav with no edit here.
+
+The only hand-maintained data left is a set of PRETTY-TITLE maps (tier and
+docs-subdir display names); every one degrades gracefully -- an unmapped
+directory falls back to a prettified name and still renders, never breaks and
+never lists a removed item.
+
+The generated .dox files are written under docs/generated/ (gitignored) and
+consumed by the main Doxyfile. build_docs.sh runs this before doxygen, so the
+navigation can never drift from the tree.
+"""
 
 from __future__ import annotations
 
@@ -72,8 +72,11 @@ def doxy_page_id(relpath: str) -> str:
 
 
 def doxy_dir_id(relpath: str) -> str:
-    """Doxygen directory-page id: 'dir_' + md5 of the STRIP_FROM_PATH-relative
-    directory path WITH a trailing slash.
+    """Doxygen directory-page id: ``dir_`` + md5 of the directory path.
+
+    The path hashed is the STRIP_FROM_PATH-relative one WITH a trailing slash;
+    both details are load-bearing, since doxygen hashes exactly that string and
+    dropping the slash yields a valid-looking id that resolves to nothing.
 
     Doxygen renders a directory's README.md as that directory page's detailed
     description -- so this is where an example app's README actually shows,
@@ -132,6 +135,13 @@ TIER_BRIEFS: dict[str, str] = {
 
 
 def prettify(name: str) -> str:
+    """Fallback display title for a directory with no entry in the title maps.
+
+    This is what makes the title maps optional rather than authoritative: a
+    tier or docs subdirectory added on disk renders as Title Case immediately,
+    so forgetting to add a pretty name degrades the label and never drops the
+    node out of the navigation.
+    """
     return name.replace("_", " ").strip().title()
 
 
@@ -165,6 +175,16 @@ def clean_desc(text: str) -> str:
 
 
 def read_app_desc(app_dir: pathlib.Path) -> str:
+    """Pull the one-line blurb for an example app out of its own README.
+
+    Takes the first prose paragraph AFTER the H1, which is where these READMEs
+    put their summary. The scan stops at a heading or a table row so an app
+    whose README opens with a status table straight after the title yields an
+    empty description rather than a row of pipes rendered as prose.
+
+    A missing README returns "" rather than raising: an app without one still
+    belongs in the navigation, just without a blurb.
+    """
     readme = app_dir / "README.md"
     if not readme.is_file():
         return ""
@@ -189,17 +209,41 @@ def read_app_desc(app_dir: pathlib.Path) -> str:
 
 # --- example tree ------------------------------------------------------------
 class TierNode:
+    """One directory level of the examples/ tree, holding its apps and children.
+
+    The tree is built from the app directories found on disk, so a node exists
+    only because some app lives at or below it -- there is no declared tier
+    list to fall out of step with the repository.
+    """
+
     def __init__(self, path: str) -> None:
+        """Create an empty node for the tier at ``path`` relative to examples/.
+
+        The root is spelled "" rather than "." so that child paths concatenate
+        cleanly and the root's page id can be special-cased.
+        """
         self.path = path  # relative to examples/, "" for root
         self.apps: list[tuple[str, str, str]] = []  # (name, file_id, desc)
         self.children: dict[str, TierNode] = {}
 
     def title(self) -> str:
+        """Display title for this tier, falling back to a prettified leaf name.
+
+        Lookup is on the node's FULL path, so two tiers sharing a leaf name at
+        different depths (``hw_validated/manual`` and ``hw_pending/manual``)
+        can be titled independently.
+        """
         if self.path in TIER_TITLES:
             return TIER_TITLES[self.path]
         return prettify(self.path.split("/")[-1])
 
     def page_id(self) -> str:
+        """Doxygen ``@page`` id for this tier, unique and identifier-safe.
+
+        Every character that is neither alphanumeric nor an underscore is
+        replaced, so a tier directory containing a dot or a dash cannot emit an
+        id doxygen would silently truncate or reject.
+        """
         if not self.path:
             return "ra8_examples"
         safe = self.path.replace("/", "_")
@@ -208,6 +252,18 @@ class TierNode:
 
 
 def build_example_tree() -> tuple[TierNode, int]:
+    """Discover every example app and assemble the tier tree it implies.
+
+    An app is defined as "a directory containing main.c", which is what makes
+    the navigation self-maintaining: moving an app between tiers on disk moves
+    it in the sidebar with no edit here, and a deleted app simply stops being
+    found. Intermediate tier nodes are created on demand as each path is
+    walked, so only tiers that actually contain apps appear.
+
+    Returns the root node (whose own ``apps`` list holds any app sitting
+    directly under examples/) and the total app count, which the caller prints
+    in the page brief rather than recomputing.
+    """
     root = TierNode("")
     count = 0
     mains = sorted(EXAMPLES_DIR.rglob("main.c"))
@@ -245,6 +301,15 @@ def emit_subpage_list(out: list[str], entries: list[tuple[str, str]]) -> None:
 
 
 def emit_tier_page(node: TierNode, out: list[str]) -> None:
+    """Append this tier's ``@page`` block to ``out``, then recurse into children.
+
+    Appends in place rather than returning, so one list accumulates the whole
+    tree in traversal order: a parent's page is emitted before its descendants,
+    which is the order doxygen needs to nest the subpage links correctly.
+
+    Apps are rendered as a table and child tiers as a bulleted subpage list, so
+    a tier holding both reads as sections rather than one mixed list.
+    """
     brief = TIER_BRIEFS.get(node.path, "")
     out.append("/**")
     out.append(f" * @page {node.page_id()} {node.title()}")
@@ -277,6 +342,11 @@ def _count_apps(node: TierNode) -> int:
 
 
 def gen_examples() -> str:
+    """Render the complete "Examples" navigation tree as one .dox file body.
+
+    Returns the file text, newline-terminated, ready to be written verbatim --
+    no caller-side assembly, so the generated file has exactly one author.
+    """
     root, total = build_example_tree()
     out: list[str] = [
         "// GENERATED by scripts/gen/gen_doxygen_nav.py -- do not edit.",
@@ -358,8 +428,11 @@ def _walk_docs(dir_path: pathlib.Path, rel_under_docs: str) -> tuple[list[str], 
 
 
 def _handwritten_doc_page_ids() -> list[str]:
-    """Discover hand-written @page ids in docs/*.dox so they nest under
-    Documentation instead of floating at the top level.
+    """Discover hand-written ``@page`` ids in docs/*.dox.
+
+    Without this the hand-written pages would float at the top level of the
+    sidebar rather than nesting under Documentation, since doxygen parents a
+    page only where something ``@subpage``s it.
 
     Only the docs/ root .dox files are scanned (never docs/generated/, which
     this script owns). The ids are read straight from the files, so a page that
@@ -379,6 +452,14 @@ def _handwritten_doc_page_ids() -> list[str]:
 
 
 def gen_docs() -> str:
+    """Render the complete "Documentation" navigation tree as one .dox file body.
+
+    Both the generated per-file pages and the ids harvested from hand-written
+    .dox files are listed as children here, so the two kinds of page appear in
+    one tree rather than the hand-written ones floating at the top level.
+
+    Returns the file text, newline-terminated.
+    """
     # Top-level docs/*.md become leaves of the "Documentation" root; each
     # docs/<subdir> that carries markdown becomes a sub-node, recursively --
     # the tree is exactly the on-disk docs/ layout, no classification map.
@@ -438,6 +519,16 @@ COLLIDING_TOP_DIRS: dict[str, str] = {
 
 
 def gen_dirs() -> str:
+    """Emit ``@dir`` blocks for top-level directories with a same-named twin.
+
+    A bare ``@dir src`` is ambiguous because many example apps carry their own
+    nested src/, and doxygen silently binds the description to the
+    alphabetically-first match rather than the repo-root one. Only the
+    colliding names need this treatment; the rest keep their static blocks in
+    docs/doxygen_dirs.dox.
+
+    Returns the file text, newline-terminated.
+    """
     out = ["// GENERATED by scripts/gen/gen_doxygen_nav.py -- do not edit.", ""]
     # Disambiguate with the "<repo-dir>/src" suffix rather than an absolute
     # path: it is unique (no example app lives under <repo-dir>/), and it avoids
@@ -462,6 +553,17 @@ CONFIG_SKIP = {"third_party", "build", "__pycache__", "_deps", "doxygen"}
 
 
 def python_module_symbols() -> list[str]:
+    """Collect the module STEMS of every first-party Python file, deduplicated.
+
+    Doxygen parses a .py file as a namespace named after its stem, and those
+    namespaces' classes then appear in the C firmware's Data Structures list.
+    Feeding these to EXCLUDE_SYMBOLS drops the symbols while leaving the files
+    themselves browsable under Files.
+
+    Stems, not paths: EXCLUDE_SYMBOLS matches symbol names, so two like-named
+    modules in different directories collapse to one entry -- which is correct
+    here, since both would produce the same namespace name.
+    """
     mods: set[str] = set()
     for top in PY_TOOL_DIRS:
         base = ROOT / top
@@ -475,6 +577,14 @@ def python_module_symbols() -> list[str]:
 
 
 def gen_config() -> str:
+    """Render the EXCLUDE_SYMBOLS fragment the Doxyfile ``@INCLUDE``s.
+
+    Emitted as a Doxyfile fragment rather than edited into the Doxyfile so the
+    list regenerates with the tree; a new tooling module is excluded the next
+    time the docs build runs, with nothing to remember to update.
+
+    Returns the file text, newline-terminated.
+    """
     mods = python_module_symbols()
     lines = [
         "# GENERATED by scripts/gen/gen_doxygen_nav.py -- do not edit.",
@@ -487,6 +597,22 @@ def gen_config() -> str:
 
 
 def main() -> int:
+    """Write all four generated navigation files into docs/generated/.
+
+    build_docs.sh runs this immediately before doxygen, so the four files are
+    always regenerated from the current tree rather than read from a previous
+    build -- which is what makes stale navigation structurally impossible
+    rather than merely unlikely.
+
+    Output is written as ASCII, so a non-ASCII character reaching a README
+    blurb fails here loudly instead of producing mojibake in the rendered
+    site; the repo is ASCII-only by policy and this is where that is enforced
+    for generated navigation.
+
+    Returns 0; failures surface as exceptions rather than a status code, since
+    every one of them (unwritable output, non-ASCII input) is a build fault
+    with no partial-success reading.
+    """
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "nav_examples.dox").write_text(gen_examples(), encoding="ascii")
     (OUT_DIR / "nav_docs.dox").write_text(gen_docs(), encoding="ascii")
