@@ -22,6 +22,8 @@ Usage:
     bake_library.py <out.h> <rabook>|<title>|<author> [<rabook>|<title>|<author> ...]
 """
 
+from __future__ import annotations
+
 import struct
 import sys
 import zlib
@@ -39,7 +41,7 @@ ARRAY_LINE_LIMIT = 96
 MIN_ARGV_COUNT = 3
 
 
-def unwrap_container(data):
+def unwrap_container(data: bytes) -> bytes:
     """Inflate a chunked RBKC .rabook container back to its flat blob.
 
     Keep in sync with ra8_book_container_t in libs/ra8_book/inc/ra8_book.h:
@@ -64,7 +66,7 @@ def unwrap_container(data):
     return blob
 
 
-def decode_cover_thumb(blob):
+def decode_cover_thumb(blob: bytes) -> tuple[bytes, int, int] | None:
     """Decode the book cover into a (gray8 bytes, w, h) thumbnail, or None.
 
     Mirrors sh_image_decode_gray8 / sh_fit_box / sh_gray4_at byte-for-byte so the
@@ -75,10 +77,10 @@ def decode_cover_thumb(blob):
     except ValueError:
         return None
 
-    def u32(o):
+    def u32(o: int) -> int:
         return struct.unpack_from("<I", inflated, o)[0]
 
-    def u16(o):
+    def u16(o: int) -> int:
         return struct.unpack_from("<H", inflated, o)[0]
 
     cover = u32(36)
@@ -108,7 +110,7 @@ def decode_cover_thumb(blob):
     return bytes(out), fit_w, fit_h
 
 
-def emit_array(name, data):
+def emit_array(name: str, data: bytes) -> str:
     """Render bytes as a 4-byte-aligned `static const uint8_t` C array.
 
     The `alignas(4)` is not cosmetic: the firmware casts into these blobs to
@@ -141,7 +143,7 @@ def emit_array(name, data):
     return "\n".join(out)
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     """Bake every `<path>|<title>|<author>` spec into the output header.
 
     Title and author are passed on the command line rather than read from the

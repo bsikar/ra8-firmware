@@ -45,6 +45,8 @@ Run::
 Exit status: 0 if every stub TU is guarded fail-closed, 1 otherwise.
 """
 
+from __future__ import annotations
+
 import re
 import sys
 from pathlib import Path

@@ -21,6 +21,8 @@ Usage:
     python3 make_imgfmt_fixtures.py
 """
 
+from __future__ import annotations
+
 import io
 from pathlib import Path
 
@@ -127,7 +129,7 @@ def bake_array(name: str, data: bytes) -> str:
     )
 
 
-def main():
+def main() -> int:
     """Regenerate imgfmt_fixtures.h in the CURRENT working directory.
 
     The path is relative, so run this from the app directory that owns the
