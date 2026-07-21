@@ -35,11 +35,11 @@
  */
 
 #include "ble_hci_ra8_ble.h"
-#include "nimble_transport_stubs.h"
 
 #include <stdint.h>
 #include <string.h>
 
+#include "nimble_transport_stubs.h"
 #include "ra8_ble.h"
 #include "ra8_err.h"
 
@@ -287,7 +287,6 @@ void ble_transport_ll_init(void)
   }
 }
 
-
 /* Ble transport to ll cmd impl -- see implementation for details. */
 int ble_transport_to_ll_cmd_impl(void* buf)
 {
@@ -304,7 +303,6 @@ int ble_transport_to_ll_cmd_impl(void* buf)
   ble_transport_free(buf);
   return (err == k_ra8_ok) ? 0 : -1;
 }
-
 
 /* Ble transport to ll acl impl -- see implementation for details. */
 int ble_transport_to_ll_acl_impl(struct os_mbuf* om)
@@ -339,7 +337,7 @@ int ble_transport_to_ll_acl_impl(struct os_mbuf* om)
     return -1;
   }
 
-  const uint8_t* payload = (len == 0U) ? nullptr : &flat[k_ble_hci_acl_off_payload];
+  const uint8_t*  payload = (len == 0U) ? nullptr : &flat[k_ble_hci_acl_off_payload];
   const ra8_err_t err     = ra8_ble_hci_send_acl_data(handle, payload, len);
   return (err == k_ra8_ok) ? 0 : -1;
 }

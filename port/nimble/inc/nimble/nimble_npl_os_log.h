@@ -47,8 +47,8 @@
  * @since 0.1.0
  */
 #define BLE_NPL_LOG_IMPL(lvl)                                                                      \
-  static inline void _BLE_NPL_LOG_CAT(BLE_NPL_LOG_MODULE, _BLE_NPL_LOG_CAT(_, lvl))(               \
-    const char* fmt, ...)                                                                          \
+  static inline void _BLE_NPL_LOG_CAT(BLE_NPL_LOG_MODULE,                                          \
+                                      _BLE_NPL_LOG_CAT(_, lvl))(const char* fmt, ...)              \
   {                                                                                                \
     (void)fmt;                                                                                     \
   }

@@ -30,11 +30,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_elc_regs.h"
-#include "ra8_usb_regs.h"
 #include "ra8_check.h"
+#include "ra8_elc_regs.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
+#include "ra8_usb_regs.h"
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb_internal.h"
@@ -375,12 +375,12 @@ static ra8_err_t internal_init_bind_owner(ra8_usb_speed_t speed)
    * idempotent. HUM Ch 13 NVIC + Ch 14 ICU IELSR. */
   RA8_RETURN_ON_ERROR(ra8_isr_init(), s_tag, "ra8_isr_init");
   RA8_RETURN_ON_ERROR(ra8_isr_register(internal_pick_event(speed),
-                                     internal_pick_isr(speed),
-                                     nullptr,
-                                     (uint8_t)k_ra8_usb_dcd_isr_prio,
-                                     nullptr),
-                     s_tag,
-                     "ra8_isr_register");
+                                       internal_pick_isr(speed),
+                                       nullptr,
+                                       (uint8_t)k_ra8_usb_dcd_isr_prio,
+                                       nullptr),
+                      s_tag,
+                      "ra8_isr_register");
   internal_usbfs_storm_guard_init(speed);
 #else
   /* RA8_USB_POLLED_ONLY (TrustZone NS image, #96): the worker drives the
@@ -476,8 +476,8 @@ static void internal_init_setup_ep0(UX_SLAVE_DEVICE* device, UX_SLAVE_DCD* owner
   /* Hand EP0 to ourselves so any future TRANSFER_REQUEST has the
    * pipe table populated. */
   (void)_ux_dcd_ra8_usb_function(owner,
-                                UX_DCD_CREATE_ENDPOINT,
-                                (void*)&device->ux_slave_device_control_endpoint);
+                                 UX_DCD_CREATE_ENDPOINT,
+                                 (void*)&device->ux_slave_device_control_endpoint);
 
   device->ux_slave_device_control_endpoint.ux_slave_endpoint_state = UX_ENDPOINT_RESET;
   tr->ux_slave_transfer_request_phase                              = UX_TRANSFER_PHASE_DATA_IN;
@@ -524,8 +524,8 @@ ra8_err_t ux_dcd_ra8_usb_initialize(ra8_usb_speed_t speed)
   }
   RA8_RETURN_ON_ERROR(ra8_usb_device_init(speed), s_tag, "ra8_usb_device_init");
   RA8_RETURN_ON_ERROR(ra8_usb_attach_handler(speed, internal_event_cb, nullptr),
-                     s_tag,
-                     "ra8_usb_attach_handler");
+                      s_tag,
+                      "ra8_usb_attach_handler");
 
   RA8_RETURN_ON_ERROR(internal_init_bind_owner(speed), s_tag, "bind_owner");
 
