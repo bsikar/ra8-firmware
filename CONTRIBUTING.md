@@ -155,7 +155,7 @@ finding:
   Rule 4 (function length), naming conventions, magic-number bans, and
   the C23 typed-enum requirement. See [`docs/STATIC_ANALYSIS.md`](docs/STATIC_ANALYSIS.md).
 * ASCII character check -- non-ASCII bytes in source files are
-  rejected (`scripts/utils/check_ascii.py`).
+  rejected (`scripts/utils/fix-encoding.py --check`).
 * Doxygen audit (`scripts/utils/doxy_audit.py`) -- every function in
   `libs/`, `src/`, `port/` must carry the full required tag set
   documented in `CLAUDE.md`.

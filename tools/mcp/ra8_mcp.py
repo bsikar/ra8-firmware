@@ -539,8 +539,8 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "search_code",
-        "description": "Search first-party source (libs/src/examples/tests/port/"
-        "scripts/docs) for a regex pattern. Skips third_party and build.",
+        "description": "Search first-party source (libs, src, examples, tests, "
+        "port, scripts, docs) for a regex pattern. Skips third_party and build.",
         "inputSchema": _schema(
             {
                 "pattern": {"type": "string", "description": "regex to search for"},

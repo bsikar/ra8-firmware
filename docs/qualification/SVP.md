@@ -138,7 +138,7 @@ repository is:
 | Stack-usage bound                 | `-Wstack-usage`, `-fstack-usage`, `scripts/utils/stack_usage_check.py`         | Per build          |
 | No dynamic allocation (NASA P10 #3) | `scripts/utils/check_no_dynamic_alloc.py`                                    | Per commit         |
 | Obsolete-standard reference scan  | `scripts/utils/check_obsolete_standards.py` (rejects superseded safety-standard references) | Per commit |
-| Doxygen completeness audit        | `scripts/utils/doxy_audit` -> `docs/DOXYGEN_GAPS.md`                           | On demand          |
+| Doxygen completeness audit        | `scripts/utils/doxy_audit.py` -> `docs/DOXYGEN_GAPS.md`                           | On demand          |
 | MC/DC vector pattern declaration  | `scripts/utils/check_mcdc_block.py`                                            | Per commit         |
 | SOUP qualification basis review   | One Markdown file per component under `docs/SOUP/`                             | Annual per file    |
 

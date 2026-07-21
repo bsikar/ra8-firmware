@@ -344,6 +344,15 @@ if ! python3 scripts/utils/check_final_newline.py; then
   error_found=1
 fi
 
+# Every scripts/... path mentioned anywhere in the tree resolves. Those
+# references are plain text -- a git mv inside scripts/ breaks doc links, hook
+# comments and workflow steps with no build error and no test failure.
+if ! python3 scripts/utils/check_script_references.py; then
+    echo "[FAIL] unresolved scripts/ path reference(s)."
+    echo "   Update the reference, or append 'PATHREF-OK: <reason>' if the path is prose."
+    error_found=1
+fi
+
 # Python lint + format (ruff) over scripts/, tools/, tests/.
 if ! python3 scripts/utils/check_ruff.py; then
   echo "[FAIL] ruff lint/format finding(s)."

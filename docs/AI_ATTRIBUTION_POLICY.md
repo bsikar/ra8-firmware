@@ -57,7 +57,7 @@ volatile uint32_t* base = (uint32_t*)k_ra8_gpt0_base;
 ```
 # ALLOWED: the project's own filename
 See CLAUDE.md for the full rule.
-ln -s ../../scripts/git/pre-commit .git/hooks/pre-commit
+ln -s ../../scripts/git/pre-commit .git/hooks/pre-commit  PATHREF-OK: symlink target is relative to .git/hooks/, not to this document
 
 # ALLOWED: the .claude config directory referenced as a path
 EXCLUDE_DIRS=("build" ".git" ".claude")
