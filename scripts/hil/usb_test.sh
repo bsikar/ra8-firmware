@@ -155,6 +155,95 @@ wait_for_enum() {
   return 1
 }
 
+# Steps 1-3: flash, then power-cycle until the device enumerates. Returns 1 if
+# it never does -- there is nothing to test past that point.
+_usb_flash_and_enumerate() {
+  local name="$1" app="$2" vidpid="$3" hub_port="$4"
+
+  echo -e "${YELLOW}[USB-${name}]${NC} step 1 -- flash"
+  bash scripts/hil/flash.sh "${app}" >/dev/null
+
+  echo -e "${YELLOW}[USB-${name}]${NC} step 2/3 -- power-cycle + wait for enumeration"
+  for attempt in 1 2 3 4 5; do
+    bash scripts/hil/tapo.sh board cycle >/dev/null
+    if wait_for_enum "${vidpid}" "${hub_port}" "${ENUM_WAIT_S}"; then
+      echo -e "${GREEN}[USB-${name}]${NC} enumerated (attempt ${attempt})"
+      return 0
+    fi
+    # PPPS-bounce port between Tapo cycles for the next try; helps when
+    # the host's xhci-hcd retried hard enough to confuse its internal
+    # state machine.
+    bash scripts/hil/ppps.sh cycle "${hub_port}" >/dev/null 2>&1 || true
+  done
+  echo -e "${RED}[USB-${name}]${NC} did NOT enumerate after 5 power-cycle attempts"
+  return 1
+}
+
+# Step 4a: chapter-9 / data-path correctness over the CDC endpoint.
+_usb_correctness() {
+  local name="$1" dev="$2" mps_chunk="$3"
+
+  echo -e "${YELLOW}[USB-${name}]${NC} step 4a -- correctness (usb_benchmark.py chunk=${mps_chunk}B)"
+  if pi_run "python3 /tmp/usb_benchmark.py ${dev} ${QUICK} --throughput-chunk ${mps_chunk}"; then
+    echo -e "${GREEN}[USB-${name}]${NC} correctness PASS"
+    return 0
+  fi
+  echo -e "${RED}[USB-${name}]${NC} correctness FAIL"
+  return 1
+}
+
+# Step 4b: sustained one-way throughput against a floor.
+_usb_throughput() {
+  local name="$1" dev="$2" stream_bytes="$3" stream_min_kbs="$4"
+  local bench_out
+
+  echo -e "${YELLOW}[USB-${name}]${NC} step 4b -- streaming throughput (${stream_bytes}B, floor ${stream_min_kbs} KB/s)"
+  if ! bench_out=$(pi_run "python3 /tmp/usb_stream_bench.py ${dev} --bytes ${stream_bytes}" 2>&1); then
+    echo "$bench_out"
+    echo -e "${RED}[USB-${name}]${NC} streaming bench errored"
+    return 1
+  fi
+  echo "$bench_out"
+  # Parse the "one-way wire throughput : NNN.N KB/s" line and
+  # compare against the floor. integer-ish compare to avoid bc.
+  local kbs
+  kbs=$(echo "$bench_out" | sed -nE 's/.*one-way wire throughput[^0-9]*([0-9]+).*/\1/p' | head -1)
+  if [[ -n "$kbs" && "$kbs" -ge "$stream_min_kbs" ]]; then
+    echo -e "${GREEN}[USB-${name}]${NC} throughput PASS (${kbs} KB/s >= ${stream_min_kbs} KB/s)"
+    return 0
+  fi
+  echo -e "${RED}[USB-${name}]${NC} throughput FAIL (${kbs:-?} KB/s < ${stream_min_kbs} KB/s)"
+  return 1
+}
+
+# Step 5: PPPS re-enumeration. USBHS uses the hardware uhubctl mechanism
+# (PPPS), USBFS uses the host-side authorized sysfs toggle (--soft)
+# because the device's USBFS PHY does not resync to a hub-side data
+# toggle. Both achieve the same outcome: device forced to re-run
+# chapter-9 enumeration without losing firmware state.
+_usb_reenumerate() {
+  local name="$1" vidpid="$2" hub_port="$3" ppps_mode="$4"
+
+  # An array, not a string: an unquoted "" would pass hil_ppps.sh a spurious
+  # empty argument, and quoting it would pass "" as a real argv entry.
+  local soft_arg=()
+  if [[ "$ppps_mode" == "soft" ]]; then
+    soft_arg=(--soft)
+  fi
+  echo -e "${YELLOW}[USB-${name}]${NC} step 5 -- re-enumeration on port ${hub_port} (${ppps_mode})"
+  for attempt in $(seq 1 "${PPPS_REENUM_RETRIES}"); do
+    bash scripts/hil/ppps.sh ${soft_arg[@]+"${soft_arg[@]}"} cycle "${hub_port}" \
+      >/dev/null 2>&1 || true
+    if wait_for_enum "${vidpid}" "${hub_port}" "${ENUM_WAIT_S}"; then
+      echo -e "${GREEN}[USB-${name}]${NC} re-enumeration OK (attempt ${attempt})"
+      return 0
+    fi
+    echo -e "${YELLOW}[USB-${name}]${NC} re-enum attempt ${attempt} failed; retrying"
+  done
+  echo -e "${RED}[USB-${name}]${NC} re-enumeration FAILED after ${PPPS_REENUM_RETRIES} tries"
+  return 1
+}
+
 run_one_controller() {
   local name="$1" app="$2" vidpid="$3" hub_port="$4" ppps_mode="${5:-hard}"
   local mps_chunk="${6:-64}"
@@ -167,27 +256,7 @@ run_one_controller() {
   echo -e "${CYAN}[USB-${name}]${NC} app=${app}  vidpid=${vidpid}  hub_port=${hub_port}"
   echo -e "${CYAN}===========================================================${NC}"
 
-  echo -e "${YELLOW}[USB-${name}]${NC} step 1 -- flash"
-  bash scripts/hil/flash.sh "${app}" >/dev/null
-
-  echo -e "${YELLOW}[USB-${name}]${NC} step 2/3 -- power-cycle + wait for enumeration"
-  local enum_ok=0
-  for attempt in 1 2 3 4 5; do
-    bash scripts/hil/tapo.sh board cycle >/dev/null
-    if wait_for_enum "${vidpid}" "${hub_port}" "${ENUM_WAIT_S}"; then
-      echo -e "${GREEN}[USB-${name}]${NC} enumerated (attempt ${attempt})"
-      enum_ok=1
-      break
-    fi
-    # PPPS-bounce port between Tapo cycles for the next try; helps when
-    # the host's xhci-hcd retried hard enough to confuse its internal
-    # state machine.
-    bash scripts/hil/ppps.sh cycle "${hub_port}" >/dev/null 2>&1 || true
-  done
-  if ((enum_ok == 0)); then
-    echo -e "${RED}[USB-${name}]${NC} did NOT enumerate after 5 power-cycle attempts"
-    return 1
-  fi
+  _usb_flash_and_enumerate "${name}" "${app}" "${vidpid}" "${hub_port}" || return 1
 
   relax_acm_perms
   local dev
@@ -198,61 +267,9 @@ run_one_controller() {
   fi
   echo -e "${YELLOW}[USB-${name}]${NC} device: ${dev}"
 
-  echo -e "${YELLOW}[USB-${name}]${NC} step 4a -- correctness (usb_benchmark.py chunk=${mps_chunk}B)"
-  if pi_run "python3 /tmp/usb_benchmark.py ${dev} ${QUICK} --throughput-chunk ${mps_chunk}"; then
-    echo -e "${GREEN}[USB-${name}]${NC} correctness PASS"
-  else
-    echo -e "${RED}[USB-${name}]${NC} correctness FAIL"
-    rc=1
-  fi
-
-  echo -e "${YELLOW}[USB-${name}]${NC} step 4b -- streaming throughput (${stream_bytes}B, floor ${stream_min_kbs} KB/s)"
-  local bench_out
-  if bench_out=$(pi_run "python3 /tmp/usb_stream_bench.py ${dev} --bytes ${stream_bytes}" 2>&1); then
-    echo "$bench_out"
-    # Parse the "one-way wire throughput : NNN.N KB/s" line and
-    # compare against the floor. integer-ish compare to avoid bc.
-    local kbs
-    kbs=$(echo "$bench_out" | sed -nE 's/.*one-way wire throughput[^0-9]*([0-9]+).*/\1/p' | head -1)
-    if [[ -n "$kbs" && "$kbs" -ge "$stream_min_kbs" ]]; then
-      echo -e "${GREEN}[USB-${name}]${NC} throughput PASS (${kbs} KB/s >= ${stream_min_kbs} KB/s)"
-    else
-      echo -e "${RED}[USB-${name}]${NC} throughput FAIL (${kbs:-?} KB/s < ${stream_min_kbs} KB/s)"
-      rc=1
-    fi
-  else
-    echo "$bench_out"
-    echo -e "${RED}[USB-${name}]${NC} streaming bench errored"
-    rc=1
-  fi
-
-  # PPPS re-enumeration. USBHS uses the hardware uhubctl mechanism
-  # (PPPS), USBFS uses the host-side authorized sysfs toggle (--soft)
-  # because the device's USBFS PHY does not resync to a hub-side data
-  # toggle. Both achieve the same outcome: device forced to re-run
-  # chapter-9 enumeration without losing firmware state.
-  # An array, not a string: an unquoted "" would pass hil_ppps.sh a spurious
-  # empty argument, and quoting it would pass "" as a real argv entry.
-  local soft_arg=()
-  if [[ "$ppps_mode" == "soft" ]]; then
-    soft_arg=(--soft)
-  fi
-  echo -e "${YELLOW}[USB-${name}]${NC} step 5 -- re-enumeration on port ${hub_port} (${ppps_mode})"
-  local reenum_ok=0
-  for attempt in $(seq 1 "${PPPS_REENUM_RETRIES}"); do
-    bash scripts/hil/ppps.sh ${soft_arg[@]+"${soft_arg[@]}"} cycle "${hub_port}" \
-      >/dev/null 2>&1 || true
-    if wait_for_enum "${vidpid}" "${hub_port}" "${ENUM_WAIT_S}"; then
-      echo -e "${GREEN}[USB-${name}]${NC} re-enumeration OK (attempt ${attempt})"
-      reenum_ok=1
-      break
-    fi
-    echo -e "${YELLOW}[USB-${name}]${NC} re-enum attempt ${attempt} failed; retrying"
-  done
-  if ((reenum_ok == 0)); then
-    echo -e "${RED}[USB-${name}]${NC} re-enumeration FAILED after ${PPPS_REENUM_RETRIES} tries"
-    rc=1
-  fi
+  _usb_correctness "${name}" "${dev}" "${mps_chunk}" || rc=1
+  _usb_throughput "${name}" "${dev}" "${stream_bytes}" "${stream_min_kbs}" || rc=1
+  _usb_reenumerate "${name}" "${vidpid}" "${hub_port}" "${ppps_mode}" || rc=1
 
   return "$rc"
 }

@@ -100,6 +100,37 @@ suite_errexit_selftest() {
 #   exactly ONE commit. It also asserts the resolved range is RESOLVABLE in the
 #   history repo, which is the failure mode of the rejected "export
 #   RA8_CI_COMMIT_RANGE into the snapshot" fix (SHAs the object store lacks).
+# Build the BROKEN fixture: a one-commit repository whose single message is the
+# `ci.sh snapshot of HEAD` that the #348 false-green guard exists to reject.
+# Fixture construction only -- every assertion and the cleanup/exit path stays
+# in commit_range_selftest, so there is one place that decides the verdict.
+_crs_make_snapshot_repo() {
+  local dir="$1"
+  mkdir -p "$dir"
+  printf 'snapshot\n' >"$dir/file.txt"
+  git -C "$dir" init --quiet
+  git -C "$dir" add -A
+  git -C "$dir" -c user.email=ci@localhost -c user.name=ci \
+    commit --quiet --no-verify -m "ci.sh snapshot of HEAD"
+}
+
+# Build the LEGAL fixture: three real commits, then a detached HEAD so there is
+# no upstream. ci_commit_range must fall through to HEAD~1..HEAD, a range
+# spanning exactly one commit -- an ordinary single-commit push, which it would
+# be a false failure to reject.
+_crs_make_real_repo() {
+  local dir="$1" n
+  mkdir -p "$dir"
+  git -C "$dir" init --quiet
+  for n in 1 2 3; do
+    printf 'rev %s\n' "$n" >"$dir/file.txt"
+    git -C "$dir" add -A
+    git -C "$dir" -c user.email=ci@localhost -c user.name=ci \
+      commit --quiet --no-verify -m "test: commit $n"
+  done
+  git -C "$dir" checkout --quiet --detach HEAD
+}
+
 commit_range_selftest() (
   # A SUBSHELL, not a { } body: this probe flips errexit while driving the
   # guard, and the gates that call it run `set -uo pipefail` WITHOUT -e.
@@ -112,12 +143,7 @@ commit_range_selftest() (
 
   # --- Direction 1: the broken input the guard exists to catch. -----------
   fake="$tmp/snapshot"
-  mkdir -p "$fake"
-  printf 'snapshot\n' >"$fake/file.txt"
-  git -C "$fake" init --quiet
-  git -C "$fake" add -A
-  git -C "$fake" -c user.email=ci@localhost -c user.name=ci \
-    commit --quiet --no-verify -m "ci.sh snapshot of HEAD"
+  _crs_make_snapshot_repo "$fake"
 
   if ci_require_real_history "$fake" 2>/dev/null; then
     rm -rf "$tmp"
@@ -131,19 +157,7 @@ commit_range_selftest() (
 
   # --- Direction 2: legal-but-tricky input that must NOT be rejected. -----
   real="$tmp/real"
-  mkdir -p "$real"
-  git -C "$real" init --quiet
-  local n
-  for n in 1 2 3; do
-    printf 'rev %s\n' "$n" >"$real/file.txt"
-    git -C "$real" add -A
-    git -C "$real" -c user.email=ci@localhost -c user.name=ci \
-      commit --quiet --no-verify -m "test: commit $n"
-  done
-  # Detach HEAD so there is no upstream: ci_commit_range must fall through to
-  # HEAD~1..HEAD, a range spanning exactly one commit. That is an ordinary
-  # single-commit push, and rejecting it would be a false failure.
-  git -C "$real" checkout --quiet --detach HEAD
+  _crs_make_real_repo "$real"
 
   if ! ci_require_real_history "$real" 2>/dev/null; then
     rm -rf "$tmp"
