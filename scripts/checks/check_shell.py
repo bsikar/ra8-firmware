@@ -72,7 +72,7 @@ SHELLCHECK_ENABLE = (
 #     `( fn ); rc=$?` passes while aborting the parent outright. Enabling it
 #     would mean ~90 inline disables and would push authors toward the form it
 #     cannot see. The signal is real, so it is covered instead by
-#     scripts/utils/check_errexit_masking.py, which fires only where a
+#     scripts/checks/check_errexit_masking.py, which fires only where a
 #     first-party function with two or more failable commands is invoked with
 #     its status masked. The runtime regression for the specific gate-suite
 #     failure remains asserted by suite_errexit_selftest in scripts/ci.sh.
