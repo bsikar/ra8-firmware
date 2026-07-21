@@ -41,7 +41,24 @@ select = [
   "ISC",       # flake8-implicit-str-concat
   "FURB",      # refurb (modernization)
   "TRY",       # tryceratops (exception hygiene)
-  "EM",        # flake8-errmsg
+  "EM",         # flake8-errmsg
+  # --- added by #363 -------------------------------------------------------
+  # Private-member access. The reason previously recorded here -- "this repo's
+  # own tests reaching into modules it owns" -- was simply wrong: all 15
+  # measured findings were scripts/tapo_control.py reaching into the
+  # THIRD-PARTY python-kasa library's internals, which is the most upgrade-
+  # fragile coupling in the Python tree and exactly what SLF exists to surface.
+  # It is deliberate and unavoidable (see the per-file-ignore below), but it
+  # should be visible, and the rule now catches the next one.
+  "SLF",
+  # Boolean positional value at a CALL site. Only the call-site half of FBT is
+  # taken: FBT001/FBT002 are a definition-side API opinion that cannot tell a
+  # mode flag from a boolean SUBJECT -- `_require(cond, what)` and
+  # `_brace_delta(line, in_block_comment)` are correct as written. FBT003 is
+  # not an opinion: `_svg(True)` at a call site is unreadable regardless of how
+  # the callee is designed. Measured 12, all `_svg(True)`/`_svg(False)` in
+  # check_doc_diagrams.py; fixed by making the parameter keyword-only.
+  "FBT003",
   # --- added by #360 -------------------------------------------------------
   # A blind `except Exception` in a gate swallows the very failure the gate
   # exists to report. Measured 9, all resolved: five were file-read catch-alls
@@ -77,6 +94,16 @@ ignore = [
 # deletes it again as soon as it stops being needed. That pair is what keeps a
 # targeted, justified suppression from decaying into a blanket one.
 
+[tool.ruff.lint.per-file-ignores]
+# The ONE place a private member of code this repo does not own is touched.
+# TPAP smart plugs are not discoverable, so every connection parameter has to
+# be pinned on the transport and the library's discovery step stubbed out;
+# python-kasa exposes no public API for either. This is recorded here rather
+# than as 15 inline noqa lines so the coupling reads as one documented fact
+# about the driver, and so the rule keeps firing everywhere else in the tree.
+# If python-kasa ever grows a public seam for this, delete the line.
+"scripts/tapo_control.py" = ["SLF001"]
+
 [tool.ruff.lint.pylint]
 # Pinned explicitly rather than inherited, so a ruff default change cannot
 # silently move this project's limit.
@@ -90,46 +117,87 @@ max-statements = 50
 max-branches = 12
 
 # ---------------------------------------------------------------------------
-# Deliberately NOT selected, each with the measurement behind the decision.
-# Recorded here so the next person reads a reason instead of an omission.
+# Deliberately NOT selected. Every count below was RE-MEASURED for #363 against
+# the current tree (124 first-party Python files, ruff 0.15.19), not carried
+# over from the previous pass -- a stale number is how a dropped family stops
+# being a decision and becomes an omission.
 #
-#   ANN (367) type annotations. A large mechanical diff across internal CLI
-#             scripts for modest defect-detection value, and it collides with
-#             the planned scripts/ reorganization. Revisit after that lands.
-#   T20 (517) flake8-print. These ARE command-line tools; printing is the
-#             output mechanism, not a debugging leftover.
-#   C90  (52) mccabe complexity. Fixing means restructuring 52 functions --
-#             a refactor campaign, not a lint pass, and it overlaps the
-#             function-size decision in #359.
-#   D   (402) pydocstyle, google convention (measured: google 402, pep257 396,
-#             numpy 384; google is the pick because it drops D401's
-#             imperative-mood policing, 27 findings of pure style opinion).
-#             Split out deliberately, and NOT because of the size: 271 of the
-#             402 are "this function has no docstring" on internal helpers,
-#             and writing 271 of those in one mechanical pass produces exactly
-#             the restating boilerplate docs/STYLE_GUIDE.md bans on the C side
-#             ("pointer-only boilerplate that restates the obvious ... carries
-#             zero information"). Doing it properly needs per-function
-#             judgment, so it is its own change. The other 131 are formatting
-#             rules (D205/D209/D212/D301/D415) that land with it.
-#             Nothing is suppressed by this: D is simply not selected, so no
-#             finding is hidden behind a green gate.
-#   ERA   (9) commented-out code. ALL NINE measured findings are false
-#             positives on prose: a documented shell command line, a sample
-#             of mcdc.txt's format, a deliberately-empty exemption list with
-#             a commented tuple template, and a plain English comment that
-#             happens to parse as a call. A rule whose entire measured yield
-#             is false positives buys nothing and costs nine suppressions on
-#             correct code.
-#   INP   (5) implicit-namespace-package. Its remedy is to add __init__.py to
-#             scripts/, converting a flat CLI-script tree into a Python
-#             package. That is a structural change this repo does not want.
-#   FBT  (23) boolean-trap. An API-design opinion, not a defect class, and
-#             these are internal single-caller helpers.
-#   SLF  (15) private-member access, all of it inside this repo's own tests
-#             and tooling reaching into modules it owns.
-#   TC   (13) typing-only import blocks. Runtime-irrelevant for scripts that
-#             are executed, not imported as a typed library.
+#   ANN (377) type annotations -- tracked in #372 (ANN001 227, ANN201 106, ANN202 33, ANN204 9,
+#             ANN401 2) across 27 files. This is the one family below whose
+#             reason is scheduling rather than merit, and it is recorded as
+#             such: annotations on the files implementing the CI gates are
+#             real value and this SHOULD be adopted. It is held back only
+#             because 132 of the 377 are in tools/epub_compile/ and most of
+#             the rest in scripts/utils/ -- the two trees being rewritten
+#             right now by the scripts/ restructure and the tools/ docstring
+#             pass. Landing 377 signature edits across those same files
+#             produces merge conflicts, not type safety. Adopt it as the next
+#             lint change once both land; nothing is hidden behind it in the
+#             meantime, since an unselected family suppresses nothing.
+#   T20 (584) flake8-print, 89 files. Re-checked against the specific worry
+#             that LIBRARY code is printing where it should return or log:
+#             every first-party .py that contains a top-level `print(` is
+#             either an executable script or carries a `__main__` guard, and
+#             the three genuinely importable modules (hil_secrets.py,
+#             openbao_client.py, gray4_kernel.py) contain no print at all.
+#             There is no library-printing defect here to catch, so the
+#             remedy would be 87 per-file-ignores describing the tree as it
+#             already is. Printing IS the output mechanism of a CLI tool.
+#   C90  (54) mccabe complexity, 28 files. Tracked in #373. Full sweep, so the next person
+#             picks a threshold from data: 10 -> 54, 12 -> 37, 15 -> 15,
+#             20 -> 5, 25 -> 2, 30 -> 1. Held back for sequencing, not taste:
+#             48 of the 54 are in scripts/utils/, and the worst offenders
+#             (doxy_audit 7, regen_mcdc_gaps 5, check_annotations 5,
+#             check_doc_attachment 2) are precisely the files #359 is
+#             splitting for the function-size cap. Complexity and function
+#             size are two measures of one property; decomposing for one
+#             fixes the other, and doing both in two branches at once yields
+#             conflicts rather than simpler code. #359 owns the size axis and
+#             its threshold; select C90 at ruff's default 10 against the
+#             decomposed tree afterwards.
+#   D   (455) pydocstyle, google convention (D103 179, D205 57, D413 56,
+#             D209 35, D401 34, D212 31, D102 19, D100 13) across 96 files.
+#             Re-measured after #368 landed the tools/ and examples/ half of
+#             #365 and #374 added the lint-coverage gate's three modules.
+#             Unchanged reasoning: 215 of them are "this helper has no
+#             docstring", and writing 215 in one mechanical pass produces
+#             exactly the restating boilerplate docs/STYLE_GUIDE.md bans on
+#             the C side. Needs per-function judgment, so it is its own
+#             change -- and one is in flight for tools/, tests/ and examples/.
+#   FBT001/FBT002 (13) boolean-trap, definition side. FBT003 IS now selected
+#             (see above). The definition-side half is dropped on merit after
+#             reading all 12: the rule cannot distinguish a mode flag from a
+#             boolean SUBJECT, and most of these are the latter --
+#             `_require(cond, what)` in three files is an assert-style helper
+#             whose boolean is the thing being asserted, and
+#             `_brace_delta(line, in_block_comment)` threads parser state.
+#             Forcing those to keyword-only would make correct code worse.
+#   TC   (13) typing-only import blocks -- all 13 are the identical
+#             `from collections.abc import Iterable` in a gate script. These
+#             are executed, not imported as a typed library, so moving the
+#             import into an `if TYPE_CHECKING:` block buys no startup cost
+#             back (collections.abc is already loaded by the interpreter) and
+#             costs a conditional block in 13 files. Zero defect value.
+#   ERA   (9) commented-out code. Re-verified line by line: ALL NINE remain
+#             false positives on prose -- a documented `pyftsubset` invocation
+#             in font_to_c.py, a sample of mcdc.txt's column format, a
+#             deliberately-empty exemption tuple template in
+#             stack_usage_check.py, and a comment in check_line_citations.py
+#             that happens to parse as a call. A rule whose entire measured
+#             yield is false positives buys nothing and costs nine
+#             suppressions on correct code.
+#   INP   (3) implicit-namespace-package, down from 5. INP001 fires on a .py
+#             that is neither an executable script nor a package member --
+#             verified empirically: adding a shebang silences it. Two of the
+#             original five were therefore a REAL defect, CLI entry points
+#             with `__main__` guards and no shebang (rot_keystore.py, which
+#             rot_provision.sh documents as a direct command line, and
+#             rot_patch_pubkey.py); both now have one and the executable bit
+#             that EXE001 requires. The remaining three are genuine importable
+#             library modules (hil_secrets, openbao_client, gray4_kernel), and
+#             for those the only remedy is __init__.py, converting a flat CLI
+#             tree into a package. That is a structural change this repo does
+#             not want.
 #   Q, COM    quote and comma style -- owned by `ruff format`.
 # ---------------------------------------------------------------------------
 

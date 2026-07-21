@@ -802,6 +802,17 @@ gate_lint_py_shell() (
   # from "checked nothing".
   python3 scripts/utils/check_shell.py --selftest
   python3 scripts/utils/check_shell.py --require
+  # The narrow, first-party form of ShellCheck's SC2310. That opt-in check is
+  # unsatisfiable here -- measured 90 findings, and the only two source forms
+  # it ACCEPTS are worse than the ones it rejects: `set +e; fn; rc=$?; set -e`
+  # (which it passes, and which still lets a brace-bodied callee run past a
+  # failure) and a bare subshell (which aborts the parent). Adopting it would
+  # mean ~90 disables. This fires only where a first-party function whose body
+  # has two or more failable commands is invoked with its status masked, which
+  # is the shape that once reduced this whole gate suite to "did each gate's
+  # LAST command succeed". --selftest first, both directions, as ever.
+  python3 scripts/utils/check_errexit_masking.py --selftest
+  python3 scripts/utils/check_errexit_masking.py
 )
 
 # --- lint-cmake -----------------------------------------------------------
