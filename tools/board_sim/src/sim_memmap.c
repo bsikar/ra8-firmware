@@ -36,18 +36,42 @@ static const mem_region_t k_regions[] = {
                                              * previously-unmapped read. */
   {"OFS", 0x0300A000UL, 0x00001000UL},      /* option-setting flash        */
   {"DTCM", 0x20000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled data */
-  {"SRAM", 0x22000000UL, 0x00400000UL},     /* On-chip SRAM: CPU0 1 MiB + shared mailbox +
-                                             * CPU1 bank. Intentionally a wide 4 MiB window so
-                                             * the placeholder NS_SRAM and every dual-core
-                                             * example map cleanly; it does NOT reflect the
-                                             * 1.6 MB silicon limit (real ECC SRAM is
-                                             * 0x22000000..0x221A0000). */
+  {"SRAM", 0x22000000UL, 0x001D4000UL},     /* On-chip SRAM: CPU0 bank + shared mailbox +
+                                             * CPU1 bank. The extent is BENCH-MEASURED, not
+                                             * assumed: over J-Link on an EK-RA8D2, words at
+                                             * 0x221D0000, 0x221D2000 and 0x221D3FFC read and
+                                             * write normally, while 0x221D4000 answers
+                                             * "Could not read memory" and 0x221E0000 /
+                                             * 0x22200000 answer "Failed to write memory".
+                                             * Distinct values written at 0x22030000 and
+                                             * 0x221B0000 survive independently, so the top
+                                             * of the window is real memory and not an alias
+                                             * of the bottom.
+                                             *
+                                             * This window used to be a deliberately wide
+                                             * 4 MiB "so every dual-core example maps
+                                             * cleanly", which made 2.2 MB of NONEXISTENT
+                                             * address space silently writable here. That is
+                                             * the exact defect shape that let
+                                             * ota_ab_orchestration hold hw_validated while
+                                             * its A/B slots went to an address the silicon
+                                             * does not decode (#397): a model permissive
+                                             * where the hardware is not cannot fail, so it
+                                             * validates nothing. */
   {"NS_SRAM2", 0x32100000UL, 0x00080000UL}, /* SRAM2 Non-secure alias (bit[28]=1): the
                                              * TrustZone NS image run region. The Secure
                                              * boot copies the NS image here then BLXNS-es
                                              * to it; mapping it lets two-image TZ apps
                                              * (src/app) run their NS world in board_sim. */
-  {"DATA_FLASH", 0x27000000UL, 0x00004000UL},
+  /* No DATA_FLASH region. 0x27000000 is carried in every app linker script as a
+   * 16 KiB "data flash (EEPROM emulation)" MEMORY declaration inherited from
+   * other RA parts, and board_sim used to map it as plain RAM -- so writes there
+   * succeeded in the emulator. They do not on this silicon: a J-Link
+   * `w4 0x27000000` on an EK-RA8D2 answers "Failed to write memory". That gap
+   * is what #397 found under ra8_io_mram_demo, whose extra-MRAM writes went to
+   * this address and were accepted by the model regardless of MSADDR. No
+   * first-party linker script places a section here, so leaving it unmapped
+   * costs nothing and makes the emulator fault exactly where the bench does. */
   {"SDRAM", 0x68000000UL, 0x04000000UL},    /* 64 MiB external SDRAM (Secure
                                              * physical view). Host-backed so the
                                              * NS alias below mirrors the bytes:
