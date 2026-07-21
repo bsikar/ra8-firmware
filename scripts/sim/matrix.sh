@@ -193,12 +193,29 @@ app_src_dir() { # name -> source dir on stdout (empty if not found)
     -not -path '*/build-sim/*' 2>/dev/null | head -1
 }
 
-# True if the app links a SEPARATE Non-Secure executable (a `--ns` recipe). Such
-# two-image TrustZone apps cannot boot through this single-image path. The
-# in-tree signal is a dedicated NS-image linker script (`ns_image.ld`); a bare
-# `ns_main.c` does NOT count (some apps, e.g. cpu1_pingpong_ipc, compile it into
-# the single secure image and embed cpu1, so they run fine here).
-is_two_image_ns() { # src-dir -> 0 (true) if it needs --ns
+# Two-image TrustZone apps link a SEPARATE Non-Secure executable beside the
+# secure one and boot with `--ns <ns-elf>`. They used to be reported SPECIAL
+# here -- excluded from the coverage number as "cannot run through this
+# single-image path" -- and that stopped being true: board_sim gained the
+# two-image path (NS-elf load across the BLXNS / VTOR_NS seam), sil_all.sh has
+# been driving it through the same `<app>_ns.elf` convention for a while, and
+# tz_nsc_cgc_usb passes in the SIL suite on every run.
+#
+# So the exclusion was a stale label on three runnable apps, quietly held out
+# of the metric that exists to say whether every example runs. They are run.
+# The empty result means "no NS image was built", which is a real finding
+# rather than a category, so it is reported instead of silently skipped.
+ns_elf_args() { # secure-elf -> "--ns <ns-elf>" on stdout (empty when single-image)
+  local ns="${1%.elf}_ns.elf"
+  if [ -f "$ns" ]; then
+    printf -- '--ns %s' "$ns"
+  fi
+}
+
+# True if the app's source declares a dedicated NS image (an `ns_image.ld`). A
+# bare `ns_main.c` does NOT count: some apps (e.g. cpu1_pingpong_ipc) compile it
+# into the single secure image and embed cpu1, so they are ordinary here.
+is_two_image_ns() { # src-dir -> 0 (true) if it links a separate NS image
   local dir="$1"
   [ -n "$dir" ] || return 1
   [ -f "$dir/ns_image.ld" ]
@@ -235,37 +252,56 @@ is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
 # instruction-counted chunk budget makes every verdict a function of the
 # instruction stream alone -- identical serially and at any -j. sil_all.sh
 # reached the same conclusion for the same reason.
-run_one() {
-  local app="$1"
-  local rf="$run_dir/$app.result"
-  local src_dir elf note=""
-  src_dir="$(app_src_dir "$app")"
-
-  # Two-image TrustZone (--ns) apps need their dedicated recipe -> SPECIAL.
-  if is_two_image_ns "$src_dir"; then
-    printf 'SPECIAL\tSPECIAL (two-image TrustZone -- needs --ns; detected ns_image.ld)\n' >"$rf"
-    return 0
-  fi
+# Build one app and resolve what board_sim needs to boot it. Writes the failing
+# result itself and returns non-zero when there is nothing to run; on success
+# echoes `<elf>\t<note>\t<ns-args...>` for run_one to consume.
+build_and_resolve() { # app src-dir result-file -> "elf<TAB>note<TAB>ns args"
+  local app="$1" src_dir="$2" rf="$3"
+  local elf note="" ns=""
   if [ -z "$src_dir" ] || ! timeout "$build_timeout" make -C "$src_dir" build \
     >"$run_dir/$app.build.log" 2>&1; then
     printf 'BUILD_FAIL\tBUILD FAIL (see %s)\n' "$run_dir/$app.build.log" >"$rf"
-    return 0
+    return 1
   fi
   elf="$src_dir/build/$app.elf"
   if [ ! -f "$elf" ]; then
     printf 'NO_ELF\tNO ELF\n' >"$rf"
-    return 0
+    return 1
+  fi
+  # Two-image TrustZone apps boot the Non-Secure image alongside the secure one.
+  # A declared NS image whose ELF is absent after a successful build is NOT a
+  # category to skip -- it means the NS half did not get built, so say so.
+  if is_two_image_ns "$src_dir"; then
+    ns="$(ns_elf_args "$elf")"
+    if [ -z "$ns" ]; then
+      printf 'NO_ELF\tNO NS ELF (ns_image.ld declares a Non-Secure image; %s_ns.elf was not built)\n' \
+        "$app" >"$rf"
+      return 1
+    fi
+    note=" [two-image TrustZone -- booted with --ns]"
   fi
   if is_dualcore_embedded "$elf" "$src_dir"; then
     note=" [dual-core embedded cpu1 image]"
   fi
+  printf '%s\t%s\t%s\n' "$elf" "$note" "$ns"
+}
+
+run_one() {
+  local app="$1"
+  local rf="$run_dir/$app.result"
+  local src_dir resolved elf note ns
+  src_dir="$(app_src_dir "$app")"
+  resolved="$(build_and_resolve "$app" "$src_dir" "$rf")" || return 0
+  IFS=$'\t' read -r elf note ns <<<"$resolved"
+  local -a ns_args=()
+  [ -n "$ns" ] && read -r -a ns_args <<<"$ns"
   local out rc verdict
   # BOARD_SIM_WALL_S=0 DISABLES board_sim's CPU-time guard, leaving the run
   # bounded only by the instruction-counted chunk budget -- the deterministic
   # bound. See the DETERMINISM note in the header. The outer `timeout` is a hang
   # backstop only; if it ever fires the run is reported TRUNCATED, not judged.
   out="$(BOARD_SIM_MAX_CHUNKS="$max_chunks" BOARD_SIM_WALL_S=0 \
-    timeout "$run_timeout" "$sim" "$elf" 2>&1)"
+    timeout "$run_timeout" "$sim" "$elf" ${ns_args[@]+"${ns_args[@]}"} 2>&1)"
   rc=$?
   verdict="$(classify_run "$out" "$rc")"
   # Keep the emulator output for anything that did not come out clean. The
@@ -475,27 +511,38 @@ for app in "${skipped_apps[@]}"; do
 done
 
 # -- Honest summary. ----------------------------------------------------------
-# runnable = apps we actually attempt to boot (total minus the SPECIAL two-image
-# apps). SKIPPED (_unsupported) are not part of n_total. The headline coverage
-# counts ONLY genuinely-verified OK runs (a clean run-to-budget); HALT, UNKNOWN,
-# FAULT and BUILD failures are all reported explicitly so the number is honest.
+# The arithmetic is printed so it RECONCILES on its face. A reader previously
+# had to work out why the report holds 214 rows while the total says 204 (the
+# ek_ra8d2 tier is 204; the 10 _unsupported rows are additional), and an
+# unexplained gap between two counts is exactly where an unnoticed exclusion
+# lives -- clang_tidy.sh matched 14 of 218 apps and reported clean for months
+# on that principle. Every discovered example is now accounted for in a line
+# that adds up, and the buckets that are NOT boot-verified are named.
 runnable=$((n_total - n_special))
+accounted=$((n_ok + n_fault + n_trunc + n_halt + n_unknown + n_build + n_special))
 echo ""
 echo "board_sim matrix coverage:"
-echo "  total examples : $n_total"
-echo "  special (--ns) : $n_special  (two-image TrustZone -- dedicated recipe)"
-echo "  skipped (unsup): $n_skipped  (_unsupported tier -- external hardware)"
-echo "  build failed   : $n_build"
-echo "  faulted        : $n_fault"
-echo "  truncated      : $n_trunc  (wall-clock bound hit -- NO verdict, not a pass or a fail)"
-echo "  halted/parked  : $n_halt"
-echo "  unknown/review : $n_unknown"
-echo "  booted OK      : $n_ok"
+echo "  ek_ra8d2 examples : $n_total   (the tier this gate measures)"
+echo "  + _unsupported    : $n_skipped   (separate tier, needs external hardware -- never booted)"
+echo "  = report rows     : $((n_total + n_skipped))"
+echo ""
+echo "  build failed      : $n_build"
+echo "  faulted           : $n_fault"
+echo "  truncated         : $n_trunc   (wall-clock bound hit -- NO verdict, not a pass or a fail)"
+echo "  halted/parked     : $n_halt"
+echo "  unknown/review    : $n_unknown"
+echo "  special (not run) : $n_special   (declared a Non-Secure image that was not built)"
+echo "  booted OK         : $n_ok"
+if [ "$accounted" -ne "$n_total" ]; then
+  # Every example must land in exactly one bucket. If this ever fires, an app
+  # was discovered and then counted nowhere -- the silent-gap failure mode.
+  echo "  !! ACCOUNTING BUG : $accounted bucketed vs $n_total discovered -- an example is uncounted"
+fi
 if [ "$runnable" -gt 0 ]; then
   pct=$((n_ok * 100 / runnable))
-  echo "  boot coverage  : ${pct}% verified-OK of runnable (${n_ok}/${runnable})"
+  echo "  boot coverage     : ${pct}% verified-OK of runnable (${n_ok}/${runnable})"
 fi
-echo "  report written : $report"
+echo "  report written    : $report"
 
 # Exit status. This script REPORTS; the enforcing gate is the ratchet that
 # consumes $report (scripts/checks/matrix_ratchet.py, wired as the
