@@ -264,6 +264,7 @@ EXEMPT_PREFIXES: tuple[tuple[str, str], ...] = (
     (".devcontainer/p10k.zsh", "vendored powerlevel10k theme config, not a project script"),
 )
 
+
 # ---------------------------------------------------------------------------
 # KNOWN_GAPS -- code files that NOTHING lints or formats today.
 #
@@ -276,14 +277,6 @@ EXEMPT_PREFIXES: tuple[tuple[str, str], ...] = (
 #
 # Closing a gap means deleting its row, not raising its count.
 # ---------------------------------------------------------------------------
-RTOS_HEADERS = ("tx_api.h", "nx_api.h", "ux_api.h")
-
-
-def includes_rtos_header(text: str) -> bool:
-    """True when a TU includes a ThreadX / NetX / USBX vendor header."""
-    return any(f"include <{h}>" in text or f'include "{h}"' in text for h in RTOS_HEADERS)
-
-
 @dataclass(frozen=True)
 class GapCtx:
     """What a gap predicate gets to look at when deciding if a file is its own."""
@@ -307,36 +300,16 @@ class Gap:
 
 KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
-        "firmware-tu-no-cross-compile-db",
-        435,
-        "#369",
-        "examples/, port/ and esp32/ are cross-compiled firmware. clang-tidy "
-        "parses against the HOST compile_commands.json, which carries no ARM "
-        "flags, per-app includes or vendor RTOS paths -- pointing it at these "
-        "TUs yielded 135 findings across 96 files, every one a parse error and "
-        "none an actionable style finding. Needs a cross-compile compile "
-        "database, not a scope widening",
-        lambda c: c.cls == "c-family" and c.rel.startswith(("examples/", "port/", "esp32/")),
-    ),
-    Gap(
-        "rtos-tu-no-compile-db",
-        3,
-        "#369",
-        "host-buildable trees still contain TUs that include ThreadX/NetX/USBX "
-        "vendor headers the host compile database does not carry",
-        lambda c: c.cls == "c-family" and includes_rtos_header(c.text),
-    ),
-    Gap(
-        "cxx-objc-not-in-tidy-scope",
-        12,
+        "objc-needs-macos-runner",
+        2,
         "#370",
-        "clang_tidy.sh collects only *.c and *.h, so first-party C++ shims and "
-        "the two Objective-C host views are unlinted. The .m files additionally "
-        "need a macOS runner",
-        lambda c: (
-            c.cls == "c-family"
-            and c.rel.rsplit(".", 1)[-1] in ("cpp", "cc", "cxx", "hpp", "hh", "hxx", "m")
-        ),
+        "the two Objective-C host views (board_sim, ra8_viewer) are AppKit / "
+        "CoreGraphics code. clang-tidy can only parse them against the macOS "
+        "SDK, so clang_tidy.sh claims them on Darwin and not on Linux -- where "
+        "CI runs. The C++ half of #370 is closed: .cpp/.cc/.hpp are linted by "
+        "the C++ pass on every platform. Closing this one needs a macOS lint "
+        "job, which is a runner decision, not a code change",
+        lambda c: c.cls == "c-family" and c.rel.endswith(".m"),
     ),
 )
 

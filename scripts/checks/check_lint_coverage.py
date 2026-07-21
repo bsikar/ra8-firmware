@@ -498,14 +498,25 @@ def selftest() -> int:
         failures,
     )
 
-    # 13 unclaimed .cpp files exceed the recorded 12 of
-    # cxx-objc-not-in-tidy-scope (#370); one does not.
-    many = [f"libs/ra8_x/src/f{n}.cpp" for n in range(13)]
+    # 3 unclaimed .m files exceed the recorded 2 of objc-needs-macos-runner
+    # (#370); one does not.
+    many = [f"tools/ra8_x/src/v{n}.m" for n in range(3)]
     grew = evaluate([*files, *many], claimed)
     _expect(bool(grew.gap_growth), "a known gap that grows fires the ratchet", failures)
     _expect(
         not evaluate([*files, many[0]], claimed).gap_growth,
         "a known gap at or under its recorded count stays quiet",
+        failures,
+    )
+    # C++ is no longer a recorded gap: #370's C++ half is closed by the C++
+    # pass in clang_tidy.sh, so an unclaimed .cpp is now a plain violation.
+    # This asserts that half really was closed rather than merely deleted from
+    # the table -- the same assertion shape #371 left behind for .S below.
+    orphan_cxx = evaluate([*files, "libs/ra8_x/src/orphan.cpp"], claimed)
+    _expect(
+        sorted({r for r, _, _ in orphan_cxx.uncovered}) == ["libs/ra8_x/src/orphan.cpp"]
+        and not orphan_cxx.gap_growth,
+        "an unclaimed .cpp is a violation now, not a recorded gap",
         failures,
     )
     # A .S file is no longer a recorded gap: #371 gave assembly a checker, so an

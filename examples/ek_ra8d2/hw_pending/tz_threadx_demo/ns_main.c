@@ -86,6 +86,20 @@ static void ns_systick_handler(void)
 }
 
 /**
+ * @enum ns_thread_cadence_t
+ * @brief Per-thread sleep cadence, in ThreadX ticks.
+ * @details The UI thread runs the more responsive of the two so screen
+ *          refreshes stay ahead of the background worker's batch work.
+ * @invariant Both values are non-zero: a zero sleep would spin the scheduler.
+ * @see ui_thread_entry
+ * @see work_thread_entry
+ */
+typedef enum : uint16_t {
+  k_ns_ui_sleep_ticks   = 20U,  /**< UI thread sleep between refreshes.   */
+  k_ns_work_sleep_ticks = 100U, /**< Worker thread sleep between batches. */
+} ns_thread_cadence_t;
+
+/**
  * @brief UI thread entry: logs periodically to simulate UI rendering loops.
  */
 static void ui_thread_entry(ULONG thread_input)
@@ -99,7 +113,7 @@ static void ui_thread_entry(ULONG thread_input)
     if ((count % (uint32_t)k_ns_ui_heartbeat_iters) == 0U) {
       (void)ra8_nsc_log_emit("UI", "UI Loop: Refreshing screen layout...");
     }
-    tx_thread_sleep(20U); /* ~20 ticks */
+    tx_thread_sleep((ULONG)k_ns_ui_sleep_ticks);
   }
 }
 
@@ -117,7 +131,7 @@ static void work_thread_entry(ULONG thread_input)
     if ((count % (uint32_t)k_ns_work_heartbeat_iters) == 0U) {
       (void)ra8_nsc_log_emit("WORK", "Worker Loop: Reading battery & sensor state via NSC veneers");
     }
-    tx_thread_sleep(100U); /* ~100 ticks */
+    tx_thread_sleep((ULONG)k_ns_work_sleep_ticks);
   }
 }
 
