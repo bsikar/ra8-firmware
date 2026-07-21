@@ -382,16 +382,34 @@ uart_expect() { # app -> expected UART substring on stdout
     rtc_alarm) printf 'rtc: alarm fired' ;;
     elc_event_demo) printf 'elc: en=1 trig=' ;;
     timer_capture_demo) printf 'gpt: period=' ;;
-    # drw_fill_demo: the DRW is modelled INERT (board_periph_drw.c), faithful to
-    # silicon where the D/AVE 2D engine never rasterizes (#247). The fill writes
-    # no pixel, so the centre stays clear and the app honestly reports match=N --
-    # the same result the bench gives until #247 brings the engine to life.
+    # The two DRW apps are the tree's only deliberate SIM != HIL pair, so their
+    # expectations are SIMULATOR values and intentionally differ from the
+    # HIL_EXPECT in their hil.conf. Both live in hw_pending for that reason.
+    #
+    # #247 is resolved: the D/AVE 2D engine DOES rasterize on silicon. It had
+    # simply never been powered -- the DRW sits in the graphics power domain,
+    # which PDCTRGD gates off at reset (HUM Ch 11.2.14 p 452, reset 0x81), and
+    # nothing cleared PDDE. With ra8_lpm_graphics_power_on() in ra8_drw_init the
+    # bench now paints real pixels (HWREVISION 0x00000000 -> 0x0FBE0107).
+    #
+    # board_sim still models the engine INERT: the on-silicon geometry semantics
+    # are only partly characterised (a 16x16 fill paints 8x8 and the alpha byte
+    # never reaches the framebuffer), and inventing pixels the bench does not
+    # produce would be a fresh, worse divergence. So the emulator writes no
+    # pixel and both apps report the inert-model result below.
+    #
+    # drw_fill_demo: no pixel written, so the centre stays clear -> match=N.
+    # (Silicon reports match=N too, but for the different reason above; the
+    # hil.conf gates on match=Y, which is the target state for both.)
     drw_fill_demo) printf 'drw: fill match=N' ;;
-    # drw_blend_demo: 76EFDDC5 is FNV-1a-32 over the 4096-byte ZERO framebuffer --
-    # the silicon truth. The DRW never composites on hardware (#247), and the
-    # board_sim model is inert to match, so the app hashes an untouched FB and
-    # prints this exact banner. This is the SILICON golden (also pinned in the
-    # app's hil.conf), NOT a simulator-only self-test value: SIM == HIL here.
+    # drw_blend_demo: 76EFDDC5 is FNV-1a-32 over 4096 ZERO bytes -- the hash of
+    # an untouched framebuffer. It is pinned here as a SIMULATOR invariant that
+    # asserts "the inert model still writes nothing", so a change that made the
+    # emulator emit stray pixels would fail this gate rather than pass quietly.
+    # It is NOT a hardware golden: real silicon now renders and hashes D44B3415,
+    # which is itself the hash of a known-wrong render and is deliberately
+    # pinned NOWHERE. Re-baseline both sides together once the fill geometry and
+    # alpha are fixed and the board_sim rasterizer is modelled.
     drw_blend_demo) printf 'drw: blit+blend crc=76EFDDC5 PASS' ;;
     dtc_transfer_demo) printf 'dtc: copied 1024B match=Y' ;;
     cac_accuracy_demo) printf 'cac: meas=ok ferr=0 ovf=0 ok=Y' ;;
