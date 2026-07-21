@@ -23,7 +23,7 @@
  *      which the linker places at the NS-MRAM base (0x02080000).
  *
  * Bench validation is NOT performed by this commit -- a human operator
- * with ``scripts/hil_recover.sh`` warm is the only safe path to flash
+ * with ``scripts/hil/recover.sh`` warm is the only safe path to flash
  * the resulting image (see ``project_sau_sgstubs_brick``).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

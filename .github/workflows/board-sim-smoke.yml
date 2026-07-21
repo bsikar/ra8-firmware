@@ -70,7 +70,7 @@ jobs:
       - run: bash scripts/ci.sh --gate board-sim-io-fabric
 
   # SIL (simulator-in-the-loop): the hardware-free mirror of the bench HIL suite
-  # (scripts/hil_all.sh). Every app under examples/ek_ra8d2/hw_validated/hil/ is
+  # (scripts/hil/all.sh). Every app under examples/ek_ra8d2/hw_validated/hil/ is
   # booted in board_sim headless and checked against the SAME per-app hil.conf
   # expectation the real board is checked against -- the uart_scrape / alive UART
   # banners, and the jlink_memprobe progress counters via board_sim's --dump-sym /

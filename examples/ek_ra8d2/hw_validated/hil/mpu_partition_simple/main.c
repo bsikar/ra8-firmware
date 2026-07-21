@@ -32,7 +32,7 @@
  *
  * The "fault handled" banner is the success signal for the HIL
  * alive-mode UART scanner: the negative regex in
- * ``scripts/hil_check_alive.sh`` does not match this phrase, and
+ * ``scripts/hil/check_alive.sh`` does not match this phrase, and
  * ``HIL_FAULT_EXPECTED=1`` still requires the non-zero CFSR that
  * the handler intentionally leaves latched.
  *
@@ -106,7 +106,7 @@ static volatile uint8_t s_fault_pending = 0U;
  *        completed at least once.
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD (when the
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD (when the
  * app uses jlink_memprobe mode) and additionally readable when the
  * harness uses HIL_MODE=alive with HIL_FAULT_EXPECTED=1 -- in the
  * latter case the alive check still passes (CycleCnt advances + PC
@@ -335,7 +335,7 @@ void                MemManage_Handler(void)
  * @brief Greeting line for the "fault handled" banner.
  *
  * @details
- * The negative regex in scripts/hil_check_alive.sh rejects
+ * The negative regex in scripts/hil/check_alive.sh rejects
  * ``FAIL|panic|NAK|ERROR|HardFault|MemFault|BusFault|UsageFault|
  *   stack overflow`` (case-insensitive, word-bounded). The lower-
  * case word "fault" on its own (and "handled", "recovered") are

@@ -37,7 +37,7 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  *        CPU0 -> CPU1 -> CPU0 ping/pong round-trip (got == 0x4321).
  *
  * @details
- * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * Read externally by scripts/hil/jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving CPU1 (Cortex-M33) was released, booted its
  * vector table, and is servicing the IPC channel pair. If CPU1 never

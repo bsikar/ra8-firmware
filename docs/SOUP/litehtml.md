@@ -64,7 +64,7 @@ upstream commit; documentation and MSVC scaffolding omitted).
 
 The pinned commit is queried against OSV.dev weekly by
 `.github/workflows/osv-scan.yml` (commit-range GIT queries via
-`scripts/utils/osv_scan.sh`); a published advisory affecting the pin
+`scripts/checks/osv_scan.sh`); a published advisory affecting the pin
 fails the scheduled run. Because litehtml parses untrusted EPUB
 HTML/CSS, prefer re-vendoring at a tagged release when one lands.
 

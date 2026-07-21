@@ -69,7 +69,7 @@ build/docs/
 build/docs-gate/
 docs/doxygen/
 doxygen.log
-# Generated Doxygen navigation trees (scripts/utils/gen_doxygen_nav.py, run by
+# Generated Doxygen navigation trees (scripts/gen/gen_doxygen_nav.py, run by
 # build_docs.sh). Regenerated on every `make docs`, so kept out of git.
 docs/generated/
 
@@ -150,7 +150,7 @@ libs/ra8_book/inc/ra8_book_library.h
 # committed @generated fixture, like the epub/rabook parity fixtures): its
 # cover-thumbnail bytes are architecture-dependent to regenerate (libjpeg
 # SIMD decode rounding differs x86 vs arm64), so the SIL fb-hash golden pins
-# the committed bytes. Regenerate only deliberately (scripts/build_books.sh)
+# the committed bytes. Regenerate only deliberately (scripts/builders/books.sh)
 # and re-pin the golden in the same change.
 # Host SD-card images built by tools/mkbookimg (test fixtures).
 *.img
@@ -168,14 +168,14 @@ tools/glyph_bench/*.dSYM/
 tools/cache_bench/cache_bench
 tools/cache_bench/*.dSYM/
 
-# Root-of-trust signing keys must never be committed (see scripts/rot_provision.sh).
+# Root-of-trust signing keys must never be committed (see scripts/secrets/rot_provision.sh).
 *rot-signing-key*.pem
 
 # ESP32-C6 spike build artifacts (esp32/Makefile writes here).
 esp32/build/
 
 # libFuzzer seed corpus: regenerated deterministically by
-# scripts/utils/init_fuzz_corpora.sh (invoked from `make fuzz`), so the seeds
+# scripts/checks/init_fuzz_corpora.sh (invoked from `make fuzz`), so the seeds
 # are a build product, not source. Committing them only lets them drift from
 # the generator. Crash reproducers the fuzzer discovers are NOT regenerable,
 # so those are carved back in below and must be committed by hand.

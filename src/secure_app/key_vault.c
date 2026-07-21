@@ -44,7 +44,7 @@ static const char* s_tag = "KEYV";
  * simulation or an explicitly-declared insecure dev/eval image. A real
  * production/HIL image (neither flag set) compiles the #else branch, where
  * every entry point hard-errors so the placeholder vault cannot be relied on.
- * scripts/utils/check_stub_crypto_guarded.py enforces the guard.
+ * scripts/checks/check_stub_crypto_guarded.py enforces the guard.
  */
 #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
 

@@ -1,5 +1,5 @@
 # MISRA-C 2012 ratchet baseline -- per-file-per-rule finding counts.
-# Consumed by scripts/utils/misra_ratchet.py --check (CI job: misra).
+# Consumed by scripts/checks/misra_ratchet.py --check (CI job: misra).
 # Regenerate ON THE CI-PINNED CPPCHECK (self-hosted runner / dev box):
 #   make misra-baseline
 # and commit the result. Never regenerate to absorb NEW findings --

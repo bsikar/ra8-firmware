@@ -760,7 +760,7 @@ int32_t main(void)
    * hangs otherwise (HUM Ch 9 "Clock selection switching procedure"
    * step 1). Without this the SIE never sees a 48 MHz clock and the
    * host never enumerates the device. The init-order audit
-   * (scripts/utils/audit_init_order.py) requires CGC bring-up to
+   * (scripts/checks/audit_init_order.py) requires CGC bring-up to
    * land BEFORE peripheral inits like ra8_log_init, so the RTT
    * heart-beat moves down to right after the time/board bring-up. */
   if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {

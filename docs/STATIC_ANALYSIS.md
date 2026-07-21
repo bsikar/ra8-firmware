@@ -20,7 +20,7 @@ analyzed reliably because clang has no working sysroot for
 make scan-build
 
 # CI gate (fails on any first-party finding):
-bash scripts/utils/scan_build.sh --check
+bash scripts/checks/scan_build.sh --check
 ```
 
 Reports land under `build/scan-build-reports/<timestamp>/`. The
@@ -30,7 +30,7 @@ visualisations.
 ## Suppression policy
 
 Three classes of findings are silenced by the wrapper (see
-`scripts/utils/scan_build.sh`):
+`scripts/checks/scan_build.sh`):
 
 | Partition / pattern                                                                                | Why suppressed                                                                                                |
 |----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
@@ -103,7 +103,7 @@ register-level access.
 **Mitigation:** the cross-compile build (`make blink_hal`) does the
 same thing on real hardware; the analyzer noise is purely an artefact
 of running on the host unit-test build where the addresses point at
-mock register banks. `scripts/utils/scan_build.sh` post-processes the
+mock register banks. `scripts/checks/scan_build.sh` post-processes the
 generated HTML reports and bins every
 `core.FixedAddressDereference` finding under the suppressed-MMIO
 counter when the `BUGFILE` path matches one of the documented MMIO
@@ -131,7 +131,7 @@ several minutes -- too expensive to gate every commit). Instead:
 
 * Developers run `make scan-build` locally before opening a PR
   (`make scan-build-strict` mirrors the CI gate).
-* CI runs `bash scripts/utils/scan_build.sh --strict` (alias for
+* CI runs `bash scripts/checks/scan_build.sh --strict` (alias for
   `--check`) on every push. The gate is **warn-only today** in
   practice -- the runner is wired but the workflow does not yet flip
   the job to required -- and is expected to flip to required once a
@@ -141,7 +141,7 @@ several minutes -- too expensive to gate every commit). Instead:
 
 ## Cross-references
 
-* `scripts/utils/scan_build.sh`  -- driver script
+* `scripts/checks/scan_build.sh`  -- driver script
 * `cmake/ra8_warnings.cmake`      -- per-target warning flags (-Wall etc.)
 * `docs/SOUP/README.md`          -- third-party qualification index
 * `docs/MCDC.md`                 -- complementary MC/DC coverage gate

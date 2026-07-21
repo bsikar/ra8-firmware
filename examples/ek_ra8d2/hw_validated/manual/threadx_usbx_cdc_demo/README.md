@@ -60,7 +60,7 @@ From the repo root:
 
 ```sh
 make threadx_usbx_cdc_demo
-bash scripts/flash.sh build/threadx_usbx_cdc_demo/threadx_usbx_cdc_demo.hex
+bash scripts/dev/flash.sh build/threadx_usbx_cdc_demo/threadx_usbx_cdc_demo.hex
 ```
 
 ## BSP usage
@@ -85,7 +85,7 @@ reason; the existing `hil.conf` is parked at `HIL_MODE=alive` /
 `HIL_BOOT_S=2` and will start passing once the init halt is
 root-caused and fixed.
 
-The Pi can act as USB host today (`scripts/hil_usb_test.sh` already
+The Pi can act as USB host today (`scripts/hil/usb_test.sh` already
 covers `usb_cdc_echo`). Once the init halt is fixed, this app
 should run a `hil_usb_cdc_echo` style gate: Pi enumerates the chip
 as `/dev/ttyACMx`, writes a known string, expects an echo within a

@@ -16,6 +16,6 @@ the `ra8_reset_cause_t` value observed on this boot.
 ## Build + flash
 
     make reset_cause_demo            # build (top-level)
-    ./scripts/hil_flash.sh examples/ek_ra8d2/hw_validated/hil/reset_cause_demo/build/reset_cause_demo.hex
+    ./scripts/hil/flash.sh examples/ek_ra8d2/hw_validated/hil/reset_cause_demo/build/reset_cause_demo.hex
 
 CI runs the same probe via `.github/workflows/hil.yml`.

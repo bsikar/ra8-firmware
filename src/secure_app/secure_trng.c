@@ -30,7 +30,7 @@ static const char* s_tag = "SECTRNG";
  * safe under host simulation or an explicitly-declared insecure dev/eval image.
  * A real production/HIL image (neither flag set) compiles the #else branch,
  * where every entry point hard-errors so predictable entropy can never be
- * drawn. scripts/utils/check_stub_crypto_guarded.py enforces that this guard
+ * drawn. scripts/checks/check_stub_crypto_guarded.py enforces that this guard
  * stays wrapped around the insecure body.
  */
 #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)

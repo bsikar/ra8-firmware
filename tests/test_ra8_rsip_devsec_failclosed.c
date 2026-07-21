@@ -27,7 +27,7 @@
  * untouched -- if the sim ``#if`` branch were compiled instead, the getters
  * would return ``k_ra8_ok`` and overwrite the sentinels, and this test would
  * fail. This is the host-side companion to
- * ``scripts/utils/check_stub_crypto_guarded.py`` (which enforces the guard at
+ * ``scripts/checks/check_stub_crypto_guarded.py`` (which enforces the guard at
  * gate time) and the ARM cross-build (which compiles the ``#else``).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

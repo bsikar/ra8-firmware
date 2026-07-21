@@ -58,7 +58,7 @@ whichever sector this firmware ships into first.
 | Code verification (review)  | 7.9.2.7 module review         | Section 6.3.4 code reviews             | Part 6 cl. 9 verification            | PR review history + `clang-tidy`/`cppcheck` gates      |
 | Structural coverage         | Annex C statement+branch (3); MC/DC strong-recommended for SIL 3 | Section 6.4.4.2 MC/DC at Level B | Part 6 cl. 9.4.5 MC/DC at ASIL C/D | `docs/MCDC.md`, `make mcdc`                            |
 | Test cases (req-based)      | 7.4.7 / 7.7 testing           | Section 6.4.2 requirements-based test  | Part 6 cl. 9 test specification      | `tests/test_*.c` (requirements-traced)                 |
-| Integration / HW-SW         | 7.5 integration               | Section 6.4.3 integration test         | Part 6 cl. 10 sw integration         | `docs/HARDWARE_BRINGUP.md`, `docs/HIL_SUITE.md` (Pi 5 runner + `scripts/hil_all.sh`) |
+| Integration / HW-SW         | 7.5 integration               | Section 6.4.3 integration test         | Part 6 cl. 10 sw integration         | `docs/HARDWARE_BRINGUP.md`, `docs/HIL_SUITE.md` (Pi 5 runner + `scripts/hil/all.sh`) |
 | Configuration management    | 6.2.3 / Annex B.2             | Section 7 SCM process                  | Part 8 cl. 7 sw CM                   | git + signed tags + `docs/qualification/SCMP.md`       |
 | Quality assurance           | 6.2.5                         | Section 8 SQA process                  | Part 2 cl. 5 / Part 8 cl. 5          | CI gates + `docs/qualification/SQAP.md`                |
 | Tool qualification          | 7.4.4 / Annex D               | Section 12.2 + DO-330                  | Part 8 cl. 11                        | Section 5 below                                        |
@@ -157,7 +157,7 @@ From `docs/MISRA.md` and `docs/MISRA_GAPS.csv`:
 - **EVM-validated apps**: 27 under `examples/ek_ra8d2/` (HIL-suite
   driver target).
 - **Unsupported / shelved apps**: 11 under `examples/_unsupported/`.
-- HW-in-the-loop coverage: `scripts/hil_all.sh` runs on the Pi 5
+- HW-in-the-loop coverage: `scripts/hil/all.sh` runs on the Pi 5
   self-hosted runner (`.github/workflows/hil.yml`) for every PR that
   touches HIL-relevant paths. Contract documented in
   `docs/HIL_SUITE.md`; developer workflow in
@@ -209,7 +209,7 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
   - 3c (week 10): residual modules (`ra8_core`, `ra8_fs`,
     `port/nimble`, `ra8_nsc`, `ra8_psa_crypto`,
     `ra8_ota` and the long tail).
-- **Acceptance gate**: `scripts/utils/doxy_audit` reports zero
+- **Acceptance gate**: `scripts/checks/doxy_audit.py` reports zero
   functions with gaps; CI gate flips from advisory to blocking.
 
 ### Phase 4 -- MISRA-C deviation register (weeks 11-14)
@@ -252,7 +252,7 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
   hardware run against a real EK-RA8D2.
 - **Status**: closed by the Pi 5 self-hosted runner. The Pi has the
   EK-RA8D2 wired to it and runs `.github/workflows/hil.yml`, which
-  drives `scripts/hil_all.sh` over every app under
+  drives `scripts/hil/all.sh` over every app under
   `examples/ek_ra8d2/hw_validated/hil/`. Per-app contracts live in
   `hil.conf` files; mode helpers (`hil_run_direct.sh`,
   `hil_usb_test.sh`, `hil_jlink_memprobe.sh`, `hil_eth_tcp.sh`,
@@ -337,7 +337,7 @@ Qualification Level (TQL):
 
 | Tool                      | Role                                  | TQL basis | Compensating verification                                                                          |
 |---------------------------|---------------------------------------|-----------|-----------------------------------------------------------------------------------------------------|
-| `arm-none-eabi-gcc`       | Cross-compiler -> production object   | TQL-5     | Object code re-verified against requirements via the Pi 5 HIL runner (`scripts/hil_all.sh`, Phase 6). |
+| `arm-none-eabi-gcc`       | Cross-compiler -> production object   | TQL-5     | Object code re-verified against requirements via the Pi 5 HIL runner (`scripts/hil/all.sh`, Phase 6). |
 | `clang-18` (host)         | MC/DC instrumentation + host tests    | TQL-5     | Output is test-only; no production code path. Instrumentation re-verified by host tests passing.    |
 | `cppcheck` (with misra)   | MISRA-C 2012 advisory checker         | TQL-5     | Findings reviewed manually + `MISRA_DEVIATIONS.md`. Sole MISRA tool: commercial checkers (LDRA /    |
 |                           |                                       |           | Polyspace / Helix QAC) are explicitly out of scope per `docs/qualification/MISRA_DEVIATIONS.md`.    |
@@ -347,7 +347,7 @@ Qualification Level (TQL):
 | `cmake` + `make`          | Build orchestrator                    | TQL-5     | Output is the same arm-none-eabi object as a manual invocation; build log archived per CI run.      |
 | `JLinkExe`                | Flash + register dump for smoke       | TQL-5     | Read-only with respect to certified bits. Any write step (flash) is verified by post-flash readback.|
 | `arm-none-eabi-addr2line` | Smoke-test PC resolution              | TQL-5     | Cross-check against ELF symbol table when classification is ambiguous.                              |
-| `python3` (audit scripts) | Doxygen, MC/DC, MISRA gap reports     | TQL-5     | Output reviewed; scripts under `scripts/utils/` carry their own host tests.                         |
+| `python3` (audit scripts) | Doxygen, MC/DC, MISRA gap reports     | TQL-5     | Output reviewed; scripts under `scripts/checks/` carry their own host tests.                         |
 
 No tool in the current chain requires TQL-1 because none of them
 emit certified production code without a downstream verification
@@ -407,7 +407,7 @@ that needs it.
    self-hosted runner (`pi5-star-hil`, labels
    `self-hosted, hil, pi5, ra8d2`) that has the EK-RA8D2 wired to
    it. HIL coverage runs from `.github/workflows/hil.yml` via
-   `scripts/hil_all.sh` on every PR that touches HIL-relevant
+   `scripts/hil/all.sh` on every PR that touches HIL-relevant
    paths. Contract documented in `docs/HIL_SUITE.md`; developer
    workflow in `docs/HIL_DEVELOPER_WORKFLOW.md`.
 

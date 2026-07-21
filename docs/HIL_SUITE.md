@@ -9,7 +9,7 @@ required** (Pi setup, jumpers, cables), and a **per-app table** showing
 which mode each app uses + its success criterion.
 
 The CI workflow `.github/workflows/hil.yml` runs `bash
-scripts/hil_all.sh` on a self-hosted Raspberry Pi 5 runner that has
+scripts/hil/all.sh` on a self-hosted Raspberry Pi 5 runner that has
 the EK-RA8D2 wired up; one app fails -> the merge fails.
 
 ## The honest-contract rule
@@ -31,7 +31,7 @@ runs at least one of:
   - A Pi-as-peer wire-side probe (TCP/UDP/HTTP echo / USB CDC echo)
     that exercises the chip's stack end-to-end.
 
-The pre-commit gate `scripts/utils/check_hil_alive_policy.py` rejects
+The pre-commit gate `scripts/checks/check_hil_alive_policy.py` rejects
 any new `hil.conf` under `hw_validated/hil/` that uses plain
 `HIL_MODE=alive` -- the only exception is the fault-recovery demo
 (`HIL_MODE=alive` + `HIL_FAULT_EXPECTED=1`), which has its own
@@ -45,11 +45,11 @@ instrument it (preferred) or place it under
 
 | Mode             | Helper script                    | What it asserts |
 |------------------|----------------------------------|-----------------|
-| `uart_scrape`    | `scripts/hil_run_direct.sh`      | `HIL_EXPECT` appears on `/dev/ttyACM*` (J-Link OB VCOM) within `HIL_TIMEOUT_S` seconds AND `HIL_EXPECT_NEGATIVE` does NOT match in the same capture. Min `HIL_EXPECT` length is 12 chars (override per-app with `HIL_EXPECT_SHORT_OK=1` + comment) and the script rejects expects that overlap a failure banner string in the `.elf` `.rodata`. |
-| `usb_cdc`        | `scripts/hil_usb_test.sh`        | The Pi enumerates the chip as a USB CDC ACM device at the given `HIL_VIDPID`, opens the CDC port, runs a correctness chunk + throughput stream, and asserts byte-exact echo + a throughput floor. PPPS re-enumerates the device mid-test. |
-| `jlink_memprobe` | `scripts/hil_jlink_memprobe.sh`  | Halts the chip, reads `HIL_PROBE_SYMBOL` (resolved from the matching `.elf` via `arm-none-eabi-nm`), runs the chip for `HIL_PROBE_SECONDS`, halts again, asserts the value advanced by `>= HIL_PROBE_MIN_ADVANCE`. If `HIL_PROBE_FAILURE_SYMBOL` is set, also asserts that counter advanced by `<= HIL_PROBE_MAX_FAILURE` (default 0). |
-| `hil_eth_tcp`    | `scripts/hil_eth_tcp.sh`         | The Pi opens a TCP/UDP socket to `HIL_BOARD_IP:HIL_PORT` (or `curl` for `HIL_PROTO=http`), sends a random `HIL_PAYLOAD_BYTES` payload, and asserts byte-exact echo (or HTTP 200 + the "Hello from RA8D2" marker). Uses a USB-Ethernet adapter on the Pi auto-detected via the `enxXX` / `usbX` interface naming. |
-| `alive`          | `scripts/hil_check_alive.sh`     | **Reserved for the fault-recovery demo only** (`HIL_FAULT_EXPECTED=1`). Asserts: PC in MRAM/ITCM at both samples, PC not in a fault-spinner symbol (`panic_halt` / `halt_loop` / `exception_halt` / `*_Handler` / `_die`), CycleCnt advances, HFSR with DEBUGEVT masked is zero, CFSR != 0 (the fault DID fire), UART capture contains no negative banner. |
+| `uart_scrape`    | `scripts/hil/run_direct.sh`      | `HIL_EXPECT` appears on `/dev/ttyACM*` (J-Link OB VCOM) within `HIL_TIMEOUT_S` seconds AND `HIL_EXPECT_NEGATIVE` does NOT match in the same capture. Min `HIL_EXPECT` length is 12 chars (override per-app with `HIL_EXPECT_SHORT_OK=1` + comment) and the script rejects expects that overlap a failure banner string in the `.elf` `.rodata`. |
+| `usb_cdc`        | `scripts/hil/usb_test.sh`        | The Pi enumerates the chip as a USB CDC ACM device at the given `HIL_VIDPID`, opens the CDC port, runs a correctness chunk + throughput stream, and asserts byte-exact echo + a throughput floor. PPPS re-enumerates the device mid-test. |
+| `jlink_memprobe` | `scripts/hil/jlink_memprobe.sh`  | Halts the chip, reads `HIL_PROBE_SYMBOL` (resolved from the matching `.elf` via `arm-none-eabi-nm`), runs the chip for `HIL_PROBE_SECONDS`, halts again, asserts the value advanced by `>= HIL_PROBE_MIN_ADVANCE`. If `HIL_PROBE_FAILURE_SYMBOL` is set, also asserts that counter advanced by `<= HIL_PROBE_MAX_FAILURE` (default 0). |
+| `hil_eth_tcp`    | `scripts/hil/eth_tcp.sh`         | The Pi opens a TCP/UDP socket to `HIL_BOARD_IP:HIL_PORT` (or `curl` for `HIL_PROTO=http`), sends a random `HIL_PAYLOAD_BYTES` payload, and asserts byte-exact echo (or HTTP 200 + the "Hello from RA8D2" marker). Uses a USB-Ethernet adapter on the Pi auto-detected via the `enxXX` / `usbX` interface naming. |
+| `alive`          | `scripts/hil/check_alive.sh`     | **Reserved for the fault-recovery demo only** (`HIL_FAULT_EXPECTED=1`). Asserts: PC in MRAM/ITCM at both samples, PC not in a fault-spinner symbol (`panic_halt` / `halt_loop` / `exception_halt` / `*_Handler` / `_die`), CycleCnt advances, HFSR with DEBUGEVT masked is zero, CFSR != 0 (the fault DID fire), UART capture contains no negative banner. |
 
 ## Required Pi infrastructure
 
@@ -73,12 +73,12 @@ The self-hosted Pi runner (`star@star.local`) must have:
 The Pi runners (`hil_run_direct.sh`, `hil_jlink_memprobe.sh`,
 `hil_check_alive.sh`) target the Linux bench and SSH to
 `star@star.local`. When the board is plugged straight into a developer's
-Mac, `scripts/hil_run_local.sh <app>` runs one app's gate entirely on
+Mac, `scripts/hil/run_local.sh <app>` runs one app's gate entirely on
 that Mac:
 
 ```
-scripts/hil_run_local.sh flash_journal
-scripts/hil_run_local.sh threadx_filex_levelx_demo --uart /dev/cu.usbmodemXXXX
+scripts/hil/run_local.sh flash_journal
+scripts/hil/run_local.sh threadx_filex_levelx_demo --uart /dev/cu.usbmodemXXXX
 ```
 
 It reads the app's `hil.conf`, builds if needed, flashes via the local

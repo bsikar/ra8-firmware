@@ -5,7 +5,7 @@
 # The day-to-day build is the plain Makefile next to this file (`make` /
 # `make sweep`); CI's `make bench-cache` also drives the Makefile. This CMake
 # project exists so the tool has a compile_commands.json for the clang-tidy
-# gate (scripts/clang_tidy.sh runs a tools pass against a configured build
+# gate (scripts/checks/clang_tidy.sh runs a tools pass against a configured build
 # tree) and stays byte-equivalent to the Makefile: the same source glob, the
 # same firmware TUs compiled in directly (the sweep drives the REAL
 # ra8_vmem/ra8_vsource page cache and the REAL ra8_book_chunked RBKC reader),

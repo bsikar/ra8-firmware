@@ -31,7 +31,7 @@ sim/silicon equivalence check.
 
 ```
 make ereader_image
-scripts/hil_run_local.sh ereader_image      # flash + scrape the banner
+scripts/hil/run_local.sh ereader_image      # flash + scrape the banner
 ```
 
 ## Result (validated 2026-06-18, board_sim + host)
@@ -41,7 +41,7 @@ ereader-img-hil: boot
 ereader-img-hil: img 160x120 crc=BDC56EC5
 ```
 
-`scripts/board_sim_smoke.sh ereader_image` runs the firmware ELF on the
+`scripts/sim/smoke.sh ereader_image` runs the firmware ELF on the
 emulated RA8D2 and scrapes the banner:
 
 ```
