@@ -1,0 +1,120 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2154  # FIRMWARE_DIR / BUILD_DIR / RC_INFRA and the print_* helpers come from scripts/checks/clang_tidy.sh, the only thing that sources this file
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# scripts/checks/tidy/selftest.sh -- Proving the scope and routing still work.
+#
+# SOURCED, NEVER EXECUTED. See collect.sh for the loading contract.
+#
+# Every failure mode this script has ever had was silent: a glob that stopped
+# matching, a bucket that emptied, a root that was quietly dropped. None of
+# them made anything go red. So assert the positive (each bucket claims the
+# files it should) AND the negative (a file that must NOT land in a bucket does
+# not), and fail loudly on either.
+#
+# Functions here: selftest_routing, selftest_scope, run_selftest
+
+# ---------------------------------------------------------------------------
+# Routing: each path shape must reach its own pass. The firmware roots are
+# the #369 regression; the C++/Objective-C rows are the #370 one.
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+selftest_routing() {
+  local failures=0
+  local -a cases=(
+    "$FIRMWARE_DIR/examples/x/y/main.c:firmware"
+    "$FIRMWARE_DIR/port/usbx/src/a.c:firmware"
+    "$FIRMWARE_DIR/esp32/src/main.c:firmware"
+    "$FIRMWARE_DIR/libs/ra8_epub/src/shim.cpp:cxx"
+    "$FIRMWARE_DIR/libs/ra8_hal/src/k.cc:cxx"
+    "$FIRMWARE_DIR/tools/board_sim/src/board_view.m:objc"
+    "$FIRMWARE_DIR/tools/board_sim/src/x.c:tools"
+    "$FIRMWARE_DIR/libs/ra8_core/src/ra8_err.c:host"
+    "$FIRMWARE_DIR/libs/ra8_board_ra8p1/src/b.c:ra8p1"
+  )
+  local entry path want got
+  for entry in "${cases[@]}"; do
+    path="${entry%:*}"
+    want="${entry##*:}"
+    got="$(route_bucket "$path")"
+    if [[ "$got" != "$want" ]]; then
+      print_error "selftest: $path routed to '$got', expected '$want'"
+      failures=$((failures + 1))
+    fi
+  done
+  printf '%s\n' "$failures"
+}
+
+# ---------------------------------------------------------------------------
+# Scope, in both directions, over the real collection.
+#
+# NOTE ON `grep -q` AND `set -o pipefail`, which cost a debugging round here:
+# `grep -q` exits the moment it matches, so the writer upstream of it dies of
+# SIGPIPE (141) and pipefail then reports the whole pipeline as FAILED even
+# though the match succeeded. Every match test below therefore feeds grep
+# from a here-string, never through a pipe.
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+selftest_scope() {
+  local failures=0
+  local listing
+  listing="$(collect_source_files)"
+
+  # Every first-party root must actually be claimed. This is the assertion
+  # that would have caught #296 and #369 on the day they landed.
+  local root count
+  for root in libs src tests tools examples port esp32; do
+    count="$(grep -c "^$FIRMWARE_DIR/$root/" <<<"$listing" || true)"
+    if [[ "$count" -eq 0 ]]; then
+      print_error "selftest: no files collected under $root/ -- scope regression"
+      failures=$((failures + 1))
+    fi
+  done
+
+  # The negative direction. Vendored SOUP and generated tables must NOT be
+  # claimed: a scope that swallowed them would report coverage this project
+  # explicitly does not want, and would bury real findings under SOUP noise.
+  local forbidden
+  for forbidden in libs/third_party libs/fonts tools/vela/generated esp32/third_party; do
+    if grep -q "^$FIRMWARE_DIR/$forbidden/" <<<"$listing"; then
+      print_error "selftest: $forbidden/ is claimed but must be exempt"
+      failures=$((failures + 1))
+    fi
+  done
+
+  # C++ and Objective-C must be present in the collection at all. Before #370
+  # the collection matched `*.c` and `*.h` only, so both languages were
+  # invisible -- and an invisible language reports no findings forever.
+  local note
+  for note in cpp cc; do
+    if ! grep -q "\.$note\$" <<<"$listing"; then
+      print_error "selftest: no .$note files collected -- C++ is out of scope again"
+      failures=$((failures + 1))
+    fi
+  done
+  if [[ "$(uname -s)" == "Darwin" ]] && ! grep -q '\.m$' <<<"$listing"; then
+    print_error "selftest: no .m files collected on macOS -- Objective-C is out of scope"
+    failures=$((failures + 1))
+  fi
+
+  printf '%s\n' "$failures"
+}
+
+# ---------------------------------------------------------------------------
+# --selftest: prove the scope and the routing still work, in BOTH directions.
+# ---------------------------------------------------------------------------
+run_selftest() {
+  local failures=0
+  failures=$((failures + $(selftest_routing)))
+  failures=$((failures + $(selftest_scope)))
+
+  if [[ "$failures" -ne 0 ]]; then
+    print_error "clang_tidy.sh selftest FAILED with $failures problem(s)."
+    return 1
+  fi
+  print_success "clang_tidy.sh selftest: scope and pass routing OK"
+  return 0
+}
