@@ -111,7 +111,14 @@ static uint64_t drw_read(uc_engine* uc, uint64_t addr, unsigned size)
     case (uint64_t)k_drw_off_status:
       /* HUM Ch 62.2.5 "STATUS: Status Control Register" p 3695. The engine is
        * modelled inert (issue #247): never busy, no latched IRQ or bus error, so
-       * STATUS reads all-zero and ra8_drw_wait_idle succeeds on its first poll. */
+       * STATUS reads all-zero and ra8_drw_wait_idle succeeds on its first poll.
+       *
+       * This MUST return explicitly rather than fall through to HWREVISION:
+       * the two registers are read aliases at different offsets and now carry
+       * different values, so sharing an arm made ra8_drw_wait_idle poll
+       * STATUS, see the revision stamp 0x0FBE0107, never observe idle, and
+       * time out. */
+      return 0U;
     case (uint64_t)k_drw_off_hwrevision:
       /* HUM Ch 62.2.6 "HWREVISION: Hardware Revision Register" p 3696.
        *
