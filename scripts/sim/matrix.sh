@@ -89,7 +89,13 @@ sim_dir="$ROOT/tools/board_sim"
 report="$ROOT/build/board_sim_matrix.txt"
 mkdir -p "$ROOT/build"
 
-build_timeout="${BUILD_TIMEOUT:-240}"
+# The per-app build backstop. Like the run backstop below this is a HANG guard,
+# not a bound: it must never be the thing that decides an app's verdict. 240s
+# was tight enough to be exactly that -- eight heavy USB / ThreadX / TLS apps
+# flipped to BUILD_FAIL on CI purely because neighbouring emulators had gotten
+# slower. The build now runs in its own phase (see the two-phase note), so this
+# only has to cover a genuinely stuck compile.
+build_timeout="${BUILD_TIMEOUT:-900}"
 # The outer run backstop. Deliberately generous: with the CPU-time guard off
 # (see the DETERMINISM note) the chunk budget always terminates the run, so this
 # exists only to catch a pathological hang. Sizing it tight would put a
@@ -238,14 +244,24 @@ is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
   return 1
 }
 
-# -- --run-one <app>: the parallel worker. ------------------------------------
-# Build one app into its own per-app build dir, boot it, classify it, and write
-# `<verdict><TAB><display text>` to $run_dir/<app>.result. It ALWAYS exits 0 --
-# the verdict lives in the file, never in the exit status -- so one broken app
-# cannot abort the pool and silently truncate the sweep.
+# -- The two-phase worker pool. -----------------------------------------------
+# The sweep runs as TWO pools -- every app is built, and only then is any app
+# booted -- rather than one pool where each worker builds-then-boots.
 #
-# Running the sweep in parallel is only sound BECAUSE of the determinism fix
-# above, and the dependency runs the other way too: board_sim's CPU-time guard
+# That separation is not tidiness, it is the same determinism rule applied to
+# the build. In the interleaved form the compilers competed with the emulators
+# for the box, so `make`'s wall-clock BUILD_TIMEOUT became load-sensitive: on
+# CI, widening the run backstop let the slow apps run longer, and eight heavy
+# USB / ThreadX / TLS apps that had built fine minutes earlier were reported
+# BUILD_FAIL at the same commit. A verdict that changes because a NEIGHBOURING
+# app got slower is precisely the defect this gate was written to remove, just
+# relocated from the run bound to the build bound.
+#
+# Split, each phase contends only with itself: compiles run flat out with no
+# emulator stealing the CPU, and the boots run with no compiler doing the same.
+#
+# Running the boots in parallel at all is sound only BECAUSE of the determinism
+# fix, and the dependency runs the other way too: board_sim's CPU-time guard
 # inflates under N-way parallelism (N Unicorn JITs contend for cache and
 # memory, so a fixed instruction count burns more CPU-seconds), so with the
 # guard armed an app's verdict would change with -j. Bounding purely by the
@@ -286,13 +302,28 @@ build_and_resolve() { # app src-dir result-file -> "elf<TAB>note<TAB>ns args"
   printf '%s\t%s\t%s\n' "$elf" "$note" "$ns"
 }
 
+# Phase 1 worker: build one app and record what phase 2 needs to boot it.
+build_one() {
+  local app="$1"
+  local rf="$run_dir/$app.result"
+  local src_dir resolved
+  src_dir="$(app_src_dir "$app")"
+  # build_and_resolve writes the BUILD_FAIL / NO_ELF result itself; a failed
+  # app simply has no .built file, so phase 2 never boots it.
+  resolved="$(build_and_resolve "$app" "$src_dir" "$rf")" || return 0
+  printf '%s\n' "$resolved" >"$run_dir/$app.built"
+  log "$(printf '%-30s built' "$app")"
+}
+
+# Phase 2 worker: boot the already-built app and classify it.
 run_one() {
   local app="$1"
   local rf="$run_dir/$app.result"
-  local src_dir resolved elf note ns
-  src_dir="$(app_src_dir "$app")"
-  resolved="$(build_and_resolve "$app" "$src_dir" "$rf")" || return 0
-  IFS=$'\t' read -r elf note ns <<<"$resolved"
+  local elf note ns
+  # No .built file means phase 1 already recorded a failing result for this
+  # app. Do not re-judge it, and never fall through to a boot with no ELF.
+  [ -f "$run_dir/$app.built" ] || return 0
+  IFS=$'\t' read -r elf note ns <"$run_dir/$app.built"
   local -a ns_args=()
   [ -n "$ns" ] && read -r -a ns_args <<<"$ns"
   local out rc verdict
@@ -328,12 +359,16 @@ run_one() {
   return 0
 }
 
-# Re-exec entry point for the xargs pool below (a fully isolated process per
-# app, so nothing is shared and the verdict cannot depend on the pool).
-if [ "${1:-}" = "--run-one" ]; then
-  run_dir="${MATRIX_RUN_DIR:?--run-one needs MATRIX_RUN_DIR}"
-  sim="${MATRIX_SIM:?--run-one needs MATRIX_SIM}"
-  run_one "$2"
+# Re-exec entry points for the two xargs pools below (a fully isolated process
+# per app, so nothing is shared and the verdict cannot depend on the pool).
+if [ "${1:-}" = "--build-one" ] || [ "${1:-}" = "--run-one" ]; then
+  run_dir="${MATRIX_RUN_DIR:?worker needs MATRIX_RUN_DIR}"
+  sim="${MATRIX_SIM:?worker needs MATRIX_SIM}"
+  if [ "$1" = "--build-one" ]; then
+    build_one "$2"
+  else
+    run_one "$2"
+  fi
   exit 0
 fi
 
@@ -469,7 +504,13 @@ rm -rf "$run_dir"
 mkdir -p "$run_dir"
 export MATRIX_RUN_DIR="$run_dir" MATRIX_SIM="$sim"
 export BUILD_TIMEOUT RUN_TIMEOUT MAX_CHUNKS
-log "booting ${#apps[@]} example(s), -j $jobs ..."
+# Phase 1: build everything, with nothing else running. Phase 2: boot
+# everything, with no compiler running. See the two-phase note above -- the
+# split is what keeps the build's wall-clock timeout from becoming a verdict.
+log "building ${#apps[@]} example(s), -j $jobs ..."
+printf '%s\n' "${apps[@]}" | grep -v '^$' |
+  xargs -P "$jobs" -I{} bash "$ROOT/scripts/sim/matrix.sh" --build-one {} || true
+log "booting $(find "$run_dir" -name '*.built' | wc -l | tr -d ' ') built example(s), -j $jobs ..."
 printf '%s\n' "${apps[@]}" | grep -v '^$' |
   xargs -P "$jobs" -I{} bash "$ROOT/scripts/sim/matrix.sh" --run-one {} || true
 
