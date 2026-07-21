@@ -135,6 +135,12 @@ jobs="${MATRIX_JOBS:-$(detect_jobs)}"
 # its verdict is known); stdout stays the clean, parseable table + summary.
 log() { printf 'board_sim matrix: %s\n' "$*" >&2; }
 
+# Which apps need a board_sim device (a card) attached. Shared with sil_all.sh
+# so the knowledge has one home -- see the header of that file for why booting a
+# card-dependent app without a card is worse than skipping it.
+# shellcheck source=scripts/sim/sim_fixtures.sh
+. "$ROOT/scripts/sim/sim_fixtures.sh"
+
 # The board_sim exit codes this classifier keys on, named so the tests below
 # read as intent rather than digits. The full space is in sim_run.h: 0 clean,
 # 1 emulation fault, 2 BKPT, 3 CPU-time guard. 1 and 2 need no name here --
@@ -326,13 +332,19 @@ run_one() {
   IFS=$'\t' read -r elf note ns <"$run_dir/$app.built"
   local -a ns_args=()
   [ -n "$ns" ] && read -r -a ns_args <<<"$ns"
+  # Devices this app needs attached (a blank card, usually). Withholding one
+  # does not make the app fail honestly -- it makes it assert on a failed init,
+  # which the matrix would then record as the APP's fault.
+  local -a dev_args=()
+  read -r -a dev_args <<<"$(sim_extra_args "$app")"
   local out rc verdict
   # BOARD_SIM_WALL_S=0 DISABLES board_sim's CPU-time guard, leaving the run
   # bounded only by the instruction-counted chunk budget -- the deterministic
   # bound. See the DETERMINISM note in the header. The outer `timeout` is a hang
   # backstop only; if it ever fires the run is reported TRUNCATED, not judged.
   out="$(BOARD_SIM_MAX_CHUNKS="$max_chunks" BOARD_SIM_WALL_S=0 \
-    timeout "$run_timeout" "$sim" "$elf" ${ns_args[@]+"${ns_args[@]}"} 2>&1)"
+    timeout "$run_timeout" "$sim" "$elf" ${ns_args[@]+"${ns_args[@]}"} \
+    ${dev_args[@]+"${dev_args[@]}"} 2>&1)"
   rc=$?
   verdict="$(classify_run "$out" "$rc")"
   # Keep the emulator output for anything that did not come out clean. The
