@@ -339,11 +339,14 @@ catalogued as deactivated under DO-178C 6.4.4.3 in
 
 ### 6.4 Hardware smoke
 
-`make smoke` invokes
-[`../../scripts/hw_smoke_test.sh`](../../scripts/hw_smoke_test.sh)
-which flashes every EVM app, halts the chip, dumps registers, and
-classifies the resolved PC as PASS / WIP / FAIL / NOBUILD / UNKNOWN
-per the rubric in [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md).
+`make hil-all` invokes
+[`../../scripts/hil_all.sh`](../../scripts/hil_all.sh)
+which auto-discovers every app under
+`examples/ek_ra8d2/hw_validated/hil/` carrying a `hil.conf`, flashes
+each to the bench board, and verifies it by the mode that `hil.conf`
+declares (`uart_scrape`, `jlink_memprobe`, `usb_cdc`, `usb_hid`,
+`usb_msc`, ...). An app under `hil/` with no `hil.conf` fails the run
+rather than being skipped.
 Hardware-in-the-loop is a developer-laptop pre-push step (see
 [`../HIL_DEVELOPER_WORKFLOW.md`](../HIL_DEVELOPER_WORKFLOW.md)); a
 self-hosted runner is **not** in scope.

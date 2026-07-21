@@ -131,8 +131,8 @@ hand-traced decisions, and so on.
 | Vendor                          | SEGGER Microcontroller GmbH                                        |
 | Tool version pinned             | JLinkExe v9.38a (per `docs/HARDWARE_BRINGUP.md`).                  |
 | Intended use                    | Programming MRAM (`scripts/flash.sh`) and halting / register-      |
-|                                 | dumping the CPU during the smoke sweep                             |
-|                                 | (`scripts/hw_smoke_test.sh`). Ozone debugger backend               |
+|                                 | dumping the CPU during the HIL sweep                               |
+|                                 | (`scripts/hil_all.sh`). Ozone debugger backend                     |
 |                                 | (`scripts/ozone.sh`).                                              |
 | TQL classification              | **TQL-5**                                                          |
 | DO-330 Criterion                | Criterion 3.                                                       |

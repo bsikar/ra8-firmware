@@ -209,7 +209,7 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
   - 3c (week 10): residual modules (`ra8_core`, `ra8_fs`,
     `port/nimble`, `ra8_nsc`, `ra8_psa_crypto`,
     `ra8_ota` and the long tail).
-- **Acceptance gate**: `scripts/utils/doxy_audit` reports zero
+- **Acceptance gate**: `scripts/utils/doxy_audit.py` reports zero
   functions with gaps; CI gate flips from advisory to blocking.
 
 ### Phase 4 -- MISRA-C deviation register (weeks 11-14)
