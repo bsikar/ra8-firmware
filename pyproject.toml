@@ -59,6 +59,10 @@ select = [
   # the callee is designed. Measured 12, all `_svg(True)`/`_svg(False)` in
   # check_doc_diagrams.py; fixed by making the parameter keyword-only.
   "FBT003",
+  # --- added by #373 -------------------------------------------------------
+  # mccabe cyclomatic complexity. Threshold and reasoning in
+  # [tool.ruff.lint.mccabe] below.
+  "C90",
   # --- added by #360 -------------------------------------------------------
   # A blind `except Exception` in a gate swallows the very failure the gate
   # exists to report. Measured 9, all resolved: five were file-read catch-alls
@@ -116,6 +120,45 @@ ignore = [
 max-statements = 50
 max-branches = 12
 
+[tool.ruff.lint.mccabe]
+# Pinned explicitly rather than inherited, so a ruff default change cannot
+# silently move this project's limit.
+#
+# MEASURED against the decomposed tree, after #359 split the eight oversized
+# files and the over-cap functions inside them:
+#
+#     max-complexity   findings
+#          10            37
+#          12            20
+#          13             9
+#          15             0        <- selected
+#
+# For reference, the same sweep BEFORE that decomposition read 54 / 37 / 15 at
+# 10 / 12 / 15. Decomposing for the size cap removed most of the complexity by
+# itself, which is the whole reason #373 was sequenced behind #359: the two are
+# measures of one property and fixing either fixes the other.
+#
+# Why 15 and not ruff's default 10:
+#
+# `max-branches = 12` above already bounds BRANCH count, and this project keeps
+# it there. mccabe measures something PLR0912 cannot see -- it also counts the
+# boolean operators inside a condition, so `if a and b or c` costs three where
+# PLR0912 counts one branch. A function sitting exactly at the branch limit
+# with a few compound conditions therefore lands around 14-15 while being
+# perfectly within the rule that actually governs its branching.
+#
+# Setting C901 at 15 makes it COMPLEMENTARY to PLR0912: it catches functions
+# whose complexity comes from condition density rather than branch count, and
+# it does not quietly re-litigate a branch budget another rule already owns.
+# Choosing 10 or 12 would make C901 strictly tighter than max-branches and
+# effectively supersede it -- two rules limiting the same property at two
+# different numbers, which is exactly what #373 said not to do.
+#
+# The 9 findings between 13 and 15 are NOT grandfathered: nothing is exempted,
+# there is no per-file-ignore, and every function this gate reports must be
+# decomposed. They simply do not exist at the selected threshold.
+max-complexity = 15
+
 # ---------------------------------------------------------------------------
 # Deliberately NOT selected. Every count below was RE-MEASURED for #363 against
 # the current tree (124 first-party Python files, ruff 0.15.19), not carried
@@ -143,18 +186,6 @@ max-branches = 12
 #             There is no library-printing defect here to catch, so the
 #             remedy would be 87 per-file-ignores describing the tree as it
 #             already is. Printing IS the output mechanism of a CLI tool.
-#   C90  (54) mccabe complexity, 28 files. Tracked in #373. Full sweep, so the next person
-#             picks a threshold from data: 10 -> 54, 12 -> 37, 15 -> 15,
-#             20 -> 5, 25 -> 2, 30 -> 1. Held back for sequencing, not taste:
-#             48 of the 54 are in scripts/checks/, and the worst offenders
-#             (doxy_audit 7, regen_mcdc_gaps 5, check_annotations 5,
-#             check_doc_attachment 2) are precisely the files #359 is
-#             splitting for the function-size cap. Complexity and function
-#             size are two measures of one property; decomposing for one
-#             fixes the other, and doing both in two branches at once yields
-#             conflicts rather than simpler code. #359 owns the size axis and
-#             its threshold; select C90 at ruff's default 10 against the
-#             decomposed tree afterwards.
 #   D   (455) pydocstyle, google convention (D103 179, D205 57, D413 56,
 #             D209 35, D401 34, D212 31, D102 19, D100 13) across 96 files.
 #             Re-measured after #368 landed the tools/ and examples/ half of

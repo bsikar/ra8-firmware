@@ -636,36 +636,13 @@ def module_of(rel_path: str) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts readability
-    if not MCDC_TXT.exists():
-        print(
-            f"error: {MCDC_TXT} not found. Run `make mcdc` first to generate"
-            " the live llvm-cov report.",
-            file=sys.stderr,
-        )
-        return 1
+def _write_gap_csv(classified: list) -> None:
+    """Write the gap-only CSV.
 
-    # Collect every decision (covered or not) from the live report.
-    all_decisions: list[tuple[str, int, int, str, float]] = list(parse_mcdc_txt(MCDC_TXT))
-    # Skip third_party (the report already strips them, but be defensive).
-    all_decisions = [d for d in all_decisions if "/third_party/" not in d[0]]
-
-    # Gap rows = anything < 100%.
-    gap_rows = [d for d in all_decisions if d[4] < MCDC_FULL_PCT]
-    gap_rows.sort(key=lambda r: (r[0], r[1]))
-
-    # Classify each gap row as deactivated or reachable.
-    classified: list[tuple[str, int, int, str, str, str, bool, str]] = []
-    for src, ln, n, excerpt, pct in gap_rows:
-        covered = "no" if pct == MCDC_ZERO_PCT else "partial"
-        func = resolve_function(src, ln)
-        deact, rationale = is_deactivated_decision(src, ln, excerpt)
-        classified.append((src, ln, n, func, excerpt, covered, deact, rationale))
-
-    # Write CSV (gap-only). The `line` column has been replaced with
-    # `decision_text_snippet` per project citation policy: line numbers
-    # drift on every reformat and produce stale anchors. The text-derived
-    # slug is grep-able and survives reformatting.
+    The `line` column is a text-derived snippet, not a line number: line
+    numbers drift on every reformat and produce stale anchors, which project
+    citation policy bans.
+    """
     with CSV_OUT.open("w", encoding="ascii", newline="") as fh:
         w = csv.writer(fh, lineterminator="\n")
         w.writerow(
@@ -694,7 +671,9 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
                 ]
             )
 
-    # Module roll-up (counts every decision, gap or not).
+
+def _module_rows(all_decisions: list) -> list:
+    """Per-module (total, covered, partial, uncovered), worst first."""
     per_module: dict[str, list[float]] = defaultdict(list)
     for src, _ln, _n, _e, pct in all_decisions:
         per_module[module_of(src)].append(pct)
@@ -709,9 +688,11 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
 
     # Sort by uncovered+partial desc, then total desc, then name.
     rows.sort(key=lambda r: (-(r[3] + r[4]), -r[1], r[0]))
+    return rows
 
-    # Build the markdown header. Preserve the existing prose; only the
-    # numeric blocks get rewritten.
+
+def _headline(all_decisions: list, classified: list) -> dict:
+    """The counts every generated artefact quotes, computed once."""
     total_dec = len(all_decisions)
     yes_dec = sum(1 for d in all_decisions if d[4] >= MCDC_FULL_PCT)
     partial_dec = sum(1 for d in all_decisions if MCDC_ZERO_PCT < d[4] < MCDC_FULL_PCT)
@@ -730,7 +711,33 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
     reachable_total = total_dec - deact_count
     reachable_covered = yes_dec
     reachable_rate = (100.0 * reachable_covered / reachable_total) if reachable_total else 100.0
+    return {
+        "total_dec": total_dec,
+        "yes_dec": yes_dec,
+        "partial_dec": partial_dec,
+        "no_dec": no_dec,
+        "files_seen": files_seen,
+        "rate": rate,
+        "deactivated_rows": deactivated_rows,
+        "reachable_rows": reachable_rows,
+        "deact_count": deact_count,
+        "reachable_total": reachable_total,
+        "reachable_covered": reachable_covered,
+        "reachable_rate": reachable_rate,
+    }
 
+
+def _md_summary(h: dict) -> list[str]:
+    """Report heading, methodology, and the top-line numbers."""
+    total_dec = h["total_dec"]
+    yes_dec = h["yes_dec"]
+    partial_dec = h["partial_dec"]
+    no_dec = h["no_dec"]
+    files_seen = h["files_seen"]
+    rate = h["rate"]
+    deact_count = h["deact_count"]
+    reachable_total = h["reachable_total"]
+    reachable_rate = h["reachable_rate"]
     md_lines: list[str] = []
     md_lines.append("# MC/DC Coverage Gap Audit")
     md_lines.append("")
@@ -784,6 +791,14 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
         "See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog."
     )
     md_lines.append("")
+    return md_lines
+
+
+def _md_gap_tables(h: dict) -> list[str]:
+    """The reachable-gap and deactivated-gap tables."""
+    deactivated_rows = h["deactivated_rows"]
+    reachable_rows = h["reachable_rows"]
+    md_lines: list[str] = []
     md_lines.append("## Reachable gaps (require new MC/DC test vectors)")
     md_lines.append("")
     md_lines.append("| File | Conds | Function | Excerpt | Status |")
@@ -817,6 +832,12 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
         )
         md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {rt} |")
     md_lines.append("")
+    return md_lines
+
+
+def _md_module_tables(rows: list) -> list[str]:
+    """The per-module roll-up tables and the report footer."""
+    md_lines: list[str] = []
     md_lines.append("## Per-module gap counts (full table)")
     md_lines.append("")
     md_lines.append("Sorted by (uncovered + partial) descending, then total descending.")
@@ -844,12 +865,18 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
     )
     md_lines.append("")
 
+    return md_lines
+
+
+def _write_markdown(rows: list, h: dict) -> None:
+    """Write the gap-audit report, one function per section."""
+    md_lines = [*_md_summary(h), *_md_gap_tables(h), *_md_module_tables(rows)]
     MD_OUT.write_text("\n".join(md_lines), encoding="ascii")
 
-    # ----------------------------------------------------------------
-    # docs/MCDC_DEACTIVATIONS.md -- per-condition catalog. The auto-
-    # generated entries can be extended by hand below the marker.
-    # ----------------------------------------------------------------
+
+def _write_deactivations(h: dict) -> None:
+    """Write the per-condition deactivation catalog (DO-178C 6.4.4.3)."""
+    deactivated_rows = h["deactivated_rows"]
     deact_lines: list[str] = []
     deact_lines.append("# MC/DC Deactivated-Condition Catalog")
     deact_lines.append("")
@@ -929,7 +956,16 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
     deact_lines.append("")
     DEACT_MD_OUT.write_text("\n".join(deact_lines), encoding="ascii")
 
-    # Stash key counts for the gate script to read without re-parsing.
+
+def _write_gate_json(h: dict) -> None:
+    """Stash key counts so the gate script need not re-parse the report."""
+    total_dec = h["total_dec"]
+    yes_dec = h["yes_dec"]
+    rate = h["rate"]
+    deact_count = h["deact_count"]
+    reachable_total = h["reachable_total"]
+    reachable_covered = h["reachable_covered"]
+    reachable_rate = h["reachable_rate"]
     gate_json = REPO_ROOT / "build" / "mcdc-report" / "gate.json"
     with contextlib.suppress(OSError):
         gate_json.write_text(
@@ -945,13 +981,9 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
             encoding="ascii",
         )
 
-    # Per-file decision roll-up for the per-file MC/DC floor
-    # (scripts/checks/check_mcdc_floor.py). This mirrors how gcovr's
-    # coverage.json feeds check_coverage_floor.py: emit raw per-file decision
-    # counts and let the floor script compute the reachable rate + apply the
-    # threshold. `total`/`covered` come from every decision llvm-cov reported
-    # for the file; `deactivated` is the subset of that file's gap decisions
-    # the classifier exempted under DO-178C 6.4.4.3.
+
+def _write_per_file_json(all_decisions: list, classified: list) -> None:
+    """Per-file decision roll-up for check_mcdc_floor.py."""
     per_file: dict[str, dict[str, int]] = defaultdict(
         lambda: {"total": 0, "covered": 0, "deactivated": 0}
     )
@@ -979,12 +1011,47 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
             encoding="ascii",
         )
 
+
+def main() -> int:
+    if not MCDC_TXT.exists():
+        print(
+            f"error: {MCDC_TXT} not found. Run `make mcdc` first to generate"
+            " the live llvm-cov report.",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Collect every decision (covered or not) from the live report.
+    all_decisions: list[tuple[str, int, int, str, float]] = list(parse_mcdc_txt(MCDC_TXT))
+    # Skip third_party (the report already strips them, but be defensive).
+    all_decisions = [d for d in all_decisions if "/third_party/" not in d[0]]
+
+    # Gap rows = anything < 100%.
+    gap_rows = [d for d in all_decisions if d[4] < MCDC_FULL_PCT]
+    gap_rows.sort(key=lambda r: (r[0], r[1]))
+
+    # Classify each gap row as deactivated or reachable.
+    classified: list[tuple[str, int, int, str, str, str, bool, str]] = []
+    for src, ln, n, excerpt, pct in gap_rows:
+        covered = "no" if pct == MCDC_ZERO_PCT else "partial"
+        func = resolve_function(src, ln)
+        deact, rationale = is_deactivated_decision(src, ln, excerpt)
+        classified.append((src, ln, n, func, excerpt, covered, deact, rationale))
+
+    _write_gap_csv(classified)
+    h = _headline(all_decisions, classified)
+    _write_markdown(_module_rows(all_decisions), h)
+    _write_deactivations(h)
+    _write_gate_json(h)
+    _write_per_file_json(all_decisions, classified)
+
+    gap_rows = [d for d in all_decisions if d[4] < MCDC_FULL_PCT]
     print(
         f"Wrote {CSV_OUT.relative_to(REPO_ROOT)} ({len(gap_rows)} gap rows;"
-        f" {deact_count} deactivated, {len(reachable_rows)} reachable),"
+        f" {h['deact_count']} deactivated, {len(h['reachable_rows'])} reachable),"
         f" {MD_OUT.relative_to(REPO_ROOT)},"
         f" {DEACT_MD_OUT.relative_to(REPO_ROOT)}."
-        f" Absolute MC/DC: {rate:.2f}%; reachable MC/DC: {reachable_rate:.2f}%."
+        f" Absolute MC/DC: {h['rate']:.2f}%; reachable MC/DC: {h['reachable_rate']:.2f}%."
     )
     return 0
 

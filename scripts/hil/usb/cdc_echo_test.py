@@ -131,7 +131,60 @@ def _open_raw(tty_path: str) -> int:
     return fd
 
 
-def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, bytes]:  # noqa: PLR0912  # I/O state machine; splitting hurts readability
+def _drain_stale(fd: int, window_s: float = 0.2) -> None:
+    """Discard anything already in the RX buffer.
+
+    Leftover boot chatter would otherwise contaminate the echo comparison.
+    """
+    deadline = time.monotonic() + window_s
+    while time.monotonic() < deadline:
+        r, _, _ = select.select([fd], [], [], 0.05)
+        if not r:
+            return
+        try:
+            _ = os.read(fd, 4096)
+        except OSError as exc:
+            if exc.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
+                raise
+
+
+def _write_all(fd: int, payload: bytes) -> None:
+    """Write the whole payload, retrying on a would-block."""
+    written = 0
+    while written < len(payload):
+        try:
+            n = os.write(fd, payload[written:])
+            if n <= 0:
+                return
+            written += n
+        except OSError as exc:  # noqa: PERF203 -- retrying a would-block IS the loop; the write must be attempted per iteration
+            if exc.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
+                time.sleep(0.01)
+                continue
+            raise
+
+
+def _read_until(fd: int, want: int, timeout_s: float) -> bytes:
+    """Read until ``want`` bytes have arrived or ``timeout_s`` expires."""
+    rx = bytearray()
+    deadline = time.monotonic() + timeout_s
+    while len(rx) < want and time.monotonic() < deadline:
+        remaining = deadline - time.monotonic()
+        r, _, _ = select.select([fd], [], [], min(0.25, max(0.0, remaining)))
+        if not r:
+            continue
+        try:
+            chunk = os.read(fd, 4096)
+        except OSError as exc:
+            if exc.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
+                continue
+            raise
+        if chunk:
+            rx.extend(chunk)
+    return bytes(rx)
+
+
+def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, bytes]:
     """Write payload, read back for timeout_s, return (exit_code, received).
 
     The function does not raise on I/O errors -- it converts them into the
@@ -139,54 +192,13 @@ def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, by
     """
     fd = _open_raw(tty_path)
     try:
-        # Drain any stale RX before writing so leftover boot chatter does not
-        # contaminate the comparison.
-        deadline_drain = time.monotonic() + 0.2
-        while time.monotonic() < deadline_drain:
-            r, _, _ = select.select([fd], [], [], 0.05)
-            if not r:
-                break
-            try:
-                _ = os.read(fd, 4096)
-            except OSError as exc:
-                if exc.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
-                    raise
-
-        # Write the payload in one go; CDC ACM bulk-OUT will accept it.
-        written = 0
-        while written < len(payload):
-            try:
-                n = os.write(fd, payload[written:])
-                if n <= 0:
-                    break
-                written += n
-            except OSError as exc:
-                if exc.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
-                    time.sleep(0.01)
-                    continue
-                raise
-
-        # Read back until we have len(payload) bytes or the timeout expires.
-        rx = bytearray()
-        deadline = time.monotonic() + timeout_s
-        while len(rx) < len(payload) and time.monotonic() < deadline:
-            remaining = deadline - time.monotonic()
-            r, _, _ = select.select([fd], [], [], min(0.25, max(0.0, remaining)))
-            if not r:
-                continue
-            try:
-                chunk = os.read(fd, 4096)
-            except OSError as exc:
-                if exc.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
-                    continue
-                raise
-            if chunk:
-                rx.extend(chunk)
+        _drain_stale(fd)
+        _write_all(fd, payload)
+        received = _read_until(fd, len(payload), timeout_s)
     finally:
         with contextlib.suppress(OSError):
             os.close(fd)
 
-    received = bytes(rx)
     if not received:
         return 1, received
     if received[: len(payload)] != payload:
