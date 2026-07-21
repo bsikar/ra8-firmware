@@ -1,12 +1,27 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
-#
-# Assert a viewer-dumped PPM actually rendered content. The viewer's failure
-# modes are an all-one-color frame (blank/error fill) or a zero-size image, so a
-# real render must have positive dimensions AND more than one distinct color.
-# Exits 0 on a good frame, 1 on a blank/degenerate one, 2/3 on usage/dependency
-# errors -- so integration.sh can treat a blank render as a hard failure.
+"""Assert a viewer-dumped PPM actually rendered content.
+
+This exists because "the viewer exited 0 and wrote a file" is not evidence that
+anything was drawn. The viewer's failure modes both produce a perfectly valid
+PPM: an all-one-color frame (the blank or error fill) and a zero-size image. A
+real render must therefore have positive dimensions AND more than one distinct
+color, and this checks both.
+
+Distinct exit statuses let integration.sh tell a blank render (a real product
+failure that must fail the run) apart from a bad invocation or a missing
+Pillow, which must not be reported as a rendering bug:
+
+    0  frame has content
+    1  blank, degenerate, or unopenable frame
+    2  usage error
+    3  Pillow not installed
+
+The color test is a floor, not a fingerprint: it catches blank output, not
+wrong-but-colorful output.
+"""
+
 import sys
 
 try:
@@ -32,6 +47,25 @@ COLOR_CAP = 1 << 20
 
 
 def main():
+    """Check the PPM named in argv and map the verdict onto an exit status.
+
+    Reads `FILE.ppm [MIN_COLORS]` from `sys.argv`. MIN_COLORS defaults to 2 --
+    "not a single flat color" -- and raising it is how a caller demands a
+    richer frame than merely non-blank.
+
+    An unopenable file returns EXIT_BLANK rather than a usage error, on purpose:
+    from integration.sh's point of view a frame the viewer never produced and a
+    frame it produced blank are the same product failure.
+
+    Color counting is capped at COLOR_CAP. Past that `getcolors()` returns None,
+    which is itself proof of a rich frame, so the count is reported as the cap.
+
+    Returns:
+        EXIT_OK, EXIT_BLANK, or EXIT_USAGE, for `sys.exit`.
+
+    Raises:
+        ValueError: MIN_COLORS was given but is not an integer.
+    """
     if len(sys.argv) < ARGV_MIN:
         sys.stderr.write("usage: check_ppm.py FILE.ppm [MIN_COLORS]\n")
         return EXIT_USAGE

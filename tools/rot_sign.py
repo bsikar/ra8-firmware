@@ -177,6 +177,27 @@ def _pubkey_c_header(pubkey: bytes) -> str:
 
 
 def cmd_keygen(args: argparse.Namespace) -> int:
+    """Run the `keygen` subcommand: mint a root keypair and emit its C header.
+
+    This is the key ceremony. The private key written to `--key` is the root of
+    the entire secure-boot chain: losing it means no future image can ever be
+    signed for a board already provisioned with the matching public key, and
+    leaking it means anyone can. It is written wherever the caller says, with no
+    passphrase and no permission hardening -- protecting it is the operator's
+    job, not this tool's.
+
+    The public half is emitted as a C array for
+    `libs/ra8_dfu/src/ra8_rot.c::s_rot_root_pubkey`. Without `--pubkey-c` it
+    goes to stdout, so the ceremony can be eyeballed before anything is pasted.
+
+    An existing `--key` path is overwritten without confirmation.
+
+    Args:
+        args: Parsed namespace with `key` and optional `pubkey_c`.
+
+    Returns:
+        0. Failures surface as exceptions from `keygen`, not a status code.
+    """
     pubkey = keygen(Path(args.key))
     sys.stdout.write(f"wrote private key: {args.key}\n")
     if args.pubkey_c:
@@ -188,6 +209,26 @@ def cmd_keygen(args: argparse.Namespace) -> int:
 
 
 def cmd_sign(args: argparse.Namespace) -> int:
+    """Run the `sign` subcommand: append a signed trailer to an image body.
+
+    Output is the input body followed by the 116-byte `ra8_rot_trailer_t`, so
+    `--out` is always exactly 116 bytes longer than `--image`. Signing is not
+    idempotent: feeding an already-signed image back in signs the body AND the
+    old trailer, producing a double-trailered image the verifier rejects. Always
+    sign the raw build artifact.
+
+    `--img-version` is the monotonic anti-rollback counter, and the device
+    refuses any image whose value is below what it has already accepted.
+    Signing with a number lower than one already deployed produces a
+    correctly-signed image that the target will still refuse -- and re-using a
+    number is what silently permits a rollback.
+
+    Args:
+        args: Parsed namespace with `key`, `image`, `out` and `img_version`.
+
+    Returns:
+        0. Failures surface as exceptions from `sign_body`.
+    """
     body = Path(args.image).read_bytes()
     signed = sign_body(Path(args.key), body, args.img_version)
     Path(args.out).write_bytes(signed)
@@ -196,6 +237,26 @@ def cmd_sign(args: argparse.Namespace) -> int:
 
 
 def cmd_selftest(_args: argparse.Namespace) -> int:
+    """Run the `selftest` subcommand: a throwaway-key sign/verify round trip.
+
+    Proves this tool emits exactly the byte layout `ra8_rot_verify_image()`
+    parses -- magic, version, field widths and offsets, digest placement, and
+    that `img_version` survives the round trip. It checks the FORMAT contract,
+    not the crypto: openssl owns ECDSA correctness.
+
+    The keypair is generated into a temporary directory and destroyed with it,
+    so this touches no provisioned key and is safe to run anywhere. It needs
+    `openssl` on PATH and no hardware.
+
+    Failures exit non-zero from `_require` rather than returning, so the caller
+    never sees a false 0.
+
+    Args:
+        _args: Unused; the subcommand takes no options.
+
+    Returns:
+        0 when every check passes.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         key = Path(tmp) / "k.pem"
         pubkey = keygen(key)
@@ -251,6 +312,15 @@ def _require(cond: bool, what: str) -> None:
 
 
 def main() -> int:
+    """Parse the subcommand line and dispatch to the matching `cmd_*` handler.
+
+    Three subcommands -- `keygen`, `sign`, `selftest` -- and one is required, so
+    a bare invocation is an argparse error rather than a default action. That
+    is deliberate for a tool whose default could otherwise overwrite a root key.
+
+    Returns:
+        The handler's status, for `sys.exit`.
+    """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
 
