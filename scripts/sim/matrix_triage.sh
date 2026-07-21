@@ -169,10 +169,20 @@ done <"$report"
 
 echo "board_sim matrix -- $n_fail failing example(s) grouped by cause:"
 echo ""
-for cause in "${!cause_n[@]}"; do
-  printf '%4d  %s\n' "${cause_n[$cause]}" "$cause"
-  printf '        %s\n' "${cause_apps[$cause]}" | fold -s -w 96 | sed '2,$s/^/        /'
-done | sort -rn
-echo ""
+# Order the CAUSES by size, biggest tranche first, then print each with its own
+# app list. Sorting the whole rendered block would reorder the indented app
+# lines too and detach them from their heading -- which is what the first
+# version did, producing a plausible-looking report whose app lists belonged to
+# no cause in particular.
+while IFS=$'\t' read -r n cause; do
+  [ -z "$cause" ] && continue
+  printf '%4d  %s\n' "$n" "$cause"
+  printf '%s\n' "${cause_apps[$cause]}" | fold -s -w 88 | sed 's/^/        /'
+  echo ""
+done < <(
+  for cause in "${!cause_n[@]}"; do
+    printf '%s\t%s\n' "${cause_n[$cause]}" "$cause"
+  done | sort -rn -k1,1
+)
 echo "An 'unclassified' bucket is work for this tool, not a resting place:"
 echo "add its signature to triage_rules() once the cause is known."
