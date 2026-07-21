@@ -22,6 +22,11 @@
 gate_board_sim_smoke() (
   set -e
   use_pinned_arm_toolchain
+  # Prove the gate is WIRED before trusting a green run. Every app class is
+  # dispatched through a table, so a dropped entry stops that class being
+  # asserted at all -- the app still builds, still runs, and still prints OK
+  # from the generic path while the check it exists for never happens.
+  bash scripts/sim/smoke.sh --selftest
   bash scripts/sim/smoke.sh
 )
 
