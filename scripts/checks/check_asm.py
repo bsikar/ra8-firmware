@@ -79,6 +79,10 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from selftest_assert import expect, report
+
 REPO_ROOT = Path(
     subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],  # noqa: S607 -- trusted: fixed git argv
@@ -254,18 +258,6 @@ def targets() -> list[str]:
     )
 
 
-def _expect(cond: bool, label: str, failures: list[str]) -> None:
-    """Record one selftest assertion and print its pass/fail line.
-
-    Accumulates into ``failures`` instead of raising, so one failing
-    assertion does not hide the ones after it -- the value of a
-    both-direction selftest is the whole picture, not the first breakage.
-    """
-    print(f"  [{'ok' if cond else 'FAIL'}] {label}")
-    if not cond:
-        failures.append(label)
-
-
 GOOD = b"""/*
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2026 Brighton Sikarskie
@@ -288,13 +280,10 @@ HEADER = b"/*\n * SPDX-License-Identifier: MIT\n * Copyright (c) 2026 x\n */\n"
 CPP_BEFORE_SECTION = HEADER + b'#ifdef TX_INCLUDE_USER_DEFINE_FILE\n#include "tx_user.h"\n#endif\n'
 
 
-def selftest() -> int:
-    """Assert every rule fires on a malformed source and stays quiet on a good one."""
-    print("check_asm.py --selftest")
-    failures: list[str] = []
-
+def _assert_rule_codes(failures: list[str]) -> None:
+    """Assert a conforming source is silent and a malformed one fires every rule."""
     quiet = check_file("good.S", GOOD)
-    _expect(not quiet, f"a conforming source yields no findings (got {quiet})", failures)
+    expect(not quiet, f"a conforming source yields no findings (got {quiet})", failures)
 
     loud = check_file("bad.S", BAD)
     codes = {f.code for f in loud}
@@ -305,31 +294,46 @@ def selftest() -> int:
         ("AS004", "an ARM source without .syntax unified fires"),
         ("AS005", "tab indentation and trailing whitespace fire"),
     ):
-        _expect(code in codes, why, failures)
+        expect(code in codes, why, failures)
 
-    # Each half of AS003 independently.
+
+def _assert_as003_halves(failures: list[str]) -> None:
+    """Assert each half of AS003 fires on its own.
+
+    AS003 is a three-part rule (``.type``, ``.size``, a defining label), and a
+    conjunction that only ever fires when all three are missing would pass the
+    all-at-once case above while missing every realistic defect.
+    """
     no_size = GOOD.replace(b"    .size   _start, . - _start\n", b"")
-    _expect(
+    expect(
         any("without a `.size" in f.msg for f in check_file("x.S", no_size)),
         "dropping only .size fires AS003",
         failures,
     )
     no_type = GOOD.replace(b"    .type   _start, %function\n", b"")
-    _expect(
+    expect(
         any("without a `.type" in f.msg for f in check_file("x.S", no_type)),
         "dropping only .type fires AS003",
         failures,
     )
     no_label = GOOD.replace(b"_start:\n", b"")
-    _expect(
+    expect(
         any("no label defines it" in f.msg for f in check_file("x.S", no_label)),
         "dropping only the label fires AS003",
         failures,
     )
 
+
+def _assert_section_scan(failures: list[str]) -> None:
+    """Assert the section/syntax scan is not fooled by non-instruction text.
+
+    These are the false-positive cases: a rule that fires on a comment or on a
+    preprocessor line would make the gate unusable on the ThreadX port, and a
+    rule that holds a RISC-V source to an ARM directive is simply wrong.
+    """
     # AS004 must NOT fire on a non-ARM source.
     riscv = GOOD.replace(b"    .syntax unified\n", b"").replace(b"    .thumb_func\n", b"")
-    _expect(
+    expect(
         not any(f.code == "AS004" for f in check_file("rv.S", riscv)),
         "a non-ARM source is not held to the ARM .syntax rule",
         failures,
@@ -338,12 +342,12 @@ def selftest() -> int:
     # A preprocessor directive is not an instruction: the ThreadX port opens
     # with #ifdef/#include before its .section, and AS002 must not fire on it.
     cpp = CPP_BEFORE_SECTION + GOOD.split(b"*/\n", 1)[1]
-    _expect(
+    expect(
         not any(f.code == "AS002" for f in check_file("cpp.S", cpp)),
         "a #ifdef / #include before .section is not an instruction (AS002 quiet)",
         failures,
     )
-    _expect(
+    expect(
         any(f.code == "AS002" for f in check_file("i.S", HEADER + b"    nop\n")),
         "a real instruction before .section still fires AS002",
         failures,
@@ -351,33 +355,36 @@ def selftest() -> int:
 
     # A comment mentioning a directive must not satisfy a rule.
     commented = GOOD.replace(b"    .section .text.boot", b"    /* .section */\n    .section .x")
-    _expect(
+    expect(
         not any(f.code == "AS002" for f in check_file("c.S", commented)),
         "a commented-out directive does not confuse the section scan",
         failures,
     )
 
-    # Missing final newline.
-    _expect(
+
+def _assert_byte_hygiene(failures: list[str]) -> None:
+    """Assert the AS005 byte-level rules (final newline, ASCII-only) fire."""
+    expect(
         any("no final newline" in f.msg for f in check_file("n.S", GOOD.rstrip(b"\n"))),
         "a missing final newline fires AS005",
         failures,
     )
-
-    # Non-ASCII.
-    _expect(
+    expect(
         any("non-ASCII" in f.msg for f in check_file("u.S", GOOD.replace(b"MIT", b"MIT\xc2\xa9"))),
         "a non-ASCII byte fires AS005",
         failures,
     )
 
-    if failures:
-        print(f"\nSELFTEST FAILED: {len(failures)} assertion(s)", file=sys.stderr)
-        for item in failures:
-            print(f"  {item}", file=sys.stderr)
-        return 1
-    print("selftest: all assertions held (both directions).")
-    return 0
+
+def selftest() -> int:
+    """Assert every rule fires on a malformed source and stays quiet on a good one."""
+    print("check_asm.py --selftest")
+    failures: list[str] = []
+    _assert_rule_codes(failures)
+    _assert_as003_halves(failures)
+    _assert_section_scan(failures)
+    _assert_byte_hygiene(failures)
+    return report(failures)
 
 
 def main(argv: list[str]) -> int:
