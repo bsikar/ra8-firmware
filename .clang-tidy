@@ -116,6 +116,21 @@ WarningsAsErrors: '*'
 HeaderFilterRegex: '^(?!.*(_deps|build/)).*\.(h|hpp)$'
 
 CheckOptions:
+  # --- vendor RTOS ABI symbol names ---
+  #
+  # ThreadX and USBX define these names themselves; a first-party TU that
+  # implements or declares one MUST spell it exactly as the vendor does or the
+  # image links against nothing. The leading underscore is the vendor's
+  # choice, not ours. This is the same situation as Reset_Handler and the
+  # libFuzzer entry points already exempted below: an externally-fixed ABI
+  # name, where renaming to satisfy the checker produces a binary that builds
+  # and then does not work.
+  #
+  # Listed by exact name, never by a broad `_*` pattern, so a genuinely
+  # reserved identifier we invented ourselves is still caught.
+  - key: bugprone-reserved-identifier.AllowedIdentifiers
+    value: '_tx_timer_interrupt;_ux_dcd_ra8_usb_function;_ux_hcd_ra8_usb_function'
+
   # --- readability-identifier-naming (CLAUDE.md naming conventions) ---
 
   # Functions: snake_case
@@ -128,7 +143,7 @@ CheckOptions:
   # whose spelling is fixed by the libFuzzer runtime ABI exactly the same way:
   # rename them and the harness links but is never called.
   - key: readability-identifier-naming.FunctionIgnoredRegexp
-    value: '^(SystemInit|Reset_Handler|Default_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler|LLVMFuzzer[A-Za-z0-9]+)$'
+    value: '^(SystemInit|Reset_Handler|Default_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler|LLVMFuzzer[A-Za-z0-9]+|_tx_[a-z0-9_]+|_ux_[a-z0-9_]+)$'
 
   # Variables: snake_case
   - key: readability-identifier-naming.VariableCase
