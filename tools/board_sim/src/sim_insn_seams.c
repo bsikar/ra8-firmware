@@ -512,6 +512,15 @@ bool on_invalid_insn(uc_engine* uc, void* user)
     return true; /* handled -- run loop resumes at the advanced PC */
   }
 
+  /* Unicorn re-reports the instruction FOLLOWING a serviced NoCP fault as
+   * invalid even when it is perfectly valid, because the seam wrote PC and
+   * stopped the engine from inside the interrupt hook. Absorb exactly that one
+   * report, at exactly that one address, and relaunch. */
+  if (sim_mve_nocp_spurious(pc)) {
+    (void)uc_emu_stop(uc);
+    return true;
+  }
+
   report_unhandled_insn(pc, code);
   return false; /* not handled -> stop emulation with UC_ERR_INSN_INVALID */
 }

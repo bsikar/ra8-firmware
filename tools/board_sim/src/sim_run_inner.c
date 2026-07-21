@@ -165,6 +165,15 @@ static inner_action_t run_inner_take_exception(uc_engine* uc,
     (void)uc_reg_read(uc, UC_ARM_REG_PC, run_pc);
     return k_inner_continue;
   }
+  if (sim_mve_nocp_take()) {
+    /* The chunk ended in a NoCP UsageFault raised by an MVE contiguous
+     * load/store -- an instruction the M85 executes natively and Unicorn's M33
+     * has no unit for. The seam already performed the access and advanced PC,
+     * but uc_emu_start still reports UC_ERR_EXCEPTION, so resume rather than
+     * end the run. No time advances: the access is synchronous. */
+    (void)uc_reg_read(uc, UC_ARM_REG_PC, run_pc);
+    return k_inner_continue;
+  }
   if (err != UC_ERR_OK) {
     *faulted = true;
     return k_inner_break;

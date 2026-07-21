@@ -698,6 +698,23 @@ static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
     return;
   }
 
+  /* MVE (Helium) contiguous load/store. The M85 executes these natively, but
+   * they reuse the legacy coprocessor 14/15 encodings that Unicorn's M33 has
+   * no unit for, so the core raises a NoCP UsageFault (QEMU EXCP_NOCP, seen
+   * here as int_no 17) rather than trapping them as invalid instructions --
+   * the invalid-instruction dispatcher never sees this family at all. PC is
+   * still at the faulting word, so decode and perform the access here, then
+   * stop so the run loop relaunches past it. The decode is precise (it
+   * rejects the neighbouring FP stores, which Unicorn executes correctly, and
+   * the reserved size encoding), so gating on the decode rather than on
+   * int_no keeps this working if the exception numbering ever shifts. Without
+   * this the fault would fall through to the SVCall path below and be taken
+   * as a bogus SVC. */
+  if (sim_mve_nocp_emulate(uc, pc)) {
+    (void)uc_emu_stop(uc);
+    return;
+  }
+
   /* Armv8-M secure gateway: every Non-Secure-Callable veneer starts with `SG`
    * (0xE97FE97F) then `B.W __acle_se_<fn>`. Unicorn's M33 has no Security
    * Extension, so it raises INTR on the unrecognised SG instead of switching to
