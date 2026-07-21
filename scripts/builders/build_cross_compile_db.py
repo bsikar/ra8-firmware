@@ -234,6 +234,15 @@ class Database:
         return {os.path.relpath(key, root) for key in self.entries if key.startswith(root + os.sep)}
 
     def write(self, out_dir: Path) -> Path:
+        """Serialise the accumulated entries to compile_commands.json.
+
+        Writes the values of the entry map, not a list built alongside it, so
+        a translation unit compiled twice (two configurations of one source)
+        contributes exactly one entry -- clangd and clang-tidy both take the
+        first match and a duplicate would make which flags apply arbitrary.
+
+        Returns the path written.
+        """
         out_dir.mkdir(parents=True, exist_ok=True)
         path = out_dir / "compile_commands.json"
         path.write_text(
@@ -672,6 +681,15 @@ def selftest() -> int:
 # Entry point
 # ---------------------------------------------------------------------------
 def main() -> int:
+    """Build a cross-compilation database, or verify the committed one is current.
+
+    ``--check`` regenerates in memory and compares instead of writing, which
+    is what CI runs: it fails when the checked-in database has drifted from
+    the build system rather than silently rewriting it under the runner.
+
+    Returns 0 on success or a matching ``--check``, non-zero when the database
+    is stale.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("-o", "--out", help="directory to write compile_commands.json into")
     parser.add_argument("--check", action="store_true", help="fail on any uncovered firmware TU")
