@@ -39,6 +39,60 @@
 # CMake compiles ra8_viewer_view_stub.c in its place, so the portable reader
 # core still builds, links, and renders here -- the whole tool is gated on
 # Linux rather than skipped for the sake of its window backend.
+# media_dl: build, link, and run its own CTest suite.
+_tb_media_dl() (
+  set -e
+  local root="$1" jobs="$2"
+  echo "tools-build: media_dl"
+  # shellcheck disable=SC2154  # REPO_ROOT comes from scripts/ci.sh, the only thing that sources this file; shellcheck reports the variable once per file.
+  CC=clang-18 cmake -S "$REPO_ROOT/tools/media_dl" -B "$root/media_dl" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  cmake --build "$root/media_dl" -j "$jobs"
+  test -x "$root/media_dl/media_dl"
+  ctest --test-dir "$root/media_dl" --output-on-failure
+)
+
+# ra8_viewer: build, link, and exercise the headless render. Linking is not
+# evidence the reader still decodes anything, so the committed CBZ fixture is
+# driven through the headless path and the pixels are checked -- a zero exit
+# with no image would be a vacuous pass.
+_tb_ra8_viewer() (
+  set -e
+  local root="$1" jobs="$2"
+  echo "tools-build: ra8_viewer"
+  CC=clang-18 cmake -S "$REPO_ROOT/tools/ra8_viewer" -B "$root/ra8_viewer" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  cmake --build "$root/ra8_viewer" -j "$jobs"
+  test -x "$root/ra8_viewer/ra8_viewer"
+
+  local ppm="$root/viewer_page0.ppm"
+  "$root/ra8_viewer/ra8_viewer" \
+    "$REPO_ROOT/tools/ra8_viewer/fixtures/sample.cbz" --headless --dump-ppm "$ppm"
+  if [[ "$(head -c 2 "$ppm" 2>/dev/null)" != "P6" ]]; then
+    echo "ERROR: ra8_viewer --headless did not write a P6 PPM." >&2
+    echo "       A zero exit with no image would be a vacuous pass." >&2
+    return 1
+  fi
+  echo "tools-build: headless render wrote $(wc -c <"$ppm") bytes of P6"
+)
+
+# The remaining first-party CMake tools no job built. #335 asked for these to
+# be enumerated rather than fixing media_dl alone. They have no test binary of
+# their own, so building and linking them IS the check: each pulls a different
+# slice of the firmware (ra8_fmt the JOF/JPEG stack, mkbookimg and mkfontimg
+# the whole FAT/exFAT driver) host-side.
+_tb_other_tools() (
+  set -e
+  local root="$1" jobs="$2" tool
+  for tool in ra8_fmt mkbookimg mkfontimg; do
+    echo "tools-build: $tool"
+    CC=clang-18 cmake -S "$REPO_ROOT/tools/$tool" -B "$root/$tool" \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake --build "$root/$tool" -j "$jobs"
+    test -x "$root/$tool/$tool"
+  done
+)
+
 gate_tools_build() (
   set -e
   require_cmd clang-18 "the tools-build gate pins clang-18 to match CI"
@@ -49,52 +103,14 @@ gate_tools_build() (
   # A checker asserted in neither direction reports success forever.
   python3 scripts/checks/check_tool_warning_flags.py --selftest
 
-  # shellcheck disable=SC2154  # REPO_ROOT comes from scripts/ci.sh, the only thing that sources this file.
   local root="$REPO_ROOT/build/tools-build"
   local jobs
   jobs="$(cpu_count)"
   rm -rf "$root"
 
-  # --- media_dl: build, link, and run its own CTest suite -----------------
-  echo "tools-build: media_dl"
-  CC=clang-18 cmake -S "$REPO_ROOT/tools/media_dl" -B "$root/media_dl" \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-  cmake --build "$root/media_dl" -j "$jobs"
-  test -x "$root/media_dl/media_dl"
-  ctest --test-dir "$root/media_dl" --output-on-failure
-
-  # --- ra8_viewer: build, link, and exercise the headless render ----------
-  echo "tools-build: ra8_viewer"
-  CC=clang-18 cmake -S "$REPO_ROOT/tools/ra8_viewer" -B "$root/ra8_viewer" \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-  cmake --build "$root/ra8_viewer" -j "$jobs"
-  test -x "$root/ra8_viewer/ra8_viewer"
-
-  # Linking is not evidence the reader still decodes anything, so drive the
-  # headless path over the committed CBZ fixture and check the pixels landed.
-  local ppm="$root/viewer_page0.ppm"
-  "$root/ra8_viewer/ra8_viewer" \
-    "$REPO_ROOT/tools/ra8_viewer/fixtures/sample.cbz" --headless --dump-ppm "$ppm"
-  if [[ "$(head -c 2 "$ppm" 2>/dev/null)" != "P6" ]]; then
-    echo "ERROR: ra8_viewer --headless did not write a P6 PPM." >&2
-    echo "       A zero exit with no image would be a vacuous pass." >&2
-    return 1
-  fi
-  echo "tools-build: headless render wrote $(wc -c <"$ppm") bytes of P6"
-
-  # --- the remaining first-party CMake tools no job built -----------------
-  # #335 asked for these to be enumerated rather than fixing media_dl alone.
-  # They have no test binary of their own, so building and linking them IS the
-  # check: each pulls a different slice of the firmware (ra8_fmt the JOF/JPEG
-  # stack, mkbookimg and mkfontimg the whole FAT/exFAT driver) host-side.
-  local tool
-  for tool in ra8_fmt mkbookimg mkfontimg; do
-    echo "tools-build: $tool"
-    CC=clang-18 cmake -S "$REPO_ROOT/tools/$tool" -B "$root/$tool" \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-    cmake --build "$root/$tool" -j "$jobs"
-    test -x "$root/$tool/$tool"
-  done
+  _tb_media_dl "$root" "$jobs"
+  _tb_ra8_viewer "$root" "$jobs"
+  _tb_other_tools "$root" "$jobs"
 
   # --- the warning bar actually reached every first-party TU --------------
   python3 scripts/checks/check_tool_warning_flags.py \

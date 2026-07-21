@@ -361,6 +361,58 @@ EOF
 # This reports what the runner box observed. A job that never reached a runner
 # (queued, or dispatched to a stopped runner) is invisible here BY DESIGN --
 # absence of a log is reported as UNKNOWN, never as a pass.
+# Pull the most recent job records straight off the runner's own worker logs.
+# One record per line, "result|workflow|job|sha". Costs zero GitHub API quota,
+# which is the whole point of this command.
+_runner_status_fetch() {
+  local host="$1" glob="$2" limit="$3"
+  # shellcheck disable=SC2029  # deliberate: expand $glob/$limit locally.
+  ssh -o ConnectTimeout=10 -o BatchMode=yes "$host" "
+    for f in \$(ls -t $glob 2>/dev/null | head -$limit); do
+      res=\$(grep -oE 'Job result after all job steps finish: [A-Za-z]+' \"\$f\" 2>/dev/null | tail -1 | awk '{print \$NF}')
+      name=\$(grep -oE '\"jobDisplayName\": \"[^\"]+\"' \"\$f\" 2>/dev/null | head -1 | cut -d'\"' -f4)
+      sha=\$(grep -A1 '\"k\": \"sha\"' \"\$f\" 2>/dev/null | grep -oE '[0-9a-f]{40}' | head -1)
+      wf=\$(grep -A1 '\"k\": \"workflow_ref\"' \"\$f\" 2>/dev/null | grep -oE '\.github/workflows/[^@\"]+' | head -1 | sed 's|.*/||')
+      printf '%s|%s|%s|%s\n' \"\${res:-RUNNING}\" \"\${wf:-?}\" \"\${name:-?}\" \"\${sha:-?}\"
+    done" 2>/dev/null
+}
+
+# Print the matching records and exit with the overall verdict.
+#
+# No matching record is UNKNOWN, not a pass: the job may simply not have
+# reached this box yet. That distinction is the reason this command exists,
+# so it is the one thing the reporting half must never blur.
+_runner_status_report() {
+  local want_sha="$1" host="$2" out="$3"
+  local shown=0 failed=0 running=0
+  echo "source: runner logs on $host (zero GitHub API quota)"
+  while IFS='|' read -r res wf name sha; do
+    [[ -z "$res" ]] && continue
+    if [[ -n "$want_sha" && "$sha" != "$want_sha"* ]]; then continue; fi
+    printf '  %-10s %-28s %-34s %s\n' "$res" "$wf" "$name" "${sha:0:9}"
+    shown=$((shown + 1))
+    case "$res" in
+      Succeeded) ;;
+      RUNNING) running=$((running + 1)) ;;
+      *) failed=$((failed + 1)) ;;
+    esac
+  done <<<"$out"
+
+  echo "note: reports only what REACHED a runner; a queued job is invisible here."
+  if [[ "$shown" -eq 0 ]]; then
+    echo "overall: UNKNOWN (no runner log matches${want_sha:+ sha $want_sha})"
+    exit "$RA8_CI_EXIT_UNKNOWN"
+  elif [[ "$failed" -gt 0 ]]; then
+    echo "overall: FAIL ($failed failed of $shown observed)"
+    exit "$RA8_CI_EXIT_FAIL"
+  elif [[ "$running" -gt 0 ]]; then
+    echo "overall: UNKNOWN ($running still running of $shown observed)"
+    exit "$RA8_CI_EXIT_UNKNOWN"
+  fi
+  echo "overall: PASS ($shown observed, all Succeeded)"
+  exit "$RA8_CI_EXIT_PASS"
+}
+
 cmd_runner_status() {
   local host="${RA8_CI_RUNNER_HOST:-k3s-pve}"
   local glob="${RA8_CI_RUNNER_GLOB:-/home/ubuntu/actions-runner*/_diag/Worker_*.log}"
@@ -384,15 +436,7 @@ cmd_runner_status() {
   done
 
   local out
-  # shellcheck disable=SC2029  # deliberate: expand $glob/$limit locally.
-  out="$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$host" "
-    for f in \$(ls -t $glob 2>/dev/null | head -$limit); do
-      res=\$(grep -oE 'Job result after all job steps finish: [A-Za-z]+' \"\$f\" 2>/dev/null | tail -1 | awk '{print \$NF}')
-      name=\$(grep -oE '\"jobDisplayName\": \"[^\"]+\"' \"\$f\" 2>/dev/null | head -1 | cut -d'\"' -f4)
-      sha=\$(grep -A1 '\"k\": \"sha\"' \"\$f\" 2>/dev/null | grep -oE '[0-9a-f]{40}' | head -1)
-      wf=\$(grep -A1 '\"k\": \"workflow_ref\"' \"\$f\" 2>/dev/null | grep -oE '\.github/workflows/[^@\"]+' | head -1 | sed 's|.*/||')
-      printf '%s|%s|%s|%s\n' \"\${res:-RUNNING}\" \"\${wf:-?}\" \"\${name:-?}\" \"\${sha:-?}\"
-    done" 2>/dev/null)"
+  out="$(_runner_status_fetch "$host" "$glob" "$limit")"
 
   if [[ -z "$out" ]]; then
     echo "overall: UNKNOWN"
@@ -400,35 +444,7 @@ cmd_runner_status() {
     exit "$RA8_CI_EXIT_UNKNOWN"
   fi
 
-  local shown=0 failed=0 running=0
-  echo "source: runner logs on $host (zero GitHub API quota)"
-  while IFS='|' read -r res wf name sha; do
-    [[ -z "$res" ]] && continue
-    if [[ -n "$want_sha" && "$sha" != "$want_sha"* ]]; then continue; fi
-    printf '  %-10s %-28s %-34s %s\n' "$res" "$wf" "$name" "${sha:0:9}"
-    shown=$((shown + 1))
-    case "$res" in
-      Succeeded) ;;
-      RUNNING) running=$((running + 1)) ;;
-      *) failed=$((failed + 1)) ;;
-    esac
-  done <<<"$out"
-
-  echo "note: reports only what REACHED a runner; a queued job is invisible here."
-  # No matching record is UNKNOWN, not a pass: the job may simply not have
-  # reached this box yet.
-  if [[ "$shown" -eq 0 ]]; then
-    echo "overall: UNKNOWN (no runner log matches${want_sha:+ sha $want_sha})"
-    exit "$RA8_CI_EXIT_UNKNOWN"
-  elif [[ "$failed" -gt 0 ]]; then
-    echo "overall: FAIL ($failed failed of $shown observed)"
-    exit "$RA8_CI_EXIT_FAIL"
-  elif [[ "$running" -gt 0 ]]; then
-    echo "overall: UNKNOWN ($running still running of $shown observed)"
-    exit "$RA8_CI_EXIT_UNKNOWN"
-  fi
-  echo "overall: PASS ($shown observed, all Succeeded)"
-  exit "$RA8_CI_EXIT_PASS"
+  _runner_status_report "$want_sha" "$host" "$out"
 }
 
 case "${1:-}" in

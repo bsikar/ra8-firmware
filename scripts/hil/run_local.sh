@@ -314,6 +314,49 @@ sym_addr() { # sym_addr <symbol> -> prints hex addr, or empty
   arm-none-eabi-nm --print-size "${elfs[@]}" |
     awk -v s="$1" '$NF==s && !f {print $1; f=1}'
 }
+# Build the J-Link command script for one probe run: connect, optional boot
+# dwell, read the counter(s), run for the measurement window, read again.
+# Emitted on stdout so the caller can capture it with $( ), which strips the
+# trailing newline and yields exactly the string jlink_run expects.
+_memprobe_script() {
+  local saddr="$1" faddr="$2" boot="$3" win="$4"
+  local script="device ${JLINK_DEVICE}
+si SWD
+speed ${JLINK_SPEED}
+connect
+halt"
+  ((boot > 0)) && script+=$'\n'"go
+sleep $((boot * 1000))
+halt"
+  script+=$'\n'"mem32 0x${saddr} 1"
+  [[ -n "$faddr" ]] && script+=$'\n'"mem32 0x${faddr} 1"
+  script+=$'\n'"go
+sleep $((win * 1000))
+halt
+mem32 0x${saddr} 1"
+  [[ -n "$faddr" ]] && script+=$'\n'"mem32 0x${faddr} 1"
+  script+=$'\n'"q"
+  printf '%s\n' "$script"
+}
+
+# Read one probed address twice out of the J-Link log into the caller's array
+# (passed by name). Returns 1 -- having reported which symbol and dumped the
+# J-Link tail -- when the address was not read twice: one reading cannot show
+# advance, so it is never a pass.
+#
+# A nameref rather than stdout: the diagnostic above is written to stdout, so
+# a $( ) capture would swallow the one message that says what went wrong.
+_memprobe_pair() {
+  local log="$1" addr="$2" label="$3"
+  local -n _pair_out="$4"
+  mapfile -t _pair_out < <(grep -iE "^${addr}" "$log" | awk '{print $3}' | tr 'a-f' 'A-F')
+  if ((${#_pair_out[@]} < 2)); then
+    echo -e "${RED}[local]${NC} could not read ${label} twice"
+    tail -20 "$log" >&2
+    return 1
+  fi
+}
+
 run_memprobe() {
   local sym="${HIL_PROBE_SYMBOL:-}" min="${HIL_PROBE_MIN_ADVANCE:-4}" win="${HIL_PROBE_SECONDS:-3}"
   local fsym="${HIL_PROBE_FAILURE_SYMBOL:-}" fmax="${HIL_PROBE_MAX_FAILURE:-0}"
@@ -337,29 +380,12 @@ run_memprobe() {
   echo -e "${YELLOW}[local]${NC} memprobe symbol=${sym}@0x${saddr} min_advance=${min} window=${win}s boot_dwell=${boot}s${fsym:+ fail=${fsym}@0x${faddr}}"
   if ! flash_local; then return 1; fi
   local log="/tmp/hil_local_${APP}_memprobe.log"
-  local script="device ${JLINK_DEVICE}
-si SWD
-speed ${JLINK_SPEED}
-connect
-halt"
-  ((boot > 0)) && script+=$'\n'"go
-sleep $((boot * 1000))
-halt"
-  script+=$'\n'"mem32 0x${saddr} 1"
-  [[ -n "$faddr" ]] && script+=$'\n'"mem32 0x${faddr} 1"
-  script+=$'\n'"go
-sleep $((win * 1000))
-halt
-mem32 0x${saddr} 1"
-  [[ -n "$faddr" ]] && script+=$'\n'"mem32 0x${faddr} 1"
-  script+=$'\n'"q"
-  jlink_run "$script" "$log"
-  mapfile -t HITS < <(grep -iE "^${saddr}" "$log" | awk '{print $3}' | tr 'a-f' 'A-F')
-  ((${#HITS[@]} >= 2)) || {
-    echo -e "${RED}[local]${NC} could not read ${sym} twice"
-    tail -20 "$log" >&2
-    return 1
-  }
+  jlink_run "$(_memprobe_script "$saddr" "$faddr" "$boot" "$win")" "$log"
+
+  # Declared here, filled by _memprobe_pair through a nameref. They were
+  # undeclared globals before; scoping them also lets shellcheck see the write.
+  local -a HITS=() FH=()
+  _memprobe_pair "$log" "$saddr" "$sym" HITS || return 1
   # Signed delta: a counter that goes BACKWARDS (post < pre) means the target
   # reset between the two reads -- not "steadily advancing" -- so it must fail,
   # not wrap around to a huge positive delta. These liveness counters never
@@ -368,12 +394,7 @@ mem32 0x${saddr} 1"
   delta=$((post - pre))
   local fdelta=0 fpre="" fpost=""
   if [[ -n "$faddr" ]]; then
-    mapfile -t FH < <(grep -iE "^${faddr}" "$log" | awk '{print $3}' | tr 'a-f' 'A-F')
-    ((${#FH[@]} >= 2)) || {
-      echo -e "${RED}[local]${NC} could not read ${fsym} twice"
-      tail -20 "$log" >&2
-      return 1
-    }
+    _memprobe_pair "$log" "$faddr" "$fsym" FH || return 1
     fpre="${FH[0]}"
     fpost="${FH[1]}"
     fdelta=$(((16#${FH[1]}) - (16#${FH[0]})))
@@ -395,17 +416,10 @@ mem32 0x${saddr} 1"
 # =============================================================================
 # Mode: alive
 # =============================================================================
-run_alive() {
-  need_uart
-  local boot_s="${HIL_BOOT_S:-2}"
-  echo -e "${YELLOW}[local]${NC} alive  boot_dwell=${boot_s}s"
-  if ! flash_local; then return 1; fi
-  local uart="/tmp/hil_local_${APP}.uart"
-  start_reader "$uart" "$((boot_s + 3))" # outlive the dwell so stop_reader owns the kill
-  sleep "$boot_s"
-  stop_reader
-  local log="/tmp/hil_local_${APP}_alive.log"
-  local script="device ${JLINK_DEVICE}
+# The fixed J-Link probe for a liveness run: read the fault status registers,
+# sample the core registers, run for 1.5 s, sample them again.
+_alive_jlink_script() {
+  printf '%s\n' "device ${JLINK_DEVICE}
 si SWD
 speed ${JLINK_SPEED}
 connect
@@ -418,7 +432,97 @@ sleep 1500
 halt
 regs
 q"
-  jlink_run "$script" "$log"
+}
+
+# Is the core executing real code, and is it making progress? Emits one issue
+# line per problem on stdout and returns 1 when it found any. Each of the four
+# checks below is a separate way for an image to look alive and not be.
+_alive_check_pc_cycles() {
+  local pc1="$1" pc2="$2" cyc1="$3" cyc2="$4" bad=0
+  if [[ -z "$pc1" || -z "$cyc1" ]]; then
+    echo "could not parse PC/CycleCnt"
+    return 1
+  fi
+  local mram_lo=$((16#02000000)) mram_hi=$((16#02100000)) itcm_lo=0 itcm_hi=$((16#00010000))
+  # dfu_bootloader copy-to-run target: a booted payload runs from the SRAM
+  # window at k_ra8_dfu_run_base (0x22020000), so accept that as live code too
+  # (real faults are still caught by the CFSR/HFSR + fault-spinner checks).
+  local srun_lo=$((16#22020000)) srun_hi=$((16#22100000))
+  in_code() {
+    local p=$1
+    { ((p >= mram_lo && p < mram_hi)) || ((p >= itcm_lo && p < itcm_hi)) || ((p >= srun_lo && p < srun_hi)); }
+  }
+  in_code $((16#$pc1)) || {
+    echo "PC1=0x${pc1} outside MRAM/ITCM/SRAM-run"
+    bad=1
+  }
+  in_code $((16#$pc2)) || {
+    echo "PC2=0x${pc2} outside MRAM/ITCM/SRAM-run"
+    bad=1
+  }
+  ((((16#$cyc2) - (16#$cyc1)) & 0xFFFFFFFF)) || {
+    echo "CycleCnt frozen (0x${cyc1}->0x${cyc2})"
+    bad=1
+  }
+  return "$bad"
+}
+
+# A PC inside MRAM is not proof of life if it is parked in a fault handler or a
+# spin loop, so resolve both samples to symbols and reject the known spinners.
+_alive_check_spinner() {
+  local pc1="$1" pc2="$2"
+  local spinner='(panic_halt|halt_loop|exception_halt|Default_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|spin_forever|hang_forever|_die|__assert_fail)'
+  [[ -n "$pc1" ]] || return 0
+  command -v arm-none-eabi-addr2line >/dev/null 2>&1 || return 0
+  local s1 s2
+  s1="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${pc1}" 2>/dev/null | head -1)"
+  s2="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${pc2}" 2>/dev/null | head -1)"
+  if echo "$s1" | grep -qE "$spinner" || echo "$s2" | grep -qE "$spinner"; then
+    echo "PC in fault spinner: PC1=${s1:-?} PC2=${s2:-?}"
+    return 1
+  fi
+  return 0
+}
+
+# Configurable Fault Status and HardFault Status. HFSR bit 31 (DEBUGEVT) is
+# masked off: it is set by the debugger's own halt, not by a fault.
+_alive_check_faults() {
+  local cfsr="$1" hfsr="$2" bad=0
+  if [[ -n "$cfsr" ]] && ((16#$cfsr != 0)); then
+    echo "CFSR=0x${cfsr} non-zero"
+    bad=1
+  fi
+  if [[ -n "$hfsr" ]] && (((16#$hfsr & ~(1 << 31)) != 0)); then
+    echo "HFSR=0x${hfsr} real HardFault"
+    bad=1
+  fi
+  return "$bad"
+}
+
+# The core can be alive and progressing while the firmware itself reports a
+# failure, so scan what it printed during the boot dwell.
+_alive_check_uart_banner() {
+  local uart="$1"
+  [[ -s "$uart" ]] || return 0
+  local neg
+  neg="$(grep -aiE '\b(FAIL|FAILED|panic|NAK|ERROR|HardFault|hardfault|MemFault|BusFault|UsageFault|stack[ _-]?overflow)\b' "$uart" | head -3 || true)"
+  [[ -n "$neg" ]] || return 0
+  echo "UART failure banner during boot:"
+  while IFS= read -r l; do echo "      $l"; done <<<"$neg"
+  return 1
+}
+
+run_alive() {
+  need_uart
+  local boot_s="${HIL_BOOT_S:-2}"
+  echo -e "${YELLOW}[local]${NC} alive  boot_dwell=${boot_s}s"
+  if ! flash_local; then return 1; fi
+  local uart="/tmp/hil_local_${APP}.uart"
+  start_reader "$uart" "$((boot_s + 3))" # outlive the dwell so stop_reader owns the kill
+  sleep "$boot_s"
+  stop_reader
+  local log="/tmp/hil_local_${APP}_alive.log"
+  jlink_run "$(_alive_jlink_script)" "$log"
   local txt
   txt="$(cat "$log")"
   mapfile -t PCS < <(echo "$txt" | grep -oE 'PC[ ]*=[ ]*[0-9A-Fa-f]+' | grep -oE '[0-9A-Fa-f]+$' | tr 'a-f' 'A-F' | awk '!seen[$0]++')
@@ -428,60 +532,19 @@ q"
   local cfsr hfsr
   cfsr="$(echo "$txt" | grep -iE '^E000ED28' | head -1 | awk '{print $3}' | tr 'a-f' 'A-F')"
   hfsr="$(echo "$txt" | grep -iE '^E000ED2C' | head -1 | awk '{print $3}' | tr 'a-f' 'A-F')"
-  local ok=1 issues=()
-  if [[ -z "$pc1" || -z "$cyc1" ]]; then
-    issues+=("could not parse PC/CycleCnt")
+
+  # Every check runs -- the report lists all reasons, not just the first.
+  local ok=1 issues=() line
+  while IFS= read -r line; do
+    issues+=("$line")
     ok=0
-  else
-    local mram_lo=$((16#02000000)) mram_hi=$((16#02100000)) itcm_lo=0 itcm_hi=$((16#00010000))
-    # dfu_bootloader copy-to-run target: a booted payload runs from the SRAM
-    # window at k_ra8_dfu_run_base (0x22020000), so accept that as live code too
-    # (real faults are still caught by the CFSR/HFSR + fault-spinner checks).
-    local srun_lo=$((16#22020000)) srun_hi=$((16#22100000))
-    in_code() {
-      local p=$1
-      { ((p >= mram_lo && p < mram_hi)) || ((p >= itcm_lo && p < itcm_hi)) || ((p >= srun_lo && p < srun_hi)); }
-    }
-    in_code $((16#$pc1)) || {
-      issues+=("PC1=0x${pc1} outside MRAM/ITCM/SRAM-run")
-      ok=0
-    }
-    in_code $((16#$pc2)) || {
-      issues+=("PC2=0x${pc2} outside MRAM/ITCM/SRAM-run")
-      ok=0
-    }
-    ((((16#$cyc2) - (16#$cyc1)) & 0xFFFFFFFF)) || {
-      issues+=("CycleCnt frozen (0x${cyc1}->0x${cyc2})")
-      ok=0
-    }
-  fi
-  local spinner='(panic_halt|halt_loop|exception_halt|Default_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|spin_forever|hang_forever|_die|__assert_fail)'
-  if [[ -n "$pc1" ]] && command -v arm-none-eabi-addr2line >/dev/null 2>&1; then
-    local s1 s2
-    s1="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${pc1}" 2>/dev/null | head -1)"
-    s2="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${pc2}" 2>/dev/null | head -1)"
-    if echo "$s1" | grep -qE "$spinner" || echo "$s2" | grep -qE "$spinner"; then
-      issues+=("PC in fault spinner: PC1=${s1:-?} PC2=${s2:-?}")
-      ok=0
-    fi
-  fi
-  if [[ -n "$cfsr" ]] && ((16#$cfsr != 0)); then
-    issues+=("CFSR=0x${cfsr} non-zero")
-    ok=0
-  fi
-  if [[ -n "$hfsr" ]] && (((16#$hfsr & ~(1 << 31)) != 0)); then
-    issues+=("HFSR=0x${hfsr} real HardFault")
-    ok=0
-  fi
-  if [[ -s "$uart" ]]; then
-    local neg
-    neg="$(grep -aiE '\b(FAIL|FAILED|panic|NAK|ERROR|HardFault|hardfault|MemFault|BusFault|UsageFault|stack[ _-]?overflow)\b' "$uart" | head -3 || true)"
-    [[ -n "$neg" ]] && {
-      issues+=("UART failure banner during boot:")
-      while IFS= read -r l; do issues+=("      $l"); done <<<"$neg"
-      ok=0
-    }
-  fi
+  done < <(
+    _alive_check_pc_cycles "$pc1" "$pc2" "$cyc1" "$cyc2"
+    _alive_check_spinner "$pc1" "$pc2"
+    _alive_check_faults "$cfsr" "$hfsr"
+    _alive_check_uart_banner "$uart"
+  )
+
   if ((ok == 1)); then
     echo -e "${GREEN}[local PASS]${NC} ${APP} (PC=0x${pc1}->0x${pc2}, CycleCnt 0x${cyc1}->0x${cyc2})"
     return 0
