@@ -65,7 +65,7 @@ MEMBER_EXCLUDE_PARTS = {"third_party", "fonts", "build", "build-cov", "_deps", "
 MODULE_PATH_MIN_DEPTH = 2
 
 
-def iter_function_files():
+def iter_function_files() -> Iterator[Path]:
     """Yield every first-party .c/.h the FUNCTION gate audits.
 
     Both the strict gate and the report generator walked this identically
@@ -87,7 +87,7 @@ def iter_function_files():
                 yield p
 
 
-def _iter_member_files(explicit):
+def _iter_member_files(explicit: list[str]) -> Iterator[Path]:
     """Yield first-party .c/.h paths for the member audit.
 
     ``explicit`` is a list of user-supplied paths; if non-empty those exact

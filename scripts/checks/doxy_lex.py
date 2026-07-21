@@ -66,9 +66,15 @@ def strip_comments(src: str) -> str:
     return "".join(out)
 
 
-def find_preceding_doxy(src: str, func_offset: int):
-    """Return (block_text, has_block) for the doxygen block immediately
-    preceding func_offset, or ("", False) if none.
+def find_preceding_doxy(src: str, func_offset: int) -> tuple[str, bool]:
+    """Return the doxygen block immediately preceding ``func_offset``.
+
+    Only whitespace may separate the block from the offset; any intervening
+    code means the block documents something else and is not returned.
+
+    Returns ``(block_text, True)`` when a block is attached, or ``("", False)``
+    when none is -- the flag rather than an empty-string test, so a genuinely
+    empty block is still reported as present.
     """
     # walk backward over whitespace
     j = func_offset - 1
@@ -142,7 +148,7 @@ def _line_comment_style(raw: str, i: int) -> str | None:
     return None
 
 
-def blank_noncode(raw: str):  # noqa: PLR0912, PLR0915  # char scanner, splitting hurts clarity
+def blank_noncode(raw: str) -> tuple[str, list[tuple[int, int, str | None]]]:  # noqa: PLR0912, PLR0915  # char scanner, splitting hurts clarity
     """Blank comment and string interiors to spaces, keeping offsets stable.
 
     Returns ``(codeonly, comments)`` where ``codeonly`` is the same length as
@@ -206,8 +212,13 @@ def blank_noncode(raw: str):  # noqa: PLR0912, PLR0915  # char scanner, splittin
     return "".join(out), comments
 
 
-def _match_brace(code: str, open_idx: int):
-    """Return the offset of the ``}`` matching the ``{`` at ``open_idx``."""
+def _match_brace(code: str, open_idx: int) -> int | None:
+    """Offset of the ``}`` matching the ``{`` at ``open_idx``, or None if unbalanced.
+
+    Returns None rather than raising on an unterminated brace: this runs over
+    partially-valid source, and an unbalanced file should be skipped, not
+    crash the sweep.
+    """
     depth = 0
     i = open_idx
     n = len(code)
@@ -223,8 +234,11 @@ def _match_brace(code: str, open_idx: int):
     return None
 
 
-def _first_code_offset(code: str, lo: int, hi: int):
-    """First non-whitespace offset in the half-open range ``(lo, hi)``."""
+def _first_code_offset(code: str, lo: int, hi: int) -> int | None:
+    """First non-whitespace offset in the exclusive range ``(lo, hi)``, else None.
+
+    Starts at ``lo + 1``, so the delimiter at ``lo`` is never itself returned.
+    """
     i = lo + 1
     while i < hi:
         if not code[i].isspace():

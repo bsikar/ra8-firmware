@@ -17,6 +17,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from types import ModuleType
 
 from docattach_ast import (
     _check_declarations,
@@ -581,7 +582,7 @@ struct panel_timing_t {
 ]
 
 
-def _findings_for(path: Path, cindex, args: list[str]) -> list[Finding]:
+def _findings_for(path: Path, cindex: ModuleType, args: list[str]) -> list[Finding]:
     """Every finding for one fixture, through the same code the gate runs.
 
     Deliberately the production helpers rather than a walk of its own. This
