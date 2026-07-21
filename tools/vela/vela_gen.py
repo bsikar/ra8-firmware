@@ -1,43 +1,42 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
-#
-# tools/vela/vela_gen.py -- offline Ethos-U55 model build step for issue #227.
-#
-# Two responsibilities, deliberately separated so the golden pipeline runs in CI
-# WITHOUT the (heavy, optional) Vela toolchain:
-#
-#   1. compile  -- run the pinned ethos-u-vela on a real quantized .tflite to
-#                  produce a _vela.tflite (the "ethos-u" custom op wraps a
-#                  Vela command stream). Requires Vela; skips with a clear
-#                  notice (exit 0) when it is not installed, so a CI job that
-#                  never installs Vela still passes.
-#
-#   2. emit / check
-#               -- turn a committed model DESCRIPTOR (tools/vela/models/*.json)
-#                  into the lean, linkable ".npub" container defined by
-#                  libs/ra8_hal/inc/ra8_npu_blob.h, baked as a C header the
-#                  firmware links. `emit` writes the header; `check` regenerates
-#                  it in memory and diffs it against the committed golden,
-#                  failing on drift. Neither needs Vela, so both are the
-#                  regenerate-and-diff gate the issue asks for.
-#
-# The committed descriptor is a SIM model (the tiny, documented "SE55"
-# command-stream convention in libs/ra8_hal/inc/ra8_npu_sim_cmd.h), not a real
-# Vela program: it is the only Ethos-U55 command stream this repo can produce
-# deterministically without a Vela install and without inventing NPU opcodes.
-# The board_sim NPU model and the ra8_npu driver both decode that same
-# convention, so the whole submit -> run -> read-output path is exercised
-# end-to-end. Distilling a REAL _vela.tflite into a .npub is wired below as a
-# documented follow-up (see `compile`), pending a validated Vela output and an
-# RA8P1 board.
-#
-# Usage:
-#   python3 tools/vela/vela_gen.py emit  tools/vela/models/npu_addk_sim.json \
-#           -o tools/vela/generated/ra8_npu_model_addk_sim.h
-#   python3 tools/vela/vela_gen.py check tools/vela/models/npu_addk_sim.json \
-#           tools/vela/generated/ra8_npu_model_addk_sim.h
-#   python3 tools/vela/vela_gen.py compile model_int8.tflite -o build/vela
+"""Offline Ethos-U55 model build step for issue #227.
+
+Two responsibilities, deliberately separated so the golden pipeline runs in CI
+WITHOUT the heavy, optional Vela toolchain:
+
+1. `compile` runs the pinned ethos-u-vela on a real quantized .tflite to
+   produce a _vela.tflite, in which the "ethos-u" custom op wraps a Vela
+   command stream. This one needs Vela, and SKIPS with a clear notice and exit
+   0 when it is absent -- so a CI job that never installs Vela still passes.
+   Read that exit 0 as "not run", never as "the model compiled".
+
+2. `emit` / `check` turn a committed model DESCRIPTOR
+   (tools/vela/models/*.json) into the lean, linkable ".npub" container defined
+   by libs/ra8_hal/inc/ra8_npu_blob.h, baked as a C header the firmware links.
+   `emit` writes the header; `check` regenerates it in memory and diffs it
+   against the committed golden, failing on drift. Neither needs Vela, so this
+   pair IS the regenerate-and-diff gate the issue asks for.
+
+What the committed descriptor actually is matters for reading a green run: it
+is a SIM model -- the tiny, documented "SE55" command-stream convention in
+libs/ra8_hal/inc/ra8_npu_sim_cmd.h -- and NOT a real Vela program. It is the
+only Ethos-U55 command stream this repo can produce deterministically without
+a Vela install and without inventing NPU opcodes. The board_sim NPU model and
+the ra8_npu driver both decode that same convention, so the whole
+submit -> run -> read-output path is exercised end to end, but a passing gate
+says nothing about real Vela output. Distilling a REAL _vela.tflite into a
+.npub is wired below as a documented follow-up (see `compile`), pending a
+validated Vela output and an RA8P1 board.
+
+Usage:
+    python3 tools/vela/vela_gen.py emit  tools/vela/models/npu_addk_sim.json \
+            -o tools/vela/generated/ra8_npu_model_addk_sim.h
+    python3 tools/vela/vela_gen.py check tools/vela/models/npu_addk_sim.json \
+            tools/vela/generated/ra8_npu_model_addk_sim.h
+    python3 tools/vela/vela_gen.py compile model_int8.tflite -o build/vela
+"""
 
 from __future__ import annotations
 
@@ -315,6 +314,22 @@ def cmd_compile(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Parse the subcommand line and dispatch to the matching `cmd_*` handler.
+
+    A subcommand is required, so a bare invocation is an argparse usage error
+    rather than a default action.
+
+    Note the asymmetry in what a 0 means across the three: `emit` and `check`
+    return 0 only when they really ran, but `compile` also returns 0 when Vela
+    is not installed and nothing was compiled. See the module docstring.
+
+    Args:
+        argv: Argument list WITHOUT the program name (callers pass
+            `sys.argv[1:]`).
+
+    Returns:
+        The handler's status, for `sys.exit`.
+    """
     parser = argparse.ArgumentParser(description="Offline Ethos-U55 model build step (#227).")
     sub = parser.add_subparsers(dest="command", required=True)
 

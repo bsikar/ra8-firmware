@@ -19,6 +19,26 @@ from pathlib import Path
 
 
 def ascii_only(text):
+    """Fold text to 7-bit ASCII that is safe inside a C string literal.
+
+    NFKD decomposition first, so an accented letter splits into a plain letter
+    plus a combining mark and the letter survives the ASCII encode; encoding
+    without it would drop the whole character. Anything still non-ASCII after
+    that -- CJK, emoji, typographic dashes -- is dropped silently, so a title in
+    a non-Latin script can come back empty. That is accepted: the repository
+    encoding policy requires pure 7-bit ASCII in generated sources.
+
+    Double quotes become apostrophes and backslashes are deleted, which is what
+    keeps the result from terminating or escaping the surrounding C literal.
+    Callers must still not wrap the result in anything but a plain "..." .
+
+    Args:
+        text: Arbitrary Unicode, typically a book title or author.
+
+    Returns:
+        ASCII-only text containing neither a double quote nor a backslash. May
+        be shorter than the input, and may be empty.
+    """
     norm = unicodedata.normalize("NFKD", text)
     out = norm.encode("ascii", "ignore").decode("ascii")
     return out.replace('"', "'").replace("\\", "")
@@ -50,6 +70,30 @@ def unwrap_container(data):
 
 
 def read_meta(path):
+    """Inflate one .rabook and extract the fields the manifest header needs.
+
+    Reads the whole container into memory and inflates all of it just to reach
+    the header and a few pool strings -- wasteful per file, but it is the only
+    way to learn the inflated size, which is the number the firmware sizes its
+    scratch buffer from.
+
+    Note the two different sizes returned and do not confuse them: `file_size`
+    is the compressed bytes on the SD card, `inflated_size` is the RAM the
+    device must have free to open the book.
+
+    Args:
+        path: Path to a .rabook container.
+
+    Returns:
+        Dict with "title", "author", "language" (decoded with replacement, so
+        never raises on bad UTF-8), "file_size", "inflated_size", "chapters"
+        and "images".
+
+    Raises:
+        ValueError: Not a valid RBKC container, prefixed with the file path so
+            the caller's loop reports which book failed.
+        OSError: `path` cannot be read.
+    """
     with Path(path).open("rb") as fh:
         container = fh.read()
     try:
@@ -144,6 +188,21 @@ def _build_header_lines(entries):
 
 
 def main():
+    """Scan a directory of .rabook files and write the generated C header.
+
+    Books are ordered by filename, and that order fixes the indices in
+    `g_ra8_book_library[]`. Anything that persists a book index -- a saved
+    reading position, a baked fixture -- is invalidated by adding or renaming a
+    file in the directory.
+
+    The header is written with `encoding="ascii"`, so a title that survived
+    `ascii_only` but still holds a non-ASCII byte raises here rather than
+    producing a source file the encoding gate would later reject.
+
+    Non-.rabook files in the directory are ignored; an unreadable or corrupt
+    .rabook aborts the whole run rather than being skipped, because a manifest
+    that silently omits a book would under-size the inflate scratch buffer.
+    """
     ap = argparse.ArgumentParser(description="Generate the ra8_book library manifest header.")
     ap.add_argument("compiled_dir", help="directory of .rabook files")
     ap.add_argument("output", help="path to the generated header")

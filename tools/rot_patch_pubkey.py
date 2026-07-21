@@ -1,15 +1,22 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-#
-# rot_patch_pubkey.py -- provision a root-of-trust public key into ra8_rot.c.
-#
-# Rewrites the single `s_rot_root_pubkey[...]` initialiser in ra8_rot.c from a
-# C header emitted by `tools/rot_sign.py keygen --pubkey-c`. Shared by the
-# provisioning ceremony (scripts/rot_provision.sh) and the re-key flow
-# (scripts/rot_keystore.py rekey) so the patch lives in exactly one place.
-#
-# Usage:
-#   python3 tools/rot_patch_pubkey.py <ra8_rot.c> <pubkey-c-header>
+"""Provision a root-of-trust public key into ra8_rot.c.
+
+Rewrites the single `s_rot_root_pubkey[...]` initialiser in ra8_rot.c from a C
+header emitted by `tools/rot_sign.py keygen --pubkey-c`. The provisioning
+ceremony (scripts/rot_provision.sh) and the re-key flow (scripts/rot_keystore.py
+rekey) both call this, so the patch logic lives in exactly one place -- two
+copies of it drifting is how a board gets provisioned with a key that does not
+match the one images are signed with.
+
+The rewrite is in place and unconditional: ra8_rot.c is overwritten with no
+backup, and the array it replaces is matched by a regex on the exact
+declaration text. Renaming or reformatting that declaration in ra8_rot.c makes
+the match fail rather than silently patch the wrong thing.
+
+Usage:
+    python3 tools/rot_patch_pubkey.py <ra8_rot.c> <pubkey-c-header>
+"""
 
 from __future__ import annotations
 

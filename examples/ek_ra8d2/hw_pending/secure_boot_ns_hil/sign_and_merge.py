@@ -139,6 +139,34 @@ def _emit_manual_recipe(args: argparse.Namespace, ns_bin: Path) -> None:
 
 
 def main() -> int:
+    """Sign the NS image and emit the genuine and tampered merged hexes.
+
+    Pipeline: extract the raw NS body from its ELF with objcopy, pad it to the
+    `body_len` the linker recorded in `.ns_rot_header`, sign the padded body,
+    convert to ihex at the LMA, and merge with the Secure hex. The tampered
+    output is the same signed image with one body byte flipped AFTER signing, so
+    it differs from the genuine one only in that the digest no longer matches.
+
+    The padding step is not incidental. objcopy drops a trailing empty section's
+    alignment tail, so the raw output can be a few bytes short of the linker's
+    loaded-image extent. Signing the short body would put the trailer at the
+    wrong address and hash different bytes than the firmware does -- verification
+    would fail on a correctly-signed image. Padding to `body_len` makes the
+    signed body exactly what the firmware hashes.
+
+    Degrades deliberately when the RoT key is absent: it prints the exact
+    command to run later with the key and returns 0, leaving the unsigned NS
+    body for reference so the build still succeeds. **A 0 return therefore does
+    not mean the images were produced.** Check for the output files, not the
+    exit status.
+
+    Returns:
+        0 on success, and also 0 on the no-key degrade path.
+
+    Raises:
+        SystemExit: The NS body is larger than the header's `body_len`, or a
+            subprocess (objcopy, rot_sign, merge_ihex) failed.
+    """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--secure-hex", required=True, help="Secure ELF's ihex")
     parser.add_argument("--ns-elf", required=True, help="Non-Secure ELF")

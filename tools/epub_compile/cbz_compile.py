@@ -312,6 +312,23 @@ def _selftest():
 
 
 def main():
+    """Parse the command line and write the RBKC-wrapped .rabook to disk.
+
+    `--selftest` short-circuits everything else and ignores the positional
+    arguments. Otherwise both are required.
+
+    Two flags have consequences past this process. `--rtl` sets a header bit
+    the device reads as manga page order, and it is the ONLY difference in the
+    output -- the page rasters are byte-identical either way, which the selftest
+    asserts. `--chunk-bytes` must equal the reader's `ra8_vmem` frame size; a
+    mismatch produces a container the firmware cannot demand-page.
+
+    Note this is the whole-book paging path. For multi-GB omnibus volumes use
+    `cbz_container.py`, which pages one image at a time instead.
+
+    Returns:
+        0 on success; the selftest's own status when `--selftest` is given.
+    """
     ap = argparse.ArgumentParser(description="Compile a CBZ into a .rabook blob.")
     ap.add_argument("input", nargs="?", help="source .cbz (a ZIP of page images)")
     ap.add_argument("output", nargs="?", help="destination .rabook")

@@ -246,6 +246,19 @@ def _selftest():
 
 
 def main():
+    """Parse the command line and write the RCBZ container to disk.
+
+    `--selftest` short-circuits and ignores the positional arguments; otherwise
+    both are required.
+
+    There is no `--chunk-bytes` here, unlike the .rabook path, and its absence
+    is the point: RCBZ's paging unit is one page, so there is no whole-archive
+    stream to slice and nothing to keep in step with the reader's frame size.
+    That is what lets a multi-GB omnibus be read page-paged, never resident.
+
+    Returns:
+        0 on success; the selftest's own status when `--selftest` is given.
+    """
     ap = argparse.ArgumentParser(description="Compile a CBZ into an RCBZ per-page container.")
     ap.add_argument("input", nargs="?", help="source .cbz (a ZIP of page images)")
     ap.add_argument("output", nargs="?", help="destination .rcbz container")
