@@ -1,0 +1,41 @@
+# hadolint configuration -- hadolint 2.14.0, the pin the lint-devcontainer
+# gate, the devcontainer image and the CI runners all install.
+#
+# Scope is the single first-party Dockerfile, .devcontainer/Dockerfile. That
+# file pins every tool version CI resolves, so a defect in it changes what
+# every other gate runs -- which is why #371 called out its being unlinted as
+# the most consequential of the four gaps.
+#
+# `failure-threshold: style` promotes every severity to a failure. hadolint
+# defaults to failing only on `error`, which would let the DL4006 class -- a
+# pipeline whose exit status is silently that of its LAST command -- pass as a
+# warning. That is the exact defect scripts/checks/check_errexit_masking.py
+# exists to catch in shell, and it was live in this Dockerfile until #371:
+# eight `curl -fsSL <url> | tar -x` lines would have reported success on a
+# failed download and produced an image with the pinned tool simply absent.
+# It is fixed by the `SHELL ["/bin/bash", "-o", "pipefail", "-c"]` directive
+# near the top of the file, not by lowering the threshold.
+---
+failure-threshold: style
+
+ignored:
+  # DL3008 -- "pin versions in apt-get install".
+  #
+  # Ignored deliberately, and NOT because pinning is hard. Ubuntu's archive
+  # drops superseded package versions as soon as a -security or -updates
+  # revision lands, so an exact apt pin makes the image UNBUILDABLE within
+  # weeks rather than reproducible. The Dockerfile's own reproducibility
+  # posture note says this already, and applies exact pins precisely where
+  # they survive: the base image by immutable index digest, the ARM toolchain
+  # by URL + sha256, and the four `universe` packages that do not rotate
+  # within an LTS (cppcheck, gcovr) by exact version ARG.
+  #
+  # The packages this rule fires on are git, curl, ca-certificates and the
+  # clang-18 family -- none of which any gate's BEHAVIOUR depends on, and the
+  # clang family is documented in the Dockerfile as intentionally tracking the
+  # major-version package name for exactly this reason.
+  #
+  # Revisit if the base ever moves to a distribution with an immutable package
+  # archive (nix, or a pinned snapshot mirror); until then the rule's intent
+  # is met by stronger mechanisms than the one it checks for.
+  - DL3008
