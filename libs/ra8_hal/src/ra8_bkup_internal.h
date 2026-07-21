@@ -16,13 +16,13 @@
  * - ``ra8_bkup_tamper.c``   -- tamper detection and RTCIC pad wiring.
  * - ``ra8_bkup_security.c`` -- the TrustZone attribution registers.
  *
- * This src/-local header carries the only two symbols those TUs share:
- * the init latch that gates the ISR, and the protected read-modify-write
- * helper. Everything else stayed private to the TU that owns it -- the
- * tamper channel-bit helper and per-channel validator are used nowhere
- * else, and ``ra8_bkup_security.c`` shares nothing at all. It is NOT
- * part of the public ABI; production code outside this driver must use
- * ``ra8_bkup.h``.
+ * This src/-local header carries the handful of symbols those TUs share:
+ * the driver-wide log tag, the init latch that gates the ISR, and the
+ * protected read-modify-write helper. Everything else stayed private to
+ * the TU that owns it -- the tamper channel-bit helper and per-channel
+ * validator are used nowhere else, and the security TU borrows nothing
+ * but the log tag. It is NOT part of the public ABI; production code
+ * outside this driver must use ``ra8_bkup.h``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -37,6 +37,20 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+
+/**
+ * @var s_bkup_tag
+ * @brief Log tag every TU of this driver logs under.
+ *
+ * @details
+ * Defined once in ``ra8_bkup.c``. The tamper and security TUs reference
+ * it through this declaration rather than each defining their own copy,
+ * so the driver has a single logging identity and a single object.
+ *
+ * @note Read-only after definition; never reassigned.
+ * @since 0.1.0
+ */
+extern const char* s_bkup_tag;
 
 /**
  * @var s_bkup_initialized

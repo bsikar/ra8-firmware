@@ -42,12 +42,6 @@
 #include "ra8_register_protection.h"
 
 /**
- * @var s_tag
- * @brief Log tag used for this driver's diagnostics.
- */
-static const char* s_tag = "BKUP";
-
-/**
  * @enum ra8_bkup_tamper_internal_t
  * @brief Local numeric constants -- avoid magic numbers per CLAUDE.md.
  */
@@ -147,7 +141,7 @@ static ra8_err_t internal_validate_tamper_channels(const ra8_bkup_tamper_config_
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_bkup_chan_count; ++i) {
     const ra8_err_t err = internal_validate_chan(&cfg->channels[i]);
     RA8_RETURN_ON_ERROR(err,
-                        s_tag,
+                        s_bkup_tag,
                         "tamper_init: channel cfg out of range"); /* GCOVR_EXCL_BR_LINE */
   }
   return k_ra8_ok;
@@ -328,13 +322,13 @@ static uint8_t internal_compose_vbtadcr3(const ra8_bkup_tamper_config_t* cfg)
 
 [[nodiscard]] ra8_err_t ra8_bkup_tamper_init(const ra8_bkup_tamper_config_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_tag, "tamper cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg, s_bkup_tag, "tamper cfg must not be nullptr");
   if ((uint16_t)cfg->nc_width > k_ra8_bkup_max_nc_width) {
     return k_ra8_err_invalid_arg;
   }
   const ra8_err_t v_err = internal_validate_tamper_channels(cfg);
   RA8_RETURN_ON_ERROR(v_err,
-                      s_tag,
+                      s_bkup_tag,
                       "tamper_init: channel cfg out of range"); /* GCOVR_EXCL_BR_LINE */
 
   /* The whole tamper register file is PRC1 (HUM Ch 13.1 Table 13.1 p 521). */
@@ -379,7 +373,7 @@ static uint8_t internal_compose_vbtadcr3(const ra8_bkup_tamper_config_t* cfg)
   }
 
   s_bkup_initialized = true;
-  ra8_log_info(s_tag, "bkup_tamper_init");
+  ra8_log_info(s_bkup_tag, "bkup_tamper_init");
   return k_ra8_ok;
 }
 
@@ -406,7 +400,7 @@ static uint8_t internal_compose_vbtadcr3(const ra8_bkup_tamper_config_t* cfg)
 
 [[nodiscard]] ra8_err_t ra8_bkup_read_input(ra8_bkup_channel_t channel, bool* high_out)
 {
-  RA8_CHECK_NULL_PTR(high_out, s_tag, "high_out must not be nullptr");
+  RA8_CHECK_NULL_PTR(high_out, s_bkup_tag, "high_out must not be nullptr");
   if ((uint8_t)channel >= (uint8_t)k_ra8_bkup_chan_count) {
     return k_ra8_err_invalid_arg;
   }
