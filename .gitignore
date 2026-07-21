@@ -1,8 +1,41 @@
-# CMake build artifacts
-build/
-build-*/
-build_*/
-cmake-build-*/
+# CMake build artifacts.
+#
+# EVERY PATTERN HERE IS ANCHORED ON PURPOSE (#377). A bare `build/` has no
+# leading slash, so git matches it at EVERY depth -- a first-party directory
+# that happens to be named `build` becomes silently unaddable. #359's
+# reorganisation created `scripts/build/` -- PATHREF-OK: #359 renamed it.
+# Its six files were tracked only because `git mv` moves already-tracked
+# files; a seventh, newly created, would never have been added, and
+# `git add` would have reported nothing wrong.
+#
+# So each pattern below is rooted at a directory where a build tree is actually
+# produced. A `scripts/build/` -- PATHREF-OK: #359 renamed it -- or a
+# `libs/ra8_core/build/` outside these roots is ordinary tracked source.
+#
+# Note the deliberate absence of a `build*/` glob: it would match `builders/`,
+# which is the collision that made this worth fixing rather than renaming
+# around. The separator is always required.
+#
+# scripts/checks/lint_targets.py:is_build_output() is the matching definition
+# for the checkers -- one rule, two readers -- and check_gitignore_scope.py
+# fails on any new unanchored directory pattern, so the two cannot drift apart
+# again. CMakeFiles/ stays unanchored deliberately: CMake reserves the name and
+# nobody can author a source directory called that (the checker's
+# RESERVED_DIR_NAMES records that judgement).
+/build/
+/build-*/
+/build_*/
+/cmake-build-*/
+/docs/build/
+/esp32/build/
+/examples/**/build/
+/examples/**/build-*/
+/local-poc/**/build/
+/local-poc/**/build-*/
+/port/**/build/
+/src/**/build/
+/src/**/build-*/
+/tools/**/build/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
@@ -10,7 +43,11 @@ compile_commands.json
 
 # Downloaded media (comics/manga/manhwa fetched by tools/media_dl). This is
 # third-party copyrighted content pulled for LOCAL testing only -- never commit
-# or publish it. Applies to the default `downloads/` root anywhere in the tree.
+# or publish it. Applies to the default `downloads/` root anywhere in the
+# tree, which is the one pattern here that genuinely cannot be anchored:
+# tools/media_dl writes `downloads/` relative to whatever directory it is run
+# from, so there is no single root to anchor it to.
+# gitignore-scope-ok: media_dl writes it relative to its own cwd
 downloads/
 
 # Real-world EPUB test fixtures (copyrighted books used for local pipeline
@@ -40,11 +77,11 @@ tests/fixtures/epub/real/*.epub
 /core.*
 /vgcore.*
 
-# Test build artifacts
-tests/build/
-tests/build-cov/
-tests/build*/
-tests/Unity/
+# Test build artifacts (build-cov, build-fuzz, build-iwyu, build-scan,
+# build-ubsan). Anchored, and hyphen-separated so `tests/builders/` is safe.
+/tests/build/
+/tests/build-*/
+/tests/Unity/
 
 # GCC coverage instrumentation
 *.gcov
@@ -54,8 +91,8 @@ tests/Unity/
 
 # Coverage report outputs (already covered by build/ above; listed
 # explicitly so the directory is greppable)
-build/host-cov/
-build/coverage-html/
+/build/host-cov/
+/build/coverage-html/
 
 # GCC RTL dump files
 *.expand
@@ -65,9 +102,9 @@ build/coverage-html/
 # keeps the generated HTML out of git). docs/doxygen/ was the output
 # directory of the retired Doxyfile.main; kept ignored so stale local
 # builds never get committed.
-build/docs/
-build/docs-gate/
-docs/doxygen/
+/build/docs/
+/build/docs-gate/
+/docs/doxygen/
 doxygen.log
 # Generated Doxygen navigation trees (scripts/gen/gen_doxygen_nav.py, run by
 # build_docs.sh). Regenerated on every `make docs`, so kept out of git.
@@ -80,22 +117,25 @@ docs/reference/ra8d2-hardware-user-manual/
 docs/reference/ra8d2-high-temperature-operation/
 docs/reference/ra8d2-technical-brief/
 
-# Renesas / vendor IDE artifacts (NOT used here, guarded in case they show up)
+# Renesas / vendor IDE artifacts (NOT used here, guarded in case they show
+# up). Anchored to the repo root for the same reason as the build trees above:
+# `output/` and `ra/` are both plausible source directory names.
+#
+# `ra/` had already drawn blood in exactly the way #377 describes -- unanchored,
+# it swallowed the vendored FSP blob trees, which is the only reason the two
+# negations that used to sit below it existed. Anchoring the pattern makes them
+# dead code, so they went with it.
 .metadata/
 .settings/
-HardwareDebug/
-output/
+/HardwareDebug/
+/output/
 .project
 .cproject
 *.launch
 ra8_cfg.txt
-ra8_gen/
-ra/
-ra8_cfg/
-
-# Vendored FSP blob trees intentionally preserve upstream "ra/" path layout.
-!libs/third_party/fsp_blobs/**/ra/
-!libs/third_party/fsp_blobs/**/ra/**
+/ra8_gen/
+/ra/
+/ra8_cfg/
 
 # ARM / Keil / IAR artifacts
 *.uvprojx
@@ -103,10 +143,10 @@ ra8_cfg/
 *.ewp
 *.eww
 *.ewd
-Debug/
-Release/
-Objects/
-Listings/
+/Debug/
+/Release/
+/Objects/
+/Listings/
 
 # SEGGER
 *.jdebug
@@ -133,7 +173,6 @@ venv/
 .env.local
 .claude/*
 !.claude/agents/
-build_test/
 doxy_run.txt
 .pi-connection
 *.dump

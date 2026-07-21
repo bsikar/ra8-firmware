@@ -117,6 +117,8 @@ RA8_GATE_REGISTRY=(
   "lint-yaml|fast|yamllint + actionlint over the workflows"
   "lint-make|fast|Makefile structure, headers and portable ROOT"
   "lint-ld|fast|linker-script structure, headers and symbol closure"
+  "lint-asm|fast|assembly headers, sections and exported-symbol shape"
+  "lint-devcontainer|fast|hadolint over the Dockerfile, zsh -n over the zshrc"
   "lint-coverage|fast|every code file is claimed by a linter and a formatter"
   "cite-check|fast|HUM citation validator (strict)"
   "roadmap-stats|fast|ROADMAP summary stats"

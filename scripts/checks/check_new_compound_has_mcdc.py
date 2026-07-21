@@ -50,6 +50,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -66,11 +70,7 @@ SNIPPET_TRUNCATE_LEN = 77  # Length of truncated snippet body (leaves room for "
 RENAME_ROW_FIELD_COUNT = 3  # <status>\t<old>\t<new>
 
 # Excluded subtrees (SOUP, generated, etc.).
-EXCLUDED_SUBSTRINGS: tuple[str, ...] = (
-    "/third_party/",
-    "/_deps/",
-    "/build/",
-)
+EXCLUDED_SUBSTRINGS: tuple[str, ...] = ("/third_party/",)
 
 # Regex matching a compound boolean decision on a non-comment line.
 # We require the operator to be surrounded by whitespace or paren so we
@@ -134,7 +134,7 @@ def staged_files(
             continue
         if prefixes is not None and not any(p.startswith(pre) for pre in prefixes):
             continue
-        if any(sub in p for sub in EXCLUDED_SUBSTRINGS):
+        if is_build_output_path(p) or any(sub in p for sub in EXCLUDED_SUBSTRINGS):
             continue
         paths.append(p)
     return paths

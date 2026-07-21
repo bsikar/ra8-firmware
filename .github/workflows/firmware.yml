@@ -380,6 +380,20 @@ jobs:
       - run: bash scripts/ci.sh --gate lint-yaml
       - run: bash scripts/ci.sh --gate lint-make
       - run: bash scripts/ci.sh --gate lint-ld
+      - run: bash scripts/ci.sh --gate lint-asm
+      - name: Install hadolint
+        run: |
+          # ci-parity: infra -- provisions the pinned hadolint binary on the
+          # runner; runs no project check. The lint-devcontainer gate calls
+          # require_cmd, so a still-missing binary FAILS the gate rather than
+          # skipping it. zsh is preinstalled on the runner image.
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dockerbin"
+          curl -fsSL -o "$RUNNER_TEMP/dockerbin/hadolint" \
+            https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Linux-x86_64
+          chmod +x "$RUNNER_TEMP/dockerbin/hadolint"
+          echo "$RUNNER_TEMP/dockerbin" >> "$GITHUB_PATH"
+      - run: bash scripts/ci.sh --gate lint-devcontainer
       # Runs after every other lint gate in this job: it asks each of them what
       # they scan and proves nothing in the tree falls between them.
       - run: bash scripts/ci.sh --gate lint-coverage
