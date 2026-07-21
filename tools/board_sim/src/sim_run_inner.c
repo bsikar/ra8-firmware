@@ -165,6 +165,11 @@ static inner_action_t run_inner_take_exception(uc_engine* uc,
     (void)uc_reg_read(uc, UC_ARM_REG_PC, run_pc);
     return k_inner_continue;
   }
+  if (sim_mve_nocp_take()) {
+    /* MVE NoCP fault: the seam already did the access + advanced PC; resume, synchronous. */
+    (void)uc_reg_read(uc, UC_ARM_REG_PC, run_pc);
+    return k_inner_continue;
+  }
   if (err != UC_ERR_OK) {
     *faulted = true;
     return k_inner_break;
