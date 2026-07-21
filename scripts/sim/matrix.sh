@@ -267,6 +267,11 @@ run_one() {
   if [ "$verdict" != "OK" ] && [ "$verdict" != "HALT" ]; then
     printf '%s\n' "$out" >"$run_dir/$app.out"
   fi
+  # One whole line to stderr as each worker finishes. The pool prints nothing
+  # until aggregation, so without this a multi-minute sweep looks hung; these
+  # may interleave under -j but each is atomic, and the DETERMINISTIC table is
+  # printed by the parent from the result files, never from this stream.
+  log "$(printf '%-30s %s' "$app" "$verdict")"
   case "$verdict" in
     OK) printf 'OK\tOK (boots + runs to budget)%s\n' "$note" >"$rf" ;;
     FAULT) printf 'FAULT\tFAULT (rc=%s -- board_sim model gap or firmware bug)%s\n' \
