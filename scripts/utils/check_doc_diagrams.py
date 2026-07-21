@@ -347,7 +347,7 @@ def check(root: Path, html_dir: Path) -> list[Finding]:
 # ---------------------------------------------------------------------------
 
 
-def _svg(nodes: bool, label: str = "Idle") -> str:
+def _svg(*, nodes: bool, label: str = "Idle") -> str:
     body = f'<g class="node"><title>A</title><text x="0" y="0">{label}</text></g>' if nodes else ""
     return f'<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg">{body}</svg>'
 
@@ -386,26 +386,26 @@ def selftest() -> int:
         (
             "correct: 2 authored, 2 rendered",
             {"docs/x.md": _md(g1, g2)},
-            {"p.html": _page(s1, s2), s1: _svg(True), s2: _svg(True)},
+            {"p.html": _page(s1, s2), s1: _svg(nodes=True), s2: _svg(nodes=True)},
             False,
         ),
         (
             "correct: one block embedded on two pages",
             {"docs/x.md": _md(g1)},
-            {"a.html": _page(s1), "b.html": _page(s1), s1: _svg(True)},
+            {"a.html": _page(s1), "b.html": _page(s1), s1: _svg(nodes=True)},
             False,
         ),
         (
             "correct: identical blocks share one SVG",
             {"docs/x.md": _md(g1), "libs/y.h": dup_header},
-            {"p.html": _page(s1), s1: _svg(True)},
+            {"p.html": _page(s1), s1: _svg(nodes=True)},
             False,
         ),
         # --- the gate must FIRE when a diagram is dropped -----------------
         (
             "dropped: 2 authored, 1 rendered",
             {"docs/x.md": _md(g1, g2)},
-            {"p.html": _page(s1), s1: _svg(True)},
+            {"p.html": _page(s1), s1: _svg(nodes=True)},
             True,
         ),
         (
@@ -417,13 +417,13 @@ def selftest() -> int:
         (
             "empty: rendered SVG has no nodes",
             {"docs/x.md": _md(g1)},
-            {"p.html": _page(s1), s1: _svg(False)},
+            {"p.html": _page(s1), s1: _svg(nodes=False)},
             True,
         ),
         (
             "double-escaped: label renders a literal backslash-n",
             {"docs/x.md": _md(g1)},
-            {"p.html": _page(s1), s1: _svg(True, label="ra8_init\\nstep two")},
+            {"p.html": _page(s1), s1: _svg(nodes=True, label="ra8_init\\nstep two")},
             True,
         ),
         (
@@ -453,21 +453,21 @@ def selftest() -> int:
             # Two blocks authored; only one is rendered, but a leftover SVG
             # from an older build makes the count add up.
             {"docs/x.md": _md(g1, g2)},
-            {"p.html": _page(s1), s1: _svg(True), s2: _svg(True)},
+            {"p.html": _page(s1), s1: _svg(nodes=True), s2: _svg(nodes=True)},
             True,
             "wrong",
         ),
         (
             "stale: output predates a newly added diagram",
             {"docs/x.md": _md(g1, g2)},
-            {"p.html": _page(s1, s2), s1: _svg(True), s2: _svg(True)},
+            {"p.html": _page(s1, s2), s1: _svg(nodes=True), s2: _svg(nodes=True)},
             True,
             "wrong",
         ),
         (
             "unknown provenance: no build stamp at all",
             {"docs/x.md": _md(g1)},
-            {"p.html": _page(s1), s1: _svg(True)},
+            {"p.html": _page(s1), s1: _svg(nodes=True)},
             True,
             "missing",
         ),
