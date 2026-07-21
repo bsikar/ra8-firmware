@@ -1,5 +1,5 @@
 # SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh (gates:
-# board-sim-smoke, board-sim-io-fabric, sil-integration). See
+# board-sim-smoke, board-sim-matrix, board-sim-io-fabric, sil-integration). See
 # .github/workflows/firmware.yml for the design note.
 #
 # board_sim (tools/board_sim) is the Unicorn-based RA8D2 board emulator: it boots
@@ -68,6 +68,52 @@ jobs:
 
       - run: bash scripts/ci.sh --gate board-sim-smoke
       - run: bash scripts/ci.sh --gate board-sim-io-fabric
+
+  # The BREADTH matrix (#394) to board-sim-smoke's depth: every example under
+  # examples/ek_ra8d2/ built and booted on the emulator, with the failing count
+  # ratcheted DOWNWARD against .github/board-sim-matrix-baseline.txt. This is
+  # #67's own headline success criterion -- "every example runs in the
+  # simulator" -- and the script that measures it (scripts/sim/matrix.sh) was
+  # invoked by nothing at all until this job existed.
+  #
+  # Its own job rather than a step on board-sim-smoke: it builds and boots every
+  # example, so folding it into that job would push the pair past the 30 min
+  # ceiling and make one slow sweep cancel the other gate's result.
+  #
+  # DETERMINISM is a precondition for running here, not a nice-to-have. Until
+  # #394 the verdict depended on host load (board_sim's clock() guard truncated
+  # a run earlier the busier the box was), and a load-correlated gate on a
+  # shared self-hosted runner produces flaky red and gets disabled. Runs are now
+  # bounded by the instruction-counted chunk budget alone, so a verdict is
+  # identical on an idle runner and a saturated one.
+  board-sim-matrix:
+    name: board_sim example matrix (ratcheted)
+    runs-on: [self-hosted, Linux, X64]
+    # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
+    # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    # Builds ~200 example apps and boots each one. The run phase is dominated by
+    # the handful of apps that execute the full chunk budget rather than parking
+    # early (measured on the dev box: most apps finish in under 2 s, the heaviest
+    # around 70 s). See the measured wall time recorded in the PR for #394.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Install Unicorn + Capstone
+        run: |
+          # ci-parity: infra -- runner package provisioning only; runs no
+          # project check. Idempotent on this long-lived runner.
+          if ! ldconfig -p | grep -q 'libunicorn'; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libunicorn-dev libcapstone-dev
+          fi
+
+      - run: bash scripts/ci.sh --gate board-sim-matrix
 
   # SIL (simulator-in-the-loop): the hardware-free mirror of the bench HIL suite
   # (scripts/hil/all.sh). Every app under examples/ek_ra8d2/hw_validated/hil/ is

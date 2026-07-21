@@ -139,6 +139,7 @@ RA8_GATE_REGISTRY=(
   "stack-usage|slow|aggregate -fstack-usage frames"
   "docs|slow|Doxygen warning gate + authored-diagram render check"
   "board-sim-smoke|slow|board_sim boot smoke over the example apps"
+  "board-sim-matrix|slow|every example booted in board_sim, ratcheted downward"
   "board-sim-io-fabric|slow|ra8_io fabric demos in board_sim"
   "sil-integration|slow|every HIL app booted in board_sim against its hil.conf"
   "mcdc-delta-base|manual|base-branch MC/DC summary for the PR delta comment"
