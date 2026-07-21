@@ -72,12 +72,10 @@ typedef enum : uint32_t {
  * carries the note "Set the PRCR.PRC3 bit to 1 (write enabled) before
  * rewriting this register" (HUM Ch 8.2.2 p 303, Ch 8.2.4 p 305, Ch 8.2.6
  * p 307, Ch 8.2.7 p 307). PRCR is R_SYSTEM + 0x3FA; bit 15:8 is the
- * mandatory 0xA5 key. ``k_ra8_prcr_grp2_osc`` (0x0008) is the PRC3 group
- * bit; OR it with the key to enable writes, write the key alone to relock.
+ * mandatory 0xA5 key and ``k_ra8_prcr_grp3_pvd`` (0x0008) is the PRC3
+ * group bit, so ``k_ra8_prcr_unlock_pvd`` (0xA508) enables writes and
+ * ``k_ra8_prcr_lock_all`` (the key alone) relocks.
  */
-typedef enum : uint16_t {
-  k_lvd_demo_prcr_unlock_pvd = (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp2_osc), /**< 0xA508. */
-} lvd_demo_prcr_t;
 
 /** @brief Output line tags (2.80 V == k_ra8_lvd_pvdlvl_2_80v). */
 static const uint8_t k_lvd_demo_ok_msg[]  = "lvd: pvd1 thr=2.80V mon=above det=0 ok=Y\r\n";
@@ -197,7 +195,7 @@ static void lvd_demo_setup_or_halt(void)
   /* HUM Ch 8.2.4 "PVDmCR0" p 305: "Set the PRCR.PRC3 bit to 1 (write
    * enabled) before rewriting this register." PRCR = R_SYSTEM + 0x3FA,
    * key 0xA5 in [15:8], PRC3 = bit 3. */
-  *ra8_sys_prcr()     = (uint16_t)k_lvd_demo_prcr_unlock_pvd;
+  *ra8_sys_prcr()     = (uint16_t)k_ra8_prcr_unlock_pvd;
   const ra8_err_t err = ra8_lvd_channel_init(k_ra8_lvd_ch1, &cfg);
   ra8_sys_prcr_lock_all();
 
