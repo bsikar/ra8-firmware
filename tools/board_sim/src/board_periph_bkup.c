@@ -21,21 +21,37 @@
  * reset-survival contract. The bytes clear only at process start (static
  * zero-initialisation), modelling the first-ever boot with a dead battery.
  *
- * The @c VBTBER access-enable byte is shadowed AND gates VBTBKRn writes to model
- * the software contract HUM Ch 12.2.6 p 504 states -- "You must write 1 to VBAE
- * before accessing VBTBKR" -- so a write while @c VBTBER.VBAE (bit 3) is 0 is
- * dropped and counted in @c dropped. This stops the model from masking a
- * forgotten VBAE arm: firmware that never calls @c ra8_bkup_init now reports
- * @c rw=BAD on the sim. The survival demo arms VBAE via @c ra8_bkup_init, so its
- * writes stick. Reads always return the retained byte.
+ * Two silicon preconditions gate a VBTBKRn write, and both are modelled here:
  *
- * Caveat (issue #131): the DOMINANT silicon precondition is not VBAE (which
- * resets to 1) but voltage monitor 0 (LVD0) reset enabled via the @c OFS1.PVDAS
- * option byte (HUM Ch 12.1.3 p 499, Ch 12.3.2 p 514). With LVD0 disabled the
- * real VBATT area is held in @c VBATT_POR reset and rejects every write. The
- * emulator has no option memory and cannot model that gate, so it reports
- * @c rw=ok where the bench (default @c OFS1) reports @c rw=BAD. The VBAE gate
- * here is the modelable part of the enable sequence, not the whole story.
+ * 1. **PRCR.PRC1 must be unlocked.** Every register in this block -- VBTBER,
+ *    VBTICTLR, VBTBKRn, VBTBPCR1, VBTBPCR2, VBTBPSR, VBTADSR, VBTADCR1,
+ *    VBTADCR2, VBTICTLR2, VBTADCR3, VBTNCWCR -- is named under PRC1 in HUM
+ *    Ch 13.1 Table 13.1 "Association between PRCR bits and use of registers to
+ *    be protected" p 520-521. A write with PRC1 locked is discarded silently:
+ *    no fault, no flag. This is the #131 root cause. Bench-confirmed by J-Link
+ *    on an EK-RA8D2: writing VBTBKR0 with PRCR locked reads back
+ *    @c 0x00000000; after @c PRCR = 0xA502 the identical write sticks.
+ * 2. **VBTBER.VBAE must be 1** -- HUM Ch 12.2.6 p 504, "You must write 1 to
+ *    VBAE before accessing VBTBKR".
+ *
+ * @c VBTBER resets to @c 0x08 (VBAE = 1) per its "Value after reset" row in
+ * HUM Ch 12.2.6 p 504, matching a J-Link read of a live board, so VBAE alone
+ * never blocks a first write -- which is precisely why modelling only VBAE
+ * left the sim green while the bench was red. Writes to VBTBER itself are
+ * PRC1-gated too, so firmware that clears VBAE without unlocking does not
+ * change it, exactly as on silicon.
+ *
+ * A write dropped for either reason is counted in @c dropped and named in the
+ * end-of-run report, so the cause is visible rather than inferred from a
+ * failing banner. Reads always return the retained byte (PRCR gates writes
+ * only, HUM Ch 13.1 p 520).
+ *
+ * The earlier revision of this file blamed the @c OFS1.PVDAS option byte for
+ * the #131 divergence and declared it unmodelable. That was wrong: PVDAS
+ * governs the *battery power-supply switch* (HUM Ch 12.3.2 p 514), not
+ * register access, and on the EK-RA8D2 -- where VBATT is tied to VCC and the
+ * switch is stopped -- the backup registers read and write correctly with the
+ * default @c OFS1 once PRC1 is unlocked. Bench-proven: @c rw=ok survived=Y.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -47,6 +63,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "board_periph_prcr_internal.h"
 
 /** @brief VBATT backup window geometry (ra8_bkup_regs.h). */
 typedef enum : uint64_t {
@@ -60,6 +77,7 @@ typedef enum : uint64_t {
 /** @brief VBTBER field masks (HUM Ch 12.2.6 p 504). */
 typedef enum : uint8_t {
   k_bkup_vbtber_mask_vbae = 0x08U, /**< VBAE @ bit 3: 1 = enable VBTBKRn access. */
+  k_bkup_vbtber_reset     = 0x08U, /**< "Value after reset" row: VBAE = 1.       */
 } bkup_vbtber_mask_t;
 
 /** @brief Per-tick order slot for the VBATT-backup block (relative order). */
@@ -78,9 +96,10 @@ static uint8_t s_bkup_vbtbkr[k_bkup_reg_count];
 
 /** @brief VBATT control state (cleared by a reset; data is not). */
 typedef struct {
-  uint8_t  vbtber;  /**< VBTBER access-enable shadow (VBAE @ bit 3). */
-  uint32_t writes;  /**< VBTBKRn writes accepted (report).           */
-  uint32_t dropped; /**< VBTBKRn writes dropped while VBAE = 0.      */
+  uint8_t  vbtber;       /**< VBTBER access-enable shadow (VBAE @ bit 3). */
+  uint32_t writes;       /**< VBTBKRn writes accepted (report).           */
+  uint32_t dropped_prc1; /**< VBTBKRn writes dropped: PRCR.PRC1 locked.   */
+  uint32_t dropped_vbae; /**< VBTBKRn writes dropped: VBTBER.VBAE = 0.    */
 } bkup_ctrl_t;
 
 static bkup_ctrl_t s_bkup;
@@ -89,6 +108,11 @@ static bkup_ctrl_t s_bkup;
 static void bkup_reset(void)
 {
   s_bkup = (bkup_ctrl_t){};
+  /* HUM Ch 12.2.6 p 504 "Value after reset": VBAE = 1, so the access-enable
+   * bit is already armed out of reset (confirmed by a J-Link read of a live
+   * board). Modelling it as 0 would make a forgotten VBAE arm look fatal in
+   * the emulator when on silicon it is harmless. */
+  s_bkup.vbtber = (uint8_t)k_bkup_vbtber_reset;
   /* s_bkup_vbtbkr is intentionally NOT cleared: it is the reset-retained
    * domain that the survival demo depends on across a --reboot. */
 }
@@ -117,6 +141,16 @@ static void bkup_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_bkup_base;
+  /* HUM Ch 13.1 Table 13.1 p 521 lists VBTBER and VBTBKRn (with the rest of
+   * the VBATT file) under PRC1. Every write below is discarded while that
+   * group is locked, with no fault and no flag -- the #131 silicon behaviour.
+   * Nested-if (not &&) keeps each decision single-condition. */
+  if (!board_prcr_group_unlocked((uint16_t)k_board_prcr_grp1_lpm)) {
+    if (off >= (uint64_t)k_bkup_off_vbtbkr0) {
+      s_bkup.dropped_prc1++;
+    }
+    return;
+  }
   if (off == (uint64_t)k_bkup_off_vbtber) {
     s_bkup.vbtber = (uint8_t)value;
     return;
@@ -124,10 +158,9 @@ static void bkup_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   if (off >= (uint64_t)k_bkup_off_vbtbkr0) {
     /* HUM Ch 12.2.6 "VBTBER : VBATT Backup Enable Register" p 504: "You must
      * write 1 to VBAE before accessing VBTBKR." Drop the write while VBAE = 0
-     * so a missing-enable bug surfaces here (rw=BAD) exactly as on silicon.
-     * Nested-if (not &&) keeps this decision single-condition. */
+     * so a cleared-VBAE bug surfaces here (rw=BAD) exactly as on silicon. */
     if ((s_bkup.vbtber & (uint8_t)k_bkup_vbtber_mask_vbae) == 0U) {
-      s_bkup.dropped++;
+      s_bkup.dropped_vbae++;
       return;
     }
     const uint64_t idx = off - (uint64_t)k_bkup_off_vbtbkr0;
@@ -141,12 +174,21 @@ static void bkup_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
 /** @brief End-of-run VBATT-backup section: writes accepted / dropped this run. */
 static void bkup_report(void)
 {
-  if (s_bkup.dropped != 0U) {
-    /* Loud: firmware touched VBTBKRn without arming VBTBER.VBAE first. */
+  if (s_bkup.dropped_prc1 != 0U) {
+    /* Loud: firmware wrote VBTBKRn without unlocking PRCR.PRC1 (#131). */
+    (void)fprintf(
+      stderr,
+      "  VBATT-BKUP    : VBTBKRn writes=%u dropped=%u (PRCR.PRC1 locked: unlock 0xA502)\n",
+      s_bkup.writes,
+      s_bkup.dropped_prc1);
+    return;
+  }
+  if (s_bkup.dropped_vbae != 0U) {
+    /* Loud: firmware touched VBTBKRn after clearing VBTBER.VBAE. */
     (void)fprintf(stderr,
                   "  VBATT-BKUP    : VBTBKRn writes=%u dropped=%u (VBAE=0: enable VBTBER.VBAE)\n",
                   s_bkup.writes,
-                  s_bkup.dropped);
+                  s_bkup.dropped_vbae);
     return;
   }
   if (s_bkup.writes == 0U) {
