@@ -104,7 +104,7 @@ def run_check() -> int:
     return 1
 
 
-def run_members_report(explicit, out_csv) -> int:
+def run_members_report(explicit: list[str], out_csv: str | None) -> int:
     """REPORT-ONLY member/enum/macro audit. Always returns 0.
 
     Enumerates every undocumented enum value, struct/union member, and macro
@@ -157,7 +157,7 @@ def run_members_report(explicit, out_csv) -> int:
     return 0
 
 
-def run_members_check(explicit) -> int:
+def run_members_check(explicit: list[str]) -> int:
     """ENFORCING member gate: exit 0 if zero offenders, else exit 1.
 
     Enforces the CLAUDE.md rule that every enum value, struct/union member, and
@@ -193,7 +193,7 @@ def run_members_check(explicit) -> int:
     return 1
 
 
-def _parse_members_args(argv):
+def _parse_members_args(argv: list[str]) -> tuple[list[str], str | None]:
     """Split --members argv into (explicit_paths, out_csv)."""
     explicit = []
     out_csv = None
@@ -208,6 +208,16 @@ def _parse_members_args(argv):
 
 
 def main() -> int:
+    """Dispatch to the function gate, the member gate, or one of the report modes.
+
+    The two member modes are NOT interchangeable: ``--members`` alone is
+    report-only and always exits 0 (it exists to size the #246 fallout), while
+    ``--members --check`` is the enforcing gate. CI must pass both flags, or
+    the step measures the problem instead of failing on it.
+
+    Returns 0 on a clean gate, a passing selftest, or any report-only run;
+    1 when an enforcing mode found offenders.
+    """
     args = sys.argv[1:]
     if "--selftest" in args:
         return run_selftest()
