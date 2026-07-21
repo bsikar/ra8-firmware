@@ -177,14 +177,26 @@ OPTOUT_RE = re.compile(r"LEGACY-OK\s*:")
 
 
 def _is_skip_dir(name: str) -> bool:
+    """Whether a directory name is build output or otherwise out of scope.
+
+    Matches the ``build-*`` family by prefix as well as the exact names, so a
+    CMake variant directory (build-cov, build-fuzz) is skipped without being
+    listed individually.
+    """
     return name in SKIP_DIR_NAMES or name == "build" or name.startswith("build-")
 
 
 def should_scan(p: Path) -> bool:
+    """Whether this file's name or suffix puts it in scope.
+
+    Basename is checked as well as suffix so extensionless files the tree
+    cares about (CMakeLists.txt, Makefile) are not missed.
+    """
     return p.name in SCAN_BASENAMES or p.suffix in SCAN_EXTS
 
 
 def iter_files(root: Path) -> list[Path]:
+    """Every in-scope file beneath the configured scan roots."""
     out: list[Path] = []
     for sr in SCAN_ROOTS:
         base = root / sr
@@ -204,12 +216,24 @@ def iter_files(root: Path) -> list[Path]:
 
 
 def rewrite_line(line: str) -> str:
+    """Apply every terminology rewrite to one line and tidy the result.
+
+    Collapses runs of spaces afterwards, because the replacements differ in
+    length from what they replace and would otherwise leave ragged gaps where
+    a longer legacy term was swapped out.
+    """
     for rx, sub in REWRITES:
         line = rx.sub(sub, line)
     return re.sub(r"  +", " ", line).rstrip()
 
 
 def rewrite(text: str) -> str:
+    """Rewrite only the lines carrying legacy terminology, leaving the rest byte-identical.
+
+    Lines matching the opt-out marker are passed through untouched -- that is
+    what protects a deliberate quotation of a vendor document, where the
+    legacy term is the accurate one.
+    """
     out = []
     for ln in text.splitlines():
         if LEGACY_RE.search(ln) and not OPTOUT_RE.search(ln):
@@ -220,6 +244,14 @@ def rewrite(text: str) -> str:
 
 
 def main() -> int:
+    """Report, or with ``--apply`` perform, the inclusive-terminology rewrite.
+
+    Dry-run by default: without ``--apply`` nothing is written, so the diff
+    can be inspected before a tree-wide substitution is committed.
+
+    Returns 0 when no line needed rewriting, 1 when some did (in either mode),
+    so the dry run doubles as a gate.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     args = ap.parse_args()

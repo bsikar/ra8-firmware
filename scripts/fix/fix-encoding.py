@@ -98,6 +98,14 @@ def rewrite(text: str) -> tuple[str, int]:
 
 
 def process(path: pathlib.Path, *, check_only: bool) -> int:
+    """Transliterate one file's non-ASCII characters, or just count them.
+
+    A file that cannot be decoded as UTF-8 is SKIPPED with a message rather
+    than failed: it is almost certainly binary, and rewriting it would corrupt
+    it.
+
+    Returns the number of offending characters found (0 when clean).
+    """
     try:
         original = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError) as exc:
@@ -117,6 +125,10 @@ def process(path: pathlib.Path, *, check_only: bool) -> int:
 
 
 def walk(target: pathlib.Path, *, check_only: bool) -> int:
+    """Process one file, or recurse through a directory.
+
+    Returns the total count of non-ASCII characters across everything visited.
+    """
     if target.is_file():
         return process(target, check_only=check_only)
     total = 0
@@ -132,6 +144,14 @@ def walk(target: pathlib.Path, *, check_only: bool) -> int:
 
 
 def main() -> int:
+    """Rewrite non-ASCII characters to ASCII equivalents, or check for them.
+
+    ``--check`` reports without writing, which is the gate mode; bare, it
+    rewrites in place.
+
+    Returns 1 when any non-ASCII character was found, in either mode, so the
+    check mode fails the build and the rewrite mode reports it did work.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("target", type=pathlib.Path)
     parser.add_argument("--check", action="store_true", help="Only report, do not modify")

@@ -28,13 +28,19 @@ MACRO = "TEST_ASSERT_EQ("
 
 
 def _strip_leading_cast(text: str) -> str:
+    """Remove one leading integer cast from an argument, if present.
+
+    Only the outermost, leading cast: a cast deeper in the expression is
+    usually load-bearing and is left alone.
+    """
     m = _CAST_RE.match(text)
     return (m.group(1) + m.group(2)) if m else text
 
 
 def _skip_token(text: str, i: int) -> int:
-    """Return the index just past a string/char literal or comment starting at
-    ``i`` (handling escapes); return ``i`` unchanged for ordinary code.
+    """Index just past a literal or comment at ``i``; ``i`` itself for plain code.
+
+    Escapes are handled, so an embedded quote does not end the literal early.
 
     Bracket/comma scanning must never count a ``(``, ``)`` or ``,`` that lives
     inside a ``"..."`` / ``'...'`` literal or a ``/* */`` / ``//`` comment, or the
@@ -62,6 +68,11 @@ def _skip_token(text: str, i: int) -> int:
 
 
 def _find_close_paren(text: str, start: int) -> int:
+    """Offset of the ``)`` closing the paren already opened before ``start``.
+
+    Skips literals and comments via ``_skip_token``, so a parenthesis inside a
+    string cannot unbalance the depth count.
+    """
     depth = 1
     i = start
     while i < len(text) and depth:
@@ -79,6 +90,12 @@ def _find_close_paren(text: str, start: int) -> int:
 
 
 def process(content: str) -> str:
+    """Strip redundant leading casts from every TEST_ASSERT_EQ in one pass.
+
+    A SINGLE pass: removing a cast can expose another one beneath it, so this
+    is not guaranteed to reach a fixed point on its own -- callers should use
+    ``process_to_convergence``.
+    """
     out = []
     pos = 0
     macro_len = len(MACRO)
@@ -128,6 +145,13 @@ def process(content: str) -> str:
 
 
 def process_to_convergence(content: str) -> str:
+    """Re-run ``process`` until the text stops changing.
+
+    Bounded to ten iterations rather than looping until stable: a bug that
+    made the transform oscillate between two forms would otherwise hang the
+    pre-commit hook. In practice one pass fixes everything and a second
+    confirms it.
+    """
     for _ in range(10):
         next_pass = process(content)
         if next_pass == content:
@@ -137,6 +161,13 @@ def process_to_convergence(content: str) -> str:
 
 
 def main() -> int:
+    """Rewrite the files named on argv in place, reporting how many changed.
+
+    Always writes -- there is no dry-run mode here, because check_assert_casts
+    is the read-only half of this pair and CI runs that one.
+
+    Returns 1 on the empty-argv usage error, 0 otherwise.
+    """
     paths = [Path(p) for p in sys.argv[1:]]
     if not paths:
         print("usage: strip_assert_casts.py <file> [...]", file=sys.stderr)
