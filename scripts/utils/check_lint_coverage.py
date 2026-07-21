@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Prove that EVERY code file in this repository is linted and formatted.
 
 WHY THIS EXISTS
