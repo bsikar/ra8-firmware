@@ -76,53 +76,19 @@ if [[ -n "$c_files" ]]; then
     echo "   Install: sudo apt install clang-format"
   fi
 
-  # ---- C23 pattern enforcement -------------------------------------------
-  c23_ok=true
-  for f in "${c_file_list[@]}"; do
-    # _Static_assert -> static_assert
-    if grep -qnE '^[[:space:]]*_Static_assert[[:space:]]*\(' "$f" 2>/dev/null; then
-      echo "[FAIL] C11 _Static_assert in $f (use static_assert)"
-      grep -nE '^[[:space:]]*_Static_assert[[:space:]]*\(' "$f"
-      c23_ok=false
-    fi
-    # = {0} -> = {}
-    if grep -qnE '= \{0\}' "$f" 2>/dev/null; then
-      echo "[FAIL] C11 = {0} initializer in $f (use = {})"
-      grep -nE '= \{0\}' "$f" | head -5
-      c23_ok=false
-    fi
-    # #include <stdbool.h> (unnecessary in C23)
-    if grep -qnE '^[[:space:]]*#[[:space:]]*include[[:space:]]+<stdbool\.h>' "$f" 2>/dev/null; then
-      echo "[FAIL] Unnecessary #include <stdbool.h> in $f (bool is a C23 keyword)"
-      c23_ok=false
-    fi
-  done
-  if [[ "$c23_ok" == "false" ]]; then
-    echo ""
-    echo "Policy: Use C23 constructs (static_assert, = {}, no stdbool.h)."
-    error_found=1
-  fi
-
-  # ---- Defensive macro paren check ---------------------------------------
-  # Object-like `#define FOO 1000` is fragile in expressions: if FOO is
-  # ever rewritten as `1+999`, callers like `BAR * FOO + 1` silently break.
-  # Wrap as `(1000)` so the value stays a single token in every context.
-  # Catches: bare integer or float literals (with optional U/L/F suffix);
-  # ignores function-like macros, bare feature flags, and already-parenthesized
-  # values.
-  parens_ok=true
-  paren_re='^[[:space:]]*#[[:space:]]*define[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+[+-]?(0[xX][0-9a-fA-F]+[uUlL]*|0[bB][01]+[uUlL]*|[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?[fFlL]?|\.[0-9]+([eE][+-]?[0-9]+)?[fFlL]?|[0-9]+([eE][+-]?[0-9]+)?[fFlLuU]*)[[:space:]]*(/[/*].*)?$'
-  for f in "${c_file_list[@]}"; do
-    if grep -qnE "$paren_re" "$f" 2>/dev/null; then
-      echo "[FAIL] bare numeric #define value in $f (wrap with parens)"
-      grep -nE "$paren_re" "$f" | head -5
-      parens_ok=false
-    fi
-  done
-  if [[ "$parens_ok" == "false" ]]; then
-    echo ""
-    echo "Policy: numeric #define values must be wrapped in parens."
-    echo "        Example: #define FOO (1000)  not  #define FOO 1000"
+  # ---- C23 source patterns -----------------------------------------------
+  # The four checks below (_Static_assert -> static_assert, = {0} -> = {},
+  # no <stdbool.h>, and paren-wrapped numeric #define values) were inline grep
+  # loops here for the life of the hook and were NOT run by the CI
+  # pre-commit-checks gate, so a violation the hook rejects passed CI on any
+  # machine whose hook was not installed. They now live in one first-party
+  # checker that BOTH this hook and gate_pre_commit_checks call, so there is a
+  # single definition of each rule (#407). The checker skips comments and
+  # string literals, which the raw greps did not.
+  if ! python3 scripts/checks/check_c23_patterns.py "${c_file_list[@]}"; then
+    echo "[FAIL] C23 source-pattern violation(s)."
+    echo "   Use static_assert, = {}, drop <stdbool.h>, and wrap bare"
+    echo "   numeric #define values in parens (e.g. #define FOO (1000))."
     error_found=1
   fi
 
