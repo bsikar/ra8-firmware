@@ -33,7 +33,7 @@
  * the per-app syscfg.h on the include path. The wrapper only needs the
  * three function signatures + the bearer enum below to compile.
  */
-typedef enum {
+typedef enum : uint8_t {
   k_bt_mesh_prov_adv  = 1 << 0, /**< Bt mesh prov adv.  */
   k_bt_mesh_prov_gatt = 1 << 1, /**< Bt mesh prov GATT. */
 } ra8_internal_bt_mesh_prov_bearer_t;

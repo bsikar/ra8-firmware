@@ -131,7 +131,7 @@ static void test_mcdc_writable_char_value(void)
   /* Use sentinel small ints to stand in for k_attr_kind_char_value (the
    * production enum is not exposed from the public header; the mirror
    * only cares about equality semantics). */
-  enum {
+  enum : uint8_t {
     k_kind_char_value = 4U, /**< Kind char value. */
     k_kind_other      = 7U, /**< Kind other.      */
   };
