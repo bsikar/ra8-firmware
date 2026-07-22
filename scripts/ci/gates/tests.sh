@@ -12,7 +12,8 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: unit-tests, ubsan, coverage, coverage-report, mcdc, cache-bench
+# Gates in this file: unit-tests, ubsan, coverage, coverage-report, mcdc,
+# artefact-freshness, cache-bench
 
 # --- unit-tests -----------------------------------------------------------
 gate_unit_tests() (
@@ -118,6 +119,27 @@ gate_mcdc() (
     return 1
   fi
   echo "PASS: MC/DC coverage holds the baseline."
+)
+
+# --- artefact-freshness ---------------------------------------------------
+# #380: the committed MC/DC + doxygen gap docs (docs/MCDC_GAPS.csv, .md,
+# docs/MCDC_DEACTIVATIONS.md, docs/DOXYGEN_GAPS.csv, .md) must equal what their
+# generators produce from the current tree. Nothing used to notice when they
+# drifted, so on a DO-178C Level B target the human-readable gap record quietly
+# described a tree that no longer existed.
+#
+# The MC/DC half CONSUMES the mcdc gate's build/mcdc-report/mcdc.txt
+# (regen_mcdc_gaps.py reads it), so this gate is scheduled immediately AFTER the
+# `mcdc` gate in the same job / same snapshot and reuses that report rather than
+# re-running the ~20-minute coverage build. With the report absent the checker
+# FAILS LOUDLY naming the dependency instead of skipping. The doxygen half is a
+# static source parse and needs no toolchain input. --selftest runs first, in
+# both directions, so a checker that stopped comparing cannot pass as clean.
+gate_artefact_freshness() (
+  set -e
+  require_cmd python3 "the artefact-freshness gate regenerates docs via python generators"
+  python3 scripts/checks/check_generated_artefacts.py --selftest
+  python3 scripts/checks/check_generated_artefacts.py
 )
 
 # --- cache-bench ----------------------------------------------------------
