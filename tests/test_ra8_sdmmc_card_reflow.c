@@ -392,7 +392,7 @@ static void build_fat16(void)
 }
 
 /* ---- font + framebuffer -------------------------------------------------- */
-enum {
+enum : uint32_t {
   k_font_cap = 2U * 1024U * 1024U, /**< Font cap. */
   k_path_cap = 1024,               /**< Path cap. */
   k_fb_w     = 384,                /**< Fb w.     */
