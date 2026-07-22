@@ -132,6 +132,7 @@ RA8_GATE_REGISTRY=(
   "coverage|slow|gcovr line/branch gate (90/80)"
   "coverage-report|slow|coverage_report.sh + check_coverage.py ratchet"
   "mcdc|slow|MC/DC coverage against the committed baseline"
+  "artefact-freshness|slow|committed MC/DC + doxygen gap docs match a fresh regenerate"
   "cache-bench|slow|cache/glyph benchmark toolchain"
   "tools-build|slow|first-party host tools compile, link and test on Linux"
   "build-cross|slow|cross-build every example app"

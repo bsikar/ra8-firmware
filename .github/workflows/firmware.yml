@@ -290,10 +290,15 @@ jobs:
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate mcdc
+      # Freshness of the committed MC/DC + doxygen gap docs (#380). Runs in THIS
+      # job because it reuses the mcdc step's build/mcdc-report/mcdc.txt instead
+      # of re-running the coverage build; the checker fails loudly if that report
+      # is absent, so it can never silently pass out of this job's context.
+      - run: bash scripts/ci.sh --gate artefact-freshness
       - name: Upload MC/DC report
         if: always()
         uses: actions/upload-artifact@v4
