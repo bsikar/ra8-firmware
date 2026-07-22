@@ -113,6 +113,12 @@ _pcc_source_form() (
   python3 scripts/checks/check_tz_boundary_discard.py
   # Ban the numbered session-bookkeeping tags from comments and docs.
   python3 scripts/checks/check_no_wave_references.py
+  # C23 typed enums (every enum names an explicit underlying type) and
+  # pragma-once headers (no classic #ifndef include guards). Both were
+  # CLAUDE.md mandates with no checker until #409; the --selftest asserts the
+  # detector fires and stays silent for both rules before the tree is swept.
+  python3 scripts/checks/check_c23_headers.py --selftest
+  python3 scripts/checks/check_c23_headers.py --all
 )
 
 # Security invariants that a compiler cannot express: the NS->S entry surface,
