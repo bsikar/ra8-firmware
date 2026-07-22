@@ -96,17 +96,76 @@ objc_pass_args() {
 # file not found" and were never analysed at all. They are ASKED FOR, not
 # hardcoded: the compiler prints its own search list, so a toolchain bump
 # moves them automatically.
+#
+# FAILS rather than emitting nothing on an unusable compiler (#387). The distro
+# default arm-none-eabi-gcc 12.2 cannot parse -mcpu=cortex-m85: it answers the
+# query with an EMPTY search list and exit 1, and the old `|| return 0` / `||
+# true` turned that into an empty-but-successful include set. ~100 firmware TUs
+# then parsed with no system headers, every one a clang-diagnostic-error, and a
+# ratchet baseline generated in that state would freeze those parse errors
+# forever (the exact symptom #369 existed to fix). An empty list is
+# indistinguishable from "a compiler with no system includes", which is not a
+# real configuration, so this returns non-zero and prints nothing to stdout
+# when it cannot obtain a usable, marker-bearing list. require_arm_system_includes
+# is the loud, synchronous guard the firmware pass calls before trusting it --
+# process substitution swallows this exit code, so a plain caller cannot.
 # ---------------------------------------------------------------------------
 arm_system_includes() {
   local cc="${ARM_CC:-arm-none-eabi-gcc}"
-  command -v "$cc" &>/dev/null || return 0
-  "$cc" -mcpu=cortex-m85 -mthumb -E -v -x c /dev/null 2>&1 |
+  command -v "$cc" &>/dev/null || return 1
+  local raw
+  raw="$("$cc" -mcpu=cortex-m85 -mthumb -E -v -x c /dev/null 2>&1)" || true
+  local -a dirs=()
+  local dir
+  while IFS= read -r dir; do
+    dir="${dir# }"
+    [[ -d "$dir" ]] && dirs+=("$dir")
+  done < <(printf '%s\n' "$raw" |
     sed -n '/#include <\.\.\.> search starts here/,/End of search list/p' |
-    grep '^ ' |
-    while IFS= read -r dir; do
-      dir="${dir# }"
-      [[ -d "$dir" ]] && printf -- '--extra-arg=-isystem%s\n' "$dir"
-    done || true
+    grep '^ ')
+  # Floor: a non-empty list that carries the arm-none-eabi sysroot marker.
+  # Below that the query did not really answer, so fail rather than hand back
+  # an empty set that reads as success.
+  [[ ${#dirs[@]} -gt 0 ]] || return 1
+  local have_marker=0
+  for dir in "${dirs[@]}"; do
+    case "$dir" in *arm-none-eabi*)
+      have_marker=1
+      break
+      ;;
+    esac
+  done
+  [[ "$have_marker" -eq 1 ]] || return 1
+  printf -- '--extra-arg=-isystem%s\n' "${dirs[@]}"
+}
+
+# ---------------------------------------------------------------------------
+# The loud guard for arm_system_includes, called synchronously by the firmware
+# pass (run_pass_firmware) BEFORE the include list is captured.
+#
+# arm_system_includes is otherwise consumed through `mapfile < <(...)`, and
+# process substitution discards the inner exit code -- so a non-zero return
+# there would be silently ignored and the empty list used anyway. This runs it
+# in the current shell, and on failure names the offending compiler and its
+# version and aborts the whole gate with RC_INFRA, so a broken toolchain can
+# never reach clang-tidy (or, worse, the ratchet baseline) as an empty include
+# set (#387).
+# ---------------------------------------------------------------------------
+require_arm_system_includes() {
+  arm_system_includes >/dev/null && return 0
+  local cc="${ARM_CC:-arm-none-eabi-gcc}"
+  local version
+  version="$("$cc" --version 2>&1 | head -1)" || version="<not found on PATH>"
+  print_error "arm_system_includes: could not obtain ARM system include paths."
+  print_error "  compiler: $cc"
+  print_error "  version:  ${version:-<unknown>}"
+  print_error "  A compiler that cannot answer -mcpu=cortex-m85 (the distro-default"
+  print_error "  arm-none-eabi-gcc 12.2 is the usual culprit) yields an EMPTY include"
+  print_error "  list; ~100 firmware TUs would then parse as clang-diagnostic-error and"
+  print_error "  a ratchet baseline built now would freeze those parse errors forever."
+  print_error "  Put the pinned 13.3 toolchain on PATH (use_pinned_arm_toolchain, or"
+  print_error "  point RA8_ARM_TOOLCHAIN_BIN / ARM_CC at it)."
+  exit "$RC_INFRA"
 }
 
 # ---------------------------------------------------------------------------
