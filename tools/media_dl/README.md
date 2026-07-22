@@ -46,7 +46,20 @@ extract, download politely, package.
 - `mdl_net.{h,c}` -- streaming HTTP GET **seam**, mirroring the on-device
   `ra8_ota_net_iface_t`. Host backend is libcurl (TLS, redirects, gzip, one
   reused connection with a persistent cookie jar). On the RA8 this becomes NetX
-  Duo + Mbed TLS over the C6; callers do not change.
+  Duo + Mbed TLS over the C6; callers do not change. The backend is hardened for
+  attacker-controlled URLs: transport pinned to http/https, redirects refused
+  when they change host or resolve to loopback/private/link-local address space
+  (the SSRF guard, on the resolved peer), explicit TLS verification, `.netrc`
+  and proxy-env disabled, and a per-response size + low-speed cap.
+- `mdl_url_guard.{h,c}` -- pure URL/address predicates the backend enforces
+  (scheme allowlist, IP classification, size cap, host/path extraction).
+- `mdl_sanitize.{h,c}` -- neutralise untrusted names before a filesystem or XML
+  sink: segment sanitiser (`..`/reserved/over-length), path containment, and an
+  XML escaper for the generated EPUB.
+- `mdl_robots.{h,c}` -- robots.txt parser (most-specific `User-agent` group,
+  longest-match `Allow`/`Disallow`, `Crawl-delay`) + a per-host cache.
+- `mdl_session.{h,c}` -- honest configurable User-Agent + robots.txt gating.
+- `mdl_cli.{h,c}` -- command-line parsing.
 - `mdl_extract.{h,c}` -- `<img>`/`<a>` tag scanner + relative-URL resolver.
   Replaced on-device by litehtml (already vendored) behind the same signatures.
 - `mdl_config.{h,c}` -- flat key=value **site descriptor** loader. Adding a site
@@ -58,10 +71,19 @@ extract, download politely, package.
 - Return type is `ra8_err_t` from `libs/ra8_core` -- signatures are already
   device-shaped.
 
-Intentional fixes vs. the Kotlin original: one User-Agent per session (not
-per-request), one reused HTTP connection (shared pool + cookies), and image
-extraction that prefers `data-src` (lazy-loaded) with a URL-substring filter to
-drop loader/nav/ad images.
+Intentional fixes vs. the Kotlin original: a truthful, configurable User-Agent
+held constant per session (not a spoofed browser string, and not rotated per
+request -- rotation reads as *more* bot-like), one reused HTTP connection
+(shared pool + cookies), and image extraction that prefers `data-src`
+(lazy-loaded) with a URL-substring filter to drop loader/nav/ad images. Set your
+contact with `--contact <email|url>` (or a `contact =` key in the site
+descriptor) so an operator can reach you rather than ban a netblock.
+
+robots.txt is honoured by default: `/robots.txt` is fetched once per host, the
+most specific `User-agent` group is applied, a disallowed URL is refused before
+any request, and a `Crawl-delay` raises the per-host politeness floor. `--polite`
+raises delays further, `--ignore-robots` is a loud, explicit escape hatch, and
+`--allow-private` / `--cross-host` open the SSRF guards only when asked.
 
 ## Build
 

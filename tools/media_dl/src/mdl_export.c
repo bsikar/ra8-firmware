@@ -49,6 +49,7 @@
 #endif
 
 #include "mdl_export_internal.h"
+#include "mdl_sanitize.h"
 #include "miniz.h"
 #include "ra8_attributes.h"
 
@@ -263,8 +264,11 @@ RA8_INTERNAL static size_t list_pages(const char* dir, char names[][k_name_max],
   const struct dirent* e = readdir(d);
   while ((e != nullptr) && (n < cap)) {
     /* Skip hidden / AppleDouble, and anything that is not a page image so a
-     * dir already holding this tool's output re-packages cleanly. */
-    if ((e->d_name[0] != '.') && is_page_image(e->d_name)) {
+     * dir already holding this tool's output re-packages cleanly. A name that
+     * would not fit is rejected rather than silently truncated (which could
+     * collide two distinct pages onto one entry). */
+    if ((e->d_name[0] != '.') && is_page_image(e->d_name) &&
+        (strlen(e->d_name) < (size_t)k_name_max)) {
       (void)snprintf(names[n], k_name_max, "%s", e->d_name);
       ++n;
     }
@@ -291,9 +295,14 @@ RA8_INTERNAL static size_t round_block(size_t n)
   return ((n + (size_t)k_tar_block - 1U) / (size_t)k_tar_block) * (size_t)k_tar_block;
 }
 
-/** @brief Write a ustar header for `name`/`size` into a zeroed 512-byte block. */
-RA8_INTERNAL static void tar_header(uint8_t* blk, const char* name, size_t size)
+/** @brief Write a ustar header for `name`/`size`; error if `name` will not fit. */
+RA8_INTERNAL static ra8_err_t tar_header(uint8_t* blk, const char* name, size_t size)
 {
+  if (strlen(name) >= (size_t)k_len_name) {
+    /* The ustar name field is 100 bytes; a longer name would silently truncate
+     * and two distinct pages could collide onto one entry. Refuse instead. */
+    return k_ra8_err_invalid_size;
+  }
   memset(blk, 0, k_tar_block);
   (void)snprintf((char*)blk + k_off_name, k_len_name, "%s", name);
   (void)snprintf((char*)blk + k_off_mode, k_len_id, "%07o", (unsigned)k_file_mode);
@@ -312,6 +321,7 @@ RA8_INTERNAL static void tar_header(uint8_t* blk, const char* name, size_t size)
   }
   (void)snprintf((char*)blk + k_off_chksum, k_len_chksum - 1U, "%06o", sum);
   blk[k_off_chksum + k_len_chksum - 1U] = ' ';
+  return k_ra8_ok;
 }
 
 /** @brief Build a tar of `names` from `dir` into a freshly-malloc'd buffer. */
@@ -336,8 +346,12 @@ RA8_INTERNAL static ra8_err_t build_tar(const char* dir,
   for (size_t i = 0U; i < count; ++i) {
     char path[PATH_MAX];
     (void)snprintf(path, sizeof(path), "%s/%s", dir, names[i]);
-    const size_t sz = file_size(path);
-    tar_header(buf + pos, names[i], sz);
+    const size_t    sz  = file_size(path);
+    const ra8_err_t hrc = tar_header(buf + pos, names[i], sz);
+    if (hrc != k_ra8_ok) {
+      free(buf);
+      return hrc;
+    }
     pos += (size_t)k_tar_block;
     FILE* f = fopen(path, "rb");
     if ((f == nullptr) || (fread(buf + pos, 1U, sz, f) != sz)) {
@@ -524,11 +538,18 @@ export_cbt_xz(const char* dir, char names[][k_name_max], size_t count, const cha
 
 /** @brief EPUB string-buffer sizing (grows with the page count). */
 typedef enum : uint32_t {
-  k_epub_frag_max       = 512U,  /**< One manifest/spine/nav fragment. */
-  k_epub_xhtml_max      = 1024U, /**< One page's xhtml document.       */
-  k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead.          */
-  k_epub_per_page_bytes = 512U,  /**< Per-page opf/nav growth.         */
+  k_epub_frag_max       = 512U,  /**< One manifest/spine/nav fragment.        */
+  k_epub_xhtml_max      = 1024U, /**< One page's xhtml document.              */
+  k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead.                 */
+  k_epub_per_page_bytes = 512U,  /**< Per-page opf/nav growth.                */
+  k_epub_name_esc_max   = 1536U, /**< XML-escaped page name (k_name_max * 6). */
 } mdl_epub_size_t;
+
+/** @brief True if an snprintf result fully fit its buffer (no truncation). */
+RA8_INTERNAL static bool snprintf_fit(int written, size_t cap)
+{
+  return (written >= 0) && ((size_t)written < cap);
+}
 
 /** @brief OCF container pointing at the OPF package (fixed). */
 static const char* const k_epub_container_xml =
@@ -574,6 +595,38 @@ RA8_INTERNAL static bool epub_add_str(mz_zip_archive* zip, const char* name, con
   return mz_zip_writer_add_mem(zip, name, body, strlen(body), MZ_NO_COMPRESSION) != MZ_FALSE;
 }
 
+/** @brief Append this page's manifest/spine/nav fragments (escaped href). */
+RA8_INTERNAL static ra8_err_t epub_append_frags(char*       mani,
+                                                char*       spine,
+                                                char*       nav,
+                                                size_t      cap,
+                                                const char* esc_name,
+                                                const char* media,
+                                                size_t      idx,
+                                                unsigned    n)
+{
+  char      frag[k_epub_frag_max];
+  const int fn = snprintf(frag,
+                          sizeof(frag),
+                          "<item id=\"pg%zu\" href=\"page_%03u.xhtml\" "
+                          "media-type=\"application/xhtml+xml\"/>"
+                          "<item id=\"img%zu\" href=\"images/%s\" media-type=\"%s\"/>",
+                          idx,
+                          n,
+                          idx,
+                          esc_name,
+                          media);
+  if (!snprintf_fit(fn, sizeof(frag))) {
+    return k_ra8_fail;
+  }
+  str_cat(mani, cap, frag);
+  (void)snprintf(frag, sizeof(frag), "<itemref idref=\"pg%zu\"/>", idx);
+  str_cat(spine, cap, frag);
+  (void)snprintf(frag, sizeof(frag), "<li><a href=\"page_%03u.xhtml\">Page %u</a></li>", n, n);
+  str_cat(nav, cap, frag);
+  return k_ra8_ok;
+}
+
 /** @brief Add one page's xhtml + image, and append its opf/spine/nav fragments. */
 RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive* zip,
                                             const char*     dir,
@@ -585,16 +638,23 @@ RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive* zip,
                                             size_t          cap)
 {
   const unsigned n = (unsigned)(idx + 1U);
-  char           xhtml[k_epub_xhtml_max];
-  (void)snprintf(xhtml,
-                 sizeof(xhtml),
-                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                 "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Page %u"
-                 "</title></head><body><img src=\"images/%s\" alt=\"Page %u\"/>"
-                 "</body></html>",
-                 n,
-                 name,
-                 n);
+  char           esc[k_epub_name_esc_max];
+  if (!mdl_xml_escape(name, esc, sizeof(esc))) {
+    return k_ra8_fail; /* untrusted filename must not break the container XML */
+  }
+  char      xhtml[k_epub_xhtml_max];
+  const int xn = snprintf(xhtml,
+                          sizeof(xhtml),
+                          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                          "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Page %u"
+                          "</title></head><body><img src=\"images/%s\" alt=\"Page %u\"/>"
+                          "</body></html>",
+                          n,
+                          esc,
+                          n);
+  if (!snprintf_fit(xn, sizeof(xhtml))) {
+    return k_ra8_fail;
+  }
   char entry[k_name_max];
   (void)snprintf(entry, sizeof(entry), "OEBPS/page_%03u.xhtml", n);
   if (!epub_add_str(zip, entry, xhtml)) {
@@ -602,27 +662,14 @@ RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive* zip,
   }
   char src[PATH_MAX];
   (void)snprintf(src, sizeof(src), "%s/%s", dir, name);
-  (void)snprintf(entry, sizeof(entry), "OEBPS/images/%s", name);
+  const int en = snprintf(entry, sizeof(entry), "OEBPS/images/%s", name);
+  if (!snprintf_fit(en, sizeof(entry))) {
+    return k_ra8_fail;
+  }
   if (mz_zip_writer_add_file(zip, entry, src, nullptr, 0, MZ_NO_COMPRESSION) == MZ_FALSE) {
     return k_ra8_fail;
   }
-  char frag[k_epub_frag_max];
-  (void)snprintf(frag,
-                 sizeof(frag),
-                 "<item id=\"pg%zu\" href=\"page_%03u.xhtml\" "
-                 "media-type=\"application/xhtml+xml\"/>"
-                 "<item id=\"img%zu\" href=\"images/%s\" media-type=\"%s\"/>",
-                 idx,
-                 n,
-                 idx,
-                 name,
-                 epub_media_type(name));
-  str_cat(mani, cap, frag);
-  (void)snprintf(frag, sizeof(frag), "<itemref idref=\"pg%zu\"/>", idx);
-  str_cat(spine, cap, frag);
-  (void)snprintf(frag, sizeof(frag), "<li><a href=\"page_%03u.xhtml\">Page %u</a></li>", n, n);
-  str_cat(nav, cap, frag);
-  return k_ra8_ok;
+  return epub_append_frags(mani, spine, nav, cap, esc, epub_media_type(name), idx, n);
 }
 
 /** @brief Build + add content.opf and nav.xhtml, then finalize the archive. */
