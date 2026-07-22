@@ -1,5 +1,5 @@
 #
-# Per-app Makefile for the RA8P1 Ethos-U55 Vela-blob loader demo `npu_vela`.
+# Per-app Makefile for the RA8P1 Ethos-U55 .npub container loader demo `npu_vela`.
 #
 # Standalone use:
 #   cd examples/ra8p1_foundation/npu_vela/
@@ -36,7 +36,7 @@ ARM_SIZE   ?= arm-none-eabi-size
 all: build
 
 help:
-	@echo "$(APP) make targets (RA8P1 NPU Vela-blob loader):"
+	@echo "$(APP) make targets (RA8P1 NPU .npub container loader):"
 	@echo "  build / all  cross-compile $(APP).elf / .hex / .bin for R7KA8P1KFLCAC (default)"
 	@echo "  clean        rm -rf $(BUILD_DIR)"
 	@echo "  size         arm-none-eabi-size on the ELF"

@@ -1,6 +1,6 @@
 #
-# Per-app CMake stub for `npu_vela` -- the RA8P1 Ethos-U55 Vela-blob loader
-# end-to-end demo (issue #227).
+# Per-app CMake stub for `npu_vela` -- the RA8P1 Ethos-U55 .npub container loader
+# end-to-end demo (on the way to issue #227).
 #
 # Build it STANDALONE with the RA8P1 toolchain (it is deliberately excluded from
 # the top-level RA8D2 unified build so the RA8D2 build never touches an NPU app --
@@ -37,7 +37,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME npu_vela
   STACK_BYTES 2400
-  DESCRIPTION "RA8P1 Ethos-U55 Vela-blob loader end-to-end (R7KA8P1KFLCAC)"
+  DESCRIPTION "RA8P1 Ethos-U55 .npub container loader end-to-end (R7KA8P1KFLCAC)"
 )
 
 # The generated golden model container header lives in tools/vela/generated/.
