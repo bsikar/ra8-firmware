@@ -29,6 +29,14 @@
  *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
  */
 
+/*
+ * C23HDR-OK: this is NOT an ordinary include guard and must not become
+ * `#pragma once`. `PSA_CRYPTO_CONFIG_H` is a vendor-ABI sentinel: the
+ * vendored Mbed TLS SOUP (mbedtls_config_check_before.h /
+ * mbedtls_config_check_user.h) tests `#if defined(PSA_CRYPTO_CONFIG_H)` to
+ * confirm the PSA crypto config file was supplied, so the macro must keep
+ * being defined here.
+ */
 #ifndef PSA_CRYPTO_CONFIG_H
 /** @brief PSA CRYPTO CONFIG h. */
 #define PSA_CRYPTO_CONFIG_H

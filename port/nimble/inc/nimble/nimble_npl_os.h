@@ -62,7 +62,7 @@ extern "C" {
  * @note Read by vendored NimBLE headers, never by first-party code.
  * @since 0.1.0
  */
-#define BLE_NPL_OS_ALIGNMENT 4
+#define BLE_NPL_OS_ALIGNMENT (4)
 
 /**
  * @def BLE_NPL_TIME_FOREVER

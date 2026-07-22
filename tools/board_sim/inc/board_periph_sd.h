@@ -20,9 +20,7 @@
  *
  * @since 0.1.0
  */
-#ifndef BOARD_PERIPH_SD_H
-/** @brief BOARD PERIPH SD h. */
-#define BOARD_PERIPH_SD_H
+#pragma once
 
 #include <stdint.h>
 
@@ -187,5 +185,3 @@ bool board_sd_write_block(uint32_t lba, const uint8_t* src);
  * @since 0.1.0
  */
 void board_sd_reset(void);
-
-#endif /* BOARD_PERIPH_SD_H */

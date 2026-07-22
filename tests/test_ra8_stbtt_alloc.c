@@ -36,7 +36,7 @@ typedef enum : uint8_t {
   k_t_alloc_size = 64U, /**< Bytes requested per allocation. */
 } t_alloc_t;
 
-enum {
+enum : uint32_t {
   k_align       = 16,        /**< Mirror of k_ra8_stbtt_align.       */
   k_arena_bytes = 96 * 1024, /**< Mirror of k_ra8_stbtt_arena_bytes. */
 };
