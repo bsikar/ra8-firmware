@@ -107,6 +107,15 @@ _pcc_source_form() (
   # rejected except for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
   # which clang has no portable [[gnu::]] spelling for).
   python3 scripts/checks/check_no_gnu_attribute.py
+  # The four C23 source patterns (_Static_assert -> static_assert, = {0} ->
+  # = {}, no <stdbool.h>, paren-wrapped numeric #define values). These lived
+  # ONLY as inline grep loops in scripts/git/pre-commit and were never run by
+  # this gate, so a violation the hook rejects slipped through CI on any
+  # machine whose hook was not installed. The hook and this gate now share one
+  # implementation. The selftest asserts each rule in both directions before
+  # the sweep so a rule that stopped matching cannot pass as a clean tree.
+  python3 scripts/checks/check_c23_patterns.py --selftest
+  python3 scripts/checks/check_c23_patterns.py --all
   # No silent ra8_err_t discards at TrustZone boot boundaries. A C23
   # (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can never catch
   # a discarded ra8_cgc_init() right before a BLXNS (#191).
