@@ -54,9 +54,25 @@ commercial tool.
                --error-exitcode=1 \
                --suppressions-list=.cppcheck-suppressions \
                --inline-suppr \
-               --std=c23 \
+               --std=c11 \
                --quiet \
                <files>
+
+  The standard is pinned to **`--std=c11`**, not `--std=c23`. The
+  bundled cppcheck (2.20) predates C23 support: the codebase's C23
+  typed enums (`enum : uint8_t`) and `[[...]]` attributes raise
+  `syntaxError` under a C23 parse, and cppcheck has no `c23` value for
+  `--std`. All three invocations use `--std=c11` accordingly:
+  `scripts/checks/cppcheck.sh`, `scripts/checks/misra_check.sh`, and
+  `scripts/checks/misra_check_inner.sh` (whose inline comment records
+  the version limitation). The **consequence** is that any line using
+  C23-only syntax raises `syntaxError`; cppcheck recovers and continues
+  parsing the rest of the translation unit, so MISRA coverage is the
+  *parseable subset* of the tree rather than every line. For the two
+  MISRA rules this most affects -- 15.1 (`goto`) and 21.4 (`<setjmp.h>`)
+  -- a parse-independent textual backstop
+  (`scripts/checks/check_no_goto_setjmp.py`) closes the gap for
+  `goto` / `setjmp` / `longjmp` across the whole tree.
 
 * **No commercial MISRA checker is integrated.** The project does
   not maintain LDRA / Parasoft / Coverity result files. If a
