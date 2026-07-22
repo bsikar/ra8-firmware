@@ -1,13 +1,13 @@
 /**
  * @file examples/ra8p1_foundation/npu_vela/main.c
- * @brief RA8P1 Ethos-U55 Vela-blob loader end-to-end -- load a `.npub`, run it
+ * @brief RA8P1 Ethos-U55 .npub container loader end-to-end -- load a `.npub`, run it
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Companion to ``examples/ra8p1_foundation/npu_smoke`` that closes the issue
- * #227 loop: instead of hand-building a command stream in SRAM, this app LOADS a
+ * Companion to ``examples/ra8p1_foundation/npu_smoke`` on the way to issue #227:
+ * instead of hand-building a command stream in SRAM, this app LOADS a
  * committed, generated ``.npub`` model container
  * (``tools/vela/generated/ra8_npu_model_addk_sim.h``, produced offline by
  * ``tools/vela/vela_gen.py``) through the on-target loader ``ra8_npu_load()``,

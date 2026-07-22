@@ -1,9 +1,17 @@
-# npu_vela -- RA8P1 Ethos-U55 Vela-blob loader end-to-end
+# npu_vela -- RA8P1 Ethos-U55 .npub container loader end-to-end
 
-Closes the issue #227 loop on the Renesas **RA8P1** (`R7KA8P1KFLCAC`): instead of
-hand-building a command stream in SRAM (as `npu_smoke` does), this app **loads a
-committed, generated `.npub` model container** through the on-target loader
-`ra8_npu_load()` and runs it on the Ethos-U55 NPU.
+An end-to-end **loader demonstration** on the Renesas **RA8P1** (`R7KA8P1KFLCAC`),
+on the way to issue #227: instead of hand-building a command stream in SRAM (as
+`npu_smoke` does), this app **loads a committed, generated `.npub` model
+container** through the on-target loader `ra8_npu_load()` and runs it on the
+Ethos-U55 NPU.
+
+The container's command stream is the documented **SE55 sim convention**
+(`libs/ra8_hal/inc/ra8_npu_sim_cmd.h`), **not** a Vela-compiled program. So this
+app exercises the full offline-build -> load -> submit -> run path
+deterministically, but it does **not** close #227: lowering a real quantized
+`.tflite` into a genuine Ethos-U55 command stream with Arm's Vela compiler, and
+pinning a golden to *that*, remains open (see **Status**).
 
 ## What it does
 
@@ -55,6 +63,9 @@ one.
 yet, and the container's command stream is the SE55 sim convention, not a real
 Vela-compiled program, so a real inference would not complete on silicon. The
 host unit test `tests/test_ra8_npu_loader.c` byte-pins the loader's extracted
-command stream + region layout with mock MMIO. Distilling a real `_vela.tflite`
-into a `.npub`, a TFLite-micro runtime, and on-silicon inference bring-up are
-tracked as follow-ups on the RA8P1 epic (#220).
+command stream + region layout with mock MMIO. **Issue #227 (a Vela-compiled
+Ethos-U55 command stream, with a golden pinned to real Vela output) therefore
+stays open** -- this app is a foundation on the way to it, not its closure.
+Distilling a real `_vela.tflite` into a `.npub`, a TFLite-micro runtime, and
+on-silicon inference bring-up are tracked as follow-ups on the RA8P1 epic
+(#220).
