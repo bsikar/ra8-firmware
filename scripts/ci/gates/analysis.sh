@@ -144,12 +144,14 @@ gate_sg_offsets() (
 # project-wide and fail on any first-party frame over 2048 B, any `dynamic`
 # (VLA/alloca) frame -- NASA P10 Rule 3 -- or any critical-path module
 # (ra8_isr/ra8_check/ra8_err/ra8_mpu/ra8_cgc/ra8_pfs) over 256 B.
+#
+# The aggregator runs WITHOUT --allow-empty, so a sweep that finds no .su files
+# or collapses below its function floor FAILS rather than passing vacuously
+# (#386) -- a stack budget that went unmeasured must never read as clean. The
+# --selftest runs first and asserts that empty/collapsed detection still fires,
+# so a detector that quietly stopped matching cannot pass as a clean gate.
 gate_stack_usage() (
   set -e
-  if [[ -z "$(find . -name '*.su' -print -quit)" ]]; then
-    echo "stack_usage_check: no .su files found -- run the build-cross gate" >&2
-    echo "                   first (this gate reads its output)." >&2
-    return 1
-  fi
+  python3 scripts/checks/stack_usage_check.py --selftest
   python3 scripts/checks/stack_usage_check.py --strict
 )

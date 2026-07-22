@@ -60,6 +60,27 @@ MAX_DETAIL_LINES = 10
 BASELINE_COLUMNS = 3
 """Column count of one baseline row: file, check, count."""
 
+DIAGNOSTIC_ERROR_CHECK = "clang-diagnostic-error"
+"""The clang "check" that is really a PARSE failure, not a lint finding."""
+
+MAX_DIAGNOSTIC_ERROR_RATE = 0.20
+"""Refuse to ratchet when more than this fraction of findings are parse errors.
+
+A clang-diagnostic-error means clang-tidy could not PARSE a translation unit
+(a missing header, an unusable compile command) rather than that it found a
+real defect. When those dominate a run, nothing was actually analysed -- the
+#387 case, where an unusable arm-none-eabi-gcc stripped the firmware pass of
+every system include and turned ~100 TUs into "'string.h' file not found". The
+healthy baseline runs at 37 of 415 findings (9%) with the toolchain correct, so
+0.20 clears real runs with margin while a mass parse failure (which pushes the
+rate past 25%) trips it.
+"""
+
+DIAGNOSTIC_ERROR_FLOOR = 60
+"""...and only once at least this many parse errors are present, so a tiny run
+whose handful of findings happen to be parse errors does not trip. Above the
+healthy baseline's 37, below the ~137 a broken firmware pass produces."""
+
 # One clang-tidy diagnostic line:
 #   /abs/path/file.c:12:34: warning: text [check-name,-warnings-as-errors]
 FINDING_RE = re.compile(
@@ -143,6 +164,38 @@ def write_baseline(counts: Counter) -> None:
         if n:
             lines.append(f"{path}\t{check}\t{n}")
     BASELINE_FILE.write_text("\n".join(lines) + "\n", encoding="ascii")
+
+
+def diagnostic_error_reason(current: Counter) -> str | None:
+    """Return a refusal reason if the run is dominated by parse errors, else None.
+
+    Guards both directions of the ratchet (#387): a run whose findings are
+    mostly clang-diagnostic-error has not analysed its code, it has failed to
+    compile it. Writing that as the baseline freezes ~100 files of parse errors
+    as the accepted state, and comparing against it hides every real finding in
+    those files. So refuse to ``--update`` or ``--check`` such a run and name
+    the likely cause instead.
+
+    Trips only when BOTH the absolute count clears ``DIAGNOSTIC_ERROR_FLOOR``
+    and the fraction clears ``MAX_DIAGNOSTIC_ERROR_RATE`` -- a healthy run
+    carrying a few baselined parse errors must not be mistaken for a broken one.
+    """
+    total = sum(current.values())
+    if total == 0:
+        return None
+    diag = sum(n for (_path, check), n in current.items() if check == DIAGNOSTIC_ERROR_CHECK)
+    rate = diag / total
+    if diag < DIAGNOSTIC_ERROR_FLOOR or rate <= MAX_DIAGNOSTIC_ERROR_RATE:
+        return None
+    return (
+        f"{diag} of {total} finding(s) ({rate:.0%}) are {DIAGNOSTIC_ERROR_CHECK} "
+        f"-- over the {MAX_DIAGNOSTIC_ERROR_RATE:.0%} ceiling.\n"
+        "  clang-tidy could not PARSE most of its input. The usual cause is an\n"
+        "  unusable cross-compiler stripping the firmware pass of its system\n"
+        "  includes (#387): run the tidy gate with the pinned 13.3\n"
+        "  arm-none-eabi-gcc on PATH. A baseline built from a broken parse is\n"
+        "  worse than no baseline, so this run is refused for ratcheting."
+    )
 
 
 def report(current: Counter, baseline: Counter) -> int:
@@ -246,9 +299,35 @@ def _selftest_ratchet() -> list[str]:
     return failures
 
 
+def _selftest_diag_guard() -> list[str]:
+    """Assertions about the parse-error guard (#387), in both directions."""
+    failures: list[str] = []
+
+    # A run dominated by parse errors must be refused for ratcheting ...
+    broken = Counter({(f"examples/tu{i}.c", DIAGNOSTIC_ERROR_CHECK): 1 for i in range(100)})
+    if diagnostic_error_reason(broken) is None:
+        failures.append("diagnostic_error_reason() accepted a run that is 100% parse errors")
+
+    # ... while a healthy mix carrying a few baselined parse errors is accepted.
+    healthy: Counter = Counter(
+        {(f"libs/f{i}.c", "readability-magic-numbers"): 1 for i in range(378)}
+    )
+    healthy.update({(f"examples/m{i}.c", DIAGNOSTIC_ERROR_CHECK): 1 for i in range(37)})
+    if diagnostic_error_reason(healthy) is not None:
+        failures.append("diagnostic_error_reason() rejected the healthy 37/415 baseline mix")
+
+    # A tiny run whose few findings are all parse errors must not trip (below
+    # the absolute floor): the signature is a MASS failure, not a stray error.
+    tiny = Counter({(f"x{i}.c", DIAGNOSTIC_ERROR_CHECK): 1 for i in range(5)})
+    if diagnostic_error_reason(tiny) is not None:
+        failures.append("diagnostic_error_reason() tripped on a handful of parse errors")
+
+    return failures
+
+
 def selftest() -> int:
     """Assert the parser and the ratchet fire, in BOTH directions."""
-    failures = _selftest_parse() + _selftest_ratchet()
+    failures = _selftest_parse() + _selftest_ratchet() + _selftest_diag_guard()
 
     if failures:
         print("SELFTEST FAILED:", file=sys.stderr)
@@ -286,6 +365,15 @@ def main() -> int:
 
     text = Path(args.log).read_text(encoding="utf-8", errors="replace")
     current = parse_log(text)
+
+    # Refuse to ratchet a run that failed to parse its input, in EITHER
+    # direction, before comparing or writing anything (#387). A baseline built
+    # from a broken toolchain would freeze ~100 files of parse errors forever.
+    broken = diagnostic_error_reason(current)
+    if broken:
+        verb = "--update" if args.update else "--check"
+        print(f"refusing to {verb}: {broken}", file=sys.stderr)
+        return 1
 
     if args.update:
         baseline = load_baseline()

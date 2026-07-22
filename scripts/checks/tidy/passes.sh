@@ -135,6 +135,12 @@ run_pass_host() {
 run_pass_firmware() {
   [[ -s "$TIDY_LIST_DIR/firmware.files" ]] || return 0
   build_cross_db
+  # Fail loudly HERE, in the current shell, if the cross-compiler cannot report
+  # its own system include paths (#387). firmware_pass_args appends them, but it
+  # is consumed through `mapfile < <(...)`, which discards the exit code -- so an
+  # empty include list would otherwise sail through and turn ~100 firmware TUs
+  # into clang-diagnostic-error.
+  require_arm_system_includes
   local firmware_arg=()
   mapfile -t firmware_arg < <(firmware_pass_args)
   invoke_clang_tidy "$1" "firmware (cross)" "$TIDY_LIST_DIR/firmware.files" \
