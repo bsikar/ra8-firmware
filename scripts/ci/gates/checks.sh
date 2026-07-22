@@ -39,6 +39,16 @@ _pcc_banned_constructs() (
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /
   # FX_NULL / NX_NULL are exempted.
   python3 scripts/checks/check_no_null.py --all
+  # NASA P10 Rule 1 -- no goto/setjmp/longjmp in firmware. A parse-independent
+  # textual backstop: goto/setjmp were enforced only indirectly via the MISRA
+  # cppcheck ratchet, which runs at --std=c11 (cppcheck 2.20 cannot parse C23)
+  # and skips C23-syntax lines, so a construct on a skipped line was never ruled
+  # on. The textual scan does not depend on a parse and covers the whole tree.
+  # (Recursion needs a call graph -- covered by annot_rules.py RA8_NO_RECURSION
+  # and MISRA 17.2.) --selftest asserts the detector both fires on code and
+  # stays silent on comment/string occurrences before the tree is trusted.
+  python3 scripts/checks/check_no_goto_setjmp.py --selftest
+  python3 scripts/checks/check_no_goto_setjmp.py --all
 )
 
 # The two size caps. NASA P10 Rule 4 -- every function fits in <=60 lines --
