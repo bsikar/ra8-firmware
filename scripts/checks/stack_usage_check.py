@@ -45,6 +45,7 @@ import argparse
 import csv
 import re
 import sys
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -58,6 +59,40 @@ CRITICAL_MODULES = (
     "ra8_cgc",
     "ra8_pfs",
 )
+
+# --- Enumeration floor (issue #386) ------------------------------------------
+#
+# A scan that parsed ZERO functions -- no .su files at all, or .su files that
+# decode to nothing -- used to exit 0, byte-for-byte identical to a genuine
+# clean pass. A build-flag change, a moved build directory, or a compiler swap
+# silently produces zero .su files; the gate then reported success over a stack
+# budget it never measured. On a bare-metal target a blown frame is memory
+# corruption rather than an exception, so this is the highest-consequence
+# instance of the "green while measuring nothing" defect this tree keeps
+# finding, and it left every RA8_MAX_STACK annotation unverified while it
+# appeared enforced.
+#
+# The floor makes a degraded enumeration read as FAILURE, never as an
+# improvement -- the same shape as check_lint_coverage.py's FILE_FLOOR and
+# check_annotations.py's MIN_CALL_RESOLUTION. Below it the gate exits non-zero
+# and says the sweep collapsed.
+#
+# Calibrated against a full cross-build: the `build-cross` gate runs
+# scripts/builders/all_examples.sh (218 apps at time of writing), then the
+# `stack-usage` gate aggregates its .su output. That build parses 90,140
+# first-party-plus-SOUP functions from 7552 .su files. The floor sits far below
+# that (~5.5%) so any legitimate build clears it with an 18x margin, while the
+# collapse modes above -- which drive the count to zero or a handful -- trip it
+# unambiguously. --allow-empty (the pre-commit path) skips the floor, because a
+# single-app local build legitimately parses far fewer than a full sweep.
+DEFAULT_MIN_FUNCTIONS = 5000
+
+# Process exit codes. Distinct so a caller (and a reader of the CI log) can tell
+# "the code has an over-budget frame" from "this gate could not measure its
+# subject", mirroring the convention in check_lint_coverage.py.
+RC_OK = 0
+RC_VIOLATION = 1
+RC_ENUMERATION_BROKE = 2
 
 # --- Strict-mode partitioning -------------------------------------------------
 #
@@ -368,6 +403,49 @@ def print_top_n(entries: list, n: int) -> None:
         print(f"{r.bytes_:>8}  {r.qualifier:<16}  {r.app}/{r.func}  ({r.tu})")
 
 
+def _add_enumeration_args(parser: argparse.ArgumentParser) -> None:
+    """Add the #386 enumeration-floor and self-check options.
+
+    Kept out of ``_build_parser`` so that function stays within the 60-line
+    NASA Rule 4 budget the ``function-size`` gate enforces; these are the
+    controls that make an empty or collapsed sweep fail loudly.
+    """
+    parser.add_argument(
+        "--min-functions",
+        type=int,
+        default=DEFAULT_MIN_FUNCTIONS,
+        help=(
+            "Enumeration floor (issue #386). A sweep that parses fewer than "
+            "this many functions is treated as a collapsed enumeration and "
+            "FAILS, so a degraded run reporting fewer results cannot read as a "
+            "pass. Ignored under --allow-empty."
+        ),
+    )
+    parser.add_argument(
+        "--allow-empty",
+        action="store_true",
+        help=(
+            "Pre-commit-friendly: a freshly cloned tree has no .su files yet, "
+            "and forcing a full app build inside the hook would cost minutes "
+            "per commit. With this flag a sweep that finds NO .su files exits "
+            "0 and the function floor is not enforced. It does NOT excuse .su "
+            "files that decode to zero functions -- that is corruption, not a "
+            "fresh clone, and still fails. Omit this flag in CI so an empty or "
+            "collapsed sweep goes red."
+        ),
+    )
+    parser.add_argument(
+        "--selftest",
+        action="store_true",
+        help=(
+            "Assert the gate fires in BOTH directions on synthetic .su "
+            "fixtures -- an empty sweep and an over-budget frame go red, a "
+            "real clean run stays green -- then exit. Proves an enumeration "
+            "collapse cannot pass as clean."
+        ),
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Every command-line option this gate accepts."""
     parser = argparse.ArgumentParser(
@@ -409,6 +487,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "FIRST_PARTY_EXEMPTIONS at the top of this script."
         ),
     )
+    _add_enumeration_args(parser)
     return parser
 
 
@@ -486,16 +565,92 @@ def _collect_entries(repo_root: Path, su_files: list) -> list:
     return all_entries
 
 
+def _print_census(su_count: int, func_count: int) -> None:
+    """Print the file/function census that tells a real pass from an empty one.
+
+    Emitted on EVERY path -- pass and fail alike, and regardless of --quiet --
+    because it is the one line that makes a green result meaningful (#386): a
+    reader can see whether the sweep actually measured anything.
+    """
+    print(f"stack_usage_check: parsed {func_count} function(s) from {su_count} .su file(s).")
+
+
+def _check_enumeration(
+    su_count: int, func_count: int, min_functions: int, allow_empty: bool
+) -> int:
+    """Decide whether the sweep measured enough to trust its verdict (#386).
+
+    A gate that examined nothing must FAIL, not pass. The three collapse modes
+    are graded distinctly:
+
+    * NO .su files -- an unbuilt or moved build tree. Under ``--allow-empty``
+      (the pre-commit path) this is a fresh clone and is tolerated; otherwise
+      it is a build that never ran and fails.
+    * .su files that decode to ZERO functions -- corruption or a grammar the
+      parser no longer understands. This is never a fresh clone, so it fails
+      even under ``--allow-empty``.
+    * FEWER functions than the floor -- a partially collapsed enumeration. A
+      run reporting far fewer results than a real build must not read as an
+      improvement, so it fails; ``--allow-empty`` skips the floor because a
+      single-app local build legitimately parses fewer.
+
+    Returns ``RC_OK`` when the sweep is trustworthy, ``RC_ENUMERATION_BROKE``
+    otherwise (after printing the reason to stderr).
+    """
+    if su_count == 0:
+        if allow_empty:
+            print(
+                "stack_usage_check: no .su files found; nothing built with "
+                "-fstack-usage yet -- allowed under --allow-empty.",
+                file=sys.stderr,
+            )
+            return RC_OK
+        print(
+            "stack_usage_check: FAIL -- no .su files found under examples/*/*/build*/ "
+            "or build/shared_libs/.\n"
+            "  The build never ran or its output moved: there is no stack budget to "
+            "measure, so this is a failure, not a pass.\n"
+            "  Run the build-cross gate first (it compiles every app with "
+            "-fstack-usage).",
+            file=sys.stderr,
+        )
+        return RC_ENUMERATION_BROKE
+
+    if func_count == 0:
+        print(
+            f"stack_usage_check: FAIL -- found {su_count} .su file(s) but parsed 0 "
+            "functions.\n"
+            "  .su files present that decode to nothing is corruption or a changed "
+            ".su grammar, not a fresh clone; the stack budget went unmeasured.",
+            file=sys.stderr,
+        )
+        return RC_ENUMERATION_BROKE
+
+    if not allow_empty and func_count < min_functions:
+        print(
+            f"stack_usage_check: FAIL -- parsed only {func_count} function(s) from "
+            f"{su_count} .su file(s), below the floor of {min_functions}.\n"
+            "  The enumeration collapsed (a partial build, a moved build dir, or a "
+            "compiler swap). A degraded sweep reporting fewer frames must not read as "
+            "a pass.",
+            file=sys.stderr,
+        )
+        return RC_ENUMERATION_BROKE
+
+    return RC_OK
+
+
 def main(argv: list) -> int:
     """Aggregate every .su file, write the reports, and gate on the violations.
 
-    Read the no-input paths carefully before trusting a green run: no .su files
-    found, or .su files that parse to zero functions, BOTH exit 0. The reason
-    is pre-commit ergonomics -- a fresh clone has no build tree, and forcing a
-    full app build inside the hook would cost minutes per commit -- but the
-    consequence is that this gate passes vacuously unless something was built
-    with ``-fstack-usage`` first. A green result here is only evidence when the
-    printed function count is non-zero.
+    A green run is only evidence that stack budgets were checked when the sweep
+    actually parsed functions. Every no-input path is therefore graded by
+    ``_check_enumeration`` and prints the file/function census: an empty sweep
+    or one collapsed below ``--min-functions`` FAILS with
+    ``RC_ENUMERATION_BROKE`` rather than passing vacuously (#386). The only
+    tolerated empty case is ``--allow-empty`` with no .su files at all -- the
+    pre-commit fresh-clone path, where forcing a full build inside the hook
+    would cost minutes per commit.
 
     Severity is tiered rather than uniform. Critical-path modules breach at 256
     bytes, everything else at ``--frame-limit`` (2048), and a ``dynamic``
@@ -503,31 +658,29 @@ def main(argv: list) -> int:
     that last check runs on ALL entries and is the one thing ``--warn-only``
     cannot downgrade.
 
-    Returns 1 on a strict-mode soft breach, an un-waived critical breach, or
-    any dynamic frame; 0 otherwise.
+    Returns ``RC_ENUMERATION_BROKE`` (2) when the sweep measured too little to
+    trust, ``RC_VIOLATION`` (1) on a strict-mode soft breach, an un-waived
+    critical breach, or any dynamic frame, and ``RC_OK`` (0) otherwise.
     """
     args = _build_parser().parse_args(argv)
 
+    if args.selftest:
+        return selftest()
+
     repo_root = args.repo_root.resolve()
     su_files = find_su_files(repo_root)
-    if not su_files:
-        if args.warn_only or args.strict:
-            # Pre-commit-friendly: a freshly cloned tree has no .su
-            # files yet, and forcing a full app build inside the hook
-            # would slow every commit by minutes. Skip silently.
-            return 0
-        print(
-            "stack_usage_check: no .su files found under "
-            "examples/*/*/build*/.\n  Build at least one app with "
-            "-fstack-usage first (e.g. `make blink`).",
-            file=sys.stderr,
-        )
-        return 0
-
     all_entries = _collect_entries(repo_root, su_files)
-    if not all_entries:
-        print("stack_usage_check: parsed 0 functions; .su files empty?", file=sys.stderr)
-        return 0
+
+    su_count = len(su_files)
+    func_count = len(all_entries)
+    _print_census(su_count, func_count)
+
+    verdict = _check_enumeration(su_count, func_count, args.min_functions, args.allow_empty)
+    if verdict != RC_OK:
+        return verdict
+    if su_count == 0:
+        # --allow-empty with a fresh clone: nothing to measure, nothing to gate.
+        return RC_OK
 
     out_dir = repo_root / "build"
     write_csv(out_dir / "stack_usage.csv", all_entries)
@@ -536,10 +689,6 @@ def main(argv: list) -> int:
     critical, soft = find_violations(all_entries, args.frame_limit)
 
     if not args.quiet:
-        print(
-            f"stack_usage_check: parsed {len(all_entries)} functions "
-            f"from {len(su_files)} .su files."
-        )
         print(f"  CSV:        {out_dir / 'stack_usage.csv'}")
         print(f"  per-app:    {out_dir}/stack_usage_<app>.txt")
         print_top_n(all_entries, args.top)
@@ -552,14 +701,89 @@ def main(argv: list) -> int:
             print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
 
     if args.strict and _report_strict(soft, args.frame_limit):
-        return 1
+        return RC_VIOLATION
 
     if critical:
         _report_critical(critical)
         if not args.warn_only:
-            return 1
+            return RC_VIOLATION
 
     return _report_dynamic(all_entries)
+
+
+def _write_su_fixture(build_dir: Path, name: str, lines: list) -> None:
+    """Write a synthetic .su file under a fake app build tree for the selftest."""
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / name).write_text("".join(f"{line}\n" for line in lines), encoding="ascii")
+
+
+def selftest() -> int:
+    """Assert the gate fires in BOTH directions, so a collapse cannot pass clean.
+
+    Builds throwaway .su fixtures in a temp tree and drives ``main`` against
+    them. A vacuous selftest would defeat the whole point of #386, so each
+    direction is asserted against a real return code:
+
+    * an empty sweep (no .su files, no --allow-empty) FAILS;
+    * .su files that decode to zero functions FAIL even under --allow-empty;
+    * a sweep below the floor FAILS, but the same fixture PASSES once the floor
+      is lowered -- proving the floor, not something else, is what tripped;
+    * an over-budget first-party frame FAILS under --strict;
+    * a genuine clean run PASSES.
+
+    Returns ``RC_OK`` when every direction behaves, ``RC_VIOLATION`` otherwise.
+    """
+    failures: list = []
+
+    def expect_red(got: int, label: str) -> None:
+        if got == RC_OK:
+            failures.append(f"{label}: expected non-zero, got {got}")
+
+    def expect_green(got: int, label: str) -> None:
+        if got != RC_OK:
+            failures.append(f"{label}: expected 0, got {got}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        build = root / "examples" / "app" / "build"
+        low = ["--strict", "--min-functions", "1"]
+        clean_line = "libs/ra8_epub/src/ok.c:10:1:small_fn\t128\tstatic"
+
+        # 1. Empty sweep -- no .su anywhere. Must FAIL without --allow-empty ...
+        expect_red(main(["--repo-root", str(root)]), "empty sweep")
+        # ... and be tolerated WITH --allow-empty (fresh clone).
+        expect_green(main(["--repo-root", str(root), "--allow-empty"]), "empty sweep, allow-empty")
+
+        # 2. .su present but decoding to zero functions -- corruption. Must FAIL
+        #    even under --allow-empty.
+        _write_su_fixture(build, "junk.su", ["not a stack-usage line at all", ""])
+        expect_red(
+            main(["--repo-root", str(root), "--allow-empty"]),
+            "zero functions, allow-empty",
+        )
+
+        # 3. One clean function. Below the default floor -> FAIL on the floor ...
+        _write_su_fixture(build, "junk.su", [clean_line])
+        expect_red(main(["--repo-root", str(root), "--strict"]), "below floor")
+        # ... but PASS once the floor is lowered to admit it (isolates the floor).
+        expect_green(main(["--repo-root", str(root), *low]), "clean run, floor=1")
+
+        # 4. An over-budget first-party frame must FAIL under --strict even with
+        #    the floor satisfied.
+        _write_su_fixture(
+            build,
+            "over.su",
+            [clean_line, "libs/ra8_epub/src/big.c:20:1:priv_scratch\t9000\tstatic"],
+        )
+        expect_red(main(["--repo-root", str(root), *low]), "over-budget frame")
+
+    if failures:
+        print("SELFTEST FAILED:", file=sys.stderr)
+        for problem in failures:
+            print(f"  - {problem}", file=sys.stderr)
+        return RC_VIOLATION
+    print("selftest: stack_usage_check empty-sweep + floor + over-budget detection OK")
+    return RC_OK
 
 
 if __name__ == "__main__":

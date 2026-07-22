@@ -104,12 +104,56 @@ selftest_scope() {
 }
 
 # ---------------------------------------------------------------------------
+# arm_system_includes must FAIL, never emit an empty success, when the compiler
+# cannot answer the -mcpu=cortex-m85 query (#387). Assert both directions:
+#
+#   * negative -- a compiler that exists but prints no search list (simulated
+#     with `true`, exactly what gcc 12.2 does for cortex-m85), and a compiler
+#     that is not on PATH, must both make arm_system_includes return non-zero;
+#   * positive -- whatever arm-none-eabi-gcc on PATH CAN target cortex-m85 must
+#     yield a non-empty list carrying the arm-none-eabi sysroot marker.
+#
+# The positive half is skipped (not failed) when no cortex-m85-capable compiler
+# is on PATH, so a developer running --selftest without the pinned toolchain
+# still exercises the load-bearing negative half. The gate always has it: it
+# runs use_pinned_arm_toolchain before invoking --selftest.
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+selftest_arm_includes() {
+  local failures=0
+
+  if ARM_CC=true arm_system_includes >/dev/null 2>&1; then
+    print_error "selftest: arm_system_includes succeeded for a compiler that emits no includes"
+    failures=$((failures + 1))
+  fi
+  if ARM_CC="ra8-no-such-cc-$$" arm_system_includes >/dev/null 2>&1; then
+    print_error "selftest: arm_system_includes succeeded for a missing compiler"
+    failures=$((failures + 1))
+  fi
+
+  if arm-none-eabi-gcc -mcpu=cortex-m85 -E - </dev/null >/dev/null 2>&1; then
+    local out=""
+    if ! out="$(arm_system_includes)"; then
+      print_error "selftest: arm_system_includes failed for a working cortex-m85 compiler"
+      failures=$((failures + 1))
+    elif ! grep -q 'arm-none-eabi' <<<"$out"; then
+      print_error "selftest: arm_system_includes output lacks the arm-none-eabi sysroot marker"
+      failures=$((failures + 1))
+    fi
+  fi
+
+  printf '%s\n' "$failures"
+}
+
+# ---------------------------------------------------------------------------
 # --selftest: prove the scope and the routing still work, in BOTH directions.
 # ---------------------------------------------------------------------------
 run_selftest() {
   local failures=0
   failures=$((failures + $(selftest_routing)))
   failures=$((failures + $(selftest_scope)))
+  failures=$((failures + $(selftest_arm_includes)))
 
   if [[ "$failures" -ne 0 ]]; then
     print_error "clang_tidy.sh selftest FAILED with $failures problem(s)."
