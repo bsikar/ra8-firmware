@@ -39,6 +39,16 @@ _pcc_banned_constructs() (
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /
   # FX_NULL / NX_NULL are exempted.
   python3 scripts/checks/check_no_null.py --all
+  # NASA P10 Rule 1 -- no goto/setjmp/longjmp in firmware. A parse-independent
+  # textual backstop: goto/setjmp were enforced only indirectly via the MISRA
+  # cppcheck ratchet, which runs at --std=c11 (cppcheck 2.20 cannot parse C23)
+  # and skips C23-syntax lines, so a construct on a skipped line was never ruled
+  # on. The textual scan does not depend on a parse and covers the whole tree.
+  # (Recursion needs a call graph -- covered by annot_rules.py RA8_NO_RECURSION
+  # and MISRA 17.2.) --selftest asserts the detector both fires on code and
+  # stays silent on comment/string occurrences before the tree is trusted.
+  python3 scripts/checks/check_no_goto_setjmp.py --selftest
+  python3 scripts/checks/check_no_goto_setjmp.py --all
 )
 
 # The two size caps. NASA P10 Rule 4 -- every function fits in <=60 lines --
@@ -107,12 +117,27 @@ _pcc_source_form() (
   # rejected except for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
   # which clang has no portable [[gnu::]] spelling for).
   python3 scripts/checks/check_no_gnu_attribute.py
+  # The four C23 source patterns (_Static_assert -> static_assert, = {0} ->
+  # = {}, no <stdbool.h>, paren-wrapped numeric #define values). These lived
+  # ONLY as inline grep loops in scripts/git/pre-commit and were never run by
+  # this gate, so a violation the hook rejects slipped through CI on any
+  # machine whose hook was not installed. The hook and this gate now share one
+  # implementation. The selftest asserts each rule in both directions before
+  # the sweep so a rule that stopped matching cannot pass as a clean tree.
+  python3 scripts/checks/check_c23_patterns.py --selftest
+  python3 scripts/checks/check_c23_patterns.py --all
   # No silent ra8_err_t discards at TrustZone boot boundaries. A C23
   # (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can never catch
   # a discarded ra8_cgc_init() right before a BLXNS (#191).
   python3 scripts/checks/check_tz_boundary_discard.py
   # Ban the numbered session-bookkeeping tags from comments and docs.
   python3 scripts/checks/check_no_wave_references.py
+  # C23 typed enums (every enum names an explicit underlying type) and
+  # pragma-once headers (no classic #ifndef include guards). Both were
+  # CLAUDE.md mandates with no checker until #409; the --selftest asserts the
+  # detector fires and stays silent for both rules before the tree is swept.
+  python3 scripts/checks/check_c23_headers.py --selftest
+  python3 scripts/checks/check_c23_headers.py --all
 )
 
 # Security invariants that a compiler cannot express: the NS->S entry surface,
