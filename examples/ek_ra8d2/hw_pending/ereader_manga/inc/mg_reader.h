@@ -158,8 +158,12 @@ typedef struct {
  * @retval k_ra8_ok               Reader ready; viewport at (0,0), zoom 1:1.
  * @retval k_ra8_err_null_ptr     @p r, @p cfg, or a required @p cfg field NULL.
  * @retval k_ra8_err_invalid_size @p cfg geometry is zero / smaller than the fb.
+ * @retval k_ra8_err_not_supported @p cfg->info->bpp is not 1 (gray8); the blit
+ *                                path reads one byte per pixel, so a colour
+ *                                atlas is rejected rather than mis-rendered.
  *
  * @pre @p cfg->info came from a successful ``ra8_jof_parse``.
+ * @pre @p cfg->info->bpp == 1 (gray8); colour atlases are unsupported.
  * @pre @p cfg->fb covers `fb_w * fb_h` RGB565 pixels.
  * @post On success the viewport is clamped inside the page.
  * @post On any error @p r is left unbound.
