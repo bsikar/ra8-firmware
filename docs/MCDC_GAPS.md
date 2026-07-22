@@ -14,13 +14,13 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 ## Top-line Numbers
 
 - Source files with at least one decision: **210**
-- Total compound decisions in scope: **1089**
-- Decisions at 100% MC/DC (`yes`): **992**
+- Total compound decisions in scope: **1090**
+- Decisions at 100% MC/DC (`yes`): **993**
 - Decisions partially covered (`partial`): **56**
 - Decisions fully uncovered (`no`): **41**
-- Coverage rate (yes / total): **91.09%**
+- Coverage rate (yes / total): **91.10%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **87**
-- Reachable-condition denominator (total - deactivated): **1002**
+- Reachable-condition denominator (total - deactivated): **1003**
 - **Reachable MC/DC rate**: **99.00%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
@@ -96,6 +96,13 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_hal/src/ra8_spi_b.c | 2 | internal_apply_bit_width | `if ((tx == nullptr) && (rx == nullptr)) {` | Annotated deactivation: TU-local helper internal_apply_bi... |
 | libs/ra8_hal/src/ra8_usb_cdc.c | 2 | internal_apply_line_coding | `if ((data == nullptr) \|\| (len < k_ra8_cdc_line_coding_l...` | Annotated deactivation: TU-local helper internal_apply_li... |
 | libs/ra8_hal/src/ra8_vin.c | 2 | internal_mc_rmw | `if (((mc_now & k_ra8_vin_mc_me) != 0UL) \|\| ((fc_now & k...` | Annotated deactivation: ra8_vin idle-state guard; MC.ME (... |
+| libs/ra8_jof/src/ra8_jof_png.c | 2 | png_inflate_step | `if ((it->in_pos == it->in_avail) && (st->source_done == 0...` | Annotated deactivation: refill-first loop structure; ente... |
+| libs/ra8_jof/src/ra8_jof_png.c | 2 | png_inflate_step | `if ((in_sz == 0U) && (out_sz == 0U)) {` | Annotated deactivation: zero-progress stall guard, defens... |
+| libs/ra8_jof/src/ra8_jof_png.c | 2 | png_inflate_step | `if ((it->stalls > 1U) \|\| (st->source_done != 0U)) {` | Annotated deactivation: inner arm of the non-constructibl... |
+| libs/ra8_jof/src/ra8_jof_produce.c | 2 | priv_carve_pixel_path | `if ((band_bytes > (uint64_t)UINT32_MAX) \|\| (stage_bytes...` | Annotated deactivation: stage_bytes = tw_eff*th_eff*bpp w... |
+| libs/ra8_jof/src/ra8_jof_produce.c | 3 | priv_flush_band | `if ((st->geom_done == 0U) \|\| (width != st->w) \|\| (cha...` | Annotated deactivation: row-sink contract guard; both in-... |
+| libs/ra8_jof/src/ra8_jof_produce.c | 3 | priv_flush_band | `if ((nrows == 0U) \|\| ((uint32_t)y0 != st->rows_seen) \|\|` | Annotated deactivation: row-ordering contract guard; the ... |
+| libs/ra8_jof/src/ra8_jof_produce.c | 2 | priv_epilogue | `if ((st->geom_done == 0U) \|\| (st->rows_seen != (uint32_...` | Annotated deactivation: post-decode contract guard; both ... |
 | libs/ra8_longstrip/src/ra8_longstrip.c | 2 | ra8_longstrip_tick | `if ((wt->velocity == 0) \|\| wt_fling_should_stop(wt)) {` | Pointer(s) ['wt'] already null-checked upstream in the sa... |
 | libs/ra8_net_pal/src/ra8_net_pal.c | 2 | internal_eth_event | `if ((s_state.event_fn != nullptr) && (pal_mask != k_ra8_n...` | Annotated deactivation: TU-local helper internal_eth_even... |
 | libs/ra8_psa_crypto/src/ra8_psa_crypto_sim.c | 2 | ra8_psa_sim_sha256_oneshot | `for (size_t i = 0U; (i < key_len) && (off < sizeof(buf));...` | Defensive scratch-buffer bound: input length is capped by... |
@@ -124,13 +131,6 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_reflow/src/ra8_reflow_svg_shape.c | 2 | priv_grad_eval | `if ((p >= o0) && (p <= o1)) {` | Annotated deactivation: the loop is entered only when p >... |
 | libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c | 3 | priv_decode_numeric | `if ((i < avail) && ((src[i] == 'x') \|\| (src[i] == 'X'))) {` | Annotated deactivation: the sole caller ra8_reflow_tok_de... |
 | libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c | 3 | priv_decode_numeric | `if ((digits == 0U) \|\| (i >= avail) \|\| (src[i] != ';')) {` | Annotated deactivation: the scan loop above exits with i ... |
-| libs/ra8_jof/src/ra8_jof_png.c | 2 | png_inflate_step | `if ((it->in_pos == it->in_avail) && (st->source_done == 0...` | Annotated deactivation: refill-first loop structure; ente... |
-| libs/ra8_jof/src/ra8_jof_png.c | 2 | png_inflate_step | `if ((in_sz == 0U) && (out_sz == 0U)) {` | Annotated deactivation: zero-progress stall guard, defens... |
-| libs/ra8_jof/src/ra8_jof_png.c | 2 | png_inflate_step | `if ((it->stalls > 1U) \|\| (st->source_done != 0U)) {` | Annotated deactivation: inner arm of the non-constructibl... |
-| libs/ra8_jof/src/ra8_jof_produce.c | 2 | priv_carve_pixel_path | `if ((band_bytes > (uint64_t)UINT32_MAX) \|\| (stage_bytes...` | Annotated deactivation: stage_bytes = tw_eff*th_eff*bpp w... |
-| libs/ra8_jof/src/ra8_jof_produce.c | 3 | priv_flush_band | `if ((st->geom_done == 0U) \|\| (width != st->w) \|\| (cha...` | Annotated deactivation: row-sink contract guard; both in-... |
-| libs/ra8_jof/src/ra8_jof_produce.c | 3 | priv_flush_band | `if ((nrows == 0U) \|\| ((uint32_t)y0 != st->rows_seen) \|\|` | Annotated deactivation: row-ordering contract guard; the ... |
-| libs/ra8_jof/src/ra8_jof_produce.c | 2 | priv_epilogue | `if ((st->geom_done == 0U) \|\| (st->rows_seen != (uint32_...` | Annotated deactivation: post-decode contract guard; both ... |
 | libs/ra8_touch_cal/src/ra8_touch_cal.c | 2 | internal_clip32 | `if (!ok_u \|\| !ok_v) {` | Annotated deactivation: TU-local helper internal_clip32 s... |
 | libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c | 2 | ra8_wdt_supervisor_tick | `if (will_refresh && (s_state.refresh != nullptr)) {` | Annotated deactivation: ra8_wdt_supervisor_tick refresh d... |
 
@@ -228,9 +228,9 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_fs_fat_fmt | 5 | 5 | 0 | 0 |
 | ra8_gpt | 5 | 5 | 0 | 0 |
 | ra8_i2c_peripheral | 5 | 5 | 0 | 0 |
+| ra8_jof_png_chunk | 5 | 5 | 0 | 0 |
 | ra8_rar5 | 5 | 5 | 0 | 0 |
 | ra8_rar5_tables | 5 | 5 | 0 | 0 |
-| ra8_jof_png_chunk | 5 | 5 | 0 | 0 |
 | ra8_usb_haud | 5 | 5 | 0 | 0 |
 | ra8_usb_hcdc_ecm | 5 | 5 | 0 | 0 |
 | ra8_usb_pprn | 5 | 5 | 0 | 0 |
@@ -238,6 +238,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_batt | 4 | 4 | 0 | 0 |
 | ra8_ble_gatt_client | 4 | 4 | 0 | 0 |
 | ra8_dfu_program | 4 | 4 | 0 | 0 |
+| ra8_drw | 4 | 4 | 0 | 0 |
 | ra8_drw_draw | 4 | 4 | 0 | 0 |
 | ra8_epaper | 4 | 4 | 0 | 0 |
 | ra8_epd_cal | 4 | 4 | 0 | 0 |
@@ -255,11 +256,10 @@ Sorted by (uncovered + partial) descending, then total descending.
 | adc_selfdiag | 3 | 3 | 0 | 0 |
 | ra8_book | 3 | 3 | 0 | 0 |
 | ra8_dmac | 3 | 3 | 0 | 0 |
-| ra8_drw | 3 | 3 | 0 | 0 |
 | ra8_eth_gwca_queue | 3 | 3 | 0 | 0 |
+| ra8_jof | 3 | 3 | 0 | 0 |
 | ra8_jpeg_sw_stream | 3 | 3 | 0 | 0 |
 | ra8_sdmmc_spi | 3 | 3 | 0 | 0 |
-| ra8_jof | 3 | 3 | 0 | 0 |
 | ra8_touch | 3 | 3 | 0 | 0 |
 | ra8_ui | 3 | 3 | 0 | 0 |
 | ra8_usb_hmsc | 3 | 3 | 0 | 0 |
@@ -268,7 +268,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | usb_printer_vendor_ch9 | 3 | 3 | 0 | 0 |
 | adc | 2 | 2 | 0 | 0 |
 | ra8_agt | 2 | 2 | 0 | 0 |
-| ra8_bkup | 2 | 2 | 0 | 0 |
+| ra8_bkup_tamper | 2 | 2 | 0 | 0 |
 | ra8_ble_mesh | 2 | 2 | 0 | 0 |
 | ra8_board_ek_ra8d2_audio_usb | 2 | 2 | 0 | 0 |
 | ra8_comic_wrapped | 2 | 2 | 0 | 0 |
@@ -278,6 +278,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_fs_fat_dir | 2 | 2 | 0 | 0 |
 | ra8_i3c_i2c_peripheral | 2 | 2 | 0 | 0 |
 | ra8_ipc | 2 | 2 | 0 | 0 |
+| ra8_jof_produce_webp | 2 | 2 | 0 | 0 |
 | ra8_jpeg_sw_encode | 2 | 2 | 0 | 0 |
 | ra8_keyboard | 2 | 2 | 0 | 0 |
 | ra8_rabook_pipeline | 2 | 2 | 0 | 0 |
@@ -289,7 +290,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_sci_dma_isr | 2 | 2 | 0 | 0 |
 | ra8_sdhi | 2 | 2 | 0 | 0 |
 | ra8_spi_b_dma | 2 | 2 | 0 | 0 |
-| ra8_jof_produce_webp | 2 | 2 | 0 | 0 |
 | ra8_tsn | 2 | 2 | 0 | 0 |
 | ra8_usb_composite | 2 | 2 | 0 | 0 |
 | ra8_usb_hcdc | 2 | 2 | 0 | 0 |
