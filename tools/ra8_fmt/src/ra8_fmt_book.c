@@ -1,19 +1,19 @@
 /**
  * @file ra8_fmt_book.c
- * @brief RBKC (`.rabook`) and RCBZ container inspectors for `ra8_fmt`.
+ * @brief RBKC (`.rabook`) container inspector for `ra8_fmt`.
  *
  * @details
- * Both containers share one shape -- a fixed header, a strictly increasing
- * `count + 1` offset table, then that many concatenated zlib streams -- so they
- * share one table walker. Dumping the chunk/page inventory with each entry's
- * byte range is exactly what reveals a malformed book: a non-monotonic table, a
- * final offset that disagrees with the payload length, or an entry whose window
- * runs past the file are all silent at open time but fatal at read time.
+ * The RBKC container has a fixed header, a strictly increasing `count + 1`
+ * offset table, then that many concatenated zlib streams. Dumping the chunk
+ * inventory with each entry's byte range is exactly what reveals a malformed
+ * book: a non-monotonic table, a final offset that disagrees with the payload
+ * length, or an entry whose window runs past the file are all silent at open
+ * time but fatal at read time.
  *
- * "One unit" for these containers is one whole compiled book (RBKC) or one
- * whole comic (RCBZ) -- neither is built from a single image, so neither
- * declares a `convert` verb; the compilers under `tools/epub_compile` remain
- * the producers. See the report note in ra8_fmt_registry.c.
+ * "One unit" for this container is one whole compiled book -- it is not built
+ * from a single image, so it declares no `convert` verb; the compilers under
+ * `tools/epub_compile` remain the producers. See the report note in
+ * ra8_fmt_registry.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -29,7 +29,6 @@
 
 #include "ra8_attributes.h"
 #include "ra8_book.h"
-#include "ra8_cbz_container.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_fmt.h"
@@ -40,8 +39,8 @@ static const char* const s_tag = "ra8_fmt_book";
 
 /**
  * @enum ra8_fmt_book_const_t
- * @brief Field offsets and widths shared by the two chunked containers.
- * @details Mirrors the layout tables in ra8_book.h and ra8_cbz_container.h.
+ * @brief Field offsets and widths of the RBKC container header.
+ * @details Mirrors the layout tables in ra8_book.h.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -49,20 +48,13 @@ typedef enum : uint32_t {
   k_fmt_bk_off_inflated    = 8U,  /**< RBKC: uint64 total inflated length.    */
   k_fmt_bk_off_chunk_count = 16U, /**< RBKC: uint32 chunk count.              */
   k_fmt_bk_off_reserved    = 20U, /**< RBKC: uint32 reserved, must be 0.      */
-  k_fmt_cbz_off_pages      = 4U,  /**< RCBZ: uint32 page count.               */
-  k_fmt_cbz_off_flags      = 8U,  /**< RCBZ: uint32 feature flags.            */
-  k_fmt_cbz_off_reserved   = 12U, /**< RCBZ: uint32 reserved, must be 0.      */
-  k_fmt_cbz_meta_raw_size  = 0U,  /**< RCBZ meta: uint32 raster byte size.    */
-  k_fmt_cbz_meta_width     = 4U,  /**< RCBZ meta: uint16 page width.          */
-  k_fmt_cbz_meta_height    = 6U,  /**< RCBZ meta: uint16 page height.         */
-  k_fmt_cbz_meta_format    = 8U,  /**< RCBZ meta: uint8 image format.         */
   k_fmt_u64_hi_shift       = 32U, /**< High-word shift for a uint64 field.    */
 } ra8_fmt_book_const_t;
 
 /**
  * @brief Read a little-endian uint64 from a byte window.
- * @details The two chunked containers store their offset tables as uint64, so
- *          the shared walker needs a 64-bit reader alongside the 32-bit one.
+ * @details The RBKC container stores its offset table as uint64, so the walker
+ *          needs a 64-bit reader alongside the 32-bit one.
  * @param[in] buf Source bytes (at least 8 readable).
  * @return The decoded value.
  * @retval 0 All eight source bytes were zero.
@@ -83,10 +75,11 @@ static uint64_t priv_rd_u64(const uint8_t* buf)
 
 /**
  * @brief Walk a `count + 1` uint64 offset table, printing and validating it.
- * @details Enforces the invariants both containers share: `offset[0] == 0`, the
- *          table is strictly increasing, and `offset[count]` equals the
- *          remaining payload length. Each entry's byte range is printed so a
- *          malformed inventory is visible, not merely reported.
+ * @details Enforces the invariants the RBKC offset table must hold:
+ *          `offset[0] == 0`, the table is strictly increasing, and
+ *          `offset[count]` equals the remaining payload length. Each entry's
+ *          byte range is printed so a malformed inventory is visible, not
+ *          merely reported.
  * @param[in] src        Container bytes (non-NULL).
  * @param[in] table_off  Byte offset of `offset[0]` within the container.
  * @param[in] count      Entry count (the table holds `count + 1` offsets).
@@ -127,9 +120,9 @@ static ra8_err_t priv_walk_table(const ra8_fmt_blob_t* src,
                     (unsigned long long)off);
       verdict = k_ra8_err_validation_failed;
     }
-    /* Both containers specify a STRICTLY increasing table, so an offset equal
-     * to its predecessor is as invalid as one that goes backwards: it declares
-     * a zero-length stream that no reader can inflate. Testing `<=` rather than
+    /* RBKC specifies a STRICTLY increasing table, so an offset equal to its
+     * predecessor is as invalid as one that goes backwards: it declares a
+     * zero-length stream that no reader can inflate. Testing `<=` rather than
      * `<` is what makes a table rewritten to a constant fail here. */
     if ((i > 0U) && (off <= prev)) {
       (void)fprintf(opts->report,
@@ -169,10 +162,10 @@ bool ra8_fmt_rabook_sniff(const ra8_fmt_blob_t* src)
 }
 
 /**
- * @brief Check the two header words every container shares.
+ * @brief Check the two RBKC header words: reserved and count.
  *
  * @details
- * Both container headers carry a reserved word that must read zero and a count
+ * The RBKC header carries a reserved word that must read zero and a chunk count
  * that must be non-zero. A non-zero reserved word is an anomaly the caller still
  * reports around -- the rest of the container is readable -- whereas a zero
  * count makes every derived table offset meaningless, so the walk cannot
@@ -283,94 +276,6 @@ ra8_err_t ra8_fmt_rabook_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t
   (void)fprintf(opts->report,
                 "verdict: %s\n",
                 (verdict == k_ra8_ok) ? "VALID (chunk table monotonic and complete)"
-                                      : "INVALID (see anomalies above)");
-  return verdict;
-}
-
-bool ra8_fmt_cbz_sniff(const ra8_fmt_blob_t* src)
-{
-  return ra8_fmt_magic_is(src, "RCBZ"); /* MAGIC-OK: the RCBZ container fourCC */
-}
-
-/**
- * @brief Print the RCBZ per-page metadata table (raster size and dimensions).
- * @param[in] src   Container bytes (non-NULL).
- * @param[in] meta  Byte offset of the metadata table.
- * @param[in] pages Page count.
- * @param[in] opts  Options carrying the report sink.
- * @return Result code.
- * @retval k_ra8_ok                    Metadata table read and printed.
- * @retval k_ra8_err_validation_failed The table runs past the file end.
- * @pre @p src holds the whole container.
- * @pre @p pages is the header-declared page count.
- * @post At most ::k_ra8_fmt_max_dump_rows rows were written.
- * @post No state other than the stream is mutated.
- * @note Not thread-safe (writes one stream).
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t
-priv_cbz_meta(const ra8_fmt_blob_t* src, size_t meta, uint32_t pages, const ra8_fmt_opts_t* opts)
-{
-  if ((meta + ((size_t)pages * (size_t)k_ra8_cbz_meta_len)) > src->len) {
-    (void)fprintf(opts->report, "  ANOMALY page metadata table runs past the file end\n");
-    return k_ra8_err_validation_failed;
-  }
-  if (!opts->verbose) {
-    return k_ra8_ok;
-  }
-  (void)fprintf(opts->report, "   page   raw_size    width   height  format\n");
-  uint32_t shown = pages;
-  if (shown > (uint32_t)k_ra8_fmt_max_dump_rows) {
-    shown = (uint32_t)k_ra8_fmt_max_dump_rows;
-  }
-  for (uint32_t i = 0U; i < shown; ++i) { /* bounded by k_ra8_fmt_max_dump_rows */
-    const uint8_t* e = &src->bytes[meta + ((size_t)i * (size_t)k_ra8_cbz_meta_len)];
-    (void)fprintf(opts->report,
-                  "  %5u %10u %8u %8u %7u\n",
-                  (unsigned)i,
-                  (unsigned)ra8_fmt_rd_u32(&e[k_fmt_cbz_meta_raw_size]),
-                  (unsigned)ra8_fmt_rd_u16(&e[k_fmt_cbz_meta_width]),
-                  (unsigned)ra8_fmt_rd_u16(&e[k_fmt_cbz_meta_height]),
-                  (unsigned)e[k_fmt_cbz_meta_format]);
-  }
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_fmt_cbz_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
-{
-  RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
-  RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
-  if (src->len < (size_t)k_ra8_cbz_header_len) {
-    (void)fprintf(opts->report, "RCBZ too short to hold a header\n");
-    return k_ra8_err_invalid_size;
-  }
-  const uint32_t pages    = ra8_fmt_rd_u32(&src->bytes[k_fmt_cbz_off_pages]);
-  const uint32_t flags    = ra8_fmt_rd_u32(&src->bytes[k_fmt_cbz_off_flags]);
-  const uint32_t reserved = ra8_fmt_rd_u32(&src->bytes[k_fmt_cbz_off_reserved]);
-  (void)fprintf(opts->report, "RCBZ comic container: %zu bytes\n", src->len);
-  (void)fprintf(opts->report, "  page_count : %u\n", (unsigned)pages);
-  (void)fprintf(opts->report, "  flags      : 0x%08X\n", (unsigned)flags);
-  (void)fprintf(opts->report, "  reserved   : %u\n", (unsigned)reserved);
-
-  ra8_err_t verdict = k_ra8_ok;
-  if (!priv_hdr_sanity(opts->report, reserved, pages, "page_count", &verdict)) {
-    return verdict;
-  }
-  const size_t    table   = (size_t)k_ra8_cbz_header_len;
-  const size_t    meta    = table + (((size_t)pages + 1U) * sizeof(uint64_t));
-  const size_t    payload = meta + ((size_t)pages * (size_t)k_ra8_cbz_meta_len);
-  const ra8_err_t mrc     = priv_cbz_meta(src, meta, pages, opts);
-  if (mrc != k_ra8_ok) {
-    verdict = mrc;
-  }
-  const ra8_err_t trc = priv_walk_table(src, table, pages, payload, opts);
-  if (trc != k_ra8_ok) {
-    verdict = trc;
-  }
-  (void)fprintf(opts->report,
-                "verdict: %s\n",
-                (verdict == k_ra8_ok) ? "VALID (page table monotonic and complete)"
                                       : "INVALID (see anomalies above)");
   return verdict;
 }

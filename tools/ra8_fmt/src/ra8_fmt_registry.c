@@ -49,15 +49,6 @@ static const ra8_fmt_desc_t s_formats[] = {
     .inspect = ra8_fmt_rabook_inspect,
     .verify  = nullptr,
   },
-  {
-    .name    = "rcbz",
-    .ext     = ".rcbz",
-    .summary = "comic page container (RCBZ): page directory over stored images",
-    .sniff   = ra8_fmt_cbz_sniff,
-    .convert = nullptr,
-    .inspect = ra8_fmt_cbz_inspect,
-    .verify  = nullptr,
-  },
 };
 
 const ra8_fmt_desc_t* ra8_fmt_registry(size_t* out_count)

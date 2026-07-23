@@ -335,9 +335,6 @@ def main() -> int:
     asserts. `--chunk-bytes` must equal the reader's `ra8_vmem` frame size; a
     mismatch produces a container the firmware cannot demand-page.
 
-    Note this is the whole-book paging path. For multi-GB omnibus volumes use
-    `cbz_container.py`, which pages one image at a time instead.
-
     Returns:
         0 on success; the selftest's own status when `--selftest` is given.
     """
