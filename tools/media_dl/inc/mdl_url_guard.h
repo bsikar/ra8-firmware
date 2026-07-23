@@ -43,11 +43,11 @@
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_mdl_addr_public    = 0, /**< Routable public unicast address.              */
-  k_mdl_addr_loopback  = 1, /**< 127.0.0.0/8 or ::1.                           */
-  k_mdl_addr_private   = 2, /**< RFC1918, RFC6598 (CGNAT), or fc00::/7.        */
-  k_mdl_addr_linklocal = 3, /**< 169.254.0.0/16 or fe80::/10.                  */
-  k_mdl_addr_unknown   = 4, /**< Unparseable, unspecified, or reserved.        */
+  k_mdl_addr_public    = 0, /**< Routable public unicast address.       */
+  k_mdl_addr_loopback  = 1, /**< 127.0.0.0/8 or ::1.                    */
+  k_mdl_addr_private   = 2, /**< RFC1918, RFC6598 (CGNAT), or fc00::/7. */
+  k_mdl_addr_linklocal = 3, /**< 169.254.0.0/16 or fe80::/10.           */
+  k_mdl_addr_unknown   = 4, /**< Unparseable, unspecified, or reserved. */
 } mdl_addr_class_t;
 
 /**
