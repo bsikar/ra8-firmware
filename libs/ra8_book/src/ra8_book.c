@@ -219,6 +219,42 @@ static bool ra8_book_image_pixfmts_known(const void* base, const ra8_book_header
   return true;
 }
 
+/**
+ * @brief Whether the header's magic field equals the "RABOOK1" tag.
+ *
+ * @details
+ * Compares all 8 magic bytes (7 chars + NUL) against the fixed "RABOOK1"
+ * signature. Factored out of ra8_book_validate() so that function stays within
+ * the readability-function-size / NASA Rule 4 statement budget; the check is a
+ * pure read over the caller-provided header.
+ *
+ * @param[in] hdr Header view of a blob whose size was already bounds-checked.
+ *
+ * @return Whether every magic byte matches the "RABOOK1" signature.
+ * @retval true  All 8 magic bytes match.
+ * @retval false At least one magic byte differs.
+ *
+ * @pre @p hdr is non-NULL and points at a blob of at least sizeof(header).
+ * @pre The magic[] array is fully in range (guaranteed by the size precheck).
+ * @post No memory is written (pure read over the header).
+ * @post The result depends only on hdr->magic, not on any body bytes.
+ *
+ * @note Thread-safe: read-only over immutable data.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static bool ra8_book_magic_ok(const ra8_book_header_t* hdr)
+{
+  const char expect[8] = {'R', 'A', 'B', 'O', 'O', 'K', '1', '\0'};
+  bool       ok        = true;
+  for (uint8_t i = 0U; i < (uint8_t)sizeof(expect); ++i) {
+    if (hdr->magic[i] != expect[i]) {
+      ok = false;
+    }
+  }
+  return ok;
+}
+
 ra8_err_t ra8_book_validate(const void* base, size_t size)
 {
   RA8_CHECK_NULL_PTR(base, s_tag_book, "validate: null base");
@@ -229,11 +265,8 @@ ra8_err_t ra8_book_validate(const void* base, size_t size)
 
   const ra8_book_header_t* hdr = (const ra8_book_header_t*)base;
 
-  const char expect[8] = {'R', 'A', 'B', 'O', 'O', 'K', '1', '\0'};
-  for (uint8_t i = 0U; i < (uint8_t)sizeof(expect); ++i) {
-    if (hdr->magic[i] != expect[i]) {
-      return k_ra8_err_invalid_arg;
-    }
+  if (!ra8_book_magic_ok(hdr)) {
+    return k_ra8_err_invalid_arg;
   }
   if (hdr->format_version != k_ra8_book_format_version) {
     return k_ra8_err_invalid_arg;

@@ -349,6 +349,21 @@ static bool mve_exec_one(uc_engine* uc, const cs_insn* insn)
   return false;
 }
 
+/** @brief Lazily open the shared Thumb/M-class Capstone handle; nullptr on failure. */
+static csh* mve_capstone(void)
+{
+  static csh  s_cs;
+  static bool s_cs_ok = false;
+  if (!s_cs_ok) {
+    if (cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_THUMB | CS_MODE_MCLASS), &s_cs) != CS_ERR_OK) {
+      return nullptr;
+    }
+    (void)cs_option(s_cs, CS_OPT_DETAIL, CS_OPT_ON);
+    s_cs_ok = true;
+  }
+  return &s_cs;
+}
+
 /**
  * @brief Emulate a run of consecutive auto-vectoriser MVE instructions.
  *
@@ -364,14 +379,9 @@ static bool mve_exec_one(uc_engine* uc, const cs_insn* insn)
  */
 bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4])
 {
-  static csh  s_cs;
-  static bool s_cs_ok = false;
-  if (!s_cs_ok) {
-    if (cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_THUMB | CS_MODE_MCLASS), &s_cs) != CS_ERR_OK) {
-      return false;
-    }
-    (void)cs_option(s_cs, CS_OPT_DETAIL, CS_OPT_ON);
-    s_cs_ok = true;
+  csh* cs = mve_capstone();
+  if (cs == nullptr) {
+    return false;
   }
   uint32_t pc = pc0;
   uint8_t  code[4];
@@ -390,7 +400,7 @@ bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4])
       continue;
     }
     cs_insn*     insn = nullptr;
-    const size_t n    = cs_disasm(s_cs, code, (size_t)k_mve_insn_len, pc, 1, &insn);
+    const size_t n    = cs_disasm(*cs, code, (size_t)k_mve_insn_len, pc, 1, &insn);
     if (n != 1U) {
       break;
     }

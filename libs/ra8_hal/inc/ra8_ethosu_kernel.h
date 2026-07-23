@@ -51,7 +51,7 @@ extern "C" {
  * @details
  * Calls `tflite::Register_ETHOSU()` and validates the returned `TFLMRegistration`
  * is non-NULL, carries a non-NULL `invoke` handler, and its `custom_name` matches
- * `tflite::GetString_ETHOSU()`. This is a link-time + registration proof that the
+ * `tflite::ethosu_custom_name()`. This is a link-time + registration proof that the
  * vendored `Register_ETHOSU()` stub (which returned `nullptr`) has been replaced
  * by the first-party NPU-dispatching kernel. It does NOT run an inference.
  *

@@ -302,13 +302,13 @@ KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
         "objc-needs-macos-runner",
         2,
-        "#370",
+        "#436",
         "the two Objective-C host views (board_sim, ra8_viewer) are AppKit / "
         "CoreGraphics code. clang-tidy can only parse them against the macOS "
         "SDK, so clang_tidy.sh claims them on Darwin and not on Linux -- where "
-        "CI runs. The C++ half of #370 is closed: .cpp/.cc/.hpp are linted by "
-        "the C++ pass on every platform. Closing this one needs a macOS lint "
-        "job, which is a runner decision, not a code change",
+        "CI runs. The C++ half of #370 is fully closed: every .cpp/.cc finding "
+        "is fixed and its tidy-baseline rows are gone. Closing this one needs a "
+        "macOS lint job, which is a runner decision, not a code change",
         lambda c: c.cls == "c-family" and c.rel.endswith(".m"),
     ),
 )

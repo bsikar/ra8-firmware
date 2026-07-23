@@ -29,12 +29,22 @@ extern "C" {
 
 namespace {
 
-static const uint8_t k_dummy_font[32] = {
+typedef enum : uint8_t {
+  k_test_paragraph_count = 40U, /**< Paragraphs in the pagination fixture. */
+  k_test_viewport_count  = 5U,  /**< Number of viewport heights measured.  */
+} test_dim_t;
+
+typedef enum : uint8_t {
+  k_test_body_color = 0x000000U, /**< Body text colour (black, 0x000000). */
+  k_test_link_color = 0x0000FFU, /**< Link colour (blue, 0x0000FF).       */
+} test_color_t;
+
+const uint8_t k_dummy_font[32] = {
   0x00, 0x01, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x80, 0x00, 0x03, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-static ra8_reflow_t s_engine;
+ra8_reflow_t s_engine;
 
 ra8_err_t init_default(uint16_t w, uint16_t h)
 {
@@ -43,8 +53,8 @@ ra8_err_t init_default(uint16_t w, uint16_t h)
                          k_dummy_font,
                          sizeof(k_dummy_font),
                          (uint16_t)k_ra8_reflow_default_font_px,
-                         0x000000U,
-                         0x0000FFU,
+                         (uint32_t)k_test_body_color,
+                         (uint32_t)k_test_link_color,
                          &s_engine);
 }
 
@@ -57,7 +67,7 @@ void test_empty_body(void)
 
   uint32_t          pages = 0U;
   const std::string ws    = " ";
-  ra8_err_t         err   = ra8_reflow_layout_chapter(&s_engine,
+  const ra8_err_t   err   = ra8_reflow_layout_chapter(&s_engine,
                                                       reinterpret_cast<const uint8_t*>(ws.data()),
                                                       ws.size(),
                                                       &pages);
@@ -83,7 +93,7 @@ void test_single_paragraph(void)
                             "Pack my box with five dozen liquor jugs. "
                             "How vexingly quick daft zebras jump.</p>";
   uint32_t          pages = 0U;
-  ra8_err_t         err   = ra8_reflow_layout_chapter(&s_engine,
+  const ra8_err_t   err   = ra8_reflow_layout_chapter(&s_engine,
                                                       reinterpret_cast<const uint8_t*>(body.data()),
                                                       body.size(),
                                                       &pages);
@@ -108,7 +118,7 @@ void test_paragraph_and_image(void)
                             "<p><img src=\"figure.png\" alt=\"figure\"/></p>"
                             "<p>Caption text continues after the inline figure.</p>";
   uint32_t          pages = 0U;
-  ra8_err_t         err   = ra8_reflow_layout_chapter(&s_engine,
+  const ra8_err_t   err   = ra8_reflow_layout_chapter(&s_engine,
                                                       reinterpret_cast<const uint8_t*>(body.data()),
                                                       body.size(),
                                                       &pages);
@@ -124,7 +134,7 @@ void test_paginate_across_viewports(void)
   std::printf("test_paginate_across_viewports: ");
 
   std::string body = "<div>";
-  for (int i = 0; i < 40; ++i) {
+  for (int i = 0; i < (int)k_test_paragraph_count; ++i) {
     body.append("<p>Paragraph ");
     body.append(std::to_string(i));
     body.append(" with enough words to wrap onto a couple of lines on a "
@@ -132,18 +142,18 @@ void test_paginate_across_viewports(void)
   }
   body.append("</div>");
 
-  const uint16_t heights[]      = {64U, 96U, 160U, 240U, 480U};
-  uint32_t       page_counts[5] = {0U, 0U, 0U, 0U, 0U};
+  const uint16_t heights[k_test_viewport_count]     = {64U, 96U, 160U, 240U, 480U};
+  uint32_t       page_counts[k_test_viewport_count] = {0U, 0U, 0U, 0U, 0U};
 
-  for (size_t i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < (size_t)k_test_viewport_count; ++i) {
     std::memset(&s_engine, 0, sizeof(s_engine));
     assert(init_default(320U, heights[i]) == k_ra8_ok);
 
-    uint32_t  pages = 0U;
-    ra8_err_t err   = ra8_reflow_layout_chapter(&s_engine,
-                                                reinterpret_cast<const uint8_t*>(body.data()),
-                                                body.size(),
-                                                &pages);
+    uint32_t        pages = 0U;
+    const ra8_err_t err   = ra8_reflow_layout_chapter(&s_engine,
+                                                      reinterpret_cast<const uint8_t*>(body.data()),
+                                                      body.size(),
+                                                      &pages);
     assert(err == k_ra8_ok);
     assert(pages >= 1U);
     page_counts[i] = pages;
@@ -151,12 +161,12 @@ void test_paginate_across_viewports(void)
     assert(ra8_reflow_close(&s_engine) == k_ra8_ok);
   }
 
-  for (size_t i = 1; i < 5; ++i) {
+  for (size_t i = 1; i < (size_t)k_test_viewport_count; ++i) {
     assert(page_counts[i] <= page_counts[i - 1]);
   }
   /* The smallest viewport must yield strictly more pages than the
    * largest one when the document is non-trivial. */
-  assert(page_counts[0] > page_counts[4]);
+  assert(page_counts[0] > page_counts[k_test_viewport_count - 1]);
 
   std::printf("ok (pages: %u, %u, %u, %u, %u)\n",
               (unsigned)page_counts[0],
