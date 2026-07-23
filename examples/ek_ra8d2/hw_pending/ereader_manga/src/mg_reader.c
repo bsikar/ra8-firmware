@@ -82,6 +82,23 @@ typedef enum : uint32_t {
   k_mg_fnv_prime  = 16777619U,   /**< FNV-1a-32 prime.        */
 } mg_fnv_t;
 
+/**
+ * @enum mg_pixfmt_t
+ * @brief The single JOF pixel format the reader can blit.
+ *
+ * @details Every blit path here (::mg_blit_tile via ::mg_g565) reads one byte
+ *          per pixel and expands it as gray8. A JOF atlas may instead declare
+ *          `bpp` 3 (RGB888) or 4 (RGBA8888) -- ``ra8_jof_produce`` follows the
+ *          source decoder's channel count -- so ::mg_reader_init fails closed on
+ *          anything but ::k_mg_gray8_bpp rather than mis-reading a colour tile
+ *          one byte per pixel and rendering garbage (#339).
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_mg_gray8_bpp = 1U, /**< The only bytes-per-pixel the reader supports. */
+} mg_pixfmt_t;
+
 /* ===========================================================================
  * Geometry helpers (pure; page-pixel <-> panel-pixel mapping)
  * =========================================================================== */
@@ -489,20 +506,9 @@ static uint8_t mg_fit_factor(const mg_reader_t* r)
   return (uint8_t)f;
 }
 
-ra8_err_t mg_reader_init(mg_reader_t* r, const mg_reader_cfg_t* cfg)
+/** @brief Populate reader state from an already-validated config (no checks). */
+static void mg_reader_bind(mg_reader_t* r, const mg_reader_cfg_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(r, k_mg_tag, "reader");
-  RA8_CHECK_NULL_PTR(cfg, k_mg_tag, "cfg");
-  RA8_CHECK_NULL_PTR(cfg->fb, k_mg_tag, "fb");
-  RA8_CHECK_NULL_PTR(cfg->cache, k_mg_tag, "cache");
-  RA8_CHECK_NULL_PTR(cfg->info, k_mg_tag, "info");
-  if ((cfg->fb_w <= 0) || (cfg->fb_h <= (int32_t)k_mg_statusbar_h)) {
-    return k_ra8_err_invalid_size;
-  }
-  if ((cfg->info->width == 0U) || (cfg->info->height == 0U) || (cfg->info->tile_w == 0U) ||
-      (cfg->info->tile_h == 0U)) {
-    return k_ra8_err_invalid_size;
-  }
   *r            = (mg_reader_t){.fb        = cfg->fb,
                                 .fb_w      = cfg->fb_w,
                                 .fb_h      = cfg->fb_h,
@@ -519,6 +525,49 @@ ra8_err_t mg_reader_init(mg_reader_t* r, const mg_reader_cfg_t* cfg)
                                 .zoom      = (uint8_t)k_mg_zoom_full};
   r->fit_factor = mg_fit_factor(r);
   mg_clamp(r);
+}
+
+/** @brief Null-guard the init inputs (5 preconditions, NASA Rule 5). */
+static ra8_err_t mg_reader_check_ptrs(const mg_reader_t* r, const mg_reader_cfg_t* cfg)
+{
+  RA8_CHECK_NULL_PTR(r, k_mg_tag, "reader");
+  RA8_CHECK_NULL_PTR(cfg, k_mg_tag, "cfg");
+  RA8_CHECK_NULL_PTR(cfg->fb, k_mg_tag, "fb");
+  RA8_CHECK_NULL_PTR(cfg->cache, k_mg_tag, "cache");
+  RA8_CHECK_NULL_PTR(cfg->info, k_mg_tag, "info");
+  return k_ra8_ok;
+}
+
+/** @brief Validate framebuffer + atlas geometry; reject non-gray8 atlases (#339). */
+static ra8_err_t mg_reader_check_geometry(const mg_reader_cfg_t* cfg)
+{
+  if ((cfg->fb_w <= 0) || (cfg->fb_h <= (int32_t)k_mg_statusbar_h)) {
+    return k_ra8_err_invalid_size;
+  }
+  if ((cfg->info->width == 0U) || (cfg->info->height == 0U) || (cfg->info->tile_w == 0U) ||
+      (cfg->info->tile_h == 0U)) {
+    return k_ra8_err_invalid_size;
+  }
+  /* The blit path is gray8-only; a colour atlas (bpp 3/4) would be mis-read one
+   * byte per pixel and rendered as garbage. Fail closed instead (#339). */
+  if (cfg->info->bpp != (uint8_t)k_mg_gray8_bpp) {
+    ra8_log_error(k_mg_tag, "JOF atlas bpp unsupported: reader is gray8-only");
+    return k_ra8_err_not_supported;
+  }
+  return k_ra8_ok;
+}
+
+ra8_err_t mg_reader_init(mg_reader_t* r, const mg_reader_cfg_t* cfg)
+{
+  const ra8_err_t pc = mg_reader_check_ptrs(r, cfg);
+  if (pc != k_ra8_ok) {
+    return pc;
+  }
+  const ra8_err_t gc = mg_reader_check_geometry(cfg);
+  if (gc != k_ra8_ok) {
+    return gc;
+  }
+  mg_reader_bind(r, cfg);
   return k_ra8_ok;
 }
 

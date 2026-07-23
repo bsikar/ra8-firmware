@@ -18,9 +18,9 @@
  *      (``mg_page_fixture.h``) into a JOF tile atlas with
  *      ``ra8_jof_produce`` -- one bounded band at a time, the decoded
  *      page never resident whole -- into an SDRAM memstore.
- *   3. Serve the atlas through a deliberately small (4-cell) ``ra8_tile_cache``
- *      so a viewport spanning more tiles than the cache holds forces LRU
- *      eviction every frame.
+ *   3. Serve the atlas through an ``ra8_tile_cache`` sized (::k_mg_cells) to
+ *      the 1:1 viewport tile demand plus a one-tile pan margin, so panning
+ *      evicts only newly exposed tiles instead of thrashing (#338).
  *   4. Main loop: poll the GT911, hit-test the tap-zones (four edges pan, the
  *      centre toggles 1:1 <-> fit-page), redraw the viewport + status bar +
  *      minimap, and present.
@@ -84,20 +84,66 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_mg_tile_edge   = 256U,               /**< Import + cache tile edge, pixels. */
-  k_mg_cap_edge    = 2048U,              /**< Produce budget cap, pixels.       */
-  k_mg_cell_bytes  = 256U * 256U,        /**< One gray8 256x256 tile.           */
-  k_mg_cells       = 4U,                 /**< Small budget (forces evictions).  */
-  k_mg_buckets     = 8U,                 /**< Cache hash buckets.               */
-  k_mg_scratch     = 96U * 1024U,        /**< read_tile deflate staging.        */
-  k_mg_work_bytes  = 3203832U,           /**< SDRAM producer work arena.        */
-  k_mg_store_bytes = 4U * 1024U * 1024U, /**< SDRAM atlas memstore.             */
-  k_mg_image_id    = 1U,                 /**< Tile-cache key image id.          */
-  k_mg_hex_nibbles = 8U,                 /**< Hex digits in a 32-bit value.     */
-  k_mg_nibble_bits = 4U,                 /**< Bits per hex nibble.              */
-  k_mg_nibble_mask = 0x0FU,              /**< Low-nibble mask.                  */
-  k_mg_dec_ten     = 10U,                /**< Decimal radix / hex split.        */
+  k_mg_tile_edge  = 256U,        /**< Import + cache tile edge, pixels. */
+  k_mg_cap_edge   = 2048U,       /**< Produce budget cap, pixels.       */
+  k_mg_cell_bytes = 256U * 256U, /**< One gray8 256x256 tile.           */
+  /* ::k_mg_view_cols / ::k_mg_view_rows are the tile columns/rows one 1:1
+   * viewport frame can straddle: ceil(extent / tile) tiles, plus one for the
+   * viewport not being tile-aligned. The content area is the panel minus the
+   * status bar (the render clips there). See the derivation note below. */
+  k_mg_view_cols =
+    (((uint32_t)k_panel_width_px + k_mg_tile_edge - 1U) / k_mg_tile_edge) + 1U, /**< 1:1 cols. */
+  k_mg_view_rows =
+    ((((uint32_t)k_panel_height_px - (uint32_t)k_mg_statusbar_h) + k_mg_tile_edge - 1U) /
+     k_mg_tile_edge) +
+    1U,                                                         /**< 1:1 content rows.          */
+  k_mg_cells   = (k_mg_view_cols + 1U) * (k_mg_view_rows + 1U), /**< Frame + 1-tile pan margin. */
+  k_mg_buckets = 64U,                          /**< Cache hash buckets (>= cells).  */
+  k_mg_cell_budget_bytes = 4U * 1024U * 1024U, /**< SDRAM the tile cache may claim. */
+  k_mg_scratch           = 96U * 1024U,        /**< read_tile deflate staging.      */
+  k_mg_work_bytes        = 3203832U,           /**< SDRAM producer work arena.      */
+  k_mg_store_bytes       = 4U * 1024U * 1024U, /**< SDRAM atlas memstore.           */
+  k_mg_image_id          = 1U,                 /**< Tile-cache key image id.        */
+  k_mg_hex_nibbles       = 8U,                 /**< Hex digits in a 32-bit value.   */
+  k_mg_nibble_bits       = 4U,                 /**< Bits per hex nibble.            */
+  k_mg_nibble_mask       = 0x0FU,              /**< Low-nibble mask.                */
+  k_mg_dec_ten           = 10U,                /**< Decimal radix / hex split.      */
 } mg_atlas_t;
+
+/*
+ * ::k_mg_cells is DERIVED from the panel + tile geometry, never hand-picked
+ * (#338). The reader pages the atlas one tile at a time (get / blit / put), so
+ * the cache does not need every on-screen tile pinned at once -- but it must
+ * still be able to *hold* the tiles a frame touches, or a one-tile pan evicts
+ * tiles that are still on screen and re-inflates them next frame. That is the
+ * thrash: with a sub-frame budget every pan re-decodes ~a full screen of
+ * 64 KiB DEFLATE tiles.
+ *
+ * At 1:1 a 1024x600 panel with a 48 px status bar shows a 1024x552 content
+ * window over 256x256 tiles, straddling at most ::k_mg_view_cols x
+ * ::k_mg_view_rows = 5 x 4 = 20 tiles. Sizing the cache to that frame plus one
+ * tile of margin on each axis (::k_mg_cells = 6 x 5 = 30, ~1.9 MiB of the
+ * 64 MB SDRAM) means the union of any single-step pan's before/after frames
+ * stays resident, so a pan re-decodes only the newly exposed row/column, never
+ * a tile still on screen. `tests/test_app_ereader_manga.c`
+ * (test_manga_pan_no_thrash) measures the eviction/decode count for a
+ * representative pan against the old 4-cell budget and asserts it collapses.
+ *
+ * Two compile-time tripwires keep the budget honest:
+ *   - the first static_assert fails the build if ::k_mg_cells is ever set below
+ *     the frame demand (a manual override, or a geometry change that outgrows
+ *     it), the condition that reintroduces the thrash;
+ *   - the second bounds the resident-tile arena by ::k_mg_cell_budget_bytes so
+ *     the derivation cannot silently balloon the SDRAM working set.
+ * The 4-cell budget lives on only as the explicit eviction-stress case in the
+ * host test, which is what it was always right for.
+ */
+static_assert((uint64_t)k_mg_cells >= (uint64_t)k_mg_view_cols * (uint64_t)k_mg_view_rows,
+              "tile cache is smaller than the 1:1 viewport tile demand: re-derive k_mg_cells from "
+              "the panel + tile geometry so a single-step pan cannot thrash (#338)");
+static_assert((uint64_t)k_mg_cells * (uint64_t)k_mg_cell_bytes <= (uint64_t)k_mg_cell_budget_bytes,
+              "resident tile arena exceeds its SDRAM budget: the tile-cache derivation grew past "
+              "k_mg_cell_budget_bytes");
 
 /*
  * ::k_mg_work_bytes is DERIVED, never hand-picked: it is exactly
@@ -153,7 +199,7 @@ typedef enum : uint16_t {
 [[gnu::section(".sdram_data")]] static uint8_t s_work[k_mg_work_bytes];
 /** @brief Atlas memstore backing (SDRAM: the produced JOF atlas). */
 [[gnu::section(".sdram_data")]] static uint8_t s_store_buf[k_mg_store_bytes];
-/** @brief Tile-cache cell storage (four gray8 256x256 tiles, SDRAM). */
+/** @brief Tile-cache cell storage (::k_mg_cells gray8 256x256 tiles, SDRAM). */
 [[gnu::section(
   ".sdram_data")]] static uint8_t s_cell_mem[(size_t)k_mg_cells * (size_t)k_mg_cell_bytes];
 /** @brief read_tile deflate stored-stream staging (SDRAM). */

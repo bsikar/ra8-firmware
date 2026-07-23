@@ -37,8 +37,8 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_append_uint | `while ((v > 0U) && (n < (uint32_t)k_mg_dec_max)) {` | partial |
 | examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_append_uint | `for (uint32_t i = 0U; (i < n) && (pos < (cap - 1U)); ++i) {` | partial |
 | examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 3 | mg_append_str | `for (uint32_t i = 0U; (i < (uint32_t)k_mg_str_max) && (s[i] != '\0') && (pos ...` | partial |
-| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_reader_init | `if ((cfg->fb_w <= 0) \|\| (cfg->fb_h <= (int32_t)k_mg_statusbar_h)) {` | no |
-| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 4 | mg_reader_init | `if ((cfg->info->width == 0U) \|\| (cfg->info->height == 0U) \|\| (cfg->info->...` | no |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_reader_check_geometry | `if ((cfg->fb_w <= 0) \|\| (cfg->fb_h <= (int32_t)k_mg_statusbar_h)) {` | no |
+| examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 4 | mg_reader_check_geometry | `if ((cfg->info->width == 0U) \|\| (cfg->info->height == 0U) \|\| (cfg->info->...` | no |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
