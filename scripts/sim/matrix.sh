@@ -56,7 +56,7 @@
 # pass. That is the touch_demo empty-verdict lesson and the #168 lesson both.
 #
 # Usage:
-#   scripts/sim/matrix.sh                 # every ek_ra8d2 example, -j = cores
+#   scripts/sim/matrix.sh                 # every ek_ra8d2 example, -j = ra8_max_jobs
 #   scripts/sim/matrix.sh blink dtc_transfer_demo   # explicit subset
 #   scripts/sim/matrix.sh --selftest      # assert the classifier, build nothing
 #   MATRIX_JOBS=1 scripts/sim/matrix.sh   # serial (identical verdicts, slower)
@@ -85,6 +85,11 @@ export LC_ALL=C
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || exit 1
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328); the sweep
+# worker pool and the emulator build derive from it so ~200 images do not
+# saturate a shared box.
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$ROOT/scripts/ci/lib/parallelism.sh"
 sim_dir="$ROOT/tools/board_sim"
 report="$ROOT/build/board_sim_matrix.txt"
 mkdir -p "$ROOT/build"
@@ -119,15 +124,7 @@ max_chunks="${MAX_CHUNKS:-4000}"
 # instruction-counted chunk budget rather than by CPU-time -- the verdict is
 # identical at any -j. Parallelism is therefore free of the usual risk here:
 # it can change the wall time and nothing else.
-detect_jobs() { # -> host core count, or 4 when it cannot be determined
-  local n=""
-  n="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || printf '')"
-  case "$n" in
-    '' | *[!0-9]*) printf '4\n' ;;
-    *) printf '%s\n' "$n" ;;
-  esac
-}
-jobs="${MATRIX_JOBS:-$(detect_jobs)}"
+jobs="${MATRIX_JOBS:-$(ra8_max_jobs)}"
 
 # A diagnostic line (to stderr) so detection/discovery decisions are never
 # silent. stderr keeps these off the stdout per-app table, which would otherwise
@@ -448,7 +445,7 @@ if ! cmake -B "$sim_dir/build" -S "$sim_dir" >"$sim_cmake_log" 2>&1; then
   echo "FATAL: board_sim cmake configure failed (see $sim_cmake_log)" >&2
   exit 2
 fi
-if ! cmake --build "$sim_dir/build" -j >>"$sim_cmake_log" 2>&1; then
+if ! cmake --build "$sim_dir/build" -j "$(ra8_max_jobs)" >>"$sim_cmake_log" 2>&1; then
   echo "FATAL: board_sim build failed (see $sim_cmake_log)" >&2
   exit 2
 fi
