@@ -141,9 +141,13 @@ CheckOptions:
   # SysTick_Handler, Default_Handler, and the IRQ<N>_Handler pattern), and for
   # the libFuzzer entry points (LLVMFuzzerTestOneInput / LLVMFuzzerInitialize),
   # whose spelling is fixed by the libFuzzer runtime ABI exactly the same way:
-  # rename them and the harness links but is never called.
+  # rename them and the harness links but is never called. Register_ETHOSU is
+  # the same case for TFLite-micro: the vendored MicroMutableOpResolver resolves
+  # the ethos-u operator by calling `tflite::Register_ETHOSU()` by that exact
+  # name (the first-party kernel replaces the vendored stub of the same symbol),
+  # so renaming it links against nothing.
   - key: readability-identifier-naming.FunctionIgnoredRegexp
-    value: '^(SystemInit|Reset_Handler|Default_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler|LLVMFuzzer[A-Za-z0-9]+|_tx_[a-z0-9_]+|_ux_[a-z0-9_]+)$'
+    value: '^(SystemInit|Reset_Handler|Default_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler|LLVMFuzzer[A-Za-z0-9]+|_tx_[a-z0-9_]+|_ux_[a-z0-9_]+|Register_ETHOSU)$'
 
   # Variables: snake_case
   - key: readability-identifier-naming.VariableCase

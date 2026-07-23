@@ -721,6 +721,6 @@ int main(void)
   test_mcdc_collect_fonts_href_and_type();
   test_mcdc_nav_by_type_untyped_first();
   test_mcdc_ncx_nav_book_null();
-  std::fprintf(stderr, "[OK ] test_ra8_epub_xml_shim.cpp\n");
+  (void)std::fprintf(stderr, "[OK ] test_ra8_epub_xml_shim.cpp\n");
   return 0;
 }
