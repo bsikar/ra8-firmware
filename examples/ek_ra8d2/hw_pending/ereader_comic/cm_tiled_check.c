@@ -21,11 +21,12 @@
  * @since 0.1.0
  */
 
+#include "cm_tiled_check.h"
+
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
-#include "cm_tiled_check.h"
 #include "comic_large_fixture.h"
 #include "ra8_comic.h"
 #include "ra8_comic_tiles.h"
@@ -44,20 +45,20 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ct_tile       = 256U,                            /**< Square tile edge, pixels.        */
-  k_ct_bpp_gray   = 1U,                              /**< Grayscale atlas bytes per pixel. */
-  k_ct_cell_bytes = k_ct_tile * k_ct_tile * k_ct_bpp_gray, /**< Bytes per cache cell. */
-  k_ct_cells      = 8U,                              /**< Tile-cache cell budget.          */
-  k_ct_buckets    = 16U,                             /**< Tile-cache hash buckets.         */
-  k_ct_budget     = 2U * 1024U * 1024U,              /**< Whole-decode budget (threshold). */
-  k_ct_pagebuf    = 64U * 1024U,                     /**< Encoded page scratch, bytes.     */
-  k_ct_work       = 2U * 1024U * 1024U,              /**< Producer work arena, bytes.      */
-  k_ct_atlas      = 2U * 1024U * 1024U,              /**< Atlas memstore backing, bytes.   */
-  k_ct_scratch    = 96U * 1024U,                     /**< Stored-tile staging, bytes.      */
-  k_ct_page_cap   = 4U,                              /**< Comic page-index capacity.       */
-  k_ct_name_cap   = 64U,                             /**< Comic name-arena bytes.          */
-  k_ct_fnv_offset = 2166136261U,                     /**< FNV-1a-32 offset basis.          */
-  k_ct_fnv_prime  = 16777619U,                       /**< FNV-1a-32 prime.                 */
+  k_ct_tile       = 256U,                                  /**< Square tile edge, pixels.        */
+  k_ct_bpp_gray   = 1U,                                    /**< Grayscale atlas bytes per pixel. */
+  k_ct_cell_bytes = k_ct_tile * k_ct_tile * k_ct_bpp_gray, /**< Bytes per cache cell.            */
+  k_ct_cells      = 8U,                                    /**< Tile-cache cell budget.          */
+  k_ct_buckets    = 16U,                                   /**< Tile-cache hash buckets.         */
+  k_ct_budget     = 2U * 1024U * 1024U,                    /**< Whole-decode budget (threshold). */
+  k_ct_pagebuf    = 64U * 1024U,                           /**< Encoded page scratch, bytes.     */
+  k_ct_work       = 2U * 1024U * 1024U,                    /**< Producer work arena, bytes.      */
+  k_ct_atlas      = 2U * 1024U * 1024U,                    /**< Atlas memstore backing, bytes.   */
+  k_ct_scratch    = 96U * 1024U,                           /**< Stored-tile staging, bytes.      */
+  k_ct_page_cap   = 4U,                                    /**< Comic page-index capacity.       */
+  k_ct_name_cap   = 64U,                                   /**< Comic name-arena bytes.          */
+  k_ct_fnv_offset = 2166136261U,                           /**< FNV-1a-32 offset basis.          */
+  k_ct_fnv_prime  = 16777619U,                             /**< FNV-1a-32 prime.                 */
 } cm_tiled_cfg_t;
 
 /**
@@ -79,7 +80,8 @@ typedef struct {
 /** @brief SDRAM: produced JOF atlas backing store. */
 [[gnu::section(".sdram_data")]] static uint8_t s_ct_atlas[k_ct_atlas];
 /** @brief SDRAM: tile-cache cell storage. */
-[[gnu::section(".sdram_data")]] static uint8_t s_ct_cells[(size_t)k_ct_cells * (size_t)k_ct_cell_bytes];
+[[gnu::section(
+  ".sdram_data")]] static uint8_t s_ct_cells[(size_t)k_ct_cells * (size_t)k_ct_cell_bytes];
 /** @brief SDRAM: stored-tile staging for deflate tiles. */
 [[gnu::section(".sdram_data")]] static uint8_t s_ct_scratch[k_ct_scratch];
 /** @brief SDRAM: comic page-index storage. */

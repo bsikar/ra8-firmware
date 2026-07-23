@@ -244,7 +244,7 @@ static ra8_err_t priv_transcode(ra8_comic_tile_reader_t*            r,
                                 const ra8_comic_tiles_import_cfg_t* cfg)
 {
   r->store = (ra8_jof_memstore_t){.buf = cfg->atlas, .cap = cfg->atlas_cap, .len = 0U};
-  ra8_comic_tiles_pull_t     pull = {.d = enc, .n = enc_len, .off = 0U};
+  ra8_comic_tiles_pull_t      pull = {.d = enc, .n = enc_len, .off = 0U};
   const ra8_jof_produce_cfg_t pcfg = {
     .pull          = priv_mem_pull,
     .pull_ctx      = &pull,
@@ -317,8 +317,11 @@ ra8_err_t ra8_comic_tiles_tile(ra8_comic_tile_reader_t* r,
   if (tile_y >= r->info.tile_rows) {
     return k_ra8_err_out_of_range;
   }
-  const ra8_tile_key_t key = {
-    .image_id = r->epoch, .tile_x = tile_x, .tile_y = tile_y, .zoom = 0U, .reserved = 0U};
+  const ra8_tile_key_t key = {.image_id = r->epoch,
+                              .tile_x   = tile_x,
+                              .tile_y   = tile_y,
+                              .zoom     = 0U,
+                              .reserved = 0U};
   return ra8_tile_cache_get(&r->cache, &key, out_tile);
 }
 

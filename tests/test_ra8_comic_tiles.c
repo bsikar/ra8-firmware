@@ -53,19 +53,19 @@
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
-  k_big_w        = 700U,             /**< Big page width (not tile-aligned).    */
-  k_big_h        = 480U,             /**< Big page height (not tile-aligned).   */
-  k_small_w      = 96U,              /**< Small page width (fits the arena).    */
-  k_small_h      = 64U,              /**< Small page height.                    */
-  k_tile         = 128U,             /**< Square tile edge.                     */
-  k_rgb_bpp      = 3U,               /**< Source / atlas bytes per pixel (RGB). */
-  k_cell_bytes   = k_tile * k_tile * k_rgb_bpp, /**< Bytes per cache cell. */
-  k_cells        = 8U,               /**< Cache cell budget (< the tile count).           */
-  k_buckets      = 16U,              /**< Cache hash buckets.                             */
-  k_budget_bytes = 256U * 1024U,     /**< Resident decode budget (threshold).             */
-  k_small_arena  = 256U * 1024U,     /**< Whole-decode arena the cap is measured against. */
-  k_probe_w      = 64U,              /**< Off-screen framebuffer width.                   */
-  k_probe_h      = 64U,              /**< Off-screen framebuffer height.                  */
+  k_big_w        = 700U,                        /**< Big page width (not tile-aligned).    */
+  k_big_h        = 480U,                        /**< Big page height (not tile-aligned).   */
+  k_small_w      = 96U,                         /**< Small page width (fits the arena).    */
+  k_small_h      = 64U,                         /**< Small page height.                    */
+  k_tile         = 128U,                        /**< Square tile edge.                     */
+  k_rgb_bpp      = 3U,                          /**< Source / atlas bytes per pixel (RGB). */
+  k_cell_bytes   = k_tile * k_tile * k_rgb_bpp, /**< Bytes per cache cell.                 */
+  k_cells        = 8U,           /**< Cache cell budget (< the tile count).           */
+  k_buckets      = 16U,          /**< Cache hash buckets.                             */
+  k_budget_bytes = 256U * 1024U, /**< Resident decode budget (threshold).             */
+  k_small_arena  = 256U * 1024U, /**< Whole-decode arena the cap is measured against. */
+  k_probe_w      = 64U,          /**< Off-screen framebuffer width.                   */
+  k_probe_h      = 64U,          /**< Off-screen framebuffer height.                  */
 } comic_tiles_geom_t;
 
 /**
@@ -74,13 +74,13 @@ typedef enum : uint32_t {
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
-  k_arc_cap    = 4U * 1024U * 1024U, /**< Built CBZ capacity.       */
-  k_png_cap    = 2U * 1024U * 1024U, /**< Synthesized PNG capacity. */
-  k_raw_cap    = ((size_t)k_big_w * (size_t)k_rgb_bpp + 1U) * (size_t)k_big_h,
-                                     /**< Filter-0 RGB scanline buffer. */
-  k_work_cap   = 8U * 1024U * 1024U, /**< Producer work arena.    */
-  k_atlas_cap  = 4U * 1024U * 1024U, /**< Atlas memstore backing. */
-  k_scratch    = k_cell_bytes + (k_cell_bytes / 8U) + 256U, /**< Stored-tile staging. */
+  k_arc_cap = 4U * 1024U * 1024U, /**< Built CBZ capacity.       */
+  k_png_cap = 2U * 1024U * 1024U, /**< Synthesized PNG capacity. */
+  k_raw_cap = ((size_t)k_big_w * (size_t)k_rgb_bpp + 1U) * (size_t)k_big_h,
+  /**< Filter-0 RGB scanline buffer. */
+  k_work_cap  = 8U * 1024U * 1024U,                        /**< Producer work arena.    */
+  k_atlas_cap = 4U * 1024U * 1024U,                        /**< Atlas memstore backing. */
+  k_scratch   = k_cell_bytes + (k_cell_bytes / 8U) + 256U, /**< Stored-tile staging.    */
 } comic_tiles_cap_t;
 
 /**
@@ -106,17 +106,17 @@ typedef enum : uint32_t {
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
-  k_png_ihdr_len   = 13U,   /**< IHDR data length.                   */
-  k_png_overhead   = 12U,   /**< Chunk length + type + CRC bytes.    */
-  k_png_bitdepth8  = 8U,    /**< 8-bit samples.                      */
-  k_png_color_rgb  = 2U,    /**< PNG colour type 2 = truecolour RGB. */
-  k_byte_mask      = 0xFFU, /**< Low-byte mask.                      */
-  k_shift_b3       = 24U,   /**< Most-significant byte shift.        */
-  k_shift_b2       = 16U,   /**< Second byte shift.                  */
-  k_shift_b1       = 8U,    /**< Third byte shift.                   */
-  k_crc_b1_ofs     = 9U,    /**< Chunk CRC second byte offset.       */
-  k_crc_b2_ofs     = 10U,   /**< Chunk CRC third byte offset.        */
-  k_crc_b3_ofs     = 11U,   /**< Chunk CRC last byte offset.         */
+  k_png_ihdr_len  = 13U,   /**< IHDR data length.                   */
+  k_png_overhead  = 12U,   /**< Chunk length + type + CRC bytes.    */
+  k_png_bitdepth8 = 8U,    /**< 8-bit samples.                      */
+  k_png_color_rgb = 2U,    /**< PNG colour type 2 = truecolour RGB. */
+  k_byte_mask     = 0xFFU, /**< Low-byte mask.                      */
+  k_shift_b3      = 24U,   /**< Most-significant byte shift.        */
+  k_shift_b2      = 16U,   /**< Second byte shift.                  */
+  k_shift_b1      = 8U,    /**< Third byte shift.                   */
+  k_crc_b1_ofs    = 9U,    /**< Chunk CRC second byte offset.       */
+  k_crc_b2_ofs    = 10U,   /**< Chunk CRC third byte offset.        */
+  k_crc_b3_ofs    = 11U,   /**< Chunk CRC last byte offset.         */
 } comic_tiles_png_t;
 
 /* ---------------------------------------------------------------------------
@@ -190,10 +190,12 @@ static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
   if (len > 0U) {
     (void)memcpy(&p[8], data, len);
   }
-  const uint32_t crc          = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
-  p[8U + len]                 = (uint8_t)(crc >> (uint32_t)k_shift_b3);
-  p[(uint32_t)k_crc_b1_ofs + len] = (uint8_t)((crc >> (uint32_t)k_shift_b2) & (uint32_t)k_byte_mask);
-  p[(uint32_t)k_crc_b2_ofs + len] = (uint8_t)((crc >> (uint32_t)k_shift_b1) & (uint32_t)k_byte_mask);
+  const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
+  p[8U + len]        = (uint8_t)(crc >> (uint32_t)k_shift_b3);
+  p[(uint32_t)k_crc_b1_ofs + len] =
+    (uint8_t)((crc >> (uint32_t)k_shift_b2) & (uint32_t)k_byte_mask);
+  p[(uint32_t)k_crc_b2_ofs + len] =
+    (uint8_t)((crc >> (uint32_t)k_shift_b1) & (uint32_t)k_byte_mask);
   p[(uint32_t)k_crc_b3_ofs + len] = (uint8_t)(crc & (uint32_t)k_byte_mask);
   s_png_len += (size_t)k_png_overhead + (size_t)len;
 }
@@ -206,18 +208,18 @@ static void png_build_rgb(uint32_t w, uint32_t h)
   static uint8_t       s_zbuf[k_png_cap];
   s_png_len = 0U;
   (void)memcpy(s_png, sig, sizeof(sig));
-  s_png_len                          = sizeof(sig);
-  uint8_t ihdr[k_png_ihdr_len]       = {};
-  ihdr[0]                            = (uint8_t)(w >> (uint32_t)k_shift_b3);
-  ihdr[1]                            = (uint8_t)((w >> (uint32_t)k_shift_b2) & (uint32_t)k_byte_mask);
-  ihdr[2]                            = (uint8_t)((w >> (uint32_t)k_shift_b1) & (uint32_t)k_byte_mask);
-  ihdr[3]                            = (uint8_t)(w & (uint32_t)k_byte_mask);
-  ihdr[4]                            = (uint8_t)(h >> (uint32_t)k_shift_b3);
-  ihdr[5]                            = (uint8_t)((h >> (uint32_t)k_shift_b2) & (uint32_t)k_byte_mask);
-  ihdr[6]                            = (uint8_t)((h >> (uint32_t)k_shift_b1) & (uint32_t)k_byte_mask);
-  ihdr[7]                            = (uint8_t)(h & (uint32_t)k_byte_mask);
-  ihdr[8]                            = (uint8_t)k_png_bitdepth8;
-  ihdr[9]                            = (uint8_t)k_png_color_rgb;
+  s_png_len                    = sizeof(sig);
+  uint8_t ihdr[k_png_ihdr_len] = {};
+  ihdr[0]                      = (uint8_t)(w >> (uint32_t)k_shift_b3);
+  ihdr[1]                      = (uint8_t)((w >> (uint32_t)k_shift_b2) & (uint32_t)k_byte_mask);
+  ihdr[2]                      = (uint8_t)((w >> (uint32_t)k_shift_b1) & (uint32_t)k_byte_mask);
+  ihdr[3]                      = (uint8_t)(w & (uint32_t)k_byte_mask);
+  ihdr[4]                      = (uint8_t)(h >> (uint32_t)k_shift_b3);
+  ihdr[5]                      = (uint8_t)((h >> (uint32_t)k_shift_b2) & (uint32_t)k_byte_mask);
+  ihdr[6]                      = (uint8_t)((h >> (uint32_t)k_shift_b1) & (uint32_t)k_byte_mask);
+  ihdr[7]                      = (uint8_t)(h & (uint32_t)k_byte_mask);
+  ihdr[8]                      = (uint8_t)k_png_bitdepth8;
+  ihdr[9]                      = (uint8_t)k_png_color_rgb;
   png_chunk("IHDR", ihdr, (uint32_t)k_png_ihdr_len);
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
@@ -245,8 +247,9 @@ static void build_cbz(void)
   TEST_ASSERT(mz_zip_writer_add_mem(&zip, "01_big.png", s_png, s_png_len, MZ_NO_COMPRESSION) ==
               MZ_TRUE);
   png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
-  TEST_ASSERT(mz_zip_writer_add_mem(&zip, "02_small.png", s_png, s_png_len, MZ_DEFAULT_COMPRESSION) ==
-              MZ_TRUE);
+  TEST_ASSERT(
+    mz_zip_writer_add_mem(&zip, "02_small.png", s_png, s_png_len, MZ_DEFAULT_COMPRESSION) ==
+    MZ_TRUE);
   void*  heap = nullptr;
   size_t hsz  = 0U;
   TEST_ASSERT(mz_zip_writer_finalize_heap_archive(&zip, &heap, &hsz) == MZ_TRUE);
@@ -370,8 +373,8 @@ static void test_footprint_and_budget(void)
 
   /* Big page footprint from the encoded header. */
   png_build_rgb((uint32_t)k_big_w, (uint32_t)k_big_h);
-  uint16_t w = 0U;
-  uint16_t h = 0U;
+  uint16_t w  = 0U;
+  uint16_t h  = 0U;
   uint64_t db = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_footprint(s_png, s_png_len, &w, &h, &db));
   TEST_ASSERT_EQ((int)k_big_w, (int)w);
@@ -410,24 +413,31 @@ static void test_footprint_and_budget(void)
 static void test_large_page_opens(void)
 {
   TEST_BEGIN("comic tiles: large page opens where whole-decode caps");
-  ra8_comic_t comic = {};
-  const size_t got  = open_big_page_bytes(&comic);
+  ra8_comic_t  comic = {};
+  const size_t got   = open_big_page_bytes(&comic);
 
   /* Threshold says tile. */
-  uint16_t w = 0U;
-  uint16_t h = 0U;
+  uint16_t w  = 0U;
+  uint16_t h  = 0U;
   uint64_t db = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_footprint(s_pagebuf, got, &w, &h, &db));
   TEST_ASSERT(ra8_comic_tiles_over_budget(db, (uint64_t)k_budget_bytes));
 
   /* The OLD path caps: whole-decode into a modest arena fails no_mem. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_init(s_fb, (uint16_t)k_probe_w, (uint16_t)k_probe_h,
-                              k_ra8_gfx_format_rgb565));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_gfx_init(s_fb, (uint16_t)k_probe_w, (uint16_t)k_probe_h, k_ra8_gfx_format_rgb565));
   ra8_img_arena_t arena = {.base = s_decode_arena, .cap = sizeof s_decode_arena};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_img_decode_blit(&arena, s_pagebuf, got, 0, 0, (int32_t)k_probe_w,
-                                     (int32_t)k_probe_h, nullptr, nullptr));
+                 ra8_img_decode_blit(&arena,
+                                     s_pagebuf,
+                                     got,
+                                     0,
+                                     0,
+                                     (int32_t)k_probe_w,
+                                     (int32_t)k_probe_h,
+                                     nullptr,
+                                     nullptr));
 
   /* The NEW path opens it. Resident cache RAM is far below the decoded image. */
   TEST_ASSERT((uint64_t)k_cells * (uint64_t)k_cell_bytes < db);
@@ -481,7 +491,8 @@ static void test_zoom_subrect(void)
 
   ra8_comic_tile_reader_t r       = {};
   ra8_tile_cache_cfg_t    storage = cache_cfg();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
   const ra8_comic_tiles_import_cfg_t cfg = import_cfg((uint8_t)k_ra8_jof_codec_raw);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_import(&r, s_pagebuf, got, &cfg));
 
@@ -509,28 +520,40 @@ static void test_small_page_flat(void)
   build_cbz();
   ra8_comic_t comic = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_comic_open(&comic, arc_read, nullptr, (uint64_t)s_arc_size, s_pages,
-                                (uint32_t)(sizeof s_pages / sizeof s_pages[0]), s_names,
+                 ra8_comic_open(&comic,
+                                arc_read,
+                                nullptr,
+                                (uint64_t)s_arc_size,
+                                s_pages,
+                                (uint32_t)(sizeof s_pages / sizeof s_pages[0]),
+                                s_names,
                                 (uint32_t)sizeof s_names));
   size_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_read(&comic, 1U, s_pagebuf, sizeof s_pagebuf, &got));
 
-  uint16_t w = 0U;
-  uint16_t h = 0U;
+  uint16_t w  = 0U;
+  uint16_t h  = 0U;
   uint64_t db = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_footprint(s_pagebuf, got, &w, &h, &db));
   TEST_ASSERT_EQ((int)k_small_w, (int)w);
   TEST_ASSERT(!ra8_comic_tiles_over_budget(db, (uint64_t)k_budget_bytes));
 
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_init(s_fb, (uint16_t)k_probe_w, (uint16_t)k_probe_h,
-                              k_ra8_gfx_format_rgb565));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_gfx_init(s_fb, (uint16_t)k_probe_w, (uint16_t)k_probe_h, k_ra8_gfx_format_rgb565));
   ra8_img_arena_t arena = {.base = s_decode_arena, .cap = sizeof s_decode_arena};
   int32_t         dw    = 0;
   int32_t         dh    = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_img_decode_blit(&arena, s_pagebuf, got, 0, 0, (int32_t)k_probe_w,
-                                     (int32_t)k_probe_h, &dw, &dh));
+                 ra8_img_decode_blit(&arena,
+                                     s_pagebuf,
+                                     got,
+                                     0,
+                                     0,
+                                     (int32_t)k_probe_w,
+                                     (int32_t)k_probe_h,
+                                     &dw,
+                                     &dh));
   TEST_ASSERT(dw > 0);
   TEST_ASSERT(dh > 0);
 
@@ -548,7 +571,8 @@ static void test_page_turn_epoch(void)
   TEST_BEGIN("comic tiles: page turn never surfaces a stale tile");
   ra8_comic_tile_reader_t r       = {};
   ra8_tile_cache_cfg_t    storage = cache_cfg();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
 
   const ra8_comic_tiles_import_cfg_t cfg = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
 
@@ -595,7 +619,8 @@ static void test_guards(void)
   /* init guards. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_init(nullptr, &storage, s_scratch, 4U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_init(&r, nullptr, s_scratch, 4U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
 
   /* Fetching before an import is invalid_state. */
   ra8_tile_t     t    = {};
@@ -613,8 +638,8 @@ static void test_guards(void)
 
   /* An unsupported (non-image) source aborts the transcode fail-closed and
    * leaves the reader unbound. */
-  static const uint8_t junk[16] = {'n', 'o', 't', ' ', 'a', 'n', ' ', 'i',
-                                    'm', 'a', 'g', 'e', '!', '!', '!', '!'};
+  static const uint8_t junk[16] =
+    {'n', 'o', 't', ' ', 'a', 'n', ' ', 'i', 'm', 'a', 'g', 'e', '!', '!', '!', '!'};
   TEST_ASSERT(ra8_comic_tiles_import(&r, junk, sizeof junk, &cfg) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_comic_tiles_tile(&r, 0U, 0U, &t));
 
