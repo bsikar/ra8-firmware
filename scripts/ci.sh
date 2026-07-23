@@ -198,6 +198,15 @@ pick_clang_format() {
 # shellcheck source=scripts/ci/lib/parallelism.sh
 . "${SCRIPT_DIR}/ci/lib/parallelism.sh"
 
+# use_pinned_tool_path() + require_tool_versions() -- deterministic tool
+# resolution (#333). run_one_gate calls use_pinned_tool_path so every gate,
+# however the shell was entered (a login shell, a non-interactive `ssh dev`, a
+# GitHub Actions step), resolves the SAME pinned binaries; require_tool_versions
+# then makes the wrong version fail loudly. One home for the policy, sourced the
+# same way as parallelism.sh.
+# shellcheck source=scripts/ci/lib/tool_env.sh
+. "${SCRIPT_DIR}/ci/lib/tool_env.sh"
+
 # Prepend the pinned Arm GNU Toolchain when the runner provisions it under
 # /opt, replacing what the workflows used to do with GITHUB_PATH. The apt
 # gcc-arm-none-eabi package ships no C++ standard library, so C++ apps
@@ -453,6 +462,12 @@ list_gates() {
 
 run_one_gate() {
   local name="$1" fn
+  # Deterministic tool resolution BEFORE any gate body runs (#333): normalise
+  # PATH so a non-login shell resolves the same pinned binaries a login shell
+  # does. This is the single choke point every gate passes through -- the
+  # --gate CLI path and run_suite (via run_gate_capture) both land here -- so no
+  # gate has to remember to do it.
+  use_pinned_tool_path
   fn="$(gate_fn_name "$name")"
   if ! declare -F "$fn" >/dev/null 2>&1; then
     echo "ci.sh: unknown gate '$name'. Registered gates:" >&2
