@@ -26,6 +26,14 @@
 # explicit clang-format-22 repo pin further down -- the same major the tree is
 # formatted and linted against.
 #
+# gcc-14 is the SECOND host-tool compiler arm (#356). The tools-build gate
+# compiles the first-party host tools under clang-18 AND gcc-14 so the warning
+# families each catches but the other misses are both held: gcc-14's
+# -Wformat-truncation found a silent PATH_MAX path-join truncation in
+# tools/media_dl that clang-18 did not flag. Like the clang family it tracks the
+# major-version package name (gcc-14) rather than an exact string, and
+# check_tool_versions.py reads that major from here.
+#
 # Cross-compiler: this image fetches Arm GNU Toolchain 13.3.rel1 to
 # /opt/arm-gnu-toolchain-13.3 by URL + sha256 (below) -- the SAME release + path
 # the self-hosted runner's `build-cross` job uses, so `make ci` and CI build
@@ -80,6 +88,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       curl \
       doxygen \
       clang-tools-18 \
+      gcc-14 \
       gcovr=${GCOVR_VERSION} \
       git \
       graphviz \

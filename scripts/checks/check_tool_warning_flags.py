@@ -37,9 +37,19 @@ The traps this deliberately avoids, each of which a substring test gets wrong:
 
 Matching is therefore on exact argv arguments, in order, never on substrings.
 
+Second compiler arm (#356)
+--------------------------
+gcc-14 catches warning families clang-18 misses -- its ``-Wformat-truncation``
+found a silent PATH_MAX path-join truncation in ``tools/media_dl`` that clang
+did not flag. The tools-build gate therefore compiles the host tools under BOTH
+pinned compilers and passes both sets of databases here. ``--require-compilers
+clang,gcc`` makes a silently-dropped arm a hard failure rather than a vacuous
+pass (the #348/#355 class): each named family must drive at least one database.
+
 Usage
 -----
     check_tool_warning_flags.py COMPILE_COMMANDS_JSON [...]
+    check_tool_warning_flags.py --require-compilers clang,gcc COMPILE_COMMANDS_JSON [...]
     check_tool_warning_flags.py --selftest
 """
 
@@ -73,6 +83,34 @@ def tokens_of(entry: dict) -> list[str]:
     return shlex.split(str(entry.get("command", "")))
 
 
+def compiler_of(argv: list[str]) -> str:
+    """Classify the compiler family driving one compile-database entry.
+
+    Returns ``"clang"`` or ``"gcc"`` for the two pinned host-tool arms, or
+    ``"other"`` for anything else. The first recognised driver token wins, so a
+    launcher prefix (``ccache gcc-14 ...``) still classifies as gcc.
+    """
+    for token in argv:
+        base = token.replace("\\", "/").rsplit("/", 1)[-1]
+        if "clang" in base:
+            return "clang"
+        if base in ("gcc", "g++") or base.startswith(("gcc-", "g++-")):
+            return "gcc"
+    return "other"
+
+
+def missing_required_compilers(seen: set[str], required: list[str]) -> list[str]:
+    """Return the required compiler families that no database exercised.
+
+    This is the #356 second-arm guard: the tools-build gate compiles the host
+    tools under clang-18 AND gcc-14 and passes both sets of databases here. If
+    the gcc arm is ever silently dropped, its family never appears in `seen`,
+    and a silently-dropped arm otherwise reads as a pass -- the #348/#355
+    failure class. ``--selftest`` asserts this fires when an arm is absent.
+    """
+    return sorted(set(required) - set(seen))
+
+
 def flag_problem(argv: list[str]) -> str | None:
     """Return a problem description for `argv`, or None when it is compliant.
 
@@ -94,8 +132,13 @@ def flag_problem(argv: list[str]) -> str | None:
     return None
 
 
-def check_database(path: Path) -> list[str]:
-    """Return violation lines for one compile_commands.json."""
+def check_database(path: Path) -> tuple[list[str], set[str]]:
+    """Return (violation lines, compiler families seen) for one database.
+
+    The compiler set is the #356 second-arm evidence: every translation unit in
+    one database is compiled by the same driver, so the union across the clang
+    and gcc databases the gate passes must contain both families.
+    """
     try:
         entries = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
@@ -111,14 +154,17 @@ def check_database(path: Path) -> list[str]:
         raise SystemExit(2)
 
     violations: list[str] = []
+    compilers: set[str] = set()
     for entry in entries:
+        argv = tokens_of(entry)
+        compilers.add(compiler_of(argv))
         source = str(entry.get("file", ""))
         if not source or is_exempt(source):
             continue
-        problem = flag_problem(tokens_of(entry))
+        problem = flag_problem(argv)
         if problem is not None:
             violations.append(f"{source}: {problem}")
-    return violations
+    return violations, compilers
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +228,30 @@ SELFTEST_CASES: list[tuple[str, str, list[str], bool]] = [
     ),
 ]
 
+# Compiler-classification cases: compiler_of must name the driver family from
+# an argv the way the real databases spell it (absolute path, versioned name,
+# a launcher prefix). Asserted so the #356 second-arm guard cannot be defeated
+# by a classifier that quietly folds gcc into clang or "other".
+COMPILER_SELFTEST_CASES: list[tuple[str, list[str], str]] = [
+    ("clang-18 absolute path", ["/usr/bin/clang-18", "-c", "f.c"], "clang"),
+    ("clang++-18 driver", ["clang++-18", "-c", "f.cc"], "clang"),
+    ("gcc-14 absolute path", ["/usr/local/bin/gcc-14", "-c", "f.c"], "gcc"),
+    ("g++-14 driver", ["g++-14", "-c", "f.cc"], "gcc"),
+    ("bare gcc", ["gcc", "-c", "f.c"], "gcc"),
+    ("ccache-wrapped gcc-14", ["ccache", "gcc-14", "-c", "f.c"], "gcc"),
+    ("unknown driver", ["tcc", "-c", "f.c"], "other"),
+]
+
+# Second-arm coverage cases: with both arms required, a missing family must be
+# reported (fires) and a complete set must report nothing (quiet). This is the
+# property the #356 acceptance names -- a silently-dropped gcc arm reads as a
+# pass unless its absence is turned into a hard finding here.
+COVERAGE_SELFTEST_CASES: list[tuple[str, set[str], list[str], list[str]]] = [
+    ("only clang seen -> gcc missing", {"clang"}, ["clang", "gcc"], ["gcc"]),
+    ("only gcc seen -> clang missing", {"gcc"}, ["clang", "gcc"], ["clang"]),
+    ("both seen -> nothing missing", {"clang", "gcc"}, ["clang", "gcc"], []),
+]
+
 
 def selftest() -> int:
     """Prove the detector fires and stays quiet where it must."""
@@ -194,6 +264,18 @@ def selftest() -> int:
                 f"got {'a violation' if fired else 'none'}"
             )
 
+    for name, argv, want in COMPILER_SELFTEST_CASES:
+        got = compiler_of(argv)
+        if got != want:
+            failures.append(f"  compiler_of {name}: expected {want!r}, got {got!r}")
+
+    for name, seen, required, want_missing in COVERAGE_SELFTEST_CASES:
+        got_missing = missing_required_compilers(seen, required)
+        if got_missing != want_missing:
+            failures.append(
+                f"  coverage {name}: expected missing {want_missing}, got {got_missing}"
+            )
+
     if failures:
         sys.stderr.write("check_tool_warning_flags.py --selftest: FAILED\n")
         sys.stderr.write("\n".join(failures) + "\n")
@@ -203,9 +285,61 @@ def selftest() -> int:
     quiet = len(SELFTEST_CASES) - fires
     print(
         f"check_tool_warning_flags.py --selftest: PASS "
-        f"({fires} must-fire, {quiet} must-stay-quiet cases)"
+        f"({fires} must-fire, {quiet} must-stay-quiet flag cases; "
+        f"{len(COMPILER_SELFTEST_CASES)} classifier, "
+        f"{len(COVERAGE_SELFTEST_CASES)} second-arm coverage cases)"
     )
     return 0
+
+
+def _scan_databases(paths: list[str]) -> tuple[list[str], set[str]]:
+    """Scan every database path; return (violations, compiler families seen).
+
+    Exits (SystemExit 2) when a path is missing, matching check_database's
+    fatal handling of an empty or unreadable database -- a gate must never
+    report a pass for a database it could not inspect.
+    """
+    violations: list[str] = []
+    seen: set[str] = set()
+    for name in paths:
+        path = Path(name)
+        if not path.is_file():
+            sys.stderr.write(
+                f"check_tool_warning_flags.py: FATAL -- {path} does not exist.\n"
+                "  Configure the tool with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON first.\n"
+            )
+            raise SystemExit(2)
+        db_violations, db_compilers = check_database(path)
+        violations += db_violations
+        seen |= db_compilers
+    return violations, seen
+
+
+def _report_violations(violations: list[str]) -> None:
+    """Print every first-party translation unit found below the warning bar."""
+    sys.stderr.write(
+        f"check_tool_warning_flags.py: {len(violations)} first-party "
+        "translation unit(s) below the project warning bar:\n\n"
+    )
+    for line in sorted(violations):
+        sys.stderr.write(f"  {line}\n")
+    sys.stderr.write(
+        "\nFirst-party sources are held to -Wall -Wextra -Werror everywhere\n"
+        "else in this tree (NASA Power of 10 Rule 10). Only libs/third_party/\n"
+        "SOUP may be compiled -w. Fix the warning; do not re-suppress it.\n"
+    )
+
+
+def _report_missing_arm(missing: list[str], seen: set[str]) -> None:
+    """Print the silently-dropped compiler-arm failure (#356)."""
+    sys.stderr.write(
+        "check_tool_warning_flags.py: FATAL -- required compiler arm(s) "
+        f"never exercised: {', '.join(missing)}\n"
+        f"  databases were compiled by: {', '.join(sorted(seen)) or '(none)'}\n"
+        "  The tools-build gate compiles the host tools under clang-18 AND\n"
+        "  gcc-14 (#356) so the warnings each catches but the other misses\n"
+        "  are both held. A silently-dropped arm would read as a pass.\n"
+    )
 
 
 def main() -> int:
@@ -217,11 +351,20 @@ def main() -> int:
         action="store_true",
         help="prove the detector fires and stays quiet, then exit",
     )
+    parser.add_argument(
+        "--require-compilers",
+        default="",
+        metavar="FAMILY[,FAMILY...]",
+        help=(
+            "comma-separated compiler families (e.g. clang,gcc) that must each "
+            "drive at least one database; the #356 second-arm guard. A single "
+            "comma-joined value keeps it order-independent of the database list."
+        ),
+    )
     args = parser.parse_args()
 
     if args.selftest:
         return selftest()
-
     if not args.databases:
         sys.stderr.write(
             "check_tool_warning_flags.py: FATAL -- no compile database given.\n"
@@ -230,36 +373,20 @@ def main() -> int:
         )
         return 2
 
-    violations: list[str] = []
-    checked = 0
-    for name in args.databases:
-        path = Path(name)
-        if not path.is_file():
-            sys.stderr.write(
-                f"check_tool_warning_flags.py: FATAL -- {path} does not exist.\n"
-                "  Configure the tool with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON first.\n"
-            )
-            return 2
-        violations += check_database(path)
-        checked += 1
-
+    required = [fam for fam in args.require_compilers.split(",") if fam]
+    violations, seen = _scan_databases(args.databases)
     if violations:
-        sys.stderr.write(
-            f"check_tool_warning_flags.py: {len(violations)} first-party "
-            "translation unit(s) below the project warning bar:\n\n"
-        )
-        for line in sorted(violations):
-            sys.stderr.write(f"  {line}\n")
-        sys.stderr.write(
-            "\nFirst-party sources are held to -Wall -Wextra -Werror everywhere\n"
-            "else in this tree (NASA Power of 10 Rule 10). Only libs/third_party/\n"
-            "SOUP may be compiled -w. Fix the warning; do not re-suppress it.\n"
-        )
+        _report_violations(violations)
+        return 1
+    missing = missing_required_compilers(seen, required)
+    if missing:
+        _report_missing_arm(missing, seen)
         return 1
 
+    arms = f", arms: {', '.join(sorted(seen))}" if required else ""
     print(
-        f"check_tool_warning_flags.py: OK ({checked} compile database(s), "
-        "every first-party TU at -Wall -Wextra -Werror)"
+        f"check_tool_warning_flags.py: OK ({len(args.databases)} compile "
+        f"database(s), every first-party TU at -Wall -Wextra -Werror{arms})"
     )
     return 0
 
