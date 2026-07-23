@@ -15,9 +15,9 @@
  * Bring-up: CGC + SysTick + SCI8 + LEDs + MSTP. Once a second the loop
  * clears the framebuffer, issues the fill, and reports
  * ``"drw: fill match=Y\r\n"`` (or ``match=N``) on the J-Link OB CDC channel.
- * LED1 toggles on a clean fill; LED2 toggles on a mismatch. On silicon today
- * the DRW is inert (issue #247), so the fill lands nothing and the banner
- * reads ``match=N``; see the note below.
+ * LED1 toggles on a clean fill; LED2 toggles on a mismatch. On silicon the DRW
+ * paints exactly the requested rectangle once the graphics power domain is up
+ * (issue #247 resolved), so the banner reads ``match=Y``.
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers. The DRW FB
  * cache is left off (``enable_caches = false``) so the CPU reads the
@@ -26,15 +26,13 @@
  * D-cache (the framebuffer lives in cacheable SRAM) -- see the bench plan.
  *
  * @note **Headless-emulator status.** ``tools/board_sim`` models the DRW engine
- * as INERT (``board_periph_drw.c``), faithful to real silicon where the D/AVE 2D
- * engine never rasterizes (issue #247): the register sequence completes (writes
- * accepted, ``ra8_drw_wait_idle`` returns), but the box fill lands NO pixel, so
- * the centre pixel stays clear and the banner honestly reports ``match=N``
- * (``g_drw_match = 0``) -- the same result the bench gives. The
- * ``board_sim_smoke.sh`` gate keys on that ``match=N`` line. This demo stays in
- * ``hw_pending/`` and CANNOT report ``match=Y`` in SIL or on hardware until #247
- * brings the engine to life; the simulator proves only the driver register
- * sequence, not a working D/AVE 2D engine. See ``README.md`` for the bench plan.
+ * faithfully (``board_periph_drw.c``): with the graphics power domain on it
+ * rasterizes the ORIGIN-anchored bounding box, so the register sequence paints
+ * the same 16x16 green rectangle the bench does and the banner reports
+ * ``match=Y`` in SIL and on hardware alike (SIM == HIL). This register/immediate
+ * fill renders a byte-clean single rectangle; for a loop where the DRW clears
+ * and repaints the framebuffer with no CPU write race, see ``drw_dlist_demo``
+ * (the display-list route).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
