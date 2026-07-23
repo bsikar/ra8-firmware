@@ -35,6 +35,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "board_periph_mstp_internal.h"
 #include "board_usb.h"
 #include "board_usb_host.h"
 
@@ -471,6 +472,14 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
   *handled                          = true;
   const board_periph_block_t* block = block_for_addr(addr);
   if ((block != nullptr) && !block->observe) {
+    if (board_mstp_addr_stopped(addr)) {
+      /* Module-stopped peripheral: unclocked on silicon, so it reads 0 and the
+       * modelled block must NOT answer (#405). This is the same fidelity shape
+       * as the #247 graphics power domain -- a block whose enable was never
+       * cancelled does nothing on hardware, and now nothing in the sim. */
+      board_mstp_note_gated_access(addr, false);
+      return 0U;
+    }
     return block->read(uc, addr, size);
   }
   /* An observe-only block (e.g. GLCDC) does not own its window: fall through so
@@ -502,6 +511,13 @@ void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
   *handled                          = true;
   const board_periph_block_t* block = block_for_addr(addr);
   if (block != nullptr) {
+    if (!block->observe && board_mstp_addr_stopped(addr)) {
+      /* Module-stopped peripheral: unclocked on silicon, so the write is
+       * dropped (#405). Reported handled -- the access is consumed and
+       * discarded exactly as the hardware discards it (no fault, no flag). */
+      board_mstp_note_gated_access(addr, true);
+      return;
+    }
     block->write(uc, addr, size, value);
     /* An observe-only block snoops the write but does not consume it: report
      * NOT handled so the caller's sparse model also records it (the panel
