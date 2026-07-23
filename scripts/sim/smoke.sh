@@ -219,12 +219,76 @@ if [ "${1:-}" = "--selftest" ]; then
       ;;
   esac
 
+  # --- a sim override that has CONVERGED with hil.conf is stale (#398) ------
+  #
+  # uart_expect() reads each app's banner from its hil.conf (SIM == HIL, the ONE
+  # source of truth). uart_expect_override() is the only sanctioned exception --
+  # a sim banner that DIFFERS from hil.conf on purpose, with a stated reason. If
+  # an override's value ever EQUALS the app's HIL_EXPECT, the divergence is gone
+  # and the override is pure duplication again: exactly the drift #398 removed,
+  # relocated into the table. Fail so it is DELETED (the app then reads hil.conf
+  # like every other banner app) rather than left to rot. Without this tripwire
+  # the override table just becomes the new drift site.
+  #
+  # The override apps are parsed from the case arms themselves, so there is no
+  # second list to fall out of step with the table.
+  ov_apps="$(awk '/^uart_expect_override\(\)/{f=1} f&&/^}/{f=0} f' \
+    "$ROOT/scripts/sim/smoke_apps.sh" |
+    grep -oE '^[[:space:]]+[a-z0-9_]+\)' | tr -d ' )')"
+  if [ -z "$ov_apps" ]; then
+    echo "  FAIL uart_expect_override has no parsable entries -- the staleness"
+    echo "       check would police nothing"
+    sel_fail=1
+  fi
+  for sapp in $ov_apps; do
+    sov="$(uart_expect_override "$sapp")"
+    she="$(uart_expect_from_hil_conf "$sapp")"
+    if [ -z "$sov" ]; then
+      echo "  FAIL override '$sapp' parsed from the table returns no value"
+      sel_fail=1
+    elif [ -z "$she" ]; then
+      echo "  FAIL override '$sapp' has no hil.conf HIL_EXPECT to diverge FROM"
+      sel_fail=1
+    elif uart_override_is_stale "$sov" "$she"; then
+      echo "  FAIL override '$sapp' has CONVERGED with hil.conf (sim=hil='$sov')."
+      echo "       Delete it from uart_expect_override -- the app should read its"
+      echo "       banner from hil.conf like every other banner app (#398)."
+      sel_fail=1
+    fi
+  done
+  # Prove the staleness predicate fires on an equal pair and stays quiet on a
+  # differing one, with no app or hil.conf involved -- both directions.
+  if ! uart_override_is_stale "same banner" "same banner"; then
+    echo "  FAIL uart_override_is_stale did not flag a converged (equal) override"
+    sel_fail=1
+  fi
+  if uart_override_is_stale "sim-only banner" "bench banner"; then
+    echo "  FAIL uart_override_is_stale flagged a genuinely divergent override"
+    sel_fail=1
+  fi
+
+  # --- every banner app must resolve to a hil.conf HIL_EXPECT (#398) --------
+  #
+  # A name in uart_banner_apps with no hil.conf HIL_EXPECT would assert the
+  # empty string -- i.e. pass on ANY output, the check that checks nothing. Make
+  # that impossible: a listed app must supply its banner from hil.conf.
+  for sapp in $uart_banner_apps; do
+    if [ -z "$(uart_expect_from_hil_conf "$sapp")" ]; then
+      echo "  FAIL banner app '$sapp' has no hil.conf HIL_EXPECT -- it would"
+      echo "       assert the empty string (pass on any output). Add its"
+      echo "       hil.conf, or drop it from uart_banner_apps."
+      sel_fail=1
+    fi
+  done
+
   if [ "$sel_fail" -ne 0 ]; then
     echo "smoke.sh: --selftest FAILED"
     exit 1
   fi
   echo "smoke.sh: --selftest OK ($(wc -w <<<"$defined") verdict function(s) all dispatched;" \
-    "${#SMOKE_CLASS_VERDICTS[@]} class(es) all non-empty and defined; empty-class check fires)"
+    "${#SMOKE_CLASS_VERDICTS[@]} class(es) all non-empty and defined; empty-class check fires;" \
+    "$(wc -w <<<"$ov_apps") override(s) non-stale;" \
+    "$(wc -w <<<"$uart_banner_apps") banner app(s) resolve to a hil.conf HIL_EXPECT)"
   exit 0
 fi
 
