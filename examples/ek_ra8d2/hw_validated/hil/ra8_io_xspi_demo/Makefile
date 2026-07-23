@@ -2,7 +2,7 @@
 # Per-app Makefile for the `ra8_io_xspi_demo` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_pending/ra8_io_xspi_demo/
+#   cd examples/ek_ra8d2/hw_validated/hil/ra8_io_xspi_demo/
 #   make             # configure + build -> build/ra8_io_xspi_demo.elf
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger

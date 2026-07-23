@@ -1,7 +1,8 @@
 # MISRA-C 2012 Deviation Register
 
-**Last refreshed**: 2026-05-03 (cppcheck-only policy verified; D-001..D-005
-remain the active set; deviation counts unchanged from 2026-05-02 baseline).
+**Last refreshed**: 2026-07-22 (D-001..D-007 active; D-007 records the
+Rule 14.2 C23-attribute parse phantom on `RA8_PROTECTED_WRITE` inside
+`[[nodiscard]]` functions -- same tooling gap as D-002 / D-005).
 
 This document records every formal deviation taken against MISRA-C 2012
 in the ra8-firmware codebase, following the deviation procedure in
@@ -103,6 +104,7 @@ gap-closure plan in `docs/MISRA.md`:
 | D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 |
 | D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 |
 | D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 |
+| D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 |
 
 `MAR` = mandatory annual review date (or earlier review trigger when
 the underlying tooling assumption changes).
@@ -647,9 +649,97 @@ object-level).
 
 ---
 
+## D-007: Rule 14.2 -- for loop shall be well formed
+
+- **Rule ID**: misra-c2012-14.2.
+- **Rule text (paraphrased per MISRA licence)**: a `for` loop shall
+  be well formed (the loop counter is initialised in the first clause,
+  tested in the second, modified only in the third, and not modified
+  in the body).
+- **Category**: Required.
+- **Disposition**: Tooling gap (false positive).
+- **Scope**: cppcheck audit baseline only. The `RA8_PROTECTED_WRITE`
+  scoped-unlock macro (`libs/ra8_hal/inc/ra8_register_protection.h`)
+  expands to a run-once `for` loop whose counter is initialised,
+  tested and modified only in the three loop-header clauses and never
+  in the body -- a well-formed loop.
+- **Files affected**: the phantom fires only where the macro sits
+  inside a `[[nodiscard]]` function. Beyond the `libs/ra8_hal/src/ra8_cgc*.c`
+  hits already frozen in the baseline before this register was
+  extended, the sites are:
+
+  | File                                     | Hits |
+  |------------------------------------------|-----:|
+  | `libs/ra8_hal/src/ra8_bkup.c`            |  12  |
+  | `libs/ra8_hal/src/ra8_bkup_tamper.c`     |   2  |
+  | `libs/ra8_hal/src/ra8_bkup_security.c`   |   1  |
+
+  The `ra8_bkup*` hits appeared when the VBATT / tamper bring-up moved
+  its register writes inside `RA8_PROTECTED_WRITE` windows (issue #131)
+  and the baseline was not extended at the time; the `ra8_cgc*` hits
+  have carried the identical phantom in the baseline since those
+  drivers were first audited.
+
+### Root cause
+
+Same C23-parse defect as D-002 and D-005. cppcheck (`--std=c11`,
+which the audit is pinned to because 2.13/2.20 reject `--std=c23`)
+raises `syntaxError` on a `[[nodiscard]]` function definition and its
+recovery mis-reads the function body. When the body opens with the
+`for` loop `RA8_PROTECTED_WRITE` expands to, the damaged parse charges
+it Rule 14.2. The same macro in a plain (non-`[[nodiscard]]`)
+function -- for example a `static void` helper -- parses cleanly and
+draws no 14.2, which is the reproducer that isolates the cause: it is
+the attribute, not the loop.
+
+### Why this is not a real defect
+
+- `RA8_PROTECTED_WRITE` expands to
+  `for (uint32_t ra8_prot_once_ = ra8_prot_scope_begin(uv); ra8_prot_once_ != 0U; ra8_prot_once_ = ra8_prot_scope_end())`.
+  The loop counter `ra8_prot_once_` is initialised in clause 1, tested
+  in clause 2 and assigned in clause 3; the body never reads or writes
+  it. That is precisely a well-formed loop.
+- arm-none-eabi-gcc builds every affected translation unit with
+  `-Wall -Wextra -Werror`; a genuinely malformed loop would not survive
+  the cross build or the host unit-test build.
+
+### Alternative verification (until cppcheck ships C23)
+
+- arm-none-eabi-gcc cross build with the warning flags above.
+- Host unit-test build (`make test`), a second independent compiler
+  pass over the same sources.
+- The Phase 4 commercial-tool re-audit (LDRA / Polyspace / QAC) will
+  provide authoritative MISRA evidence at certification time.
+
+### Standards basis
+
+Same as D-002. Per IEC 61508-3:2010 section 7.4.4.4, the qualified
+compiler is the authoritative checker; the unqualified open-source
+audit tool is supplementary.
+
+### Risk assessment
+
+- **Likelihood of escape**: zero. A real malformed loop is a cross
+  build error.
+- **Severity of escape**: not applicable (likelihood is zero).
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Mandatory annual review**: 2026-11-02 (shared cppcheck-cadence
+  window with D-002, D-003 and D-005).
+- **Trigger for early review**: cppcheck shipping `--std=c23`; or any
+  change that removes `[[nodiscard]]` from the affected functions or
+  reworks `RA8_PROTECTED_WRITE` away from a `for`-loop guard.
+
+---
+
 ## Change log
 
 | Date       | Author              | Change                              |
 |------------|---------------------|-------------------------------------|
 | 2026-05-02 | Brighton Sikarskie  | Initial population (D-001..D-005).  |
 | 2026-07-18 | Brighton Sikarskie  | Add D-006 (Rule 20.5, NSC veneer).  |
+| 2026-07-22 | Brighton Sikarskie  | Add D-007 (Rule 14.2, C23 attribute phantom). |

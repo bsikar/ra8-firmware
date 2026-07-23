@@ -3,6 +3,19 @@
 Headless HIL gate proving a **large-structure EPUB opens on the firmware static
 arena** (#144 bug 1 regression net).
 
+## Status: demoted to hw_pending (#170 audit)
+
+This app **does not pass on silicon** and lives under `hw_pending/`, not
+`hw_validated/hil/`. On the EK-RA8D2 bench (UART reader attached before the
+reset, so the #390 print-once race cannot explain it) it prints
+`epub-stress-hil: boot` then `epub-stress-hil: FAIL toc`: the NCX navPoint
+extraction this gate exists to hold comes back short of 60 on the real part.
+The fixture is baked in memory -- no SD card, no external hardware, no
+provisioning -- so this is a firmware defect, not a rig gap, and it is tracked.
+board_sim cannot arbitrate it either (it stops on an Armv8.1-M encoding the
+Unicorn M33 model has no seam for). See `hil.conf` for the full capture.
+Re-promote only from a bench capture showing the PASS banner.
+
 ## The bug it pins (#144)
 
 A ~7 MB real Boox novel was reported to fail `ra8_epub_open` with
@@ -64,7 +77,7 @@ the shared 96 KiB arena, no fault):
 ## Regenerating the fixture
 
 ```
-cd examples/ek_ra8d2/hw_validated/hil/epub_stress
+cd examples/ek_ra8d2/hw_pending/epub_stress
 python3 make_stress_fixture.py   # rewrites epub_stress_fixture.h
 ```
 
@@ -72,5 +85,5 @@ python3 make_stress_fixture.py   # rewrites epub_stress_fixture.h
 
 ```
 make epub_stress
-make -C examples/ek_ra8d2/hw_validated/hil/epub_stress flash
+make -C examples/ek_ra8d2/hw_pending/epub_stress flash
 ```

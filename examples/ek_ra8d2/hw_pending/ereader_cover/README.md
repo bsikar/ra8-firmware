@@ -4,6 +4,19 @@ Headless HIL gate for the **EPUB cover-art** path (#143) -- the headline "show
 the book cover" pipeline, end to end: pull the cover image out of an `.epub`,
 decode it, scale it to fit, and render it.
 
+## Status: demoted to hw_pending (#170 audit)
+
+This app **does not pass on silicon** and lives under `hw_pending/`, not
+`hw_validated/hil/`. On the EK-RA8D2 bench (UART reader attached before the
+reset, so the #390 print-once race cannot explain it) it prints
+`ereader-cover-hil: boot` then `ereader-cover-hil: FAIL open`: `ra8_epub_open`
+fails outright on the real part against the same baked in-memory fixture the
+host tests use. There is no SD card, external hardware, or provisioning in this
+path, so this is a firmware defect, not a rig gap, and it is tracked. board_sim
+cannot arbitrate it either (it stops on an Armv8.1-M encoding the Unicorn M33
+model has no seam for). See `hil.conf` for the full capture. Re-promote only
+from a bench capture showing the PASS banner and its CRC.
+
 ## What it does
 
 1. `ra8_epub_open` -- opens a baked, cover-bearing EPUB3 (`epub_cover_fixture.h`)
@@ -55,7 +68,7 @@ the board_sim CRC gate plus those on-silicon precedents cover it end to end.
 ## Regenerating the fixture
 
 ```
-cd examples/ek_ra8d2/hw_validated/hil/ereader_cover
+cd examples/ek_ra8d2/hw_pending/ereader_cover
 python3 make_cover_fixture.py     # rewrites epub_cover_fixture.h (needs Pillow)
 ```
 
@@ -66,5 +79,5 @@ After changing the cover, re-read the CRC the board prints and update the
 
 ```
 make ereader_cover
-make -C examples/ek_ra8d2/hw_validated/hil/ereader_cover flash
+make -C examples/ek_ra8d2/hw_pending/ereader_cover flash
 ```

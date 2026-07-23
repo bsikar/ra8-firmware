@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/epub_stress/main.c
+ * @file examples/ek_ra8d2/hw_pending/epub_stress/main.c
  * @brief On-silicon HIL: large-structure EPUB opens on the static arena (#144).
  *
  * @details

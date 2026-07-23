@@ -269,27 +269,36 @@ static void test_fill_rect_happy(void)
   TEST_ASSERT_EQ(expected_size, *ra8_drw_reg32(k_ra8_drw_off_size));
   TEST_ASSERT_EQ(k_ra8_drw_test_rect_color, *ra8_drw_reg32(k_ra8_drw_off_color1));
 
-  const uint32_t l1 = (uint32_t)((int32_t)k_ra8_drw_test_rect_x * (int32_t)k_ra8_drw_test_subpixel);
-  const uint32_t l2 = (uint32_t)(((int32_t)k_ra8_drw_test_rect_x + (int32_t)k_ra8_drw_test_rect_w) *
-                                 (int32_t)k_ra8_drw_test_subpixel);
-  const uint32_t l3 = (uint32_t)((int32_t)k_ra8_drw_test_rect_y * (int32_t)k_ra8_drw_test_subpixel);
-  const uint32_t l4 = (uint32_t)(((int32_t)k_ra8_drw_test_rect_y + (int32_t)k_ra8_drw_test_rect_h) *
-                                 (int32_t)k_ra8_drw_test_subpixel);
-  TEST_ASSERT_EQ(l1, *ra8_drw_reg32(k_ra8_drw_off_l1start));
-  TEST_ASSERT_EQ(l2, *ra8_drw_reg32(k_ra8_drw_off_l2start));
-  TEST_ASSERT_EQ(l3, *ra8_drw_reg32(k_ra8_drw_off_l3start));
-  TEST_ASSERT_EQ(l4, *ra8_drw_reg32(k_ra8_drw_off_l4start));
+  /* An axis-aligned rectangle is positioned by ORIGIN, not by the limiters.
+   * HUM Ch 62.6.2 p 3716 has the engine scan "the whole bounding box", so
+   * ORIGIN must point at the rect's own top-left pixel and SIZE gives the
+   * extent. Programming the limiters with absolute pixel coordinates instead
+   * is what painted a 16x16 request as 8x8 on silicon: LnSTART is the decision
+   * value at the bounding box top-left corner, not a coordinate. */
+  const uint32_t expected_origin =
+    (uint32_t)k_ra8_drw_test_fb_addr_lo +
+    ((((uint32_t)k_ra8_drw_test_rect_y * (uint32_t)k_ra8_drw_test_pitch_px) +
+      (uint32_t)k_ra8_drw_test_rect_x) *
+     (uint32_t)k_ra8_drw_bytes_px_32bpp);
+  TEST_ASSERT_EQ(expected_origin, *ra8_drw_reg32(k_ra8_drw_off_origin));
 
-  TEST_ASSERT_EQ(k_ra8_drw_test_subpixel, *ra8_drw_reg32(k_ra8_drw_off_l1xadd));
-  TEST_ASSERT_EQ(k_ra8_drw_test_subpixel, *ra8_drw_reg32(k_ra8_drw_off_l2xadd));
+  /* Every spatial limiter is disabled and cleared: the bounding box scan IS
+   * the rectangle, so no half-plane is needed to carve it out. */
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l1start));
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l2start));
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l3start));
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l4start));
+
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l1xadd));
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l2xadd));
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l3xadd));
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l4xadd));
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l1yadd));
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l2yadd));
-  TEST_ASSERT_EQ(k_ra8_drw_test_subpixel, *ra8_drw_reg32(k_ra8_drw_off_l3yadd));
-  TEST_ASSERT_EQ(k_ra8_drw_test_subpixel, *ra8_drw_reg32(k_ra8_drw_off_l4yadd));
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l3yadd));
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_l4yadd));
 
-  TEST_ASSERT_EQ(k_ra8_drw_control_quad_box, *ra8_drw_reg32(k_ra8_drw_off_control));
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_control));
 
   TEST_END("drw fill_rect happy");
 }
@@ -380,7 +389,10 @@ static void test_blit_textured_rect(void)
     .color_argb8888 = 0UL,
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_blit_textured_rect(&rect));
-  TEST_ASSERT_EQ(k_ra8_drw_control_quad_box, *ra8_drw_reg32(k_ra8_drw_off_control));
+  /* Like the solid fill, the blit extent is the ORIGIN-anchored bounding box
+   * (HUM Ch 62.6.2 p 3716), so CONTROL enables no spatial limiter. The U and V
+   * texture limiters are a separate unit and stay programmed. */
+  TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_control));
   TEST_ASSERT_EQ(k_ra8_drw_subpixel_unit, *ra8_drw_reg32(k_ra8_drw_off_luxadd));
   TEST_ASSERT_EQ(k_ra8_drw_subpixel_unit, *ra8_drw_reg32(k_ra8_drw_off_lvyaddi));
 

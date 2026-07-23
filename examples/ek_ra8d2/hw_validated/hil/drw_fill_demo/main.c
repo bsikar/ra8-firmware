@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/drw_fill_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/drw_fill_demo/main.c
  * @brief DRW 2D-engine framebuffer fill-rect + verify demo (EK-RA8D2)
  *
  * @par Tag
