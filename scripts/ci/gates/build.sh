@@ -74,6 +74,15 @@ _tb_ra8_viewer() (
     return 1
   fi
   echo "tools-build: headless render wrote $(wc -c <"$ppm") bytes of P6"
+
+  # #298: the viewer meets attacker-supplied archives first, so its untrusted-
+  # allocation guards (page-buffer cap, JOF atlas/band bounds) are exercised
+  # here. The corpus refuses a lying/oversized/overflowing header cleanly and
+  # still decodes a valid atlas -- a regression would otherwise need a human at
+  # a window to notice.
+  echo "tools-build: ra8_viewer malformed-input security corpus"
+  bash "$REPO_ROOT/tools/ra8_viewer/tests/run_corpus.sh" \
+    "$root/ra8_viewer/ra8_viewer" "$root/ra8_viewer_corpus"
 )
 
 # The remaining first-party CMake tools no job built. #335 asked for these to
