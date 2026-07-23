@@ -118,6 +118,10 @@ typedef enum : uint32_t {
   k_crc_b1_ofs    = 9U,    /**< Chunk CRC second byte offset.       */
   k_crc_b2_ofs    = 10U,   /**< Chunk CRC third byte offset.        */
   k_crc_b3_ofs    = 11U,   /**< Chunk CRC last byte offset.         */
+  k_ihdr_h_b1     = 5U,    /**< IHDR height byte 1 (big-endian).    */
+  k_ihdr_h_b3     = 7U,    /**< IHDR height byte 3 (big-endian).    */
+  k_ihdr_color    = 9U,    /**< IHDR colour-type byte offset.       */
+  k_name_cap      = 512U,  /**< Comic name-arena capacity, bytes.   */
 } comic_tiles_png_t;
 
 /* ---------------------------------------------------------------------------
@@ -141,7 +145,7 @@ static uint8_t s_atlas[k_atlas_cap];
 /** @brief Comic page-index storage. */
 static ra8_comic_page_t s_pages[8];
 /** @brief Comic name arena. */
-static char s_names[512];
+static char s_names[k_name_cap];
 /** @brief One extracted encoded page. */
 static uint8_t s_pagebuf[k_png_cap];
 /** @brief Whole-decode scratch arena (the cap under test). */
@@ -216,11 +220,11 @@ static void png_build_rgb(uint32_t w, uint32_t h)
   ihdr[2]                      = (uint8_t)((w >> (uint32_t)k_shift_b1) & (uint32_t)k_byte_mask);
   ihdr[3]                      = (uint8_t)(w & (uint32_t)k_byte_mask);
   ihdr[4]                      = (uint8_t)(h >> (uint32_t)k_shift_b3);
-  ihdr[5]                      = (uint8_t)((h >> (uint32_t)k_shift_b2) & (uint32_t)k_byte_mask);
+  ihdr[k_ihdr_h_b1]            = (uint8_t)((h >> (uint32_t)k_shift_b2) & (uint32_t)k_byte_mask);
   ihdr[6]                      = (uint8_t)((h >> (uint32_t)k_shift_b1) & (uint32_t)k_byte_mask);
-  ihdr[7]                      = (uint8_t)(h & (uint32_t)k_byte_mask);
+  ihdr[k_ihdr_h_b3]            = (uint8_t)(h & (uint32_t)k_byte_mask);
   ihdr[8]                      = (uint8_t)k_png_bitdepth8;
-  ihdr[9]                      = (uint8_t)k_png_color_rgb;
+  ihdr[k_ihdr_color]           = (uint8_t)k_png_color_rgb;
   png_chunk("IHDR", ihdr, (uint32_t)k_png_ihdr_len);
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
