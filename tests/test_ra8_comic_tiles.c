@@ -409,6 +409,11 @@ static void test_footprint_and_budget(void)
  *          (`k_ra8_err_no_mem`) yet the tile path opens it and every tile is
  *          byte-exact at full resolution, with resident RAM bounded by the cell
  *          budget. A re-fetch is a cache hit, not a re-decode.
+ *
+ * @par MC/DC:
+ * The `ra8_comic_tiles_over_budget` `&&` decision is exercised here only as a
+ * control (a single true vector); its full N+1 MC/DC vector set lives in
+ * ::test_footprint_and_budget.
  */
 static void test_large_page_opens(void)
 {
@@ -482,6 +487,9 @@ static void test_large_page_opens(void)
  * @test comic_tiles_zoom_subrect
  * @details The loupe property: a single interior tile is fetched and verified
  *          full-resolution without decoding the whole page or its neighbours.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test)
  */
 static void test_zoom_subrect(void)
 {
@@ -513,6 +521,11 @@ static void test_zoom_subrect(void)
  * @details A page under the budget stays on the whole-decode fast path: the
  *          same modest arena that capped the big page decodes the small page,
  *          so the existing golden render is preserved.
+ *
+ * @par MC/DC:
+ * The `ra8_comic_tiles_over_budget` `&&` decision is exercised here only as a
+ * control (a single false vector); its full N+1 MC/DC vector set lives in
+ * ::test_footprint_and_budget.
  */
 static void test_small_page_flat(void)
 {
@@ -565,6 +578,9 @@ static void test_small_page_flat(void)
  * @test comic_tiles_page_turn_epoch
  * @details Re-importing (a page turn) bumps the epoch so a same-coordinate tile
  *          fetch returns the NEW page's pixels, never a stale cached tile.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test)
  */
 static void test_page_turn_epoch(void)
 {
@@ -609,6 +625,9 @@ static void test_page_turn_epoch(void)
  * @details Fail-closed guards on every entry point: null pointers, unbound
  *          reader, out-of-range tiles, an unsupported source, and a too-small
  *          atlas store.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test)
  */
 static void test_guards(void)
 {
