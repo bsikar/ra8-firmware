@@ -162,11 +162,11 @@ static uint32_t ulpt_cell_value(const ulpt_channel_t* c, uint64_t off)
   if (off < (uint64_t)k_ulpt_off_cma) {
     return c->counter;
   }
-  /* HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187 (ULPTCMA) */
+  /* HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187 -- ULPTCMA */
   if (off < (uint64_t)k_ulpt_off_cmb) {
     return c->cmpa;
   }
-  /* HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187 (ULPTCMB) */
+  /* HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187 -- ULPTCMB */
   if (off < (uint64_t)k_ulpt_off_cr) {
     return c->cmpb;
   }
@@ -264,10 +264,10 @@ static void ulpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
     c->counter = (uint32_t)value;
     c->reload  = (uint32_t)value;
   } else if (off < (uint64_t)k_ulpt_off_cmb) {
-    /* HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187 (ULPTCMA) */
+    /* HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187 -- ULPTCMA */
     c->cmpa = (uint32_t)value;
   } else if (off < (uint64_t)k_ulpt_off_cr) {
-    /* HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187 (ULPTCMB) */
+    /* HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187 -- ULPTCMB */
     c->cmpb = (uint32_t)value;
   } else if (off == (uint64_t)k_ulpt_off_cr) {
     ulpt_write_cr(c, (uint8_t)value);
@@ -296,7 +296,7 @@ static void ulpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
 static void ulpt_tick_channel(uc_engine* uc, uint32_t ch)
 {
   ulpt_channel_t* c = &s_ulpt[ch];
-  /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 (TSTART gate) */
+  /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 -- TSTART gate */
   if ((c->cr & (uint8_t)k_ulpt_cr_tstart) == 0U) {
     return; /* stopped: counter holds */
   }
@@ -312,7 +312,7 @@ static void ulpt_tick_channel(uc_engine* uc, uint32_t ch)
   /* Raise only on the rising edge of TUNDF -- one wake per armed period, until
    * the firmware clears it by stopping/re-arming the channel. */
   if ((c->cr & (uint8_t)k_ulpt_cr_tundf) == 0U) {
-    /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 (TUNDF set) */
+    /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 -- TUNDF set */
     c->cr |= (uint8_t)k_ulpt_cr_tundf;
     c->underflows++;
     if (ch == 0U) {

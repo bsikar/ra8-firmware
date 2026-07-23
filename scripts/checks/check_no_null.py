@@ -3,17 +3,22 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """check_no_null.py -- enforce the C23 nullptr-only rule on first-party code.
 
-Project policy: production code (libs/, src/, port/, examples/<app>/) must
-use ``nullptr`` instead of ``NULL`` for null pointer constants. This script
-walks staged or all-tracked source files and rejects bare ``NULL`` tokens
-in code positions. It allows NULL in:
+Project policy: first-party C must use ``nullptr`` instead of ``NULL`` for
+null pointer constants. This script walks staged or all-tracked source files
+and rejects bare ``NULL`` tokens in code positions. It allows NULL in:
 
   * comment lines and inline `/* ... */` / `// ...` comments
   * string literals
   * Doxygen annotation prose
   * UX_NULL / similar vendor macros (USBX expects literal NULL)
 
-Vendored trees under libs/third_party/ are skipped wholesale.
+Scope is DERIVED from git ls-files (#358), so tools/ -- host tooling held to
+the same C23 bar, and silently omitted by the old ROOT_DIRS tuple -- is now in
+scope, along with every future top-level directory. Vendored SOUP
+(libs/third_party/, libs/fonts/, port/threadx/, ...) is skipped wholesale, and
+two first-party trees are exempt for stated reasons (see EXEMPT_PREFIXES):
+tests/ (NULL is deliberate null-guard stimulus) and esp32/ (ESP-IDF C11
+toolchain, where ``nullptr`` does not exist).
 
 Usage:
     python3 scripts/checks/check_no_null.py FILE [FILE ...]
@@ -28,13 +33,38 @@ import argparse
 import pathlib
 import re
 import sys
+import tempfile
 from collections.abc import Iterable
 
-# Files we author. Vendored / generated trees are skipped.
-ROOT_DIRS = ("libs", "src", "port", "examples")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-EXCLUDED_PARTS = {"third_party", "_deps", "build", "build-cov"}
-EXTENSIONS = {".c", ".h", ".cpp", ".hpp"}
+from lint_targets import first_party_paths, is_build_output_path
+from selftest_assert import expect, report
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+EXTENSIONS = (".c", ".h", ".cpp", ".hpp")
+
+# Vendored SOUP the nullptr rule never governs. first_party_paths already drops
+# these for the --all sweep; needs_check re-checks them so an explicitly named
+# vendored file (a pre-commit staging edge case) is skipped as well.
+SOUP_PREFIXES = ("libs/third_party/", "libs/fonts/", "tools/vela/generated/", "port/threadx/")
+
+# Scope recorded here, NOT as a directory allowlist (#358). Enumeration is
+# derived from git ls-files, so tools/ -- host tooling held to the same C23 bar
+# per CLAUDE.md, and silently omitted by the old ROOT_DIRS tuple -- and every
+# future top-level directory are in scope automatically. Two first-party trees
+# are deliberately OUT, each for a stated reason:
+EXEMPT_PREFIXES = (
+    # Unit tests pass NULL as deliberate stimulus to exercise null-pointer
+    # guards -- `TEST_ASSERT_EQ(k_ra8_err_null_ptr, fn(NULL, ...))`. Requiring
+    # nullptr there fights the test rather than the code, the same reason
+    # check_magic_numbers.py holds tests/ exempt.
+    "tests/",
+    # esp32/ builds under the ESP-IDF (RISC-V, C11) toolchain, where the C23
+    # `nullptr` keyword does not exist. NULL is correct in that tree.
+    "esp32/",
+)
 
 # bare NULL token in a code context. \bNULL\b matches the identifier;
 # we strip comments and strings first so this only fires in code.
@@ -148,22 +178,83 @@ def find_violations(path: pathlib.Path) -> list[tuple[int, str]]:
     return violations
 
 
+def _in_scope(rel: str) -> bool:
+    """Whether repo-relative ``rel`` is first-party C the nullptr rule governs.
+
+    Pure and total, so the selftest asserts scope on synthetic paths without
+    touching the tree: a re-narrowing that drops tools/ fails the selftest
+    instead of passing green.
+    """
+    if not rel.endswith(EXTENSIONS):
+        return False
+    if rel.startswith(EXEMPT_PREFIXES) or rel.startswith(SOUP_PREFIXES):
+        return False
+    return not is_build_output_path(rel)
+
+
 def needs_check(path: pathlib.Path) -> bool:
-    """Whether a path is first-party C subject to the nullptr rule."""
+    """Whether a CLI-supplied path is first-party C subject to the nullptr rule."""
     if path.suffix.lower() not in EXTENSIONS:
         return False
-    return not any(part in EXCLUDED_PARTS for part in path.parts)
+    try:
+        rel = path.resolve().relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        # Outside the repo (an isolated selftest fixture): the suffix already
+        # matched and no repo-relative prefix rule can apply, so it is in scope.
+        return True
+    return _in_scope(rel)
 
 
 def iter_all_files() -> Iterable[pathlib.Path]:
-    """Every checkable file beneath the root directories, for the ``--all`` sweep."""
-    for root in ROOT_DIRS:
-        rp = pathlib.Path(root)
-        if not rp.is_dir():
-            continue
-        for p in rp.rglob("*"):
-            if p.is_file() and needs_check(p):
-                yield p
+    """Every first-party C file the rule governs, for the ``--all`` sweep.
+
+    Derived from git ls-files via first_party_paths (which already removes
+    vendored SOUP, generated tables, build output and the vendored port/threadx
+    tree), minus the two documented EXEMPT_PREFIXES. A newly-added top-level
+    directory of first-party C is covered the day it lands -- no allowlist.
+    """
+    for rel in first_party_paths(EXTENSIONS):
+        if not rel.startswith(EXEMPT_PREFIXES):
+            yield REPO_ROOT / rel
+
+
+# ---------------------------------------------------------------------------
+# Selftest -- both directions, plus a scope assertion under tools/, the root
+# ROOT_DIRS silently omitted until #358. A scope that quietly re-narrows must
+# fail here, not report a clean tree over files it stopped scanning.
+# ---------------------------------------------------------------------------
+_BAD_FIXTURE = "int f(void) { char *p = NULL; return p == NULL; }\n"
+_GOOD_FIXTURE = (
+    "int f(void) { char *p = nullptr;   // NULL in a comment is fine\n"
+    '  const char *s = "NULL literal";  // and in a string literal\n'
+    "  return (p == nullptr) && (UX_NULL == p); }\n"
+)
+
+
+def selftest() -> int:
+    """Prove bare NULL fires, legal constructs stay quiet, and the scope holds."""
+    print("check_no_null.py --selftest")
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        bad = pathlib.Path(tmp) / "bad.c"
+        bad.write_text(_BAD_FIXTURE, encoding="utf-8")
+        good = pathlib.Path(tmp) / "good.c"
+        good.write_text(_GOOD_FIXTURE, encoding="utf-8")
+        expect(bool(find_violations(bad)), "bare NULL in code fires", failures)
+        expect(
+            not find_violations(good),
+            "nullptr / vendor macro / comment / string stays quiet",
+            failures,
+        )
+    expect(
+        _in_scope("tools/mkbookimg/mkbookimg.c"),
+        "tools/ is in scope (ROOT_DIRS omitted it before #358)",
+        failures,
+    )
+    expect(not _in_scope("tests/test_x.c"), "tests/ exempt (deliberate NULL stimulus)", failures)
+    expect(not _in_scope("esp32/src/main.c"), "esp32/ exempt (ESP-IDF C11, no nullptr)", failures)
+    expect(not _in_scope("libs/third_party/miniz/miniz.c"), "vendored SOUP exempt", failures)
+    return report(failures)
 
 
 def main() -> int:
@@ -177,9 +268,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--all", action="store_true", help="scan all tracked source files")
     parser.add_argument(
+        "--selftest", action="store_true", help="prove the rule fires and the scope holds"
+    )
+    parser.add_argument(
         "files", nargs="*", type=pathlib.Path, help="explicit file list (e.g. staged files)"
     )
     args = parser.parse_args()
+
+    if args.selftest:
+        return selftest()
 
     if args.all:
         candidates = list(iter_all_files())
