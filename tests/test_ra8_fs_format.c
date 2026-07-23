@@ -498,6 +498,14 @@ static void test_mcdc_format_spc_valid_pair(void)
   TEST_END("ra8_fs format MC/DC: spc (==0 || (<=64 && pow2)) guard");
 }
 
+static ra8_err_t bad_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
+{
+  (void)ctx;
+  *block_count = (uint32_t)k_fmt_blocks_fat16;
+  *block_size  = k_fs_block_size_unsupported; /* not 512 -> formatter must reject */
+  return k_ra8_ok;
+}
+
 /**
  * @test test_mcdc_format_block_guard_pair
  * @par MC/DC:
@@ -512,14 +520,6 @@ static void test_mcdc_format_spc_valid_pair(void)
  * - V2 backend reports 1024 B sectors -> C1=T -> T (rejected).
  * N+1 (for the one observable condition) = 2 vectors.
  */
-static ra8_err_t bad_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
-{
-  (void)ctx;
-  *block_count = (uint32_t)k_fmt_blocks_fat16;
-  *block_size  = k_fs_block_size_unsupported; /* not 512 -> formatter must reject */
-  return k_ra8_ok;
-}
-
 static void test_mcdc_format_block_guard_pair(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: (block_size!=512 || block_count==0) guard");
@@ -708,6 +708,15 @@ typedef enum : uint32_t {
  *          sweep from the Microsoft ``DskSzToSecPerClus`` table. Each branch of
  *          that table is exercised with a mid-tier capacity (256 MB / 4 / 12 /
  *          24 / 128 GB) and the formatted BPB's ``BPB_SecPerClus`` is asserted.
+ *
+ * @par MC/DC:
+ * (no compound decision is uniquely proven here -- it verifies the FAT32 auto
+ * cluster-size table selects the right BPB_SecPerClus per capacity tier. Each
+ * format lands the cluster count in the FAT32 band, driving only the both-true
+ * (accepted) leg of `(count >= k_cluster_count_fat16_max) &&
+ * (count <= k_fmt_fat32_clus_cap)` in priv_fmt_count_in_band; that compound's
+ * independence (the C1-false and C2-false vectors) is owned by
+ * test_mcdc_fat32_count_over_cap)
  */
 static void test_fat32_cluster_size_table(void)
 {
@@ -857,6 +866,13 @@ static void test_erase_clear_region_modes(void)
  *          HIL, so it is intentionally out of scope here. The on-disk image this
  *          produces is fsck.exfat-clean (validated out-of-band against macOS
  *          fsck_exfat).
+ *
+ * @par MC/DC:
+ * (no compound decision is uniquely touched -- it exercises the exFAT format +
+ * mount + empty-root happy path end to end; the format argument/capacity
+ * compounds are passed with control inputs and are covered by the dedicated
+ * MC/DC cases above, and the exFAT cluster-size cascade is covered by
+ * test_exfat_spc_shift_tiers)
  */
 static void test_format_exfat_mount_empty(void)
 {

@@ -158,6 +158,12 @@ static uint32_t pt_encode(const pt_golden_t* g)
 /**
  * @test parity_encoder_bytes
  * @brief The encoder byte stream is byte-identical to the pinned goldens.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- a golden byte-parity check: it pins
+ * ra8_jpeg_sw_encode's exact output length and FNV-1a-32 hash across 30
+ * geometry/quality vectors. It drives no decision to independent influence; the
+ * codec's own compound decisions are covered by the ra8_jpeg_sw unit tests.)
  */
 static void test_parity_encoder_bytes(void)
 {
@@ -173,6 +179,13 @@ static void test_parity_encoder_bytes(void)
 /**
  * @test parity_decoder_pixels
  * @brief Decoded RGB output is byte-identical to the pinned goldens.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- a golden pixel-parity check: it pins
+ * ra8_jpeg_sw_get_dimensions and ra8_jpeg_sw_decode's exact RGB888 output
+ * (FNV-1a-32) across the same 30 vectors. It drives no decision to independent
+ * influence; the codec's own compound decisions are covered by the ra8_jpeg_sw
+ * unit tests.)
  */
 static void test_parity_decoder_pixels(void)
 {
@@ -256,6 +269,13 @@ static ra8_err_t pt_on_rows(void*          ctx,
 /**
  * @test parity_stream_equals_whole_buffer
  * @brief The streaming stripe decoder emits byte-identical pixels.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- a golden parity check: the streaming
+ * stripe decoder ra8_jpeg_sw_decode_stripes must emit the same row count and
+ * pixels (FNV-1a-32) as the whole-buffer goldens. It drives no decision to
+ * independent influence; the streaming decoder's compound decisions are covered
+ * in test_ra8_jpeg_sw_stream.c.)
  */
 static void test_parity_stream_equals_whole_buffer(void)
 {

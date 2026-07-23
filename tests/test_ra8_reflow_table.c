@@ -65,6 +65,18 @@ static int32_t find_cp(int32_t cp)
 /**
  * @test test_table_grid
  * @brief A 2x3 table lays out as an aligned column grid with stacked rows.
+ *
+ * @par MC/DC:
+ * Decision (all four probed cells found, enclosing fn test_table_grid):
+ * `(a >= 0) && (b >= 0) && (c >= 0) && (e >= 0)` (4 conditions, AND; find_cp
+ * returns -1 when a glyph is absent). The 2x3 grid lays out all four cells, so
+ * the observed vector is the control; N+1 = 5:
+ *  - V1 a,b,c,e all >= 0 -> C1=C2=C3=C4=T -> T (all cells present).
+ *  - V2 a < 0 -> C1=F -> F (cell A missing).
+ *  - V3 b < 0 -> C2=F -> F (cell B missing).
+ *  - V4 c < 0 -> C3=F -> F (cell C missing).
+ *  - V5 e < 0 -> C4=F -> F (cell E missing).
+ * Each Vk (k>1) vs V1 isolates condition k.
  */
 static void test_table_grid(void)
 {
@@ -97,6 +109,13 @@ static void test_table_grid(void)
 /**
  * @test test_table_page_break
  * @brief A table taller than the page breaks between rows across pages.
+ *
+ * @par MC/DC:
+ * (no MC/DC vectors contributed here -- a table taller than the page is laid
+ * out and the case asserts `pages >= 2` (single condition). The row page-break
+ * compound `(cur->y + row_h > bottom) && (cur->y > margin)` in priv_layout_row
+ * that produces the extra page has its independence vectors in
+ * test_row_break_mcdc.)
  */
 static void test_table_page_break(void)
 {

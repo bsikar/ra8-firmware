@@ -372,6 +372,12 @@ static void seed_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
  *          copy, and confirms every accessor rejects the closed handle with
  *          k_ra8_err_invalid_state. No compound decision under test (each guard
  *          is a single condition on the copy path).
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it clears in_use on a handle copy and
+ * asserts read/seek/tell/size each reject it through their single-condition
+ * `in_use == 0` guard; the null-pointer `||` guards on those entries are passed
+ * with fixed non-NULL inputs, not varied)
  */
 static void test_read_seek_tell_size_not_in_use(void)
 {
@@ -410,6 +416,11 @@ static void test_read_seek_tell_size_not_in_use(void)
  * @test test_write_zero_length
  * @brief A zero-length write returns success without touching the backend
  *        (line 419).
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it exercises ra8_fs_write's
+ * single-condition `len == 0` early return; the null-pointer and
+ * in_use/mode `||` guards are passed with fixed control inputs, not varied)
  */
 static void test_write_zero_length(void)
 {
@@ -485,6 +496,12 @@ static void test_write_file_guards(void)
  *          succeed, and the read-modify-write read succeeds, so the failure is
  *          the data-sector write inside ra8_fs_write. ra8_fs_close performs no
  *          I/O, so the write error is returned at line 461.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it injects a data-sector write
+ * failure and asserts ra8_fs_write_file returns k_ra8_err_hw_error; the
+ * write_file argument/state guards are single-condition `if`s passed with
+ * fixed valid inputs)
  */
 static void test_write_file_write_error(void)
 {
@@ -517,6 +534,12 @@ static void test_write_file_write_error(void)
  *          of the first FAT sector. The first chunk (cluster index 0, no walk)
  *          reads a data sector and succeeds; advancing into cluster index 1
  *          forces priv_skip_clusters to read the FAT sector, which fails.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it injects a FAT-sector read failure
+ * during the read cluster-walk and asserts k_ra8_err_hw_error propagates out;
+ * the read-path cache-resume `&&` in priv_read_one_chunk is passed with a fixed
+ * control input, its MC/DC owned by test_read_cache_unset_after_write)
  */
 static void test_read_walk_fat_get_error(void)
 {
@@ -549,6 +572,13 @@ static void test_read_walk_fat_get_error(void)
  * @details Seeds a two-cluster file, then corrupts the first cluster's FAT
  *          entry to an end-of-chain marker. Seeking into cluster index 1 and
  *          reading walks one cluster, finds the premature EOC, and reports it.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it plants a premature FAT16
+ * end-of-chain marker and asserts priv_skip_clusters reports
+ * k_ra8_err_invalid_state; the read-path cache-resume `&&` in
+ * priv_read_one_chunk is passed with a fixed control input, its MC/DC owned by
+ * test_read_cache_unset_after_write)
  */
 static void test_read_walk_hits_eoc(void)
 {
@@ -590,6 +620,12 @@ static void test_read_walk_hits_eoc(void)
  * @details Opens a fresh file (first_cluster unallocated), then fails reads of
  *          the FAT sector. The first thing ra8_fs_write does is allocate the
  *          head cluster, which scans the FAT; that read fails.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it fails the FAT scan behind the
+ * first-cluster allocation and asserts k_ra8_err_hw_error propagates out of
+ * priv_write_stream; the write path's guards are passed with fixed control
+ * inputs)
  */
 static void test_write_stream_alloc_error(void)
 {
@@ -620,6 +656,11 @@ static void test_write_stream_alloc_error(void)
  * @details Fails reads of the first data sector. FAT allocation reads/writes
  *          succeed; the read-modify-write read of the target data sector then
  *          fails.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it fails the read-modify-write read
+ * in priv_write_into_sector and asserts k_ra8_err_hw_error propagates out; the
+ * code under test on this leg is single-condition error checks)
  */
 static void test_write_into_sector_read_error(void)
 {
@@ -649,6 +690,12 @@ static void test_write_into_sector_read_error(void)
  *
  * @details Fails only the first data sector's write. FAT writes and the
  *          read-modify-write read succeed; the merged sector write fails.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it fails the merged sector write in
+ * priv_write_into_sector and asserts k_ra8_err_hw_error propagates out of
+ * priv_write_stream; the code under test on this leg is single-condition error
+ * checks)
  */
 static void test_write_into_sector_write_error(void)
 {
@@ -679,6 +726,12 @@ static void test_write_into_sector_write_error(void)
  * @details Fails reads of the file's directory-entry sector. The stream write
  *          (FAT + data sectors) completes; the follow-up read of the directory
  *          entry to patch cluster and size then fails.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it fails the directory-entry read
+ * that ra8_fs_write performs after a successful stream write and asserts
+ * k_ra8_err_hw_error propagates out; the code under test on this leg is
+ * single-condition error checks)
  */
 static void test_write_dir_entry_read_error(void)
 {
@@ -717,6 +770,11 @@ static void test_write_dir_entry_read_error(void)
  *          read (the FAT-get for the chain head); failing after four reads
  *          exercises the FAT-get error leg. Asserting on the error code (not a
  *          line) keeps the test robust to exact read ordering.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it fails the FAT-get inside
+ * priv_walk_grow and asserts k_ra8_err_hw_error propagates out; priv_walk_grow
+ * has no `&&`/`||` decision, only single-condition error and EOC checks)
  */
 static void test_walk_grow_fat_get_error(void)
 {
@@ -748,6 +806,13 @@ static void test_walk_grow_fat_get_error(void)
  *          to run until the chain-link FAT-set for the newly grown cluster,
  *          whose read-modify-write read is failed. Asserting on the error code
  *          keeps the test robust to exact read ordering.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- this write-path case fails the
+ * chain-link FAT-set inside priv_walk_grow after the chain grows and asserts
+ * k_ra8_err_hw_error propagates out; priv_walk_grow has no `&&`/`||` decision,
+ * only single-condition error and EOC checks, and the read-path cache-resume
+ * compound is never reached by a write)
  */
 static void test_walk_grow_fat_set_error(void)
 {
