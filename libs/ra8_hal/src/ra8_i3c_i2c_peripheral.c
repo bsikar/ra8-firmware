@@ -35,6 +35,8 @@
 #include "ra8_err.h"
 #include "ra8_i3c_i2c_regs.h"
 #include "ra8_log.h"
+#include "ra8_mstp.h"
+#include "ra8_mstp_regs.h"
 
 static const char* s_tag = "IICBP";
 
@@ -99,12 +101,22 @@ ra8_err_t internal_i3c_i2c_peripheral_open(uint8_t channel, const ra8_i3c_i2c_pe
     return k_ra8_err_invalid_arg;
   }
 
-  reg->RSTCTL = 0U;
-  reg->MSDVAD = (uint32_t)cfg->peripheral_addr_7b << k_ra8_i3c_i2c_peripheral_msdvad_shift_dvad;
-  reg->SVCTL  = (cfg->general_call != 0U) ? k_ra8_i3c_i2c_peripheral_msk_svctl_gcae : 0U;
-  reg->BCTL   = k_ra8_i3c_i2c_msk_bctl_buse;
-  ra8_log_info_val(s_tag, "internal_i3c_i2c_peripheral_open ch", (uint32_t)channel);
-  return k_ra8_ok;
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445 -- the R_I3C
+   * block is clock-gated OFF at reset; cancel its module-stop (MSTPB4) before the
+   * first responder register write or the peripheral never sees the bus. Omitting
+   * this ran clean in board_sim yet was inert on silicon until #405 modelled the
+   * gate, which surfaced the miss here (the controller path already ungated). The
+   * writes are guarded so a failed ungate does not touch a still-gated block, and
+   * the outcome is returned from the single exit below (no extra return path). */
+  const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_i3c);
+  if (mst_err == k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
+    reg->RSTCTL = 0U;
+    reg->MSDVAD = (uint32_t)cfg->peripheral_addr_7b << k_ra8_i3c_i2c_peripheral_msdvad_shift_dvad;
+    reg->SVCTL  = (cfg->general_call != 0U) ? k_ra8_i3c_i2c_peripheral_msk_svctl_gcae : 0U;
+    reg->BCTL   = k_ra8_i3c_i2c_msk_bctl_buse;
+    ra8_log_info_val(s_tag, "internal_i3c_i2c_peripheral_open ch", (uint32_t)channel);
+  }
+  return mst_err;
 }
 
 ra8_err_t internal_i3c_i2c_peripheral_close(uint8_t channel)
@@ -116,7 +128,9 @@ ra8_err_t internal_i3c_i2c_peripheral_close(uint8_t channel)
   reg->BCTL   = 0U;
   reg->MSDVAD = 0U;
   reg->SVCTL  = 0U;
-  return k_ra8_ok;
+  /* Release the I3C module-stop reference taken in peripheral_open (ref-counted;
+   * HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445). */
+  return ra8_mstp_disable(k_ra8_mstp_i3c);
 }
 
 ra8_err_t internal_i3c_i2c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len)
