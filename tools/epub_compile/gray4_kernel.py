@@ -43,6 +43,37 @@ _NIB_MAX = 15  # Maximum nibble value (4 bits unsigned).
 _NIB_SHIFT = 4  # Even pixel occupies the high nibble.
 _NIB_PER_BYTE = 2  # Pixels packed per output byte.
 
+# RGB -> gray8 luma coefficients (mirror stbi__compute_y in
+# libs/third_party/stb/stb_image.h). The DEVICE decodes every raster with
+# stb_image at req_comp=1, so the host MUST fold colour the same way or the same
+# source compiles to different .rabook bytes host-vs-device (issue #337). These
+# are stb's exact integer weights and its truncating >>8 -- NOT PIL's ITU-R
+# 601-2 convert("L"), which rounds and weights green/blue differently and so
+# disagrees with the device on ~48% of the RGB cube.
+_LUMA_R = 77  # Red weight   (stbi__compute_y).
+_LUMA_G = 150  # Green weight (stbi__compute_y).
+_LUMA_B = 29  # Blue weight  (stbi__compute_y).
+_LUMA_SHIFT = 8  # Normalising right-shift (truncating, matches stb).
+
+
+def stb_compute_y(r: int, g: int, b: int) -> int:
+    """Fold one RGB triple to an 8-bit gray value, byte-identical to stb_image.
+
+    Exact mirror of ``stbi__compute_y`` in ``libs/third_party/stb/stb_image.h``:
+    ``(r*77 + g*150 + b*29) >> 8`` with a truncating shift. This is the single
+    host luma the device shares; using PIL's ``convert("L")`` here instead would
+    diverge from the on-device stb decode on most colour inputs (issue #337).
+
+    Args:
+        r: Red channel, 0-255.
+        g: Green channel, 0-255.
+        b: Blue channel, 0-255.
+
+    Returns:
+        The stb gray8 value, 0-255.
+    """
+    return ((r * _LUMA_R) + (g * _LUMA_G) + (b * _LUMA_B)) >> _LUMA_SHIFT
+
 
 def gray4_output_dims(src_w: int, src_h: int, max_edge: int) -> tuple[int, int]:
     """Scaled output dims keeping the longer edge within ``max_edge``.

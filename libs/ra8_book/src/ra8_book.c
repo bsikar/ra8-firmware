@@ -180,6 +180,45 @@ static bool ra8_book_table_fits(uint32_t off, uint32_t count, uint32_t elem, uin
   return (off <= total) && (end <= (uint64_t)total);
 }
 
+/**
+ * @brief Whether every image descriptor declares a pixel format this build knows.
+ *
+ * @details
+ * Rejects a blob carrying a @ref ra8_book_image_t::pixel_format newer than
+ * @ref k_ra8_book_pixfmt_gray8 -- the same fail-closed stance ra8_book_validate()
+ * takes on an unknown header feature bit: a depth this firmware cannot unpack must
+ * be refused, not fed to the wrong blit and mis-rendered. Every pre-field blob
+ * zero-filled the byte (== @ref k_ra8_book_pixfmt_gray4), so this never rejects an
+ * older gray4 book. Called only after the image table's bounds are validated, so
+ * ra8_book_images() is in range for all @p hdr->image_count entries.
+ *
+ * @param[in] base Blob base already bounds-checked by the caller (non-NULL).
+ * @param[in] hdr  Header view of @p base whose image table was already validated.
+ *
+ * @return Whether every image's declared pixel format is known to this build.
+ * @retval true  Every descriptor's `pixel_format` is <= k_ra8_book_pixfmt_gray8.
+ * @retval false At least one descriptor names a depth this firmware cannot decode.
+ *
+ * @pre The image table [image_off, image_off + image_count * sizeof(image)) fits.
+ * @pre @p base and @p hdr are non-NULL and describe the same blob.
+ * @post No memory is written (pure read over the immutable image table).
+ * @post The result depends only on the descriptors, not on any pool bytes.
+ *
+ * @note Thread-safe: read-only over immutable data.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static bool ra8_book_image_pixfmts_known(const void* base, const ra8_book_header_t* hdr)
+{
+  const ra8_book_image_t* imgs = ra8_book_images(base);
+  for (uint32_t i = 0U; i < hdr->image_count; ++i) { /* bound: validated image_count */
+    if (imgs[i].pixel_format > (uint8_t)k_ra8_book_pixfmt_gray8) {
+      return false;
+    }
+  }
+  return true;
+}
+
 ra8_err_t ra8_book_validate(const void* base, size_t size)
 {
   RA8_CHECK_NULL_PTR(base, s_tag_book, "validate: null base");
@@ -224,6 +263,12 @@ ra8_err_t ra8_book_validate(const void* base, size_t size)
     ra8_book_table_fits(hdr->image_pool_off, hdr->image_pool_size, 1U, total);
   if (!tables_ok) {
     return k_ra8_err_invalid_size;
+  }
+
+  /* Every image descriptor must name a pixel depth this build can unpack; an
+   * unknown depth is refused (fail-closed) rather than fed to the wrong blit. */
+  if (!ra8_book_image_pixfmts_known(base, hdr)) {
+    return k_ra8_err_invalid_arg;
   }
 
   const uint8_t* body     = (const uint8_t*)base + sizeof(ra8_book_header_t);
