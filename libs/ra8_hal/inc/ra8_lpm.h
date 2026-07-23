@@ -566,6 +566,15 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
 /**
  * @brief Set or clear the per-oscillator stop bit before sleep entry.
  *
+ * @details
+ * Toggles the STOP bit (bit 0) of the oscillator control register selected by
+ * @p clock -- MOSCCR, HOCOCR, MOCOCR, LOCOCR or SOSCCR. Those registers belong
+ * to the clock-generation circuit and are PRC0-protected (HUM Ch 13.1
+ * Table 13.1); a write issued while PRC0 is locked is discarded silently by the
+ * hardware. The read-modify-write is therefore performed inside a
+ * self-contained PRCR CGC unlock window: the caller does not unlock PRCR
+ * beforehand, and PRCR is returned to its fully-locked state before return.
+ *
  * @param[in] clock Oscillator selector (``k_ra8_lpm_clock_*``).
  * @param[in] stop  true -- request stop; false -- request run.
  *
@@ -574,10 +583,10 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @retval k_ra8_err_invalid_arg  ``clock`` out of range.
  *
  * @pre IRQs masked or single-threaded context.
- * @pre PRCR.PRC0 unlocked (CGC region) -- caller must arrange.
+ * @pre ``clock`` selects one of the five oscillator control registers.
  *
- * @post (*OCR & 0x01) reflects ``stop``.
- * @post No other oscillator has been modified.
+ * @post On ``k_ra8_ok``, ``(*OCR & 0x01)`` reflects ``stop``.
+ * @post PRCR is left fully locked; no other oscillator has been modified.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
