@@ -138,13 +138,26 @@ REMOTE_FW="/tmp/hil_${APP_NAME}_mram.hex"
 echo -e "${YELLOW}[HIL]${NC} uploading hex..."
 scp -q "$STRIPPED_FW" "${PI_HOST}:${REMOTE_FW}"
 
-# ---- 3. Flash via J-Link on Pi -----------------------------------------------
-echo -e "${YELLOW}[HIL]${NC} flashing..."
-# shellcheck disable=SC2087  # client-side substitution of JLINK_DEVICE/JLINK_SN/REMOTE_FW/APP_NAME is intentional
-ssh "$PI_HOST" bash <<REMOTE
+# ---- 3. Flash, then read UART for the expected string ------------------------
+# ORDERING (issue #390): the UART reader MUST be live BEFORE the core is
+# released from reset. A "print-once" app emits its banner within a few
+# milliseconds of "g" (go) and then parks; if the tty is opened only AFTER
+# JLinkExe returns, those bytes are already gone and the app reads as a silent
+# hang -- indistinguishable from a genuine lock-up. So, on the Pi, we (1) start
+# a background reader capturing the tty into a log, (2) let it settle so the
+# port is open, (3) run JLinkExe (which loadfiles, resets, and goes), and only
+# then (4) poll the log for EXPECT within the timeout. The reader is therefore
+# already draining the port at the instant "g" runs, so the first post-reset
+# bytes are caught. This mirrors the silicon-proven order in
+# scripts/hil/run_direct.sh (reader-before-reset), which the suite already uses.
+echo -e "${YELLOW}[HIL]${NC} flashing + capturing '${EXPECT}' on ${UART} (${TIMEOUT_S}s)..."
+RESULT=$(
+  # shellcheck disable=SC2087  # client-side substitution of JLINK_DEVICE/JLINK_SN/REMOTE_FW/APP_NAME/UART/BAUD/EXPECT/TIMEOUT_S is intentional
+  ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
-TMP_SCRIPT=\$(mktemp)
 LOG=/tmp/hil_jlink_${APP_NAME}.log
+UART_LOG=/tmp/hil_uart_${APP_NAME}.log
+TMP_SCRIPT=\$(mktemp)
 trap 'rm -f "\$TMP_SCRIPT"' EXIT
 cat > "\$TMP_SCRIPT" <<JLINK
 device ${JLINK_DEVICE}
@@ -157,45 +170,65 @@ r
 g
 q
 JLINK
-JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP_SCRIPT" > "\$LOG" 2>&1
-if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted" "\$LOG"; then
+
+# 1. Start the UART reader BEFORE JLinkExe resets and runs the target. setsid
+#    detaches it from our process group so the end-of-run pkill is reliable;
+#    stdbuf -o0 flushes every byte to the log immediately so a short one-shot
+#    banner is visible to grep without waiting for cat's stdio buffer to fill.
+stty -F ${UART} ${BAUD} raw -echo cs8 -cstopb -parenb
+: > "\$UART_LOG"
+setsid stdbuf -o0 cat ${UART} > "\$UART_LOG" 2>/dev/null &
+READER_PID=\$!
+# 2. Let the reader open the tty before the core is released from reset.
+sleep 0.2
+
+# 3. Flash + reset + go. The boot banner now lands in the live capture.
+JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP_SCRIPT" > "\$LOG" 2>&1 || true
+if grep -qiE "\*\*\*\*\*\* Error|^Error|could not load|RAMCode did not respond|could not be halted|Cannot connect" "\$LOG"; then
+    kill "\$READER_PID" 2>/dev/null || true
+    pkill -f "cat ${UART}" 2>/dev/null || true
     echo "J-Link error log:" >&2
     cat "\$LOG" >&2
-    exit 1
+    echo "RESULT=FLASHFAIL"
+    exit 0
 fi
 if ! grep -q "O\.K\." "\$LOG"; then
+    kill "\$READER_PID" 2>/dev/null || true
+    pkill -f "cat ${UART}" 2>/dev/null || true
     echo "J-Link did not confirm download (no 'O.K.' in log):" >&2
     cat "\$LOG" >&2
-    exit 1
+    echo "RESULT=FLASHFAIL"
+    exit 0
 fi
-echo "flash OK"
-REMOTE
 
-# ---- 3. Read UART and check for expected string ------------------------------
-echo -e "${YELLOW}[HIL]${NC} waiting for '${EXPECT}' on ${UART} (${TIMEOUT_S}s)..."
-RESULT=$(
-  # shellcheck disable=SC2087  # client-side substitution of UART/BAUD/TIMEOUT_S/EXPECT is intentional
-  ssh "$PI_HOST" bash <<REMOTE
-set -euo pipefail
-# Configure baud rate once before opening the device for reading.
-stty -F ${UART} ${BAUD} raw -echo cs8 -cstopb -parenb
-# Pass the port as fd 3 to the child so the loop does not re-open it each line.
-timeout ${TIMEOUT_S} bash -c '
-    while IFS= read -r line <&3; do
-        echo "[uart] \$line"
-        if echo "\$line" | grep -qF "${EXPECT}"; then
-            echo "MATCH"
-            exit 0
-        fi
-    done
-    exit 1
-' 3<>${UART} && echo "FOUND" || echo "TIMEOUT"
+# 4. The reader has been capturing since before "g"; poll the log for EXPECT.
+#    Polling a file (not a live pipe) sidesteps the stdio-buffer race and keeps
+#    the ${TIMEOUT_S} wait window as the post-flash budget, exactly as before.
+FOUND=TIMEOUT
+deadline=\$((SECONDS + ${TIMEOUT_S}))
+while ((SECONDS < deadline)); do
+    if grep -qF "${EXPECT}" "\$UART_LOG" 2>/dev/null; then
+        FOUND=MATCH
+        break
+    fi
+    sleep 0.1
+done
+
+# Stop the reader so it does not keep draining the tty into the next run.
+kill "\$READER_PID" 2>/dev/null || true
+pkill -f "cat ${UART}" 2>/dev/null || true
+head -n 20 "\$UART_LOG" | sed 's/^/[uart] /' || true
+echo "RESULT=\$FOUND"
 REMOTE
 )
 
-echo -e "${YELLOW}[HIL]${NC} output: ${RESULT}"
+echo -e "${YELLOW}[HIL]${NC} captured output:"
+printf '%s\n' "$RESULT"
 
-if echo "$RESULT" | grep -q "FOUND\|MATCH"; then
+if echo "$RESULT" | grep -q "RESULT=FLASHFAIL"; then
+  echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: flash failed"
+  exit 1
+elif echo "$RESULT" | grep -q "RESULT=MATCH"; then
   echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"
   exit 0
 else
