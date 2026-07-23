@@ -154,6 +154,37 @@ bool mdl_path_contained(const char* parent, const char* candidate)
   return (sep == '/') || (sep == '\0');
 }
 
+/** @brief True if `seg` embeds a path separator (would span directories). */
+RA8_INTERNAL static bool has_separator(const char* seg)
+{
+  return strchr(seg, '/') != nullptr;
+}
+
+bool mdl_path_join(const char* parent, const char* seg, char* out, size_t cap)
+{
+  if ((out == nullptr) || (cap == 0U)) {
+    return false;
+  }
+  out[0] = '\0';
+  if ((parent == nullptr) || (seg == nullptr)) {
+    return false;
+  }
+  if (is_dot_segment(seg) || has_separator(seg)) {
+    return false; /* empty, `.`, `..`, or a `/`-bearing/absolute segment */
+  }
+  const size_t plen = strlen(parent);
+  const size_t slen = strlen(seg);
+  const size_t need = plen + 1U + slen + 1U; /* parent + '/' + seg + NUL */
+  if (need > cap) {
+    return false; /* refuse a truncated (thus different) path */
+  }
+  memcpy(out, parent, plen);
+  out[plen] = '/';
+  memcpy(out + plen + 1U, seg, slen);
+  out[plen + 1U + slen] = '\0';
+  return true;
+}
+
 /** @brief XML entity for a metacharacter, or NULL when `c` needs no escape. */
 RA8_INTERNAL static const char* xml_entity(char c)
 {
