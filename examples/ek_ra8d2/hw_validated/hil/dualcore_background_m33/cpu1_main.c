@@ -87,7 +87,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
    * individually visible to the M85 once the write buffer drains, but we
    * only signal completion after all increments so the M85 reads a stable
    * final value. */
-  RA8_BOUNDED_LOOP(k_bg_target_count);
+  RA8_LOOP_BOUND(k_bg_target_count);
   for (uint32_t i = 0U; i < (uint32_t)k_bg_target_count; i++) {
     bg->counter = bg->counter + 1U;
   }
@@ -124,7 +124,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
 {
   uint32_t* dst = &g_ra8_ls_cpu1_data_start;
   uint32_t* src = &g_ra8_ls_cpu1_data_load;
-  RA8_BOUNDED_LOOP(g_ra8_ls_cpu1_data_end);
+  RA8_LOOP_BOUND_RUNTIME(g_ra8_ls_cpu1_data_end);
   while (dst < &g_ra8_ls_cpu1_data_end) {
     *dst = *src;
     dst++;
@@ -132,7 +132,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
   }
 
   uint32_t* bss = &g_ra8_ls_cpu1_bss_start;
-  RA8_BOUNDED_LOOP(g_ra8_ls_cpu1_bss_end);
+  RA8_LOOP_BOUND_RUNTIME(g_ra8_ls_cpu1_bss_end);
   while (bss < &g_ra8_ls_cpu1_bss_end) {
     *bss = 0U;
     bss++;

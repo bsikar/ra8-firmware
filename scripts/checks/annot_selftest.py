@@ -26,6 +26,7 @@ import sys
 import tempfile
 
 from annot_clang import cindex
+from annot_loopbound import run_loopbound_selftest
 from annot_model import AnnotatedSymbol, CallSite, ParseStats, Violation
 from annot_rules import enforce_rules
 from annot_scope import SOURCE_SUFFIXES, override_repo_root
@@ -414,6 +415,9 @@ def run_selftest() -> int:
         *_check_linkage(violations),
         *_check_rule3(violations),
         *_check_fixtures_parsed(symbols),
+        # The loop-bound scan is textual and libclang-free, so it self-tests on
+        # synthetic source strings rather than the parsed synthetic tree.
+        *run_loopbound_selftest(),
     ]
     if failures:
         for f in failures:
@@ -424,6 +428,8 @@ def run_selftest() -> int:
         "check_annotations selftest: OK (namesakes resolved by USR; linkage rule "
         "catches both gap shapes, reaches tools/, and exempts only tabled handlers; "
         "NASA rule 3 fires on untagged firmware allocation and stays quiet on the "
-        "documented waiver and on host-only code)"
+        "documented waiver and on host-only code; loop-bound scan fires on a "
+        "mis-attached marker and a stale RA8_BOUNDED_LOOP statement, stays quiet on "
+        "correct markers and on #define/comment/string mentions)"
     )
     return 0

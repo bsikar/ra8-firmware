@@ -211,15 +211,62 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 
 ### 15. `RA8_BOUNDED_LOOP(symbol)`
 
-- **Purpose:** NASA P10 Rule 2; every loop has a constant upper bound
-  named by `symbol`.
+- **Purpose:** NASA P10 Rule 2, FUNCTION-level; every loop in the
+  function has a constant upper bound named by `symbol`.
 - **Enforcement:** libclang loop analyzer verifies each loop's
   termination condition references a constant or the named symbol.
+- **Position:** This is an `[[clang::annotate]]` attribute, so it may
+  appear ONLY before a DECLARATION. It is NOT valid in statement
+  position: `RA8_BOUNDED_LOOP(x);` inside a body is a hard clang error
+  and a silent GCC no-op that binds to nothing. To bind a bound to ONE
+  specific loop, use `RA8_LOOP_BOUND` / `RA8_LOOP_BOUND_RUNTIME` below.
 - **Example:**
 
   ```c
   RA8_BOUNDED_LOOP(k_max_retries)
   ra8_err_t ra8_i2c_send_with_retry(const uint8_t* buf, uint32_t len);
+  ```
+
+### 15b. `RA8_LOOP_BOUND(ceiling)`
+
+- **Purpose:** NASA P10 Rule 2, per-LOOP; bind ONE loop to a positive
+  compile-time-constant ceiling. The statement-position counterpart to
+  `RA8_BOUNDED_LOOP`.
+- **Mechanism:** Not an annotation. Lowers to
+  `static_assert((uint32_t)(ceiling) > 0U, ...)`, real C valid in
+  statement position under every toolchain, so it cannot degrade to a
+  comment no-op. If `ceiling` is not a positive compile-time constant
+  the build fails under both arm-none-eabi-gcc and clang.
+- **Enforcement:** two ways at once. (1) The `static_assert` fails the
+  compile on a non-constant ceiling. (2) `check_annotations.py`
+  (loop-bound scan, `annot_loopbound`) fails the gate if the marker is
+  not immediately followed by a `for` / `while` / `do` loop.
+- **Example:**
+
+  ```c
+  RA8_LOOP_BOUND(k_max_retries);
+  for (uint32_t i = 0U; i < (uint32_t)k_max_retries; i++) { ... }
+  ```
+
+### 15c. `RA8_LOOP_BOUND_RUNTIME(ceiling_ref)`
+
+- **Purpose:** NASA P10 Rule 2, per-LOOP; the honest form for a loop
+  whose bound is real but NOT a compile-time constant -- e.g. a
+  `.data` / `.bss` copy loop bounded by a linker end symbol
+  (`while (dst < &g_ra8_ls_cpu1_data_end)`). Faking a `static_assert`
+  on a link-time address would be dishonest, so this form is separate.
+- **Mechanism:** Lowers to `((void)sizeof(&(ceiling_ref)))`: the operand
+  is unevaluated (no codegen, safe in a reset handler that runs before
+  `.data` is copied) yet still requires `ceiling_ref` to be a declared,
+  addressable object, so a typo fails to compile.
+- **Enforcement:** the symbol reference fails the compile on an
+  undeclared ceiling; `check_annotations.py` (loop-bound scan) fails the
+  gate if the marker is not immediately followed by a loop.
+- **Example:**
+
+  ```c
+  RA8_LOOP_BOUND_RUNTIME(g_ra8_ls_cpu1_data_end);
+  while (dst < &g_ra8_ls_cpu1_data_end) { *dst = *src; dst++; src++; }
   ```
 
 ### 16. `RA8_VALIDATES(n)`
@@ -342,6 +389,26 @@ the gate on its own terms:
   resolved call sites below `MIN_CALL_RESOLUTION` is fatal. When the
   parse comes apart the call-graph rules stop policing anything and the
   gate reports *fewer* violations, which reads as an improvement.
+
+### The loop-bound scan (`ra8_loop_bound`)
+
+`RA8_LOOP_BOUND` / `RA8_LOOP_BOUND_RUNTIME` are not annotations, so they
+never reach the AST as such -- they have already expanded to a
+`static_assert` / a symbol reference. Their contract is a source-text
+adjacency: the marker sits on the line above the loop it bounds. So
+[`annot_loopbound.py`](../scripts/checks/annot_loopbound.py) scans the
+source (comments, strings and `#define` lines stripped) and fails on two
+directions, both of which are the exact defect these markers replaced --
+a bound annotation that binds to nothing:
+
+- a `RA8_LOOP_BOUND` / `RA8_LOOP_BOUND_RUNTIME` marker whose next code
+  line is not a `for` / `while` / `do` loop (mis-attached); and
+- a legacy `RA8_BOUNDED_LOOP(x);` in statement position, immediately
+  above a loop (the clang-error / GCC-no-op form that #382 removed).
+
+`--selftest` asserts both directions and both clean shapes (a correctly
+attached marker, and a function-level `RA8_BOUNDED_LOOP` above a
+declaration), so the rule cannot be defanged without the test noticing.
 
 ### The checker's own regression test
 

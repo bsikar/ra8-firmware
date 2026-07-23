@@ -222,7 +222,7 @@ static void append_run(char* out, uint32_t* plen, uint32_t cap, const char* txt)
   if (txt == nullptr) {
     return;
   }
-  RA8_BOUNDED_LOOP(k_max_run_len);
+  RA8_LOOP_BOUND(k_max_run_len);
   for (uint32_t i = 0U; i < (uint32_t)k_max_run_len; i++) {
     const char c = txt[i];
     if (c == '\0') {
@@ -323,7 +323,7 @@ collect_chapter_text(const void* base, uint32_t root, uint32_t node_count, char*
   if (root != (uint32_t)k_ra8_book_nil) {
     walk_push(&st, nodes[root].first_child);
   }
-  RA8_BOUNDED_LOOP(k_walk_iter_max);
+  RA8_LOOP_BOUND(k_walk_iter_max);
   for (uint32_t it = 0U; it < (uint32_t)k_walk_iter_max; it++) {
     if ((st.sp == 0U) || (len >= cap)) {
       break;
@@ -384,11 +384,11 @@ static bool render_page(uint8_t* fb, const char* text, uint32_t len)
   if (ra8_gfx_clear((uint32_t)k_erm33_paper) != k_ra8_ok) {
     return false;
   }
-  RA8_BOUNDED_LOOP(k_erm33_fb_rows);
+  RA8_LOOP_BOUND(k_erm33_fb_rows);
   for (uint32_t row = 0U; row < (uint32_t)k_erm33_fb_rows; row++) {
     char     line[(uint32_t)k_erm33_fb_cols + 1U];
     uint32_t cols = 0U;
-    RA8_BOUNDED_LOOP(k_erm33_fb_cols);
+    RA8_LOOP_BOUND(k_erm33_fb_cols);
     for (uint32_t col = 0U; col < (uint32_t)k_erm33_fb_cols; col++) {
       const uint32_t idx = (row * (uint32_t)k_erm33_fb_cols) + col;
       if (idx >= len) {
@@ -445,13 +445,13 @@ static uint32_t fb_crc32(const uint8_t* fb, uint32_t len)
     return 0U;
   }
   uint32_t crc = (uint32_t)k_crc32_init;
-  RA8_BOUNDED_LOOP(k_erm33_fb_bytes);
+  RA8_LOOP_BOUND(k_erm33_fb_bytes);
   for (uint32_t i = 0U; i < len; i++) {
     if (i >= (uint32_t)k_erm33_fb_bytes) {
       break;
     }
     crc ^= (uint32_t)fb[i];
-    RA8_BOUNDED_LOOP(k_crc32_bits);
+    RA8_LOOP_BOUND(k_crc32_bits);
     for (uint8_t b = 0U; b < (uint8_t)k_crc32_bits; b++) {
       const uint32_t mask = (uint32_t)(0U - (crc & 1U));
       crc                 = (crc >> 1U) ^ ((uint32_t)k_crc32_poly & mask);
@@ -529,7 +529,7 @@ static bool book_is_valid(const void* base, uint32_t size)
   }
   const ra8_book_header_t* hdr      = ra8_book_header(base);
   static const char        expect[] = {'R', 'A', 'B', 'O', 'O', 'K', '1'};
-  RA8_BOUNDED_LOOP(k_magic_len);
+  RA8_LOOP_BOUND(k_magic_len);
   for (uint32_t i = 0U; i < (uint32_t)k_magic_len; i++) {
     if (hdr->magic[i] != expect[i]) {
       return false;
@@ -650,7 +650,7 @@ static void notify_m85(void)
 static void simulate_touch_dwell(void)
 {
   volatile uint32_t spin = 0U;
-  RA8_BOUNDED_LOOP(k_erm33_touch_dwell);
+  RA8_LOOP_BOUND(k_erm33_touch_dwell);
   for (uint32_t i = 0U; i < (uint32_t)k_erm33_touch_dwell; i++) {
     spin = spin + 1U;
   }
@@ -685,7 +685,7 @@ static bool wait_for_ack(volatile erm33_mailbox_t* mb, uint32_t turn)
   if (mb == nullptr) {
     return false;
   }
-  RA8_BOUNDED_LOOP(k_m33_ack_budget);
+  RA8_LOOP_BOUND(k_m33_ack_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m33_ack_budget; i++) {
     if (mb->turn_ack >= turn) {
       return true;
@@ -725,7 +725,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
   if (base == nullptr) {
     return;
   }
-  RA8_BOUNDED_LOOP(k_erm33_max_turns);
+  RA8_LOOP_BOUND(k_erm33_max_turns);
   for (uint32_t turn = 1U; turn <= (uint32_t)k_erm33_max_turns; turn++) {
     simulate_touch_dwell();
     mb->turn_req = turn;
