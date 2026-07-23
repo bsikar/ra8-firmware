@@ -41,10 +41,15 @@
  *          p 3592). A commit is a monotone-advancing write (bits go 1->0 only),
  *          so no erase cycle is needed and there is no power-loss window where
  *          the counter reads back as reset.
- * @note The window is one-time-programmable option-setting memory, not a
- *       rewritable data-flash; whether a virgin word programs cleanly, and
- *       whether the counter belongs at the window base rather than the ARC
- *       structure (0x02E17930), is a bench question tracked by #315.
+ * @note #315 answered the bench question on EK-RA8D2 silicon (M85 r1p1): a virgin
+ *       extra-MRAM page in the corrected option-setting window (bench-tested at the
+ *       General-Purpose-OTP sub-range 0x02E076A0, HUM Ch 59.7.4.5 Table 59.15
+ *       p 3592) programs cleanly write-first -- no prior read -- via the MACI
+ *       Program command and reads back byte-exact with valid ECC. A virgin read
+ *       returns 0xFFFFFFFF (== ::k_ra8_rot_ar_erased) WITHOUT faulting. Whether the
+ *       counter belongs at the window base (the FSBL-setting word) rather than a
+ *       dedicated slot (GPOTP, or the ARC structure at 0x02E17930) is a design
+ *       choice deferred to #314.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -148,10 +153,14 @@ bool ra8_rot_antirollback_on_probe_fault(uint32_t* exc_frame)
  * @brief Fault-tolerant read of the durable counter word (blank maps to erased).
  *
  * @details
- * A never-written extra-MRAM word bus-faults on read (uncorrectable ECC, and the
- * RA8D2 has no MRAM BlankCheck command to test for blank -- #194). Probe it under
- * the transient fault-catch so a blank word returns as ::k_ra8_rot_ar_erased
- * instead of crashing the boot path.
+ * The RA8D2 has no MRAM BlankCheck command, so a blank word cannot be tested for
+ * without reading it. #315 bench-proved on silicon that a virgin word in the
+ * corrected option-setting window READS BACK as 0xFFFFFFFF (== ::k_ra8_rot_ar_erased)
+ * WITHOUT faulting: the bus fault #194 recorded was against the phantom 0x27000000
+ * address, which does not decode on this part (an address-decode abort, corrected
+ * by #397), not an uncorrectable-ECC fault of a real blank word. The transient
+ * fault-catch is therefore retained only as belt-and-braces for the counter's own
+ * (untested) location; on the corrected window it is not expected to trigger.
  *
  * @param[out] out_blank Set true when the word was blank (the probe read faulted).
  *
@@ -186,9 +195,10 @@ RA8_INTERNAL static uint32_t internal_probe_counter(bool* out_blank)
  * @details
  * Reads the little-endian ``uint32_t`` counter at the base of the extra-MRAM
  * (data-flash) window (::k_ra8_flash_extra_start) through the fault-tolerant
- * ::internal_probe_counter on silicon: a never-programmed word bus-faults on read
- * (blank ECC, and the RA8D2 has no BlankCheck -- #194), so it is recovered as
- * ::k_ra8_rot_ar_erased and maps to version 0 -- a fresh device has accepted
+ * ::internal_probe_counter on silicon: a never-programmed word reads back as
+ * 0xFFFFFFFF (the RA8D2 has no BlankCheck, but #315 bench-proved a virgin read does
+ * not fault -- #194's fault was the phantom 0x27000000 address, corrected by #397),
+ * mapping to ::k_ra8_rot_ar_erased and version 0 -- a fresh device has accepted
  * nothing, so any image version is ``>= 0`` and passes the pure policy.
  *
  * @param[out] out_min_version Receives the stored highest-accepted version, or 0
@@ -269,12 +279,15 @@ RA8_INTERNAL static ra8_err_t internal_default_store_commit(uint32_t new_version
   (void)memcpy(le, &new_version, sizeof(le)); /* both toolchains little-endian */
   const ra8_err_t wr =
     ra8_flash_extra_mram_write((uint32_t)k_ra8_flash_extra_start, le, (uint32_t)sizeof(le));
-  /* A blank (never-provisioned) extra-MRAM counter cannot be programmed at runtime
-   * on this silicon (there is no BlankCheck and the read leaves the controller
-   * unable to program a fresh word -- #194). The image is already
-   * signature-authenticated, so a fresh device launches its first authentic image
-   * without a persisted floor; anti-rollback begins enforcing once the counter is
-   * provisioned (writable). On a provisioned counter a write error is real and
+  /* #315 bench-proved on silicon that a virgin extra-MRAM page CAN be programmed at
+   * runtime write-first (no prior read) and reads back byte-exact with valid ECC, so
+   * the commit programs the counter directly and returns the write result. The
+   * earlier "#194: the read leaves the controller unable to program a fresh word"
+   * claim was an artifact of the phantom 0x27000000 window (corrected by #397). The
+   * ``blank`` leg is retained defensively -- it is not expected on the corrected
+   * window (a virgin read returns 0xFFFFFFFF without faulting, so ``blank`` stays
+   * false) -- and lets a signature-authenticated fresh device launch its first
+   * authentic image without a persisted floor. On a real write error the commit
    * default-denies the launch. */
   return blank ? k_ra8_ok : wr;
 #endif
