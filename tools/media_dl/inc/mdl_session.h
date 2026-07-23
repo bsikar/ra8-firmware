@@ -42,7 +42,7 @@ typedef struct {
   const char*        user_agent;                     /**< Full UA header (caller-owned).       */
   bool               honor_robots;                   /**< False disables all robots gating.    */
   mdl_robots_cache_t cache;                          /**< Per-host robots cache.               */
-  char               scratch[k_mdl_session_scratch]; /**< Fetch scratch.     */
+  char               scratch[k_mdl_session_scratch]; /**< Fetch scratch.                       */
 } mdl_session_t;
 
 /**

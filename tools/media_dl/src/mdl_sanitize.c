@@ -41,13 +41,13 @@ RA8_INTERNAL static bool is_allowed_char(char c)
          (c == '.') || (c == '-') || (c == '_');
 }
 
-/** @brief True if `name` is empty, `.`, or `..` (no useful segment). */
+/** @brief True if `name` is empty, ".", or ".." (no useful segment). */
 RA8_INTERNAL static bool is_dot_segment(const char* name)
 {
   return (name[0] == '\0') || (strcmp(name, ".") == 0) || (strcmp(name, "..") == 0);
 }
 
-/** @brief Case-folded base name (up to the first `.`) of `name` into `base`. */
+/** @brief Case-folded base name (up to the first ".") of `name` into `base`. */
 RA8_INTERNAL static void base_of(const char* name, char* base, size_t cap)
 {
   size_t i = 0U;

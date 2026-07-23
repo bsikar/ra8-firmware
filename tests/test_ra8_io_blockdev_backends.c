@@ -60,11 +60,11 @@ typedef enum : uint8_t {
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_sdram_blocks   = 64,     /**< 32 KiB inside the simulated SDRAM window.  */
-  k_t_xspi_blocks    = 8,      /**< 4 KiB == one NOR sector of the model.      */
-  k_t_mram_blocks    = 4,      /**< 2 KiB inside the extra-MRAM OTP window.     */
+  k_t_sdram_blocks   = 64,     /**< 32 KiB inside the simulated SDRAM window.     */
+  k_t_xspi_blocks    = 8,      /**< 4 KiB == one NOR sector of the model.         */
+  k_t_mram_blocks    = 4,      /**< 2 KiB inside the extra-MRAM OTP window.       */
   k_t_mram_oversize  = 256,    /**< > 65 KiB / 512 -- past the extra-MRAM window. */
-  k_t_sdram_oversize = 200000, /**< > 64 MiB / 512 -- rejected by sdram init.  */
+  k_t_sdram_oversize = 200000, /**< > 64 MiB / 512 -- rejected by sdram init.     */
 } t_backend_const_t;
 
 /* =============================================================================

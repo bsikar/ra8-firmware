@@ -21,25 +21,25 @@ typedef enum : uint8_t {
 
 /** @brief IPv4 range boundaries that mark non-public address space. */
 typedef enum : uint16_t {
-  k_v4_zero_net      = 0,   /**< 0.0.0.0/8 "this network" (unspecified).  */
-  k_v4_loopback_net  = 127, /**< 127.0.0.0/8 loopback.                    */
-  k_v4_private_a     = 10,  /**< 10.0.0.0/8.                              */
-  k_v4_private_b     = 172, /**< 172.16.0.0/12 first octet.               */
-  k_v4_private_b_lo  = 16,  /**< 172.16 low second octet (inclusive).     */
-  k_v4_private_b_hi  = 31,  /**< 172.31 high second octet (inclusive).    */
-  k_v4_private_c     = 192, /**< 192.168.0.0/16 first octet.              */
-  k_v4_private_c_2   = 168, /**< 192.168 second octet.                    */
-  k_v4_linklocal     = 169, /**< 169.254.0.0/16 first octet.              */
-  k_v4_linklocal_2   = 254, /**< 169.254 second octet.                    */
-  k_v4_cgnat         = 100, /**< 100.64.0.0/10 (RFC6598) first octet.     */
-  k_v4_cgnat_lo      = 64,  /**< 100.64 low second octet (inclusive).     */
-  k_v4_cgnat_hi      = 127, /**< 100.127 high second octet (inclusive).   */
-  k_v4_multicast_min = 224, /**< 224.0.0.0/4 and up: multicast/reserved.  */
+  k_v4_zero_net      = 0,   /**< 0.0.0.0/8 "this network" (unspecified). */
+  k_v4_loopback_net  = 127, /**< 127.0.0.0/8 loopback.                   */
+  k_v4_private_a     = 10,  /**< 10.0.0.0/8.                             */
+  k_v4_private_b     = 172, /**< 172.16.0.0/12 first octet.              */
+  k_v4_private_b_lo  = 16,  /**< 172.16 low second octet (inclusive).    */
+  k_v4_private_b_hi  = 31,  /**< 172.31 high second octet (inclusive).   */
+  k_v4_private_c     = 192, /**< 192.168.0.0/16 first octet.             */
+  k_v4_private_c_2   = 168, /**< 192.168 second octet.                   */
+  k_v4_linklocal     = 169, /**< 169.254.0.0/16 first octet.             */
+  k_v4_linklocal_2   = 254, /**< 169.254 second octet.                   */
+  k_v4_cgnat         = 100, /**< 100.64.0.0/10 (RFC6598) first octet.    */
+  k_v4_cgnat_lo      = 64,  /**< 100.64 low second octet (inclusive).    */
+  k_v4_cgnat_hi      = 127, /**< 100.127 high second octet (inclusive).  */
+  k_v4_multicast_min = 224, /**< 224.0.0.0/4 and up: multicast/reserved. */
 } mdl_v4_range_t;
 
 /** @brief IPv6 address byte layout and the bytes classification inspects. */
 typedef enum : uint8_t {
-  k_v6_bytes       = 16, /**< Total bytes in an IPv6 address.          */
+  k_v6_bytes       = 16, /**< Total bytes in an IPv6 address.           */
   k_v6_mapped_ff_a = 10, /**< First 0xFF byte of an IPv4-mapped prefix. */
   k_v6_mapped_ff_b = 11, /**< Second 0xFF byte of the mapped prefix.    */
   k_v6_mapped_v4   = 12, /**< Offset of the embedded IPv4 address.      */
@@ -48,13 +48,13 @@ typedef enum : uint8_t {
 
 /** @brief IPv6 prefix byte values that mark non-public address space. */
 typedef enum : uint16_t {
-  k_v6_byte_ff       = 0xFF, /**< Multicast lead byte / mapped filler.  */
-  k_v6_ula_mask      = 0xFE, /**< Mask isolating the fc00::/7 prefix.   */
-  k_v6_ula_value     = 0xFC, /**< fc00::/7 unique-local value.          */
-  k_v6_ll_lead       = 0xFE, /**< fe80::/10 lead byte.                  */
-  k_v6_ll_mask       = 0xC0, /**< Mask isolating the /10 boundary.      */
-  k_v6_ll_value      = 0x80, /**< fe80::/10 masked value.               */
-  k_v6_loopback_last = 0x01, /**< Final byte of ::1.                    */
+  k_v6_byte_ff       = 0xFF, /**< Multicast lead byte / mapped filler. */
+  k_v6_ula_mask      = 0xFE, /**< Mask isolating the fc00::/7 prefix.  */
+  k_v6_ula_value     = 0xFC, /**< fc00::/7 unique-local value.         */
+  k_v6_ll_lead       = 0xFE, /**< fe80::/10 lead byte.                 */
+  k_v6_ll_mask       = 0xC0, /**< Mask isolating the /10 boundary.     */
+  k_v6_ll_value      = 0x80, /**< fe80::/10 masked value.              */
+  k_v6_loopback_last = 0x01, /**< Final byte of ::1.                   */
 } mdl_v6_prefix_t;
 
 /** @brief Scheme prefixes accepted by ::mdl_url_scheme_allowed. */

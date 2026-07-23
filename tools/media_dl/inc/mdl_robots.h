@@ -26,27 +26,27 @@
 
 /** @brief Fixed capacities for one parsed robots.txt group. */
 typedef enum : uint16_t {
-  k_mdl_robots_max_rules = 64,  /**< Max Allow/Disallow rules retained.   */
-  k_mdl_robots_path_max  = 256, /**< Max bytes per rule path pattern.     */
+  k_mdl_robots_max_rules = 64,  /**< Max Allow/Disallow rules retained. */
+  k_mdl_robots_path_max  = 256, /**< Max bytes per rule path pattern.   */
 } mdl_robots_limits_t;
 
 /** @brief Fixed capacities for the per-host robots cache. */
 typedef enum : uint16_t {
-  k_mdl_robots_max_hosts = 16,  /**< Distinct hosts cached per run.       */
-  k_mdl_robots_host_max  = 128, /**< Max host string bytes.               */
+  k_mdl_robots_max_hosts = 16,  /**< Distinct hosts cached per run. */
+  k_mdl_robots_host_max  = 128, /**< Max host string bytes.         */
 } mdl_robots_cache_limits_t;
 
 /** @brief Whether a rule permits or forbids a matching path. */
 typedef enum : uint8_t {
-  k_mdl_rule_disallow = 0, /**< A `Disallow` rule.  */
-  k_mdl_rule_allow    = 1, /**< An `Allow` rule.    */
+  k_mdl_rule_disallow = 0, /**< A `Disallow` rule. */
+  k_mdl_rule_allow    = 1, /**< An `Allow` rule.   */
 } mdl_robots_rule_kind_t;
 
 /** @brief Outcome class of a robots.txt fetch, per RFC 9309 convention. */
 typedef enum : uint8_t {
-  k_mdl_robots_fetch_ok     = 0, /**< A body was retrieved to parse.        */
-  k_mdl_robots_fetch_absent = 1, /**< Absent / transport error: allow all.  */
-  k_mdl_robots_fetch_denied = 2, /**< 5xx status: disallow all.             */
+  k_mdl_robots_fetch_ok     = 0, /**< A body was retrieved to parse.       */
+  k_mdl_robots_fetch_absent = 1, /**< Absent / transport error: allow all. */
+  k_mdl_robots_fetch_denied = 2, /**< 5xx status: disallow all.            */
 } mdl_robots_fetch_result_t;
 
 /**
@@ -58,9 +58,9 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  mdl_robots_rule_kind_t kind;                        /**< Allow or disallow.        */
-  uint16_t               len;                         /**< Pattern length in bytes.  */
-  char                   path[k_mdl_robots_path_max]; /**< Path pattern.           */
+  mdl_robots_rule_kind_t kind;                        /**< Allow or disallow.       */
+  uint16_t               len;                         /**< Pattern length in bytes. */
+  char                   path[k_mdl_robots_path_max]; /**< Path pattern.            */
 } mdl_robots_rule_t;
 
 /**
@@ -73,10 +73,10 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  mdl_robots_rule_t rules[k_mdl_robots_max_rules]; /**< Selected group's rules.   */
-  size_t            count;                         /**< Number of valid rules.    */
-  bool              have_crawl_delay;              /**< A Crawl-delay was seen.   */
-  uint32_t          crawl_delay_ms;                /**< Crawl-delay in ms.        */
+  mdl_robots_rule_t rules[k_mdl_robots_max_rules]; /**< Selected group's rules. */
+  size_t            count;                         /**< Number of valid rules.  */
+  bool              have_crawl_delay;              /**< A Crawl-delay was seen. */
+  uint32_t          crawl_delay_ms;                /**< Crawl-delay in ms.      */
 } mdl_robots_t;
 
 /**
@@ -180,7 +180,7 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  mdl_robots_cache_entry_t hosts[k_mdl_robots_max_hosts]; /**< Cached hosts.  */
+  mdl_robots_cache_entry_t hosts[k_mdl_robots_max_hosts]; /**< Cached hosts. */
 } mdl_robots_cache_t;
 
 /**

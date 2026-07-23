@@ -57,9 +57,9 @@ RA8_INTERNAL static void set_str(char* dst, size_t cap, const char* val)
 RA8_INTERNAL static bool apply_kv_str(mdl_site_t* s, const char* key, const char* val)
 {
   const struct {
-    const char* key; /**< Config key spelling.            */
-    char*       dst; /**< Descriptor field it fills.      */
-    size_t      cap; /**< Capacity of that field.         */
+    const char* key; /**< Config key spelling.       */
+    char*       dst; /**< Descriptor field it fills. */
+    size_t      cap; /**< Capacity of that field.    */
   } fields[] = {
     {"name", s->name, sizeof(s->name)},
     {"host", s->host, sizeof(s->host)},
@@ -82,8 +82,8 @@ RA8_INTERNAL static bool apply_kv_str(mdl_site_t* s, const char* key, const char
 RA8_INTERNAL static bool apply_kv_delay(mdl_site_t* s, const char* key, const char* val)
 {
   const struct {
-    const char* key; /**< Config key spelling.            */
-    uint32_t*   dst; /**< Descriptor delay it fills.      */
+    const char* key; /**< Config key spelling.       */
+    uint32_t*   dst; /**< Descriptor delay it fills. */
   } delays[] = {
     {"img_delay_min", &s->img_delay_min},
     {"img_delay_max", &s->img_delay_max},

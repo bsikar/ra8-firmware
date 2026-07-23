@@ -21,8 +21,8 @@ typedef enum : uint32_t {
 
 /** @brief HTTP server-error range treated as "disallow all". */
 typedef enum : uint16_t {
-  k_http_server_err_min = 500, /**< First 5xx status.  */
-  k_http_server_err_max = 599, /**< Last 5xx status.   */
+  k_http_server_err_min = 500, /**< First 5xx status. */
+  k_http_server_err_max = 599, /**< Last 5xx status.  */
 } mdl_session_status_t;
 
 /** @brief Product token used to match robots.txt `User-agent` groups. */

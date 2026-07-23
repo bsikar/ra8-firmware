@@ -62,9 +62,9 @@ static mdl_url_list_t s_list;
  * @since 0.1.0
  */
 typedef struct {
-  int                       count;  /**< Number of fetches performed.  */
+  int                       count;  /**< Number of fetches performed.     */
   const char*               body;   /**< Canned robots.txt body, or NULL. */
-  mdl_robots_fetch_result_t result; /**< Result the fetcher reports.   */
+  mdl_robots_fetch_result_t result; /**< Result the fetcher reports.      */
 } fake_fetch_ctx_t;
 
 /** @brief Injected robots.txt fetcher returning a canned body/result. */
@@ -370,8 +370,8 @@ static void test_addr_classify(void)
   TEST_BEGIN("address classify");
   TEST_ASSERT(mdl_classify_ip("8.8.8.8") == k_mdl_addr_public);
   TEST_ASSERT(mdl_classify_ip("2606:4700:4700::1111") == k_mdl_addr_public);
-  TEST_ASSERT(mdl_classify_ip("172.15.0.1") == k_mdl_addr_public);  /* below the /12 */
-  TEST_ASSERT(mdl_classify_ip("172.32.0.1") == k_mdl_addr_public);  /* above the /12 */
+  TEST_ASSERT(mdl_classify_ip("172.15.0.1") == k_mdl_addr_public);  /* below the /12  */
+  TEST_ASSERT(mdl_classify_ip("172.32.0.1") == k_mdl_addr_public);  /* above the /12  */
   TEST_ASSERT(mdl_classify_ip("169.253.0.1") == k_mdl_addr_public); /* not link-local */
   TEST_ASSERT(mdl_classify_ip("127.0.0.1") == k_mdl_addr_loopback);
   TEST_ASSERT(mdl_classify_ip("::1") == k_mdl_addr_loopback);
@@ -409,9 +409,9 @@ static void test_size_cap(void)
 {
   TEST_BEGIN("size cap");
   TEST_ASSERT(!mdl_size_exceeds(0U, 100U, 0U));   /* cap 0 -> unlimited */
-  TEST_ASSERT(!mdl_size_exceeds(90U, 10U, 100U)); /* exactly fits */
-  TEST_ASSERT(mdl_size_exceeds(90U, 11U, 100U));  /* one byte over */
-  TEST_ASSERT(mdl_size_exceeds(200U, 1U, 100U));  /* already over cap */
+  TEST_ASSERT(!mdl_size_exceeds(90U, 10U, 100U)); /* exactly fits       */
+  TEST_ASSERT(mdl_size_exceeds(90U, 11U, 100U));  /* one byte over      */
+  TEST_ASSERT(mdl_size_exceeds(200U, 1U, 100U));  /* already over cap   */
   TEST_END("size cap");
 }
 
@@ -467,7 +467,7 @@ static void test_path_contained(void)
   TEST_ASSERT(mdl_path_contained("/a/b", "/a/b"));
   TEST_ASSERT(mdl_path_contained("/a/b", "/a/b/c"));
   TEST_ASSERT(mdl_path_contained("/a/b/", "/a/b/c")); /* trailing slash ignored */
-  TEST_ASSERT(!mdl_path_contained("/a/b", "/a/bb"));  /* boundary not a prefix */
+  TEST_ASSERT(!mdl_path_contained("/a/b", "/a/bb"));  /* boundary not a prefix  */
   TEST_ASSERT(!mdl_path_contained("/a/b", "/a/c"));
   TEST_ASSERT(!mdl_path_contained("/a/b", "/x"));
   TEST_END("path contained");
@@ -574,7 +574,7 @@ static void test_robots_allow_wins(void)
   static const char txt[] = "User-agent: *\nDisallow: /dir/\nAllow: /dir/ok\n";
   mdl_robots_t      r;
   mdl_robots_parse(txt, sizeof(txt) - 1U, "media_dl", &r);
-  TEST_ASSERT(mdl_robots_allows(&r, "/dir/ok/page")); /* longer Allow wins */
+  TEST_ASSERT(mdl_robots_allows(&r, "/dir/ok/page")); /* longer Allow wins     */
   TEST_ASSERT(!mdl_robots_allows(&r, "/dir/secret")); /* only Disallow matches */
   TEST_END("robots longest-match allow");
 }
@@ -586,7 +586,7 @@ static void test_robots_wildcard_anchor(void)
   static const char txt[] = "User-agent: *\nDisallow: /*.pdf$\n";
   mdl_robots_t      r;
   mdl_robots_parse(txt, sizeof(txt) - 1U, "media_dl", &r);
-  TEST_ASSERT(!mdl_robots_allows(&r, "/docs/a.pdf"));     /* matches to end */
+  TEST_ASSERT(!mdl_robots_allows(&r, "/docs/a.pdf"));     /* matches to end    */
   TEST_ASSERT(mdl_robots_allows(&r, "/docs/a.pdf.html")); /* $ anchors the end */
   TEST_END("robots wildcard + anchor");
 }
@@ -637,7 +637,7 @@ static void test_robots_cache(void)
                                                     scratch,
                                                     sizeof(scratch));
   TEST_ASSERT(r2 == r);                            /* cache hit: same entry */
-  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)ok.count); /* fetched exactly once */
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)ok.count); /* fetched exactly once  */
 
   fake_fetch_ctx_t    deny = {.count = 0, .body = nullptr, .result = k_mdl_robots_fetch_denied};
   const mdl_robots_t* rd   = mdl_robots_cache_consult(&s_cache,

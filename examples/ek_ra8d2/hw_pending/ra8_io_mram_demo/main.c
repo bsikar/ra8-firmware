@@ -52,8 +52,8 @@
 
 /** @enum demo_const_t @brief Console + volume + MRAM knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_demo_uart_chan   = 8U,      /**< SCI8 J-Link OB console.               */
-  k_demo_uart_baud   = 115200U, /**< Console baud.                         */
+  k_demo_uart_chan   = 8U,                                /**< SCI8 J-Link OB console.     */
+  k_demo_uart_baud   = 115200U,                           /**< Console baud.               */
   k_demo_mram_base   = (uint32_t)k_ra8_flash_extra_start, /**< Extra-MRAM OTP window base. */
   k_demo_disk_blocks = 24U,  /**< 12 KiB scratch inside the OTP window. */
   k_demo_test_lba    = 0U,   /**< Logical block under test.             */

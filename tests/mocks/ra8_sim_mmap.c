@@ -104,7 +104,7 @@ typedef enum : uint8_t {
   k_ra8_sim_region_sram       = 3, /**< SRAM 0x22000000.                       */
   k_ra8_sim_region_sdram      = 4, /**< SDRAM framebuffers 0x68000000.         */
   k_ra8_sim_region_code_mram  = 5, /**< Code MRAM 0x02000000 (1 MiB).          */
-  k_ra8_sim_region_extra_mram = 6, /**< Extra-MRAM OTP window 0x02E07000 head.  */
+  k_ra8_sim_region_extra_mram = 6, /**< Extra-MRAM OTP window 0x02E07000 head. */
   k_ra8_sim_region_peri_ns    = 7, /**< NS alias of peripheral bus 0x50000000. */
   k_ra8_sim_region_count      = 8, /**< RA8 sim region count.                  */
 } ra8_sim_region_id_t;
@@ -126,26 +126,26 @@ typedef struct {
  * base plus any future driver without revisiting this list.
  */
 enum : size_t {
-  k_ra8_sim_peri_size       = 0x00800000U, /**< 8 MiB over the peri bus.           */
-  k_ra8_sim_core_size       = 0x00100000U, /**< 1 MiB SCB/MPU window.              */
-  k_ra8_sim_mram_size       = 0x00100000U, /**< 1 MiB MRAM span.                   */
-  k_ra8_sim_sram_size       = 0x00200000U, /**< 2 MiB SRAM span.                   */
-  k_ra8_sim_sdram_size      = 0x00100000U, /**< 1 MiB SDRAM head.                  */
-  k_ra8_sim_code_mram_size  = 0x00100000U, /**< 1 MiB code MRAM (HUM 59.1 p 3543). */
+  k_ra8_sim_peri_size       = 0x00800000U, /**< 8 MiB over the peri bus.                  */
+  k_ra8_sim_core_size       = 0x00100000U, /**< 1 MiB SCB/MPU window.                     */
+  k_ra8_sim_mram_size       = 0x00100000U, /**< 1 MiB MRAM span.                          */
+  k_ra8_sim_sram_size       = 0x00200000U, /**< 2 MiB SRAM span.                          */
+  k_ra8_sim_sdram_size      = 0x00100000U, /**< 1 MiB SDRAM head.                         */
+  k_ra8_sim_code_mram_size  = 0x00100000U, /**< 1 MiB code MRAM (HUM 59.1 p 3543).        */
   k_ra8_sim_extra_mram_size = 0x00011000U, /**< Covers the OTP window through 0x02E18000. */
 };
 
 enum : uintptr_t {
-  k_ra8_sim_peri_base       = 0x40000000UL, /**< RA8 sim peri base.                            */
-  k_ra8_sim_core_base       = 0xE0000000UL, /**< RA8 sim core base.                            */
-  k_ra8_sim_mram_base       = 0x02C00000UL, /**< RA8 sim MRAM base.                            */
-  k_ra8_sim_sram_base       = 0x22000000UL, /**< RA8 sim SRAM base.                            */
-  k_ra8_sim_sdram_base      = 0x68000000UL, /**< RA8 sim SDRAM base.                           */
-  k_ra8_sim_code_mram_base  = 0x02000000UL, /**< Code MRAM (matches k_ra8_flash_code_start).   */
+  k_ra8_sim_peri_base       = 0x40000000UL, /**< RA8 sim peri base.                          */
+  k_ra8_sim_core_base       = 0xE0000000UL, /**< RA8 sim core base.                          */
+  k_ra8_sim_mram_base       = 0x02C00000UL, /**< RA8 sim MRAM base.                          */
+  k_ra8_sim_sram_base       = 0x22000000UL, /**< RA8 sim SRAM base.                          */
+  k_ra8_sim_sdram_base      = 0x68000000UL, /**< RA8 sim SDRAM base.                         */
+  k_ra8_sim_code_mram_base  = 0x02000000UL, /**< Code MRAM (matches k_ra8_flash_code_start). */
   k_ra8_sim_extra_mram_base = 0x02E07000UL, /**< Page-aligned head of the extra-MRAM OTP
                                              * window (covers k_ra8_flash_extra_start
                                              * 0x02E07600, HUM Ch 59.7.4.5 Table 59.15 p 3592). */
-  k_ra8_sim_peri_ns_base    = 0x50000000UL, /**< Non-Secure alias of peri bus.                 */
+  k_ra8_sim_peri_ns_base    = 0x50000000UL, /**< Non-Secure alias of peri bus. */
 };
 
 static const ra8_sim_region_t s_ra8_sim_regions[k_ra8_sim_region_count] = {
