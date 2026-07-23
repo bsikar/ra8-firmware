@@ -131,21 +131,6 @@ static bool cond_holds(uint32_t cond, uint32_t xpsr)
 }
 
 /**
- * @brief Emulate one Armv8.1-M conditional-select instruction if present at PC.
- *
- * @details
- * Decodes the CSEL/CSINC/CSINV/CSNEG encoding (see ::cond_select_t), evaluates
- * the condition against the APSR, computes Rd, writes it back, and advances PC
- * past the 4-byte instruction. This lets Unicorn's M33 core execute the M85
- * firmware's branchless index math instead of trapping on an opcode it does not
- * implement. Anything that is not this family is left untouched.
- *
- * @param[in,out] uc   Unicorn engine.
- * @param[in]     pc   Address of the trapped instruction.
- * @param[in]     code The 4 instruction bytes already read at @p pc.
- * @return true if a conditional-select was recognised, executed, and PC advanced.
- */
-/**
  * @brief Report whether @p reg is reserved as a conditional-select operand.
  *
  * @details SP and PC make CSEL/CSINC/CSINV/CSNEG UNPREDICTABLE, so no compiler
@@ -166,6 +151,21 @@ static bool cs_reserved_reg(uint32_t reg)
   return (reg == (uint32_t)k_cs_reg_sp) || (reg == (uint32_t)k_cs_reg_pc);
 }
 
+/**
+ * @brief Emulate one Armv8.1-M conditional-select instruction if present at PC.
+ *
+ * @details
+ * Decodes the CSEL/CSINC/CSINV/CSNEG encoding (see ::cond_select_t), evaluates
+ * the condition against the APSR, computes Rd, writes it back, and advances PC
+ * past the 4-byte instruction. This lets Unicorn's M33 core execute the M85
+ * firmware's branchless index math instead of trapping on an opcode it does not
+ * implement. Anything that is not this family is left untouched.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   Address of the trapped instruction.
+ * @param[in]     code The 4 instruction bytes already read at @p pc.
+ * @return true if a conditional-select was recognised, executed, and PC advanced.
+ */
 static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
 {
   const uint16_t hw1 = (uint16_t)(code[0] | ((uint16_t)code[1] << 8));

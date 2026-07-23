@@ -181,10 +181,57 @@ static uint32_t s_drw_control2;
  */
 static uint32_t s_drw_color1;
 
+/**
+ * @var s_drw_pitch_px
+ * @brief Cached framebuffer pitch in pixels.
+ *
+ * @details
+ * The engine scans the bounding box anchored at ORIGIN (HUM Ch 62.6.2
+ * p 3716: "the 2D Drawing Engine scans the whole bounding box"), so every
+ * rectangle primitive has to advance ORIGIN to its own top-left pixel.
+ * That address is ``framebuffer + ((y * pitch) + x) * bytes_per_px``, which
+ * needs the pitch and the pixel stride kept alongside the base.
+ *
+ * @note Written by ::ra8_drw_init, cleared by ::ra8_drw_deinit.
+ * @warning Do not modify outside init/deinit -- primitives only read it.
+ * @since 0.1.0
+ */
+static uint32_t s_drw_pitch_px;
+
+/**
+ * @var s_drw_bytes_px
+ * @brief Cached framebuffer bytes per pixel for the configured WRITEFORMAT.
+ *
+ * @note Written by ::ra8_drw_init, cleared by ::ra8_drw_deinit.
+ * @warning Do not modify outside init/deinit -- primitives only read it.
+ * @since 0.1.0
+ */
+static uint32_t s_drw_bytes_px;
+
 /** @brief Implementation of `ra8_drw_internal_origin()` -- shadow read. */
 uint32_t ra8_drw_internal_origin(void)
 {
   return s_drw_origin;
+}
+
+uint32_t ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect)
+{
+  const uint32_t x   = (uint32_t)(int32_t)rect->x;
+  const uint32_t y   = (uint32_t)(int32_t)rect->y;
+  const uint32_t off = ((y * s_drw_pitch_px) + x) * s_drw_bytes_px;
+  return s_drw_origin + off;
+}
+
+bool ra8_drw_internal_rect_off_surface(const ra8_drw_rect_t* rect)
+{
+  bool off = false;
+  if ((rect->x < 0) || (rect->y < 0)) {
+    off = true;
+  } else {
+    const uint32_t right = (uint32_t)(int32_t)rect->x + (uint32_t)rect->width_px;
+    off                  = (right > s_drw_pitch_px);
+  }
+  return off;
 }
 
 /** @brief Implementation of `ra8_drw_internal_color1_write()` -- MMIO + shadow. */
@@ -257,6 +304,86 @@ static inline uint32_t internal_pack_readformat(ra8_drw_readformat_t fmt)
 }
 
 /**
+ * @brief Map a WRITEFORMAT code to its framebuffer pixel stride in bytes.
+ *
+ * @details
+ * HUM Ch 62.3.1.1 "Color Formats" p 3707 lists the framebuffer formats:
+ * A8 is 8 bpp, RGB565 and ARGB4444 are 16 bpp, ARGB8888 is 32 bpp. The
+ * stride is needed to advance ORIGIN to a rectangle's top-left pixel.
+ *
+ * @param[in] fmt One of ``ra8_drw_writeformat_t``.
+ * @return Bytes occupied by one framebuffer pixel (1, 2 or 4).
+ * @retval 1 ``fmt`` is ``k_ra8_drw_writefmt_a8``.
+ * @retval 4 ``fmt`` is ``k_ra8_drw_writefmt_argb8888``.
+ * @retval 2 ``fmt`` is RGB565 or ARGB4444.
+ *
+ * @pre ``fmt`` is one of the four documented WRITEFORMAT codes.
+ * @pre Caller uses the result only for framebuffer address arithmetic.
+ * @post Returned value is non-zero.
+ * @post No side effects.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static inline uint32_t internal_bytes_per_px(ra8_drw_writeformat_t fmt)
+{
+  /* RGB565 / ARGB4444 default to 16 bpp; the two exclusive overrides below
+   * pick 8 or 32 bpp when they match. */
+  uint32_t bytes = (uint32_t)k_ra8_drw_bytes_px_16bpp;
+  if (fmt == k_ra8_drw_writefmt_a8) {
+    bytes = (uint32_t)k_ra8_drw_bytes_px_8bpp;
+  }
+  if (fmt == k_ra8_drw_writefmt_argb8888) {
+    bytes = (uint32_t)k_ra8_drw_bytes_px_32bpp;
+  }
+  return bytes;
+}
+
+/**
+ * @brief Build the CONTROL2 value a plain solid-fill surface needs at init.
+ *
+ * @details
+ * Plain solid-fill mode: no texture, no pattern. Beyond the framebuffer pixel
+ * format two defaults matter and NEITHER is the reset value.
+ *
+ * @c WRITEALPHA (bits 23:22, HUM Ch 62.2.2 p 3694) selects what reaches the
+ * framebuffer alpha byte. Its reset value 00 means "use alpha from COLOR2", and
+ * COLOR2 is 0 for a solid fill -- so every filled pixel landed with alpha 0x00
+ * on silicon (bench: a @c 0xFF00FF00 fill read back @c 0x0000FF00). Select 01,
+ * "use source alpha (pixel coverage)", which the bench shows is COLOR1's alpha
+ * scaled by coverage: an opaque fill lands @c 0xFF and a @c 0x80-alpha fill
+ * lands @c 0x80.
+ *
+ * @c BDI (bit 12) forces the blend destination factor fD to 0 (HUM Ch 62.6.5.1
+ * p 3733, Table 62.9 "SRC_ONE"). Without it the reset factors are fS = fD = 1,
+ * i.e. @c dst @c = @c src @c + @c dst -- a fill would ADD to whatever the
+ * framebuffer already held rather than replace it. Bench-confirmed: filling
+ * @c 0xFF00FF00 over a @c 0x00000010 framebuffer produced @c 0xFF00FF10 without
+ * BDI and @c 0xFF00FF00 with it.
+ *
+ * @param[in] fmt Framebuffer pixel format from the caller's config.
+ * @return CONTROL2 word to write and to seed the software shadow with.
+ * @retval (packed) WRITEFORMAT | WRITEALPHA=01 | BDI, all other fields zero.
+ *
+ * @pre ``fmt`` is one of the four documented WRITEFORMAT codes.
+ * @pre Caller owns the CONTROL2 shadow and writes the result to both.
+ * @post No side effects.
+ * @post Texture, pattern, colour-key and alpha-channel-blend bits are clear.
+ *
+ * @note Pure; thread-safe.
+ * @see ra8_drw_set_blend  Overwrites the blend bits, BDI included.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static inline uint32_t internal_pack_surface_defaults(ra8_drw_writeformat_t fmt)
+{
+  return internal_pack_writeformat(fmt) |
+         ((uint32_t)k_ra8_drw_writealpha_pixel_cov << k_ra8_drw_control2_writealpha_pos) |
+         k_ra8_drw_control2_bdi;
+}
+
+/**
  * @brief Read-modify-write a CONTROL2 mask; preserve unrelated bits.
  *
  * @param[in] clear_mask Bits to clear before applying ``set_mask``.
@@ -286,38 +413,74 @@ static inline uint32_t internal_control2_rmw(uint32_t clear_mask, uint32_t set_m
   return nxt;
 }
 
-void internal_program_rect_limiters(const ra8_drw_rect_t* rect)
+void internal_program_rect_bbox(const ra8_drw_rect_t* rect)
 {
-  const int32_t  x0 = (int32_t)rect->x;
-  const int32_t  y0 = (int32_t)rect->y;
-  const int32_t  x1 = x0 + (int32_t)rect->width_px;
-  const int32_t  y1 = y0 + (int32_t)rect->height_px;
-  const uint32_t l1 = internal_to_subpixel(x0);
-  const uint32_t l2 = internal_to_subpixel(x1);
-  const uint32_t l3 = internal_to_subpixel(y0);
-  const uint32_t l4 = internal_to_subpixel(y1);
-
   /* HUM Ch 62.2.29 "SIZE: Bounding Box Dimension Register", p 3704 */
+  /* The bounding box IS the rectangle: HUM Ch 62.6.2 p 3716 has the engine
+   * scan "the whole bounding box" anchored at ORIGIN, so an axis-aligned
+   * solid rectangle needs no spatial limiter at all -- the scan produces
+   * exactly the requested extent. */
   *ra8_drw_reg32(k_ra8_drw_off_size) =
     ((uint32_t)rect->height_px << k_ra8_drw_size_height_pos) | (uint32_t)rect->width_px;
 
   /* HUM Ch 62.2.10 "LnSTART: Limiter n Start Value Register", p 3698 */
-  *ra8_drw_reg32(k_ra8_drw_off_l1start) = l1;
-  *ra8_drw_reg32(k_ra8_drw_off_l2start) = l2;
-  *ra8_drw_reg32(k_ra8_drw_off_l3start) = l3;
-  *ra8_drw_reg32(k_ra8_drw_off_l4start) = l4;
+  /* Clear the six spatial limiters so a previous line/triangle primitive
+   * cannot leak an edge into this box. CONTROL disables them, but leaving
+   * live values behind makes a mis-set CONTROL fail silently instead of
+   * loudly. */
+  *ra8_drw_reg32(k_ra8_drw_off_l1start) = 0UL;
+  *ra8_drw_reg32(k_ra8_drw_off_l2start) = 0UL;
+  *ra8_drw_reg32(k_ra8_drw_off_l3start) = 0UL;
+  *ra8_drw_reg32(k_ra8_drw_off_l4start) = 0UL;
 
   /* HUM Ch 62.2.11 "LnXADD: Limiter n X-Axis Increment Register", p 3698 */
-  *ra8_drw_reg32(k_ra8_drw_off_l1xadd) = (uint32_t)k_ra8_drw_subpixel_unit;
-  *ra8_drw_reg32(k_ra8_drw_off_l2xadd) = (uint32_t)k_ra8_drw_subpixel_unit;
+  *ra8_drw_reg32(k_ra8_drw_off_l1xadd) = 0UL;
+  *ra8_drw_reg32(k_ra8_drw_off_l2xadd) = 0UL;
   *ra8_drw_reg32(k_ra8_drw_off_l3xadd) = 0UL;
   *ra8_drw_reg32(k_ra8_drw_off_l4xadd) = 0UL;
 
   /* HUM Ch 62.2.12 "LnYADD: Limiter n Y-Axis Increment Register", p 3699 */
   *ra8_drw_reg32(k_ra8_drw_off_l1yadd) = 0UL;
   *ra8_drw_reg32(k_ra8_drw_off_l2yadd) = 0UL;
-  *ra8_drw_reg32(k_ra8_drw_off_l3yadd) = (uint32_t)k_ra8_drw_subpixel_unit;
-  *ra8_drw_reg32(k_ra8_drw_off_l4yadd) = (uint32_t)k_ra8_drw_subpixel_unit;
+  *ra8_drw_reg32(k_ra8_drw_off_l3yadd) = 0UL;
+  *ra8_drw_reg32(k_ra8_drw_off_l4yadd) = 0UL;
+}
+
+/**
+ * @brief Program the optional CACHECTL and DBWER features from the config.
+ *
+ * @details
+ * Applies the two boolean surface options that ::ra8_drw_init exposes: the
+ * DRW cache enable (CACHECTL) and the bufferable-write enable (DBWER). Both
+ * are all-or-nothing writes derived directly from the caller's config, split
+ * out so ::ra8_drw_init stays under the function-size threshold.
+ *
+ * @param[in] cfg Validated driver configuration (already null-checked).
+ *
+ * @pre ``cfg`` is non-null (::ra8_drw_init guarantees this).
+ * @pre The DRW clock is running (module-stop already cancelled).
+ * @post CACHECTL reflects ``cfg->enable_caches``.
+ * @post DBWER reflects ``cfg->enable_buffered_writes``.
+ *
+ * @note Internal helper, not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_drw_program_cache_options(const ra8_drw_config_t* cfg)
+{
+  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
+  if (cfg->enable_caches) {
+    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = k_ra8_drw_cachectl_all_en;
+  } else {
+    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = 0UL;
+  }
+
+  /* HUM Ch 62.2.35 "DBWER: DRW Bufferable Write Enable", p 3707 */
+  if (cfg->enable_buffered_writes) {
+    *ra8_drw_reg32(k_ra8_drw_off_dbwer) = k_ra8_drw_dbwer_bwe;
+  } else {
+    *ra8_drw_reg32(k_ra8_drw_off_dbwer) = 0UL;
+  }
 }
 
 /* =============================================================================
@@ -357,30 +520,19 @@ void internal_program_rect_limiters(const ra8_drw_rect_t* rect)
   s_drw_origin                         = (uint32_t)cfg->framebuffer_addr;
   *ra8_drw_reg32(k_ra8_drw_off_origin) = s_drw_origin;
 
+  s_drw_pitch_px = (uint32_t)cfg->pitch_px;
+  s_drw_bytes_px = internal_bytes_per_px(cfg->format);
+
   /* HUM Ch 62.2.30 "PITCH: Framebuffer Pitch and Spanstore Delay
  * Register", p 3705. Spanstore delay (SSD) field [31:16] kept 0. */
   *ra8_drw_reg32(k_ra8_drw_off_pitch) = (uint32_t)cfg->pitch_px;
 
   /* HUM Ch 62.2.2 "CONTROL2: Surface Control Register", p 3690 */
-  /* Plain solid-fill mode: no texture, no pattern, no blend; only the
- * framebuffer pixel format bits are set. Seed the write-only shadow. */
-  s_drw_control2                         = internal_pack_writeformat(cfg->format);
+  s_drw_control2                         = internal_pack_surface_defaults(cfg->format);
   *ra8_drw_reg32(k_ra8_drw_off_control2) = s_drw_control2;
   s_drw_color1                           = 0U;
 
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  if (cfg->enable_caches) {
-    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = k_ra8_drw_cachectl_all_en;
-  } else {
-    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = 0UL;
-  }
-
-  /* HUM Ch 62.2.35 "DBWER: DRW Bufferable Write Enable", p 3707 */
-  if (cfg->enable_buffered_writes) {
-    *ra8_drw_reg32(k_ra8_drw_off_dbwer) = k_ra8_drw_dbwer_bwe;
-  } else {
-    *ra8_drw_reg32(k_ra8_drw_off_dbwer) = 0UL;
-  }
+  internal_drw_program_cache_options(cfg);
 
   ra8_log_info_val(s_tag, "drw_init fb", (uint32_t)cfg->framebuffer_addr);
   return k_ra8_ok;
@@ -401,6 +553,8 @@ void internal_program_rect_limiters(const ra8_drw_rect_t* rect)
   s_drw_fn       = nullptr;
   s_drw_ctx      = nullptr;
   s_drw_origin   = 0U;
+  s_drw_pitch_px = 0U;
+  s_drw_bytes_px = 0U;
   s_drw_control2 = 0U;
   s_drw_color1   = 0U;
   return ra8_mstp_disable(k_ra8_mstp_drw);
@@ -531,19 +685,19 @@ void ra8_drw_dispatch(void)
 {
   if (!flush_fb && !flush_texture) {
     ra8_log_warn(s_tag, "cache_flush: nothing to flush");
-    return k_ra8_ok;
+  } else {
+    /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
+    /* Preserve enable bits, OR in the requested flush pulses. */
+    const uint32_t cur = *ra8_drw_reg32(k_ra8_drw_off_cachectl);
+    uint32_t       nxt = cur;
+    if (flush_fb) {
+      nxt |= k_ra8_drw_cachectl_cflushfx;
+    }
+    if (flush_texture) {
+      nxt |= k_ra8_drw_cachectl_cflushtx;
+    }
+    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = nxt;
   }
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  /* Preserve enable bits, OR in the requested flush pulses. */
-  const uint32_t cur = *ra8_drw_reg32(k_ra8_drw_off_cachectl);
-  uint32_t       nxt = cur;
-  if (flush_fb) {
-    nxt |= k_ra8_drw_cachectl_cflushfx;
-  }
-  if (flush_texture) {
-    nxt |= k_ra8_drw_cachectl_cflushtx;
-  }
-  *ra8_drw_reg32(k_ra8_drw_off_cachectl) = nxt;
   return k_ra8_ok;
 }
 

@@ -66,27 +66,30 @@ static const char* s_tag = "DRW";
       (uint16_t)rect->height_px > k_ra8_drw_max_height_px) {
     return k_ra8_err_invalid_arg;
   }
+  if (ra8_drw_internal_rect_off_surface(rect)) {
+    return k_ra8_err_invalid_arg;
+  }
 
   /* COLOR1 goes through the shadowed writer (write-only register). */
   ra8_drw_internal_color1_write(rect->color_argb8888);
 
-  internal_program_rect_limiters(rect);
-
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  /* Flush the framebuffer cache so writes from a previous primitive
- * land in memory before this fill consumes the same lines. */
-  *ra8_drw_reg32(k_ra8_drw_off_cachectl) =
-    (k_ra8_drw_cachectl_all_en | k_ra8_drw_cachectl_cflushfx);
+  internal_program_rect_bbox(rect);
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  /* Select the quad-box geometry mode (limiters 1..4). */
-  *ra8_drw_reg32(k_ra8_drw_off_control) = k_ra8_drw_control_quad_box;
+  /* No spatial limiter: the bounding box scan (HUM Ch 62.6.2 p 3716) already
+   * covers exactly the rectangle, so every enable bit stays clear. Driving
+   * the quad-box limiters here is what produced the half-sized rect on
+   * silicon -- the limiters were fed absolute pixel coordinates while the
+   * hardware wants the decision value at the bounding box's top-left corner,
+   * and their coverage output then landed as alpha 0x01 rather than 0xFF. */
+  *ra8_drw_reg32(k_ra8_drw_off_control) = 0UL;
 
   /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
-  /* Writing ORIGIN triggers the start of rendering; the CONTROL write above
-   * only latches geometry. Without this trigger the engine never rasterizes
-   * (silicon-verified: the demo framebuffer stayed zero-filled). */
-  *ra8_drw_reg32(k_ra8_drw_off_origin) = ra8_drw_internal_origin();
+  /* ORIGIN both POSITIONS the bounding box and TRIGGERS the render, so it is
+   * written last and points at the rectangle's own top-left pixel rather
+   * than the framebuffer base. Without the trigger the engine never
+   * rasterizes (silicon-verified: the demo framebuffer stayed zero-filled). */
+  *ra8_drw_reg32(k_ra8_drw_off_origin) = ra8_drw_internal_rect_origin(rect);
 
   return k_ra8_ok;
 }
@@ -105,8 +108,11 @@ static const char* s_tag = "DRW";
                                       (uint16_t)rect->height_px)) {
     return k_ra8_err_invalid_arg;
   }
+  if (ra8_drw_internal_rect_off_surface(rect)) {
+    return k_ra8_err_invalid_arg;
+  }
 
-  internal_program_rect_limiters(rect);
+  internal_program_rect_bbox(rect);
 
   /* HUM Ch 62.2.18 "LUSTART: U Limiter Start Value Register" p 3701 */
   *ra8_drw_reg32(k_ra8_drw_off_lustart) = 0UL;
@@ -127,16 +133,20 @@ static const char* s_tag = "DRW";
   *ra8_drw_reg32(k_ra8_drw_off_lvyxaddf) = 0UL;
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  /* Pulse FB + texture cache flush before consuming. */
-  *ra8_drw_reg32(k_ra8_drw_off_cachectl) =
-    (k_ra8_drw_cachectl_all_en | k_ra8_drw_cachectl_all_flush);
+  /* Pulse the texture cache flush so this blit cannot consume texels a
+ * previous primitive left cached. The framebuffer cache is left exactly as
+ * ::ra8_drw_init configured it -- a primitive must not silently switch on a
+ * cache the caller asked to keep off, because the rendered pixels then sit
+ * in the DRW cache instead of memory until something flushes them. */
+  *ra8_drw_reg32(k_ra8_drw_off_cachectl) = k_ra8_drw_cachectl_cflushtx;
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  *ra8_drw_reg32(k_ra8_drw_off_control) = k_ra8_drw_control_quad_box;
+  /* No spatial limiter -- the bounding box scan is the rectangle. */
+  *ra8_drw_reg32(k_ra8_drw_off_control) = 0UL;
 
   /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
-  /* ORIGIN write = render trigger (see ra8_drw_fill_rect). */
-  *ra8_drw_reg32(k_ra8_drw_off_origin) = ra8_drw_internal_origin();
+  /* ORIGIN positions the bounding box AND triggers the render. */
+  *ra8_drw_reg32(k_ra8_drw_off_origin) = ra8_drw_internal_rect_origin(rect);
   return k_ra8_ok;
 }
 
@@ -346,28 +356,32 @@ static void internal_program_line_limiters(const ra8_drw_line_t* line)
 [[nodiscard]] ra8_err_t ra8_drw_perf_read(ra8_drw_perfcounter_id_t id, uint32_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  ra8_err_t result = k_ra8_err_invalid_arg;
   /* HUM Ch 62.2.34 "PERFCOUNTk: Performance Counter k", p 3706 */
   if (id == k_ra8_drw_perfctr_1) {
-    *out = *ra8_drw_reg32(k_ra8_drw_off_perfcount1);
-    return k_ra8_ok;
+    *out   = *ra8_drw_reg32(k_ra8_drw_off_perfcount1);
+    result = k_ra8_ok;
+  } else if (id == k_ra8_drw_perfctr_2) {
+    *out   = *ra8_drw_reg32(k_ra8_drw_off_perfcount2);
+    result = k_ra8_ok;
+  } else {
+    result = k_ra8_err_invalid_arg;
   }
-  if (id == k_ra8_drw_perfctr_2) {
-    *out = *ra8_drw_reg32(k_ra8_drw_off_perfcount2);
-    return k_ra8_ok;
-  }
-  return k_ra8_err_invalid_arg;
+  return result;
 }
 
 [[nodiscard]] ra8_err_t ra8_drw_perf_reset(ra8_drw_perfcounter_id_t id)
 {
+  ra8_err_t result = k_ra8_err_invalid_arg;
   /* HUM Ch 62.2.34 "PERFCOUNTk: Performance Counter k", p 3706 */
   if (id == k_ra8_drw_perfctr_1) {
     *ra8_drw_reg32(k_ra8_drw_off_perfcount1) = 0UL;
-    return k_ra8_ok;
-  }
-  if (id == k_ra8_drw_perfctr_2) {
+    result                                   = k_ra8_ok;
+  } else if (id == k_ra8_drw_perfctr_2) {
     *ra8_drw_reg32(k_ra8_drw_off_perfcount2) = 0UL;
-    return k_ra8_ok;
+    result                                   = k_ra8_ok;
+  } else {
+    result = k_ra8_err_invalid_arg;
   }
-  return k_ra8_err_invalid_arg;
+  return result;
 }
