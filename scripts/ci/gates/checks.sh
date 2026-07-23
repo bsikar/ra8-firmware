@@ -189,6 +189,22 @@ _pcc_security_invariants() (
   # tests/mocks/ra8_host_asm_stub.c so the driver stays branch-free and
   # coverage lands on the shipping path (#293).
   python3 scripts/checks/check_no_driver_asm_guard.py
+  # No first-party file may introduce a permanent anti-recovery brick ACTION
+  # (setting the ce "Disable Initialize" security flag, or transitioning the DLM
+  # to a terminal LCK_BOOT lock). Owner policy 2026-07-23: this project must
+  # never permanently disable device recovery. --selftest runs first and asserts
+  # the detector both fires on brick actions and stays silent on the recovery
+  # scripts + defensive checks, so a detector that stopped matching cannot pass
+  # as a clean tree.
+  python3 scripts/checks/check_no_antirecovery.py --selftest
+  python3 scripts/checks/check_no_antirecovery.py
+  # The pre-flash IMAGE guard's detector (scripts/hil/lib/preflash_guard.sh runs
+  # it before every flash): refuse a firmware image that programs a lockdown
+  # value into the disable-initialize / permanent-block-protect / HUK-zeroize
+  # option-setting region, while allowing benign OFS0/OFS1/SAS/BPS. No tree to
+  # scan here, so only its --selftest runs -- it asserts a lockdown image is
+  # refused and a benign one allowed, both directions.
+  python3 scripts/checks/check_image_no_antirecovery.py --selftest
 )
 
 # Documentation completeness, cross-reference integrity, and the test-side

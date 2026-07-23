@@ -69,6 +69,14 @@ fi
 
 echo -e "${YELLOW}[hil_flash]${NC} app=${APP}"
 
+# ---- 0. Anti-recovery pre-flash guard ----------------------------------------
+# Inspect the FULL image (pre-strip) and the source tree BEFORE programming, so
+# a lockdown value in the disable-initialize / DLM-lock / permanent-block-protect
+# option-setting region can never reach the board. See preflash_guard.sh.
+# shellcheck source=scripts/hil/lib/preflash_guard.sh
+source "$_hil_dir/lib/preflash_guard.sh"
+ra8_preflash_guard "$HEX" || exit $?
+
 # ---- 1. Strip OFS sections ---------------------------------------------------
 # OFS sections at 0x0300A100+ cause J-Link RAMCode to timeout during Prepare()
 # when TrustZone option bytes are involved.  Strip them so J-Link only programs
