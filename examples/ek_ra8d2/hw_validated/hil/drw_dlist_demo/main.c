@@ -41,6 +41,7 @@
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_drw.h"
+#include "ra8_drw_dlist.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"

@@ -27,7 +27,7 @@ No external hardware required.
 
 The register/immediate path (`ra8_drw_fill_rect`, `drw_fill_demo`) renders a
 byte-clean single fill on silicon, but a tight loop that has the **CPU** clear
-the framebuffer and the **engine** fill it races two bus masters on the shared
+the framebuffer and the **engine** fill it races two bus initiators on the shared
 SRAM and eventually latches `STATUS.BUSERRMFB`, wedging the engine. The display
 list moves the clear onto the engine too: the DRW clears and fills end to end
 and the CPU only reads the finished framebuffer, so there is no write race.

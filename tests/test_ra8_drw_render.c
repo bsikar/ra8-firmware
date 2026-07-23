@@ -14,6 +14,7 @@
  */
 
 #include "ra8_drw.h"
+#include "ra8_drw_dlist.h"
 #include "ra8_drw_internal.h"
 #include "ra8_drw_regs.h"
 #include "ra8_err.h"

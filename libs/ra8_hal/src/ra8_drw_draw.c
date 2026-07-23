@@ -27,6 +27,7 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_drw.h"
+#include "ra8_drw_dlist.h"
 #include "ra8_drw_internal.h"
 #include "ra8_drw_regs.h"
 #include "ra8_err.h"
@@ -363,7 +364,8 @@ typedef enum : uint8_t {
  *
  * @pre ``dl`` and ``dl->buf`` are non-null.
  * @pre ``dl->count + 2 <= dl->cap_words`` (caller-reserved).
- * @post Two words were appended and ``dl->count`` grew by two.
+ * @post ``dl->buf`` holds the one-index tag then @p val at the reserved slot.
+ * @post ``dl->count`` grew by two (``k_ra8_drw_dlist_entry_words``).
  *
  * @note Not thread-safe; caller-buffer writes only.
  * @since 0.1.0
@@ -388,7 +390,8 @@ static void internal_dlist_put_reg(ra8_drw_dlist_t* dl, ra8_drw_dlr_index_t idx,
  *
  * @pre ``dl`` and ``dl->buf`` are non-null.
  * @pre ``dl->count + 1 <= dl->cap_words`` (caller-reserved).
- * @post One word was appended and ``dl->count`` grew by one.
+ * @post ``dl->buf`` holds the encoded end-of-list word at the reserved slot.
+ * @post ``dl->count`` grew by one (``k_ra8_drw_dlist_special_words``).
  *
  * @note Not thread-safe; caller-buffer writes only.
  * @since 0.1.0
