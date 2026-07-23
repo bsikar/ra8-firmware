@@ -45,10 +45,11 @@ typedef enum : uint8_t {
  * @brief Magic values used by the LPM unit tests.
  */
 typedef enum : uint32_t {
-  k_ra8_lpm_test_wupen0_pattern  = 0x0123ABCDUL, /**< Arbitrary WUPEN0 pattern.  */
-  k_ra8_lpm_test_wupen1_pattern  = 0xDEADBEEFUL, /**< Arbitrary WUPEN1 pattern.  */
-  k_ra8_lpm_test_bad_mode_value  = 0x77U,        /**< Not a valid LPMD encoding. */
-  k_ra8_lpm_test_poll_budget     = 16U,          /**< OPCMTSF poll budget.       */
+  k_ra8_lpm_test_wupen0_pattern  = 0x0123ABCDUL, /**< Arbitrary WUPEN0 pattern.        */
+  k_ra8_lpm_test_wupen1_pattern  = 0xDEADBEEFUL, /**< Arbitrary WUPEN1 pattern.        */
+  k_ra8_lpm_test_bad_mode_value  = 0x77U,        /**< Not a valid LPMD encoding.       */
+  k_ra8_lpm_test_poll_budget     = 16U,          /**< OPCMTSF poll budget.             */
+  k_ra8_lpm_test_pd_budget       = 8U,           /**< Graphics power-gate poll budget. */
   k_ra8_lpm_test_scr_sleeponexit = 0x00000002UL, /**< SCR.SLEEPONEXIT @ bit 1 (sibling
                                                   *   bit the driver must preserve). */
 } ra8_lpm_test_const_t;
@@ -466,6 +467,47 @@ static void test_opccr_read_and_wait(void)
 
 /**
  * @par MC/DC:
+ * (no compound decisions in this test -- ``ra8_lpm_graphics_power_on`` and its
+ * ``internal_pdctrgd_wait`` / ``internal_graphics_confirm_*`` helpers branch
+ * only on single conditions; this case drives the reject, already-powered,
+ * full-sequence and confirm-ready-timeout legs so every line -- including the
+ * bounded-wait timeout return -- is exercised.)
+ */
+static void test_graphics_power_on(void)
+{
+  TEST_BEGIN("lpm graphics_power_on");
+  ra8_sim_mmap_reset();
+
+  volatile uint8_t* pdctrgd = ra8_lpm_sysc_reg8(k_ra8_lpm_pdctrgd_off);
+
+  /* timeout_iters == 0 is rejected before any register is touched. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_lpm_graphics_power_on(0U));
+
+  /* Already powered (PDPGSF clear) -> idempotent no-op success, no gating. */
+  *pdctrgd = 0x00U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_graphics_power_on((uint32_t)k_ra8_lpm_test_pd_budget));
+
+  /* Full power-on: PDPGSF set (domain gated) with PDCSF clear (controller
+   * idle). confirm_ready passes at once, clear_pdde writes PDDE=0 (whole
+   * register 0), then confirm_powered passes -- exercising enable_moco,
+   * clear_pdde and both confirm helpers' success legs. */
+  *pdctrgd = (uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_graphics_power_on((uint32_t)k_ra8_lpm_test_pd_budget));
+  TEST_ASSERT_EQ(0x00, *pdctrgd);
+
+  /* confirm_ready timeout: PDCSF stuck set (controller never idles) while
+   * PDPGSF set keeps us past the already-powered gate. Drives
+   * internal_pdctrgd_wait's k_ra8_err_hw_timeout return and the
+   * confirm_ready + graphics_power_on error-propagation legs. */
+  *pdctrgd = (uint8_t)((uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask | (uint8_t)k_ra8_lpm_pdctr_pdcsf_mask);
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_lpm_graphics_power_on((uint32_t)k_ra8_lpm_test_pd_budget));
+
+  TEST_END("lpm graphics_power_on");
+}
+
+/**
+ * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
@@ -749,6 +791,7 @@ static void (*const s_test_roster[])(void) = {
   test_ldo_standby,
   test_clock_stop_each,
   test_opccr_read_and_wait,
+  test_graphics_power_on,
   test_prcr_unlock_relock,
   test_enter_sleep_modes,
   test_enter_sleep_scr_sleepdeep_rmw,
