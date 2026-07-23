@@ -421,7 +421,7 @@ static void notify_m85(void)
 {
   uint32_t* dst = &g_ra8_ls_cpu1_data_start;
   uint32_t* src = &g_ra8_ls_cpu1_data_load;
-  RA8_BOUNDED_LOOP(g_ra8_ls_cpu1_data_end);
+  RA8_LOOP_BOUND_RUNTIME(g_ra8_ls_cpu1_data_end);
   while (dst < &g_ra8_ls_cpu1_data_end) {
     *dst = *src;
     dst++;
@@ -429,7 +429,7 @@ static void notify_m85(void)
   }
 
   uint32_t* bss = &g_ra8_ls_cpu1_bss_start;
-  RA8_BOUNDED_LOOP(g_ra8_ls_cpu1_bss_end);
+  RA8_LOOP_BOUND_RUNTIME(g_ra8_ls_cpu1_bss_end);
   while (bss < &g_ra8_ls_cpu1_bss_end) {
     *bss = 0U;
     bss++;
