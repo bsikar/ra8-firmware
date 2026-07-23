@@ -31,6 +31,13 @@ if [[ ! -f "$HEX" ]]; then
   exit 1
 fi
 
+# ---- anti-recovery pre-flash guard ------------------------------------------
+# Inspect the image + source tree before programming; refuse any lockdown value
+# in the disable-initialize / DLM-lock / permanent-block-protect option region.
+# shellcheck source=scripts/hil/lib/preflash_guard.sh
+source "$SCRIPT_DIR/../hil/lib/preflash_guard.sh"
+ra8_preflash_guard "$HEX" || exit $?
+
 if ! command -v JLinkExe &>/dev/null; then
   echo -e "${RED}Error:${NC} JLinkExe not found in PATH"
   echo "Install the SEGGER J-Link package from https://www.segger.com/downloads/jlink/"

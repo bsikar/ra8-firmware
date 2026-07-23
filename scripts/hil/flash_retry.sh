@@ -58,6 +58,13 @@ fi
   exit 1
 }
 
+# ---- Anti-recovery pre-flash guard ------------------------------------------
+# Inspect the full image + source tree before any programming. See
+# scripts/hil/lib/preflash_guard.sh.
+# shellcheck source=scripts/hil/lib/preflash_guard.sh
+source "$_hil_dir/lib/preflash_guard.sh"
+ra8_preflash_guard "$HEX" || exit $?
+
 echo -e "${YELLOW}[hil_flash_retry]${NC} uploading hex to Pi..."
 REMOTE_HEX="/tmp/hil_${APP}.hex"
 scp -q "$HEX" "${PI_HOST}:${REMOTE_HEX}"
