@@ -87,6 +87,7 @@ typedef struct {
   cbs_meter_t       meter;     /**< Vsource-seam storage-command meter.  */
   uint8_t*          frame_mem; /**< `frames * block` page storage.       */
   ra8_vmem_frame_t* meta;      /**< Per-frame metadata array.            */
+  ra8_vmem_key_t*   keys;      /**< Per-frame key-storage array.         */
   int32_t*          buckets;   /**< Hash-bucket heads.                   */
   uint32_t          frames;    /**< Frame count at this block size.      */
   uint32_t          object_id; /**< Registered object id.                */
@@ -100,6 +101,7 @@ static void cbs_cache_close(cbs_cache_t* c)
   }
   free(c->frame_mem);
   free(c->meta);
+  free(c->keys);
   free(c->buckets);
   *c = (cbs_cache_t){};
 }
@@ -145,8 +147,10 @@ cbs_cache_open(cbs_cache_t* c, cbs_backend_t* be, uint32_t blob_bytes, uint32_t 
   }
   c->frame_mem = (uint8_t*)malloc((size_t)c->frames * (size_t)block_bytes);
   c->meta      = (ra8_vmem_frame_t*)calloc((size_t)c->frames, sizeof(ra8_vmem_frame_t));
+  c->keys      = (ra8_vmem_key_t*)calloc((size_t)c->frames, sizeof(ra8_vmem_key_t));
   c->buckets   = (int32_t*)malloc((size_t)nbuckets * sizeof(int32_t));
-  if ((c->frame_mem == nullptr) || (c->meta == nullptr) || (c->buckets == nullptr)) {
+  if ((c->frame_mem == nullptr) || (c->meta == nullptr) || (c->keys == nullptr) ||
+      (c->buckets == nullptr)) {
     cbs_cache_close(c);
     return 1;
   }
@@ -168,6 +172,7 @@ cbs_cache_open(cbs_cache_t* c, cbs_backend_t* be, uint32_t blob_bytes, uint32_t 
                               .frame_bytes  = block_bytes,
                               .frame_count  = c->frames,
                               .meta         = c->meta,
+                              .keys         = c->keys,
                               .buckets      = c->buckets,
                               .bucket_count = nbuckets,
                               .loader       = ra8_vsource_loader,

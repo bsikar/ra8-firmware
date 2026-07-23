@@ -75,6 +75,7 @@ typedef struct {
   uint32_t                    cache_frame_bytes;  /**< Bytes per cache frame (e.g. 4096).     */
   uint32_t                    cache_frame_count;  /**< Frames in the pool (the RAM budget).   */
   ra8_vmem_frame_t*           cache_meta;         /**< Per-frame metadata array.              */
+  ra8_vmem_key_t*             cache_keys;         /**< Per-frame key-storage array.           */
   int32_t*                    cache_buckets;      /**< Cache hash-bucket heads.               */
   uint32_t                    cache_bucket_count; /**< Number of hash buckets (>= 1).         */
   const ra8_rabook_buffers_t* bufs;               /**< RABOOK1 builder arenas.                */

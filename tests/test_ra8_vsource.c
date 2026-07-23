@@ -145,6 +145,7 @@ static void test_vmem_integration(void)
   t_fill_backing();
   static uint8_t          s_frames[(size_t)k_t_frames * (size_t)k_t_frame_bytes];
   static ra8_vmem_frame_t s_meta[(size_t)k_t_frames];
+  static ra8_vmem_key_t   s_keys[(size_t)k_t_frames];
   static int32_t          s_buckets[(size_t)k_t_buckets];
 
   ra8_vsource_t vs = {};
@@ -157,6 +158,7 @@ static void test_vmem_integration(void)
   cfg.frame_bytes    = k_t_frame_bytes;
   cfg.frame_count    = k_t_frames;
   cfg.meta           = s_meta;
+  cfg.keys           = s_keys;
   cfg.buckets        = s_buckets;
   cfg.bucket_count   = k_t_buckets;
   cfg.loader         = ra8_vsource_loader;

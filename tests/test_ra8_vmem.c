@@ -60,6 +60,7 @@ typedef enum : uint32_t {
 
 static uint8_t          s_frames[(size_t)k_t_frames * (size_t)k_t_frame_bytes];
 static ra8_vmem_frame_t s_meta[(size_t)k_t_frames];
+static ra8_vmem_key_t   s_keys[(size_t)k_t_frames];
 static int32_t          s_buckets[(size_t)k_t_buckets];
 
 /** @brief Deterministic loader: stamps object id + page number into the frame. */
@@ -82,6 +83,7 @@ static ra8_vmem_cfg_t t_cfg(void)
   cfg.frame_bytes    = k_t_frame_bytes;
   cfg.frame_count    = k_t_frames;
   cfg.meta           = s_meta;
+  cfg.keys           = s_keys;
   cfg.buckets        = s_buckets;
   cfg.bucket_count   = k_t_buckets;
   cfg.loader         = t_loader;

@@ -1,6 +1,6 @@
 /**
  * @file ra8_vmem.h
- * @brief Unified page cache with SLRU eviction (Layer 2, #147).
+ * @brief Byte-range page cache with SLRU eviction (Layer 2, #147).
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -14,6 +14,18 @@
  * offset)` returns a pointer to a pinned frame holding that page; a miss evicts
  * an unpinned victim, loads the page through a caller-supplied loader, and
  * inserts it. The caller `ra8_vmem_put`s the frame when done.
+ *
+ * ## A typed facade over the one cache engine (#345)
+ *
+ * `ra8_vmem` no longer carries its own hash/pin/evict machinery. It is a thin
+ * typed facade over ::ra8_keycache, the single reader cache engine, configured
+ * for the SLRU policy with an (object_id, frame-aligned offset) key: the byte
+ * page is the cell payload, the ::ra8_vmem_loader_fn adapts to the engine's
+ * render-on-miss seam, and the page-number hash is injected. The image-tile and
+ * glyph caches are the LRU facades over the same engine. What `ra8_vmem` adds on
+ * top is this pointer-handle API, the frame-boundary alignment, and the
+ * ::ra8_vmem_prefetch read-ahead helper -- the representation its byte-range
+ * consumers want and the tile/glyph consumers do not.
  *
  * Eviction is **SLRU (Segmented LRU / 2Q)** -- the policy chosen in #147 because
  * it is the only scan-resistant policy with deterministic O(1) (WCET = 1)
@@ -48,9 +60,10 @@
  * bounded-RAM guarantee (residency <= `frame_count`) is independent of the knob.
  *
  * Zero allocation (NASA P10 Rule 3): the caller provides the frame storage, the
- * per-frame metadata array, and the hash-bucket array -- all carved once from a
- * tier arena (::ra8_arena) at init. The frames themselves come from a tier's
- * ::ra8_slab in production, but `ra8_vmem` only needs a contiguous frame region.
+ * per-frame metadata array, the key-storage array, and the hash-bucket array --
+ * all carved once from a tier arena (::ra8_arena) at init. The frames themselves
+ * come from a tier's ::ra8_slab in production, but `ra8_vmem` only needs a
+ * contiguous frame region.
  *
  * @note Not thread-safe; the reader is single-threaded (or serialises access).
  *
@@ -69,6 +82,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_keycache.h"
 
 /**
  * @typedef ra8_vmem_loader_fn
@@ -96,24 +110,34 @@ typedef ra8_err_t (*ra8_vmem_loader_fn)(void*    ctx,
                                         uint32_t frame_bytes);
 
 /**
- * @struct ra8_vmem_frame_t
- * @brief Per-frame metadata (one caller-owned array entry per frame).
+ * @typedef ra8_vmem_frame_t
+ * @brief Per-frame cache metadata (one caller-owned array entry per frame).
  *
- * @details Treat as private; the cache owns the contents. Allocate an array of
- *          `frame_count` of these alongside the frame storage and hash buckets.
+ * @details Treat as private; the cache owns the contents. Since #345 folded the
+ *          cache machinery into ::ra8_keycache, this is exactly an
+ *          ::ra8_keycache_cell_t -- allocate an array of `frame_count` of them
+ *          alongside the frame storage, the key array, and the hash buckets.
+ *
+ * @since 0.1.0
+ */
+typedef ra8_keycache_cell_t ra8_vmem_frame_t;
+
+/**
+ * @struct ra8_vmem_key_t
+ * @brief The (object_id, frame-aligned offset) key the page cache hashes on.
+ *
+ * @details Treat as private; the cache owns the contents. Provide an array of
+ *          `frame_count` of these as the engine's key storage (parallel to the
+ *          ::ra8_vmem_frame_t metadata). `ra8_vmem` always zero-fills a key
+ *          before use, so the struct's padding never carries indeterminate bytes
+ *          into the byte-wise key comparison.
  *
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t object_id; /**< Cached object id (valid only when in use).           */
-  uint64_t offset;    /**< Frame-aligned byte offset of the cached page.        */
-  int32_t  prev;      /**< SLRU list link toward MRU within the segment, or -1. */
-  int32_t  next;      /**< SLRU list link toward LRU within the segment, or -1. */
-  int32_t  hash_next; /**< Next frame in the hash bucket chain, or -1.          */
-  uint16_t pin_count; /**< Outstanding ::ra8_vmem_get pins (0 => evictable).    */
-  uint8_t  seg;       /**< SLRU segment tag (probationary / protected).         */
-  uint8_t  valid;     /**< 1 => this frame holds a cached page.                 */
-} ra8_vmem_frame_t;
+  uint32_t object_id; /**< Cached object id.                             */
+  uint64_t offset;    /**< Frame-aligned byte offset of the cached page. */
+} ra8_vmem_key_t;
 
 /**
  * @struct ra8_vmem_cfg_t
@@ -121,7 +145,7 @@ typedef struct {
  *
  * @details All arrays are caller-owned and must out-live the cache. Carve them
  *          once from a tier arena at bring-up (frame storage from SDRAM, the
- *          metadata + buckets from DTCM for the hot path).
+ *          metadata + keys + buckets from DTCM for the hot path).
  *
  * @since 0.1.0
  */
@@ -130,6 +154,7 @@ typedef struct {
   uint32_t           frame_bytes;   /**< Bytes per frame (page size, e.g. 4096).      */
   uint32_t           frame_count;   /**< Number of frames.                            */
   ra8_vmem_frame_t*  meta;          /**< `frame_count` metadata entries.              */
+  ra8_vmem_key_t*    keys;          /**< `frame_count` key-storage entries.           */
   int32_t*           buckets;       /**< `bucket_count` hash-bucket heads.            */
   uint32_t           bucket_count;  /**< Number of hash buckets (>= 1).               */
   ra8_vmem_loader_fn loader;        /**< Page-fill callback (the storage DIP seam).   */
@@ -144,23 +169,18 @@ typedef struct {
  * @struct ra8_vmem_t
  * @brief Page-cache state (caller-owned; treat as private).
  *
- * @invariant `protected_count <= protected_cap <= frame_count`.
+ * @details A thin wrapper around the ::ra8_keycache engine plus the copied
+ *          config and the resolved SLRU protected capacity.
+ *
+ * @invariant `protected_cap <= frame_count`.
  * @invariant Every valid frame is reachable from exactly one hash bucket.
  *
  * @since 0.1.0
  */
 typedef struct {
-  ra8_vmem_cfg_t cfg;             /**< The configuration (copied at init). */
-  int32_t        pb_head;         /**< Probationary MRU frame, or -1.      */
-  int32_t        pb_tail;         /**< Probationary LRU frame, or -1.      */
-  int32_t        pt_head;         /**< Protected MRU frame, or -1.         */
-  int32_t        pt_tail;         /**< Protected LRU frame, or -1.         */
-  uint32_t       protected_count; /**< Frames in the protected segment.    */
-  uint32_t       protected_cap;   /**< Protected-segment capacity.         */
-  uint32_t       free_count;      /**< Frames never yet used (cold).       */
-  uint32_t       hits;            /**< Get hits so far.                    */
-  uint32_t       misses;          /**< Get misses so far.                  */
-  uint32_t       evictions;       /**< Pages evicted so far.               */
+  ra8_vmem_cfg_t cfg;           /**< The configuration (copied at init).       */
+  ra8_keycache_t kc;            /**< The underlying SLRU cache engine.         */
+  uint32_t       protected_cap; /**< Resolved SLRU protected-segment capacity. */
 } ra8_vmem_t;
 
 /**
@@ -286,8 +306,9 @@ ra8_vmem_get(ra8_vmem_t* vm, uint32_t object_id, uint64_t offset, void** out_pag
  * @param[out] out_evictions Pages evicted so far (may be NULL).
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok           Counters reported.
- * @retval k_ra8_err_null_ptr `vm` was NULL.
+ * @retval k_ra8_ok             Counters reported.
+ * @retval k_ra8_err_null_ptr   `vm` was NULL.
+ * @retval k_ra8_err_invalid_state The cache was not initialised.
  *
  * @pre `vm` was populated by ::ra8_vmem_init.
  * @pre At least one output pointer is non-NULL to be useful.
