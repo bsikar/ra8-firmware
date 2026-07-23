@@ -119,16 +119,19 @@ bench-cache:
 	$(ROOT)/tools/glyph_bench/glyph_bench
 	@echo "==== bench-cache done ===="
 
-# `make rabook-golden-update` -- regenerate the #151/#213 byte-identity parity
-# fixtures from the desktop reference tools (needs Pillow), then clang-format them.
+# `make rabook-golden-update` -- regenerate the #151/#213/#337 byte-identity
+# parity fixtures from the desktop reference tools (needs Pillow), then
+# clang-format them.
 RABOOK_PARITY_SRC        ?= tests/fixtures/rabook_parity
 RABOOK_PARITY_FIXTURE    ?= tests/rabook_parity_fixture.h
 RABOOK_PARITY_M33        ?= examples/ek_ra8d2/hw_pending/compile_on_m33/parity_fixture.h
 RABOOK_REALBOOK_SRC      ?= tests/fixtures/rabook_realbook
 RABOOK_REALBOOK_FIXTURE  ?= tests/rabook_realbook_fixture.h
 RABOOK_DOWNSCALE_FIXTURE ?= tests/rabook_downscale_parity_fixture.h
+RABOOK_COLOR_FIXTURE     ?= tests/rabook_color_parity_fixture.h
 rabook-golden-update:
 	python3 scripts/gen/rabook_parity_gen.py $(RABOOK_PARITY_SRC) $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33)
 	python3 scripts/gen/rabook_parity_gen.py --realbook $(RABOOK_REALBOOK_SRC) $(RABOOK_REALBOOK_FIXTURE)
 	python3 scripts/gen/rabook_parity_gen.py --downscale $(RABOOK_DOWNSCALE_FIXTURE)
-	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33) $(RABOOK_REALBOOK_FIXTURE) $(RABOOK_DOWNSCALE_FIXTURE)
+	python3 scripts/gen/rabook_parity_gen.py --color $(RABOOK_COLOR_FIXTURE)
+	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33) $(RABOOK_REALBOOK_FIXTURE) $(RABOOK_DOWNSCALE_FIXTURE) $(RABOOK_COLOR_FIXTURE)

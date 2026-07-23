@@ -3,10 +3,11 @@
  * @brief Host unit tests for the gray4 transcode stage (ra8_rabook_gray4).
  *
  * @details
- * Verifies three independently-testable pieces of the #149 image transcode:
+ * Verifies the independently-testable pieces of the #149 image transcode:
  *
  *  - @ref ra8_rabook_gray4_output_dims -- dimension-clamping arithmetic
- *  - @ref ra8_rabook_gray4_encode      -- quantise + nibble-pack
+ *  - @ref ra8_rabook_gray4_encode      -- quantise + nibble-pack (4-bpp)
+ *  - @ref ra8_rabook_gray8_encode      -- verbatim 8-bpp copy (#343)
  *  - @ref ra8_rabook_gray4_downscale   -- Q16.16 bilinear resample
  *
  * @par MC/DC:
@@ -391,6 +392,49 @@ static void test_encode_max_nib(void)
 }
 
 /* -------------------------------------------------------------------------- */
+/* gray8 encode tests (1 byte per pixel, verbatim copy) */
+/* -------------------------------------------------------------------------- */
+
+static void test_gray8_encode_copies(void)
+{
+  static const uint8_t pixels[] = {0U, 17U, 128U, 255U};
+  uint8_t              out[4]   = {};
+  uint32_t             out_size = 0U;
+
+  ra8_err_t err = ra8_rabook_gray8_encode(pixels, 4U, 1U, out, sizeof(out), &out_size);
+  check(err == k_ra8_ok, "gray8 encode: ok");
+  check(out_size == 4U, "gray8 encode: size == w*h");
+  check(memcmp(out, pixels, sizeof(pixels)) == 0, "gray8 encode: bytes copied verbatim");
+}
+
+static void test_gray8_encode_0px(void)
+{
+  uint8_t  dummy[1] = {};
+  uint32_t out_size = k_t_size_poison;
+
+  ra8_err_t err = ra8_rabook_gray8_encode(dummy, 0U, 0U, dummy, sizeof(dummy), &out_size);
+  check(err == k_ra8_ok && out_size == 0U, "gray8 encode: 0 pixels returns 0 bytes");
+}
+
+static void test_gray8_encode_buffer_too_small(void)
+{
+  static const uint8_t pixels[] = {0U, 255U, 128U, 64U};
+  uint8_t              out[1]   = {};
+  uint32_t             out_size = 0U;
+
+  ra8_err_t err = ra8_rabook_gray8_encode(pixels, 4U, 1U, out, 1U, &out_size);
+  check(err == k_ra8_err_no_mem, "gray8 encode: buffer too small returns no_mem");
+}
+
+static void test_gray8_encode_null_src(void)
+{
+  uint8_t   out[4]   = {};
+  uint32_t  out_size = 0U;
+  ra8_err_t err      = ra8_rabook_gray8_encode(nullptr, 4U, 1U, out, sizeof(out), &out_size);
+  check(err == k_ra8_err_null_ptr, "gray8 encode: null src returns null_ptr");
+}
+
+/* -------------------------------------------------------------------------- */
 /* downscale tests */
 /* -------------------------------------------------------------------------- */
 
@@ -507,6 +551,11 @@ int main(void)
   test_encode_buffer_too_small();
   test_encode_null_src();
   test_encode_max_nib();
+
+  test_gray8_encode_copies();
+  test_gray8_encode_0px();
+  test_gray8_encode_buffer_too_small();
+  test_gray8_encode_null_src();
 
   test_downscale_identity();
   test_downscale_2to1_horizontal();

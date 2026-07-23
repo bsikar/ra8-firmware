@@ -139,6 +139,7 @@ static void test_rabook_cov_null_ctx(void)
                                       (uint16_t)k_c_img_w,
                                       (uint16_t)k_c_img_h,
                                       (uint8_t)k_ra8_book_image_gray4,
+                                      (uint8_t)k_ra8_book_pixfmt_gray4,
                                       data,
                                       1U));
   TEST_ASSERT_EQ(k_ra8_book_nil, ra8_rabook_add_stylesheet(nullptr, 0U, 0U));
@@ -326,6 +327,7 @@ static void test_rabook_cov_add_image_null_data(void)
                                       (uint16_t)k_c_img_w,
                                       (uint16_t)k_c_img_h,
                                       (uint8_t)k_ra8_book_image_gray4,
+                                      (uint8_t)k_ra8_book_pixfmt_gray4,
                                       nullptr,
                                       (uint32_t)k_c_pool_overflow_bytes));
   TEST_ASSERT(ctx.failed);
@@ -358,6 +360,7 @@ static void test_rabook_cov_add_image_pool_overflow(void)
                                       (uint16_t)k_c_img_w,
                                       (uint16_t)k_c_img_h,
                                       (uint8_t)k_ra8_book_image_gray4,
+                                      (uint8_t)k_ra8_book_pixfmt_gray4,
                                       data,
                                       (uint32_t)k_c_pool_overflow_bytes));
   TEST_ASSERT(ctx.failed);
@@ -368,6 +371,7 @@ static void test_rabook_cov_add_image_pool_overflow(void)
                                       (uint16_t)k_c_img_w,
                                       (uint16_t)k_c_img_h,
                                       (uint8_t)k_ra8_book_image_gray4,
+                                      (uint8_t)k_ra8_book_pixfmt_gray4,
                                       data,
                                       (uint32_t)k_c_pool_overflow_bytes));
   TEST_END("ra8_rabook_compile: add_image pool overflow latch + failed short-circuit");

@@ -20,12 +20,16 @@ NODE_ELEMENT = 0
 NODE_TEXT = 1
 IMG_GRAY4 = 0
 IMG_SVG = 1
+# ra8_book_image_pixfmt_t: the raster depth stored in the image descriptor's
+# former padding byte (ra8_book_image_t.pixel_format). 0 is the default that
+# every pre-field .rabook already carried, so the firmware reads old blobs
+# unchanged; a grayscale device emits gray4 (half the bytes), a deeper panel
+# gray8 (lossless). Kept in lockstep with ra8_book.h.
+PIXFMT_GRAY4 = 0
+PIXFMT_GRAY8 = 1
 # Header feature-flag bits (ra8_book_flag_t). The firmware validator rejects any
 # bit outside its known mask, so only emit bits defined there.
 FLAG_RTL = 0x00000001
-GRAY_LEVELS = 16
-# Full 256-entry RGB palette = 256 * 3 channels.
-PALETTE_BYTES = 768
 # .rabook chunked container ("RBKC"; keep in sync with ra8_book_container_t in
 # libs/ra8_book/inc/ra8_book.h):
 #   "RBKC" + <I chunk_bytes + <Q inflated_total + <I chunk_count + <I reserved(0)
