@@ -184,13 +184,18 @@ _pcc_docs_and_tests() (
   python3 scripts/checks/check_line_citations.py
   # Per-app SystemInit boot init-order audit.
   python3 scripts/checks/audit_init_order.py
-  # Every newly added compound boolean decision must arrive with MC/DC
-  # vectors. This is the local counterpart of the mcdc gate's baseline
-  # comparison: catching the gap at the decision keeps the baseline from
-  # sliding in the first place. It was in the hand-maintained local suite but
-  # never in the workflow, which is the same drift in the other direction --
-  # now that the workflow calls this gate, both sides run it.
-  python3 scripts/checks/check_new_compound_has_mcdc.py
+  # Every new compound boolean decision must arrive with MC/DC vectors.
+  # #355: the checker used `git diff --cached`, so in any CI checkout (nothing
+  # staged) it saw 0 files and exited 0, auditing nothing ever. It is
+  # range-aware and fail-loud now (no mode / unresolvable range is exit 2, not
+  # a silent clean scan). --selftest proves the detector in BOTH directions, so
+  # one that stopped matching cannot pass as clean; the staged counterpart runs
+  # blocking in scripts/git/pre-commit (--staged).
+  python3 scripts/checks/check_new_compound_has_mcdc.py --selftest
+  # The blocking --range scan is written and proven but off until the measured
+  # backlog (998 decisions / 391 files, issue #426) is burned down. Then add:
+  #   python3 scripts/checks/check_new_compound_has_mcdc.py \
+  #     --range "$(ci_commit_range)" --repo "$(ci_history_repo)"
   # OSHWA inclusive-terminology gate over first-party sources.
   python3 scripts/checks/check_inclusive_terminology.py
   # MAXIMUM-documentation gate: every function -- including statics -- carries
