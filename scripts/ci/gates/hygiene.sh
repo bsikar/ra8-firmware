@@ -216,17 +216,23 @@ gate_copyright() (
 )
 
 # --- since ----------------------------------------------------------------
+# --all runs BOTH halves over the DERIVED first-party set (#358): the @since
+# PRESENCE check on every libs/ra8_*/inc/ public header, AND the @since VALUE
+# check on every first-party source. The old form passed only the public
+# headers, so the value check ("every @since equals the one VERSION string")
+# never ran on tools/, port/ or the deeply-nested example apps -- and drifted
+# @since values sat there unseen. --selftest proves both halves first.
 gate_since() (
   set -e
-  local files=() line
-  while IFS= read -r line; do files+=("$line"); done < <(
-    git ls-files 'libs/ra8_*/inc/*.h'
-  )
-  python3 scripts/checks/check-since-version.py "${files[@]}"
+  python3 scripts/checks/check-since-version.py --selftest
+  python3 scripts/checks/check-since-version.py --all
 )
 
 # --- no-ai-attribution ----------------------------------------------------
 gate_no_ai_attribution() {
+  # --selftest FIRST (#358): proves the ban fires and that tools/, .github/ and
+  # every other tracked-text tree the old SCAN_DIRS omitted are back in scope.
+  python3 scripts/checks/check_no_ai_attribution.py --selftest
   python3 scripts/checks/check_no_ai_attribution.py
 }
 

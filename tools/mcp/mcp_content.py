@@ -36,7 +36,7 @@ def _resource_catalogue() -> str:
 
 RESOURCES: list[dict[str, Any]] = [
     {
-        "uri": "ra8d2://doc/claude-md",
+        "uri": "ra8d2://doc/claude-md",  # AI-OK: MCP resource id serving CLAUDE.md, not attribution
         "name": "CLAUDE.md",
         "description": "Project rules for AI assistants (the most-violated rules).",
         "mimeType": "text/markdown",

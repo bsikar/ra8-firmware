@@ -45,31 +45,17 @@ from __future__ import annotations
 import pathlib
 import re
 import sys
+import tempfile
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from lint_targets import first_party_paths
+from selftest_assert import expect, report
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 VERSION_FILE = REPO_ROOT / "VERSION"
 
-ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
-
-
-def _discover_scan_dirs() -> tuple[str, ...]:
-    """Return libs/src/tests + every examples/<tier>/<app>/ dir."""
-    out = list(ALWAYS_SCAN_DIRS)
-    examples_root = REPO_ROOT / "examples"
-    if examples_root.is_dir():
-        for tier in sorted(examples_root.iterdir()):
-            if not tier.is_dir():
-                continue
-            for entry in sorted(tier.iterdir()):
-                if not entry.is_dir():
-                    continue
-                if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-                    out.append(f"examples/{tier.name}/{entry.name}")
-    return tuple(out)
-
-
-SCAN_DIRS = _discover_scan_dirs()
-SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
+SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp")
 
 PUBLIC_DECL = re.compile(
     r"""
@@ -149,35 +135,53 @@ def is_under_lib_inc(path: pathlib.Path) -> bool:
     return "libs/ra8_" in str(path) and path.suffix == ".h" and "/inc/" in str(path)
 
 
-def is_scannable(path: pathlib.Path) -> bool:
-    """Whether a path is a source file this gate reads at all.
-
-    A path staged as a deletion no longer exists and is filtered here, so the
-    caller need not distinguish removal from modification.
-    """
-    if not path.is_file():
-        return False
-    if path.suffix not in SOURCE_SUFFIXES:
-        return False
-    rel = path.relative_to(REPO_ROOT).as_posix()
-    if any(rel.startswith(d + "/") or rel == d for d in ("build", "fsp", "STAR")):
-        return False
-    return any(rel.startswith(d + "/") for d in SCAN_DIRS)
-
-
 def collect_repo_paths() -> list[pathlib.Path]:
-    """Every scannable source file under the configured scan roots.
+    """Every first-party source file, for the ``--all`` whole-tree sweep.
 
-    Backs the ``--all`` whole-tree sweep; without the flag the gate reads only
-    the paths it was handed, which is how the pre-commit hook keeps a commit
-    from paying for the full tree.
+    Derived from git ls-files via first_party_paths (#358): the value check --
+    every ``@since`` must equal the single ``VERSION`` string -- now reaches
+    tools/, port/usbx and every future top-level directory, which the old
+    hardcoded libs/src/tests + example-app list silently omitted. The presence
+    check still fires only on libs/ra8_*/inc/ headers via ``is_under_lib_inc``,
+    so nothing else is newly *required* to carry a tag -- only its value is
+    validated. Without the flag the gate reads only the paths it is handed,
+    which is how the pre-commit hook stays cheap.
     """
-    out: list[pathlib.Path] = []
-    for d in SCAN_DIRS:
-        root = REPO_ROOT / d
-        if root.is_dir():
-            out.extend(p for p in root.rglob("*") if is_scannable(p))
-    return out
+    return [REPO_ROOT / rel for rel in first_party_paths(SOURCE_SUFFIXES)]
+
+
+# ---------------------------------------------------------------------------
+# Selftest -- both directions, plus a scope assertion under tools/, silently
+# omitted by the old scan-dir list until #358.
+# ---------------------------------------------------------------------------
+def selftest() -> int:
+    """Prove a wrong @since fires, a right one is quiet, and the scope holds."""
+    print("check-since-version.py --selftest")
+    failures: list[str] = []
+    version = read_project_version()
+    with tempfile.TemporaryDirectory() as tmp:
+        bad = pathlib.Path(tmp) / "bad.c"
+        bad.write_text("/** @since 9.9.9 */\n", encoding="utf-8")
+        good = pathlib.Path(tmp) / "good.c"
+        good.write_text(f"/** @since {version} */\n", encoding="utf-8")
+        expect(bool(check_values(bad, version)), "a wrong @since value fires", failures)
+        expect(not check_values(good, version), "the correct @since value stays quiet", failures)
+        hdr = pathlib.Path(tmp) / "decl.h"
+        hdr.write_text("ra8_err_t ra8_foo(void);\n", encoding="utf-8")
+        expect(bool(check_presence(hdr)), "a public decl missing @since fires", failures)
+
+    scope = set(first_party_paths(SOURCE_SUFFIXES))
+    expect(
+        any(s.startswith("tools/") for s in scope),
+        "tools/ is in scope (the scan-dir list omitted it before #358)",
+        failures,
+    )
+    expect(
+        not any(s.startswith("libs/third_party/") for s in scope),
+        "vendored SOUP stays out of scope",
+        failures,
+    )
+    return report(failures)
 
 
 def main() -> int:
@@ -189,6 +193,9 @@ def main() -> int:
 
     Returns 0 when every public declaration carries a correct tag, 1 otherwise.
     """
+    if "--selftest" in sys.argv[1:]:
+        return selftest()
+
     project_version = read_project_version()
 
     if len(sys.argv) >= 2 and sys.argv[1] == "--all":  # noqa: PLR2004  # argv[1] presence check

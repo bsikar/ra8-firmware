@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_validated/hil/ra8_io_demo/main.c
  * @brief End-to-end demo of the ra8_io fabric (epic #155) over a RAM block device.
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * Exercises the whole fabric in one app, with no external hardware. The fabric
  * round-trip (bridge -> format -> mount -> VFS -> write/read/verify -> mkdir +

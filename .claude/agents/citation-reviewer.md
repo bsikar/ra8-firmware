@@ -21,7 +21,7 @@ You are a citation and documentation audit agent. Your objective is to ensure th
 
 ## In-Tree Citations Ban
 
-- **No Line-Number References**: Do NOT cite files or lines within this repository (e.g., `libs/foo.c:123` or `src/bar.h:45` is forbidden).
+- **No Line-Number References**: Do NOT cite files or lines within this repository (e.g., `libs/foo.c:123` or `src/bar.h:45` is forbidden). <!-- CITES-OK: literal examples of the banned pattern, documenting the rule itself -->
 - **Symbolic References**: If you need to refer to other code, always refer to the function name, struct name, variable name, or symbol name instead.
 
 ## Instructions
