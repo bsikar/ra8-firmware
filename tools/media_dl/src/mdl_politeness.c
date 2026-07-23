@@ -4,7 +4,7 @@
  */
 /**
  * @file mdl_politeness.c
- * @brief Seeded xorshift64 jitter + host sleep for v0 politeness.
+ * @brief Seeded xorshift64 jitter + injectable sleep for v0 politeness.
  */
 #include "mdl_politeness.h"
 
@@ -33,10 +33,21 @@ typedef enum : uint8_t {
 
 void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed)
 {
+  mdl_politeness_init_clock(p, seed, nullptr, nullptr);
+}
+
+RA8_DI_SLOT("politeness_sleep")
+void mdl_politeness_init_clock(mdl_politeness_t* p,
+                               uint64_t          seed,
+                               mdl_sleep_fn      sleep_fn,
+                               void*             sleep_ctx)
+{
   if (p == nullptr) {
     return;
   }
-  p->state = (seed == 0U) ? (uint64_t)k_seed_fallback : seed;
+  p->state     = (seed == 0U) ? (uint64_t)k_seed_fallback : seed;
+  p->sleep_fn  = sleep_fn;
+  p->sleep_ctx = sleep_ctx;
 }
 
 /** @brief Advance the xorshift64 state and return the new value. */
@@ -50,6 +61,19 @@ RA8_INTERNAL static uint64_t next_rand(mdl_politeness_t* p)
   return x;
 }
 
+/** @brief Block for `ms` milliseconds on the host clock. */
+RA8_INTERNAL static void host_sleep_ms(uint32_t ms)
+{
+  /** @brief Unit conversions for splitting a millisecond delay into timespec. */
+  enum : uint32_t {
+    k_ms_per_s  = 1000U,    /**< Milliseconds per second.     */
+    k_ns_per_ms = 1000000U, /**< Nanoseconds per millisecond. */
+  };
+  struct timespec ts = {.tv_sec  = (time_t)(ms / k_ms_per_s),
+                        .tv_nsec = (long)((ms % k_ms_per_s) * k_ns_per_ms)};
+  (void)nanosleep(&ts, nullptr);
+}
+
 uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms, uint32_t max_ms)
 {
   if (p == nullptr) {
@@ -61,13 +85,10 @@ uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms, uint32_t max_
   const uint32_t span    = (max_ms - min_ms) + 1U;
   const uint32_t delayms = min_ms + (uint32_t)(next_rand(p) % (uint64_t)span);
 
-  /** @brief Unit conversions for splitting a millisecond delay into timespec. */
-  enum : uint32_t {
-    k_ms_per_s  = 1000U,    /**< Milliseconds per second.     */
-    k_ns_per_ms = 1000000U, /**< Nanoseconds per millisecond. */
-  };
-  struct timespec ts = {.tv_sec  = (time_t)(delayms / k_ms_per_s),
-                        .tv_nsec = (long)((delayms % k_ms_per_s) * k_ns_per_ms)};
-  (void)nanosleep(&ts, nullptr);
+  if (p->sleep_fn != nullptr) {
+    p->sleep_fn(p->sleep_ctx, delayms);
+  } else {
+    host_sleep_ms(delayms);
+  }
   return delayms;
 }

@@ -79,6 +79,7 @@ add_executable(
   media_dl
   src/main.c
   src/mdl_cli.c
+  src/mdl_net.c
   src/mdl_net_curl.c
   src/mdl_url_guard.c
   src/mdl_sanitize.c
@@ -116,8 +117,10 @@ target_link_libraries(media_dl PRIVATE CURL::libcurl)
 ra8_webp_attach(media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
 # Host unit tests (unity_minimal harness, like the repo's tests/). The pure
-# logic under test (extract/config/export) needs no libcurl, so the test binary
-# links only those units + vendored miniz.
+# logic under test here (extract/config/export/url_guard/sanitize/robots) needs
+# no libcurl, so this binary links only those units + vendored miniz. The
+# network-seam tests (which do need the libcurl backend) live in their own
+# binary below so neither test file exceeds the size cap.
 enable_testing()
 add_executable(
   test_media_dl
@@ -147,3 +150,29 @@ target_compile_definitions(
 target_compile_options(test_media_dl PRIVATE -Wall -Wextra -Werror)
 ra8_webp_attach(test_media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 add_test(NAME test_media_dl COMMAND test_media_dl)
+
+# #310 network-seam tests: a scripted fake ::mdl_net_iface_t backend drives the
+# vtable dispatchers with no network, and the libcurl backend's pure transfer
+# classifier + bounded write callback are exercised directly. This binary links
+# the dispatchers, the politeness clock seam, the libcurl backend and its URL
+# guards (so it needs libcurl); src/ is on the include path for the promoted
+# helpers in mdl_net_curl_internal.h.
+add_executable(
+  test_media_dl_net
+  tests/test_media_dl_net.c
+  src/mdl_net.c
+  src/mdl_net_curl.c
+  src/mdl_politeness.c
+  src/mdl_url_guard.c
+)
+target_include_directories(
+  test_media_dl_net
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+)
+target_compile_definitions(test_media_dl_net PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_options(test_media_dl_net PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(test_media_dl_net PRIVATE CURL::libcurl)
+add_test(NAME test_media_dl_net COMMAND test_media_dl_net)

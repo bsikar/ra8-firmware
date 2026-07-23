@@ -4,13 +4,15 @@
  */
 /**
  * @file mdl_net_curl.c
- * @brief libcurl host backend for the mdl_net streaming-GET seam.
+ * @brief libcurl host backend registered through the mdl_net vtable seam.
  *
  * @details
- * Host-only implementation of @ref mdl_net.h. libcurl handles TLS, redirects,
- * gzip and the connection pool -- exactly the parts we do not want to hand-roll
- * before the on-device NetX/Mbed TLS stack exists. One easy handle is reused
- * across requests so the cookie jar and keep-alive connections persist.
+ * Host-only implementation of the ::mdl_net_iface_t interface from @ref
+ * mdl_net.h. It builds a `{ vtable, ctx }` handle whose four methods forward to
+ * one reused libcurl easy handle; callers reach them only through the
+ * dispatchers, never by name. libcurl handles TLS, redirects, gzip and the
+ * connection pool -- exactly the parts we do not want to hand-roll before the
+ * on-device NetX/Mbed TLS stack exists.
  *
  * The URL that reaches `curl_easy_perform` is attacker-influenced by design, so
  * the handle is hardened rather than left on libcurl's inherited defaults: the
@@ -21,12 +23,15 @@
  * and time-bounded. Every `curl_easy_setopt` of a security-relevant option is
  * checked; a failure fails handle creation rather than proceeding unhardened.
  */
+#include "mdl_net_curl.h"
+
 #include <curl/curl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "mdl_net.h"
+#include "mdl_net_curl_internal.h"
 #include "mdl_url_guard.h"
 #include "ra8_attributes.h"
 
@@ -40,22 +45,14 @@ typedef enum : uint32_t {
   k_origin_host_max     = 256,   /**< Stored origin-host buffer bytes.        */
 } mdl_curl_limits_t;
 
-/** @brief Concrete libcurl network interface. */
-struct mdl_net_iface {
+/** @brief Private state of the libcurl backend (the vtable's `ctx`). */
+typedef struct {
   CURL*    curl;                           /**< Reused easy handle.          */
   bool     allow_private;                  /**< SSRF opt-in (private peers). */
   bool     allow_cross_host;               /**< Cross-host redirect opt-in.  */
   uint64_t max_bytes;                      /**< Per-response cap (0 = none). */
   char     origin_host[k_origin_host_max]; /**< Host of the current request. */
-};
-
-/** @brief Bounded-buffer sink state for a page fetch. */
-typedef struct {
-  char*  buf;      /**< Destination buffer.              */
-  size_t cap;      /**< Capacity in bytes.               */
-  size_t len;      /**< Bytes written so far.            */
-  bool   overflow; /**< Set once the body exceeds `cap`. */
-} buf_sink_t;
+} mdl_curl_ctx_t;
 
 /** @brief Size-bounded FILE* sink state for an image fetch. */
 typedef struct {
@@ -65,9 +62,8 @@ typedef struct {
   bool     overflow; /**< Set once the body exceeds `cap`.  */
 } file_sink_t;
 
-/** @brief libcurl write callback: append into a bounded buffer. */
 /* cppcheck-suppress constParameterCallback ; libcurl WRITEFUNCTION ABI is char* */
-RA8_INTERNAL static size_t on_buf_write(char* data, size_t size, size_t nmemb, void* user)
+RA8_PRIV size_t mdl_net_curl_buf_write(char* data, size_t size, size_t nmemb, void* user)
 {
   buf_sink_t*  sink  = (buf_sink_t*)user;
   const size_t bytes = size * nmemb;
@@ -102,7 +98,7 @@ RA8_INTERNAL static size_t on_file_write(char* data, size_t size, size_t nmemb, 
 }
 
 /** @brief Extract the host of the connection curl is about to request. */
-RA8_INTERNAL static bool redirect_host_ok(struct mdl_net_iface* net)
+RA8_INTERNAL static bool redirect_host_ok(mdl_curl_ctx_t* net)
 {
   if (net->allow_cross_host || (net->origin_host[0] == '\0')) {
     return true;
@@ -131,7 +127,7 @@ RA8_INTERNAL static int on_prereq(void* clientp,
   (void)conn_local_ip;
   (void)conn_primary_port;
   (void)conn_local_port;
-  struct mdl_net_iface* net = (struct mdl_net_iface*)clientp;
+  mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)clientp;
   if (net == nullptr) {
     return CURL_PREREQFUNC_ABORT;
   }
@@ -152,7 +148,7 @@ RA8_INTERNAL static bool ok_code(CURLcode code)
 }
 
 /** @brief Apply the security-critical, life-of-handle options (all checked). */
-RA8_INTERNAL static bool apply_security_opts(CURL* curl, struct mdl_net_iface* net)
+RA8_INTERNAL static bool apply_security_opts(CURL* curl, mdl_curl_ctx_t* net)
 {
   return ok_code(curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https")) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "http,https")) &&
@@ -178,62 +174,8 @@ RA8_INTERNAL static bool apply_behavior_opts(CURL* curl)
          ok_code(curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, (long)k_low_speed_secs));
 }
 
-mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
-{
-  static bool s_global_ready = false;
-  if (!s_global_ready) {
-    if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
-      return nullptr;
-    }
-    s_global_ready = true;
-  }
-
-  mdl_net_iface_t* net = (mdl_net_iface_t*)calloc(1U, sizeof(*net));
-  if (net == nullptr) {
-    return nullptr;
-  }
-  if (policy != nullptr) {
-    net->allow_private    = policy->allow_private_hosts;
-    net->allow_cross_host = policy->allow_cross_host_redirect;
-    net->max_bytes        = policy->max_response_bytes;
-  }
-  net->curl = curl_easy_init();
-  if (net->curl == nullptr) {
-    free(net);
-    return nullptr;
-  }
-  if (!apply_security_opts(net->curl, net) || !apply_behavior_opts(net->curl)) {
-    curl_easy_cleanup(net->curl);
-    free(net);
-    return nullptr;
-  }
-  return net;
-}
-
-void mdl_net_curl_destroy(mdl_net_iface_t* net)
-{
-  if (net == nullptr) {
-    return;
-  }
-  if (net->curl != nullptr) {
-    curl_easy_cleanup(net->curl);
-  }
-  free(net);
-}
-
-long mdl_net_last_status(mdl_net_iface_t* net)
-{
-  if ((net == nullptr) || (net->curl == nullptr)) {
-    return 0;
-  }
-  long status = 0;
-  curl_easy_getinfo(net->curl, CURLINFO_RESPONSE_CODE, &status);
-  return status;
-}
-
 /** @brief Apply the per-request options shared by both fetch paths. */
-RA8_INTERNAL static bool
-apply_req(struct mdl_net_iface* net, const char* url, const mdl_net_req_t* req)
+RA8_INTERNAL static bool apply_req(mdl_curl_ctx_t* net, const char* url, const mdl_net_req_t* req)
 {
   if (!mdl_url_host(url, net->origin_host, sizeof(net->origin_host))) {
     net->origin_host[0] = '\0';
@@ -249,8 +191,7 @@ apply_req(struct mdl_net_iface* net, const char* url, const mdl_net_req_t* req)
   return ok;
 }
 
-/** @brief Map a completed libcurl transfer to an ra8_err_t. */
-RA8_INTERNAL static ra8_err_t classify(CURL* curl, CURLcode code, bool overflow)
+RA8_PRIV ra8_err_t mdl_net_curl_classify(CURLcode code, bool overflow, long status)
 {
   if (overflow) {
     return k_ra8_err_no_mem;
@@ -261,37 +202,42 @@ RA8_INTERNAL static ra8_err_t classify(CURL* curl, CURLcode code, bool overflow)
   if (code != CURLE_OK) {
     return k_ra8_fail;
   }
-  long status = 0;
-  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
   if (status >= (long)k_http_status_err_min) {
     return k_ra8_fail;
   }
   return k_ra8_ok;
 }
 
-ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
-                          const char*          url,
-                          const mdl_net_req_t* req,
-                          char*                buf,
-                          size_t               cap,
-                          size_t*              out_len)
+/** @brief Read the finished transfer's status and classify it. */
+RA8_INTERNAL static ra8_err_t classify_transfer(CURL* curl, CURLcode code, bool overflow)
 {
-  if ((net == nullptr) || (url == nullptr) || (req == nullptr) || (buf == nullptr) || (cap == 0U)) {
-    return k_ra8_err_invalid_arg;
-  }
+  long status = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+  return mdl_net_curl_classify(code, overflow, status);
+}
+
+/** @brief Vtable method: GET `url` into a caller buffer. */
+RA8_INTERNAL static ra8_err_t curl_get_buf(void*                ctx,
+                                           const char*          url,
+                                           const mdl_net_req_t* req,
+                                           char*                buf,
+                                           size_t               cap,
+                                           size_t*              out_len)
+{
+  mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
   if (!mdl_url_scheme_allowed(url)) {
     return k_ra8_err_invalid_arg; /* refuse file://, gopher://, ... before curl */
   }
 
   buf_sink_t sink = {.buf = buf, .cap = cap, .len = 0U, .overflow = false};
   if (!apply_req(net, url, req) ||
-      !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, on_buf_write)) ||
+      !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, mdl_net_curl_buf_write)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEDATA, &sink))) {
     return k_ra8_fail;
   }
 
   const CURLcode  code = curl_easy_perform(net->curl);
-  const ra8_err_t rc   = classify(net->curl, code, sink.overflow);
+  const ra8_err_t rc   = classify_transfer(net->curl, code, sink.overflow);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -305,15 +251,14 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
   return k_ra8_ok;
 }
 
-ra8_err_t mdl_net_get_file(mdl_net_iface_t*     net,
-                           const char*          url,
-                           const mdl_net_req_t* req,
-                           const char*          out_path,
-                           size_t*              out_len)
+/** @brief Vtable method: GET `url` and stream the body to a file. */
+RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
+                                            const char*          url,
+                                            const mdl_net_req_t* req,
+                                            const char*          out_path,
+                                            size_t*              out_len)
 {
-  if ((net == nullptr) || (url == nullptr) || (req == nullptr) || (out_path == nullptr)) {
-    return k_ra8_err_invalid_arg;
-  }
+  mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
   if (!mdl_url_scheme_allowed(url)) {
     return k_ra8_err_invalid_arg;
   }
@@ -337,7 +282,7 @@ ra8_err_t mdl_net_get_file(mdl_net_iface_t*     net,
   }
 
   const CURLcode  code = curl_easy_perform(net->curl);
-  const ra8_err_t rc   = classify(net->curl, code, sink.overflow);
+  const ra8_err_t rc   = classify_transfer(net->curl, code, sink.overflow);
 
   const long fsize = ftell(fp);
   if (fclose(fp) != 0) {
@@ -352,4 +297,79 @@ ra8_err_t mdl_net_get_file(mdl_net_iface_t*     net,
     *out_len = (fsize < 0) ? 0U : (size_t)fsize;
   }
   return k_ra8_ok;
+}
+
+/** @brief Vtable method: HTTP status of the most recent transfer. */
+RA8_INTERNAL static long curl_last_status(void* ctx)
+{
+  mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
+  if (net->curl == nullptr) {
+    return 0;
+  }
+  long status = 0;
+  curl_easy_getinfo(net->curl, CURLINFO_RESPONSE_CODE, &status);
+  return status;
+}
+
+/** @brief Vtable method: release the libcurl handle and this backend state. */
+RA8_INTERNAL static void curl_destroy(void* ctx)
+{
+  mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
+  if (net == nullptr) {
+    return;
+  }
+  if (net->curl != nullptr) {
+    curl_easy_cleanup(net->curl);
+  }
+  free(net);
+}
+
+/** @brief The libcurl backend's immutable method table. */
+static const mdl_net_vtable_t s_curl_vtable = {
+  .get_buf     = curl_get_buf,
+  .get_file    = curl_get_file,
+  .last_status = curl_last_status,
+  .destroy     = curl_destroy,
+};
+
+RA8_DI_SLOT("net_iface")
+mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
+{
+  static bool s_global_ready = false;
+  if (!s_global_ready) {
+    if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
+      return nullptr;
+    }
+    s_global_ready = true;
+  }
+
+  mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)calloc(1U, sizeof(*ctx));
+  if (ctx == nullptr) {
+    return nullptr;
+  }
+  if (policy != nullptr) {
+    ctx->allow_private    = policy->allow_private_hosts;
+    ctx->allow_cross_host = policy->allow_cross_host_redirect;
+    ctx->max_bytes        = policy->max_response_bytes;
+  }
+  ctx->curl = curl_easy_init();
+  if (ctx->curl == nullptr) {
+    free(ctx);
+    return nullptr;
+  }
+  if (!apply_security_opts(ctx->curl, ctx) || !apply_behavior_opts(ctx->curl)) {
+    curl_easy_cleanup(ctx->curl);
+    free(ctx);
+    return nullptr;
+  }
+
+  mdl_net_iface_t* net = (mdl_net_iface_t*)calloc(1U, sizeof(*net));
+  if (net == nullptr) {
+    curl_easy_cleanup(ctx->curl);
+    free(ctx);
+    return nullptr;
+  }
+  net->vtable = &s_curl_vtable;
+  net->ctx    = ctx;
+  return net;
 }

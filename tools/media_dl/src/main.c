@@ -35,6 +35,7 @@
 #include "mdl_export.h"
 #include "mdl_extract.h"
 #include "mdl_net.h"
+#include "mdl_net_curl.h"
 #include "mdl_politeness.h"
 #include "mdl_sanitize.h"
 #include "mdl_session.h"
@@ -760,20 +761,20 @@ RA8_INTERNAL static int run_series(const char*           cfg_path,
   ra8_err_t rc = prepare_chapters(&site, series_url, timeout);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: series fetch failed (err 0x%X)\n", (unsigned)rc);
-    mdl_net_curl_destroy(net);
+    mdl_net_destroy(net);
     return 1;
   }
   (void)printf("chapters found: %zu\n", s_chapters.count);
   if (s_chapters.count == 0U) {
     (void)fprintf(stderr, "media_dl: no chapters (check chapter_url_contains)\n");
-    mdl_net_curl_destroy(net);
+    mdl_net_destroy(net);
     return 1;
   }
 
   char series_slug[k_slug_bytes];
   char abs_series_dir[PATH_MAX];
   if (!prepare_series_dir(out_dir, series_url, series_slug, sizeof(series_slug), abs_series_dir)) {
-    mdl_net_curl_destroy(net);
+    mdl_net_destroy(net);
     return 1;
   }
 
@@ -787,7 +788,7 @@ RA8_INTERNAL static int run_series(const char*           cfg_path,
                                          start,
                                          seed,
                                          timeout);
-  mdl_net_curl_destroy(net);
+  mdl_net_destroy(net);
   return (fails == 0U) ? 0 : 1;
 }
 
@@ -858,7 +859,7 @@ RA8_INTERNAL static int run_page(const char*           url,
   start_session(net, opts, nullptr, ua, sizeof(ua));
 
   if (!mdl_session_url_allowed(&s_session, url, nullptr)) {
-    mdl_net_curl_destroy(net);
+    mdl_net_destroy(net);
     return 1;
   }
   const mdl_net_req_t req = {.user_agent = s_session.user_agent,
@@ -868,7 +869,7 @@ RA8_INTERNAL static int run_page(const char*           url,
   ra8_err_t           rc  = mdl_net_get_buf(s_session.net, url, &req, s_page, sizeof(s_page), &len);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: fetch failed (err 0x%X)\n", (unsigned)rc);
-    mdl_net_curl_destroy(net);
+    mdl_net_destroy(net);
     return 1;
   }
   (void)mdl_extract_images(s_page, len, url, attr, nullptr, &s_images);
@@ -876,7 +877,7 @@ RA8_INTERNAL static int run_page(const char*           url,
   (void)mkdir(out_dir, (mode_t)k_dir_mode);
 
   const size_t fail = download_page_images(url, out_dir, max_imgs, seed, timeout, opts->polite);
-  mdl_net_curl_destroy(net);
+  mdl_net_destroy(net);
   return (fail == 0U) ? 0 : 1;
 }
 

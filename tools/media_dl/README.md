@@ -43,14 +43,23 @@ extract, download politely, package.
 
 ## Design (why it maps cleanly to the RA8 later)
 
-- `mdl_net.{h,c}` -- streaming HTTP GET **seam**, mirroring the on-device
-  `ra8_ota_net_iface_t`. Host backend is libcurl (TLS, redirects, gzip, one
-  reused connection with a persistent cookie jar). On the RA8 this becomes NetX
-  Duo + Mbed TLS over the C6; callers do not change. The backend is hardened for
-  attacker-controlled URLs: transport pinned to http/https, redirects refused
-  when they change host or resolve to loopback/private/link-local address space
-  (the SSRF guard, on the resolved peer), explicit TLS verification, `.netrc`
-  and proxy-env disabled, and a per-response size + low-speed cap.
+- `mdl_net.{h,c}` -- streaming HTTP GET **seam**, a real function-pointer vtable
+  mirroring the on-device `ra8_ota_net_iface_t`. `mdl_net.h` defines the
+  `mdl_net_vtable_t` (get-to-buffer, get-to-file, last-status, destroy) and the
+  `{ vtable, ctx }` handle; `mdl_net.c` holds the backend-agnostic dispatchers
+  and their argument validation. Callers reach a backend only through the
+  dispatchers, so swapping backends -- or a scripted mock in the host tests --
+  is a vtable substitution, never a relink (NASA Rule 9 DIP deviation).
+- `mdl_net_curl.{h,c}` -- the concrete libcurl backend, registered through the
+  seam. `mdl_net_curl.h` (included only by the composition root, `main.c`) is
+  the ONE place that names the backend; every other layer sees only `mdl_net.h`.
+  libcurl gives TLS, redirects, gzip and one reused connection with a persistent
+  cookie jar. On the RA8 this becomes NetX Duo + Mbed TLS over the C6; callers do
+  not change. The backend is hardened for attacker-controlled URLs: transport
+  pinned to http/https, redirects refused when they change host or resolve to
+  loopback/private/link-local address space (the SSRF guard, on the resolved
+  peer), explicit TLS verification, `.netrc` and proxy-env disabled, and a
+  per-response size + low-speed cap.
 - `mdl_url_guard.{h,c}` -- pure URL/address predicates the backend enforces
   (scheme allowlist, IP classification, size cap, host/path extraction).
 - `mdl_sanitize.{h,c}` -- neutralise untrusted names before a filesystem or XML
@@ -65,9 +74,11 @@ extract, download politely, package.
 - `mdl_config.{h,c}` -- flat key=value **site descriptor** loader. Adding a site
   is dropping a `.conf` in `sites/`, no rebuild. Fixed-size struct, zero dynamic
   allocation -- ports to the RA8 unchanged.
-- `mdl_politeness.{h,c}` -- seeded, jittered inter-request delay. The full
-  governor (global per-host token bucket, adaptive 429/503 backoff, Retry-After)
-  is a later milestone.
+- `mdl_politeness.{h,c}` -- seeded, jittered inter-request delay. The blocking
+  sleep is reached through an injectable clock seam (`mdl_politeness_init_clock`)
+  so spacing/backoff timing is unit-tested without real sleeps. The full governor
+  (global per-host token bucket, adaptive 429/503 backoff, Retry-After) is a
+  later milestone.
 - Return type is `ra8_err_t` from `libs/ra8_core` -- signatures are already
   device-shaped.
 
