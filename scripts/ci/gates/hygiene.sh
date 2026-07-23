@@ -246,7 +246,9 @@ gate_no_ai_attribution_commits() (
   repo="$(ci_history_repo)"
   ci_require_real_history "$repo" || return 1
   range="$(ci_commit_range)"
-  echo "Scanning commit messages in: $range (history repo: $repo)"
+  # Print the commit COUNT and reject the zero-commit dispatch range (#357):
+  # a run that examined nothing must not read as a pass.
+  ci_report_commit_range "$repo" "$range" || return 1
   for sha in $(git -C "$repo" rev-list "$range"); do
     f="$(mktemp)"
     git -C "$repo" log -1 --format=%B "$sha" >"$f"
@@ -275,7 +277,9 @@ gate_inclusive_terminology_commits() (
   repo="$(ci_history_repo)"
   ci_require_real_history "$repo" || return 1
   range="$(ci_commit_range)"
-  echo "Scanning commit messages in: $range (history repo: $repo)"
+  # Print the commit COUNT and reject the zero-commit dispatch range (#357):
+  # a run that examined nothing must not read as a pass.
+  ci_report_commit_range "$repo" "$range" || return 1
   git -C "$repo" log "$range" --format=%B |
     python3 scripts/checks/check_inclusive_terminology_commits.py
 )
