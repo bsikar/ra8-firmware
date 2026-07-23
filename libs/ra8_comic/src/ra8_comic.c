@@ -15,7 +15,7 @@
  * dispatch on the detected kind.
  *
  * Every decision here is a single condition on purpose, so the facade carries no
- * MC/DC obligation of its own (mirroring ra8_cbz_container.c).
+ * MC/DC obligation of its own.
  *
  * @since Version 0.1.0
  *

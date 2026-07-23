@@ -229,8 +229,8 @@ allow for per-region padding, not merely the sum of the `size` fields.
   5. Write the header with total_bytes and checksum filled in
 ```
 
-Sizes are all known before any bytes are written, so -- as with RBKC and RCBZ --
-the file is emitted in one forward pass with the tables at the front.
+Sizes are all known before any bytes are written, so -- as with RBKC -- the
+file is emitted in one forward pass with the tables at the front.
 
 ### 4.2 Loading
 
@@ -337,8 +337,8 @@ Cross-checks a loader performs on these exact numbers: `32 + 2*16 <= total`;
 into an out-of-bounds pointer.
 
 > The byte values above are an annotated layout illustrating the specified
-> field order, not a dump of a committed fixture -- unlike the JOF, RBKC, RCBZ
-> and ROT1 pages, whose hexdumps are captured from real generated files. A
+> field order, not a dump of a committed fixture -- unlike the JOF, RBKC and
+> ROT1 pages, whose hexdumps are captured from real generated files. A
 > `.npub` requires the Vela compiler and an RA8P1 target, neither of which is
 > available in this checkout. The field offsets, sizes and constants are taken
 > directly from `ra8_npu_blob.h`; regenerate this section from a real

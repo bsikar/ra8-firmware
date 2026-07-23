@@ -37,7 +37,6 @@ artifact, and only earns an entry here).
 |-------|--------|------|----------|---------------|
 | `JOF1` / `JOFE` | Jump-Offset band-tile atlas | `libs/ra8_jof` | `ra8_jof_produce()`, `ra8_fmt convert` | @ref md_docs_2formats_2JOF |
 | `RBKC` | Chunked `.rabook` container | `libs/ra8_book` | `tools/epub_compile` | @ref md_docs_2formats_2RBKC |
-| `RCBZ` | Per-page comic container | `libs/ra8_book` | `tools/epub_compile/cbz_container.py` | @ref md_docs_2formats_2RCBZ |
 | `NPU1` | `.npub` Ethos-U55 model container | `libs/ra8_hal` | `tools/vela/vela_gen.py` | @ref md_docs_2formats_2NPU1 |
 | `ROT1` | Root-of-trust signed-image trailer | `libs/ra8_dfu` | `tools/rot_sign.py` | @ref md_docs_2formats_2ROT1 |
 | `NSR1` | Non-Secure image RoT header | `libs/ra8_tz_secure_boot` | `sign_and_merge.py`, `ns_image.ld` | @ref md_docs_2formats_2NSR1 |
@@ -55,14 +54,11 @@ effort than the alphabetical sidebar suggests:
    reuse.
 2. @ref md_docs_2formats_2RBKC -- the same seekability problem for a flat blob;
    introduces the two-layer container idea and the front-loaded table.
-3. @ref md_docs_2formats_2RCBZ -- a direct contrast with RBKC that shows *why*
-   the unit of indexing is a design decision rather than an implementation
-   detail.
-4. @ref md_docs_2formats_2ROT1 -- the shift from "do not crash on bad input" to
+3. @ref md_docs_2formats_2ROT1 -- the shift from "do not crash on bad input" to
    "do not run unauthorised code".
-5. @ref md_docs_2formats_2NSR1 -- eight bytes that make ROT1 usable at the
+4. @ref md_docs_2formats_2NSR1 -- eight bytes that make ROT1 usable at the
    TrustZone boundary.
-6. @ref md_docs_2formats_2NPU1 -- the same host-does-the-work philosophy applied
+5. @ref md_docs_2formats_2NPU1 -- the same host-does-the-work philosophy applied
    to a neural network.
 
 ### Internal markers -- no separate specification
@@ -96,12 +92,11 @@ is a specific competitor a knowledgeable reader will name.
 |---|---|---|---|
 | `JOF1` | **Tiled TIFF** -- `TileOffsets` / `TileByteCounts`, `COMPRESSION_ADOBE_DEFLATE` | **Yes.** That pair genuinely is a jump-offset index over independently-compressed tiles | Parser attack surface, and a producer that must never seek |
 | `RBKC` | **Blocked DEFLATE** -- `bgzf`, `dictzip`, or `.xz` with its block index | **Yes.** Independent blocks plus an index is exactly this pattern | One chunk == one `ra8_vmem` cache frame == one inflate |
-| `RCBZ` | **Plain CBZ** -- a ZIP of page images | **Yes.** ZIP compresses each entry independently and the central directory is a seekable index | Getting the image codec off the device entirely |
 | `RABOOK1` | **EPUB, read directly** | Not the question -- the cost here is parsing, not seeking | Pre-resolving the CSS cascade and pre-transcoding images to panel-native 4 bpp |
 
-Three of those four competitors **already solve random access.** That is worth
+Two of those three competitors **already solve random access.** That is worth
 saying plainly, because "the standard format cannot seek" is the argument these
-pages are most likely to be *assumed* to make, and for three of them it would
+pages are most likely to be *assumed* to make, and for two of them it would
 be false.
 
 ### The thread that actually connects them
@@ -111,7 +106,6 @@ cost** off the device permanently, and pay it once on a host with an operating
 system and gigabytes of RAM.
 
 - `JOF1` moves the transcode that makes an image randomly accessible.
-- `RCBZ` moves the PNG/JPEG decode and the colour conversion.
 - `RABOOK1` moves the unzip, the XML parse and the CSS cascade.
 - `RBKC` moves the decision of where the compression boundaries fall.
 
@@ -154,19 +148,13 @@ and an MMU, most of these decisions would go the other way.
 
 ### Where the parallel breaks
 
-The four cases are not equally strong, and flattening them into one story
-would misrepresent two of them.
+The three cases are not equally strong, and flattening them into one story
+would misrepresent one of them.
 
 - **JOF vs tiled TIFF is the closest contest** and the only one where parser
   attack surface is the deciding factor. It gets the detailed treatment, in
   @ref md_docs_2formats_2JOF section 2.
-- **RCBZ replaces an archive, not a codec container.** ZIP's central directory
-  is a much better starting point than TIFF's IFD -- already a seekable index
-  over independently-compressed entries. Reading the CBZ directly on device
-  would genuinely *work*, and @ref md_docs_2formats_2RCBZ says so in as many
-  words ("works, but drags a codec along"). What it drags along is a PNG/JPEG
-  decoder running on untrusted input; that, not seekability, is the argument.
-- **RABOOK's justification is the weakest of the four, and is partly
+- **RABOOK's justification is the weakest of the three, and is partly
   historical.** The device parses EPUB directly today: `libs/ra8_epub` opens
   the ZIP with miniz and parses the OPF with tinyxml2, and ten firmware
   applications link it, several of them silicon-validated. "The device cannot
@@ -197,7 +185,7 @@ split into two camps:
 
 | Style | Formats | Declared as | Bytes on disk |
 |-------|---------|-------------|---------------|
-| **Byte string** | `JOF1`, `JOFE`, `RBKC`, `RCBZ` | a 4-byte array, compared with `memcmp` | read left-to-right: `4a 4f 46 31` = `JOF1` |
+| **Byte string** | `JOF1`, `JOFE`, `RBKC` | a 4-byte array, compared with `memcmp` | read left-to-right: `4a 4f 46 31` = `JOF1` |
 | **`uint32` constant** | `NPU1`, `NSR1`, `ROT1`, `RBK1` | a `uint32_t` enum, compared with `==` | stored little-endian, so whether they read forwards depends on how the constant was chosen -- see below |
 
 A `uint32` magic reads forwards in a hexdump only if whoever picked the constant
@@ -268,7 +256,7 @@ Three mechanisms do most of that work:
 3. **Decompression is capped** by `ra8_decomp_limits_t` -- a hard **64 MiB**
    output ceiling and a **1024:1** expansion-ratio ceiling -- so a
    decompression bomb fails instead of exhausting memory. This applies to every
-   DEFLATE/zlib stream in `RBKC`, `RCBZ` and `JOF`.
+   DEFLATE/zlib stream in `RBKC` and `JOF`.
 
 ### Zero dynamic allocation
 
@@ -369,7 +357,7 @@ digraph fmt_layers {
 
   src   [label="Source content\n(EPUB, CBZ, PNG,\nJPEG, .tflite, .elf)"];
   host  [label="Host producer\n(tools/epub_compile,\nra8_fmt, vela_gen,\nrot_sign)", fillcolor="#dff0e4", color="#5f9e72"];
-  fmt   [label="First-party\nbinary format\n(JOF/RBKC/RCBZ/\nNPU1/ROT1/NSR1)", fillcolor="#fbf0d9", color="#b8913f"];
+  fmt   [label="First-party\nbinary format\n(JOF/RBKC/NPU1/\nROT1/NSR1)", fillcolor="#fbf0d9", color="#b8913f"];
   dev   [label="On-device reader\n(bounded RAM,\nzero alloc,\nfail-closed)", fillcolor="#f7e4e4", color="#b06a6a"];
 
   src -> host [label="parse once,\noff device"];

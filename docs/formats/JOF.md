@@ -350,9 +350,8 @@ By codec:
   length equals `tw * th * bpp`.
 - **Codec 1 (deflate)**: the stored stream is one standalone **raw DEFLATE**
   stream (RFC 1951 -- *no* zlib or gzip wrapper, no Adler-32) that inflates to
-  exactly the payload size. Note the contrast with `RBKC` and `RCBZ`, which use
-  zlib (RFC 1950) and therefore begin with a `78 xx` header; a JOF tile does
-  not.
+  exactly the payload size. Note the contrast with `RBKC`, which uses zlib
+  (RFC 1950) and therefore begins with a `78 xx` header; a JOF tile does not.
 
 ### 3.3 Index (8 bytes per entry, at `footer.index_offset`)
 
@@ -991,8 +990,7 @@ no padding, no overlap. That is the invariant behind `inspect`'s
 
 Note there is **no `78 xx` zlib header** -- the stream starts immediately with
 DEFLATE-compressed data. This is the RFC 1951 raw stream promised by codec 1,
-and it is the visible difference from `RBKC`/`RCBZ` payloads, which do begin
-`78 da`.
+and it is the visible difference from `RBKC` payloads, which do begin `78 da`.
 
 ### 6.6 Proving the transcode is lossless
 
@@ -1065,8 +1063,7 @@ different attacks:
 
 For JOF, mechanism 1 is normally what fires -- the geometry cap of 32768 x
 32768 x 4 bpp already bounds a single tile far below 64 MiB. Mechanism 2 matters
-for the shared paths (`RBKC`, `RCBZ`) where the expected size is itself read
-from the file.
+for `RBKC`, where the expected size is itself read from the file.
 
 ### What is deliberately *not* defended
 
@@ -1137,5 +1134,3 @@ no dual-version reader and there should never be one.
 - `ra8_epub_img_tiles.h` -- EPUB tile-cache binder over this format
 - @ref md_docs_2formats_2RBKC -- the chunked book container, which solves the
   same seekability problem for a *flat blob* rather than an image grid
-- @ref md_docs_2formats_2RCBZ -- the per-page comic container, the same idea
-  keyed by page instead of by tile

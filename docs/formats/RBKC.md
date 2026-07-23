@@ -71,8 +71,12 @@ there are **two formats stacked**, and they have different jobs:
 The inner blob starts with the ASCII magic `RABOOK1` and is described by
 `ra8_book_header_t`. The outer container knows *nothing* about books -- it sees
 an opaque byte range it must be able to serve any window of. That separation is
-what lets the same paging machinery serve a comic container (`RCBZ`) and a book,
-and it is why this page specifies only the outer layer.
+what lets the outer container serve any opaque inner payload, and it is why this
+page specifies only the outer layer. It is also why a `.rabook` needs this outer
+chunking at all: unlike a ZIP (whose entries are already independently
+compressed and individually seekable, so a comic archive needs no
+whole-archive chunking), the inner `RABOOK1` blob is a single contiguous stream,
+so the seekable boundaries have to be imposed around it.
 
 You can see both layers in a hexdump, which is the fastest way to convince
 yourself: the file begins `52 42 4B 43` (`RBKC`), and the first chunk's zlib
@@ -557,7 +561,5 @@ the old handling. There is no dual-version reader.
 - `ra8_book_chunked.h` -- the demand-paged chunk reader specified here
 - `ra8_book_paged.h` -- binds the paged object as a book source
 - `ra8_vsource.h` -- the paging registry the reader plugs into
-- @ref md_docs_2formats_2RCBZ -- the same paging idea keyed by *page* instead of
-  by uniform chunk
 - @ref md_docs_2formats_2JOF -- the same seekability problem solved for an
   *image grid*, with the index at the end instead of the front
