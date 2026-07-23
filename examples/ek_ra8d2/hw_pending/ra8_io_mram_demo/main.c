@@ -6,13 +6,19 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Proves the ra8_io fabric over the RA8D2's on-chip extra MRAM (data flash) at
- * 0x27000000 -- a non-volatile, erase-before-write medium programmed through the
- * MACI command sequencer. Same block-device vtable as the other ra8_io demos;
- * only the backend differs (ra8_io_blockdev_mram instead of RAM/SD/OSPI).
+ * Proves the ra8_io fabric over the RA8D2's on-chip extra MRAM at
+ * ``k_ra8_flash_extra_start`` (0x02E07600, HUM Ch 59.7.4.5 Table 59.15 p 3592) --
+ * programmed through the MACI command sequencer. Same block-device vtable as the
+ * other ra8_io demos; only the backend differs (ra8_io_blockdev_mram instead of
+ * RAM/SD/OSPI).
  *
- * The extra-MRAM region is small (12 KiB) -- too small for a FAT volume -- so
- * the demo exercises the backend directly through the ra8_io block-device layer,
+ * @warning This window is one-time-programmable option-setting / OTP memory, not
+ * a rewritable data-flash: the erase + re-program cycle this demo exercises does
+ * NOT work on real silicon (there is no erase). board_sim maps the window and so
+ * the round-trip passes here, but that is optimistic -- a real rewritable-medium
+ * home for this demo (OSPI / SD) is tracked by #315.
+ *
+ * The demo exercises the backend directly through the ra8_io block-device layer,
  * which is the right level for this special-purpose non-volatile store (the FAT
  * layer is already proven over the RAM / SD / OSPI / SDRAM backends):
  *   1. ra8_flash_init() brings up the MRAM controller (Phase 1, #156).
@@ -46,18 +52,18 @@
 
 /** @enum demo_const_t @brief Console + volume + MRAM knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_demo_uart_chan   = 8U,          /**< SCI8 J-Link OB console.               */
-  k_demo_uart_baud   = 115200U,     /**< Console baud.                         */
-  k_demo_mram_base   = 0x27000000U, /**< Extra-MRAM (data flash) base.         */
-  k_demo_disk_blocks = 24U,         /**< 12 KiB window = whole extra MRAM.     */
-  k_demo_test_lba    = 0U,          /**< Logical block under test.             */
-  k_demo_block_count = 1U,          /**< Blocks erased/written/read.           */
-  k_demo_payload     = 512U,        /**< One 512-byte block round-tripped.     */
-  k_demo_pin_shift   = 8U,          /**< Port byte position in ra8_port_pin_t. */
-  k_demo_seed_mul    = 5U,          /**< Test-pattern multiplier.              */
-  k_demo_seed_add    = 3U,          /**< Test-pattern additive bias.           */
-  k_demo_mrcfreq_mhz = 200U,        /**< Code-MRAM advertised clock (MHz).     */
-  k_demo_mrefreq_mhz = 100U,        /**< Extra-MRAM advertised clock (MHz).    */
+  k_demo_uart_chan   = 8U,      /**< SCI8 J-Link OB console.               */
+  k_demo_uart_baud   = 115200U, /**< Console baud.                         */
+  k_demo_mram_base   = (uint32_t)k_ra8_flash_extra_start, /**< Extra-MRAM OTP window base. */
+  k_demo_disk_blocks = 24U,  /**< 12 KiB scratch inside the OTP window. */
+  k_demo_test_lba    = 0U,   /**< Logical block under test.             */
+  k_demo_block_count = 1U,   /**< Blocks erased/written/read.           */
+  k_demo_payload     = 512U, /**< One 512-byte block round-tripped.     */
+  k_demo_pin_shift   = 8U,   /**< Port byte position in ra8_port_pin_t. */
+  k_demo_seed_mul    = 5U,   /**< Test-pattern multiplier.              */
+  k_demo_seed_add    = 3U,   /**< Test-pattern additive bias.           */
+  k_demo_mrcfreq_mhz = 200U, /**< Code-MRAM advertised clock (MHz).     */
+  k_demo_mrefreq_mhz = 100U, /**< Extra-MRAM advertised clock (MHz).    */
 } demo_const_t;
 
 /** @brief SCI8 console TXD = PD02. */

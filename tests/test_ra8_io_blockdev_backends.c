@@ -62,7 +62,8 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_t_sdram_blocks   = 64,     /**< 32 KiB inside the simulated SDRAM window.  */
   k_t_xspi_blocks    = 8,      /**< 4 KiB == one NOR sector of the model.      */
-  k_t_mram_blocks    = 4,      /**< 2 KiB inside the 12 KiB extra-MRAM region. */
+  k_t_mram_blocks    = 4,      /**< 2 KiB inside the extra-MRAM OTP window.     */
+  k_t_mram_oversize  = 256,    /**< > 65 KiB / 512 -- past the extra-MRAM window. */
   k_t_sdram_oversize = 200000, /**< > 64 MiB / 512 -- rejected by sdram init.  */
 } t_backend_const_t;
 
@@ -214,8 +215,9 @@ static void test_mram_fence(void)
                                            (uintptr_t)k_ra8_flash_code_start,
                                            k_t_mram_blocks,
                                            false));
-  /* window runs past the 12 KiB extra region */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_blockdev_mram_init(&bd, &state, base, 64, false));
+  /* window runs past the extra-MRAM OTP window */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_io_blockdev_mram_init(&bd, &state, base, k_t_mram_oversize, false));
   /* valid */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_mram_init(&bd, &state, base, k_t_mram_blocks, false));
 

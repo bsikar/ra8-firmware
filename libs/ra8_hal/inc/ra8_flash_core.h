@@ -463,8 +463,9 @@ ra8_flash_block_protect_set(ra8_flash_world_t world, bool lock, bool permanent);
  *  - OFS configuration area (HUM Ch 7.2.x p 280..299): the Configuration Set
  *    command (``0x40``, HUM Ch 59.7.4.8 p 3594). This is the escape hatch
  *    ``ra8_flash_set_startup_area`` builds on.
- *  - Extra-MRAM data area (0x27000000, HUM Ch 59.1 p 3543): the Program
- *    command (``0xE8``, HUM Ch 59.7.4.5 "Program Command" Fig 59.13 p 3591).
+ *  - Extra-MRAM option-setting / OTP area (0x02E07600, HUM Ch 59.7.4.5
+ *    Table 59.15 p 3592): the Program command (``0xE8``, HUM Ch 59.7.4.5
+ *    "Program Command" Fig 59.13 p 3591).
  *    This is the primitive ``ra8_flash_extra_mram_write`` builds on. Config-Set
  *    is NOT interchangeable here -- against the data area it raises
  *    MSTATR.CFGSETERR and leaves the target blank.
@@ -841,34 +842,48 @@ uint32_t ra8_flash_dispatch_isr(void);
 ra8_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint8_t* out_err);
 
 /**
- * @brief Program 1..32 contiguous bytes into extra-MRAM via MACI.
+ * @brief Program 1..32 contiguous bytes into the general-purpose extra-MRAM window.
  *
  * @details
- * Extra-MRAM (data flash) lives at ``k_ra8_flash_extra_start`` and is
- * programmed through the MACI sequencer rather than the direct STR
- * gate (HUM Ch 7 p 278..299 + HUM Ch 59 p 3550..3624). This API mirrors
- * ``ra8_flash_write_block`` semantics: 1..32 bytes inside one page.
+ * The extra-MRAM option-setting / OTP window
+ * (``[k_ra8_flash_extra_start, +k_ra8_flash_extra_size)``, HUM Ch 59.7.4.5
+ * Table 59.15 p 3592) is programmed through the MACI Program command rather than
+ * the direct STR gate. This API mirrors ``ra8_flash_write_block`` semantics:
+ * 1..32 bytes inside one page.
  *
- * @param[in] mram_addr Destination inside the extra-MRAM window.
+ * **OTP-misuse guard (#397):** this is the *general-purpose* write path, so it
+ * refuses any target at or above ``k_ra8_flash_extra_locked_start`` -- the
+ * permanent, irreversible structures (PBPS, POFSPS, REVOKE, HUK-zeroize enable,
+ * anti-rollback). Programming those can brick the part or destroy the wrapped
+ * HUK, so they require the deliberate, separately-named
+ * ``ra8_flash_config_set_write``. The general-purpose OTP sub-range
+ * (``k_ra8_flash_gpotp_start``, HUM Ch 7.2.25 p 299) is the intended target for
+ * ordinary callers. Note that the whole window is one-time-programmable on this
+ * silicon -- there is no rewritable data-flash to erase and re-use.
+ *
+ * @param[in] mram_addr Destination inside the extra-MRAM window, below
+ *                      ``k_ra8_flash_extra_locked_start``.
  * @param[in] src Non-NULL source buffer of at least ``len`` bytes.
  * @param[in] len 1..32.
  *
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok Bytes written.
  * @retval k_ra8_err_null_ptr ``src`` was NULL.
- * @retval k_ra8_err_invalid_arg Range / alignment violation.
+ * @retval k_ra8_err_invalid_arg Range / alignment violation, or the target is a
+ *                               permanent structure at/above the guard boundary.
  * @retval k_ra8_err_hw_error MSTATR error after the command.
  * @retval k_ra8_err_hw_timeout MACI never returned MRDY.
  *
  * @pre ``src`` non-null and ``len`` in [1, 32].
- * @pre ``mram_addr`` lies inside extra-MRAM and ``mram_addr+len-1``
- * lies on the same 32-byte page.
+ * @pre ``mram_addr`` lies inside extra-MRAM below the guard boundary and
+ * ``mram_addr+len-1`` lies on the same 32-byte page.
  * @pre ``ra8_flash_init`` has been called.
  * @post Data committed; controller back in read mode.
  *
  * @note Thread-safe: no.
  * @warning Same brick warnings as ``ra8_flash_write_block``.
  * @see ra8_flash_extra_mram_erase
+ * @see ra8_flash_config_set_write
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
