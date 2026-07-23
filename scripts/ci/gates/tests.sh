@@ -69,29 +69,29 @@ gate_coverage_report() (
 #
 # RA8_MCDC_THRESHOLD=0 disables mcdc_report.sh's own per-file gate; the
 # project-wide baseline comparison below is the actual quality bar.
+#
+# Freshness (#346/#326): the gate first proves mcdc_report.sh's build-dir
+# freshness guard still fires (--selftest) BEFORE spending twenty minutes
+# measuring nothing -- an inherited tests/build-cov configured by the coverage
+# gate's gcc cached "-fcoverage-mcdc: no", so the build came out uninstrumented
+# and the gate died at the merge step blaming the tests when all 540 had passed.
+# It then WIPES both tests/build-cov and build/mcdc-report: a reused build
+# carries that stale probe, and a leftover build/mcdc-report holds a stale
+# mcdc_per_file.json / gate.json the per-file MC/DC floor would read and
+# FALSE-PASS on numbers this run never produced. This exact reuse hid a real red
+# this week. `make mcdc` for a developer stays incremental (mcdc_report.sh keeps
+# a matching-compiler cache) -- only the CI gate wipes. artefact-freshness runs
+# AFTER this gate and re-reads the report mcdc_report.sh regenerates, so the wipe
+# is safe.
 gate_mcdc() (
   set -e
   set -o pipefail
   require_cmd clang-18 "the MC/DC gate pins clang-18 to match CI"
 
-  # Prove the build-dir freshness guard still fires BEFORE spending twenty
-  # minutes measuring nothing. #346: an inherited tests/build-cov configured
-  # by the coverage gate's gcc-13 cached "-fcoverage-mcdc: no", so the build
-  # came out uninstrumented and the gate died at the merge step blaming the
-  # tests for crashing when all 540 had passed.
+  # Prove the build-dir freshness guard fires before measuring (see header).
   CC=clang-18 CXX=clang++-18 bash scripts/report/mcdc_report.sh --selftest
 
-  # Measure a WIPED build AND report dir (#346/#326). In the suite the coverage
-  # gate configures tests/build-cov FIRST, with gcc, so a reused tree carries
-  # the cached "-fcoverage-mcdc: no" probe; and a build/mcdc-report left by an
-  # earlier run holds a stale mcdc_per_file.json / gate.json that the per-file
-  # MC/DC floor would read and FALSE-PASS on numbers this run never produced.
-  # This exact reuse hid a real red this week. The compiler-change guard inside
-  # mcdc_report.sh catches the probe case; wiping unconditionally here also
-  # clears the stale report and covers a same-compiler reconfigure. `make mcdc`
-  # for a developer stays incremental (mcdc_report.sh keeps a matching-compiler
-  # cache) -- only the CI gate wipes. artefact-freshness runs AFTER this gate and
-  # re-reads the report mcdc_report.sh regenerates below, so the wipe is safe.
+  # Wipe build AND report dir for a guaranteed-fresh MC/DC build (see header).
   rm -rf "${RA8_MCDC_BUILD_DIR:-tests/build-cov}" \
     "${RA8_MCDC_REPORT_DIR:-build/mcdc-report}"
 
