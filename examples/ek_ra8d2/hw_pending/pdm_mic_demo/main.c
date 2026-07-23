@@ -35,7 +35,7 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -209,7 +209,7 @@ static const uint8_t k_pdm_demo_banner_nodat[] = "pdm: no data (FIFO empty) -- c
  * @post No further application code runs.
  *
  * @note Not callable from ISR context.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_demo_panic_halt(void)
 {
@@ -234,7 +234,7 @@ static void pdm_demo_panic_halt(void)
  * @post The return value is in ``[1, 11]``.
  *
  * @note Pure helper; thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static uint32_t pdm_demo_i32_to_dec(int32_t value, uint8_t* out)
 {
@@ -281,7 +281,7 @@ static uint32_t pdm_demo_i32_to_dec(int32_t value, uint8_t* out)
  * @post ``(result + 1)`` squared exceeds ``value``.
  *
  * @note Pure helper; thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static uint32_t pdm_demo_isqrt(uint64_t value)
 {
@@ -316,7 +316,7 @@ static uint32_t pdm_demo_isqrt(uint64_t value)
  * @post No application state changed.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_demo_tx(const uint8_t* bytes, uint32_t len)
 {
@@ -338,7 +338,7 @@ static void pdm_demo_tx(const uint8_t* bytes, uint32_t len)
  * @post No application state changed.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t value)
 {
@@ -366,7 +366,7 @@ static void pdm_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t v
  * @post The CPU is parked on any failure.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_demo_clocks_or_halt(void)
 {
@@ -398,7 +398,7 @@ static void pdm_demo_clocks_or_halt(void)
  * @post The CPU is parked on any failure.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_demo_io_or_halt(void)
 {
@@ -428,7 +428,7 @@ static void pdm_demo_io_or_halt(void)
  * @post The CPU is parked on any failure.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_demo_pdm_or_halt(void)
 {
@@ -475,7 +475,7 @@ static void pdm_demo_pdm_or_halt(void)
  * @post ``buf[0..return-1]`` hold live PCM.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static uint32_t pdm_demo_capture(int32_t* buf, uint32_t want)
 {
@@ -511,7 +511,7 @@ static uint32_t pdm_demo_capture(int32_t* buf, uint32_t want)
  * @post ``m->rms`` and ``m->peak`` are non-negative.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_demo_analyze(const int32_t* buf, uint32_t n, pdm_metrics_t* m)
 {
@@ -559,7 +559,7 @@ static void pdm_demo_analyze(const int32_t* buf, uint32_t n, pdm_metrics_t* m)
  * @post The result reflects only ``m``.
  *
  * @note Pure helper; thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static bool pdm_demo_is_active(const pdm_metrics_t* m)
 {
@@ -587,7 +587,7 @@ static bool pdm_demo_is_active(const pdm_metrics_t* m)
  * @post ::g_pdm_mic_result mirrors ``m``.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_demo_publish(const pdm_metrics_t* m, int32_t vary, bool active)
 {
@@ -640,7 +640,7 @@ static void pdm_demo_publish(const pdm_metrics_t* m, int32_t vary, bool active)
  * @post ::g_pdm_mic_result is refreshed on success.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static bool pdm_demo_run_window(int32_t vary, pdm_metrics_t* out_m)
 {
@@ -672,7 +672,7 @@ static bool pdm_demo_run_window(int32_t vary, pdm_metrics_t* out_m)
  * @post The verdict banner is printed and streaming continues.
  * @post ::g_pdm_mic_result carries the latest verdict.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 int32_t main(void)
 {

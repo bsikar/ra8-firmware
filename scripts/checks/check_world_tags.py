@@ -11,8 +11,10 @@ header:
 
 This script:
 
-    1. Walks project-owned libs/, src/, tests/, and examples/ code while
-       skipping vendored trees such as libs/third_party/.
+    1. Walks every first-party C file, derived from git ls-files via
+       lint_targets (#358) rather than a hardcoded ("libs","src","tests")
+       + example-app list that silently omitted tools/ and port/. Vendored
+       trees (libs/third_party/, port/threadx/) are dropped automatically.
     2. For Ring 3+ files (anything outside Ring 1 BSP and Ring 2 Core),
        requires both a [Ring N / ...] tag and a {World: ...} tag in
        the first ~80 lines of the file.
@@ -24,17 +26,21 @@ This script:
        as a Non-Secure entry point, and the project requires that
        only happen in NSC veneers.
 
+Host tooling under tools/ and vendored trees are enumerated but are NOT
+ring3+, so they require no World tag -- a documented scope decision (see
+file_is_in_ring3_plus and _select_targets), not an accident of a tuple. The
+NSC-location and cmse_nonsecure_entry bans (checks 3 and 4) apply to every
+file, everywhere.
+
 Modes:
 
     --warn (default) -- exit 0, print findings
     --strict (onward) -- exit 1 on any finding
+    --selftest -- prove the bans fire and the scope decision holds, then exit
 
-In there are no Ring 3+ files yet that carry these tags
-(the existing 29 driver shells were written before the tag system
-was introduced and will be retrofitted starting). The
-script therefore EXEMPTS the existing previous source files via
-an allowlist of paths -- those files become non-exempt as the
-relevant / sessions touch them.
+A finite LEGACY_RING3_EXEMPT_PREFIXES list grandfathers the pre-tag-system
+libs/ra8_hal/ and tests/ files: each leaves the exemption automatically the
+moment it grows either tag, so the exemption only ever shrinks.
 """
 
 from __future__ import annotations
@@ -43,15 +49,17 @@ import argparse
 import pathlib
 import re
 import sys
+import tempfile
 from collections.abc import Iterable
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from lint_targets import first_party_paths
+from selftest_assert import expect, report
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
-
-# Top-level dirs we scan by default. Vendored/build subtrees are filtered
-# during traversal.
-ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
+SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp")
 
 EXCLUDED_PATH_PARTS = {"build", "_deps", "third_party"}
 
@@ -68,25 +76,30 @@ APP_BOOT_FILES = {
 
 
 def discover_app_dirs() -> tuple[str, ...]:
-    """Every examples/<tier>/<app>/ path holding both main.c and CMakeLists.txt.
+    """Every examples/**/ dir at ANY depth holding both main.c and CMakeLists.txt.
 
     Requiring BOTH is what distinguishes a real app directory from a shared
-    subdirectory that merely contains sources, so the app set is derived
-    rather than listed.
+    subdirectory that merely contains sources. Discovery recurses on that pair
+    rather than assuming a fixed examples/<tier>/<app> layout: an earlier
+    TWO-LEVEL walk reached only the handful of one-level apps and silently
+    skipped the entire deeply-nested ek_ra8d2 board tree -- the same
+    under-scoping defect as #358, and the reason nine ek_ra8d2 app main.c files
+    went unclassified and untagged. cite_check.py already discovers apps this
+    way.
     """
-    out: list[str] = []
     examples_root = REPO_ROOT / "examples"
     if not examples_root.is_dir():
         return ()
-    for tier in sorted(examples_root.iterdir()):
-        if not tier.is_dir():
+    app_dirs: set[str] = set()
+    for cmake in examples_root.rglob("CMakeLists.txt"):
+        app_dir = cmake.parent
+        if any(
+            part in ("third_party", "_deps") or part.startswith("build") for part in app_dir.parts
+        ):
             continue
-        for entry in sorted(tier.iterdir()):
-            if not entry.is_dir():
-                continue
-            if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-                out.append(f"examples/{tier.name}/{entry.name}")
-    return tuple(out)
+        if (app_dir / "main.c").is_file():
+            app_dirs.add(app_dir.relative_to(REPO_ROOT).as_posix())
+    return tuple(sorted(app_dirs))
 
 
 APP_DIRS = discover_app_dirs()
@@ -275,6 +288,76 @@ def check_file(path: pathlib.Path) -> list[str]:
     return findings
 
 
+# ---------------------------------------------------------------------------
+# Selftest -- both directions, plus scope/classification assertions. tools/ was
+# silently omitted until #358; it is enumerated now but is not ring3+, so the
+# selftest pins that decision in place rather than leaving it to a tuple.
+# ---------------------------------------------------------------------------
+def selftest() -> int:
+    """Prove the bans fire, plain code stays quiet, and the scope decision holds."""
+    print("check_world_tags.py --selftest")
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        bad = pathlib.Path(tmp) / "bad.c"
+        bad.write_text("void f(void) __attribute__((cmse_nonsecure_entry));\n", encoding="utf-8")
+        expect(bool(check_file(bad)), "cmse_nonsecure_entry outside libs/ra8_nsc/ fires", failures)
+        good = pathlib.Path(tmp) / "good.c"
+        good.write_text("void f(void) { /* plain host code, no TrustZone */ }\n", encoding="utf-8")
+        expect(not check_file(good), "plain code with no ring3+ role stays quiet", failures)
+
+    expect(
+        file_is_in_ring3_plus("libs/ra8_hal/ra8_gpio.c"),
+        "libs/ra8_hal/ is ring3+ (a World tag is required)",
+        failures,
+    )
+    expect(
+        not file_is_in_ring3_plus("tools/board_sim/src/main.c"),
+        "tools/ host code is not ring3+ (no World tag required -- documented decision)",
+        failures,
+    )
+    scope = set(first_party_paths(SOURCE_SUFFIXES))
+    expect(
+        any(s.startswith("tools/") for s in scope),
+        "tools/ is enumerated (the scan-dir list omitted it before #358)",
+        failures,
+    )
+    return report(failures)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Command-line parser for the world-tag gate."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "paths",
+        nargs="*",
+        help="files or directories to scan (default: derived first-party C)",
+    )
+    parser.add_argument(
+        "--warn", action="store_true", help="warn-only mode: print findings, exit 0 (default)"
+    )
+    parser.add_argument("--strict", action="store_true", help="strict mode: exit 1 on any finding")
+    parser.add_argument(
+        "--selftest",
+        action="store_true",
+        help="prove the bans fire and the scope decision holds, then exit",
+    )
+    return parser
+
+
+def _select_targets(paths: list[str]) -> list[pathlib.Path]:
+    """Explicit paths, or the derived first-party C set (#358).
+
+    The old ("libs","src","tests") + APP_DIRS list silently omitted tools/ and
+    port/. Host tooling (tools/) and vendored trees are enumerated but are NOT
+    ring3+, so they require no World tag -- a documented scope decision, not an
+    accident of a tuple; the NSC-location and cmse_nonsecure_entry bans still
+    apply to every file, everywhere.
+    """
+    if paths:
+        return [pathlib.Path(p) for p in paths]
+    return [REPO_ROOT / rel for rel in first_party_paths(SOURCE_SUFFIXES)]
+
+
 def main(argv: list[str]) -> int:
     """Check that every Ring 3+ source declares which TrustZone world it targets.
 
@@ -283,29 +366,16 @@ def main(argv: list[str]) -> int:
     intended -- so a file that quietly ends up in the wrong world produces a
     build that links and faults at runtime.
 
-    With no paths the scan covers libs/, src/ and tests/; naming paths narrows
-    it for the pre-commit hook.
+    With no paths the scan covers the derived first-party C set; naming paths
+    narrows it for the pre-commit hook.
 
     Returns 1 listing each untagged file, 0 when every in-scope file declares
     a world.
     """
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "paths",
-        nargs="*",
-        help="files or directories to scan (default: libs/ src/ tests/)",
-    )
-    parser.add_argument(
-        "--warn",
-        action="store_true",
-        help="warn-only mode: print findings, exit 0 (default)",
-    )
-    parser.add_argument(
-        "--strict",
-        action="store_true",
-        help="strict mode: exit 1 on any finding ",
-    )
-    args = parser.parse_args(argv)
+    args = _build_parser().parse_args(argv)
+
+    if args.selftest:
+        return selftest()
 
     if args.warn and args.strict:
         print(
@@ -315,12 +385,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     strict = args.strict and not args.warn
-
-    if args.paths:
-        targets = [pathlib.Path(p) for p in args.paths]
-    else:
-        scan = ["libs", "src", "tests", *list(APP_DIRS)]
-        targets = [REPO_ROOT / d for d in scan]
+    targets = _select_targets(args.paths)
 
     findings: list[str] = []
     file_count = 0

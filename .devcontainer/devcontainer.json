@@ -27,7 +27,7 @@
         "ms-vscode.cmake-tools",
         "twxs.cmake",
         "eamodio.gitlens",
-        "github.copilot"
+        "github.copilot" // AI-OK: editor extension id (tooling install), not code attribution
       ]
     }
   },

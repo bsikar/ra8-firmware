@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/main.c
  * @brief ra8_io fabric over on-chip extra-MRAM (data flash) backend (#155/#156).
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * Proves the ra8_io fabric over the RA8D2's on-chip extra MRAM (data flash) at
  * 0x27000000 -- a non-volatile, erase-before-write medium programmed through the

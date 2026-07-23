@@ -74,7 +74,7 @@ tool call can never inject a foreign target.
 
 | URI | Content |
 |-----|---------|
-| `ra8d2://doc/claude-md` | the project's AI-assistant rules |
+| `ra8d2://doc/claude-md` | the project's AI-assistant rules | <!-- AI-OK: MCP resource id serving the project's CLAUDE.md, not attribution -->
 | `ra8d2://doc/style-guide` | `docs/STYLE_GUIDE.md` |
 | `ra8d2://doc/ring-and-world` | `docs/RING_AND_WORLD.md` |
 | `ra8d2://doc/contributing` | `CONTRIBUTING.md` |
@@ -108,8 +108,7 @@ this directory:
 ```
 
 For a client that uses a global config file (for example, a desktop MCP host
-<!-- AI-OK: integration instructions name the MCP host product -->
-such as Claude Desktop), add the same `mcpServers` entry but give an **absolute**
+such as Claude Desktop), add the same `mcpServers` entry but give an **absolute** <!-- AI-OK: names the MCP host product, not attribution -->
 path to the script so it resolves regardless of the launch directory:
 
 ```json

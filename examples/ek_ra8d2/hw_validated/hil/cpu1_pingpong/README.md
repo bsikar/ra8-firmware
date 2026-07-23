@@ -33,7 +33,7 @@ Re-probed under the canfd-fix sweep:
 - IPC channel 0 (CPU1 -> CPU0, addr 0x400200C0) STA reads
   0x01000000 -- some upper status bit, no RDY (bit 0).
 - IPCSAR @ 0x40008610 = 0x00000000. Per
-  ra8_ipc_regs.h:267, bit 18 (SAIPCIR2) clear = "channel 2 is
+  ra8_ipc_regs.h (SAIPCIR2), bit 18 clear = "channel 2 is
   secure-only". If CPU1's M33 boots non-secure (default for the
   secondary core), it cannot read channel 2's RXD even though
   the FIFO has 0x1234 waiting.

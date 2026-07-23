@@ -75,7 +75,7 @@ static void internal_endpoint_arm_out_pid(uint8_t pipe, uint8_t ep_addr)
       auto_echo_pipe = true;
     }
   }
-  /* HUM Ch 36.2.27 PIPECTR.PID */
+  /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register" p 2005 */
   if (auto_echo_pipe) {
     (void)ra8_usb_rearm_out_pipe(s_dcd.speed, pipe);
   } else {

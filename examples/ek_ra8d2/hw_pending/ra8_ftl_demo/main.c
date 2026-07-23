@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_pending/ra8_ftl_demo/main.c
  * @brief Wear-levelled block I/O + power-cycle survival over the FTL (#258).
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * Demonstrates the Flash Translation Layer (`ra8_ftl.h`) end to end over the
  * RA8D2's on-chip extra MRAM -- a non-volatile, erase-before-write medium. The

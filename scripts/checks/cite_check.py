@@ -30,9 +30,11 @@ Modes:
         combined with --strict).
 
 The script also accepts a list of explicit file arguments. With no
-arguments, it recursively scans libs/, src/, tests/, and every example
-app dir (a directory containing both main.c and CMakeLists.txt at any
-depth under examples/).
+arguments it scans every first-party C file, derived from git ls-files
+via lint_targets (#358) -- so tools/board_sim (which models RA8
+registers and cites the RA8 HUM) and port/usbx were previously omitted
+and their citations went unvalidated. Vendored trees (port/threadx,
+libs/third_party) are dropped automatically.
 
 The chapter map is parsed from CHAPTER_MAP.md so the page-range
 truth lives in exactly one place. The pre-commit hook invokes this
@@ -60,50 +62,18 @@ import argparse
 import pathlib
 import re
 import sys
+import tempfile
 from collections.abc import Iterable
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from lint_targets import first_party_paths
+from selftest_assert import expect, report
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 CHAPTER_MAP_PATH = REPO_ROOT / "docs" / "reference" / "CHAPTER_MAP.md"
 
-# `libs/`, `src/`, and `tests/` are always sources of truth. Per-app
-# directories live under `examples/<name>/` and are discovered
-# dynamically below.
-ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
-SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
-
-
-def discover_scan_dirs() -> tuple[str, ...]:
-    """Return (`libs`, `src`, `tests`) plus every example app dir.
-
-    An "app dir" is any directory *at any depth* under `examples/` that
-    contains both `main.c` and `CMakeLists.txt`. The real tree nests
-    apps two-to-three levels deep
-    (e.g. `examples/ek_ra8d2/hw_validated/hil/<app>/`,
-    `examples/ek_ra8d2/hw_pending/<app>/`, `examples/_unsupported/<app>/`),
-    so discovery recurses on the `main.c` + `CMakeLists.txt` pair rather
-    than assuming a fixed `examples/<tier>/<app>` layout -- an earlier
-    two-level walk reached only the handful of one-level apps and silently
-    skipped the entire `ek_ra8d2` board tree.
-    """
-    out = list(ALWAYS_SCAN_DIRS)
-    examples_root = REPO_ROOT / "examples"
-    if examples_root.is_dir():
-        app_dirs: set[str] = set()
-        for cmake in examples_root.rglob("CMakeLists.txt"):
-            app_dir = cmake.parent
-            # Skip generated / vendored trees -- never an app source dir.
-            if any(
-                part in ("third_party", "_deps") or part.startswith("build")
-                for part in app_dir.parts
-            ):
-                continue
-            if (app_dir / "main.c").is_file():
-                app_dirs.add(app_dir.relative_to(REPO_ROOT).as_posix())
-        out.extend(sorted(app_dirs))
-    return tuple(out)
-
-
-DEFAULT_SCAN_DIRS = discover_scan_dirs()
+SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp")
 
 CITE_RE = re.compile(
     r"""
@@ -478,6 +448,11 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--selftest",
+        action="store_true",
+        help="prove the validator fires on a malformed cite and the scope holds",
+    )
+    parser.add_argument(
         "--chapter-map",
         default=str(CHAPTER_MAP_PATH),
         help=f"path to CHAPTER_MAP.md (default: {CHAPTER_MAP_PATH})",
@@ -505,6 +480,40 @@ def _report_findings(
     print(head, file=sys.stderr)
 
 
+# ---------------------------------------------------------------------------
+# Selftest -- both directions, plus a scope assertion under tools/, silently
+# omitted until #358.
+# ---------------------------------------------------------------------------
+def selftest() -> int:
+    """Prove a malformed cite fires, a well-formed one is quiet, and scope holds."""
+    print("cite_check.py --selftest")
+    failures: list[str] = []
+    chapters = parse_chapter_map(CHAPTER_MAP_PATH)
+    with tempfile.TemporaryDirectory() as tmp:
+        bad = pathlib.Path(tmp) / "bad.c"
+        bad.write_text("/* HUM Ch 25 a malformed cite with no page */\n", encoding="utf-8")
+        good = pathlib.Path(tmp) / "good.c"
+        good.write_text('/* HUM Ch 25 "Ultra-Low-Power Timer" p 1190 */\n', encoding="utf-8")
+        expect(bool(check_file(bad, chapters)), "a malformed HUM cite fires", failures)
+        expect(
+            not check_file(good, chapters),
+            "a well-formed, in-range cite stays quiet",
+            failures,
+        )
+    scope = set(first_party_paths(SOURCE_SUFFIXES))
+    expect(
+        any(s.startswith("tools/") for s in scope),
+        "tools/ is in scope (the scan-dir list omitted it before #358)",
+        failures,
+    )
+    expect(
+        not any(s.startswith("libs/third_party/") for s in scope),
+        "vendored SOUP stays out of scope",
+        failures,
+    )
+    return report(failures)
+
+
 def main(argv: list[str]) -> int:
     """Verify every register access carries a Hardware User's Manual citation.
 
@@ -520,6 +529,9 @@ def main(argv: list[str]) -> int:
     Returns 0 when every access is cited, 1 otherwise.
     """
     args = _build_parser().parse_args(argv)
+
+    if args.selftest:
+        return selftest()
 
     if args.warn and args.strict:
         print("cite_check.py: --warn and --strict are mutually exclusive", file=sys.stderr)
@@ -537,7 +549,13 @@ def main(argv: list[str]) -> int:
     if args.paths:
         targets = [pathlib.Path(p) for p in args.paths]
     else:
-        targets = [REPO_ROOT / d for d in DEFAULT_SCAN_DIRS]
+        # Derived from git ls-files (#358): every first-party C file, not just
+        # libs/src/tests + discovered example apps. tools/board_sim models RA8
+        # registers and cites the RA8 HUM, and port/usbx holds first-party RA8
+        # USB glue -- both were silently omitted, so their cites went
+        # unvalidated. Vendored trees (port/threadx, libs/third_party) are
+        # already dropped by first_party_paths.
+        targets = [REPO_ROOT / rel for rel in first_party_paths(SOURCE_SUFFIXES)]
 
     findings: list[str] = []
     file_count = 0

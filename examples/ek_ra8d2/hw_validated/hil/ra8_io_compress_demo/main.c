@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_validated/hil/ra8_io_compress_demo/main.c
  * @brief Transparent compress-on-write / decompress-on-read over the VFS (#161).
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * Demonstrates that DEFLATE compression is a TRANSPARENT property of the fabric:
  * the app hands a plain payload to ::ra8_io_vfs_write_compressed and reads it

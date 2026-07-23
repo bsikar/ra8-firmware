@@ -299,7 +299,7 @@ static uint32_t drw_mix(uint32_t src, uint32_t dst, uint32_t fs, uint32_t fd)
 static uint32_t drw_out_alpha(uint32_t src_a, uint32_t dst_a)
 {
   if ((s_drw.control2 & (uint32_t)k_drw_c2_useacb) != 0U) {
-    /* HUM Ch 62.6.5.2 "Alpha Channel Blending" p 3734. */
+    /* HUM Ch 62.6.5.2 "Alpha Channel Blending" p 3734 */
     const uint32_t fsa = drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bsfa) != 0U,
                                     (s_drw.control2 & (uint32_t)k_drw_c2_bsia) != 0U,
                                     src_a);
@@ -308,7 +308,7 @@ static uint32_t drw_out_alpha(uint32_t src_a, uint32_t dst_a)
                                     src_a);
     return drw_mix(src_a, dst_a, fsa, fda);
   }
-  /* HUM Ch 62.2.2 WRITEALPHA[1:0] p 3694 / Figure 62.23 p 3734. */
+  /* HUM Ch 62.2.2 "WRITEALPHA[1:0]" p 3694 -- Figure 62.23 p 3734 */
   const uint32_t code =
     (s_drw.control2 >> (uint32_t)k_drw_c2_walpha_pos) & (uint32_t)k_drw_c2_walpha_mask;
   switch (code) {

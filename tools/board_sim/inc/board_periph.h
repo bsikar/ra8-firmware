@@ -71,7 +71,7 @@ typedef enum : uint8_t {
  * @invariant Exactly one value is active per run; set once before the run loop.
  * @see board_periph_set_device
  * @see board_block_device_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_board_device_ra8d2 = 0U, /**< Renesas RA8D2 (default): no NPU.       */
@@ -98,7 +98,7 @@ typedef enum : uint8_t {
  * @post RA8P1-only blocks are dispatched iff @p device is ::k_board_device_ra8p1.
  * @note Not thread-safe; call once from the single-threaded setup path.
  * @see board_periph_device
- * @since 0.2.0
+ * @since 0.1.0
  */
 void board_periph_set_device(board_device_t device);
 
@@ -116,7 +116,7 @@ void board_periph_set_device(board_device_t device);
  * @post The returned value is a valid ::board_device_t enumerator.
  * @note Not thread-safe; single-threaded run-loop / setup use.
  * @see board_periph_set_device
- * @since 0.2.0
+ * @since 0.1.0
  */
 board_device_t board_periph_device(void);
 

@@ -31,13 +31,20 @@
 _pcc_banned_constructs() (
   set -e
   python3 scripts/checks/check_obsolete_standards.py
+  # --selftest FIRST for each derived-scope checker (#358): it proves the rule
+  # fires and that tools/ -- silently omitted by the old hardcoded scan lists --
+  # is back in scope, before the tree is trusted. A re-narrowed scope turns the
+  # selftest red instead of passing green over files it stopped scanning.
+  python3 scripts/checks/check_world_tags.py --selftest
   python3 scripts/checks/check_world_tags.py --strict
   python3 scripts/checks/check_mcdc_block.py
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
   python3 scripts/checks/check_no_dynamic_alloc.py --all
+  python3 scripts/checks/check_no_ai_attribution.py --selftest
   python3 scripts/checks/check_no_ai_attribution.py
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /
   # FX_NULL / NX_NULL are exempted.
+  python3 scripts/checks/check_no_null.py --selftest
   python3 scripts/checks/check_no_null.py --all
   # NASA P10 Rule 1 -- no goto/setjmp/longjmp in firmware. A parse-independent
   # textual backstop: goto/setjmp were enforced only indirectly via the MISRA
@@ -180,7 +187,10 @@ _pcc_security_invariants() (
 _pcc_docs_and_tests() (
   set -e
   # The in-tree line-number citation ban: reference a symbol, never a file
-  # plus line number, since line numbers rot.
+  # plus line number, since line numbers rot. --selftest FIRST (#358): it
+  # proves the ban fires in source AND docs and that tools/ -- omitted by the
+  # old SCAN_ROOTS tuple -- is back in scope.
+  python3 scripts/checks/check_line_citations.py --selftest
   python3 scripts/checks/check_line_citations.py
   # Per-app SystemInit boot init-order audit.
   python3 scripts/checks/audit_init_order.py
@@ -281,6 +291,10 @@ gate_doc_attachment() (
 # every MMIO access HAVE a cite?) surfaces a large libs/ra8_hal backlog and is
 # not yet gate-clean, so it is deliberately not wired blocking.
 gate_cite_check() {
+  # --selftest FIRST (#358): proves a malformed cite fires and that tools/
+  # (board_sim cites the RA8 HUM) and port/ are back in scope, before trusting
+  # a clean run over the derived first-party-C set.
+  python3 scripts/checks/cite_check.py --selftest
   python3 scripts/checks/cite_check.py --strict
 }
 

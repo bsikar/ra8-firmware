@@ -286,6 +286,63 @@ def files_for(languages: tuple[str, ...] = LANGUAGES) -> dict[str, list[str]]:
     return {lang: sorted(paths) for lang, paths in out.items()}
 
 
+# A tree this size cannot legitimately collapse to a handful of files. A checker
+# that enumerates almost nothing reports a clean tree because it looked at
+# almost nothing -- the exact failure this module exists to prevent. Same
+# trip-wire as check_ruff.py and check_lint_coverage.py.
+TRACKED_FLOOR = 1000
+
+
+def first_party_paths(
+    suffixes: tuple[str, ...], *, respect_language_excludes: bool = True
+) -> list[str]:
+    """Every tracked first-party path ending in one of ``suffixes``.
+
+    The derived-scope primitive the policy checkers share (#358). Enumeration
+    is ``git ls-files`` -- never a hardcoded directory list -- so a newly added
+    top-level directory (``tools/`` was the one that had been silently omitted
+    for the life of six checkers) is in scope the day it lands, with no
+    allowlist to forget. The only subtractions are the named SOUP / generated /
+    build-output exemptions this module already defines; with
+    ``respect_language_excludes`` also the per-language vendored trees
+    (``port/threadx/`` is C SOUP), which are not ours to police.
+
+    Args:
+        suffixes: Extensions to keep, e.g. ``(".c", ".h")``. Matched with
+            ``str.endswith``, so pass lower-case dotted forms.
+        respect_language_excludes: When true, also drop a path that is a
+            vendored tree for the language its own suffix implies. Callers
+            scanning text (docs, config) pass false, where it is a no-op.
+
+    Returns:
+        The matching repo-relative paths, sorted.
+
+    Raises:
+        SystemExit: When ``git ls-files`` returns fewer than ``TRACKED_FLOOR``
+            paths -- a collapsed enumeration must fail, never read as clean.
+    """
+    rels = _tracked()
+    if len(rels) < TRACKED_FLOOR:
+        sys.stderr.write(
+            f"lint_targets.py: FATAL -- only {len(rels)} tracked path(s), floor "
+            f"is {TRACKED_FLOOR}. A collapsed enumeration reports a clean tree "
+            "because it enumerated nothing.\n"
+        )
+        sys.exit(2)
+    out: list[str] = []
+    for rel in rels:
+        if not rel.endswith(suffixes):
+            continue
+        if _excluded(rel):
+            continue
+        if respect_language_excludes:
+            lang = _raw_language(rel, REPO_ROOT)
+            if lang is not None and _excluded(rel, lang):
+                continue
+        out.append(rel)
+    return sorted(out)
+
+
 def main(argv: list[str]) -> int:
     """Print the first-party file list, optionally filtered by language.
 

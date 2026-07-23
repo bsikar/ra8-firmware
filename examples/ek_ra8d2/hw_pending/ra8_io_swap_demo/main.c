@@ -4,6 +4,9 @@
  *        interface, a VFS open/read/write/close round-trip, and stdio
  *        retargeted to both a UART and a RAM stream (epic #155, issue #264).
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * Where the sibling `ra8_io_*_demo` apps each bind ONE backend, this app is the
  * capstone that shows off every ra8_io abstraction in a single binary:

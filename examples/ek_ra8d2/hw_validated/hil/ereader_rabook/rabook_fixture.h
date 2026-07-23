@@ -8,7 +8,7 @@
  * decompressor: the app calls ra8_book_validate() directly. A real SD-loaded
  * .rabook would mz_uncompress() the container first (see README). Generated.
  *
- * @since Version 1.0.0
+ * @since Version 0.1.0
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -20,7 +20,7 @@
 /**
  * @enum rabook_fixture_size_t
  * @brief Byte length of @ref k_rabook_fixture.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint32_t {
   k_rabook_fixture_len = 2214U, /**< Inflated flat-blob length. */

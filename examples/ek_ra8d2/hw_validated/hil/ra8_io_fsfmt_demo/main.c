@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_validated/hil/ra8_io_fsfmt_demo/main.c
  * @brief ra8_io pluggable filesystem-format registry demo (Phase 4, #159).
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * Exercises the format registry that lets the fabric recognise the on-disk
  * filesystem without the upper layers hard-coding a `switch` over FAT vs exFAT:

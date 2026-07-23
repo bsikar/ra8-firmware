@@ -101,8 +101,8 @@ _CASES: tuple[tuple[str, dict[str, Any], Callable[[dict[str, Any]], bool]], ...]
     ),
     (
         "resources/read returns CLAUDE.md",
-        _req("resources/read", uri="ra8d2://doc/claude-md"),
-        lambda r: "CLAUDE" in r["result"]["contents"][0]["text"],
+        _req("resources/read", uri="ra8d2://doc/claude-md"),  # AI-OK: serves CLAUDE.md
+        lambda r: "CLAUDE" in r["result"]["contents"][0]["text"],  # AI-OK: served doc is CLAUDE.md
     ),
     (
         "prompts/get fills the template",

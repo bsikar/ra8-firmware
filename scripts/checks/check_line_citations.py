@@ -12,14 +12,16 @@ Per CLAUDE.md "Code Style / Comment citations":
   External / vendor citations (HUM, FSP, RFC, datasheet) remain
   MANDATORY for any HAL register access, ISR, or driver path.
 
-Scope:
-  Scans C / C++ source comments under libs/, src/, tests/, examples/,
-  port/. Flags tokens matching `<file>.<ext>:<line>` inside `// ...`
-  or `/* ... */` comments.
+Scope (derived, not a hardcoded root list -- #358):
+  Scans C / C++ source comments in every first-party C file (via
+  lint_targets, so tools/ and esp32/ -- which the old SCAN_ROOTS tuple
+  silently omitted -- are covered). Flags tokens matching
+  `<file>.<ext>:<line>` inside `// ...` or `/* ... */` comments.
 
-  Also scans Markdown (`.md`) and plain-text (`.txt`) files under
-  `docs/` and the repo root. The same regex applies; in docs the
-  whole line is treated as the "comment" (no comment-span extraction).
+  Also scans every first-party Markdown (`.md`) / plain-text (`.txt`)
+  doc, wherever it lives (tools/mcp, examples/**/README.md, .claude/ agent
+  prompts, the repo root), not just docs/. The same regex applies; in docs
+  the whole line is treated as the "comment" (no comment-span extraction).
 
 Exemptions:
   * docs/reference/* paths (HUM PDFs etc).
@@ -38,6 +40,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
@@ -55,6 +58,8 @@ from line_citation_lex import (
     line_of_offset,
 )
 from line_citation_lex import is_in_scope as _lex_in_scope
+from lint_targets import is_build_output_path
+from selftest_assert import expect, report
 
 # Strict: cleanup wave landed; gate now blocks any new line-citation
 # violation. See docs/CITATION_POLICY.md for the rule and the
@@ -65,8 +70,10 @@ WARN_ONLY_MODE = False
 MAX_SNIPPET_LEN = 120
 SNIPPET_TRUNCATE_LEN = 117
 
-DOC_SCAN_ROOTS = ("docs/", "")  # "" => repo root (top-level *.md / *.txt)
 EXCLUDE_PREFIXES = ("libs/third_party/", "docs/reference/")
+# Vendored / generated doc trees. Not first-party prose, so out of scope --
+# named and reasoned rather than left to a positive root allowlist (#358).
+DOC_EXCLUDE_PREFIXES = ("docs/doxygen_theme/", "libs/fonts/")
 DOC_EXTS = (".md", ".txt")
 TOOL_OUTPUT_TOKENS = (
     "cppcheck",
@@ -100,15 +107,19 @@ def is_in_scope(path: str) -> bool:
 
 
 def is_doc_in_scope(path: str) -> bool:
-    """Markdown/plain-text under docs/ or at repo root."""
+    """Any first-party Markdown / plain-text doc, derived from the tree.
+
+    Widened from the old "docs/ or repo-root only" rule (#358): tools/mcp,
+    examples/**/README.md, .claude/ agent prompts and every other tracked doc
+    are now scanned, so a stale ``file.c:99`` citation cannot hide in one.
+    Vendored SOUP, generated doc trees and build output are the only
+    subtractions.
+    """
     if not path.endswith(DOC_EXTS):
         return False
-    if any(path.startswith(p) for p in EXCLUDE_PREFIXES):
+    if path.startswith(EXCLUDE_PREFIXES) or path.startswith(DOC_EXCLUDE_PREFIXES):
         return False
-    if path.startswith("docs/"):
-        return True
-    # Top-level (no `/`) markdown / txt at repo root.
-    return "/" not in path
+    return not is_build_output_path(path)
 
 
 def _line_is_tool_exempt(line: str) -> bool:
@@ -271,6 +282,53 @@ def _report_violations(
     return total
 
 
+# ---------------------------------------------------------------------------
+# Selftest -- both directions, for source AND docs, plus scope assertions under
+# tools/ (source and docs), silently omitted until #358.
+# ---------------------------------------------------------------------------
+def selftest() -> int:
+    """Prove a file:line citation fires, legal forms stay quiet, and scope holds."""
+    print("check_line_citations.py --selftest")
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        bad_src = Path(tmp) / "bad.c"
+        bad_src.write_text("/* see libs/foo.c:123 for the layout */\n", encoding="utf-8")
+        expect(bool(scan_file(bad_src)), "a file:line citation in a C comment fires", failures)
+        good_src = Path(tmp) / "good.c"
+        good_src.write_text(
+            "/* see ra8_foo(); moved from x.c:12 to here */\n"
+            "// libs/y.c:9  CITES-OK: illustrative example\n",
+            encoding="utf-8",
+        )
+        expect(
+            not scan_file(good_src),
+            "symbol ref / moved-from / CITES-OK stays quiet (source)",
+            failures,
+        )
+        bad_doc = Path(tmp) / "bad.md"
+        bad_doc.write_text("See `ra8_ipc_regs.h:267` for the bit.\n", encoding="utf-8")
+        expect(bool(scan_doc_file(bad_doc)), "a file:line citation in a doc fires", failures)
+        good_doc = Path(tmp) / "good.md"
+        good_doc.write_text(
+            "See ra8_ipc_regs.h SAIPCIR2. libs/z.c:3 <!-- CITES-OK: illustrative -->\n",
+            encoding="utf-8",
+        )
+        expect(not scan_doc_file(good_doc), "doc CITES-OK stays quiet", failures)
+
+    expect(
+        is_in_scope("tools/board_sim/src/main.c"),
+        "tools/ C is in scope (SCAN_ROOTS omitted it before #358)",
+        failures,
+    )
+    expect(is_doc_in_scope("tools/mcp/README.md"), "tools/ docs are in scope", failures)
+    expect(
+        not is_in_scope("libs/third_party/miniz/miniz.c"),
+        "vendored SOUP stays out of scope",
+        failures,
+    )
+    return report(failures)
+
+
 def main() -> int:
     """Reject in-tree citations that name a file by line number.
 
@@ -285,6 +343,9 @@ def main() -> int:
     Returns 1 listing each stale-prone citation, 0 when the scanned set is
     clean.
     """
+    if "--selftest" in sys.argv[1:]:
+        return selftest()
+
     repo_root = Path(
         subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],  # noqa: S607  # trusted: fixed git argv

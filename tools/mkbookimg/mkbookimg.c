@@ -65,25 +65,25 @@ static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
   return k_ra8_ok;
 }
 
-/** @brief Read a whole file into a freshly malloc'd buffer; NULL on failure. */
+/** @brief Read a whole file into a freshly malloc'd buffer; nullptr on failure. */
 static uint8_t* read_file(const char* path, uint32_t* out_len)
 {
   FILE* f = fopen(path, "rb");
-  if (f == NULL) {
-    return NULL;
+  if (f == nullptr) {
+    return nullptr;
   }
   (void)fseek(f, 0, SEEK_END);
   const long n = ftell(f);
   (void)fseek(f, 0, SEEK_SET);
   if (n <= 0) {
     (void)fclose(f);
-    return NULL;
+    return nullptr;
   }
   uint8_t* buf = (uint8_t*)malloc((size_t)n);
-  if ((buf == NULL) || (fread(buf, 1U, (size_t)n, f) != (size_t)n)) {
+  if ((buf == nullptr) || (fread(buf, 1U, (size_t)n, f) != (size_t)n)) {
     free(buf);
     (void)fclose(f);
-    return NULL;
+    return nullptr;
   }
   (void)fclose(f);
   *out_len = (uint32_t)n;
@@ -121,7 +121,7 @@ static int write_books(ra8_fs_mount_t* mnt, char** argv, int n_books)
   for (int i = 0; i < n_books; ++i) {
     uint32_t       len  = 0U;
     uint8_t* const data = read_file(argv[2 + i], &len);
-    if (data == NULL) {
+    if (data == nullptr) {
       (void)fprintf(stderr, "mkbookimg: cannot read %s\n", argv[2 + i]);
       return 1;
     }
@@ -144,7 +144,7 @@ static int write_books(ra8_fs_mount_t* mnt, char** argv, int n_books)
 static int dump_image(const char* path)
 {
   FILE* out = fopen(path, "wb");
-  if (out == NULL) {
+  if (out == nullptr) {
     (void)fprintf(stderr, "mkbookimg: cannot write %s\n", path);
     return 1;
   }
@@ -167,7 +167,7 @@ int main(int argc, char** argv)
   }
   s_disk.block_count = k_img_sectors;
   s_disk.bytes       = (uint8_t*)calloc(1U, (size_t)k_img_sectors * k_block_size);
-  if (s_disk.bytes == NULL) {
+  if (s_disk.bytes == nullptr) {
     (void)fprintf(stderr, "mkbookimg: out of memory\n");
     return 1;
   }
@@ -175,7 +175,7 @@ int main(int argc, char** argv)
                                     .write_block  = mem_write,
                                     .get_capacity = mem_cap,
                                     .ctx          = &s_disk};
-  ra8_fs_mount_t*        mnt     = NULL;
+  ra8_fs_mount_t*        mnt     = nullptr;
   int                    rc      = fs_format_mount(&backend, &mnt);
   if (rc == 0) {
     rc = write_books(mnt, argv, n_books);
