@@ -210,13 +210,14 @@ static bool ra8_book_table_fits(uint32_t off, uint32_t count, uint32_t elem, uin
 RA8_INTERNAL
 static bool ra8_book_image_pixfmts_known(const void* base, const ra8_book_header_t* hdr)
 {
-  const ra8_book_image_t* imgs = ra8_book_images(base);
+  const ra8_book_image_t* imgs  = ra8_book_images(base);
+  bool                    known = true;
   for (uint32_t i = 0U; i < hdr->image_count; ++i) { /* bound: validated image_count */
     if (imgs[i].pixel_format > (uint8_t)k_ra8_book_pixfmt_gray8) {
-      return false;
+      known = false;
     }
   }
-  return true;
+  return known;
 }
 
 /**
