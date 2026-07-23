@@ -452,6 +452,12 @@ static void configure_endpoint_rejects_shape(void)
                                             0U));
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_endpoint(void)
 {
   TEST_BEGIN("ra8_usb_configure_endpoint validates args + writes PIPECFG");
@@ -837,6 +843,11 @@ static void queue_out_hs_tails(void)
   assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail3, 3U, k_tail3);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises FIFO width/tail
+ * branch coverage through the public queue_out API)
+ */
 static void test_queue_out_fifo_tail_paths(void)
 {
   TEST_BEGIN("ra8_usb_queue_out covers FS and HS FIFO tail paths");

@@ -100,6 +100,13 @@ static void test_href_split_classify_mcdc(void)
 /**
  * @test test_href_split_spans
  * @brief The path/fragment spans are returned correctly + null guard.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the path/fragment span outputs
+ * of ra8_reflow_href_split for one chapter+fragment href ("chap.xhtml#sec3" ->
+ * pl=10, fo=11, fl=4) plus the single-condition null-href guard. The href
+ * classification branches are single-condition and their branch coverage is owned
+ * by test_href_split_classify_mcdc.)
  */
 static void test_href_split_spans(void)
 {
@@ -122,6 +129,17 @@ static void test_href_split_spans(void)
 /**
  * @test test_hit_test_link
  * @brief Hit-test resolves a point inside a link rect to its href slice.
+ *
+ * @par MC/DC:
+ * Decision: `(x >= rect->x) && (x < (rect->x + rect->w)) && (y >= rect->y) &&
+ * (y < (rect->y + rect->h))` (4 conditions, AND; function `ra8_reflow_hit_test_link`,
+ * rect x=20 y=100 w=80 h=24), driven through the public API by its return code:
+ * - V1 x=40, y=110 -> C1 T, C2 T, C3 T, C4 T -> T (k_ra8_ok, off=0 len=9).
+ * - V2 x=5,  y=110 -> C1 (x >= rect->x) F -> F (k_ra8_err_not_found).
+ * V1 vs V2 prove C1's independent influence (C2..C4 held true). Independence of
+ * C2/C3/C4 is completed by the sibling test_hit_test_rect_bounds_mcdc (N+1 = 5).
+ * The preceding single-condition page filter `rect->page_index != page_idx` is
+ * exercised both ways here (page 1 matches; page 0 skips -> k_ra8_err_not_found).
  */
 static void test_hit_test_link(void)
 {
@@ -219,6 +237,16 @@ static void test_hit_test_rect_bounds_mcdc(void)
 /**
  * @test test_find_anchor
  * @brief Same-chapter anchor lookup returns the anchor's page.
+ *
+ * @par MC/DC:
+ * Decision: `(anchor->id_len == id_len) && (memcmp(&text_pool[anchor->id_off], id,
+ * id_len) == 0)` (2 conditions, AND; function `ra8_reflow_find_anchor`; the stored
+ * anchor is id "foot", id_len 4, page 3):
+ * - V1 id="foot", len=4 -> C1 T, C2 T -> T (k_ra8_ok, page 3).
+ * - V2 id="foo",  len=3 -> C1 (id_len match) F -> F (k_ra8_err_not_found).
+ * - V3 id="barz", len=4 -> C1 T, C2 (bytes match) F -> F (k_ra8_err_not_found).
+ * V1 vs V2 prove C1 independent; V1 vs V3 prove C2. N+1 = 3 vectors for N=2. The
+ * `id_len == 0` invalid-arg guard is a separate single-condition check.
  */
 static void test_find_anchor(void)
 {

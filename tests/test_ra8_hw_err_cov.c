@@ -54,6 +54,10 @@ typedef enum : uint8_t {
 /**
  * @test test_hw_err_null_ptr
  * @details All four waiters reject a NULL register with k_ra8_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- each waiter's `reg == nullptr` guard is
+ * single-condition; ra8_hw_err.h has no `&&`/`||`)
  */
 static void test_hw_err_null_ptr(void)
 {
@@ -78,6 +82,11 @@ static void test_hw_err_null_ptr(void)
  * short-circuits (T1-01/#177) -- a consumer that never touches the seam makes
  * progress instead of spinning to timeout. The timeout and succeed-after-N legs
  * are covered by test_hw_err_fail_wait and test_hw_err_satisfy_after.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the four waiters and
+ * ra8_sim_mmio_wait_eval are all single-condition; it exercises the unarmed
+ * seam's "flag ready" success leg on the first poll)
  */
 static void test_hw_err_unarmed_succeeds(void)
 {
@@ -112,6 +121,10 @@ static void test_hw_err_unarmed_succeeds(void)
  * @test test_hw_err_fail_wait
  * @details `ra8_sim_mmio_fail_wait` forces a timeout even when the flag is staged
  * as already satisfied -- proving the seam overrides the RAM poll.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- single-condition throughout; it arms the
+ * fail seam so the bounded poll runs to k_ra8_err_hw_timeout regardless of RAM)
  */
 static void test_hw_err_fail_wait(void)
 {
@@ -135,6 +148,10 @@ static void test_hw_err_fail_wait(void)
  * @details `ra8_sim_mmio_satisfy_after(n)` makes the flag assert on the n-th
  * poll: the waiter succeeds after iterating (covering the loop-continuation
  * branch, i.e. iter < n then iter >= n). `n == 0` succeeds immediately.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- single-condition throughout; it drives
+ * ra8_sim_mmio_satisfy_after's `iter >= arg` continuation, including n == 0)
  */
 static void test_hw_err_satisfy_after(void)
 {
@@ -156,6 +173,11 @@ static void test_hw_err_satisfy_after(void)
  * @details The arm entry points validate their inputs (NULL register) and the
  * bounded table (no_mem once ::k_ra8_sim_mmio_max_faults distinct registers are
  * armed).
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the arm entry points' `reg == nullptr`
+ * and table-full `slot == nullptr` guards are each single-condition; no `&&`/`||`
+ * in ra8_sim_mmio.c)
  */
 static void test_sim_mmio_arm_errors(void)
 {
@@ -181,6 +203,10 @@ static void test_sim_mmio_arm_errors(void)
  * @details `ra8_sim_mmio_reset` disarms every register (transparent again), and
  * re-arming the same register updates it in place (fail_wait over a prior
  * satisfy_after wins).
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- single-condition throughout; it checks
+ * reset disarms every slot and a re-arm updates the same slot in place)
  */
 static void test_sim_mmio_reset_and_update(void)
 {
@@ -208,6 +234,11 @@ static void test_sim_mmio_reset_and_update(void)
  * or a real address with no fault slot) succeeds on the first poll regardless of
  * the driver's real_cond (both polarities), covering the free-slot / NULL-address
  * guard in the lookup and the unarmed = "flag ready" contract.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- ra8_sim_mmio_wait_eval's free-slot /
+ * NULL-address lookup is single-condition; an un-armed register succeeds on the
+ * first poll for both real_cond polarities)
  */
 static void test_sim_mmio_wait_eval_direct(void)
 {

@@ -157,6 +157,12 @@ static void layout_shelf(ra8_box_t* store, ra8_ui_rect_t* out)
  * @brief The shelf grid places 3 cards at the golden coordinates (#233).
  * @details Pins the exact rects board_sim renders at -Og -- a regression in
  *          ra8_box's grid maths that shifted the shelf would fail here.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- pins the exact card rects ra8_box_layout
+ * produces for the 3-book shelf grid (x=24/274/524, y=80, w=226, h=248); it adds no
+ * compound decision of its own, and ra8_box_layout's decisions carry their MC/DC in
+ * test_ra8_box.c.)
  */
 static void test_shelf_card_geometry(void)
 {
@@ -216,6 +222,12 @@ static void render_shelf(uint16_t* fb, const ra8_ui_rect_t* card)
  *          interior carries the card fill, and that a grid gap stays
  *          background. Each probe is a single pixel whose colour is decided by
  *          one rectangle, so a failure names which rectangle went wrong.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- probes single framebuffer pixels rendered
+ * through ra8_gfx (bar at px(0,0) and bar bottom, card interior, grid gap); it adds
+ * no compound decision of its own, and the ra8_gfx fill/clip decisions carry their
+ * MC/DC in the ra8_gfx tests.)
  */
 static void test_shelf_render_pixels(void)
 {
@@ -245,6 +257,11 @@ static void test_shelf_render_pixels(void)
  *          pixel. This is the property that would break first if the fill path
  *          read uninitialised state or depended on what the buffer held before,
  *          which is why it is checked apart from the placement probes.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- renders the same layout into two buffers
+ * and compares them with a single-condition `s_fb[i] != s_fb2[i]` scan; no && or ||
+ * in the code under test that this case touches.)
  */
 static void test_shelf_render_deterministic(void)
 {

@@ -138,6 +138,13 @@ tsc_probe(const uint8_t* data, size_t len, uint32_t* pages, int32_t* w, int32_t*
  * @details Both baked fixtures carry the same first page, so both digests equal
  *          the value the shelf `hil.conf` banner pins -- proving the integrated
  *          ra8_comic + ra8_img_decode_blit path renders both containers alike.
+ *
+ * @par MC/DC:
+ * (no compound decision is varied by this case -- it runs the integrated CBZ/CBR
+ * page-0 decode pipeline once per container and pins the deterministic golden
+ * digest (pages, fitted w/h, FNV-1a). The comic-screen decision logic's MC/DC
+ * vectors live in test_comic_edge_dir_rtl_mcdc, test_comic_turn_clamp_mcdc,
+ * test_comic_tap_mcdc and test_comic_classify_mcdc.)
  */
 static void test_comic_page0_digest_matches_golden(void)
 {

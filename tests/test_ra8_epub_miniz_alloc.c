@@ -48,6 +48,16 @@ enum : size_t {
 /**
  * @test test_alloc_align_and_distinct
  * @brief Allocations are aligned and non-overlapping.
+ *
+ * @par MC/DC:
+ * Decision (in-test success invariant): `(a != nullptr) && (b != nullptr)`
+ * (2 conditions, AND). Both allocations succeed, so it is asserted at
+ * C1=T,C2=T -> T; this is a conjunctive "both allocations succeeded" invariant,
+ * not an independence set -- a null from either arm is the failure the
+ * conjunction exists to catch, so no false vector is driven. The production
+ * first-fit `(is_free) && (size >= need)` and overflow `(size != 0) && ...`
+ * AND-decisions this exercises have their N+1 vectors in test_firstfit_mcdc,
+ * test_overflow_mcdc, and test_alloc_real_overflow_and_firstfit_mcdc.
  */
 static void test_alloc_align_and_distinct(void)
 {
@@ -71,6 +81,14 @@ static void test_alloc_align_and_distinct(void)
 /**
  * @test test_free_coalesce_reclaim
  * @brief Freeing everything lets a later big alloc reuse the whole pool.
+ *
+ * @par MC/DC:
+ * (no compound decision is authored in this test's assertions -- they are single
+ * `!= nullptr` checks. It exercises the production coalesce
+ * `while ((next < end) && (next->is_free))` and first-fit
+ * `(is_free) && (size >= need)` AND-decisions by fragmenting then reclaiming the
+ * pool, but their N+1 = 3 vectors are supplied by test_coalesce_mcdc,
+ * test_firstfit_mcdc, and test_alloc_real_overflow_and_firstfit_mcdc)
  */
 static void test_free_coalesce_reclaim(void)
 {
@@ -94,6 +112,14 @@ static void test_free_coalesce_reclaim(void)
 /**
  * @test test_realloc_grow_preserves
  * @brief realloc grows, moves when needed, and preserves the old bytes.
+ *
+ * @par MC/DC:
+ * (no compound decision is authored in this test's assertions -- they are single
+ * `!= nullptr` / `TEST_ASSERT_EQ` checks. It drives the realloc grow-and-move
+ * path (the single-condition `b->size >= need` false arm -> allocate + memcpy);
+ * the production overflow / first-fit AND-decisions it touches have their N+1
+ * vectors in test_realloc_real_overflow_mcdc, test_firstfit_mcdc, and
+ * test_alloc_real_overflow_and_firstfit_mcdc)
  */
 static void test_realloc_grow_preserves(void)
 {
@@ -119,6 +145,15 @@ static void test_realloc_grow_preserves(void)
 /**
  * @test test_realloc_inplace_and_null_zero
  * @brief realloc keeps a block that already fits; NULL/0 edge cases.
+ *
+ * @par MC/DC:
+ * (no compound decision is authored in this test's assertions -- they are single
+ * equality / null checks. It drives ra8_epub_miniz_realloc's single-condition
+ * branches: `address == nullptr` (realloc(NULL,n) -> alloc), `b->size >= need`
+ * true (shrink fits in place -> same pointer), and `need == 0` (realloc(p,0) ->
+ * free -> NULL). The first-fit `(is_free) && (size >= need)` AND it reaches
+ * through the alloc path has its N+1 vectors in test_firstfit_mcdc and
+ * test_alloc_real_overflow_and_firstfit_mcdc)
  */
 static void test_realloc_inplace_and_null_zero(void)
 {

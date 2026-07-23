@@ -106,6 +106,13 @@ static ra8_webp_arena_t fresh_arena(void)
  * @test test_decode_lossless_golden
  * @brief A lossless 8x8 WebP decodes bit-exact to the source pattern, and the
  *        arena fully drains (heap-free path).
+ *
+ * @par MC/DC:
+ * (no compound decision is uniquely proven here -- it decodes the golden 8x8
+ * lossless fixture bit-exact and asserts the arena fully drains; the
+ * output-geometry `||` compound in internal_webp_check_output is passed with an
+ * in-range control vector, its MC/DC owned by test_decode_output_size_mcdc)
+ *
  * @since 0.1.0
  */
 static void test_decode_lossless_golden(void)
@@ -152,6 +159,13 @@ static void test_decode_lossless_golden(void)
  * @brief A lossy 8x8 WebP decodes without error to the correct geometry.
  * @details Pixels are not bit-compared (lossy re-encoding perturbs them); the
  *          check is that the VP8 + YUV upsampling path completes cleanly.
+ *
+ * @par MC/DC:
+ * (no compound decision is uniquely proven here -- it decodes the 8x8 lossy
+ * fixture and asserts clean completion at the correct geometry; the
+ * output-geometry `||` compound is passed with an in-range control vector, its
+ * MC/DC owned by test_decode_output_size_mcdc)
+ *
  * @since 0.1.0
  */
 static void test_decode_lossy_runs(void)
@@ -184,6 +198,13 @@ static void test_decode_lossy_runs(void)
 /**
  * @test test_get_info_ok_and_null_guards
  * @brief get_info returns dims for a valid header and rejects NULL args / empty.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it exercises get_info's success path
+ * and its individual single-condition null/empty guards; the dimension-cap
+ * `||` compound is passed with an in-range control vector on the 8x8 fixture,
+ * its MC/DC owned by test_get_info_dimension_cap_mcdc)
+ *
  * @since 0.1.0
  */
 static void test_get_info_ok_and_null_guards(void)
@@ -208,6 +229,13 @@ static void test_get_info_ok_and_null_guards(void)
 /**
  * @test test_get_info_garbage
  * @brief Non-WebP bytes are rejected as validation failures.
+ *
+ * @par MC/DC:
+ * (no compound decision is reached here -- the garbage buffer fails
+ * WebPGetInfo's container check, a single `== 0` condition, and returns
+ * k_ra8_err_validation_failed before the dimension-cap compound; that compound
+ * is covered by test_get_info_dimension_cap_mcdc)
+ *
  * @since 0.1.0
  */
 static void test_get_info_garbage(void)
@@ -260,6 +288,13 @@ static void test_get_info_dimension_cap_mcdc(void)
 /**
  * @test test_decode_null_guards
  * @brief decode_rgba rejects NULL data / arena / output buffer.
+ *
+ * @par MC/DC:
+ * (no compound decision is reached here -- each NULL argument trips a
+ * single-condition RA8_CHECK_NULL_PTR guard in ra8_webp_decode_rgba and returns
+ * before any compound; the decode-path compounds are covered by
+ * test_decode_output_size_mcdc)
+ *
  * @since 0.1.0
  */
 static void test_decode_null_guards(void)
@@ -297,6 +332,14 @@ static void test_decode_null_guards(void)
  * @brief A header error from get_info propagates out of decode_rgba unchanged.
  * @details Feeding an oversized (8200x2) header makes the internal get_info
  *          return k_ra8_err_not_supported, which RA8_RETURN_ON_ERROR forwards.
+ *
+ * @par MC/DC:
+ * (no compound decision's independence is proven here -- the oversized 8200x2
+ * header drives only the (T,F) leg of the dimension-cap compound
+ * `(w > max) || (h > max)` inside ra8_webp_get_info, and the test asserts that
+ * k_ra8_err_not_supported propagates out of ra8_webp_decode_rgba unchanged; the
+ * full MC/DC for that compound is owned by test_get_info_dimension_cap_mcdc)
+ *
  * @since 0.1.0
  */
 static void test_decode_bad_header_propagates(void)
@@ -381,6 +424,13 @@ static void test_decode_output_size_mcdc(void)
  * @details Passes a dishonestly large capacity so the size guard passes, then a
  *          stride > INT_MAX trips the dedicated `out_stride > INT_MAX` check.
  *          The output buffer is never written (the guard returns first).
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- it exercises the single-condition
+ * `out_stride > INT_MAX` guard in internal_webp_check_output; the preceding
+ * output-size `||` compound is passed with an in-range control vector, its
+ * MC/DC owned by test_decode_output_size_mcdc)
+ *
  * @since 0.1.0
  */
 static void test_decode_stride_over_int_max(void)
@@ -406,6 +456,14 @@ static void test_decode_stride_over_int_max(void)
  * @test test_decode_arena_oom
  * @brief A too-small arena makes libwebp's allocator fail, so the decode fails
  *        cleanly (validation error) rather than corrupting memory.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven here -- a too-small arena makes libwebp's
+ * allocator fail and the test asserts the single-condition `result == nullptr`
+ * leg returns k_ra8_err_validation_failed and the arena still drains; the
+ * output-geometry `||` compound is passed with an in-range control vector, its
+ * MC/DC owned by test_decode_output_size_mcdc)
+ *
  * @since 0.1.0
  */
 static void test_decode_arena_oom(void)
@@ -435,6 +493,14 @@ static void test_decode_arena_oom(void)
 /**
  * @test test_arena_malloc_and_bind
  * @brief Covers the malloc capacity guards and bind(NULL)/unbind paths.
+ *
+ * @par MC/DC:
+ * (no compound decision is uniquely proven here -- it exercises the arena
+ * malloc capacity guards (each single-condition) and the bind(NULL)/unbind and
+ * free/rewind paths; the calloc overflow `&&` compound and the free null-guard
+ * `||` compound this path passes through with fixed control inputs are owned by
+ * test_arena_calloc_overflow_mcdc and test_arena_free_mcdc)
+ *
  * @since 0.1.0
  */
 static void test_arena_malloc_and_bind(void)

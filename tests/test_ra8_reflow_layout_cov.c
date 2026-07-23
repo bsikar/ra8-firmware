@@ -169,6 +169,11 @@ static uint32_t lay(const char* doc, uint16_t w, uint16_t h)
  * @details Targets ra8_reflow_layout.c lines 293-301 (the h4/h5/h6 switch cases)
  * plus the block-open path. Each heading uses its scaled font size, so the
  * glyphs land and the page count is >= 1.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it executes the
+ * h4/h5/h6 arms of the priv_block_font_px switch (a multi-way switch, not a
+ * compound boolean); it does not vary any decision's conditions independently.)
  */
 static void test_cov_heading_font_scales(void)
 {
@@ -189,6 +194,12 @@ static void test_cov_heading_font_scales(void)
  * error). The engine inits fine (blob passes the >= 16-byte size check) but the
  * blob is not a parseable font, so the run-layout pass reports
  * k_ra8_err_validation_failed.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it drives the two
+ * single-condition priv_init_font error returns (offset < 0, InitFont == 0) and
+ * their propagation through ra8_reflow_run_layout; neither is a compound
+ * boolean.)
  */
 static void test_cov_bad_font_run_layout(void)
 {
@@ -223,6 +234,11 @@ static void test_cov_bad_font_run_layout(void)
  * executed once per page boundary) and the priv_newline page-finish path. Many
  * `<p>` paragraphs in a short viewport overflow the bottom margin repeatedly, so
  * page_count climbs above one.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it executes the
+ * priv_finish_page body and the page-boundary break, both single-condition
+ * checks; it does not vary any decision's conditions independently.)
  */
 static void test_cov_multipage_finish_page(void)
 {
@@ -245,6 +261,13 @@ static void test_cov_multipage_finish_page(void)
  * paragraph wraps over many short words so a justified line carries several
  * spaces with a non-zero remainder; the long single-word line in the second doc
  * reaches a justify line with zero spaces (the early-out).
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- priv_justify_glyphs's
+ * `spaces == 0` early-out and its `seen < rem` remainder step are both
+ * single-condition branches. The test reaches priv_finish_line's
+ * `(hi <= lo) || (slack <= 0)` on its both-false (proceed) outcome; that
+ * decision's slack arm is driven by ::test_cov_right_align_slack_nonpositive.)
  */
 static void test_cov_justify_remainder_and_no_space(void)
 {
@@ -274,6 +297,14 @@ static void test_cov_justify_remainder_and_no_space(void)
  * `(hi <= lo) || (slack <= 0)` early return). A right-aligned single long word in
  * a narrow viewport produces a line whose content already reaches/overruns the
  * right margin, so slack is non-positive and the alignment shift is skipped.
+ *
+ * @par MC/DC:
+ * Decision: `(hi <= lo) || (slack <= 0)` in priv_finish_line (2 conditions).
+ * This test drives one outcome: hi>lo (F), slack<=0 (T) -> true -> the alignment
+ * shift is skipped (varies the slack condition). The both-false (F,F -> proceed)
+ * control is reached by ::test_cov_justify_remainder_and_no_space; together they
+ * prove the slack condition's independent influence. This test does not vary the
+ * `hi <= lo` condition, so it does not by itself establish the full decision.
  */
 static void test_cov_right_align_slack_nonpositive(void)
 {
@@ -294,6 +325,12 @@ static void test_cov_right_align_slack_nonpositive(void)
  * line-flush newline). Text immediately followed by a nested block-start and by
  * an `<hr>` -- with no intervening close -- leaves the line dirty when the next
  * element opens, so both flush paths run.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- the priv_open_block
+ * and priv_apply_rule line-flush guards it targets are single-condition
+ * (`line_has_content != 0`) checks; it does not vary any decision's conditions
+ * independently.)
  */
 static void test_cov_open_block_and_rule_with_content(void)
 {
@@ -315,6 +352,11 @@ static void test_cov_open_block_and_rule_with_content(void)
  * newline-on-overflow + advance). With no image loader bound, an `<img>` reserves
  * a 32px placeholder; placing it after a line that is already near the right
  * margin trips the overflow break, so the placeholder wraps to a new line.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it drives the
+ * placeholder overflow-wrap branch on a single outcome (the line wraps); it does
+ * not vary that branch's conditions independently.)
  */
 static void test_cov_image_placeholder_wrap(void)
 {
@@ -335,6 +377,12 @@ static void test_cov_image_placeholder_wrap(void)
  * returning false when the bound loader fails). With a loader + arena bound but a
  * loader that always errors, priv_place_image cannot resolve the size and falls
  * back to the placeholder advance -- so the chapter still lays out.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it drives the
+ * loader-failure fallback on a single outcome (priv_image_resolve_size returns
+ * false); it does not vary the resolve-size compound guard's conditions
+ * independently.)
  */
 static void test_cov_image_loader_failure_fallback(void)
 {
@@ -365,6 +413,11 @@ static void test_cov_image_loader_failure_fallback(void)
  * @details Targets ra8_reflow_layout.c priv_place_image / priv_image_resolve_size
  * / priv_image_record (the successful image-block path that runs when the loader
  * returns a decodable raster). One `<img>` produces one recorded image box.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it drives the
+ * successful image-block path on a single outcome (one recorded image box); it
+ * does not vary any decision's conditions independently.)
  */
 static void test_cov_image_real_block(void)
 {
@@ -395,6 +448,12 @@ static void test_cov_image_real_block(void)
  * skip), priv_layout_table (line 1501 non-row skip in the main loop), plus
  * priv_match_block_end, priv_layout_row, priv_layout_cell and priv_cell_text. A
  * 2x2 table with stray whitespace between rows / cells reaches every skip arm.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it walks the table
+ * column / row / cell scan loops with real content, taking the non-row /
+ * non-cell skip arms; it does not vary the `is_cell` / `is_row` compound
+ * predicates' conditions independently.)
  */
 static void test_cov_table_layout(void)
 {
@@ -417,6 +476,12 @@ static void test_cov_table_layout(void)
  * line-flush newline when the line has content) and 1490-1491 (the cols==0
  * early-out for a table with no cells). Leading text before `<table>` leaves the
  * line dirty; the second table has no rows / cells.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- the line-flush
+ * (`line_has_content`) and `cols == 0` early-outs it targets are
+ * single-condition branches; it does not vary any decision's conditions
+ * independently.)
  */
 static void test_cov_table_with_dirty_line_and_empty(void)
 {
@@ -443,6 +508,11 @@ static void test_cov_table_with_dirty_line_and_empty(void)
  * `depth++` on a same-tag nested block-start). Scanning for the outer table's
  * close crosses an inner `<table>` start, so the nesting counter increments
  * before the matching outer close is found.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it drives the
+ * nested-table depth-increment branch on a single outcome; it does not vary any
+ * decision's conditions independently.)
  */
 static void test_cov_table_nested_depth(void)
 {
@@ -461,6 +531,12 @@ static void test_cov_table_nested_depth(void)
  * 1686-1690 (ra8_reflow_set_image_loader) and 1698-1703 (ra8_reflow_set_css_loader)
  * null-pointer + not-initialised guard returns, none of which the happy-path
  * tests reach.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the null-pointer and
+ * not-initialised guard returns on run_layout / set_image_loader /
+ * set_css_loader; these are sequential single-condition `if` checks, so there is
+ * no `&&` or `||` in the code under test that this case touches.)
  */
 static void test_cov_lifecycle_guards(void)
 {

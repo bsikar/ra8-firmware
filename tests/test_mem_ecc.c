@@ -50,6 +50,12 @@ static ra8_sram_config_t mecc_test_cfg(void)
 /**
  * @test test_mem_ecc_1bit_decodes_correctable
  * @brief A 1-bit injection latches only the 1-bit slot; clear wipes it.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- stages a 1-bit SRAMESR latch, then drives
+ * ra8_sram_self_test's single-condition caught check and internal_decode_esr's
+ * per-slot single-condition bit tests (one_bit_mask set, two_bit_mask clear), plus a
+ * clear_status call; no && or || in the code under test that this case touches.)
  */
 static void test_mem_ecc_1bit_decodes_correctable(void)
 {
@@ -87,6 +93,12 @@ static void test_mem_ecc_1bit_decodes_correctable(void)
 /**
  * @test test_mem_ecc_2bit_decodes_uncorrectable
  * @brief A 2-bit injection latches only the 2-bit slot; clear wipes it.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- stages a 2-bit SRAMESR latch, then drives
+ * ra8_sram_self_test's single-condition caught check and internal_decode_esr's
+ * per-slot single-condition bit tests (two_bit_mask set, one_bit_mask clear), plus a
+ * clear_status call; no && or || in the code under test that this case touches.)
  */
 static void test_mem_ecc_2bit_decodes_uncorrectable(void)
 {

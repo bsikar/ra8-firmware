@@ -300,6 +300,13 @@ static void test_jpeg_stream_window_slide(void)
  *          apart from the malformed-bitstream cases: the source here is a
  *          perfectly valid JPEG, which proves the guards fire on their own
  *          terms and not as a side effect of decoding failing anyway.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the single-condition
+ * RA8_CHECK_NULL_PTR guards (here: null pull, null window) and the single-condition
+ * `window_cap < k_ra8_jpeg_sw_stream_min_window` size guard in
+ * ra8_jpeg_sw_decode_stripes, each returning before js_begin; no && or || is
+ * reached on this path.)
  */
 static void test_jpeg_stream_argument_guards(void)
 {
@@ -380,6 +387,14 @@ static void test_jpeg_stream_rejects_malformed(void)
  *          back a stripe too small for the image must surface invalid_size.
  *          Distinct codes matter because the caller's remedy differs: raise the
  *          budget, versus fix the stripe arithmetic.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the two single-condition
+ * fail-closed arms of js_bind_geometry: the geometry hook's `err != k_ra8_ok`
+ * (t_geom_abort -> k_ra8_err_no_mem) and `stripe_cap < need` (t_geom_tiny ->
+ * k_ra8_err_invalid_size). The `got_sof && !geom_done` gate that reaches the hook
+ * is exercised only in its both-true state here; its independent-influence MC/DC
+ * is owned by test_jpeg_stream_rejects_malformed.)
  */
 static void test_jpeg_stream_geometry_hook_failures(void)
 {
@@ -419,6 +434,11 @@ static void test_jpeg_stream_geometry_hook_failures(void)
  * @details The decoder must not translate, swallow, or overwrite a sink's
  *          refusal -- the consumer's code is what the caller acts on, so it has
  *          to survive the unwind unchanged.
+ *
+ * @par MC/DC:
+ * (no compound decisions in the production code under test -- exercises verbatim
+ * propagation of a sink-returned error (k_ra8_err_busy) up through the decoder's
+ * single-condition `err != k_ra8_ok` unwind in js_scan; no && or || on that path.)
  */
 static void test_jpeg_stream_propagates_sink_abort(void)
 {

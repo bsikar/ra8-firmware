@@ -254,6 +254,17 @@ static void test_route_input(void)
  *
  * @details Mirrors the `#if RA8_APP_SETTINGS` pattern -- simply not calling
  * register leaves the app out of count / find / launch.
+ *
+ * @par MC/DC:
+ * Decision: `(reg->apps[i] != nullptr) && (reg->apps[i]->id == id)` (2 conditions,
+ * AND; function `ra8_app_find`). The registry holds one non-null app (id 1) and the
+ * search is for the unregistered id 3:
+ * - this vector: apps[0] != nullptr T, apps[0]->id (1) == 3 F -> C2 F -> decision F
+ *   -> id 3 absent (find idx == k_ra8_app_none, launch -> k_ra8_err_not_found,
+ *   count still 1).
+ * The both-true arm (a matching id is found) is exercised by test_launch_lifecycle
+ * / test_route_input; the C1-false arm (a NULL slot is skipped) by test_null_slots.
+ * Together they complete N+1 = 3 for the 2-condition AND.
  */
 static void test_buildtime_exclusion(void)
 {
@@ -360,6 +371,14 @@ static void test_null_callbacks(void)
 
 /**
  * @test Every public entry rejects a NULL required pointer (NASA Rule 5).
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the single-condition
+ * RA8_CHECK_NULL_PTR guard on every public entry plus ra8_app_at's single-condition
+ * `idx >= reg->count` range guard. The nullptr registry handed to find/launch
+ * returns at the null guard before the search loop, so ra8_app_find's
+ * `apps[i] != nullptr && apps[i]->id == id` AND is never reached; no && or || is
+ * exercised here.)
  */
 static void test_null_guards(void)
 {

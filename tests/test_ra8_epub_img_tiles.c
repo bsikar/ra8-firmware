@@ -629,6 +629,25 @@ static void import_error_arms(ra8_epub_tile_binder_t*            binder,
                  ra8_epub_tile_binder_import(binder, book, "page1.png", 44U, nullptr));
 }
 
+/**
+ * @test test_import_transcode
+ * @brief The open-path transcode wiring end to end plus the import error arms.
+ *
+ * @par MC/DC:
+ * Decision (href length, ra8_epub_tile_binder_import):
+ * `(hlen == 0U) || (hlen >= k_ra8_epub_max_path_len)` (2 conditions, OR). This
+ * case drives only the both-false control (a normal href such as "page1.png" ->
+ * C1=F,C2=F -> the import proceeds); the true legs (empty href, oversize href)
+ * are supplied by test_import_classify_arms, completing N+1 = 3.
+ * Decision (classify, priv_classify):
+ * `(got == 4) && (memcmp(magic,"JOF1") == 0)` (2 conditions, AND) is NOT reached
+ * here -- every entry this case drives is DEFLATE-compressed or absent, so
+ * priv_classify short-circuits (not_supported / not_found / err) before the
+ * compare. Its N+1 vectors live in test_import_passthrough (C1=T,C2=T) and
+ * test_import_classify_arms (got-mismatch C1=F, magic-mismatch C1=T,C2=F).
+ * The import error arms this case adds (not_found, not_supported, invalid_size,
+ * no_mem, null_ptr) are single-condition guards.
+ */
 static void test_import_transcode(void)
 {
   TEST_BEGIN("epub tiles: import-time transcode (PNG entry -> atlas -> tiles)");
@@ -795,6 +814,21 @@ static void add_arg_guards(ra8_epub_tile_binder_t* binder, ra8_epub_book_t* book
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epub_tile_binder_add(binder, book, longp, 1U));
 }
 
+/**
+ * @test test_tile_binder_guards
+ * @brief NULL / not-found / range / duplicate / bad-entry binder guards.
+ *
+ * @par MC/DC:
+ * Decision: `(plen == 0U) || (plen >= k_ra8_epub_max_path_len)` (2 conditions,
+ * OR; ra8_epub_tile_binder_add). All three vectors are driven here -- N+1 = 3:
+ * - V1: "big.rta" (normal path) -> C1=F,C2=F -> the add proceeds.
+ * - V2: "" (empty path)         -> C1=T -> invalid_arg.
+ * - V3: an oversize path        -> C1=F,C2=T -> invalid_arg.
+ * V1+V2 prove C1 independent; V1+V3 prove C2. Every other guard exercised here
+ * (init/add/add_ext null_ptr, not_found, out_of_range, duplicate id, table
+ * exhaustion, the two separate `tile_x >= cols` / `tile_y >= rows` range checks)
+ * is a single-condition check.
+ */
 static void test_tile_binder_guards(void)
 {
   TEST_BEGIN("epub tiles: binder guards + bad entries");
