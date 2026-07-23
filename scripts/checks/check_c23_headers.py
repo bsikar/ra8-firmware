@@ -96,8 +96,8 @@ OPT_OUT = "C23HDR-OK"
 #            UNTYPED -> a violation.
 #   ``:`` -> a fixed underlying type follows -> typed, compliant.
 #   else -> a reference / use / forward declaration -> not our concern.
-# DOTALL lets the leading ``\s*`` swallow newlines so a ``typedef enum\n{``
-# split across lines is still recognised as one definition.
+# DOTALL lets the leading ``\s*`` swallow newlines so a ``typedef enum`` whose
+# opening ``{`` sits on the next line is still recognised as one definition.
 _ENUM_RE = re.compile(
     r"\benum\b\s*(?:[A-Za-z_]\w*\s*)?(?P<next>.)",
     re.DOTALL,
