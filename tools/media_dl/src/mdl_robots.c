@@ -16,14 +16,14 @@
 
 /** @brief Local parse/format sizes. */
 typedef enum : uint16_t {
-  k_robots_line_max = 512, /**< Max robots.txt line length.  */
+  k_robots_line_max = 512, /**< Max robots.txt line length.   */
   k_robots_url_max  = 256, /**< Max `/robots.txt` URL length. */
 } mdl_robots_local_size_t;
 
 /** @brief Millisecond conversions and the crawl-delay ceiling. */
 typedef enum : uint32_t {
-  k_ms_per_s     = 1000U,  /**< Milliseconds per second.                */
-  k_crawl_cap_ms = 60000U, /**< Clamp a Crawl-delay to at most 60s.     */
+  k_ms_per_s     = 1000U,  /**< Milliseconds per second.            */
+  k_crawl_cap_ms = 60000U, /**< Clamp a Crawl-delay to at most 60s. */
 } mdl_robots_ms_t;
 
 /** @brief "No user-agent match" sentinel for the specificity score. */

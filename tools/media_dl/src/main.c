@@ -61,10 +61,10 @@ typedef enum : uint16_t {
 
 /** @brief `--polite` per-host delay floors (milliseconds). */
 typedef enum : uint16_t {
-  k_polite_img_min_ms  = 2000,  /**< Polite per-image floor.        */
-  k_polite_img_max_ms  = 4000,  /**< Polite per-image ceiling.      */
-  k_polite_chap_min_ms = 5000,  /**< Polite inter-chapter floor.    */
-  k_polite_chap_max_ms = 10000, /**< Polite inter-chapter ceiling.  */
+  k_polite_img_min_ms  = 2000,  /**< Polite per-image floor.       */
+  k_polite_img_max_ms  = 4000,  /**< Polite per-image ceiling.     */
+  k_polite_chap_min_ms = 5000,  /**< Polite inter-chapter floor.   */
+  k_polite_chap_max_ms = 10000, /**< Polite inter-chapter ceiling. */
 } mdl_polite_floor_t;
 
 /** @brief Filesystem + parse constants. */
@@ -683,8 +683,11 @@ RA8_INTERNAL static void start_session(mdl_net_iface_t*      net,
 }
 
 /** @brief Build slug + absolute series dir under `out_dir`; false on failure. */
-RA8_INTERNAL static bool prepare_series_dir(
-  const char* out_dir, const char* series_url, char* slug, size_t slug_cap, char* abs_dir)
+RA8_INTERNAL static bool prepare_series_dir(const char* out_dir,
+                                            const char* series_url,
+                                            char*       slug,
+                                            size_t      slug_cap,
+                                            char*       abs_dir)
 {
   last_segment(series_url, slug, slug_cap);
   char series_dir[k_dir_path_bytes];
@@ -778,8 +781,8 @@ RA8_INTERNAL static size_t download_page_image(const char*       url,
   }
   (void)mdl_politeness_wait(pol, max_u32(dmin, crawl), max_u32(dmax, crawl));
   char path[k_file_path_bytes];
-  (void)snprintf(
-    path, sizeof(path), "%s/page_%03zu.%s", out_dir, idx + 1U, ext_of(s_images.urls[idx]));
+  (void)
+    snprintf(path, sizeof(path), "%s/page_%03zu.%s", out_dir, idx + 1U, ext_of(s_images.urls[idx]));
   const mdl_net_req_t ir  = {.user_agent = s_session.user_agent,
                              .referer    = url,
                              .timeout_ms = timeout};
@@ -789,8 +792,12 @@ RA8_INTERNAL static size_t download_page_image(const char*       url,
 }
 
 /** @brief Download the extracted page images into `out_dir`; returns failures. */
-RA8_INTERNAL static size_t download_page_images(
-  const char* url, const char* out_dir, uint32_t max_imgs, uint64_t seed, uint32_t timeout, bool polite)
+RA8_INTERNAL static size_t download_page_images(const char* url,
+                                                const char* out_dir,
+                                                uint32_t    max_imgs,
+                                                uint64_t    seed,
+                                                uint32_t    timeout,
+                                                bool        polite)
 {
   mdl_politeness_t pol;
   mdl_politeness_init(&pol, seed);

@@ -32,21 +32,21 @@
 
 /** @brief Backend tunables. */
 typedef enum : uint32_t {
-  k_curl_max_redirects  = 5,     /**< Redirect hops to follow.               */
-  k_http_status_err_min = 400,   /**< First HTTP status treated as an error. */
-  k_connect_timeout_ms  = 15000, /**< TCP/TLS connect budget, ms.            */
+  k_curl_max_redirects  = 5,     /**< Redirect hops to follow.                */
+  k_http_status_err_min = 400,   /**< First HTTP status treated as an error.  */
+  k_connect_timeout_ms  = 15000, /**< TCP/TLS connect budget, ms.             */
   k_low_speed_bytes     = 64,    /**< Below this many B/s...                  */
   k_low_speed_secs      = 30,    /**< ...for this long, abort a stalled xfer. */
-  k_origin_host_max     = 256,   /**< Stored origin-host buffer bytes.       */
+  k_origin_host_max     = 256,   /**< Stored origin-host buffer bytes.        */
 } mdl_curl_limits_t;
 
 /** @brief Concrete libcurl network interface. */
 struct mdl_net_iface {
-  CURL*    curl;                           /**< Reused easy handle.              */
-  bool     allow_private;                  /**< SSRF opt-in (private peers).     */
-  bool     allow_cross_host;               /**< Cross-host redirect opt-in.      */
-  uint64_t max_bytes;                      /**< Per-response cap (0 = none).     */
-  char     origin_host[k_origin_host_max]; /**< Host of the current request.    */
+  CURL*    curl;                           /**< Reused easy handle.          */
+  bool     allow_private;                  /**< SSRF opt-in (private peers). */
+  bool     allow_cross_host;               /**< Cross-host redirect opt-in.  */
+  uint64_t max_bytes;                      /**< Per-response cap (0 = none). */
+  char     origin_host[k_origin_host_max]; /**< Host of the current request. */
 };
 
 /** @brief Bounded-buffer sink state for a page fetch. */
@@ -59,10 +59,10 @@ typedef struct {
 
 /** @brief Size-bounded FILE* sink state for an image fetch. */
 typedef struct {
-  FILE*    fp;       /**< Destination file.                       */
-  uint64_t written;  /**< Bytes written so far.                   */
-  uint64_t cap;      /**< Per-response cap (0 = unlimited).       */
-  bool     overflow; /**< Set once the body exceeds `cap`.        */
+  FILE*    fp;       /**< Destination file.                 */
+  uint64_t written;  /**< Bytes written so far.             */
+  uint64_t cap;      /**< Per-response cap (0 = unlimited). */
+  bool     overflow; /**< Set once the body exceeds `cap`.  */
 } file_sink_t;
 
 /** @brief libcurl write callback: append into a bounded buffer. */

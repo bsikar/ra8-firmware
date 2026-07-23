@@ -53,7 +53,7 @@ typedef struct {
  */
 typedef struct {
   bool     allow_private_hosts;       /**< Permit loopback/private/link-local peers. */
-  bool     allow_cross_host_redirect; /**< Permit a redirect to a different host.   */
+  bool     allow_cross_host_redirect; /**< Permit a redirect to a different host.    */
   uint64_t max_response_bytes;        /**< Per-response byte cap (0 = unlimited).    */
 } mdl_net_policy_t;
 

@@ -29,10 +29,10 @@
  * @since 0.1.0
  */
 typedef struct {
-  mdl_net_policy_t policy;       /**< Backend security policy.            */
-  const char*      contact;      /**< --contact override, or NULL.        */
-  bool             honor_robots; /**< False when --ignore-robots is set.  */
-  bool             polite;       /**< True when --polite is set.          */
+  mdl_net_policy_t policy;       /**< Backend security policy.           */
+  const char*      contact;      /**< --contact override, or NULL.       */
+  bool             honor_robots; /**< False when --ignore-robots is set. */
+  bool             polite;       /**< True when --polite is set.         */
 } mdl_run_opts_t;
 
 /**
