@@ -103,6 +103,7 @@ const XMLElement* next_preorder(const XMLElement* node, const XMLElement* root)
     return child;
   }
   const XMLElement* cursor = node;
+  // mcdc-deactivated: next_preorder only ever walks strictly inside root's subtree -- both callers (find_descendant, find_nav_by_type) seed the walk from root->FirstChildElement() and re-seed only from this function's own return -- so backtracking always terminates at cursor == root before cursor could reach root's parent; up = cursor->Parent() is therefore always a non-null element and up->ToElement() never yields nullptr. The `cursor != nullptr` condition can never independently flip on any reachable walk; it is defense-in-depth against a corrupted node chain. Deactivated per DO-178C 6.4.4.3 (deactivated code); the `cursor != root` terminator is exercised by the tree-walk tests.
   while (cursor != nullptr && cursor != root) {
     const XMLElement* sibling = cursor->NextSiblingElement();
     if (sibling != nullptr) {
