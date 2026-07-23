@@ -32,6 +32,12 @@ typedef enum : uint8_t {
 
 /**
  * @test er_tap_to_dir splits the screen into thirds (edge taps).
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises er_tap_to_dir's third-split
+ * mapping: left third = prev, middle = none, right third = next, and zero width
+ * = none; every branch in er_tap_to_dir is single-condition, with no && or || on
+ * the path this case touches.)
  */
 static void test_tap_thirds(void)
 {
@@ -49,6 +55,11 @@ static void test_tap_thirds(void)
 
 /**
  * @test er_buttons_to_dir maps SW1=prev, SW2=next, both=prev, none=none.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises er_buttons_to_dir's SW1 = prev,
+ * SW2 = next, both = prev (SW1 wins) and none = none mapping; er_buttons_to_dir is
+ * a chain of single-condition ifs, with no && or || on the path this case touches.)
  */
 static void test_buttons(void)
 {
@@ -62,6 +73,13 @@ static void test_buttons(void)
 
 /**
  * @test er_pageturn_step within-chapter next/prev and the no-op direction.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises er_pageturn_step's
+ * within-chapter next/prev advance and the k_er_dir_none no-op; every decision in
+ * er_pageturn_step is single-condition, with no && or || on the path this case
+ * touches. The step boundary branches get their branch vectors in
+ * test_mcdc_boundaries.)
  */
 static void test_step_within(void)
 {
@@ -85,6 +103,13 @@ static void test_step_within(void)
 
 /**
  * @test er_pageturn_step crosses chapters and clamps at the book ends.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises er_pageturn_step's chapter
+ * crossing (NEXT past the last page, PREV before page 0) and both book-end clamps;
+ * every decision in er_pageturn_step is single-condition, with no && or || on the
+ * path this case touches. The boundary branches get their vectors in
+ * test_mcdc_boundaries.)
  */
 static void test_step_cross_and_clamp(void)
 {

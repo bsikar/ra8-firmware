@@ -212,6 +212,17 @@ static void test_mcdc_fill_rect_565_clip(void)
  * test_mcdc_fill_rect_565_clip; this exercises the false branch (the per-pixel
  * fallback) by filling a rectangle in ARGB8888 and confirming the covered pixel
  * changes.
+ *
+ * @par MC/DC:
+ * The decision this targets, `if (s_state.format == k_ra8_gfx_format_rgb565)` in
+ * internal_fill_rect, is single-condition: this drives its false branch (the
+ * ARGB8888 per-pixel fallback), the true branch being test_mcdc_fill_rect_565_clip.
+ * The ARGB8888 path never enters internal_fill_rect_565, so its
+ * `(x1<=x0)||(y1<=y0)` guard is not reached; the compound guards it does traverse
+ * -- `(w<=0)||(h<=0)` in ra8_gfx_rect and s_gfx_text_plot's `(x<clip_x0)||(y<clip_y0)`
+ * and `(x>=clip_x1)||(y>=clip_y1)` clip checks -- are all-false control vectors,
+ * their independence vectors living in test_mcdc_fill_rect_565_clip and
+ * test_clip_confines_drawing. No new compound vector is introduced here.
  */
 static void test_fill_rect_dispatch(void)
 {
@@ -299,6 +310,17 @@ static void test_mcdc_glyph_565_clip(void)
  * through ra8_gfx_clear. White (0xFFFFFF) packs to 0xFFFF (lo==hi) -> the memset
  * branch; blue (0x0000FF) packs to 0x001F (lo!=hi) -> the byte-loop branch. Both
  * branches must produce the documented bytes.
+ *
+ * @par MC/DC:
+ * Decision: `if (lo == hi)` in internal_fill_565 (1 condition, reached via
+ * ra8_gfx_clear -> internal_fill_rect_565).
+ * - V1: white 0xFFFFFF packs to 0xFFFF -> lo==hi T -> memset branch (s_fb[0] and
+ *   s_fb[1] both 0xFF).
+ * - V2: blue 0x0000FF packs to 0x001F -> lo==hi F -> byte-loop branch (s_fb[0] !=
+ *   s_fb[1]).
+ * Both branches of the single condition -> minimal MC/DC (N+1 = 2). The
+ * `(x1<=x0)||(y1<=y0)` clip guard is the all-false control vector here (a
+ * full-screen clear); its N+1 vectors are in test_mcdc_fill_rect_565_clip.
  */
 static void test_clear_565_memset_path(void)
 {
@@ -324,6 +346,18 @@ static void test_clear_565_memset_path(void)
  * outside are untouched. ra8_gfx_reset_clip restores full-framebuffer drawing,
  * and a zero-area clip makes draws a no-op. Covers the clip path in
  * internal_fill_rect_565 (reached via ra8_gfx_rect) and the set/reset API.
+ *
+ * @par MC/DC:
+ * Decision: `(x1 <= x0) || (y1 <= y0)` in internal_fill_rect_565 (2 conditions,
+ * reached via ra8_gfx_rect).
+ * - V1: small/normal clip, full-screen rect -> x1>x0, y1>y0 (F,F) -> the in-clip
+ *   pixel changes and the out-of-clip pixel is kept.
+ * - V2: zero-area clip set_clip(0,0,0,0) -> x1<=x0 (T, short-circuit) -> the draw
+ *   is a no-op (s_fb[0] unchanged).
+ * This supplies the F,F control and the (x1<=x0) true vector; the (y1<=y0)
+ * independence vector (V3) is test_mcdc_fill_rect_565_clip. set_clip's corner
+ * clamps are single-condition and take their not-taken branches here (in-bounds),
+ * complementing the taken branches in test_set_clip_corner_clamps.
  */
 static void test_clip_confines_drawing(void)
 {

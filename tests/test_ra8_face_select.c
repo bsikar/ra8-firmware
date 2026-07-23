@@ -175,6 +175,13 @@ static void test_face_select_routing(void)
  * @test While an embedded face is registered the pagination cache is bypassed
  *       (the 4b invariant), so a multi-face book is never serialized or
  *       mis-served under a different face set.
+ *
+ * @par MC/DC:
+ * (no compound decision is varied by this case -- it flips the single-condition
+ * `if (engine->face_count != 0U)` bypass guard in priv_cache_precheck: with zero
+ * faces the serialize proceeds, and once a face is registered both cache entry
+ * points return invalid_state. The content-null compound guard on that path is
+ * held at its content-non-null short-circuit leg.)
  */
 static void test_cache_bypass_with_faces(void)
 {
@@ -216,6 +223,20 @@ static void test_cache_bypass_with_faces(void)
 /**
  * @test `ra8_reflow_register_face` validates its inputs, rejects an invalid blob
  *       without disturbing the registry, and enforces the face cap.
+ *
+ * @par MC/DC:
+ * Decision: `if (engine == nullptr || blob == nullptr)` (2 conditions, OR,
+ * `ra8_reflow_register_face` in libs/ra8_reflow/src/ra8_reflow_layout_driver.c).
+ * - V1: engine=NULL, blob=valid  -> null_ptr (first condition true).
+ * - V2: engine=valid, blob=NULL  -> null_ptr (second condition true).
+ * - V3: engine=valid, blob=valid (the invalid_size / cap calls) -> proceeds past
+ *       the guard (both conditions false: control).
+ * V3+V1 prove `engine == nullptr` independently drives the outcome; V3+V2 prove
+ * the same for `blob == nullptr`. N+1 = 3 vectors. The same function's blob-
+ * validation OR `offset < 0 || stbtt_InitFont(...) == 0` is driven here at its
+ * `offset < 0` leg (the garbage blob) and both-false leg (the valid faces); its
+ * remaining InitFont-only leg is discharged by the source-text-equivalent
+ * decision (DO-178C 6.4.4.3) in `ra8_reflow_bind_font` (test_bind_measure_and_mcdc).
  */
 static void test_register_validation(void)
 {

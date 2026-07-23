@@ -116,6 +116,11 @@ static void make_png(uint8_t* buf, uint32_t w, uint32_t h)
  * @pre None.
  * @post Each guard returned ::k_ra8_err_null_ptr.
  * @post No output was written.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the three single-condition
+ * RA8_CHECK_NULL_PTR guards in ra8_jof_probe_dims (data, out_w, out_h), each
+ * returning before priv_probe_sniff; no && or || is reached on this path.)
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -140,6 +145,11 @@ static void test_probe_null_guards(void)
  * @pre None.
  * @post A short buffer returned ::k_ra8_err_not_supported.
  * @post A buffer one byte under the window is still refused.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives priv_probe_sniff's single-condition
+ * `len < k_ra8_jof_sniff_bytes` guard (len 0 and len sniff-1), which returns before
+ * any container magic is compared; no && or || is reached on this path.)
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -165,6 +175,14 @@ static void test_probe_too_short(void)
  * @pre None.
  * @post A full IHDR produced the declared width and height.
  * @post An IHDR truncated below its end returned ::k_ra8_err_not_supported.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the PNG dispatch arm and
+ * priv_png_dims's single-condition `len < k_ra8_jof_png_ihdr_end` truncation guard
+ * (full IHDR -> k_ra8_ok; IHDR cut short -> not_supported). The valid PNG passes
+ * through priv_probe_sniff's SOI && and range || decisions in one direction only;
+ * their independent-influence MC/DC is owned by test_probe_jpeg_dispatch and
+ * test_probe_range_guard.)
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -192,6 +210,18 @@ static void test_probe_png(void)
  * @pre None.
  * @post A zero width and a zero height each returned invalid-size.
  * @post A dimension past the atlas cap returned invalid-size.
+ *
+ * @par MC/DC:
+ * Decision: `(w == 0) || (h == 0) || (w > k_ra8_jof_max_dim) || (h > k_ra8_jof_max_dim)`
+ * (4 conditions, OR; function `priv_probe_sniff`). Crafted PNG geometry isolates
+ * each disjunct (the other three false):
+ * - V2 w=0,     h=400   -> C1 T -> T (k_ra8_err_invalid_size).
+ * - V3 w=640,   h=0     -> C2 T -> T (k_ra8_err_invalid_size).
+ * - V4 w=40000, h=400   -> C3 T -> T (k_ra8_err_invalid_size).
+ * - V5 w=640,   h=40000 -> C4 T -> T (k_ra8_err_invalid_size).
+ * The all-false control V1 (valid 640x400 PNG -> F -> k_ra8_ok) is exercised by the
+ * sibling test_probe_png. Each Vk vs V1 flips exactly one condition and the outcome.
+ * N+1 = 5 vectors for N=4 (4 here + the control in test_probe_png).
  * @note Not thread-safe.
  * @since 0.1.0
  */

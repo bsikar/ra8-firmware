@@ -137,6 +137,14 @@ static void cov_fill_gray(void)
  * 759 (ra8_gfx_rect), 833 (ra8_gfx_circle), 1002 (ra8_gfx_text_out, reached past
  * the non-null str/font check), and 1049 (ra8_gfx_blit, reached past the
  * non-null src_buf check).
+ *
+ * @par MC/DC:
+ * The guard asserted for every API is the single-condition `if (!initialized)`
+ * early return. Two entry points evaluate a leading check first and are reached
+ * with valid pointers: ra8_gfx_blit's single-condition `src_buf == nullptr`, and
+ * ra8_gfx_text_out's compound `(str == nullptr) || (font == nullptr)`. The latter
+ * is thus traversed as the both-false control vector only -- no independence
+ * vector is introduced here.
  */
 static void test_uninitialized_guards(void)
 {
@@ -173,6 +181,14 @@ static void test_uninitialized_guards(void)
  * ra8_gfx_pixel in RGB565 routes through internal_plot -> internal_put_pixel and
  * takes the k_ra8_gfx_format_rgb565 switch arm, landing lines 277-281. The
  * covered pixel must differ from the cleared background.
+ *
+ * @par MC/DC:
+ * This coverage companion drives the RGB565 arm of the internal_put_pixel switch
+ * (a switch, not a boolean decision). The compound guards traversed on the way --
+ * ra8_gfx_init's range checks, ra8_gfx_pixel's
+ * `(x<0)||(y<0)||(x>=width)||(y>=height)` bounds check, and s_gfx_text_plot's clip
+ * ORs -- are all reached as all-false control vectors; their independence vectors
+ * live in test_ra8_gfx_text.c. No new compound vector is introduced here.
  */
 static void test_put_pixel_565_path(void)
 {
@@ -194,6 +210,13 @@ static void test_put_pixel_565_path(void)
  * k_ra8_gfx_format_rgb565 lands the RGB565 read arm (322-327); a source bound as
  * k_ra8_gfx_format_rgb888 lands the RGB888 read arm (329-333). The framebuffer
  * stays RGB565, so the converted pixels differ from the cleared background.
+ *
+ * @par MC/DC:
+ * This drives the RGB565 and RGB888 arms of the internal_get_pixel switch (a
+ * switch, not a boolean decision) by varying only the source format. The
+ * `(src_w==0)||(src_h==0)||!internal_format_ok(src_format)` guard in ra8_gfx_blit
+ * and s_gfx_text_plot's clip ORs are traversed as all-false control vectors; the
+ * independence vectors for those decisions live in test_ra8_gfx_text.c.
  */
 static void test_blit_get_pixel_565_888(void)
 {
@@ -245,6 +268,14 @@ static void test_blit_get_pixel_565_888(void)
  * exercises the corner clamps: x0 > fbw (603), y0 > fbh (606), then x1 < x0
  * (613) and y1 < y0 (616). The result is an empty clip, so a following full
  * clear leaves the buffer untouched at a sampled pixel.
+ *
+ * @par MC/DC:
+ * ra8_gfx_set_clip's corner clamps are single-condition (x0>fbw, y0>fbh, x1<x0,
+ * y1<y0), each driven to its taken branch here; the not-taken branches are the
+ * in-bounds set_clip in test_clip_confines_drawing (test_ra8_gfx_text.c). The
+ * resulting empty clip then drives internal_fill_rect_565's
+ * `(x1 <= x0) || (y1 <= y0)` to true (x1<=x0), matching V2 of that decision in
+ * test_mcdc_fill_rect_565_clip, where its F,F and (y1<=y0) vectors also live.
  */
 static void test_set_clip_corner_clamps(void)
 {
@@ -280,6 +311,14 @@ static void test_set_clip_corner_clamps(void)
  * expands each gray sample through internal_gray_to_color (650,652) and stores
  * RGB565 bytes. With a visible on-screen block the covered pixel changes; line
  * 720 returns k_ra8_ok.
+ *
+ * @par MC/DC:
+ * Decision: `(x0 < x1) && (y0 < y1)` in ra8_gfx_blit_gray8 (2 conditions), the
+ * clipped-block guard before internal_blit_gray8_565. The on-screen block gives
+ * x0<x1, y0<y1 (T,T) -> the taken vector (the covered pixel changes). This test
+ * supplies only that both-true vector; the false vectors (a fully-clipped block)
+ * are not varied here. The `(src==nullptr)||(w<=0)||(h<=0)` guard is all-false
+ * control, its src==nullptr true leg being test_blit_gray8_arg_guard.
  */
 static void test_blit_gray8_565_fast_path(void)
 {
@@ -308,6 +347,13 @@ static void test_blit_gray8_565_fast_path(void)
  * and calls internal_blit_gray8_slow (687,689-691,693,696 plus internal_plot),
  * returning at 709-710. The covered ARGB8888 pixel changes from the cleared
  * background.
+ *
+ * @par MC/DC:
+ * This drives the single-condition `if (format != k_ra8_gfx_format_rgb565)`
+ * dispatch in ra8_gfx_blit_gray8 to its true branch (the non-RGB565 per-pixel
+ * slow path); the false branch is test_blit_gray8_565_fast_path. The
+ * `(src==nullptr)||(w<=0)||(h<=0)` guard and s_gfx_text_plot's clip ORs are
+ * all-false control vectors, covered for independence in test_ra8_gfx_text.c.
  */
 static void test_blit_gray8_slow_path(void)
 {
@@ -334,6 +380,14 @@ static void test_blit_gray8_slow_path(void)
  * ra8_gfx_blit_gray8's argument guard (703-704): a NULL source returns
  * k_ra8_err_invalid_arg, confirming the validation line executes after the
  * not-initialised check passes.
+ *
+ * @par MC/DC:
+ * Decision: `(src == nullptr) || (w <= 0) || (h <= 0)` in ra8_gfx_blit_gray8
+ * (3 conditions). This supplies one vector: src=NULL, w=6, h=6 -> src==nullptr T
+ * (short-circuit) -> k_ra8_err_invalid_arg. The all-false control vector is
+ * test_blit_gray8_565_fast_path / test_blit_gray8_slow_path; the independent true
+ * vectors for (w<=0) and (h<=0) are not exercised in this suite, so this
+ * decision's MC/DC is only partially demonstrated here.
  */
 static void test_blit_gray8_arg_guard(void)
 {
@@ -351,6 +405,13 @@ static void test_blit_gray8_arg_guard(void)
  * Exercises ra8_gfx_text_size as a supporting measurement check: a 3-character
  * string measures 3*glyph_width wide and glyph_height tall, confirming the
  * font is bound and usable for the rendering tests above.
+ *
+ * @par MC/DC:
+ * ra8_gfx_text_size's only compound decision is its null guard
+ * `(str==nullptr)||(font==nullptr)||(out_w==nullptr)||(out_h==nullptr)`; this test
+ * passes four valid pointers, so it is traversed as the all-false control vector
+ * only. The character-count loop's `str[i] == '\0'` test is single-condition. No
+ * independence vector is introduced here.
  */
 static void test_text_size_measures(void)
 {

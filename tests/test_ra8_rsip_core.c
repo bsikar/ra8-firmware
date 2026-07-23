@@ -775,6 +775,18 @@ hmac_ref_compute(const uint8_t* prepared, const uint8_t* data, uint32_t data_len
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&outer_ctx, expect));
 }
 
+/**
+ * @test test_hmac_sha256_inc_oversized_key
+ * @brief HMAC-SHA-256 with a key longer than the SHA-256 block.
+ *
+ * @par MC/DC:
+ * (no compound decision is varied by this case -- it exercises the RFC 2104
+ * oversized-key preparation path, where a key longer than the 64-byte block
+ * collapses to its own digest, and compares the MAC against an independent
+ * reference. The only compound decision on the init path,
+ * `(key == nullptr) && (key_len != 0U)`, is held at its key-non-null
+ * short-circuit leg here; its MC/DC vectors live in test_mcdc_hmac_init_key_len.)
+ */
 static void test_hmac_sha256_inc_oversized_key(void)
 {
   TEST_BEGIN("rsip hmac sha256 incremental oversized key");

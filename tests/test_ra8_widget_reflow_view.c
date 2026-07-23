@@ -288,6 +288,20 @@ static void test_reflow_view_render_guards(void)
   TEST_END("ra8_widget_reflow_view: render guards");
 }
 
+/**
+ * @test ra8_widget_reflow_view input guards: non-taps and a NULL ctx decline.
+ *
+ * @par MC/DC:
+ * `internal_rv_link` guard `(ops == NULL) || (follow_link == NULL)` (2 conditions,
+ * OR): this case drives both true arms -- `ops == NULL` true (page turn only,
+ * varies the first condition) and `ops != NULL` with `follow_link == NULL` true
+ * (the link seam declines, page turn taken, varies the second). The both-false
+ * control (seam present, a link adopted) is test_reflow_view_link; that control
+ * paired with each true arm proves each condition independently drives the
+ * outcome. Also the single-condition `internal_rv_on_input` guards
+ * `ev->kind != touch` true (a button event is declined) and `v == NULL` true (a
+ * NULL ctx declines).
+ */
 static void test_reflow_view_input_guards(void)
 {
   TEST_BEGIN("ra8_widget_reflow_view: input guards");
@@ -321,6 +335,15 @@ static void test_reflow_view_input_guards(void)
   TEST_END("ra8_widget_reflow_view: input guards");
 }
 
+/**
+ * @test ra8_widget_reflow_view_init NULL guards + success installs the vtable.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- ra8_widget_reflow_view_init has two
+ * independent RA8_CHECK_NULL_PTR guards, exercised here with a NULL widget then a
+ * NULL view, followed by the success path that installs the vtable and marks the
+ * widget visible; no `&&` or `||` in the code under test that this case touches)
+ */
 static void test_reflow_view_init_guards(void)
 {
   TEST_BEGIN("ra8_widget_reflow_view: init guards");

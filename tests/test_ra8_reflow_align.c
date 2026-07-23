@@ -78,6 +78,20 @@ static uint32_t last_on_first_line(void)
 /**
  * @test test_align_left_right_center
  * @brief Left keeps the margin; right meets the right edge; centre balances.
+ *
+ * @par MC/DC:
+ * Two AND decisions in this case's own assertions (enclosing fn
+ * test_align_left_right_center); the right / centre layout produces the control
+ * (both conditions true), N+1 = 3 each.
+ * Right-edge tolerance: `(r_edge >= k_right_limit-2) && (r_edge <= k_right_limit+2)`
+ * (k_right_limit == 184):
+ *  - V1 r_edge in [182,186] -> C1=T, C2=T -> T (line flush to the right margin).
+ *  - V2 r_edge < 182        -> C1=F       -> F (line short of the margin).
+ *  - V3 r_edge > 186        -> C1=T, C2=F -> F (line past the margin).
+ * Centre balance: `((left_gap - right_gap) <= 2) && ((right_gap - left_gap) <= 2)`:
+ *  - V1 |left_gap - right_gap| <= 2 -> C1=T, C2=T -> T (gaps balanced).
+ *  - V2 left_gap - right_gap > 2    -> C1=F       -> F (text pushed right).
+ *  - V3 right_gap - left_gap > 2    -> C1=T, C2=F -> F (text pushed left).
  */
 static void test_align_left_right_center(void)
 {
@@ -107,6 +121,15 @@ static void test_align_left_right_center(void)
 /**
  * @test test_align_justify
  * @brief A justified paragraph: wrapped lines reach the margin, last line left.
+ *
+ * @par MC/DC:
+ * Decision (last non-space glyph on the first line, enclosing fn
+ * test_align_justify): `(glyphs[i].y == y0) && (glyphs[i].cp != ' ')`
+ * (2 conditions, AND), evaluated across the laid-out glyphs. N+1 = 3:
+ *  - V1 a non-space glyph on line 0     -> C1=T, C2=T -> T (selected as `last`).
+ *  - V2 a non-space glyph on a later line -> C1=F, C2=T -> F (not on the first line).
+ *  - V3 a space glyph on line 0         -> C1=T, C2=F -> F (space excluded).
+ * V1 vs V2 isolate the baseline condition; V1 vs V3 the non-space condition.
  */
 static void test_align_justify(void)
 {

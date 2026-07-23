@@ -202,6 +202,12 @@ static void connect_with_char(uint16_t* out_chr, uint8_t* buf, uint16_t cap)
  *          guard ``if (len < k_min_param_bytes)`` TRUE: a
  *          Find_Information_Request with only 2 body bytes (len == 2 < 4)
  *          takes the invalid-PDU Error_Response return.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the
+ * internal_handle_find_info `len < k_min_param_bytes` short-parameter guard, a
+ * single condition that returns before the `(start == 0U) || (start > end)`
+ * decision; the handler leg this case takes evaluates no `&&` or `||`)
  */
 static void test_find_info_short_pdu(void)
 {
@@ -229,6 +235,12 @@ static void test_find_info_short_pdu(void)
  *          ``if (len < k_short_param_bytes)`` TRUE: a Read_By_Type_Request
  *          with only 5 body bytes (len == 5 < 6) takes the invalid-PDU
  *          Error_Response return.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the
+ * internal_handle_read_by_type `len < k_short_param_bytes` short-parameter
+ * guard, a single condition that returns immediately; the handler leg this
+ * case takes evaluates no `&&` or `||`)
  */
 static void test_read_by_type_short_pdu(void)
 {
@@ -256,6 +268,11 @@ static void test_read_by_type_short_pdu(void)
  *          ``if (uuid16 != k_uuid16_char)`` TRUE: a well-formed 6-byte
  *          request whose type UUID is 0x2800 (not 0x2803) takes the
  *          attr-not-found Error_Response return.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the
+ * internal_handle_read_by_type `uuid16 != k_uuid16_char` type-UUID guard, a
+ * single condition; the handler leg this case takes evaluates no `&&` or `||`)
  */
 static void test_read_by_type_wrong_uuid(void)
 {
@@ -290,6 +307,12 @@ static void test_read_by_type_wrong_uuid(void)
  *          ``if (len < k_min_param_bytes)`` TRUE: a Read_Request with a
  *          single body byte (len == 1 < 2) takes the invalid-PDU
  *          Error_Response return.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the
+ * internal_handle_read `len < k_min_param_bytes` short-parameter guard, a
+ * single condition that returns immediately; the handler leg this case takes
+ * evaluates no `&&` or `||`)
  */
 static void test_read_short_pdu(void)
 {
@@ -322,6 +345,12 @@ static void test_read_short_pdu(void)
  *          on the registered characteristic appends a CCCD at handle 4
  *          (value handle + 1); reading it packs the 2-byte cccd_value into
  *          the Read_Response. The default cccd_value is 0.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- the internal_handle_read
+ * value-dispatch is an if / else-if chain of single conditions, and this case
+ * takes the first arm `a->kind == k_attr_kind_cccd`; no `&&` or `||` is
+ * evaluated on the leg this case takes)
  */
 static void test_read_cccd_arm(void)
 {
@@ -355,6 +384,12 @@ static void test_read_cccd_arm(void)
  *          ``if (copy_len > k_max_value_bytes)`` TRUE. The characteristic
  *          value is 30 bytes (> the MTU-23 cap of 22), so the copy length
  *          is clamped to 22 before the memcpy.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the
+ * internal_handle_read `copy_len > k_max_value_bytes` clamp, a single
+ * condition, reached through the single-condition `a->value != nullptr` arm;
+ * no `&&` or `||` is evaluated on the leg this case takes)
  */
 static void test_read_value_clamp(void)
 {
@@ -404,6 +439,12 @@ static void test_read_value_clamp(void)
  *          so the cccd and value arms fall through and the service UUID
  *          is emitted from uuid[]. uuid[] was seeded with
  *          the 0xA0 marker ramp by register_one_char().
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- the internal_handle_read
+ * value-dispatch is an if / else-if chain of single conditions, and this case
+ * falls through to the third arm `a->kind == k_attr_kind_primary_service`; no
+ * `&&` or `||` is evaluated on the leg this case takes)
  */
 static void test_read_primary_service(void)
 {
@@ -441,6 +482,14 @@ static void test_read_primary_service(void)
  *          the CCCD handle carrying a single value byte (val_len == 1 < 2)
  *          returns k_att_err_invalid_value_len, which the
  *          Write handler surfaces as an Error_Response.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- internal_handle_write
+ * routes to internal_write_cccd through the single-condition arm
+ * `a->kind == k_attr_kind_cccd`, and internal_write_cccd's
+ * `val_len < k_cccd_min_bytes` guard is itself a single condition; the
+ * char-value `&&` decision is not reached, and no `&&` or `||` is evaluated on
+ * the leg this case takes)
  */
 static void test_write_cccd_short_value(void)
 {
@@ -474,6 +523,16 @@ static void test_write_cccd_short_value(void)
  *          buffer holds 8 bytes; a Write_Request carrying 10 payload bytes
  *          exceeds value_max and returns k_att_err_invalid_value_len,
  *          surfaced as an Error_Response.
+ *
+ * @par MC/DC:
+ * Decision: `else if ((a->kind == k_attr_kind_char_value) && (a->value !=
+ * nullptr))` (2 conditions, AND, function `internal_handle_write`). To reach
+ * internal_write_value this test drives only the both-true leg:
+ * - V1 handle = char value with a non-NULL backing buffer -> C1=T,C2=T -> T
+ *   (dispatch to internal_write_value, whose `val_len > a->value_max` guard
+ *   then rejects the 10-byte write with invalid_value_len).
+ * The C2=false leg (V2, NULL backing) and the C1=false leg (V3, non-char kind)
+ * are in `test_write_char_value_backing_mcdc`. N+1 = 3 vectors for N=2.
  */
 static void test_write_value_too_long(void)
 {
@@ -518,6 +577,13 @@ static void test_write_value_too_long(void)
  *          taking the inner ``if (op == k_att_op_write_req)`` TRUE arm:
  *          an invalid-PDU Error_Response is queued and the function
  *          returns.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the
+ * internal_handle_write `len < k_min_param_bytes` guard and its inner
+ * `op == k_att_op_write_req` arm, both single conditions; the function returns
+ * before the char-value `&&` decision, so no `&&` or `||` is evaluated on the
+ * leg this case takes)
  */
 static void test_write_req_short_pdu(void)
 {
@@ -547,6 +613,13 @@ static void test_write_req_short_pdu(void)
  *          is queued (Write_Command is never answered, Vol 3 Part F
  *          3.4.5.3) and the function returns. Observed as an empty TX
  *          capture.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the
+ * internal_handle_write `len < k_min_param_bytes` guard and its inner
+ * `op == k_att_op_write_req` FALSE arm, both single conditions; the function
+ * returns before the char-value `&&` decision, so no `&&` or `||` is evaluated
+ * on the leg this case takes)
  */
 static void test_write_cmd_short_pdu(void)
 {
@@ -572,6 +645,13 @@ static void test_write_cmd_short_pdu(void)
  *          inner ``if (op == k_att_op_write_req)`` TRUE arm: an
  *          invalid-handle Error_Response is queued and the function
  *          returns. Handle 0x00FF is not registered.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the
+ * internal_handle_write `a == nullptr` unknown-handle guard and its inner
+ * `op == k_att_op_write_req` arm, both single conditions; the function returns
+ * before the char-value `&&` decision, so no `&&` or `||` is evaluated on the
+ * leg this case takes)
  */
 static void test_write_req_unknown_handle(void)
 {
@@ -598,6 +678,13 @@ static void test_write_req_unknown_handle(void)
  *          ``if (op == k_att_op_write_req)`` FALSE arm: no Error_Response
  *          is queued and the function returns. Observed as an empty TX
  *          capture.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the
+ * internal_handle_write `a == nullptr` unknown-handle guard and its inner
+ * `op == k_att_op_write_req` FALSE arm, both single conditions; the function
+ * returns before the char-value `&&` decision, so no `&&` or `||` is evaluated
+ * on the leg this case takes)
  */
 static void test_write_cmd_unknown_handle(void)
 {

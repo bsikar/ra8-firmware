@@ -360,6 +360,13 @@ static void test_mcdc_epub_internal_book_not_ready(void)
  * The existing MC/DC test only drives the NULL guard and the not-initialized
  * arm; this adds the `*out_count = book->chapter_count; return k_ra8_ok;` body
  * that runs once the book is marked open.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised for MC/DC by this case -- it drives the
+ * in_use==1 success body `*out_count = book->chapter_count; return k_ra8_ok`;
+ * the `book == NULL || out_count == NULL` guard is reached only as the
+ * both-false control here, and its N+1 = 3 vectors live in
+ * test_mcdc_epub_get_chapter_count_null_pair)
  */
 static void test_epub_get_chapter_count_success(void)
 {
@@ -381,6 +388,13 @@ static void test_epub_get_chapter_count_success(void)
  * Runs the four `out_meta->* = book->*` assignments + `return k_ra8_ok`, which
  * the guard-only MC/DC test never reaches. Confirms the returned pointers alias
  * the book storage.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised for MC/DC by this case -- it drives the
+ * in_use==1 success body (the four `out_meta->* = book->*` copies + return);
+ * the `book == NULL || out_meta == NULL` guard is reached only as the both-false
+ * control here, and its N+1 = 3 vectors live in
+ * test_mcdc_epub_get_metadata_null_pair)
  */
 static void test_epub_get_metadata_success(void)
 {
@@ -407,6 +421,13 @@ static void test_epub_get_metadata_success(void)
  * @par Coverage:
  * Adds the `*out_count = book->embedded_font_count; return k_ra8_ok;` body to the
  * guard-only coverage that already exists.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised for MC/DC by this case -- it drives the
+ * in_use==1 success body `*out_count = book->embedded_font_count; return k_ra8_ok`;
+ * the `book == NULL || out_count == NULL` guard is reached only as the both-false
+ * control here, and its N+1 = 3 vectors live in
+ * test_mcdc_epub_get_embedded_font_count_null_pair)
  */
 static void test_epub_get_embedded_font_count_success(void)
 {
@@ -646,6 +667,15 @@ static void test_epub_get_cover_image_guards(void)
  * The existing MC/DC test only reaches the NULL quad and the not-initialized
  * arm (in_use==0). This marks the book ready so the `max_len == 0` invalid-size
  * arm runs (the only remaining guard before the archive extract).
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised for MC/DC by this case -- it drives the
+ * single-condition `max_len == 0` invalid-size arm on a ready book. The
+ * `book == NULL || path == NULL || out_buf == NULL || got_len == NULL` quad is
+ * reached only as the both-false control (all non-NULL), with its N+1 = 5
+ * vectors in test_mcdc_epub_get_resource_null_quad; the `in_use == 0 ||
+ * zip_archive_active == 0` not-ready OR is held both-false, its vectors in
+ * test_mcdc_epub_internal_book_not_ready)
  */
 static void test_epub_get_resource_ready_guards(void)
 {
@@ -666,6 +696,15 @@ static void test_epub_get_resource_ready_guards(void)
  * @par Coverage:
  * Adds the `max_len == 0` invalid-size arm and the `idx >= embedded_font_count`
  * out-of-range arm (the existing test stops at the NULL triple + not-init).
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised for MC/DC by this case -- it drives the
+ * single-condition `max_len == 0` invalid-size arm and the single-condition
+ * `idx >= embedded_font_count` out-of-range arm on a ready book. The
+ * `book == NULL || out_buf == NULL || got_len == NULL` triple is reached only as
+ * the both-false control (all non-NULL); its N+1 = 4 vectors live in
+ * test_mcdc_epub_get_embedded_font_null_triple, and the not-ready OR's vectors
+ * in test_mcdc_epub_internal_book_not_ready)
  */
 static void test_epub_get_embedded_font_guards(void)
 {

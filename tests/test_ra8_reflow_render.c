@@ -537,6 +537,18 @@ static void test_render_images_loader_both_arms(void)
  * priv_glyph_render_cached outcomes (miss -> render-into-cell, hit -> reuse),
  * plus ra8_reflow_set_glyph_atlas bind + detach (atlas == NULL) paths -- source
  * the no-cache MC/DC tests above cannot reach.
+ *
+ * @par MC/DC:
+ * Decision: `(storage->cell_bytes == 0U) || (storage->cell_count == 0U) ||
+ * (storage->bucket_count == 0U)` in ra8_reflow_set_glyph_atlas
+ * (libs/ra8_reflow/src/ra8_reflow_render.c), evaluated here only at its all-false
+ * control -- every bind (full-size then tiny cells) uses non-zero storage, so the
+ * init path is taken each time. The atlas bind / render / detach branches it
+ * drives (`atlas != NULL`, `!drawn`, `ra8_glyph_atlas_get != k_ra8_ok`, and the
+ * `w * h > cell_bytes` fit check) are all single-condition. The storage-zero OR's
+ * independent-influence vectors are carried by the sibling
+ * test_mcdc_set_glyph_atlas_storage_zeros; the glyph-box `(w > 0) && (h > 0)`
+ * guard crossed for the page text is MC/DC-deactivated (co-dependent extents).
  */
 static void test_render_glyph_atlas_equivalence(void)
 {

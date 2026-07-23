@@ -520,6 +520,17 @@ static void test_mcdc_ra8_epaper(void)
  * Pins the packing arithmetic the PAL and the driver must agree on. The
  * 4 bpp row size is the one that matters commercially: it is exactly half
  * the 8 bpp size, which is where the transfer-time win comes from.
+ *
+ * @par MC/DC:
+ * Decision: `if ((area->width == 0U) || (area->height == 0U))` (2 conditions,
+ * function `ra8_epaper_image_bytes`, libs/ra8_hal/src/ra8_epaper_geom.c). This
+ * test drives:
+ * - V1 width=64, height=4 -> C1=false, C2=false -> false (k_ra8_ok, bytes sized).
+ * - V2 width=0,  height=4 -> C1=true shorts     -> true  (k_ra8_err_invalid_size).
+ * V1+V2 prove the width condition independent. The height condition's independent
+ * vector (width!=0, height=0) is carried by the sibling test_geom_mcdc
+ * (Decision C, no_h = {8,0}) in test_ra8_epaper_pure.c. (`ra8_epaper_bits_per_pixel`
+ * is a switch, not a compound boolean.)
  */
 static void test_pixel_format_sizing(void)
 {
@@ -635,6 +646,12 @@ static void test_area_alignment(void)
  * The defect this pins: A2 was hardcoded to 4, which is right for the
  * M641 LUT (6 inch / 6 inch HD) and wrong for the 7.8 / 9.7 / 10.3 inch
  * panels, where the vendor default is 6.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- `ra8_epaper_waveform_cfg_for_lut` is a
+ * character-by-character prefix-compare loop with a single-condition body, plus a
+ * single-condition `is_m641 ? ... : ...` ternary and two null guards; no `&&` or
+ * `||` in the code under test that this case touches)
  */
 static void test_waveform_cfg_for_lut(void)
 {
@@ -668,6 +685,18 @@ static void test_waveform_cfg_for_lut(void)
  * A zero-initialised waveform map would refresh every mode as INIT. Init
  * refuses it so a board descriptor cannot inherit another panel's
  * numbering by omission.
+ *
+ * @par MC/DC:
+ * Through `ra8_epaper_init` -> `ra8_epaper_validate_cfg` this drives the reject
+ * arms of the two waveform-validation ORs in
+ * `internal_ra8_epaper_validate_waveform` (libs/ra8_hal/src/ra8_epaper_geom.c):
+ * - `(du == 0) || (gc16 == 0) || (a2 == 0)`: an all-zero map (du==0 -> C1 true)
+ *   and a map with only a2 zero (du,gc16 non-zero -> C3 true) are both refused.
+ * - `(init > MAX) || (du > MAX) || (gc16 > MAX) || (a2 > MAX)`: a2 = 200 > MAX
+ *   (C4 true) is refused.
+ * The complete N+1 independence sets for both decisions (the all-false accept
+ * control and every condition isolated) are carried by the sibling test_geom_mcdc
+ * (Decisions A and B) in test_ra8_epaper_pure.c.
  */
 static void test_init_requires_waveform_map(void)
 {
@@ -695,6 +724,12 @@ static void test_init_requires_waveform_map(void)
  * The lifecycle guard matters more here than elsewhere: a VCOM write to an
  * unconfigured controller is exactly the unattended-damage case this
  * driver exists to prevent.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- get_vcom, set_vcom and dev_info each
+ * return at a single-condition `state != ready` lifecycle guard before any
+ * compound decision; no `&&` or `||` in the code under test that this case
+ * touches)
  */
 static void test_vcom_before_init(void)
 {
@@ -716,6 +751,13 @@ static void test_vcom_before_init(void)
  * The RAM-backed SPI window returns whatever the fixture last wrote rather
  * than a real panel's value, so the assertions are on the state-machine
  * guards and on the commands completing, not on a millivolt figure.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the VCOM get / set / dev_info legs turn
+ * on single-condition checks only: the `state != ready` guards, the `mv == 0U`
+ * refusal, and the `readback != mv` compare; init runs here only as fixture and
+ * its validation ORs are covered by test_mcdc_ra8_epaper; no `&&` or `||` in the
+ * code under test that this case touches)
  */
 static void test_vcom_commands(void)
 {
@@ -758,6 +800,22 @@ static void test_vcom_commands(void)
  * traffic; and a 4 bpp area wants exactly half the bytes of the 8 bpp
  * path, so a mis-sized buffer must be refused rather than silently
  * truncating the row.
+ *
+ * @par MC/DC:
+ * Two compound decisions on the load path are crossed:
+ * - `if ((serr != k_ra8_ok) || (buf_len != expect))` in
+ *   `internal_ra8_epaper_validate_load` (libs/ra8_hal/src/ra8_epaper.c): the size
+ *   mismatch condition is driven both false (matched buffers accepted) and true (a
+ *   64-byte 8bpp buffer offered for a 32-byte 4bpp area -> invalid_size), while
+ *   `serr != k_ra8_ok` stays false (every area is non-empty). The
+ *   image-bytes-failed arm (empty area -> serr true) is carried by the sibling
+ *   test_mcdc_ra8_epaper (its 0x0-area load case).
+ * - `return ((area->x % grid) == 0U) && ((area->width % grid) == 0U)` in
+ *   `ra8_epaper_area_is_aligned` (libs/ra8_hal/src/ra8_epaper_geom.c): the x
+ *   condition is driven both false (x=8 misaligned -> refused) and true (x=0,
+ *   width=64 -> accepted). The width condition's independent vector is carried by
+ *   the sibling test_area_alignment. (The unknown-waveform refusal exercised at
+ *   the end is a switch default, not a compound boolean.)
  */
 static void test_load_image_depth_and_alignment(void)
 {

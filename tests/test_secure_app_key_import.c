@@ -62,6 +62,12 @@ static void test_kimp_fill_pattern(uint8_t seed)
  * @details The KAK is the secret that keys the import-blob CMAC; it lives in
  * vault storage no Non-Secure path can reach and must be set before any blob
  * can be built or sealed.
+ *
+ * @par MC/DC:
+ * (no compound decision is under test in this case -- it is a provisioning helper
+ * (vault init + KAK set + importer reset) that asserts each step returns ok; no
+ * `&&` or `||` in the code under test that this case touches. The compound decision
+ * in ra8_key_import_resolve is driven by test_mcdc_resolve_slot_match.)
  */
 static void test_kimp_provision(void)
 {

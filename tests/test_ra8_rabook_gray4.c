@@ -176,6 +176,20 @@ static void check(bool cond, const char* name)
 /* output_dims tests */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @test test_dims_no_scale
+ * @par MC/DC:
+ * Decision: `src_w == 0 || src_h == 0 || max_edge == 0`
+ * (3 conditions, function `ra8_rabook_gray4_output_dims`).
+ * - V1 src_w=100, src_h=50,  max_edge=200 -> C1=F,C2=F,C3=F -> F (proceeds, returns (100,50)).
+ * - V2 src_w=0,   src_h=100, max_edge=200 -> C1=T -> T (returns (0,0)).
+ * - V3 src_w=100, src_h=0,   max_edge=200 -> C2=T -> T (returns (0,0)).
+ * - V4 src_w=100, src_h=50,  max_edge=0   -> C3=T -> T (returns (0,0)).
+ * Vectors 1+2 prove C1 independent; 1+3 prove C2; 1+4 prove C3.
+ * N+1 = 4 vectors (this test supplies the all-false control vector V1; the
+ * varied-condition vectors V2/V3/V4 are in sibling tests test_dims_zero_src,
+ * test_dims_zero_src_h, and test_dims_zero_max_edge of this file).
+ */
 static void test_dims_no_scale(void)
 {
   uint16_t ow = 0U;
@@ -184,6 +198,14 @@ static void test_dims_no_scale(void)
   check(ow == k_t_src_small_w && oh == k_t_src_small_h, "dims: no scale when within max_edge");
 }
 
+/**
+ * @test test_dims_exact_edge
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * fit-to-max-edge branch `if (longer <= max_edge)` at its boundary
+ * (longer == max_edge -> no scaling, dimensions pass through unchanged); no
+ * `&&` or `||` in the code under test that this case touches)
+ */
 static void test_dims_exact_edge(void)
 {
   uint16_t ow = 0U;
@@ -192,6 +214,14 @@ static void test_dims_exact_edge(void)
   check(ow == k_t_cap_edge && oh == k_t_fit_h, "dims: exact max_edge passes unchanged");
 }
 
+/**
+ * @test test_dims_scale_landscape
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * fit-to-max-edge branch `if (longer <= max_edge)` on its false arm (a 2x
+ * over-cap landscape source is scaled down to the cap); no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dims_scale_landscape(void)
 {
   uint16_t ow = 0U;
@@ -200,6 +230,14 @@ static void test_dims_scale_landscape(void)
   check(ow == k_t_cap_edge && oh == k_t_fit_h, "dims: 2x landscape scale down");
 }
 
+/**
+ * @test test_dims_scale_portrait
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * fit-to-max-edge scale-down branch for a portrait source (longer edge clamped
+ * to the cap, width stays >= 1); no `&&` or `||` in the code under test that
+ * this case touches)
+ */
 static void test_dims_scale_portrait(void)
 {
   uint16_t ow = 0U;
@@ -209,6 +247,20 @@ static void test_dims_scale_portrait(void)
   check(ow >= 1U, "dims: portrait width at least 1");
 }
 
+/**
+ * @test test_dims_null_out
+ * @par MC/DC:
+ * Decision: `out_w == nullptr || out_h == nullptr`
+ * (2 conditions, function `ra8_rabook_gray4_output_dims`).
+ * - V1 out_w=&ow,  out_h=&oh  -> C1=F,C2=F -> F (proceeds past the guard).
+ * - V2 out_w=NULL, out_h=&oh  -> C1=T -> T (early return, out params untouched).
+ * - V3 out_w=&ow,  out_h=NULL -> C2=T -> T (early return, out params untouched).
+ * Vectors 1+2 prove C1 (out_w) independent; 1+3 prove C2 (out_h).
+ * N+1 = 3 vectors (this test supplies V2 and V3 via its two calls, asserting
+ * ow/oh keep their poison value k_t_dim_poison; the all-false control V1 is
+ * supplied by the sibling dims tests of this file, which all pass non-NULL out
+ * pointers).
+ */
 static void test_dims_null_out(void)
 {
   uint16_t ow = k_t_dim_poison;
@@ -218,6 +270,20 @@ static void test_dims_null_out(void)
   check(ow == k_t_dim_poison && oh == k_t_dim_poison, "dims: null out ptr leaves values unchanged");
 }
 
+/**
+ * @test test_dims_zero_src
+ * @par MC/DC:
+ * Decision: `src_w == 0 || src_h == 0 || max_edge == 0`
+ * (3 conditions, function `ra8_rabook_gray4_output_dims`).
+ * - V1 src_w=100, src_h=50,  max_edge=200 -> C1=F,C2=F,C3=F -> F (proceeds).
+ * - V2 src_w=0,   src_h=100, max_edge=200 -> C1=T -> T (returns (0,0)).
+ * - V3 src_w=100, src_h=0,   max_edge=200 -> C2=T -> T (returns (0,0)).
+ * - V4 src_w=100, src_h=50,  max_edge=0   -> C3=T -> T (returns (0,0)).
+ * Vectors 1+2 prove C1 independent; 1+3 prove C2; 1+4 prove C3.
+ * N+1 = 4 vectors (this test supplies V2, flipping only src_w true; the control
+ * V1 and the other varied vectors V3/V4 are in sibling tests test_dims_no_scale,
+ * test_dims_zero_src_h, and test_dims_zero_max_edge of this file).
+ */
 static void test_dims_zero_src(void)
 {
   uint16_t ow = k_t_size_poison;
@@ -226,6 +292,20 @@ static void test_dims_zero_src(void)
   check(ow == 0U && oh == 0U, "dims: zero src_w yields (0,0)");
 }
 
+/**
+ * @test test_dims_zero_src_h
+ * @par MC/DC:
+ * Decision: `src_w == 0 || src_h == 0 || max_edge == 0`
+ * (3 conditions, function `ra8_rabook_gray4_output_dims`).
+ * - V1 src_w=100, src_h=50,  max_edge=200 -> C1=F,C2=F,C3=F -> F (proceeds).
+ * - V2 src_w=0,   src_h=100, max_edge=200 -> C1=T -> T (returns (0,0)).
+ * - V3 src_w=100, src_h=0,   max_edge=200 -> C2=T -> T (returns (0,0)).
+ * - V4 src_w=100, src_h=50,  max_edge=0   -> C3=T -> T (returns (0,0)).
+ * Vectors 1+2 prove C1 independent; 1+3 prove C2; 1+4 prove C3.
+ * N+1 = 4 vectors (this test supplies V3, flipping only src_h true; the control
+ * V1 and the other varied vectors V2/V4 are in sibling tests test_dims_no_scale,
+ * test_dims_zero_src, and test_dims_zero_max_edge of this file).
+ */
 static void test_dims_zero_src_h(void)
 {
   /*
@@ -239,6 +319,20 @@ static void test_dims_zero_src_h(void)
   check(ow == 0U && oh == 0U, "dims: zero src_h yields (0,0)");
 }
 
+/**
+ * @test test_dims_zero_max_edge
+ * @par MC/DC:
+ * Decision: `src_w == 0 || src_h == 0 || max_edge == 0`
+ * (3 conditions, function `ra8_rabook_gray4_output_dims`).
+ * - V1 src_w=100, src_h=50,  max_edge=200 -> C1=F,C2=F,C3=F -> F (proceeds).
+ * - V2 src_w=0,   src_h=100, max_edge=200 -> C1=T -> T (returns (0,0)).
+ * - V3 src_w=100, src_h=0,   max_edge=200 -> C2=T -> T (returns (0,0)).
+ * - V4 src_w=100, src_h=50,  max_edge=0   -> C3=T -> T (returns (0,0)).
+ * Vectors 1+2 prove C1 independent; 1+3 prove C2; 1+4 prove C3.
+ * N+1 = 4 vectors (this test supplies V4, flipping only max_edge true; the
+ * control V1 and the other varied vectors V2/V3 are in sibling tests
+ * test_dims_no_scale, test_dims_zero_src, and test_dims_zero_src_h of this file).
+ */
 static void test_dims_zero_max_edge(void)
 {
   /*
@@ -252,6 +346,14 @@ static void test_dims_zero_max_edge(void)
   check(ow == 0U && oh == 0U, "dims: zero max_edge yields (0,0)");
 }
 
+/**
+ * @test test_dims_clamp_w_to_1
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * round-to-zero width clamp `if (*out_w == 0) *out_w = 1` via an extreme
+ * portrait aspect (src 1x10000, max_edge 2) whose scaled width rounds to 0; no
+ * `&&` or `||` in the code under test that this case touches)
+ */
 static void test_dims_clamp_w_to_1(void)
 {
   /*
@@ -268,6 +370,14 @@ static void test_dims_clamp_w_to_1(void)
   check(oh == 2U, "dims: degenerate-width height is 2");
 }
 
+/**
+ * @test test_dims_clamp_h_to_1
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * round-to-zero height clamp `if (*out_h == 0) *out_h = 1` via an extreme
+ * landscape aspect (src 10000x1, max_edge 2) whose scaled height rounds to 0;
+ * no `&&` or `||` in the code under test that this case touches)
+ */
 static void test_dims_clamp_h_to_1(void)
 {
   /*
@@ -288,6 +398,14 @@ static void test_dims_clamp_h_to_1(void)
 /* encode tests */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @test test_encode_4px_exact_palette
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the quantise-and-pack path
+ * of `ra8_rabook_gray4_encode` with exact-palette values (v = i*17), covering
+ * the single-condition even/odd nibble split `if ((i & 1U) == 0U)` across four
+ * pixels; no `&&` or `||` in the code under test that this case touches)
+ */
 static void test_encode_4px_exact_palette(void)
 {
   /*
@@ -308,6 +426,13 @@ static void test_encode_4px_exact_palette(void)
   check(out[1] == k_t_pack_2_3, "encode: exact palette 4px -- byte1");
 }
 
+/**
+ * @test test_encode_3px_odd
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the odd-pixel-count encode
+ * path where the trailing byte is high-nibble only and the low nibble stays
+ * zero-padded; no `&&` or `||` in the code under test that this case touches)
+ */
 static void test_encode_3px_odd(void)
 {
   /*
@@ -329,6 +454,13 @@ static void test_encode_3px_odd(void)
   check(out[1] == k_t_pack_15_pad, "encode: odd pixel count -- byte1 (low nibble zero)");
 }
 
+/**
+ * @test test_encode_1px
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-pixel encode
+ * (one high nibble, one output byte); no `&&` or `||` in the code under test
+ * that this case touches)
+ */
 static void test_encode_1px(void)
 {
   static const uint8_t pixel    = 128U;
@@ -345,6 +477,13 @@ static void test_encode_1px(void)
   check(out[0] == k_t_pack_8_pad, "encode: single pixel -- byte (nib=8)");
 }
 
+/**
+ * @test test_encode_0px
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * early-out `if (n_pixels == 0U)` that returns 0 bytes for an empty image; no
+ * `&&` or `||` in the code under test that this case touches)
+ */
 static void test_encode_0px(void)
 {
   uint8_t  dummy[1] = {};
@@ -354,6 +493,13 @@ static void test_encode_0px(void)
   check(err == k_ra8_ok && out_size == 0U, "encode: 0 pixels returns 0 bytes");
 }
 
+/**
+ * @test test_encode_buffer_too_small
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * capacity check `if (out_cap < n_bytes)` returning k_ra8_err_no_mem; no `&&`
+ * or `||` in the code under test that this case touches)
+ */
 static void test_encode_buffer_too_small(void)
 {
   static const uint8_t pixels[] = {0U, 255U, 128U, 64U};
@@ -364,6 +510,14 @@ static void test_encode_buffer_too_small(void)
   check(err == k_ra8_err_no_mem, "encode: buffer too small returns no_mem");
 }
 
+/**
+ * @test test_encode_null_src
+ * @par MC/DC:
+ * (no compound decisions in this test -- a precondition null-guard test that
+ * returns early via the single-condition RA8_CHECK_NULL_PTR(gray_pixels) before
+ * any compound decision; no `&&` or `||` in the code under test that this case
+ * touches)
+ */
 static void test_encode_null_src(void)
 {
   uint8_t   out[4]   = {};
@@ -372,6 +526,14 @@ static void test_encode_null_src(void)
   check(err == k_ra8_err_null_ptr, "encode: null src returns null_ptr");
 }
 
+/**
+ * @test test_encode_max_nib
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition nibble
+ * saturation clamp `if (nib > k_ra8_rabook_gray4_nib_max)` where near-white
+ * pixels all pin to nibble 15; no `&&` or `||` in the code under test that this
+ * case touches)
+ */
 static void test_encode_max_nib(void)
 {
   static const uint8_t pixels[] = {255U, 254U, 253U};
@@ -395,6 +557,13 @@ static void test_encode_max_nib(void)
 /* gray8 encode tests (1 byte per pixel, verbatim copy) */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @test test_gray8_encode_copies
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the verbatim gray8 copy
+ * path of `ra8_rabook_gray8_encode`, which memcpy's w*h bytes with no `&&` or
+ * `||` in the code under test that this case touches)
+ */
 static void test_gray8_encode_copies(void)
 {
   static const uint8_t pixels[] = {0U, 17U, 128U, 255U};
@@ -407,6 +576,15 @@ static void test_gray8_encode_copies(void)
   check(memcmp(out, pixels, sizeof(pixels)) == 0, "gray8 encode: bytes copied verbatim");
 }
 
+/**
+ * @test test_gray8_encode_0px
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * early-out `if (n_bytes == 0U)` that returns 0 bytes for an empty image; the
+ * `err == k_ra8_ok && out_size == 0U` in the assertion is a conjoined
+ * postcondition of that one path, not a decision under test; no `&&` or `||`
+ * in the code under test that this case touches)
+ */
 static void test_gray8_encode_0px(void)
 {
   uint8_t  dummy[1] = {};
@@ -416,6 +594,13 @@ static void test_gray8_encode_0px(void)
   check(err == k_ra8_ok && out_size == 0U, "gray8 encode: 0 pixels returns 0 bytes");
 }
 
+/**
+ * @test test_gray8_encode_buffer_too_small
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * capacity check `if (out_cap < n_bytes)` returning k_ra8_err_no_mem; no `&&`
+ * or `||` in the code under test that this case touches)
+ */
 static void test_gray8_encode_buffer_too_small(void)
 {
   static const uint8_t pixels[] = {0U, 255U, 128U, 64U};
@@ -426,6 +611,14 @@ static void test_gray8_encode_buffer_too_small(void)
   check(err == k_ra8_err_no_mem, "gray8 encode: buffer too small returns no_mem");
 }
 
+/**
+ * @test test_gray8_encode_null_src
+ * @par MC/DC:
+ * (no compound decisions in this test -- a precondition null-guard test that
+ * returns early via the single-condition RA8_CHECK_NULL_PTR(gray_pixels)
+ * before any compound decision; no `&&` or `||` in the code under test that
+ * this case touches)
+ */
 static void test_gray8_encode_null_src(void)
 {
   uint8_t   out[4]   = {};
@@ -438,6 +631,27 @@ static void test_gray8_encode_null_src(void)
 /* downscale tests */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @test test_downscale_identity
+ * @par MC/DC:
+ * Decision A: `dst_w == 0 || dst_h == 0`
+ * (2 conditions, function `ra8_rabook_gray4_downscale`).
+ * - V1 dst_w=2, dst_h=2 -> C1=F,C2=F -> F (proceeds).
+ * - V2 dst_w=0, dst_h=1 -> C1=T -> T (invalid_arg).
+ * - V3 dst_w=1, dst_h=0 -> C2=T -> T (invalid_arg).
+ * Vectors 1+2 prove C1 (dst_w) independent; 1+3 prove C2 (dst_h). N+1 = 3.
+ * Decision B: `src_w == 0 || src_h == 0` (the source guard, reached only past
+ * decision A; 2 conditions, same function).
+ * - V1 src_w=2, src_h=2 -> C1=F,C2=F -> F (samples the bilinear kernel).
+ * - V2 src_w=0, src_h=2 -> C1=T -> T (ok, dst zeroed).
+ * - V3 src_w=2, src_h=0 -> C2=T -> T (ok, dst zeroed).
+ * Vectors 1+2 prove C1 (src_w) independent; 1+3 prove C2 (src_h). N+1 = 3.
+ * This test supplies the all-false control vector V1 for BOTH decisions (dst
+ * 2x2, src 2x2 -> proceeds and resamples identity). The varied vectors are in
+ * sibling tests: test_downscale_zero_dst / test_downscale_zero_dst_h complete
+ * decision A, and test_downscale_zero_src / test_downscale_zero_src_h complete
+ * decision B.
+ */
 static void test_downscale_identity(void)
 {
   static const uint8_t src[]  = {10U, 20U, 30U, 40U};
@@ -449,6 +663,14 @@ static void test_downscale_identity(void)
         "downscale: identity 2x2 -- pixels unchanged");
 }
 
+/**
+ * @test test_downscale_2to1_horizontal
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the bilinear resample
+ * sampling path (4x1 -> 2x1, left-aligned sample grid) with valid non-zero dst
+ * and src, so both compound guards evaluate all-false and are not varied here;
+ * no `&&` or `||` in the code under test that this case drives)
+ */
 static void test_downscale_2to1_horizontal(void)
 {
   /*
@@ -464,6 +686,14 @@ static void test_downscale_2to1_horizontal(void)
   check(dst[0] == 0U && dst[1] == k_t_px_sample2, "downscale: 4x1->2x1 -- sampled at x=0,2");
 }
 
+/**
+ * @test test_downscale_null_ptr
+ * @par MC/DC:
+ * (no compound decisions in this test -- two precondition null-guard calls that
+ * return early via the separate single-condition RA8_CHECK_NULL_PTR(src) and
+ * RA8_CHECK_NULL_PTR(dst) checks before any compound decision; no `&&` or `||`
+ * in the code under test that this case touches)
+ */
 static void test_downscale_null_ptr(void)
 {
   uint8_t buf[4] = {};
@@ -473,6 +703,19 @@ static void test_downscale_null_ptr(void)
         "downscale: null dst");
 }
 
+/**
+ * @test test_downscale_zero_dst
+ * @par MC/DC:
+ * Decision: `dst_w == 0 || dst_h == 0`
+ * (2 conditions, function `ra8_rabook_gray4_downscale`).
+ * - V1 dst_w=2, dst_h=2 -> C1=F,C2=F -> F (proceeds).
+ * - V2 dst_w=0, dst_h=1 -> C1=T -> T (returns k_ra8_err_invalid_arg).
+ * - V3 dst_w=1, dst_h=0 -> C2=T -> T (returns k_ra8_err_invalid_arg).
+ * Vectors 1+2 prove C1 (dst_w) independent; 1+3 prove C2 (dst_h).
+ * N+1 = 3 vectors (this test supplies V2, flipping only dst_w true; the control
+ * V1 is in test_downscale_identity and V3 is in test_downscale_zero_dst_h of
+ * this file).
+ */
 static void test_downscale_zero_dst(void)
 {
   static const uint8_t src[]  = {1U, 2U, 3U, 4U};
@@ -481,6 +724,20 @@ static void test_downscale_zero_dst(void)
   check(err == k_ra8_err_invalid_arg, "downscale: dst_w=0 returns invalid_arg");
 }
 
+/**
+ * @test test_downscale_zero_src
+ * @par MC/DC:
+ * Decision: `src_w == 0 || src_h == 0`
+ * (2 conditions, function `ra8_rabook_gray4_downscale`; the source guard,
+ * reached only with a valid non-zero dst).
+ * - V1 src_w=2, src_h=2 -> C1=F,C2=F -> F (samples).
+ * - V2 src_w=0, src_h=2 -> C1=T -> T (returns k_ra8_ok, dst zeroed).
+ * - V3 src_w=2, src_h=0 -> C2=T -> T (returns k_ra8_ok, dst zeroed).
+ * Vectors 1+2 prove C1 (src_w) independent; 1+3 prove C2 (src_h).
+ * N+1 = 3 vectors (this test supplies V2, flipping only src_w true; the control
+ * V1 is in test_downscale_identity and V3 is in test_downscale_zero_src_h of
+ * this file).
+ */
 static void test_downscale_zero_src(void)
 {
   static const uint8_t src[]  = {1U};
@@ -491,6 +748,19 @@ static void test_downscale_zero_src(void)
   check(dst[0] == 0U && dst[1] == 0U, "downscale: zero src_w zeroes dst");
 }
 
+/**
+ * @test test_downscale_zero_dst_h
+ * @par MC/DC:
+ * Decision: `dst_w == 0 || dst_h == 0`
+ * (2 conditions, function `ra8_rabook_gray4_downscale`).
+ * - V1 dst_w=2, dst_h=2 -> C1=F,C2=F -> F (proceeds).
+ * - V2 dst_w=0, dst_h=1 -> C1=T -> T (returns k_ra8_err_invalid_arg).
+ * - V3 dst_w=1, dst_h=0 -> C2=T -> T (returns k_ra8_err_invalid_arg).
+ * Vectors 1+2 prove C1 (dst_w) independent; 1+3 prove C2 (dst_h).
+ * N+1 = 3 vectors (this test supplies V3, flipping only dst_h true; the control
+ * V1 is in test_downscale_identity and V2 is in test_downscale_zero_dst of this
+ * file).
+ */
 static void test_downscale_zero_dst_h(void)
 {
   /*
@@ -503,6 +773,20 @@ static void test_downscale_zero_dst_h(void)
   check(err == k_ra8_err_invalid_arg, "downscale: dst_h=0 returns invalid_arg");
 }
 
+/**
+ * @test test_downscale_zero_src_h
+ * @par MC/DC:
+ * Decision: `src_w == 0 || src_h == 0`
+ * (2 conditions, function `ra8_rabook_gray4_downscale`; the source guard,
+ * reached only with a valid non-zero dst).
+ * - V1 src_w=2, src_h=2 -> C1=F,C2=F -> F (samples).
+ * - V2 src_w=0, src_h=2 -> C1=T -> T (returns k_ra8_ok, dst zeroed).
+ * - V3 src_w=2, src_h=0 -> C2=T -> T (returns k_ra8_ok, dst zeroed).
+ * Vectors 1+2 prove C1 (src_w) independent; 1+3 prove C2 (src_h).
+ * N+1 = 3 vectors (this test supplies V3, flipping only src_h true; the control
+ * V1 is in test_downscale_identity and V2 is in test_downscale_zero_src of this
+ * file).
+ */
 static void test_downscale_zero_src_h(void)
 {
   /*

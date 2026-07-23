@@ -218,7 +218,19 @@ static void ec_seed_record(uint16_t mv)
  * =============================================================================
  */
 
-/** @test Serialise then deserialise reproduces the record exactly. */
+/**
+ * @test test_record_roundtrip -- serialise then deserialise reproduces the
+ *       record exactly.
+ *
+ * @par MC/DC:
+ * Decision: `(m[0] == 'E') && (m[1] == 'V') && (m[2] == 'C') && (m[3] == 'M')`
+ * (4 conditions, AND chain, function `internal_ra8_epd_cal_magic_ok`). This
+ * test round-trips one valid record, so it drives only the control leg:
+ * - V1 blob magic = 'E','V','C','M' -> all four conditions T -> T (record
+ *   parses; deserialize returns k_ra8_ok).
+ * Per-condition independent influence (V2..V5, one magic byte varied each) is
+ * provided by `test_magic_mcdc`. N+1 = 5 vectors for N=4.
+ */
 static void test_record_roundtrip(void)
 {
   TEST_BEGIN("epd_cal: record serialize/deserialize round-trip");
@@ -235,7 +247,16 @@ static void test_record_roundtrip(void)
   TEST_END("epd_cal: record serialize/deserialize round-trip");
 }
 
-/** @test Codec argument and capacity validation. */
+/**
+ * @test test_record_arg_validation -- codec argument and capacity validation.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- it drives the serialize /
+ * deserialize null-pointer, buffer-size and zero-VCOM guards, each a single
+ * condition; every deserialize call fails at its null / size guard before the
+ * `internal_ra8_epd_cal_magic_ok` `&&` chain is reached, so no `&&` or `||`
+ * on the path this case takes is evaluated)
+ */
 static void test_record_arg_validation(void)
 {
   TEST_BEGIN("epd_cal: codec argument validation");
@@ -259,7 +280,21 @@ static void test_record_arg_validation(void)
   TEST_END("epd_cal: codec argument validation");
 }
 
-/** @test Blank storage, wrong schema, wrong length and bad CRC are distinct. */
+/**
+ * @test test_record_integrity_and_versioning -- blank storage, wrong schema,
+ *       wrong length and bad CRC are distinct.
+ *
+ * @par MC/DC:
+ * Decision: `(m[0] == 'E') && (m[1] == 'V') && (m[2] == 'C') && (m[3] == 'M')`
+ * (4 conditions, AND chain, function `internal_ra8_epd_cal_magic_ok`).
+ * - V1 magic = 'E','V','C','M' (the good / newer / badlen / corrupt blobs,
+ *   whose magic is intact) -> all four T -> T (magic accepted; deserialize
+ *   then rejects on schema / length / CRC further down).
+ * - V2 blank 0xFF blob -> m[0] != 'E' -> C1=F, short-circuit -> F
+ *   (k_ra8_err_not_found).
+ * V1+V2 prove magic byte 0 independently affects the outcome; byte 1..3
+ * independence (V3..V5) is in `test_magic_mcdc`. N+1 = 5 vectors for N=4.
+ */
 static void test_record_integrity_and_versioning(void)
 {
   TEST_BEGIN("epd_cal: record integrity + schema versioning");
@@ -402,7 +437,20 @@ static void test_resolve_limits_mcdc(void)
  * =============================================================================
  */
 
-/** @test The controller's own value wins when it is in range. */
+/**
+ * @test test_resolve_prefers_panel -- the controller's own value wins when it
+ *       is in range.
+ *
+ * @par MC/DC:
+ * Decision: `if ((mv < limits->min_mv) || (mv > limits->max_mv))` (2
+ * conditions, OR, function `ra8_epd_cal_vcom_in_range`), reached when the
+ * controller value 1530 mV is range-checked before adoption.
+ * - V1 mv=1530, window 200..4000 -> F||F -> F (in range; controller value is
+ *   accepted, source = panel).
+ * This test drives only the in-range control vector; the out-of-range legs V2
+ * (low-edge) and V3 (high-edge) are in `test_vcom_range_mcdc`. N+1 = 3 vectors
+ * for N=2.
+ */
 static void test_resolve_prefers_panel(void)
 {
   TEST_BEGIN("epd_cal: resolve prefers the controller's own VCOM");
@@ -422,7 +470,22 @@ static void test_resolve_prefers_panel(void)
   TEST_END("epd_cal: resolve prefers the controller's own VCOM");
 }
 
-/** @test With no controller value, the per-device record is used. */
+/**
+ * @test test_resolve_falls_back_to_record -- with no controller value, the
+ *       per-device record is used.
+ *
+ * @par MC/DC:
+ * Decision: `if ((mv < limits->min_mv) || (mv > limits->max_mv))` (2
+ * conditions, OR, function `ra8_epd_cal_vcom_in_range`).
+ * - V1 mv=1670 (the stored record), window 200..4000 -> F||F -> F (in range;
+ *   record adopted, source = record).
+ * - V3 mv=0xFFFF (leg-3 controller value), window 200..4000 -> F||T -> T (out
+ *   of range; the controller value is ignored and resolve falls to the
+ *   record).
+ * V1+V3 prove the high-edge condition `mv > max_mv` independently affects the
+ * outcome; the low-edge case V2 is in `test_vcom_range_mcdc`. N+1 = 3 vectors
+ * for N=2.
+ */
 static void test_resolve_falls_back_to_record(void)
 {
   TEST_BEGIN("epd_cal: resolve falls back to the per-device record");
@@ -462,7 +525,21 @@ static void test_resolve_falls_back_to_record(void)
   TEST_END("epd_cal: resolve falls back to the per-device record");
 }
 
-/** @test With no controller value and no record, provisioning is used. */
+/**
+ * @test test_resolve_falls_back_to_provisioned -- with no controller value and
+ *       no record, provisioning is used.
+ *
+ * @par MC/DC:
+ * Decision: `if ((mv < limits->min_mv) || (mv > limits->max_mv))` (2
+ * conditions, OR, function `ra8_epd_cal_vcom_in_range`).
+ * - V1 mv=1450 (leg-1 operator value), window 200..4000 -> F||F -> F (in
+ *   range; provisioned value adopted, source = provisioned).
+ * - V2 mv=1530 (leg-3 stored record), window 1531..4000 -> T||F -> T (out of
+ *   range; the stored value is ignored and provisioning wins).
+ * V1+V2 prove the low-edge condition `mv < min_mv` independently affects the
+ * outcome; the high-edge case V3 is in `test_vcom_range_mcdc`. N+1 = 3 vectors
+ * for N=2.
+ */
 static void test_resolve_falls_back_to_provisioned(void)
 {
   TEST_BEGIN("epd_cal: resolve falls back to the provisioned value");
@@ -504,7 +581,24 @@ static void test_resolve_falls_back_to_provisioned(void)
   TEST_END("epd_cal: resolve falls back to the provisioned value");
 }
 
-/** @test Nothing trusted anywhere: resolve fails and apply refuses. */
+/**
+ * @test test_resolve_fail_safe -- nothing trusted anywhere: resolve fails and
+ *       apply refuses.
+ *
+ * @par MC/DC:
+ * Decision: `if ((mv < limits->min_mv) || (mv > limits->max_mv))` (2
+ * conditions, OR, function `ra8_epd_cal_vcom_in_range`). Every source is
+ * driven out of range so resolve returns k_ra8_err_not_found:
+ * - V3 mv=0xFFFF (controller), window 1531..4000 -> F||T -> T (high-edge
+ *   forces out-of-range).
+ * - V2 mv=1530 (stored record) and mv=199 (operator), window 1531..4000 ->
+ *   T||F -> T (low-edge forces out-of-range).
+ * V2+V3 exercise each OR condition forcing the decision true; the in-range
+ * control V1 (F||F) is in `test_vcom_range_mcdc`. This test also drives the
+ * `cfg->has_provisioned && ra8_epd_cal_vcom_in_range(...)` guard at
+ * has_provisioned=false (C1=F, short-circuit -> F) and at has_provisioned=true
+ * with an out-of-range operator value (T&&F -> F). N+1 = 3 vectors for N=2.
+ */
 static void test_resolve_fail_safe(void)
 {
   TEST_BEGIN("epd_cal: fail-safe when no source is trustworthy");
@@ -549,7 +643,16 @@ static void test_resolve_fail_safe(void)
   TEST_END("epd_cal: fail-safe when no source is trustworthy");
 }
 
-/** @test Null-argument handling on the resolution entry points. */
+/**
+ * @test test_resolve_null_args -- null-argument handling on the resolution
+ *       entry points.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this test -- every resolve / apply /
+ * provision call passes a null pointer and returns at its RA8_CHECK_NULL_PTR
+ * guard, a single condition, before any `&&` or `||` decision on the path is
+ * reached)
+ */
 static void test_resolve_null_args(void)
 {
   TEST_BEGIN("epd_cal: resolve / apply / provision null arguments");
@@ -569,7 +672,23 @@ static void test_resolve_null_args(void)
  * =============================================================================
  */
 
-/** @test A resolved value is programmed, and every refusal leg holds. */
+/**
+ * @test test_apply_paths -- a resolved value is programmed, and every refusal
+ *       leg holds.
+ *
+ * @par MC/DC:
+ * Decision: `if ((mv < limits->min_mv) || (mv > limits->max_mv))` (2
+ * conditions, OR, function `ra8_epd_cal_vcom_in_range`), the point-of-use
+ * re-check inside `ra8_epd_cal_apply`.
+ * - V1 mv=1530, window 200..4000 -> F||F -> F (in range; the panel is
+ *   programmed, apply returns k_ra8_ok).
+ * - V3 mv=4001 (result tampered between resolve and apply), window 200..4000
+ *   -> F||T -> T (out of range; apply returns k_ra8_err_range_check_failed).
+ * V1+V3 prove `mv > max_mv` independently affects the outcome; the low-edge V2
+ * is in `test_vcom_range_mcdc`. The remaining apply refusal legs (source==none,
+ * set/get unbound, set/readback fault) are single-condition guards. N+1 = 3
+ * vectors for N=2.
+ */
 static void test_apply_paths(void)
 {
   TEST_BEGIN("epd_cal: apply programs the panel and refuses bad input");
@@ -673,7 +792,21 @@ static void test_apply_readback_guard(void)
   TEST_END("epd_cal: apply refuses when the readback disagrees");
 }
 
-/** @test Provisioning writes a record that a later resolve accepts. */
+/**
+ * @test test_provision_roundtrip -- provisioning writes a record that a later
+ *       resolve accepts.
+ *
+ * @par MC/DC:
+ * Decision: `if ((mv < limits->min_mv) || (mv > limits->max_mv))` (2
+ * conditions, OR, function `ra8_epd_cal_vcom_in_range`), reached both when
+ * provisioning validates 1450 mV and when the round-trip resolve re-checks the
+ * stored value.
+ * - V1 mv=1450, window 200..4000 -> F||F -> F (in range; the record is written
+ *   and later adopted, source = record).
+ * This test drives only the in-range control vector; the out-of-range legs V2
+ * (low-edge) and V3 (high-edge) are in `test_vcom_range_mcdc`. N+1 = 3 vectors
+ * for N=2.
+ */
 static void test_provision_roundtrip(void)
 {
   TEST_BEGIN("epd_cal: provision -> resolve round-trip");
@@ -692,7 +825,22 @@ static void test_provision_roundtrip(void)
   TEST_END("epd_cal: provision -> resolve round-trip");
 }
 
-/** @test Provisioning refuses out-of-range values and unbound stores. */
+/**
+ * @test test_provision_refusals -- provisioning refuses out-of-range values and
+ *       unbound stores.
+ *
+ * @par MC/DC:
+ * Decision: `if ((mv < limits->min_mv) || (mv > limits->max_mv))` (2
+ * conditions, OR, function `ra8_epd_cal_vcom_in_range`), the range gate in
+ * `ra8_epd_cal_provision`.
+ * - V1 mv=1530 (the write-fault leg), window 200..4000 -> F||F -> F (in range;
+ *   provisioning proceeds to the store write).
+ * - V2 mv=199 and mv=0, window 200..4000 -> T||F -> T (low-edge; refused with
+ *   k_ra8_err_range_check_failed).
+ * - V3 mv=4001, window 200..4000 -> F||T -> T (high-edge; refused).
+ * V1+V2 prove `mv < min_mv` independent; V1+V3 prove `mv > max_mv` independent.
+ * N+1 = 3 vectors for N=2.
+ */
 static void test_provision_refusals(void)
 {
   TEST_BEGIN("epd_cal: provision refusal legs");
@@ -716,7 +864,22 @@ static void test_provision_refusals(void)
   TEST_END("epd_cal: provision refusal legs");
 }
 
-/** @test A faulting store read is treated as "no record", not as a value. */
+/**
+ * @test test_store_read_fault -- a faulting store read is treated as "no
+ *       record", not as a value.
+ *
+ * @par MC/DC:
+ * Decision: `if (cfg->has_provisioned && ra8_epd_cal_vcom_in_range(
+ * cfg->provisioned_mv, &cfg->limits))` (2 conditions, AND, function
+ * `ra8_epd_cal_resolve`), reached after the faulting (leg 1) or unbound
+ * (leg 2) store read makes the record source fall through.
+ * - V1 has_provisioned=true, provisioned=1450 in window 200..4000 -> T&&T -> T
+ *   (operator value adopted, source = provisioned).
+ * This test drives only the both-true control vector; C1 independence
+ * (has_provisioned=false) and the C2=false leg are in `test_resolve_fail_safe`,
+ * and the nested `ra8_epd_cal_vcom_in_range` OR is covered by
+ * `test_vcom_range_mcdc`. N+1 = 3 vectors for N=2.
+ */
 static void test_store_read_fault(void)
 {
   TEST_BEGIN("epd_cal: store read fault falls through");

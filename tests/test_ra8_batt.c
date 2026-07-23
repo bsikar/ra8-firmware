@@ -44,6 +44,17 @@ static ra8_batt_nag_t upd(ra8_batt_monitor_t* mon, uint8_t soc, bool charging)
 /**
  * @test test_batt_basic_edges
  * Each band warns once on the descent into it and stays quiet below.
+ *
+ * @par MC/DC:
+ * Crosses the two raise ANDs `(soc <= threshold) && !raised` and the two re-arm
+ * ORs `charging || (soc > rearm)` in `ra8_batt_update()` across a descending SOC
+ * sweep (charging held false): soc 72 -> 20 -> 18 -> 10 -> 8. It observes the
+ * raise-low AND flip (warn at 20 with both conditions true, quiet at 18 once
+ * !low_raised is false) and the raise-critical AND flip (critical at 10, quiet at
+ * 8). The minimal N+1 independence vector sets -- including the charging arm of
+ * each re-arm OR, never true here -- are carried by the dedicated siblings
+ * test_mcdc_raise_low, test_mcdc_raise_critical, test_mcdc_rearm_low and
+ * test_mcdc_rearm_critical.
  */
 static void test_batt_basic_edges(void)
 {
@@ -61,6 +72,14 @@ static void test_batt_basic_edges(void)
 /**
  * @test test_batt_rearm_on_rise
  * A band re-warns only after SOC recovers past its hysteresis margin.
+ *
+ * @par MC/DC:
+ * Crosses the re-arm-low OR `charging || (soc > k_ra8_batt_low_pct +
+ * k_ra8_batt_rearm_margin)` in `ra8_batt_update()` with charging held false, so
+ * the SOC-recovery condition is exercised both false (soc=22, below the margin,
+ * no re-arm) and true (soc=24, past the margin, re-arm), observed by whether low
+ * can warn again. The charging arm's independent vector and the full N+1 sets are
+ * carried by the siblings test_mcdc_rearm_low and test_mcdc_raise_low.
  */
 static void test_batt_rearm_on_rise(void)
 {
@@ -78,6 +97,14 @@ static void test_batt_rearm_on_rise(void)
 /**
  * @test test_batt_charging
  * Charging suppresses warnings and re-arms the bands for the next unplug.
+ *
+ * @par MC/DC:
+ * Crosses both re-arm ORs `charging || (soc > rearm)` in `ra8_batt_update()` with
+ * the charging arm true (soc=5, charging=true -> both bands re-arm and the
+ * !charging raise block is skipped), then unplugs (charging=false) to re-warn.
+ * This supplies the charging-true arm the descending-SOC tests cannot; the full
+ * N+1 independence sets are carried by the siblings test_mcdc_rearm_low,
+ * test_mcdc_rearm_critical, test_mcdc_raise_low and test_mcdc_raise_critical.
  */
 static void test_batt_charging(void)
 {
@@ -93,6 +120,14 @@ static void test_batt_charging(void)
 /**
  * @test test_batt_clamp_and_str
  * Out-of-range SOC is clamped; the nag label map covers every value.
+ *
+ * @par MC/DC:
+ * The SOC clamp is a single-condition ternary and `ra8_batt_nag_str` is a switch
+ * (neither is a compound boolean). The compound decisions crossed are the raise
+ * ANDs `(soc <= threshold) && !raised` in `ra8_batt_update()`, exercised at the
+ * clamped extremes (soc 200->100 stays quiet, soc 0 raises both low and
+ * critical). The N+1 independence vector sets are carried by the siblings
+ * test_mcdc_raise_low and test_mcdc_raise_critical.
  */
 static void test_batt_clamp_and_str(void)
 {
@@ -112,6 +147,11 @@ static void test_batt_clamp_and_str(void)
 /**
  * @test test_batt_nullguards
  * Both entry points reject null pointers without writing through them.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- both calls return at the
+ * RA8_CHECK_NULL_PTR guard, before the `(soc <= low) && !low_raised` raise
+ * decision; no `&&` or `||` in the code under test that this case touches)
  */
 static void test_batt_nullguards(void)
 {

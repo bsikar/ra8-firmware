@@ -120,6 +120,22 @@ static ra8_epaper_cfg_t make_cfg(void)
  * Also covers the two argument guards and the short-response refusal, and
  * asserts that a non-printable version byte is dropped to NUL rather than
  * reaching a log as a control character.
+ *
+ * @par MC/DC:
+ * Decision: `(byte >= 0x20) && (byte < 0x7F)` -- the printable-ASCII test applied
+ * to each version byte in `internal_ra8_epaper_unpack_ver_word`
+ * (libs/ra8_hal/src/ra8_epaper_devinfo.c), reached through
+ * `ra8_epaper_decode_dev_info`. This test drives it via the version words:
+ * - control: 'M' (0x4D) -> C1 (>= 0x20) true, C2 (< 0x7F) true -> char kept
+ *   (lut_version decodes to "M641").
+ * - vary C1: the firmware-slot control byte 0x01 -> C1 false shorts -> char
+ *   dropped to NUL (asserted: fw_version == "").
+ * C1's independent influence is proven by these two. C2 (the < 0x7F upper bound)
+ * holds for every byte in this fixture, so its independent vector (a byte >= 0x7F)
+ * is not exercised here -- and no sibling drives it either (test_read_dev_info_legs
+ * in test_ra8_epaper_cov.c uses only 0x00 and 'A'), a documented MC/DC gap on the
+ * upper-bound condition. (The decode's null guards, the short-response count check
+ * and the per-word index dispatch are all single-condition.)
  */
 static void test_decode_dev_info_layout(void)
 {

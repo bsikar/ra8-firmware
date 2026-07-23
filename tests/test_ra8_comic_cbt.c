@@ -489,6 +489,13 @@ static void test_cbt_wrapped_bombs_and_guards(void)
  * embedded tar walker is not live (`tar.live == 0`) rather than read
  * uninitialised walker state -- the guard that fires when a probe misclassifies
  * a container or a caller reuses a comic across a failed open.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it drives the single-condition
+ * `!c->tar.live` dead-walker guard in both entry points: ra8_comic_cbt_open and
+ * ra8_comic_cbt_extract each return k_ra8_err_invalid_state with tar.live == 0
+ * (extract also zeroing `*got` before the guard). The RA8_CHECK_NULL_PTR argument
+ * checks are single-condition; no `&&` or `||` decision is reached)
  */
 static void test_cbt_dead_walker_guards(void)
 {

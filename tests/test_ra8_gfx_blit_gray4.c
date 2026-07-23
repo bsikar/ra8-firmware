@@ -118,6 +118,15 @@ static void assert_zoom2_block(int32_t sx, int32_t sy, uint8_t g)
   }
 }
 
+/**
+ * @test test_blit_gray4_zoom2
+ * @par MC/DC:
+ * No compound decision is varied here -- this verifies integer 2x zoom (each
+ * source pixel replicated into a 2x2 output block). The one compound guard on
+ * the path, `(src_w <= 0) || (src_h <= 0)` in ra8_gfx_blit_gray4_zoom, is
+ * traversed both-false as the control vector; its N+1 MC/DC vectors live in
+ * test_mcdc_blit_gray4_dims.
+ */
 static void test_blit_gray4_zoom2(void)
 {
   TEST_BEGIN("gray4 2x zoom replicates each pixel into a 2x2 block");

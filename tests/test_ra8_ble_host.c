@@ -345,6 +345,12 @@ static uint16_t setup_notify_char(uint8_t* buf)
   return chr;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_value_and_notify_paths(void)
 {
   TEST_BEGIN("ble_host gatt set_value + notify");

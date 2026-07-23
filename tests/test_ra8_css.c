@@ -69,6 +69,14 @@ static ra8_css_style_t no_inline(void)
 /**
  * @test test_parse_props
  * @brief Each v1 property parses into the right set bit + value.
+ *
+ * @par MC/DC:
+ * (no MC/DC vectors contributed here -- this case parses one rule and asserts
+ * the resulting set / style bits and align value. The font-weight / font-style /
+ * text-decoration OR-chains in priv_apply_emphasis are each driven at a single
+ * true assignment (first matching term), and the text-align ci_eq chain at
+ * "justify"; none is varied for independence here. The text-decoration
+ * property-name OR is proven independent in test_decoration_line_alias.)
  */
 static void test_parse_props(void)
 {
@@ -94,6 +102,14 @@ static void test_parse_props(void)
 /**
  * @test test_parse_normal_resets
  * @brief `normal` / `none` declare the property but clear the value bit.
+ *
+ * @par MC/DC:
+ * (no MC/DC vectors contributed here -- `normal` / `none` drive the FALSE arm
+ * of the font-weight / font-style / text-decoration OR-chains in
+ * priv_apply_emphasis (every ci_eq term false -> on == false), so each property
+ * is declared but its style bit cleared. Independence for those decisions is
+ * not shown here; the text-decoration alias OR is covered by
+ * test_decoration_line_alias.)
  */
 static void test_parse_normal_resets(void)
 {
@@ -111,6 +127,13 @@ static void test_parse_normal_resets(void)
 /**
  * @test test_parse_selectors
  * @brief Universal / class / id selectors, comma groups, comment skip.
+ *
+ * @par MC/DC:
+ * (no MC/DC vectors contributed here -- this case asserts the parsed rule shape
+ * (rule_count, sel_tag, class_len, id_len) for universal / class / id selectors,
+ * comma groups and a comment. The stylesheet scanner's comment / block
+ * compounds in ra8_css_parse are held at a single truth assignment and are not
+ * varied for independence by this case.)
  */
 static void test_parse_selectors(void)
 {
@@ -135,6 +158,12 @@ static void test_parse_selectors(void)
  * @test test_parse_unsupported_skipped
  * @brief Multi-class / unknown-tag selectors are dropped, not errored. (Descendant
  *        selectors ARE supported now -- see test_descendant.)
+ *
+ * @par MC/DC:
+ * (no MC/DC vectors contributed here -- this case asserts that a multi-class
+ * and an unknown-tag selector are dropped while a valid `h1` rule survives
+ * (rule_count == 1). The selector-validity decisions in the block parser are
+ * not varied for independence by this case.)
  */
 static void test_parse_unsupported_skipped(void)
 {
@@ -150,6 +179,13 @@ static void test_parse_unsupported_skipped(void)
 /**
  * @test test_inline
  * @brief Inline `style=""` parses without a selector or braces.
+ *
+ * @par MC/DC:
+ * (no MC/DC vectors contributed here -- an inline `style` string parses without
+ * a selector; this case asserts font-weight:bold sets the bold set/style bits
+ * and text-align:center sets align. The font-weight OR-chain in
+ * priv_apply_emphasis is held at its first-term-true assignment and the
+ * text-align ci_eq chain at "center"; neither is varied for independence here.)
  */
 static void test_inline(void)
 {
@@ -197,6 +233,17 @@ static void test_match_mcdc(void)
 /**
  * @test test_match_class_universal_type
  * @brief Class-list membership, universal-always, type-by-tag.
+ *
+ * @par MC/DC:
+ * Decision (class-constraint check in ra8_css_rule_matches):
+ * `(el->class_str == NULL) || !priv_class_list_has(list, name)` (2 conditions, OR).
+ *  - V1 el class="intro note last", rule=.note -> C1=F, C2=F -> F (rule matches; "note" present).
+ *  - V2 el class="introduction",    rule=.note -> C1=F, C2=T -> T (no match; substring only).
+ * V1 vs V2 prove the membership condition (C2) independent (C1 held false).
+ * C1's true arm (a `.class` rule against an element with no class_str) is not
+ * varied here; the id-constraint 3-AND is proven in test_match_mcdc and the
+ * NULL entry guard in test_null_guards. Universal (no constraints -> always
+ * match) and type-by-tag matching are also exercised.
  */
 static void test_match_class_universal_type(void)
 {
@@ -219,6 +266,14 @@ static void test_match_class_universal_type(void)
 /**
  * @test test_cascade_specificity
  * @brief id > class > type > universal > inherited; inline beats all.
+ *
+ * @par MC/DC:
+ * (no independent MC/DC vectors contributed here -- this case checks the
+ * specificity ordering id > class > type > universal and inline-wins by
+ * asserting the resolved align. The winner-selection compound in priv_resolve,
+ * `(!have) || (rank > best_rank) || ((rank == best_rank) && (order >= best_order))`,
+ * has its independence vectors in test_resolve_winner_mcdc; the per-rule skip
+ * guard in test_resolve_skip_mcdc.)
  */
 static void test_cascade_specificity(void)
 {
@@ -246,6 +301,13 @@ static void test_cascade_specificity(void)
 /**
  * @test test_cascade_source_order
  * @brief Equal-specificity ties go to the later rule.
+ *
+ * @par MC/DC:
+ * (no independent MC/DC vectors contributed here -- two equal-specificity `p`
+ * rules resolve to the later one, exercising the order-tiebreak arm
+ * `(rank == best_rank) && (order >= best_order)` of the priv_resolve winner
+ * decision at a single truth assignment. Its independence vectors are proven in
+ * test_resolve_winner_mcdc.)
  */
 static void test_cascade_source_order(void)
 {
@@ -260,6 +322,16 @@ static void test_cascade_source_order(void)
 /**
  * @test test_cascade_inheritance
  * @brief Inheritable props flow from parent; a child rule overrides; normal resets.
+ *
+ * @par MC/DC:
+ * Decision (cascade entry guard in ra8_css_cascade_ctx):
+ * `(sheet == NULL) || (el == NULL)` (2 conditions, OR).
+ *  - This case passes sheet != NULL and el != NULL -> C1=F, C2=F -> F: the
+ *    cascade runs (control vector). Both true arms (either pointer NULL ->
+ *    return the inherited style) are proven independent in test_cascade_null_mcdc.
+ * The inheritance asserted here (the `em` rule turns bold OFF while italic stays
+ * inherited ON) is resolved through priv_resolve, whose skip and winner
+ * compounds are proven in test_resolve_skip_mcdc / test_resolve_winner_mcdc.
  */
 static void test_cascade_inheritance(void)
 {
@@ -312,6 +384,13 @@ static void test_cascade_null_mcdc(void)
 /**
  * @test test_parse_color
  * @brief `color` parses #rrggbb / #rgb / named keywords; bad values are ignored.
+ *
+ * @par MC/DC:
+ * (no MC/DC vectors contributed here -- this case asserts colour parsing for
+ * #rrggbb / #rgb / a named keyword (navy) / an invalid keyword. The one
+ * compound in priv_parse_color, `ci_eq("gray") || ci_eq("grey")`, is not reached
+ * by these inputs; the NULL / zero-length guard is documented unreachable
+ * (mcdc-deactivated) in the source.)
  */
 static void test_parse_color(void)
 {
@@ -332,6 +411,13 @@ static void test_parse_color(void)
 /**
  * @test test_cascade_color
  * @brief Colour cascades by specificity and inherits parent -> child.
+ *
+ * @par MC/DC:
+ * (no independent MC/DC vectors contributed here -- `.hi` (class) beats `p`
+ * (type) for colour, and a child with no colour rule inherits the parent's
+ * colour. Both outcomes flow from the priv_resolve skip and winner compounds,
+ * whose independence vectors are proven in test_resolve_skip_mcdc and
+ * test_resolve_winner_mcdc.)
  */
 static void test_cascade_color(void)
 {
@@ -442,6 +528,12 @@ static void test_decoration_line_alias(void)
 /**
  * @test test_cascade_fontsize
  * @brief font-size cascades by specificity (class beats type); raw value carried.
+ *
+ * @par MC/DC:
+ * (no independent MC/DC vectors contributed here -- `.big` (class) beats `p`
+ * (type) for font-size and the raw value / unit are carried through. The
+ * specificity choice is made by the priv_resolve winner compound, proven in
+ * test_resolve_winner_mcdc; the per-rule skip guard in test_resolve_skip_mcdc.)
  */
 static void test_cascade_fontsize(void)
 {
@@ -462,6 +554,13 @@ static void test_cascade_fontsize(void)
 /**
  * @test test_display
  * @brief `display:none` parses + cascades; other display values are visible.
+ *
+ * @par MC/DC:
+ * (no MC/DC vectors contributed here -- `display:none` sets display=1 and any
+ * other value 0 (a single-condition `ci_eq(val,"none")` select, no compound),
+ * and a matching `p{display:none}` hides while a non-matching element stays
+ * unset. The cascade selection uses the priv_resolve skip / winner compounds,
+ * proven in test_resolve_skip_mcdc / test_resolve_winner_mcdc.)
  */
 static void test_display(void)
 {
@@ -487,6 +586,19 @@ static void test_display(void)
 /**
  * @test test_compound_selectors
  * @brief `type.class` / `type#id` match all parts; specificity sums; `.a.b` skipped.
+ *
+ * @par MC/DC:
+ * Decision (per-rule skip guard in priv_resolve):
+ * `!matched[i] || ((rule.decl.set & setbit) == 0)` (2 conditions, OR),
+ * observed by resolving COLOR:
+ *  - V1 `p.note` rule vs `<p class="note">` -> matched=T and sets colour ->
+ *    C1=F, C2=F -> F: the rule participates (p.note wins -> 0xFF0000).
+ *  - V2 `p.note` rule vs `<p>` (no class)   -> matched=F -> C1=T -> T: the rule
+ *    is skipped, so only plain `p` wins -> 0x00FF00.
+ * V1 vs V2 prove condition 1 (matched) independent. Condition 2's true arm (a
+ * matched rule that does not set the property) is proven in test_resolve_skip_mcdc.
+ * Selector matching ("both tag AND class must match") is exercised via
+ * ra8_css_rule_matches: p_note matches, p_plain fails on class, h1_note on tag.
  */
 static void test_compound_selectors(void)
 {
@@ -584,6 +696,12 @@ static void test_resolve_winner_mcdc(void)
 /**
  * @test test_null_guards
  * @brief NULL arguments are rejected by the parse / reset API.
+ *
+ * @par MC/DC:
+ * (no independent MC/DC vectors contributed here -- each call passes a NULL
+ * argument so the null-pointer OR guards in ra8_css_sheet_reset / ra8_css_parse
+ * / ra8_css_parse_inline / ra8_css_rule_matches return early on their TRUE arm;
+ * this case does not vary those conditions for independence.)
  */
 static void test_null_guards(void)
 {
@@ -601,6 +719,16 @@ static void test_null_guards(void)
 /**
  * @test test_fontface_parse
  * @brief `@font-face` at-rules populate the face table; they are not rules.
+ *
+ * @par MC/DC:
+ * Decision (src verification): `(slen == strlen(expected)) &&
+ * (memcmp(src, expected, slen) == 0)` (2 conditions, AND, in test_fontface_parse).
+ * The parsed `@font-face` src equals the expected literal, so the observed
+ * vector is the control:
+ *  - V1 correct src -> C1=T, C2=T -> T (pass; length and bytes both match).
+ *  - V2 wrong length -> C1=F -> F (assertion would fail).
+ *  - V3 wrong bytes  -> C1=T, C2=F -> F (assertion would fail).
+ * V1 vs V2 isolate the length condition; V1 vs V3 the byte-compare.
  */
 static void test_fontface_parse(void)
 {
@@ -629,6 +757,17 @@ static void test_fontface_parse(void)
 /**
  * @test test_fontface_cascade
  * @brief `font-family` resolves on a rule and inherits to a child element.
+ *
+ * @par MC/DC:
+ * Decision (resolved-family verification): `(family_len == 4) &&
+ * (memcmp(names[family_off], "Body", 4) == 0)` (2 conditions, AND, in
+ * test_fontface_cascade). The resolved family is "Body", so the observed vector
+ * is the control:
+ *  - V1 len==4 and bytes=="Body" -> C1=T, C2=T -> T (pass; rule and inherited both "Body").
+ *  - V2 len!=4        -> C1=F -> F (assertion would fail).
+ *  - V3 bytes!="Body" -> C1=T, C2=F -> F (assertion would fail).
+ * V1 vs V2 isolate the length; V1 vs V3 the byte-compare. The font-family
+ * selection through priv_resolve is proven in the *_mcdc siblings.
  */
 static void test_fontface_cascade(void)
 {
@@ -681,6 +820,21 @@ static void test_fontface_match_mcdc(void)
 /**
  * @test test_fontface_null_guards
  * @brief match / face_src reject NULLs, a zero family, and out-of-range indices.
+ *
+ * @par MC/DC:
+ * Two null / range OR guards, each with one condition driven to its true arm:
+ * ra8_css_match_face: `(sheet == NULL) || (family == NULL) || (family_len == 0)`
+ *  - sheet=NULL       -> cond1 T -> no-face.
+ *  - family=NULL      -> cond2 T -> no-face.
+ *  - family_len=0     -> cond3 T -> no-face.
+ * ra8_css_face_src: `(sheet == NULL) || (out_src == NULL) || (out_len == NULL)
+ * || (idx >= face_count)`
+ *  - sheet=NULL       -> cond1 T -> false.
+ *  - out_src=NULL     -> cond2 T -> false.
+ *  - idx=99 (>=count) -> cond4 T -> false.
+ * Each vector flips exactly one condition true; the all-false controls (a valid
+ * match / a valid src fetch) are the passing calls in test_fontface_match_mcdc
+ * and test_fontface_parse.
  */
 static void test_fontface_null_guards(void)
 {

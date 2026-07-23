@@ -107,6 +107,17 @@ typedef enum : uint16_t {
   k_t_hdr_csum_seed = 0x5AU, /**< Seed the header checksum is XOR-folded against.   */
 } t_r5_fixture_t;
 
+/**
+ * @test test_rar5_all_literal_roundtrip
+ * @brief An all-literal RAR5 method-50 block round-trips byte-exactly.
+ *
+ * @par MC/DC:
+ * (no compound decision is varied by this case -- the stream carries only literal
+ * tokens (no match/repeat), so ra8_rar5_copy_match is never reached; the decoder
+ * runs the token loop to completion and the output is compared byte-for-byte. The
+ * LZ decisions `dist == 0 || dist > pos` and the decode-stream loop guard are
+ * driven for MC/DC by test_rar5_match_legs and test_ra8_rar5_mcdc.)
+ */
 static void test_rar5_all_literal_roundtrip(void)
 {
   TEST_BEGIN("rar5: all-literal round-trip");

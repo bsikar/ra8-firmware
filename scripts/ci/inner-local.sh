@@ -167,7 +167,8 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     set -e
     python3 scripts/checks/check_obsolete_standards.py
     python3 scripts/checks/check_world_tags.py --strict
-    python3 scripts/checks/check_mcdc_block.py
+    python3 scripts/checks/check_mcdc_block.py --selftest
+    python3 scripts/checks/check_mcdc_block.py --all
     python3 scripts/checks/check_no_dynamic_alloc.py --all
     python3 scripts/checks/check_no_ai_attribution.py
     python3 scripts/checks/check_no_null.py --all

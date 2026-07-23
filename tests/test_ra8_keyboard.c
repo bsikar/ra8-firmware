@@ -93,6 +93,17 @@ static void type_lc(ra8_kbd_text_t* t, const char* s)
 /**
  * @test test_layout_letters
  * @brief 31 keys in-frame; lowercase letters, SHIFT, and a 123 layer key.
+ *
+ * @par MC/DC:
+ * Decision (in-test in-frame invariant): the per-key assertion
+ * `(r->x >= k_fx) && ((r->x + r->w) <= (k_fx + k_fw))` (and the paired y-bounds)
+ * (2 conditions, AND). It is asserted TRUE for every one of the 31 keys, so both
+ * conditions are held at C1=T,C2=T -> T across the whole grid. This is a
+ * conjunctive layout invariant, not an independence-demonstrating vector set: a
+ * false arm would be an out-of-frame key -- the defect the conjunction exists to
+ * catch -- so no false vector is driven. The frame-reject OR
+ * `(w <= 0) || (h <= 0)` is held at its both-false control here; its N+1 vectors
+ * live in test_frame_reject_mcdc.
  */
 static void test_layout_letters(void)
 {
@@ -117,6 +128,18 @@ static void test_layout_letters(void)
 /**
  * @test test_typing_layers
  * @brief Case + the 123/ABC layer toggle (digit) + commit.
+ *
+ * @par MC/DC:
+ * Decision (in the test's `key_of` lookup, driven by every `type_lc`):
+ * `(keys[i].kind == k_ra8_kbd_key_char) && (keys[i].ch_lower == ch)`
+ * (2 conditions, AND). Scanning the laid-out grid supplies all three states in a
+ * single pass -- N+1 = 3:
+ * - a non-char key (shift/space/layer/backspace/enter) -> C1=F -> false.
+ * - a char key whose glyph differs                     -> C1=T,C2=F -> false.
+ * - the target char key                                -> C1=T,C2=T -> true.
+ * The F and T,F rows each pair with T,T to prove C1 and C2 independent. The
+ * production `ra8_kbd_apply` path under test is a switch on key kind with no
+ * compound boolean.
  */
 static void test_typing_layers(void)
 {
@@ -173,6 +196,17 @@ static bool reachable_here(char c)
 /**
  * @test test_all_ascii_symbols
  * @brief Every printable ASCII symbol + digit is reachable across the layers.
+ *
+ * @par MC/DC:
+ * Decision (in the test's `reachable_here` scan):
+ * `(keys[i].kind == k_ra8_kbd_key_char) && (keys[i].ch_lower == c)`
+ * (2 conditions, AND). Sweeping every char across all three layers drives all
+ * three states -- N+1 = 3:
+ * - a non-char key                    -> C1=F -> false.
+ * - a char key with a different glyph -> C1=T,C2=F -> false.
+ * - the reachable glyph               -> C1=T,C2=T -> true.
+ * The F and T,F rows each pair with T,T to prove C1 and C2 independent. The
+ * `if (!found)` layer-advance checks are single-condition.
  */
 static void test_all_ascii_symbols(void)
 {
@@ -209,6 +243,16 @@ static void test_all_ascii_symbols(void)
 /**
  * @test test_glyph_and_edges
  * @brief ra8_kbd_key_glyph tracks SHIFT; empty backspace + overflow are no-ops.
+ *
+ * @par MC/DC:
+ * Decision: `(kb == nullptr) || (key_idx >= kb->count)` (2 conditions, OR;
+ * ra8_kbd_key_glyph). This case drives C1=F,C2=F (the 'q' and enter keys ->
+ * guard false, glyph returned) and C1=T (nullptr kb -> 0); the C2=T
+ * (key_idx >= count) leg that completes N+1 = 3 is supplied by
+ * test_key_glyph_guard_mcdc. The test's own `key_of` lookup additionally drives
+ * `(keys[i].kind == char) && (keys[i].ch_lower == ch)` through all three states
+ * (non-char C1=F, wrong-glyph C1=T,C2=F, match C1=T,C2=T) across the key scan.
+ * The apply/backspace/overflow edges are single-condition guards.
  */
 static void test_glyph_and_edges(void)
 {
@@ -292,6 +336,13 @@ static void test_key_glyph_guard_mcdc(void)
 /**
  * @test test_null_guards
  * @brief NULL arguments are rejected.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it drives the single-condition guards:
+ * the two separate RA8_CHECK_NULL_PTR checks in ra8_kbd_layout_init (kb, then
+ * frame), the RA8_CHECK_NULL_PTR in ra8_kbd_text_init, and the `kb == nullptr`
+ * guard in ra8_kbd_hit. Each is one condition; the `w <= 0 || h <= 0` frame OR
+ * is never reached because the null check returns first)
  */
 static void test_null_guards(void)
 {

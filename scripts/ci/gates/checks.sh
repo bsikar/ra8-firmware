@@ -37,7 +37,16 @@ _pcc_banned_constructs() (
   # selftest red instead of passing green over files it stopped scanning.
   python3 scripts/checks/check_world_tags.py --selftest
   python3 scripts/checks/check_world_tags.py --strict
-  python3 scripts/checks/check_mcdc_block.py
+  # Every unit test must declare its MC/DC vector pattern via @par MC/DC:.
+  # #325: the checker used `git diff --cached`, so in any CI checkout (nothing
+  # staged) it scanned 0 files and passed unconditionally -- a no-op that read
+  # as green while `make ci` (which stages `git add -A`) saw the real backlog.
+  # --selftest FIRST proves the detector fires in BOTH directions, so one that
+  # stopped matching cannot pass as clean; --all then audits the whole tree
+  # index-independently (the fix), so CI and local agree. The --staged
+  # counterpart runs blocking in scripts/git/pre-commit.
+  python3 scripts/checks/check_mcdc_block.py --selftest
+  python3 scripts/checks/check_mcdc_block.py --all
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
   python3 scripts/checks/check_no_dynamic_alloc.py --all
   python3 scripts/checks/check_no_ai_attribution.py --selftest

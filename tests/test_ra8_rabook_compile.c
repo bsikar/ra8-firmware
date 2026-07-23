@@ -271,6 +271,15 @@ static void rabook_rt_verify(const rabook_rt_t* rt)
 /**
  * @test test_rabook_compile_roundtrip
  * @brief Build a blob, validate it, and read every field back identical.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it exercises the builder happy path end
+ * to end: intern -> add_image -> add_stylesheet -> add_element/text ->
+ * link_child -> set_metadata -> add_chapter -> finalize -> ra8_book_validate,
+ * then reads every field back through the accessors and confirms interning
+ * de-dups. Each builder guard on this success path is a single-condition
+ * bounds/relational check; the arena-overflow decisions have their own error-arm
+ * tests in this file)
  */
 static void test_rabook_compile_roundtrip(void)
 {

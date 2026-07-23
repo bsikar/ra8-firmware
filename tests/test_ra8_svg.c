@@ -58,6 +58,15 @@ static ra8_err_t render(const char* svg)
 /**
  * @test test_is_svg
  * @brief The sniff accepts `<svg` / `<?xml` (with BOM / whitespace), rejects PNG.
+ *
+ * @par MC/DC:
+ * Decision: `ra8_svgp_starts_ci(...,"<?xml") || ra8_svgp_starts_ci(...,"<svg")`
+ * (2 conditions, function `ra8_svg_is_svg`).
+ * - V1 PNG bytes "\x89PNG.." -> C1=F, C2=F -> false (rejected).
+ * - V2 "  \n<?xml..."        -> C1=T        -> true  (accepted, varies C1).
+ * - V3 "<svg xmlns..."       -> C1=F, C2=T -> true  (accepted, varies C2).
+ * V1+V2 prove the `<?xml` condition independent; V1+V3 prove `<svg`. N+1 = 3.
+ * (The `bytes == nullptr || len == 0` guard is exercised, not driven to MC/DC.)
  */
 static void test_is_svg(void)
 {
@@ -75,6 +84,13 @@ static void test_is_svg(void)
 /**
  * @test test_image_href
  * @brief A cover-wrapper `<svg><image .../></svg>` yields its href slice.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it exercises href
+ * extraction for `xlink:href`, plain `href`, and the no-`<image>` not-found
+ * return. The `!attr(xlink:href) && !attr(href)` guard in `ra8_svg_image_href`
+ * is reached only on its false outcomes here, so no condition is varied to flip
+ * it, and the not-found case exits earlier via priv_tag_span.)
  */
 static void test_image_href(void)
 {
@@ -102,6 +118,11 @@ static void test_image_href(void)
 /**
  * @test test_render_shapes
  * @brief rect / circle / line render at viewBox-scaled positions + colours.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it verifies rect /
+ * circle / line rasterisation by rendered-pixel assertions; it does not vary any
+ * single decision's conditions independently.)
  */
 static void test_render_shapes(void)
 {
@@ -124,6 +145,11 @@ static void test_render_shapes(void)
 /**
  * @test test_render_polygon
  * @brief A `<polygon>` is filled by the scanline rasteriser (inside vs outside).
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it verifies the
+ * scanline polygon fill (inside vs outside a triangle) by rendered-pixel
+ * assertions; it does not vary any single decision's conditions independently.)
  */
 static void test_render_polygon(void)
 {
@@ -141,6 +167,11 @@ static void test_render_polygon(void)
 /**
  * @test test_render_path
  * @brief A `<path>` of M/L/V/H/Z line commands fills as a polygon.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it verifies M/L/V/H/Z
+ * path filling as a polygon by rendered-pixel assertions; it does not vary any
+ * single decision's conditions independently.)
  */
 static void test_render_path(void)
 {
@@ -158,6 +189,11 @@ static void test_render_path(void)
 /**
  * @test test_render_cubic
  * @brief A `<path>` cubic `C` is flattened (collinear controls == a line edge).
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it exercises the
+ * cubic `C` flatten (priv_flatten_cubic) by rendered-pixel assertions; it does
+ * not vary any single decision's conditions independently.)
  */
 static void test_render_cubic(void)
 {
@@ -177,6 +213,11 @@ static void test_render_cubic(void)
 /**
  * @test test_render_quad
  * @brief A `<path>` quadratic `Q` is flattened (collinear control == a line edge).
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it exercises the
+ * quadratic `Q` flatten (priv_flatten_quad) by rendered-pixel assertions; it
+ * does not vary any single decision's conditions independently.)
  */
 static void test_render_quad(void)
 {
@@ -222,6 +263,14 @@ static void test_render_smooth_t(void)
  * @test test_render_smooth_s
  * @brief A smooth cubic `S` after a `C` reflects the previous control; a fully
  *        collinear run still yields a straight edge (exercises the reflect path).
+ *
+ * @par MC/DC:
+ * Decision: `st->kind == want` in priv_smooth_ctrl (1 condition).
+ * - Vector B (this test): S after `C`, st->kind='c' == want('c') -> true ->
+ *   control = reflected previous control point.
+ * - Vector A (::test_render_smooth_t): T after `M`, st->kind=0 != 'q' -> false
+ *   -> control = current point. A+B exercise both outcomes of the lone
+ *   condition (N+1 = 2).
  */
 static void test_render_smooth_s(void)
 {
@@ -295,6 +344,15 @@ static void test_render_arc_sweep0(void)
  * @test test_render_arc_degenerate
  * @brief A zero-radius arc (`rx=0`) collapses to a straight line to its
  *        endpoint -- here the path closes into a plain rectangle.
+ *
+ * @par MC/DC:
+ * Decision: the priv_arc_center degenerate guard
+ * `(rx == 0) || (ry == 0) || ((p0.x == p_end.x) && (p0.y == p_end.y))`.
+ * - Vector B (this test): rx=0 -> true -> line-fallback (the `A` collapses to a
+ *   straight edge).
+ * - Vector A (::test_render_arc): rx=ry=40>0, start!=end -> all false -> a real
+ *   arc renders. A+B vary the radius condition alone, proving it independently
+ *   flips the outcome (N+1 = 2 for the controlling pair).
  */
 static void test_render_arc_degenerate(void)
 {
@@ -313,6 +371,15 @@ static void test_render_arc_degenerate(void)
 /**
  * @test test_render_fill_none
  * @brief `fill="none"` rects draw nothing; default fill is black.
+ *
+ * @par MC/DC:
+ * Decision: `(gi < 0) && (fill == k_svg_no_paint)` in ra8_svgp_draw_rect (the
+ * skip-when-unpainted guard, 2 conditions).
+ * - V1 fill="none":  gi<0=T, fill==no_paint=T -> true  -> skip (stays white).
+ * - V2 no fill attr: gi<0=T, fill==no_paint=F -> false -> paint (black default).
+ * - V3 fill="url(#g)" (::test_render_gradient): gi>=0 so gi<0=F -> false ->
+ *   paint (gradient). V1+V2 prove the no-paint condition independent; V1+V3
+ *   prove the gradient-index condition. N+1 = 3.
  */
 static void test_render_fill_none(void)
 {
@@ -332,6 +399,12 @@ static void test_render_fill_none(void)
  * @test test_render_transform
  * @brief `transform=` translate / scale on a shape and on a `<g>` group move
  *        and resize the rendered output (viewBox 100->box 200 == 2x).
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it verifies basic
+ * translate / scale / `<g>`-group placement by rendered-pixel assertions. The
+ * transform-argument and has-rotation compound decisions are driven to MC/DC by
+ * ::test_transform_args_mcdc and ::test_render_rotate.)
  */
 static void test_render_transform(void)
 {
@@ -531,6 +604,12 @@ static void test_render_gradient(void)
 /**
  * @test test_render_gradient_radial
  * @brief A radial gradient is the first stop at the centre, the last at the edge.
+ *
+ * @par MC/DC:
+ * (no compound decision is driven to MC/DC by this test -- it verifies radial
+ * gradient interpolation (first stop at the centre, last at the edge) by
+ * rendered-pixel assertions. The gradient-fill compound decision is driven to
+ * MC/DC by ::test_render_gradient.)
  */
 static void test_render_gradient_radial(void)
 {
@@ -552,6 +631,14 @@ static void test_render_gradient_radial(void)
 /**
  * @test test_guards
  * @brief NULL / non-positive box arguments are rejected.
+ *
+ * @par MC/DC:
+ * Decision: `(w <= 0) || (h <= 0)` in ra8_svg_render (2 conditions).
+ * - V1 w=200,h=200 (::test_render_shapes render path): F,F -> false -> renders.
+ * - V2 w=0, h=10: T,F -> true -> k_ra8_err_invalid_arg (varies w).
+ * - V3 w=10,h=-1: F,T -> true -> k_ra8_err_invalid_arg (varies h).
+ * V1+V2 prove the width condition independent; V1+V3 prove the height. N+1 = 3.
+ * (The null-pointer guards on both entry points are single-condition checks.)
  */
 static void test_guards(void)
 {

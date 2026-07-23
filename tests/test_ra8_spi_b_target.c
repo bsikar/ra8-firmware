@@ -129,6 +129,11 @@ static void init_target_ch0(void)
  *  - MODFEN (bit 14) == 1 -- mode fault error detection enabled.
  *  - SPE (bit 0) == 1 -- SPI function enabled.
  *  - SCKASE (bit 12) == 0 -- controller-only; must not be set in target mode.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- ra8_spi_b_target_init and the SPCR
+ * builder internal_target_spcr contain no `&&`/`||`; it checks the MSTR / MODFEN
+ * / SPE / SCKASE bits of the SPCR image after a successful init)
  */
 static void test_target_init_register_image(void)
 {
@@ -165,6 +170,11 @@ static void test_target_init_register_image(void)
  * @par Single-condition coverage (rx != nullptr):
  * V1: rx is non-NULL -> ``*rx`` is written (this test).
  * V2: rx is NULL     -> ``*rx`` is NOT written (test_target_xfer_null_rx).
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- neither ra8_spi_b_target_xfer nor the
+ * ra8_hw_wait_flag_set32 it polls through has any `&&`/`||`; the only decision it
+ * drives is the single-condition `rx != nullptr` guard, its true leg V1)
  */
 static void test_target_xfer_roundtrip(void)
 {
@@ -197,6 +207,10 @@ static void test_target_xfer_roundtrip(void)
 /**
  * @test test_target_init_null_cfg
  * @brief NULL cfg pointer returns k_ra8_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it returns at the single-condition
+ * RA8_CHECK_NULL_PTR(cfg) guard; ra8_spi_b_target_init has no `&&`/`||`)
  */
 static void test_target_init_null_cfg(void)
 {
@@ -214,6 +228,10 @@ static void test_target_init_null_cfg(void)
 /**
  * @test test_target_init_oor_channel
  * @brief Out-of-range channel returns k_ra8_err_invalid_arg from init.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it returns at the single-condition
+ * `channel >= k_ra8_spi_b_channel_count` range guard; no `&&`/`||` on the path)
  */
 static void test_target_init_oor_channel(void)
 {
@@ -240,6 +258,10 @@ static void test_target_init_oor_channel(void)
  *
  * @details ra8_spi() returns nullptr for OOR; RA8_CHECK_NULL_PTR fires
  *          with k_ra8_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the single-condition
+ * RA8_CHECK_NULL_PTR(reg) guard returns; ra8_spi_b_target_xfer has no `&&`/`||`)
  */
 static void test_target_xfer_oor_channel(void)
 {
@@ -262,6 +284,10 @@ static void test_target_xfer_oor_channel(void)
  *
  * @par Single-condition coverage (rx != nullptr):
  * V2: rx is NULL (complements V1 in test_target_xfer_roundtrip).
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- no `&&`/`||` in ra8_spi_b_target_xfer;
+ * it supplies V2, the false leg, of the single-condition `rx != nullptr` guard)
  */
 static void test_target_xfer_null_rx(void)
 {
@@ -299,6 +325,11 @@ static void test_target_xfer_null_rx(void)
  * @par Single-condition coverage (internal_target_wait_spsr):
  * V2: wait never satisfied -> k_ra8_err_hw_timeout.
  * (V1: wait satisfied -> k_ra8_ok is covered by tests 2 and 6.)
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- internal_target_wait_spsr and
+ * ra8_hw_wait_flag_set32 contain no `&&`/`||`; it drives the single-condition
+ * wait-timeout leg (`err != k_ra8_ok` true) surfaced on the SPTEF poll)
  */
 static void test_target_xfer_timeout_sptef(void)
 {
@@ -343,6 +374,11 @@ static void test_target_xfer_timeout_sptef(void)
  * The wait-timeout early-return true leg (this test); the false leg is the
  * happy-path xfer (tests 2 and 6). The post-check confirms the rx-write guard
  * is skipped on the timeout path.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- no `&&`/`||` on the xfer path; it drives
+ * the single-condition wait-timeout early-return true leg and checks the
+ * rx-write guard is skipped)
  */
 static void test_target_xfer_timeout_sprf(void)
 {

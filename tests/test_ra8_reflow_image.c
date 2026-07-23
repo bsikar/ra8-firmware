@@ -71,6 +71,12 @@ static uint32_t fb_px(const uint8_t* fb, int32_t w, int32_t x, int32_t y)
 /**
  * @test test_probe_size_png
  * @brief ra8_img_probe_size reads 2x2 and rejects NULL arguments.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives ra8_img_probe_size's single-condition
+ * null guards (bytes, out_w), the single-condition SVG dispatch, and the
+ * single-condition `stbi_info_from_memory(...) == 0` reject (2x2 PNG -> k_ra8_ok;
+ * junk -> not_supported); no && or || is reached on this path.)
  */
 static void test_probe_size_png(void)
 {
@@ -89,6 +95,16 @@ static void test_probe_size_png(void)
 /**
  * @test test_decode_blit_pixels
  * @brief Decode + blit the 2x2 PNG 1:1 and 2x; assert exact framebuffer pixels.
+ *
+ * @par MC/DC:
+ * Decision: `(len == 0) || (box_w < 1) || (box_h < 1)` (3 conditions, OR; function
+ * `ra8_img_decode_blit`). Both decode+blit calls here (2x2 PNG, box 2x2 then 4x4)
+ * hold all three conditions false:
+ * - V1 len=N, box_w>=1, box_h>=1 -> C1 F, C2 F, C3 F -> F (decode proceeds ->
+ *   k_ra8_ok, exact framebuffer pixels asserted 1:1 and 2x).
+ * This is the all-false control of the OR; the three true arms (each condition
+ * individually) that complete N+1 = 4 are driven by
+ * test_decode_blit_precondition_mcdc.
  */
 static void test_decode_blit_pixels(void)
 {
@@ -254,6 +270,21 @@ static void test_decode_fail_classify_mcdc(void)
 /**
  * @test test_arena_drained_and_no_mem
  * @brief Arena drains on the decode-failure path; a tiny arena yields no_mem.
+ *
+ * @par MC/DC:
+ * The test's own assertion is a 2-condition OR tolerating either failure code:
+ * `(e == k_ra8_err_no_mem) || (e == k_ra8_err_not_supported)`. Which arm holds is
+ * decided by the production AND in `internal_decode_fail`,
+ * `(reason != nullptr) && (strstr(reason, "outofmem") != nullptr)`, driven here
+ * through the real API:
+ * - junk bytes + large arena -> reason set, no "outofmem" (C2 F) -> F ->
+ *   k_ra8_err_not_supported (asserted exactly).
+ * - valid PNG + 48-byte arena -> reason "outofmem" (C2 T) -> T -> k_ra8_err_no_mem
+ *   (the tolerant OR's first arm; the tiny arena is deterministic on this host).
+ * The two vectors vary C2 and flip the outcome; C1 (`reason != nullptr`) is
+ * MC/DC-deactivated (DO-178C 6.4.4.3) -- stb always sets a reason on failure, per
+ * the production `mcdc-deactivated` note. The dedicated block for this production
+ * decision is test_decode_fail_real_paths_mcdc.
  */
 static void test_arena_drained_and_no_mem(void)
 {

@@ -311,6 +311,12 @@ static void test_clamp_len(void)
  * it contains (wTotalLength == sizeof), two interfaces, and that the first
  * interface is Printer 0x07 while the second is Vendor 0xFF -- the class codes
  * the board_sim host detects and the issue #265 requires.
+ *
+ * @par MC/DC:
+ * (no compound decision is varied by this case -- it reads one descriptor table
+ * back through pv_descriptor and asserts its wTotalLength, interface count and the
+ * Printer/Vendor class codes are internally consistent. pv_descriptor's compound
+ * NULL-guard MC/DC lives in test_descriptor.)
  */
 static void test_descriptor_tables(void)
 {

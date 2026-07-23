@@ -267,6 +267,13 @@ static bool fb_has_drawn_pixel(void)
  * 393-394 (priv_render_page returning it). A valid chapter is laid out first
  * (the layout pass keeps the good font in font_data), then font_data is swapped
  * for junk so the *render* pass re-inits a broken font and bails.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the malformed default font makes
+ * priv_init_font return at its `offset < 0` check (a single condition; the
+ * `stbtt_InitFont(...) == 0` check is a separate single-condition `if`), so
+ * priv_init_faces -> priv_render_page bail before any glyph is blitted or image
+ * rendered; no `&&` or `||` in the code under test that this case touches)
  */
 static void test_cov_render_bad_default_font(void)
 {
@@ -301,6 +308,15 @@ static void test_cov_render_bad_default_font(void)
  * gate) and 156-170 (priv_draw_underline). The tokenizer stamps every `<a>`
  * glyph with k_ra8_reflow_style_underline, so rendering the page draws the
  * underline beneath the link glyphs.
+ *
+ * @par MC/DC:
+ * The underline gate `if ((g->style & k_ra8_reflow_style_underline) != 0U)` and
+ * the priv_draw_underline strip are single-condition / straight-line. The only
+ * compound decision the render path crosses is priv_blit_glyph's
+ * `if ((w > 0) && (h > 0))` glyph-box guard, which is MC/DC-deactivated in the
+ * source (the box extents are co-dependent -- a glyph is inked with w,h both
+ * positive or empty with both zero, so the mixed vectors are unreachable). Its
+ * reachable arms are exercised by the sibling test_render_glyph_size_both_arms.
  */
 static void test_cov_render_link_underline(void)
 {
@@ -332,6 +348,16 @@ static void test_cov_render_link_underline(void)
  * 284-302 (priv_render_one_image: href fetch + raster branch) and the
  * ra8_img_decode_blit call. A loader returning the 2x2 PNG yields a recorded image
  * box; rendering its page decodes + blits it nearest-neighbour.
+ *
+ * @par MC/DC:
+ * Decision: `if ((engine->img_loader == NULL) || (engine->img_arena == NULL))`
+ * in priv_render_images (libs/ra8_reflow/src/ra8_reflow_render.c), evaluated here
+ * at its all-false control only -- a loader and arena are bound, so the loop runs
+ * and the 2x2 PNG is decoded and blitted. The `ra8_svg_is_svg` selector in
+ * priv_render_one_image is single-condition (false for a PNG). The loader/arena
+ * OR's independent-influence vectors are carried by the sibling
+ * test_render_images_loader_both_arms; the glyph-box `(w > 0) && (h > 0)` guard
+ * crossed for the page text is MC/DC-deactivated (co-dependent extents).
  */
 static void test_cov_render_raster_image(void)
 {
@@ -372,6 +398,16 @@ static void test_cov_render_raster_image(void)
  * (`<svg><image href="cover.png"/></svg>`) makes priv_render_svg extract the href
  * and re-load the raster; a second engine whose loader returns a shapes SVG
  * drives the ra8_svg_render branch.
+ *
+ * @par MC/DC:
+ * Decision: `if ((engine->img_loader == NULL) || (engine->img_arena == NULL))`
+ * in priv_render_images, evaluated here at its all-false control only (loader +
+ * arena bound). The routing checks it reaches -- `ra8_svg_is_svg` (true for SVG),
+ * `ra8_svg_image_href`, the href-length guard and the loader-result check in
+ * priv_render_svg -- are all single-condition. The loader/arena OR's
+ * independent-influence vectors are carried by the sibling
+ * test_render_images_loader_both_arms; the glyph-box `(w > 0) && (h > 0)` guard
+ * crossed for the page text is MC/DC-deactivated (co-dependent extents).
  */
 static void test_cov_render_svg_image(void)
 {
@@ -426,6 +462,14 @@ static void test_cov_render_svg_image(void)
  * `fi (1) >= nfaces (1)` true, so the renderer clamps it to the default face and
  * the page still rasterises. Driven via ra8_reflow_render_page_at() to also
  * execute the offset render entry point.
+ *
+ * @par MC/DC:
+ * The defensive `if (fi >= nfaces)` face-index clamp in priv_render_page is a
+ * single-condition comparison, not a compound boolean. The only compound decision
+ * the render path crosses is priv_blit_glyph's `if ((w > 0) && (h > 0))` glyph-box
+ * guard, which is MC/DC-deactivated in the source (co-dependent box extents; mixed
+ * vectors unreachable); its reachable arms are exercised by the sibling
+ * test_render_glyph_size_both_arms.
  */
 static void test_cov_render_face_index_clamp(void)
 {

@@ -373,6 +373,13 @@ static void test_manifest_item_null_and_not_ready(void)
  *          (which is >= count) to drive the `index >= book->manifest_count`
  *          branch at line 495, returning nullptr at line 496.
  *
+ * @par MC/DC:
+ * (no compound decision is exercised for MC/DC by this case -- it drives the
+ * single-condition `index >= book->manifest_count` out-of-range guard on a ready
+ * book (manifest_count == 0, index 0). The compound
+ * `book == nullptr || book->in_use == 0U` guard is reached only as the both-false
+ * control here; its N+1 = 3 vectors live in test_manifest_item_null_and_not_ready)
+ *
  * @pre None.
  * @pre None.
  * @post No side effects.
