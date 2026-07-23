@@ -263,7 +263,7 @@ def report(files: list[Path], findings: list[tuple[str, int, str]], scope: str) 
 # Selftest
 # ---------------------------------------------------------------------------
 
-_ST_WITH_BLOCK = '''\
+_ST_WITH_BLOCK = """\
 /**
  * @test present
  * @par MC/DC:
@@ -276,15 +276,15 @@ static void test_has_block(void)
 {
   TEST_ASSERT(guard(0, 1) || guard(1, 0));
 }
-'''
+"""
 
-_ST_NO_BLOCK = '''\
+_ST_NO_BLOCK = """\
 /** @test absent -- this test documents no vector pattern. */
 static void test_missing_block(void)
 {
   TEST_ASSERT(guard(0, 1) || guard(1, 0));
 }
-'''
+"""
 
 
 def selftest() -> int:
