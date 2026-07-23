@@ -266,7 +266,7 @@ static void prep_mailbox(volatile com33_mailbox_t* mb)
  */
 static bool wait_for_m33_sig(volatile com33_mailbox_t* mb)
 {
-  RA8_BOUNDED_LOOP(k_m85_sig_poll_budget);
+  RA8_LOOP_BOUND(k_m85_sig_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_sig_poll_budget; i++) {
     if (mb->m33_sig == (uint32_t)k_com33_m33_sig) {
       return true;
@@ -301,7 +301,7 @@ static bool wait_for_m33_sig(volatile com33_mailbox_t* mb)
  */
 static bool wait_for_done(volatile com33_mailbox_t* mb)
 {
-  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_LOOP_BOUND(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (mb->done == 1U) {
       return true;
