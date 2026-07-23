@@ -21,9 +21,6 @@
 #
 # Re-baseline after burning debt down (causes are carried forward):
 #   bash scripts/sim/matrix.sh; python3 scripts/checks/matrix_ratchet.py --update
-# total: 5
+# total: 2
 import_reader	FAULT	reaches 'card ready' + 'volume mounted', then 'FAIL import compile' and traps; wants a pre-populated library card (cf. sd_font_render's baked FONT.OTF image)
-ota_ab_orchestration	FAULT	stages A/B images into the extra-MRAM (data-flash) bank at 0x27000000 (#397), a region absent from the RA8D2 manual; board_sim narrowed to real silicon now faults there as the bench does (J-Link w4 answers "Failed to write memory", MSTATR=0x0080C000); off the baseline when #397 repoints the extra-MRAM constant
-ra8_ftl_demo	FAULT	the ra8_ftl backend writes its wear-level blocks to the extra-MRAM (data-flash) window at 0x27000000 (#397), which this part does not decode; board_sim now leaves 0x27000000 unmapped to match silicon and faults there; off the baseline when #397 repoints the extra-MRAM constant
-ra8_io_mram_demo	FAULT	erases/programs the extra MRAM at nonexistent 0x27000000 (#397); the bench MACI rejects it (MSTATR=0x0080C000, MASTAT=0x18); board_sim now unmaps 0x27000000 and faults there matching silicon; off the baseline when #397 repoints the extra-MRAM constant
 secure_boot_ns_hil	FAULT	board_sim --ns loader gap (#404): the .ns_bss zeroing loop faults at 0x32100052 because the literal at 0x3210006c reads as zero -- the NS image tail is not populated
