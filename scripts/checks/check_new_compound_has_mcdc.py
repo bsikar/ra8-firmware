@@ -1,54 +1,69 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Reject staged commits adding a compound decision with no MC/DC test.
+"""Reject a NEW compound decision that lands without an MC/DC test.
 
-A new compound boolean decision (`&&` / `||`) in production code must arrive
-with an accompanying MC/DC test vector set.
-
-Per CLAUDE.md "IEC 61508 SIL 3 / DO-178C Level B Qualification" and
-docs/MCDC.md, every compound boolean decision in production code under
-`libs/`, `src/`, `port/` must have a matching MC/DC test vector set in
-`tests/test_<module>.c`. The MC/DC test function (named `test_mcdc_*`)
-declares its vector pattern in a Doxygen `@par MC/DC:` block that cites
-the decision as `path@function` -- the source path and the *enclosing
-function* of the decision.
-
-This pre-commit gate is a *static* check: it never builds or runs the
-test suite (so it adds no perceptible latency to `git commit`). It works
-by diffing the staged version of each production file against HEAD and
-flagging compound boolean decisions that are present in the staged
-version but were NOT present in the HEAD version on the same source
-line. For each such NEW decision, the script resolves the decision's
-enclosing function and searches every staged-or-already-committed
-`tests/test_*.c` file for a `@par MC/DC:` block citing
-`path@that_function`. Citing by function (not line number) means
+A new compound boolean decision (``&&`` / ``||``) in production code must
+arrive with an accompanying MC/DC test vector set. Per CLAUDE.md
+"IEC 61508 SIL 3 / DO-178C Level B Qualification" and docs/MCDC.md, every
+compound boolean decision in production code under ``libs/``, ``src/``,
+``port/`` must have a matching MC/DC test vector set in
+``tests/test_<module>.c``. The MC/DC test function (named ``test_mcdc_*``)
+declares its vector pattern in a Doxygen ``@par MC/DC:`` block that cites
+the decision as ``path@function`` -- the source path and the *enclosing
+function* of the decision. Citing by function (not line number) means
 unrelated edits that shift lines never invalidate a citation.
 
-If a new compound decision is staged WITHOUT a matching MC/DC test in
-the same commit OR already committed in HEAD, the commit is REJECTED.
+This is a *static* check: it never builds or runs the test suite. It works
+by diffing two revisions of each changed production file and flagging
+compound boolean decisions present in the newer revision but NOT in the
+older one on the same normalized line. For each such NEW decision it
+resolves the decision's enclosing function and searches every
+``tests/test_*.c`` for a ``@par MC/DC:`` block citing ``path@that_function``.
 
-This complements `check_mcdc_block.py`, which enforces that *test* files
-declare `@par MC/DC:` blocks; this script enforces that the production
-side actually has a test counterpart.
+Two selection modes, and NO third silent one:
+
+  * ``--range BASE..HEAD [--repo DIR]`` -- audit the files changed in that
+    commit range, run against DIR (default ``.``). This is the mode CI uses;
+    ``scripts/ci.sh``'s ``ci_commit_range`` / ``ci_history_repo`` resolve the
+    range and the history repository the same way every other range-aware
+    gate does. A range that does not resolve in the repository is FATAL, not
+    a clean scan of nothing.
+
+  * ``--staged`` -- audit the git index against HEAD. This is the mode the
+    local ``scripts/git/pre-commit`` hook uses: it gates exactly what is
+    about to be committed.
+
+Invoked with NEITHER mode, the check FAILS LOUDLY (exit 2) rather than
+reporting a clean scan of zero files. That is the #355 defect this rewrite
+closes: the check used ``git diff --cached`` unconditionally, so in any CI
+checkout -- where nothing is staged -- it saw 0 files and exited 0, having
+audited nothing in any CI run, ever. A scan that examined zero files can
+never exit 0 silently: the audited file count is always reported, and a
+scope that could not be established is a non-PASS.
 
 The check intentionally does NOT cover:
-  * `libs/third_party/`  -- SOUP exempted per docs/MCDC.md.
-  * `tests/`             -- only production code.
-  * `examples/`          -- application code, not yet under MC/DC gate.
-  * Single-condition `if (x)` statements -- MC/DC only applies to
-    compound decisions with `&&` or `||`.
+  * ``libs/third_party/``  -- SOUP exempted per docs/MCDC.md.
+  * ``tests/``             -- only production code.
+  * ``examples/``          -- application code, not yet under the MC/DC gate.
+  * Single-condition ``if (x)`` -- MC/DC only applies to compound decisions.
 
-Exit code:
-  0  no new compound decision is missing a matching MC/DC test.
-  1  one or more new decisions lack an MC/DC test (commit rejected).
+Exit codes:
+  0  the audited (non-empty or legitimately empty) scope adds no uncovered
+     compound decision.
+  1  one or more NEW decisions lack a matching MC/DC test.
+  2  no usable scan scope (no mode given, or an unresolvable range) -- the
+     scope could not be established, so no verdict is trustworthy.
 """
 
 from __future__ import annotations
 
+import argparse
 import re
 import subprocess
 import sys
+import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -59,49 +74,48 @@ from lint_targets import is_build_output_path
 # Configuration
 # ---------------------------------------------------------------------------
 
-# Production directories that are subject to the MC/DC pre-commit gate.
+# Production directories that are subject to the MC/DC gate.
 PROD_PREFIXES: tuple[str, ...] = ("libs/", "src/", "port/")
 
 # Display limits.
-MAX_DISPLAYED_FINDINGS = 50  # Max number of findings to print before summarizing the rest.
+MAX_DISPLAYED_FINDINGS = 50  # Max findings to print before summarizing the rest.
 SNIPPET_MAX_LEN = 80  # Max characters of a decision snippet before truncation.
 SNIPPET_TRUNCATE_LEN = 77  # Length of truncated snippet body (leaves room for "...").
 
 # Number of tab-separated fields in a `git diff --name-status -M` rename row.
 RENAME_ROW_FIELD_COUNT = 3  # <status>\t<old>\t<new>
 
+# The canonical empty-tree object. Used as the "base" when a range names a
+# root/new-branch head with no parent, so every decision in every changed file
+# is treated as new. `git` always resolves it, in every repository.
+EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+
 # Excluded subtrees (SOUP, generated, etc.).
 EXCLUDED_SUBSTRINGS: tuple[str, ...] = ("/third_party/",)
 
-# Regex matching a compound boolean decision on a non-comment line.
-# We require the operator to be surrounded by whitespace or paren so we
-# do not collide with `&` / `|` (bitwise) or `&&` inside string literals
-# (we additionally strip string contents below).
+# Regex matching a compound boolean decision on a non-comment line. The
+# operator boundary avoids colliding with `&` / `|` (bitwise); string and
+# comment contents are scrubbed separately below.
 COMPOUND_OP_RE = re.compile(r"(?:\|\||&&)")
 
-# Regex stripping line and block comment contents so we do not flag
-# `&&` that appears in a comment. This is intentionally simple and may
-# leave fragments inside multi-line block comments; the line-by-line
-# diff approach further mitigates this (a NEW comment also cannot
-# usually contain `&&` on its own).
+# Regexes stripping comment / literal contents so a `&&` inside prose or a
+# string is not mistaken for a decision.
 LINE_COMMENT_RE = re.compile(r"//.*$")
 BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/")
 STRING_LITERAL_RE = re.compile(r'"(?:\\.|[^"\\])*"')
 CHAR_LITERAL_RE = re.compile(r"'(?:\\.|[^'\\])*'")
 
-# Regex matching one citation token inside a `@par MC/DC:` block. The
-# only accepted form is `path@function_name`: it pins the decision to its
-# enclosing function, so unrelated edits that shift lines never invalidate
-# it, and -- having no `:line` -- it is not flagged by
-# check_line_citations.py. (The legacy `path:line` form is gone; the gate
-# does not accept brittle line-number anchors.)
+# Regex matching one citation token inside a `@par MC/DC:` block. The only
+# accepted form is `path@function_name`: it pins the decision to its enclosing
+# function, so unrelated edits that shift lines never invalidate it, and --
+# having no `:line` -- it is not flagged by check_line_citations.py.
 SYMBOL_CITATION_RE = re.compile(
     r"(?P<path>(?:libs|src|port)/[A-Za-z0-9_./-]+\.c)@(?P<sym>[A-Za-z_]\w*)"
 )
 
-# Regex isolating each `@par MC/DC:` block in a test file. The block
-# starts at `@par MC/DC:` and runs until the next `@par`, the next
-# `*/`, or the next blank Doxygen line (` *` followed by EOL).
+# Regex isolating each `@par MC/DC:` block in a test file. The block starts at
+# `@par MC/DC:` and runs until the next `@par`, the next `*/`, or the next
+# blank Doxygen line (` *` followed by EOL).
 MCDC_BLOCK_RE = re.compile(
     r"@par\s+MC/DC\s*:.*?(?=(?:\*/|@par\s+\w|\n\s*\*\s*\n))",
     re.IGNORECASE | re.DOTALL,
@@ -114,7 +128,7 @@ MCDC_BLOCK_RE = re.compile(
 
 
 def _git(*args: str) -> str:
-    """Run `git <args...>` and return stdout (text)."""
+    """Run ``git <args...>`` and return stdout, raising on a non-zero exit."""
     return subprocess.run(  # noqa: S603  # trusted: fixed git argv
         ["git", *args],  # noqa: S607  # trusted: fixed git argv
         check=True,
@@ -123,33 +137,60 @@ def _git(*args: str) -> str:
     ).stdout
 
 
-def staged_files(
-    *, suffix: str | None = None, prefixes: tuple[str, ...] | None = None
-) -> list[str]:
-    """Staged file paths, optionally filtered by suffix and path prefix.
+def _git_ok(*args: str) -> bool:
+    """Whether ``git <args...>`` exits 0 (used for object-existence probes)."""
+    return (
+        subprocess.run(  # noqa: S603  # trusted: fixed git argv
+            ["git", *args],  # noqa: S607  # trusted: fixed git argv
+            check=False,
+            capture_output=True,
+            text=True,
+        ).returncode
+        == 0
+    )
 
-    Covers added, copied, modified and renamed entries -- deletions are
-    excluded, since a removed file has no decision left to cover.
+
+def _blob_at(repo: str, rev: str, path: str) -> str:
+    """Content of ``path`` at ``rev`` in ``repo``, or "" when it is absent.
+
+    The empty string is the meaningful case for the base revision: it makes
+    every decision in a file that did not exist there count as new.
+    """
+    try:
+        return _git("-C", repo, "show", f"{rev}:{path}")
+    except subprocess.CalledProcessError:
+        return ""
+
+
+def _path_included(path: str, *, prefixes: tuple[str, ...]) -> bool:
+    """Whether ``path`` is a production ``.c`` file the gate should audit."""
+    if not path.endswith(".c"):
+        return False
+    if not any(path.startswith(pre) for pre in prefixes):
+        return False
+    return not (is_build_output_path(path) or any(sub in path for sub in EXCLUDED_SUBSTRINGS))
+
+
+# ---------------------------------------------------------------------------
+# Staged-mode selection (the local pre-commit hook)
+# ---------------------------------------------------------------------------
+
+
+def staged_files() -> list[str]:
+    """Production ``.c`` paths staged for commit (added/copied/modified/renamed).
+
+    Deletions are excluded: a removed file has no decision left to cover.
     """
     out = _git("diff", "--cached", "--name-only", "--diff-filter=ACMR")
-    paths: list[str] = []
-    for p in out.splitlines():
-        if suffix is not None and not p.endswith(suffix):
-            continue
-        if prefixes is not None and not any(p.startswith(pre) for pre in prefixes):
-            continue
-        if is_build_output_path(p) or any(sub in p for sub in EXCLUDED_SUBSTRINGS):
-            continue
-        paths.append(p)
-    return paths
+    return [p for p in out.splitlines() if _path_included(p, prefixes=PROD_PREFIXES)]
 
 
 def staged_blob(path: str) -> str:
-    """The staged (index) content of ``path``, or "" when it is not staged.
+    """Staged (index) content of ``path``, or "" when it is not staged.
 
     Reads the INDEX rather than the working tree, so unstaged edits sitting
-    alongside a staged change cannot make the gate judge content that is not
-    about to be committed.
+    alongside a staged change cannot make the gate judge content not about to
+    be committed.
     """
     try:
         return _git("show", f":0:{path}")
@@ -158,34 +199,52 @@ def staged_blob(path: str) -> str:
 
 
 def head_blob(path: str) -> str:
-    """The HEAD content of ``path``, or "" when the file is newly added.
-
-    The empty string is the meaningful case: it makes every decision in a new
-    file count as new, which is the intended reading.
-    """
+    """HEAD content of ``path``, or "" when the file is newly added."""
     try:
         return _git("show", f"HEAD:{path}")
     except subprocess.CalledProcessError:
         return ""
 
 
-def rename_map() -> dict[str, str]:
-    """Map each staged rename's new path -> its pre-rename old path.
+def staged_rename_map() -> dict[str, str]:
+    """Map each staged rename's new path to its pre-rename old path.
 
-    A `git mv` followed by interior edits would otherwise make every
-    compound decision in the moved file look brand-new (HEAD has no blob
-    at the new path), forcing re-citation of decisions that already exist
-    unchanged and are already covered by MC/DC vectors. Diffing the staged
-    file against its pre-rename HEAD content restores correct "new vs
-    existing" detection -- genuinely new decisions in a renamed file are
-    still caught.
+    A ``git mv`` plus interior edits would otherwise make every decision in the
+    moved file look brand new. A 40% similarity bar still pairs a rename that
+    also renamed many interior symbols; mispairing only ever suppresses a "new"
+    finding, so the generous threshold is safe.
     """
-    # 40% similarity: a rename that also renames many interior symbols
-    # (e.g. ra8_iic_b_* -> internal_i3c_i2c_*) scores well below git's
-    # default 50% threshold, so use a lower bar to still pair it with its
-    # pre-rename blob. Mispairing only ever suppresses a "new" finding, so
-    # a generous threshold is safe here.
     out = _git("diff", "--cached", "--name-status", "-M40%", "--diff-filter=R")
+    return _parse_rename_rows(out)
+
+
+def collect_working_tree_citations() -> list[tuple[str, str]]:
+    """Every ``path@function`` citation in the working-tree ``tests/test_*.c``.
+
+    Walks the working tree, not the index, so a test staged in this same
+    commit counts -- the normal case, since the decision and its vectors land
+    together.
+    """
+    cites: list[tuple[str, str]] = []
+    tests_dir = Path("tests")
+    if not tests_dir.is_dir():
+        return cites
+    for tf in sorted(tests_dir.glob("test_*.c")):
+        try:
+            text = tf.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        cites.extend(_extract_citations(text))
+    return cites
+
+
+# ---------------------------------------------------------------------------
+# Range-mode selection (CI)
+# ---------------------------------------------------------------------------
+
+
+def _parse_rename_rows(out: str) -> dict[str, str]:
+    """Parse ``git diff --name-status`` rename rows into new -> old paths."""
     mapping: dict[str, str] = {}
     for row in out.splitlines():
         parts = row.split("\t")
@@ -193,6 +252,80 @@ def rename_map() -> dict[str, str]:
             _status, old, new = parts
             mapping[new] = old
     return mapping
+
+
+def resolve_range(repo: str, spec: str) -> tuple[str, str] | None:
+    """Resolve a range spec to a ``(base, head)`` pair, or None when unusable.
+
+    Accepts the shapes ``ci_commit_range`` emits: ``BASE..HEAD``, ``A...B``
+    (symmetric, resolved via merge-base), and a bare ``HEAD`` (base becomes its
+    first parent, or the empty tree at a root commit). Returns None -- the
+    caller's cue to fail loudly -- when the spec is empty or names an endpoint
+    the repository does not contain, which is the failure mode of pointing the
+    gate at a snapshot whose object store lacks those commits.
+    """
+    spec = spec.strip()
+    if not spec:
+        return None
+    if "..." in spec:
+        left, _, right = spec.partition("...")
+        head = right or "HEAD"
+        left = left or "HEAD"
+        try:
+            base = _git("-C", repo, "merge-base", left, head).strip()
+        except subprocess.CalledProcessError:
+            return None
+    elif ".." in spec:
+        left, _, right = spec.partition("..")
+        base = left
+        head = right or "HEAD"
+    else:
+        head = spec
+        base = (
+            _git("-C", repo, "rev-parse", "--verify", "--quiet", f"{head}~1").strip()
+            if _git_ok("-C", repo, "rev-parse", "--verify", "--quiet", f"{head}~1")
+            else EMPTY_TREE
+        )
+    if not _git_ok("-C", repo, "rev-parse", "--verify", "--quiet", f"{head}^{{commit}}"):
+        return None
+    if not base:
+        base = EMPTY_TREE
+    if base != EMPTY_TREE and not _git_ok("-C", repo, "cat-file", "-e", f"{base}^{{commit}}"):
+        return None
+    return (base, head)
+
+
+def changed_prod_files(repo: str, base: str, head: str) -> list[str]:
+    """Production ``.c`` files changed between ``base`` and ``head`` in ``repo``."""
+    out = _git("-C", repo, "diff", "--name-only", "--diff-filter=ACMR", base, head)
+    return [p for p in out.splitlines() if _path_included(p, prefixes=PROD_PREFIXES)]
+
+
+def range_rename_map(repo: str, base: str, head: str) -> dict[str, str]:
+    """Map each rename between ``base`` and ``head`` to its pre-rename path."""
+    out = _git("-C", repo, "diff", "--name-status", "-M40%", "--diff-filter=R", base, head)
+    return _parse_rename_rows(out)
+
+
+def collect_range_citations(repo: str, head: str) -> list[tuple[str, str]]:
+    """Every ``path@function`` citation in ``tests/test_*.c`` at ``head``.
+
+    Reads the tests as committed at the audited revision (not the working
+    tree), so the citation set matches the code under audit even when ``repo``
+    is not the current checkout -- exactly the case under the CI snapshot,
+    where the gate runs from a clean snapshot but resolves the range against
+    the real history repository.
+    """
+    cites: list[tuple[str, str]] = []
+    try:
+        listing = _git("-C", repo, "ls-tree", "-r", "--name-only", head, "--", "tests")
+    except subprocess.CalledProcessError:
+        return cites
+    for path in listing.splitlines():
+        name = path.rsplit("/", 1)[-1]
+        if name.startswith("test_") and name.endswith(".c"):
+            cites.extend(_extract_citations(_blob_at(repo, head, path)))
+    return cites
 
 
 # ---------------------------------------------------------------------------
@@ -214,49 +347,43 @@ def _scrub(line: str) -> str:
 
 
 def compound_decision_lines(text: str) -> set[tuple[int, str]]:
-    """Every line holding a compound boolean operator outside comments and strings.
+    """Every line holding a compound operator outside comments and strings.
 
-    Returns a set of ``(line_no, scrubbed_line)`` with 1-based line numbers.
-    The scrubbed text rather than the raw line is carried so the same decision
-    compares equal across a comment-only edit.
+    Returns a set of ``(line_no, normalized_line)`` with 1-based line numbers.
+    The normalized text -- whitespace-collapsed with ``NULL`` folded to
+    ``nullptr`` -- is carried so the same decision compares equal across a
+    cosmetic reformat or the C23 ``nullptr`` migration.
     """
     found: set[tuple[int, str]] = set()
     for idx, raw in enumerate(text.splitlines(), start=1):
         # Preprocessor directives (`#if` / `#elif` / `#define` ...) are
-        # compile-time conditional compilation, not runtime boolean
-        # decisions, so MC/DC -- a runtime coverage criterion -- does not
-        # apply to them. The canonical case is the fail-closed stub-crypto
-        # guard `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)`
-        # that check_stub_crypto_guarded.py mandates: its `||` selects a
-        # translation unit, it is never evaluated at run time. Skip any
-        # preprocessor line so it is not mistaken for a coverable decision.
+        # compile-time conditional compilation, not runtime decisions, so
+        # MC/DC -- a runtime coverage criterion -- does not apply. The
+        # canonical case is the fail-closed stub-crypto guard
+        # `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)`
+        # whose `||` selects a translation unit and is never evaluated at run
+        # time. Skip any preprocessor line.
         if raw.lstrip().startswith("#"):
             continue
         scrubbed = _scrub(raw)
         if COMPOUND_OP_RE.search(scrubbed):
-            # Normalize whitespace + the NULL <-> nullptr swap so cosmetic
-            # reformatting (or the C23 nullptr migration) in the staged
-            # file does not cause false-positive "new" decisions.
             normalized = re.sub(r"\s+", " ", scrubbed.strip())
             normalized = re.sub(r"\bNULL\b", "nullptr", normalized)
             found.add((idx, normalized))
     return found
 
 
-def new_decisions(staged_text: str, head_text: str) -> list[tuple[int, str]]:
-    """Compound decisions present in the staged text but not in HEAD.
+def new_decisions(new_text: str, base_text: str) -> list[tuple[int, str]]:
+    """Compound decisions present in ``new_text`` but not in ``base_text``.
 
-    Returns ``(line_no, normalized_line)`` for each.
-
-    A decision is considered "not new" if the SAME normalized scrubbed
-    line text appears anywhere in head_text (regardless of line number),
-    so that pure additions/insertions above an existing decision do not
-    trip the gate.
+    A decision counts as "not new" when the SAME normalized scrubbed line
+    appears anywhere in ``base_text`` (regardless of line number), so pure
+    insertions above an existing decision do not trip the gate.
     """
-    head_norms = {norm for _, norm in compound_decision_lines(head_text)}
-    staged = compound_decision_lines(staged_text)
+    base_norms = {norm for _, norm in compound_decision_lines(base_text)}
+    new = compound_decision_lines(new_text)
     return sorted(
-        [(ln, norm) for (ln, norm) in staged if norm not in head_norms],
+        [(ln, norm) for (ln, norm) in new if norm not in base_norms],
         key=lambda t: t[0],
     )
 
@@ -266,50 +393,32 @@ def new_decisions(staged_text: str, head_text: str) -> list[tuple[int, str]]:
 # ---------------------------------------------------------------------------
 
 
-def collect_test_citations() -> list[tuple[str, str]]:
-    """Every ``path@function`` citation inside a ``@par MC/DC:`` block.
-
-    Walks the WORKING TREE copy of ``tests/test_*.c``, not the index, so a
-    test staged in this same commit counts -- which is the normal case, since
-    the decision and its vectors land together.
-    """
-    symbol_cites: list[tuple[str, str]] = []
-    tests_dir = Path("tests")
-    if not tests_dir.is_dir():
-        return symbol_cites
-    for tf in sorted(tests_dir.glob("test_*.c")):
-        try:
-            text = tf.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            continue
-        for block in MCDC_BLOCK_RE.findall(text):
-            symbol_cites.extend(
-                (m.group("path"), m.group("sym")) for m in SYMBOL_CITATION_RE.finditer(block)
-            )
-    return symbol_cites
+def _extract_citations(text: str) -> list[tuple[str, str]]:
+    """Every ``(path, function)`` citation inside a ``@par MC/DC:`` block."""
+    cites: list[tuple[str, str]] = []
+    for block in MCDC_BLOCK_RE.findall(text):
+        cites.extend((m.group("path"), m.group("sym")) for m in SYMBOL_CITATION_RE.finditer(block))
+    return cites
 
 
 def enclosing_function(src_text: str, decision_line: int) -> str | None:
     """Name of the function enclosing a 1-based source line, or None.
 
-    Relies on the repo's clang-format style: a function-definition body
-    opens with ``{`` alone on its own line at column 0, whereas control
-    blocks keep their brace at end-of-line (``if (...) {``) and nested
-    scopes are indented. So the nearest preceding line that is exactly
-    ``{`` is the enclosing function's opening brace; the function name is
-    the last identifier before the ``(`` in the signature above it.
+    Relies on the repo's clang-format style: a function-definition body opens
+    with ``{`` alone at column 0, whereas control blocks keep their brace at
+    end-of-line (``if (...) {``). So the nearest preceding line that is exactly
+    ``{`` is the enclosing function's opening brace; the function name is the
+    last identifier before the ``(`` in the signature above it.
     """
     lines = src_text.splitlines()
     idx = decision_line - 1
     if idx < 0 or idx >= len(lines):
         return None
-    # Walk up to the function body's opening brace (a bare "{" at col 0).
     brace = idx
     while brace >= 0 and lines[brace] != "{":
         brace -= 1
     if brace < 0:
         return None
-    # Assemble the signature lines just above the brace.
     sig_parts: list[str] = []
     j = brace - 1
     while j >= 0 and lines[j].strip() not in ("", "}", "};", "*/", "/*"):
@@ -318,8 +427,6 @@ def enclosing_function(src_text: str, decision_line: int) -> str | None:
             break
         j -= 1
     sig = " ".join(part.strip() for part in sig_parts)
-    # The function name is the identifier immediately before the first
-    # parameter-list "(" in the signature.
     m = re.search(r"([A-Za-z_]\w*)\s*\(", sig)
     return m.group(1) if m else None
 
@@ -332,12 +439,11 @@ def has_matching_citation(
 ) -> bool:
     """Whether some test cites the enclosing function of this decision.
 
-    Matches at FUNCTION granularity, not line granularity: a citation names
-    ``path@function``, so adding a second decision to an already-cited
-    function satisfies the gate. That is deliberate -- line-exact citations
-    would churn on every edit above the decision -- but it does mean this
-    gate proves a vector set exists for the function, not that the new
-    decision itself is individually covered.
+    Matches at FUNCTION granularity: a citation names ``path@function``, so
+    adding a second decision to an already-cited function satisfies the gate.
+    That is deliberate -- line-exact citations would churn on every edit above
+    the decision -- but it proves a vector set exists for the function, not
+    that the new decision itself is individually covered.
     """
     fn = enclosing_function(src_text, src_line)
     if fn is None:
@@ -346,73 +452,368 @@ def has_matching_citation(
 
 
 # ---------------------------------------------------------------------------
+# Core audit
+# ---------------------------------------------------------------------------
+
+
+def audit_files(
+    files: list[str],
+    new_text_of: Callable[[str], str],
+    base_text_of: Callable[[str], str],
+    symbol_cites: list[tuple[str, str]],
+) -> list[tuple[str, int, str]]:
+    """Findings for every new, uncited compound decision in ``files``.
+
+    ``new_text_of`` yields the audited (newer) revision of a path and
+    ``base_text_of`` its older revision; splitting them out is what lets the
+    staged and range modes share one auditing core. Returns ``(path, line,
+    snippet)`` per offending decision.
+    """
+    findings: list[tuple[str, int, str]] = []
+    for path in files:
+        new_text = new_text_of(path)
+        if not new_text:
+            continue
+        base_text = base_text_of(path)
+        for line_no, normalized in new_decisions(new_text, base_text):
+            if not has_matching_citation(path, line_no, new_text, symbol_cites):
+                findings.append((path, line_no, normalized))
+    return findings
+
+
+def audit_range(repo: str, base: str, head: str) -> tuple[list[str], list[tuple[str, int, str]]]:
+    """Audit files changed between ``base`` and ``head`` in ``repo``.
+
+    Returns ``(changed_files, findings)`` so callers can both report the file
+    count (a scan of zero files must never be silent) and act on the findings.
+    """
+    files = changed_prod_files(repo, base, head)
+    renamed = range_rename_map(repo, base, head)
+    symbol_cites = collect_range_citations(repo, head)
+    findings = audit_files(
+        files,
+        lambda p: _blob_at(repo, head, p),
+        lambda p: _blob_at(repo, base, renamed.get(p, p)),
+        symbol_cites,
+    )
+    return files, findings
+
+
+def audit_staged() -> tuple[list[str], list[tuple[str, int, str]]]:
+    """Audit the staged index against HEAD (the local pre-commit-hook mode)."""
+    files = staged_files()
+    renamed = staged_rename_map()
+    symbol_cites = collect_working_tree_citations()
+    findings = audit_files(
+        files,
+        staged_blob,
+        lambda p: head_blob(renamed.get(p, p)),
+        symbol_cites,
+    )
+    return files, findings
+
+
+# ---------------------------------------------------------------------------
+# Reporting
+# ---------------------------------------------------------------------------
+
+
+def _report(files: list[str], findings: list[tuple[str, int, str]], scope: str) -> int:
+    """Print the audited file count then the verdict; return the exit code.
+
+    The count is printed unconditionally: a scan that examined zero files can
+    never pass silently, so even a legitimately empty diff says so out loud.
+    """
+    print(f"check_new_compound_has_mcdc.py: audited {len(files)} production file(s) in {scope}.")
+    if not files:
+        print("check_new_compound_has_mcdc.py: no production file changed -- nothing to audit.")
+        return 0
+    if not findings:
+        print("check_new_compound_has_mcdc.py: 0 findings.")
+        return 0
+
+    print()
+    print("[FAIL] check_new_compound_has_mcdc.py: new compound boolean")
+    print("       decisions landed without an accompanying MC/DC test")
+    print("       vector set in tests/test_*.c.")
+    print()
+    print("       Per docs/MCDC.md, every `&&` / `||` decision under")
+    print("       libs/, src/, port/ must have a `test_mcdc_*` function")
+    print("       in the matching tests/test_<module>.c whose")
+    print("       `@par MC/DC:` block cites the decision as")
+    print("       `path@function` (the enclosing function of the")
+    print("       decision -- a drift-proof anchor, no line numbers).")
+    print()
+    print("       Offending decisions (path:line is informational):")
+    for path, line_no, normalized in findings[:MAX_DISPLAYED_FINDINGS]:
+        snippet = (
+            normalized
+            if len(normalized) <= SNIPPET_MAX_LEN
+            else normalized[:SNIPPET_TRUNCATE_LEN] + "..."
+        )
+        print(f"         {path}:{line_no}: {snippet}")
+    if len(findings) > MAX_DISPLAYED_FINDINGS:
+        print(f"         ... and {len(findings) - MAX_DISPLAYED_FINDINGS} more")
+    print()
+    print("       Fix: add a `test_mcdc_<decision>` function in the")
+    print("       matching tests/test_<module>.c with N+1 vectors and")
+    print("       a `@par MC/DC:` block citing `path@function`, then")
+    print("       re-run. See docs/MCDC.md for the worked example.")
+    return 1
+
+
+# ---------------------------------------------------------------------------
+# Self-test
+# ---------------------------------------------------------------------------
+
+_ST_PRE_C = """\
+ra8_err_t ra8_pre_fn(int a, int b)
+{
+  if (a && b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+# The head revision of the pre-existing file: modified (a comment added) but
+# the decision line is byte-identical, so it must NOT be flagged as new.
+_ST_PRE_C_HEAD = """\
+ra8_err_t ra8_pre_fn(int a, int b)
+{
+  /* unrelated edit that touches the file but not the decision */
+  if (a && b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_NEWDEC_C = """\
+ra8_err_t ra8_new_fn(int a, int b)
+{
+  if (a && b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_COVERED_C = """\
+ra8_err_t ra8_covered_fn(int c, int d)
+{
+  if (c && d) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_TEST_COVERED_C = """\
+/**
+ * @test ra8_covered_fn_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (c && d)` cites libs/covered.c@ra8_covered_fn
+ * - Vector 1: c=1, d=1 -> true
+ * - Vector 2: c=0, d=1 -> false (varies c)
+ * - Vector 3: c=1, d=0 -> false (varies d)
+ */
+void test_mcdc_ra8_covered_fn(void) {}
+"""
+
+_ST_SOUP_C = """\
+int soup_fn(int e, int f)
+{
+  if (e && f) {
+    return 1;
+  }
+  return 0;
+}
+"""
+
+
+def _st_git(repo: Path, *args: str) -> None:
+    """Run a git command inside the self-test fixture repository."""
+    subprocess.run(  # noqa: S603  # trusted: fixed git argv, temp repo
+        [  # noqa: S607
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "user.email=selftest@localhost",
+            "-c",
+            "user.name=selftest",
+            *args,
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _st_write(repo: Path, rel: str, body: str) -> None:
+    """Write ``body`` to ``rel`` under ``repo``, creating parent dirs."""
+    dst = repo / rel
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_text(body, encoding="utf-8")
+
+
+def _st_build_fixture(repo: Path) -> tuple[str, str]:
+    """Build a two-commit fixture and return the ``(base, head)`` SHAs.
+
+    The base commit holds a pre-existing decision; the head commit adds a
+    genuinely new uncovered decision (must fire), a new decision that carries
+    vectors (must stay quiet), a SOUP decision (excluded), and a cosmetic edit
+    to the pre-existing file (unchanged decision must stay quiet).
+    """
+    repo.mkdir(parents=True, exist_ok=True)
+    _st_git(repo, "init", "--quiet")
+    _st_write(repo, "libs/pre.c", _ST_PRE_C)
+    _st_write(repo, "tests/.keep", "")
+    _st_git(repo, "add", "-A")
+    _st_git(repo, "commit", "--quiet", "--no-verify", "-m", "base")
+    base = _git("-C", str(repo), "rev-parse", "HEAD").strip()
+
+    _st_write(repo, "libs/pre.c", _ST_PRE_C_HEAD)
+    _st_write(repo, "libs/newdec.c", _ST_NEWDEC_C)
+    _st_write(repo, "libs/covered.c", _ST_COVERED_C)
+    _st_write(repo, "tests/test_covered.c", _ST_TEST_COVERED_C)
+    _st_write(repo, "libs/third_party/soup.c", _ST_SOUP_C)
+    _st_git(repo, "add", "-A")
+    _st_git(repo, "commit", "--quiet", "--no-verify", "-m", "head")
+    head = _git("-C", str(repo), "rev-parse", "HEAD").strip()
+    return base, head
+
+
+def _st_check(files: list[str], findings: list[tuple[str, int, str]]) -> list[str]:
+    """Assert the range audit fired on the right decision and nowhere else."""
+    found_paths = {p for p, _, _ in findings}
+    failures: list[str] = []
+    if "libs/newdec.c" not in found_paths:
+        failures.append("  did NOT fire on libs/newdec.c (a new uncovered decision)")
+    if "libs/covered.c" in found_paths:
+        failures.append("  fired on libs/covered.c (it already carries MC/DC vectors)")
+    if "libs/pre.c" in found_paths:
+        failures.append("  fired on libs/pre.c (a pre-existing, unchanged decision)")
+    if any("third_party" in p for p in found_paths):
+        failures.append("  fired inside libs/third_party/ (SOUP is exempt)")
+    if "libs/third_party/soup.c" in files:
+        failures.append("  selected a libs/third_party/ file (SOUP must be excluded)")
+    if len(findings) != 1:
+        failures.append(f"  expected exactly 1 finding, got {len(findings)}: {sorted(found_paths)}")
+    return failures
+
+
+def selftest() -> int:
+    """Assert the detector fires on a new uncovered decision and stays quiet otherwise.
+
+    Exercises the REAL range-audit code path against a throwaway repository, so
+    a detector that quietly stopped matching cannot pass as clean. Both
+    directions are asserted: it must fire on ``libs/newdec.c`` and stay silent
+    on the pre-existing decision, the vector-covered decision, and the SOUP
+    decision.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        repo = Path(td) / "fixture"
+        base, head = _st_build_fixture(repo)
+        rng = resolve_range(str(repo), f"{base}..{head}")
+        if rng is None:
+            print("check_new_compound_has_mcdc.py: --selftest FAILED", file=sys.stderr)
+            print("  a valid base..head range did not resolve", file=sys.stderr)
+            return 1
+        files, findings = audit_range(str(repo), *rng)
+        failures = _st_check(files, findings)
+
+    if failures:
+        print("check_new_compound_has_mcdc.py: --selftest FAILED", file=sys.stderr)
+        print("\n".join(failures), file=sys.stderr)
+        return 1
+    print(
+        "check_new_compound_has_mcdc.py: --selftest OK "
+        "(fires on a new uncovered decision; silent on pre-existing, "
+        "vector-covered, and SOUP decisions)."
+    )
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 
-def main() -> int:
-    """Fail the commit when a newly-staged compound decision has no MC/DC citation.
+def _run_range(spec: str, repo: str) -> int:
+    """Resolve and audit a commit range, failing loudly on an unusable scope."""
+    rng = resolve_range(repo, spec)
+    if rng is None:
+        print(
+            f"check_new_compound_has_mcdc.py: FATAL -- range '{spec}' does not\n"
+            f"       resolve in repository '{repo}'. Refusing to report a clean\n"
+            "       scan of zero files: an unresolvable range means the gate is\n"
+            "       looking at nothing (the #355 defect), not that the tree is\n"
+            "       clean. Under the CI suite the range is resolved against the\n"
+            "       history repository (RA8_CI_HISTORY_REPO); pass --repo to it.",
+            file=sys.stderr,
+        )
+        return 2
+    base, head = rng
+    files, findings = audit_range(repo, base, head)
+    return _report(files, findings, f"range {base[:12]}..{head[:12]}")
 
-    Scope is the staged set, so this judges what is about to be committed and
-    says nothing about compound decisions already in the tree -- backfilling
-    those is check_mcdc_floor's job, not this gate's.
 
-    Renamed files are diffed against their PRE-RENAME HEAD content, which is
-    what stops a ``git mv`` from making every decision in the moved file look
-    new and demanding re-citation of already-covered logic.
+def main(argv: list[str]) -> int:
+    """Dispatch to the selected mode, or fail loudly when none was given.
 
-    Returns 1 listing each uncited decision, 0 when the staged set adds none.
+    Exactly one of ``--selftest`` / ``--range`` / ``--staged`` selects the
+    scope. With none of them the check exits 2 rather than silently auditing
+    the empty staged set -- the #355 defect that left it toothless in every CI
+    run.
     """
-    prod_files = staged_files(suffix=".c", prefixes=PROD_PREFIXES)
-    if not prod_files:
-        return 0
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument(
+        "--range",
+        dest="commit_range",
+        metavar="BASE..HEAD",
+        help="audit files changed in this commit range (the CI mode)",
+    )
+    ap.add_argument(
+        "--repo",
+        default=".",
+        metavar="DIR",
+        help="repository the range is resolved and read against (default '.')",
+    )
+    ap.add_argument(
+        "--staged",
+        action="store_true",
+        help="audit the git index against HEAD (the pre-commit-hook mode)",
+    )
+    ap.add_argument(
+        "--selftest",
+        action="store_true",
+        help="prove the detector fires on a new uncovered decision and not otherwise",
+    )
+    args = ap.parse_args(argv[1:])
 
-    symbol_cites = collect_test_citations()
-    renamed = rename_map()
+    if args.selftest:
+        return selftest()
+    if args.commit_range is not None:
+        return _run_range(args.commit_range, args.repo)
+    if args.staged:
+        files, findings = audit_staged()
+        return _report(files, findings, "the staged index")
 
-    findings: list[tuple[str, int, str]] = []
-    for path in prod_files:
-        staged_text = staged_blob(path)
-        head_text = head_blob(renamed.get(path, path))
-        if not staged_text:
-            continue
-        for line_no, normalized in new_decisions(staged_text, head_text):
-            if not has_matching_citation(path, line_no, staged_text, symbol_cites):
-                findings.append((path, line_no, normalized))
-
-    if findings:
-        print("[FAIL] check_new_compound_has_mcdc.py: new compound boolean")
-        print("       decisions are staged without an accompanying MC/DC")
-        print("       test vector set in tests/test_*.c.")
-        print()
-        print("       Per docs/MCDC.md, every `&&` / `||` decision under")
-        print("       libs/, src/, port/ must have a `test_mcdc_*` function")
-        print("       in the matching tests/test_<module>.c whose")
-        print("       `@par MC/DC:` block cites the decision as")
-        print("       `path@function` (the enclosing function of the")
-        print("       decision -- a drift-proof anchor, no line numbers).")
-        print()
-        print("       Offending decisions (path:line is informational):")
-        for path, line_no, normalized in findings[:MAX_DISPLAYED_FINDINGS]:
-            snippet = (
-                normalized
-                if len(normalized) <= SNIPPET_MAX_LEN
-                else normalized[:SNIPPET_TRUNCATE_LEN] + "..."
-            )
-            print(f"         {path}:{line_no}: {snippet}")
-        if len(findings) > MAX_DISPLAYED_FINDINGS:
-            print(f"         ... and {len(findings) - MAX_DISPLAYED_FINDINGS} more")
-        print()
-        print("       Fix: add a `test_mcdc_<decision>` function in the")
-        print("       matching tests/test_<module>.c with N+1 vectors and")
-        print("       a `@par MC/DC:` block citing `path@function`,")
-        print("       then re-stage and commit. See docs/MCDC.md for the")
-        print("       worked example.")
-        return 1
-
-    print("check_new_compound_has_mcdc.py: 0 findings.")
-    return 0
+    print(
+        "check_new_compound_has_mcdc.py: FATAL -- no scan scope selected.\n"
+        "       Pass --range <base..head> [--repo DIR] (CI) or --staged (the\n"
+        "       pre-commit hook). This check used to default to `git diff\n"
+        "       --cached`, so in any CI checkout -- where nothing is staged --\n"
+        "       it saw 0 files and exited 0, auditing nothing in any CI run\n"
+        "       (issue #355). A scope that cannot be established is now a\n"
+        "       non-PASS, never a clean scan of zero files.",
+        file=sys.stderr,
+    )
+    return 2
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv))

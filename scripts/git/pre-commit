@@ -546,14 +546,15 @@ if [[ -f scripts/checks/check_mcdc_block.py ]]; then
 fi
 
 # ---- New compound boolean decisions must ship with MC/DC tests ----
-# Static gate (no build): for each staged .c file under libs/, src/,
-# port/, diff against HEAD and reject any newly added `&&` / `||`
-# decision that does not have a `test_mcdc_*` function citing the
-# source file:line in a `@par MC/DC:` block under tests/. This is a
-# regression-prevention companion to the CI baseline gate -- it stops
-# the project-wide MC/DC % from drifting downward one commit at a time.
+# Static gate (no build): --staged diffs each staged .c file under libs/,
+# src/, port/ against HEAD and rejects any newly added `&&` / `||` decision
+# that does not have a `test_mcdc_*` function citing `path@function` in a
+# `@par MC/DC:` block under tests/. This is a regression-prevention companion
+# to the CI baseline gate -- it stops the project-wide MC/DC % from drifting
+# downward one commit at a time. (CI runs the same checker in --range mode; the
+# checker now refuses to run with no mode, so the flag is mandatory -- #355.)
 if [[ -f scripts/checks/check_new_compound_has_mcdc.py ]]; then
-  if ! python3 scripts/checks/check_new_compound_has_mcdc.py; then
+  if ! python3 scripts/checks/check_new_compound_has_mcdc.py --staged; then
     echo "[FAIL] check_new_compound_has_mcdc.py reported issues."
     echo "       New compound boolean decisions must ship with"
     echo "       matching MC/DC test vectors. See docs/MCDC.md."
