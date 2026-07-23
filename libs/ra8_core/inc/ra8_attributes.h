@@ -46,18 +46,28 @@ extern "C" {
 /* =============================================================================
  * Backend selection
  *
- * Clang preserves `[[clang::annotate("...")]]` on both declarations and
- * statements and exposes it through libclang as
- * `clang_Cursor_getAnnotations`. The C23/C++11 attribute-specifier form is
- * used (not the GNU `__attribute__((annotate(...)))` form) because GNU
- * statement attributes cannot legally prefix a loop -- mainline clang rejects
- * `__attribute__((annotate)) for (...)` as "annotate attribute cannot be
- * applied to a statement", which broke the `RA8_BOUNDED_LOOP` loop usage under
- * the firmware clang-tidy gate. The `[[clang::annotate]]` form attaches to
- * both decls and statements identically (same AnnotateAttr in the AST). GCC
- * parses the same syntax silently but does not surface it; either way, codegen
- * is unaffected. We still gate on `__clang__` so non-clang toolchains
- * compile a literal no-op (a pure comment placeholder).
+ * Each RA8_* annotation macro lowers to `[[clang::annotate("...")]]` under
+ * clang and is exposed through libclang as `clang_Cursor_getAnnotations`. The
+ * C23/C++11 attribute-specifier form is used (not the GNU
+ * `__attribute__((annotate(...)))` form) because it is the spelling libclang
+ * surfaces on a declaration. GCC parses the same syntax silently but does not
+ * surface it; either way codegen is unaffected. We gate on `__clang__` so
+ * non-clang toolchains compile a literal no-op (a pure comment placeholder).
+ *
+ * These annotations attach to a DECLARATION -- a function, variable, or type --
+ * and NOWHERE ELSE. `[[clang::annotate]]` is not valid in statement position:
+ * clang rejects `[[clang::annotate("x")]] for (...)` as "'annotate' attribute
+ * cannot be applied to a statement", and under a non-clang toolchain the
+ * comment no-op evaporates, binding to nothing. A per-LOOP bound therefore
+ * cannot be one of these annotations, and a statement-position
+ * `RA8_BOUNDED_LOOP(x);` was for that reason a hard clang error and a silent
+ * GCC no-op that bound to no loop at all. `RA8_BOUNDED_LOOP` (section 15) is a
+ * FUNCTION-level annotation: it decorates the function declaration and the
+ * checker walks that function's loops. To bind a bound to ONE specific loop in
+ * statement position, use `RA8_LOOP_BOUND` / `RA8_LOOP_BOUND_RUNTIME`
+ * (sections 15b/15c) -- these are real C (a `static_assert`, or a symbol
+ * reference), not annotations, so they compile and are enforced identically
+ * under every toolchain and cannot degrade to a no-op.
  *
  * `__CPPCHECK__` is excluded because cppcheck's C parser cannot represent a
  * scoped attribute carrying a string argument: on `[[clang::annotate("x")]]`
@@ -510,19 +520,28 @@ extern "C" {
  */
 
 /**
- * @brief NASA Power-of-10 Rule 2: every loop has a constant upper bound.
+ * @brief NASA Power-of-10 Rule 2: every loop in a FUNCTION has a constant bound.
  *
  * @details
- * Names the symbol (typically a typed enum value) that bounds every loop
- * inside the function. The libclang checker walks the function body and
- * verifies each loop's termination condition references a constant (or
- * the named symbol).
+ * This is a FUNCTION-level annotation. It decorates a function DECLARATION and
+ * names the symbol (typically a typed enum value) that bounds every loop inside
+ * that function; the libclang checker walks the function body and verifies each
+ * loop's termination condition references the named symbol. Because it is an
+ * `[[clang::annotate]]` attribute it may appear ONLY before a declaration --
+ * never in statement position inside a body (see the Backend-selection note
+ * above). To bind a bound to ONE specific loop, reach for `RA8_LOOP_BOUND` or
+ * `RA8_LOOP_BOUND_RUNTIME` instead: those are real statements that sit directly
+ * above the loop they describe.
  *
  * @param symbol Bare token naming the bounding constant (e.g.
  *               `k_max_retries`, `k_ringbuf_capacity`).
  *
  * @par Enforcement:
  * libclang loop analyzer.
+ *
+ * @warning
+ * Not a statement. `RA8_BOUNDED_LOOP(x);` inside a function body is a hard
+ * clang error and a silent GCC no-op; use `RA8_LOOP_BOUND(x);` there.
  *
  * @par Example:
  * @code
@@ -531,8 +550,114 @@ extern "C" {
  * @endcode
  *
  * Every loop in `ra8_i2c_send_with_retry` is bounded by `k_max_retries`.
+ *
+ * @see RA8_LOOP_BOUND  Per-loop, statement-position bound (compile-time ceiling).
+ * @see RA8_LOOP_BOUND_RUNTIME  Per-loop bound whose ceiling is a runtime symbol.
  */
 #define RA8_BOUNDED_LOOP(symbol) RA8_INTERNAL_ANNOTATE("ra8_bounded_loop:" #symbol)
+
+/* =============================================================================
+ * 15b. RA8_LOOP_BOUND(ceiling)
+ * =============================================================================
+ */
+
+/**
+ * @def RA8_LOOP_BOUND
+ * @brief NASA Power-of-10 Rule 2: bind ONE loop to a compile-time ceiling.
+ *
+ * @details
+ * The per-loop counterpart to `RA8_BOUNDED_LOOP`. Placed on the statement line
+ * immediately above a `for` / `while` / `do` loop, it asserts that @p ceiling
+ * is a positive compile-time constant -- exactly the property NASA Rule 2
+ * requires of a statically-bounded loop -- and it is the marker
+ * `scripts/checks/check_annotations.py` pairs to that immediately-following
+ * loop.
+ *
+ * Unlike the `RA8_*` annotation macros this is NOT an `[[clang::annotate]]`
+ * attribute: it lowers to a `static_assert`, which is real C valid in statement
+ * position under every toolchain. That is the whole point -- it cannot degrade
+ * to a comment no-op the way a statement-position annotation did. If @p ceiling
+ * is not a positive compile-time constant the build fails under both
+ * arm-none-eabi-gcc and clang. A loop whose ceiling is a link-time / runtime
+ * symbol (not a compile-time constant) cannot use this macro; use
+ * `RA8_LOOP_BOUND_RUNTIME` instead rather than fake a `static_assert`.
+ *
+ * @param ceiling A positive integer compile-time constant expression (typically
+ *                a typed enum value) that upper-bounds the loop's iteration
+ *                count. Cast to `uint32_t` inside the assert, so it must fit.
+ *
+ * @par Enforcement:
+ * Two ways at once. (1) The `static_assert` fails the compile if @p ceiling is
+ * not a positive constant. (2) `check_annotations.py` (loop-bound scan) fails
+ * the gate if this marker is not immediately followed by a loop.
+ *
+ * @note No codegen, no runtime cost; the assert is evaluated at compile time.
+ *
+ * @par Example:
+ * @code
+ * RA8_LOOP_BOUND(k_max_retries);
+ * for (uint32_t i = 0U; i < (uint32_t)k_max_retries; i++) {
+ *   ...
+ * }
+ * @endcode
+ *
+ * @see RA8_LOOP_BOUND_RUNTIME  When the ceiling is a runtime / linker symbol.
+ * @see RA8_BOUNDED_LOOP  Function-level form (all loops in one function).
+ * @since 0.1.0
+ */
+#define RA8_LOOP_BOUND(ceiling)                                                                    \
+  static_assert((uint32_t)(ceiling) > 0U,                                                          \
+                "RA8_LOOP_BOUND requires a positive compile-time constant bound")
+
+/* =============================================================================
+ * 15c. RA8_LOOP_BOUND_RUNTIME(ceiling_ref)
+ * =============================================================================
+ */
+
+/**
+ * @def RA8_LOOP_BOUND_RUNTIME
+ * @brief NASA Power-of-10 Rule 2: bind ONE loop to a runtime / linker ceiling.
+ *
+ * @details
+ * The honest form for a loop whose upper bound is real but NOT a compile-time
+ * constant -- the canonical case being a `.data` / `.bss` copy loop bounded by
+ * a linker-provided end symbol (`while (dst < &g_ra8_ls_cpu1_data_end)`). Such
+ * a loop is statically provably terminating (the pointer marches monotonically
+ * to a fixed, link-time address), but no `static_assert` can evaluate that
+ * address, so `RA8_LOOP_BOUND` cannot be used and faking one would be
+ * dishonest.
+ *
+ * Placed on the statement line immediately above the loop, this macro names the
+ * ceiling symbol so a typo fails to compile, and it is the marker
+ * `check_annotations.py` pairs to the immediately-following loop. It lowers to
+ * `((void)sizeof(&(ceiling_ref)))`: the operand is unevaluated, so it emits no
+ * code (safe in a reset handler that runs before `.data` is copied) yet still
+ * requires @p ceiling_ref to be a declared, addressable object.
+ *
+ * @param ceiling_ref An addressable object whose address upper-bounds the loop
+ *                    (e.g. a linker end symbol). Must be declared and in scope.
+ *
+ * @par Enforcement:
+ * `((void)sizeof(&(ceiling_ref)))` fails the compile if @p ceiling_ref is not a
+ * declared addressable object; `check_annotations.py` (loop-bound scan) fails
+ * the gate if this marker is not immediately followed by a loop.
+ *
+ * @note No codegen, no runtime cost; `sizeof`'s operand is unevaluated.
+ *
+ * @par Example:
+ * @code
+ * RA8_LOOP_BOUND_RUNTIME(g_ra8_ls_cpu1_data_end);
+ * while (dst < &g_ra8_ls_cpu1_data_end) {
+ *   *dst = *src;
+ *   dst++;
+ *   src++;
+ * }
+ * @endcode
+ *
+ * @see RA8_LOOP_BOUND  When the ceiling is a compile-time constant.
+ * @since 0.1.0
+ */
+#define RA8_LOOP_BOUND_RUNTIME(ceiling_ref) ((void)sizeof(&(ceiling_ref)))
 
 /* =============================================================================
  * 16. RA8_VALIDATES(n)

@@ -566,7 +566,7 @@ static void app_shell_log_menu(void)
 {
   uint16_t n = 0U;
   (void)ra8_app_count(&s_reg, &n);
-  RA8_BOUNDED_LOOP(k_app_reg_cap);
+  RA8_LOOP_BOUND(k_app_reg_cap);
   for (uint16_t i = 0U; i < n; i++) {
     ra8_app_t* app = nullptr;
     if (ra8_app_at(&s_reg, i, &app) == k_ra8_ok) {

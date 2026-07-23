@@ -42,6 +42,7 @@ that no stage can quietly redefine another's assumptions:
     :mod:`annot_walk`      AST traversal into a USR-keyed symbol table
     :mod:`annot_rules`     one function per rule, dispatched by key
     :mod:`annot_linkage`   the rule defined over the ABSENCE of an annotation
+    :mod:`annot_loopbound` the textual per-loop bound-marker scan (no libclang)
     :mod:`annot_selftest`  synthetic-tree regression tests, both directions
 
 Usage::
@@ -62,6 +63,7 @@ from dataclasses import dataclass, field
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from annot_clang import check_parse_integrity, parse_tu
+from annot_loopbound import discover_loopbound_files, enforce_loop_bounds
 from annot_model import AnnotatedSymbol, CallSite, ParseStats, Violation
 from annot_rulekeys import check_rule_keys
 from annot_rules import enforce_rules
@@ -148,7 +150,9 @@ def _list_symbols(symbols: dict[str, AnnotatedSymbol]) -> int:
     return 0
 
 
-def _collect_violations(sweep: Sweep, *, partial: bool) -> list[Violation]:
+def _collect_violations(
+    sweep: Sweep, loopbound_files: list[pathlib.Path], *, partial: bool
+) -> list[Violation]:
     """Run the self-checks and the rules appropriate to the scan's scope."""
     violations = check_rule_keys()
     # An explicit file list parses a fraction of the tree on purpose, so
@@ -165,6 +169,11 @@ def _collect_violations(sweep: Sweep, *, partial: bool) -> list[Violation]:
     else:
         violations.extend(check_parse_integrity(sweep.stats, sweep.tu_count))
         violations.extend(enforce_rules(sweep.symbols, sweep.calls, sweep.vector_entries))
+    # The loop-bound marker scan is textual and per-file, so it stands on its
+    # own regardless of the parse. It runs in both modes; only the whole-tree
+    # gate insists the scan actually saw files (an empty glob there is a broken
+    # gate, not a clean tree).
+    violations.extend(enforce_loop_bounds(loopbound_files, require_nonempty=not partial))
     return violations
 
 
@@ -215,15 +224,19 @@ def main(argv: list[str]) -> int:
             for p in args.paths
             if pathlib.Path(p).suffix in SOURCE_SUFFIXES
         ]
+        # The loop-bound scan also covers headers, so it takes the raw list
+        # (it self-filters by suffix), not the .c/.cpp-only translation units.
+        loopbound_files = [pathlib.Path(p).resolve() for p in args.paths]
     else:
         tus = discover_translation_units()
+        loopbound_files = discover_loopbound_files()
 
     sweep = _sweep(tus, progress=not args.quiet and not args.check)
 
     if args.list:
         return _list_symbols(sweep.symbols)
 
-    violations = _collect_violations(sweep, partial=partial)
+    violations = _collect_violations(sweep, loopbound_files, partial=partial)
     return _report(violations, sweep.summary(), quiet=args.quiet)
 
 

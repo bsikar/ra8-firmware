@@ -150,7 +150,7 @@ static void banner_append(char* dst, uint32_t* off, uint32_t cap, const char* sr
   if (src == nullptr) {
     return;
   }
-  RA8_BOUNDED_LOOP(k_banner_cap);
+  RA8_LOOP_BOUND(k_banner_cap);
   for (uint32_t i = 0U; i < cap; i++) {
     const char c = src[i];
     if (c == '\0') {
@@ -191,7 +191,7 @@ static void banner_append_hex(char* dst, uint32_t* off, uint32_t cap, uint32_t v
     return;
   }
   static const char digits[] = "0123456789ABCDEF";
-  RA8_BOUNDED_LOOP(k_hex_nibbles);
+  RA8_LOOP_BOUND(k_hex_nibbles);
   for (uint32_t i = 0U; i < (uint32_t)k_hex_nibbles; i++) {
     if (*off >= (cap - 1U)) {
       break;
@@ -236,7 +236,7 @@ static void banner_append_u32(char* dst, uint32_t* off, uint32_t cap, uint32_t v
   char     tmp[k_dec_digits_max];
   uint32_t count = 0U;
   uint32_t v     = value;
-  RA8_BOUNDED_LOOP(k_dec_digits_max);
+  RA8_LOOP_BOUND(k_dec_digits_max);
   for (uint32_t i = 0U; i < (uint32_t)k_dec_digits_max; i++) {
     tmp[count] = (char)('0' + (char)(v % (uint32_t)k_dec_radix));
     count += 1U;
@@ -245,7 +245,7 @@ static void banner_append_u32(char* dst, uint32_t* off, uint32_t cap, uint32_t v
       break;
     }
   }
-  RA8_BOUNDED_LOOP(k_dec_digits_max);
+  RA8_LOOP_BOUND(k_dec_digits_max);
   for (uint32_t i = 0U; i < count; i++) {
     if (*off >= (cap - 1U)) {
       break;
@@ -310,7 +310,7 @@ static void prep_mailbox(volatile erm33_mailbox_t* mb)
  */
 static bool wait_for_m33_sig(volatile erm33_mailbox_t* mb)
 {
-  RA8_BOUNDED_LOOP(k_m85_sig_poll_budget);
+  RA8_LOOP_BOUND(k_m85_sig_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_sig_poll_budget; i++) {
     if (mb->m33_sig == (uint32_t)k_erm33_m33_sig) {
       return true;
@@ -338,7 +338,7 @@ static bool wait_for_m33_sig(volatile erm33_mailbox_t* mb)
  */
 static bool wait_for_done(volatile erm33_mailbox_t* mb)
 {
-  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_LOOP_BOUND(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (mb->done == 1U) {
       return true;
@@ -634,7 +634,7 @@ static void m85_gate_hoco(bool stop)
  */
 static bool m85_wait_turn(volatile erm33_mailbox_t* mb, uint32_t turn)
 {
-  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_LOOP_BOUND(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (mb->turn_req >= turn) {
       return true;
@@ -670,7 +670,7 @@ static bool m85_wait_turn(volatile erm33_mailbox_t* mb, uint32_t turn)
 static uint32_t m85_heavy_work(uint32_t turn)
 {
   uint32_t acc = turn;
-  RA8_BOUNDED_LOOP(k_heavy_work_iters);
+  RA8_LOOP_BOUND(k_heavy_work_iters);
   for (uint32_t i = 0U; i < (uint32_t)k_heavy_work_iters; i++) {
     acc += i;
   }
@@ -702,7 +702,7 @@ static uint32_t m85_heavy_work(uint32_t turn)
  */
 static bool m85_wait_turn_done(volatile erm33_mailbox_t* mb, uint32_t turn)
 {
-  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_LOOP_BOUND(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (mb->turn_done >= turn) {
       return true;
@@ -740,7 +740,7 @@ static bool run_handoff_cycle(volatile erm33_mailbox_t* mb)
   if (mb == nullptr) {
     return false;
   }
-  RA8_BOUNDED_LOOP(k_erm33_max_turns);
+  RA8_LOOP_BOUND(k_erm33_max_turns);
   for (uint32_t turn = 1U; turn <= (uint32_t)k_erm33_max_turns; turn++) {
     m85_gate_hoco(true);
     const bool woke = m85_wait_turn(mb, turn);

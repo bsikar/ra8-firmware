@@ -188,7 +188,7 @@ static void zero_bg(volatile dualcore_bg_t* bg)
  */
 static bool wait_for_m33_sig(volatile dualcore_bg_t* bg)
 {
-  RA8_BOUNDED_LOOP(k_m85_sig_poll_budget);
+  RA8_LOOP_BOUND(k_m85_sig_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_sig_poll_budget; i++) {
     if (bg->m33_sig == (uint32_t)k_bg_m33_signature) {
       return true;
@@ -216,7 +216,7 @@ static bool wait_for_m33_sig(volatile dualcore_bg_t* bg)
  */
 static bool wait_for_done(volatile dualcore_bg_t* bg)
 {
-  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_LOOP_BOUND(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (bg->done == 1U) {
       return true;
