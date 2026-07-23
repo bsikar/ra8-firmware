@@ -31,6 +31,11 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 sim_dir="$ROOT/tools/board_sim"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328); the
+# emulator build below derives from it instead of an unbounded -j.
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$ROOT/scripts/ci/lib/parallelism.sh"
+
 # The gate is assembled from three sourced fragments beside this file (#359).
 # Split by responsibility, not size: what a run must satisfy, what each app is,
 # and how one app is run. This file owns the app list, the build phase, the
@@ -262,7 +267,7 @@ fi
 
 echo "board_sim smoke: building the emulator ..."
 cmake -B "$sim_dir/build" -S "$sim_dir" >/dev/null
-cmake --build "$sim_dir/build" -j >/dev/null
+cmake --build "$sim_dir/build" -j "$(ra8_max_jobs)" >/dev/null
 sim="$sim_dir/build/board_sim"
 
 # Build the microSD card image once if any selected app needs it.

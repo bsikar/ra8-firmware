@@ -15,6 +15,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FW_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="$FW_DIR/build/coverage"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328); the build
+# step below derives its width from it instead of `--parallel` with no bound
+# (which cmake expands to every core).
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$SCRIPT_DIR/../ci/lib/parallelism.sh"
+
 GATE=false
 if [[ "${1:-}" == "--gate" ]]; then
   GATE=true
@@ -59,7 +65,7 @@ cmake -B "$BUILD_DIR" -S "$FW_DIR/tests" \
   -Wno-dev >/dev/null
 
 echo -e "${YELLOW}[2/4]${NC} Building..."
-cmake --build "$BUILD_DIR" --parallel >/dev/null
+cmake --build "$BUILD_DIR" --parallel "$(ra8_max_jobs)" >/dev/null
 
 echo -e "${YELLOW}[3/4]${NC} Running ctest..."
 chmod +x "$BUILD_DIR"/test_* || true

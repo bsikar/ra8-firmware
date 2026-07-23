@@ -43,6 +43,10 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328).
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$SCRIPT_DIR/../ci/lib/parallelism.sh"
+
 CMAKE="${CMAKE:-cmake}"
 IWYU="${IWYU:-include-what-you-use}"
 
@@ -63,14 +67,8 @@ REPORT_DIR="$REPO_ROOT/build/iwyu-reports"
 
 mkdir -p "$BUILD_DIR" "$REPORT_DIR"
 
-# Parallelism (portable across linux/macos).
-if command -v nproc >/dev/null 2>&1; then
-  JOBS="$(nproc)"
-elif command -v sysctl >/dev/null 2>&1; then
-  JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
-else
-  JOBS=4
-fi
+# Parallelism: the bounded canonical width, not a raw nproc (#328).
+JOBS="$(ra8_max_jobs)"
 
 # IWYU is wired via CMAKE_C_INCLUDE_WHAT_YOU_USE / CMAKE_CXX_INCLUDE_
 # WHAT_YOU_USE -- cmake invokes the tool alongside every compile.

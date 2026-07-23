@@ -79,7 +79,7 @@ gate_lint_cmake() (
   # own output must be accepted.
   bash scripts/checks/lint_selftest.sh cmake
 
-  printf '%s\n' "${files[@]}" | xargs -r -P "$(cpu_count)" -n 20 cmake-format --check
+  printf '%s\n' "${files[@]}" | xargs -r -P "$(ra8_max_jobs)" -n 20 cmake-format --check
   printf '%s\n' "${files[@]}" | xargs -r cmake-lint
 )
 
