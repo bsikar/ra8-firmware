@@ -81,6 +81,20 @@ gate_mcdc() (
   # tests for crashing when all 540 had passed.
   CC=clang-18 CXX=clang++-18 bash scripts/report/mcdc_report.sh --selftest
 
+  # Measure a WIPED build AND report dir (#346/#326). In the suite the coverage
+  # gate configures tests/build-cov FIRST, with gcc, so a reused tree carries
+  # the cached "-fcoverage-mcdc: no" probe; and a build/mcdc-report left by an
+  # earlier run holds a stale mcdc_per_file.json / gate.json that the per-file
+  # MC/DC floor would read and FALSE-PASS on numbers this run never produced.
+  # This exact reuse hid a real red this week. The compiler-change guard inside
+  # mcdc_report.sh catches the probe case; wiping unconditionally here also
+  # clears the stale report and covers a same-compiler reconfigure. `make mcdc`
+  # for a developer stays incremental (mcdc_report.sh keeps a matching-compiler
+  # cache) -- only the CI gate wipes. artefact-freshness runs AFTER this gate and
+  # re-reads the report mcdc_report.sh regenerates below, so the wipe is safe.
+  rm -rf "${RA8_MCDC_BUILD_DIR:-tests/build-cov}" \
+    "${RA8_MCDC_REPORT_DIR:-build/mcdc-report}"
+
   CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
     bash scripts/report/mcdc_report.sh --in-container | tee mcdc-output.log
 
@@ -153,6 +167,15 @@ gate_artefact_freshness() (
 # cache_bench-consumable trace) and glyph_bench (sweeps the real glyph atlas),
 # re-confirming SLRU on the captured reader trace on every push. clang-18
 # accepts the C23 typed-enum / nullptr syntax the bench tools and ra8_mem use.
+#
+# Despite the name this is NOT a wall-clock gate, so it belongs in the local
+# suite and is stable under a loaded shared box (#326/#328). Every non-zero exit
+# in cache_bench / reader_vmem / glyph_bench comes from a DETERMINISTIC failure
+# -- an allocation or trace-build error, a get/put/verify data-integrity
+# mismatch, or the SLRU policy losing on the fixed captured trace -- none of
+# which depend on how busy the machine is. The wall_ns / MiB-s figures the tools
+# print are informational only and gate nothing, so a load average of 156 (#328)
+# changes the numbers on screen but never the PASS/FAIL verdict.
 gate_cache_bench() (
   set -e
   require_cmd clang-18 "the cache-bench gate pins clang-18 to match CI"
