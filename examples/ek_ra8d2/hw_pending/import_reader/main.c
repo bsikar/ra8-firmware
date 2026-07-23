@@ -147,6 +147,9 @@ static const char k_imp_epub_path[] = "BOOK.EPB";
 /** @brief Per-frame metadata for the source page cache. */
 static ra8_vmem_frame_t s_imp_cache_meta[k_imp_cache_frames];
 
+/** @brief Per-frame key storage for the source page cache. */
+static ra8_vmem_key_t s_imp_cache_keys[k_imp_cache_frames];
+
 /** @brief Hash-bucket heads for the source page cache. */
 static int32_t s_imp_cache_buckets[k_imp_cache_buckets];
 
@@ -451,6 +454,7 @@ static void imp_build_cookie(void)
     .cache_frame_bytes  = (uint32_t)k_imp_cache_frame_bytes,
     .cache_frame_count  = (uint32_t)k_imp_cache_frames,
     .cache_meta         = s_imp_cache_meta,
+    .cache_keys         = s_imp_cache_keys,
     .cache_buckets      = s_imp_cache_buckets,
     .cache_bucket_count = (uint32_t)k_imp_cache_buckets,
     .bufs               = &s_imp_bufs,

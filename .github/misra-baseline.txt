@@ -1073,7 +1073,7 @@ libs/ra8_mem/src/ra8_glyph_atlas.c	misra-c2012-9.2	2
 libs/ra8_mem/src/ra8_keycache.c	misra-c2012-11.4	2
 libs/ra8_mem/src/ra8_keycache.c	misra-c2012-11.5	1
 libs/ra8_mem/src/ra8_keycache.c	misra-c2012-15.4	1
-libs/ra8_mem/src/ra8_keycache.c	misra-c2012-15.5	31
+libs/ra8_mem/src/ra8_keycache.c	misra-c2012-15.5	35
 libs/ra8_mem/src/ra8_keycache.c	misra-c2012-21.16	1
 libs/ra8_mem/src/ra8_keycache.c	misra-c2012-8.4	4
 libs/ra8_mem/src/ra8_slab.c	misra-c2012-11.4	1
@@ -1088,10 +1088,13 @@ libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-15.5	12
 libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-8.4	4
 libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-9.2	2
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-11.4	1
+libs/ra8_mem/src/ra8_vmem.c	misra-c2012-11.5	4
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-11.6	1
+libs/ra8_mem/src/ra8_vmem.c	misra-c2012-11.8	1
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-15.5	32
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-15.7	2
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-8.4	5
+libs/ra8_mem/src/ra8_vmem.c	misra-c2012-9.2	3
 libs/ra8_mem/src/ra8_vmem_stream.c	misra-c2012-11.5	3
 libs/ra8_mem/src/ra8_vmem_stream.c	misra-c2012-15.4	1
 libs/ra8_mem/src/ra8_vmem_stream.c	misra-c2012-15.5	9

@@ -194,6 +194,8 @@ static const uint8_t s_mg_magic_ftr[k_ra8_jof_magic_len] = {'J', 'O', 'F', 'E'};
 static uint8_t s_pc_frames[(size_t)k_mg_frames * (size_t)k_mg_frame_bytes];
 /** @brief Page-cache frame metadata. */
 static ra8_vmem_frame_t s_pc_meta[(size_t)k_mg_frames];
+/** @brief Page-cache frame key storage. */
+static ra8_vmem_key_t s_pc_keys[(size_t)k_mg_frames];
 /** @brief Page-cache hash buckets. */
 static int32_t s_pc_buckets[(size_t)k_mg_pc_buckets];
 
@@ -741,6 +743,7 @@ static uint64_t t_mg_setup(uint32_t           atlas_count,
                          .frame_bytes   = (uint32_t)k_mg_frame_bytes,
                          .frame_count   = (uint32_t)k_mg_frames,
                          .meta          = s_pc_meta,
+                         .keys          = s_pc_keys,
                          .buckets       = s_pc_buckets,
                          .bucket_count  = (uint32_t)k_mg_pc_buckets,
                          .loader        = ra8_vsource_loader,
