@@ -355,6 +355,33 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
   fi
 }
 
+# Announce the resolved range a message-scanning gate is about to cover, WITH
+# the commit count, and reject the vacuous zero-commit case (#357 Path 2).
+#
+# On workflow_dispatch a manual re-run resolves the range to head..head -- the
+# checked-out branch's upstream equals its head, so base == head and the range
+# spans zero commits. The gate would then scan nothing and report PASS, so a
+# "green" from a hand re-run means "examined nothing", not "history is clean".
+# A push or a PR always supplies a real base, so a zero-commit range is only
+# ever this dispatch degeneracy. Print the count in EVERY case so a run that
+# examined commits and found nothing is visibly distinct from one that examined
+# none, and FAIL loudly on the zero case rather than passing vacuously -- the
+# same fail-on-missing-input discipline require_cmd applies to an absent tool.
+ci_report_commit_range() {
+  local repo="$1" range="$2" count
+  count="$(git -C "$repo" rev-list --count "$range" 2>/dev/null || printf '0')"
+  echo "Scanning $count commit message(s) in: $range (history repo: $repo)"
+  if [[ "${count:-0}" -eq 0 ]]; then
+    echo "::error::commit-metadata gate examined 0 commits -- range '$range'" >&2
+    echo "       is empty (base resolved equal to head). This is the" >&2
+    echo "       workflow_dispatch head..head vacuity (#357): a manual re-run" >&2
+    echo "       has nothing new to scan, so a green here would mean 'examined" >&2
+    echo "       nothing', not 'history is clean'. Failing loudly instead." >&2
+    return 1
+  fi
+  return 0
+}
+
 # ===========================================================================
 # GATE BODIES
 #
