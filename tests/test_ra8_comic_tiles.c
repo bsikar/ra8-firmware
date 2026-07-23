@@ -339,8 +339,8 @@ static void verify_tile(const ra8_tile_t* t, uint16_t tx, uint16_t ty)
   const uint32_t exp_h  = ((base_y + (uint32_t)k_tile) <= (uint32_t)k_big_h)
                             ? (uint32_t)k_tile
                             : ((uint32_t)k_big_h - base_y);
-  TEST_ASSERT_EQ((int)exp_w, (int)t->width);
-  TEST_ASSERT_EQ((int)exp_h, (int)t->height);
+  TEST_ASSERT_EQ(exp_w, t->width);
+  TEST_ASSERT_EQ(exp_h, t->height);
   for (uint32_t j = 0U; j < exp_h; j++) {
     for (uint32_t i = 0U; i < exp_w; i++) {
       const size_t o = ((size_t)j * (size_t)exp_w + (size_t)i) * (size_t)k_rgb_bpp;
@@ -428,9 +428,9 @@ static void test_footprint_and_budget(void)
   uint16_t h  = 0U;
   uint64_t db = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_footprint(s_png, s_png_len, &w, &h, &db));
-  TEST_ASSERT_EQ((int)k_big_w, (int)w);
-  TEST_ASSERT_EQ((int)k_big_h, (int)h);
-  TEST_ASSERT_EQ((uint64_t)k_big_w * (uint64_t)k_big_h * (uint64_t)k_ra8_comic_tiles_decoded_bpp,
+  TEST_ASSERT_EQ(k_big_w, w);
+  TEST_ASSERT_EQ(k_big_h, h);
+  TEST_ASSERT_EQ(k_big_w * (uint64_t)k_big_h * (uint64_t)k_ra8_comic_tiles_decoded_bpp,
                  db);
 
   /* MC/DC vectors for the threshold decision. */
@@ -495,9 +495,9 @@ static void test_large_page_opens(void)
 
   ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_info(&r, &info));
-  TEST_ASSERT_EQ((int)k_big_w, (int)info.width);
-  TEST_ASSERT_EQ((int)k_big_h, (int)info.height);
-  TEST_ASSERT_EQ((int)k_rgb_bpp, (int)info.bpp);
+  TEST_ASSERT_EQ(k_big_w, info.width);
+  TEST_ASSERT_EQ(k_big_h, info.height);
+  TEST_ASSERT_EQ(k_rgb_bpp, info.bpp);
   TEST_ASSERT(info.tile_count > (uint32_t)k_cells); /* more tiles than cells */
 
   /* Every tile -- interior and clamped edge -- decodes byte-exact, and a
@@ -532,8 +532,8 @@ static void test_zoom_subrect(void)
   /* Center-ish interior tile (2,1) fetched on its own -> native pixels. */
   ra8_tile_t t = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(&r, 2U, 1U, &t));
-  TEST_ASSERT_EQ((int)k_tile, (int)t.width);
-  TEST_ASSERT_EQ((int)k_tile, (int)t.height);
+  TEST_ASSERT_EQ(k_tile, t.width);
+  TEST_ASSERT_EQ(k_tile, t.height);
   verify_tile(&t, 2U, 1U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(&r, t.pixels));
 
@@ -604,7 +604,7 @@ static void test_small_page_flat(void)
   uint16_t h  = 0U;
   uint64_t db = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_footprint(s_pagebuf, got, &w, &h, &db));
-  TEST_ASSERT_EQ((int)k_small_w, (int)w);
+  TEST_ASSERT_EQ(k_small_w, w);
   TEST_ASSERT(!ra8_comic_tiles_over_budget(db, (uint64_t)k_budget_bytes));
 
   TEST_ASSERT_EQ(
@@ -664,13 +664,13 @@ static void test_page_turn_epoch(void)
   TEST_ASSERT(r.epoch != epoch_a);
   ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_info(&r, &info));
-  TEST_ASSERT_EQ((int)k_small_w, (int)info.width);
+  TEST_ASSERT_EQ(k_small_w, info.width);
   ra8_tile_t tb = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(&r, 0U, 0U, &tb));
   /* Same pattern origin (0,0) so byte 0 matches -- but assert we read page B's
    * geometry (the clamped tile is the small page's size, not the big page's). */
-  TEST_ASSERT_EQ((int)k_small_w, (int)tb.width);
-  TEST_ASSERT_EQ((int)k_small_h, (int)tb.height);
+  TEST_ASSERT_EQ(k_small_w, tb.width);
+  TEST_ASSERT_EQ(k_small_h, tb.height);
   TEST_ASSERT_EQ(a00, tb.pixels[0]); /* pix_rgb(0,0,R) identical for both pages */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(&r, tb.pixels));
   TEST_END("comic tiles: page turn never surfaces a stale tile");
