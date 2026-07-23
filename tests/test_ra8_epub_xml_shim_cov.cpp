@@ -512,6 +512,95 @@ void test_cov_spine_and_nav_edges(void)
   std::printf("ok\n");
 }
 
+/* Nested NCX: a top-level <navPoint> ("Chapter One") whose only child is a
+ * childless nested <navPoint> ("Section 1.1") with no navPoint sibling,
+ * followed by a top-level sibling ("Chapter Two"). Descending into the
+ * childless nested navPoint and finding no sibling forces ncx_walk's inner
+ * backtrack loop to run with depth > base_depth. */
+constexpr const char* k_ncx_nested_backtrack =
+  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+  "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\">"
+  "<navMap>"
+  "<navPoint id=\"p1\"><navLabel><text>Chapter One</text></navLabel>"
+  "<content src=\"c1.xhtml\"/>"
+  "<navPoint id=\"p1a\"><navLabel><text>Section 1.1</text></navLabel>"
+  "<content src=\"c1.xhtml#s1\"/></navPoint>"
+  "</navPoint>"
+  "<navPoint id=\"p2\"><navLabel><text>Chapter Two</text></navLabel>"
+  "<content src=\"c2.xhtml\"/></navPoint>"
+  "</navMap></ncx>";
+
+/* Nested nav.xhtml mirroring k_ncx_nested_backtrack: a top-level <li>
+ * ("Chapter One") carrying a nested <ol> whose single <li> ("Section 1.1")
+ * has no <li> sibling, followed by a top-level sibling <li> ("Chapter Two").
+ * The childless nested <li> forces nav_walk's two-level backtrack loop to run
+ * with depth > base_depth. */
+constexpr const char* k_nav_nested_backtrack =
+  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+  "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\">"
+  "<body><nav epub:type=\"toc\"><ol>"
+  "<li><a href=\"c1.xhtml\">Chapter One</a>"
+  "<ol><li><a href=\"c1.xhtml#s1\">Section 1.1</a></li></ol></li>"
+  "<li><a href=\"c2.xhtml\">Chapter Two</a></li>"
+  "</ol></nav></body></html>";
+
+/* Shared 3-entry expectation for the nested TOC fixtures above. */
+void cov_assert_nested_toc(const ra8_epub_book_t& book)
+{
+  assert(book.toc_count == 3U);
+  assert(std::strcmp(book.toc[0].title, "Chapter One") == 0);
+  assert(book.toc[0].depth == 0U);
+  assert(std::strcmp(book.toc[1].title, "Section 1.1") == 0);
+  assert(book.toc[1].depth == 1U);
+  assert(std::strcmp(book.toc[2].title, "Chapter Two") == 0);
+  assert(book.toc[2].depth == 0U);
+}
+
+/**
+ * @test test_cov_nested_toc_backtrack
+ *
+ * @par MC/DC:
+ * Completes the two-condition backtrack guards that #438's recursion-to-
+ * iteration refactor introduced, driven through the white-box `_cov` entry
+ * points so THIS translation unit's instantiation of ncx_walk / nav_walk
+ * (compiled from the `#include`d source) reaches them. The production
+ * instantiation is already covered by the nested fixtures in
+ * test_ra8_epub_xml_shim.cpp; the `_cov` copy's existing flat fixtures never
+ * descend a level, leaving its backtrack loops at 0% MC/DC.
+ *
+ * Decision A: `while (sibling == nullptr && depth > base_depth)` in ncx_walk
+ * (2 conditions), via ra8_epub_xml_parse_ncx_cov(k_ncx_nested_backtrack).
+ *  - V1: after descending into the childless nested navPoint (depth 1) with no
+ *    navPoint sibling -> C1=T (sibling NULL), C2=T (1 > 0). Decision T (enter,
+ *    backtrack one level).
+ *  - V2: the nested navPoint's parent ("Chapter One") has a following navPoint
+ *    sibling ("Chapter Two") -> C1=F short. Decision F (stop backtracking).
+ *  - V3: the final top-level navPoint ("Chapter Two") has no sibling at base
+ *    depth -> C1=T, C2=F (0 > 0 is false). Decision F (walk complete).
+ * V1+V2 isolate C1 (sibling); V1+V3 isolate C2 (depth). N+1 = 3 vectors.
+ *
+ * Decision B: `while (sibling == nullptr && depth > base_depth)` in nav_walk
+ * (2 conditions), via ra8_epub_xml_parse_nav_cov(k_nav_nested_backtrack) over
+ * the identical nested shape, landing the same V1/V2/V3 legs on the two-level
+ * (`<li>` -> `<ol>` -> parent `<li>`) backtrack.
+ */
+void test_cov_nested_toc_backtrack(void)
+{
+  std::printf("test_cov_nested_toc_backtrack: ");
+
+  ra8_epub_book_t book = {};
+  const auto*     ncx  = reinterpret_cast<const uint8_t*>(k_ncx_nested_backtrack);
+  assert(ra8_epub_xml_parse_ncx_cov(ncx, std::strlen(k_ncx_nested_backtrack), &book) == k_ra8_ok);
+  cov_assert_nested_toc(book);
+
+  std::memset(&book, 0, sizeof(book));
+  const auto* nav = reinterpret_cast<const uint8_t*>(k_nav_nested_backtrack);
+  assert(ra8_epub_xml_parse_nav_cov(nav, std::strlen(k_nav_nested_backtrack), &book) == k_ra8_ok);
+  cov_assert_nested_toc(book);
+
+  std::printf("ok\n");
+}
+
 /**
  * @test test_cov_entry_and_structural_guards
  *
@@ -646,6 +735,7 @@ int main(void)
   test_cov_find_identifier_variants();
   test_cov_entry_error_paths();
   test_cov_spine_and_nav_edges();
+  test_cov_nested_toc_backtrack();
   test_cov_entry_and_structural_guards();
   test_cov_compound_helper_legs();
   (void)std::fprintf(stderr, "[OK ] test_ra8_epub_xml_shim_cov.cpp\n");
