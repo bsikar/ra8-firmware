@@ -19,6 +19,10 @@
  *    no network -- re-encode a download, or drive the integration harness.
  *  - **page** (bare `URL`): fetch one page and download its `<img>` URLs -- a
  *    debug/inspection path.
+ *
+ * The tool identifies itself honestly (a truthful, configurable User-Agent),
+ * honours robots.txt by default, and sanitises every untrusted name before it
+ * reaches the filesystem.
  */
 #include <limits.h>
 #include <stdio.h>
@@ -26,11 +30,14 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "mdl_cli.h"
 #include "mdl_config.h"
 #include "mdl_export.h"
 #include "mdl_extract.h"
 #include "mdl_net.h"
 #include "mdl_politeness.h"
+#include "mdl_sanitize.h"
+#include "mdl_session.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
@@ -52,6 +59,14 @@ typedef enum : uint16_t {
   k_page_img_delay_max = 800,  /**< page-mode per-image ceiling, ms. */
 } mdl_bufsize_t;
 
+/** @brief `--polite` per-host delay floors (milliseconds). */
+typedef enum : uint16_t {
+  k_polite_img_min_ms  = 2000,  /**< Polite per-image floor.        */
+  k_polite_img_max_ms  = 4000,  /**< Polite per-image ceiling.      */
+  k_polite_chap_min_ms = 5000,  /**< Polite inter-chapter floor.    */
+  k_polite_chap_max_ms = 10000, /**< Polite inter-chapter ceiling.  */
+} mdl_polite_floor_t;
+
 /** @brief Filesystem + parse constants. */
 typedef enum : uint16_t {
   k_dir_mode = 0755, /**< mkdir() permission bits.  */
@@ -59,16 +74,14 @@ typedef enum : uint16_t {
 } mdl_misc_t;
 
 /**
- * @var k_user_agent
- * @brief Session User-Agent sent with every request.
- * @details Held constant for the whole run. Rotating it per request (as the
- *          Kotlin original did) looks more bot-like to a host, not less.
- * @note Read-only; shared by both fetch paths.
+ * @var s_session
+ * @brief The one download session (identity + robots cache) for this run.
+ * @details Embeds a large per-host cache and fetch scratch, so it lives in
+ *          `.bss` rather than on the stack.
+ * @warning Single-threaded; reused across every fetch in one run.
  * @since 0.1.0
  */
-static const char* const k_user_agent =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-  "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+static mdl_session_t s_session;
 
 /**
  * @var s_page
@@ -104,6 +117,12 @@ static mdl_url_list_t s_images;
  * @since 0.1.0
  */
 static char s_rowtmp[k_mdl_url_max];
+
+/** @brief Larger of two unsigned values. */
+RA8_INTERNAL static uint32_t max_u32(uint32_t a, uint32_t b)
+{
+  return (a > b) ? a : b;
+}
 
 /** @brief Pick a file extension from a URL, defaulting to "jpg". */
 RA8_INTERNAL static const char* ext_of(const char* url)
@@ -144,20 +163,25 @@ RA8_INTERNAL static void last_segment(const char* url, char* out, size_t cap)
   while ((start > 0U) && (url[start - 1U] != '/')) {
     --start;
   }
+  char   raw[k_chap_name_bytes];
   size_t n = 0U;
-  for (size_t i = start; (i < end) && (n + 1U < cap); ++i) {
-    const char c  = url[i];
-    const bool ok = ((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z')) ||
-                    ((c >= '0') && (c <= '9')) || (c == '.') || (c == '-') || (c == '_');
-    /* Both arms are already char-valued; the cast is only undoing the integer
-     * promotion the conditional operator applies to them. */
-    out[n] = (char)(ok ? c : '_');
+  for (size_t i = start; (i < end) && (n + 1U < sizeof(raw)); ++i) {
+    raw[n] = url[i];
     ++n;
   }
-  out[n] = '\0';
-  if (n == 0U) {
-    (void)snprintf(out, cap, "item");
+  raw[n] = '\0';
+  /* Neutralise `..`, absolute/traversal bytes, reserved names, over-length. */
+  (void)mdl_sanitize_segment(raw, out, cap);
+}
+
+/** @brief True if `child` resolves to a path inside `parent_abs`. */
+RA8_INTERNAL static bool path_under(const char* parent_abs, const char* child)
+{
+  char resolved[PATH_MAX];
+  if (realpath(child, resolved) == nullptr) {
+    return false;
   }
+  return mdl_path_contained(parent_abs, resolved);
 }
 
 /** @brief Parse the last run of digits in `url` (0 if none). */
@@ -250,10 +274,72 @@ RA8_INTERNAL static void filter_prefix(mdl_url_list_t* l, const char* prefix)
   l->count = w;
 }
 
+/** @brief `--polite`: raise a site's delay floors. */
+RA8_INTERNAL static void apply_polite(mdl_site_t* site)
+{
+  site->img_delay_min     = max_u32(site->img_delay_min, (uint32_t)k_polite_img_min_ms);
+  site->img_delay_max     = max_u32(site->img_delay_max, (uint32_t)k_polite_img_max_ms);
+  site->chapter_delay_min = max_u32(site->chapter_delay_min, (uint32_t)k_polite_chap_min_ms);
+  site->chapter_delay_max = max_u32(site->chapter_delay_max, (uint32_t)k_polite_chap_max_ms);
+}
+
+/** @brief One-time warning printed when no operator contact is configured. */
+RA8_INTERNAL static void warn_no_contact(void)
+{
+  static bool s_warned = false;
+  if (!s_warned) {
+    (void)fprintf(stderr,
+                  "media_dl: WARNING: no contact configured; pass --contact "
+                  "<email|url> so a site operator can reach you before banning\n");
+    s_warned = true;
+  }
+}
+
+/**
+ * @brief Gate, space, and download one chapter image; 0 ok, 1 on skip/failure.
+ * @param[in]     site        Site descriptor (image politeness bounds).
+ * @param[in]     chapter_url Referer for the image request.
+ * @param[in]     dest_dir    Directory the image is written into.
+ * @param[in,out] page_no     Running 1-based page counter, advanced per image.
+ * @param[in,out] pol         Jitter source spacing consecutive fetches.
+ * @param[in]     timeout     Per-request budget, milliseconds.
+ * @param[in]     img_url     Absolute image URL to fetch.
+ * @return 0 on success, 1 when robots refused it or the fetch failed.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static size_t download_one_image(const mdl_site_t* site,
+                                              const char*       chapter_url,
+                                              const char*       dest_dir,
+                                              size_t*           page_no,
+                                              mdl_politeness_t* pol,
+                                              uint32_t          timeout,
+                                              const char*       img_url)
+{
+  uint32_t crawl = 0U;
+  if (!mdl_session_url_allowed(&s_session, img_url, &crawl)) {
+    return 1U; /* robots refused (message already printed) */
+  }
+  (void)mdl_politeness_wait(pol,
+                            max_u32(site->img_delay_min, crawl),
+                            max_u32(site->img_delay_max, crawl));
+  *page_no += 1U;
+  char path[k_file_path_bytes];
+  (void)snprintf(path, sizeof(path), "%s/page_%04zu.%s", dest_dir, *page_no, ext_of(img_url));
+  const mdl_net_req_t img_req = {.user_agent = s_session.user_agent,
+                                 .referer    = chapter_url,
+                                 .timeout_ms = timeout};
+  size_t              got     = 0U;
+  const ra8_err_t     irc     = mdl_net_get_file(s_session.net, img_url, &img_req, path, &got);
+  if (irc != k_ra8_ok) {
+    (void)fprintf(stderr, "    page %zu FAILED (err 0x%X)\n", *page_no, (unsigned)irc);
+    return 1U;
+  }
+  return 0U;
+}
+
 /**
  * @brief Download one chapter's page images into `dest_dir`.
  *
- * @param[in]     net         Network interface used for every fetch.
  * @param[in]     site        Site descriptor supplying the image selectors and
  *                            the per-image politeness bounds.
  * @param[in]     series_url  Series page URL, sent as the Referer.
@@ -266,8 +352,7 @@ RA8_INTERNAL static void filter_prefix(mdl_url_list_t* l, const char* prefix)
  * @param[in]     timeout     Per-request time budget, milliseconds.
  * @return Count of images that failed to download.
  */
-RA8_INTERNAL static size_t download_chapter(mdl_net_iface_t*  net,
-                                            const mdl_site_t* site,
+RA8_INTERNAL static size_t download_chapter(const mdl_site_t* site,
                                             const char*       series_url,
                                             const char*       chapter_url,
                                             const char*       dest_dir,
@@ -275,11 +360,12 @@ RA8_INTERNAL static size_t download_chapter(mdl_net_iface_t*  net,
                                             mdl_politeness_t* pol,
                                             uint32_t          timeout)
 {
-  const mdl_net_req_t page_req = {.user_agent = k_user_agent,
+  const mdl_net_req_t page_req = {.user_agent = s_session.user_agent,
                                   .referer    = series_url,
                                   .timeout_ms = timeout};
   size_t              page_len = 0U;
-  ra8_err_t rc = mdl_net_get_buf(net, chapter_url, &page_req, s_page, sizeof(s_page), &page_len);
+  ra8_err_t           rc =
+    mdl_net_get_buf(s_session.net, chapter_url, &page_req, s_page, sizeof(s_page), &page_len);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "  chapter fetch failed %s (err 0x%X)\n", chapter_url, (unsigned)rc);
     return 1U;
@@ -302,37 +388,24 @@ RA8_INTERNAL static size_t download_chapter(mdl_net_iface_t*  net,
 
   size_t fail = 0U;
   for (size_t i = 0U; i < s_images.count; ++i) {
-    (void)mdl_politeness_wait(pol, site->img_delay_min, site->img_delay_max);
-    *page_no += 1U;
-    char path[k_file_path_bytes];
-    (void)snprintf(path,
-                   sizeof(path),
-                   "%s/page_%04zu.%s",
-                   dest_dir,
-                   *page_no,
-                   ext_of(s_images.urls[i]));
-    const mdl_net_req_t img_req = {.user_agent = k_user_agent,
-                                   .referer    = chapter_url,
-                                   .timeout_ms = timeout};
-    size_t              got     = 0U;
-    ra8_err_t           irc     = mdl_net_get_file(net, s_images.urls[i], &img_req, path, &got);
-    if (irc != k_ra8_ok) {
-      (void)fprintf(stderr, "    page %zu FAILED (err 0x%X)\n", *page_no, (unsigned)irc);
-      ++fail;
-    }
+    fail +=
+      download_one_image(site, chapter_url, dest_dir, page_no, pol, timeout, s_images.urls[i]);
   }
   return fail;
 }
 
 /** @brief Fetch the series page and build the ordered, filtered chapter list. */
-RA8_INTERNAL static ra8_err_t prepare_chapters(mdl_net_iface_t*  net,
-                                               const mdl_site_t* site,
-                                               const char*       series_url,
-                                               uint32_t          timeout)
+RA8_INTERNAL static ra8_err_t
+prepare_chapters(const mdl_site_t* site, const char* series_url, uint32_t timeout)
 {
-  const mdl_net_req_t req = {.user_agent = k_user_agent, .referer = nullptr, .timeout_ms = timeout};
+  if (!mdl_session_url_allowed(&s_session, series_url, nullptr)) {
+    return k_ra8_fail; /* robots refused the series page (message printed) */
+  }
+  const mdl_net_req_t req = {.user_agent = s_session.user_agent,
+                             .referer    = nullptr,
+                             .timeout_ms = timeout};
   size_t              len = 0U;
-  ra8_err_t           rc  = mdl_net_get_buf(net, series_url, &req, s_page, sizeof(s_page), &len);
+  ra8_err_t rc = mdl_net_get_buf(s_session.net, series_url, &req, s_page, sizeof(s_page), &len);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -435,27 +508,25 @@ RA8_INTERNAL static size_t export_combined(mdl_format_t format,
  * the format is `loose`, which has no archive) the folder is exported to its own
  * archive next to the others.
  *
- * @param[in]     net        Network interface used for the fetches.
  * @param[in]     site       Site descriptor supplying selectors and delays.
  * @param[in]     series_url Series page URL, used as the Referer.
  * @param[in]     chapter_url URL of the chapter to download.
- * @param[in]     series_dir Directory holding the per-chapter folders.
+ * @param[in]     series_dir Absolute directory holding the per-chapter folders.
  * @param[in]     format     Output format for the per-chapter archive.
  * @param[in,out] pol        Politeness state carried across chapters.
- * @param[in]     timeout    Per-request timeout in seconds.
+ * @param[in]     timeout    Per-request timeout in milliseconds.
  * @return Number of failures (page fetch failures plus a failed export).
  * @retval 0 Every page fetched and the archive (if any) was written.
  *
  * @pre All pointer arguments are non-NULL.
- * @pre @p series_dir exists.
+ * @pre @p series_dir exists and is absolute.
  * @post The chapter folder exists under @p series_dir.
  * @post Page numbering inside that folder starts at zero.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static size_t download_chapter_separate(mdl_net_iface_t*  net,
-                                                     const mdl_site_t* site,
+RA8_INTERNAL static size_t download_chapter_separate(const mdl_site_t* site,
                                                      const char*       series_url,
                                                      const char*       chapter_url,
                                                      const char*       series_dir,
@@ -468,14 +539,56 @@ RA8_INTERNAL static size_t download_chapter_separate(mdl_net_iface_t*  net,
   char chap_dir[k_dir_path_bytes];
   (void)snprintf(chap_dir, sizeof(chap_dir), "%s/%s", series_dir, chap);
   (void)mkdir(chap_dir, (mode_t)k_dir_mode);
+  if (!path_under(series_dir, chap_dir)) {
+    (void)fprintf(stderr, "  refusing chapter dir outside %s: %s\n", series_dir, chap_dir);
+    return 1U;
+  }
 
   size_t chap_page = 0U;
   size_t fails =
-    download_chapter(net, site, series_url, chapter_url, chap_dir, &chap_page, pol, timeout);
+    download_chapter(site, series_url, chapter_url, chap_dir, &chap_page, pol, timeout);
   if (format != k_mdl_fmt_loose) {
     fails += export_one(format, series_dir, chapter_url);
   }
   return fails;
+}
+
+/** @brief Make the combined output folder under `series_dir`; 0 ok, 1 on error. */
+RA8_INTERNAL static size_t
+make_combined_dir(const char* series_dir, const char* slug, long lo, long hi, char* out, size_t cap)
+{
+  (void)snprintf(out, cap, "%s/%s-%ld-%ld", series_dir, slug, lo, hi);
+  (void)mkdir(out, (mode_t)k_dir_mode);
+  if (!path_under(series_dir, out)) {
+    (void)fprintf(stderr, "  refusing combined dir outside %s: %s\n", series_dir, out);
+    return 1U;
+  }
+  return 0U;
+}
+
+/** @brief Space (if not the first) then download one chapter; returns failures. */
+RA8_INTERNAL static size_t chapter_step(const mdl_site_t* site,
+                                        const char*       series_url,
+                                        const char*       chapter_url,
+                                        const char*       series_dir,
+                                        const char*       combined_dir,
+                                        mdl_format_t      format,
+                                        bool              one_file,
+                                        uint32_t          crawl,
+                                        bool              space,
+                                        size_t*           page_no,
+                                        mdl_politeness_t* pol,
+                                        uint32_t          timeout)
+{
+  if (space) {
+    (void)mdl_politeness_wait(pol,
+                              max_u32(site->chapter_delay_min, crawl),
+                              max_u32(site->chapter_delay_max, crawl));
+  }
+  if (one_file) {
+    return download_chapter(site, series_url, chapter_url, combined_dir, page_no, pol, timeout);
+  }
+  return download_chapter_separate(site, series_url, chapter_url, series_dir, format, pol, timeout);
 }
 
 /**
@@ -487,8 +600,7 @@ RA8_INTERNAL static size_t download_chapter_separate(mdl_net_iface_t*  net,
  * chapter-number range). `--separate` (combine == false), or a `loose` format
  * that has no archive, falls back to one folder (and one archive) per chapter.
  */
-RA8_INTERNAL static size_t download_chapters(mdl_net_iface_t*  net,
-                                             const mdl_site_t* site,
+RA8_INTERNAL static size_t download_chapters(const mdl_site_t* site,
                                              const char*       series_url,
                                              const char*       series_dir,
                                              const char*       slug,
@@ -508,8 +620,7 @@ RA8_INTERNAL static size_t download_chapters(mdl_net_iface_t*  net,
   }
 
   const bool one_file = combine && (format != k_mdl_fmt_loose);
-
-  size_t last = start + (chapters - 1U);
+  size_t     last     = start + (chapters - 1U);
   if (last >= s_chapters.count) {
     last = s_chapters.count - 1U;
   }
@@ -519,25 +630,31 @@ RA8_INTERNAL static size_t download_chapters(mdl_net_iface_t*  net,
 
   char   combined_dir[k_dir_path_bytes];
   size_t page_no = 0U;
-  if (one_file) {
-    (void)snprintf(combined_dir, sizeof(combined_dir), "%s/%s-%ld-%ld", series_dir, slug, lo, hi);
-    (void)mkdir(combined_dir, (mode_t)k_dir_mode);
+  if (one_file &&
+      (make_combined_dir(series_dir, slug, lo, hi, combined_dir, sizeof(combined_dir)) != 0U)) {
+    return 1U;
   }
 
   size_t got_ch = 0U;
   size_t fails  = 0U;
   for (size_t i = start; (i < s_chapters.count) && (got_ch < chapters); ++i) {
-    if (got_ch > 0U) {
-      (void)mdl_politeness_wait(&pol, site->chapter_delay_min, site->chapter_delay_max);
+    const char* curl  = s_chapters.urls[i];
+    uint32_t    crawl = 0U;
+    if (!mdl_session_url_allowed(&s_session, curl, &crawl)) {
+      continue; /* robots refused this chapter (message printed) */
     }
-    const char* curl = s_chapters.urls[i];
-    if (one_file) {
-      /* Continuous page numbering across chapters -> one contiguous archive. */
-      fails += download_chapter(net, site, series_url, curl, combined_dir, &page_no, &pol, timeout);
-    } else {
-      fails +=
-        download_chapter_separate(net, site, series_url, curl, series_dir, format, &pol, timeout);
-    }
+    fails += chapter_step(site,
+                          series_url,
+                          curl,
+                          series_dir,
+                          combined_dir,
+                          format,
+                          one_file,
+                          crawl,
+                          got_ch > 0U,
+                          &page_no,
+                          &pol,
+                          timeout);
     ++got_ch;
   }
 
@@ -548,30 +665,71 @@ RA8_INTERNAL static size_t download_chapters(mdl_net_iface_t*  net,
   return fails;
 }
 
+/** @brief Build the session UA + identity for a run; warns on missing contact. */
+RA8_INTERNAL static void start_session(mdl_net_iface_t*      net,
+                                       const mdl_run_opts_t* opts,
+                                       const char*           cfg_contact,
+                                       char*                 ua,
+                                       size_t                ua_cap)
+{
+  const char* contact = opts->contact;
+  if ((contact == nullptr) && (cfg_contact != nullptr) && (cfg_contact[0] != '\0')) {
+    contact = cfg_contact; /* CLI --contact overrides the site descriptor's key */
+  }
+  if (!mdl_session_build_ua(contact, ua, ua_cap)) {
+    warn_no_contact();
+  }
+  mdl_session_init(&s_session, net, ua, opts->honor_robots);
+}
+
+/** @brief Build slug + absolute series dir under `out_dir`; false on failure. */
+RA8_INTERNAL static bool prepare_series_dir(
+  const char* out_dir, const char* series_url, char* slug, size_t slug_cap, char* abs_dir)
+{
+  last_segment(series_url, slug, slug_cap);
+  char series_dir[k_dir_path_bytes];
+  (void)snprintf(series_dir, sizeof(series_dir), "%s/%s", out_dir, slug);
+  (void)mkdir(out_dir, (mode_t)k_dir_mode);
+  (void)mkdir(series_dir, (mode_t)k_dir_mode);
+  /* Archive export spawns the archiver with cwd set to the chapter dir, so the
+   * output paths must be absolute -- resolve the series dir now that it exists. */
+  if (realpath(series_dir, abs_dir) == nullptr) {
+    (void)fprintf(stderr, "media_dl: cannot resolve %s\n", series_dir);
+    return false;
+  }
+  return true;
+}
+
 /** @brief series mode: config + series URL -> download N chapters. */
-RA8_INTERNAL static int run_series(const char*  cfg_path,
-                                   const char*  series_url,
-                                   const char*  out_dir,
-                                   mdl_format_t format,
-                                   bool         combine,
-                                   size_t       chapters,
-                                   size_t       start,
-                                   uint64_t     seed,
-                                   uint32_t     timeout)
+RA8_INTERNAL static int run_series(const char*           cfg_path,
+                                   const char*           series_url,
+                                   const char*           out_dir,
+                                   mdl_format_t          format,
+                                   bool                  combine,
+                                   size_t                chapters,
+                                   size_t                start,
+                                   uint64_t              seed,
+                                   uint32_t              timeout,
+                                   const mdl_run_opts_t* opts)
 {
   mdl_site_t site;
   if (mdl_config_load(cfg_path, &site) != k_ra8_ok) {
     return 1;
   }
+  if (opts->polite) {
+    apply_polite(&site);
+  }
   (void)printf("site: %s (host %s, kind %s)\n", site.name, site.host, site.kind);
 
-  mdl_net_iface_t* net = mdl_net_curl_create();
+  mdl_net_iface_t* net = mdl_net_curl_create(&opts->policy);
   if (net == nullptr) {
     (void)fprintf(stderr, "media_dl: network init failed\n");
     return 1;
   }
+  char ua[k_mdl_ua_max];
+  start_session(net, opts, site.contact, ua, sizeof(ua));
 
-  ra8_err_t rc = prepare_chapters(net, &site, series_url, timeout);
+  ra8_err_t rc = prepare_chapters(&site, series_url, timeout);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: series fetch failed (err 0x%X)\n", (unsigned)rc);
     mdl_net_curl_destroy(net);
@@ -585,23 +743,13 @@ RA8_INTERNAL static int run_series(const char*  cfg_path,
   }
 
   char series_slug[k_slug_bytes];
-  last_segment(series_url, series_slug, sizeof(series_slug));
-  char series_dir[k_dir_path_bytes];
-  (void)snprintf(series_dir, sizeof(series_dir), "%s/%s", out_dir, series_slug);
-  (void)mkdir(out_dir, (mode_t)k_dir_mode);
-  (void)mkdir(series_dir, (mode_t)k_dir_mode);
-
-  /* Archive export spawns the archiver with cwd set to the chapter dir, so the
-   * output paths must be absolute -- resolve the series dir now that it exists. */
   char abs_series_dir[PATH_MAX];
-  if (realpath(series_dir, abs_series_dir) == nullptr) {
-    (void)fprintf(stderr, "media_dl: cannot resolve %s\n", series_dir);
+  if (!prepare_series_dir(out_dir, series_url, series_slug, sizeof(series_slug), abs_series_dir)) {
     mdl_net_curl_destroy(net);
     return 1;
   }
 
-  const size_t fails = download_chapters(net,
-                                         &site,
+  const size_t fails = download_chapters(&site,
                                          series_url,
                                          abs_series_dir,
                                          series_slug,
@@ -615,22 +763,77 @@ RA8_INTERNAL static int run_series(const char*  cfg_path,
   return (fails == 0U) ? 0 : 1;
 }
 
-/** @brief page mode: fetch one URL, download its `<img>` URLs (debug path). */
-RA8_INTERNAL static int run_page(const char* url,
-                                 const char* out_dir,
-                                 const char* attr,
-                                 uint32_t    max_imgs,
-                                 uint64_t    seed,
-                                 uint32_t    timeout)
+/** @brief Gate, space, and download one page-mode image; 0 ok, 1 on skip/fail. */
+RA8_INTERNAL static size_t download_page_image(const char*       url,
+                                               const char*       out_dir,
+                                               uint32_t          dmin,
+                                               uint32_t          dmax,
+                                               uint32_t          timeout,
+                                               mdl_politeness_t* pol,
+                                               size_t            idx)
 {
-  mdl_net_iface_t* net = mdl_net_curl_create();
+  uint32_t crawl = 0U;
+  if (!mdl_session_url_allowed(&s_session, s_images.urls[idx], &crawl)) {
+    return 1U;
+  }
+  (void)mdl_politeness_wait(pol, max_u32(dmin, crawl), max_u32(dmax, crawl));
+  char path[k_file_path_bytes];
+  (void)snprintf(
+    path, sizeof(path), "%s/page_%03zu.%s", out_dir, idx + 1U, ext_of(s_images.urls[idx]));
+  const mdl_net_req_t ir  = {.user_agent = s_session.user_agent,
+                             .referer    = url,
+                             .timeout_ms = timeout};
+  size_t              got = 0U;
+  return (mdl_net_get_file(s_session.net, s_images.urls[idx], &ir, path, &got) != k_ra8_ok) ? 1U
+                                                                                            : 0U;
+}
+
+/** @brief Download the extracted page images into `out_dir`; returns failures. */
+RA8_INTERNAL static size_t download_page_images(
+  const char* url, const char* out_dir, uint32_t max_imgs, uint64_t seed, uint32_t timeout, bool polite)
+{
+  mdl_politeness_t pol;
+  mdl_politeness_init(&pol, seed);
+  const uint32_t dmin  = polite ? (uint32_t)k_polite_img_min_ms : (uint32_t)k_page_img_delay_min;
+  const uint32_t dmax  = polite ? (uint32_t)k_polite_img_max_ms : (uint32_t)k_page_img_delay_max;
+  const size_t   limit = (max_imgs == 0U) ? s_images.count : (size_t)max_imgs;
+  size_t         fail  = 0U;
+  for (size_t i = 0U; (i < s_images.count) && (i < limit); ++i) {
+    fail += download_page_image(url, out_dir, dmin, dmax, timeout, &pol, i);
+  }
+  (void)printf("done: %zu ok, %zu failed, into %s/\n",
+               (s_images.count < limit ? s_images.count : limit) - fail,
+               fail,
+               out_dir);
+  return fail;
+}
+
+/** @brief page mode: fetch one URL, download its `<img>` URLs (debug path). */
+RA8_INTERNAL static int run_page(const char*           url,
+                                 const char*           out_dir,
+                                 const char*           attr,
+                                 uint32_t              max_imgs,
+                                 uint64_t              seed,
+                                 uint32_t              timeout,
+                                 const mdl_run_opts_t* opts)
+{
+  mdl_net_iface_t* net = mdl_net_curl_create(&opts->policy);
   if (net == nullptr) {
     (void)fprintf(stderr, "media_dl: network init failed\n");
     return 1;
   }
-  const mdl_net_req_t req = {.user_agent = k_user_agent, .referer = nullptr, .timeout_ms = timeout};
+  char ua[k_mdl_ua_max];
+  start_session(net, opts, nullptr, ua, sizeof(ua));
+
+  if (!mdl_session_url_allowed(&s_session, url, nullptr)) {
+    mdl_net_curl_destroy(net);
+    return 1;
+  }
+  const mdl_net_req_t req = {.user_agent = s_session.user_agent,
+                             .referer    = nullptr,
+                             .timeout_ms = timeout};
   size_t              len = 0U;
-  ra8_err_t           rc  = mdl_net_get_buf(net, url, &req, s_page, sizeof(s_page), &len);
+  ra8_err_t           rc  = mdl_net_get_buf(s_session.net, url, &req, s_page, sizeof(s_page), &len);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: fetch failed (err 0x%X)\n", (unsigned)rc);
     mdl_net_curl_destroy(net);
@@ -640,118 +843,9 @@ RA8_INTERNAL static int run_page(const char* url,
   (void)printf("found %zu image(s)\n", s_images.count);
   (void)mkdir(out_dir, (mode_t)k_dir_mode);
 
-  mdl_politeness_t pol;
-  mdl_politeness_init(&pol, seed);
-  const size_t limit = (max_imgs == 0U) ? s_images.count : (size_t)max_imgs;
-  size_t       fail  = 0U;
-  for (size_t i = 0U; (i < s_images.count) && (i < limit); ++i) {
-    (void)mdl_politeness_wait(&pol, (uint32_t)k_page_img_delay_min, (uint32_t)k_page_img_delay_max);
-    char path[k_file_path_bytes];
-    (void)
-      snprintf(path, sizeof(path), "%s/page_%03zu.%s", out_dir, i + 1U, ext_of(s_images.urls[i]));
-    const mdl_net_req_t ir  = {.user_agent = k_user_agent, .referer = url, .timeout_ms = timeout};
-    size_t              got = 0U;
-    if (mdl_net_get_file(net, s_images.urls[i], &ir, path, &got) != k_ra8_ok) {
-      ++fail;
-    }
-  }
-  (void)printf("done: %zu ok, %zu failed, into %s/\n",
-               (s_images.count < limit ? s_images.count : limit) - fail,
-               fail,
-               out_dir);
+  const size_t fail = download_page_images(url, out_dir, max_imgs, seed, timeout, opts->polite);
   mdl_net_curl_destroy(net);
   return (fail == 0U) ? 0 : 1;
-}
-
-/** @brief Print usage to stderr. */
-RA8_INTERNAL static void usage(const char* a0)
-{
-  (void)fprintf(stderr,
-                "usage:\n"
-                "  series: %s --config SITE.conf --series URL [--chapters N] "
-                "[--start K] [--out DIR] "
-                "[--format cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook] "
-                "[--separate] [--seed S] [--timeout MS]\n"
-                "          N chapters combine into ONE <slug>-<lo>-<hi>.<ext> by "
-                "default; --separate keeps one archive per chapter.\n"
-                "  pack:   %s --pack DIR --format FMT   "
-                "package an existing folder of page images (no network)\n"
-                "  page:   %s URL [--out DIR] [--max N] [--attr data-src|src] "
-                "[--seed S] [--timeout MS]\n",
-                a0,
-                a0,
-                a0);
-}
-
-/** @brief Parsed command-line options in string form (converted by main). */
-typedef struct {
-  const char* cfg;      /**< --config path.                                          */
-  const char* series;   /**< --series URL.                                           */
-  const char* page_url; /**< positional page URL (page mode).                        */
-  const char* out;      /**< --out dir.                                              */
-  const char* attr;     /**< --attr.                                                 */
-  const char* chapters; /**< --chapters.                                             */
-  const char* start;    /**< --start.                                                */
-  const char* max;      /**< --max.                                                  */
-  const char* seed;     /**< --seed.                                                 */
-  const char* timeout;  /**< --timeout.                                              */
-  const char* format;   /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/jof/rabook).   */
-  const char* pack;     /**< --pack DIR: package an existing folder, no network.     */
-  bool        separate; /**< --separate: one archive per chapter (default: combine). */
-  bool        bad;      /**< An unrecognised argument was seen.                      */
-} mdl_args_t;
-
-/** @brief If argv[*i] == `flag`, store its value in *dst and advance `*i`. */
-RA8_INTERNAL static bool take_opt(char** argv, int argc, int* i, const char* flag, const char** dst)
-{
-  if ((argv[*i] == nullptr) || (strcmp(argv[*i], flag) != 0)) {
-    return false;
-  }
-  if ((*i + 1) < argc) {
-    *i += 1;
-    *dst = argv[*i];
-  }
-  return true;
-}
-
-/** @brief Parse argv into `a`; numeric fields stay as strings for main. */
-RA8_INTERNAL static void parse_args(int argc, char** argv, mdl_args_t* a)
-{
-  /* Table-driven long options: each entry binds a flag to the field it fills. */
-  const struct {
-    const char*  flag; /**< Long-option spelling, including the leading "--". */
-    const char** dst;  /**< Field in @p a that receives the option's value.   */
-  } opts[] = {
-    {"--config", &a->cfg},
-    {"--series", &a->series},
-    {"--out", &a->out},
-    {"--attr", &a->attr},
-    {"--chapters", &a->chapters},
-    {"--start", &a->start},
-    {"--max", &a->max},
-    {"--seed", &a->seed},
-    {"--timeout", &a->timeout},
-    {"--format", &a->format},
-    {"--pack", &a->pack},
-  };
-  for (int i = 1; i < argc; ++i) {
-    if ((argv[i] != nullptr) && (strcmp(argv[i], "--separate") == 0)) {
-      a->separate = true;
-      continue;
-    }
-    bool matched = false;
-    for (size_t k = 0U; (k < (sizeof(opts) / sizeof(opts[0]))) && !matched; ++k) {
-      matched = take_opt(argv, argc, &i, opts[k].flag, opts[k].dst);
-    }
-    if (matched) {
-      continue;
-    }
-    if ((argv[i] != nullptr) && (argv[i][0] != '-')) {
-      a->page_url = argv[i];
-      continue;
-    }
-    a->bad = true;
-  }
 }
 
 /** @brief Convert a decimal string, or `dflt` when NULL. */
@@ -807,15 +901,20 @@ int main(int argc, char** argv)
   mdl_args_t a = {};
   a.out        = "downloads";
   a.attr       = "data-src";
-  parse_args(argc, argv, &a);
+  mdl_cli_parse(argc, argv, &a);
   if (a.bad) {
-    usage(argv[0]);
+    mdl_cli_usage(argv[0]);
     return 2;
   }
+  if (a.ignore_robots) {
+    (void)fprintf(stderr,
+                  "media_dl: WARNING: --ignore-robots set; robots.txt will NOT be honoured\n");
+  }
 
-  const uint64_t seed    = (a.seed == nullptr) ? 1UL : strtoull(a.seed, nullptr, k_dec_base);
-  const uint32_t timeout = (uint32_t)to_ul(a.timeout, (unsigned long)k_req_timeout_def);
-  const size_t   start   = (size_t)to_ul(a.start, 0UL);
+  const uint64_t       seed    = (a.seed == nullptr) ? 1UL : strtoull(a.seed, nullptr, k_dec_base);
+  const uint32_t       timeout = (uint32_t)to_ul(a.timeout, (unsigned long)k_req_timeout_def);
+  const size_t         start   = (size_t)to_ul(a.start, 0UL);
+  const mdl_run_opts_t opts    = mdl_cli_run_opts(&a);
 
   const mdl_format_t format = mdl_format_from_str(a.format);
   if (format == k_mdl_fmt_invalid) {
@@ -839,12 +938,21 @@ int main(int argc, char** argv)
     if (chapters == 0U) {
       chapters = 1U;
     }
-    return run_series(a.cfg, a.series, a.out, format, !a.separate, chapters, start, seed, timeout);
+    return run_series(a.cfg,
+                      a.series,
+                      a.out,
+                      format,
+                      !a.separate,
+                      chapters,
+                      start,
+                      seed,
+                      timeout,
+                      &opts);
   }
   if (a.page_url != nullptr) {
     const uint32_t max_imgs = (uint32_t)to_ul(a.max, 0UL);
-    return run_page(a.page_url, a.out, a.attr, max_imgs, seed, timeout);
+    return run_page(a.page_url, a.out, a.attr, max_imgs, seed, timeout, &opts);
   }
-  usage(argv[0]);
+  mdl_cli_usage(argv[0]);
   return 2;
 }

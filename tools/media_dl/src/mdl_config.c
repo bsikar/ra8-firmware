@@ -53,37 +53,72 @@ RA8_INTERNAL static void set_str(char* dst, size_t cap, const char* val)
   (void)snprintf(dst, cap, "%s", val);
 }
 
+/** @brief Apply a string-valued key, or return false if `key` is not one. */
+RA8_INTERNAL static bool apply_kv_str(mdl_site_t* s, const char* key, const char* val)
+{
+  const struct {
+    const char* key; /**< Config key spelling.            */
+    char*       dst; /**< Descriptor field it fills.      */
+    size_t      cap; /**< Capacity of that field.         */
+  } fields[] = {
+    {"name", s->name, sizeof(s->name)},
+    {"host", s->host, sizeof(s->host)},
+    {"kind", s->kind, sizeof(s->kind)},
+    {"contact", s->contact, sizeof(s->contact)},
+    {"chapter_url_contains", s->chapter_url_contains, sizeof(s->chapter_url_contains)},
+    {"page_img_attr", s->page_img_attr, sizeof(s->page_img_attr)},
+    {"page_img_url_contains", s->page_img_url_contains, sizeof(s->page_img_url_contains)},
+  };
+  for (size_t i = 0U; i < (sizeof(fields) / sizeof(fields[0])); ++i) {
+    if (strcmp(key, fields[i].key) == 0) {
+      set_str(fields[i].dst, fields[i].cap, val);
+      return true;
+    }
+  }
+  return false;
+}
+
+/** @brief Apply a millisecond-delay key, or return false if `key` is not one. */
+RA8_INTERNAL static bool apply_kv_delay(mdl_site_t* s, const char* key, const char* val)
+{
+  const struct {
+    const char* key; /**< Config key spelling.            */
+    uint32_t*   dst; /**< Descriptor delay it fills.      */
+  } delays[] = {
+    {"img_delay_min", &s->img_delay_min},
+    {"img_delay_max", &s->img_delay_max},
+    {"chapter_delay_min", &s->chapter_delay_min},
+    {"chapter_delay_max", &s->chapter_delay_max},
+  };
+  for (size_t i = 0U; i < (sizeof(delays) / sizeof(delays[0])); ++i) {
+    if (strcmp(key, delays[i].key) == 0) {
+      *delays[i].dst = (uint32_t)strtoul(val, nullptr, k_dec_base);
+      return true;
+    }
+  }
+  return false;
+}
+
+/** @brief Map a `chapter_order` value string to its enum. */
+RA8_INTERNAL static mdl_chapter_order_t parse_order(const char* val)
+{
+  if (strcmp(val, "reverse") == 0) {
+    return k_mdl_order_reverse;
+  }
+  if (strcmp(val, "asc") == 0) {
+    return k_mdl_order_asc;
+  }
+  return k_mdl_order_doc;
+}
+
 /** @brief Apply one key=value pair to the descriptor. */
 RA8_INTERNAL static void apply_kv(mdl_site_t* s, const char* key, const char* val)
 {
-  if (strcmp(key, "name") == 0) {
-    set_str(s->name, sizeof(s->name), val);
-  } else if (strcmp(key, "host") == 0) {
-    set_str(s->host, sizeof(s->host), val);
-  } else if (strcmp(key, "kind") == 0) {
-    set_str(s->kind, sizeof(s->kind), val);
-  } else if (strcmp(key, "chapter_url_contains") == 0) {
-    set_str(s->chapter_url_contains, sizeof(s->chapter_url_contains), val);
-  } else if (strcmp(key, "chapter_order") == 0) {
-    if (strcmp(val, "reverse") == 0) {
-      s->chapter_order = k_mdl_order_reverse;
-    } else if (strcmp(val, "asc") == 0) {
-      s->chapter_order = k_mdl_order_asc;
-    } else {
-      s->chapter_order = k_mdl_order_doc;
-    }
-  } else if (strcmp(key, "page_img_attr") == 0) {
-    set_str(s->page_img_attr, sizeof(s->page_img_attr), val);
-  } else if (strcmp(key, "page_img_url_contains") == 0) {
-    set_str(s->page_img_url_contains, sizeof(s->page_img_url_contains), val);
-  } else if (strcmp(key, "img_delay_min") == 0) {
-    s->img_delay_min = (uint32_t)strtoul(val, nullptr, k_dec_base);
-  } else if (strcmp(key, "img_delay_max") == 0) {
-    s->img_delay_max = (uint32_t)strtoul(val, nullptr, k_dec_base);
-  } else if (strcmp(key, "chapter_delay_min") == 0) {
-    s->chapter_delay_min = (uint32_t)strtoul(val, nullptr, k_dec_base);
-  } else if (strcmp(key, "chapter_delay_max") == 0) {
-    s->chapter_delay_max = (uint32_t)strtoul(val, nullptr, k_dec_base);
+  if (apply_kv_str(s, key, val) || apply_kv_delay(s, key, val)) {
+    return;
+  }
+  if (strcmp(key, "chapter_order") == 0) {
+    s->chapter_order = parse_order(val);
   } else {
     (void)fprintf(stderr, "media_dl: config: unknown key '%s' (ignored)\n", key);
   }

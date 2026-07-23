@@ -30,11 +30,12 @@ typedef enum : uint8_t {
 
 /** @brief Fixed field sizes for a site descriptor. */
 typedef enum : uint16_t {
-  k_mdl_name_max  = 64,  /**< Site display name bytes.        */
-  k_mdl_host_max  = 128, /**< Host bytes.                     */
-  k_mdl_kind_max  = 16,  /**< "manga"/"manhwa"/... bytes.     */
-  k_mdl_match_max = 128, /**< Selector/substring field bytes. */
-  k_mdl_attr_max  = 16,  /**< Image attribute name bytes.     */
+  k_mdl_name_max    = 64,  /**< Site display name bytes.        */
+  k_mdl_host_max    = 128, /**< Host bytes.                     */
+  k_mdl_kind_max    = 16,  /**< "manga"/"manhwa"/... bytes.     */
+  k_mdl_match_max   = 128, /**< Selector/substring field bytes. */
+  k_mdl_attr_max    = 16,  /**< Image attribute name bytes.     */
+  k_mdl_contact_max = 128, /**< Operator contact string bytes.  */
 } mdl_config_limits_t;
 
 /**
@@ -42,9 +43,10 @@ typedef enum : uint16_t {
  * @invariant Every string field is NUL-terminated.
  */
 typedef struct {
-  char name[k_mdl_name_max]; /**< Human-readable site name.        */
-  char host[k_mdl_host_max]; /**< Site host, e.g. "manhwaus.net".  */
-  char kind[k_mdl_kind_max]; /**< Content kind hint (reader mode). */
+  char name[k_mdl_name_max];       /**< Human-readable site name.        */
+  char host[k_mdl_host_max];       /**< Site host, e.g. "manhwaus.net".  */
+  char kind[k_mdl_kind_max];       /**< Content kind hint (reader mode). */
+  char contact[k_mdl_contact_max]; /**< Operator contact for the UA.     */
 
   /* Chapter list, found on a series page. */
   char                chapter_url_contains[k_mdl_match_max]; /**< href must contain this. */
