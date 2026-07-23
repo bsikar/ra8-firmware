@@ -355,7 +355,8 @@ static void verify_tile(const ra8_tile_t* t, uint16_t tx, uint16_t ty)
 static void assert_whole_decode_caps(const uint8_t* enc, size_t len)
 {
   TEST_ASSERT_EQ(
-    k_ra8_ok, ra8_gfx_init(s_fb, (uint16_t)k_probe_w, (uint16_t)k_probe_h, k_ra8_gfx_format_rgb565));
+    k_ra8_ok,
+    ra8_gfx_init(s_fb, (uint16_t)k_probe_w, (uint16_t)k_probe_h, k_ra8_gfx_format_rgb565));
   ra8_img_arena_t arena = {.base = s_decode_arena, .cap = sizeof s_decode_arena};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  ra8_img_decode_blit(&arena,
