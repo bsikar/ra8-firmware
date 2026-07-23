@@ -169,11 +169,11 @@ resolve_scheme_rel(const char* base, const char* raw, char* out, size_t out_cap)
 RA8_INTERNAL static bool
 resolve_root_rel(const char* auth, const char* raw, char* out, size_t out_cap)
 {
-  if ((strlen(auth) + strlen(raw) + 1U) > out_cap) {
-    return false;
-  }
-  (void)snprintf(out, out_cap, "%s%s", auth, raw);
-  return true;
+  /* The snprintf return is the truncation test: n >= out_cap is exactly the
+   * over-long case a separate strlen guard would reject, and using the return
+   * (rather than discarding it) is also what keeps -Wformat-truncation quiet. */
+  const int n = snprintf(out, out_cap, "%s%s", auth, raw);
+  return (n >= 0) && ((size_t)n < out_cap);
 }
 
 /** @brief Resolve a path-relative URL against `base` (authority `auth`). */
@@ -189,11 +189,10 @@ resolve_path_rel(const char* base, const char* auth, const char* raw, char* out,
     }
   }
   if (slash < strlen(auth)) {
-    if ((strlen(auth) + 1U + strlen(raw) + 1U) > out_cap) {
-      return false;
-    }
-    (void)snprintf(out, out_cap, "%s/%s", auth, raw);
-    return true;
+    /* As in resolve_root_rel: the snprintf return is the truncation test, and
+     * using it keeps -Wformat-truncation quiet where a discarded return does not. */
+    const int n = snprintf(out, out_cap, "%s/%s", auth, raw);
+    return (n >= 0) && ((size_t)n < out_cap);
   }
   if ((slash + 1U + strlen(raw) + 1U) > out_cap) {
     return false;

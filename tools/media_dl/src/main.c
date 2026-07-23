@@ -424,6 +424,12 @@ prepare_chapters(const mdl_site_t* site, const char* series_url, uint32_t timeou
   return k_ra8_ok;
 }
 
+/** @brief True when an snprintf result of `n` fully fit a buffer of `cap`. */
+RA8_INTERNAL static bool snprintf_fit(int n, size_t cap)
+{
+  return (n >= 0) && ((size_t)n < cap);
+}
+
 /** @brief Package one downloaded chapter into `format`; 0 ok, 1 on failure. */
 RA8_INTERNAL static size_t
 export_one(mdl_format_t format, const char* series_dir, const char* chapter_url)
@@ -432,10 +438,17 @@ export_one(mdl_format_t format, const char* series_dir, const char* chapter_url)
   last_segment(chapter_url, chap, sizeof(chap));
   const char* ext = mdl_format_ext(format);
 
-  char dir[k_dir_path_bytes];
-  (void)snprintf(dir, sizeof(dir), "%s/%s", series_dir, chap);
-  char out[k_dir_path_bytes];
-  (void)snprintf(out, sizeof(out), "%s/%s.%s", series_dir, chap, ext);
+  /* series_dir is caller-supplied and may itself be near the buffer size, so a
+   * silently-truncated join would package the chapter into the wrong path.
+   * Check the snprintf result instead of discarding it. */
+  char      dir[k_dir_path_bytes];
+  char      out[k_dir_path_bytes];
+  const int dn = snprintf(dir, sizeof(dir), "%s/%s", series_dir, chap);
+  const int on = snprintf(out, sizeof(out), "%s/%s.%s", series_dir, chap, ext);
+  if (!snprintf_fit(dn, sizeof(dir)) || !snprintf_fit(on, sizeof(out))) {
+    (void)fprintf(stderr, "  export %s.%s path too long, skipped\n", chap, ext);
+    return 1U;
+  }
 
   const ra8_err_t rc = mdl_export_chapter(format, dir, out);
   if (rc != k_ra8_ok) {
@@ -489,7 +502,11 @@ RA8_INTERNAL static size_t export_combined(mdl_format_t format,
 {
   const char* ext = mdl_format_ext(format);
   char        out[k_dir_path_bytes];
-  (void)snprintf(out, sizeof(out), "%s/%s-%ld-%ld.%s", series_dir, slug, lo, hi, ext);
+  const int   n = snprintf(out, sizeof(out), "%s/%s-%ld-%ld.%s", series_dir, slug, lo, hi, ext);
+  if (!snprintf_fit(n, sizeof(out))) {
+    (void)fprintf(stderr, "  combine export path too long under %s\n", series_dir);
+    return 1U;
+  }
   const ra8_err_t rc = mdl_export_chapter(format, dir, out);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)rc);
@@ -536,8 +553,12 @@ RA8_INTERNAL static size_t download_chapter_separate(const mdl_site_t* site,
 {
   char chap[k_chap_name_bytes];
   last_segment(chapter_url, chap, sizeof(chap));
-  char chap_dir[k_dir_path_bytes];
-  (void)snprintf(chap_dir, sizeof(chap_dir), "%s/%s", series_dir, chap);
+  char      chap_dir[k_dir_path_bytes];
+  const int n = snprintf(chap_dir, sizeof(chap_dir), "%s/%s", series_dir, chap);
+  if (!snprintf_fit(n, sizeof(chap_dir))) {
+    (void)fprintf(stderr, "  chapter dir path too long under %s\n", series_dir);
+    return 1U;
+  }
   (void)mkdir(chap_dir, (mode_t)k_dir_mode);
   if (!path_under(series_dir, chap_dir)) {
     (void)fprintf(stderr, "  refusing chapter dir outside %s: %s\n", series_dir, chap_dir);
@@ -557,7 +578,11 @@ RA8_INTERNAL static size_t download_chapter_separate(const mdl_site_t* site,
 RA8_INTERNAL static size_t
 make_combined_dir(const char* series_dir, const char* slug, long lo, long hi, char* out, size_t cap)
 {
-  (void)snprintf(out, cap, "%s/%s-%ld-%ld", series_dir, slug, lo, hi);
+  const int n = snprintf(out, cap, "%s/%s-%ld-%ld", series_dir, slug, lo, hi);
+  if (!snprintf_fit(n, cap)) {
+    (void)fprintf(stderr, "  combined dir path too long under %s\n", series_dir);
+    return 1U;
+  }
   (void)mkdir(out, (mode_t)k_dir_mode);
   if (!path_under(series_dir, out)) {
     (void)fprintf(stderr, "  refusing combined dir outside %s: %s\n", series_dir, out);
