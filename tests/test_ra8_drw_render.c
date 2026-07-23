@@ -634,6 +634,44 @@ static void test_mcdc_drw_internal_rect_above_max(void)
   TEST_END("drw MC/DC: rect_above_max OR");
 }
 
+/**
+ * @test test_mcdc_drw_internal_rect_off_surface
+ *
+ * @par MC/DC:
+ * Decision at libs/ra8_hal/src/ra8_drw.c, ra8_drw_internal_rect_off_surface:
+ *   ``rect->x < 0 || rect->y < 0`` (2 conditions C1, C2; ``||`` short-circuit).
+ * - V1: x>=0, y>=0 -> C1=F, C2=F -> false (control; on-surface rect)
+ * - V2: x<0,  y>=0 -> C1=T (short-circuit) -> true  (varies C1 only)
+ * - V3: x>=0, y<0  -> C1=F, C2=T -> true  (varies C2 only)
+ * Pairs: (V1,V2) flips C1 with C2 fixed>=0; (V1,V3) flips C2 with C1 fixed>=0.
+ * N+1 = 3 vectors for 2 conditions. The driver is init'd first so the cached
+ * pitch keeps the on-surface rect's independent ``right > pitch`` leg false.
+ */
+static void test_mcdc_drw_internal_rect_off_surface(void)
+{
+  TEST_BEGIN("drw MC/DC: rect_off_surface OR");
+  prep();
+  const ra8_drw_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
+
+  const ra8_drw_rect_t on = {
+    .x              = (int16_t)k_ra8_drw_test_rect_x,
+    .y              = (int16_t)k_ra8_drw_test_rect_y,
+    .width_px       = (uint16_t)k_ra8_drw_test_rect_w,
+    .height_px      = (uint16_t)k_ra8_drw_test_rect_h,
+    .color_argb8888 = 0UL,
+  };
+  ra8_drw_rect_t neg_x = on;
+  neg_x.x              = (int16_t)-1;
+  ra8_drw_rect_t neg_y = on;
+  neg_y.y              = (int16_t)-1;
+
+  TEST_ASSERT(!ra8_drw_internal_rect_off_surface(&on));   /* V1: F || F -> F       */
+  TEST_ASSERT(ra8_drw_internal_rect_off_surface(&neg_x)); /* V2: T -> T (varies x) */
+  TEST_ASSERT(ra8_drw_internal_rect_off_surface(&neg_y)); /* V3: F || T -> T (y)   */
+  TEST_END("drw MC/DC: rect_off_surface OR");
+}
+
 int32_t main(void)
 {
   test_set_texture_argb8888();
@@ -653,6 +691,7 @@ int32_t main(void)
   test_mcdc_drw();
   test_mcdc_drw_internal_rect_below_min();
   test_mcdc_drw_internal_rect_above_max();
+  test_mcdc_drw_internal_rect_off_surface();
   (void)fprintf(stderr, "[OK  ] test_ra8_drw_render.c\n");
   return 0;
 }
