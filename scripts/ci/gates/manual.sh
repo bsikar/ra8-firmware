@@ -119,7 +119,7 @@ gate_hil_all() (
     find examples/ek_ra8d2/hw_validated/hil -mindepth 1 -maxdepth 1 -type d \
       -exec basename {} \;
   )
-  make -j"$(cpu_count)" "${apps[@]}"
+  make -j"$(ra8_max_jobs)" "${apps[@]}"
   bash scripts/hil/all.sh --skip-build
 )
 

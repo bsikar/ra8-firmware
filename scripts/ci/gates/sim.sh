@@ -108,5 +108,5 @@ gate_sil_integration() (
   # the fixture is tracked; assert it is present so a future re-gitignore
   # fails loudly here instead of as a confusing app FAIL.
   test -s examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h
-  bash scripts/sim/sil_all.sh -j "$(cpu_count)"
+  bash scripts/sim/sil_all.sh -j "$(ra8_max_jobs)"
 )

@@ -189,15 +189,13 @@ pick_clang_format() {
   return 1
 }
 
-cpu_count() {
-  if command -v nproc >/dev/null 2>&1; then
-    nproc
-  elif command -v sysctl >/dev/null 2>&1; then
-    sysctl -n hw.ncpu
-  else
-    echo 4
-  fi
-}
+# cpu_count() and ra8_max_jobs() -- the ONE canonical bounded-parallelism
+# source (#328). Gate bodies derive every `-j` / `-P` width from ra8_max_jobs,
+# never a raw nproc, so N gate jobs on one shared box do not each grab all
+# cores. The standalone builders / checks / sim drivers a gate shells out to
+# source the same file, so there is a single home for the policy.
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "${SCRIPT_DIR}/ci/lib/parallelism.sh"
 
 # Prepend the pinned Arm GNU Toolchain when the runner provisions it under
 # /opt, replacing what the workflows used to do with GITHUB_PATH. The apt
@@ -842,11 +840,15 @@ echo "==> running CI gates in container (runtime=${RUNTIME_CMD[*]} fast=$fast)"
 #
 # CMAKE_BUILD_PARALLEL_LEVEL defaults to 4 (the CI runner's value, so this
 # reproduces its timing) but is overridable for a beefier verification box.
+# RA8_MAX_JOBS is forwarded when set so an operator can cap every in-container
+# parallel width (#328) below the CMAKE_BUILD_PARALLEL_LEVEL budget; unset on
+# the host, `-e RA8_MAX_JOBS` passes nothing and ra8_max_jobs falls through.
 exec "${RUNTIME_CMD[@]}" run --rm \
   -u 0:0 \
   -e RA8_CI_INNER=1 \
   -e RA8_CI_FAST="$fast" \
   -e HOME=/tmp \
+  -e RA8_MAX_JOBS \
   -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}" \
   -v "$REPO_ROOT":/workspace:ro \
   ${WORKTREE_RUN_ARGS[@]+"${WORKTREE_RUN_ARGS[@]}"} \
