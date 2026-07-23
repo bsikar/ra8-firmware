@@ -14,14 +14,14 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 ## Top-line Numbers
 
 - Source files with at least one decision: **210**
-- Total compound decisions in scope: **1090**
-- Decisions at 100% MC/DC (`yes`): **994**
-- Decisions partially covered (`partial`): **55**
+- Total compound decisions in scope: **1102**
+- Decisions at 100% MC/DC (`yes`): **1002**
+- Decisions partially covered (`partial`): **59**
 - Decisions fully uncovered (`no`): **41**
-- Coverage rate (yes / total): **91.19%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **86**
-- Reachable-condition denominator (total - deactivated): **1004**
-- **Reachable MC/DC rate**: **99.00%** -- this is the gate threshold (100% required).
+- Coverage rate (yes / total): **90.93%**
+- Deactivated gap conditions (DO-178C 6.4.4.3): **90**
+- Reachable-condition denominator (total - deactivated): **1012**
+- **Reachable MC/DC rate**: **99.01%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -58,6 +58,10 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (dst == nullptr \|\| cap == 0U) {` | TU-local static helper `copy_bounded` -- defensive NULL g... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `while (i + 1U < cap && src[i] != '\0') {` | Annotated deactivation: TU-local helper copy_bounded; cap... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `while (i + 1U < cap && src[i] != '\0') {` | Annotated deactivation: TU-local helper copy_bounded; cap... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `while (cursor != nullptr && cursor != root) {` | Annotated deactivation: next_preorder only ever walks str... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `while (cursor != nullptr && cursor != root) {` | Annotated deactivation: next_preorder only ever walks str... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `while (cursor != nullptr && cursor != root) {` | Annotated deactivation: next_preorder only ever walks str... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `while (cursor != nullptr && cursor != root) {` | Annotated deactivation: next_preorder only ever walks str... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (root == nullptr \|\| local_name == nullptr) {` | TU-local static helper `find_descendant` -- defensive NUL... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (root == nullptr \|\| local_name == nullptr) {` | TU-local static helper `find_descendant` -- defensive NUL... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (parent == nullptr \|\| local_name == nullptr) {` | TU-local static helper `find_child` -- defensive NULL gua... |
@@ -139,7 +143,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 
 | Module | Total | Covered | Partial | Uncovered |
 |--------|------:|--------:|--------:|----------:|
-| ra8_epub_xml_shim | 72 | 54 | 4 | 14 |
+| ra8_epub_xml_shim | 84 | 62 | 8 | 14 |
 | mg_reader | 11 | 1 | 4 | 6 |
 | ra8_psa_crypto_sim | 6 | 1 | 5 | 0 |
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
@@ -354,7 +358,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 
 | Module | Uncovered | Partial | Covered | Total |
 |--------|----------:|--------:|--------:|------:|
-| ra8_epub_xml_shim | 14 | 4 | 54 | 72 |
+| ra8_epub_xml_shim | 14 | 8 | 62 | 84 |
 | mg_reader | 6 | 4 | 1 | 11 |
 | ra8_jof_produce | 3 | 1 | 15 | 19 |
 | ra8_epub_open | 3 | 0 | 4 | 7 |
