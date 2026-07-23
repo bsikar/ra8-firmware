@@ -389,6 +389,17 @@ static void walk_and_verify_tiles(ra8_comic_tile_reader_t* r, const ra8_jof_info
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(r, b.pixels));
 }
 
+/** @brief Assert import rejects a config with a null work arena or a null atlas store. */
+static void assert_import_cfg_guards(ra8_comic_tile_reader_t* r)
+{
+  ra8_comic_tiles_import_cfg_t no_work = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  no_work.work                         = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(r, s_png, 4U, &no_work));
+  ra8_comic_tiles_import_cfg_t no_atlas = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  no_atlas.atlas                        = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(r, s_png, 4U, &no_atlas));
+}
+
 /* ---------------------------------------------------------------------------
  * Tests.
  * ---------------------------------------------------------------------------
@@ -696,12 +707,7 @@ static void test_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(nullptr, s_png, 4U, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, nullptr, 4U, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, s_png, 4U, nullptr));
-  ra8_comic_tiles_import_cfg_t no_work = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
-  no_work.work                         = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, s_png, 4U, &no_work));
-  ra8_comic_tiles_import_cfg_t no_atlas = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
-  no_atlas.atlas                        = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, s_png, 4U, &no_atlas));
+  assert_import_cfg_guards(&r);
   png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_comic_tiles_import(&r, s_png, 0U, &cfg));
 
