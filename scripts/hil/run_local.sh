@@ -120,6 +120,13 @@ fi
   exit 1
 }
 
+# ---- Anti-recovery pre-flash guard ------------------------------------------
+# Inspect the full image + source tree before any programming. See
+# scripts/hil/lib/preflash_guard.sh.
+# shellcheck source=scripts/hil/lib/preflash_guard.sh
+source "$_hil_dir/lib/preflash_guard.sh"
+ra8_preflash_guard "$HEX" || exit $?
+
 # ---- Load the per-app hil.conf ----------------------------------------------
 CONF="${APP_DIR}/hil.conf"
 [[ -f "$CONF" ]] || {

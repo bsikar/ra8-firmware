@@ -112,6 +112,14 @@ fi
   exit 1
 }
 
+# ---- anti-recovery pre-flash guard ------------------------------------------
+# Even a recovery flash must refuse an image that would brick recovery. Inspect
+# the full pre-strip image + the source tree before any programming. See
+# scripts/hil/lib/preflash_guard.sh.
+# shellcheck source=scripts/hil/lib/preflash_guard.sh
+source "$_hil_dir/lib/preflash_guard.sh"
+ra8_preflash_guard "$HEX" || exit $?
+
 # ---- strip OFS sections (the root cause of RAMCode timeout) ------------------
 # OFS sections at 0x0300A100+ cause J-Link RAMCode to time out during
 # Prepare() when TrustZone option bytes are involved.  Strip them so J-Link

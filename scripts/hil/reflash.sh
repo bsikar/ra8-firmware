@@ -29,6 +29,24 @@ set -euo pipefail
 APP="${1:?usage: hil_reflash.sh <app>}"
 here="$(cd "$(dirname "$0")" && pwd)"
 
+# ---- anti-recovery pre-flash guard (BEFORE the destructive erase) ------------
+# Refuse a bricking image up front, so the board is not erased for an image the
+# flash step would refuse anyway. See scripts/hil/lib/preflash_guard.sh.
+_root="$(cd "${here}/../.." && pwd)"
+_app_dir="$(find "${_root}/examples" -name main.c -print0 |
+  xargs -0 -n1 dirname |
+  { while read -r _d; do [[ "$(basename "$_d")" == "${APP}" ]] && echo "$_d"; done; } |
+  head -1)"
+if [[ -z "${_app_dir}" ]]; then
+  echo "[hil_reflash] app '${APP}' not found under examples/" >&2
+  exit 1
+fi
+_hex="${_app_dir}/build/${APP}.hex"
+[[ -f "${_hex}" ]] || make -C "${_root}" "${APP}"
+# shellcheck source=scripts/hil/lib/preflash_guard.sh
+source "${here}/lib/preflash_guard.sh"
+ra8_preflash_guard "${_hex}" || exit $?
+
 echo "[hil_reflash] full TrustZone/RoT reset via rfp-cli -erase-chip ..."
 bash "${here}/hil_dlm_reset.sh"
 
