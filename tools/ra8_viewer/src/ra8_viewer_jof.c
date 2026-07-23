@@ -120,14 +120,22 @@ RA8_INTERNAL static ra8_err_t viewer_jof_blit(void*          ctx,
  * @brief Slurp the open JOF file into @p r->jof.atlas and set up the memstore.
  * @param[in,out] r Reader whose file is already open (non-NULL).
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok            The atlas is resident and the memstore is wired.
- * @retval k_ra8_err_no_mem    The atlas buffer could not be allocated.
- * @retval k_ra8_err_not_found The file could not be rewound or fully read.
+ * @retval k_ra8_ok                    The atlas is resident and memstore wired.
+ * @retval k_ra8_err_decomp_output_cap The file exceeds the per-unit output cap.
+ * @retval k_ra8_err_no_mem            The atlas buffer could not be allocated.
+ * @retval k_ra8_err_not_found         The file could not be rewound or read.
  * @post On any error the partial buffer is freed.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
 {
+  /* The whole atlas is held resident in RAM, so a file larger than the per-unit
+   * output cap is refused before allocating -- the same working-set ceiling the
+   * board's SDRAM decode obeys, and the check that keeps `(size_t)file.size`
+   * from truncating a > 4 GiB length on the 32-bit target. */
+  if (r->file.size > r->limits.max_output_bytes) {
+    return k_ra8_err_decomp_output_cap;
+  }
   const size_t sz  = (size_t)r->file.size;
   uint8_t*     buf = (uint8_t*)malloc(sz);
   if (buf == nullptr) {
@@ -271,17 +279,40 @@ ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r)
   if (rc != k_ra8_ok) {
     return rc;
   }
-  const ra8_jof_info_t info       = w->dctx.info;
-  const size_t         band_bytes = (size_t)info.tile_w * (size_t)info.tile_h * (size_t)info.bpp;
-  if (band_bytes == 0U) {
+  const ra8_jof_info_t info = w->dctx.info;
+  /* One decoded band is tile_w * tile_h * bpp bytes. tile_w/tile_h are untrusted
+   * 16-bit header fields that ra8_jof_parse does NOT bound against the image
+   * size, so form the product in 64 bits (u16*u16*u8 cannot wrap) and refuse it
+   * against the policy before narrowing to size_t: an absurd geometry -- e.g.
+   * 65535 x 65535 x 4 ~= 17 GiB -- can neither overflow the allocation size nor
+   * be attempted. */
+  const uint64_t band_bytes64 = (uint64_t)info.tile_w * (uint64_t)info.tile_h * (uint64_t)info.bpp;
+  if (band_bytes64 == 0U) {
     return k_ra8_err_invalid_size;
   }
-  uint32_t cell_count = info.tile_rows;
+  rc = ra8_decomp_check_declared(&r->limits, r->file.size, band_bytes64);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  const size_t band_bytes = (size_t)band_bytes64; /* proven <= max_output_bytes */
+  uint32_t     cell_count = info.tile_rows;
   if (cell_count > (uint32_t)k_viewer_jof_max_cells) {
     cell_count = (uint32_t)k_viewer_jof_max_cells;
   }
   if (cell_count == 0U) {
     cell_count = 1U;
+  }
+  /* Bound the resident cache (cell_count * band_bytes) by the same output cap:
+   * keep at most as many bands resident as the budget admits, always >= 1 since
+   * one band already fits the cap. Fewer resident bands only means more
+   * decode-on-miss churn -- every tile still decodes correctly -- so this bounds
+   * the allocation without ever refusing a valid atlas. */
+  uint32_t max_resident = (uint32_t)(r->limits.max_output_bytes / band_bytes64);
+  if (max_resident == 0U) {
+    max_resident = 1U;
+  }
+  if (cell_count > max_resident) {
+    cell_count = max_resident;
   }
   rc = viewer_jof_alloc_cache(w, cell_count, band_bytes);
   if (rc != k_ra8_ok) {
@@ -322,6 +353,9 @@ viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, ui
   if ((nw == 0U) || (nh == 0U)) {
     return k_ra8_err_invalid_size;
   }
+  /* nw is the atlas width (bounded to k_ra8_jof_max_dim by ra8_jof_parse) and nh
+   * is one viewport band (<= the fixed framebuffer height), so this product is
+   * bounded by those prior policy checks and cannot wrap size_t. */
   const size_t px  = (size_t)nw * (size_t)nh;
   uint16_t*    buf = (uint16_t*)malloc(px * sizeof(uint16_t));
   if (buf == nullptr) {
