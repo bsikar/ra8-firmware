@@ -167,8 +167,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_net
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/src
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
@@ -176,3 +175,28 @@ target_compile_definitions(test_media_dl_net PRIVATE _GNU_SOURCE RA8_SIMULATOR_M
 target_compile_options(test_media_dl_net PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(test_media_dl_net PRIVATE CURL::libcurl)
 add_test(NAME test_media_dl_net COMMAND test_media_dl_net)
+
+# #302 session-level tests: the honest User-Agent + robots.txt gating driven
+# end-to-end through the #310 mdl_net vtable mock. A scripted fake backend
+# serves robots.txt and records the transmitted User-Agent, proving the honest
+# UA reaches the wire, a Disallow refuses a URL before any content fetch, and a
+# Crawl-delay raises the per-host politeness floor -- all with no network. The
+# fake backend replaces libcurl, so this binary links only the pure units above
+# the seam and needs no CURL.
+add_executable(
+  test_media_dl_session
+  tests/test_media_dl_session.c
+  src/mdl_session.c
+  src/mdl_robots.c
+  src/mdl_net.c
+  src/mdl_politeness.c
+  src/mdl_url_guard.c
+)
+target_include_directories(
+  test_media_dl_session
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+)
+target_compile_definitions(test_media_dl_session PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_options(test_media_dl_session PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_media_dl_session COMMAND test_media_dl_session)
