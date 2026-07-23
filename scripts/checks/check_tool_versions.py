@@ -28,10 +28,11 @@ Comparison modes
 * ``exact``     -- version string must equal the pin (ruff, shellcheck, shfmt,
                    cppcheck, cmakelang, yamllint, actionlint, hadolint). These
                    are the tools whose findings drift with the exact version.
-* ``major``     -- major must equal the pin (clang-format-22, clang-tidy-18).
-                   The clang family is pinned by major on purpose; the tree is
-                   formatted/linted to that major and the binary carries it in
-                   its name.
+* ``major``     -- major must equal the pin (clang-format-22, clang-tidy-18,
+                   gcc-14). The clang family and the gcc-14 host-tool arm
+                   (#356) are pinned by major on purpose; the tree is
+                   formatted/linted/built to that major and the binary carries
+                   it in its name.
 * ``min-major`` -- major must be at least the pin (gcovr). The container pins
                    gcovr 7.0 while the native boxes carry 8.x; both work, and
                    the crash this guards against is the ancient 5.2 line, so a
@@ -153,8 +154,11 @@ def _arg(args: dict[str, str], key: str) -> str:
     return args[key]
 
 
-def _clang_major(text: str, needle: str, label: str) -> str:
-    """Return the pinned clang-family major from a ``needle-NN`` token.
+def _pkg_major(text: str, needle: str, label: str) -> str:
+    """Return the pinned major from a ``needle-NN`` package/binary token.
+
+    Used for the compiler families whose pin is carried in the package name
+    rather than an exact ARG: the clang-18 family and the gcc-14 arm (#356).
 
     Args:
         text: The Dockerfile contents.
@@ -234,8 +238,9 @@ def build_specs() -> list[ToolSpec]:
     """
     text = _read_dockerfile()
     args = _dockerfile_args(text)
-    cf = _clang_major(text, "clang-format", "clang-format")
-    ct = _clang_major(text, "clang-tools", "clang-tidy")
+    cf = _pkg_major(text, "clang-format", "clang-format")
+    ct = _pkg_major(text, "clang-tools", "clang-tidy")
+    gc = _pkg_major(text, "gcc", "gcc")
     return [
         _spec(args, "ruff", "RUFF_VERSION", MODE_EXACT),
         _spec(args, "shellcheck", "SHELLCHECK_VERSION", MODE_EXACT),
@@ -248,6 +253,11 @@ def build_specs() -> list[ToolSpec]:
         _spec(args, "hadolint", "HADOLINT_VERSION", MODE_EXACT),
         ToolSpec(f"clang-format-{cf}", cf, MODE_MAJOR, f"clang-format-{cf}"),
         ToolSpec(f"clang-tidy-{ct}", ct, MODE_MAJOR, f"clang-tools-{ct}"),
+        # gcc-14 is the second host-tool compiler arm (#356); the tools-build
+        # gate resolves it by exact binary name, so pin its major like clang's.
+        # `gcc-14 --version` prints a dotted "14.2.0"; `-dumpversion` prints a
+        # bare "14" the dotted-token parser would reject, so keep the default.
+        ToolSpec(f"gcc-{gc}", gc, MODE_MAJOR, f"gcc-{gc}"),
         _spec(args, "gcovr", "GCOVR_VERSION", MODE_MIN_MAJOR, _gcovr_floor),
     ]
 

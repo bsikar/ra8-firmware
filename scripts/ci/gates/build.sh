@@ -31,21 +31,30 @@
 # report nothing; check_tool_warning_flags.py reads the compile database and
 # fails if that suppression -- or a missing -Werror -- ever comes back.
 #
-# clang-18 is pinned as the cache-bench and mcdc gates pin it: the tools and
-# the firmware sources they pull in use C23 typed enums and `nullptr`, which
-# the Debian gcc-12 a developer box may default to rejects outright.
+# clang-18 is one of two pinned arms. It is pinned as the cache-bench and mcdc
+# gates pin it: the tools and the firmware sources they pull in use C23 typed
+# enums and `nullptr`, which the Debian gcc-12 a developer box may default to
+# rejects outright.
+#
+# gcc-14 is the SECOND arm (#356). clang-18 and gcc-14 catch different warning
+# families, and a gate that holds the bar with one compiler holds only that
+# compiler's bar: gcc-14's -Wformat-truncation caught a silent PATH_MAX
+# path-join truncation in tools/media_dl that clang-18 did not flag. Both arms
+# build, link and test under -Wall -Wextra -Werror; neither may degrade to a
+# warning-only run, and check_tool_warning_flags.py --require-compilers makes a
+# silently-dropped arm a hard failure rather than a vacuous pass.
 #
 # ra8_viewer's Cocoa window layer is macOS-only by design. Off the APPLE path
 # CMake compiles ra8_viewer_view_stub.c in its place, so the portable reader
 # core still builds, links, and renders here -- the whole tool is gated on
 # Linux rather than skipped for the sake of its window backend.
-# media_dl: build, link, and run its own CTest suite.
+# media_dl: build, link, and run its own CTest suite under compiler $1.
 _tb_media_dl() (
   set -e
-  local root="$1" jobs="$2"
-  echo "tools-build: media_dl"
+  local cc="$1" root="$2" jobs="$3"
+  echo "tools-build[$cc]: media_dl"
   # shellcheck disable=SC2154  # REPO_ROOT comes from scripts/ci.sh, the only thing that sources this file; shellcheck reports the variable once per file.
-  CC=clang-18 cmake -S "$REPO_ROOT/tools/media_dl" -B "$root/media_dl" \
+  CC="$cc" cmake -S "$REPO_ROOT/tools/media_dl" -B "$root/media_dl" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
   cmake --build "$root/media_dl" -j "$jobs"
   test -x "$root/media_dl/media_dl"
@@ -58,9 +67,9 @@ _tb_media_dl() (
 # with no image would be a vacuous pass.
 _tb_ra8_viewer() (
   set -e
-  local root="$1" jobs="$2"
-  echo "tools-build: ra8_viewer"
-  CC=clang-18 cmake -S "$REPO_ROOT/tools/ra8_viewer" -B "$root/ra8_viewer" \
+  local cc="$1" root="$2" jobs="$3"
+  echo "tools-build[$cc]: ra8_viewer"
+  CC="$cc" cmake -S "$REPO_ROOT/tools/ra8_viewer" -B "$root/ra8_viewer" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
   cmake --build "$root/ra8_viewer" -j "$jobs"
   test -x "$root/ra8_viewer/ra8_viewer"
@@ -92,10 +101,10 @@ _tb_ra8_viewer() (
 # the whole FAT/exFAT driver) host-side.
 _tb_other_tools() (
   set -e
-  local root="$1" jobs="$2" tool
+  local cc="$1" root="$2" jobs="$3" tool
   for tool in ra8_fmt mkbookimg mkfontimg; do
-    echo "tools-build: $tool"
-    CC=clang-18 cmake -S "$REPO_ROOT/tools/$tool" -B "$root/$tool" \
+    echo "tools-build[$cc]: $tool"
+    CC="$cc" cmake -S "$REPO_ROOT/tools/$tool" -B "$root/$tool" \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     cmake --build "$root/$tool" -j "$jobs"
     test -x "$root/$tool/$tool"
@@ -105,31 +114,50 @@ _tb_other_tools() (
 gate_tools_build() (
   set -e
   require_cmd clang-18 "the tools-build gate pins clang-18 to match CI"
+  require_cmd gcc-14 "the tools-build gate's second warning arm pins gcc-14 (#356)"
   require_cmd cmake
   require_cmd ctest
+  # gcc-14 is enforced to its pin the same way the other gates enforce theirs
+  # (#333/#447): the wrong gcc silently changes which warnings the arm holds.
+  require_tool_versions gcc-14
 
   # Prove the flag detector fires and stays quiet BEFORE trusting its verdict.
-  # A checker asserted in neither direction reports success forever.
+  # A checker asserted in neither direction reports success forever. The
+  # selftest now also asserts the second-arm coverage guard fires both ways.
   python3 scripts/checks/check_tool_warning_flags.py --selftest
 
-  local root="$REPO_ROOT/build/tools-build"
+  local base="$REPO_ROOT/build/tools-build"
   local jobs
   jobs="$(ra8_max_jobs)"
-  rm -rf "$root"
+  rm -rf "$base"
 
-  _tb_media_dl "$root" "$jobs"
-  _tb_ra8_viewer "$root" "$jobs"
-  _tb_other_tools "$root" "$jobs"
+  # Build, link and test every tool under BOTH pinned compilers. Each compiler
+  # gets its own build tree so the two compile databases never overwrite each
+  # other; both are handed to check_tool_warning_flags.py below.
+  local dbs=()
+  local cc root
+  for cc in clang-18 gcc-14; do
+    root="$base/$cc"
+    _tb_media_dl "$cc" "$root" "$jobs"
+    _tb_ra8_viewer "$cc" "$root" "$jobs"
+    _tb_other_tools "$cc" "$root" "$jobs"
+    dbs+=(
+      "$root/media_dl/compile_commands.json"
+      "$root/ra8_viewer/compile_commands.json"
+      "$root/ra8_fmt/compile_commands.json"
+      "$root/mkbookimg/compile_commands.json"
+      "$root/mkfontimg/compile_commands.json"
+    )
+  done
 
-  # --- the warning bar actually reached every first-party TU --------------
+  # --- the warning bar actually reached every first-party TU, under BOTH arms.
+  # --require-compilers makes a silently-dropped gcc (or clang) arm a hard
+  # failure instead of a vacuous pass (#356, #348/#355 class).
   python3 scripts/checks/check_tool_warning_flags.py \
-    "$root/media_dl/compile_commands.json" \
-    "$root/ra8_viewer/compile_commands.json" \
-    "$root/ra8_fmt/compile_commands.json" \
-    "$root/mkbookimg/compile_commands.json" \
-    "$root/mkfontimg/compile_commands.json"
+    --require-compilers clang,gcc \
+    "${dbs[@]}"
 
-  echo "PASS: host tools build, link, test and hold the warning bar."
+  echo "PASS: host tools build, link, test and hold the warning bar under clang-18 and gcc-14."
 )
 
 # --- build-cross ----------------------------------------------------------
