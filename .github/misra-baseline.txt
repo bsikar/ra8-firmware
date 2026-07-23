@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12645
+# total findings: 12653
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -79,7 +79,7 @@ libs/ra8_book/inc/ra8_book.h	misra-c2012-11.5	9
 libs/ra8_book/inc/ra8_book.h	misra-c2012-18.4	2
 libs/ra8_book/src/ra8_book.c	misra-c2012-11.1	1
 libs/ra8_book/src/ra8_book.c	misra-c2012-11.5	4
-libs/ra8_book/src/ra8_book.c	misra-c2012-15.5	30
+libs/ra8_book/src/ra8_book.c	misra-c2012-15.5	31
 libs/ra8_book/src/ra8_book.c	misra-c2012-17.7	5
 libs/ra8_book/src/ra8_book.c	misra-c2012-18.4	1
 libs/ra8_book/src/ra8_book.c	misra-c2012-21.15	5
@@ -1177,12 +1177,13 @@ libs/ra8_rabook_compile/src/ra8_rabook_compile.c	misra-c2012-21.14	1
 libs/ra8_rabook_compile/src/ra8_rabook_compile.c	misra-c2012-21.15	6
 libs/ra8_rabook_compile/src/ra8_rabook_compile.c	misra-c2012-21.16	1
 libs/ra8_rabook_compile/src/ra8_rabook_compile.c	misra-c2012-9.2	2
+# ra8_rabook_* below: #444 grew misra-15.5 (guard-clause early return -- deviation D-001) and one 11.8 (write-through a const-scratch buffer, same as the existing pipeline.c 11.8 entries); recorded here per the documented deviation process.
 libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	misra-c2012-12.1	6
-libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	misra-c2012-15.5	12
+libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	misra-c2012-15.5	17
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-11.5	1
-libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-11.8	4
+libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-11.8	5
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-12.1	3
-libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-15.5	32
+libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-15.5	33
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-15.7	1
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-17.3	2
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-9.2	3
