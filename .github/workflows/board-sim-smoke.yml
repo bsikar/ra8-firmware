@@ -28,8 +28,20 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Concurrency key is per-SHA on push, per-ref otherwise (#366). On a push
+# burst to dev/main every commit lands under its own group
+# (<workflow>-<sha>), so cancel-in-progress cannot cancel a DISTINCT commit's
+# board_sim run: a cancelled run marks its remaining gate steps `skipped`,
+# which reads as a green pass, silently converting "gate ran and passed" into
+# "gate never executed". Each landed commit must therefore get its own
+# complete, uncancelled run (per-commit board_sim validation; bisectability).
+# On pull_request / workflow_dispatch the key stays the ref, so a fresh push
+# to a PR still supersedes that PR's own older, now-obsolete run -- correct,
+# because branch health is judged from the latest head. Matches the four
+# gate workflows (#422). Do NOT revert to a bare `github.ref`: that
+# reintroduces the burst-cancellation defect.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: true
 
 env:
