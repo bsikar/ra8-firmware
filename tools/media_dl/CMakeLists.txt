@@ -78,7 +78,12 @@ set(MDL_EPUB_COMPILE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../epub_compile)
 add_executable(
   media_dl
   src/main.c
+  src/mdl_cli.c
   src/mdl_net_curl.c
+  src/mdl_url_guard.c
+  src/mdl_sanitize.c
+  src/mdl_robots.c
+  src/mdl_session.c
   src/mdl_extract.c
   src/mdl_politeness.c
   src/mdl_config.c
@@ -117,6 +122,9 @@ enable_testing()
 add_executable(
   test_media_dl
   tests/test_media_dl.c
+  src/mdl_url_guard.c
+  src/mdl_sanitize.c
+  src/mdl_robots.c
   src/mdl_extract.c
   src/mdl_config.c
   src/mdl_export.c
