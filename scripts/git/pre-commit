@@ -450,6 +450,32 @@ if [[ -f scripts/checks/check_no_driver_asm_guard.py ]]; then
   fi
 fi
 
+# ---- No anti-recovery brick action (owner policy 2026-07-23) -------
+# Forbid any first-party file from setting the ce "Disable Initialize" security
+# flag or transitioning the DLM to a terminal LCK_BOOT lock -- actions that
+# permanently disable device recovery. The recovery/check scripts are excluded;
+# --selftest asserts both directions before the scan.
+if [[ -f scripts/checks/check_no_antirecovery.py ]]; then
+  if ! python3 scripts/checks/check_no_antirecovery.py --selftest >/dev/null; then
+    echo "[FAIL] check_no_antirecovery.py: the detector's own selftest failed."
+    error_found=1
+  elif ! python3 scripts/checks/check_no_antirecovery.py; then
+    echo "[FAIL] check_no_antirecovery.py: an anti-recovery brick action would be committed."
+    error_found=1
+  fi
+fi
+
+# ---- Pre-flash IMAGE guard detector selftest ----------------------
+# scripts/hil/lib/preflash_guard.sh runs check_image_no_antirecovery.py before
+# every flash. Assert the detector still refuses a lockdown image and allows a
+# benign one (no tree to scan; selftest only).
+if [[ -f scripts/checks/check_image_no_antirecovery.py ]]; then
+  if ! python3 scripts/checks/check_image_no_antirecovery.py --selftest >/dev/null; then
+    echo "[FAIL] check_image_no_antirecovery.py: the image-guard selftest failed."
+    error_found=1
+  fi
+fi
+
 # ---- ROADMAP summary stats (strict: refuse stale summaries) -------
 if [[ -f scripts/report/roadmap_stats.py && -f docs/ROADMAP.md ]]; then
   if ! python3 scripts/report/roadmap_stats.py --check; then

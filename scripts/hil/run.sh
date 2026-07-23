@@ -110,6 +110,13 @@ REMOTE_FW="/tmp/hil_${APP_NAME}.${FIRMWARE_EXT}"
 
 echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
 
+# ---- 0. Anti-recovery pre-flash guard ----------------------------------------
+# Inspect the full image + source tree before any programming. See
+# scripts/hil/lib/preflash_guard.sh.
+# shellcheck source=scripts/hil/lib/preflash_guard.sh
+source "$_hil_dir/lib/preflash_guard.sh"
+ra8_preflash_guard "$HEX" || exit $?
+
 # ---- 1. Option-setting (OFS/OTP) sections: strip by default (brick-safety) ---
 # The .option_setting_* sections carry the RA8D2 option bytes: OFS0..3, SAS, BPS
 # and the OTP structures (FSBL, PBPS, POFSPS, REVOKE, HUK-zeroize enable,
