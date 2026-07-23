@@ -137,6 +137,10 @@ libs/ra8_comic/src/ra8_comic_cbz.c	misra-c2012-15.5	19
 libs/ra8_comic/src/ra8_comic_cbz.c	misra-c2012-17.3	4
 libs/ra8_comic/src/ra8_comic_cbz.c	misra-c2012-18.4	1
 libs/ra8_comic/src/ra8_comic_cbz.c	misra-c2012-9.2	1
+libs/ra8_comic/src/ra8_comic_tiles.c	misra-c2012-11.5	2
+libs/ra8_comic/src/ra8_comic_tiles.c	misra-c2012-15.5	28
+libs/ra8_comic/src/ra8_comic_tiles.c	misra-c2012-8.4	7
+libs/ra8_comic/src/ra8_comic_tiles.c	misra-c2012-9.2	1
 libs/ra8_comic/src/ra8_comic_wrapped.c	misra-c2012-11.1	1
 libs/ra8_comic/src/ra8_comic_wrapped.c	misra-c2012-11.4	1
 libs/ra8_comic/src/ra8_comic_wrapped.c	misra-c2012-11.5	1

@@ -42,6 +42,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "cm_tiled_check.h"
 #include "comic_pages_fixture.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -324,6 +325,10 @@ static const uint8_t k_cm_msg_dim[] = " ";
 static const uint8_t k_cm_msg_x[] = "x";
 /** @brief Banner page + crc separator (SCI8). */
 static const uint8_t k_cm_msg_page[] = " page=1 crc=";
+/** @brief Banner oversized-page tile self-check field prefix (SCI8, #344). */
+static const uint8_t k_cm_msg_tiled[] = " tiled=";
+/** @brief Banner numeric-field separator (SCI8). */
+static const uint8_t k_cm_msg_colon[] = ":";
 /** @brief Banner trailer (SCI8). */
 static const uint8_t k_cm_msg_ok[] = " ok\r\n";
 
@@ -345,6 +350,17 @@ typedef struct {
  * @since 0.1.0
  */
 static cm_src_t s_src;
+
+/**
+ * @var s_tiled
+ * @brief Result of the #344 oversized-page tile self-check.
+ * @details Populated once in ::main (before the banner) by
+ *          ::cm_comic_tiled_selfcheck; read by ::cm_print_banner.
+ * @note File-scope so the banner helper can read it.
+ * @warning Written only during boot.
+ * @since 0.1.0
+ */
+static cm_tiled_result_t s_tiled;
 
 /* ===========================================================================
  * Console helpers
@@ -906,6 +922,14 @@ static void cm_print_banner(void)
   cm_print_uint((uint32_t)k_cm_fb_h);
   cm_print(k_cm_msg_page, (uint32_t)sizeof(k_cm_msg_page) - 1U);
   cm_print_hex(cm_framebuffer_hash());
+  cm_print(k_cm_msg_tiled, (uint32_t)sizeof(k_cm_msg_tiled) - 1U);
+  cm_print_uint(s_tiled.w);
+  cm_print(k_cm_msg_x, (uint32_t)sizeof(k_cm_msg_x) - 1U);
+  cm_print_uint(s_tiled.h);
+  cm_print(k_cm_msg_colon, (uint32_t)sizeof(k_cm_msg_colon) - 1U);
+  cm_print_uint(s_tiled.tiles);
+  cm_print(k_cm_msg_colon, (uint32_t)sizeof(k_cm_msg_colon) - 1U);
+  cm_print_hex(s_tiled.crc);
   cm_print(k_cm_msg_ok, (uint32_t)sizeof(k_cm_msg_ok) - 1U);
 }
 
@@ -934,6 +958,7 @@ int32_t main(void)
 
   cm_render();
   cm_present();
+  s_tiled = cm_comic_tiled_selfcheck();
   cm_print_banner();
 
   while (1) {
