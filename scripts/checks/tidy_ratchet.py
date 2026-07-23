@@ -60,6 +60,28 @@ MAX_DETAIL_LINES = 10
 BASELINE_COLUMNS = 3
 """Column count of one baseline row: file, check, count."""
 
+DIAG_ERROR_CHECK = "clang-diagnostic-error"
+"""The check name clang-tidy emits for a translation unit it could not parse."""
+
+# A broken firmware parse -- e.g. an unpinned arm-none-eabi-gcc that cannot
+# report its own system include paths (#387) -- turns ~100 firmware TUs into
+# clang-diagnostic-error in a single run. A HEALTHY run carries a small,
+# irreducible set of parse errors (dual-core M33 TUs compiled in single-core
+# config, standalone vendored headers): 37 findings, 8.9% of 415. A poisoned
+# run roughly quadruples that to ~137 (~27%). A baseline built from such a run
+# freezes ~100 files' worth of parse errors as the accepted state and hides
+# every real finding in them from then on -- worse than no baseline at all.
+#
+# So refuse to compare OR write a baseline when parse errors DOMINATE a run.
+# The AND of an absolute floor and a rate is deliberate: the rate alone would
+# false-fire on a tiny log, and the floor alone would false-fire if the healthy
+# accepted-error set ever grew large while staying a small fraction of findings.
+DIAG_ERROR_MAX_RATE = 0.15
+"""Refuse a run whose clang-diagnostic-error share exceeds this fraction ..."""
+
+DIAG_ERROR_MIN_COUNT = 60
+"""... but only once the absolute error count clears this floor (healthy: 37)."""
+
 # One clang-tidy diagnostic line:
 #   /abs/path/file.c:12:34: warning: text [check-name,-warnings-as-errors]
 FINDING_RE = re.compile(
@@ -102,6 +124,27 @@ def parse_log(text: str) -> Counter:
         seen.add(key)
         counts[(rel, check)] += 1
     return counts
+
+
+def diag_error_flood(counts: Counter) -> tuple[bool, int, int]:
+    """Detect a run dominated by clang-diagnostic-error parse failures (#387).
+
+    A run in which parse errors both clear the absolute floor AND make up more
+    than ``DIAG_ERROR_MAX_RATE`` of all findings is a broken parse, not a lint
+    result -- the signature of the firmware pass running without the
+    cross-compiler's system includes. The handful of irreducible parse errors a
+    healthy run carries stays well under both thresholds.
+
+    Args:
+        counts: the ``{(file, check): count}`` map for the run under test.
+
+    Returns:
+        A ``(is_flood, error_findings, total_findings)`` tuple.
+    """
+    total = sum(counts.values())
+    errors = sum(n for (_path, check), n in counts.items() if check == DIAG_ERROR_CHECK)
+    is_flood = errors >= DIAG_ERROR_MIN_COUNT and total > 0 and errors / total > DIAG_ERROR_MAX_RATE
+    return is_flood, errors, total
 
 
 def load_baseline() -> Counter:
@@ -246,9 +289,38 @@ def _selftest_ratchet() -> list[str]:
     return failures
 
 
+def _selftest_diag_guard() -> list[str]:
+    """The parse-error flood guard (#387) fires on a broken parse, not a healthy run."""
+    failures: list[str] = []
+
+    def synth_log(n_errors: int, n_other: int) -> str:
+        lines = [
+            f"/repo/examples/e{i}/main.c:1:10: error: 'string.h' file not found "
+            f"[{DIAG_ERROR_CHECK}]"
+            for i in range(n_errors)
+        ]
+        lines += [
+            f"/repo/libs/l{i}/x.c:{i}:3: warning: bad [readability-magic-numbers]"
+            for i in range(n_other)
+        ]
+        return "\n".join(lines) + "\n"
+
+    # Healthy: 37 parse errors among 415 findings (8.9%) -- below the floor.
+    healthy_flood, _, _ = diag_error_flood(parse_log(synth_log(37, 378)))
+    if healthy_flood:
+        failures.append("diag_error_flood() fired on a healthy run (37/415 parse errors)")
+
+    # Poisoned: ~137 parse errors dominate (~27%) -- the #387 shape.
+    poisoned_flood, _, _ = diag_error_flood(parse_log(synth_log(137, 378)))
+    if not poisoned_flood:
+        failures.append("diag_error_flood() missed a parse-error flood (137 errors)")
+
+    return failures
+
+
 def selftest() -> int:
     """Assert the parser and the ratchet fire, in BOTH directions."""
-    failures = _selftest_parse() + _selftest_ratchet()
+    failures = _selftest_parse() + _selftest_ratchet() + _selftest_diag_guard()
 
     if failures:
         print("SELFTEST FAILED:", file=sys.stderr)
@@ -286,6 +358,25 @@ def main() -> int:
 
     text = Path(args.log).read_text(encoding="utf-8", errors="replace")
     current = parse_log(text)
+
+    # Fail-closed second layer to arm_system_includes' fail-loud (#387): a run
+    # whose findings are dominated by parse errors must NEITHER be compared
+    # against the baseline NOR frozen into one. A baseline built from a broken
+    # parse permanently accepts ~100 files' worth of clang-diagnostic-error and
+    # hides every real finding in them, so it is rejected rather than recorded.
+    flood, errors, total = diag_error_flood(current)
+    if flood:
+        verb = "update the baseline" if args.update else "ratchet"
+        print(
+            f"refusing to {verb}: {errors} of {total} finding(s) are "
+            f"{DIAG_ERROR_CHECK} ({errors / total:.0%}). That is a broken PARSE, "
+            "not a lint result -- most likely the firmware pass ran without the "
+            "cross-compiler's system includes (see #387: use the pinned "
+            "arm-none-eabi toolchain). A baseline built from it would freeze mass "
+            "parse errors as the accepted state.",
+            file=sys.stderr,
+        )
+        return 1
 
     if args.update:
         baseline = load_baseline()

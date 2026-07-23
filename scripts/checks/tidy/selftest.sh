@@ -13,7 +13,8 @@
 # files it should) AND the negative (a file that must NOT land in a bucket does
 # not), and fail loudly on either.
 #
-# Functions here: selftest_routing, selftest_scope, run_selftest
+# Functions here: selftest_routing, selftest_scope, selftest_arm_includes,
+# run_selftest
 
 # ---------------------------------------------------------------------------
 # Routing: each path shape must reach its own pass. The firmware roots are
@@ -104,12 +105,88 @@ selftest_scope() {
 }
 
 # ---------------------------------------------------------------------------
+# arm_system_includes must FAIL LOUDLY, never emit an empty set (#387).
+#
+# The firmware pass asks the cross-compiler for its own -isystem search list.
+# When the compiler is absent, or is an unpinned arm-gcc too old to parse
+# -mcpu=cortex-m85, or answers with no usable include dirs, the OLD helper
+# printed nothing and returned success -- so ~100 firmware TUs parsed with no
+# system headers, every one became a clang-diagnostic-error, and the gate went
+# green over code it never analysed. Prove the three failure shapes each exit
+# non-zero, and (when a real cross-compiler is on PATH) that a working one
+# yields a non-empty, sysroot-bearing set.
+#
+# The negative cases are hermetic: they run against fake compilers under a
+# temp dir and need no toolchain, so this fires everywhere -- including the dev
+# box whose default arm-none-eabi-gcc is the unpinned 12.2 that triggers #387.
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+selftest_arm_includes() {
+  local failures=0
+  local tmp
+  tmp="$(mktemp -d)"
+
+  # 1) Absent compiler -> must fail, not emit an empty set.
+  if ARM_CC="$tmp/does-not-exist-arm-none-eabi-gcc" arm_system_includes >/dev/null 2>&1; then
+    print_error "selftest: arm_system_includes passed with an ABSENT compiler"
+    failures=$((failures + 1))
+  fi
+
+  # 2) Present but unusable: errors on -mcpu=cortex-m85 exactly as the unpinned
+  # 12.2 arm-gcc does. Must fail, not fall through to an empty set.
+  local bad="$tmp/bad-arm-none-eabi-gcc"
+  cat >"$bad" <<'FAKE'
+#!/bin/sh
+echo "arm-none-eabi-gcc: error: unrecognized -mcpu target: cortex-m85" >&2
+exit 1
+FAKE
+  chmod +x "$bad"
+  if ARM_CC="$bad" arm_system_includes >/dev/null 2>&1; then
+    print_error "selftest: arm_system_includes passed with an UNUSABLE compiler"
+    failures=$((failures + 1))
+  fi
+
+  # 3) Present, exits 0, but reports a search list with no real include dirs --
+  # the empty-result shape a broken query can still take. Must fail the floor.
+  local hollow="$tmp/hollow-arm-none-eabi-gcc"
+  cat >"$hollow" <<'FAKE'
+#!/bin/sh
+cat >&2 <<'EOF'
+#include <...> search starts here:
+End of search list.
+EOF
+exit 0
+FAKE
+  chmod +x "$hollow"
+  if ARM_CC="$hollow" arm_system_includes >/dev/null 2>&1; then
+    print_error "selftest: arm_system_includes passed on an EMPTY include set"
+    failures=$((failures + 1))
+  fi
+
+  # 4) Positive control: when a real Cortex-M85 cross-compiler is on PATH, the
+  # helper must SUCCEED and emit a non-empty, sysroot-bearing set. Skipped when
+  # no such compiler is available (a host with only the unpinned 12.2), so the
+  # selftest still runs everywhere; the negatives above prove the fail-loud.
+  local out rc=0
+  out="$(arm_system_includes 2>/dev/null)" || rc=$?
+  if [[ "$rc" -eq 0 ]] && ! grep -q -- '--extra-arg=-isystem' <<<"$out"; then
+    print_error "selftest: arm_system_includes succeeded but emitted no -isystem"
+    failures=$((failures + 1))
+  fi
+
+  rm -rf "$tmp"
+  printf '%s\n' "$failures"
+}
+
+# ---------------------------------------------------------------------------
 # --selftest: prove the scope and the routing still work, in BOTH directions.
 # ---------------------------------------------------------------------------
 run_selftest() {
   local failures=0
   failures=$((failures + $(selftest_routing)))
   failures=$((failures + $(selftest_scope)))
+  failures=$((failures + $(selftest_arm_includes)))
 
   if [[ "$failures" -ne 0 ]]; then
     print_error "clang_tidy.sh selftest FAILED with $failures problem(s)."

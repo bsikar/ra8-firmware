@@ -131,14 +131,34 @@ run_pass_host() {
 #
 # The database is built first and its own coverage check must pass, so this
 # can never analyse a subset while reporting success.
+#
+# The cross-compiler's own -isystem search list is resolved HERE, in the main
+# shell, so arm_system_includes' fail-loud non-zero status aborts the gate
+# (exit RC_INFRA). Were it spliced in through the `firmware_pass_args` process
+# substitution below, mapfile would discard that status and the pass would
+# parse every firmware TU with no system headers -- turning ~100 of them into
+# clang-diagnostic-error while the gate stayed green, the exact #387 defect.
 # ---------------------------------------------------------------------------
 run_pass_firmware() {
   [[ -s "$TIDY_LIST_DIR/firmware.files" ]] || return 0
   build_cross_db
+
+  local arm_out
+  local arm_rc=0
+  arm_out="$(arm_system_includes)" || arm_rc=$?
+  if [[ "$arm_rc" -ne 0 ]]; then
+    print_error "Firmware pass aborted: the cross-compiler's system include"
+    print_error "paths are unavailable (see the diagnostic above, #387). Refusing"
+    print_error "to lint ~100 firmware TUs with no system headers."
+    exit "$RC_INFRA"
+  fi
+  local arm_isystem=()
+  mapfile -t arm_isystem <<<"$arm_out"
+
   local firmware_arg=()
   mapfile -t firmware_arg < <(firmware_pass_args)
   invoke_clang_tidy "$1" "firmware (cross)" "$TIDY_LIST_DIR/firmware.files" \
-    "${TIDY_FIX_FLAG[@]}" "${firmware_arg[@]}" "${TIDY_SDK_ARG[@]}"
+    "${TIDY_FIX_FLAG[@]}" "${firmware_arg[@]}" "${arm_isystem[@]}" "${TIDY_SDK_ARG[@]}"
 }
 
 # ---------------------------------------------------------------------------

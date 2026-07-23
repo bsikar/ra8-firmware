@@ -96,25 +96,89 @@ objc_pass_args() {
 # file not found" and were never analysed at all. They are ASKED FOR, not
 # hardcoded: the compiler prints its own search list, so a toolchain bump
 # moves them automatically.
+#
+# FAILS LOUDLY, never emits an empty set (#387). The old body returned success
+# and printed nothing whenever the query came up empty -- an absent compiler,
+# or an unpinned arm-none-eabi-gcc older than 12.3 that cannot parse
+# -mcpu=cortex-m85 (the dev box default 12.2 does exactly this). The firmware
+# pass then parsed ~100 TUs with NO system headers, every one became a
+# clang-diagnostic-error, and the gate went green over code it never analysed.
+# An empty include set is not a real configuration, it is a broken toolchain,
+# so each failure shape exits non-zero and names the compiler and its version.
+#
+# Prints one `--extra-arg=-isystem<dir>` line per include dir on stdout, and
+# returns RC_INFRA on failure with a diagnostic on stderr. The caller
+# (run_pass_firmware) captures this in the main shell so the non-zero status
+# aborts the gate rather than being swallowed by a process substitution.
 # ---------------------------------------------------------------------------
 arm_system_includes() {
   local cc="${ARM_CC:-arm-none-eabi-gcc}"
-  command -v "$cc" &>/dev/null || return 0
-  "$cc" -mcpu=cortex-m85 -mthumb -E -v -x c /dev/null 2>&1 |
+
+  if ! command -v "$cc" &>/dev/null; then
+    print_error "arm_system_includes: cross-compiler '$cc' is not on PATH."
+    print_error "The firmware pass asks the compiler for its own system include"
+    print_error "paths; with none, ~100 firmware TUs become clang-diagnostic-error"
+    print_error "and are never linted while the gate stays green (#387)."
+    print_error "Provide the pinned toolchain (use_pinned_arm_toolchain)."
+    return "$RC_INFRA"
+  fi
+
+  local ver
+  ver="$("$cc" -dumpfullversion 2>/dev/null)" || ver="unknown"
+
+  local raw rc=0
+  raw="$("$cc" -mcpu=cortex-m85 -mthumb -E -v -x c /dev/null 2>&1)" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    print_error "arm_system_includes: '$cc' (version $ver) could not preprocess a"
+    print_error "Cortex-M85 TU (-mcpu=cortex-m85). An unpinned arm-none-eabi-gcc"
+    print_error "older than 12.3 fails exactly here -- the #387 trigger. Use the"
+    print_error "pinned 13.3 toolchain (use_pinned_arm_toolchain)."
+    return "$RC_INFRA"
+  fi
+
+  local -a dirs=()
+  local line dir
+  while IFS= read -r line; do
+    dir="${line# }"
+    [[ -d "$dir" ]] && dirs+=("$dir")
+  done < <(printf '%s\n' "$raw" |
     sed -n '/#include <\.\.\.> search starts here/,/End of search list/p' |
-    grep '^ ' |
-    while IFS= read -r dir; do
-      dir="${dir# }"
-      [[ -d "$dir" ]] && printf -- '--extra-arg=-isystem%s\n' "$dir"
-    done || true
+    grep '^ ' || true)
+
+  # Floor: a real cross toolchain reports several dirs, at least one of which is
+  # its arm-none-eabi sysroot carrying <string.h>. An empty or sysroot-less set
+  # means the compiler answered but its answer is not a usable include search
+  # list -- treat that as the failure it is, not as "no system includes".
+  local -a marker_hits=()
+  for dir in "${dirs[@]}"; do
+    if [[ "$dir" == *arm-none-eabi* || -r "$dir/string.h" ]]; then
+      marker_hits+=("$dir")
+    fi
+  done
+
+  if [[ "${#dirs[@]}" -eq 0 || "${#marker_hits[@]}" -eq 0 ]]; then
+    print_error "arm_system_includes: '$cc' (version $ver) yielded ${#dirs[@]}"
+    print_error "usable include dir(s) and ${#marker_hits[@]} sysroot marker(s)."
+    print_error "A firmware pass with no system headers turns every TU into"
+    print_error "clang-diagnostic-error (#387). Refusing to emit an empty set."
+    return "$RC_INFRA"
+  fi
+
+  for dir in "${dirs[@]}"; do
+    printf -- '--extra-arg=-isystem%s\n' "$dir"
+  done
 }
 
 # ---------------------------------------------------------------------------
 # Arguments for the firmware (cross-compile) pass, on top of CROSS_DB_DIR.
 #
-# Beyond the toolchain's own system includes above, this adds
-# -Wno-unknown-warning-option for the same GCC-only warning flags the host
-# pass has to neutralise.
+# This adds -Wno-unknown-warning-option for the same GCC-only warning flags the
+# host pass has to neutralise. The toolchain's own -isystem search list is NOT
+# assembled here: run_pass_firmware resolves it via arm_system_includes in the
+# main shell, so that helper's fail-loud non-zero status aborts the gate rather
+# than being swallowed by the process substitution this function is read through
+# (#387). Splicing it in here through `mapfile < <(firmware_pass_args)` was
+# exactly how a broken toolchain's empty include set slipped by unnoticed.
 # ---------------------------------------------------------------------------
 firmware_pass_args() {
   # readability-magic-numbers is OFF for this pass, and this is a
@@ -139,7 +203,6 @@ firmware_pass_args() {
     "-p=$CROSS_DB_DIR" \
     "--checks=-readability-magic-numbers" \
     "--extra-arg=-Wno-unknown-warning-option"
-  arm_system_includes
 }
 
 # ---------------------------------------------------------------------------
