@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_validated/hil/ra8_io_sdram_demo/main.c
  * @brief ra8_io fabric over the external SDRAM backend (epic #155) on EK-RA8D2.
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * The same fabric as `ra8_io_demo`, but the block device is backed by the 64 MiB
  * external SDRAM (at 0x68000000) instead of an in-SRAM buffer -- the swappable

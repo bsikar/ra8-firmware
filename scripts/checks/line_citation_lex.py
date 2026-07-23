@@ -26,9 +26,12 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
+from pathlib import Path
 
-#: Roots subject to the ban.
-SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import language_of
 
 #: Source extensions carrying C/C++ comments.
 SOURCE_EXTS = (".c", ".h", ".cpp", ".hpp", ".cc")
@@ -69,9 +72,13 @@ def all_tracked_files() -> list[str]:
 def is_in_scope(path: str, exclude_prefixes: tuple[str, ...]) -> bool:
     """Whether a source path is subject to the in-tree line-citation ban.
 
-    Three conditions, all required: a source extension, a location under one
-    of the scan roots, and no excluded prefix. The root test is what keeps
-    vendored trees out without needing to name each of their files.
+    First-party-ness is DERIVED, not a hardcoded root list. The old
+    ``SCAN_ROOTS`` tuple (libs/, src/, tests/, examples/, port/) silently
+    omitted tools/ and esp32/ -- the #358 defect that let a ``file.c:123``
+    citation land there unseen. ``lint_targets.language_of`` decides first-party
+    C by suffix, language and the shared SOUP/generated/build exclusions, so a
+    new top-level directory is covered the day it lands and vendored trees stay
+    out without naming each of their files.
 
     ``exclude_prefixes`` is a parameter rather than a module constant because
     the gate and the extractor genuinely scan different sets -- see the module
@@ -79,9 +86,9 @@ def is_in_scope(path: str, exclude_prefixes: tuple[str, ...]) -> bool:
     """
     if not path.endswith(SOURCE_EXTS):
         return False
-    if not any(path.startswith(r) for r in SCAN_ROOTS):
+    if any(path.startswith(p) for p in exclude_prefixes):
         return False
-    return not any(path.startswith(p) for p in exclude_prefixes)
+    return language_of(path) == "c"
 
 
 def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # one char scanner; splitting the states hurts clarity

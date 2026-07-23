@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_validated/hil/ra8_io_cache_demo/main.c
  * @brief ra8_io caching block device demo (Phase 5, #160).
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * Exercises the caching block device -- an LRU sector cache decorator that wraps
  * any backend so repeated reads of the same blocks (filesystem metadata, a

@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_validated/hil/ra8_io_xspi_demo/main.c
  * @brief ra8_io fabric over OSPI NOR flash (epic #155, #156) on the EK-RA8D2.
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * The third storage tier for the ra8_io fabric. Where `ra8_io_demo` proves the
  * fabric over RAM and `ra8_io_sd_demo` over an SD card, this app proves it over
