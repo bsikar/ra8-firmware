@@ -34,7 +34,19 @@ static const mem_region_t k_regions[] = {
                                              * ra8_tsn reads a real two-point pair
                                              * instead of bus-faulting on the
                                              * previously-unmapped read. */
-  {"OFS", 0x0300A000UL, 0x00001000UL},      /* option-setting flash        */
+  {"OFS_CFG", 0x02C9F000UL, 0x00001000UL},  /* Option-setting configuration words
+                                             * (OFS0/1/2/3, SAS, BPS, selectors) --
+                                             * HUM Ch 7 Figure 7.1 p 279, secure alias
+                                             * 0x02C9_F0xx. Replaces the phantom
+                                             * 0x0300A000 OFS block (#391). */
+  {"OFS_OTP", 0x02E07000UL, 0x00011000UL},  /* Option-setting OTP area + the extra-MRAM
+                                             * Program window: FSBL, code-cert, GPOTP,
+                                             * PBPS, POFSPS, REVOKE, ZHUK, anti-rollback
+                                             * (HUM Ch 59.7.4.5 Table 59.15 p 3592,
+                                             * 0x02E0_7600..0x02E1_79F0). Readable on
+                                             * silicon, so mapped; the MACI model
+                                             * (board_periph_mram.c) lands accepted
+                                             * Program payloads here. */
   {"DTCM", 0x20000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled data */
   {"SRAM", 0x22000000UL, 0x001D4000UL},     /* On-chip SRAM: CPU0 bank + shared mailbox +
                                              * CPU1 bank. The extent is BENCH-MEASURED, not
@@ -63,15 +75,15 @@ static const mem_region_t k_regions[] = {
                                              * boot copies the NS image here then BLXNS-es
                                              * to it; mapping it lets two-image TZ apps
                                              * (src/app) run their NS world in board_sim. */
-  /* No DATA_FLASH region. 0x27000000 is carried in every app linker script as a
+  /* No DATA_FLASH region. 0x27000000 was carried in every app linker script as a
    * 16 KiB "data flash (EEPROM emulation)" MEMORY declaration inherited from
    * other RA parts, and board_sim used to map it as plain RAM -- so writes there
    * succeeded in the emulator. They do not on this silicon: a J-Link
    * `w4 0x27000000` on an EK-RA8D2 answers "Failed to write memory". That gap
-   * is what #397 found under ra8_io_mram_demo, whose extra-MRAM writes went to
-   * this address and were accepted by the model regardless of MSADDR. No
-   * first-party linker script places a section here, so leaving it unmapped
-   * costs nothing and makes the emulator fault exactly where the bench does. */
+   * is what #397 found under ra8_io_mram_demo. #397 removed the phantom region
+   * from the linker scripts and repointed the extra-MRAM constant at the real
+   * option-setting window (OFS_OTP above, 0x02E0_7600); 0x27000000 stays
+   * unmapped so any straggler write still faults exactly where the bench does. */
   {"SDRAM", 0x68000000UL, 0x04000000UL},    /* 64 MiB external SDRAM (Secure
                                              * physical view). Host-backed so the
                                              * NS alias below mirrors the bytes:

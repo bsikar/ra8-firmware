@@ -15,12 +15,12 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 - Source files with at least one decision: **210**
 - Total compound decisions in scope: **1090**
-- Decisions at 100% MC/DC (`yes`): **993**
-- Decisions partially covered (`partial`): **56**
+- Decisions at 100% MC/DC (`yes`): **994**
+- Decisions partially covered (`partial`): **55**
 - Decisions fully uncovered (`no`): **41**
-- Coverage rate (yes / total): **91.10%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **87**
-- Reachable-condition denominator (total - deactivated): **1003**
+- Coverage rate (yes / total): **91.19%**
+- Deactivated gap conditions (DO-178C 6.4.4.3): **86**
+- Reachable-condition denominator (total - deactivated): **1004**
 - **Reachable MC/DC rate**: **99.00%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
@@ -83,7 +83,6 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_hal/src/ra8_eth.c | 2 | ra8_eth_channel_to_port | `if ((tx == 0U) \|\| (tx > k_ra8_eth_num_tx_desc)) {` | Annotated deactivation: tx normalized to nonzero above; f... |
 | libs/ra8_hal/src/ra8_eth.c | 2 | ra8_eth_channel_to_port | `if ((rx == 0U) \|\| (rx > k_ra8_eth_num_rx_desc)) {` | Annotated deactivation: rx normalized to nonzero above; f... |
 | libs/ra8_hal/src/ra8_flash_irq.c | 2 | ra8_flash_blank_check | `(address >= k_ra8_flash_code_start) &&` | Annotated deactivation: ra8_flash_blank_check window-memb... |
-| libs/ra8_hal/src/ra8_flash_irq.c | 2 | ra8_flash_blank_check | `(address >= k_ra8_flash_extra_start) &&` | Annotated deactivation: ra8_flash_blank_check extra-windo... |
 | libs/ra8_hal/src/ra8_i3c_i2c.c | 2 | internal_i3c_i2c_half_period | `if ((bus_hz == 0U) \|\| (pclka_hz == 0U)) {` | Annotated deactivation: both args validated by internal_i... |
 | libs/ra8_hal/src/ra8_jpeg_sw.c | 4 | ra8_jpeg_sw_idct8x8 | `if (mk >= k_jpeg_marker_sof_lo && mk <= k_jpeg_marker_sof...` | Annotated deactivation: dims_step unsupported-SOFn detect... |
 | libs/ra8_hal/src/ra8_jpeg_sw_decode.c | 2 | ra8_jpeg_sw_priv_parse_dqt | `if (len < 2U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
@@ -152,7 +151,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_reflow_css_cascade | 23 | 21 | 2 | 0 |
 | ra8_reflow_css_rules | 21 | 19 | 2 | 0 |
 | ra8_reflow_tokenize_lex | 11 | 9 | 2 | 0 |
-| ra8_flash_irq | 9 | 7 | 2 | 0 |
 | ra8_ble | 8 | 6 | 0 | 2 |
 | ra8_reflow_layout_image | 6 | 4 | 2 | 0 |
 | ra8_rabook_xml_shim | 5 | 3 | 1 | 1 |
@@ -162,6 +160,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_reflow_svg_doc | 20 | 19 | 1 | 0 |
 | ra8_vin | 14 | 13 | 1 | 0 |
 | ra8_touch_cal | 13 | 12 | 1 | 0 |
+| ra8_flash_irq | 9 | 8 | 1 | 0 |
 | ra8_reflow_svg_path | 9 | 8 | 1 | 0 |
 | ra8_fs_fat_lfn | 8 | 7 | 0 | 1 |
 | ra8_i3c_i2c | 7 | 6 | 0 | 1 |

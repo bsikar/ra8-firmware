@@ -6,13 +6,19 @@
  * [Ring 4 / PAL] {World: NS}
  *
  * @details
- * Implements ::ra8_io_blockdev_iface over the on-chip extra/data MRAM region.
+ * Implements ::ra8_io_blockdev_iface over the on-chip extra MRAM region.
  * Reads `memcpy` from the memory-mapped MRAM array; writes route through
  * `ra8_flash_extra_mram_write` chunked into the 32-byte MRAM program unit; erases
  * route through `ra8_flash_extra_mram_erase`, one 32-byte block per call. The
- * window is fenced at bind time to the extra/data MRAM region and every call is
+ * window is fenced at bind time to the extra MRAM region and every call is
  * bounds-checked, so no access can reach the code-MRAM `.text` region. This file
  * touches no raw MMIO -- the `ra8_flash` driver carries the HUM citations.
+ *
+ * @warning The RA8D2 extra MRAM is one-time-programmable option-setting / OTP
+ * memory (HUM Ch 59.7.4.5 Table 59.15 p 3592), NOT a rewritable data-flash
+ * array -- there is no erase-and-reuse cycle on this silicon. A rewritable
+ * block backend therefore belongs on a real rewritable medium (OSPI / SD);
+ * retargeting this backend and its demos off the OTP window is tracked by #315.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

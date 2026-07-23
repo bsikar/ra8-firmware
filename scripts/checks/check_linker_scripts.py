@@ -211,11 +211,86 @@ def _check_region_closure(path: pathlib.Path, code: str, regions: set[str]) -> l
     return findings
 
 
+# Real RA8D2 option-setting layout, HUM Ch 7 Figure 7.1 p 279 (secure aliases;
+# OFS1/OFS3/BPS/PBPS are listed at the Non-secure alias 0x12.., the secure alias
+# below addresses the same cell). This is the authority the linker scripts are
+# checked against, and it is the same table scripts/gen has no business owning:
+# a wrong option-byte address silently programs the wrong OTP cell (#391).
+OPTION_SETTING_ADDR = {
+    "OFS0_ADDR": 0x02C9F040,
+    "OFS1_ADDR": 0x02C9F4C0,
+    "OFS2_ADDR": 0x02C9F044,
+    "OFS3_ADDR": 0x02C9F4C4,
+    "SAS_ADDR": 0x02C9F074,
+    "OFS1_SEC_ADDR": 0x02C9F0C0,
+    "OFS1_SEL_ADDR": 0x02C9F120,
+    "OFS3_SEC_ADDR": 0x02C9F0C4,
+    "OFS3_SEL_ADDR": 0x02C9F124,
+    "BPS_ADDR": 0x02C9F600,
+    "BPS_SEC_ADDR": 0x02C9F200,
+    "OTP_FSBLCTRL0_ADDR": 0x02E07600,
+    "OTP_FSBLCTRL1_ADDR": 0x02E07604,
+    "OTP_FSBLCTRL2_ADDR": 0x02E07608,
+    "OTP_SAMR_ADDR": 0x02E07614,
+    "OTP_SACC00_ADDR": 0x02E07620,
+    "OTP_SACC10_ADDR": 0x02E07630,
+    "OTP_SACC01_ADDR": 0x02E07640,
+    "OTP_SACC11_ADDR": 0x02E07650,
+    "OTP_SACC02_ADDR": 0x02E07660,
+    "OTP_SACC12_ADDR": 0x02E07670,
+    "OTP_SACC03_ADDR": 0x02E07680,
+    "OTP_SACC13_ADDR": 0x02E07690,
+    "OTP_PBPS_ADDR": 0x02E17780,
+    "OTP_PBPS_SEC_ADDR": 0x02E17700,
+    "OTP_ZHUK_ADDR": 0x02E17920,
+}
+
+
+def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
+    """LD007 -- no phantom 0x27000000 data-flash, and option-setting section
+    addresses match the real HUM Ch 7 layout.
+
+    The RA8D2 has no general-purpose data-flash / EEPROM array: 0x27000000 (the
+    conventional RA-family data-flash base) faults on this silicon (#397). And
+    the option bytes must land on their true addresses (#391) or the flasher
+    programs the wrong OTP cell. Only scripts that actually declare the
+    option-setting words are address-checked; every RA8 script is phantom-checked.
+    """
+    findings: list[Finding] = []
+    for m in re.finditer(r"\bDATA_FLASH\b|0x2700_?0000", code):
+        line = code[: m.start()].count("\n") + 1
+        findings.append(
+            Finding(
+                path,
+                line,
+                "LD007",
+                "phantom data-flash 0x27000000 -- the RA8D2 has no such region (#397)",
+            )
+        )
+    for name, expect in OPTION_SETTING_ADDR.items():
+        m = re.search(r"PROVIDE\(\s*" + re.escape(name) + r"\s*=\s*(0x[0-9A-Fa-f_]+)\s*\)", code)
+        if not m:
+            continue
+        got = int(m.group(1).replace("_", ""), 16)
+        if got != expect:
+            line = code[: m.start()].count("\n") + 1
+            findings.append(
+                Finding(
+                    path,
+                    line,
+                    "LD007",
+                    f"{name} = {m.group(1)}, expected 0x{expect:08X} "
+                    "(HUM Ch 7 Figure 7.1 p 279)",
+                )
+            )
+    return findings
+
+
 def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     """Every linker-script rule, one function per finding code.
 
     The rule list is the call sequence below: LD005 formatting, LD001 licence,
-    LD002 ENTRY, LD003 MEMORY, LD004 region closure.
+    LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD007 option-setting layout.
     """
     findings, text = _check_formatting(path, raw)
     findings += _check_licence(path, text.splitlines())
@@ -224,6 +299,7 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     memory_findings, regions = _check_memory(path, code)
     findings += memory_findings
     findings += _check_region_closure(path, code, regions)
+    findings += _check_option_setting(path, code)
     return findings
 
 
@@ -342,6 +418,83 @@ SECTIONS
 """
 
 
+# Option-setting layout: a phantom data-flash region plus a wrong OFS0 address
+# (both must draw LD007), and a correct-address twin that must stay silent.
+OFS_BAD = """\
+/*
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+ENTRY(Reset_Handler)
+
+MEMORY
+{
+    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K
+    DATA_FLASH (rw) : ORIGIN = 0x27000000, LENGTH = 16K
+    OFS_CFG (r) : ORIGIN = 0x02C9F000, LENGTH = 2K
+}
+
+PROVIDE(OFS0_ADDR = 0x0300A100);
+
+SECTIONS
+{
+    .text : { *(.text) } > MRAM
+    .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > OFS_CFG
+}
+"""
+
+OFS_GOOD = """\
+/*
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+ENTRY(Reset_Handler)
+
+MEMORY
+{
+    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K
+    OFS_CFG (r) : ORIGIN = 0x02C9F000, LENGTH = 2K
+}
+
+PROVIDE(OFS0_ADDR = 0x02C9F040);
+
+SECTIONS
+{
+    .text : { *(.text) } > MRAM
+    .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > OFS_CFG
+}
+"""
+
+
+def _selftest_option_setting() -> int:
+    """LD007 fires on the phantom region and a wrong OFS0 address, and stays
+    quiet on the correct-address twin."""
+    rc = 0
+    with tempfile.TemporaryDirectory() as td:
+        bad = pathlib.Path(td) / "ofs_bad.ld"
+        bad.write_bytes(OFS_BAD.encode())
+        codes = {f.code for f in check_file(bad, bad.read_bytes())}
+        if "LD007" not in codes:
+            print("SELFTEST FAIL: ofs_bad.ld did not report LD007")
+            rc = 1
+        else:
+            print("selftest: ofs_bad.ld -> LD007 (phantom + wrong OFS0) OK")
+
+        good = pathlib.Path(td) / "ofs_good.ld"
+        good.write_bytes(OFS_GOOD.encode())
+        ld007 = [f for f in check_file(good, good.read_bytes()) if f.code == "LD007"]
+        if ld007:
+            print("SELFTEST FAIL: ofs_good.ld should have no LD007 but reported:")
+            for f in ld007:
+                print(f"    {f}")
+            rc = 1
+        else:
+            print("selftest: ofs_good.ld -> no LD007 OK")
+    return rc
+
+
 def _selftest_fixtures() -> int:
     """The two whole-file fixtures: every code must fire, nothing may over-fire."""
     rc = 0
@@ -426,6 +579,7 @@ def _selftest_closure(got_def: set[str], got_ref: set[str]) -> int:
 def selftest() -> int:
     """Assert every finding code fires, and that none of them over-fires."""
     rc = _selftest_fixtures()
+    rc |= _selftest_option_setting()
     scan_rc, got_def, got_ref = _selftest_symbol_scan()
     return rc | scan_rc | _selftest_closure(got_def, got_ref)
 

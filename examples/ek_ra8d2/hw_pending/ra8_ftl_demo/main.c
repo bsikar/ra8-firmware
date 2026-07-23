@@ -56,9 +56,12 @@
 #include "ra8_sci.h"
 #include "ra8_time.h"
 
-/** @enum demo_addr_t @brief Extra-MRAM window base address. */
+/** @enum demo_addr_t @brief Extra-MRAM window base address.
+ *  @warning One-time-programmable OTP option-setting memory (HUM Ch 59.7.4.5
+ *  Table 59.15 p 3592), not rewritable data-flash: the wear-level erase/rewrite
+ *  cycle cannot work on real silicon. A rewritable-medium retarget is #315. */
 typedef enum : uintptr_t {
-  k_demo_mram_base = 0x27000000U, /**< Extra-MRAM (data flash) base. */
+  k_demo_mram_base = k_ra8_flash_extra_start, /**< Extra-MRAM OTP window base (0x02E07600). */
 } demo_addr_t;
 
 /** @enum demo_const_t @brief Console + FTL geometry + workload knobs. */

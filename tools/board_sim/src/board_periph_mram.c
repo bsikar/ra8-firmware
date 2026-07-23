@@ -5,10 +5,8 @@
  * @details
  * Models the RA8D2 MRMS controller (ra8_flash_regs.h, ra8_flash.c) just enough
  * to make the firmware's real extra-MRAM *program* sequence round-trip. The
- * extra-MRAM data region at @c 0x27000000 is a normal mapped RAM region in
- * board_sim, so READS of it are served directly by Unicorn; what was missing is
- * the WRITE path, which the firmware drives through the MACI command sequencer
- * rather than by storing to the region:
+ * firmware drives extra-MRAM writes through the MACI command sequencer rather
+ * than by storing to the region; this model intercepts that sequence:
  *
  *   1. MENTRYR (0x4013E084) = 0xAA80  -> enter program/erase mode; the driver
  *      then spins on MENTRYR bit 0x0080 until set.
@@ -23,15 +21,19 @@
  *      checks the error mask (0x00B85020).
  *   5. MENTRYR = 0xAA00                -> leave program mode.
  *
- * On the 0xD0 trailer this model writes the accumulated halfword payload into the
- * mapped data region at the latched MSADDR via @c uc_mem_write, so the firmware's
- * subsequent direct reads see exactly what each command programmed. The model
- * is deliberately *faithful*: one command carries eight halfwords (16 bytes), so
- * a caller that programs more than 16 bytes per `ra8_flash_extra_mram_write` call
- * will see only the first 16 land -- the model reflects the hardware, it does not
- * paper over it. Before the fix for the extra-MRAM opcode, this model accepted
- * ONLY the 0x40 opener, which is why board_sim round-tripped the firmware's
- * (wrong) config-set write and masked the on-silicon blank-MRAM ECC fault.
+ * On the 0xD0 trailer this model writes the accumulated halfword payload to the
+ * latched MSADDR via @c uc_mem_write. The option-setting / OTP window is
+ * host-backed by sim_memmap (it is readable on silicon, and the boot-ROM option
+ * words live there), so an accepted Program at an in-window MSADDR round-trips
+ * on the firmware's read-back. The model is deliberately *faithful* about the
+ * command shape: one command carries eight halfwords (16 bytes), so a caller
+ * that programs more than 16 bytes per `ra8_flash_extra_mram_write` call issues
+ * one command per unit. What it does NOT model is the one-time-programmable
+ * semantics -- a real OTP cell cannot be erased and re-programmed, so a sim pass
+ * for an erase/rewrite demo is optimistic pending the #315 bench answer. Before
+ * the extra-MRAM opcode fix, this model accepted ONLY the 0x40 opener, which is
+ * why board_sim round-tripped the firmware's (wrong) config-set write and masked
+ * the on-silicon blank-MRAM ECC fault.
  *
  * @par There is no data-flash at 0x2700_0000 (#170)
  * The premise above -- that @c 0x27000000 is an "extra-MRAM data region" the

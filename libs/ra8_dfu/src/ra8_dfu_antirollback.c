@@ -36,10 +36,15 @@
 /**
  * @brief NV anti-rollback backing constants.
  * @details The durable highest-accepted version is a single little-endian
- *          ``uint32_t`` at the base of the extra-MRAM (data-flash) window
- *          (::k_ra8_flash_extra_start, 0x27000000). Extra-MRAM is bit-alterable,
- *          so a commit is a plain write -- no erase cycle and no power-loss
- *          window where the counter reads back as reset.
+ *          ``uint32_t`` at the base of the extra-MRAM option-setting window
+ *          (::k_ra8_flash_extra_start, 0x02E07600 -- HUM Ch 59.7.4.5 Table 59.15
+ *          p 3592). A commit is a monotone-advancing write (bits go 1->0 only),
+ *          so no erase cycle is needed and there is no power-loss window where
+ *          the counter reads back as reset.
+ * @note The window is one-time-programmable option-setting memory, not a
+ *       rewritable data-flash; whether a virgin word programs cleanly, and
+ *       whether the counter belongs at the window base rather than the ARC
+ *       structure (0x02E17930), is a bench question tracked by #315.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -52,7 +57,7 @@ typedef enum : uint32_t {
  * @brief Host-test RAM shadow of the extra-MRAM anti-rollback counter.
  * @details The host unit-test simulator models the flash MACI *registers* but
  *          not the extra-MRAM *data* side, so writes never round-trip through
- *          ``0x27000000``. Under RA8_SIMULATOR_MODE the durable read/commit use
+ *          ``k_ra8_flash_extra_start``. Under RA8_SIMULATOR_MODE the durable read/commit use
  *          this word instead; silicon and board_sim exercise the real
  *          extra-MRAM path in the ``#else`` branch.
  * @note File-private; the anti-rollback host test seeds it directly.

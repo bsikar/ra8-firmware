@@ -193,10 +193,13 @@ typedef enum : uint8_t {
  * @brief Placement of the record in non-volatile storage.
  *
  * @details
- * The offset is relative to ``k_ra8_flash_extra_start`` (the extra-MRAM /
- * data-flash window base, ``0x27000000``). Extra-MRAM is erased by no DFU
- * path, so the record survives an A/B firmware update and a rollback
- * alike.
+ * The offset is relative to ``k_ra8_flash_extra_start`` (the extra-MRAM
+ * option-setting window base, ``0x02E07600`` -- HUM Ch 59.7.4.5 Table 59.15
+ * p 3592). No DFU path erases extra-MRAM, so the record survives an A/B
+ * firmware update and a rollback alike.
+ * @note The window is one-time-programmable option-setting memory, not a
+ *       rewritable data-flash; a real rewritable-medium home for this record is
+ *       a bench question tracked by #315.
  *
  * ## Why this is not at the obvious ``0x40``
  *

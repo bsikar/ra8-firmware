@@ -110,17 +110,31 @@ REMOTE_FW="/tmp/hil_${APP_NAME}.${FIRMWARE_EXT}"
 
 echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
 
-# ---- 1. Strip OFS sections ---------------------------------------------------
-# OFS sections at 0x0300A100+ cause J-Link RAMCode to timeout during Prepare()
-# when TrustZone option bytes are involved.  Strip them so J-Link only programs
-# the MRAM bank at 0x02000000.
+# ---- 1. Option-setting (OFS/OTP) sections: strip by default (brick-safety) ---
+# The .option_setting_* sections carry the RA8D2 option bytes: OFS0..3, SAS, BPS
+# and the OTP structures (FSBL, PBPS, POFSPS, REVOKE, HUK-zeroize enable,
+# anti-rollback) at their real HUM Ch 7 addresses (0x02C9_F0xx / 0x02E0_7600..).
+# SEVERAL ARE ONE-TIME-PROGRAMMABLE: a wrong value can permanently lock or brick
+# the part, and a bad OFS also stalls J-Link's RAMCode during Prepare(). The
+# default flashing policy is therefore DELIBERATE, not incidental -- strip every
+# .option_setting section and program only the code-MRAM bank at 0x02000000.
+#
+# There is a separate, explicit path for provisioning the option bytes on
+# purpose: set RA8_HIL_PROGRAM_OPTION_BYTES=1 and the sections are flashed as-is.
+# Only do that with values you have vetted against HUM Ch 7 -- an erased
+# (all-ones) word is the permissive default and safe; anything else is on you.
 #
 # SWD speed: RA8D2 boots from the internal ~4 MHz oscillator after SYSRESETREQ.
 # J-Link's RAMCode runs at this low clock and requires speed <= 1000 kHz to
 # communicate reliably.  Using 4000 kHz causes RAMCode timeout.
 ELF="${HEX%.hex}.elf"
 STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.${FIRMWARE_EXT}"
-OFS_ARGS=('--remove-section=.option_setting*')
+if [[ "${RA8_HIL_PROGRAM_OPTION_BYTES:-0}" == "1" ]]; then
+  OFS_ARGS=()
+  echo -e "${YELLOW}[HIL]${NC} RA8_HIL_PROGRAM_OPTION_BYTES=1 -- flashing option bytes (NOT stripped)"
+else
+  OFS_ARGS=('--remove-section=.option_setting*')
+fi
 if [[ "$FIRMWARE_EXT" == "elf" ]]; then
   arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex" 2>/dev/null ||
     arm-none-eabi-objcopy -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex"

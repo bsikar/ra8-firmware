@@ -10,25 +10,17 @@
  * Region Start Size Usage
  * ------------ ---------- --------- ----------------------------
  * MRAM 0x02000000 1 MiB Code + rodata + vectors + OFS
- * DATA_FLASH 0x27000000 16 KiB Data flash (EEPROM emulation)
  * ITCM 0x00000000 64 KiB Instruction tightly-coupled mem
  * DTCM 0x20000000 64 KiB Data tightly-coupled mem
  * SRAM (ECC) 0x22000000 2 MiB .data, .bss, main stack (no heap)
  * SDRAM 0x68000000 64 MiB External SDRAM (EK board)
  *
  * =====================================================================
- * WARNING -- OFS addresses below are a best-effort derivation of the
- * RA8 MRAM option-setting layout. Before flashing to a real board,
- * confirm against HUM R01UH1065EJ section 4 ("Option Function Select
- * Registers") that 0x0300_A100 is the correct OFS0 base. If it is not,
- * override via the build with:
- *
- * -Wl,--defsym=OFS0_ADDR=0xNNNNNNNN
- *
- * Getting this wrong cannot brick the chip if the data is all-ones
- * (the boot ROM interprets 0xFFFFFFFF as "default / permissive"), but
- * any non-erased value at the wrong address will lead to undefined
- * behaviour on first boot.
+ * Option-setting addresses below are the real RA8D2 layout from HUM
+ * R01UH1065EJ Ch 7 Figure 7.1 p 279 (secure aliases). scripts/hil/run.sh
+ * strips every .option_setting section before flashing as a deliberate
+ * brick-safety policy -- program them only through the explicit path
+ * documented there.
  * =====================================================================
  *
  * Copyright (c) 2026 Brighton Sikarskie
@@ -40,11 +32,12 @@ ENTRY(Reset_Handler)
 MEMORY
 {
     MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K
-    /* Option Setting / OTP block lives in a dedicated config flash
-     * area outside main MRAM. Sized to cover 0x0300A000..0x0300B000
-     * so every OFS*, SAS, BPS, OTP_* section has a home. */
-    OFS (r) : ORIGIN = 0x0300A000, LENGTH = 4K
-    DATA_FLASH (rw) : ORIGIN = 0x27000000, LENGTH = 16K
+    /* Option-setting memory lives in the extra MRAM in two disjoint blocks
+     * (HUM Ch 7 Figure 7.1 p 279): the configuration words at 0x02C9_F0xx and
+     * the OTP / anti-rollback area at 0x02E0_7600.. . Placed at their real
+     * secure-alias addresses so the flashing tool targets the right cells. */
+    OFS_CFG (r) : ORIGIN = 0x02C9F000, LENGTH = 2K
+    OFS_OTP (r) : ORIGIN = 0x02E07000, LENGTH = 68K
     ITCM (rwx) : ORIGIN = 0x00000000, LENGTH = 64K
     DTCM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
     SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K
@@ -97,32 +90,32 @@ PROVIDE(g_ra8_threadx_unused_memory_start = ORIGIN(SDRAM));
  * top-level build. If you need to change the MRAM base, override all
  * of these in lock-step.
  */
-PROVIDE(OFS0_ADDR = 0x0300A100);
-PROVIDE(OFS1_ADDR = 0x0300A104);
-PROVIDE(OFS2_ADDR = 0x0300A108);
-PROVIDE(OFS3_ADDR = 0x0300A10C);
-PROVIDE(SAS_ADDR = 0x0300A110);
-PROVIDE(OFS1_SEC_ADDR = 0x0300A200);
-PROVIDE(OFS1_SEL_ADDR = 0x0300A204);
-PROVIDE(OFS3_SEC_ADDR = 0x0300A20C);
-PROVIDE(OFS3_SEL_ADDR = 0x0300A210);
-PROVIDE(BPS_ADDR = 0x0300A300);
-PROVIDE(BPS_SEC_ADDR = 0x0300A400);
-PROVIDE(OTP_FSBLCTRL0_ADDR = 0x0300A500);
-PROVIDE(OTP_FSBLCTRL1_ADDR = 0x0300A504);
-PROVIDE(OTP_FSBLCTRL2_ADDR = 0x0300A508);
-PROVIDE(OTP_SAMR_ADDR = 0x0300A600);
-PROVIDE(OTP_SACC00_ADDR = 0x0300A700);
-PROVIDE(OTP_SACC10_ADDR = 0x0300A704);
-PROVIDE(OTP_SACC01_ADDR = 0x0300A708);
-PROVIDE(OTP_SACC11_ADDR = 0x0300A70C);
-PROVIDE(OTP_SACC02_ADDR = 0x0300A710);
-PROVIDE(OTP_SACC12_ADDR = 0x0300A714);
-PROVIDE(OTP_SACC03_ADDR = 0x0300A718);
-PROVIDE(OTP_SACC13_ADDR = 0x0300A71C);
-PROVIDE(OTP_PBPS_ADDR = 0x0300A800);
-PROVIDE(OTP_PBPS_SEC_ADDR = 0x0300A804);
-PROVIDE(OTP_ZHUK_ADDR = 0x0300A900);
+PROVIDE(OFS0_ADDR = 0x02C9F040);
+PROVIDE(OFS1_ADDR = 0x02C9F4C0);
+PROVIDE(OFS2_ADDR = 0x02C9F044);
+PROVIDE(OFS3_ADDR = 0x02C9F4C4);
+PROVIDE(SAS_ADDR = 0x02C9F074);
+PROVIDE(OFS1_SEC_ADDR = 0x02C9F0C0);
+PROVIDE(OFS1_SEL_ADDR = 0x02C9F120);
+PROVIDE(OFS3_SEC_ADDR = 0x02C9F0C4);
+PROVIDE(OFS3_SEL_ADDR = 0x02C9F124);
+PROVIDE(BPS_ADDR = 0x02C9F600);
+PROVIDE(BPS_SEC_ADDR = 0x02C9F200);
+PROVIDE(OTP_FSBLCTRL0_ADDR = 0x02E07600);
+PROVIDE(OTP_FSBLCTRL1_ADDR = 0x02E07604);
+PROVIDE(OTP_FSBLCTRL2_ADDR = 0x02E07608);
+PROVIDE(OTP_SAMR_ADDR = 0x02E07614);
+PROVIDE(OTP_SACC00_ADDR = 0x02E07620);
+PROVIDE(OTP_SACC10_ADDR = 0x02E07630);
+PROVIDE(OTP_SACC01_ADDR = 0x02E07640);
+PROVIDE(OTP_SACC11_ADDR = 0x02E07650);
+PROVIDE(OTP_SACC02_ADDR = 0x02E07660);
+PROVIDE(OTP_SACC12_ADDR = 0x02E07670);
+PROVIDE(OTP_SACC03_ADDR = 0x02E07680);
+PROVIDE(OTP_SACC13_ADDR = 0x02E07690);
+PROVIDE(OTP_PBPS_ADDR = 0x02E17780);
+PROVIDE(OTP_PBPS_SEC_ADDR = 0x02E17700);
+PROVIDE(OTP_ZHUK_ADDR = 0x02E17920);
 
 SECTIONS
 {
@@ -215,32 +208,32 @@ SECTIONS
      * A project that wants to change any of them just overrides the
      * matching `BSP_CFG_OPTION_SETTING_*` macro and rebuilds.
      */
-    .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > OFS
-    .option_setting_ofs1 OFS1_ADDR : { KEEP(*(.option_setting_ofs1)) } > OFS
-    .option_setting_ofs2 OFS2_ADDR : { KEEP(*(.option_setting_ofs2)) } > OFS
-    .option_setting_ofs3 OFS3_ADDR : { KEEP(*(.option_setting_ofs3)) } > OFS
-    .option_setting_sas SAS_ADDR : { KEEP(*(.option_setting_sas)) } > OFS
-    .option_setting_ofs1_sec OFS1_SEC_ADDR : { KEEP(*(.option_setting_ofs1_sec)) } > OFS
-    .option_setting_ofs1_sel OFS1_SEL_ADDR : { KEEP(*(.option_setting_ofs1_sel)) } > OFS
-    .option_setting_ofs3_sec OFS3_SEC_ADDR : { KEEP(*(.option_setting_ofs3_sec)) } > OFS
-    .option_setting_ofs3_sel OFS3_SEL_ADDR : { KEEP(*(.option_setting_ofs3_sel)) } > OFS
-    .option_setting_bps BPS_ADDR : { KEEP(*(.option_setting_bps)) } > OFS
-    .option_setting_bps_sec BPS_SEC_ADDR : { KEEP(*(.option_setting_bps_sec)) } > OFS
-    .option_setting_otp_fsblctrl0 OTP_FSBLCTRL0_ADDR : { KEEP(*(.option_setting_otp_fsblctrl0)) } > OFS
-    .option_setting_otp_fsblctrl1 OTP_FSBLCTRL1_ADDR : { KEEP(*(.option_setting_otp_fsblctrl1)) } > OFS
-    .option_setting_otp_fsblctrl2 OTP_FSBLCTRL2_ADDR : { KEEP(*(.option_setting_otp_fsblctrl2)) } > OFS
-    .option_setting_otp_samr OTP_SAMR_ADDR : { KEEP(*(.option_setting_otp_samr)) } > OFS
-    .option_setting_otp_sacc00 OTP_SACC00_ADDR : { KEEP(*(.option_setting_otp_sacc00)) } > OFS
-    .option_setting_otp_sacc10 OTP_SACC10_ADDR : { KEEP(*(.option_setting_otp_sacc10)) } > OFS
-    .option_setting_otp_sacc01 OTP_SACC01_ADDR : { KEEP(*(.option_setting_otp_sacc01)) } > OFS
-    .option_setting_otp_sacc11 OTP_SACC11_ADDR : { KEEP(*(.option_setting_otp_sacc11)) } > OFS
-    .option_setting_otp_sacc02 OTP_SACC02_ADDR : { KEEP(*(.option_setting_otp_sacc02)) } > OFS
-    .option_setting_otp_sacc12 OTP_SACC12_ADDR : { KEEP(*(.option_setting_otp_sacc12)) } > OFS
-    .option_setting_otp_sacc03 OTP_SACC03_ADDR : { KEEP(*(.option_setting_otp_sacc03)) } > OFS
-    .option_setting_otp_sacc13 OTP_SACC13_ADDR : { KEEP(*(.option_setting_otp_sacc13)) } > OFS
-    .option_setting_otp_pbps OTP_PBPS_ADDR : { KEEP(*(.option_setting_otp_pbps)) } > OFS
-    .option_setting_otp_pbps_sec OTP_PBPS_SEC_ADDR : { KEEP(*(.option_setting_otp_pbps_sec)) } > OFS
-    .option_setting_otp_zhuk OTP_ZHUK_ADDR : { KEEP(*(.option_setting_otp_zhuk)) } > OFS
+    .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > OFS_CFG
+    .option_setting_ofs1 OFS1_ADDR : { KEEP(*(.option_setting_ofs1)) } > OFS_CFG
+    .option_setting_ofs2 OFS2_ADDR : { KEEP(*(.option_setting_ofs2)) } > OFS_CFG
+    .option_setting_ofs3 OFS3_ADDR : { KEEP(*(.option_setting_ofs3)) } > OFS_CFG
+    .option_setting_sas SAS_ADDR : { KEEP(*(.option_setting_sas)) } > OFS_CFG
+    .option_setting_ofs1_sec OFS1_SEC_ADDR : { KEEP(*(.option_setting_ofs1_sec)) } > OFS_CFG
+    .option_setting_ofs1_sel OFS1_SEL_ADDR : { KEEP(*(.option_setting_ofs1_sel)) } > OFS_CFG
+    .option_setting_ofs3_sec OFS3_SEC_ADDR : { KEEP(*(.option_setting_ofs3_sec)) } > OFS_CFG
+    .option_setting_ofs3_sel OFS3_SEL_ADDR : { KEEP(*(.option_setting_ofs3_sel)) } > OFS_CFG
+    .option_setting_bps BPS_ADDR : { KEEP(*(.option_setting_bps)) } > OFS_CFG
+    .option_setting_bps_sec BPS_SEC_ADDR : { KEEP(*(.option_setting_bps_sec)) } > OFS_CFG
+    .option_setting_otp_fsblctrl0 OTP_FSBLCTRL0_ADDR : { KEEP(*(.option_setting_otp_fsblctrl0)) } > OFS_OTP
+    .option_setting_otp_fsblctrl1 OTP_FSBLCTRL1_ADDR : { KEEP(*(.option_setting_otp_fsblctrl1)) } > OFS_OTP
+    .option_setting_otp_fsblctrl2 OTP_FSBLCTRL2_ADDR : { KEEP(*(.option_setting_otp_fsblctrl2)) } > OFS_OTP
+    .option_setting_otp_samr OTP_SAMR_ADDR : { KEEP(*(.option_setting_otp_samr)) } > OFS_OTP
+    .option_setting_otp_sacc00 OTP_SACC00_ADDR : { KEEP(*(.option_setting_otp_sacc00)) } > OFS_OTP
+    .option_setting_otp_sacc10 OTP_SACC10_ADDR : { KEEP(*(.option_setting_otp_sacc10)) } > OFS_OTP
+    .option_setting_otp_sacc01 OTP_SACC01_ADDR : { KEEP(*(.option_setting_otp_sacc01)) } > OFS_OTP
+    .option_setting_otp_sacc11 OTP_SACC11_ADDR : { KEEP(*(.option_setting_otp_sacc11)) } > OFS_OTP
+    .option_setting_otp_sacc02 OTP_SACC02_ADDR : { KEEP(*(.option_setting_otp_sacc02)) } > OFS_OTP
+    .option_setting_otp_sacc12 OTP_SACC12_ADDR : { KEEP(*(.option_setting_otp_sacc12)) } > OFS_OTP
+    .option_setting_otp_sacc03 OTP_SACC03_ADDR : { KEEP(*(.option_setting_otp_sacc03)) } > OFS_OTP
+    .option_setting_otp_sacc13 OTP_SACC13_ADDR : { KEEP(*(.option_setting_otp_sacc13)) } > OFS_OTP
+    .option_setting_otp_pbps OTP_PBPS_ADDR : { KEEP(*(.option_setting_otp_pbps)) } > OFS_OTP
+    .option_setting_otp_pbps_sec OTP_PBPS_SEC_ADDR : { KEEP(*(.option_setting_otp_pbps_sec)) } > OFS_OTP
+    .option_setting_otp_zhuk OTP_ZHUK_ADDR : { KEEP(*(.option_setting_otp_zhuk)) } > OFS_OTP
 
     /* ---- Initialised data: loaded from MRAM, lives in SRAM ---- */
     .data : ALIGN(4)

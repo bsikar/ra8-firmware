@@ -97,7 +97,7 @@ static void test_config_set_write_ofs_window(void)
  * resolves to T -- the in_ofs OR at line 1429 evaluates F,F = F (proceeds
  * past the rejection path) and the MACI sequence completes via the
  * pre-staged MRDY bit.
- *   V_T_T: target_addr = 0x27000000 (start of extra MRAM, sim-mmap backed).
+ *   V_T_T: target_addr = 0x02E07600 (start of extra MRAM, sim-mmap backed).
  * Combined with the existing F,- and T,F vectors, both C1-pair and
  * C2-pair are covered (3 vectors for N=2 conditions: minimal MC/DC).
  */
@@ -138,6 +138,40 @@ static void test_extra_mram_write_validation(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_flash_extra_mram_write((uint32_t)k_ra8_flash_extra_start + 30U, buf, 4U));
   TEST_END("flash extra_mram_write validation");
+}
+
+/**
+ * @test test_extra_mram_write_rejects_locked_otp
+ *
+ * @details
+ * OTP-misuse guard (#397): the general-purpose write path must refuse any
+ * target at or above ``k_ra8_flash_extra_locked_start`` -- the permanent,
+ * irreversible option-setting structures (PBPS, POFSPS, REVOKE, HUK-zeroize,
+ * anti-rollback). Those need the deliberate ``ra8_flash_config_set_write``.
+ * The general-purpose OTP sub-range (``k_ra8_flash_gpotp_start``) stays
+ * writable through this path.
+ *
+ * @par MC/DC:
+ * Decision: single-condition guard ``end_excl > k_ra8_flash_extra_locked_start``.
+ * - Vector F (allowed): a write into the GPOTP sub-range -- end_excl below the
+ *   boundary -- returns k_ra8_ok (covered here and by the happy-path cases).
+ * - Vector T (rejected): a write starting at the boundary (PBPS_SEC) -- end_excl
+ *   above it -- returns k_ra8_err_invalid_arg. Two vectors for one condition.
+ */
+static void test_extra_mram_write_rejects_locked_otp(void)
+{
+  TEST_BEGIN("flash extra_mram_write rejects permanent-OTP structures");
+  ra8_sim_mmap_reset();
+  const uint8_t buf[k_ra8_mram_write_size_bytes]   = {};
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = (uint32_t)k_ra8_mstatr_mask_mrdy;
+
+  /* F: general-purpose OTP sub-range is permitted (end below the guard). */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_extra_mram_write((uint32_t)k_ra8_flash_gpotp_start, buf, 16U));
+
+  /* T: the permanent-structure block is refused. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_flash_extra_mram_write((uint32_t)k_ra8_flash_extra_locked_start, buf, 16U));
+  TEST_END("flash extra_mram_write rejects permanent-OTP structures");
 }
 /**
  * @par MC/DC:
@@ -572,6 +606,7 @@ static void (*const s_test_roster[])(void) = {
   test_config_set_write_ofs_window,
   test_mcdc_config_set_write_extra_window,
   test_extra_mram_write_validation,
+  test_extra_mram_write_rejects_locked_otp,
   test_extra_mram_write_success_pads_payload,
   test_extra_mram_write_emits_program_opcode,
   test_config_set_write_ofs_emits_config_set_opcode,
