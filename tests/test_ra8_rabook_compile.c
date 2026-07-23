@@ -177,6 +177,7 @@ static void rabook_rt_populate(ra8_rabook_ctx_t* ctx, rabook_rt_t* rt)
                                                            (uint16_t)k_t_img_w,
                                                            (uint16_t)k_t_img_h,
                                                            (uint8_t)k_ra8_book_image_gray4,
+                                                           (uint8_t)k_ra8_book_pixfmt_gray4,
                                                            img_bytes,
                                                            (uint32_t)sizeof(img_bytes));
   TEST_ASSERT_EQ(0U, rt->img_idx);
@@ -406,12 +407,24 @@ static void test_rabook_overflow_images(void)
 
   const uint32_t       href    = ra8_rabook_intern(&ctx, "img.bin");
   static const uint8_t data[1] = {0xABU};
-  TEST_ASSERT_EQ(
-    0U,
-    ra8_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra8_book_image_gray4, data, 1U));
-  TEST_ASSERT_EQ(
-    k_ra8_book_nil,
-    ra8_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra8_book_image_gray4, data, 1U));
+  TEST_ASSERT_EQ(0U,
+                 ra8_rabook_add_image(&ctx,
+                                      href,
+                                      1U,
+                                      1U,
+                                      (uint8_t)k_ra8_book_image_gray4,
+                                      (uint8_t)k_ra8_book_pixfmt_gray4,
+                                      data,
+                                      1U));
+  TEST_ASSERT_EQ(k_ra8_book_nil,
+                 ra8_rabook_add_image(&ctx,
+                                      href,
+                                      1U,
+                                      1U,
+                                      (uint8_t)k_ra8_book_image_gray4,
+                                      (uint8_t)k_ra8_book_pixfmt_gray4,
+                                      data,
+                                      1U));
 
   const void* blob = nullptr;
   uint32_t    len  = 0U;
@@ -471,8 +484,14 @@ static void test_rabook_add_image_zero_data(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
 
   const uint32_t href = ra8_rabook_intern(&ctx, "empty.bin");
-  const uint32_t idx =
-    ra8_rabook_add_image(&ctx, href, 4U, 4U, (uint8_t)k_ra8_book_image_gray4, nullptr, 0U);
+  const uint32_t idx  = ra8_rabook_add_image(&ctx,
+                                             href,
+                                             4U,
+                                             4U,
+                                             (uint8_t)k_ra8_book_image_gray4,
+                                             (uint8_t)k_ra8_book_pixfmt_gray4,
+                                             nullptr,
+                                             0U);
   TEST_ASSERT_EQ(0U, idx);
 
   const void* blob = nullptr;

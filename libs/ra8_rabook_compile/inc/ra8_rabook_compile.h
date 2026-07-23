@@ -273,6 +273,9 @@ uint32_t ra8_rabook_add_chapter(ra8_rabook_ctx_t* ctx,
  * @param[in]     width     Pixel width (0 for SVG).
  * @param[in]     height    Pixel height (0 for SVG).
  * @param[in]     format    @ref ra8_book_image_format_t (gray4 or svg).
+ * @param[in]     pixel_format @ref ra8_book_image_pixfmt_t depth of a gray4-format
+ *                          raster (gray4 = 4bpp packed, gray8 = 8bpp); pass
+ *                          @ref k_ra8_book_pixfmt_gray4 (0) for an SVG entry.
  * @param[in]     data      Pixel / SVG bytes to copy (non-NULL iff @p data_size > 0).
  * @param[in]     data_size Byte length of @p data.
  * @return The new image index, or @ref k_ra8_book_nil on overflow / error.
@@ -280,7 +283,8 @@ uint32_t ra8_rabook_add_chapter(ra8_rabook_ctx_t* ctx,
  *                       @p data is NULL with a non-zero @p data_size.
  * @pre @p ctx was initialised.
  * @pre @p data_size bytes fit the remaining image-pool capacity.
- * @post On success the descriptor's `data_off` addresses the copied bytes.
+ * @post On success the descriptor's `data_off` addresses the copied bytes and its
+ *       `pixel_format` records @p pixel_format.
  * @post On overflow `failed` is set and no descriptor / bytes are appended.
  * @note Not thread-safe.
  * @since Version 0.1.0
@@ -290,6 +294,7 @@ uint32_t ra8_rabook_add_image(ra8_rabook_ctx_t* ctx,
                               uint16_t          width,
                               uint16_t          height,
                               uint8_t           format,
+                              uint8_t           pixel_format,
                               const uint8_t*    data,
                               uint32_t          data_size);
 

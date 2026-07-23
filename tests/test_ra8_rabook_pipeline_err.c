@@ -253,6 +253,58 @@ static void test_pipeline_tall_image_height_downscaled(void)
 }
 
 /**
+ * @test test_pipeline_gray8_profile
+ * @brief The gray8 device profile stores each raster at 8-bpp (one byte/pixel)
+ *        and stamps its descriptor `pixel_format` = gray8 (#343).
+ *
+ * @par MC/DC:
+ * Drives the true arm of `if (scr->pixel_format == k_ra8_book_pixfmt_gray8)` in
+ * s_encode_gray (single condition): the profile selects the 8-bpp copy, so each
+ * raster's `raw_size` equals width*height (not the ceil(w*h/2) of the 4-bpp pack)
+ * and its `pixel_format` reads back gray8. The false (gray4) arm is driven by
+ * @ref test_pipeline_raster_images_transcoded. `format` stays gray4 (raster) --
+ * pixel_format is the orthogonal depth axis.
+ */
+static void test_pipeline_gray8_profile(void)
+{
+  TEST_BEGIN("ra8_rabook_pipeline: gray8 profile stores 8-bpp rasters");
+  build_epub_raster();
+  ra8_fs_mount_t* mount = fresh_volume();
+
+  ra8_epub_book_t book = {};
+  open_s_epub(&book);
+
+  ra8_rabook_buffers_t          bufs  = {};
+  ra8_rabook_pipeline_scratch_t scr   = {};
+  ra8_img_arena_t               arena = {};
+  make_views(&bufs, &scr, &arena);
+  scr.pixel_format = (uint8_t)k_ra8_book_pixfmt_gray8; /* device profile: keep 8-bpp */
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
+
+  ra8_fs_file_t* file = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, "OUT.RAB", k_ra8_fs_mode_read, &file));
+  uint32_t got = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(file));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(s_readback, (size_t)got));
+  const ra8_book_header_t* hdr  = ra8_book_header(s_readback);
+  const ra8_book_image_t*  imgs = ra8_book_images(s_readback);
+  TEST_ASSERT_EQ(2U, hdr->image_count);
+  for (uint32_t i = 0U; i < hdr->image_count; ++i) {
+    /* Raster kind unchanged; depth axis is gray8; 8-bpp is exactly w*h bytes. */
+    TEST_ASSERT_EQ(k_ra8_book_image_gray4, imgs[i].format);
+    TEST_ASSERT_EQ(k_ra8_book_pixfmt_gray8, ra8_book_image_pixfmt(&imgs[i]));
+    TEST_ASSERT_EQ(imgs[i].width * (uint32_t)imgs[i].height, imgs[i].raw_size);
+  }
+
+  teardown(mount);
+  TEST_END("ra8_rabook_pipeline: gray8 profile stores 8-bpp rasters");
+}
+
+/**
  * @test test_pipeline_toc_titles_resolved
  * @brief Each spine chapter picks up its TOC title via s_chapter_title.
  *
@@ -645,6 +697,7 @@ int32_t main(void)
   test_pipeline_default_preserves_resolution();
   test_pipeline_gray_scratch_too_small();
   test_pipeline_tall_image_height_downscaled();
+  test_pipeline_gray8_profile();
   test_pipeline_toc_titles_resolved();
   test_pipeline_css_absent_skipped();
   test_pipeline_css_load_error_propagates();
