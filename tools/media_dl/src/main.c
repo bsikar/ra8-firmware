@@ -52,6 +52,7 @@ typedef enum : uint32_t {
 typedef enum : uint16_t {
   k_chap_name_bytes    = 128,  /**< Chapter folder-name buffer.      */
   k_slug_bytes         = 128,  /**< Series slug buffer.              */
+  k_leaf_name_bytes    = 256,  /**< Composed archive/dir leaf name.  */
   k_dir_path_bytes     = 1024, /**< Directory-path buffer.           */
   k_file_path_bytes    = 1200, /**< File-path buffer.                */
   k_numbuf_bytes       = 16,   /**< Digit-run parse buffer.          */
@@ -183,6 +184,51 @@ RA8_INTERNAL static bool path_under(const char* parent_abs, const char* child)
     return false;
   }
   return mdl_path_contained(parent_abs, resolved);
+}
+
+/**
+ * @brief Join `seg` under `parent_abs`, create it, and verify it stays inside.
+ *
+ * @details
+ * The single guarded directory join every `series_dir`/`chapter_dir` path
+ * routes through. ::mdl_path_join refuses a traversal, separator-bearing, or
+ * over-long `seg` before any `mkdir`, so a scraped `..` can never name a
+ * directory; the post-`mkdir` ::path_under `realpath` check is the runtime
+ * belt-and-suspenders that also defeats a symlinked component. Any failure
+ * prints a diagnostic and returns false so the caller aborts loudly rather
+ * than operating on the wrong directory.
+ *
+ * @param[in]  parent_abs Absolute, resolved parent directory.
+ * @param[in]  seg        Sanitised child segment (from ::last_segment or a leaf).
+ * @param[out] out        Buffer receiving the joined directory path.
+ * @param[in]  cap        Capacity of @p out in bytes.
+ *
+ * @return Whether @p out names a created directory contained under @p parent_abs.
+ * @retval true  The directory exists and resolves inside @p parent_abs.
+ * @retval false Unsafe/over-long @p seg, or the resolved path escaped the parent.
+ *
+ * @pre @p parent_abs is an existing absolute directory.
+ * @pre @p seg and @p out are non-NULL; @p seg is NUL-terminated.
+ * @post On true, @p out names an existing directory under @p parent_abs.
+ * @post On false, no path outside @p parent_abs is created or used.
+ *
+ * @note Not thread-safe (shared cwd for the realpath resolution).
+ * @see mdl_path_join  The lexical join that rejects the traversal segment.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+join_dir_under(const char* parent_abs, const char* seg, char* out, size_t cap)
+{
+  if (!mdl_path_join(parent_abs, seg, out, cap)) {
+    (void)fprintf(stderr, "  refusing unsafe path segment '%s' under %s\n", seg, parent_abs);
+    return false;
+  }
+  (void)mkdir(out, (mode_t)k_dir_mode);
+  if (!path_under(parent_abs, out)) {
+    (void)fprintf(stderr, "  refusing dir outside %s: %s\n", parent_abs, out);
+    return false;
+  }
+  return true;
 }
 
 /** @brief Parse the last run of digits in `url` (0 if none). */
@@ -439,15 +485,15 @@ export_one(mdl_format_t format, const char* series_dir, const char* chapter_url)
   last_segment(chapter_url, chap, sizeof(chap));
   const char* ext = mdl_format_ext(format);
 
-  /* series_dir is caller-supplied and may itself be near the buffer size, so a
-   * silently-truncated join would package the chapter into the wrong path.
-   * Check the snprintf result instead of discarding it. */
+  /* Route both joins through mdl_path_join: it refuses a traversal/separator
+   * segment and a truncated (thus wrong) path rather than composing one. */
+  char      leaf[k_leaf_name_bytes];
+  const int ln = snprintf(leaf, sizeof(leaf), "%s.%s", chap, ext);
   char      dir[k_dir_path_bytes];
   char      out[k_dir_path_bytes];
-  const int dn = snprintf(dir, sizeof(dir), "%s/%s", series_dir, chap);
-  const int on = snprintf(out, sizeof(out), "%s/%s.%s", series_dir, chap, ext);
-  if (!snprintf_fit(dn, sizeof(dir)) || !snprintf_fit(on, sizeof(out))) {
-    (void)fprintf(stderr, "  export %s.%s path too long, skipped\n", chap, ext);
+  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, chap, dir, sizeof(dir)) ||
+      !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
+    (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap, ext);
     return 1U;
   }
 
@@ -502,10 +548,11 @@ RA8_INTERNAL static size_t export_combined(mdl_format_t format,
                                            size_t       got_ch)
 {
   const char* ext = mdl_format_ext(format);
+  char        leaf[k_leaf_name_bytes];
+  const int   ln = snprintf(leaf, sizeof(leaf), "%s-%ld-%ld.%s", slug, lo, hi, ext);
   char        out[k_dir_path_bytes];
-  const int   n = snprintf(out, sizeof(out), "%s/%s-%ld-%ld.%s", series_dir, slug, lo, hi, ext);
-  if (!snprintf_fit(n, sizeof(out))) {
-    (void)fprintf(stderr, "  combine export path too long under %s\n", series_dir);
+  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
+    (void)fprintf(stderr, "  combine export path rejected under %s\n", series_dir);
     return 1U;
   }
   const ra8_err_t rc = mdl_export_chapter(format, dir, out);
@@ -554,15 +601,8 @@ RA8_INTERNAL static size_t download_chapter_separate(const mdl_site_t* site,
 {
   char chap[k_chap_name_bytes];
   last_segment(chapter_url, chap, sizeof(chap));
-  char      chap_dir[k_dir_path_bytes];
-  const int n = snprintf(chap_dir, sizeof(chap_dir), "%s/%s", series_dir, chap);
-  if (!snprintf_fit(n, sizeof(chap_dir))) {
-    (void)fprintf(stderr, "  chapter dir path too long under %s\n", series_dir);
-    return 1U;
-  }
-  (void)mkdir(chap_dir, (mode_t)k_dir_mode);
-  if (!path_under(series_dir, chap_dir)) {
-    (void)fprintf(stderr, "  refusing chapter dir outside %s: %s\n", series_dir, chap_dir);
+  char chap_dir[k_dir_path_bytes];
+  if (!join_dir_under(series_dir, chap, chap_dir, sizeof(chap_dir))) {
     return 1U;
   }
 
@@ -579,17 +619,13 @@ RA8_INTERNAL static size_t download_chapter_separate(const mdl_site_t* site,
 RA8_INTERNAL static size_t
 make_combined_dir(const char* series_dir, const char* slug, long lo, long hi, char* out, size_t cap)
 {
-  const int n = snprintf(out, cap, "%s/%s-%ld-%ld", series_dir, slug, lo, hi);
-  if (!snprintf_fit(n, cap)) {
-    (void)fprintf(stderr, "  combined dir path too long under %s\n", series_dir);
+  char      leaf[k_leaf_name_bytes];
+  const int n = snprintf(leaf, sizeof(leaf), "%s-%ld-%ld", slug, lo, hi);
+  if (!snprintf_fit(n, sizeof(leaf))) {
+    (void)fprintf(stderr, "  combined dir name too long under %s\n", series_dir);
     return 1U;
   }
-  (void)mkdir(out, (mode_t)k_dir_mode);
-  if (!path_under(series_dir, out)) {
-    (void)fprintf(stderr, "  refusing combined dir outside %s: %s\n", series_dir, out);
-    return 1U;
-  }
-  return 0U;
+  return join_dir_under(series_dir, leaf, out, cap) ? 0U : 1U;
 }
 
 /** @brief Space (if not the first) then download one chapter; returns failures. */
@@ -717,7 +753,10 @@ RA8_INTERNAL static bool prepare_series_dir(const char* out_dir,
 {
   last_segment(series_url, slug, slug_cap);
   char series_dir[k_dir_path_bytes];
-  (void)snprintf(series_dir, sizeof(series_dir), "%s/%s", out_dir, slug);
+  if (!mdl_path_join(out_dir, slug, series_dir, sizeof(series_dir))) {
+    (void)fprintf(stderr, "media_dl: cannot build series dir for slug '%s'\n", slug);
+    return false;
+  }
   (void)mkdir(out_dir, (mode_t)k_dir_mode);
   (void)mkdir(series_dir, (mode_t)k_dir_mode);
   /* Archive export spawns the archiver with cwd set to the chapter dir, so the
