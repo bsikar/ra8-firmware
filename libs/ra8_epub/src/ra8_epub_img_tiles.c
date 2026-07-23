@@ -375,6 +375,30 @@ ra8_err_t ra8_epub_tile_binder_put(ra8_epub_tile_binder_t* binder, const uint8_t
   return ra8_tile_cache_put(&binder->cache, pixels);
 }
 
+ra8_err_t ra8_epub_tile_binder_prefetch_pan(ra8_epub_tile_binder_t* binder,
+                                            uint32_t                image_id,
+                                            const ra8_tile_rect_t*  view,
+                                            ra8_tile_pan_dir_t      dir,
+                                            uint16_t                max_tiles,
+                                            uint16_t*               out_warmed)
+{
+  RA8_CHECK_NULL_PTR(binder, s_tag, "binder must not be nullptr");
+  RA8_CHECK_NULL_PTR(view, s_tag, "view must not be nullptr");
+  const int32_t si = priv_find(binder, image_id);
+  if (si < 0) {
+    return k_ra8_err_not_found;
+  }
+  const ra8_jof_info_t*         info = &binder->sources[si].info;
+  const ra8_tile_prefetch_req_t req  = {.image_id  = image_id,
+                                        .view      = *view,
+                                        .tile_cols = info->tile_cols,
+                                        .tile_rows = info->tile_rows,
+                                        .zoom      = 0U,
+                                        .max_tiles = max_tiles,
+                                        .dir       = dir};
+  return ra8_tile_cache_prefetch_pan(&binder->cache, &req, out_warmed);
+}
+
 /* ---------------------------------------------------------------------------
  * Public API -- reflow img loader.
  * ---------------------------------------------------------------------------

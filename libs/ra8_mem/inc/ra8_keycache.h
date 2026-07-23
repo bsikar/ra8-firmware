@@ -305,6 +305,42 @@ typedef struct {
 ra8_keycache_get(ra8_keycache_t* kc, const void* key, ra8_keycache_view_t* out_view);
 
 /**
+ * @brief Warm the cell for @p key into the cache without holding a pin.
+ *
+ * @details The read-ahead / prefetch primitive: a ::ra8_keycache_get immediately
+ *          followed by a ::ra8_keycache_put, so on return the cell is resident but
+ *          unpinned (evictable). A hit is a no-op refresh; a miss renders the cell
+ *          through the configured callback and inserts it. Warming changes only
+ *          residency -- never the bytes a later ::ra8_keycache_get returns -- so it
+ *          is transparent to the caller. This is the image-tile analogue of
+ *          ::ra8_vmem_prefetch (which warms a page-cache frame). The cell is
+ *          inserted at the MRU (single-list LRU), so a wrong read-ahead guess can
+ *          age out hot data before itself; the scan-resistant probationary insert
+ *          is tracked by the cache-consolidation work (#345).
+ *
+ * @param[in,out] kc  Initialised cache.
+ * @param[in]     key `key_bytes`-wide key to warm (fully initialised).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           The cell is resident and unpinned (warmed or hit).
+ * @retval k_ra8_err_null_ptr `kc` or `key` was NULL.
+ * @retval k_ra8_err_no_mem   Every cell is pinned (cannot evict to warm).
+ * @retval k_ra8_err_*        The render callback failed (returned verbatim).
+ *
+ * @pre `kc` was populated by ::ra8_keycache_init.
+ * @pre `key` is fully initialised (no indeterminate padding bytes).
+ * @post On success the entry is resident with pin count zero.
+ * @post On any non-ok return no pin is held and no entry was warmed.
+ *
+ * @note Not thread-safe. Single-threaded read-ahead only.
+ * @note A warmed-but-unused cell is evicted before any pinned cell.
+ *
+ * @see ra8_keycache_get()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_keycache_prefetch(ra8_keycache_t* kc, const void* key);
+
+/**
  * @brief Release one pin on a cell previously returned by ::ra8_keycache_get.
  *
  * @param[in] kc   Initialised cache.
