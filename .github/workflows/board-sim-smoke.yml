@@ -10,12 +10,16 @@
 # panic/fault halt -- guarding the emulator, the GLCDC bring-up path, and the
 # modelled peripheral blocks (GPIO / SCI UART / GPT+ICU IRQ / USB CDC).
 #
-# board_sim needs Unicorn + Capstone. The self-hosted runner has passwordless
-# sudo + apt but no pkg-config, so the infra step installs the system -dev
-# packages (a no-op once present) and the build finds them with CMake's
-# find_library (off the APPLE path -- no pkg-config required). The live --view
-# window is macOS-only (Cocoa); these jobs are headless, which board_sim
-# supports via board_view_stub.c.
+# board_sim needs Unicorn + Capstone. Capstone (disassembly only) comes from the
+# distro package via the infra step below. UNICORN IS PINNED: its version
+# changes how Armv8.1-M (Helium/MVE) decodes, so an unpinned emulator makes the
+# same commit pass here and fault there (#354). It is provisioned as a
+# reproducible source build (docs/TOOLCHAIN.md) and each gate calls
+# require_pinned_unicorn, which FAILS LOUDLY if the runtime Unicorn is not the
+# pin -- the infra step no longer installs "whatever apt offers, once". The
+# build finds both with CMake's find_library (off the APPLE path -- no
+# pkg-config required). The live --view window is macOS-only (Cocoa); these jobs
+# are headless, which board_sim supports via board_view_stub.c.
 #
 # This workflow is separate from firmware.yml and has been missed by a "local
 # green" run before, which is why the ci-parity gate walks EVERY workflow file.
@@ -67,16 +71,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Unicorn + Capstone
+      - name: Install Capstone
         run: |
           # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. Idempotent: skip apt entirely once the libraries are
-          # present on this long-lived runner, so only the first run pays the
-          # install cost.
-          if ! ldconfig -p | grep -q 'libunicorn'; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends libunicorn-dev libcapstone-dev
-          fi
+          # project check. Capstone is board_sim's disassembly-only dependency
+          # (not the instruction-decode variable), so the distro package is fine
+          # and is installed every run rather than frozen after the first.
+          # Unicorn is deliberately NOT installed here: it is pinned to an exact
+          # version (docs/TOOLCHAIN.md) and provisioned as a reproducible source
+          # build. The board-sim gates verify the runtime Unicorn matches the
+          # pin and FAIL LOUDLY otherwise, so a skewed or absent Unicorn can
+          # never silently produce a green board_sim run -- which is the #354
+          # defect the removed `if ! ldconfig | grep libunicorn` guard created.
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libcapstone-dev
 
       - run: bash scripts/ci.sh --gate board-sim-smoke
       - run: bash scripts/ci.sh --gate board-sim-io-fabric
@@ -116,14 +124,20 @@ jobs:
         with:
           lfs: false
 
-      - name: Install Unicorn + Capstone
+      - name: Install Capstone
         run: |
           # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. Idempotent on this long-lived runner.
-          if ! ldconfig -p | grep -q 'libunicorn'; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends libunicorn-dev libcapstone-dev
-          fi
+          # project check. Capstone is board_sim's disassembly-only dependency
+          # (not the instruction-decode variable), so the distro package is fine
+          # and is installed every run rather than frozen after the first.
+          # Unicorn is deliberately NOT installed here: it is pinned to an exact
+          # version (docs/TOOLCHAIN.md) and provisioned as a reproducible source
+          # build. The board-sim gates verify the runtime Unicorn matches the
+          # pin and FAIL LOUDLY otherwise, so a skewed or absent Unicorn can
+          # never silently produce a green board_sim run -- which is the #354
+          # defect the removed `if ! ldconfig | grep libunicorn` guard created.
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libcapstone-dev
 
       - run: bash scripts/ci.sh --gate board-sim-matrix
 
@@ -175,13 +189,19 @@ jobs:
         with:
           lfs: false
 
-      - name: Install Unicorn + Capstone
+      - name: Install Capstone
         run: |
           # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. Idempotent on this long-lived runner.
-          if ! ldconfig -p | grep -q 'libunicorn'; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends libunicorn-dev libcapstone-dev
-          fi
+          # project check. Capstone is board_sim's disassembly-only dependency
+          # (not the instruction-decode variable), so the distro package is fine
+          # and is installed every run rather than frozen after the first.
+          # Unicorn is deliberately NOT installed here: it is pinned to an exact
+          # version (docs/TOOLCHAIN.md) and provisioned as a reproducible source
+          # build. The board-sim gates verify the runtime Unicorn matches the
+          # pin and FAIL LOUDLY otherwise, so a skewed or absent Unicorn can
+          # never silently produce a green board_sim run -- which is the #354
+          # defect the removed `if ! ldconfig | grep libunicorn` guard created.
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libcapstone-dev
 
       - run: bash scripts/ci.sh --gate sil-integration

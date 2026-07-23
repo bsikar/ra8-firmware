@@ -23,6 +23,10 @@
 gate_board_sim_smoke() (
   set -e
   use_pinned_arm_toolchain
+  # Refuse to run on an unpinned Unicorn -- the emulator's decode of Armv8.1-M
+  # is version-specific, so a fossil libunicorn produces an unreproducible
+  # verdict (#354). Fail loudly here rather than silently boot on the wrong one.
+  require_pinned_unicorn
   # Prove the gate is WIRED before trusting a green run. Every app class is
   # dispatched through a table, so a dropped entry stops that class being
   # asserted at all -- the app still builds, still runs, and still prints OK
@@ -56,6 +60,7 @@ gate_board_sim_smoke() (
 gate_board_sim_matrix() (
   set -e
   use_pinned_arm_toolchain
+  require_pinned_unicorn
   bash scripts/sim/matrix.sh --selftest
   bash scripts/sim/matrix_triage.sh --selftest
   python3 scripts/checks/matrix_ratchet.py --selftest
@@ -87,6 +92,7 @@ gate_board_sim_matrix() (
 gate_board_sim_io_fabric() (
   set -e
   use_pinned_arm_toolchain
+  require_pinned_unicorn
   bash scripts/sim/smoke.sh \
     ra8_io_demo ra8_io_sdram_demo ra8_io_compress_demo \
     ra8_io_sd_demo ra8_io_sdhi_demo ra8_io_xspi_demo \
@@ -102,6 +108,7 @@ gate_board_sim_io_fabric() (
 gate_sil_integration() (
   set -e
   use_pinned_arm_toolchain
+  require_pinned_unicorn
   # ereader_shelf compiles against a COMMITTED generated MRAM library header.
   # The bake is not reproducible across architectures (libjpeg SIMD decode
   # rounding differs x86_64 vs Apple silicon at the same Pillow version), so
