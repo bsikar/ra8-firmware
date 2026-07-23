@@ -85,7 +85,7 @@ extern "C" {
 
 namespace {
 
-typedef enum : uint32_t {
+typedef enum : uint16_t {
   k_chapter_cap = 8U,
   k_node_cap    = 512U, /**< Roomy: the sibling-scan test walks 257 children. */
   k_attr_cap    = 64U,
@@ -94,7 +94,12 @@ typedef enum : uint32_t {
   k_string_cap  = 4096U,
   k_imgpool_cap = 64U,
   k_out_cap     = 8192U,
-} TestCap;
+} test_cap_t;
+
+typedef enum : uint8_t {
+  k_test_dummy_len = 10U, /**< Arbitrary nonzero length for the null-arg guards. */
+  k_nested_b_idx   = 5U,  /**< Pre-order index of the "B" text node (last node). */
+} test_idx_t;
 
 ra8_book_chapter_t    s_chapters[k_chapter_cap];
 ra8_book_node_t       s_nodes[k_node_cap];
@@ -105,8 +110,8 @@ char                  s_strpool[k_string_cap];
 uint8_t               s_imgpool[k_imgpool_cap];
 uint8_t               s_out[k_out_cap];
 
-static uint32_t s_total = 0U;
-static uint32_t s_pass  = 0U;
+uint32_t s_total = 0U;
+uint32_t s_pass  = 0U;
 
 void check(bool cond, const char* name)
 {
@@ -196,64 +201,65 @@ constexpr const char* k_xhtml_malformed = "<body><unclosed>";
 /* Empty text (whitespace-only inside an element gets skipped when trimmed) */
 constexpr const char* k_xhtml_empty_text = "<?xml version=\"1.0\"?><body><p></p></body>";
 
-} // namespace
-
 /* -------------------------------------------------------------------------- */
 /* Individual tests */
 /* -------------------------------------------------------------------------- */
 
-static void test_null_xhtml_bytes()
+void test_null_xhtml_bytes()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
-  ra8_err_t        err = ra8_rabook_xml_parse_chapter(nullptr, 10U, &ctx, "ch.xhtml", "T");
+  const ra8_err_t  err =
+    ra8_rabook_xml_parse_chapter(nullptr, k_test_dummy_len, &ctx, "ch.xhtml", "T");
   check(err == k_ra8_err_null_ptr, "null xhtml_bytes -> null_ptr");
 }
 
-static void test_null_ctx()
+void test_null_ctx()
 {
-  const uint8_t    dummy = 0U;
-  ra8_rabook_ctx_t ctx   = make_ctx();
-  ra8_err_t        err   = ra8_rabook_xml_parse_chapter(&dummy, 1U, nullptr, "ch.xhtml", "T");
+  const uint8_t          dummy = 0U;
+  const ra8_rabook_ctx_t ctx   = make_ctx();
+  const ra8_err_t        err   = ra8_rabook_xml_parse_chapter(&dummy, 1U, nullptr, "ch.xhtml", "T");
   (void)ctx;
   check(err == k_ra8_err_null_ptr, "null ctx -> null_ptr");
 }
 
-static void test_null_href()
+void test_null_href()
 {
   ra8_rabook_ctx_t ctx   = make_ctx();
   const uint8_t    dummy = 0U;
-  ra8_err_t        err   = ra8_rabook_xml_parse_chapter(&dummy, 1U, &ctx, nullptr, "T");
+  const ra8_err_t  err   = ra8_rabook_xml_parse_chapter(&dummy, 1U, &ctx, nullptr, "T");
   check(err == k_ra8_err_null_ptr, "null chapter_href -> null_ptr");
 }
 
-static void test_null_title()
+void test_null_title()
 {
   ra8_rabook_ctx_t ctx   = make_ctx();
   const uint8_t    dummy = 0U;
-  ra8_err_t        err   = ra8_rabook_xml_parse_chapter(&dummy, 1U, &ctx, "ch.xhtml", nullptr);
+  const ra8_err_t  err   = ra8_rabook_xml_parse_chapter(&dummy, 1U, &ctx, "ch.xhtml", nullptr);
   check(err == k_ra8_err_null_ptr, "null chapter_title -> null_ptr");
 }
 
-static void test_malformed_xml()
+void test_malformed_xml()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
-  ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_malformed),
-                                               std::strlen(k_xhtml_malformed),
-                                               &ctx,
-                                               "ch.xhtml",
-                                               "T");
+  const ra8_err_t  err =
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_malformed),
+                                 std::strlen(k_xhtml_malformed),
+                                 &ctx,
+                                 "ch.xhtml",
+                                 "T");
   /* tinyxml2 fails to parse unclosed elements -> error returned */
   check(err != k_ra8_ok, "malformed XHTML returns error");
 }
 
-static void test_empty_body()
+void test_empty_body()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
-  ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_empty_body),
-                                               std::strlen(k_xhtml_empty_body),
-                                               &ctx,
-                                               "empty.xhtml",
-                                               "Empty");
+  const ra8_err_t  err =
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_empty_body),
+                                 std::strlen(k_xhtml_empty_body),
+                                 &ctx,
+                                 "empty.xhtml",
+                                 "Empty");
 
   check(err == k_ra8_ok, "empty body: parse ok");
   /* One chapter, one node (the body root), no children. */
@@ -264,14 +270,15 @@ static void test_empty_body()
   check(ctx.buf.nodes[0].first_child == k_ra8_book_nil, "empty body: root has no children");
 }
 
-static void test_simple_p_with_text()
+void test_simple_p_with_text()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
-  ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_simple),
-                                               std::strlen(k_xhtml_simple),
-                                               &ctx,
-                                               "simple.xhtml",
-                                               "Simple");
+  const ra8_err_t  err =
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_simple),
+                                 std::strlen(k_xhtml_simple),
+                                 &ctx,
+                                 "simple.xhtml",
+                                 "Simple");
 
   check(err == k_ra8_ok, "simple: parse ok");
   check(ctx.chapter_count == 1U, "simple: chapter_count == 1");
@@ -303,14 +310,15 @@ static void test_simple_p_with_text()
   check(ctx.buf.nodes[2].next_sibling == k_ra8_book_nil, "simple: text.next_sibling == nil");
 }
 
-static void test_nested_siblings_preorder()
+void test_nested_siblings_preorder()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
-  ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_nested),
-                                               std::strlen(k_xhtml_nested),
-                                               &ctx,
-                                               "nested.xhtml",
-                                               "Nested");
+  const ra8_err_t  err =
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_nested),
+                                 std::strlen(k_xhtml_nested),
+                                 &ctx,
+                                 "nested.xhtml",
+                                 "Nested");
 
   check(err == k_ra8_ok, "nested: parse ok");
   /*
@@ -345,18 +353,18 @@ static void test_nested_siblings_preorder()
 
   /* p2 (sibling of div) */
   check(std::strcmp(pool_str(ctx, ctx.buf.nodes[4].name_off), "p") == 0, "nested: node[4] is p2");
-  check(ctx.buf.nodes[4].first_child == 5U, "nested: p2.first_child == 'B' (5)");
+  check(ctx.buf.nodes[4].first_child == k_nested_b_idx, "nested: p2.first_child == 'B' (5)");
   check(ctx.buf.nodes[4].next_sibling == k_ra8_book_nil, "nested: p2.next_sibling == nil");
 
   /* "B" */
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[5].text_off), "B") == 0,
+  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[k_nested_b_idx].text_off), "B") == 0,
         "nested: node[5] text is 'B'");
 }
 
-static void test_html_wrapper_body_fallback()
+void test_html_wrapper_body_fallback()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
-  ra8_err_t        err =
+  const ra8_err_t  err =
     ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_html_wrapper),
                                  std::strlen(k_xhtml_html_wrapper),
                                  &ctx,
@@ -380,10 +388,10 @@ static void test_html_wrapper_body_fallback()
  * returns null and the node is skipped without ever reaching add_text. Two
  * comments + one element + its text -> exactly 3 emitted nodes.
  */
-static void test_comment_skipped()
+void test_comment_skipped()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
-  ra8_err_t        err =
+  const ra8_err_t  err =
     ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_with_comment),
                                  std::strlen(k_xhtml_with_comment),
                                  &ctx,
@@ -412,14 +420,15 @@ static void test_comment_skipped()
  * that no text node carries the CDATA content proves the skip. Complements the
  * FALSE arm (real text -> emitted) covered by test_simple_p_with_text.
  */
-static void test_cdata_skipped()
+void test_cdata_skipped()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
-  ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_with_cdata),
-                                               std::strlen(k_xhtml_with_cdata),
-                                               &ctx,
-                                               "cdata.xhtml",
-                                               "Cdata");
+  const ra8_err_t  err =
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_with_cdata),
+                                 std::strlen(k_xhtml_with_cdata),
+                                 &ctx,
+                                 "cdata.xhtml",
+                                 "Cdata");
 
   check(err == k_ra8_ok, "cdata: parse ok");
   /*
@@ -454,14 +463,15 @@ static void test_cdata_skipped()
  * an empty Value() string, so @c val[0] == '\0' and no text node is added.
  * The TRUE arm (non-empty text emitted) is covered by test_simple_p_with_text.
  */
-static void test_empty_text_skipped()
+void test_empty_text_skipped()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
-  ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_empty_text),
-                                               std::strlen(k_xhtml_empty_text),
-                                               &ctx,
-                                               "empty_text.xhtml",
-                                               "EmptyText");
+  const ra8_err_t  err =
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_empty_text),
+                                 std::strlen(k_xhtml_empty_text),
+                                 &ctx,
+                                 "empty_text.xhtml",
+                                 "EmptyText");
 
   check(err == k_ra8_ok, "empty-text: parse ok");
   /* <p></p> -> body (root) + p (child); empty text node not added. */
@@ -472,9 +482,7 @@ static void test_empty_text_skipped()
 /* Edge fixtures for the loop-bound / overflow MC/DC legs */
 /* -------------------------------------------------------------------------- */
 
-namespace {
-
-typedef enum : uint32_t {
+typedef enum : uint16_t {
   k_sib_over_max  = 257U, /**< Root children > k_xhtml_max_siblings (256).    */
   k_attr_over_max = 33U,  /**< Attributes on one element > k_xhtml_max_attrs. */
   k_ovf_node_cap  = 3U,   /**< Tiny node cap: the 4th element fails to add.   */
@@ -506,8 +514,6 @@ ra8_rabook_ctx_t make_ctx_capped(uint32_t node_cap)
   return ctx;
 }
 
-} // namespace
-
 /**
  * @test test_find_body_many_siblings
  * @brief A root with more direct children than the sibling-scan bound exercises
@@ -522,7 +528,7 @@ ra8_rabook_ctx_t make_ctx_capped(uint32_t node_cap)
  * leg are supplied by the small fixtures; N+1 vectors complete. tinyxml2 does not
  * cap sibling breadth, so this flat 257-wide document is a reachable input.
  */
-static void test_find_body_many_siblings()
+void test_find_body_many_siblings()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
   std::string      xml = "<?xml version=\"1.0\"?><root>";
@@ -530,11 +536,11 @@ static void test_find_body_many_siblings()
     xml += "<c/>";
   }
   xml += "</root>";
-  ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(xml.c_str()),
-                                               xml.size(),
-                                               &ctx,
-                                               "wide.xhtml",
-                                               "Wide");
+  const ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(xml.c_str()),
+                                                     xml.size(),
+                                                     &ctx,
+                                                     "wide.xhtml",
+                                                     "Wide");
   /* No <body> among 257 children -> s_find_body gives up on the scan bound and
    * returns the root; the walk then serialises it without error. */
   check(err == k_ra8_ok, "many-siblings: parse ok (scan-bound leg)");
@@ -556,7 +562,7 @@ static void test_find_body_many_siblings()
  * by the attribute-bearing fixture. tinyxml2 does not cap attribute count, so a
  * 33-attribute element is a reachable input.
  */
-static void test_collect_attrs_overflow()
+void test_collect_attrs_overflow()
 {
   ra8_rabook_ctx_t ctx = make_ctx();
   std::string      xml = "<?xml version=\"1.0\"?><body><p";
@@ -564,11 +570,11 @@ static void test_collect_attrs_overflow()
     xml += " a" + std::to_string(i) + "=\"v\"";
   }
   xml += ">x</p></body>";
-  ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(xml.c_str()),
-                                               xml.size(),
-                                               &ctx,
-                                               "attrs.xhtml",
-                                               "Attrs");
+  const ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(xml.c_str()),
+                                                     xml.size(),
+                                                     &ctx,
+                                                     "attrs.xhtml",
+                                                     "Attrs");
   /* The overflow latches the sticky builder failure, so finalize (via
    * add_chapter) reports it out of the parse as no_mem. */
   check(err == k_ra8_err_no_mem, "collect-attrs: overflow latches builder failure");
@@ -589,16 +595,16 @@ static void test_collect_attrs_overflow()
  * and the (false, true) text-node leg are supplied by the nested-siblings
  * fixture. A book that overruns the builder node budget is a reachable input.
  */
-static void test_walk_builder_overflow()
+void test_walk_builder_overflow()
 {
   ra8_rabook_ctx_t      ctx = make_ctx_capped((uint32_t)k_ovf_node_cap);
   constexpr const char* k_deep =
     "<?xml version=\"1.0\"?><body><div><p><span>x</span></p></div></body>";
-  ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_deep),
-                                               std::strlen(k_deep),
-                                               &ctx,
-                                               "deep.xhtml",
-                                               "Deep");
+  const ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_deep),
+                                                     std::strlen(k_deep),
+                                                     &ctx,
+                                                     "deep.xhtml",
+                                                     "Deep");
   /* body(0), div(1), p(2) fill the 3-node table; <span> fails to add (nil),
    * so the walk takes the new_idx == nil leg and the compile reports no_mem. */
   check(err == k_ra8_err_no_mem, "walk-overflow: element add-nil leg (node cap hit)");
@@ -608,10 +614,12 @@ static void test_walk_builder_overflow()
 /* Log sink redirect (avoid ITM hardware access on host) */
 /* -------------------------------------------------------------------------- */
 
-static void s_log_sink(void* /*ctx*/, uint8_t byte)
+void s_log_sink(void* /*ctx*/, uint8_t byte)
 {
   (void)std::fputc(static_cast<int>(byte), stderr);
 }
+
+} // namespace
 
 /* -------------------------------------------------------------------------- */
 /* main */

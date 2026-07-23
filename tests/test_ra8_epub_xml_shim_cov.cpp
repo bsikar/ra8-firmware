@@ -47,11 +47,15 @@
 /* Rename the four extern "C" entry points so the instrumented copy does not
  * clash with the production `ra8_epub_xml_parse_*` linked from ra8_core_hal.
  * Both the declarations (top of the TU) and the definitions are renamed
- * consistently by these macros. */
+ * consistently by these macros. The macro name on each left-hand side is
+ * dictated by the symbol it renames, so it cannot take the UPPER_CASE
+ * spelling readability-identifier-naming would otherwise demand. */
+// NOLINTBEGIN(readability-identifier-naming) -- names fixed by the renamed symbols
 #define ra8_epub_xml_parse_container ra8_epub_xml_parse_container_cov
 #define ra8_epub_xml_parse_opf       ra8_epub_xml_parse_opf_cov
 #define ra8_epub_xml_parse_ncx       ra8_epub_xml_parse_ncx_cov
 #define ra8_epub_xml_parse_nav       ra8_epub_xml_parse_nav_cov
+// NOLINTEND(readability-identifier-naming)
 
 /* White-box: pull the shim source (and its anonymous-namespace helpers) into
  * this TU so the defensive guards can be driven directly. tinyxml2's symbols
@@ -208,6 +212,47 @@ void test_cov_lookup_null_guards(void)
  * `toc_emit`'s cap guard (`toc_count >= k_ra8_epub_max_toc`) is driven by
  * pre-seeding the count to the cap and asserting the emit is dropped.
  */
+/* Font cap: feeding more font items than the cap clamps the count. */
+void cov_check_font_cap(void)
+{
+  std::string xml = "<manifest>";
+  for (int i = 0; i < static_cast<int>(k_ra8_epub_max_fonts) + 3; ++i) {
+    xml += "<item id=\"f";
+    xml += std::to_string(i);
+    xml += "\" href=\"f";
+    xml += std::to_string(i);
+    xml += ".ttf\" media-type=\"font/ttf\"/>";
+  }
+  xml += "</manifest>";
+  XMLDocument       doc;
+  const XMLElement* manifest = root_of(doc, xml.c_str());
+  assert(manifest != nullptr);
+  ra8_epub_book_t book = {};
+  collect_font_items(manifest, &book);
+  assert(book.embedded_font_count == static_cast<uint16_t>(k_ra8_epub_max_fonts));
+}
+
+/* Manifest cap + non-<item> child skip: one stray element then an over-cap
+ * run of items; the stray is skipped, the count clamps. */
+void cov_check_manifest_cap(void)
+{
+  std::string xml = "<manifest><stray/>";
+  for (int i = 0; i < static_cast<int>(k_ra8_epub_max_manifest) + 2; ++i) {
+    xml += "<item id=\"i";
+    xml += std::to_string(i);
+    xml += "\" href=\"h";
+    xml += std::to_string(i);
+    xml += "\" media-type=\"application/xhtml+xml\"/>";
+  }
+  xml += "</manifest>";
+  XMLDocument       doc;
+  const XMLElement* manifest = root_of(doc, xml.c_str());
+  assert(manifest != nullptr);
+  ra8_epub_book_t book = {};
+  collect_manifest_items(manifest, &book);
+  assert(book.manifest_count == static_cast<uint16_t>(k_ra8_epub_max_manifest));
+}
+
 void test_cov_collect_guards_and_caps(void)
 {
   std::printf("test_cov_collect_guards_and_caps: ");
@@ -220,44 +265,8 @@ void test_cov_collect_guards_and_caps(void)
   collect_manifest_items(nullptr, &book);
   assert(book.manifest_count == 0U);
 
-  /* Font cap: feed more font items than the cap; count clamps. */
-  {
-    std::string xml = "<manifest>";
-    for (int i = 0; i < static_cast<int>(k_ra8_epub_max_fonts) + 3; ++i) {
-      xml += "<item id=\"f";
-      xml += std::to_string(i);
-      xml += "\" href=\"f";
-      xml += std::to_string(i);
-      xml += ".ttf\" media-type=\"font/ttf\"/>";
-    }
-    xml += "</manifest>";
-    XMLDocument       doc;
-    const XMLElement* manifest = root_of(doc, xml.c_str());
-    assert(manifest != nullptr);
-    std::memset(&book, 0, sizeof(book));
-    collect_font_items(manifest, &book);
-    assert(book.embedded_font_count == static_cast<uint16_t>(k_ra8_epub_max_fonts));
-  }
-
-  /* Manifest cap + non-<item> child skip: one stray element then an
-   * over-cap run of items; the stray is skipped, the count clamps. */
-  {
-    std::string xml = "<manifest><stray/>";
-    for (int i = 0; i < static_cast<int>(k_ra8_epub_max_manifest) + 2; ++i) {
-      xml += "<item id=\"i";
-      xml += std::to_string(i);
-      xml += "\" href=\"h";
-      xml += std::to_string(i);
-      xml += "\" media-type=\"application/xhtml+xml\"/>";
-    }
-    xml += "</manifest>";
-    XMLDocument       doc;
-    const XMLElement* manifest = root_of(doc, xml.c_str());
-    assert(manifest != nullptr);
-    std::memset(&book, 0, sizeof(book));
-    collect_manifest_items(manifest, &book);
-    assert(book.manifest_count == static_cast<uint16_t>(k_ra8_epub_max_manifest));
-  }
+  cov_check_font_cap();
+  cov_check_manifest_cap();
 
   /* toc_emit cap: pre-seed the count to the cap, the emit is dropped. */
   std::memset(&book, 0, sizeof(book));
@@ -639,6 +648,6 @@ int main(void)
   test_cov_spine_and_nav_edges();
   test_cov_entry_and_structural_guards();
   test_cov_compound_helper_legs();
-  std::fprintf(stderr, "[OK ] test_ra8_epub_xml_shim_cov.cpp\n");
+  (void)std::fprintf(stderr, "[OK ] test_ra8_epub_xml_shim_cov.cpp\n");
   return 0;
 }
