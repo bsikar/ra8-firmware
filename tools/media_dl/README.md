@@ -32,6 +32,25 @@ default when `--format` is omitted) to stop at page-image folders and skip
 packaging. Continuous page numbering across chapters means the combined archive
 reads as one contiguous book.
 
+Series mode keeps **persistent library state** (a `.mdl_state` file per series),
+so it is resumable and incrementally updatable rather than an index-into-a-scrape
+exercise:
+
+- `--from CHAP` starts at the chapter NUMBERED `CHAP` (a parsed chapter number,
+  stable as the site adds/reorders chapters -- not a position in today's list,
+  which is what the old `--start K` was).
+- `--update` fetches only the chapters not already recorded complete -- the
+  primary mode for following an ongoing manhwa/manga.
+- An interrupted download **resumes**: a chapter is marked complete only after
+  every page is fetched and its bytes verified, so the next run refetches just
+  the missing pages and reproduces the same (combined) page numbering.
+- A byte-identical image already held is **reused, not re-fetched** -- across
+  reruns and across chapters that share an image (content-hash dedup).
+
+**library mode** (over `--out`): `--list` prints every tracked series with its
+chapter coverage and gaps, `--update-all --config S.conf` incrementally updates
+them all, and `--remove URL|SLUG` drops one series.
+
 **pack mode** (`--pack DIR --format FMT`): package an existing folder of page
 images -- no network. Handy for re-encoding a download into another format and
 for the integration harness.
@@ -39,7 +58,7 @@ for the integration harness.
 **page mode** (debug): fetch one URL and download its `<img>` URLs.
 
 The scope is deliberately small (unlike the half-baked Kotlin original): fetch,
-extract, download politely, package.
+extract, download politely, resumably, package.
 
 ## Design (why it maps cleanly to the RA8 later)
 
@@ -74,6 +93,25 @@ extract, download politely, package.
 - `mdl_config.{h,c}` -- flat key=value **site descriptor** loader. Adding a site
   is dropping a `.conf` in `sites/`, no rebuild. Fixed-size struct, zero dynamic
   allocation -- ports to the RA8 unchanged.
+- `mdl_state.{h,c}` -- **persistent per-series library state**: a versioned,
+  flat, TAB-separated `.mdl_state` file recording the series identity, the site
+  descriptor used, and -- per chapter -- the parsed identifier, source URL, page
+  count, completion status and fetch time, plus a series-wide pool of per-page
+  content identities. Written atomically (temp file + `rename`); a corrupt file
+  degrades to a clear error and a rebuild rather than a crash or silent refetch.
+  Fixed-size struct, zero dynamic allocation.
+- `mdl_hash.{h,c}` -- FNV-1a 64 content-identity hashing (buffer, string, and a
+  streamed file), used to key the URL dedup lookup and to verify a page on disk.
+- `mdl_urlname.{h,c}` -- pure URL-to-name helpers (sanitised last segment ->
+  chapter identifier / slug, last-digit-run chapter number, page extension).
+- `mdl_fetch.{h,c}` -- the state-aware download **orchestrator**: resumes
+  interrupted chapters page-wise, skips complete chapters under `--update`,
+  dedups already-held pages by content, and derives combined page numbers from
+  recorded per-chapter counts. Driven end-to-end through the `mdl_net` mock in
+  the host tests (first run fetches N; second fetches only the new ones;
+  interrupted run resumes byte-identical).
+- `mdl_library.{h,c}` -- library-wide walk over a directory of tracked series
+  (`--list`/`--update-all`) and one-series tree removal (`--remove`).
 - `mdl_politeness.{h,c}` -- seeded, jittered inter-request delay. The blocking
   sleep is reached through an injectable clock seam (`mdl_politeness_init_clock`)
   so spacing/backoff timing is unit-tested without real sleeps. The full governor
@@ -115,7 +153,7 @@ Series mode (combined by default -- two chapters into one `nano-machine-1-2.cbz`
 ./build/media_dl --config sites/manhwaus.conf \
                  --series "https://manhwaus.net/webtoon/nano-machine/" \
                  --chapters 2 --format cbz \
-                 [--separate] [--start K] [--out DIR] [--seed S] [--timeout MS]
+                 [--separate] [--from CHAP] [--update] [--out DIR] [--seed S] [--timeout MS]
 ```
 
 - `--config FILE`  site descriptor (see `sites/manhwaus.conf`)
@@ -123,8 +161,32 @@ Series mode (combined by default -- two chapters into one `nano-machine-1-2.cbz`
 - `--chapters N`   how many chapters to download (default 1)
 - `--format FMT`   output container (default `loose`; see the table below)
 - `--separate`     one archive per chapter instead of one combined archive
-- `--start K`      skip the first K chapters (default 0)
-- `--out DIR`      output root (default `downloads/`)
+- `--from CHAP`    start at the chapter NUMBERED `CHAP` (a chapter number, not an
+                   index into the scraped list); download up to `--chapters` of them
+- `--update`       fetch only chapters not already recorded complete (incremental)
+- `--out DIR`      output root / library (default `downloads/`)
+
+Following a series is then: run once, and later `--update` (or `--update-all`)
+to pull whatever is new. Re-running never re-downloads a page already held, and a
+run killed part-way resumes where it stopped.
+
+Library commands (over `--out`):
+
+```sh
+./build/media_dl --list                                # tracked series + coverage/gaps
+./build/media_dl --update-all --config sites/S.conf    # incremental update of all series
+./build/media_dl --remove "https://site/webtoon/foo/"  # drop one series (URL or slug)
+```
+
+### Library state (`.mdl_state`)
+
+Each series directory holds a `.mdl_state` file: a versioned, flat,
+TAB-separated, `#`-commented text record (`V` version, `S/T/N/H/G` series/site
+metadata, one `C` line per chapter, one `P` line per fetched page carrying its
+source-URL hash + content hash + relative path). It is written atomically (temp
+file then `rename`), so a kill mid-write cannot corrupt it, and a file that fails
+to parse degrades to a clear error and a rebuild-from-scratch (already-downloaded
+pages are reused by content) rather than a crash or a silent full refetch.
 
 Pack mode (re-package a folder, no network):
 
@@ -203,9 +265,11 @@ skipped, not failed.
 
 ## Status / roadmap
 
-Working: config-driven series -> chapter list -> polite download -> combined
-(or `--separate`) packaging into every reader format, verified end-to-end by
-`make test-integration` and against manhwaus.net. Known limits: naive extension
+Working: config-driven series -> chapter list -> polite, **resumable** download
+with **persistent per-series state** (`--update` incremental pulls, content-hash
+dedup, `--list`/`--update-all`/`--remove`) -> combined (or `--separate`)
+packaging into every reader format, verified end-to-end by `make test-integration`
+and against manhwaus.net. Known limits: naive extension
 naming from the URL (Content-Type/magic-byte typing is a planned fix -- pages
 are named `.jpg` even when the bytes are PNG/WebP, though the readers sniff the
 real magic on open), single-site descriptor format (richer TOML later), and no

@@ -29,11 +29,15 @@ void mdl_cli_usage(const char* a0)
   (void)fprintf(stderr,
                 "usage:\n"
                 "  series: %s --config SITE.conf --series URL [--chapters N] "
-                "[--start K] [--out DIR] "
+                "[--from CHAP] [--update] [--out DIR] "
                 "[--format cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook] "
                 "[--separate] [--seed S] [--timeout MS]\n"
                 "          N chapters combine into ONE <slug>-<lo>-<hi>.<ext> by "
                 "default; --separate keeps one archive per chapter.\n"
+                "          --from CHAP starts at the chapter NUMBERED CHAP (not a "
+                "list index); --update fetches only chapters not already complete.\n"
+                "  library (over --out): %s --list | --update-all --config SITE.conf "
+                "| --remove URL|SLUG [--out DIR]\n"
                 "  pack:   %s --pack DIR --format FMT   "
                 "package an existing folder of page images (no network)\n"
                 "  page:   %s URL [--out DIR] [--max N] [--attr data-src|src] "
@@ -45,6 +49,7 @@ void mdl_cli_usage(const char* a0)
                 "    --ignore-robots        do NOT honour robots.txt (logged loudly)\n"
                 "    --allow-private        permit loopback/private/link-local peers\n"
                 "    --cross-host           permit redirects to a different host\n",
+                a0,
                 a0,
                 a0,
                 a0);
@@ -76,7 +81,9 @@ RA8_INTERNAL static bool take_flag(const char* arg, const char* flag, bool* dst)
 /** @brief Consume any recognised boolean flag at `arg`. */
 RA8_INTERNAL static bool parse_bool_flags(const char* arg, mdl_args_t* a)
 {
-  return take_flag(arg, "--separate", &a->separate) || take_flag(arg, "--polite", &a->polite) ||
+  return take_flag(arg, "--separate", &a->separate) || take_flag(arg, "--update", &a->update) ||
+         take_flag(arg, "--list", &a->list) || take_flag(arg, "--update-all", &a->update_all) ||
+         take_flag(arg, "--polite", &a->polite) ||
          take_flag(arg, "--ignore-robots", &a->ignore_robots) ||
          take_flag(arg, "--allow-private", &a->allow_private) ||
          take_flag(arg, "--cross-host", &a->cross_host);
@@ -94,7 +101,7 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
     {"--out", &a->out},
     {"--attr", &a->attr},
     {"--chapters", &a->chapters},
-    {"--start", &a->start},
+    {"--from", &a->from},
     {"--max", &a->max},
     {"--seed", &a->seed},
     {"--timeout", &a->timeout},
@@ -102,6 +109,7 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
     {"--pack", &a->pack},
     {"--contact", &a->contact},
     {"--max-bytes", &a->max_bytes},
+    {"--remove", &a->remove_series},
   };
   for (int i = 1; i < argc; ++i) {
     if (parse_bool_flags(argv[i], a)) {
