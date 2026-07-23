@@ -125,8 +125,8 @@ A step that genuinely only provisions the runner declares itself:
 
 ```yaml
 run: |
-  # ci-parity: infra -- installs libunicorn; runs no project check
-  sudo apt-get install -y libunicorn-dev
+  # ci-parity: infra -- installs libcapstone; runs no project check
+  sudo apt-get install -y libcapstone-dev
 ```
 
 and an infra step may not invoke anything under `scripts/`, a `tests/*.sh`
