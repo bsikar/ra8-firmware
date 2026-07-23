@@ -244,16 +244,37 @@ jobs:
   # media_dl could not build on Linux at all. This job builds and links all
   # five, runs media_dl's CTest suite, drives the viewer's headless render, and
   # enforces -Wall -Wextra -Werror on every first-party TU they pull in.
+  #
+  # #356: the build runs under BOTH pinned compilers, clang-18 AND gcc-14, so
+  # the warning families each catches but the other misses are both held --
+  # gcc-14's -Wformat-truncation caught a silent path-join truncation clang-18
+  # did not. Both arms must be present (self-hosted runners provision gcc-14,
+  # the devcontainer installs it); a missing arm fails loudly, never skips.
   # ---------------------------------------------------------------------------
   tools-build:
-    name: Host tools (build + link + test)
+    name: Host tools (build + link + test, clang-18 + gcc-14)
     runs-on: [self-hosted, Linux, X64]
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
+      # ci-parity: infra -- installs the second-arm compiler; runs no project check.
+      # The gate compiles the host tools under clang-18 AND gcc-14 (#356). gcc-14
+      # is the one dep not already on a generic runner; install it here rather
+      # than assuming runner state, the same way the tidy job provisions its
+      # headers. Idempotent: the probe skips apt once gcc-14 is present. The gate
+      # still require_cmd/require_tool_versions it, so a failed install fails loud.
+      - name: Install the gcc-14 warning arm
+        run: |
+          # ci-parity: infra -- installs gcc-14; runs no project check
+          command -v gcc-14 >/dev/null 2>&1 || {
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends gcc-14
+          }
+
       - run: bash scripts/ci.sh --gate tools-build
 
   coverage:
