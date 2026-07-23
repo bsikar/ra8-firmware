@@ -173,9 +173,14 @@ gate_build_cross() (
 
 # --- docs -----------------------------------------------------------------
 # --gate builds the single top-level Doxyfile with the project-pinned doxygen
-# (downloaded + sha256-verified by provision_doxygen.sh on first use, cached
-# under build/tools/ after) and writes the warning log. Using the same pinned
-# version as docs-publish keeps this gate and the published site in lockstep.
+# (downloaded + sha256-verified by provision_doxygen.sh on first use) and writes
+# the warning log. Using the same pinned version as docs-publish keeps this gate
+# and the published site in lockstep.
+#
+# The pinned binary caches in the persistent tool cache scripts/ci.sh provides
+# (RA8_TOOLS_CACHE -> /toolcache in the container, /var/cache/ra8-tools
+# natively), not the per-run build/tools/ that each ephemeral snapshot destroys.
+# Without that the download would repeat every run and FAIL offline (#326).
 gate_docs() (
   set -e
   # graphviz is a hard dependency, not a nice-to-have: build_docs.sh degrades to

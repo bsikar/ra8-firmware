@@ -207,6 +207,35 @@ pick_clang_format() {
 # shellcheck source=scripts/ci/lib/tool_env.sh
 . "${SCRIPT_DIR}/ci/lib/tool_env.sh"
 
+# Persistent PINNED-TOOL cache (#326). The docs gate builds with a
+# version-pinned doxygen that scripts/builders/provision_doxygen.sh downloads +
+# sha256-verifies on first use. Every suite run builds in a fresh mktemp
+# snapshot whose build/tools/ is destroyed on exit, so without a persistent
+# location that download repeats every run and FAILS outright with no network.
+# This is to pinned tools what the ccache mount is to compiled objects: one host
+# directory, reused across runs and shared across agents at zero cost.
+ra8_tools_cache_host_dir() {
+  printf '%s\n' "${RA8_TOOLS_CACHE_DIR:-/var/cache/ra8-tools}"
+}
+
+# Point provision_doxygen.sh (and any future pinned-tool provisioner) at that
+# persistent directory by exporting RA8_TOOLS_CACHE, for the paths that run a
+# gate DIRECTLY on the host (single-gate and native-suite modes). The container
+# path sets RA8_TOOLS_CACHE via `-e` against the /toolcache mount instead, so
+# leave an already-set value untouched. A cache is an optimisation: an
+# unwritable location degrades to the per-build build/tools/ rather than
+# failing a gate.
+export_tools_cache() {
+  [[ -n "${RA8_TOOLS_CACHE:-}" ]] && return 0
+  local dir
+  dir="$(ra8_tools_cache_host_dir)"
+  mkdir -p "$dir" 2>/dev/null || true
+  if [[ -d "$dir" && -w "$dir" ]]; then
+    export RA8_TOOLS_CACHE="$dir"
+    echo "==> pinned-tool cache: $dir (survives the snapshot; docs gate doxygen)" >&2
+  fi
+}
+
 # Prepend the pinned Arm GNU Toolchain when the runner provisions it under
 # /opt, replacing what the workflows used to do with GITHUB_PATH. The apt
 # gcc-arm-none-eabi package ships no C++ standard library, so C++ apps
@@ -675,6 +704,7 @@ done
 # container-runtime dependency at all.
 if [[ -n "$gate" ]]; then
   cd "$REPO_ROOT"
+  export_tools_cache
   run_one_gate "$gate"
   exit $?
 fi
@@ -697,6 +727,7 @@ fi
 
 # --- native full-suite mode -----------------------------------------------
 if [[ "$native" == "1" ]]; then
+  export_tools_cache
   run_suite_on_snapshot "$fast"
   exit $?
 fi
@@ -735,6 +766,7 @@ if [[ "${#RUNTIME_CMD[@]}" -eq 0 ]]; then
     echo "==> no container runtime found; running gates NATIVELY on this Linux host."
     echo "    (Linux native == the CI environment. Install podman for isolation:"
     echo "     sudo apt-get install -y podman uidmap)"
+    export_tools_cache
     run_suite_on_snapshot "$fast"
     exit $?
   fi
@@ -844,6 +876,28 @@ if [[ -d "$CCACHE_HOST_DIR" && -w "$CCACHE_HOST_DIR" ]]; then
   echo "==> compiler cache: $CCACHE_HOST_DIR -> /ccache"
 fi
 
+# Persistent PINNED-TOOL cache for the containerised path (#326).
+#
+# The docs gate builds with a version-pinned doxygen that
+# scripts/builders/provision_doxygen.sh downloads + sha256-verifies on first
+# use. Every gate run builds in a fresh mktemp snapshot whose build/tools/ is
+# destroyed on exit (trap rm -rf), so without a persistent mount that download
+# repeats every run and FAILS outright with no network. This mount is to pinned
+# tools what the ccache mount above is to compiled objects: one host directory,
+# reused across runs and shared across agents. RA8_TOOLS_CACHE tells
+# provision_doxygen.sh to cache under it instead of the ephemeral build/tools/.
+# Best-effort create; absent or unwritable, run without it rather than fail.
+TOOLCACHE_RUN_ARGS=()
+TOOLCACHE_HOST_DIR="$(ra8_tools_cache_host_dir)"
+mkdir -p "$TOOLCACHE_HOST_DIR" 2>/dev/null || true
+if [[ -d "$TOOLCACHE_HOST_DIR" && -w "$TOOLCACHE_HOST_DIR" ]]; then
+  TOOLCACHE_RUN_ARGS=(
+    -v "$TOOLCACHE_HOST_DIR":/toolcache
+    -e RA8_TOOLS_CACHE=/toolcache
+  )
+  echo "==> pinned-tool cache: $TOOLCACHE_HOST_DIR -> /toolcache"
+fi
+
 echo "==> running CI gates in container (runtime=${RUNTIME_CMD[*]} fast=$fast)"
 # The host repo is bind-mounted READ-ONLY: the in-container step extracts a
 # clean `git archive HEAD` into a throwaway dir and builds there, so the host
@@ -869,6 +923,7 @@ exec "${RUNTIME_CMD[@]}" run --rm \
   -v "$REPO_ROOT":/workspace:ro \
   ${WORKTREE_RUN_ARGS[@]+"${WORKTREE_RUN_ARGS[@]}"} \
   ${CCACHE_RUN_ARGS[@]+"${CCACHE_RUN_ARGS[@]}"} \
+  ${TOOLCACHE_RUN_ARGS[@]+"${TOOLCACHE_RUN_ARGS[@]}"} \
   -w /workspace \
   "$IMAGE_TAG" \
   bash scripts/ci.sh

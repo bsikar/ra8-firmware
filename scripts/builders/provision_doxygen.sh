@@ -43,7 +43,21 @@ SHA256_LINUX_X64="a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4f9fa4baf1d8
 SHA256_MAC_ARM64="f75d4e7253ad959d691cb65b6c3a9bb0c138ce75bce7cef17f5ebf36c7b54bdc"
 SHA256_MAC_X64="1530e5eca05b442e4cdd80a8ad6b22e1bbb3fc14e12b64b07c61de4be48cc5f1"
 
-TOOLS_DIR="${ROOT_DIR}/build/tools"
+# Where the provisioned binary is cached.
+#
+# Default: build/tools/ under the repo. Every ephemeral `make ci` snapshot
+# recreates and then destroys that tree, so under the suite runner the download
+# would repeat every run -- and fail outright with no network. RA8_TOOLS_CACHE
+# points this at a PERSISTENT directory that survives the snapshot: scripts/ci.sh
+# mounts one into the container and exports it for native runs, exactly as the
+# ccache mount lets compiled objects survive (issue #326). It is namespaced by
+# OS + arch so a macOS host and a Linux container that share one host directory
+# never fight over the same doxygen-<version>/ subtree.
+if [[ -n "${RA8_TOOLS_CACHE:-}" ]]; then
+  TOOLS_DIR="${RA8_TOOLS_CACHE}/$(uname -s)-$(uname -m)"
+else
+  TOOLS_DIR="${ROOT_DIR}/build/tools"
+fi
 
 log() { echo "provision_doxygen.sh: $*" >&2; }
 

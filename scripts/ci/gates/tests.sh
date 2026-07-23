@@ -69,17 +69,31 @@ gate_coverage_report() (
 #
 # RA8_MCDC_THRESHOLD=0 disables mcdc_report.sh's own per-file gate; the
 # project-wide baseline comparison below is the actual quality bar.
+#
+# Freshness (#346/#326): the gate first proves mcdc_report.sh's build-dir
+# freshness guard still fires (--selftest) BEFORE spending twenty minutes
+# measuring nothing -- an inherited tests/build-cov configured by the coverage
+# gate's gcc cached "-fcoverage-mcdc: no", so the build came out uninstrumented
+# and the gate died at the merge step blaming the tests when all 540 had passed.
+# It then WIPES both tests/build-cov and build/mcdc-report: a reused build
+# carries that stale probe, and a leftover build/mcdc-report holds a stale
+# mcdc_per_file.json / gate.json the per-file MC/DC floor would read and
+# FALSE-PASS on numbers this run never produced. This exact reuse hid a real red
+# this week. `make mcdc` for a developer stays incremental (mcdc_report.sh keeps
+# a matching-compiler cache) -- only the CI gate wipes. artefact-freshness runs
+# AFTER this gate and re-reads the report mcdc_report.sh regenerates, so the wipe
+# is safe.
 gate_mcdc() (
   set -e
   set -o pipefail
   require_cmd clang-18 "the MC/DC gate pins clang-18 to match CI"
 
-  # Prove the build-dir freshness guard still fires BEFORE spending twenty
-  # minutes measuring nothing. #346: an inherited tests/build-cov configured
-  # by the coverage gate's gcc-13 cached "-fcoverage-mcdc: no", so the build
-  # came out uninstrumented and the gate died at the merge step blaming the
-  # tests for crashing when all 540 had passed.
+  # Prove the build-dir freshness guard fires before measuring (see header).
   CC=clang-18 CXX=clang++-18 bash scripts/report/mcdc_report.sh --selftest
+
+  # Wipe build AND report dir for a guaranteed-fresh MC/DC build (see header).
+  rm -rf "${RA8_MCDC_BUILD_DIR:-tests/build-cov}" \
+    "${RA8_MCDC_REPORT_DIR:-build/mcdc-report}"
 
   CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
     bash scripts/report/mcdc_report.sh --in-container | tee mcdc-output.log
@@ -153,6 +167,15 @@ gate_artefact_freshness() (
 # cache_bench-consumable trace) and glyph_bench (sweeps the real glyph atlas),
 # re-confirming SLRU on the captured reader trace on every push. clang-18
 # accepts the C23 typed-enum / nullptr syntax the bench tools and ra8_mem use.
+#
+# Despite the name this is NOT a wall-clock gate, so it belongs in the local
+# suite and is stable under a loaded shared box (#326/#328). Every non-zero exit
+# in cache_bench / reader_vmem / glyph_bench comes from a DETERMINISTIC failure
+# -- an allocation or trace-build error, a get/put/verify data-integrity
+# mismatch, or the SLRU policy losing on the fixed captured trace -- none of
+# which depend on how busy the machine is. The wall_ns / MiB-s figures the tools
+# print are informational only and gate nothing, so a load average of 156 (#328)
+# changes the numbers on screen but never the PASS/FAIL verdict.
 gate_cache_bench() (
   set -e
   require_cmd clang-18 "the cache-bench gate pins clang-18 to match CI"
