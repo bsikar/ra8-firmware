@@ -77,6 +77,42 @@ bool mdl_sanitize_segment(const char* raw, char* out, size_t cap);
 bool mdl_path_contained(const char* parent, const char* candidate);
 
 /**
+ * @brief Join one safe child segment under a parent directory path.
+ *
+ * @details
+ * The single join primitive every `series_dir`/`chapter_dir` join routes
+ * through, so a traversal name can never reach `mkdir`, an archiver, or an
+ * output path. It refuses -- rather than composing -- a `seg` that is not a
+ * single filesystem-safe segment: an empty string, `.` or `..`, or any name
+ * containing a `/` (which also rejects an absolute `seg` such as `/etc`). A
+ * result that would not fit `out` is likewise refused rather than truncated,
+ * since a silently-shortened path would name a different directory. `seg` is
+ * expected to already be the output of ::mdl_sanitize_segment (or a leaf
+ * composed from such a slug); this predicate is the defence-in-depth gate that
+ * makes an escape structurally impossible even if that upstream step regressed.
+ *
+ * @param[in]  parent Parent directory path (NUL-terminated), or NULL.
+ * @param[in]  seg    Candidate child segment (NUL-terminated), or NULL.
+ * @param[out] out    Destination buffer receiving `parent/seg`.
+ * @param[in]  cap    Capacity of `out` in bytes.
+ *
+ * @return Whether `out` holds the joined `parent/seg` path.
+ * @retval true  `out` is `parent` + `'/'` + `seg`, NUL-terminated.
+ * @retval false A NULL/zero argument, an unsafe `seg`, or a non-fitting result.
+ *
+ * @pre `out`, when non-NULL, has room for at least `cap` bytes.
+ * @pre The caller treats `false` as a hard error (no partial path is used).
+ * @post On `false` with `cap > 0`, `out[0]` is `'\0'` (no usable partial path).
+ * @post On `true`, `out` contains exactly one `/` more than `parent` did.
+ *
+ * @note Thread-safe: writes only caller-provided storage.
+ * @see mdl_sanitize_segment  Produces the safe `seg` this join expects.
+ * @see mdl_path_contained    Runtime realpath check callers pair with this.
+ * @since 0.1.0
+ */
+bool mdl_path_join(const char* parent, const char* seg, char* out, size_t cap);
+
+/**
  * @brief XML-escape `src` into `out`, failing rather than truncating.
  *
  * @details
