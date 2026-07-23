@@ -46,11 +46,12 @@ typedef enum : uint16_t {
 
 /** @brief Named sizes/values for the hardening tests (no bare literals). */
 typedef enum : uint16_t {
-  k_crawl_5s_ms  = 5000, /**< `Crawl-delay: 5` expressed in milliseconds. */
-  k_longname_len = 120,  /**< Page-name length exceeding the ustar field. */
-  k_buf_128      = 128,  /**< Small host/path/name probe buffer.          */
-  k_buf_256      = 256,  /**< Medium probe buffer.                        */
-  k_buf_4k       = 4096, /**< robots.txt fetch scratch buffer.            */
+  k_crawl_5s_ms  = 5000, /**< `Crawl-delay: 5` expressed in milliseconds.   */
+  k_longname_len = 120,  /**< Page-name length exceeding the ustar field.   */
+  k_join_tiny    = 6,    /**< Buffer too small for a joined path (D4 test). */
+  k_buf_128      = 128,  /**< Small host/path/name probe buffer.            */
+  k_buf_256      = 256,  /**< Medium probe buffer.                          */
+  k_buf_4k       = 4096, /**< robots.txt fetch scratch buffer.              */
 } mdl_hard_const_t;
 
 static mdl_url_list_t s_list;
@@ -473,6 +474,55 @@ static void test_path_contained(void)
   TEST_END("path contained");
 }
 
+/**
+ * @test Path join composes a safe child but refuses every traversal shape.
+ *
+ * @par MC/DC:
+ * Decision A `if (out == nullptr || cap == 0U)` (2 conditions)
+ * - out=buf,  cap>0  -> false (control: a normal join proceeds)
+ * - out=NULL, cap>0  -> true  (varies out)
+ * - out=buf,  cap=0  -> true  (varies cap)
+ * Decision B `if (parent == nullptr || seg == nullptr)` (2 conditions)
+ * - parent="/base", seg="c"    -> false (control)
+ * - parent=NULL,    seg="c"    -> true  (varies parent)
+ * - parent="/base", seg=NULL   -> true  (varies seg)
+ * Decision C `if (is_dot_segment(seg) || has_separator(seg))` (2 conditions)
+ * - seg="chap-1" -> false (control: dot=F, sep=F, join succeeds)
+ * - seg=".."     -> true  (varies dot: dot=T, sep=F)
+ * - seg="a/b"    -> true  (varies sep: dot=F, sep=T)
+ * Decision D `if (need > cap)` (1 condition)
+ * - result fits   -> false (control)
+ * - cap too small -> true  (truncation refused, not composed)
+ * Each control + single-varied-condition pair proves that condition's
+ * independent influence; N+1 vectors per decision, minimal MC/DC.
+ */
+static void test_path_join(void)
+{
+  TEST_BEGIN("path join rejects traversal");
+  char out[k_buf_128];
+  /* Controls for decisions A/B/C/D: a legal segment joins verbatim. */
+  TEST_ASSERT(mdl_path_join("/base", "chap-1", out, sizeof(out)));
+  TEST_ASSERT(strcmp(out, "/base/chap-1") == 0);
+  /* Decision C: `.`/`..`/empty, a `/`-bearing, and an absolute segment fail. */
+  TEST_ASSERT(!mdl_path_join("/base", "..", out, sizeof(out)));
+  TEST_ASSERT(out[0] == '\0'); /* no usable partial path on refusal */
+  TEST_ASSERT(!mdl_path_join("/base", ".", out, sizeof(out)));
+  TEST_ASSERT(!mdl_path_join("/base", "", out, sizeof(out)));
+  TEST_ASSERT(!mdl_path_join("/base", "a/b", out, sizeof(out)));  /* separator */
+  TEST_ASSERT(!mdl_path_join("/base", "/etc", out, sizeof(out))); /* absolute  */
+  /* Decision B: a NULL parent or segment fails. */
+  TEST_ASSERT(!mdl_path_join(nullptr, "c", out, sizeof(out)));
+  TEST_ASSERT(!mdl_path_join("/base", nullptr, out, sizeof(out)));
+  /* Decision A: a NULL destination or zero capacity fails. */
+  TEST_ASSERT(!mdl_path_join("/base", "c", nullptr, sizeof(out)));
+  TEST_ASSERT(!mdl_path_join("/base", "c", out, 0U));
+  /* Decision D: a result that would not fit is refused, never truncated. */
+  char tiny[k_join_tiny];
+  TEST_ASSERT(!mdl_path_join("/base", "toolong", tiny, sizeof(tiny)));
+  TEST_ASSERT(tiny[0] == '\0');
+  TEST_END("path join rejects traversal");
+}
+
 /** @test XML escaper replaces metacharacters and fails rather than truncating. */
 static void test_xml_escape(void)
 {
@@ -686,6 +736,7 @@ int32_t main(void)
   test_url_parts();
   test_sanitize_segment();
   test_path_contained();
+  test_path_join();
   test_xml_escape();
   test_tar_rejects_long_name();
   test_epub_escapes_name();

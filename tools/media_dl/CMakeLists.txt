@@ -83,6 +83,7 @@ add_executable(
   src/mdl_net_curl.c
   src/mdl_url_guard.c
   src/mdl_sanitize.c
+  src/mdl_pathfs.c
   src/mdl_robots.c
   src/mdl_session.c
   src/mdl_extract.c
