@@ -32,11 +32,22 @@ name: firmware
 on:
   push:
     branches: [main, dev]
+  # PRs targeting dev run the same gate set as PRs targeting main (#357). dev
+  # is this repo's working branch, so the review path -- not just post-merge --
+  # must exercise every gate that decides branch health. A PR to dev was
+  # previously blind to copyright, format, tidy, cppcheck, misra, ci-parity,
+  # pre-commit-checks, unit-tests and all the lint-* gates.
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
+# Per-commit isolation on push (#366). Keying the group on the commit SHA for
+# push events means a burst of dev pushes never cancels an in-flight run:
+# every landed commit gets its own complete gate run, so a cancelled run can
+# no longer masquerade as a passing one when judging branch health, and each
+# commit is individually validated (bisectability). PR and dispatch events
+# still key on the ref, so a fresh push to a PR cancels its now-superseded run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: true
 
 env:

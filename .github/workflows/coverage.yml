@@ -10,11 +10,19 @@ name: coverage
 on:
   push:
     branches: [main, dev]
+  # PRs targeting dev run the same coverage gate as PRs targeting main (#357).
+  # dev is the working branch, so the review path must exercise the same
+  # branch-health gates it does for main -- coverage was previously only
+  # checked on a PR to main or post-merge on dev.
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
+# Per-commit isolation on push (#366): identical rationale to firmware.yml. Key
+# the group on the commit SHA for push events so a burst of dev pushes never
+# cancels an in-flight coverage run -- a cancelled run reads as skipped-not-
+# failed and would otherwise sit green next to a real result on branch health.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: true
 
 env:

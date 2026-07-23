@@ -5,13 +5,21 @@
 name: inclusive-terminology
 
 on:
+  # dev is the working branch: essentially every commit lands there first, so
+  # the terminology gates must run where the commits actually land, not just on
+  # main (#357). Before this, a push to dev ran neither gate and the local
+  # pre-push hook was the only thing checking.
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 
+# Per-commit isolation on push (#366): key the group on the commit SHA for push
+# events so a burst of dev pushes never cancels an in-flight run. A cancelled
+# run marks its remaining steps skipped-not-failed, so an uncancelled run per
+# commit is what keeps a green here from meaning "the gate never executed".
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: true
 
 env:
