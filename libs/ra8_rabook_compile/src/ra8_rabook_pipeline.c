@@ -109,11 +109,58 @@ static const uint8_t* s_downscale_if_needed(const ra8_rabook_pipeline_scratch_t*
 }
 
 /**
- * @brief Decode one raw image, transcode to 4-bpp gray, add to builder.
+ * @brief Encode @p gray_src into @p scr->image_raw at the device-profile depth.
+ * @details Dispatches on @p scr->pixel_format: @ref k_ra8_book_pixfmt_gray8 copies
+ *          the pixels out verbatim at 8-bpp (1 byte/pixel), any other value
+ *          quantises + nibble-packs to 4-bpp (2 pixels/byte). The output is written
+ *          into @p scr->image_raw in place, so it must not overlap the still-live
+ *          @p gray_src (see @ref ra8_rabook_pipeline_scratch_t).
+ * @param[in]  scr      Scratch buffers (provides @p image_raw / @p image_cap /
+ *                      @p pixel_format), non-NULL.
+ * @param[in]  gray_src Gray pixels to encode: @p ow * @p oh readable bytes, non-NULL.
+ * @param[in]  ow       Output width in pixels.
+ * @param[in]  oh       Output height in pixels.
+ * @param[out] out_size Receives the encoded byte length written to @p image_raw.
+ * @return Error code from the selected encoder.
+ * @retval k_ra8_ok         Encoded; @p *out_size bytes written to @p image_raw.
+ * @retval k_ra8_err_no_mem @p image_cap is too small for the encoded output.
+ * @pre @p scr, @p gray_src and @p out_size are non-NULL (caller-validated).
+ * @pre @p gray_src holds at least @p ow * @p oh readable bytes.
+ * @post On k_ra8_ok @p scr->image_raw holds @p *out_size encoded bytes.
+ * @post @p gray_src is not modified (read-only encode).
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t s_encode_gray(const ra8_rabook_pipeline_scratch_t* scr,
+                               const uint8_t*                       gray_src,
+                               uint16_t                             ow,
+                               uint16_t                             oh,
+                               uint32_t*                            out_size)
+{
+  if (scr->pixel_format == (uint8_t)k_ra8_book_pixfmt_gray8) {
+    return ra8_rabook_gray8_encode(gray_src,
+                                   ow,
+                                   oh,
+                                   scr->image_raw,
+                                   (uint32_t)scr->image_cap,
+                                   out_size);
+  }
+  return ra8_rabook_gray4_encode(gray_src,
+                                 ow,
+                                 oh,
+                                 scr->image_raw,
+                                 (uint32_t)scr->image_cap,
+                                 out_size);
+}
+
+/**
+ * @brief Decode one raw image, transcode to the profile's gray depth, add to builder.
  * @details Binds @p scr->img_arena before calling stb_image and unbinds on every
- *          return path.  The encoded nibbles are written into @p scr->image_raw
- *          (reusing the buffer that held the raw bytes), so the source and encode
- *          buffers must not overlap (see @ref ra8_rabook_pipeline_scratch_t).
+ *          return path.  The encoded output (4-bpp nibbles or the 8-bpp copy, per
+ *          @p scr->pixel_format) is written into @p scr->image_raw (reusing the
+ *          buffer that held the raw bytes), so the source and encode buffers must
+ *          not overlap (see @ref ra8_rabook_pipeline_scratch_t).
  * @param[in,out] ctx     Builder the transcoded image is appended to (non-NULL).
  * @param[in]     scr     Scratch buffers for decode / downscale / encode (non-NULL).
  * @param[in]     id_off  String-pool offset of the image href / manifest id.
@@ -124,7 +171,8 @@ static const uint8_t* s_downscale_if_needed(const ra8_rabook_pipeline_scratch_t*
  * @pre @p ctx and @p scr are non-NULL (caller-validated).
  * @pre @p scr->image_raw holds @p raw_len readable encoded bytes.
  * @post The image arena is unbound on return regardless of outcome.
- * @post On success the builder gains one gray4 image descriptor.
+ * @post On success the builder gains one raster image descriptor at
+ *       @p scr->pixel_format depth.
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
@@ -167,12 +215,7 @@ static uint32_t s_transcode_image(ra8_rabook_ctx_t*                    ctx,
   }
 
   uint32_t  encoded_size = 0U;
-  ra8_err_t enc_err      = ra8_rabook_gray4_encode(gray_src,
-                                                   ow,
-                                                   oh,
-                                                   scr->image_raw,
-                                                   (uint32_t)scr->image_cap,
-                                                   &encoded_size);
+  ra8_err_t enc_err      = s_encode_gray(scr, gray_src, ow, oh, &encoded_size);
   stbi_image_free(pixels); /* alloc-allow: stb backed by ra8_img_arena */
   ra8_img_arena_unbind();
 
@@ -185,6 +228,7 @@ static uint32_t s_transcode_image(ra8_rabook_ctx_t*                    ctx,
                               ow,
                               oh,
                               (uint8_t)k_ra8_book_image_gray4,
+                              scr->pixel_format,
                               scr->image_raw,
                               encoded_size);
 }
@@ -369,6 +413,7 @@ static uint32_t s_add_manifest_image(ra8_rabook_ctx_t*                    ctx,
                                 0U,
                                 0U,
                                 (uint8_t)k_ra8_book_image_svg,
+                                (uint8_t)k_ra8_book_pixfmt_gray4, /* unused for SVG; store 0 */
                                 scr->image_raw,
                                 (uint32_t)got);
   }

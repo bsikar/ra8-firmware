@@ -1,6 +1,6 @@
 /**
  * @file ra8_rabook_gray4.c
- * @brief 4-bpp grayscale image transcode -- downscale + quantise + nibble-pack.
+ * @brief Grayscale image transcode -- downscale + quantise + nibble-pack (4-bpp) or copy (8-bpp).
  * @since Version 0.1.0
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -249,6 +249,35 @@ ra8_err_t ra8_rabook_gray4_encode(const uint8_t* gray_pixels,
 
   (void)memset(out, 0, n_bytes);
   s_pack_nibbles(gray_pixels, n_pixels, out);
+
+  *out_size = n_bytes;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_rabook_gray8_encode(const uint8_t* gray_pixels,
+                                  uint16_t       w,
+                                  uint16_t       h,
+                                  uint8_t*       out,
+                                  uint32_t       out_cap,
+                                  uint32_t*      out_size)
+{
+  RA8_CHECK_NULL_PTR(gray_pixels, s_tag, "gray_pixels");
+  RA8_CHECK_NULL_PTR(out, s_tag, "out");
+  RA8_CHECK_NULL_PTR(out_size, s_tag, "out_size");
+
+  uint32_t n_bytes = (uint32_t)w * h;
+
+  if (n_bytes == 0U) {
+    *out_size = 0U;
+    return k_ra8_ok;
+  }
+
+  if (out_cap < n_bytes) {
+    ra8_log_error(s_tag, "output buffer too small");
+    return k_ra8_err_no_mem;
+  }
+
+  (void)memcpy(out, gray_pixels, n_bytes);
 
   *out_size = n_bytes;
   return k_ra8_ok;

@@ -1,6 +1,6 @@
 /**
  * @file ra8_rabook_gray4.h
- * @brief 4-bpp grayscale image transcode stage for the on-device EPUB compiler (#149).
+ * @brief Grayscale image transcode stage (4-bpp / 8-bpp) for the on-device EPUB compiler (#149).
  * @ingroup grp_ereader
  *
  * @details
@@ -198,6 +198,49 @@ ra8_err_t ra8_rabook_gray4_downscale(const uint8_t* src,
  * @since Version 0.1.0
  */
 ra8_err_t ra8_rabook_gray4_encode(const uint8_t* gray_pixels,
+                                  uint16_t       w,
+                                  uint16_t       h,
+                                  uint8_t*       out,
+                                  uint32_t       out_cap,
+                                  uint32_t*      out_size);
+
+/**
+ * @brief Copy a grayscale buffer out verbatim as 8-bpp (one byte per pixel).
+ *
+ * @details The 8-bpp counterpart of @ref ra8_rabook_gray4_encode, selected when a
+ *          device profile wants the lossless grayscale source instead of the
+ *          half-size 4-bpp packing. There is no quantise and no packing: the
+ *          @ref k_ra8_book_pixfmt_gray8 pool bytes ARE the decoded (and possibly
+ *          downscaled) gray pixels, so `out[i] == gray_pixels[i]` for every pixel.
+ *          Keeping it a distinct, validated call -- rather than a bare memcpy at
+ *          the call site -- means the transcode stage always states the depth it
+ *          produced and the capacity is checked once, here.
+ *
+ *          Output size is w * h bytes (0 when either dimension is 0).
+ *
+ * @param[in]  gray_pixels  Grayscale source: w * h bytes, 0-255 each.
+ * @param[in]  w            Image width in pixels.
+ * @param[in]  h            Image height in pixels.
+ * @param[out] out          Output buffer; must hold at least w * h bytes.
+ * @param[in]  out_cap      Capacity of @p out in bytes.
+ * @param[out] out_size     On success: bytes written (== w * h).
+ *
+ * @return Error code.
+ * @retval k_ra8_ok           Copied successfully.
+ * @retval k_ra8_err_null_ptr @p gray_pixels, @p out, or @p out_size is NULL.
+ * @retval k_ra8_err_no_mem   out_cap < w * h.
+ *
+ * @pre @p gray_pixels holds at least w * h readable bytes.
+ * @pre out_cap >= w * h, and @p out does not overlap @p gray_pixels.
+ * @post *out_size == w * h (0 when w or h is 0).
+ * @post out[0..w*h) equals gray_pixels[0..w*h) byte for byte.
+ *
+ * @note When w or h is 0, *out_size is set to 0 and k_ra8_ok is returned.
+ * @note Not thread-safe.
+ * @see ra8_rabook_gray4_encode  The 4-bpp (quantise + nibble-pack) counterpart.
+ * @since Version 0.1.0
+ */
+ra8_err_t ra8_rabook_gray8_encode(const uint8_t* gray_pixels,
                                   uint16_t       w,
                                   uint16_t       h,
                                   uint8_t*       out,

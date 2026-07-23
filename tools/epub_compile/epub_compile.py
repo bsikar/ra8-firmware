@@ -29,25 +29,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from epub_pipeline import compile_epub
 from epub_selftest import selftest
-from rabook_blob import MAX_IMAGE_EDGE
-from rabook_format import CONTAINER_CHUNK_BYTES, wrap_container
+from rabook_blob import MAX_IMAGE_EDGE, BlobBuilder
+from rabook_format import CONTAINER_CHUNK_BYTES, PIXFMT_GRAY4, PIXFMT_GRAY8, wrap_container
+
+# Device-profile raster depth selector for --pixel-format (issue #343). gray4 is
+# the default so an existing compile emits the same 4bpp packing; gray8 keeps the
+# lossless 8bpp source for a deeper panel.
+_PIXFMT_BY_NAME = {"gray4": PIXFMT_GRAY4, "gray8": PIXFMT_GRAY8}
 
 
-def main() -> int:
-    """Parse the command line, compile, and write the container to disk.
+def _build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the epub_compile.py command-line parser.
 
-    Two modes: `--selftest` runs the issue #196 fixed-layout self-check and
-    ignores the positional arguments entirely, otherwise both input and output
-    are required. The output written is the RBKC-wrapped container, not the raw
-    blob -- `--chunk-bytes` must equal the reader's `ra8_vmem` frame size or the
-    device cannot page the book.
-
-    Errors are not caught here. A malformed EPUB surfaces as a traceback rather
-    than a diagnostic; the exception type names the failing stage.
+    Kept out of :func:`main` so the entry point stays short; every option's help
+    text lives here next to the flag it documents.
 
     Returns:
-        0 on success. Non-zero exits arrive as SystemExit from argparse or the
-        selftest, not through this return.
+        The configured ``argparse.ArgumentParser``.
     """
     ap = argparse.ArgumentParser(description="Compile an EPUB into a .rabook blob.")
     ap.add_argument("input", nargs="?", help="source .epub")
@@ -66,6 +64,13 @@ def main() -> int:
         help="drop all images (text-only); tiny blob for a baked fixture",
     )
     ap.add_argument(
+        "--pixel-format",
+        choices=sorted(_PIXFMT_BY_NAME),
+        default="gray4",
+        help="device profile: raster depth to emit (default gray4 = 4bpp packed, "
+        "half the storage for a grayscale panel; gray8 = lossless 8bpp)",
+    )
+    ap.add_argument(
         "--chunk-bytes",
         type=int,
         default=CONTAINER_CHUNK_BYTES,
@@ -77,6 +82,55 @@ def main() -> int:
         action="store_true",
         help="compile the fixed-layout fixture and run the #196 self-check, then exit",
     )
+    return ap
+
+
+def _print_stats(
+    input_path: str,
+    meta: dict[str, str],
+    blob: bytes,
+    container: bytes,
+    bb: BlobBuilder,
+) -> None:
+    """Print the ``--stats`` size/structure summary for one compile.
+
+    Args:
+        input_path: Path to the source .epub, for its on-disk size.
+        meta: Metadata dict with the book "title" and "author".
+        blob: The inflated RABOOK1 blob.
+        container: The RBKC-wrapped bytes actually written to disk.
+        bb: The BlobBuilder, for its table counts.
+    """
+    src = Path(input_path).stat().st_size
+    out = len(container)
+    print(f"{meta['title']} -- {meta['author']}")
+    print(
+        f"  chapters={len(bb.chapters)} nodes={len(bb.nodes)} "
+        f"attrs={len(bb.attrs)} css={len(bb.stylesheets)} images={len(bb.images)}"
+    )
+    print(
+        f"  epub={src // 1024} KB -> rabook={out // 1024} KB "
+        f"({100 * out // max(src, 1)}%); inflated={len(blob) // 1024} KB"
+    )
+
+
+def main() -> int:
+    """Parse the command line, compile, and write the container to disk.
+
+    Two modes: `--selftest` runs the issue #196 fixed-layout self-check and
+    ignores the positional arguments entirely, otherwise both input and output
+    are required. The output written is the RBKC-wrapped container, not the raw
+    blob -- `--chunk-bytes` must equal the reader's `ra8_vmem` frame size or the
+    device cannot page the book.
+
+    Errors are not caught here. A malformed EPUB surfaces as a traceback rather
+    than a diagnostic; the exception type names the failing stage.
+
+    Returns:
+        0 on success. Non-zero exits arrive as SystemExit from argparse or the
+        selftest, not through this return.
+    """
+    ap = _build_arg_parser()
     args = ap.parse_args()
 
     if args.selftest:
@@ -84,23 +138,15 @@ def main() -> int:
     if not args.input or not args.output:
         ap.error("input and output are required unless --selftest")
 
-    blob, meta, bb = compile_epub(args.input, args.max_edge, args.no_images)
+    blob, meta, bb = compile_epub(
+        args.input, args.max_edge, args.no_images, _PIXFMT_BY_NAME[args.pixel_format]
+    )
     container = wrap_container(blob, args.chunk_bytes)
     with Path(args.output).open("wb") as fh:
         fh.write(container)
 
     if args.stats:
-        src = Path(args.input).stat().st_size
-        out = len(container)
-        print(f"{meta['title']} -- {meta['author']}")
-        print(
-            f"  chapters={len(bb.chapters)} nodes={len(bb.nodes)} "
-            f"attrs={len(bb.attrs)} css={len(bb.stylesheets)} images={len(bb.images)}"
-        )
-        print(
-            f"  epub={src // 1024} KB -> rabook={out // 1024} KB "
-            f"({100 * out // max(src, 1)}%); inflated={len(blob) // 1024} KB"
-        )
+        _print_stats(args.input, meta, blob, container, bb)
     return 0
 
 

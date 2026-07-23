@@ -20,19 +20,64 @@ import struct
 import zlib
 
 from epub_dom import DomNode, StringPool
-from gray4_kernel import gray4_downscale, gray4_encode, gray4_output_dims
+from gray4_kernel import gray4_downscale, gray4_encode, gray4_output_dims, stb_compute_y
 from PIL import Image
 from rabook_format import (
     FORMAT_VERSION,
-    GRAY_LEVELS,
     IMG_GRAY4,
     IMG_SVG,
     MAGIC,
     NIL,
     NODE_ELEMENT,
     NODE_TEXT,
-    PALETTE_BYTES,
+    PIXFMT_GRAY4,
+    PIXFMT_GRAY8,
 )
+
+# PIL modes stb_image decodes as one 16-bit gray channel; it reduces them to
+# 8-bit by keeping the high byte (v >> 8), matching stbi__convert_16_to_8.
+_PIL_MODES_16 = ("I", "I;16", "I;16L", "I;16B", "I;16N")
+# PIL modes that are already an 8-bit gray (optionally with alpha); stb keeps the
+# grey channel when reducing 1/2 channels to 1, so convert("L") matches.
+_PIL_MODES_GREY8 = ("L", "LA", "La")
+_STB_16_TO_8_SHIFT = 8  # stbi__convert_16_to_8: high byte is the 16->8 reduction.
+_BYTE_MASK = 0xFF  # (uint8_t) mask after the 16->8 reduction.
+_RGB_STRIDE = 3  # Bytes per pixel in a PIL "RGB" buffer.
+
+
+def _stb_gray8(im: Image.Image) -> tuple[int, int, bytes]:
+    """Decode a PIL image to 8-bit gray exactly as the device stb_image would.
+
+    The on-device pipeline calls ``stbi_load_from_memory(..., req_comp=1)``, so
+    every raster is reduced to a single 8-bit gray channel before the gray4/gray8
+    encode. Mirroring that reduction here is what makes the host emit the same
+    bytes (issue #337):
+
+    * a 16-bit single channel keeps its high byte (``v >> 8``), like
+      ``stbi__convert_16_to_8``;
+    * an 8-bit gray (or gray+alpha) channel passes through unchanged, like stb
+      keeping ``src[0]`` when it folds 1/2 channels down to 1;
+    * anything with colour is expanded to RGB and folded with
+      :func:`gray4_kernel.stb_compute_y`, like stb's compute_y on a 3/4-channel
+      source.
+
+    Args:
+        im: An open ``PIL.Image`` in any mode.
+
+    Returns:
+        ``(width, height, gray8_bytes)``, row-major, one byte per pixel.
+    """
+    width, height = im.size
+    if im.mode in _PIL_MODES_16:
+        gray = bytes((v >> _STB_16_TO_8_SHIFT) & _BYTE_MASK for v in im.getdata())
+        return (width, height, gray)
+    if im.mode in _PIL_MODES_GREY8:
+        return (width, height, im.convert("L").tobytes())
+    rgb = im.convert("RGB").tobytes()
+    gray = bytes(
+        stb_compute_y(rgb[i], rgb[i + 1], rgb[i + 2]) for i in range(0, len(rgb), _RGB_STRIDE)
+    )
+    return (width, height, gray)
 
 # The SE source files are trusted local input; some cover scans exceed Pillow's
 # default decompression-bomb threshold, so lift it rather than warn.
@@ -62,7 +107,7 @@ class BlobBuilder:
         self.attrs = []  # list of (name_off, value_off)
         self.chapters = []  # list of (title_off, href_off, root_node)
         self.stylesheets = []  # list of (source_off, scope_chapter)
-        self.images = []  # list of (id_off, w, h, fmt, data, raw_size)
+        self.images = []  # list of (id_off, w, h, fmt, data, raw_size, pixel_format)
         self.cover_index = NIL
         self.flags = 0  # ra8_book_flag_t bits (e.g. FLAG_RTL); 0 for EPUB text
 
@@ -183,24 +228,31 @@ class BlobBuilder:
         """
         self.stylesheets.append((self.sp.intern(css_text), NIL))
 
-    def add_raster_image(self, href: str, data: bytes, max_image_edge: int = MAX_IMAGE_EDGE) -> int:
-        """Transcode an encoded raster image to panel-native 4bpp and store it.
+    def add_raster_image(
+        self,
+        href: str,
+        data: bytes,
+        max_image_edge: int = MAX_IMAGE_EDGE,
+        pixel_format: int = PIXFMT_GRAY4,
+    ) -> int:
+        """Transcode an encoded raster to panel-native grayscale and store it.
 
-        This is the one place content changes form, because the e-ink panel is
-        physically 4bpp. Colour is flattened to luminance, quantized to 16 grey
-        levels with dithering OFF (dithered noise survives neither the panel's
-        own dynamics nor a later downscale), and packed two pixels per byte,
-        high nibble first. An odd width leaves the final byte's low nibble zero.
+        This is the one place content changes form. Colour is flattened to
+        luminance with the SAME integer luma the device's stb_image applies
+        (`gray4_kernel.stb_compute_y`, mirroring `stbi__compute_y`), so the host
+        tool and the on-device compiler emit byte-identical output for one source
+        (issue #337). The reduced gray8 is then either kept verbatim
+        (`pixel_format` PIXFMT_GRAY8, one byte per pixel) or quantized and packed
+        two-pixels-per-byte to 4bpp (PIXFMT_GRAY4, the default) via the exact
+        integer kernel `ra8_rabook_gray4_*` runs on device. Dithering stays OFF
+        (dithered noise survives neither the panel's own dynamics nor a later
+        downscale).
 
-        Two quantization paths exist and they are NOT interchangeable:
-
-        - Downscaling (`max_image_edge` non-zero) resamples and packs with
-          `gray4_kernel`, the exact integer kernel `ra8_rabook_gray4_*` runs on
-          device. That keeps a downscaled image byte-identical host-vs-device
-          (issue #213) and stable across Pillow versions.
-        - The default no-downscale path uses Pillow's palette quantize. It is
-          byte-frozen: goldens in this tree hash its output, so changing it
-          changes committed fixtures.
+        BOTH the default no-downscale path and the opt-in `--max-edge` downscale
+        path go through `gray4_kernel`, so there is exactly ONE luma and ONE
+        quantiser shared with the firmware -- no PIL palette-snap, no LANCZOS,
+        nothing that drifts across Pillow versions (issue #337 closes the
+        no-downscale gap that #213 left on the default path).
 
         Pixels are stored uncompressed. The container DEFLATEs the whole blob
         once, so per-image compression would only double-compress, and after the
@@ -214,53 +266,33 @@ class BlobBuilder:
             max_image_edge: Opt-in long-edge cap in pixels (issue #210). 0 --
                 the default -- preserves source resolution, which is what makes
                 the manga zoom loupe possible.
+            pixel_format: Device-profile raster depth (issue #343). PIXFMT_GRAY4
+                (the default, 4bpp packed -- half the storage, and exactly right
+                for a 16-level e-ink panel) or PIXFMT_GRAY8 (8bpp, lossless for a
+                deeper panel).
 
         Returns:
             Index of the image in `self.images`, for `cover_index` or a DOM ref.
 
         Raises:
             OSError: `data` is not a decodable image.
-            ValueError: Pillow rejected the decoded image.
+            ValueError: Pillow rejected the decoded image, or `pixel_format` is
+                not a known depth.
         """
-        im = Image.open(io.BytesIO(data)).convert("L")
-        w, h = im.size
+        if pixel_format not in (PIXFMT_GRAY4, PIXFMT_GRAY8):
+            msg = f"unknown pixel_format {pixel_format}"
+            raise ValueError(msg)
+        w, h, gray = _stb_gray8(Image.open(io.BytesIO(data)))
         if max_image_edge:
             ow, oh = gray4_output_dims(w, h, max_image_edge)
             if (ow, oh) != (w, h):
-                # Opt-in downscale (issue #210): resample AND quantize/pack with the
-                # exact integer kernel the device runs (gray4_kernel mirrors
-                # ra8_rabook_gray4_*) -- NOT PIL LANCZOS + PIL palette-snap -- so a
-                # downscaled image is byte-identical host-vs-device (issue #213) and
-                # deterministic across Pillow versions. The default (no-downscale)
-                # path below is byte-for-byte untouched.
-                scaled = gray4_downscale(im.tobytes(), w, h, ow, oh)
-                raw = gray4_encode(scaled, ow, oh)
-                self.images.append((self.sp.intern(href), ow, oh, IMG_GRAY4, raw, len(raw)))
-                return len(self.images) - 1
-        width, height = w, h
-        palette = []
-        for i in range(GRAY_LEVELS):
-            v = round(i * 255 / (GRAY_LEVELS - 1))
-            palette += [v, v, v]
-        while len(palette) < PALETTE_BYTES:
-            palette += [0, 0, 0]
-        pal_img = Image.new("P", (1, 1))
-        pal_img.putpalette(palette)
-        quantized = (
-            im.convert("RGB").quantize(palette=pal_img, dither=Image.Dither.NONE).convert("L")
-        )
-        nib_table = bytes(min(v // 17, GRAY_LEVELS - 1) for v in range(256))
-        nibbles = quantized.tobytes().translate(nib_table)
-        even = nibbles[0::2]
-        odd = nibbles[1::2]
-        packed = bytearray(bytes((e << 4) | o for e, o in zip(even, odd)))
-        if len(even) > len(odd):
-            packed.append(even[-1] << 4)
+                gray = gray4_downscale(gray, w, h, ow, oh)
+                w, h = ow, oh
         # Stored raw; the whole blob is DEFLATE-wrapped as one stream on disk, so
         # per-image compression would just double-compress for no gain. After the
-        # single inflate-on-open these bytes are panel-ready 4bpp, no decode.
-        raw = bytes(packed)
-        self.images.append((self.sp.intern(href), width, height, IMG_GRAY4, raw, len(raw)))
+        # single inflate-on-open these bytes are panel-ready, no decode.
+        raw = gray if pixel_format == PIXFMT_GRAY8 else gray4_encode(gray, w, h)
+        self.images.append((self.sp.intern(href), w, h, IMG_GRAY4, raw, len(raw), pixel_format))
         return len(self.images) - 1
 
     def add_svg_image(self, href: str, data: bytes) -> int:
@@ -283,7 +315,10 @@ class BlobBuilder:
         Returns:
             Index of the image in `self.images`.
         """
-        self.images.append((self.sp.intern(href), 0, 0, IMG_SVG, data, len(data)))
+        # pixel_format is unused for a vector entry; store PIXFMT_GRAY4 (0), the
+        # value every pre-field blob carried, so an SVG record stays all-zeros
+        # in that byte.
+        self.images.append((self.sp.intern(href), 0, 0, IMG_SVG, data, len(data), PIXFMT_GRAY4))
         return len(self.images) - 1
 
     # -- serialization --------------------------------------------------------
@@ -317,11 +352,13 @@ class BlobBuilder:
         """
         pool = bytearray()
         records = []
-        for id_off, w, h, fmt, data, raw in self.images:
+        for id_off, w, h, fmt, data, raw, pixfmt in self.images:
             data_off = len(pool)
             pool += data
+            # The second B is ra8_book_image_t.pixel_format (issue #343); the H
+            # after it is the still-reserved padding (0).
             records.append(
-                struct.pack("<IHHBBHIII", id_off, w, h, fmt, 0, 0, data_off, len(data), raw)
+                struct.pack("<IHHBBHIII", id_off, w, h, fmt, pixfmt, 0, data_off, len(data), raw)
             )
         return b"".join(records), pool
 

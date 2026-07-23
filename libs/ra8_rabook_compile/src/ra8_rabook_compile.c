@@ -359,6 +359,7 @@ uint32_t ra8_rabook_add_image(ra8_rabook_ctx_t* ctx,
                               uint16_t          width,
                               uint16_t          height,
                               uint8_t           format,
+                              uint8_t           pixel_format,
                               const uint8_t*    data,
                               uint32_t          data_size)
 {
@@ -396,6 +397,7 @@ uint32_t ra8_rabook_add_image(ra8_rabook_ctx_t* ctx,
   img->width            = width;
   img->height           = height;
   img->format           = format;
+  img->pixel_format     = pixel_format;
   img->data_off         = data_off;
   img->data_size        = data_size;
   img->raw_size         = data_size;

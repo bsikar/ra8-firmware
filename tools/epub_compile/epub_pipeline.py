@@ -18,12 +18,14 @@ from zipfile import ZipFile
 from epub_dom import DomBuilder, find_first
 from epub_package import parse_opf, parse_toc
 from rabook_blob import MAX_IMAGE_EDGE, SKIP_IMAGES, BlobBuilder
+from rabook_format import PIXFMT_GRAY4
 
 
 def compile_epub(
     path: str | Path,
     max_image_edge: int = MAX_IMAGE_EDGE,
     skip_images: bool = SKIP_IMAGES,
+    pixel_format: int = PIXFMT_GRAY4,
 ) -> tuple[bytes, dict[str, str], BlobBuilder]:
     """Compile one EPUB into an inflated .rabook blob.
 
@@ -49,6 +51,9 @@ def compile_epub(
             paths are not byte-equivalent.
         skip_images: Drop every image, producing a text-only blob small enough
             to bake into MRAM as a fixture. The cover is dropped too.
+        pixel_format: Device-profile raster depth (issue #343): PIXFMT_GRAY4
+            (the default 4bpp packing) or PIXFMT_GRAY8 (lossless 8bpp). Only the
+            raster image arm reads it; SVG is unaffected.
 
     Returns:
         Tuple of (blob, meta, bb): the serialized inflated blob, the metadata
@@ -87,7 +92,9 @@ def compile_epub(
                 if media == "image/svg+xml":
                     id_to_image[mid] = bb.add_svg_image(href, zf.read(full))
                 elif media.startswith("image/"):
-                    id_to_image[mid] = bb.add_raster_image(href, zf.read(full), max_image_edge)
+                    id_to_image[mid] = bb.add_raster_image(
+                        href, zf.read(full), max_image_edge, pixel_format
+                    )
             except (OSError, ValueError):
                 pass
         if cover_id and cover_id in id_to_image:

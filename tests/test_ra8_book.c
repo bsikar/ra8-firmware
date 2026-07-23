@@ -38,6 +38,15 @@ typedef enum : uint16_t {
 } book_fixture2_t;
 
 /**
+ * @enum book_pixfmt_fixture_t
+ * @brief Image pixel-depth values the validator must accept or reject.
+ */
+typedef enum : uint8_t {
+  k_book_pixfmt_unknown =
+    2, /**< One past k_ra8_book_pixfmt_gray8: a depth no reader can unpack, so validate must reject it. */
+} book_pixfmt_fixture_t;
+
+/**
  * @enum book_fixture3_t
  * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable, plus the byte-level helpers.
  */
@@ -281,25 +290,25 @@ static void setup_mock_attrs_and_css(mock_book_t* b, const mock_book_offsets_t* 
  */
 static void setup_mock_images(mock_book_t* b, const mock_book_offsets_t* off)
 {
-  b->images[0].id_off    = off->img_href;
-  b->images[0].width     = 16;
-  b->images[0].height    = 16;
-  b->images[0].format    = k_ra8_book_image_gray4;
-  b->images[0].reserved  = 0;
-  b->images[0].reserved2 = 0;
-  b->images[0].data_off  = 0;
-  b->images[0].data_size = k_book_img0_bytes;
-  b->images[0].raw_size  = k_book_strings_cap;
+  b->images[0].id_off       = off->img_href;
+  b->images[0].width        = 16;
+  b->images[0].height       = 16;
+  b->images[0].format       = k_ra8_book_image_gray4;
+  b->images[0].pixel_format = k_ra8_book_pixfmt_gray4;
+  b->images[0].reserved2    = 0;
+  b->images[0].data_off     = 0;
+  b->images[0].data_size    = k_book_img0_bytes;
+  b->images[0].raw_size     = k_book_strings_cap;
 
-  b->images[1].id_off    = off->svg_href;
-  b->images[1].width     = 0;
-  b->images[1].height    = 0;
-  b->images[1].format    = k_ra8_book_image_svg;
-  b->images[1].reserved  = 0;
-  b->images[1].reserved2 = 0;
-  b->images[1].data_off  = k_book_img0_bytes;
-  b->images[1].data_size = k_book_img1_bytes;
-  b->images[1].raw_size  = k_book_img1_raw_bytes;
+  b->images[1].id_off       = off->svg_href;
+  b->images[1].width        = 0;
+  b->images[1].height       = 0;
+  b->images[1].format       = k_ra8_book_image_svg;
+  b->images[1].pixel_format = k_ra8_book_pixfmt_gray4;
+  b->images[1].reserved2    = 0;
+  b->images[1].data_off     = k_book_img0_bytes;
+  b->images[1].data_size    = k_book_img1_bytes;
+  b->images[1].raw_size     = k_book_img1_raw_bytes;
 
   b->hdr.cover_image_index = 0;
 }
@@ -362,7 +371,7 @@ static void test_ra8_book_invalid(void)
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_validate(NULL, 100));
 
-  uint8_t buffer[k_book_image_pool_cap] = {0};
+  uint8_t buffer[k_book_image_pool_cap] = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(buffer, sizeof(buffer)));
 
   mock_book_t b;
@@ -390,6 +399,44 @@ static void test_ra8_book_invalid(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(&b, sizeof(b)));
 
   TEST_END("ra8_book validation invalid parameters");
+}
+
+/**
+ * @test test_ra8_book_pixfmt
+ * @brief validate() accepts a known image pixel depth (gray4/gray8) and rejects
+ *        an unknown one; the accessor decodes the descriptor byte.
+ *
+ * @par MC/DC:
+ * Decision: `if (imgs[i].pixel_format > k_ra8_book_pixfmt_gray8)` in
+ * ra8_book_image_pixfmts_known (single condition; N+1 = 2 vectors).
+ * - Vector 1 (false): image 0 pixel_format = gray8 (1 <= 1) -> known -> validate ok.
+ * - Vector 2 (true):  image 0 pixel_format = 2 (> 1) -> unknown -> invalid_arg.
+ * Vector 1 also proves backward-read: the fixture leaves image 1's byte 0 (the
+ * value every pre-field blob zero-filled == gray4), and validate accepts it.
+ */
+static void test_ra8_book_pixfmt(void)
+{
+  TEST_BEGIN("ra8_book validation image pixel format");
+  mock_book_t b;
+
+  /* gray8 is a known depth: accepted, and the accessor decodes it. */
+  setup_mock_book(&b);
+  b.images[0].pixel_format = (uint8_t)k_ra8_book_pixfmt_gray8;
+  const uint8_t* body      = (const uint8_t*)&b + sizeof(ra8_book_header_t);
+  uint32_t       body_len  = sizeof(b) - sizeof(ra8_book_header_t);
+  b.hdr.crc32              = compute_crc32(body, body_len);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(&b, sizeof(b)));
+  TEST_ASSERT_EQ(k_ra8_book_pixfmt_gray8, ra8_book_image_pixfmt(&ra8_book_images(&b)[0]));
+  /* Backward-read: image 1 kept its zero byte (== gray4) and still validates. */
+  TEST_ASSERT_EQ(k_ra8_book_pixfmt_gray4, ra8_book_image_pixfmt(&ra8_book_images(&b)[1]));
+
+  /* An unknown depth (one past gray8) is refused fail-closed. */
+  setup_mock_book(&b);
+  b.images[0].pixel_format = (uint8_t)k_book_pixfmt_unknown;
+  b.hdr.crc32              = compute_crc32(body, body_len);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_book_validate(&b, sizeof(b)));
+
+  TEST_END("ra8_book validation image pixel format");
 }
 
 /**
@@ -451,6 +498,7 @@ static void book_walk_check_images(const mock_book_t* b, const ra8_book_header_t
   TEST_ASSERT_EQ(16, imgs[0].width);
   TEST_ASSERT_EQ(16, imgs[0].height);
   TEST_ASSERT_EQ(k_ra8_book_image_gray4, imgs[0].format);
+  TEST_ASSERT_EQ(k_ra8_book_pixfmt_gray4, ra8_book_image_pixfmt(&imgs[0]));
   TEST_ASSERT_EQ(10, imgs[0].data_size);
   TEST_ASSERT_EQ(128, imgs[0].raw_size);
   TEST_ASSERT_NOT_NULL(ra8_book_image_data(b, &imgs[0]));
@@ -459,6 +507,7 @@ static void book_walk_check_images(const mock_book_t* b, const ra8_book_header_t
   TEST_ASSERT_EQ(0, imgs[1].width);
   TEST_ASSERT_EQ(0, imgs[1].height);
   TEST_ASSERT_EQ(k_ra8_book_image_svg, imgs[1].format);
+  TEST_ASSERT_EQ(k_ra8_book_pixfmt_gray4, ra8_book_image_pixfmt(&imgs[1]));
   TEST_ASSERT_EQ(20, imgs[1].data_size);
   TEST_ASSERT_EQ(50, imgs[1].raw_size);
   TEST_ASSERT_NOT_NULL(ra8_book_image_data(b, &imgs[1]));
@@ -598,6 +647,7 @@ static void test_ra8_book_rtl_accessor(void)
 int main(void)
 {
   test_ra8_book_invalid();
+  test_ra8_book_pixfmt();
   test_ra8_book_valid_walk();
   test_ra8_book_flags_known_mask();
   test_ra8_book_rtl_accessor();

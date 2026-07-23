@@ -175,6 +175,45 @@ typedef enum : uint8_t {
 } ra8_book_image_format_t;
 
 /**
+ * @enum ra8_book_image_pixfmt_t
+ * @brief Pixel depth of a @ref k_ra8_book_image_gray4 raster in the image pool.
+ * @details A second axis, orthogonal to @ref ra8_book_image_format_t: that field
+ *          only says whether an entry is a packed-grayscale raster or verbatim
+ *          SVG, while this one -- modelled on JOF's `bpp` header field -- records
+ *          how DEEP that raster is. A grayscale e-reader can then rasterize at
+ *          4bpp (half the storage, and exactly right for an even 16-level e-ink
+ *          panel) while a device with more headroom carries the lossless 8bpp
+ *          source; the compiler picks the depth by device profile instead of
+ *          baking 4bpp in for every reader.
+ *
+ *          It lives in the descriptor's former padding byte
+ *          (@ref ra8_book_image_t::pixel_format), so it costs no format growth and
+ *          needs no @ref ra8_book_version_t bump: every `.rabook` written before
+ *          this field existed zero-filled that byte, and 0 is
+ *          @ref k_ra8_book_pixfmt_gray4 -- exactly the 4bpp packing those blobs
+ *          already carried. New firmware therefore reads every pre-existing blob
+ *          unchanged (backward-read); an unknown depth is rejected by
+ *          ra8_book_validate() rather than silently mis-rendered.
+ * @invariant An @ref k_ra8_book_image_svg entry stores 0 here (the field is
+ *            meaningful only for a raster; callers branch on `format` first).
+ * @code
+ *   const ra8_book_image_t* img = &ra8_book_images(base)[i];
+ *   if (img->format == k_ra8_book_image_gray4 &&
+ *       ra8_book_image_pixfmt(img) == k_ra8_book_pixfmt_gray8) {
+ *     ra8_gfx_blit_gray8(ra8_book_image_data(base, img), img->width, img->height, x, y);
+ *   }
+ * @endcode
+ * @see ra8_book_image_pixfmt()
+ * @see ra8_book_image_t
+ * @since Version 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_book_pixfmt_gray4 =
+    0U, /**< 4bpp packed grayscale, 2px/byte (default; every pre-field blob). */
+  k_ra8_book_pixfmt_gray8 = 1U, /**< 8bpp grayscale, 1px/byte (lossless against any grey panel). */
+} ra8_book_image_pixfmt_t;
+
+/**
  * @enum ra8_book_struct_size_t
  * @brief Pinned on-disk sizes of the blob's fixed-layout records.
  * @details The format is a binary wire layout shared with the host compiler, so
@@ -302,25 +341,26 @@ static_assert(sizeof(ra8_book_stylesheet_t) == k_ra8_book_sizeof_stylesheet,
  * @struct ra8_book_image_t
  * @brief Descriptor for one transcoded image in the image pool.
  * @details `id_off` is the original manifest href so an `<img src>` attribute
- *          value resolves to this entry. Raster images are packed as 4bpp
- *          grayscale at source resolution (panel-ready, no decode; an opt-in
- *          compile knob can clamp the long edge); SVG is
- *          kept as verbatim vector source. Pool bytes are raw -- the blob is
- *          chunk-DEFLATE-wrapped on disk (see @ref ra8_book_container_t) and
- *          inflated on open, so per-image compression would not help -- thus
- *          `data_size == raw_size` and `data_off` indexes the image pool.
+ *          value resolves to this entry. Raster images are packed grayscale at
+ *          source resolution (panel-ready, no decode; an opt-in compile knob can
+ *          clamp the long edge) -- 4bpp (2px/byte) or 8bpp (1px/byte) per
+ *          `pixel_format`; SVG is kept as verbatim vector source. Pool bytes are
+ *          raw -- the blob is chunk-DEFLATE-wrapped on disk (see
+ *          @ref ra8_book_container_t) and inflated on open, so per-image
+ *          compression would not help -- thus `data_size == raw_size` and
+ *          `data_off` indexes the image pool.
  * @since Version 0.1.0
  */
 typedef struct {
-  uint32_t id_off;    /**< String-pool offset of the source href / manifest id. */
-  uint16_t width;     /**< Pixel width.                                         */
-  uint16_t height;    /**< Pixel height.                                        */
-  uint8_t  format;    /**< @ref ra8_book_image_format_t.                        */
-  uint8_t  reserved;  /**< Padding; 0.                                          */
-  uint16_t reserved2; /**< Padding; 0.                                          */
-  uint32_t data_off;  /**< Image-pool offset of the compressed pixel data.      */
-  uint32_t data_size; /**< Compressed length in bytes.                          */
-  uint32_t raw_size;  /**< Inflated length in bytes.                            */
+  uint32_t id_off;       /**< String-pool offset of the source href / manifest id. */
+  uint16_t width;        /**< Pixel width.                                         */
+  uint16_t height;       /**< Pixel height.                                        */
+  uint8_t  format;       /**< @ref ra8_book_image_format_t.                        */
+  uint8_t  pixel_format; /**< @ref ra8_book_image_pixfmt_t (0 == gray4; SVG: 0).   */
+  uint16_t reserved2;    /**< Padding; 0.                                          */
+  uint32_t data_off;     /**< Image-pool offset of the compressed pixel data.      */
+  uint32_t data_size;    /**< Compressed length in bytes.                          */
+  uint32_t raw_size;     /**< Inflated length in bytes.                            */
 } ra8_book_image_t;
 
 static_assert(sizeof(ra8_book_image_t) == k_ra8_book_sizeof_image, "ra8_book_image_t size pinned");
@@ -529,6 +569,39 @@ static inline const uint8_t* ra8_book_image_data(const void* base, const ra8_boo
 }
 
 /**
+ * @brief Declared pixel depth of one image descriptor.
+ *
+ * @details
+ * Decodes @ref ra8_book_image_t::pixel_format into its @ref ra8_book_image_pixfmt_t.
+ * Meaningful only for a @ref k_ra8_book_image_gray4 raster (4bpp vs 8bpp packing);
+ * an SVG entry stores 0 and reports @ref k_ra8_book_pixfmt_gray4, so a renderer
+ * must branch on @ref ra8_book_image_t::format first and only consult this for a
+ * raster. Every blob written before the field existed zero-filled the byte, so
+ * an old gray4 blob reports @ref k_ra8_book_pixfmt_gray4 unchanged (backward-read).
+ *
+ * @param[in] img Image descriptor (non-NULL) obtained from ra8_book_images().
+ *
+ * @return The declared pixel depth.
+ * @retval k_ra8_book_pixfmt_gray4 4bpp packed grayscale (2px/byte); also every
+ *                                 pre-field blob and every SVG entry.
+ * @retval k_ra8_book_pixfmt_gray8 8bpp grayscale (1px/byte).
+ *
+ * @pre `img` belongs to a blob accepted by ra8_book_validate().
+ * @pre `img` is non-NULL.
+ * @post The blob is not modified (pure read).
+ * @post The result is a depth ra8_book_validate() already accepted as known.
+ *
+ * @note Thread-safe: read-only over immutable data.
+ * @see ra8_book_image_pixfmt_t
+ * @see ra8_book_image_data()
+ * @since Version 0.1.0
+ */
+static inline ra8_book_image_pixfmt_t ra8_book_image_pixfmt(const ra8_book_image_t* img)
+{
+  return (ra8_book_image_pixfmt_t)img->pixel_format;
+}
+
+/**
  * @brief Validate that a byte buffer is a well-formed, intact `.rabook` blob.
  *
  * @details
@@ -536,10 +609,12 @@ static inline const uint8_t* ra8_book_image_data(const void* base, const ra8_boo
  * outside ::k_ra8_book_flag_mask_known (a blob relying on a presentation
  * semantic this firmware does not implement must be rejected, not mis-read);
  * that `total_size` fits in `size`; that every table offset plus its extent
- * and every pool lie within `total_size`; and finally the CRC-32 of the body.
- * Must be called once before any accessor is used on `base`; the accessors
- * assume a validated blob and do no bounds checking themselves (they are pure
- * offset arithmetic for XIP).
+ * and every pool lie within `total_size`; that every image descriptor names a
+ * @ref ra8_book_image_pixfmt_t this build can unpack (an unknown depth is refused
+ * rather than mis-blitted); and finally the CRC-32 of the body. Must be called
+ * once before any accessor is used on `base`; the accessors assume a validated
+ * blob and do no bounds checking themselves (they are pure offset arithmetic for
+ * XIP).
  *
  * @param[in] base Pointer to the candidate blob (may be NULL).
  * @param[in] size Number of readable bytes at `base`.
@@ -548,7 +623,8 @@ static inline const uint8_t* ra8_book_image_data(const void* base, const ra8_boo
  * @retval k_ra8_ok             Blob is well-formed and CRC matches.
  * @retval k_ra8_err_null_ptr   `base` is NULL.
  * @retval k_ra8_err_invalid_arg  Magic is wrong, the format version is unknown,
- *                               or `flags` carries an unknown feature bit.
+ *                               `flags` carries an unknown feature bit, or an
+ *                               image declares an unknown pixel format.
  * @retval k_ra8_err_invalid_size `size` is too small or a table/pool runs past `total_size`.
  * @retval k_ra8_err_range_check_failed CRC-32 of the body does not match the header.
  *

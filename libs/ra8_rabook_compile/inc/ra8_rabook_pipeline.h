@@ -65,23 +65,30 @@ extern "C" {
  *          never allocates; it writes only into these buffers and the builder
  *          arenas inside @ref ra8_rabook_buffers_t.
  *
- *          @p skip_images is the lone configuration flag (default false): when
- *          true the image stage is a no-op -- no image-table entries are added
- *          and the cover index stays nil, so the blob is text/CSS-only. It is
- *          the on-device equivalent of the desktop epub_compile.py @c --no-images
- *          option (its empty @c manifest.items() image loop), and yields a blob
- *          byte-identical to that desktop @c --no-images golden. Stylesheets,
- *          chapters and metadata are unaffected. The @p image_raw / @p img_arena
- *          / @p gray buffers may stay tiny when @p skip_images is true.
+ *          @p skip_images (default false): when true the image stage is a no-op
+ *          -- no image-table entries are added and the cover index stays nil, so
+ *          the blob is text/CSS-only. It is the on-device equivalent of the
+ *          desktop epub_compile.py @c --no-images option (its empty
+ *          @c manifest.items() image loop), and yields a blob byte-identical to
+ *          that desktop @c --no-images golden. Stylesheets, chapters and metadata
+ *          are unaffected. The @p image_raw / @p img_arena / @p gray buffers may
+ *          stay tiny when @p skip_images is true.
+ *
+ *          @p pixel_format (default 0 == @ref k_ra8_book_pixfmt_gray4) is the
+ *          device profile that selects the raster depth: 4-bpp packed grayscale
+ *          for an even 16-level e-ink panel, or @ref k_ra8_book_pixfmt_gray8 for
+ *          the lossless 8-bpp source on a deeper panel. It only affects raster
+ *          transcode; SVG, stylesheets, chapters and metadata are unaffected.
  *
  * @invariant Every pointer is non-NULL and each buffer holds at least its cap.
  * @invariant @p xhtml, @p image_raw, @p gray and the @p img_arena backing store
  *            do not overlap. The transcode stage reuses @p image_raw in place as
- *            the 4-bpp encode output while the decoded source pixels are still
- *            live in @p img_arena (and @p gray on the downscale path), so an
- *            aliased buffer would corrupt the still-live source.
+ *            the encode output (4-bpp nibbles or the 8-bpp copy) while the decoded
+ *            source pixels are still live in @p img_arena (and @p gray on the
+ *            downscale path), so an aliased buffer would corrupt the still-live
+ *            source.
  * @warning Do not alias these buffers: @p image_raw is overwritten with the
- *          encoded nibbles while @p img_arena / @p gray still hold the pixels
+ *          encoded output while @p img_arena / @p gray still hold the pixels
  *          being read.
  * @code
  *   static uint8_t xhtml_buf[64U * 1024U];
@@ -115,6 +122,13 @@ typedef struct {
                                    *   source resolution (full-res manga for the
                                    *   zoom loupe). Mirrors the desktop tool's
                                    *   opt-in `--max-edge` knob.                  */
+  uint8_t          pixel_format;   /**< Device profile: raster depth to emit,
+                                   *   @ref ra8_book_image_pixfmt_t. 0 (the
+                                   *   zero-init default) is
+                                   *   @ref k_ra8_book_pixfmt_gray4 -- the 4-bpp
+                                   *   packing a grayscale panel wants;
+                                   *   @ref k_ra8_book_pixfmt_gray8 keeps the
+                                   *   lossless 8-bpp source for a deeper panel. */
 } ra8_rabook_pipeline_scratch_t;
 
 /**
