@@ -356,28 +356,32 @@ static void internal_program_line_limiters(const ra8_drw_line_t* line)
 [[nodiscard]] ra8_err_t ra8_drw_perf_read(ra8_drw_perfcounter_id_t id, uint32_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  ra8_err_t result = k_ra8_err_invalid_arg;
   /* HUM Ch 62.2.34 "PERFCOUNTk: Performance Counter k", p 3706 */
   if (id == k_ra8_drw_perfctr_1) {
-    *out = *ra8_drw_reg32(k_ra8_drw_off_perfcount1);
-    return k_ra8_ok;
+    *out   = *ra8_drw_reg32(k_ra8_drw_off_perfcount1);
+    result = k_ra8_ok;
+  } else if (id == k_ra8_drw_perfctr_2) {
+    *out   = *ra8_drw_reg32(k_ra8_drw_off_perfcount2);
+    result = k_ra8_ok;
+  } else {
+    result = k_ra8_err_invalid_arg;
   }
-  if (id == k_ra8_drw_perfctr_2) {
-    *out = *ra8_drw_reg32(k_ra8_drw_off_perfcount2);
-    return k_ra8_ok;
-  }
-  return k_ra8_err_invalid_arg;
+  return result;
 }
 
 [[nodiscard]] ra8_err_t ra8_drw_perf_reset(ra8_drw_perfcounter_id_t id)
 {
+  ra8_err_t result = k_ra8_err_invalid_arg;
   /* HUM Ch 62.2.34 "PERFCOUNTk: Performance Counter k", p 3706 */
   if (id == k_ra8_drw_perfctr_1) {
     *ra8_drw_reg32(k_ra8_drw_off_perfcount1) = 0UL;
-    return k_ra8_ok;
-  }
-  if (id == k_ra8_drw_perfctr_2) {
+    result                                   = k_ra8_ok;
+  } else if (id == k_ra8_drw_perfctr_2) {
     *ra8_drw_reg32(k_ra8_drw_off_perfcount2) = 0UL;
-    return k_ra8_ok;
+    result                                   = k_ra8_ok;
+  } else {
+    result = k_ra8_err_invalid_arg;
   }
-  return k_ra8_err_invalid_arg;
+  return result;
 }

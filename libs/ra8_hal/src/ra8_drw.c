@@ -224,11 +224,14 @@ uint32_t ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect)
 
 bool ra8_drw_internal_rect_off_surface(const ra8_drw_rect_t* rect)
 {
-  if (rect->x < 0 || rect->y < 0) {
-    return true;
+  bool off = false;
+  if ((rect->x < 0) || (rect->y < 0)) {
+    off = true;
+  } else {
+    const uint32_t right = (uint32_t)(int32_t)rect->x + (uint32_t)rect->width_px;
+    off                  = (right > s_drw_pitch_px);
   }
-  const uint32_t right = (uint32_t)(int32_t)rect->x + (uint32_t)rect->width_px;
-  return right > s_drw_pitch_px;
+  return off;
 }
 
 /** @brief Implementation of `ra8_drw_internal_color1_write()` -- MMIO + shadow. */
@@ -325,13 +328,16 @@ static inline uint32_t internal_pack_readformat(ra8_drw_readformat_t fmt)
 RA8_INTERNAL
 static inline uint32_t internal_bytes_per_px(ra8_drw_writeformat_t fmt)
 {
+  /* RGB565 / ARGB4444 default to 16 bpp; the two exclusive overrides below
+   * pick 8 or 32 bpp when they match. */
+  uint32_t bytes = (uint32_t)k_ra8_drw_bytes_px_16bpp;
   if (fmt == k_ra8_drw_writefmt_a8) {
-    return (uint32_t)k_ra8_drw_bytes_px_8bpp;
+    bytes = (uint32_t)k_ra8_drw_bytes_px_8bpp;
   }
   if (fmt == k_ra8_drw_writefmt_argb8888) {
-    return (uint32_t)k_ra8_drw_bytes_px_32bpp;
+    bytes = (uint32_t)k_ra8_drw_bytes_px_32bpp;
   }
-  return (uint32_t)k_ra8_drw_bytes_px_16bpp;
+  return bytes;
 }
 
 /**
@@ -440,6 +446,43 @@ void internal_program_rect_bbox(const ra8_drw_rect_t* rect)
   *ra8_drw_reg32(k_ra8_drw_off_l4yadd) = 0UL;
 }
 
+/**
+ * @brief Program the optional CACHECTL and DBWER features from the config.
+ *
+ * @details
+ * Applies the two boolean surface options that ::ra8_drw_init exposes: the
+ * DRW cache enable (CACHECTL) and the bufferable-write enable (DBWER). Both
+ * are all-or-nothing writes derived directly from the caller's config, split
+ * out so ::ra8_drw_init stays under the function-size threshold.
+ *
+ * @param[in] cfg Validated driver configuration (already null-checked).
+ *
+ * @pre ``cfg`` is non-null (::ra8_drw_init guarantees this).
+ * @pre The DRW clock is running (module-stop already cancelled).
+ * @post CACHECTL reflects ``cfg->enable_caches``.
+ * @post DBWER reflects ``cfg->enable_buffered_writes``.
+ *
+ * @note Internal helper, not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_drw_program_cache_options(const ra8_drw_config_t* cfg)
+{
+  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
+  if (cfg->enable_caches) {
+    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = k_ra8_drw_cachectl_all_en;
+  } else {
+    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = 0UL;
+  }
+
+  /* HUM Ch 62.2.35 "DBWER: DRW Bufferable Write Enable", p 3707 */
+  if (cfg->enable_buffered_writes) {
+    *ra8_drw_reg32(k_ra8_drw_off_dbwer) = k_ra8_drw_dbwer_bwe;
+  } else {
+    *ra8_drw_reg32(k_ra8_drw_off_dbwer) = 0UL;
+  }
+}
+
 /* =============================================================================
  * Lifecycle
  * =============================================================================
@@ -489,19 +532,7 @@ void internal_program_rect_bbox(const ra8_drw_rect_t* rect)
   *ra8_drw_reg32(k_ra8_drw_off_control2) = s_drw_control2;
   s_drw_color1                           = 0U;
 
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  if (cfg->enable_caches) {
-    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = k_ra8_drw_cachectl_all_en;
-  } else {
-    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = 0UL;
-  }
-
-  /* HUM Ch 62.2.35 "DBWER: DRW Bufferable Write Enable", p 3707 */
-  if (cfg->enable_buffered_writes) {
-    *ra8_drw_reg32(k_ra8_drw_off_dbwer) = k_ra8_drw_dbwer_bwe;
-  } else {
-    *ra8_drw_reg32(k_ra8_drw_off_dbwer) = 0UL;
-  }
+  internal_drw_program_cache_options(cfg);
 
   ra8_log_info_val(s_tag, "drw_init fb", (uint32_t)cfg->framebuffer_addr);
   return k_ra8_ok;
@@ -654,19 +685,19 @@ void ra8_drw_dispatch(void)
 {
   if (!flush_fb && !flush_texture) {
     ra8_log_warn(s_tag, "cache_flush: nothing to flush");
-    return k_ra8_ok;
+  } else {
+    /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
+    /* Preserve enable bits, OR in the requested flush pulses. */
+    const uint32_t cur = *ra8_drw_reg32(k_ra8_drw_off_cachectl);
+    uint32_t       nxt = cur;
+    if (flush_fb) {
+      nxt |= k_ra8_drw_cachectl_cflushfx;
+    }
+    if (flush_texture) {
+      nxt |= k_ra8_drw_cachectl_cflushtx;
+    }
+    *ra8_drw_reg32(k_ra8_drw_off_cachectl) = nxt;
   }
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  /* Preserve enable bits, OR in the requested flush pulses. */
-  const uint32_t cur = *ra8_drw_reg32(k_ra8_drw_off_cachectl);
-  uint32_t       nxt = cur;
-  if (flush_fb) {
-    nxt |= k_ra8_drw_cachectl_cflushfx;
-  }
-  if (flush_texture) {
-    nxt |= k_ra8_drw_cachectl_cflushtx;
-  }
-  *ra8_drw_reg32(k_ra8_drw_off_cachectl) = nxt;
   return k_ra8_ok;
 }
 
