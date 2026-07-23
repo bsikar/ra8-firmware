@@ -151,6 +151,14 @@ static void build_font_epub(void)
 
 /**
  * @test ra8_epub enumerates the manifest font item and extracts its bytes.
+ *
+ * @par MC/DC:
+ * (no compound decision is varied by this case -- it enumerates the single
+ * embedded face, CRC-checks the extracted bytes against the fixture, and flips the
+ * single-condition `if (idx >= book->embedded_font_count)` guard (idx 0 extracts;
+ * idx 1 -> out_of_range). The font-validation compound decision `offset < 0 ||
+ * stbtt_InitFont(...) == 0` is exercised in ra8_reflow_bind_font by
+ * test_bind_measure_and_mcdc, not here.)
  */
 static void test_enumerate_and_extract(void)
 {

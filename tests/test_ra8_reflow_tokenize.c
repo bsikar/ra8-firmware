@@ -292,6 +292,18 @@ static bool text_has(const char* needle)
 /**
  * @test test_display_none_suppressed
  * @brief `display:none` (#140) drops the element's whole subtree from the stream.
+ *
+ * @par MC/DC:
+ * Decision (image-token reduction, enclosing fn test_display_none_suppressed):
+ * `saw_img || (tokens[i].kind == k_ra8_reflow_tok_image)` (2 conditions, OR).
+ * The hidden `<img>` is suppressed, so no image token survives and this case
+ * observes only the all-false control (asserting !saw_img); N+1 = 3:
+ *  - V1 saw_img=F, kind!=image -> C1=F, C2=F -> F (every surviving token here).
+ *  - V2 saw_img=T, kind any    -> C1=T -> T (an image already seen).
+ *  - V3 saw_img=F, kind==image -> C1=F, C2=T -> T (first surviving image).
+ * V2 / V3 (the true arms) are exercised where an `<img>` is NOT suppressed, in
+ * walk_check_void_selfclose under test_walk_end_to_end. The text_has() checks
+ * (visibleone / visibletwo kept, hiddentext dropped) confirm subtree suppression.
  */
 static void test_display_none_suppressed(void)
 {
@@ -347,6 +359,15 @@ static uint32_t first_text_color(void)
 /**
  * @test test_external_stylesheet
  * @brief `<link rel=stylesheet>` rules apply, and a later inline `<style>` wins.
+ *
+ * @par MC/DC:
+ * (no independent MC/DC vectors contributed here -- this case checks that an
+ * external `<link rel=stylesheet>` applies (colour changes once a loader is
+ * bound) and that a later inline `<style>` overrides it by document order. The
+ * 3-condition load guard in priv_handle_link,
+ * `find(rel) && find(href) && rel_is_stylesheet`, is driven only at its all-true
+ * and loader-absent assignments here; its independence vectors are proven in
+ * test_external_link_mcdc.)
  */
 static void test_external_stylesheet(void)
 {

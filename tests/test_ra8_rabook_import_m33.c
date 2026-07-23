@@ -585,6 +585,13 @@ static void make_cookie(ra8_rabook_import_compiler_m33_ctx_t* ctx,
 
 /**
  * @test A golden-returning dispatch yields a validated, byte-identical .rabook.
+ *
+ * @par MC/DC:
+ * (no compound decision is exercised by this case -- the golden dispatch returns
+ * k_ra8_ok, so `s_offload_or_fallback` short-circuits at `if (err == k_ra8_ok)`
+ * and the module's sole compound `s_is_dispatch_failure` is never reached; every
+ * guard on this happy path -- the RA8_CHECK_NULL_PTR argument checks, the
+ * `size > cap` transport check, the `err != k_ra8_ok` checks -- is single-condition)
  */
 static void test_m33_adapter_writes_validated_blob(void)
 {
@@ -612,6 +619,16 @@ static void test_m33_adapter_writes_validated_blob(void)
 
 /**
  * @test A corrupt dispatched blob is rejected by validation and not written.
+ *
+ * @par MC/DC:
+ * (no independent MC/DC contribution -- the dispatch returns k_ra8_ok but the
+ * blob fails `ra8_book_validate`, so `s_fallback_or_propagate` reaches the
+ * module's sole compound `s_is_dispatch_failure(err)` =
+ * `(err == k_ra8_err_hw_error) || (err == k_ra8_err_no_mem)` only at its
+ * both-false control: the validation error is outside {hw_error, no_mem}, the
+ * guard is false, and the error propagates with no output written. That
+ * decision's N+1 = 3 vectors live in test_m33_adapter_falls_back_on_timeout,
+ * _falls_back_on_oom, and _no_fallback_on_other_error)
  */
 static void test_m33_adapter_rejects_corrupt_blob(void)
 {
@@ -632,6 +649,17 @@ static void test_m33_adapter_rejects_corrupt_blob(void)
 
 /**
  * @test A dispatch error propagates verbatim and writes nothing.
+ *
+ * @par MC/DC:
+ * Decision: `s_is_dispatch_failure(err)` =
+ * `(err == k_ra8_err_hw_error) || (err == k_ra8_err_no_mem)` (2 conditions, OR;
+ * ra8_rabook_import_compiler.c). The mock returns k_ra8_err_hw_error with no
+ * fallback bound, so this case drives C1=T (hw_error -> short-circuit -> true) --
+ * the same true leg as test_m33_adapter_falls_back_on_timeout; the N+1 = 3 set is
+ * completed by _falls_back_on_oom (C2=T) and _no_fallback_on_other_error (both
+ * false). This case additionally drives the single-condition
+ * `ctx->fallback == nullptr` propagate arm (fallback NULL -> err returned
+ * verbatim, no output written).
  */
 static void test_m33_adapter_propagates_dispatch_error(void)
 {
@@ -652,6 +680,12 @@ static void test_m33_adapter_propagates_dispatch_error(void)
 
 /**
  * @test NULL arguments and a NULL cookie field are rejected with null-ptr.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this case -- it drives the single-condition
+ * RA8_CHECK_NULL_PTR guards of ra8_rabook_import_compile_adapter_m33: a NULL
+ * compile_ctx and a NULL `ctx->dispatch` cookie field each return
+ * k_ra8_err_null_ptr; no `&&` or `||` decision is reached)
  */
 static void test_m33_adapter_null_guards(void)
 {
@@ -673,6 +707,16 @@ static void test_m33_adapter_null_guards(void)
 
 /**
  * @test A missing source `.epub` surfaces the read error and writes nothing.
+ *
+ * @par MC/DC:
+ * (no independent MC/DC contribution -- the missing source makes `ra8_fs_open`
+ * fail inside `s_read_whole_file`, so `s_fallback_or_propagate` reaches the
+ * module's sole compound `s_is_dispatch_failure(err)` =
+ * `(err == k_ra8_err_hw_error) || (err == k_ra8_err_no_mem)` only at its
+ * both-false control: the open error is outside {hw_error, no_mem}, the guard is
+ * false, and the error propagates with no output written. That decision's
+ * N+1 = 3 vectors live in test_m33_adapter_falls_back_on_timeout,
+ * _falls_back_on_oom, and _no_fallback_on_other_error)
  */
 static void test_m33_adapter_handles_missing_source(void)
 {

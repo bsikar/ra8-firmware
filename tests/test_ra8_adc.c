@@ -119,6 +119,12 @@ static uint32_t adc_adprc_of(uint8_t ch)
   return (opcrc & k_ra8_addopcrc_mask_adprc) >> (uint32_t)k_ra8_addopcrc_bit_adprc;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("adc init happy");

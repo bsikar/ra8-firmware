@@ -33,6 +33,13 @@ typedef enum : uint8_t {
 /** @brief Local cadence used by the cadence/MC-DC tests. */
 enum : uint16_t { k_test_clean_every = 4U /**< Test clean every. */ };
 
+/**
+ * @test test_policy_init_validates
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises display_policy_init's null
+ * guard, the out-of-range `kind` check, and the clean_every min/max clamp, all
+ * single-condition; no `&&` or `||` in the code under test that this case touches)
+ */
 static void test_policy_init_validates(void)
 {
   TEST_BEGIN("policy init: null, bad kind, clamp");
@@ -49,6 +56,14 @@ static void test_policy_init_validates(void)
   TEST_END("policy init: null, bad kind, clamp");
 }
 
+/**
+ * @test test_policy_decide_validates
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises display_policy_decide's two
+ * null guards and the out-of-range event check, all single-condition; the calls
+ * return before reaching priv_decide_fast_clean's compound clean-turn decision;
+ * no `&&` or `||` in the code under test that this case touches)
+ */
 static void test_policy_decide_validates(void)
 {
   TEST_BEGIN("policy decide: null + bad event");
@@ -61,6 +76,14 @@ static void test_policy_decide_validates(void)
   TEST_END("policy decide: null + bad event");
 }
 
+/**
+ * @test test_policy_open_is_init
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the open-event INIT path for
+ * all three strategies; the `event == k_display_event_open` check is
+ * single-condition and returns before the strategy switch or the fast_clean
+ * compound; no `&&` or `||` in the code under test that this case touches)
+ */
 static void test_policy_open_is_init(void)
 {
   TEST_BEGIN("policy: open -> INIT full, resets counter (every strategy)");
@@ -80,6 +103,14 @@ static void test_policy_open_is_init(void)
   TEST_END("policy: open -> INIT full, resets counter (every strategy)");
 }
 
+/**
+ * @test test_policy_fast_only
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the fast_only arm of
+ * display_policy_decide's `kind` switch on turn and chapter events; a switch case
+ * is not a compound boolean; no `&&` or `||` in the code under test that this
+ * case touches)
+ */
 static void test_policy_fast_only(void)
 {
   TEST_BEGIN("policy fast_only: always A2 partial on turns + chapters");
@@ -96,6 +127,13 @@ static void test_policy_fast_only(void)
   TEST_END("policy fast_only: always A2 partial on turns + chapters");
 }
 
+/**
+ * @test test_policy_quality
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the quality arm of
+ * display_policy_decide's `kind` switch on turn events; a switch case is not a
+ * compound boolean; no `&&` or `||` in the code under test that this case touches)
+ */
 static void test_policy_quality(void)
 {
   TEST_BEGIN("policy quality: always GC16 full");
@@ -110,6 +148,20 @@ static void test_policy_quality(void)
   TEST_END("policy quality: always GC16 full");
 }
 
+/**
+ * @test test_policy_fast_clean_cadence
+ * @par MC/DC:
+ * Decision: `clean = (turns_since_clean + 1 >= clean_every) || (event == chapter)`
+ * (2 conditions, function `priv_decide_fast_clean`,
+ * libs/ra8_display_pal/src/ra8_display_pal_policy.c). With clean_every = 4 this
+ * test drives only turn events, so the chapter condition stays false throughout:
+ * - V1 next=1 (>=4 false), event=turn (chapter false) -> clean=false -> A2 partial.
+ * - V2 next=4 (>=4 true),  event=turn (chapter false) -> clean=true  -> GC16 full.
+ * V1+V2 prove the cadence condition independently flips the outcome. The chapter
+ * condition's independent vector (next=1 false, chapter true -> clean=true) is
+ * carried by the sibling test_mcdc_clean_turn_decision (its V3). N+1 = 3 across
+ * both tests.
+ */
 static void test_policy_fast_clean_cadence(void)
 {
   TEST_BEGIN("policy fast_clean: A2 x (N-1) then GC16 clean, repeating");
@@ -177,6 +229,18 @@ static void test_mcdc_clean_turn_decision(void)
   TEST_END("policy fast_clean: MC/DC clean-turn decision");
 }
 
+/**
+ * @test test_policy_full_rect
+ * @par MC/DC:
+ * Decision: `if ((w == 0U) || (h == 0U))` (2 conditions, function
+ * `display_policy_full_rect`, libs/ra8_display_pal/src/ra8_display_pal_policy.c).
+ * - V1 w=100, h=50 -> C1=false, C2=false -> false (rect filled, k_ra8_ok).
+ * - V2 w=0,   h=50 -> C1=true shorts     -> true  (k_ra8_err_invalid_arg).
+ * - V3 w=100, h=0  -> C1=false, C2=true  -> true  (k_ra8_err_invalid_arg).
+ * V1+V2 prove w independent; V1+V3 prove h independent. N+1 = 3 vectors.
+ * (The leading null-out call returns at the RA8_CHECK_NULL_PTR guard, before this
+ * decision.)
+ */
 static void test_policy_full_rect(void)
 {
   TEST_BEGIN("policy full_rect: null, zero dims, valid");

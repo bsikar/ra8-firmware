@@ -266,6 +266,12 @@ static uint32_t lr_compose_crc(uint32_t* buf, const ra8_app_registry_t* reg)
  * byte-identical (the run-time core-uninstallable invariant, seen in pixels).
  * Uninstalling the removable `settings` app drops its tile, yielding the
  * distinct frame-B golden -- the launcher visibly reflects the registry change.
+ *
+ * @par MC/DC:
+ * (no compound decision is under test in this case -- it pins two CRC-32 goldens
+ * and the registry-reflects invariant (core uninstall refused -> byte-identical;
+ * removable uninstall -> distinct golden). The launcher/app logic's decisions live
+ * in ra8_app and ra8_widget, each MC/DC-tested in its own TU.)
  */
 static void test_launcher_render_golden(void)
 {

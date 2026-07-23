@@ -153,6 +153,13 @@ static void test_periph_init_idempotent_second_call(void)
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decision is under test in this case -- it re-exercises the
+ * idempotent fast path; the sole decision `if (s_initialized)` in
+ * ra8_nsc_periph_init() is single-condition, and its two-vector MC/DC is covered
+ * by test_periph_init_first_call (false) + test_periph_init_idempotent_second_call
+ * (true). No `&&` or `||` is involved.)
  */
 static void test_periph_init_always_ok_after_first(void)
 {
