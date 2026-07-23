@@ -693,9 +693,10 @@ libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-9.2	3
 libs/ra8_hal/src/ra8_layer3_switch.c	misra-c2012-15.5	10
 libs/ra8_hal/src/ra8_layer3_switch.c	misra-c2012-8.4	5
 libs/ra8_hal/src/ra8_layer3_switch.c	misra-c2012-9.2	1
-libs/ra8_hal/src/ra8_lpm.c	misra-c2012-14.2	1
-libs/ra8_hal/src/ra8_lpm.c	misra-c2012-15.5	63
+libs/ra8_hal/src/ra8_lpm.c	misra-c2012-14.2	2
+libs/ra8_hal/src/ra8_lpm.c	misra-c2012-15.5	44
 libs/ra8_hal/src/ra8_lpm.c	misra-c2012-16.2	6
+libs/ra8_hal/src/ra8_lpm_graphics.c	misra-c2012-15.5	8
 libs/ra8_hal/src/ra8_lvd.c	misra-c2012-15.5	26
 libs/ra8_hal/src/ra8_lvd.c	misra-c2012-20.1	1
 libs/ra8_hal/src/ra8_lvd.c	misra-c2012-8.4	5
