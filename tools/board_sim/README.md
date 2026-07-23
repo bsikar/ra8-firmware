@@ -16,8 +16,13 @@ binary, so it exercises the genuine bring-up and peripheral-driver code path --
 the panel/UI you see is exactly what the flashed firmware draws.
 
 Standalone tool under `tools/`. Needs Unicorn + Capstone: `brew install unicorn
-capstone` on macOS, or `libunicorn-dev` + `libcapstone-dev` (a source install
-works too) on Linux, discovered via CMake's `find_library`/`find_path`. The live
+capstone` on macOS. On Linux, Capstone is the distro `libcapstone-dev` package
+but **Unicorn is version-pinned** -- its decode of Armv8.1-M (Helium/MVE)
+differs across releases, so an unpinned emulator makes the same commit pass on
+one box and fault on another (#354). Provision the pin (currently 2.1.4) with
+`bash scripts/ci/install_unicorn.sh` (see `docs/TOOLCHAIN.md`); the board-sim
+gates fail loudly if the runtime Unicorn is not the pin. Both are discovered via
+CMake's `find_library`/`find_path`. The live
 board view (`--view`) is a macOS Cocoa window; every other path -- headless
 boot, the MMIO report, `--ppm`, the console capture -- builds and runs headless
 on Linux as well (the CMake links a no-op window shim off the APPLE path and
@@ -329,9 +334,13 @@ core** (CPU1's real code in a second Unicorn engine over shared SRAM ->
 `g_cpu1_pingpong_mismatch == 0`), and `mpu_partition_simple` faults + recovers
 under the now-**enforced Armv8-M MPU** (`mpu: fault handled, recovered`).
 
-Host-Unicorn note: the CI runner's Unicorn (2.0.1) does not decode the
-DSB/DMB/ISB barriers (handled as NOPs here) and mis-delivers the hand-rolled
-PendSV entry on a ThreadX first context switch (`UC_ERR_EXCEPTION`). The
-ThreadX/USBX examples therefore run on a newer Unicorn (macOS / a source build),
-not the Linux smoke gate; the gate covers the bare-metal apps that behave
-identically across versions.
+Host-Unicorn note: Unicorn is version-pinned (2.1.4) across every board_sim
+environment -- dev box, devcontainer and CI runner (`docs/TOOLCHAIN.md`, #354) --
+so the Armv8.1-M decode is identical everywhere. An earlier version of this note
+claimed the runner ran 2.0.1; it did not. The runner carried a source-built
+2.1.4 while the dev box and devcontainer ran 2.0.1, and 2.0.1 raises a spurious
+`EXCP_NOCP` on the Helium/MVE store family -- which is exactly what made the same
+commit fault locally and pass in CI. On the pinned build those stores decode
+natively; any residual ThreadX first-context-switch PendSV misbehaviour is a
+board_sim defect around the ICSR `PENDSVSET` write, not a Unicorn one, and is
+tracked separately.

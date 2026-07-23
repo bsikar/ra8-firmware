@@ -67,15 +67,22 @@ ARG ARM_GCC_RELEASE=13.3.rel1
 ARG ARM_GCC_SHA256_X86_64=95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97f9c8d83af4
 ARG ARM_GCC_SHA256_AARCH64=c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764
 
-# libunicorn-dev / libcapstone-dev are the Unicorn + Capstone headers that
-# tools/board_sim includes, and libcurl4-openssl-dev is the libcurl header
-# tools/media_dl's network backend includes. `make ci` lints tools/ (issue
-# #296), so the tidy gate needs those headers present inside the container even
-# though the container builds neither tool itself. A missing header does not
-# fail loudly -- clang-tidy emits clang-diagnostic-error and never lints that
-# TU -- so keep this list in step with the runner install step in
-# .github/workflows/firmware.yml and the pkg-config probe in
-# scripts/checks/clang_tidy.sh.
+# Unicorn CPU emulator -- pinned by URL + sha256 (built from source below) so
+# board_sim decodes Armv8.1-M (Helium/MVE) IDENTICALLY to the self-hosted
+# runner. An unpinned Unicorn is exactly the #354 skew (runner 2.1.4 vs an old
+# 2.0.1). Keep these two in step with RA8_UNICORN_* in scripts/ci/unicorn_pin.sh.
+ARG UNICORN_VERSION=2.1.4
+ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce5601f4
+
+# libcapstone-dev is the Capstone header that tools/board_sim includes (for
+# disassembly only -- NOT the decode variable), and libcurl4-openssl-dev is the
+# libcurl header tools/media_dl's network backend includes. `make ci` lints
+# tools/ (issue #296), so the tidy gate needs those headers present inside the
+# container even though the tidy pass builds neither tool. A missing header does
+# not fail loudly -- clang-tidy emits clang-diagnostic-error and never lints
+# that TU -- so keep this list in step with the runner install step in
+# .github/workflows/firmware.yml. Unicorn is NOT here: it is the pinned source
+# build below (docs/TOOLCHAIN.md), not an apt package.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
@@ -96,7 +103,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libcapstone-dev \
       libclang-rt-18-dev \
       libcurl4-openssl-dev \
-      libunicorn-dev \
       llvm-18 \
       locales \
       ninja-build \
@@ -135,6 +141,26 @@ RUN set -eux; \
     rm /tmp/armgcc.tar.xz; \
     /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-gcc -dumpfullversion
 ENV PATH="/opt/arm-gnu-toolchain-13.3/bin:${PATH}"
+
+# Unicorn ${UNICORN_VERSION} from source -> /usr/local (the runner's layout), so
+# `make ci`'s board_sim gates decode Armv8.1-M byte-identically to CI. Pinned by
+# URL + sha256 so a corrupted/swapped/regenerated download fails loudly. Only
+# the arm target is built (board_sim emulates the Cortex-M core), which keeps
+# the build small without changing the arm decode. Verified by re-reading the
+# installed header's UC_API_* version afterwards.
+RUN set -eux; \
+    url="https://github.com/unicorn-engine/unicorn/archive/refs/tags/${UNICORN_VERSION}.tar.gz"; \
+    curl -fsSL "$url" -o /tmp/unicorn.tar.gz; \
+    echo "${UNICORN_SHA256}  /tmp/unicorn.tar.gz" | sha256sum -c -; \
+    tar -xzf /tmp/unicorn.tar.gz -C /tmp; \
+    cmake -S "/tmp/unicorn-${UNICORN_VERSION}" -B /tmp/unicorn-build \
+      -DCMAKE_BUILD_TYPE=Release -DUNICORN_ARCH=arm -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_INSTALL_PREFIX=/usr/local; \
+    cmake --build /tmp/unicorn-build --parallel "$(nproc)"; \
+    cmake --install /tmp/unicorn-build; \
+    ldconfig; \
+    rm -rf /tmp/unicorn.tar.gz "/tmp/unicorn-${UNICORN_VERSION}" /tmp/unicorn-build; \
+    grep -E 'UC_API_(MAJOR|MINOR|PATCH)' /usr/local/include/unicorn/unicorn.h
 
 # Sanity-check that the clang-18 profile runtime is present. MC/DC
 # instrumented binaries link against libclang_rt.profile-<arch>.a; if

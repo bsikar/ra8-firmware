@@ -165,8 +165,14 @@ jobs:
       - name: Install clang-tidy tool dependencies
         run: |
           # ci-parity: infra -- installs headers; runs no project check
+          # Unicorn is the pinned source build in /usr/local (docs/TOOLCHAIN.md);
+          # accept it there so tidy lints against the pin and does not pull a
+          # stale apt header. The apt fallback is a last resort for a fresh
+          # runner -- header VERSION does not change a lint result, only decode.
           missing=""
-          [ -f /usr/include/unicorn/unicorn.h ] || missing="$missing libunicorn-dev"
+          { [ -f /usr/include/unicorn/unicorn.h ] \
+            || [ -f /usr/local/include/unicorn/unicorn.h ]; } \
+            || missing="$missing libunicorn-dev"
           [ -f /usr/include/capstone/capstone.h ] || missing="$missing libcapstone-dev"
           pkg-config --exists libcurl || missing="$missing libcurl4-openssl-dev"
           if [ -n "$missing" ]; then

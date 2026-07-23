@@ -122,10 +122,12 @@ target_include_directories(
 )
 
 # Unicorn + Capstone discovery: Homebrew prefix on macOS (unchanged); on Linux
-# use CMake's native find_* (the self-hosted CI runner has no pkg-config). It
-# finds a system install -- the board-sim smoke gate apt-installs libunicorn-dev
-# + libcapstone-dev (headers under /usr/include/{unicorn,capstone}); a custom
-# prefix still works via CMAKE_PREFIX_PATH. Cocoa is linked on the APPLE path only.
+# use CMake's native find_* (works with or without pkg-config). Capstone is the
+# distro -dev package (disassembly only). Unicorn is the PINNED source build in
+# /usr/local (docs/TOOLCHAIN.md, #354): find_library(unicorn) resolves it there
+# ahead of any stale distro package, and the board-sim gates fail loudly via
+# check_unicorn_version.sh if the runtime Unicorn is not the pin. A custom prefix
+# still works via CMAKE_PREFIX_PATH. Cocoa is linked on the APPLE path only.
 if(APPLE)
   target_include_directories(board_sim PRIVATE ${BREW}/include)
   target_link_directories(board_sim PRIVATE ${BREW}/lib)
