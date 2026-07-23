@@ -21,6 +21,5 @@
 #
 # Re-baseline after burning debt down (causes are carried forward):
 #   bash scripts/sim/matrix.sh; python3 scripts/checks/matrix_ratchet.py --update
-# total: 2
+# total: 1
 import_reader	FAULT	reaches 'card ready' + 'volume mounted', then 'FAIL import compile' and traps; wants a pre-populated library card (cf. sd_font_render's baked FONT.OTF image)
-secure_boot_ns_hil	FAULT	board_sim --ns loader gap (#404): the .ns_bss zeroing loop faults at 0x32100052 because the literal at 0x3210006c reads as zero -- the NS image tail is not populated

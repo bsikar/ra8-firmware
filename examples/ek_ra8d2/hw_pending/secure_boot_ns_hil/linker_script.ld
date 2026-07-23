@@ -135,9 +135,17 @@ SECTIONS
      * Flashed into NS_LOAD (Secure MRAM); the secure boot copies
      * [g_ra8_ls_ns_load_start, g_ra8_ls_ns_load_end) to g_ra8_ls_ns_run_start
      * (0x3210_0000) after SRAMSABAR2 marks SRAM2 Non-secure, then BLXNS-es
-     * to slot 1 of ``g_ra8_ns_vector_table`` (VMA 0x3210_0000). The NS image
-     * carries its own ThreadX kernel (libthreadx_ns.a, routed below) + libc;
-     * it crosses into Secure only through the cmse_nonsecure_entry veneers. */
+     * to slot 1 of ``g_ra8_ns_vector_table`` (VMA 0x3210_0000).
+     *
+     * This is a TWO-IMAGE app: the Non-Secure half is a SEPARATE, minimal
+     * beacon ELF (ns_main.c linked with ns_image.ld) that carries NO libc and
+     * NO RTOS. Its bytes reach board_sim via --ns and the flash image via
+     * sign_and_merge.py; they are NOT part of this Secure ELF. So the .ns_*
+     * output sections below hold ONLY .ns_*-attributed input (none on the
+     * Secure side). They must NOT pull the Secure side own libc (memset,
+     * memcpy) into this region: that libc would overlap the beacon, and every
+     * veneered call would then branch into the NS image at run time. The
+     * Secure libc therefore stays in .text (MRAM). */
     .ns_vectors ORIGIN(NS_SRAM_RUN) : ALIGN(8)
     {
         g_ra8_ls_ns_run_start = .;
@@ -145,42 +153,28 @@ SECTIONS
         KEEP(*(.ns_vectors.*))
     } > NS_SRAM_RUN AT > NS_LOAD
 
-    /* Phase C (#96): ThreadX runs INSIDE the NS image, so libthreadx_ns.a and
-     * the libc/libgcc it pulls in must execute from the NS region too (NS
-     * cannot call Secure code without a veneer). Route those archives'
-     * sections here alongside ns_main.c. The Secure side is libc-clean, so
-     * libc lands only on the NS side. */
+    /* Only .ns_*-attributed input lands here. This minimal two-image app has
+     * NO Secure-side .ns_text/.ns_data, so these output sections are empty and
+     * the beacon (supplied via --ns / the merged flash image) owns the SRAM2
+     * run region alone. Deliberately NOT routing *libc.a / *libthreadx_ns.a
+     * here: the Secure side DOES use libc (the crypto verify), and pulling it
+     * into this region would place that libc at the beacon addresses. */
     .ns_text : ALIGN(8)
     {
         *(.ns_text)
         *(.ns_text.*)
-        *libthreadx_ns.a:*(.text .text.* .glue_7 .glue_7t)
-        *libc.a:*(.text .text.*)
-        *libc_nano.a:*(.text .text.*)
-        *libg_nano.a:*(.text .text.*)
-        *libm.a:*(.text .text.*)
-        *libnosys.a:*(.text .text.*)
     } > NS_SRAM_RUN AT > NS_LOAD
 
     .ns_rodata : ALIGN(8)
     {
         *(.ns_rodata)
         *(.ns_rodata.*)
-        *libthreadx_ns.a:*(.rodata .rodata.*)
-        *libc.a:*(.rodata .rodata.*)
-        *libc_nano.a:*(.rodata .rodata.*)
-        *libg_nano.a:*(.rodata .rodata.*)
-        *libm.a:*(.rodata .rodata.*)
     } > NS_SRAM_RUN AT > NS_LOAD
 
     .ns_data : ALIGN(8)
     {
         *(.ns_data)
         *(.ns_data.*)
-        *libthreadx_ns.a:*(.data .data.*)
-        *libc.a:*(.data .data.*)
-        *libc_nano.a:*(.data .data.*)
-        *libg_nano.a:*(.data .data.*)
         g_ra8_ls_ns_run_end = .;
     } > NS_SRAM_RUN AT > NS_LOAD
 
@@ -193,14 +187,8 @@ SECTIONS
         g_ra8_ls_ns_bss_start = .;
         *(.ns_bss)
         *(.ns_bss.*)
-        *libthreadx_ns.a:*(.bss .bss.* COMMON)
-        *libc.a:*(.bss .bss.* COMMON)
-        *libc_nano.a:*(.bss .bss.* COMMON)
-        *libg_nano.a:*(.bss .bss.* COMMON)
         g_ra8_ls_ns_bss_end = .;
         . = ALIGN(8);
-        /* ThreadX gets the rest of NS_SRAM_RUN as its free pool (thread
-         * stacks etc.), passed via _tx_initialize_unused_memory. */
         g_ra8_threadx_unused_memory_start = .;
     } > NS_SRAM_RUN
 
