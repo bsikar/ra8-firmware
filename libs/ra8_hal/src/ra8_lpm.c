@@ -164,6 +164,7 @@ static inline void internal_set_sleepdeep(bool enable)
  */
 static ra8_err_t internal_validate_mode(ra8_sleep_mode_t mode)
 {
+  ra8_err_t result = k_ra8_err_invalid_arg;
   switch (mode) {
     case k_ra8_sleep_mode_sleep:
     case k_ra8_sleep_mode_deep_sleep:
@@ -171,10 +172,13 @@ static ra8_err_t internal_validate_mode(ra8_sleep_mode_t mode)
     case k_ra8_sleep_mode_deep_standby_1:
     case k_ra8_sleep_mode_deep_standby_2:
     case k_ra8_sleep_mode_deep_standby_3:
-      return k_ra8_ok;
+      result = k_ra8_ok;
+      break;
     default:
-      return k_ra8_err_invalid_arg;
+      result = k_ra8_err_invalid_arg;
+      break;
   }
+  return result;
 }
 
 /**
@@ -195,26 +199,34 @@ static ra8_err_t internal_validate_mode(ra8_sleep_mode_t mode)
  */
 static ra8_lpm_off_t internal_clock_offset(ra8_lpm_clock_t clock)
 {
+  ra8_lpm_off_t off = k_ra8_lpm_mococr_off;
   switch (clock) {
     case k_ra8_lpm_clock_moco:
       /* HUM Ch 11.2.18 "SBYCR : Standby Control Register", p 456 */
-      return k_ra8_lpm_mococr_off;
+      off = k_ra8_lpm_mococr_off;
+      break;
     case k_ra8_lpm_clock_hoco:
       /* HUM Ch 11.2.18 "SBYCR : Standby Control Register", p 456 */
-      return k_ra8_lpm_hococr_off;
+      off = k_ra8_lpm_hococr_off;
+      break;
     case k_ra8_lpm_clock_loco:
       /* HUM Ch 11.2.21 "DPSBYCR : Deep Software Standby Control", p 458 */
-      return k_ra8_lpm_lococr_off;
+      off = k_ra8_lpm_lococr_off;
+      break;
     case k_ra8_lpm_clock_main:
       /* HUM Ch 11.2.18 "SBYCR : Standby Control Register", p 456 */
-      return k_ra8_lpm_mosccr_off;
+      off = k_ra8_lpm_mosccr_off;
+      break;
     case k_ra8_lpm_clock_sub:
       /* HUM Ch 11.2.21 "DPSBYCR : Deep Software Standby Control", p 458 */
-      return k_ra8_lpm_sosccr_off;
+      off = k_ra8_lpm_sosccr_off;
+      break;
     case k_ra8_lpm_clock_count:
     default:
-      return k_ra8_lpm_mococr_off;
+      off = k_ra8_lpm_mococr_off;
+      break;
   }
+  return off;
 }
 
 /**
@@ -233,22 +245,28 @@ static ra8_lpm_off_t internal_clock_offset(ra8_lpm_clock_t clock)
  */
 static ra8_lpm_off_t internal_dpsier_offset(ra8_lpm_dpsier_idx_t idx)
 {
+  ra8_lpm_off_t off = k_ra8_lpm_dpsier3_off;
   switch (idx) {
     case k_ra8_lpm_dpsier_idx_0:
       /* HUM Ch 11.2.22 "DPSIER0", p 459 */
-      return k_ra8_lpm_dpsier0_off;
+      off = k_ra8_lpm_dpsier0_off;
+      break;
     case k_ra8_lpm_dpsier_idx_1:
       /* HUM Ch 11.2.23 "DPSIER1", p 459 */
-      return k_ra8_lpm_dpsier1_off;
+      off = k_ra8_lpm_dpsier1_off;
+      break;
     case k_ra8_lpm_dpsier_idx_2:
       /* HUM Ch 11.2.24 "DPSIER2", p 460 */
-      return k_ra8_lpm_dpsier2_off;
+      off = k_ra8_lpm_dpsier2_off;
+      break;
     case k_ra8_lpm_dpsier_idx_3:
     case k_ra8_lpm_dpsier_idx_count:
     default:
       /* HUM Ch 11.2.25 "DPSIER3", p 461 */
-      return k_ra8_lpm_dpsier3_off;
+      off = k_ra8_lpm_dpsier3_off;
+      break;
   }
+  return off;
 }
 
 /**
@@ -267,22 +285,28 @@ static ra8_lpm_off_t internal_dpsier_offset(ra8_lpm_dpsier_idx_t idx)
  */
 static ra8_lpm_off_t internal_dpsifr_offset(ra8_lpm_dpsier_idx_t idx)
 {
+  ra8_lpm_off_t off = k_ra8_lpm_dpsifr3_off;
   switch (idx) {
     case k_ra8_lpm_dpsier_idx_0:
       /* HUM Ch 11.2.22 "DPSIER0", p 459 */
-      return k_ra8_lpm_dpsifr0_off;
+      off = k_ra8_lpm_dpsifr0_off;
+      break;
     case k_ra8_lpm_dpsier_idx_1:
       /* HUM Ch 11.2.23 "DPSIER1", p 459 */
-      return k_ra8_lpm_dpsifr1_off;
+      off = k_ra8_lpm_dpsifr1_off;
+      break;
     case k_ra8_lpm_dpsier_idx_2:
       /* HUM Ch 11.2.24 "DPSIER2", p 460 */
-      return k_ra8_lpm_dpsifr2_off;
+      off = k_ra8_lpm_dpsifr2_off;
+      break;
     case k_ra8_lpm_dpsier_idx_3:
     case k_ra8_lpm_dpsier_idx_count:
     default:
       /* HUM Ch 11.2.25 "DPSIER3", p 461 */
-      return k_ra8_lpm_dpsifr3_off;
+      off = k_ra8_lpm_dpsifr3_off;
+      break;
   }
+  return off;
 }
 
 /**
@@ -305,20 +329,25 @@ static ra8_lpm_off_t internal_dpsifr_offset(ra8_lpm_dpsier_idx_t idx)
  */
 static ra8_lpm_off_t internal_dpsiegr_offset(ra8_lpm_dpsier_idx_t idx)
 {
+  ra8_lpm_off_t off = k_ra8_lpm_dpsiegr2_off;
   switch (idx) {
     case k_ra8_lpm_dpsier_idx_0:
       /* HUM Ch 11.2.22 "DPSIER0", p 459 */
-      return k_ra8_lpm_dpsiegr0_off;
+      off = k_ra8_lpm_dpsiegr0_off;
+      break;
     case k_ra8_lpm_dpsier_idx_1:
       /* HUM Ch 11.2.23 "DPSIER1", p 459 */
-      return k_ra8_lpm_dpsiegr1_off;
+      off = k_ra8_lpm_dpsiegr1_off;
+      break;
     case k_ra8_lpm_dpsier_idx_2:
     case k_ra8_lpm_dpsier_idx_3:
     case k_ra8_lpm_dpsier_idx_count:
     default:
       /* HUM Ch 11.2.24 "DPSIER2", p 460 */
-      return k_ra8_lpm_dpsiegr2_off;
+      off = k_ra8_lpm_dpsiegr2_off;
+      break;
   }
+  return off;
 }
 
 /* =============================================================================
@@ -651,28 +680,20 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs)
  * @brief Poll a PDCTRGD status flag until it reads the wanted level.
  *
  * @details
- * Busy-polls the graphics power-domain status register until the watched
- * bit reaches @p want_set, or until @p limit iterations have elapsed. The
- * loop is bounded by an iteration count rather than by wall time so the
- * wait carries a statically provable bound (NASA Rule 2); the HAL exposes
- * no timed primitive at this layer. The poll is read-only, so unlike the
- * PDCTRGD write paths it needs no PRCR unlock window.
+ * Busy-polls the read-only graphics power-domain status register for at most
+ * @p limit iterations (NASA Rule 2 bound); no PRCR window is needed.
  *
- * @param[in] mask    ``k_ra8_lpm_pdctr_*_mask`` bit to watch.
+ * @param[in] mask     ``k_ra8_lpm_pdctr_*_mask`` bit to watch.
  * @param[in] want_set ``true`` to wait for set, ``false`` for clear.
- * @param[in] limit   Iteration bound (NASA Rule 2).
- *
- * @return ``k_ra8_ok`` if the flag reached the level, else
- *         ``k_ra8_err_hw_timeout``.
+ * @param[in] limit    Iteration bound (NASA Rule 2).
+ * @return ``k_ra8_ok`` if the flag reached the level, else timeout.
  * @retval k_ra8_ok The watched bit read @p want_set within @p limit polls.
  * @retval k_ra8_err_hw_timeout The bit never reached @p want_set.
- *
  * @pre limit > 0.
  * @pre mask names exactly one PDCTRGD bit.
  * @post No register is written.
  * @post At most @p limit reads of PDCTRGD were issued.
- *
- * @note Thread safety: not thread-safe.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_pdctrgd_wait(uint8_t mask, bool want_set, uint32_t limit)
@@ -687,6 +708,97 @@ RA8_INTERNAL static ra8_err_t internal_pdctrgd_wait(uint8_t mask, bool want_set,
   return k_ra8_err_hw_timeout;
 }
 
+/**
+ * @brief Start MOCO so the graphics power-gating controller has a clock.
+ *
+ * @details HUM Ch 11.5.1 p 480 requires MOCOCR.MCSTP = 0 before power gating;
+ *          MOCOCR is PRC0 (CGC) so the clear runs in a CGC unlock window.
+ * @pre Called on the power-on path with the domain still gated.
+ * @pre Single-threaded init context or interrupts masked.
+ * @post MOCOCR.MCSTP is 0 (MOCO running).
+ * @post PRCR is re-locked on exit.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_graphics_enable_moco(void)
+{
+  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
+  {
+    /* HUM Ch 9.2.18 "MOCOCR : MOCO Control Register", p 346 */
+    volatile uint8_t* mococr = ra8_lpm_sysc_reg8(k_ra8_lpm_mococr_off);
+    *mococr                  = (uint8_t)(*mococr & (uint8_t)~k_ra8_lpm_clock_stop_mask);
+  }
+}
+
+/**
+ * @brief Wait until PDCSF = 0 and PDPGSF = 1 (domain ready for the clear).
+ *
+ * @details HUM Ch 11.2.14 p 452 gates the PDDE clear on PDCSF = 0 then
+ *          PDPGSF = 1; split out of ::ra8_lpm_graphics_power_on for size.
+ * @param[in] limit Iteration bound handed to ::internal_pdctrgd_wait.
+ * @return ``k_ra8_ok`` when both flags reached their level.
+ * @retval k_ra8_ok PDCSF == 0 and PDPGSF == 1 within @p limit polls.
+ * @retval k_ra8_err_hw_timeout A flag never settled.
+ * @pre @p limit > 0.
+ * @pre The controller is quiescent enough to make progress.
+ * @post No register is written.
+ * @post The return value reflects the first flag that failed to settle.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_graphics_confirm_ready(uint32_t limit)
+{
+  ra8_err_t err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdcsf_mask, false, limit);
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF busy"); /* GCOVR_EXCL_BR_LINE */
+  err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask, true, limit);
+  return err;
+}
+
+/**
+ * @brief Wait until PDCSF = 0 and PDPGSF = 0 (gating finished, domain live).
+ *
+ * @details Gating is complete when the controller is idle and the domain is
+ *          no longer gated; split out of ::ra8_lpm_graphics_power_on for size.
+ * @param[in] limit Iteration bound handed to ::internal_pdctrgd_wait.
+ * @return ``k_ra8_ok`` when both flags reached their level.
+ * @retval k_ra8_ok PDCSF == 0 and PDPGSF == 0 within @p limit polls.
+ * @retval k_ra8_err_hw_timeout A flag never settled.
+ * @pre @p limit > 0.
+ * @pre ::internal_graphics_clear_pdde has requested power-on.
+ * @post No register is written.
+ * @post The return value reflects the first flag that failed to settle.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_graphics_confirm_powered(uint32_t limit)
+{
+  ra8_err_t err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdcsf_mask, false, limit);
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF stuck"); /* GCOVR_EXCL_BR_LINE */
+  err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask, false, limit);
+  return err;
+}
+
+/**
+ * @brief Clear PDDE under the PRC1 unlock so the domain powers on.
+ *
+ * @details PDCTRGD is PRC1-protected (HUM Ch 13.1 Table 13.1 p 521); without
+ *          the unlock the clear is dropped. PDDE = 0 powers the domain ON.
+ * @pre The domain was confirmed ready by ::internal_graphics_confirm_ready.
+ * @pre Single-threaded init context or interrupts masked.
+ * @post PDCTRGD.PDDE is 0 (power-on requested).
+ * @post PRCR is re-locked on exit.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_graphics_clear_pdde(void)
+{
+  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_lpm)
+  {
+    /* HUM Ch 11.2.14 "PDCTRGD : Graphics Power Domain Control Register", p 452 */
+    *ra8_lpm_sysc_reg8(k_ra8_lpm_pdctrgd_off) = 0U;
+  }
+}
+
 [[nodiscard]] ra8_err_t ra8_lpm_graphics_power_on(uint32_t timeout_iters)
 {
   if (timeout_iters == 0U) {
@@ -695,42 +807,19 @@ RA8_INTERNAL static ra8_err_t internal_pdctrgd_wait(uint8_t mask, bool want_set,
   }
 
   /* HUM Ch 11.2.14 "PDCTRGD : Graphics Power Domain Control Register", p 452 */
-  /* Already powered (PDPGSF = 0)? Nothing to do -- keeps the call idempotent
-   * so several graphics drivers may each run it from their own init. */
+  /* Already powered (PDPGSF = 0)? Idempotent no-op for multi-driver init. */
   if ((*ra8_lpm_sysc_reg8(k_ra8_lpm_pdctrgd_off) & (uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask) == 0U) {
     return k_ra8_ok;
   }
 
-  /* HUM Ch 11.5.1 p 480: "when using the power gating function, it should be
-   * set MOCOCR.MCSTP to 0 (MOCO is operated) in advance". MOCOCR is PRC0, so
-   * start it inside a CGC unlock window rather than relying on the caller. */
-  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
-  {
-    /* HUM Ch 9.2.18 "MOCOCR : MOCO Control Register", p 346 */
-    volatile uint8_t* mococr = ra8_lpm_sysc_reg8(k_ra8_lpm_mococr_off);
-    *mococr                  = (uint8_t)(*mococr & (uint8_t)~k_ra8_lpm_clock_stop_mask);
-  }
+  internal_graphics_enable_moco();
 
-  /* HUM Ch 11.2.14 p 452: "the PDDE bit should be set from 1 to 0, after
-   * confirmed that the PDCSF = 0 and PDPGSF = 1". */
-  ra8_err_t err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdcsf_mask, false, timeout_iters);
-  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF busy"); /* GCOVR_EXCL_BR_LINE */
-  err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask, true, timeout_iters);
-  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDPGSF"); /* GCOVR_EXCL_BR_LINE */
+  ra8_err_t err = internal_graphics_confirm_ready(timeout_iters);
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: not ready"); /* GCOVR_EXCL_BR_LINE */
 
-  /* PDCTRGD is PRC1-protected (HUM Ch 13.1 Table 13.1 p 521): without the
-   * unlock the clear is silently discarded and the domain stays dark. */
-  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_lpm)
-  {
-    /* HUM Ch 11.2.14 "PDCTRGD : Graphics Power Domain Control Register", p 452 */
-    /* PDDE = 0 powers the domain ON (the polarity is inverted). */
-    *ra8_lpm_sysc_reg8(k_ra8_lpm_pdctrgd_off) = 0U;
-  }
+  internal_graphics_clear_pdde();
 
-  /* Gating finished when the controller is idle and the domain is not gated. */
-  err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdcsf_mask, false, timeout_iters);
-  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF stuck"); /* GCOVR_EXCL_BR_LINE */
-  err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask, false, timeout_iters);
+  err = internal_graphics_confirm_powered(timeout_iters);
   RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: still gated"); /* GCOVR_EXCL_BR_LINE */
 
   ra8_log_info(s_tag, "graphics power domain on");
