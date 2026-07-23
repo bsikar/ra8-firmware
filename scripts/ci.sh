@@ -255,6 +255,18 @@ use_pinned_arm_toolchain() {
   done
 }
 
+# Refuse to run a board_sim gate on an unpinned Unicorn.
+#
+# board_sim boots the real firmware .elf on Unicorn, and different Unicorn
+# versions decode Armv8.1-M (Helium/MVE) differently, so an unpinned emulator
+# makes "same commit, different verdict" structural (#354). This is the
+# fail-loud counterpart to require_cmd: the check binds the ACTUAL libunicorn
+# board_sim will link and exits non-zero -- with remediation -- when it is not
+# the pin, rather than letting a fossil produce an unreproducible green run.
+require_pinned_unicorn() {
+  bash scripts/checks/check_unicorn_version.sh
+}
+
 # Fail with the real reason when the arm-gcc on PATH predates Cortex-M85.
 #
 # -mcpu=cortex-m85 needs arm-gcc 12.3+. An older distro package does not say
