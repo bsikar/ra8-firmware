@@ -203,21 +203,3 @@ RA8_PRIV [[nodiscard]] bool ra8_fmt_rabook_sniff(const ra8_fmt_blob_t* src);
  */
 RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_rabook_inspect(const ra8_fmt_blob_t* src,
                                                         const ra8_fmt_opts_t* opts);
-
-/**
- * @brief Report whether a blob carries the RCBZ container magic.
- * @param[in] src Candidate container bytes.
- * @return `true` when the first four bytes are "RCBZ".
- * @since 0.1.0
- */
-RA8_PRIV [[nodiscard]] bool ra8_fmt_cbz_sniff(const ra8_fmt_blob_t* src);
-
-/**
- * @brief RCBZ `inspect` verb: dump the page directory with offsets and lengths.
- * @param[in] src  Container bytes (non-NULL).
- * @param[in] opts Options carrying the report sink and verbosity.
- * @return k_ra8_ok when the container validated clean.
- * @since 0.1.0
- */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_cbz_inspect(const ra8_fmt_blob_t* src,
-                                                     const ra8_fmt_opts_t* opts);
