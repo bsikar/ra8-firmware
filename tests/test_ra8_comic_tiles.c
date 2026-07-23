@@ -430,8 +430,7 @@ static void test_footprint_and_budget(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_footprint(s_png, s_png_len, &w, &h, &db));
   TEST_ASSERT_EQ(k_big_w, w);
   TEST_ASSERT_EQ(k_big_h, h);
-  TEST_ASSERT_EQ(k_big_w * (uint64_t)k_big_h * (uint64_t)k_ra8_comic_tiles_decoded_bpp,
-                 db);
+  TEST_ASSERT_EQ(k_big_w * (uint64_t)k_big_h * (uint64_t)k_ra8_comic_tiles_decoded_bpp, db);
 
   /* MC/DC vectors for the threshold decision. */
   TEST_ASSERT(ra8_comic_tiles_over_budget((uint64_t)1024U * 1024U, (uint64_t)k_budget_bytes));
