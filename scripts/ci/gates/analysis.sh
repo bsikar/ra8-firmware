@@ -22,6 +22,9 @@
 gate_cppcheck() (
   set -e
   require_cmd cppcheck
+  # cppcheck findings drift by version (2.10 / 2.13 / 2.21 each differ); the
+  # tree is clean only on the pinned 2.13, so a wrong build must fail loud (#333).
+  require_tool_versions cppcheck
   local apps=() dir line
   if [[ -d examples ]]; then
     for dir in examples/*/*/ examples/*/*/*/ examples/*/*/*/*/; do
@@ -56,6 +59,9 @@ gate_cppcheck() (
 gate_misra() (
   set -e
   require_cmd cppcheck
+  # The MISRA baseline records the cppcheck version it was generated with;
+  # a drifted cppcheck ratchets against the wrong findings (#333).
+  require_tool_versions cppcheck
   bash scripts/checks/misra_check_inner.sh
   python3 scripts/checks/misra_ratchet.py --check
 )
@@ -87,6 +93,10 @@ gate_tidy() (
   use_pinned_arm_toolchain
   require_arm_gcc_m85
   require_cmd cmake
+  # clang_tidy.sh prefers clang-tidy-18 (the pinned clang-tools-18 major); assert
+  # it resolves and is really major 18, so a box with only a newer bare
+  # clang-tidy cannot lint under a different major and drift the ratchet (#333).
+  require_tool_versions clang-tidy-18
   bash scripts/checks/clang_tidy.sh --selftest
   python3 scripts/checks/tidy_ratchet.py --selftest
 

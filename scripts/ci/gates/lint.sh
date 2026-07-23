@@ -20,6 +20,14 @@
 # finding -- there is no grandfathering.
 gate_lint_py_shell() (
   set -e
+  # Pinned-version guard (#333). --selftest proves the version comparator fires
+  # in both directions, then require_tool_versions asserts the three tools this
+  # gate resolves are the pinned builds -- not the shellcheck 0.9.0 / shfmt
+  # 3.6.0 a non-login PATH used to reach, and not an absent ruff. use_pinned_
+  # tool_path in run_one_gate has already made the resolution deterministic; this
+  # makes a wrong version fail loudly rather than lint under the wrong tool.
+  python3 scripts/checks/check_tool_versions.py --selftest
+  require_tool_versions ruff shellcheck shfmt
   # --selftest runs FIRST and asserts the configured rule set really enforces
   # what it advertises: a deliberately non-conforming fixture must trip every
   # rule family named in EXPECTED_CODES, and a legal-but-tricky one must stay
@@ -61,6 +69,7 @@ gate_lint_cmake() (
   set -e
   require_cmd cmake-format "pip install --user cmakelang==0.6.13"
   require_cmd cmake-lint "ships with cmakelang; check the cmakelang install"
+  require_tool_versions cmake-format cmake-lint
 
   # Scope comes from lint_targets.py, which is also what check_lint_coverage.py
   # asks when it verifies that every CMake listfile is covered. One definition,
@@ -93,6 +102,7 @@ gate_lint_yaml() (
   require_cmd yamllint "pip install --user yamllint==1.37.1"
   require_cmd actionlint \
     "https://github.com/rhysd/actionlint/releases (pinned to 1.7.7)"
+  require_tool_versions yamllint actionlint
 
   # Scope comes from lint_targets.py -- see the note in gate_lint_cmake.
   local files
@@ -162,6 +172,7 @@ gate_lint_devcontainer() (
   require_cmd hadolint \
     "https://github.com/hadolint/hadolint/releases (pinned to 2.14.0)"
   require_cmd zsh "apt-get install zsh (already in the devcontainer image)"
+  require_tool_versions hadolint
   python3 scripts/checks/check_devcontainer.py --selftest
   python3 scripts/checks/check_devcontainer.py
 )

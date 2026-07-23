@@ -44,6 +44,10 @@ gate_ubsan() (
 gate_coverage() (
   set -e
   require_cmd gcovr
+  # gcovr version-sensitivity is documented history: the 5.2 line has a
+  # merge_function assertion crash newer lines do not. Assert a floor so the
+  # crashing ancient build fails loud instead of skewing coverage (#333).
+  require_tool_versions gcovr
   bash scripts/checks/coverage.sh --gate
 )
 
@@ -54,6 +58,7 @@ gate_coverage() (
 gate_coverage_report() (
   set -e
   require_cmd gcovr
+  require_tool_versions gcovr
   bash scripts/report/coverage_report.sh --in-container
   python3 scripts/checks/check_coverage.py
 )

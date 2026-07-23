@@ -79,6 +79,7 @@ def _stb_gray8(im: Image.Image) -> tuple[int, int, bytes]:
     )
     return (width, height, gray)
 
+
 # The SE source files are trusted local input; some cover scans exceed Pillow's
 # default decompression-bomb threshold, so lift it rather than warn.
 Image.MAX_IMAGE_PIXELS = None

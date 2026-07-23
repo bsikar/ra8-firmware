@@ -247,8 +247,7 @@ OPTION_SETTING_ADDR = {
 
 
 def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
-    """LD007 -- no phantom 0x27000000 data-flash, and option-setting section
-    addresses match the real HUM Ch 7 layout.
+    """LD007 -- no phantom data-flash, and option-setting addresses match the HUM.
 
     The RA8D2 has no general-purpose data-flash / EEPROM array: 0x27000000 (the
     conventional RA-family data-flash base) faults on this silicon (#397). And
@@ -279,8 +278,7 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
                     path,
                     line,
                     "LD007",
-                    f"{name} = {m.group(1)}, expected 0x{expect:08X} "
-                    "(HUM Ch 7 Figure 7.1 p 279)",
+                    f"{name} = {m.group(1)}, expected 0x{expect:08X} (HUM Ch 7 Figure 7.1 p 279)",
                 )
             )
     return findings
@@ -469,8 +467,7 @@ SECTIONS
 
 
 def _selftest_option_setting() -> int:
-    """LD007 fires on the phantom region and a wrong OFS0 address, and stays
-    quiet on the correct-address twin."""
+    """LD007 fires on the phantom region and a wrong OFS0 address, quiet on the twin."""
     rc = 0
     with tempfile.TemporaryDirectory() as td:
         bad = pathlib.Path(td) / "ofs_bad.ld"
