@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import pathlib
 import re
+from collections.abc import Callable
 
 from annot_model import Violation
 from annot_scope import SCAN_DIRS, is_excluded, repo_root
@@ -207,20 +208,9 @@ def _sf_names(violations: list[Violation]) -> set[int]:
     return {v.line for v in violations if v.rule == _RULE}
 
 
-def run_loopbound_selftest() -> list[str]:
-    """Assert both failure directions and both clean shapes. Returns failures.
-
-    Called from ``annot_selftest.run_selftest`` so the one ``--selftest`` proves
-    this check the same way it proves the AST rules: the rule fires on the
-    broken fixture AND stays quiet on the correct one, because a rule can be
-    "fixed" by defanging it and no single-direction test can tell the difference.
-    """
+def _sf_new_marker(fires: Callable[[str, str], bool]) -> list[str]:
+    """Direction 1: a NEW marker attached to a loop is clean; detached, it fires."""
     failures: list[str] = []
-
-    def fires(name: str, src: str) -> bool:
-        return bool(_sf_names(scan_source(name, src)))
-
-    # Direction 1: a NEW marker attached to a loop is clean; detached, it fires.
     good_static = (
         "void f(void) {\n  RA8_LOOP_BOUND(k_cap);\n  for (int i = 0; i < 4; i++) { g(); }\n}\n"
     )
@@ -258,10 +248,12 @@ def run_loopbound_selftest() -> list[str]:
             "loop-bound went toothless: RA8_LOOP_BOUND with no following loop "
             "(a marker present with no loop) was NOT reported"
         )
+    return failures
 
-    # Direction 2: legacy annotation above a DECLARATION is clean (that is the
-    # only legitimate RA8_BOUNDED_LOOP use); above a LOOP it is the banned
-    # statement form and must fire.
+
+def _sf_legacy(fires: Callable[[str, str], bool]) -> list[str]:
+    """Direction 2: legacy RA8_BOUNDED_LOOP is clean on a decl, fires on a loop."""
+    failures: list[str] = []
     legacy_decl = (
         "RA8_BOUNDED_LOOP(k_polls)\n"
         "static int worker(int n)\n"
@@ -283,9 +275,12 @@ def run_loopbound_selftest() -> list[str]:
             "loop-bound went toothless: legacy RA8_BOUNDED_LOOP in statement "
             "position above a loop (a loop lacking a real bound) was NOT reported"
         )
+    return failures
 
-    # A marker named only inside a comment or string, or on a #define line, is
-    # not a use and must not be paired to anything.
+
+def _sf_non_uses(fires: Callable[[str, str], bool]) -> list[str]:
+    """A marker named only in a comment, string, or #define is not a use."""
+    failures: list[str] = []
     non_uses = (
         '#define RA8_LOOP_BOUND(c) static_assert((c) > 0, "x")\n'
         "/* RA8_LOOP_BOUND(k_cap); shown in a comment */\n"
@@ -297,5 +292,22 @@ def run_loopbound_selftest() -> list[str]:
             "loop-bound false positive: a marker inside a #define / comment / "
             "string literal was treated as a real use"
         )
-
     return failures
+
+
+def run_loopbound_selftest() -> list[str]:
+    """Assert both failure directions and both clean shapes. Returns failures.
+
+    Called from ``annot_selftest.run_selftest`` so the one ``--selftest`` proves
+    this check the same way it proves the AST rules: the rule fires on the
+    broken fixture AND stays quiet on the correct one, because a rule can be
+    "fixed" by defanging it and no single-direction test can tell the difference.
+
+    Split by fixture family (:func:`_sf_new_marker`, :func:`_sf_legacy`,
+    :func:`_sf_non_uses`) so each stays within the 60-line NASA P10 Rule 4 cap.
+    """
+
+    def fires(name: str, src: str) -> bool:
+        return bool(_sf_names(scan_source(name, src)))
+
+    return _sf_new_marker(fires) + _sf_legacy(fires) + _sf_non_uses(fires)
