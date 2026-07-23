@@ -340,100 +340,133 @@ sim_extra_args() { # app -> extra args on stdout
   esac
 }
 
-# Echo the UART substring an app must print for its peripheral to count as
-# "meaningfully exercised" (board_sim emits SCI TX as `[uart] SCIn: ...`), or
-# nothing for apps with no such banner (display / button / render apps). This
-# upgrades the gate from "booted without faulting" to "produced the right
-# peripheral data" -- e.g. crc_demo's hw CRC must equal its sw CRC, dma_memcopy
-# must actually copy, adc must read midscale, the RTC alarm must fire.
-uart_expect() { # app -> expected UART substring on stdout
+# Expected UART banner per app -- ONE source of truth (#398).
+#
+# The banner an app must print lives in exactly ONE place: HIL_EXPECT in the
+# app's hil.conf. The owner's SIM == HIL rule makes hil.conf authoritative, so
+# uart_expect() READS it from there rather than hand-copying it. The old copy
+# here had already drifted from several hil.confs, and a stale copy does not
+# fail loudly -- it asserts the wrong thing and passes, or fails pointing
+# nowhere near the cause. This upgrades the gate from "booted without faulting"
+# to "produced the right peripheral data" (e.g. crc_demo's hw CRC must equal its
+# sw CRC, adc must read midscale, the RTC alarm must fire) with no second copy
+# to rot.
+#
+# Two small tables replace the ~60 hand-copied strings:
+#   uart_banner_apps      -- WHICH apps the simulator asserts a banner for.
+#                            Membership ONLY: no banner string lives here, so
+#                            there is nothing to drift. An app absent from this
+#                            list (blink, doc_demo, display apps, ...) is judged
+#                            on "ran to the run budget without faulting" alone,
+#                            exactly as before.
+#   uart_expect_override  -- the few apps whose SIMULATOR banner legitimately
+#                            differs from the bench (each with an inline reason).
+#                            The ONLY sanctioned place a sim expectation may
+#                            differ from hil.conf; smoke.sh --selftest FAILS on
+#                            any entry that has CONVERGED with its hil.conf.
+
+# Apps whose SCI banner the simulator asserts, keyed by NAME only -- the banner
+# STRING is read from each app's hil.conf HIL_EXPECT (SIM == HIL). Keeping only
+# names here means there is no string to fall out of step with hil.conf.
+# smoke.sh --selftest fails if any name here resolves to no hil.conf HIL_EXPECT
+# (a listed app that cannot supply its banner would silently assert the empty
+# string -- pass on any output -- which is exactly the hole #398 closes).
+uart_banner_apps="
+  uart_hello
+  ra8_io_demo ra8_io_sdram_demo ra8_io_compress_demo ra8_io_sd_demo
+  ra8_io_sdhi_demo ra8_sdhi_card_demo ra8_io_xspi_demo ra8_io_fsfmt_demo
+  ra8_io_cache_demo
+  epaper_refresh modem_at_demo battery_monitor_demo
+  ereader_chrome ereader_image ereader_link ereader_align ereader_table
+  reflow_content ereader_input ereader_cover ereader_svg ereader_imgfmt
+  ereader_jpeg ereader_longstrip epub_parse epub_stress
+  widget_app widget_app_demo glcdc_render bscan_selftest keyboard
+  smbus_demo crc_demo adc_b_demo agt_periodic i2c_loopback eth_loopback
+  crypto_aes_demo dma_memcopy_demo rtc_alarm elc_event_demo timer_capture_demo
+  drw_fill_demo drw_blend_demo dtc_transfer_demo cac_accuracy_demo
+  lvd_monitor_demo pdg_delay_demo dotf_selftest_demo ecc_monitor_demo
+  mem_ecc_fault_demo wdt_reset_recovery_demo lpm_idle_demo lpm_periodic_idle
+  import_reader
+"
+# ra8_io_mram_demo is deliberately absent (#170): the extra-MRAM data region it
+# targets does not exist on this silicon, so it prints no PASS banner in the
+# emulator or on the bench and is run by no gate.
+
+# Genuine SIM != HIL divergences: the SIMULATOR asserts a banner the bench
+# deliberately cannot. Each entry pins its sim-only banner HERE (not in
+# hil.conf) and states WHY. THE ONLY sanctioned place a sim expectation may
+# differ from hil.conf's HIL_EXPECT; smoke.sh --selftest rejects any entry that
+# has CONVERGED with hil.conf (equal values -> the divergence is gone -> delete
+# the entry so the app reads hil.conf like every other banner app).
+uart_expect_override() { # app -> sim-only expected substring, or empty
   case "$1" in
-    uart_hello) printf 'hello, ra8d2!' ;;
-    ra8_io_demo) printf 'ra8_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS' ;;
-    ra8_io_sdram_demo) printf 'ra8_io_sdram_demo: mkdir+nested dr:/SUB/NOTE.TXT PASS' ;;
-    ra8_io_compress_demo) printf 'bytes -> 4096 round-trip PASS' ;;
-    ra8_io_sd_demo) printf 'ra8_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
-    ra8_io_sdhi_demo) printf 'ra8_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
-    ra8_sdhi_card_demo) printf 'ra8_sdhi_card_demo: native SDHI block round-trip PASS' ;;
-    ra8_io_xspi_demo) printf 'ra8_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
-    # ra8_io_mram_demo intentionally has NO expectation: the extra-MRAM data
-    # region it targets does not exist on this silicon (#170 -- see the
-    # xspi_io_apps note above and the app's hil.conf), so it cannot print a PASS
-    # banner in the emulator or on the bench. It is no longer run by any gate.
-    epaper_refresh) printf 'epaper: PASS' ;;
-    modem_at_demo) printf 'modem: rssi=17 reg=1 attach=1 cme=ok PASS' ;;
-    ra8_io_fsfmt_demo) printf 'ra8_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS' ;;
-    ra8_io_cache_demo) printf 'ra8_io_cache_demo: re-read x8 hits=' ;;
-    ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
-    ereader_image) printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
-    ereader_link) printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
-    ereader_align) printf 'ereader-align-hil: glyphs=210 geom=D4C9657E' ;;
-    ereader_table) printf 'ereader-table-hil: glyphs=172 geom=E3181EE6' ;;
-    reflow_content) printf 'reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5' ;;
-    ereader_input) printf 'ui-hil: taps=7 hits=5 nav_ok=1 PASS' ;;
-    ereader_cover) printf 'ereader-cover-hil: cover 80x120 crc=6E4E45C5 PASS' ;;
-    ereader_svg) printf 'ereader-svg-hil: svg 100x100 crc=A6450BE6 PASS' ;;
-    ereader_imgfmt) printf 'ereader-imgfmt-hil: bmp=D53617C5 gif=350551C5 PASS' ;;
-    ereader_jpeg) printf 'ereader-jpeg-hil: img 160x120 crc=F71D21E8' ;;
-    ereader_longstrip) printf 'ereader-longstrip: bands=16 view=1024x600 scroll=0 crc=795D27E6' ;;
-    epub_parse) printf 'epub: chapters=2 ch0_crc=CF23AEEE PASS' ;;
-    epub_stress) printf 'epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS' ;;
-    widget_app) printf 'widget-app-hil: apps=2 lib=D3FB85C5 rdr=E9E475C5 flush=160x16 hint=fast PASS' ;;
-    widget_app_demo) printf 'widget-app-demo: apps=3 lib=26CE7CD0 rdr=22B7E671 route=ok flush=512x44 hint=fast PASS' ;;
-    glcdc_render) printf 'glcdc-hil: layer1=ok dim=512x512 crc=B21B8D3D PASS' ;;
-    bscan_selftest) printf 'bscan: idcode=085DA447 checks=17 PASS' ;;
-    keyboard) printf 'kbd: q=Hi 9 commit=1 taps=7 PASS' ;;
+    # board_sim injects a fixed --click 250 250 tap, so the GT911 decode returns
+    # that exact coordinate and the sim gates the touch-injection path end to
+    # end (#122). A bench tap lands wherever the operator presses, so hil.conf
+    # asserts only "touch: open=OK" (HIL_EXPECT_SHORT_OK: a no-touch read is
+    # also OK) -- the coordinate cannot be pinned on hardware.
     touch_demo) printf 'touch: open=OK pts=1 x=250 y=250' ;;
-    smbus_demo) printf 'smbus: whoami=6C sendrecv=6C PASS' ;;
-    battery_monitor_demo) printf 'battery: soc=72%% chg=N PASS' ;;
-    crc_demo) printf 'match=Y' ;;
-    adc_b_demo) printf 'adc: raw=' ;;
-    agt_periodic) printf 'agt: tick' ;;
-    i2c_loopback) printf 'i2c: scan 0x43 ack=1' ;;
-    eth_loopback) printf 'etha: loopback ok' ;;
-    crypto_aes_demo) printf 'aes: round-trip OK' ;;
-    dma_memcopy_demo) printf 'dma: copied 1024B match=Y' ;;
-    rtc_alarm) printf 'rtc: alarm fired' ;;
-    elc_event_demo) printf 'elc: en=1 trig=' ;;
-    timer_capture_demo) printf 'gpt: period=' ;;
-    # The two DRW apps are SIM == HIL again as of #170: these expectations are
-    # the values an EK-RA8D2 produces, and they match each app's HIL_EXPECT.
-    #
-    # #247 established that the D/AVE 2D engine had never been POWERED -- the
-    # DRW sits in the graphics power domain, which PDCTRGD gates off at reset
-    # (HUM Ch 11.2.14 p 452, reset 0x81), and nothing cleared PDDE.
-    # ra8_lpm_graphics_power_on() in ra8_drw_init fixed that, but the render was
-    # then still wrong: a 16x16 request painted 8x8 and the alpha byte never
-    # reached the framebuffer. #170 root-caused both on the bench -- the driver
-    # fed the spatial limiters absolute pixel coordinates when the engine wants
-    # the bounding box anchored by ORIGIN (HUM Ch 62.6.2 p 3716), and left
-    # CONTROL2.WRITEALPHA at its reset value 00 ("alpha from COLOR2", and
-    # COLOR2 is 0 for a solid fill). board_periph_drw.c now models the
-    # bench-measured rasterizer, so both values below are silicon truth.
-    #
-    # drw_fill_demo: the 16x16 rect lands at (8,8)..(23,23) in 0xFF00FF00, so
-    # the centre pixel matches and both corners stay clear.
-    drw_fill_demo) printf 'drw: fill match=Y' ;;
-    # drw_blend_demo: F0AE5DC5 is the FNV-1a-32 of a REAL three-layer composite,
-    # captured from an EK-RA8D2 over J-Link and verified pixel-by-pixel: an
-    # opaque 0xFF202060 background, an opaque 0xFF40C040 sprite at (8,8), and a
-    # source-over 0x80E04040 foreground at (4,4) giving 0xBF803050 over the
-    # background and 0xBF908040 over the sprite. The previous value 76EFDDC5
-    # was FNV-1a-32 over 4096 ZERO bytes -- the hash of an untouched
-    # framebuffer, i.e. the demo hashing its own BSS.
-    drw_blend_demo) printf 'drw: blit+blend crc=F0AE5DC5 PASS' ;;
-    dtc_transfer_demo) printf 'dtc: copied 1024B match=Y' ;;
-    cac_accuracy_demo) printf 'cac: meas=ok ferr=0 ovf=0 ok=Y' ;;
-    lvd_monitor_demo) printf 'lvd: pvd1 thr=2.80V mon=above det=0 ok=Y' ;;
-    pdg_delay_demo) printf 'pdg: dll=on ch0=on delay=0x40 cfg=ok' ;;
-    dotf_selftest_demo) printf 'dotf: ch0/1 init=ok selftest=run ok=Y' ;;
-    ecc_monitor_demo) printf 'ecc: sram2 ecc=on rw=ok ok=Y' ;;
-    mem_ecc_fault_demo) printf 'ecc: sram2 1bit-inj=caught 2bit-inj=caught ok=Y' ;;
+    # smoke runs this with --reboot 1, so board_sim re-enters from the reset
+    # vector with the VBATT backup domain retained and the SECOND boot finds the
+    # sentinel -> survived=Y. The bench (hil.conf: "bkup: rw=ok") runs a single
+    # boot, never re-enters, so survival is unobservable there.
     bkup_survival_demo) printf 'bkup: rw=ok survived=Y' ;;
-    wdt_reset_recovery_demo) printf 'wdt: reset_by=watchdog' ;;
-    lpm_idle_demo) printf 'lpm: wake_count=' ;;
+    # board_sim wakes the core out of deep sleep, so the app reaches "woke". On
+    # silicon deep sleep cannot wake on this stimulus, so the bench (hil.conf:
+    # "lpm_deep: boot") only ever sees the boot line.
     lpm_deep_sleep_demo) printf 'lpm_deep: woke' ;;
-    lpm_periodic_idle) printf 'lpm_periodic_idle PASS' ;;
-    import_reader) printf 'import_reader: miss->compile->cache->hit->read PASS' ;;
   esac
+}
+
+# Read an app's authoritative banner (HIL_EXPECT) from its hil.conf. Empty if
+# the app has no hil.conf, or its manifest declares no HIL_EXPECT. Sourced in a
+# subshell so nothing the manifest assigns leaks into the caller.
+uart_expect_from_hil_conf() { # app -> HIL_EXPECT from its hil.conf, or empty
+  local app="$1" dir
+  dir="$(find "$ROOT/examples" -type d -name "$app" 2>/dev/null | grep -v '/build/' | head -1)"
+  [ -n "$dir" ] || return 0
+  [ -f "$dir/hil.conf" ] || return 0
+  (
+    HIL_EXPECT=""
+    # shellcheck disable=SC1091  # per-app manifest resolved at runtime, not a lint input
+    . "$dir/hil.conf" >/dev/null 2>&1 || true
+    printf '%s' "$HIL_EXPECT"
+  )
+}
+
+# True (0) when the simulator asserts a UART banner for $1. Word-splits the list
+# so a multi-line uart_banner_apps matches (a `case " $list "` glob would miss a
+# name adjacent to a newline).
+uart_is_banner_app() { # app -> 0 if a banner is expected, 1 otherwise
+  local a
+  for a in $uart_banner_apps; do
+    [ "$a" = "$1" ] && return 0
+  done
+  return 1
+}
+
+# Staleness predicate for an override: 0 (stale) iff the sim override value has
+# CONVERGED with hil.conf's HIL_EXPECT (they are equal), meaning the divergence
+# the override records no longer exists. Kept as a 2-arg pure function so
+# smoke.sh --selftest can prove it fires (equal) and stays quiet (differing)
+# with no app or hil.conf involved.
+uart_override_is_stale() { # <sim_override> <hil_expect> -> 0 iff equal (stale)
+  [ "$1" = "$2" ]
+}
+
+# Expected SCI banner substring for an app, or empty for apps judged only on
+# "ran to the run budget without faulting" (display / button / render apps, and
+# every app not in uart_banner_apps). board_sim emits SCI TX as
+# `[uart] SCIn: ...`; smoke_run.sh greps this substring in that output and also
+# uses it as the BOARD_SIM_STOP_ON marker.
+uart_expect() { # app -> expected UART substring on stdout
+  local app="$1" ov
+  ov="$(uart_expect_override "$app")"
+  if [ -n "$ov" ]; then
+    printf '%s' "$ov"
+    return 0
+  fi
+  if uart_is_banner_app "$app"; then
+    uart_expect_from_hil_conf "$app"
+  fi
 }
