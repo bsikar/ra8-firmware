@@ -8,8 +8,9 @@
  * mis-executes. Each seam closes one gap:
  *
  *  - MVE (Helium): VMOV.I32 traps invalid and is emulated from the
- *    invalid-instruction hook; VSTRW.32 decodes as a *valid* legacy
- *    coprocessor store, so a one-time image scan hooks every site instead.
+ *    invalid-instruction hook; the contiguous load/store family reuses the
+ *    legacy coprocessor encodings, so the M33 raises a NoCP UsageFault
+ *    instead of trapping and those are serviced from the interrupt hook.
  *  - Long shifts (LSLL/LSRL/ASRL): overlap ORR.W and mis-execute silently;
  *    likewise found by image scan and emulated per site.
  *  - Divide-by-zero trap (CCR.DIV_0_TRP): Unicorn never raises the
@@ -61,36 +62,95 @@ extern "C" {
  * @post On true, PC points at the first unhandled instruction.
  * @post On false, no engine state changed.
  * @note Not thread-safe; the emulator is single-threaded host-side.
- * @see mve_seam_install()  Handles the VSTRW.32 sites the core would not trap.
+ * @see sim_mve_nocp_emulate()  Handles the MVE loads/stores that raise NoCP.
  * @since 0.1.0
  */
 RA8_PRIV bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4]);
 
 /**
- * @brief Scan the loaded image for VSTRW.32 sites and hook each one.
+ * @brief Emulate an MVE contiguous load/store from the NoCP UsageFault.
  *
  * @details
- * Unlike VMOV.I32 (which traps as invalid), the MVE vector store decodes as a
- * valid legacy coprocessor store on the M33 core, so Unicorn would EXECUTE it
- * -- faulting on the absent coprocessor -- rather than trap it. This walks
- * the ELF32 executable PT_LOAD segments on 2-byte boundaries for the VSTRW.32
- * encoding and installs a targeted UC_HOOK_CODE at each site's VMA so the
- * store is performed by hand before the core reaches the bad instruction.
- * Scan false-positives are harmless (never executed, hook never fires).
+ * Armv8.1-M reallocates coprocessor space 0b1110 / 0b1111 to MVE, so
+ * VLDRB/VLDRH/VLDRW and VSTRB/VSTRH/VSTRW (immediate offset) reuse the legacy
+ * STC/LDC encodings byte for byte -- `stc p15, c7, [r0, #196]` and
+ * `vstrw.32 q3, [r0, #196]` are both ED80 7F31. Unicorn's M33 implements
+ * neither MVE nor coprocessor 14/15, so it does not trap them as invalid
+ * instructions: it raises a NoCP UsageFault with PC still at the faulting
+ * word. This decodes that word straight from its two halfwords (capstone
+ * renders the family as a legacy `stc`, so it cannot be used), moves the
+ * 16-byte vector, applies write-back, and advances PC past the instruction.
+ * Anything outside the family -- including the neighbouring FP stores, which
+ * differ only in hw2[12:9] and which Unicorn executes correctly -- is
+ * rejected so it still faults honestly.
  *
- * @param[in,out] uc  Unicorn engine to install the hooks on.
- * @param[in]     elf In-memory ELF image (still alive at call time).
- * @param[in]     len Length of @p elf in bytes.
- * @return Nothing.
- * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
- * @pre The M85 profile is selected (the caller gates on the primary core).
- * @post One UC_HOOK_CODE per VSTRW.32 site is armed (up to the site cap).
- * @post One stderr summary line is printed when any site was hooked.
- * @note Not thread-safe; call once during setup before the run loop.
- * @see emulate_mve()  Handles the MVE forms that do trap.
+ * @param[in,out] uc Unicorn engine.
+ * @param[in]     pc Address of the faulting instruction.
+ * @return true iff an MVE contiguous load/store was decoded and performed.
+ * @retval true  The access happened and PC advanced by four bytes.
+ * @retval false Not this family; no engine state changed.
+ * @pre @p uc is stopped inside the UC_HOOK_INTR NoCP fault.
+ * @pre @p pc is the faulting instruction address, not an EXC_RETURN magic.
+ * @post On true, PC points at the next instruction.
+ * @post On false, no engine or memory state changed.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @see emulate_mve()  Handles the MVE forms that do trap as invalid.
  * @since 0.1.0
  */
-RA8_PRIV void mve_seam_install(uc_engine* uc, const uint8_t* elf, long len);
+RA8_PRIV bool sim_mve_nocp_emulate(uc_engine* uc, uint32_t pc);
+
+/**
+ * @brief Test and clear the "NoCP fault serviced by the MVE seam" latch.
+ *
+ * @details
+ * `uc_emu_start` returns UC_ERR_EXCEPTION for a NoCP UsageFault even when the
+ * interrupt hook handled it completely, so the run loop cannot tell a serviced
+ * MVE access from a genuine unhandled exception by status alone. The seam sets
+ * this latch on every access it performs; the run loop consumes it at the chunk
+ * boundary and relaunches rather than ending the run as a fault.
+ *
+ * @return true iff a NoCP fault was serviced since the last call.
+ * @retval true  Relaunch from the advanced PC; the access already happened.
+ * @retval false Nothing was serviced; treat the chunk status at face value.
+ * @pre Called once per chunk boundary, from the run loop only.
+ * @pre The engine is stopped at a chunk boundary.
+ * @post The latch is clear on return.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @see sim_mve_nocp_emulate()  Sets the latch.
+ * @since 0.1.0
+ */
+RA8_PRIV bool sim_mve_nocp_take(void);
+
+/**
+ * @brief Report whether an invalid-instruction trap at @p pc is the bogus one
+ *        Unicorn raises just after the MVE seam serviced a NoCP fault.
+ *
+ * @details
+ * Servicing the NoCP fault means writing PC and calling `uc_emu_stop` from
+ * inside the interrupt hook. Unicorn then re-decodes at the advanced PC and
+ * reports UC_ERR_INSN_INVALID there even though the instruction is perfectly
+ * valid -- in `ereader_cover` the address is a plain `strd r3, r3, [r7, #8]`
+ * four bytes past a `vstrw.32`. A relaunch from that same PC executes it
+ * correctly, so the report is noise, but it is indistinguishable from a real
+ * one by decode alone: this predicate distinguishes it by address instead.
+ *
+ * Exactly one report is absorbed per serviced fault, and only at the address
+ * the seam advanced to. A genuinely invalid instruction sitting at that
+ * address is therefore delayed by one relaunch, never suppressed: the arming
+ * is cleared on the first call, so the second trap reports normally.
+ *
+ * @param[in] pc Address the invalid-instruction hook trapped at.
+ * @return true iff this trap is the expected post-NoCP artefact.
+ * @retval true  Absorb it silently and relaunch; nothing is wrong.
+ * @retval false Report it; the arming (if any) is now cleared.
+ * @pre Called only after every real seam in the dispatch chain declined.
+ * @pre Called at most once per invalid-instruction trap.
+ * @post The one-shot arming is clear on return.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @see sim_mve_nocp_emulate()  Arms this.
+ * @since 0.1.0
+ */
+RA8_PRIV bool sim_mve_nocp_spurious(uint32_t pc);
 
 /**
  * @brief Count of MVE instructions emulated this run (run-end telemetry).
@@ -129,7 +189,7 @@ RA8_PRIV uint64_t sim_mve_emulated_count(void);
  * @post One UC_HOOK_CODE per long-shift site is armed (up to the site cap).
  * @post One stderr summary line is printed when any site was hooked.
  * @note Not thread-safe; call once during setup before the run loop.
- * @see mve_seam_install()  The companion image-scan seam.
+ * @see div0_seam_install()  The companion image-scan seam.
  * @since 0.1.0
  */
 RA8_PRIV void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len);

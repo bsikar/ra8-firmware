@@ -573,7 +573,6 @@ main_install_run_seams(uc_engine* uc, uint8_t* elf, long elf_len, const sim_args
    * instruction hook and stays armed (also inert for an M33 image). */
   if (sim_primary_core() == k_core_m85) {
     long_shift_seam_install(uc, elf, elf_len);
-    mve_seam_install(uc, elf, elf_len);
   }
   div0_seam_install(elf, elf_len);        /* UDIV/SDIV sites, patched only under DIV_0_TRP. */
   fast_sd_seam_install(uc, elf, elf_len); /* --fast-sd whole-block serve; else inert.       */

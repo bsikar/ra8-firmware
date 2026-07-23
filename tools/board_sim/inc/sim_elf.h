@@ -280,7 +280,7 @@ typedef bool (*elf_exec_segment_fn)(const elf_exec_segment_t* seg, void* ctx);
  * @note Not thread-safe with respect to the image it reads.
  *
  * @see div0_seam_install()  Scans for UDIV/SDIV sites.
- * @see mve_seam_install()   Scans for MVE VSTRW sites.
+ * @see long_shift_seam_install()  Scans for LSLL/LSRL/ASRL sites.
  * @since 0.1.0
  */
 RA8_PRIV uint32_t elf_foreach_exec_segment(const uint8_t*      elf,
