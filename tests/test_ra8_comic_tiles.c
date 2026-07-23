@@ -66,6 +66,7 @@ typedef enum : uint32_t {
   k_small_arena  = 256U * 1024U, /**< Whole-decode arena the cap is measured against. */
   k_probe_w      = 64U,          /**< Off-screen framebuffer width.                   */
   k_probe_h      = 64U,          /**< Off-screen framebuffer height.                  */
+  k_tiny_cell    = 64U,          /**< Undersized cell to force a no_mem tile decode.  */
 } comic_tiles_geom_t;
 
 /**
@@ -350,6 +351,44 @@ static void verify_tile(const ra8_tile_t* t, uint16_t tx, uint16_t ty)
   }
 }
 
+/** @brief Assert the whole-decode fast path caps this page (no_mem) in a modest arena. */
+static void assert_whole_decode_caps(const uint8_t* enc, size_t len)
+{
+  TEST_ASSERT_EQ(
+    k_ra8_ok, ra8_gfx_init(s_fb, (uint16_t)k_probe_w, (uint16_t)k_probe_h, k_ra8_gfx_format_rgb565));
+  ra8_img_arena_t arena = {.base = s_decode_arena, .cap = sizeof s_decode_arena};
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_img_decode_blit(&arena,
+                                     enc,
+                                     len,
+                                     0,
+                                     0,
+                                     (int32_t)k_probe_w,
+                                     (int32_t)k_probe_h,
+                                     nullptr,
+                                     nullptr));
+}
+
+/** @brief Fetch + byte-verify every tile of @p info, then assert a re-fetch is a cache hit. */
+static void walk_and_verify_tiles(ra8_comic_tile_reader_t* r, const ra8_jof_info_t* info)
+{
+  for (uint16_t ty = 0U; ty < info->tile_rows; ty++) {
+    for (uint16_t tx = 0U; tx < info->tile_cols; tx++) {
+      ra8_tile_t t = {};
+      TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(r, tx, ty, &t));
+      verify_tile(&t, tx, ty);
+      TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(r, t.pixels));
+    }
+  }
+  ra8_tile_t a = {};
+  ra8_tile_t b = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(r, 0U, 0U, &a));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(r, a.pixels));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(r, 0U, 0U, &b));
+  TEST_ASSERT(a.pixels == b.pixels);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(r, b.pixels));
+}
+
 /* ---------------------------------------------------------------------------
  * Tests.
  * ---------------------------------------------------------------------------
@@ -393,9 +432,11 @@ static void test_footprint_and_budget(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_footprint(s_png, s_png_len, &w, &h, &small_db));
   TEST_ASSERT(!ra8_comic_tiles_over_budget(small_db, (uint64_t)k_budget_bytes));
 
-  /* Guards. */
+  /* Guards -- every required pointer, and the zero-length / non-image paths. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_footprint(nullptr, 4U, &w, &h, &db));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_footprint(s_png, 4U, nullptr, &h, &db));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_footprint(s_png, 4U, &w, nullptr, &db));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_footprint(s_png, 4U, &w, &h, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_comic_tiles_footprint(s_png, 0U, &w, &h, &db));
   static const uint8_t junk[8] = {'n', 'o', 't', 'i', 'm', 'a', 'g', 'e'};
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
@@ -429,20 +470,7 @@ static void test_large_page_opens(void)
   TEST_ASSERT(ra8_comic_tiles_over_budget(db, (uint64_t)k_budget_bytes));
 
   /* The OLD path caps: whole-decode into a modest arena fails no_mem. */
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_gfx_init(s_fb, (uint16_t)k_probe_w, (uint16_t)k_probe_h, k_ra8_gfx_format_rgb565));
-  ra8_img_arena_t arena = {.base = s_decode_arena, .cap = sizeof s_decode_arena};
-  TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_img_decode_blit(&arena,
-                                     s_pagebuf,
-                                     got,
-                                     0,
-                                     0,
-                                     (int32_t)k_probe_w,
-                                     (int32_t)k_probe_h,
-                                     nullptr,
-                                     nullptr));
+  assert_whole_decode_caps(s_pagebuf, got);
 
   /* The NEW path opens it. Resident cache RAM is far below the decoded image. */
   TEST_ASSERT((uint64_t)k_cells * (uint64_t)k_cell_bytes < db);
@@ -460,24 +488,9 @@ static void test_large_page_opens(void)
   TEST_ASSERT_EQ((int)k_rgb_bpp, (int)info.bpp);
   TEST_ASSERT(info.tile_count > (uint32_t)k_cells); /* more tiles than cells */
 
-  /* Every tile -- interior and clamped edge -- decodes byte-exact. */
-  for (uint16_t ty = 0U; ty < info.tile_rows; ty++) {
-    for (uint16_t tx = 0U; tx < info.tile_cols; tx++) {
-      ra8_tile_t t = {};
-      TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(&r, tx, ty, &t));
-      verify_tile(&t, tx, ty);
-      TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(&r, t.pixels));
-    }
-  }
-
-  /* A re-fetch of the last interior tile is a hit (pixels pointer reused). */
-  ra8_tile_t a = {};
-  ra8_tile_t b = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(&r, 0U, 0U, &a));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(&r, a.pixels));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(&r, 0U, 0U, &b));
-  TEST_ASSERT(a.pixels == b.pixels);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(&r, b.pixels));
+  /* Every tile -- interior and clamped edge -- decodes byte-exact, and a
+   * re-fetch hits the cache rather than re-decoding. */
+  walk_and_verify_tiles(&r, &info);
 
   (void)ra8_comic_close(&comic);
   TEST_END("comic tiles: large page opens where whole-decode caps");
@@ -514,6 +527,37 @@ static void test_zoom_subrect(void)
 
   (void)ra8_comic_close(&comic);
   TEST_END("comic tiles: sub-rect (loupe) tile is full-resolution");
+}
+
+/**
+ * @test comic_tiles_tile_over_cell_budget
+ * @details A tile whose decoded payload exceeds the cache cell (a deliberately
+ *          undersized cache) fails closed as `k_ra8_err_no_mem` rather than
+ *          overrunning the cell -- the decode-on-miss maps the atlas reader's
+ *          `k_ra8_err_invalid_size` to `k_ra8_err_no_mem`.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
+static void test_tile_over_cell_budget(void)
+{
+  TEST_BEGIN("comic tiles: a tile larger than the cache cell fails no_mem");
+  ra8_comic_t  comic = {};
+  const size_t got   = open_big_page_bytes(&comic);
+
+  ra8_comic_tile_reader_t r       = {};
+  ra8_tile_cache_cfg_t    storage = cache_cfg();
+  storage.cell_bytes              = (uint32_t)k_tiny_cell; /* far below a 128x128x3 tile */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
+  const ra8_comic_tiles_import_cfg_t cfg = import_cfg((uint8_t)k_ra8_jof_codec_raw);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_import(&r, s_pagebuf, got, &cfg));
+
+  ra8_tile_t t = {};
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_comic_tiles_tile(&r, 0U, 0U, &t));
+
+  (void)ra8_comic_close(&comic);
+  TEST_END("comic tiles: a tile larger than the cache cell fails no_mem");
 }
 
 /**
@@ -652,6 +696,12 @@ static void test_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(nullptr, s_png, 4U, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, nullptr, 4U, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, s_png, 4U, nullptr));
+  ra8_comic_tiles_import_cfg_t no_work = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  no_work.work                         = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, s_png, 4U, &no_work));
+  ra8_comic_tiles_import_cfg_t no_atlas = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  no_atlas.atlas                        = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, s_png, 4U, &no_atlas));
   png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_comic_tiles_import(&r, s_png, 0U, &cfg));
 
@@ -691,6 +741,7 @@ int32_t main(void)
   test_footprint_and_budget();
   test_large_page_opens();
   test_zoom_subrect();
+  test_tile_over_cell_budget();
   test_small_page_flat();
   test_page_turn_epoch();
   test_guards();
