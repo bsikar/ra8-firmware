@@ -111,25 +111,87 @@ static inline int32_t internal_iabs(int32_t v)
 }
 
 /**
- * @brief Programme the four edge limiters that bound an axis-aligned rect.
+ * @brief Programme the bounding box that describes an axis-aligned rect.
  *
  * @details
- * Writes SIZE plus L1..L4 START/XADD/YADD to describe a filled
- * axis-aligned quad (HUM Ch 62.2.10-62.2.12, 62.2.29). Shared between
- * @c ra8_drw.c and @c ra8_drw_draw.c so both the solid-fill and the
- * textured-blit primitive reuse the same limiter encoding.
+ * Writes SIZE (HUM Ch 62.2.29 p 3704) and clears the six spatial limiters
+ * (HUM Ch 62.2.10-62.2.12 pp 3698-3699). An axis-aligned solid rectangle
+ * needs NO limiter: HUM Ch 62.6.2 p 3716 has the engine scan "the whole
+ * bounding box" anchored at ORIGIN, so the box scan already produces exactly
+ * the requested extent. Position comes from ORIGIN, which the caller writes
+ * last because that write is the render trigger (HUM Ch 62.2.31 p 3705).
+ *
+ * Shared between @c ra8_drw.c and @c ra8_drw_draw.c so the solid-fill and
+ * the textured-blit primitive describe their extent identically.
  *
  * @param[in] rect Rectangle in pixel space (validated by caller).
  *
  * @pre @p rect dimensions in [1..1024].
  * @pre Driver initialized.
- * @post L1..L4 START / XADD / YADD describe a filled axis-aligned quad.
  * @post SIZE = (height << 16) | width.
+ * @post L1..L4 START / XADD / YADD are all zero.
  *
  * @note Not thread-safe; writes MMIO.
  * @since 0.1.0
  */
-RA8_PRIV void internal_program_rect_limiters(const ra8_drw_rect_t* rect);
+RA8_PRIV void internal_program_rect_bbox(const ra8_drw_rect_t* rect);
+
+/**
+ * @brief Framebuffer byte address of a rectangle's top-left pixel.
+ *
+ * @details
+ * The engine scans its bounding box anchored at ORIGIN (HUM Ch 62.6.2
+ * p 3716), so a primitive is positioned by pointing ORIGIN at its own
+ * top-left pixel rather than at the framebuffer base. Computes
+ * ``base + ((y * pitch) + x) * bytes_per_px`` from the geometry cached at
+ * ::ra8_drw_init.
+ *
+ * @param[in] rect Rectangle in pixel space (validated by caller).
+ *
+ * @return Absolute byte address to write to ORIGIN.
+ * @retval base The rect is at (0, 0).
+ *
+ * @pre Driver initialized (pitch and pixel stride cached).
+ * @pre @p rect lies on the surface -- see ::ra8_drw_internal_rect_off_surface.
+ * @post No state mutated.
+ * @post Result is within the framebuffer for an on-surface rect.
+ *
+ * @note Pure with respect to hardware; reads driver-private state.
+ * @since 0.1.0
+ */
+RA8_PRIV uint32_t ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect);
+
+/**
+ * @brief Reject a rectangle that would rasterize outside the framebuffer.
+ *
+ * @details
+ * With the bounding box positioned by ORIGIN there is no limiter clipping
+ * left to contain an out-of-range rectangle, so a negative origin or a
+ * right edge past the pitch would have the engine scribble over unrelated
+ * memory. Callers must reject before triggering a render.
+ *
+ * @param[in] rect Rectangle in pixel space.
+ *
+ * @return Boolean reject predicate.
+ * @retval true  Caller must return @c k_ra8_err_invalid_arg.
+ * @retval false The rect starts on the surface and fits the pitch.
+ *
+ * @pre Driver initialized (pitch cached).
+ * @pre @p rect is non-null.
+ * @post No state mutated.
+ * @post Return depends only on @p rect and the cached pitch.
+ *
+ * @par MC/DC:
+ * Decision ``rect->x < 0 || rect->y < 0`` (2 conditions), then the
+ * independent ``right > pitch`` test. N+1 = 3 vectors for the OR:
+ *  - x>=0, y>=0 -> false (control)
+ *  - x<0,  y>=0 -> true  (varies x)
+ *  - x>=0, y<0  -> true  (varies y)
+ *
+ * @note Not thread-safe; reads driver-private state.
+ * @since 0.1.0
+ */
+RA8_PRIV bool ra8_drw_internal_rect_off_surface(const ra8_drw_rect_t* rect);
 
 /**
  * @brief Pure predicate for the "rect is below min dim" rejection.

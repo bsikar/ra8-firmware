@@ -131,10 +131,6 @@ typedef struct {
 } ra8_lpm_ram_retention_t;
 
 /**
- * @enum ra8_lpm_clock_t
- * @brief Selector for ``ra8_lpm_set_clock_stop`` / ``ra8_lpm_get_clock_stop``.
- */
-/**
  * @enum ra8_lpm_pd_timeout_t
  * @brief Poll bound for ``ra8_lpm_graphics_power_on`` flag waits.
  *
@@ -149,6 +145,10 @@ typedef enum : uint32_t {
   k_ra8_lpm_pd_timeout_default = 100000U, /**< Default power-gate poll bound. */
 } ra8_lpm_pd_timeout_t;
 
+/**
+ * @enum ra8_lpm_clock_t
+ * @brief Selector for ``ra8_lpm_set_clock_stop`` / ``ra8_lpm_get_clock_stop``.
+ */
 typedef enum : uint8_t {
   k_ra8_lpm_clock_moco  = 0U, /**< Middle-Speed On-Chip Oscillator. */
   k_ra8_lpm_clock_hoco  = 1U, /**< High-Speed On-Chip Oscillator.   */

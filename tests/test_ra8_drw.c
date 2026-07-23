@@ -112,10 +112,20 @@ static void test_init_happy(void)
 
   TEST_ASSERT_EQ(cfg.framebuffer_addr, *ra8_drw_reg32(k_ra8_drw_off_origin));
   TEST_ASSERT_EQ(cfg.pitch_px, *ra8_drw_reg32(k_ra8_drw_off_pitch));
-  /* CONTROL2 should carry only the WRITEFORMAT bits for ARGB8888 (code 2). */
+  /* CONTROL2 carries the WRITEFORMAT bits for ARGB8888 (code 2) PLUS the two
+   * surface defaults whose reset values are wrong for a solid fill, both
+   * established on an EK-RA8D2:
+   *   WRITEALPHA = 01 (source alpha). At its reset 00 the framebuffer alpha
+   *   comes from COLOR2, which is 0 for a fill, so an opaque 0xFF00FF00 fill
+   *   read back 0x0000FF00 on silicon.
+   *   BDI. At reset both blend factors are 1, i.e. dst = src + dst, so a fill
+   *   ADDED to the framebuffer: 0xFF00FF00 over 0x00000010 gave 0xFF00FF10. */
   const uint32_t ctl2 = *ra8_drw_reg32(k_ra8_drw_off_control2);
-  TEST_ASSERT_EQ(((uint32_t)k_ra8_drw_writefmt_argb8888 << k_ra8_drw_control2_writeformat_pos),
-                 ctl2);
+  const uint32_t expected_ctl2 =
+    ((uint32_t)k_ra8_drw_writefmt_argb8888 << k_ra8_drw_control2_writeformat_pos) |
+    ((uint32_t)k_ra8_drw_writealpha_pixel_cov << k_ra8_drw_control2_writealpha_pos) |
+    (uint32_t)k_ra8_drw_control2_bdi;
+  TEST_ASSERT_EQ(expected_ctl2, ctl2);
   /* CACHECTL should enable both FB and texture caches. */
   TEST_ASSERT_EQ((k_ra8_drw_cachectl_cenablefx | k_ra8_drw_cachectl_cenabletx),
                  *ra8_drw_reg32(k_ra8_drw_off_cachectl));

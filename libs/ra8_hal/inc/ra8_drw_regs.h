@@ -583,6 +583,25 @@ typedef enum : uint16_t {
 } ra8_drw_dim_limits_t;
 
 /**
+ * @enum ra8_drw_pixel_stride_t
+ * @brief Framebuffer pixel stride in bytes per WRITEFORMAT class.
+ *
+ * @details
+ * HUM Ch 62.3.1.1 "Color Formats" p 3707. Needed to advance ORIGIN to a
+ * primitive's top-left pixel, because the engine scans the bounding box
+ * anchored at ORIGIN (HUM Ch 62.6.2 p 3716).
+ *
+ * @invariant Every member is a power of two in [1, 4].
+ *
+ * @see ra8_drw_writeformat_t
+ */
+typedef enum : uint8_t {
+  k_ra8_drw_bytes_px_8bpp  = 1U, /**< A8.                */
+  k_ra8_drw_bytes_px_16bpp = 2U, /**< RGB565 / ARGB4444. */
+  k_ra8_drw_bytes_px_32bpp = 4U, /**< ARGB8888.          */
+} ra8_drw_pixel_stride_t;
+
+/**
  * @enum ra8_drw_dbwer_mask_t
  * @brief DBWER (DRW Bufferable Write Enable) field masks.
  *

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/ereader_cover/main.c
+ * @file examples/ek_ra8d2/hw_pending/ereader_cover/main.c
  * @brief On-silicon HIL: EPUB cover-art extraction + decode + render (#143).
  *
  * @details
