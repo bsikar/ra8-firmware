@@ -55,6 +55,10 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328).
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$SCRIPT_DIR/../ci/lib/parallelism.sh"
+
 CMAKE="${CMAKE:-cmake}"
 SCAN_BUILD="${SCAN_BUILD:-scan-build}"
 
@@ -75,14 +79,8 @@ REPORT_DIR="$REPO_ROOT/build/scan-build-reports"
 
 mkdir -p "$BUILD_DIR" "$REPORT_DIR"
 
-# Parallelism (portable across linux/macos).
-if command -v nproc >/dev/null 2>&1; then
-  JOBS="$(nproc)"
-elif command -v sysctl >/dev/null 2>&1; then
-  JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
-else
-  JOBS=4
-fi
+# Parallelism: the bounded canonical width, not a raw nproc (#328).
+JOBS="$(ra8_max_jobs)"
 
 echo "==> scan-build: configuring host test build at $BUILD_DIR"
 "$SCAN_BUILD" --use-cc=clang --use-c++=clang++ \

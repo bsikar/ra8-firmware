@@ -17,16 +17,13 @@
 # run_tidy_chunks
 
 # ---------------------------------------------------------------------------
-# Number of parallel clang-tidy processes.
+# Number of parallel clang-tidy processes -- the bounded canonical width
+# (#328). clang_tidy.sh sources scripts/ci/lib/parallelism.sh before this
+# helper, so ra8_max_jobs caps the fan-out (RA8_MAX_JOBS /
+# CMAKE_BUILD_PARALLEL_LEVEL / host core count) instead of one process per core.
 # ---------------------------------------------------------------------------
 detect_jobs() {
-  if command -v nproc &>/dev/null; then
-    nproc
-  elif command -v sysctl &>/dev/null; then
-    sysctl -n hw.ncpu 2>/dev/null || echo 4
-  else
-    echo 4
-  fi
+  ra8_max_jobs
 }
 
 # ---------------------------------------------------------------------------

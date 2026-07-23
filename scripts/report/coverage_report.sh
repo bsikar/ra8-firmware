@@ -43,6 +43,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328); the build
+# step below derives from it instead of an unbounded --parallel.
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$SCRIPT_DIR/../ci/lib/parallelism.sh"
+
 BUILD_DIR_REL="tests/build-cov"
 REPORT_DIR_REL="build/coverage"
 
@@ -133,7 +138,7 @@ cmake -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
   -Wno-dev >/dev/null
 
 echo "==> [2/4] Building"
-cmake --build "$BUILD_DIR" --parallel >/dev/null
+cmake --build "$BUILD_DIR" --parallel "$(ra8_max_jobs)" >/dev/null
 
 echo "==> [3/4] Running ctest"
 (cd "$BUILD_DIR" && ctest --output-on-failure) | tail -10 || true

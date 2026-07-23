@@ -105,7 +105,7 @@ gate_tools_build() (
 
   local root="$REPO_ROOT/build/tools-build"
   local jobs
-  jobs="$(cpu_count)"
+  jobs="$(ra8_max_jobs)"
   rm -rf "$root"
 
   _tb_media_dl "$root" "$jobs"

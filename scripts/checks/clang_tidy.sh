@@ -53,6 +53,12 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FIRMWARE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). Sourced
+# before the tidy helpers below so invoke.sh's detect_jobs can delegate to it,
+# capping the clang-tidy fan-out instead of spawning one process per core.
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$SCRIPT_DIR/../ci/lib/parallelism.sh"
+
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------

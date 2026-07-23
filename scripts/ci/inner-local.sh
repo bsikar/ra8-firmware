@@ -312,6 +312,7 @@ exec docker run --rm \
   -e RA8_CI_INNER=1 \
   -e RA8_CI_FAST="$fast" \
   -e HOME=/tmp \
+  -e RA8_MAX_JOBS \
   -e CMAKE_BUILD_PARALLEL_LEVEL=4 \
   -v "$REPO_ROOT":/workspace:ro \
   -w /workspace \

@@ -18,6 +18,12 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). The
+# across-app worker pool below defaults to it so this cross-build (205 apps)
+# does not grab every core when it shares the box with other gate jobs.
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$REPO_ROOT/scripts/ci/lib/parallelism.sh"
+
 cd "$REPO_ROOT" || exit 1
 
 if [ ! -d examples ]; then
@@ -116,17 +122,10 @@ mkdir -p "$STATUS_DIR"
 
 # Worker pool size: one `make <app>` per worker, each build SINGLE-THREADED.
 # The across-app pool is the only parallelism -- we deliberately do NOT also
-# pass a per-app --parallel, which would oversubscribe (nproc x nproc).
-detect_ncpu() {
-  if command -v nproc >/dev/null 2>&1; then
-    nproc
-  elif command -v sysctl >/dev/null 2>&1 && sysctl -n hw.ncpu >/dev/null 2>&1; then
-    sysctl -n hw.ncpu
-  else
-    echo 1
-  fi
-}
-MAX_JOBS="${MAX_JOBS:-$(detect_ncpu)}"
+# pass a per-app --parallel, which would oversubscribe (jobs x jobs). The pool
+# width is the canonical bounded value (RA8_MAX_JOBS / CMAKE_BUILD_PARALLEL_LEVEL
+# / nproc); MAX_JOBS is still honoured as this script's own explicit override.
+MAX_JOBS="${MAX_JOBS:-$(ra8_max_jobs)}"
 # Guard against a non-numeric / zero override.
 case "$MAX_JOBS" in
   '' | *[!0-9]*) MAX_JOBS=1 ;;

@@ -67,13 +67,14 @@
 #
 # PARALLELISM: unlike hil_all.sh (serial -- one physical board), board_sim
 # instances share no hardware, so apps run CONCURRENTLY in a worker pool of
-# SIL_JOBS (default: the host core count; -j N overrides). Each app builds into
-# its OWN isolated per-app build dir and runs its OWN board_sim process writing
-# its OWN result file, so concurrent runs never collide. The per-app PASS/FAIL
-# verdict is independent of -j, so the final (sorted) matrix is deterministic.
+# SIL_JOBS (default: the bounded canonical width ra8_max_jobs; -j N overrides).
+# Each app builds into its OWN isolated per-app build dir and runs its OWN
+# board_sim process writing its OWN result file, so concurrent runs never
+# collide. The per-app PASS/FAIL verdict is independent of -j, so the final
+# (sorted) matrix is deterministic.
 #
 # Usage:
-#   bash scripts/sim/sil_all.sh                  # every app, -j = host cores
+#   bash scripts/sim/sil_all.sh                  # every app, -j = ra8_max_jobs
 #   bash scripts/sim/sil_all.sh -j 8             # cap parallelism at 8
 #   bash scripts/sim/sil_all.sh --only blink     # one app
 #   bash scripts/sim/sil_all.sh --mode uart_scrape   # one mode
@@ -82,7 +83,8 @@
 #   bash scripts/sim/sil_all.sh --list           # enumerate apps + modes, no run
 #
 # Budgets (env overridable):
-#   SIL_JOBS               parallel workers (default: nproc / sysctl hw.ncpu)
+#   SIL_JOBS               parallel workers (default: ra8_max_jobs -- #328;
+#                          RA8_MAX_JOBS / CMAKE_BUILD_PARALLEL_LEVEL / nproc)
 #   SIL_UART_MAX_CHUNKS    uart_scrape/alive instruction-chunk cap (150000; a
 #                          hil.conf may raise its own via HIL_SIM_MAX_CHUNKS)
 #   SIL_UART_WALL_S        uart_scrape/alive CPU-time guard, s (0=off; default 0
@@ -105,6 +107,13 @@ HIL_DIR="${REPO_ROOT}/examples/ek_ra8d2/hw_validated/hil"
 SIL_RA8P1_DIR="${REPO_ROOT}/examples/ra8p1_foundation"
 SIM_DIR="${REPO_ROOT}/tools/board_sim"
 SELF="${REPO_ROOT}/scripts/sim/sil_all.sh"
+
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). The
+# board_sim worker pool and the emulator build below derive from it so this
+# sweep does not saturate a shared box (the contention that timed out a
+# board-sim gate and read as a regression).
+# shellcheck source=scripts/ci/lib/parallelism.sh
+source "${REPO_ROOT}/scripts/ci/lib/parallelism.sh"
 
 # Shared app discovery + hil.conf sourcing (also used by scripts/hil/all.sh).
 # shellcheck source=scripts/hil/lib/hil_conf.sh
@@ -230,22 +239,6 @@ sil_ns_elf_args() { # <secure-elf> -> "--ns <ns-elf>" on stdout (or empty)
   if [ -f "$ns" ]; then
     printf -- '--ns %s' "$ns"
   fi
-}
-
-# -----------------------------------------------------------------------------
-# Host core count for the default worker-pool size.
-# -----------------------------------------------------------------------------
-detect_jobs() {
-  local n=""
-  if command -v nproc >/dev/null 2>&1; then
-    n="$(nproc 2>/dev/null || true)"
-  elif command -v sysctl >/dev/null 2>&1; then
-    n="$(sysctl -n hw.ncpu 2>/dev/null || true)"
-  fi
-  case "$n" in
-    '' | *[!0-9]*) n=4 ;;
-  esac
-  printf '%s' "$n"
 }
 
 # =============================================================================
@@ -585,7 +578,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-[ -n "$JOBS" ] || JOBS="${SIL_JOBS:-$(detect_jobs)}"
+[ -n "$JOBS" ] || JOBS="${SIL_JOBS:-$(ra8_max_jobs)}"
 case "$JOBS" in
   '' | *[!0-9]*)
     echo "sil_all: -j must be a positive integer, got '$JOBS'" >&2
@@ -645,7 +638,7 @@ echo -e "${CYAN}[sil_all]${NC} ${#SEL[@]} app(s), board_sim SIL, -j ${JOBS}"
 # Build the emulator ONCE; the workers only invoke the prebuilt binary.
 echo -e "${CYAN}[sil_all]${NC} building board_sim ..."
 cmake -B "${SIM_DIR}/build" -S "${SIM_DIR}" >/tmp/sil_sim_cmake.log 2>&1
-cmake --build "${SIM_DIR}/build" -j >/tmp/sil_sim_build.log 2>&1
+cmake --build "${SIM_DIR}/build" -j "$(ra8_max_jobs)" >/tmp/sil_sim_build.log 2>&1
 SIL_SIM="${SIM_DIR}/build/board_sim"
 if [ ! -x "$SIL_SIM" ]; then
   echo -e "${RED}[sil_all]${NC} board_sim failed to build (see /tmp/sil_sim_build.log)" >&2

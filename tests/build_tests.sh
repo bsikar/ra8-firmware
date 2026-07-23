@@ -30,6 +30,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). The host
+# suite links 500+ test executables; capping the build here is what keeps this
+# gate from spawning `ld` per core when it shares the box with other jobs.
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$SCRIPT_DIR/../scripts/ci/lib/parallelism.sh"
+
 CMAKE="${CMAKE:-cmake}"
 
 MODE="fast"
@@ -79,15 +85,10 @@ echo "    using CC=$CC CXX=$CXX"
 CMAKE_ARGS+=("-DCMAKE_C_COMPILER=$CC")
 CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=$CXX")
 
-# Determine parallelism without depending on bash-only or GNU-only
-# coreutils. nproc is Linux; sysctl is macOS; fall back to 4.
-if command -v nproc >/dev/null 2>&1; then
-  JOBS="$(nproc)"
-elif command -v sysctl >/dev/null 2>&1; then
-  JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
-else
-  JOBS=4
-fi
+# Parallelism is the bounded canonical width (RA8_MAX_JOBS /
+# CMAKE_BUILD_PARALLEL_LEVEL / host core count), not a raw nproc, so N gate
+# jobs sharing one box do not each link across every core (#328).
+JOBS="$(ra8_max_jobs)"
 
 echo "==> ra8-firmware tests: building ($LABEL)"
 echo "    build dir : $BUILD_DIR"

@@ -31,6 +31,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 IMAGE_TAG="ra8-firmware-test:latest"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). Forwarded
+# into the container as CMAKE_BUILD_PARALLEL_LEVEL so the in-container
+# `cmake --build --parallel` honours the same bound as every other gate.
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$SCRIPT_DIR/lib/parallelism.sh"
+
 REBUILD=false
 for arg in "$@"; do
   case "$arg" in
@@ -80,6 +86,7 @@ echo "==> Running host tests inside container"
 docker run --rm \
   -v "$REPO_ROOT":/work \
   -w /work \
+  -e CMAKE_BUILD_PARALLEL_LEVEL="$(ra8_max_jobs)" \
   "$IMAGE_TAG" \
   bash -lc "
         set -e

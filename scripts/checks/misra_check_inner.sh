@@ -31,6 +31,11 @@ set +H
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328); cppcheck's
+# -j below derives from it instead of raw nproc.
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "$SCRIPT_DIR/../ci/lib/parallelism.sh"
+
 cd "$ROOT_DIR"
 
 OUT_DIR="$ROOT_DIR/build/misra"
@@ -68,7 +73,7 @@ if [[ -z "$ADDON_DIR" ]]; then
 fi
 MISRA_PY="$ADDON_DIR/misra.py"
 
-JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
+JOBS="${JOBS:-$(ra8_max_jobs)}"
 
 # Header roots, derived from the repo layout rather than hand-picked. The
 # list used to name five directories while the audit scanned libs/, src/

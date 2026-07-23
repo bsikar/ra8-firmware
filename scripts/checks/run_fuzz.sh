@@ -47,6 +47,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328).
+# shellcheck source=scripts/ci/lib/parallelism.sh
+. "${SCRIPT_DIR}/../ci/lib/parallelism.sh"
+
 build_dir="${ROOT}/tests/build-fuzz"
 registry="${ROOT}/tests/fuzz/CMakeLists.txt"
 
@@ -156,17 +160,11 @@ select_fuzz_compiler() {
 }
 
 # Configure (first use) + build the given cmake target in tests/build-fuzz.
-# Parallelism mirrors tests/build_tests.sh: nproc (Linux), sysctl (macOS),
-# fall back to 4 -- an explicit bound, not make's unlimited -j.
+# Parallelism is the bounded canonical width (ra8_max_jobs), matching
+# tests/build_tests.sh -- an explicit bound, not make's unlimited -j (#328).
 build_fuzz_target() {
   local cmake_target="$1" jobs
-  if command -v nproc >/dev/null 2>&1; then
-    jobs="$(nproc)"
-  elif command -v sysctl >/dev/null 2>&1; then
-    jobs="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
-  else
-    jobs=4
-  fi
+  jobs="$(ra8_max_jobs)"
   if [[ ! -f "${build_dir}/CMakeCache.txt" ]]; then
     echo "Configuring fuzz build (${build_dir})..."
     mkdir -p "${build_dir}"
