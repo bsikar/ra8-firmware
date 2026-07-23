@@ -87,6 +87,7 @@ typedef enum : uint32_t {
 
 static uint8_t          s_frames[(size_t)k_h_frames * (size_t)k_h_frame_bytes];
 static ra8_vmem_frame_t s_meta[(size_t)k_h_frames];
+static ra8_vmem_key_t   s_keys[(size_t)k_h_frames];
 static int32_t          s_buckets[(size_t)k_h_buckets];
 
 /** @brief Total size of the modelled huge object in bytes (~7.6 GiB). */
@@ -217,6 +218,7 @@ static uint32_t t_setup(ra8_vsource_t* vs, ra8_vsource_obj_t* objs, ra8_vmem_t* 
                         .frame_bytes  = (uint32_t)k_h_frame_bytes,
                         .frame_count  = (uint32_t)k_h_frames,
                         .meta         = s_meta,
+                        .keys         = s_keys,
                         .buckets      = s_buckets,
                         .bucket_count = (uint32_t)k_h_buckets,
                         .loader       = ra8_vsource_loader,

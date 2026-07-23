@@ -355,6 +355,7 @@ static void vmem_stream_open_backing(ra8_vsource_t* vs, ra8_vmem_t* vm, ra8_vmem
 {
   [[gnu::aligned(8)]] static uint8_t s_frames[(size_t)k_vmem_frames * (size_t)k_vmem_frame_bytes];
   static ra8_vmem_frame_t            s_fmeta[k_vmem_frames];
+  static ra8_vmem_key_t              s_fkeys[k_vmem_frames];
   static int32_t                     s_fbuckets[k_vmem_buckets];
   static ra8_vsource_obj_t           s_objs[k_vmem_objs];
 
@@ -369,6 +370,7 @@ static void vmem_stream_open_backing(ra8_vsource_t* vs, ra8_vmem_t* vm, ra8_vmem
   vcfg.frame_bytes    = (uint32_t)k_vmem_frame_bytes;
   vcfg.frame_count    = (uint32_t)k_vmem_frames;
   vcfg.meta           = s_fmeta;
+  vcfg.keys           = s_fkeys;
   vcfg.buckets        = s_fbuckets;
   vcfg.bucket_count   = (uint32_t)k_vmem_buckets;
   vcfg.loader         = ra8_vsource_loader;

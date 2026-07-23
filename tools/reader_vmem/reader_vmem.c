@@ -232,6 +232,7 @@ static void rv_phase_scan_resist(rv_driver_t* d)
 typedef struct {
   uint8_t*          frame_mem; /**< Page-frame pool.         */
   ra8_vmem_frame_t* meta;      /**< Per-frame metadata.      */
+  ra8_vmem_key_t*   keys;      /**< Per-frame key storage.   */
   int32_t*          buckets;   /**< Hash-bucket index heads. */
 } rv_res_t;
 
@@ -240,6 +241,7 @@ static void rv_res_free(rv_res_t* res)
 {
   free(res->frame_mem);
   free(res->meta);
+  free(res->keys);
   free(res->buckets);
 }
 
@@ -265,14 +267,17 @@ static bool rv_vmem_setup(ra8_vmem_t* vm, rv_res_t* res, uint32_t budget, ra8_vs
 {
   res->frame_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_rv_frame_bytes);
   res->meta      = (ra8_vmem_frame_t*)calloc((size_t)budget, sizeof(ra8_vmem_frame_t));
+  res->keys      = (ra8_vmem_key_t*)calloc((size_t)budget, sizeof(ra8_vmem_key_t));
   res->buckets   = (int32_t*)malloc((size_t)k_rv_buckets * sizeof(int32_t));
-  if ((res->frame_mem == nullptr) || (res->meta == nullptr) || (res->buckets == nullptr)) {
+  if ((res->frame_mem == nullptr) || (res->meta == nullptr) || (res->keys == nullptr) ||
+      (res->buckets == nullptr)) {
     return false;
   }
   ra8_vmem_cfg_t cfg = {.frame_mem    = res->frame_mem,
                         .frame_bytes  = (uint32_t)k_rv_frame_bytes,
                         .frame_count  = budget,
                         .meta         = res->meta,
+                        .keys         = res->keys,
                         .buckets      = res->buckets,
                         .bucket_count = (uint32_t)k_rv_buckets,
                         .loader       = ra8_vsource_loader,

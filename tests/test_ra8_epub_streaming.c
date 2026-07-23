@@ -97,8 +97,24 @@ static uint8_t s_filler[k_filler_bytes];
 static uint8_t s_frames[(size_t)k_frames * (size_t)k_frame_bytes];
 /** @brief Page-cache per-frame metadata. */
 static ra8_vmem_frame_t s_meta[(size_t)k_frames];
+/** @brief Page-cache per-frame key storage. */
+static ra8_vmem_key_t s_keys[(size_t)k_frames];
 /** @brief Page-cache hash buckets. */
 static int32_t s_buckets[(size_t)k_buckets];
+
+/** @brief Build the page-cache vmem config over the shared static fixtures. */
+static ra8_vmem_cfg_t esb_vmem_cfg(void* loader_ctx)
+{
+  return (ra8_vmem_cfg_t){.frame_mem    = s_frames,
+                          .frame_bytes  = (uint32_t)k_frame_bytes,
+                          .frame_count  = (uint32_t)k_frames,
+                          .meta         = s_meta,
+                          .keys         = s_keys,
+                          .buckets      = s_buckets,
+                          .bucket_count = (uint32_t)k_buckets,
+                          .loader       = ra8_vsource_loader,
+                          .loader_ctx   = loader_ctx};
+}
 
 /** @brief Bytes fetched from the backing (page-cache path instrumentation). */
 static uint64_t g_storage_bytes = 0U;
@@ -536,14 +552,7 @@ static void test_stream_via_pagecache_bounded(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_vsource_add_paged(&vs, storage_read, nullptr, 0U, (uint64_t)s_arc_size, &obj));
   ra8_vmem_t     vm  = {};
-  ra8_vmem_cfg_t cfg = {.frame_mem    = s_frames,
-                        .frame_bytes  = (uint32_t)k_frame_bytes,
-                        .frame_count  = (uint32_t)k_frames,
-                        .meta         = s_meta,
-                        .buckets      = s_buckets,
-                        .bucket_count = (uint32_t)k_buckets,
-                        .loader       = ra8_vsource_loader,
-                        .loader_ctx   = &vs};
+  ra8_vmem_cfg_t cfg = esb_vmem_cfg(&vs);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &cfg));
   ra8_vmem_stream_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_init(&st, &vm, obj, (uint64_t)s_arc_size));

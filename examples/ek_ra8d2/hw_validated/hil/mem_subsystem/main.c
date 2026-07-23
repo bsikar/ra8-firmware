@@ -168,6 +168,8 @@ static int32_t s_tile_buckets[k_mem_tile_buckets];
   8)]] static uint8_t s_vmem_frames[(size_t)k_mem_vmem_frames * (size_t)k_mem_vmem_frame_bytes];
 /** @brief Page-cache per-frame metadata. */
 static ra8_vmem_frame_t s_vmem_fmeta[k_mem_vmem_frames];
+/** @brief Page-cache per-frame key storage. */
+static ra8_vmem_key_t s_vmem_fkeys[k_mem_vmem_frames];
 /** @brief Page-cache hash buckets. */
 static int32_t s_vmem_fbuckets[k_mem_vmem_buckets];
 /** @brief Object-source registry slots. */
@@ -525,6 +527,7 @@ static bool mem_run_vmem(mem_report_t* r)
     .frame_bytes  = (uint32_t)k_mem_vmem_frame_bytes,
     .frame_count  = (uint32_t)k_mem_vmem_frames,
     .meta         = s_vmem_fmeta,
+    .keys         = s_vmem_fkeys,
     .buckets      = s_vmem_fbuckets,
     .bucket_count = (uint32_t)k_mem_vmem_buckets,
     .loader       = ra8_vsource_loader,

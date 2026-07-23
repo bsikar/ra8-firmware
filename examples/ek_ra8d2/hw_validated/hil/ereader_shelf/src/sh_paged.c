@@ -73,6 +73,9 @@ static uint64_t s_shp_table[k_shp_table_entries];
 /** @brief Per-frame cache metadata (parallel to the frame pool). */
 static ra8_vmem_frame_t s_shp_meta[k_shp_frame_count];
 
+/** @brief Per-frame cache key storage (parallel to the frame pool). */
+static ra8_vmem_key_t s_shp_keys[k_shp_frame_count];
+
 /** @brief Cache hash-bucket heads. */
 static int32_t s_shp_buckets[k_shp_bucket_count];
 
@@ -195,6 +198,7 @@ static bool sh_paged_bind(void)
     .frame_bytes  = (uint32_t)k_shp_frame_bytes,
     .frame_count  = (uint32_t)k_shp_frame_count,
     .meta         = s_shp_meta,
+    .keys         = s_shp_keys,
     .buckets      = s_shp_buckets,
     .bucket_count = (uint32_t)k_shp_bucket_count,
     .loader       = ra8_vsource_loader,

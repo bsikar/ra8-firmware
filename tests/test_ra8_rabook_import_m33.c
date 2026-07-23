@@ -454,6 +454,8 @@ static char                  s_ic_css[k_ic_css_cap];
 static uint8_t s_ic_cache_frames[k_ic_cache_frames * k_ic_cache_frame_bytes];
 /** @brief Per-frame metadata for the in-core source page cache. */
 static ra8_vmem_frame_t s_ic_cache_meta[k_ic_cache_frames];
+/** @brief Per-frame key storage for the in-core source page cache. */
+static ra8_vmem_key_t s_ic_cache_keys[k_ic_cache_frames];
 /** @brief Hash-bucket heads for the in-core source page cache. */
 static int32_t s_ic_cache_buckets[k_ic_cache_buckets];
 /** @brief In-core source page cache; re-initialised by the adapter per compile. */
@@ -527,6 +529,7 @@ static void make_incore_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
     .cache_frame_bytes  = (uint32_t)k_ic_cache_frame_bytes,
     .cache_frame_count  = (uint32_t)k_ic_cache_frames,
     .cache_meta         = s_ic_cache_meta,
+    .cache_keys         = s_ic_cache_keys,
     .cache_buckets      = s_ic_cache_buckets,
     .cache_bucket_count = (uint32_t)k_ic_cache_buckets,
     .bufs               = &s_ic_bufs,

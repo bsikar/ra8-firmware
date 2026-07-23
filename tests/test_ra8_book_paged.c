@@ -259,6 +259,7 @@ typedef enum : uint32_t {
 
 static uint8_t          s_pb_frames[(size_t)k_pb_frame_count * (size_t)k_pb_frame_bytes];
 static ra8_vmem_frame_t s_pb_meta[k_pb_frame_count];
+static ra8_vmem_key_t   s_pb_keys[k_pb_frame_count];
 static int32_t          s_pb_buckets[k_pb_buckets];
 
 /** @brief Bind a paged book source over the shared cache + s_pbook backing. */
@@ -278,6 +279,7 @@ static void pbook_bind(ra8_book_src_t*    psrc,
     .frame_bytes  = (uint32_t)k_pb_frame_bytes,
     .frame_count  = (uint32_t)k_pb_frame_count,
     .meta         = s_pb_meta,
+    .keys         = s_pb_keys,
     .buckets      = s_pb_buckets,
     .bucket_count = (uint32_t)k_pb_buckets,
     .loader       = ra8_vsource_loader,
@@ -637,6 +639,7 @@ static void test_ra8_book_paged_read_faults(void)
     .frame_bytes  = (uint32_t)k_pb_frame_bytes,
     .frame_count  = (uint32_t)k_pb_frame_count,
     .meta         = s_pb_meta,
+    .keys         = s_pb_keys,
     .buckets      = s_pb_buckets,
     .bucket_count = (uint32_t)k_pb_buckets,
     .loader       = ra8_vsource_loader,

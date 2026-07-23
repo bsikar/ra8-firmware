@@ -363,6 +363,8 @@ static char                  s_css[k_st_css_cap];
 static uint8_t s_cache_frames[k_st_cache_frames * k_st_cache_frame_bytes];
 /** @brief Per-frame metadata; probed post-compile for the residency bound. */
 static ra8_vmem_frame_t s_cache_meta[k_st_cache_frames];
+/** @brief Per-frame key storage for the source page cache. */
+static ra8_vmem_key_t s_cache_keys[k_st_cache_frames];
 /** @brief Hash-bucket heads for the source page cache. */
 static int32_t s_cache_buckets[k_st_cache_buckets];
 /** @brief Source page cache; the adapter re-initialises it per compile and the
@@ -423,6 +425,7 @@ static void make_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
     .cache_frame_bytes  = (uint32_t)k_st_cache_frame_bytes,
     .cache_frame_count  = (uint32_t)k_st_cache_frames,
     .cache_meta         = s_cache_meta,
+    .cache_keys         = s_cache_keys,
     .cache_buckets      = s_cache_buckets,
     .cache_bucket_count = (uint32_t)k_st_cache_buckets,
     .bufs               = &s_bufs,
