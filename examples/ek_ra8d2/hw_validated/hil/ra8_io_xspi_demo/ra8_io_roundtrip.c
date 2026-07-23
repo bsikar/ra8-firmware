@@ -147,18 +147,72 @@ static ra8_err_t ra8_io_roundtrip_read_verify(const char* path, uint32_t len, co
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_io_roundtrip_mount(ra8_io_blockdev_t*               bd,
-                                 const ra8_io_roundtrip_params_t* p,
-                                 ra8_fs_backend_t*                be,
-                                 ra8_fs_mount_t**                 out_mount)
+/**
+ * @brief Null-check the four ::ra8_io_roundtrip_mount arguments.
+ *
+ * @details Split out so ::ra8_io_roundtrip_mount stays under the
+ *          function-size threshold: the four ``RA8_CHECK_NULL_PTR`` guards
+ *          expand to far more statements than they read as. Uses a literal
+ *          log tag because @p p may itself be the null argument.
+ *
+ * @param[in] bd        Block device the demo bound.
+ * @param[in] p         Round-trip parameter block.
+ * @param[in] be        Backend storage the caller supplies.
+ * @param[in] out_mount Out-parameter for the resulting mount handle.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           All four pointers are non-NULL.
+ * @retval k_ra8_err_null_ptr The first NULL argument was rejected.
+ *
+ * @pre The caller passes the same four pointers it received.
+ * @pre None of the pointers has been dereferenced yet.
+ * @post No state is modified.
+ * @post A non-ok return names the offending argument in the log.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t ra8_io_roundtrip_mount_check(ra8_io_blockdev_t*               bd,
+                                              const ra8_io_roundtrip_params_t* p,
+                                              ra8_fs_backend_t*                be,
+                                              ra8_fs_mount_t**                 out_mount)
 {
   RA8_CHECK_NULL_PTR(bd, "ra8_io_roundtrip", "bd");
   RA8_CHECK_NULL_PTR(p, "ra8_io_roundtrip", "params");
   RA8_CHECK_NULL_PTR(be, "ra8_io_roundtrip", "backend");
   RA8_CHECK_NULL_PTR(out_mount, "ra8_io_roundtrip", "out_mount");
-  *out_mount = nullptr;
+  return k_ra8_ok;
+}
 
-  RA8_RETURN_ON_ERROR(ra8_io_blockdev_as_fs_backend(bd, be), p->log_tag, "fs bridge");
+/**
+ * @brief Format @p be, mount it, and expose it through the VFS prefix.
+ *
+ * @details Runs the three failable storage steps of
+ *          ::ra8_io_roundtrip_mount -- FAT format, filesystem mount, VFS
+ *          registration -- and publishes the mount handle on success. Split
+ *          out so the public entry point stays under the function-size
+ *          threshold.
+ *
+ * @param[in]  be        Backend already bridged onto the block device.
+ * @param[in]  p         Round-trip parameter block (format + prefix knobs).
+ * @param[out] out_mount Receives the mount handle on success.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok      Formatted, mounted and VFS-registered.
+ * @retval (other)       The first failing ra8_fs / VFS step's code.
+ *
+ * @pre @p be, @p p and @p out_mount are non-NULL.
+ * @pre The block-device-to-backend bridge already ran.
+ * @post On success ``*out_mount`` holds the live mount handle.
+ * @post On failure ``*out_mount`` is left unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t ra8_io_roundtrip_format_mount(ra8_fs_backend_t*                be,
+                                               const ra8_io_roundtrip_params_t* p,
+                                               ra8_fs_mount_t**                 out_mount)
+{
   ra8_fs_format_opts_t opts = {};
   opts.type                 = p->fat_type;
   opts.label                = p->volume_label;
@@ -168,6 +222,20 @@ ra8_err_t ra8_io_roundtrip_mount(ra8_io_blockdev_t*               bd,
   RA8_RETURN_ON_ERROR(ra8_io_vfs_mount(p->vfs_prefix, mnt), p->log_tag, "vfs mount");
   *out_mount = mnt;
   return k_ra8_ok;
+}
+
+ra8_err_t ra8_io_roundtrip_mount(ra8_io_blockdev_t*               bd,
+                                 const ra8_io_roundtrip_params_t* p,
+                                 ra8_fs_backend_t*                be,
+                                 ra8_fs_mount_t**                 out_mount)
+{
+  RA8_RETURN_ON_ERROR(ra8_io_roundtrip_mount_check(bd, p, be, out_mount),
+                      "ra8_io_roundtrip",
+                      "args");
+  *out_mount = nullptr;
+
+  RA8_RETURN_ON_ERROR(ra8_io_blockdev_as_fs_backend(bd, be), p->log_tag, "fs bridge");
+  return ra8_io_roundtrip_format_mount(be, p, out_mount);
 }
 
 ra8_err_t ra8_io_roundtrip_root_file(ra8_fs_mount_t* mnt, const ra8_io_roundtrip_params_t* p)
@@ -185,6 +253,41 @@ ra8_err_t ra8_io_roundtrip_root_file(ra8_fs_mount_t* mnt, const ra8_io_roundtrip
   return ra8_io_roundtrip_read_verify(p->root_path, p->root_bytes, p->log_tag);
 }
 
+/**
+ * @brief Open the subdir file for writing, emit ::s_payload, and close it.
+ *
+ * @details Runs the open / write / close sequence of
+ *          ::ra8_io_roundtrip_subdir_file, closing the handle on every path
+ *          before surfacing the write error. Split out so the public entry
+ *          point stays under the function-size threshold. Assumes the caller
+ *          already filled ::s_payload with the subdir pattern.
+ *
+ * @param[in] p Round-trip parameter block (subdir path + byte count + tag).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok The payload was written and the handle closed cleanly.
+ * @retval (other)  The first failing open / write / close step's code.
+ *
+ * @pre @p p is non-NULL and ::s_payload holds @p p->subdir_bytes bytes.
+ * @pre @p p->subdir_bytes is at most ::k_ra8_io_roundtrip_max_payload.
+ * @post No file handle is left open on any return path.
+ * @post The subdir file holds ::s_payload on success.
+ *
+ * @note Not thread-safe; reads the shared payload buffer.
+ * @since 0.1.0
+ */
+static ra8_err_t ra8_io_roundtrip_write_subdir(const ra8_io_roundtrip_params_t* p)
+{
+  ra8_fs_file_t* wf = nullptr;
+  RA8_RETURN_ON_ERROR(ra8_io_vfs_open(p->subdir_file, k_ra8_fs_mode_write, &wf),
+                      p->log_tag,
+                      "open w");
+  ra8_err_t werr = ra8_fs_write(wf, s_payload, p->subdir_bytes);
+  RA8_RETURN_ON_ERROR(ra8_fs_close(wf), p->log_tag, "close w");
+  RA8_RETURN_ON_ERROR(werr, p->log_tag, "write");
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_io_roundtrip_subdir_file(const ra8_io_roundtrip_params_t* p)
 {
   RA8_CHECK_NULL_PTR(p, "ra8_io_roundtrip", "params");
@@ -194,14 +297,7 @@ ra8_err_t ra8_io_roundtrip_subdir_file(const ra8_io_roundtrip_params_t* p)
 
   RA8_RETURN_ON_ERROR(ra8_io_vfs_mkdir(p->subdir_path), p->log_tag, "mkdir");
   ra8_io_roundtrip_fill_alpha(p->subdir_bytes);
-
-  ra8_fs_file_t* wf = nullptr;
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_open(p->subdir_file, k_ra8_fs_mode_write, &wf),
-                      p->log_tag,
-                      "open w");
-  ra8_err_t werr = ra8_fs_write(wf, s_payload, p->subdir_bytes);
-  RA8_RETURN_ON_ERROR(ra8_fs_close(wf), p->log_tag, "close w");
-  RA8_RETURN_ON_ERROR(werr, p->log_tag, "write");
+  RA8_RETURN_ON_ERROR(ra8_io_roundtrip_write_subdir(p), p->log_tag, "subdir write");
 
   return ra8_io_roundtrip_read_verify(p->subdir_file, p->subdir_bytes, p->log_tag);
 }
