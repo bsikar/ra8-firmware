@@ -96,8 +96,8 @@ select = [
   # The recorded reason for dropping this was scheduling, not merit, and the
   # merit argument held: ANN is the family that catches a checker silently
   # accepting the wrong type, and these checkers are what the tree's
-  # correctness rests on. It caught one here -- parse_cbz_container returns a
-  # 3-tuple where its neighbours return 2, which a docstring-led annotation
+  # correctness rests on. It caught one here -- a producer helper returned a
+  # 3-tuple where its neighbours returned 2, which a docstring-led annotation
   # got wrong until the runtime shapes were checked.
   #
   # ANN401 got real types rather than Any respelled: a JSON-RPC id is
