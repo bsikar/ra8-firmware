@@ -87,29 +87,53 @@ void copy_bounded(char* dst, std::size_t cap, const char* src)
 }
 
 /**
- * @brief Recursive walk to find the first descendant matching
- *        `local_name`. Tinyxml2 stores names with the namespace prefix
- *        glued in, so we accept any tag that ends in `:local_name` or
- *        is exactly `local_name`.
+ * @brief Advance to the next element of a pre-order walk of `root`'s
+ *        subtree, or nullptr once the subtree is exhausted.
+ *
+ * @details Iterative replacement for the recursive descent the tree
+ *          walkers used to perform (NASA Power of 10 Rule 1: no recursion).
+ *          Descends into the first child, else the next sibling, else
+ *          backtracks up to an ancestor's sibling, never stepping above
+ *          `root`.
+ */
+const XMLElement* next_preorder(const XMLElement* node, const XMLElement* root)
+{
+  const XMLElement* child = node->FirstChildElement();
+  if (child != nullptr) {
+    return child;
+  }
+  const XMLElement* cursor = node;
+  while (cursor != nullptr && cursor != root) {
+    const XMLElement* sibling = cursor->NextSiblingElement();
+    if (sibling != nullptr) {
+      return sibling;
+    }
+    const tinyxml2::XMLNode* up = cursor->Parent();
+    cursor                      = (up != nullptr) ? up->ToElement() : nullptr;
+  }
+  return nullptr;
+}
+
+/**
+ * @brief Find the first descendant matching `local_name`, in document
+ *        pre-order. Tinyxml2 stores names with the namespace prefix glued
+ *        in, so we accept any tag that ends in `:local_name` or is exactly
+ *        `local_name`.
  */
 const XMLElement* find_descendant(const XMLElement* root, const char* local_name)
 {
   if (root == nullptr || local_name == nullptr) {
     return nullptr;
   }
-  for (const XMLElement* child = root->FirstChildElement(); child != nullptr;
-       child                   = child->NextSiblingElement()) {
-    const char* name = child->Name();
+  for (const XMLElement* node = root->FirstChildElement(); node != nullptr;
+       node                   = next_preorder(node, root)) {
+    const char* name = node->Name();
     if (name != nullptr) {
       const char* colon = std::strrchr(name, ':');
       const char* tail  = (colon != nullptr) ? (colon + 1) : name;
       if (std::strcmp(tail, local_name) == 0) {
-        return child;
+        return node;
       }
-    }
-    const XMLElement* deeper = find_descendant(child, local_name);
-    if (deeper != nullptr) {
-      return deeper;
     }
   }
   return nullptr;
@@ -384,66 +408,117 @@ void toc_emit(ra8_epub_book_t* book, const char* title, const char* href, std::u
 }
 
 /**
- * @brief Depth-first walk of NCX `<navPoint>` siblings under `parent`.
+ * @brief First following sibling of `from` whose local name matches.
  */
-void ncx_walk(const XMLElement* parent, ra8_epub_book_t* book, std::uint8_t depth)
+const XMLElement* next_local_sibling(const XMLElement* from, const char* local_name)
 {
-  for (const XMLElement* np = parent->FirstChildElement(); np != nullptr;
-       np                   = np->NextSiblingElement()) {
-    if (!elem_local_is(np, "navPoint")) {
-      continue;
-    }
-    const XMLElement* label   = find_child(np, "navLabel");
-    const XMLElement* text    = (label != nullptr) ? find_child(label, "text") : nullptr;
-    const XMLElement* content = find_child(np, "content");
-    const char*       title   = (text != nullptr) ? text->GetText() : nullptr;
-    const char*       src     = (content != nullptr) ? content->Attribute("src") : nullptr;
-    toc_emit(book, title, src, depth);
-    ncx_walk(np, book, static_cast<std::uint8_t>(depth + 1U));
-  }
-}
-
-/**
- * @brief Recursively find the first `<nav>` whose `epub:type` token list
- *        contains `type` (e.g. "toc").
- */
-const XMLElement* find_nav_by_type(const XMLElement* root, const char* type)
-{
-  for (const XMLElement* child = root->FirstChildElement(); child != nullptr;
-       child                   = child->NextSiblingElement()) {
-    if (elem_local_is(child, "nav")) {
-      const char* attr = child->Attribute("epub:type");
-      if (attr != nullptr && std::strstr(attr, type) != nullptr) {
-        return child;
-      }
-    }
-    const XMLElement* deeper = find_nav_by_type(child, type);
-    if (deeper != nullptr) {
-      return deeper;
+  for (const XMLElement* sibling = from->NextSiblingElement(); sibling != nullptr;
+       sibling                   = sibling->NextSiblingElement()) {
+    if (elem_local_is(sibling, local_name)) {
+      return sibling;
     }
   }
   return nullptr;
 }
 
 /**
- * @brief Depth-first walk of nav `<li>` siblings under an `<ol>`.
+ * @brief Depth-first walk of NCX `<navPoint>` elements, emitting one TOC
+ *        entry per navPoint at its nesting depth.
+ *
+ * @details Iterative pre-order walk (NASA Power of 10 Rule 1: no
+ *          recursion). Descends into a navPoint's first navPoint child,
+ *          else advances to the next navPoint sibling, else backtracks to
+ *          the parent navPoint's sibling, tracking the depth as it goes.
  */
-void nav_walk(const XMLElement* ordered_list, ra8_epub_book_t* book, std::uint8_t depth)
+void ncx_walk(const XMLElement* parent, ra8_epub_book_t* book, std::uint8_t base_depth)
 {
-  for (const XMLElement* li = ordered_list->FirstChildElement(); li != nullptr;
-       li                   = li->NextSiblingElement()) {
-    if (!elem_local_is(li, "li")) {
+  const XMLElement* np    = find_child(parent, "navPoint");
+  std::uint8_t      depth = base_depth;
+  while (np != nullptr) {
+    const XMLElement* label   = find_child(np, "navLabel");
+    const XMLElement* text    = (label != nullptr) ? find_child(label, "text") : nullptr;
+    const XMLElement* content = find_child(np, "content");
+    const char*       title   = (text != nullptr) ? text->GetText() : nullptr;
+    const char*       src     = (content != nullptr) ? content->Attribute("src") : nullptr;
+    toc_emit(book, title, src, depth);
+
+    const XMLElement* child = find_child(np, "navPoint");
+    if (child != nullptr) {
+      np    = child;
+      depth = static_cast<std::uint8_t>(depth + 1U);
       continue;
     }
+    const XMLElement* sibling = next_local_sibling(np, "navPoint");
+    while (sibling == nullptr && depth > base_depth) {
+      const tinyxml2::XMLNode* up = np->Parent();
+      np                          = (up != nullptr) ? up->ToElement() : nullptr;
+      depth                       = static_cast<std::uint8_t>(depth - 1U);
+      if (np == nullptr) {
+        break;
+      }
+      sibling = next_local_sibling(np, "navPoint");
+    }
+    np = sibling;
+  }
+}
+
+/**
+ * @brief Find the first `<nav>` whose `epub:type` token list contains
+ *        `type` (e.g. "toc"), searching in document pre-order.
+ */
+const XMLElement* find_nav_by_type(const XMLElement* root, const char* type)
+{
+  for (const XMLElement* node = root->FirstChildElement(); node != nullptr;
+       node                   = next_preorder(node, root)) {
+    if (elem_local_is(node, "nav")) {
+      const char* attr = node->Attribute("epub:type");
+      if (attr != nullptr && std::strstr(attr, type) != nullptr) {
+        return node;
+      }
+    }
+  }
+  return nullptr;
+}
+
+/**
+ * @brief Depth-first walk of nav `<li>` elements under an `<ol>`, emitting
+ *        one TOC entry per `<li>` at its nesting depth.
+ *
+ * @details Iterative pre-order walk (NASA Power of 10 Rule 1: no
+ *          recursion). Descends into an `<li>`'s nested `<ol>` first list
+ *          item, else advances to the next `<li>` sibling, else backtracks
+ *          two levels (`<li>` -> `<ol>` -> parent `<li>`) to its sibling.
+ */
+void nav_walk(const XMLElement* ordered_list, ra8_epub_book_t* book, std::uint8_t base_depth)
+{
+  const XMLElement* li    = find_child(ordered_list, "li");
+  std::uint8_t      depth = base_depth;
+  while (li != nullptr) {
     const XMLElement* anchor = find_child(li, "a");
     const XMLElement* label  = (anchor != nullptr) ? anchor : find_child(li, "span");
     const char*       title  = (label != nullptr) ? label->GetText() : nullptr;
     const char*       href   = (anchor != nullptr) ? anchor->Attribute("href") : nullptr;
     toc_emit(book, title, href, depth);
+
     const XMLElement* nested = find_child(li, "ol");
-    if (nested != nullptr) {
-      nav_walk(nested, book, static_cast<std::uint8_t>(depth + 1U));
+    const XMLElement* child  = (nested != nullptr) ? find_child(nested, "li") : nullptr;
+    if (child != nullptr) {
+      li    = child;
+      depth = static_cast<std::uint8_t>(depth + 1U);
+      continue;
     }
+    const XMLElement* sibling = next_local_sibling(li, "li");
+    while (sibling == nullptr && depth > base_depth) {
+      const tinyxml2::XMLNode* ol_node = li->Parent();
+      const tinyxml2::XMLNode* up_li   = (ol_node != nullptr) ? ol_node->Parent() : nullptr;
+      li                               = (up_li != nullptr) ? up_li->ToElement() : nullptr;
+      depth                            = static_cast<std::uint8_t>(depth - 1U);
+      if (li == nullptr) {
+        break;
+      }
+      sibling = next_local_sibling(li, "li");
+    }
+    li = sibling;
   }
 }
 

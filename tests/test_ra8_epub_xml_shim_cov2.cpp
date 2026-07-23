@@ -331,6 +331,6 @@ int main(void)
   test_cov2_opf_edges();
   test_cov2_ncx_edges();
   test_cov2_nav_edges();
-  std::fprintf(stderr, "[OK ] test_ra8_epub_xml_shim_cov2.cpp\n");
+  (void)std::fprintf(stderr, "[OK ] test_ra8_epub_xml_shim_cov2.cpp\n");
   return 0;
 }
