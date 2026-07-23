@@ -250,9 +250,10 @@ ra8_err_t ra8_flash_config_set_write(uint32_t target_addr, const uint16_t* words
    * two target regions, and the opener opcode is chosen per region below:
    *   - OFS configuration area (HUM Ch 7 "Option-Setting Memory" p 278) at
    *     0x02C9F000: the Configuration Set command (HUM Ch 59.7.4.8 p 3594).
-   *   - Extra-MRAM DATA area (HUM Ch 59.1 "Address Map" p 3543) at 0x27000000:
-   *     the Program command (HUM Ch 59.7.4.5 "Program Command" Fig 59.13
-   *     p 3591). Config-Set is NOT valid for the data area -- it raises
+   *   - Extra-MRAM option-setting / OTP area (HUM Ch 59.7.4.5 Table 59.15
+   *     p 3592) at 0x02E07600: the Program command (HUM Ch 59.7.4.5 "Program
+   *     Command" Fig 59.13 p 3591). Config-Set is NOT valid for the data area
+   *     -- it raises
    *     MSTATR.CFGSETERR and leaves the target blank, so a later read of the
    *     un-programmed cells bus-faults on the blank-MRAM ECC error.
    * Accept both ranges; reject everything else. */
@@ -699,7 +700,15 @@ ra8_err_t ra8_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uin
     return k_ra8_err_invalid_arg;
   }
   const uint32_t end_excl = (uint32_t)((uint64_t)mram_addr + (uint64_t)len);
-  if (end_excl > (uint32_t)k_ra8_flash_extra_start + (uint32_t)k_ra8_flash_extra_size) {
+  /* OTP-misuse guard (#397): cap the general-purpose write path at
+   * k_ra8_flash_extra_locked_start. The permanent / irreversible option-setting
+   * structures (PBPS, POFSPS, REVOKE, Zeroization-HUK enable, anti-rollback)
+   * begin there; programming any of them can brick the part or destroy the
+   * wrapped HUK, so they require the deliberate, separately-named
+   * ra8_flash_config_set_write. This bound is stricter than the full window end
+   * (k_ra8_flash_extra_start + k_ra8_flash_extra_size), so the single check also
+   * rejects an overrun past the window. HUM Ch 59.7.4.5 Table 59.15 p 3592. */
+  if (end_excl > (uint32_t)k_ra8_flash_extra_locked_start) {
     return k_ra8_err_invalid_arg;
   }
   const uint32_t page_mask = k_ra8_mram_write_size_bytes - 1U;

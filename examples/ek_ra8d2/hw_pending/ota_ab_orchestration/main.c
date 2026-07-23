@@ -85,15 +85,21 @@ typedef enum : uint32_t {
 
 /**
  * @enum app_mram_addr_t
- * @brief Extra-MRAM (data-flash) addresses the demo owns (0x27000000, 12 KiB).
+ * @brief Extra-MRAM option-setting addresses the demo owns (0x02E07600, 12 KiB).
  *
  * @details The inactive "bank" is staged at the region base; the persistent
  * boot-select record lives in a separate 32-byte block clear of the image so an
- * OTA bank erase never touches it (HUM Ch 59.1 "Address Map" p 3543).
+ * OTA bank erase never touches it (HUM Ch 59.7.4.5 Table 59.15 p 3592).
+ *
+ * @warning This window is one-time-programmable option-setting / OTP memory, not
+ * a rewritable data-flash bank: the erase + re-stage cycle an A/B updater needs
+ * does NOT work on real silicon. board_sim maps the window so the demo passes
+ * here, but a real inactive-bank home (OSPI / SD) is tracked by #315.
  */
 typedef enum : uintptr_t {
-  k_app_bank_addr    = 0x27000000U, /**< Inactive-bank base (extra-MRAM start).     */
-  k_app_bootsel_addr = 0x27002000U, /**< Persistent boot-select record (own block). */
+  k_app_bank_addr = k_ra8_flash_extra_start, /**< Inactive-bank base (extra-MRAM start). */
+  k_app_bootsel_addr =
+    k_ra8_flash_extra_start + 0x2000U, /**< Persistent boot-select record (own block). */
 } app_mram_addr_t;
 
 /**

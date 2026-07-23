@@ -436,7 +436,7 @@ static void test_write_loop_hw_error(void)
  *
  * @details
  * Calls ra8_flash_blank_check with an address inside the extra-MRAM region
- * (k_ra8_flash_extra_start = 0x27000000).  The logical-AND at lines 503-504
+ * (k_ra8_flash_extra_start = 0x02E07600).  The logical-AND at lines 503-504
  * short-circuits on the first condition when the address is below
  * k_ra8_flash_extra_start; to reach line 504 the first condition must be
  * true, which happens here because the address equals k_ra8_flash_extra_start.

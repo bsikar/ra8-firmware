@@ -48,17 +48,45 @@ extern "C" {
  * @brief Address bounds of the user-visible MRAM windows.
  *
  * @details
- * The code-MRAM lives at 0x02000000 and is 1 MiB. The extra-MRAM
- * (a.k.a. data flash) lives at 0x27000000 and is 12 KiB. Anti-
- * rollback counters and the start-up area-select fuse live in the
+ * The code-MRAM lives at 0x02000000 and is 1 MiB. The RA8D2 has **no
+ * general-purpose data-flash / EEPROM array**: the only MRAM area the
+ * MACI Program command (0xE8) can target is the extra-MRAM
+ * option-setting / OTP window at 0x02E07600..0x02E179F0. Every address
+ * enumerated by HUM Ch 59.7.4.5 Table 59.15 lies in that span (FSBL,
+ * code certificate, general-purpose OTP, PBPS, POFSPS, REVOKE,
+ * HUK-zeroize enable, anti-rollback counter). The previously-declared
+ * 0x27000000 "data flash" base is an RA-family assumption this part does
+ * not honour (writing it faults, ILGCOMERR|ILGLERR -- issue #397).
+ * Anti-rollback counters and the start-up area-select fuse live in the
  * Option-Setting Memory window starting at 0x02C9F000.
  */
 typedef enum : uintptr_t {
   /* HUM Ch 59.1 "Address Map" p 3543 */
-  k_ra8_flash_code_start  = 0x02000000UL, /**< Start of code MRAM region.        */
-  k_ra8_flash_code_size   = 0x00100000UL, /**< 1 MiB of code MRAM.               */
-  k_ra8_flash_extra_start = 0x27000000UL, /**< Start of extra MRAM (data flash). */
-  k_ra8_flash_extra_size  = 0x00003000UL, /**< 12 KiB of extra MRAM.             */
+  k_ra8_flash_code_start = 0x02000000UL, /**< Start of code MRAM region. */
+  k_ra8_flash_code_size  = 0x00100000UL, /**< 1 MiB of code MRAM.        */
+
+  /* Extra-MRAM option-setting / OTP window: the whole address space the MACI
+   * Program command accepts. There is NO rewritable data-flash on this part.
+   * HUM Ch 59.7.4.5 "Program Command" Table 59.15 p 3592 (0x02E0_7600 first
+   * legal target .. 0x02E1_79F0 last). */
+  k_ra8_flash_extra_start = 0x02E07600UL, /**< First legal Program target (FSBL setting).  */
+  k_ra8_flash_extra_size  = 0x00010400UL, /**< Covers through 0x02E179F0 (last, reserved). */
+
+  /* General-purpose OTP sub-range: the only portion of the window a
+   * general-purpose write may target. The rest (FSBL, code certificate, PBPS,
+   * POFSPS, REVOKE, HUK-zeroize, anti-rollback) is security-critical and needs
+   * a deliberate, separately-named call (see ra8_flash_config_set_write).
+   * HUM Ch 7.2.25 "GPOTPn : General Purpose OTP (n = 0 to 23)" p 299 (24 words
+   * at 0x02E0_76A0 + 0x4 x n). */
+  k_ra8_flash_gpotp_start = 0x02E076A0UL, /**< GPOTP0.                     */
+  k_ra8_flash_gpotp_size  = 0x00000060UL, /**< 24 words (GPOTP0..GPOTP23). */
+
+  /* Guard boundary: the permanent / irreversible option-setting structures
+   * begin here (PBPS_SEC, PBPS, POFSPS, REVOKE, Zeroization HUK enable,
+   * anti-rollback lock/config). A general-purpose write is refused at or above
+   * this address so a caller cannot brick the part or destroy the wrapped HUK
+   * by accident. HUM Ch 59.7.4.5 Table 59.15 p 3592 (PBPS_SEC at 0x02E1_7700). */
+  k_ra8_flash_extra_locked_start = 0x02E17700UL, /**< First permanent-OTP structure. */
 
   /* HUM Ch 7 "Option-Setting Memory" p 278 -- the config_set MACI command
    * targets halfwords inside this OFS window (BTFLG/BTSIZE at 0x02C9F070,
