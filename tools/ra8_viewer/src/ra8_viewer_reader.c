@@ -61,6 +61,12 @@ size_t viewer_read(void* ctx, uint64_t offset, void* buf, size_t len)
 
 ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need)
 {
+  /* Fail closed before touching the allocator: `need` is the encoded-image
+   * length declared in the archive header, so an attacker-chosen value must be
+   * rejected against the per-unit output cap rather than handed to realloc. */
+  if ((uint64_t)need > r->limits.max_output_bytes) {
+    return k_ra8_err_decomp_output_cap;
+  }
   if (r->page_cap >= need) {
     return k_ra8_ok;
   }
@@ -191,7 +197,13 @@ RA8_INTERNAL static ra8_err_t viewer_alloc_core(ra8_viewer_reader_t** out)
   r->rt565 = r->fb;
   r->rt_w  = (uint32_t)k_ra8_viewer_fb_width;
   r->rt_h  = (uint32_t)k_ra8_viewer_fb_height;
-  *out     = r;
+  /* One owner-approved decompression policy governs every allocation the viewer
+   * sizes from untrusted archive fields (page buffers, the JOF atlas slurp, the
+   * JOF band cache). It is the same 64 MiB output cap / 1024:1 ratio bound the
+   * firmware reader core enforces, so the viewer rejects exactly what the board
+   * would. */
+  r->limits = ra8_decomp_limits_default();
+  *out      = r;
   return k_ra8_ok;
 }
 

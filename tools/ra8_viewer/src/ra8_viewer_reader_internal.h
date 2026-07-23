@@ -28,6 +28,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_comic.h"
+#include "ra8_decomp_limits.h"
 #include "ra8_err.h"
 #include "ra8_img_arena.h"
 #include "ra8_jof.h"
@@ -136,9 +137,10 @@ typedef struct {
  * @since 0.1.0
  */
 struct ra8_viewer_reader {
-  viewer_fmt_t      fmt;  /**< Which engine this document uses.    */
-  viewer_file_ctx_t file; /**< File backing for the read callback. */
-  uint16_t*         fb;   /**< RGB565 framebuffer (owned).         */
+  viewer_fmt_t        fmt;    /**< Which engine this document uses.          */
+  viewer_file_ctx_t   file;   /**< File backing for the read callback.       */
+  ra8_decomp_limits_t limits; /**< Untrusted-input allocation policy (open). */
+  uint16_t*           fb;     /**< RGB565 framebuffer (owned).               */
   /* --- continuous-scroll tile model (native-resolution, window path) --- */
   uint32_t* tile_wpx; /**< Cached native width per tile (tile_n).  */
   uint32_t* tile_hpx; /**< Cached native height per tile (tile_n). */
@@ -178,12 +180,19 @@ RA8_PRIV size_t viewer_read(void* ctx, uint64_t offset, void* buf, size_t len);
 
 /**
  * @brief Ensure @p r->page_buf holds at least @p need bytes, growing if required.
+ * @details Fails closed before allocating when @p need exceeds the reader's
+ *          untrusted-input output cap (`r->limits.max_output_bytes`): @p need is
+ *          an archive-declared length, so a lying header must be refused rather
+ *          than realloc'd. The declared/compressed-size ratio is validated by the
+ *          caller (viewer_read_page_bytes) via `ra8_decomp_check_declared`.
  * @param[in,out] r    Reader whose scratch buffer to size (non-NULL).
- * @param[in]     need Required capacity in bytes.
+ * @param[in]     need Required capacity in bytes (archive-derived; untrusted).
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok         The buffer holds at least @p need bytes.
- * @retval k_ra8_err_no_mem The buffer could not be grown.
+ * @retval k_ra8_ok                    The buffer holds at least @p need bytes.
+ * @retval k_ra8_err_decomp_output_cap @p need exceeds the per-unit output cap.
+ * @retval k_ra8_err_no_mem            The buffer could not be grown.
  * @post On ::k_ra8_ok `r->page_cap >= need`.
+ * @post On ::k_ra8_err_decomp_output_cap no allocation was attempted.
  * @note Not thread-safe.
  * @since 0.1.0
  */

@@ -119,6 +119,15 @@ viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got)
   if (rc != k_ra8_ok) {
     return rc;
   }
+  /* Refuse a lying or bomb-ratio declaration before any allocation. The whole
+   * archive length is a sound upper bound on this entry's compressed bytes, so
+   * a declared uncompressed size over the output cap -- or implausible against
+   * that compressed bound -- is rejected here (the CBT/tar walker has no
+   * open-time size guard, so this is the viewer's own line of defence for it). */
+  rc = ra8_decomp_check_declared(&r->limits, r->file.size, raw_size);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
   rc = viewer_reserve_page_buf(r, (size_t)raw_size);
   if (rc != k_ra8_ok) {
     return rc;
@@ -211,7 +220,14 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   if (rc != k_ra8_ok) {
     return rc;
   }
-  uint16_t* buf = (uint16_t*)malloc((size_t)rw * (size_t)rh * sizeof(uint16_t));
+  /* rw/rh are already clamped to k_ra8_gfx_max_dim, but size the destination
+   * through a widened multiply and the output cap so the allocation is
+   * provably bounded (and cannot wrap size_t) whatever the render cap becomes. */
+  const uint64_t buf_bytes = (uint64_t)rw * (uint64_t)rh * (uint64_t)sizeof(uint16_t);
+  if (buf_bytes > r->limits.max_output_bytes) {
+    return k_ra8_err_decomp_output_cap;
+  }
+  uint16_t* buf = (uint16_t*)malloc((size_t)buf_bytes);
   if (buf == nullptr) {
     return k_ra8_err_no_mem;
   }
