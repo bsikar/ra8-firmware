@@ -134,6 +134,7 @@ s_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, u
     .frame_bytes  = ctx->cache_frame_bytes,
     .frame_count  = ctx->cache_frame_count,
     .meta         = ctx->cache_meta,
+    .keys         = ctx->cache_keys,
     .buckets      = ctx->cache_buckets,
     .bucket_count = ctx->cache_bucket_count,
     .loader       = ra8_vsource_loader,
