@@ -172,6 +172,96 @@ typedef struct {
 ra8_book_src_read(const ra8_book_src_t* src, uint32_t off, void* dst, uint32_t len);
 
 /**
+ * @brief Read one image descriptor out of a book source (resident or paged).
+ *
+ * @details The source-aware counterpart of the resident-only ra8_book_images()
+ *          accessor: resolves image @p idx to its blob offset
+ *          (`hdr.image_off + idx * sizeof(ra8_book_image_t)`) and copies the
+ *          24-byte descriptor out through ::ra8_book_src_read, so a paged book
+ *          faults the descriptor's frame in on demand. The descriptor names the
+ *          image geometry and its `data_off` into the image pool; feed it to
+ *          ::ra8_book_src_image_rect to read pixels. This is the library-owned
+ *          replacement for open-coding the image-table stride in a consumer.
+ *
+ * @param[in]  src     Bound book source.
+ * @param[in]  idx     Image-table index (`< src->hdr.image_count`).
+ * @param[out] out_img Receives the image descriptor.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               Descriptor copied into @p out_img.
+ * @retval k_ra8_err_null_ptr     @p src or @p out_img was NULL.
+ * @retval k_ra8_err_invalid_arg  @p idx is at or past `src->hdr.image_count`.
+ * @retval k_ra8_err_*            A page fault (paged mode only; returned verbatim).
+ *
+ * @pre  @p src was populated by ra8_book_src_resident() / ra8_book_src_paged().
+ * @pre  @p out_img addresses writable storage for one ::ra8_book_image_t.
+ * @post On k_ra8_ok, @p out_img holds the descriptor at @p idx.
+ * @post On any non-ok return @p out_img content is unspecified.
+ *
+ * @note Not thread-safe.
+ * @see ra8_book_src_image_rect()
+ * @see ra8_book_images()
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_book_src_image(const ra8_book_src_t* src, uint32_t idx, ra8_book_image_t* out_img);
+
+/**
+ * @brief Read a sub-rectangle of a 4bpp image as unpacked gray8, row by row.
+ *
+ * @details Owns the image-pool addressing contract so consumers do not: for a
+ *          @ref k_ra8_book_image_gray4 raster (2 pixels per byte, pixel `(px,py)`
+ *          at flat nibble index `py * width + px`), copies the `w`x`h` window at
+ *          (@p x, @p y) out through ::ra8_book_src_read and expands each 4-bit
+ *          sample to one gray8 byte (`(nib << 4) | nib`) into @p out. The odd-width
+ *          nibble parity -- where a row can start on either the high or low nibble
+ *          of a pool byte -- is handled here, once, instead of in every renderer.
+ *
+ *          Each source row is read in bounded packed spans (a fixed pixel budget
+ *          per ::ra8_book_src_read), so the per-call read stays bounded by the
+ *          rectangle regardless of the image width and never inflates the whole
+ *          pool. Rows are written at @p out_stride intervals, so @p out may be a
+ *          window into a wider buffer.
+ *
+ * @param[in]  src        Bound book source.
+ * @param[in]  img        Image descriptor from ::ra8_book_src_image (@c format
+ *                        must be @ref k_ra8_book_image_gray4).
+ * @param[in]  x          Sub-rect left edge in source pixels (`x + w <= img->width`).
+ * @param[in]  y          Sub-rect top edge in source pixels (`y + h <= img->height`).
+ * @param[in]  w          Sub-rect width in pixels (`> 0`, `<= out_stride`).
+ * @param[in]  h          Sub-rect height in pixels (`> 0`).
+ * @param[out] out        Destination gray8 buffer (`>= out_stride * h` bytes).
+ * @param[in]  out_stride Bytes between successive output rows (`>= w`).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               The `w`x`h` window was unpacked into @p out.
+ * @retval k_ra8_err_null_ptr     @p src, @p img, or @p out was NULL.
+ * @retval k_ra8_err_invalid_arg  @p img is not gray4, or `w == 0`, `h == 0`,
+ *                               or `out_stride < w`.
+ * @retval k_ra8_err_out_of_range The sub-rect leaves the image, or the pool span
+ *                               it addresses leaves the blob.
+ * @retval k_ra8_err_*            A page fault (paged mode only; returned verbatim).
+ *
+ * @pre  @p src was populated by ra8_book_src_resident() / ra8_book_src_paged().
+ * @pre  @p out addresses at least `out_stride * h` writable bytes.
+ * @post On k_ra8_ok, each `out[r*out_stride + c]` (`0<=r<h`, `0<=c<w`) is the
+ *       gray8 expansion of source pixel `(x+c, y+r)`.
+ * @post On any non-ok return @p out content is unspecified.
+ *
+ * @note Not thread-safe.
+ * @see ra8_book_src_image()
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_book_src_image_rect(const ra8_book_src_t*   src,
+                                                const ra8_book_image_t* img,
+                                                uint32_t                x,
+                                                uint32_t                y,
+                                                uint32_t                w,
+                                                uint32_t                h,
+                                                uint8_t*                out,
+                                                uint32_t                out_stride);
+
+/**
  * @brief Extract one chapter's plain text from a book source (resident or paged).
  *
  * @details The source-aware counterpart of ra8_book_chapter_text(): same output
