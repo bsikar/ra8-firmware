@@ -20,6 +20,7 @@
 
 #include "mdl_config.h"
 #include "mdl_export.h"
+#include "mdl_export_internal.h"
 #include "mdl_extract.h"
 #include "mdl_robots.h"
 #include "mdl_sanitize.h"
@@ -51,7 +52,11 @@ typedef enum : uint16_t {
   k_join_tiny    = 6,    /**< Buffer too small for a joined path (D4 test). */
   k_buf_128      = 128,  /**< Small host/path/name probe buffer.            */
   k_buf_256      = 256,  /**< Medium probe buffer.                          */
+  k_buf_320      = 320,  /**< EPUB zip-entry-path probe buffer.             */
+  k_buf_2k       = 2048, /**< EPUB escaped-name / href probe buffer.        */
   k_buf_4k       = 4096, /**< robots.txt fetch scratch buffer.              */
+  k_long_amp_run = 240,  /**< '&' chars in the long-filename EPUB probe.    */
+  k_amp_esc_len  = 5,    /**< strlen("&amp;"), the escape of one '&'.       */
 } mdl_hard_const_t;
 
 static mdl_url_list_t s_list;
@@ -322,8 +327,15 @@ static void test_export_jof_roundtrip(void)
   const char* jof = "/tmp/mdl_jof_chap/page_001.jof";
   (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   write_bytes(jpg, k_tiny_jpeg, (size_t)k_tiny_jpeg_len);
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_jof, dir, "unused") == k_ra8_ok);
+  /* JOF is a directory-output format: it writes a `.jof` sibling per page into
+   * the chapter dir and does not use out_path (no single container exists), so
+   * the caller must report the directory, never a phantom archive file. */
+  TEST_ASSERT(mdl_format_is_dir_output(k_mdl_fmt_jof));
+  TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_cbz));
+  TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_epub));
+  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_jof, dir, dir) == k_ra8_ok);
 
+  /* The reported output -- the `.jof` sibling -- actually exists on disk. */
   FILE* f = fopen(jof, "rb");
   TEST_ASSERT_NOT_NULL(f);
   (void)fseek(f, 0, SEEK_END);
@@ -597,6 +609,96 @@ static void test_epub_escapes_name(void)
   TEST_END("epub escapes filename");
 }
 
+/**
+ * @test An EPUB built from a maximal-length, XML-escaping filename is complete.
+ * @details A 240-`&` page name escapes to 1200+ bytes and is embedded in both
+ *          the manifest fragment and the page xhtml. The pre-#308 512/1024-byte
+ *          accumulators could not hold it, so the export truncated (or, after
+ *          the fragment guard, failed) on a legitimate long name. Correct
+ *          worst-case sizing must now package it, and the OPF must carry the
+ *          whole escaped href plus its `</manifest>` / `</package>` closers --
+ *          proving the manifest was not cut off mid-element.
+ */
+static void test_epub_long_filenames(void)
+{
+  TEST_BEGIN("epub long filenames");
+  const char* dir = "/tmp/mdl_epublong_chap";
+  const char* out = "/tmp/mdl_epublong_chap.epub";
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
+
+  /* raw name: 240 '&' + ".jpg" (244 bytes, under NAME_MAX). */
+  char raw[k_buf_256];
+  memset(raw, '&', (size_t)k_long_amp_run);
+  memcpy(raw + k_long_amp_run, ".jpg", sizeof(".jpg"));
+  /* escaped name: "&amp;" x240 + ".jpg" (1204 bytes). */
+  char   esc[k_buf_2k];
+  size_t p = 0U;
+  for (uint16_t i = 0U; i < (uint16_t)k_long_amp_run; ++i) {
+    memcpy(esc + p, "&amp;", (size_t)k_amp_esc_len);
+    p += (size_t)k_amp_esc_len;
+  }
+  memcpy(esc + p, ".jpg", sizeof(".jpg"));
+
+  char path[k_buf_320];
+  (void)snprintf(path, sizeof(path), "%s/%s", dir, raw);
+  write_fixture(path, 'x');
+  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+
+  mz_zip_archive zr;
+  memset(&zr, 0, sizeof(zr));
+  TEST_ASSERT(mz_zip_reader_init_file(&zr, out, 0) != MZ_FALSE);
+  char* opf = zip_entry_str(&zr, "OEBPS/content.opf");
+  TEST_ASSERT_NOT_NULL(opf);
+  char href[k_buf_4k]; /* room for the "images/" prefix + a full k_buf_2k esc */
+  (void)snprintf(href, sizeof(href), "images/%s", esc);
+  TEST_ASSERT(strstr(opf, href) != nullptr);          /* whole escaped name present */
+  TEST_ASSERT(strstr(opf, "</manifest>") != nullptr); /* manifest not truncated     */
+  TEST_ASSERT(strstr(opf, "</package>") != nullptr);  /* document closed            */
+  free(opf);
+  /* the image entry is stored under the raw (unescaped) name, untruncated. */
+  char zipname[k_buf_320];
+  (void)snprintf(zipname, sizeof(zipname), "OEBPS/images/%s", raw);
+  TEST_ASSERT(mz_zip_reader_locate_file(&zr, zipname, nullptr, 0) >= 0);
+  (void)mz_zip_reader_end(&zr);
+
+  (void)unlink(path);
+  (void)unlink(out);
+  (void)rmdir(dir);
+  TEST_END("epub long filenames");
+}
+
+/**
+ * @test A directory holding more than k_max_pages images fails, not truncates.
+ * @details ::list_pages fills a fixed ::k_max_pages table; before #308 it
+ *          returned the capped count with no signal, so a larger chapter
+ *          packaged short and successfully. It now flags the overflow and
+ *          ::mdl_export_chapter fails instead of dropping the extra pages.
+ */
+static void test_export_page_cap(void)
+{
+  TEST_BEGIN("export page cap");
+  const char*  dir  = "/tmp/mdl_cap_chap";
+  const char*  out  = "/tmp/mdl_cap_chap.cbz";
+  const size_t over = (size_t)k_max_pages + 1U;
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
+  for (size_t i = 0U; i < over; ++i) {
+    char path[k_buf_256];
+    (void)snprintf(path, sizeof(path), "%s/page_%05zu.jpg", dir, i);
+    write_fixture(path, 'x');
+  }
+  /* One image too many -> refuse rather than package a short chapter. */
+  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbz, dir, out) == k_ra8_err_invalid_size);
+
+  for (size_t i = 0U; i < over; ++i) {
+    char path[k_buf_256];
+    (void)snprintf(path, sizeof(path), "%s/page_%05zu.jpg", dir, i);
+    (void)unlink(path);
+  }
+  (void)unlink(out);
+  (void)rmdir(dir);
+  TEST_END("export page cap");
+}
+
 /* ---- #302: robots.txt parser / matcher / cache (mdl_robots) ------------- */
 
 /** @test Most-specific User-agent group wins; Crawl-delay + reason extracted. */
@@ -740,6 +842,8 @@ int32_t main(void)
   test_xml_escape();
   test_tar_rejects_long_name();
   test_epub_escapes_name();
+  test_epub_long_filenames();
+  test_export_page_cap();
   test_robots_group_select();
   test_robots_allow_wins();
   test_robots_wildcard_anchor();
