@@ -275,10 +275,14 @@ jobs:
       # still require_cmd/require_tool_versions it, so a failed install fails loud.
       - name: Install the gcc-14 warning arm
         run: |
-          # ci-parity: infra -- installs gcc-14; runs no project check
-          command -v gcc-14 >/dev/null 2>&1 || {
+          # ci-parity: infra -- installs the gcc-14 + g++-14 pair; runs no project check
+          # g++-14 is installed alongside gcc-14 so the compiler this leaves on
+          # the shared self-hosted runner is a complete pair: the coverage gate's
+          # gcc-first selector otherwise picks up this gcc-14 and dies enabling
+          # C++ when only the C half is present.
+          { command -v gcc-14 && command -v g++-14 ; } >/dev/null 2>&1 || {
             sudo apt-get update
-            sudo apt-get install -y --no-install-recommends gcc-14
+            sudo apt-get install -y --no-install-recommends gcc-14 g++-14
           }
 
       - run: bash scripts/ci.sh --gate tools-build
