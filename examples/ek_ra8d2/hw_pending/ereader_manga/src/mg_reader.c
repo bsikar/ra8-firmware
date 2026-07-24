@@ -252,6 +252,15 @@ static void mg_blit_tile(mg_reader_t*      r,
   }
 }
 
+/** @brief Inclusive tile rect {tx0,ty0,tx1,ty1} covering a page region. */
+static void mg_tiles_of_region(const mg_reader_t* r, const int32_t reg[4], uint16_t out[4])
+{
+  out[0] = (uint16_t)(reg[0] / (int32_t)r->tile_w);       /* tx0 */
+  out[1] = (uint16_t)(reg[1] / (int32_t)r->tile_h);       /* ty0 */
+  out[2] = (uint16_t)((reg[2] - 1) / (int32_t)r->tile_w); /* tx1 */
+  out[3] = (uint16_t)((reg[3] - 1) / (int32_t)r->tile_h); /* ty1 */
+}
+
 /** @brief Page every tile overlapping the viewport through the cache and blit. */
 static ra8_err_t mg_render_page(mg_reader_t* r)
 {
@@ -261,12 +270,10 @@ static ra8_err_t mg_render_page(mg_reader_t* r)
   int32_t ox = 0;
   int32_t oy = 0;
   mg_offsets(r, &ox, &oy);
-  const uint16_t txlo = (uint16_t)(reg[0] / (int32_t)r->tile_w);
-  const uint16_t txhi = (uint16_t)((reg[2] - 1) / (int32_t)r->tile_w);
-  const uint16_t tylo = (uint16_t)(reg[1] / (int32_t)r->tile_h);
-  const uint16_t tyhi = (uint16_t)((reg[3] - 1) / (int32_t)r->tile_h);
-  for (uint16_t ty = tylo; ty <= tyhi; ++ty) {
-    for (uint16_t tx = txlo; tx <= txhi; ++tx) {
+  uint16_t tiles[4] = {};
+  mg_tiles_of_region(r, reg, tiles);
+  for (uint16_t ty = tiles[1]; ty <= tiles[3]; ++ty) {
+    for (uint16_t tx = tiles[0]; tx <= tiles[2]; ++tx) {
       ra8_tile_key_t  key  = {.image_id = r->image_id, .tile_x = tx, .tile_y = ty, .zoom = 0U};
       ra8_tile_t      tile = {};
       const ra8_err_t e    = ra8_tile_cache_get(r->cache, &key, &tile);
@@ -342,9 +349,57 @@ ra8_err_t mg_reader_render(mg_reader_t* r)
   return k_ra8_ok;
 }
 
+ra8_err_t mg_reader_prefetch(mg_reader_t* r)
+{
+  RA8_CHECK_NULL_PTR(r, k_mg_tag, "reader");
+  RA8_CHECK_NULL_PTR(r->cache, k_mg_tag, "cache");
+  if (r->last_pan == (ra8_tile_pan_dir_t)k_ra8_tile_pan_none) {
+    /* Last action was not a moving pan (initial frame, zoom toggle, or a pan
+     * clamped at the page edge): nothing ahead of the viewport to warm. A pan is
+     * a no-op at fit-zoom, so this also covers the whole-page-shown case. */
+    return k_ra8_ok;
+  }
+  int32_t reg[4] = {};
+  mg_region(r, &reg[0], &reg[1], &reg[2], &reg[3]);
+  uint16_t tiles[4] = {};
+  mg_tiles_of_region(r, reg, tiles);
+  /* Budget the prefetch to the cache's spare cells (capacity minus the tiles the
+   * current frame occupies) so warming can never evict an on-screen tile. */
+  const uint32_t frame =
+    ((uint32_t)(tiles[2] - tiles[0]) + 1U) * ((uint32_t)(tiles[3] - tiles[1]) + 1U);
+  const uint32_t cap    = ra8_tile_cache_capacity(r->cache);
+  const uint32_t spare  = (cap > frame) ? (cap - frame) : 0U;
+  const uint16_t budget = (spare > (uint32_t)UINT16_MAX) ? (uint16_t)UINT16_MAX : (uint16_t)spare;
+  const ra8_tile_prefetch_req_t req = {
+    .image_id  = r->image_id,
+    .view      = {.tx0 = tiles[0], .ty0 = tiles[1], .tx1 = tiles[2], .ty1 = tiles[3]},
+    .tile_cols = r->tile_cols,
+    .tile_rows = r->tile_rows,
+    .zoom      = 0U,
+    .max_tiles = budget,
+    .dir       = r->last_pan,
+  };
+  return ra8_tile_cache_prefetch_pan(r->cache, &req, nullptr);
+}
+
 /* ===========================================================================
  * Navigation
  * =========================================================================== */
+
+/** @brief Pan direction of a (dx,dy) step (exactly one axis is non-zero). */
+static ra8_tile_pan_dir_t mg_pan_dir(int32_t dx, int32_t dy)
+{
+  if (dx > 0) {
+    return k_ra8_tile_pan_right;
+  }
+  if (dx < 0) {
+    return k_ra8_tile_pan_left;
+  }
+  if (dy > 0) {
+    return k_ra8_tile_pan_down;
+  }
+  return k_ra8_tile_pan_up; /* dy < 0 */
+}
 
 /** @brief Slide the viewport by (dx,dy) page px; false if pinned / at fit. */
 static bool mg_pan(mg_reader_t* r, int32_t dx, int32_t dy)
@@ -357,7 +412,9 @@ static bool mg_pan(mg_reader_t* r, int32_t dx, int32_t dy)
   r->view_x += dx;
   r->view_y += dy;
   mg_clamp(r);
-  return (r->view_x != ox) || (r->view_y != oy);
+  const bool moved = (r->view_x != ox) || (r->view_y != oy);
+  r->last_pan      = moved ? mg_pan_dir(dx, dy) : (ra8_tile_pan_dir_t)k_ra8_tile_pan_none;
+  return moved;
 }
 
 mg_zone_t mg_zone_hit(const mg_reader_t* r, int32_t x, int32_t y)
@@ -400,6 +457,7 @@ bool mg_reader_toggle_zoom(mg_reader_t* r)
   }
   r->zoom = (r->zoom == (uint8_t)k_mg_zoom_full) ? (uint8_t)k_mg_zoom_fit : (uint8_t)k_mg_zoom_full;
   mg_clamp(r);
+  r->last_pan = (ra8_tile_pan_dir_t)k_ra8_tile_pan_none; /* a zoom is not a pan */
   return true;
 }
 
@@ -522,7 +580,8 @@ static void mg_reader_bind(mg_reader_t* r, const mg_reader_cfg_t* cfg)
                                 .tile_rows = cfg->info->tile_rows,
                                 .view_x    = 0,
                                 .view_y    = 0,
-                                .zoom      = (uint8_t)k_mg_zoom_full};
+                                .zoom      = (uint8_t)k_mg_zoom_full,
+                                .last_pan  = k_ra8_tile_pan_none};
   r->fit_factor = mg_fit_factor(r);
   mg_clamp(r);
 }

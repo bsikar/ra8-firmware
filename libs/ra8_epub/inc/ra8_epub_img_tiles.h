@@ -433,6 +433,50 @@ typedef struct {
                                                  const uint8_t*          pixels);
 
 /**
+ * @brief Predictively warm the tiles one step ahead of a panning image (#341).
+ *
+ * @details
+ * The image-render counterpart of ::ra8_book_src_prefetch_chapter's text
+ * read-ahead: on a pan of a tiled page (the #231 all-image EPUB path, and the
+ * comic-tiling path that shares this binder), warms the tile row or column just
+ * beyond @p view in @p dir so the next tiles the viewport exposes are resident
+ * before they are needed. The binder supplies the image's tile-grid extent to
+ * ::ra8_tile_cache_prefetch_pan, which clamps the lead edge to the grid (a pan
+ * already at the image edge warms nothing) and caps the count at @p max_tiles --
+ * the caller's spare-capacity budget -- so read-ahead can neither exceed the
+ * cache budget nor evict an on-screen tile. Best-effort and transparent: warming
+ * changes only residency, never the bytes a later `ra8_epub_tile_binder_get()`
+ * returns, so goldens hold.
+ *
+ * @param[in,out] binder     Initialised binder with @p image_id registered.
+ * @param[in]     image_id   Image being panned.
+ * @param[in]     view       The tiles the viewport currently straddles.
+ * @param[in]     dir        Direction of viewport travel.
+ * @param[in]     max_tiles  Residency budget: warm at most this many tiles.
+ * @param[out]    out_warmed Tiles warmed by this call (may be NULL).
+ *
+ * @return ra8_err_t
+ * @retval k_ra8_ok              The sweep ran (0 or more tiles warmed).
+ * @retval k_ra8_err_null_ptr    @p binder or @p view is NULL.
+ * @retval k_ra8_err_not_found   @p image_id is not registered.
+ * @retval k_ra8_err_invalid_arg @p view is unordered or lies outside the grid.
+ *
+ * @pre @p binder came from `ra8_epub_tile_binder_init()`.
+ * @pre @p view is a valid inclusive tile rectangle of @p image_id.
+ * @post On success at most @p max_tiles lead-edge tiles are resident.
+ * @post No on-screen (already-visible) tile is evicted by this call.
+ * @note Not thread-safe. Single-threaded read-ahead only.
+ * @see ra8_epub_tile_binder_get()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_epub_tile_binder_prefetch_pan(ra8_epub_tile_binder_t* binder,
+                                                          uint32_t                image_id,
+                                                          const ra8_tile_rect_t*  view,
+                                                          ra8_tile_pan_dir_t      dir,
+                                                          uint16_t                max_tiles,
+                                                          uint16_t*               out_warmed);
+
+/**
  * @brief Real reflow `<img>` byte loader off an EPUB book (#231).
  *
  * @details

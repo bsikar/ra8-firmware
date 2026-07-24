@@ -502,6 +502,9 @@ static void mg_poll_touch(bool* was_touching)
     if (mg_reader_tap(&s_reader, (int32_t)pt.x, (int32_t)pt.y)) {
       if (mg_reader_render(&s_reader) == k_ra8_ok) {
         mg_present();
+        /* Idle-window read-ahead: warm the next pan step's tiles so a follow-on
+         * pan finds them resident instead of stalling on a cold decode (#341). */
+        (void)mg_reader_prefetch(&s_reader);
       }
     }
   }

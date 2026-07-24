@@ -168,6 +168,67 @@ typedef struct {
 } ra8_tile_cache_t;
 
 /**
+ * @enum ra8_tile_pan_dir_t
+ * @brief Direction of viewport travel, for predictive pan prefetch.
+ *
+ * @details ::ra8_tile_cache_prefetch_pan warms the tile row or column one step
+ *          ahead of the visible rectangle in this direction. ::k_ra8_tile_pan_none
+ *          warms nothing (a still viewport, or a pan that did not move).
+ *
+ * @see ra8_tile_cache_prefetch_pan
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_tile_pan_none  = 0U, /**< No travel: prefetch is a no-op.        */
+  k_ra8_tile_pan_left  = 1U, /**< Warm the column left of the viewport.  */
+  k_ra8_tile_pan_right = 2U, /**< Warm the column right of the viewport. */
+  k_ra8_tile_pan_up    = 3U, /**< Warm the row above the viewport.       */
+  k_ra8_tile_pan_down  = 4U, /**< Warm the row below the viewport.       */
+} ra8_tile_pan_dir_t;
+
+/**
+ * @struct ra8_tile_rect_t
+ * @brief An inclusive rectangle of tile grid coordinates (the visible tiles).
+ *
+ * @details All four bounds are tile indices, inclusive. `tx0 <= tx1` and
+ *          `ty0 <= ty1` describe the tiles the current viewport straddles; the
+ *          prefetch reads the edge just beyond this rectangle.
+ *
+ * @invariant `tx0 <= tx1` and `ty0 <= ty1`.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t tx0; /**< Leftmost visible tile column (inclusive).  */
+  uint16_t ty0; /**< Topmost visible tile row (inclusive).      */
+  uint16_t tx1; /**< Rightmost visible tile column (inclusive). */
+  uint16_t ty1; /**< Bottommost visible tile row (inclusive).   */
+} ra8_tile_rect_t;
+
+/**
+ * @struct ra8_tile_prefetch_req_t
+ * @brief A predictive pan-prefetch request: what is visible + where it heads.
+ *
+ * @details Describes the visible tile rectangle (@ref view), the tile grid extent
+ *          used to clamp the lead edge to the image (@ref tile_cols / @ref
+ *          tile_rows), the direction of travel (@ref dir), and the residency
+ *          budget (@ref max_tiles) that caps how many tiles the prefetch may warm
+ *          so it never exceeds the cache's spare capacity.
+ *
+ * @invariant `view.tx1 < tile_cols` and `view.ty1 < tile_rows`.
+ * @see ra8_tile_cache_prefetch_pan
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t           image_id;  /**< Tile-cache key image id (the image panned). */
+  ra8_tile_rect_t    view;      /**< The tiles the viewport currently straddles. */
+  uint16_t           tile_cols; /**< Image tile columns (lead-edge clamp bound). */
+  uint16_t           tile_rows; /**< Image tile rows (lead-edge clamp bound).    */
+  uint16_t           zoom;      /**< Zoom / mip level for the key (0 = native).  */
+  uint16_t           max_tiles; /**< Residency budget: warm at most this many.   */
+  ra8_tile_pan_dir_t dir;       /**< Direction of viewport travel.               */
+} ra8_tile_prefetch_req_t;
+
+/**
  * @brief Initialise a tile cache over caller-supplied storage.
  *
  * @param[out] tc  Cache state to populate (zero-initialised by the caller).
@@ -241,6 +302,95 @@ ra8_tile_cache_get(ra8_tile_cache_t* tc, const ra8_tile_key_t* key, ra8_tile_t* 
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_tile_cache_put(ra8_tile_cache_t* tc, const uint8_t* pixels);
+
+/**
+ * @brief Report the number of cells the cache can hold.
+ *
+ * @details The cache capacity in tiles, used by a pan-prefetch caller to size its
+ *          residency budget (spare = capacity - currently-visible tiles) so a
+ *          prefetch cannot evict an on-screen tile.
+ *
+ * @param[in] tc Initialised cache.
+ *
+ * @return uint32_t The cell count, or 0 if @p tc is NULL / uninitialised.
+ * @retval 0     @p tc was NULL or was never ::ra8_tile_cache_init'd.
+ * @retval >0    The configured cell count.
+ *
+ * @pre `tc` was populated by ::ra8_tile_cache_init (else 0 is returned).
+ * @pre None beyond the above.
+ * @post No cache state is mutated.
+ * @post The result is the exact configured cell count.
+ *
+ * @note Thread-safe with respect to a quiescent cache (pure read).
+ * @since 0.1.0
+ */
+[[nodiscard]] uint32_t ra8_tile_cache_capacity(const ra8_tile_cache_t* tc);
+
+/**
+ * @brief Warm one tile into the cache without holding a pin (read-ahead).
+ *
+ * @details Decode-on-miss + immediate unpin, so on return the tile is resident but
+ *          evictable. A thin typed facade over ::ra8_keycache_prefetch: warming
+ *          changes only residency, never the pixels a later ::ra8_tile_cache_get
+ *          returns, so rendered output is unchanged and goldens hold.
+ *
+ * @param[in,out] tc  Initialised cache.
+ * @param[in]     key Tile to warm (fully initialised; zero-fill before setting).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           The tile is resident and unpinned (warmed or hit).
+ * @retval k_ra8_err_null_ptr `tc` or `key` was NULL.
+ * @retval k_ra8_err_no_mem   Every cell is pinned (cannot evict to warm).
+ * @retval k_ra8_err_*        The decoder failed (returned verbatim).
+ *
+ * @pre `tc` was populated by ::ra8_tile_cache_init.
+ * @pre `key` names a valid tile of a decodable image.
+ * @post On success the tile is resident with pin count zero.
+ * @post On any non-ok return no pin is held.
+ *
+ * @note Not thread-safe. Single-threaded read-ahead only.
+ * @see ra8_tile_cache_prefetch_pan()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_tile_cache_prefetch(ra8_tile_cache_t* tc, const ra8_tile_key_t* key);
+
+/**
+ * @brief Predictively warm the tiles one step ahead of a panning viewport.
+ *
+ * @details
+ * On a pan, warms the tile row or column immediately beyond @p req->view in
+ * @p req->dir, so the next tiles the viewport exposes are resident before they
+ * are needed -- the image counterpart of ::ra8_book_src_prefetch_chapter's text
+ * read-ahead. The lead edge is clamped to the tile grid (@p req->tile_cols /
+ * @p req->tile_rows): a pan already at the image edge warms nothing. The number
+ * of tiles warmed is bounded by @p req->max_tiles (the caller's spare-capacity
+ * budget) and by the edge length, so the prefetch cannot exceed the cache budget
+ * or evict an on-screen tile. Best-effort: each tile is warmed with
+ * ::ra8_tile_cache_prefetch and a per-tile failure stops the sweep without
+ * failing the call, so a pan never errors because read-ahead could not complete.
+ *
+ * @param[in,out] tc         Initialised cache.
+ * @param[in]     req        The visible rectangle + direction + budget.
+ * @param[out]    out_warmed Tiles warmed by this call (may be NULL).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok              The sweep ran (0 or more tiles warmed).
+ * @retval k_ra8_err_null_ptr    `tc` or `req` was NULL.
+ * @retval k_ra8_err_invalid_arg `req->view` is not `tx0<=tx1` / `ty0<=ty1`, or a
+ *                              bound lies outside the tile grid.
+ *
+ * @pre `tc` was populated by ::ra8_tile_cache_init.
+ * @pre `req->view` is a valid inclusive rectangle inside the tile grid.
+ * @post On success at most `req->max_tiles` lead-edge tiles are resident.
+ * @post No on-screen (already-visible) tile is evicted by this call.
+ *
+ * @note Not thread-safe. Single-threaded read-ahead only.
+ * @see ra8_tile_cache_prefetch()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_tile_cache_prefetch_pan(ra8_tile_cache_t*              tc,
+                                                    const ra8_tile_prefetch_req_t* req,
+                                                    uint16_t*                      out_warmed);
 
 /**
  * @brief Report the cache hit / miss / eviction counters.

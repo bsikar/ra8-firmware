@@ -70,6 +70,11 @@ enum : uint32_t {
   k_t_pan_step         = 256U,               /**< One edge-tap viewport slide.                */
 };
 
+/** @brief Tile-grid coordinates the pan-prefetch test asserts on. */
+enum : uint16_t {
+  k_t_lead_col = 5U, /**< Column warmed one tile ahead of a rightward pan. */
+};
+
 /** @brief JOF bytes-per-pixel values exercised by the bpp guard test. */
 enum : uint8_t {
   k_t_gray8_bpp  = 1U, /**< gray8: the only format the reader blits.       */
@@ -690,6 +695,75 @@ static void test_manga_pan_no_thrash(void)
   TEST_END("ereader_manga: sized tile cache stops the pan thrash");
 }
 
+/** @brief Fetch tile (tx,ty) of the reader image through ::s_cache, then release. */
+static void assert_tile_resident(uint16_t tx, uint16_t ty)
+{
+  const ra8_tile_key_t key = {.image_id = (uint32_t)k_t_image_id,
+                              .tile_x   = tx,
+                              .tile_y   = ty,
+                              .zoom     = 0U};
+  ra8_tile_t           t   = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_get(&s_cache, &key, &t));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_put(&s_cache, t.pixels));
+}
+
+/**
+ * @test test_manga_pan_prefetch
+ * @brief After a right pan + render, ::mg_reader_prefetch has warmed the next
+ *        column of tiles into the cache, so they are resident before the follow-
+ *        on pan needs them -- and the read-ahead evicts no on-screen tile (#341).
+ *
+ * @details The panned 1:1 frame straddles tile columns 1..4, rows 0..2; the
+ *          prefetch warms column 5 (rows 0..2) one step ahead in the pan
+ *          direction. Residency is proved by the miss counter not moving across a
+ *          fetch of the warmed tiles, and the budget bound by the eviction
+ *          counter not moving (a warmed lead column plus the visible frame fit
+ *          inside the derived ::k_t_cells budget).
+ *
+ * @par MC/DC:
+ * (integration gate: the pan-prefetch direction / edge / budget decisions carry
+ * their vectors in test_ra8_tile_cache*.c; here the oracle is the miss / eviction
+ * counters read back after a real pan + render + prefetch.)
+ */
+static void test_manga_pan_prefetch(void)
+{
+  TEST_BEGIN("ereader_manga: pan prefetch warms the next column, resident");
+  setup_reader();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, mg_reader_prefetch(NULL)); /* null guard             */
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_render(&s_reader));        /* initial frame at (0,0) */
+  /* No pan yet: prefetch is a no-op that still succeeds. */
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_prefetch(&s_reader));
+
+  /* One right-edge tap pans to view_x=256; render the newly exposed frame. */
+  TEST_ASSERT(mg_reader_tap(&s_reader, 950, 300));
+  TEST_ASSERT_EQ(k_t_pan_step, s_reader.view_x);
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_render(&s_reader));
+
+  /* Idle-window read-ahead warms the column one tile ahead (col 5, rows 0..2). */
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_prefetch(&s_reader));
+
+  uint32_t miss_before = 0U;
+  uint32_t evic_before = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&s_cache, NULL, &miss_before, &evic_before));
+  assert_tile_resident(k_t_lead_col, 0U); /* predicted lead-column tiles ... */
+  assert_tile_resident(k_t_lead_col, 2U);
+  assert_tile_resident(1U, 0U); /* ... and an on-screen tile: both still resident */
+  uint32_t miss_after = 0U;
+  uint32_t evic_after = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&s_cache, NULL, &miss_after, &evic_after));
+  TEST_ASSERT_EQ(miss_before, miss_after); /* every fetch was a cache hit       */
+  TEST_ASSERT_EQ(evic_before, evic_after); /* budget respected: nothing evicted */
+
+  /* The vertical directions warm the same way (down then up). */
+  TEST_ASSERT(mg_reader_tap(&s_reader, 500, 500)); /* pan down */
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_render(&s_reader));
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_prefetch(&s_reader));
+  TEST_ASSERT(mg_reader_tap(&s_reader, 500, 100)); /* pan up */
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_render(&s_reader));
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_prefetch(&s_reader));
+  TEST_END("ereader_manga: pan prefetch warms the next column, resident");
+}
+
 /**
  * @brief Test entry point -- runs the ereader_manga host-twin gates.
  * @return 0 on success; unity_minimal.h exits non-zero on first failure.
@@ -710,6 +784,7 @@ int32_t main(void)
   test_manga_status_text();
   test_manga_bpp_guard();
   test_manga_pan_no_thrash();
+  test_manga_pan_prefetch();
   (void)fprintf(stderr, "[OK  ] test_app_ereader_manga.c\n");
   return 0;
 }

@@ -122,6 +122,193 @@ ra8_err_t ra8_tile_cache_put(ra8_tile_cache_t* tc, const uint8_t* pixels)
   return ra8_keycache_put(&tc->kc, pixels);
 }
 
+uint32_t ra8_tile_cache_capacity(const ra8_tile_cache_t* tc)
+{
+  if (tc == nullptr) {
+    return 0U;
+  }
+  if (tc->kc.cfg.cell_mem == nullptr) {
+    return 0U; /* never initialised: report no capacity */
+  }
+  return tc->kc.cfg.cell_count;
+}
+
+ra8_err_t ra8_tile_cache_prefetch(ra8_tile_cache_t* tc, const ra8_tile_key_t* key)
+{
+  RA8_CHECK_NULL_PTR(tc, s_tag, "tc must not be nullptr");
+  RA8_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  return ra8_keycache_prefetch(&tc->kc, key);
+}
+
+/**
+ * @struct priv_pan_line_t
+ * @brief The lead-edge tile run a pan prefetch walks (one row or one column).
+ *
+ * @details `(x, y)` is the first tile; each successive tile steps by
+ *          `(step_x, step_y)` (one of them 1, the other 0); `count` tiles lie on
+ *          the run before the tile-grid clamp / budget cap are applied.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t x;      /**< First lead tile column.              */
+  uint16_t y;      /**< First lead tile row.                 */
+  uint16_t step_x; /**< Per-tile column delta (0 or 1).      */
+  uint16_t step_y; /**< Per-tile row delta (0 or 1).         */
+  uint16_t count;  /**< Tiles on the lead edge (pre-budget). */
+} priv_pan_line_t;
+
+/**
+ * @brief Reject a structurally invalid prefetch request.
+ *
+ * @details Each guard is an independent single-condition check kept intact here:
+ *          the visible rectangle must be ordered (`tx0<=tx1`, `ty0<=ty1`) and lie
+ *          inside the tile grid (`tx1<tile_cols`, `ty1<tile_rows`).
+ *
+ * @param[in] req The prefetch request to validate (non-NULL).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok              The request is well-formed.
+ * @retval k_ra8_err_invalid_arg A rectangle bound is unordered or off-grid.
+ *
+ * @pre `req` is non-NULL (the caller checked it).
+ * @pre `req->view` is the caller's visible tile rectangle.
+ * @post No state is modified (pure validation).
+ * @post A non-ok return means a bound was unordered or off-grid.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_validate_req(const ra8_tile_prefetch_req_t* req)
+{
+  const ra8_tile_rect_t v = req->view;
+  if (v.tx0 > v.tx1) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (v.ty0 > v.ty1) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((uint32_t)v.tx1 >= (uint32_t)req->tile_cols) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((uint32_t)v.ty1 >= (uint32_t)req->tile_rows) {
+    return k_ra8_err_invalid_arg;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Compute the lead-edge tile run for a pan direction, or none at an edge.
+ *
+ * @details Selects the row/column one step beyond @p req->view in @p req->dir and
+ *          clamps it to the tile grid: a pan already against the image edge
+ *          (or ::k_ra8_tile_pan_none) yields no run. Each direction's edge test
+ *          is an independent single-condition guard.
+ *
+ * @param[in]  req The validated prefetch request.
+ * @param[out] out Receives the lead-edge run when the return is true.
+ *
+ * @return true if a lead edge exists to warm, false at an image edge / no pan.
+ * @retval true  `*out` holds the run to walk.
+ * @retval false Nothing to warm (`*out` is untouched).
+ *
+ * @pre `req` passed ::priv_validate_req; `out` is writable.
+ * @pre `req->view` lies inside the tile grid.
+ * @post A true return leaves `*out` fully populated.
+ * @post No cache or request state is modified.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static bool priv_pan_line(const ra8_tile_prefetch_req_t* req, priv_pan_line_t* out)
+{
+  const ra8_tile_rect_t v     = req->view;
+  const uint16_t        v_run = (uint16_t)((v.ty1 - v.ty0) + 1U);
+  const uint16_t        h_run = (uint16_t)((v.tx1 - v.tx0) + 1U);
+  switch (req->dir) {
+    case k_ra8_tile_pan_right:
+      if (((uint32_t)v.tx1 + 1U) >= (uint32_t)req->tile_cols) {
+        return false;
+      }
+      *out = (priv_pan_line_t){.x      = (uint16_t)(v.tx1 + 1U),
+                               .y      = v.ty0,
+                               .step_x = 0U,
+                               .step_y = 1U,
+                               .count  = v_run};
+      return true;
+    case k_ra8_tile_pan_left:
+      if (v.tx0 == 0U) {
+        return false;
+      }
+      *out = (priv_pan_line_t){.x      = (uint16_t)(v.tx0 - 1U),
+                               .y      = v.ty0,
+                               .step_x = 0U,
+                               .step_y = 1U,
+                               .count  = v_run};
+      return true;
+    case k_ra8_tile_pan_down:
+      if (((uint32_t)v.ty1 + 1U) >= (uint32_t)req->tile_rows) {
+        return false;
+      }
+      *out = (priv_pan_line_t){.x      = v.tx0,
+                               .y      = (uint16_t)(v.ty1 + 1U),
+                               .step_x = 1U,
+                               .step_y = 0U,
+                               .count  = h_run};
+      return true;
+    case k_ra8_tile_pan_up:
+      if (v.ty0 == 0U) {
+        return false;
+      }
+      *out = (priv_pan_line_t){.x      = v.tx0,
+                               .y      = (uint16_t)(v.ty0 - 1U),
+                               .step_x = 1U,
+                               .step_y = 0U,
+                               .count  = h_run};
+      return true;
+    case k_ra8_tile_pan_none:
+    default:
+      return false;
+  }
+}
+
+ra8_err_t ra8_tile_cache_prefetch_pan(ra8_tile_cache_t*              tc,
+                                      const ra8_tile_prefetch_req_t* req,
+                                      uint16_t*                      out_warmed)
+{
+  RA8_CHECK_NULL_PTR(tc, s_tag, "tc must not be nullptr");
+  RA8_CHECK_NULL_PTR(req, s_tag, "req must not be nullptr");
+  if (out_warmed != nullptr) {
+    *out_warmed = 0U;
+  }
+  const ra8_err_t verr = priv_validate_req(req);
+  if (verr != k_ra8_ok) {
+    return verr;
+  }
+  priv_pan_line_t line = {};
+  if (!priv_pan_line(req, &line)) {
+    return k_ra8_ok; /* at an image edge or not panning: nothing to warm */
+  }
+  const uint16_t cap    = (uint16_t)((line.count < req->max_tiles) ? line.count : req->max_tiles);
+  uint16_t       warmed = 0U;
+  for (uint16_t i = 0U; i < cap; ++i) {
+    const ra8_tile_key_t key = {.image_id = req->image_id,
+                                .tile_x   = (uint16_t)(line.x + (uint16_t)(line.step_x * i)),
+                                .tile_y   = (uint16_t)(line.y + (uint16_t)(line.step_y * i)),
+                                .zoom     = req->zoom};
+    if (ra8_tile_cache_prefetch(tc, &key) != k_ra8_ok) {
+      break; /* best-effort: a full/failed cache stops the sweep, not the pan */
+    }
+    warmed++;
+  }
+  if (out_warmed != nullptr) {
+    *out_warmed = warmed;
+  }
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_tile_cache_stats(const ra8_tile_cache_t* tc,
                                uint32_t*               out_hits,
                                uint32_t*               out_misses,

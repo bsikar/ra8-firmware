@@ -877,6 +877,20 @@ ra8_err_t ra8_keycache_get(ra8_keycache_t* kc, const void* key, ra8_keycache_vie
   return priv_miss(kc, key, out_view);
 }
 
+ra8_err_t ra8_keycache_prefetch(ra8_keycache_t* kc, const void* key)
+{
+  RA8_CHECK_NULL_PTR(kc, s_tag, "kc must not be nullptr");
+  RA8_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  ra8_keycache_view_t view = {};
+  const ra8_err_t     gerr = ra8_keycache_get(kc, key, &view);
+  if (gerr != k_ra8_ok) {
+    return gerr;
+  }
+  /* Drop the pin now: the cell is resident but evictable, so a wrong read-ahead
+   * guess ages out before hot data is displaced by a pinned request. */
+  return ra8_keycache_put(kc, view.data);
+}
+
 ra8_err_t ra8_keycache_put(ra8_keycache_t* kc, const uint8_t* data)
 {
   RA8_CHECK_NULL_PTR(kc, s_tag, "kc must not be nullptr");
