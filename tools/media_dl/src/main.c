@@ -273,12 +273,26 @@ RA8_INTERNAL static size_t
 export_one(mdl_format_t format, const char* series_dir, const char* chap_id)
 {
   const char* ext = mdl_format_ext(format);
-  char        leaf[k_leaf_name_bytes];
-  const int   ln = snprintf(leaf, sizeof(leaf), "%s.%s", chap_id, ext);
   char        dir[k_dir_path_bytes];
-  char        out[k_dir_path_bytes];
-  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, chap_id, dir, sizeof(dir)) ||
-      !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
+  if (!mdl_path_join(series_dir, chap_id, dir, sizeof(dir))) {
+    (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap_id, ext);
+    return 1U;
+  }
+  if (mdl_format_is_dir_output(format)) {
+    /* JOF writes per-page `.jof` siblings into the chapter dir; report that dir,
+     * never a single-container name that was not created. */
+    const ra8_err_t drc = mdl_export_chapter(format, dir, dir);
+    if (drc != k_ra8_ok) {
+      (void)fprintf(stderr, "  export %s .%s FAILED (err 0x%X)\n", chap_id, ext, (unsigned)drc);
+      return 1U;
+    }
+    (void)printf("  converted %s -> %s/*.%s\n", chap_id, dir, ext);
+    return 0U;
+  }
+  char      leaf[k_leaf_name_bytes];
+  const int ln = snprintf(leaf, sizeof(leaf), "%s.%s", chap_id, ext);
+  char      out[k_dir_path_bytes];
+  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
     (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap_id, ext);
     return 1U;
   }
@@ -296,13 +310,25 @@ RA8_INTERNAL static size_t
 export_combined_dir(mdl_format_t format, const char* series_dir, const char* combined_rel)
 {
   const char* ext = mdl_format_ext(format);
-  char        leaf[k_leaf_name_bytes];
-  const int   ln = snprintf(leaf, sizeof(leaf), "%s.%s", combined_rel, ext);
   char        dir[k_dir_path_bytes];
-  char        out[k_dir_path_bytes];
-  if (!snprintf_fit(ln, sizeof(leaf)) ||
-      !mdl_path_join(series_dir, combined_rel, dir, sizeof(dir)) ||
-      !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
+  if (!mdl_path_join(series_dir, combined_rel, dir, sizeof(dir))) {
+    (void)fprintf(stderr, "  combine export path rejected under %s\n", series_dir);
+    return 1U;
+  }
+  if (mdl_format_is_dir_output(format)) {
+    /* JOF: the combined pages become `.jof` siblings inside the combined dir. */
+    const ra8_err_t drc = mdl_export_chapter(format, dir, dir);
+    if (drc != k_ra8_ok) {
+      (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)drc);
+      return 1U;
+    }
+    (void)printf("  combined -> %s/*.%s\n", dir, ext);
+    return 0U;
+  }
+  char      leaf[k_leaf_name_bytes];
+  const int ln = snprintf(leaf, sizeof(leaf), "%s.%s", combined_rel, ext);
+  char      out[k_dir_path_bytes];
+  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
     (void)fprintf(stderr, "  combine export path rejected under %s\n", series_dir);
     return 1U;
   }
@@ -808,8 +834,20 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
     return 1;
   }
   const char* ext = mdl_format_ext(format);
-  char        out[PATH_MAX];
-  const int   n = snprintf(out, sizeof(out), "%s.%s", abs, ext);
+  if (mdl_format_is_dir_output(format)) {
+    /* JOF writes per-page `.jof` siblings into the packed directory itself;
+     * report that directory rather than a container file it never creates. */
+    const ra8_err_t drc = mdl_export_chapter(format, abs, abs);
+    if (drc != k_ra8_ok) {
+      (void)
+        fprintf(stderr, "media_dl: pack '%s' as .%s FAILED (err 0x%X)\n", dir, ext, (unsigned)drc);
+      return 1;
+    }
+    (void)printf("packed %s -> %s/*.%s\n", dir, abs, ext);
+    return 0;
+  }
+  char      out[PATH_MAX];
+  const int n = snprintf(out, sizeof(out), "%s.%s", abs, ext);
   if ((n < 0) || ((size_t)n >= sizeof(out))) {
     (void)fprintf(stderr, "media_dl: output path for '%s' is too long\n", dir);
     return 1;

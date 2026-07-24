@@ -51,14 +51,54 @@ mdl_format_t mdl_format_from_str(const char* s);
 const char* mdl_format_ext(mdl_format_t fmt);
 
 /**
+ * @brief Whether `fmt` writes per-page sibling files rather than one container.
+ *
+ * @details
+ * JOF is inherently per-page: ::mdl_export_chapter writes one `.jof` band atlas
+ * beside each source image inside the chapter directory, so a JOF "chapter" is a
+ * directory of atlases, not a single archive at `out_path`. Every other archive
+ * format produces exactly one file at `out_path`. Callers use this to report
+ * what was actually written -- a success message must never name a container
+ * file that a directory-output format did not create.
+ *
+ * @param[in] fmt Format to classify.
+ *
+ * @return Whether @p fmt produces per-page sibling files in the chapter dir.
+ * @retval true  @p fmt is ::k_mdl_fmt_jof (per-page `.jof` siblings).
+ * @retval false @p fmt produces a single container file at `out_path`.
+ *
+ * @pre @p fmt is a value of ::mdl_format_t.
+ * @post No state is mutated (pure classifier).
+ *
+ * @note Thread-safe: pure function of its argument.
+ * @see mdl_export_chapter()
+ * @since 0.1.0
+ */
+bool mdl_format_is_dir_output(mdl_format_t fmt);
+
+/**
  * @brief Package `chapter_dir`'s contents into `out_path` as `fmt`.
+ *
+ * @details
+ * For single-container formats (CBZ/CBT/CBT.GZ/CBT.XZ/CBR/EPUB/RABOOK) the
+ * archive is created at @p out_path. For a directory-output format (JOF, see
+ * ::mdl_format_is_dir_output) the pages are written as `.jof` siblings inside
+ * @p chapter_dir and @p out_path is unused. Fails rather than silently
+ * truncating: a chapter with more than ::k_max_pages page images, a page name
+ * that will not fit a ustar entry, or an EPUB accumulator overrun all return an
+ * error instead of producing short or malformed output.
  *
  * @param[in] fmt         Target container (must not be loose/invalid).
  * @param[in] chapter_dir Absolute path to the chapter's page folder.
- * @param[in] out_path    Absolute path of the archive to create.
+ * @param[in] out_path    Absolute path of the archive to create (single-file
+ *                        formats); unused for directory-output formats but must
+ *                        be non-NULL.
  *
- * @retval k_ra8_ok               Archive written.
+ * @retval k_ra8_ok               Archive (or every `.jof` sibling) written.
  * @retval k_ra8_err_invalid_arg  NULL/loose/invalid argument.
+ * @retval k_ra8_err_invalid_size Over-long page name, or more than
+ *                                ::k_max_pages page images in @p chapter_dir.
+ * @retval k_ra8_err_empty        No page images found in @p chapter_dir.
  * @retval k_ra8_err_not_supported The archiver tool is not on PATH.
  * @retval k_ra8_fail             The archiver ran but failed.
  */

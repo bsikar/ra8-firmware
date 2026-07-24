@@ -165,6 +165,14 @@ const char* mdl_format_ext(mdl_format_t fmt)
   }
 }
 
+bool mdl_format_is_dir_output(mdl_format_t fmt)
+{
+  /* JOF is inherently per-page: one `.jof` band atlas is written beside each
+   * source image, so a chapter is a directory of atlases rather than a single
+   * container file at out_path. Every other archive format produces one file. */
+  return fmt == k_mdl_fmt_jof;
+}
+
 /** @brief The process environment block, for the `posix_spawnp` calls below. */
 RA8_INTERNAL static char* const* spawn_environ(void)
 {
@@ -253,22 +261,33 @@ RA8_INTERNAL static bool is_page_image(const char* name)
   return false;
 }
 
-/** @brief List a chapter's page-image files (only) into `names`, sorted. */
-RA8_INTERNAL static size_t list_pages(const char* dir, char names[][k_name_max], size_t cap)
+/**
+ * @brief List a chapter's page-image files (only) into `names`, sorted.
+ * @details Sets `*out_truncated` when a qualifying page image exists beyond
+ *          `cap`, so the caller fails loudly instead of packaging a chapter
+ *          short. Non-image junk beyond the cap does not trip the flag.
+ */
+RA8_INTERNAL static size_t
+list_pages(const char* dir, char names[][k_name_max], size_t cap, bool* out_truncated)
 {
-  DIR* d = opendir(dir);
+  *out_truncated = false;
+  DIR* d         = opendir(dir);
   if (d == nullptr) {
     return 0U;
   }
   size_t               n = 0U;
   const struct dirent* e = readdir(d);
-  while ((e != nullptr) && (n < cap)) {
+  while (e != nullptr) {
     /* Skip hidden / AppleDouble, and anything that is not a page image so a
      * dir already holding this tool's output re-packages cleanly. A name that
      * would not fit is rejected rather than silently truncated (which could
      * collide two distinct pages onto one entry). */
     if ((e->d_name[0] != '.') && is_page_image(e->d_name) &&
         (strlen(e->d_name) < (size_t)k_name_max)) {
+      if (n >= cap) {
+        *out_truncated = true; /* more pages than the fixed table holds */
+        break;
+      }
       (void)snprintf(names[n], k_name_max, "%s", e->d_name);
       ++n;
     }
@@ -277,16 +296,6 @@ RA8_INTERNAL static size_t list_pages(const char* dir, char names[][k_name_max],
   (void)closedir(d);
   qsort(names, n, k_name_max, name_cmp);
   return n;
-}
-
-/** @brief Byte size of a file, or 0 on error. */
-RA8_INTERNAL static size_t file_size(const char* path)
-{
-  struct stat st = {};
-  if (stat(path, &st) != 0) {
-    return 0U;
-  }
-  return (size_t)st.st_size;
 }
 
 /** @brief Round `n` up to a whole tar block. */
@@ -324,61 +333,95 @@ RA8_INTERNAL static ra8_err_t tar_header(uint8_t* blk, const char* name, size_t 
   return k_ra8_ok;
 }
 
-/** @brief Build a tar of `names` from `dir` into a freshly-malloc'd buffer. */
-RA8_INTERNAL static ra8_err_t build_tar(const char* dir,
-                                        char        names[][k_name_max],
-                                        size_t      count,
-                                        uint8_t**   out_buf,
-                                        size_t*     out_len)
-{
-  size_t total = 2U * (size_t)k_tar_block; /* two trailing zero blocks */
-  for (size_t i = 0U; i < count; ++i) {
-    char path[PATH_MAX];
-    (void)snprintf(path, sizeof(path), "%s/%s", dir, names[i]);
-    total += (size_t)k_tar_block + round_block(file_size(path));
-  }
-  uint8_t* buf = (uint8_t*)calloc(1U, total);
-  if (buf == nullptr) {
-    return k_ra8_err_no_mem;
-  }
+/** @brief Streaming copy-buffer size (bounds the per-file tar/gzip working set). */
+typedef enum : uint32_t {
+  k_stream_chunk = 65536U, /**< File-copy chunk in bytes. */
+} mdl_stream_t;
 
-  size_t pos = 0U;
-  for (size_t i = 0U; i < count; ++i) {
-    char path[PATH_MAX];
-    (void)snprintf(path, sizeof(path), "%s/%s", dir, names[i]);
-    const size_t    sz  = file_size(path);
-    const ra8_err_t hrc = tar_header(buf + pos, names[i], sz);
-    if (hrc != k_ra8_ok) {
-      free(buf);
-      return hrc;
-    }
-    pos += (size_t)k_tar_block;
-    FILE* f = fopen(path, "rb");
-    if ((f == nullptr) || (fread(buf + pos, 1U, sz, f) != sz)) {
-      if (f != nullptr) {
-        (void)fclose(f);
-      }
-      free(buf);
+/**
+ * @brief Copy exactly `size` bytes from open `in` to `out`, padding to a block.
+ * @details Reads through a fixed chunk buffer and writes straight to @p out, so
+ *          no whole-file buffer is ever held. Copies precisely the byte count
+ *          the header was written with, so a file that grew after `fstat`
+ *          cannot spill past the entry and one that shrank fails loudly.
+ */
+RA8_INTERNAL static ra8_err_t tar_copy_file(FILE* in, FILE* out, size_t size)
+{
+  uint8_t chunk[k_stream_chunk];
+  size_t  remaining = size;
+  while (remaining > 0U) {
+    const size_t want = (remaining < sizeof(chunk)) ? remaining : sizeof(chunk);
+    const size_t got  = fread(chunk, 1U, want, in);
+    if ((got == 0U) || (fwrite(chunk, 1U, got, out) != got)) {
       return k_ra8_fail;
     }
-    (void)fclose(f);
-    pos += round_block(sz);
+    remaining -= got;
   }
-  *out_buf = buf;
-  *out_len = total;
+  const size_t pad = round_block(size) - size;
+  if (pad > 0U) {
+    uint8_t zeros[k_tar_block] = {};
+    if (fwrite(zeros, 1U, pad, out) != pad) {
+      return k_ra8_fail;
+    }
+  }
   return k_ra8_ok;
 }
 
-/** @brief Write `len` bytes of `buf` to `path`. */
-RA8_INTERNAL static ra8_err_t write_buf(const char* path, const uint8_t* buf, size_t len)
+/** @brief Stream a ustar of `names` from `dir` straight into the open file `out`. */
+RA8_INTERNAL static ra8_err_t
+build_tar_to_file(const char* dir, char names[][k_name_max], size_t count, FILE* out)
 {
-  FILE* f = fopen(path, "wb");
+  for (size_t i = 0U; i < count; ++i) {
+    char path[PATH_MAX];
+    (void)snprintf(path, sizeof(path), "%s/%s", dir, names[i]);
+    FILE* f = fopen(path, "rb");
+    if (f == nullptr) {
+      return k_ra8_fail;
+    }
+    struct stat st = {};
+    if (fstat(fileno(f), &st) != 0) {
+      (void)fclose(f);
+      return k_ra8_fail;
+    }
+    /* One fstat on the open descriptor sizes the header and bounds the copy, so
+     * the two never disagree (a file racing our output cannot overflow). */
+    const size_t    sz = (size_t)st.st_size;
+    uint8_t         hdr[k_tar_block];
+    const ra8_err_t hrc = tar_header(hdr, names[i], sz);
+    if (hrc != k_ra8_ok) {
+      (void)fclose(f);
+      return hrc;
+    }
+    ra8_err_t rc = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) ? k_ra8_ok : k_ra8_fail;
+    if (rc == k_ra8_ok) {
+      rc = tar_copy_file(f, out, sz);
+    }
+    (void)fclose(f);
+    if (rc != k_ra8_ok) {
+      return rc;
+    }
+  }
+  uint8_t trailer[2U * (size_t)k_tar_block] = {}; /* two trailing zero blocks */
+  return (fwrite(trailer, 1U, sizeof(trailer), out) == sizeof(trailer)) ? k_ra8_ok : k_ra8_fail;
+}
+
+/** @brief Stream a ustar to `out_path`; remove a partial file on any failure. */
+RA8_INTERNAL static ra8_err_t
+write_tar_file(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
+{
+  FILE* f = fopen(out_path, "wb");
   if (f == nullptr) {
     return k_ra8_fail;
   }
-  const size_t w  = fwrite(buf, 1U, len, f);
-  const bool   ok = (fclose(f) == 0) && (w == len);
-  return ok ? k_ra8_ok : k_ra8_fail;
+  ra8_err_t  rc       = build_tar_to_file(dir, names, count, f);
+  const bool close_ok = (fclose(f) == 0);
+  if ((rc == k_ra8_ok) && !close_ok) {
+    rc = k_ra8_fail;
+  }
+  if (rc != k_ra8_ok) {
+    (void)remove(out_path);
+  }
+  return rc;
 }
 
 /** @brief Append a little-endian u32 to `f`. */
@@ -392,27 +435,63 @@ RA8_INTERNAL static bool put_u32le(FILE* f, uint32_t v)
   return fwrite(b, 1U, sizeof(b), f) == sizeof(b);
 }
 
-/** @brief gzip `buf` to `path` using vendored miniz DEFLATE + RFC-1952 framing. */
-RA8_INTERNAL static ra8_err_t gzip_buf(const char* path, const uint8_t* buf, size_t len)
+/** @brief put_buf sink for streaming deflate: append compressed bytes to a FILE*. */
+RA8_INTERNAL static mz_bool gz_put(const void* buf, int len, void* user)
 {
-  size_t dfl_len = 0U;
-  void*  dfl     = tdefl_compress_mem_to_heap(buf, len, &dfl_len, TDEFL_DEFAULT_MAX_PROBES);
-  if (dfl == nullptr) {
+  FILE* f = (FILE*)user;
+  return (fwrite(buf, 1U, (size_t)len, f) == (size_t)len) ? MZ_TRUE : MZ_FALSE;
+}
+
+/**
+ * @brief gzip `in_path` to `out_path`, streaming miniz DEFLATE + RFC-1952 framing.
+ * @details Feeds the source through a fixed chunk buffer into miniz's streaming
+ *          deflator (its put-buf callback writes straight to `out`), so neither
+ *          the source nor the compressed stream is ever held whole. CRC32 and
+ *          ISIZE are accumulated incrementally across the chunks.
+ */
+RA8_INTERNAL static ra8_err_t gzip_file(const char* in_path, const char* out_path)
+{
+  FILE* in = fopen(in_path, "rb");
+  if (in == nullptr) {
     return k_ra8_fail;
   }
-  FILE* f = fopen(path, "wb");
-  if (f == nullptr) {
-    mz_free(dfl);
+  FILE* out = fopen(out_path, "wb");
+  if (out == nullptr) {
+    (void)fclose(in);
     return k_ra8_fail;
+  }
+  tdefl_compressor* d = (tdefl_compressor*)malloc(sizeof(*d));
+  if (d == nullptr) {
+    (void)fclose(in);
+    (void)fclose(out);
+    return k_ra8_err_no_mem;
   }
   const uint8_t hdr[k_gzip_hdr_len] =
     {k_gz_id1, k_gz_id2, k_gz_cm, 0U, 0U, 0U, 0U, 0U, 0U, k_gz_os};
-  bool ok = (fwrite(hdr, 1U, sizeof(hdr), f) == sizeof(hdr)) &&
-            (fwrite(dfl, 1U, dfl_len, f) == dfl_len) &&
-            put_u32le(f, mz_crc32(MZ_CRC32_INIT, buf, len)) &&
-            put_u32le(f, (uint32_t)len); /* ISIZE = len mod 2^32 */
-  ok      = (fclose(f) == 0) && ok;
-  mz_free(dfl);
+  bool     ok    = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) &&
+                   (tdefl_init(d, gz_put, out, TDEFL_DEFAULT_MAX_PROBES) == TDEFL_STATUS_OKAY);
+  uint32_t crc   = (uint32_t)MZ_CRC32_INIT;
+  uint32_t isize = 0U; /* ISIZE = total input length mod 2^32 */
+  uint8_t  chunk[k_stream_chunk];
+  while (ok) {
+    const size_t got = fread(chunk, 1U, sizeof(chunk), in);
+    if (got == 0U) {
+      break;
+    }
+    crc = (uint32_t)mz_crc32(crc, chunk, got);
+    isize += (uint32_t)got;
+    ok = (tdefl_compress_buffer(d, chunk, got, TDEFL_NO_FLUSH) == TDEFL_STATUS_OKAY);
+  }
+  if (ok && (ferror(in) != 0)) {
+    ok = false;
+  }
+  if (ok && (tdefl_compress_buffer(d, nullptr, 0U, TDEFL_FINISH) != TDEFL_STATUS_DONE)) {
+    ok = false;
+  }
+  free(d);
+  ok = ok && put_u32le(out, crc) && put_u32le(out, isize);
+  ok = (fclose(out) == 0) && ok;
+  (void)fclose(in);
   return ok ? k_ra8_ok : k_ra8_fail;
 }
 
@@ -436,25 +515,6 @@ export_cbz(const char* dir, char names[][k_name_max], size_t count, const char* 
   const bool ok = (mz_zip_writer_finalize_archive(&zip) != MZ_FALSE);
   (void)mz_zip_writer_end(&zip);
   return ok ? k_ra8_ok : k_ra8_fail;
-}
-
-/** @brief Build a tar then hand it to `compress` (gzip/xz) written to `out`. */
-RA8_INTERNAL static ra8_err_t
-export_tar_wrapped(const char* dir,
-                   char        names[][k_name_max],
-                   size_t      count,
-                   const char* out_path,
-                   ra8_err_t (*compress)(const char*, const uint8_t*, size_t))
-{
-  uint8_t*  tarbuf = nullptr;
-  size_t    tarlen = 0U;
-  ra8_err_t rc     = build_tar(dir, names, count, &tarbuf, &tarlen);
-  if (rc != k_ra8_ok) {
-    return rc;
-  }
-  rc = compress(out_path, tarbuf, tarlen);
-  free(tarbuf);
-  return rc;
 }
 
 /** @brief Spawn the proprietary `rar` tool for CBR (the sole external path). */
@@ -510,39 +570,59 @@ RA8_INTERNAL static ra8_err_t run_to_file(const char* const argv[], const char* 
   return ok ? k_ra8_ok : k_ra8_fail;
 }
 
-/** @brief Optional external xz: tar the folder, then `xz` it with reader-safe flags. */
-RA8_INTERNAL static ra8_err_t
-export_cbt_xz(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
+/** @brief Compress `in_path` to `out_path` via the external `xz` with reader-safe flags. */
+RA8_INTERNAL static ra8_err_t xz_file(const char* in_path, const char* out_path)
 {
-  uint8_t*  tarbuf = nullptr;
-  size_t    tarlen = 0U;
-  ra8_err_t rc     = build_tar(dir, names, count, &tarbuf, &tarlen);
-  if (rc != k_ra8_ok) {
-    return rc;
-  }
+  /* CRC32 check + 1 MiB dict so the on-device xz scratch accepts the stream. */
+  const char* const a[] =
+    {"xz", "--check=crc32", "--lzma2=preset=6,dict=1MiB", "-c", in_path, nullptr};
+  return run_to_file(a, out_path);
+}
+
+/**
+ * @brief Stream a tar to `<out_path>.tar.tmp`, then `compress` it to out_path.
+ * @details The tar is streamed to a sibling temp file (never held whole in RAM),
+ *          `compress` reads that file and streams its own output, and the temp
+ *          file is removed on every exit path.
+ */
+RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char* dir,
+                                                 char        names[][k_name_max],
+                                                 size_t      count,
+                                                 const char* out_path,
+                                                 ra8_err_t (*compress)(const char* in_path,
+                                                                       const char* out_path))
+{
   char tmp[PATH_MAX];
   (void)snprintf(tmp, sizeof(tmp), "%s.tar.tmp", out_path);
-  rc = write_buf(tmp, tarbuf, tarlen);
-  free(tarbuf);
-  if (rc != k_ra8_ok) {
-    return rc;
+  ra8_err_t rc = write_tar_file(dir, names, count, tmp);
+  if (rc == k_ra8_ok) {
+    rc = compress(tmp, out_path);
   }
-  /* CRC32 check + 1 MiB dict so the on-device xz scratch accepts the stream. */
-  const char* const a[] = {"xz", "--check=crc32", "--lzma2=preset=6,dict=1MiB", "-c", tmp, nullptr};
-  rc                    = run_to_file(a, out_path);
   (void)remove(tmp);
   return rc;
 }
 
 /* --- EPUB (self-contained: a valid EPUB3 of the page images via miniz) ---- */
 
-/** @brief EPUB string-buffer sizing (grows with the page count). */
+/**
+ * @brief EPUB string-buffer sizing (grows with the page count).
+ * @details Sized for the WORST case, not the typical `page_NNN.jpg`: a page
+ *          filename may be up to ::k_name_max bytes and, XML-escaped, expand
+ *          6x (a name of all `&quot;`). That escaped name is embedded once in
+ *          the page's manifest fragment and once in its xhtml document, so both
+ *          the fragment buffer and the per-page accumulator budget must exceed
+ *          the fixed template text plus ::k_epub_name_esc_max. Undersizing here
+ *          does not truncate silently -- ::str_cat and ::snprintf_fit report it
+ *          and the export fails -- but correct sizing is what lets a legitimate
+ *          long-name chapter package rather than error.
+ */
 typedef enum : uint32_t {
-  k_epub_frag_max       = 512U,  /**< One manifest/spine/nav fragment.        */
-  k_epub_xhtml_max      = 1024U, /**< One page's xhtml document.              */
-  k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead.                 */
-  k_epub_per_page_bytes = 512U,  /**< Per-page opf/nav growth.                */
-  k_epub_name_esc_max   = 1536U, /**< XML-escaped page name (k_name_max * 6). */
+  k_epub_name_esc_max   = 1536U, /**< XML-escaped page name (k_name_max * 6).       */
+  k_epub_frag_max       = 2048U, /**< One manifest fragment (fixed + escaped name). */
+  k_epub_xhtml_max      = 2048U, /**< One page's xhtml document (embeds the name).  */
+  k_epub_entry_max      = 320U,  /**< A zip entry path ("OEBPS/images/" + name).    */
+  k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead.                       */
+  k_epub_per_page_bytes = 2048U, /**< Per-page opf/nav accumulator growth.          */
 } mdl_epub_size_t;
 
 /** @brief True if an snprintf result fully fit its buffer (no truncation). */
@@ -580,13 +660,22 @@ RA8_INTERNAL static const char* epub_media_type(const char* name)
   return "image/jpeg";
 }
 
-/** @brief Append `text` to NUL-terminated `dst` if it fits (truncation-safe). */
-RA8_INTERNAL static void str_cat(char* dst, size_t cap, const char* text)
+/**
+ * @brief Append `text` to NUL-terminated `dst`; report whether it fully fit.
+ * @details Never truncates: if the append (plus its NUL) would not fit in
+ *          @p cap it leaves @p dst unchanged and returns false, so the caller
+ *          can fail loudly rather than emit a manifest cut off mid-element.
+ * @return true when the whole of @p text was appended, false if it would overrun.
+ */
+RA8_INTERNAL static bool str_cat(char* dst, size_t cap, const char* text)
 {
   const size_t cur = strlen(dst);
-  if (cur + 1U < cap) {
-    (void)snprintf(dst + cur, cap - cur, "%s", text);
+  const size_t add = strlen(text);
+  if (cur + add + 1U > cap) {
+    return false;
   }
+  memcpy(dst + cur, text, add + 1U);
+  return true;
 }
 
 /** @brief Add an in-memory string as a STORED zip entry. */
@@ -619,11 +708,17 @@ RA8_INTERNAL static ra8_err_t epub_append_frags(char*       mani,
   if (!snprintf_fit(fn, sizeof(frag))) {
     return k_ra8_fail;
   }
-  str_cat(mani, cap, frag);
+  if (!str_cat(mani, cap, frag)) {
+    return k_ra8_fail;
+  }
   (void)snprintf(frag, sizeof(frag), "<itemref idref=\"pg%zu\"/>", idx);
-  str_cat(spine, cap, frag);
+  if (!str_cat(spine, cap, frag)) {
+    return k_ra8_fail;
+  }
   (void)snprintf(frag, sizeof(frag), "<li><a href=\"page_%03u.xhtml\">Page %u</a></li>", n, n);
-  str_cat(nav, cap, frag);
+  if (!str_cat(nav, cap, frag)) {
+    return k_ra8_fail;
+  }
   return k_ra8_ok;
 }
 
@@ -655,7 +750,7 @@ RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive* zip,
   if (!snprintf_fit(xn, sizeof(xhtml))) {
     return k_ra8_fail;
   }
-  char entry[k_name_max];
+  char entry[k_epub_entry_max];
   (void)snprintf(entry, sizeof(entry), "OEBPS/page_%03u.xhtml", n);
   if (!epub_add_str(zip, entry, xhtml)) {
     return k_ra8_fail;
@@ -811,7 +906,13 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
   }
 
   static char  s_names[k_max_pages][k_name_max];
-  const size_t count = list_pages(chapter_dir, s_names, (size_t)k_max_pages);
+  bool         truncated = false;
+  const size_t count     = list_pages(chapter_dir, s_names, (size_t)k_max_pages, &truncated);
+  if (truncated) {
+    /* More page images than the fixed table holds: fail rather than silently
+     * package a short chapter the reader would discover missing pages in. */
+    return k_ra8_err_invalid_size;
+  }
   if (count == 0U) {
     return k_ra8_err_empty;
   }
@@ -819,23 +920,18 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
   switch (fmt) {
     case k_mdl_fmt_cbz:
       return export_cbz(chapter_dir, s_names, count, out_path);
-    case k_mdl_fmt_cbt: {
-      uint8_t*  tarbuf = nullptr;
-      size_t    tarlen = 0U;
-      ra8_err_t rc     = build_tar(chapter_dir, s_names, count, &tarbuf, &tarlen);
-      if (rc == k_ra8_ok) {
-        rc = write_buf(out_path, tarbuf, tarlen);
-      }
-      free(tarbuf);
-      return rc;
-    }
+    case k_mdl_fmt_cbt:
+      return write_tar_file(chapter_dir, s_names, count, out_path);
     case k_mdl_fmt_cbt_gz:
-      return export_tar_wrapped(chapter_dir, s_names, count, out_path, gzip_buf);
+      return export_tar_wrapped(chapter_dir, s_names, count, out_path, gzip_file);
     case k_mdl_fmt_cbt_xz:
-      return export_cbt_xz(chapter_dir, s_names, count, out_path);
+      return export_tar_wrapped(chapter_dir, s_names, count, out_path, xz_file);
     case k_mdl_fmt_epub:
       return export_epub(chapter_dir, s_names, count, out_path);
     case k_mdl_fmt_jof:
+      /* JOF writes one `.jof` sibling per page into chapter_dir; out_path names
+       * no single container (see mdl_format_is_dir_output). Callers report the
+       * directory rather than a phantom archive file. */
       return mdl_export_jof(chapter_dir, s_names, count);
     case k_mdl_fmt_rabook:
       return export_rabook(chapter_dir, s_names, count, out_path);
