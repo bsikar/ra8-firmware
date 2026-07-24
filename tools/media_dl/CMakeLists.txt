@@ -267,11 +267,7 @@ add_test(NAME test_media_dl_fetch COMMAND test_media_dl_fetch)
 # both forms, and the per-host in-flight cap) driven entirely through the
 # injectable clock/sleep seams -- no network, no real time. The governor lives
 # in mdl_politeness.c and is self-contained, so this binary links only that unit.
-add_executable(
-  test_media_dl_governor
-  tests/test_media_dl_governor.c
-  src/mdl_politeness.c
-)
+add_executable(test_media_dl_governor tests/test_media_dl_governor.c src/mdl_politeness.c)
 target_include_directories(
   test_media_dl_governor
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
