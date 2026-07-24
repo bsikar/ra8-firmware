@@ -69,6 +69,7 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_nsc/inc
             ${FW_ROOT}/libs/ra8_ota/inc
             ${FW_ROOT}/libs/ra8_dfu/inc
+            ${FW_ROOT}/libs/ra8_devcfg/inc
             ${FW_ROOT}/libs/ra8_display_pal/inc
             ${FW_ROOT}/libs/ra8_power_profile/inc
             ${FW_ROOT}/libs/ra8_epub/inc
@@ -109,6 +110,7 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_nsc/src
             ${FW_ROOT}/libs/ra8_ota/src
             ${FW_ROOT}/libs/ra8_dfu/src
+            ${FW_ROOT}/libs/ra8_devcfg/src
             ${FW_ROOT}/libs/ra8_display_pal/src
             ${FW_ROOT}/libs/ra8_power_profile/src
             ${FW_ROOT}/libs/ra8_touch_cal/src
