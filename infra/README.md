@@ -4,6 +4,18 @@ Provisions and configures every machine the project runs on -- dev boxes, CI
 runners, and the hardware-in-the-loop (HIL) bench -- from code, so an
 environment is recreated instead of hand-assembled.
 
+## Quick start (clone -> deploy)
+
+```
+git clone <this-repo> && cd ra8-firmware
+make infra-setup          # or: bash infra/bootstrap.sh
+```
+
+The bootstrap checks prerequisites, writes your **git-ignored** inventory and
+GitHub token, and offers to run the deploy. Nothing secret is ever committed --
+your token lands in `infra/ansible/private/` (git-ignored) or, if you run one,
+in OpenBao. That's it: your machine joins as a CI runner pool.
+
 ## What it does
 
 - **Dev box** -- one playbook installs the exact pinned toolchain, so `make ci`

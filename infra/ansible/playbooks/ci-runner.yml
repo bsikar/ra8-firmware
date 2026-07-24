@@ -4,5 +4,11 @@
 - name: Deploy the CI runner pool (ARC on k3s)
   hosts: ci_runners
   gather_facts: true
+  pre_tasks:
+    - name: Load local secrets if present (bootstrap writes private/secrets.yml)
+      ansible.builtin.include_vars: "{{ item }}"
+      vars:
+        item: "{{ playbook_dir }}/../private/secrets.yml"
+      when: item is exists
   roles:
     - ci-runner
