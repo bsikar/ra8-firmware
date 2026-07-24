@@ -90,6 +90,12 @@ cd "$ROOT" || exit 1
 # saturate a shared box.
 # shellcheck source=scripts/ci/lib/parallelism.sh
 . "$ROOT/scripts/ci/lib/parallelism.sh"
+# board_sim is C23 (typed enums, nullptr) and links C++ TUs, so its build must
+# pin a C23-capable C/C++ pair -- the ambient "cc" on the Debian 12 dev box is
+# gcc 12 and rejects the syntax outright (#467). Reuse the ONE shared selector
+# the host-test and coverage builds use rather than hand-rolling a second probe.
+# shellcheck source=scripts/builders/select_host_compiler.sh
+. "$ROOT/scripts/builders/select_host_compiler.sh"
 sim_dir="$ROOT/tools/board_sim"
 report="$ROOT/build/board_sim_matrix.txt"
 mkdir -p "$ROOT/build"
@@ -441,7 +447,16 @@ fi
 # nonexistent) emulator. Abort the whole matrix with a clear error instead.
 sim_cmake_log="$ROOT/build/board_sim_matrix_emu_build.log"
 log "building the emulator ..."
-if ! cmake -B "$sim_dir/build" -S "$sim_dir" >"$sim_cmake_log" 2>&1; then
+# Pin a C23-capable host compiler (gcc-first to match CI). This file runs
+# without `set -e`, so the selection is checked explicitly: a box with no
+# C23-capable compiler is a FATAL, never a silent fall-through to a too-old cc.
+if ! ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc; then
+  echo "FATAL: no C23-capable host compiler for board_sim (need gcc >= 13 or clang >= 17)" >&2
+  exit 2
+fi
+ra8_cmake_reset_if_compiler_changed "$sim_dir/build"
+if ! cmake -B "$sim_dir/build" -S "$sim_dir" \
+  -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" >"$sim_cmake_log" 2>&1; then
   echo "FATAL: board_sim cmake configure failed (see $sim_cmake_log)" >&2
   exit 2
 fi
