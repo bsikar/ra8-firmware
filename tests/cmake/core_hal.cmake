@@ -64,6 +64,7 @@ add_library(
   ${RA8_LSM6DSO_SOURCES}
   ${RA8_TZ_SECURE_BOOT_SOURCES}
   ${RA8_DFU_SOURCES}
+  ${RA8_DEVCFG_SOURCES}
   # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
   # libs/), so it is not caught by the libs/ globs above -- add it by
   # hand. Its SYST_RVR/CVR writes compile out under RA8_SIMULATOR_MODE,
@@ -115,6 +116,7 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_nsc/inc
          ${FW_ROOT}/libs/ra8_ota/inc
          ${FW_ROOT}/libs/ra8_dfu/inc
+         ${FW_ROOT}/libs/ra8_devcfg/inc
          ${FW_ROOT}/libs/ra8_display_pal/inc
          ${FW_ROOT}/libs/ra8_power_profile/inc
          ${FW_ROOT}/libs/ra8_epub/inc
@@ -164,6 +166,7 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_nsc/src
          ${FW_ROOT}/libs/ra8_ota/src
          ${FW_ROOT}/libs/ra8_dfu/src
+         ${FW_ROOT}/libs/ra8_devcfg/src
          ${FW_ROOT}/libs/ra8_display_pal/src
          ${FW_ROOT}/libs/ra8_power_profile/src
          ${FW_ROOT}/libs/ra8_touch_cal/src
