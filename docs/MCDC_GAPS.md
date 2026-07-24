@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **212**
-- Total compound decisions in scope: **1105**
-- Decisions at 100% MC/DC (`yes`): **1005**
+- Source files with at least one decision: **213**
+- Total compound decisions in scope: **1107**
+- Decisions at 100% MC/DC (`yes`): **1007**
 - Decisions partially covered (`partial`): **59**
 - Decisions fully uncovered (`no`): **41**
-- Coverage rate (yes / total): **90.95%**
+- Coverage rate (yes / total): **90.97%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **1015**
-- **Reachable MC/DC rate**: **99.01%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1017**
+- **Reachable MC/DC rate**: **99.02%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -275,6 +275,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_ble_mesh | 2 | 2 | 0 | 0 |
 | ra8_board_ek_ra8d2_audio_usb | 2 | 2 | 0 | 0 |
 | ra8_comic_wrapped | 2 | 2 | 0 | 0 |
+| ra8_devcfg | 2 | 2 | 0 | 0 |
 | ra8_display_pal_policy | 2 | 2 | 0 | 0 |
 | ra8_epaper_devinfo | 2 | 2 | 0 | 0 |
 | ra8_epub_img_import | 2 | 2 | 0 | 0 |

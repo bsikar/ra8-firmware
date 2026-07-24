@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12653
+# total findings: 12713
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -1567,3 +1567,13 @@ src/secure_app/secure_trng.c	misra-c2012-10.7	1
 src/secure_app/secure_trng.c	misra-c2012-15.5	3
 src/secure_app/secure_trng.c	misra-c2012-8.4	4
 src/secure_app/secure_trng.c	misra-c2012-8.9	1
+libs/ra8_devcfg/src/ra8_devcfg.c	misra-c2012-14.2	2
+libs/ra8_devcfg/src/ra8_devcfg.c	misra-c2012-15.5	34
+libs/ra8_devcfg/src/ra8_devcfg.c	misra-c2012-17.3	5
+libs/ra8_devcfg/src/ra8_devcfg.c	misra-c2012-8.9	2
+libs/ra8_devcfg/src/ra8_devcfg.c	misra-c2012-9.2	3
+libs/ra8_devcfg/src/ra8_devcfg_store_extra_mram.c	misra-c2012-11.4	1
+libs/ra8_devcfg/src/ra8_devcfg_store_extra_mram.c	misra-c2012-14.2	1
+libs/ra8_devcfg/src/ra8_devcfg_store_extra_mram.c	misra-c2012-15.5	8
+libs/ra8_devcfg/src/ra8_devcfg_store_extra_mram.c	misra-c2012-8.9	3
+libs/ra8_devcfg/src/ra8_devcfg_store_extra_mram.c	misra-c2012-9.2	1
