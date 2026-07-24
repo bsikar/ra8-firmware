@@ -96,6 +96,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       doxygen \
       clang-tools-18 \
       gcc-14 \
+      g++-14 \
       gcovr=${GCOVR_VERSION} \
       git \
       graphviz \
