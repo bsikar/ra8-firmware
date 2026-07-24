@@ -56,11 +56,18 @@ typedef struct {
   char page_img_attr[k_mdl_attr_max];          /**< Preferred attr (fallback other). */
   char page_img_url_contains[k_mdl_match_max]; /**< Keep only URLs with this.        */
 
-  /* Politeness (milliseconds); jittered in [min,max]. */
+  /* Politeness jitter (milliseconds); baseline spacing, jittered in [min,max]. */
   uint32_t img_delay_min;     /**< Per-image spacing floor.       */
   uint32_t img_delay_max;     /**< Per-image spacing ceiling.     */
   uint32_t chapter_delay_min; /**< Inter-chapter spacing floor.   */
   uint32_t chapter_delay_max; /**< Inter-chapter spacing ceiling. */
+
+  /* Governor: closed-loop per-host rate/backoff/concurrency (see mdl_politeness). */
+  uint32_t rate_per_min;    /**< Sustained per-host request ceiling (0 = off). */
+  uint32_t burst;           /**< Token-bucket capacity, in requests.           */
+  uint32_t backoff_base_ms; /**< First backoff window on a 429/503.            */
+  uint32_t backoff_max_ms;  /**< Backoff-window ceiling.                       */
+  uint32_t max_inflight;    /**< Per-host in-flight request cap.               */
 } mdl_site_t;
 
 /**

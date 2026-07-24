@@ -66,6 +66,37 @@ typedef struct {
   uint64_t max_response_bytes;        /**< Per-response byte cap (0 = unlimited).    */
 } mdl_net_policy_t;
 
+/** @brief Captured-response-field buffer sizes. */
+typedef enum : uint16_t {
+  k_mdl_retry_after_max = 64U, /**< Raw `Retry-After` header value buffer bytes. */
+} mdl_net_resp_size_t;
+
+/**
+ * @struct mdl_net_resp_t
+ * @brief Per-transfer response metadata surfaced to the politeness governor.
+ *
+ * @details
+ * The fetch dispatchers fill one of these (when the caller passes a non-NULL
+ * pointer) so a caller can distinguish an absent page from a throttle from a
+ * server error and, on a throttle, honour the server's own `Retry-After`. It
+ * carries the finished transfer's HTTP `status` and the raw `Retry-After`
+ * header value verbatim -- the governor parses the header (both delta-seconds
+ * and HTTP-date forms) through ::mdl_retry_after_parse, so the network backend
+ * never has to. An empty `retry_after` means the header was absent.
+ *
+ * @invariant `retry_after` is always NUL-terminated; `retry_after[0] == '\0'`
+ *            exactly when the header was absent.
+ * @invariant `status == 0` means no HTTP status was observed (transport error
+ *            before a response, or an argument the dispatcher refused).
+ * @see mdl_net_get_buf()
+ * @see mdl_retry_after_parse()
+ * @since 0.1.0
+ */
+typedef struct {
+  long status;                             /**< Finished transfer's HTTP status, 0 if none. */
+  char retry_after[k_mdl_retry_after_max]; /**< Raw `Retry-After` value, "" when absent.    */
+} mdl_net_resp_t;
+
 /**
  * @struct mdl_net_vtable_t
  * @brief Method table one network backend registers (Dependency Inversion).
@@ -78,7 +109,7 @@ typedef struct {
  * passing the backend's opaque `ctx`. Every pointer receives that `ctx` as its
  * first argument so one table serves many independent handles.
  *
- * @invariant All four function pointers are non-NULL in any table handed to
+ * @invariant All three function pointers are non-NULL in any table handed to
  *            ::mdl_net_iface_t. The dispatchers refuse a NULL `get_*` method.
  * @see mdl_net_iface_t
  * @see mdl_net_get_buf()
@@ -93,6 +124,7 @@ typedef struct {
    * @param[out] buf     Destination buffer (never NULL).
    * @param[in]  cap     Capacity of `buf` in bytes (never 0).
    * @param[out] out_len Bytes written (excluding any NUL). May be NULL.
+   * @param[out] resp    Response metadata (status + Retry-After). May be NULL.
    * @return An ::ra8_err_t per the ::mdl_net_get_buf contract.
    */
   ra8_err_t (*get_buf)(void*                ctx,
@@ -100,7 +132,8 @@ typedef struct {
                        const mdl_net_req_t* req,
                        char*                buf,
                        size_t               cap,
-                       size_t*              out_len);
+                       size_t*              out_len,
+                       mdl_net_resp_t*      resp);
 
   /**
    * @brief GET `url` and stream the body to a file (used for images).
@@ -109,20 +142,15 @@ typedef struct {
    * @param[in]  req      Session parameters (never NULL).
    * @param[in]  out_path Filesystem path to create/overwrite (never NULL).
    * @param[out] out_len  Bytes written. May be NULL.
+   * @param[out] resp     Response metadata (status + Retry-After). May be NULL.
    * @return An ::ra8_err_t per the ::mdl_net_get_file contract.
    */
   ra8_err_t (*get_file)(void*                ctx,
                         const char*          url,
                         const mdl_net_req_t* req,
                         const char*          out_path,
-                        size_t*              out_len);
-
-  /**
-   * @brief HTTP status code of the most recent transfer.
-   * @param[in] ctx Backend-private state (never NULL).
-   * @return The last transfer's HTTP status, or 0 when unknown.
-   */
-  long (*last_status)(void* ctx);
+                        size_t*              out_len,
+                        mdl_net_resp_t*      resp);
 
   /**
    * @brief Release the backend-private state (called by ::mdl_net_destroy).
@@ -142,7 +170,7 @@ typedef struct {
  * and `ctx` together is what makes the substitution real: the same download
  * loop runs against libcurl or against a mock with no code change.
  *
- * @invariant `vtable` is non-NULL and points to a table with all four methods
+ * @invariant `vtable` is non-NULL and points to a table with all three methods
  *            populated for the whole lifetime of the handle.
  * @invariant `ctx` is whatever the backend factory stored; the dispatchers
  *            never interpret it, only forward it.
@@ -179,36 +207,15 @@ typedef struct mdl_net_iface {
 void mdl_net_destroy(mdl_net_iface_t* net);
 
 /**
- * @brief HTTP status code of the most recent transfer on `net`.
- *
- * @details
- * Lets a caller distinguish an absent resource (`404`) from a server error
- * (`5xx`) after a fetch, which the robots.txt convention needs: an absent
- * file means "no restrictions" while a `5xx` means "disallow all". Dispatches
- * to the backend's `last_status` method.
- *
- * @param[in] net Network interface, or NULL.
- *
- * @return The last transfer's HTTP status, or 0 when unknown.
- * @retval 0     No transfer has completed, or `net`/its vtable is NULL.
- * @retval other The status the backend recorded for the last transfer.
- *
- * @pre `net`, when non-NULL, was returned by a backend factory.
- * @pre A transfer has been attempted for the value to be meaningful.
- * @post `net` is not modified by the dispatcher.
- *
- * @note Not thread-safe: reads shared backend state.
- * @since 0.1.0
- */
-long mdl_net_last_status(mdl_net_iface_t* net);
-
-/**
  * @brief GET `url` fully into a caller buffer (used for HTML pages).
  *
  * @details
  * Validates the handle and arguments, then dispatches to the backend's
  * `get_buf` method. The backend enforces the scheme allowlist and any security
- * policy before contacting the network.
+ * policy before contacting the network. When @p resp is non-NULL it receives
+ * the finished transfer's HTTP status and raw `Retry-After` header, letting the
+ * caller tell an absent page from a throttle from a server error -- the
+ * distinction the robots.txt convention and the politeness governor both need.
  *
  * @param[in]  net     Network interface.
  * @param[in]  url     Absolute http/https URL.
@@ -217,18 +224,22 @@ long mdl_net_last_status(mdl_net_iface_t* net);
  * @param[in]  cap     Capacity of `buf` in bytes (a trailing NUL is written when
  *                     it fits, so pass cap >= body + 1 to guarantee a C string).
  * @param[out] out_len Bytes written (excluding any NUL). May be NULL.
+ * @param[out] resp    Response metadata (status + Retry-After), or NULL to skip.
  *
  * @return An ::ra8_err_t transfer result.
  * @retval k_ra8_ok               Body fetched, HTTP status < 400.
  * @retval k_ra8_err_invalid_arg  NULL argument, `cap == 0`, or refused scheme.
  * @retval k_ra8_err_no_mem       Body exceeded `cap`.
  * @retval k_ra8_err_timeout      Request exceeded `req->timeout_ms`.
- * @retval k_ra8_fail             Transport error or HTTP status >= 400.
+ * @retval k_ra8_err_busy         HTTP 429 or 503 (throttled -- back off).
+ * @retval k_ra8_err_not_found    HTTP 404 or another 4xx (skip this resource).
+ * @retval k_ra8_fail             Transport error or HTTP 5xx (server error).
  *
  * @pre `net`, when non-NULL, holds a fully populated vtable.
  * @pre `req`, `buf` are non-NULL and `cap > 0` for a fetch to be attempted.
  * @post On any error the buffer contents are unspecified.
  * @post `*out_len`, when `out_len` is non-NULL, is set only on ::k_ra8_ok.
+ * @post `*resp`, when non-NULL, is filled with the observed status/header.
  *
  * @note Not thread-safe: one interface per worker.
  * @since 0.1.0
@@ -238,7 +249,8 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
                           const mdl_net_req_t* req,
                           char*                buf,
                           size_t               cap,
-                          size_t*              out_len);
+                          size_t*              out_len,
+                          mdl_net_resp_t*      resp);
 
 /**
  * @brief GET `url` and stream the body to a file (used for images).
@@ -246,25 +258,31 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
  * @details
  * Validates the handle and arguments, then dispatches to the backend's
  * `get_file` method, which streams the body to `out_path` under the session
- * size cap and removes a torn/oversized file on failure.
+ * size cap and removes a torn/oversized file on failure. When @p resp is
+ * non-NULL it receives the finished transfer's HTTP status and raw
+ * `Retry-After` header so the governor can back off on a throttle.
  *
  * @param[in]  net      Network interface.
  * @param[in]  url      Absolute http/https URL.
  * @param[in]  req      Session parameters (must be non-NULL).
  * @param[in]  out_path Filesystem path to create/overwrite.
  * @param[out] out_len  Bytes written. May be NULL.
+ * @param[out] resp     Response metadata (status + Retry-After), or NULL to skip.
  *
  * @return An ::ra8_err_t transfer result.
  * @retval k_ra8_ok               File written, HTTP status < 400.
  * @retval k_ra8_err_invalid_arg  NULL argument or refused scheme.
  * @retval k_ra8_err_no_mem       Body exceeded the session size cap.
  * @retval k_ra8_err_timeout      Request exceeded `req->timeout_ms`.
- * @retval k_ra8_fail             Transport error, HTTP status >= 400, or I/O.
+ * @retval k_ra8_err_busy         HTTP 429 or 503 (throttled -- back off).
+ * @retval k_ra8_err_not_found    HTTP 404 or another 4xx (skip this resource).
+ * @retval k_ra8_fail             Transport error, HTTP 5xx, or local I/O error.
  *
  * @pre `net`, when non-NULL, holds a fully populated vtable.
  * @pre `req`, `out_path` are non-NULL for a fetch to be attempted.
  * @post On any error no partial output file is left behind.
  * @post `*out_len`, when `out_len` is non-NULL, is set only on ::k_ra8_ok.
+ * @post `*resp`, when non-NULL, is filled with the observed status/header.
  *
  * @note Not thread-safe: one interface per worker.
  * @since 0.1.0
@@ -273,4 +291,5 @@ ra8_err_t mdl_net_get_file(mdl_net_iface_t*     net,
                            const char*          url,
                            const mdl_net_req_t* req,
                            const char*          out_path,
-                           size_t*              out_len);
+                           size_t*              out_len,
+                           mdl_net_resp_t*      resp);

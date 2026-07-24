@@ -37,12 +37,16 @@
 
 /** @brief Backend tunables. */
 typedef enum : uint32_t {
-  k_curl_max_redirects  = 5,     /**< Redirect hops to follow.                */
-  k_http_status_err_min = 400,   /**< First HTTP status treated as an error.  */
-  k_connect_timeout_ms  = 15000, /**< TCP/TLS connect budget, ms.             */
-  k_low_speed_bytes     = 64,    /**< Below this many B/s...                  */
-  k_low_speed_secs      = 30,    /**< ...for this long, abort a stalled xfer. */
-  k_origin_host_max     = 256,   /**< Stored origin-host buffer bytes.        */
+  k_curl_max_redirects  = 5,     /**< Redirect hops to follow.                  */
+  k_http_client_err_min = 400,   /**< First HTTP status treated as an error.    */
+  k_http_not_found      = 404,   /**< Absent resource (client error).           */
+  k_http_too_many_req   = 429,   /**< Too Many Requests (throttle).             */
+  k_http_server_err_min = 500,   /**< First HTTP status that is a server error. */
+  k_http_unavailable    = 503,   /**< Service Unavailable (throttle).           */
+  k_connect_timeout_ms  = 15000, /**< TCP/TLS connect budget, ms.               */
+  k_low_speed_bytes     = 64,    /**< Below this many B/s...                    */
+  k_low_speed_secs      = 30,    /**< ...for this long, abort a stalled xfer.   */
+  k_origin_host_max     = 256,   /**< Stored origin-host buffer bytes.          */
 } mdl_curl_limits_t;
 
 /** @brief Private state of the libcurl backend (the vtable's `ctx`). */
@@ -61,6 +65,78 @@ typedef struct {
   uint64_t cap;      /**< Per-response cap (0 = unlimited). */
   bool     overflow; /**< Set once the body exceeds `cap`.  */
 } file_sink_t;
+
+/** @brief Response-header capture sink: keeps the final response's Retry-After. */
+typedef struct {
+  char retry_after[k_mdl_retry_after_max]; /**< Raw value, "" when absent. */
+} hdr_sink_t;
+
+/** @brief Lower-case an ASCII byte (locale-independent). */
+RA8_INTERNAL static char ascii_lower(char c)
+{
+  if ((c >= 'A') && (c <= 'Z')) {
+    return (char)(c - 'A' + 'a');
+  }
+  return c;
+}
+
+/** @brief True when `line` begins with `prefix`, ASCII case-insensitively. */
+RA8_INTERNAL static bool header_is(const char* line, size_t line_len, const char* prefix)
+{
+  size_t i = 0U;
+  for (; (prefix[i] != '\0') && (i < line_len); ++i) {
+    if (ascii_lower(line[i]) != prefix[i]) {
+      return false;
+    }
+  }
+  return prefix[i] == '\0';
+}
+
+/** @brief Copy a header value (after the colon), trimmed of CR/LF/space, bounded. */
+RA8_INTERNAL static void header_value(const char* line, size_t line_len, char* out, size_t cap)
+{
+  size_t start = 0U;
+  while ((start < line_len) && (line[start] != ':')) {
+    ++start;
+  }
+  if (start < line_len) {
+    ++start; /* skip the colon */
+  }
+  while ((start < line_len) && ((line[start] == ' ') || (line[start] == '\t'))) {
+    ++start;
+  }
+  size_t end = line_len;
+  while ((end > start) && ((line[end - 1U] == '\r') || (line[end - 1U] == '\n') ||
+                           (line[end - 1U] == ' ') || (line[end - 1U] == '\t'))) {
+    --end;
+  }
+  size_t n = end - start;
+  if (n >= cap) {
+    n = cap - 1U;
+  }
+  for (size_t i = 0U; i < n; ++i) {
+    out[i] = line[start + i];
+  }
+  out[n] = '\0';
+}
+
+/** @brief libcurl header callback: latch the final response's Retry-After value. */
+/* cppcheck-suppress constParameterCallback ; libcurl HEADERFUNCTION ABI is char* */
+RA8_INTERNAL static size_t on_header(char* buffer, size_t size, size_t nitems, void* user)
+{
+  const size_t len  = size * nitems;
+  hdr_sink_t*  sink = (hdr_sink_t*)user;
+  if (sink == nullptr) {
+    return len;
+  }
+  /* A new status line starts a fresh response (redirect chain): drop stale values. */
+  if (header_is(buffer, len, "http/")) {
+    sink->retry_after[0] = '\0';
+  } else if (header_is(buffer, len, "retry-after:")) {
+    header_value(buffer, len, sink->retry_after, sizeof(sink->retry_after));
+  }
+  return len;
+}
 
 /* cppcheck-suppress constParameterCallback ; libcurl WRITEFUNCTION ABI is char* */
 RA8_PRIV size_t mdl_net_curl_buf_write(char* data, size_t size, size_t nmemb, void* user)
@@ -169,6 +245,7 @@ RA8_INTERNAL static bool apply_behavior_opts(CURL* curl)
   return ok_code(curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "")) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "")) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L)) &&
+         ok_code(curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, on_header)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, (long)k_connect_timeout_ms)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, (long)k_low_speed_bytes)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, (long)k_low_speed_secs));
@@ -202,17 +279,31 @@ RA8_PRIV ra8_err_t mdl_net_curl_classify(CURLcode code, bool overflow, long stat
   if (code != CURLE_OK) {
     return k_ra8_fail;
   }
-  if (status >= (long)k_http_status_err_min) {
-    return k_ra8_fail;
+  if ((status == (long)k_http_too_many_req) || (status == (long)k_http_unavailable)) {
+    return k_ra8_err_busy; /* 429 / 503: throttled -- the governor must back off. */
+  }
+  if (status >= (long)k_http_server_err_min) {
+    return k_ra8_fail; /* 5xx: server error -- retryable later. */
+  }
+  if (status >= (long)k_http_client_err_min) {
+    return k_ra8_err_not_found; /* 404 and other 4xx: skip this resource. */
   }
   return k_ra8_ok;
 }
 
-/** @brief Read the finished transfer's status and classify it. */
-RA8_INTERNAL static ra8_err_t classify_transfer(CURL* curl, CURLcode code, bool overflow)
+/** @brief Read status + captured headers, fill @p resp, and classify the result. */
+RA8_INTERNAL static ra8_err_t finish_transfer(CURL*             curl,
+                                              CURLcode          code,
+                                              bool              overflow,
+                                              const hdr_sink_t* hdr,
+                                              mdl_net_resp_t*   resp)
 {
   long status = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+  if (resp != nullptr) {
+    resp->status = status;
+    (void)snprintf(resp->retry_after, sizeof(resp->retry_after), "%s", hdr->retry_after);
+  }
   return mdl_net_curl_classify(code, overflow, status);
 }
 
@@ -222,7 +313,8 @@ RA8_INTERNAL static ra8_err_t curl_get_buf(void*                ctx,
                                            const mdl_net_req_t* req,
                                            char*                buf,
                                            size_t               cap,
-                                           size_t*              out_len)
+                                           size_t*              out_len,
+                                           mdl_net_resp_t*      resp)
 {
   mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
   if (!mdl_url_scheme_allowed(url)) {
@@ -230,14 +322,16 @@ RA8_INTERNAL static ra8_err_t curl_get_buf(void*                ctx,
   }
 
   buf_sink_t sink = {.buf = buf, .cap = cap, .len = 0U, .overflow = false};
+  hdr_sink_t hdr  = {};
   if (!apply_req(net, url, req) ||
+      !ok_code(curl_easy_setopt(net->curl, CURLOPT_HEADERDATA, &hdr)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, mdl_net_curl_buf_write)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEDATA, &sink))) {
     return k_ra8_fail;
   }
 
   const CURLcode  code = curl_easy_perform(net->curl);
-  const ra8_err_t rc   = classify_transfer(net->curl, code, sink.overflow);
+  const ra8_err_t rc   = finish_transfer(net->curl, code, sink.overflow, &hdr, resp);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -256,7 +350,8 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
                                             const char*          url,
                                             const mdl_net_req_t* req,
                                             const char*          out_path,
-                                            size_t*              out_len)
+                                            size_t*              out_len,
+                                            mdl_net_resp_t*      resp)
 {
   mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
   if (!mdl_url_scheme_allowed(url)) {
@@ -269,9 +364,11 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
   }
 
   file_sink_t sink = {.fp = fp, .written = 0U, .cap = net->max_bytes, .overflow = false};
+  hdr_sink_t  hdr  = {};
   /* MAXFILESIZE_LARGE checks an advertised Content-Length up front; 0 disables
    * it, exactly as cap == 0 disables the callback check below. */
   if (!apply_req(net, url, req) ||
+      !ok_code(curl_easy_setopt(net->curl, CURLOPT_HEADERDATA, &hdr)) ||
       !ok_code(
         curl_easy_setopt(net->curl, CURLOPT_MAXFILESIZE_LARGE, (curl_off_t)net->max_bytes)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, on_file_write)) ||
@@ -282,7 +379,7 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
   }
 
   const CURLcode  code = curl_easy_perform(net->curl);
-  const ra8_err_t rc   = classify_transfer(net->curl, code, sink.overflow);
+  const ra8_err_t rc   = finish_transfer(net->curl, code, sink.overflow, &hdr, resp);
 
   const long fsize = ftell(fp);
   if (fclose(fp) != 0) {
@@ -297,18 +394,6 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
     *out_len = (fsize < 0) ? 0U : (size_t)fsize;
   }
   return k_ra8_ok;
-}
-
-/** @brief Vtable method: HTTP status of the most recent transfer. */
-RA8_INTERNAL static long curl_last_status(void* ctx)
-{
-  mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
-  if (net->curl == nullptr) {
-    return 0;
-  }
-  long status = 0;
-  curl_easy_getinfo(net->curl, CURLINFO_RESPONSE_CODE, &status);
-  return status;
 }
 
 /** @brief Vtable method: release the libcurl handle and this backend state. */
@@ -326,10 +411,9 @@ RA8_INTERNAL static void curl_destroy(void* ctx)
 
 /** @brief The libcurl backend's immutable method table. */
 static const mdl_net_vtable_t s_curl_vtable = {
-  .get_buf     = curl_get_buf,
-  .get_file    = curl_get_file,
-  .last_status = curl_last_status,
-  .destroy     = curl_destroy,
+  .get_buf  = curl_get_buf,
+  .get_file = curl_get_file,
+  .destroy  = curl_destroy,
 };
 
 RA8_DI_SLOT("net_iface")
