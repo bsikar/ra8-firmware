@@ -45,26 +45,30 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const char* cfg;           /**< --config path.                                          */
-  const char* series;        /**< --series URL.                                           */
-  const char* page_url;      /**< positional page URL (page mode).                        */
-  const char* out;           /**< --out dir.                                              */
-  const char* attr;          /**< --attr.                                                 */
-  const char* chapters;      /**< --chapters.                                             */
-  const char* start;         /**< --start.                                                */
-  const char* max;           /**< --max.                                                  */
-  const char* seed;          /**< --seed.                                                 */
-  const char* timeout;       /**< --timeout.                                              */
-  const char* format;        /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/jof/rabook).   */
-  const char* pack;          /**< --pack DIR: package an existing folder, no network.     */
-  const char* contact;       /**< --contact: operator identity for the User-Agent.        */
-  const char* max_bytes;     /**< --max-bytes: per-response size cap.                     */
-  bool        separate;      /**< --separate: one archive per chapter (default: combine). */
-  bool        polite;        /**< --polite: raise per-host delays.                        */
-  bool        ignore_robots; /**< --ignore-robots: escape hatch (off by default).         */
-  bool        allow_private; /**< --allow-private: permit private/loopback peers.         */
-  bool        cross_host;    /**< --cross-host: permit cross-host redirects.              */
-  bool        bad;           /**< An unrecognised argument was seen.                      */
+  const char* cfg;           /**< --config path.                                            */
+  const char* series;        /**< --series URL.                                             */
+  const char* page_url;      /**< positional page URL (page mode).                          */
+  const char* out;           /**< --out dir.                                                */
+  const char* attr;          /**< --attr.                                                   */
+  const char* chapters;      /**< --chapters.                                               */
+  const char* from;          /**< --from: first chapter NUMBER to fetch (not an index).     */
+  const char* max;           /**< --max.                                                    */
+  const char* seed;          /**< --seed.                                                   */
+  const char* timeout;       /**< --timeout.                                                */
+  const char* format;        /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/jof/rabook).     */
+  const char* pack;          /**< --pack DIR: package an existing folder, no network.       */
+  const char* contact;       /**< --contact: operator identity for the User-Agent.          */
+  const char* max_bytes;     /**< --max-bytes: per-response size cap.                       */
+  const char* remove_series; /**< --remove: series URL/slug to drop from the library.       */
+  bool        separate;      /**< --separate: one archive per chapter (default: combine).   */
+  bool        update;        /**< --update: fetch only chapters not already complete.       */
+  bool        list;          /**< --list: list tracked series with coverage, then exit.     */
+  bool        update_all;    /**< --update-all: incremental update of every tracked series. */
+  bool        polite;        /**< --polite: raise per-host delays.                          */
+  bool        ignore_robots; /**< --ignore-robots: escape hatch (off by default).           */
+  bool        allow_private; /**< --allow-private: permit private/loopback peers.           */
+  bool        cross_host;    /**< --cross-host: permit cross-host redirects.                */
+  bool        bad;           /**< An unrecognised argument was seen.                        */
 } mdl_args_t;
 
 /**
