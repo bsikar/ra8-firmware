@@ -39,7 +39,7 @@ jobs:
   # ---------------------------------------------------------------------------
   coverage:
     name: Statement + branch coverage
-    runs-on: self-hosted
+    runs-on: ra8-ci
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
     if: >-

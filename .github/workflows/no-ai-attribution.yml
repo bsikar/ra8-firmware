@@ -28,7 +28,7 @@ env:
 jobs:
   no-ai-attribution:
     name: Attribution policy (tracked files)
-    runs-on: self-hosted
+    runs-on: ra8-ci
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
     if: >-
@@ -45,7 +45,7 @@ jobs:
 
   commit-messages:
     name: Attribution policy (commit messages)
-    runs-on: self-hosted
+    runs-on: ra8-ci
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
     if: >-
