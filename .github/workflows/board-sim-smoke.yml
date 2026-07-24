@@ -55,7 +55,7 @@ env:
 jobs:
   board-sim-smoke:
     name: board_sim boot smoke
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
     if: >-
@@ -108,7 +108,7 @@ jobs:
   # identical on an idle runner and a saturated one.
   board-sim-matrix:
     name: board_sim example matrix (ratcheted)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
     if: >-
@@ -161,7 +161,7 @@ jobs:
   # board-sim-smoke budget.
   sil-integration:
     name: SIL integration (all hil apps in board_sim)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
     if: >-

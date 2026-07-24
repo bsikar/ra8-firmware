@@ -62,7 +62,7 @@ jobs:
   # ---------------------------------------------------------------------------
   ci-parity:
     name: CI parity (workflows <-> ci.sh)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -83,7 +83,7 @@ jobs:
 
   ascii:
     name: ASCII-only source files
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -93,7 +93,7 @@ jobs:
 
   copyright:
     name: Copyright header check
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -106,7 +106,7 @@ jobs:
   # against the dev-box/runner drift that hid a red coverage gate for hours.
   toolchain-parity:
     name: Toolchain pin parity
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -116,7 +116,7 @@ jobs:
 
   since:
     name: Doxygen @since tags
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -131,7 +131,7 @@ jobs:
   # ---------------------------------------------------------------------------
   hil-sil-parity:
     name: SIM==HIL parity
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -141,7 +141,7 @@ jobs:
 
   format:
     name: clang-format check
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -162,7 +162,7 @@ jobs:
   # ---------------------------------------------------------------------------
   tidy:
     name: clang-tidy
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -203,7 +203,7 @@ jobs:
   # ---------------------------------------------------------------------------
   nsc-cmse:
     name: NSC veneers (-mcmse)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -213,7 +213,7 @@ jobs:
 
   unit-tests:
     name: Unit tests (host)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -233,7 +233,7 @@ jobs:
   # ---------------------------------------------------------------------------
   ubsan:
     name: UBSan (host tests)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -248,7 +248,7 @@ jobs:
   # ---------------------------------------------------------------------------
   cache-bench:
     name: Cache benchmarks (#147/#160)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -272,7 +272,7 @@ jobs:
   # ---------------------------------------------------------------------------
   tools-build:
     name: Host tools (build + link + test, clang-18 + gcc-14)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -302,7 +302,7 @@ jobs:
 
   coverage:
     name: Coverage (gcovr 90/80)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -330,7 +330,7 @@ jobs:
   # ---------------------------------------------------------------------------
   mcdc:
     name: MC/DC coverage gate
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -359,7 +359,7 @@ jobs:
   # ---------------------------------------------------------------------------
   pre-commit-checks:
     name: Pre-commit gate suite
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -476,7 +476,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-cross:
     name: Cross-build all apps
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -488,7 +488,7 @@ jobs:
 
   docs:
     name: Doxygen warnings
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -515,7 +515,7 @@ jobs:
   # ---------------------------------------------------------------------------
   misra:
     name: MISRA-C 2012 ratchet
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -526,7 +526,7 @@ jobs:
 
   cppcheck:
     name: cppcheck
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
@@ -540,7 +540,7 @@ jobs:
   # ---------------------------------------------------------------------------
   coverage-comment:
     name: MC/DC delta comment
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     needs: mcdc
     # PR-only job, and self-hosted: also require the PR head to live in THIS
     # repo so a fork PR can never reach the runner (defence in depth -- `needs:

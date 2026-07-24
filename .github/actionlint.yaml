@@ -13,6 +13,9 @@ self-hosted-runner:
     # The Linux x86_64 build/test fleet.
     - Linux
     - X64
+    # The ARC runner scale set: ephemeral pods booted from the devcontainer
+    # image (infra/, arc-runners namespace). The core CI workflows target this.
+    - ra8-ci
     # The bench runner with the EK-RA8D2 attached (.github/workflows/hil.yml).
     - hil
     - ra8d2
