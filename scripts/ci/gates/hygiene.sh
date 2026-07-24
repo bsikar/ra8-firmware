@@ -228,6 +228,25 @@ gate_since() (
   python3 scripts/checks/check-since-version.py --all
 )
 
+# --- toolchain-parity -----------------------------------------------------
+# The whole CI pipeline runs bare-metal on the self-hosted runner, NOT in the
+# pinned devcontainer (no `container:` key on any job), so the runner's ambient
+# toolchain can drift from the pins in .devcontainer/Dockerfile while the dev
+# box (also bare-metal, but separately hand-provisioned) still carries them.
+# That produces the worst failure mode: a gate GREEN on the dev box and RED on
+# CI -- a missing g++-14 sank the coverage gate for hours exactly this way, and
+# four more pinned tools were absent from the runner behind it. This gate makes
+# such drift LOUD and comprehensive in ONE place: --all verifies EVERY pinned
+# tool resolves to its pinned version, so a drifted runner fails HERE with a
+# named tool ("shellcheck NOT FOUND, want 0.11.0") instead of cryptically deep
+# in a downstream build. --selftest proves the comparator both ways first.
+# Reprovision a drifted bare-metal runner with scripts/ci/provision_runner.sh.
+gate_toolchain_parity() (
+  set -e
+  python3 scripts/checks/check_tool_versions.py --selftest
+  python3 scripts/checks/check_tool_versions.py --all
+)
+
 # --- no-ai-attribution ----------------------------------------------------
 gate_no_ai_attribution() {
   # --selftest FIRST (#358): proves the ban fires and that tools/, .github/ and

@@ -100,6 +100,7 @@ DOCKERFILE="$REPO_ROOT/.devcontainer/Dockerfile"
 # ===========================================================================
 RA8_GATE_REGISTRY=(
   "ci-parity|fast|workflow <-> gate-registry parity guard"
+  "toolchain-parity|fast|pinned host tools match .devcontainer/Dockerfile versions"
   "ascii|fast|ASCII-only source files"
   "copyright|fast|SPDX + copyright headers"
   "since|fast|Doxygen @since tags on public headers"
