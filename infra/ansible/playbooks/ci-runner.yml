@@ -1,0 +1,8 @@
+---
+# Deploy the ARC-based CI runner pool onto a k3s node.
+#   ansible-playbook -i inventory/hosts.ini playbooks/ci-runner.yml
+- name: Deploy the CI runner pool (ARC on k3s)
+  hosts: ci_runners
+  gather_facts: true
+  roles:
+    - ci-runner

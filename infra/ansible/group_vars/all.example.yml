@@ -1,0 +1,14 @@
+---
+# Copy to group_vars/all.yml (git-ignored) and set the real values there.
+#
+# The GitHub PAT ARC registers with is pulled from OpenBao at run time -- it is
+# never written to this repo. Requires the community.hashi_vault collection and
+# BAO_ADDR + a token (or other auth) in the environment.
+ci_runner_github_pat: >-
+  {{ lookup('community.hashi_vault.vault_kv2_get',
+            'ra8/ci-runner-pat',
+            engine_mount_point='secret').secret.github_token }}
+
+# Example non-secret overrides (defaults live in roles/ci-runner/defaults):
+# ci_runner_github_url: "https://github.com/YOURORG/YOURREPO"
+# ci_runner_max: 8

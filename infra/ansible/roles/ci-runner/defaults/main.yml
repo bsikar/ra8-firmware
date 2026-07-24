@@ -1,0 +1,50 @@
+---
+# ci-runner role defaults. Override per deployment in group_vars / host_vars.
+#
+# Deploys GitHub's Actions Runner Controller (ARC, the gha-runner-scale-set
+# charts) into an existing k3s cluster and a runner scale set whose pods boot
+# from the devcontainer-toolchain image, so every CI job runs the exact
+# `make ci` toolchain.
+
+# The repository (or org) the runners register against.
+ci_runner_github_url: "https://github.com/bsikar/ra8-firmware"
+
+# ARC charts. gha-runner-scale-set(-controller) are OCI charts on ghcr.
+ci_runner_arc_chart_version: "0.14.2"
+ci_runner_controller_chart: >-
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
+ci_runner_scaleset_chart: >-
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+
+# Namespaces (isolated from other cluster workloads).
+ci_runner_controller_namespace: "arc-systems"
+ci_runner_namespace: "arc-runners"
+
+# The runner scale set. Its NAME is the `runs-on:` label the workflows target.
+ci_runner_scale_set_name: "ra8-ci"
+ci_runner_min: 0
+ci_runner_max: 8
+
+# Per-pod resources. Requests are sized to share the node with other workloads;
+# limits let heavy gates (compile / misra / tidy / mcdc) burst.
+ci_runner_cpu_request: "1"
+ci_runner_mem_request: "2Gi"
+ci_runner_cpu_limit: "8"
+ci_runner_mem_limit: "12Gi"
+
+# Images. The runner image is built from infra/images/runner/Dockerfile
+# (FROM the devcontainer image) and imported into the node's containerd; on a
+# single-node k3s there is no registry, so the pods pull nothing (Never).
+ci_runner_devcontainer_image: "localhost/ra8-devcontainer:latest"
+ci_runner_image: "localhost/ra8-ci-runner:v2"
+
+# The k8s Secret ARC reads for the GitHub PAT (Administration: read/write).
+# The token value comes from OpenBao at run time (see group_vars example) and
+# is never written to this repo.
+ci_runner_github_secret_name: "ra8-arc-github"
+
+# Path to the repo checkout on the target host (build context for the images).
+ci_runner_repo_dir: "/home/{{ ansible_user | default('ubuntu') }}/ra8-firmware"
+
+# kubeconfig on the target (k3s default is root-owned).
+ci_runner_kubeconfig: "/etc/rancher/k3s/k3s.yaml"
