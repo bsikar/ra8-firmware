@@ -10,6 +10,7 @@ ROOT    := ../..
 INCS    := -I$(ROOT)/libs/ra8_core/inc -I$(ROOT)/libs/ra8_mem/inc
 SRC     := reader_vmem.c \
            $(ROOT)/libs/ra8_mem/src/ra8_vmem.c \
+           $(ROOT)/libs/ra8_mem/src/ra8_keycache.c \
            $(ROOT)/libs/ra8_mem/src/ra8_vsource.c
 
 reader_vmem: $(SRC)
