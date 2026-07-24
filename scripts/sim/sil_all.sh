@@ -115,6 +115,13 @@ SELF="${REPO_ROOT}/scripts/sim/sil_all.sh"
 # shellcheck source=scripts/ci/lib/parallelism.sh
 source "${REPO_ROOT}/scripts/ci/lib/parallelism.sh"
 
+# board_sim is C23 (typed enums, nullptr) and links C++ TUs, so its build must
+# pin a C23-capable C/C++ pair -- the ambient "cc" on the Debian 12 dev box is
+# gcc 12 and rejects the syntax outright (#467). Reuse the ONE shared selector
+# the host-test and coverage builds use rather than hand-rolling a second probe.
+# shellcheck source=scripts/builders/select_host_compiler.sh
+source "${REPO_ROOT}/scripts/builders/select_host_compiler.sh"
+
 # Shared app discovery + hil.conf sourcing (also used by scripts/hil/all.sh).
 # shellcheck source=scripts/hil/lib/hil_conf.sh
 source "${REPO_ROOT}/scripts/hil/lib/hil_conf.sh"
@@ -637,7 +644,14 @@ echo -e "${CYAN}[sil_all]${NC} ${#SEL[@]} app(s), board_sim SIL, -j ${JOBS}"
 
 # Build the emulator ONCE; the workers only invoke the prebuilt binary.
 echo -e "${CYAN}[sil_all]${NC} building board_sim ..."
-cmake -B "${SIM_DIR}/build" -S "${SIM_DIR}" >/tmp/sil_sim_cmake.log 2>&1
+# Pin a C23-capable host compiler (gcc-first to match CI; clang fallback where
+# the host gcc is too old). Honours a pre-set CC/CXX and, under `set -e`, aborts
+# loudly if no candidate is C23-capable -- never a silent fall-through to a
+# too-old cc.
+ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
+ra8_cmake_reset_if_compiler_changed "${SIM_DIR}/build"
+cmake -B "${SIM_DIR}/build" -S "${SIM_DIR}" \
+  -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" >/tmp/sil_sim_cmake.log 2>&1
 cmake --build "${SIM_DIR}/build" -j "$(ra8_max_jobs)" >/tmp/sil_sim_build.log 2>&1
 SIL_SIM="${SIM_DIR}/build/board_sim"
 if [ ! -x "$SIL_SIM" ]; then

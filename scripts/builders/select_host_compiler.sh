@@ -1,20 +1,25 @@
 #!/usr/bin/env bash
 #
 # scripts/builders/select_host_compiler.sh -- shared C23-capable host-compiler
-# selection (and the matching gcov tool) for the host-test and coverage builds.
+# selection (and the matching gcov tool) for the host-test, coverage, and
+# board_sim builds.
 #
 # C23 fixed-underlying-type enums ("typedef enum : uint8_t") require clang >= 17
 # or gcc >= 13. CMake otherwise defaults to a bare "cc", which on the Debian 12
-# dev box is gcc 12 and rejects the syntax outright -- breaking every host-test
-# or coverage configure that does not pin a compiler. This helper compile-tests
-# the feature rather than parsing version strings, so the same probe works
-# across gcc, clang, and future versions.
+# dev box is gcc 12 and rejects the syntax outright -- breaking every host-test,
+# coverage, or board_sim configure that does not pin a compiler. This helper
+# compile-tests the feature rather than parsing version strings, so the same
+# probe works across gcc, clang, and future versions.
 #
 # Usage (source it first):
 #   ra8_select_host_compiler [candidate ...]   -- sets+exports CC and CXX to the
 #       first listed candidate that compiles a C23 typed enum (default order is
-#       clang-first; the coverage builds pass a gcc-first list so they match
-#       CI's gcov pipeline and only fall back to clang where gcc is too old).
+#       clang-first; the coverage and board_sim builds pass a gcc-first list so
+#       they match CI's gcov pipeline and only fall back to clang where gcc is
+#       too old).
+#   ra8_cmake_reset_if_compiler_changed "$dir"  -- wipe a cmake build dir whose
+#       cached CMAKE_C_COMPILER differs from the freshly-selected $CC, since
+#       CMake refuses to change the compiler on an existing cache.
 #   ra8_gcov_executable_for "$CC"              -- echoes the gcovr --gcov-executable
 #       that reads coverage data produced by $CC (llvm-cov for clang, gcov for gcc).
 #
@@ -72,6 +77,24 @@ ra8_select_host_compiler() {
     CXX="$(ra8_cxx_for_cc "$CC")"
   fi
   export CC CXX
+}
+
+# Wipe cmake build directory $1 when its cached CMAKE_C_COMPILER differs from the
+# currently-selected $CC. CMake refuses to change the compiler on an existing
+# cache, so a tree first configured with a different (e.g. stale, or a too-old
+# ambient "cc") compiler must be discarded before it can be reconfigured with
+# the pinned one. A no-op when the directory has no cache or the cache already
+# matches -- so a repeated build is never gratuitously wiped. Call it AFTER
+# ra8_select_host_compiler has exported CC.
+ra8_cmake_reset_if_compiler_changed() {
+  local _build_dir="$1"
+  local _cache="$_build_dir/CMakeCache.txt"
+  [ -f "$_cache" ] || return 0
+  local _cached_cc
+  _cached_cc="$(sed -n 's/^CMAKE_C_COMPILER:[^=]*=//p' "$_cache")"
+  if [ "$_cached_cc" != "$(command -v "$CC")" ]; then
+    rm -rf "$_build_dir"
+  fi
 }
 
 # Echo the gcovr --gcov-executable matching compiler $1. clang's coverage data

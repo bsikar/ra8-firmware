@@ -36,6 +36,13 @@ sim_dir="$ROOT/tools/board_sim"
 # shellcheck source=scripts/ci/lib/parallelism.sh
 . "$ROOT/scripts/ci/lib/parallelism.sh"
 
+# board_sim is C23 (typed enums, nullptr) and links C++ TUs, so its build must
+# pin a C23-capable C/C++ pair -- the ambient "cc" on the Debian 12 dev box is
+# gcc 12 and rejects the syntax outright (#467). Reuse the ONE shared selector
+# the host-test and coverage builds use rather than hand-rolling a second probe.
+# shellcheck source=scripts/builders/select_host_compiler.sh
+. "$ROOT/scripts/builders/select_host_compiler.sh"
+
 # The gate is assembled from three sourced fragments beside this file (#359).
 # Split by responsibility, not size: what a run must satisfy, what each app is,
 # and how one app is run. This file owns the app list, the build phase, the
@@ -330,7 +337,14 @@ if [ "${#apps[@]}" -eq 0 ]; then
 fi
 
 echo "board_sim smoke: building the emulator ..."
-cmake -B "$sim_dir/build" -S "$sim_dir" >/dev/null
+# Pin a C23-capable host compiler (gcc-first to match CI's toolchain; falls
+# back to clang where the host gcc is too old). Honours a pre-set CC/CXX and,
+# under `set -e`, aborts loudly if no candidate is C23-capable -- never a silent
+# fall-through to a too-old cc.
+ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
+ra8_cmake_reset_if_compiler_changed "$sim_dir/build"
+cmake -B "$sim_dir/build" -S "$sim_dir" \
+  -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" >/dev/null
 cmake --build "$sim_dir/build" -j "$(ra8_max_jobs)" >/dev/null
 sim="$sim_dir/build/board_sim"
 
