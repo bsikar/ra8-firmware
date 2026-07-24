@@ -18,8 +18,8 @@
       -t {{ ci_runner_devcontainer_image }}
       -f {{ ci_runner_repo_dir }}/.devcontainer/Dockerfile
       {{ ci_runner_repo_dir }}/.devcontainer
-  register: _dc_build
-  changed_when: _dc_build.rc == 0
+  register: ci_runner_dc_build
+  changed_when: ci_runner_dc_build.rc == 0
 
 - name: Build the runner image (devcontainer + actions-runner)
   become: true
@@ -30,8 +30,8 @@
       -t {{ ci_runner_image }}
       -f {{ ci_runner_repo_dir }}/infra/images/runner/Dockerfile
       {{ ci_runner_repo_dir }}/infra/images/runner
-  register: _runner_build
-  changed_when: _runner_build.rc == 0
+  register: ci_runner_runner_build
+  changed_when: ci_runner_runner_build.rc == 0
 
 - name: Export the runner image to a docker-archive
   become: true
