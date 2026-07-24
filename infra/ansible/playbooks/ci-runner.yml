@@ -11,4 +11,4 @@
         item: "{{ playbook_dir }}/../private/secrets.yml"
       when: item is exists
   roles:
-    - ci-runner
+    - ci_runner
