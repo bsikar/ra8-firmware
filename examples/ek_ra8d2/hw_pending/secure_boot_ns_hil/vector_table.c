@@ -422,23 +422,34 @@ const exc_handler_t g_ra8_vector_table_start[16U + k_ra8_irq_count] = {
 /* NOLINTBEGIN(clang-analyzer-security.ArrayBound,misc-use-internal-linkage) -- the .data/.bss copy loops walk linker-symbol bounds the analyzer cannot model, and Reset_Handler must be extern for the vector table. */
 void Reset_Handler(void)
 {
-  /* Step 1: core-level init (VTOR, FPU, caches, priority grouping,
-   * interrupts masked). Runs before we touch .data or .bss so it
-   * must not read or write any global variables. */
-  SystemInit();
-
-  /* Step 2: copy initialized data from flash/MRAM to SRAM. */
+  /* Step 1: copy initialized data from flash/MRAM to SRAM. This MUST run
+   * before SystemInit(): SystemInit() calls ra8_cgc_init(), which publishes
+   * the settled clock-tree rates into the .data-resident cache
+   * (ra8_cgc's s_clock_hz[]). If the .data copy ran AFTER SystemInit() it
+   * would overwrite that cache with the boot-default (MOCO) LMA image, so
+   * ra8_cgc_get_clock_hz(PCLKA) would report ~8 MHz in main() and the SCI8
+   * console would refuse to come up (k_ra8_err_not_initialized). The stack
+   * is already usable (SP is loaded from the vector table at reset), and
+   * SRAM0-3 run at reset, so this copy is safe before SystemInit(). */
   uint32_t* src = &g_ra8_ls_sidata;
   uint32_t* dst = &g_ra8_ls_sdata;
   while (dst < &g_ra8_ls_edata) {
     *dst++ = *src++;
   }
 
-  /* Step 3: zero BSS. */
+  /* Step 2: zero BSS (also before SystemInit(), for the same reason -- any
+   * .bss state SystemInit()'s ra8_cgc_init / ra8_trustzone_init establish
+   * must survive into main()). */
   dst = &g_ra8_ls_sbss;
   while (dst < &g_ra8_ls_ebss) {
     *dst++ = 0U;
   }
+
+  /* Step 3: core-level init (VTOR, FPU, caches, priority grouping, interrupts
+   * masked) + the Secure clock tree + TrustZone SAU/NS-image copy. Runs with
+   * .data/.bss already initialised, so ra8_cgc_init's clock-cache writes and
+   * any other global state it (or ra8_trustzone_init) sets now persist. */
+  SystemInit();
 
   /* Step 4: enter C. `main()` is responsible for enabling interrupts
    * via `__enable_irq()` once all drivers are ready. */
