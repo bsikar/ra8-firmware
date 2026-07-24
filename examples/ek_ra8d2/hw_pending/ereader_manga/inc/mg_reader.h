@@ -131,21 +131,22 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint16_t*         fb;         /**< RGB565 panel framebuffer.              */
-  int32_t           fb_w;       /**< Framebuffer width, pixels.             */
-  int32_t           fb_h;       /**< Framebuffer height, pixels.            */
-  ra8_tile_cache_t* cache;      /**< Tile cache paging the atlas.           */
-  uint32_t          image_id;   /**< Tile-cache key image id.               */
-  uint16_t          page_w;     /**< Full page width, pixels.               */
-  uint16_t          page_h;     /**< Full page height, pixels.              */
-  uint16_t          tile_w;     /**< Atlas tile width, pixels.              */
-  uint16_t          tile_h;     /**< Atlas tile height, pixels.             */
-  uint16_t          tile_cols;  /**< Atlas tile columns.                    */
-  uint16_t          tile_rows;  /**< Atlas tile rows.                       */
-  int32_t           view_x;     /**< Viewport left in page px (1:1 anchor). */
-  int32_t           view_y;     /**< Viewport top in page px (1:1 anchor).  */
-  uint8_t           zoom;       /**< Current ::mg_zoom_t.                   */
-  uint8_t           fit_factor; /**< Decimation factor for fit-page (>= 1). */
+  uint16_t*          fb;         /**< RGB565 panel framebuffer.                       */
+  int32_t            fb_w;       /**< Framebuffer width, pixels.                      */
+  int32_t            fb_h;       /**< Framebuffer height, pixels.                     */
+  ra8_tile_cache_t*  cache;      /**< Tile cache paging the atlas.                    */
+  uint32_t           image_id;   /**< Tile-cache key image id.                        */
+  uint16_t           page_w;     /**< Full page width, pixels.                        */
+  uint16_t           page_h;     /**< Full page height, pixels.                       */
+  uint16_t           tile_w;     /**< Atlas tile width, pixels.                       */
+  uint16_t           tile_h;     /**< Atlas tile height, pixels.                      */
+  uint16_t           tile_cols;  /**< Atlas tile columns.                             */
+  uint16_t           tile_rows;  /**< Atlas tile rows.                                */
+  int32_t            view_x;     /**< Viewport left in page px (1:1 anchor).          */
+  int32_t            view_y;     /**< Viewport top in page px (1:1 anchor).           */
+  uint8_t            zoom;       /**< Current ::mg_zoom_t.                            */
+  uint8_t            fit_factor; /**< Decimation factor for fit-page (>= 1).          */
+  ra8_tile_pan_dir_t last_pan;   /**< Last pan direction (::mg_reader_prefetch seed). */
 } mg_reader_t;
 
 /**
@@ -271,6 +272,40 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t mg_reader_render(mg_reader_t* r);
+
+/**
+ * @brief Warm the tiles one step ahead of the last pan (predictive prefetch).
+ *
+ * @details
+ * Called in the idle window after ::mg_reader_render presents a panned frame, so
+ * the next tiles the viewport will expose are decoded into the cache before the
+ * next pan needs them -- the image counterpart of the chapter-text read-ahead
+ * (`ra8_book_src_prefetch_chapter`). Warms the lead tile row/column in
+ * @p r->last_pan through ::ra8_tile_cache_prefetch_pan, sizing the budget from the
+ * cache's spare capacity (`capacity - currently-visible tiles`) so a prefetch can
+ * never evict an on-screen tile. A no-op when the last action was not a moving
+ * pan (@p last_pan == ::k_ra8_tile_pan_none -- the initial frame, a zoom toggle,
+ * a pan clamped at the page edge, or fit-page zoom where a pan is a no-op), or
+ * when the cache has no spare capacity. Transparent: warming changes only
+ * residency, so the next ::mg_reader_render is byte-identical.
+ *
+ * @param[in,out] r Bound reader (its @p last_pan seeds the direction).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           Prefetch ran (possibly warming zero tiles).
+ * @retval k_ra8_err_null_ptr @p r or its cache was NULL.
+ * @retval k_ra8_err_*        Propagated from ::ra8_tile_cache_prefetch_pan.
+ *
+ * @pre @p r was populated by ::mg_reader_init.
+ * @pre The tile cache can decode the lead-edge tiles.
+ * @post No on-screen tile resident after the last render is evicted.
+ * @post @p r->fb and the viewport state are unchanged.
+ *
+ * @note Not thread-safe. Single-threaded read-ahead only.
+ * @see mg_reader_render()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t mg_reader_prefetch(mg_reader_t* r);
 
 /**
  * @brief Format the status-bar string ("MANGA  1:1  x=.. y=..").
