@@ -1,0 +1,111 @@
+---
+# Deploy ARC (Actions Runner Controller) + the ra8-ci runner scale set into an
+# existing k3s cluster. Run against the k3s node (see playbooks/ci-runner.yml).
+# Idempotent: helm upgrade --install semantics + a re-imported image converge
+# on re-run.
+
+- name: Install buildah (builds the runner image on the node)
+  become: true
+  ansible.builtin.package:
+    name: buildah
+    state: present
+
+- name: Build the devcontainer toolchain image (single source of truth)
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      buildah bud --isolation chroot
+      -t {{ ci_runner_devcontainer_image }}
+      -f {{ ci_runner_repo_dir }}/.devcontainer/Dockerfile
+      {{ ci_runner_repo_dir }}/.devcontainer
+  register: _dc_build
+  changed_when: _dc_build.rc == 0
+
+- name: Build the runner image (devcontainer + actions-runner)
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      buildah bud --isolation chroot
+      --build-arg BASE_IMAGE={{ ci_runner_devcontainer_image }}
+      -t {{ ci_runner_image }}
+      -f {{ ci_runner_repo_dir }}/infra/images/runner/Dockerfile
+      {{ ci_runner_repo_dir }}/infra/images/runner
+  register: _runner_build
+  changed_when: _runner_build.rc == 0
+
+- name: Export the runner image to a docker-archive
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      buildah push {{ ci_runner_image }}
+      docker-archive:/tmp/ra8-ci-runner.tar:{{ ci_runner_image }}
+  changed_when: true
+
+- name: Import the runner image into the node's containerd
+  become: true
+  ansible.builtin.command:
+    cmd: k3s ctr -n k8s.io images import /tmp/ra8-ci-runner.tar
+  changed_when: true
+
+- name: Install the ARC controller
+  become: true
+  kubernetes.core.helm:
+    name: arc
+    chart_ref: "{{ ci_runner_controller_chart }}"
+    chart_version: "{{ ci_runner_arc_chart_version }}"
+    release_namespace: "{{ ci_runner_controller_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ ci_runner_kubeconfig }}"
+
+- name: Ensure the runner namespace exists
+  become: true
+  kubernetes.core.k8s:
+    kind: Namespace
+    name: "{{ ci_runner_namespace }}"
+    state: present
+    kubeconfig: "{{ ci_runner_kubeconfig }}"
+
+- name: Create the GitHub PAT secret ARC registers with (value from OpenBao)
+  become: true
+  no_log: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ ci_runner_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ ci_runner_github_secret_name }}"
+        namespace: "{{ ci_runner_namespace }}"
+      type: Opaque
+      stringData:
+        github_token: "{{ ci_runner_github_pat }}"
+
+- name: Install the ra8-ci runner scale set
+  become: true
+  kubernetes.core.helm:
+    name: "{{ ci_runner_scale_set_name }}"
+    chart_ref: "{{ ci_runner_scaleset_chart }}"
+    chart_version: "{{ ci_runner_arc_chart_version }}"
+    release_namespace: "{{ ci_runner_namespace }}"
+    kubeconfig: "{{ ci_runner_kubeconfig }}"
+    values:
+      githubConfigUrl: "{{ ci_runner_github_url }}"
+      githubConfigSecret: "{{ ci_runner_github_secret_name }}"
+      runnerScaleSetName: "{{ ci_runner_scale_set_name }}"
+      minRunners: "{{ ci_runner_min | int }}"
+      maxRunners: "{{ ci_runner_max | int }}"
+      template:
+        spec:
+          containers:
+            - name: runner
+              image: "{{ ci_runner_image }}"
+              imagePullPolicy: Never
+              command: ["/home/runner/run.sh"]
+              resources:
+                requests:
+                  cpu: "{{ ci_runner_cpu_request }}"
+                  memory: "{{ ci_runner_mem_request }}"
+                limits:
+                  cpu: "{{ ci_runner_cpu_limit }}"
+                  memory: "{{ ci_runner_mem_limit }}"
