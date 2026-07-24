@@ -20,6 +20,9 @@
  * @note Not thread-safe; one builder per thread.
  * @see ra8_drw.h
  * @since 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
