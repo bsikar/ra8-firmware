@@ -38,6 +38,7 @@ add_executable(
   cache_bench
   ${CACHE_BENCH_SOURCES}
   ${RA8_ROOT}/libs/ra8_mem/src/ra8_vmem.c
+  ${RA8_ROOT}/libs/ra8_mem/src/ra8_keycache.c
   ${RA8_ROOT}/libs/ra8_mem/src/ra8_vsource.c
   ${RA8_ROOT}/libs/ra8_book/src/ra8_book.c
   ${RA8_ROOT}/libs/ra8_book/src/ra8_book_chunked.c

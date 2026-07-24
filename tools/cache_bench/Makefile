@@ -17,6 +17,7 @@ INCS    := -I$(ROOT)/libs/ra8_core/inc \
            -I$(ROOT)/libs/third_party/miniz
 SRC     := $(wildcard *.c) \
            $(ROOT)/libs/ra8_mem/src/ra8_vmem.c \
+           $(ROOT)/libs/ra8_mem/src/ra8_keycache.c \
            $(ROOT)/libs/ra8_mem/src/ra8_vsource.c \
            $(ROOT)/libs/ra8_book/src/ra8_book.c \
            $(ROOT)/libs/ra8_book/src/ra8_book_chunked.c
