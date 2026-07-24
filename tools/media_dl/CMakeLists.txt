@@ -145,6 +145,7 @@ add_executable(
 target_include_directories(
   test_media_dl
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
