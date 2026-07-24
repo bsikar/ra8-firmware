@@ -37,11 +37,15 @@
  * mirrors CMSIS convention. `main()` re-enables via
  * `__enable_irq()` once all drivers are up.
  *
- * The function is C, not naked asm, so stack and BSS must already be
- * usable. `Reset_Handler` loads SP from the vector table before
- * calling `SystemInit()`, so the stack is fine; BSS is zeroed only
- * *after* `SystemInit()` returns but `SystemInit()` writes to no
- * BSS or data-section variables, so the ordering is safe.
+ * The function is C, not naked asm, so stack, `.data` and `.bss` must
+ * already be usable. `Reset_Handler` loads SP from the vector table before
+ * calling `SystemInit()`, and now copies `.data` + zeroes `.bss` BEFORE the
+ * `SystemInit()` call, so any global state this function establishes
+ * survives into `main()`. This ordering is load-bearing: `ra8_cgc_init()`
+ * (called below) publishes the settled clock rates into a `.data`-resident
+ * cache in `ra8_cgc`; if the `.data` copy ran after `SystemInit()` it would
+ * clobber that cache back to the MOCO boot default and the SCI8 console
+ * would then read a stale ~8 MHz PCLKA and refuse to initialise.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
