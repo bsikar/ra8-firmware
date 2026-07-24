@@ -35,8 +35,10 @@ typedef enum : uint16_t {
   k_net_dst        = 128, /**< buf-write test destination buffer bytes.    */
   k_http_ok        = 200, /**< HTTP 200 OK.                                */
   k_http_moved     = 301, /**< HTTP 301 (redirect, still < 400).           */
-  k_http_not_found = 404, /**< HTTP 404 (>= 400 -> error).                 */
+  k_http_not_found = 404, /**< HTTP 404 (not found -> skip).               */
+  k_http_too_many  = 429, /**< HTTP 429 (throttle -> back off).            */
   k_http_srv_err   = 500, /**< HTTP 500 (server error).                    */
+  k_http_unavail   = 503, /**< HTTP 503 (throttle -> back off).            */
 } mdl_net_test_const_t;
 
 /**
@@ -48,9 +50,10 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_err_t   rc;     /**< Result the fetch call returns.                 */
-  long        status; /**< Status ::mdl_net_last_status reports after it. */
-  const char* body;   /**< Body copied into the buffer on ok, or NULL.    */
+  ra8_err_t   rc;          /**< Result the fetch call returns.                    */
+  long        status;      /**< HTTP status reported through `resp`.              */
+  const char* body;        /**< Body copied into the buffer on ok, or NULL.       */
+  const char* retry_after; /**< Raw Retry-After surfaced through `resp`, or NULL. */
 } fake_reply_t;
 
 /**
@@ -65,7 +68,6 @@ typedef struct {
   const fake_reply_t* replies;                                /**< Scripted replies (>= 1). */
   size_t              n;                                      /**< Number of replies.       */
   size_t              call;                                   /**< Fetches dispatched.      */
-  long                last;                                   /**< last_status() value.     */
   char                urls[k_fake_max_calls][k_fake_url_max]; /**< Recorded URLs.           */
   const char*         referers[k_fake_max_calls];             /**< Recorded referers.       */
 } fake_net_t;
@@ -86,18 +88,31 @@ static const fake_reply_t* fake_next(const fake_net_t* f)
   return &f->replies[i];
 }
 
+/** @brief Surface a scripted reply's status + Retry-After through `resp`. */
+static void fake_fill_resp(const fake_reply_t* r, mdl_net_resp_t* resp)
+{
+  if (resp != nullptr) {
+    resp->status = r->status;
+    (void)snprintf(resp->retry_after,
+                   sizeof(resp->retry_after),
+                   "%s",
+                   (r->retry_after != nullptr) ? r->retry_after : "");
+  }
+}
+
 /** @brief Fake get_buf: record, hand back the scripted body/result. */
 static ra8_err_t fake_get_buf(void*                ctx,
                               const char*          url,
                               const mdl_net_req_t* req,
                               char*                buf,
                               size_t               cap,
-                              size_t*              out_len)
+                              size_t*              out_len,
+                              mdl_net_resp_t*      resp)
 {
   fake_net_t*         f = (fake_net_t*)ctx;
   const fake_reply_t* r = fake_next(f);
   fake_record(f, url, req);
-  f->last = r->status;
+  fake_fill_resp(r, resp);
   f->call += 1U;
   size_t got = 0U;
   if ((r->rc == k_ra8_ok) && (r->body != nullptr)) {
@@ -118,24 +133,19 @@ static ra8_err_t fake_get_file(void*                ctx,
                                const char*          url,
                                const mdl_net_req_t* req,
                                const char*          out_path,
-                               size_t*              out_len)
+                               size_t*              out_len,
+                               mdl_net_resp_t*      resp)
 {
   (void)out_path;
   fake_net_t*         f = (fake_net_t*)ctx;
   const fake_reply_t* r = fake_next(f);
   fake_record(f, url, req);
-  f->last = r->status;
+  fake_fill_resp(r, resp);
   f->call += 1U;
   if (out_len != nullptr) {
     *out_len = 0U;
   }
   return r->rc;
-}
-
-/** @brief Fake last_status: the status of the most recent scripted reply. */
-static long fake_last_status(void* ctx)
-{
-  return ((const fake_net_t*)ctx)->last;
 }
 
 /** @brief Fake destroy: the handle is stack-owned, so nothing to release. */
@@ -146,10 +156,9 @@ static void fake_destroy(void* ctx)
 
 /** @brief The fake backend's method table. */
 static const mdl_net_vtable_t s_fake_vtable = {
-  .get_buf     = fake_get_buf,
-  .get_file    = fake_get_file,
-  .last_status = fake_last_status,
-  .destroy     = fake_destroy,
+  .get_buf  = fake_get_buf,
+  .get_file = fake_get_file,
+  .destroy  = fake_destroy,
 };
 
 /** @brief Build a stack ::mdl_net_iface_t around a fake context. */
@@ -185,25 +194,27 @@ static void test_net_dispatch_guard(void)
   char                buf[k_net_buf];
   size_t              got = 0U;
   /* V1 control: all conditions false -> the fetch is dispatched to the fake. */
-  TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", &req, buf, sizeof(buf), &got) == k_ra8_ok);
+  TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", &req, buf, sizeof(buf), &got, nullptr) ==
+              k_ra8_ok);
   TEST_ASSERT(strcmp(buf, "OK") == 0);
   TEST_ASSERT_EQ((uint16_t)2, (uint16_t)got);
   /* V2 vtable NULL */
-  TEST_ASSERT(mdl_net_get_buf(&badv, "http://h/a", &req, buf, sizeof(buf), &got) ==
+  TEST_ASSERT(mdl_net_get_buf(&badv, "http://h/a", &req, buf, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
   /* V3 url NULL */
-  TEST_ASSERT(mdl_net_get_buf(&good, nullptr, &req, buf, sizeof(buf), &got) ==
+  TEST_ASSERT(mdl_net_get_buf(&good, nullptr, &req, buf, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
   /* V4 req NULL */
-  TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", nullptr, buf, sizeof(buf), &got) ==
+  TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", nullptr, buf, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
   /* V5 buf NULL */
-  TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", &req, nullptr, sizeof(buf), &got) ==
+  TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", &req, nullptr, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
   /* V6 cap 0 */
-  TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", &req, buf, 0U, &got) == k_ra8_err_invalid_arg);
+  TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", &req, buf, 0U, &got, nullptr) ==
+              k_ra8_err_invalid_arg);
   /* Separate net==NULL guard */
-  TEST_ASSERT(mdl_net_get_buf(nullptr, "http://h/a", &req, buf, sizeof(buf), &got) ==
+  TEST_ASSERT(mdl_net_get_buf(nullptr, "http://h/a", &req, buf, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
   /* Only the control vector reached the backend. */
   TEST_ASSERT_EQ((uint16_t)1, (uint16_t)f.call);
@@ -233,15 +244,17 @@ static void test_net_get_file_guard(void)
   mdl_net_iface_t     badv = {.vtable = nullptr, .ctx = nullptr};
   const mdl_net_req_t req  = {.user_agent = "ua", .referer = nullptr, .timeout_ms = 1000U};
   size_t              got  = 0U;
-  TEST_ASSERT(mdl_net_get_file(&good, "http://h/i.jpg", &req, "/dev/null", &got) == k_ra8_ok);
-  TEST_ASSERT(mdl_net_get_file(&badv, "http://h/i.jpg", &req, "/dev/null", &got) ==
+  TEST_ASSERT(mdl_net_get_file(&good, "http://h/i.jpg", &req, "/dev/null", &got, nullptr) ==
+              k_ra8_ok);
+  TEST_ASSERT(mdl_net_get_file(&badv, "http://h/i.jpg", &req, "/dev/null", &got, nullptr) ==
               k_ra8_err_invalid_arg);
-  TEST_ASSERT(mdl_net_get_file(&good, nullptr, &req, "/dev/null", &got) == k_ra8_err_invalid_arg);
-  TEST_ASSERT(mdl_net_get_file(&good, "http://h/i.jpg", nullptr, "/dev/null", &got) ==
+  TEST_ASSERT(mdl_net_get_file(&good, nullptr, &req, "/dev/null", &got, nullptr) ==
               k_ra8_err_invalid_arg);
-  TEST_ASSERT(mdl_net_get_file(&good, "http://h/i.jpg", &req, nullptr, &got) ==
+  TEST_ASSERT(mdl_net_get_file(&good, "http://h/i.jpg", nullptr, "/dev/null", &got, nullptr) ==
               k_ra8_err_invalid_arg);
-  TEST_ASSERT(mdl_net_get_file(nullptr, "http://h/i.jpg", &req, "/dev/null", &got) ==
+  TEST_ASSERT(mdl_net_get_file(&good, "http://h/i.jpg", &req, nullptr, &got, nullptr) ==
+              k_ra8_err_invalid_arg);
+  TEST_ASSERT(mdl_net_get_file(nullptr, "http://h/i.jpg", &req, "/dev/null", &got, nullptr) ==
               k_ra8_err_invalid_arg);
   TEST_ASSERT_EQ((uint16_t)1, (uint16_t)f.call);
   TEST_END("net get_file guard");
@@ -261,27 +274,33 @@ static void test_net_fake_scripts_and_records(void)
   TEST_BEGIN("net fake scripts + records");
   const fake_reply_t seq[] = {
     {.rc = k_ra8_ok, .status = (long)k_http_ok, .body = "PAGE"},
-    {.rc = k_ra8_fail, .status = (long)k_http_not_found, .body = nullptr},
+    {.rc = k_ra8_err_busy, .status = (long)k_http_unavail, .body = nullptr, .retry_after = "42"},
     {.rc = k_ra8_ok, .status = (long)k_http_ok, .body = nullptr},
   };
   fake_net_t          f   = {.replies = seq, .n = sizeof(seq) / sizeof(seq[0])};
   mdl_net_iface_t     net = fake_iface(&f);
   char                buf[k_net_buf];
-  size_t              got = 0U;
-  const mdl_net_req_t r0  = {.user_agent = "ua",
-                             .referer    = "http://site/series",
-                             .timeout_ms = 1000U};
-  const mdl_net_req_t r1  = {.user_agent = "ua", .referer = "http://site/ch1", .timeout_ms = 1000U};
+  size_t              got  = 0U;
+  mdl_net_resp_t      resp = {};
+  const mdl_net_req_t r0   = {.user_agent = "ua",
+                              .referer    = "http://site/series",
+                              .timeout_ms = 1000U};
+  const mdl_net_req_t r1 = {.user_agent = "ua", .referer = "http://site/ch1", .timeout_ms = 1000U};
 
-  /* 1st: a scripted OK page body is delivered into the caller buffer. */
-  TEST_ASSERT(mdl_net_get_buf(&net, "http://site/ch1", &r0, buf, sizeof(buf), &got) == k_ra8_ok);
+  /* 1st: a scripted OK page body is delivered, with its status through resp. */
+  TEST_ASSERT(mdl_net_get_buf(&net, "http://site/ch1", &r0, buf, sizeof(buf), &got, &resp) ==
+              k_ra8_ok);
   TEST_ASSERT(strcmp(buf, "PAGE") == 0);
-  TEST_ASSERT_EQ((int64_t)k_http_ok, mdl_net_last_status(&net));
-  /* 2nd: a scripted failure, with its 404 visible through last_status. */
-  TEST_ASSERT(mdl_net_get_file(&net, "http://cdn/img1.jpg", &r1, "/dev/null", &got) == k_ra8_fail);
-  TEST_ASSERT_EQ((int64_t)k_http_not_found, mdl_net_last_status(&net));
-  /* 3rd: a scripted OK file. */
-  TEST_ASSERT(mdl_net_get_file(&net, "http://cdn/img2.jpg", &r1, "/dev/null", &got) == k_ra8_ok);
+  TEST_ASSERT_EQ((int64_t)k_http_ok, resp.status);
+  TEST_ASSERT(resp.retry_after[0] == '\0'); /* no header on the OK reply */
+  /* 2nd: a scripted throttle -- its 503 + Retry-After surface through resp. */
+  TEST_ASSERT(mdl_net_get_file(&net, "http://cdn/img1.jpg", &r1, "/dev/null", &got, &resp) ==
+              k_ra8_err_busy);
+  TEST_ASSERT_EQ((int64_t)k_http_unavail, resp.status);
+  TEST_ASSERT(strcmp(resp.retry_after, "42") == 0);
+  /* 3rd: a scripted OK file; a NULL resp is accepted (no plumbing required). */
+  TEST_ASSERT(mdl_net_get_file(&net, "http://cdn/img2.jpg", &r1, "/dev/null", &got, nullptr) ==
+              k_ra8_ok);
 
   /* The recorded request sequence is exactly what was dispatched. */
   TEST_ASSERT_EQ((uint16_t)3, (uint16_t)f.call);
@@ -297,9 +316,14 @@ static void test_net_fake_scripts_and_records(void)
  * @test test_net_classify
  *
  * @par MC/DC:
- * mdl_net_curl_classify is a precedence chain of single-condition `if`s, not a
- * compound `&&`/`||` decision. Vectors cover every class it distinguishes:
- * overflow, timeout, other transport error, HTTP >= 400, and HTTP < 400.
+ * mdl_net_curl_classify's HTTP branches are reached only when `code ==
+ * CURLE_OK`. The throttle test `status == 429 || status == 503` is a
+ * two-condition OR: vector 429 varies the first condition true (503 false),
+ * vector 503 varies the second true (429 false), and a non-throttle status
+ * (200/404/500) holds both false -- minimal N+1 for the OR. The remaining
+ * relational branches (`>= 500`, `>= 400`, else) plus the overflow, timeout and
+ * transport-error precedence guards each get their own vector, so every class
+ * the classifier distinguishes is exercised.
  */
 static void test_net_classify(void)
 {
@@ -308,8 +332,15 @@ static void test_net_classify(void)
   TEST_ASSERT(mdl_net_curl_classify(CURLE_OK, true, (long)k_http_ok) == k_ra8_err_no_mem);
   TEST_ASSERT(mdl_net_curl_classify(CURLE_OPERATION_TIMEDOUT, false, 0) == k_ra8_err_timeout);
   TEST_ASSERT(mdl_net_curl_classify(CURLE_COULDNT_CONNECT, false, 0) == k_ra8_fail);
-  TEST_ASSERT(mdl_net_curl_classify(CURLE_OK, false, (long)k_http_not_found) == k_ra8_fail);
+  /* throttle OR: 429 true/503 false, then 503 true/429 false -> busy. */
+  TEST_ASSERT(mdl_net_curl_classify(CURLE_OK, false, (long)k_http_too_many) == k_ra8_err_busy);
+  TEST_ASSERT(mdl_net_curl_classify(CURLE_OK, false, (long)k_http_unavail) == k_ra8_err_busy);
+  /* 5xx (both throttle conditions false) -> server error. */
   TEST_ASSERT(mdl_net_curl_classify(CURLE_OK, false, (long)k_http_srv_err) == k_ra8_fail);
+  /* 404 / other 4xx (both false) -> not found. */
+  TEST_ASSERT(mdl_net_curl_classify(CURLE_OK, false, (long)k_http_not_found) ==
+              k_ra8_err_not_found);
+  /* < 400 -> ok. */
   TEST_ASSERT(mdl_net_curl_classify(CURLE_OK, false, (long)k_http_ok) == k_ra8_ok);
   TEST_ASSERT(mdl_net_curl_classify(CURLE_OK, false, (long)k_http_moved) == k_ra8_ok);
   TEST_END("net classify");

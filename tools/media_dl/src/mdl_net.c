@@ -18,14 +18,27 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "ra8_attributes.h"
+
+/** @brief Zero a caller-supplied response block so early returns leave it clean. */
+RA8_INTERNAL static void resp_reset(mdl_net_resp_t* resp)
+{
+  if (resp != nullptr) {
+    memset(resp, 0, sizeof(*resp));
+  }
+}
 
 ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
                           const char*          url,
                           const mdl_net_req_t* req,
                           char*                buf,
                           size_t               cap,
-                          size_t*              out_len)
+                          size_t*              out_len,
+                          mdl_net_resp_t*      resp)
 {
+  resp_reset(resp);
   if (net == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -33,30 +46,24 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
       (cap == 0U)) {
     return k_ra8_err_invalid_arg;
   }
-  return net->vtable->get_buf(net->ctx, url, req, buf, cap, out_len);
+  return net->vtable->get_buf(net->ctx, url, req, buf, cap, out_len, resp);
 }
 
 ra8_err_t mdl_net_get_file(mdl_net_iface_t*     net,
                            const char*          url,
                            const mdl_net_req_t* req,
                            const char*          out_path,
-                           size_t*              out_len)
+                           size_t*              out_len,
+                           mdl_net_resp_t*      resp)
 {
+  resp_reset(resp);
   if (net == nullptr) {
     return k_ra8_err_invalid_arg;
   }
   if ((net->vtable == nullptr) || (url == nullptr) || (req == nullptr) || (out_path == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
-  return net->vtable->get_file(net->ctx, url, req, out_path, out_len);
-}
-
-long mdl_net_last_status(mdl_net_iface_t* net)
-{
-  if ((net == nullptr) || (net->vtable == nullptr)) {
-    return 0;
-  }
-  return net->vtable->last_status(net->ctx);
+  return net->vtable->get_file(net->ctx, url, req, out_path, out_len, resp);
 }
 
 void mdl_net_destroy(mdl_net_iface_t* net)
