@@ -97,7 +97,7 @@ RA8_COMPILE_COMMANDS := $(ROOT)/build/compile_commands.json
 _RA8_CMAKE_INPUTS := $(ROOT)/CMakeLists.txt $(wildcard $(ROOT)/cmake/*.cmake) \
 	$(shell find $(ROOT)/examples -name CMakeLists.txt -not -path '*/build/*' 2>/dev/null)
 
-.PHONY: help hooks all
+.PHONY: help hooks all infra-setup
 
 help:
 	@echo "ra8-firmware make targets   ($(words $(RA8_APPS)) firmware apps -- 'make apps' for the list)"
@@ -179,6 +179,11 @@ help:
 hooks:
 	@$(ROOT)/scripts/git/install-hooks.sh
 	@echo "git hooks active: core.hooksPath = $$(git config core.hooksPath)"
+
+# `make infra-setup` -- one-command onboarding for a fresh clone: prerequisites,
+# git-ignored inventory + token, then deploy. See infra/README.md.
+infra-setup:
+	@bash $(ROOT)/infra/bootstrap.sh
 
 # `make all` -- the local pre-commit meta-target.
 all: format tidy test default
