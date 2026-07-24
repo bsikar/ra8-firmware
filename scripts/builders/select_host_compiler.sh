@@ -27,9 +27,21 @@ ra8_c23_compiler_ok() {
     "$1" -std=gnu2x -x c -fsyntax-only - >/dev/null 2>&1
 }
 
+# Echo the C++ driver that matches C compiler $1 (clang-19 -> clang++-19,
+# gcc-14 -> g++-14, anything else -> c++). Kept as a helper so the selection
+# loop and the final CXX assignment derive the pairing identically.
+ra8_cxx_for_cc() {
+  case "$1" in
+    clang*) echo "${1/clang/clang++}" ;;
+    gcc*) echo "${1/gcc/g++}" ;;
+    *) echo "c++" ;;
+  esac
+}
+
 # Set and export CC / CXX to a C23-capable host compiler. Honours a pre-set CC.
 # Candidates may be passed as arguments (default: clang-first). Returns non-zero
-# (with a message on stderr) if no listed candidate is C23-capable.
+# (with a message on stderr) if no listed candidate is C23-capable with a
+# matching C++ driver.
 ra8_select_host_compiler() {
   if [ "$#" -eq 0 ]; then
     set -- clang-19 clang gcc cc
@@ -37,23 +49,27 @@ ra8_select_host_compiler() {
   if [ -z "${CC:-}" ]; then
     local _cand
     for _cand in "$@"; do
-      if command -v "$_cand" >/dev/null 2>&1 && ra8_c23_compiler_ok "$_cand"; then
+      command -v "$_cand" >/dev/null 2>&1 || continue
+      ra8_c23_compiler_ok "$_cand" || continue
+      # The host-test and coverage builds enable_language(CXX), so a C compiler
+      # whose matching C++ driver is absent (e.g. gcc-14 installed without
+      # g++-14, which then leaks onto a shared self-hosted runner) would be
+      # selected here and only fail deep in CMake configure. Require the C++
+      # half too -- unless the caller pinned CXX explicitly -- so selection
+      # falls through to the next complete pair instead.
+      if [ -n "${CXX:-}" ] || command -v "$(ra8_cxx_for_cc "$_cand")" >/dev/null 2>&1; then
         CC="$_cand"
         break
       fi
     done
     if [ -z "${CC:-}" ]; then
-      echo "error: no C23-capable host compiler found (need clang >= 17 or gcc >= 13)" >&2
-      echo "       install clang or set CC=<compiler> explicitly" >&2
+      echo "error: no C23-capable host compiler with a matching C++ driver found (need clang >= 17 or gcc >= 13, plus its C++ driver)" >&2
+      echo "       install clang/g++ or set CC=<compiler> (and CXX) explicitly" >&2
       return 1
     fi
   fi
   if [ -z "${CXX:-}" ]; then
-    case "$CC" in
-      clang*) CXX="${CC/clang/clang++}" ;;
-      gcc*) CXX="${CC/gcc/g++}" ;;
-      *) CXX="c++" ;;
-    esac
+    CXX="$(ra8_cxx_for_cc "$CC")"
   fi
   export CC CXX
 }
