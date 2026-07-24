@@ -27,6 +27,7 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_drw.h"
+#include "ra8_drw_dlist.h"
 #include "ra8_drw_internal.h"
 #include "ra8_drw_regs.h"
 #include "ra8_err.h"
@@ -327,6 +328,164 @@ static void internal_program_line_limiters(const ra8_drw_line_t* line)
  * p 3705. Writing a new value triggers execution. */
   *ra8_drw_reg32(k_ra8_drw_off_dliststart) = (uint32_t)(uintptr_t)dlist_addr;
   return k_ra8_ok;
+}
+
+/**
+ * @enum ra8_drw_dlist_span_t
+ * @brief Word spans of the display-list entries the builder emits.
+ *
+ * @details
+ * A single-register entry is a tag word plus one value word; a special word
+ * (wait / terminate) is one word. A solid-fill primitive programs COLOR1,
+ * SIZE, CONTROL and ORIGIN and appends one wait word.
+ *
+ * @invariant ``k_ra8_drw_dlist_fill_words`` == fill regs * entry words + 1.
+ * @see ra8_drw_dlist_add_fill
+ */
+typedef enum : uint8_t {
+  k_ra8_drw_dlist_entry_words   = 2U, /**< 1-register entry: tag + value. */
+  k_ra8_drw_dlist_special_words = 1U, /**< Wait or terminate word.        */
+  k_ra8_drw_dlist_fill_regs     = 4U, /**< COLOR1, SIZE, CONTROL, ORIGIN. */
+  k_ra8_drw_dlist_fill_words    = 9U, /**< 4 * 2 + 1 wait word.           */
+} ra8_drw_dlist_span_t;
+
+/**
+ * @brief Append a single-register display-list entry to the builder buffer.
+ *
+ * @details
+ * Writes a one-index tag (register index OR ::k_ra8_drw_dlr_tag_one_index)
+ * followed by the value word. The caller (::ra8_drw_dlist_add_fill) reserves
+ * the whole primitive's span up front, so this writer never bounds-checks --
+ * it is a plain memory append to the caller buffer, never MMIO.
+ *
+ * @param[in,out] dl  Bound builder with at least two free words.
+ * @param[in]     idx Register index (::ra8_drw_dlr_index_t).
+ * @param[in]     val Value word to program.
+ *
+ * @pre ``dl`` and ``dl->buf`` are non-null.
+ * @pre ``dl->count + 2 <= dl->cap_words`` (caller-reserved).
+ * @post ``dl->buf`` holds the one-index tag then @p val at the reserved slot.
+ * @post ``dl->count`` grew by two (``k_ra8_drw_dlist_entry_words``).
+ *
+ * @note Not thread-safe; caller-buffer writes only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_dlist_put_reg(ra8_drw_dlist_t* dl, ra8_drw_dlr_index_t idx, uint32_t val)
+{
+  dl->buf[dl->count]      = (uint32_t)k_ra8_drw_dlr_tag_one_index | (uint32_t)idx;
+  dl->buf[dl->count + 1U] = val;
+  dl->count += (uint32_t)k_ra8_drw_dlist_entry_words;
+}
+
+/**
+ * @brief Append a display-list special word (wait or terminate).
+ *
+ * @details
+ * Encodes ::k_ra8_drw_dlr_eol_byte with @p arg in byte 1. The caller reserves
+ * the word up front, so this writer never bounds-checks.
+ *
+ * @param[in,out] dl  Bound builder with at least one free word.
+ * @param[in]     arg End-of-list argument (wait / terminate).
+ *
+ * @pre ``dl`` and ``dl->buf`` are non-null.
+ * @pre ``dl->count + 1 <= dl->cap_words`` (caller-reserved).
+ * @post ``dl->buf`` holds the encoded end-of-list word at the reserved slot.
+ * @post ``dl->count`` grew by one (``k_ra8_drw_dlist_special_words``).
+ *
+ * @note Not thread-safe; caller-buffer writes only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_dlist_put_special(ra8_drw_dlist_t* dl, uint32_t arg)
+{
+  dl->buf[dl->count] =
+    (uint32_t)k_ra8_drw_dlr_eol_byte | (arg << (uint32_t)k_ra8_drw_dlr_eol_arg_pos);
+  dl->count += (uint32_t)k_ra8_drw_dlist_special_words;
+}
+
+[[nodiscard]] ra8_err_t ra8_drw_dlist_begin(ra8_drw_dlist_t* dl, uint32_t* buf, uint32_t cap_words)
+{
+  RA8_CHECK_NULL_PTR(dl, s_tag, "dl must not be nullptr");
+  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
+  if (((uintptr_t)buf & (uintptr_t)k_ra8_drw_internal_align_mask) != 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (cap_words == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  dl->buf        = buf;
+  dl->cap_words  = cap_words;
+  dl->count      = 0U;
+  dl->overflow   = false;
+  dl->terminated = false;
+  return k_ra8_ok;
+}
+
+[[nodiscard]] ra8_err_t ra8_drw_dlist_add_fill(ra8_drw_dlist_t* dl, const ra8_drw_rect_t* rect)
+{
+  RA8_CHECK_NULL_PTR(dl, s_tag, "dl must not be nullptr");
+  RA8_CHECK_NULL_PTR(rect, s_tag, "rect must not be nullptr");
+  if (ra8_drw_internal_rect_below_min((uint16_t)k_ra8_drw_min_dim_px,
+                                      (uint16_t)rect->width_px,
+                                      (uint16_t)rect->height_px)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (ra8_drw_internal_rect_above_max((uint16_t)k_ra8_drw_max_width_px,
+                                      (uint16_t)k_ra8_drw_max_height_px,
+                                      (uint16_t)rect->width_px,
+                                      (uint16_t)rect->height_px)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (ra8_drw_internal_rect_off_surface(rect)) {
+    return k_ra8_err_invalid_arg;
+  }
+  /* Reject up front so no partial primitive is left in the buffer. */
+  if ((dl->count + (uint32_t)k_ra8_drw_dlist_fill_words) > dl->cap_words) {
+    dl->overflow = true;
+    return k_ra8_err_no_mem;
+  }
+
+  /* Same geometry as the register-mode ra8_drw_fill_rect: COLOR1 carries the
+   * ARGB, SIZE the bounding box, CONTROL clears the spatial limiters so the
+   * box scan is the rectangle, and ORIGIN (the render trigger) anchors it at
+   * the rectangle's top-left pixel. CONTROL2 / PITCH / cache stay as
+   * ra8_drw_init programmed them. */
+  internal_dlist_put_reg(dl, k_ra8_drw_dlr_idx_color1, rect->color_argb8888);
+  internal_dlist_put_reg(dl,
+                         k_ra8_drw_dlr_idx_size,
+                         ((uint32_t)rect->height_px << k_ra8_drw_size_height_pos) |
+                           (uint32_t)rect->width_px);
+  internal_dlist_put_reg(dl, k_ra8_drw_dlr_idx_control, 0UL);
+  internal_dlist_put_reg(dl, k_ra8_drw_dlr_idx_origin, ra8_drw_internal_rect_origin(rect));
+  /* Wait for the pipeline and framebuffer cache to drain so this primitive
+   * fully lands before the next one (or the CPU read) begins. */
+  internal_dlist_put_special(dl, (uint32_t)k_ra8_drw_dlr_arg_wait);
+  return k_ra8_ok;
+}
+
+[[nodiscard]] ra8_err_t ra8_drw_dlist_end(ra8_drw_dlist_t* dl)
+{
+  RA8_CHECK_NULL_PTR(dl, s_tag, "dl must not be nullptr");
+  if (dl->overflow) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((dl->count + (uint32_t)k_ra8_drw_dlist_special_words) > dl->cap_words) {
+    dl->overflow = true;
+    return k_ra8_err_no_mem;
+  }
+  internal_dlist_put_special(dl, (uint32_t)k_ra8_drw_dlr_arg_terminate);
+  dl->terminated = true;
+  return k_ra8_ok;
+}
+
+[[nodiscard]] ra8_err_t ra8_drw_dlist_run(const ra8_drw_dlist_t* dl)
+{
+  RA8_CHECK_NULL_PTR(dl, s_tag, "dl must not be nullptr");
+  if (dl->overflow || !dl->terminated || (dl->count == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  return ra8_drw_run_dlist(dl->buf);
 }
 
 /* =============================================================================

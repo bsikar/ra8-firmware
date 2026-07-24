@@ -541,6 +541,70 @@ typedef enum : uint8_t {
 } ra8_drw_perfcounter_id_t;
 
 /* =============================================================================
+ * Display list encoding
+ *
+ * A display list is a stream of 32-bit words the DRW's display-list reader
+ * (DLR) fetches from RAM after DLISTSTART is written (HUM Ch 62.6 "Display
+ * List Mode" p 3724). The HUM documents the concept but not the word layout;
+ * the layout below is the one the DLR consumes, decoded from the vendored TES
+ * D/AVE 2D reference (its software DLR model d2_executedlist_intern and
+ * register map: register index == byte offset / 4) and bench-verified on an
+ * EK-RA8D2 (issue #247).
+ *
+ * Each entry is a TAG word followed by one value word per register it writes.
+ * The tag packs up to four register indices, one per byte. The first byte
+ * position >= 1 whose bit 7 is set marks the entry's boundary: byte 1 -> one
+ * register, byte 2 -> two, byte 3 -> three, none set -> four. A word whose low
+ * byte is 0xFF is an end-of-list marker with an argument in byte 1 (2 = wait
+ * for the pipeline and cache then continue; 3 = terminate).
+ * =============================================================================
+ */
+
+/**
+ * @enum ra8_drw_dlr_index_t
+ * @brief Register indices a display-list entry addresses (byte offset / 4).
+ *
+ * @details
+ * The DLR names registers by word index, not byte offset. Each value equals
+ * the matching ``k_ra8_drw_off_*`` divided by four (e.g. ORIGIN 0x80 -> 32).
+ * Only the registers the solid-fill display-list path programs are listed;
+ * add more here as further primitives gain a display-list encoding.
+ *
+ * @see ra8_drw_dlist_add_fill
+ */
+typedef enum : uint8_t {
+  k_ra8_drw_dlr_idx_control  = 0U,  /**< CONTROL  (HUM Ch 62.2.1, 0x00/4).  */
+  k_ra8_drw_dlr_idx_control2 = 1U,  /**< CONTROL2 (HUM Ch 62.2.2, 0x04/4).  */
+  k_ra8_drw_dlr_idx_color1   = 25U, /**< COLOR1   (HUM Ch 62.2.7, 0x64/4).  */
+  k_ra8_drw_dlr_idx_color2   = 26U, /**< COLOR2   (HUM Ch 62.2.8, 0x68/4).  */
+  k_ra8_drw_dlr_idx_size     = 30U, /**< SIZE     (HUM Ch 62.2.29, 0x78/4). */
+  k_ra8_drw_dlr_idx_pitch    = 31U, /**< PITCH    (HUM Ch 62.2.30, 0x7C/4). */
+  k_ra8_drw_dlr_idx_origin   = 32U, /**< ORIGIN   (HUM Ch 62.2.31, 0x80/4). */
+  k_ra8_drw_dlr_idx_cachectl = 49U, /**< CACHECTL (HUM Ch 62.2.4, 0xC4/4).  */
+} ra8_drw_dlr_index_t;
+
+/**
+ * @enum ra8_drw_dlr_word_t
+ * @brief Display-list tag and end-of-list word constants.
+ *
+ * @details
+ * ::k_ra8_drw_dlr_tag_one_index OR-ed with a ::ra8_drw_dlr_index_t forms a tag
+ * for a single-register entry (byte 1 carries bit 7, the boundary marker, so
+ * the DLR reads exactly one value word after it). An end-of-list word is
+ * ::k_ra8_drw_dlr_eol_byte OR-ed with an argument shifted by
+ * ::k_ra8_drw_dlr_eol_arg_pos.
+ *
+ * @see ra8_drw_dlr_index_t
+ */
+typedef enum : uint32_t {
+  k_ra8_drw_dlr_tag_one_index = 0x80808000UL, /**< 1-register entry tag base.   */
+  k_ra8_drw_dlr_eol_byte      = 0x000000FFUL, /**< End-of-list low byte marker. */
+  k_ra8_drw_dlr_eol_arg_pos   = 8UL,          /**< End-of-list argument shift.  */
+  k_ra8_drw_dlr_arg_wait      = 2UL,          /**< Arg: wait pipe+cache, go on. */
+  k_ra8_drw_dlr_arg_terminate = 3UL,          /**< Arg: terminate the list.     */
+} ra8_drw_dlr_word_t;
+
+/* =============================================================================
  * SIZE / PITCH / DBWER misc bit fields
  * =============================================================================
  */

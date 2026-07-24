@@ -14,13 +14,13 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 ## Top-line Numbers
 
 - Source files with at least one decision: **212**
-- Total compound decisions in scope: **1104**
-- Decisions at 100% MC/DC (`yes`): **1004**
+- Total compound decisions in scope: **1105**
+- Decisions at 100% MC/DC (`yes`): **1005**
 - Decisions partially covered (`partial`): **59**
 - Decisions fully uncovered (`no`): **41**
-- Coverage rate (yes / total): **90.94%**
+- Coverage rate (yes / total): **90.95%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **1014**
+- Reachable-condition denominator (total - deactivated): **1015**
 - **Reachable MC/DC rate**: **99.01%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
@@ -228,6 +228,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_phid | 6 | 6 | 0 | 0 |
 | ra8_ble_att | 5 | 5 | 0 | 0 |
 | ra8_ble_l2cap_advertise | 5 | 5 | 0 | 0 |
+| ra8_drw_draw | 5 | 5 | 0 | 0 |
 | ra8_fs_fat_fmt | 5 | 5 | 0 | 0 |
 | ra8_gpt | 5 | 5 | 0 | 0 |
 | ra8_i2c_peripheral | 5 | 5 | 0 | 0 |
@@ -242,7 +243,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_ble_gatt_client | 4 | 4 | 0 | 0 |
 | ra8_dfu_program | 4 | 4 | 0 | 0 |
 | ra8_drw | 4 | 4 | 0 | 0 |
-| ra8_drw_draw | 4 | 4 | 0 | 0 |
 | ra8_epaper | 4 | 4 | 0 | 0 |
 | ra8_epd_cal | 4 | 4 | 0 | 0 |
 | ra8_flash_config | 4 | 4 | 0 | 0 |

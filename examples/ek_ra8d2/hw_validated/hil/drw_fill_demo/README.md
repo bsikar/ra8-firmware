@@ -22,21 +22,21 @@ framebuffer in SRAM. Once a second it:
 
 No external hardware required.
 
-## Why this is in hw_pending
+## Why this is hw_validated (issue #247 resolved)
 
-The DRW is inert on real silicon (issue #247): the D/AVE 2D engine never
-rasterizes -- PERFCOUNT never advances, HWREVISION reads 0, and a J-Link
-dump of the framebuffer after a run is all zeros. `tools/board_sim` models
-the engine INERT to match (`tools/board_sim/src/board_periph_drw.c`): the
-`ra8_drw_fill_rect` register sequence is accepted and `ra8_drw_wait_idle`
-returns, but no pixel is written, so the centre pixel stays clear and the
-banner honestly reports `match=N` (`g_drw_match = 0`) in the emulator, just
-as it does on the bench. The `board_sim_smoke.sh` gate keys on that
-`match=N` line. This app cannot report `match=Y` -- in SIL or on hardware --
-until #247 brings the engine to life; hold it in `hw_pending/` until then.
-When the engine renders on silicon, teach `board_periph_drw.c` the real
-rasterizer (so SIM == HIL still holds), flip this expectation to `match=Y`,
-and promote the app to `hw_validated/hil/`.
+The DRW was thought inert on silicon, but the real cause was that the D/AVE 2D
+engine sits in the graphics power domain, which `PDCTRGD` gates OFF at reset
+(HUM Ch 11.2.14 p 452). `ra8_drw_init` now powers it (`HWREVISION` reads
+`0x0FBE0107`), and with the ORIGIN-anchored bounding-box fill (no spatial
+limiters, `WRITEALPHA = 01`) the engine paints exactly pixels (8,8)..(23,23) in
+`0xFF00FF00` -- byte-verified by a J-Link savebin. `tools/board_sim`
+(`board_periph_drw.c`) rasterizes the same bounding box, so `match=Y` holds in
+SIL and on hardware alike (SIM == HIL).
+
+This demo exercises the register/immediate fill path (`ra8_drw_fill_rect`),
+which renders a byte-clean single rectangle. For a loop-stable clear+fill where
+the DRW owns the framebuffer end to end (no CPU write race), see
+`drw_dlist_demo` -- the display-list route.
 
 ## Notes (HUM R01UH1065EJ0130 Rev.1.30, Ch 62 "2D Drawing Engine")
 
@@ -55,22 +55,17 @@ and promote the app to `hw_validated/hil/`.
 
 ## On-silicon bench plan
 
-Today the DRW is inert (issue #247): steps 2-3 report the failure state
-(`match=N`, `g_drw_rev == 0`) on both the bench and board_sim. They describe
-the target state that becomes reachable once #247 makes the engine render.
+The DRW renders on silicon once the graphics power domain is up (#247 resolved):
+the banner reads `match=Y` and the framebuffer reads back byte-clean.
 
 1. `make drw_fill_demo`, then flash the EK-RA8D2.
-2. Open the J-Link OB CDC channel at 115200 8N1; while #247 is open the banner
-   reads `drw: fill match=N` with LED2 toggling. Once the engine renders it
-   flips to `drw: fill match=Y` with LED1 toggling.
-3. Or probe headless over SWD: while #247 is open `g_drw_match == 0`,
-   `g_drw_rev == 0` (the DRW HWREVISION reads 0 on inert silicon), and
-   `g_drw_fill_err == 0` (the register sequence still completes cleanly). A
-   working engine yields `g_drw_match == 1` and a non-zero `g_drw_rev`.
+2. Open the J-Link OB CDC channel at 115200 8N1; the banner reads
+   `drw: fill match=Y` with LED1 toggling.
+3. Or probe headless over SWD: `g_drw_match == 1`, `g_drw_rev == 0x0FBE0107`
+   (DRW HWREVISION once powered), and `g_drw_fill_err == 0`. A `savebin` of
+   `g_drw_fb` shows pixels (8,8)..(23,23) all `0xFF00FF00` on a zero background.
 4. Optional: point the DRW at a real LCD/GLCDC layer framebuffer and
    render the rectangle on the panel to eyeball it.
-5. Once `match=Y` is confirmed on silicon (#247), move the app to
-   `hw_validated/hil/`.
 
 Build / flash:
 

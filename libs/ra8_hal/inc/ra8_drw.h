@@ -207,6 +207,43 @@ typedef struct {
 } ra8_drw_gradient_t;
 
 /**
+ * @struct ra8_drw_dlist_t
+ * @brief Builder state for composing a DRW display list in a caller buffer.
+ *
+ * @details
+ * A display list lets the DRW clear and repaint a framebuffer end to end with
+ * the CPU never touching it inside the loop, so there is no CPU/engine write
+ * race to latch STATUS.BUSERRMFB -- the loop-stable path proven on silicon for
+ * issue #247. ::ra8_drw_dlist_begin binds this builder to a 4-byte-aligned
+ * word buffer in a region the DRW bus initiator can read (SRAM);
+ * ::ra8_drw_dlist_add_fill appends primitives; ::ra8_drw_dlist_end terminates
+ * the list; ::ra8_drw_dlist_run kicks it. The build calls never touch MMIO.
+ *
+ * @invariant ``count <= cap_words`` at all times; ``overflow`` latches true if
+ * a request would have exceeded ``cap_words`` and no partial entry is written.
+ *
+ * @code
+ * static uint32_t s_dlist[32];
+ * ra8_drw_dlist_t dl;
+ * ra8_drw_dlist_begin(&dl, s_dlist, 32U);
+ * ra8_drw_dlist_add_fill(&dl, &clear_rect);
+ * ra8_drw_dlist_add_fill(&dl, &box_rect);
+ * ra8_drw_dlist_end(&dl);
+ * ra8_drw_dlist_run(&dl);
+ * @endcode
+ *
+ * @see ra8_drw_dlist_begin
+ * @see ra8_drw_dlist_add_fill
+ */
+typedef struct {
+  uint32_t* buf;        /**< Caller word buffer, 4-byte aligned, in SRAM. */
+  uint32_t  cap_words;  /**< Buffer capacity in 32-bit words.             */
+  uint32_t  count;      /**< Words emitted so far (<= cap_words).         */
+  bool      overflow;   /**< A request exceeded the buffer capacity.      */
+  bool      terminated; /**< ::ra8_drw_dlist_end has closed the list.     */
+} ra8_drw_dlist_t;
+
+/**
  * @typedef ra8_drw_event_fn_t
  * @brief DRW asynchronous event callback signature.
  *

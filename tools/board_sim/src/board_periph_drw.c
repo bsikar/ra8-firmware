@@ -101,15 +101,43 @@ typedef enum : uint64_t {
 
 /** @brief Register offsets this model tracks (HUM Ch 62.2, ra8_drw_regs.h). */
 typedef enum : uint64_t {
-  k_drw_off_control  = 0x000UL, /**< W CONTROL / R STATUS.             */
-  k_drw_off_control2 = 0x004UL, /**< W CONTROL2 / R HWREVISION.        */
-  k_drw_off_color1   = 0x064UL, /**< W COLOR1: base colour.            */
-  k_drw_off_color2   = 0x068UL, /**< W COLOR2: secondary colour.       */
-  k_drw_off_size     = 0x078UL, /**< W SIZE: bounding box W/H.         */
-  k_drw_off_pitch    = 0x07CUL, /**< W PITCH: framebuffer pitch.       */
-  k_drw_off_origin   = 0x080UL, /**< W ORIGIN: bbox anchor + trigger.  */
-  k_drw_off_cachectl = 0x0C4UL, /**< W CACHECTL: cache enable / flush. */
+  k_drw_off_control    = 0x000UL, /**< W CONTROL / R STATUS.             */
+  k_drw_off_control2   = 0x004UL, /**< W CONTROL2 / R HWREVISION.        */
+  k_drw_off_color1     = 0x064UL, /**< W COLOR1: base colour.            */
+  k_drw_off_color2     = 0x068UL, /**< W COLOR2: secondary colour.       */
+  k_drw_off_size       = 0x078UL, /**< W SIZE: bounding box W/H.         */
+  k_drw_off_pitch      = 0x07CUL, /**< W PITCH: framebuffer pitch.       */
+  k_drw_off_origin     = 0x080UL, /**< W ORIGIN: bbox anchor + trigger.  */
+  k_drw_off_cachectl   = 0x0C4UL, /**< W CACHECTL: cache enable / flush. */
+  k_drw_off_dliststart = 0x0C8UL, /**< W DLISTSTART: kick display list.  */
 } drw_off_t;
+
+/**
+ * @brief Display-list encoding constants (HUM Ch 62.6; TES D/AVE format).
+ *
+ * @details
+ * The DLR fetches 32-bit words. This model executes exactly the encoding the
+ * ra8_drw display-list builder emits and bench-verified on the EK-RA8D2 for
+ * issue #247: single-register entries -- a tag ``0x80808000 | index`` (byte 1
+ * bit 7 marks a one-index entry) followed by one value word -- and end-of-list
+ * words whose low byte is 0xFF with an argument in byte 1 (2 = wait for the
+ * pipeline+cache then continue, the only wait the builder emits; anything else
+ * terminates). Register index == byte offset / 4. Any other tag encoding
+ * (multi-index packing) is deliberately NOT modelled: it was never observed on
+ * the bench, so the model STOPS rather than guess, and an app that relied on it
+ * under-renders visibly here instead of a false PASS -- the same fail-safe
+ * stance as the limiter and FB-cache paths above.
+ */
+typedef enum : uint32_t {
+  k_drw_dlr_index_mask     = 0xFFU,       /**< Register index in a tag byte.    */
+  k_drw_dlr_b1_boundary    = 0x00008000U, /**< Byte 1 bit 7 -> one-index entry. */
+  k_drw_dlr_eol_low        = 0xFFU,       /**< Low byte of an end-of-list word. */
+  k_drw_dlr_eol_arg_pos    = 8U,          /**< End-of-list argument position.   */
+  k_drw_dlr_arg_wait       = 2U,          /**< Wait pipe+cache, keep reading.   */
+  k_drw_dlr_idx_dliststart = 50U,         /**< DLISTSTART index (jump / stop).  */
+  k_drw_dlr_bytes_per_word = 4U,          /**< Register index -> byte offset.   */
+  k_drw_dlr_max_words      = 4096U,       /**< NASA Rule 2 fetch bound.         */
+} drw_dlr_t;
 
 /** @brief CONTROL bit-field constants (HUM Ch 62.2.1 p 3689). */
 typedef enum : uint32_t {
@@ -505,7 +533,70 @@ static bool drw_latch(uint64_t off, uint32_t val)
   }
 }
 
-/** @brief MMIO write inside the DRW window; ORIGIN triggers the render. */
+/** @brief Apply one display-list register write; ORIGIN triggers a render. */
+static void drw_dlr_exec_reg(uc_engine* uc, uint32_t index, uint32_t val)
+{
+  const uint64_t off = (uint64_t)index * (uint64_t)k_drw_dlr_bytes_per_word;
+  if (off == (uint64_t)k_drw_off_origin) {
+    /* Same trigger as a CPU ORIGIN write: anchor the box and rasterize. */
+    s_drw.origin = val;
+    drw_render(uc);
+    return;
+  }
+  (void)drw_latch(off, val);
+}
+
+/**
+ * @brief Execute a display list the DLR fetches from emulated memory.
+ *
+ * @details
+ * Mirrors the DRW display-list reader for the encoding the ra8_drw builder
+ * emits: single-register entries and end-of-list words (see ::drw_dlr_t). Each
+ * ORIGIN write inside the list rasterizes exactly as a CPU ORIGIN write does,
+ * so a clear+fill list reproduces the byte-identical framebuffer the bench
+ * produced for issue #247. The fetch loop is bounded by ::k_drw_dlr_max_words
+ * (NASA Rule 2). Any tag encoding the builder never emits stops the list --
+ * unmodelled rather than guessed.
+ *
+ * @param[in] uc        Emulator engine (framebuffer + display-list memory).
+ * @param[in] dlist_addr Display-list base address (DLISTSTART value).
+ */
+static void drw_run_dlist(uc_engine* uc, uint32_t dlist_addr)
+{
+  uint32_t addr = dlist_addr;
+  for (uint32_t fetched = 0U; fetched < (uint32_t)k_drw_dlr_max_words; ++fetched) {
+    uint32_t tag = 0U;
+    (void)uc_mem_read(uc, (uint64_t)addr, &tag, sizeof(tag));
+    addr += (uint32_t)k_drw_dlr_bytes_per_word;
+
+    if ((tag & (uint32_t)k_drw_dlr_b1_boundary) != 0U) {
+      /* One-index entry: byte 0 is a register, one value word follows. */
+      const uint32_t index = tag & (uint32_t)k_drw_dlr_index_mask;
+      if (index == (uint32_t)k_drw_dlr_idx_dliststart) {
+        return; /* display-list jump / stop */
+      }
+      uint32_t val = 0U;
+      (void)uc_mem_read(uc, (uint64_t)addr, &val, sizeof(val));
+      addr += (uint32_t)k_drw_dlr_bytes_per_word;
+      drw_dlr_exec_reg(uc, index, val);
+      continue;
+    }
+    if ((tag & (uint32_t)k_drw_dlr_index_mask) == (uint32_t)k_drw_dlr_eol_low) {
+      /* End-of-list word: byte 1 is the argument. The builder emits only the
+       * pipeline+cache wait (2, a synchronous no-op here); every other value
+       * terminates. */
+      const uint32_t arg =
+        (tag >> (uint32_t)k_drw_dlr_eol_arg_pos) & (uint32_t)k_drw_dlr_index_mask;
+      if (arg == (uint32_t)k_drw_dlr_arg_wait) {
+        continue;
+      }
+      return; /* terminate */
+    }
+    return; /* unmodelled multi-index packing: stop, do not guess */
+  }
+}
+
+/** @brief MMIO write inside the DRW window; ORIGIN or DLISTSTART renders. */
 static void drw_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)size;
@@ -525,6 +616,12 @@ static void drw_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
      * TRIGGERS the render. */
     s_drw.origin = val;
     drw_render(uc);
+    return;
+  }
+  if (off == (uint64_t)k_drw_off_dliststart) {
+    /* HUM Ch 62.2.32 p 3705: writing DLISTSTART kicks the display-list reader,
+     * which executes the list from RAM (issue #247 loop-stable clear+fill). */
+    drw_run_dlist(uc, val);
     return;
   }
   (void)drw_latch(off, val);

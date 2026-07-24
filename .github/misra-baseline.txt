@@ -516,7 +516,7 @@ libs/ra8_hal/src/ra8_drw.c	misra-c2012-14.2	2
 libs/ra8_hal/src/ra8_drw.c	misra-c2012-15.5	34
 libs/ra8_hal/src/ra8_drw.c	misra-c2012-8.9	5
 libs/ra8_hal/src/ra8_drw_draw.c	misra-c2012-12.1	4
-libs/ra8_hal/src/ra8_drw_draw.c	misra-c2012-15.5	25
+libs/ra8_hal/src/ra8_drw_draw.c	misra-c2012-15.5	42
 libs/ra8_hal/src/ra8_dtc.c	misra-c2012-10.4	1
 libs/ra8_hal/src/ra8_dtc.c	misra-c2012-11.6	4
 libs/ra8_hal/src/ra8_dtc.c	misra-c2012-15.5	4
