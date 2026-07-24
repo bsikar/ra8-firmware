@@ -718,7 +718,7 @@ static void test_mcdc_dlist_run(void)
                         .overflow   = false,
                         .terminated = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_run(&v1));
-  TEST_ASSERT_EQ((uint32_t)(uintptr_t)buf, *ra8_drw_reg32(k_ra8_drw_off_dliststart));
+  TEST_ASSERT_EQ((uintptr_t)buf, *ra8_drw_reg32(k_ra8_drw_off_dliststart));
 
   /* V2: overflow set (varies A). */
   ra8_drw_dlist_t v2 = {.buf        = buf,
