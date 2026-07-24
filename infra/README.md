@@ -31,7 +31,7 @@ in OpenBao. That's it: your machine joins as a CI runner pool.
 
 ```
 terraform/   creates machines + cluster resources (Proxmox LXC/VM, k8s/Helm)
-ansible/     configures machines (toolchain, dev, ci-runner, hil-bench roles)
+ansible/     configures machines (toolchain, dev, ci_runner, hil_bench roles)
 images/      the CI runner container image (devcontainer toolchain + runner)
 ```
 
