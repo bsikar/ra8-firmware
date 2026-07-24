@@ -89,6 +89,11 @@ add_executable(
   src/mdl_extract.c
   src/mdl_politeness.c
   src/mdl_config.c
+  src/mdl_hash.c
+  src/mdl_urlname.c
+  src/mdl_state.c
+  src/mdl_fetch.c
+  src/mdl_library.c
   src/mdl_export.c
   src/mdl_export_jof.c
   ${MDL_JOF_SRC}
@@ -201,3 +206,56 @@ target_include_directories(
 target_compile_definitions(test_media_dl_session PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
 target_compile_options(test_media_dl_session PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_session COMMAND test_media_dl_session)
+
+# #305 library-state tests: the persistent state store + its content-identity
+# hashing + the URL-to-name helpers, exercised as pure logic (no network, no
+# libcurl). Covers save/load round-trips, atomic-write survival, corrupt-file
+# handling, chapter/page lookup, and coverage/gaps rendering.
+add_executable(
+  test_media_dl_state
+  tests/test_media_dl_state.c
+  src/mdl_state.c
+  src/mdl_hash.c
+  src/mdl_urlname.c
+  src/mdl_sanitize.c
+)
+target_include_directories(
+  test_media_dl_state
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+)
+target_compile_definitions(test_media_dl_state PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_options(test_media_dl_state PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_media_dl_state COMMAND test_media_dl_state)
+
+# #305 fetch-orchestrator tests: the resumable, deduping download loop driven
+# end-to-end through the #310 mdl_net vtable mock with no network. A scripted
+# fake backend writes deterministic page bytes into a temp directory, so the
+# suite asserts that a first run fetches N pages, a second run fetches only the
+# new ones, an interrupted run resumes to a byte-identical result, and a
+# corrupt state file rebuilds cleanly. The fake replaces libcurl, so this binary
+# links only the pure units above the seam and needs no CURL.
+add_executable(
+  test_media_dl_fetch
+  tests/test_media_dl_fetch.c
+  src/mdl_fetch.c
+  src/mdl_state.c
+  src/mdl_hash.c
+  src/mdl_urlname.c
+  src/mdl_sanitize.c
+  src/mdl_pathfs.c
+  src/mdl_session.c
+  src/mdl_robots.c
+  src/mdl_net.c
+  src/mdl_politeness.c
+  src/mdl_url_guard.c
+  src/mdl_extract.c
+)
+target_include_directories(
+  test_media_dl_fetch
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+)
+target_compile_definitions(test_media_dl_fetch PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_options(test_media_dl_fetch PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_media_dl_fetch COMMAND test_media_dl_fetch)
