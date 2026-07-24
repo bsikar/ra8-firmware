@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "mdl_politeness.h"
 #include "ra8_attributes.h"
 
 /** @brief Local parser limits. */
@@ -78,21 +79,26 @@ RA8_INTERNAL static bool apply_kv_str(mdl_site_t* s, const char* key, const char
   return false;
 }
 
-/** @brief Apply a millisecond-delay key, or return false if `key` is not one. */
-RA8_INTERNAL static bool apply_kv_delay(mdl_site_t* s, const char* key, const char* val)
+/** @brief Apply an unsigned-integer key (jitter delay or governor bound). */
+RA8_INTERNAL static bool apply_kv_u32(mdl_site_t* s, const char* key, const char* val)
 {
   const struct {
     const char* key; /**< Config key spelling.       */
-    uint32_t*   dst; /**< Descriptor delay it fills. */
-  } delays[] = {
+    uint32_t*   dst; /**< Descriptor field it fills. */
+  } fields[] = {
     {"img_delay_min", &s->img_delay_min},
     {"img_delay_max", &s->img_delay_max},
     {"chapter_delay_min", &s->chapter_delay_min},
     {"chapter_delay_max", &s->chapter_delay_max},
+    {"rate_per_min", &s->rate_per_min},
+    {"burst", &s->burst},
+    {"backoff_base_ms", &s->backoff_base_ms},
+    {"backoff_max_ms", &s->backoff_max_ms},
+    {"max_inflight", &s->max_inflight},
   };
-  for (size_t i = 0U; i < (sizeof(delays) / sizeof(delays[0])); ++i) {
-    if (strcmp(key, delays[i].key) == 0) {
-      *delays[i].dst = (uint32_t)strtoul(val, nullptr, k_dec_base);
+  for (size_t i = 0U; i < (sizeof(fields) / sizeof(fields[0])); ++i) {
+    if (strcmp(key, fields[i].key) == 0) {
+      *fields[i].dst = (uint32_t)strtoul(val, nullptr, k_dec_base);
       return true;
     }
   }
@@ -114,7 +120,7 @@ RA8_INTERNAL static mdl_chapter_order_t parse_order(const char* val)
 /** @brief Apply one key=value pair to the descriptor. */
 RA8_INTERNAL static void apply_kv(mdl_site_t* s, const char* key, const char* val)
 {
-  if (apply_kv_str(s, key, val) || apply_kv_delay(s, key, val)) {
+  if (apply_kv_str(s, key, val) || apply_kv_u32(s, key, val)) {
     return;
   }
   if (strcmp(key, "chapter_order") == 0) {
@@ -137,6 +143,14 @@ RA8_INTERNAL static void config_set_defaults(mdl_site_t* out)
   out->img_delay_max     = (uint32_t)k_def_img_delay_max;
   out->chapter_delay_min = (uint32_t)k_def_chapter_delay_min;
   out->chapter_delay_max = (uint32_t)k_def_chapter_delay_max;
+
+  /* Governor bounds default to the conservative single source of truth. */
+  const mdl_gov_cfg_t gov = mdl_gov_cfg_default();
+  out->rate_per_min       = gov.rate_per_min;
+  out->burst              = gov.burst;
+  out->backoff_base_ms    = gov.backoff_base_ms;
+  out->backoff_max_ms     = gov.backoff_max_ms;
+  out->max_inflight       = (uint32_t)gov.max_inflight;
 }
 
 /** @brief Apply every key=value line of an open config stream to `out`. */
