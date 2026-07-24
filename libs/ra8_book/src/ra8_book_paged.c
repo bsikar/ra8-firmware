@@ -159,6 +159,154 @@ ra8_err_t ra8_book_src_read(const ra8_book_src_t* src, uint32_t off, void* dst, 
 }
 
 /* ===========================================================================
+ * Image sub-rect reads (#342): the image-pool addressing contract -- descriptor
+ * stride, pool base, 4bpp nibble packing, and odd-width parity -- lives here in
+ * the library that owns the format, not open-coded in every image renderer. The
+ * loupe / tile / thumbnail consumers keep only their geometry and blit and call
+ * ra8_book_src_image_rect() for "read me this rectangle" as unpacked gray8.
+ * =========================================================================== */
+
+/**
+ * @enum ra8_book_image_rect_const_t
+ * @brief 4bpp nibble packing + the per-read pixel budget (no magic numbers).
+ * @details A @ref k_ra8_book_image_gray4 pool byte holds two pixels; the high
+ *          nibble is the even flat index, the low nibble the odd. A 4-bit sample
+ *          expands to gray8 by replicating the nibble into both halves
+ *          (`(nib << 4) | nib`). ::ra8_book_src_image_rect unpacks each row in
+ *          spans of at most @ref k_ra8_book_rect_chunk_px pixels so the staging
+ *          buffer -- and every ::ra8_book_src_read -- stays small and bounded.
+ * @since Version 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8_book_gray4_nib_lo  = 0x0FU, /**< Low-nibble mask (odd flat index).           */
+  k_ra8_book_gray4_nib_sh  = 4U,    /**< Nibble shift and 4->8 bit replicate amount. */
+  k_ra8_book_gray4_ppb     = 2U,    /**< Pixels packed per pool byte.                */
+  k_ra8_book_rect_chunk_px = 512U,  /**< Max pixels unpacked per bounded span read.  */
+  k_ra8_book_rect_chunk_pad =
+    2U, /**< Loop-bound headroom over ceil(w / k_ra8_book_rect_chunk_px). */
+} ra8_book_image_rect_const_t;
+
+/**
+ * @brief Unpack one horizontal gray4 run `[x, x+w)` of source row @p ry to gray8.
+ *
+ * @details The per-row worker of ::ra8_book_src_image_rect. Walks the run in
+ *          spans of at most ::k_ra8_book_rect_chunk_px pixels: each span's flat
+ *          nibble index maps to an absolute pool offset
+ *          (`image_pool_off + data_off + (flat >> 1)`), the packed span is copied
+ *          out via ::ra8_book_src_read (bounds-checked, paged-fault-aware), and
+ *          each 4-bit sample is replicated into a gray8 byte. Tracking the
+ *          absolute flat index per pixel keeps the high/low nibble parity correct
+ *          across span boundaries and for odd image widths.
+ *
+ * @param[in]  src Bound book source.
+ * @param[in]  img Gray4 image descriptor (caller already checked the format).
+ * @param[in]  x   Run left edge in source pixels (`x + w <= img->width`).
+ * @param[in]  ry  Source row index (`< img->height`).
+ * @param[in]  w   Run width in pixels (`> 0`).
+ * @param[out] out Destination gray8 run (`>= w` bytes).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               The run was unpacked into @p out.
+ * @retval k_ra8_err_out_of_range A span it addresses leaves the blob.
+ * @retval k_ra8_err_*            A ::ra8_book_src_read fault (returned verbatim).
+ *
+ * @pre  @p src is bound and @p img is a gray4 descriptor within @p src.
+ * @pre  @p out addresses at least @p w writable bytes.
+ * @post On k_ra8_ok, `out[i]` is the gray8 expansion of pixel `(x+i, ry)`.
+ * @post On any non-ok return @p out content is unspecified.
+ *
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_book_image_row(const ra8_book_src_t*   src,
+                                     const ra8_book_image_t* img,
+                                     uint32_t                x,
+                                     uint32_t                ry,
+                                     uint32_t                w,
+                                     uint8_t*                out)
+{
+  const uint32_t row_flat = (ry * (uint32_t)img->width) + x;
+  uint8_t        packed[(k_ra8_book_rect_chunk_px / k_ra8_book_gray4_ppb) + 1U];
+  uint32_t       done = 0U;
+  const uint32_t max_iter =
+    (w / (uint32_t)k_ra8_book_rect_chunk_px) + (uint32_t)k_ra8_book_rect_chunk_pad;
+  for (uint32_t it = 0U; it < max_iter; ++it) {
+    if (done >= w) {
+      break; /* whole run unpacked; the count bound above is the loop invariant */
+    }
+    const uint32_t remain = w - done;
+    const uint32_t cpx =
+      (remain < (uint32_t)k_ra8_book_rect_chunk_px) ? remain : (uint32_t)k_ra8_book_rect_chunk_px;
+    const uint32_t flat0 = row_flat + done;
+    const uint32_t first = flat0 >> 1U;
+    const uint32_t last  = (flat0 + cpx - 1U) >> 1U;
+    const uint32_t n     = (last - first) + 1U;
+    const uint64_t off =
+      (uint64_t)src->hdr.image_pool_off + (uint64_t)img->data_off + (uint64_t)first;
+    if ((off + (uint64_t)n) > (uint64_t)src->size) {
+      return k_ra8_err_out_of_range; /* descriptor / geometry points past the blob */
+    }
+    const ra8_err_t re = ra8_book_src_read(src, (uint32_t)off, packed, n);
+    if (re != k_ra8_ok) {
+      return re;
+    }
+    for (uint32_t i = 0U; i < cpx; ++i) {
+      const uint32_t flat = flat0 + i;
+      const uint8_t  byte = packed[(flat >> 1U) - first];
+      const uint8_t nib = ((flat & 1U) != 0U) ? (uint8_t)(byte & (uint8_t)k_ra8_book_gray4_nib_lo)
+                                              : (uint8_t)(byte >> (uint8_t)k_ra8_book_gray4_nib_sh);
+      out[done + i]     = (uint8_t)((nib << (uint8_t)k_ra8_book_gray4_nib_sh) | nib);
+    }
+    done += cpx;
+  }
+  return (done == w) ? k_ra8_ok : k_ra8_err_out_of_range;
+}
+
+ra8_err_t ra8_book_src_image(const ra8_book_src_t* src, uint32_t idx, ra8_book_image_t* out_img)
+{
+  RA8_CHECK_NULL_PTR(src, s_tag_paged, "image: null src");
+  RA8_CHECK_NULL_PTR(out_img, s_tag_paged, "image: null out_img");
+  if (idx >= src->hdr.image_count) {
+    return k_ra8_err_invalid_arg;
+  }
+  const uint32_t off = src->hdr.image_off + (idx * (uint32_t)sizeof(ra8_book_image_t));
+  return ra8_book_src_read(src, off, out_img, (uint32_t)sizeof(ra8_book_image_t));
+}
+
+ra8_err_t ra8_book_src_image_rect(const ra8_book_src_t*   src,
+                                  const ra8_book_image_t* img,
+                                  uint32_t                x,
+                                  uint32_t                y,
+                                  uint32_t                w,
+                                  uint32_t                h,
+                                  uint8_t*                out,
+                                  uint32_t                out_stride)
+{
+  RA8_CHECK_NULL_PTR(src, s_tag_paged, "image_rect: null src");
+  RA8_CHECK_NULL_PTR(img, s_tag_paged, "image_rect: null img");
+  RA8_CHECK_NULL_PTR(out, s_tag_paged, "image_rect: null out");
+  if (img->format != (uint8_t)k_ra8_book_image_gray4) {
+    return k_ra8_err_invalid_arg; /* only 4bpp packed grayscale is unpackable here */
+  }
+  if ((w == 0U) || (h == 0U) || (out_stride < w)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((((uint64_t)x + (uint64_t)w) > (uint64_t)img->width) ||
+      (((uint64_t)y + (uint64_t)h) > (uint64_t)img->height)) {
+    return k_ra8_err_out_of_range; /* sub-rect not fully inside the image */
+  }
+  for (uint32_t row = 0U; row < h; ++row) {
+    const ra8_err_t re =
+      priv_book_image_row(src, img, x, y + row, w, &out[(size_t)row * (size_t)out_stride]);
+    if (re != k_ra8_ok) {
+      return re;
+    }
+  }
+  return k_ra8_ok;
+}
+
+/* ===========================================================================
  * Paged plain-text extraction (#163): same output as ra8_book_chapter_text but
  * the DOM is read frame-by-frame through an ra8_book_src_t / ra8_vmem cache, so a
  * book that exceeds the resident budget is walked with a bounded working set.
