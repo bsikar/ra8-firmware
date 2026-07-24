@@ -9,37 +9,45 @@
  * @details
  * Native host binary that links the firmware error contract (`ra8_err_t`) and
  * drives the downloader logic that will later run on the RA8 (only the injected
- * libcurl backend is host-specific). Two modes:
+ * libcurl backend is host-specific). Modes:
  *
- *  - **series** (`--config S.conf --series URL`): read a site descriptor, list
- *    a series' chapters, download the first N, and package them -- combined into
- *    one `<slug>-<lo>-<hi>.<ext>` by default, or one archive per chapter with
- *    `--separate`. `--format` selects the container (see mdl_export).
+ *  - **series** (`--config S.conf --series URL`): read a site descriptor, list a
+ *    series' chapters, and download them into a reader-openable file. Selection
+ *    is by chapter identity, not list position: `--from CHAP` starts at the
+ *    chapter NUMBERED CHAP, and `--update` fetches only chapters not already
+ *    recorded complete in the per-series library state. Downloads resume after
+ *    interruption and never re-fetch a page whose bytes are already held.
+ *  - **library** (over `--out`): `--list` shows tracked series with coverage and
+ *    gaps, `--update-all` incrementally updates every tracked series, `--remove`
+ *    drops one series.
  *  - **pack** (`--pack DIR --format FMT`): package an existing image folder with
- *    no network -- re-encode a download, or drive the integration harness.
- *  - **page** (bare `URL`): fetch one page and download its `<img>` URLs -- a
- *    debug/inspection path.
+ *    no network.
+ *  - **page** (bare `URL`): fetch one page and download its `<img>` URLs.
  *
- * The tool identifies itself honestly (a truthful, configurable User-Agent),
- * honours robots.txt by default, and sanitises every untrusted name before it
- * reaches the filesystem.
+ * The tool identifies itself honestly, honours robots.txt by default, and
+ * sanitises every untrusted name before it reaches the filesystem.
  */
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "mdl_cli.h"
 #include "mdl_config.h"
 #include "mdl_export.h"
 #include "mdl_extract.h"
+#include "mdl_fetch.h"
+#include "mdl_library.h"
 #include "mdl_net.h"
 #include "mdl_net_curl.h"
 #include "mdl_pathfs.h"
 #include "mdl_politeness.h"
 #include "mdl_sanitize.h"
 #include "mdl_session.h"
+#include "mdl_state.h"
+#include "mdl_urlname.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
@@ -51,13 +59,12 @@ typedef enum : uint32_t {
 
 /** @brief On-stack string buffer sizes and page-mode delays. */
 typedef enum : uint16_t {
-  k_chap_name_bytes    = 128,  /**< Chapter folder-name buffer.      */
   k_slug_bytes         = 128,  /**< Series slug buffer.              */
   k_leaf_name_bytes    = 256,  /**< Composed archive/dir leaf name.  */
   k_dir_path_bytes     = 1024, /**< Directory-path buffer.           */
   k_file_path_bytes    = 1200, /**< File-path buffer.                */
-  k_numbuf_bytes       = 16,   /**< Digit-run parse buffer.          */
-  k_extbuf_bytes       = 8,    /**< File-extension buffer.           */
+  k_cov_bytes          = 256,  /**< Coverage summary line buffer.    */
+  k_ext_bytes          = 8,    /**< Image-extension buffer.          */
   k_page_img_delay_min = 400,  /**< page-mode per-image floor, ms.   */
   k_page_img_delay_max = 800,  /**< page-mode per-image ceiling, ms. */
 } mdl_bufsize_t;
@@ -106,12 +113,29 @@ static char s_page[k_page_buf_bytes];
 static mdl_url_list_t s_chapters;
 
 /**
+ * @var s_selected
+ * @brief The `--from`/`--chapters` window copied out of ::s_chapters.
+ * @warning Single-threaded; rebuilt per series.
+ * @since 0.1.0
+ */
+static mdl_url_list_t s_selected;
+
+/**
  * @var s_images
  * @brief Page-image URLs extracted from the current chapter page.
  * @warning Single-threaded; overwritten per chapter.
  * @since 0.1.0
  */
 static mdl_url_list_t s_images;
+
+/**
+ * @var s_state
+ * @brief The persistent library state of the series being processed.
+ * @details About 2 MiB (chapter table + page pool), so it lives in `.bss`.
+ * @warning Single-threaded; reused across series within one run.
+ * @since 0.1.0
+ */
+static mdl_state_t s_state;
 
 /**
  * @var s_rowtmp
@@ -125,87 +149,6 @@ static char s_rowtmp[k_mdl_url_max];
 RA8_INTERNAL static uint32_t max_u32(uint32_t a, uint32_t b)
 {
   return (a > b) ? a : b;
-}
-
-/** @brief Pick a file extension from a URL, defaulting to "jpg". */
-RA8_INTERNAL static const char* ext_of(const char* url)
-{
-  const char* slash = strrchr(url, '/');
-  const char* seg   = (slash == nullptr) ? url : slash + 1;
-  const char* dot   = strrchr(seg, '.');
-  if (dot == nullptr) {
-    return "jpg";
-  }
-  static const char* const k_known[] = {"jpg", "jpeg", "png", "gif", "webp", "bmp"};
-  static char              s_ext[k_extbuf_bytes];
-  size_t                   n = 0U;
-  for (const char* c = dot + 1;
-       (*c != '\0') && (*c != '?') && (*c != '#') && (n + 1U < sizeof(s_ext));
-       ++c) {
-    s_ext[n] = (char)(((*c >= 'A') && (*c <= 'Z')) ? (*c + ('a' - 'A')) : *c);
-    ++n;
-  }
-  s_ext[n] = '\0';
-  for (size_t i = 0U; i < (sizeof(k_known) / sizeof(k_known[0])); ++i) {
-    if (strcmp(s_ext, k_known[i]) == 0) {
-      return s_ext;
-    }
-  }
-  return "jpg";
-}
-
-/** @brief Last non-empty path segment of a URL, sanitised, into `out`. */
-RA8_INTERNAL static void last_segment(const char* url, char* out, size_t cap)
-{
-  const char* q   = strpbrk(url, "?#");
-  size_t      end = (q == nullptr) ? strlen(url) : (size_t)(q - url);
-  while ((end > 0U) && (url[end - 1U] == '/')) {
-    --end; /* trim trailing slashes */
-  }
-  size_t start = end;
-  while ((start > 0U) && (url[start - 1U] != '/')) {
-    --start;
-  }
-  char   raw[k_chap_name_bytes];
-  size_t n = 0U;
-  for (size_t i = start; (i < end) && (n + 1U < sizeof(raw)); ++i) {
-    raw[n] = url[i];
-    ++n;
-  }
-  raw[n] = '\0';
-  /* Neutralise `..`, absolute/traversal bytes, reserved names, over-length. */
-  (void)mdl_sanitize_segment(raw, out, cap);
-}
-
-/** @brief Parse the last run of digits in `url` (0 if none). */
-RA8_INTERNAL static long chapter_num(const char* url)
-{
-  const size_t len   = strlen(url);
-  size_t       e     = 0U;
-  size_t       s     = 0U;
-  bool         found = false;
-  for (size_t i = 0U; i < len; ++i) {
-    if ((url[i] >= '0') && (url[i] <= '9')) {
-      size_t j = i;
-      while ((j < len) && (url[j] >= '0') && (url[j] <= '9')) {
-        ++j;
-      }
-      s     = i;
-      e     = j;
-      found = true;
-      i     = j; /* skip the run */
-    }
-  }
-  if (!found) {
-    return 0L;
-  }
-  char   num[k_numbuf_bytes];
-  size_t n = 0U;
-  for (size_t i = s; (i < e) && (n + 1U < sizeof(num)); ++i) {
-    num[n++] = url[i];
-  }
-  num[n] = '\0';
-  return strtol(num, nullptr, k_dec_base);
 }
 
 /** @brief Swap two rows of a URL list. */
@@ -233,7 +176,7 @@ RA8_INTERNAL static void sort_by_chapter_num(mdl_url_list_t* l)
   for (size_t i = 0U; i + 1U < l->count; ++i) {
     size_t min = i;
     for (size_t j = i + 1U; j < l->count; ++j) {
-      if (chapter_num(l->urls[j]) < chapter_num(l->urls[min])) {
+      if (mdl_urlname_chapter_number(l->urls[j]) < mdl_urlname_chapter_number(l->urls[min])) {
         min = j;
       }
     }
@@ -288,105 +231,6 @@ RA8_INTERNAL static void warn_no_contact(void)
   }
 }
 
-/**
- * @brief Gate, space, and download one chapter image; 0 ok, 1 on skip/failure.
- * @param[in]     site        Site descriptor (image politeness bounds).
- * @param[in]     chapter_url Referer for the image request.
- * @param[in]     dest_dir    Directory the image is written into.
- * @param[in,out] page_no     Running 1-based page counter, advanced per image.
- * @param[in,out] pol         Jitter source spacing consecutive fetches.
- * @param[in]     timeout     Per-request budget, milliseconds.
- * @param[in]     img_url     Absolute image URL to fetch.
- * @return 0 on success, 1 when robots refused it or the fetch failed.
- * @since 0.1.0
- */
-RA8_INTERNAL static size_t download_one_image(const mdl_site_t* site,
-                                              const char*       chapter_url,
-                                              const char*       dest_dir,
-                                              size_t*           page_no,
-                                              mdl_politeness_t* pol,
-                                              uint32_t          timeout,
-                                              const char*       img_url)
-{
-  uint32_t crawl = 0U;
-  if (!mdl_session_url_allowed(&s_session, img_url, &crawl)) {
-    return 1U; /* robots refused (message already printed) */
-  }
-  (void)mdl_politeness_wait(pol,
-                            max_u32(site->img_delay_min, crawl),
-                            max_u32(site->img_delay_max, crawl));
-  *page_no += 1U;
-  char path[k_file_path_bytes];
-  (void)snprintf(path, sizeof(path), "%s/page_%04zu.%s", dest_dir, *page_no, ext_of(img_url));
-  const mdl_net_req_t img_req = {.user_agent = s_session.user_agent,
-                                 .referer    = chapter_url,
-                                 .timeout_ms = timeout};
-  size_t              got     = 0U;
-  const ra8_err_t     irc     = mdl_net_get_file(s_session.net, img_url, &img_req, path, &got);
-  if (irc != k_ra8_ok) {
-    (void)fprintf(stderr, "    page %zu FAILED (err 0x%X)\n", *page_no, (unsigned)irc);
-    return 1U;
-  }
-  return 0U;
-}
-
-/**
- * @brief Download one chapter's page images into `dest_dir`.
- *
- * @param[in]     site        Site descriptor supplying the image selectors and
- *                            the per-image politeness bounds.
- * @param[in]     series_url  Series page URL, sent as the Referer.
- * @param[in]     chapter_url Chapter page URL to scrape for `<img>` sources.
- * @param[in]     dest_dir    Existing directory the images are written into.
- * @param[in,out] page_no     Running 1-based page counter, advanced per image so
- *                            a combined download numbers pages continuously
- *                            across chapters.
- * @param[in,out] pol         Jitter source spacing consecutive image fetches.
- * @param[in]     timeout     Per-request time budget, milliseconds.
- * @return Count of images that failed to download.
- */
-RA8_INTERNAL static size_t download_chapter(const mdl_site_t* site,
-                                            const char*       series_url,
-                                            const char*       chapter_url,
-                                            const char*       dest_dir,
-                                            size_t*           page_no,
-                                            mdl_politeness_t* pol,
-                                            uint32_t          timeout)
-{
-  const mdl_net_req_t page_req = {.user_agent = s_session.user_agent,
-                                  .referer    = series_url,
-                                  .timeout_ms = timeout};
-  size_t              page_len = 0U;
-  ra8_err_t           rc =
-    mdl_net_get_buf(s_session.net, chapter_url, &page_req, s_page, sizeof(s_page), &page_len);
-  if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "  chapter fetch failed %s (err 0x%X)\n", chapter_url, (unsigned)rc);
-    return 1U;
-  }
-
-  rc = mdl_extract_images(s_page,
-                          page_len,
-                          chapter_url,
-                          site->page_img_attr,
-                          site->page_img_url_contains,
-                          &s_images);
-  if ((rc != k_ra8_ok) && (rc != k_ra8_err_no_mem)) {
-    (void)fprintf(stderr, "  image extract failed (err 0x%X)\n", (unsigned)rc);
-    return 1U;
-  }
-
-  char chap[k_chap_name_bytes];
-  last_segment(chapter_url, chap, sizeof(chap));
-  (void)printf("  %s: %zu page(s)\n", chap, s_images.count);
-
-  size_t fail = 0U;
-  for (size_t i = 0U; i < s_images.count; ++i) {
-    fail +=
-      download_one_image(site, chapter_url, dest_dir, page_no, pol, timeout, s_images.urls[i]);
-  }
-  return fail;
-}
-
 /** @brief Fetch the series page and build the ordered, filtered chapter list. */
 RA8_INTERNAL static ra8_err_t
 prepare_chapters(const mdl_site_t* site, const char* series_url, uint32_t timeout)
@@ -423,81 +267,41 @@ RA8_INTERNAL static bool snprintf_fit(int n, size_t cap)
   return (n >= 0) && ((size_t)n < cap);
 }
 
-/** @brief Package one downloaded chapter into `format`; 0 ok, 1 on failure. */
+/** @brief Package one downloaded chapter folder `chap_id` into `format`. */
 RA8_INTERNAL static size_t
-export_one(mdl_format_t format, const char* series_dir, const char* chapter_url)
-{
-  char chap[k_chap_name_bytes];
-  last_segment(chapter_url, chap, sizeof(chap));
-  const char* ext = mdl_format_ext(format);
-
-  /* Route both joins through mdl_path_join: it refuses a traversal/separator
-   * segment and a truncated (thus wrong) path rather than composing one. */
-  char      leaf[k_leaf_name_bytes];
-  const int ln = snprintf(leaf, sizeof(leaf), "%s.%s", chap, ext);
-  char      dir[k_dir_path_bytes];
-  char      out[k_dir_path_bytes];
-  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, chap, dir, sizeof(dir)) ||
-      !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
-    (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap, ext);
-    return 1U;
-  }
-
-  const ra8_err_t rc = mdl_export_chapter(format, dir, out);
-  if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "  export %s.%s FAILED (err 0x%X)\n", chap, ext, (unsigned)rc);
-    return 1U;
-  }
-  (void)printf("  packaged %s.%s\n", chap, ext);
-  return 0U;
-}
-
-/**
- * @brief Chapter-number range spanned by the slice `[start, last]`.
- * @details Taken as the min/max rather than the endpoints so a reverse-ordered
- *          chapter list still yields an ascending `<lo>-<hi>` archive name.
- * @param[in]  start First index into ::s_chapters.
- * @param[in]  last  Last index into ::s_chapters (inclusive, >= @p start).
- * @param[out] lo    Receives the lowest chapter number in the slice.
- * @param[out] hi    Receives the highest chapter number in the slice.
- * @since 0.1.0
- */
-RA8_INTERNAL static void chapter_range(size_t start, size_t last, long* lo, long* hi)
-{
-  *lo = chapter_num(s_chapters.urls[start]);
-  *hi = *lo;
-  for (size_t i = start; i <= last; ++i) {
-    const long num = chapter_num(s_chapters.urls[i]);
-    *lo            = (num < *lo) ? num : *lo;
-    *hi            = (num > *hi) ? num : *hi;
-  }
-}
-
-/**
- * @brief Package the combined chapter folder into one archive; 0 ok, 1 on error.
- * @param[in] format     Target container (never `loose` on this path).
- * @param[in] series_dir Series output directory.
- * @param[in] dir        The combined chapter folder to package.
- * @param[in] slug       Series slug used in the archive name.
- * @param[in] lo         Lowest chapter number in the slice.
- * @param[in] hi         Highest chapter number in the slice.
- * @param[in] got_ch     Chapters actually downloaded (for the summary line).
- * @return 0 on success, 1 when the export failed.
- * @since 0.1.0
- */
-RA8_INTERNAL static size_t export_combined(mdl_format_t format,
-                                           const char*  series_dir,
-                                           const char*  dir,
-                                           const char*  slug,
-                                           long         lo,
-                                           long         hi,
-                                           size_t       got_ch)
+export_one(mdl_format_t format, const char* series_dir, const char* chap_id)
 {
   const char* ext = mdl_format_ext(format);
   char        leaf[k_leaf_name_bytes];
-  const int   ln = snprintf(leaf, sizeof(leaf), "%s-%ld-%ld.%s", slug, lo, hi, ext);
+  const int   ln = snprintf(leaf, sizeof(leaf), "%s.%s", chap_id, ext);
+  char        dir[k_dir_path_bytes];
   char        out[k_dir_path_bytes];
-  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
+  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, chap_id, dir, sizeof(dir)) ||
+      !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
+    (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap_id, ext);
+    return 1U;
+  }
+  const ra8_err_t rc = mdl_export_chapter(format, dir, out);
+  if (rc != k_ra8_ok) {
+    (void)fprintf(stderr, "  export %s.%s FAILED (err 0x%X)\n", chap_id, ext, (unsigned)rc);
+    return 1U;
+  }
+  (void)printf("  packaged %s.%s\n", chap_id, ext);
+  return 0U;
+}
+
+/** @brief Package the combined chapter folder `combined_rel` into `format`. */
+RA8_INTERNAL static size_t
+export_combined_dir(mdl_format_t format, const char* series_dir, const char* combined_rel)
+{
+  const char* ext = mdl_format_ext(format);
+  char        leaf[k_leaf_name_bytes];
+  const int   ln = snprintf(leaf, sizeof(leaf), "%s.%s", combined_rel, ext);
+  char        dir[k_dir_path_bytes];
+  char        out[k_dir_path_bytes];
+  if (!snprintf_fit(ln, sizeof(leaf)) ||
+      !mdl_path_join(series_dir, combined_rel, dir, sizeof(dir)) ||
+      !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
     (void)fprintf(stderr, "  combine export path rejected under %s\n", series_dir);
     return 1U;
   }
@@ -506,171 +310,8 @@ RA8_INTERNAL static size_t export_combined(mdl_format_t format,
     (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)rc);
     return 1U;
   }
-  (void)printf("  combined %zu chapter(s) -> %s\n", got_ch, out);
+  (void)printf("  combined -> %s\n", out);
   return 0U;
-}
-
-/**
- * @brief Download one chapter into its own folder, and package it.
- *
- * @details
- * The `--separate` / `loose`-format path: each chapter gets a folder named after
- * the last URL segment, page numbering restarts at zero inside it, and (unless
- * the format is `loose`, which has no archive) the folder is exported to its own
- * archive next to the others.
- *
- * @param[in]     site       Site descriptor supplying selectors and delays.
- * @param[in]     series_url Series page URL, used as the Referer.
- * @param[in]     chapter_url URL of the chapter to download.
- * @param[in]     series_dir Absolute directory holding the per-chapter folders.
- * @param[in]     format     Output format for the per-chapter archive.
- * @param[in,out] pol        Politeness state carried across chapters.
- * @param[in]     timeout    Per-request timeout in milliseconds.
- * @return Number of failures (page fetch failures plus a failed export).
- * @retval 0 Every page fetched and the archive (if any) was written.
- *
- * @pre All pointer arguments are non-NULL.
- * @pre @p series_dir exists and is absolute.
- * @post The chapter folder exists under @p series_dir.
- * @post Page numbering inside that folder starts at zero.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static size_t download_chapter_separate(const mdl_site_t* site,
-                                                     const char*       series_url,
-                                                     const char*       chapter_url,
-                                                     const char*       series_dir,
-                                                     mdl_format_t      format,
-                                                     mdl_politeness_t* pol,
-                                                     uint32_t          timeout)
-{
-  char chap[k_chap_name_bytes];
-  last_segment(chapter_url, chap, sizeof(chap));
-  char chap_dir[k_dir_path_bytes];
-  if (!mdl_join_dir_under(series_dir, chap, chap_dir, sizeof(chap_dir))) {
-    return 1U;
-  }
-
-  size_t chap_page = 0U;
-  size_t fails =
-    download_chapter(site, series_url, chapter_url, chap_dir, &chap_page, pol, timeout);
-  if (format != k_mdl_fmt_loose) {
-    fails += export_one(format, series_dir, chapter_url);
-  }
-  return fails;
-}
-
-/** @brief Make the combined output folder under `series_dir`; 0 ok, 1 on error. */
-RA8_INTERNAL static size_t
-make_combined_dir(const char* series_dir, const char* slug, long lo, long hi, char* out, size_t cap)
-{
-  char      leaf[k_leaf_name_bytes];
-  const int n = snprintf(leaf, sizeof(leaf), "%s-%ld-%ld", slug, lo, hi);
-  if (!snprintf_fit(n, sizeof(leaf))) {
-    (void)fprintf(stderr, "  combined dir name too long under %s\n", series_dir);
-    return 1U;
-  }
-  return mdl_join_dir_under(series_dir, leaf, out, cap) ? 0U : 1U;
-}
-
-/** @brief Space (if not the first) then download one chapter; returns failures. */
-RA8_INTERNAL static size_t chapter_step(const mdl_site_t* site,
-                                        const char*       series_url,
-                                        const char*       chapter_url,
-                                        const char*       series_dir,
-                                        const char*       combined_dir,
-                                        mdl_format_t      format,
-                                        bool              one_file,
-                                        uint32_t          crawl,
-                                        bool              space,
-                                        size_t*           page_no,
-                                        mdl_politeness_t* pol,
-                                        uint32_t          timeout)
-{
-  if (space) {
-    (void)mdl_politeness_wait(pol,
-                              max_u32(site->chapter_delay_min, crawl),
-                              max_u32(site->chapter_delay_max, crawl));
-  }
-  if (one_file) {
-    return download_chapter(site, series_url, chapter_url, combined_dir, page_no, pol, timeout);
-  }
-  return download_chapter_separate(site, series_url, chapter_url, series_dir, format, pol, timeout);
-}
-
-/**
- * @brief Download `chapters` chapters from `start`; returns failure count.
- *
- * Default (`combine`) collects every downloaded chapter's pages -- numbered
- * continuously -- into one folder `series_dir/<slug>-<lo>-<hi>/` and packages it
- * into a SINGLE archive `series_dir/<slug>-<lo>-<hi>.<ext>` (lo/hi are the parsed
- * chapter-number range). `--separate` (combine == false), or a `loose` format
- * that has no archive, falls back to one folder (and one archive) per chapter.
- */
-RA8_INTERNAL static size_t download_chapters(const mdl_site_t* site,
-                                             const char*       series_url,
-                                             const char*       series_dir,
-                                             const char*       slug,
-                                             mdl_format_t      format,
-                                             bool              combine,
-                                             size_t            chapters,
-                                             size_t            start,
-                                             uint64_t          seed,
-                                             uint32_t          timeout)
-{
-  mdl_politeness_t pol;
-  mdl_politeness_init(&pol, seed);
-
-  if (start >= s_chapters.count) {
-    (void)fprintf(stderr, "media_dl: --start %zu is past the last chapter\n", start);
-    return 1U;
-  }
-
-  const bool one_file = combine && (format != k_mdl_fmt_loose);
-  size_t     last     = start + (chapters - 1U);
-  if (last >= s_chapters.count) {
-    last = s_chapters.count - 1U;
-  }
-  long lo = 0;
-  long hi = 0;
-  chapter_range(start, last, &lo, &hi);
-
-  char   combined_dir[k_dir_path_bytes];
-  size_t page_no = 0U;
-  if (one_file &&
-      (make_combined_dir(series_dir, slug, lo, hi, combined_dir, sizeof(combined_dir)) != 0U)) {
-    return 1U;
-  }
-
-  size_t got_ch = 0U;
-  size_t fails  = 0U;
-  for (size_t i = start; (i < s_chapters.count) && (got_ch < chapters); ++i) {
-    const char* curl  = s_chapters.urls[i];
-    uint32_t    crawl = 0U;
-    if (!mdl_session_url_allowed(&s_session, curl, &crawl)) {
-      continue; /* robots refused this chapter (message printed) */
-    }
-    fails += chapter_step(site,
-                          series_url,
-                          curl,
-                          series_dir,
-                          combined_dir,
-                          format,
-                          one_file,
-                          crawl,
-                          got_ch > 0U,
-                          &page_no,
-                          &pol,
-                          timeout);
-    ++got_ch;
-  }
-
-  if (one_file) {
-    fails += export_combined(format, series_dir, combined_dir, slug, lo, hi, got_ch);
-  }
-  (void)printf("done: %zu chapter(s) into %s/ (%zu failure(s))\n", got_ch, series_dir, fails);
-  return fails;
 }
 
 /** @brief Build the session UA + identity for a run; warns on missing contact. */
@@ -697,7 +338,7 @@ RA8_INTERNAL static bool prepare_series_dir(const char* out_dir,
                                             size_t      slug_cap,
                                             char*       abs_dir)
 {
-  last_segment(series_url, slug, slug_cap);
+  mdl_urlname_last_segment(series_url, slug, slug_cap);
   char series_dir[k_dir_path_bytes];
   if (!mdl_path_join(out_dir, slug, series_dir, sizeof(series_dir))) {
     (void)fprintf(stderr, "media_dl: cannot build series dir for slug '%s'\n", slug);
@@ -705,8 +346,6 @@ RA8_INTERNAL static bool prepare_series_dir(const char* out_dir,
   }
   (void)mkdir(out_dir, (mode_t)k_dir_mode);
   (void)mkdir(series_dir, (mode_t)k_dir_mode);
-  /* Archive export spawns the archiver with cwd set to the chapter dir, so the
-   * output paths must be absolute -- resolve the series dir now that it exists. */
   if (realpath(series_dir, abs_dir) == nullptr) {
     (void)fprintf(stderr, "media_dl: cannot resolve %s\n", series_dir);
     return false;
@@ -714,67 +353,333 @@ RA8_INTERNAL static bool prepare_series_dir(const char* out_dir,
   return true;
 }
 
-/** @brief series mode: config + series URL -> download N chapters. */
-RA8_INTERNAL static int run_series(const char*           cfg_path,
-                                   const char*           series_url,
-                                   const char*           out_dir,
-                                   mdl_format_t          format,
-                                   bool                  combine,
-                                   size_t                chapters,
-                                   size_t                start,
-                                   uint64_t              seed,
-                                   uint32_t              timeout,
-                                   const mdl_run_opts_t* opts)
+/** @brief Chapter-number span [lo,hi] of a selected chapter list. */
+RA8_INTERNAL static void list_range(const mdl_url_list_t* l, long* lo, long* hi)
+{
+  *lo = 0;
+  *hi = 0;
+  if (l->count == 0U) {
+    return;
+  }
+  *lo = mdl_urlname_chapter_number(l->urls[0]);
+  *hi = *lo;
+  for (size_t i = 0U; i < l->count; ++i) {
+    const long num = mdl_urlname_chapter_number(l->urls[i]);
+    *lo            = (num < *lo) ? num : *lo;
+    *hi            = (num > *hi) ? num : *hi;
+  }
+}
+
+/** @brief Copy the `[from, from+count)` chapter window out of ::s_chapters. */
+RA8_INTERNAL static void
+select_window(bool from_present, long from_num, size_t count, mdl_url_list_t* out)
+{
+  size_t start = 0U;
+  if (from_present) {
+    while ((start < s_chapters.count) &&
+           (mdl_urlname_chapter_number(s_chapters.urls[start]) < from_num)) {
+      ++start;
+    }
+  }
+  out->count = 0U;
+  for (size_t i = start; (i < s_chapters.count) && (out->count < count); ++i) {
+    memcpy(out->urls[out->count], s_chapters.urls[i], k_mdl_url_max);
+    out->count += 1U;
+  }
+}
+
+/** @brief Absolute path of a series' `.mdl_state` file; false if too long. */
+RA8_INTERNAL static bool state_path_of(const char* abs_dir, char* out, size_t cap)
+{
+  const int n = snprintf(out, cap, "%s/.mdl_state", abs_dir);
+  return snprintf_fit(n, cap);
+}
+
+/** @brief Export every chapter in `sel` that completed at/after `run_start`. */
+RA8_INTERNAL static size_t export_fresh_separate(mdl_format_t          format,
+                                                 const char*           abs_dir,
+                                                 const mdl_url_list_t* sel,
+                                                 int64_t               run_start)
+{
+  size_t fails = 0U;
+  for (size_t i = 0U; i < sel->count; ++i) {
+    char id[k_mdl_chapter_id_max];
+    mdl_urlname_last_segment(sel->urls[i], id, sizeof(id));
+    const mdl_chapter_rec_t* rec = mdl_state_find_chapter(&s_state, id);
+    if ((rec != nullptr) && rec->complete && (rec->fetched_at >= run_start)) {
+      fails += export_one(format, abs_dir, id);
+    }
+  }
+  return fails;
+}
+
+/** @brief Print the per-run download tally line. */
+RA8_INTERNAL static void report_stats(const char* abs_dir, const mdl_fetch_stats_t* st)
+{
+  (void)printf("done into %s/: %zu chapter(s) fetched, %zu skipped, %zu failed; "
+               "pages %zu new / %zu reused / %zu failed\n",
+               abs_dir,
+               st->chapters_completed,
+               st->chapters_skipped,
+               st->chapters_failed,
+               st->pages_fetched,
+               st->pages_reused,
+               st->pages_failed);
+}
+
+/**
+ * @struct series_run_t
+ * @brief The parameters of one series download, bundled for the run entry point.
+ * @details Keeps ::run_series to a single options pointer rather than a long,
+ *          error-prone positional parameter list (the library `--update-all`
+ *          path reuses the same struct).
+ * @since 0.1.0
+ */
+typedef struct {
+  const char*           cfg_path;     /**< Site descriptor path.          */
+  const char*           series_url;   /**< Series page URL.               */
+  const char*           out_dir;      /**< Output library root.           */
+  mdl_format_t          format;       /**< Output container.              */
+  bool                  combine;      /**< Combine into one archive.      */
+  bool                  update;       /**< Incremental (skip complete).   */
+  bool                  from_present; /**< Whether @ref from_num applies. */
+  long                  from_num;     /**< First chapter number to fetch. */
+  size_t                chapters;     /**< Max chapters (window mode).    */
+  uint64_t              seed;         /**< Politeness jitter seed.        */
+  uint32_t              timeout;      /**< Per-request budget, ms.        */
+  const mdl_run_opts_t* opts;         /**< Identity/security knobs.       */
+} series_run_t;
+
+/** @brief Choose the layout + combined dir name for a series run. */
+RA8_INTERNAL static mdl_fetch_layout_t choose_layout(const series_run_t*   r,
+                                                     const mdl_url_list_t* sel,
+                                                     char*                 combined_rel,
+                                                     size_t                cap,
+                                                     const char*           slug)
+{
+  combined_rel[0] = '\0';
+  if (r->update || !r->combine || (r->format == k_mdl_fmt_loose)) {
+    return k_mdl_layout_separate;
+  }
+  long lo = 0;
+  long hi = 0;
+  list_range(sel, &lo, &hi);
+  (void)snprintf(combined_rel, cap, "%s-%ld-%ld", slug, lo, hi);
+  return k_mdl_layout_combined;
+}
+
+/** @brief Assemble the fetch context for one series run over the shared buffers. */
+RA8_INTERNAL static mdl_fetch_ctx_t make_ctx(const series_run_t* r,
+                                             const mdl_site_t*   site,
+                                             const char*         abs_dir,
+                                             const char*         state_path,
+                                             mdl_politeness_t*   pol)
+{
+  return (mdl_fetch_ctx_t){.session        = &s_session,
+                           .state          = &s_state,
+                           .state_path     = state_path,
+                           .series_abs_dir = abs_dir,
+                           .series_url     = r->series_url,
+                           .site           = site,
+                           .pol            = pol,
+                           .timeout_ms     = r->timeout,
+                           .page_buf       = s_page,
+                           .page_cap       = sizeof(s_page),
+                           .images         = &s_images,
+                           .update_only    = r->update};
+}
+
+/** @brief Package the freshly-downloaded output; returns the export-failure count. */
+RA8_INTERNAL static size_t export_after(const series_run_t*      r,
+                                        const char*              abs_dir,
+                                        mdl_fetch_layout_t       layout,
+                                        const char*              combined_rel,
+                                        const mdl_url_list_t*    sel,
+                                        const mdl_fetch_stats_t* stats,
+                                        int64_t                  run_start)
+{
+  if (r->format == k_mdl_fmt_loose) {
+    return 0U;
+  }
+  if (layout == k_mdl_layout_combined) {
+    return (stats->chapters_completed > 0U) ? export_combined_dir(r->format, abs_dir, combined_rel)
+                                            : 0U;
+  }
+  return export_fresh_separate(r->format, abs_dir, sel, run_start);
+}
+
+/** @brief Drive one prepared series through the fetch orchestrator + export. */
+RA8_INTERNAL static int run_prepared(const series_run_t* r,
+                                     const mdl_site_t*   site,
+                                     const char*         abs_dir,
+                                     const char*         slug,
+                                     const char*         state_path)
+{
+  const mdl_url_list_t* sel = &s_chapters;
+  if (!r->update) {
+    select_window(r->from_present, r->from_num, r->chapters, &s_selected);
+    sel = &s_selected;
+    if (sel->count == 0U) {
+      (void)fprintf(stderr, "media_dl: no chapters match the requested range\n");
+      return 1;
+    }
+  }
+  char               combined_rel[k_leaf_name_bytes];
+  mdl_fetch_layout_t layout = choose_layout(r, sel, combined_rel, sizeof(combined_rel), slug);
+
+  mdl_politeness_t pol;
+  mdl_politeness_init(&pol, r->seed);
+  mdl_fetch_ctx_t   ctx       = make_ctx(r, site, abs_dir, state_path, &pol);
+  const int64_t     run_start = (int64_t)time(nullptr);
+  mdl_fetch_stats_t stats;
+  const ra8_err_t   frc = mdl_fetch_run(&ctx,
+                                        sel,
+                                        layout,
+                                        (layout == k_mdl_layout_combined) ? combined_rel : nullptr,
+                                        &stats);
+  (void)mdl_state_save(state_path, &s_state);
+  report_stats(abs_dir, &stats);
+  const size_t efail = export_after(r, abs_dir, layout, combined_rel, sel, &stats, run_start);
+  return ((frc == k_ra8_ok) && (efail == 0U)) ? 0 : 1;
+}
+
+/** @brief series mode: config + series URL -> chapter selection -> download. */
+RA8_INTERNAL static int run_series(const series_run_t* r)
 {
   mdl_site_t site;
-  if (mdl_config_load(cfg_path, &site) != k_ra8_ok) {
+  if (mdl_config_load(r->cfg_path, &site) != k_ra8_ok) {
     return 1;
   }
-  if (opts->polite) {
+  if (r->opts->polite) {
     apply_polite(&site);
   }
   (void)printf("site: %s (host %s, kind %s)\n", site.name, site.host, site.kind);
 
-  mdl_net_iface_t* net = mdl_net_curl_create(&opts->policy);
+  mdl_net_iface_t* net = mdl_net_curl_create(&r->opts->policy);
   if (net == nullptr) {
     (void)fprintf(stderr, "media_dl: network init failed\n");
     return 1;
   }
   char ua[k_mdl_ua_max];
-  start_session(net, opts, site.contact, ua, sizeof(ua));
+  start_session(net, r->opts, site.contact, ua, sizeof(ua));
 
-  ra8_err_t rc = prepare_chapters(&site, series_url, timeout);
-  if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "media_dl: series fetch failed (err 0x%X)\n", (unsigned)rc);
-    mdl_net_destroy(net);
-    return 1;
-  }
-  (void)printf("chapters found: %zu\n", s_chapters.count);
-  if (s_chapters.count == 0U) {
+  int rc = 1;
+  if (prepare_chapters(&site, r->series_url, r->timeout) != k_ra8_ok) {
+    (void)fprintf(stderr, "media_dl: series fetch failed\n");
+  } else if (s_chapters.count == 0U) {
     (void)fprintf(stderr, "media_dl: no chapters (check chapter_url_contains)\n");
-    mdl_net_destroy(net);
-    return 1;
+  } else {
+    (void)printf("chapters found: %zu\n", s_chapters.count);
+    char slug[k_slug_bytes];
+    char abs_dir[PATH_MAX];
+    char state_path[PATH_MAX];
+    if (prepare_series_dir(r->out_dir, r->series_url, slug, sizeof(slug), abs_dir) &&
+        state_path_of(abs_dir, state_path, sizeof(state_path))) {
+      (void)mdl_state_load(state_path, &s_state); /* corrupt -> rebuild (message printed) */
+      mdl_state_set_series(&s_state, r->series_url, slug, site.name, site.host, r->cfg_path);
+      rc = run_prepared(r, &site, abs_dir, slug, state_path);
+    }
   }
-
-  char series_slug[k_slug_bytes];
-  char abs_series_dir[PATH_MAX];
-  if (!prepare_series_dir(out_dir, series_url, series_slug, sizeof(series_slug), abs_series_dir)) {
-    mdl_net_destroy(net);
-    return 1;
-  }
-
-  const size_t fails = download_chapters(&site,
-                                         series_url,
-                                         abs_series_dir,
-                                         series_slug,
-                                         format,
-                                         combine,
-                                         chapters,
-                                         start,
-                                         seed,
-                                         timeout);
   mdl_net_destroy(net);
-  return (fails == 0U) ? 0 : 1;
+  return rc;
+}
+
+/** @brief `--list`: print one tracked series' URL and coverage summary. */
+RA8_INTERNAL static ra8_err_t list_cb(const char* series_dir, const char* state_path, void* ctx)
+{
+  size_t* n = (size_t*)ctx;
+  *n += 1U;
+  if (mdl_state_load(state_path, &s_state) != k_ra8_ok) {
+    (void)printf("  %s\n    (state file unreadable)\n", series_dir);
+    return k_ra8_ok;
+  }
+  char cov[k_cov_bytes];
+  mdl_state_coverage(&s_state, cov, sizeof(cov));
+  (void)printf("  %s\n    url: %s\n    %s\n",
+               series_dir,
+               (s_state.series_url[0] != '\0') ? s_state.series_url : "(unknown)",
+               cov);
+  return k_ra8_ok;
+}
+
+/** @brief `--list`: enumerate tracked series under `out_dir`. */
+RA8_INTERNAL static int run_list(const char* out_dir)
+{
+  size_t          n  = 0U;
+  const ra8_err_t rc = mdl_library_for_each(out_dir, list_cb, &n);
+  if (n == 0U) {
+    (void)printf("no tracked series under %s\n", out_dir);
+  }
+  return (rc == k_ra8_ok) ? 0 : 1;
+}
+
+/** @brief `--remove`: drop the series whose slug matches `url_or_slug`. */
+RA8_INTERNAL static int run_remove(const char* out_dir, const char* url_or_slug)
+{
+  char slug[k_slug_bytes];
+  mdl_urlname_last_segment(url_or_slug, slug, sizeof(slug));
+  char dir[k_dir_path_bytes];
+  if (!mdl_path_join(out_dir, slug, dir, sizeof(dir))) {
+    (void)fprintf(stderr, "media_dl: cannot resolve series '%s'\n", url_or_slug);
+    return 1;
+  }
+  if (mdl_library_remove_tree(dir) != k_ra8_ok) {
+    (void)fprintf(stderr, "media_dl: failed to remove %s\n", dir);
+    return 1;
+  }
+  (void)printf("removed %s\n", dir);
+  return 0;
+}
+
+/**
+ * @struct update_all_ctx_t
+ * @brief Context threaded through ::update_all_cb for `--update-all`.
+ * @since 0.1.0
+ */
+typedef struct {
+  const series_run_t* base;    /**< Template run (format/knobs); url filled per series. */
+  size_t              updated; /**< Count of series updated.                            */
+} update_all_ctx_t;
+
+/** @brief `--update-all`: run an incremental update of one tracked series. */
+RA8_INTERNAL static ra8_err_t
+update_all_cb(const char* series_dir, const char* state_path, void* ctx)
+{
+  update_all_ctx_t* p = (update_all_ctx_t*)ctx;
+  if (mdl_state_load(state_path, &s_state) != k_ra8_ok) {
+    (void)printf("skip %s (state file unreadable)\n", series_dir);
+    return k_ra8_ok;
+  }
+  char url[k_mdl_url_max];
+  char cfg[k_mdl_cfgpath_max];
+  (void)snprintf(url, sizeof(url), "%s", s_state.series_url);
+  (void)snprintf(cfg,
+                 sizeof(cfg),
+                 "%s",
+                 (s_state.config_path[0] != '\0') ? s_state.config_path : p->base->cfg_path);
+  if ((url[0] == '\0') || (cfg[0] == '\0')) {
+    (void)printf("skip %s (no series URL / descriptor recorded)\n", series_dir);
+    return k_ra8_ok;
+  }
+  (void)printf("updating %s\n", url);
+  series_run_t run = *p->base;
+  run.series_url   = url;
+  run.cfg_path     = cfg;
+  run.update       = true;
+  (void)run_series(&run);
+  p->updated += 1U;
+  return k_ra8_ok;
+}
+
+/** @brief `--update-all`: incrementally update every tracked series. */
+RA8_INTERNAL static int run_update_all(const series_run_t* base)
+{
+  update_all_ctx_t c  = {.base = base, .updated = 0U};
+  const ra8_err_t  rc = mdl_library_for_each(base->out_dir, update_all_cb, &c);
+  if (c.updated == 0U) {
+    (void)printf("no tracked series to update under %s\n", base->out_dir);
+  }
+  return (rc == k_ra8_ok) ? 0 : 1;
 }
 
 /** @brief Gate, space, and download one page-mode image; 0 ok, 1 on skip/fail. */
@@ -791,9 +696,10 @@ RA8_INTERNAL static size_t download_page_image(const char*       url,
     return 1U;
   }
   (void)mdl_politeness_wait(pol, max_u32(dmin, crawl), max_u32(dmax, crawl));
+  char ext[k_ext_bytes];
+  mdl_urlname_ext(s_images.urls[idx], ext, sizeof(ext));
   char path[k_file_path_bytes];
-  (void)
-    snprintf(path, sizeof(path), "%s/page_%03zu.%s", out_dir, idx + 1U, ext_of(s_images.urls[idx]));
+  (void)snprintf(path, sizeof(path), "%s/page_%03zu.%s", out_dir, idx + 1U, ext);
   const mdl_net_req_t ir  = {.user_agent = s_session.user_agent,
                              .referer    = url,
                              .timeout_ms = timeout};
@@ -888,10 +794,7 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
   }
   const char* ext = mdl_format_ext(format);
   char        out[PATH_MAX];
-  /* `abs` is itself PATH_MAX, so appending ".<ext>" can overrun `out`.
-   * snprintf would silently truncate and we would then package the chapter
-   * into a path that is not the one asked for; report it instead. */
-  const int n = snprintf(out, sizeof(out), "%s.%s", abs, ext);
+  const int   n = snprintf(out, sizeof(out), "%s.%s", abs, ext);
   if ((n < 0) || ((size_t)n >= sizeof(out))) {
     (void)fprintf(stderr, "media_dl: output path for '%s' is too long\n", dir);
     return 1;
@@ -905,10 +808,53 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
   return 0;
 }
 
+/** @brief Assemble a ::series_run_t from parsed args + derived scalars. */
+RA8_INTERNAL static series_run_t build_run(const mdl_args_t*     a,
+                                           mdl_format_t          format,
+                                           const mdl_run_opts_t* opts,
+                                           uint64_t              seed,
+                                           uint32_t              timeout)
+{
+  size_t chapters = (size_t)to_ul(a->chapters, 1UL);
+  if (chapters == 0U) {
+    chapters = 1U;
+  }
+  return (series_run_t){.cfg_path     = a->cfg,
+                        .series_url   = a->series,
+                        .out_dir      = a->out,
+                        .format       = format,
+                        .combine      = !a->separate,
+                        .update       = a->update,
+                        .from_present = (a->from != nullptr),
+                        .from_num =
+                          (a->from == nullptr) ? 0L : strtol(a->from, nullptr, k_dec_base),
+                        .chapters = chapters,
+                        .seed     = seed,
+                        .timeout  = timeout,
+                        .opts     = opts};
+}
+
+/** @brief Dispatch a library command (`--list`/`--remove`/`--update-all`). */
+RA8_INTERNAL static int run_library(const mdl_args_t* a, const series_run_t* run)
+{
+  if (a->list) {
+    return run_list(a->out);
+  }
+  if (a->remove_series != nullptr) {
+    return run_remove(a->out, a->remove_series);
+  }
+  if (a->cfg == nullptr) {
+    (void)fprintf(stderr, "media_dl: --update-all requires --config SITE.conf\n");
+    return 2;
+  }
+  return run_update_all(run);
+}
+
 /**
  * @brief Program entry point: parse the command line and select a run mode.
- * @details Dispatches to pack mode (`--pack`), series mode (`--config` +
- *          `--series`), or single-page mode (a bare URL), in that precedence.
+ * @details Dispatches to a library command (`--list`/`--remove`/`--update-all`),
+ *          pack mode (`--pack`), series mode (`--config` + `--series`), or
+ *          single-page mode (a bare URL), in that precedence.
  * @param[in] argc Argument count.
  * @param[in] argv Argument vector.
  * @return 0 on success, 1 on a download/export failure, 2 on a usage error.
@@ -931,7 +877,6 @@ int main(int argc, char** argv)
 
   const uint64_t       seed    = (a.seed == nullptr) ? 1UL : strtoull(a.seed, nullptr, k_dec_base);
   const uint32_t       timeout = (uint32_t)to_ul(a.timeout, (unsigned long)k_req_timeout_def);
-  const size_t         start   = (size_t)to_ul(a.start, 0UL);
   const mdl_run_opts_t opts    = mdl_cli_run_opts(&a);
 
   const mdl_format_t format = mdl_format_from_str(a.format);
@@ -943,29 +888,20 @@ int main(int argc, char** argv)
     return 2;
   }
 
+  const series_run_t run = build_run(&a, format, &opts, seed, timeout);
+
+  if (a.list || (a.remove_series != nullptr) || a.update_all) {
+    return run_library(&a, &run);
+  }
   if (a.pack != nullptr) {
     return run_pack(a.pack, format);
   }
-
   if (a.cfg != nullptr) {
     if (a.series == nullptr) {
       (void)fprintf(stderr, "media_dl: --config requires --series URL\n");
       return 2;
     }
-    size_t chapters = (size_t)to_ul(a.chapters, 1UL);
-    if (chapters == 0U) {
-      chapters = 1U;
-    }
-    return run_series(a.cfg,
-                      a.series,
-                      a.out,
-                      format,
-                      !a.separate,
-                      chapters,
-                      start,
-                      seed,
-                      timeout,
-                      &opts);
+    return run_series(&run);
   }
   if (a.page_url != nullptr) {
     const uint32_t max_imgs = (uint32_t)to_ul(a.max, 0UL);
