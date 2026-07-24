@@ -258,6 +258,11 @@ def build_specs() -> list[ToolSpec]:
         # `gcc-14 --version` prints a dotted "14.2.0"; `-dumpversion` prints a
         # bare "14" the dotted-token parser would reject, so keep the default.
         ToolSpec(f"gcc-{gc}", gc, MODE_MAJOR, f"gcc-{gc}"),
+        # g++-14 is gcc-14's C++ half. The host-test and coverage builds
+        # enable_language(CXX), and the gcc-first selector picks gcc-14; a
+        # gcc-14 without g++-14 sank the coverage gate for hours. Pin the pair
+        # so every environment (devcontainer, runner pod, bare-metal) has both.
+        ToolSpec(f"g++-{gc}", gc, MODE_MAJOR, f"g++-{gc}"),
         _spec(args, "gcovr", "GCOVR_VERSION", MODE_MIN_MAJOR, _gcovr_floor),
     ]
 
