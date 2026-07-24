@@ -14,6 +14,7 @@
  */
 
 #include "ra8_drw.h"
+#include "ra8_drw_dlist.h"
 #include "ra8_drw_internal.h"
 #include "ra8_drw_regs.h"
 #include "ra8_err.h"
@@ -494,6 +495,261 @@ static void test_run_dlist(void)
 }
 
 /* =============================================================================
+ * Display-list builder
+ * =============================================================================
+ */
+
+/**
+ * @enum drw_dlist_expect_t
+ * @brief Bench-observed on-wire words the builder must emit, as literals.
+ *
+ * @details
+ * Independent of the builder's own encoding constants so a wrong register
+ * index or tag bit is caught. These are the exact words a J-Link savebin read
+ * back from the EK-RA8D2 display list (issue #247).
+ */
+typedef enum : uint32_t {
+  k_drw_dl_tag_color1  = 0x80808019UL, /**< 1-index tag, COLOR1 (idx 25).   */
+  k_drw_dl_tag_size    = 0x8080801EUL, /**< 1-index tag, SIZE (idx 30).     */
+  k_drw_dl_tag_control = 0x80808000UL, /**< 1-index tag, CONTROL (idx 0).   */
+  k_drw_dl_tag_origin  = 0x80808020UL, /**< 1-index tag, ORIGIN (idx 32).   */
+  k_drw_dl_wait        = 0x000002FFUL, /**< Wait pipe+cache word.           */
+  k_drw_dl_term        = 0x000003FFUL, /**< Terminate word.                 */
+  k_drw_dl_words       = 19UL,         /**< Clear+fill list length.         */
+  k_drw_dl_clear_dim   = 32UL,         /**< Clear rect width/height.        */
+  k_drw_dl_clear_color = 0x00000000UL, /**< Clear colour (transparent).     */
+  k_drw_dl_box_xy      = 8UL,          /**< Box top-left.                   */
+  k_drw_dl_box_wh      = 16UL,         /**< Box width/height.               */
+  k_drw_dl_cap         = 32UL,         /**< Builder buffer capacity words.  */
+  k_drw_dl_tiny_cap    = 8UL,          /**< Too small for one 9-word fill.  */
+  k_drw_dl_fill_cap    = 9UL,          /**< One fill, no room for the term. */
+} drw_dlist_expect_t;
+
+/** @brief Build a clear+fill display list into @p buf; return the word count. */
+static uint32_t build_clear_fill(uint32_t* buf, uint32_t cap)
+{
+  ra8_drw_dlist_t dl;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_begin(&dl, buf, cap));
+  const ra8_drw_rect_t clear = {.x              = 0,
+                                .y              = 0,
+                                .width_px       = (uint16_t)k_drw_dl_clear_dim,
+                                .height_px      = (uint16_t)k_drw_dl_clear_dim,
+                                .color_argb8888 = (uint32_t)k_drw_dl_clear_color};
+  const ra8_drw_rect_t box   = {.x              = (int16_t)k_drw_dl_box_xy,
+                                .y              = (int16_t)k_drw_dl_box_xy,
+                                .width_px       = (uint16_t)k_drw_dl_box_wh,
+                                .height_px      = (uint16_t)k_drw_dl_box_wh,
+                                .color_argb8888 = (uint32_t)k_ra8_drw_test_rect_color};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_add_fill(&dl, &clear));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_add_fill(&dl, &box));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_end(&dl));
+  return dl.count;
+}
+
+/** @brief Assert @p buf holds the exact bench-observed clear+fill words. */
+static void assert_clear_fill_words(const uint32_t* buf)
+{
+  const uint32_t clear_size = ((uint32_t)k_drw_dl_clear_dim << 16U) | (uint32_t)k_drw_dl_clear_dim;
+  const uint32_t box_size   = ((uint32_t)k_drw_dl_box_wh << 16U) | (uint32_t)k_drw_dl_box_wh;
+  const uint32_t box_origin =
+    (uint32_t)k_ra8_drw_test_fb_addr_lo +
+    ((((uint32_t)k_drw_dl_box_xy * (uint32_t)k_ra8_drw_test_pitch_px) + (uint32_t)k_drw_dl_box_xy) *
+     (uint32_t)k_ra8_drw_bytes_px_32bpp);
+  const uint32_t want[k_drw_dl_words] = {
+    k_drw_dl_tag_color1,
+    k_drw_dl_clear_color,
+    k_drw_dl_tag_size,
+    clear_size,
+    k_drw_dl_tag_control,
+    0U,
+    k_drw_dl_tag_origin,
+    k_ra8_drw_test_fb_addr_lo,
+    k_drw_dl_wait,
+    k_drw_dl_tag_color1,
+    k_ra8_drw_test_rect_color,
+    k_drw_dl_tag_size,
+    box_size,
+    k_drw_dl_tag_control,
+    0U,
+    k_drw_dl_tag_origin,
+    box_origin,
+    k_drw_dl_wait,
+    k_drw_dl_term,
+  };
+  for (uint32_t i = 0U; i < (uint32_t)k_drw_dl_words; ++i) {
+    TEST_ASSERT_EQ(want[i], buf[i]);
+  }
+}
+
+/**
+ * @brief Build a clear+fill display list and assert the exact on-wire words.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- asserts the emitted encoding of the
+ * public builder API against literal bench-observed words)
+ */
+static void test_dlist_build_encoding(void)
+{
+  TEST_BEGIN("drw dlist build encoding");
+  prep();
+  const ra8_drw_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
+
+  uint32_t buf[k_drw_dl_cap] = {};
+  TEST_ASSERT_EQ(k_drw_dl_words, build_clear_fill(buf, (uint32_t)k_drw_dl_cap));
+  assert_clear_fill_words(buf);
+  TEST_END("drw dlist build encoding");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises begin/add_fill/end reject
+ * contracts; the reused rect predicates are covered by their own MC/DC cases)
+ */
+static void test_dlist_begin_add_rejects(void)
+{
+  TEST_BEGIN("drw dlist begin/add rejects");
+  prep();
+  const ra8_drw_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
+
+  uint32_t        buf[k_drw_dl_cap] = {};
+  ra8_drw_dlist_t dl;
+  /* begin rejects. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_drw_dlist_begin(nullptr, buf, (uint32_t)k_drw_dl_cap));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_drw_dlist_begin(&dl, nullptr, (uint32_t)k_drw_dl_cap));
+  uint32_t* unaligned = (uint32_t*)(uintptr_t)(k_ra8_drw_test_dlist_addr | 0x1UL);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_drw_dlist_begin(&dl, unaligned, (uint32_t)k_drw_dl_cap));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_dlist_begin(&dl, buf, 0U));
+
+  /* add_fill rejects. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_begin(&dl, buf, (uint32_t)k_drw_dl_cap));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_drw_dlist_add_fill(&dl, nullptr));
+  const ra8_drw_rect_t zero = {.x              = 0,
+                               .y              = 0,
+                               .width_px       = 0U,
+                               .height_px      = (uint16_t)k_drw_dl_box_wh,
+                               .color_argb8888 = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_dlist_add_fill(&dl, &zero));
+  const ra8_drw_rect_t big = {
+    .x              = 0,
+    .y              = 0,
+    .width_px       = (uint16_t)k_ra8_drw_test_too_big_dim,
+    .height_px      = (uint16_t)k_drw_dl_box_wh,
+    .color_argb8888 = 0U,
+  };
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_dlist_add_fill(&dl, &big));
+  const ra8_drw_rect_t offs = {.x              = -1,
+                               .y              = 0,
+                               .width_px       = (uint16_t)k_drw_dl_box_wh,
+                               .height_px      = (uint16_t)k_drw_dl_box_wh,
+                               .color_argb8888 = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_dlist_add_fill(&dl, &offs));
+  TEST_END("drw dlist begin/add rejects");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- exercises the single-condition capacity guard in
+ * add_fill and end, and the overflow latch)
+ */
+static void test_dlist_overflow(void)
+{
+  TEST_BEGIN("drw dlist overflow");
+  prep();
+  const ra8_drw_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
+
+  /* A single fill needs 9 words; a smaller buffer cannot hold one. */
+  uint32_t        tiny[k_drw_dl_tiny_cap] = {};
+  ra8_drw_dlist_t dl;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_begin(&dl, tiny, (uint32_t)k_drw_dl_tiny_cap));
+  const ra8_drw_rect_t box = {
+    .x              = (int16_t)k_drw_dl_box_xy,
+    .y              = (int16_t)k_drw_dl_box_xy,
+    .width_px       = (uint16_t)k_drw_dl_box_wh,
+    .height_px      = (uint16_t)k_drw_dl_box_wh,
+    .color_argb8888 = (uint32_t)k_ra8_drw_test_rect_color,
+  };
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_drw_dlist_add_fill(&dl, &box));
+  TEST_ASSERT(dl.overflow);
+  TEST_ASSERT_EQ(0, dl.count);
+  /* end refuses an overflowed builder. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_dlist_end(&dl));
+
+  /* A buffer that fits one fill but not the terminator: end returns no_mem. */
+  uint32_t        exact[k_drw_dl_fill_cap] = {};
+  ra8_drw_dlist_t dl2;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_begin(&dl2, exact, (uint32_t)k_drw_dl_fill_cap));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_add_fill(&dl2, &box));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_drw_dlist_end(&dl2));
+  TEST_ASSERT(dl2.overflow);
+  TEST_END("drw dlist overflow");
+}
+
+/**
+ * @test drw dlist run MC/DC
+ *
+ * @par MC/DC:
+ * libs/ra8_hal/src/ra8_drw_draw.c@ra8_drw_dlist_run
+ * Decision: `if (dl->overflow || !dl->terminated || (dl->count == 0U))`
+ * (3 conditions A=overflow, B=!terminated, C=count==0)
+ * - V1: overflow=F, terminated=T, count>0 -> F (runs; control, all false)
+ * - V2: overflow=T, terminated=T, count>0 -> T (varies A)
+ * - V3: overflow=F, terminated=F, count>0 -> T (varies B)
+ * - V4: overflow=F, terminated=T, count=0 -> T (varies C)
+ * V1+V2 prove A, V1+V3 prove B, V1+V4 prove C. N+1 = 4 vectors.
+ */
+static void test_mcdc_dlist_run(void)
+{
+  TEST_BEGIN("drw MC/DC: dlist_run OR");
+  prep();
+  const ra8_drw_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
+
+  uint32_t buf[k_drw_dl_cap] = {};
+  buf[0]                     = (uint32_t)k_drw_dl_term;
+
+  /* V1: valid, terminated, non-empty -> runs and writes DLISTSTART. */
+  ra8_drw_dlist_t v1 = {.buf        = buf,
+                        .cap_words  = (uint32_t)k_drw_dl_cap,
+                        .count      = 1U,
+                        .overflow   = false,
+                        .terminated = true};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_run(&v1));
+  const uint32_t expected_dliststart = (uint32_t)(uintptr_t)buf;
+  TEST_ASSERT_EQ(expected_dliststart, *ra8_drw_reg32(k_ra8_drw_off_dliststart));
+
+  /* V2: overflow set (varies A). */
+  ra8_drw_dlist_t v2 = {.buf        = buf,
+                        .cap_words  = (uint32_t)k_drw_dl_cap,
+                        .count      = 1U,
+                        .overflow   = true,
+                        .terminated = true};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_dlist_run(&v2));
+
+  /* V3: not terminated (varies B). */
+  ra8_drw_dlist_t v3 = {.buf        = buf,
+                        .cap_words  = (uint32_t)k_drw_dl_cap,
+                        .count      = 1U,
+                        .overflow   = false,
+                        .terminated = false};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_dlist_run(&v3));
+
+  /* V4: empty (varies C). */
+  ra8_drw_dlist_t v4 = {.buf        = buf,
+                        .cap_words  = (uint32_t)k_drw_dl_cap,
+                        .count      = 0U,
+                        .overflow   = false,
+                        .terminated = true};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_dlist_run(&v4));
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_drw_dlist_run(nullptr));
+  TEST_END("drw MC/DC: dlist_run OR");
+}
+
+/* =============================================================================
  * Performance counters
  * =============================================================================
   *
@@ -687,6 +943,10 @@ int32_t main(void)
   test_draw_line();
   test_draw_triangle();
   test_run_dlist();
+  test_dlist_build_encoding();
+  test_dlist_begin_add_rejects();
+  test_dlist_overflow();
+  test_mcdc_dlist_run();
   test_perf_arm_read_reset();
   test_mcdc_drw();
   test_mcdc_drw_internal_rect_below_min();
