@@ -94,7 +94,7 @@ RA8_INTERNAL static bool copy_file(const char* src, const char* dst)
   return ok;
 }
 
-/** @brief Compose the `page_NNNN.<ext>` leaf for one page; false if it overran. */
+/** @brief Compose the `page_NNNN.ext` leaf for one page; false if it overran. */
 RA8_INTERNAL static bool page_leaf(size_t page_no, const char* url, char* out, size_t cap)
 {
   char ext[8];
