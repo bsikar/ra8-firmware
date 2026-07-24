@@ -136,6 +136,7 @@ add_executable(
   src/mdl_robots.c
   src/mdl_extract.c
   src/mdl_config.c
+  src/mdl_politeness.c
   src/mdl_export.c
   src/mdl_export_jof.c
   ${MDL_JOF_SRC}
@@ -259,3 +260,22 @@ target_include_directories(
 target_compile_definitions(test_media_dl_fetch PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
 target_compile_options(test_media_dl_fetch PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_fetch COMMAND test_media_dl_fetch)
+
+# #301 governor tests: the per-host politeness governor (token-bucket rate
+# limiting, exponential backoff + jitter on 429/503, Retry-After honouring in
+# both forms, and the per-host in-flight cap) driven entirely through the
+# injectable clock/sleep seams -- no network, no real time. The governor lives
+# in mdl_politeness.c and is self-contained, so this binary links only that unit.
+add_executable(
+  test_media_dl_governor
+  tests/test_media_dl_governor.c
+  src/mdl_politeness.c
+)
+target_include_directories(
+  test_media_dl_governor
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+)
+target_compile_definitions(test_media_dl_governor PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_options(test_media_dl_governor PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_media_dl_governor COMMAND test_media_dl_governor)

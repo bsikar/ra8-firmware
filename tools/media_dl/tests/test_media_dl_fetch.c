@@ -42,12 +42,13 @@
 
 /** @brief Named constants for the fetch tests (no bare literals). */
 typedef enum : uint16_t {
-  k_map_max     = 8,    /**< Chapter->HTML map slots.       */
-  k_html_bytes  = 512,  /**< Per-chapter HTML buffer bytes. */
-  k_page_bytes  = 8192, /**< Chapter-HTML scratch bytes.    */
-  k_tmpl_bytes  = 64,   /**< mkdtemp template bytes.        */
-  k_req_timeout = 1000, /**< Per-request budget, ms.        */
-  k_list_max    = 8,    /**< Chapter URLs in a scenario.    */
+  k_map_max          = 8,    /**< Chapter->HTML map slots.                      */
+  k_html_bytes       = 512,  /**< Per-chapter HTML buffer bytes.                */
+  k_page_bytes       = 8192, /**< Chapter-HTML scratch bytes.                   */
+  k_tmpl_bytes       = 64,   /**< mkdtemp template bytes.                       */
+  k_req_timeout      = 1000, /**< Per-request budget, ms.                       */
+  k_list_max         = 8,    /**< Chapter URLs in a scenario.                   */
+  k_http_unavailable = 503,  /**< HTTP 503 the throttle-injection mock returns. */
 } mdl_fetch_test_const_t;
 
 /**
@@ -79,11 +80,13 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const page_map_t* map;               /**< Chapter URL -> HTML.              */
-  size_t            map_n;             /**< Entries in @ref map.              */
-  size_t            get_buf_calls;     /**< Chapter-HTML fetches dispatched.  */
-  size_t            get_file_calls;    /**< Page transfers attempted.         */
-  size_t            fail_on_file_call; /**< 1-based call to fail (0 = never). */
+  const page_map_t* map;               /**< Chapter URL -> HTML.               */
+  size_t            map_n;             /**< Entries in @ref map.               */
+  size_t            get_buf_calls;     /**< Chapter-HTML fetches dispatched.   */
+  size_t            get_file_calls;    /**< Page transfers attempted.          */
+  size_t            fail_on_file_call; /**< 1-based call to fail (0 = never).  */
+  size_t            busy_on_file_call; /**< 1-based call to 503+Retry (0=off). */
+  const char*       busy_retry_after;  /**< Retry-After for the busy reply.    */
 } mock_net_t;
 
 /** @brief Fake get_buf: serve the mapped HTML for a chapter URL. */
@@ -92,9 +95,11 @@ static ra8_err_t mock_get_buf(void*                ctx,
                               const mdl_net_req_t* req,
                               char*                buf,
                               size_t               cap,
-                              size_t*              out_len)
+                              size_t*              out_len,
+                              mdl_net_resp_t*      resp)
 {
   (void)req;
+  (void)resp;
   mock_net_t* f = (mock_net_t*)ctx;
   f->get_buf_calls += 1U;
   for (size_t i = 0U; i < f->map_n; ++i) {
@@ -114,11 +119,22 @@ static ra8_err_t mock_get_file(void*                ctx,
                                const char*          url,
                                const mdl_net_req_t* req,
                                const char*          out_path,
-                               size_t*              out_len)
+                               size_t*              out_len,
+                               mdl_net_resp_t*      resp)
 {
   (void)req;
   mock_net_t* f = (mock_net_t*)ctx;
   f->get_file_calls += 1U;
+  if ((f->busy_on_file_call != 0U) && (f->get_file_calls == f->busy_on_file_call)) {
+    if (resp != nullptr) { /* scripted throttle: 503 + Retry-After, nothing written */
+      resp->status = (long)k_http_unavailable;
+      (void)snprintf(resp->retry_after,
+                     sizeof(resp->retry_after),
+                     "%s",
+                     (f->busy_retry_after != nullptr) ? f->busy_retry_after : "");
+    }
+    return k_ra8_err_busy;
+  }
   if ((f->fail_on_file_call != 0U) && (f->get_file_calls == f->fail_on_file_call)) {
     return k_ra8_fail; /* simulate a kill mid-transfer: nothing written */
   }
@@ -134,13 +150,6 @@ static ra8_err_t mock_get_file(void*                ctx,
   return k_ra8_ok;
 }
 
-/** @brief Fake last_status: unused by the fetch loop. */
-static long mock_last_status(void* ctx)
-{
-  (void)ctx;
-  return 0;
-}
-
 /** @brief Fake destroy: the handle is stack-owned, nothing to release. */
 static void mock_destroy(void* ctx)
 {
@@ -149,21 +158,45 @@ static void mock_destroy(void* ctx)
 
 /** @brief The fake backend's method table. */
 static const mdl_net_vtable_t s_mock_vtable = {
-  .get_buf     = mock_get_buf,
-  .get_file    = mock_get_file,
-  .last_status = mock_last_status,
-  .destroy     = mock_destroy,
+  .get_buf  = mock_get_buf,
+  .get_file = mock_get_file,
+  .destroy  = mock_destroy,
 };
 
 /* ---- shared fixtures (large objects live off the stack) ------------------ */
 
-static mock_net_t     g_mock;               /**< The scripted backend context.         */
-static mdl_session_t  g_sess;               /**< Session over the fake (64 KiB embed). */
-static mdl_site_t     g_site;               /**< Selectors + (zero) politeness bounds. */
-static mdl_state_t    g_state;              /**< State under test (~2 MiB).            */
-static mdl_url_list_t g_chapters;           /**< Live chapter list for a scenario.     */
-static mdl_url_list_t g_images;             /**< Extracted-image scratch.              */
-static char           g_page[k_page_bytes]; /**< Chapter-HTML scratch.                 */
+static mock_net_t      g_mock;               /**< The scripted backend context.           */
+static mdl_session_t   g_sess;               /**< Session over the fake (64 KiB embed).   */
+static mdl_site_t      g_site;               /**< Selectors + (zero) politeness bounds.   */
+static mdl_state_t     g_state;              /**< State under test (~2 MiB).              */
+static mdl_url_list_t  g_chapters;           /**< Live chapter list for a scenario.       */
+static mdl_url_list_t  g_images;             /**< Extracted-image scratch.                */
+static char            g_page[k_page_bytes]; /**< Chapter-HTML scratch.                   */
+static mdl_governor_t* g_fetch_gov;          /**< Governor wired into run_fetch, or NULL. */
+
+/**
+ * @struct fetch_clock_t
+ * @brief Virtual clock for the governed integration test (no real sleeps).
+ * @since 0.1.0
+ */
+typedef struct {
+  int64_t now_ms;      /**< Virtual now (ms).            */
+  int64_t total_slept; /**< Sum of governor sleeps (ms). */
+} fetch_clock_t;
+
+/** @brief Injected clock: return the virtual now. */
+static int64_t fetch_now(void* c)
+{
+  return ((const fetch_clock_t*)c)->now_ms;
+}
+
+/** @brief Injected sleeper: advance the virtual clock and tally the wait. */
+static void fetch_sleep(void* c, uint32_t ms)
+{
+  fetch_clock_t* k = (fetch_clock_t*)c;
+  k->now_ms += (int64_t)ms;
+  k->total_slept += (int64_t)ms;
+}
 
 /** @brief Configure the site descriptor the fake HTML is scraped against. */
 static void setup_site(void)
@@ -216,7 +249,7 @@ static ra8_err_t run_fetch(const char*        abs_dir,
                          .series_abs_dir = abs_dir,
                          .series_url     = "http://s/series",
                          .site           = &g_site,
-                         .pol            = nullptr,
+                         .gov            = g_fetch_gov,
                          .timeout_ms     = (uint32_t)k_req_timeout,
                          .page_buf       = g_page,
                          .page_cap       = sizeof(g_page),
@@ -461,6 +494,61 @@ static void test_corrupt_state_rebuilds(void)
   TEST_END("corrupt state rebuilds");
 }
 
+/** @brief One chapter, one image, for the governed-retry integration test. */
+static const page_map_t s_map1[] = {
+  {"http://s/chapter-1", "<img data-src=\"http://cdn/a.jpg\">"},
+};
+
+/**
+ * @test test_governor_retries_throttle
+ *
+ * @par MC/DC:
+ * (No compound decision in this test; it proves the #301 integration: when the
+ * mdl_net mock answers the first image transfer with 503 + `Retry-After: 1`, the
+ * fetch loop feeds it to the governor, waits the honoured 1 s through the
+ * injected clock, retries, and completes -- rather than hammering or abandoning
+ * the page. Backoff observation is confirmed via ::mdl_governor_peek.)
+ */
+static void test_governor_retries_throttle(void)
+{
+  TEST_BEGIN("fetch loop honours governor backoff");
+  setup_site();
+  g_mock.map               = s_map1;
+  g_mock.map_n             = sizeof(s_map1) / sizeof(s_map1[0]);
+  g_mock.busy_on_file_call = 1U;  /* first image transfer is throttled */
+  g_mock.busy_retry_after  = "1"; /* Retry-After: 1 second             */
+  char abs_dir[PATH_MAX];
+  char state_path[PATH_MAX];
+  make_series_dir(abs_dir, sizeof(abs_dir), state_path, sizeof(state_path));
+  mdl_state_init(&g_state);
+  const char* c1[] = {"http://s/chapter-1"};
+  set_chapters(c1, 1U);
+
+  fetch_clock_t clk = {};
+  mdl_gov_cfg_t cfg = mdl_gov_cfg_default();
+  cfg.rate_per_min  = 0U; /* isolate: only the backoff/Retry-After gate sleeps */
+  mdl_governor_t gov;
+  mdl_governor_init_clock(&gov, &cfg, 1U, fetch_now, &clk, fetch_sleep, &clk);
+  g_fetch_gov = &gov;
+
+  mdl_fetch_stats_t st;
+  const ra8_err_t   rc =
+    run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 0U, &st);
+  g_fetch_gov              = nullptr; /* restore the default (governor-less) path */
+  g_mock.busy_on_file_call = 0U;
+
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, rc);
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)st.pages_fetched); /* succeeded after the retry */
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)st.chapters_completed);
+  TEST_ASSERT_EQ((uint16_t)2, (uint16_t)g_mock.get_file_calls); /* initial 503 + one retry      */
+  TEST_ASSERT(clk.total_slept >= 1000);                         /* honoured the 1 s Retry-After */
+  TEST_ASSERT(page_exists(abs_dir, "chapter-1/page_0001.jpg"));
+  uint16_t level = 0U;
+  TEST_ASSERT(mdl_governor_peek(&gov, "cdn", &level, nullptr)); /* host of a.jpg         */
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)level);                   /* one throttle recorded */
+  TEST_END("fetch loop honours governor backoff");
+}
+
 /**
  * @brief Run every fetch-orchestration unit test in sequence.
  * @return 0 when all tests passed; a failing assertion aborts via the harness.
@@ -472,6 +560,7 @@ int32_t main(void)
   test_resume_equals_uninterrupted();
   test_content_dedup_across_chapters();
   test_corrupt_state_rebuilds();
+  test_governor_retries_throttle();
   (void)fprintf(stderr, "[OK  ] test_media_dl_fetch.c\n");
   return 0;
 }

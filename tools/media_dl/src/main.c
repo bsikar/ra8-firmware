@@ -242,7 +242,8 @@ prepare_chapters(const mdl_site_t* site, const char* series_url, uint32_t timeou
                              .referer    = nullptr,
                              .timeout_ms = timeout};
   size_t              len = 0U;
-  ra8_err_t rc = mdl_net_get_buf(s_session.net, series_url, &req, s_page, sizeof(s_page), &len);
+  ra8_err_t           rc =
+    mdl_net_get_buf(s_session.net, series_url, &req, s_page, sizeof(s_page), &len, nullptr);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -468,12 +469,24 @@ RA8_INTERNAL static mdl_fetch_layout_t choose_layout(const series_run_t*   r,
   return k_mdl_layout_combined;
 }
 
+/** @brief Governor tunables for `site`: defaults overlaid with descriptor bounds. */
+RA8_INTERNAL static mdl_gov_cfg_t site_gov_cfg(const mdl_site_t* site)
+{
+  mdl_gov_cfg_t cfg   = mdl_gov_cfg_default();
+  cfg.rate_per_min    = site->rate_per_min;
+  cfg.burst           = site->burst;
+  cfg.backoff_base_ms = site->backoff_base_ms;
+  cfg.backoff_max_ms  = site->backoff_max_ms;
+  cfg.max_inflight    = (uint16_t)site->max_inflight;
+  return cfg;
+}
+
 /** @brief Assemble the fetch context for one series run over the shared buffers. */
 RA8_INTERNAL static mdl_fetch_ctx_t make_ctx(const series_run_t* r,
                                              const mdl_site_t*   site,
                                              const char*         abs_dir,
                                              const char*         state_path,
-                                             mdl_politeness_t*   pol)
+                                             mdl_governor_t*     gov)
 {
   return (mdl_fetch_ctx_t){.session        = &s_session,
                            .state          = &s_state,
@@ -481,7 +494,7 @@ RA8_INTERNAL static mdl_fetch_ctx_t make_ctx(const series_run_t* r,
                            .series_abs_dir = abs_dir,
                            .series_url     = r->series_url,
                            .site           = site,
-                           .pol            = pol,
+                           .gov            = gov,
                            .timeout_ms     = r->timeout,
                            .page_buf       = s_page,
                            .page_cap       = sizeof(s_page),
@@ -527,9 +540,10 @@ RA8_INTERNAL static int run_prepared(const series_run_t* r,
   char               combined_rel[k_leaf_name_bytes];
   mdl_fetch_layout_t layout = choose_layout(r, sel, combined_rel, sizeof(combined_rel), slug);
 
-  mdl_politeness_t pol;
-  mdl_politeness_init(&pol, r->seed);
-  mdl_fetch_ctx_t   ctx       = make_ctx(r, site, abs_dir, state_path, &pol);
+  mdl_governor_t      gov;
+  const mdl_gov_cfg_t cfg = site_gov_cfg(site);
+  mdl_governor_init(&gov, &cfg, r->seed);
+  mdl_fetch_ctx_t   ctx       = make_ctx(r, site, abs_dir, state_path, &gov);
   const int64_t     run_start = (int64_t)time(nullptr);
   mdl_fetch_stats_t stats;
   const ra8_err_t   frc = mdl_fetch_run(&ctx,
@@ -704,8 +718,9 @@ RA8_INTERNAL static size_t download_page_image(const char*       url,
                              .referer    = url,
                              .timeout_ms = timeout};
   size_t              got = 0U;
-  return (mdl_net_get_file(s_session.net, s_images.urls[idx], &ir, path, &got) != k_ra8_ok) ? 1U
-                                                                                            : 0U;
+  return (mdl_net_get_file(s_session.net, s_images.urls[idx], &ir, path, &got, nullptr) != k_ra8_ok)
+           ? 1U
+           : 0U;
 }
 
 /** @brief Download the extracted page images into `out_dir`; returns failures. */
@@ -757,7 +772,7 @@ RA8_INTERNAL static int run_page(const char*           url,
                              .referer    = nullptr,
                              .timeout_ms = timeout};
   size_t              len = 0U;
-  ra8_err_t           rc  = mdl_net_get_buf(s_session.net, url, &req, s_page, sizeof(s_page), &len);
+  ra8_err_t rc = mdl_net_get_buf(s_session.net, url, &req, s_page, sizeof(s_page), &len, nullptr);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: fetch failed (err 0x%X)\n", (unsigned)rc);
     mdl_net_destroy(net);

@@ -75,15 +75,16 @@ RA8_INTERNAL static const char* url_scheme(const char* url)
 RA8_INTERNAL static mdl_robots_fetch_result_t
 session_fetch(void* ctx, const char* robots_url, char* buf, size_t cap, size_t* out_len)
 {
-  mdl_session_t*      s   = (mdl_session_t*)ctx;
-  const mdl_net_req_t req = {.user_agent = s->user_agent,
-                             .referer    = nullptr,
-                             .timeout_ms = k_robots_timeout_ms};
-  if (mdl_net_get_buf(s->net, robots_url, &req, buf, cap, out_len) == k_ra8_ok) {
+  mdl_session_t*      s    = (mdl_session_t*)ctx;
+  const mdl_net_req_t req  = {.user_agent = s->user_agent,
+                              .referer    = nullptr,
+                              .timeout_ms = k_robots_timeout_ms};
+  mdl_net_resp_t      resp = {};
+  if (mdl_net_get_buf(s->net, robots_url, &req, buf, cap, out_len, &resp) == k_ra8_ok) {
     return k_mdl_robots_fetch_ok;
   }
-  const long status = mdl_net_last_status(s->net);
-  if ((status >= (long)k_http_server_err_min) && (status <= (long)k_http_server_err_max)) {
+  if ((resp.status >= (long)k_http_server_err_min) &&
+      (resp.status <= (long)k_http_server_err_max)) {
     return k_mdl_robots_fetch_denied;
   }
   return k_mdl_robots_fetch_absent;

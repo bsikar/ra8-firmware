@@ -60,12 +60,12 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  const char* body;                /**< robots.txt body served on ok.         */
-  ra8_err_t   rc;                  /**< Result the fetch returns.             */
-  long        status;              /**< Status ::mdl_net_last_status reports. */
-  size_t      calls;               /**< Fetches dispatched.                   */
-  char        last_ua[k_rec_max];  /**< User-Agent of the most recent GET.    */
-  char        last_url[k_rec_max]; /**< URL of the most recent GET.           */
+  const char* body;                /**< robots.txt body served on ok.        */
+  ra8_err_t   rc;                  /**< Result the fetch returns.            */
+  long        status;              /**< HTTP status surfaced through `resp`. */
+  size_t      calls;               /**< Fetches dispatched.                  */
+  char        last_ua[k_rec_max];  /**< User-Agent of the most recent GET.   */
+  char        last_url[k_rec_max]; /**< URL of the most recent GET.          */
 } robo_net_t;
 
 /** @brief Fake get_buf: record the UA + URL, serve the scripted robots body. */
@@ -74,7 +74,8 @@ static ra8_err_t robo_get_buf(void*                ctx,
                               const mdl_net_req_t* req,
                               char*                buf,
                               size_t               cap,
-                              size_t*              out_len)
+                              size_t*              out_len,
+                              mdl_net_resp_t*      resp)
 {
   robo_net_t* f = (robo_net_t*)ctx;
   f->calls += 1U;
@@ -83,6 +84,9 @@ static ra8_err_t robo_get_buf(void*                ctx,
                  sizeof(f->last_ua),
                  "%s",
                  (req->user_agent != nullptr) ? req->user_agent : "");
+  if (resp != nullptr) {
+    resp->status = f->status; /* the session reads the status class through resp */
+  }
   size_t got = 0U;
   if ((f->rc == k_ra8_ok) && (f->body != nullptr)) {
     const int w = snprintf(buf, cap, "%s", f->body);
@@ -102,22 +106,18 @@ static ra8_err_t robo_get_file(void*                ctx,
                                const char*          url,
                                const mdl_net_req_t* req,
                                const char*          out_path,
-                               size_t*              out_len)
+                               size_t*              out_len,
+                               mdl_net_resp_t*      resp)
 {
   (void)ctx;
   (void)url;
   (void)req;
   (void)out_path;
+  (void)resp;
   if (out_len != nullptr) {
     *out_len = 0U;
   }
   return k_ra8_ok;
-}
-
-/** @brief Fake last_status: the status of the scripted robots reply. */
-static long robo_last_status(void* ctx)
-{
-  return ((const robo_net_t*)ctx)->status;
 }
 
 /** @brief Fake destroy: the handle is stack-owned, nothing to release. */
@@ -128,10 +128,9 @@ static void robo_destroy(void* ctx)
 
 /** @brief The fake backend's method table. */
 static const mdl_net_vtable_t s_robo_vtable = {
-  .get_buf     = robo_get_buf,
-  .get_file    = robo_get_file,
-  .last_status = robo_last_status,
-  .destroy     = robo_destroy,
+  .get_buf  = robo_get_buf,
+  .get_file = robo_get_file,
+  .destroy  = robo_destroy,
 };
 
 /** @brief Build a stack ::mdl_net_iface_t around a fake context. */

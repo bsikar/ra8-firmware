@@ -50,18 +50,23 @@ typedef struct {
  * @details
  * The backend's decision table, factored out of the getinfo wrapper so it is a
  * pure function of the finished transfer's three observable outcomes and can be
- * unit-tested for every status class without a network. Precedence is
- * overflow, then timeout, then any other transport error, then the HTTP status.
+ * unit-tested for every status class without a network. Precedence is overflow,
+ * then timeout, then any other transport error, then the HTTP status class.
+ * Mapping distinct status classes to distinct codes is what lets the politeness
+ * governor tell a throttle (back off) from an absent page (skip) from a server
+ * error (retry later).
  *
  * @param[in] code     libcurl completion code from `curl_easy_perform`.
  * @param[in] overflow Whether a sink latched a size-cap overflow.
  * @param[in] status   HTTP response status (from `CURLINFO_RESPONSE_CODE`).
  *
  * @return The classified transfer result.
- * @retval k_ra8_err_no_mem  `overflow` is true.
- * @retval k_ra8_err_timeout `code` is `CURLE_OPERATION_TIMEDOUT`.
- * @retval k_ra8_fail        Any other non-OK `code`, or `status >= 400`.
- * @retval k_ra8_ok          OK code and `status < 400`.
+ * @retval k_ra8_err_no_mem    `overflow` is true.
+ * @retval k_ra8_err_timeout   `code` is `CURLE_OPERATION_TIMEDOUT`.
+ * @retval k_ra8_err_busy      OK code and `status` is 429 or 503 (throttle).
+ * @retval k_ra8_err_not_found OK code and `status` is 404 or another 4xx.
+ * @retval k_ra8_fail          Any other non-OK `code`, or `status >= 500`.
+ * @retval k_ra8_ok            OK code and `status < 400`.
  *
  * @pre `status` is a meaningful HTTP status only when `code == CURLE_OK`.
  * @pre The caller has finished the transfer before classifying it.
@@ -70,10 +75,13 @@ typedef struct {
  * @note Thread-safe: depends only on its arguments.
  *
  * @par MC/DC:
- * The status test `status >= k_http_status_err_min` is a single relational
- * condition, not a compound `&&`/`||` decision; the surrounding branches are
- * independent `if`s. Vectors exercise each class: overflow, timeout, other
- * error, `status >= 400`, and `status < 400`.
+ * The status tests (`status == 429 || status == 503`, then `status >= 500`,
+ * then `status >= 400`) gate independent `if`s reached only when `code ==
+ * CURLE_OK`. The throttle test is a two-condition OR: vectors 429 and 503 each
+ * vary one condition true while a non-throttle status (e.g. 200/404/500) holds
+ * both false, and the 500/404/200 vectors exercise the remaining relational
+ * branches. Combined with the overflow and timeout vectors, every class the
+ * function distinguishes has a vector.
  *
  * @since 0.1.0
  */

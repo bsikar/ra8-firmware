@@ -17,6 +17,7 @@
 #include "mdl_hash.h"
 #include "mdl_net.h"
 #include "mdl_pathfs.h"
+#include "mdl_url_guard.h"
 #include "mdl_urlname.h"
 #include "ra8_attributes.h"
 
@@ -30,6 +31,11 @@ typedef enum : uint16_t {
 typedef enum : uint32_t {
   k_fetch_copy_max_chunks = 1000000U, /**< 8 GiB ceiling. */
 } mdl_fetch_bound_t;
+
+/** @brief Bounded attempts per request: the initial try plus backoff retries. */
+typedef enum : uint8_t {
+  k_fetch_max_attempts = 4U, /**< 1 initial + up to 3 governed retries on a 429/503. */
+} mdl_fetch_retry_t;
 
 /** @brief Per-chapter outcome ::process_chapter reports to the run loop. */
 typedef enum : uint8_t {
@@ -130,7 +136,33 @@ try_reuse(mdl_fetch_ctx_t* ctx, uint64_t url_hash, const char* target_abs, const
   return true;
 }
 
-/** @brief Gate, space, fetch, hash and record one page over the network. */
+/** @brief Governor host key for `url`, or NULL when it cannot be parsed. */
+RA8_INTERNAL static const char* page_host(const char* url, char* buf, size_t cap)
+{
+  return mdl_url_host(url, buf, cap) ? buf : nullptr;
+}
+
+/** @brief One governed image transfer: pace, fetch, feed the outcome back. */
+RA8_INTERNAL static ra8_err_t governed_get_file(mdl_fetch_ctx_t*     ctx,
+                                                const char*          host,
+                                                const char*          url,
+                                                const mdl_net_req_t* req,
+                                                const char*          target_abs,
+                                                uint32_t             jmin,
+                                                uint32_t             jmax)
+{
+  if (mdl_governor_acquire(ctx->gov, host, jmin, jmax) == k_ra8_err_would_block) {
+    return k_ra8_err_would_block;
+  }
+  size_t          got  = 0U;
+  mdl_net_resp_t  resp = {};
+  const ra8_err_t rc   = mdl_net_get_file(ctx->session->net, url, req, target_abs, &got, &resp);
+  mdl_governor_observe(ctx->gov, host, resp.status, resp.retry_after);
+  mdl_governor_release(ctx->gov, host);
+  return rc;
+}
+
+/** @brief Gate, govern (with backoff retry), fetch, hash and record one page. */
 RA8_INTERNAL static ra8_err_t do_fetch_page(mdl_fetch_ctx_t* ctx,
                                             const char*      chapter_url,
                                             const char*      url,
@@ -141,16 +173,21 @@ RA8_INTERNAL static ra8_err_t do_fetch_page(mdl_fetch_ctx_t* ctx,
   if (!mdl_session_url_allowed(ctx->session, url, &crawl)) {
     return k_ra8_fail; /* robots refused (message printed by the session) */
   }
-  if (ctx->pol != nullptr) {
-    (void)mdl_politeness_wait(ctx->pol,
-                              max_u32(ctx->site->img_delay_min, crawl),
-                              max_u32(ctx->site->img_delay_max, crawl));
+  char                hostbuf[k_mdl_gov_host_max];
+  const char*         host = page_host(url, hostbuf, sizeof(hostbuf));
+  const uint32_t      jmin = max_u32(ctx->site->img_delay_min, crawl);
+  const uint32_t      jmax = max_u32(ctx->site->img_delay_max, crawl);
+  const mdl_net_req_t req  = {.user_agent = ctx->session->user_agent,
+                              .referer    = chapter_url,
+                              .timeout_ms = ctx->timeout_ms};
+  ra8_err_t           rc   = k_ra8_fail;
+  for (uint8_t attempt = 0U; attempt < (uint8_t)k_fetch_max_attempts; ++attempt) {
+    rc = governed_get_file(ctx, host, url, &req, target_abs, jmin, jmax);
+    if (rc != k_ra8_err_busy) {
+      break; /* success, or a non-throttle failure not worth retrying */
+    }
   }
-  const mdl_net_req_t req = {.user_agent = ctx->session->user_agent,
-                             .referer    = chapter_url,
-                             .timeout_ms = ctx->timeout_ms};
-  size_t              got = 0U;
-  if (mdl_net_get_file(ctx->session->net, url, &req, target_abs, &got) != k_ra8_ok) {
+  if (rc != k_ra8_ok) {
     return k_ra8_fail;
   }
   uint64_t content = 0U;
@@ -219,19 +256,49 @@ RA8_INTERNAL static ra8_err_t fetch_chapter_pages(mdl_fetch_ctx_t*   ctx,
   return k_ra8_ok;
 }
 
-/** @brief Robots-gate, fetch and extract one chapter's page-image URLs. */
+/** @brief One governed chapter-HTML fetch: pace, GET, feed the outcome back. */
+RA8_INTERNAL static ra8_err_t governed_get_buf(mdl_fetch_ctx_t*     ctx,
+                                               const char*          host,
+                                               const char*          url,
+                                               const mdl_net_req_t* req,
+                                               uint32_t             jmin,
+                                               uint32_t             jmax,
+                                               size_t*              out_len)
+{
+  if (mdl_governor_acquire(ctx->gov, host, jmin, jmax) == k_ra8_err_would_block) {
+    return k_ra8_err_would_block;
+  }
+  mdl_net_resp_t  resp = {};
+  const ra8_err_t rc =
+    mdl_net_get_buf(ctx->session->net, url, req, ctx->page_buf, ctx->page_cap, out_len, &resp);
+  mdl_governor_observe(ctx->gov, host, resp.status, resp.retry_after);
+  mdl_governor_release(ctx->gov, host);
+  return rc;
+}
+
+/** @brief Robots-gate, govern (with backoff retry), fetch and extract page URLs. */
 RA8_INTERNAL static ra8_err_t fetch_chapter_html(mdl_fetch_ctx_t* ctx, const char* chapter_url)
 {
   uint32_t crawl = 0U;
   if (!mdl_session_url_allowed(ctx->session, chapter_url, &crawl)) {
     return k_ra8_fail;
   }
-  const mdl_net_req_t req = {.user_agent = ctx->session->user_agent,
-                             .referer    = ctx->series_url,
-                             .timeout_ms = ctx->timeout_ms};
-  size_t              len = 0U;
-  if (mdl_net_get_buf(ctx->session->net, chapter_url, &req, ctx->page_buf, ctx->page_cap, &len) !=
-      k_ra8_ok) {
+  char                hostbuf[k_mdl_gov_host_max];
+  const char*         host = page_host(chapter_url, hostbuf, sizeof(hostbuf));
+  const uint32_t      jmin = max_u32(ctx->site->chapter_delay_min, crawl);
+  const uint32_t      jmax = max_u32(ctx->site->chapter_delay_max, crawl);
+  const mdl_net_req_t req  = {.user_agent = ctx->session->user_agent,
+                              .referer    = ctx->series_url,
+                              .timeout_ms = ctx->timeout_ms};
+  ra8_err_t           rc   = k_ra8_fail;
+  size_t              len  = 0U;
+  for (uint8_t attempt = 0U; attempt < (uint8_t)k_fetch_max_attempts; ++attempt) {
+    rc = governed_get_buf(ctx, host, chapter_url, &req, jmin, jmax, &len);
+    if (rc != k_ra8_err_busy) {
+      break; /* success, or a non-throttle failure not worth retrying */
+    }
+  }
+  if (rc != k_ra8_ok) {
     return k_ra8_fail;
   }
   const ra8_err_t erc = mdl_extract_images(ctx->page_buf,

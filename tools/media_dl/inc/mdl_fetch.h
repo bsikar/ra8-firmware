@@ -14,7 +14,7 @@
  * second run fetches only what is new, and an interrupted run resumes to a
  * byte-identical result. Everything the loop needs is injected through
  * ::mdl_fetch_ctx_t -- the network seam (via the session), the persistent state
- * store, the politeness clock -- so nothing here is host-only.
+ * store, the politeness governor -- so nothing here is host-only.
  *
  * What it does that the old index-based loop did not:
  *   - **Addresses chapters by identity, not position.** Each chapter's stable id
@@ -87,7 +87,7 @@ typedef struct {
   const char*       series_abs_dir; /**< Absolute series dir (paths resolve here). */
   const char*       series_url;     /**< Series URL, sent as the chapter Referer.  */
   const mdl_site_t* site;           /**< Selectors + politeness bounds.            */
-  mdl_politeness_t* pol;            /**< Inter-request jitter clock, or NULL.      */
+  mdl_governor_t*   gov;            /**< Per-host rate/backoff governor, or NULL.  */
   uint32_t          timeout_ms;     /**< Per-request time budget.                  */
   char*             page_buf;       /**< Chapter-HTML scratch (caller-owned).      */
   size_t            page_cap;       /**< Capacity of @ref page_buf.                */
