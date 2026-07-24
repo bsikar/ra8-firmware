@@ -1,0 +1,24 @@
+# Private, per-deployment, and secret material never belongs in the repo.
+# Only generic, shareable structure is committed here (see infra/README.md).
+
+# Real inventory and host-specific vars (actual hostnames / IPs).
+ansible/private/
+ansible/inventory/*.ini
+!ansible/inventory/example.ini
+ansible/group_vars/*.yml
+!ansible/group_vars/*.example.yml
+
+# Terraform state, provider caches, and real variable values.
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+!**/*.tfvars.example
+**/.terraform.lock.hcl
+
+# Any secret that slips through despite OpenBao being the intended store.
+*.pem
+*.key
+*_token
+*.pat
+*.secret
