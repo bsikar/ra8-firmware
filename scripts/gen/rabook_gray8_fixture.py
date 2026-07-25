@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""Generate the ereader_rabook full-resolution gray8 image fixture (#476).
+
+The ereader_rabook HIL/board_sim gate proves the compiled-book path. This
+generator bakes a second, tiny `.rabook` blob whose one raster image is stored
+at ``PIXFMT_GRAY8`` -- the full-resolution, continuous-tone representation the
+compiler retains for zoomable content (#476), never the panel-quantised 4bpp
+form. The blob is emitted INFLATED (``BlobBuilder.serialize`` output, no RBKC
+container) so the gate can ``ra8_book_validate`` and walk it with no
+decompressor, exactly like the sibling ``rabook_fixture.h``.
+
+The image is a synthetic diagonal grayscale ramp: its pixel values sweep the
+full 0-255 range, so many land strictly between two 16-level gray4 steps. A
+gray4 store would round them to the grid; keeping them verbatim is the proof
+that the compiled blob retains continuous tone at full source resolution. The
+image itself is grayscale ("L" mode) so the host decode is deterministic across
+Pillow versions (no colour->luma fold), which keeps the baked bytes -- and the
+board_sim framebuffer golden derived from them -- reproducible.
+
+Regenerate with ``make rabook-gray8-fixture-update`` after any format change,
+then re-pin the ereader_rabook ``img`` framebuffer golden (its hil.conf
+``HIL_EXPECT``) in the same change.
+
+@copyright Copyright (c) 2026 Brighton Sikarskie
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+import io
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_EPUB_COMPILE = _REPO_ROOT / "tools" / "epub_compile"
+sys.path.insert(0, str(_EPUB_COMPILE))
+
+from PIL import Image  # noqa: E402  (path set above so the vendored tool imports)
+from rabook_blob import BlobBuilder  # noqa: E402
+from rabook_format import PIXFMT_GRAY8  # noqa: E402
+
+# Image geometry: small enough to render 1:1 inside the gate's 128x160 RGB565
+# framebuffer, large enough that the diagonal ramp visits many off-grid tones.
+_IMG_W = 96
+_IMG_H = 48
+_GRAY_MAX = 255  # Peak 8-bit gray value.
+_HALF = 2  # Averaging divisor for the two-axis ramp.
+_ARRAY_LINE_LIMIT = 96  # Soft wrap width for the emitted C byte rows.
+
+_OUT = (
+    _REPO_ROOT
+    / "examples"
+    / "ek_ra8d2"
+    / "hw_validated"
+    / "hil"
+    / "ereader_rabook"
+    / "rabook_gray8_fixture.h"
+)
+
+
+def _ramp_png() -> bytes:
+    """Encode a WxH grayscale diagonal ramp as PNG bytes.
+
+    Returns:
+        PNG-encoded bytes of an "L" (8-bit gray) image whose pixel (x, y) is the
+        average of a horizontal and a vertical 0-255 ramp, so tone varies
+        smoothly on both axes and covers values off the 16-level gray4 grid.
+    """
+    im = Image.new("L", (_IMG_W, _IMG_H))
+    px = [
+        ((x * _GRAY_MAX) // (_IMG_W - 1) + (y * _GRAY_MAX) // (_IMG_H - 1)) // _HALF
+        for y in range(_IMG_H)
+        for x in range(_IMG_W)
+    ]
+    im.putdata(px)
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def _emit_array(name: str, data: bytes) -> str:
+    """Render bytes as a 4-byte-aligned ``static const uint8_t`` C array.
+
+    ``alignas(4)`` matters: the firmware casts into the blob to read 32-bit
+    header fields, and an unaligned load faults on the target. Deterministic for
+    identical input, so the generated header commits and diffs cleanly.
+
+    Args:
+        name: C identifier for the array.
+        data: Bytes to emit.
+
+    Returns:
+        The declaration as a newline-joined string (no trailing newline).
+    """
+    out = [f"alignas(4) static const uint8_t {name}[{len(data)}U] = {{"]
+    line = "  "
+    for b in data:
+        line += f"0x{b:02X}U,"
+        if len(line) >= _ARRAY_LINE_LIMIT:
+            out.append(line)
+            line = "  "
+    if line.strip():
+        out.append(line)
+    out.append("};")
+    return "\n".join(out)
+
+
+def _build_blob() -> bytes:
+    """Compile the one-image gray8 book to an inflated flat `.rabook` blob."""
+    bb = BlobBuilder()
+    idx = bb.add_raster_image("ramp.png", _ramp_png(), pixel_format=PIXFMT_GRAY8)
+    bb.cover_index = idx
+    meta = {
+        "title": "gray8 ramp",
+        "author": "",
+        "language": "en",
+        "identifier": "urn:ra8:rabook-gray8-fixture",
+    }
+    return bb.serialize(meta)
+
+
+def main() -> int:
+    """Emit the gray8 fixture header; return a process exit code."""
+    blob = _build_blob()
+    header = "\n".join(
+        [
+            "/**",
+            " * @file rabook_gray8_fixture.h",
+            " * @brief Baked, INFLATED .rabook flat blob carrying one full-resolution",
+            " *        gray8 image (#476). @generated scripts/gen/rabook_gray8_fixture.py.",
+            " *",
+            " * @details",
+            " * The compiled-book path retains zoomable rasters at full source resolution",
+            " * in continuous-tone gray8 (1 byte/pixel), never the panel-quantised 4bpp",
+            " * form. This one-image book is the board_sim proof: ereader_rabook validates",
+            " * it, confirms the image is 8bpp and holds more than the 16 distinct tones a",
+            " * 4bpp store could reproduce, then blits it 1:1 at full resolution. The image",
+            " * is a diagonal grayscale ramp whose tones sweep the full 0-255 range, so its",
+            " * survival proves no quantisation occurred. Do not edit by hand; see the",
+            " * generator.",
+            " *",
+            " * @copyright Copyright (c) 2026 Brighton Sikarskie",
+            " * SPDX-License-Identifier: MIT",
+            " *",
+            " * @since Version 0.1.0",
+            " */",
+            "#pragma once",
+            "",
+            "#include <stdint.h>",
+            "",
+            "/**",
+            " * @enum rabook_gray8_fixture_size_t",
+            " * @brief Byte length of @ref k_rabook_gray8_fixture.",
+            " * @since Version 0.1.0",
+            " */",
+            "typedef enum : uint32_t {",
+            f"  k_rabook_gray8_fixture_len = {len(blob)}U, /**< Inflated flat-blob length. */",
+            "} rabook_gray8_fixture_size_t;",
+            "",
+            "/** @brief The baked, inflated gray8-image .rabook blob (validate + walk directly). */",
+            "// NOLINTBEGIN(readability-magic-numbers) -- generated byte-table fixture.",
+        ]
+    )
+    body = _emit_array("k_rabook_gray8_fixture", blob)
+    text = header + "\n" + body + "\n// NOLINTEND(readability-magic-numbers)\n"
+    _OUT.write_text(text, encoding="ascii")
+    sys.stdout.write(f"rabook_gray8_fixture: wrote {_OUT} ({len(blob)} blob bytes)\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

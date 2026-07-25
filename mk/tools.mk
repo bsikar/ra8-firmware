@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 
 .PHONY: tools tools-help media_dl test-media_dl test-integration viewer view dl \
-        mcp books rabook-golden-update bench-cache
+        mcp books rabook-golden-update rabook-gray8-fixture-update bench-cache
 
 # `make tools` -- build every compiled host tool in one go.
 tools: media_dl viewer
@@ -135,3 +135,12 @@ rabook-golden-update:
 	python3 scripts/gen/rabook_parity_gen.py --downscale $(RABOOK_DOWNSCALE_FIXTURE)
 	python3 scripts/gen/rabook_parity_gen.py --color $(RABOOK_COLOR_FIXTURE)
 	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33) $(RABOOK_REALBOOK_FIXTURE) $(RABOOK_DOWNSCALE_FIXTURE) $(RABOOK_COLOR_FIXTURE)
+
+# `make rabook-gray8-fixture-update` -- regenerate the ereader_rabook
+# full-resolution gray8 image board_sim fixture (#476) from the desktop
+# BlobBuilder (needs Pillow), then clang-format it. Re-pin the ereader_rabook
+# `img` framebuffer golden (its hil.conf HIL_EXPECT) in the same change.
+RABOOK_GRAY8_FIXTURE ?= examples/ek_ra8d2/hw_validated/hil/ereader_rabook/rabook_gray8_fixture.h
+rabook-gray8-fixture-update:
+	python3 scripts/gen/rabook_gray8_fixture.py
+	$(CLANG_FORMAT) -i $(RABOOK_GRAY8_FIXTURE)
