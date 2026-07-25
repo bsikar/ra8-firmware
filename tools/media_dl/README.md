@@ -47,6 +47,19 @@ exercise:
 - A byte-identical image already held is **reused, not re-fetched** -- across
   reruns and across chapters that share an image (content-hash dedup).
 
+**search / browse mode** (`--config S.conf --search TERM`, or `--browse`): find a
+series without already knowing its URL. `--search TERM` fetches the descriptor's
+`search_url` (with `{q}` replaced by the percent-encoded term), parses the result
+list, and prints a numbered `title + series URL` per hit; `--browse` does the same
+over the descriptor's `browse_url` (a latest-updates page). Add `--pick N` to feed
+hit `N` straight into a download -- the same `--format`/`--chapters`/`--out`
+options apply -- so there is no copy-paste step. Every discovery request goes
+through the same politeness governor and `robots.txt` gate as a download (search is
+never a rate-limit bypass), and the honesty rule holds: zero results, a
+changed-markup page, and a failed request are three distinct messages, never an
+empty list dressed up as success. The term is percent-encoded, so spaces, `&`,
+`#`, `+` and non-ASCII (UTF-8) terms all produce a valid request.
+
 **library mode** (over `--out`): `--list` prints every tracked series with its
 chapter coverage and gaps, `--update-all --config S.conf` incrementally updates
 them all, and `--remove URL|SLUG` drops one series.
@@ -205,8 +218,13 @@ Page mode (debug):
 A `.conf` is flat `key = value` (`#` comments, `[section]` lines ignored). See
 `sites/manhwaus.conf`. Keys: `name`, `host`, `kind`, `chapter_url_contains`,
 `chapter_order` (`asc`|`reverse`|`doc`), `page_img_attr`,
-`page_img_url_contains`, and the `*_delay_min/max` politeness bounds. Sites
-behind a Cloudflare JS challenge will not work (no challenge solver yet).
+`page_img_url_contains`, the `*_delay_min/max` politeness bounds, and the
+discovery keys `search_url` (a query template holding one `{q}` placeholder for
+the encoded term), `search_result_contains` (the series-link substring that
+picks result entries out of a search/browse page), and `browse_url` (the
+latest-updates page for `--browse`). A descriptor without `search_url` /
+`browse_url` simply reports that mode as unavailable rather than pretending.
+Sites behind a Cloudflare JS challenge will not work (no challenge solver yet).
 
 ## Export formats (`--format`)
 

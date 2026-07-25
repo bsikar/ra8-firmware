@@ -33,6 +33,14 @@ typedef enum : uint16_t {
   k_def_chapter_delay_max = 3000, /**< Inter-chapter spacing ceiling. */
 } mdl_config_defaults_t;
 
+/** @brief `--polite` per-request delay floors (milliseconds). */
+typedef enum : uint16_t {
+  k_polite_img_min_ms  = 2000,  /**< Polite per-image floor.       */
+  k_polite_img_max_ms  = 4000,  /**< Polite per-image ceiling.     */
+  k_polite_chap_min_ms = 5000,  /**< Polite inter-chapter floor.   */
+  k_polite_chap_max_ms = 10000, /**< Polite inter-chapter ceiling. */
+} mdl_config_polite_floor_t;
+
 /** @brief Trim leading/trailing ASCII whitespace in place; return start. */
 RA8_INTERNAL static char* trim(char* s)
 {
@@ -69,6 +77,9 @@ RA8_INTERNAL static bool apply_kv_str(mdl_site_t* s, const char* key, const char
     {"chapter_url_contains", s->chapter_url_contains, sizeof(s->chapter_url_contains)},
     {"page_img_attr", s->page_img_attr, sizeof(s->page_img_attr)},
     {"page_img_url_contains", s->page_img_url_contains, sizeof(s->page_img_url_contains)},
+    {"search_url", s->search_url, sizeof(s->search_url)},
+    {"search_result_contains", s->search_result_contains, sizeof(s->search_result_contains)},
+    {"browse_url", s->browse_url, sizeof(s->browse_url)},
   };
   for (size_t i = 0U; i < (sizeof(fields) / sizeof(fields[0])); ++i) {
     if (strcmp(key, fields[i].key) == 0) {
@@ -195,4 +206,29 @@ ra8_err_t mdl_config_load(const char* path, mdl_site_t* out)
     return k_ra8_err_invalid_state;
   }
   return k_ra8_ok;
+}
+
+mdl_gov_cfg_t mdl_config_gov_cfg(const mdl_site_t* site)
+{
+  mdl_gov_cfg_t cfg   = mdl_gov_cfg_default();
+  cfg.rate_per_min    = site->rate_per_min;
+  cfg.burst           = site->burst;
+  cfg.backoff_base_ms = site->backoff_base_ms;
+  cfg.backoff_max_ms  = site->backoff_max_ms;
+  cfg.max_inflight    = (uint16_t)site->max_inflight;
+  return cfg;
+}
+
+/** @brief Larger of two unsigned values. */
+RA8_INTERNAL static uint32_t max_u32(uint32_t a, uint32_t b)
+{
+  return (a > b) ? a : b;
+}
+
+void mdl_config_apply_polite(mdl_site_t* site)
+{
+  site->img_delay_min     = max_u32(site->img_delay_min, (uint32_t)k_polite_img_min_ms);
+  site->img_delay_max     = max_u32(site->img_delay_max, (uint32_t)k_polite_img_max_ms);
+  site->chapter_delay_min = max_u32(site->chapter_delay_min, (uint32_t)k_polite_chap_min_ms);
+  site->chapter_delay_max = max_u32(site->chapter_delay_max, (uint32_t)k_polite_chap_max_ms);
 }

@@ -87,6 +87,8 @@ add_executable(
   src/mdl_robots.c
   src/mdl_session.c
   src/mdl_extract.c
+  src/mdl_search.c
+  src/mdl_discover.c
   src/mdl_politeness.c
   src/mdl_config.c
   src/mdl_hash.c
@@ -279,3 +281,18 @@ target_include_directories(
 target_compile_definitions(test_media_dl_governor PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
 target_compile_options(test_media_dl_governor PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_governor COMMAND test_media_dl_governor)
+
+# #304 search/discovery tests: the pure parse + policy path -- the titled-anchor
+# hit scanner (mdl_extract_hits), the RFC 3986 query encoder, the `{q}` template
+# expander, and the honest zero-vs-broken result classifier -- driven against a
+# captured search-results fixture with NO network. Covers the matched, zero-hit
+# and malformed-markup cases the issue requires. Links only the two pure units.
+add_executable(test_media_dl_search tests/test_media_dl_search.c src/mdl_search.c src/mdl_extract.c)
+target_include_directories(
+  test_media_dl_search
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+)
+target_compile_definitions(test_media_dl_search PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_options(test_media_dl_search PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_media_dl_search COMMAND test_media_dl_search)
