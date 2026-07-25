@@ -39,11 +39,14 @@
 #include "mdl_export.h"
 #include "mdl_extract.h"
 #include "mdl_fetch.h"
+#include "mdl_fetch_internal.h"
 #include "mdl_library.h"
 #include "mdl_net.h"
 #include "mdl_net_curl.h"
+#include "mdl_pack.h"
 #include "mdl_pathfs.h"
 #include "mdl_politeness.h"
+#include "mdl_report.h"
 #include "mdl_sanitize.h"
 #include "mdl_session.h"
 #include "mdl_state.h"
@@ -53,8 +56,7 @@
 
 /** @brief Fixed sizing for the CLI (large buffers live in .bss). */
 typedef enum : uint32_t {
-  k_page_buf_bytes  = 8U * 1024U * 1024U, /**< Max HTML page size.             */
-  k_req_timeout_def = 25000U,             /**< Default per-request budget, ms. */
+  k_page_buf_bytes = 8U * 1024U * 1024U, /**< Max HTML page size. */
 } mdl_cli_limits_t;
 
 /** @brief On-stack string buffer sizes and page-mode delays. */
@@ -77,10 +79,9 @@ typedef enum : uint16_t {
   k_polite_chap_max_ms = 10000, /**< Polite inter-chapter ceiling. */
 } mdl_polite_floor_t;
 
-/** @brief Filesystem + parse constants. */
+/** @brief Filesystem constants. */
 typedef enum : uint16_t {
-  k_dir_mode = 0755, /**< mkdir() permission bits.  */
-  k_dec_base = 10,   /**< strtoul()/strtol() radix. */
+  k_dir_mode = 0755, /**< mkdir() permission bits. */
 } mdl_misc_t;
 
 /**
@@ -136,6 +137,16 @@ static mdl_url_list_t s_images;
  * @since 0.1.0
  */
 static mdl_state_t s_state;
+
+/**
+ * @var s_faillog
+ * @brief The per-run failure log surfaced in the end-of-run summary.
+ * @details About 135 KiB (a fixed failure table), so it lives in `.bss`. Cleared
+ *          before each series run; the fetch loop only appends.
+ * @warning Single-threaded; reused across series within one run.
+ * @since 0.1.0
+ */
+static mdl_fetch_faillog_t s_faillog;
 
 /**
  * @var s_rowtmp
@@ -262,85 +273,6 @@ prepare_chapters(const mdl_site_t* site, const char* series_url, uint32_t timeou
   return k_ra8_ok;
 }
 
-/** @brief True when an snprintf result of `n` fully fit a buffer of `cap`. */
-RA8_INTERNAL static bool snprintf_fit(int n, size_t cap)
-{
-  return (n >= 0) && ((size_t)n < cap);
-}
-
-/** @brief Package one downloaded chapter folder `chap_id` into `format`. */
-RA8_INTERNAL static size_t
-export_one(mdl_format_t format, const char* series_dir, const char* chap_id)
-{
-  const char* ext = mdl_format_ext(format);
-  char        dir[k_dir_path_bytes];
-  if (!mdl_path_join(series_dir, chap_id, dir, sizeof(dir))) {
-    (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap_id, ext);
-    return 1U;
-  }
-  if (mdl_format_is_dir_output(format)) {
-    /* JOF writes per-page `.jof` siblings into the chapter dir; report that dir,
-     * never a single-container name that was not created. */
-    const ra8_err_t drc = mdl_export_chapter(format, dir, dir);
-    if (drc != k_ra8_ok) {
-      (void)fprintf(stderr, "  export %s .%s FAILED (err 0x%X)\n", chap_id, ext, (unsigned)drc);
-      return 1U;
-    }
-    (void)printf("  converted %s -> %s/*.%s\n", chap_id, dir, ext);
-    return 0U;
-  }
-  char      leaf[k_leaf_name_bytes];
-  const int ln = snprintf(leaf, sizeof(leaf), "%s.%s", chap_id, ext);
-  char      out[k_dir_path_bytes];
-  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
-    (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap_id, ext);
-    return 1U;
-  }
-  const ra8_err_t rc = mdl_export_chapter(format, dir, out);
-  if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "  export %s.%s FAILED (err 0x%X)\n", chap_id, ext, (unsigned)rc);
-    return 1U;
-  }
-  (void)printf("  packaged %s.%s\n", chap_id, ext);
-  return 0U;
-}
-
-/** @brief Package the combined chapter folder `combined_rel` into `format`. */
-RA8_INTERNAL static size_t
-export_combined_dir(mdl_format_t format, const char* series_dir, const char* combined_rel)
-{
-  const char* ext = mdl_format_ext(format);
-  char        dir[k_dir_path_bytes];
-  if (!mdl_path_join(series_dir, combined_rel, dir, sizeof(dir))) {
-    (void)fprintf(stderr, "  combine export path rejected under %s\n", series_dir);
-    return 1U;
-  }
-  if (mdl_format_is_dir_output(format)) {
-    /* JOF: the combined pages become `.jof` siblings inside the combined dir. */
-    const ra8_err_t drc = mdl_export_chapter(format, dir, dir);
-    if (drc != k_ra8_ok) {
-      (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)drc);
-      return 1U;
-    }
-    (void)printf("  combined -> %s/*.%s\n", dir, ext);
-    return 0U;
-  }
-  char      leaf[k_leaf_name_bytes];
-  const int ln = snprintf(leaf, sizeof(leaf), "%s.%s", combined_rel, ext);
-  char      out[k_dir_path_bytes];
-  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
-    (void)fprintf(stderr, "  combine export path rejected under %s\n", series_dir);
-    return 1U;
-  }
-  const ra8_err_t rc = mdl_export_chapter(format, dir, out);
-  if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)rc);
-    return 1U;
-  }
-  (void)printf("  combined -> %s\n", out);
-  return 0U;
-}
-
 /** @brief Build the session UA + identity for a run; warns on missing contact. */
 RA8_INTERNAL static void start_session(mdl_net_iface_t*      net,
                                        const mdl_run_opts_t* opts,
@@ -419,7 +351,10 @@ select_window(bool from_present, long from_num, size_t count, mdl_url_list_t* ou
 RA8_INTERNAL static bool state_path_of(const char* abs_dir, char* out, size_t cap)
 {
   const int n = snprintf(out, cap, "%s/.mdl_state", abs_dir);
-  return snprintf_fit(n, cap);
+  if (n < 0) {
+    return false;
+  }
+  return (size_t)n < cap;
 }
 
 /** @brief Export every chapter in `sel` that completed at/after `run_start`. */
@@ -434,7 +369,7 @@ RA8_INTERNAL static size_t export_fresh_separate(mdl_format_t          format,
     mdl_urlname_last_segment(sel->urls[i], id, sizeof(id));
     const mdl_chapter_rec_t* rec = mdl_state_find_chapter(&s_state, id);
     if ((rec != nullptr) && rec->complete && (rec->fetched_at >= run_start)) {
-      fails += export_one(format, abs_dir, id);
+      fails += mdl_pack_one(format, abs_dir, id);
     }
   }
   return fails;
@@ -525,7 +460,10 @@ RA8_INTERNAL static mdl_fetch_ctx_t make_ctx(const series_run_t* r,
                            .page_buf       = s_page,
                            .page_cap       = sizeof(s_page),
                            .images         = &s_images,
-                           .update_only    = r->update};
+                           .update_only    = r->update,
+                           .faillog        = &s_faillog,
+                           .progress_fn    = mdl_report_progress,
+                           .progress_ctx   = nullptr};
 }
 
 /** @brief Package the freshly-downloaded output; returns the export-failure count. */
@@ -541,8 +479,7 @@ RA8_INTERNAL static size_t export_after(const series_run_t*      r,
     return 0U;
   }
   if (layout == k_mdl_layout_combined) {
-    return (stats->chapters_completed > 0U) ? export_combined_dir(r->format, abs_dir, combined_rel)
-                                            : 0U;
+    return mdl_pack_combined(r->format, r->opts->allow_incomplete, abs_dir, combined_rel, stats);
   }
   return export_fresh_separate(r->format, abs_dir, sel, run_start);
 }
@@ -569,6 +506,7 @@ RA8_INTERNAL static int run_prepared(const series_run_t* r,
   mdl_governor_t      gov;
   const mdl_gov_cfg_t cfg = site_gov_cfg(site);
   mdl_governor_init(&gov, &cfg, r->seed);
+  memset(&s_faillog, 0, sizeof(s_faillog));
   mdl_fetch_ctx_t   ctx       = make_ctx(r, site, abs_dir, state_path, &gov);
   const int64_t     run_start = (int64_t)time(nullptr);
   mdl_fetch_stats_t stats;
@@ -579,6 +517,7 @@ RA8_INTERNAL static int run_prepared(const series_run_t* r,
                                         &stats);
   (void)mdl_state_save(state_path, &s_state);
   report_stats(abs_dir, &stats);
+  mdl_report_failures(&s_faillog);
   const size_t efail = export_after(r, abs_dir, layout, combined_rel, sel, &stats, run_start);
   return ((frc == k_ra8_ok) && (efail == 0U)) ? 0 : 1;
 }
@@ -740,13 +679,19 @@ RA8_INTERNAL static size_t download_page_image(const char*       url,
   mdl_urlname_ext(s_images.urls[idx], ext, sizeof(ext));
   char path[k_file_path_bytes];
   (void)snprintf(path, sizeof(path), "%s/page_%03zu.%s", out_dir, idx + 1U, ext);
-  const mdl_net_req_t ir  = {.user_agent = s_session.user_agent,
-                             .referer    = url,
-                             .timeout_ms = timeout};
-  size_t              got = 0U;
-  return (mdl_net_get_file(s_session.net, s_images.urls[idx], &ir, path, &got, nullptr) != k_ra8_ok)
-           ? 1U
-           : 0U;
+  const mdl_net_req_t ir   = {.user_agent = s_session.user_agent,
+                              .referer    = url,
+                              .timeout_ms = timeout};
+  size_t              got  = 0U;
+  mdl_net_resp_t      resp = {};
+  const ra8_err_t rc = mdl_net_get_file(s_session.net, s_images.urls[idx], &ir, path, &got, &resp);
+  if (rc != k_ra8_ok) {
+    char reason[k_mdl_reason_max];
+    mdl_fetch_reason(rc, resp.status, reason, sizeof(reason));
+    (void)fprintf(stderr, "  page %zu FAILED %s -- %s\n", idx + 1U, s_images.urls[idx], reason);
+    return 1U;
+  }
+  return 0U;
 }
 
 /** @brief Download the extracted page images into `out_dir`; returns failures. */
@@ -794,13 +739,16 @@ RA8_INTERNAL static int run_page(const char*           url,
     mdl_net_destroy(net);
     return 1;
   }
-  const mdl_net_req_t req = {.user_agent = s_session.user_agent,
-                             .referer    = nullptr,
-                             .timeout_ms = timeout};
-  size_t              len = 0U;
-  ra8_err_t rc = mdl_net_get_buf(s_session.net, url, &req, s_page, sizeof(s_page), &len, nullptr);
+  const mdl_net_req_t req  = {.user_agent = s_session.user_agent,
+                              .referer    = nullptr,
+                              .timeout_ms = timeout};
+  size_t              len  = 0U;
+  mdl_net_resp_t      resp = {};
+  ra8_err_t rc = mdl_net_get_buf(s_session.net, url, &req, s_page, sizeof(s_page), &len, &resp);
   if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "media_dl: fetch failed (err 0x%X)\n", (unsigned)rc);
+    char reason[k_mdl_reason_max];
+    mdl_fetch_reason(rc, resp.status, reason, sizeof(reason));
+    (void)fprintf(stderr, "media_dl: fetch failed -- %s\n", reason);
     mdl_net_destroy(net);
     return 1;
   }
@@ -811,12 +759,6 @@ RA8_INTERNAL static int run_page(const char*           url,
   const size_t fail = download_page_images(url, out_dir, max_imgs, seed, timeout, opts->polite);
   mdl_net_destroy(net);
   return (fail == 0U) ? 0 : 1;
-}
-
-/** @brief Convert a decimal string, or `dflt` when NULL. */
-RA8_INTERNAL static unsigned long to_ul(const char* s, unsigned long dflt)
-{
-  return (s == nullptr) ? dflt : strtoul(s, nullptr, k_dec_base);
 }
 
 /** @brief pack mode: package an existing folder of images into `format`. */
@@ -861,30 +803,22 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
   return 0;
 }
 
-/** @brief Assemble a ::series_run_t from parsed args + derived scalars. */
-RA8_INTERNAL static series_run_t build_run(const mdl_args_t*     a,
-                                           mdl_format_t          format,
-                                           const mdl_run_opts_t* opts,
-                                           uint64_t              seed,
-                                           uint32_t              timeout)
+/** @brief Assemble a ::series_run_t from parsed args + validated scalars. */
+RA8_INTERNAL static series_run_t
+build_run(const mdl_args_t* a, mdl_format_t format, const mdl_run_opts_t* opts, const mdl_nums_t* n)
 {
-  size_t chapters = (size_t)to_ul(a->chapters, 1UL);
-  if (chapters == 0U) {
-    chapters = 1U;
-  }
   return (series_run_t){.cfg_path     = a->cfg,
                         .series_url   = a->series,
                         .out_dir      = a->out,
                         .format       = format,
                         .combine      = !a->separate,
                         .update       = a->update,
-                        .from_present = (a->from != nullptr),
-                        .from_num =
-                          (a->from == nullptr) ? 0L : strtol(a->from, nullptr, k_dec_base),
-                        .chapters = chapters,
-                        .seed     = seed,
-                        .timeout  = timeout,
-                        .opts     = opts};
+                        .from_present = n->from_present,
+                        .from_num     = n->from_num,
+                        .chapters     = n->chapters,
+                        .seed         = n->seed,
+                        .timeout      = n->timeout,
+                        .opts         = opts};
 }
 
 /** @brief Dispatch a library command (`--list`/`--remove`/`--update-all`). */
@@ -928,9 +862,11 @@ int main(int argc, char** argv)
                   "media_dl: WARNING: --ignore-robots set; robots.txt will NOT be honoured\n");
   }
 
-  const uint64_t       seed    = (a.seed == nullptr) ? 1UL : strtoull(a.seed, nullptr, k_dec_base);
-  const uint32_t       timeout = (uint32_t)to_ul(a.timeout, (unsigned long)k_req_timeout_def);
-  const mdl_run_opts_t opts    = mdl_cli_run_opts(&a);
+  mdl_nums_t nums = {};
+  if (!mdl_cli_parse_nums(&a, &nums)) {
+    return 2;
+  }
+  const mdl_run_opts_t opts = mdl_cli_run_opts(&a);
 
   const mdl_format_t format = mdl_format_from_str(a.format);
   if (format == k_mdl_fmt_invalid) {
@@ -941,7 +877,7 @@ int main(int argc, char** argv)
     return 2;
   }
 
-  const series_run_t run = build_run(&a, format, &opts, seed, timeout);
+  const series_run_t run = build_run(&a, format, &opts, &nums);
 
   if (a.list || (a.remove_series != nullptr) || a.update_all) {
     return run_library(&a, &run);
@@ -957,8 +893,7 @@ int main(int argc, char** argv)
     return run_series(&run);
   }
   if (a.page_url != nullptr) {
-    const uint32_t max_imgs = (uint32_t)to_ul(a.max, 0UL);
-    return run_page(a.page_url, a.out, a.attr, max_imgs, seed, timeout, &opts);
+    return run_page(a.page_url, a.out, a.attr, nums.max_imgs, nums.seed, nums.timeout, &opts);
   }
   mdl_cli_usage(argv[0]);
   return 2;

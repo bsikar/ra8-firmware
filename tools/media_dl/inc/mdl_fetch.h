@@ -68,6 +68,84 @@ typedef struct {
   size_t pages_failed;       /**< Page fetches that failed or robots refused.      */
 } mdl_fetch_stats_t;
 
+/** @brief Bounded run-failure log capacity (zero dynamic allocation). */
+typedef enum : uint16_t {
+  k_mdl_fetch_fail_max = 256, /**< Failures stored before the log saturates. */
+} mdl_fetch_faillog_size_t;
+
+/**
+ * @struct mdl_fetch_fail_t
+ * @brief One recorded page/chapter failure: what failed, and with what status.
+ * @details Captured by the run so an end-of-run summary can name every lost
+ *          page long after its one-line diagnostic has scrolled past. The raw
+ *          ::ra8_err_t is kept (not a prose string) so the caller renders a
+ *          human-readable reason at print time via ::mdl_fetch_reason.
+ * @invariant `status == 0` when no HTTP status was observed (transport error or
+ *            a robots refusal before any request).
+ * @since 0.1.0
+ */
+typedef struct {
+  char      url[k_mdl_url_max]; /**< Failing page or chapter URL (truncation-safe). */
+  long      status;             /**< HTTP status observed, 0 when none.             */
+  ra8_err_t err;                /**< Classified failure code (rendered on demand).  */
+} mdl_fetch_fail_t;
+
+/**
+ * @struct mdl_fetch_faillog_t
+ * @brief Bounded record of every failure in a run (declare at file scope).
+ * @details About 135 KiB (a fixed ::mdl_fetch_fail_t table), so it lives in
+ *          `.bss` beside the other large run buffers. The caller clears it
+ *          before a run; the loop only appends. `count` is what is stored (at
+ *          most ::k_mdl_fetch_fail_max), `total` is what was observed, so a
+ *          saturated log still reports the true failure count.
+ * @invariant `count <= k_mdl_fetch_fail_max` and `count <= total`.
+ * @see mdl_fetch_run
+ * @since 0.1.0
+ */
+typedef struct {
+  mdl_fetch_fail_t items[k_mdl_fetch_fail_max]; /**< Stored failures.               */
+  size_t           count;                       /**< Stored (<= capacity).          */
+  size_t           total;                       /**< Observed (may exceed `count`). */
+} mdl_fetch_faillog_t;
+
+/**
+ * @struct mdl_fetch_progress_t
+ * @brief One per-page progress event the run emits through ::mdl_progress_fn.
+ * @details Carries everything a redirect-safe progress line needs: where we are
+ *          in the run (chapter index/total), where we are in the chapter (page
+ *          index/total), and how the page went (bytes and wall time, or a reuse
+ *          flag). Rate is bytes over `elapsed_ms`; the sink formats it.
+ * @invariant `page_bytes == 0` and `elapsed_ms == 0` when `reused` is true.
+ * @see mdl_progress_fn
+ * @since 0.1.0
+ */
+typedef struct {
+  size_t      chapter_index; /**< 1-based chapter position in the run.        */
+  size_t      chapter_total; /**< Total chapters in the run.                  */
+  const char* chapter_id;    /**< Chapter identifier (URL leaf).              */
+  size_t      page_index;    /**< 1-based page position within the chapter.   */
+  size_t      page_total;    /**< Pages in the chapter.                       */
+  uint64_t    page_bytes;    /**< Bytes transferred (0 when reused).          */
+  uint32_t    elapsed_ms;    /**< Wall time for the transfer (0 when reused). */
+  bool        reused;        /**< Page served from an already-held file.      */
+} mdl_fetch_progress_t;
+
+/**
+ * @brief Injected per-page progress sink; NULL disables all progress output.
+ *
+ * @details
+ * The dependency-injection seam for run progress. Production wires a sink that
+ * prints one redirect-safe line per page; the host tests leave it NULL so the
+ * loop is silent and deterministic (and no wall clock is read). It is called
+ * once per page after the page is present, fetched or reused.
+ *
+ * @param[in] ctx Opaque context supplied in ::mdl_fetch_ctx_t::progress_ctx.
+ * @param[in] ev  The just-completed page's progress event (never NULL).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+typedef void (*mdl_progress_fn)(void* ctx, const mdl_fetch_progress_t* ev);
+
 /**
  * @struct mdl_fetch_ctx_t
  * @brief Everything ::mdl_fetch_run needs, injected for testability.
@@ -81,18 +159,21 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  mdl_session_t*    session;        /**< Identity + robots + net backend.          */
-  mdl_state_t*      state;          /**< Persistent state, read and updated.       */
-  const char*       state_path;     /**< Atomic checkpoint target, or NULL.        */
-  const char*       series_abs_dir; /**< Absolute series dir (paths resolve here). */
-  const char*       series_url;     /**< Series URL, sent as the chapter Referer.  */
-  const mdl_site_t* site;           /**< Selectors + politeness bounds.            */
-  mdl_governor_t*   gov;            /**< Per-host rate/backoff governor, or NULL.  */
-  uint32_t          timeout_ms;     /**< Per-request time budget.                  */
-  char*             page_buf;       /**< Chapter-HTML scratch (caller-owned).      */
-  size_t            page_cap;       /**< Capacity of @ref page_buf.                */
-  mdl_url_list_t*   images;         /**< Extracted-image scratch (caller-owned).   */
-  bool              update_only;    /**< Skip chapters already recorded complete.  */
+  mdl_session_t*       session;        /**< Identity + robots + net backend.          */
+  mdl_state_t*         state;          /**< Persistent state, read and updated.       */
+  const char*          state_path;     /**< Atomic checkpoint target, or NULL.        */
+  const char*          series_abs_dir; /**< Absolute series dir (paths resolve here). */
+  const char*          series_url;     /**< Series URL, sent as the chapter Referer.  */
+  const mdl_site_t*    site;           /**< Selectors + politeness bounds.            */
+  mdl_governor_t*      gov;            /**< Per-host rate/backoff governor, or NULL.  */
+  uint32_t             timeout_ms;     /**< Per-request time budget.                  */
+  char*                page_buf;       /**< Chapter-HTML scratch (caller-owned).      */
+  size_t               page_cap;       /**< Capacity of @ref page_buf.                */
+  mdl_url_list_t*      images;         /**< Extracted-image scratch (caller-owned).   */
+  bool                 update_only;    /**< Skip chapters already recorded complete.  */
+  mdl_fetch_faillog_t* faillog;        /**< Caller-cleared failure log, or NULL.      */
+  mdl_progress_fn      progress_fn;    /**< Per-page progress sink, or NULL (silent). */
+  void*                progress_ctx;   /**< Context passed to @ref progress_fn.       */
 } mdl_fetch_ctx_t;
 
 /**
@@ -104,9 +185,14 @@ typedef struct {
  * record is already complete -- fetches the chapter page, extracts its image
  * URLs, and writes each page under @p ctx->series_abs_dir. A page already held
  * (matched by source-URL hash and verified by content hash) is reused from disk
- * rather than re-fetched, including across chapters. A chapter is marked complete
- * and its record checkpointed only once every page is present and verified; a
- * page failure leaves the chapter partial for the next run to resume. In
+ * rather than re-fetched, including across chapters. Each request is retried up
+ * to a small bounded number of times on a retryable outcome (a transport error,
+ * timeout, 429 or 5xx), always paced through the politeness governor so a retry
+ * never becomes an unpaced hammer; a 404 is never retried. A chapter is marked
+ * complete and its record checkpointed only once every page is present and
+ * verified; a page failure leaves the chapter partial for the next run to
+ * resume, and is appended to @p ctx->faillog (when set) with its URL and status.
+ * Per-page progress is emitted through @p ctx->progress_fn (when set). In
  * ::k_mdl_layout_combined the pages of all chapters share one directory with
  * numbering continued across chapters (derived from recorded per-chapter page
  * counts, so a resume reproduces it); ::k_mdl_layout_separate gives each chapter

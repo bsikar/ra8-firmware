@@ -14,6 +14,7 @@
  */
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "mdl_net.h"
@@ -29,10 +30,11 @@
  * @since 0.1.0
  */
 typedef struct {
-  mdl_net_policy_t policy;       /**< Backend security policy.           */
-  const char*      contact;      /**< --contact override, or NULL.       */
-  bool             honor_robots; /**< False when --ignore-robots is set. */
-  bool             polite;       /**< True when --polite is set.         */
+  mdl_net_policy_t policy;           /**< Backend security policy.             */
+  const char*      contact;          /**< --contact override, or NULL.         */
+  bool             honor_robots;     /**< False when --ignore-robots is set.   */
+  bool             polite;           /**< True when --polite is set.           */
+  bool             allow_incomplete; /**< True when --allow-incomplete is set. */
 } mdl_run_opts_t;
 
 /**
@@ -45,30 +47,31 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const char* cfg;           /**< --config path.                                            */
-  const char* series;        /**< --series URL.                                             */
-  const char* page_url;      /**< positional page URL (page mode).                          */
-  const char* out;           /**< --out dir.                                                */
-  const char* attr;          /**< --attr.                                                   */
-  const char* chapters;      /**< --chapters.                                               */
-  const char* from;          /**< --from: first chapter NUMBER to fetch (not an index).     */
-  const char* max;           /**< --max.                                                    */
-  const char* seed;          /**< --seed.                                                   */
-  const char* timeout;       /**< --timeout.                                                */
-  const char* format;        /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/jof/rabook).     */
-  const char* pack;          /**< --pack DIR: package an existing folder, no network.       */
-  const char* contact;       /**< --contact: operator identity for the User-Agent.          */
-  const char* max_bytes;     /**< --max-bytes: per-response size cap.                       */
-  const char* remove_series; /**< --remove: series URL/slug to drop from the library.       */
-  bool        separate;      /**< --separate: one archive per chapter (default: combine).   */
-  bool        update;        /**< --update: fetch only chapters not already complete.       */
-  bool        list;          /**< --list: list tracked series with coverage, then exit.     */
-  bool        update_all;    /**< --update-all: incremental update of every tracked series. */
-  bool        polite;        /**< --polite: raise per-host delays.                          */
-  bool        ignore_robots; /**< --ignore-robots: escape hatch (off by default).           */
-  bool        allow_private; /**< --allow-private: permit private/loopback peers.           */
-  bool        cross_host;    /**< --cross-host: permit cross-host redirects.                */
-  bool        bad;           /**< An unrecognised argument was seen.                        */
+  const char* cfg;              /**< --config path.                                            */
+  const char* series;           /**< --series URL.                                             */
+  const char* page_url;         /**< positional page URL (page mode).                          */
+  const char* out;              /**< --out dir.                                                */
+  const char* attr;             /**< --attr.                                                   */
+  const char* chapters;         /**< --chapters.                                               */
+  const char* from;             /**< --from: first chapter NUMBER to fetch (not an index).     */
+  const char* max;              /**< --max.                                                    */
+  const char* seed;             /**< --seed.                                                   */
+  const char* timeout;          /**< --timeout.                                                */
+  const char* format;           /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/jof/rabook).     */
+  const char* pack;             /**< --pack DIR: package an existing folder, no network.       */
+  const char* contact;          /**< --contact: operator identity for the User-Agent.          */
+  const char* max_bytes;        /**< --max-bytes: per-response size cap.                       */
+  const char* remove_series;    /**< --remove: series URL/slug to drop from the library.       */
+  bool        separate;         /**< --separate: one archive per chapter (default: combine).   */
+  bool        update;           /**< --update: fetch only chapters not already complete.       */
+  bool        list;             /**< --list: list tracked series with coverage, then exit.     */
+  bool        update_all;       /**< --update-all: incremental update of every tracked series. */
+  bool        polite;           /**< --polite: raise per-host delays.                          */
+  bool        ignore_robots;    /**< --ignore-robots: escape hatch (off by default).           */
+  bool        allow_private;    /**< --allow-private: permit private/loopback peers.           */
+  bool        cross_host;       /**< --cross-host: permit cross-host redirects.                */
+  bool        allow_incomplete; /**< --allow-incomplete: package a run with failed pages.      */
+  bool        bad;              /**< An unrecognised argument was seen.                        */
 } mdl_args_t;
 
 /**
@@ -112,3 +115,49 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a);
  * @since 0.1.0
  */
 mdl_run_opts_t mdl_cli_run_opts(const mdl_args_t* a);
+
+/**
+ * @struct mdl_nums_t
+ * @brief The validated numeric CLI scalars, parsed once before any run mode.
+ * @details Parsing the string fields in one strict place means every run mode
+ *          sees the same rejection of non-numeric input rather than a silent 0.
+ * @invariant `chapters >= 1` after ::mdl_cli_parse_nums succeeds.
+ * @see mdl_cli_parse_nums()
+ * @since 0.1.0
+ */
+typedef struct {
+  uint64_t seed;         /**< --seed (default 1).                         */
+  uint32_t timeout;      /**< --timeout ms (default ::k_req_timeout_def). */
+  size_t   chapters;     /**< --chapters window (clamped to >= 1).        */
+  uint32_t max_imgs;     /**< --max page images (0 = all).                */
+  bool     from_present; /**< Whether --from was supplied.                */
+  long     from_num;     /**< --from chapter number.                      */
+} mdl_nums_t;
+
+/**
+ * @brief Strictly parse and validate every numeric CLI field.
+ *
+ * @details
+ * Converts the string-form numeric options (`--timeout`, `--chapters`, `--max`,
+ * `--seed`, `--from`, and `--max-bytes` for presence-validation) into typed
+ * scalars, rejecting any non-numeric or trailing-garbage value with a usage
+ * message on stderr rather than silently substituting 0. `--chapters` of 0 is
+ * clamped up to 1.
+ *
+ * @param[in]  a Parsed command-line options (never NULL).
+ * @param[out] n Receives the validated scalars (never NULL).
+ *
+ * @return Whether every present numeric field parsed cleanly.
+ * @retval true  All fields valid; @p n is fully populated.
+ * @retval false A field was non-numeric or out of range; a usage error was
+ *               printed and @p n is partially written.
+ *
+ * @pre @p a and @p n are non-NULL; @p a was populated by ::mdl_cli_parse.
+ * @pre The caller aborts with a usage exit code when this returns false.
+ * @post On true, `n->chapters >= 1` and every scalar reflects the args.
+ * @post On false, a diagnostic naming the bad option was written to stderr.
+ *
+ * @note Not thread-safe: writes caller storage and stderr.
+ * @since 0.1.0
+ */
+bool mdl_cli_parse_nums(const mdl_args_t* a, mdl_nums_t* n);

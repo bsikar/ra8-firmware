@@ -93,6 +93,8 @@ add_executable(
   src/mdl_urlname.c
   src/mdl_state.c
   src/mdl_fetch.c
+  src/mdl_report.c
+  src/mdl_pack.c
   src/mdl_library.c
   src/mdl_export.c
   src/mdl_export_jof.c
@@ -255,7 +257,8 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_fetch
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
 target_compile_definitions(test_media_dl_fetch PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)

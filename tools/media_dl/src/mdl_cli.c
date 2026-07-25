@@ -8,6 +8,7 @@
  */
 #include "mdl_cli.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,11 @@
 typedef enum : uint8_t {
   k_cli_dec_base = 10, /**< strtoull() radix for --max-bytes. */
 } mdl_cli_parse_t;
+
+/** @brief Default per-request time budget when --timeout is absent. */
+typedef enum : uint32_t {
+  k_req_timeout_def = 25000U, /**< 25 s per-request budget, ms. */
+} mdl_cli_timeout_t;
 
 /** @brief Default per-response size cap: bound a hostile/broken stream. */
 typedef enum : uint64_t {
@@ -48,7 +54,9 @@ void mdl_cli_usage(const char* a0)
                 "    --max-bytes N          per-response size cap (default 64 MiB)\n"
                 "    --ignore-robots        do NOT honour robots.txt (logged loudly)\n"
                 "    --allow-private        permit loopback/private/link-local peers\n"
-                "    --cross-host           permit redirects to a different host\n",
+                "    --cross-host           permit redirects to a different host\n"
+                "    --allow-incomplete     package a run with failed pages; the archive\n"
+                "                           is named .INCOMPLETE so it is visibly partial\n",
                 a0,
                 a0,
                 a0,
@@ -86,7 +94,8 @@ RA8_INTERNAL static bool parse_bool_flags(const char* arg, mdl_args_t* a)
          take_flag(arg, "--polite", &a->polite) ||
          take_flag(arg, "--ignore-robots", &a->ignore_robots) ||
          take_flag(arg, "--allow-private", &a->allow_private) ||
-         take_flag(arg, "--cross-host", &a->cross_host);
+         take_flag(arg, "--cross-host", &a->cross_host) ||
+         take_flag(arg, "--allow-incomplete", &a->allow_incomplete);
 }
 
 void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
@@ -136,11 +145,151 @@ mdl_run_opts_t mdl_cli_run_opts(const mdl_args_t* a)
                                ? (uint64_t)k_max_response_bytes_def
                                : strtoull(a->max_bytes, nullptr, k_cli_dec_base);
   return (mdl_run_opts_t){
-    .policy       = {.allow_private_hosts       = a->allow_private,
-                     .allow_cross_host_redirect = a->cross_host,
-                     .max_response_bytes        = max_bytes},
-    .contact      = a->contact,
-    .honor_robots = !a->ignore_robots,
-    .polite       = a->polite,
+    .policy           = {.allow_private_hosts       = a->allow_private,
+                         .allow_cross_host_redirect = a->cross_host,
+                         .max_response_bytes        = max_bytes},
+    .contact          = a->contact,
+    .honor_robots     = !a->ignore_robots,
+    .polite           = a->polite,
+    .allow_incomplete = a->allow_incomplete,
   };
+}
+
+/** @brief Strict decimal unsigned parse: false unless all of `s` is digits. */
+RA8_INTERNAL static bool parse_ul(const char* s, unsigned long* out)
+{
+  if (s == nullptr) {
+    return false;
+  }
+  if (s[0] < '0') {
+    return false; /* rejects "", sign, whitespace, and other leading non-digits */
+  }
+  if (s[0] > '9') {
+    return false;
+  }
+  errno                   = 0;
+  char*               end = nullptr;
+  const unsigned long v   = strtoul(s, &end, k_cli_dec_base);
+  if (errno != 0) {
+    return false;
+  }
+  if (*end != '\0') {
+    return false; /* trailing garbage ("12abc") is not a number */
+  }
+  *out = v;
+  return true;
+}
+
+/** @brief Strict decimal 64-bit unsigned parse (as ::parse_ul, wider type). */
+RA8_INTERNAL static bool parse_ull(const char* s, uint64_t* out)
+{
+  if (s == nullptr) {
+    return false;
+  }
+  if (s[0] < '0') {
+    return false;
+  }
+  if (s[0] > '9') {
+    return false;
+  }
+  errno                        = 0;
+  char*                    end = nullptr;
+  const unsigned long long v   = strtoull(s, &end, k_cli_dec_base);
+  if (errno != 0) {
+    return false;
+  }
+  if (*end != '\0') {
+    return false;
+  }
+  *out = (uint64_t)v;
+  return true;
+}
+
+/** @brief Strict decimal signed parse for `--from` (a leading sign is allowed). */
+RA8_INTERNAL static bool parse_l(const char* s, long* out)
+{
+  if (s == nullptr) {
+    return false;
+  }
+  if (s[0] == '\0') {
+    return false;
+  }
+  errno          = 0;
+  char*      end = nullptr;
+  const long v   = strtol(s, &end, k_cli_dec_base);
+  if (errno != 0) {
+    return false;
+  }
+  if (end == s) {
+    return false;
+  }
+  if (*end != '\0') {
+    return false;
+  }
+  *out = v;
+  return true;
+}
+
+/** @brief Optional unsigned option: default when absent, usage error on garbage. */
+RA8_INTERNAL static bool
+opt_ul(const char* name, const char* s, unsigned long dflt, unsigned long* out)
+{
+  if (s == nullptr) {
+    *out = dflt;
+    return true;
+  }
+  if (parse_ul(s, out)) {
+    return true;
+  }
+  (void)fprintf(stderr, "media_dl: --%s expects a non-negative integer, got '%s'\n", name, s);
+  return false;
+}
+
+/** @brief Optional 64-bit unsigned option: default when absent, error on garbage. */
+RA8_INTERNAL static bool opt_ull(const char* name, const char* s, uint64_t dflt, uint64_t* out)
+{
+  if (s == nullptr) {
+    *out = dflt;
+    return true;
+  }
+  if (parse_ull(s, out)) {
+    return true;
+  }
+  (void)fprintf(stderr, "media_dl: --%s expects a non-negative integer, got '%s'\n", name, s);
+  return false;
+}
+
+bool mdl_cli_parse_nums(const mdl_args_t* a, mdl_nums_t* n)
+{
+  unsigned long timeout_ul  = 0UL;
+  unsigned long chapters_ul = 0UL;
+  unsigned long max_ul      = 0UL;
+  if (!opt_ul("timeout", a->timeout, (unsigned long)k_req_timeout_def, &timeout_ul)) {
+    return false;
+  }
+  if (!opt_ul("chapters", a->chapters, 1UL, &chapters_ul)) {
+    return false;
+  }
+  if (!opt_ul("max", a->max, 0UL, &max_ul)) {
+    return false;
+  }
+  if (!opt_ull("seed", a->seed, 1U, &n->seed)) {
+    return false;
+  }
+  uint64_t max_bytes = 0U;
+  if (!opt_ull("max-bytes", a->max_bytes, 0U, &max_bytes)) {
+    return false; /* validate presence-garbage; the default is applied in run_opts */
+  }
+  n->from_present = (a->from != nullptr);
+  n->from_num     = 0L;
+  if (a->from != nullptr) {
+    if (!parse_l(a->from, &n->from_num)) {
+      (void)fprintf(stderr, "media_dl: --from expects an integer, got '%s'\n", a->from);
+      return false;
+    }
+  }
+  n->timeout  = (uint32_t)timeout_ul;
+  n->chapters = (chapters_ul == 0UL) ? 1U : (size_t)chapters_ul;
+  n->max_imgs = (uint32_t)max_ul;
+  return true;
 }
