@@ -5,7 +5,8 @@
 # SPDX-License-Identifier: MIT
 
 .PHONY: tools tools-help media_dl test-media_dl test-integration viewer view dl \
-        mcp books rabook-golden-update rabook-gray8-fixture-update bench-cache
+        mcp books rabook-golden-update rabook-gray8-fixture-update \
+        bluenoise-mask-update bench-cache
 
 # `make tools` -- build every compiled host tool in one go.
 tools: media_dl viewer
@@ -144,3 +145,13 @@ RABOOK_GRAY8_FIXTURE ?= examples/ek_ra8d2/hw_validated/hil/ereader_rabook/rabook
 rabook-gray8-fixture-update:
 	python3 scripts/gen/rabook_gray8_fixture.py
 	$(CLANG_FORMAT) -i $(RABOOK_GRAY8_FIXTURE)
+
+# `make bluenoise-mask-update` -- regenerate the void-and-cluster blue-noise
+# dither threshold mask (#477) with the deterministic pure-Python generator,
+# then clang-format it. The mask is committed generated data; re-pin the
+# test_ra8_gfx_dither `k_dt_blit_golden` framebuffer golden in the same change
+# if the quantiser or the mask changed.
+BLUENOISE_MASK ?= libs/ra8_gfx/src/ra8_gfx_dither_mask_internal.h
+bluenoise-mask-update:
+	python3 scripts/gen/gen_bluenoise_mask.py
+	$(CLANG_FORMAT) -i $(BLUENOISE_MASK)
