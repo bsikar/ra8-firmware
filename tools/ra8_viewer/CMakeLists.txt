@@ -37,45 +37,190 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
 # ---------------------------------------------------------------------------
+# ra8_viewer_read_path(<out> <lib_src_dir> KEEP <files...> DROP <files...>)
+#
+# Resolve -- and CHECK -- the read-path members of a firmware library the viewer
+# links only a SUBSET of. KEEP names the reader-core members compiled into
+# ra8_reader; DROP names the producer / encoder / block-device / text-layout
+# members deliberately left out. The function globs <lib_src_dir>/*.c and fails
+# configuration unless KEEP and DROP partition that glob exactly:
+#
+#   * a present file in neither list -- a reader-core file was split, renamed or
+#     added; classify it KEEP (link it) or DROP (leave it out);
+#   * a listed file that is not present -- a member was renamed or deleted;
+#     update its KEEP/DROP list.
+#
+# Either way `cmake` fails LOUDLY at configure time -- which the tools-build gate
+# runs under clang-18 and gcc-14 -- so a frozen hand-list can no longer rot into
+# a silent undefined-symbol link error found only by a later manual build. <out>
+# receives the KEEP members as absolute paths.
+# ---------------------------------------------------------------------------
+function(ra8_viewer_read_path out_var lib_src_dir)
+  cmake_parse_arguments(
+    _RP
+    ""
+    ""
+    "KEEP;DROP"
+    ${ARGN}
+  )
+
+  file(GLOB _present_abs CONFIGURE_DEPENDS ${lib_src_dir}/*.c)
+  set(_present "")
+  foreach(_path IN LISTS _present_abs)
+    get_filename_component(_name "${_path}" NAME)
+    list(APPEND _present "${_name}")
+  endforeach()
+
+  set(_declared ${_RP_KEEP} ${_RP_DROP})
+  foreach(_name IN LISTS _present)
+    if(NOT _name IN_LIST _declared)
+      message(
+        FATAL_ERROR
+          "ra8_viewer: ${lib_src_dir}/${_name} is neither a KEEP (read-path) nor "
+          "a DROP (excluded) source. A reader-core file was split, renamed or "
+          "added -- classify it so the viewer links the right members."
+      )
+    endif()
+  endforeach()
+
+  foreach(_name IN LISTS _declared)
+    if(NOT _name IN_LIST _present)
+      message(FATAL_ERROR "ra8_viewer: declared source ${lib_src_dir}/${_name} does not exist. A "
+                          "firmware member was renamed or deleted -- update its KEEP/DROP list."
+      )
+    endif()
+  endforeach()
+
+  set(_keep_abs "")
+  foreach(_name IN LISTS _RP_KEEP)
+    list(APPEND _keep_abs "${lib_src_dir}/${_name}")
+  endforeach()
+  set(${out_var}
+      "${_keep_abs}"
+      PARENT_SCOPE
+  )
+endfunction()
+
+# ---------------------------------------------------------------------------
 # ra8_reader: static archive of exactly the firmware reader sources the viewer
 # calls. Building an archive (not an object library) means the linker pulls only
 # the members needed to resolve the viewer's references -- transitively -- so the
 # HAL / RTOS / peripheral libraries are never dragged in. Under RA8_SIMULATOR_MODE
 # the CBZ backend uses miniz's default (malloc) allocator, so no ra8_epub source
 # is needed -- only its header (ra8_epub_miniz_alloc.h) sits on the include path.
+#
+# The source list is DERIVED, never hand-frozen. Libraries whose whole src/ tree
+# is read path are globbed (a split or new read-path file is absorbed
+# automatically); libraries the viewer links a subset of go through
+# ra8_viewer_read_path(), which fails configuration the moment its declaration
+# stops covering the library.
 # ---------------------------------------------------------------------------
+
+# Whole-read-path libraries -- every src/ member is part of the reader path, so
+# a glob is the single source of truth (the host-test build and board_sim
+# consume their firmware libraries the same way). ra8_comic pulls in the
+# gzip/xz/tar wrapped-container decoders (ra8_unarch, which sits on the vendored
+# xz-embedded decoder); ra8_longstrip renders the firmware-native `.jof`
+# vertical-scroll tile atlas.
 file(GLOB RA8_COMIC_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_comic/src/*.c)
 file(GLOB RA8_GFX_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
-# ra8_comic pulls in the gzip/xz/tar wrapped-container decoders (ra8_unarch),
-# and ra8_unarch_xz sits on the vendored xz-embedded decoder.
 file(GLOB RA8_UNARCH_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_unarch/src/*.c)
+file(GLOB RA8_LONGSTRIP_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_longstrip/src/*.c)
 
-# ra8_longstrip renders the firmware-native `.jof` vertical-scroll tile atlas the
-# downloader writes: the strip parses through ra8_jof (DEFLATE tiles inflate
-# via ra8_io_compress over the already-linked miniz), pages through the ra8_mem
-# tile cache (+ its keycache), and composites bands via ra8_longstrip. Only the
-# READ path is needed (no producer / PNG / webp), so name the exact members.
-set(RA8_LONGSTRIP_SRC
-    ${FW_ROOT}/libs/ra8_longstrip/src/ra8_longstrip.c
-    ${FW_ROOT}/libs/ra8_jof/src/ra8_jof.c
-    ${FW_ROOT}/libs/ra8_io/src/ra8_io_compress.c
-    ${FW_ROOT}/libs/ra8_mem/src/ra8_tile_cache.c
-    ${FW_ROOT}/libs/ra8_mem/src/ra8_keycache.c
+# Partial-read-path libraries -- the viewer links only the read members. The JOF
+# strip parses through ra8_jof (DEFLATE tiles inflate via ra8_io_compress over
+# the already-linked miniz) and pages through the ra8_mem tile cache (+ its
+# keycache); ra8_reflow supplies the image blit + SVG rasteriser (no CSS/text
+# layout); ra8_core supplies logging, the error handler and the shared
+# decompression-limits policy. Each DROP is producer / encoder / HAL /
+# text-layout code the viewer must not link; ra8_viewer_read_path() proves the
+# split is still complete.
+ra8_viewer_read_path(
+  RA8_JOF_SRC ${FW_ROOT}/libs/ra8_jof/src
+  KEEP ra8_jof.c
+  DROP ra8_jof_png.c ra8_jof_png_chunk.c ra8_jof_produce.c ra8_jof_produce_webp.c
 )
 
-set(RA8_REFLOW_SRC
-    ${FW_ROOT}/libs/ra8_reflow/src/ra8_reflow_image.c
-    ${FW_ROOT}/libs/ra8_reflow/src/ra8_img_arena.c
-    ${FW_ROOT}/libs/ra8_reflow/src/ra8_reflow_svg.c
-    ${FW_ROOT}/libs/ra8_reflow/src/ra8_reflow_svg_doc.c
-    ${FW_ROOT}/libs/ra8_reflow/src/ra8_reflow_svg_path.c
-    ${FW_ROOT}/libs/ra8_reflow/src/ra8_reflow_svg_shape.c
-    ${FW_ROOT}/libs/ra8_reflow/src/ra8_reflow_svg_xform.c
+ra8_viewer_read_path(
+  RA8_IO_SRC ${FW_ROOT}/libs/ra8_io/src
+  KEEP ra8_io_compress.c
+  DROP ra8_io_blockdev.c
+       ra8_io_blockdev_cache.c
+       ra8_io_blockdev_mram.c
+       ra8_io_blockdev_ram.c
+       ra8_io_blockdev_sdhi.c
+       ra8_io_blockdev_sdram.c
+       ra8_io_blockdev_sdspi.c
+       ra8_io_blockdev_vsource.c
+       ra8_io_blockdev_xspi.c
+       ra8_io_fsfmt.c
+       ra8_io_i2c_bus.c
+       ra8_io_i2c_bus_i3c_compat.c
+       ra8_io_i2c_bus_riic.c
+       ra8_io_log.c
+       ra8_io_spi_bus.c
+       ra8_io_spi_bus_sci_spi.c
+       ra8_io_spi_bus_spi_b.c
+       ra8_io_stream.c
+       ra8_io_stream_blockdev.c
+       ra8_io_stream_ram.c
+       ra8_io_stream_uart.c
+       ra8_io_stream_usbcdc.c
+       ra8_io_vfs.c
+       ra8_io_vfs_compress.c
 )
-set(RA8_CORE_SRC
-    ${FW_ROOT}/libs/ra8_core/src/ra8_log.c ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
-    ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
+
+ra8_viewer_read_path(
+  RA8_MEM_SRC ${FW_ROOT}/libs/ra8_mem/src
+  KEEP ra8_tile_cache.c ra8_keycache.c
+  DROP ra8_arena.c
+       ra8_glyph_atlas.c
+       ra8_slab.c
+       ra8_vmem.c
+       ra8_vmem_stream.c
+       ra8_vsource.c
 )
+
+ra8_viewer_read_path(
+  RA8_REFLOW_SRC ${FW_ROOT}/libs/ra8_reflow/src
+  KEEP ra8_reflow_image.c
+       ra8_img_arena.c
+       ra8_reflow_svg.c
+       ra8_reflow_svg_doc.c
+       ra8_reflow_svg_path.c
+       ra8_reflow_svg_shape.c
+       ra8_reflow_svg_xform.c
+  DROP ra8_reflow_cache.c
+       ra8_reflow_css.c
+       ra8_reflow_css_cascade.c
+       ra8_reflow_css_rules.c
+       ra8_reflow_layout.c
+       ra8_reflow_layout_driver.c
+       ra8_reflow_layout_image.c
+       ra8_reflow_layout_table.c
+       ra8_reflow_link.c
+       ra8_reflow_parse.c
+       ra8_reflow_render.c
+       ra8_reflow_tokenize.c
+       ra8_reflow_tokenize_attr.c
+       ra8_reflow_tokenize_lex.c
+       ra8_stbtt_alloc.c
+       ra8_stbtt_guard.c
+)
+
+ra8_viewer_read_path(
+  RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
+  KEEP ra8_log.c ra8_error_handler.c ra8_decomp_limits.c
+  DROP ra8_crashlog.c
+       ra8_exception.c
+       ra8_infrastructure.c
+       ra8_pin_validator.c
+       ra8_rand_stub.c
+       ra8_sbrk_trap.c
+       ra8_secure.c
+       ra8_time.c
+)
+
 file(GLOB RA8_XZ_EMBEDDED_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/third_party/xz_embedded/*.c)
 set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/libs/third_party/miniz/miniz.c
                         ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c ${RA8_XZ_EMBEDDED_SRC}
@@ -87,6 +232,9 @@ add_library(
   ${RA8_GFX_SRC}
   ${RA8_UNARCH_SRC}
   ${RA8_LONGSTRIP_SRC}
+  ${RA8_JOF_SRC}
+  ${RA8_IO_SRC}
+  ${RA8_MEM_SRC}
   ${RA8_REFLOW_SRC}
   ${RA8_CORE_SRC}
   ${RA8_THIRD_PARTY_SRC}

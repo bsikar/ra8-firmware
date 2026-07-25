@@ -47,6 +47,11 @@ parse:
       pargs: 1
       kwargs:
         STACK_USAGE_BYTES: 1
+    ra8_viewer_read_path:
+      pargs: 2
+      kwargs:
+        KEEP: '*'
+        DROP: '*'
 
 format:
   line_width: 100
