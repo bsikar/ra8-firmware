@@ -28,10 +28,13 @@
  * renderer cannot lay out yet is still present in the blob intact -- the fix
  * for unsupported markup is to grow the renderer, never to strip the content.
  * The only content that changes form is raster images, which are transcoded to
- * the panel's native 4-bit grayscale (a hardware limit, not a renderer one) at
- * their source resolution -- no downscale by default, so zoomable content
- * (manga pages) keeps every pixel; a long-edge clamp exists only as an opt-in
- * compile knob.
+ * grayscale at their source resolution -- no downscale by default, so zoomable
+ * content (manga pages) keeps every pixel; a long-edge clamp exists only as an
+ * opt-in compile knob. The depth is the `pixel_format` axis: 4bpp panel-native
+ * (a hardware limit, not a renderer one) for never-zoomed content, or
+ * full-resolution continuous-tone 8bpp kept verbatim for zoomable content (#476),
+ * since the zoom loupe and the e-ink dither need the 256-level tones the 4bpp
+ * quantise discards. See @ref md_docs_2formats_2RBKC section 3.5.
  *
  * @par String interning
  * All strings (tag names, attribute names and values, text runs, hrefs,

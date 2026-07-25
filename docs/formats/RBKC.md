@@ -258,6 +258,46 @@ by `ra8_book_header_t` -- an 8-byte magic `"RABOOK1"` (7 chars plus NUL), a
 inspects nor validates any of it; `ra8_book_validate()` does that after the
 bytes are available.
 
+### 3.5 Image pool: gray4, or full-resolution gray8 for zoomable content
+
+The image pool holds one payload per `ra8_book_image_t`. An SVG entry keeps its
+verbatim vector source. A raster entry (`format = k_ra8_book_image_gray4`) stores
+grayscale pixels at **source resolution** -- no downscale by default; the long-edge
+clamp is an opt-in compile knob -- at a depth chosen by the descriptor's
+`pixel_format` (`ra8_book_image_pixfmt_t`):
+
+- **`gray4`** (2 pixels/byte): panel-native for the 16-level e-ink target, half the
+  storage. Correct for content that is *never* zoomed, but the 256 -> 16 quantise
+  is destructive -- the discarded tones cannot be recovered.
+- **`gray8`** (1 byte/pixel): the **full-resolution, continuous-tone** source, kept
+  verbatim. This is the representation the compiler retains for any image that may
+  be zoomed (issue #476), because both the tap-to-zoom loupe (#478) and the
+  blue-noise e-ink dither (#477) need the 256-level source that `gray4` throws away.
+
+**Why full-resolution gray8 and not an embedded tiled JOF atlas.** The live-EPUB
+image path (`ra8_jof`) tiles each image into a jump-offset atlas because it reads
+from a ZIP entry with no random access, and a page can exceed the SDRAM working
+set. The compiled path does not have that problem: the RBKC container is *already*
+a random-access tiling -- any chunk inflates independently into one `ra8_vmem`
+frame -- and `ra8_book_src_image_rect()` reads an arbitrary sub-rectangle of a pool
+image through it with a bounded working set (one packed span, or one gray8 row, per
+`ra8_book_src_read`). Embedding a second JOF atlas inside the pool would be
+tiling-on-tiling: it re-solves a problem the chunk layer already solved, and it
+would fight the one-luma / one-quantiser parity the on-device (`stb_image`) and
+desktop (Pillow + `gray4_kernel`) compilers share (the JOF PNG decoder keeps RGB888
+rather than folding to luma). So the compiled path keeps the container simplest and
+delivers the same "full-resolution tiled random access" the epic's storage decision
+calls for through the flat pool plus the chunk layer plus the sub-rect reader.
+
+**Storage tradeoff.** `gray8` is ~2x the raw bytes of `gray4` (one byte vs one
+nibble per pixel). Most of that is recovered on disk: the whole blob is
+chunk-DEFLATE-wrapped, and continuous-tone photographic/screentone content
+compresses better than the 4bpp-quantised banding, so the packed-file delta is well
+under 2x. The reader pays nothing extra -- a `gray8` sub-rect read is *cheaper* than
+`gray4` (no nibble unpack) -- and in exchange the zoom and dither paths get a source
+they can actually use. The inline (flow-size) reflow view is derived from the same
+retained source at render time (nearest-neighbour scale), never baked in place of it.
+
 ---
 
 ## 4. Algorithms

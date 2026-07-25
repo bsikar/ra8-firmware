@@ -207,25 +207,34 @@ ra8_book_src_read(const ra8_book_src_t* src, uint32_t off, void* dst, uint32_t l
 ra8_book_src_image(const ra8_book_src_t* src, uint32_t idx, ra8_book_image_t* out_img);
 
 /**
- * @brief Read a sub-rectangle of a 4bpp image as unpacked gray8, row by row.
+ * @brief Read a sub-rectangle of a raster image (4bpp or 8bpp) as gray8, row by row.
  *
- * @details Owns the image-pool addressing contract so consumers do not: for a
- *          @ref k_ra8_book_image_gray4 raster (2 pixels per byte, pixel `(px,py)`
- *          at flat nibble index `py * width + px`), copies the `w`x`h` window at
- *          (@p x, @p y) out through ::ra8_book_src_read and expands each 4-bit
- *          sample to one gray8 byte (`(nib << 4) | nib`) into @p out. The odd-width
- *          nibble parity -- where a row can start on either the high or low nibble
- *          of a pool byte -- is handled here, once, instead of in every renderer.
+ * @details Owns the image-pool addressing contract so consumers do not. Both raster
+ *          depths of a @ref k_ra8_book_image_gray4 entry are served, selected by the
+ *          descriptor's @ref ra8_book_image_pixfmt_t, and both yield one gray8 byte
+ *          per output pixel so the renderer sees a single depth:
+ *          - @ref k_ra8_book_pixfmt_gray4: 2 pixels per byte, pixel `(px,py)` at flat
+ *            nibble index `py * width + px`; each 4-bit sample is expanded to gray8
+ *            (`(nib << 4) | nib`). The odd-width nibble parity -- where a row can
+ *            start on either the high or low nibble of a pool byte -- is handled
+ *            here, once, instead of in every renderer. Each row is read in bounded
+ *            packed spans (a fixed pixel budget per ::ra8_book_src_read).
+ *          - @ref k_ra8_book_pixfmt_gray8: 1 byte per pixel at flat index
+ *            `py * width + px`; the row is the retained full-resolution
+ *            continuous-tone source (#476) and is copied straight out with no
+ *            unpack. This is the representation the zoom loupe magnifies and the
+ *            e-ink dither (#477) re-quantises from -- gray4 quantisation is not
+ *            reversible, gray8 is not quantised at all.
  *
- *          Each source row is read in bounded packed spans (a fixed pixel budget
- *          per ::ra8_book_src_read), so the per-call read stays bounded by the
- *          rectangle regardless of the image width and never inflates the whole
- *          pool. Rows are written at @p out_stride intervals, so @p out may be a
- *          window into a wider buffer.
+ *          The per-call read stays bounded by the rectangle regardless of the image
+ *          width (::ra8_book_src_read itself faults a paged source frame-by-frame),
+ *          so the whole pool is never inflated. Rows are written at @p out_stride
+ *          intervals, so @p out may be a window into a wider buffer.
  *
  * @param[in]  src        Bound book source.
- * @param[in]  img        Image descriptor from ::ra8_book_src_image (@c format
- *                        must be @ref k_ra8_book_image_gray4).
+ * @param[in]  img        Image descriptor from ::ra8_book_src_image (@c format must
+ *                        be @ref k_ra8_book_image_gray4; @c pixel_format selects the
+ *                        gray4 vs gray8 unpack).
  * @param[in]  x          Sub-rect left edge in source pixels (`x + w <= img->width`).
  * @param[in]  y          Sub-rect top edge in source pixels (`y + h <= img->height`).
  * @param[in]  w          Sub-rect width in pixels (`> 0`, `<= out_stride`).
@@ -234,9 +243,10 @@ ra8_book_src_image(const ra8_book_src_t* src, uint32_t idx, ra8_book_image_t* ou
  * @param[in]  out_stride Bytes between successive output rows (`>= w`).
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok               The `w`x`h` window was unpacked into @p out.
+ * @retval k_ra8_ok               The `w`x`h` window was read into @p out as gray8.
  * @retval k_ra8_err_null_ptr     @p src, @p img, or @p out was NULL.
- * @retval k_ra8_err_invalid_arg  @p img is not gray4, or `w == 0`, `h == 0`,
+ * @retval k_ra8_err_invalid_arg  @p img is not a raster (SVG), its @c pixel_format
+ *                               is neither gray4 nor gray8, or `w == 0`, `h == 0`,
  *                               or `out_stride < w`.
  * @retval k_ra8_err_out_of_range The sub-rect leaves the image, or the pool span
  *                               it addresses leaves the blob.
@@ -245,7 +255,8 @@ ra8_book_src_image(const ra8_book_src_t* src, uint32_t idx, ra8_book_image_t* ou
  * @pre  @p src was populated by ra8_book_src_resident() / ra8_book_src_paged().
  * @pre  @p out addresses at least `out_stride * h` writable bytes.
  * @post On k_ra8_ok, each `out[r*out_stride + c]` (`0<=r<h`, `0<=c<w`) is the
- *       gray8 expansion of source pixel `(x+c, y+r)`.
+ *       gray8 value of source pixel `(x+c, y+r)` (gray4 samples nibble-expanded,
+ *       gray8 samples verbatim).
  * @post On any non-ok return @p out content is unspecified.
  *
  * @note Not thread-safe.

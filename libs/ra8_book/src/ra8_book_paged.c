@@ -263,6 +263,58 @@ static ra8_err_t priv_book_image_row(const ra8_book_src_t*   src,
   return (done == w) ? k_ra8_ok : k_ra8_err_out_of_range;
 }
 
+/**
+ * @brief Copy one horizontal gray8 run `[x, x+w)` of source row @p ry into @p out.
+ *
+ * @details The per-row worker of ::ra8_book_src_image_rect for a
+ *          @ref k_ra8_book_pixfmt_gray8 raster (the full-resolution, continuous-tone
+ *          representation the compiled `.rabook` retains for zoomable content, #476).
+ *          At 8bpp there is no nibble packing: pixel `(px, py)` is one byte at flat
+ *          index `py * width + px`, so the run maps to a single contiguous pool span
+ *          `[image_pool_off + data_off + (ry * width + x), + w)` that is copied
+ *          straight into @p out via ::ra8_book_src_read -- which is itself bounded
+ *          (a paged source faults the covering frames in one at a time), so no
+ *          unpack staging buffer and no per-span loop are needed here.
+ *
+ * @param[in]  src Bound book source.
+ * @param[in]  img Gray8 image descriptor (caller already checked format + depth).
+ * @param[in]  x   Run left edge in source pixels (`x + w <= img->width`).
+ * @param[in]  ry  Source row index (`< img->height`).
+ * @param[in]  w   Run width in pixels (`> 0`).
+ * @param[out] out Destination gray8 run (`>= w` bytes).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               The run was copied into @p out.
+ * @retval k_ra8_err_out_of_range The pool span it addresses leaves the blob.
+ * @retval k_ra8_err_*            A ::ra8_book_src_read fault (returned verbatim).
+ *
+ * @pre  @p src is bound and @p img is a gray8 descriptor within @p src.
+ * @pre  @p out addresses at least @p w writable bytes.
+ * @post On k_ra8_ok, `out[i]` is the gray8 value of pixel `(x+i, ry)`.
+ * @post On any non-ok return @p out content is unspecified.
+ *
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_book_image_row_gray8(const ra8_book_src_t*   src,
+                                           const ra8_book_image_t* img,
+                                           uint32_t                x,
+                                           uint32_t                ry,
+                                           uint32_t                w,
+                                           uint8_t*                out)
+{
+  const uint32_t row_flat = (ry * (uint32_t)img->width) + x;
+  const uint64_t off =
+    (uint64_t)src->hdr.image_pool_off + (uint64_t)img->data_off + (uint64_t)row_flat;
+  /* Single exit (MISRA 15.5): a span leaving the blob is an out-of-range read. */
+  ra8_err_t re = k_ra8_err_out_of_range; /* descriptor / geometry points past the blob */
+  if ((off + (uint64_t)w) <= (uint64_t)src->size) {
+    re = ra8_book_src_read(src, (uint32_t)off, out, w);
+  }
+  return re;
+}
+
 ra8_err_t ra8_book_src_image(const ra8_book_src_t* src, uint32_t idx, ra8_book_image_t* out_img)
 {
   RA8_CHECK_NULL_PTR(src, s_tag_paged, "image: null src");
@@ -286,8 +338,15 @@ ra8_err_t ra8_book_src_image_rect(const ra8_book_src_t*   src,
   RA8_CHECK_NULL_PTR(src, s_tag_paged, "image_rect: null src");
   RA8_CHECK_NULL_PTR(img, s_tag_paged, "image_rect: null img");
   RA8_CHECK_NULL_PTR(out, s_tag_paged, "image_rect: null out");
-  if (img->format != (uint8_t)k_ra8_book_image_gray4) {
-    return k_ra8_err_invalid_arg; /* only 4bpp packed grayscale is unpackable here */
+  /* Readable raster of a known depth (one decision, single exit -- MISRA 15.5):
+   * SVG has no pixel grid, and only the two grayscale depths are unpackable --
+   * gray4 nibble-unpacks 2px/byte, gray8 copies 1px/byte verbatim (the retained
+   * full-resolution continuous-tone source, #343/#476). ra8_book_validate()
+   * already refuses any other depth; this also guards a corrupt descriptor. */
+  const ra8_book_image_pixfmt_t pf = ra8_book_image_pixfmt(img);
+  if ((img->format != (uint8_t)k_ra8_book_image_gray4) ||
+      ((pf != k_ra8_book_pixfmt_gray4) && (pf != k_ra8_book_pixfmt_gray8))) {
+    return k_ra8_err_invalid_arg;
   }
   if ((w == 0U) || (h == 0U) || (out_stride < w)) {
     return k_ra8_err_invalid_arg;
@@ -296,9 +355,11 @@ ra8_err_t ra8_book_src_image_rect(const ra8_book_src_t*   src,
       (((uint64_t)y + (uint64_t)h) > (uint64_t)img->height)) {
     return k_ra8_err_out_of_range; /* sub-rect not fully inside the image */
   }
+  const bool is_gray8 = (pf == k_ra8_book_pixfmt_gray8);
   for (uint32_t row = 0U; row < h; ++row) {
-    const ra8_err_t re =
-      priv_book_image_row(src, img, x, y + row, w, &out[(size_t)row * (size_t)out_stride]);
+    uint8_t* const  dst = &out[(size_t)row * (size_t)out_stride];
+    const ra8_err_t re  = is_gray8 ? priv_book_image_row_gray8(src, img, x, y + row, w, dst)
+                                   : priv_book_image_row(src, img, x, y + row, w, dst);
     if (re != k_ra8_ok) {
       return re;
     }

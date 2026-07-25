@@ -3,12 +3,18 @@
  * @brief Sub-rect image addressing tests for ra8_book_src_image / _rect (#342).
  *
  * @details
- * Builds a small, self-contained `.rabook` blob in memory with two 4bpp
- * grayscale images in the image pool: a 5x3 image (odd width, so a row starts on
- * either the high or the low nibble of a pool byte) and a 600x2 image (wider than
- * one unpack span, so ::ra8_book_src_image_rect must stitch several bounded
- * ::ra8_book_src_read spans per row). Each pool nibble is the low 4 bits of the
- * pixel's flat index, so a reader knows the exact byte every pixel must expand to.
+ * Builds a small, self-contained `.rabook` blob in memory with three raster
+ * images in the image pool. Two are 4bpp packed grayscale: a 5x3 image (odd
+ * width, so a row starts on either the high or the low nibble of a pool byte) and
+ * a 600x2 image (wider than one unpack span, so ::ra8_book_src_image_rect must
+ * stitch several bounded ::ra8_book_src_read spans per row); each pool nibble is
+ * the low 4 bits of the pixel's flat index, so a reader knows the exact byte every
+ * pixel must expand to. The third is an 80x3 @ref k_ra8_book_pixfmt_gray8 image --
+ * the full-resolution, continuous-tone representation the compiled `.rabook`
+ * retains for zoomable content (#476) -- whose pixels take deliberately off-grid
+ * values (not on the 16-level gray4 quantiser), proving the gray8 read returns the
+ * source byte verbatim with no quantisation and that it crosses a paged frame
+ * boundary (80 > the 64-byte fixture frame).
  *
  * The addressing contract (descriptor stride, pool base, nibble packing, odd-width
  * parity) used to be open-coded in ereader_shelf's sh_image.c; #342 moved it into
@@ -45,7 +51,13 @@ typedef enum : uint16_t {
   k_img1_w      = 600U,  /**< Image 1 width (> one unpack span -> chunking).    */
   k_img1_h      = 2U,    /**< Image 1 height.                                   */
   k_img1_off    = 8U,    /**< Image 1 pool offset (== image 0 byte count).      */
-  k_pool_cap    = 640U,  /**< Image-pool capacity (>= img1_off + 600).          */
+  k_img1_bytes  = 600U,  /**< Packed bytes for image 1 (600 * 2 / 2).           */
+  k_img2_w      = 80U,   /**< Image 2 width (gray8; > 64B frame -> paged span). */
+  k_img2_h      = 3U,    /**< Image 2 height.                                   */
+  k_img2_off    = 608U,  /**< Image 2 pool offset (== img1_off + img1_bytes).   */
+  k_img2_bytes  = 240U,  /**< gray8 bytes for image 2 (80 * 3, 1 byte/pixel).   */
+  k_img2_sub_w  = 70U,   /**< gray8 sub-rect width (> 64B frame -> paged span). */
+  k_pool_cap    = 1024U, /**< Image-pool capacity (>= img2_off + 240).          */
   k_strings_cap = 32U,   /**< String-pool capacity of the fixture.              */
   k_out_cap     = 1300U, /**< gray8 output buffer (>= 600 * 2 for a full read). */
 } ibook_dim_t;
@@ -99,12 +111,12 @@ static uint32_t ibook_crc32(const uint8_t* data, size_t len)
  *          a real inflated blob would; the paged backing reads these bytes.
  */
 typedef struct {
-  ra8_book_header_t  hdr;                    /**< Hdr.      */
-  ra8_book_chapter_t chapters[1];            /**< Chapters. */
-  ra8_book_node_t    nodes[1];               /**< Nodes.    */
-  ra8_book_image_t   images[2];              /**< Images.   */
-  char               strings[k_strings_cap]; /**< Strings.  */
-  uint8_t            pool[k_pool_cap];       /**< Pool.     */
+  ra8_book_header_t  hdr;                    /**< Hdr.                        */
+  ra8_book_chapter_t chapters[1];            /**< Chapters.                   */
+  ra8_book_node_t    nodes[1];               /**< Nodes.                      */
+  ra8_book_image_t   images[3];              /**< Images (2 gray4 + 1 gray8). */
+  char               strings[k_strings_cap]; /**< Strings.                    */
+  uint8_t            pool[k_pool_cap];       /**< Pool.                       */
 } ibook_t;
 
 /** @brief Nibble value of pixel `(px, py)` for a @p w-wide fixture image. */
@@ -150,6 +162,49 @@ static ra8_book_image_t ibook_img(uint16_t w, uint16_t h, uint32_t data_off, uin
                             .raw_size     = data_size};
 }
 
+/** @enum ibook_g8_t @brief gray8 continuous-tone fixture generator constants. */
+typedef enum : uint16_t {
+  k_g8_mul  = 37U,  /**< Odd multiplier: values stride the full 0-255 range.   */
+  k_g8_bias = 5U,   /**< Bias so pixel (0,0) is off the gray4 grid (5, not 0). */
+  k_g8_byte = 256U, /**< gray8 modulus.                                        */
+} ibook_g8_t;
+
+/**
+ * @brief Continuous-tone gray8 value of pixel `(px, py)` for a @p w-wide image.
+ * @details `(flat * 37 + 5) mod 256` -- deliberately off the 16-level gray4 grid
+ *          {0,17,...,255}, so a gray4 round-trip would perturb it; the gray8 read
+ *          returning this exact byte proves no quantisation happened (#476).
+ */
+static uint8_t ibook_g8(uint32_t w, uint32_t px, uint32_t py)
+{
+  const uint32_t flat = (py * w) + px;
+  return (uint8_t)(((flat * (uint32_t)k_g8_mul) + (uint32_t)k_g8_bias) % (uint32_t)k_g8_byte);
+}
+
+/** @brief Pack a @p w x @p h gray8 image (1 byte/pixel) into @p pool at @p data_off. */
+static void ibook_pack_gray8(uint8_t* pool, uint32_t data_off, uint32_t w, uint32_t h)
+{
+  for (uint32_t py = 0U; py < h; ++py) {
+    for (uint32_t px = 0U; px < w; ++px) {
+      pool[data_off + (py * w) + px] = ibook_g8(w, px, py);
+    }
+  }
+}
+
+/** @brief Compose one gray8 raster descriptor (format gray4-tag, depth gray8). */
+static ra8_book_image_t
+ibook_img_gray8(uint16_t w, uint16_t h, uint32_t data_off, uint32_t data_size)
+{
+  return (ra8_book_image_t){.id_off       = 0U,
+                            .width        = w,
+                            .height       = h,
+                            .format       = (uint8_t)k_ra8_book_image_gray4,
+                            .pixel_format = (uint8_t)k_ra8_book_pixfmt_gray8,
+                            .data_off     = data_off,
+                            .data_size    = data_size,
+                            .raw_size     = data_size};
+}
+
 /** @brief Populate a valid 2-image fixture blob (header, tables, packed pool). */
 static void ibook_setup(ibook_t* b)
 {
@@ -166,7 +221,7 @@ static void ibook_setup(ibook_t* b)
   b->hdr.attr_off          = (uint32_t)offsetof(ibook_t, strings);
   b->hdr.stylesheet_count  = 0U;
   b->hdr.stylesheet_off    = (uint32_t)offsetof(ibook_t, strings);
-  b->hdr.image_count       = 2U;
+  b->hdr.image_count       = 3U;
   b->hdr.image_off         = (uint32_t)offsetof(ibook_t, images);
   b->hdr.string_off        = (uint32_t)offsetof(ibook_t, strings);
   b->hdr.string_size       = (uint32_t)sizeof(b->strings);
@@ -185,8 +240,13 @@ static void ibook_setup(ibook_t* b)
                            (uint16_t)k_img1_h,
                            (uint32_t)k_img1_off,
                            (uint32_t)k_img1_w * (uint32_t)k_img1_h / 2U);
+  b->images[2] = ibook_img_gray8((uint16_t)k_img2_w,
+                                 (uint16_t)k_img2_h,
+                                 (uint32_t)k_img2_off,
+                                 (uint32_t)k_img2_bytes);
   ibook_pack(b->pool, 0U, (uint32_t)k_img0_w, (uint32_t)k_img0_h);
   ibook_pack(b->pool, (uint32_t)k_img1_off, (uint32_t)k_img1_w, (uint32_t)k_img1_h);
+  ibook_pack_gray8(b->pool, (uint32_t)k_img2_off, (uint32_t)k_img2_w, (uint32_t)k_img2_h);
 
   const uint8_t* body     = (const uint8_t*)b + sizeof(ra8_book_header_t);
   const uint32_t body_len = (uint32_t)(sizeof(*b) - sizeof(ra8_book_header_t));
@@ -303,7 +363,7 @@ static void test_ra8_book_src_image_descriptor(void)
   /* Null + range guards. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_src_image(nullptr, 0U, &img));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_src_image(&rsrc, 0U, nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_book_src_image(&rsrc, 2U, &img)); /* == image_count */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_book_src_image(&rsrc, 3U, &img)); /* == image_count */
 
   /* Every descriptor read matches the resident inline accessor byte-for-byte. */
   const ra8_book_image_t* inl = ra8_book_images(&s_book);
@@ -406,6 +466,43 @@ static void test_ra8_book_src_image_rect_matches(void)
   TEST_END("ra8_book_src_image_rect unpack matches");
 }
 
+/** @brief Drive the three null-pointer guards of ra8_book_src_image_rect and the
+ *         merged "readable raster of a known depth" decision (see the @par MC/DC on
+ *         the guards test): an SVG (Vector 1) and an unknown depth (Vector 4) are
+ *         rejected; a gray8 raster (Vector 3) proceeds. The gray4 case (Vector 2)
+ *         is the caller's all-false rect read. Split out so the guards test stays
+ *         within the function-size budget. */
+static void
+ibook_guard_singleconds(const ra8_book_src_t* rsrc, const ra8_book_image_t* img, uint8_t* s_out)
+{
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_book_src_image_rect(nullptr, img, 0U, 0U, k_img0_w, k_img0_h, s_out, k_img0_w));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_book_src_image_rect(rsrc, nullptr, 0U, 0U, k_img0_w, k_img0_h, s_out, k_img0_w));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_src_image_rect(rsrc, img, 0U, 0U, k_img0_w, k_img0_h, nullptr, k_img0_w));
+
+  /* Vector 1: an SVG (non-raster) descriptor -> A true -> rejected. */
+  ra8_book_image_t svg = *img;
+  svg.format           = (uint8_t)k_ra8_book_image_svg;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_book_src_image_rect(rsrc, &svg, 0U, 0U, k_img0_w, k_img0_h, s_out, k_img0_w));
+
+  /* Vector 3: a gray8 raster -> A false, B true, C false -> proceeds. */
+  ra8_book_image_t g8 = *img;
+  g8.pixel_format     = (uint8_t)k_ra8_book_pixfmt_gray8;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_book_src_image_rect(rsrc, &g8, 0U, 0U, k_img0_w, k_img0_h, s_out, k_img0_w));
+
+  /* Vector 4: a raster with an unknown depth -> A false, B true, C true -> rejected. */
+  ra8_book_image_t unk = *img;
+  unk.pixel_format     = (uint8_t)(k_ra8_book_pixfmt_gray8 + 1U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_book_src_image_rect(rsrc, &unk, 0U, 0U, k_img0_w, k_img0_h, s_out, k_img0_w));
+}
+
 /**
  * @test test_mcdc_ra8_book_src_image_rect_guards
  * @brief The two compound bound guards reject malformed rectangles.
@@ -427,6 +524,21 @@ static void test_ra8_book_src_image_rect_matches(void)
  * - Vector 2: x=1,w=5 / y=0,h=3 -> true  (varies x+w only  -> out_of_range).
  * - Vector 3: x=0,w=5 / y=1,h=3 -> true  (varies y+h only  -> out_of_range).
  * Vectors 1+2 prove the width bound, 1+3 the height bound; N+1 = 3 vectors.
+ *
+ * @par MC/DC:
+ * Decision: `(img->format != k_ra8_book_image_gray4) ||
+ *           ((pf != k_ra8_book_pixfmt_gray4) && (pf != k_ra8_book_pixfmt_gray8))`
+ * -- 3 conditions, `A || (B && C)` -- in
+ * libs/ra8_book/src/ra8_book_paged.c@ra8_book_src_image_rect, where
+ * `pf = ra8_book_image_pixfmt(img)`: the "readable raster of a known depth" guard
+ * (#476), with A the SVG (non-raster) reject and B && C the unknown-depth reject:
+ * - Vector 1: format=SVG          -> A true, short-circuit      -> invalid_arg.
+ * - Vector 2: gray4 raster (pf=0) -> A false, B false           -> proceeds.
+ * - Vector 3: gray8 raster (pf=1) -> A false, B true, C false   -> proceeds.
+ * - Vector 4: raster, pf=2        -> A false, B true, C true    -> invalid_arg.
+ * Vectors 1+2 isolate A, 2+4 isolate B, 3+4 isolate C; N+1 = 4 for N = 3. Vectors
+ * 1, 3, 4 are driven in ibook_guard_singleconds; Vector 2 (gray4) is the all-false
+ * rect read in decision 1 below.
  */
 static void test_mcdc_ra8_book_src_image_rect_guards(void)
 {
@@ -445,22 +557,7 @@ static void test_mcdc_ra8_book_src_image_rect_guards(void)
 
   static uint8_t s_out[k_out_cap];
 
-  /* Null guards (each independent, single-condition). */
-  TEST_ASSERT_EQ(
-    k_ra8_err_null_ptr,
-    ra8_book_src_image_rect(nullptr, &img, 0U, 0U, k_img0_w, k_img0_h, s_out, k_img0_w));
-  TEST_ASSERT_EQ(
-    k_ra8_err_null_ptr,
-    ra8_book_src_image_rect(&rsrc, nullptr, 0U, 0U, k_img0_w, k_img0_h, s_out, k_img0_w));
-  TEST_ASSERT_EQ(
-    k_ra8_err_null_ptr,
-    ra8_book_src_image_rect(&rsrc, &img, 0U, 0U, k_img0_w, k_img0_h, nullptr, k_img0_w));
-
-  /* Format guard: an SVG (non-gray4) descriptor cannot be nibble-unpacked. */
-  ra8_book_image_t svg = img;
-  svg.format           = (uint8_t)k_ra8_book_image_svg;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_src_image_rect(&rsrc, &svg, 0U, 0U, k_img0_w, k_img0_h, s_out, k_img0_w));
+  ibook_guard_singleconds(&rsrc, &img, s_out);
 
   /* Decision 1: (w==0) || (h==0) || (out_stride<w). */
   TEST_ASSERT_EQ(k_ra8_ok, /* V1: all false */
@@ -488,6 +585,98 @@ static void test_mcdc_ra8_book_src_image_rect_guards(void)
                  ra8_book_src_image_rect(&rsrc, &img, 0U, 1U, k_img0_w, k_img0_h, s_out, k_img0_w));
 
   TEST_END("ra8_book_src_image_rect bound guards (MC/DC)");
+}
+
+/** @brief Assert the @p w x @p h gray8 window at (@p x, @p y) of a @p iw-wide
+ *         image read back the exact source byte the fixture wrote, at @p stride. */
+static void ibook_verify_rect_g8(uint32_t       iw,
+                                 uint32_t       x,
+                                 uint32_t       y,
+                                 uint32_t       w,
+                                 uint32_t       h,
+                                 const uint8_t* out,
+                                 uint32_t       stride)
+{
+  for (uint32_t r = 0U; r < h; ++r) {
+    for (uint32_t c = 0U; c < w; ++c) {
+      TEST_ASSERT_EQ(ibook_g8(iw, x + c, y + r), out[(r * stride) + c]);
+    }
+  }
+}
+
+/**
+ * @test test_ra8_book_src_image_rect_gray8
+ * @brief A gray8 raster reads back its full-resolution, continuous-tone source
+ *        bytes verbatim -- resident == paged -- with no quantisation (#476).
+ *
+ * @details The core #476 acceptance at the library level: the compiled `.rabook`
+ *          retains full-resolution gray8 for zoomable content, and the sub-rect
+ *          reader serves it 1 byte/pixel with no gray4 nibble-pack in the path.
+ *          Image 2 is 80x3 (wider than the 64-byte paged frame, so a row crosses a
+ *          frame boundary) and its pixels are off the 16-level gray4 grid, so a
+ *          verbatim read-back is proof the depth was preserved, not quantised.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test here -- this owns the gray8 byte-fidelity of
+ * the read; the depth-dispatch guard is covered by
+ * test_mcdc_ra8_book_src_image_rect_guards)
+ */
+static void test_ra8_book_src_image_rect_gray8(void)
+{
+  TEST_BEGIN("ra8_book_src_image_rect gray8 full-resolution read");
+
+  static ibook_t s_book;
+  ibook_setup(&s_book);
+  s_ibook_bytes       = (const uint8_t*)&s_book;
+  s_ibook_len         = (uint32_t)sizeof(s_book);
+  s_ibook_fault_armed = false;
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(&s_book, sizeof(s_book)));
+
+  ra8_book_src_t rsrc = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_resident(&rsrc, &s_book, (uint32_t)sizeof(s_book)));
+  ra8_vsource_obj_t objs[1];
+  ra8_vsource_t     vs   = {};
+  ra8_vmem_t        vm   = {};
+  ra8_book_src_t    psrc = {};
+  ibook_bind_paged(&psrc, &vs, objs, &vm);
+
+  ra8_book_image_t img2 = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_image(&rsrc, 2U, &img2));
+  TEST_ASSERT_EQ(k_ra8_book_image_gray4, img2.format); /* raster tag */
+  TEST_ASSERT_EQ(k_ra8_book_pixfmt_gray8, ra8_book_image_pixfmt(&img2));
+  TEST_ASSERT_EQ(k_img2_w * (uint32_t)k_img2_h, img2.raw_size); /* 1 byte/pixel */
+
+  static uint8_t s_out_r[k_out_cap];
+  static uint8_t s_out_p[k_out_cap];
+
+  /* (A) Full image: resident and paged both return the exact source bytes. */
+  memset(s_out_r, k_fill_poison_a, sizeof s_out_r);
+  memset(s_out_p, k_fill_poison_b, sizeof s_out_p);
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_book_src_image_rect(&rsrc, &img2, 0U, 0U, k_img2_w, k_img2_h, s_out_r, k_img2_w));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_book_src_image_rect(&psrc, &img2, 0U, 0U, k_img2_w, k_img2_h, s_out_p, k_img2_w));
+  ibook_verify_rect_g8(k_img2_w, 0U, 0U, k_img2_w, k_img2_h, s_out_r, k_img2_w);
+  TEST_ASSERT_EQ(0, memcmp(s_out_r, s_out_p, (size_t)k_img2_w * (size_t)k_img2_h));
+
+  /* (B) Continuous tone survives: a sample sits strictly between two gray4 levels
+   *     {0,17,34,...}, so a gray4 quantise would have moved it. */
+  const uint8_t v0 = ibook_g8(k_img2_w, 0U, 0U);
+  TEST_ASSERT_EQ(v0, s_out_r[0]);
+  TEST_ASSERT((v0 % 17U) != 0U); /* off the 16-level grid -> not a gray4 value */
+
+  /* (C) Sub-rect into a wider buffer (out_stride > w), crossing a frame boundary. */
+  static uint8_t s_out[k_out_cap];
+  memset(s_out, k_fill_poison_a, sizeof s_out);
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_book_src_image_rect(&rsrc, &img2, 3U, 1U, k_img2_sub_w, 2U, s_out, (uint32_t)k_img2_w));
+  ibook_verify_rect_g8(k_img2_w, 3U, 1U, k_img2_sub_w, 2U, s_out, (uint32_t)k_img2_w);
+
+  TEST_END("ra8_book_src_image_rect gray8 full-resolution read");
 }
 
 /**
@@ -552,6 +741,7 @@ int32_t main(void)
   test_ra8_book_src_image_descriptor();
   test_ra8_book_src_image_rect_matches();
   test_mcdc_ra8_book_src_image_rect_guards();
+  test_ra8_book_src_image_rect_gray8();
   test_ra8_book_src_image_rect_faults();
   (void)fprintf(stderr, "[OK ] test_ra8_book_image_rect.c\n");
   return 0;
