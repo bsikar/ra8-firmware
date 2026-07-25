@@ -177,7 +177,7 @@ commit_range_selftest() (
   # fail on every CI run while passing locally. The property under test is the
   # local fallback chain, so pin the inputs to it.
   range="$(RA8_CI_HISTORY_REPO="$real" RA8_CI_COMMIT_RANGE="" \
-    GITHUB_EVENT_PATH="" GITHUB_SHA="" ci_commit_range)"
+    GITHUB_EVENT_PATH="" GITHUB_SHA="" GITHUB_EVENT_NAME="" ci_commit_range)"
   span="$(git -C "$real" rev-list --count "$range" 2>/dev/null)" || span=""
   if [[ -z "$span" || "$span" -lt 1 ]]; then
     rm -rf "$tmp"
@@ -189,9 +189,43 @@ commit_range_selftest() (
     exit 1
   fi
 
+  # --- Direction 3: the force-push degeneracy (#357 meets a rewrite). -----
+  # After a force push the event's before-sha is gone and @{upstream} equals
+  # the head, so the naive range is head..head -- zero commits. On a PUSH
+  # event ci_commit_range must drop that base and cover the tip commit; on a
+  # dispatch it must keep the vacuous range for ci_report_commit_range to
+  # reject. Model upstream == head with a local branch tracking a twin ref.
+  git -C "$real" checkout --quiet -b crs_main
+  git -C "$real" branch --quiet crs_twin crs_main
+  git -C "$real" branch --quiet --set-upstream-to=crs_twin crs_main
+  local push_range dispatch_range push_span
+  push_range="$(RA8_CI_HISTORY_REPO="$real" RA8_CI_COMMIT_RANGE="" \
+    GITHUB_EVENT_PATH="" GITHUB_SHA="" GITHUB_EVENT_NAME="push" ci_commit_range)"
+  push_span="$(git -C "$real" rev-list --count "$push_range" 2>/dev/null)" || push_span=""
+  if [[ -z "$push_span" || "$push_span" -lt 1 ]]; then
+    rm -rf "$tmp"
+    echo "ERROR: ci.sh commit-range self-test FAILED (direction 3, push)." >&2
+    echo "       With upstream == head (the post-force-push state) a PUSH" >&2
+    echo "       event resolved '$push_range' spanning nothing. The gates" >&2
+    echo "       would fail loudly on every force-pushed tip instead of" >&2
+    echo "       scanning the tip commit." >&2
+    exit 1
+  fi
+  dispatch_range="$(RA8_CI_HISTORY_REPO="$real" RA8_CI_COMMIT_RANGE="" \
+    GITHUB_EVENT_PATH="" GITHUB_SHA="" GITHUB_EVENT_NAME="" ci_commit_range)"
+  if [[ "$(git -C "$real" rev-list --count "$dispatch_range" 2>/dev/null)" != "0" ]]; then
+    rm -rf "$tmp"
+    echo "ERROR: ci.sh commit-range self-test FAILED (direction 3, dispatch)." >&2
+    echo "       With upstream == head a non-push event resolved" >&2
+    echo "       '$dispatch_range' spanning commits. The #357 vacuity" >&2
+    echo "       rejection for manual re-runs has been bypassed." >&2
+    exit 1
+  fi
+
   rm -rf "$tmp"
   echo "ci.sh: commit-range self-test OK (rejects a synthetic snapshot," \
-    "accepts real history; tricky one-commit span resolved to '$range')."
+    "accepts real history; tricky one-commit span resolved to '$range';" \
+    "force-push fallback covers the tip, dispatch stays vacuous)."
 )
 
 # --- ascii ----------------------------------------------------------------

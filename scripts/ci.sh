@@ -394,6 +394,17 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
   if [[ -z "$base" ]] || ! git -C "$repo" cat-file -e "${base}^{commit}" 2>/dev/null; then
     base="$(git -C "$repo" rev-parse --verify --quiet '@{upstream}' 2>/dev/null || true)"
   fi
+  # After a FORCE push the event's before-sha was rewritten out of existence,
+  # and the @{upstream} fallback resolves to the freshly-pushed head itself --
+  # a head..head range spanning nothing, which ci_report_commit_range then
+  # rejects. A push event always carries at least its tip commit, so drop the
+  # degenerate base and let the head~1 fallback scan that one commit instead.
+  # workflow_dispatch deliberately keeps base == head: a manual re-run has
+  # nothing new to scan, and rejecting that vacuity is #357's whole point.
+  if [[ "${GITHUB_EVENT_NAME:-}" == "push" && -n "$base" ]] &&
+    [[ "$(git -C "$repo" rev-parse --verify --quiet "${base}^{commit}" 2>/dev/null)" == "$(git -C "$repo" rev-parse --verify --quiet "${head}^{commit}" 2>/dev/null)" ]]; then
+    base=""
+  fi
   if [[ -z "$base" ]] || ! git -C "$repo" cat-file -e "${base}^{commit}" 2>/dev/null; then
     base="$(git -C "$repo" rev-parse --verify --quiet "${head}~1" 2>/dev/null || true)"
   fi
@@ -412,11 +423,13 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
 # checked-out branch's upstream equals its head, so base == head and the range
 # spans zero commits. The gate would then scan nothing and report PASS, so a
 # "green" from a hand re-run means "examined nothing", not "history is clean".
-# A push or a PR always supplies a real base, so a zero-commit range is only
-# ever this dispatch degeneracy. Print the count in EVERY case so a run that
-# examined commits and found nothing is visibly distinct from one that examined
-# none, and FAIL loudly on the zero case rather than passing vacuously -- the
-# same fail-on-missing-input discipline require_cmd applies to an absent tool.
+# A PR always supplies a real base, and a push resolves to at least head~1..head
+# (ci_commit_range drops a base that degenerated to the head after a force
+# push), so a zero-commit range is only ever this dispatch degeneracy. Print
+# the count in EVERY case so a run that examined commits and found nothing is
+# visibly distinct from one that examined none, and FAIL loudly on the zero
+# case rather than passing vacuously -- the same fail-on-missing-input
+# discipline require_cmd applies to an absent tool.
 ci_report_commit_range() {
   local repo="$1" range="$2" count
   count="$(git -C "$repo" rev-list --count "$range" 2>/dev/null || printf '0')"
