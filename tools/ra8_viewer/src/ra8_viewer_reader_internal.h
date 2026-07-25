@@ -34,6 +34,7 @@
 #include "ra8_jof.h"
 #include "ra8_longstrip.h"
 #include "ra8_tile_cache.h"
+#include "ra8_unarch_xz.h"
 #include "ra8_viewer_reader.h"
 
 #ifdef __cplusplus
@@ -47,12 +48,34 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_viewer_page_cap     = 8192U,                /**< Max pages in the sorted index.  */
+  k_viewer_page_cap     = 8192U,                /**< Page index; >= fw entry cap.    */
   k_viewer_name_cap     = 512U * 1024U,         /**< Page-name arena, bytes.         */
   k_viewer_arena_bytes  = 160U * 1024U * 1024U, /**< stb_image decode scratch.       */
-  k_viewer_unwrap_bytes = 128U * 1024U * 1024U, /**< gzip/xz decompressed container. */
-  k_viewer_xz_scratch   = 4U * 1024U * 1024U,   /**< xz decoder state + <=1MiB dict. */
+  k_viewer_unwrap_bytes = 128U * 1024U * 1024U, /**< Unwrap arena; >= fw output cap. */
+  k_viewer_xz_scratch   = 4U * 1024U * 1024U,   /**< xz scratch; > fw state reserve. */
 } ra8_viewer_budget_t;
+
+/*
+ * The capacities the viewer shares with the firmware reader are CHECKED against
+ * the firmware policy headers, never silently copied: the viewer over-provisions
+ * for a host (it has RAM to spare), but a firmware sizing that grows past that
+ * headroom must break THIS build rather than let the viewer quietly preview a
+ * document the board would reject (or vice versa). The page index must hold every
+ * member the shared archive decoder will enumerate; the gzip/xz unwrap arena must
+ * hold the largest container the shared decompression policy admits; the xz
+ * scratch must exceed the firmware decoder-state reserve so a dictionary budget
+ * remains. (k_viewer_name_cap and k_viewer_arena_bytes are host-local sizing with
+ * no firmware counterpart, so they carry no such coupling.)
+ */
+static_assert((uint64_t)k_viewer_page_cap >= (uint64_t)k_ra8_decomp_def_max_entries,
+              "viewer page index must cover the firmware archive entry cap "
+              "(ra8_decomp_limits.h)");
+static_assert((uint64_t)k_viewer_unwrap_bytes >= (uint64_t)k_ra8_decomp_def_output_bytes,
+              "viewer unwrap arena must cover the firmware decode output cap "
+              "(ra8_decomp_limits.h)");
+static_assert((uint64_t)k_viewer_xz_scratch > (uint64_t)k_ra8_unarch_xz_state_reserve,
+              "viewer xz scratch must exceed the firmware xz decoder-state reserve "
+              "(ra8_unarch_xz.h)");
 
 /**
  * @enum ra8_viewer_jof_budget_t
