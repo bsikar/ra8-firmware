@@ -62,6 +62,9 @@ typedef struct {
   const char* contact;          /**< --contact: operator identity for the User-Agent.          */
   const char* max_bytes;        /**< --max-bytes: per-response size cap.                       */
   const char* remove_series;    /**< --remove: series URL/slug to drop from the library.       */
+  const char* search;           /**< --search TERM: find series by title, no known URL.        */
+  const char* pick;             /**< --pick N: download the Nth discovery hit (1-based).       */
+  bool        browse;           /**< --browse: list a site's latest-updates page.              */
   bool        separate;         /**< --separate: one archive per chapter (default: combine).   */
   bool        update;           /**< --update: fetch only chapters not already complete.       */
   bool        list;             /**< --list: list tracked series with coverage, then exit.     */
@@ -132,6 +135,7 @@ typedef struct {
   uint32_t max_imgs;     /**< --max page images (0 = all).                */
   bool     from_present; /**< Whether --from was supplied.                */
   long     from_num;     /**< --from chapter number.                      */
+  size_t   pick;         /**< --pick discovery hit (1-based; 0 = list).   */
 } mdl_nums_t;
 
 /**

@@ -42,6 +42,12 @@ void mdl_cli_usage(const char* a0)
                 "default; --separate keeps one archive per chapter.\n"
                 "          --from CHAP starts at the chapter NUMBERED CHAP (not a "
                 "list index); --update fetches only chapters not already complete.\n"
+                "  search: %s --config SITE.conf --search TERM [--pick N ...download opts]\n"
+                "          lists title + series URL per hit; --pick N downloads hit N "
+                "(no copy-paste) using the same --format/--chapters/--out options.\n"
+                "  browse: %s --config SITE.conf --browse [--pick N ...download opts]\n"
+                "          lists the site's latest-updates page (needs browse_url in the "
+                "descriptor).\n"
                 "  library (over --out): %s --list | --update-all --config SITE.conf "
                 "| --remove URL|SLUG [--out DIR]\n"
                 "  pack:   %s --pack DIR --format FMT   "
@@ -57,6 +63,8 @@ void mdl_cli_usage(const char* a0)
                 "    --cross-host           permit redirects to a different host\n"
                 "    --allow-incomplete     package a run with failed pages; the archive\n"
                 "                           is named .INCOMPLETE so it is visibly partial\n",
+                a0,
+                a0,
                 a0,
                 a0,
                 a0,
@@ -91,7 +99,7 @@ RA8_INTERNAL static bool parse_bool_flags(const char* arg, mdl_args_t* a)
 {
   return take_flag(arg, "--separate", &a->separate) || take_flag(arg, "--update", &a->update) ||
          take_flag(arg, "--list", &a->list) || take_flag(arg, "--update-all", &a->update_all) ||
-         take_flag(arg, "--polite", &a->polite) ||
+         take_flag(arg, "--browse", &a->browse) || take_flag(arg, "--polite", &a->polite) ||
          take_flag(arg, "--ignore-robots", &a->ignore_robots) ||
          take_flag(arg, "--allow-private", &a->allow_private) ||
          take_flag(arg, "--cross-host", &a->cross_host) ||
@@ -119,6 +127,8 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
     {"--contact", &a->contact},
     {"--max-bytes", &a->max_bytes},
     {"--remove", &a->remove_series},
+    {"--search", &a->search},
+    {"--pick", &a->pick},
   };
   for (int i = 1; i < argc; ++i) {
     if (parse_bool_flags(argv[i], a)) {
@@ -288,8 +298,13 @@ bool mdl_cli_parse_nums(const mdl_args_t* a, mdl_nums_t* n)
       return false;
     }
   }
+  unsigned long pick_ul = 0UL;
+  if (!opt_ul("pick", a->pick, 0UL, &pick_ul)) {
+    return false;
+  }
   n->timeout  = (uint32_t)timeout_ul;
   n->chapters = (chapters_ul == 0UL) ? 1U : (size_t)chapters_ul;
   n->max_imgs = (uint32_t)max_ul;
+  n->pick     = (size_t)pick_ul;
   return true;
 }

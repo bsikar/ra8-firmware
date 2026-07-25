@@ -343,3 +343,238 @@ ra8_err_t mdl_extract_anchors(const char*     html,
 {
   return scan_tags(html, html_len, base_url, "<a", "href", nullptr, href_contains, out);
 }
+
+/** @brief One recognised HTML entity mapped to its single replacement byte. */
+typedef struct {
+  const char* name; /**< Entity body after '&', including the ';'. */
+  char        ch;   /**< Decoded byte ('\0' means "emit a space"). */
+} mdl_entity_t;
+
+/** @brief ASCII whitespace test (locale-independent). */
+RA8_INTERNAL static bool is_ws(char c)
+{
+  return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v');
+}
+
+/**
+ * @brief Decode an entity at `&`, returning its byte and advancing `*i`.
+ * @return true when a known entity was consumed; `*space` is set when the
+ *         entity is whitespace-like (`&nbsp;`) so the caller collapses it.
+ */
+RA8_INTERNAL static bool
+decode_entity(const char* s, size_t len, size_t* i, char* out_ch, bool* space)
+{
+  static const mdl_entity_t table[] = {
+    {"amp;", '&'},
+    {"lt;", '<'},
+    {"gt;", '>'},
+    {"quot;", '"'},
+    {"#39;", '\''},
+    {"apos;", '\''},
+    {"nbsp;", '\0'},
+  };
+  const size_t start = *i + 1U; /* byte after '&' */
+  for (size_t e = 0U; e < (sizeof(table) / sizeof(table[0])); ++e) {
+    const size_t nlen = strlen(table[e].name);
+    if (((start + nlen) <= len) && (memcmp(s + start, table[e].name, nlen) == 0)) {
+      *i      = start + nlen - 1U; /* leave *i on the ';'; the loop's ++ steps past */
+      *space  = (table[e].ch == '\0');
+      *out_ch = table[e].ch;
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Copy the anchor inner text from `text` into `out`, cleaned for display.
+ * @details Strips nested `<...>` tags, collapses runs of whitespace to one
+ *          space, decodes the common HTML entities, and trims the ends.
+ */
+RA8_INTERNAL static void clean_inner_text(const char* text, size_t len, char* out, size_t cap)
+{
+  size_t n       = 0U;
+  bool   pending = false; /* a space is owed before the next visible char */
+  for (size_t i = 0U; (i < len) && ((n + 1U) < cap); ++i) {
+    const char c = text[i];
+    if (c == '<') {
+      while ((i < len) && (text[i] != '>')) {
+        ++i; /* skip a nested tag such as <span> */
+      }
+      continue;
+    }
+    char emit  = c;
+    bool space = is_ws(c);
+    if (c == '&') {
+      char decoded = '\0';
+      if (decode_entity(text, len, &i, &decoded, &space)) {
+        emit = decoded;
+      }
+    }
+    if (space) {
+      pending = (n > 0U); /* collapse; never a leading space */
+      continue;
+    }
+    if (pending && ((n + 1U) < cap)) {
+      out[n] = ' ';
+      ++n;
+    }
+    pending = false;
+    if ((n + 1U) < cap) {
+      out[n] = emit;
+      ++n;
+    }
+  }
+  out[n] = '\0';
+}
+
+/** @brief Fill `out` with the URL's last non-empty path segment (slug fallback). */
+RA8_INTERNAL static void url_slug(const char* url, char* out, size_t cap)
+{
+  const char*  q   = strpbrk(url, "?#");
+  const size_t end = (q == nullptr) ? strlen(url) : (size_t)(q - url);
+  size_t       beg = 0U;
+  size_t       fin = end;
+  while ((fin > 0U) && (url[fin - 1U] == '/')) {
+    --fin; /* drop trailing slashes */
+  }
+  beg = fin;
+  while ((beg > 0U) && (url[beg - 1U] != '/')) {
+    --beg; /* walk back to the segment start */
+  }
+  size_t n = 0U;
+  for (size_t i = beg; (i < fin) && ((n + 1U) < cap); ++i) {
+    out[n] = url[i];
+    ++n;
+  }
+  out[n] = '\0';
+}
+
+/**
+ * @brief Read the title for the anchor whose `>` sits at `gt_off`.
+ * @return true when a real title (attribute or inner text) was found; false
+ *         when the caller must fall back to the URL slug.
+ */
+RA8_INTERNAL static bool anchor_title(const char* html,
+                                      size_t      html_len,
+                                      const char* tag,
+                                      size_t      tag_len,
+                                      size_t      gt_off,
+                                      char*       out,
+                                      size_t      cap)
+{
+  if (find_attr_value(tag, tag_len, "title", out, cap) && (out[0] != '\0')) {
+    return true;
+  }
+  if (gt_off >= html_len) {
+    return false;
+  }
+  const size_t text_off = gt_off + 1U;
+  const char*  close    = find_ci(html + text_off, html_len - text_off, "</a");
+  const size_t text_len =
+    (close == nullptr) ? (html_len - text_off) : (size_t)(close - (html + text_off));
+  clean_inner_text(html + text_off, text_len, out, cap);
+  return out[0] != '\0';
+}
+
+/** @brief Index of an existing hit with URL `url`, or `count` when absent. */
+RA8_INTERNAL static size_t hit_index_of(const mdl_hit_list_t* out, const char* url)
+{
+  for (size_t i = 0U; i < out->count; ++i) {
+    if (strcmp(out->hits[i].url, url) == 0) {
+      return i;
+    }
+  }
+  return out->count;
+}
+
+/** @brief Merge one resolved (url,title) hit; upgrade a slug with a real title. */
+RA8_INTERNAL static ra8_err_t
+merge_hit(mdl_hit_list_t* out, bool* real, const char* url, const char* title, bool title_real)
+{
+  const size_t at = hit_index_of(out, url);
+  if (at < out->count) {
+    if (title_real && !real[at]) {
+      (void)copy_fits(out->hits[at].title, k_mdl_hit_title_max, title);
+      real[at] = true;
+    }
+    return k_ra8_ok;
+  }
+  if (out->count >= (size_t)k_mdl_max_hits) {
+    return k_ra8_err_no_mem;
+  }
+  (void)copy_fits(out->hits[out->count].url, k_mdl_url_max, url);
+  (void)copy_fits(out->hits[out->count].title, k_mdl_hit_title_max, title);
+  real[out->count] = title_real;
+  out->count++;
+  return k_ra8_ok;
+}
+
+/** @brief Resolve one anchor's href, count it, and emit a filtered hit. */
+RA8_INTERNAL static ra8_err_t emit_hit(const char*     html,
+                                       size_t          html_len,
+                                       const char*     base_url,
+                                       const char*     keep,
+                                       const char*     tag,
+                                       size_t          tag_len,
+                                       size_t          gt_off,
+                                       mdl_hit_list_t* out,
+                                       bool*           real)
+{
+  char raw[k_mdl_url_max];
+  if (!find_attr_value(tag, tag_len, "href", raw, sizeof(raw))) {
+    return k_ra8_ok; /* an <a> with no href is not a link */
+  }
+  char abs[k_mdl_url_max];
+  if (!resolve_url(base_url, raw, abs, sizeof(abs))) {
+    return k_ra8_ok; /* unresolvable (e.g. javascript:, fragment): not counted */
+  }
+  out->anchors_seen++;
+  if (!contains_ok(abs, keep)) {
+    return k_ra8_ok; /* a real link, but not a result: counted, not stored */
+  }
+  char       title[k_mdl_hit_title_max];
+  const bool title_real = anchor_title(html, html_len, tag, tag_len, gt_off, title, sizeof(title));
+  if (!title_real) {
+    url_slug(abs, title, sizeof(title));
+  }
+  return merge_hit(out, real, abs, title, title_real);
+}
+
+ra8_err_t mdl_extract_hits(const char*     html,
+                           size_t          html_len,
+                           const char*     base_url,
+                           const char*     url_contains,
+                           mdl_hit_list_t* out)
+{
+  if ((html == nullptr) || (base_url == nullptr) || (out == nullptr)) {
+    return k_ra8_err_invalid_arg;
+  }
+  out->count        = 0U;
+  out->anchors_seen = 0U;
+  bool real[k_mdl_max_hits];
+  memset(real, 0, sizeof(real));
+
+  size_t pos = 0U;
+  while (pos < html_len) {
+    const char* tag = find_ci(html + pos, html_len - pos, "<a");
+    if (tag == nullptr) {
+      break;
+    }
+    const size_t tag_off = (size_t)(tag - html);
+    const size_t after   = tag_off + (sizeof("<a") - 1U);
+    if ((after < html_len) && !is_name_end(html[after])) {
+      pos = tag_off + 1U; /* "<article" while seeking "<a" */
+      continue;
+    }
+    const char*  gt      = memchr(tag, '>', html_len - tag_off);
+    const size_t gt_off  = (gt == nullptr) ? html_len : (size_t)(gt - html);
+    const size_t tag_len = (gt == nullptr) ? (html_len - tag_off) : (size_t)(gt - tag);
+    if (emit_hit(html, html_len, base_url, url_contains, tag, tag_len, gt_off, out, real) ==
+        k_ra8_err_no_mem) {
+      return k_ra8_err_no_mem;
+    }
+    pos = tag_off + ((gt == nullptr) ? tag_len : (tag_len + 1U));
+  }
+  return k_ra8_ok;
+}

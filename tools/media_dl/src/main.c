@@ -36,6 +36,7 @@
 
 #include "mdl_cli.h"
 #include "mdl_config.h"
+#include "mdl_discover.h"
 #include "mdl_export.h"
 #include "mdl_extract.h"
 #include "mdl_fetch.h"
@@ -71,12 +72,10 @@ typedef enum : uint16_t {
   k_page_img_delay_max = 800,  /**< page-mode per-image ceiling, ms. */
 } mdl_bufsize_t;
 
-/** @brief `--polite` per-host delay floors (milliseconds). */
+/** @brief `--polite` per-image delay floors for page mode (milliseconds). */
 typedef enum : uint16_t {
-  k_polite_img_min_ms  = 2000,  /**< Polite per-image floor.       */
-  k_polite_img_max_ms  = 4000,  /**< Polite per-image ceiling.     */
-  k_polite_chap_min_ms = 5000,  /**< Polite inter-chapter floor.   */
-  k_polite_chap_max_ms = 10000, /**< Polite inter-chapter ceiling. */
+  k_polite_img_min_ms = 2000, /**< Polite per-image floor.   */
+  k_polite_img_max_ms = 4000, /**< Polite per-image ceiling. */
 } mdl_polite_floor_t;
 
 /** @brief Filesystem constants. */
@@ -156,6 +155,16 @@ static mdl_fetch_faillog_t s_faillog;
  */
 static char s_rowtmp[k_mdl_url_max];
 
+/**
+ * @var s_results
+ * @brief Titled search/browse hits parsed from a discovery results page.
+ * @details About 98 KiB (a fixed title+URL table), so it lives in `.bss`. Only
+ *          used before a download begins, so it never overlaps ::s_chapters.
+ * @warning Single-threaded; rebuilt per discovery run.
+ * @since 0.1.0
+ */
+static mdl_hit_list_t s_results;
+
 /** @brief Larger of two unsigned values. */
 RA8_INTERNAL static uint32_t max_u32(uint32_t a, uint32_t b)
 {
@@ -219,15 +228,6 @@ RA8_INTERNAL static void filter_prefix(mdl_url_list_t* l, const char* prefix)
     }
   }
   l->count = w;
-}
-
-/** @brief `--polite`: raise a site's delay floors. */
-RA8_INTERNAL static void apply_polite(mdl_site_t* site)
-{
-  site->img_delay_min     = max_u32(site->img_delay_min, (uint32_t)k_polite_img_min_ms);
-  site->img_delay_max     = max_u32(site->img_delay_max, (uint32_t)k_polite_img_max_ms);
-  site->chapter_delay_min = max_u32(site->chapter_delay_min, (uint32_t)k_polite_chap_min_ms);
-  site->chapter_delay_max = max_u32(site->chapter_delay_max, (uint32_t)k_polite_chap_max_ms);
 }
 
 /** @brief One-time warning printed when no operator contact is configured. */
@@ -430,18 +430,6 @@ RA8_INTERNAL static mdl_fetch_layout_t choose_layout(const series_run_t*   r,
   return k_mdl_layout_combined;
 }
 
-/** @brief Governor tunables for `site`: defaults overlaid with descriptor bounds. */
-RA8_INTERNAL static mdl_gov_cfg_t site_gov_cfg(const mdl_site_t* site)
-{
-  mdl_gov_cfg_t cfg   = mdl_gov_cfg_default();
-  cfg.rate_per_min    = site->rate_per_min;
-  cfg.burst           = site->burst;
-  cfg.backoff_base_ms = site->backoff_base_ms;
-  cfg.backoff_max_ms  = site->backoff_max_ms;
-  cfg.max_inflight    = (uint16_t)site->max_inflight;
-  return cfg;
-}
-
 /** @brief Assemble the fetch context for one series run over the shared buffers. */
 RA8_INTERNAL static mdl_fetch_ctx_t make_ctx(const series_run_t* r,
                                              const mdl_site_t*   site,
@@ -504,7 +492,7 @@ RA8_INTERNAL static int run_prepared(const series_run_t* r,
   mdl_fetch_layout_t layout = choose_layout(r, sel, combined_rel, sizeof(combined_rel), slug);
 
   mdl_governor_t      gov;
-  const mdl_gov_cfg_t cfg = site_gov_cfg(site);
+  const mdl_gov_cfg_t cfg = mdl_config_gov_cfg(site);
   mdl_governor_init(&gov, &cfg, r->seed);
   memset(&s_faillog, 0, sizeof(s_faillog));
   mdl_fetch_ctx_t   ctx       = make_ctx(r, site, abs_dir, state_path, &gov);
@@ -530,7 +518,7 @@ RA8_INTERNAL static int run_series(const series_run_t* r)
     return 1;
   }
   if (r->opts->polite) {
-    apply_polite(&site);
+    mdl_config_apply_polite(&site);
   }
   (void)printf("site: %s (host %s, kind %s)\n", site.name, site.host, site.kind);
 
@@ -821,6 +809,58 @@ build_run(const mdl_args_t* a, mdl_format_t format, const mdl_run_opts_t* opts, 
                         .opts         = opts};
 }
 
+/** @brief search/browse discovery: fetch a results page, list hits, and -- when
+ *  `--pick N` selected one -- download it as a series via @p base. */
+RA8_INTERNAL static int run_discover(const mdl_args_t*     a,
+                                     const mdl_run_opts_t* opts,
+                                     const mdl_nums_t*     n,
+                                     const series_run_t*   base)
+{
+  if (a->cfg == nullptr) {
+    (void)fprintf(stderr, "media_dl: --search/--browse requires --config SITE.conf\n");
+    return 2;
+  }
+  mdl_site_t site;
+  if (mdl_config_load(a->cfg, &site) != k_ra8_ok) {
+    return 1;
+  }
+  if (opts->polite) {
+    mdl_config_apply_polite(&site);
+  }
+  mdl_net_iface_t* net = mdl_net_curl_create(&opts->policy);
+  if (net == nullptr) {
+    (void)fprintf(stderr, "media_dl: network init failed\n");
+    return 1;
+  }
+  char ua[k_mdl_ua_max];
+  start_session(net, opts, site.contact, ua, sizeof(ua));
+
+  mdl_governor_t      gov;
+  const mdl_gov_cfg_t cfg = mdl_config_gov_cfg(&site);
+  mdl_governor_init(&gov, &cfg, n->seed);
+
+  const mdl_discover_req_t req = {
+    .session    = &s_session,
+    .gov        = &gov,
+    .site       = &site,
+    .mode       = a->browse ? k_mdl_discover_browse : k_mdl_discover_search,
+    .term       = a->search,
+    .timeout_ms = n->timeout,
+    .page_buf   = s_page,
+    .page_cap   = sizeof(s_page),
+    .hits       = &s_results,
+  };
+  char      picked[k_mdl_url_max] = {};
+  const int rc                    = mdl_discover_run(&req, n->pick, picked, sizeof(picked));
+  mdl_net_destroy(net);
+  if ((rc != 0) || (picked[0] == '\0')) {
+    return rc; /* listed results, or an error, with nothing to download */
+  }
+  series_run_t run = *base;
+  run.series_url   = picked; /* combined search-and-select: feed the pick in */
+  return run_series(&run);
+}
+
 /** @brief Dispatch a library command (`--list`/`--remove`/`--update-all`). */
 RA8_INTERNAL static int run_library(const mdl_args_t* a, const series_run_t* run)
 {
@@ -837,11 +877,44 @@ RA8_INTERNAL static int run_library(const mdl_args_t* a, const series_run_t* run
   return run_update_all(run);
 }
 
+/** @brief Select and run the mode implied by the parsed args; return the exit code. */
+RA8_INTERNAL static int dispatch_run(const mdl_args_t*     a,
+                                     mdl_format_t          format,
+                                     const mdl_run_opts_t* opts,
+                                     const mdl_nums_t*     nums,
+                                     const series_run_t*   run,
+                                     const char*           prog)
+{
+  if (a->list || (a->remove_series != nullptr) || a->update_all) {
+    return run_library(a, run);
+  }
+  if ((a->search != nullptr) || a->browse) {
+    return run_discover(a, opts, nums, run);
+  }
+  if (a->pack != nullptr) {
+    return run_pack(a->pack, format);
+  }
+  if (a->cfg != nullptr) {
+    if (a->series == nullptr) {
+      (void)fprintf(stderr, "media_dl: --config requires --series URL\n");
+      return 2;
+    }
+    return run_series(run);
+  }
+  if (a->page_url != nullptr) {
+    return run_page(a->page_url, a->out, a->attr, nums->max_imgs, nums->seed, nums->timeout, opts);
+  }
+  mdl_cli_usage(prog);
+  return 2;
+}
+
 /**
  * @brief Program entry point: parse the command line and select a run mode.
- * @details Dispatches to a library command (`--list`/`--remove`/`--update-all`),
- *          pack mode (`--pack`), series mode (`--config` + `--series`), or
- *          single-page mode (a bare URL), in that precedence.
+ * @details Parses and validates the arguments, then hands off to ::dispatch_run,
+ *          which selects a library command (`--list`/`--remove`/`--update-all`),
+ *          search/browse discovery (`--search`/`--browse`), pack mode (`--pack`),
+ *          series mode (`--config` + `--series`), or single-page mode (a bare
+ *          URL), in that precedence.
  * @param[in] argc Argument count.
  * @param[in] argv Argument vector.
  * @return 0 on success, 1 on a download/export failure, 2 on a usage error.
@@ -878,23 +951,5 @@ int main(int argc, char** argv)
   }
 
   const series_run_t run = build_run(&a, format, &opts, &nums);
-
-  if (a.list || (a.remove_series != nullptr) || a.update_all) {
-    return run_library(&a, &run);
-  }
-  if (a.pack != nullptr) {
-    return run_pack(a.pack, format);
-  }
-  if (a.cfg != nullptr) {
-    if (a.series == nullptr) {
-      (void)fprintf(stderr, "media_dl: --config requires --series URL\n");
-      return 2;
-    }
-    return run_series(&run);
-  }
-  if (a.page_url != nullptr) {
-    return run_page(a.page_url, a.out, a.attr, nums.max_imgs, nums.seed, nums.timeout, &opts);
-  }
-  mdl_cli_usage(argv[0]);
-  return 2;
+  return dispatch_run(&a, format, &opts, &nums, &run, argv[0]);
 }
