@@ -14,12 +14,14 @@
 #include <string.h>
 #include <time.h>
 
+#include "mdl_fetch_internal.h"
 #include "mdl_hash.h"
 #include "mdl_net.h"
 #include "mdl_pathfs.h"
 #include "mdl_url_guard.h"
 #include "mdl_urlname.h"
 #include "ra8_attributes.h"
+#include "ra8_err.h"
 
 /** @brief Local buffer sizes and the file-copy chunk. */
 typedef enum : uint16_t {
@@ -27,14 +29,45 @@ typedef enum : uint16_t {
   k_fetch_copy_chunk = 8192, /**< Reuse-copy stream chunk bytes.    */
 } mdl_fetch_size_t;
 
+/** @brief HTTP-status boundaries used when rendering a failure reason. */
+typedef enum : uint16_t {
+  k_http_server_err = 500,  /**< First status that is a server error.  */
+  k_ms_per_sec      = 1000, /**< Milliseconds per second (rate maths). */
+} mdl_fetch_http_t;
+
+/**
+ * @struct mdl_run_pos_t
+ * @brief Where a page sits in the run, for a progress event.
+ * @details Bundled so the per-page functions carry one pointer rather than a
+ *          fan of position scalars.
+ * @since 0.1.0
+ */
+typedef struct {
+  size_t      chapter_index; /**< 1-based chapter position in the run. */
+  size_t      chapter_total; /**< Total chapters in the run.           */
+  const char* chapter_id;    /**< Chapter identifier (URL leaf).       */
+} mdl_run_pos_t;
+
+/**
+ * @struct mdl_page_outcome_t
+ * @brief How one page transfer went, handed back for a progress event.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint64_t bytes;      /**< Bytes transferred (0 when reused).     */
+  uint32_t elapsed_ms; /**< Wall time for the transfer (0 reused). */
+  bool     reused;     /**< Served from an already-held file.      */
+} mdl_page_outcome_t;
+
 /** @brief Loop bound on the reuse-copy stream (any real page is far under). */
 typedef enum : uint32_t {
-  k_fetch_copy_max_chunks = 1000000U, /**< 8 GiB ceiling. */
+  k_fetch_copy_max_chunks = 1000000U, /**< 8 GiB ceiling.               */
+  k_ns_per_ms             = 1000000U, /**< Nanoseconds per millisecond. */
 } mdl_fetch_bound_t;
 
 /** @brief Bounded attempts per request: the initial try plus backoff retries. */
 typedef enum : uint8_t {
-  k_fetch_max_attempts = 4U, /**< 1 initial + up to 3 governed retries on a 429/503. */
+  k_fetch_max_attempts = 4U, /**< 1 initial + up to 3 governed retries on a retryable class. */
 } mdl_fetch_retry_t;
 
 /** @brief Per-chapter outcome ::process_chapter reports to the run loop. */
@@ -56,6 +89,120 @@ RA8_INTERNAL static void checkpoint(const mdl_fetch_ctx_t* ctx)
   if (ctx->state_path != nullptr) {
     (void)mdl_state_save(ctx->state_path, ctx->state);
   }
+}
+
+RA8_PRIV bool mdl_fetch_is_retryable(ra8_err_t rc)
+{
+  return (rc == k_ra8_err_busy) || (rc == k_ra8_err_timeout) || (rc == k_ra8_fail);
+}
+
+RA8_PRIV bool mdl_fetch_run_incomplete(const mdl_fetch_stats_t* stats)
+{
+  if (stats == nullptr) {
+    return false;
+  }
+  return (stats->chapters_failed > 0U) || (stats->pages_failed > 0U);
+}
+
+/** @brief Prose for a k_ra8_fail: a 5xx server error versus a transport error. */
+RA8_INTERNAL static const char* fail_reason(long status)
+{
+  return (status >= (long)k_http_server_err) ? "server error" : "transport error";
+}
+
+RA8_PRIV void mdl_fetch_reason(ra8_err_t err, long status, char* buf, size_t cap)
+{
+  if (buf == nullptr) {
+    return;
+  }
+  if (cap == 0U) {
+    return;
+  }
+  const char* base = nullptr;
+  switch (err) {
+    case k_ra8_ok:
+      base = "ok";
+      break;
+    case k_ra8_err_timeout:
+      base = "request timed out";
+      break;
+    case k_ra8_err_busy:
+      base = "rate limited";
+      break;
+    case k_ra8_err_not_found:
+      base = "not found";
+      break;
+    case k_ra8_err_no_mem:
+      base = "response exceeded size cap";
+      break;
+    case k_ra8_err_retry_limit:
+      base = "still failing after retries";
+      break;
+    case k_ra8_fail:
+      base = fail_reason(status);
+      break;
+    default:
+      base = "error";
+      break;
+  }
+  if (status > 0) {
+    (void)snprintf(buf, cap, "%s (HTTP %ld)", base, status);
+  } else {
+    (void)snprintf(buf, cap, "%s", base);
+  }
+}
+
+/** @brief Append one failure to the run's log (when set); always tally total. */
+RA8_INTERNAL static void
+record_fail(const mdl_fetch_ctx_t* ctx, const char* url, long status, ra8_err_t err)
+{
+  if (ctx->faillog == nullptr) {
+    return;
+  }
+  mdl_fetch_faillog_t* log = ctx->faillog;
+  log->total += 1U;
+  if (log->count >= (size_t)k_mdl_fetch_fail_max) {
+    return;
+  }
+  mdl_fetch_fail_t* item = &log->items[log->count];
+  (void)snprintf(item->url, sizeof(item->url), "%s", (url != nullptr) ? url : "");
+  item->status = status;
+  item->err    = err;
+  log->count += 1U;
+}
+
+/** @brief Monotonic milliseconds, but only when progress is on (else 0). */
+RA8_INTERNAL static int64_t mono_ms(const mdl_fetch_ctx_t* ctx)
+{
+  if (ctx->progress_fn == nullptr) {
+    return 0;
+  }
+  struct timespec ts = {};
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    return 0;
+  }
+  return ((int64_t)ts.tv_sec * (int64_t)k_ms_per_sec) +
+         ((int64_t)ts.tv_nsec / (int64_t)k_ns_per_ms);
+}
+
+/** @brief Emit one per-page progress event through the injected sink, if any. */
+RA8_INTERNAL static void emit_progress(const mdl_fetch_ctx_t*    ctx,
+                                       const mdl_run_pos_t*      pos,
+                                       size_t                    page_index,
+                                       const mdl_page_outcome_t* out)
+{
+  if (ctx->progress_fn == nullptr) {
+    return;
+  }
+  const mdl_fetch_progress_t ev = {.chapter_index = pos->chapter_index,
+                                   .chapter_total = pos->chapter_total,
+                                   .chapter_id    = pos->chapter_id,
+                                   .page_index    = page_index,
+                                   .page_total    = ctx->images->count,
+                                   .page_bytes    = out->bytes,
+                                   .elapsed_ms    = out->elapsed_ms,
+                                   .reused        = out->reused};
+  ctx->progress_fn(ctx->progress_ctx, &ev);
 }
 
 /** @brief Copy a file byte-for-byte; false on any open/read/write error. */
@@ -149,7 +296,9 @@ RA8_INTERNAL static ra8_err_t governed_get_file(mdl_fetch_ctx_t*     ctx,
                                                 const mdl_net_req_t* req,
                                                 const char*          target_abs,
                                                 uint32_t             jmin,
-                                                uint32_t             jmax)
+                                                uint32_t             jmax,
+                                                long*                out_status,
+                                                size_t*              out_bytes)
 {
   if (mdl_governor_acquire(ctx->gov, host, jmin, jmax) == k_ra8_err_would_block) {
     return k_ra8_err_would_block;
@@ -159,6 +308,33 @@ RA8_INTERNAL static ra8_err_t governed_get_file(mdl_fetch_ctx_t*     ctx,
   const ra8_err_t rc   = mdl_net_get_file(ctx->session->net, url, req, target_abs, &got, &resp);
   mdl_governor_observe(ctx->gov, host, resp.status, resp.retry_after);
   mdl_governor_release(ctx->gov, host);
+  if (out_status != nullptr) {
+    *out_status = resp.status;
+  }
+  if (out_bytes != nullptr) {
+    *out_bytes = got;
+  }
+  return rc;
+}
+
+/** @brief Bounded, governed retry of one image transfer; last status latched. */
+RA8_INTERNAL static ra8_err_t fetch_with_retry(mdl_fetch_ctx_t*     ctx,
+                                               const char*          host,
+                                               const char*          url,
+                                               const mdl_net_req_t* req,
+                                               const char*          target_abs,
+                                               uint32_t             jmin,
+                                               uint32_t             jmax,
+                                               long*                out_status,
+                                               size_t*              out_bytes)
+{
+  ra8_err_t rc = k_ra8_fail;
+  for (uint8_t attempt = 0U; attempt < (uint8_t)k_fetch_max_attempts; ++attempt) {
+    rc = governed_get_file(ctx, host, url, req, target_abs, jmin, jmax, out_status, out_bytes);
+    if (!mdl_fetch_is_retryable(rc)) {
+      break; /* success, or a permanent failure not worth retrying */
+    }
+  }
   return rc;
 }
 
@@ -167,31 +343,31 @@ RA8_INTERNAL static ra8_err_t do_fetch_page(mdl_fetch_ctx_t* ctx,
                                             const char*      chapter_url,
                                             const char*      url,
                                             const char*      target_abs,
-                                            const char*      target_rel)
+                                            const char*      target_rel,
+                                            size_t*          out_bytes)
 {
   uint32_t crawl = 0U;
   if (!mdl_session_url_allowed(ctx->session, url, &crawl)) {
-    return k_ra8_fail; /* robots refused (message printed by the session) */
+    record_fail(ctx, url, 0, k_ra8_fail); /* robots refused (message printed) */
+    return k_ra8_fail;
   }
   char                hostbuf[k_mdl_gov_host_max];
-  const char*         host = page_host(url, hostbuf, sizeof(hostbuf));
-  const uint32_t      jmin = max_u32(ctx->site->img_delay_min, crawl);
-  const uint32_t      jmax = max_u32(ctx->site->img_delay_max, crawl);
-  const mdl_net_req_t req  = {.user_agent = ctx->session->user_agent,
-                              .referer    = chapter_url,
-                              .timeout_ms = ctx->timeout_ms};
-  ra8_err_t           rc   = k_ra8_fail;
-  for (uint8_t attempt = 0U; attempt < (uint8_t)k_fetch_max_attempts; ++attempt) {
-    rc = governed_get_file(ctx, host, url, &req, target_abs, jmin, jmax);
-    if (rc != k_ra8_err_busy) {
-      break; /* success, or a non-throttle failure not worth retrying */
-    }
-  }
+  const char*         host   = page_host(url, hostbuf, sizeof(hostbuf));
+  const uint32_t      jmin   = max_u32(ctx->site->img_delay_min, crawl);
+  const uint32_t      jmax   = max_u32(ctx->site->img_delay_max, crawl);
+  const mdl_net_req_t req    = {.user_agent = ctx->session->user_agent,
+                                .referer    = chapter_url,
+                                .timeout_ms = ctx->timeout_ms};
+  long                status = 0;
+  const ra8_err_t     rc =
+    fetch_with_retry(ctx, host, url, &req, target_abs, jmin, jmax, &status, out_bytes);
   if (rc != k_ra8_ok) {
+    record_fail(ctx, url, status, rc);
     return k_ra8_fail;
   }
   uint64_t content = 0U;
   if (mdl_hash_file(target_abs, &content) != k_ra8_ok) {
+    record_fail(ctx, url, status, k_ra8_fail);
     return k_ra8_fail;
   }
   (void)mdl_state_add_page(ctx->state, mdl_hash_str(url), content, target_rel);
@@ -199,14 +375,15 @@ RA8_INTERNAL static ra8_err_t do_fetch_page(mdl_fetch_ctx_t* ctx,
 }
 
 /** @brief Reuse or fetch page @p idx into @p dest_abs; update stats + checkpoint. */
-RA8_INTERNAL static ra8_err_t fetch_one_page(mdl_fetch_ctx_t*   ctx,
-                                             const char*        chapter_url,
-                                             const char*        dest_abs,
-                                             const char*        dest_rel,
-                                             size_t             page_no,
-                                             size_t             idx,
-                                             mdl_chapter_rec_t* rec,
-                                             mdl_fetch_stats_t* stats)
+RA8_INTERNAL static ra8_err_t fetch_one_page(mdl_fetch_ctx_t*    ctx,
+                                             const char*         chapter_url,
+                                             const char*         dest_abs,
+                                             const char*         dest_rel,
+                                             size_t              page_no,
+                                             size_t              idx,
+                                             mdl_chapter_rec_t*  rec,
+                                             mdl_fetch_stats_t*  stats,
+                                             mdl_page_outcome_t* out)
 {
   const char* url = ctx->images->urls[idx];
   char        leaf[k_fetch_leaf_bytes];
@@ -223,13 +400,19 @@ RA8_INTERNAL static ra8_err_t fetch_one_page(mdl_fetch_ctx_t*   ctx,
   }
   if (try_reuse(ctx, mdl_hash_str(url), target_abs, target_rel)) {
     stats->pages_reused += 1U;
+    *out = (mdl_page_outcome_t){.bytes = 0U, .elapsed_ms = 0U, .reused = true};
   } else {
-    const ra8_err_t rc = do_fetch_page(ctx, chapter_url, url, target_abs, target_rel);
+    const int64_t   t0  = mono_ms(ctx);
+    size_t          got = 0U;
+    const ra8_err_t rc  = do_fetch_page(ctx, chapter_url, url, target_abs, target_rel, &got);
     if (rc != k_ra8_ok) {
       stats->pages_failed += 1U;
       return rc;
     }
     stats->pages_fetched += 1U;
+    *out = (mdl_page_outcome_t){.bytes      = (uint64_t)got,
+                                .elapsed_ms = (uint32_t)(mono_ms(ctx) - t0),
+                                .reused     = false};
   }
   rec->pages_done = (uint16_t)(idx + 1U);
   checkpoint(ctx);
@@ -237,21 +420,24 @@ RA8_INTERNAL static ra8_err_t fetch_one_page(mdl_fetch_ctx_t*   ctx,
 }
 
 /** @brief Fetch every page of one chapter; fail (partial) on the first bad page. */
-RA8_INTERNAL static ra8_err_t fetch_chapter_pages(mdl_fetch_ctx_t*   ctx,
-                                                  const char*        chapter_url,
-                                                  const char*        dest_abs,
-                                                  const char*        dest_rel,
-                                                  size_t             base,
-                                                  mdl_chapter_rec_t* rec,
-                                                  mdl_fetch_stats_t* stats)
+RA8_INTERNAL static ra8_err_t fetch_chapter_pages(mdl_fetch_ctx_t*     ctx,
+                                                  const char*          chapter_url,
+                                                  const char*          dest_abs,
+                                                  const char*          dest_rel,
+                                                  size_t               base,
+                                                  mdl_chapter_rec_t*   rec,
+                                                  mdl_fetch_stats_t*   stats,
+                                                  const mdl_run_pos_t* pos)
 {
   for (size_t i = 0U; i < ctx->images->count; ++i) {
-    const size_t    page_no = base + i + 1U;
-    const ra8_err_t rc =
-      fetch_one_page(ctx, chapter_url, dest_abs, dest_rel, page_no, i, rec, stats);
+    const size_t       page_no = base + i + 1U;
+    mdl_page_outcome_t out     = {};
+    const ra8_err_t    rc =
+      fetch_one_page(ctx, chapter_url, dest_abs, dest_rel, page_no, i, rec, stats, &out);
     if (rc != k_ra8_ok) {
       return rc;
     }
+    emit_progress(ctx, pos, i + 1U, &out);
   }
   return k_ra8_ok;
 }
@@ -263,7 +449,8 @@ RA8_INTERNAL static ra8_err_t governed_get_buf(mdl_fetch_ctx_t*     ctx,
                                                const mdl_net_req_t* req,
                                                uint32_t             jmin,
                                                uint32_t             jmax,
-                                               size_t*              out_len)
+                                               size_t*              out_len,
+                                               long*                out_status)
 {
   if (mdl_governor_acquire(ctx->gov, host, jmin, jmax) == k_ra8_err_would_block) {
     return k_ra8_err_would_block;
@@ -273,6 +460,9 @@ RA8_INTERNAL static ra8_err_t governed_get_buf(mdl_fetch_ctx_t*     ctx,
     mdl_net_get_buf(ctx->session->net, url, req, ctx->page_buf, ctx->page_cap, out_len, &resp);
   mdl_governor_observe(ctx->gov, host, resp.status, resp.retry_after);
   mdl_governor_release(ctx->gov, host);
+  if (out_status != nullptr) {
+    *out_status = resp.status;
+  }
   return rc;
 }
 
@@ -281,24 +471,27 @@ RA8_INTERNAL static ra8_err_t fetch_chapter_html(mdl_fetch_ctx_t* ctx, const cha
 {
   uint32_t crawl = 0U;
   if (!mdl_session_url_allowed(ctx->session, chapter_url, &crawl)) {
+    record_fail(ctx, chapter_url, 0, k_ra8_fail);
     return k_ra8_fail;
   }
   char                hostbuf[k_mdl_gov_host_max];
-  const char*         host = page_host(chapter_url, hostbuf, sizeof(hostbuf));
-  const uint32_t      jmin = max_u32(ctx->site->chapter_delay_min, crawl);
-  const uint32_t      jmax = max_u32(ctx->site->chapter_delay_max, crawl);
-  const mdl_net_req_t req  = {.user_agent = ctx->session->user_agent,
-                              .referer    = ctx->series_url,
-                              .timeout_ms = ctx->timeout_ms};
-  ra8_err_t           rc   = k_ra8_fail;
-  size_t              len  = 0U;
+  const char*         host   = page_host(chapter_url, hostbuf, sizeof(hostbuf));
+  const uint32_t      jmin   = max_u32(ctx->site->chapter_delay_min, crawl);
+  const uint32_t      jmax   = max_u32(ctx->site->chapter_delay_max, crawl);
+  const mdl_net_req_t req    = {.user_agent = ctx->session->user_agent,
+                                .referer    = ctx->series_url,
+                                .timeout_ms = ctx->timeout_ms};
+  ra8_err_t           rc     = k_ra8_fail;
+  size_t              len    = 0U;
+  long                status = 0;
   for (uint8_t attempt = 0U; attempt < (uint8_t)k_fetch_max_attempts; ++attempt) {
-    rc = governed_get_buf(ctx, host, chapter_url, &req, jmin, jmax, &len);
-    if (rc != k_ra8_err_busy) {
-      break; /* success, or a non-throttle failure not worth retrying */
+    rc = governed_get_buf(ctx, host, chapter_url, &req, jmin, jmax, &len, &status);
+    if (!mdl_fetch_is_retryable(rc)) {
+      break; /* success, or a permanent failure not worth retrying */
     }
   }
   if (rc != k_ra8_ok) {
+    record_fail(ctx, chapter_url, status, rc);
     return k_ra8_fail;
   }
   const ra8_err_t erc = mdl_extract_images(ctx->page_buf,
@@ -360,7 +553,9 @@ RA8_INTERNAL static mdl_chap_status_t process_chapter(mdl_fetch_ctx_t*   ctx,
                                                       const char*        combined_abs,
                                                       const char*        combined_rel,
                                                       size_t*            global_no,
-                                                      mdl_fetch_stats_t* stats)
+                                                      mdl_fetch_stats_t* stats,
+                                                      size_t             chapter_index,
+                                                      size_t             chapter_total)
 {
   char id[k_mdl_chapter_id_max];
   mdl_urlname_last_segment(chapter_url, id, sizeof(id));
@@ -393,7 +588,11 @@ RA8_INTERNAL static mdl_chap_status_t process_chapter(mdl_fetch_ctx_t*   ctx,
                     &base)) {
     return k_ch_failed;
   }
-  if (fetch_chapter_pages(ctx, chapter_url, dest_abs, dest_rel, base, rec, stats) != k_ra8_ok) {
+  const mdl_run_pos_t pos = {.chapter_index = chapter_index,
+                             .chapter_total = chapter_total,
+                             .chapter_id    = id};
+  if (fetch_chapter_pages(ctx, chapter_url, dest_abs, dest_rel, base, rec, stats, &pos) !=
+      k_ra8_ok) {
     checkpoint(ctx);
     return k_ch_failed;
   }
@@ -458,7 +657,9 @@ ra8_err_t mdl_fetch_run(mdl_fetch_ctx_t*      ctx,
                                                 combined_abs,
                                                 combined_dir_rel,
                                                 &global_no,
-                                                stats);
+                                                stats,
+                                                i + 1U,
+                                                chapters->count);
     if (tally(s, stats)) {
       any_fail = true;
       if (layout == k_mdl_layout_combined) {

@@ -34,10 +34,12 @@
 #include "mdl_config.h"
 #include "mdl_extract.h"
 #include "mdl_fetch.h"
+#include "mdl_fetch_internal.h"
 #include "mdl_hash.h"
 #include "mdl_net.h"
 #include "mdl_session.h"
 #include "mdl_state.h"
+#include "ra8_err.h"
 #include "unity_minimal.h"
 
 /** @brief Named constants for the fetch tests (no bare literals). */
@@ -80,13 +82,14 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const page_map_t* map;               /**< Chapter URL -> HTML.               */
-  size_t            map_n;             /**< Entries in @ref map.               */
-  size_t            get_buf_calls;     /**< Chapter-HTML fetches dispatched.   */
-  size_t            get_file_calls;    /**< Page transfers attempted.          */
-  size_t            fail_on_file_call; /**< 1-based call to fail (0 = never).  */
-  size_t            busy_on_file_call; /**< 1-based call to 503+Retry (0=off). */
-  const char*       busy_retry_after;  /**< Retry-After for the busy reply.    */
+  const page_map_t* map;               /**< Chapter URL -> HTML.                 */
+  size_t            map_n;             /**< Entries in @ref map.                 */
+  size_t            get_buf_calls;     /**< Chapter-HTML fetches dispatched.     */
+  size_t            get_file_calls;    /**< Page transfers attempted.            */
+  size_t            fail_on_file_call; /**< 1-based call to fail once (0=never). */
+  size_t            busy_on_file_call; /**< 1-based call to 503+Retry (0=off).   */
+  const char*       busy_retry_after;  /**< Retry-After for the busy reply.      */
+  const char*       fail_url;          /**< URL that fails on EVERY attempt.     */
 } mock_net_t;
 
 /** @brief Fake get_buf: serve the mapped HTML for a chapter URL. */
@@ -136,7 +139,10 @@ static ra8_err_t mock_get_file(void*                ctx,
     return k_ra8_err_busy;
   }
   if ((f->fail_on_file_call != 0U) && (f->get_file_calls == f->fail_on_file_call)) {
-    return k_ra8_fail; /* simulate a kill mid-transfer: nothing written */
+    return k_ra8_fail; /* a single transient failure: the retry recovers it */
+  }
+  if ((f->fail_url != nullptr) && (strcmp(f->fail_url, url) == 0)) {
+    return k_ra8_fail; /* a permanently-unreachable page: every attempt fails */
   }
   FILE* fp = fopen(out_path, "wb");
   if (fp == nullptr) {
@@ -165,14 +171,15 @@ static const mdl_net_vtable_t s_mock_vtable = {
 
 /* ---- shared fixtures (large objects live off the stack) ------------------ */
 
-static mock_net_t      g_mock;               /**< The scripted backend context.           */
-static mdl_session_t   g_sess;               /**< Session over the fake (64 KiB embed).   */
-static mdl_site_t      g_site;               /**< Selectors + (zero) politeness bounds.   */
-static mdl_state_t     g_state;              /**< State under test (~2 MiB).              */
-static mdl_url_list_t  g_chapters;           /**< Live chapter list for a scenario.       */
-static mdl_url_list_t  g_images;             /**< Extracted-image scratch.                */
-static char            g_page[k_page_bytes]; /**< Chapter-HTML scratch.                   */
-static mdl_governor_t* g_fetch_gov;          /**< Governor wired into run_fetch, or NULL. */
+static mock_net_t          g_mock;               /**< The scripted backend context.           */
+static mdl_session_t       g_sess;               /**< Session over the fake (64 KiB embed).   */
+static mdl_site_t          g_site;               /**< Selectors + (zero) politeness bounds.   */
+static mdl_state_t         g_state;              /**< State under test (~2 MiB).              */
+static mdl_url_list_t      g_chapters;           /**< Live chapter list for a scenario.       */
+static mdl_url_list_t      g_images;             /**< Extracted-image scratch.                */
+static char                g_page[k_page_bytes]; /**< Chapter-HTML scratch.                   */
+static mdl_governor_t*     g_fetch_gov;          /**< Governor wired into run_fetch, or NULL. */
+static mdl_fetch_faillog_t g_faillog;            /**< Failure log run_fetch fills each run.   */
 
 /**
  * @struct fetch_clock_t
@@ -241,7 +248,8 @@ static ra8_err_t run_fetch(const char*        abs_dir,
   g_mock.get_buf_calls     = 0U;
   g_mock.get_file_calls    = 0U;
   g_mock.fail_on_file_call = fail_on_file_call;
-  mdl_net_iface_t iface    = {.vtable = &s_mock_vtable, .ctx = &g_mock};
+  memset(&g_faillog, 0, sizeof(g_faillog));
+  mdl_net_iface_t iface = {.vtable = &s_mock_vtable, .ctx = &g_mock};
   mdl_session_init(&g_sess, &iface, "media_dl/test", false);
   mdl_fetch_ctx_t ctx = {.session        = &g_sess,
                          .state          = &g_state,
@@ -254,7 +262,10 @@ static ra8_err_t run_fetch(const char*        abs_dir,
                          .page_buf       = g_page,
                          .page_cap       = sizeof(g_page),
                          .images         = &g_images,
-                         .update_only    = update_only};
+                         .update_only    = update_only,
+                         .faillog        = &g_faillog,
+                         .progress_fn    = nullptr,
+                         .progress_ctx   = nullptr};
   return mdl_fetch_run(&ctx, &g_chapters, layout, combined_rel, out);
 }
 
@@ -384,19 +395,23 @@ static void test_resume_equals_uninterrupted(void)
   TEST_ASSERT_EQ((uint16_t)4, (uint16_t)sa.pages_fetched);
   TEST_ASSERT(page_exists(dir_a, "foo-1-2/page_0004.jpg"));
 
-  /* (b) Interrupted combined run into dir B: fail on the 4th page transfer. */
+  /* (b) Interrupted combined run into dir B: page 4 (d.jpg) is unreachable on
+   *     every attempt, so its retries all fail and the chapter is left partial. */
   char dir_b[PATH_MAX];
   char state_b[PATH_MAX];
   make_series_dir(dir_b, sizeof(dir_b), state_b, sizeof(state_b));
   mdl_state_init(&g_state);
   set_chapters(c12, 2U);
+  g_mock.fail_url = "http://cdn/d.jpg";
   mdl_fetch_stats_t sb;
   TEST_ASSERT_EQ((int64_t)k_ra8_fail,
-                 run_fetch(dir_b, state_b, k_mdl_layout_combined, "foo-1-2", false, 4U, &sb));
+                 run_fetch(dir_b, state_b, k_mdl_layout_combined, "foo-1-2", false, 0U, &sb));
   TEST_ASSERT_EQ((uint16_t)1, (uint16_t)sb.chapters_failed);
   TEST_ASSERT(!page_exists(dir_b, "foo-1-2/page_0004.jpg"));
 
-  /* (c) Resume from dir B's on-disk state: only page 4 is re-fetched. */
+  /* (c) Resume from dir B's on-disk state, page 4 now reachable: only it is
+   *     re-fetched. */
+  g_mock.fail_url = nullptr;
   TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_load(state_b, &g_state));
   set_chapters(c12, 2U);
   mdl_fetch_stats_t sc;
@@ -550,6 +565,133 @@ static void test_governor_retries_throttle(void)
 }
 
 /**
+ * @test test_transient_page_retry_succeeds
+ *
+ * @par MC/DC:
+ * (No compound decision under test; it proves a single transient transport
+ * failure on a page is recovered by the bounded retry -- the page's second
+ * attempt succeeds, the chapter completes, and nothing is recorded as failed.)
+ */
+static void test_transient_page_retry_succeeds(void)
+{
+  TEST_BEGIN("transient page retry succeeds");
+  setup_site();
+  g_mock.map   = s_map3; /* chapter-1 has two pages (a,b) */
+  g_mock.map_n = sizeof(s_map3) / sizeof(s_map3[0]);
+  char abs_dir[PATH_MAX];
+  char state_path[PATH_MAX];
+  make_series_dir(abs_dir, sizeof(abs_dir), state_path, sizeof(state_path));
+  mdl_state_init(&g_state);
+  const char* c1[] = {"http://s/chapter-1"};
+  set_chapters(c1, 1U);
+
+  mdl_fetch_stats_t s;
+  /* Fail only the very first page transfer; the bounded retry must recover it. */
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok,
+                 run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 1U, &s));
+  TEST_ASSERT_EQ((uint16_t)2, (uint16_t)s.pages_fetched);
+  TEST_ASSERT_EQ((uint16_t)0, (uint16_t)s.pages_failed);
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)s.chapters_completed);
+  TEST_ASSERT_EQ((uint16_t)3, (uint16_t)g_mock.get_file_calls); /* a(fail)+a(ok)+b(ok) */
+  TEST_ASSERT_EQ((uint16_t)0, (uint16_t)g_faillog.total);
+  TEST_END("transient page retry succeeds");
+}
+
+/**
+ * @test test_incomplete_chapter_not_completed_and_logged
+ *
+ * @par MC/DC:
+ * (No compound decision under test; it proves a page that fails every retry
+ * leaves its chapter recorded incomplete -- never marked complete -- and is
+ * captured in the run's failure log with its URL, so a resume re-fetches it and
+ * the run is reported honestly rather than packaged as if whole.)
+ */
+static void test_incomplete_chapter_not_completed_and_logged(void)
+{
+  TEST_BEGIN("incomplete chapter is not completed and is logged");
+  setup_site();
+  g_mock.map      = s_map3; /* chapter-1 has pages a,b */
+  g_mock.map_n    = sizeof(s_map3) / sizeof(s_map3[0]);
+  g_mock.fail_url = "http://cdn/b.jpg"; /* page b never succeeds */
+  char abs_dir[PATH_MAX];
+  char state_path[PATH_MAX];
+  make_series_dir(abs_dir, sizeof(abs_dir), state_path, sizeof(state_path));
+  mdl_state_init(&g_state);
+  const char* c1[] = {"http://s/chapter-1"};
+  set_chapters(c1, 1U);
+
+  mdl_fetch_stats_t s;
+  TEST_ASSERT_EQ((int64_t)k_ra8_fail,
+                 run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 0U, &s));
+  g_mock.fail_url = nullptr; /* restore for later tests */
+
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)s.pages_fetched); /* page a */
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)s.pages_failed);  /* page b */
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)s.chapters_failed);
+  TEST_ASSERT_EQ((uint16_t)0, (uint16_t)s.chapters_completed);
+  /* The chapter is recorded incomplete, so a later run resumes it. */
+  TEST_ASSERT(!mdl_state_chapter_complete(&g_state, "chapter-1"));
+  /* The failure is logged with the offending URL for the end-of-run summary. */
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)g_faillog.total);
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)g_faillog.count);
+  TEST_ASSERT_EQ((int64_t)k_ra8_fail, (int64_t)g_faillog.items[0].err);
+  TEST_ASSERT(strcmp(g_faillog.items[0].url, "http://cdn/b.jpg") == 0);
+  TEST_ASSERT(g_mock.get_file_calls > (size_t)2); /* page b was retried, not abandoned */
+  TEST_END("incomplete chapter is not completed and is logged");
+}
+
+/**
+ * @test test_mcdc_is_retryable
+ *
+ * @par MC/DC:
+ * Decision: `(rc == k_ra8_err_busy) || (rc == k_ra8_err_timeout) || (rc ==
+ * k_ra8_fail)` cites tools/media_dl/src/mdl_fetch.c@mdl_fetch_is_retryable.
+ * - Vector 1: rc=k_ra8_err_not_found -> false (all three conditions false)
+ * - Vector 2: rc=k_ra8_err_busy      -> true  (varies condition 1)
+ * - Vector 3: rc=k_ra8_err_timeout   -> true  (varies condition 2)
+ * - Vector 4: rc=k_ra8_fail          -> true  (varies condition 3)
+ * Vectors 1+2 isolate condition 1, 1+3 condition 2, 1+4 condition 3.
+ * N+1 = 4 vectors for N=3 conditions: minimal MC/DC.
+ */
+static void test_mcdc_is_retryable(void)
+{
+  TEST_BEGIN("is_retryable MC/DC");
+  TEST_ASSERT(!mdl_fetch_is_retryable(k_ra8_err_not_found));
+  TEST_ASSERT(mdl_fetch_is_retryable(k_ra8_err_busy));
+  TEST_ASSERT(mdl_fetch_is_retryable(k_ra8_err_timeout));
+  TEST_ASSERT(mdl_fetch_is_retryable(k_ra8_fail));
+  /* A success and other permanent errors are never retried. */
+  TEST_ASSERT(!mdl_fetch_is_retryable(k_ra8_ok));
+  TEST_ASSERT(!mdl_fetch_is_retryable(k_ra8_err_no_mem));
+  TEST_END("is_retryable MC/DC");
+}
+
+/**
+ * @test test_mcdc_run_incomplete
+ *
+ * @par MC/DC:
+ * Decision: `(stats->chapters_failed > 0) || (stats->pages_failed > 0)` cites
+ * tools/media_dl/src/mdl_fetch.c@mdl_fetch_run_incomplete.
+ * - Vector 1: chapters_failed=0, pages_failed=0 -> false (both false)
+ * - Vector 2: chapters_failed=1, pages_failed=0 -> true  (varies chapters)
+ * - Vector 3: chapters_failed=0, pages_failed=1 -> true  (varies pages)
+ * Vectors 1+2 isolate the chapter condition, 1+3 the page condition.
+ * N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ */
+static void test_mcdc_run_incomplete(void)
+{
+  TEST_BEGIN("run_incomplete MC/DC");
+  mdl_fetch_stats_t clean = {};
+  TEST_ASSERT(!mdl_fetch_run_incomplete(&clean));
+  mdl_fetch_stats_t ch = {.chapters_failed = 1U};
+  TEST_ASSERT(mdl_fetch_run_incomplete(&ch));
+  mdl_fetch_stats_t pg = {.pages_failed = 1U};
+  TEST_ASSERT(mdl_fetch_run_incomplete(&pg));
+  TEST_ASSERT(!mdl_fetch_run_incomplete(nullptr));
+  TEST_END("run_incomplete MC/DC");
+}
+
+/**
  * @brief Run every fetch-orchestration unit test in sequence.
  * @return 0 when all tests passed; a failing assertion aborts via the harness.
  * @since 0.1.0
@@ -561,6 +703,10 @@ int32_t main(void)
   test_content_dedup_across_chapters();
   test_corrupt_state_rebuilds();
   test_governor_retries_throttle();
+  test_transient_page_retry_succeeds();
+  test_incomplete_chapter_not_completed_and_logged();
+  test_mcdc_is_retryable();
+  test_mcdc_run_incomplete();
   (void)fprintf(stderr, "[OK  ] test_media_dl_fetch.c\n");
   return 0;
 }
