@@ -22,27 +22,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CORPUS_ROOT="${ROOT}/tests/fuzz/corpus"
 
-mkdir -p \
-  "${CORPUS_ROOT}/fuzz_ra8_jpeg_sw" \
-  "${CORPUS_ROOT}/fuzz_ra8_jpeg_sw_block" \
-  "${CORPUS_ROOT}/fuzz_ra8_epub" \
-  "${CORPUS_ROOT}/fuzz_ra8_modem_at" \
-  "${CORPUS_ROOT}/fuzz_ra8_ble_att" \
-  "${CORPUS_ROOT}/fuzz_ra8_usb_pal" \
-  "${CORPUS_ROOT}/fuzz_ra8_tls" \
-  "${CORPUS_ROOT}/fuzz_ra8_canfd" \
-  "${CORPUS_ROOT}/fuzz_ra8_etha" \
-  "${CORPUS_ROOT}/fuzz_ra8_fs_fat" \
-  "${CORPUS_ROOT}/fuzz_ra8_stb_image" \
-  "${CORPUS_ROOT}/fuzz_ra8_reflow_xml" \
-  "${CORPUS_ROOT}/fuzz_ra8_stbtt" \
-  "${CORPUS_ROOT}/fuzz_ra8_webp" \
-  "${CORPUS_ROOT}/fuzz_ra8_jof" \
-  "${CORPUS_ROOT}/fuzz_ra8_jof_produce" \
-  "${CORPUS_ROOT}/fuzz_ra8_unarch_xz" \
-  "${CORPUS_ROOT}/fuzz_ra8_unarch_tar" \
-  "${CORPUS_ROOT}/fuzz_ra8_unarch_gzip" \
-  "${CORPUS_ROOT}/fuzz_ra8_decomp_limits"
+# Every registered harness needs its corpus directory to exist before the
+# sweep runs it -- run_fuzz.sh fails hard on a missing corpus dir, and the
+# self-hosted runner's `git clean -xffd` deletes any untracked (empty) dir
+# between jobs, so the directories cannot simply be committed. Derive the list
+# from the ONE registry run_fuzz.sh uses (RA8_FUZZ_TARGETS in
+# tests/fuzz/CMakeLists.txt) rather than repeating it here: a hand-maintained
+# parallel list is exactly how fuzz_ra8_rar was registered and swept but never
+# got a corpus dir, reddening the nightly. Deriving it means a new harness can
+# never be forgotten.
+_fuzz_targets="$(bash "${SCRIPT_DIR}/run_fuzz.sh" --list)"
+if [ -z "${_fuzz_targets}" ]; then
+  echo "init_fuzz_corpora.sh: FATAL -- run_fuzz.sh --list returned no targets" >&2
+  exit 1
+fi
+while IFS= read -r _target; do
+  [ -n "${_target}" ] || continue
+  mkdir -p "${CORPUS_ROOT}/${_target}"
+done <<EOF
+${_fuzz_targets}
+EOF
 
 # -----------------------------------------------------------------------------
 # fuzz_ra8_jpeg_sw -- minimal baseline JPEGs at five sizes.
