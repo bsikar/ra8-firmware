@@ -3,7 +3,7 @@
  * @brief Integration test: touch_cal demo logic + end-to-end calibration solve.
  *
  * @details
- * Mirrors examples/ek_ra8d2/hw_validated/hil/touch_cal/main.c. The GLCDC panel
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/touch_cal/main.c. The GLCDC panel
  * bring-up is owned + covered by glcdc_render / the display PAL tests, the GT911
  * transport by test_ra8_touch.c, and the affine math by test_ra8_touch_cal.c;
  * this test pins down the app-level decision logic with full MC/DC:

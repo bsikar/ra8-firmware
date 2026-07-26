@@ -3,7 +3,7 @@
  * @brief Integration test: ra8_power_profile init + cycle through 4 modes
  *
  * @details
- * Mirrors examples/ek_ra8d2/power_profiler/main.c by initialising
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/power_profiler/main.c by initialising
  * the LPM block + the power profiler and walking through the
  * ACTIVE / SLEEP / DEEP_STANDBY / SOFTWARE_STANDBY regions, then
  * snapshotting the accumulator. Host WFI is a no-op so the cycle

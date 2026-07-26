@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../examples/ek_ra8d2/hw_validated/hil/ereader_shelf/sh_comic_fixture.h"
+#include "../examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/sh_comic_fixture.h"
 #include "ra8_comic.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
