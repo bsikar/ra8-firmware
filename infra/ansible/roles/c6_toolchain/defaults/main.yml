@@ -8,9 +8,16 @@
 # otherwise unmanaged, drift-prone IDF checkout. Override per deploy in
 # group_vars / host_vars.
 
-# Pinned ESP-IDF release. Must match what coprocessor/esp32c6/ (the esp-hosted build
-# recipe) expects, so the bench builds the same C6 image as any other host.
-c6_toolchain_idf_version: "v5.4.1"
+# Pinned ESP-IDF release. Must match ESP_IDF_VERSION in
+# coprocessor/esp32c6/pins.env -- that file is the source of truth the esp-hosted
+# build recipe reads, and build.sh refuses to run under any other v5.5.x, so the
+# bench builds the same C6 image as any other host.
+#
+# v5.4.1 does NOT build esp-hosted-mcu: the component-manager pull of
+# tf-psa-crypto fails to compile p256-m under that release. v5.5.4 is the
+# release the bench proved end to end (peripheral firmware 2.12.11 flashed and
+# alive), so provisioning must land on it and not on the older pin.
+c6_toolchain_idf_version: "v5.5.4"
 c6_toolchain_idf_repo: "https://github.com/espressif/esp-idf.git"
 c6_toolchain_idf_dir: "{{ ansible_env.HOME }}/esp/esp-idf"
 
@@ -42,7 +49,13 @@ c6_toolchain_apt_packages:
 # Idempotency marker: install.sh creates this per-minor-version venv. Presence
 # means the toolchain download already ran, so the (slow) install is skipped.
 # The glob tolerates the host python minor version in the directory name.
-c6_toolchain_env_glob: "{{ ansible_env.HOME }}/.espressif/python_env/idf5.4_*_env"
+#
+# The idf<major>.<minor> prefix is part of the marker, so it MUST track
+# c6_toolchain_idf_version: an idf5.4_* glob against a v5.5.4 checkout matches
+# nothing on a re-run and re-downloads the whole toolchain every play, and a
+# stale idf5.4 venv left over from the old pin would satisfy a loose glob and
+# skip the install the new release needs.
+c6_toolchain_env_glob: "{{ ansible_env.HOME }}/.espressif/python_env/idf5.5_*_env"
 
 # Convenience shell helper dropped for interactive use: `get_idf` sources the
 # IDF export script into the current shell. Not used by the coprocessor/esp32c6 build
