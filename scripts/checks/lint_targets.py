@@ -68,7 +68,7 @@ LANGUAGE_EXCLUDED_PREFIXES = {
 #
 # This used to be thirteen copies of the substring ``"/build/"``, one per
 # checker, and the substring is the defect (#377). ``"/build/" in path`` cannot
-# tell ``tools/board_sim/build/`` -- genuine CMake output -- from a first-party
+# tell ``tools/ra8_emulator/build/`` -- genuine CMake output -- from a first-party
 # source directory that happens to be called ``build``. When #359's
 # reorganisation created ``scripts/build/``, every file in it  # PATHREF-OK: #359
 # became invisible to shellcheck, shfmt and the rest, while every gate still

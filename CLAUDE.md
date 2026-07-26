@@ -257,7 +257,7 @@ arguments and handing back a canned answer -- is worse than a missing feature:
 the program links clean, advertises the capability, and fails at runtime or,
 worse, silently succeeds having done nothing.
 
-The motivating case: `tools/ra8_fmt/webp_stub.c` and
+The motivating case: `tools/rabook_imagepack/webp_stub.c` and
 `tools/media_dl/webp_stub.c` each defined the real symbol
 `ra8_jof_priv_webp_transcode()`, threw away both arguments and returned
 `k_ra8_err_not_supported` -- while a complete WebP decoder sat vendored,
@@ -443,7 +443,7 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 
 > **Scope: these standards apply to EVERY first-party file in the repository**
 > -- not just the firmware. `libs/`, `src/`, `examples/`, `port/`, `tools/`
-> (including the `tools/board_sim` host emulator), `tests/`, and `scripts/`
+> (including the `tools/ra8_emulator` host emulator), `tests/`, and `scripts/`
 > are all held to the same bar. The **only** exemption is vendored
 > third-party code under `libs/third_party/` (SOUP). Generated data under
 > `libs/fonts/` is likewise exempt as it is not hand-authored. A file being

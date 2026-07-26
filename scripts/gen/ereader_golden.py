@@ -4,7 +4,7 @@
 """ereader_golden.py -- golden-image regression gate for the e-reader chrome.
 
 The ``ereader_ui`` example (issue #80) paints its Library and Reading screens
-into the GLCDC framebuffer. ``tools/board_sim`` renders that firmware
+into the GLCDC framebuffer. ``tools/ra8_emulator`` renders that firmware
 framebuffer deterministically, so we can pin the chrome with checked-in golden
 images and fail CI (or a local ``make`` target) when an unrelated change shifts
 a pixel.
@@ -42,7 +42,7 @@ from pathlib import Path
 PPM_HEADER_TOKEN_COUNT = 3
 
 # Width board_sim appends on the right of the panel for its status sidebar.
-# Mirrors ``k_ovl_sidebar_w`` in tools/board_sim/src/board_overlay.c; the crop
+# Mirrors ``k_ovl_sidebar_w`` in tools/ra8_emulator/src/display/board_overlay.c; the crop
 # removes it so the golden depends only on the firmware chrome.
 SIDEBAR_W = 520
 

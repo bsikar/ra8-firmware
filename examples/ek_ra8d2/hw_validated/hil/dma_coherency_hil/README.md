@@ -46,7 +46,7 @@ operate on exactly the buffer with no partial-line spill.
 
 ## board_sim
 
-`tools/board_sim` **does** model the DMAC mem-to-mem transfer
+`tools/ra8_emulator` **does** model the DMAC mem-to-mem transfer
 (`board_periph_dmac.c` `dmac_copy_units` moves the bytes in emulated
 memory on the software trigger), so the **real** `ra8_dmac` path runs in
 sim -- there is no CPU-memcpy fallback. board_sim's memory is byte-exact
@@ -61,9 +61,9 @@ Headless sim run:
 ```sh
 make                                   # cross-compile -> build/dma_coherency_hil.elf
 BOARD_SIM_WALL_S=15 BOARD_SIM_IDLE_STOP=1 \
-  tools/board_sim/build/board_sim \
+  tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/dma_coherency_hil/build/dma_coherency_hil.elf \
-  --panel tools/board_sim/panels/ek_ra8d2.toml
+  --panel tools/ra8_emulator/panels/ek_ra8d2.toml
 ```
 
 ## Build / flash

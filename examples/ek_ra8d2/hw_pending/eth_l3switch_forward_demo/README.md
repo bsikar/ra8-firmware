@@ -38,7 +38,7 @@ citations.
 
 ## Tier: hw_pending (bench-only)
 
-`tools/board_sim` has no Ethernet / MFWD peripheral model, so there is no
+`tools/ra8_emulator` has no Ethernet / MFWD peripheral model, so there is no
 `make sim-` gate for this app; the EK-RA8D2 Ethernet wire is also marginal
 (#21). The example's value is demonstrating the real forwarding API behind a
 clean ARM cross-build, matching the driver-gap example wave (#182-188).

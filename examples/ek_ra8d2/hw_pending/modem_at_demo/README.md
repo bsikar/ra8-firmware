@@ -54,11 +54,11 @@ board_sim, so the example boots and runs its whole state machine with zero
 skips in simulation:
 
 ```
-tools/board_sim/build/board_sim build/modem_at_demo.elf --modem
+tools/ra8_emulator/build/ra8_emulator build/modem_at_demo.elf --modem
 ```
 
 `--modem` attaches the SCI7 AT-responder model
-(`tools/board_sim/src/board_periph_modem.c`), which answers the exact AT script
+(`tools/ra8_emulator/src/periph/board_periph_modem.c`), which answers the exact AT script
 above -- including a `+CREG` URC on `AT+CREG=1` and a `+CME ERROR: 4` for the
 unsupported command -- so `ra8_modem_at -> ra8_sci` runs byte-for-byte as on
 silicon (SIM == HIL for the AT protocol; only the RF link is unmodelled).

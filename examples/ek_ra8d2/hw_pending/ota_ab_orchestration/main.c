@@ -8,7 +8,7 @@
  * @details
  * Exercises the ``libs/ra8_ota`` A/B slot state machine end to end on the
  * EK-RA8D2, over the on-chip extra-MRAM (data-flash) bank model that
- * ``tools/board_sim`` already reproduces (board_periph_mram.c, the MACI
+ * ``tools/ra8_emulator`` already reproduces (board_periph_mram.c, the MACI
  * program/erase sequencer). ``ra8_ota`` is Dependency-Inversion pure: it drives
  * injected ``net`` / ``crypto`` / ``flash`` interfaces, so this app supplies
  * concrete backends and runs BOTH outcomes of the A/B flow in a single boot:

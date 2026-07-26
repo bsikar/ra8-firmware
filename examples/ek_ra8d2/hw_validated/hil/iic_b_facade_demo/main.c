@@ -33,7 +33,7 @@
  *
  *   ``iic_b facade: up ctrl=OK id0=0x39 periph=4``
  *
- * @note **SIM vs bench.** ``tools/board_sim`` models the IIC_B controller
+ * @note **SIM vs bench.** ``tools/ra8_emulator`` models the IIC_B controller
  * bus (GT911 answers PRODUCT_ID) AND plays the EXTERNAL I2C controller that
  * drives the firmware's target role (``board_periph_i2c.c``), so both halves
  * run headless and the peripheral count is non-zero in SIL. On a bare bench

@@ -316,7 +316,7 @@ def selftest() -> int:
         expect(not scan_doc_file(good_doc), "doc CITES-OK stays quiet", failures)
 
     expect(
-        is_in_scope("tools/board_sim/src/main.c"),
+        is_in_scope("tools/ra8_emulator/src/main.c"),
         "tools/ C is in scope (SCAN_ROOTS omitted it before #358)",
         failures,
     )

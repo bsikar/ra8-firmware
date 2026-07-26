@@ -3,7 +3,7 @@
 # scripts/sim/smoke.sh -- boot each display example on the board emulator
 # and assert it runs to its main loop without faulting.
 #
-# For every app it builds the firmware .elf and runs tools/board_sim headlessly,
+# For every app it builds the firmware .elf and runs tools/ra8_emulator headlessly,
 # then checks the run: no invalid opcode, no unmapped access, the firmware
 # reached the run budget, and the final PC is NOT parked in the lcd_panic_halt
 # loop. A fast regression gate for the emulator + the display bring-up path
@@ -29,7 +29,7 @@ export LC_ALL=C
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
-sim_dir="$ROOT/tools/board_sim"
+sim_dir="$ROOT/tools/ra8_emulator"
 
 # ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328); the
 # emulator build below derives from it instead of an unbounded -j.
@@ -346,7 +346,7 @@ ra8_cmake_reset_if_compiler_changed "$sim_dir/build"
 cmake -B "$sim_dir/build" -S "$sim_dir" \
   -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" >/dev/null
 cmake --build "$sim_dir/build" -j "$(ra8_max_jobs)" >/dev/null
-sim="$sim_dir/build/board_sim"
+sim="$sim_dir/build/ra8_emulator"
 
 # Build the microSD card image once if any selected app needs it.
 for app in "${apps[@]}"; do

@@ -57,7 +57,7 @@ board_sim has a writable SD model; `--dump-sym` reads result globals after the
 run (the headless equivalent of a J-Link memprobe):
 
 ```sh
-./tools/board_sim/build/board_sim build/epub_open.elf --sd-new 64:fat32 \
+./tools/ra8_emulator/build/ra8_emulator build/epub_open.elf --sd-new 64:fat32 \
     --dump-sym g_eoh_heartbeat --dump-sym g_eoh_err \
     --dump-sym g_eoh_chapters --dump-sym g_eoh_crc
 # expect: heartbeat advancing, err 0, chapters 2, crc 0xCF23AEEE

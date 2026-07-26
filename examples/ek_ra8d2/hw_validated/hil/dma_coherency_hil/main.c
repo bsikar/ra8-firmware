@@ -40,7 +40,7 @@
  *      emulator's idle-stop terminates the run after the one-shot.
  *
  * @par board_sim note (sim path)
- * ``tools/board_sim`` DOES model the DMAC mem-to-mem transfer:
+ * ``tools/ra8_emulator`` DOES model the DMAC mem-to-mem transfer:
  * ``board_periph_dmac.c`` (``dmac_copy_units``) actually moves the bytes
  * in emulated memory on the ``DMREQ.SWREQ`` software trigger, so the
  * **real** ``ra8_dmac`` path runs in sim -- no CPU-memcpy fallback is

@@ -32,7 +32,7 @@ regex catches that fast.
 
 ```
 make mem_subsystem                       # cross-compile -> build/mem_subsystem.elf
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_validated/hil/mem_subsystem/build/mem_subsystem.elf
 bash scripts/sim/sil_all.sh --only mem_subsystem   # headless board_sim gate
 make hil-flash APP=mem_subsystem         # flash the Pi-attached board + scrape UART

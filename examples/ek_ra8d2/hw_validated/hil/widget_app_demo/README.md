@@ -58,7 +58,7 @@ GLCDC render path, and lets you drive it by hand.
 
 ## Status
 
-`hw_pending`: validated in `tools/board_sim` (GUI render + headless banner), not
+`hw_pending`: validated in `tools/ra8_emulator` (GUI render + headless banner), not
 yet exercised on a stock EVM (it shares the GLCDC layer-1 bring-up that
 `glcdc_render` validates on bench).
 

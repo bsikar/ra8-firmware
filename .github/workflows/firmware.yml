@@ -156,7 +156,7 @@ jobs:
   # the scope and hard-fails if any of those roots collects zero files, so a
   # future narrowing cannot silently shrink what this job checks.
   #
-  # The tools/ pass needs the Unicorn + Capstone headers that tools/board_sim
+  # The tools/ pass needs the Unicorn + Capstone headers that tools/ra8_emulator
   # includes (libunicorn-dev + libcapstone-dev on the runner, and in
   # .devcontainer/Dockerfile for `make ci`).
   # ---------------------------------------------------------------------------
@@ -170,7 +170,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # ci-parity: infra -- installs clang-tidy TU dependencies; runs no project check.
-      # The tools/ pass needs the headers tools/board_sim (Unicorn, Capstone) and
+      # The tools/ pass needs the headers tools/ra8_emulator (Unicorn, Capstone) and
       # tools/media_dl (libcurl) include. A MISSING header does not fail loudly --
       # clang-tidy reports clang-diagnostic-error for that TU and never lints it,
       # which is the same silent hole #296 closed. Install them here rather than

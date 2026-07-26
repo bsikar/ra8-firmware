@@ -60,7 +60,7 @@ make widget_kit_demo                                    # from the repo root
 make -C examples/ek_ra8d2/hw_pending/widget_kit_demo    # standalone
 
 # headless render in the host emulator:
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_pending/widget_kit_demo/build/widget_kit_demo.elf \
     --ppm /tmp/widget_kit.ppm
 ```

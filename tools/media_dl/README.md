@@ -276,7 +276,7 @@ folding a non-image "page" into the archive.
 
 `tools/media_dl/tests/integration.sh` (also `make test-integration`) is the
 cross-tool end-to-end gate: it packages synthetic, non-copyright pages into
-*every* format and opens each result in the native `ra8_viewer` headless,
+*every* format and opens each result in the native `rabook_viewer` headless,
 asserting a non-blank render -- the check that catches "packages fine but the
 reader can't open it". Formats whose optional tool is absent (`rar`) are
 skipped, not failed.

@@ -111,7 +111,7 @@ instant on hardware, a couple seconds in the emulator.
 make ereader_shelf                       # build
 
 # baked-only (3 MRAM books with cover art):
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/ereader_shelf/build/ereader_shelf.elf \
   --ppm shelf.ppm
 
@@ -120,7 +120,7 @@ cmake -S tools/mkbookimg -B tools/mkbookimg/build && cmake --build tools/mkbooki
 tools/mkbookimg/build/mkbookimg books.img \
   "content/compiled/The Wonderful Wizard of Oz - L Frank Baum.rabook" \
   "content/library/Pride and Prejudice - Jane Austen.epub"   # .rabook or .epub
-tools/board_sim/build/board_sim .../ereader_shelf.elf --sd books.img --ppm shelf.ppm
+tools/ra8_emulator/build/ra8_emulator .../ereader_shelf.elf --sd books.img --ppm shelf.ppm
 ```
 
 The baked set is regenerated with `tools/bake_library.py` (see the head of
@@ -150,7 +150,7 @@ the firmware's own per-pixel decode (a 683x1024 cover is ~700 K pixels),
 emulated at board_sim's ~125x compute slowdown -- sub-second on the real device.
 
 ```sh
-tools/board_sim/build/board_sim .../ereader_shelf.elf \
+tools/ra8_emulator/build/ra8_emulator .../ereader_shelf.elf \
   --sd oz.img --click 887 210 --fast-sd --ppm oz.ppm   # full Oz, fast
 ```
 

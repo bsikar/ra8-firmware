@@ -48,9 +48,9 @@ DOXYGEN      ?= doxygen
 ARM_SIZE     ?= arm-none-eabi-size
 
 # Host tool directories (referenced by mk/sim.mk, mk/tools.mk, and clean).
-BOARD_SIM_DIR  := $(ROOT)/tools/board_sim
+BOARD_SIM_DIR  := $(ROOT)/tools/ra8_emulator
 MEDIA_DL_DIR   := $(ROOT)/tools/media_dl
-RA8_VIEWER_DIR := $(ROOT)/tools/ra8_viewer
+RA8_VIEWER_DIR := $(ROOT)/tools/rabook_viewer
 
 # --- git hooks: active for every clone, every make invocation ----------------
 # A fresh clone has no hooks in .git/hooks, so the commit-msg / pre-commit /
@@ -111,7 +111,7 @@ help:
 	@echo ""
 	@echo "RUN / PREVIEW / SIMULATE  (no board needed -- see 'make apps')          [make sim-help]"
 	@echo "  make sim-<app> [PANEL=ek_ra8d2]  boot an app's REAL .elf on the Unicorn CPU"
-	@echo "                             emulator, live panel/UI window (tools/board_sim)"
+	@echo "                             emulator, live panel/UI window (tools/ra8_emulator)"
 	@echo "  make ereader-gui           full hybrid e-reader GUI: baked + SD books on a live window"
 	@echo "  make sil [SIL_JOBS=N]      SIL: boot EVERY hil app in board_sim headless + assert"
 	@echo "  make sim-matrix            boot EVERY example in board_sim (the #67 coverage matrix)"
@@ -125,7 +125,7 @@ help:
 	@echo "  make dl ARGS='...'     build + run the downloader with ARGS (e.g. --format cbz)"
 	@echo "  make test-media_dl     build + run the downloader unit tests (ctest)"
 	@echo "  make test-integration  pack synthetic pages in EVERY format + view each (end-to-end gate)"
-	@echo "  make viewer            build the native reader viewer (tools/ra8_viewer)"
+	@echo "  make viewer            build the native reader viewer (tools/rabook_viewer)"
 	@echo "  make view FILE=<doc>   open a document in the viewer (arrows page; HEADLESS=1 dumps a PPM)"
 	@echo ""
 	@echo "HARDWARE -- flash / debug (board on THIS machine, local J-Link)  [make flash-help / debug-help / ozone-help]"

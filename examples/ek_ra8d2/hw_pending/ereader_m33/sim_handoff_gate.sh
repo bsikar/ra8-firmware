@@ -47,7 +47,7 @@ APP="ereader_m33"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(git -C "${here}" rev-parse --show-toplevel)"
 build_dir="${here}/build"
-sim_dir="${root}/tools/board_sim"
+sim_dir="${root}/tools/ra8_emulator"
 toolchain="${root}/cmake/toolchain-ra8d2.cmake"
 
 page0_banner="${APP}: rgb565 256x64 sdram crc=${GOLDEN_CRC} PASS"
@@ -68,7 +68,7 @@ fi
 echo "ereader_m33 handoff gate: building board_sim ..."
 cmake -B "${sim_dir}/build" -S "${sim_dir}" >/dev/null
 cmake --build "${sim_dir}/build" -j >/dev/null
-sim="${sim_dir}/build/board_sim"
+sim="${sim_dir}/build/ra8_emulator"
 
 echo "ereader_m33 handoff gate: driving the M85-park / M33-hold / wake cycle ..."
 # The cycle (boot + page-0 render + 3 park/wake/re-render turns) completes in a

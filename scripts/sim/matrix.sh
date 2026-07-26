@@ -96,7 +96,7 @@ cd "$ROOT" || exit 1
 # the host-test and coverage builds use rather than hand-rolling a second probe.
 # shellcheck source=scripts/builders/select_host_compiler.sh
 . "$ROOT/scripts/builders/select_host_compiler.sh"
-sim_dir="$ROOT/tools/board_sim"
+sim_dir="$ROOT/tools/ra8_emulator"
 report="$ROOT/build/board_sim_matrix.txt"
 mkdir -p "$ROOT/build"
 
@@ -464,7 +464,7 @@ if ! cmake --build "$sim_dir/build" -j "$(ra8_max_jobs)" >>"$sim_cmake_log" 2>&1
   echo "FATAL: board_sim build failed (see $sim_cmake_log)" >&2
   exit 2
 fi
-sim="$sim_dir/build/board_sim"
+sim="$sim_dir/build/ra8_emulator"
 if [ ! -x "$sim" ]; then
   echo "FATAL: board_sim binary missing or not executable: $sim" >&2
   echo "       (build reported success but produced no runnable emulator)" >&2

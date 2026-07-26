@@ -28,7 +28,7 @@
  * (``board_sim_smoke.sh`` / ``hil.conf`` ``uart_scrape``) asserts that banner.
  * No display panel is touched -- this is a pure compute + memory test.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` models the DRW engine
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the DRW engine
  * as INERT (``board_periph_drw.c``), faithful to real silicon where the D/AVE 2D
  * engine never rasterizes (issue #247): register writes are accepted, STATUS
  * reads idle so ``ra8_drw_wait_idle`` returns, HWREVISION reads 0, and the

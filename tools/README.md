@@ -10,20 +10,20 @@ board, plus the gate that keeps them honest.
 
 | You want to... | Use | How |
 |----------------|-----|-----|
-| Run a firmware **`.elf`** with no board: boot it, drive the panel, preview its UI | **`tools/board_sim`** (Unicorn CPU emulator) | `make sim-<app> [PANEL=<name>]` |
+| Run a firmware **`.elf`** with no board: boot it, drive the panel, preview its UI | **`tools/ra8_emulator`** (Unicorn CPU emulator) | `make sim-<app> [PANEL=<name>]` |
 | Build a FAT **SD-card image** carrying a font (for `board_sim --sd` or a real card) | **`tools/mkfontimg`** | `cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfontimg/build` |
 | Give an **MCP-aware assistant** live repo context (app catalogue, build/test/HIL workflows, code search, project docs) | **`tools/mcp`** (zero-dependency MCP server) | `make mcp` self-tests it; an MCP client auto-loads it via the repo `.mcp.json` |
 | Compare **page-cache eviction policies** for the #147 memory hierarchy (the SLRU decision record) | **`tools/cache_bench`** | `make -C tools/cache_bench run` |
 | Measure the **block/frame/chunk size** for the chunked `.rabook` container / `ra8_vmem` `frame_bytes` (#208) | **`tools/cache_bench`** (`--sweep-block`) | `make -C tools/cache_bench sweep` |
 | Confirm SLRU on a **real reader workload** by driving the actual `ra8_vmem` + emitting a replayable trace | **`tools/reader_vmem`** | `make -C tools/reader_vmem run` |
 | Size the **glyph-cache budget** by sweeping the real `ra8_glyph_atlas` under a text-render workload | **`tools/glyph_bench`** | `make -C tools/glyph_bench run` |
-| Convert **one** image to a **`.jof`** tile atlas, or dump any first-party container's structure (header, tile/chunk table, offsets, lengths, validity verdict) when a render looks wrong | **`tools/ra8_fmt`** | `cmake -S tools/ra8_fmt -B tools/ra8_fmt/build && cmake --build tools/ra8_fmt/build`, then `ra8_fmt inspect <file> --verbose` |
-| Prove a produced container is **not** the cause of a rendering bug (encode -> decode -> compare, byte for byte) | **`tools/ra8_fmt verify`** | `ra8_fmt verify --format jof --in page.jpg` |
+| Convert **one** image to a **`.jof`** tile atlas, or dump any first-party container's structure (header, tile/chunk table, offsets, lengths, validity verdict) when a render looks wrong | **`tools/rabook_imagepack`** | `cmake -S tools/rabook_imagepack -B tools/rabook_imagepack/build && cmake --build tools/rabook_imagepack/build`, then `rabook_imagepack inspect <file> --verbose` |
+| Prove a produced container is **not** the cause of a rendering bug (encode -> decode -> compare, byte for byte) | **`tools/rabook_imagepack verify`** | `rabook_imagepack verify --format jof --in page.jpg` |
 
 `make apps` lists every firmware app; `make help` is the grouped target
 reference. Git hooks auto-install on first `make` (or `make hooks`).
 
-## `tools/board_sim` -- the board emulator
+## `tools/ra8_emulator` -- the board emulator
 
 Boots the **unmodified cross-compiled firmware `.elf`** on an emulated Cortex-M
 (Unicorn), models the RA8D2 peripheral space, ticks SysTick, and presents the
@@ -37,11 +37,11 @@ Flags: `--view` (live macOS window), `--ppm <file>` (headless frame),
 `--panel <file.toml>` / `--size WxH` (model a given display), `--click X Y`
 (inject touch through the real GT911 path), `--sd <image>` (attach a FAT
 SD-card image to the modelled SD-over-SPI device -- see `tools/mkfontimg`).
-Panel descriptors live in `tools/board_sim/panels/<name>.toml`. From the repo
+Panel descriptors live in `tools/ra8_emulator/panels/<name>.toml`. From the repo
 root, `make sim-<app>` builds the app and opens its live window; a chrome app
 (e.g. `make sim-ereader_ui`) doubles as the UI preview. Layout: `inc/`
 (headers) + `src/` (sources), matching the `libs/` convention. Details:
-`tools/board_sim/README.md`.
+`tools/ra8_emulator/README.md`.
 
 For heavy headless runs (a large SD font read + glyph rasterisation is slow
 under the CPU emulator), the run budget is env-overridable:
@@ -58,7 +58,7 @@ on-card layout is byte-for-byte what the firmware reads back (same code path as
 ```sh
 cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfontimg/build
 tools/mkfontimg/build/mkfontimg libs/fonts/Literata-Regular.ttf font.img FONT.OTF
-tools/board_sim/build/board_sim <app>.elf --sd font.img --ppm out.ppm
+tools/ra8_emulator/build/ra8_emulator <app>.elf --sd font.img --ppm out.ppm
 ```
 
 ## `#147` memory-hierarchy benchmarking -- `cache_bench` + `reader_vmem` + `glyph_bench`

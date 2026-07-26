@@ -358,7 +358,7 @@ def selftest() -> int:
     expect(not _scan_text(_GOOD_FIXTURE), "legal-but-tricky fixture stays silent", failures)
 
     expect(
-        _in_scan_scope("tools/board_sim/src/main.c"),
+        _in_scan_scope("tools/ra8_emulator/src/main.c"),
         "tools/ is in scope (SCAN_DIRS omitted it before #358)",
         failures,
     )

@@ -180,7 +180,7 @@ opt-out.
 
 ### 3.6 libunicorn (board_sim CPU emulator): pinned 2.1.4, source-built, fail-loud (#354)
 
-`tools/board_sim` boots the real cross-compiled firmware `.elf` on Unicorn
+`tools/ra8_emulator` boots the real cross-compiled firmware `.elf` on Unicorn
 (QEMU's core as a library). **Different Unicorn versions decode Armv8.1-M
 differently** -- notably the Cortex-M85's Helium/MVE store family -- so the
 emulator's verdict for a byte-identical `.elf` depends on which Unicorn is

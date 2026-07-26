@@ -38,13 +38,13 @@ make -C examples/ek_ra8d2/hw_validated/hil/sd_font_render
 
 # A) Card already carrying a font:
 tools/mkfontimg/build/mkfontimg libs/fonts/literata_latin1.ttf /tmp/font.img FONT.OTF
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \
   --sd /tmp/font.img --ppm /tmp/out.ppm
 
 # B) Blank "random" card -- exercises ra8_sdfont self-provisioning (text still renders):
 tools/mkfontimg/build/mkfontimg --blank /tmp/blank.img
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \
   --sd /tmp/blank.img --ppm /tmp/out.ppm
 ```
@@ -59,7 +59,7 @@ The rendered page appears in `/tmp/out.ppm` (and live with `--view`).
 >
 > ```sh
 > BOARD_SIM_WALL_S=180 BOARD_SIM_MAX_CHUNKS=400000000 \
->   tools/board_sim/build/board_sim .../sd_font_render.elf --sd /tmp/font.img --ppm /tmp/out.ppm
+>   tools/ra8_emulator/build/ra8_emulator .../sd_font_render.elf --sd /tmp/font.img --ppm /tmp/out.ppm
 > ```
 
 ## Run on hardware

@@ -45,7 +45,7 @@ VBATT area is held in `VBATT_POR` reset. Bench debugger reads confirm it:
 `VBTBPSR = 0x31` (`VBPORF = 1`), and a J-Link write of `0xDEADBEEF` to
 `VBTBKR0` reads back `0x00000000` -- writes to `VBTBPCR1` / `VBTBKRn` are
 dropped even with `VBTBER.VBAE = 1` (VBAE resets to 1, so it was never the
-gate). `tools/board_sim` models `VBTBKRn` as plain retained RAM with no
+gate). `tools/ra8_emulator` models `VBTBKRn` as plain retained RAM with no
 option memory, so the sim reports `rw=ok` while the bench reports `rw=BAD` --
 the classic board_sim-masks-silicon pattern.
 
@@ -67,8 +67,8 @@ tooling does not provide. The root cause + fix are proven; the final
 
 ## Why this is in hw_pending
 
-`tools/board_sim` models the `VBTBKRn` window as a reset-retained domain
-(`tools/board_sim/src/board_periph_bkup.c`): the backup bytes live in a
+`tools/ra8_emulator` models the `VBTBKRn` window as a reset-retained domain
+(`tools/ra8_emulator/src/periph/board_periph_bkup.c`): the backup bytes live in a
 buffer whose reset hook deliberately leaves them untouched, and writes are
 **gated on `VBTBER.VBAE`** (HUM Ch 12.2.6 p 504) so the read/write half
 passes headlessly (`g_bkup_rw_ok = 1`, banner `rw=ok`) only because the demo

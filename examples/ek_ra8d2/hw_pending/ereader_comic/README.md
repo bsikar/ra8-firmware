@@ -51,10 +51,10 @@ make                                     # cross-compile -> build/ereader_comic.
 make -C ../../../.. sim-ereader_comic    # live window: click to turn pages
 
 # Headless render + drive (panel + sidebar composited to a PPM):
-cd ../../../../tools/board_sim && cmake -B build -S . && cmake --build build -j
-./build/board_sim <repo>/.../ereader_comic/build/ereader_comic.elf \
+cd ../../../../tools/ra8_emulator && cmake -B build -S . && cmake --build build -j
+./build/ra8_emulator <repo>/.../ereader_comic/build/ereader_comic.elf \
     --panel panels/ek_ra8d2.toml --ppm page1.ppm                 # page 1
-./build/board_sim <...>/ereader_comic.elf \
+./build/ra8_emulator <...>/ereader_comic.elf \
     --panel panels/ek_ra8d2.toml --touch-seq "900:300" --ppm page2.ppm   # page 2
 ```
 

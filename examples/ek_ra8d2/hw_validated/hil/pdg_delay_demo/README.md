@@ -30,7 +30,7 @@ reads back powered and un-bypassed, so the gate is green
 A silicon finding fixed here: the delay code register `GTDLYRnA` is **not
 read-exposed on this silicon** -- a write stages the delay, but the register
 returns its `0x0000` reset value to both firmware and a J-Link debugger (FSP
-never reads it back either). `tools/board_sim` shadows `GTDLYRnA` as plain
+never reads it back either). `tools/ra8_emulator` shadows `GTDLYRnA` as plain
 R/W, which is why the read-back appeared to work on the emulator. The verdict
 therefore gates on the software-observable bring-up (DLL + channel power +
 un-bypass), not on a delay read-back.
@@ -56,7 +56,7 @@ part of the headless gate.
 2. Confirm the headless config gate first: J-Link CDC prints
    `pdg: dll=on ch0=on delay=0x40 cfg=ok` (or probe `g_pdg_cfg_ok == 1`).
    Note: `g_pdg_delay_readback` reads `0` on silicon (`GTDLYRnA` is not
-   read-exposed; it reads `0x40` only on `tools/board_sim`).
+   read-exposed; it reads `0x40` only on `tools/ra8_emulator`).
 3. **Delay measurement (the real acceptance, needs an instrument):**
    - Bring up GPT32_0 as a PWM source on GTIOC0A (e.g. mirror
      `gpt_dma_demo`), with the PDG bound so the staged delay propagates.

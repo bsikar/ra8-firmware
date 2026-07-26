@@ -18,7 +18,7 @@ to the SCI8 console as `[netx] echoed N bytes from a.b.c.d`.
 
 - **SIL (board_sim, no hardware)**: `scripts/sim/sil_all.sh` boots the
   same `.elf` headless. board_sim ships the peer in-process --
-  `tools/board_sim` models the R-Switch register cluster
+  `tools/ra8_emulator` models the R-Switch register cluster
   (`board_periph_eth.c`) and its virtual host `board_net`
   (192.168.1.1) resolves the firmware over ARP, pings it, TCP-connects
   to port 7, sends a fixed 21-byte payload, and byte-verifies the
@@ -29,7 +29,7 @@ to the SCI8 console as `[netx] echoed N bytes from a.b.c.d`.
 
 ```sh
 make threadx_netx_tcp_echo
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/build/threadx_netx_tcp_echo.elf
 ```
 

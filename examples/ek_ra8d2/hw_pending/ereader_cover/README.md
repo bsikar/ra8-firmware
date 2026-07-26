@@ -53,7 +53,7 @@ the gate. Part of the cover-art image-decode family (#143).
 
 Deterministic, so the board_sim CRC gate is the regression net (the same way
 `ereader_image` / `ereader_jpeg` / `epub_parse` gate). Run on
-`tools/board_sim` (the firmware boots, the full open -> extract -> decode ->
+`tools/ra8_emulator` (the firmware boots, the full open -> extract -> decode ->
 scale -> blit -> hash chain runs on the emulated M85, no fault):
 
 ```

@@ -46,7 +46,7 @@ live, so the panel updates only its top band (the damage-tracked A2 path).
 
 ```
 make widget_chrome_demo                              # cross-build the .elf
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/widget_chrome_demo/build/widget_chrome_demo.elf
 ```
 

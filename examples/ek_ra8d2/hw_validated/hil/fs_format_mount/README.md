@@ -68,10 +68,10 @@ any size with `--sd-new <MiB>[:fat16|fat32]`. The initial format does not matter
 size so the SD bring-up reports a real capacity.
 
 ```
-cmake -B tools/board_sim/build -S tools/board_sim
-cmake --build tools/board_sim/build
+cmake -B tools/ra8_emulator/build -S tools/ra8_emulator
+cmake --build tools/ra8_emulator/build
 make fs_format_mount
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_validated/hil/fs_format_mount/build/fs_format_mount.elf \
     --sd-new 64:fat32
 ```

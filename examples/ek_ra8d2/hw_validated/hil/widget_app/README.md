@@ -51,7 +51,7 @@ that golden baseline (currently in flux from the board_sim GUI work) settles.
 
 ## Validation
 
-Run on `tools/board_sim` (the firmware boots, registers + launches + composites
+Run on `tools/ra8_emulator` (the firmware boots, registers + launches + composites
 the apps, no fault):
 
 ```

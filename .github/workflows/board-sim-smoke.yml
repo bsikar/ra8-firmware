@@ -2,7 +2,7 @@
 # board-sim-smoke, board-sim-matrix, board-sim-io-fabric, sil-integration). See
 # .github/workflows/firmware.yml for the design note.
 #
-# board_sim (tools/board_sim) is the Unicorn-based RA8D2 board emulator: it boots
+# board_sim (tools/ra8_emulator) is the Unicorn-based RA8D2 board emulator: it boots
 # the real cross-compiled firmware .elf on an emulated Cortex-M with the RA8D2
 # peripheral space modelled. These jobs build it headless on the Linux runner and
 # boot known-good example images, asserting each reaches its main loop without

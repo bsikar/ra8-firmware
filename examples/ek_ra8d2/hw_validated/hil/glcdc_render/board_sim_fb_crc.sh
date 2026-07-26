@@ -2,8 +2,8 @@
 #
 # board_sim_fb_crc.sh -- board_sim GLCDC framebuffer-CRC gate for glcdc_render.
 #
-# Boots glcdc_render on the board emulator (tools/board_sim) and proves the
-# modelled GLCDC display controller (tools/board_sim/src/board_periph_glcdc.c)
+# Boots glcdc_render on the board emulator (tools/ra8_emulator) and proves the
+# modelled GLCDC display controller (tools/ra8_emulator/src/periph/board_periph_glcdc.c)
 # exposes the active graphics-layer framebuffer and that board_sim reads the
 # rendered pixels back out of modelled RAM and checksums them to a stable golden.
 #
@@ -38,8 +38,8 @@ GOLDEN_CRC="B21B8D3D"
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(git -C "$APP_DIR" rev-parse --show-toplevel)"
-SIM_DIR="$ROOT/tools/board_sim"
-SIM="$SIM_DIR/build/board_sim"
+SIM_DIR="$ROOT/tools/ra8_emulator"
+SIM="$SIM_DIR/build/ra8_emulator"
 ELF="$APP_DIR/build/glcdc_render.elf"
 
 fail() {

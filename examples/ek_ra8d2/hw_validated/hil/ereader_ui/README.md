@@ -31,7 +31,7 @@ RGB565 framebuffer lives in external SDRAM (`.sdram_data`).
 ## Run it in the simulator
 
 ```
-make sim-ereader_ui            # boot the real .elf on tools/board_sim
+make sim-ereader_ui            # boot the real .elf on tools/ra8_emulator
 ```
 
 Headless render + navigation proof:
@@ -39,8 +39,8 @@ Headless render + navigation proof:
 ```
 make ereader_ui                                  # cross-build the .elf
 ELF=examples/ek_ra8d2/hw_pending/ereader_ui/build/ereader_ui.elf
-tools/board_sim/build/board_sim "$ELF" --ppm /tmp/library.ppm       # Library
-tools/board_sim/build/board_sim "$ELF" --click 250 250 --ppm /tmp/reading.ppm  # tap a card -> Reading
+tools/ra8_emulator/build/ra8_emulator "$ELF" --ppm /tmp/library.ppm       # Library
+tools/ra8_emulator/build/ra8_emulator "$ELF" --click 250 250 --ppm /tmp/reading.ppm  # tap a card -> Reading
 ```
 
 `--click` injects a tap through the genuine GT911 -> I2C -> `ra8_touch`
@@ -59,7 +59,7 @@ models the gauge and drives it from the on-screen battery slider, so:
 ```
 make sim-ereader_ui                                          # drag the POWER slider below 20% / 10%
 ELF=examples/ek_ra8d2/hw_pending/ereader_ui/build/ereader_ui.elf
-tools/board_sim/build/board_sim "$ELF" --battery 8 --ppm /tmp/nag.ppm   # critical banner
+tools/ra8_emulator/build/ra8_emulator "$ELF" --battery 8 --ppm /tmp/nag.ppm   # critical banner
 ```
 
 The `battery_low` chrome golden (`make ereader-golden`) renders at `--battery 8`

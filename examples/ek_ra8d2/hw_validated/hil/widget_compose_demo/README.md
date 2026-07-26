@@ -51,7 +51,7 @@ make widget_compose_demo                       # from the repo root
 make -C examples/ek_ra8d2/hw_pending/widget_compose_demo   # standalone
 
 # headless render in the host emulator:
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_pending/widget_compose_demo/build/widget_compose_demo.elf \
     --ppm /tmp/widget_compose.ppm --record-secs 2
 ```

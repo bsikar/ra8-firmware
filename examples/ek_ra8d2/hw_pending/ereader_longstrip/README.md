@@ -53,7 +53,7 @@ make                                  # cross-compile -> build/ereader_longstrip
 make sim-ereader_longstrip            # live window: click to page, centre to toggle chrome
 
 # Headless snapshots at three scroll positions (a discrete tap = one page):
-SIM=../../../../tools/board_sim/build/board_sim
+SIM=../../../../tools/ra8_emulator/build/ra8_emulator
 $SIM build/ereader_longstrip.elf --panel panels/ek_ra8d2.toml --ppm top.ppm
 $SIM build/ereader_longstrip.elf --panel panels/ek_ra8d2.toml \
     --touch-seq "512:500,512:500,512:500,512:500" --ppm mid.ppm
