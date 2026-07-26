@@ -1,9 +1,20 @@
-# SOUP Justification: Espressif esp-hosted-mcu
+# SOUP Justification: Espressif esp-hosted-mcu (co-processor firmware)
 
 Per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4, this document
 records the qualification basis for accepting Espressif's esp-hosted-mcu
 co-processor firmware into this project as Software Of Unknown Provenance
 (SOUP).
+
+esp-hosted has two halves and this project consumes both. They are catalogued
+as two components because they are qualified differently:
+
+| Half | Runs on | Vendored? | Document |
+|------|---------|-----------|----------|
+| Co-processor firmware (**this document**) | ESP32-C6, flashed as its own image | no, built from a pinned recipe | this file |
+| Host driver | RA8D2, linked into the RA8 image | yes, `libs/third_party/esp-hosted/` | [`esp-hosted-host.md`](esp-hosted-host.md) |
+
+Both halves come from the same upstream commit `949bb30` and report the same
+protocol version 2.12.11, which is what makes them wire-compatible.
 
 ## Component identity
 
@@ -14,10 +25,15 @@ co-processor firmware into this project as Software Of Unknown Provenance
   `949bb30612747a3bd9e402eda8d01fbfa1f8503e` (short `949bb30`).
 - **Build toolchain pin**: esp-idf `v5.5.4`.
 - **Upstream URL**: <https://github.com/espressif/esp-hosted-mcu>.
-- **Local path**: NOT vendored into the tree. The build recipe (pinned
-  versions, our proven `sdkconfig.defaults`, and the build/flash scripts)
-  lives in `coprocessor/esp32c6/`; `coprocessor/esp32c6/build.sh` fetches the pinned upstream
-  into the git-ignored `coprocessor/esp32c6/esp-hosted-mcu/` at build time.
+- **Local path**: the **co-processor firmware is NOT vendored** into the tree.
+  The build recipe (pinned versions, our proven `sdkconfig.defaults`, and the
+  build/flash scripts) lives in `coprocessor/esp32c6/`;
+  `coprocessor/esp32c6/build.sh` fetches the pinned upstream into the
+  git-ignored `coprocessor/esp32c6/esp-hosted-mcu/` at build time.
+  This is a statement about the C6 image only: the complementary **host
+  driver from the same upstream repository IS vendored**, at
+  `libs/third_party/esp-hosted/`, and is qualified separately in
+  [`esp-hosted-host.md`](esp-hosted-host.md).
 
 ## Provenance
 
@@ -81,7 +97,7 @@ DO-178C Section 12.1.4 (previously developed software):
 ## CVE monitoring
 
 The pinned commit is recorded in the SBOM registry
-(`scripts/gen/gen_sbom.py`) with its upstream commit, so the weekly OSV scan
+(`scripts/gen/sbom_registry.py`) with its upstream commit, so the weekly OSV scan
 (`scripts/checks/osv_scan.sh`) issues a commit-range query for it against
 OSV.dev alongside the vendored SOUP.
 
@@ -89,3 +105,10 @@ OSV.dev alongside the vendored SOUP.
 
 - Reviewed: 2026-07-26 (build recipe codified from the bench-proven build)
 - Expected re-review by: 2027-07-26
+
+## See also
+
+- [`esp-hosted-host.md`](esp-hosted-host.md) -- the host-driver half, vendored
+  at `libs/third_party/esp-hosted/`.
+- [`../design/c6_wireless_architecture.md`](../design/c6_wireless_architecture.md)
+  -- the design-level architecture.

@@ -17,7 +17,7 @@ as Software Of Unknown Provenance (SOUP).
 - **Integrity**: aggregate SHA-256
   `9dc6c2af6988af773cdf64d383a450f70c31a6df467ec5bcf827901c21c95dd9`
   (SHA-256 over the newline-joined, name-sorted per-file SHA-256 hashes of
-  the whole vendored directory), recorded in `scripts/gen/gen_sbom.py`.
+  the whole vendored directory), recorded in `scripts/gen/sbom_registry.py`.
 
 ## Provenance
 

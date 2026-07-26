@@ -38,9 +38,10 @@ a component, update that registry and run `make sbom`.
 
 ## License verdict and elections
 
-The source tree is license-clean: every component is **MIT**, **BSD-3-Clause**,
-**zlib**, **Apache-2.0**, **OFL-1.1** (the bundled font), or **public domain
-(MIT OR Unlicense)**. There is no copyleft contamination of the MIT firmware.
+The source tree is license-clean: every component is **MIT**, **BSD-2-Clause**,
+**BSD-3-Clause**, **0BSD**, **zlib**, **Apache-2.0**, **OFL-1.1** (the bundled
+font), or **public domain (MIT OR Unlicense)**. All are permissive; there is no
+copyleft contamination of the MIT firmware.
 
 **Dual-license elections (recorded per the license terms):**
 
@@ -78,32 +79,44 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | FlatBuffers | 25.9.23 | Apache-2.0 | `libs/third_party/flatbuffers/` | <https://github.com/google/flatbuffers> |
 | gemmlowp | git `719139ce` | Apache-2.0 | `libs/third_party/gemmlowp/` | <https://github.com/google/gemmlowp> |
 | ruy | git `d3712831` | Apache-2.0 | `libs/third_party/ruy/` | <https://github.com/google/ruy> |
+| esp-hosted host driver | 2.12.11 (git `949bb30`) | Apache-2.0 | `libs/third_party/esp-hosted/` | <https://github.com/espressif/esp-hosted-mcu> |
+| protobuf-c (nested in esp-hosted) | 1.4.1 (git `abc67a11`) | BSD-2-Clause | `libs/third_party/esp-hosted/common/protobuf-c/` | <https://github.com/protobuf-c/protobuf-c> |
 | Renesas RSIP-E50D fw (`r_sce_AMC`) | FSP @ `40bbaa11` | BSD-3-Clause | `libs/third_party/fsp_blobs/r_sce_AMC/` | <https://github.com/renesas/fsp> |
 | Renesas BLE controller patch (**not vendored**) | FSP (Renesas SLA) | Renesas SLA | `libs/third_party/fsp_blobs/ble_patch/` (absent) | <https://github.com/renesas/fsp> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
-Counts: **18 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
+Counts: **20 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
 the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
-asset**. TinyXML-2 and libwebp each carry a local in-tree patch (see below), so
-both are *modified* SOUP. The four ML-stack components (TFLite-micro, FlatBuffers,
-gemmlowp, ruy) and the two dev-branch snapshots (Apache NimBLE, litehtml)
-are commit-pinned and unmodified; libwebp is commit-pinned (release tag
+asset**. One of the twenty (protobuf-c) is *nested*: upstream esp-hosted carries
+it as a git submodule, so it is pinned and licensed in its own right rather than
+folded into its parent. TinyXML-2 and libwebp each carry a local in-tree patch
+(see below), so both are *modified* SOUP. The four ML-stack components
+(TFLite-micro, FlatBuffers, gemmlowp, ruy), the two dev-branch snapshots
+(Apache NimBLE, litehtml) and the two esp-hosted components are commit-pinned
+and unmodified; libwebp is commit-pinned (release tag
 `v1.5.0`) but modified (one allocator-fronting patch). Separately, **Arm Ethos-U
 Vela** is a build-time host tool (pinned at `tools/vela/requirements.txt`),
 linked into nothing -- see the build-tools note below and
 [`docs/SOUP/vela.md`](docs/SOUP/vela.md).
 
+The esp-hosted host driver is vendored but **not yet compiled by any target**:
+it needs the first-party port under `port/esp-hosted/` before it can build, and
+the port plus the CMake wiring are a follow-on change. See
+[`docs/SOUP/esp-hosted-host.md`](docs/SOUP/esp-hosted-host.md).
+
 ---
 
 ## Provenance and integrity
 
-Only the Renesas RSIP blob and XZ Embedded are pinned to an upstream commit
-with an integrity hash. Nine components carry an upstream commit pin (the ML
+Four components are pinned to an upstream commit *with* an integrity hash: the
+Renesas RSIP blob, XZ Embedded, and the two esp-hosted components. Eleven
+components carry an upstream commit pin (the ML
 stack, the RSIP blob, the NimBLE / litehtml dev snapshots and XZ Embedded --
 those three recovered by fingerprinting the vendored trees against their
-upstream histories, each a byte-identical single-commit match -- and libwebp,
+upstream histories, each a byte-identical single-commit match -- libwebp,
 pinned to release tag `v1.5.0` and byte-identical except its one
-allocator-fronting patch). The remaining ten source components'
+allocator-fronting patch, and the esp-hosted host driver plus its nested
+protobuf-c, both pinned at vendor-in and verified file-by-file). The remaining ten source components'
 versions are *inferred from an in-tree header* with no upstream commit or
 `SHA256SUMS` manifest recorded -- the open **T5-09** finding; those trees
 are not independently reproducible or tamper-verifiable yet.
@@ -124,6 +137,8 @@ are not independently reproducible or tamper-verifiable yet.
 | FlatBuffers | tag `v25.9.23` (+ `FLATBUFFERS_VERSION_*`) | `edbe17738352418245d7228e7fd9f12c3ddc34c4` | none | **commit-pinned** |
 | gemmlowp | commit pin | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | none | **commit-pinned** |
 | ruy | commit pin | `d37128311b445e758136b8602d1bbd2a755e115d` | none | **commit-pinned** |
+| esp-hosted host driver | commit pin (77/77 files byte-identical) | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | aggregate SHA-256 `79ae0497...d29cc0` | **fully pinned (gold standard)** |
+| protobuf-c (nested) | submodule pin + `PROTOBUF_C_VERSION` probe (3/3 files byte-identical) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | aggregate SHA-256 `67da2264...784d7f` | **fully pinned (gold standard)** |
 | RSIP-E50D (`r_sce_AMC`) | FSP release | `40bbaa11b1a1b87e0ee0675e401aea6351f90d14` | aggregate SHA-256 `718e4d45...037064` | **fully pinned (gold standard)** |
 | BLE patch | not vendored | n/a | n/a | absent |
 | Literata | TTF `name` table (3.103) | n/a | none | version only; SIL OFL 1.1 |
@@ -183,6 +198,18 @@ below); this section reproduces the copyright line and points to that text.
   `libs/third_party/gemmlowp/LICENSE`.
 - **ruy** -- Apache-2.0. Copyright The ruy Authors (Google). Text:
   `libs/third_party/ruy/LICENSE`.
+- **esp-hosted host driver** -- Apache-2.0. "Copyright Espressif Systems
+  (Shanghai) CO LTD" (per-file `SPDX-FileCopyrightText`). Text:
+  `libs/third_party/esp-hosted/LICENSE`. Upstream ships no separate `NOTICE`,
+  so there is nothing beyond the license text to propagate. Unmodified SOUP;
+  the RA8 port that makes it buildable is first-party (see
+  [`docs/SOUP/esp-hosted-host.md`](docs/SOUP/esp-hosted-host.md)).
+- **protobuf-c** -- BSD-2-Clause. "Copyright (c) 2008-2022, Dave Benson and
+  the protobuf-c authors. All rights reserved." Text:
+  `libs/third_party/esp-hosted/common/protobuf-c/LICENSE`. Vendored *inside*
+  the esp-hosted tree because upstream embeds it there as a git submodule;
+  it is a separate upstream project under a separate license and is pinned
+  and attributed as one.
 - **RSIP-E50D firmware (`r_sce_AMC`)** -- BSD-3-Clause, per-file SPDX.
   Renesas Electronics Corporation. Upstream `LICENSE.md` mirrored at
   `libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md`.
@@ -213,10 +240,14 @@ SBOM component list with `scope: excluded` rather than as linked SOUP:
 
 - **Espressif esp-hosted-mcu** -- Apache-2.0. Espressif Systems. The
   `network_adapter` co-processor firmware that gives the RA8D2 Wi-Fi and
-  Bluetooth over a SPI link. NOT vendored into the tree: built from the
+  Bluetooth over a SPI link. This **C6 image** is NOT vendored into the tree:
+  it is built from the
   pinned upstream commit `949bb30` with esp-idf `v5.5.4` and flashed onto
   the C6 by `coprocessor/esp32c6/build.sh` / `flash.sh`. Recipe and pins in
   `coprocessor/esp32c6/`; qualification in [`docs/SOUP/esp-hosted.md`](docs/SOUP/esp-hosted.md).
+  Do not confuse this with the **host driver** from the same upstream
+  repository, which *is* vendored (`libs/third_party/esp-hosted/`), is linked
+  into the RA8 image, and appears in the inventory table above.
 
 ### Build-time host tools (not linked into firmware)
 
@@ -291,7 +322,8 @@ component cannot ship without updating both artifacts.
 - [`docs/sbom/ra8-firmware.cdx.json`](docs/sbom/ra8-firmware.cdx.json) -- the
   CycloneDX 1.5 SBOM (machine-readable; feed to `osv-scanner`).
 - [`scripts/gen/gen_sbom.py`](scripts/gen/gen_sbom.py) -- the generator /
-  validator and its component registry.
+  validator; the component registry it renders is the sibling module
+  [`scripts/gen/sbom_registry.py`](scripts/gen/sbom_registry.py).
 - [`scripts/checks/osv_scan.sh`](scripts/checks/osv_scan.sh) +
   [`.github/workflows/osv-scan.yml`](.github/workflows/osv-scan.yml) -- the
   weekly OSV CVE scan (SBOM purl leg + pinned-commit leg).

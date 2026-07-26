@@ -13,18 +13,30 @@ split out:
 - The reproducible **C6 firmware build recipe** (pinned versions, config,
   build/flash scripts) lives in [`../../coprocessor/esp32c6/`](../../coprocessor/esp32c6/).
 - The **SOUP qualification** for the esp-hosted-mcu firmware lives in
-  [`../SOUP/esp-hosted.md`](../SOUP/esp-hosted.md).
+  [`../SOUP/esp-hosted.md`](../SOUP/esp-hosted.md), and for the vendored
+  host-side driver in [`../SOUP/esp-hosted-host.md`](../SOUP/esp-hosted-host.md).
+
+Both sides of the link are the same upstream project at the same pinned
+commit: the C6 runs the peripheral-side firmware, the RA8D2 links the host
+driver, and matching protocol version 2.12.11 is what makes them speak.
 
 ## Roles and code ownership
 
 | Side | Device | Software |
 |------|--------|----------|
-| Host | RA8D2 (Cortex-M85) | First-party RA8 host driver (a follow-on -- see below) |
+| Host | RA8D2 (Cortex-M85) | Upstream esp-hosted host driver (vendored SOUP) + a first-party RA8 port (a follow-on -- see below) |
 | Co-processor | ESP32-C6 | Espressif esp-hosted-mcu `network_adapter`, unmodified SOUP |
 
 **Zero first-party code runs on the C6.** The whole C6 image is upstream
 esp-hosted-mcu, built from a pinned commit. Nothing project-authored is flashed
-to the C6 and nothing from the C6 is linked into the RA8D2 firmware binary.
+to the C6, and the C6 image itself is never linked into the RA8D2 firmware
+binary -- the two are separate images that meet only on the wire.
+
+The RA8D2 side is a mix by design: the protocol driver is the *same upstream
+project* (vendored at `libs/third_party/esp-hosted/`, so the framing and RPC
+encoding cannot drift from the peripheral side), while everything that touches
+RA8D2 hardware -- the SPI transfers, GPIO, timers, tasks and memory -- is
+first-party port code held to the full project bar.
 
 ## Transport
 
@@ -72,10 +84,18 @@ update does not touch the C6, and vice versa.
 
 ## RA8-side host driver (follow-on)
 
-The host-side driver that speaks the esp-hosted protocol over the RA8D2 SPI
-peripheral is **not** part of the current change; that change codifies only the
-C6 firmware build recipe and the SOUP qualification. The driver is a separate
-follow-on and, when added, will:
+The upstream host driver source **is now vendored** at
+`libs/third_party/esp-hosted/` (host driver + shared protocol at commit
+`949bb30`, with the upstream ESP-IDF/FreeRTOS port deliberately left out).
+Nothing compiles it yet: the driver includes port headers by name, so it
+cannot build until the port exists.
+
+The **first-party port and the build wiring are the follow-on change**. That
+port supplies the ten `port_esp_hosted_host_*.h` header contracts, fills the
+72-entry `hosted_osi_funcs_t` vtable, and defines the handful of link-time
+symbols the vendored core leaves undefined -- all enumerated in
+[`../SOUP/esp-hosted-host.md`](../SOUP/esp-hosted-host.md). When added it
+will:
 
 - Present a single integration boundary (one RA8 module) for all C6 access, so
   the co-processor is never reached from application code directly.

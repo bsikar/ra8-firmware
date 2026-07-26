@@ -33,6 +33,8 @@ basis.
 | FlatBuffers     | 25.9.23  | Google                      | [flatbuffers.md](flatbuffers.md)   |
 | gemmlowp        | git `719139ce` | Google                | [gemmlowp.md](gemmlowp.md)         |
 | ruy             | git `d3712831` | Google                | [ruy.md](ruy.md)                   |
+| esp-hosted host driver | 2.12.11 git `949bb30` | Espressif Systems | [esp-hosted-host.md](esp-hosted-host.md) |
+| protobuf-c (nested in esp-hosted) | 1.4.1 git `abc67a11` | protobuf-c authors | [esp-hosted-host.md](esp-hosted-host.md) |
 | RSIP-E50D firmware (`r_sce_AMC`) | FSP TBD | Renesas / FSP            | [r_sce_AMC_firmware.md](r_sce_AMC_firmware.md) |
 
 Host build tool (not vendored source, not linked into firmware): **Arm Ethos-U
@@ -41,7 +43,9 @@ Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
 Co-processor firmware (not vendored source, not linked into firmware; built
 from a pinned upstream and flashed onto the companion ESP32-C6):
 **Espressif esp-hosted-mcu** -- [esp-hosted.md](esp-hosted.md) (pinned in
-`coprocessor/esp32c6/pins.env`; recipe in `coprocessor/esp32c6/`).
+`coprocessor/esp32c6/pins.env`; recipe in `coprocessor/esp32c6/`). Its
+complementary **host driver** IS vendored and is in the table above --
+see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 
 ## One-line summaries
 
@@ -77,6 +81,14 @@ from a pinned upstream and flashed onto the companion ESP32-C6):
   kernels depend on.
 - **ruy** -- A single profiler-instrumentation stub header included by
   TFLite-micro kernel utilities (no ruy GEMM backend).
+- **esp-hosted host driver** -- The RA8D2-side driver for the ESP32-C6
+  wireless co-processor: transport framing, RPC codec, serial and Bluetooth
+  HCI channels. Vendored without the upstream ESP-IDF port; a first-party
+  port under `port/esp-hosted/` supplies that seam. Not yet compiled by any
+  target (the port and build wiring are the follow-on change).
+- **protobuf-c** -- Protocol Buffers C runtime backing the esp-hosted RPC
+  codec; a git submodule upstream, so it is pinned and licensed separately
+  (BSD-2-Clause) inside `libs/third_party/esp-hosted/common/protobuf-c/`.
 - **Vela** (host tool) -- Arm's offline Ethos-U model compiler; runs at build
   time, links nothing into firmware. See [vela.md](vela.md).
 - **Espressif esp-hosted-mcu** -- ESP32-C6 wireless co-processor firmware
@@ -102,7 +114,10 @@ in sync with it:
 
 Both are generated and validated by
 [`../../scripts/gen/gen_sbom.py`](../../scripts/gen/gen_sbom.py)
-(`make sbom` / `make sbom-check`); its component registry is the single
+(`make sbom` / `make sbom-check`); the component registry it renders lives in
+the sibling module
+[`../../scripts/gen/sbom_registry.py`](../../scripts/gen/sbom_registry.py)
+and is the single
 source of truth for the version / license / purl / provenance fields. When
 you bump or re-vendor a component here, update that registry and run
 `make sbom` so the SBOM and inventory do not drift (enforced in CI and the
