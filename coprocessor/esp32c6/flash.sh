@@ -9,8 +9,8 @@
 # writing: it fails with EPIPE partway through write_flash.
 #
 # Usage:
-#   ./c6_firmware/flash.sh                 # uses C6_FLASH_PORT from pins.env
-#   ./c6_firmware/flash.sh /dev/ttyACM1    # explicit port
+#   ./coprocessor/esp32c6/flash.sh                 # uses C6_FLASH_PORT from pins.env
+#   ./coprocessor/esp32c6/flash.sh /dev/ttyACM1    # explicit port
 #
 # Requires: esptool (python -m esptool) on PATH and a completed ./build.sh.
 
@@ -18,11 +18,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=c6_firmware/pins.env
+# shellcheck source=coprocessor/esp32c6/pins.env
 source "${SCRIPT_DIR}/pins.env"
 
 PORT="${1:-${C6_FLASH_PORT}}"
-BUILD_DIR="${SCRIPT_DIR}/esp-hosted-mcu/slave/build"
+BUILD_DIR="${SCRIPT_DIR}/esp-hosted-mcu/slave/build" # LEGACY-OK: esp-hosted-mcu upstream layout dir is named "slave"
 
 if ! command -v python >/dev/null 2>&1; then
   echo "ERROR: python not on PATH (need python -m esptool)" >&2
@@ -30,7 +30,7 @@ if ! command -v python >/dev/null 2>&1; then
 fi
 
 if [[ ! -d "${BUILD_DIR}" ]]; then
-  echo "ERROR: ${BUILD_DIR} not found. Run ./c6_firmware/build.sh first." >&2
+  echo "ERROR: ${BUILD_DIR} not found. Run ./coprocessor/esp32c6/build.sh first." >&2
   exit 1
 fi
 

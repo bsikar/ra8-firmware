@@ -11,7 +11,7 @@ This document is the design-level architecture. Two concerns are deliberately
 split out:
 
 - The reproducible **C6 firmware build recipe** (pinned versions, config,
-  build/flash scripts) lives in [`../../c6_firmware/`](../../c6_firmware/).
+  build/flash scripts) lives in [`../../coprocessor/esp32c6/`](../../coprocessor/esp32c6/).
 - The **SOUP qualification** for the esp-hosted-mcu firmware lives in
   [`../SOUP/esp-hosted.md`](../SOUP/esp-hosted.md).
 
@@ -41,7 +41,7 @@ Two out-of-band GPIOs pace the link:
 ### Pin map (ESP32-C6 GPIO numbers)
 
 Inclusive signal names; the pins are the single source of truth in
-[`../../c6_firmware/pins.env`](../../c6_firmware/pins.env).
+[`../../coprocessor/esp32c6/pins.env`](../../coprocessor/esp32c6/pins.env).
 
 | Signal | ESP32-C6 GPIO | Direction |
 |--------|---------------|-----------|
@@ -61,7 +61,7 @@ recover the C6 without a power cycle.
 
 1. Power-on: the C6 boots its own bootloader and starts the esp-hosted-mcu
    `network_adapter` app from flash (a one-time flashing step, see
-   `c6_firmware/flash.sh`).
+   `coprocessor/esp32c6/flash.sh`).
 2. The RA8D2 host driver opens the SPI link and completes the esp-hosted
    handshake.
 3. From then on the host issues Wi-Fi / Bluetooth / control requests and the

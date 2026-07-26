@@ -16,16 +16,16 @@ co-processor firmware into this project as Software Of Unknown Provenance
 - **Upstream URL**: <https://github.com/espressif/esp-hosted-mcu>.
 - **Local path**: NOT vendored into the tree. The build recipe (pinned
   versions, our proven `sdkconfig.defaults`, and the build/flash scripts)
-  lives in `c6_firmware/`; `c6_firmware/build.sh` fetches the pinned upstream
-  into the git-ignored `c6_firmware/esp-hosted-mcu/` at build time.
+  lives in `coprocessor/esp32c6/`; `coprocessor/esp32c6/build.sh` fetches the pinned upstream
+  into the git-ignored `coprocessor/esp32c6/esp-hosted-mcu/` at build time.
 
 ## Provenance
 
 - **Origin**: Espressif Systems, the esp-hosted-mcu project.
 - **License**: Apache-2.0 (upstream `LICENSE`).
-- **How it enters our build**: `c6_firmware/build.sh` clones the upstream
+- **How it enters our build**: `coprocessor/esp32c6/build.sh` clones the upstream
   repository, checks out the pinned commit `949bb30`, drops in the proven
-  `c6_firmware/sdkconfig.defaults`, and builds the `network_adapter`
+  `coprocessor/esp32c6/sdkconfig.defaults`, and builds the `network_adapter`
   peripheral-side application with the pinned esp-idf. Nothing is copied into
   the repository; the recipe is the record.
 
@@ -74,7 +74,7 @@ DO-178C Section 12.1.4 (previously developed software):
 ## Deviations / patches
 
 - **Modified**: no. The upstream tree is built unmodified at the pinned
-  commit. The only project-supplied input is `c6_firmware/sdkconfig.defaults`
+  commit. The only project-supplied input is `coprocessor/esp32c6/sdkconfig.defaults`
   (build configuration: transport = SPI, the SPI pin assignments, and 16 MB
   flash size), which selects upstream options and patches no upstream source.
 
