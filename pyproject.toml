@@ -36,7 +36,6 @@ extend-exclude = [
   "__pycache__",
   "/build",
   "docs/build",
-  "esp32/build",
   "tests/build",
   "tests/build-cov",
   "tests/build-fuzz",

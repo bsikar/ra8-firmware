@@ -118,7 +118,7 @@ parse_args() {
 #
 # Scope is derived from `git ls-files`, NOT from a directory list. The previous
 # revision walked a hand-maintained set of roots (libs, src, tests,
-# examples/*/*, tools/*) and so formatted nothing under port/ or esp32/ -- 43
+# examples/*/*, tools/*) and so formatted nothing under port/ -- 43
 # first-party C files that no formatter had ever touched, carrying 477
 # clang-format violations. That is the #296 / #332 / #358 / #359 / #360 defect
 # class: a scan list narrower than the tree, reporting "All files are properly

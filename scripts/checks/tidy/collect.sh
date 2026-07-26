@@ -17,13 +17,13 @@
 #
 # Scope: EVERY first-party C-family file in the repository -- C, C++ and
 # Objective-C, translation units and headers alike, under libs/, src/,
-# tests/, tools/, examples/, port/ and esp32/. CLAUDE.md ("Scope: these
+# tests/, tools/, examples/ and port/. CLAUDE.md ("Scope: these
 # standards apply to EVERY first-party file in the repository") makes the
 # host tools, the host test suite and the firmware subject to exactly the
 # same rules; a file being "just a simulator", "just a test" or "just an
 # example" is not a reason to relax them.
 #
-# The ONLY exemptions are vendored SOUP (libs/third_party/, esp32/third_party/)
+# The ONLY exemptions are vendored SOUP (libs/third_party/)
 # and generated tables (libs/fonts/, tools/vela/generated/), matching the
 # CLAUDE.md exemption list. Build trees and CMake-fetched deps are excluded
 # because they are not source.
@@ -46,7 +46,7 @@
 #              host-buildable C and C++ in libs/, src/, tests/ and tools/.
 #   firmware   a CROSS-COMPILE compile_commands.json built by
 #              scripts/builders/build_cross_compile_db.py, covering every
-#              cross-compiled TU in examples/, port/ and esp32/ plus the
+#              cross-compiled TU in examples/ and port/ plus the
 #              handful of libs/ and src/ TUs that include ThreadX / NetX /
 #              USBX vendor headers.
 #   fixed      a hand-assembled command, for the host dev tools whose own
@@ -63,9 +63,9 @@ collect_source_files() {
   cd "$FIRMWARE_DIR" || return 1
   git ls-files --cached --others --exclude-standard |
     grep -E '\.(c|h|cpp|cc|cxx|hpp|hh|hxx|m)$' |
-    grep -E '^(libs|src|tests|tools|examples|port|esp32)/' |
+    grep -E '^(libs|src|tests|tools|examples|port)/' |
     # Vendored SOUP and generated tables -- the CLAUDE.md exemption list.
-    grep -Ev '^(libs/third_party/|libs/fonts/|tools/vela/generated/|esp32/third_party/)' |
+    grep -Ev '^(libs/third_party/|libs/fonts/|tools/vela/generated/)' |
     # Build trees and CMake-fetched deps are not source.
     grep -Ev '(^|/)(build|build-[^/]*|_deps)/' |
     while IFS= read -r f; do
@@ -105,8 +105,8 @@ route_bucket() {
     *.cpp | *.cc | *.cxx | *.hpp | *.hh | *.hxx) echo cxx && return 0 ;;
   esac
   case "$f" in
-    # Cross-compiled firmware: examples/, port/ and esp32/ in full.
-    */examples/* | */port/* | */esp32/*) echo firmware && return 0 ;;
+    # Cross-compiled firmware: examples/ and port/ in full.
+    */examples/* | */port/*) echo firmware && return 0 ;;
   esac
   # A libs/ or src/ TU that includes a ThreadX / NetX / USBX vendor header is
   # firmware too: the host database carries no path to those headers, so it

@@ -86,18 +86,3 @@
  *        server.
  */
 
-/**
- * @page experimental_spikes Experimental Spikes
- * @brief Exploratory work that is NOT part of the supported firmware.
- *
- * Spikes are proofs of concept, not shipped components. They live on their own
- * git branches rather than on `main`, so they do not appear in the directory
- * tree above -- this page is the index.
- *
- * ## ESP32-C6 companion radio
- *
- * An investigation into offloading wireless (Wi-Fi / BLE / Thread) to an
- * ESP32-C6 companion MCU, evaluated as SOUP (esp-hosted). It lives on the
- * `spike/esp32c6` branch; see that branch's DIRECTION.md and
- * UPDATE_PIPELINE.md for the current state. Treat it as experimental.
- */

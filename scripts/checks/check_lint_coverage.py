@@ -434,7 +434,7 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "CMakeLists.txt",
         "Makefile",
         "examples/app/linker_script.ld",
-        "esp32/boot/start.S",
+        "examples/app/boot.S",
         ".devcontainer/Dockerfile",
         ".devcontainer/zshrc",
         ".github/workflows/firmware.yml",
@@ -452,7 +452,7 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "yamllint+actionlint": {".github/workflows/firmware.yml"},
         "check_makefiles": {"Makefile"},
         "check_linker_scripts": {"examples/app/linker_script.ld"},
-        "check_asm": {"esp32/boot/start.S"},
+        "check_asm": {"examples/app/boot.S"},
         "hadolint+zsh": {".devcontainer/Dockerfile", ".devcontainer/zshrc"},
     }
     return files, claimed

@@ -26,7 +26,6 @@ selftest_routing() {
   local -a cases=(
     "$FIRMWARE_DIR/examples/x/y/main.c:firmware"
     "$FIRMWARE_DIR/port/usbx/src/a.c:firmware"
-    "$FIRMWARE_DIR/esp32/src/main.c:firmware"
     "$FIRMWARE_DIR/libs/ra8_epub/src/shim.cpp:cxx"
     "$FIRMWARE_DIR/libs/ra8_hal/src/k.cc:cxx"
     "$FIRMWARE_DIR/tools/ra8_emulator/src/display/board_view.m:objc"
@@ -66,7 +65,7 @@ selftest_scope() {
   # Every first-party root must actually be claimed. This is the assertion
   # that would have caught #296 and #369 on the day they landed.
   local root count
-  for root in libs src tests tools examples port esp32; do
+  for root in libs src tests tools examples port; do
     count="$(grep -c "^$FIRMWARE_DIR/$root/" <<<"$listing" || true)"
     if [[ "$count" -eq 0 ]]; then
       print_error "selftest: no files collected under $root/ -- scope regression"
@@ -78,7 +77,7 @@ selftest_scope() {
   # claimed: a scope that swallowed them would report coverage this project
   # explicitly does not want, and would bury real findings under SOUP noise.
   local forbidden
-  for forbidden in libs/third_party libs/fonts tools/vela/generated esp32/third_party; do
+  for forbidden in libs/third_party libs/fonts tools/vela/generated; do
     if grep -q "^$FIRMWARE_DIR/$forbidden/" <<<"$listing"; then
       print_error "selftest: $forbidden/ is claimed but must be exempt"
       failures=$((failures + 1))

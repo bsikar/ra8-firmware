@@ -32,7 +32,7 @@ gate_lint_py_shell() (
   # what it advertises: a deliberately non-conforming fixture must trip every
   # rule family named in EXPECTED_CODES, and a legal-but-tricky one must stay
   # silent. #360 is why -- `check_ruff.py` hardcoded its target list, so seven
-  # first-party files (esp32/tools, the HIL fixture generators) were never
+  # first-party files (host tooling and the HIL fixture generators) were never
   # linted at all while the gate reported a clean tree. Scope is derived from
   # `git ls-files` now, and gutting the select list turns the selftest red
   # instead of turning the tree green.
@@ -151,7 +151,7 @@ gate_lint_ld() (
 # about assembly as text: licence header, an explicit .section, `.type` /
 # `.size` / a label behind every exported symbol, `.syntax unified` on ARM,
 # and formatting. The header rule alone closed a real hole -- check-copyright.py
-# has never covered .S, so esp32/boot/start.S carried no SPDX at all.
+# has never covered .S, so hand-written assembly carried no SPDX at all.
 gate_lint_asm() (
   set -e
   python3 scripts/checks/check_asm.py --selftest

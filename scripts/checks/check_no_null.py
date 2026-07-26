@@ -16,9 +16,8 @@ Scope is DERIVED from git ls-files (#358), so tools/ -- host tooling held to
 the same C23 bar, and silently omitted by the old ROOT_DIRS tuple -- is now in
 scope, along with every future top-level directory. Vendored SOUP
 (libs/third_party/, libs/fonts/, port/threadx/, ...) is skipped wholesale, and
-two first-party trees are exempt for stated reasons (see EXEMPT_PREFIXES):
-tests/ (NULL is deliberate null-guard stimulus) and esp32/ (ESP-IDF C11
-toolchain, where ``nullptr`` does not exist).
+one first-party tree is exempt for a stated reason (see EXEMPT_PREFIXES):
+tests/ (NULL is deliberate null-guard stimulus).
 
 Usage:
     python3 scripts/checks/check_no_null.py FILE [FILE ...]
@@ -53,17 +52,14 @@ SOUP_PREFIXES = ("libs/third_party/", "libs/fonts/", "tools/vela/generated/", "p
 # Scope recorded here, NOT as a directory allowlist (#358). Enumeration is
 # derived from git ls-files, so tools/ -- host tooling held to the same C23 bar
 # per CLAUDE.md, and silently omitted by the old ROOT_DIRS tuple -- and every
-# future top-level directory are in scope automatically. Two first-party trees
-# are deliberately OUT, each for a stated reason:
+# future top-level directory are in scope automatically. One first-party tree
+# is deliberately OUT, for a stated reason:
 EXEMPT_PREFIXES = (
     # Unit tests pass NULL as deliberate stimulus to exercise null-pointer
     # guards -- `TEST_ASSERT_EQ(k_ra8_err_null_ptr, fn(NULL, ...))`. Requiring
     # nullptr there fights the test rather than the code, the same reason
     # check_magic_numbers.py holds tests/ exempt.
     "tests/",
-    # esp32/ builds under the ESP-IDF (RISC-V, C11) toolchain, where the C23
-    # `nullptr` keyword does not exist. NULL is correct in that tree.
-    "esp32/",
 )
 
 # bare NULL token in a code context. \bNULL\b matches the identifier;
@@ -252,7 +248,6 @@ def selftest() -> int:
         failures,
     )
     expect(not _in_scope("tests/test_x.c"), "tests/ exempt (deliberate NULL stimulus)", failures)
-    expect(not _in_scope("esp32/src/main.c"), "esp32/ exempt (ESP-IDF C11, no nullptr)", failures)
     expect(not _in_scope("libs/third_party/miniz/miniz.c"), "vendored SOUP exempt", failures)
     return report(failures)
 

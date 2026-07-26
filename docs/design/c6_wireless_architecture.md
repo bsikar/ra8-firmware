@@ -88,3 +88,43 @@ The RA8D2 has no integrated radio; a companion connectivity device is the only
 route to Wi-Fi / Bluetooth on this board. esp-hosted-mcu is Espressif's
 supported, proven-in-use solution for exactly this host-plus-co-processor
 topology, which is why it is accepted as SOUP rather than reimplemented.
+
+### Why not a first-party radio driver
+
+The C6 Wi-Fi MAC/PHY is not documented in Espressif public datasheets or the C6
+technical reference manual -- only the wired peripherals are. Every production
+Wi-Fi / Bluetooth stack for the part (ESP-IDF, Zephyr, NuttX, the Rust esp-radio
+crates) links the same Espressif binary blobs (libpp, libnet80211, libphy,
+libcoexist, and the BLE controller library); there is no open reimplementation
+of the radio, and the reverse-engineering efforts that do exist support open
+networks only, on the classic Xtensa ESP32, and still need the blob to bring up
+the RF front end. A hand-written first-party driver for the one peripheral the
+C6 exists to provide is therefore not achievable. The blobs are also what the
+module FCC modular grant rests on, so shipping Espressif stock firmware keeps
+that grant intact.
+
+### Why esp-hosted-mcu over the alternatives
+
+- **A-la-carte ESP-IDF components** do not stand alone; they drag Kconfig, the
+  IDF Python environment, FreeRTOS and inter-component dependency resolution, so
+  consuming the SDK as libraries does not work at that grain.
+- **A full ESP-IDF application on the C6** is warranted only if substantial
+  first-party logic must run next to the radio. Here the C6 jobs (radio, OTA
+  ingress) are all appliance jobs, so that path buys a second toolchain and
+  image format for no benefit.
+- **ESP-AT** terminates TCP/IP on the C6, bypassing the RA8-side network stack
+  and its TLS posture, offers no host-pushed OTA, and its C6 line is stalled.
+
+Running the whole co-processor firmware as one pinned SOUP artifact keeps every
+line the project compiles under its own rules, turns the SOUP boundary into a
+documented wire protocol rather than a linker boundary, and preserves the FCC
+modular grant.
+
+## Primary sources
+
+- esp-hosted-mcu: https://github.com/espressif/esp-hosted-mcu
+- Component registry: https://components.espressif.com/components/espressif/esp_hosted
+- Radio-less host precedent (ESP32-P4 companion): https://www.espressif.com/en/news/ESP32-P4
+- Wi-Fi blob and license: https://github.com/espressif/esp32-wifi-lib
+- Open-driver reality: https://github.com/esp32-open-mac/esp32-open-mac
+- Field-recovery flasher: https://github.com/espressif/esp-serial-flasher

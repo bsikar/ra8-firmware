@@ -70,7 +70,7 @@ gate_misra() (
 # clang-tidy over every first-party C, C++ and Objective-C file.
 #
 # Needs the cross-compiler as well as clang-tidy: since #369 the firmware pass
-# parses examples/, port/ and esp32/ against a CROSS-COMPILE compile database
+# parses examples/ and port/ against a CROSS-COMPILE compile database
 # that scripts/builders/build_cross_compile_db.py produces by really
 # configuring the RA8D2 / RA8P1 builds. require_arm_gcc_m85 makes an absent or
 # too-old toolchain a hard failure -- if this degraded to skipping the firmware

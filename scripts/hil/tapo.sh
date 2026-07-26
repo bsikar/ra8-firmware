@@ -50,7 +50,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV_FILE="$ROOT/.env"
 TAPO_SCRIPT="$ROOT/scripts/hil/tapo_control.py"
-SECRETS_SCRIPT="$ROOT/scripts/hil/secrets.py"
+SECRETS_SCRIPT="$ROOT/scripts/hil/hil_secrets.py"
 
 [[ -f "$TAPO_SCRIPT" ]] ||
   {

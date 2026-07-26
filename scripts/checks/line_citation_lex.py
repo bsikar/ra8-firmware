@@ -74,7 +74,7 @@ def is_in_scope(path: str, exclude_prefixes: tuple[str, ...]) -> bool:
 
     First-party-ness is DERIVED, not a hardcoded root list. The old
     ``SCAN_ROOTS`` tuple (libs/, src/, tests/, examples/, port/) silently
-    omitted tools/ and esp32/ -- the #358 defect that let a ``file.c:123``
+    omitted tools/ -- the #358 defect that let a ``file.c:123``
     citation land there unseen. ``lint_targets.language_of`` decides first-party
     C by suffix, language and the shared SOUP/generated/build exclusions, so a
     new top-level directory is covered the day it lands and vendored trees stay
