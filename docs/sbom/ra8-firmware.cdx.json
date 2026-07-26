@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:ac51a2ed-d6ec-51ad-8b07-1b34682da076",
+  "serialNumber": "urn:uuid:a953a9cb-a333-5825-8881-ac48b5d3d9de",
   "version": 1,
   "metadata": {
     "tools": [
@@ -971,6 +971,138 @@
         {
           "name": "ra8:note0",
           "value": "Gold-standard provenance: commit pin + aggregate SHA-256 of the sorted per-file hashes (excludes UPSTREAM_LICENSE.md). See docs/SOUP/r_sce_AMC_firmware.md."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "esp-hosted",
+      "name": "Espressif esp-hosted-mcu (host driver)",
+      "group": "espressif",
+      "version": "2.12.11 (host driver) @ git 949bb30",
+      "description": "esp-hosted host driver + shared protocol for the ESP32-C6 Wi-Fi/BLE co-processor.",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "copyright": "Apache-2.0 (upstream LICENSE); no separate NOTICE file upstream.",
+      "purl": "pkg:github/espressif/esp-hosted-mcu@949bb30612747a3bd9e402eda8d01fbfa1f8503e",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "79ae04974accce04871f64d6e5cfb1e46676a4e70a0252eed616405826d29cc0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/espressif/esp-hosted-mcu"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "commit-pinned-sha256"
+        },
+        {
+          "name": "ra8:path",
+          "value": "libs/third_party/esp-hosted"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "949bb30612747a3bd9e402eda8d01fbfa1f8503e"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/third_party/esp-hosted/LICENSE"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "HOST half of esp-hosted: this is the driver compiled INTO the RA8 image. The peripheral-side co-processor firmware that runs on the ESP32-C6 is the separate, not-vendored esp-hosted-mcu entry. Both halves are the same upstream commit 949bb30 and the same protocol version 2.12.11, which is what makes them wire-compatible."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "Vendored subset: upstream host/ (minus host/port/) and common/ (minus esp_hosted_lwip_src_port_hook.h). 77 files, all byte-identical to upstream 949bb30; aggregate SHA-256 is over the sorted per-file hashes of those 77 files (it excludes the separately-pinned nested protobuf-c subtree)."
+        },
+        {
+          "name": "ra8:note2",
+          "value": "host/port/ (the upstream ESP-IDF/FreeRTOS port) is deliberately NOT vendored: a first-party RA8/ThreadX port supplies the same 10 port_esp_hosted_host_*.h header contracts and fills the 72-entry hosted_osi_funcs_t vtable. See docs/SOUP/esp-hosted-host.md."
+        },
+        {
+          "name": "ra8:note3",
+          "value": "Not compiled by any target yet: the sources cannot build until the first-party port under port/esp-hosted/ lands (the follow-on change), which is also when the CMake wiring is added."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "esp-hosted/protobuf-c",
+      "name": "protobuf-c (runtime library)",
+      "group": "protobuf-c",
+      "version": "1.4.1 (git abc67a11)",
+      "description": "Protocol Buffers C runtime backing the esp-hosted RPC codec.",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause"
+          }
+        }
+      ],
+      "copyright": "BSD-2-Clause (upstream LICENSE); distinct upstream from esp-hosted.",
+      "purl": "pkg:github/protobuf-c/protobuf-c@abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "67da2264194eb142d30830ab92a8a64decb1557d4d4ee8a82dddd7f731784d7f"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/protobuf-c/protobuf-c"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "commit-pinned-sha256"
+        },
+        {
+          "name": "ra8:path",
+          "value": "libs/third_party/esp-hosted/common/protobuf-c"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "abc67a11c6db271bedbb9f58be85d6f4e2ea8389"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/third_party/esp-hosted/common/protobuf-c/LICENSE"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "Nested component: upstream esp-hosted-mcu carries protobuf-c as a git SUBMODULE at common/protobuf-c, pinned to abc67a11. A submodule is a separate upstream project under a separate license, so it gets its own registry entry and its own OSV commit query rather than hiding inside the esp-hosted aggregate hash."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "Runtime-only subset: protobuf-c/protobuf-c.c, protobuf-c/protobuf-c.h and LICENSE (3 files, byte-identical to abc67a11). The protoc-c code generator, build system and tests are a host-side C++ toolchain and are not vendored; the generated esp_hosted_rpc.pb-c.c ships pre-generated in the esp-hosted tree."
+        },
+        {
+          "name": "ra8:note2",
+          "value": "Version is doubly evidenced: commit pin + aggregate SHA-256 + an in-header PROTOBUF_C_VERSION probe cross-checked by this generator."
         }
       ]
     },
