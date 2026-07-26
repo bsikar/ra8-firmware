@@ -34,9 +34,9 @@ self-contained.
 Status snapshot at the close of sweep 11 (commit `ba54974`):
 
 - 115 driver source files in `libs/ra8_hal/src/` (was 96 at sweep 8).
-- 11 top-level libraries: ra8_core, ra8_hal, ra8_nsc, ra8_net_pal,
-  ra8_usb_pal, plus the five sweep-8/9/10 additions ra8_net, ra8_fs,
-  ra8_tls, ra8_gfx, ra8_ble_host.
+- 10 top-level libraries: ra8_core, ra8_hal, ra8_nsc, ra8_net_pal,
+  ra8_usb_pal, plus the four sweep-8/9/10 additions ra8_net, ra8_fs,
+  ra8_tls, ra8_gfx.
 - 65 drivers feature-complete vs FSP, 6 partial, 20 FSP-shaped
   placeholders (carry `@warning`; bodies maintain software state),
   24 scaffolds.

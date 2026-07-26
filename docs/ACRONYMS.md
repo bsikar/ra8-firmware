@@ -80,7 +80,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | PTP   | Precision Time Protocol (IEEE 1588) SYNFP/STCA            | `ra8_ptp.c` |
 | TSN   | Time-Sensitive Networking                                 | `ra8_tsn.c` |
 | PHY   | Physical-layer transceiver (Ethernet PHY)                 | `ra8_ether_phy.c`, `ra8_rmac_phy.c` |
-| BLE   | Bluetooth Low Energy (HCI transport seam; controller on the ESP32-C6 companion) | `ra8_ble.c`, `ra8_ble_host` |
+| BLE   | Bluetooth Low Energy (HCI transport seam; controller on the ESP32-C6 companion) | `ra8_ble.c`, `port/nimble` |
 | IPC   | Inter-Processor Communication (M85 <-> M33 mailbox)       | `ra8_ipc.c` |
 
 ## 4. Crypto and secure-storage

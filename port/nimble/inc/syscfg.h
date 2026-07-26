@@ -201,11 +201,14 @@
 /* ----------------------------------------------------------------------- */
 
 /**
- * When set, ble_sm_alg.c calls into our ra8_rsip wrapper for the P-256
- * key-pair generation, ECDH shared-secret, AES-CMAC and AES-128-ECB
- * primitives instead of the bundled tinycrypt fallback. The shim
- * lives in libs/ra8_ble_host/src/ra8_ble_security.c and is wired via
- * the public ble_sm_alg_*_hw hooks defined upstream when this is set.
+ * Project syscfg reserved for routing NimBLE's P-256 key-pair
+ * generation, ECDH shared-secret, AES-CMAC and AES-128-ECB primitives
+ * through our ra8_rsip wrapper instead of the bundled tinycrypt
+ * fallback. The offload shim previously lived in the first-party BLE-host
+ * facade, which has been removed; upstream NimBLE does not consume this
+ * value, so it is currently inert and NimBLE uses its tinycrypt
+ * fallback. The offload path will be re-wired when the ESP32-C6
+ * controller link and its crypto seam land.
  */
 #undef MYNEWT_VAL_BLE_SM_SC_HW_OFFLOAD
 /** @brief MYNEWT VAL BLE SM SC HW OFFLOAD. */

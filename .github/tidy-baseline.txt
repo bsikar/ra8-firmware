@@ -15,9 +15,6 @@
 # file<TAB>check<TAB>count
 drivers/ours/esp_gpio.c	readability-uppercase-literal-suffix	2
 drivers/ours/esp_uart.c	readability-uppercase-literal-suffix	8
-examples/_unsupported/threadx_ble_central/main.c	clang-diagnostic-cast-qual	1
-examples/_unsupported/threadx_ble_central/main.c	clang-diagnostic-unused-function	1
-examples/_unsupported/threadx_ble_mesh_node/main.c	clang-diagnostic-cast-qual	1
 examples/_unsupported/threadx_https_client/main.c	bugprone-branch-clone	1
 examples/_unsupported/threadx_https_client/main.c	clang-diagnostic-cast-qual	4
 examples/_unsupported/threadx_https_client/main.c	readability-function-cognitive-complexity	1

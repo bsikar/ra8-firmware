@@ -16,7 +16,7 @@
 #   miniz.h, miniz.c             -- ZIP / DEFLATE
 #   tinyxml2.h, tinyxml2.cpp     -- XML parser
 #
-# Like the other domain libs in this tree (ra8_fs, ra8_ble_host),
+# Like the other domain libs in this tree (ra8_fs, ra8_reflow),
 # consumers reach into inc/ + src/ directly. The host unit test build
 # in tests/CMakeLists.txt picks up ra8_epub via the recursive glob plus
 # the third-party additions wired up there. When an example app starts

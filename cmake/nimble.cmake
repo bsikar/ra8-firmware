@@ -94,19 +94,13 @@ target_include_directories(
             # ``port/nimble/inc/nimble/nimble_npl_os.h``, so point the whole build
             # at it. This used to fall back to the upstream "dummy" port's header
             # for translation units that reference NimBLE host APIs without going
-            # through nimble_port_threadx (e.g. libs/ra8_ble_host/src/ra8_ble_*.c).
+            # through nimble_port_threadx (e.g. application TUs that call the
+            # NimBLE host APIs directly).
             # That put two different definitions of ``struct ble_npl_mutex`` and
             # friends into one image depending on which target a TU linked, which
             # is an ABI mismatch no diagnostic reports.
             ${_RA8_NIMBLE_REPO_ROOT}/port/nimble/inc
 )
-
-# Apps that link `nimble` get RA8_TARGET_BUILD so the ra8_ble_host
-# wrapper TUs (ra8_ble_security.c / ra8_ble_gatt_client.c / ra8_ble_mesh.c)
-# compile in the direct NimBLE call paths. Host unit tests do not link
-# `nimble`, so RA8_TARGET_BUILD stays undefined and the wrappers fall
-# back to their portable bookkeeping-only implementations.
-target_compile_definitions(nimble INTERFACE RA8_TARGET_BUILD)
 
 # NimBLE's NPL header pulls ThreadX primitives in via our
 # port/nimble/inc/nimble_npl_threadx.h shim. Inherit the ThreadX include

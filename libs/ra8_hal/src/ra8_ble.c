@@ -8,8 +8,8 @@
  * @details
  * Implements the HCI transport interface declared in ``ra8_ble.h``: H4-style
  * command / event / ACL framing per Bluetooth Core 5.3 Vol 4 Part A 2 ("HCI
- * Transport Layer"), plus the send / dispatch / callback machinery the BLE
- * host stack (``libs/ra8_ble_host``, NimBLE) drives.
+ * Transport Layer"), plus the send / dispatch / callback machinery the NimBLE
+ * host stack (via ``port/nimble``) drives.
  *
  * There is deliberately no register access here. The RA8D2 has no on-chip
  * Bluetooth radio (the datasheet lists no BLE/2.4 GHz block), so the former

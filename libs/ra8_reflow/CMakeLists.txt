@@ -16,8 +16,8 @@
 # Vendored dependencies (already at libs/third_party/):
 #   stb_truetype.h     -- glyph rasteriser
 #
-# Like the other domain libs in this tree (ra8_fs, ra8_ble_host,
-# ra8_epub), consumers reach into inc/ + src/ directly. The host unit
+# Like the other domain libs in this tree (ra8_fs, ra8_epub),
+# consumers reach into inc/ + src/ directly. The host unit
 # test build in tests/CMakeLists.txt already picks up libs that follow
 # this convention and ships them through the ra8_core_hal OBJECT
 # library; ra8_reflow is wired in next to ra8_epub there.

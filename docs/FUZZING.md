@@ -17,7 +17,6 @@ the device (network, modem, removable media):
 | `fuzz_ra8_jpeg_sw`   | `ra8_jpeg_sw_decode()` baseline JPEG decoder             | Camera frames, on-disk files |
 | `fuzz_ra8_epub`      | `ra8_epub_open()` (miniz ZIP + OPF/NCX parsing)          | Removable media              |
 | `fuzz_ra8_modem_at`  | AT response parser (`ra8_modem_at_send_cmd` + rx pump)   | Cellular modem byte stream   |
-| `fuzz_ra8_ble_att`   | ATT dispatcher via `ra8_ble_host_test_inject_acl()`      | BLE peer (over the air)      |
 | `fuzz_ra8_usb_pal`   | `ra8_usb_pal_ep_open` / `ep_send` / `ep_recv`            | USB host / compliance stand  |
 | `fuzz_ra8_tls`       | `ra8_tls_*` facade lifecycle + BIO recv stream           | Network transport (TLS)      |
 | `fuzz_ra8_canfd`     | `ra8_canfd_receive()` decode of a staged `CFDRF[0]` block | CAN-FD bus                   |

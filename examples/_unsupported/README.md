@@ -16,27 +16,22 @@ satisfy the same lint/format/MC/DC gates as the EVM-validated tier.
 |----------------------------------|---------------------------------------------------------|
 | audio_loopback                   | External audio amplifier + speaker / line-out hardware  |
 | usb_audio_device                 | External audio amplifier + speaker / line-out hardware  |
-| ble_peripheral                   | BLE radio module + Renesas vendor patch image           |
-| threadx_nimble_peripheral        | BLE radio module + Renesas vendor patch image           |
-| threadx_ble_central              | BLE radio module + Renesas vendor patch image           |
-| threadx_ble_mesh_node            | BLE radio module + Renesas vendor patch image           |
+| threadx_nimble_peripheral        | ESP32-C6 BLE controller + HCI link                      |
 | threadx_https_client             | RSIP BIST vendor blob (encrypted asset image)           |
 | ptp_time_transmitter             | PTP-aware Ethernet switch                               |
 | motor_3phase                     | Renesas MCK motor-control daughter board                |
 | threadx_sdcard_demo              | SD card slot + an SD card                               |
 
-> **NimBLE apps are link-only scaffold (issue #286).**
-> `threadx_nimble_peripheral`, `threadx_ble_central`, and
-> `threadx_ble_mesh_node` sit on the `port/nimble/` host port + ThreadX
-> Native Porting Layer, which link and pass the static gates but have
-> **never been hardware-validated** and are **not sim-gated** --
-> `board_sim` models no RA8D2 BLE controller / HCI mailbox, and the
-> `ra8_ble` transport underneath is itself unproven on this board
-> (#86, #91). `ble_peripheral` uses the separate hand-written
-> `ra8_ble_host` stack over the same unproven transport, so it is
-> equally unvalidated. Read every BLE app here as a compile-and-link
-> reference, not a working feature, until one is driven to real
-> hardware validation and promoted out of this tier.
+> **The NimBLE app is link-only scaffold (issue #286).**
+> `threadx_nimble_peripheral` sits on the `port/nimble/` host port +
+> ThreadX Native Porting Layer and drives the NimBLE host APIs directly.
+> It links and passes the static gates but has **never been
+> hardware-validated** and is **not sim-gated** -- `board_sim` models no
+> BLE controller / HCI link, and the `ra8_ble` HCI transport underneath
+> is itself unproven on this board (#86, #91). The BLE controller runs on
+> the ESP32-C6 companion, which is not yet wired up. Read this BLE app as
+> a compile-and-link reference, not a working feature, until it is driven
+> to real hardware validation and promoted out of this tier.
 
 If you add a hardware-dependent app, drop it under this directory so
 the next person scanning the tree can immediately tell what we can and

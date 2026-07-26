@@ -6,39 +6,11 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12827
+# total findings: 12635
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
 libs/ra8_batt/src/ra8_batt.c	misra-c2012-15.5	3
-libs/ra8_ble_host/src/ra8_ble_att.c	misra-c2012-13.3	6
-libs/ra8_ble_host/src/ra8_ble_att.c	misra-c2012-15.5	17
-libs/ra8_ble_host/src/ra8_ble_att.c	misra-c2012-15.7	1
-libs/ra8_ble_host/src/ra8_ble_gatt.c	misra-c2012-15.5	28
-libs/ra8_ble_host/src/ra8_ble_gatt.c	misra-c2012-8.4	4
-libs/ra8_ble_host/src/ra8_ble_gatt_client.c	misra-c2012-11.1	1
-libs/ra8_ble_host/src/ra8_ble_gatt_client.c	misra-c2012-12.1	6
-libs/ra8_ble_host/src/ra8_ble_gatt_client.c	misra-c2012-15.5	21
-libs/ra8_ble_host/src/ra8_ble_gatt_client.c	misra-c2012-17.7	5
-libs/ra8_ble_host/src/ra8_ble_gatt_client.c	misra-c2012-8.4	4
-libs/ra8_ble_host/src/ra8_ble_gatt_client.c	misra-c2012-8.9	4
-libs/ra8_ble_host/src/ra8_ble_gatt_client.c	misra-c2012-9.2	1
-libs/ra8_ble_host/src/ra8_ble_l2cap.c	misra-c2012-15.5	16
-libs/ra8_ble_host/src/ra8_ble_l2cap.c	misra-c2012-15.7	1
-libs/ra8_ble_host/src/ra8_ble_l2cap.c	misra-c2012-8.4	3
-libs/ra8_ble_host/src/ra8_ble_l2cap_advertise.c	misra-c2012-15.5	11
-libs/ra8_ble_host/src/ra8_ble_l2cap_advertise.c	misra-c2012-8.4	2
-libs/ra8_ble_host/src/ra8_ble_l2cap_advertise.c	misra-c2012-9.2	2
-libs/ra8_ble_host/src/ra8_ble_mesh.c	misra-c2012-10.1	2
-libs/ra8_ble_host/src/ra8_ble_mesh.c	misra-c2012-10.8	2
-libs/ra8_ble_host/src/ra8_ble_mesh.c	misra-c2012-12.1	2
-libs/ra8_ble_host/src/ra8_ble_mesh.c	misra-c2012-15.5	12
-libs/ra8_ble_host/src/ra8_ble_mesh.c	misra-c2012-8.4	6
-libs/ra8_ble_host/src/ra8_ble_security.c	misra-c2012-12.1	2
-libs/ra8_ble_host/src/ra8_ble_security.c	misra-c2012-15.5	21
-libs/ra8_ble_host/src/ra8_ble_security.c	misra-c2012-20.1	4
-libs/ra8_ble_host/src/ra8_ble_security.c	misra-c2012-8.4	7
-libs/ra8_ble_host/src/ra8_ble_security.c	misra-c2012-9.2	1
 libs/ra8_board_ek_ra8d2/boot/system_init.c	misra-c2012-11.4	1
 libs/ra8_board_ek_ra8d2/boot/system_init.c	misra-c2012-8.11	1
 libs/ra8_board_ek_ra8d2/boot/trustzone_init.c	misra-c2012-15.5	1

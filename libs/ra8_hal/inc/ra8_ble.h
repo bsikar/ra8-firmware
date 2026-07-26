@@ -4,8 +4,8 @@
  * @ingroup grp_hal_system
  *
  * @details
- * The host-side HCI transport the BLE host stack (``libs/ra8_ble_host``,
- * NimBLE) sits on. It is deliberately the controller-agnostic seam:
+ * The host-side HCI transport the NimBLE host stack (via ``port/nimble``)
+ * sits on. It is deliberately the controller-agnostic seam:
  *
  *   - Open / close the HCI transport.
  *   - Send raw HCI command and HCI ACL data packets.

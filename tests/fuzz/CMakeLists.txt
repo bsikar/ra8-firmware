@@ -84,7 +84,6 @@ set(RA8_FUZZ_TARGETS
     fuzz_ra8_jpeg_sw_block
     fuzz_ra8_epub
     fuzz_ra8_modem_at
-    fuzz_ra8_ble_att
     fuzz_ra8_usb_pal
     fuzz_ra8_tls
     fuzz_ra8_canfd
@@ -109,9 +108,7 @@ set(RA8_FUZZ_TARGETS
 # shadow-gap skip in ra8_sim_mmap.c does not affect them:
 #   fuzz_ra8_canfd    -- stages a CFDRF[0] RX block and decodes via ra8_canfd_receive
 #   fuzz_ra8_usb_pal  -- ra8_mstp_init + ra8_usb_pal_init / _ep_* touch USBFS regs
-#   fuzz_ra8_ble_att  -- ra8_ble_host_init -> ra8_ble_open writes the BLE
-#                       controller block at 0x40700000
-set(RA8_FUZZ_MMIO_TARGETS fuzz_ra8_canfd fuzz_ra8_usb_pal fuzz_ra8_ble_att)
+set(RA8_FUZZ_MMIO_TARGETS fuzz_ra8_canfd fuzz_ra8_usb_pal)
 
 foreach(_t ${RA8_FUZZ_TARGETS})
   # fuzz_log_sink.c installs a discard ra8_log byte sink before main() so no
@@ -131,7 +128,6 @@ foreach(_t ${RA8_FUZZ_TARGETS})
             ${FW_ROOT}/libs/ra8_modem_at/inc
             ${FW_ROOT}/libs/ra8_net_pal/inc
             ${FW_ROOT}/libs/ra8_epub/inc
-            ${FW_ROOT}/libs/ra8_ble_host/inc
             ${FW_ROOT}/libs/ra8_usb_pal/inc
             ${FW_ROOT}/libs/ra8_tls/inc
             ${FW_ROOT}/libs/ra8_fs/inc
