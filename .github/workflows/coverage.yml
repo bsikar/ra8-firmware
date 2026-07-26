@@ -53,9 +53,30 @@ jobs:
           # ci-parity: infra -- runner package provisioning only; runs no
           # project check. The coverage-report gate hard-fails when gcovr is
           # still absent afterwards, so a failed install can never look green.
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake gcc g++ gcovr python3
+          #
+          # Probe first, apt only for what is genuinely absent. ra8-ci is an
+          # ephemeral pod booted from the devcontainer image: it already carries
+          # this entire toolchain, and its runner user has NO passwordless sudo,
+          # so an unconditional `sudo apt-get` dies on "sudo: a password is
+          # required" before the gate ever runs. The probe makes this step a
+          # no-op on the pod and still self-heals a bare host runner. Same shape
+          # as the tidy job's dependency provisioning in firmware.yml.
+          set -euo pipefail
+          missing=""
+          command -v make >/dev/null 2>&1 || missing="$missing build-essential"
+          command -v cmake >/dev/null 2>&1 || missing="$missing cmake"
+          command -v gcc >/dev/null 2>&1 || missing="$missing gcc"
+          command -v g++ >/dev/null 2>&1 || missing="$missing g++"
+          command -v gcovr >/dev/null 2>&1 || missing="$missing gcovr"
+          command -v python3 >/dev/null 2>&1 || missing="$missing python3"
+          if [ -n "$missing" ]; then
+            echo "installing:$missing"
+            sudo apt-get update
+            # shellcheck disable=SC2086
+            sudo apt-get install -y --no-install-recommends $missing
+          else
+            echo "build + coverage toolchain already present -- nothing to install"
+          fi
 
       - run: bash scripts/ci.sh --gate coverage-report
 

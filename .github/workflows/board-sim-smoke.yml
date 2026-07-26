@@ -76,15 +76,30 @@ jobs:
           # ci-parity: infra -- runner package provisioning only; runs no
           # project check. Capstone is board_sim's disassembly-only dependency
           # (not the instruction-decode variable), so the distro package is fine
-          # and is installed every run rather than frozen after the first.
-          # Unicorn is deliberately NOT installed here: it is pinned to an exact
-          # version (docs/TOOLCHAIN.md) and provisioned as a reproducible source
-          # build. The board-sim gates verify the runtime Unicorn matches the
-          # pin and FAIL LOUDLY otherwise, so a skewed or absent Unicorn can
-          # never silently produce a green board_sim run -- which is the #354
-          # defect the removed `if ! ldconfig | grep libunicorn` guard created.
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libcapstone-dev
+          # and the header the build needs either exists or it does not -- there
+          # is no version to skew past, which is what makes a probe safe here.
+          #
+          # Probe-then-install, because ra8-ci is an ephemeral pod booted from
+          # the devcontainer image: libcapstone-dev is already in that image and
+          # the pod's runner user has NO passwordless sudo, so an unconditional
+          # `sudo apt-get` dies on "sudo: a password is required" before the
+          # gate ever runs. The probe no-ops on the pod and still provisions a
+          # bare host runner.
+          #
+          # This is NOT the #354 guard that was removed: that one skipped the
+          # version-pinned UNICORN install and let a skewed Unicorn go
+          # unnoticed. Unicorn is still deliberately NOT installed here -- it is
+          # pinned to an exact version (docs/TOOLCHAIN.md) and provisioned as a
+          # reproducible source build, and the board-sim gates verify the
+          # runtime Unicorn matches the pin and FAIL LOUDLY otherwise, so a
+          # skewed or absent Unicorn can never silently produce a green run.
+          set -euo pipefail
+          if [ -f /usr/include/capstone/capstone.h ]; then
+            echo "libcapstone-dev already present -- nothing to install"
+          else
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libcapstone-dev
+          fi
 
       - run: bash scripts/ci.sh --gate board-sim-smoke
       - run: bash scripts/ci.sh --gate board-sim-io-fabric
@@ -129,15 +144,30 @@ jobs:
           # ci-parity: infra -- runner package provisioning only; runs no
           # project check. Capstone is board_sim's disassembly-only dependency
           # (not the instruction-decode variable), so the distro package is fine
-          # and is installed every run rather than frozen after the first.
-          # Unicorn is deliberately NOT installed here: it is pinned to an exact
-          # version (docs/TOOLCHAIN.md) and provisioned as a reproducible source
-          # build. The board-sim gates verify the runtime Unicorn matches the
-          # pin and FAIL LOUDLY otherwise, so a skewed or absent Unicorn can
-          # never silently produce a green board_sim run -- which is the #354
-          # defect the removed `if ! ldconfig | grep libunicorn` guard created.
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libcapstone-dev
+          # and the header the build needs either exists or it does not -- there
+          # is no version to skew past, which is what makes a probe safe here.
+          #
+          # Probe-then-install, because ra8-ci is an ephemeral pod booted from
+          # the devcontainer image: libcapstone-dev is already in that image and
+          # the pod's runner user has NO passwordless sudo, so an unconditional
+          # `sudo apt-get` dies on "sudo: a password is required" before the
+          # gate ever runs. The probe no-ops on the pod and still provisions a
+          # bare host runner.
+          #
+          # This is NOT the #354 guard that was removed: that one skipped the
+          # version-pinned UNICORN install and let a skewed Unicorn go
+          # unnoticed. Unicorn is still deliberately NOT installed here -- it is
+          # pinned to an exact version (docs/TOOLCHAIN.md) and provisioned as a
+          # reproducible source build, and the board-sim gates verify the
+          # runtime Unicorn matches the pin and FAIL LOUDLY otherwise, so a
+          # skewed or absent Unicorn can never silently produce a green run.
+          set -euo pipefail
+          if [ -f /usr/include/capstone/capstone.h ]; then
+            echo "libcapstone-dev already present -- nothing to install"
+          else
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libcapstone-dev
+          fi
 
       - run: bash scripts/ci.sh --gate board-sim-matrix
 
@@ -194,14 +224,29 @@ jobs:
           # ci-parity: infra -- runner package provisioning only; runs no
           # project check. Capstone is board_sim's disassembly-only dependency
           # (not the instruction-decode variable), so the distro package is fine
-          # and is installed every run rather than frozen after the first.
-          # Unicorn is deliberately NOT installed here: it is pinned to an exact
-          # version (docs/TOOLCHAIN.md) and provisioned as a reproducible source
-          # build. The board-sim gates verify the runtime Unicorn matches the
-          # pin and FAIL LOUDLY otherwise, so a skewed or absent Unicorn can
-          # never silently produce a green board_sim run -- which is the #354
-          # defect the removed `if ! ldconfig | grep libunicorn` guard created.
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libcapstone-dev
+          # and the header the build needs either exists or it does not -- there
+          # is no version to skew past, which is what makes a probe safe here.
+          #
+          # Probe-then-install, because ra8-ci is an ephemeral pod booted from
+          # the devcontainer image: libcapstone-dev is already in that image and
+          # the pod's runner user has NO passwordless sudo, so an unconditional
+          # `sudo apt-get` dies on "sudo: a password is required" before the
+          # gate ever runs. The probe no-ops on the pod and still provisions a
+          # bare host runner.
+          #
+          # This is NOT the #354 guard that was removed: that one skipped the
+          # version-pinned UNICORN install and let a skewed Unicorn go
+          # unnoticed. Unicorn is still deliberately NOT installed here -- it is
+          # pinned to an exact version (docs/TOOLCHAIN.md) and provisioned as a
+          # reproducible source build, and the board-sim gates verify the
+          # runtime Unicorn matches the pin and FAIL LOUDLY otherwise, so a
+          # skewed or absent Unicorn can never silently produce a green run.
+          set -euo pipefail
+          if [ -f /usr/include/capstone/capstone.h ]; then
+            echo "libcapstone-dev already present -- nothing to install"
+          else
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libcapstone-dev
+          fi
 
       - run: bash scripts/ci.sh --gate sil-integration
