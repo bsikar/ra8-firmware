@@ -14,6 +14,26 @@ if [[ "${1:-}" == "--no-verify" ]]; then
   exit 0
 fi
 
+# -----------------------------------------------------------------------------
+# PINNED TOOL RESOLUTION -- the same helper every CI gate uses (#333).
+# -----------------------------------------------------------------------------
+# SOURCED, not copied. use_pinned_tool_path() prepends the directories the
+# pinned host tools live in, so this hook resolves the same binaries the
+# lint-py-shell gate does no matter how the shell was entered -- a login shell,
+# a non-interactive `ssh dev`, a GUI git client, or an editor whose PATH is
+# little more than /usr/bin:/bin. That divergence is not hypothetical: the hook
+# was reaching shellcheck 0.9.0 (which reports findings the pinned 0.11.0 does
+# not) and no ruff at all on a Mac that has both pinned tools installed, so
+# every commit on that box went out under --no-verify.
+#
+# The pins themselves are NOT restated here. They live in
+# .devcontainer/Dockerfile and are read by check_tool_versions.py, which is what
+# gate_lint_py_shell calls through require_tool_versions -- one definition of
+# truth for what "pinned" means, with the hook and the gate as two readers.
+# shellcheck source=scripts/ci/lib/tool_env.sh
+. scripts/ci/lib/tool_env.sh
+use_pinned_tool_path
+
 # Get list of staged files
 staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
 
@@ -348,15 +368,45 @@ if ! python3 scripts/checks/check_script_references.py; then
   error_found=1
 fi
 
-# Python lint + format (ruff) over scripts/, tools/, tests/.
-if ! python3 scripts/checks/check_ruff.py; then
+# Pinned-version guard for the three tools the two gates below resolve, exactly
+# as gate_lint_py_shell does it. --selftest first, so a comparator that stopped
+# judging versions turns THIS red instead of waving every version through.
+#
+# A wrong or missing tool is a HARD FAIL, never a skip. Neither ruff nor
+# ShellCheck reports the same findings across adjacent releases,
+# so a hook that lints under whatever happens to be on PATH gives a
+# verdict CI will not reproduce -- and one that skips ruff entirely because a
+# non-login PATH cannot see it is the "gate that silently does nothing" defect
+# in its purest form. Remediation when this fires is to install the pin
+# (`pip install --user ruff==<pin>` lands in ~/.local/bin, which
+# use_pinned_tool_path puts ahead of a distro or Homebrew build), not to lower
+# the bar.
+if ! python3 scripts/checks/check_tool_versions.py --selftest; then
+  echo "[FAIL] check_tool_versions.py selftest failed -- the version"
+  echo "       comparator is broken, so no pin below can be trusted."
+  error_found=1
+fi
+if ! require_tool_versions ruff shellcheck shfmt; then
+  echo "[FAIL] a pinned lint tool is missing or the wrong version."
+  echo "   The pins live in .devcontainer/Dockerfile. Install the pinned"
+  echo "   build (~/.local/bin wins over /usr/local and /opt/homebrew);"
+  echo "   do NOT commit under a different version -- its findings are"
+  echo "   not the findings CI will produce."
+  error_found=1
+fi
+
+# Python lint + format (ruff) over every tracked first-party Python file.
+# --require: a missing ruff FAILS here rather than printing a notice and
+# exiting 0, which is what let ruff go unrun on this hook entirely.
+if ! python3 scripts/checks/check_ruff.py --require; then
   echo "[FAIL] ruff lint/format finding(s)."
   echo "   Fix the finding or run 'ruff format'."
   error_found=1
 fi
 
-# Shell lint + format (shellcheck --severity=warning + shfmt).
-if ! python3 scripts/checks/check_shell.py; then
+# Shell lint + format (shellcheck --severity=style + opt-in checks, and shfmt).
+# --require for the same reason as ruff above.
+if ! python3 scripts/checks/check_shell.py --require; then
   echo "[FAIL] shellcheck/shfmt finding(s)."
   echo "   Fix the finding or run 'shfmt -w -i 2 -ci <file>'."
   error_found=1

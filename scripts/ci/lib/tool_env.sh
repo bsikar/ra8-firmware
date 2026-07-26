@@ -36,17 +36,26 @@ if [ -z "${_RA8_TOOL_ENV_SH:-}" ]; then
   # directory a login shell adds and a non-login shell does not, so it is the
   # one that actually differs; /usr/local/bin (shellcheck, shfmt, actionlint,
   # hadolint, clang-format-22) is normally already present and is re-asserted
-  # only for completeness. RA8_TOOL_BIN is an operator override for a box that
-  # keeps its pinned tools elsewhere.
+  # only for completeness. /opt/homebrew/bin is where an Apple-Silicon Mac keeps
+  # the same set -- the developer box runs the git hooks through this helper too
+  # (scripts/git/pre-commit), and there Homebrew is the ONLY source of the
+  # pinned shellcheck/shfmt/ruff while /usr/local/bin holds unrelated
+  # vendor symlinks. It is listed after /usr/local/bin so it ends up AHEAD of
+  # it: an Intel-era leftover under /usr/local must not outrank the current
+  # Homebrew build. On Linux the directory does not exist and the entry is
+  # inert. RA8_TOOL_BIN is an operator override for a box that keeps its pinned
+  # tools elsewhere.
   #
-  # Ordering matches a login shell: ~/.local/bin wins over /usr/local/bin, which
-  # is why a directory already on PATH is left in place (not reordered) while a
-  # missing one is prepended. Only directories that exist are added, and an
-  # already-present directory is never duplicated, so repeated calls are inert.
+  # Ordering matches a login shell: ~/.local/bin wins over the system prefixes,
+  # which is why a directory already on PATH is left in place (not reordered)
+  # while a missing one is prepended. Only directories that exist are added, and
+  # an already-present directory is never duplicated, so repeated calls are
+  # inert.
   use_pinned_tool_path() {
     local dir
     for dir in \
       /usr/local/bin \
+      /opt/homebrew/bin \
       "${HOME:-}/.local/bin" \
       "${RA8_TOOL_BIN:-}"; do
       [ -n "${dir}" ] && [ -d "${dir}" ] || continue
