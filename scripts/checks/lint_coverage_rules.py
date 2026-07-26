@@ -164,6 +164,8 @@ EXT_CLASS: dict[str, str] = {
     ".example": "text",
     ".args": "text",
     ".defs": "text",
+    ".env": "text",
+    ".defaults": "text",
     # Binary payloads
     ".png": "binary",
     ".jpg": "binary",
@@ -260,7 +262,6 @@ EXEMPT_PREFIXES: tuple[tuple[str, str], ...] = (
     # which is the same class of wrongness as one that conceals uncovered code.
     # Everything else under fixtures/ classifies as data on its own merits.
     ("tests/fuzz/corpus/", "libFuzzer corpora, machine-generated random inputs"),
-    ("esp32/third_party/", "vendored ESP-IDF and esp-hosted sources"),
     (".devcontainer/p10k.zsh", "vendored powerlevel10k theme config, not a project script"),
 )
 

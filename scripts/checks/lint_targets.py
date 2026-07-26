@@ -95,7 +95,6 @@ LANGUAGE_EXCLUDED_PREFIXES = {
 BUILD_TREE_ROOTS = frozenset(
     {
         "docs",  # docs/build/ -- generated Doxygen HTML
-        "esp32",  # esp32/build/ -- esp32/Makefile writes here
         "examples",  # examples/**/<app>/build/ -- per-app CMake output
         "local-poc",  # local-poc/**/build/ -- git-excluded PoC tree
         "port",  # port/**/build/

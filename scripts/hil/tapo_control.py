@@ -26,7 +26,7 @@ cluster is down.  The resolved values land in the environment as:
   TAPO_PI_IP,    TAPO_PI_MAC    -- Pi plug
 
 OpenBao consumer credentials (BAO_ADDR, ROLE_ID, SECRET_ID) live outside the
-repo in ~/.config/hil/openbao.env; see scripts/hil/secrets.py for details.
+repo in ~/.config/hil/openbao.env; see scripts/hil/hil_secrets.py for details.
 
 Usage:
   python3 scripts/hil/tapo_control.py <board|pi> [status|on|off|cycle]

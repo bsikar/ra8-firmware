@@ -13,16 +13,15 @@ the conclusion is worth writing down so the next person does not repeat it:
     published style guide to encode, and the analysers that do read assembly
     (objdump, radare2, Ghidra) consume ASSEMBLED objects, not source text.
   * `as` / `gcc -c` does validate syntax -- but only for one target, with that
-    target's toolchain present and the right `-I` and `-D` set. The two files
-    here are for DIFFERENT architectures: `port/threadx/.../*.S` is Armv8.1-M
-    Thumb and `esp32/boot/start.S` is rv32imac. The tree provisions
-    arm-none-eabi only, so an assemble-based gate could check one file and
-    would have to SKIP the other -- and a gate that skips is the exact defect
-    this suite exists to eliminate.
+    target's toolchain present and the right `-I` and `-D` set. The first-party
+    assembly in the tree is `port/threadx/.../*.S`, Armv8.1-M Thumb, and only
+    arm-none-eabi is provisioned. An assemble-based gate would therefore be
+    silent on any source written for a target whose toolchain is absent -- and
+    a gate that skips is the exact defect this suite exists to eliminate.
   * Where assembling IS possible it is already happening: the ThreadX port file
-    is assembled by the `build-cross` gate as part of every ThreadX app. The
-    RISC-V file is assembled by nothing in CI, because no riscv toolchain is
-    installed, so structural checking is its ONLY coverage.
+    is assembled by the `build-cross` gate as part of every ThreadX app. This
+    text-level checker is the toolchain-independent layer on top of that, and is
+    the ONLY coverage for any assembly a provisioned toolchain cannot build.
 
 So this enforces what is mechanically checkable about assembly source as text,
 in the same spirit as `check_linker_scripts.py` (which exists because no linter

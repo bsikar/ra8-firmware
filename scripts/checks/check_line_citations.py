@@ -14,8 +14,8 @@ Per CLAUDE.md "Code Style / Comment citations":
 
 Scope (derived, not a hardcoded root list -- #358):
   Scans C / C++ source comments in every first-party C file (via
-  lint_targets, so tools/ and esp32/ -- which the old SCAN_ROOTS tuple
-  silently omitted -- are covered). Flags tokens matching
+  lint_targets, so tools/ -- which the old SCAN_ROOTS tuple
+  silently omitted -- is covered). Flags tokens matching
   `<file>.<ext>:<line>` inside `// ...` or `/* ... */` comments.
 
   Also scans every first-party Markdown (`.md`) / plain-text (`.txt`)

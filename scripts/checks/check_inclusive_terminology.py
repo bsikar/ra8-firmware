@@ -53,7 +53,6 @@ SCAN_ROOTS: tuple[str, ...] = (
     "docs",
     "cmake",
     ".github",
-    "esp32",  # first-party ESP32-C6 companion sub-project (drivers/ours, src, hal)
     "tools",  # first-party host tools incl. tools/ra8_emulator (same bar per CLAUDE.md)
 )
 

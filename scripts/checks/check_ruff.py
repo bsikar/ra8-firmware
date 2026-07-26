@@ -14,7 +14,7 @@ paths bypass exclusions without that flag, which would drag
 ``libs/third_party`` into the gate.
 
 The previous revision hardcoded ``TARGETS = ("scripts", "tools", "tests")``.
-That left seven first-party files -- ``esp32/tools/`` and the HIL fixture
+That left seven first-party files -- host tooling and the HIL fixture
 generators under ``examples/`` -- unlinted and unformatted for the life of the
 gate, hiding 33 lint findings and 3 unformatted files.  It is the same
 hardcoded-scan-list defect as #358 / #332 / #296, so the list is derived here

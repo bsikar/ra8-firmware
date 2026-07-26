@@ -32,10 +32,7 @@ WHAT IT COVERS AND HOW IT FINDS IT
    toolchain file) and ``ra8_cache_store_demo`` (LevelX standalone mode, which
    is mutually exclusive with the LevelX the unified build selects) are picked
    up without this file knowing either fact.
-3. ``esp32/``, whose build is a plain Makefile for a RISC-V target rather than
-   CMake. Its compile lines are read straight out of ``make -n``, so the flags
-   come from the Makefile itself and cannot drift from it.
-4. A last-resort derivation for TUs that NO configure compiles, described
+3. A last-resort derivation for TUs that NO configure compiles, described
    below.
 
 Step 2 is the load-bearing one. A hardcoded residual list is the exact defect
@@ -117,11 +114,12 @@ UNIFIED_MIDDLEWARE_OFF = ("RA8_USE_LEVELX_STANDALONE",)
 
 # Roots whose C is cross-compiled firmware, i.e. exactly the code the host
 # compile database cannot describe.
-FIRMWARE_ROOTS = ("examples/", "port/", "esp32/")
+FIRMWARE_ROOTS = ("examples/", "port/")
 
 # Vendored SOUP under a firmware root -- CLAUDE.md exempts it from first-party
-# standards, so it is not part of what this database must cover.
-FIRMWARE_EXEMPT = ("esp32/third_party/",)
+# standards, so it is not part of what this database must cover. None exists
+# today; kept as the extension point if a firmware root ever vendors SOUP.
+FIRMWARE_EXEMPT: tuple[str, ...] = ()
 
 # A firmware tree this size cannot legitimately collapse to a handful of TUs.
 # Fewer than this means a configure silently failed and the "merged" database
@@ -217,7 +215,7 @@ class Database:
         return added
 
     def add(self, directory: Path, source: Path, argv: list[str]) -> None:
-        """Add one hand-assembled entry (the non-CMake esp32 build)."""
+        """Add one hand-assembled compile-database entry (used by the derived-command pass)."""
         key = os.path.realpath(str(source))
         self.entries.setdefault(
             key,
@@ -387,33 +385,7 @@ def configure_residual_apps(db: Database, scratch: Path, verbose: bool) -> list[
 
 
 # ---------------------------------------------------------------------------
-# Pass 3 -- esp32, a Makefile build for a RISC-V target
-# ---------------------------------------------------------------------------
-def absorb_esp32(db: Database, verbose: bool) -> None:
-    """Read esp32's compile lines out of its own Makefile via ``make -n``."""
-    esp_dir = REPO_ROOT / "esp32"
-    if not (esp_dir / "Makefile").is_file():
-        return
-    dry = run(["make", "-n", "-B", "all"], cwd=esp_dir)
-    if dry.returncode != 0:
-        sys.stderr.write(f"ERROR: `make -n` in esp32/ failed:\n{dry.stderr[-2000:]}\n")
-        sys.exit(1)
-    added = 0
-    for line in join_continuations(dry.stdout):
-        argv = shlex.split(line)
-        if "-c" not in argv or not argv[0].endswith("gcc"):
-            continue
-        source = argv[argv.index("-c") + 1]
-        if not source.endswith(".c"):
-            continue
-        db.add(esp_dir, esp_dir / source, argv)
-        added += 1
-    if verbose:
-        print(f"[db] esp32 (make -n) -> +{added}")
-
-
-# ---------------------------------------------------------------------------
-# Pass 4 -- derive a command for TUs no configure builds, then prove it works
+# Pass 3 -- derive a command for TUs no configure builds, then prove it works
 # ---------------------------------------------------------------------------
 def entry_argv(entry: dict) -> list[str]:
     """The compile command of a database entry, as an argv list."""
@@ -737,7 +709,6 @@ def main() -> int:
     if args.verbose:
         print(f"[db] unified -> {len(db.entries)} entries")
     configure_residual_apps(db, scratch, args.verbose)
-    absorb_esp32(db, args.verbose)
     uncovered = derive_unbuilt(db, scratch, args.verbose)
     out_path = db.write(out_dir)
 
