@@ -59,7 +59,13 @@ _INIT_FRACTION = 10  # Prototype minority density: 1/_INIT_FRACTION of cells.
 _BYTE_LEVELS = 256  # Threshold texture depth (8-bit).
 _ROW_BYTES = 16  # Byte literals per emitted C source row (clang-format fit).
 
-_OUT = Path(__file__).resolve().parents[2] / "libs" / "ra8_gfx" / "src" / "ra8_gfx_dither_mask_internal.h"
+_OUT = (
+    Path(__file__).resolve().parents[2]
+    / "libs"
+    / "ra8_gfx"
+    / "src"
+    / "ra8_gfx_dither_mask_internal.h"
+)
 
 
 def _wrap(value: int) -> int:
@@ -129,7 +135,7 @@ def _initial_pattern(kernel: list[tuple[int, int, int]]) -> tuple[list[bool], li
     moves the tightest cluster's pixel into the largest void until the two
     coincide -- the fixed point at which the pattern is maximally homogeneous.
     """
-    rng = random.Random(_SEED)
+    rng = random.Random(_SEED)  # noqa: S311 -- non-crypto: deterministic mask seed
     ones = _N // _INIT_FRACTION
     chosen = rng.sample(range(_N), ones)
     pattern = [False] * _N
