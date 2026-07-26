@@ -130,7 +130,7 @@ constVariablePointer
 # sh_line_t / sh_* members are populated and read across the app's eight
 # TUs (sh_book.c, sh_cover.c, sh_reader.c, ...); cppcheck analyzes the
 # header per-TU and cannot see the cross-TU reads.
-unusedStructMember:examples/ek_ra8d2/hw_validated/hil/ereader_shelf/sh_app.h
+unusedStructMember:examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/sh_app.h
 
 # unusedStructMember on the board_sim board-view status struct. Its fields are
 # read in tools/ra8_emulator/src/display/board_overlay.c via a pointer to the struct declared

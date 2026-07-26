@@ -45,7 +45,7 @@ OUT_DIR="$ROOT/content/compiled"
 COMPILER="$ROOT/tools/epub_compile/epub_compile.py"
 MANIFEST_GEN="$ROOT/tools/epub_compile/gen_manifest.py"
 MANIFEST_HDR="$ROOT/libs/ra8_book/inc/ra8_book_library.h"
-SHELF_HDR="$ROOT/examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h"
+SHELF_HDR="$ROOT/examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/library.h"
 MAX_EDGE="${RA8_BOOK_MAX_EDGE:-1024}"
 
 # Single source of truth for the ereader_shelf demo subset: one entry per baked

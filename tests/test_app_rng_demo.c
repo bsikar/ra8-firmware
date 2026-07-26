@@ -3,7 +3,7 @@
  * @brief Integration test: ra8_psa_crypto_random round-trip from rng_demo
  *
  * @details
- * Mirrors examples/ek_ra8d2/rng_demo/main.c bring-up: ra8_psa_crypto_init
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/rng_demo/main.c bring-up: ra8_psa_crypto_init
  * -> ra8_psa_crypto_random(buf, 32) -> nibble-to-hex conversion. Each
  * test exercises a distinct branch in the demo's emit-one-line path so
  * MC/DC for the four-condition compound decision is fully covered.

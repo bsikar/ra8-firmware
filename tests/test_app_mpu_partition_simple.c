@@ -3,7 +3,7 @@
  * @brief Integration test: single-region MPU RO partition demo
  *
  * @details
- * Mirrors examples/ek_ra8d2/mpu_partition_simple/main.c bring-up:
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/main.c bring-up:
  * build a one-entry RO region table covering a 32-byte aligned
  * scratch buffer and feed it to ra8_mpu_configure. The host shim
  * does not actually trap the demo's probe write -- the test

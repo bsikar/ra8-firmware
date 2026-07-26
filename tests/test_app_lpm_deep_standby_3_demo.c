@@ -3,7 +3,7 @@
  * @brief Integration test: LPM init + DPSIER2.DRTCAIE + WUPEN0.RTCALM + DSBY1
  *
  * @details
- * Mirrors examples/ek_ra8d2/lpm_deep_standby_3_demo/main.c bring-up:
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_3_demo/main.c bring-up:
  * ra8_lpm_init -> ra8_lpm_arm_dpsier(2, DRTCAIE) ->
  * ra8_lpm_arm_wupen0_bits(RTCALM) ->
  * ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_3). The host sim

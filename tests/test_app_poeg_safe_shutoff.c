@@ -3,7 +3,7 @@
  * @brief Integration test: POEG safe-shutoff demo logic + model semantics
  *
  * @details
- * Mirrors examples/ek_ra8d2/hw_validated/hil/poeg_safe_shutoff/main.c. The POEG
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/main.c. The POEG
  * register sequencing is owned + covered by ra8_poeg's own unit tests
  * (test_ra8_poeg.c); this test pins down:
  *

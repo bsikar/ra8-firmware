@@ -3,7 +3,7 @@
  * @brief Integration test: LVD / PVD VCC-monitor bring-up (pure logic)
  *
  * @details
- * Mirrors examples/ek_ra8d2/lvd_monitor_demo/main.c. The demo's
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/lvd_monitor_demo/main.c. The demo's
  * hardware-touching paths (PRCR unlock, ra8_lvd_channel_init,
  * ra8_lvd_get_status) are owned + covered by ra8_lvd's own unit tests; this
  * test pins down the app-level pure logic:

@@ -40,7 +40,7 @@ fi
 # books, and regenerating from LFS sources needs git-lfs + Pillow that CI lacks.
 # So emit a 0-book stub (with the same struct/symbols) when the real header is
 # absent; `make books` still produces the full library for HIL / deployment.
-shelf_lib="examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h"
+shelf_lib="examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/library.h"
 if [ ! -f "$shelf_lib" ]; then
   echo "build_all: emitting a 0-book stub $shelf_lib (run 'make books' for the full library)"
   cat >"$shelf_lib" <<'STUB'

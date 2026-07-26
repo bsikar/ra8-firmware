@@ -2,7 +2,7 @@
 # Per-app Makefile for the `pagecache` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_validated/hil/pagecache/
+#   cd examples/ek_ra8d2/hil_needs_revalidation/pagecache/
 #   make             # configure + build -> build/pagecache.elf
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
