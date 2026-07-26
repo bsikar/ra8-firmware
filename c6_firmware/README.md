@@ -1,0 +1,95 @@
+# ESP32-C6 wireless co-processor firmware
+
+The EK-RA8D2 gains Wi-Fi + Bluetooth by pairing the RA8D2 host with an
+**ESP32-C6** acting as a wireless co-processor. The C6 runs Espressif's
+**esp-hosted-mcu** `network_adapter` application (the peripheral-side, or
+upstream "slave", firmware) over a SPI transport; the RA8 is the host that
+drives it.
+
+**Zero first-party code runs on the C6.** The C6 image is entirely Espressif
+esp-hosted-mcu, vendored-in as Software Of Unknown Provenance (SOUP). This
+directory holds only the *build recipe* (pinned versions, our proven
+`sdkconfig.defaults`, and reproducible build/flash scripts) -- not any source
+that runs on the C6. The RA8-side host driver is a separate follow-on and is
+**not** part of this directory.
+
+- SOUP qualification: [`../docs/SOUP/esp-hosted.md`](../docs/SOUP/esp-hosted.md)
+- Architecture: [`../docs/design/c6_wireless_architecture.md`](../docs/design/c6_wireless_architecture.md)
+
+## Pinned versions
+
+Single source of truth: [`pins.env`](pins.env).
+
+| Item | Value |
+|------|-------|
+| esp-idf | `v5.5.4` |
+| esp-hosted-mcu | commit `949bb30` (`949bb30612747a3bd9e402eda8d01fbfa1f8503e`) |
+| esp-hosted-mcu FW | `2.12.11` (`network_adapter` app) |
+| Target | `esp32c6` |
+
+## SPI pin map (ESP32-C6 GPIO numbers)
+
+Inclusive name first, Espressif legacy name in parentheses.
+
+| Signal | GPIO | esp-idf `sdkconfig` key |
+|--------|------|-------------------------|
+| CS (Chip Select) | GPIO0 | `CONFIG_ESP_SPI_HSPI_GPIO_CS` |
+| COPI (Controller Out / MOSI) | GPIO1 | `CONFIG_ESP_SPI_HSPI_GPIO_MOSI` |
+| CIPO (Controller In / MISO) | GPIO2 | `CONFIG_ESP_SPI_HSPI_GPIO_MISO` |
+| SCK (clock / CLK) | GPIO3 | `CONFIG_ESP_SPI_HSPI_GPIO_CLK` |
+| DATA_READY | GPIO4 | `CONFIG_ESP_SPI_GPIO_DATA_READY` |
+| HANDSHAKE | GPIO6 | `CONFIG_ESP_SPI_GPIO_HANDSHAKE` |
+| RESET | disconnected (-1) | `CONFIG_ESP_SPI_GPIO_RESET` |
+
+### Config gotcha: which pin leaves are settable
+
+In `sdkconfig.defaults` the **settable** SPI pin leaves are
+`CONFIG_ESP_SPI_HSPI_GPIO_{CS,MOSI,MISO,CLK}`. The similarly named
+`CONFIG_ESP_SPI_GPIO_{CS,MOSI,MISO,CLK}` symbols are **derived from those and
+are ignored** if you set them directly -- edit the `HSPI` leaves. By contrast,
+`CONFIG_ESP_SPI_GPIO_DATA_READY` and `CONFIG_ESP_SPI_GPIO_HANDSHAKE` are
+directly settable.
+
+## Build
+
+The dev box does **not** have esp-idf installed -- build on the Pi bench host
+(the only machine with esp-idf). The build is fully reproducible from the pins:
+
+```sh
+./c6_firmware/build.sh
+```
+
+`build.sh` requires `idf.py` on PATH and asserts esp-idf `v5.5.x`, then:
+
+1. clones esp-hosted-mcu and checks out the pinned commit `949bb30`,
+2. copies our `sdkconfig.defaults` into the upstream peripheral-side project,
+3. cleans (`rm -rf build sdkconfig dependencies.lock managed_components`),
+4. runs `idf.py set-target esp32c6 && idf.py build`,
+5. prints the four output `.bin` paths.
+
+The fetched clone lands at `c6_firmware/esp-hosted-mcu/` and is git-ignored
+(SOUP, fetched at build time -- never committed).
+
+## Flash
+
+Flash over the **CH343 USB-UART bridge** (VID:PID `1a86:55d3`), which
+enumerates as `/dev/ttyACM1` on the bench host. Do **not** use the C6 native
+USB-JTAG interface to write the image: it fails with `EPIPE` partway through
+`write_flash`.
+
+```sh
+./c6_firmware/flash.sh                 # default port from pins.env
+./c6_firmware/flash.sh /dev/ttyACM1    # explicit port
+```
+
+The flash-size / mode / freq are pinned to the proven `16MB` / `dio` / `80m`
+values in `pins.env`; a wrong flash size is the other common bring-up failure.
+
+## Layout
+
+| File | Purpose |
+|------|---------|
+| `pins.env` | Single source of truth: pinned versions + SPI pin map |
+| `sdkconfig.defaults` | Proven esp-hosted-mcu config (verbatim from the bench) |
+| `build.sh` | Fetch pinned upstream, apply config, clean, build |
+| `flash.sh` | Flash the four artifacts over the CH343 bridge |

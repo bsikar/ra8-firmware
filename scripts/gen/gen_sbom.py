@@ -557,6 +557,37 @@ REGISTRY: tuple[Component, ...] = (
         ),
     ),
     Component(
+        key="esp-hosted-mcu",
+        name="Espressif esp-hosted-mcu (network_adapter co-processor firmware)",
+        version="FW 2.12.11 (network_adapter) @ git 949bb30, esp-idf v5.5.4",
+        ctype="firmware",
+        group="espressif",
+        url="https://github.com/espressif/esp-hosted-mcu",
+        path="c6_firmware/esp-hosted-mcu",
+        provenance=PROV_NOT_VENDORED,
+        description=(
+            "ESP32-C6 wireless co-processor firmware; runs on the C6, not in the RA8 image."
+        ),
+        purl="pkg:github/espressif/esp-hosted-mcu@949bb30612747a3bd9e402eda8d01fbfa1f8503e",
+        spdx="Apache-2.0",
+        license_note=(
+            "Built from source at flash time onto the ESP32-C6; "
+            "not linked into the RA8 firmware binary."
+        ),
+        upstream_commit="949bb30612747a3bd9e402eda8d01fbfa1f8503e",
+        scope="excluded",
+        extra_notes=(
+            "NOT vendored: c6_firmware/build.sh fetches the pinned upstream "
+            "commit at build time into the git-ignored c6_firmware/esp-hosted-mcu/. "
+            "The build recipe (pins + proven sdkconfig.defaults) is the record; "
+            "see c6_firmware/README.md and docs/SOUP/esp-hosted.md.",
+            "Co-processor firmware: it runs on the ESP32-C6 (Wi-Fi/BLE), not on "
+            "the RA8D2, and is not part of the RA8 linked image -- hence "
+            "scope=excluded. Zero first-party code runs on the C6.",
+            "esp-idf toolchain pinned at v5.5.4; firmware version 2.12.11.",
+        ),
+    ),
+    Component(
         key="fonts/Literata",
         name="Literata (Literata-Regular.ttf)",
         version="3.103 (TTF name table)",
