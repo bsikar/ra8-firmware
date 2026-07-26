@@ -29,8 +29,7 @@
   block:
     - name: Download the pinned Arm toolchain tarball (sha256-verified)
       ansible.builtin.get_url:
-        url: >-
-          https://developer.arm.com/-/media/Files/downloads/gnu/{{ hil_bench_arm_gcc_release }}/binrel/arm-gnu-toolchain-{{ hil_bench_arm_gcc_release }}-aarch64-arm-none-eabi.tar.xz
+        url: "{{ hil_bench_arm_gcc_url }}"
         dest: /tmp/ra8-armgcc.tar.xz
         checksum: "sha256:{{ hil_bench_arm_gcc_sha256_aarch64 }}"
         mode: "0644"

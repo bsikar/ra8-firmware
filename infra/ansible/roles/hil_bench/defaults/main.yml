@@ -34,6 +34,10 @@ hil_bench_arm_gcc_sha256_aarch64: "c8824bffd057afce2259f7618254e840715f33523a3d4
 # What `arm-none-eabi-gcc -dumpfullversion` prints for the release above -- used
 # to skip the install idempotently when it is already present.
 hil_bench_arm_gcc_dumpversion: "13.3.1"
+# Download URL (arm-developer.com), aarch64 host. URLs are the standard
+# line-length exception.
+# yamllint disable-line rule:line-length
+hil_bench_arm_gcc_url: "https://developer.arm.com/-/media/Files/downloads/gnu/{{ hil_bench_arm_gcc_release }}/binrel/arm-gnu-toolchain-{{ hil_bench_arm_gcc_release }}-aarch64-arm-none-eabi.tar.xz"
 
 # Vendor tools that are NOT apt-installable (manual SEGGER / Renesas downloads).
 # The role FAILS LOUD if they are missing rather than silently degrading -- a
