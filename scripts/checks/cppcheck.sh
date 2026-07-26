@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ra8-firmware - cppcheck Static Analysis Script
 #
 # Runs cppcheck across libs/ and examples/ (excluding libs/third_party/) with

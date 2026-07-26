@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 # flash.sh -- Flash an Intel HEX firmware image to an attached EK-RA8D2 via SEGGER J-Link.
