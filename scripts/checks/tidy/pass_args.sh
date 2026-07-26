@@ -226,7 +226,7 @@ tools_pass_args() {
   local cflag
   local pkg
   if command -v pkg-config &>/dev/null; then
-    # unicorn + capstone: tools/board_sim. libcurl: tools/media_dl's network
+    # unicorn + capstone: tools/ra8_emulator. libcurl: tools/media_dl's network
     # backend. Without the include dir clang-tidy cannot find the header and
     # reports clang-diagnostic-error instead of linting the file at all -- a
     # silent hole exactly like the one #296 closed, so keep this in step with

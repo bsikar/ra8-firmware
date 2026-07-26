@@ -102,6 +102,11 @@ _INCLUDE_ROOT_PATTERNS = (
     "tools/*",
     "tools/*/inc",
     "tools/*/src",
+    # a tool whose src/ is grouped into domain subdirs (ra8_emulator:
+    # engine/periph/usb/display/io) keeps its *_internal.h beside the .c;
+    # a cross-boundary include from tests/ needs the subdir on the path,
+    # so derive those roots too (the same courtesy libs/*/* already gets).
+    "tools/*/src/*",
     "tools/*/generated",
 )
 

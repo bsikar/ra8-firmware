@@ -27,7 +27,7 @@
  *
  * On the EK-RA8D2 the SCI8 pins surface as the J-Link OB VCOM port; typing into
  * a terminal at 115200 8N1 echoes each character back and toggles LED1. Under
- * tools/board_sim, ``--input <str>`` feeds the RX queue and the echo appears as
+ * tools/ra8_emulator, ``--input <str>`` feeds the RX queue and the echo appears as
  * captured ``[uart]`` output.
  *
  * @note Unlike the other demos, this one drives SCI8 directly rather than the
@@ -85,7 +85,7 @@ static const uint8_t k_uart_irq_banner[] = "uart_irq_echo ready\r\n";
  * Incremented only inside ``uart_irq_rx_cb`` (reached via the real RXI ->
  * ra8_isr_dispatch -> driver path). A non-zero value is direct evidence the
  * interrupt-driven receive ran; read externally by J-Link (HIL) and by
- * tools/board_sim (emulator).
+ * tools/ra8_emulator (emulator).
  *
  * @note Read externally only; the firmware main loop never reads it back.
  * @since 0.1.0

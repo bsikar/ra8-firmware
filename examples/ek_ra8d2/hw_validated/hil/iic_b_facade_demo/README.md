@@ -45,7 +45,7 @@ Liskov-substitutable "twin I2C backends" property the facade exists to provide.
 
 ## SIM vs bench
 
-`tools/board_sim` (`board_periph_i2c.c`) models the IIC_B controller bus (the
+`tools/ra8_emulator` (`board_periph_i2c.c`) models the IIC_B controller bus (the
 GT911 answers `PRODUCT_ID`) AND plays the **external** I2C controller that
 drives the firmware's target role, so BOTH halves run headless: the controller
 reads `id0=0x39` and the peripheral count is non-zero. `scripts/sim/sil_all.sh`

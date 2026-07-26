@@ -417,7 +417,7 @@ static void test_irq_fault_and_timeout(void)
  * poll -> read-output path through a host-side MOCK of the board_sim NPU
  * execution model. The mock decodes the command stream via the SHARED
  * ra8_npu_sim_cmd.h convention (so it can never drift from
- * tools/board_sim/src/board_periph_npu.c) and applies the op to the tensor
+ * tools/ra8_emulator/src/periph/board_periph_npu.c) and applies the op to the tensor
  * arenas, then latches STATUS exactly as the sim does: cmd_end on success, a
  * cmd_parse fault on a stream it cannot interpret (honest model -- no faked
  * completion). The NPU register window is plain host RAM here, so the driver

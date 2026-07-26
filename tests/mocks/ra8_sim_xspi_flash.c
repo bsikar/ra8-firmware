@@ -8,7 +8,7 @@
  * @details
  * See ``ra8_sim_xspi_flash.h`` for the model contract. The implementation
  * mirrors the board_sim peripheral model
- * (``tools/board_sim/src/board_periph_xspi.c``), including the inverted
+ * (``tools/ra8_emulator/src/periph/board_periph_xspi.c``), including the inverted
  * backing-store trick: each byte stores the complement of the flash
  * content, so the all-zero BSS image IS the erased (0xFF) part and a fresh
  * test process commits no resident pages for the 16 MiB windows until a

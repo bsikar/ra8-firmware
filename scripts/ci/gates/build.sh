@@ -16,12 +16,12 @@
 
 # --- tools-build ----------------------------------------------------------
 # #335/#309: COMPILES AND LINKS every first-party CMake host tool -- media_dl,
-# ra8_viewer, ra8_fmt, mkbookimg, mkfontimg. They were linted (#296 widened
+# rabook_viewer, rabook_imagepack, mkbookimg, mkfontimg. They were linted (#296 widened
 # clang-tidy to tools/) and NONE was ever built by a job, so a change that
 # parsed and linted cleanly could break the build or the link with nothing
 # going red -- and media_dl could not build on Linux at all, which is the only
 # kind of runner this project has. tools/cache_bench, tools/glyph_bench and
-# tools/reader_vmem are already built by the cache-bench gate; tools/board_sim
+# tools/reader_vmem are already built by the cache-bench gate; tools/ra8_emulator
 # by the board-sim gates; tools/epub_compile, tools/mcp and tools/vela are
 # Python and are covered by lint-py-shell.
 #
@@ -44,7 +44,7 @@
 # warning-only run, and check_tool_warning_flags.py --require-compilers makes a
 # silently-dropped arm a hard failure rather than a vacuous pass.
 #
-# ra8_viewer's Cocoa window layer is macOS-only by design. Off the APPLE path
+# rabook_viewer's Cocoa window layer is macOS-only by design. Off the APPLE path
 # CMake compiles ra8_viewer_view_stub.c in its place, so the portable reader
 # core still builds, links, and renders here -- the whole tool is gated on
 # Linux rather than skipped for the sake of its window backend.
@@ -61,24 +61,24 @@ _tb_media_dl() (
   ctest --test-dir "$root/media_dl" --output-on-failure
 )
 
-# ra8_viewer: build, link, and exercise the headless render. Linking is not
+# rabook_viewer: build, link, and exercise the headless render. Linking is not
 # evidence the reader still decodes anything, so the committed CBZ fixture is
 # driven through the headless path and the pixels are checked -- a zero exit
 # with no image would be a vacuous pass.
-_tb_ra8_viewer() (
+_tb_rabook_viewer() (
   set -e
   local cc="$1" root="$2" jobs="$3"
-  echo "tools-build[$cc]: ra8_viewer"
-  CC="$cc" cmake -S "$REPO_ROOT/tools/ra8_viewer" -B "$root/ra8_viewer" \
+  echo "tools-build[$cc]: rabook_viewer"
+  CC="$cc" cmake -S "$REPO_ROOT/tools/rabook_viewer" -B "$root/rabook_viewer" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-  cmake --build "$root/ra8_viewer" -j "$jobs"
-  test -x "$root/ra8_viewer/ra8_viewer"
+  cmake --build "$root/rabook_viewer" -j "$jobs"
+  test -x "$root/rabook_viewer/rabook_viewer"
 
   local ppm="$root/viewer_page0.ppm"
-  "$root/ra8_viewer/ra8_viewer" \
-    "$REPO_ROOT/tools/ra8_viewer/fixtures/sample.cbz" --headless --dump-ppm "$ppm"
+  "$root/rabook_viewer/rabook_viewer" \
+    "$REPO_ROOT/tools/rabook_viewer/fixtures/sample.cbz" --headless --dump-ppm "$ppm"
   if [[ "$(head -c 2 "$ppm" 2>/dev/null)" != "P6" ]]; then
-    echo "ERROR: ra8_viewer --headless did not write a P6 PPM." >&2
+    echo "ERROR: rabook_viewer --headless did not write a P6 PPM." >&2
     echo "       A zero exit with no image would be a vacuous pass." >&2
     return 1
   fi
@@ -89,20 +89,20 @@ _tb_ra8_viewer() (
   # here. The corpus refuses a lying/oversized/overflowing header cleanly and
   # still decodes a valid atlas -- a regression would otherwise need a human at
   # a window to notice.
-  echo "tools-build: ra8_viewer malformed-input security corpus"
-  bash "$REPO_ROOT/tools/ra8_viewer/tests/run_corpus.sh" \
-    "$root/ra8_viewer/ra8_viewer" "$root/ra8_viewer_corpus"
+  echo "tools-build: rabook_viewer malformed-input security corpus"
+  bash "$REPO_ROOT/tools/rabook_viewer/tests/run_corpus.sh" \
+    "$root/rabook_viewer/rabook_viewer" "$root/ra8_viewer_corpus"
 )
 
 # The remaining first-party CMake tools no job built. #335 asked for these to
 # be enumerated rather than fixing media_dl alone. They have no test binary of
 # their own, so building and linking them IS the check: each pulls a different
-# slice of the firmware (ra8_fmt the JOF/JPEG stack, mkbookimg and mkfontimg
+# slice of the firmware (rabook_imagepack the JOF/JPEG stack, mkbookimg and mkfontimg
 # the whole FAT/exFAT driver) host-side.
 _tb_other_tools() (
   set -e
   local cc="$1" root="$2" jobs="$3" tool
-  for tool in ra8_fmt mkbookimg mkfontimg; do
+  for tool in rabook_imagepack mkbookimg mkfontimg; do
     echo "tools-build[$cc]: $tool"
     CC="$cc" cmake -S "$REPO_ROOT/tools/$tool" -B "$root/$tool" \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -139,12 +139,12 @@ gate_tools_build() (
   for cc in clang-18 gcc-14; do
     root="$base/$cc"
     _tb_media_dl "$cc" "$root" "$jobs"
-    _tb_ra8_viewer "$cc" "$root" "$jobs"
+    _tb_rabook_viewer "$cc" "$root" "$jobs"
     _tb_other_tools "$cc" "$root" "$jobs"
     dbs+=(
       "$root/media_dl/compile_commands.json"
-      "$root/ra8_viewer/compile_commands.json"
-      "$root/ra8_fmt/compile_commands.json"
+      "$root/rabook_viewer/compile_commands.json"
+      "$root/rabook_imagepack/compile_commands.json"
       "$root/mkbookimg/compile_commands.json"
       "$root/mkfontimg/compile_commands.json"
     )

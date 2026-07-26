@@ -36,8 +36,8 @@ Confirmed on a real EK-RA8D2 (2026-06-28): the analog comparator drives
 `PVD1SR.MON` above the 2.80 V threshold on a healthy 3.3 V rail, so the
 gate is green (`lvd: pvd1 thr=2.80V mon=above det=0 ok=Y`).
 
-`tools/board_sim` also models the PVD status
-(`tools/board_sim/src/board_periph_lvd.c`): `PVD1SR.MON` reads "above
+`tools/ra8_emulator` also models the PVD status
+(`tools/ra8_emulator/src/periph/board_periph_lvd.c`): `PVD1SR.MON` reads "above
 threshold" with `DET` clear -- the steady state of a healthy 3.3 V rail --
 so the headless `board_sim_smoke.sh` gate sees the same `mon=above ok=Y`
 banner. The configuration path and the status-decode / verdict logic are

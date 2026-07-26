@@ -43,7 +43,7 @@ a persistent fuse.)
 
 ## Why this is in hw_pending
 
-`tools/board_sim` does **not** model the DOTF APB window (`0x4026_8800` /
+`tools/ra8_emulator` does **not** model the DOTF APB window (`0x4026_8800` /
 `0x4026_8900`), so the self-test register reads are not backed by a real AES
 core -- the bring-up + self-test calls return `k_ra8_ok` and the demo reports
 `ok=Y`, but the genuine AES BIST pass/fail result and the in-place decryption

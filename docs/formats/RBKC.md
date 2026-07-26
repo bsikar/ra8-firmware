@@ -425,7 +425,7 @@ Walden -- Henry David Thoreau
   chapters=2 nodes=338 attrs=47 css=2 images=0
   epub=27 KB -> rabook=25 KB (95%); inflated=66 KB
 
-$ ./build/ra8_fmt/ra8_fmt inspect /tmp/real.rabook --verbose
+$ ./build/rabook_imagepack/rabook_imagepack inspect /tmp/real.rabook --verbose
 RBKC rabook container: 26315 bytes
   chunk_bytes    : 65536
   inflated_total : 68527

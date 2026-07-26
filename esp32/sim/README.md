@@ -1,7 +1,7 @@
 # sim/ -- host-side simulator + companion-IC link (roadmap)
 
 This directory will hold the ESP32-C6 host simulator, following the RA8 tree's
-`tools/board_sim` philosophy: run the **real firmware** on the host with the
+`tools/ra8_emulator` philosophy: run the **real firmware** on the host with the
 peripherals **modelled**, so the application and the two-chip protocol can be
 exercised with zero hardware. Nothing here is implemented yet; this is the plan
 the spike commits to.

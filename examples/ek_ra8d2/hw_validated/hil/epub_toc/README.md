@@ -33,8 +33,8 @@ make -C examples/epub_toc flash        # flash via on-board J-Link OB
 ## Run on the M85 simulator (no hardware)
 
 ```sh
-cmake --build tools/board_sim/build -j
-./tools/board_sim/build/board_sim build/epub_toc.elf --sd-new 64:fat32 \
+cmake --build tools/ra8_emulator/build -j
+./tools/ra8_emulator/build/ra8_emulator build/epub_toc.elf --sd-new 64:fat32 \
   --dump-sym g_etoc_err --dump-sym g_etoc_ncx_kind --dump-sym g_etoc_nav_kind \
   --dump-sym g_etoc_bad_kind --dump-sym g_etoc_heartbeat
 ```

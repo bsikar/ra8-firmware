@@ -19,7 +19,7 @@
  * the J-Link OB CDC channel. LED1 toggles on a match, LED2 on a mismatch. The
  * golden ``0xE6B215C5`` is a real EK-RA8D2 capture: a 16x16 green box
  * (``0xFF00FF00``) at (8,8) on a zero background, byte-identical to the
- * register-mode ::ra8_drw_fill_rect result and reproduced by ``tools/board_sim``
+ * register-mode ::ra8_drw_fill_rect result and reproduced by ``tools/ra8_emulator``
  * (its DLR model executes the same list), so this app is SIM == HIL.
  *
  * The framebuffer is poisoned once up front so the very first display-list

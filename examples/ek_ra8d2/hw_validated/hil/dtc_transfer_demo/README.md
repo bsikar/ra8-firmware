@@ -42,7 +42,7 @@ silicon-specific fixes were required, both of which `board_sim` had masked:
    transfer on silicon, so the demo leaves that IRQ masked and polls `s_dst`;
    the `IELSR` slot + `DTCE` still activate the DTC.
 
-`tools/board_sim` (`tools/board_sim/src/board_periph_dtc.c`) runs the transfer
+`tools/ra8_emulator` (`tools/ra8_emulator/src/periph/board_periph_dtc.c`) runs the transfer
 synchronously on the `ELSEGR0` write -- resolving the DTCE-enabled `IELSR`
 slot, reading the Transfer Information block at `DTCVBR + slot*4`, decoding the
 `MR` mode word, and copying the block -- so the headless `board_sim_smoke.sh`

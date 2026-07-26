@@ -30,7 +30,7 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` shadows the SRAM
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` shadows the SRAM
  * ECC control window (SRAMCRn / SRAMESR) so the bring-up + status read run
  * and report ``ok=Y`` with a clean ESR -- but a real ECC *error* only
  * appears when a bit actually flips, which needs silicon (or an

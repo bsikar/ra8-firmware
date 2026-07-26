@@ -21,7 +21,7 @@ and checks each end-to-end on the RA8P1 profile:
 
 ```sh
 make                                 # -> ./build/npu_infer.elf (RA8P1)
-../../../tools/board_sim/build/board_sim ./build/npu_infer.elf --device ra8p1
+../../../tools/ra8_emulator/build/ra8_emulator ./build/npu_infer.elf --device ra8p1
 ```
 
 Expected console line:

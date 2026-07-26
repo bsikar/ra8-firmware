@@ -32,19 +32,19 @@ on the Linux CI runner.
 ## Build & run
 
 ```sh
-cd tools/board_sim && cmake -B build -S . && cmake --build build -j
-./build/board_sim <firmware.elf>                      # headless: boot + MMIO report
-./build/board_sim <firmware.elf> --view               # live board view (macOS window)
-./build/board_sim <firmware.elf> --ppm out.ppm        # write the full composite frame
-./build/board_sim <firmware.elf> --panel <file.toml>  # size the window to a display
-./build/board_sim <firmware.elf> --size 480x272       # explicit size (overrides --panel)
-./build/board_sim <firmware.elf> --input "ping\r\n"   # feed bytes to the console UART RX
-./build/board_sim <firmware.elf> --usb-in "ping"      # feed bytes to the USB CDC bulk OUT pipe
-./build/board_sim <firmware.elf> --sd <image>         # attach a pre-built FAT image as the microSD
-./build/board_sim <firmware.elf> --sd-new 64:fat32    # create + attach a blank 64 MiB FAT32 card
-./build/board_sim <firmware.elf> --sd-new 16 --save-sd out.img  # blank card, then dump it after
-./build/board_sim <firmware.elf> --trace-sym ra8_usb_device_attach   # log each entry to a function
-./build/board_sim <firmware.elf> --device ra8p1       # emulate the RA8P1 (adds the Ethos-U55 NPU window)
+cd tools/ra8_emulator && cmake -B build -S . && cmake --build build -j
+./build/ra8_emulator <firmware.elf>                      # headless: boot + MMIO report
+./build/ra8_emulator <firmware.elf> --view               # live board view (macOS window)
+./build/ra8_emulator <firmware.elf> --ppm out.ppm        # write the full composite frame
+./build/ra8_emulator <firmware.elf> --panel <file.toml>  # size the window to a display
+./build/ra8_emulator <firmware.elf> --size 480x272       # explicit size (overrides --panel)
+./build/ra8_emulator <firmware.elf> --input "ping\r\n"   # feed bytes to the console UART RX
+./build/ra8_emulator <firmware.elf> --usb-in "ping"      # feed bytes to the USB CDC bulk OUT pipe
+./build/ra8_emulator <firmware.elf> --sd <image>         # attach a pre-built FAT image as the microSD
+./build/ra8_emulator <firmware.elf> --sd-new 64:fat32    # create + attach a blank 64 MiB FAT32 card
+./build/ra8_emulator <firmware.elf> --sd-new 16 --save-sd out.img  # blank card, then dump it after
+./build/ra8_emulator <firmware.elf> --trace-sym ra8_usb_device_attach   # log each entry to a function
+./build/ra8_emulator <firmware.elf> --device ra8p1       # emulate the RA8P1 (adds the Ethos-U55 NPU window)
 ```
 
 ### Emulated part: RA8D2 (default) or RA8P1
@@ -127,12 +127,12 @@ escapes decoded -- so an echo example like `uart_irq_echo` can be driven
 headlessly.
 
 The display is configurable: `--panel` takes a flat `key = value` descriptor
-(`name`, `width`, `height`, ... -- the files in `tools/board_sim/panels/`),
+(`name`, `width`, `height`, ... -- the files in `tools/ra8_emulator/panels/`),
 so the emulator presents any screen, not just the EK-RA8D2 1024x600.
 
 Or from the repo root: `make sim-<app> [PANEL=<name>]` (e.g.
 `make sim-ereader_ui`) cross-builds the app and opens its live window
-sized by `tools/board_sim/panels/<PANEL>.toml` (default `ek_ra8d2`). Close to
+sized by `tools/ra8_emulator/panels/<PANEL>.toml` (default `ek_ra8d2`). Close to
 exit. board_sim is the single simulator: it boots the *real cross-compiled
 `.elf`*, so a chrome app like `ereader_ui` doubles as the UI preview --
 there is no separate native UI tool.

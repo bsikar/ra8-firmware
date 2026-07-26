@@ -214,7 +214,7 @@ macro(_ra8_app_collect_sources)
   # include root, -DRA8_WEBP_USE_ARENA, the SOUP warning flags -- lives in
   # cmake/ra8_webp_vendor.cmake and is NOT restated here: open-coding it is
   # what left the recipe unreachable from a standalone host tool, which is why
-  # tools/ra8_fmt and tools/media_dl each faked ra8_jof_priv_webp_transcode()
+  # tools/rabook_imagepack and tools/media_dl each faked ra8_jof_priv_webp_transcode()
   # rather than compile the decoder that was already in the tree.
   #
   # ra8_webp's own .c facade/arena are globbed by the LIBS loop above (or by

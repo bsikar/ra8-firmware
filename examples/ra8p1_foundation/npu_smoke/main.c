@@ -25,7 +25,7 @@
  *
  * The command stream is NOT a real Vela program: it uses the tiny, documented
  * board_sim / host-test convention in ``ra8_npu_sim_cmd.h`` (an "SE55" magic word
- * plus an add-constant opcode). Under ``tools/board_sim --device ra8p1`` the NPU
+ * plus an add-constant opcode). Under ``tools/ra8_emulator --device ra8p1`` the NPU
  * model decodes it and applies the op to the tensor arenas, so this app is a
  * DETERMINISTIC, sim-runnable check of the driver protocol + BASEPn region
  * programming -- run it twice and the banner is identical. It is still a

@@ -16,7 +16,7 @@
 #                     sil-integration
 
 # --- board-sim-smoke ------------------------------------------------------
-# board_sim (tools/board_sim) boots the real cross-compiled .elf on an
+# board_sim (tools/ra8_emulator) boots the real cross-compiled .elf on an
 # emulated Cortex-M with the RA8D2 peripheral space modelled, asserting each
 # image reaches its main loop without faulting (no invalid opcode, no unmapped
 # access) and is not parked in a panic/fault halt.

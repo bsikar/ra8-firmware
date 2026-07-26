@@ -36,7 +36,7 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` models the DTC
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the DTC
  * descriptor-table transfer engine (``board_periph_dtc.c``): the ELC
  * software-event trigger activates the controller, which reads the TI via
  * ``DTCVBR`` and copies the block in emulated memory, so the banner reports

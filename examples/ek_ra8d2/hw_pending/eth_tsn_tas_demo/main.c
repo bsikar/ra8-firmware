@@ -36,7 +36,7 @@
  * call returned ``k_ra8_ok``. The programmed entry count, CBS enable / gate
  * bits, and TAS cycle monitor are logged for the bench operator.
  *
- * hw_pending: ``tools/board_sim`` has no Ethernet / ETHA peripheral model, and
+ * hw_pending: ``tools/ra8_emulator`` has no Ethernet / ETHA peripheral model, and
  * the EK-RA8D2 Ethernet wire is marginal (#21), so this is compile-gated and
  * bench-only -- matching the driver-gap example wave (#182-188). Asserting the
  * egress is actually shaped to the schedule needs a multi-node measurement rig

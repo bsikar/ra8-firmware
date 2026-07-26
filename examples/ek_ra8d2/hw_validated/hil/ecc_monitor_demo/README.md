@@ -34,7 +34,7 @@ stays NMI but no error is injected, so the NMI never fires here.
 
 ## Why this is in hw_pending
 
-`tools/board_sim` shadows the SRAM ECC control window (`SRAMCRn` /
+`tools/ra8_emulator` shadows the SRAM ECC control window (`SRAMCRn` /
 `SRAMESR`) so the bring-up + round-trip run and report `ok=Y` -- but
 board_sim does **not** model ECC, so the actual error-detection path (a
 real 1-bit / 2-bit flip setting `SRAMESR`) cannot be exercised on the

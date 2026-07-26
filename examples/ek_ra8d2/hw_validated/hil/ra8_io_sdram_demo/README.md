@@ -33,7 +33,7 @@ make            # -> build/ra8_io_sdram_demo.elf
 ## Run in the simulator
 
 ```
-BOARD_SIM_WALL_S=20 tools/board_sim/build/board_sim build/ra8_io_sdram_demo.elf
+BOARD_SIM_WALL_S=20 tools/ra8_emulator/build/ra8_emulator build/ra8_io_sdram_demo.elf
 ```
 
 Expected console output:

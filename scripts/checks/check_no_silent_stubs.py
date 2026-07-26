@@ -9,7 +9,7 @@ link and the program claim a capability it does not have.  The failure mode is
 worse than a missing feature: the tool links clean, advertises support, and
 fails at runtime (or, worse, silently succeeds having done nothing).
 
-``tools/ra8_fmt/webp_stub.c`` and ``tools/media_dl/webp_stub.c`` were the
+``tools/rabook_imagepack/webp_stub.c`` and ``tools/media_dl/webp_stub.c`` were the
 motivating case.  Each defined the real symbol
 ``ra8_jof_priv_webp_transcode()``, discarded both arguments and returned
 ``k_ra8_err_not_supported`` -- purely so the JOF producer would link
@@ -23,7 +23,7 @@ Calibration
 Most no-op bodies in this tree are *legitimate* -- an early revision of this
 gate flagged 27 candidates of which 24 were correct by design:
 
-  * platform alternatives (``tools/board_sim/src/board_view_stub.c`` is the
+  * platform alternatives (``tools/ra8_emulator/src/display/board_view_stub.c`` is the
     headless stand-in for the Cocoa window layer on Linux CI; it reports
     failure honestly so callers take their headless branch);
   * the fail-closed ``#else`` half of the placeholder-crypto guard, which

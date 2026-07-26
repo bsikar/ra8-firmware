@@ -36,7 +36,7 @@
  *   2. ``ra8_eth_gptp_init`` + ``ra8_ptp_open`` (role ``k_ra8_ptp_role_controller``).
  *   3. Loop once per ``k_gptp_period_ms``.
  *
- * hw_pending: ``tools/board_sim`` has no Ethernet / GPTP peripheral model
+ * hw_pending: ``tools/ra8_emulator`` has no Ethernet / GPTP peripheral model
  * (the GWCA/ETHA/PHY bring-up is shimmed to no-ops there), and the EK-RA8D2
  * Ethernet wire is marginal (#21), so this is a compile-gated, bench-only
  * example. The value it adds is driving the real driver API + a clean ARM

@@ -58,7 +58,7 @@ scripts/hil/run_local.sh battery_monitor_demo      # flash + scrape the banner
 
 ## Simulator: battery control + on-screen gauge
 
-`tools/board_sim` models the MAX17048 fuel gauge, so this app reads a real
+`tools/ra8_emulator` models the MAX17048 fuel gauge, so this app reads a real
 percent over the modelled I2C bus and reaches its banner headlessly. The battery
 state is driven two ways:
 

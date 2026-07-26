@@ -3,7 +3,7 @@
 Pinned reference renders of the `ereader_ui` example's **chrome** (the Library
 and Reading screens, issue #80), used as a regression gate.
 
-`tools/board_sim` boots the real cross-built `ereader_ui.elf` on the emulated
+`tools/ra8_emulator` boots the real cross-built `ereader_ui.elf` on the emulated
 RA8D2 and renders the GLCDC framebuffer deterministically. Each golden is that
 framebuffer for one screen, cropped to the panel region (board_sim's debug
 sidebar is removed so the golden depends only on firmware output) and gzipped

@@ -23,7 +23,7 @@
 # recipe (ARM toolchain, linker script, vector table) and the test build is one
 # monolithic target. A host tool that hand-lists firmware sources therefore had no
 # way to say "and WebP too" short of re-deriving all four parts by hand -- so
-# tools/ra8_fmt and tools/media_dl instead each defined a do-nothing
+# tools/rabook_imagepack and tools/media_dl instead each defined a do-nothing
 # ra8_jof_priv_webp_transcode() that returned k_ra8_err_not_supported purely to
 # satisfy the linker. Both tools linked clean, advertised WebP, and failed at
 # runtime on every WebP source. This module removes the reason those stubs existed:

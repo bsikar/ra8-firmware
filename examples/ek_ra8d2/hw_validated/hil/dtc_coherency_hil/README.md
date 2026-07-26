@@ -60,7 +60,7 @@ completion ISR (which writes `DTCSTS`) racing the in-flight copy.
 
 ## board_sim note
 
-`tools/board_sim` DOES model the DTC transfer engine (`board_periph_dtc.c`): the
+`tools/ra8_emulator` DOES model the DTC transfer engine (`board_periph_dtc.c`): the
 ELC software-event trigger reads the vector-table entry at `DTCVBR + slot*4`,
 fetches the TI, and actually MOVES the bytes in emulated memory, so the **real**
 `ra8_dtc` + ELC path runs in sim and the copy verifies. board_sim's memory is
@@ -82,9 +82,9 @@ Headless `board_sim` (one-shot banner, idle-stop):
 
 ```sh
 BOARD_SIM_WALL_S=15 BOARD_SIM_IDLE_STOP=1 \
-  tools/board_sim/build/board_sim \
+  tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_validated/hil/dtc_coherency_hil/build/dtc_coherency_hil.elf \
-    --panel tools/board_sim/panels/ek_ra8d2.toml
+    --panel tools/ra8_emulator/panels/ek_ra8d2.toml
 ```
 
 The VCOM console line `dtc_coherency_hil: dtc coherent PASS` (or an `[itm]` mirror

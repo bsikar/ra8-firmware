@@ -48,8 +48,8 @@ completion -- every register write is accepted and `ra8_drw_wait_idle`
 returns -- but no pixel is ever written, so the FNV-1a-32 hash is that of the
 untouched zero framebuffer: `76EFDDC5`.
 
-`tools/board_sim` models the engine INERT to match
-(`tools/board_sim/src/board_periph_drw.c`): writes are accepted and
+`tools/ra8_emulator` models the engine INERT to match
+(`tools/ra8_emulator/src/periph/board_periph_drw.c`): writes are accepted and
 discarded, STATUS reads idle, HWREVISION reads 0, and the ORIGIN render
 trigger synthesises nothing. The emulator therefore hashes the same zero
 framebuffer and prints the same `76EFDDC5` banner as the bench -- so this

@@ -28,7 +28,7 @@ LED1 toggles while both injections are caught; LED2 toggles on a miss.
 
 ## Headless gate (board_sim)
 
-`tools/board_sim` (`board_periph_sram.c`) models the decoder self-test: it
+`tools/ra8_emulator` (`board_periph_sram.c`) models the decoder self-test: it
 latches `SRAMESR` on the `bypass -> verify` `SRAMCRn` sequence, so
 `ra8_sram_self_test` reports `out_caught` headlessly and the detection +
 reporting + clear plumbing is proven end to end:

@@ -64,7 +64,7 @@ board_sim models the microSD over `ra8_sdmmc_spi`; attach a blank card with
 `--sd-new <MiB>[:fat16|fat32]`. From the repo root:
 
 ```
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_pending/ra8_io_sd_demo/build/ra8_io_sd_demo.elf \
     --sd-new 64:fat16
 ```

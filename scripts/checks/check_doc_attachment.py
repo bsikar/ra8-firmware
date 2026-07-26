@@ -11,7 +11,7 @@ twice and measured "coverage" goes up while one symbol silently loses its
 documentation and another gains a duplicate.  Every defect this gate finds was
 therefore invisible to -- and in some cases rewarded by -- the existing gates.
 
-Real defects that motivated this (both found by eye, in ``tools/ra8_viewer``):
+Real defects that motivated this (both found by eye, in ``tools/rabook_viewer``):
 
 * ``main()``'s block sat immediately above ``viewer_log_sink()``'s block, so
   ``main()`` was undocumented and the sink was documented twice.

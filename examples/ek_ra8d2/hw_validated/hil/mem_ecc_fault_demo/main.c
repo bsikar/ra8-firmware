@@ -30,7 +30,7 @@
  *
  * LED1 toggles while both injections are caught; LED2 toggles on a miss.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` (board_periph_sram.c)
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` (board_periph_sram.c)
  * models the decoder self-test: it latches ``SRAMESR`` on the bypass->verify CR
  * sequence so ``out_caught`` is true headlessly, proving the
  * detection/reporting plumbing end to end. It cannot observe the syndrome data

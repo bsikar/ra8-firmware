@@ -80,7 +80,7 @@ store itself is `libs/ra8_cache_store` (`USES levelx_standalone`,
 
 `hil.conf` gates the app in `uart_scrape` mode on the success-only PASS banner.
 Because the whole path is RAM-resident, `scripts/sim/sil_all.sh` runs it headless in
-`tools/board_sim` with no board attached and the emulated run matches the bench.
+`tools/ra8_emulator` with no board attached and the emulated run matches the bench.
 
 ## Host test
 

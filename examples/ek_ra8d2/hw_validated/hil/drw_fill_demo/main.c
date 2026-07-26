@@ -25,7 +25,7 @@
  * ``ra8_drw_cache_flush`` before the verify, and mind the Cortex-M85
  * D-cache (the framebuffer lives in cacheable SRAM) -- see the bench plan.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` models the DRW engine
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the DRW engine
  * faithfully (``board_periph_drw.c``): with the graphics power domain on it
  * rasterizes the ORIGIN-anchored bounding box, so the register sequence paints
  * the same 16x16 green rectangle the bench does and the banner reports

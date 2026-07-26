@@ -31,7 +31,7 @@
  * RTC); if the LOCO is stopped the reference never ticks and the
  * measurement times out.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` models the CAC
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the CAC
  * edge counter (``board_periph_cac.c``): a CACR0.CFME start latches CASTR.MENDF
  * and returns a CACNTBR inside the programmed [CALLVR, CAULVR] window, so
  * ``ra8_cac_measure`` completes with FERRF / OVFF clear and the banner reports

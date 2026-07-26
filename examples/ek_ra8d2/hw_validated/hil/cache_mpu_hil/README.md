@@ -61,9 +61,9 @@ Headless `board_sim` (one-shot banner, idle-stop):
 
 ```sh
 BOARD_SIM_WALL_S=15 BOARD_SIM_IDLE_STOP=1 \
-  tools/board_sim/build/board_sim \
+  tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_validated/hil/cache_mpu_hil/build/cache_mpu_hil.elf \
-    --panel tools/board_sim/panels/ek_ra8d2.toml
+    --panel tools/ra8_emulator/panels/ek_ra8d2.toml
 ```
 
 The VCOM console line `cache_mpu_hil: cache+mpu PASS` (or an `[itm]` mirror of
