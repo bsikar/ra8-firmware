@@ -85,7 +85,6 @@ add_executable(
   src/sim_exc.c
   src/sim_exc_scs.c
   src/sim_idle.c
-  src/board_periph_sd_image.c
   src/sim_insn_seams.c
   src/sim_seam_div0.c
   src/sim_seam_longshift.c
