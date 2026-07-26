@@ -8,7 +8,7 @@
  * @details
  * Models the xSPI manual-command engine plus the on-board IS25LX512M NOR
  * flash at REGISTER level for the host unit-test build, mirroring the
- * board_sim peripheral model in ``tools/board_sim/src/board_periph_xspi.c``.
+ * board_sim peripheral model in ``tools/board_sim/src/periph/board_periph_xspi.c``.
  * It replaces the deleted in-driver ``RA8_SIMULATOR_MODE`` fake-flash
  * short-circuits (#238): with the model installed, ``ra8_xspi_flash.c``
  * runs its real "fill CDBUF, set CDCTL0.TRREQ, poll INTS.CMDCMP, read

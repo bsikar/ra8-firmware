@@ -54,60 +54,60 @@ set(BREW /opt/homebrew)
 # -- see board_periph_block.h). The glob below picks it up automatically; the
 # core keeps no central block list, so blocks can be added in parallel with no
 # edit to this file and no conflict.
-file(GLOB BOARD_PERIPH_BLOCKS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/board_periph_*.c")
+file(GLOB BOARD_PERIPH_BLOCKS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/periph/board_periph_*.c")
 
 if(APPLE)
-  set(BOARD_VIEW_SRC src/board_view.m)
+  set(BOARD_VIEW_SRC src/display/board_view.m)
 else()
-  set(BOARD_VIEW_SRC src/board_view_stub.c)
+  set(BOARD_VIEW_SRC src/display/board_view_stub.c)
 endif()
 
 add_executable(
   board_sim
   src/main.c
-  src/sim_console.c
-  src/sim_elf.c
-  src/sim_engine.c
-  src/sim_memmap.c
-  src/sim_mmio.c
-  src/sim_mpu.c
-  src/sim_prof.c
-  src/sim_args.c
-  src/sim_run.c
-  src/sim_run_guards.c
-  src/sim_run_inner.c
-  src/sim_run_report.c
-  src/sim_trace.c
-  src/sim_tz.c
-  src/sim_view.c
-  src/sim_usbh_seam.c
-  src/sim_cpu1.c
-  src/sim_exc.c
-  src/sim_exc_scs.c
-  src/sim_idle.c
-  src/sim_insn_seams.c
-  src/sim_seam_div0.c
-  src/sim_seam_longshift.c
-  src/sim_seam_sd.c
-  src/sim_seam_mve.c
-  src/board_periph.c
+  src/engine/sim_console.c
+  src/engine/sim_elf.c
+  src/engine/sim_engine.c
+  src/engine/sim_memmap.c
+  src/engine/sim_mmio.c
+  src/engine/sim_mpu.c
+  src/engine/sim_prof.c
+  src/engine/sim_args.c
+  src/engine/sim_run.c
+  src/engine/sim_run_guards.c
+  src/engine/sim_run_inner.c
+  src/engine/sim_run_report.c
+  src/engine/sim_trace.c
+  src/engine/sim_tz.c
+  src/engine/sim_view.c
+  src/engine/sim_usbh_seam.c
+  src/engine/sim_cpu1.c
+  src/engine/sim_exc.c
+  src/engine/sim_exc_scs.c
+  src/engine/sim_idle.c
+  src/engine/sim_insn_seams.c
+  src/engine/sim_seam_div0.c
+  src/engine/sim_seam_longshift.c
+  src/engine/sim_seam_sd.c
+  src/engine/sim_seam_mve.c
+  src/periph/board_periph.c
   ${BOARD_PERIPH_BLOCKS}
-  src/board_usb.c
-  src/board_usb_bridge.c
-  src/board_usb_dev.c
-  src/board_usb_loop.c
-  src/board_usb_vhost.c
-  src/board_usb_host.c
-  src/board_net.c
-  src/board_overlay.c
-  src/board_overlay_draw.c
-  src/board_console.c
-  src/board_input.c
+  src/usb/board_usb.c
+  src/usb/board_usb_bridge.c
+  src/usb/board_usb_dev.c
+  src/usb/board_usb_loop.c
+  src/usb/board_usb_vhost.c
+  src/usb/board_usb_host.c
+  src/io/board_net.c
+  src/display/board_overlay.c
+  src/display/board_overlay_draw.c
+  src/io/board_console.c
+  src/io/board_input.c
   ${BOARD_VIEW_SRC}
 )
 
 if(APPLE)
-  set_source_files_properties(src/board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+  set_source_files_properties(src/display/board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 endif()
 
 # The USB model includes the firmware's register/ELC headers for the exact

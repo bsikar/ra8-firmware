@@ -77,7 +77,7 @@ board_sim runs the real firmware ELF, so a genuine handshake here needs
 two things board_sim does not yet provide:
 
 - **A crypto-complete TLS server on the wire.** board_sim's in-process
-  peer (`tools/board_sim/src/board_net.c`) is a plaintext
+  peer (`tools/board_sim/src/io/board_net.c`) is a plaintext
   Ethernet/ARP/IPv4/ICMP/TCP stack with no TLS. It can echo TCP bytes
   (that is how `threadx_netx_tcp_echo` sim-gates) but cannot complete an
   Mbed TLS handshake.

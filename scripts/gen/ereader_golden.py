@@ -42,7 +42,7 @@ from pathlib import Path
 PPM_HEADER_TOKEN_COUNT = 3
 
 # Width board_sim appends on the right of the panel for its status sidebar.
-# Mirrors ``k_ovl_sidebar_w`` in tools/board_sim/src/board_overlay.c; the crop
+# Mirrors ``k_ovl_sidebar_w`` in tools/board_sim/src/display/board_overlay.c; the crop
 # removes it so the golden depends only on the firmware chrome.
 SIDEBAR_W = 520
 

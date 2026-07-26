@@ -3,7 +3,7 @@
 # board_sim_fb_crc.sh -- board_sim GLCDC framebuffer-CRC gate for glcdc_render.
 #
 # Boots glcdc_render on the board emulator (tools/board_sim) and proves the
-# modelled GLCDC display controller (tools/board_sim/src/board_periph_glcdc.c)
+# modelled GLCDC display controller (tools/board_sim/src/periph/board_periph_glcdc.c)
 # exposes the active graphics-layer framebuffer and that board_sim reads the
 # rendered pixels back out of modelled RAM and checksums them to a stable golden.
 #

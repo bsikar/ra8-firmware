@@ -92,7 +92,7 @@ the board layer, and they match the pins the board_sim IT8951 model drives:
 1. Wire an IT8951 e-paper controller to SPI_B ch0 with `/RESET` on P4_00 and
    `HRDY` on P4_01 (adjust the `k_ep_reset_pin` / `k_ep_hrdy_pin` enums in
    `main.c` and the matching `k_eink_hrdy_*` enums in
-   `tools/board_sim/src/board_periph_eink.c` if a different pinout is used).
+   `tools/board_sim/src/periph/board_periph_eink.c` if a different pinout is used).
 2. `make epaper_refresh` from the repo root, then:
    ```
    make -C examples/ek_ra8d2/hw_pending/epaper_refresh flash
