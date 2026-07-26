@@ -23,7 +23,7 @@ Calibration
 Most no-op bodies in this tree are *legitimate* -- an early revision of this
 gate flagged 27 candidates of which 24 were correct by design:
 
-  * platform alternatives (``tools/board_sim/src/board_view_stub.c`` is the
+  * platform alternatives (``tools/board_sim/src/display/board_view_stub.c`` is the
     headless stand-in for the Cocoa window layer on Linux CI; it reports
     failure honestly so callers take their headless branch);
   * the fail-closed ``#else`` half of the placeholder-crypto guard, which

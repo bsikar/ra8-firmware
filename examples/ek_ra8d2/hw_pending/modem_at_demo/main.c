@@ -15,7 +15,7 @@
  * TODO(real modem): the physical RF link + a populated MikroBUS cellular Click
  * with a live SIM are external hardware this repo cannot carry, so the app is
  * hw_pending. board_sim answers the AT script faithfully with the SCI7 modem
- * model (``tools/board_sim/src/board_periph_modem.c``, ``--modem``), so the app
+ * model (``tools/board_sim/src/periph/board_periph_modem.c``, ``--modem``), so the app
  * boots and walks its whole state machine 0-skip in SIL (SIM == HIL for the AT
  * protocol; only the antenna is unmodelled).
  *

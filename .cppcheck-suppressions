@@ -133,7 +133,7 @@ constVariablePointer
 unusedStructMember:examples/ek_ra8d2/hw_validated/hil/ereader_shelf/sh_app.h
 
 # unusedStructMember on the board_sim board-view status struct. Its fields are
-# read in tools/board_sim/src/board_overlay.c via a pointer to the struct declared
+# read in tools/board_sim/src/display/board_overlay.c via a pointer to the struct declared
 # in the header, which cppcheck cannot follow across the .h boundary.
 unusedStructMember:tools/board_sim/inc/board_overlay.h
 

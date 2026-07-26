@@ -68,7 +68,7 @@ tooling does not provide. The root cause + fix are proven; the final
 ## Why this is in hw_pending
 
 `tools/board_sim` models the `VBTBKRn` window as a reset-retained domain
-(`tools/board_sim/src/board_periph_bkup.c`): the backup bytes live in a
+(`tools/board_sim/src/periph/board_periph_bkup.c`): the backup bytes live in a
 buffer whose reset hook deliberately leaves them untouched, and writes are
 **gated on `VBTBER.VBAE`** (HUM Ch 12.2.6 p 504) so the read/write half
 passes headlessly (`g_bkup_rw_ok = 1`, banner `rw=ok`) only because the demo

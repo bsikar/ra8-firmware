@@ -33,7 +33,7 @@ of the 24 MHz main oscillator against LOCO/32 lands inside the +/-6% window
 ok=Y`).
 
 `tools/board_sim` also models the CAC edge counter
-(`tools/board_sim/src/board_periph_cac.c`). A measurement start
+(`tools/board_sim/src/periph/board_periph_cac.c`). A measurement start
 (`CACR0.CFME = 1`) latches `CASTR.MENDF` and loads `CACNTBR` with the
 midpoint of the firmware's programmed `[CALLVR, CAULVR]` window -- in-band
 by construction -- so `ra8_cac_measure` completes with `FERRF` / `OVFF`

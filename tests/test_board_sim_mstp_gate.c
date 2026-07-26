@@ -4,7 +4,7 @@
  *
  * @details
  * Compiles the engine-free half of the board_sim module-stop model
- * (tools/board_sim/src/board_periph_mstp_model.c) directly on the host and
+ * (tools/board_sim/src/periph/board_periph_mstp_model.c) directly on the host and
  * drives its public seam (board_periph_mstp_internal.h). The board_sim core
  * consults ::board_mstp_addr_stopped before answering an MMIO access to an
  * owning peripheral block; these tests prove the gate table is correct so a

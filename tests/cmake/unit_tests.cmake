@@ -222,7 +222,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_ethosu_sh
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_npu_loader.c)
 
 # test_board_sim_mstp_gate.c (#405) compiles the engine-free board_sim MSTP
-# model (tools/board_sim/src/board_periph_mstp_model.c) alongside it to exercise
+# model (tools/board_sim/src/periph/board_periph_mstp_model.c) alongside it to exercise
 # the address->module-stop-bit gate table directly, so it is registered by hand
 # in tests_board_sim.cmake rather than through the ra8_add_test() auto-glob
 # (which would build it against ra8_core_hal without the model source).
