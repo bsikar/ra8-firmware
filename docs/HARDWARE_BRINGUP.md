@@ -84,9 +84,10 @@ to pristine afterward. All reads were taken over SWD on the live board.
    and each of the 8 lines driven individually 0 then 1. **Result: still
    no real ID** in any case. With U15 released to inputs, its input
    register reads **0xF8** -- the same value the previously-rejected decode
-   saw; the U15<->SW4 bitmap/polarity is unreliable (imported from a
-   different board), so this value is NOT actionable and was not used to
-   recommend any switch position.
+   saw; the exact U15<->SW4 bit mapping is not published in the UM (it is in
+   the EK-RA8D2 Design Package schematic) and has not been verified on this
+   EVM, so this value is NOT actionable and was not used to recommend any
+   switch position.
 3. **Software reset (RSTEN 0x66 + RST 0x99) in BOTH 8D and 1S**, to recover
    a chip possibly stuck in OPI from a prior boot. After each, re-init 1S
    and RDID. **Result: no recovery** (RDID stays 0x00000000 / 0x00FFFFFF).

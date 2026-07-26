@@ -839,15 +839,16 @@ typedef enum : uint8_t {
    *  Bit n = 1 -> SW4-(n+1) reads OFF; bit n = 0 -> reads ON. */
   k_ra8_board_pi4ioe_output_project_default = 0xF2U,
   /** @brief U15 output byte that ELECTRICALLY ENABLES the on-board Octo-SPI
-   *  flash. Value and meaning taken VERBATIM from the working Renesas FSP
-   *  EK-RA8D2 quickstart ``board_cfg_switch_init`` (board_cfg_switch.c),
-   *  which writes 0xF8 to PI4IOE5V6408 reg 0x05: "All Output HIGH except
-   *  OPMOD1/0 mode-selects (bits 0,1) and OSPI_OE_L (bit 2), which must be
-   *  LOW." Bit 2 = OSPI_OE_L is active-low: driving it LOW connects the
-   *  flash's OM_0 bus to the MCU. Our prior 0xFF held OSPI_OE_L HIGH and
-   *  kept the flash off the bus -- the actual root cause of issue #44.
-   *  0xF8 is also the vendor's ``SWITCH_EXPECTED_VALUE`` (the normal
-   *  all-SW4-OFF state), so it is NOT a switch-isolation indicator. */
+   *  flash. Written to PI4IOE5V6408 reg 0x05 (Output State). Meaning derived
+   *  from the PI4IOE5V6408 datasheet register map + EK-RA8D2 v1 UM Sec 4.3.4
+   *  (U15 overrides SW4): all outputs HIGH except OPMOD1/0 mode-selects
+   *  (bits 0,1) and OSPI_OE_L (bit 2), which are LOW. Bit 2 = OSPI_OE_L is
+   *  active-low: driving it LOW connects the flash's OM_0 bus to the MCU.
+   *  Our prior 0xFF held OSPI_OE_L HIGH and kept the flash off the bus -- the
+   *  root cause of issue #44. The exact U15-bit <-> SW4-channel mapping is
+   *  NOT published in the UM (it lives in the EK-RA8D2 Design Package
+   *  schematic); this byte is derived, and the on-hardware verification of
+   *  the mapping on this EVM is tracked with the U15 bring-up work. */
   k_ra8_board_pi4ioe_output_octospi_active = 0xF8U,
   /** @brief Project layout with USBHS in HOST role: the project default
    *  (0xF2) with bit 7 (SW4-8, USBHS role) driven LOW = ON = Host, so

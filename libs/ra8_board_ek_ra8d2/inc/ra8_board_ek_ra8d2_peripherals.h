@@ -87,9 +87,9 @@ extern "C" {
  * @brief Program the U15 I/O expander to request the Octo-SPI SW4 layout.
  *
  * @details
- * Writes ``k_ra8_board_pi4ioe_output_octospi_active`` (0xFF = all SW4 OFF,
- * the layout the Renesas FSP EK-RA8D2 ``ospi_b`` example requires) to the
- * U15 output register with the port set to outputs.
+ * Writes ``k_ra8_board_pi4ioe_output_octospi_active`` (0xF8, the all-SW4-OFF
+ * layout with OSPI_OE_L asserted -- see that enum's definition) to the U15
+ * output register with the port set to outputs.
  *
  * IMPORTANT -- this does NOT, and CANNOT, connect the flash. A firmware
  * sweep over the entire U15 output space (all 256 output bytes, plus
@@ -100,8 +100,9 @@ extern "C" {
  * override* whose GPIOs are NOT in the OSPI DQ/CK/CS path; the flash is
  * gated only by the SW4-3 **analog mux**, which is hardware-only and not
  * reachable from firmware. (When U15 is released to inputs, reg 0x0F reads
- * 0xF8, but the U15<->SW4 bitmap/polarity is unreliable -- imported from a
- * different EK board -- so that value is NOT actionable.) This call is kept
+ * 0xF8, but the exact U15<->SW4 bit mapping is not published in the UM -- it
+ * lives in the EK-RA8D2 Design Package schematic -- and has not yet been
+ * verified on this EVM, so that value is NOT actionable.) This call is kept
  * only as an inert courtesy write; it has no bearing on flash reachability.
  * See ``examples/.../flash_journal/README.md`` and issue #44.
  *
@@ -205,17 +206,19 @@ typedef enum : uint16_t {
  * gate the same on-board mux that SW4 drives, including SW4-8 which
  * selects USB function on J7 (USB-HS): OFF = Device, ON = Host.
  *
- * U15 register convention (PI4IOE5V6408, see Renesas
- * ``ra-fsp-examples/ek_ra8t2/board_cfg_switch.c``):
+ * U15 register convention (from the PI4IOE5V6408 datasheet register map):
  *  - 0x01 Device-ID  (expect 0xA0 or 0xA2)
  *  - 0x03 I/O direction      (1 = output)
  *  - 0x05 Output state       (1 = HIGH = SW4 OFF, 0 = LOW = SW4 ON)
  *  - 0x07 Output Hi-Z        (1 = Hi-Z)
  *  - 0x0D Pull-up / pull-down select
  *
- * Polarity: the FSP reference driver treats ``OFF == output bit HIGH``,
- * so SW4-8 OFF (the silk-screen "Device" position) corresponds to
- * U15.P7 = 1. We write 0xFF (all bits HIGH = all SW4 channels in their
+ * Polarity: the PI4IOE5V6408 datasheet defines a HIGH output bit as the
+ * released (pulled-up) level, so SW4-8 OFF (the silk-screen "Device"
+ * position) corresponds to U15.P7 = 1. The exact bit<->SW4-channel mapping is
+ * not in the UM (it is in the Design Package schematic) and is pending
+ * on-hardware verification on this EVM. We write 0xFF (all bits HIGH = all
+ * SW4 channels in their
  * default OFF position) which puts USB-HS into Device mode and leaves
  * the other muxed peripherals at their EK-RA8D2 default routing.
  *
