@@ -4,7 +4,7 @@
  *
  * @details
  * Replays each drive the app
- * examples/ek_ra8d2/hw_validated/hil/mem_subsystem/main.c performs on the #147
+ * examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/main.c performs on the #147
  * ra8_mem memory hierarchy, on the host-compiled library, and asserts the exact
  * observables the app prints in its banner:
  *

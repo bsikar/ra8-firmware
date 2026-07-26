@@ -64,7 +64,7 @@ static const char* s_tag = "ROT";
  *          e7080738d869454f203979242990e7982209dfc40485fd870b859478cecf4ac0.
  *          Re-key by re-running the ceremony and replacing these bytes.
  * @note    On-silicon ECDSA-P256 + SHA-256 known-answer tests pass on the M85
- *          (hw_validated/hil/psa_crypto_hil and rsip_sha256_kat), this key is
+ *          (hil_needs_revalidation/psa_crypto_hil and rsip_sha256_kat), this key is
  *          the provisioned ceremony key (fingerprint above), and RoT enforcement
  *          is proven end-to-end on silicon by hw_validated/hil/secure_boot_hil
  *          (tampered image rejected, genuine launched).

@@ -3,7 +3,7 @@
  * @brief Integration test: RTC init + set + new ra8_rtc_set_alarm API
  *
  * @details
- * Mirrors examples/ek_ra8d2/rtc_alarm/main.c bring-up flow:
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/rtc_alarm/main.c bring-up flow:
  * ra8_rtc_init -> ra8_rtc_set seed -> ra8_rtc_set_alarm -> AIE enable
  * -> status flag round-trip. Exercises the new ``ra8_rtc_set_alarm``
  * helper introduced for this app, including its NULL-pointer and

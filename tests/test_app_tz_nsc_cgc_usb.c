@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors the multi-module integration-test pattern. The
- * production app at examples/ek_ra8d2/tz_nsc_cgc_usb/main.c reaches
+ * production app at examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/main.c reaches
  * the secure-side CGC driver via three Non-Secure Callable veneers:
  *
  *   - ra8_nsc_cgc_pll2_enable
@@ -66,7 +66,7 @@ typedef enum : uint16_t {
   k_test_cdc_max_packet    = 64U, /**< Bulk-FS packet size.          */
 } test_tz_nsc_cgc_const_t;
 
-/** @brief Pin map mirrors examples/ek_ra8d2/tz_nsc_cgc_usb/main.c. */
+/** @brief Pin map mirrors examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/main.c. */
 static const ra8_port_pin_t k_test_tz_pin_dp =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
 static const ra8_port_pin_t k_test_tz_pin_dm =

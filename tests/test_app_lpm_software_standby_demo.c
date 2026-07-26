@@ -3,7 +3,7 @@
  * @brief Integration test: LPM init + WUPEN0.RTCALM arm + Software Standby entry
  *
  * @details
- * Mirrors examples/ek_ra8d2/lpm_software_standby_demo/main.c bring-up:
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/lpm_software_standby_demo/main.c bring-up:
  * ra8_lpm_init -> ra8_lpm_arm_wupen0_bits(RTCALM) ->
  * ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std). On host builds
  * WFI is a no-op and the host sim mmap records each register write

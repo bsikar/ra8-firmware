@@ -3,7 +3,7 @@
  * @brief Integration test: PDG delay-demo verdict logic (pure)
  *
  * @details
- * Mirrors examples/ek_ra8d2/pdg_delay_demo/main.c. The PDG register
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/pdg_delay_demo/main.c. The PDG register
  * sequencing is owned + covered by ra8_pdg's own unit tests; this test
  * pins down the app-level pure logic:
  *

@@ -3,7 +3,7 @@
  * @brief Integration test: VBATT backup-register demo logic (pure)
  *
  * @details
- * Mirrors examples/ek_ra8d2/bkup_survival_demo/main.c. The hardware
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/main.c. The hardware
  * accessors (ra8_bkup_read_word / write_word) are owned + covered by
  * ra8_bkup's own unit tests; this test pins down the app-level pure logic:
  *

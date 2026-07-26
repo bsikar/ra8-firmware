@@ -1,0 +1,232 @@
+/**
+ * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/main.c
+ * @brief ra8_cache_store on-media render/glyph cache demo for the EK-RA8D2 (#257)
+ *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
+ * @details
+ * Brings the chip up the same way ``crc_demo`` does (CGC -> SysTick -> the
+ * J-Link OB VCOM console @ 115200 8N1), then runs the whole ra8_cache_store
+ * demonstration once through ::cache_store_demo_run:
+ *
+ *   1. Formats + mounts a cache_store over LevelX standalone, bound to a
+ *      RAM-backed NOR driver (::lx_nor_ram_init) that lives entirely in SRAM.
+ *   2. Puts four keyed "render/glyph cache" blobs and reads each back
+ *      byte-identical.
+ *   3. Pins the open-book cover atlas, forces an eviction of a render tile,
+ *      confirms the survivors still resolve and the pinned entry refuses
+ *      eviction, and re-puts a new blob into the reclaimed sectors.
+ *   4. Checkpoint-closes, then re-mounts over the same (persisted) media and
+ *      confirms the survivors + the pin came back and the evicted key stayed
+ *      gone.
+ *
+ * On success it prints ``[rcs] cache_store demo PASS survivors=N ...`` -- the
+ * success-only banner the HIL / SIL scrape keys on -- and then idles, re-emitting
+ * it so the board_sim STOP_ON guard always sees the steady-state line. On any
+ * failure it prints ``[rcs] cache_store demo FAIL stage=S status=C`` instead,
+ * which the negative regex catches.
+ *
+ * ## Why a RAM-backed NOR driver
+ * ra8_cache_store's physical-flash bind is an injected callback. Production binds
+ * the Octo-SPI driver; this demo binds a RAM driver so the entire path runs in
+ * SRAM with no MMIO. That is what makes the run sim-gateable AND makes the
+ * emulated run byte-identical to the on-silicon run (SIM equals HIL): there is no
+ * peripheral for board_sim to model differently from the chip.
+ *
+ * @author Brighton Sikarskie
+ * @date 2026-07-15
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "cache_store_demo.h"
+#include "lx_api.h"
+#include "lx_nor_ram.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cache_store.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
+
+/**
+ * @enum rcs_demo_config_t
+ * @brief Compile-time settings + fixture geometry for the demo app.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_rcs_baud            = 115200U, /**< Console baud (matches crc_demo).             */
+  k_rcs_index_cap       = 16U,     /**< cache_store index slots.                     */
+  k_rcs_staging_bytes   = 512U,    /**< One LevelX logical sector.                   */
+  k_rcs_scratch_bytes   = 1536U,   /**< Read/write scratch (>= largest demo blob).   */
+  k_rcs_logical_sectors = 128U,    /**< Usable LevelX logical-sector span.           */
+  k_rcs_reemit_ms       = 1000U,   /**< Steady-state banner re-emit cadence (ms).    */
+  k_rcs_radix_dec       = 10U,     /**< Decimal radix for the u32 printer.           */
+  k_rcs_u32_buf_size    = 12U,     /**< u32 printer buffer (10 digits + sign + NUL). */
+} rcs_demo_config_t;
+
+/** @brief LevelX control block (statically allocated -- NASA P10 Rule 3). */
+static LX_NOR_FLASH s_nor_flash;
+/** @brief cache_store index array (caller-owned). */
+static ra8_cache_store_entry_t s_index[k_rcs_index_cap];
+/** @brief One-sector staging buffer (caller-owned). */
+static uint8_t s_staging[k_rcs_staging_bytes];
+/** @brief Read/write scratch buffer for the demo core (caller-owned). */
+static uint8_t s_scratch[k_rcs_scratch_bytes];
+
+/** @brief Park the CPU forever after draining the console TX FIFO. */
+static void rcs_panic_halt(void)
+{
+  (void)ra8_board_uart_console_flush();
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+/** @brief Bring CGC + SysTick + the J-Link OB VCOM console up, or panic-halt. */
+static void rcs_setup_or_halt(void)
+{
+  uint32_t cpuclk0_hz = 0U;
+  if (ra8_cgc_init() != k_ra8_ok) {
+    rcs_panic_halt();
+  }
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+    rcs_panic_halt();
+  }
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
+    rcs_panic_halt();
+  }
+  if (ra8_board_uart_console_init((uint32_t)k_rcs_baud) != k_ra8_ok) {
+    rcs_panic_halt();
+  }
+}
+
+/**
+ * @brief Write a NUL-terminated ASCII string to the console (fire-and-forget).
+ * @param[in] s NUL-terminated string, or NULL (ignored).
+ * @return Nothing.
+ * @pre The console is initialised.
+ * @pre @p s is NUL-terminated when non-NULL.
+ * @post On a non-NULL @p s its bytes are queued to the console TX FIFO.
+ * @post A NULL @p s is a no-op.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void rcs_print(const char* s)
+{
+  if (s == nullptr) {
+    return;
+  }
+  (void)ra8_board_uart_console_write((const uint8_t*)s, strlen(s));
+}
+
+/**
+ * @brief Print an unsigned 32-bit value in decimal to the console.
+ * @param[in] value Integer to print.
+ * @return Nothing.
+ * @pre The console is initialised.
+ * @pre None on @p value (full range accepted).
+ * @post The decimal representation of @p value is queued to the console.
+ * @post No other state changes.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void rcs_print_u32(uint32_t value)
+{
+  char     buf[k_rcs_u32_buf_size];
+  uint32_t i = (uint32_t)sizeof(buf);
+  buf[--i]   = '\0';
+  if (value == 0U) {
+    buf[--i] = '0';
+  } else {
+    while ((value != 0U) && (i > 0U)) {
+      buf[--i] = (char)('0' + (value % (uint32_t)k_rcs_radix_dec));
+      value /= (uint32_t)k_rcs_radix_dec;
+    }
+  }
+  rcs_print(&buf[i]);
+}
+
+/**
+ * @brief Emit the one-line verdict banner for a completed demo run.
+ * @param[in] rc  Return code from ::cache_store_demo_run.
+ * @param[in] res Populated demo result.
+ * @return Nothing.
+ * @pre The console is initialised.
+ * @pre @p res reflects the run @p rc came from.
+ * @post Exactly one PASS or FAIL banner line is queued to the console.
+ * @post The banner is success-only on the PASS path (never printed on failure).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void rcs_report(ra8_err_t rc, const cache_store_demo_result_t* res)
+{
+  if ((rc == k_ra8_ok) && (res->status == k_cache_store_demo_ok)) {
+    rcs_print("[rcs] cache_store demo PASS survivors=");
+    rcs_print_u32(res->survivors);
+    rcs_print(" evicted_gone=");
+    rcs_print_u32(res->evicted_stayed_gone ? 1U : 0U);
+    rcs_print(" pin=");
+    rcs_print_u32(res->pin_survived ? 1U : 0U);
+    rcs_print("\r\n");
+    return;
+  }
+  rcs_print("[rcs] cache_store demo FAIL stage=");
+  rcs_print_u32((uint32_t)res->last_stage);
+  rcs_print(" status=");
+  rcs_print_u32((uint32_t)res->status);
+  rcs_print("\r\n");
+}
+
+/** @brief Build the demo config over the app's static fixture buffers. */
+static cache_store_demo_cfg_t rcs_build_cfg(void)
+{
+  return (cache_store_demo_cfg_t){
+    .nor_flash       = &s_nor_flash,
+    .nor_driver_init = lx_nor_ram_init,
+    .index           = s_index,
+    .staging         = s_staging,
+    .scratch         = s_scratch,
+    .staging_bytes   = (uint32_t)sizeof(s_staging),
+    .scratch_bytes   = (uint32_t)sizeof(s_scratch),
+    .logical_sectors = (uint32_t)k_rcs_logical_sectors,
+    .index_cap       = (uint16_t)k_rcs_index_cap,
+  };
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Application entry: bring up clocks + console, run the demo, report.
+ * @return Never returns.
+ * @pre Reset_Handler has copied .data and zeroed .bss.
+ * @pre The shared board boot files installed the vector table.
+ * @post The demo has run once and its verdict banner is streaming steadily.
+ * @post The CPU idles re-emitting the banner (or halts after a fatal init error).
+ * @since 0.1.0
+ */
+int32_t main(void)
+{
+  rcs_setup_or_halt();
+  ra8_isr_globals_enable();
+  rcs_print("[rcs] cache_store demo: mounting RAM-backed LevelX...\r\n");
+
+  cache_store_demo_cfg_t    cfg = rcs_build_cfg();
+  cache_store_demo_result_t res = {};
+  const ra8_err_t           rc  = cache_store_demo_run(&cfg, &res);
+  rcs_report(rc, &res);
+
+  /* Idle, re-emitting the verdict so the STOP_ON / scrape always sees the
+   * steady-state banner and the run reaches its budget cleanly. */
+  while (1) {
+    ra8_delay_ms((uint32_t)k_rcs_reemit_ms);
+    rcs_report(rc, &res);
+  }
+  return 0;
+}
+#pragma GCC diagnostic pop
