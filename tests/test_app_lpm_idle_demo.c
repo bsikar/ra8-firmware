@@ -3,7 +3,7 @@
  * @brief Integration test: LPM init + Sleep-mode entry round-trip
  *
  * @details
- * Mirrors examples/ek_ra8d2/lpm_idle_demo/main.c bring-up:
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/lpm_idle_demo/main.c bring-up:
  * ra8_lpm_init -> ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep). On host
  * builds WFI is a no-op so the call returns immediately and the
  * register state can be checked. Each test exercises one branch of

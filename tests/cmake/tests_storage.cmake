@@ -104,7 +104,7 @@ add_test(NAME test_ra8_cache_store COMMAND test_ra8_cache_store)
 # ra8_err / ra8_check. The example sources live under examples/ (outside the
 # coverage filter), so they add no per-file coverage-floor obligation.
 # ---------------------------------------------------------------------------
-set(RCS_DEMO_DIR ${FW_ROOT}/examples/ek_ra8d2/hw_validated/hil/ra8_cache_store_demo)
+set(RCS_DEMO_DIR ${FW_ROOT}/examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo)
 add_executable(
   test_cache_store_demo
   ${CMAKE_CURRENT_SOURCE_DIR}/test_cache_store_demo.c

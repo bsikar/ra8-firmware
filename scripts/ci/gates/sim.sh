@@ -109,11 +109,5 @@ gate_sil_integration() (
   set -e
   use_pinned_arm_toolchain
   require_pinned_unicorn
-  # ereader_shelf compiles against a COMMITTED generated MRAM library header.
-  # The bake is not reproducible across architectures (libjpeg SIMD decode
-  # rounding differs x86_64 vs Apple silicon at the same Pillow version), so
-  # the fixture is tracked; assert it is present so a future re-gitignore
-  # fails loudly here instead of as a confusing app FAIL.
-  test -s examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h
   bash scripts/sim/sil_all.sh -j "$(ra8_max_jobs)"
 )

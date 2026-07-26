@@ -13,6 +13,13 @@ result is observable in CI.
 Apps that genuinely require a human (push a button, look at the LCD,
 listen to audio) live in [`../manual/`](../manual/).
 
+Apps that were HIL-tiered but did **not** pass the most recent bench run
+(blocked by a bench-config change, an unseated SD card, absent external
+hardware, or a state the harness cannot probe) have moved to
+[`../../hil_needs_revalidation/`](../../hil_needs_revalidation/); that tier's
+README records the real reason and re-validation path for each. Only
+currently-green apps remain here.
+
 ## Build
 
 `make <appname>` from the repo root, e.g. `make blink`, `make
@@ -37,10 +44,6 @@ asserts an expected string appears within a per-app timeout.
 | elc_event_demo | `elc: en=` | 10 s |
 | eth_loopback | `etha: loopback ok` | 20 s |
 | iwdt_demo | `iwdt: refresh in window` | 15 s |
-| lpm_idle_demo | `lpm: wake_count=` | 15 s |
-| power_profiler | `pp: a=` | 15 s |
-| rng_demo | `trng: ` | 10 s |
-| rtc_alarm | `rtc: alarm fired` | 30 s |
 | sdram_benchmark | `sdram: w=` | 20 s |
 | threadx_filex_demo | `ospi FAT roundtrip ok` | 20 s |
 | threadx_ipc_demo | `[ipc_demo]` | 15 s |
@@ -67,7 +70,6 @@ banner on SCI8. Device-mode apps that need a separate USB host to verify live in
 | usb_selftest_hid | HS host / FS device (HID reports) | `USB SELFTEST HID PASS` |
 | usb_selftest_microsd | HS host / FS device (Pmod2 microSD) | `USB SELFTEST MICROSD PASS` |
 | usb_selftest_mlun | HS host / FS device (2-LUN MSC) | `USB SELFTEST MULTI-LUN PASS` |
-| usb_selftest_wlun | HS host / FS device (writable RAM LUN) | `USB SELFTEST WRITABLE-LUN PASS` |
 | usb_selftest_ospi | HS host / FS device (OSPI drive RO) | `USB SELFTEST OSPI PASS` |
 | usb_selftest_ospi_rw | HS host / FS device (OSPI writable) | `USB SELFTEST WRITABLE-OSPI PASS` |
 | usb_selftest_soak | HS host / FS device (endurance + benchmark) | `USB SELFTEST SOAK PASS` |
@@ -103,7 +105,6 @@ CAN driver on the Pi) and tracked in [`docs/HIL.md`](../../../../../docs/HIL.md)
 | gpio_input_demo | LED1 mirrors SW1 state |
 | gpt_capture_input | LED toggles on SW1 press; captures period |
 | gpt_pwm_demo | LED breathes via GPT PWM duty cycle |
-| mpu_partition_simple | LED2 on MemFault (expected), LED3 on no-fault |
 | sd_font_render | `g_sfr_heartbeat` advances (J-Link memprobe, after a 12 s render dwell) only once the SD-font render reaches its idle loop -- proves the whole microSD -> ra8_sdfont (self-provision) -> ra8_reflow -> framebuffer path. Any failure stage parks in `sfr_panic_halt` and the counter freezes |
 | threadx_blink | LED1/LED2 toggle from two ThreadX threads |
 | threadx_canfd_demo | LED toggles on each CAN-FD ThreadX frame |

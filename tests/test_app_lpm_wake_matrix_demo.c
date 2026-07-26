@@ -3,7 +3,7 @@
  * @brief Integration test: WUPEN0 / WUPEN1 arm + disarm walk
  *
  * @details
- * Mirrors examples/ek_ra8d2/lpm_wake_matrix_demo/main.c bring-up:
+ * Mirrors examples/ek_ra8d2/hil_needs_revalidation/lpm_wake_matrix_demo/main.c bring-up:
  * ra8_lpm_init -> arm WUPEN0 bits in sequence -> arm WUPEN1 bits in
  * sequence -> clear both -> verify zero. The host sim mmap records
  * each register write so the test can verify the bits actually
