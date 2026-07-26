@@ -143,7 +143,7 @@ Cross-cutting design points:
 | ra8_tls              | `ra8_tls.h`                                                                                    | Mbed TLS (SOUP), `ra8_psa_crypto`                              | REQ-HAL-009     |
 | ra8_psa_crypto       | `ra8_psa_crypto.h`                                                                             | TF-PSA-Crypto (SOUP), `ra8_rsip*` (when HW path available)     | REQ-HAL-010     |
 | ra8_ota              | `ra8_ota.h`                                                                                    | `ra8_flash`, `ra8_psa_crypto`, NSC `ra8_nsc_ota`                 | REQ-HAL-011     |
-| ra8_ble_host         | `ra8_ble_host.h`, `ra8_ble_gatt_client.h`, `ra8_ble_mesh.h`, `ra8_ble_security.h`                  | `ra8_ble` (HCI transport seam; controller on ESP32-C6 companion) | REQ-HAL-012     |
+| NimBLE host (SOUP, via `port/nimble`) | NimBLE `host/ble_*.h` (`libs/third_party/nimble/`)                                          | `ra8_ble` (HCI transport seam; controller on ESP32-C6 companion), Apache NimBLE (SOUP) | REQ-HAL-012     |
 | ra8_modem_at         | `ra8_modem_at.h`                                                                               | `ra8_sci` / `ra8_uart`                                          | REQ-HAL-013     |
 | ra8_epub             | `ra8_epub.h`                                                                                   | `ra8_fs`, miniz (SOUP), TinyXML-2 (SOUP) via xml shim          | REQ-HAL-014     |
 | ra8_reflow           | `ra8_reflow.h`                                                                                 | `ra8_gfx`, litehtml (SOUP) via xml shim                        | REQ-HAL-015     |
@@ -298,13 +298,16 @@ default -> address -> configured -> suspended/resumed/disconnected`.
 Implementation in `ra8_usb.c` + `ra8_usb_cdc.c`. Test:
 `tests/test_ra8_usb_cdc.c`.
 
-### 5.3 BLE host (`libs/ra8_ble_host/`)
+### 5.3 BLE host (Apache NimBLE via `port/nimble/`)
 
-States: `radio_off -> radio_on -> advertising | scanning | connected ->
-encrypted -> service_discovery -> notifications`. End-to-end coverage
-is HW-blocked (REQ-HAL-012): on-wire BLE needs the ESP32-C6 companion
-controller across the HCI transport seam; host-side state-machine logic
-is tested in `tests/test_ra8_ble_*.c`.
+The BLE host is Apache NimBLE (SOUP, `libs/third_party/nimble/`),
+consumed directly by applications through the `port/nimble/` ThreadX +
+HCI-over-`ra8_ble` port; the former first-party BLE-host facade
+was retired. NimBLE runs the host and the ESP32-C6 companion runs the
+controller across the HCI transport seam. End-to-end coverage is
+HW-blocked (REQ-HAL-012): on-wire BLE needs the ESP32-C6 companion. The
+HCI transport seam (`ra8_ble`) is tested in `tests/test_ra8_ble.c`;
+NimBLE host code is SOUP (see `docs/SOUP/nimble.md`).
 
 ### 5.4 Power profile (`libs/ra8_power_profile/`)
 

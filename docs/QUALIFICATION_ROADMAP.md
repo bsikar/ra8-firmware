@@ -108,8 +108,8 @@ From `docs/DOXYGEN_GAPS.md`, scope `libs/`, `src/`, `port/`
 - **Total missing-tag instances**: 20328.
 - Most-frequent missing tags: `@param` (3432), `@post` (2467),
   `@pre` (2413), `@note` (2382), `@since` (2238).
-- Worst three modules: `libs/ra8_hal` (1809 functions with gaps),
-  `libs/ra8_ble_host` (64), `libs/ra8_net` (59).
+- Worst modules: `libs/ra8_hal` (1809 functions with gaps) and
+  `libs/ra8_net` (59).
 
 ### Coding-standard conformance (MISRA-C 2012)
 
@@ -205,7 +205,7 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
 - **Sub-phases**:
   - 3a (week 7-8): `libs/ra8_hal` -- 1809 functions, focused on
     register-driver `@param`/`@retval`/`@pre`/`@post` tags.
-  - 3b (week 9): `libs/ra8_ble_host` (64) and `libs/ra8_net` (59).
+  - 3b (week 9): `libs/ra8_net` (59).
   - 3c (week 10): residual modules (`ra8_core`, `ra8_fs`,
     `port/nimble`, `ra8_nsc`, `ra8_psa_crypto`,
     `ra8_ota` and the long tail).

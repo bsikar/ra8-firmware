@@ -347,15 +347,13 @@ configured to leave redundant parentheses untouched.
 
 ### Files affected
 
-101 violations in the 2026-05-02 baseline. Each is recorded in
+91 violations in the current tree (the 2026-05-02 baseline recorded
+101; the retired BLE host facade accounted for 10). Each is recorded in
 `.cppcheck-suppressions` under the `misra-c2012-12.1:` block as a
 per-file:line entry. The full inventory is:
 
 | File                                              | Lines |
 |---------------------------------------------------|-------|
-| `libs/ra8_ble_host/src/ra8_ble_gatt_client.c`       | 189, 236, 342, 393, 400, 464 |
-| `libs/ra8_ble_host/src/ra8_ble_mesh.c`              | 108, 215 |
-| `libs/ra8_ble_host/src/ra8_ble_security.c`          | 224, 301 |
 | `libs/ra8_core/src/ra8_log.c`                       | 251 |
 | `libs/ra8_epub/src/ra8_epub_chapter.c`              | 64, 70, 77, 168, 192, 208, 212, 232, 247, 251, 271, 293, 298 |
 | `libs/ra8_epub/src/ra8_epub_open.c`                 | 96, 213, 217 |
@@ -373,7 +371,7 @@ Per-line review notes:
 
 * Every flagged line falls into one of the accepted-as-implicit
   categories above. The 2026-05-02 spot check confirmed:
-  - The `libs/ra8_ble_host/`, `libs/ra8_epub/chapter`, `libs/ra8_fs/`,
+  - The `libs/ra8_epub/chapter`, `libs/ra8_fs/`,
     `libs/ra8_mpu/` (62-71), `libs/ra8_net/`, `libs/ra8_ota/`, and
     `libs/ra8_reflow/` hits are predominantly inside Doxygen `/** ... */`
     blocks or on function-signature lines that the `misra.py` addon
@@ -431,8 +429,9 @@ referencing the accepted-as-implicit category.
 - **Category**: Required.
 - **Disposition**: Tooling gap (false positive).
 - **Scope**: cppcheck 2.20 audit baseline only.
-- **Files affected**: 196 spurious violations in the 2026-05-02
-  baseline, distributed across:
+- **Files affected**: 166 spurious violations in the current tree (the
+  2026-05-02 baseline recorded 196; the retired BLE host facade
+  accounted for 30), distributed across:
 
   | File                                        | Hits |
   |---------------------------------------------|-----:|
@@ -440,20 +439,16 @@ referencing the accepted-as-implicit category.
   | `port/lwip/arch/sys_arch.c`                 |  31  |
   | `libs/ra8_net/src/ra8_net_ipv4.c`             |  11  |
   | `libs/ra8_fs/src/ra8_fs_fat.c`                |  11  |
-  | `libs/ra8_ble_host/src/ra8_ble_security.c`    |  11  |
   | `libs/ra8_ota/src/ra8_ota.c`                  |  10  |
   | `libs/ra8_psa_crypto/src/ra8_psa_crypto.c`    |   9  |
   | `libs/ra8_gfx/src/ra8_gfx_text.c`             |   9  |
-  | `libs/ra8_ble_host/src/ra8_ble_gatt_client.c` |   9  |
   | `libs/ra8_tls/src/ra8_tls.c`                  |   7  |
   | `libs/ra8_reflow/src/ra8_reflow_layout.c`     |   6  |
   | `libs/ra8_epub/src/ra8_epub_chapter.c`        |   6  |
-  | `libs/ra8_ble_host/src/ra8_ble_mesh.c`        |   6  |
   | `libs/ra8_touch_cal/src/ra8_touch_cal.c`      |   5  |
   | `libs/ra8_power_profile/src/ra8_power_profile.c` | 5 |
   | `libs/ra8_modem_at/src/ra8_modem_at.c`        |   5  |
   | `libs/ra8_mpu/src/ra8_mpu.c`                  |   4  |
-  | `libs/ra8_ble_host/src/ra8_ble_gatt.c`        |   4  |
   | `libs/ra8_epub/src/ra8_epub_open.c`           |   2  |
   | `libs/ra8_core/src/ra8_rand_stub.c`           |   2  |
   | `libs/ra8_reflow/src/ra8_reflow_render.c`     |   1  |
@@ -502,7 +497,7 @@ upgrade can confirm both root causes are gone.
   definitions in the same translation unit. This was spot-checked on
   the four representative files
   (`libs/ra8_mpu/src/ra8_mpu.c`,
-  `libs/ra8_ble_host/src/ra8_ble_gatt.c`,
+  `libs/ra8_tls/src/ra8_tls.c`,
   `port/nimble/src/nimble_npl_threadx.c`,
   `port/lwip/arch/sys_arch.c`) before this register was authored.
 - Module-internal functions are marked `static` and are caught

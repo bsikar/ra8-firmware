@@ -162,7 +162,6 @@ higher-level consumer does not need to know the RA8D2-specific details.
 | [`ra8_sdmmc_spi/`](ra8_sdmmc_spi/) | SD card driver in SPI mode (Pmod-attached cards). |
 | [`ra8_touch_cal/`](ra8_touch_cal/) | Resistive/capacitive touch-screen calibration utility. |
 | [`ra8_epd_cal/`](ra8_epd_cal/) | Per-device e-paper panel calibration (VCOM) -- record and storage seam. |
-| [`ra8_ble_host/`](ra8_ble_host/) | Starter Bluetooth Low Energy host stack (L2CAP / ATT / GATT). |
 
 **System services**
 

@@ -30,9 +30,15 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- Bluetooth 5.4 host + controller stack consumed by `libs/ra8_ble_host/`.
-- No example app currently links NimBLE; reserved for future BLE
-  bring-up.
+- Bluetooth 5.4 host stack, consumed DIRECTLY by applications via
+  `port/nimble/` (the ThreadX + HCI-over-`ra8_ble` port). The ESP32-C6
+  companion runs the BLE controller; NimBLE runs the host. The
+  first-party BLE-host facade that previously wrapped NimBLE
+  has been removed -- applications call the NimBLE host APIs
+  (`host/ble_gap.h`, `host/ble_hs.h`, ...) directly.
+- `examples/_unsupported/threadx_nimble_peripheral` demonstrates the
+  direct-NimBLE path; it is HW-blocked on the ESP32-C6 radio companion,
+  so no in-tree example is HW-validated yet.
 - Integrity claim category: none (no BLE-driven safety signal in the
   current firmware).
 
@@ -52,7 +58,8 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- All BLE access will be mediated through `libs/ra8_ble_host/` to keep a
+- All BLE access is mediated through the NimBLE host via the
+  `port/nimble/` port and the `ra8_ble` HCI transport seam, keeping a
   single integration boundary.
 - Stack is not yet wired to any production-track example; introduction
   will require a fresh integration test pass.

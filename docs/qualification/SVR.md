@@ -106,13 +106,12 @@ hard faults observed (no `Default_Handler`, `HardFault_Handler`,
 `MemManage_Handler`, `BusFault_Handler`, `UsageFault_Handler`,
 `SecureFault_Handler`, or `0xEFFFFFFE` lockup across all 26).
 
-The 11 apps under `examples/_unsupported/` (audio_loopback,
-ble_peripheral, motor_3phase, ptp_time_transmitter, threadx_ble_central,
-threadx_ble_mesh_node, threadx_https_client, threadx_nimble_peripheral,
-threadx_sdcard_demo, usb_audio_device) are not part of the EVM
-sweep -- they require hardware not present on a stock EK-RA8D2 v1
-and are documented as such in `docs/HARDWARE_BRINGUP.md` and
-`docs/VENDOR_BLOBS.md`.
+The 7 apps under `examples/_unsupported/` (audio_loopback,
+motor_3phase, ptp_time_transmitter, threadx_https_client,
+threadx_nimble_peripheral, threadx_sdcard_demo, usb_audio_device) are
+not part of the EVM sweep -- they require hardware not present on a
+stock EK-RA8D2 v1 and are documented as such in
+`docs/HARDWARE_BRINGUP.md` and `docs/VENDOR_BLOBS.md`.
 
 ## 4. Coverage results (MC/DC -- per-file)
 
@@ -200,17 +199,19 @@ recorded as deferred work for the SAS to roll up.
 - **Disposition**: WIP -- treated as warning by `make smoke`,
   blocking for SOI-3 release.
 
-### OP-004 -- BLE apps blocked on Renesas vendor patch image
+### OP-004 -- BLE app blocked on ESP32-C6 controller
 
-- **Affected apps**: 5 BLE apps under `examples/_unsupported/`
-  (`ble_peripheral`, `threadx_nimble_peripheral`,
-  `threadx_ble_central`, `threadx_ble_mesh_node`, plus the
-  hosted nimble work under `port/nimble/`).
-- **Root cause**: the on-chip BLE controller requires the Renesas
-  patch-image binary blob (NDA-distributed via FSP).
-  Tracked in `docs/VENDOR_BLOBS.md`.
-- **Disposition**: deferred. Requires either NDA acquisition or
-  removing BLE from the v1 certification scope.
+- **Affected app**: `threadx_nimble_peripheral` under
+  `examples/_unsupported/`, plus the hosted NimBLE work under
+  `port/nimble/`. (The first-party BLE-host facade and its
+  `ble_peripheral` / `threadx_ble_central` / `threadx_ble_mesh_node`
+  demos were retired; NimBLE is now the BLE host, consumed directly.)
+- **Root cause**: the RA8D2 has no on-chip Bluetooth radio. BLE
+  standardizes on Apache NimBLE as the host with the ESP32-C6 as the
+  controller over the HCI transport seam; the C6 controller link is
+  not yet wired up.
+- **Disposition**: deferred. Requires wiring the ESP32-C6 controller
+  link or removing BLE from the v1 certification scope.
 
 ### OP-005 -- RSIP BIST returns hardware-init-failed on silicon
 
@@ -222,8 +223,8 @@ recorded as deferred work for the SAS to roll up.
   is inferred from a host-sim hack and does not match the AMC
   firmware sequence the RSIP-E engine actually requires. Multi-day
   port comparable to OP-001 in scope.
-- **Disposition**: deferred. Tracked alongside OP-004 because both
-  block by missing vendor blobs.
+- **Disposition**: deferred. Tracked alongside OP-004 as a deferred,
+  hardware-blocked BLE/crypto enablement item.
 
 ### OP-006 -- Doxygen gap (CLOSED)
 

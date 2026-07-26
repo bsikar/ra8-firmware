@@ -102,18 +102,6 @@ substitute without changing this header.
   `ra8_usb_pal_ep_open()`, `ra8_usb_pal_ep_send()`,
   `ra8_usb_pal_ep_recv()`.
 
-## ra8_ble_host
-
-Starter Bluetooth Low Energy host stack -- L2CAP fixed channels, ATT
-attribute protocol, GATT services + characteristics -- layered on the
-HCI driver in `ra8_hal/ra8_ble`. Aggressively capped attribute table
-(8 services, 32 characteristics) so the entire host fits alongside
-the rest of the firmware on the EK-RA8D2.
-
-* Headers: `libs/ra8_ble_host/inc/ra8_ble_{host,gatt_client,security,mesh}.h`
-* Main entry points: `ra8_ble_host_init()`,
-  `ra8_ble_host_gatt_register_service()`, `ra8_ble_host_advertise_start()`.
-
 ## ra8_tls
 
 Thin facade over the vendored Mbed TLS 4.x + TF-PSA-Crypto 1.x stack.

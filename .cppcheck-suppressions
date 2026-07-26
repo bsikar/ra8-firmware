@@ -204,18 +204,6 @@ constParameterCallback:libs/ra8_epub/src/ra8_epub_open.c
 constParameterCallback:examples/ek_ra8d2/hw_pending/ereader_comic/main.c
 
 
-# unusedStructMember in ra8_ble_host implementation files. These TUs each
-# define a forward-compatible state struct whose fields are populated by
-# downstream NimBLE-target builds; cppcheck's per-TU view cannot see those
-# uses. Suppressing per-file rather than per-field keeps the suppression set
-# stable when new fields are added during BLE bring-up.
-unusedStructMember:libs/ra8_ble_host/src/ra8_ble_att.c
-unusedStructMember:libs/ra8_ble_host/src/ra8_ble_gatt.c
-unusedStructMember:libs/ra8_ble_host/src/ra8_ble_gatt_client.c
-unusedStructMember:libs/ra8_ble_host/src/ra8_ble_l2cap.c
-unusedStructMember:libs/ra8_ble_host/src/ra8_ble_mesh.c
-unusedStructMember:libs/ra8_ble_host/src/ra8_ble_security.c
-
 # unusedStructMember in NimBLE NPL-ThreadX bridge headers. Fields are
 # consumed by NimBLE host code at link time, not visible to the per-TU
 # cppcheck pass.
@@ -247,16 +235,6 @@ knownConditionTrueFalse:libs/ra8_hal/src/ra8_dual_core.c
 # When the source line numbers shift due to refactor, re-run `make misra`
 # and regenerate this block from the new docs/MISRA_GAPS.csv 12.1 rows.
 # ---------------------------------------------------------------------------
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:189
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:236
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:342
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:393
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:400
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:464
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_mesh.c:108
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_mesh.c:215
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_security.c:224
-misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_security.c:301
 misra-c2012-12.1:libs/ra8_core/src/ra8_log.c:251
 misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:64
 misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:70

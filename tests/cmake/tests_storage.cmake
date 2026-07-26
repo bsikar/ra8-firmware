@@ -133,13 +133,13 @@ target_include_directories(
           # the nearest DB entry, and these examples/ entries become that neighbour for
           # the other example apps. Give them the same broad first-party include set
           # ra8_add_test() uses so an interpolated app (audio_loopback -> ra8_board...,
-          # threadx_ble_* -> ra8_ble_host, ...) still resolves its headers instead of a
-          # clang-diagnostic-error. The extra dirs are harmless to the actual test build.
+          # threadx_nimble_peripheral -> port/nimble, ...) still resolves its headers
+          # instead of a clang-diagnostic-error. The extra dirs are harmless to the
+          # actual test build.
           ${FW_ROOT}/libs/ra8_core/inc
           ${FW_ROOT}/libs/ra8_hal/inc
           ${FW_ROOT}/libs/ra8_net_pal/inc
           ${FW_ROOT}/libs/ra8_modem_at/inc
-          ${FW_ROOT}/libs/ra8_ble_host/inc
           ${FW_ROOT}/libs/ra8_usb_pal/inc
           ${FW_ROOT}/libs/ra8_fs/inc
           ${FW_ROOT}/libs/ra8_io/inc

@@ -19,7 +19,6 @@ add_library(
   ${RA8_HAL_SOURCES}
   ${RA8_NET_PAL_SOURCES}
   ${RA8_MODEM_AT_SOURCES}
-  ${RA8_BLE_HOST_SOURCES}
   ${RA8_TLS_SOURCES}
   ${RA8_USB_PAL_SOURCES}
   ${RA8_FS_SOURCES}
@@ -94,7 +93,6 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_hal/inc
          ${FW_ROOT}/libs/ra8_net_pal/inc
          ${FW_ROOT}/libs/ra8_modem_at/inc
-         ${FW_ROOT}/libs/ra8_ble_host/inc
          ${FW_ROOT}/libs/ra8_usb_pal/inc
          ${FW_ROOT}/libs/ra8_fs/inc
          ${FW_ROOT}/libs/ra8_io/inc
@@ -155,7 +153,6 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_hal/src
          ${FW_ROOT}/libs/ra8_net_pal/src
          ${FW_ROOT}/libs/ra8_modem_at/src
-         ${FW_ROOT}/libs/ra8_ble_host/src
          ${FW_ROOT}/libs/ra8_tls/src
          ${FW_ROOT}/libs/ra8_usb_pal/src
          ${FW_ROOT}/libs/ra8_fs/src

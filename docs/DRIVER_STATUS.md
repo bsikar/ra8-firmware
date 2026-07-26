@@ -5,8 +5,8 @@ closure commits `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f`).
 
 This file is the at-a-glance map of every driver in
 `libs/ra8_hal/src/` plus the new top-level libraries (`libs/ra8_net/`,
-`libs/ra8_fs/`, `libs/ra8_tls/` (Mbed TLS facade), `libs/ra8_gfx/`,
-`libs/ra8_ble_host/`) against their FSP `r_*` parity benchmark. Status
+`libs/ra8_fs/`, `libs/ra8_tls/` (Mbed TLS facade), `libs/ra8_gfx/`)
+against their FSP `r_*` parity benchmark. Status
 classes:
 
 - `feature-complete` -- the public API matches FSP `R_*` parity for
@@ -234,7 +234,6 @@ work; subsequent fixes may live in later commits.
 | libs/ra8_fs | feature-complete | sweep 9 (`afeb54a`) | FAT12/16/32 reader+writer, mount/open/read/write/seek/listdir |
 | libs/ra8_tls | partial | sweep 9 (`afeb54a`) | TLS 1.2 client, RSA key-exchange encrypt awaits real ra8_sce RSA path |
 | libs/ra8_gfx | feature-complete | sweep 9 (`afeb54a`) | GLCDC framebuffer drawing + 8x16 IBM PC VGA font (95 ASCII glyphs) |
-| libs/ra8_ble_host | feature-complete | sweep 10 (`59cc3c3`) | L2CAP fixed channels + ATT server + GATT registration; depends on ra8_ble placeholder |
 | libs/ra8_display_pal (LCD backend) | feature-complete | 2026-05-12 | One-vtable PAL over ra8_glcdc; folds 6-step bring-up |
 | libs/ra8_display_pal (e-ink backend) | scaffold | 2026-05-12 | IT8951 stub: init/get_caps work; flush/get_fb return `k_ra8_err_not_supported` until hardware lands |
 
@@ -263,9 +262,9 @@ Driver count rollup at the close of sweep 11:
 
 Top-level library rollup:
 
-- **11 libraries** total in `libs/`
-- **10 feature-complete** (ra8_core, ra8_hal, ra8_nsc, ra8_net_pal,
-  ra8_usb_pal, ra8_net, ra8_fs, ra8_gfx, ra8_ble_host, plus the
+- **10 libraries** total in `libs/`
+- **9 feature-complete** (ra8_core, ra8_hal, ra8_nsc, ra8_net_pal,
+  ra8_usb_pal, ra8_net, ra8_fs, ra8_gfx, plus the
   secure_app key_vault inside ra8_hal)
 - **1 partial** (ra8_tls -- awaits real RSA primitive)
 
