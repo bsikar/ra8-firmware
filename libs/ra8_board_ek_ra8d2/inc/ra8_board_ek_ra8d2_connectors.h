@@ -630,6 +630,35 @@ typedef enum : uint16_t {
 } ra8_board_pmod1_gpio_pin_t;
 
 /**
+ * @brief SCI channels that back the two Pmod sockets in Simple-SPI mode.
+ *
+ * @details
+ * Both Pmod sockets are driven by an SCI channel in Simple-SPI mode rather
+ * than by the RSPI/SPI_B peripheral, so firmware opens them with
+ * ``ra8_sci_spi_init`` on the channel named here. Pmod1 (J26) sits on SCI2
+ * via P801..P804 (UM Table 17 p 26); Pmod2 (J25) sits on SCI0 via
+ * P601..P604 (UM Table 19 p 27). Both channel indices are a fixed board
+ * fact of the EK-RA8D2 routing, which is why they live here rather than in
+ * each application.
+ *
+ * @invariant Both values are valid ``ra8_sci_spi`` channel indices (0..9).
+ *
+ * @par Example:
+ * @code
+ * const ra8_sci_spi_cfg_t cfg = { .baud_hz = 1000000U, .pclk_hz = pclka_hz,
+ *                                 .mode = k_ra8_spi_mode_3, .lsb_first = false };
+ * (void)ra8_sci_spi_init((uint8_t)k_ra8_board_pmod1_sci_channel, &cfg);
+ * @endcode
+ *
+ * @see ra8_board_pmod1_spi_pin_t
+ * @see ra8_board_pmod2_spi_pin_t
+ */
+typedef enum : uint8_t {
+  k_ra8_board_pmod1_sci_channel = 2U, /**< Pmod1 (J26) Simple-SPI is SCI2. */
+  k_ra8_board_pmod2_sci_channel = 0U, /**< Pmod2 (J25) Simple-SPI is SCI0. */
+} ra8_board_pmod_sci_channel_t;
+
+/**
  * @brief Pin assignments for Pmod2 (J25) in SPI mode (UM Table 19 p 27).
  *
  * @details
