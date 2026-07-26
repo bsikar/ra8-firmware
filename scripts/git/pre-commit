@@ -384,6 +384,21 @@ if ! python3 scripts/checks/check_shebangs.py; then
   error_found=1
 fi
 
+# The ESP32-C6 SPI pin map is stated in two files that must agree:
+# coprocessor/esp32c6/pins.env (source of truth) and sdkconfig.defaults (the
+# same numbers in esp-idf's Kconfig syntax). Drift is invisible downstream --
+# the build and flash both succeed and the SPI link simply never comes up.
+if ! python3 scripts/checks/check_c6_pin_config.py --selftest; then
+  echo "[FAIL] check_c6_pin_config.py selftest failed -- the drift"
+  echo "       comparator is broken; do not trust the verdict below."
+  error_found=1
+fi
+if ! python3 scripts/checks/check_c6_pin_config.py; then
+  echo "[FAIL] C6 pin/flash config drift between pins.env and sdkconfig.defaults."
+  echo "   pins.env is the source of truth; update sdkconfig.defaults to match."
+  error_found=1
+fi
+
 # Pinned-version guard for the three tools the two gates below resolve, exactly
 # as gate_lint_py_shell does it. --selftest first, so a comparator that stopped
 # judging versions turns THIS red instead of waving every version through.
