@@ -7,3 +7,6 @@
   gather_facts: true
   roles:
     - hil_bench
+    # The bench Pi also hosts the ESP32-C6 on PMOD1, so it builds + flashes the
+    # C6 firmware. Drop this role for a HIL-only bench with no C6 attached.
+    - c6_toolchain

@@ -23,6 +23,7 @@ hil_bench_apt_packages:
   - build-essential
   - python3
   - python3-pip
+  - python3-venv
   - usbutils
 
 # Pinned Arm GNU Toolchain (must match .devcontainer/Dockerfile exactly so the

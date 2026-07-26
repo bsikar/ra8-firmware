@@ -1,0 +1,50 @@
+---
+# c6_toolchain role defaults -- provisions the ESP-IDF build environment used to
+# build + flash the ESP32-C6 wireless co-processor firmware (esp-hosted-mcu).
+# Runs on the same host as the HIL bench (the Pi with the C6 on PMOD1), but is a
+# separate role so a HIL-only bench need not carry the ~2 GB IDF toolchain.
+# Codifies exactly what had to be hand-fixed during bring-up: a missing
+# python3-venv (IDF's installer creates a venv and hard-fails without it) and an
+# otherwise unmanaged, drift-prone IDF checkout. Override per deploy in
+# group_vars / host_vars.
+
+# Pinned ESP-IDF release. Must match what c6_firmware/ (the esp-hosted build
+# recipe) expects, so the bench builds the same C6 image as any other host.
+c6_toolchain_idf_version: "v5.4.1"
+c6_toolchain_idf_repo: "https://github.com/espressif/esp-idf.git"
+c6_toolchain_idf_dir: "{{ ansible_env.HOME }}/esp/esp-idf"
+
+# Chip targets install.sh provisions toolchains for. C6 is a RISC-V part, so
+# this pulls riscv32-esp-elf-gcc (not the xtensa toolchain).
+c6_toolchain_targets: "esp32c6"
+
+# ESP-IDF's documented Linux prerequisites. python3-venv + python3-full are the
+# ones that were missing on the bench: install.sh runs `python3 -m venv` and
+# exits non-zero when the stdlib venv module is not installed as a package.
+c6_toolchain_apt_packages:
+  - git
+  - wget
+  - flex
+  - bison
+  - gperf
+  - python3
+  - python3-pip
+  - python3-venv
+  - python3-full
+  - cmake
+  - ninja-build
+  - ccache
+  - libffi-dev
+  - libssl-dev
+  - dfu-util
+  - libusb-1.0-0
+
+# Idempotency marker: install.sh creates this per-minor-version venv. Presence
+# means the toolchain download already ran, so the (slow) install is skipped.
+# The glob tolerates the host python minor version in the directory name.
+c6_toolchain_env_glob: "{{ ansible_env.HOME }}/.espressif/python_env/idf5.4_*_env"
+
+# Convenience shell helper dropped for interactive use: `get_idf` sources the
+# IDF export script into the current shell. Not used by the c6_firmware build
+# (which sources export.sh itself); this is purely for humans on the bench.
+c6_toolchain_helper_path: /etc/profile.d/ra8-esp-idf.sh
