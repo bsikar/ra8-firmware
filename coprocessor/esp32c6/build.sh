@@ -11,7 +11,7 @@
 # docs/design/c6_wireless_architecture.md.
 #
 # Usage:
-#   ./c6_firmware/build.sh
+#   ./coprocessor/esp32c6/build.sh
 #
 # Requires (NONE of which live on the dev box -- build on the Pi bench host):
 #   - esp-idf ESP_IDF_VERSION exported so idf.py is on PATH (. $IDF_PATH/export.sh)
@@ -23,11 +23,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=c6_firmware/pins.env
+# shellcheck source=coprocessor/esp32c6/pins.env
 source "${SCRIPT_DIR}/pins.env"
 
 CLONE_DIR="${SCRIPT_DIR}/esp-hosted-mcu"
-SLAVE_DIR="${CLONE_DIR}/slave"
+PERIPHERAL_DIR="${CLONE_DIR}/slave" # LEGACY-OK: esp-hosted-mcu upstream directory is named "slave"
 
 # ---- 1. require idf.py and assert the pinned esp-idf major.minor ----
 if ! command -v idf.py >/dev/null 2>&1; then
@@ -56,36 +56,36 @@ echo "==> checking out ${ESP_HOSTED_MCU_SHORT} (${ESP_HOSTED_MCU_COMMIT})"
 git -C "${CLONE_DIR}" fetch origin
 git -C "${CLONE_DIR}" -c advice.detachedHead=false checkout --detach "${ESP_HOSTED_MCU_COMMIT}"
 
-if [[ ! -d "${SLAVE_DIR}" ]]; then
-  echo "ERROR: ${SLAVE_DIR} missing -- upstream layout changed at this commit" >&2
+if [[ ! -d "${PERIPHERAL_DIR}" ]]; then
+  echo "ERROR: ${PERIPHERAL_DIR} missing -- upstream layout changed at this commit" >&2
   exit 1
 fi
 
 # ---- 3. drop in the proven sdkconfig.defaults ----
 echo "==> installing sdkconfig.defaults"
-cp "${SCRIPT_DIR}/sdkconfig.defaults" "${SLAVE_DIR}/sdkconfig.defaults"
+cp "${SCRIPT_DIR}/sdkconfig.defaults" "${PERIPHERAL_DIR}/sdkconfig.defaults"
 
 # ---- 4. clean, set target, build ----
 echo "==> cleaning previous build state"
 rm -rf \
-  "${SLAVE_DIR}/build" \
-  "${SLAVE_DIR}/sdkconfig" \
-  "${SLAVE_DIR}/dependencies.lock" \
-  "${SLAVE_DIR}/managed_components"
+  "${PERIPHERAL_DIR}/build" \
+  "${PERIPHERAL_DIR}/sdkconfig" \
+  "${PERIPHERAL_DIR}/dependencies.lock" \
+  "${PERIPHERAL_DIR}/managed_components"
 
 echo "==> idf.py set-target ${ESP_TARGET} && idf.py build"
 (
-  cd "${SLAVE_DIR}"
+  cd "${PERIPHERAL_DIR}"
   idf.py set-target "${ESP_TARGET}"
   idf.py build
 )
 
 # ---- 5. print artifact paths ----
-echo "build.sh: OK -- flash these with ./c6_firmware/flash.sh:"
+echo "build.sh: OK -- flash these with ./coprocessor/esp32c6/flash.sh:"
 for artifact in \
   "bootloader/bootloader.bin" \
   "partition_table/partition-table.bin" \
   "ota_data_initial.bin" \
   "network_adapter.bin"; do
-  echo "  ${SLAVE_DIR}/build/${artifact}"
+  echo "  ${PERIPHERAL_DIR}/build/${artifact}"
 done

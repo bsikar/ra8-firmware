@@ -1004,7 +1004,7 @@
         },
         {
           "name": "ra8:path",
-          "value": "c6_firmware/esp-hosted-mcu"
+          "value": "coprocessor/esp32c6/esp-hosted-mcu"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -1016,7 +1016,7 @@
         },
         {
           "name": "ra8:note0",
-          "value": "NOT vendored: c6_firmware/build.sh fetches the pinned upstream commit at build time into the git-ignored c6_firmware/esp-hosted-mcu/. The build recipe (pins + proven sdkconfig.defaults) is the record; see c6_firmware/README.md and docs/SOUP/esp-hosted.md."
+          "value": "NOT vendored: coprocessor/esp32c6/build.sh fetches the pinned upstream commit at build time into the git-ignored coprocessor/esp32c6/esp-hosted-mcu/. The build recipe (pins + proven sdkconfig.defaults) is the record; see coprocessor/esp32c6/README.md and docs/SOUP/esp-hosted.md."
         },
         {
           "name": "ra8:note1",

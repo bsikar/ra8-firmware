@@ -563,7 +563,7 @@ REGISTRY: tuple[Component, ...] = (
         ctype="firmware",
         group="espressif",
         url="https://github.com/espressif/esp-hosted-mcu",
-        path="c6_firmware/esp-hosted-mcu",
+        path="coprocessor/esp32c6/esp-hosted-mcu",
         provenance=PROV_NOT_VENDORED,
         description=(
             "ESP32-C6 wireless co-processor firmware; runs on the C6, not in the RA8 image."
@@ -577,10 +577,10 @@ REGISTRY: tuple[Component, ...] = (
         upstream_commit="949bb30612747a3bd9e402eda8d01fbfa1f8503e",
         scope="excluded",
         extra_notes=(
-            "NOT vendored: c6_firmware/build.sh fetches the pinned upstream "
-            "commit at build time into the git-ignored c6_firmware/esp-hosted-mcu/. "
+            "NOT vendored: coprocessor/esp32c6/build.sh fetches the pinned upstream "
+            "commit at build time into the git-ignored coprocessor/esp32c6/esp-hosted-mcu/. "
             "The build recipe (pins + proven sdkconfig.defaults) is the record; "
-            "see c6_firmware/README.md and docs/SOUP/esp-hosted.md.",
+            "see coprocessor/esp32c6/README.md and docs/SOUP/esp-hosted.md.",
             "Co-processor firmware: it runs on the ESP32-C6 (Wi-Fi/BLE), not on "
             "the RA8D2, and is not part of the RA8 linked image -- hence "
             "scope=excluded. Zero first-party code runs on the C6.",

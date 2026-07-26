@@ -8,7 +8,7 @@
 # otherwise unmanaged, drift-prone IDF checkout. Override per deploy in
 # group_vars / host_vars.
 
-# Pinned ESP-IDF release. Must match what c6_firmware/ (the esp-hosted build
+# Pinned ESP-IDF release. Must match what coprocessor/esp32c6/ (the esp-hosted build
 # recipe) expects, so the bench builds the same C6 image as any other host.
 c6_toolchain_idf_version: "v5.4.1"
 c6_toolchain_idf_repo: "https://github.com/espressif/esp-idf.git"
@@ -45,6 +45,6 @@ c6_toolchain_apt_packages:
 c6_toolchain_env_glob: "{{ ansible_env.HOME }}/.espressif/python_env/idf5.4_*_env"
 
 # Convenience shell helper dropped for interactive use: `get_idf` sources the
-# IDF export script into the current shell. Not used by the c6_firmware build
+# IDF export script into the current shell. Not used by the coprocessor/esp32c6 build
 # (which sources export.sh itself); this is purely for humans on the bench.
 c6_toolchain_helper_path: /etc/profile.d/ra8-esp-idf.sh

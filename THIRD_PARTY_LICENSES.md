@@ -215,8 +215,8 @@ SBOM component list with `scope: excluded` rather than as linked SOUP:
   `network_adapter` co-processor firmware that gives the RA8D2 Wi-Fi and
   Bluetooth over a SPI link. NOT vendored into the tree: built from the
   pinned upstream commit `949bb30` with esp-idf `v5.5.4` and flashed onto
-  the C6 by `c6_firmware/build.sh` / `flash.sh`. Recipe and pins in
-  `c6_firmware/`; qualification in [`docs/SOUP/esp-hosted.md`](docs/SOUP/esp-hosted.md).
+  the C6 by `coprocessor/esp32c6/build.sh` / `flash.sh`. Recipe and pins in
+  `coprocessor/esp32c6/`; qualification in [`docs/SOUP/esp-hosted.md`](docs/SOUP/esp-hosted.md).
 
 ### Build-time host tools (not linked into firmware)
 
