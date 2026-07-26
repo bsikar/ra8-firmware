@@ -205,6 +205,19 @@ behaviour is unchanged. Full description:
 Because the tree is modified, its zlib obligation to "not misrepresent the
 original software" is met by this disclosure.
 
+### Co-processor firmware (not linked into firmware)
+
+This runs on the companion **ESP32-C6** wireless co-processor, not on the
+RA8D2, and ships no code into the RA8 firmware image, so it is carried in the
+SBOM component list with `scope: excluded` rather than as linked SOUP:
+
+- **Espressif esp-hosted-mcu** -- Apache-2.0. Espressif Systems. The
+  `network_adapter` co-processor firmware that gives the RA8D2 Wi-Fi and
+  Bluetooth over a SPI link. NOT vendored into the tree: built from the
+  pinned upstream commit `949bb30` with esp-idf `v5.5.4` and flashed onto
+  the C6 by `c6_firmware/build.sh` / `flash.sh`. Recipe and pins in
+  `c6_firmware/`; qualification in [`docs/SOUP/esp-hosted.md`](docs/SOUP/esp-hosted.md).
+
 ### Build-time host tools (not linked into firmware)
 
 These run on the developer / CI host at build time and ship no code into the

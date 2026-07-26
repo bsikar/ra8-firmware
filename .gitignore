@@ -213,6 +213,13 @@ tools/cache_bench/*.dSYM/
 # ESP32-C6 spike build artifacts (esp32/Makefile writes here).
 esp32/build/
 
+# ESP32-C6 co-processor firmware: the esp-hosted-mcu SOUP clone that
+# c6_firmware/build.sh fetches at the pinned commit, plus everything it
+# builds underneath (slave/build, dependencies.lock, managed_components,
+# generated sdkconfig). None of it is first-party source. Anchored to the
+# repo root so it cannot match a directory of that name elsewhere (#377).
+/c6_firmware/esp-hosted-mcu/
+
 # libFuzzer seed corpus: regenerated deterministically by
 # scripts/checks/init_fuzz_corpora.sh (invoked from `make fuzz`), so the seeds
 # are a build product, not source. Committing them only lets them drift from

@@ -38,6 +38,11 @@ basis.
 Host build tool (not vendored source, not linked into firmware): **Arm Ethos-U
 Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
 
+Co-processor firmware (not vendored source, not linked into firmware; built
+from a pinned upstream and flashed onto the companion ESP32-C6):
+**Espressif esp-hosted-mcu** -- [esp-hosted.md](esp-hosted.md) (pinned in
+`c6_firmware/pins.env`; recipe in `c6_firmware/`).
+
 ## One-line summaries
 
 - **ThreadX** -- Cooperative + preemptive RTOS kernel under every
@@ -74,6 +79,9 @@ Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
   TFLite-micro kernel utilities (no ruy GEMM backend).
 - **Vela** (host tool) -- Arm's offline Ethos-U model compiler; runs at build
   time, links nothing into firmware. See [vela.md](vela.md).
+- **Espressif esp-hosted-mcu** -- ESP32-C6 wireless co-processor firmware
+  (Wi-Fi/BLE) built from a pinned upstream commit and flashed onto the C6.
+  Not vendored and not linked into the RA8 image; recipe in `c6_firmware/`.
 - **RSIP-E50D firmware (`r_sce_AMC`)** -- Renesas Secure IP protected
   procedures (key install / wrap / unwrap) consumed by
   `libs/ra8_hal/src/ra8_rsip*.c` and the secure-side key vault.
