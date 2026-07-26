@@ -66,7 +66,7 @@ import subprocess
 import sys
 import tempfile
 
-EXCLUDED_PREFIXES = ("libs/third_party/", "libs/fonts/")
+EXCLUDED_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
 
 GIT_ROOT_FORM = "rev-parse --show-toplevel"
 

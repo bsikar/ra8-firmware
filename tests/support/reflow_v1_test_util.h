@@ -128,7 +128,7 @@ static inline bool priv_load_font(void)
   /* GCC's -Wformat-truncation flags the maximally-conservative case
    * where `root` is the full 1 KiB; concatenate manually so the
    * checker can see the bound. */
-  const char* const k_font_rel = "/libs/fonts/Literata-Regular.ttf";
+  const char* const k_font_rel = "/libs/ra8_fonts/Literata-Regular.ttf";
   size_t            root_len   = 0U;
   while (root_len + 1U < sizeof(s_path) && s_root[root_len] != '\0') {
     s_path[root_len] = s_root[root_len];

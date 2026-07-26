@@ -33,7 +33,7 @@ Input: `build/mcdc-report/mcdc_per_file.json`, written by
 (`build/mcdc-report/mcdc.txt`). Run the MC/DC build first (which runs the
 regenerator), then this. Scope mirrors the line-coverage floor: files under
 `libs/` or `src/`, excluding vendored SOUP (`libs/third_party/`) and
-generated font tables (`libs/fonts/`).
+generated font tables (`libs/ra8_fonts/`).
 
 Exit 0 if every in-scope file with at least one reachable decision is
 >= FLOOR_PCT, else exit 1 with the offenders.
@@ -62,7 +62,7 @@ MCDC_JSON = REPO_ROOT / "build" / "mcdc-report" / "mcdc_per_file.json"
 IN_SCOPE_PREFIXES = ("libs/", "src/")
 """First-party source roots held to the floor (mirrors the line-coverage floor)."""
 
-OUT_OF_SCOPE_PREFIXES = ("libs/third_party/", "libs/fonts/")
+OUT_OF_SCOPE_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
 """Vendored SOUP and generated font tables -- exempt from first-party rules
 per the CLAUDE.md coding-standards scope, so exempt from the floor too."""
 

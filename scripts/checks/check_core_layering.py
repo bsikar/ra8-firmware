@@ -42,7 +42,7 @@ LIBS_ROOT = REPO_ROOT / "libs"
 FOUNDATION_LIB = "ra8_core"
 SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp")
 INCLUDE_RE = re.compile(r'#\s*include\s*[<"]([^">]+)[">]')
-EXCLUDE_FRAGMENTS = ("/third_party/", "/fonts/")
+EXCLUDE_FRAGMENTS = ("/third_party/", "/ra8_fonts/")
 
 # A lib header path under libs/ is <module>/<inc|src>/...: at least the module
 # component and the inc/src component must be present to attribute an owner.

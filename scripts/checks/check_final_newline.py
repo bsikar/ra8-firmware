@@ -58,7 +58,7 @@ SOURCE_NAMES = ("CMakeLists.txt",)
 SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "tests", "scripts", "cmake", ".github")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
     "port/threadx/",
     "_unsupported/",
 )

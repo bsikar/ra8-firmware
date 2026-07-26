@@ -15,7 +15,7 @@ and rejects bare ``NULL`` tokens in code positions. It allows NULL in:
 Scope is DERIVED from git ls-files (#358), so tools/ -- host tooling held to
 the same C23 bar, and silently omitted by the old ROOT_DIRS tuple -- is now in
 scope, along with every future top-level directory. Vendored SOUP
-(libs/third_party/, libs/fonts/, port/threadx/, ...) is skipped wholesale, and
+(libs/third_party/, libs/ra8_fonts/, port/threadx/, ...) is skipped wholesale, and
 one first-party tree is exempt for a stated reason (see EXEMPT_PREFIXES):
 tests/ (NULL is deliberate null-guard stimulus).
 
@@ -47,7 +47,7 @@ EXTENSIONS = (".c", ".h", ".cpp", ".hpp")
 # Vendored SOUP the nullptr rule never governs. first_party_paths already drops
 # these for the --all sweep; needs_check re-checks them so an explicitly named
 # vendored file (a pre-commit staging edge case) is skipped as well.
-SOUP_PREFIXES = ("libs/third_party/", "libs/fonts/", "tools/vela/generated/", "port/threadx/")
+SOUP_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/", "tools/vela/generated/", "port/threadx/")
 
 # Scope recorded here, NOT as a directory allowlist (#358). Enumeration is
 # derived from git ls-files, so tools/ -- host tooling held to the same C23 bar

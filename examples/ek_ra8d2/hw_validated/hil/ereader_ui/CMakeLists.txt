@@ -48,9 +48,9 @@ ra8_add_app(
        ra8_io_bus
 )
 
-# Bake the Latin-1 subset font (libs/fonts/literata_latin1.ttf) into .rodata so
+# Bake the Latin-1 subset font (libs/ra8_fonts/literata_latin1.ttf) into .rodata so
 # the Reading body reflows real text with no microSD card (see the per-font
-# header libs/fonts/literata_latin1.h). The hex array is generated at build time
+# header libs/ra8_fonts/literata_latin1.h). The hex array is generated at build time
 # -- not committed -- so the ~37 KB of byte literals never reach the QC gates.
 # ${_d} is the repo root resolved above.
 set(_ra8_baked_font_c "${CMAKE_CURRENT_BINARY_DIR}/ra8_font_literata_latin1.c")
@@ -58,10 +58,10 @@ add_custom_command(
   OUTPUT "${_ra8_baked_font_c}"
   COMMAND
     ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/gen/font_to_c.py"
-    "${_d}/libs/fonts/literata_latin1.ttf" "${_ra8_baked_font_c}" g_ra8_font_literata_latin1
+    "${_d}/libs/ra8_fonts/literata_latin1.ttf" "${_ra8_baked_font_c}" g_ra8_font_literata_latin1
     literata_latin1.h
-  DEPENDS "${_d}/libs/fonts/literata_latin1.ttf" "${_d}/scripts/gen/font_to_c.py"
+  DEPENDS "${_d}/libs/ra8_fonts/literata_latin1.ttf" "${_d}/scripts/gen/font_to_c.py"
   COMMENT "Generating baked Latin-1 font array (ereader_ui)"
 )
 target_sources(ereader_ui.elf PRIVATE "${_ra8_baked_font_c}")
-target_include_directories(ereader_ui.elf PRIVATE "${_d}/libs/fonts")
+target_include_directories(ereader_ui.elf PRIVATE "${_d}/libs/ra8_fonts")

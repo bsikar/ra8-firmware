@@ -81,13 +81,13 @@ and locks in the critical banner pixel-for-pixel.
   is heap-free (glyph arena in `ra8_stbtt_alloc.c`; no-heap tokenizer
   `ra8_reflow_tokenize.c`, #82). A `FONT.OTF` on the microSD overrides the baked
   face; verify that path with a card image, e.g.
-  `tools/mkfontimg/build/mkfontimg libs/fonts/Literata-Regular.ttf /tmp/font.img FONT.OTF`
+  `tools/mkfontimg/build/mkfontimg libs/ra8_fonts/Literata-Regular.ttf /tmp/font.img FONT.OTF`
   then `board_sim <elf> --click 250 250 --sd /tmp/font.img --ppm out.ppm`
   (give it a generous `BOARD_SIM_MAX_CHUNKS` -- the ~312 KB SPI font read is
   slow under emulation; instant on real hardware).
 - **E (done, #66):** a **Latin-1 subset of Literata baked into internal flash**
-  (`libs/fonts/literata_latin1.ttf`, ~37 KB, generated into `.rodata` at build
-  time by `scripts/gen/font_to_c.py`; see `libs/fonts/literata_latin1.h`). So the Reading body
+  (`libs/ra8_fonts/literata_latin1.ttf`, ~37 KB, generated into `.rodata` at build
+  time by `scripts/gen/font_to_c.py`; see `libs/ra8_fonts/literata_latin1.h`). So the Reading body
   reflows **real proportional text with no SD card at all** -- with no `FONT.OTF`
   the body is now the baked reflow, not the old bitmap fallback (which remains
   only for a reflow-engine failure). The no-card golden (#84) was regenerated to

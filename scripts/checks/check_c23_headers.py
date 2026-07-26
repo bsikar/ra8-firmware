@@ -48,7 +48,7 @@ vendor-ABI sentinel: the vendored Mbed TLS SOUP tests ``#if
 defined(PSA_CRYPTO_CONFIG_H)`` to confirm the crypto config file was supplied,
 so the guard macro must keep being defined.
 
-Vendored trees (``libs/third_party/``), generated tables (``libs/fonts/``) and
+Vendored trees (``libs/third_party/``), generated tables (``libs/ra8_fonts/``) and
 build output are skipped wholesale.
 
 Usage:
@@ -79,7 +79,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ``is_build_output_path``. Matches the sibling gates' EXCLUDE_FRAGMENTS.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
 )
 
 # The typed-enum rule applies to every first-party C/C++ translation unit and

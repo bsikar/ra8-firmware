@@ -37,7 +37,7 @@ scope: the host unit-test harness legitimately uses ``setjmp`` / ``longjmp``
 to trap the firmware's ``[[noreturn]]`` fatal paths under test, which is test
 scaffolding rather than firmware control flow (the same reason ``tests/`` is
 exempt from MC/DC re-test and the magic-number gate). Vendored trees under
-``libs/third_party/``, generated data under ``libs/fonts/``, and build output
+``libs/third_party/``, generated data under ``libs/ra8_fonts/``, and build output
 are skipped wholesale.
 
 Usage::
@@ -87,7 +87,7 @@ ROOT_DIRS = ("libs", "src", "examples", "port", "tools")
 # EXCLUDE_FRAGMENTS.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
 )
 
 EXTENSIONS = {".c", ".h", ".cpp", ".hpp"}

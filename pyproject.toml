@@ -31,7 +31,7 @@ target-version = "py39"
 # CMake and CPython reserve those names, so they cannot collide with source.
 extend-exclude = [
   "libs/third_party",
-  "libs/fonts",
+  "libs/ra8_fonts",
   "_deps",
   "__pycache__",
   "/build",

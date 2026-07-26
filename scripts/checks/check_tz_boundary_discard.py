@@ -33,7 +33,7 @@ Rules (first-party C/C++ only):
 Scope:
   C / C++ sources (.c .h .cpp .hpp) under libs/, src/, tests/, examples/,
   port/, tools/.  Vendored SOUP (libs/third_party/*) and generated font
-  data (libs/fonts/*) are exempt, as are build trees.
+  data (libs/ra8_fonts/*) are exempt, as are build trees.
 
 Exemptions:
   * Comment lines / prose (a match whose cast sits inside a // or /*
@@ -55,7 +55,7 @@ from lint_targets import is_build_output_path
 
 ROOTS = ("libs", "src", "tests", "examples", "port", "tools")
 EXTS = (".c", ".h", ".cpp", ".hpp")
-EXEMPT_DIRS = ("/third_party/", "/fonts/")
+EXEMPT_DIRS = ("/third_party/", "/ra8_fonts/")
 
 # Rule A: the world-switch family, discarded anywhere.
 FAMILY_RE = re.compile(r"\(\s*void\s*\)\s*(ra8_tz_secure_boot_[a-z0-9_]+)\s*\(")

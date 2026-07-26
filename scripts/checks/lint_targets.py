@@ -49,7 +49,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # the sibling gates' EXCLUDE_FRAGMENTS.
 EXCLUDED_PREFIXES = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
     "tools/vela/generated/",
 )
 

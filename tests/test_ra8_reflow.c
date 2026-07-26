@@ -4,7 +4,7 @@
  *
  * @details
  * Loads the vendored Literata font from
- * `libs/fonts/Literata-Regular.ttf`, hands it to the
+ * `libs/ra8_fonts/Literata-Regular.ttf`, hands it to the
  * reflow engine, and exercises the public surface against a few
  * hand-written XHTML fragments. The test computes the firmware root
  * from `__FILE__` so it works whether cmake is run from `build/tidy`

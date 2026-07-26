@@ -110,7 +110,7 @@ SHELLCHECK_DISABLED_OPTIONAL = (
 
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
     "port/threadx/",
 )
 

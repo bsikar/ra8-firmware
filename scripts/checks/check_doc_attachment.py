@@ -38,7 +38,7 @@ Why a sibling script rather than a new ``doxy_audit.py`` mode:
 
 Scope: every first-party ``.c`` / ``.h`` under ``libs/``, ``src/``, ``port/``,
 ``examples/``, ``tools/`` and ``tests/``.  Vendored SOUP (``libs/third_party``)
-and generated data (``libs/fonts``) are excluded, matching CLAUDE.md.
+and generated data (``libs/ra8_fonts``) are excluded, matching CLAUDE.md.
 
 Module layout
 -------------

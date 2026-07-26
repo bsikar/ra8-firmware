@@ -87,7 +87,7 @@ OPT_OUT = "PATHREF-OK"
 # their OWN scripts/ paths, which do not exist here and never will.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
     "port/threadx/",
     "tools/vela/generated/",
 )

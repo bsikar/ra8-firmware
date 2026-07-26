@@ -215,7 +215,7 @@ static int load_font(void)
     return 0;
   }
   memcpy(path, here, base);
-  (void)snprintf(&path[base], sizeof(path) - base, "libs/fonts/literata_latin1.ttf");
+  (void)snprintf(&path[base], sizeof(path) - base, "libs/ra8_fonts/literata_latin1.ttf");
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
     return 0;

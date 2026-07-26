@@ -69,7 +69,7 @@ MIN_CALL_RESOLUTION = 0.98
 #: naming one is not an include-path defect.
 GENERATED_HEADERS = frozenset(
     {
-        "literata_latin1.h",  # libs/fonts generator output
+        "literata_latin1.h",  # libs/ra8_fonts generator output
         "ra8_npu_model_addk_sim.h",  # Vela model-compiler output
     }
 )

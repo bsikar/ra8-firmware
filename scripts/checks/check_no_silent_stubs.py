@@ -88,10 +88,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-# First-party roots. libs/third_party (SOUP) and libs/fonts (generated) are out
+# First-party roots. libs/third_party (SOUP) and libs/ra8_fonts (generated) are out
 # of scope, matching every other repo gate.
 ROOTS = ("libs", "src", "tools", "examples", "port")
-EXCLUDED = ("libs/third_party", "libs/fonts")
+EXCLUDED = ("libs/third_party", "libs/ra8_fonts")
 
 # Error constants that mean "this operation has no implementation". A function
 # whose entire body hands one of these back, having discarded its arguments,

@@ -13,7 +13,7 @@ form [[...]] (e.g. [[gnu::weak]], [[noreturn]], [[maybe_unused]],
 Scope:
   C / C++ sources (.c .h .cpp .hpp) under libs/, src/, tests/, examples/,
   port/, tools/.  Vendored SOUP (libs/third_party/*) and generated font
-  data (libs/fonts/*) are exempt, as are build trees.
+  data (libs/ra8_fonts/*) are exempt, as are build trees.
 
 Allowed __attribute__ uses (no portable [[...]] spelling -- clang errors on
 the [[gnu::]] form as an unknown attribute while it silently ignores the GNU
@@ -41,7 +41,7 @@ from lint_targets import is_build_output_path
 
 ROOTS = ("libs", "src", "tests", "examples", "port", "tools")
 EXTS = (".c", ".h", ".cpp", ".hpp")
-EXEMPT_DIRS = ("/third_party/", "/fonts/")
+EXEMPT_DIRS = ("/third_party/", "/ra8_fonts/")
 ALLOWED = {"interrupt", "cmse_nonsecure_entry", "cmse_nonsecure_call"}
 
 ATTR_RE = re.compile(r"__attribute__\s*\(\(")

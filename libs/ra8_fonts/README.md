@@ -1,4 +1,4 @@
-# libs/fonts/
+# libs/ra8_fonts/
 
 Project-curated font assets for the rendering stack (`libs/ra8_reflow`,
 `libs/ra8_gfx`).
@@ -21,8 +21,8 @@ bitmap-conversion step is needed -- apps hand the raw `.ttf` bytes to
 `ra8_reflow_init()`.
 
 `literata_latin1.ttf` is a ~37 KB Latin-1 + common-typographic subset produced
-with `pyftsubset` (recipe in `scripts/utils/font_to_c.py`). The e-reader apps
-bake it into `.rodata` at build time via `scripts/utils/font_to_c.py`, declared
+with `pyftsubset` (recipe in `scripts/gen/font_to_c.py`). The e-reader apps
+bake it into `.rodata` at build time via `scripts/gen/font_to_c.py`, declared
 by `literata_latin1.h`; the generated hex array is not committed.
 
 The host reflow tests load these files directly (see `tests/test_ra8_reflow.c`
