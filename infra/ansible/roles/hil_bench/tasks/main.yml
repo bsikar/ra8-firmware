@@ -17,7 +17,8 @@
   changed_when: "'already initialized' not in hil_bench_lfs_install.stdout"
 
 - name: Assert the non-apt vendor tools are present (fail loud, never skip)
-  ansible.builtin.shell: "command -v {{ item }}"  # noqa: command-instead-of-shell -- command -v is a shell builtin
+  # command -v is a shell builtin, so the shell module is required here.
+  ansible.builtin.shell: "command -v {{ item }}"  # noqa: command-instead-of-shell
   args:
     executable: /bin/bash
   environment:
