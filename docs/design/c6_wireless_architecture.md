@@ -69,6 +69,58 @@ RESET is left disconnected (`-1`) in this bring-up: the C6 is reset by power
 cycling. A future revision may wire a host-driven reset line so the host can
 recover the C6 without a power cycle.
 
+### Pin map (RA8D2 side, Pmod1 / J26)
+
+The C6 is soldered to Pmod1 (J26). Which MCU pin carries each J26 signal is
+**not** fixed: EK-RA8D2 v1 UM Rev 1.01 Table 17 p 26 shows pins J26-1..J26-4
+are muxed on the board, and Table 18 p 26 selects the mux position from
+SW4-1 / SW4-2.
+
+| J26 | Signal (C6 GPIO) | RA8D2 pin, Pmod1 **SPI** position | RA8D2 pin, UART position |
+|-----|------------------|-----------------------------------|--------------------------|
+| 1 | CS (GPIO0) | `P804` (SS2/IRQ14) | `P800` (CTS2) |
+| 2 | COPI (GPIO1) | `P801` (COPI2/TXD2) | `P801` |
+| 3 | CIPO (GPIO2) | `P802` (CIPO2/RXD2) | `P802` |
+| 4 | SCK (GPIO3) | `P803` (SCK2) | `P804` (RTS2) |
+| 7 | side-band | `P006` (IRQ11-DS) | `P006` |
+| 8 | side-band | `P402` | `P402` |
+| 9 | side-band | `P412` | `P412` |
+| 10 | side-band | `P413` | `P413` |
+
+The controller is **SCI2 in Simple-SPI mode** (`k_ra8_board_pmod1_sci_channel`),
+with the chip-select owned as a GPIO so one assertion spans the whole
+1600-byte esp-hosted frame. Board symbols: `k_ra8_board_pmod1_spi_*` and
+`k_ra8_board_pmod1_irq` / `_reset` / `_gpio_a` / `_gpio_b`.
+
+Note the trap in the UART position: J26-1 becomes `P800` and J26-4 becomes
+`P804`, so a controller that drives `P804` as chip-select is really feeding
+the C6's *clock* pin, and the C6 never sees a chip-select at all.
+
+### Required SW4 DIP positions
+
+| Switch | Required | Meaning (UM Table 3 p 16, Table 18 p 26) |
+|--------|----------|------------------------------------------|
+| SW4-1 | OFF | Pmod1 Mode Select 1 |
+| SW4-2 | OFF | Pmod1 Mode Select 2; OFF+OFF selects SPI |
+| SW4-3 | ON | Octo-SPI Inactive -- frees `P801`..`P804` for Pmod1 |
+
+SW4-3 is a hardware-only analog mux: the U15 PI4IOE5V6408 expander can sense
+and override the other SW4 lines, but a whole-output-space sweep (issue #44,
+recorded on `ra8_board_io_expander_set_octospi_active`) established that its
+GPIOs are not in the Octo-SPI path.
+
+### Side-band assignment: still unresolved
+
+Which side-band pin carries DATA_READY (C6 GPIO4) and which carries HANDSHAKE
+(C6 GPIO6) is **not yet established on hardware**. The bring-up instrument for
+it is `examples/ek_ra8d2/hw_pending/c6_spi_probe`, which resolves the mapping
+from the C6's own behaviour rather than from a wiring note: the C6 image sets
+`CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y`, so HANDSHAKE tracks the chip-select edge,
+while DATA_READY stays high only while the C6's transmit queue holds a frame.
+Its 2026-07-26 run found the Pmod1 SPI group not reaching J26 at all (the DIP
+positions above were not set), so the map is still open; see that app's README
+for the captured evidence.
+
 ## Boot and reset
 
 1. Power-on: the C6 boots its own bootloader and starts the esp-hosted-mcu
@@ -89,6 +141,12 @@ The upstream host driver source **is now vendored** at
 `949bb30`, with the upstream ESP-IDF/FreeRTOS port deliberately left out).
 Nothing compiles it yet: the driver includes port headers by name, so it
 cannot build until the port exists.
+
+Separately, the first-light bench instrument for the *raw* link is
+`examples/ek_ra8d2/hw_pending/c6_spi_probe`. It hand-decodes the payload
+header from the same pinned upstream spec, but it is deliberately an app
+rather than a driver: its job is to prove the wire, resolve the Pmod1 mux
+position and identify the side-band pins, not to become the transport.
 
 The **first-party port and the build wiring are the follow-on change**. That
 port supplies the ten `port_esp_hosted_host_*.h` header contracts, fills the
