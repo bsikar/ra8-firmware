@@ -13,8 +13,8 @@ baked font, named after the font -- e.g. literata_latin1.h):
   const unsigned char <symbol_name>[]  = { ... };
   const unsigned int  <symbol_name>_len = <N>;
 
-The Latin-1 subset checked in at libs/fonts/literata_latin1.ttf was produced
-with fonttools (in a throwaway venv) from libs/fonts/Literata-Regular.ttf
+The Latin-1 subset checked in at libs/ra8_fonts/literata_latin1.ttf was produced
+with fonttools (in a throwaway venv) from libs/ra8_fonts/Literata-Regular.ttf
 (Literata Regular, SIL OFL 1.1, googlefonts/literata):
   pyftsubset Literata-Regular.ttf \
     --unicodes='0020-00FF,2013,2014,2018,2019,201C,201D,2026' \

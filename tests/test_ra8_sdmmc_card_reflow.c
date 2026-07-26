@@ -418,7 +418,7 @@ static bool load_src_font(void)
     }
   }
   const size_t base = strlen(path);
-  (void)snprintf(&path[base], sizeof(path) - base, "/libs/fonts/Literata-Regular.ttf");
+  (void)snprintf(&path[base], sizeof(path) - base, "/libs/ra8_fonts/Literata-Regular.ttf");
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
     return false;

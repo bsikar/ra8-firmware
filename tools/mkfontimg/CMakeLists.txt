@@ -4,7 +4,7 @@
 # reads it back bit-for-bit.
 #
 #   cmake -B build -S . && cmake --build build
-#   ./build/mkfontimg ../../libs/fonts/Literata-Regular.ttf font.img FONT.OTF
+#   ./build/mkfontimg ../../libs/ra8_fonts/Literata-Regular.ttf font.img FONT.OTF
 #
 # Standalone host dev tool under tools/, outside the firmware cross-build.
 #

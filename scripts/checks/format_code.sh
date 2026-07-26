@@ -130,7 +130,7 @@ parse_args() {
 find_source_files() {
   git ls-files --cached --others --exclude-standard |
     grep -E '\.(c|h|cpp|hpp|cc|cxx|hh|hxx|m)$' |
-    grep -Ev '^(libs/third_party/|libs/fonts/|tools/vela/generated/)' |
+    grep -Ev '^(libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
     grep -Ev '(^|/)(build|build-[^/]*|_deps)/' |
     sort
 }

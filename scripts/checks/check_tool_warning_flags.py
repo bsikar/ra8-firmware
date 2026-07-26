@@ -21,7 +21,7 @@ holds every first-party source in it to NASA Power of 10 Rule 10:
   * blanket ``-Werror`` is present, and
   * blanket ``-w`` is absent.
 
-Vendored SOUP (``libs/third_party/``) and generated data (``libs/fonts/``) are
+Vendored SOUP (``libs/third_party/``) and generated data (``libs/ra8_fonts/``) are
 exempt by construction -- they are not hand-authored here and CLAUDE.md scopes
 the style bar to first-party code.
 
@@ -63,7 +63,7 @@ from pathlib import Path
 
 # Path fragments whose sources are not hand-authored under this project's
 # style rules. Kept identical in spirit to check_no_silent_stubs.py's EXCLUDED.
-EXEMPT_FRAGMENTS = ("libs/third_party/", "libs/fonts/")
+EXEMPT_FRAGMENTS = ("libs/third_party/", "libs/ra8_fonts/")
 
 
 def is_exempt(source: str) -> bool:
@@ -222,7 +222,7 @@ SELFTEST_CASES: list[tuple[str, str, list[str], bool]] = [
     ),
     (
         "generated font data is exempt",
-        "libs/fonts/ra8_font_dejavu.c",
+        "libs/ra8_fonts/ra8_font_dejavu.c",
         ["cc", "-w", "-c"],
         False,
     ),

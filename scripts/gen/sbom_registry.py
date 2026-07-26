@@ -622,21 +622,21 @@ REGISTRY: tuple[Component, ...] = (
         ctype="data",
         group="googlefonts",
         url="https://github.com/googlefonts/literata",
-        path="libs/fonts/Literata-Regular.ttf",
+        path="libs/ra8_fonts/Literata-Regular.ttf",
         provenance=PROV_OPEN_ASSET,
         description="Reading-body serif font, rasterized at runtime by ra8_reflow.",
         purl="pkg:github/googlefonts/literata",
         spdx="OFL-1.1",
-        license_file="libs/fonts/Literata-OFL.txt",
+        license_file="libs/ra8_fonts/Literata-OFL.txt",
         copyright=(
             "Copyright 2017 The Literata Project Authors (https://github.com/googlefonts/literata)."
         ),
         extra_notes=(
             "SIL Open Font License 1.1 -- open and redistributable. Static "
             "Regular instance from the googlefonts/literata upstream; the "
-            "shipped OFL.txt is libs/fonts/Literata-OFL.txt.",
-            "Also bundled: libs/fonts/literata_latin1.ttf and the baked "
-            "libs/fonts/literata_latin1.h (Latin-1 subset). Same provenance.",
+            "shipped OFL.txt is libs/ra8_fonts/Literata-OFL.txt.",
+            "Also bundled: libs/ra8_fonts/literata_latin1.ttf and the baked "
+            "libs/ra8_fonts/literata_latin1.h (Latin-1 subset). Same provenance.",
             "Replaces the previously bundled proprietary Adobe Arno Pro face "
             "(a redistribution blocker); see THIRD_PARTY_LICENSES.md.",
         ),

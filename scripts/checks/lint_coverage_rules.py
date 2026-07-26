@@ -249,7 +249,7 @@ SHEBANG_CLASS: tuple[tuple[str, str], ...] = (
 # ---------------------------------------------------------------------------
 EXEMPT_PREFIXES: tuple[tuple[str, str], ...] = (
     ("libs/third_party/", "vendored SOUP; CLAUDE.md exempts it from first-party standards"),
-    ("libs/fonts/", "generated glyph tables, not hand-authored"),
+    ("libs/ra8_fonts/", "generated glyph tables, not hand-authored"),
     ("tools/vela/generated/", "emitted by the Vela NPU compiler on every regen"),
     ("docs/reference/", "committed Renesas datasheet and HUM PDFs"),
     ("docs/doxygen_theme/", "vendored doxygen-awesome theme"),

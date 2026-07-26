@@ -1189,11 +1189,11 @@
         },
         {
           "name": "ra8:path",
-          "value": "libs/fonts/Literata-Regular.ttf"
+          "value": "libs/ra8_fonts/Literata-Regular.ttf"
         },
         {
           "name": "ra8:licenseFile",
-          "value": "libs/fonts/Literata-OFL.txt"
+          "value": "libs/ra8_fonts/Literata-OFL.txt"
         },
         {
           "name": "ra8:copyright",
@@ -1205,11 +1205,11 @@
         },
         {
           "name": "ra8:note0",
-          "value": "SIL Open Font License 1.1 -- open and redistributable. Static Regular instance from the googlefonts/literata upstream; the shipped OFL.txt is libs/fonts/Literata-OFL.txt."
+          "value": "SIL Open Font License 1.1 -- open and redistributable. Static Regular instance from the googlefonts/literata upstream; the shipped OFL.txt is libs/ra8_fonts/Literata-OFL.txt."
         },
         {
           "name": "ra8:note1",
-          "value": "Also bundled: libs/fonts/literata_latin1.ttf and the baked libs/fonts/literata_latin1.h (Latin-1 subset). Same provenance."
+          "value": "Also bundled: libs/ra8_fonts/literata_latin1.ttf and the baked libs/ra8_fonts/literata_latin1.h (Latin-1 subset). Same provenance."
         },
         {
           "name": "ra8:note2",

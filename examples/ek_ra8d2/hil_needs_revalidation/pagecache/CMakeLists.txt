@@ -40,7 +40,7 @@ ra8_add_app(
        ra8_board_ek_ra8d2
 )
 
-# Bake the Latin-1 subset font (libs/fonts/literata_latin1.ttf) into .rodata so a
+# Bake the Latin-1 subset font (libs/ra8_fonts/literata_latin1.ttf) into .rodata so a
 # blank SD card self-provisions FONT.OTF on first boot (write the blob, read it
 # back). The hex array is generated at build time -- not committed -- so the
 # ~37 KB of byte literals never reach the QC gates. ${_d} is the repo root above.
@@ -49,12 +49,12 @@ add_custom_command(
   OUTPUT "${_ra8_baked_font_c}"
   COMMAND
     ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/gen/font_to_c.py"
-    "${_d}/libs/fonts/literata_latin1.ttf" "${_ra8_baked_font_c}" g_ra8_font_literata_latin1
+    "${_d}/libs/ra8_fonts/literata_latin1.ttf" "${_ra8_baked_font_c}" g_ra8_font_literata_latin1
     literata_latin1.h
-  DEPENDS "${_d}/libs/fonts/literata_latin1.ttf" "${_d}/scripts/gen/font_to_c.py"
+  DEPENDS "${_d}/libs/ra8_fonts/literata_latin1.ttf" "${_d}/scripts/gen/font_to_c.py"
   COMMENT "Generating baked Latin-1 font array (pagecache)"
 )
 target_sources(pagecache.elf PRIVATE "${_ra8_baked_font_c}")
-# libs/fonts holds the per-font declaration header (literata_latin1.h) that both
+# libs/ra8_fonts holds the per-font declaration header (literata_latin1.h) that both
 # main.c and the generated array .c include.
-target_include_directories(pagecache.elf PRIVATE "${_d}/libs/fonts")
+target_include_directories(pagecache.elf PRIVATE "${_d}/libs/ra8_fonts")

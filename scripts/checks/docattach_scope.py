@@ -25,7 +25,7 @@ SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "tests")
 EXCLUDED_PARTS = frozenset(
     {
         "third_party",
-        "fonts",
+        "ra8_fonts",
         "build",
         "build-cov",
         "build-bench",

@@ -73,7 +73,7 @@ SNIPPET_TRUNCATE_LEN = 117
 EXCLUDE_PREFIXES = ("libs/third_party/", "docs/reference/")
 # Vendored / generated doc trees. Not first-party prose, so out of scope --
 # named and reasoned rather than left to a positive root allowlist (#358).
-DOC_EXCLUDE_PREFIXES = ("docs/doxygen_theme/", "libs/fonts/")
+DOC_EXCLUDE_PREFIXES = ("docs/doxygen_theme/", "libs/ra8_fonts/")
 DOC_EXTS = (".md", ".txt")
 TOOL_OUTPUT_TOKENS = (
     "cppcheck",

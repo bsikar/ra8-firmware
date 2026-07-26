@@ -5,7 +5,7 @@
 
 This is the supply-chain provenance gate for the vendored third-party SOUP
 (Software Of Unknown Provenance) under ``libs/third_party/`` plus the one
-bundled font data asset under ``libs/fonts/``.  It emits a machine-readable
+bundled font data asset under ``libs/ra8_fonts/``.  It emits a machine-readable
 CycloneDX 1.5 JSON document at ``docs/sbom/ra8-firmware.cdx.json`` that
 records, for every component: name, version, SPDX license (with the
 Apache-2.0 election for the dual-licensed crypto), package URL (purl) where

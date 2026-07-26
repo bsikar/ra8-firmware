@@ -2,7 +2,7 @@
 # devcontainer image and the CI runners all install.
 #
 # Scope is the 10 first-party workflow / config YAML files. Vendored trees
-# (libs/third_party/, libs/fonts/) are excluded by the gate's file list, not
+# (libs/third_party/, libs/ra8_fonts/) are excluded by the gate's file list, not
 # here, so this config never has to know about SOUP.
 
 ---

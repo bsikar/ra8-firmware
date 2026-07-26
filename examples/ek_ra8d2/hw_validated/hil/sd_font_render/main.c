@@ -15,7 +15,7 @@
  * board_sim-runnable binary:
  *
  *   @code
- *   tools/mkfontimg/build/mkfontimg libs/fonts/Literata-Regular.ttf /tmp/font.img
+ *   tools/mkfontimg/build/mkfontimg libs/ra8_fonts/Literata-Regular.ttf /tmp/font.img
  *   make -C examples/ek_ra8d2/hw_validated/hil/sd_font_render
  *   tools/ra8_emulator/build/ra8_emulator \
  *     examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \

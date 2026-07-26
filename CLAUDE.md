@@ -446,7 +446,7 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 > (including the `tools/ra8_emulator` host emulator), `tests/`, and `scripts/`
 > are all held to the same bar. The **only** exemption is vendored
 > third-party code under `libs/third_party/` (SOUP). Generated data under
-> `libs/fonts/` is likewise exempt as it is not hand-authored. A file being
+> `libs/ra8_fonts/` is likewise exempt as it is not hand-authored. A file being
 > a "host tool" or "just a simulator" is NOT a reason to relax the rules:
 > uneven standards train sloppy habits. Every CI gate runs against this same
 > scope; if a gate or a `(RA8D2 C Firmware)` heading below ever reads as

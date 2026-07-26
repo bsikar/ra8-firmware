@@ -18,7 +18,7 @@ two mistakes:
 Either way it is a defect.  This gate walks every first-party ``.h``/``.hpp``
 under a ``src/`` directory and fails on any that do not end in ``_internal``.
 Vendored trees (``libs/third_party/``) and generated font tables
-(``libs/fonts/``) are out of scope, matching every other repo gate.
+(``libs/ra8_fonts/``) are out of scope, matching every other repo gate.
 
 There is deliberately NO in-file waiver marker: the fix is to move the header
 to ``inc/`` or rename it ``*_internal.h``, never to annotate an exception.
@@ -48,7 +48,7 @@ HEADER_SUFFIXES = (".h", ".hpp", ".hh", ".hxx")
 SCAN_ROOTS = ("libs", "src", "port", "examples", "tools")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
     "port/threadx/",
 )
 

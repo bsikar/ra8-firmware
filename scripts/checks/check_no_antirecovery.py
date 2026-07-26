@@ -88,7 +88,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # reference trees and the recovery scripts, which are pro-recovery by design.
 EXCLUDED_PREFIXES: tuple[str, ...] = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
     "docs/reference/",
 )
 

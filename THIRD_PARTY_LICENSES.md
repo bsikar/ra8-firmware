@@ -24,13 +24,13 @@ a component, update that registry and run `make sbom`.
 ## Scope
 
 - **Covered here:** the vendored Software Of Unknown Provenance (SOUP) under
-  `libs/third_party/` and the one bundled font data asset under `libs/fonts/`.
+  `libs/third_party/` and the one bundled font data asset under `libs/ra8_fonts/`.
 - **NOT covered (first-party, MIT):** all hand-written code under `libs/`,
   `src/`, `examples/`, `port/`, `tools/`, `tests/`, and `scripts/` is
   first-party and licensed under the root MIT `LICENSE.txt`. In particular
   `port/` is the project's own RA8D2 glue for the middleware (project Ring /
   World tags, project copyright) -- it is NOT vendored SOUP.
-- **Generated font tables** (`libs/fonts/literata_latin1.h` and the `.ttf`
+- **Generated font tables** (`libs/ra8_fonts/literata_latin1.h` and the `.ttf`
   bytes it bakes) are derived data, not hand-authored; their license follows
   the source font (see the Literata entry -- SIL OFL 1.1, redistributable).
 
@@ -83,7 +83,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | protobuf-c (nested in esp-hosted) | 1.4.1 (git `abc67a11`) | BSD-2-Clause | `libs/third_party/esp-hosted/common/protobuf-c/` | <https://github.com/protobuf-c/protobuf-c> |
 | Renesas RSIP-E50D fw (`r_sce_AMC`) | FSP @ `40bbaa11` | BSD-3-Clause | `libs/third_party/fsp_blobs/r_sce_AMC/` | <https://github.com/renesas/fsp> |
 | Renesas BLE controller patch (**not vendored**) | FSP (Renesas SLA) | Renesas SLA | `libs/third_party/fsp_blobs/ble_patch/` (absent) | <https://github.com/renesas/fsp> |
-| Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
+| Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/ra8_fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
 Counts: **20 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
 the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
@@ -220,7 +220,7 @@ below); this section reproduces the copyright line and points to that text.
 - **Literata** -- "Copyright 2017 The Literata Project Authors
   (https://github.com/googlefonts/literata)." Licensed under the SIL Open Font
   License, Version 1.1; the full license text ships at
-  `libs/fonts/Literata-OFL.txt`.
+  `libs/ra8_fonts/Literata-OFL.txt`.
 
 ### TinyXML-2 local modification
 

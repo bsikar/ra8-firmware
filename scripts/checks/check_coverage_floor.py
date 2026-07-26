@@ -16,7 +16,7 @@ Input: the gcovr JSON `build/coverage/coverage/coverage.json` produced by
 `scripts/checks/coverage.sh` (its `[4/4] Running gcovr` step writes `--json`). Run
 that first, then this. Scope mirrors the aggregate gate: files under `libs/`
 or `src/`, excluding vendored SOUP (`libs/third_party/`) and generated font
-tables (`libs/fonts/`), which the coding-standards scope explicitly exempts.
+tables (`libs/ra8_fonts/`), which the coding-standards scope explicitly exempts.
 
 Exit 0 if every in-scope file is >= FLOOR_PCT, else exit 1 with the offenders.
 
@@ -41,7 +41,7 @@ COVERAGE_JSON = REPO_ROOT / "build" / "coverage" / "coverage" / "coverage.json"
 IN_SCOPE_PREFIXES = ("libs/", "src/")
 """First-party source roots held to the floor."""
 
-OUT_OF_SCOPE_PREFIXES = ("libs/third_party/", "libs/fonts/")
+OUT_OF_SCOPE_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
 """Vendored SOUP and generated font tables -- exempt from first-party rules
 per the CLAUDE.md coding-standards scope, so exempt from the floor too."""
 

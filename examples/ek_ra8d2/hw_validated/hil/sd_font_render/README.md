@@ -8,7 +8,7 @@ RA8D2 binary (and inside `board_sim` against a `--sd` image).
 
 The SD bring-up + font load is handled by the shared **`libs/ra8_sdfont`** helper,
 which **self-provisions**: if the card carries no `FONT.OTF`, it writes a baked
-Latin-1 font (`libs/fonts/literata_latin1.ttf`) to the card and reads it back. So
+Latin-1 font (`libs/ra8_fonts/literata_latin1.ttf`) to the card and reads it back. So
 **any FAT-formatted "random" card just works** -- no host-side image prep. The
 same helper backs `ereader_ui`'s (read-only) font load.
 
@@ -37,7 +37,7 @@ cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfonti
 make -C examples/ek_ra8d2/hw_validated/hil/sd_font_render
 
 # A) Card already carrying a font:
-tools/mkfontimg/build/mkfontimg libs/fonts/literata_latin1.ttf /tmp/font.img FONT.OTF
+tools/mkfontimg/build/mkfontimg libs/ra8_fonts/literata_latin1.ttf /tmp/font.img FONT.OTF
 tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \
   --sd /tmp/font.img --ppm /tmp/out.ppm

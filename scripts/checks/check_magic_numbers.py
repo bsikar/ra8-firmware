@@ -100,7 +100,7 @@ BOOT_BOILERPLATE = frozenset(
 # typed enum would obscure the vectors, not clarify them.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
     "port/threadx/",
     "tests/",
 )

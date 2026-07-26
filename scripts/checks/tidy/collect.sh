@@ -24,7 +24,7 @@
 # example" is not a reason to relax them.
 #
 # The ONLY exemptions are vendored SOUP (libs/third_party/)
-# and generated tables (libs/fonts/, tools/vela/generated/), matching the
+# and generated tables (libs/ra8_fonts/, tools/vela/generated/), matching the
 # CLAUDE.md exemption list. Build trees and CMake-fetched deps are excluded
 # because they are not source.
 #
@@ -65,7 +65,7 @@ collect_source_files() {
     grep -E '\.(c|h|cpp|cc|cxx|hpp|hh|hxx|m)$' |
     grep -E '^(libs|src|tests|tools|examples|port)/' |
     # Vendored SOUP and generated tables -- the CLAUDE.md exemption list.
-    grep -Ev '^(libs/third_party/|libs/fonts/|tools/vela/generated/)' |
+    grep -Ev '^(libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
     # Build trees and CMake-fetched deps are not source.
     grep -Ev '(^|/)(build|build-[^/]*|_deps)/' |
     while IFS= read -r f; do

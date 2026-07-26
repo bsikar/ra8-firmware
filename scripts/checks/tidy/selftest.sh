@@ -77,7 +77,7 @@ selftest_scope() {
   # claimed: a scope that swallowed them would report coverage this project
   # explicitly does not want, and would bury real findings under SOUP noise.
   local forbidden
-  for forbidden in libs/third_party libs/fonts tools/vela/generated; do
+  for forbidden in libs/third_party libs/ra8_fonts tools/vela/generated; do
     if grep -q "^$FIRMWARE_DIR/$forbidden/" <<<"$listing"; then
       print_error "selftest: $forbidden/ is claimed but must be exempt"
       failures=$((failures + 1))

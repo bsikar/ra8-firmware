@@ -56,10 +56,10 @@ EXCLUDE_PARTS = {"third_party", "build", ".git"}
 # than SCAN_DIRS on purpose: the member/enum/macro documentation bar is
 # repo-wide (CLAUDE.md "these standards apply to EVERY first-party file"), so
 # the fallout report must cover examples/, tools/, and tests/ too. Vendored
-# SOUP (libs/third_party/) and generated tables (libs/fonts/) stay exempt, the
+# SOUP (libs/third_party/) and generated tables (libs/ra8_fonts/) stay exempt, the
 # same as the function audit.
 MEMBER_SCAN_DIRS = ["libs", "src", "port", "examples", "tools", "tests"]
-MEMBER_EXCLUDE_PARTS = {"third_party", "fonts", "build", "build-cov", "_deps", ".git"}
+MEMBER_EXCLUDE_PARTS = {"third_party", "ra8_fonts", "build", "build-cov", "_deps", ".git"}
 
 # Minimum path depth to form a two-segment module label (e.g. "libs/ra8_hal").
 MODULE_PATH_MIN_DEPTH = 2

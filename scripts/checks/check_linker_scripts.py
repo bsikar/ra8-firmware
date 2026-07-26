@@ -62,7 +62,7 @@ import sys
 import tempfile
 
 SYMBOL_PREFIX = "g_ra8_ls_"
-EXCLUDED_PREFIXES = ("libs/third_party/", "libs/fonts/")
+EXCLUDED_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
 
 # A comment in an ld script is /* ... */ only -- there is no line-comment form.
 _COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)

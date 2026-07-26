@@ -323,7 +323,7 @@ printf '<package><metadata><dc:title>oops' >"${REFLOW_XML_DIR}/seed_malformed.xm
 # a valid stbtt_InitFont state instantly) plus a garbage blob.
 # -----------------------------------------------------------------------------
 STBTT_DIR="${CORPUS_ROOT}/fuzz_ra8_stbtt"
-cp "${ROOT}/libs/fonts/literata_latin1.ttf" "${STBTT_DIR}/seed_literata_latin1.ttf"
+cp "${ROOT}/libs/ra8_fonts/literata_latin1.ttf" "${STBTT_DIR}/seed_literata_latin1.ttf"
 printf 'OTTOnot-a-real-font\x00\x00\x00\x00' >"${STBTT_DIR}/seed_garbage.bin"
 
 # -----------------------------------------------------------------------------

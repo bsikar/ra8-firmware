@@ -76,7 +76,7 @@ SOURCE_SUFFIXES = (
 SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "tests")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
-    "libs/fonts/",
+    "libs/ra8_fonts/",
     "port/threadx/",
 )
 

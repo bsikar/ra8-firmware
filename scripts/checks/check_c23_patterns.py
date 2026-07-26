@@ -27,7 +27,7 @@ The rules (CLAUDE.md "C23 Syntax" and "Constants and Macros"):
 Scope:
   C / C++ sources (.c .h .cpp .hpp) under libs/, src/, examples/, port/,
   tools/, tests/.  Vendored SOUP (libs/third_party/) and generated font data
-  (libs/fonts/) are exempt, as are build trees.
+  (libs/ra8_fonts/) are exempt, as are build trees.
 
 Matches inside comments and string / character literals are ignored: the
 comment/string blanking is reused verbatim from ``check_magic_numbers.py`` so
@@ -62,7 +62,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ROOTS = ("libs", "src", "examples", "port", "tools", "tests")
 EXTS = (".c", ".h", ".cpp", ".hpp")
 # Path fragments that exclude a file: vendored SOUP and generated font tables.
-EXEMPT_DIRS = ("/third_party/", "/fonts/")
+EXEMPT_DIRS = ("/third_party/", "/ra8_fonts/")
 
 # Rule 1: C11 _Static_assert at the start of a line (after leading whitespace).
 # C23 spells it `static_assert`.

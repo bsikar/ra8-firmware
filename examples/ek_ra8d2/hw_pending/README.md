@@ -43,7 +43,7 @@ devices itself) and moved to `hw_validated/hil/`.
 
 `sd_font_render` was reworked to **self-provision** its font through the new
 `libs/ra8_sdfont` helper: it mounts the Pmod2 microSD, and if `FONT.OTF` is absent
-it writes a baked Latin-1 font (`libs/fonts/literata_latin1.ttf`) to the card and
+it writes a baked Latin-1 font (`libs/ra8_fonts/literata_latin1.ttf`) to the card and
 reads it back -- so any FAT-formatted "random" card just works, no host-side
 image prep. Validated on real hardware with the prior Arno Pro face
 (`g_sfr_stage` = render_ok, font 404 KB, `g_sfr_ink` = 1254 inked pixels) and in

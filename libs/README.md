@@ -14,9 +14,11 @@ the tree:
 ls libs/
 ```
 
-Every entry is either an `ra8_*` library (first-party, built under the full
-style/safety rules -- see below) or one of the two documented exceptions
-(`third_party/`, `fonts/`).
+Every entry is an `ra8_*` library (first-party, built under the full
+style/safety rules -- see below) except the one vendored tree,
+`third_party/`. One `ra8_*` entry, `ra8_fonts/`, carries the prefix but
+holds font *data* rather than hand-written code, so it is exempt from the
+coding-style rules; both exemptions are set out below.
 
 ## The `ra8_` naming convention
 
@@ -33,16 +35,16 @@ first-party library exports carries it, per
 
 A directory under `libs/` named `ra8_foo` is the library that owns the
 `ra8_foo_*` symbol family (functions, types, and `k_ra8_foo_*` enum values).
-This is also why the two non-`ra8_` entries below are exceptions rather than
-just differently-named libraries: they do not participate in this project's
-own C namespace at all.
+This is also why `third_party/` below is an exception rather than just a
+differently-named library: it does not participate in this project's own C
+namespace at all.
 
-## The two non-`ra8_` entries
+## The two style-rule exemptions
 
 | Dir | What it is | Why it is exempt |
 |---|---|---|
 | [`third_party/`](third_party/) | Vendored third-party dependencies (SOUP -- Software of Unknown Provenance): TLS, filesystem, RTOS, codec, and ML libraries such as `mbedtls`, `litehtml`, `libwebp`, `threadx`, `netxduo`, `tflite-micro`. Each subdirectory is upstream source, not hand-authored here. | `CLAUDE.md` and the style guide both carve this path out explicitly: the C23/Doxygen/HUM-citation/naming rules apply to first-party code, and vendored code keeps its own upstream conventions. MC/DC re-test is likewise waived here (component justifications live under `docs/SOUP/`). |
-| [`fonts/`](fonts/) | Generated/curated font assets for the rendering stack (`libs/ra8_reflow`, `libs/ra8_gfx`) -- committed `.ttf` files plus a generated `extern` header for a baked-in glyph subset. | Not hand-authored: it is font data (and a generator-produced header over that data), so the coding-style rules that apply to hand-written C do not apply here either. |
+| [`ra8_fonts/`](ra8_fonts/) | Generated/curated font assets for the rendering stack (`libs/ra8_reflow`, `libs/ra8_gfx`) -- committed `.ttf` files plus a generated `extern` header for a baked-in glyph subset. It owns the `g_ra8_font_*` blob symbols, hence the `ra8_` prefix. | Not hand-authored: it is font data (and a generator-produced header over that data), so the coding-style rules that apply to hand-written C do not apply here either. |
 
 Everything else under `libs/` is a hand-written `ra8_*` library and is held to
 the full rule set in the top-level `CLAUDE.md` and `docs/STYLE_GUIDE.md`
