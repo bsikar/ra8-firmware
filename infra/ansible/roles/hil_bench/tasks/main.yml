@@ -16,6 +16,41 @@
   register: hil_bench_lfs_install
   changed_when: "'already initialized' not in hil_bench_lfs_install.stdout"
 
+- name: Check the currently-installed pinned Arm toolchain version
+  ansible.builtin.command:
+    cmd: "{{ hil_bench_arm_gcc_prefix }}/bin/arm-none-eabi-gcc -dumpfullversion"
+  register: hil_bench_arm_ver
+  changed_when: false
+  failed_when: false
+
+- name: Install the pinned Arm GNU Toolchain (aarch64) to /opt
+  when: hil_bench_arm_gcc_dumpversion not in (hil_bench_arm_ver.stdout | default(''))
+  become: true
+  block:
+    - name: Download the pinned Arm toolchain tarball (sha256-verified)
+      ansible.builtin.get_url:
+        url: >-
+          https://developer.arm.com/-/media/Files/downloads/gnu/{{ hil_bench_arm_gcc_release }}/binrel/arm-gnu-toolchain-{{ hil_bench_arm_gcc_release }}-aarch64-arm-none-eabi.tar.xz
+        dest: /tmp/ra8-armgcc.tar.xz
+        checksum: "sha256:{{ hil_bench_arm_gcc_sha256_aarch64 }}"
+        mode: "0644"
+    - name: Create the toolchain prefix
+      ansible.builtin.file:
+        path: "{{ hil_bench_arm_gcc_prefix }}"
+        state: directory
+        mode: "0755"
+    - name: Extract the toolchain (strip the tarball's top dir)
+      ansible.builtin.unarchive:
+        src: /tmp/ra8-armgcc.tar.xz
+        dest: "{{ hil_bench_arm_gcc_prefix }}"
+        remote_src: true
+        extra_opts: ["--strip-components=1"]
+    - name: Put the pinned toolchain on PATH for all login shells
+      ansible.builtin.copy:
+        dest: /etc/profile.d/ra8-arm-toolchain.sh
+        content: "export PATH={{ hil_bench_arm_gcc_prefix }}/bin:$PATH\n"
+        mode: "0644"
+
 - name: Assert the non-apt vendor tools are present (fail loud, never skip)
   # command -v is a shell builtin, so the shell module is required here.
   ansible.builtin.shell: "command -v {{ item }}"  # noqa: command-instead-of-shell

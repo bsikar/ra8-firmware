@@ -11,16 +11,29 @@ hil_bench_repo_dir: "/home/{{ ansible_user | default('star') }}/ra8-firmware"
 hil_bench_ref: "origin/dev"
 
 # apt packages the bench needs to build + flash + probe the firmware.
+# NOTE: gcc-arm-none-eabi is deliberately NOT here -- apt ships 13.2, but the
+# project pins Arm GNU Toolchain 13.3.rel1 for reproducible codegen (#178: the
+# miniz inflater is version-sensitive, which SIM==HIL goldens depend on). The
+# pinned toolchain is installed to /opt below, matching the devcontainer.
 hil_bench_apt_packages:
   - git
   - git-lfs
   - cmake
   - ninja-build
   - build-essential
-  - gcc-arm-none-eabi
   - python3
   - python3-pip
   - usbutils
+
+# Pinned Arm GNU Toolchain (must match .devcontainer/Dockerfile exactly so the
+# bench builds byte-identical firmware to CI). Installed to the /opt path the
+# CMake toolchain (cmake/toolchain-ra8d2.cmake) searches.
+hil_bench_arm_gcc_release: "13.3.rel1"
+hil_bench_arm_gcc_prefix: "/opt/arm-gnu-toolchain-13.3"
+hil_bench_arm_gcc_sha256_aarch64: "c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764"
+# What `arm-none-eabi-gcc -dumpfullversion` prints for the release above -- used
+# to skip the install idempotently when it is already present.
+hil_bench_arm_gcc_dumpversion: "13.3.1"
 
 # Vendor tools that are NOT apt-installable (manual SEGGER / Renesas downloads).
 # The role FAILS LOUD if they are missing rather than silently degrading -- a
