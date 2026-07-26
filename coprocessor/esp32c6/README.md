@@ -87,9 +87,33 @@ values in `pins.env`; a wrong flash size is the other common bring-up failure.
 
 ## Layout
 
-| File | Purpose |
-|------|---------|
-| `pins.env` | Single source of truth: pinned versions + SPI pin map |
-| `sdkconfig.defaults` | Proven esp-hosted-mcu config (verbatim from the bench) |
-| `build.sh` | Fetch pinned upstream, apply config, clean, build |
-| `flash.sh` | Flash the four artifacts over the CH343 bridge |
+| File | Role | Purpose |
+|------|------|---------|
+| `pins.env` | **SOURCE OF TRUTH** | Pinned versions + SPI pin map + flash params |
+| `sdkconfig.defaults` | **DERIVED, verified against `pins.env`** | The same pin numbers in Kconfig syntax; byte-stable, as built on the bench |
+| `build.sh` | consumer | Verify the two agree, fetch pinned upstream, apply config, clean, build |
+| `flash.sh` | consumer | Flash the four artifacts over the CH343 bridge |
+
+### Why the pin numbers appear twice
+
+Because the two consumers cannot read the same syntax. `pins.env` is a plain
+`KEY=value` fragment so `build.sh` and `flash.sh` can `source` it, and so one
+file answers "what is wired to what" for anyone working the RA8 side.
+`sdkconfig.defaults` is Kconfig, which is the *only* form esp-idf reads.
+
+`sdkconfig.defaults` is therefore a **derived artifact**, but it is not
+generated: it is kept byte-stable because the bench-proven C6 image was built
+from exactly these lines, and regenerating it would put an unproven file in the
+path of a working firmware. It is *verified* against `pins.env` instead.
+
+That verification is a gate, not a convention, because this particular drift is
+undetectable downstream -- the build succeeds, the image flashes, the board
+boots, and the SPI link simply never comes up, because the two ends are driving
+different pins. `scripts/checks/check_c6_pin_config.py` compares every SPI
+signal, the chip target and the flash size; it runs in the `pre-commit-checks`
+CI gate and in `scripts/git/pre-commit` (pure text compare -- no esp-idf
+needed), and `build.sh` runs it on the bench before it builds.
+
+**To change a pin: edit `pins.env`, then update `sdkconfig.defaults` to match,
+and reflash the C6.** A board still holding the previous image keeps the
+previous pins no matter what the repository says.

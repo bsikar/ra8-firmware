@@ -115,6 +115,14 @@ _pcc_tree_structure() (
   # asking the question can catch it (#377).
   python3 scripts/checks/check_gitignore_scope.py --selftest
   python3 scripts/checks/check_gitignore_scope.py
+  # The C6 SPI pin map is stated twice: coprocessor/esp32c6/pins.env (the source
+  # of truth, read by shell) and sdkconfig.defaults (the same numbers in the only
+  # syntax esp-idf reads). Drift between them is invisible downstream -- the
+  # build succeeds, the image flashes, and the link silently never comes up
+  # because the two ends drive different pins. Pure text compare, no esp-idf
+  # needed, so it runs here as well as on the bench (build.sh calls it too).
+  python3 scripts/checks/check_c6_pin_config.py --selftest
+  python3 scripts/checks/check_c6_pin_config.py
 )
 
 # How source is written: trailing newline, named constants, C23 attribute

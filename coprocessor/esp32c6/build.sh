@@ -47,6 +47,19 @@ case "${idf_version}" in
 esac
 echo "==> idf.py: ${idf_version}"
 
+# ---- 1b. assert sdkconfig.defaults still agrees with pins.env ----
+# pins.env is the source of truth; sdkconfig.defaults restates every pin in the
+# only syntax esp-idf reads. Two files holding one fact drift silently, and a
+# drift here is invisible downstream: the build succeeds, the image flashes, and
+# the SPI link just never comes up because the C6 drives a different pin than
+# the RA8 does. The comparison lives in ONE place (the checker below, which CI
+# also runs), never copied into this script.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "ERROR: python3 not on PATH; cannot verify the C6 pin config." >&2
+  exit 1
+fi
+python3 "${SCRIPT_DIR}/../../scripts/checks/check_c6_pin_config.py"
+
 # ---- 2. fetch esp-hosted-mcu at the pinned commit ----
 if [[ ! -d "${CLONE_DIR}/.git" ]]; then
   echo "==> cloning ${ESP_HOSTED_MCU_URL}"
