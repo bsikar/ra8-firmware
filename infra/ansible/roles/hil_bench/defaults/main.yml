@@ -1,0 +1,41 @@
+---
+# hil_bench role defaults -- provisions the hardware-in-the-loop bench host
+# (the Raspberry Pi with the EK-RA8D2 + J-Link attached) to a known, current,
+# HIL-ready state. Codifies exactly what rotted: a stale/broken repo checkout
+# and an unmanaged toolchain that nobody noticed because HIL had no owner.
+# Override per deployment in group_vars / host_vars.
+
+# The repo the bench checks out and runs HIL against.
+hil_bench_repo_url: "git@github.com:bsikar/ra8-firmware.git"
+hil_bench_repo_dir: "/home/{{ ansible_user | default('star') }}/ra8-firmware"
+hil_bench_ref: "origin/dev"
+
+# apt packages the bench needs to build + flash + probe the firmware.
+hil_bench_apt_packages:
+  - git
+  - git-lfs
+  - cmake
+  - ninja-build
+  - build-essential
+  - gcc-arm-none-eabi
+  - python3
+  - python3-pip
+  - usbutils
+
+# Vendor tools that are NOT apt-installable (manual SEGGER / Renesas downloads).
+# The role FAILS LOUD if they are missing rather than silently degrading -- a
+# HIL bench without these cannot flash or probe, and a green run that skipped
+# them would be a lie.
+hil_bench_required_vendor_tools:
+  - JLinkExe   # SEGGER J-Link (flash + SWD + VCOM)
+  - rfp-cli    # Renesas Flash Programmer (DLM recovery, option bytes)
+
+# Serial group the bench user must be in for /dev/ttyACM* access.
+hil_bench_serial_group: dialout
+
+# J-Link target for the board-reachable health check.
+hil_bench_jlink_device: "R7KA8D2KF_CPU0"
+hil_bench_jlink_speed: 1000
+
+# Whether to pull LFS content (book fixtures some HIL apps bake in).
+hil_bench_lfs_pull: true
