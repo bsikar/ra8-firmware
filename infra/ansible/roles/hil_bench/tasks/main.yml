@@ -1,0 +1,68 @@
+---
+# Provision the HIL bench Pi to a known, current, board-reachable state.
+# Idempotent: safe to re-run; converges the checkout + toolchain + permissions.
+
+- name: Install the bench build/flash toolchain
+  become: true
+  ansible.builtin.apt:
+    name: "{{ hil_bench_apt_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure git-lfs is initialised for the bench user
+  ansible.builtin.command:
+    cmd: git lfs install
+  register: hil_bench_lfs_install
+  changed_when: "'already initialized' not in hil_bench_lfs_install.stdout"
+
+- name: Assert the non-apt vendor tools are present (fail loud, never skip)
+  ansible.builtin.command:
+    cmd: "command -v {{ item }}"
+  loop: "{{ hil_bench_required_vendor_tools }}"
+  register: hil_bench_vendor_check
+  changed_when: false
+  failed_when: hil_bench_vendor_check.rc != 0
+
+- name: Ensure the bench user can access the serial ports
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user | default('star') }}"
+    groups: "{{ hil_bench_serial_group }}"
+    append: true
+
+- name: Check out the repo at the pinned ref (force -- the bench tree is disposable)
+  ansible.builtin.git:
+    repo: "{{ hil_bench_repo_url }}"
+    dest: "{{ hil_bench_repo_dir }}"
+    version: "{{ hil_bench_ref }}"
+    force: true
+    accept_hostkey: true
+  environment:
+    GIT_LFS_SKIP_SMUDGE: "1"
+
+- name: Pull LFS content the HIL builds bake in
+  ansible.builtin.command:
+    cmd: git lfs pull
+    chdir: "{{ hil_bench_repo_dir }}"
+  register: hil_bench_lfs_pull_result
+  changed_when: hil_bench_lfs_pull_result.rc == 0
+  when: hil_bench_lfs_pull | bool
+
+- name: Health check -- the EK-RA8D2 must be reachable over J-Link (SIM==HIL ground truth)
+  ansible.builtin.shell:
+    cmd: >-
+      printf 'si 1\nspeed {{ hil_bench_jlink_speed }}\nr\nh\nq\n' > /tmp/hil_bench_ping.jlink &&
+      JLinkExe -device {{ hil_bench_jlink_device }} -if SWD
+      -speed {{ hil_bench_jlink_speed }} -autoconnect 1
+      -CommandFile /tmp/hil_bench_ping.jlink
+  register: hil_bench_jlink_probe
+  changed_when: false
+  failed_when: "'Cortex-M85' not in hil_bench_jlink_probe.stdout"
+
+- name: Report bench state
+  ansible.builtin.debug:
+    msg: >-
+      HIL bench ready: repo at {{ hil_bench_ref }} in {{ hil_bench_repo_dir }},
+      toolchain + vendor tools present, board reachable
+      ({{ 'Cortex-M85 found' if 'Cortex-M85' in hil_bench_jlink_probe.stdout else 'NOT found' }}).
