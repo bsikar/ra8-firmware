@@ -74,7 +74,8 @@ initial-access memory-safety hole (surfaced by the `fuzz_ra8_stbtt`
 libFuzzer harness under AddressSanitizer). The vendored file is patched
 in place; every change is delimited by an `RA8 LOCAL PATCH` comment that
 back-references this document. The patch is minimal and mechanical -- it
-adds bounds checks, it does not restructure the parser:
+adds bounds and allocation-failure checks, it does not restructure the
+parser:
 
 - **`stbtt_fontinfo.data_size`**: new field recording the byte length of
   the font buffer. `stbtt_InitFont()` / `stbtt_InitFont_internal()` gain
@@ -102,15 +103,39 @@ adds bounds checks, it does not restructure the parser:
 - **CFF/OTF path**: the CFF `stbtt__buf` is sized to the real remaining
   bytes instead of the upstream bogus 512 MB, so the built-in `stbtt__buf`
   bounds checks fire on a crafted OTF.
+- **`stbtt__rasterize_sorted_edges()`**: null-checks the per-scanline
+  `STBTT_malloc`. `STBTT_malloc` is wired to the fixed bump arena
+  `ra8_stbtt_malloc` (`libs/ra8_reflow/src/ra8_stbtt_alloc.c`), which returns
+  NULL on exhaustion by design (NASA P10 Rule 3, zero dynamic allocation after
+  init). Upstream stb never checks this allocation, so a crafted glyph that is
+  wide (`result->w > 64`, taking the heap scanline rather than the 129-float
+  stack buffer) AND carries a huge edge list -- draining the arena in the
+  preceding edge-list allocation -- left `scanline == NULL`, and the following
+  `STBTT_memset(scanline, ...)` wrote to a NULL pointer (an AddressSanitizer
+  SEGV surfaced by `fuzz_ra8_stbtt` inside `stbtt__rasterize_sorted_edges`; the
+  same `stbtt_MakeCodepointBitmap` path is reached by the real reader in
+  `ra8_epub_chapter.c` `priv_render_into`). The patch returns early on the NULL,
+  rendering that glyph blank -- the same graceful degradation the arena already
+  yields elsewhere on exhaustion. The other allocations on this rasterisation
+  path already null-check upstream: the edge list (`stbtt__rasterize`), the
+  active-edge hheap chunk (`stbtt__hheap_alloc` / `stbtt__new_active`), and the
+  `stbtt_FlattenCurves` point / contour-length buffers. The identical guard is
+  mirrored in the `STBTT_RASTERIZER_VERSION==1` rasteriser for consistency,
+  though the firmware builds version 2.
 
 On any out-of-bounds condition the font (or the individual glyph) is
 rejected cleanly -- an empty glyph or an init/lookup failure -- never a
-read past the buffer. A compact regression reproducer is committed at
-`tests/fuzz/corpus/fuzz_ra8_stbtt/crash-*` and exercised by
-`tests/test_ra8_stbtt_guard.c`.
+read past the buffer; on arena exhaustion the glyph is likewise rendered
+blank rather than dereferencing a NULL allocation. Regression reproducers are
+committed under `tests/fuzz/corpus/fuzz_ra8_stbtt/crash-*`: the out-of-bounds
+`loca` case is additionally hand-minimised into `tests/test_ra8_stbtt_guard.c`,
+and the arena-exhaustion NULL-deref case is replayed on every `fuzz_ra8_stbtt`
+sweep (`scripts/checks/run_fuzz.sh`), so a regression re-aborts under
+AddressSanitizer.
 
 ## Last review date
 
 - Reviewed: 2026-05-02
 - stb_truetype.h memory-safety hardening: 2026-07-15
+- stb_truetype.h rasteriser arena-exhaustion NULL-deref guard: 2026-07-25
 - Expected re-review by: 2027-05-02

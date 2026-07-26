@@ -3674,6 +3674,15 @@ static void stbtt__rasterize_sorted_edges(stbtt__bitmap* result,
   else
     scanline = scanline_data;
 
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): the fixed bump arena
+  // (ra8_stbtt_malloc) returns NULL on exhaustion; upstream never checks this
+  // allocation, so a drained arena would leave scanline == NULL and the
+  // STBTT_memset() below writes to NULL. Bail and render the glyph blank. This is
+  // the STBTT_RASTERIZER_VERSION==1 twin of the guard in the V2 rasteriser; the
+  // firmware builds V2, but both paths carry the identical exposure.
+  if (scanline == NULL)
+    return;
+
   y       = off_y * vsubsample;
   e[n].y0 = (off_y + result->h) * (float)vsubsample + 1;
 
@@ -4075,6 +4084,18 @@ static void stbtt__rasterize_sorted_edges(stbtt__bitmap* result,
     scanline = (float*)STBTT_malloc((result->w * 2 + 1) * sizeof(float), userdata);
   else
     scanline = scanline_data;
+
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): STBTT_malloc is the fixed bump arena
+  // ra8_stbtt_malloc, which returns NULL on exhaustion by design (NASA P10
+  // Rule 3). Upstream never null-checks this allocation, so a crafted wide glyph
+  // (result->w > 64 -> the malloc path, not the scanline_data[] stack path) that
+  // drained the arena via the earlier edge-list allocation leaves scanline ==
+  // NULL, and the STBTT_memset() below then writes to NULL (fuzz_ra8_stbtt SEGV).
+  // Bail and render the glyph blank -- graceful degradation matching arena
+  // exhaustion. Nothing is allocated in this function yet, so there is nothing
+  // to free; the caller frees the edge list on return.
+  if (scanline == NULL)
+    return;
 
   scanline2 = scanline + result->w;
 
