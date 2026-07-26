@@ -10,9 +10,9 @@
  * three lifecycle entry points (release / halt / is_running) on top of
  * the CPU_CTRL register window's CPU1INITVTOR / CPU1WAITCR / CPU1ACTCSR
  * registers (HUM Ch 2.9.1 p 128-130). Earlier drafts used SYSC.LPCSR /
- * VTORC1 / MSPC1 addresses copied from a different RA-family driver;
- * those registers do not exist on RA8D2 and silently dropped writes,
- * which is what made cpu1_pingpong's CPU1 stay in reset forever.
+ * VTORC1 / MSPC1 register addresses that belong to a different RA family and
+ * do not exist on RA8D2; those silently dropped writes, which is what made
+ * cpu1_pingpong's CPU1 stay in reset forever.
  *
  * Host (RA8_SIMULATOR_MODE) builds back the registers with a small
  * static state struct so unit tests can drive the API without a chip.
