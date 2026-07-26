@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ra8-firmware - MISRA-C 2023 Static Analysis Script
 #
 # Runs cppcheck with the MISRA addon configured for the MISRA-C 2023 rule

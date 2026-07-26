@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 # debug.sh -- Attach arm-none-eabi-gdb to a running EK-RA8D2 via J-Link GDB Server.

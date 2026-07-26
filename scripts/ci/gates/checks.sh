@@ -154,6 +154,14 @@ _pcc_source_form() (
   # detector fires and stays silent for both rules before the tree is swept.
   python3 scripts/checks/check_c23_headers.py --selftest
   python3 scripts/checks/check_c23_headers.py --all
+  # Every shebang uses `#!/usr/bin/env <interp>`. A hardcoded interpreter path
+  # is a portability claim this tree cannot keep (NixOS, a Homebrew bash 5 on a
+  # Mac whose /bin/bash is the 3.2 without mapfile, busybox images), and the
+  # near-miss `# !/bin/bash` is not a shebang at all -- it reads as one and the
+  # kernel never sees it. Scope comes from git ls-files including untracked
+  # files, so a brand-new script is judged the moment it is written.
+  python3 scripts/checks/check_shebangs.py --selftest
+  python3 scripts/checks/check_shebangs.py
 )
 
 # Security invariants that a compiler cannot express: the NS->S entry surface,

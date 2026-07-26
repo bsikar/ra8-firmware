@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # coverage.sh -- run the host unit tests with gcov instrumentation
 # and produce an HTML + text coverage report.
 #
