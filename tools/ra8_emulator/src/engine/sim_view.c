@@ -651,7 +651,7 @@ static void panel_apply_kv(board_panel_t* out, const char* key, const char* val)
  * @brief Load a panel descriptor (name / width / height) from a TOML-ish file.
  *
  * @details
- * A flat ``key = value`` panel descriptor (see ``tools/board_sim/panels/``), so
+ * A flat ``key = value`` panel descriptor (see ``tools/ra8_emulator/panels/``), so
  * the board emulator becomes whatever display a config describes -- not just the
  * EK-RA8D2 1024x600. Dependency-free bounded parser (strncmp / strtol, no
  * dynamic allocation beyond the FILE handle); blank lines and '#' comments are

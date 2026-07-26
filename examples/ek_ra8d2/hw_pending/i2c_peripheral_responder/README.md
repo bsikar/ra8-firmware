@@ -31,7 +31,7 @@ left for a follow-up once those event numbers are pinned down and bench-checked.
 ## HIL status: pending (hw_pending)
 
 The on-wire target role is **UNVERIFIED on silicon**. `board_sim` models RIIC
-only as a controller (see `tools/board_sim/src/periph/board_periph_riic.c`), so it
+only as a controller (see `tools/ra8_emulator/src/periph/board_periph_riic.c`), so it
 cannot gate this app; the host MC/DC unit tests in
 `tests/test_ra8_riic_peripheral.c` cover the driver logic instead.
 

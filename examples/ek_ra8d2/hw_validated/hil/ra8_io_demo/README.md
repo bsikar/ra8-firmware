@@ -25,7 +25,7 @@ make            # -> build/ra8_io_demo.elf
 ## Run in the simulator
 
 ```
-BOARD_SIM_WALL_S=12 tools/board_sim/build/board_sim build/ra8_io_demo.elf
+BOARD_SIM_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_demo.elf
 ```
 
 Expected console output:

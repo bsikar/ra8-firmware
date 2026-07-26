@@ -50,7 +50,7 @@ budget:
 
 ```
 BOARD_SIM_MAX_CHUNKS=6000000 BOARD_SIM_WALL_S=120 \
-  tools/board_sim/build/board_sim build/ra8_io_swap_demo.elf
+  tools/ra8_emulator/build/ra8_emulator build/ra8_io_swap_demo.elf
 ```
 
 Expected console output (RAM leg prints first, the OSPI leg follows after its RMW

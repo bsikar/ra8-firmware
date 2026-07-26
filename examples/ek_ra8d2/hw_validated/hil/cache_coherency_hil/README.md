@@ -52,9 +52,9 @@ make cache_coherency_hil        # ARM cross-build (M85 + embedded M33 image)
 
 # headless board_sim (no GUI):
 BOARD_SIM_WALL_S=15 BOARD_SIM_IDLE_STOP=1 \
-  tools/board_sim/build/board_sim \
+  tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/build/cache_coherency_hil.elf \
-  --panel tools/board_sim/panels/ek_ra8d2.toml
+  --panel tools/ra8_emulator/panels/ek_ra8d2.toml
 ```
 
 ## HIL gate (`hil.conf`)

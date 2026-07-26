@@ -29,7 +29,7 @@
  * so the verdict gates on the bring-up state, not on a delay read-back. The
  * PDG's only other observable, the *timing shift* of a GPT output edge, needs a
  * logic analyzer / oscilloscope and a running GPT32_0 PWM source to measure
- * (out of scope; see ``README.md``). ``tools/board_sim`` shadows ``GTDLYRnA``
+ * (out of scope; see ``README.md``). ``tools/ra8_emulator`` shadows ``GTDLYRnA``
  * as plain R/W, which is why a delay read-back appears to work there but not on
  * silicon.
  *

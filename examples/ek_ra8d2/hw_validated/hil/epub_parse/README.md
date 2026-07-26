@@ -54,8 +54,8 @@ make clean
 ## Run on the M85 simulator (no hardware)
 
 ```sh
-cmake --build tools/board_sim/build -j
-./tools/board_sim/build/board_sim build/epub_parse.elf
+cmake --build tools/ra8_emulator/build -j
+./tools/ra8_emulator/build/ra8_emulator build/epub_parse.elf
 ```
 
 board_sim runs the firmware on Unicorn's Cortex-M33 core and emulates the

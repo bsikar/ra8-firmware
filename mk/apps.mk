@@ -26,7 +26,7 @@ apps:
 			printf '%s\t%s\t%s\n' "$$group" "$$app" "$$desc"; \
 		done; \
 	done | sort | awk -F'\t' '{ if ($$1 != g) { g=$$1; printf "\n  [%s]\n", g } printf "    %-30s %s\n", $$2, $$3 }'
-	@printf '\nUI preview: run the e-reader chrome on the emulator, e.g. make sim-ereader_ui [PANEL=ek_ra8d2]   (tools/board_sim)\n'
+	@printf '\nUI preview: run the e-reader chrome on the emulator, e.g. make sim-ereader_ui [PANEL=ek_ra8d2]   (tools/ra8_emulator)\n'
 
 # Forward `make <app>` to the per-app Makefile via RA8_APP_DIR_<app>, keeping
 # build/compile_commands.json fresh when a CMake input changes (clangd reads it).

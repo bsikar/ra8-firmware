@@ -28,7 +28,7 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` models the PVD
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the PVD
  * status (``board_periph_lvd.c``): ``PVD1SR.MON`` reads "above threshold" with
  * ``DET`` clear -- the steady state of a healthy 3.3 V rail -- so the banner
  * reports ``mon=above ok=Y`` and the ``board_sim_smoke.sh`` gate keys on it.

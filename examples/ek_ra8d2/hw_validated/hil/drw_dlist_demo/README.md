@@ -43,7 +43,7 @@ Bench-verified on an EK-RA8D2 (VTref 3.3V, over J-Link):
 
 ## SIM == HIL
 
-`tools/board_sim` models the DLR (`board_periph_drw.c`): a DLISTSTART write
+`tools/ra8_emulator` models the DLR (`board_periph_drw.c`): a DLISTSTART write
 executes the list from emulated memory, each ORIGIN write triggering the same
 render as a CPU ORIGIN write. board_sim therefore produces the byte-identical
 framebuffer and the identical `crc=E6B215C5 PASS` banner, so `hil.conf` gates

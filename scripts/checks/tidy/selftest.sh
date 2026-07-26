@@ -29,8 +29,8 @@ selftest_routing() {
     "$FIRMWARE_DIR/esp32/src/main.c:firmware"
     "$FIRMWARE_DIR/libs/ra8_epub/src/shim.cpp:cxx"
     "$FIRMWARE_DIR/libs/ra8_hal/src/k.cc:cxx"
-    "$FIRMWARE_DIR/tools/board_sim/src/display/board_view.m:objc"
-    "$FIRMWARE_DIR/tools/board_sim/src/x.c:tools"
+    "$FIRMWARE_DIR/tools/ra8_emulator/src/display/board_view.m:objc"
+    "$FIRMWARE_DIR/tools/ra8_emulator/src/x.c:tools"
     "$FIRMWARE_DIR/libs/ra8_core/src/ra8_err.c:host"
     "$FIRMWARE_DIR/libs/ra8_board_ra8p1/src/b.c:ra8p1"
   )

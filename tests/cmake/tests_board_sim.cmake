@@ -7,7 +7,7 @@
 # consults MSTPCRA..E state before answering an MMIO access to an owning
 # peripheral block, so a peripheral the firmware never ungated is inert in the
 # simulator exactly as on silicon. The engine-free half of that model
-# (tools/board_sim/src/periph/board_periph_mstp_model.c) takes NO Unicorn dependency by
+# (tools/ra8_emulator/src/periph/board_periph_mstp_model.c) takes NO Unicorn dependency by
 # design, so it is compiled straight into this host executable and its
 # address->module-stop-bit table is exercised directly. It links no ra8_core_hal
 # (the model is self-contained: stdint + ra8_mstp_regs.h + ra8_attributes.h), so
@@ -20,11 +20,12 @@
 
 add_executable(
   test_board_sim_mstp_gate ${CMAKE_CURRENT_SOURCE_DIR}/test_board_sim_mstp_gate.c
-                           ${FW_ROOT}/tools/board_sim/src/periph/board_periph_mstp_model.c
+                           ${FW_ROOT}/tools/ra8_emulator/src/periph/board_periph_mstp_model.c
 )
 target_compile_options(test_board_sim_mstp_gate PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
-  test_board_sim_mstp_gate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${FW_ROOT}/libs/ra8_core/inc
-                                   ${FW_ROOT}/libs/ra8_hal/inc ${FW_ROOT}/tools/board_sim/src/periph
+  test_board_sim_mstp_gate
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${FW_ROOT}/libs/ra8_core/inc ${FW_ROOT}/libs/ra8_hal/inc
+          ${FW_ROOT}/tools/ra8_emulator/src/periph
 )
 add_test(NAME test_board_sim_mstp_gate COMMAND test_board_sim_mstp_gate)

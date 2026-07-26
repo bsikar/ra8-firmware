@@ -31,7 +31,7 @@ make sim-lowpower_holdpage          # live board view; LED1 toggled by the M33
 ```
 Or headless, holding SW1 to exercise the page-turn:
 ```
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_pending/lowpower_holdpage/build/lowpower_holdpage.elf \
   --button 1 --trace --record-secs 2
 ```

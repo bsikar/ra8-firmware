@@ -29,7 +29,7 @@ engine sits in the graphics power domain, which `PDCTRGD` gates OFF at reset
 (HUM Ch 11.2.14 p 452). `ra8_drw_init` now powers it (`HWREVISION` reads
 `0x0FBE0107`), and with the ORIGIN-anchored bounding-box fill (no spatial
 limiters, `WRITEALPHA = 01`) the engine paints exactly pixels (8,8)..(23,23) in
-`0xFF00FF00` -- byte-verified by a J-Link savebin. `tools/board_sim`
+`0xFF00FF00` -- byte-verified by a J-Link savebin. `tools/ra8_emulator`
 (`board_periph_drw.c`) rasterizes the same bounding box, so `match=Y` holds in
 SIL and on hardware alike (SIM == HIL).
 

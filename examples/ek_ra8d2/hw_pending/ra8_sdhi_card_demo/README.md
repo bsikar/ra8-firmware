@@ -50,7 +50,7 @@ That distinct regression value is why both apps exist.
 
 ## board_sim gate
 
-Under `tools/board_sim`, the native SDHI host-controller model
+Under `tools/ra8_emulator`, the native SDHI host-controller model
 (`board_periph_sdhi.c`) serves a blank card attached with `--sd-new 64:fat16`.
 The gate command is:
 

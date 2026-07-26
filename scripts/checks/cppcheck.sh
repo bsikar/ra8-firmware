@@ -132,10 +132,10 @@ INCLUDE_DIRS=(
   -Ilibs/ra8_hal/inc
   -Ilibs/ra8_nsc/inc
   -Isrc/inc
-  -Itools/board_sim/inc
+  -Itools/ra8_emulator/inc
 )
 
-print_status "Running cppcheck on libs/, examples/, tools/board_sim/ (excluding libs/third_party/) ..."
+print_status "Running cppcheck on libs/, examples/, tools/ra8_emulator/ (excluding libs/third_party/) ..."
 set +e
 cppcheck \
   --enable=warning,style,performance,portability \
@@ -153,7 +153,7 @@ cppcheck \
   "${ADDON_ARGS[@]}" \
   "${VERBOSE_ARGS[@]}" \
   "${INCLUDE_DIRS[@]}" \
-  libs examples tools/board_sim \
+  libs examples tools/ra8_emulator \
   2>"$REPORT"
 RC=$?
 set -e

@@ -17,7 +17,7 @@
  *   @code
  *   tools/mkfontimg/build/mkfontimg libs/fonts/Literata-Regular.ttf /tmp/font.img
  *   make -C examples/ek_ra8d2/hw_validated/hil/sd_font_render
- *   tools/board_sim/build/board_sim \
+ *   tools/ra8_emulator/build/ra8_emulator \
  *     examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \
  *     --sd /tmp/font.img --ppm /tmp/out.ppm
  *   @endcode

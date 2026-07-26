@@ -47,7 +47,7 @@ the build loudly if it is ever configured with the RA8D2 toolchain.
 ## Run in the emulator
 
 ```sh
-tools/board_sim/build/board_sim build/npu_vela.elf --device ra8p1
+tools/ra8_emulator/build/ra8_emulator build/npu_vela.elf --device ra8p1
 ```
 
 board_sim only maps the Ethos-U55 window (`0x40140000`) under `--device ra8p1`;

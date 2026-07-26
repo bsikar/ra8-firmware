@@ -31,7 +31,7 @@ Modes:
 
 The script also accepts a list of explicit file arguments. With no
 arguments it scans every first-party C file, derived from git ls-files
-via lint_targets (#358) -- so tools/board_sim (which models RA8
+via lint_targets (#358) -- so tools/ra8_emulator (which models RA8
 registers and cites the RA8 HUM) and port/usbx were previously omitted
 and their citations went unvalidated. Vendored trees (port/threadx,
 libs/third_party) are dropped automatically.
@@ -550,7 +550,7 @@ def main(argv: list[str]) -> int:
         targets = [pathlib.Path(p) for p in args.paths]
     else:
         # Derived from git ls-files (#358): every first-party C file, not just
-        # libs/src/tests + discovered example apps. tools/board_sim models RA8
+        # libs/src/tests + discovered example apps. tools/ra8_emulator models RA8
         # registers and cites the RA8 HUM, and port/usbx holds first-party RA8
         # USB glue -- both were silently omitted, so their cites went
         # unvalidated. Vendored trees (port/threadx, libs/third_party) are

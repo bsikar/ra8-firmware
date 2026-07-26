@@ -4,7 +4,7 @@
 #
 # media_dl end-to-end integration harness. For EVERY export format it runs the
 # full pipeline the reader depends on -- package a folder of pages into that
-# format, then open the result in the native ra8_viewer headless and assert it
+# format, then open the result in the native rabook_viewer headless and assert it
 # renders a non-blank frame. This is the test that catches the class of bug the
 # unit tests miss: an archive that writes fine but the viewer cannot open (the
 # 0x107 open/render failures). Pages are synthetic and non-copyright (gen_pages.py),
@@ -19,10 +19,10 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 MDL_DIR="$(cd "$HERE/.." && pwd)"
 ROOT="$(cd "$MDL_DIR/../.." && pwd)"
-VIEWER_DIR="$ROOT/tools/ra8_viewer"
+VIEWER_DIR="$ROOT/tools/rabook_viewer"
 
 MEDIA_DL="$MDL_DIR/build/media_dl"
-VIEWER="$VIEWER_DIR/build/ra8_viewer"
+VIEWER="$VIEWER_DIR/build/rabook_viewer"
 
 WORK="$MDL_DIR/build/integration"
 PAGES="$WORK/pages"
@@ -43,7 +43,7 @@ rule() { printf '%s\n' "--------------------------------------------------------
 
 # --- build the two tools under test -----------------------------------------
 if [ "$BUILD" -eq 1 ]; then
-  say "== building media_dl + ra8_viewer =="
+  say "== building media_dl + rabook_viewer =="
   cmake -B "$MDL_DIR/build" -S "$MDL_DIR" >/dev/null || {
     say "media_dl configure FAILED"
     exit 99

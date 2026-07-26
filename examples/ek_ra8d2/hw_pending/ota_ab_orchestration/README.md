@@ -38,7 +38,7 @@ ota_ab: stage=ok commit=Y rollback=Y ok=Y
 
 | Interface | Backing | Fidelity |
 |-----------|---------|----------|
-| `flash`   | Real `ra8_flash` extra-MRAM driver (`ra8_flash_extra_mram_write` / `_erase` + direct read-back). The persistent boot-select record stands in for the BTFLG boot-area swap, on brick-safe data-flash. | `tools/board_sim` models the MACI program/erase sequencer (`board_periph_mram.c`), so the stage / re-hash / boot-select path runs the exact register sequence a bench build drives. |
+| `flash`   | Real `ra8_flash` extra-MRAM driver (`ra8_flash_extra_mram_write` / `_erase` + direct read-back). The persistent boot-select record stands in for the BTFLG boot-area swap, on brick-safe data-flash. | `tools/ra8_emulator` models the MACI program/erase sequencer (`board_periph_mram.c`), so the stage / re-hash / boot-select path runs the exact register sequence a bench build drives. |
 | `crypto`  | SHA-256 via the real software backend (`ra8_rsip_sha256*`). | Identical on host, sim and silicon (there is no RSIP hash-hardware on this part). Update **integrity** -- the digest match that triggers the rollback -- is verified for real. |
 | `net`     | Local in-RAM image source. | **Not** a network. `TODO`: bind to a TLS stream once `ra8_tls` lands. |
 | authenticity | Demo `ecdsa_verify` stub gating on the demo key handle + tag width. | **Not** real ECDSA-P256. `TODO`: swap in a `tf-psa-crypto` / `ra8_psa_crypto` verifier (already proven in `secure_boot_hil` / `psa_crypto_hil`). The rollback demonstration does not depend on it. |

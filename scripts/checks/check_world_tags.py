@@ -311,7 +311,7 @@ def selftest() -> int:
         failures,
     )
     expect(
-        not file_is_in_ring3_plus("tools/board_sim/src/main.c"),
+        not file_is_in_ring3_plus("tools/ra8_emulator/src/main.c"),
         "tools/ host code is not ring3+ (no World tag required -- documented decision)",
         failures,
     )

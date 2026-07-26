@@ -8,7 +8,7 @@
 #
 # WHY THIS FILE EXISTS
 # --------------------
-# tools/board_sim boots the real cross-compiled firmware .elf on Unicorn (QEMU's
+# tools/ra8_emulator boots the real cross-compiled firmware .elf on Unicorn (QEMU's
 # core as a library). Different Unicorn versions DECODE Armv8.1-M instructions
 # differently -- notably the Helium/MVE store family the Cortex-M85 executes.
 # So the emulator's verdict for an identical .elf depends on which Unicorn is

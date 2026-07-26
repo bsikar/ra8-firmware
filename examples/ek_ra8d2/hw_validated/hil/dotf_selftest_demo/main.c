@@ -38,7 +38,7 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` does not model the
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` does not model the
  * DOTF APB window (``0x4026_8800`` / ``0x4026_8900``), so REG00 reads are not
  * a real AES core -- the bring-up + self-test calls return ``k_ra8_ok`` and
  * the demo reports ``ok=Y``, but the genuine AES BIST result + the in-place

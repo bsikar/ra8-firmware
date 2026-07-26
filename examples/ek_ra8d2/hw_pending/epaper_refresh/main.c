@@ -29,7 +29,7 @@
  * ## Hardware / simulation
  *
  * The EK-RA8D2 ships a parallel-RGB TFT, not e-paper, so on-panel HIL is
- * pending an IT8951 carrier on the bench (see README). ``tools/board_sim``
+ * pending an IT8951 carrier on the bench (see README). ``tools/ra8_emulator``
  * models the IT8951 as an SPI device (``--eink``): it answers HRDY, the
  * GET_DEV_INFO drain and the LUTAFSR "LUT idle" poll, so this whole path runs
  * headlessly to its ``epaper: PASS`` banner -- SIM == HIL.

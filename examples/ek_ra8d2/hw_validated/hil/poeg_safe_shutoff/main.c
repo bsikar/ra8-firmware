@@ -36,7 +36,7 @@
  * live PWM using the deterministic software trigger, which is what the headless
  * board_sim gate can verify with no physical pin to scope.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` models the POEG
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the POEG
  * register file (``board_periph_poeg.c``): a POEGG.SSF write latches the derived
  * output-disable STATE flag POEGG.ST, and clearing every request flag returns
  * ST to 0, so ``ra8_poeg_get_status`` observes the shutoff and the re-enable

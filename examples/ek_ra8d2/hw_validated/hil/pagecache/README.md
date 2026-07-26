@@ -51,12 +51,12 @@ make pagecache
 # Round-trip + invalidation on a blank card (write is slow under the sim,
 # so raise the wall/chunk budget):
 BOARD_SIM_WALL_S=550 BOARD_SIM_MAX_CHUNKS=8000000 \
-  tools/board_sim/build/board_sim \
+  tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/pagecache/build/pagecache.elf \
   --sd-new 64:fat32 --save-sd /tmp/pc.img --dump-sym g_pc_crc_match \
   --dump-sym g_pc_invalidate --dump-sym g_pc_err --dump-sym g_pc_heartbeat
 # Reset-survival: a second boot against the persisted image -> g_pc_hit=1:
-tools/board_sim/build/board_sim ... --sd /tmp/pc.img --dump-sym g_pc_hit
+tools/ra8_emulator/build/ra8_emulator ... --sd /tmp/pc.img --dump-sym g_pc_hit
 ```
 
 ## Build + flash (bench)

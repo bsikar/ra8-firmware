@@ -71,12 +71,12 @@ make ereader_manga                      # cross-build from the repo root
 make sim-ereader_manga                  # live macOS window; click to navigate
 
 # Headless snapshot to a viewable image (initial 1:1 top-left):
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_pending/ereader_manga/build/ereader_manga.elf \
-    --panel tools/board_sim/panels/ek_ra8d2.toml --ppm topleft.ppm
+    --panel tools/ra8_emulator/panels/ek_ra8d2.toml --ppm topleft.ppm
 
 # Drive navigation headless (one tap lands per run):
 #   right edge  -> pan right   |  bottom edge -> pan down  |  centre -> zoom
-tools/board_sim/build/board_sim <elf> --panel <toml> --touch-seq "950:300" --ppm panned.ppm
-tools/board_sim/build/board_sim <elf> --panel <toml> --touch-seq "512:300" --ppm fit.ppm
+tools/ra8_emulator/build/ra8_emulator <elf> --panel <toml> --touch-seq "950:300" --ppm panned.ppm
+tools/ra8_emulator/build/ra8_emulator <elf> --panel <toml> --touch-seq "512:300" --ppm fit.ppm
 ```
