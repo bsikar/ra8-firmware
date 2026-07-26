@@ -43,6 +43,15 @@
 #                down, status file stale, jq missing, sha not seen yet. NEVER
 #                collapse this into 0 or 1.
 #
+# One thing `status` prints that is NOT a verdict: the stalled-queue hint.
+# A dead runner pool is indistinguishable from slow CI through this interface --
+# both read "queued", both exit UNKNOWN -- and in #484 that cost 16 hours,
+# because the runner image had been garbage-collected off the k3s node and
+# nothing here could say so. When every run for the newest sha has been sitting
+# unstarted for longer than RA8_CI_STALL_MIN minutes, a `warning:` line is
+# recorded alongside the verdict pointing at the recovery runbook. It changes
+# no exit code: "the queue is not moving" is evidence, not a result.
+#
 # Usage:
 #   bash scripts/ci/monitor.sh daemon            # the single shared poller
 #   bash scripts/ci/monitor.sh status [--sha X]  # read cached status (0 quota)
@@ -72,10 +81,22 @@ RA8_CI_INTERVAL="${RA8_CI_INTERVAL:-120}"
 # Stop polling well above zero so interactive `gh` use by a human still works.
 RA8_CI_QUOTA_RESERVE="${RA8_CI_QUOTA_RESERVE:-500}"
 RA8_CI_BRANCH="${RA8_CI_BRANCH:-dev}"
+# Minutes an entirely-unstarted queue may sit before the stall hint fires. The
+# gates themselves run for tens of minutes, but PICKUP is prompt when the pool
+# is healthy -- 15 minutes with nothing started is already abnormal.
+RA8_CI_STALL_MIN="${RA8_CI_STALL_MIN:-15}"
 
 mkdir -p "$RA8_CI_STATE_DIR" 2>/dev/null || true
 
 log() { printf '[ci-monitor] %s\n' "$*" >&2; }
+
+# A non-numeric override would make the hint's jq invocation fail and the hint
+# would then simply never appear -- a silently disabled warning, which is the
+# failure mode this whole file exists to avoid. Say so and fall back.
+if [[ ! "$RA8_CI_STALL_MIN" =~ ^[0-9]+$ ]]; then
+  log "warning: RA8_CI_STALL_MIN='$RA8_CI_STALL_MIN' is not an integer -- using 15"
+  RA8_CI_STALL_MIN=15
+fi
 
 need_gh() {
   command -v gh >/dev/null 2>&1 || {
@@ -125,6 +146,41 @@ write_state() {
   chmod 666 "$RA8_CI_STATE" 2>/dev/null || true
 }
 
+# Stall hint for the newest sha, emitted as a JSON string so poll_once can
+# splice it straight into the state document. `""` means "nothing to say", and
+# every path that cannot decide returns exactly that -- a hint is worth having
+# only while it stays quiet in the normal case.
+#
+# "Stalled" is: every run for the sha is in a pre-start status, and the oldest
+# was created more than RA8_CI_STALL_MIN minutes ago. GitHub spells pre-start
+# as `queued`, plus `requested` / `waiting` / `pending` for the approval and
+# concurrency gates; all of them mean no runner has picked the job up. One run
+# already `in_progress` proves the pool is alive, so the hint stays silent.
+stall_hint() {
+  local runs="$1" head_sha="$2" hint
+  hint="$(printf '%s' "$runs" | jq -c --arg s "$head_sha" --argjson lim "$RA8_CI_STALL_MIN" '
+      [ .[] | select(.sha == $s) ] as $cur
+      | if ($cur | length) == 0 then ""
+        elif any($cur[]; .created == null) then ""
+        elif any($cur[]; .status != "queued" and .status != "requested"
+                         and .status != "waiting" and .status != "pending") then ""
+        else
+          ([ $cur[] | .created | fromdateiso8601 ] | min) as $oldest
+          | (((now - $oldest) / 60) | floor) as $age
+          | if $age < $lim then ""
+            else
+              "warning: all \($cur | length) run(s) for \($s[0:9]) queued "
+              + "\($age)m (>\($lim)m) -- runner pool likely stalled, nothing is "
+              + "picking jobs up. Recovery: issue #484 and the \"Emergency "
+              + "recovery\" section of infra/images/README.md."
+            end
+        end' 2>/dev/null)"
+  # jq failing (malformed timestamp, ancient state document) must not corrupt
+  # the state file with an empty splice, so normalise to the JSON empty string.
+  [[ -z "$hint" ]] && hint='""'
+  printf '%s' "$hint"
+}
+
 poll_once() {
   local remaining
   remaining="$(quota_remaining)"
@@ -141,10 +197,12 @@ poll_once() {
     return 1
   fi
 
-  # ONE request covers every workflow.
+  # ONE request covers every workflow. `created` is carried because it is the
+  # enqueue time -- `updated` moves for reasons unrelated to being picked up,
+  # so it cannot measure how long a job has been waiting for a runner.
   local runs
   runs="$(gh api "/repos/$RA8_CI_REPO/actions/runs?branch=$RA8_CI_BRANCH&per_page=30" \
-    --jq '[.workflow_runs[] | {name:.name, sha:.head_sha, status:.status, conclusion:.conclusion, url:.html_url, updated:.updated_at}]' \
+    --jq '[.workflow_runs[] | {name:.name, sha:.head_sha, status:.status, conclusion:.conclusion, url:.html_url, created:.created_at, updated:.updated_at}]' \
     2>/dev/null)"
   if [[ -z "$runs" ]]; then
     write_state "$(printf '{"polled_at":"%s","quota":%s,"overall":"UNKNOWN","reason":"query failed","runs":[]}' \
@@ -163,9 +221,16 @@ poll_once() {
         elif all($cur[]; .status=="completed") and all($cur[]; .conclusion=="success" or .conclusion=="skipped") then "PASS"
         else "RUNNING" end')"
 
-  write_state "$(printf '{"polled_at":"%s","quota":%s,"branch":"%s","head_sha":"%s","overall":"%s","runs":%s}' \
-    "$(date -Iseconds)" "$remaining" "$RA8_CI_BRANCH" "$head_sha" "$overall" "$runs")"
+  # Evidence, not verdict: `overall` above is untouched by the hint.
+  local warning
+  warning="$(stall_hint "$runs" "$head_sha")"
+
+  write_state "$(printf '{"polled_at":"%s","quota":%s,"branch":"%s","head_sha":"%s","overall":"%s","warning":%s,"runs":%s}' \
+    "$(date -Iseconds)" "$remaining" "$RA8_CI_BRANCH" "$head_sha" "$overall" "$warning" "$runs")"
   log "polled: $overall (sha ${head_sha:0:9}, quota $remaining)"
+  if [[ "$warning" != '""' ]]; then
+    log "$(printf '%s' "$warning" | jq -r . 2>/dev/null)"
+  fi
   return 0
 }
 
@@ -220,6 +285,10 @@ cmd_status() {
   fi
   echo "overall: $overall   (polled $polled, ${age_s}s ago)"
   [[ -n "$reason" ]] && echo "reason:  $reason"
+  # Printed next to the verdict, never instead of it -- see the header note.
+  local warning
+  warning="$(jq -r '.warning // ""' "$RA8_CI_STATE")"
+  [[ -n "$warning" ]] && echo "$warning"
   if [[ -n "$want_sha" ]]; then
     echo "runs for $want_sha:"
     jq -r --arg s "$want_sha" '.runs[] | select(.sha|startswith($s)) | "  \(.name): \(.status)/\(.conclusion // "-")"' "$RA8_CI_STATE"
@@ -317,6 +386,7 @@ Environment=RA8_CI_REPO=$RA8_CI_REPO
 Environment=RA8_CI_BRANCH=$RA8_CI_BRANCH
 Environment=RA8_CI_INTERVAL=$RA8_CI_INTERVAL
 Environment=RA8_CI_QUOTA_RESERVE=$RA8_CI_QUOTA_RESERVE
+Environment=RA8_CI_STALL_MIN=$RA8_CI_STALL_MIN
 Environment=RA8_CI_STATE_DIR=$RA8_CI_STATE_DIR
 ExecStart=/usr/bin/env bash $self daemon
 Restart=always

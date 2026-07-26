@@ -38,6 +38,29 @@ ci_runner_mem_limit: "12Gi"
 ci_runner_devcontainer_image: "localhost/ra8-devcontainer:latest"
 ci_runner_image: "localhost/ra8-ci-runner:v2"
 
+# Where the exported image archive LIVES on the node.
+#
+# k3s owns this directory: it imports every archive in it at agent start, and
+# an fsnotify watcher imports one again whenever it appears or changes (k3s
+# ADR "Easy way for auto adding images to k3s"). So an image the containerd
+# GC evicts comes back on its own instead of needing a human with a shell.
+# That is the whole point of #484: the archive used to sit in /tmp, which
+# nothing re-imports from and systemd-tmpfiles eventually clears, so a GC
+# sweep left every pod in ErrImageNeverPull for 16 hours.
+ci_runner_image_dir: "/var/lib/rancher/k3s/agent/images"
+ci_runner_image_archive: "{{ ci_runner_image_dir }}/ra8-ci-runner.tar"
+
+# ...and where it is WRITTEN before being renamed into place.
+#
+# The watcher fires on WRITE, so exporting a multi-GB archive directly into
+# the watched directory makes k3s import a half-written file: measured on the
+# live node, nine consecutive imports failed with "unexpected EOF" over the
+# four minutes the export took, each one re-reading gigabytes. A rename is
+# atomic and delivers a single event for a complete file. Keep this on the
+# same filesystem as ci_runner_image_dir or the rename degrades to a copy.
+ci_runner_image_stage_dir: "/var/lib/rancher/k3s/agent/ra8-image-staging"
+ci_runner_image_stage: "{{ ci_runner_image_stage_dir }}/ra8-ci-runner.tar"
+
 # The k8s Secret ARC reads for the GitHub PAT (Administration: read/write).
 # The token value comes from OpenBao at run time (see group_vars example) and
 # is never written to this repo.

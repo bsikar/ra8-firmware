@@ -3,6 +3,10 @@
 # existing k3s cluster. Run against the k3s node (see playbooks/ci-runner.yml).
 # Idempotent: helm upgrade --install semantics + a re-imported image converge
 # on re-run.
+#
+# This role is AUTHORITATIVE for how the runner image reaches the node.
+# infra/images/README.md mirrors it for hand-running the same steps; if the two
+# ever disagree, this file is right and the README is stale.
 
 - name: Install buildah (builds the runner image on the node)
   become: true
@@ -33,19 +37,131 @@
   register: ci_runner_runner_build
   changed_when: ci_runner_runner_build.rc == 0
 
-- name: Export the runner image to a docker-archive
+- name: Ensure the k3s auto-import and staging directories exist
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ ci_runner_image_dir }}"
+    - "{{ ci_runner_image_stage_dir }}"
+
+# buildah's docker-archive transport APPENDS to an existing archive rather than
+# replacing it, so a stage file left behind by an interrupted run would produce
+# a two-image archive of twice the size. Start from nothing.
+- name: Remove any staged archive left by an interrupted run
+  become: true
+  ansible.builtin.file:
+    path: "{{ ci_runner_image_stage }}"
+    state: absent
+
+# Staged, not written straight into the watched directory -- see the comment
+# on ci_runner_image_stage_dir for the partial-import failure that causes.
+- name: Export the runner image to a staged docker-archive
   become: true
   ansible.builtin.command:
     cmd: >-
       buildah push {{ ci_runner_image }}
-      docker-archive:/tmp/ra8-ci-runner.tar:{{ ci_runner_image }}
+      docker-archive:{{ ci_runner_image_stage }}:{{ ci_runner_image }}
   changed_when: true
 
+# The tag-drift trap that produced #484: the archive recovered by hand carried
+# :latest while the scale set boots :v2, so the import "succeeded" and the pods
+# still could not find their image. Read the tag the archive actually claims
+# BEFORE it is published, and refuse to continue on a mismatch. Both producers
+# write the Docker manifest.json this reads -- `buildah push docker-archive:`
+# always, `ctr images export` unless --skip-manifest-json is passed.
+- name: Read the image tags embedded in the staged archive
+  become: true
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - |
+        import json
+        import sys
+        import tarfile
+        with tarfile.open(sys.argv[1]) as archive:
+            entries = json.load(archive.extractfile("manifest.json"))
+        for entry in entries:
+            for tag in entry.get("RepoTags") or []:
+                print(tag)
+      - "{{ ci_runner_image_stage }}"
+  register: ci_runner_archive_tags
+  changed_when: false
+
+- name: Assert the staged archive is tagged exactly as the scale set expects
+  ansible.builtin.assert:
+    that:
+      - ci_runner_image in ci_runner_archive_tags.stdout_lines
+    fail_msg: >-
+      {{ ci_runner_image_stage }} is tagged
+      {{ ci_runner_archive_tags.stdout_lines | default(['<none>']) | join(', ') }}
+      but the scale set boots {{ ci_runner_image }} with imagePullPolicy Never.
+      Importing this archive would leave every pod in ErrImageNeverPull (#484).
+      Rebuild the archive with the tag the deployment uses.
+    success_msg: "staged archive is tagged {{ ci_runner_image }}"
+
+# Atomic rename into the watched directory: k3s sees one complete file.
+- name: Publish the archive into the k3s auto-import directory
+  become: true
+  ansible.builtin.command:
+    cmd: mv -f {{ ci_runner_image_stage }} {{ ci_runner_image_archive }}
+  changed_when: true
+
+# k3s would import the archive on its own (watcher now, agent start later), but
+# a provisioning run must converge without waiting on either, so import here
+# too. Both paths are idempotent -- the same digest under the same name.
 - name: Import the runner image into the node's containerd
   become: true
   ansible.builtin.command:
-    cmd: k3s ctr -n k8s.io images import /tmp/ra8-ci-runner.tar
+    cmd: k3s ctr -n k8s.io images import {{ ci_runner_image_archive }}
   changed_when: true
+
+# Pin it against the containerd CRI garbage collector, which is what evicted
+# the image in #484. Verified on the node: containerd v2.1.5-k3s1 honours
+# io.cri-containerd.pinned, and k3s applies that same label itself to
+# everything it imports from ci_runner_image_dir (labelImages in
+# pkg/agent/containerd). This makes the import done above -- which does not go
+# through that code path -- pinned as well.
+- name: Pin the runner image so containerd's CRI GC cannot evict it
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      k3s ctr -n k8s.io images label {{ ci_runner_image }}
+      io.cri-containerd.pinned=pinned
+  changed_when: true
+
+- name: Read back the imported image ref and its labels
+  become: true
+  ansible.builtin.command:
+    cmd: k3s ctr -n k8s.io images ls name=={{ ci_runner_image }}
+  register: ci_runner_image_check
+  changed_when: false
+
+- name: Assert the image the pods boot exists in containerd and is pinned
+  ansible.builtin.assert:
+    that:
+      - ci_runner_image in ci_runner_image_check.stdout
+      - "'io.cri-containerd.pinned=pinned' in ci_runner_image_check.stdout"
+    fail_msg: >-
+      containerd has no pinned {{ ci_runner_image }} after import. The pods use
+      imagePullPolicy Never, so they cannot recover this themselves -- they
+      would sit in ErrImageNeverPull until someone noticed (#484).
+      Node reported: {{ ci_runner_image_check.stdout | default('<no output>') }}
+    success_msg: "{{ ci_runner_image }} present in containerd and pinned"
+
+# Pre-#484 deploys left the archive in /tmp, where nothing re-imports it and
+# systemd-tmpfiles eventually deletes it. Drop it so there is exactly one
+# archive on the node and it is the durable one.
+- name: Remove the pre-#484 archive from /tmp
+  become: true
+  ansible.builtin.file:
+    path: /tmp/ra8-ci-runner.tar
+    state: absent
 
 - name: Install the ARC controller
   become: true
