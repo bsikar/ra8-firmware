@@ -35,7 +35,7 @@ reader parses a fixed 16-byte footer, learns where the index is, reads one
 8-byte index entry, and jumps straight to the tile it wants. One bounded read,
 one bounded inflate, and the resident cost is *one tile* -- not one image.
 
-Import runs on the **host** (`ra8_fmt convert`) *or* on the **device**
+Import runs on the **host** (`rabook_imagepack convert`) *or* on the **device**
 (`ra8_epub_tile_binder_import()`, when a book arrives with ordinary JPEG/PNG
 inside it). That is not an afterthought: the producer is a streaming,
 zero-heap, fixed-arena transcoder precisely so the device can run it, and
@@ -161,7 +161,7 @@ format exists to provide.
 A pleasing consequence of the geometry: set `tile_w == width` and the grid
 collapses to one column. Tile *n* is then simply band *n*, the tile index
 becomes a band index, and 2-D paging code and 1-D scroll code share one reader
-with no special case. `ra8_fmt inspect` reports this as `longstrip: YES`.
+with no special case. `rabook_imagepack inspect` reports this as `longstrip: YES`.
 
 ### Why not tiled TIFF?
 
@@ -259,7 +259,7 @@ happens to be a multiple of 16.
 
 **And the cost.** A tiled TIFF opens in any image viewer. A `.jof` opens in
 nothing that already exists, which is why this tree ships both
-`tools/ra8_fmt` to inspect the bytes and `tools/ra8_viewer` to look at a page
+`tools/rabook_imagepack` to inspect the bytes and `tools/rabook_viewer` to look at a page
 -- two first-party tools recovering what TIFF gets for free. That is a real
 and recurring cost, paid every time something needs debugging, and it is
 accounted for with the rest of the bill in
@@ -342,7 +342,7 @@ image whose dimensions are not exact multiples of the tile size would need
 padding, and the reader would have to know how much padding to strip. With it,
 edge tiles are simply *smaller*, the decoded byte count is exact, and the sum
 of all tile areas equals the image area precisely -- which is what
-`ra8_fmt inspect` checks before reporting "coverage exact, no duplicate tiles".
+`rabook_imagepack inspect` checks before reporting "coverage exact, no duplicate tiles".
 
 By codec:
 
@@ -392,7 +392,7 @@ truncation even when the caller's idea of the file length is wrong.
 ### 4.1 Producing (`ra8_jof_produce()` -- host *or* device)
 
 The same function runs in both places. On the host it is driven by
-`ra8_fmt convert` / `tools/media_dl`; on the device it is driven by
+`rabook_imagepack convert` / `tools/media_dl`; on the device it is driven by
 `ra8_epub_tile_binder_import()` when an EPUB turns out to contain ordinary
 JPEG/PNG. There is no separate device transcoder and no reduced device mode --
 the memory contract in [section 5.1](#51-memory-behaviour-of-the-writer) is
@@ -836,7 +836,7 @@ will get the identical bytes.
 **Step 1 -- build the tool.**
 
 ```
-cmake -S tools/ra8_fmt -B build/ra8_fmt && cmake --build build/ra8_fmt
+cmake -S tools/rabook_imagepack -B build/rabook_imagepack && cmake --build build/rabook_imagepack
 ```
 
 **Step 2 -- generate the source image.** A 200 x 300 RGB PNG, an 8-pixel
@@ -869,7 +869,7 @@ EOF
 on its own, giving one column and two rows:
 
 ```
-$ ./build/ra8_fmt/ra8_fmt convert --format jof --in sample.png --out sample.jof
+$ ./build/rabook_imagepack/rabook_imagepack convert --format jof --in sample.png --out sample.jof
 convert: 200x300 bpp=3 band=256 tiles=2 -> sample.jof (1264 bytes)
 ```
 
@@ -877,7 +877,7 @@ convert: 200x300 bpp=3 band=256 tiles=2 -> sample.jof (1264 bytes)
 per-tile table, so the tool itself produces the annotated dump:
 
 ```
-$ ./build/ra8_fmt/ra8_fmt inspect sample.jof --verbose
+$ ./build/rabook_imagepack/rabook_imagepack inspect sample.jof --verbose
 JOF atlas: 1264 bytes
   image      : 200 x 300 px
   tile       : 200 x 256 px
@@ -1000,7 +1000,7 @@ image**, not the atlas -- it re-runs the transcode and compares against a
 single-tile reference decode of the original:
 
 ```
-$ ./build/ra8_fmt/ra8_fmt verify --format jof --in sample.png
+$ ./build/rabook_imagepack/rabook_imagepack verify --format jof --in sample.png
 verify: 200x300 bpp=3 | reference 1 tile | banded 2 tiles of 256 rows
 verdict: ROUND-TRIP EXACT -- the produced file is correct (0 differing bytes)
 ```
@@ -1040,7 +1040,7 @@ rejection, not a crash.
 | `index_off` pointing into the header | Reader parses its own header as index entries | Index window must close the file exactly |
 | Index entry pointing into the footer, the index, or past EOF | Out-of-bounds read | Every entry validated against `[32, index_off)` per read |
 | Index entry with huge `length` | Unbounded read / scratch overflow | `length` must fit inside the tile-stream region *and* inside `scratch_cap` |
-| Overlapping tile windows | Two tiles alias the same bytes | Legal on the wire but flagged by `ra8_fmt inspect` ("no duplicate tiles"); harmless to the reader since each read is independently bounded |
+| Overlapping tile windows | Two tiles alias the same bytes | Legal on the wire but flagged by `rabook_imagepack inspect` ("no duplicate tiles"); harmless to the reader since each read is independently bounded |
 | **Decompression bomb** | Tiny stream inflating to gigabytes | Two independent limits, below |
 | Inflate producing the wrong size | Caller reads uninitialised or foreign pixels | Decoded size must equal `tw*th*bpp` **exactly** |
 | `bpp` = 0 or 7 | Payload-size arithmetic nonsense | Must be 1, 3 or 4 |
@@ -1071,7 +1071,7 @@ for `RBKC`, where the expected size is itself read from the file.
   That is not a failure mode, it is a content problem.
 - **Overlapping tiles.** The wire format permits an index whose windows overlap.
   Each read is independently bounded so this cannot corrupt memory; it can only
-  produce a visually wrong image. `ra8_fmt inspect` reports it so a *producer*
+  produce a visually wrong image. `rabook_imagepack inspect` reports it so a *producer*
   bug is caught in tooling rather than shipped.
 - **Integrity/authenticity.** JOF has no checksum and no signature. It is not
   an authenticated format and must not be treated as one -- if an atlas needs to

@@ -54,5 +54,5 @@ checks this app's `hil.conf` banner headlessly, just like a
 
 ```
 BOARD_SIM_STOP_ON="rtt_log_demo: 3" \
-  tools/board_sim/build/board_sim build/rtt_log_demo.elf
+  tools/ra8_emulator/build/ra8_emulator build/rtt_log_demo.elf
 ```

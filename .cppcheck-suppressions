@@ -133,21 +133,21 @@ constVariablePointer
 unusedStructMember:examples/ek_ra8d2/hw_validated/hil/ereader_shelf/sh_app.h
 
 # unusedStructMember on the board_sim board-view status struct. Its fields are
-# read in tools/board_sim/src/display/board_overlay.c via a pointer to the struct declared
+# read in tools/ra8_emulator/src/display/board_overlay.c via a pointer to the struct declared
 # in the header, which cppcheck cannot follow across the .h boundary.
-unusedStructMember:tools/board_sim/inc/board_overlay.h
+unusedStructMember:tools/ra8_emulator/inc/board_overlay.h
 
 # unusedStructMember on the board_sim peripheral-block descriptor struct. Each
 # board_periph_<blk>.c fills a board_periph_block_t and the core reads its
 # fields through the registered pointer; cppcheck's per-TU view of the header
 # alone cannot see those cross-.c uses.
-unusedStructMember:tools/board_sim/inc/board_periph_block.h
+unusedStructMember:tools/ra8_emulator/inc/board_periph_block.h
 
 # missingInclude for board_sim's host dependencies: cppcheck cannot resolve the
 # Unicorn / Capstone / Cocoa headers (they live under the Homebrew prefix, not a
-# path cppcheck scans), so it reports missingInclude for tools/board_sim. The
+# path cppcheck scans), so it reports missingInclude for tools/ra8_emulator. The
 # real host build links them; the board-sim smoke gate proves it compiles + runs.
-missingInclude:tools/board_sim/*
+missingInclude:tools/ra8_emulator/*
 
 # ---------------------------------------------------------------------------
 # board_sim (tools/) is a HOST development tool -- a Unicorn-based CPU emulator
@@ -161,19 +161,19 @@ missingInclude:tools/board_sim/*
 #   15.5  -- guard-clause early returns are the house style (advisory).
 #   17.7  -- some libc / Unicorn return values are intentionally ignored.
 # See docs/qualification/MISRA_DEVIATIONS.md (D-BSIM) for the rationale. These
-# scope to tools/board_sim only; every other MISRA rule is still enforced there,
+# scope to tools/ra8_emulator only; every other MISRA rule is still enforced there,
 # so a genuine defect (e.g. an uninitialised read) is still reported.
 # ---------------------------------------------------------------------------
-misra-c2012-21.6:tools/board_sim/*
-misra-c2012-21.3:tools/board_sim/*
-misra-c2012-11.1:tools/board_sim/*
-misra-c2012-11.2:tools/board_sim/*
-misra-c2012-11.3:tools/board_sim/*
-misra-c2012-11.5:tools/board_sim/*
-misra-c2012-11.6:tools/board_sim/*
-misra-c2012-11.8:tools/board_sim/*
-misra-c2012-15.5:tools/board_sim/*
-misra-c2012-17.7:tools/board_sim/*
+misra-c2012-21.6:tools/ra8_emulator/*
+misra-c2012-21.3:tools/ra8_emulator/*
+misra-c2012-11.1:tools/ra8_emulator/*
+misra-c2012-11.2:tools/ra8_emulator/*
+misra-c2012-11.3:tools/ra8_emulator/*
+misra-c2012-11.5:tools/ra8_emulator/*
+misra-c2012-11.6:tools/ra8_emulator/*
+misra-c2012-11.8:tools/ra8_emulator/*
+misra-c2012-15.5:tools/ra8_emulator/*
+misra-c2012-17.7:tools/ra8_emulator/*
 
 # constParameterCallback on ISR trampolines whose signatures are dictated by
 # the registration API (ra8_isr_register takes a fixed function-pointer type).

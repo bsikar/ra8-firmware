@@ -48,7 +48,7 @@ generic single-file image builder works for any file):
 
 ```sh
 tools/mkfontimg/build/mkfontimg my.epub card.img BOOK.EPB
-board_sim/build/board_sim build/import_reader.elf --sd card.img
+ra8_emulator/build/ra8_emulator build/import_reader.elf --sd card.img
 ```
 
 ### On the bench

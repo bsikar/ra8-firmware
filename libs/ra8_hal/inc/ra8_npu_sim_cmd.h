@@ -11,7 +11,7 @@
  *
  *  - `examples/ra8p1_foundation/npu_smoke` BUILDS a stream in this layout, points
  *    the NPU command queue at it (`ra8_npu_submit`), and kicks it (`ra8_npu_run`).
- *  - `tools/board_sim/src/periph/board_periph_npu.c` DECODES a stream in this layout and
+ *  - `tools/ra8_emulator/src/periph/board_periph_npu.c` DECODES a stream in this layout and
  *    performs the stand-in "execution" against the tensor arenas, so the OUTPUT
  *    arena ends up holding a checkable, deterministic result.
  *  - `tests/test_ra8_npu.c` MOCKS the same decode against the host MMIO backing

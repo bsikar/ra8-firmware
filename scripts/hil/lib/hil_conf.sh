@@ -6,7 +6,7 @@
 # (hardware-in-the-loop) and SIL (simulator-in-the-loop) suites.
 #
 # Both scripts/hil/all.sh (flash a real board, scrape its UART) and
-# scripts/sim/sil_all.sh (boot the same .elf in tools/board_sim, scrape the
+# scripts/sim/sil_all.sh (boot the same .elf in tools/ra8_emulator, scrape the
 # emulated UART) discover the SAME apps under
 # examples/ek_ra8d2/hw_validated/hil/ and read the SAME per-app hil.conf
 # manifests. Factoring the two shared steps here keeps the two suites in

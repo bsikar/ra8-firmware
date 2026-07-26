@@ -30,7 +30,7 @@
  * ``k_ra8_ok``. The ``route_add`` placeholder code is logged but never fails the
  * verdict.
  *
- * hw_pending: ``tools/board_sim`` has no Ethernet / MFWD peripheral model, and
+ * hw_pending: ``tools/ra8_emulator`` has no Ethernet / MFWD peripheral model, and
  * the EK-RA8D2 Ethernet wire is marginal (#21), so this is compile-gated and
  * bench-only -- matching the driver-gap example wave (#182-188). Proving a
  * frame is actually forwarded to the right egress port needs a multi-port

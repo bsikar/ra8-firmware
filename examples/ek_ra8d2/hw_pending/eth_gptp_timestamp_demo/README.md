@@ -35,7 +35,7 @@ which already carries its HUM citations.
 
 ## Tier: hw_pending (bench-only)
 
-`tools/board_sim` has no Ethernet / GPTP peripheral model -- the GWCA/ETHA/PHY
+`tools/ra8_emulator` has no Ethernet / GPTP peripheral model -- the GWCA/ETHA/PHY
 bring-up is shimmed to no-ops there -- so there is no `make sim-` gate for this
 app. The EK-RA8D2 Ethernet wire is also marginal (#21). The example's value is
 demonstrating the real driver API behind a clean ARM cross-build, matching the

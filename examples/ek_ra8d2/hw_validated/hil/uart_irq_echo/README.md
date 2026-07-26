@@ -14,13 +14,13 @@ On the EK-RA8D2 the SCI8 pins (PD02 TXD / PD03 RXD) surface as the J-Link OB
 VCOM port; open it at 115200 8N1 and every character you type echoes back with
 LED1 toggling.
 
-This is the interrupt-driven UART proof target for `tools/board_sim`: feed the
+This is the interrupt-driven UART proof target for `tools/ra8_emulator`: feed the
 console RX with `--input` and the emulator raises RXI, takes the echo out
 through TXI, and captures it as `[uart]` output.
 
 ```
 make uart_irq_echo
-./tools/board_sim/build/board_sim \
+./tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_validated/hil/uart_irq_echo/build/uart_irq_echo.elf \
     --input "PING\r\n"
 # stdout: [uart] SCI8: uart_irq_echo ready

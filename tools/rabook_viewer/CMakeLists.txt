@@ -1,15 +1,15 @@
 #
-# tools/ra8_viewer -- native macOS reader viewer (direct-call, not an emulator).
+# tools/rabook_viewer -- native macOS reader viewer (direct-call, not an emulator).
 #
 # Links the firmware's platform-agnostic reader libraries compiled host-side
 # (RA8_SIMULATOR_MODE, C23) and calls them directly to rasterise e-book / comic
 # pages into an RGB565 framebuffer, which a layer-backed Cocoa NSWindow presents.
-# Unlike tools/board_sim (which emulates the firmware ELF under Unicorn), this
+# Unlike tools/ra8_emulator (which emulates the firmware ELF under Unicorn), this
 # tool runs no ARM code -- it is purely a viewer, so it is far faster.
 #
 #   cmake -B build -S . && cmake --build build -j
-#   ./build/ra8_viewer path/to/book.cbz               # window; arrows turn pages
-#   ./build/ra8_viewer book.cbz --headless --dump-ppm page0.ppm   # no display
+#   ./build/rabook_viewer path/to/book.cbz               # window; arrows turn pages
+#   ./build/rabook_viewer book.cbz --headless --dump-ppm page0.ppm   # no display
 #
 # Reader engine coverage: CBZ / CBR / CBT comic archives incl. gzip/xz-wrapped
 # (ra8_comic), and the firmware-native JOF long-strip vertical-scroll tile atlas
@@ -23,7 +23,7 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-project(ra8_viewer LANGUAGES C)
+project(rabook_viewer LANGUAGES C)
 if(APPLE)
   enable_language(OBJC)
 endif()
@@ -33,7 +33,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-#Firmware root(two directories up from tools / ra8_viewer /).
+#Firmware root(two directories up from tools / rabook_viewer /).
 get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
 # ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ function(ra8_viewer_read_path out_var lib_src_dir)
     if(NOT _name IN_LIST _declared)
       message(
         FATAL_ERROR
-          "ra8_viewer: ${lib_src_dir}/${_name} is neither a KEEP (read-path) nor "
+          "rabook_viewer: ${lib_src_dir}/${_name} is neither a KEEP (read-path) nor "
           "a DROP (excluded) source. A reader-core file was split, renamed or "
           "added -- classify it so the viewer links the right members."
       )
@@ -85,8 +85,9 @@ function(ra8_viewer_read_path out_var lib_src_dir)
 
   foreach(_name IN LISTS _declared)
     if(NOT _name IN_LIST _present)
-      message(FATAL_ERROR "ra8_viewer: declared source ${lib_src_dir}/${_name} does not exist. A "
-                          "firmware member was renamed or deleted -- update its KEEP/DROP list."
+      message(
+        FATAL_ERROR "rabook_viewer: declared source ${lib_src_dir}/${_name} does not exist. A "
+                    "firmware member was renamed or deleted -- update its KEEP/DROP list."
       )
     endif()
   endforeach()
@@ -269,13 +270,13 @@ set_source_files_properties(
 )
 
 # ---------------------------------------------------------------------------
-# ra8_viewer: the viewer executable -- C core + Cocoa window backend.
+# rabook_viewer: the viewer executable -- C core + Cocoa window backend.
 # ---------------------------------------------------------------------------
 # The window backend is the only platform-specific piece. Cocoa on macOS; off
 # the APPLE path a headless stand-in supplies the identical C ABI and reports
 # "no window" so main.c takes its existing headless branch. Exactly one of the
 # two is ever compiled, so they never compete for the same symbols -- the same
-# arrangement tools/board_sim uses for board_view.m.
+# arrangement tools/ra8_emulator uses for board_view.m.
 if(APPLE)
   set(RA8_VIEWER_VIEW_SRC src/ra8_viewer_view.m)
 else()
@@ -286,7 +287,7 @@ endif()
 # src/ra8_viewer_reader_internal.h): public API + dispatch, the comic engine, the
 # JOF long-strip engine, and the shared RGB565 / PPM writer.
 add_executable(
-  ra8_viewer
+  rabook_viewer
   src/main.c
   src/ra8_viewer_reader.c
   src/ra8_viewer_comic.c
@@ -294,15 +295,15 @@ add_executable(
   src/ra8_viewer_ppm.c
   ${RA8_VIEWER_VIEW_SRC}
 )
-target_include_directories(ra8_viewer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-target_link_libraries(ra8_viewer PRIVATE ra8_reader)
-target_compile_options(ra8_viewer PRIVATE -Wall -Wextra -Werror)
+target_include_directories(rabook_viewer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+target_link_libraries(rabook_viewer PRIVATE ra8_reader)
+target_compile_options(rabook_viewer PRIVATE -Wall -Wextra -Werror)
 
 if(APPLE)
   set_source_files_properties(src/ra8_viewer_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
-  target_link_libraries(ra8_viewer PRIVATE "-framework Cocoa" "-framework QuartzCore")
+  target_link_libraries(rabook_viewer PRIVATE "-framework Cocoa" "-framework QuartzCore")
 else()
   # The SVG rasteriser calls sinf/cosf/tanf/sqrtf/atan2f. macOS keeps those in
   # libSystem; every other POSIX host needs libm named explicitly.
-  target_link_libraries(ra8_viewer PRIVATE m)
+  target_link_libraries(rabook_viewer PRIVATE m)
 endif()

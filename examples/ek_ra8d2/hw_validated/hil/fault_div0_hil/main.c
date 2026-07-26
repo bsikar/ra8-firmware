@@ -26,7 +26,7 @@
  * parks at `ra8_exception_halt_loop`. The `hil.conf` gate scrapes that
  * dump.
  *
- * @note **Headless-emulator status.** `tools/board_sim` models this trap:
+ * @note **Headless-emulator status.** `tools/ra8_emulator` models this trap:
  * a DIV_0_TRP-gated UDIV/SDIV seam takes the decoded UsageFault when (and
  * only when) the firmware has armed `CCR.DIV_0_TRP` and the divisor is
  * zero, so the sim run reproduces the silicon dump headlessly

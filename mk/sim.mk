@@ -4,7 +4,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 
-# Panel descriptor used by sim-<app>: tools/board_sim/panels/<PANEL>.toml.
+# Panel descriptor used by sim-<app>: tools/ra8_emulator/panels/<PANEL>.toml.
 SIM_PANEL ?= ek_ra8d2
 PANEL     ?= $(SIM_PANEL)
 
@@ -17,7 +17,7 @@ PANEL     ?= $(SIM_PANEL)
 $(RA8_SIM_GENERIC): sim-%: %
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
-	$(BOARD_SIM_DIR)/build/board_sim $(RA8_APP_DIR_$*)/build/$*.elf \
+	$(BOARD_SIM_DIR)/build/ra8_emulator $(RA8_APP_DIR_$*)/build/$*.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 # The e-reader (src/app) is a two-image TrustZone Debug build; board_sim loads
@@ -30,7 +30,7 @@ sim-ra8d2-ereader:
 	$(CMAKE) --build $(RA8_EREADER_SIM_DIR) -j
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
-	$(BOARD_SIM_DIR)/build/board_sim \
+	$(BOARD_SIM_DIR)/build/ra8_emulator \
 		$(RA8_EREADER_SIM_DIR)/ra8d2-ereader.elf \
 		--ns $(RA8_EREADER_SIM_DIR)/ra8d2-ereader_ns.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
@@ -44,7 +44,7 @@ sim-dualcore_mailbox:
 	$(CMAKE) --build $(RA8_DUALCORE_SIM_DIR) -j
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
-	$(BOARD_SIM_DIR)/build/board_sim \
+	$(BOARD_SIM_DIR)/build/ra8_emulator \
 		$(RA8_DUALCORE_SIM_DIR)/dualcore_mailbox.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
@@ -57,7 +57,7 @@ sim-tz_threadx_demo:
 	$(CMAKE) --build $(RA8_TZ_THREADX_DEMO_SIM_DIR) -j
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
-	$(BOARD_SIM_DIR)/build/board_sim \
+	$(BOARD_SIM_DIR)/build/ra8_emulator \
 		$(RA8_TZ_THREADX_DEMO_SIM_DIR)/tz_threadx_demo.elf \
 		--ns $(RA8_TZ_THREADX_DEMO_SIM_DIR)/tz_threadx_demo_ns.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
@@ -73,7 +73,7 @@ $(RA8_PROFILE): profile-%: %
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	BOARD_SIM_PROFILE=$(MODE) BOARD_SIM_STOP_PC=$(STOP_PC) BOARD_SIM_MAX_CHUNKS=8000000 \
-		$(BOARD_SIM_DIR)/build/board_sim $(RA8_APP_DIR_$*)/build/$*.elf $(PROFILE_ARGS)
+		$(BOARD_SIM_DIR)/build/ra8_emulator $(RA8_APP_DIR_$*)/build/$*.elf $(PROFILE_ARGS)
 	@if [ -f board_sim_profile.html ]; then \
 		echo "  opening flamechart GUI: board_sim_profile.html"; \
 		( command -v open >/dev/null 2>&1 && open board_sim_profile.html ) \
@@ -100,16 +100,16 @@ ereader-gui: ereader_shelf
 		if [ $${#books[@]} -eq 0 ]; then echo "no *.rabook in $(EREADER_SD_DIR)"; exit 1; fi; \
 		echo "  SD card: $${#books[@]} book(s) from $(EREADER_SD_DIR)"; \
 		"$(ROOT)/tools/mkbookimg/build/mkbookimg" "$(EREADER_SD_IMG)" "$${books[@]}"
-	$(BOARD_SIM_DIR)/build/board_sim $(RA8_APP_DIR_ereader_shelf)/build/ereader_shelf.elf \
+	$(BOARD_SIM_DIR)/build/ra8_emulator $(RA8_APP_DIR_ereader_shelf)/build/ereader_shelf.elf \
 		--sd $(EREADER_SD_IMG) $(_EREADER_FAST) \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 # `make sim-help` -- usage, the PANEL knob, and the board_sim flag surface.
 sim-help:
 	@echo "make sim-<app> [PANEL=<name>]  -- boot an app's REAL .elf on the board_sim"
-	@echo "                                  Unicorn CPU emulator (tools/board_sim)"
+	@echo "                                  Unicorn CPU emulator (tools/ra8_emulator)"
 	@echo ""
-	@echo "  PANEL=<name>   display descriptor tools/board_sim/panels/<name>.toml (default ek_ra8d2)"
+	@echo "  PANEL=<name>   display descriptor tools/ra8_emulator/panels/<name>.toml (default ek_ra8d2)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make sim-blink                       live board view (LEDs, USB/UART/IRQ sidebar)"
@@ -122,12 +122,12 @@ sim-help:
 	@echo "  make profile-<app> MODE=1                cheap flat wall-time sampler (no flamechart)"
 	@echo "  make profile-<app> STOP_PC=0x...         stop the profile at an exact PC"
 	@echo ""
-	@echo "Run board_sim directly for headless / scripted use (tools/board_sim/README.md):"
-	@echo "  cd tools/board_sim && cmake -B build -S . && cmake --build build -j"
-	@echo "  ./build/board_sim <app.elf>                  headless boot + MMIO report"
-	@echo "  ./build/board_sim <app.elf> --view           live macOS window"
-	@echo "  ./build/board_sim <app.elf> --ppm out.ppm    write the composite frame"
-	@echo "  ./build/board_sim <app.elf> --sd <img> | --sd-new 64:fat32 [--save-sd out.img]"
+	@echo "Run board_sim directly for headless / scripted use (tools/ra8_emulator/README.md):"
+	@echo "  cd tools/ra8_emulator && cmake -B build -S . && cmake --build build -j"
+	@echo "  ./build/ra8_emulator <app.elf>                  headless boot + MMIO report"
+	@echo "  ./build/ra8_emulator <app.elf> --view           live macOS window"
+	@echo "  ./build/ra8_emulator <app.elf> --ppm out.ppm    write the composite frame"
+	@echo "  ./build/ra8_emulator <app.elf> --sd <img> | --sd-new 64:fat32 [--save-sd out.img]"
 	@echo ""
 	@echo "Headless run-bounding env vars: BOARD_SIM_MAX_CHUNKS, BOARD_SIM_WALL_S,"
 	@echo "  BOARD_SIM_IDLE_STOP=N, BOARD_SIM_USB_STOP=N, BOARD_SIM_STOP_ON='<substr>'"
@@ -166,12 +166,12 @@ ereader-golden: ereader_ui
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	python3 scripts/gen/ereader_golden.py check \
-		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/board_sim \
+		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/ra8_emulator \
 		--golden-dir $(EREADER_GOLDEN_DIR) --out-dir /tmp/ereader_golden_out
 
 ereader-golden-update: ereader_ui
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	python3 scripts/gen/ereader_golden.py update \
-		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/board_sim \
+		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/ra8_emulator \
 		--golden-dir $(EREADER_GOLDEN_DIR)

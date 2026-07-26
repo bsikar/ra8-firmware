@@ -23,7 +23,7 @@
  *
  * The container's command stream is NOT a real Vela program: it is the tiny,
  * documented board_sim / host-test convention in ``ra8_npu_sim_cmd.h``. Under
- * ``tools/board_sim --device ra8p1`` the NPU model decodes it and applies the op
+ * ``tools/ra8_emulator --device ra8p1`` the NPU model decodes it and applies the op
  * to the tensor arenas, so this app is a DETERMINISTIC, sim-runnable proof of the
  * FULL offline-build -> on-target-load -> run pipeline. It is still a FOUNDATION
  * app: there is no RA8P1 board yet, and real Vela-compiled inference is the

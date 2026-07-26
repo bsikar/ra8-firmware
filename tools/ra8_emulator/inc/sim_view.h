@@ -250,7 +250,7 @@ RA8_PRIV void build_composite(uc_engine*  uc,
  * @brief Load a panel descriptor (name / width / height) from a TOML-ish file.
  *
  * @details A flat ``key = value`` panel descriptor (see
- * ``tools/board_sim/panels/``), so the board emulator becomes whatever
+ * ``tools/ra8_emulator/panels/``), so the board emulator becomes whatever
  * display a config describes -- not just the EK-RA8D2 1024x600.
  * Dependency-free bounded parser; blank lines and '#' comments are ignored
  * and quotes are stripped from the name.

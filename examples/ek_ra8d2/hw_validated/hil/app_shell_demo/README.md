@@ -64,7 +64,7 @@ make app_shell_demo                  # from the repo root
 cd examples/ek_ra8d2/hw_pending/app_shell_demo && make
 
 # Headless on board_sim (ITM lines show up as `[itm] ...`):
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_pending/app_shell_demo/build/app_shell_demo.elf
 ```
 

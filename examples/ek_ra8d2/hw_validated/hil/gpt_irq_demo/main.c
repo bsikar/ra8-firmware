@@ -58,7 +58,7 @@ typedef enum : uint16_t {
  * Incremented only inside ``gpt_irq_demo_isr``. If the ICU event link, the
  * NVIC enable, or the vector dispatch were broken this would never advance --
  * so a non-zero value is direct evidence the real NVIC interrupt path ran.
- * Read externally by J-Link (HIL) and by tools/board_sim (emulator).
+ * Read externally by J-Link (HIL) and by tools/ra8_emulator (emulator).
  *
  * @note Read externally only; the firmware main loop never reads it back.
  * @since 0.1.0

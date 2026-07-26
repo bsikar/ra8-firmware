@@ -74,7 +74,7 @@ ARG ARM_GCC_SHA256_AARCH64=c8824bffd057afce2259f7618254e840715f33523a3d4e4294f47
 ARG UNICORN_VERSION=2.1.4
 ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce5601f4
 
-# libcapstone-dev is the Capstone header that tools/board_sim includes (for
+# libcapstone-dev is the Capstone header that tools/ra8_emulator includes (for
 # disassembly only -- NOT the decode variable), and libcurl4-openssl-dev is the
 # libcurl header tools/media_dl's network backend includes. `make ci` lints
 # tools/ (issue #296), so the tidy gate needs those headers present inside the

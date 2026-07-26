@@ -7,7 +7,7 @@
 # outside the firmware CI gates.
 #
 #   cmake -B build -S . && cmake --build build -j
-#   ./build/board_sim ../../examples/ek_ra8d2/.../<app>/build/<app>.elf
+#   ./build/ra8_emulator ../../examples/ek_ra8d2/.../<app>/build/<app>.elf
 #
 # Needs Unicorn + Capstone:
 #   macOS: brew install unicorn capstone
@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.20)
 # Objective-C (board_view.m) is the macOS live-window backend ONLY, and an OBJC
 # compiler / AppKit may be absent on a Linux CI runner. Enable C unconditionally
 # and add OBJC only on APPLE, where board_view.m is actually compiled.
-project(ra8_board_sim LANGUAGES C)
+project(ra8_emulator LANGUAGES C)
 if(APPLE)
   enable_language(OBJC)
 endif()
@@ -54,7 +54,9 @@ set(BREW /opt/homebrew)
 # -- see board_periph_block.h). The glob below picks it up automatically; the
 # core keeps no central block list, so blocks can be added in parallel with no
 # edit to this file and no conflict.
-file(GLOB BOARD_PERIPH_BLOCKS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/periph/board_periph_*.c")
+file(GLOB BOARD_PERIPH_BLOCKS CONFIGURE_DEPENDS
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/periph/board_periph_*.c"
+)
 
 if(APPLE)
   set(BOARD_VIEW_SRC src/display/board_view.m)
@@ -63,7 +65,7 @@ else()
 endif()
 
 add_executable(
-  board_sim
+  ra8_emulator
   src/main.c
   src/engine/sim_console.c
   src/engine/sim_elf.c
@@ -115,7 +117,7 @@ endif()
 # ra8_core/inc supplies ra8_attributes.h for the RA8_PRIV annotations on the
 # sim_* module-private cross-TU helpers.
 target_include_directories(
-  board_sim
+  ra8_emulator
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
 )
@@ -128,18 +130,18 @@ target_include_directories(
 # check_unicorn_version.sh if the runtime Unicorn is not the pin. A custom prefix
 # still works via CMAKE_PREFIX_PATH. Cocoa is linked on the APPLE path only.
 if(APPLE)
-  target_include_directories(board_sim PRIVATE ${BREW}/include)
-  target_link_directories(board_sim PRIVATE ${BREW}/lib)
+  target_include_directories(ra8_emulator PRIVATE ${BREW}/include)
+  target_link_directories(ra8_emulator PRIVATE ${BREW}/lib)
   target_link_libraries(
-    board_sim PRIVATE unicorn capstone "-framework Cocoa" "-framework QuartzCore"
+    ra8_emulator PRIVATE unicorn capstone "-framework Cocoa" "-framework QuartzCore"
   )
 else()
   find_path(UNICORN_INCLUDE_DIR unicorn/unicorn.h REQUIRED)
   find_path(CAPSTONE_INCLUDE_DIR capstone/capstone.h REQUIRED)
   find_library(UNICORN_LIBRARY unicorn REQUIRED)
   find_library(CAPSTONE_LIBRARY capstone REQUIRED)
-  target_include_directories(board_sim PRIVATE ${UNICORN_INCLUDE_DIR} ${CAPSTONE_INCLUDE_DIR})
-  target_link_libraries(board_sim PRIVATE ${UNICORN_LIBRARY} ${CAPSTONE_LIBRARY})
+  target_include_directories(ra8_emulator PRIVATE ${UNICORN_INCLUDE_DIR} ${CAPSTONE_INCLUDE_DIR})
+  target_link_libraries(ra8_emulator PRIVATE ${UNICORN_LIBRARY} ${CAPSTONE_LIBRARY})
 endif()
 
-target_compile_options(board_sim PRIVATE -Wall -Wextra)
+target_compile_options(ra8_emulator PRIVATE -Wall -Wextra)

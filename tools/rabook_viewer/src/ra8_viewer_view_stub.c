@@ -23,7 +23,7 @@
  * This is a platform alternative, not a stub in the sense the no-stubs policy
  * bans: the CMakeLists compiles exactly one of ra8_viewer_view.m (APPLE) or
  * this file (non-APPLE), so it is the ONLY definition of these symbols in its
- * build and never shadows a working implementation. tools/board_sim's
+ * build and never shadows a working implementation. tools/ra8_emulator's
  * board_view_stub.c stands in the same relation to board_view.m.
  *
  * @see ra8_viewer_view.h  The contract both backends implement.

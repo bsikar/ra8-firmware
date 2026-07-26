@@ -51,7 +51,7 @@ SRAM state, keep MRAM) is a faithful model of a real reset and the demo runs
 headless. Run it with:
 
 ```
-tools/board_sim/build/board_sim build/ra8_ftl_demo.elf
+tools/ra8_emulator/build/ra8_emulator build/ra8_ftl_demo.elf
 ```
 
 ## Expected output (board_sim or J-Link RTT/UART)

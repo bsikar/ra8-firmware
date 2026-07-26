@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # sil_all.sh -- SIL (simulator-in-the-loop): run every HIL app in the
-# tools/board_sim emulator HEADLESS and verify the SAME per-app hil.conf
+# tools/ra8_emulator emulator HEADLESS and verify the SAME per-app hil.conf
 # expectations the real-hardware suite (scripts/hil/all.sh) checks -- with NO
 # board attached. It is the hardware-free mirror of hil_all.sh, fast enough to
 # gate every push in CI (a board_sim run is seconds; the whole set runs in
@@ -105,7 +105,7 @@ HIL_DIR="${REPO_ROOT}/examples/ek_ra8d2/hw_validated/hil"
 # there is no RA8P1 HIL rig, so these are discovered HERE but never by
 # hil_all.sh (which would try to flash them to the RA8D2 board).
 SIL_RA8P1_DIR="${REPO_ROOT}/examples/ra8p1_foundation"
-SIM_DIR="${REPO_ROOT}/tools/board_sim"
+SIM_DIR="${REPO_ROOT}/tools/ra8_emulator"
 SELF="${REPO_ROOT}/scripts/sim/sil_all.sh"
 
 # ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). The
@@ -653,7 +653,7 @@ ra8_cmake_reset_if_compiler_changed "${SIM_DIR}/build"
 cmake -B "${SIM_DIR}/build" -S "${SIM_DIR}" \
   -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" >/tmp/sil_sim_cmake.log 2>&1
 cmake --build "${SIM_DIR}/build" -j "$(ra8_max_jobs)" >/tmp/sil_sim_build.log 2>&1
-SIL_SIM="${SIM_DIR}/build/board_sim"
+SIL_SIM="${SIM_DIR}/build/ra8_emulator"
 if [ ! -x "$SIL_SIM" ]; then
   echo -e "${RED}[sil_all]${NC} board_sim failed to build (see /tmp/sil_sim_build.log)" >&2
   exit 1

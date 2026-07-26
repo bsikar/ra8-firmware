@@ -85,7 +85,7 @@ JOBS="${JOBS:-$(ra8_max_jobs)}"
 # _include_args() in check_annotations.py). Deriving both from the layout
 # means a new library or port cannot silently fall outside either.
 INCLUDE_DIRS=()
-for _inc_dir in libs/*/inc src/inc src/*/inc port/*/inc tools/board_sim/inc; do
+for _inc_dir in libs/*/inc src/inc src/*/inc port/*/inc tools/ra8_emulator/inc; do
   case "$_inc_dir" in */third_party/*) continue ;; esac
   [[ -d "$_inc_dir" ]] && INCLUDE_DIRS+=("-I$_inc_dir")
 done

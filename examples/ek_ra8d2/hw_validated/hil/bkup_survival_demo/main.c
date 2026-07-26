@@ -37,7 +37,7 @@
  * setting_*`` sections, so the ``OFS1`` change does not reach silicon through
  * it; on-silicon ``rw=ok`` needs a full-image / option-byte flash (see README).
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` models the VBTBKRn
+ * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the VBTBKRn
  * window as a reset-retained domain (``board_periph_bkup.c``) whose writes are
  * gated on ``VBTBER.VBAE`` (HUM Ch 12.2.6 p 504), so the read/write half passes
  * (``rw=ok``) only because this demo first arms VBAE via ``ra8_bkup_init`` -- a

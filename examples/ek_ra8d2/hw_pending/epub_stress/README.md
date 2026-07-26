@@ -66,7 +66,7 @@ real static-pool path.
 
 ## Validation
 
-Run on `tools/board_sim` (the firmware boots, opens the 125-entry book through
+Run on `tools/ra8_emulator` (the firmware boots, opens the 125-entry book through
 the shared 96 KiB arena, no fault):
 
 ```

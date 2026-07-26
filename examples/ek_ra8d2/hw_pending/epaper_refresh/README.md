@@ -43,7 +43,7 @@ verdict never depends on a timing value.
 
 ## board_sim gate
 
-`tools/board_sim` models the IT8951 as an SPI device attached with `--eink`
+`tools/ra8_emulator` models the IT8951 as an SPI device attached with `--eink`
 (`board_periph_eink.c`). The model self-frames off the IT8951 SPI preambles
 (`0x6000` command / `0x0000` data write / `0x1000` data read), answers the
 `HRDY` "ready" GPIO, drains `GET_DEV_INFO`, and returns `0` for the `LUTAFSR`
@@ -92,7 +92,7 @@ the board layer, and they match the pins the board_sim IT8951 model drives:
 1. Wire an IT8951 e-paper controller to SPI_B ch0 with `/RESET` on P4_00 and
    `HRDY` on P4_01 (adjust the `k_ep_reset_pin` / `k_ep_hrdy_pin` enums in
    `main.c` and the matching `k_eink_hrdy_*` enums in
-   `tools/board_sim/src/periph/board_periph_eink.c` if a different pinout is used).
+   `tools/ra8_emulator/src/periph/board_periph_eink.c` if a different pinout is used).
 2. `make epaper_refresh` from the repo root, then:
    ```
    make -C examples/ek_ra8d2/hw_pending/epaper_refresh flash

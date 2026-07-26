@@ -12,7 +12,7 @@ Two harnesses already exist:
   * ``scripts/hil/all.sh`` flashes the physical EK-RA8D2 and scrapes its UART /
     J-Link / RTT / wire for every app under
     ``examples/ek_ra8d2/hw_validated/hil/``.
-  * ``scripts/sim/sil_all.sh`` boots the SAME ``.elf`` files in ``tools/board_sim``
+  * ``scripts/sim/sil_all.sh`` boots the SAME ``.elf`` files in ``tools/ra8_emulator``
     headless and checks the SAME per-app ``hil.conf`` expectations with NO board
     attached.  The ``sil-integration`` CI job runs it enforcing, 0 skips.
 
@@ -58,7 +58,7 @@ gate refuses to silently no-op).
 # ---------------------------------------------------------------------------
 # SIM==HIL is an ONGOING DISCIPLINE, not a one-time state.
 #
-# "SIM==HIL" means board_sim (tools/board_sim) must reproduce the ACTUAL
+# "SIM==HIL" means board_sim (tools/ra8_emulator) must reproduce the ACTUAL
 # silicon behaviour of every path a HIL app exercises -- bugs INCLUDED, not an
 # idealised model.  When a new HIL app drives a peripheral or code path that
 # board_sim does not yet model, the correct response is NOT to skip it in SIL:

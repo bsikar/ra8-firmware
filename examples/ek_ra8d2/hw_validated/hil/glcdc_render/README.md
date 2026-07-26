@@ -55,7 +55,7 @@ framebuffer registers, so a `--ppm` snapshot independently confirms GR1 points
 at the buffer:
 
 ```
-tools/board_sim/build/board_sim \
+tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/glcdc_render/build/glcdc_render.elf \
   --ppm /tmp/glcdc_hil.ppm \
   --dump-sym g_glcdc_hil_ok --dump-sym g_glcdc_hil_crc

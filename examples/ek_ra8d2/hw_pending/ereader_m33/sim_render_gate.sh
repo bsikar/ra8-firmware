@@ -34,7 +34,7 @@ APP="ereader_m33"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(git -C "${here}" rev-parse --show-toplevel)"
 build_dir="${here}/build"
-sim_dir="${root}/tools/board_sim"
+sim_dir="${root}/tools/ra8_emulator"
 toolchain="${root}/cmake/toolchain-ra8d2.cmake"
 want="${APP}: rgb565 256x64 sdram crc=${GOLDEN_CRC} PASS"
 
@@ -53,7 +53,7 @@ fi
 echo "ereader_m33 gate: building board_sim ..."
 cmake -B "${sim_dir}/build" -S "${sim_dir}" >/dev/null
 cmake --build "${sim_dir}/build" -j >/dev/null
-sim="${sim_dir}/build/board_sim"
+sim="${sim_dir}/build/ra8_emulator"
 
 echo "ereader_m33 gate: booting the M85 + M33 handoff on board_sim ..."
 # The render completes in well under 60 instruction-chunks; the bound below is a

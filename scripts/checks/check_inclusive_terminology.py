@@ -54,7 +54,7 @@ SCAN_ROOTS: tuple[str, ...] = (
     "cmake",
     ".github",
     "esp32",  # first-party ESP32-C6 companion sub-project (drivers/ours, src, hal)
-    "tools",  # first-party host tools incl. tools/board_sim (same bar per CLAUDE.md)
+    "tools",  # first-party host tools incl. tools/ra8_emulator (same bar per CLAUDE.md)
 )
 
 # Directories anywhere in the path that suppress the scan.

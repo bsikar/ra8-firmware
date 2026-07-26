@@ -58,7 +58,7 @@
  * avoids the completion ISR (which writes ``DTCSTS``) racing the in-flight copy.
  *
  * @par board_sim note (sim path)
- * ``tools/board_sim`` DOES model the DTC transfer engine
+ * ``tools/ra8_emulator`` DOES model the DTC transfer engine
  * (``board_periph_dtc.c``): the ELC software-event trigger reads the vector-table
  * entry at ``DTCVBR + slot*4``, fetches the TI, and actually MOVES the bytes in
  * emulated memory, so the **real** ``ra8_dtc`` + ELC path runs in sim and the copy

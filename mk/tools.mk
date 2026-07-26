@@ -70,12 +70,12 @@ test-media_dl:
 test-integration:
 	bash $(MEDIA_DL_DIR)/tests/integration.sh $(FMT)
 
-# --- ra8_viewer (reader) ----------------------------------------------------
+# --- rabook_viewer (reader) ----------------------------------------------------
 # `viewer` only BUILDS; `view FILE=<doc>` builds and OPENS a document.
 viewer:
 	$(CMAKE) -B $(RA8_VIEWER_DIR)/build -S $(RA8_VIEWER_DIR) -DCMAKE_BUILD_TYPE=Release
 	$(CMAKE) --build $(RA8_VIEWER_DIR)/build -j
-	@echo "  built $(RA8_VIEWER_DIR)/build/ra8_viewer"
+	@echo "  built $(RA8_VIEWER_DIR)/build/rabook_viewer"
 	@if [ -n "$(FILE)" ]; then \
 		echo "  note: 'viewer' only builds. To OPEN a document use: make view FILE=$(FILE)"; \
 	fi
@@ -86,7 +86,7 @@ viewer:
 view:
 	@test -n "$(FILE)" || { echo "usage: make view FILE=<doc> [HEADLESS=1]"; exit 2; }
 	$(MAKE) viewer
-	$(RA8_VIEWER_DIR)/build/ra8_viewer "$(FILE)" \
+	$(RA8_VIEWER_DIR)/build/rabook_viewer "$(FILE)" \
 		$(if $(filter-out 0,$(HEADLESS)),--headless --dump-ppm /tmp/ra8_view.ppm,)
 
 # --- other host tools -------------------------------------------------------

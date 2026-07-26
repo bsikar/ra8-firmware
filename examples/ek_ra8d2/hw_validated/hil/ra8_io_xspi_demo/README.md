@@ -42,7 +42,7 @@ needed. The OSPI RMW is slow in the emulator, so give it a generous budget:
 
 ```
 BOARD_SIM_MAX_CHUNKS=4000000 BOARD_SIM_WALL_S=60 \
-  tools/board_sim/build/board_sim build/ra8_io_xspi_demo.elf
+  tools/ra8_emulator/build/ra8_emulator build/ra8_io_xspi_demo.elf
 ```
 
 Expected console output:

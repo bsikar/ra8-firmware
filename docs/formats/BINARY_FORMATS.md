@@ -35,7 +35,7 @@ artifact, and only earns an entry here).
 
 | Magic | Format | Home | Producer | Specification |
 |-------|--------|------|----------|---------------|
-| `JOF1` / `JOFE` | Jump-Offset band-tile atlas | `libs/ra8_jof` | `ra8_jof_produce()`, `ra8_fmt convert` | @ref md_docs_2formats_2JOF |
+| `JOF1` / `JOFE` | Jump-Offset band-tile atlas | `libs/ra8_jof` | `ra8_jof_produce()`, `rabook_imagepack convert` | @ref md_docs_2formats_2JOF |
 | `RBKC` | Chunked `.rabook` container | `libs/ra8_book` | `tools/epub_compile` | @ref md_docs_2formats_2RBKC |
 | `NPU1` | `.npub` Ethos-U55 model container | `libs/ra8_hal` | `tools/vela/vela_gen.py` | @ref md_docs_2formats_2NPU1 |
 | `ROT1` | Root-of-trust signed-image trailer | `libs/ra8_dfu` | `tools/rot_sign.py` | @ref md_docs_2formats_2ROT1 |
@@ -129,15 +129,15 @@ bespoke formats is real and is paid continuously:
 - **No off-the-shelf tooling -- so we built our own, twice.** A tiled TIFF
   opens in any image viewer and a CBZ in any comic reader; a `.jof` opens in
   nothing that already exists. This tree therefore carries *two* first-party
-  tools to recover what a standard format gets for free: `tools/ra8_fmt` to
-  inspect the bytes, and `tools/ra8_viewer` to actually look at a page.
+  tools to recover what a standard format gets for free: `tools/rabook_imagepack` to
+  inspect the bytes, and `tools/rabook_viewer` to actually look at a page.
   Diagnosing a real rendering bug meant building the inspector first, before a
   single byte could be read -- a cost a standard format charges at zero.
 - **A specification per format.** These pages exist only because the formats
   are novel. Nobody writes a 900-line document explaining how to read a TIFF.
 - **No independent validation.** There is no `tiffinfo`, no fuzzing corpus
   accumulated over thirty years, and no second implementation to disagree with
-  ours and expose a bug. `ra8_fmt inspect` is the only checker, written by the
+  ours and expose a bug. `rabook_imagepack inspect` is the only checker, written by the
   same hands as the writer it checks.
 - **Ownership with no upstream.** Every format here is a permanent maintenance
   obligation. A bug is ours; a missing feature is ours to add.
@@ -268,22 +268,22 @@ what makes the working set statically knowable.
 
 ---
 
-## The `ra8_fmt` tool
+## The `rabook_imagepack` tool
 
-Every worked example in this section was produced with `tools/ra8_fmt`, the
+Every worked example in this section was produced with `tools/rabook_imagepack`, the
 in-tree inspector. Build it:
 
 ```
-cmake -S tools/ra8_fmt -B build/ra8_fmt
-cmake --build build/ra8_fmt
+cmake -S tools/rabook_imagepack -B build/rabook_imagepack
+cmake --build build/rabook_imagepack
 ```
 
 It exposes three verbs over a format registry:
 
 ```
-  ra8_fmt convert --format <fmt> --in <file> --out <file>
-  ra8_fmt inspect <container> [--verbose]
-  ra8_fmt verify  --format <fmt> --in <file> [--out <dump.ppm>]
+  rabook_imagepack convert --format <fmt> --in <file> --out <file>
+  rabook_imagepack inspect <container> [--verbose]
+  rabook_imagepack verify  --format <fmt> --in <file> [--out <dump.ppm>]
 ```
 
 The three verbs answer three different questions, and the distinction matters:
@@ -294,7 +294,7 @@ The three verbs answer three different questions, and the distinction matters:
 | `inspect` | a **container** | is this structurally sound, and what is in it? `--verbose` adds header/footer hexdumps and a per-record table |
 | `verify` | a **source** file | does the transcode round-trip losslessly, byte for byte? |
 
-`inspect` sniffs the magic itself, so `ra8_fmt inspect foo.bin` identifies the
+`inspect` sniffs the magic itself, so `rabook_imagepack inspect foo.bin` identifies the
 container without being told which format it is; for `JOF` it also proves the
 tile grid covers the image exactly once, with no gaps and no duplicates. Note
 that `verify` takes the **source**, not the container -- it re-runs the
@@ -345,7 +345,7 @@ contract. When you change a format:
 
 1. Change the offset/limit enums in the header (the code's source of truth).
 2. Update the specification page here (the human contract, including rationale).
-3. Regenerate the worked example with `ra8_fmt` so the hexdump matches.
+3. Regenerate the worked example with `rabook_imagepack` so the hexdump matches.
 
 @dot
 digraph fmt_layers {
@@ -356,7 +356,7 @@ digraph fmt_layers {
   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
 
   src   [label="Source content\n(EPUB, CBZ, PNG,\nJPEG, .tflite, .elf)"];
-  host  [label="Host producer\n(tools/epub_compile,\nra8_fmt, vela_gen,\nrot_sign)", fillcolor="#dff0e4", color="#5f9e72"];
+  host  [label="Host producer\n(tools/epub_compile,\nrabook_imagepack, vela_gen,\nrot_sign)", fillcolor="#dff0e4", color="#5f9e72"];
   fmt   [label="First-party\nbinary format\n(JOF/RBKC/NPU1/\nROT1/NSR1)", fillcolor="#fbf0d9", color="#b8913f"];
   dev   [label="On-device reader\n(bounded RAM,\nzero alloc,\nfail-closed)", fillcolor="#f7e4e4", color="#b06a6a"];
 

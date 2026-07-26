@@ -78,7 +78,7 @@ def tool_app_info(args: dict[str, Any]) -> str:
         "",
         "build:    make " + app["name"],
         "flash:    make flash-" + app["name"] + "   (local J-Link)",
-        "simulate: make sim-" + app["name"] + "     (tools/board_sim emulator)",
+        "simulate: make sim-" + app["name"] + "     (tools/ra8_emulator emulator)",
     ]
     readme = app_dir / "README.md"
     if readme.is_file():
