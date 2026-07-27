@@ -67,6 +67,41 @@ The self-hosted Pi runner (`star@star.local`) must have:
     `uhubctl` can power-cycle individual ports.
   - A USB-Ethernet adapter that auto-IPs to `192.168.1.1/24` for the
     `hil_eth_tcp` mode (the helper script handles bring-up).
+  - A Digilent Analog Discovery 2 (serial `210321A36AAE`, presenting as
+    an FTDI FT232H at `0403:6014`) for signal capture: primarily the
+    RA8 <-> ESP32-C6 SPI + side-band lines when the C6 harness needs
+    diagnosing, and generally any bring-up question that has to be
+    answered off the wire rather than from a register read. No HIL mode
+    in the table above depends on it -- it is an instrument a human
+    reaches for, not a gate.
+
+    Re-provision it with the `ad2_tools` Ansible role
+    (`infra/ansible/playbooks/hil-bench.yml`), which pins and installs
+    the Digilent Adept runtime, installs the WaveForms SDK (`libdwf`,
+    what a headless capture links against), and smoke-tests the
+    instrument end to end with `scripts/hil/ad2_smoke.py` -- run that
+    by hand any time to answer "can this bench capture?".
+
+    The Adept half is fully unattended. The WaveForms deb is not: it
+    has no unattended URL (every direct link is behind a click-through
+    licence gate), so a human downloads it once from
+    <https://digilent.com/shop/software/digilent-waveforms/download>
+    and drops it in `/tmp` or `~/Downloads` -- the role adopts it into
+    `/var/cache/ra8-bench/`, checks its sha256 and version, and
+    installs it. When the file is absent the role fails the play with
+    those instructions rather than skipping.
+
+    WaveForms is installed by **extracting** the deb, never with apt.
+    The package declares `libc6 (>= 2.41)` while the bench runs Ubuntu
+    24.04 (glibc 2.39), so apt refuses it outright -- but that floor
+    belongs to the Qt GUI binaries a headless bench does not install.
+    `libdwf` itself tops out at `GLIBC_2.38` and runs correctly here,
+    so the role installs only the library, `dwf.h`, and the device
+    firmware/configuration resources under
+    `/usr/share/digilent/waveforms`. Those resources are not optional:
+    without them `FDwfDeviceOpen` fails with "Device not supported. No
+    compatible configuration found" even though the device enumerates,
+    which looks like a hardware fault and is not one.
 
 ## Running a single app locally on a Mac (no Pi)
 

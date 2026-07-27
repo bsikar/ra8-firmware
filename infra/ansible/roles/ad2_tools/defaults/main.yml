@@ -1,0 +1,107 @@
+---
+# ad2_tools role defaults -- provisions the Digilent Analog Discovery 2 logic
+# analyzer attached to the HIL bench Pi.
+#
+# The AD2 is bench instrumentation, not a build dependency: it captures the
+# RA8 <-> ESP32-C6 SPI + side-band lines so a C6 harness fault is read off the
+# wire instead of guessed at, and it is the general-purpose signal capture for
+# any HIL bring-up (the "measure it with a logic analyzer" follow-ups in
+# docs/HARDWARE_BRINGUP.md had no instrument to run them on).
+#
+# Kept as its own role beside c6_toolchain for the same reason that one is
+# separate: a bench with no AD2 plugged in must not be forced to carry it. It
+# matters more here, because this role hard-fails on a missing manual download
+# (see below) -- folded into hil_bench that would block an unrelated HIL
+# provision on an instrument the bench may not even have.
+#
+# Override per deployment in group_vars / host_vars.
+
+# Durable cache for vendor debs. Deliberately NOT /tmp: the hand-install this
+# role replaces left the runtime deb at /tmp/adept.deb, where the next reboot
+# takes it and the pinned artifact is gone.
+ad2_tools_cache_dir: /var/cache/ra8-bench
+
+# --- Adept 2 runtime -------------------------------------------------------
+# Shared libraries, firmware images and udev rules every Digilent device needs.
+# Served unauthenticated from Digilent's S3 bucket, so this half is unattended.
+ad2_tools_adept_version: "2.27.9"
+ad2_tools_adept_deb: >-
+  {{ ad2_tools_cache_dir }}/digilent.adept.runtime_{{ ad2_tools_adept_version }}-arm64.deb
+# URLs are the standard line-length exception.
+# yamllint disable-line rule:line-length
+ad2_tools_adept_url: "https://digilent.s3.us-west-2.amazonaws.com/Software/Adept2+Runtime/{{ ad2_tools_adept_version }}/digilent.adept.runtime_{{ ad2_tools_adept_version }}-arm64.deb"
+# sha256 of the arm64 deb above. Computed on the bench from a fresh fetch of
+# that URL (2026-07-27) and cross-checked byte-for-byte against the copy the
+# hand-install used, so the pin describes what the URL actually serves.
+ad2_tools_adept_sha256: "264798458c8e1f93521e77565163b8220ef07969db9a19c46bd40f1d89cf29e9"
+
+# --- WaveForms (libdwf) ----------------------------------------------------
+# libdwf is the SDK a headless capture links against; the AD2 is an inert USB
+# device without it. This half CANNOT be automated: every direct download URL
+# 403s behind a click-through licence gate, so the deb is an owner-staged
+# artifact. The role adopts it from the interactive download spots below, then
+# checksum- and version-checks it -- and FAILS LOUD when it is absent, rather
+# than leaving a half-provisioned bench that reported success.
+#
+# IMPORTANT: this package is installed by EXTRACTING it, never with apt. Do
+# not "fix" it back to `apt: deb=`; that fails on the bench and the reason is
+# not obvious from the error.
+#
+# The deb declares `Depends: libc6 (>= 2.41)`, and the bench is Ubuntu 24.04
+# with glibc 2.39, so apt refuses the package outright. That dependency is
+# OVERSTATED for the part we use: the highest glibc symbol version libdwf
+# itself references is 2.38 --
+#
+#     objdump -T libdwf.so.3.25.1 | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1
+#
+# -- so the SDK runs correctly on 24.04. The 2.41 floor belongs to the Qt GUI
+# binaries in the same package, which a headless bench does not install and
+# does not want (the deb also drags in libqt6*, libgl1-mesa-dri and xdg-utils
+# for them). Extracting the three pieces we need sidesteps a dependency that
+# does not apply to them.
+ad2_tools_waveforms_version: "3.25.1"
+ad2_tools_waveforms_deb: >-
+  {{ ad2_tools_cache_dir }}/digilent.waveforms_{{ ad2_tools_waveforms_version }}_arm64.deb
+# sha256 of the owner-staged arm64 deb, recorded on the bench (2026-07-27) from
+# the copy that was downloaded through the licence gate. Pinned for the same
+# reason the Adept URL is: a hand-carried artifact needs its identity recorded
+# somewhere the next person can check, or "the deb" means whatever is lying
+# around.
+ad2_tools_waveforms_sha256: "14ffc4503f739e87a957ef363f994f544e49b77decc4e3ef4bbcac3832c80345"
+
+# Where the three extracted pieces land. Only these are installed; the Qt GUI,
+# its desktop entry and its icons are deliberately left in the deb.
+#   - the shared library, which a capture links or dlopens
+#   - the C header, so a native tool can build against it
+#   - the device firmware/configuration resources. These are NOT optional:
+#     without them FDwfDeviceOpen fails "Device not supported. No compatible
+#     configuration found" even though the device enumerates fine, which reads
+#     like a hardware fault and is not one.
+ad2_tools_libdwf_dir: /usr/local/lib
+ad2_tools_dwf_header_dir: /usr/local/include
+ad2_tools_waveforms_resource_dir: /usr/share/digilent
+# Where a human's browser drops the file. Anything matching is adopted into the
+# durable cache above; the version assert then rejects a wrong pick.
+ad2_tools_waveforms_staging_dirs:
+  - /tmp
+  - "{{ ansible_env.HOME }}/Downloads"
+ad2_tools_waveforms_staging_patterns:
+  - "digilent.waveforms_*_arm64.deb"
+  - "waveforms.deb"
+# The page a human must click through. Quoted verbatim in the failure message.
+ad2_tools_waveforms_page: "https://digilent.com/shop/software/digilent-waveforms/download"
+
+# --- The instrument itself -------------------------------------------------
+# The AD2 presents as an FTDI FT232H. VID:PID alone does not identify it -- any
+# other FT232H on the bench answers to 0403:6014 -- so the verify step matches
+# the Digilent serial in sysfs as well.
+ad2_tools_device_vidpid: "0403:6014"
+ad2_tools_device_serial: "210321A36AAE"
+
+# udev rules the Adept runtime ships as a dpkg conffile. The role ASSERTS this
+# file rather than writing a copy of its own: the vendor rule does more than
+# set MODE:="666" -- it also RUN+="/usr/sbin/dftdrvdtch", which detaches the
+# ftdi_sio kernel driver so libdwf can claim the interface. A hand-rolled
+# duplicate would miss that hook and silently break non-root capture, and a
+# second file racing the vendor's on every hotplug is its own bug.
+ad2_tools_udev_rules_file: /etc/udev/rules.d/52-digilent-usb.rules
