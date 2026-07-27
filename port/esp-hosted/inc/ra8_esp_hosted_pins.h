@@ -13,16 +13,21 @@
  * same list. Re-encoding any of it elsewhere is a defect.
  *
  * @par Why this file exists as its own header
- * The C6 side of the link is settled and bench-proven: chip select on
- * GPIO0, controller-out on GPIO1, controller-in on GPIO2, clock on GPIO3,
- * DATA_READY on GPIO4, HANDSHAKE on GPIO6, reset not wired
- * (``coprocessor/esp32c6/pins.env``). The **RA8 side is not**: the landed
- * probe ``examples/ek_ra8d2/hw_pending/c6_spi_probe`` established that the
- * module is not currently connected to the Pmod1 pins it probed, and the
- * harness is being rebuilt. When the rebuilt harness is characterised,
- * the only edit needed anywhere in this port is to the four
- * ::ra8_esp_hosted_pin_t rows below (and, if a side-band pin lands on an
- * ICU-capable pin, its row in ``k_ra8_esp_hosted_irq_map``).
+ * Both ends of the link are bench-proven and both are recorded in
+ * ``coprocessor/esp32c6/pins.env``: the C6 end as ``C6_PIN_*`` (chip
+ * select on GPIO0, controller-out GPIO1, controller-in GPIO2, clock
+ * GPIO3, DATA_READY GPIO4, HANDSHAKE GPIO6, reset not wired) and the RA8
+ * end as ``RA8_PIN_*`` / ``RA8_J26_*``. The rows below restate the RA8
+ * end in board-layer terms so C code can use it, and
+ * ``scripts/checks/check_c6_pin_config.py`` diffs them against
+ * ``pins.env`` on every CI run -- so the two cannot drift, and a harness
+ * change is one edit to ``pins.env`` and one here.
+ *
+ * The map moved once already. It was first written from the probe's
+ * candidate list while the module was disconnected; the rebuilt harness
+ * was then characterised at the J26 holes and put HANDSHAKE on P006 and
+ * DATA_READY on P402, the opposite way round. The gate exists because of
+ * that.
  *
  * @par Pin identity comes from the board layer
  * No EK-RA8D2 pin number is written here. Each row names a
@@ -40,6 +45,12 @@
  * software edge detector at a bounded poll period. Both deliver the same
  * callback, so the vendored driver is unaware of the difference and the
  * choice moves with the harness rather than with the code.
+ *
+ * As wired, that puts the ICU edge on HANDSHAKE and the poll on
+ * DATA_READY, which suits the two signals' behaviour: HANDSHAKE pulses
+ * low for the duration of a chip-select assertion and is easy to miss,
+ * while DATA_READY stays asserted until the host drains the queued frame
+ * and so cannot be missed by a poll.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -99,14 +110,18 @@ typedef enum : uint16_t {
   k_ra8_esp_hosted_pin_cipo = (uint16_t)k_ra8_board_pmod1_spi_cipo,
   /** Serial clock, RA8 output, routed to the SCI channel. */
   k_ra8_esp_hosted_pin_sck = (uint16_t)k_ra8_board_pmod1_spi_sck,
-  /** HANDSHAKE, RA8 input, C6 output. No ICU channel on this net, so the
-      port services it with its software edge detector. */
-  k_ra8_esp_hosted_pin_handshake = (uint16_t)k_ra8_board_pmod1_gpio_a,
-  /** DATA_READY, RA8 input, C6 output. Sits on the one Pmod1 side-band
-      net with an ICU channel, so it gets the hardware edge path -- it is
-      the latency-sensitive one, since it is what tells the host a frame
-      is waiting. */
-  k_ra8_esp_hosted_pin_data_ready = (uint16_t)k_ra8_board_pmod1_irq,
+  /** HANDSHAKE, RA8 input, C6 output. J26-7, which lands on P006 -- the
+      one Pmod1 side-band net with an ICU channel (IRQ11), so this signal
+      gets the hardware edge path. */
+  k_ra8_esp_hosted_pin_handshake = (uint16_t)k_ra8_board_pmod1_irq,
+  /** DATA_READY, RA8 input, C6 output. J26-8, which lands on P402. The
+      package routes no ICU channel there, so the port services it with
+      its software edge detector. That is the right way round for this
+      link even though DATA_READY is the more interesting signal: the C6
+      holds DATA_READY asserted until the host drains the frame, so a
+      poll cannot miss it, whereas HANDSHAKE pulses low once per
+      transaction and needs the edge. */
+  k_ra8_esp_hosted_pin_data_ready = (uint16_t)k_ra8_board_pmod1_reset,
   /** Co-processor reset, RA8 output. ``k_ra8_pin_none`` until the rebuilt
       harness wires one: ``pins.env`` records the C6 reset input as
       disconnected, and inventing a pin here would make the port drive an

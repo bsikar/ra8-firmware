@@ -451,12 +451,14 @@
  * @def H_GPIO_DATA_READY_Pin
  * @brief Pin index of the DATA_READY input, or -1 when it is not wired.
  * @details Derived from ``k_ra8_esp_hosted_pin_data_ready``. The C6 asserts
- * it while its transmit queue holds a frame for the host, so it is the
- * latency-sensitive side-band line.
+ * it while its transmit queue holds a frame for the host, and keeps it
+ * asserted until the host drains that frame.
  * @note Read-only build configuration.
- * @warning This is the one Pmod1 side-band net with an ICU channel; moving
- *          it in ``ra8_esp_hosted_pins.h`` demotes the link to the software
- *          edge detector.
+ * @warning As wired this net (J26-8) has no ICU channel, so the port serves
+ *          it with the software edge detector. That costs nothing only
+ *          because the level is held: the one Pmod1 side-band net with a
+ *          channel is HANDSHAKE's, which needs it, since HANDSHAKE merely
+ *          pulses.
  * @par Example:
  * @code
  * if (H_GPIO_DATA_READY_Pin != -1) { attach_data_ready_irq(); }

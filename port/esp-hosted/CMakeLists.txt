@@ -44,12 +44,13 @@
 # a GLOBAL property the per-app CMakeLists splices into its own
 # add_executable() call -- the same pattern port/nimble uses.
 #
-# RUNTIME STATUS: the port compiles, links and is host-tested, but the
-# link has never been driven end to end. The landed probe
-# examples/ek_ra8d2/hw_pending/c6_spi_probe established that the C6 is
-# not currently wired to the RA8 pins and the harness is being rebuilt,
-# so every app that links this port stays under examples/*/hw_pending/
-# until a run on real hardware promotes it.
+# RUNTIME STATUS: the port compiles, links and is host-tested, but no
+# code in it has ever run on silicon. The wire it drives is proven --
+# the landed probe examples/ek_ra8d2/hw_pending/c6_spi_probe qualified
+# every J26 hole on 2026-07-27 and brought the raw link up at SPI mode 3
+# / 1 MHz -- but that probe drives the SCI directly and reaches none of
+# this code. Every app that links this port therefore stays under
+# examples/*/hw_pending/ until a run on real hardware promotes it.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT

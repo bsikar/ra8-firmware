@@ -78,7 +78,7 @@ RA8_PRIV
  *
  * @details
  * The pin map in ``ra8_esp_hosted_pins.h`` is the one file the owner
- * edits when the harness is rebuilt, so it is exactly where a
+ * edits when the harness changes, so it is exactly where a
  * copy-and-paste mistake would land. Two properties are worth proving
  * before anything claims a pin: the chip select and the two side-band
  * nets must be three distinct pins, and each must decode to a legal port
@@ -86,7 +86,7 @@ RA8_PRIV
  * unexplained pin-claim conflict deep in bring-up.
  *
  * The reset pin is deliberately exempt from the distinctness check: it is
- * legitimately ``k_ra8_pin_none`` until the harness wires one.
+ * legitimately ``k_ra8_pin_none``, the harness having no reset wire.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok The map is self-consistent.

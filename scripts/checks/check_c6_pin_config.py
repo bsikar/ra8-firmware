@@ -37,12 +37,19 @@ table is where they are tied to this project's COPI/CIPO vocabulary.
 What is checked on the RA8 side
 -------------------------------
 pins.env also records where each signal LANDS on the EK-RA8D2 (MCU pin and
-J26 hole) and which SW4 DIP positions the link needs. No second file restates
-those, so there is nothing to diff them against -- but the map can still be
-checked for the failures that actually happen to a pin map: a signal named at
-one end and not the other, a pin or hole name that is not a pin or hole name,
-two signals silently claiming the same pin after a copy-paste, and a missing
-SW4 position. That bank is not incidental: SW4-4 ON with SW4-3 OFF holds the
+J26 hole) and which SW4 DIP positions the link needs. That map IS restated in
+one other place -- ``port/esp-hosted/inc/ra8_esp_hosted_pins.h``, which the
+esp-hosted port compiles against -- so the two are diffed here. They have
+already drifted once: the port header was first written from the probe's
+candidate list while the module was disconnected, and the rebuilt harness was
+later characterised with HANDSHAKE and DATA_READY the other way round. A pin
+map that only one file knows is a pin map that will be wrong again.
+
+Independently of that diff, the map is checked for the failures that actually
+happen to a pin map: a signal named at one end and not the other, a pin or
+hole name that is not a pin or hole name, two signals silently claiming the
+same pin after a copy-paste, and a missing SW4 position. That bank is not
+incidental: SW4-4 ON with SW4-3 OFF holds the
 Pmod1 bus switches open, so J26-1..J26-4 never reach the MCU, and misreading
 it cost a full bench day chasing a harness that was fine.
 
@@ -131,6 +138,86 @@ UNWIRED_RA8 = "none"
 UNWIRED_C6 = "-1"
 
 _RA8_PIN_RE = re.compile(r"^P[0-9]{3}$")
+
+PORT_PIN_HEADER = REPO_ROOT / "port" / "esp-hosted" / "inc" / "ra8_esp_hosted_pins.h"
+"""The esp-hosted port's copy of the RA8-side map, diffed against pins.env."""
+
+PORT_PIN_ROWS: tuple[tuple[str, str, str], ...] = (
+    ("CS", "k_ra8_esp_hosted_pin_chip_select", "RA8_PIN_CS"),
+    ("COPI", "k_ra8_esp_hosted_pin_copi", "RA8_PIN_COPI"),
+    ("CIPO", "k_ra8_esp_hosted_pin_cipo", "RA8_PIN_CIPO"),
+    ("SCK", "k_ra8_esp_hosted_pin_sck", "RA8_PIN_SCK"),
+    ("HANDSHAKE", "k_ra8_esp_hosted_pin_handshake", "RA8_PIN_HANDSHAKE"),
+    ("DATA_READY", "k_ra8_esp_hosted_pin_data_ready", "RA8_PIN_DATA_READY"),
+    ("RESET", "k_ra8_esp_hosted_pin_reset", "RA8_PIN_RESET"),
+)
+"""Signal, the port header's enumerator, and the pins.env key it must match."""
+
+BOARD_SYMBOL_TO_PIN: dict[str, str] = {
+    "k_ra8_board_pmod1_spi_cs": "P804",
+    "k_ra8_board_pmod1_spi_copi": "P801",
+    "k_ra8_board_pmod1_spi_cipo": "P802",
+    "k_ra8_board_pmod1_spi_sck": "P803",
+    "k_ra8_board_pmod1_irq": "P006",
+    "k_ra8_board_pmod1_reset": "P402",
+    "k_ra8_board_pmod1_gpio_a": "P412",
+    "k_ra8_board_pmod1_gpio_b": "P413",
+    "k_ra8_pin_none": "none",
+}
+"""Board-layer Pmod1 enumerators and the MCU pin each names.
+
+The port header cites board symbols rather than pin numbers -- that is the
+point of the board layer -- so resolving them is what lets the two files be
+compared at all. The values come from
+``libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_connectors.h``, which carries
+the board User's Manual citation for every row.
+"""
+
+_PORT_ROW_RE = re.compile(
+    r"(?P<enum>k_ra8_esp_hosted_pin_[a-z_]+)\s*=\s*\(uint16_t\)(?P<sym>k_ra8_[a-z0-9_]+)"
+)
+
+
+def parse_port_header(text: str) -> dict[str, str]:
+    """Return {enumerator: board symbol} for every row of the port pin map."""
+    return {m.group("enum"): m.group("sym") for m in _PORT_ROW_RE.finditer(text)}
+
+
+def check_port_header(pins: dict[str, str], header: str) -> list[str]:
+    """Return one message per disagreement with the port's pin map.
+
+    Args:
+        pins: Parsed pins.env assignments (the source of truth).
+        header: Text of ``ra8_esp_hosted_pins.h``.
+
+    Returns:
+        Human-readable findings; empty when the header agrees with pins.env.
+    """
+    rows = parse_port_header(header)
+    findings: list[str] = []
+    for label, enum_name, pin_key in PORT_PIN_ROWS:
+        if enum_name not in rows:
+            findings.append(f"{label}: the port pin header does not define {enum_name}")
+            continue
+        symbol = rows[enum_name]
+        if symbol not in BOARD_SYMBOL_TO_PIN:
+            findings.append(
+                f"{label}: the port pin header names {symbol}, which this gate cannot "
+                f"resolve to an MCU pin; add it to BOARD_SYMBOL_TO_PIN"
+            )
+            continue
+        if pin_key not in pins:
+            findings.append(f"{label}: pins.env is missing {pin_key}")
+            continue
+        resolved = BOARD_SYMBOL_TO_PIN[symbol]
+        if resolved != pins[pin_key]:
+            findings.append(
+                f"{label}: the port pin header says {symbol} ({resolved}) "
+                f"but pins.env says {pin_key}={pins[pin_key]}"
+            )
+    return findings
+
+
 _RA8_HOLE_RE = re.compile(r"^J26-([0-9]{1,2})$")
 
 _ASSIGN_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$")
@@ -309,6 +396,13 @@ def compare(pins: dict[str, str], sdk: dict[str, str]) -> list[str]:
         )
 
     findings.extend(check_ra8_side(pins))
+
+    try:
+        header = PORT_PIN_HEADER.read_text(encoding="utf-8")
+    except OSError as exc:
+        findings.append(f"port pin header: cannot read {PORT_PIN_HEADER}: {exc}")
+    else:
+        findings.extend(check_port_header(pins, header))
     return findings
 
 
@@ -505,6 +599,54 @@ def _selftest_cases_ra8_map() -> list[tuple[str, str, str, bool]]:
     ]
 
 
+_GOOD_PORT_HEADER = """
+  k_ra8_esp_hosted_pin_chip_select = (uint16_t)k_ra8_board_pmod1_spi_cs,
+  k_ra8_esp_hosted_pin_copi = (uint16_t)k_ra8_board_pmod1_spi_copi,
+  k_ra8_esp_hosted_pin_cipo = (uint16_t)k_ra8_board_pmod1_spi_cipo,
+  k_ra8_esp_hosted_pin_sck = (uint16_t)k_ra8_board_pmod1_spi_sck,
+  k_ra8_esp_hosted_pin_handshake = (uint16_t)k_ra8_board_pmod1_irq,
+  k_ra8_esp_hosted_pin_data_ready = (uint16_t)k_ra8_board_pmod1_reset,
+  k_ra8_esp_hosted_pin_reset = (uint16_t)k_ra8_pin_none,
+"""
+"""A port pin map that agrees with ``_GOOD_PINS``."""
+
+
+def _selftest_cases_port_header() -> list[tuple[str, str, str, bool]]:
+    """Return crafted cases for the port-header half of the comparator.
+
+    The port header is a second statement of the RA8-side map, so the cases
+    here are the ways two copies drift: a swapped pair (the drift that really
+    happened), a signal the header does not define, and a board symbol the
+    gate cannot resolve.
+
+    Returns:
+        ``(label, header_text, expect_findings)`` triples, widened to the
+        four-tuple shape the shared driver consumes.
+    """
+    swapped = _GOOD_PORT_HEADER.replace(
+        "k_ra8_esp_hosted_pin_handshake = (uint16_t)k_ra8_board_pmod1_irq",
+        "k_ra8_esp_hosted_pin_handshake = (uint16_t)k_ra8_board_pmod1_reset",
+    )
+    return [
+        ("port header agrees", _GOOD_PORT_HEADER, "", False),
+        ("port header swaps HANDSHAKE onto the DATA_READY pin", swapped, "", True),
+        (
+            "port header omits a signal",
+            _GOOD_PORT_HEADER.replace(
+                "  k_ra8_esp_hosted_pin_sck = (uint16_t)k_ra8_board_pmod1_spi_sck,\n", ""
+            ),
+            "",
+            True,
+        ),
+        (
+            "port header names an unresolvable board symbol",
+            _GOOD_PORT_HEADER.replace("k_ra8_board_pmod1_spi_cs", "k_ra8_board_pmod9_spi_cs"),
+            "",
+            True,
+        ),
+    ]
+
+
 def _selftest_cases() -> list[tuple[str, str, str, bool]]:
     """Return every crafted case, across both halves of the comparator.
 
@@ -512,6 +654,18 @@ def _selftest_cases() -> list[tuple[str, str, str, bool]]:
         The concatenation of the three case groups.
     """
     return _selftest_cases_kconfig() + _selftest_cases_ra8_signals() + _selftest_cases_ra8_map()
+
+
+def _selftest_port_failures() -> list[str]:
+    """Return one message per port-header selftest case that misbehaved."""
+    good = parse_assignments(_GOOD_PINS)
+    out: list[str] = []
+    for label, header, _unused, expect in _selftest_cases_port_header():
+        findings = check_port_header(good, header)
+        if bool(findings) != expect:
+            verb = "reported nothing" if expect else f"reported {findings}"
+            out.append(f"  {label}: {verb}")
+    return out
 
 
 def selftest() -> int:
@@ -527,6 +681,7 @@ def selftest() -> int:
         if bool(findings) != expect:
             verb = "reported nothing" if expect else f"reported {findings}"
             failures.append(f"  {label}: {verb}")
+    failures.extend(_selftest_port_failures())
 
     if failures:
         sys.stderr.write("check_c6_pin_config.py --selftest: FAILED\n\n")
@@ -534,7 +689,7 @@ def selftest() -> int:
         sys.stderr.write("\nThe comparator does not detect drift as claimed.\n")
         return EXIT_FAIL
 
-    cases = _selftest_cases()
+    cases = _selftest_cases() + _selftest_cases_port_header()
     fires = sum(1 for c in cases if c[3])
     print(
         f"check_c6_pin_config.py --selftest: OK "

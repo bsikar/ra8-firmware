@@ -93,10 +93,14 @@ gate_mcdc() (
 
   # Wipe build AND report dir for a guaranteed-fresh MC/DC build (see header).
   rm -rf "${RA8_MCDC_BUILD_DIR:-tests/build-cov}" \
-    "${RA8_MCDC_REPORT_DIR:-build/mcdc-report}"
+    "${RA8_MCDC_REPORT_DIR:-build/mcdc-report}" && mkdir -p "${RA8_MCDC_REPORT_DIR:-build/mcdc-report}"
 
+  # Transcript under build/, not the repo root: at the root it survives as an
+  # untracked file that the next `git add -A` commits, which is how it once
+  # turned dev red on the lint-coverage gate.
+  local report_dir="${RA8_MCDC_REPORT_DIR:-build/mcdc-report}"
   CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
-    bash scripts/report/mcdc_report.sh --in-container | tee mcdc-output.log
+    bash scripts/report/mcdc_report.sh --in-container | tee "$report_dir/mcdc-output.log"
 
   local summary="build/mcdc-report/summary.txt"
   local baseline_file="${MCDC_BASELINE_FILE:-.github/mcdc-baseline.txt}"

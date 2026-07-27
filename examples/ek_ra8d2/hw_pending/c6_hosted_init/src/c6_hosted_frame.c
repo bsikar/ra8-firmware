@@ -19,11 +19,10 @@
  *
  * The undriven-bus test comes before the header tests deliberately. The C6
  * holds its controller-in line with an internal pull-down, so a connected
- * but idle co-processor reads all-zero, while an unterminated RA8 input
- * floats to all-ones; either is a wiring fact, and reporting it as a
- * checksum mismatch would point at the wrong problem entirely. Until the
- * harness is rebuilt this is the branch the application is expected to
- * take -- see the app README and ``c6_spi_probe``.
+ * co-processor that never saw a valid transaction reads all-zero, while an
+ * unterminated RA8 input floats to all-ones; the two are different faults,
+ * and reporting either as a checksum mismatch would point at the wrong
+ * problem entirely. See the app README for what each verdict implicates.
  *
  * Every protocol size is read from the vendored headers rather than
  * restated, so an upstream change moves this file with it.

@@ -503,13 +503,16 @@ static void test_hardware_interrupt_path(void)
 {
   TEST_BEGIN("esp_hosted gpio: a pin with an ICU channel takes the hardware path");
   reset_state();
-  const hosted_osi_funcs_t f         = bound_vtable();
-  const ra8_port_pin_t     pin       = (ra8_port_pin_t)k_ra8_esp_hosted_pin_data_ready;
-  void* const              prt       = RA8_ESP_HOSTED_GPIO_PORT(pin);
-  const uint32_t           num       = (uint32_t)RA8_ESP_HOSTED_GPIO_PIN(pin);
-  const ra8_port_pin_t     spare     = (ra8_port_pin_t)k_ra8_esp_hosted_pin_handshake;
-  void* const              spare_prt = RA8_ESP_HOSTED_GPIO_PORT(spare);
-  const uint32_t           spare_num = (uint32_t)RA8_ESP_HOSTED_GPIO_PIN(spare);
+  const hosted_osi_funcs_t f = bound_vtable();
+  /* HANDSHAKE is the net the package routes to an ICU channel (IRQ11 on
+     P006); DATA_READY lands on P402, which has none, so it is the spare that
+     must fall to the polled table. */
+  const ra8_port_pin_t pin       = (ra8_port_pin_t)k_ra8_esp_hosted_pin_handshake;
+  void* const          prt       = RA8_ESP_HOSTED_GPIO_PORT(pin);
+  const uint32_t       num       = (uint32_t)RA8_ESP_HOSTED_GPIO_PIN(pin);
+  const ra8_port_pin_t spare     = (ra8_port_pin_t)k_ra8_esp_hosted_pin_data_ready;
+  void* const          spare_prt = RA8_ESP_HOSTED_GPIO_PORT(spare);
+  const uint32_t       spare_num = (uint32_t)RA8_ESP_HOSTED_GPIO_PIN(spare);
 
   TEST_ASSERT(ra8_esp_hosted_pin_irq_num(pin) != (uint8_t)k_ra8_esp_hosted_irq_none);
   TEST_ASSERT_EQ(
@@ -588,17 +591,19 @@ static void test_polled_path(void)
 {
   TEST_BEGIN("esp_hosted gpio: a pin with no ICU channel is sampled in software");
   reset_state();
-  const hosted_osi_funcs_t f   = bound_vtable();
-  const ra8_port_pin_t     pin = (ra8_port_pin_t)k_ra8_esp_hosted_pin_handshake;
-  void* const              prt = RA8_ESP_HOSTED_GPIO_PORT(pin);
-  const uint32_t           num = (uint32_t)RA8_ESP_HOSTED_GPIO_PIN(pin);
+  const hosted_osi_funcs_t f = bound_vtable();
+  /* DATA_READY lands on P402, which the package routes to no ICU channel, so
+     it is the net that must fall to the software edge detector. */
+  const ra8_port_pin_t pin = (ra8_port_pin_t)k_ra8_esp_hosted_pin_data_ready;
+  void* const          prt = RA8_ESP_HOSTED_GPIO_PORT(pin);
+  const uint32_t       num = (uint32_t)RA8_ESP_HOSTED_GPIO_PIN(pin);
 
   TEST_ASSERT_EQ(k_ra8_esp_hosted_irq_none, ra8_esp_hosted_pin_irq_num(pin));
-  set_level(pin, (uint8_t)H_HS_VAL_INACTIVE);
+  set_level(pin, (uint8_t)H_DR_VAL_INACTIVE);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_gpio_set_edge_poll_ms((uint16_t)k_gpio_test_poll_ms));
   TEST_ASSERT_EQ(
     RET_OK,
-    f._h_config_gpio_as_interrupt(prt, num, (uint32_t)H_HS_INTR_EDGE, count_handler, &s_levels[1]));
+    f._h_config_gpio_as_interrupt(prt, num, (uint32_t)H_DR_INTR_EDGE, count_handler, &s_levels[1]));
   TEST_ASSERT_EQ(1U, ra8_esp_hosted_gpio_edge_count());
 
   /* Vector 2: nothing changed and three rows are free -- no dispatch. */
