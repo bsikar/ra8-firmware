@@ -4,24 +4,33 @@
 #
 # flash.sh -- flash the built ESP32-C6 co-processor firmware to the C6.
 #
-# Proven over the CH343 USB-UART bridge (VID:PID 1a86:55d3), which enumerates as
-# /dev/ttyACM1 on the bench host. Do NOT use the native USB-JTAG interface for
-# writing: it fails with EPIPE partway through write_flash.
+# Proven over the CH343 USB-UART bridge (VID:PID 1a86:55d3). Do NOT use the
+# native USB-JTAG interface for writing: it fails with EPIPE partway through
+# write_flash. The two are easy to confuse -- both enumerate as /dev/ttyACM<n>
+# and the numbering changes on a power cycle -- so the bridge is resolved by
+# device identity through scripts/hil/lib/tty_resolve.sh rather than named by
+# number.
 #
 # Usage:
-#   ./coprocessor/esp32c6/flash.sh                 # uses C6_FLASH_PORT from pins.env
-#   ./coprocessor/esp32c6/flash.sh /dev/ttyACM1    # explicit port
+#   ./coprocessor/esp32c6/flash.sh                 # resolve the CH343 bridge
+#   ./coprocessor/esp32c6/flash.sh <device>        # explicit port
 #
 # Requires: esptool (python -m esptool) on PATH and a completed ./build.sh.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # shellcheck source=coprocessor/esp32c6/pins.env
 source "${SCRIPT_DIR}/pins.env"
+# shellcheck source=scripts/hil/lib/tty_resolve.sh
+source "${REPO_ROOT}/scripts/hil/lib/tty_resolve.sh"
 
 PORT="${1:-${C6_FLASH_PORT}}"
+if [[ -z "${PORT}" ]]; then
+  PORT="$(ra8_tty_resolve c6)" || exit 1
+fi
 BUILD_DIR="${SCRIPT_DIR}/esp-hosted-mcu/slave/build" # LEGACY-OK: esp-hosted-mcu upstream layout dir is named "slave"
 
 if ! command -v python >/dev/null 2>&1; then

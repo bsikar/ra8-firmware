@@ -57,8 +57,11 @@ echo "[hil-dev] Creating workspace on star: $REMOTE_DIR"
 ssh "$PI" "mkdir -p $REMOTE_DIR/scripts"
 
 echo "[hil-dev] Uploading scripts..."
-scp "$ROOT/scripts/hil/suite.sh" "$ROOT/scripts/hil/run_direct.sh" \
-  "$PI:$REMOTE_DIR/scripts/"
+# The whole scripts/hil tree, at its real path: suite.sh invokes
+# `scripts/hil/run_direct.sh` by that path, and run_direct.sh sources
+# `lib/rig_env.sh` (and through it lib/tty_resolve.sh) from beside itself.
+# Uploading the two files flat left both of those dangling.
+scp -q -r "$ROOT/scripts/hil" "$PI:$REMOTE_DIR/scripts/"
 
 echo "[hil-dev] Uploading hex files..."
 for app in "${HIL_APPS[@]}"; do
@@ -73,7 +76,10 @@ for app in "${HIL_APPS[@]}"; do
 done
 
 echo "[hil-dev] Running suite on star..."
-SUITE_CMD="cd $REMOTE_DIR && bash scripts/hil/suite.sh --uart /dev/ttyACM0"
+# No --uart: the Pi resolves the board console by device identity
+# (scripts/hil/lib/tty_resolve.sh). Naming a ttyACM number from here was how a
+# renumbered bench got pointed at the wrong device.
+SUITE_CMD="cd $REMOTE_DIR && bash scripts/hil/suite.sh"
 [[ -n "$ONLY" ]] && SUITE_CMD+=" --only $ONLY"
 
 # shellcheck disable=SC2029  # $SUITE_CMD is the command this script composed locally to run there.

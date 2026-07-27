@@ -6,7 +6,8 @@
 #
 # Auto-detects environment:
 #  * If running ON the HIL Pi (see rig_is_local_pi), runs JLinkExe and reads
-#    /dev/ttyACM0 directly.
+#    the board console directly. The console is resolved by device identity
+#    (scripts/hil/lib/tty_resolve.sh), never by ttyACM number.
 #  * If running on a developer workstation, SCPs the hex to the Pi, SSHes
 #    in, and re-invokes itself there. The shape of the test (expect string,
 #    timeout) is preserved unchanged.
@@ -17,7 +18,7 @@
 #                             [--expect-negative <regex>]  \
 #                             [--baud 115200]              \
 #                             [--timeout 10]               \
-#                             [--uart /dev/ttyACM0]
+#                             [--uart <device>]
 #
 # --expect-negative <regex>
 #     Extended-regex (grep -E) of substrings that, if seen in the UART
@@ -58,7 +59,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 usage() {
-  echo "Usage: $0 --hex <file> --expect <string> [--expect-negative <regex>] [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
+  echo "Usage: $0 --hex <file> --expect <string> [--expect-negative <regex>] [--baud 115200] [--timeout 10] [--uart <device>]"
   exit 2
 }
 
@@ -67,7 +68,10 @@ EXPECT=""
 EXPECT_NEG="${HIL_EXPECT_NEGATIVE:-}"
 BAUD="115200"
 TIMEOUT_S="10"
-UART="/dev/ttyACM0"
+# Empty on purpose: the console is resolved by identity below, and there is no
+# ttyACM number that is right often enough to be a default.
+UART=""
+UART_EXPLICIT=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -93,6 +97,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --uart)
       UART="$2"
+      UART_EXPLICIT=1
       shift 2
       ;;
     *)
@@ -148,7 +153,7 @@ APP_NAME="$(basename "${HEX%.hex}")"
 LOG_FILE="/tmp/hil_jlink_${APP_NAME}.log"
 
 # Detect whether we're already on the Pi (matches the pattern used by
-# hil_usb_test.sh: hostname OR aarch64 + ttyACM0 present).
+# hil_usb_test.sh: hostname OR aarch64 with a CDC device attached).
 LOCAL_PI=0
 if rig_is_local_pi; then
   LOCAL_PI=1
@@ -156,7 +161,7 @@ fi
 
 # Off-Pi: scp the hex over, re-invoke ourselves on the Pi with --hex
 # pointing at the remote copy. This way every Pi-local step (JLinkExe,
-# /dev/ttyACM0 reads) runs natively, and the developer just sees the
+# console reads) runs natively, and the developer just sees the
 # pass/fail on stdout.
 if ((LOCAL_PI == 0)); then
   ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null ||
@@ -176,7 +181,13 @@ if ((LOCAL_PI == 0)); then
   if [[ -n "$EXPECT_NEG" ]]; then
     REMOTE_ARGS+=" --expect-negative $(printf '%q' "$EXPECT_NEG")"
   fi
-  REMOTE_ARGS+=" --baud '${BAUD}' --timeout '${TIMEOUT_S}' --uart '${UART}'"
+  REMOTE_ARGS+=" --baud '${BAUD}' --timeout '${TIMEOUT_S}'"
+  # Only forward --uart when the caller actually named one. Forwarding an
+  # empty value would pin the remote side to nothing; without it the Pi
+  # resolves its own console by identity, which is what it should do anyway.
+  if [[ -n "$UART_EXPLICIT" ]]; then
+    REMOTE_ARGS+=" --uart '${UART}'"
+  fi
   # Propagate the sanity-gate escape-hatch flags so the remote side
   # doesn't re-reject inputs the local side already vetted.
   REMOTE_ENV=""
@@ -220,7 +231,11 @@ fi
 # LPSCR via DAP (PRCR-unlock + write 0 + relock) makes RAMCode's WFI a plain
 # Sleep that any interrupt can wake.
 TMP_SCRIPT="$(mktemp)"
-trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"; pkill -f "cat ${UART}" 2>/dev/null || true' EXIT
+# Single-quoted body: ${UART} is read at trap time, not now. It is still empty
+# here (the console is resolved after flashing), and a pkill pattern of a bare
+# "cat " would match far more than this script's reader.
+# shellcheck disable=SC2016  # deliberate late expansion of $UART, see above.
+trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"; [ -n "$UART" ] && pkill -f "cat $UART" 2>/dev/null; true' EXIT
 cat >"$TMP_SCRIPT" <<JLINK
 device ${JLINK_DEVICE}
 si SWD
@@ -239,43 +254,26 @@ JLINK
 echo -e "${YELLOW}[HIL]${NC} flashing ${HEX}..."
 
 # Start UART reader in the background BEFORE flashing.  The firmware's boot
-# banner prints within milliseconds of "g" (go) -- if we open /dev/ttyACM0
+# banner prints within milliseconds of "g" (go) -- if we open the console
 # only after JLinkExe returns, one-shot boot banners are missed because the
 # bytes arrive before any reader is attached.  Configure the tty first, then
 # launch a background tail that streams to a log file we can grep afterward.
 #
+# Resolve the console by device identity, with a retry window that covers the
+# J-Link briefly disappearing between back-to-back flash cycles. There is no
+# ttyACM number to default to: the chip's own USBHS CDC (1209:xxxx) and the
+# ESP32-C6's UART bridge enumerate in that namespace too, and which number
+# each takes depends on plug order. See scripts/hil/lib/tty_resolve.sh.
+if [ -z "$UART_EXPLICIT" ]; then
+  UART="$(ra8_tty_resolve console)" || exit 1
+fi
+echo -e "${YELLOW}[HIL]${NC} board console: ${UART}"
+
 # Kill any lingering readers from a previous test that didn't clean up.
-# Two cats on the same /dev/ttyACM0 each get only half the bytes, which
-# silently breaks pattern matching for the next test.
+# Two cats on the same console each get only half the bytes, which silently
+# breaks pattern matching for the next test.
 pkill -f "cat ${UART}" 2>/dev/null || true
 sleep 0.1
-# Find the J-Link OB's VCOM dynamically. After a USB-CDC test the
-# 1209:xxx device may still be enumerated and claim /dev/ttyACM0,
-# bumping J-Link's VCOM to /dev/ttyACM1 (or higher). Scan all
-# /dev/ttyACM* and pick the one whose USB descriptor is the SEGGER
-# J-Link (VID 0x1366). Also handles the J-Link briefly disappearing
-# during back-to-back flash cycles (5 s retry window).
-JLINK_VID="1366"
-JLINK_TTY=""
-for _i in 1 2 3 4 5 6 7 8 9 10; do
-  for d in /dev/ttyACM*; do
-    [ -e "$d" ] || continue
-    if udevadm info "$d" 2>/dev/null | grep -q "ID_VENDOR_ID=${JLINK_VID}"; then
-      JLINK_TTY="$d"
-      break 2
-    fi
-  done
-  sleep 0.5
-done
-if [ -z "$JLINK_TTY" ]; then
-  echo -e "${RED}[HIL]${NC} J-Link VCOM (VID ${JLINK_VID}) never enumerated under /dev/ttyACM*" >&2
-  ls /dev/ttyACM* 2>&1 >&2 || true
-  exit 1
-fi
-if [ "$JLINK_TTY" != "$UART" ]; then
-  echo -e "${YELLOW}[HIL]${NC} J-Link VCOM is ${JLINK_TTY} (default ${UART} taken by another USB device)"
-  UART="$JLINK_TTY"
-fi
 stty -F "${UART}" "${BAUD}" raw -echo
 UART_LOG="/tmp/hil_uart_${APP_NAME}.log"
 : >"${UART_LOG}"
@@ -341,7 +339,7 @@ sed 's/\r/\\r/g' "${UART_LOG}" | head -20 | sed 's/^/[uart] /'
 echo "--- end ---"
 
 # Stop the background tty reader.  It will keep running otherwise, consuming
-# data from /dev/ttyACM0 and breaking the next test's reader.  setsid moved
+# data from the console and breaking the next test's reader.  setsid moved
 # it out of our process group, so we pkill by name too as a safety net.
 kill "${READER_PID}" 2>/dev/null || true
 pkill -f "cat ${UART}" 2>/dev/null || true
