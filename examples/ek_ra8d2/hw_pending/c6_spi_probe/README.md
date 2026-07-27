@@ -71,109 +71,95 @@ bash scripts/hil/flash.sh c6_spi_probe # program + release from reset
 
 Console: J-Link OB VCOM, 115200 8N1.
 
-## Bench status: BLOCKED on the SW4 DIP mux (2026-07-26)
+## Bench status: the C6 is NOT wired to the probed Pmod1 pins (2026-07-26)
 
-Run on the EK-RA8D2 with the C6 flashed and idling (esp-hosted-mcu
-peripheral-side FW 2.12.11). The probe works; the link does not, and the probe says why.
+The probe works. The link does not, and the cause is neither the board mux nor
+the co-processor: **nothing on the ESP32-C6 is on the same net as any Pmod1 pin
+this app can reach.**
+
+Two facts were established on the bench and each rules out one earlier suspect:
+
+- **The SW4 mux is correct.** Confirmed against the board: SW4-1 OFF, SW4-2 OFF
+  (Pmod1 SPI position, UM Table 18 p 26) and SW4-3 ON (Octo-SPI inactive, UM
+  Table 3 p 16). The Pmod1 SPI group *is* routed to J26.
+- **The C6 is alive, armed, and correctly configured.** Its console shows a
+  clean boot of esp-hosted-mcu 2.12.11, `Transport used :: SPI only`,
+  `SPI Ctrl:1 mode: 3`, and the expected GPIO assignment <!-- LEGACY-OK: quoting the co-processor's verbatim console line -->
+  (`CLK:3 MOSI:1 MISO:2 CS:0 HS:6 DR:4`, upstream's own signal names for SCK / COPI / CIPO), plus the queued boot event `event ESPInit` <!-- LEGACY-OK: upstream log tag -->
+  waiting for a host.
+
+### The measurement that settles it
+
+The C6 drives HANDSHAKE and DATA_READY as GPIO outputs: both are necessarily
+low through a reset and high again once the transport arms. So resetting the
+C6 *in the middle* of a probe run must move any side-band pin that is really
+on its net.
+
+The C6 was reset mid-run (its boot banner captured as proof) while the probe
+sampled all four Pmod1 side-band pins. Across **54 samples spanning that
+reset**, the reading never changed even once:
 
 ```
-c6_probe: EK-RA8D2 <-> ESP32-C6 esp-hosted SPI probe
-c6_probe: pmod1 sci2 simple-spi controller, cs on P804
+### resetting C6 now (mid-run) ###
+### C6 reset issued; boot log bytes: 4104 ###
+=== distinct side-band readings seen across the whole run ===
+     54 P006=1 P402=1 P412=0 P413=1
+=== C6 confirmed to have rebooted mid-run? ===
+1
+```
+
+A pin wired to a C6 output cannot sit still through that. All four did.
+
+### Corroborating evidence from the same runs
+
+- **Controller-in reads all-`0xFF`** on every one of the sixteen full-size
+  transactions, in all four SPI modes. The C6 holds its controller-in line
+  with an internal pull-down, so a *connected* C6 -- idle or not -- would read
+  all-`0x00`. `0xFF` is an unterminated RA8 input, not a peripheral.
+- **No chip-select candidate provokes anything.** Asserting each of P800,
+  P801, P802, P803 and P804 in turn produced no side-band movement and no
+  entry in the C6's own console log. The C6 clears HANDSHAKE from a
+  chip-select edge interrupt, so a live C6 on any of those nets would have
+  answered without a single clock edge.
+
+```
 c6_probe: idle sideband P006=1 P402=1 P412=0 P413=1
-c6_probe: wire P800(J26-1 in UART mux) hi->1 lo->1 high-side(pull-up or driven high)
-c6_probe: wire P801(J26-2) hi->1 lo->1 high-side(pull-up or driven high)
-c6_probe: wire P802(J26-3) hi->1 lo->1 high-side(pull-up or driven high)
-c6_probe: wire P803(J26-4 in SPI mux) hi->1 lo->1 high-side(pull-up or driven high)
-c6_probe: wire P804(J26-1 in SPI mux) hi->1 lo->1 high-side(pull-up or driven high)
 c6_probe: cs-hunt P800(J26-1 in UART mux) no response, asserted P006=1 P402=1 P412=0 P413=1
 c6_probe: cs-hunt P801(J26-2) no response, asserted P006=1 P402=1 P412=0 P413=1
 c6_probe: cs-hunt P802(J26-3) no response, asserted P006=1 P402=1 P412=0 P413=1
 c6_probe: cs-hunt P803(J26-4 in SPI mux) no response, asserted P006=1 P402=1 P412=0 P413=1
 c6_probe: cs-hunt P804(J26-1 in SPI mux) no response, asserted P006=1 P402=1 P412=0 P413=1
 c6_probe: cs-hunt result none
-c6_probe: spi mode=3 sck_hz=1000000
-  xfer 1
-    pre  P006=1 P402=1 P412=0 P413=1
-    mid  P006=1 P402=1 P412=0 P413=1
-    post P006=1 P402=1 P412=0 P413=1
     hdr if_type=15 if_num=15 flags=0xff len=65535 offset=65535 csum=0xffff calc=0x0000 seq=65535 pkt=0xff
     frame: no esp-hosted structure
-...
-c6_probe: evidence P006 hs_vote=0 dr_vote=0 high=1 low=0
-c6_probe: evidence P402 hs_vote=0 dr_vote=0 high=1 low=0
-c6_probe: evidence P412 hs_vote=0 dr_vote=0 high=0 low=1
-c6_probe: evidence P413 hs_vote=0 dr_vote=0 high=1 low=0
 c6_probe: map HANDSHAKE=unresolved DATA_READY=unresolved
 c6_probe: FAIL no esp-hosted frame mode=2 sck_hz=1000000 xfers=16 data=0 idle=0 badcsum=0
 ```
 
-### What the run establishes
+Note the C6 is powered independently of these signals -- it enumerates over
+its own USB -- so "alive" was never evidence that the signal harness exists.
 
-- **Every one of the sixteen full-size transactions read back all-`0xFF`**, in
-  all four SPI modes. The C6's controller-in line is held with an internal
-  pull-down (`gpio_set_pull_mode(GPIO_MISO, GPIO_PULLDOWN_ONLY)` in the C6's
-  peripheral-side SPI driver), so a connected-but-idle C6 would read all-`0x00`.
-  All-`0xFF` means the RA8's `P802` is not on the same net as the C6.
-- **The chip-select hunt is the decisive measurement.** Asserting each of the
-  five candidate MCU pins produced no side-band movement at all. Because the
-  C6 clears HANDSHAKE from a chip-select edge interrupt, a live C6 on any of
-  those nets would have answered without a single clock edge. None did.
-- **The side-band pins never moved** across any phase of the run
-  (`hs_vote=0 dr_vote=0` for all four; each pin stayed at one level).
+### Next step: it is a wiring question now
 
-Taken together: **the Pmod1 SPI signal group is not electrically reaching J26.**
-That is a board-mux fact, not a firmware fact. Per EK-RA8D2 v1 UM Rev 1.01
-Table 3 p 16 and Table 18 p 26 the required DIP positions are
+The remaining unknown is physical: where the C6's CS / COPI / CIPO / SCK /
+HANDSHAKE / DATA_READY actually land, if they are connected at all. Firmware
+cannot narrow this further by guessing pins -- the probe already drove every
+Pmod1 candidate.
 
-| Switch | Required | Meaning |
-|--------|----------|---------|
-| SW4-1 | **OFF** | Pmod1 Mode Select 1 |
-| SW4-2 | **OFF** | Pmod1 Mode Select 2; OFF+OFF selects **SPI** (ON/OFF is UART, OFF/ON is I2C) |
-| SW4-3 | **ON** | Octo-SPI **Inactive** -- this is what frees P801..P804 for Pmod1 |
+1. Inspect the harness between J26 and the C6 and record the real pin map. If
+   the SPI leads were never run (only power and the USB console), that is the
+   whole story.
+2. Once the map is known, put it in `coprocessor/esp32c6/pins.env` and in the
+   architecture doc, then re-run this probe unchanged: the chip-select hunt
+   will name the pin and the mode sweep will resolve `HANDSHAKE=` /
+   `DATA_READY=` from the C6's own behaviour.
+3. Re-run with the C6 freshly reset so its queued boot INIT event is the first
+   payload -- it is the richest first-light frame, and the first completed
+   transaction drains it for good.
 
-Note the trap in the UART position: J26-1 becomes `P800` and J26-4 becomes
-`P804`, so a controller driving `P804` as chip-select is really feeding the
-C6's *clock* pin and the C6 never sees a chip-select at all -- exactly the
-silent failure this probe was written to catch.
-
-The U15 PI4IOE5V6408 expander (I2C 0x43) can override SW4 in software, but a
-prior whole-output-space sweep (issue #44, recorded on
-`ra8_board_io_expander_set_octospi_active`) established that its GPIOs are
-**not** in the Octo-SPI path and that SW4-3 is a hardware-only analog mux. The
-switch has to be set on the board.
-
-**SW4-3 is the prime suspect**, because SW4-1 and SW4-2 are already OFF/OFF in
-the UM's default configuration -- that is the SPI position -- while SW4-3's
-default is OFF, which is *Octo-SPI Active* and which UM Table 3 p 16 lists as
-conflicting with "Arduino, mikroBUS and Pmod 1 (SPI, UART)". So the one switch
-that must be moved off its factory default for this link to work is SW4-3.
-
-### The one alternative this run cannot exclude
-
-"No chip-select response" is also what a C6 whose esp-hosted application had
-wedged would look like, since the HANDSHAKE drop comes from a GPIO interrupt
-inside that application. The evidence against it is circumstantial but strong:
-the C6 enumerates its USB Serial/JTAG interface (so the part is powered and
-running), it had been idling untouched since a clean flash with a confirmed
-boot log, and an idle esp-hosted peripheral is only ever blocked on queues.
-
-Discriminate in this order:
-
-1. Set the three switches above, power-cycle, re-run the probe. If the
-   chip-select hunt now names a pin, the mux was the whole story.
-2. If it still reports `none`, read the C6 console to check that esp-hosted is
-   alive before suspecting the wiring itself.
-
-### Next step
-
-Set SW4-1 OFF / SW4-2 OFF / SW4-3 ON on the EVM and re-run. The probe needs no
-change: the chip-select hunt will name the pin that reaches the C6 and the mode
-sweep will resolve `HANDSHAKE=` / `DATA_READY=` from the C6's own behaviour.
-
-Re-running is worth a power cycle first (`bash scripts/hil/tapo.sh board cycle`)
-so the C6 has a freshly queued boot INIT event on `ESP_PRIV_IF`: that event is
-the richest first-light payload, and the first completed transaction drains it
-for good.
+If the harness turns out to land on pins outside Pmod1, widen
+`k_c6_wire_pin` in `c6_probe.h` to those candidates; the hunt logic itself
+needs no change.
 
 ## Files
 

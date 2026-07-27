@@ -117,9 +117,21 @@ it is `examples/ek_ra8d2/hw_pending/c6_spi_probe`, which resolves the mapping
 from the C6's own behaviour rather than from a wiring note: the C6 image sets
 `CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y`, so HANDSHAKE tracks the chip-select edge,
 while DATA_READY stays high only while the C6's transmit queue holds a frame.
-Its 2026-07-26 run found the Pmod1 SPI group not reaching J26 at all (the DIP
-positions above were not set), so the map is still open; see that app's README
-for the captured evidence.
+Its 2026-07-26 bench run left the map **still open, and for a physical
+reason**: the C6 is not on the same net as any Pmod1 pin the probe can reach.
+The SW4 positions above were verified correct on the board, and the C6 was
+verified alive and armed (clean esp-hosted 2.12.11 boot, `SPI Ctrl:1 mode: 3`,
+queued boot `event ESPInit`), yet resetting the C6 mid probe run <!-- LEGACY-OK: upstream log tag -->
+moved none of the four side-band pins across 54 samples -- which HANDSHAKE and
+DATA_READY, being C6 GPIO outputs, could not do if they were connected.
+Controller-in also reads all-ones rather than the all-zeroes the C6's internal
+pull-down would force.
+
+So the table above records the *board* routing, which is correct; what is not
+yet established is the harness between J26 and the C6. Until that is inspected
+and recorded in `coprocessor/esp32c6/pins.env`, the RA8-side DATA_READY /
+HANDSHAKE assignment stays unknown. See the probe's README for the captured
+evidence.
 
 ## Boot and reset
 
