@@ -54,12 +54,17 @@ extern "C" {
  * @retval k_ra8_err_gpio_invalid_port Port out of range.
  * @retval k_ra8_err_gpio_invalid_pin Pin out of range.
  * @retval k_ra8_err_gpio_conflict Pin already owned.
+ * @retval k_ra8_err_hw_unmapped The port/pin pair has no PFS register on
+ * this device.
  *
  * @pre `ra8_infrastructure_init()` has run (pin validator ready).
  * @pre The IOPORT module clock is on (IOPORT is one of the "always on"
  * blocks, so this is satisfied automatically after reset).
  * @post On success, the pin is in GPIO-output mode driving `init_level`.
  * @post On success, the pin is owned by this driver (`"GPIO"` tag).
+ * @post On **any** failure, pin ownership is unchanged: a claim taken while
+ * configuring is handed back before returning, so a failed call never
+ * strands the pin. Callers may retry or fall through without leaking it.
  *
  * @note Not thread-safe: reads / modifies / writes the PFS register
  * and touches PWPR. Protect with IRQ masking or run during
@@ -72,9 +77,24 @@ extern "C" {
  * @brief Configure a pin as a digital input.
  *
  * @param[in] pin Packed port/pin identifier.
- * @param[in] pull `k_ra8_pull_none` / `k_ra8_pull_up`.
+ * @param[in] pull `k_ra8_pull_none` / `k_ra8_pull_up`. The RA8D2 PFS has a
+ * pull-up bit only, so `k_ra8_pull_down` is accepted but configures no pull.
  *
- * @return `ra8_err_t` error code (same set as `ra8_gpio_output_init()`).
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok Pin configured as a digital input.
+ * @retval k_ra8_err_gpio_invalid_port Port out of range.
+ * @retval k_ra8_err_gpio_invalid_pin Pin out of range.
+ * @retval k_ra8_err_gpio_conflict Pin already owned.
+ * @retval k_ra8_err_hw_unmapped The port/pin pair has no PFS register on
+ * this device.
+ *
+ * @pre `ra8_infrastructure_init()` has run (pin validator ready).
+ * @pre The IOPORT module clock is on (always-on after reset).
+ * @post On success, the pin is a digital input owned by this driver.
+ * @post On **any** failure, pin ownership is unchanged (see
+ * `ra8_gpio_output_init()`).
+ *
+ * @note Not thread-safe; same PFS/PWPR caveat as `ra8_gpio_output_init()`.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_gpio_input_init(ra8_port_pin_t pin, ra8_pin_pull_t pull);

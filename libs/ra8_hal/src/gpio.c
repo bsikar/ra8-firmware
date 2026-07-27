@@ -97,6 +97,11 @@ ra8_err_t ra8_gpio_output_init(ra8_port_pin_t pin, ra8_level_t init_level)
   /* Programme PFS: PMR=0 (GPIO), PDR=1 (output), PODR=init level. */
   volatile uint32_t* pfs = ra8_pfs_pmn(port, bit);
   if (pfs == nullptr) {
+    /* The claim is already taken by internal_claim above, so it has to be
+     * handed back before bailing out -- otherwise the pin stays owned by a
+     * call that configured nothing, and every later claim of it fails. This
+     * mirrors ra8_pfs_route_peripheral, which releases on the same branch. */
+    (void)ra8_pin_validator_release(pin);
     return k_ra8_err_hw_unmapped;
   }
 
@@ -124,6 +129,9 @@ ra8_err_t ra8_gpio_input_init(ra8_port_pin_t pin, ra8_pin_pull_t pull)
 
   volatile uint32_t* pfs = ra8_pfs_pmn(port, bit);
   if (pfs == nullptr) {
+    /* Same ownership hand-back as ra8_gpio_output_init: internal_claim has
+     * already taken the pin, so returning without releasing would strand it. */
+    (void)ra8_pin_validator_release(pin);
     return k_ra8_err_hw_unmapped;
   }
 
