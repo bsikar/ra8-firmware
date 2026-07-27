@@ -23,6 +23,11 @@
 # nobody can author a source directory called that (the checker's
 # RESERVED_DIR_NAMES records that judgement).
 /build/
+# The mcdc gate's transcript. It is written under build/ now, so this line
+# is a second line of defence rather than the fix: a stale root-level copy
+# from an older tree once rode into a commit and failed the lint-coverage
+# gate, and an ignore rule stops any other producer repeating that.
+/mcdc-output.log
 /build-*/
 /build_*/
 /cmake-build-*/
