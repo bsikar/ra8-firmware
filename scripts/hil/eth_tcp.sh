@@ -68,7 +68,8 @@ PROTO=""
 PAYLOAD_BYTES=512
 BOOT_TIMEOUT_S=25
 PROBE_TIMEOUT_S=10
-UART="/dev/ttyACM0"
+# Resolved by identity on the Pi before the console is read; see below.
+UART=""
 BAUD=115200
 
 while [[ $# -gt 0 ]]; do
@@ -150,8 +151,13 @@ if ((LOCAL_PI == 0)); then
   if [[ -f "${HEX%.hex}.elf" ]]; then
     scp -q "${HEX%.hex}.elf" "${PI_HOST}:${REMOTE_HEX%.hex}.elf"
   fi
+  # Forward --uart only when one was named: an empty value would be quoted
+  # through as a real (empty) device, and the Pi resolves its own console by
+  # identity when left to it.
+  REMOTE_UART=""
+  [[ -n "$UART" ]] && REMOTE_UART="--uart '${UART}'"
   # shellcheck disable=SC2029  # every value is local rig/app config passed as args to the piped script.
-  ssh "$PI_HOST" "bash -s -- --hex '${REMOTE_HEX}' --board-ip '${BOARD_IP}' --port '${PORT}' --proto '${PROTO}' --payload-bytes '${PAYLOAD_BYTES}' --boot-timeout '${BOOT_TIMEOUT_S}' --probe-timeout '${PROBE_TIMEOUT_S}' --uart '${UART}' --baud '${BAUD}'" <"$0"
+  ssh "$PI_HOST" "bash -s -- --hex '${REMOTE_HEX}' --board-ip '${BOARD_IP}' --port '${PORT}' --proto '${PROTO}' --payload-bytes '${PAYLOAD_BYTES}' --boot-timeout '${BOOT_TIMEOUT_S}' --probe-timeout '${PROBE_TIMEOUT_S}' ${REMOTE_UART} --baud '${BAUD}'" <"$0"
   exit $?
 fi
 
@@ -188,7 +194,9 @@ restore_iface() {
 # shellcheck disable=SC2329  # invoked by `trap cleanup EXIT` below.
 cleanup() {
   rm -f "$STRIPPED_HEX" "/tmp/hil_eth_jlink_${APP_NAME}.cmd"
-  pkill -f "cat ${UART}" 2>/dev/null || true
+  # Guarded: UART is still empty until the console is resolved further down,
+  # and a pkill pattern of a bare "cat " would match unrelated processes.
+  [ -n "$UART" ] && pkill -f "cat ${UART}" 2>/dev/null
   restore_iface
 }
 trap cleanup EXIT
@@ -220,24 +228,11 @@ g
 q
 JLINK
 
-# Find JLink's VCOM /dev/ttyACMx.
-JLINK_VID="1366"
-JLINK_TTY=""
-for _i in 1 2 3 4 5 6 7 8 9 10; do
-  for d in /dev/ttyACM*; do
-    [ -e "$d" ] || continue
-    if udevadm info "$d" 2>/dev/null | grep -q "ID_VENDOR_ID=${JLINK_VID}"; then
-      JLINK_TTY="$d"
-      break 2
-    fi
-  done
-  sleep 0.5
-done
-if [ -z "$JLINK_TTY" ]; then
-  echo -e "${RED}[HIL]${NC} J-Link VCOM not found under /dev/ttyACM*" >&2
-  exit 1
+# Resolve the board console by device identity unless one was named
+# explicitly (scripts/hil/lib/tty_resolve.sh).
+if [ -z "$UART" ]; then
+  UART="$(ra8_tty_resolve console)" || exit 1
 fi
-UART="$JLINK_TTY"
 stty -F "${UART}" "${BAUD}" raw -echo
 
 UART_LOG="/tmp/hil_eth_uart_${APP_NAME}.log"

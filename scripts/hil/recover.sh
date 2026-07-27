@@ -237,7 +237,23 @@ if [[ -z "$EXPECT" ]]; then
   exit 0
 fi
 
-[[ -z "$UART" ]] && UART="/dev/ttyACM0"
+# Resolve the console on the Pi by device identity when none was named. The
+# old default was /dev/ttyACM0, which after a re-enumeration is as likely to be
+# the ESP32-C6's UART bridge as the board -- and a recovery run that reads the
+# wrong device reports a dead board that is actually fine.
+if [[ -z "$UART" ]]; then
+  UART=$(
+    # shellcheck disable=SC2087  # RA8_TTY_RESOLVER_SRC/JLINK_SN are substituted client-side on purpose: the Pi has no checkout.
+    ssh "$PI_HOST" bash -s <<REMOTE
+${RA8_TTY_RESOLVER_SRC}
+JLINK_SN="${JLINK_SN}"
+ra8_tty_resolve console
+REMOTE
+  ) || {
+    err "could not resolve the board console on ${PI_HOST}"
+    exit 1
+  }
+fi
 
 tag "waiting for '$EXPECT' on Pi:$UART (${TIMEOUT_S}s)..."
 

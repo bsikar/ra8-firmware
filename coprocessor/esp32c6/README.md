@@ -97,14 +97,20 @@ The fetched clone lands at `coprocessor/esp32c6/esp-hosted-mcu/` and is git-igno
 
 ## Flash
 
-Flash over the **CH343 USB-UART bridge** (VID:PID `1a86:55d3`), which
-enumerates as `/dev/ttyACM1` on the bench host. Do **not** use the C6 native
-USB-JTAG interface to write the image: it fails with `EPIPE` partway through
-`write_flash`.
+Flash over the **CH343 USB-UART bridge** (VID:PID `1a86:55d3`). Do **not** use
+the C6 native USB-JTAG interface to write the image: it fails with `EPIPE`
+partway through `write_flash`.
+
+Both interfaces enumerate as `/dev/ttyACM<n>`, and the numbering changes on a
+power cycle -- on 2026-07-27 the bridge moved from `ttyACM1` to `ttyACM0` and
+the board console took `ttyACM1`. `flash.sh` therefore resolves the bridge by
+device identity (`/dev/serial/by-id/usb-1a86_USB_Single_Serial_*`, see
+`scripts/hil/lib/tty_resolve.sh`) and fails loudly if it cannot, rather than
+writing to whatever holds a number.
 
 ```sh
-./coprocessor/esp32c6/flash.sh                 # default port from pins.env
-./coprocessor/esp32c6/flash.sh /dev/ttyACM1    # explicit port
+./coprocessor/esp32c6/flash.sh                 # resolve the CH343 bridge
+./coprocessor/esp32c6/flash.sh <device>        # explicit port
 ```
 
 The flash-size / mode / freq are pinned to the proven `16MB` / `dio` / `80m`

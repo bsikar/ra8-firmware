@@ -5,19 +5,21 @@
 # hil_suite.sh -- Run the full HIL test suite for hw_validated/hil/ apps.
 #
 # Each entry in the TESTS table below maps an app name to the UART string
-# that must appear on /dev/ttyACM0 within a timeout after flashing.
+# that must appear on the board console within a timeout after flashing.
 # Tests run sequentially (one board).  The script exits non-zero if any
 # test fails and prints a summary at the end.
 #
 # Usage (run from the repo root on the Pi after `make <apps>` has built them):
-#   bash scripts/hil/suite.sh [--uart /dev/ttyACM0]
+#   bash scripts/hil/suite.sh [--uart <device>]
 #
 # The hex for each app is expected at:
 #   examples/ek_ra8d2/hw_validated/hil/<app>/build/<app>.hex
 
 set -euo pipefail
 
-UART="/dev/ttyACM0"
+# Empty by default: run_direct.sh resolves the board console by device
+# identity (scripts/hil/lib/tty_resolve.sh). --uart pins it when needed.
+UART=""
 ONLY=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -86,12 +88,18 @@ for entry in "${TESTS[@]}"; do
     continue
   fi
 
+  # --uart is forwarded only when the caller named one; otherwise run_direct.sh
+  # resolves the console by device identity, which is the right answer more
+  # often than any ttyACM number is.
+  uart_arg=()
+  [[ -n "${UART}" ]] && uart_arg=(--uart "${UART}")
+
   if bash scripts/hil/run_direct.sh \
     --hex "${hex}" \
     --expect "${expect}" \
     --baud 115200 \
     --timeout "${timeout_s}" \
-    --uart "${UART}"; then
+    "${uart_arg[@]}"; then
     ((pass++)) || true
   else
     failures+=("${app}")

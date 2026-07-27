@@ -6,16 +6,17 @@
 # the Pi and verify expected output appears on the J-Link OB UART within a
 # timeout.
 #
-# The Pi is the HIL host: the EK-RA8D2 board is physically wired to it,
-# the J-Link OB is ttyACM0, and the board VCOM (SCI8) is also ttyACM0 at
-# 115200 baud.
+# The Pi is the HIL host: the EK-RA8D2 board is physically wired to it, and its
+# console (the J-Link OB VCOM carrying SCI8 at 115200 baud) is resolved by
+# device identity through scripts/hil/lib/tty_resolve.sh -- never by ttyACM
+# number, which is assignment order and changes on a power cycle.
 #
 # Usage (run from the repo root on the dev machine):
 #   scripts/hil/run.sh --hex <path/to/app.elf|app.hex> \
 #                      --expect <string>                \
 #                      [--baud 115200]                  \
 #                      [--timeout 10]                   \
-#                      [--uart /dev/ttyACM0]
+#                      [--uart /dev/serial/by-id/...]
 #
 # Exit codes:
 #   0  PASS  -- expected string appeared within timeout
@@ -38,7 +39,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 usage() {
-  echo "Usage: $0 --hex <file.elf|file.hex> --expect <string> [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
+  echo "Usage: $0 --hex <file.elf|file.hex> --expect <string> [--baud 115200] [--timeout 10] [--uart <device>]"
   exit 2
 }
 
@@ -83,25 +84,22 @@ done
   exit 2
 }
 
-# Auto-detect J-Link OB CDC port on the Pi when --uart not given.  Without
-# this the script falls back to /dev/ttyACM0, which is occupied by the
-# chip's USBHS CDC device whenever a previous USB firmware ran (or even
-# stale from before a reset), so reads return garbage from the wrong port.
-# The J-Link OB CDC always reports ID_MODEL=J-Link via udev.
+# Resolve the board console on the Pi when --uart was not given. Identity, not
+# number: the chip's own USBHS CDC and the ESP32-C6's UART bridge both
+# enumerate as /dev/ttyACM<n> too, and which number each gets depends on the
+# order they were plugged in. See scripts/hil/lib/tty_resolve.sh.
 if [[ -z "$UART" ]]; then
   UART=$(
-    ssh "$PI_HOST" bash -s <<'REMOTE'
-for dev in /dev/ttyACM*; do
-    [[ -e "$dev" ]] || continue
-    if udevadm info "$dev" 2>/dev/null | grep -q "ID_MODEL=J-Link"; then
-        echo "$dev"
-        exit 0
-    fi
-done
-echo "/dev/ttyACM0"
+    # shellcheck disable=SC2087  # RA8_TTY_RESOLVER_SRC/JLINK_SN are substituted client-side on purpose: the Pi has no checkout.
+    ssh "$PI_HOST" bash -s <<REMOTE
+${RA8_TTY_RESOLVER_SRC}
+JLINK_SN="${JLINK_SN}"
+ra8_tty_resolve console
 REMOTE
-  )
-  UART="${UART:-/dev/ttyACM0}"
+  ) || {
+    echo -e "${RED}[HIL]${NC} could not resolve the board console on ${PI_HOST}" >&2
+    exit 2
+  }
 fi
 
 APP_NAME="$(basename "${HEX%.*}")"

@@ -157,25 +157,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   exit 1
 }
 
-# 2. Capture UART during the boot dwell. We auto-detect the J-Link OB
-# CDC port the same way hil_run.sh does -- ID_MODEL=J-Link in udevadm
-# picks the right ttyACM when the chip's USBHS CDC has also enumerated.
-# Run cat in the background on the Pi for BOOT_S seconds; halt before
-# the J-Link probe begins, since J-Link halt freezes the UART side.
+# 2. Capture UART during the boot dwell. The console is resolved by device
+# identity (scripts/hil/lib/tty_resolve.sh), the same way hil_run.sh does it:
+# the chip's own USBHS CDC and the ESP32-C6's UART bridge enumerate as
+# /dev/ttyACM<n> too, so the number is not a name. Run cat in the background
+# on the Pi for BOOT_S seconds; halt before the J-Link probe begins, since
+# J-Link halt freezes the UART side.
 UART_CAP="/tmp/hil_alive_${APP_NAME}.uart"
 UART_DEV=$(
-  pi_run_stdin <<'REMOTE'
-for dev in /dev/ttyACM*; do
-    [[ -e "$dev" ]] || continue
-    if udevadm info "$dev" 2>/dev/null | grep -q "ID_MODEL=J-Link"; then
-        echo "$dev"
-        exit 0
-    fi
-done
-echo "/dev/ttyACM0"
+  pi_run_stdin <<REMOTE
+${RA8_TTY_RESOLVER_SRC}
+JLINK_SN="${JLINK_SN}"
+ra8_tty_resolve console
 REMOTE
-)
-UART_DEV="${UART_DEV:-/dev/ttyACM0}"
+) || {
+  echo -e "${RED}[alive]${NC} could not resolve the board console"
+  exit 1
+}
 echo -e "${YELLOW}[alive]${NC} capturing UART on ${UART_DEV} for ${BOOT_S}s..."
 pi_run "stty -F ${UART_DEV} 115200 raw -echo cs8 -cstopb -parenb 2>/dev/null; timeout ${BOOT_S} cat ${UART_DEV} > ${UART_CAP} 2>/dev/null || true"
 pi_pull "${UART_CAP}" "${UART_CAP}"

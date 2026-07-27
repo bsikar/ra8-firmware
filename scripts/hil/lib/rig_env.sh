@@ -12,6 +12,10 @@
 #   JLINK_SN      on-board J-Link OB serial (see .env.example for how to find it)
 #   JLINK_DEVICE  Renesas device name (default R7KA8D2KF_CPU0; rarely changed)
 #
+# Sourcing this also brings in `ra8_tty_resolve` (lib/tty_resolve.sh), because
+# every consumer of the rig needs to name a console and none of them may name
+# it by ttyACM number.
+#
 # Portability: pure bash 3.2 (the macOS system bash) -- no name-refs, no mapfile.
 
 # Load .env if present, exported so child processes (JLinkExe, rfp-cli, ssh
@@ -24,6 +28,17 @@ if [ -f "$_rig_root/.env" ]; then
   set +a
 fi
 unset _rig_root
+
+# Serial-console resolution by device identity, never by ttyACM number.
+# shellcheck source=scripts/hil/lib/tty_resolve.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tty_resolve.sh"
+
+# RA8_TTY_RESOLVER_SRC -- the resolver's own text, for the scripts whose UART
+# work happens on the far side of an ssh. They paste this into the remote
+# heredoc so the Pi resolves the console with the identical function this
+# machine would use, without needing a checkout there.
+# shellcheck disable=SC2034  # consumed by the scripts that source this file (run.sh, check_alive.sh, recover.sh), never here.
+RA8_TTY_RESOLVER_SRC="$(cat "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tty_resolve.sh")"
 
 # Declare the .env-provided contract explicitly. These are set by the `. .env`
 # above when it exists; defaulting them to empty here keeps every consumer safe
@@ -41,16 +56,23 @@ PI_BAREHOST="${PI_BAREHOST%%.*}"
 
 # rig_is_local_pi -- succeed (return 0) when this script is running ON the bench
 # Pi itself, so callers run JLinkExe/rfp-cli locally instead of over ssh. True
-# when the hostname matches PI_HOST's bare host, or on any aarch64 box with the
-# probe enumerated at /dev/ttyACM0.
+# when the hostname matches PI_HOST's bare host, or on any aarch64 box with a
+# CDC device attached. The second test used to require /dev/ttyACM0 by name,
+# which made "am I on the bench" depend on USB enumeration order: after a power
+# cycle that started numbering at ttyACM1, an aarch64 bench stopped recognising
+# itself.
 rig_is_local_pi() {
-  local _h
+  local _h _d
   _h="$(hostname 2>/dev/null || true)"
   if [ -n "$PI_BAREHOST" ] &&
     { [ "$_h" = "$PI_BAREHOST" ] || [ "$_h" = "${PI_BAREHOST}-desktop" ]; }; then
     return 0
   fi
-  [ -e /dev/ttyACM0 ] && [ "$(uname -m)" = "aarch64" ]
+  [ "$(uname -m)" = "aarch64" ] || return 1
+  for _d in /dev/ttyACM*; do
+    [ -e "$_d" ] && return 0
+  done
+  return 1
 }
 
 # rig_require VAR...  -- exit 2 with a helpful message if any named var is empty.
