@@ -374,6 +374,7 @@ macro(ra8_add_app)
   set(_ra8_port_lib_filex filex_port_ra8_sdhi)
   set(_ra8_port_lib_levelx levelx_port_ra8_xspi)
   set(_ra8_port_lib_nimble nimble_port_threadx)
+  set(_ra8_port_lib_esp_hosted esp_hosted_port_ra8_spi)
 
   # Link the middleware interface libraries + pull in their bridge sources.
   foreach(_ra8_use ${_RA8_APP_USES})

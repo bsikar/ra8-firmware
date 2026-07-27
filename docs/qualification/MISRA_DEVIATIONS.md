@@ -105,6 +105,7 @@ gap-closure plan in `docs/MISRA.md`:
 | D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 |
 | D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 |
 | D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 |
+| D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 |
 
 `MAR` = mandatory annual review date (or earlier review trigger when
 the underlying tooling assumption changes).
@@ -738,3 +739,69 @@ audit tool is supplementary.
 | 2026-05-02 | Brighton Sikarskie  | Initial population (D-001..D-005).  |
 | 2026-07-18 | Brighton Sikarskie  | Add D-006 (Rule 20.5, NSC veneer).  |
 | 2026-07-22 | Brighton Sikarskie  | Add D-007 (Rule 14.2, C23 attribute phantom). |
+
+---
+
+## D-008: Rule 17.1 -- the features of <stdarg.h> shall not be used
+
+- **Rule ID**: misra-c2012-17.1.
+- **Rule text (paraphrased per MISRA licence)**: the features of
+  `<stdarg.h>` shall not be used.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Scope**: the esp-hosted logging bridge only --
+  `port/esp-hosted/src/ra8_esp_hosted_fmt.c`,
+  `ra8_esp_hosted_fmt_internal.h`, `ra8_esp_hosted_log.c`,
+  `ra8_esp_hosted_log_internal.h`, and the one vtable row in
+  `ra8_esp_hosted_osi.c` that forwards to it. No other first-party
+  file in the repository uses `<stdarg.h>`, and none may without
+  extending this record.
+
+### Why the variadic interface is not a choice here
+
+The vendored esp-hosted host driver
+(`libs/third_party/esp-hosted/`, SOUP pinned at `949bb30`) logs through
+`printf`-style call sites -- `ESP_LOGI(TAG, "rx len %u if %d", len, if_type)`
+-- in 13 translation units. Those call sites are upstream's source and
+are not editable: the tree records the component as having zero
+deviations and verifies every file byte-identical to its upstream pin
+(`docs/SOUP/esp-hosted-host.md`). The OS-abstraction vtable the driver
+calls through likewise declares its log row as
+`void (*_h_printf)(int level, const char *tag, const char *format, ...)`,
+so the signature is fixed by the seam, not by this port.
+
+A port that refused variadic arguments could therefore only drop the
+driver's diagnostics entirely. On a link that has never been driven on
+hardware, the diagnostics are the bring-up instrument.
+
+### Why this is bounded
+
+- **One entry point.** Every variadic path in the port funnels into
+  `ra8_esp_hosted_log_vwrite`, which immediately converts the argument
+  list into a finished string and calls nothing variadic thereafter.
+  Nothing else in `port/esp-hosted/` takes a `...` parameter.
+- **The formatter is first-party and fully tested.** The concern behind
+  Rule 17.1 is that `va_arg` is unchecked: read at the wrong width and
+  every later argument misaligns. `ra8_esp_hosted_fmt.c` addresses that
+  directly -- it parses the length modifier explicitly and reads at
+  exactly the named width, refuses to consume an argument for a
+  conversion it does not implement (copying the specifier through
+  verbatim instead, so later arguments stay aligned), and bounds every
+  loop by a compile-time constant. `tests/test_ra8_esp_hosted_fmt.c`
+  drives all of that, including the misalignment case, with MC/DC
+  vectors.
+- **The compiler checks the call sites.** Both the log entry point and
+  the vtable row carry `[[gnu::format(printf, 3, 4)]]`, and the project
+  builds with `-Wformat=2`, so a format string that disagrees with its
+  arguments is a build error at the vendored call site -- which is the
+  check Rule 17.1 exists to substitute for.
+- **No allocation, bounded output.** The formatter writes only into a
+  caller-supplied buffer and never calls the C library's `printf`
+  family, whose formatting paths this project cannot admit (NASA Power
+  of 10 Rule 3; this board has no heap and `_sbrk` fatal-errors).
+
+### Review trigger
+
+If the vendored driver is ever re-vendored with a non-variadic logging
+seam, or if the port stops carrying the driver's diagnostics, this
+deviation is withdrawn rather than renewed.

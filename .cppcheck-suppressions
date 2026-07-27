@@ -1,16 +1,24 @@
 # ra8-firmware cppcheck suppression list
-#
+# NOTE ON FORMAT: a line containing only '#' is NOT a comment to
+# cppcheck's --suppressions-list parser -- it reads it as a suppression
+# with an empty id, prints 'Failed to add suppression. No id.' and exits
+# non-zero before checking anything. Use a blank line for a paragraph
+# break inside a comment block, never a bare '#'. (The MISRA gate never
+# saw this because misra_check_inner.sh strips comments itself and passes
+# --suppress= arguments; the pre-commit hook passes the file directly and
+# does see it.)
+
 # Format: <check-id>[:<file-pattern>[:<line>]]
 # Each suppression must include a justification comment.
-#
+
 # Applied via: cppcheck --suppressions-list=.cppcheck-suppressions
-#
+
 # Review policy: suppressions are reviewed during each major firmware release.
 
 # ---------------------------------------------------------------------------
 # comparePointers on linker symbols (vector_table.c .data copy and .bss zero
 # loops, ra8_infrastructure.c stack canary write/check loops).
-#
+
 # Justification: cppcheck cannot see that symbols like `g_ra8_ls_sdata` and
 # `g_ra8_ls_edata` bracket the same memory region because they are declared as
 # separate `extern uint32_t` objects. The linker script places them at
@@ -33,11 +41,11 @@ comparePointers:examples/*/*/*/*/vector_table.c
 # moves staged every per-app main.c as ADDED (rename detection happens
 # AFTER the pre-commit cppcheck pass), so the pre-commit hook re-scanned
 # files it previously left alone and found these latent issues.
-#
+
 # These are app demos only; fixing them is out of scope for the directory-
 # layout change. Suppressing per-line, with a TODO to revisit during the
 # next cleanup wave on those apps.
-#
+
 # threadx_https_client demo_verify_cert_pin() is a placeholder that always
 # returns 0 (cert-pin verification not yet wired through to mbedTLS).
 # threadx_netx_tcp_echo `di` could be tightened to a smaller scope but is
@@ -48,7 +56,7 @@ variableScope:libs/ra8_hal/src/ra8_touch.c
 
 # ---------------------------------------------------------------------------
 # duplicateExpression on ra8_time.c tick rollover math
-#
+
 # Justification: `(uint32_t)(s_tick_ms - start) < ms` performs unsigned
 # modular subtraction that handles 32-bit tick counter rollover correctly.
 # cppcheck flags this as a self-subtract because it does not model the fact
@@ -58,7 +66,7 @@ duplicateExpression:libs/ra8_core/src/ra8_time.c
 
 # ---------------------------------------------------------------------------
 # missingInclude for hardware register headers.
-#
+
 # Justification: cppcheck does not parse the full arm-none-eabi sysroot, so
 # it cannot find CMSIS headers even when they exist on the system. The host
 # test build and the real cross build both include them successfully.
@@ -69,10 +77,10 @@ missingInclude:libs/ra8_core/src/ra8_infrastructure.c
 
 # ---------------------------------------------------------------------------
 # unusedStructMember on every public header under libs/*/inc/.
-#
+
 # Justification: this is a false-positive CLASS on public headers, not a
 # per-site fact. Headers under libs/<lib>/inc/ define two kinds of struct:
-#
+
 #   1. Hardware register maps (r_*_regs_t and friends): each field is a 1:1
 #      model of a peripheral's MMIO window. Fields are "used" by the
 #      compiler emitting load/store instructions through volatile pointer
@@ -83,13 +91,13 @@ missingInclude:libs/ra8_core/src/ra8_infrastructure.c
 #      consumed by applications, tests, or a sibling library. cppcheck
 #      analyzes one TU at a time and cannot see reads that happen on the
 #      other side of the header.
-#
+
 # Before this scoped entry the same fact was restated by ~591 inline
 # cppcheck-suppress comments spread across ~105 headers, added one at a
 # time as each new header tripped the checker. Those inline comments were
 # deleted when this class-level disposition landed; do not reintroduce
 # them for headers this pattern already covers.
-#
+
 # Scope: cppcheck's suppression glob (matchglob) lets '*' cross directory
 # separators, so the pattern covers every header under any libs/<lib>/inc/
 # tree. The check STAYS LIVE everywhere a genuinely unused member is a real
@@ -102,7 +110,7 @@ unusedStructMember:libs/*/inc/*.h
 
 # ---------------------------------------------------------------------------
 # constParameterCallback on the ra8_sdfont transport shims.
-#
+
 # Justification: sdfont_set_clock/cs/xfer take `void* ctx` because they are
 # bound to the ra8_sdmmc_spi transport function-pointer types, whose ctx
 # parameter is `void*`. cppcheck suggests const-qualifying it, but that would
@@ -231,7 +239,7 @@ knownConditionTrueFalse:libs/ra8_hal/src/ra8_dual_core.c
 # the project uses. Per D-004 risk assessment: net residual risk is
 # acceptable for IEC 61508 SIL 3 / DO-178C DAL B given clang-tidy's
 # mandatory-braces rule and the Phase 1 MC/DC coverage target.
-#
+
 # When the source line numbers shift due to refactor, re-run `make misra`
 # and regenerate this block from the new docs/MISRA_GAPS.csv 12.1 rows.
 # ---------------------------------------------------------------------------
@@ -324,3 +332,37 @@ unusedStructMember:port/usbx/src/ux_dcd_ra8_usb.c
 # commit for the boot-HardFault rationale.
 # ---------------------------------------------------------------------------
 knownConditionTrueFalse:libs/ra8_core/src/ra8_time.c
+
+# ---------------------------------------------------------------------------
+# Rule 7.4 on the esp-hosted port's ThreadX object-name buffers.
+# ThreadX takes object names as `CHAR*`, not `const CHAR*`, so the port gives
+# each name its own writable array -- `static char s_tx_name_eh_edge[] =
+# "eh_edge";` -- rather than casting a literal and dropping a qualifier the
+# object really has (which is what `-Wcast-qual -Werror` correctly rejects).
+# Rule 7.4 forbids ASSIGNING a string literal to an object that is not a
+# pointer to const-qualified char. Initialising a char ARRAY from a literal is
+# a copy, not an assignment of the literal's address, and is explicitly outside
+# the rule -- the array is the object, and nothing aliases the literal. cppcheck
+# does not draw that distinction here (and inconsistently: it charges only one
+# of the port's three identical name buffers), so this is a tooling gap, not a
+# deviation.
+# ---------------------------------------------------------------------------
+misra-c2012-7.4:port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c
+misra-c2012-7.4:port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
+
+# constParameterCallback on the esp-hosted port's OS-abstraction vtable rows.
+# Every row here is bound to a member of `hosted_osi_funcs_t`
+# (libs/third_party/esp-hosted/host/esp_hosted_os_abstraction.h), whose
+# parameter types are `void*` / `uint8_t*` with no const. Const-qualifying a
+# row's parameter makes the assignment in its binder a type error, and the
+# vendored header is SOUP that must stay byte-identical to its upstream pin.
+# Suppressed via the list rather than inline so each row's Doxygen block stays
+# adjacent to its function for the doc-coverage audit -- the same reasoning and
+# the same mechanism as the ra8_ftl / ra8_comic / ra8_epub entries above.
+constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_gpio.c
+constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_osi.c
+constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_osi_absent.c
+constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_rtos.c
+constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
+constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_spi.c
+constParameterPointer:port/esp-hosted/src/ra8_esp_hosted_spi.c

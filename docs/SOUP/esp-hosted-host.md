@@ -101,13 +101,61 @@ size, not correctness, and the linker drops what is never referenced.
 - Integrity-claim category: connectivity convenience. No safety signal in this
   project depends on the C6 link.
 
-## Build status: not yet compiled
+## Build status: the SPI transport half compiles
 
-**No CMake target builds this source yet, by design.** The driver cannot
-compile until the first-party port exists, because the port supplies headers
-the core includes by name. The port under `port/esp-hosted/` and the build
-wiring land together in the follow-on change; this change is source vendoring
-and records only.
+The first-party port landed at `port/esp-hosted/`, and `cmake/esp_hosted.cmake`
+compiles nine of the vendored translation units into the `esp_hosted` object
+library behind the `RA8_USE_ESP_HOSTED` option. Its consumer is
+`examples/ek_ra8d2/hw_pending/c6_hosted_init`, so the cross-build gate covers
+it on every push.
+
+**Compiled today** -- the SPI transport, the serial (control-plane) channel,
+the RPC wire codec and the shared utilities:
+
+`host/drivers/transport/spi/spi_drv.c`, `host/drivers/transport/transport_util.c`,
+`host/api/src/esp_hosted_transport_config.c`, `host/drivers/serial/serial_drv.c`,
+`host/drivers/serial/serial_ll_if.c`, `host/drivers/power_save/power_save_drv.c`,
+`host/utils/stats.c`, `common/proto/esp_hosted_rpc.pb-c.c`,
+`common/protobuf-c/protobuf-c/protobuf-c.c`.
+
+**Not compiled, and why.** Four groups, for four different reasons:
+
+- `host/drivers/transport/transport_drv.c`, the whole `host/drivers/rpc/`
+  layer, `host/api/src/esp_hosted_api.c` and `esp_wifi_weak.c` are written
+  against ESP-IDF's Wi-Fi API. They name 43 distinct `wifi_*_t` /
+  `esp_netif_*` types in their declarations, and those layouts are what the
+  co-processor decodes on the far side of the link, so they have to be
+  reproduced from ESP-IDF rather than approximated -- a hand-guessed
+  `esp_wifi_types.h` would compile and then mis-encode every RPC request.
+  That is the next piece of work, not a defect in this one.
+- `common/mempool/mempool*.c` is excluded structurally: `mempool_ll.h`
+  includes `freertos/FreeRTOS.h`, `portmacro.h`, `task.h` and `semphr.h`
+  unconditionally. It is a FreeRTOS data structure and this image runs
+  ThreadX. `H_USE_MEMPOOL` is therefore left **undefined** -- the vendored
+  vtable header guards four of its rows with `#ifdef`, so defining that symbol
+  even to zero would grow `hosted_osi_funcs_t`, and because that header does
+  not include the port config, the struct's layout would then depend on
+  per-TU include order with no diagnostic. With the symbol absent, the port's
+  own fixed ThreadX byte pool supplies the bounded, allocate-once behaviour
+  the upstream pool existed to provide.
+- `host/drivers/virtual_serial_if/serial_if.c` is the only vendored file that
+  expands `HOSTED_CALLOC`, an allocate-or-bail macro whose failure arm is a
+  `goto` to a caller-supplied label. Supplying that macro would put a `goto`
+  in first-party code, which NASA Power of 10 Rule 1 forbids and
+  `check_no_goto_setjmp.py` rejects with no allowlist; substituting a `return`
+  for the jump would be behaviourally identical at this pinned commit and
+  would silently stop being so at the next one. The macro is therefore absent
+  and this file goes with it. It is a TLV framing helper whose only consumers
+  are in the RPC layer, which does not compile here anyway.
+- `host/drivers/transport/{sdio,spi_hd,uart}/` and `host/drivers/bt/` are
+  transports and a Bluetooth bridge this integration does not use yet: the
+  C6 is reached over full-duplex SPI only, and the Bluetooth pair needs the
+  NimBLE transport headers and belongs with the NimBLE integration.
+
+The link has **not** been driven end to end on hardware. The probe
+`examples/ek_ra8d2/hw_pending/c6_spi_probe` established that the C6 is not
+currently wired to the RA8 pins it probes, so every app that links this port
+stays under `examples/*/hw_pending/` until a run on real silicon promotes it.
 
 ## The port contract
 

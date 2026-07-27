@@ -69,6 +69,24 @@ add_library(
   # hand. Its SYST_RVR/CVR writes compile out under RA8_SIMULATOR_MODE,
   # so the host build exercises only the clock-query + reload arithmetic.
   ${FW_ROOT}/port/threadx/src/cortex_m85/tx_systick_retune.c
+  # esp-hosted RA8 + ThreadX port (piece 1b). Lives under port/esp-hosted
+  # (not libs/), so the libs/ globs above do not catch it -- list it by
+  # hand. Every TU here is host-testable: the ThreadX calls go through the
+  # recording shim in ra8_esp_hosted_tx_shim_internal.h under
+  # RA8_SIMULATOR_MODE, and the SPI and GPIO slices take their bus and pin
+  # interfaces through injectable seams.
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_fmt.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_gpio.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_log.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_osi.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_osi_absent.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_pins.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_port.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_rtos.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_rtos_sync.c
+  ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_spi.c
   ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_mmap.c
   ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_irq.c
   ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_dma.c
@@ -133,6 +151,17 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_lsm6dso/inc
          ${FW_ROOT}/libs/ra8_tz_secure_boot/inc
          ${FW_ROOT}/port/threadx/inc
+         ${FW_ROOT}/port/esp-hosted/inc
+         ${FW_ROOT}/port/esp-hosted/inc/idf_compat
+         ${FW_ROOT}/port/esp-hosted/src
+         ${FW_ROOT}/libs/third_party/esp-hosted/host
+         ${FW_ROOT}/libs/third_party/esp-hosted/host/api/include
+         ${FW_ROOT}/libs/third_party/esp-hosted/host/drivers/transport
+         ${FW_ROOT}/libs/third_party/esp-hosted/host/drivers/transport/spi
+         ${FW_ROOT}/libs/third_party/esp-hosted/common
+         ${FW_ROOT}/libs/third_party/esp-hosted/common/log
+         ${FW_ROOT}/libs/third_party/esp-hosted/common/mempool/include
+         ${FW_ROOT}/libs/third_party/esp-hosted/common/transport
          ${FW_ROOT}/libs/third_party/miniz
          ${FW_ROOT}/libs/third_party/tinyxml2
          ${FW_ROOT}/libs/third_party/stb

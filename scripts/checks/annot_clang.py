@@ -94,6 +94,14 @@ _INCLUDE_ROOT_PATTERNS = (
     "tests/include",
     "tests/mocks",
     "port/*/inc",
+    # A port may nest a compatibility include root under inc/ when the
+    # software it ports supplies headers by name that the host SDK would
+    # otherwise provide (port/esp-hosted/inc/idf_compat/ holds the ESP-IDF
+    # headers the vendored driver includes). Derive those roots rather than
+    # naming them: a port that grows one and is not listed here parses with
+    # an unresolved include, and every declaration behind it drops out of
+    # the call graph.
+    "port/*/inc/*",
     "port/*/src",
     # tools/<tool>/{inc,src}: the same public/private split the libraries
     # use. cache_bench keeps its headers flat beside its sources, and the
@@ -127,7 +135,31 @@ def _vendored_include_roots() -> list[pathlib.Path]:
     vendored = list(third_party.iterdir())
     vendored += list(third_party.rglob("inc"))
     vendored += list(third_party.rglob("include"))
-    return sorted(d for d in vendored if d.is_dir() and not is_build_output(d))
+    # Not every vendored tree uses an inc/ or include/ convention. esp-hosted
+    # puts its public headers directly in host/ and common/**, and its driver
+    # includes them by bare name, so the two conventions above miss them
+    # entirely -- `esp_hosted_os_abstraction.h` went unresolved and the whole
+    # OS-abstraction seam disappeared from the call graph.
+    #
+    # The tempting fix, deriving roots from wherever a `.h` actually sits, was
+    # tried and rejected: it puts ~600 directories on the path, several of them
+    # C++ trees, and a namesake header there then shadows the one a C
+    # translation unit meant -- forty examples/ TUs started failing to resolve
+    # `cstdint`. Include shadowing is exactly what a wider path buys, so the
+    # extra roots are named per tree instead. Add a row here when a vendored
+    # tree lands whose public headers are not under inc/ or include/.
+    for extra in ("esp-hosted/host", "esp-hosted/host/api/priv", "esp-hosted/common"):
+        vendored.append(third_party / extra)
+    vendored += sorted((third_party / "esp-hosted" / "common").glob("*"))
+    vendored += sorted((third_party / "esp-hosted" / "host" / "drivers").rglob("*"))
+    seen: set[pathlib.Path] = set()
+    ordered: list[pathlib.Path] = []
+    for d in vendored:
+        if d in seen or not d.is_dir() or is_build_output(d):
+            continue
+        seen.add(d)
+        ordered.append(d)
+    return ordered
 
 
 def _include_args() -> list[str]:
