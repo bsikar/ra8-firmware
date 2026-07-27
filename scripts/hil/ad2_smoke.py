@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Smoke-test the Digilent Analog Discovery 2 through the WaveForms SDK.
 
 Answers one question: can this bench actually capture with the AD2? That needs
