@@ -15,28 +15,33 @@ this directory, any commit, or any kept log.
                  (NO uplink -- deliberately islanded; no WAN, no default route)
 
    +-------------------------+           PoE + data (802.3af, Cat5)
-   |   FortiGate 81E-POE      |  port1  =========================+
-   |   ra8-bench-fw           |                                  |
-   |   internal (LAN switch): |                             +----------------+
-   |     10.0.40.1/24         |                             | Meraki MR18    |
-   |   DHCP .100-.199         |                             | OpenWrt 25.12  |
-   |   admin: ssh + https     |                             | static .10     |
-   +------------+------------+                              | radio0 2.4GHz  |
-                | console (DB9, 9600 8N1)                   | radio1 5GHz    |
-                |                                           +--------+-------+
-      /dev/serial/by-id/usb-FTDI_FT232R_..._A9MJ2SSQ                 | SSID: ra8-bench
-                |                                                    | WPA2-PSK (2.4GHz)
-        +-------+--------+                                           |
-        | bench Pi (star)|                             +------------+-----------+
-        | ssh star       |                             |  ESP32-C6 test client  |
-        +----------------+                             |  + Pi wlan0 (verify)   |
-                                                       +------------------------+
+   |  FortiGate 81E-POE       |  port on ===============================+
+   |  ra8-bench-fw            |  the LAN                                |
+   |  FortiOS v6.4.6          |  hard-switch                            |
+   |  serial <redacted-see-openbao> |                                    +----------------+
+   |  lan (hard-switch):      |                                    | Meraki MR18    |
+   |    10.0.40.1/24          |                                    | OpenWrt (ath9k)|
+   |  DHCP .100-.199          |                                    | static .10     |
+   |  reserves .10 -> AP MAC  |                                    | br-trusted     |
+   |  admin: ssh + https      |                                    | radio1 2.4GHz  |
+   +------------+------------+                                     | radio0 5GHz    |
+                | console (DB9, 9600 8N1)                          +--------+-------+
+                |                                                           | SSID: ra8-bench
+      /dev/serial/by-id/usb-FTDI_FT232R_..._A9MJ2SSQ                        | WPA2-PSK (radio1)
+                |                                                           |
+        +-------+--------+                                    +------------+-----------+
+        | bench Pi (star)|                                    |  ESP32-C6 test client  |
+        | ssh star       |                                    |  (2.4 GHz, joins       |
+        +----------------+                                    |   ra8-bench)           |
+                                                              +------------------------+
 ```
 
-- Flat L2: one bridge (`br-lan`) on the AP, one broadcast domain, **no VLAN
-  tags**. The AP's uplink is a plain access port into the FortiGate LAN switch.
-- The AP is powered by FortiGate `port1` PoE. A FortiGate reboot cycles the AP
-  -- expected and harmless.
+- Flat L2: the AP bridges every SSID + its uplink into one bridge (`br-trusted`),
+  untagged, into the FortiGate `lan` hardware switch. **No VLAN tags.**
+- The AP is a **dumb AP**: its own dnsmasq/odhcpd DHCP is disabled, so the
+  FortiGate (10.0.40.1) is the single DHCP server.
+- The AP is powered by FortiGate PoE. A FortiGate reboot cycles the AP --
+  expected and harmless.
 
 ## Subnet plan (10.0.40.0/24)
 
@@ -44,13 +49,13 @@ this directory, any commit, or any kept log.
 |--------------------|-------------------------------------------------|
 | `10.0.40.1`        | FortiGate LAN interface (gateway, DNS)          |
 | `10.0.40.2 - .9`   | Reserved (spare infrastructure statics)         |
-| `10.0.40.10`       | Meraki MR18 access point (static, on the AP)    |
+| `10.0.40.10`       | Meraki MR18 AP (static; also DHCP-reserved to its MAC) |
 | `10.0.40.11 - .99` | Reserved statics (future bench gear)            |
-| `10.0.40.100-.199` | FortiGate DHCP pool (C6, Pi wlan0, test hosts)  |
+| `10.0.40.100-.199` | FortiGate DHCP pool (C6, test hosts)            |
 | `10.0.40.200-.254` | Free                                            |
 
-The `10.0.40.0/24` subnet is kept from the pre-existing layout so the AP's
-static `10.0.40.10` config keeps working after the FortiGate is re-provisioned.
+The AP's MAC `00:18:0a:7b:dd:eb` is reserved to `10.0.40.10` in the FortiGate
+DHCP server, so the AP holds `.10` whether it is static or DHCP.
 
 ## Credentials -- all in OpenBao, none here
 
@@ -58,27 +63,28 @@ Mount `secret` (KV v2), path **`secret/ra8d2/bench-network`**. Read it with the
 existing read-only AppRole (`scripts/secrets/openbao_client.py`,
 `~/.config/hil/openbao.env`). Keys:
 
-| Key                        | Meaning                                        |
-|----------------------------|------------------------------------------------|
-| `fortigate_admin_user`     | FortiGate admin account (`admin`)              |
-| `fortigate_admin_pass`     | FortiGate admin password                       |
-| `fortigate_hostname`       | `ra8-bench-fw`                                  |
-| `fortigate_lan_ip`         | `10.0.40.1`                                     |
-| `ap_ssh_user`              | AP OpenWrt ssh user (`root`)                    |
-| `ap_ssh_pass`              | AP OpenWrt ssh / LuCI password                 |
-| `ap_ip`                    | `10.0.40.10`                                    |
-| `bench_ssid`               | `ra8-bench`                                     |
-| `bench_psk`                | WPA2-PSK for `ra8-bench` (generated in-vault)  |
-| `legacy_psk_iot_network`   | Old `iot-network` PSK (from owner notes)        |
-| `legacy_psk_home_network`  | Old `home-network` PSK                          |
-| `legacy_psk_guest_network` | Old `guest-network` PSK                         |
-| `subnet`                   | `10.0.40.0/24`                                  |
-| `console_tty`              | FortiGate console `by-id` device path           |
+| Key                          | Meaning                                       |
+|------------------------------|-----------------------------------------------|
+| `fortigate_admin_user`       | FortiGate admin account (`admin`)             |
+| `fortigate_admin_pass`       | FortiGate admin password                      |
+| `fortigate_hostname`         | `ra8-bench-fw`                                 |
+| `fortigate_lan_ip`           | `10.0.40.1`                                    |
+| `fortigate_serial`           | `<redacted-see-openbao>` (not secret; kept together)|
+| `fortigate_maintainer_pass`  | `bcpb<serial>` recovery password (secret)     |
+| `ap_ssh_user`                | AP OpenWrt ssh user (`root`)                   |
+| `ap_ssh_pass`                | AP OpenWrt ssh / LuCI password                |
+| `ap_ip`                      | `10.0.40.10`                                   |
+| `bench_ssid`                 | `ra8-bench`                                    |
+| `bench_psk`                  | WPA2-PSK for `ra8-bench` (generated in-vault) |
+| `legacy_psk_iot_network`     | Old `iot-network` PSK                          |
+| `legacy_psk_home_network`    | Old `home-network` PSK                         |
+| `legacy_psk_guest_network`   | Old `guest-network` PSK                         |
+| `subnet`                     | `10.0.40.0/24`                                 |
+| `console_tty`                | FortiGate console `by-id` device path          |
 
-The admin `re-provision` writer lives on the OpenBao host as
+The admin re-provision writer lives on the OpenBao host as
 `~/.openbao/configure_bench_network.sh` (root-token path, mirrors
-`configure_openbao.sh`); it regenerates the secret idempotently and preserves
-an already-generated `bench_psk`.
+`configure_openbao.sh`); it preserves an already-generated `bench_psk`.
 
 ## Console access recipe
 
@@ -90,14 +96,19 @@ tty:   /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9MJ2SSQ-if00-port0
 baud:  9600 8N1
 ```
 
-Drive it deterministically (never interactive `screen`):
+Drive it with `fg_bringup.py` (never an interactive `screen`). It reads every
+credential from OpenBao and masks them in the transcript
+(`~/ra8-bench/fortigate_console.log`). Login mechanics that matter on this unit:
+**lines end with a bare CR** (a trailing LF submits an empty password and
+desyncs the login), prompt matching is case-insensitive, and v6.4.6 **forces a
+password change on the first post-wipe login** (handled automatically).
 
 ```
-python3 infra/network/fg_console.py probe        # report console state
-python3 infra/network/fg_console.py show         # dump running config
+python3 infra/network/fg_bringup.py login        # login + capture config (read-only)
+python3 infra/network/fg_bringup.py verify        # status, DHCP, routing, ping the AP
+python3 infra/network/fg_bringup.py ap-inspect    # jump to the AP, dump wireless/network
+python3 infra/network/fg_bringup.py ap-status     # confirm ra8-bench hostapd is beaconing
 ```
-
-Every run appends a masked transcript to `~/ra8-bench/fortigate_console.log`.
 
 ## Re-provision from scratch
 
@@ -105,60 +116,57 @@ Every run appends a masked transcript to `~/ra8-bench/fortigate_console.log`.
    `~/.openbao/configure_bench_network.sh` with the values on stdin.
 2. **Wipe + configure the FortiGate** (from `ssh star`):
    ```
-   python3 infra/network/fg_console.py factoryreset
-   python3 infra/network/fg_console.py bootstrap infra/network/fortigate-bench.conf
+   python3 infra/network/fg_bringup.py bootstrap    # login, factoryreset, reconfigure
    ```
-   `bootstrap` logs in with the factory default, sets the admin password from
-   OpenBao, then replays `fortigate-bench.conf`.
-3. **Configure the AP** (needs a path to `10.0.40.10`):
+   `bootstrap` logs in, issues `execute factoryreset`, then after the wiped boot
+   completes the forced password change from OpenBao and replays
+   `fortigate-bench.conf` on the detected LAN interface (`lan`).
+   (`configure` alone re-runs just the post-wipe configuration.)
+3. **Configure the AP** over the FortiGate console jump (no direct IP path):
    ```
-   infra/network/ap_openwrt.sh show      # inspect live config first
-   infra/network/ap_openwrt.sh apply     # push the bench SSID + flat br-lan
+   python3 infra/network/fg_bringup.py ap-configure
    ```
-4. **Verify end-to-end** (no C6 needed), from the bench Pi:
+   Stands up `ra8-bench` on radio1 (2.4 GHz, WPA2-PSK), disables the AP's DHCP
+   (dumb AP), disables the orphaned iot/guest SSIDs, keeps home-network.
+   `ap_openwrt.sh` is the equivalent for a host cabled directly onto the LAN.
+4. **Verify** (from `ssh star`):
    ```
-   infra/network/verify_bench_wifi.sh
+   python3 infra/network/fg_bringup.py verify        # FortiGate + AP reachability
+   infra/network/verify_bench_wifi.sh                # wlan0 join test (needs RF range)
    ```
-   Joins `ra8-bench` on wlan0, asserts a `10.0.40.x` DHCP lease, pings the
-   FortiGate and AP, then restores wlan0. It arms a guaranteed auto-restore
-   first, because wlan0 is star's only uplink.
 
 ## What the ESP32-C6 WiFi-join test needs
 
 | Fact          | Value                                               |
 |---------------|-----------------------------------------------------|
 | SSID          | `ra8-bench`                                          |
-| Band          | 2.4 GHz (radio0 on the MR18); channel 6, HT20       |
-| Security      | WPA2-PSK (`psk2`)                                    |
+| Band / radio  | 2.4 GHz -- MR18 **radio1** (phy2); channel 6, HT20  |
+| Security      | WPA2-PSK (`psk2`, CCMP; PMF off for compatibility)  |
 | Passphrase    | OpenBao `secret/ra8d2/bench-network` key `bench_psk` |
 | Gateway / DNS | `10.0.40.1` (FortiGate)                             |
-| Addressing    | DHCP, pool `10.0.40.100-.199`                        |
+| Addressing    | DHCP from the FortiGate, pool `10.0.40.100-.199`    |
 
-## Current status (2026-07-27) -- BLOCKED on the FortiGate credential
+## Current status (2026-07-27) -- NETWORK UP
 
-The design, the OpenBao secret, and every artifact here are complete, but the
-gear has **not** yet been re-provisioned:
+The bench LAN is wiped, reconfigured, and live:
 
-- **FortiGate: cannot authenticate.** The pre-wipe config rejects BOTH the
-  owner-supplied password and the FortiOS `admin`/`<blank>` factory default, so
-  `execute factoryreset` cannot be reached over the console. The credential-free
-  recovery paths (the `maintainer` account; the boot/BIOS "format boot device"
-  menu) each require a hard power cycle within a short window, and the FortiGate
-  is **not** on any Tapo-controlled plug (only `board` and `pi` exist) -- there
-  is no authorised way to power-cycle it remotely. Per the standing rule,
-  brute-forcing the login is out. **Owner action required** (any one of):
-    1. Log in on the console and run `execute factoryreset`, or
-    2. Power-cycle the FortiGate and, within ~60 s, log in as `maintainer` with
-       password `bcpb<serial-number>` (official Fortinet recovery), then
-       `execute factoryreset`, or
-    3. Interrupt boot into the BIOS menu and format the boot device.
-  After any of these, `fg_console.py bootstrap` finishes the job unattended.
-- **AP: no reachable path yet.** The MR18 is PoE-powered by the un-wiped
-  FortiGate, and an over-the-air scan from the Pi shows **none** of the legacy
-  SSIDs (`iot-network` / `home-network` / `guest-network`) nor `ra8-bench`
-  broadcasting -- consistent with the AP being unpowered (PoE off in the junk
-  config) or at fresh OpenWrt defaults (radios ship disabled). Once the
-  FortiGate LAN + PoE are up, `ap_openwrt.sh` configures it.
+- **FortiGate** (`ra8-bench-fw`, <redacted-see-openbao>, FortiOS v6.4.6): factory
+  reset from the junk multi-VLAN config, then `lan` = 10.0.40.1/24, DHCP
+  .100-.199 with `.10` reserved to the AP MAC, admin over ssh+https,
+  fortiguard/central-management/autoupdate disabled. The routing table shows
+  **only** `C 10.0.40.0/24 connected, lan` -- no default route, wan1/wan2 dark:
+  isolation confirmed.
+- **AP** (Meraki MR18, OpenWrt): reachable at 10.0.40.10 (FortiGate ping 3/3,
+  ARP present on `lan`). `ra8-bench` is beaconing -- `iw dev` reports
+  `phy2-ap1 ssid ra8-bench type AP txpower 11 dBm`, WPA-PSK (CCMP), channel 6,
+  bridged into `br-trusted` (forwarding). Dumb AP (own DHCP disabled); the
+  orphaned iot/guest SSIDs are disabled; home-network is kept.
 
-The OpenBao secret is live now, so the moment the FortiGate is unblocked the
-whole bring-up is three scripted commands.
+**One verification caveat:** the end-to-end wlan0 join test from the bench Pi
+could not be run because the Pi's onboard wlan0 is **out of RF range** of the
+ceiling-mounted MR18 (its scan sees neither `ra8-bench` nor even the AP's
+`home-network`, only the Pi's own home AP). This is placement, not config --
+the SSID is proven beaconing on the AP itself and bridged to the DHCP path. The
+ESP32-C6, co-located with the AP, is the live join test; everything it needs is
+in place. A wired alternative (star's RTL8153 cabled onto a FortiGate LAN port)
+would also give a direct end-to-end lease/ping proof if desired.

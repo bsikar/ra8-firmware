@@ -10,10 +10,18 @@
 # file, an argument list, or a log. The uci batch is fed to the AP on stdin so
 # the PSK never appears in the remote process table either.
 #
-# The MR18 is a single-band-per-radio ath9k device: radio0 = 2.4 GHz, radio1 =
-# 5 GHz (confirm with `iwinfo` on the box). The ESP32-C6 is 2.4 GHz-only, so
-# the bench SSID is pinned to radio0. Everything bridges to a single flat
-# br-lan (no VLAN tags) to match the wiped, flat 10.0.40.0/24 FortiGate LAN.
+# The MR18 is a single-band-per-radio ath9k device. CONFIRMED on this unit:
+# radio0 = 5 GHz, radio1 = 2.4 GHz. The ESP32-C6 is 2.4 GHz-only, so the bench
+# SSID is pinned to radio1. The lan bridge is 'br-trusted' (untagged) to the
+# FortiGate lan switch. This makes the AP a DUMB AP: it disables its own
+# dnsmasq/odhcpd DHCP so the FortiGate (10.0.40.1) is the ONLY DHCP server, and
+# it disables the orphaned iot/guest SSIDs whose VLAN networks were wiped from
+# the FortiGate, keeping the working home-network on 'lan'.
+#
+# NOTE: with no direct IP route to 10.0.40.10, the AP is normally configured
+# over the FortiGate console jump host -- see fg_bringup.py 'ap-configure',
+# which applies this exact uci. This standalone script is for the case where a
+# host (e.g. star's RTL8153) is cabled directly onto the bench LAN.
 #
 # Usage:
 #   infra/network/ap_openwrt.sh apply      # push the config (default)
@@ -23,9 +31,9 @@
 # Prereqs: run from the bench Pi or the Mac with a working path to the AP
 # (10.0.40.10) and the OpenBao consumer creds at ~/.config/hil/openbao.env.
 #
-# STATUS: NOT yet applied. There is currently no network path to the AP: it is
-# PoE-powered by the (un-wiped, locked-out) FortiGate, and no legacy SSID is
-# broadcasting for an over-the-air path. See README.md "Current status".
+# STATUS: the equivalent uci has been APPLIED (2026-07-27) via the FortiGate
+# console jump (fg_bringup.py ap-configure); ra8-bench is live on radio1. This
+# standalone variant stays for the direct-IP-path case. See README.md.
 set -euo pipefail
 
 MODE="${1:-apply}"
@@ -52,23 +60,31 @@ render_uci() {
 set network.lan.ipaddr='${ap_ip}'
 set network.lan.netmask='255.255.255.0'
 set network.lan.gateway='10.0.40.1'
-set network.lan.dns='10.0.40.1'
 set network.lan.proto='static'
 
-set wireless.radio0.disabled='0'
-set wireless.radio0.country='US'
-set wireless.radio0.channel='6'
-set wireless.radio0.htmode='HT20'
+set wireless.radio1.disabled='0'
+set wireless.radio1.channel='6'
+set wireless.radio1.htmode='HT20'
 
-delete wireless.bench 2>/dev/null || true
+delete wireless.bench
 set wireless.bench='wifi-iface'
-set wireless.bench.device='radio0'
+set wireless.bench.device='radio1'
 set wireless.bench.mode='ap'
 set wireless.bench.network='lan'
 set wireless.bench.ssid='${ssid}'
 set wireless.bench.encryption='psk2'
 set wireless.bench.key='__PSK__'
 set wireless.bench.disabled='0'
+
+set wireless.iot_5g.disabled='1'
+set wireless.iot_2g.disabled='1'
+set wireless.guest_5g.disabled='1'
+set wireless.guest_2g.disabled='1'
+
+set dhcp.lan.ignore='1'
+set dhcp.lan.dhcpv4='disabled'
+set dhcp.lan.dhcpv6='disabled'
+set dhcp.lan.ra='disabled'
 UCI
 }
 
@@ -103,6 +119,7 @@ AP_USER="$(bao_field ap_ssh_user)"
   PSK="$(bao_field bench_psk)"
   render_uci "${SSID}" "${AP_IP}" | sed "s|__PSK__|${PSK}|"
   unset PSK
-} | ssh "${AP_USER}@${AP_IP}" 'uci batch && uci commit && wifi reload && /etc/init.d/network reload'
+} | ssh "${AP_USER}@${AP_IP}" \
+  'uci batch && uci commit && wifi reload && /etc/init.d/dnsmasq restart && /etc/init.d/odhcpd restart'
 
-echo "AP configured: SSID='${SSID}' on radio0 (2.4 GHz), static ${AP_IP}, bridged to flat br-lan." >&2
+echo "AP configured: SSID='${SSID}' on radio1 (2.4 GHz), static ${AP_IP} on br-trusted, dumb-AP DHCP off." >&2
