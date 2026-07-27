@@ -45,10 +45,22 @@ over a single physical link. This project uses the **SPI** transport
 (`CONFIG_ESP_SPI_HOST_INTERFACE`), with the RA8D2 as the SPI controller and the
 C6 as the SPI peripheral.
 
-Two out-of-band GPIOs pace the link:
+Two out-of-band GPIOs pace the link. Their **idle levels differ**, which is
+easy to get wrong and was got wrong here (see the side-band section below):
 
-- **DATA_READY** -- the C6 raises it to tell the host it has data to send.
-- **HANDSHAKE** -- the C6 raises it when it is ready for the next transaction.
+- **DATA_READY** -- idles **low**. The C6 raises it only while its transmit
+  queue holds a frame, so on a healthy but quiet link this pin sits low
+  indefinitely. A freshly-booted C6 is the exception: it holds DATA_READY high
+  for its queued `ESPInit` event <!-- LEGACY-OK: upstream log tag --> until the
+  first transaction drains it, and then it stays low.
+- **HANDSHAKE** -- idles **high** once the transport is armed. With this
+  image's `CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y`, the C6 drops it from its
+  chip-select edge interrupt and re-raises it when the next transaction is
+  queued, so it pulses low once per transaction. Bench-observed on every
+  transfer: `pre=1 mid=0 post=1`.
+
+The consequence for any bring-up tool: HANDSHAKE can be identified by watching
+it move, and DATA_READY cannot.
 
 ### Pin map (ESP32-C6 GPIO numbers)
 
@@ -69,12 +81,18 @@ RESET is left disconnected (`-1`) in this bring-up: the C6 is reset by power
 cycling. A future revision may wire a host-driven reset line so the host can
 recover the C6 without a power cycle.
 
-### Pin map (RA8D2 side, Pmod1 / J26)
+### Pin map (RA8D2 side, Pmod1 / J26) -- bench-proven 2026-07-27
 
 The C6 is soldered to Pmod1 (J26). Which MCU pin carries each J26 signal is
 **not** fixed: EK-RA8D2 v1 UM Rev 1.01 Table 17 p 26 shows pins J26-1..J26-4
 are muxed on the board, and Table 18 p 26 selects the mux position from
 SW4-1 / SW4-2.
+
+Every row below was scope-qualified end to end at the J26 hole, and the link
+then came up at SPI mode 3 / 1 MHz with zero bad checksums. The same map is
+machine-readable in
+[`../../coprocessor/esp32c6/pins.env`](../../coprocessor/esp32c6/pins.env)
+(`RA8_PIN_*` / `RA8_J26_*`), which is the source of truth.
 
 | J26 | Signal (C6 GPIO) | RA8D2 pin, Pmod1 **SPI** position | RA8D2 pin, UART position |
 |-----|------------------|-----------------------------------|--------------------------|
@@ -82,10 +100,14 @@ SW4-1 / SW4-2.
 | 2 | COPI (GPIO1) | `P801` (COPI2/TXD2) | `P801` |
 | 3 | CIPO (GPIO2) | `P802` (CIPO2/RXD2) | `P802` |
 | 4 | SCK (GPIO3) | `P803` (SCK2) | `P804` (RTS2) |
-| 7 | side-band | `P006` (IRQ11-DS) | `P006` |
-| 8 | side-band | `P402` | `P402` |
-| 9 | side-band | `P412` | `P412` |
-| 10 | side-band | `P413` | `P413` |
+| 7 | HANDSHAKE (GPIO6) | `P006` (IRQ11-DS) | `P006` |
+| 8 | DATA_READY (GPIO4) | `P402` | `P402` |
+| 9 | *not connected* (future EN / reset) | `P412` | `P412` |
+| 10 | *not connected* | `P413` | `P413` |
+
+J26-5 and J26-11 are ground; there is no 3V3 wire, as the C6 is self-powered
+over its own USB. J26-9 is the hole reserved for the host-driven reset line
+that `C6_PIN_RESET=-1` records as absent.
 
 The controller is **SCI2 in Simple-SPI mode** (`k_ra8_board_pmod1_sci_channel`),
 with the chip-select owned as a GPIO so one assertion spans the whole
@@ -102,36 +124,56 @@ the C6's *clock* pin, and the C6 never sees a chip-select at all.
 |--------|----------|------------------------------------------|
 | SW4-1 | OFF | Pmod1 Mode Select 1 |
 | SW4-2 | OFF | Pmod1 Mode Select 2; OFF+OFF selects SPI |
-| SW4-3 | ON | Octo-SPI Inactive -- frees `P801`..`P804` for Pmod1 |
+| SW4-3 | **ON** | Octo-SPI Inactive -- frees `P801`..`P804` for Pmod1 |
+| SW4-4 | **OFF** | Arduino / mikroBUS inactive (SW4-3 ON + SW4-4 ON is invalid) |
+
+**This bank is the single highest-risk setting on the board for this link.**
+With SW4-4 ON and SW4-3 OFF the Octo-SPI flash owns the Pmod1 SPI pins and the
+U6 / U9 bus switches stay open, so J26-1..J26-4 are not electrically connected
+to the MCU -- while the MCU, the board and the C6 all appear perfectly
+healthy. That misreading, not a wiring fault, was the whole 2026-07-26 outage.
+
+SW4-4 OFF also takes the Arduino and mikroBUS connectors offline, so the
+LSM6DSO IMU Click cannot be used at the same time as the C6 link. That is a
+genuine board-level trade-off, not an oversight.
 
 SW4-3 is a hardware-only analog mux: the U15 PI4IOE5V6408 expander can sense
 and override the other SW4 lines, but a whole-output-space sweep (issue #44,
 recorded on `ra8_board_io_expander_set_octospi_active`) established that its
 GPIOs are not in the Octo-SPI path.
 
-### Side-band assignment: still unresolved
+### Side-band assignment: resolved
 
-Which side-band pin carries DATA_READY (C6 GPIO4) and which carries HANDSHAKE
-(C6 GPIO6) is **not yet established on hardware**. The bring-up instrument for
-it is `examples/ek_ra8d2/hw_pending/c6_spi_probe`, which resolves the mapping
-from the C6's own behaviour rather than from a wiring note: the C6 image sets
-`CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y`, so HANDSHAKE tracks the chip-select edge,
-while DATA_READY stays high only while the C6's transmit queue holds a frame.
-Its 2026-07-26 bench run left the map **still open, and for a physical
-reason**: the C6 is not on the same net as any Pmod1 pin the probe can reach.
-The SW4 positions above were verified correct on the board, and the C6 was
-verified alive and armed (clean esp-hosted 2.12.11 boot, `SPI Ctrl:1 mode: 3`,
-queued boot `event ESPInit`), yet resetting the C6 mid probe run <!-- LEGACY-OK: upstream log tag -->
-moved none of the four side-band pins across 54 samples -- which HANDSHAKE and
-DATA_READY, being C6 GPIO outputs, could not do if they were connected.
-Controller-in also reads all-ones rather than the all-zeroes the C6's internal
-pull-down would force.
+`P006` carries HANDSHAKE and `P402` carries DATA_READY, established on the
+bench by `examples/ek_ra8d2/hw_pending/c6_spi_probe` from the C6's own
+behaviour rather than from a wiring note. The two took different evidence,
+for the reason given in the transport section above:
 
-So the table above records the *board* routing, which is correct; what is not
-yet established is the harness between J26 and the C6. Until that is inspected
-and recorded in `coprocessor/esp32c6/pins.env`, the RA8-side DATA_READY /
-HANDSHAKE assignment stays unknown. See the probe's README for the captured
-evidence.
+- **HANDSHAKE (`P006`)** was identified by *motion*, and abundantly: it tracks
+  the chip-select edge on every transaction (5 votes in the run), and the
+  probe's chip-select hunt provokes that edge without needing a clock or a
+  payload.
+- **DATA_READY (`P402`)** was identified from its *level history* plus the
+  physical qualification of J26-8. It read high while the C6 still held its
+  queued boot event, then low from the first completed transaction onward and
+  for the rest of the run -- exactly the profile of a DATA_READY whose
+  transmit queue has drained, and the only side-band pin with it.
+
+That second identification was nearly missed, and the near-miss is the
+interesting part. DATA_READY transitions **once per boot** and then sits
+still, and that single transition falls outside any transaction's sampling
+window, so a rule that counts pre/mid/post transitions within a transaction
+scores it zero forever. The probe's first heuristic did exactly that, read the
+stillness as absence, and named the floating, unconnected `P413` instead on a
+single noise sample.
+
+The probe now settles the question electrically rather than by catching that
+one transition: `c6_probe_pull_contest` reads each side-band pin with the
+RA8D2's internal pull-up engaged, and a pin still reading low is being sunk by
+a driver on the far end -- something no floating pin can imitate, requiring no
+cooperation from the C6 and no lucky timing. That mechanism has not yet been
+exercised on hardware; the map above does not rest on it. See the probe's
+README for the full record, including the superseded 2026-07-26 diagnosis.
 
 ## Boot and reset
 
