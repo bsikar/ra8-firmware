@@ -103,6 +103,24 @@ The self-hosted Pi runner (`star@star.local`) must have:
     compatible configuration found" even though the device enumerates,
     which looks like a hardware fault and is not one.
 
+## Isolated wireless bench LAN (ESP32-C6)
+
+Wireless testing (the ESP32-C6 co-processor and future WiFi clients) runs on a
+self-contained, air-gapped LAN with **no uplink** to the home network:
+
+  - **FortiGate 81E-POE** (`ra8-bench-fw`) -- router / DHCP / switch on
+    `10.0.40.1/24`, admin over ssh + https, console on the Pi at
+    `/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9MJ2SSQ-if00-port0` (9600 8N1).
+  - **Meraki MR18** (OpenWrt) -- access point at static `10.0.40.10`, PoE-fed by
+    FortiGate `port1`, publishing the 2.4 GHz bench SSID `ra8-bench` (WPA2-PSK).
+
+All of it is codified in `infra/network/` (config artifacts, the pyserial
+console driver, the OpenWrt uci script, and the wlan0 verification harness).
+Every credential -- FortiGate admin, AP root, the per-SSID PSKs, and the
+generated `ra8-bench` PSK -- lives in OpenBao at `secret/ra8d2/bench-network`;
+nothing is committed. See `infra/network/README.md` for the topology diagram,
+subnet plan, re-provision steps, and current bring-up status.
+
 ## Running a single app locally on a Mac (no Pi)
 
 The Pi runners (`hil_run_direct.sh`, `hil_jlink_memprobe.sh`,
