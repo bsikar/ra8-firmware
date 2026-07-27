@@ -10,3 +10,9 @@
     # The bench Pi also hosts the ESP32-C6 on PMOD1, so it builds + flashes the
     # C6 firmware. Drop this role for a HIL-only bench with no C6 attached.
     - c6_toolchain
+    # The Digilent Analog Discovery 2 that probes the RA8 <-> C6 SPI + side-band
+    # lines. Drop this role for a bench with no AD2 attached: it FAILS the play
+    # when the (click-through-gated, hand-downloaded) WaveForms deb is not
+    # staged, which is correct for a bench that has the instrument and wrong for
+    # one that does not.
+    - ad2_tools
