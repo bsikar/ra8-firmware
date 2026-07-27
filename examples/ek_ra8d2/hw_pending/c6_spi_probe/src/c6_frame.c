@@ -9,7 +9,7 @@
  * Unpacks and judges ``struct esp_payload_header`` (esp-hosted-mcu
  * ``common/esp_hosted_header.h``, pinned commit ``949bb30``) straight out of
  * the receive buffer, without vendoring any upstream source. Field offsets,
- * endianness and the acceptance rules all live in ``c6_probe.h`` next to the
+ * endianness and the acceptance rules all live in ``c6_proto.h`` next to the
  * upstream file they were read from.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 #include "c6_probe.h"
+#include "c6_proto.h"
 
 /**
  * @brief Read a little-endian 16-bit field out of a byte buffer.

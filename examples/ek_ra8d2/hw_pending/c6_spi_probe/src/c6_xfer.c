@@ -372,7 +372,7 @@ bool c6_probe_sweep_mode(ra8_spi_mode_t    mode,
     if (kind == k_c6_frame_idle || kind == k_c6_frame_data) {
       decoded = true;
     }
-    *hs_idx = c6_probe_best(st->hs_vote, (uint8_t)k_c6_sb_count);
+    *hs_idx = c6_probe_best(st->hs_vote, (uint8_t)k_c6_sb_count, (uint32_t)k_c6_probe_min_votes);
     ra8_delay_ms((uint32_t)k_c6_probe_gap_ms);
   }
   (void)ra8_sci_spi_deinit((uint8_t)k_ra8_board_pmod1_sci_channel);
