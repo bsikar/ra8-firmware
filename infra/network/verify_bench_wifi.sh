@@ -21,8 +21,10 @@
 #   infra/network/verify_bench_wifi.sh            # run the join/ping/restore
 #   RESTORE_AFTER=180 infra/network/verify_bench_wifi.sh
 #
-# STATUS: NOT yet runnable -- the `ra8-bench` SSID does not exist until the
-# FortiGate is wiped and the AP is configured (both currently blocked). See
+# STATUS: `ra8-bench` is live (2026-07-27), but this test needs the runner to be
+# in RF range of the AP. The bench Pi's onboard wlan0 is out of range of the
+# ceiling-mounted MR18, so run this from a client that can hear the AP (or cable
+# star's RTL8153 onto a FortiGate LAN port for a wired lease/ping proof). See
 # README.md "Current status".
 set -euo pipefail
 
