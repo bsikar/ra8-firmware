@@ -3,28 +3,28 @@
  * @brief Shared contract for the EK-RA8D2 <-> ESP32-C6 esp-hosted SPI probe.
  *
  * @details
+ * This header is the **probe's own** contract: its budgets, the Pmod1
+ * side-band and muxed-net maps, the evidence it accumulates, and the entry
+ * point of each module. The esp-hosted **wire format** it decodes is a
+ * separate concern and lives in `c6_proto.h`, which this header includes.
+ *
  * The probe is split into one module per concern, all driven by `main.c`:
  *
  *   - `src/c6_console.c`  -- bounded console formatters (no newlib printf).
  *   - `src/c6_sideband.c` -- Pmod1 side-band sampling, the muxed-net wire
- *                            test, and the chip-select hunt that identifies
- *                            HANDSHAKE without needing a working link.
- *   - `src/c6_frame.c`    -- hand-decoded esp-hosted payload header.
+ *                            test, the pull-up contest that identifies
+ *                            DATA_READY, and the chip-select hunt that
+ *                            identifies HANDSHAKE. None of the three needs
+ *                            a working data path.
+ *   - `src/c6_frame.c`    -- the `c6_proto.h` half: payload-header decode,
+ *                            checksum and classification.
  *   - `src/c6_xfer.c`     -- one full 1600-byte esp-hosted transaction.
  *
- * Protocol constants are hand-decoded from the pinned upstream
- * esp-hosted-mcu tree (commit `949bb30`, firmware `2.12.11`); no upstream
- * source is vendored. The authoritative files are named at each constant
- * block:
- *
- *   - `docs/spi_full_duplex.md` -- transaction rules, side-band semantics,
- *     recommended evaluation clock.
- *   - `common/esp_hosted_header.h` -- `struct esp_payload_header`.
- *   - `common/transport/esp_hosted_transport.h` -- buffer size, interface
- *     identifiers, `compute_checksum()`.
- *   - `host/drivers/transport/spi/spi_drv.c` -- reference host pacing and
- *     receive validation.
- *   - `slave/main/spi_slave_api.c` -- what the C6 drives. LEGACY-OK: upstream path
+ * Nothing from esp-hosted-mcu is vendored; every protocol constant is
+ * hand-decoded from the pinned upstream tree (commit `949bb30`, firmware
+ * `2.12.11`) and cites its source in `c6_proto.h`. The side-band semantics
+ * this file relies on come from upstream's `docs/spi_full_duplex.md` and
+ * `slave/main/spi_slave_api.c` -- what the C6 drives. LEGACY-OK: upstream path
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "c6_proto.h"
 #include "ra8_err.h"
 #include "ra8_spi.h"
 
@@ -85,6 +86,13 @@ typedef enum : uint32_t {
  * depends on data received from the C6 -- a peripheral that answers with
  * garbage can waste a bounded amount of time and nothing more.
  *
+ * ``k_c6_probe_min_votes`` is an evidence bar rather than a loop bound, and
+ * it exists because of a real mis-identification on the bench: an
+ * unconnected side-band pin floats, and a single noise transition on it is
+ * indistinguishable from one real edge, so a mapping claimed on one vote
+ * named a floating pin while the truly-connected pin sat unresolved. A
+ * mapping is therefore claimed only from repeated, agreeing evidence.
+ *
  * @invariant Every value is non-zero.
  *
  * @par Example:
@@ -95,12 +103,15 @@ typedef enum : uint32_t {
  * @see c6_probe_tunable_t
  */
 typedef enum : uint8_t {
-  k_c6_probe_xfer_per_mode = 4U,   /**< Transactions attempted per SPI mode. */
-  k_c6_probe_mode_count    = 4U,   /**< SPI modes swept.                     */
-  k_c6_probe_hs_poll_max   = 100U, /**< Handshake polls before giving up.    */
-  k_c6_probe_hs_poll_ms    = 5U,   /**< Delay between handshake polls.       */
-  k_c6_probe_dump_bytes    = 32U,  /**< Payload bytes hex-dumped per frame.  */
-  k_c6_probe_str_max       = 96U,  /**< Longest console literal accepted.    */
+  k_c6_probe_xfer_per_mode  = 4U,   /**< Transactions attempted per SPI mode.  */
+  k_c6_probe_mode_count     = 4U,   /**< SPI modes swept.                      */
+  k_c6_probe_hs_poll_max    = 100U, /**< Handshake polls before giving up.     */
+  k_c6_probe_hs_poll_ms     = 5U,   /**< Delay between handshake polls.        */
+  k_c6_probe_dump_bytes     = 32U,  /**< Payload bytes hex-dumped per frame.   */
+  k_c6_probe_str_max        = 96U,  /**< Longest console literal accepted.     */
+  k_c6_probe_pull_samples   = 8U,   /**< Reads per pin in the pull-up contest. */
+  k_c6_probe_pull_settle_ms = 5U,   /**< Settle between pull-up contest reads. */
+  k_c6_probe_min_votes      = 2U,   /**< Votes required to claim a mapping.    */
 } c6_probe_budget_t;
 
 /**
@@ -133,167 +144,7 @@ typedef enum : uint8_t {
 } c6_probe_fmt_t;
 
 /* =============================================================================
- * 2. esp-hosted SPI full-duplex protocol constants (upstream 949bb30)
- * =============================================================================
- */
-
-/**
- * @enum c6_proto_dim_t
- * @brief Fixed transport dimensions of the esp-hosted SPI FD transport.
- *
- * @details
- * Source: esp-hosted-mcu ``common/transport/esp_hosted_transport.h``
- * (``ESP_TRANSPORT_SPI_MAX_BUF_SIZE``) and ``common/esp_hosted_header.h``
- * (``struct esp_payload_header``, twelve packed bytes). Both peers set the
- * transaction length to the full buffer regardless of how much payload is
- * live, so the controller must always clock exactly
- * ::k_c6_proto_buf_size bytes.
- *
- * @invariant ``k_c6_proto_payload_max + k_c6_proto_hdr_size ==
- *            k_c6_proto_buf_size``.
- *
- * @par Example:
- * @code
- * static uint8_t rx[k_c6_proto_buf_size];
- * @endcode
- *
- * @see c6_hdr_offset_t
- */
-typedef enum : uint16_t {
-  k_c6_proto_buf_size    = 1600U, /**< Bytes clocked per transaction.        */
-  k_c6_proto_hdr_size    = 12U,   /**< sizeof(struct esp_payload_header).    */
-  k_c6_proto_payload_max = 1588U, /**< Largest payload the header may claim. */
-} c6_proto_dim_t;
-
-/**
- * @enum c6_hdr_offset_t
- * @brief Byte offsets of every field in the esp-hosted payload header.
- *
- * @details
- * Hand-decoded from ``struct esp_payload_header`` in esp-hosted-mcu
- * ``common/esp_hosted_header.h``. The struct is packed and every
- * multi-byte field is little-endian on the wire (the reference host wraps
- * each one in ``le16toh`` / ``htole16``). Byte 0 packs two nibbles:
- * ``if_type`` occupies bits 3:0 and ``if_num`` bits 7:4, which is how the
- * little-endian ABI lays out the two four-bit members in declaration
- * order.
- *
- * @invariant Every offset is below ::k_c6_proto_hdr_size.
- *
- * @par Example:
- * @code
- * const uint8_t iface = rx[k_c6_hdr_off_iface];
- * @endcode
- *
- * @see c6_hdr_t
- */
-typedef enum : uint8_t {
-  k_c6_hdr_off_iface    = 0U,  /**< if_type[3:0] | if_num[7:4].        */
-  k_c6_hdr_off_flags    = 1U,  /**< Fragment / wake / power-save bits. */
-  k_c6_hdr_off_len_lo   = 2U,  /**< Payload length, low byte.          */
-  k_c6_hdr_off_len_hi   = 3U,  /**< Payload length, high byte.         */
-  k_c6_hdr_off_off_lo   = 4U,  /**< Payload offset, low byte.          */
-  k_c6_hdr_off_off_hi   = 5U,  /**< Payload offset, high byte.         */
-  k_c6_hdr_off_csum_lo  = 6U,  /**< Checksum, low byte.                */
-  k_c6_hdr_off_csum_hi  = 7U,  /**< Checksum, high byte.               */
-  k_c6_hdr_off_seq_lo   = 8U,  /**< Sequence number, low byte.         */
-  k_c6_hdr_off_seq_hi   = 9U,  /**< Sequence number, high byte.        */
-  k_c6_hdr_off_throttle = 10U, /**< throttle_cmd[1:0] | reserved[7:2]. */
-  k_c6_hdr_off_pkttype  = 11U, /**< reserved3 / hci_ or priv_pkt_type. */
-} c6_hdr_offset_t;
-
-/**
- * @enum c6_if_type_t
- * @brief esp-hosted interface identifiers carried in ``if_type``.
- *
- * @details
- * Mirrors ``esp_hosted_if_type_t`` in esp-hosted-mcu
- * ``common/esp_hosted_interface.h``. ::k_c6_if_max doubles as the "this
- * frame carries nothing" marker: both the reference host (``spi_drv.c``)
- * and the C6's peripheral-side SPI driver stamp it into the header of an idle
- * filler transaction.
- *
- * @invariant Values are contiguous from zero, matching the upstream enum.
- *
- * @par Example:
- * @code
- * tx[k_c6_hdr_off_iface] = (uint8_t)k_c6_if_max;  // idle filler frame
- * @endcode
- *
- * @see c6_proto_priv_t
- */
-typedef enum : uint8_t {
-  k_c6_if_invalid = 0U, /**< Unused slot zero.                    */
-  k_c6_if_sta     = 1U, /**< Wi-Fi station data.                  */
-  k_c6_if_ap      = 2U, /**< Wi-Fi soft-AP data.                  */
-  k_c6_if_serial  = 3U, /**< Control-plane (RPC) channel.         */
-  k_c6_if_hci     = 4U, /**< Bluetooth HCI.                       */
-  k_c6_if_priv    = 5U, /**< Private events, e.g. the INIT event. */
-  k_c6_if_test    = 6U, /**< Raw throughput test channel.         */
-  k_c6_if_eth     = 7U, /**< Ethernet data.                       */
-  k_c6_if_max     = 8U, /**< Idle filler marker.                  */
-} c6_if_type_t;
-
-/**
- * @enum c6_proto_priv_t
- * @brief Private-interface packet and event tags, plus the filler signature.
- *
- * @details
- * ``ESP_PRIV_PACKET_TYPE`` / ``ESP_PRIV_EVENT_TYPE`` come from
- * esp-hosted-mcu ``common/transport/esp_hosted_transport.h``. The C6
- * queues exactly one private event at boot -- an ``ESP_PRIV_EVENT_INIT``
- * carried on ::k_c6_if_priv -- and it stays queued until a host drains it,
- * which is what makes it the ideal first-light payload.
- *
- * ``get_next_tx_buffer()`` in the C6's peripheral-side SPI driver zeroes a
- * buffer and stamps ``if_type = ESP_MAX_IF`` plus ``if_num = 0xF`` for an
- * idle filler frame, leaving length, offset and checksum at zero.
- * Recognising that signature matters: an idle frame proves the wire, the
- * clock polarity and the C6's SPI peripheral are all live even after the
- * queued INIT event has been drained, and it is trivially distinguishable
- * from a dead bus reading all-zero or all-ones.
- *
- * @invariant ``k_c6_dummy_if_num`` fits in the header's four-bit field.
- *
- * @par Example:
- * @code
- * const bool idle = (h.if_type == (uint8_t)k_c6_if_max) &&
- *                   (h.if_num == (uint8_t)k_c6_dummy_if_num);
- * @endcode
- *
- * @see c6_if_type_t
- */
-typedef enum : uint8_t {
-  k_c6_priv_pkt_event  = 0x33U, /**< priv_pkt_type of an event frame.         */
-  k_c6_priv_event_init = 0x22U, /**< event_type of the boot INIT event.       */
-  k_c6_dummy_if_num    = 0x0FU, /**< if_num the C6 stamps into filler frames. */
-} c6_proto_priv_t;
-
-/**
- * @enum c6_bitop_t
- * @brief Shifts and masks used to unpack the header.
- *
- * @details Every one of these names a field boundary in
- * ``struct esp_payload_header``; none is a bare literal at a use site.
- *
- * @invariant Each shift is smaller than the width of the field it moves.
- *
- * @par Example:
- * @code
- * const uint8_t if_num = (uint8_t)((iface >> k_c6_shift_nibble) & k_c6_mask_nibble);
- * @endcode
- *
- * @see c6_hdr_offset_t
- */
-typedef enum : uint8_t {
-  k_c6_shift_nibble  = 4U,    /**< if_num sits in the upper nibble. */
-  k_c6_mask_nibble   = 0x0FU, /**< Four-bit field mask.             */
-  k_c6_shift_byte    = 8U,    /**< Little-endian high-byte shift.   */
-  k_c6_mask_throttle = 0x03U, /**< throttle_cmd occupies bits 1:0.  */
-} c6_bitop_t;
-
-/* =============================================================================
- * 3. Side-band pins
+ * 2. Side-band pins
  * =============================================================================
  */
 
@@ -403,70 +254,20 @@ typedef enum : uint8_t {
   k_c6_wire_odd       = 3U, /**< Inverted result: not physically sane.  */
 } c6_wire_kind_t;
 
-/* =============================================================================
- * 4. Frame decode
- * =============================================================================
- */
-
-/**
- * @enum c6_frame_kind_t
- * @brief Classification of one received 1600-byte transaction.
- *
- * @details
- * Mirrors the acceptance rules of ``process_spi_rx_buf()`` in
- * esp-hosted-mcu ``host/drivers/transport/spi/spi_drv.c``, with the C6's
- * idle filler frame recognised ahead of them so a quiet-but-alive link is
- * never mistaken for a dead one.
- *
- * @invariant Exactly one kind describes any received buffer.
- *
- * @par Example:
- * @code
- * if (c6_probe_classify(&hdr) == k_c6_frame_data) { ... }
- * @endcode
- *
- * @see c6_probe_classify
- */
-typedef enum : uint8_t {
-  k_c6_frame_garbage  = 0U, /**< No recognisable esp-hosted structure.   */
-  k_c6_frame_idle     = 1U, /**< The C6's idle filler frame.             */
-  k_c6_frame_data     = 2U, /**< Real frame, checksum verified.          */
-  k_c6_frame_bad_csum = 3U, /**< Header shape sane, checksum mismatched. */
-} c6_frame_kind_t;
-
-/**
- * @struct c6_hdr_t
- * @brief Decoded esp-hosted payload header plus the locally recomputed sum.
- *
- * @invariant ``offset`` and ``len`` are taken verbatim from the wire and are
- *            judged by ::c6_probe_classify, not by the decoder.
- *
- * @par Example:
- * @code
- * c6_hdr_t h = {};
- * c6_probe_decode_header(rx, &h);
- * @endcode
- *
- * @see c6_probe_decode_header
- */
-typedef struct {
-  uint8_t  if_type;  /**< Interface identifier (::c6_if_type_t).       */
-  uint8_t  if_num;   /**< Interface instance number.                   */
-  uint8_t  flags;    /**< Fragment / wake / power-save bits.           */
-  uint16_t len;      /**< Payload length claimed by the sender.        */
-  uint16_t offset;   /**< Payload offset; always the header size.      */
-  uint16_t checksum; /**< Checksum carried on the wire.                */
-  uint16_t seq_num;  /**< Sender sequence number.                      */
-  uint8_t  throttle; /**< Wi-Fi transmit throttle command.             */
-  uint8_t  pkt_type; /**< HCI / private packet sub-type.               */
-  uint16_t computed; /**< Checksum recomputed over the receive buffer. */
-} c6_hdr_t;
-
 /**
  * @struct c6_probe_stats_t
  * @brief Running evidence gathered across every transaction.
  *
+ * @details
+ * Two independent kinds of evidence live here and they are not equally
+ * strong. The vote counters are *behavioural*: they need the C6 to move a
+ * pin while the probe happens to be sampling. ``pull_low`` is *electrical*:
+ * a pin read as an input with the internal pull-up engaged can only read low
+ * if something off-chip is sinking the pull-up current, which no floating
+ * pin can fake. ::c6_probe_resolve_map weighs them in that order.
+ *
  * @invariant ``hs_vote`` / ``dr_vote`` are only ever incremented.
+ * @invariant ``pull_low[i] <= pull_samples`` for every ``i``.
  *
  * @par Example:
  * @code
@@ -477,18 +278,20 @@ typedef struct {
  * @see c6_probe_vote
  */
 typedef struct {
-  uint32_t attempts;                 /**< Transactions clocked.               */
-  uint32_t idle_frames;              /**< Idle filler frames decoded.         */
-  uint32_t data_frames;              /**< Real frames with a good checksum.   */
-  uint32_t bad_csum_frames;          /**< Sane shape, checksum mismatched.    */
-  uint32_t hs_vote[k_c6_sb_count];   /**< Pin dropped while CS was asserted.  */
-  uint32_t dr_vote[k_c6_sb_count];   /**< Pin dropped once the queue drained. */
-  uint8_t  ever_high[k_c6_sb_count]; /**< Pin was seen high at least once.    */
-  uint8_t  ever_low[k_c6_sb_count];  /**< Pin was seen low at least once.     */
+  uint32_t attempts;                 /**< Transactions clocked.                */
+  uint32_t idle_frames;              /**< Idle filler frames decoded.          */
+  uint32_t data_frames;              /**< Real frames with a good checksum.    */
+  uint32_t bad_csum_frames;          /**< Sane shape, checksum mismatched.     */
+  uint32_t hs_vote[k_c6_sb_count];   /**< Pin dropped while CS was asserted.   */
+  uint32_t dr_vote[k_c6_sb_count];   /**< Pin dropped once the queue drained.  */
+  uint8_t  ever_high[k_c6_sb_count]; /**< Pin was seen high at least once.     */
+  uint8_t  ever_low[k_c6_sb_count];  /**< Pin was seen low at least once.      */
+  uint8_t  pull_low[k_c6_sb_count];  /**< Reads that lost to an external sink. */
+  uint8_t  pull_samples;             /**< Pull-up reads per pin; 0 = not run.  */
 } c6_probe_stats_t;
 
 /* =============================================================================
- * 5. Module entry points
+ * 3. Module entry points
  * =============================================================================
  */
 
@@ -553,10 +356,11 @@ void c6_probe_put_hex(uint32_t value, uint8_t digits);
  * @brief Claim the four Pmod1 side-band pins as no-pull digital inputs.
  *
  * @details
- * No internal pull is applied: the C6 drives HANDSHAKE and DATA_READY
- * push-pull, and a pull-up would make an unconnected pin indistinguishable
- * from an asserted one -- precisely the distinction this app exists to
- * make.
+ * No internal pull is applied for *sampling*: the C6 drives HANDSHAKE and
+ * DATA_READY push-pull, and holding a pull-up during the run would make an
+ * unconnected pin indistinguishable from an asserted one -- precisely the
+ * distinction this app exists to make. ::c6_probe_pull_contest engages the
+ * pull-up briefly and on purpose, then restores the pins to this state.
  *
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok All four side-band pins are inputs.
@@ -624,9 +428,23 @@ void c6_probe_print_sideband(const char* label, const c6_sideband_sample_t* s);
  * chip-select is asserted, because the C6 is built with
  * ``CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y`` and clears it from its
  * chip-select edge interrupt (``gpio_disable_hs_isr_handler`` in
- * the C6's peripheral-side SPI driver). DATA_READY is the pin that is high
- * before the transfer and still low well after it, because the C6 clears
- * it only when its transmit queue runs dry (``get_next_tx_buffer``).
+ * the C6's peripheral-side SPI driver). That is a genuine identification:
+ * the pin moves, twice per transaction, in step with a line the probe
+ * itself drives.
+ *
+ * The DATA_READY vote is far weaker and must not be read as its equal. It
+ * counts a pin that was high before the transfer and still low well after
+ * it, which is what the C6 does when it *drains* a queued frame
+ * (``get_next_tx_buffer``). That is a once-per-boot event: the C6 raises
+ * DATA_READY for its queued INIT event and lowers it when the first
+ * transaction takes it, after which the pin stays low and every later
+ * ``pre`` sample is already low, so the vote cannot fire again. Worse, that
+ * single transition usually lands *between* transactions -- during the
+ * chip-select hunt, say -- where nothing is sampling, so in practice the
+ * counter often stays at zero for the correctly-wired pin. The vote proves
+ * DATA_READY when it fires and says nothing at all when it does not, which
+ * is why ::c6_probe_resolve_map prefers the pull-up contest and keeps this
+ * counter only as a fallback.
  *
  * @param[in]     pre  Sample taken with the chip-select released.
  * @param[in]     mid  Sample taken with the chip-select asserted.
@@ -654,31 +472,187 @@ void c6_probe_vote(const c6_sideband_sample_t* pre,
                    c6_probe_stats_t*           st);
 
 /**
- * @brief Pick the side-band pin with the most votes, ignoring one index.
+ * @brief Pick the side-band pin that won the vote outright, or report none.
  *
- * @param[in] votes  Per-pin vote counters.
- * @param[in] ignore Index to skip, or ::k_c6_sb_count to skip nothing.
+ * @details
+ * A winner must clear two bars, and both exist because the bench produced
+ * the failure they prevent. It must reach ``min_votes``, so one transition
+ * on a floating pin cannot name a mapping; and it must be a *strict*
+ * winner, so a tie is reported as unresolved rather than silently broken by
+ * table order. Reporting "unresolved" is a useful answer here -- claiming
+ * the wrong pin is not.
  *
- * @return Winning pin index, or ::k_c6_sb_count when no pin scored.
- * @retval k_c6_sb_count No pin collected a vote, or ``votes`` was NULL.
+ * @param[in] votes     Per-pin vote counters.
+ * @param[in] ignore    Index to skip, or ::k_c6_sb_count to skip nothing.
+ * @param[in] min_votes Smallest vote count that may claim a mapping; must
+ *                      be at least one.
+ *
+ * @return Winning pin index, or ::k_c6_sb_count when none qualifies.
+ * @retval k_c6_sb_count No pin reached ``min_votes``, the top score was
+ *                       tied, ``votes`` was NULL, or ``min_votes`` was zero.
  *
  * @pre ``votes`` is non-NULL for a winner to be reported.
  * @pre ``ignore`` is a valid index or ::k_c6_sb_count.
  * @post The returned index is either a strict winner or ::k_c6_sb_count.
  * @post ``votes`` is unmodified.
  *
- * @note Ties resolve to the lowest index, reachable only when the wiring
- *       itself is ambiguous.
+ * @note Pure function; safe from any context.
  *
  * @par Example:
  * @code
- * const uint8_t hs = c6_probe_best(stats.hs_vote, (uint8_t)k_c6_sb_count);
+ * const uint8_t hs = c6_probe_best(stats.hs_vote,
+ *                                  (uint8_t)k_c6_sb_count,
+ *                                  (uint32_t)k_c6_probe_min_votes);
  * @endcode
  *
- * @see c6_probe_vote
+ * @see c6_probe_resolve_map
  * @since 0.1.0
  */
-uint8_t c6_probe_best(const uint32_t* votes, uint8_t ignore);
+uint8_t c6_probe_best(const uint32_t* votes, uint8_t ignore, uint32_t min_votes);
+
+/**
+ * @brief Find which side-band pins an external driver is holding low.
+ *
+ * @details
+ * Re-claims each side-band pin as an input with the RA8D2's internal
+ * pull-up engaged, reads it ::k_c6_probe_pull_samples times, and restores
+ * it to a no-pull input. A pin with nothing on it is pulled high and reads
+ * high every time; a pin that keeps reading low is losing a current fight
+ * to something off-chip, which nothing floating can imitate. That is the
+ * strongest "this pin is connected" evidence the probe can gather, and it
+ * needs no cooperation from the C6 whatsoever.
+ *
+ * It is what identifies DATA_READY. An esp-hosted peripheral with an empty
+ * transmit queue holds DATA_READY low by design, so across a whole probe run
+ * that pin moves once at most, and usually where nothing is sampling. The
+ * pin that matters most is therefore the one a transition-counting rule
+ * cannot see -- and the one this rule reads without ambiguity.
+ *
+ * One line per pin is printed, so the raw count is in the log even when the
+ * verdict is unresolved.
+ *
+ * @param[in,out] st Statistics block; ``pull_low`` and ``pull_samples`` are
+ *                   written.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok Every pin was tested and restored to a no-pull input.
+ * @retval k_ra8_err_null_ptr ``st`` was NULL.
+ * @retval k_ra8_err_gpio_conflict A side-band pin is owned elsewhere.
+ *
+ * @pre ::c6_probe_sideband_init has claimed the side-band pins.
+ * @pre The chip-select is released and no transaction is in flight.
+ * @post On success every side-band pin is a no-pull input again.
+ * @post On success ``st->pull_samples`` is ::k_c6_probe_pull_samples.
+ *
+ * @warning Timing is part of the measurement, in both directions. Run it
+ *          only with the chip-select released -- HANDSHAKE is legitimately
+ *          low while it is asserted, and would read as a sunk pin. Run it
+ *          only *after* the transaction sweep as well: a freshly-booted C6
+ *          holds DATA_READY high for its queued INIT event until the first
+ *          transaction drains it, so an early contest finds nothing sunk.
+ *
+ * @note Not thread-safe; boot-time diagnostic only.
+ *
+ * @par Example:
+ * @code
+ * if (c6_probe_pull_contest(&stats) != k_ra8_ok) { panic(); }
+ * @endcode
+ *
+ * @see c6_probe_sunk_pin
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t c6_probe_pull_contest(c6_probe_stats_t* st);
+
+/**
+ * @brief Name the one pin that lost every read of the pull-up contest.
+ *
+ * @details
+ * Reads the verdict out of the evidence ::c6_probe_pull_contest gathered: a
+ * pin qualifies only when ``pull_low`` equals ``pull_samples``, i.e. it read
+ * low on every single sample taken against the pull-up.
+ *
+ * Two conditions are deliberately reported as "no answer" rather than as a
+ * winner. **Unanimity** is required because a pin that reads low only
+ * sometimes is being driven by something that is not an idle DATA_READY --
+ * a coupled edge, a shared ground bounce -- and naming it would be a guess.
+ * **Uniqueness** is required because two sunk pins mean the caller's
+ * exclusion (typically the resolved HANDSHAKE) has not narrowed the field to
+ * one, and picking either by table order is the exact failure this whole
+ * mechanism exists to prevent.
+ *
+ * @param[in] st     Statistics block filled by ::c6_probe_pull_contest.
+ * @param[in] ignore Index to skip, or ::k_c6_sb_count to skip nothing.
+ *
+ * @return Index of the uniquely sunk pin, or ::k_c6_sb_count.
+ * @retval k_c6_sb_count No pin was sunk, more than one was, the contest was
+ *                       never run, or ``st`` was NULL.
+ *
+ * @pre ``st`` is non-NULL for a verdict to be reported.
+ * @pre ``ignore`` is a valid index or ::k_c6_sb_count.
+ * @post ``st`` is unmodified.
+ * @post The returned index is unique, or ::k_c6_sb_count.
+ *
+ * @note Pure function; safe from any context.
+ *
+ * @par Example:
+ * @code
+ * const uint8_t dr = c6_probe_sunk_pin(&stats, hs_idx);
+ * @endcode
+ *
+ * @see c6_probe_pull_contest
+ * @since 0.1.0
+ */
+uint8_t c6_probe_sunk_pin(const c6_probe_stats_t* st, uint8_t ignore);
+
+/**
+ * @brief Resolve the HANDSHAKE and DATA_READY side-band map from the
+ *        accumulated evidence.
+ *
+ * @details
+ * The whole identification policy lives here, in one place, ranked by how
+ * hard the evidence is to fake:
+ *
+ *   1. **HANDSHAKE** is the pin that wins the vote outright -- more
+ *      chip-select-tracking transitions than any other pin, and at least
+ *      ::k_c6_probe_min_votes of them. The C6 drives that edge itself, so
+ *      repeated transitions in step with a line the probe controls are not
+ *      something noise produces.
+ *   2. **DATA_READY** is the pin that loses the pull-up contest outright,
+ *      excluding whichever pin took HANDSHAKE. An idle esp-hosted
+ *      peripheral holds DATA_READY low, and only a real connection can hold
+ *      a pin down against the pull-up.
+ *   3. Failing that, DATA_READY falls back to the drain-transition vote
+ *      under the same threshold -- the only evidence available if the C6
+ *      had a frame queued and drained it during the run.
+ *
+ * Any step that cannot decide yields ::k_c6_sb_count, and the caller prints
+ * ``unresolved``. That is deliberate: the previous policy took the highest
+ * vote unconditionally, and a single noise transition on an unconnected pin
+ * was enough to publish a wrong pin map that read exactly like a measured
+ * one.
+ *
+ * @param[in]  st     Accumulated evidence.
+ * @param[out] hs_idx Resolved HANDSHAKE index, or ::k_c6_sb_count.
+ * @param[out] dr_idx Resolved DATA_READY index, or ::k_c6_sb_count.
+ *
+ * @pre All three pointers are non-NULL.
+ * @pre ``st`` holds the evidence of a completed run.
+ * @post ``*hs_idx`` and ``*dr_idx`` are valid indices or ::k_c6_sb_count.
+ * @post ``*hs_idx != *dr_idx`` unless both are ::k_c6_sb_count.
+ *
+ * @note Pure with respect to ``st``; safe from any context.
+ *
+ * @par Example:
+ * @code
+ * uint8_t hs = 0U;
+ * uint8_t dr = 0U;
+ * c6_probe_resolve_map(&stats, &hs, &dr);
+ * @endcode
+ *
+ * @see c6_probe_pull_contest
+ * @since 0.1.0
+ */
+void c6_probe_resolve_map(const c6_probe_stats_t* st, uint8_t* hs_idx, uint8_t* dr_idx);
 
 /**
  * @brief Name a side-band pin for the console.
@@ -788,138 +762,6 @@ void c6_probe_wire_test(void);
  * @since 0.1.0
  */
 uint8_t c6_probe_cs_hunt(c6_probe_stats_t* st);
-
-/**
- * @brief Unpack the twelve-byte esp-hosted payload header.
- *
- * @param[in]  buf Receive buffer holding a completed transaction.
- * @param[out] out Decoded header; ignored when NULL.
- *
- * @pre ``buf`` holds at least ::k_c6_proto_hdr_size bytes.
- * @pre ``out`` is non-NULL for anything to be stored.
- * @post Every ``out`` field is populated from the wire bytes.
- * @post ``out->computed`` holds the locally recomputed checksum.
- *
- * @note Performs no validation; ::c6_probe_classify judges the result.
- *
- * @par Example:
- * @code
- * c6_hdr_t h = {};
- * c6_probe_decode_header(rx, &h);
- * @endcode
- *
- * @see c6_probe_classify
- * @since 0.1.0
- */
-void c6_probe_decode_header(const uint8_t* buf, c6_hdr_t* out);
-
-/**
- * @brief Recompute the esp-hosted checksum over a received frame.
- *
- * @details
- * ``compute_checksum()`` in esp-hosted-mcu
- * ``common/transport/esp_hosted_transport.h`` is a plain 16-bit sum of
- * every byte from the start of the header through the end of the payload.
- * Both peers zero the checksum field before summing
- * (``process_spi_rx_buf`` in ``host/drivers/transport/spi/spi_drv.c``), so
- * the two checksum bytes are skipped here instead of being cleared, which
- * leaves the receive buffer intact for the hex dump.
- *
- * @param[in] buf   Receive buffer.
- * @param[in] count Bytes to sum: header offset plus payload length.
- *
- * @return The 16-bit sum, or zero when ``buf`` is NULL.
- * @retval 0 ``buf`` was NULL, ``count`` was zero, or the sum is zero.
- *
- * @pre ``buf`` holds at least ``count`` bytes.
- * @pre ``count`` is no larger than ::k_c6_proto_buf_size.
- * @post The buffer is unmodified.
- * @post Overflow wraps at 16 bits, exactly as upstream does.
- *
- * @note Requires ``buf`` to be stable for the duration of the call.
- *
- * @par Example:
- * @code
- * const uint16_t sum = c6_probe_checksum(rx, (uint16_t)(h.offset + h.len));
- * @endcode
- *
- * @see c6_probe_decode_header
- * @since 0.1.0
- */
-uint16_t c6_probe_checksum(const uint8_t* buf, uint16_t count);
-
-/**
- * @brief Judge a decoded header against the upstream receive rules.
- *
- * @param[in] h Decoded header.
- *
- * @return The frame classification.
- * @retval k_c6_frame_idle     Idle filler frame from the C6.
- * @retval k_c6_frame_data     Real frame whose checksum verified.
- * @retval k_c6_frame_bad_csum Real-looking frame with a bad checksum.
- * @retval k_c6_frame_garbage  No esp-hosted structure at all, or NULL input.
- *
- * @pre ``h`` was produced by ::c6_probe_decode_header.
- * @pre ``h`` is non-NULL for a real verdict.
- * @post ``h`` is unmodified.
- * @post Exactly one classification is returned.
- *
- * @note Pure function; safe from any context.
- *
- * @par Example:
- * @code
- * const c6_frame_kind_t kind = c6_probe_classify(&h);
- * @endcode
- *
- * @see c6_frame_kind_t
- * @since 0.1.0
- */
-c6_frame_kind_t c6_probe_classify(const c6_hdr_t* h);
-
-/**
- * @brief Print the decoded header fields on one console line.
- *
- * @param[in] h Decoded header; ignored when NULL.
- *
- * @pre The board UART console has been initialised.
- * @pre ``h`` is non-NULL for anything to be printed.
- * @post Exactly one console line was emitted when ``h`` is non-NULL.
- * @post ``h`` is unmodified.
- *
- * @note Not thread-safe.
- *
- * @par Example:
- * @code
- * c6_probe_print_header(&h);
- * @endcode
- *
- * @see c6_probe_dump_payload
- * @since 0.1.0
- */
-void c6_probe_print_header(const c6_hdr_t* h);
-
-/**
- * @brief Hex-dump the leading payload bytes of a received frame.
- *
- * @param[in] buf Receive buffer.
- * @param[in] len Payload length claimed by the header.
- *
- * @pre The board UART console has been initialised.
- * @pre ``buf`` holds a completed transaction.
- * @post At most ::k_c6_probe_dump_bytes payload bytes were printed.
- * @post ``buf`` is unmodified.
- *
- * @note Not thread-safe.
- *
- * @par Example:
- * @code
- * c6_probe_dump_payload(rx, h.len);
- * @endcode
- *
- * @see c6_probe_print_header
- * @since 0.1.0
- */
-void c6_probe_dump_payload(const uint8_t* buf, uint16_t len);
 
 /**
  * @brief Route the Pmod1 SPI pins to SCI2 and own the chip-select as GPIO.

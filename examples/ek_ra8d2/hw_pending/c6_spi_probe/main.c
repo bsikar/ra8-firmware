@@ -23,13 +23,17 @@
  *      the C6 to answer, so the log states the mux position rather than
  *      assuming it.
  *   2. Which Pmod1 side-band pin carries DATA_READY and which carries
- *      HANDSHAKE. The C6 is built with
- *      ``CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y``, so it drops HANDSHAKE on the
- *      chip-select falling edge and re-raises it once the next transaction
- *      is queued, while DATA_READY stays high only while its transmit queue
- *      holds a frame. A pin that tracks the chip-select is HANDSHAKE; a pin
- *      that goes low once the queue drains is DATA_READY; a pin that never
- *      moves is not wired to the C6.
+ *      HANDSHAKE. The two are found by different means because the C6
+ *      treats them differently. HANDSHAKE *moves*: the image is built with
+ *      ``CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y``, so it drops on the
+ *      chip-select falling edge and re-raises once the next transaction is
+ *      queued, and the pin that repeatedly tracks the chip-select is
+ *      HANDSHAKE. DATA_READY typically does **not** move: an esp-hosted
+ *      peripheral with an empty transmit queue holds it low indefinitely.
+ *      It is identified electrically instead, by ::c6_probe_pull_contest --
+ *      a pin that reads low against the RA8D2's own pull-up is being sunk
+ *      by a real driver on the far end. A pin that neither moves nor sinks
+ *      the pull-up is the one that is not wired to the C6.
  *
  * Flow:
  *   1. ``ra8_cgc_init`` -- bring CPUCLK0 / PCLKA up, start SysTick.
@@ -39,7 +43,8 @@
  *   5. PFS-route Pmod1 SCI2 Simple-SPI and own the chip-select as a GPIO.
  *   6. Sweep SPI modes starting at the C6's configured mode 3, running a
  *      few full-size transactions per mode until one decodes.
- *   7. Print the resolved side-band map and the PASS/FAIL verdict.
+ *   7. Pull-up contest on the side-band pins, with the C6's queue drained.
+ *   8. Print the resolved side-band map and the PASS/FAIL verdict.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -205,6 +210,10 @@ static void c6_probe_print_map(const c6_probe_stats_t* st, uint8_t hs_idx, uint8
     c6_probe_put_u32(st->hs_vote[i]);
     c6_probe_puts(" dr_vote=");
     c6_probe_put_u32(st->dr_vote[i]);
+    c6_probe_puts(" pull_low=");
+    c6_probe_put_u32((uint32_t)st->pull_low[i]);
+    c6_probe_puts("/");
+    c6_probe_put_u32((uint32_t)st->pull_samples);
     c6_probe_puts(" high=");
     c6_probe_put_u32((uint32_t)st->ever_high[i]);
     c6_probe_puts(" low=");
@@ -256,7 +265,13 @@ static void c6_probe_print_verdict(const c6_probe_stats_t* st, ra8_spi_mode_t mo
 }
 
 /**
- * @brief Sweep the SPI modes and report the outcome.
+ * @brief Sweep the SPI modes, resolve the side-band map, report the outcome.
+ *
+ * @details
+ * Ordering is load-bearing: the pull-up contest runs after the sweep so it
+ * measures DATA_READY's idle state rather than the boot event the C6 has
+ * queued, and ::c6_probe_resolve_map runs after both so it sees every kind
+ * of evidence the run produced.
  *
  * @pre Setup completed, the console is up and the SPI pins are routed.
  * @pre ::s_c6_stats already holds the chip-select hunt's evidence.
@@ -268,7 +283,8 @@ static void c6_probe_print_verdict(const c6_probe_stats_t* st, ra8_spi_mode_t mo
  */
 static void c6_probe_run(void)
 {
-  uint8_t        hs_idx    = c6_probe_best(s_c6_stats.hs_vote, (uint8_t)k_c6_sb_count);
+  uint8_t hs_idx =
+    c6_probe_best(s_c6_stats.hs_vote, (uint8_t)k_c6_sb_count, (uint32_t)k_c6_probe_min_votes);
   bool           link_live = false;
   ra8_spi_mode_t used      = k_c6_mode_order[0];
 
@@ -277,8 +293,17 @@ static void c6_probe_run(void)
     link_live = c6_probe_sweep_mode(used, s_c6_pclka_hz, &s_c6_stats, &hs_idx);
   }
 
-  hs_idx               = c6_probe_best(s_c6_stats.hs_vote, (uint8_t)k_c6_sb_count);
-  const uint8_t dr_idx = c6_probe_best(s_c6_stats.dr_vote, hs_idx);
+  /* Here, and not before the sweep: a freshly-booted C6 has its INIT event
+   * queued and holds DATA_READY high until a transaction drains it, so an
+   * early contest would find nothing sunk. By now the queue is empty (or the
+   * link is dead and the contest is the only evidence there is) and the
+   * chip-select has been released, which is DATA_READY's true idle state. */
+  if (c6_probe_pull_contest(&s_c6_stats) != k_ra8_ok) {
+    c6_probe_puts("c6_probe: pull-up contest failed; map falls back to votes\r\n");
+  }
+
+  uint8_t dr_idx = (uint8_t)k_c6_sb_count;
+  c6_probe_resolve_map(&s_c6_stats, &hs_idx, &dr_idx);
   c6_probe_print_map(&s_c6_stats, hs_idx, dr_idx);
   c6_probe_print_verdict(&s_c6_stats, used, link_live);
   if (!link_live) {
