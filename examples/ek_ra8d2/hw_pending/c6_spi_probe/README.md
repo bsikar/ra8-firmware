@@ -142,6 +142,28 @@ prior whole-output-space sweep (issue #44, recorded on
 **not** in the Octo-SPI path and that SW4-3 is a hardware-only analog mux. The
 switch has to be set on the board.
 
+**SW4-3 is the prime suspect**, because SW4-1 and SW4-2 are already OFF/OFF in
+the UM's default configuration -- that is the SPI position -- while SW4-3's
+default is OFF, which is *Octo-SPI Active* and which UM Table 3 p 16 lists as
+conflicting with "Arduino, mikroBUS and Pmod 1 (SPI, UART)". So the one switch
+that must be moved off its factory default for this link to work is SW4-3.
+
+### The one alternative this run cannot exclude
+
+"No chip-select response" is also what a C6 whose esp-hosted application had
+wedged would look like, since the HANDSHAKE drop comes from a GPIO interrupt
+inside that application. The evidence against it is circumstantial but strong:
+the C6 enumerates its USB Serial/JTAG interface (so the part is powered and
+running), it had been idling untouched since a clean flash with a confirmed
+boot log, and an idle esp-hosted peripheral is only ever blocked on queues.
+
+Discriminate in this order:
+
+1. Set the three switches above, power-cycle, re-run the probe. If the
+   chip-select hunt now names a pin, the mux was the whole story.
+2. If it still reports `none`, read the C6 console to check that esp-hosted is
+   alive before suspecting the wiring itself.
+
 ### Next step
 
 Set SW4-1 OFF / SW4-2 OFF / SW4-3 ON on the EVM and re-run. The probe needs no
