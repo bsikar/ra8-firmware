@@ -159,6 +159,15 @@ project default `0xF2` (programmed into U15 PI4IOE5V6408 via
 If a HIL app needs a different layout, that goes in the app's
 README.md + hil.conf comment.
 
+The ESP32-C6 link is the notable exception, and it is mutually exclusive
+with this default: it needs **SW4-1 OFF + SW4-2 OFF** (Pmod1 = SPI, not
+UART) and **SW4-4 OFF**, which takes the Arduino and mikroBUS connectors
+offline. Those are mechanical DIP positions -- the U15 expander cannot
+override the Pmod1 SPI mux (issue #44) -- so the bank has to be flipped by
+hand and flipped back. See
+[`design/c6_wireless_architecture.md`](design/c6_wireless_architecture.md)
+and `examples/ek_ra8d2/hw_pending/c6_spi_probe/README.md`.
+
 ## Per-app table
 
 The table below is generated from the live `hil.conf` files and the

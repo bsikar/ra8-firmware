@@ -34,6 +34,18 @@ Two of the data signals carry Espressif's legacy names in their Kconfig symbols.
 Those symbols belong to upstream and cannot be renamed from here; the mapping
 table is where they are tied to this project's COPI/CIPO vocabulary.
 
+What is checked on the RA8 side
+-------------------------------
+pins.env also records where each signal LANDS on the EK-RA8D2 (MCU pin and
+J26 hole) and which SW4 DIP positions the link needs. No second file restates
+those, so there is nothing to diff them against -- but the map can still be
+checked for the failures that actually happen to a pin map: a signal named at
+one end and not the other, a pin or hole name that is not a pin or hole name,
+two signals silently claiming the same pin after a copy-paste, and a missing
+SW4 position. That bank is not incidental: SW4-4 ON with SW4-3 OFF holds the
+Pmod1 bus switches open, so J26-1..J26-4 never reach the MCU, and misreading
+it cost a full bench day chasing a harness that was fine.
+
 This is a pure text comparison of two committed files -- no esp-idf, no
 toolchain, no hardware -- so it runs in CI on any box. ``build.sh`` invokes
 this same script before it builds, so the bench and CI apply one rule.
@@ -93,6 +105,34 @@ VALUE_PAIRS: tuple[tuple[str, str, str], ...] = (
 _FLASHSIZE_RE = re.compile(r"^CONFIG_ESPTOOLPY_FLASHSIZE_([0-9]+MB)$")
 FLASH_SIZE_KEY = "C6_FLASH_SIZE"
 
+# (label, C6 GPIO key, RA8 landing-pin key, RA8 J26 hole key). The RA8 side of
+# the harness is recorded in pins.env too, because a pin map is only useful if
+# it names BOTH ends: "GPIO4" alone does not tell anyone which MCU pin to read.
+RA8_TRIPLES: tuple[tuple[str, str, str, str], ...] = (
+    ("CS (Chip Select)", "C6_PIN_CS", "RA8_PIN_CS", "RA8_J26_CS"),
+    ("COPI (Controller Out)", "C6_PIN_COPI", "RA8_PIN_COPI", "RA8_J26_COPI"),
+    ("CIPO (Controller In)", "C6_PIN_CIPO", "RA8_PIN_CIPO", "RA8_J26_CIPO"),
+    ("SCK (clock)", "C6_PIN_SCK", "RA8_PIN_SCK", "RA8_J26_SCK"),
+    ("DATA_READY", "C6_PIN_DATA_READY", "RA8_PIN_DATA_READY", "RA8_J26_DATA_READY"),
+    ("HANDSHAKE", "C6_PIN_HANDSHAKE", "RA8_PIN_HANDSHAKE", "RA8_J26_HANDSHAKE"),
+    ("RESET", "C6_PIN_RESET", "RA8_PIN_RESET", "RA8_J26_RESET"),
+)
+
+# The four EK-RA8D2 DIP switches that decide whether J26-1..J26-4 reach the MCU
+# at all. Misreading this bank was the whole 2026-07-26 C6 outage, so the
+# required positions are recorded as data rather than as prose in one doc.
+SW4_KEYS: tuple[str, ...] = ("RA8_SW4_1", "RA8_SW4_2", "RA8_SW4_3", "RA8_SW4_4")
+SW4_VALUES: tuple[str, ...] = ("ON", "OFF")
+
+# A signal with no wire: "none" on the RA8 side must pair with -1 on the C6
+# side, in both directions. Half a disconnection recorded is a pin map that
+# claims a link nobody built.
+UNWIRED_RA8 = "none"
+UNWIRED_C6 = "-1"
+
+_RA8_PIN_RE = re.compile(r"^P[0-9]{3}$")
+_RA8_HOLE_RE = re.compile(r"^J26-([0-9]{1,2})$")
+
 _ASSIGN_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$")
 
 # Shortest value that can carry a matched pair of surrounding quotes ("" is 2).
@@ -143,6 +183,93 @@ def _flash_size(sdk: dict[str, str]) -> str | None:
     return None
 
 
+def _check_one_signal(label: str, c6: str, ra8_pin: str, ra8_hole: str) -> list[str]:
+    """Return findings for one signal's RA8-side entry.
+
+    Args:
+        label: Human-readable signal name.
+        c6: C6 GPIO number as written in pins.env.
+        ra8_pin: RA8 landing pin, or "none".
+        ra8_hole: J26 hole, or "none".
+
+    Returns:
+        Human-readable findings; empty when the entry is well-formed.
+    """
+    unwired_c6 = c6 == UNWIRED_C6
+    unwired_ra8 = ra8_pin == UNWIRED_RA8 and ra8_hole == UNWIRED_RA8
+    if unwired_c6 != unwired_ra8:
+        return [
+            f"{label}: half-recorded connection -- C6 side is "
+            f"{'disconnected' if unwired_c6 else c6} but RA8 side is "
+            f"{ra8_pin}/{ra8_hole}"
+        ]
+    if unwired_ra8:
+        return []
+
+    findings: list[str] = []
+    if _RA8_PIN_RE.match(ra8_pin) is None:
+        findings.append(f"{label}: RA8 pin {ra8_pin!r} is not a Pnnn pin name or 'none'")
+    if _RA8_HOLE_RE.match(ra8_hole) is None:
+        findings.append(f"{label}: J26 hole {ra8_hole!r} is not a J26-n hole or 'none'")
+    return findings
+
+
+def _check_uniqueness(pins: dict[str, str]) -> list[str]:
+    """Return findings for any RA8 pin or J26 hole claimed by two signals.
+
+    Args:
+        pins: Parsed pins.env assignments.
+
+    Returns:
+        Human-readable findings; empty when every wired entry is unique.
+    """
+    findings: list[str] = []
+    for what, index in (("RA8 pin", 2), ("J26 hole", 3)):
+        seen: dict[str, str] = {}
+        for triple in RA8_TRIPLES:
+            value = pins.get(triple[index], UNWIRED_RA8)
+            if value == UNWIRED_RA8:
+                continue
+            if value in seen:
+                findings.append(f"{what} {value} is claimed by both {seen[value]} and {triple[0]}")
+            seen[value] = triple[0]
+    return findings
+
+
+def check_ra8_side(pins: dict[str, str]) -> list[str]:
+    """Return one message per defect in the RA8-side half of the pin map.
+
+    The C6-side numbers are checked against sdkconfig.defaults by ``compare``;
+    nothing downstream can check the RA8 side that way, because no second file
+    restates it. What is checkable is that the map is COMPLETE and INTERNALLY
+    CONSISTENT: every signal names both ends or neither, the names are
+    well-formed, no two signals claim one pin or one hole, and the SW4
+    positions the link depends on are recorded.
+
+    Args:
+        pins: Parsed pins.env assignments.
+
+    Returns:
+        Human-readable findings; empty when the RA8 side is well-formed.
+    """
+    findings: list[str] = []
+    for label, c6_key, pin_key, hole_key in RA8_TRIPLES:
+        missing = [k for k in (c6_key, pin_key, hole_key) if k not in pins]
+        if missing:
+            findings.extend(f"{label}: pins.env is missing {k}" for k in missing)
+            continue
+        findings.extend(_check_one_signal(label, pins[c6_key], pins[pin_key], pins[hole_key]))
+
+    findings.extend(_check_uniqueness(pins))
+
+    for key in SW4_KEYS:
+        if key not in pins:
+            findings.append(f"SW4 positions: pins.env is missing {key}")
+        elif pins[key] not in SW4_VALUES:
+            findings.append(f"SW4 positions: {key}={pins[key]!r} is not one of {SW4_VALUES}")
+    return findings
+
+
 def compare(pins: dict[str, str], sdk: dict[str, str]) -> list[str]:
     """Return one message per disagreement between the two parsed files.
 
@@ -181,6 +308,7 @@ def compare(pins: dict[str, str], sdk: dict[str, str]) -> list[str]:
             f"but sdkconfig.defaults enables CONFIG_ESPTOOLPY_FLASHSIZE_{size}"
         )
 
+    findings.extend(check_ra8_side(pins))
     return findings
 
 
@@ -198,6 +326,24 @@ C6_PIN_SCK=3
 C6_PIN_DATA_READY=4
 C6_PIN_HANDSHAKE=6
 C6_PIN_RESET=-1
+RA8_PIN_CS=P804
+RA8_PIN_COPI=P801
+RA8_PIN_CIPO=P802
+RA8_PIN_SCK=P803
+RA8_PIN_DATA_READY=P402
+RA8_PIN_HANDSHAKE=P006
+RA8_PIN_RESET=none
+RA8_J26_CS=J26-1
+RA8_J26_COPI=J26-2
+RA8_J26_CIPO=J26-3
+RA8_J26_SCK=J26-4
+RA8_J26_DATA_READY=J26-8
+RA8_J26_HANDSHAKE=J26-7
+RA8_J26_RESET=none
+RA8_SW4_1=OFF
+RA8_SW4_2=OFF
+RA8_SW4_3=ON
+RA8_SW4_4=OFF
 C6_FLASH_SIZE=16MB
 ESP_TARGET=esp32c6
 """
@@ -215,11 +361,12 @@ CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 """
 
 
-def _selftest_cases() -> list[tuple[str, str, str, bool]]:
-    """Return ``(label, pins_text, sdk_text, expect_finding)`` cases.
+def _selftest_cases_kconfig() -> list[tuple[str, str, str, bool]]:
+    """Return the crafted cases for the pins.env <-> sdkconfig.defaults half.
 
     Returns:
-        One case per defect shape, plus the agreeing control.
+        One case per drift shape between the two files, plus the agreeing
+        control that must stay silent.
     """
     return [
         ("agreeing pair", _GOOD_PINS, _GOOD_SDK, False),
@@ -268,6 +415,103 @@ def _selftest_cases() -> list[tuple[str, str, str, bool]]:
             True,
         ),
     ]
+
+
+def _selftest_cases_ra8_signals() -> list[tuple[str, str, str, bool]]:
+    """Return the crafted cases for one signal's RA8-side entry.
+
+    Returns:
+        One case per way a single signal can be recorded wrongly: named at
+        one end only, disconnected on one side but not the other, or given a
+        pin or hole name that is not one.
+    """
+    return [
+        (
+            "RA8 landing pin never recorded",
+            _GOOD_PINS.replace("RA8_PIN_HANDSHAKE=P006\n", ""),
+            _GOOD_SDK,
+            True,
+        ),
+        (
+            "RA8 J26 hole never recorded",
+            _GOOD_PINS.replace("RA8_J26_SCK=J26-4\n", ""),
+            _GOOD_SDK,
+            True,
+        ),
+        (
+            "wired on the C6 side, 'none' on the RA8 side",
+            _GOOD_PINS.replace("RA8_PIN_DATA_READY=P402", "RA8_PIN_DATA_READY=none").replace(
+                "RA8_J26_DATA_READY=J26-8", "RA8_J26_DATA_READY=none"
+            ),
+            _GOOD_SDK,
+            True,
+        ),
+        (
+            "RESET given an RA8 pin while the C6 side stays -1",
+            _GOOD_PINS.replace("RA8_PIN_RESET=none", "RA8_PIN_RESET=P412").replace(
+                "RA8_J26_RESET=none", "RA8_J26_RESET=J26-9"
+            ),
+            _GOOD_SDK,
+            True,
+        ),
+        (
+            "RA8 pin name malformed",
+            _GOOD_PINS.replace("RA8_PIN_CS=P804", "RA8_PIN_CS=P80_4"),
+            _GOOD_SDK,
+            True,
+        ),
+        (
+            "J26 hole malformed",
+            _GOOD_PINS.replace("RA8_J26_CS=J26-1", "RA8_J26_CS=pin1"),
+            _GOOD_SDK,
+            True,
+        ),
+    ]
+
+
+def _selftest_cases_ra8_map() -> list[tuple[str, str, str, bool]]:
+    """Return the crafted cases for whole-map RA8-side defects.
+
+    Returns:
+        One case per defect that only shows up across signals -- two of them
+        claiming one pin or one hole after a copy-paste -- plus the SW4 bank
+        the link depends on.
+    """
+    return [
+        (
+            "two signals claim one RA8 pin",
+            _GOOD_PINS.replace("RA8_PIN_COPI=P801", "RA8_PIN_COPI=P804"),
+            _GOOD_SDK,
+            True,
+        ),
+        (
+            "two signals claim one J26 hole",
+            _GOOD_PINS.replace("RA8_J26_CIPO=J26-3", "RA8_J26_CIPO=J26-2"),
+            _GOOD_SDK,
+            True,
+        ),
+        (
+            "SW4 position never recorded",
+            _GOOD_PINS.replace("RA8_SW4_3=ON\n", ""),
+            _GOOD_SDK,
+            True,
+        ),
+        (
+            "SW4 position is not ON or OFF",
+            _GOOD_PINS.replace("RA8_SW4_4=OFF", "RA8_SW4_4=maybe"),
+            _GOOD_SDK,
+            True,
+        ),
+    ]
+
+
+def _selftest_cases() -> list[tuple[str, str, str, bool]]:
+    """Return every crafted case, across both halves of the comparator.
+
+    Returns:
+        The concatenation of the three case groups.
+    """
+    return _selftest_cases_kconfig() + _selftest_cases_ra8_signals() + _selftest_cases_ra8_map()
 
 
 def selftest() -> int:
@@ -320,8 +564,10 @@ def main(argv: list[str]) -> int:
 
     if not findings:
         checked = len(PIN_PAIRS) + len(VALUE_PAIRS) + 1
+        ra8 = (len(RA8_TRIPLES) * 2) + len(SW4_KEYS)
         print(
-            f"check_c6_pin_config.py: pins.env and sdkconfig.defaults agree ({checked} settings)."
+            f"check_c6_pin_config.py: pins.env and sdkconfig.defaults agree "
+            f"({checked} settings); RA8-side map well-formed ({ra8} entries)."
         )
         return EXIT_OK
 

@@ -41,6 +41,31 @@ Inclusive name first, Espressif legacy name in parentheses.
 | HANDSHAKE | GPIO6 | `CONFIG_ESP_SPI_GPIO_HANDSHAKE` |
 | RESET | disconnected (-1) | `CONFIG_ESP_SPI_GPIO_RESET` |
 
+## RA8-side landing pins (EK-RA8D2 Pmod1 / J26) -- bench-proven 2026-07-27
+
+`pins.env` records both ends of every wire (`RA8_PIN_*` / `RA8_J26_*`); a pin
+map that names only the C6 GPIO does not tell anyone which MCU pin to read.
+
+| Signal | RA8D2 pin | J26 hole | C6 GPIO |
+|--------|-----------|----------|---------|
+| CS (Chip Select) | `P804` | J26-1 | GPIO0 |
+| COPI (Controller Out) | `P801` | J26-2 | GPIO1 |
+| CIPO (Controller In) | `P802` | J26-3 | GPIO2 |
+| SCK (clock) | `P803` | J26-4 | GPIO3 |
+| HANDSHAKE | `P006` | J26-7 | GPIO6 |
+| DATA_READY | `P402` | J26-8 | GPIO4 |
+
+J26-5 / J26-11 are ground. J26-9 (`P412`) and J26-10 (`P413`) are unconnected;
+J26-9 is reserved for the future host-driven EN / reset line. There is no 3V3
+wire -- the C6 is self-powered over its own USB.
+
+**Required DIP positions: SW4-1 OFF, SW4-2 OFF, SW4-3 ON, SW4-4 OFF.** These
+are mechanical switches and getting them wrong is invisible: SW4-4 ON with
+SW4-3 OFF leaves the Octo-SPI flash owning the Pmod1 SPI pins and the U6 / U9
+bus switches open, so J26-1..J26-4 never reach the MCU while every part
+involved looks healthy. SW4-4 OFF also takes the Arduino and mikroBUS
+connectors offline.
+
 ### Config gotcha: which pin leaves are settable
 
 In `sdkconfig.defaults` the **settable** SPI pin leaves are
