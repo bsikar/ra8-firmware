@@ -2,7 +2,8 @@
 
 [![firmware](https://github.com/bsikar/ra8-firmware/actions/workflows/firmware.yml/badge.svg?branch=main)](https://github.com/bsikar/ra8-firmware/actions/workflows/firmware.yml)
 
-Bare-metal firmware for the Renesas RA8 family (RA8D2 and RA8P1).
+Bare-metal firmware for the Renesas RA8 family (RA8D2 and RA8P1), plus a host
+emulator that boots the real firmware images so none of it needs a board.
 
 ## Getting started
 
@@ -22,6 +23,43 @@ make sim-<app>     # run it on the emulator, no board
 
 - Per app: `make flash-<app>`, `make debug-<app>`, `make ozone-<app>`
 - Suites: `make hil`, `make ci` (or `make ci-native`), `make test`, `make coverage`, `make mcdc`
+
+## No board? Run the firmware anyway
+
+[`tools/ra8_emulator`](tools/ra8_emulator/README.md) boots the **real,
+unmodified `.elf`** -- the same image that flashes to an EK-RA8D2 -- on an
+emulated Cortex-M (Unicorn) over a modelled RA8D2 peripheral space. It shows
+the GLCDC panel framebuffer beside a status sidebar carrying the three board
+LEDs and live USB / UART / IRQ / touch state, so a display app draws its real
+screen and a non-display app (blink, USB, UART, timers) is still watchable. A
+click in the window enters the firmware through the genuine GT911 touch path;
+typing feeds the console UART's receive path.
+
+```sh
+brew install unicorn capstone  # macOS; Linux: libcapstone-dev + scripts/ci/install_unicorn.sh
+make sim-blink                 # live window: LEDs plus the USB/UART/IRQ sidebar
+make sim-ereader_ui            # the e-reader chrome, drawn by the firmware itself
+make sim-help                  # panels, profiling, the whole flag surface
+```
+
+The live window is macOS-only (Cocoa). Every other path -- boot, MMIO report,
+console capture, frame dump -- also runs headless on Linux:
+
+```sh
+make blink
+cmake -B tools/ra8_emulator/build -S tools/ra8_emulator
+cmake --build tools/ra8_emulator/build -j
+./tools/ra8_emulator/build/ra8_emulator \
+  examples/ek_ra8d2/hw_validated/hil/blink/build/blink.elf --ppm frame.ppm
+```
+
+It executes the actual bring-up and driver code, so it reproduces what the
+silicon does -- including real firmware bugs a short bench run never reaches
+(the `ra8_mstp` refcount saturation behind the AGT faults surfaced here first).
+It models hardware *handshakes* rather than silicon timing, and some app
+families are modelled further than others, so it complements the bench instead
+of replacing it. CI leans on it: `make sil` boots every HIL app headless and
+asserts its expectation, and `make sim-matrix` sweeps every example.
 
 ## Examples
 
@@ -64,6 +102,8 @@ EK-RA8D2 wired to this machine and returns it to the factory default
 - [`CLAUDE.md`](CLAUDE.md), [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md): rules and style
 - [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md): rings and TrustZone worlds
 - [`docs/DEBUG.md`](docs/DEBUG.md): debugging
+- [`tools/ra8_emulator/README.md`](tools/ra8_emulator/README.md): the board emulator
+- [`tools/README.md`](tools/README.md): the rest of the host tooling
 - [`docs/reference/`](docs/reference/): datasheets and manuals
 
 ## License
