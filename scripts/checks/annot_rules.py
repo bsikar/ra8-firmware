@@ -391,6 +391,31 @@ def _function_body_text(sym: AnnotatedSymbol) -> str:
     return ""
 
 
+def _loop_headers(body: str) -> list[str]:
+    """Return the full parenthesised header of every for/while in ``body``.
+
+    The paren run is matched by counting depth rather than by a
+    ``[^)]*`` regex. A condition that contains parentheses of its own --
+    ``(i < n) && (i < k_max)``, or a cast such as ``(uint32_t)k_max`` --
+    is extremely common, and a paren-blind slice truncates it at the first
+    inner ``)``. That made the bound symbol invisible whenever it sat after
+    one, so the rule reported a violation against a loop that was in fact
+    bounded exactly as the annotation claimed.
+    """
+    out: list[str] = []
+    for m in re.finditer(r"\b(?:for|while)\s*\(", body):
+        depth = 0
+        for i in range(m.end() - 1, len(body)):
+            if body[i] == "(":
+                depth += 1
+            elif body[i] == ")":
+                depth -= 1
+                if depth == 0:
+                    out.append(body[m.end() : i])
+                    break
+    return out
+
+
 def _rule_bounded_loop(sym: AnnotatedSymbol, arg: str, _ctx: RuleCtx) -> list[Violation]:
     """RA8_BOUNDED_LOOP: every loop condition must name the bounding symbol."""
     body = _function_body_text(sym)
@@ -400,11 +425,10 @@ def _rule_bounded_loop(sym: AnnotatedSymbol, arg: str, _ctx: RuleCtx) -> list[Vi
         _at(
             sym,
             "ra8_bounded_loop",
-            f"loop in '{sym.name}' missing bound symbol '{arg}' in "
-            f"condition '{m.group(2).strip()}'",
+            f"loop in '{sym.name}' missing bound symbol '{arg}' in condition '{header.strip()}'",
         )
-        for m in re.finditer(r"\b(for|while)\s*\(([^)]*)\)", body)
-        if arg not in m.group(2)
+        for header in _loop_headers(body)
+        if arg not in header
     ]
 
 

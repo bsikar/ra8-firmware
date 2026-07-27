@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **207**
-- Total compound decisions in scope: **1078**
-- Decisions at 100% MC/DC (`yes`): **978**
-- Decisions partially covered (`partial`): **59**
-- Decisions fully uncovered (`no`): **41**
-- Coverage rate (yes / total): **90.72%**
+- Source files with at least one decision: **220**
+- Total compound decisions in scope: **1204**
+- Decisions at 100% MC/DC (`yes`): **1031**
+- Decisions partially covered (`partial`): **67**
+- Decisions fully uncovered (`no`): **106**
+- Coverage rate (yes / total): **85.63%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **988**
-- **Reachable MC/DC rate**: **98.99%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1114**
+- **Reachable MC/DC rate**: **92.55%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -39,6 +39,57 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 3 | mg_append_str | `for (uint32_t i = 0U; (i < (uint32_t)k_mg_str_max) && (s[i] != '\0') && (pos ...` | partial |
 | examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_reader_check_geometry | `if ((cfg->fb_w <= 0) \|\| (cfg->fb_h <= (int32_t)k_mg_statusbar_h)) {` | no |
 | examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 4 | mg_reader_check_geometry | `if ((cfg->info->width == 0U) \|\| (cfg->info->height == 0U) \|\| (cfg->info->...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_fmt.c | 2 | internal_put | `if ((cur == nullptr) \|\| (cur->out == nullptr)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_gpio.c | 2 | internal_isr_trampoline | `if ((row == nullptr) \|\| (row->handler == nullptr)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_copy_name | `if ((dst == nullptr) \|\| (cap == 0U)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_thread_entry | `if (s_rtos.thread_used[idx] && (s_rtos.threads[idx].entry != nullptr)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_timer_expiry | `if (s_rtos.timer_used[idx] && (s_rtos.timers[idx].cb_fn != nullptr)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_spin_us | `for (uint32_t i = 0U; (i < iters) && (i < (uint32_t)k_ra8_esp_hosted_spin_ite...` | partial |
+| port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_h_blocking_delay | `for (uint32_t i = 0U; (i < iters) && (i < (uint32_t)k_ra8_esp_hosted_delay_it...` | partial |
+| port/esp-hosted/src/ra8_esp_hosted_rtos.c | 3 | internal_h_blocking_delay | `if (!s_rtos.ready \|\| (timeout_handler == nullptr) \|\| (duration_ms <= 0)) {` | partial |
+| port/esp-hosted/src/ra8_esp_hosted_rtos_sync.c | 2 | internal_h_create_semaphore | `if (!s_sync.ready \|\| (max_count <= 0)) {` | partial |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_fire_timer | `if ((timer_ptr == nullptr) \|\| (timer_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_fire_timer | `if ((timer_ptr == nullptr) \|\| (timer_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_fire_timer | `if (!timer_ptr->active \|\| (timer_ptr->expiry == nullptr)) {` | partial |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_fire_timer | `if (!timer_ptr->active \|\| (timer_ptr->expiry == nullptr)) {` | partial |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_fire_timer | `if ((pool_ptr == nullptr) \|\| (pool_start == nullptr)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | ra8_esp_hosted_tx_shim_fire_timer | `if ((pool_ptr == nullptr) \|\| (pool_start == nullptr)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_pool_delete | `if ((pool_ptr == nullptr) \|\| (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_pool_delete | `if ((pool_ptr == nullptr) \|\| (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_pool_delete | `if ((pool_ptr == nullptr) \|\| (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_pool_delete | `if ((pool_ptr == nullptr) \|\| (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_pool_delete | `if ((need > pool_ptr->size) \|\| (cursor > (pool_ptr->size - need))) {` | partial |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_pool_delete | `if ((need > pool_ptr->size) \|\| (cursor > (pool_ptr->size - need))) {` | partial |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_release | `if ((pool_ptr == nullptr) \|\| (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_release | `if ((pool_ptr == nullptr) \|\| (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_release | `if ((queue_ptr == nullptr) \|\| (queue_start == nullptr)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_release | `if ((queue_ptr == nullptr) \|\| (queue_start == nullptr)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_release | `if ((message_size == 0U) \|\| (message_size > TX_16_ULONG)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_release | `if ((message_size == 0U) \|\| (message_size > TX_16_ULONG)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_release | `if ((capacity == 0U) \|\| (capacity > (uint32_t)k_ra8_esp_hosted_tx_shim_queu...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_byte_release | `if ((capacity == 0U) \|\| (capacity > (uint32_t)k_ra8_esp_hosted_tx_shim_queu...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_delete | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_delete | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_flush | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_flush | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_send | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_send | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_receive | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_receive | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_delete | `if ((semaphore_ptr == nullptr) \|\|` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_delete | `if ((semaphore_ptr == nullptr) \|\|` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_get | `if ((semaphore_ptr == nullptr) \|\|` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_get | `if ((semaphore_ptr == nullptr) \|\|` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_put | `if ((semaphore_ptr == nullptr) \|\|` | no |
+| ... | | | | *(23 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -143,8 +194,11 @@ Sorted by (uncovered + partial) descending, then total descending.
 
 | Module | Total | Covered | Partial | Uncovered |
 |--------|------:|--------:|--------:|----------:|
+| ra8_esp_hosted_tx_shim_internal | 36 | 0 | 4 | 32 |
+| ra8_esp_hosted_tx_shim_sync_internal | 28 | 0 | 0 | 28 |
 | ra8_epub_xml_shim | 84 | 62 | 8 | 14 |
 | mg_reader | 11 | 1 | 4 | 6 |
+| ra8_esp_hosted_rtos | 15 | 9 | 3 | 3 |
 | ra8_psa_crypto_sim | 6 | 1 | 5 | 0 |
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
@@ -166,6 +220,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_touch_cal | 13 | 12 | 1 | 0 |
 | ra8_flash_irq | 9 | 8 | 1 | 0 |
 | ra8_reflow_svg_path | 9 | 8 | 1 | 0 |
+| ra8_esp_hosted_fmt | 8 | 7 | 0 | 1 |
 | ra8_fs_fat_lfn | 8 | 7 | 0 | 1 |
 | ra8_i3c_i2c | 7 | 6 | 0 | 1 |
 | ra8_spi_b | 7 | 6 | 0 | 1 |
@@ -182,6 +237,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_cdc | 4 | 3 | 0 | 1 |
 | ra8_ceu | 3 | 2 | 1 | 0 |
 | ra8_epub_fs | 3 | 2 | 0 | 1 |
+| ra8_esp_hosted_gpio | 3 | 2 | 0 | 1 |
+| ra8_esp_hosted_rtos_sync | 3 | 2 | 1 | 0 |
 | ra8_mipi_phy_timing | 3 | 2 | 1 | 0 |
 | ra8_net_pal | 2 | 1 | 0 | 1 |
 | ra8_rmac_mgmt | 2 | 1 | 0 | 1 |
@@ -197,10 +254,12 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_gfx_text | 12 | 12 | 0 | 0 |
 | ra8_modem_at | 12 | 12 | 0 | 0 |
 | ra8_reflow_layout_driver | 12 | 12 | 0 | 0 |
+| ra8_esp_hosted_rtos_pool | 11 | 11 | 0 | 0 |
 | ra8_reflow_svg_xform | 11 | 11 | 0 | 0 |
 | ra8_reflow_tokenize_attr | 11 | 11 | 0 | 0 |
 | ra8_book_paged | 10 | 10 | 0 | 0 |
 | ra8_mipi_dsi_cmd | 10 | 10 | 0 | 0 |
+| ra8_esp_hosted_osi_absent | 9 | 9 | 0 | 0 |
 | ra8_epaper_geom | 8 | 8 | 0 | 0 |
 | ra8_fs_fat_mount | 8 | 8 | 0 | 0 |
 | ra8_pdg | 8 | 8 | 0 | 0 |
@@ -254,6 +313,9 @@ Sorted by (uncovered + partial) descending, then total descending.
 | adc_selfdiag | 3 | 3 | 0 | 0 |
 | ra8_book | 3 | 3 | 0 | 0 |
 | ra8_dmac | 3 | 3 | 0 | 0 |
+| ra8_esp_hosted_log | 3 | 3 | 0 | 0 |
+| ra8_esp_hosted_port | 3 | 3 | 0 | 0 |
+| ra8_esp_hosted_spi | 3 | 3 | 0 | 0 |
 | ra8_eth_gwca_queue | 3 | 3 | 0 | 0 |
 | ra8_jof | 3 | 3 | 0 | 0 |
 | ra8_jpeg_sw_stream | 3 | 3 | 0 | 0 |
@@ -273,6 +335,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_display_pal_policy | 2 | 2 | 0 | 0 |
 | ra8_epaper_devinfo | 2 | 2 | 0 | 0 |
 | ra8_epub_img_import | 2 | 2 | 0 | 0 |
+| ra8_esp_hosted_gpio_edge | 2 | 2 | 0 | 0 |
+| ra8_esp_hosted_osi | 2 | 2 | 0 | 0 |
 | ra8_fs_fat_dir | 2 | 2 | 0 | 0 |
 | ra8_gfx_dither | 2 | 2 | 0 | 0 |
 | ra8_i3c_i2c_peripheral | 2 | 2 | 0 | 0 |
@@ -355,8 +419,11 @@ Sorted by (uncovered + partial) descending, then total descending.
 
 | Module | Uncovered | Partial | Covered | Total |
 |--------|----------:|--------:|--------:|------:|
+| ra8_esp_hosted_tx_shim_internal | 32 | 4 | 0 | 36 |
+| ra8_esp_hosted_tx_shim_sync_internal | 28 | 0 | 0 | 28 |
 | ra8_epub_xml_shim | 14 | 8 | 62 | 84 |
 | mg_reader | 6 | 4 | 1 | 11 |
+| ra8_esp_hosted_rtos | 3 | 3 | 9 | 15 |
 | ra8_jof_produce | 3 | 1 | 15 | 19 |
 | ra8_epub_open | 3 | 0 | 4 | 7 |
 | ra8_jof_png | 2 | 1 | 4 | 7 |
@@ -365,6 +432,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_reflow_css | 1 | 1 | 24 | 26 |
 | ra8_dotf | 1 | 0 | 5 | 6 |
 | ra8_epub_fs | 1 | 0 | 2 | 3 |
+| ra8_esp_hosted_fmt | 1 | 0 | 7 | 8 |
+| ra8_esp_hosted_gpio | 1 | 0 | 2 | 3 |
 | ra8_fs_fat_lfn | 1 | 0 | 7 | 8 |
 | ra8_i3c_i2c | 1 | 0 | 6 | 7 |
 | ra8_net_pal | 1 | 0 | 1 | 2 |

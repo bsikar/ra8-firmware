@@ -24,7 +24,7 @@ driver, and matching protocol version 2.12.11 is what makes them speak.
 
 | Side | Device | Software |
 |------|--------|----------|
-| Host | RA8D2 (Cortex-M85) | Upstream esp-hosted host driver (vendored SOUP) + a first-party RA8 port (a follow-on -- see below) |
+| Host | RA8D2 (Cortex-M85) | Upstream esp-hosted host driver (vendored SOUP) + the first-party RA8 + ThreadX port at `port/esp-hosted/` |
 | Co-processor | ESP32-C6 | Espressif esp-hosted-mcu `network_adapter`, unmodified SOUP |
 
 **Zero first-party code runs on the C6.** The whole C6 image is upstream
@@ -188,31 +188,53 @@ README for the full record, including the superseded 2026-07-26 diagnosis.
 Because the C6 firmware is flashed once and independently, an RA8D2 firmware
 update does not touch the C6, and vice versa.
 
-## RA8-side host driver (follow-on)
+## RA8-side host driver
 
-The upstream host driver source **is now vendored** at
-`libs/third_party/esp-hosted/` (host driver + shared protocol at commit
-`949bb30`, with the upstream ESP-IDF/FreeRTOS port deliberately left out).
-Nothing compiles it yet: the driver includes port headers by name, so it
-cannot build until the port exists.
+The upstream host driver source is vendored at `libs/third_party/esp-hosted/`
+(host driver + shared protocol at commit `949bb30`, with the upstream
+ESP-IDF/FreeRTOS port deliberately left out), and the first-party replacement
+for that port is at **`port/esp-hosted/`**. It supplies the ten
+`port_esp_hosted_host_*.h` header contracts, the ESP-IDF compatibility headers
+the core includes by name, and the implementations behind the 72-entry
+`hosted_osi_funcs_t` vtable -- all enumerated in
+[`../SOUP/esp-hosted-host.md`](../SOUP/esp-hosted-host.md), which also records
+exactly which vendored translation units compile today and what blocks the
+rest.
+
+`cmake/esp_hosted.cmake` wires it up behind `RA8_USE_ESP_HOSTED`; the consumer
+is `examples/ek_ra8d2/hw_pending/c6_hosted_init`, so the cross-build gate
+covers it on every push. The port:
+
+- Presents a single integration boundary for all C6 access, so the
+  co-processor is never reached from application code directly.
+- Reuses the existing `ra8_io` SPI bus facade over SCI2 Simple-SPI for the
+  physical transport.
+- Serves every allocation the vendored core asks for from one fixed ThreadX
+  byte pool carved at init, so the whole driver stays inside NASA Power of 10
+  Rule 3 on a board with no heap.
+- Carries its own host unit tests and MC/DC vectors under `tests/`.
 
 Separately, the first-light bench instrument for the *raw* link is
 `examples/ek_ra8d2/hw_pending/c6_spi_probe`. It hand-decodes the payload
 header from the same pinned upstream spec, but it is deliberately an app
-rather than a driver: its job is to prove the wire, resolve the Pmod1 mux
-position and identify the side-band pins, not to become the transport.
+rather than a driver: its job was to prove the wire, resolve the Pmod1 mux
+position and identify the side-band pins, not to become the transport. It is
+what established that the C6 is not currently wired to the pins it probes.
 
-The **first-party port and the build wiring are the follow-on change**. That
-port supplies the ten `port_esp_hosted_host_*.h` header contracts, fills the
-72-entry `hosted_osi_funcs_t` vtable, and defines the handful of link-time
-symbols the vendored core leaves undefined -- all enumerated in
-[`../SOUP/esp-hosted-host.md`](../SOUP/esp-hosted-host.md). When added it
-will:
+### The one file to edit when the harness is rebuilt
 
-- Present a single integration boundary (one RA8 module) for all C6 access, so
-  the co-processor is never reached from application code directly.
-- Reuse the existing `ra8_io` SPI bus facade for the physical transport.
-- Carry its own host unit tests and MC/DC vectors under `tests/`.
+`port/esp-hosted/inc/ra8_esp_hosted_pins.h` states every RA8-side pin fact
+about the link -- chip select, HANDSHAKE, DATA_READY and reset -- as board-layer
+enumerators, and `port/esp-hosted/src/ra8_esp_hosted_pins.c` states which of
+those pins the package routes to an ICU external-interrupt channel. Nothing
+else in the port, the build or the example app re-encodes a pin. When the
+rebuilt harness is characterised, those two files are the change.
+
+That routing table matters because the ICU inputs are concentrated on port 0:
+of the four Pmod1 side-band nets, only P006 has a channel (IRQ11). The port
+therefore gives an ICU-routed pin a hardware edge and services a pin without a
+channel through a bounded software edge detector, and the vendored driver sees
+the same callback either way.
 
 ## Why a co-processor rather than an on-chip radio
 

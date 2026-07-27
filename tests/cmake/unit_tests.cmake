@@ -87,6 +87,17 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_lsm6dso/inc
             ${FW_ROOT}/libs/ra8_tz_secure_boot/inc
             ${FW_ROOT}/port/threadx/inc
+            ${FW_ROOT}/port/esp-hosted/inc
+            ${FW_ROOT}/port/esp-hosted/inc/idf_compat
+            ${FW_ROOT}/port/esp-hosted/src
+            ${FW_ROOT}/libs/third_party/esp-hosted/host
+            ${FW_ROOT}/libs/third_party/esp-hosted/host/api/include
+            ${FW_ROOT}/libs/third_party/esp-hosted/host/drivers/transport
+            ${FW_ROOT}/libs/third_party/esp-hosted/host/drivers/transport/spi
+            ${FW_ROOT}/libs/third_party/esp-hosted/common
+            ${FW_ROOT}/libs/third_party/esp-hosted/common/log
+            ${FW_ROOT}/libs/third_party/esp-hosted/common/mempool/include
+            ${FW_ROOT}/libs/third_party/esp-hosted/common/transport
             ${FW_ROOT}/libs/third_party/miniz
             ${FW_ROOT}/libs/third_party/tinyxml2
             ${FW_ROOT}/libs/third_party/stb
