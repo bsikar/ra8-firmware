@@ -58,13 +58,13 @@
  *
  * @par Example:
  * @code
- * TEST_ASSERT_EQ(k_t_pins_irq_data_ready, ra8_esp_hosted_pin_irq_num(pin));
+ * TEST_ASSERT_EQ(k_t_pins_irq_sideband, ra8_esp_hosted_pin_irq_num(pin));
  * @endcode
  *
  * @see ra8_esp_hosted_pin_irq_num
  */
 typedef enum : uint8_t {
-  k_t_pins_irq_data_ready  = 11U, /**< IRQ11-DS, the channel P006 routes to. */
+  k_t_pins_irq_sideband    = 11U, /**< IRQ11-DS, the channel P006 routes to. */
   k_t_pins_irq_chip_select = 14U, /**< IRQ14, the channel P804 routes to.    */
 } t_pins_const_t;
 
@@ -126,14 +126,17 @@ static void test_irq_num_routed_pins(void)
 {
   TEST_BEGIN("pins routed irq channels");
 
-  TEST_ASSERT_EQ(k_t_pins_irq_data_ready,
+  TEST_ASSERT_EQ(k_t_pins_irq_sideband,
                  ra8_esp_hosted_pin_irq_num((ra8_port_pin_t)k_ra8_board_pmod1_irq));
   TEST_ASSERT_EQ(k_t_pins_irq_chip_select,
                  ra8_esp_hosted_pin_irq_num((ra8_port_pin_t)k_ra8_board_pmod1_spi_cs));
 
   /* The same two nets reached through the link's own names, which is how the
-     port asks: DATA_READY is the routed one, the chip select is the output. */
-  TEST_ASSERT_EQ(k_t_pins_irq_data_ready,
+     port asks. As the harness is wired, HANDSHAKE is the routed one and the
+     chip select is an output; DATA_READY lands on P402 and is polled. */
+  TEST_ASSERT_EQ(k_t_pins_irq_sideband,
+                 ra8_esp_hosted_pin_irq_num((ra8_port_pin_t)k_ra8_esp_hosted_pin_handshake));
+  TEST_ASSERT_EQ(k_ra8_esp_hosted_irq_none,
                  ra8_esp_hosted_pin_irq_num((ra8_port_pin_t)k_ra8_esp_hosted_pin_data_ready));
   TEST_ASSERT_EQ(k_t_pins_irq_chip_select,
                  ra8_esp_hosted_pin_irq_num((ra8_port_pin_t)k_ra8_esp_hosted_pin_chip_select));
@@ -152,9 +155,12 @@ static void test_irq_num_routed_pins(void)
  * from being an accident of the table's length, and it is what the port reads
  * as "use the software edge detector for this pin".
  *
- * HANDSHAKE sits on P412, so it is one of the unrouted ones. That is asserted
- * through the link's own name as well as the board's, because it is the case
- * a reader is most likely to assume works the other way round.
+ * DATA_READY sits on P402, so it is one of the unrouted ones. That is
+ * asserted through the link's own name as well as the board's, because it is
+ * the case a reader is most likely to assume works the other way round: the
+ * signal that says "a frame is waiting" is the polled one, and it is safe to
+ * poll only because the co-processor holds it asserted until the host drains
+ * the frame.
  *
  * @par MC/DC:
  * Decision: `if (k_ra8_esp_hosted_irq_map[row].pin == wanted)` inside the scan
@@ -181,10 +187,12 @@ static void test_irq_num_unrouted_pins(void)
   TEST_ASSERT_EQ(k_ra8_esp_hosted_irq_none,
                  ra8_esp_hosted_pin_irq_num((ra8_port_pin_t)k_ra8_board_pmod1_gpio_b));
 
-  /* HANDSHAKE is on an unrouted net, so the port polls it rather than taking
-     an edge -- the opposite of what its importance would suggest. */
+  /* DATA_READY is on an unrouted net, so the port polls it rather than taking
+     an edge -- the opposite of what its importance would suggest. It is safe
+     because the co-processor holds the line asserted until the frame is
+     drained, so a poll can be late but never blind. */
   TEST_ASSERT_EQ(k_ra8_esp_hosted_irq_none,
-                 ra8_esp_hosted_pin_irq_num((ra8_port_pin_t)k_ra8_esp_hosted_pin_handshake));
+                 ra8_esp_hosted_pin_irq_num((ra8_port_pin_t)k_ra8_esp_hosted_pin_data_ready));
   TEST_END("pins unrouted nets");
 }
 

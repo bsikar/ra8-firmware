@@ -17,7 +17,8 @@
  * explicit recorded fact rather than the result of falling off the end of
  * a shorter list. On this package the ICU external-interrupt inputs are
  * concentrated on port 0 and a handful of others, so of the four Pmod1
- * side-band nets only P006 has a channel.
+ * side-band nets only P006 has a channel. As the harness is wired that is
+ * HANDSHAKE, and DATA_READY on P402 is polled.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -54,13 +55,15 @@
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  /** IRQ11, the channel P006 (Pmod1.7) is routed to. It is deep-standby
-      capable, which is why the board layer names it IRQ11-DS. */
+  /** IRQ11, the channel P006 (J26-7) is routed to. It is deep-standby
+      capable, which is why the board layer names it IRQ11-DS. As the
+      harness is wired, P006 carries HANDSHAKE, so this is the channel the
+      link's hardware edge runs on. */
   k_ra8_esp_hosted_irq_pmod1_sideband = 11U,
-  /** IRQ14, the channel P804 (Pmod1.1) is routed to. The link drives that
+  /** IRQ14, the channel P804 (J26-1) is routed to. The link drives that
       pin as a chip-select output, so the channel goes unused here; it is
       recorded because a future harness could move a side-band net onto
-      Pmod1.1 and would then inherit a hardware edge for free. */
+      J26-1 and would then inherit a hardware edge for free. */
   k_ra8_esp_hosted_irq_pmod1_cs = 14U,
 } ra8_esp_hosted_irq_route_t;
 

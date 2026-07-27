@@ -27,10 +27,13 @@
  *   6. publishes ``g_h`` so the vendored core can be started.
  *
  * @par Runtime status
- * This port compiles, links and is host-tested, but the link has never
- * been driven end-to-end: the probe
- * ``examples/ek_ra8d2/hw_pending/c6_spi_probe`` established that the C6 is
- * not currently wired to the RA8 pins, and the harness is being rebuilt.
+ * This port compiles, links and is host-tested, but **no code in it has
+ * ever run on silicon**. The wire it drives is proven: the probe
+ * ``examples/ek_ra8d2/hw_pending/c6_spi_probe`` scope-qualified every J26
+ * hole on 2026-07-27 and brought the raw link up at SPI mode 3 / 1 MHz with
+ * zero bad checksums, which is where the map in ``ra8_esp_hosted_pins.h``
+ * comes from. That probe drives the SCI directly, though, and reaches none
+ * of this code, so every runtime claim about this port remains untested.
  * Nothing here fakes a result -- every function does its real work and
  * reports what the hardware actually did.
  *

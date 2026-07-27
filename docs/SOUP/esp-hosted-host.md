@@ -152,9 +152,11 @@ the RPC wire codec and the shared utilities:
   C6 is reached over full-duplex SPI only, and the Bluetooth pair needs the
   NimBLE transport headers and belongs with the NimBLE integration.
 
-The link has **not** been driven end to end on hardware. The probe
-`examples/ek_ra8d2/hw_pending/c6_spi_probe` established that the C6 is not
-currently wired to the RA8 pins it probes, so every app that links this port
+No code in this port has **ever run on silicon**. The wire beneath it is
+proven -- the probe `examples/ek_ra8d2/hw_pending/c6_spi_probe` qualified
+every J26 hole on 2026-07-27 and brought the raw link up at SPI mode 3 / 1 MHz
+with zero bad checksums -- but that probe drives the SCI directly and reaches
+none of the code described here. Every app that links this port therefore
 stays under `examples/*/hw_pending/` until a run on real silicon promotes it.
 
 ## The port contract

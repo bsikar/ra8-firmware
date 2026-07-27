@@ -32,13 +32,15 @@
  *
  * @par Runtime status -- no hardware run has ever happened
  * This application compiles, links and is gate-checked, and it has **never
- * completed a transaction on real hardware**. The landed probe
- * ``examples/ek_ra8d2/hw_pending/c6_spi_probe`` established that the
- * ESP32-C6 is not currently wired to the RA8 pins it probes -- across 54
- * samples spanning a mid-run reset of the co-processor not one side-band
- * reading moved -- and the owner is rebuilding the harness. Until that is
- * done the expected outcome is the FAIL branch reporting the receive
- * buffer as undriven, and nothing here pretends otherwise.
+ * been flashed**. The wire underneath it is proven: the landed probe
+ * ``examples/ek_ra8d2/hw_pending/c6_spi_probe`` scope-qualified every J26
+ * hole on 2026-07-27 and brought the raw link up at SPI mode 3 / 1 MHz with
+ * zero bad checksums, which is where the pin map in
+ * ``ra8_esp_hosted_pins.h`` comes from. What is unproven is the port: no
+ * application built on ``port/esp-hosted/`` has run on silicon, so neither
+ * the PASS branch nor any FAIL branch below has been observed, and nothing
+ * here pretends otherwise. A first run is a test of this firmware, not of
+ * the harness.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
