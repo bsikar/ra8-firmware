@@ -122,10 +122,33 @@ INPUT                  = README.md \
                          scripts \
                          tools
 INPUT_ENCODING         = UTF-8
-FILE_PATTERNS          = *.c *.h *.cpp *.hpp *.md *.dox *.py *.sh
-# Shell has no native doxygen parser; treat it as Python so the leading
-# `#` comment header of each script is picked up instead of being skipped.
-EXTENSION_MAPPING      = sh=Python
+FILE_PATTERNS          = *.c *.h *.cpp *.hpp *.md *.dox *.py
+# Shell is deliberately NOT here, and there is no `sh=Python` mapping any more.
+#
+# Doxygen has no shell parser. The old mapping asked the PYTHON parser to read
+# shell so the leading `#` header of each script would be picked up -- and it
+# did pick those up, but it also modelled every `local x` / `x=...` as a CLASS
+# MEMBER of a pseudo-class named after the file. Doxygen then tried to bind
+# each of those invented members to a real documented member of the same name,
+# which is how a shell local called `probe` came to be resolved against
+# `ra8_io_fsfmt_t::probe`.
+#
+# That is not a cosmetic mis-render. It is cross-file and it is unstable:
+# measured on #497, adding six new shell files to a clean tree produced eight
+# "no uniquely matching class member" warnings in scripts/ci.sh -- a file the
+# change never touched -- because the new invented members made ci.sh's own
+# locals ambiguous. Renaming the locals in the new files silenced their own
+# warnings and left ci.sh's untouched, which is the tell: the trigger is the
+# mapping, not any one script's comment style. Any future shell file can do it
+# again to any other, and the failure surfaces as a red gate pointing at
+# innocent code.
+#
+# So shell leaves the doxygen INPUT rather than being documented wrongly. Its
+# real documentation is the file header, read in the source where the reader
+# already is, and it is policed there: check_comment_format.py for form,
+# check_script_references.py for the paths it names, check_shell.py for the
+# code. A generated page that mislabels a shell local as a C++ class member was
+# never adding to that.
 RECURSIVE              = YES
 
 # Curated tab order / visibility for the navigation sidebar.
