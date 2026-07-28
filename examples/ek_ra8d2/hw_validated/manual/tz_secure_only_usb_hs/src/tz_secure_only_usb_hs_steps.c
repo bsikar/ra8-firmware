@@ -399,18 +399,15 @@ static bool demo_worker_usbx_init(void)
     return false;
   }
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_stack_init;
-  if (_ux_device_stack_initialize(s_tz_secure_only_usb_hs_device_framework_hs,
-                                  sizeof(s_tz_secure_only_usb_hs_device_framework_hs),
-                                  s_tz_secure_only_usb_hs_device_framework_fs,
-                                  sizeof(s_tz_secure_only_usb_hs_device_framework_fs),
-                                  s_tz_secure_only_usb_hs_string_framework,
-                                  sizeof(s_tz_secure_only_usb_hs_string_framework),
-                                  s_tz_secure_only_usb_hs_language_id_framework,
-                                  sizeof(s_tz_secure_only_usb_hs_language_id_framework),
-                                  UX_NULL) != UX_SUCCESS) {
-    return false;
-  }
-  return true;
+  return _ux_device_stack_initialize(s_tz_secure_only_usb_hs_device_framework_hs,
+                                     sizeof(s_tz_secure_only_usb_hs_device_framework_hs),
+                                     s_tz_secure_only_usb_hs_device_framework_fs,
+                                     sizeof(s_tz_secure_only_usb_hs_device_framework_fs),
+                                     s_tz_secure_only_usb_hs_string_framework,
+                                     sizeof(s_tz_secure_only_usb_hs_string_framework),
+                                     s_tz_secure_only_usb_hs_language_id_framework,
+                                     sizeof(s_tz_secure_only_usb_hs_language_id_framework),
+                                     UX_NULL) == UX_SUCCESS;
 }
 
 /**
@@ -439,14 +436,11 @@ static bool demo_worker_register_cdc(void)
     .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
   };
   s_boot_probe = (uint32_t)k_boot_probe_pre_class_register;
-  if (_ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
-                                      _ux_device_class_cdc_acm_entry,
-                                      1, /* configuration # */
-                                      0, /* interface #     */
-                                      &cdc_params) != UX_SUCCESS) {
-    return false;
-  }
-  return true;
+  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
+                                         _ux_device_class_cdc_acm_entry,
+                                         1, /* configuration # */
+                                         0, /* interface #     */
+                                         &cdc_params) == UX_SUCCESS;
 }
 
 /**

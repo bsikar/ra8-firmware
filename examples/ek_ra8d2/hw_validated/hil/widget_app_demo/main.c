@@ -758,13 +758,11 @@ static bool wd_register_apps(ra8_app_t* library, ra8_app_t* reader, ra8_app_t* s
                           .id        = (uint16_t)k_wd_app_settings,
                           .name      = "Settings",
                           .removable = true};
-  if (ra8_app_register(&s_reg, settings) != k_ra8_ok) {
-    return false;
-  }
+  return ra8_app_register(&s_reg, settings) == k_ra8_ok;
 #else
   (void)settings;
-#endif
   return true;
+#endif
 }
 
 /** @brief Drive a synthetic touch on the Library tab while Reader is focused. */

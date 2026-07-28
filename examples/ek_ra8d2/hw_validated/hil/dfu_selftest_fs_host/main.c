@@ -67,7 +67,6 @@
 #include "ux_device_class_dfu.h"
 #include "ux_device_stack.h"
 
-extern void ra8_time_on_tick(void);
 extern void _tx_timer_interrupt(void); /**< @brief ThreadX 1 ms tick worker. */
 
 /**

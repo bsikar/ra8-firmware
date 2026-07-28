@@ -170,7 +170,7 @@ static ra8_err_t demo_run(uint32_t* out_hits, uint32_t* out_misses)
 
   uint8_t data[(size_t)k_demo_payload];
   for (uint32_t i = 0; i < (uint32_t)k_demo_payload; ++i) {
-    data[i] = (uint8_t)(i * (uint32_t)k_demo_seed_mul + 1u);
+    data[i] = (uint8_t)(i * (uint32_t)k_demo_seed_mul + 1U);
   }
   RA8_RETURN_ON_ERROR(ra8_fs_write_file(mnt, "HELLO.TXT", data, (uint32_t)k_demo_payload),
                       s_tag,
@@ -181,7 +181,7 @@ static ra8_err_t demo_run(uint32_t* out_hits, uint32_t* out_misses)
   }
 
   RA8_RETURN_ON_ERROR(ra8_io_blockdev_cache_stats(&s_cstate, out_hits, out_misses), s_tag, "stats");
-  if (*out_hits == 0u) {
+  if (*out_hits == 0U) {
     return k_ra8_err_checksum_mismatch;
   }
   return k_ra8_ok;

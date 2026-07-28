@@ -184,7 +184,7 @@ def emit_header(png: bytes) -> tuple[Path, int]:
         "};",
         "",
         "/** @brief Length of ::k_mg_png in bytes. */",
-        f"static const uint32_t k_mg_png_len = {len(png)}u;",
+        f"static const uint32_t k_mg_png_len = {len(png)}U;",
     ]
     dst.write_text("\n".join(lines) + "\n", encoding="ascii")
     return dst, len(png)
