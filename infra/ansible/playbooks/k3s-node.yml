@@ -1,0 +1,20 @@
+---
+# Bring a bare host up as the single-node k3s server the rig's CI and secrets
+# run on, then deploy the vault onto it.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/k3s-node.yml
+#
+# This is the PREREQUISITE for playbooks/ci-runner.yml: that playbook deploys
+# ARC into "an existing k3s cluster" through helm, and neither the cluster nor
+# helm existed in code until this one did. Run this first on a fresh node, then
+# ci-runner.yml.
+#
+# The vault is deployed but deliberately NOT initialised or unsealed -- both
+# produce secrets. The play reports what it left for the operator; the steps are
+# in scripts/secrets/README.md.
+- name: Provision the k3s node and its vault
+  hosts: ci_runners
+  gather_facts: true
+  roles:
+    - k3s_node
+    - openbao

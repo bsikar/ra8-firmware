@@ -1,0 +1,147 @@
+---
+# Deploy the OpenBao vault onto an existing k3s cluster (roles/k3s_node).
+# Idempotent: helm upgrade --install semantics plus a declarative Service.
+#
+# This role is AUTHORITATIVE for how the vault is DEPLOYED. It is deliberately
+# not authoritative for what is IN it: initialising, unsealing and populating
+# the vault produce and handle secrets, and those steps live with the operator
+# (scripts/secrets/) rather than in a playbook that could log them.
+
+- name: Add the OpenBao chart repository
+  become: true
+  kubernetes.core.helm_repository:
+    name: "{{ openbao_chart_repo_name }}"
+    repo_url: "{{ openbao_chart_repo_url }}"
+    state: present
+
+- name: Ensure the vault namespace exists
+  become: true
+  kubernetes.core.k8s:
+    kind: Namespace
+    name: "{{ openbao_namespace }}"
+    state: present
+    kubeconfig: "{{ k3s_kubeconfig }}"
+
+- name: Install the OpenBao chart at the pinned version
+  become: true
+  kubernetes.core.helm:
+    name: "{{ openbao_release_name }}"
+    chart_ref: "{{ openbao_chart_ref }}"
+    chart_version: "{{ openbao_chart_version }}"
+    release_namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ k3s_kubeconfig }}"
+    values_files:
+      - "{{ openbao_values_file }}"
+
+- name: Publish the vault on a LAN NodePort
+  # Not part of the chart, and not optional in practice: every consumer of this
+  # vault is out-of-cluster (the bench Pi, the dev box, the Mac), so without
+  # this service BAO_ADDR has nothing to point at. The chart's own service is a
+  # ClusterIP.
+  when: openbao_nodeport_enabled | bool
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k3s_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ openbao_nodeport_name }}"
+        namespace: "{{ openbao_namespace }}"
+        labels:
+          app.kubernetes.io/name: openbao
+          app.kubernetes.io/instance: "{{ openbao_release_name }}"
+      spec:
+        type: NodePort
+        selector:
+          app.kubernetes.io/name: openbao
+          app.kubernetes.io/instance: "{{ openbao_release_name }}"
+          component: server
+        ports:
+          # `| int` is load-bearing: a bare "{{ ... }}" renders a STRING, and
+          # the Service schema types these as integers. The API server rejects
+          # the manifest outright rather than coercing, so the play would fail
+          # on a value that looks correct in the role.
+          - name: http
+            port: "{{ openbao_nodeport_port | int }}"
+            targetPort: "{{ openbao_nodeport_port | int }}"
+            nodePort: "{{ openbao_nodeport_node_port | int }}"
+
+- name: Wait for the vault pod to be running
+  # Deliberately POD PHASE, not readiness. A sealed OpenBao fails its readiness
+  # probe on purpose, and a never-initialised one is always sealed -- so waiting
+  # for Ready here would hang forever on exactly the first deploy this role
+  # exists to perform.
+  become: true
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: "{{ openbao_namespace }}"
+    name: "{{ openbao_release_name }}-0"
+    kubeconfig: "{{ k3s_kubeconfig }}"
+  register: openbao_pod
+  retries: "{{ openbao_pod_retries | int }}"
+  delay: "{{ openbao_pod_delay | int }}"
+  until: >-
+    (openbao_pod.resources | length) > 0
+    and openbao_pod.resources[0].status.phase == 'Running'
+
+- name: Ask the vault for its own seal and init state
+  # `bao status` exits non-zero when the vault is sealed (2) or uninitialised
+  # (2), which are both legitimate states here, so the rc is recorded rather
+  # than acted on and the JSON is what gets read.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - k3s
+      - kubectl
+      - exec
+      - "-n{{ openbao_namespace }}"
+      - "{{ openbao_release_name }}-0"
+      - --
+      - bao
+      - status
+      - -format=json
+  register: openbao_status
+  changed_when: false
+  failed_when: false
+
+- name: Parse the seal state
+  ansible.builtin.set_fact:
+    openbao_state: >-
+      {{ (openbao_status.stdout | from_json)
+         if (openbao_status.stdout | default('') | trim | length) > 0
+         else {} }}
+
+- name: Assert the vault is deployed and answering
+  # The bar this role can honestly clear: the API responds. Whether it is
+  # sealed or initialised is the operator's business, reported below.
+  ansible.builtin.assert:
+    that:
+      - openbao_state.get('sealed') is not none
+    fail_msg: >-
+      {{ openbao_release_name }}-0 is Running but `bao status` returned
+      '{{ openbao_status.stdout | default(openbao_status.stderr) | default('nothing') | trim }}'
+      (rc={{ openbao_status.rc | default('n/a') }}). The pod is up and the API
+      is not answering, so nothing that reads a credential from this vault
+      would work.
+    success_msg: >-
+      vault API answering (initialized={{ openbao_state.get('initialized') }},
+      sealed={{ openbao_state.get('sealed') }})
+
+- name: Report vault state and the operator steps this role will not take
+  ansible.builtin.debug:
+    msg: >-
+      OpenBao {{ openbao_chart_version }} ({{ openbao_app_version }}) deployed
+      in namespace {{ openbao_namespace }}, reachable on node port
+      {{ openbao_nodeport_node_port }}.
+      initialized={{ openbao_state.get('initialized') }}
+      sealed={{ openbao_state.get('sealed') }}.
+      {{ 'ACTION REQUIRED: run `bao operator init` on the pod and store the
+          unseal keys and root token OUT of this repo -- see
+          scripts/secrets/README.md.'
+         if not openbao_state.get('initialized', false)
+         else ('ACTION REQUIRED: the vault is sealed (normal after any
+                restart) -- run scripts/secrets/openbao_unseal.sh.'
+               if openbao_state.get('sealed', true)
+               else 'Unsealed and serving; no operator action needed.') }}

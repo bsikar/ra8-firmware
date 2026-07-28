@@ -53,6 +53,19 @@ as_root() {
   fi
 }
 
+# True when apt has an installable candidate for the named package here.
+#
+# Not every pinned tool is an apt package on every host this script runs on:
+# gcc-14 is packaged on the Ubuntu runners and the devcontainer base, but no
+# Debian 12 suite carries it, so the dev box builds that release from source
+# (infra/ansible/roles/dev_box). Asking apt first lets one script serve both
+# without pretending the package exists.
+apt_has_candidate() {
+  local pkg="$1" candidate
+  candidate="$(apt-cache policy "${pkg}" 2>/dev/null | sed -n 's/^  Candidate: //p')"
+  [ -n "${candidate}" ] && [ "${candidate}" != "(none)" ]
+}
+
 install_shellcheck() {
   local version="$1"
   local url="https://github.com/koalaman/shellcheck/releases/download/v${version}/shellcheck-v${version}.linux.x86_64.tar.xz"
@@ -100,6 +113,51 @@ ensure_release_tool() {
   "${installer}" "${want}"
 }
 
+# The apt-managed compiler pins.
+#
+# gcc-14 and g++-14 MUST be installed as a pair: the coverage build does
+# enable_language(CXX), and a lone gcc-14 is exactly what broke it.
+#
+# The pair is only requested when apt can actually supply it. On Debian 12 no
+# suite carries gcc-14 and the dev box builds the release from source instead
+# (infra/ansible/roles/dev_box), so an unconditional `apt-get install gcc-14`
+# would abort this script on a host where the pin is already met by other means.
+# That is not a relaxation: main()'s parity check is unchanged and still FAILS
+# loudly if neither path produced a pinned gcc-14.
+install_apt_pins() {
+  local pkgs=(clang-format-22 clang-tools-18)
+  as_root apt-get update -qq
+  if apt_has_candidate gcc-14 && apt_has_candidate g++-14; then
+    pkgs+=(gcc-14 g++-14)
+  else
+    echo "  note gcc-14/g++-14 have no apt candidate here;" \
+      "relying on an out-of-band install (the parity check decides)"
+  fi
+  as_root apt-get install -y --no-install-recommends "${pkgs[@]}" >/dev/null
+}
+
+# The GitHub-release binaries and the pip-managed pins, at the versions read
+# from the Dockerfile. Split out of main() so each half stays inside the
+# 60-line NASA P10 Rule 4 cap the repo enforces on shell as well as C.
+install_pinned_tools() {
+  local shellcheck_v="$1" shfmt_v="$2" actionlint_v="$3" hadolint_v="$4"
+  local ruff_v="$5" yamllint_v="$6" cmakelang_v="$7"
+
+  ensure_release_tool shellcheck "${shellcheck_v}" \
+    "$(shellcheck --version 2>/dev/null | sed -n 's/^version: //p')" install_shellcheck
+  ensure_release_tool shfmt "${shfmt_v}" \
+    "$(shfmt --version 2>/dev/null | sed 's/^v//')" install_shfmt
+  ensure_release_tool actionlint "${actionlint_v}" \
+    "$(actionlint --version 2>/dev/null | head -1)" install_actionlint
+  ensure_release_tool hadolint "${hadolint_v}" \
+    "$(hadolint --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')" install_hadolint
+
+  # pip-managed pins. --break-system-packages matches the Dockerfile on a
+  # PEP-668 base image; the pins keep these exact.
+  python3 -m pip install --quiet --break-system-packages \
+    "ruff==${ruff_v}" "yamllint==${yamllint_v}" "cmakelang==${cmakelang_v}"
+}
+
 main() {
   local check_only=0
   [ "${1:-}" = "--check-only" ] && check_only=1
@@ -130,28 +188,9 @@ main() {
 
   if [ "${check_only}" -eq 0 ]; then
     echo "provisioning runner toolchain from ${DOCKERFILE#"${ROOT}"/} pins:"
-
-    # apt-managed compiler pins. gcc-14 and g++-14 MUST be installed as a pair:
-    # the coverage build enable_language(CXX) needs the C++ half, and a lone
-    # gcc-14 is exactly what broke it.
-    as_root apt-get update -qq
-    as_root apt-get install -y --no-install-recommends \
-      gcc-14 g++-14 clang-format-22 clang-tools-18 >/dev/null
-
-    # GitHub-release binaries, pinned to the Dockerfile versions.
-    ensure_release_tool shellcheck "${shellcheck_v}" \
-      "$(shellcheck --version 2>/dev/null | sed -n 's/^version: //p')" install_shellcheck
-    ensure_release_tool shfmt "${shfmt_v}" \
-      "$(shfmt --version 2>/dev/null | sed 's/^v//')" install_shfmt
-    ensure_release_tool actionlint "${actionlint_v}" \
-      "$(actionlint --version 2>/dev/null | head -1)" install_actionlint
-    ensure_release_tool hadolint "${hadolint_v}" \
-      "$(hadolint --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')" install_hadolint
-
-    # pip-managed pins. --break-system-packages matches the Dockerfile on a
-    # PEP-668 base image; the pins keep these exact.
-    python3 -m pip install --quiet --break-system-packages \
-      "ruff==${ruff_v}" "yamllint==${yamllint_v}" "cmakelang==${cmakelang_v}"
+    install_apt_pins
+    install_pinned_tools "${shellcheck_v}" "${shfmt_v}" "${actionlint_v}" \
+      "${hadolint_v}" "${ruff_v}" "${yamllint_v}" "${cmakelang_v}"
   fi
 
   echo "verifying parity (the check the toolchain-parity gate runs):"
