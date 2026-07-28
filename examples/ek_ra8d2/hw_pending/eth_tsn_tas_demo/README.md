@@ -46,9 +46,26 @@ every register access lives behind the driver API, which carries the citations.
 (#21). The example's value is demonstrating the real shaper API behind a clean
 ARM cross-build, matching the driver-gap example wave (#182-188).
 
-Asserting the egress is actually shaped to the schedule needs a multi-node
-measurement rig plus the gPTP time base locked to a peer (bench wiring #89);
-promote to `hw_validated/hil/` once the schedule is confirmed on silicon.
+### Why a measurement peer does not unblock this (#292)
+
+A measurement peer was provisioned on the bench for this app -- `linuxptp` on
+the HIL Pi's built-in Ethernet port, which carries a real PTP hardware clock --
+and it cannot assert anything here, because the blocker is in the firmware:
+
+- **Nothing is transmitted.** `ra8_etha_init` leaves port 0 in `CONFIG` mode
+  (the only mode in which the TAS/CBS registers are writable) and the app never
+  moves it to `OPERATION`, never opens a queue, and never queues a frame. A
+  shaper with no egress produces nothing to measure.
+- **The schedule reference is never started.** TAS times its gate-control list
+  against the gPTP timer, and `ra8_eth_gptp_init` writes an invented
+  `GPTP_CTRL`/`GPTP_STS`/`GPTP_IE` window instead of the real HUM Ch 35
+  `PTPTMEC` / `PTPTIVCt` registers, so the timer is never enabled. See
+  `../eth_gptp_timestamp_demo/README.md` for the full evidence.
+
+So `tsn: schedule PASS` says the shaper *programming* calls returned
+`k_ra8_ok`; it says nothing about shaped traffic. Promotion needs the gPTP
+driver rewritten onto the real register map and this app extended to actually
+transmit -- not a bench change.
 
 Build:
 

@@ -62,6 +62,110 @@
   changed_when: false
   failed_when: hil_bench_vendor_check.rc != 0
 
+# --- linuxptp + a board-facing port that can actually timestamp -------------
+
+- name: Install the pinned linuxptp release
+  become: true
+  ansible.builtin.apt:
+    name: "linuxptp={{ hil_bench_linuxptp_version }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Assert the installed linuxptp is the pinned release
+  ansible.builtin.command:
+    cmd: "dpkg-query -W -f=${Version} linuxptp"
+  register: hil_bench_linuxptp_installed
+  changed_when: false
+  failed_when: (hil_bench_linuxptp_installed.stdout | trim) != hil_bench_linuxptp_version
+
+- name: Assert every linuxptp binary the bench scripts invoke is present
+  # command -v is a shell builtin, so the shell module is required here.
+  ansible.builtin.shell: "command -v {{ item }}"  # noqa: command-instead-of-shell
+  args:
+    executable: /bin/bash
+  loop: "{{ hil_bench_linuxptp_binaries }}"
+  register: hil_bench_linuxptp_bins
+  changed_when: false
+  failed_when: hil_bench_linuxptp_bins.rc != 0
+
+- name: Mask the distro's system-wide PTP daemons
+  # See this role's defaults: a HIL helper owns ptp4l for the length of a run,
+  # and a system unit on the same interface is an invisible second speaker.
+  # `systemctl mask`, not the systemd module: two of the three units are
+  # templates, and the module insists on resolving an instance they cannot have
+  # ("Could not find the requested service ptp4l@.service"). mask is idempotent
+  # and prints the symlink line only when it actually changes something.
+  become: true
+  ansible.builtin.command:
+    cmd: "systemctl mask {{ item }}"
+  loop: "{{ hil_bench_linuxptp_masked_units }}"
+  register: hil_bench_ptp_mask
+  changed_when: "'Created symlink' in (hil_bench_ptp_mask.stdout + hil_bench_ptp_mask.stderr)"
+
+- name: Read the host's default-route interface
+  ansible.builtin.command:
+    cmd: ip -o route show default
+  register: hil_bench_default_route
+  changed_when: false
+
+- name: Assert the board-facing interface is not the host's uplink
+  # The bench reaches the world over wlan0 and Tailscale rides it. Giving the
+  # board-facing port the uplink's job would take the bench off the network
+  # mid-run; scripts/hil/eth_tcp.sh refuses the uplink for the same reason, and
+  # this assert catches the misconfiguration at provision time instead.
+  ansible.builtin.assert:
+    that:
+      - (hil_bench_default_route.stdout.split() | length) < 5 or
+        (hil_bench_default_route.stdout.split()[4]) != hil_bench_eth_iface
+    fail_msg: >-
+      {{ hil_bench_eth_iface }} carries this host's default route
+      ({{ hil_bench_default_route.stdout | trim }}), so it cannot also be the
+      board-facing bench port. Either move the uplink or point
+      hil_bench_eth_iface at the port the EK-RA8D2 is cabled to.
+
+- name: Read the board-facing interface's timestamping capabilities
+  ansible.builtin.command:
+    cmd: "ethtool -T {{ hil_bench_eth_iface }}"
+  register: hil_bench_ethtool_t
+  changed_when: false
+  failed_when: false
+
+- name: Assert the board-facing interface has a PTP hardware clock
+  # This is the whole reason the Ethernet cable moved off the USB adapter
+  # (#292): the adapter reports "PTP Hardware Clock: none" and software-receive
+  # only, so any offset measured through it is dominated by host scheduling
+  # jitter rather than by the board. Asserting the capability keeps a future
+  # re-cable from silently degrading every timing result.
+  ansible.builtin.assert:
+    that:
+      - hil_bench_ethtool_t.rc == 0
+      - "'hardware-receive' in hil_bench_ethtool_t.stdout"
+      - "'hardware-transmit' in hil_bench_ethtool_t.stdout"
+      - hil_bench_ethtool_t.stdout is not search('PTP Hardware Clock: none')
+    fail_msg: >-
+      {{ hil_bench_eth_iface }} cannot hardware-timestamp
+      (ethtool -T rc {{ hil_bench_ethtool_t.rc }}):
+      {{ hil_bench_ethtool_t.stdout | default(hil_bench_ethtool_t.stderr) | trim }}.
+      A USB-Ethernet adapter will always fail this -- none of them carry a PHC.
+      Cable the EK-RA8D2 to the host's built-in Ethernet port and set
+      hil_bench_eth_iface to it.
+
+- name: Read the PHC index the board-facing interface exposes
+  ansible.builtin.shell:
+    cmd: >-
+      ethtool -T {{ hil_bench_eth_iface }}
+      | awk '/PTP Hardware Clock:/ {print $4}'
+    executable: /bin/bash
+  register: hil_bench_phc_index
+  changed_when: false
+
+- name: Assert the PHC character device exists
+  ansible.builtin.stat:
+    path: "/dev/ptp{{ hil_bench_phc_index.stdout | trim }}"
+  register: hil_bench_phc_dev
+  failed_when: not hil_bench_phc_dev.stat.exists
+
 - name: Ensure the bench user can access the serial ports
   become: true
   ansible.builtin.user:
@@ -193,4 +297,8 @@
     msg: >-
       HIL bench ready: repo at {{ hil_bench_ref }} in {{ hil_bench_repo_dir }},
       toolchain + vendor tools present, board reachable
-      ({{ 'Cortex-M85 found' if 'Cortex-M85' in hil_bench_jlink_probe.stdout else 'NOT found' }}).
+      ({{ 'Cortex-M85 found' if 'Cortex-M85' in hil_bench_jlink_probe.stdout else 'NOT found' }});
+      linuxptp {{ hil_bench_linuxptp_installed.stdout | trim }} with
+      {{ hil_bench_linuxptp_binaries | join(', ') }}, board-facing port
+      {{ hil_bench_eth_iface }} hardware-timestamps on
+      /dev/ptp{{ hil_bench_phc_index.stdout | trim }}.

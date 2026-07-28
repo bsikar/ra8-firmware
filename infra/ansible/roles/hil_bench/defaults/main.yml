@@ -25,6 +25,10 @@ hil_bench_apt_packages:
   - python3-pip
   - python3-venv
   - usbutils
+  # ethtool reads the NIC timestamping capabilities the gPTP assertions below
+  # stand on. Without it the PHC check cannot run, so it is a hard dependency
+  # of this role, not a convenience.
+  - ethtool
 
 # Pinned Arm GNU Toolchain (must match .devcontainer/Dockerfile exactly so the
 # bench builds byte-identical firmware to CI). Installed to the /opt path the
@@ -47,6 +51,47 @@ hil_bench_arm_gcc_url: "https://developer.arm.com/-/media/Files/downloads/gnu/{{
 hil_bench_required_vendor_tools:
   - JLinkExe   # SEGGER J-Link (flash + SWD + VCOM)
   - rfp-cli    # Renesas Flash Programmer (DLM recovery, option bytes)
+
+# --- linuxptp: the IEEE 1588 / 802.1AS peer on the board-facing wire --------
+# The Ethernet timing examples measure against a real PTP peer rather than
+# against themselves, so the bench needs one. linuxptp is in the Ubuntu archive
+# and is pinned to the exact archive version below: unlike the vendor tools it
+# has a stable, resolvable name, so there is no reason to accept "whatever apt
+# had that day" on a host whose whole job is producing timing numbers.
+#
+# Re-pinning: `apt-cache policy linuxptp` on the bench prints the candidate.
+# Move this pin deliberately and re-run; do not drop the `=` and let it float.
+hil_bench_linuxptp_version: "4.0-1ubuntu1.1"
+# Binaries the bench scripts invoke. Asserted individually after the install so
+# a partially-unpacked package cannot pass as a provisioned bench.
+hil_bench_linuxptp_binaries:
+  - ptp4l    # the PTP port state machine (grandmaster or slave)
+  - phc2sys  # moves time between the NIC's PHC and CLOCK_REALTIME
+  - pmc      # management client: queries a running ptp4l over its UDS socket
+# The distro ships system-wide units for all three. They are NOT enabled by
+# default, but a bench where one got enabled by hand would have a second ptp4l
+# bound to the same interface, silently fighting the per-run daemon a HIL
+# helper starts -- and the symptom is an offset that never converges, which
+# reads as a firmware fault. Mask them so that cannot happen.
+#
+# Two of the three are systemd TEMPLATE units (the trailing `@`): `systemctl
+# mask ptp4l@.service` masks every instance, but they cannot be `stop`ped or
+# queried without an instance name, which is why the role masks by command
+# rather than through the systemd module.
+hil_bench_linuxptp_masked_units:
+  - "ptp4l@.service"
+  - "phc2sys@.service"
+  - timemaster.service
+
+# The board-facing wired interface: the EK-RA8D2's RJ45 goes here.
+#
+# This MUST be a port with a PTP hardware clock. The bench previously reached
+# the board through a USB-Ethernet adapter, which `ethtool -T` reports as
+# software-receive only with "PTP Hardware Clock: none" -- it can never be more
+# than a software-timestamped peer. The Pi's built-in port has PHC 0 with
+# hardware transmit and receive timestamping, so the cable lives there (#292)
+# and the role asserts the property rather than trusting the label.
+hil_bench_eth_iface: "eth0"
 
 # Serial group the bench user must be in for /dev/ttyACM* access.
 hil_bench_serial_group: dialout
