@@ -358,6 +358,36 @@ bh_preempt() {
   return $?
 }
 
+# bh_take_flock <wait_s>  -- 0 when fd 9 now holds the lock, 1 when denied.
+#
+# fd 9 stays open for the life of this process on purpose: THAT open fd, with a
+# kernel lock on it, IS the hold. Nothing below ever writes "held" anywhere as
+# a claim.
+bh_take_flock() {
+  local wait_s="$1"
+  exec 9>>"$BH_LOCK" || {
+    bh_log "FATAL -- cannot open $BH_LOCK"
+    return 1
+  }
+  if [ "$wait_s" -gt 0 ] 2>/dev/null; then
+    flock -w "$wait_s" 9 && return 0
+  else
+    flock -n 9 && return 0
+  fi
+  [ "$BH_BREAK_GLASS" = "true" ] || return 1
+  # Break-glass: preempt the incumbent and try again, IN ONE OPERATION. Doing
+  # it as a separate `release` then `hold` would leave a window in which a
+  # third actor could take the bench between them -- and the whole reason
+  # somebody is breaking glass is that the board is already wedged.
+  bh_preempt || return 1
+  if [ "$wait_s" -gt 0 ] 2>/dev/null; then
+    flock -w "$wait_s" 9 && return 0
+  else
+    flock -w 15 9 && return 0
+  fi
+  return 1
+}
+
 # bh_hold <mode> <wait_s> <fields_b64>
 bh_hold() {
   local mode="$1" wait_s="$2" fields="$3"
@@ -367,39 +397,15 @@ bh_hold() {
     return "$BH_EXIT_UNKNOWN"
   }
 
-  exec 9>>"$BH_LOCK" || {
-    bh_log "FATAL -- cannot open $BH_LOCK"
-    return "$BH_EXIT_UNKNOWN"
-  }
-  local got=0
-  if [ "$wait_s" -gt 0 ] 2>/dev/null; then
-    flock -w "$wait_s" 9 && got=1
-  else
-    flock -n 9 && got=1
-  fi
-  if [ "$got" -eq 0 ] && [ "$BH_BREAK_GLASS" = "true" ]; then
-    # Break-glass: preempt the incumbent and try again, IN ONE OPERATION.
-    # Doing it as a separate `release` then `hold` would leave a window in
-    # which a third actor could take the bench between them -- and the whole
-    # reason someone is breaking glass is that the board is already wedged.
-    if bh_preempt; then
-      if [ "$wait_s" -gt 0 ] 2>/dev/null; then
-        flock -w "$wait_s" 9 && got=1
-      else
-        flock -w 15 9 && got=1
-      fi
-    fi
-  fi
-  if [ "$got" -eq 0 ]; then
+  bh_take_flock "$wait_s" || {
     # Denied. Print the incumbent so the caller can name who to go and ask.
     printf 'bench: DENIED\n'
     # Its exit status is the incumbent's state, which the caller already knows;
-    # what is wanted here is the RECORD it prints, so the caller's refusal can
-    # name who to go and ask. No `|| true`: this file runs without errexit
-    # precisely so a non-zero verdict is a verdict and not an abort.
+    # what is wanted here is the RECORD it prints. No `|| true`: this file runs
+    # without errexit precisely so a non-zero verdict is a verdict, not an abort.
     bh_probe
     return "$BH_EXIT_HELD"
-  fi
+  }
 
   BH_BOOT="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)"
   BH_AT="$(date -Iseconds)"
@@ -422,7 +428,14 @@ bh_hold() {
   # holder for its own.
   printf 'bench: ACQUIRED %s\n' "$BH_LOCK_ID"
 
-  case "$mode" in
+  bh_block "$mode"
+}
+
+# Hold still until the hold ends. This function IS the lease: while it is
+# blocked, fd 9 is open and locked; when it returns or dies, the kernel drops
+# the lock. Nothing else needs to happen.
+bh_block() {
+  case "$1" in
     wrapped)
       # THE load-bearing line of the whole design. stdin is the ssh channel;
       # when the client's ssh process dies -- exits, is killed, or loses its
@@ -445,7 +458,7 @@ bh_hold() {
       done
       ;;
     *)
-      bh_log "FATAL -- unknown hold mode '$mode'"
+      bh_log "FATAL -- unknown hold mode '$1'"
       return "$BH_EXIT_UNKNOWN"
       ;;
   esac
@@ -498,11 +511,16 @@ bh_release() {
 
   [ "$force" = "force" ] &&
     bh_journal_add force-take "$rec_id" "$cls" "$name" "forced release"
+  bh_signal_holder "$pid"
+}
 
-  # SIGTERM first and a grace window, so the holder's own EXIT trap gets to
-  # write its journal line; SIGKILL only if it will not go.
+# SIGTERM first with a 10s grace window, so the holder's own EXIT trap gets to
+# write its journal line; SIGKILL only if it will not go. The verdict is read
+# off the FLOCK each time round, not off the signal's exit status -- the
+# question is whether the lock is gone, and only the kernel can answer that.
+bh_signal_holder() {
+  local pid="$1" i=0
   kill -TERM "$pid" 2>/dev/null || true
-  local i=0
   while [ "$i" -lt 20 ]; do
     bh_flock_held || {
       printf 'bench: released\n'

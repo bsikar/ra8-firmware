@@ -126,30 +126,7 @@ cmd_status() {
   fi
 
   if [ "$state" = "HELD" ]; then
-    local age left budget
-    budget="$(bench_field "$probe" f_max_hold_s 0)"
-    age=$(($(bench_field "$probe" now_epoch 0) - $(bench_field "$probe" f_acquired_epoch 0)))
-    left=$((budget - age))
-    printf 'bench:    HELD\n'
-    printf 'holder:   %s (%s)\n' "$(bench_field "$probe" f_holder_name '?')" \
-      "$(bench_field "$probe" f_holder_class '?')"
-    printf 'intent:   %s\n' "$(bench_field "$probe" f_intent '<none stated>')"
-    printf 'kind:     %s\n' \
-      "$(bench_hold_kind_text "$(bench_field "$probe" f_hold_kind wrapped)")"
-    printf 'since:    %s (%s ago)\n' "$(bench_field "$probe" f_acquired_at '?')" \
-      "$(bench_human_age "$age")"
-    if [ "$left" -ge 0 ]; then
-      printf 'budget:   %s (%s left)\n' "$(bench_human_age "$budget")" \
-        "$(bench_human_age "$left")"
-    else
-      printf 'budget:   %s (OVERRUN by %s)\n' "$(bench_human_age "$budget")" \
-        "$(bench_human_age $((-left)))"
-    fi
-    printf 'origin:   %s\n' "$(bench_field "$probe" f_origin '?')"
-    printf 'activity: %s\n' "$(bench_field "$probe" f_last_activity '?')"
-    if [ "$(bench_field "$probe" f_break_glass false)" = "true" ]; then
-      printf 'note:     taken with --break-glass\n'
-    fi
+    bench_print_held "$probe"
     bench_print_health "$probe"
     return "$RA8_BENCH_EXIT_HELD"
   fi
@@ -167,6 +144,37 @@ cmd_status() {
   fi
   bench_print_health "$probe"
   return "$RA8_BENCH_EXIT_FREE"
+}
+
+# The whole record, in the order somebody standing at the bench wants it: who,
+# why, for how much longer. `activity` is when a guarded operation last STARTED
+# under this hold -- evidence for "is it busy or is it wedged?", never a verdict
+# and never something that extends a budget.
+bench_print_held() {
+  local probe="$1" age left budget
+  budget="$(bench_field "$probe" f_max_hold_s 0)"
+  age=$(($(bench_field "$probe" now_epoch 0) - $(bench_field "$probe" f_acquired_epoch 0)))
+  left=$((budget - age))
+  printf 'bench:    HELD\n'
+  printf 'holder:   %s (%s)\n' "$(bench_field "$probe" f_holder_name '?')" \
+    "$(bench_field "$probe" f_holder_class '?')"
+  printf 'intent:   %s\n' "$(bench_field "$probe" f_intent '<none stated>')"
+  printf 'kind:     %s\n' \
+    "$(bench_hold_kind_text "$(bench_field "$probe" f_hold_kind wrapped)")"
+  printf 'since:    %s (%s ago)\n' "$(bench_field "$probe" f_acquired_at '?')" \
+    "$(bench_human_age "$age")"
+  if [ "$left" -ge 0 ]; then
+    printf 'budget:   %s (%s left)\n' "$(bench_human_age "$budget")" \
+      "$(bench_human_age "$left")"
+  else
+    printf 'budget:   %s (OVERRUN by %s)\n' "$(bench_human_age "$budget")" \
+      "$(bench_human_age $((-left)))"
+  fi
+  printf 'origin:   %s\n' "$(bench_field "$probe" f_origin '?')"
+  printf 'activity: %s\n' "$(bench_field "$probe" f_last_activity '?')"
+  if [ "$(bench_field "$probe" f_break_glass false)" = "true" ]; then
+    printf 'note:     taken with --break-glass\n'
+  fi
 }
 
 # A hold that dies with its command is a different promise from one that
@@ -201,65 +209,26 @@ bench_print_health() {
 # run
 # ---------------------------------------------------------------------------
 
-cmd_run() {
-  local intent="" budget_s="$RA8_BENCH_DEFAULT_HOLD_S" wait_s=0 cls="" name=""
-  local glass=false confirm="${CONFIRM:-}"
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --intent)
-        intent="${2:-}"
-        shift 2
-        ;;
-      --for)
-        budget_s="$(bench_duration "${2:-}")"
-        shift 2
-        ;;
-      --wait)
-        wait_s="$(bench_duration "${2:-}")"
-        shift 2
-        ;;
-      --as)
-        cls="${2:-}"
-        shift 2
-        ;;
-      --name)
-        name="${2:-}"
-        shift 2
-        ;;
-      --break-glass)
-        glass=true
-        shift
-        ;;
-      --confirm)
-        confirm="${2:-}"
-        shift 2
-        ;;
-      --)
-        shift
-        break
-        ;;
-      *)
-        bench_say "unknown option '$1' (did you forget the -- before the command?)"
-        return "$RA8_BENCH_EXIT_UNKNOWN"
-        ;;
-    esac
-  done
-  [ $# -gt 0 ] || {
+# Reject the two things a hold cannot be taken without: a payload, and a reason
+# somebody can read at a glance. An unreadable lock is a lock people force-take
+# blindly, which is why --intent has no default anywhere in this interface.
+_cmd_run_validate() {
+  if [ "${#BENCH_OPT_ARGV[@]}" -eq 0 ]; then
     bench_say "usage: bench.sh run --intent \"...\" -- <command> [args]"
-    return "$RA8_BENCH_EXIT_UNKNOWN"
-  }
-  [ -n "$intent" ] || {
+    return 1
+  fi
+  if [ -z "$BENCH_OPT_INTENT" ]; then
     bench_say "--intent is required. A lock you cannot read at a glance is a lock"
     bench_say "people force-take blindly."
-    return "$RA8_BENCH_EXIT_UNKNOWN"
-  }
-  [ -n "$budget_s" ] || {
-    bench_say "--for: could not parse a duration (want 900s / 15m / 2h)"
-    return "$RA8_BENCH_EXIT_UNKNOWN"
-  }
-  [ -n "$wait_s" ] || wait_s=0
-  [ -n "$cls" ] || cls="$(bench_default_class)"
-  [ -n "$name" ] || name="$(bench_default_name "$cls")"
+    return 1
+  fi
+  return 0
+}
+
+cmd_run() {
+  bench_parse_opts "$@" || return "$RA8_BENCH_EXIT_UNKNOWN"
+  _cmd_run_validate || return "$RA8_BENCH_EXIT_UNKNOWN"
+  [ -n "$BENCH_OPT_BUDGET_S" ] || BENCH_OPT_BUDGET_S="$RA8_BENCH_DEFAULT_HOLD_S"
 
   local tmp lock_id holder rc
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-bench.XXXXXX")" || return "$RA8_BENCH_EXIT_UNKNOWN"
@@ -270,8 +239,9 @@ cmd_run() {
   : >"$tmp/hold.out"
   lock_id="$(bench_new_lock_id)"
 
-  bench_start_holder "$lock_id" "$cls" "$name" "$intent" "$budget_s" \
-    "$wait_s" "$glass" "$tmp/hold.in" "$tmp/hold.out" "$confirm"
+  bench_start_holder "$lock_id" "$BENCH_OPT_CLASS" "$BENCH_OPT_NAME" \
+    "$BENCH_OPT_INTENT" "$BENCH_OPT_BUDGET_S" "$BENCH_OPT_WAIT_S" \
+    "$BENCH_OPT_GLASS" "$tmp/hold.in" "$tmp/hold.out" "$BENCH_OPT_CONFIRM"
   holder="$RA8_BENCH_HOLDER_PID"
   if [ -z "$holder" ]; then
     bench_say "could not start a holder (PI_HOST unset, or the host half is unreadable)"
@@ -282,33 +252,39 @@ cmd_run() {
   # on, this shell dying closes the pipe, which is the release.
   exec 8>"$tmp/hold.in"
 
-  bench_await_ack "$lock_id" "$tmp/hold.out" "$holder" $((wait_s + 30))
+  bench_await_ack "$lock_id" "$tmp/hold.out" "$holder" $((BENCH_OPT_WAIT_S + 30))
   rc=$?
-  if [ "$rc" -eq "$RA8_BENCH_EXIT_HELD" ]; then
-    bench_report_denial "$tmp/hold.out"
-    exec 8>&-
-    wait "$holder" 2>/dev/null
-    rm -rf "$tmp"
-    return "$RA8_BENCH_EXIT_HELD"
-  fi
   if [ "$rc" -ne 0 ]; then
-    bench_say "UNKNOWN -- could not establish a hold. Refusing to touch the bench."
-    sed 's/^/          /' "$tmp/hold.out" >&2 2>/dev/null
+    _cmd_run_report_failure "$rc" "$tmp/hold.out"
     exec 8>&-
     wait "$holder" 2>/dev/null
     rm -rf "$tmp"
-    return "$RA8_BENCH_EXIT_UNKNOWN"
+    return "$rc"
   fi
 
-  bench_say "holding ($lock_id, $name [$cls]) -- $intent"
+  bench_say "holding ($lock_id, $BENCH_OPT_NAME [$BENCH_OPT_CLASS]) -- $BENCH_OPT_INTENT"
   RA8_BENCH_LOCK_ID="$lock_id" RA8_BENCH_HOLDER_PID="$holder" \
-    RA8_BENCH_INTENT="$intent" bench_supervise "$holder" "$@"
+    RA8_BENCH_INTENT="$BENCH_OPT_INTENT" \
+    bench_supervise "$holder" "${BENCH_OPT_ARGV[@]}"
   rc=$?
 
   exec 8>&-
   wait "$holder" 2>/dev/null
   rm -rf "$tmp"
   return "$rc"
+}
+
+# Denied and could-not-tell are different answers and get different words.
+# Collapsing them would be the exact mistake this interface's third exit code
+# exists to prevent.
+_cmd_run_report_failure() {
+  local rc="$1" out="$2"
+  if [ "$rc" -eq "$RA8_BENCH_EXIT_HELD" ]; then
+    bench_report_denial "$out"
+    return 0
+  fi
+  bench_say "UNKNOWN -- could not establish a hold. Refusing to touch the bench."
+  sed 's/^/          /' "$out" >&2 2>/dev/null
 }
 
 # Run the payload, and FENCE it: if the holder dies while the payload is still
@@ -348,103 +324,70 @@ bench_supervise() {
 # acquire / release -- the detached pair
 # ---------------------------------------------------------------------------
 
-cmd_acquire() {
-  local intent="" budget_s="" wait_s=0 cls="" name="" glass=false confirm=""
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --intent)
-        intent="${2:-}"
-        shift 2
-        ;;
-      --for)
-        budget_s="$(bench_duration "${2:-}")"
-        shift 2
-        ;;
-      --wait)
-        wait_s="$(bench_duration "${2:-}")"
-        shift 2
-        ;;
-      --as)
-        cls="${2:-}"
-        shift 2
-        ;;
-      --name)
-        name="${2:-}"
-        shift 2
-        ;;
-      --run-url)
-        RA8_BENCH_RUN_URL="${2:-}"
-        export RA8_BENCH_RUN_URL
-        shift 2
-        ;;
-      --break-glass)
-        glass=true
-        shift
-        ;;
-      --confirm)
-        confirm="${2:-}"
-        shift 2
-        ;;
-      *)
-        bench_say "unknown option '$1'"
-        return "$RA8_BENCH_EXIT_UNKNOWN"
-        ;;
-    esac
-  done
-  [ -n "$intent" ] || {
+# A detached hold is the ONE shape that outlives the process that took it, so it
+# is the one shape a TTL is unavoidable for -- and therefore the one shape that
+# may not have a default budget. A default is what gets forgotten.
+_cmd_acquire_validate() {
+  if [ -z "$BENCH_OPT_INTENT" ]; then
     bench_say "--intent is required."
-    return "$RA8_BENCH_EXIT_UNKNOWN"
-  }
-  # A detached hold is the ONE shape that outlives the process that took it, so
-  # it is the one shape a TTL is unavoidable for -- and therefore the one shape
-  # that may not have a default. A default is what gets forgotten.
-  [ -n "$budget_s" ] || {
+    return 1
+  fi
+  if [ -z "$BENCH_OPT_BUDGET_S" ]; then
     bench_say "--for is MANDATORY for a detached hold: it survives the command"
     bench_say "that took it, so nothing but the budget bounds it. Cap is 8h."
-    bench_say "If you want a hold that dies with your command, use \`bench.sh run\`."
-    return "$RA8_BENCH_EXIT_UNKNOWN"
-  }
-  if [ "$budget_s" -gt "$RA8_BENCH_MAX_DETACHED_S" ]; then
-    bench_say "--for $budget_s s exceeds the 8h cap on a detached hold."
-    return "$RA8_BENCH_EXIT_UNKNOWN"
+    bench_say "If you want a hold that dies with your command, use: bench.sh run"
+    return 1
   fi
-  [ -n "$wait_s" ] || wait_s=0
-  [ -n "$cls" ] || cls="$(bench_default_class)"
-  [ -n "$name" ] || name="$(bench_default_name "$cls")"
+  if [ "$BENCH_OPT_BUDGET_S" -gt "$RA8_BENCH_MAX_DETACHED_S" ]; then
+    bench_say "--for ${BENCH_OPT_BUDGET_S}s exceeds the 8h cap on a detached hold."
+    return 1
+  fi
+  return 0
+}
 
-  local lock_id fields cmd rc
-  lock_id="$(bench_new_lock_id)"
-  fields="$(bench_fields_b64 "$lock_id" "$cls" "$name" "$intent" "$budget_s" detached \
-    "$glass" "$confirm")"
-  cmd="$(bench_host_cmd hold detached "$wait_s" "$fields")" || return "$RA8_BENCH_EXIT_UNKNOWN"
-
+# Launch the detached holder and return immediately. It is deliberately NOT
+# confirmed here: see cmd_acquire, which confirms by observing the lock.
+_cmd_acquire_launch() {
+  local fields="$1" cmd
   if rig_is_local_pi; then
     local t
-    t="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-host.XXXXXX")" || return "$RA8_BENCH_EXIT_UNKNOWN"
-    cp "$RA8_BENCH_HOST_SRC" "$t" || return "$RA8_BENCH_EXIT_UNKNOWN"
-    RA8_BENCH_DIR="$RA8_BENCH_DIR" setsid bash "$t" hold detached "$wait_s" "$fields" \
-      </dev/null >/dev/null 2>&1 &
-  else
-    # shellcheck disable=SC2029  # $cmd is composed here on purpose (see bench_host_cmd) and quoted for the remote shell by bench_q.
-    ssh "${RA8_BENCH_SSH_OPTS[@]}" "$PI_HOST" \
-      "setsid nohup bash -c $(bench_q "$cmd") </dev/null >/dev/null 2>&1 &" \
-      </dev/null >/dev/null 2>&1
+    t="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-host.XXXXXX")" || return 1
+    cp "$RA8_BENCH_HOST_SRC" "$t" || return 1
+    RA8_BENCH_DIR="$RA8_BENCH_DIR" setsid bash "$t" hold detached \
+      "$BENCH_OPT_WAIT_S" "$fields" </dev/null >/dev/null 2>&1 &
+    return 0
   fi
+  cmd="$(bench_host_cmd hold detached "$BENCH_OPT_WAIT_S" "$fields")" || return 1
+  # shellcheck disable=SC2029  # $cmd is composed here on purpose (see bench_host_cmd) and quoted for the remote shell by bench_q.
+  ssh "${RA8_BENCH_SSH_OPTS[@]}" "$PI_HOST" \
+    "setsid nohup bash -c $(bench_q "$cmd") </dev/null >/dev/null 2>&1 &" \
+    </dev/null >/dev/null 2>&1
+}
+
+cmd_acquire() {
+  bench_parse_opts "$@" || return "$RA8_BENCH_EXIT_UNKNOWN"
+  _cmd_acquire_validate || return "$RA8_BENCH_EXIT_UNKNOWN"
+
+  local lock_id fields
+  lock_id="$(bench_new_lock_id)"
+  fields="$(bench_fields_b64 "$lock_id" "$BENCH_OPT_CLASS" "$BENCH_OPT_NAME" \
+    "$BENCH_OPT_INTENT" "$BENCH_OPT_BUDGET_S" detached "$BENCH_OPT_GLASS" \
+    "$BENCH_OPT_CONFIRM")"
+  _cmd_acquire_launch "$fields" || return "$RA8_BENCH_EXIT_UNKNOWN"
 
   # Confirm by OBSERVING the lock, not by trusting that we launched something.
-  local waited=0 limit=$((wait_s + 20)) seen
+  local waited=0 limit=$((BENCH_OPT_WAIT_S + 20)) seen rc=0
   while [ "$waited" -lt "$limit" ]; do
     seen="$(bench_lock_id_now)"
     if [ "$seen" = "$lock_id" ]; then
       printf '%s\n' "$lock_id"
-      bench_say "acquired ($name [$cls], detached, budget $(bench_human_age "$budget_s")) -- $intent"
+      bench_say "acquired ($BENCH_OPT_NAME [$BENCH_OPT_CLASS], detached, budget $(bench_human_age "$BENCH_OPT_BUDGET_S")) -- $BENCH_OPT_INTENT"
       bench_say "release it with: make bench-free"
       return "$RA8_BENCH_EXIT_FREE"
     fi
     sleep 1
     waited=$((waited + 1))
   done
-  rc=0
   cmd_status >/dev/null 2>&1 || rc=$?
   if [ "$rc" -eq "$RA8_BENCH_EXIT_HELD" ]; then
     bench_say "DENIED -- somebody else holds the bench."

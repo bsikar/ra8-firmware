@@ -57,3 +57,9 @@ hil_bench_jlink_speed: 1000
 
 # Whether to pull LFS content (book fixtures some HIL apps bake in).
 hil_bench_lfs_pull: true
+
+# Bench mutual exclusion (#497). The canonical state directory -- one path, on
+# every actor, because two actors flocking two DIFFERENT inodes is the one
+# silent-corruption path the design has. Overriding this is for a test rig, not
+# for the bench.
+hil_bench_lock_dir: /var/lib/ra8-bench

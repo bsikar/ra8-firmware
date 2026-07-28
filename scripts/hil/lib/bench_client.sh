@@ -71,6 +71,120 @@ bench_duration() {
 # Single-quote a value for safe interpolation into a remote command string.
 bench_q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 
+# ---------------------------------------------------------------------------
+# One option parser for every verb that takes a hold
+# ---------------------------------------------------------------------------
+#
+# run / acquire / hold / take all accept the same vocabulary, and three copies
+# of it would drift on the first new flag. Results land in globals rather than
+# a return value because bash 3.2 has no name-refs and a function can only hand
+# back a status.
+# shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+BENCH_OPT_INTENT=""
+BENCH_OPT_BUDGET_S=""
+BENCH_OPT_WAIT_S=0
+BENCH_OPT_CLASS=""
+BENCH_OPT_NAME=""
+# shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+BENCH_OPT_GLASS=false
+# shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+BENCH_OPT_CONFIRM=""
+# Whatever followed `--`: the payload for `run`.
+# shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+BENCH_OPT_ARGV=()
+# Set when --for or --wait was given but could not be parsed as a duration.
+BENCH_OPT_BAD=""
+
+# Reset every output parameter, so a second call in one process cannot inherit
+# a flag from the first.
+_bench_opts_reset() {
+  # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+  BENCH_OPT_INTENT=""
+  BENCH_OPT_BUDGET_S=""
+  BENCH_OPT_WAIT_S=0
+  BENCH_OPT_CLASS=""
+  BENCH_OPT_NAME=""
+  # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+  BENCH_OPT_GLASS=false
+  # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+  BENCH_OPT_CONFIRM="${CONFIRM:-}"
+  # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+  BENCH_OPT_ARGV=()
+  BENCH_OPT_BAD=""
+}
+
+# bench_parse_opts "$@"  -- 0 on success, 1 on an unknown flag or a bad value.
+bench_parse_opts() {
+  _bench_opts_reset
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --intent | --why | --reason)
+        # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+        BENCH_OPT_INTENT="${2:-}"
+        shift 2
+        ;;
+      --for)
+        BENCH_OPT_BUDGET_S="$(bench_duration "${2:-}")"
+        [ -n "$BENCH_OPT_BUDGET_S" ] || BENCH_OPT_BAD="--for ${2:-}"
+        shift 2
+        ;;
+      --wait)
+        BENCH_OPT_WAIT_S="$(bench_duration "${2:-}")"
+        [ -n "$BENCH_OPT_WAIT_S" ] || BENCH_OPT_BAD="--wait ${2:-}"
+        shift 2
+        ;;
+      --as)
+        BENCH_OPT_CLASS="${2:-}"
+        shift 2
+        ;;
+      --name)
+        BENCH_OPT_NAME="${2:-}"
+        shift 2
+        ;;
+      --confirm)
+        # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+        BENCH_OPT_CONFIRM="${2:-}"
+        shift 2
+        ;;
+      --break-glass)
+        # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+        BENCH_OPT_GLASS=true
+        shift
+        ;;
+      --run-url)
+        RA8_BENCH_RUN_URL="${2:-}"
+        export RA8_BENCH_RUN_URL
+        shift 2
+        ;;
+      --)
+        shift
+        # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
+        BENCH_OPT_ARGV=("$@")
+        break
+        ;;
+      *)
+        bench_say "unknown option '$1' (did you forget the -- before the command?)"
+        return 1
+        ;;
+    esac
+  done
+  _bench_opts_finish
+}
+
+# Defaults and validation, once the flags are in. The class default is `agent`
+# and never `human` -- only a human may preempt, so guessing the WEAKER class
+# is the fail-safe direction and --as is how you say otherwise.
+_bench_opts_finish() {
+  [ -n "$BENCH_OPT_WAIT_S" ] || BENCH_OPT_WAIT_S=0
+  if [ -n "$BENCH_OPT_BAD" ]; then
+    bench_say "could not parse a duration: $BENCH_OPT_BAD (want 900s / 15m / 2h)"
+    return 1
+  fi
+  [ -n "$BENCH_OPT_CLASS" ] || BENCH_OPT_CLASS="$(bench_default_class)"
+  [ -n "$BENCH_OPT_NAME" ] || BENCH_OPT_NAME="$(bench_default_name "$BENCH_OPT_CLASS")"
+  return 0
+}
+
 # base64 with no line wrapping, on both a Mac client and a Linux one.
 bench_b64() { base64 <"$1" | tr -d '\n'; }
 

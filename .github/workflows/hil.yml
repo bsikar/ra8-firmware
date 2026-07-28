@@ -88,4 +88,10 @@ jobs:
           arm-none-eabi-gcc --version
           cmake --version
 
+      # Ahead of the suite, deliberately. It runs against a throwaway state
+      # directory and takes no instrument, so it cannot disturb the run that
+      # follows -- and if the bench lock is broken, that is worth knowing
+      # BEFORE 151 apps are flashed under a lock that is not holding.
+      - run: bash scripts/ci.sh --gate bench-lock-selftest
+
       - run: bash scripts/ci.sh --gate hil-all

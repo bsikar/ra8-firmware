@@ -23,33 +23,9 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bench_client.sh"
 # The mechanics, against a throwaway state directory on the bench host, so no
 # instrument and no board is touched. --ssh-death additionally proves the one
 # claim the whole "no stale lock" property rests on.
-cmd_selftest() {
-  local want_ssh_death=0
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --ssh-death)
-        want_ssh_death=1
-        shift
-        ;;
-      *) shift ;;
-    esac
-  done
-  local sandbox failures=0
-  sandbox="/tmp/ra8-bench-selftest.$$"
-  # Redirect every lock operation below at a directory nobody else uses. This
-  # is the ONLY place RA8_BENCH_DIR is ever moved off its canonical path, and
-  # it is why the selftest can prove exclusion without excluding anyone.
-  # shellcheck disable=SC2034  # consumed by lib/bench_client.sh and lib/bench_host.sh, not here.
-  RA8_BENCH_DIR="$sandbox"
-  printf 'bench selftest: state directory %s (throwaway)\n' "$sandbox"
-
-  bench_host provision >/dev/null 2>&1 || {
-    printf '  FAIL: could not provision %s\n' "$sandbox"
-    return "$RA8_BENCH_EXIT_UNKNOWN"
-  }
-
-  # 1. A fresh directory reports FREE, exit 0.
-  local rc
+# Cases 1+2: a fresh bench is FREE, and `run` acquires, runs and releases.
+_bench_st_basic() {
+  local failures=0 rc
   cmd_status >/dev/null 2>&1
   rc=$?
   if [ "$rc" -eq "$RA8_BENCH_EXIT_FREE" ]; then
@@ -58,9 +34,6 @@ cmd_selftest() {
     printf '  FAIL: unheld bench reported exit %s, want 0\n' "$rc"
     failures=$((failures + 1))
   fi
-
-  # 2. A wrapped hold really excludes: status must say HELD (exit 1) while a
-  #    payload runs, and FREE again the moment it stops.
   cmd_run --intent "selftest: mutual exclusion" --for 60s -- \
     bash -c 'true' >/dev/null 2>&1
   rc=$?
@@ -70,9 +43,14 @@ cmd_selftest() {
     printf '  FAIL: run exited %s on a trivial payload\n' "$rc"
     failures=$((failures + 1))
   fi
+  return "$failures"
+}
 
-  # 3. A second acquirer is DENIED while the first holds -- exit 1, not 0.
-  local tmp lock_id holder
+# Cases 3+4: while an incumbent holds, status says HELD and a second acquirer is
+# DENIED with its payload never run; when the incumbent's channel closes the
+# bench is FREE again. Exclusion that only reports itself is not exclusion.
+_bench_st_exclusion() {
+  local failures=0 rc tmp lock_id holder
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-bench-st.XXXXXX")"
   mkfifo "$tmp/hold.in"
   : >"$tmp/hold.out"
@@ -108,7 +86,6 @@ cmd_selftest() {
   wait "$holder" 2>/dev/null
   rm -rf "$tmp"
 
-  # 4. Releasing on holder death, with no cooperation from the holder at all.
   cmd_status >/dev/null 2>&1
   rc=$?
   if [ "$rc" -eq "$RA8_BENCH_EXIT_FREE" ]; then
@@ -117,29 +94,61 @@ cmd_selftest() {
     printf '  FAIL: bench still %s after the holder went away\n' "$rc"
     failures=$((failures + 1))
   fi
+  return "$failures"
+}
 
-  # 5. THE GUARD. Everything above proves the CLI; this proves the thing every
-  #    HIL script actually calls -- that `ra8_bench_require` holds for the life
-  #    of the calling script, no-ops when nested, and lets go when the script
-  #    dies WITHOUT running a trap. A guard that quietly released early, or
-  #    quietly held forever, would pass every test above.
-  bench_selftest_guard || failures=$((failures + 1))
-
-  # 6. The two halves of the human-preempt handshake are written down in two
-  #    files -- the client refuses without the phrase, the bench host enforces
-  #    it -- so they can drift, and if they did the client would refuse a
-  #    preempt the host would have allowed, or worse.
+# Case 6: the human-preempt handshake is written down in TWO files -- the client
+# refuses without the phrase, the bench host enforces it -- so they can drift,
+# and a drift would mean the client refusing a preempt the host would have
+# allowed, or the reverse.
+_bench_st_confirm_phrase() {
   local host_phrase client_phrase
   host_phrase="$(sed -n 's/^BH_CONFIRM_PHRASE="\(.*\)"$/\1/p' "$RA8_BENCH_HOST_SRC")"
   client_phrase="$(sed -n 's/^RA8_BENCH_CONFIRM_PHRASE="\(.*\)"$/\1/p' \
     "$(dirname "$RA8_BENCH_HOST_SRC")/bench_human.sh")"
   if [ -n "$host_phrase" ] && [ "$host_phrase" = "$client_phrase" ]; then
     printf '  ok: the CONFIRM phrase agrees between client and bench host\n'
-  else
-    printf '  FAIL: CONFIRM phrase drift -- host=%s client=%s\n' \
-      "${host_phrase:-<unset>}" "${client_phrase:-<unset>}"
-    failures=$((failures + 1))
+    return 0
   fi
+  printf '  FAIL: CONFIRM phrase drift -- host=%s client=%s\n' \
+    "${host_phrase:-<unset>}" "${client_phrase:-<unset>}"
+  return 1
+}
+
+cmd_selftest() {
+  local want_ssh_death=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --ssh-death)
+        want_ssh_death=1
+        shift
+        ;;
+      *) shift ;;
+    esac
+  done
+  local sandbox failures=0
+  sandbox="/tmp/ra8-bench-selftest.$$"
+  # Redirect every lock operation below at a directory nobody else uses. This
+  # is the ONLY place RA8_BENCH_DIR is ever moved off its canonical path, and
+  # it is why the selftest can prove exclusion without excluding anyone.
+  # shellcheck disable=SC2034  # consumed by lib/bench_client.sh and lib/bench_host.sh, not here.
+  RA8_BENCH_DIR="$sandbox"
+  printf 'bench selftest: state directory %s (throwaway)\n' "$sandbox"
+
+  bench_host provision >/dev/null 2>&1 || {
+    printf '  FAIL: could not provision %s\n' "$sandbox"
+    return "$RA8_BENCH_EXIT_UNKNOWN"
+  }
+
+  _bench_st_basic || failures=$((failures + $?))
+  _bench_st_exclusion || failures=$((failures + $?))
+  # THE GUARD. Everything above proves the CLI; this proves the thing every HIL
+  # script actually calls -- that `ra8_bench_require` holds for the life of the
+  # calling script, no-ops when nested, and lets go when the script dies WITHOUT
+  # running a trap. A guard that quietly released early, or quietly held
+  # forever, would pass every case above.
+  bench_selftest_guard || failures=$((failures + 1))
+  _bench_st_confirm_phrase || failures=$((failures + 1))
 
   if [ "$want_ssh_death" -eq 1 ]; then
     bench_selftest_ssh_death || failures=$((failures + 1))
@@ -161,10 +170,11 @@ cmd_selftest() {
 # only thing releasing the bench were the EXIT trap, every hard-killed HIL run
 # would leak the bench, and the fd-close mechanism this design relies on would
 # be doing nothing while looking like it worked.
-bench_selftest_guard() {
-  local lib script pid rc waited=0 probe
+# A stand-in for a real HIL script: source the guard, take the bench, prove a
+# nested call is a no-op, then sit still so the caller can kill it.
+_bench_st_write_guard_script() {
+  local script="$1" lib
   lib="$(dirname "$RA8_BENCH_HOST_SRC")"
-  script="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-guardtest.XXXXXX")"
   cat >"$script" <<GUARDTEST
 #!/usr/bin/env bash
 set -uo pipefail
@@ -177,6 +187,25 @@ printf 'GUARD-HELD %s\n' "\$RA8_BENCH_LOCK_ID"
 # Hold still until killed.
 while :; do sleep 1; done
 GUARDTEST
+}
+
+# Poll the bench host until the flock reaches <want> (0 free, 1 held), or the
+# window runs out. Prints the seconds waited.
+_bench_st_await_flock() {
+  local want="$1" limit="$2" waited=0 probe
+  while [ "$waited" -lt "$limit" ]; do
+    probe="$(bench_host probe 2>/dev/null)"
+    [ "$(bench_field "$probe" flock_held 9)" = "$want" ] && break
+    sleep 1
+    waited=$((waited + 1))
+  done
+  printf '%s' "$waited"
+}
+
+bench_selftest_guard() {
+  local script pid waited=0 probe
+  script="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-guardtest.XXXXXX")"
+  _bench_st_write_guard_script "$script"
 
   RA8_BENCH_DIR="$RA8_BENCH_DIR" bash "$script" >"$script.out" 2>"$script.err" &
   pid=$!
@@ -204,13 +233,7 @@ GUARDTEST
 
   kill -9 "$pid" 2>/dev/null
   wait "$pid" 2>/dev/null
-  waited=0
-  while [ "$waited" -lt 60 ]; do
-    probe="$(bench_host probe 2>/dev/null)"
-    [ "$(bench_field "$probe" flock_held 1)" = "0" ] && break
-    sleep 1
-    waited=$((waited + 1))
-  done
+  waited="$(_bench_st_await_flock 0 60)"
   rm -f "$script" "$script.out" "$script.err"
   probe="$(bench_host probe 2>/dev/null)"
   if [ "$(bench_field "$probe" flock_held 1)" = "0" ]; then
@@ -220,8 +243,7 @@ GUARDTEST
   fi
   printf '  FAIL: the bench stayed held %ss after a guarded script was SIGKILLed.\n' "$waited"
   printf '        The fd-close release is not working; only the EXIT trap is.\n'
-  rc=1
-  return "$rc"
+  return 1
 }
 
 # THE experiment the design stands on.
@@ -243,7 +265,7 @@ bench_selftest_ssh_death() {
     printf '  skip: --ssh-death needs a remote bench host (running ON the bench)\n'
     return 0
   fi
-  local tmp lock_id holder rc waited=0 probe
+  local tmp lock_id holder waited probe
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-bench-sd.XXXXXX")"
   mkfifo "$tmp/hold.in"
   : >"$tmp/hold.out"
@@ -252,20 +274,7 @@ bench_selftest_ssh_death() {
     "$tmp/hold.in" "$tmp/hold.out"
   holder="$RA8_BENCH_HOLDER_PID"
   exec 9>"$tmp/hold.in"
-  bench_await_ack "$lock_id" "$tmp/hold.out" "$holder" 30
-  rc=$?
-  if [ "$rc" -ne 0 ]; then
-    printf '  FAIL(ssh-death): could not establish the hold to kill (rc %s)\n' "$rc"
-    exec 9>&-
-    rm -rf "$tmp"
-    return 1
-  fi
-  # Assert the PRECONDITION before drawing any conclusion from the postcondition:
-  # a test that starts from an unheld lock proves nothing about releasing one.
-  probe="$(bench_host probe 2>/dev/null)"
-  if [ "$(bench_field "$probe" flock_held 0)" != "1" ] ||
-    [ "$(bench_field "$probe" f_lock_id)" != "$lock_id" ]; then
-    printf '  FAIL(ssh-death): the hold was not actually in force before the kill\n'
+  if ! _bench_st_ssh_death_precondition "$lock_id" "$holder" "$tmp"; then
     exec 9>&-
     rm -rf "$tmp"
     return 1
@@ -274,31 +283,44 @@ bench_selftest_ssh_death() {
   # kill -9 the ssh CLIENT. The remote payload is untouched and has no idea.
   kill -9 "$holder" 2>/dev/null
   wait "$holder" 2>/dev/null
-  # Keep our end of the fifo OPEN, so the only thing that can release the lock
+  # Our end of the fifo stays OPEN, so the only thing that can release the lock
   # is the remote payload noticing its channel died. Closing it here would
   # prove nothing.
   #
   # The poll asks about the FLOCK, not about the record. A missing record would
   # also make a lock_id comparison differ, and that is not the same claim: the
   # question is whether the kernel lock is gone, so that is what is measured.
-  while [ "$waited" -lt 120 ]; do
-    probe="$(bench_host probe 2>/dev/null)"
-    if [ "$(bench_field "$probe" flock_held 1)" = "0" ]; then
-      break
-    fi
-    sleep 2
-    waited=$((waited + 2))
-  done
+  waited="$(_bench_st_await_flock 0 120)"
   exec 9>&-
   rm -rf "$tmp"
   probe="$(bench_host probe 2>/dev/null)"
   if [ "$(bench_field "$probe" flock_held 1)" = "0" ]; then
     printf '  ok: SIGKILL of the ssh client released the flock within %ss\n' \
-      "$((waited + 2))"
+      "$((waited + 1))"
     return 0
   fi
   printf '  FAIL(ssh-death): the flock was still held %ss after the ssh client died.\n' "$waited"
   printf '        The no-stale-lock property does NOT hold on this transport, so the\n'
   printf '        design has degraded to a TTL lease. Do NOT paper over this.\n'
   return 1
+}
+
+# Assert the PRECONDITION before drawing any conclusion from the postcondition:
+# a test that starts from an unheld lock proves nothing at all about releasing
+# one, and would pass forever.
+_bench_st_ssh_death_precondition() {
+  local lock_id="$1" holder="$2" tmp="$3" rc probe
+  bench_await_ack "$lock_id" "$tmp/hold.out" "$holder" 30
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    printf '  FAIL(ssh-death): could not establish the hold to kill (rc %s)\n' "$rc"
+    return 1
+  fi
+  probe="$(bench_host probe 2>/dev/null)"
+  if [ "$(bench_field "$probe" flock_held 0)" != "1" ] ||
+    [ "$(bench_field "$probe" f_lock_id)" != "$lock_id" ]; then
+    printf '  FAIL(ssh-death): the hold was not actually in force before the kill\n'
+    return 1
+  fi
+  return 0
 }

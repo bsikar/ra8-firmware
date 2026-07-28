@@ -368,6 +368,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: bash scripts/ci.sh --gate pre-commit-checks
+      - run: bash scripts/ci.sh --gate bench-lock
       - name: Install libclang for the annotation gate
         run: |
           # ci-parity: infra -- installs the libclang Python binding the

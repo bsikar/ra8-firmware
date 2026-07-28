@@ -176,39 +176,21 @@ cmd_extend() {
 # collect a reason, refuse to proceed without one, and pass the acknowledgement
 # through.
 cmd_take() {
-  local reason="" intent="" confirm="${CONFIRM:-}" budget_s=1800 wait_s=0
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --reason | --why)
-        reason="${2:-}"
-        shift 2
-        ;;
-      --intent)
-        intent="${2:-}"
-        shift 2
-        ;;
-      --confirm)
-        confirm="${2:-}"
-        shift 2
-        ;;
-      --for)
-        budget_s="$(bench_duration "${2:-}")"
-        shift 2
-        ;;
-      *)
-        bench_say "unknown option '$1'"
-        return "$RA8_BENCH_EXIT_UNKNOWN"
-        ;;
-    esac
-  done
+  bench_parse_opts "$@" || return "$RA8_BENCH_EXIT_UNKNOWN"
+  local reason="$BENCH_OPT_INTENT" confirm="$BENCH_OPT_CONFIRM"
+  local budget_s="${BENCH_OPT_BUDGET_S:-1800}" wait_s="$BENCH_OPT_WAIT_S"
   [ -n "$reason" ] || {
     bench_say "usage: make bench-take WHY=\"why you are taking it from them\""
     bench_say "The reason is journaled. Preempting somebody silently is how a"
     bench_say "half-flashed board becomes a mystery."
     return "$RA8_BENCH_EXIT_UNKNOWN"
   }
-  [ -n "$intent" ] || intent="$reason"
-  [ -n "$budget_s" ] || budget_s=1800
+
+  # The caller's OWN class, never a hardcoded `human`. Hardcoding it would let
+  # an agent that ran `bench take` acquire AS a human -- and a human hold is
+  # the one class nothing may preempt without an acknowledgement, so that would
+  # be a privilege escalation available to anybody who typed one word.
+  local mine="$BENCH_OPT_CLASS"
 
   local probe cls holder
   probe="$(bench_host probe 2>/dev/null)"
@@ -217,18 +199,33 @@ cmd_take() {
   else
     cls="$(bench_field "$probe" f_holder_class)"
     holder="$(bench_field "$probe" f_holder_name)"
-    if [ "$cls" = "human" ] && [ "$confirm" != "$RA8_BENCH_CONFIRM_PHRASE" ]; then
-      bench_say "refusing: the bench is held by $holder (human), active since"
-      bench_say "  $(bench_field "$probe" f_acquired_at '?') -- \"$(bench_field "$probe" f_intent)\""
-      bench_say ""
-      bench_say "  A human holder can only be preempted by another human with an"
-      bench_say "  explicit acknowledgement that someone may physically be at the bench:"
-      bench_say "      make bench-take WHY=\"...\" CONFIRM=$RA8_BENCH_CONFIRM_PHRASE"
+    if [ "$cls" = "human" ] &&
+      { [ "$mine" != "human" ] || [ "$confirm" != "$RA8_BENCH_CONFIRM_PHRASE" ]; }; then
+      _cmd_take_refuse "$probe" "$holder" "$mine"
       return "$RA8_BENCH_EXIT_HELD"
     fi
     bench_say "preempting $holder ($cls) -- $reason"
   fi
 
-  cmd_acquire --intent "$intent" --for "${budget_s}s" --wait "${wait_s}s" \
-    --as human --break-glass --confirm "$confirm"
+  # Precedence is re-decided on the bench host by bh_preempt, next to the
+  # incumbent's record. The check above exists to give a better message, not to
+  # be the thing that enforces it -- a client-side check is advice.
+  cmd_acquire --intent "$reason" --for "${budget_s}s" --wait "${wait_s}s" \
+    --as "$mine" --break-glass --confirm "$confirm"
+}
+
+_cmd_take_refuse() {
+  local probe="$1" holder="$2" mine="$3"
+  bench_say "refusing: the bench is held by $holder (human), active since"
+  bench_say "  $(bench_field "$probe" f_acquired_at '?') -- \"$(bench_field "$probe" f_intent)\""
+  bench_say ""
+  if [ "$mine" != "human" ]; then
+    bench_say "  Your class is $mine. A human holder may be standing at the bench"
+    bench_say "  right now with a probe on a test point, and nothing here can see"
+    bench_say "  that, so only another human may preempt one."
+    return 0
+  fi
+  bench_say "  A human holder can only be preempted by another human with an"
+  bench_say "  explicit acknowledgement that someone may physically be at the bench:"
+  bench_say "      make bench-take WHY=\"...\" CONFIRM=$RA8_BENCH_CONFIRM_PHRASE"
 }

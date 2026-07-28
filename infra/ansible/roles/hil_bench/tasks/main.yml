@@ -87,10 +87,100 @@
   changed_when: hil_bench_lfs_pull_result.rc == 0
   when: hil_bench_lfs_pull | bool
 
+- name: Provision the bench-lock state directory (#497)
+  # /var/lib and not /tmp or /run: the record must not depend on whether this
+  # host's /tmp is a tmpfs. A reboot is handled explicitly instead, by boot_id.
+  # 1777 because several accounts (the bench user, a CI runner, a human) share
+  # this box and any of them may be the next acquirer; the sticky bit keeps one
+  # from unlinking another's files.
+  become: true
+  ansible.builtin.file:
+    path: "{{ hil_bench_lock_dir }}"
+    state: directory
+    mode: "1777"
+
+- name: Create the flock inode and the journal
+  # The flock is taken on THIS inode. Two actors flocking two different inodes
+  # is the one silent-corruption path in the design, so the canonical path is
+  # provisioned here rather than invented by whichever client got there first.
+  become: true
+  ansible.builtin.file:
+    path: "{{ hil_bench_lock_dir }}/{{ item }}"
+    state: touch
+    mode: "0666"
+    access_time: preserve
+    modification_time: preserve
+  loop:
+    - board.lock
+    - journal.ndjson
+
+- name: Bound the release of a client that vanishes without closing its socket
+  # The bench lock releases the instant an ssh CLIENT dies, because the remote
+  # holder blocks on the channel as stdin -- measured at 0.29 s. That covers a
+  # killed process. It does NOT cover a client whose machine loses power or is
+  # severed at the network: no FIN arrives, so only sshd can notice, and with
+  # the default ClientAliveInterval of 0 that falls back to TCP keepalive --
+  # over two hours on this host's sysctls. That is precisely the stale lock the
+  # whole design exists to rule out, so it is configured, not hoped for.
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/60-ra8-bench-clientalive.conf
+    content: |
+      # Managed by the hil_bench ansible role -- see issue #497.
+      # Bounds how long a bench hold survives a client that vanished without
+      # closing its socket. 15s x 4 = ~60s, against hours of TCP keepalive.
+      ClientAliveInterval 15
+      ClientAliveCountMax 4
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload sshd
+
+- name: Install the bench-lock reaper timer
+  # Advisory only, and deliberately so. The reaper does not release anything a
+  # live holder owns within its budget -- the flock already handles death. It
+  # exists to bound an OVERRUN: an agent or CI holder past the budget it
+  # declared gets SIGTERM. A HUMAN holder is only ever flagged, because they
+  # may be standing at the bench with a probe on a test point.
+  become: true
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/{{ item.name }}"
+    content: "{{ item.body }}"
+    mode: "0644"
+  loop:
+    - name: ra8-bench-reap.service
+      body: |
+        [Unit]
+        Description=Reap overrun RA8 bench holds (#497)
+
+        [Service]
+        Type=oneshot
+        ExecStart={{ hil_bench_repo_dir }}/scripts/hil/lib/bench_host.sh reap
+    - name: ra8-bench-reap.timer
+      body: |
+        [Unit]
+        Description=Reap overrun RA8 bench holds every 5 minutes (#497)
+
+        [Timer]
+        OnBootSec=5min
+        OnUnitActiveSec=5min
+
+        [Install]
+        WantedBy=timers.target
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Restart the bench reaper timer
+
 - name: Health check -- the EK-RA8D2 must be reachable over J-Link (EIL==HIL ground truth)
+  # This RESETS AND HALTS the target, so it is a bench operation like any other
+  # and takes the lock. Running the playbook used to reset the board out from
+  # under whatever was using it. --break-glass is deliberately NOT set: if
+  # somebody is mid-suite, provisioning waits.
   ansible.builtin.shell:
     cmd: >-
       printf 'si 1\nspeed {{ hil_bench_jlink_speed }}\nr\nh\nq\n' > /tmp/hil_bench_ping.jlink &&
+      {{ hil_bench_repo_dir }}/scripts/hil/bench.sh run
+      --intent 'ansible hil_bench health check (resets the target)'
+      --for 5m --wait 10m --
       JLinkExe -device {{ hil_bench_jlink_device }} -if SWD
       -speed {{ hil_bench_jlink_speed }} -autoconnect 1
       -CommandFile /tmp/hil_bench_ping.jlink
