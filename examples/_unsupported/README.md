@@ -18,7 +18,6 @@ satisfy the same lint/format/MC/DC gates as the EVM-validated tier.
 | usb_audio_device                 | External audio amplifier + speaker / line-out hardware  |
 | threadx_nimble_peripheral        | ESP32-C6 BLE controller + HCI link                      |
 | threadx_https_client             | RSIP BIST vendor blob (encrypted asset image)           |
-| ptp_time_transmitter             | PTP-aware Ethernet switch                               |
 | motor_3phase                     | Renesas MCK motor-control daughter board                |
 | threadx_sdcard_demo              | SD card slot + an SD card                               |
 

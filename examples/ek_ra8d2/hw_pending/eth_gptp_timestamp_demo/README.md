@@ -1,79 +1,86 @@
 # eth_gptp_timestamp_demo
 
-Drives the Ethernet gPTP / IEEE 1588 hardware-timestamp path that no other
-example referenced (recon gap #133), logging results over SCI8 (PD_02 / PD_03
--> J-Link OB CDC). LED1 blinks as a heartbeat.
+Brings up the RA8D2 Ethernet Generic PTP Timer (HUM Ch 35, p 1925-1964) and
+then *measures* it, logging over SCI8 (PD_02 / PD_03 -> J-Link OB CDC). LED1
+blinks as a heartbeat.
 
-Two layered drivers are exercised end to end:
+## What this part actually has
 
-- `ra8_eth_gptp` -- brings up the GPTP block that owns the free-running IEEE
-  1588 hardware timestamp counter shared by the GMAC ports, and reads its
-  status word (`ra8_eth_gptp_init`, `ra8_eth_gptp_get_status`).
-- `ra8_ptp` -- the SYNFP / STCA IEEE 1588-2019 clock layered on the counter:
-  - `ra8_ptp_open` / `ra8_ptp_set_role` (role `k_ra8_ptp_role_controller`),
-  - `ra8_ptp_set_time` + `ra8_ptp_get_time` -- the timestamp capture path,
-  - `ra8_ptp_adjust_time` + `ra8_ptp_adjust_rate` -- the disciplined-clock servo
-    (step + rate), `ra8_ptp_get_offset`,
-  - `ra8_ptp_send_sync` + `ra8_ptp_send_announce` -- the transmit-side generators.
+HUM Ch 35 describes a **timer**, not a protocol engine. Its whole register list
+(Table 35.3, p 1926) is: an IP-version word, timer enable / disable, a per-clk
+increment, a 78-bit offset, 78-bit and 64-bit time monitors, media-clock
+capture / recovery, cyclic compare, and a pulse-output timer. There is **no**
+Sync or Announce generator, no `Follow_Up`, no domain register, no
+`clockIdentity` and no BMCA anywhere in the block. An IEEE 1588-2019 /
+IEEE 802.1AS implementation on this silicon is therefore software above the
+HAL, disciplining this counter and taking receive timestamps from the RMAC
+capture path (`MTRC` / `MPFCt`, HUM Ch 33).
+
+An earlier version of this app drove an invented `ra8_ptp` "SYNFP/STCA"
+register window at `0x403E_0100` -- a reserved hole in the GPTP aperture -- and
+printed `PASS` because a reserved region echoed back its own writes. Issue #498
+records that; the fiction is deleted.
+
+## What the app does
+
+Bring-up: CGC -> `ra8_cgc_eswclk_init` (ESWM power domain + ESWCLK, the GPTP
+`clk` input) -> MSTP -> SysTick -> console. Then `ra8_eth_gptp_init` derives
+`PTPTIVCt` from the live ESWCLK frequency, `ra8_eth_gptp_set_offset` loads a
+known epoch into the 78-bit offset, and `ra8_eth_gptp_timer_enable` starts
+timer unit 0.
+
+Per cycle:
+
+- `ra8_eth_gptp_ip_version` reads the read-only `PTPIPV` word and requires it
+  to be nonzero. That is the presence probe -- a reserved aperture reads back
+  zero or whatever was last written, whereas `PTPIPV` has a nonzero reset value
+  (HUM 35.3.1.1 p 1927).
+- `ra8_eth_gptp_get_time` samples the 78-bit counter, the app waits 500 ms
+  measured on SysTick, samples again, and requires the advance to match that
+  interval to within 10 %.
 
 Console output per cycle:
 
-    gptp: t=1000000000.0
-    gptp: t=1000000000.0
-    gptp: offset_ns=0
-    gptp: sts=0x0
+    gptp: ipv=3
+    gptp: t=1000000000.4187520
+    gptp: t=1000000000.919124160
+    gptp: adv_ns=500002240 sys_ms=500
     gptp: clock PASS
 
-The two `gptp: t=` lines are back-to-back captures of the hardware counter, so
-on silicon the nanoseconds field advances between them. The verdict
-`gptp: clock PASS` prints only when every driver call in the cycle returned
-`k_ra8_ok`.
+`gptp: clock PASS` means the counter advanced one second per second against an
+independent time base. It is not a claim that the part speaks gPTP.
 
-HUM references: Ch 31-32 "Ethernet" (GPTP timer + gPTP). The example adds no
-raw MMIO of its own -- every register access lives behind the driver API,
-which already carries its HUM citations.
+The example adds no raw MMIO of its own -- every register access lives behind
+the driver API, which carries its own HUM citations.
 
 ## Tier: hw_pending (bench-only)
 
-`tools/ra8_emulator` has no Ethernet / GPTP peripheral model -- the GWCA/ETHA/PHY
-bring-up is shimmed to no-ops there -- so there is no `make emu-` gate for this
-app. The EK-RA8D2 Ethernet wire is also marginal (#21). The example's value is
-demonstrating the real driver API behind a clean ARM cross-build, matching the
-driver-gap example wave (#182-188).
+`tools/ra8_emulator` has no GPTP timer model: the `0x403E_0000` window falls to
+the sparse config-reflect fallback, where a counter cannot advance, so this app
+would (correctly) report `clock FAIL` under emulation and there is no `make
+emu-` gate for it. The EK-RA8D2 Ethernet wire is also marginal (#21).
 
-### Why a bounded sync offset is NOT the missing piece (#292)
+### The bench peer exists; a bounded sync offset still is not the assertion (#292)
 
-A gPTP peer was attached to the bench for this app -- the EK-RA8D2's RJ45 now
-goes to the HIL Pi's built-in Ethernet port, which has a real PTP hardware
-clock (`/dev/ptp0`, hardware transmit + receive timestamping), and `linuxptp`
-is provisioned there by the `hil_bench` Ansible role. **That did not unblock
-this app, and no peer ever will as it stands.** Two facts, in order:
+A gPTP peer is attached to the bench for this app -- the EK-RA8D2's RJ45 goes
+to the HIL Pi's built-in Ethernet port, which has a real PTP hardware clock
+(`/dev/ptp0`, hardware transmit + receive timestamping), and `linuxptp` is
+provisioned there by the `hil_bench` Ansible role.
 
-1. **The RA8D2 has no PTP message engine.** HUM Ch 35 "Ethernet Generic PTP
-   Timer (GPTP)" (p 1925-1964) is a *timer*: enable/disable (`PTPTMEC` /
-   `PTPTMDC`), an increment value in ns per clk (`PTPTIVCt`), a 78-bit offset
-   load (`PTPTOVCtL/M/U`), 78-bit monitoring (`PTPGPTPTMtL/M/U`), plus PPS,
-   media-clock capture/recovery and cyclic compare. There is no Sync/Announce
-   generator, no domain register, no clockIdentity, no port role, no BMCA. The
-   only other PTP hardware on the part is RMAC timestamp *capture* with PTP
-   frame filtering (HUM Ch 33, `MTRC` / `MPFCt`). Everything above that --
-   Sync, Follow_Up, Pdelay, the servo, the state machine -- is software on this
-   silicon, and no such stack drives the RA8D2 Ethernet path in this tree.
-2. **The `ra8_ptp` driver this app calls does not address real registers.**
-   `libs/ra8_hal/inc/ra8_ptp_regs.h` declares a "SYNFP/STCA window" at
-   `0x403E_0100` with registers (`PTP_CTRL`, `PTP_DOMAIN`, `PTP_SYNINT`,
-   `PTP_TIME_SECH`, `PTP_TX_TRIG`, `PTP_MAC0`, ...) that appear nowhere in the
-   HUM; `0x403E_0100` is a reserved hole between `PTPGPTPTM1U` (`+0x0098`) and
-   the media-clock block (`+0x0200`). The `r_gptp_regs_t` window in
-   `ra8_ether_regs.h` is invented the same way -- its `GPTP_CTRL` at `+0x00` is
-   really the read-only `PTPIPV` IP-version register. So `gptp: clock PASS`
-   asserts only that a reserved aperture read back what was written to it, and
-   `ra8_ptp_send_sync()` puts nothing on any wire.
+That peer did not unblock this app, and no peer can, because **the RA8D2 has no
+PTP message engine** (see "What this part actually has" above). Sync,
+Follow_Up, Pdelay, the servo and the state machine are all software on this
+silicon, and no such stack drives the RA8D2 Ethernet path in this tree. So this
+app asserts what the hardware genuinely provides -- that the counter runs one
+second per second -- and nothing about protocol conformance.
 
-The blocker is therefore the driver, not the bench. Rewriting `ra8_eth_gptp`
-onto the real Ch-35 register map is tracked separately; until then this app
-must stay in `hw_pending`, and its `hil.conf` verdict must not be read as
-evidence that the hardware clock works.
+The second half of #292's finding is now closed: the driver addresses the real
+Ch-35 registers (#498), so `gptp: clock PASS` is no longer a reserved aperture
+reading back what was written to it.
+
+Comparing this counter against the peer's `/dev/ptp0` over a long window is a
+manual bench measurement; promote to `hw_validated/hil/` once the advance
+assertion is confirmed on silicon.
 
 Build:
 

@@ -106,8 +106,8 @@ hard faults observed (no `Default_Handler`, `HardFault_Handler`,
 `MemManage_Handler`, `BusFault_Handler`, `UsageFault_Handler`,
 `SecureFault_Handler`, or `0xEFFFFFFE` lockup across all 26).
 
-The 7 apps under `examples/_unsupported/` (audio_loopback,
-motor_3phase, ptp_time_transmitter, threadx_https_client,
+The 6 apps under `examples/_unsupported/` (audio_loopback,
+motor_3phase, threadx_https_client,
 threadx_nimble_peripheral, threadx_sdcard_demo, usb_audio_device) are
 not part of the EVM sweep -- they require hardware not present on a
 stock EK-RA8D2 v1 and are documented as such in

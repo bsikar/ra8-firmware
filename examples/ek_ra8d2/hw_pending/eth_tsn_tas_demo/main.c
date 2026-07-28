@@ -20,7 +20,8 @@
  *
  * TAS needs the gPTP time base as its schedule reference (the shaper's
  * ``@pre PTP timer (ra8_eth_gptp) provides the time reference``), so the app
- * brings up ``ra8_eth_gptp`` first, then:
+ * starts that counter for real first -- ESWCLK up, ``PTPTIVCt`` derived from
+ * the live frequency, timer unit enabled -- then:
  *
  *   1. ``ra8_etha_init`` on port 0 in CONFIG mode (shaper registers are only
  *      writable in CONFIG).
@@ -32,15 +33,19 @@
  *      ``ra8_etha_get_cbs_state`` reads the oper-side mirror back.
  *   4. ``ra8_etha_get_status`` reads the TAS cycle-time monitor.
  *
- * The fixed verdict ``"tsn: schedule PASS"`` prints only when every shaper
- * call returned ``k_ra8_ok``. The programmed entry count, CBS enable / gate
- * bits, and TAS cycle monitor are logged for the bench operator.
+ * @warning **What the verdict does and does not prove.** ``"tsn: schedule
+ * PASS"`` requires two things: that the gPTP time base advanced by the
+ * measured wall-clock interval (a real hardware assertion -- the counter is
+ * read twice around a SysTick-timed window), and that every shaper call
+ * returned ``k_ra8_ok``. The second half only proves the arguments were
+ * accepted and the writes were issued: ETHA stays in CONFIG mode here, so no
+ * frame is ever transmitted and nothing about *shaped egress* is measured.
+ * That needs a multi-node measurement rig (bench wiring #89).
  *
- * hw_pending: ``tools/ra8_emulator`` has no Ethernet / ETHA peripheral model, and
- * the EK-RA8D2 Ethernet wire is marginal (#21), so this is compile-gated and
- * bench-only -- matching the driver-gap example wave (#182-188). Asserting the
- * egress is actually shaped to the schedule needs a multi-node measurement rig
- * (bench wiring #89).
+ * hw_pending: ``tools/ra8_emulator`` has no ETHA shaper or GPTP timer model
+ * (both windows fall to the sparse config-reflect fallback, where a counter
+ * cannot advance), and the EK-RA8D2 Ethernet wire is marginal (#21), so this
+ * is compile-gated in CI and asserted on the bench.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -73,8 +78,32 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_tsn_radix        = 10U, /**< Decimal serialiser radix.          */
   k_tsn_dec_u32_max  = 10U, /**< Max decimal digits for a uint32_t. */
+  k_tsn_dec_u64_max  = 20U, /**< Max decimal digits for a uint64_t. */
   k_tsn_gate_entries = 2U,  /**< Gate-control-list entry count.     */
 } tsn_fmt_t;
+
+/** @brief gPTP time-base check parameters. */
+typedef enum : uint32_t {
+  k_tsn_gptp_window_ms = 200U,       /**< SysTick-timed measurement window. */
+  k_tsn_ns_per_ms      = 1000000U,   /**< Nanoseconds in one millisecond.   */
+  k_tsn_ns_per_sec     = 1000000000U /**< Nanoseconds in one second.        */
+} tsn_gptp_const_t;
+
+/**
+ * @brief Largest seconds value that can be flattened to nanoseconds.
+ *
+ * @details
+ * ``UINT64_MAX / 1e9``: above this, ``sec * 1e9`` wraps.
+ */
+typedef enum : uint64_t {
+  k_tsn_sec_flatten_max = 18446744073ULL, /**< floor(2^64 - 1 / 1e9). */
+} tsn_flatten_limit_t;
+
+/** @brief Accuracy band the gPTP advance must fall inside. */
+typedef enum : uint8_t {
+  k_tsn_tolerance_pct = 10U,  /**< Allowed drift vs SysTick, in percent. */
+  k_tsn_pct_full      = 100U, /**< Denominator for the percentage above. */
+} tsn_band_t;
 
 /**
  * @brief TAS gate vectors: bit q opens the class-q gate (bit 7 = PTP/control).
@@ -90,6 +119,8 @@ static const uint8_t k_tsn_tas_prefix[]   = "tsn: tas_entries=";
 static const uint8_t k_tsn_cbs_prefix[]   = "tsn: cbs_en=";
 static const uint8_t k_tsn_cbs_gate_sep[] = " gate=";
 static const uint8_t k_tsn_cyc_prefix[]   = "tsn: tas_cycle=";
+static const uint8_t k_tsn_base_prefix[]  = "tsn: gptp_adv_ns=";
+static const uint8_t k_tsn_base_sep[]     = " sys_ms=";
 static const uint8_t k_tsn_crlf[]         = "\r\n";
 static const uint8_t k_tsn_verdict_pass[] = "tsn: schedule PASS\r\n";
 static const uint8_t k_tsn_verdict_fail[] = "tsn: schedule FAIL\r\n";
@@ -173,6 +204,139 @@ static void tsn_write_u32(uint32_t val)
   uint8_t        buf[k_tsn_dec_u32_max];
   const uint32_t n = tsn_u32_to_dec(buf, val);
   tsn_write(buf, n);
+}
+
+/**
+ * @brief Log one unsigned 64-bit value as decimal ASCII.
+ *
+ * @details
+ * A standalone serialiser rather than a split-at-10^9 pair of
+ * ``tsn_write_u32`` calls: the low half would need zero-padding to nine
+ * digits, and an unpadded join silently renders 1000000005 as "15".
+ *
+ * @param[in] val Value to print.
+ *
+ * @pre The console has been initialised.
+ * @pre ``val`` fits in a uint64_t (always true).
+ * @post The decimal digits of ``val`` have been queued to the console.
+ * @post Neither scratch buffer outlives the call.
+ *
+ * @note Not thread-safe; single-threaded demo loop.
+ * @since 0.1.0
+ */
+static void tsn_write_u64(uint64_t val)
+{
+  uint8_t  buf[k_tsn_dec_u64_max];
+  uint8_t  tmp[k_tsn_dec_u64_max];
+  uint32_t n = 0U;
+  uint64_t v = val;
+  if (v == 0U) {
+    buf[0] = (uint8_t)'0';
+    tsn_write(buf, 1U);
+    return;
+  }
+  while (v != 0U) {
+    tmp[n] = (uint8_t)('0' + (uint8_t)(v % (uint64_t)k_tsn_radix));
+    v      = v / (uint64_t)k_tsn_radix;
+    n++;
+  }
+  for (uint32_t i = 0U; i < n; i++) {
+    buf[i] = tmp[n - 1U - i];
+  }
+  tsn_write(buf, n);
+}
+
+/**
+ * @brief Flatten a GPTP sample to nanoseconds.
+ *
+ * @details
+ * The seconds field is 48 bits wide, so ``sec * 1e9`` would wrap a uint64_t
+ * above ``sec ~= 1.8e10``. That value comes straight off a hardware register,
+ * so an implausible reading is clamped rather than silently wrapped into a
+ * small number that could look like a healthy advance.
+ *
+ * @param[in] sec  Seconds field.
+ * @param[in] nsec Nanoseconds field.
+ *
+ * @return The sample as a nanosecond count, or ``UINT64_MAX`` if ``sec`` is
+ *         too large to flatten.
+ *
+ * @pre ``nsec`` is below one second.
+ * @pre ``sec`` came from ``ra8_eth_gptp_get_time`` (48-bit range).
+ * @post The result is monotonic in ``sec`` and ``nsec``.
+ * @post No hardware was touched.
+ *
+ * @note Pure and re-entrant.
+ * @since 0.1.0
+ */
+static uint64_t tsn_flatten_ns(uint64_t sec, uint32_t nsec)
+{
+  if (sec > (uint64_t)k_tsn_sec_flatten_max) {
+    return UINT64_MAX;
+  }
+  return (sec * (uint64_t)k_tsn_ns_per_sec) + (uint64_t)nsec;
+}
+
+/**
+ * @brief Verify the gPTP time base the TAS scheduler references is running.
+ *
+ * @details
+ * Samples the 78-bit GPTP counter either side of a SysTick-timed window and
+ * requires the advance to match to within ``k_tsn_tolerance_pct``. Without
+ * this the app would program a gate-control list against a time base that
+ * never started, which is exactly the defect issue #498 records.
+ *
+ * @return True iff the counter advanced by the measured interval.
+ * @retval true  The advance matched SysTick inside the tolerance band.
+ * @retval false A read failed, or the counter did not track SysTick.
+ *
+ * @pre ``tsn_arm`` enabled gPTP timer unit 0.
+ * @pre The console has been initialised.
+ * @post One ``tsn: gptp_adv_ns=`` line has been queued.
+ * @post No gPTP or ETHA configuration was changed.
+ *
+ * @note Not thread-safe; single-threaded demo loop.
+ * @since 0.1.0
+ */
+static bool tsn_check_time_base(void)
+{
+  uint64_t sec0  = 0U;
+  uint32_t nsec0 = 0U;
+  uint64_t sec1  = 0U;
+  uint32_t nsec1 = 0U;
+  bool     ok    = true;
+
+  const uint32_t ms0 = ra8_time_ms();
+  if (ra8_eth_gptp_get_time(k_ra8_gptp_timer_0, &sec0, &nsec0) != k_ra8_ok) {
+    ok = false;
+  }
+  ra8_delay_ms((uint32_t)k_tsn_gptp_window_ms);
+  if (ra8_eth_gptp_get_time(k_ra8_gptp_timer_0, &sec1, &nsec1) != k_ra8_ok) {
+    ok = false;
+  }
+  const uint32_t elapsed_ms  = ra8_time_ms() - ms0;
+  const uint64_t ns0         = tsn_flatten_ns(sec0, nsec0);
+  const uint64_t ns1         = tsn_flatten_ns(sec1, nsec1);
+  const uint64_t advance_ns  = (ns1 > ns0) ? (ns1 - ns0) : 0ULL;
+  const uint64_t expected_ns = (uint64_t)elapsed_ms * (uint64_t)k_tsn_ns_per_ms;
+  const uint64_t band_ns = (expected_ns * (uint64_t)k_tsn_tolerance_pct) / (uint64_t)k_tsn_pct_full;
+
+  tsn_write(k_tsn_base_prefix, (uint32_t)(sizeof(k_tsn_base_prefix) - 1U));
+  tsn_write_u64(advance_ns);
+  tsn_write(k_tsn_base_sep, (uint32_t)(sizeof(k_tsn_base_sep) - 1U));
+  tsn_write_u32(elapsed_ms);
+  tsn_write(k_tsn_crlf, (uint32_t)(sizeof(k_tsn_crlf) - 1U));
+
+  if (elapsed_ms == 0U) {
+    return false;
+  }
+  if (advance_ns > (expected_ns + band_ns)) {
+    ok = false;
+  }
+  if (advance_ns < (expected_ns - band_ns)) {
+    ok = false;
+  }
+  return ok;
 }
 
 /**
@@ -288,19 +452,23 @@ static bool tsn_log_status(void)
 }
 
 /**
- * @brief Run one cycle: program TAS + CBS, then read status.
+ * @brief Run one cycle: check the time base, program TAS + CBS, read status.
  *
- * @return True iff every shaper call in the cycle returned ``k_ra8_ok``.
+ * @return True iff the gPTP counter advanced and every shaper call returned
+ *         ``k_ra8_ok``.
  *
- * @pre ``tsn_arm`` brought up gPTP and ETHA port 0 in CONFIG mode.
+ * @pre ``tsn_arm`` started gPTP and left ETHA port 0 in CONFIG mode.
  * @pre The console has been initialised.
- * @post One log block (TAS + CBS + status) has been queued.
+ * @post One log block (time base + TAS + CBS + status) has been queued.
  * @post The shaper schedule is (re)programmed and armed.
  * @since 0.1.0
  */
 static bool tsn_run_cycle(void)
 {
   bool ok = true;
+  if (!tsn_check_time_base()) {
+    ok = false;
+  }
   if (!tsn_program_tas()) {
     ok = false;
   }
@@ -343,20 +511,58 @@ static void tsn_setup_or_halt(void)
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     tsn_panic_halt();
   }
+  if (ra8_cgc_eswclk_init() != k_ra8_ok) {
+    tsn_panic_halt();
+  }
+}
+
+/**
+ * @brief Start the gPTP time base the TAS scheduler references.
+ *
+ * @details
+ * Reads the live ESWCLK frequency, hands it to ``ra8_eth_gptp_init`` (which
+ * derives ``PTPTIVCt`` from it), then enables the timer unit so the counter
+ * actually advances.
+ *
+ * @return ``ra8_err_t`` error code from the first failing step.
+ * @retval k_ra8_ok The gPTP counter is programmed and running.
+ * @retval Other    Forwarded from the failing driver call.
+ *
+ * @pre ``tsn_setup_or_halt`` has started ESWCLK and ungated MSTP.
+ * @pre IRQs are masked or this is single-threaded init.
+ * @post On ``k_ra8_ok`` timer unit 0 is counting.
+ * @post On failure no partial gPTP state is relied upon by the caller.
+ *
+ * @note Boot-time only; not re-entrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra8_err_t tsn_arm_time_base(void)
+{
+  uint32_t        eswclk_hz = 0U;
+  const ra8_err_t hz_err    = ra8_cgc_eswclk_hz(&eswclk_hz);
+  if (hz_err != k_ra8_ok) {
+    return hz_err;
+  }
+  const ra8_eth_gptp_cfg_t cfg      = {.clk_hz = eswclk_hz};
+  const ra8_err_t          init_err = ra8_eth_gptp_init(&cfg);
+  if (init_err != k_ra8_ok) {
+    return init_err;
+  }
+  return ra8_eth_gptp_timer_enable(k_ra8_gptp_timer_0);
 }
 
 /**
  * @brief Bring up the gPTP time base and ETHA port 0 in CONFIG mode.
  *
  * @details
- * ``ra8_eth_gptp_init`` starts the shared IEEE 1588 timer that the TAS
- * scheduler uses as its cycle reference; ``ra8_etha_init`` powers ETHA port 0
- * and enters CONFIG mode (initial_mode = ``k_ra8_etha_opc_config``), which is
- * the only mode in which the TAS / CBS shaper registers are writable.
+ * ``tsn_arm_time_base`` starts the GPTP counter that the TAS scheduler uses
+ * as its cycle reference; ``ra8_etha_init`` powers ETHA port 0 and enters
+ * CONFIG mode (initial_mode = ``k_ra8_etha_opc_config``), which is the only
+ * mode in which the TAS / CBS shaper registers are writable.
  *
  * @return ``ra8_err_t`` error code from the first failing step.
- * @retval k_ra8_ok gPTP timer up and port 0 is in CONFIG mode.
- * @retval Other   Forwarded from ``ra8_eth_gptp_init`` / ``ra8_etha_init``.
+ * @retval k_ra8_ok gPTP timer running and port 0 is in CONFIG mode.
+ * @retval Other   Forwarded from ``tsn_arm_time_base`` / ``ra8_etha_init``.
  *
  * @pre ``tsn_setup_or_halt`` has ungated MSTP.
  * @pre IRQs are masked or this is single-threaded init.
@@ -366,7 +572,7 @@ static void tsn_setup_or_halt(void)
  */
 [[nodiscard]] static ra8_err_t tsn_arm(void)
 {
-  const ra8_err_t gptp_err = ra8_eth_gptp_init();
+  const ra8_err_t gptp_err = tsn_arm_time_base();
   if (gptp_err != k_ra8_ok) {
     return gptp_err;
   }

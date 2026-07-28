@@ -1116,21 +1116,27 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra8_usb_speed_hs``.
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
-[x] Init -- HUM Ch 35 "Ethernet Generic PTP Timer (GPTP)" p 1925
-[x] Deinit -- HUM Ch 35 p 1925
-[x] Polling TX -- n/a (PTP is a timestamp block, not a datapath)
-[x] Polling RX -- n/a (PTP is a timestamp block, not a datapath)
-[x] Interrupt TX -- HUM Ch 35 p 1925 (shared dispatch + attach_handler)
-[x] Interrupt RX -- HUM Ch 35 p 1925 (shared dispatch + attach_handler)
-[x] DMA TX -- n/a (no DMA on the timestamp counter)
-[x] DMA RX -- n/a (no DMA on the timestamp counter)
-[x] Error status -- HUM Ch 35 p 1925 (GPTP_STS + GPTP_ICLR)
-[x] Runtime reconfig -- HUM Ch 35 p 1925 (GPTP_CTRL / GPTP_IE rewrite)
-[x] Power transition -- HUM Ch 35 p 1925 (enter_stop / exit_stop + MSTP gate)
-[x] Register coverage-- HUM Ch 35 p 1925 (CTRL / STS / IE / ICLR all touched)
+[x] Init -- HUM Ch 35.3.2.3 "PTPTIVCt" p 1928 (PTPTIVCt from the live ESWCLK)
+[x] Deinit -- HUM Ch 35.3.2.2 "PTPTMDC" p 1928 (stop + restore reset values)
+[x] Polling TX -- n/a (GPTP is a timer, not a datapath)
+[x] Polling RX -- n/a (GPTP is a timer, not a datapath)
+[x] Interrupt TX -- n/a (the only GPTP interrupts are media-clock capture /
+    recovery, PTPIS0/IE0/ID0 + PTPIS1/IE1/ID1 p 1939-1942; those need the
+    MEDIA_IN / MEDIA_OUT pins, which no board file routes)
+[x] Interrupt RX -- n/a (same as Interrupt TX)
+[x] DMA TX -- n/a (no DMA on the timer)
+[x] DMA RX -- n/a (no DMA on the timer)
+[x] Error status -- n/a (the block defines no error flag; the honest health
+    probe is the read-only PTPIPV word, HUM Ch 35.3.1.1 p 1927)
+[x] Runtime reconfig -- HUM Ch 35.3.2.3 p 1928 (PTPTIVCt is writable anytime,
+    Table 35.4 p 1946-1947) + the 78-bit offset load p 1944-1945
+[x] Power transition -- HUM Ch 11.2.8 p 446 (enter_stop / exit_stop, MSTPC30)
+[x] Register coverage-- HUM Table 35.3 p 1926: PTPIPV, PTPTMEC, PTPTMDC,
+    PTPTIVCt, PTPTOVCtL/M/U, PTPAVTPTMtL/U, PTPGPTPTMtL/M/U
 [x] Unit tests -- tests/test_ra8_eth_gptp.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra8_eth_gptp.c cites Ch 35
+[x] HUM cross-ref -- every register access in src/ra8_eth_gptp.c cites the
+    subsection of Ch 35 that describes that exact register
 [x] Doxygen -- full file + member coverage
 ```
 
