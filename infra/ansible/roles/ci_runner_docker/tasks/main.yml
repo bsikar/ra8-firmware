@@ -283,8 +283,35 @@
       changed_when: ci_runner_docker_image_rm.rc == 0
       failed_when: false
 
-    - name: Destroy the runner dataset
-      when: ci_runner_docker_destroy_dataset | bool
+    - name: Check for the TrueNAS middleware client before destroying
+      ansible.builtin.stat:
+        path: /usr/bin/midclt
+      register: ci_runner_docker_midclt_rm
+
+    # Destroyed the same way it was created. `zfs destroy` on an appliance
+    # removes the dataset but leaves the middleware config database still
+    # believing it owns one, so removal has to go back through the same API
+    # the create did or it is not symmetric with it.
+    - name: Destroy the runner dataset through the TrueNAS middleware
+      when:
+        - ci_runner_docker_destroy_dataset | bool
+        - ci_runner_docker_midclt_rm.stat.exists
+      become: true
+      ansible.builtin.command:
+        argv:
+          - midclt
+          - call
+          - pool.dataset.delete
+          - "{{ ci_runner_docker_dataset }}"
+          - '{"recursive": true, "force": true}'
+      register: ci_runner_docker_ds_delete
+      changed_when: ci_runner_docker_ds_delete.rc == 0
+      failed_when: false
+
+    - name: Destroy the runner dataset with zfs (non-appliance host)
+      when:
+        - ci_runner_docker_destroy_dataset | bool
+        - not ci_runner_docker_midclt_rm.stat.exists
       become: true
       ansible.builtin.command:
         argv: [zfs, destroy, -r, "{{ ci_runner_docker_dataset }}"]
@@ -292,8 +319,26 @@
       changed_when: ci_runner_docker_zfs_destroy.rc == 0
       failed_when: false
 
-    - name: Remove the runner root if it was a plain directory
+    # Guarded, because an unguarded `state: absent` here is a recursive delete
+    # aimed at a path on a storage pool. If either destroy above had failed --
+    # a busy dataset, a middleware error -- this task would go on to delete the
+    # runner root's CONTENTS by hand, on a live filesystem, and report success.
+    # It runs only when nothing is mounted there any more, which is exactly the
+    # case it exists for: a non-ZFS host where the root was a plain directory.
+    - name: Check whether anything is still mounted at the runner root
       when: ci_runner_docker_destroy_dataset | bool
+      become: true
+      ansible.builtin.command:
+        argv: [findmnt, --noheadings, --output, TARGET, --mountpoint,
+               "{{ ci_runner_docker_root }}"]
+      register: ci_runner_docker_still_mounted
+      changed_when: false
+      failed_when: false
+
+    - name: Remove the runner root if it was a plain directory
+      when:
+        - ci_runner_docker_destroy_dataset | bool
+        - ci_runner_docker_still_mounted.rc != 0
       become: true
       ansible.builtin.file:
         path: "{{ ci_runner_docker_root }}"
