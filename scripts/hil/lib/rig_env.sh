@@ -11,6 +11,12 @@
 #   PI_HOST       ssh target for the bench Pi, e.g. user@host.local
 #   JLINK_SN      on-board J-Link OB serial (see .env.example for how to find it)
 #   JLINK_DEVICE  Renesas device name (default R7KA8D2KF_CPU0; rarely changed)
+#   PI_REPO       path to the checkout ON the bench Pi, relative to the ssh
+#                 login directory or absolute (default ra8-firmware). Only
+#                 run_direct.sh needs it: it re-invokes itself there by piping
+#                 itself into `bash -s`, and the piped copy resolves lib/ from
+#                 the working directory. Everything else ships what it needs
+#                 inline (see RA8_TTY_RESOLVER_SRC below).
 #
 # Sourcing this also brings in `ra8_tty_resolve` (lib/tty_resolve.sh), because
 # every consumer of the rig needs to name a console and none of them may name
@@ -49,6 +55,10 @@ JLINK_SN="${JLINK_SN:-}"
 
 # The device name is not maintainer-specific; default it here, allow override.
 JLINK_DEVICE="${JLINK_DEVICE:-R7KA8D2KF_CPU0}"
+
+# Where the bench Pi keeps its own checkout. Not maintainer-specific enough to
+# demand a .env entry, but overridable there when it is not the default.
+PI_REPO="${PI_REPO:-ra8-firmware}"
 
 # Bare Pi hostname (strip "user@" and ".local") for the run-on-the-Pi check.
 PI_BAREHOST="${PI_HOST##*@}"

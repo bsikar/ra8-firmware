@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6_spi_probe/src/c6_sideband.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_sideband.c
  * @brief Pmod1 side-band sampling, wire test, pull-up contest, chip-select hunt
  *
  * @par Tag

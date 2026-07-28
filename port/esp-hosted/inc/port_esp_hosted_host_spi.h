@@ -22,7 +22,7 @@
  *     the vendored ``common/transport/esp_hosted_transport.h``;
  *   - the ESP32-C6 co-processor image built from
  *     ``coprocessor/esp32c6/`` reports the same 1600 in its sdkconfig;
- *   - the landed link probe ``examples/ek_ra8d2/hw_pending/c6_spi_probe``
+ *   - the landed link probe ``examples/ek_ra8d2/hw_validated/c6/c6_spi_probe``
  *     hand-decodes frames against its own ``k_c6_proto_buf_size``, also
  *     1600.
  *

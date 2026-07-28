@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6_hosted_init/src/c6_hosted_console.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_console.c
  * @brief Bounded console formatters for the esp-hosted port bring-up app.
  *
  * @par Tag

@@ -398,19 +398,6 @@ cmd_acquire() {
   return "$RA8_BENCH_EXIT_UNKNOWN"
 }
 
-# The lock_id currently recorded on the bench host, or nothing.
-#
-# The probe is captured before it is filtered, deliberately: under `pipefail` a
-# pipeline whose FIRST stage exits 1 (which `probe` does whenever the bench is
-# held -- that is its verdict, not a failure) reports 1 no matter what the
-# filter found. Piping it straight into `grep` therefore reported "not my lock"
-# for every successful acquire.
-bench_lock_id_now() {
-  local probe
-  probe="$(bench_host probe 2>/dev/null)"
-  bench_field "$probe" f_lock_id
-}
-
 cmd_release() {
   local want="${RA8_BENCH_LOCK_ID:-}" force=""
   while [ $# -gt 0 ]; do

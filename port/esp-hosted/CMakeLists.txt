@@ -46,7 +46,7 @@
 #
 # RUNTIME STATUS: the port compiles, links and is host-tested, but no
 # code in it has ever run on silicon. The wire it drives is proven --
-# the landed probe examples/ek_ra8d2/hw_pending/c6_spi_probe qualified
+# the landed probe examples/ek_ra8d2/hw_validated/c6/c6_spi_probe qualified
 # every J26 hole on 2026-07-27 and brought the raw link up at SPI mode 3
 # / 1 MHz -- but that probe drives the SCI directly and reaches none of
 # this code. Every app that links this port therefore stays under

@@ -82,6 +82,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 C6_DIR = REPO_ROOT / "coprocessor" / "esp32c6"
 PINS_ENV = C6_DIR / "pins.env"
 SDKCONFIG = C6_DIR / "sdkconfig.defaults"
+HOST_FW_VER = (
+    REPO_ROOT / "libs" / "third_party" / "esp-hosted" / "host" / "esp_hosted_host_fw_ver.h"
+)
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -354,6 +357,80 @@ def check_ra8_side(pins: dict[str, str]) -> list[str]:
             findings.append(f"SW4 positions: pins.env is missing {key}")
         elif pins[key] not in SW4_VALUES:
             findings.append(f"SW4 positions: {key}={pins[key]!r} is not one of {SW4_VALUES}")
+    return findings
+
+
+FW_VERSION_KEY = "ESP_HOSTED_MCU_FW_VERSION"
+
+# The three #defines the vendored host driver states its own version with.
+_FW_VER_MACROS: tuple[str, str, str] = (
+    "ESP_HOSTED_VERSION_MAJOR_1",
+    "ESP_HOSTED_VERSION_MINOR_1",
+    "ESP_HOSTED_VERSION_PATCH_1",
+)
+
+
+def parse_host_fw_version(text: str) -> str | None:
+    """Return the vendored host driver's own version as ``major.minor.patch``.
+
+    Args:
+        text: Body of ``host/esp_hosted_host_fw_ver.h`` from the vendor tree.
+
+    Returns:
+        The dotted version, or ``None`` when any of the three macros is absent
+        (which means the vendored header changed shape and this check can no
+        longer speak for it -- reported, never silently skipped).
+    """
+    parts: list[str] = []
+    for macro in _FW_VER_MACROS:
+        match = re.search(rf"^\s*#define\s+{re.escape(macro)}\s+(\d+)\s*$", text, re.MULTILINE)
+        if match is None:
+            return None
+        parts.append(match.group(1))
+    return ".".join(parts)
+
+
+def check_fw_version_lock(pins: dict[str, str], header_text: str) -> list[str]:
+    """Return findings when the co-processor image and the host driver disagree.
+
+    ``pins.env`` names the esp-hosted-mcu firmware the CO-PROCESSOR image is
+    built from; ``esp_hosted_host_fw_ver.h`` states the version of the HOST
+    driver vendored into this tree. Both come from one pinned upstream commit,
+    so they must be identical -- and upstream itself compares them at run time
+    and warns about "RPC timeouts" when they are not.
+
+    This is a gate rather than a convention because the mismatch is otherwise
+    silent in CI and expensive on the bench:
+    ``examples/ek_ra8d2/hw_validated/c6/c6_fw_version`` asserts the
+    co-processor's reported version against these very macros, so bumping the
+    vendor pin without reflashing the C6 turns a hardware test red with no
+    hint, from here, of why.
+
+    Args:
+        pins: Parsed pins.env assignments.
+        header_text: Body of the vendored host firmware-version header.
+
+    Returns:
+        Human-readable findings; empty when the two agree.
+    """
+    findings: list[str] = []
+    host = parse_host_fw_version(header_text)
+    if host is None:
+        findings.append(
+            "firmware version: could not read "
+            f"{', '.join(_FW_VER_MACROS)} out of {HOST_FW_VER.name} "
+            "-- the vendored header changed shape"
+        )
+        return findings
+    if FW_VERSION_KEY not in pins:
+        findings.append(f"firmware version: pins.env is missing {FW_VERSION_KEY}")
+        return findings
+    if pins[FW_VERSION_KEY] != host:
+        findings.append(
+            f"firmware version: pins.env {FW_VERSION_KEY}={pins[FW_VERSION_KEY]} "
+            f"but the vendored host driver is {host} "
+            "-- host and co-processor must come from one upstream commit"
+        )
     return findings
 
 
@@ -647,6 +724,59 @@ def _selftest_cases_port_header() -> list[tuple[str, str, str, bool]]:
     ]
 
 
+_GOOD_FW_VER_HEADER = """
+#define ESP_HOSTED_VERSION_MAJOR_1 2
+#define ESP_HOSTED_VERSION_MINOR_1 12
+#define ESP_HOSTED_VERSION_PATCH_1 11
+"""
+"""A vendored host firmware-version header stating 2.12.11."""
+
+
+def _selftest_cases_fw_version() -> list[tuple[str, str, bool]]:
+    """Return crafted cases for the host / co-processor version lock.
+
+    The ways two statements of one version drift: a vendor bump with no
+    co-processor reflash, a co-processor reflash with no vendor bump, a
+    pins.env that stopped declaring the version at all, and a vendored header
+    whose macros were renamed out from under the parser.
+
+    Returns:
+        ``(label, header_text, expect_findings)`` triples. The pins.env side is
+        held at 2.12.11 except where the label says otherwise.
+    """
+    bumped = _GOOD_FW_VER_HEADER.replace("MINOR_1 12", "MINOR_1 13")
+    renamed = _GOOD_FW_VER_HEADER.replace("ESP_HOSTED_VERSION_PATCH_1", "ESP_HOSTED_VER_PATCH")
+    return [
+        ("firmware version agrees", _GOOD_FW_VER_HEADER, False),
+        ("vendored host bumped without a co-processor reflash", bumped, True),
+        ("vendored header macros renamed", renamed, True),
+    ]
+
+
+def _selftest_fw_version_failures() -> list[str]:
+    """Return one message per version-lock selftest case that misbehaved."""
+    # Built here rather than by widening the shared _GOOD_PINS fixture, which
+    # exists to exercise the PIN comparator: a version key bolted onto it would
+    # couple two independent halves of this gate for no benefit.
+    good = parse_assignments(_GOOD_PINS)
+    good[FW_VERSION_KEY] = "2.12.11"
+    out: list[str] = []
+    for label, header, expect in _selftest_cases_fw_version():
+        findings = check_fw_version_lock(good, header)
+        if bool(findings) != expect:
+            verb = "reported nothing" if expect else f"reported {findings}"
+            out.append(f"  {label}: {verb}")
+    # The other direction: the co-processor reflashed past the vendored host.
+    stale = dict(good)
+    stale[FW_VERSION_KEY] = "2.13.0"
+    if not check_fw_version_lock(stale, _GOOD_FW_VER_HEADER):
+        out.append("  co-processor reflashed past the vendored host: reported nothing")
+    missing = {k: v for k, v in good.items() if k != FW_VERSION_KEY}
+    if not check_fw_version_lock(missing, _GOOD_FW_VER_HEADER):
+        out.append(f"  pins.env missing {FW_VERSION_KEY}: reported nothing")
+    return out
+
+
 def _selftest_cases() -> list[tuple[str, str, str, bool]]:
     """Return every crafted case, across both halves of the comparator.
 
@@ -682,6 +812,7 @@ def selftest() -> int:
             verb = "reported nothing" if expect else f"reported {findings}"
             failures.append(f"  {label}: {verb}")
     failures.extend(_selftest_port_failures())
+    failures.extend(_selftest_fw_version_failures())
 
     if failures:
         sys.stderr.write("check_c6_pin_config.py --selftest: FAILED\n\n")
@@ -690,6 +821,7 @@ def selftest() -> int:
         return EXIT_FAIL
 
     cases = _selftest_cases() + _selftest_cases_port_header()
+    cases += [(a, b, "", c) for a, b, c in _selftest_cases_fw_version()]
     fires = sum(1 for c in cases if c[3])
     print(
         f"check_c6_pin_config.py --selftest: OK "
@@ -708,7 +840,7 @@ def main(argv: list[str]) -> int:
     if "--selftest" in argv[1:]:
         return selftest()
 
-    for path in (PINS_ENV, SDKCONFIG):
+    for path in (PINS_ENV, SDKCONFIG, HOST_FW_VER):
         if not path.is_file():
             sys.stderr.write(f"check_c6_pin_config.py: FATAL -- missing {path}\n")
             return EXIT_CONFIG
@@ -716,13 +848,16 @@ def main(argv: list[str]) -> int:
     pins = parse_assignments(PINS_ENV.read_text(encoding="utf-8"))
     sdk = parse_assignments(SDKCONFIG.read_text(encoding="utf-8"))
     findings = compare(pins, sdk)
+    findings.extend(check_fw_version_lock(pins, HOST_FW_VER.read_text(encoding="utf-8")))
 
     if not findings:
-        checked = len(PIN_PAIRS) + len(VALUE_PAIRS) + 1
+        checked = len(PIN_PAIRS) + len(VALUE_PAIRS) + 2
         ra8 = (len(RA8_TRIPLES) * 2) + len(SW4_KEYS)
         print(
             f"check_c6_pin_config.py: pins.env and sdkconfig.defaults agree "
-            f"({checked} settings); RA8-side map well-formed ({ra8} entries)."
+            f"({checked} settings); RA8-side map well-formed ({ra8} entries); "
+            f"co-processor firmware {pins.get(FW_VERSION_KEY, '?')} matches the "
+            f"vendored host driver."
         )
         return EXIT_OK
 

@@ -5,7 +5,7 @@
 
 .PHONY: $(RA8_FLASH) $(RA8_DEBUG) $(RA8_OZONE) flash-help debug-help ozone-help \
         hil hil-help hil-flash hil-recover hil-flash-retry hil-erase hil-dlm-reset \
-        hil-reflash hil-probe hil-find-jlink hil-all hil-tapo hil-ppps \
+        hil-reflash hil-probe hil-find-jlink hil-all hil-c6 hil-tapo hil-ppps \
         flash-ocd debug-ocd bench-status bench-selftest bench-hold bench-free \
         bench-extend bench-take bench-log bench-doctor
 
@@ -115,6 +115,8 @@ hil-help:
 	@echo "  make hil-probe                  quick J-Link + board diagnostic"
 	@echo "  make hil-find-jlink             print connected J-Link serial(s) for .env"
 	@echo "  make hil-all                    run the full HIL suite"
+	@echo "  make hil-c6 [APP=<app>]         run the ESP32-C6 lane (needs SW4 1=OFF 2=OFF 3=ON 4=OFF"
+	@echo "                                  and the C6 harness on J26 -- see the tier README)"
 	@echo "  make hil-tapo TARGET=<board|pi> CMD=<status|on|off|cycle>   board/Pi power via Tapo plug"
 	@echo "  make hil-ppps CMD=<off|on|cycle [port]>   per-port USB power"
 
@@ -155,6 +157,15 @@ hil-find-jlink:
 # existed. That file is deleted; this is the suite.
 hil-all:
 	bash scripts/hil/all.sh
+
+# The ESP32-C6 lane. Same runner, different tier: these apps need SW4-4 OFF,
+# which takes the Arduino and mikroBUS connectors off the board for every app
+# in the default pass, so the two cannot share one run of the bench. They are
+# also invisible to the EIL suite because ra8_emulator models no ESP32-C6
+# (#494) -- which is why they live under hw_validated/c6/ rather than
+# hw_validated/hil/, where the parity gate would rightly demand EIL coverage.
+hil-c6:
+	bash scripts/hil/all.sh --dir examples/ek_ra8d2/hw_validated/c6 $(if $(APP),--only $(APP),)
 
 hil-tapo:
 	bash scripts/hil/tapo.sh $(or $(TARGET),board) $(or $(CMD),status)

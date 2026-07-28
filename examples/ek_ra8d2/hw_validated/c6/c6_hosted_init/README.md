@@ -16,31 +16,29 @@ board layer names, and the port's own checks are covered by host tests. The
 cross-build gate carries all of that on every push.
 
 **Established on the bench -- but by a different program.** The raw wire is
-proven. On 2026-07-27 `examples/ek_ra8d2/hw_pending/c6_spi_probe`
+proven. On 2026-07-27 `examples/ek_ra8d2/hw_validated/c6/c6_spi_probe`
 scope-qualified every J26 hole end to end, then brought the link up at SPI
 mode 3 / 1 MHz with zero bad checksums. That run is what fixed the pin map
 recorded below, and it retired the 2026-07-26 "no harness" diagnosis this
 README used to carry.
 
-**Not established at all: this port on silicon.** No application built on
-`port/esp-hosted/` has ever been executed on the board, and `c6_hosted_init`
-has never been flashed. `ra8_esp_hosted_port_init()` completing under
-ThreadX, the vendored `g_h.funcs` vtable being populated well enough to
-sample a GPIO, and a 5 MHz transaction landing a decodable frame are all
-*expectations* read off the source -- not observations. Neither verdict
-described below has been seen.
+**Established on the bench by this application, 2026-07-28.** The port runs on
+silicon. `ra8_esp_hosted_port_init()` returns `k_ra8_ok` under ThreadX, the
+vendored `g_h.funcs` vtable is populated well enough to sample both side-band
+GPIOs, and a **5 MHz** transaction lands a decodable frame -- five times the
+rate the probe qualified, which was the one link parameter the 1 MHz proof did
+not cover. The capture is below, and `make hil-c6` re-runs it.
 
-The harness is no longer the open question. The port is.
+## Why the `c6` tier and not `hw_validated/hil/`
 
-## Why `hw_pending`
-
-`ra8_emulator` does not model an ESP32-C6 on Pmod1, so this app cannot be
-gated by the EIL suite, and it is deliberately absent from the HIL suite (no
-`hil.conf`): a run needs SW4-4 OFF, which takes the Arduino and mikroBUS
-connectors off the board for every other app in the same pass. It is a bench
-instrument, run by hand, and it stays under `hw_pending/` because **the port
-has never been proven on silicon** -- not because anything is missing between
-J26 and the co-processor.
+`ra8_emulator` models no ESP32-C6 (#494), so this app cannot be gated by the
+EIL suite -- and `check_hil_eil_parity.py` rightly requires every app under
+`hw_validated/hil/` to be. It also needs SW4-4 OFF, which takes the Arduino and
+mikroBUS connectors off the board for every other app in the same pass. Both
+reasons put it in `examples/ek_ra8d2/hw_validated/c6/`, whose
+[README](../README.md) states the bench configuration; it is `hw_validated`
+because it passes on hardware, and separate because the bench cannot serve both
+tiers in one run.
 
 ## Pin map
 
@@ -131,7 +129,7 @@ harness moves a side-band net, the printed line follows on its own.
 
 ```sh
 make c6_hosted_init                      # from the repo root
-bash scripts/hil/flash.sh c6_hosted_init # program + release from reset
+make hil-c6 APP=c6_hosted_init           # build, flash and verify on the bench
 ```
 
 Console: J-Link OB VCOM, 115200 8N1.
@@ -158,35 +156,43 @@ init and starts the single worker thread. The worker is the first context that
 can print after the init, so it reports the exact `ra8_err_t` the init
 returned.
 
-## Expected output
-
-**Neither branch below has been observed.** Both are read off the source, not
-off a console capture: this application has not been run on hardware. The
-harness underneath it is proven, so a first run is now a real test of the
-port -- which is exactly why the outcome cannot be predicted here.
-
-### What a PASS looks like
+## Observed output (2026-07-28)
 
 PASS requires **all** of the following:
 
 1. `g_h.funcs->_h_do_bus_transfer()` returned `RET_OK`.
 2. The 1600-byte receive buffer is neither uniformly `0x00` nor uniformly
    `0xFF`.
-3. The received header's `offset` equals `sizeof(struct esp_payload_header)`
+3. Either the frame is the co-processor's **idle filler** -- `if_type =
+   ESP_MAX_IF (8)`, `if_num = 0x0F`, zero length -- or every remaining test
+   below holds.
+4. The received header's `offset` equals `sizeof(struct esp_payload_header)`
    (12).
-4. The received `len` is within `MAX_PAYLOAD_SIZE` (1588).
-5. The received checksum equals the one recomputed over the frame with the
+5. The received `len` is within `MAX_PAYLOAD_SIZE` (1588).
+6. The received checksum equals the one recomputed over the frame with the
    checksum field taken as zero.
 
+Criterion 3 is not a relaxation, it is the fix for a false negative this
+application shipped with. A filler frame legitimately carries `offset = 0`,
+because it has no payload to point at; the first silicon run judged one by the
+rules for a data frame and printed `FAIL header offset is not the
+payload-header size` at a link that was working perfectly. `c6_spi_probe`, which
+had actually seen a filler frame, classified it correctly all along.
+
 ```
+c6_hosted_init: EK-RA8D2 <-> ESP32-C6 esp-hosted port bring-up
+c6_hosted_init: cpuclk0_hz=1000000000 pclka_hz=125000000
+c6_hosted_init: spi sci=2 mode=3 sck_hz=5000000
+c6_hosted_init: bus cs=port8.pin4 copi=port8.pin1 cipo=port8.pin2 sck=port8.pin3
+c6_hosted_init: driver-view handshake=port0.pin6 data_ready=port4.pin2 reset=unwired
 c6_hosted_init: handshake=port0.pin6 irq=11 path=icu-edge
 c6_hosted_init: data_ready=port4.pin2 irq=none path=software-edge-detector poll_ms=2
-c6_hosted_init: port_init=k_ra8_ok
+c6_hosted_init: port_init=ok
 c6_hosted_init: sideband handshake level=1 active_level=1 state=asserted
-c6_hosted_init: sideband data_ready level=1 active_level=1 state=asserted
+c6_hosted_init: sideband data_ready level=0 active_level=1 state=deasserted
 c6_hosted_init: transfer rc=0 frame_bytes=1600
-c6_hosted_init: rx if_type=... len=... offset=12 seq_num=... csum=0x1234 calc=0x1234
-c6_hosted_init: PASS link up
+c6_hosted_init: rx if_type=8 if_num=15 flags=0x00 len=0 offset=0 seq_num=0 csum=0x0000 calc=0x00f8
+c6_hosted_init: PASS link up -- co-processor returned its idle filler frame
 ```
 
 The two routing lines are the cheapest confirmation that the app is running
@@ -201,10 +207,9 @@ power-cycle the C6 immediately before the run.
 
 ### What a FAIL means now
 
-A FAIL no longer means "no harness". The wire is proven, so a failing verdict
-points at this port, at the link parameters it chose, or at the bench setup --
-in that order of likelihood, since the port is the only one of the three that
-has never been exercised:
+A FAIL no longer means "no harness", and no longer means "the port is
+untested": both the wire and the port are proven. A failing verdict now points
+at the bench setup first, and at a regression in the port second:
 
 | Verdict line | What it most likely means |
 |---|---|
@@ -212,7 +217,7 @@ has never been exercised:
 | `FAIL bus transfer did not return RET_OK` | The port's `_h_do_bus_transfer` implementation or the SCI2 Simple-SPI bus beneath it failed. Entirely first-party ground. |
 | `FAIL receive buffer all-zero -- co-processor did not drive the bus` | The C6 holds its controller-in line with an internal pull-down, so all-zero is what a *connected* co-processor that never saw a valid transaction looks like: chip select never asserted for the frame, or clocked in a mode the C6 rejects. |
 | `FAIL receive buffer all-ones -- co-processor did not drive the bus` | The RA8 input floated. With the harness proven this points at the bench rather than the code: SW4-3 back OFF, the C6 unpowered, or a lifted joint. Re-run `c6_spi_probe` to separate wire from firmware. |
-| `FAIL header offset is not the payload-header size`, `FAIL advertised length exceeds MAX_PAYLOAD_SIZE`, `FAIL checksum mismatch` | The bus is alive and the C6 is driving -- framing or timing is wrong. The 5 MHz clock is the first suspect, being the one link parameter the bench proof at 1 MHz did not cover. |
+| `FAIL header offset is not the payload-header size`, `FAIL advertised length exceeds MAX_PAYLOAD_SIZE`, `FAIL checksum mismatch` | The bus is alive and the C6 is driving -- framing or timing is wrong. 5 MHz is no longer a suspect: it is the rate every run since 2026-07-28 has used, with zero bad checksums. Re-run `c6_spi_probe` to separate wire from firmware. |
 
 ```
 c6_hosted_init: transfer rc=0 frame_bytes=1600
@@ -234,16 +239,22 @@ That pairing -- HANDSHAKE asserted, DATA_READY deasserted -- is the steady
 state of a healthy link with nothing queued, and is worth seeing even on a run
 whose single transaction failed.
 
-## Next step: run it
+## Next step: the protocol
 
-The remaining unknown is firmware, not wiring. `c6_spi_probe` already settled
-the physical side.
+The wire and the port are both settled. What this application does not touch is
+the protocol above them -- it clocks one transaction and reads the header, and
+never asks the co-processor for anything. That is
+[`../c6_fw_version/`](../c6_fw_version/README.md): a real RPC request, parsed
+by the co-processor, answered with a populated response whose fields are
+checked.
+
+To re-run this one:
 
 1. Set SW4 to 1=OFF, 2=OFF, 3=ON, 4=OFF and power the C6 over its own USB.
-2. `make c6_hosted_init` and flash it; watch the J-Link OB VCOM at 115200.
+2. `make hil-c6 APP=c6_hosted_init`.
 3. Compare the two routing lines against the pin map above, then read the
-   verdict. On a FAIL, work down the table above; on a PASS, this app leaves
-   `hw_pending/`.
+   verdict. On a FAIL, work down the table above, starting with
+   `make hil-c6 APP=c6_spi_probe` to separate wire from firmware.
 
 ## See also
 
@@ -251,6 +262,6 @@ the physical side.
   compiled, what is excluded and why, and the pinned upstream commit.
 - `docs/design/c6_wireless_architecture.md` -- how the co-processor fits into
   the system.
-- `examples/ek_ra8d2/hw_pending/c6_spi_probe/README.md` -- the raw-SPI probe
+- `examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/README.md` -- the raw-SPI probe
   that established the pin map above, with the full measurement transcript
   including the superseded 2026-07-26 diagnosis.

@@ -166,7 +166,26 @@ offline. Those are mechanical DIP positions -- the U15 expander cannot
 override the Pmod1 SPI mux (issue #44) -- so the bank has to be flipped by
 hand and flipped back. See
 [`design/c6_wireless_architecture.md`](design/c6_wireless_architecture.md)
-and `examples/ek_ra8d2/hw_pending/c6_spi_probe/README.md`.
+and `examples/ek_ra8d2/hw_validated/c6/README.md`.
+
+Because that setting cannot coexist with this suite's, the C6 apps are a
+SEPARATE LANE rather than a separate runner:
+
+```sh
+make hil-c6                    # every app under hw_validated/c6/
+make hil-c6 APP=c6_spi_probe   # just one
+```
+
+which is `scripts/hil/all.sh --dir examples/ek_ra8d2/hw_validated/c6` -- the
+same discovery, the same `hil.conf` manifests, the same bench hold and the
+same six verifiers as `make hil-all`. A second copy of the runner would be a
+second place for all of that to drift.
+
+They sit outside `hw_validated/hil/` for a second, independent reason:
+`ra8_emulator` models no ESP32-C6 (#494), and `check_hil_eil_parity.py`
+requires every app in that directory to be EIL-exercised with no skips. That
+gate is right; the C6 apps simply cannot satisfy it yet, and punching a hole in
+it to house them would cost more than the separate lane does.
 
 ## Per-app table
 
