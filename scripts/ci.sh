@@ -151,6 +151,7 @@ RA8_GATE_REGISTRY=(
   "osv-scan|manual|OSV CVE sweep of the vendored SOUP (network, scheduled)"
   "fuzz-sweep|manual|libFuzzer sweep of every harness (nightly budget)"
   "runner-clock|manual|no CI runner moved its wall clock under a running job"
+  "runner-image-deps|manual|every require_cmd/require_python_mod tool exists in the runner image"
   "hil-all|manual|hardware-in-the-loop suite on the bench EK-RA8D2"
   "bench-lock-selftest|manual|the bench lock proved against the real bench host"
   "docs-publish|manual|build + force-push the Doxygen site to gh-pages"

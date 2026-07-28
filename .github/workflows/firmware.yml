@@ -124,6 +124,26 @@ jobs:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate toolchain-parity
 
+  # The other half of the same question, and the half toolchain-parity is
+  # structurally unable to ask (#513): it compares the VERSION of tools that are
+  # present against the Dockerfile pins, so a dependency that is simply absent
+  # has no pin to disagree with. Two gates landed in one day declaring a tool
+  # the deployed image does not carry -- `gh`, then `jq` -- and both were caught
+  # by a person poking a pod, not by a check.
+  #
+  # Runs here rather than nightly because it is a few `command -v` calls and a
+  # broken image breaks everything downstream of it; and on `ra8-ci` without a
+  # container:, so the step executes INSIDE the image it is asking about.
+  runner-image-deps:
+    name: Runner image carries every declared dependency
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/ci.sh --gate runner-image-deps
+
   since:
     name: Doxygen @since tags
     runs-on: ra8-ci
