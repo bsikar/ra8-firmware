@@ -23,8 +23,9 @@ in OpenBao. That's it: your machine joins as a CI runner pool.
 - **CI runner** -- point a spare machine (or a friend's server) at the repo and
   it joins the runner pool: more hardware, more parallel CI. Two shapes are
   supported and can run side by side -- an autoscaling ARC pool on a k8s
-  cluster, and a single container on any plain Docker host. See "The CI runner
-  pool spans two hosts" below.
+  cluster, and long-lived containers on any plain Docker host (including a
+  Windows machine's WSL2 distro). See "The CI runner pool spans three hosts"
+  below.
 - **HIL bench** -- configures the bench Pi's J-Link, `rfp-cli`, serial console,
   smart-plug control, the ESP32-C6 build toolchain, and the Digilent Analog
   Discovery 2 logic analyzer used to probe the RA8 <-> C6 SPI lines.
@@ -53,6 +54,7 @@ the documentation, not a footnote:
 | OpenBao vault (deployment) | `openbao` | codified |
 | ARC runner pool | `ci_runner` | codified |
 | second build host (Docker) | `ci_runner_docker` | codified |
+| Windows/WSL2 build host | `wsl_ci_host` + `ci_runner_docker` | codified |
 | HIL bench Pi | `hil_bench`, `c6_toolchain`, `ad2_tools` | codified |
 | bench LAN (FortiGate + AP) | `network/` | codified |
 | vault init / unseal / secrets | `scripts/secrets/` | manual **by design** |
@@ -115,16 +117,17 @@ generate them -- and finishes on `check_tool_versions.py --all`, the exact
 assertion the `toolchain-parity` gate makes. A box that cannot reach parity
 fails the play.
 
-## The CI runner pool spans two hosts
+## The CI runner pool spans three hosts
 
-Both roles register runners against the same repository and both boot the same
+Every role registers runners against the same repository and boots the same
 `localhost/ra8-ci-runner:v2` toolchain image, so a job behaves identically
-whichever host takes it. They differ only in shape:
+whichever host takes it. They differ only in shape and in where they run:
 
 | Role | Host | Shape | `runs-on:` it answers |
 |---|---|---|---|
 | `ci_runner` | k3s node | ARC scale set, pods, autoscaling 0..`ci_runner_max` | `ra8-ci` |
 | `ci_runner_docker` | any Docker host | one long-lived container | `ra8-ci`, `ra8-nas` |
+| `wsl_ci_host` + `ci_runner_docker` | Windows machine, in WSL2 | three long-lived containers | `ra8-ci`, `ra8-win` |
 
 **Every workflow targets `ra8-ci`.** The one exception is `hil.yml`, which
 targets `[self-hosted, hil, ra8d2]` -- a physical-bench label naming the Pi with
@@ -132,12 +135,33 @@ the EK-RA8D2 attached, not a capacity pool. Nothing schedules against a bare
 `[self-hosted, Linux, X64]` any more; see "The legacy `k3s-runner-*` pool is
 retired" below for what that replaced.
 
-**Why two.** The build farm was one machine. The k3s node hosting the ARC pods
-and the dev container where every agent runs `make ci` are guests on a single
-10-core i5-12600K with ~30 vCPU committed across them, and it sat at a load
-average near 20 with CI and local gate runs fighting for the same silicon.
-Contention, not runner count, was the throughput ceiling; the fix is a second
-machine, not more pods on the first.
+The per-host labels (`ra8-nas`, `ra8-win`) are escape hatches, not scheduling
+targets: nothing uses them today, and they exist so a specific host can be
+pinned or drained without editing every workflow.
+
+**Why more than one.** The build farm was one machine. The k3s node hosting the
+ARC pods and the dev container where every agent runs `make ci` are guests on a
+single 10-core i5-12600K with ~30 vCPU committed across them, and it sat at a
+load average near 20 with CI and local gate runs fighting for the same silicon.
+Contention, not runner count, was the throughput ceiling; the fix is more
+machines, not more pods on the first.
+
+**The third host is the fastest one, and it was measured rather than assumed.**
+`win-ci` is a Ryzen 9 7900X -- 12 physical Zen 4 cores against the 12600K's 6
+performance cores, and unlike the k3s node it is not sharing them with a dev
+container. Same gate, same commit, same toolchain image, same 8-CPU allocation
+the NAS runner uses:
+
+| gate | win-ci | truenas (NAS) | pve1 (ARC pod) |
+|---|---|---|---|
+| `build-cross`, all 218 apps, 8 CPUs | **258s** | 808s | 1689s |
+| `tidy` (clang-tidy), full width | **96s** | -- | ~981s (contended) |
+
+That is **3.1x the NAS and 6.5x a pve1 pod** on the heavy cross-build, on an
+otherwise idle host, with all 218 apps passing. The pve1 figure is not a slow
+CPU so much as a drowning one: that node runs at load average 77-100 on 16
+vCPU, so its pods are contending, which is the entire reason more hosts were
+added rather than more pods.
 
 **`ra8-ci` as a plain label is verified, not assumed.** `ra8-ci` is the ARC
 runner *scale-set name*, and a scale-set name and a runner label are resolved
@@ -174,6 +198,94 @@ which host picked the job up.
 The role's `self-hosted`/`Linux`/`X64` labels are added by the runner itself
 and cannot be removed. Nothing targets them: they are simply what GitHub
 attaches to every self-hosted Linux x86_64 runner.
+
+### The Windows host runs three runners inside WSL2
+
+`wsl_ci_host` prepares the distro; `ci_runner_docker` then deploys into it
+**unmodified**. Keeping the platform-specific work in a separate role is what
+stops the shared role growing a second personality per host.
+
+The runner runs in WSL2 rather than on Windows because the toolchain image is
+the toolchain: every pinned tool lives in `localhost/ra8-ci-runner:v2`, and the
+`toolchain-parity` gate exists to fail a runner that drifts from those pins. A
+native Windows runner would need a separately assembled toolchain -- exactly
+the drift the gate is there to catch.
+
+**This host is sized to take the largest share of the fleet's work.** It is the
+fastest machine available and is barely used interactively, so the WSL VM is
+capped at 22 of 24 threads and 26 of 31 GiB -- enough for an idle Windows
+desktop and no more. Both are role variables, so the judgement is reversible in
+one place.
+
+**Three runners, and three is a memory result.** Queue depth is the fleet's
+bottleneck, not per-job latency, so a host with cores to spare runs several
+independent runners rather than one runner with a very wide `-j`. The count is
+bounded by clang-tidy, which has been OOM-killed at 8 GiB: 26/3 = 8.7 GiB per
+instance clears that, 26/4 = 6.5 GiB does not. Cores would divide fine at four
+-- memory is what says three. Each instance gets its own registration, home and
+`_work` tree, and is pinned to its own cpuset so `nproc` inside it reports its
+real share and `make -j$(nproc)` cannot oversubscribe the box. If clang-tidy is
+ever sharded, per-shard memory drops and a fourth becomes viable; re-measure
+then rather than assuming.
+
+Roughly 5 GiB of the VM is left uncommitted on purpose: this machine has an
+RTX 5070 and will later host the GPU side of the Ethos-U55 / NPU workstream
+(#228) in this same distro. GPU work and CI do not contend for an execution
+resource, but they do contend for system RAM.
+
+**Docker Engine in the distro, not Docker Desktop.** Docker Desktop is
+installed on this machine and is left completely alone, but it cannot host this
+runner: its daemon sits behind a Windows application that needs a logged-in
+interactive session, so the runner would stop being able to start containers
+the moment the owner logged out. That is not an unattended runner. Native
+`docker-ce` runs under the distro's own systemd. Because the Desktop
+integration also puts a `docker` shim on `PATH` from `/mnt/c`, the role
+*asserts* that the binary in use is the distro's own -- a silent switch back
+would reintroduce the GUI dependency with no other symptom.
+
+**The build tree stays off `/mnt/c`.** `ci_runner_docker_root` is
+`/opt/ra8-ci-runner` on the distro's ext4 root. `/mnt/c` is drvfs, a
+translation layer onto NTFS, and roughly an order of magnitude slower for the
+many-small-files work a checkout and a build are; putting `_work` there would
+hand back most of the CPU advantage this host was added for.
+
+**Mirrored networking needs a route fix here, and that is not optional.** The
+machine is multi-homed: an isolated bench LAN with **no uplink**, and the
+owner's Wi-Fi. Mirrored networking copies the Windows routing table into the
+distro, and the bench LAN's DHCP-supplied default gateway arrives with the
+*lower* metric -- so out of the box every packet the runner sends goes into a
+black hole. Windows itself is unaffected because it fails over, which is why
+this reads as a working machine right up until a job runs. Two things fix it,
+both inside the distro, and neither touches the owner's network:
+
+- `ra8-wsl-route-pin` finds the default gateway that actually carries traffic
+  (probed by IP, before DNS can be trusted) and pins it below every mirrored
+  route. A **timer** re-asserts it, because mirrored networking re-syncs the
+  Windows routing table on every host network change -- a boot-only fix would
+  let a Wi-Fi roam break a job already in flight.
+- `generateResolvConf=false` plus a resolv.conf the role owns. WSL's DNS
+  tunnelling endpoint (`10.255.255.254`) does **not** answer on this host: a
+  raw UDP/53 query to it times out while `1.1.1.1` answers in milliseconds over
+  the same interface. Left generated, every name lookup in a job stalls for the
+  full resolver timeout.
+
+**The VM must be told not to die.** WSL reaps an unattended VM regardless of
+what is running inside it, and this host was seen going `offline` with
+`busy=true` -- GitHub still had a job assigned to a VM that had been shut down
+underneath it. `vmIdleTimeout=-1` plus a blocking keep-alive in the autostart
+task fixes it. The keep-alive matters: a task running `wsl -e true` starts the
+VM and exits, and the VM is reaped moments later, which is an autostart that
+reliably leaves the runner offline while looking configured.
+
+**The clock must be right before the runners start.** A WSL2 VM does not boot
+with a trustworthy clock. Observed here: the VM came up ~4 minutes fast, the
+runner checked the tree out with those timestamps, `timesyncd` then stepped the
+clock back, and make spent the rest of the job reporting `Clock skew detected.
+Your build may be incomplete`. That is not cosmetic -- make's up-to-date
+decisions are timestamp comparisons. Docker is therefore ordered after
+`systemd-time-wait-sync`, and since the containers are `restart:
+unless-stopped`, the daemon's start time is exactly when this host begins
+accepting jobs.
 
 ### Storage: CI I/O is kept off a named pool, by assertion
 
