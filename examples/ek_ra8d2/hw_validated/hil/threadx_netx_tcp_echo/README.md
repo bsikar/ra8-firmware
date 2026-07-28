@@ -28,7 +28,7 @@ to the SCI8 console as `[netx] echoed N bytes from a.b.c.d`.
   `tools/ra8_emulator` models the R-Switch register cluster
   (`board_periph_eth.c`) and its virtual host `board_net`
   (192.168.1.1) resolves the firmware over ARP, pings it, TCP-connects
-  to port 7, sends a fixed 21-byte payload, and byte-verifies the
+  to port 7, sends a fixed 23-byte payload, and byte-verifies the
   echo. The EIL verdict asserts both the firmware's served-echo UART
   banner (`HIL_EXPECT`) and the peer's end-of-run `echo MATCH` report.
 
@@ -41,5 +41,5 @@ tools/ra8_emulator/build/ra8_emulator \
 ```
 
 The UART shows the boot banners, `eth: ready`, then
-`[netx] echoed 21 bytes from 192.168.1.1`; the end-of-run report's
+`[netx] echoed 23 bytes from 192.168.1.1`; the end-of-run report's
 `NET TCP` line gives the peer's byte-exact verdict.

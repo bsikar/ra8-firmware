@@ -138,8 +138,30 @@ static bool     s_tcp_match;      /**< Echo matched what we sent.              *
 static bool     s_tcp_need_data;  /**< Payload queued to send post-handshake.  */
 static uint32_t s_tcp_estab_wait; /**< Ticks since the connection established. */
 
-/** @brief Payload the peer sends to the firmware's TCP echo server. */
-static const uint8_t s_tcp_payload[] = "hello from ra8_emulator\n";
+/**
+ * @brief Payload the peer sends to the firmware's TCP echo server.
+ *
+ * @details
+ * Its LENGTH is part of the EIL contract, not just an implementation detail:
+ * `threadx_netx_tcp_echo` echoes it and logs "[netx] echoed N bytes", and that
+ * exact line is the `HIL_EXPECT` its `hil.conf` asserts. So this string must
+ * not carry anything that gets renamed. It used to read "hello from
+ * board_sim\n" (21 bytes); the board_sim -> ra8_emulator rename silently made
+ * it 24 and broke that assertion, which nothing noticed because the app was
+ * parked outside the EIL run set at the time (#499). Hence a name-free literal
+ * and the static_assert below -- change the text freely, but a change in
+ * length has to be made deliberately and mirrored in the hil.conf.
+ */
+static const uint8_t s_tcp_payload[] = "tcp echo probe payload\n";
+
+/** @brief Payload length the `threadx_netx_tcp_echo` hil.conf asserts. */
+enum : uint32_t {
+  k_net_tcp_payload_len = 23U, /**< sizeof(s_tcp_payload) - 1, pinned. */
+};
+static_assert((sizeof(s_tcp_payload) - 1U) == (size_t)k_net_tcp_payload_len,
+              "EIL contract: threadx_netx_tcp_echo's hil.conf HIL_EXPECT names "
+              "this byte count -- update examples/ek_ra8d2/hw_validated/hil/"
+              "threadx_netx_tcp_echo/hil.conf in the same change");
 
 /* Ring of frames queued for the firmware to receive. The firmware's RX worker
  * drains all available frames per poll, so a handshake burst (ACK + data) can
