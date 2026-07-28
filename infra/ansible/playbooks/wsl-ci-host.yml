@@ -10,37 +10,37 @@
 # WHERE THIS RUNS: on the target, inside the distro. WSL has no SSH daemon of
 # its own, and giving it one would mean opening an inbound port on somebody's
 # personal daily-driver machine and punching a hole in their firewall so a
-# config management tool could reach it. Copying the play in and running it
-# with `--connection=local` costs nothing and asks nothing of their network:
+# config management tool could reach it. The play is therefore copied in and
+# run with `--connection=local`, which costs nothing and asks nothing of their
+# network.
 #
-#   # from the control machine, over the existing SSH path to Windows:
-#   tar -cz infra/ansible | ssh <windows-host> \
-#     "wsl -d Ubuntu -u root -e bash -lc 'mkdir -p /opt/ra8-infra &&
-#      tar -xz -C /opt/ra8-infra'"
+# That copy-in used to be a hand-run pipeline written out here. It is codified
+# now -- scripts/dev/fleet.py knows this host's transport from its block in
+# infra/fleet.yml -- so the whole operation is:
 #
-#   # then, inside the distro:
-#   ansible-playbook --connection=local -i localhost, \
-#     /opt/ra8-infra/ansible/playbooks/wsl-ci-host.yml \
+#   gh api -X POST repos/bsikar/ra8-firmware/actions/runners/registration-token
+#   python3 scripts/dev/fleet.py apply win-ci \
 #     -e ci_runner_docker_registration_token=<token>
 #
-# The token is minted on the control machine with
-# `gh api -X POST repos/bsikar/ra8-firmware/actions/runners/registration-token`
-# and is good for one hour and one registration, so no long-lived credential
-# ever lands on the machine. See the ci_runner_docker credentials defaults.
+#   # just the drain script and the quiet-hours timer, touching no container:
+#   python3 scripts/dev/fleet.py apply win-ci --tags capacity
 #
-# Remove with:
-#   ansible-playbook --connection=local -i localhost, \
-#     /opt/ra8-infra/ansible/playbooks/wsl-ci-host.yml \
-#     -e ci_runner_docker_state=absent -e wsl_ci_host_state=absent \
+#   # remove, with a removal token from .../actions/runners/remove-token:
+#   python3 scripts/dev/fleet.py remove win-ci \
 #     -e ci_runner_docker_removal_token=<token>
+#
+# The token is good for one hour and one use, so no long-lived credential ever
+# lands on the machine. See the ci_runner_docker credentials defaults, and
+# docs/CI_FLEET.md for the runbooks.
 - name: Configure a WSL2 host and deploy a CI runner into it
   hosts: all
   connection: local
   gather_facts: true
   # Loaded explicitly rather than by inventory host name: this play runs with
   # `-i localhost,` (see above), so the host is called "localhost" and Ansible
-  # would never pick up host_vars/win-ci-1.yml on its own. Select a different
-  # host with -e wsl_ci_host_id=<name>.
+  # would never pick up inventory/host_vars/win-ci.yml on its own.
+  # scripts/dev/fleet.py passes -e wsl_ci_host_id=<fleet host name>; a second
+  # WSL machine is a second block in infra/fleet.yml and a second file there.
   vars:
     wsl_ci_host_id: "win-ci"
   vars_files:

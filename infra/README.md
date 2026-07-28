@@ -88,10 +88,11 @@ always had two prerequisites that lived nowhere: the cluster, and a `helm` root
 could resolve. `k3s_node` is those prerequisites.
 
 ```
-cd infra/ansible
-ansible-playbook -i inventory/hosts.ini playbooks/k3s-node.yml   # cluster + vault
-ansible-playbook -i inventory/hosts.ini playbooks/ci-runner.yml  # then ARC
+make infra-apply HOST=k3s-pve
 ```
+
+That runs both plays in the order the host declares them (`k3s-node` then
+`ci-runner`); `PLAY=` on `scripts/dev/fleet.py` runs one on its own.
 
 k3s is pinned by release version *and* by the sha256 of the release binary, and
 the upstream installer is fetched to disk and checksummed rather than piped
@@ -110,8 +111,7 @@ runner -- it never joins the Actions pool -- so it lives in its own inventory
 group and its own playbook:
 
 ```
-cd infra/ansible
-ansible-playbook -i inventory/hosts.ini playbooks/dev-box.yml
+make infra-apply HOST=dev
 ```
 
 Two of its tools are built from source, and that is a property of the
@@ -354,16 +354,17 @@ back no matter what its restart policy says.
 
 ### Deploy and remove
 
-```
-cd infra/ansible
+```sh
+# deploy (and converge an existing deployment). Drains the host first: a
+# converge recreates containers, which would cancel the jobs they hold.
+make infra-apply HOST=truenas
 
-# deploy (and converge an existing deployment)
-ansible-playbook -i inventory/hosts.ini playbooks/ci-runner-docker.yml
+# just the drain script and the quiet-hours timer -- touches no container
+python3 scripts/dev/fleet.py apply truenas --tags capacity
 
-# remove: container down, runner deregistered from GitHub, image dropped,
+# remove: containers down, runners deregistered from GitHub, image dropped,
 # dataset destroyed. One command, nothing left behind.
-ansible-playbook -i inventory/hosts.ini playbooks/ci-runner-docker.yml \
-  -e ci_runner_docker_state=absent
+make infra-remove HOST=truenas
 ```
 
 Removal is a role path rather than a README snippet on purpose: a hand-written
