@@ -140,7 +140,6 @@ static ra8_sram_config_t make_default_cfg(void)
     cfg.banks[i].zero_init         = false;
   }
   cfg.apply_security = false;
-  cfg.wait_state     = false;
   return cfg;
 }
 
@@ -272,16 +271,31 @@ static void test_set_eccrgn_rejects_bank3_oversize(void)
   * code under test that this case touches)
  */
 
-static void test_set_wait_state_manual(void)
+static void test_lifecycle_leaves_wtsc_alone(void)
 {
-  TEST_BEGIN("sram set_wait_state writes WTEN");
+  TEST_BEGIN("sram init/deinit never touch SRAMWTSC");
   prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_set_wait_state(true));
+  /* ra8_cgc_init owns SRAMWTSC (HUM Ch 58.3.7 p 3540). An ECC config
+   * pass must not be able to undo it -- clearing WTEN behind the
+   * application's back is what took the memory system outside
+   * guaranteed operation in tracker #524, via two demos that passed a
+   * zero-initialised ra8_sram_config_t. */
   volatile r_sram_regs_t* regs = ra8_sram_regs();
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_sram_set_wait_state_for_clock((uint32_t)k_ra8_sram_test_iclk_high,
+                                                   (uint32_t)k_ra8_sram_test_iclk_max));
+  /* HUM Ch 58.2.6 "SRAMWTSC : SRAM Wait State Control Register" p 3531 */
   TEST_ASSERT_EQ(k_ra8_sram_wtsc_wten, regs->SRAMWTSC);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_set_wait_state(false));
-  TEST_ASSERT_EQ(0, regs->SRAMWTSC);
-  TEST_END("sram set_wait_state writes WTEN");
+
+  ra8_sram_config_t cfg = make_default_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
+  /* HUM Ch 58.2.6 "SRAMWTSC : SRAM Wait State Control Register" p 3531 */
+  TEST_ASSERT_EQ(k_ra8_sram_wtsc_wten, regs->SRAMWTSC);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_deinit());
+  /* HUM Ch 58.2.6 "SRAMWTSC : SRAM Wait State Control Register" p 3531 */
+  TEST_ASSERT_EQ(k_ra8_sram_wtsc_wten, regs->SRAMWTSC);
+  TEST_END("sram init/deinit never touch SRAMWTSC");
 }
 
 /**
@@ -839,7 +853,7 @@ static void (*const s_test_roster[])(void) = {
   test_set_mode_null_cfg,
   test_set_eccrgn_happy,
   test_set_eccrgn_rejects_bank3_oversize,
-  test_set_wait_state_manual,
+  test_lifecycle_leaves_wtsc_alone,
   test_set_wait_state_for_clock,
   test_status_decode,
   test_status_null_out,
