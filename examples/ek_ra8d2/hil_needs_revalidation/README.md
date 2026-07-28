@@ -4,11 +4,23 @@ Apps here were previously in [`../hw_validated/hil/`](../hw_validated/hil/)
 but did **not** pass the most recent full hardware-in-the-loop run on the
 bench (113 of 157 apps passed; these are the 44 that did not). They were moved
 out so that `hw_validated/hil/` reflects reality -- only currently-green apps.
+One of the 44 (`threadx_netx_tcp_echo`) has since been re-tested and promoted
+back, leaving 43 here.
 
-**None of these are known to be broken code.** Each is blocked by a bench-
-configuration change, a card that needs reseating, external hardware that is
-not attached, or a state the automated harness cannot observe. The table below
-records the *real* reason for each and the path back to `hw_validated/hil/`.
+Each is blocked by a bench-configuration change, a card that needs reseating,
+external hardware that is not attached, or a state the automated harness cannot
+observe. The table below records the *real* reason for each and the path back
+to `hw_validated/hil/`.
+
+This file used to open by asserting that **none** of these apps was known to be
+broken code. That claim did not survive the first app to be re-tested with its
+stated blocker removed. `threadx_netx_tcp_echo` was recorded as needing an
+Ethernet peer; it got one (#292) and failed anyway, on a firmware regression
+that had been sitting on `dev` for a month behind that wrong label (#499). A
+reason recorded here is a hypothesis until someone clears the blocker and
+re-runs -- so treat every row below as "not yet disproved", not as "known good
+code", and expect clearing a blocker to sometimes reveal a defect rather than
+a pass.
 
 ## EIL == HIL note (coverage this move gives up)
 
@@ -17,7 +29,7 @@ at the time of the move: they PASS in the simulator but FAIL on the current
 bench. Under the owner's EIL == HIL rule a SIM-pass / HIL-fail is a
 divergence worth keeping visible. Because `eil_all.sh` and the
 `hil-eil-parity` gate discover apps only under `hw_validated/hil/`, moving
-these 44 apps out **drops them from the enforcing EIL run set** -- ra8_emulator no
+these apps out **drops them from the enforcing EIL run set** -- ra8_emulator no
 longer gates them per-`hil.conf`. Their `hil.conf` files travel with them, so
 re-validation (and EIL re-coverage) is a `git mv` back once the bench reason
 is cleared. The io-fabric demos are still booted by the `emulator-io-fabric`
@@ -30,7 +42,6 @@ their ra8_emulator boot is not lost -- only the per-`hil.conf` EIL assertion is.
 |---|---|---|
 | bench-config (C6 on OSPI) | 8 | Passes in stock config; the ESP32-C6 is now wired onto the PMOD1 pins that ARE the Octo-SPI flash bus, so OSPI/XSPI/flash/FS apps cannot reach their storage. |
 | SD-not-seated | 7 | Failed with sd=0 on the last run -- the microSD card was not detected. Not a code defect. |
-| needs-external-hardware | 1 | Requires an external peer/instrument that is not on the bench. |
 | known-hard / under-triage | 28 | Sleep/standby states the harness cannot probe, previously-validated crypto/security apps that regressed to a bench-state, or paths the current automated harness does not assert. |
 
 ## Per-app detail
@@ -52,7 +63,6 @@ their ra8_emulator boot is not lost -- only the per-`hil.conf` EIL assertion is.
 | `pagecache` | SD-not-seated | Paged book accessor over SD; last run reported sd=0 -- SD card not detected, needs a reseat. | Reseat / re-insert the microSD card, confirm sd=1, then re-run the HIL suite. |
 | `ra8_io_sd_demo` | SD-not-seated | SD-over-SPI round-trip failed with sd=0; SD card not detected -- needs a reseat, not a code defect. | Reseat / re-insert the microSD card, confirm sd=1, then re-run the HIL suite. |
 | `reflow_content` | SD-not-seated | Reflows book content from SD; last run reported sd=0 -- SD card not detected, needs a reseat. | Reseat / re-insert the microSD card, confirm sd=1, then re-run the HIL suite. |
-| `threadx_netx_tcp_echo` | needs-external-hardware | NetX Duo TCP echo needs an Ethernet echo peer on the wire (#292); no peer attached on the bench. | Attach the required external peer/instrument, then re-run. |
 | `bkup_survival_demo` | known-hard / under-triage | Backup-domain survival across reset/standby; the survive-across-reset outcome is not captured by the harness. | Triage against the last green EIL/HIL run; repair the harness probe or fix the regression, then promote back to hw_validated/hil. |
 | `cpu1_pingpong_ipc` | known-hard / under-triage | M85<->M33 IPC ping-pong; dual-core handshake not observed on the last run -- under triage. | Triage against the last green EIL/HIL run; repair the harness probe or fix the regression, then promote back to hw_validated/hil. |
 | `gpt_irq_demo` | known-hard / under-triage | GPT interrupt demo; IRQ-driven output not observed on the last run -- under triage. | Triage against the last green EIL/HIL run; repair the harness probe or fix the regression, then promote back to hw_validated/hil. |
