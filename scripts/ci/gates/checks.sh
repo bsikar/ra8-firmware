@@ -233,8 +233,40 @@ _pcc_security_invariants() (
   python3 scripts/checks/check_image_no_antirecovery.py --selftest
 )
 
+# The MC/DC discipline: DO-178C Level B makes MC/DC of every compound boolean
+# decision the core evidence, so this is the half of the gate that has teeth
+# about it.
+_pcc_mcdc_discipline() (
+  set -e
+  # Every new compound boolean decision must arrive with MC/DC vectors.
+  # #355: the checker used `git diff --cached`, so in any CI checkout (nothing
+  # staged) it saw 0 files and exited 0, auditing nothing ever. It is
+  # range-aware and fail-loud now (no mode / unresolvable range is exit 2, not
+  # a silent clean scan). --selftest proves the detector in BOTH directions, so
+  # one that stopped matching cannot pass as clean; the staged counterpart runs
+  # blocking in scripts/git/pre-commit (--staged).
+  python3 scripts/checks/check_new_compound_has_mcdc.py --selftest
+  # ... and the CI teeth for that rule: the MC/DC RATCHET (#426). Until it
+  # landed, enforcement here was decorative -- only the --selftest above ran, so
+  # it proved the detector worked while auditing none of the tree, and a new
+  # uncovered compound decision passed CI. The `--range` delta scan that was
+  # meant to be the teeth had only ever existed here as a commented-out line.
+  #
+  # That delta scan is not what is enabled, because it keys on new source
+  # LINES: with a backlog of pre-existing uncovered decisions it fails on a
+  # mere reformat of one of them, which is a cliff, and a cliff gets bypassed.
+  # The ratchet is the shape this tree already uses for a measured debt
+  # (tidy_ratchet.py, misra_ratchet.py): per-file-per-function counts frozen in
+  # .github/mcdc-compound-baseline.txt, any INCREASE fails, shrinkage passes
+  # and can be re-baselined. The backlog is tolerated, cannot grow, and a
+  # genuinely new uncovered decision fails the push. --selftest first, both
+  # directions, so a ratchet that stopped detecting growth cannot pass clean.
+  python3 scripts/checks/mcdc_compound_ratchet.py --selftest
+  python3 scripts/checks/mcdc_compound_ratchet.py --check
+)
+
 # Documentation completeness, cross-reference integrity, and the test-side
-# discipline rules (MC/DC arrival, HIL instrumentation, assert casts).
+# discipline rules (HIL instrumentation, assert casts).
 _pcc_docs_and_tests() (
   set -e
   # The in-tree line-number citation ban: reference a symbol, never a file
@@ -245,18 +277,6 @@ _pcc_docs_and_tests() (
   python3 scripts/checks/check_line_citations.py
   # Per-app SystemInit boot init-order audit.
   python3 scripts/checks/audit_init_order.py
-  # Every new compound boolean decision must arrive with MC/DC vectors.
-  # #355: the checker used `git diff --cached`, so in any CI checkout (nothing
-  # staged) it saw 0 files and exited 0, auditing nothing ever. It is
-  # range-aware and fail-loud now (no mode / unresolvable range is exit 2, not
-  # a silent clean scan). --selftest proves the detector in BOTH directions, so
-  # one that stopped matching cannot pass as clean; the staged counterpart runs
-  # blocking in scripts/git/pre-commit (--staged).
-  python3 scripts/checks/check_new_compound_has_mcdc.py --selftest
-  # The blocking --range scan is written and proven but off until the measured
-  # backlog (998 decisions / 391 files, issue #426) is burned down. Then add:
-  #   python3 scripts/checks/check_new_compound_has_mcdc.py \
-  #     --range "$(ci_commit_range)" --repo "$(ci_history_repo)"
   # OSHWA inclusive-terminology gate over first-party sources.
   python3 scripts/checks/check_inclusive_terminology.py
   # MAXIMUM-documentation gate: every function -- including statics -- carries
@@ -299,6 +319,7 @@ gate_pre_commit_checks() (
   _pcc_tree_structure
   _pcc_source_form
   _pcc_security_invariants
+  _pcc_mcdc_discipline
   _pcc_docs_and_tests
 )
 
