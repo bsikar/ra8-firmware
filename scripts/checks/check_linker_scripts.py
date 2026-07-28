@@ -34,6 +34,14 @@ mechanically checkable about a linker script without linking it:
                                 error which would otherwise surface only in
                                 whichever app happens to pull the TU in -- and
                                 for a script no CI job links, never at all.
+  LD007  option-setting      -- no phantom data-flash, and every option-setting
+                                address matches the HUM (see OPTION_SETTING_ADDR).
+  LD008  option completeness -- the option-setting family is ALL-OR-NOTHING and
+                                CLOSED: a script either declares none of it (the
+                                CPU1 / non-secure-image scripts) or declares every
+                                word the HUM lists, with the matching output
+                                section for each; and it may not place an
+                                `.option_setting_*` section outside that family.
 
 The REVERSE direction (a script defines a g_ra8_ls_* nothing in C names) is
 deliberately NOT a finding, and that is a statement about what is enforceable
@@ -47,6 +55,34 @@ rule asserting it would be guessing -- it fired on 28 healthy symbols when
 tried. What IS decidable is the direction above, and that is what runs.
 
 LD006 is whole-tree, so it is reported once rather than per file.
+
+WHY LD008 IS ALL-OR-NOTHING RATHER THAN PER-DEVICE
+==================================================
+The obvious rule here would be "check the emitted OFS words against the target
+device's feature set". That rule is the bug. Issue #223 deleted the OFS3 family
+from the four RA8P1 app scripts because Renesas FSP's `BSP_FEATURE_BSP_HAS_OFS3`
+is 0 for ra8p1 -- but the RA8P1 Hardware User's Manual (R01UH1064EJ0130 Ch 7.2.6
+p 288, Ch 7.2.7 p 290) documents OFS3, OFS3_SEC and OFS3_SEL at the same
+addresses and with the same WDT1 bit fields as the RA8D2. A device-feature table
+would have had to encode that same wrong premise to pass, and would then have
+enforced it (#516).
+
+So LD008 asserts a structural invariant that needs no device knowledge: the
+option-setting block is indivisible. Every RA8 script either owns the option
+bytes and declares the COMPLETE family, or owns none of them and declares
+nothing -- and that is exactly how the tree partitions: the boot scripts are
+complete, the CPU1 / non-secure-image scripts are empty, and nothing sits in
+between. (No count is quoted here on purpose: it would drift with every added
+script and rot into a lie. `--list-files` reports the live scope, and
+OPTION_SETTING_FILE_FLOOR below is the number that is actually enforced.)
+A script at 23-of-26 is the defect signature in both directions: it catches a
+word deleted from one script and not its siblings, AND a word added to one
+script that the HUM does not list. The authority is OPTION_SETTING_ADDR, derived
+from the HUM, so no constant is ever compared against itself.
+
+Both option-setting rules carry a vacuity floor (OPTION_SETTING_FILE_FLOOR):
+if the PROVIDE spelling ever changes, these rules would match zero files and
+report a clean tree forever. Matching nothing is a failure, not a pass.
 
 Run with --selftest to prove the rules fire on a deliberately malformed script
 and stay quiet on a legal-but-tricky one.
@@ -284,11 +320,99 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
     return findings
 
 
+# A script that owns the option bytes must carry every word in the family; one
+# that does not own them carries none. The complete population is comfortably
+# into the sixties, so this floor sits far below a healthy tree -- low enough
+# never to fight normal churn, high enough that a PROVIDE rename which silently
+# stopped LD007/LD008 matching anything cannot slip past as a clean run.
+OPTION_SETTING_FILE_FLOOR = 40
+
+
+def option_section(name: str) -> str:
+    """Map a PROVIDE symbol to the output section that word lands in.
+
+    ``OFS3_SEC_ADDR`` -> ``.option_setting_ofs3_sec``. Deriving the section name
+    from OPTION_SETTING_ADDR rather than keeping a second hand-written list is
+    deliberate: two lists would drift, and the drift would disarm the rule.
+    """
+    return ".option_setting_" + name.removesuffix("_ADDR").lower()
+
+
+def declared_option_words(code: str) -> set[str]:
+    """The option-setting PROVIDE names this script declares (comment-blanked)."""
+    return {
+        name
+        for name in OPTION_SETTING_ADDR
+        if re.search(r"PROVIDE\(\s*" + re.escape(name) + r"\s*=", code)
+    }
+
+
+def placed_option_sections(code: str) -> set[str]:
+    """Every ``.option_setting_*`` output section this script places."""
+    return set(re.findall(r"^\s*(\.option_setting_\w+)", code, re.MULTILINE))
+
+
+def _check_option_completeness(path: pathlib.Path, code: str) -> list[Finding]:
+    """LD008 -- the option-setting family is all-or-nothing, and closed.
+
+    See the module docstring for why this is structural rather than per-device.
+    """
+    findings: list[Finding] = []
+    declared = declared_option_words(code)
+    placed = placed_option_sections(code)
+    known_sections = {option_section(n) for n in OPTION_SETTING_ADDR}
+
+    # Closed: an .option_setting_* section outside the HUM family is a word the
+    # silicon does not have, whichever part this script targets.
+    for stray in sorted(placed - known_sections):
+        line = next(
+            (i for i, ln in enumerate(code.splitlines(), 1) if stray in ln),
+            1,
+        )
+        findings.append(
+            Finding(
+                path,
+                line,
+                "LD008",
+                f"unknown option-setting section '{stray}' -- not a word the HUM lists",
+            )
+        )
+
+    if not declared and not (placed & known_sections):
+        return findings  # Owns no option bytes at all -- legitimate, nothing to complete.
+
+    missing_provides = sorted(set(OPTION_SETTING_ADDR) - declared)
+    if missing_provides:
+        findings.append(
+            Finding(
+                path,
+                1,
+                "LD008",
+                f"declares {len(declared)}/{len(OPTION_SETTING_ADDR)} option-setting words; "
+                f"the family is all-or-nothing, missing PROVIDE: {', '.join(missing_provides)}",
+            )
+        )
+
+    missing_sections = sorted(known_sections - placed)
+    if missing_sections:
+        findings.append(
+            Finding(
+                path,
+                1,
+                "LD008",
+                f"places {len(placed & known_sections)}/{len(known_sections)} option-setting "
+                f"sections; missing: {', '.join(missing_sections)}",
+            )
+        )
+    return findings
+
+
 def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     """Every linker-script rule, one function per finding code.
 
     The rule list is the call sequence below: LD005 formatting, LD001 licence,
-    LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD007 option-setting layout.
+    LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD007 option-setting
+    addresses, LD008 option-setting completeness.
     """
     findings, text = _check_formatting(path, raw)
     findings += _check_licence(path, text.splitlines())
@@ -298,6 +422,7 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     findings += memory_findings
     findings += _check_region_closure(path, code, regions)
     findings += _check_option_setting(path, code)
+    findings += _check_option_completeness(path, code)
     return findings
 
 
@@ -492,6 +617,90 @@ def _selftest_option_setting() -> int:
     return rc
 
 
+def _synth_option_script(omit: tuple[str, ...] = (), stray: str = "") -> str:
+    """Build a syntactically real .ld declaring the option family minus `omit`.
+
+    Generated from OPTION_SETTING_ADDR so the "complete" case cannot rot as the
+    HUM table grows -- the point of that case is that LD008 stays SILENT on a
+    complete script, which is only meaningful if "complete" tracks the table.
+    """
+    names = [n for n in OPTION_SETTING_ADDR if n not in omit]
+    provides = "\n".join(f"PROVIDE({n} = 0x{OPTION_SETTING_ADDR[n]:08X});" for n in names)
+    sections = "\n".join(
+        f"    {option_section(n)} {n} : {{ KEEP(*({option_section(n)})) }} > OFS_CFG" for n in names
+    )
+    if stray:
+        sections += f"\n    {stray} 0x02C9F800 : {{ KEEP(*({stray})) }} > OFS_CFG"
+    return (
+        "/*\n * Copyright (c) 2026 Brighton Sikarskie\n"
+        " * SPDX-License-Identifier: MIT\n */\n\n"
+        "ENTRY(Reset_Handler)\n\n"
+        "MEMORY\n{\n"
+        "    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K\n"
+        "    OFS_CFG (r) : ORIGIN = 0x02C9F000, LENGTH = 2K\n"
+        "    OFS_OTP (r) : ORIGIN = 0x02E07000, LENGTH = 68K\n}\n\n"
+        f"{provides}\n\n"
+        "SECTIONS\n{\n"
+        "    .text : { *(.text) } > MRAM\n"
+        f"{sections}\n}}\n"
+    )
+
+
+# The exact trio #223 deleted from the four RA8P1 app scripts. LD008 exists to
+# make that deletion impossible to land again, so the selftest reproduces it
+# rather than an invented omission.
+OFS3_FAMILY = ("OFS3_ADDR", "OFS3_SEC_ADDR", "OFS3_SEL_ADDR")
+
+# Below this many words, OPTION_SETTING_ADDR has plainly been gutted and every
+# LD008 case built from it would pass without asserting anything.
+MIN_OPTION_WORDS = 20
+
+
+def _selftest_option_completeness() -> int:
+    """LD008 fires on a partial family and on a stray section, silent when complete."""
+    rc = 0
+    # Anchor: an emptied or OFS3-less table would make every case below vacuous.
+    missing = [n for n in OFS3_FAMILY if n not in OPTION_SETTING_ADDR]
+    n_words = len(OPTION_SETTING_ADDR)
+    if missing or n_words < MIN_OPTION_WORDS:
+        print(f"SELFTEST FAIL: OPTION_SETTING_ADDR lost {missing or 'entries'}; LD008 vacuous")
+        return 1
+    print(f"selftest: OPTION_SETTING_ADDR has {n_words} words incl. the OFS3 family OK")
+
+    with tempfile.TemporaryDirectory() as td:
+        cases = [
+            ("partial.ld", _synth_option_script(omit=OFS3_FAMILY), True, "OFS3 family cut (#223)"),
+            ("complete.ld", _synth_option_script(), False, "complete family"),
+            ("stray.ld", _synth_option_script(stray=".option_setting_ofs4"), True, "phantom ofs4"),
+        ]
+        for fname, text, want_fire, label in cases:
+            p = pathlib.Path(td) / fname
+            p.write_bytes(text.encode())
+            ld008 = [f for f in check_file(p, p.read_bytes()) if f.code == "LD008"]
+            if want_fire and not ld008:
+                print(f"SELFTEST FAIL: {fname} ({label}) did not report LD008")
+                rc = 1
+            elif not want_fire and ld008:
+                print(f"SELFTEST FAIL: {fname} ({label}) should have no LD008 but reported:")
+                for f in ld008:
+                    print(f"    {f}")
+                rc = 1
+            else:
+                verdict = "LD008" if want_fire else "no LD008"
+                print(f"selftest: {fname} -> {verdict} ({label}) OK")
+
+        # A script owning no option bytes at all must stay silent -- that is the
+        # CPU1 / non-secure-image shape, 64 files in this tree.
+        none = pathlib.Path(td) / "none.ld"
+        none.write_bytes(TRICKY.encode())
+        if [f for f in check_file(none, none.read_bytes()) if f.code == "LD008"]:
+            print("SELFTEST FAIL: a script with no option-setting block reported LD008")
+            rc = 1
+        else:
+            print("selftest: none.ld -> no LD008 (owns no option bytes) OK")
+    return rc
+
+
 def _selftest_fixtures() -> int:
     """The two whole-file fixtures: every code must fire, nothing may over-fire."""
     rc = 0
@@ -577,8 +786,47 @@ def selftest() -> int:
     """Assert every finding code fires, and that none of them over-fires."""
     rc = _selftest_fixtures()
     rc |= _selftest_option_setting()
+    rc |= _selftest_option_completeness()
     scan_rc, got_def, got_ref = _selftest_symbol_scan()
     return rc | scan_rc | _selftest_closure(got_def, got_ref)
+
+
+def scan(paths: list[pathlib.Path]) -> tuple[list[Finding], int]:
+    """Run every per-file rule, and count scripts with the complete option family.
+
+    The count is what the vacuity floor is asserted against, so it is produced
+    by the same pass that applies the rules rather than by a second walk that
+    could drift from it.
+    """
+    findings: list[Finding] = []
+    complete = 0
+    for p in paths:
+        raw = p.read_bytes()
+        findings.extend(check_file(p, raw))
+        code = strip_comments(raw.decode("utf-8", errors="replace"))
+        if declared_option_words(code) == set(OPTION_SETTING_ADDR):
+            complete += 1
+    return findings, complete
+
+
+def option_floor_breached(complete: int) -> bool:
+    """Vacuity floor for LD007/LD008 -- report and fail when they match too little.
+
+    Both rules hinge on matching a ``PROVIDE`` spelling, which makes them the
+    two most able to fail OPEN: a rename would leave them matching nothing and
+    reporting a clean tree forever. Matching almost nothing is a gate failure,
+    not a pass.
+    """
+    if complete >= OPTION_SETTING_FILE_FLOOR:
+        return False
+    print(
+        f"ERROR: only {complete} script(s) declare the complete option-setting "
+        f"family, below the floor of {OPTION_SETTING_FILE_FLOOR}. Either the "
+        f"PROVIDE spelling changed (LD007/LD008 now match nothing and enforce "
+        f"nothing) or the option bytes were mass-deleted. Refusing to report success.",
+        file=sys.stderr,
+    )
+    return True
 
 
 def main() -> int:
@@ -622,9 +870,12 @@ def main() -> int:
         print("\n".join(sorted(str(p.relative_to(root)) for p in paths)))
         return 0
 
-    findings: list[Finding] = []
-    for p in paths:
-        findings.extend(check_file(p, p.read_bytes()))
+    findings, complete = scan(paths)
+
+    # The floor is only meaningful on a whole-tree run; a positional path list
+    # legitimately narrows the scan to a handful of files.
+    if not args.paths and option_floor_breached(complete):
+        return 1
 
     problems = check_symbol_closure(root) if not args.paths else []
 

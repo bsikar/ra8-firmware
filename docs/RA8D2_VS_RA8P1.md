@@ -28,7 +28,7 @@ Selection is a single compile define, defaulted so nothing existing changes:
 neither) and derives:
 
 - **Feature-presence macros** for `#if` guards: `RA8_HAS_NPU`, `RA8_HAS_NPUCLK`
-  (RA8P1 only), `RA8_HAS_OFS3` (RA8D2 only).
+  (RA8P1 only).
 - **A typed-enum runtime mirror** `k_ra8_feat_*` (0/1) and `k_ra8_device_t`
   (`k_ra8_device_ra8d2 = 0x8D2`, `k_ra8_device_ra8p1 = 0x8F1`) for code that needs
   the selection at run time rather than in the preprocessor.
@@ -49,13 +49,33 @@ leaves it unmapped.
 |------|-------|-------|------|---------------|
 | Ethos-U55 NPU | absent | present @ `0x40140000` | `RA8_HAS_NPU` | ra8_npu driver + `ra8_npu_regs.h`; emulator-modelled (#222). **Done.** |
 | NPUCLK domain | absent | present | `RA8_HAS_NPUCLK` | CGC NPUCLK; on-silicon wiring #229. |
-| OFS3 / WDT1 option reg | present | **absent** | `RA8_HAS_OFS3` | `ra8_ofs.{h,c}` gates OFS3 out of the option map (#223). **Done.** |
 | M85 FPU width | single (`fpv5-sp-d16`) | **double** (`fpv5-d16`) | toolchain | `cmake/toolchain-ra8p1.cmake` appends `-mfpu=fpv5-d16`; witnessed by `ra8_fpu_probe` (#225). **Done.** |
 | ADC resolution | 12-bit default | **16-bit** (ADC16H) | `ADDOPCRC.ADPRC` | Same ADC16H block on both; `ra8_adc_resolution_t` carries 10/12/14/16-bit and `ra8_adc` programs the per-channel `ADDOPCRCn.ADPRC` data-format; emulator-modelled (#225). **Done.** |
 | HUM | `R01UH1065EJ` | `R01UH1064EJ` | -- | cite the matching manual per device. |
 
 Package, 1 MB code MRAM, 1.6 MB dual-core ECC SRAM, and every non-NPU
 peripheral base are the same across the two parts.
+
+### Not a delta: the OFS3 / WDT1 option register (#516)
+
+This table previously listed OFS3 as RA8D2-only behind an `RA8_HAS_OFS3` flag,
+on the strength of Renesas FSP's `BSP_FEATURE_BSP_HAS_OFS3 == 0` for `ra8p1`.
+**That was wrong, and the flag is gone.** Both parts carry OFS3, OFS3_SEC and
+OFS3_SEL at the same addresses with the same WDT1 bit fields:
+
+| | Chapter / section | Printed page |
+|---|---|---|
+| RA8D2 `R01UH1065EJ0130` | 7.2.6 `OFS3, OFS3_SEC` / 7.2.7 `OFS3_SEL` | 287 / 289 |
+| RA8P1 `R01UH1064EJ0130` | 7.2.6 `OFS3, OFS3_SEC` / 7.2.7 `OFS3_SEL` | 288 / 290 |
+
+Both parts also have the WDT1 that OFS3 configures (RA8P1 datasheet
+`R01DS0439EJ0130`: "Watchdog Timer (WDT) x 2", WDT1 at `0x4020_2600`). The FSP
+flag contradicts Renesas' own manual, has no consumer anywhere in open FSP
+source, and a RASC-generated RA8P1 project emits the OFS3 sections regardless.
+`scripts/checks/check_linker_scripts.py` rule **LD008** now fails any linker
+script that declares a partial option-setting family, so the gating cannot be
+reintroduced silently. Do not re-add an OFS3 delta without a primary-source
+citation showing the word absent.
 
 ## 4. NPU (the headline delta)
 

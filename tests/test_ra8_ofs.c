@@ -18,7 +18,6 @@
 
 #include <stdint.h>
 
-#include "ra8_device.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_ofs.h"
 #include "unity_minimal.h"
@@ -44,7 +43,7 @@ static void test_ra8_ofs_compiled(void)
  *
  * @par MC/DC:
  * The only compound decision in libs/ra8_hal/src/ra8_ofs.c is the
- * preprocessor expression at line 128:
+ * preprocessor expression guarding the ``RA8_SECTION`` definition:
  * ``#if defined(UNIT_TEST) || defined(RA8_OFF_TARGET) ||
  *      defined(__APPLE__)``
  * Per DO-178C 6.4.4.3 and IEC 61508 SIL 3 guidance, preprocessor
@@ -65,7 +64,7 @@ static void test_ra8_ofs_compiled(void)
  */
 static void test_mcdc_ra8_ofs(void)
 {
-  TEST_BEGIN("ra8_ofs MC/DC: line 128 is preprocessor-only (no runtime gap)");
+  TEST_BEGIN("ra8_ofs MC/DC: RA8_SECTION guard is preprocessor-only (no runtime gap)");
   /* Compile-time selection of the host ``RA8_SECTION`` definition is
    * proven by the fact that this TU links at all -- the cross-compile
    * branch would fail to resolve the target-only section name. */
@@ -74,7 +73,7 @@ static void test_mcdc_ra8_ofs(void)
 #else
   TEST_ASSERT(0); /* unreachable on host build. */
 #endif
-  TEST_END("ra8_ofs MC/DC: line 128 is preprocessor-only (no runtime gap)");
+  TEST_END("ra8_ofs MC/DC: RA8_SECTION guard is preprocessor-only (no runtime gap)");
 }
 
 /**
@@ -82,35 +81,35 @@ static void test_mcdc_ra8_ofs(void)
  *
  * @par MC/DC:
  * (no compound decisions -- each assertion below is a single equality
- * comparison; the device-gating in ra8_ofs.h / ra8_ofs.c is a
- * compile-time ``#ifdef RA8_HAS_OFS3`` with no runtime ``&&`` / ``||``.)
+ * comparison; the OFS word inventory carries no runtime ``&&`` / ``||``.)
  *
- * The host build passes no ``-DRA8_DEVICE_*`` flag, so ra8_device.h
- * defaults to RA8D2, where ``RA8_HAS_OFS3`` is defined. The inventory
- * must therefore report the full OFS0..OFS3 quartet: ``ra8_ofs_has_ofs3()``
- * true, ``ra8_ofs_word_count()`` == 4, and the ``k_ra8_ofs_word_ofs3``
- * enumerator present with value 3. The RA8P1 (no-OFS3) arm is proven by
- * the cross-build, not the host test (the host is always RA8D2).
+ * The inventory is device-invariant: both RA8D2 (HUM R01UH1065EJ0130
+ * Ch 7.2.6 p 287) and RA8P1 (HUM R01UH1064EJ0130 Ch 7.2.6 p 288) carry
+ * the OFS0..OFS3 quartet, so ``ra8_ofs_word_count()`` is 4 on either
+ * device selection and this test needs no per-device arm.
+ *
+ * The earlier revision of this test asserted
+ * ``ra8_ofs_has_ofs3() == (k_ra8_feat_ofs3 != 0U)`` -- but that WAS the
+ * body of ``ra8_ofs_has_ofs3()``, so it compared a constant to itself and
+ * would have held for either value. Both the predicate and the feature
+ * mirror are gone (#516); the assertions below name the expected
+ * ordinals literally so they can actually fail.
  */
 static void test_ra8_ofs_inventory(void)
 {
-  TEST_BEGIN("ra8_ofs inventory reports the RA8D2 OFS0..OFS3 quartet");
+  TEST_BEGIN("ra8_ofs inventory reports the OFS0..OFS3 quartet");
 
-  /* Host defaults to RA8D2: OFS3 present, four OFS words. */
-  TEST_ASSERT(ra8_ofs_has_ofs3());
-  TEST_ASSERT(ra8_ofs_word_count() == 4U);
-
-  /* Enumerator ordinals are contiguous and OFS3 is the fourth word. */
+  /* Enumerator ordinals are contiguous, and OFS3 is the fourth word. */
   TEST_ASSERT(k_ra8_ofs_word_ofs0 == 0U);
+  TEST_ASSERT(k_ra8_ofs_word_ofs1 == 1U);
+  TEST_ASSERT(k_ra8_ofs_word_ofs2 == 2U);
   TEST_ASSERT(k_ra8_ofs_word_ofs3 == 3U);
   TEST_ASSERT((uint8_t)k_ra8_ofs_word_count == 4U);
 
-  /* The presence helper and the word count agree by construction, and
-   * both agree with the ra8_device.h feature mirror. */
-  TEST_ASSERT(ra8_ofs_has_ofs3() == (ra8_ofs_word_count() == 4U));
-  TEST_ASSERT(ra8_ofs_has_ofs3() == (k_ra8_feat_ofs3 != 0U));
+  /* The accessor reports that same count to callers outside this TU. */
+  TEST_ASSERT(ra8_ofs_word_count() == 4U);
 
-  TEST_END("ra8_ofs inventory reports the RA8D2 OFS0..OFS3 quartet");
+  TEST_END("ra8_ofs inventory reports the OFS0..OFS3 quartet");
 }
 
 int32_t main(void)

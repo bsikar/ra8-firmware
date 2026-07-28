@@ -81,11 +81,12 @@ g_ra8_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
 PROVIDE(OFS0_ADDR = 0x02C9F040);
 PROVIDE(OFS1_ADDR = 0x02C9F4C0);
 PROVIDE(OFS2_ADDR = 0x02C9F044);
-/* No OFS3_ADDR: the RA8P1 has no OFS3 option word (issue #223). */
+PROVIDE(OFS3_ADDR = 0x02C9F4C4);
 PROVIDE(SAS_ADDR = 0x02C9F074);
 PROVIDE(OFS1_SEC_ADDR = 0x02C9F0C0);
 PROVIDE(OFS1_SEL_ADDR = 0x02C9F120);
-/* No OFS3_SEC_ADDR / OFS3_SEL_ADDR: RA8P1 has no OFS3 to attribute. */
+PROVIDE(OFS3_SEC_ADDR = 0x02C9F0C4);
+PROVIDE(OFS3_SEL_ADDR = 0x02C9F124);
 PROVIDE(BPS_ADDR = 0x02C9F600);
 PROVIDE(BPS_SEC_ADDR = 0x02C9F200);
 PROVIDE(OTP_FSBLCTRL0_ADDR = 0x02E07600);
@@ -198,11 +199,12 @@ SECTIONS
     .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > OFS_CFG
     .option_setting_ofs1 OFS1_ADDR : { KEEP(*(.option_setting_ofs1)) } > OFS_CFG
     .option_setting_ofs2 OFS2_ADDR : { KEEP(*(.option_setting_ofs2)) } > OFS_CFG
-    /* No .option_setting_ofs3: RA8P1 has no OFS3 word (issue #223). */
+    .option_setting_ofs3 OFS3_ADDR : { KEEP(*(.option_setting_ofs3)) } > OFS_CFG
     .option_setting_sas SAS_ADDR : { KEEP(*(.option_setting_sas)) } > OFS_CFG
     .option_setting_ofs1_sec OFS1_SEC_ADDR : { KEEP(*(.option_setting_ofs1_sec)) } > OFS_CFG
     .option_setting_ofs1_sel OFS1_SEL_ADDR : { KEEP(*(.option_setting_ofs1_sel)) } > OFS_CFG
-    /* No .option_setting_ofs3_sec / _ofs3_sel: RA8P1 has no OFS3. */
+    .option_setting_ofs3_sec OFS3_SEC_ADDR : { KEEP(*(.option_setting_ofs3_sec)) } > OFS_CFG
+    .option_setting_ofs3_sel OFS3_SEL_ADDR : { KEEP(*(.option_setting_ofs3_sel)) } > OFS_CFG
     .option_setting_bps BPS_ADDR : { KEEP(*(.option_setting_bps)) } > OFS_CFG
     .option_setting_bps_sec BPS_SEC_ADDR : { KEEP(*(.option_setting_bps_sec)) } > OFS_CFG
     .option_setting_otp_fsblctrl0 OTP_FSBLCTRL0_ADDR : { KEEP(*(.option_setting_otp_fsblctrl0)) } > OFS_OTP
