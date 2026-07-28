@@ -125,6 +125,68 @@ quota_remaining() {
   gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown"
 }
 
+# Assert the exit-code contract, in both directions, against a synthetic state
+# file. This exists because `status` has twice handed an agent a WRONG verdict:
+# once read as FAIL, once as PASS, both times because the branch-level
+# "overall:" header was taken for a per-sha answer. A tool nobody has watched
+# give a wrong answer on purpose is a tool nobody has tested.
+_ci_selftest_case() {
+  local want="$1" label="$2"
+  shift 2
+  local out rc
+  out="$(bash "$RA8_CI_SELF" "$@" 2>&1)"
+  rc=$?
+  if [[ "$rc" != "$want" ]]; then
+    echo "FAIL  $label -- expected exit $want, got $rc"
+    printf '%s\n' "$out" | sed 's/^/        /'
+    return 1
+  fi
+  echo "ok    $label (exit $rc)"
+  return 0
+}
+
+cmd_selftest() {
+  need_jq
+  local d fails=0
+  d="$(mktemp -d)"
+  export RA8_CI_STATE_DIR="$d"
+  export RA8_CI_SELF="$0"
+  cat >"$d/status.json" <<JSON
+{"overall":"PASS","reason":"","polled_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","runs":[
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"aaaaaaaaa1"},
+ {"name":"firmware","status":"completed","conclusion":"failure","sha":"bbbbbbbbb2"},
+ {"name":"docs","status":"in_progress","conclusion":null,"sha":"ccccccccc3"}]}
+JSON
+
+  _ci_selftest_case 0 "healthy branch head is PASS" status || fails=$((fails + 1))
+  _ci_selftest_case 1 "failing sha is FAIL even when the branch head passed" \
+    status --sha bbbbbbbbb2 || fails=$((fails + 1))
+  _ci_selftest_case 3 "a still-running sha is UNKNOWN, not PASS" status --sha ccccccccc3 || fails=$((fails + 1))
+  _ci_selftest_case 3 "an unrecorded sha is UNKNOWN, not PASS" status --sha deadbeef9 || fails=$((fails + 1))
+
+  # The precise trap that burned two agents: an `until` loop grepping for a
+  # settled verdict must not match anything while the sha has no runs.
+  local hits
+  hits="$(bash "$0" status --sha deadbeef9 2>&1 | grep -cE '^overall: (PASS|FAIL)' || true)"
+  if [[ "$hits" != "0" ]]; then
+    echo "FAIL  unrecorded sha still emits a settled-looking 'overall:' line ($hits)"
+    fails=$((fails + 1))
+  else
+    echo "ok    unrecorded sha emits no settled-looking verdict line"
+  fi
+
+  # A stale file means the daemon may be dead; that is UNKNOWN, never a pass.
+  touch -t 200001010000 "$d/status.json"
+  _ci_selftest_case 3 "a stale status file is UNKNOWN, not PASS" status || fails=$((fails + 1))
+
+  rm -rf "$d"
+  if [[ "$fails" -gt 0 ]]; then
+    echo "selftest: $fails case(s) FAILED"
+    exit 1
+  fi
+  echo "selftest: all cases passed"
+}
+
 cmd_quota() {
   need_gh
   local r reset
@@ -283,26 +345,50 @@ cmd_status() {
     echo "reason:  status file is ${age_s}s stale (daemon down?) -- last said $overall"
     exit "$RA8_CI_EXIT_UNKNOWN"
   fi
+  local warning
+  warning="$(jq -r '.warning // ""' "$RA8_CI_STATE")"
+
+  # When a sha is asked for, the verdict must be derived from THAT sha's runs
+  # and nothing else, and it must be the ONLY "overall:" line printed.
+  #
+  # This is not cosmetic. Emitting the branch-level header first has twice been
+  # misread as the per-sha answer -- once as a false FAIL, once as a false PASS
+  # by an `until` loop grepping '^overall: (PASS|FAIL)', which matched the
+  # header on the very first poll and exited before the run existed. Exiting on
+  # "$overall" here was also wrong outright: an older sha whose runs failed
+  # would inherit a PASS from a healthy branch head.
+  if [[ -n "$want_sha" ]]; then
+    local seen sha_verdict
+    seen="$(jq -r --arg s "$want_sha" '[.runs[] | select(.sha|startswith($s))] | length' "$RA8_CI_STATE")"
+    if [[ "$seen" == "0" ]]; then
+      echo "overall: UNKNOWN   for $want_sha (polled $polled, ${age_s}s ago)"
+      echo "reason:  no run recorded for $want_sha yet -- UNKNOWN is not a pass and not a failure"
+      echo "         the daemon tracks pushes to dev/main, so a PR-event run on a"
+      echo "         feature branch is never recorded here; use 'gh pr checks <n>'"
+      [[ -n "$warning" ]] && echo "$warning"
+      exit "$RA8_CI_EXIT_UNKNOWN"
+    fi
+    sha_verdict="$(jq -r --arg s "$want_sha" '
+      [.runs[] | select(.sha|startswith($s))] as $r
+      | if   ($r | map(select(.conclusion == "failure" or .conclusion == "timed_out"
+                              or .conclusion == "cancelled")) | length) > 0 then "FAIL"
+        elif ($r | map(select(.status != "completed")) | length) > 0 then "UNKNOWN"
+        else "PASS" end' "$RA8_CI_STATE")"
+    echo "overall: $sha_verdict   for $want_sha (polled $polled, ${age_s}s ago)"
+    jq -r --arg s "$want_sha" '.runs[] | select(.sha|startswith($s)) | "  \(.name): \(.status)/\(.conclusion // "-")"' "$RA8_CI_STATE"
+    [[ -n "$warning" ]] && echo "$warning"
+    case "$sha_verdict" in
+      PASS) exit "$RA8_CI_EXIT_PASS" ;;
+      FAIL) exit "$RA8_CI_EXIT_FAIL" ;;
+      *) exit "$RA8_CI_EXIT_UNKNOWN" ;;
+    esac
+  fi
+
   echo "overall: $overall   (polled $polled, ${age_s}s ago)"
   [[ -n "$reason" ]] && echo "reason:  $reason"
   # Printed next to the verdict, never instead of it -- see the header note.
-  local warning
-  warning="$(jq -r '.warning // ""' "$RA8_CI_STATE")"
   [[ -n "$warning" ]] && echo "$warning"
-  if [[ -n "$want_sha" ]]; then
-    echo "runs for $want_sha:"
-    jq -r --arg s "$want_sha" '.runs[] | select(.sha|startswith($s)) | "  \(.name): \(.status)/\(.conclusion // "-")"' "$RA8_CI_STATE"
-    # A sha the poller has not seen has no verdict -- do not inherit the
-    # branch-level one, which belongs to a different commit.
-    local seen
-    seen="$(jq -r --arg s "$want_sha" '[.runs[] | select(.sha|startswith($s))] | length' "$RA8_CI_STATE")"
-    if [[ "$seen" == "0" ]]; then
-      echo "reason:  no run recorded for $want_sha yet"
-      exit "$RA8_CI_EXIT_UNKNOWN"
-    fi
-  else
-    jq -r '.runs[:6][] | "  \(.name): \(.status)/\(.conclusion // "-")  \(.sha[0:9])"' "$RA8_CI_STATE"
-  fi
+  jq -r '.runs[:6][] | "  \(.name): \(.status)/\(.conclusion // "-")  \(.sha[0:9])"' "$RA8_CI_STATE"
   case "$overall" in
     PASS) exit "$RA8_CI_EXIT_PASS" ;;
     FAIL) exit "$RA8_CI_EXIT_FAIL" ;;
@@ -547,6 +633,10 @@ case "${1:-}" in
   quota)
     shift
     cmd_quota "$@"
+    ;;
+  selftest)
+    shift
+    cmd_selftest "$@"
     ;;
   install-service)
     shift

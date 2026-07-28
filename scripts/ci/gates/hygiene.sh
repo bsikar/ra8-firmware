@@ -22,6 +22,19 @@
 # command's status and swallows everything before it. Every other multi-command
 # gate here is already a subshell; this one was the exception, which is exactly
 # why suite_errexit_selftest's `return 1` below could not fail the gate.
+# `make ci-status` is how every agent decides whether a commit is healthy, and
+# it has twice returned the WRONG verdict -- once read as FAIL, once as PASS --
+# because the branch-level "overall:" header was mistaken for a per-sha answer,
+# and because the per-sha path exited on the branch verdict rather than on the
+# runs for that sha. Neither failure was visible: the tool printed a plausible
+# line and exited a plausible code. This asserts the three-value contract in
+# both directions before anyone can trust it again.
+gate_ci_status_contract() (
+  set -e
+  require_cmd jq "apt-get install -y jq (the CI runners ship it)"
+  bash scripts/ci/monitor.sh selftest
+)
+
 gate_ci_parity() (
   set -e
   require_python_mod yaml "pip install pyyaml (the CI runners ship it)"
