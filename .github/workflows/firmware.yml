@@ -353,9 +353,16 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Pre-commit gate suite -- mirrors scripts/git/pre-commit so PRs surface what
-  # the local hook would have caught. Grouped into one job because each of
-  # these gates is seconds long: a job apiece would cost more in runner
-  # scheduling than in checking.
+  # the local hook would have caught. The seconds-long check_*.py and lint-*
+  # gates stay grouped: a job apiece would cost more in runner scheduling than
+  # in checking.
+  #
+  # The two libclang AST gates do NOT stay here. Measured on a real run, this
+  # job took 16.8 min of which `annotations` was 8.8 and `doc-attachment` 5.0
+  # -- 82% of the job in two gates that ran back-to-back on one runner for no
+  # reason other than sharing an install step. They are independent of each
+  # other and of everything else here, so they are their own jobs below and the
+  # remainder of this suite now finishes in about 2.5 min.
   # ---------------------------------------------------------------------------
   pre-commit-checks:
     name: Pre-commit gate suite
@@ -369,22 +376,6 @@ jobs:
           fetch-depth: 0
       - run: bash scripts/ci.sh --gate pre-commit-checks
       - run: bash scripts/ci.sh --gate bench-lock
-      - name: Install libclang for the annotation gate
-        run: |
-          # ci-parity: infra -- installs the libclang Python binding the
-          # annotation gate needs; runs no project check itself. The gate probes
-          # the import and FAILS when it is absent, because check_annotations.py
-          # exits 0 with no binding and would otherwise pass silently.
-          set -euo pipefail
-          if python3 -m venv "$RUNNER_TEMP/clangenv" 2>/dev/null \
-             && "$RUNNER_TEMP/clangenv/bin/pip" install --quiet libclang==18.1.1; then
-            echo "$RUNNER_TEMP/clangenv/bin" >> "$GITHUB_PATH"
-          else
-            echo "venv unavailable; installing libclang via pip --user --break-system-packages"
-            python3 -m pip install --user --break-system-packages --quiet libclang==18.1.1
-          fi
-      - run: bash scripts/ci.sh --gate annotations
-      - run: bash scripts/ci.sh --gate doc-attachment
       - name: Install ruff, shellcheck and shfmt
         run: |
           # ci-parity: infra -- provisions pinned lint binaries on the runner;
@@ -479,6 +470,68 @@ jobs:
       - run: bash scripts/ci.sh --gate cite-check
       - run: bash scripts/ci.sh --gate sbom
       - run: bash scripts/ci.sh --gate roadmap-stats
+
+  # ---------------------------------------------------------------------------
+  # The two libclang AST gates, split out of the pre-commit suite (they were
+  # 82% of its wall clock) and split from each other, because they share only
+  # an install step and nothing else -- 8.8 min and 5.0 min that used to run
+  # end-to-end on one runner now overlap on two.
+  #
+  # Each carries its own libclang install: the probe is idempotent and costs
+  # about a second on a warm pod, which is the correct trade for 5 min of
+  # serialisation. Both gates require_python_mod the binding and FAIL when it
+  # is absent -- check_annotations.py exits 0 with no binding, so a missing
+  # install can never read as a silent pass in either job.
+  # ---------------------------------------------------------------------------
+  annotations:
+    name: RA8_* annotations (libclang)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install libclang for the annotation gate
+        run: |
+          # ci-parity: infra -- installs the libclang Python binding the
+          # annotation gate needs; runs no project check itself. The gate probes
+          # the import and FAILS when it is absent, because check_annotations.py
+          # exits 0 with no binding and would otherwise pass silently.
+          set -euo pipefail
+          if python3 -m venv "$RUNNER_TEMP/clangenv" 2>/dev/null \
+             && "$RUNNER_TEMP/clangenv/bin/pip" install --quiet libclang==18.1.1; then
+            echo "$RUNNER_TEMP/clangenv/bin" >> "$GITHUB_PATH"
+          else
+            echo "venv unavailable; installing libclang via pip --user --break-system-packages"
+            python3 -m pip install --user --break-system-packages --quiet libclang==18.1.1
+          fi
+      - run: bash scripts/ci.sh --gate annotations
+
+  doc-attachment:
+    name: Doxygen block attachment (libclang)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install libclang for the doc-attachment gate
+        run: |
+          # ci-parity: infra -- installs the libclang Python binding the
+          # doc-attachment gate needs; runs no project check itself. The gate
+          # probes the import and FAILS when it is absent, so a runner without
+          # the binding can never make this guard silently pass.
+          set -euo pipefail
+          if python3 -m venv "$RUNNER_TEMP/clangenv" 2>/dev/null \
+             && "$RUNNER_TEMP/clangenv/bin/pip" install --quiet libclang==18.1.1; then
+            echo "$RUNNER_TEMP/clangenv/bin" >> "$GITHUB_PATH"
+          else
+            echo "venv unavailable; installing libclang via pip --user --break-system-packages"
+            python3 -m pip install --user --break-system-packages --quiet libclang==18.1.1
+          fi
+      - run: bash scripts/ci.sh --gate doc-attachment
 
   # ---------------------------------------------------------------------------
   # Cross-compile all examples, then the two gates that read the build output.
