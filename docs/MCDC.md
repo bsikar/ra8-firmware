@@ -180,6 +180,46 @@ carries no `:line` it is not flagged by `check_line_citations.py` and
 needs no `CITES-OK` escape. Brittle `path:line` anchors are not
 accepted.
 
+### How this is enforced in CI: the ratchet
+
+`check_new_compound_has_mcdc.py --staged` is the *local* pre-commit
+half, and it is bypassable with `--no-verify`. The blocking CI half is
+`scripts/checks/mcdc_compound_ratchet.py --check`, a step of the
+`pre-commit-checks` gate.
+
+It scans the whole tree with the same detector, buckets every uncovered
+decision by `(file, enclosing function)` -- the granularity a citation
+uses -- and compares those counts against
+`.github/mcdc-compound-baseline.txt`. **Any increase fails.** So a
+newly-added compound decision that arrives without vectors fails the
+push, while the pre-existing backlog is tolerated and can only shrink.
+
+A ratchet rather than a straight whole-tree check because a delta scan
+keys on new source *lines*: with a backlog this size it would fail on a
+mere reformat of a pre-existing uncovered decision, which is a cliff,
+and a cliff gets bypassed. This is the same shape `tidy_ratchet.py` and
+`misra_ratchet.py` use for their measured debts.
+
+Burning one down:
+
+```sh
+python3 scripts/checks/mcdc_compound_ratchet.py --list   # what is left
+# ... write the test_mcdc_* function and its @par MC/DC: citation ...
+python3 scripts/checks/mcdc_compound_ratchet.py --update # lock the gain in
+```
+
+`--update` refuses to raise any bucket, so the baseline can only move
+downward. Closing this out means the file reaching zero rows and being
+deleted -- never regenerated larger. The outstanding count is tracked in
+issue #426.
+
+Renaming a function that still carries baselined decisions retires its
+row and creates a new one, which reads as growth, so the gate fails and
+`--update` refuses. Rename the row by hand, keeping the count identical.
+That is deliberate rather than an oversight: automatic rename detection
+that guessed wrong would silently absorb a genuinely new uncovered
+decision, and a hand edit leaves a reviewable diff.
+
 ## Currently exempted code (SOUP)
 
 DO-178C Section 12.1.4 ("Software of Unknown Pedigree") allows
@@ -207,8 +247,10 @@ for MC/DC and the gate.
 
 - The first run of `make mcdc` will show many MC/DC gaps. Closing
   them is tracked per-module; do not attempt a single mass fix.
-- The pre-commit hook does **not** yet require MC/DC. It will be added
-  once we cross 100% on a stable subset of `libs/ra8_core/`.
+- New compound decisions **are** gated: locally by the pre-commit hook
+  (`check_new_compound_has_mcdc.py --staged`) and in CI by
+  `mcdc_compound_ratchet.py --check`. What remains is burning down the
+  baselined backlog (issue #426).
 - `ra8_psa_crypto` constant-time paths intentionally evaluate every
   condition (no short-circuit) for side-channel reasons; they will be
   documented as "deactivated short-circuit" rather than gated on MC/DC.

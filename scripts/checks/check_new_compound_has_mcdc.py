@@ -42,6 +42,18 @@ audited nothing in any CI run, ever. A scan that examined zero files can
 never exit 0 silently: the audited file count is always reported, and a
 scope that could not be established is a non-PASS.
 
+Besides the two CLI modes there is a git-free WHOLE-TREE scan, ``audit_tree()``,
+which walks the checked-out production sources and reports every uncovered
+compound decision with its enclosing function. It is the measurement
+``scripts/checks/mcdc_compound_ratchet.py`` ratchets against the committed
+``.github/mcdc-compound-baseline.txt``, and it is what makes CI enforcement
+possible while a large backlog is still outstanding: the delta modes above fail
+the moment an existing uncovered decision line is merely *reformatted*, which
+with a backlog this size is a cliff rather than a ratchet. ``audit_tree()``
+counts, so the debt is frozen and can only shrink. The detection primitives are
+shared, so there is exactly one definition of "this decision lacks MC/DC
+vectors".
+
 The check intentionally does NOT cover:
   * ``libs/third_party/``  -- SOUP exempted per docs/MCDC.md.
   * ``tests/``             -- only production code.
@@ -510,6 +522,92 @@ def audit_staged() -> tuple[list[str], list[tuple[str, int, str]]]:
         lambda p: head_blob(renamed.get(p, p)),
         symbol_cites,
     )
+    return files, findings
+
+
+# ---------------------------------------------------------------------------
+# Whole-tree scan (the ratchet's measurement)
+# ---------------------------------------------------------------------------
+
+# Bucket name for a decision whose enclosing function could not be resolved --
+# a file-scope construct such as a static initializer. Named rather than left
+# empty so a baseline row for it is self-explaining, and so two such decisions
+# in one file aggregate into one stable, diffable bucket.
+NO_ENCLOSING_FUNCTION = "(file-scope)"
+
+
+def production_files(root: Path) -> list[str]:
+    """Every production ``.c`` file under ``root``, as sorted repo-relative paths.
+
+    Walks the checked-out tree rather than git, so the scan works identically in
+    a developer checkout, a CI ``git archive`` snapshot, and a throwaway
+    fixture. Selection is delegated to the same predicate the git-based modes
+    use, so all three modes agree on what "production code" means.
+    """
+    found: list[str] = []
+    for prefix in PROD_PREFIXES:
+        base = root / prefix.rstrip("/")
+        if not base.is_dir():
+            continue
+        for path in base.rglob("*.c"):
+            rel = path.relative_to(root).as_posix()
+            if _path_included(rel, prefixes=PROD_PREFIXES):
+                found.append(rel)
+    return sorted(found)
+
+
+def _read_text(path: Path) -> str:
+    """Contents of ``path``, or "" when it cannot be read.
+
+    An unreadable file yields no decisions and no citations rather than
+    aborting the scan; the scope guards in the ratchet are what notice when
+    that has happened at a scale that matters.
+    """
+    try:
+        return path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return ""
+
+
+def collect_tree_citations(root: Path) -> list[tuple[str, str]]:
+    """Every ``path@function`` citation in ``root``'s ``tests/test_*.c`` files.
+
+    Deliberately the same scope the range mode reads, so the whole-tree count
+    and the delta modes cannot disagree about which decisions are covered.
+    """
+    cites: list[tuple[str, str]] = []
+    tests_dir = root / "tests"
+    if not tests_dir.is_dir():
+        return cites
+    for tf in sorted(tests_dir.glob("test_*.c")):
+        cites.extend(_extract_citations(_read_text(tf)))
+    return cites
+
+
+def audit_tree(root: Path) -> tuple[list[str], list[tuple[str, str, int, str]]]:
+    """Every uncovered compound decision in the tree at ``root``.
+
+    Returns ``(production_files, findings)`` where each finding is
+    ``(path, enclosing_function, line, snippet)``. Unlike the delta modes this
+    treats every decision in the tree as in scope, which is what a ratchet needs
+    to measure: a count that is invariant under reformatting and that rises the
+    moment the tree gains an uncovered decision.
+
+    The file list is returned alongside the findings so a caller can refuse to
+    trust a scan that examined implausibly little -- an empty or partial scan
+    reports FEWER findings, which reads as an improvement.
+    """
+    files = production_files(root)
+    cites = set(collect_tree_citations(root))
+    findings: list[tuple[str, str, int, str]] = []
+    for rel in files:
+        text = _read_text(root / rel)
+        for line_no, normalized in sorted(compound_decision_lines(text)):
+            fn = enclosing_function(text, line_no)
+            if fn is not None and (rel, fn) in cites:
+                continue
+            bucket = fn if fn is not None else NO_ENCLOSING_FUNCTION
+            findings.append((rel, bucket, line_no, normalized))
     return files, findings
 
 
