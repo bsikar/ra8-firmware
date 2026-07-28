@@ -382,7 +382,7 @@ These are written into the Windows user's `.wslconfig`, and they are the
 | `instances` | needs `infra-apply` (drains, re-registers) |
 | `cpus`, `memory_gb`, `pin_cpus` | needs `infra-apply` (recreates containers) |
 | `labels` | needs `infra-apply` (re-registration) |
-| `quiet_hours` | needs `infra-apply`; the timer picks it up within one interval |
+| `quiet_hours` | `fleet.py apply <host> --tags capacity` -- no drain, no container touched |
 | `budget.threads`, `budget.memory_gb` on `docker_wsl` | needs `infra-apply` **and** `wsl --shutdown` |
 | `instances` on `arc_k8s` | `infra-apply`, or live with `infra-scale` |
 
@@ -402,9 +402,15 @@ remembering to do it.
       instances: 0
 ```
 
-`make infra-apply HOST=win-ci` installs
-`ra8-fleet-capacity.{service,timer}` on that host. The window is evaluated in
-the **host's own local time**, not UTC.
+Installing or changing a window does **not** need a full re-provision. The
+capacity role is tagged, and that path touches no container:
+
+```sh
+python3 scripts/dev/fleet.py apply win-ci --tags capacity
+```
+
+`make infra-apply HOST=win-ci` installs it too, along with everything else. The
+window is evaluated in the **host's own local time**, not UTC.
 
 > That makes the host's clock load-bearing, and a WSL2 VM's clock is not
 > reliable on its own -- it drifts and jumps across host sleep, which is
@@ -448,7 +454,22 @@ make infra-status
 
 The role asserts the timer is `active` after installing it: a schedule that is
 written down and not running is exactly the kind of silent nothing this tree
-keeps finding in its own tooling.
+keeps finding in its own tooling. What a healthy run looks like:
+
+```
+systemd[1]: Starting ra8-fleet-capacity.service - Apply the declared CI
+            capacity window (drains, never kills)...
+ra8-fleet-capacity[...]: outside   Fri,Sat,Sun 18:00-23:59: target 3
+ra8-fleet-capacity[...]: resuming  ra8-ci-runner-1: was exited
+ra8-fleet-capacity[...]: active    ra8-ci-runner-2: already running
+ra8-fleet-capacity[...]: active    ra8-ci-runner-3: already running
+systemd[1]: Finished ra8-fleet-capacity.service.
+```
+
+That run is also the level-triggered design paying for itself: the host was one
+instance short of its declared capacity outside its window -- left parked by an
+earlier manual scale -- and the timer simply put it back. An edge-triggered
+pair of alarms would have had nothing to say until the next Friday.
 
 ### Deleting the block undoes it
 

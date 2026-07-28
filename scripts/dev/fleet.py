@@ -136,6 +136,11 @@ def _push_to_wsl(host: dict[str, Any]) -> int:
     tar = subprocess.run(  # noqa: S603 -- fixed argv, paths from the checkout
         [
             tar_tool,
+            # macOS bsdtar attaches com.apple.provenance to every member, and
+            # GNU tar in the distro then warns once per file -- 37 lines of
+            # noise around the one line that matters. The archive is identical
+            # without them.
+            "--no-xattrs",
             "-czf",
             "-",
             "-C",
@@ -336,9 +341,12 @@ def _converge_wsl(name: str, host: dict[str, Any], plays: list[str], extra: list
     if rc:
         return rc
     variables = shlex.quote(json.dumps(fm.role_vars(name, host)))
+    # The stage keeps the checkout's own layout, so the play's relative paths
+    # (roles/, and fleet_capacity_src reaching back into scripts/) resolve
+    # exactly as they do on the control node.
     lines = [
-        "set -eux",
-        f"cd {WSL_STAGE}/ansible",
+        "set -eu",
+        f"cd {WSL_STAGE}/infra/ansible",
         *(
             "ansible-playbook --connection=local -i localhost, "
             f"playbooks/{fm.PLAYS[play].playbook} -e {variables} "
@@ -412,7 +420,17 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     rc = cmd_inventory(data, argparse.Namespace(stdout=False))
     if rc:
         return rc
-    drain = args.mode == "apply" and not args.no_drain and fm.container_names(host)
+    # `--tags capacity` refreshes only the drain script and the quiet-hours
+    # timer. Nothing in that path stops, starts or recreates a container, so
+    # draining the host first would cost it every running job's worth of runner
+    # time to protect against a change that cannot touch them.
+    capacity_only = args.tags == "capacity"
+    drain = (
+        args.mode == "apply"
+        and not args.no_drain
+        and not capacity_only
+        and fm.container_names(host)
+    )
     if drain:
         print(f"==> draining {args.host} before converging (a converge recreates containers)")
         # drain-all, not `scale 0`: a converge that changes the instance count
@@ -433,6 +451,8 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     # outside the checkout and is passed as `-e @/path/to/secrets.yml`.
     for pair in args.extra_var:
         extra += ["-e", pair]
+    if args.tags:
+        extra += ["--tags", args.tags]
     if fm.CLASSES[host["class"]].transport == "wsl":
         rc = _converge_wsl(args.host, host, plays, extra)
     else:
@@ -504,6 +524,9 @@ def cmd_status(data: dict[str, Any], args: argparse.Namespace) -> int:
         if fm.CLASSES[host["class"]].capacity_kind == "none":
             continue
         print(f"{name} ({host['class']}, declared {host['runners']['instances']} instance(s)):")
+        # Flushed before handing the terminal to ssh, or Python's buffer holds
+        # the heading until after the rows it introduces have already printed.
+        sys.stdout.flush()
         _capacity(data, name, ["status"])
     return 0
 
@@ -584,6 +607,12 @@ def _parser() -> argparse.ArgumentParser:
                 "for a short-lived registration or removal token; pass anything "
                 "long-lived as @/path/to/secrets.yml (mode 0600, outside the checkout)"
             ),
+        )
+        sub.add_argument(
+            "--tags",
+            default="",
+            help="ansible tags; 'capacity' refreshes only the drain script and "
+            "the quiet-hours timer, and needs no drain",
         )
     status = subs.add_parser("status", help="what each host is running, right now")
     status.add_argument("host", nargs="?")

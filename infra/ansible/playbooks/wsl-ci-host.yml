@@ -57,4 +57,9 @@
     # Last: the capacity script has to name the instance containers the role
     # above has just created, and its timer is what stands this host down
     # during the owner's declared quiet hours.
-    - fleet_capacity
+    #
+    # Tagged so `--tags capacity` can refresh the drain script and the timer on
+    # their own, without re-running the Windows-side setup or touching a single
+    # container.
+    - role: fleet_capacity
+      tags: [capacity]

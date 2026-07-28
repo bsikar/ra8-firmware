@@ -72,7 +72,11 @@ RA8_FLEET_CONTAINERS="${RA8_FLEET_CONTAINERS:-}"
 # Name prefix every runner container on a host shares, so `drain-all` can find
 # what is really there rather than what the declaration predicts.
 RA8_FLEET_PREFIX="${RA8_FLEET_PREFIX:-ra8-ci-runner}"
-RA8_FLEET_KUBECTL="${RA8_FLEET_KUBECTL:-k3s kubectl}"
+# `sudo` is not optional here: k3s writes its kubeconfig root-only, so the
+# deploy user's plain `k3s kubectl` fails with "permission denied" on
+# /etc/rancher/k3s/k3s.yaml -- which reads as "no scale set" rather than as the
+# privilege problem it is.
+RA8_FLEET_KUBECTL="${RA8_FLEET_KUBECTL:-sudo k3s kubectl}"
 RA8_FLEET_NAMESPACE="${RA8_FLEET_NAMESPACE:-arc-runners}"
 RA8_FLEET_SCALESET="${RA8_FLEET_SCALESET:-ra8-ci}"
 

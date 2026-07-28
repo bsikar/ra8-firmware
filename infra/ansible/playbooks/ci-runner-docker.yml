@@ -22,4 +22,10 @@
     - ci_runner_docker
     # Second, and only second: the capacity script has to name the instance
     # containers the role above has just created.
-    - fleet_capacity
+    #
+    # Tagged so `--tags capacity` can refresh the drain script and the
+    # quiet-hours timer on their own. That path touches no container, so it
+    # needs no drain and costs the host no runner time -- which is the whole
+    # reason it is separable.
+    - role: fleet_capacity
+      tags: [capacity]
