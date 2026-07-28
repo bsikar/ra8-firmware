@@ -21,15 +21,41 @@ ci_runner_controller_namespace: "arc-systems"
 ci_runner_namespace: "arc-runners"
 
 # The runner scale set. Its NAME is the `runs-on:` label the workflows target.
+#
+# #485: the node has 16 allocatable cores (kubectl describe node). Measured
+# alongside the CI pods, the rest of the homelab (auth/media/monitoring/...
+# namespaces) sits at ~6.8 requested cores steady-state, so a max that lets CI
+# request all the way up to 16 leaves the control plane and every other
+# workload no headroom at all -- exactly the state caught live: 9 pods running
+# + 1 Pending at 15800m/16000m (98%) requested, with the deployed scale set's
+# maxRunners drifted to 10 (this file said 8 the whole time; the live cluster
+# had been bumped by hand and never reconciled back through this role -- the
+# same class of drift #487 found in the sudoers line). ci_runner_max=6 leaves
+# ~3 cores of request headroom over that baseline instead of running the node
+# to its scheduling limit on every push.
+#
+# The CPU *limit* is the bigger honesty problem the timeouts trace to: it was
+# 8 (half the node) with no ceiling on how many pods run at once, so
+# `kubectl describe node` read cpu limits at 138250m -- 864% of the node's
+# 16000m. A pod's *request* only guarantees scheduling; nothing stopped
+# several pods from bursting toward 8 cores simultaneously and starving each
+# other, which is what turned a 30-minute board_sim budget into 30m19s (twice)
+# under load. The heaviest workflows (coverage/board-sim-smoke/firmware) already
+# cap their OWN internal parallelism at 4 via CMAKE_BUILD_PARALLEL_LEVEL (see
+# scripts/ci/lib/parallelism.sh), so an 8-core limit was never buying real
+# throughput, only overcommit. limit=4 matches that real ceiling: worst case
+# (all 6 pods bursting at once) is 24 cores of limit against 16 physical --
+# 150%, not 864%.
 ci_runner_scale_set_name: "ra8-ci"
 ci_runner_min: 0
-ci_runner_max: 8
+ci_runner_max: 6
 
 # Per-pod resources. Requests are sized to share the node with other workloads;
-# limits let heavy gates (compile / misra / tidy / mcdc) burst.
+# limits let heavy gates (compile / misra / tidy / mcdc) burst -- see the
+# ci_runner_max comment above for the arithmetic behind both numbers.
 ci_runner_cpu_request: "1"
 ci_runner_mem_request: "2Gi"
-ci_runner_cpu_limit: "8"
+ci_runner_cpu_limit: "4"
 ci_runner_mem_limit: "12Gi"
 
 # Images. The runner image is built from infra/images/runner/Dockerfile
