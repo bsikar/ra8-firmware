@@ -123,6 +123,15 @@ So the recovery from any upgrade damage is the same single command as the
 initial deploy: re-run the playbook. It is idempotent -- it re-loads nothing it
 already has and re-registers nothing already registered.
 
+One dependency is worth stating because it is easy to get wrong: on SCALE
+`docker.service` is **not** systemd-enabled (`systemctl is-enabled docker`
+reports `disabled`). The middleware starts it as part of bringing the Apps
+subsystem up, which happens only while an apps pool is configured. The
+container's `restart: unless-stopped` then brings the runner back by itself.
+So "the runner returns after a reboot" is true *because* Apps is enabled on a
+pool -- unset the apps pool and Docker never starts, and the runner never comes
+back no matter what its restart policy says.
+
 ### Deploy and remove
 
 ```
