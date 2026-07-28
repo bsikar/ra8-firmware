@@ -106,6 +106,21 @@ EK-RA8D2 wired to this machine and returns it to the factory default
 - [`tools/README.md`](tools/README.md): the rest of the host tooling
 - [`docs/reference/`](docs/reference/): datasheets and manuals
 
+## What is being worked on
+
+The tracker is a [project board](https://github.com/users/bsikar/projects/5)
+that is **private** -- the link only opens for the maintainers. It holds no
+work of its own: every card is one of this repository's
+[issues](https://github.com/bsikar/ra8-firmware/issues), which are public and
+are the real record. The board adds scheduling on top of them, sorting each
+issue into a lane (`Needs you`, `Bench-blocked`, `Ready`, `In flight`,
+`In review`, `Landed`) with a track and a priority.
+
+So if the board link is closed to you, nothing is hidden: read the issues, and
+the labels (`priority:`, `epic:`, `area:`, `effort:`, `needs-bench`) carry the
+same information the board columns do. The lane rules agents work to are in
+[`CLAUDE.md`](CLAUDE.md).
+
 ## License
 
 MIT. See [`LICENSE.txt`](LICENSE.txt).
