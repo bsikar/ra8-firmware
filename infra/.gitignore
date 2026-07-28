@@ -1,10 +1,15 @@
 # Private, per-deployment, and secret material never belongs in the repo.
 # Only generic, shareable structure is committed here (see infra/README.md).
 
-# Real inventory and host-specific vars (actual hostnames / IPs).
+# Private material, and the GENERATED inventory.
+#
+# inventory/hosts.ini is produced from infra/fleet.yml by scripts/dev/fleet.py
+# on every `make infra-*` run, so committing it would be committing a second,
+# staler copy of the declaration. The committed half is
+# inventory/host_vars/: structural facts about a machine (where its runner
+# tree lives, which pools CI must avoid), never a capacity knob.
 ansible/private/
 ansible/inventory/*.ini
-!ansible/inventory/example.ini
 ansible/group_vars/*.yml
 !ansible/group_vars/*.example.yml
 

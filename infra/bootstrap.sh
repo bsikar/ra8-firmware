@@ -20,11 +20,6 @@ INVENTORY="${ANSIBLE_DIR}/inventory/hosts.ini"
 SECRETS="${PRIVATE_DIR}/secrets.yml"
 
 say() { printf '\n== %s ==\n' "$1"; }
-ask() {
-  local prompt="$1" var
-  read -r -p "  ${prompt}: " var
-  printf '%s' "${var}"
-}
 
 say "ra8-firmware rig bootstrap"
 
@@ -44,19 +39,15 @@ ansible-galaxy collection install kubernetes.core community.hashi_vault >/dev/nu
 
 mkdir -p "${PRIVATE_DIR}"
 
-# 2. Inventory (git-ignored) -------------------------------------------------
+# 2. Inventory (git-ignored, GENERATED) --------------------------------------
+#
+# Nothing is asked here any more, and nothing is copied from an example. The
+# machines are declared once in infra/fleet.yml and the inventory is derived
+# from it -- so adding a machine is adding a block there, and this file cannot
+# describe a fleet the declaration does not.
 say "Inventory"
-if [ -f "${INVENTORY}" ]; then
-  echo "  ${INVENTORY#"${ROOT}"/} already exists -- leaving it."
-else
-  cp "${ANSIBLE_DIR}/inventory/example.ini" "${INVENTORY}"
-  echo "  Where should CI runners live? (your k3s node)"
-  host="$(ask 'host or IP')"
-  user="$(ask 'ssh user')"
-  sed -i.bak -e "s/REPLACE_WITH_HOST/${host}/" -e "s/REPLACE_WITH_USER/${user}/" "${INVENTORY}"
-  rm -f "${INVENTORY}.bak"
-  echo "  wrote ${INVENTORY#"${ROOT}"/} (git-ignored)"
-fi
+python3 "${ROOT}/scripts/dev/fleet.py" inventory
+echo "  generated from infra/fleet.yml; edit that file, not ${INVENTORY#"${ROOT}"/}"
 
 # 3. Secrets (git-ignored, never committed) ----------------------------------
 say "Secrets"

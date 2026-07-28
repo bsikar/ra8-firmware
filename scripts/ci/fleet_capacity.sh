@@ -1,0 +1,515 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# scripts/ci/fleet_capacity.sh -- change how many CI runners a host is running,
+# without ever killing a job.
+#
+# WHY A DRAIN AND NOT A STOP
+# --------------------------
+# `docker stop` on a busy runner CANCELS the job it is running. That is not a
+# grace-period problem that a longer timeout fixes -- it is what the runner is
+# built to do, through three deliberate hops:
+#
+#   1. Our runner image sets RUNNER_MANUALLY_TRAP_SIG=1 (the official
+#      actions-runner image's contract), so run.sh takes the runWithManualTrap
+#      path and its `trap 'kill -INT -$PID' INT TERM` forwards a SIGTERM to the
+#      listener's process group as SIGINT.
+#   2. Runner.Listener treats that as ShutdownReason.UserCancelled, cancels its
+#      message loop, and in the finally block calls JobDispatcher.ShutdownAsync().
+#   3. ShutdownAsync() calls EnsureDispatchFinished(currentDispatch,
+#      cancelRunningJob: true) -- which cancels the worker's token and waits for
+#      the worker to die. The job ends Cancelled.
+#
+# So a longer `--time` buys nothing: the cancel is immediate and deliberate, and
+# the extra seconds are only spent waiting for a job that has already been told
+# to stop. This is the shape of the failure this fleet has already seen once --
+# WSL's idle timeout reaped the VM out from under three live jobs and GitHub
+# kept reporting the runners busy with orphaned work until it timed out.
+#
+# THE MECHANISM THIS USES INSTEAD
+# -------------------------------
+# Never signal a busy runner. Poll each instance, and stop it in the moment it
+# is idle -- a stopped container cannot be handed another job, so the host
+# converges downward one instance at a time as its jobs finish naturally.
+#
+# `docker top <container>` lists Runner.Worker exactly while a job is running
+# (Runner.Listener spawns one worker process per job), so "is this instance
+# busy" is answered locally, with no GitHub API call and no credential on the
+# host. That matters: this script runs unattended from a systemd timer on a
+# machine that deliberately holds no PAT.
+#
+# If the deadline passes with instances still busy, this reports what it could
+# not park and exits non-zero. It does NOT force them. A scale-down that kills
+# jobs is worse than no scale-down at all.
+#
+# TWO KINDS OF HOST, ONE DEFINITION OF DRAIN
+# ------------------------------------------
+#   docker  long-lived runner containers (the NAS, the Windows/WSL2 box)
+#   k8s     an ARC scale set, where lowering maxRunners is already safe: ARC
+#           runners are ephemeral (one job, then exit) and the controller only
+#           deletes runners that hold no job, so the drain is the controller's
+#           and this only has to move the number.
+#
+# Configuration arrives as flags, or as the RA8_FLEET_* environment the
+# fleet_capacity role writes to /etc/ra8-fleet/capacity.env for the timer.
+# Flags win over the environment, which wins over the defaults below.
+#
+# Usage:
+#   fleet_capacity.sh [options] status
+#   fleet_capacity.sh [options] scale <n>
+#
+# scripts/dev/fleet.py pipes THIS FILE to the host over ssh for every
+# control-node capacity command, so an operator run is always the version in
+# the checkout; the copy the role installs exists for the unattended timer.
+
+set -euo pipefail
+
+RA8_FLEET_KIND="${RA8_FLEET_KIND:-docker}"
+RA8_FLEET_DOCKER="${RA8_FLEET_DOCKER:-docker}"
+RA8_FLEET_CONTAINERS="${RA8_FLEET_CONTAINERS:-}"
+
+# Name prefix every runner container on a host shares, so `drain-all` can find
+# what is really there rather than what the declaration predicts.
+RA8_FLEET_PREFIX="${RA8_FLEET_PREFIX:-ra8-ci-runner}"
+RA8_FLEET_KUBECTL="${RA8_FLEET_KUBECTL:-k3s kubectl}"
+RA8_FLEET_NAMESPACE="${RA8_FLEET_NAMESPACE:-arc-runners}"
+RA8_FLEET_SCALESET="${RA8_FLEET_SCALESET:-ra8-ci}"
+
+# How long to keep waiting for busy instances to finish before giving up and
+# reporting. The longest job in this tree's CI is the ~30-minute emulator
+# smoke, so 90 minutes covers a job that started just before the window opened
+# plus a retry, without waiting forever on a wedged runner.
+RA8_FLEET_DEADLINE="${RA8_FLEET_DEADLINE:-5400}"
+RA8_FLEET_POLL="${RA8_FLEET_POLL:-15}"
+
+# Only ever applied to an instance already proven idle, so this is headroom for
+# the listener's own clean exit -- not the drain mechanism. See the header.
+RA8_FLEET_STOP_GRACE="${RA8_FLEET_STOP_GRACE:-120}"
+
+# Quiet hours, as declared in infra/fleet.yml and written to
+# /etc/ra8-fleet/capacity.env by the fleet_capacity role. Empty days means the
+# host declared no window, and `window` is then a no-op that says so.
+RA8_FLEET_FULL_INSTANCES="${RA8_FLEET_FULL_INSTANCES:-0}"
+RA8_FLEET_QUIET_INSTANCES="${RA8_FLEET_QUIET_INSTANCES:-0}"
+RA8_FLEET_QUIET_START="${RA8_FLEET_QUIET_START:-}"
+RA8_FLEET_QUIET_END="${RA8_FLEET_QUIET_END:-}"
+RA8_FLEET_QUIET_DAYS="${RA8_FLEET_QUIET_DAYS:-}"
+
+log() { printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"; }
+
+die() {
+  printf 'fleet-capacity: error: %s\n' "$*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'EOF'
+usage: fleet_capacity.sh [options] <command>
+
+commands:
+  status        report every instance: state, busy/idle, and how long its job
+                has been running
+  scale <n>     converge to n ACTIVE instances; shrinking DRAINS, never kills
+  drain-all     park every runner container ON THIS HOST, whatever it is
+                called -- what a re-provision runs first, because a converge
+                recreates containers and would cancel their jobs
+  window        scale to whatever the declared quiet-hours window says this
+                host should be RIGHT NOW; what the systemd timer runs
+
+options:
+  --kind docker|k8s      host shape                     (RA8_FLEET_KIND)
+  --sudo                 invoke docker through sudo     (RA8_FLEET_DOCKER)
+  --container NAME       one instance container; repeat, in instance order
+                                                        (RA8_FLEET_CONTAINERS)
+  --namespace NS         ARC runner namespace           (RA8_FLEET_NAMESPACE)
+  --scale-set NAME       ARC scale set name             (RA8_FLEET_SCALESET)
+  --deadline SECONDS     give up draining after this    (RA8_FLEET_DEADLINE)
+  --poll SECONDS         busy-check interval            (RA8_FLEET_POLL)
+  --stop-grace SECONDS   docker stop -t for an IDLE instance
+  --full-instances N     capacity outside the window    (RA8_FLEET_FULL_INSTANCES)
+  --quiet-instances N    capacity inside it             (RA8_FLEET_QUIET_INSTANCES)
+  --quiet-start HH:MM    window start                   (RA8_FLEET_QUIET_START)
+  --quiet-end HH:MM      window end                     (RA8_FLEET_QUIET_END)
+  --quiet-days Mon,Tue   days the window applies to     (RA8_FLEET_QUIET_DAYS)
+EOF
+}
+
+# --- docker kind ------------------------------------------------------------
+
+# Deliberately unquoted: RA8_FLEET_DOCKER may be "sudo docker" (the NAS, where
+# the deploy user is not in the docker group), which has to word-split.
+dk() {
+  # shellcheck disable=SC2086  # see above: intentional word splitting.
+  command $RA8_FLEET_DOCKER "$@"
+}
+
+container_state() {
+  local name="$1" state
+  state="$(dk inspect -f '{{.State.Status}}' "${name}" 2>/dev/null || true)"
+  printf '%s' "${state:-absent}"
+}
+
+# 0 when a job is running in this container. Runner.Listener spawns exactly one
+# Runner.Worker process per job, so the process either exists or the runner is
+# idle. `pid` must stay in the -o list: docker rejects a ps format without it
+# ("Couldn't find PID field in ps output"), so `-o comm` alone silently becomes
+# an error the caller would read as "not busy".
+#
+# `docker top` output is read WHOLE and only then filtered. Neither reader may
+# exit early: a busy runner's container holds a hundred build processes, docker
+# writes that list in several chunks, and a filter that stops at the first match
+# closes the pipe under it -- SIGPIPE, a 141 through `pipefail`, and under
+# `set -e` the script dies mid-sweep. It survived every test against an idle
+# container, whose whole list fits in one write.
+container_busy() {
+  local name="$1" out
+  [ "$(container_state "${name}")" = running ] || return 1
+  out="$(dk top "${name}" -o pid,comm 2>/dev/null || true)"
+  printf '%s\n' "${out}" | awk '$2 == "Runner.Worker" {found = 1} END {exit !found}'
+}
+
+# How long this instance's current job has been running, for the status table.
+# Empty when idle.
+busy_for() {
+  local name="$1" out
+  out="$(dk top "${name}" -o pid,comm,etime 2>/dev/null || true)"
+  printf '%s\n' "${out}" | awk '$2 == "Runner.Worker" && !seen {print $3; seen = 1}'
+}
+
+# The race this closes: a job can be assigned in the moment between the busy
+# check passing and the stop landing. It is small (one round trip) and cannot
+# be eliminated without a GitHub credential on the host, so it is DETECTED and
+# reported rather than assumed away.
+#
+# Bounded by --since rather than --tail: a runner that has been up for weeks has
+# a log far longer than any tail worth reading, and the only lines that can
+# answer "did this stop cancel a job" are the ones written after the stop began.
+assert_not_interrupted() {
+  local name="$1" since="$2" window
+  window="$(dk logs --since "${since}" "${name}" 2>&1 |
+    grep -Eo '(Running job: .*|Job .* completed with result: [A-Za-z]+)$' || true)"
+  case "${window}" in
+    *"completed with result: Canceled"*)
+      log "INTERRUPTED ${name}: a job was CANCELLED by this stop"
+      printf '%s\n' "${window}" | sed 's/^/            /'
+      return 1
+      ;;
+    *"Running job: "*)
+      log "INTERRUPTED ${name}: a job STARTED during the stop and did not finish"
+      printf '%s\n' "${window}" | sed 's/^/            /'
+      return 1
+      ;;
+    *)
+      log "verified  ${name}: no job started or was cancelled during the stop"
+      ;;
+  esac
+}
+
+park_instance() {
+  local name="$1" since
+  since="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  log "parking   ${name}: idle, stopping with -t ${RA8_FLEET_STOP_GRACE}"
+  dk stop -t "${RA8_FLEET_STOP_GRACE}" "${name}" >/dev/null
+  assert_not_interrupted "${name}" "${since}"
+}
+
+unpark_instance() {
+  local name="$1" state
+  state="$(container_state "${name}")"
+  case "${state}" in
+    running) log "active    ${name}: already running" ;;
+    absent) die "${name} does not exist on this host. Deploy it first: make infra-apply HOST=<host>" ;;
+    *)
+      log "resuming  ${name}: was ${state}"
+      dk start "${name}" >/dev/null
+      ;;
+  esac
+}
+
+docker_status() {
+  local name state busy elapsed
+  for name in "${CONTAINERS[@]}"; do
+    state="$(container_state "${name}")"
+    if container_busy "${name}"; then
+      busy=busy
+      elapsed="job running for $(busy_for "${name}")"
+    else
+      busy=idle
+      elapsed="ready to park"
+    fi
+    [ "${state}" = running ] || elapsed="parked"
+    printf '  %-20s %-9s %-5s %s\n' "${name}" "${state}" "${busy}" "${elapsed}"
+  done
+}
+
+# Shrink by attrition: sweep the instances that must go, stop whichever are
+# idle right now, and come back for the rest. An instance stopped in an earlier
+# sweep cannot be handed a new job, so the host only ever converges downward.
+docker_drain_to() {
+  local want="$1" deadline pending=() still=() name
+  local total="${#CONTAINERS[@]}"
+  pending=("${CONTAINERS[@]:want}")
+  [ "${#pending[@]}" -eq 0 ] && return 0
+  deadline=$(($(date +%s) + RA8_FLEET_DEADLINE))
+  log "draining  ${#pending[@]} of ${total} instance(s): ${pending[*]}"
+  while [ "${#pending[@]}" -gt 0 ]; do
+    still=()
+    for name in "${pending[@]}"; do
+      case "$(container_state "${name}")" in
+        running) ;;
+        absent) log "skipping  ${name}: not deployed on this host" && continue ;;
+        *)
+          log "parked    ${name}: already stopped"
+          continue
+          ;;
+      esac
+      if container_busy "${name}"; then
+        log "waiting   ${name}: busy, job running for $(busy_for "${name}")"
+        still+=("${name}")
+      else
+        park_instance "${name}"
+      fi
+    done
+    pending=(${still[@]+"${still[@]}"})
+    [ "${#pending[@]}" -eq 0 ] && break
+    if [ "$(date +%s)" -ge "${deadline}" ]; then
+      log "DEADLINE  ${RA8_FLEET_DEADLINE}s elapsed; still busy: ${pending[*]}"
+      log "NOT converged. These were left RUNNING on purpose: forcing them"
+      log "would cancel the jobs they hold, which is the failure this avoids."
+      return 1
+    fi
+    sleep "${RA8_FLEET_POLL}"
+  done
+  log "drained   every instance above the target is parked"
+}
+
+# Every runner container ACTUALLY on this host, whatever the declaration says.
+#
+# Load-bearing for the pre-provision drain. Crossing the 1 <-> N instance
+# boundary renames the containers (`ra8-ci-runner` becomes `ra8-ci-runner-1`,
+# ...), so a drain that walked the DECLARED names would find nothing to stop on
+# exactly the change that most needs draining -- and the converge would then
+# recreate, and cancel, whatever the host was really running.
+discover_containers() {
+  dk ps -a --filter "name=^${RA8_FLEET_PREFIX}" --format '{{.Names}}' | sort
+}
+
+docker_drain_all() {
+  local found=()
+  mapfile -t found < <(discover_containers)
+  if [ "${#found[@]}" -eq 0 ]; then
+    log "nothing    no ${RA8_FLEET_PREFIX}* container on this host"
+    return 0
+  fi
+  log "found     ${#found[@]} runner container(s): ${found[*]}"
+  CONTAINERS=("${found[@]}")
+  docker_drain_to 0
+}
+
+docker_scale() {
+  local want="$1" i
+  [ "${want}" -ge 0 ] 2>/dev/null || die "scale needs a non-negative integer, got '${want}'"
+  [ "${want}" -le "${#CONTAINERS[@]}" ] ||
+    die "this host declares ${#CONTAINERS[@]} instance(s); cannot scale to ${want} without re-deploying it (make infra-apply)"
+  for ((i = 0; i < want; i++)); do
+    unpark_instance "${CONTAINERS[i]}"
+  done
+  docker_drain_to "${want}"
+}
+
+# --- k8s kind ---------------------------------------------------------------
+
+kc() {
+  # shellcheck disable=SC2086  # RA8_FLEET_KUBECTL is "k3s kubectl": word-split on purpose.
+  command $RA8_FLEET_KUBECTL "$@"
+}
+
+k8s_status() {
+  kc get autoscalingrunnersets -n "${RA8_FLEET_NAMESPACE}" "${RA8_FLEET_SCALESET}" \
+    -o custom-columns='NAME:.metadata.name,MIN:.spec.minRunners,MAX:.spec.maxRunners,CURRENT:.status.currentRunners' ||
+    die "no scale set ${RA8_FLEET_SCALESET} in namespace ${RA8_FLEET_NAMESPACE}"
+}
+
+# ARC runners are ephemeral -- one job, then the pod exits -- and the controller
+# only deletes runners that hold no job, so lowering the ceiling never
+# interrupts work. The drain here is the controller's, and this moves the
+# number it drains toward. Note the helm release still holds the DECLARED
+# maximum, so `make infra-apply HOST=k3s-pve` restores it; that is intentional
+# for a quiet-hours window, which is temporary by definition.
+k8s_scale() {
+  local want="$1"
+  [ "${want}" -ge 0 ] 2>/dev/null || die "scale needs a non-negative integer, got '${want}'"
+  log "patching  ${RA8_FLEET_SCALESET} maxRunners -> ${want}"
+  kc patch autoscalingrunnerset -n "${RA8_FLEET_NAMESPACE}" "${RA8_FLEET_SCALESET}" \
+    --type=merge -p "{\"spec\":{\"maxRunners\":${want}}}" >/dev/null
+  log "patched   ARC will retire idle runners down to the new ceiling; running"
+  log "          jobs finish first because its runners are ephemeral."
+  k8s_status
+}
+
+# --- quiet hours ------------------------------------------------------------
+#
+# ONE timer that runs often and asks "what should this host be right now",
+# rather than a pair of timers firing at the window's edges.
+#
+# Edge-triggered timers are wrong for a machine that is switched off, asleep,
+# or mid-upgrade at the moment one would have fired: the transition is simply
+# missed, and the host sits at the wrong capacity until the next edge -- which
+# on a Friday-evening window means all weekend. This form is level-triggered
+# and idempotent, so a host that was off at 18:00 goes quiet at 18:10 instead,
+# and a host already at its target does nothing at all. It also removes the
+# only genuinely fiddly case, a window that crosses midnight, from the timer
+# and puts it here where it can be reasoned about once.
+
+day_is_listed() {
+  case ",${RA8_FLEET_QUIET_DAYS}," in
+    *",$1,"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# 0 when the wall clock is inside the declared window. A window whose end is
+# not after its start wraps past midnight, and then "inside" means either
+# after the start on a listed day, or before the end on the day AFTER one.
+in_quiet_window() {
+  local now today yesterday
+  now="$(LC_ALL=C date +%H:%M)"
+  today="$(LC_ALL=C date +%a)"
+  yesterday="$(LC_ALL=C date -d yesterday +%a)"
+  if [[ "${RA8_FLEET_QUIET_START}" < "${RA8_FLEET_QUIET_END}" ]]; then
+    day_is_listed "${today}" || return 1
+    [[ "${now}" > "${RA8_FLEET_QUIET_START}" || "${now}" == "${RA8_FLEET_QUIET_START}" ]] &&
+      [[ "${now}" < "${RA8_FLEET_QUIET_END}" ]]
+    return
+  fi
+  if day_is_listed "${today}" &&
+    [[ "${now}" > "${RA8_FLEET_QUIET_START}" || "${now}" == "${RA8_FLEET_QUIET_START}" ]]; then
+    return 0
+  fi
+  day_is_listed "${yesterday}" && [[ "${now}" < "${RA8_FLEET_QUIET_END}" ]]
+}
+
+cmd_window() {
+  local target
+  if [ -z "${RA8_FLEET_QUIET_DAYS}" ]; then
+    log "no quiet-hours window declared for this host; nothing to do"
+    return 0
+  fi
+  if in_quiet_window; then
+    target="${RA8_FLEET_QUIET_INSTANCES}"
+    log "inside    ${RA8_FLEET_QUIET_DAYS} ${RA8_FLEET_QUIET_START}-${RA8_FLEET_QUIET_END}: target ${target}"
+  else
+    target="${RA8_FLEET_FULL_INSTANCES}"
+    log "outside   ${RA8_FLEET_QUIET_DAYS} ${RA8_FLEET_QUIET_START}-${RA8_FLEET_QUIET_END}: target ${target}"
+  fi
+  case "${RA8_FLEET_KIND}" in
+    docker)
+      require_docker_config
+      docker_scale "${target}"
+      ;;
+    k8s) k8s_scale "${target}" ;;
+    *) die "unknown --kind '${RA8_FLEET_KIND}' (docker|k8s)" ;;
+  esac
+}
+
+# --- entry point ------------------------------------------------------------
+
+parse_args() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --kind) RA8_FLEET_KIND="$2" && shift 2 ;;
+      # No flag in this parser ever takes a value containing a space, and that
+      # is a transport constraint rather than a style choice: for the WSL host
+      # this command line is assembled on the control node, parsed by Windows'
+      # shell, and only then handed to `wsl -e`. A quoted argument does not
+      # survive that intact, so `sudo docker` is a boolean and the container
+      # list is repeated rather than joined.
+      --sudo)
+        RA8_FLEET_DOCKER="sudo docker"
+        shift
+        ;;
+      --container)
+        RA8_FLEET_CONTAINERS="${RA8_FLEET_CONTAINERS:+${RA8_FLEET_CONTAINERS} }$2"
+        shift 2
+        ;;
+      --namespace) RA8_FLEET_NAMESPACE="$2" && shift 2 ;;
+      --scale-set) RA8_FLEET_SCALESET="$2" && shift 2 ;;
+      --deadline) RA8_FLEET_DEADLINE="$2" && shift 2 ;;
+      --poll) RA8_FLEET_POLL="$2" && shift 2 ;;
+      --stop-grace) RA8_FLEET_STOP_GRACE="$2" && shift 2 ;;
+      --full-instances) RA8_FLEET_FULL_INSTANCES="$2" && shift 2 ;;
+      --quiet-instances) RA8_FLEET_QUIET_INSTANCES="$2" && shift 2 ;;
+      --quiet-start) RA8_FLEET_QUIET_START="$2" && shift 2 ;;
+      --quiet-end) RA8_FLEET_QUIET_END="$2" && shift 2 ;;
+      --quiet-days) RA8_FLEET_QUIET_DAYS="$2" && shift 2 ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      --*) die "unknown option '$1'" ;;
+      *) break ;;
+    esac
+  done
+  RA8_FLEET_ARGV=("$@")
+}
+
+require_docker_config() {
+  command -v "${RA8_FLEET_DOCKER%% *}" >/dev/null 2>&1 ||
+    die "'${RA8_FLEET_DOCKER%% *}' is not on PATH on this host; there is nothing to scale"
+  [ -n "${RA8_FLEET_CONTAINERS}" ] ||
+    die "no instance containers declared (--containers / RA8_FLEET_CONTAINERS)"
+  read -r -a CONTAINERS <<<"${RA8_FLEET_CONTAINERS}"
+}
+
+cmd_status() {
+  case "${RA8_FLEET_KIND}" in
+    docker)
+      require_docker_config
+      printf '  %-20s %-9s %-5s %s\n' INSTANCE STATE BUSY DETAIL
+      docker_status
+      ;;
+    k8s) k8s_status ;;
+    *) die "unknown --kind '${RA8_FLEET_KIND}' (docker|k8s)" ;;
+  esac
+}
+
+cmd_scale() {
+  [ $# -ge 1 ] || die "scale needs a target instance count"
+  case "${RA8_FLEET_KIND}" in
+    docker)
+      require_docker_config
+      docker_scale "$1"
+      ;;
+    k8s) k8s_scale "$1" ;;
+    *) die "unknown --kind '${RA8_FLEET_KIND}' (docker|k8s)" ;;
+  esac
+}
+
+cmd_drain_all() {
+  [ "${RA8_FLEET_KIND}" = docker ] ||
+    die "drain-all is a container-host command; an ARC scale set drains itself"
+  command -v "${RA8_FLEET_DOCKER%% *}" >/dev/null 2>&1 ||
+    die "'${RA8_FLEET_DOCKER%% *}' is not on PATH on this host; there is nothing to drain"
+  docker_drain_all
+}
+
+main() {
+  parse_args "$@"
+  set -- ${RA8_FLEET_ARGV[@]+"${RA8_FLEET_ARGV[@]}"}
+  local cmd="${1:-}"
+  [ -n "${cmd}" ] || {
+    usage
+    exit 2
+  }
+  shift
+  case "${cmd}" in
+    status) cmd_status ;;
+    scale) cmd_scale "$@" ;;
+    drain-all) cmd_drain_all ;;
+    window) cmd_window ;;
+    *) die "unknown command '${cmd}'" ;;
+  esac
+}
+
+main "$@"

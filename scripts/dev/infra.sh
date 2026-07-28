@@ -17,74 +17,48 @@
 #
 # THE ONE REGISTRY
 # ----------------
-# RA8_INFRA_CLASSES below is the single list of what can be provisioned. Every
-# subcommand reads it, so a class cannot exist for `apply` and be invisible to
-# `list`, and `make infra-list` cannot drift from what actually runs.
+# infra/fleet.yml is the single list of what machines exist. This script does
+# NOT keep a second one: every host-shaped subcommand hands the name straight
+# to scripts/dev/fleet.py, which reads that declaration and derives the
+# playbook, the inventory group, the transport and every role variable from it.
+#
+# A class list lived here once. It was a second place to answer "what can be
+# provisioned", and adding a machine meant editing it as well as the roles --
+# which is exactly the shape of duplication the roles were written to abolish,
+# one level up.
 #
 # Commands:
-#   list                 what host classes exist and what serves each
+#   list                 what machines are declared, and how they are sized
 #   doctor               can THIS machine drive infra at all?
-#   check <class>        dry run: what would change, changing nothing
-#   apply <class>        provision for real
-#   remove <class>       tear down (only classes that implement it)
+#   check <host>         dry run: what would change, changing nothing
+#   apply <host>         converge that host to the declaration
+#   remove <host>        tear down (classes whose roles implement it)
+#   scale <host> <n>     live capacity change; shrinking DRAINS, never kills
 #   status               what is deployed across the estate, right now
 #
-# `status` and `doctor` are strictly READ-ONLY and safe to run at any time,
-# including while CI jobs and agents are working. `apply` and `remove` are not.
+# `list`, `status` and `doctor` are strictly READ-ONLY and safe to run at any
+# time, including while CI jobs and agents are working. The rest are not.
 
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-ANSIBLE_DIR="${ROOT}/infra/ansible"
-INVENTORY="${ANSIBLE_DIR}/inventory/hosts.ini"
-
-# One row per provisionable host class:
-#   <class>|<playbook>|<inventory group>|<roles>|<removable>|<what it is>
-# `removable` is yes only where the role genuinely implements a teardown path;
-# claiming one that does not exist is worse than admitting there is none.
-RA8_INFRA_CLASSES=(
-  "dev|dev-box.yml|dev_boxes|dev_box|no|the shared box agents run gates on"
-  "k3s|k3s-node.yml|ci_runners|k3s_node,openbao|no|the k3s cluster + the OpenBao vault"
-  "ci-runner|ci-runner.yml|ci_runners|ci_runner|no|the ARC autoscaling runner pool on k3s"
-  "ci-runner-docker|ci-runner-docker.yml|ci_runners_docker|ci_runner_docker|yes|a plain runner in Docker (NAS, gaming PC)"
-  "bench|hil-bench.yml|hil_bench|hil_bench,c6_toolchain,ad2_tools|no|the HIL bench Pi, ESP32-C6 and AD2"
-)
+FLEET="${ROOT}/scripts/dev/fleet.py"
 
 die() {
   echo "error: $*" >&2
   exit 1
 }
 
-# Look one class up in the registry; empty output means "no such class".
-class_row() {
-  local want="$1" row
-  for row in "${RA8_INFRA_CLASSES[@]}"; do
-    [ "${row%%|*}" = "${want}" ] && {
-      printf '%s' "${row}"
-      return 0
-    }
-  done
-  return 1
+fleet() {
+  python3 "${FLEET}" "$@"
 }
 
-class_names() {
-  local row
-  for row in "${RA8_INFRA_CLASSES[@]}"; do printf '%s ' "${row%%|*}"; done
+host_names() {
+  fleet list | awk 'NR > 1 && NF > 1 && $1 !~ /^(make|docs)/ {print $1}'
 }
 
 cmd_list() {
-  printf '%-18s %-22s %-18s %s\n' CLASS PLAYBOOK "INVENTORY GROUP" DESCRIPTION
-  local row name play group roles rm desc
-  for row in "${RA8_INFRA_CLASSES[@]}"; do
-    IFS='|' read -r name play group roles rm desc <<<"${row}"
-    printf '%-18s %-22s %-18s %s\n' "${name}" "${play}" "${group}" "${desc}"
-    printf '%-18s   roles: %s%s\n' '' "${roles}" \
-      "$([ "${rm}" = yes ] && echo '   [supports infra-remove]')"
-  done
-  echo
-  echo "make infra-check HOST=<class>   dry run (changes nothing)"
-  echo "make infra-apply HOST=<class>   provision for real"
-  echo "make infra-status              what is deployed right now (read-only)"
+  fleet list
 }
 
 # --- doctor -----------------------------------------------------------------
@@ -129,27 +103,26 @@ doctor_tools() {
   return "${missing}"
 }
 
-doctor_inventory() {
-  if [ -f "${INVENTORY}" ]; then
-    printf '  ok    %-18s %s\n' inventory "${INVENTORY#"${ROOT}"/}"
+doctor_declaration() {
+  if fleet validate; then
     return 0
   fi
-  printf '  MISS  %-18s %s\n' inventory \
-    "${INVENTORY#"${ROOT}"/} absent -- run 'make infra-setup'"
+  printf '  MISS  %-18s %s\n' declaration "infra/fleet.yml does not validate"
   return 1
 }
 
 cmd_doctor() {
   local rc=0
   doctor_tools || rc=1
-  echo "inventory:"
-  doctor_inventory || rc=1
-  echo "hosts (ssh, from THIS machine):"
-  probe_ssh dev "dev box" || rc=1
-  probe_ssh k3s-pve "k3s node" || rc=1
-  probe_ssh star "bench Pi" || rc=1
+  echo "declaration:"
+  doctor_declaration || rc=1
+  echo "hosts (from THIS machine, each over its own declared transport):"
+  # Delegated, and derived: `win-ci` is not an ssh alias but a jump through the
+  # bench Pi into a Windows box and then into a WSL distro, so only fleet.py
+  # knows how to reach it. A machine added to the declaration is probed from
+  # the next run with nothing here edited.
+  fleet reach || rc=1
   probe_ssh pve "proxmox host" no
-  probe_ssh truenas "NAS runner" no
   echo
   if [ "${rc}" -ne 0 ]; then
     cat <<'EOF'
@@ -167,25 +140,16 @@ EOF
   return "${rc}"
 }
 
-# --- check / apply / remove -------------------------------------------------
+# --- check / apply / remove / scale ------------------------------------------
+#
+# All four are fleet.py verbs. The ansible invocation, the inventory, the extra
+# vars and (for the Windows host) the copy-into-the-distro transport are all
+# derived from the declaration, so there is nothing left for this script to
+# assemble.
 
 require_playbook_env() {
   command -v ansible-playbook >/dev/null 2>&1 ||
     die "ansible-playbook is not on PATH. Run 'make infra-doctor' for the fix."
-  [ -f "${INVENTORY}" ] ||
-    die "no inventory at ${INVENTORY#"${ROOT}"/}. Run 'make infra-setup' first."
-}
-
-run_playbook() {
-  local class="$1"
-  shift
-  local row play
-  row="$(class_row "${class}")" ||
-    die "unknown host class '${class}'. Known: $(class_names)"
-  play="$(printf '%s' "${row}" | cut -d'|' -f2)"
-  require_playbook_env
-  echo "==> ansible-playbook ${play} $*"
-  (cd "${ANSIBLE_DIR}" && ansible-playbook -i "${INVENTORY}" "playbooks/${play}" "$@")
 }
 
 cmd_check() {
@@ -194,22 +158,23 @@ cmd_check() {
   # installed report "skipped" in check mode rather than the work they would
   # really do, so a clean check run is evidence of reachability and syntax, not
   # a complete change list.
-  run_playbook "$1" --check --diff
+  require_playbook_env
+  fleet check "$@"
 }
 
-cmd_apply() { run_playbook "$1"; }
+cmd_apply() {
+  require_playbook_env
+  fleet apply "$@"
+}
 
 cmd_remove() {
-  local class="$1" row removable
-  row="$(class_row "${class}")" ||
-    die "unknown host class '${class}'. Known: $(class_names)"
-  removable="$(printf '%s' "${row}" | cut -d'|' -f5)"
-  [ "${removable}" = yes ] || die "host class '${class}' implements no teardown path.
-Only classes marked [supports infra-remove] in 'make infra-list' can be removed
-this way, because only their roles own both halves of the lifecycle. Removing
-the others means undoing them by hand, which is exactly the drift the roles
-exist to prevent -- add a removal path to the role instead."
-  run_playbook "${class}" -e "ci_runner_docker_state=absent"
+  require_playbook_env
+  fleet remove "$@"
+}
+
+cmd_scale() {
+  [ $# -ge 2 ] || die "scale needs a host and a target instance count"
+  fleet scale "$1" "$2"
 }
 
 # --- status -----------------------------------------------------------------
@@ -268,6 +233,12 @@ cmd_status() {
   echo
   status_runners
   echo
+  # Per-instance, from each host itself: which instances are up, which are
+  # parked, and how long the busy ones have been on their current job. The
+  # REST call above cannot tell a parked instance from a dead one.
+  echo "declared capacity, per host:"
+  fleet status || true
+  echo
   echo "toolchain parity on the dev box:"
   status_host dev "parity" \
     'cd ~/ra8-firmware && PATH=$HOME/.local/bin:$PATH python3 scripts/checks/check_tool_versions.py --all 2>&1 | tail -1' || true
@@ -277,14 +248,15 @@ usage() {
   cat <<EOF
 usage: infra.sh <command> [args]
 
-  list                what host classes exist and what serves each
+  list                what machines are declared, and how they are sized
   doctor              can THIS machine drive infra at all?
-  check <class>       dry run -- report what would change, change nothing
-  apply <class>       provision for real
-  remove <class>      tear down (only classes that implement it)
+  check <host>        dry run -- report what would change, change nothing
+  apply <host>        converge that machine to infra/fleet.yml
+  remove <host>       tear down (classes whose roles implement it)
+  scale <host> <n>    live capacity change; shrinking DRAINS, never kills
   status              what is deployed across the estate, right now
 
-Host classes: $(class_names)
+HOST is a machine declared in infra/fleet.yml: $(host_names | tr '\n' ' ')
 EOF
 }
 
@@ -296,17 +268,18 @@ main() {
     doctor) cmd_doctor ;;
     status) cmd_status ;;
     check)
-      [ $# -ge 1 ] || die "check needs a host class: $(class_names)"
-      cmd_check "$1"
+      [ $# -ge 1 ] || die "check needs a host: $(host_names | tr '\n' ' ')"
+      cmd_check "$@"
       ;;
     apply)
-      [ $# -ge 1 ] || die "apply needs a host class: $(class_names)"
-      cmd_apply "$1"
+      [ $# -ge 1 ] || die "apply needs a host: $(host_names | tr '\n' ' ')"
+      cmd_apply "$@"
       ;;
     remove)
-      [ $# -ge 1 ] || die "remove needs a host class: $(class_names)"
-      cmd_remove "$1"
+      [ $# -ge 1 ] || die "remove needs a host: $(host_names | tr '\n' ' ')"
+      cmd_remove "$@"
       ;;
+    scale) cmd_scale "$@" ;;
     -h | --help | help | "") usage ;;
     *) die "unknown command '${cmd}'. Run 'infra.sh help'." ;;
   esac

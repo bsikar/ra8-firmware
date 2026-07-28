@@ -20,3 +20,6 @@
       when: item is exists
   roles:
     - ci_runner_docker
+    # Second, and only second: the capacity script has to name the instance
+    # containers the role above has just created.
+    - fleet_capacity

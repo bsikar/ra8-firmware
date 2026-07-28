@@ -44,7 +44,7 @@
   vars:
     wsl_ci_host_id: "win-ci"
   vars_files:
-    - "{{ playbook_dir }}/../host_vars/{{ wsl_ci_host_id }}.yml"
+    - "{{ playbook_dir }}/../inventory/host_vars/{{ wsl_ci_host_id }}.yml"
   pre_tasks:
     - name: Load local secrets if present (bootstrap writes private/secrets.yml)
       ansible.builtin.include_vars: "{{ item }}"
@@ -54,3 +54,7 @@
   roles:
     - wsl_ci_host
     - ci_runner_docker
+    # Last: the capacity script has to name the instance containers the role
+    # above has just created, and its timer is what stands this host down
+    # during the owner's declared quiet hours.
+    - fleet_capacity

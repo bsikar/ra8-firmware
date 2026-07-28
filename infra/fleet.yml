@@ -1,0 +1,231 @@
+---
+# THE fleet declaration. One block per machine; everything else is derived.
+#
+# This file is the single registry of what hardware this project runs on and
+# how much of each machine it is allowed to use. Adding a machine means adding
+# a block here -- not writing a role, not editing an inventory, not touching a
+# playbook. Retuning one means changing a number here and re-converging.
+#
+#   make infra-list                 what is declared, and how it is sized
+#   make infra-check HOST=<name>    dry run: what would change
+#   make infra-apply HOST=<name>    converge that host to this file
+#   make infra-scale HOST=<name> N=<n>   live capacity change, drains first
+#
+# Everything downstream reads this file:
+#   - scripts/dev/fleet.py           loader, validator, renderer, dispatcher
+#   - infra/ansible/inventory/hosts.ini   GENERATED (git-ignored)
+#   - the role variables each play runs with (see CLASSES in fleet.py)
+#
+# The full narrative -- add a host, retune a host, quiet hours, remove a host,
+# and how the numbers below were arrived at -- is docs/CI_FLEET.md.
+#
+# Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
+
+# --- How instance counts are decided ----------------------------------------
+#
+# Runner count per host is DERIVED, not guessed:
+#
+#     instances = min( budget.threads   / build_parallelism ,
+#                      budget.memory_gb / memory_per_instance_gb )
+#
+# Both constants are measured properties of this tree, not preferences, and
+# both are named here so a new machine is sized by plugging in two numbers
+# rather than re-deriving anything:
+#
+#   build_parallelism      -- every heavy workflow pins its own fan-out with
+#                             CMAKE_BUILD_PARALLEL_LEVEL (see
+#                             scripts/ci/lib/parallelism.sh). A job therefore
+#                             cannot use more than this many CPUs no matter
+#                             how many it is given, so CPU beyond it per
+#                             instance is bought and never spent.
+#
+#   memory_per_instance_gb -- clang-tidy is the memory ceiling in this tree and
+#                             has been OOM-killed on an 8 GB machine. An
+#                             instance that OOMs mid-job is worse than one that
+#                             never existed: it presents as a flaky gate.
+#
+# The memory divisor is deliberately CONSERVATIVE. Container memory caps are
+# ceilings, not reservations, so this protects the case where several heavy
+# jobs coincide on one host rather than describing one job's typical draw --
+# a full cross-build was measured peaking at 4.06 GiB RSS on win-ci, well
+# inside it. If per-job peak RSS is ever measured properly and stays under the
+# divisor across the whole gate set, drop the divisor and every host's
+# recommended count rises with it. That is a measurement away, not a redesign.
+#
+# scripts/checks/check_fleet_declaration.py recomputes the formula for every
+# host and FAILS when a declared count differs from it without a written
+# `sizing_note:` saying why. A number nobody can re-derive is folklore.
+sizing:
+  build_parallelism: 4
+  memory_per_instance_gb: 8
+
+# --- The machines -----------------------------------------------------------
+#
+# `class` selects the arithmetic, the plays and the variable mapping; the
+# classes themselves live in CLASSES in scripts/dev/fleet.py.
+#
+#   arc_k8s       an ARC (Actions Runner Controller) scale set on a k8s cluster
+#   docker_linux  long-lived runner containers on any plain Docker host
+#   docker_wsl    the same, inside a Windows machine's WSL2 distro
+#   dev_box       the shared verification box (NOT a runner: no Actions pool)
+#   hil_bench     the hardware-in-the-loop bench Pi (NOT a runner)
+#
+# `budget` is what CI may use of the machine, not what the machine has. Its
+# `mode` picks which arithmetic applies:
+#
+#   reserved  the caps are real reservations the kernel enforces, so
+#             instances * cpus and instances * memory_gb must FIT the budget.
+#   burst     the caps are ceilings a scheduler may oversubscribe, so the
+#             REQUESTS are what must fit. Only arc_k8s is honest as `burst`.
+hosts:
+
+  # --- VM 300 on pve1: the k3s cluster, the vault, and the ARC runner pool ---
+  k3s-pve:
+    class: arc_k8s
+    summary: "k3s single node: ARC scale set + the OpenBao vault"
+    connect:
+      ssh: k3s-pve
+    # Two plays, in order: the cluster and vault first, the runner pool into
+    # it. `make infra-apply HOST=k3s-pve` runs both; PLAY=<name> runs one.
+    provisions: [k3s-node, ci-runner]
+    runners:
+      instances: 6
+      cpus: 4
+      memory_gb: 12
+      cpu_request: 1
+      memory_request_gb: 2
+      labels: [ra8-ci]
+    budget:
+      mode: burst
+      # 16 allocatable cores; the owner's homelab in the other namespaces sits
+      # at ~6.8 requested cores steady-state, so ~9 is what CI may request
+      # without running the node to its scheduling limit on every push.
+      threads: 9
+      memory_gb: 40
+    sizing_note: >-
+      The formula sizes an INSTANCE, and here an instance is a pod: 4 CPU and
+      12 GiB per pod is exactly min(4/4, 12/8) = 1 job's worth, which is the
+      shape the formula asks for. The COUNT is bounded by the node instead --
+      6 pods request 6 of the ~9 schedulable cores. It is deliberately not
+      raised toward the node's full 16: this is a guest on a 10-core/16-thread
+      i5-12600K it shares with the dev box (28 vCPU committed on a 16-thread
+      part before anything runs), so extra pods add contention rather than
+      throughput. Real capacity comes from hosts that are not pve1.
+
+  # --- The NAS: a plain Docker host that is otherwise idle -------------------
+  truenas:
+    class: docker_linux
+    summary: "TrueNAS SCALE: runner containers on the stripe pool"
+    connect:
+      ssh: truenas
+    provisions: [ci-runner-docker]
+    runners:
+      # Base name for the GitHub registrations. One instance keeps the base
+      # unsuffixed; above one they become <base>-1..<base>-N -- so this base
+      # keeps instance 1 registered as `truenas-ci-1`, the name that was
+      # already in the pool, and adds `truenas-ci-2` beside it.
+      name: truenas-ci
+      # TWO, from the formula rather than from the previous hand-written 1:
+      # min(8/4, 16/8) = 2. The host's total CI footprint is unchanged -- the
+      # same 8 threads and 16 GiB it always reserved -- but split into two
+      # runners instead of one, because queue depth is the fleet's bottleneck
+      # and a single runner leaves half of a reserved budget idle whenever one
+      # job is all it can hold.
+      instances: 2
+      cpus: 4
+      memory_gb: 8
+      # Each instance sees only its own 4 threads, so `make -j$(nproc)` inside
+      # it is right by construction instead of fanning out over the host.
+      pin_cpus: true
+      labels: [ra8-ci, ra8-nas]
+    budget:
+      mode: reserved
+      # 6-core / 12-thread i5-10400 whose day job is serving files. 8 of 12
+      # threads is 4 physical cores plus their SMT siblings; the remaining 4
+      # stay free for SMB/NFS, the ZFS transaction groups and the middleware.
+      threads: 8
+      # 62 GiB installed, ~34 GiB of it ZFS ARC. The ARC shrinks under
+      # pressure down to arc_min, so it yields to the runners and grows back;
+      # leaving 46 GiB outside the cap keeps that yielding rare.
+      memory_gb: 16
+
+  # --- The Windows workstation: the fastest host in the fleet ----------------
+  win-ci:
+    class: docker_wsl
+    summary: "Ryzen 9 7900X, Windows 11 + WSL2: the fleet's fastest host"
+    connect:
+      # No SSH daemon inside WSL, and giving a personal daily-driver machine
+      # one (plus the inbound firewall hole to reach it) is not a reasonable
+      # ask. fleet.py copies the play in over this path and runs it inside the
+      # distro with --connection=local. See docs/CI_FLEET.md.
+      ssh: sikar@10.0.40.100
+      jump: star
+      distro: Ubuntu
+      windows_user: sikar
+    provisions: [wsl-ci-host]
+    runners:
+      # min(22/4, 26/8) = min(5, 3) = 3. Memory is the binding constraint;
+      # cores would divide fine at four. Do not go to four until clang-tidy is
+      # sharded and per-shard peak memory has been re-measured.
+      instances: 3
+      cpus: 7
+      # 7, not the 8.7 the division allows: this machine has an RTX 5070 and
+      # will later host the GPU side of the Ethos-U55 / NPU work (#228) in
+      # this same distro. GPU work and CI do not contend for an execution
+      # resource, but they do contend for system RAM, so ~5 GiB of the VM is
+      # left uncommitted on purpose.
+      memory_gb: 7
+      pin_cpus: true
+      labels: [ra8-ci, ra8-win]
+    budget:
+      mode: reserved
+      # These two ARE the WSL2 VM caps -- 22 of 24 threads and 26 of 31 GiB,
+      # leaving ~2 threads and ~5 GiB for an idle Windows desktop. They are
+      # declared once, here, and written into .wslconfig from this file.
+      #
+      # Changing either needs `wsl --shutdown` to take effect, which stops
+      # every distro on the machine; the tooling reports that and refuses to
+      # do it behind the owner's back. See docs/CI_FLEET.md.
+      threads: 22
+      memory_gb: 26
+      swap_gb: 8
+    # Quiet hours: the machine is the owner's gaming PC as well as the fleet's
+    # fastest builder, so CI stands down on request rather than competing.
+    #
+    # Scaling down DRAINS: an instance is stopped only once it is idle, never
+    # signalled while it holds a job. A `docker stop` on a busy runner cancels
+    # that job (actions/runner cancels the in-flight job on SIGTERM), which is
+    # the orphaned-job failure this fleet has already seen once.
+    quiet_hours:
+      window: "18:00-23:59"
+      days: "Fri,Sat,Sun"
+      instances: 0
+    sizing_note: >-
+      Per-instance memory is 7 GB where the formula's divisor is 8. The count
+      is the formula's -- min(22/4, 26/8) = 3 -- but each instance is given
+      one GB less than the division allows, so that ~5 GB of the VM stays
+      uncommitted for the CUDA process the Ethos-U55 / NPU work (#228) will
+      run in this same distro. The divisor is a conservative ceiling rather
+      than a measured per-job draw: a full cross-build peaked at 4.06 GiB RSS
+      on this host and an idle listener holds ~95 MiB, so 7 GB has real
+      headroom over anything measured here. If clang-tidy is ever measured
+      above 7 GB on this machine, drop to two instances or raise the VM cap --
+      do not let a job OOM, which presents as a flaky gate rather than as the
+      capacity fault it is.
+
+  # --- CT 107 on pve1: the shared verification box (not a runner) ------------
+  dev:
+    class: dev_box
+    summary: "the shared box every agent runs `make ci` on"
+    connect:
+      ssh: dev
+    provisions: [dev-box]
+
+  # --- The bench Pi: hardware-in-the-loop (not a runner) ---------------------
+  star:
+    class: hil_bench
+    summary: "Raspberry Pi 5: EK-RA8D2, J-Link, ESP32-C6, AD2, smart plugs"
+    connect:
+      ssh: star
+    provisions: [hil-bench]
