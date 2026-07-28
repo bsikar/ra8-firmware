@@ -15,12 +15,18 @@
  *   ETHA0 = 0x403C_A000   (k_ra8_etha0_base_addr in ra8_ether_regs.h)
  *   ETHA1 = 0x403C_C000   (k_ra8_etha1_base_addr in ra8_ether_regs.h)
  *
- * Register layout was reverse-derived from HUM Ch 32 (p 1627-1702)
- * and cross-checked against the Renesas FSP CMSIS device header
- * R7KA8D2KF_core0.h (R_ETHA0_Type, total window 0x584 bytes). Every
- * named register here corresponds 1:1 with a HUM register; reserved
- * gaps are kept as ``reservedNN`` placeholders so offset arithmetic
- * matches the chip exactly.
+ * The register layout is HUM Table 32.3 "ETHA registers" (p 1628-1630),
+ * which runs EAMC (+0x0000) to EAEID2 (+0x0528). Every named register
+ * here corresponds 1:1 with a row of that table and every offset is
+ * pinned by a ``static_assert`` below; reserved gaps are kept as
+ * ``reservedNN`` placeholders so offset arithmetic matches the chip.
+ *
+ * The window was previously sized 0x584 to mirror the Renesas FSP CMSIS
+ * type ``R_ETHA0_Type``, which carries a trailing ``EASCR`` at +0x0580.
+ * Chapter 32 does not mention that symbol anywhere, so it was an FSP
+ * artefact rather than a documented register and has been removed along
+ * with the driver entry point that wrote it (#539). The manual, not the
+ * vendor header, is the authority for what exists.
  *
  * Eight per-traffic-class arrays (EATMFSC, EATDQDC, EATDQM, EATDQMLM,
  * EACAIVC, EACAULC, EACOIVM, EACOULM, EATASENC, EATASENM) follow the
@@ -90,57 +96,66 @@ typedef enum : uint8_t {
  * ::r_etha_regs_t and each driver call uses the named field directly.
  */
 typedef enum : uint16_t {
-  k_ra8_etha_off_eamc      = 0x0000U, /**< EAMC: Mode Command.            */
-  k_ra8_etha_off_eams      = 0x0004U, /**< EAMS: Mode Status.             */
-  k_ra8_etha_off_eairc     = 0x0010U, /**< EAIRC: IPV remap.              */
-  k_ra8_etha_off_eatdqsc   = 0x0014U, /**< EATDQSC: TX queue security.    */
-  k_ra8_etha_off_eatdqc    = 0x0018U, /**< EATDQC: TX queue control.      */
-  k_ra8_etha_off_eatdqac   = 0x001CU, /**< EATDQAC: TX queue arbitration. */
-  k_ra8_etha_off_eatpec    = 0x0020U, /**< EATPEC: TX preemption cfg.     */
-  k_ra8_etha_off_eatmfsc0  = 0x0040U, /**< EATMFSC0: per-class max frame. */
-  k_ra8_etha_off_eatdqdc0  = 0x0060U, /**< EATDQDC0: per-class queue cfg. */
-  k_ra8_etha_off_eatdqm0   = 0x0080U, /**< EATDQM0: per-class queue mon.  */
-  k_ra8_etha_off_eatdqmlm0 = 0x00A0U, /**< EATDQMLM0: max queue level.    */
-  k_ra8_etha_off_eactqc    = 0x0100U, /**< EACTQC: cut-through queue cfg. */
-  k_ra8_etha_off_eavcc     = 0x0130U, /**< EAVCC: VLAN control.           */
-  k_ra8_etha_off_eavtc     = 0x0134U, /**< EAVTC: VLAN tag config.        */
-  k_ra8_etha_off_eartfc    = 0x0138U, /**< EARTFC: RX tag filter cfg.     */
-  k_ra8_etha_off_eacaec    = 0x0200U, /**< EACAEC: CBS admin enable.      */
-  k_ra8_etha_off_eacc      = 0x0204U, /**< EACC: CBS configuration.       */
-  k_ra8_etha_off_eatasc    = 0x0300U, /**< EATASC: TAS configuration.     */
-  k_ra8_etha_off_eausmfsec = 0x0400U, /**< EAUSMFSECN: switch min FS err. */
-  k_ra8_etha_off_eatfecn   = 0x0404U, /**< EATFECN: tag filter err.       */
-  k_ra8_etha_off_eafsecn   = 0x0408U, /**< EAFSECN: frame size err.       */
-  k_ra8_etha_off_eadqoecn  = 0x040CU, /**< EADQOECN: queue overflow err.  */
-  k_ra8_etha_off_eadqsecn  = 0x0410U, /**< EADQSECN: queue security err.  */
-  k_ra8_etha_off_eaeis0    = 0x0500U, /**< EAEIS0: error IRQ status 0.    */
-  k_ra8_etha_off_eaeie0    = 0x0504U, /**< EAEIE0: error IRQ enable 0.    */
-  k_ra8_etha_off_eaeid0    = 0x0508U, /**< EAEID0: error IRQ disable 0.   */
-  k_ra8_etha_off_eaeis1    = 0x0510U, /**< EAEIS1: error IRQ status 1.    */
-  k_ra8_etha_off_eaeie1    = 0x0514U, /**< EAEIE1: error IRQ enable 1.    */
-  k_ra8_etha_off_eaeid1    = 0x0518U, /**< EAEID1: error IRQ disable 1.   */
-  k_ra8_etha_off_eaeis2    = 0x0520U, /**< EAEIS2: error IRQ status 2.    */
-  k_ra8_etha_off_eaeie2    = 0x0524U, /**< EAEIE2: error IRQ enable 2.    */
-  k_ra8_etha_off_eaeid2    = 0x0528U, /**< EAEID2: error IRQ disable 2.   */
-  k_ra8_etha_off_eascr     = 0x0580U, /**< EASCR: security configuration. */
-  /* Additional offsets used by the layout static_asserts below. */
+  k_ra8_etha_off_eamc       = 0x0000U, /**< EAMC: Mode Configuration.        */
+  k_ra8_etha_off_eams       = 0x0004U, /**< EAMS: Mode Status.               */
+  k_ra8_etha_off_eairc      = 0x0010U, /**< EAIRC: IPV remap.                */
+  k_ra8_etha_off_eatdqsc    = 0x0014U, /**< EATDQSC: TX queue security.      */
+  k_ra8_etha_off_eatdqc     = 0x0018U, /**< EATDQC: TX queue control.        */
+  k_ra8_etha_off_eatdqac    = 0x001CU, /**< EATDQAC: TX queue arbitration.   */
+  k_ra8_etha_off_eatpec     = 0x0020U, /**< EATPEC: TX preemption cfg.       */
+  k_ra8_etha_off_eatmfsc0   = 0x0040U, /**< EATMFSC0: per-class max frame.   */
+  k_ra8_etha_off_eatdqdc0   = 0x0060U, /**< EATDQDC0: per-class queue cfg.   */
+  k_ra8_etha_off_eatdqm0    = 0x0080U, /**< EATDQM0: per-class queue mon.    */
+  k_ra8_etha_off_eatdqmlm0  = 0x00A0U, /**< EATDQMLM0: max queue level.      */
+  k_ra8_etha_off_eactqc     = 0x0100U, /**< EACTQC: cut-through queue cfg.   */
+  k_ra8_etha_off_eactdqdc   = 0x0104U, /**< EACTDQDC: cut-through depth.     */
+  k_ra8_etha_off_eactdqm    = 0x0108U, /**< EACTDQM: cut-through queue mon.  */
+  k_ra8_etha_off_eactdqmlm  = 0x010CU, /**< EACTDQMLM: cut-through peak.     */
+  k_ra8_etha_off_eavcc      = 0x0130U, /**< EAVCC: VLAN control.             */
+  k_ra8_etha_off_eavtc      = 0x0134U, /**< EAVTC: VLAN tag config.          */
+  k_ra8_etha_off_eartfc     = 0x0138U, /**< EARTFC: RX tag filter cfg.       */
+  k_ra8_etha_off_eacaec     = 0x0200U, /**< EACAEC: CBS admin enable.        */
+  k_ra8_etha_off_eacc       = 0x0204U, /**< EACC: CBS configuration.         */
   k_ra8_etha_off_eacaivc0   = 0x0220U, /**< EACAIVC0: CBS admin increment.   */
   k_ra8_etha_off_eacaulc0   = 0x0240U, /**< EACAULC0: CBS admin upper limit. */
   k_ra8_etha_off_eacoem     = 0x0260U, /**< EACOEM: CBS oper enable mon.     */
   k_ra8_etha_off_eacoivm0   = 0x0280U, /**< EACOIVM0: CBS oper increment.    */
   k_ra8_etha_off_eacoulm0   = 0x02A0U, /**< EACOULM0: CBS oper upper limit.  */
   k_ra8_etha_off_eacgsm     = 0x02C0U, /**< EACGSM: CBS gate state monitor.  */
+  k_ra8_etha_off_eatasc     = 0x0300U, /**< EATASC: TAS configuration.       */
   k_ra8_etha_off_eatasigsc  = 0x0304U, /**< EATASIGSC: TAS init gate state.  */
   k_ra8_etha_off_eatasenc0  = 0x0320U, /**< EATASENC0: TAS entry-number cfg. */
   k_ra8_etha_off_eatasctenc = 0x0340U, /**< EATASCTENC: TAS cut-through cfg. */
   k_ra8_etha_off_eatasenm0  = 0x0360U, /**< EATASENM0: TAS entry-number mon. */
   k_ra8_etha_off_eatasctenm = 0x0380U, /**< EATASCTENM: TAS cut-through mon. */
   k_ra8_etha_off_eatascstc0 = 0x03A0U, /**< EATASCSTC0: TAS cycle start lo.  */
+  k_ra8_etha_off_eatascstc1 = 0x03A4U, /**< EATASCSTC1: TAS cycle start hi.  */
+  k_ra8_etha_off_eatascstm0 = 0x03A8U, /**< EATASCSTM0: cycle start mon lo.  */
+  k_ra8_etha_off_eatascstm1 = 0x03ACU, /**< EATASCSTM1: cycle start mon hi.  */
   k_ra8_etha_off_eatasctc   = 0x03B0U, /**< EATASCTC: TAS cycle time cfg.    */
+  k_ra8_etha_off_eatasctm   = 0x03B4U, /**< EATASCTM: TAS cycle time mon.    */
   k_ra8_etha_off_eatasgl0   = 0x03C0U, /**< EATASGL0: TAS gate learn 0.      */
+  k_ra8_etha_off_eatasgl1   = 0x03C4U, /**< EATASGL1: TAS gate learn 1.      */
+  k_ra8_etha_off_eatasglr   = 0x03C8U, /**< EATASGLR: TAS gate learn result. */
   k_ra8_etha_off_eatasgr    = 0x03D0U, /**< EATASGR: TAS gate read.          */
+  k_ra8_etha_off_eatasgrr   = 0x03D4U, /**< EATASGRR: TAS gate read result.  */
   k_ra8_etha_off_eatashcc   = 0x03E0U, /**< EATASHCC: TAS HW calibration.    */
+  k_ra8_etha_off_eatasrirm  = 0x03E4U, /**< EATASRIRM: TAS RAM init monitor. */
   k_ra8_etha_off_eatassm    = 0x03E8U, /**< EATASSM: TAS status monitor.     */
+  k_ra8_etha_off_eausmfsecn = 0x0400U, /**< EAUSMFSECN: under-min FS err.    */
+  k_ra8_etha_off_eatfecn    = 0x0404U, /**< EATFECN: tag filter err.         */
+  k_ra8_etha_off_eafsecn    = 0x0408U, /**< EAFSECN: frame size err.         */
+  k_ra8_etha_off_eadqoecn   = 0x040CU, /**< EADQOECN: queue overflow err.    */
+  k_ra8_etha_off_eadqsecn   = 0x0410U, /**< EADQSECN: queue security err.    */
+  k_ra8_etha_off_eaeis0     = 0x0500U, /**< EAEIS0: error IRQ status 0.      */
+  k_ra8_etha_off_eaeie0     = 0x0504U, /**< EAEIE0: error IRQ enable 0.      */
+  k_ra8_etha_off_eaeid0     = 0x0508U, /**< EAEID0: error IRQ disable 0.     */
+  k_ra8_etha_off_eaeis1     = 0x0510U, /**< EAEIS1: error IRQ status 1.      */
+  k_ra8_etha_off_eaeie1     = 0x0514U, /**< EAEIE1: error IRQ enable 1.      */
+  k_ra8_etha_off_eaeid1     = 0x0518U, /**< EAEID1: error IRQ disable 1.     */
+  k_ra8_etha_off_eaeis2     = 0x0520U, /**< EAEIS2: error IRQ status 2.      */
+  k_ra8_etha_off_eaeie2     = 0x0524U, /**< EAEIE2: error IRQ enable 2.      */
+  k_ra8_etha_off_eaeid2     = 0x0528U, /**< EAEID2: error IRQ disable 2.     */
 } ra8_etha_offset_t;
 
 /**
@@ -148,7 +163,7 @@ typedef enum : uint16_t {
  * @brief ETHA EAMC.OPC[1:0] operating mode commands.
  *
  * @details
- * From HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631.
+ * From HUM Ch 32.3.1.1 "EAMC : Mode Configuration Register" p 1630.
  */
 typedef enum : uint8_t {
   k_ra8_etha_opc_reset     = 0U, /**< Enter RESET mode.     */
@@ -196,7 +211,54 @@ typedef enum : uint32_t {
   k_ra8_etha_mask_tas_cycle = 0xFFFFFFFFUL, /**< EATASCTC TASACT 32-bit. */
   k_ra8_etha_mask_tas_jit   = 0x0000FFFFUL, /**< EATASHCC.TASJ[15:0].    */
   k_ra8_etha_mask_tas_gtl   = 0x0FFFFFFFUL, /**< EATASGL1.TASGTL[27:0].  */
+  k_ra8_etha_mask_tas_gal   = 0x000000FFUL, /**< EATASGL0.TASGAL[7:0].   */
+  k_ra8_etha_mask_tas_igs   = 0x000000FFUL, /**< EATASIGSC.TASIGS7..0.   */
 } ra8_etha_mask_t;
+
+/**
+ * @enum ra8_etha_tas_bits_t
+ * @brief Single-bit positions in the TAS learn / read / RAM-init registers.
+ *
+ * @details
+ * Named from the HUM field tables so the TAS entry flow cannot repeat the
+ * defect it was written to fix: ``EATASGL1`` bit 28 is ``TASGSL``, the
+ * entry's one-bit GATE STATE (HUM Ch 32.3.5.14 "EATASGL1 : TAS Gate Learn
+ * Register 1" p 1652), and had been carrying an unrelated "cut-through"
+ * flag while the gate state was written into ``EATASGL0``, whose
+ * ``TASGAL[7:0]`` field is the TAS RAM ENTRY ADDRESS (#539).
+ *
+ * @invariant Every value is a bit index in 0..31.
+ * @see ra8_etha_set_tas_schedule
+ */
+typedef enum : uint8_t {
+  k_ra8_etha_eatasgl1_tasgsl_pos   = 28U, /**< EATASGL1.TASGSL: entry gate state. */
+  k_ra8_etha_eatasglr_gl_pos       = 31U, /**< EATASGLR.GL: learn in progress.    */
+  k_ra8_etha_eatasgrr_gr_pos       = 31U, /**< EATASGRR.GR: read in progress.     */
+  k_ra8_etha_eatasgrr_tasgsr_pos   = 28U, /**< EATASGRR.TASGSR: read gate state.  */
+  k_ra8_etha_eatasrirm_tasriog_pos = 0U,  /**< EATASRIRM.TASRIOG: init ongoing.   */
+  k_ra8_etha_eatasrirm_tasrr_pos   = 1U,  /**< EATASRIRM.TASRR: TAS RAM ready.    */
+} ra8_etha_tas_bits_t;
+
+/**
+ * @enum ra8_etha_tas_limits_t
+ * @brief Capacity limits the TAS RAM imposes on a schedule.
+ *
+ * @details
+ * ``TASGAL[7:0]`` addresses 256 TAS RAM entries, but HUM Ch 32.3.5.3
+ * "EATASENCi : TAS Entry Number Configuration Register i" p 1647 caps the
+ * usable total: the sum of every ``EATASENCi.TASAEN`` (plus
+ * ``EATASCTENC.TASCTAEN``) must be <= 119 when the schedule is changed
+ * while ``EATASC.TASE`` is already set, and <= 247 otherwise. The driver
+ * enforces the conservative 119 so a schedule accepted at bring-up stays
+ * legal if it is later re-programmed live.
+ *
+ * @see ra8_etha_set_tas_schedule
+ */
+typedef enum : uint16_t {
+  k_ra8_etha_tas_entries_max = 119U, /**< Max total entries across all queues.     */
+  k_ra8_etha_tas_addr_max    = 255U, /**< Highest TAS RAM address TASGAL can hold. */
+  k_ra8_etha_tas_aen_max     = 511U, /**< EATASENCi.TASAEN[8:0] field ceiling.     */
+} ra8_etha_tas_limits_t;
 
 /**
  * @enum ra8_etha_field_pos_t
@@ -335,7 +397,6 @@ typedef enum : uint8_t {
   k_ra8_etha_rsv_words_eatasctenm_gap    = 7U,  /**< +0x0384..0x039F gap. */
   k_ra8_etha_rsv_words_eatassm_to_eausm  = 5U,  /**< +0x03EC..0x03FF gap. */
   k_ra8_etha_rsv_words_eadqsecn_to_eaeis = 59U, /**< +0x0414..0x04FF gap. */
-  k_ra8_etha_rsv_words_eaeid2_to_eascr   = 21U, /**< +0x052C..0x057F gap. */
 } ra8_etha_rsv_words_t;
 
 /**
@@ -439,30 +500,33 @@ typedef struct {
   volatile uint32_t EAEIS2;                              /**< +0x0520 Error interrupt status 2.  */
   volatile uint32_t EAEIE2;                              /**< +0x0524 Error interrupt enable 2.  */
   volatile uint32_t EAEID2;                              /**< +0x0528 Error interrupt disable 2. */
-  volatile uint32_t
-    reserved52C[k_ra8_etha_rsv_words_eaeid2_to_eascr]; /**< +0x052C..0x057F Reserved.       */
-  volatile uint32_t EASCR;                             /**< +0x0580 Security configuration. */
 } r_etha_regs_t;
 
 /**
  * @enum ra8_etha_size_t
- * @brief ETHA register window total size (FSP R_ETHA0_Type, HUM Ch 32).
+ * @brief ETHA register window total size, per HUM Table 32.3 (p 1628-1630).
+ *
+ * @details
+ * The window ends at EAEID2 (+0x0528), the last row of Table 32.3, so the
+ * block is 0x52C bytes. It was previously sized 0x584 to match the FSP
+ * ``R_ETHA0_Type``, whose trailing ``EASCR`` at +0x0580 the manual does not
+ * publish anywhere in Chapter 32 (#539).
  */
 typedef enum : uint16_t {
-  k_ra8_etha_window_bytes = 0x584U, /**< Total MMIO window (FSP size). */
+  k_ra8_etha_window_bytes = 0x52CU, /**< Total MMIO window, EAMC..EAEID2. */
 } ra8_etha_size_t;
 
 /**
  * @brief Compile-time offset and size insurance for r_etha_regs_t.
  *
  * @details
- * Mirrors the FSP R_ETHA0_Type byte-for-byte (size 0x584) and matches
- * HUM Ch 32 Table 32.x. If any field drifts (e.g. a reserved gap is
+ * Every offset below is pinned to the value HUM Table 32.3 (p 1628-1630)
+ * prints for that register. If any field drifts (e.g. a reserved gap is
  * mis-sized), these assertions fire at compile time before any test
  * runs -- silent frame corruption on the wire is avoided.
  */
 static_assert(sizeof(r_etha_regs_t) == (size_t)k_ra8_etha_window_bytes,
-              "r_etha_regs_t must match FSP R_ETHA0_Type size 0x584");
+              "r_etha_regs_t must span EAMC..EAEID2 (HUM Table 32.3)");
 
 static_assert(offsetof(r_etha_regs_t, EAMC) == (size_t)k_ra8_etha_off_eamc, "EAMC offset");
 static_assert(offsetof(r_etha_regs_t, EAMS) == (size_t)k_ra8_etha_off_eams, "EAMS offset");
@@ -515,7 +579,7 @@ static_assert(offsetof(r_etha_regs_t, EATASGR) == (size_t)k_ra8_etha_off_eatasgr
 static_assert(offsetof(r_etha_regs_t, EATASHCC) == (size_t)k_ra8_etha_off_eatashcc,
               "EATASHCC offset");
 static_assert(offsetof(r_etha_regs_t, EATASSM) == (size_t)k_ra8_etha_off_eatassm, "EATASSM offset");
-static_assert(offsetof(r_etha_regs_t, EAUSMFSECN) == (size_t)k_ra8_etha_off_eausmfsec,
+static_assert(offsetof(r_etha_regs_t, EAUSMFSECN) == (size_t)k_ra8_etha_off_eausmfsecn,
               "EAUSMFSECN offset");
 static_assert(offsetof(r_etha_regs_t, EATFECN) == (size_t)k_ra8_etha_off_eatfecn, "EATFECN offset");
 static_assert(offsetof(r_etha_regs_t, EAFSECN) == (size_t)k_ra8_etha_off_eafsecn, "EAFSECN offset");
@@ -532,7 +596,27 @@ static_assert(offsetof(r_etha_regs_t, EAEID1) == (size_t)k_ra8_etha_off_eaeid1, 
 static_assert(offsetof(r_etha_regs_t, EAEIS2) == (size_t)k_ra8_etha_off_eaeis2, "EAEIS2 offset");
 static_assert(offsetof(r_etha_regs_t, EAEIE2) == (size_t)k_ra8_etha_off_eaeie2, "EAEIE2 offset");
 static_assert(offsetof(r_etha_regs_t, EAEID2) == (size_t)k_ra8_etha_off_eaeid2, "EAEID2 offset");
-static_assert(offsetof(r_etha_regs_t, EASCR) == (size_t)k_ra8_etha_off_eascr, "EASCR offset");
+static_assert(offsetof(r_etha_regs_t, EACTDQDC) == (size_t)k_ra8_etha_off_eactdqdc,
+              "EACTDQDC offset");
+static_assert(offsetof(r_etha_regs_t, EACTDQM) == (size_t)k_ra8_etha_off_eactdqm, "EACTDQM offset");
+static_assert(offsetof(r_etha_regs_t, EACTDQMLM) == (size_t)k_ra8_etha_off_eactdqmlm,
+              "EACTDQMLM offset");
+static_assert(offsetof(r_etha_regs_t, EATASCSTC1) == (size_t)k_ra8_etha_off_eatascstc1,
+              "EATASCSTC1 offset");
+static_assert(offsetof(r_etha_regs_t, EATASCSTM0) == (size_t)k_ra8_etha_off_eatascstm0,
+              "EATASCSTM0 offset");
+static_assert(offsetof(r_etha_regs_t, EATASCSTM1) == (size_t)k_ra8_etha_off_eatascstm1,
+              "EATASCSTM1 offset");
+static_assert(offsetof(r_etha_regs_t, EATASCTM) == (size_t)k_ra8_etha_off_eatasctm,
+              "EATASCTM offset");
+static_assert(offsetof(r_etha_regs_t, EATASGL1) == (size_t)k_ra8_etha_off_eatasgl1,
+              "EATASGL1 offset");
+static_assert(offsetof(r_etha_regs_t, EATASGLR) == (size_t)k_ra8_etha_off_eatasglr,
+              "EATASGLR offset");
+static_assert(offsetof(r_etha_regs_t, EATASGRR) == (size_t)k_ra8_etha_off_eatasgrr,
+              "EATASGRR offset");
+static_assert(offsetof(r_etha_regs_t, EATASRIRM) == (size_t)k_ra8_etha_off_eatasrirm,
+              "EATASRIRM offset");
 
 /**
  * @brief Get pointer to a per-port ETHA register block.

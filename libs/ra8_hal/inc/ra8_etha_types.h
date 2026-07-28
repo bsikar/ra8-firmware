@@ -142,21 +142,60 @@ typedef struct {
 } ra8_etha_cbs_param_t;
 
 /**
- * @struct ra8_etha_tas_gate_t
- * @brief TAS (802.1Qbv) gate control list entry.
+ * @struct ra8_etha_tas_entry_t
+ * @brief One TAS (802.1Qbv) RAM entry, exactly as HUM Table 32.6 defines it.
  *
  * @details
- * One entry programs ``time_units`` of bus time during which the
- * eight per-class gates take the bit pattern ``gate_state``. Bit 0
- * of ``gate_state`` is class 0; bit 7 is class 7; bit 8 is the
- * cut-through gate (TASCTGS). One entry maps to a write to
- * EATASGL0 + EATASGL1 followed by a learn pulse.
+ * HUM Table 32.6 "TAS entry format" (p 1691) gives a TAS entry exactly two
+ * fields: a one-bit gate state ``GS`` and a 28-bit gate time ``GT`` in
+ * NANOSECONDS. There is no per-class gate vector inside an entry -- the
+ * TAS RAM is partitioned per descriptor queue by ::ra8_etha_tas_queue_t,
+ * so an entry's single ``GS`` bit belongs to the queue whose block it sits
+ * in.
+ *
+ * The previous shape of this struct modelled an entry as an eight-bit
+ * per-class gate vector plus a "cut-through" flag, which is the 802.1Qbv
+ * textbook layout but not this silicon's (#539).
+ *
+ * @invariant ``gate_time_ns`` fits in 28 bits (<= 0x0FFFFFFF).
+ *
+ * @par Example:
+ * @code
+ * const ra8_etha_tas_entry_t open_then_shut[2] = {
+ *   {.gate_time_ns = 125000U, .gate_open = true},
+ *   {.gate_time_ns = 875000U, .gate_open = false},
+ * };
+ * @endcode
+ *
+ * @see ra8_etha_tas_queue_t
+ * @see ra8_etha_set_tas_schedule
  */
 typedef struct {
-  uint8_t  gate_state;  /**< 8-bit gate vector + cut-through bit (bit 8). */
-  uint32_t time_units;  /**< Duration of this entry (28 bits).            */
-  uint8_t  cut_through; /**< Non-zero -> set TASGSL bit.                  */
-} ra8_etha_tas_gate_t;
+  uint32_t gate_time_ns; /**< TAS.GT -- entry duration in ns, 28 bits. */
+  bool     gate_open;    /**< TAS.GS -- true opens this queue's gate.  */
+} ra8_etha_tas_entry_t;
+
+/**
+ * @struct ra8_etha_tas_queue_t
+ * @brief The gate-control list of one descriptor queue.
+ *
+ * @details
+ * Each of the eight descriptor queues owns a contiguous block of TAS RAM
+ * entries; ``EATASENCi.TASAEN`` records how many entries queue ``i`` has
+ * (HUM Ch 32.3.5.3 p 1647). A queue with ``count == 0`` is left out of the
+ * schedule entirely and its ``entries`` pointer is never dereferenced.
+ *
+ * @invariant ``entries`` is non-null whenever ``count`` is non-zero.
+ * @invariant The sum of ``count`` over all queues is at most
+ *            ::k_ra8_etha_tas_entries_max.
+ *
+ * @see ra8_etha_tas_entry_t
+ * @see ra8_etha_set_tas_schedule
+ */
+typedef struct {
+  const ra8_etha_tas_entry_t* entries; /**< Gate list, or nullptr when count is 0. */
+  uint16_t                    count;   /**< Entries for this queue (EATASENCi).    */
+} ra8_etha_tas_queue_t;
 
 /**
  * @typedef ra8_etha_event_fn_t

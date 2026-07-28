@@ -9,8 +9,8 @@
  * @details
  * VLAN tag insertion / extraction, RX tag filter, cut-through queue,
  * credit-based shaper (CBS / 802.1Qav), time-aware shaper (TAS /
- * 802.1Qbv), per-port MIB counters, security gate (EASCR), descriptor
- * ring sizing, software traffic accounting, and the one-shot PHY bring-up
+ * 802.1Qbv), per-port MIB counters, descriptor ring sizing, software
+ * traffic accounting, and the one-shot PHY bring-up
  * helper. Split out of the umbrella ra8_etha.h to keep that header under
  * the per-file line budget; this is a pure move of the original
  * declarations (the tests-side Ethernet header parser that once lived
@@ -185,27 +185,72 @@ ra8_etha_configure_cut_through(ra8_etha_port_t port, uint16_t qd, uint8_t dqd);
                                                ra8_etha_cbs_param_t* oper_param);
 
 /**
- * @brief Programme the time-aware shaper (TAS / 802.1Qbv) gate list.
+ * @brief Programme the time-aware shaper (TAS / 802.1Qbv) gate lists.
+ *
+ * @details
+ * Implements the TAS setting flow of HUM Figure 32.11 (Ch 32.4.2.9
+ * "TAS Setting Flow" p 1675-1676) exactly:
+ *   1. read EATASC and abort when ``TASCI`` says a configuration change is
+ *      impossible;
+ *   2. take the base TAS RAM address from ``EATASC.TASCA[23:16]``;
+ *   3. write each queue's entry count to ``EATASENCi``;
+ *   4. write the cycle start time to ``EATASCSTC0/1`` and the cycle time to
+ *      ``EATASCTC``;
+ *   5. learn every entry in turn -- ``EATASGL0`` takes the entry ADDRESS,
+ *      ``EATASGL1`` takes ``{TASGSL gate state, TASGTL gate time}``, then
+ *      ``EATASGLR.GL`` is polled until hardware clears it;
+ *   6. commit by setting ``EATASC.TASE``, with ``TASCC`` set only when TAS
+ *      was already enabled (a live schedule change).
+ *
+ * ``queues`` is indexed by descriptor queue because the TAS RAM is
+ * partitioned per queue rather than holding one interleaved list: the entry
+ * blocks are laid out in queue order from ``EATASC.TASCA`` upward, and an
+ * entry's single ``GS`` bit belongs to the queue whose block holds it.
  *
  * @param[in] port Port identifier.
- * @param[in] gate_list Array of gate-control entries.
- * @param[in] entry_count Number of entries (1..256).
- * @param[in] cycle_units Total cycle-time in clock units (32-bit).
- * @param[in] start_time Absolute cycle-start time (64-bit, lo+hi).
+ * @param[in] queues Per-queue gate lists; ::k_ra8_etha_tc_count elements.
+ * @param[in] initial_gate_states EATASIGSC bitmap -- bit q is queue q's gate
+ *            state at schedule start (HUM Ch 32.3.5.2 p 1647).
+ * @param[in] cycle_time_ns Total cycle time, written verbatim to EATASCTC.
+ * @param[in] start_time Absolute cycle-start time on the gPTP time base;
+ *            low word to EATASCSTC0, high word to EATASCSTC1.
  *
  * @return::ra8_err_t Error code.
  * @retval k_ra8_ok TAS programmed and committed.
- * @retval k_ra8_err_null_ptr gate_list is nullptr (and entry_count > 0).
- * @retval k_ra8_err_invalid_arg port out of range or entry_count > 256.
+ * @retval k_ra8_err_null_ptr ``queues`` is nullptr, or a queue declares a
+ *         non-zero count with a nullptr entry list.
+ * @retval k_ra8_err_invalid_arg port out of range, the total entry count
+ *         exceeds ::k_ra8_etha_tas_entries_max, or a gate time does not fit
+ *         ``TASGTL[27:0]``.
+ * @retval k_ra8_err_busy EATASC.TASCI is set; the port cannot accept a
+ *         configuration change right now.
+ * @retval k_ra8_err_hw_timeout EATASGLR.GL never cleared after a learn.
  *
- * @pre Port is in CONFIG mode.
- * @pre PTP timer (ra8_eth_gptp) provides the time reference.
- * @post EATASCTC = cycle_units.
- * @post EATASCSTC0/1 = start_time low/high words.
- * @post EATASENC entries set; EATASGL writes feed each entry; EATASC.TASCC
- * commits the new schedule.
+ * @pre Port is in CONFIG or OPERATION mode -- the flow is unusable in RESET
+ *      and DISABLE, per the note on Figure 32.11.
+ * @pre The TAS RAM has been reset at least once via
+ *      ::ra8_etha_tas_ram_reset.
+ * @post On success every declared entry is resident in the TAS RAM and
+ *       EATASC.TASE is set.
+ * @post On any error return no commit is issued, so a previously active
+ *       schedule keeps running.
  *
- * @note Gate-control entries each program EATASGL0/EATASGL1 in turn.
+ * @note Not thread-safe; serialise per port.
+ * @warning Gate times are in NANOSECONDS, not bus clocks: HUM Table 32.6
+ *          (p 1691) defines TAS.GT that way.
+ *
+ * @par Example:
+ * @code
+ * static const ra8_etha_tas_entry_t ptp_window[2] = {
+ *   {.gate_time_ns = 125000U, .gate_open = true},
+ *   {.gate_time_ns = 875000U, .gate_open = false},
+ * };
+ * ra8_etha_tas_queue_t queues[k_ra8_etha_tc_count] = {};
+ * queues[k_ra8_etha_tc_7].entries = ptp_window;
+ * queues[k_ra8_etha_tc_7].count   = 2U;
+ * (void)ra8_etha_set_tas_schedule(k_ra8_etha_port_0, queues, 0x80U, 1000000U, 0U);
+ * @endcode
+ *
  * @par State Machine
  * @dot
  * digraph ra8_etha_shaper_states {
@@ -218,25 +263,91 @@ ra8_etha_configure_cut_through(ra8_etha_port_t port, uint16_t qd, uint8_t dqd);
  *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
  *
  *   Idle [label="Idle"];
- *   Loading [label="Loading"];
- *   Committing [label="Committing"];
+ *   Sizing [label="Sizing\n(EATASENCi)"];
+ *   Learning [label="Learning\n(EATASGL0/1)"];
  *   Active [label="Active"];
  *
  *   __start -> Idle;
- *   Idle -> Loading [label="ra8_etha_set_tas_schedule"];
- *   Loading -> Committing [label="EATASC.TASCC=1"];
- *   Committing -> Active [label="EATASRIRM.TASRR observed\ncleared"];
- *   Active -> Idle [label="EATASC.TASE=0"];
+ *   Idle -> Sizing [label="EATASC.TASCI == 0"];
+ *   Idle -> Idle [label="TASCI == 1\nk_ra8_err_busy"];
+ *   Sizing -> Learning [label="EATASCTC written"];
+ *   Learning -> Learning [label="EATASGLR.GL clears"];
+ *   Learning -> Active [label="EATASC.TASE = 1"];
+ *   Active -> Idle [label="ra8_etha_enable_tas(0)"];
  * }
  * @enddot
- * @see ra8_etha_get_status
+ * @see ra8_etha_tas_ram_reset
+ * @see ra8_etha_read_tas_entry
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_etha_set_tas_schedule(ra8_etha_port_t            port,
-                                                  const ra8_etha_tas_gate_t* gate_list,
-                                                  uint16_t                   entry_count,
-                                                  uint32_t                   cycle_units,
-                                                  uint64_t                   start_time);
+[[nodiscard]] ra8_err_t ra8_etha_set_tas_schedule(ra8_etha_port_t             port,
+                                                  const ra8_etha_tas_queue_t* queues,
+                                                  uint8_t                     initial_gate_states,
+                                                  uint32_t                    cycle_time_ns,
+                                                  uint64_t                    start_time);
+
+/**
+ * @brief Reset the TAS RAM and wait for it to report ready.
+ *
+ * @details
+ * The TAS RAM reset flow of HUM Figure 32.8 (Ch 32.4.2.6 "TAS RAM Reset
+ * Flow" p 1667): write 1 to ``EATASRIRM.TASRIOG``, then poll until
+ * ``EATASRIRM.TASRR`` reads 1. Hardware clears ``TASRIOG`` itself when the
+ * initialisation completes. Entries learned before a reset do not survive
+ * it, so this runs once during bring-up, ahead of any schedule.
+ *
+ * @param[in] port Port identifier.
+ *
+ * @return::ra8_err_t Error code.
+ * @retval k_ra8_ok TAS RAM initialised; EATASRIRM.TASRR reads 1.
+ * @retval k_ra8_err_invalid_arg port out of range.
+ * @retval k_ra8_err_hw_timeout TASRR never asserted within budget.
+ *
+ * @pre Port previously brought up via ::ra8_etha_init.
+ * @pre Port is not in RESET or DISABLE mode; the flow is unusable there.
+ * @post On success the TAS RAM holds no entries and TASRR reads 1.
+ * @post On timeout no schedule is committed.
+ *
+ * @note Not thread-safe; serialise per port.
+ * @see ra8_etha_set_tas_schedule
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_etha_tas_ram_reset(ra8_etha_port_t port);
+
+/**
+ * @brief Read one TAS RAM entry back out of hardware.
+ *
+ * @details
+ * The TAS entry read flow of HUM Figure 32.15 (Ch 32.4.2.13 "TAS Entry i
+ * Read Flow" p 1678): write the address to ``EATASGR.TASGAR``, poll until
+ * ``EATASGRR.GR`` clears, then take ``TASGSR`` and ``TASGTR[27:0]``.
+ *
+ * This is the read-back that lets a caller assert something real. Without
+ * it, the only available evidence that a schedule was programmed is that
+ * the programming calls returned ``k_ra8_ok`` -- which they also did while
+ * the driver was writing gate states into the entry-address register.
+ *
+ * @param[in] port Port identifier.
+ * @param[in] address TAS RAM entry address (0..::k_ra8_etha_tas_addr_max).
+ * @param[out] out Entry read back from that address.
+ *
+ * @return::ra8_err_t Error code.
+ * @retval k_ra8_ok ``*out`` holds the entry at ``address``.
+ * @retval k_ra8_err_null_ptr ``out`` is nullptr.
+ * @retval k_ra8_err_invalid_arg port out of range.
+ * @retval k_ra8_err_hw_timeout EATASGRR.GR never cleared within budget.
+ *
+ * @pre Port previously brought up via ::ra8_etha_init.
+ * @pre Port is not in RESET or DISABLE mode.
+ * @post On success ``*out`` reflects TAS RAM contents at ``address``.
+ * @post Hardware state is unchanged apart from EATASGR.
+ *
+ * @note Not thread-safe; serialise per port.
+ * @see ra8_etha_set_tas_schedule
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_etha_read_tas_entry(ra8_etha_port_t port, uint8_t address, ra8_etha_tas_entry_t* out);
 
 /**
  * @brief Enable or disable the TAS scheduler (main switch).
@@ -300,26 +411,6 @@ ra8_etha_configure_cut_through(ra8_etha_port_t port, uint16_t qd, uint8_t dqd);
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_etha_clear_stats(ra8_etha_port_t port);
-
-/**
- * @brief Configure the per-port security gate (EASCR).
- *
- * @param[in] port Port identifier.
- * @param[in] mask Verbatim EASCR write (bit fields MRSL/TRSL/...).
- *
- * @return::ra8_err_t Error code.
- * @retval k_ra8_ok EASCR = mask.
- * @retval k_ra8_err_invalid_arg port out of range.
- *
- * @pre Port previously brought up via ra8_etha_init.
- * @pre Caller composed mask using EASCR field positions.
- * @post EASCR = mask.
- * @post Subsequent secure-only register writes are gated per the mask.
- *
- * @note Used to lock the agent to TrustZone-S accesses only.
- * @since 0.1.0
- */
-[[nodiscard]] ra8_err_t ra8_etha_set_security(ra8_etha_port_t port, uint32_t mask);
 
 /**
  * @brief Configure the per-port descriptor-ring sizing.

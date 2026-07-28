@@ -44,13 +44,18 @@
  * - Cut-through queue (EACTQC + EACTDQDC) for low-latency forwarding
  * - Credit-based shaper (CBS) admin / oper registers (EACAEC, EACAIVCq,
  * EACAULCq, EACOEM, EACOIVMq, EACOULMq, EACGSM)
- * - Time-aware shaper (TAS / 802.1Qbv) gate-control programming
+ * - Time-aware shaper (TAS / 802.1Qbv): per-queue gate lists, TAS RAM
+ * reset and entry read-back (EATASC, EATASIGSC, EATASENCi, EATASGL0/1,
+ * EATASGLR, EATASGR, EATASGRR, EATASRIRM)
  * - Per-port full statistics (EAUSMFSECN, EATFECN, EAFSECN, EADQOECN,
  * EADQSECN) and MIB counter snapshot
  * - All three error-IRQ blocks (EAEIS0/E/D0, EAEIS1/E/D1, EAEIS2/E/D2)
  * -- TX-done, RX-frame, error and link-change events
  * - DMA-descriptor-ring management hooks for TX (queue-depth + monitor)
- * - Security configuration (EASCR) gating MRSL / TRSL / TGRSL etc.
+ *
+ * There is no per-port security-gate register: HUM Ch 32 publishes none,
+ * and the ``EASCR`` the driver used to write was an FSP header artefact
+ * (#539).
  *
  * Per-port state is kept in a small fixed-size table; both port
  * instances (m = 0, 1) share this driver via the::ra8_etha_port_t

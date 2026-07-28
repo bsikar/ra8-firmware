@@ -138,7 +138,7 @@ ra8_err_t ra8_etha_descriptor_ring_init(ra8_etha_port_t channel,
   }
   volatile r_etha_regs_t* reg = ra8_etha(channel);
   for (uint8_t i = 0U; i < k_ra8_etha_tc_count; ++i) {
-    /* HUM Ch 32.3 "EATDQDCq : Per-class TX Queue Depth Cfg" p 1641 */
+    /* HUM Ch 32.3.2.7 "EATDQDCq" p 1636 */
     reg->EATDQDC[i] = (uint32_t)depth & k_ra8_etha_mask_dqd;
   }
   return k_ra8_ok;

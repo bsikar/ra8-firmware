@@ -7,7 +7,7 @@
 # detector for it (cite_check.py --require-cites) ran in no gate at all, so
 # the rule was aspirational and the debt went unmeasured (#534).
 #
-# Total at this baseline: 2883 uncited access(es)
+# Total at this baseline: 2869 uncited access(es)
 # across 251 file(s).
 #
 # The gate fails on any INCREASE, so the debt is frozen and can only be
@@ -89,7 +89,7 @@ libs/ra8_hal/src/ra8_eth.c	2
 libs/ra8_hal/src/ra8_eth_coma.c	2
 libs/ra8_hal/src/ra8_eth_gwca.c	2
 libs/ra8_hal/src/ra8_eth_mfwd.c	2
-libs/ra8_hal/src/ra8_etha.c	7
+libs/ra8_hal/src/ra8_etha.c	4
 libs/ra8_hal/src/ra8_etha_stats.c	2
 libs/ra8_hal/src/ra8_gpt.c	76
 libs/ra8_hal/src/ra8_i2c.c	6
@@ -189,7 +189,7 @@ tests/test_ra8_eth_coma.c	3
 tests/test_ra8_eth_gptp.c	24
 tests/test_ra8_eth_gwca.c	3
 tests/test_ra8_eth_mfwd.c	3
-tests/test_ra8_etha.c	79
+tests/test_ra8_etha.c	68
 tests/test_ra8_etha_mcdc.c	1
 tests/test_ra8_etha_rmac_edge_cases.c	13
 tests/test_ra8_etha_stats_cov.c	4

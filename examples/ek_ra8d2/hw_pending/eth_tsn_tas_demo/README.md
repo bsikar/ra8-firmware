@@ -11,10 +11,13 @@ Recon #134 named `ra8_tsn` as the "time-sensitive networking" driver, but
 demonstrated by `adc_diag_tsn_demo`, #183). The real TSN networking surface on
 this part is the **ETHA shaper block**, and that is what this example drives:
 
-- `ra8_etha_set_tas_schedule` / `ra8_etha_enable_tas` -- the time-aware shaper
-  (TAS / 802.1Qbv scheduled traffic), programmed with a 2-entry gate-control
-  list (window 0 opens the class-7 PTP/control gate; window 1 opens the
-  best-effort classes 0-6).
+- `ra8_etha_tas_ram_reset` / `ra8_etha_set_tas_schedule` /
+  `ra8_etha_read_tas_entry` / `ra8_etha_enable_tas` -- the time-aware shaper
+  (TAS / 802.1Qbv scheduled traffic). Descriptor queue 7 (PTP / control) gets a
+  2-entry gate list, one window open and one shut, and every entry is read back
+  out of the TAS RAM and compared. A TAS entry on this part carries a single
+  gate-state bit for the queue whose TAS RAM block holds it (HUM Table 32.6
+  p 1691), not an interleaved per-class gate vector.
 - `ra8_etha_configure_cbs` / `ra8_etha_get_cbs_state` -- the credit-based shaper
   (CBS / 802.1Qav) on traffic class 2 (AVB class A).
 - `ra8_etha_get_status` -- the TAS cycle-time monitor.
@@ -37,12 +40,17 @@ Console output per cycle:
 
 ## What the verdict proves, and what it does not
 
-`tsn: schedule PASS` requires two things:
+`tsn: schedule PASS` requires three things:
 
 1. **A real hardware assertion.** The 78-bit gPTP counter is sampled either
    side of a 200 ms SysTick-timed window and must have advanced by that
    interval to within 10 %. If the time base is not running, the app fails.
-2. **That every shaper call returned `k_ra8_ok`.** This half proves only that
+2. **A second real hardware assertion.** Every TAS entry programmed is read
+   back out of the TAS RAM through `EATASGR` / `EATASGRR` and must match the
+   gate state and gate time that were written. Added with #539, when the
+   driver turned out to be writing gate states into `EATASGL0` -- whose field
+   is the entry ADDRESS -- while returning `k_ra8_ok` on every call.
+3. **That every shaper call returned `k_ra8_ok`.** This half proves only that
    the arguments were accepted and the register writes were issued. ETHA stays
    in CONFIG mode here, so **no frame is ever transmitted and nothing about
    shaped egress is measured.**
@@ -81,8 +89,8 @@ assertion. One is now closed and one is not:
   never moves it to `OPERATION`, never opens a queue, and never queues a frame.
   A shaper with no egress produces nothing to measure.
 
-So `tsn: schedule PASS` says the time base runs and the shaper *programming*
-calls returned `k_ra8_ok`; it still says nothing about shaped traffic.
+So `tsn: schedule PASS` says the time base runs and the TAS RAM holds the
+entries this app programmed; it still says nothing about shaped traffic.
 Promotion needs this app extended to actually transmit -- not a bench change.
 
 Build:

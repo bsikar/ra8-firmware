@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 13109
+# total findings: 13127
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -362,7 +362,7 @@ libs/ra8_hal/inc/ra8_crc_regs.h	misra-c2012-19.2	2
 libs/ra8_hal/inc/ra8_dac_b_regs.h	misra-c2012-15.5	1
 libs/ra8_hal/inc/ra8_dmac_regs.h	misra-c2012-15.5	1
 libs/ra8_hal/inc/ra8_dotf_regs.h	misra-c2012-15.5	1
-libs/ra8_hal/inc/ra8_etha_regs.h	misra-c2012-10.4	50
+libs/ra8_hal/inc/ra8_etha_regs.h	misra-c2012-10.4	60
 libs/ra8_hal/inc/ra8_etha_regs.h	misra-c2012-11.4	1
 libs/ra8_hal/inc/ra8_ether_regs.h	misra-c2012-10.4	13
 libs/ra8_hal/inc/ra8_ether_regs.h	misra-c2012-15.5	1
@@ -547,13 +547,15 @@ libs/ra8_hal/src/ra8_eth_mfwd.c	misra-c2012-15.5	4
 libs/ra8_hal/src/ra8_eth_mfwd.c	misra-c2012-8.4	9
 libs/ra8_hal/src/ra8_etha.c	misra-c2012-10.6	2
 libs/ra8_hal/src/ra8_etha.c	misra-c2012-10.8	1
-libs/ra8_hal/src/ra8_etha.c	misra-c2012-12.1	5
+libs/ra8_hal/src/ra8_etha.c	misra-c2012-12.1	4
 libs/ra8_hal/src/ra8_etha.c	misra-c2012-12.2	1
-libs/ra8_hal/src/ra8_etha.c	misra-c2012-15.5	53
+libs/ra8_hal/src/ra8_etha.c	misra-c2012-15.5	48
 libs/ra8_hal/src/ra8_etha.c	misra-c2012-17.3	1
-libs/ra8_hal/src/ra8_etha.c	misra-c2012-8.4	29
+libs/ra8_hal/src/ra8_etha.c	misra-c2012-8.4	26
 libs/ra8_hal/src/ra8_etha_stats.c	misra-c2012-15.5	14
 libs/ra8_hal/src/ra8_etha_stats.c	misra-c2012-8.4	4
+libs/ra8_hal/src/ra8_etha_tas.c	misra-c2012-15.5	14
+libs/ra8_hal/src/ra8_etha_tas.c	misra-c2012-8.4	4
 libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-15.5	19
 libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-15.7	1
 libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-8.4	6
@@ -806,7 +808,7 @@ libs/ra8_hal/src/ra8_spi_b_target.c	misra-c2012-15.5	7
 libs/ra8_hal/src/ra8_spi_b_target.c	misra-c2012-8.4	2
 libs/ra8_hal/src/ra8_spi_b_target.c	misra-c2012-8.9	1
 libs/ra8_hal/src/ra8_sram.c	misra-c2012-14.2	4
-libs/ra8_hal/src/ra8_sram.c	misra-c2012-15.5	41
+libs/ra8_hal/src/ra8_sram.c	misra-c2012-15.5	40
 libs/ra8_hal/src/ra8_sram.c	misra-c2012-8.9	2
 libs/ra8_hal/src/ra8_sram_security.c	misra-c2012-11.1	1
 libs/ra8_hal/src/ra8_sram_security.c	misra-c2012-15.5	13
