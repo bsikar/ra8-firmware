@@ -1,0 +1,46 @@
+---
+# win-ci -- the Windows/WSL2 build host.
+#
+# STRUCTURAL facts about this machine only. Nothing here is a capacity knob:
+# instance count, per-instance CPU and memory, the WSL VM caps, the labels and
+# the quiet-hours window are declared in this host's block in infra/fleet.yml
+# and arrive as extra-vars. The fleet-declaration gate fails this file if it
+# re-declares any of them, so "how much of the gaming PC may CI use" has
+# exactly one answer in exactly one place.
+#
+# The machine: AMD Ryzen 9 7900X (12 physical cores / 24 threads, Zen 4),
+# 31 GiB RAM, Windows 11 build 26200, WSL 2.6.3 running Ubuntu 24.04. It is by
+# a wide margin the fastest host in the fleet -- and it is also the owner's
+# daily driver and gaming PC, which is why it is the one host that declares
+# quiet hours.
+
+# --- Credentials ------------------------------------------------------------
+
+# No PAT on this host, ever -- set empty EXPLICITLY rather than left to the
+# role default, which templates `{{ ci_runner_github_pat }}` and would resolve
+# to an undefined variable here. Registration and removal use short-lived
+# tokens passed on the command line instead; see the ci_runner_docker
+# credentials defaults for why this machine is treated differently.
+#
+# The capacity script is built around the same rule: it answers "is this
+# instance busy" from `docker top`, locally, so the quiet-hours timer runs
+# unattended on this machine without any GitHub credential at all.
+ci_runner_docker_github_pat: ""
+
+# --- Storage ----------------------------------------------------------------
+
+# Plain directories on the distro's own ext4 root, NOT under /mnt/c.
+#
+# This is a throughput decision, not a tidiness one: /mnt/c is drvfs, a
+# 9P/virtio translation layer to NTFS, and it is roughly an order of magnitude
+# slower for the many-small-files work a checkout and a build are. Putting the
+# runner's _work tree there would hand back most of the CPU advantage this host
+# was added for.
+ci_runner_docker_root: "/opt/ra8-ci-runner"
+
+# There is no ZFS here, so nothing to create through a middleware and no pool
+# to keep CI off. The role's storage asserts stay armed -- they resolve
+# whatever actually backs these paths -- but with nothing forbidden they pass.
+ci_runner_docker_dataset: ""
+ci_runner_docker_forbidden_pools: []
+ci_runner_docker_forbidden_mounts: []

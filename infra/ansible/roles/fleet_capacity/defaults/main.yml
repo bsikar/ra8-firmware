@@ -1,0 +1,80 @@
+---
+# fleet_capacity role defaults.
+#
+# Installs the ONE drain-aware capacity script on a runner host, plus -- when
+# the host declares a quiet-hours window in infra/fleet.yml -- the systemd
+# timer that applies it unattended.
+#
+# Every value here is DERIVED from infra/fleet.yml by scripts/dev/fleet.py and
+# passed in as extra-vars. The defaults exist so the role still runs standalone
+# and so `ansible-doc`-style reading of it is honest; they are not a second
+# place to tune a host. The fleet-declaration gate fails a host_vars file that
+# re-declares any of them.
+
+# --- what to install --------------------------------------------------------
+
+# The script this role deploys. There is exactly one copy in the tree, and both
+# the unattended timer and every control-node `make infra-scale` run execute
+# the same file -- the latter by piping it over ssh, so an operator command
+# always runs the version in the checkout.
+fleet_capacity_src: "{{ playbook_dir }}/../../../scripts/ci/fleet_capacity.sh"
+
+# Where it lands on the host.
+#
+# NOT /usr/local/bin, and that is not a preference. TrueNAS SCALE mounts its
+# appliance root READ-ONLY (`findmnt -no OPTIONS /` reports `ro`), so a role
+# that installed there would fail on the NAS -- or, worse, be given a
+# `failed_when: false` and silently install nothing. Under the runner root the
+# script sits on the same pool dataset as the runner homes, which is both
+# writable and survives a SCALE upgrade.
+fleet_capacity_dir: "{{ ci_runner_docker_root | default('/etc/ra8-fleet') }}/capacity"
+fleet_capacity_bin: "{{ fleet_capacity_dir }}/ra8-fleet-capacity"
+fleet_capacity_env: "{{ fleet_capacity_dir }}/capacity.env"
+
+# --- what the script needs to know ------------------------------------------
+
+# 'docker' for long-lived runner containers, 'k8s' for an ARC scale set.
+fleet_capacity_kind: "docker"
+
+# How the script must invoke Docker here: plain where the connecting user owns
+# the socket, `sudo docker` where it does not.
+fleet_capacity_docker: "docker"
+
+# The instance containers, in instance order, space separated. This is the list
+# the drain walks, so it has to match what ci_runner_docker actually created --
+# fleet.py derives both from the same declaration.
+fleet_capacity_containers: ""
+
+# ARC scale set to move, for the k8s kind.
+fleet_capacity_kubectl: "k3s kubectl"
+fleet_capacity_namespace: "arc-runners"
+fleet_capacity_scale_set: "ra8-ci"
+
+# --- quiet hours ------------------------------------------------------------
+
+# False when the host declares no window. The role then REMOVES any timer a
+# previous declaration installed: deleting a `quiet_hours:` block must undo it,
+# not orphan a timer that keeps standing the host down every Friday with
+# nothing in the tree left to explain why.
+fleet_capacity_enabled: false
+
+fleet_capacity_full_instances: 0
+fleet_capacity_quiet_instances: 0
+fleet_capacity_quiet_start: ""
+fleet_capacity_quiet_end: ""
+fleet_capacity_quiet_days: ""
+
+# How often the timer asks "what should this host be right now".
+#
+# Level-triggered on purpose -- see the long note in fleet_capacity.sh. The
+# cost of a coarse interval is bounded: a host enters or leaves its window up
+# to this late. Ten minutes is small against an evening-length window and
+# cheap enough to run indefinitely (the check is two `docker inspect` calls per
+# instance when nothing needs changing).
+fleet_capacity_interval: "10min"
+
+# systemd unit names. Fixed rather than per-host: one host runs one capacity
+# timer, and a name that varied would make `systemctl list-timers` on an
+# unfamiliar box harder to read, not easier.
+fleet_capacity_unit: "ra8-fleet-capacity"
+fleet_capacity_units_dir: "/etc/systemd/system"
