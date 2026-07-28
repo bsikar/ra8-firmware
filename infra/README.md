@@ -287,6 +287,30 @@ decisions are timestamp comparisons. Docker is therefore ordered after
 unless-stopped`, the daemon's start time is exactly when this host begins
 accepting jobs.
 
+**What survives a reboot, stated precisely.** WSL does not start distros on
+boot, so a Windows Scheduled Task (`ra8-wsl-ci-runner-autostart`) starts it;
+that starts systemd, which starts docker, which starts the three runner
+containers.
+
+*Proven.* Running that task against a stopped distro brings the entire chain
+back -- distro, systemd, docker, all three containers -- in **under 5 seconds**.
+Verified by `wsl --shutdown` followed by `schtasks /Run` and nothing else
+touching the machine.
+
+*Not proven, and cannot be as configured.* That the trigger fires after an
+actual power cycle. A WSL distro is registered under the owning account's HKCU,
+so a boot-time task running as SYSTEM cannot start this distro at all -- `wsl
+-d Ubuntu` in SYSTEM's context does not find it. Running a boot-triggered task
+as the owning user instead requires "run whether user is logged on or not",
+which stores that user's Windows password, and this is a personal machine.
+This host also has `AutoAdminLogon` disabled, so after a reboot it sits at the
+login screen with all three runners offline until somebody logs in.
+
+Closing that gap needs an **owner decision, not more code**: either enable
+automatic logon for the account, or supply a credential so the task can be
+recreated as `ONSTART` with `/RU` + `/RP`. Until then reboot recovery here is
+manual, and the pool degrades onto its other two hosts rather than breaking.
+
 ### Storage: CI I/O is kept off a named pool, by assertion
 
 The NAS this role was first deployed to has a **DEGRADED** 100T `raid-z2` pool:
