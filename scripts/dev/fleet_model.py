@@ -19,16 +19,29 @@ validator from the mapping is how a checker ends up policing a shape the
 dispatcher no longer produces -- the exact drift this tree keeps finding in its
 own tooling. :mod:`fleet` (the CLI) and the ``fleet-declaration`` gate both
 import this module, so there is one definition and two front doors.
+
+The one thing that is NOT here is HOW A MACHINE IS REACHED -- its address, its
+login user, its ProxyJump chain, the generated ``~/.ssh`` fragment and the
+rules that keep an ssh alias out of the declaration. That is one coherent
+responsibility and it lives in :mod:`fleet_reach`, which this module imports
+and drives: :func:`validate` runs its rules and :func:`inventory_entry` uses
+its hop resolution, so the same two front doors still reach one definition of
+each.
 """
 
 from __future__ import annotations
 
 import shlex
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import fleet_reach as fr
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FLEET_FILE = REPO_ROOT / "infra" / "fleet.yml"
@@ -322,23 +335,6 @@ def container_names(host: dict[str, Any]) -> list[str]:
     return [f"{CONTAINER_BASE}-{i}" for i in range(1, count + 1)]
 
 
-def ssh_target(host: dict[str, Any]) -> list[str]:
-    """The ``ssh`` argv prefix that reaches a host from the control node.
-
-    Args:
-        host: One host's declaration.
-
-    Returns:
-        A complete ssh command up to but not including the remote command.
-    """
-    connect = host["connect"]
-    argv = ["ssh", "-o", "ConnectTimeout=15", "-o", "BatchMode=yes"]
-    if connect.get("jump"):
-        argv += ["-J", str(connect["jump"])]
-    argv.append(str(connect["ssh"]))
-    return argv
-
-
 def remote_shell(host: dict[str, Any]) -> str:
     """The remote command that reads a shell script on stdin and runs it.
 
@@ -541,25 +537,32 @@ def role_vars(name: str, host: dict[str, Any]) -> dict[str, Any]:
     return {**_runner_vars(name, host), **_dev_slice_vars(host), **_capacity_vars(host)}
 
 
-def _inventory_entry(name: str, host: dict[str, Any]) -> str:
+def inventory_entry(data: dict[str, Any], name: str) -> str:
     """One inventory line for a host.
 
     Args:
+        data: The parsed declaration.
         name: Fleet host name.
-        host: That host's declaration.
 
     Returns:
         The ``<name> ansible_host=... ansible_user=...`` line, or a
         ``connection=local`` line for a WSL host, whose play runs inside the
         distro because WSL has no SSH daemon of its own.
     """
+    host = data["hosts"][name]
     if CLASSES[host["class"]].transport == "wsl":
         return f"{name} ansible_connection=local"
-    target = str(host["connect"]["ssh"])
-    user, _, addr = target.rpartition("@")
-    entry = f"{name} ansible_host={addr}"
-    if user:
-        entry += f" ansible_user={user}"
+    connect = host["connect"]
+    entry = f"{name} ansible_host={connect['address']}"
+    if connect.get("user"):
+        entry += f" ansible_user={connect['user']}"
+    hops = fr.jump_chain(data, name)
+    if hops:
+        # Ansible reaches a jumped host through its own ssh invocation, not
+        # through this module's, so the hops have to be handed to it too --
+        # otherwise a converge would be the one path that still needed an alias
+        # in somebody's ~/.ssh/config to work.
+        entry += f" ansible_ssh_common_args='-o ProxyJump={','.join(hops)}'"
     return entry
 
 
@@ -578,7 +581,7 @@ def render_inventory(data: dict[str, Any]) -> str:
     """
     groups: dict[str, list[str]] = {}
     for name, host in data["hosts"].items():
-        entry = _inventory_entry(name, host)
+        entry = inventory_entry(data, name)
         for play in host["provisions"]:
             group = groups.setdefault(PLAYS[play].group, [])
             if entry not in group:
@@ -609,8 +612,6 @@ def _check_shape(name: str, host: dict[str, Any]) -> list[str]:
     bad = []
     if host.get("class") not in CLASSES:
         return [f"{name}: class '{host.get('class')}' is not one of {sorted(CLASSES)}"]
-    if not (host.get("connect") or {}).get("ssh"):
-        bad.append(f"{name}: connect.ssh is required -- nothing can reach it without one")
     provisions = host.get("provisions") or []
     if not provisions:
         bad.append(
@@ -622,7 +623,7 @@ def _check_shape(name: str, host: dict[str, Any]) -> list[str]:
         if p not in PLAYS
     ]
     if CLASSES[host["class"]].transport == "wsl":
-        missing = [k for k in ("distro", "windows_user") if not host["connect"].get(k)]
+        missing = [k for k in ("distro", "windows_user") if not (host.get("connect") or {}).get(k)]
         bad += [f"{name}: a docker_wsl host needs connect.{k}" for k in missing]
     return bad
 
@@ -945,7 +946,7 @@ def validate(data: dict[str, Any], host_vars_dir: Path | None = None) -> list[st
     if problems:
         return problems
     for name, host in data["hosts"].items():
-        shape = _check_shape(name, host)
+        shape = _check_shape(name, host) + fr.check_connect(name, host, data["hosts"])
         problems += shape
         if shape or host.get("class") not in CLASSES:
             continue

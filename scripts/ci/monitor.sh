@@ -72,6 +72,10 @@ readonly RA8_CI_EXIT_PASS=0
 readonly RA8_CI_EXIT_FAIL=1
 readonly RA8_CI_EXIT_UNKNOWN=3
 
+# The checkout this script lives in, so `runner-status` can ask the fleet
+# declaration where a runner box actually is rather than trusting an ssh alias.
+RA8_CI_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 RA8_CI_REPO="${RA8_CI_REPO:-bsikar/ra8-firmware}"
 RA8_CI_STATE_DIR="${RA8_CI_STATE_DIR:-/var/tmp/ra8-ci-monitor}"
 RA8_CI_STATE="$RA8_CI_STATE_DIR/status.json"
@@ -596,10 +600,33 @@ EOF
 # Pull the most recent job records straight off the runner's own worker logs.
 # One record per line, "result|workflow|job|sha". Costs zero GitHub API quota,
 # which is the whole point of this command.
+
+# The ssh argv that reaches a runner box.
+#
+# A fleet host is dialled through infra/fleet.yml -- its declared address, user
+# and jump -- NOT by the bare name. `truenas` is an ~/.ssh/config alias on
+# exactly one laptop, so this command (the one CLAUDE.md sends you to when the
+# GitHub quota is gone) died on "Could not resolve hostname truenas" from the
+# dev box while the machine answered fine on its address (#526). Anything that
+# is not a declared host is passed through as a raw ssh destination, so
+# --host user@1.2.3.4 still works for a box outside the fleet.
+_runner_ssh_argv() {
+  local host="$1" argv
+  if argv="$(python3 "${RA8_CI_ROOT}/scripts/dev/fleet.py" ssh-target "$host" 2>/dev/null)"; then
+    # Word splitting is deliberate and safe: the fleet-declaration gate rejects
+    # an address, user or jump containing whitespace.
+    # shellcheck disable=SC2206
+    RA8_RUNNER_SSH=(${argv})
+    return 0
+  fi
+  RA8_RUNNER_SSH=(ssh -o ConnectTimeout=10 -o BatchMode=yes "$host")
+}
+
 _runner_status_fetch() {
   local host="$1" glob="$2" limit="$3"
+  _runner_ssh_argv "$host"
   # shellcheck disable=SC2029  # deliberate: expand $glob/$limit locally.
-  ssh -o ConnectTimeout=10 -o BatchMode=yes "$host" "
+  "${RA8_RUNNER_SSH[@]}" "
     for f in \$(ls -t $glob 2>/dev/null | head -$limit); do
       res=\$(grep -oE 'Job result after all job steps finish: [A-Za-z]+' \"\$f\" 2>/dev/null | tail -1 | awk '{print \$NF}')
       name=\$(grep -oE '\"jobDisplayName\": \"[^\"]+\"' \"\$f\" 2>/dev/null | head -1 | cut -d'\"' -f4)

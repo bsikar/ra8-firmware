@@ -15,14 +15,25 @@ so adding a machine really is adding a block:
     fleet.py show <host>             one host in full, with its derived vars
     fleet.py validate                the fleet-declaration gate's check
     fleet.py inventory               write infra/ansible/inventory/hosts.ini
+    fleet.py ssh-config [--install]  the fleet's host aliases, for ~/.ssh
+    fleet.py ssh-target <host>       the ssh command that reaches one host
     fleet.py check <host> [play]     dry run -- report, change nothing
     fleet.py apply <host> [play]     converge, draining first where needed
     fleet.py remove <host>           tear down (classes that implement it)
     fleet.py status [host]           what each host is running, right now
     fleet.py scale <host> <n>        live capacity change; shrinking DRAINS
 
-``list``, ``show``, ``validate``, ``inventory`` and ``status`` are read-only
-and safe at any time. ``apply``, ``remove`` and ``scale`` are not.
+``list``, ``show``, ``validate``, ``inventory``, ``ssh-config``,
+``ssh-target`` and ``status`` are read-only and safe at any time (bar
+``ssh-config --install``, which writes under ``~/.ssh``). ``apply``, ``remove``
+and ``scale`` are not.
+
+Reachability is DERIVED, not assumed. Every host declares a literal address, a
+login user and an optional jump through another fleet host, so every command
+here works from a machine whose ``~/.ssh/config`` is empty. ``ssh-config``
+generates the friendly aliases FROM that declaration, which is what makes any
+machine a control node in one command instead of by hand-copying somebody's
+private config (#526).
 
 Why capacity is a first-class verb here rather than only an Ansible run: a
 converge on a container host recreates containers, which cancels whatever they
@@ -44,6 +55,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import fleet_model as fm
+import fleet_reach as fr
 
 CAPACITY_SCRIPT = fm.REPO_ROOT / "scripts" / "ci" / "fleet_capacity.sh"
 
@@ -111,7 +123,7 @@ def _run(argv: list[str], stdin: str | bytes | None = None, cwd: Path | None = N
 WSL_STAGE = "/opt/ra8-infra"
 
 
-def _push_to_wsl(host: dict[str, Any]) -> int:
+def _push_to_wsl(data: dict[str, Any], name: str) -> int:
     """Copy the playbooks and the capacity script into a WSL host's distro.
 
     WSL has no SSH daemon of its own, and giving a personal daily-driver
@@ -121,12 +133,14 @@ def _push_to_wsl(host: dict[str, Any]) -> int:
     hand-run pipeline in the playbook's header comment.
 
     Args:
-        host: The ``docker_wsl`` host's declaration.
+        data: The parsed declaration.
+        name: The ``docker_wsl`` host's fleet name.
 
     Returns:
         0 on success, the first failing step's status otherwise.
     """
-    ssh = fm.ssh_target(host)
+    host = data["hosts"][name]
+    ssh = fr.ssh_target(data, name)
     shell = fm.remote_shell(host)
     prepare = f"set -eu\nrm -rf {WSL_STAGE}\nmkdir -p {WSL_STAGE}\n"
     rc = _run([*ssh, shell], stdin=prepare)
@@ -197,7 +211,10 @@ def _capacity(data: dict[str, Any], name: str, args: list[str]) -> int:
     # shell before `wsl -e` sees it, and quoting does not survive that. The
     # capacity script's flags are shaped so none is ever needed.
     remote = f"{fm.remote_shell(host)} -- {' '.join(flags)} {' '.join(args)}"
-    return _run([*fm.ssh_target(host), remote], stdin=CAPACITY_SCRIPT.read_text(encoding="utf-8"))
+    return _run(
+        [*fr.ssh_target(data, name), remote],
+        stdin=CAPACITY_SCRIPT.read_text(encoding="utf-8"),
+    )
 
 
 def cmd_list(data: dict[str, Any], _args: argparse.Namespace) -> int:
@@ -228,6 +245,7 @@ def cmd_list(data: dict[str, Any], _args: argparse.Namespace) -> int:
     print("make infra-check HOST=<host>       dry run (changes nothing)")
     print("make infra-apply HOST=<host>       converge to the declaration")
     print("make infra-scale HOST=<host> N=<n> live capacity change; shrinking DRAINS")
+    print("make infra-ssh-config              name these machines in your ~/.ssh/config")
     print("docs/CI_FLEET.md                   add a host, retune one, quiet hours")
     return 0
 
@@ -247,7 +265,10 @@ def cmd_show(data: dict[str, Any], args: argparse.Namespace) -> int:
     print(f"{args.host}: {host.get('summary', '')}")
     print(f"  class          {host['class']}  ({cls.summary})")
     print(f"  transport      {cls.transport}")
-    print(f"  reachable as   {' '.join(fm.ssh_target(host)[5:])}")
+    print(f"  reachable as   {fr.ssh_destination(host)}")
+    hops = fr.jump_chain(data, args.host)
+    if hops:
+        print(f"  via            {' -> '.join(hops)}")
     print(f"  provisions     {', '.join(host['provisions'])}")
     if cls.runner:
         want = fm.recommended_instances(data["sizing"], host["budget"])
@@ -311,6 +332,85 @@ def cmd_inventory(data: dict[str, Any], args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ssh_config(data: dict[str, Any], args: argparse.Namespace) -> int:
+    """Print, or install, the fleet's generated SSH config fragment.
+
+    ``--install`` is the whole of making a machine a control node: it writes
+    ``~/.ssh/ra8-fleet.config`` and puts one ``Include`` line at the TOP of
+    ``~/.ssh/config``. Top, because ssh takes the FIRST value it obtains for
+    each keyword -- so the declaration wins over a stale hand-written alias of
+    the same name, while any keyword the fragment does not set (an
+    ``IdentityFile``, a ``Port``) still comes from the operator's own block
+    below it.
+
+    Args:
+        data: The parsed declaration.
+        args: Parsed command line; uses ``args.install``.
+
+    Returns:
+        0 on success, non-zero when the fragment could not be written.
+    """
+    body = fr.render_ssh_config(data)
+    if not args.install:
+        print(body, end="")
+        return 0
+    ssh_dir = Path.home() / ".ssh"
+    ssh_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fragment = ssh_dir / fr.SSH_FRAGMENT_NAME
+    fragment.write_text(body, encoding="utf-8")
+    fragment.chmod(0o600)
+    print(f"wrote {fragment} ({len(data['hosts'])} host(s))")
+    print(_ensure_include(ssh_dir / "config"))
+    return 0
+
+
+def _ensure_include(config: Path) -> str:
+    """Put the fragment's ``Include`` line at the top of an ssh config.
+
+    Args:
+        config: The operator's ``~/.ssh/config``.
+
+    Returns:
+        One line saying what was done, for the caller to print.
+    """
+    header = (
+        "# ra8-firmware: the CI fleet's machines, GENERATED from infra/fleet.yml.\n"
+        "# Refresh with `python3 scripts/dev/fleet.py ssh-config --install`.\n"
+        f"{fr.SSH_INCLUDE_LINE}\n"
+    )
+    if not config.exists():
+        config.write_text(header, encoding="utf-8")
+        config.chmod(0o600)
+        return f"created {config} with the include line"
+    existing = config.read_text(encoding="utf-8")
+    if any(line.strip() == fr.SSH_INCLUDE_LINE for line in existing.splitlines()):
+        return f"{config} already includes it"
+    config.write_text(f"{header}\n{existing}", encoding="utf-8")
+    return f"prepended the include line to {config}"
+
+
+def cmd_ssh_target(data: dict[str, Any], args: argparse.Namespace) -> int:
+    """Print the ssh command that reaches one host from this machine.
+
+    The declaration is the only place that knows a host is behind a jump, or
+    which account it is entered as, so the scripts that probe a machine ask
+    here rather than spelling an alias of their own. Every token is
+    whitespace-free by construction -- the fleet-declaration gate rejects an
+    address, user or jump containing any -- so a caller may split the line on
+    spaces and use it as an argv.
+
+    Args:
+        data: The parsed declaration.
+        args: Parsed command line; uses ``args.host``.
+
+    Returns:
+        0.
+    """
+    _host(data, args.host)
+    print(" ".join(fr.ssh_target(data, args.host)))
+    return 0
+
+
 def _playbook_argv(name: str, host: dict[str, Any], play: str, extra: list[str]) -> list[str]:
     """Build the ``ansible-playbook`` command for one host and play.
 
@@ -339,19 +439,20 @@ def _playbook_argv(name: str, host: dict[str, Any], play: str, extra: list[str])
     return argv + extra
 
 
-def _converge_wsl(name: str, host: dict[str, Any], plays: list[str], extra: list[str]) -> int:
+def _converge_wsl(data: dict[str, Any], name: str, plays: list[str], extra: list[str]) -> int:
     """Run a WSL host's plays inside its distro.
 
     Args:
+        data: The parsed declaration.
         name: Fleet host name.
-        host: That host's declaration.
         plays: Plays to run, in order.
         extra: Extra ansible flags (dry-run, teardown state).
 
     Returns:
         0 on success, the first failing play's status otherwise.
     """
-    rc = _push_to_wsl(host)
+    host = data["hosts"][name]
+    rc = _push_to_wsl(data, name)
     if rc:
         return rc
     variables = shlex.quote(json.dumps(fm.role_vars(name, host)))
@@ -370,7 +471,7 @@ def _converge_wsl(name: str, host: dict[str, Any], plays: list[str], extra: list
             for play in plays
         ),
     ]
-    return _run([*fm.ssh_target(host), fm.remote_shell(host)], stdin="\n".join(lines) + "\n")
+    return _run([*fr.ssh_target(data, name), fm.remote_shell(host)], stdin="\n".join(lines) + "\n")
 
 
 def _plays_for(host: dict[str, Any], only: str | None) -> list[str]:
@@ -470,9 +571,9 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     if args.tags:
         extra += ["--tags", args.tags]
     if fm.CLASSES[host["class"]].transport == "wsl":
-        rc = _converge_wsl(args.host, host, plays, extra)
+        rc = _converge_wsl(data, args.host, plays, extra)
     else:
-        rc = _converge_ssh(args.host, host, plays, extra)
+        rc = _converge_ssh(data, args.host, plays, extra)
     if rc or args.mode == "remove":
         return rc
     if drain:
@@ -480,18 +581,19 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     return 0
 
 
-def _converge_ssh(name: str, host: dict[str, Any], plays: list[str], extra: list[str]) -> int:
+def _converge_ssh(data: dict[str, Any], name: str, plays: list[str], extra: list[str]) -> int:
     """Run a host's plays with Ansible over ssh, from the control node.
 
     Args:
+        data: The parsed declaration.
         name: Fleet host name.
-        host: That host's declaration.
         plays: Plays to run, in order.
         extra: Extra ansible flags (dry-run, teardown state).
 
     Returns:
         0 on success, the first failing play's status otherwise.
     """
+    host = data["hosts"][name]
     for play in plays:
         argv = _playbook_argv(name, host, play, extra)
         print(f"==> ansible-playbook {fm.PLAYS[play].playbook} --limit {name}")
@@ -553,8 +655,9 @@ def cmd_reach(data: dict[str, Any], _args: argparse.Namespace) -> int:
     The transport is the point: ``win-ci`` is not an ssh alias but a jump
     through the bench Pi into a Windows box and then into a WSL distro, and a
     reachability check that did not know that would report the fleet broken.
-    Because the list comes from the declaration, a machine added there is
-    probed from the next run with nothing else edited.
+    Because the list AND every address come from the declaration, a machine
+    added there is probed from the next run with nothing else edited, on a
+    control node with no ``~/.ssh/config`` at all.
 
     Args:
         data: The parsed declaration.
@@ -569,17 +672,18 @@ def cmd_reach(data: dict[str, Any], _args: argparse.Namespace) -> int:
         # not to the operator's terminal, and a failing host's ssh chatter would
         # otherwise bury the one line that says which host failed.
         probe = subprocess.run(  # noqa: S603 -- argv built from the declaration
-            [*fm.ssh_target(host), fm.remote_shell(host)],
+            [*fr.ssh_target(data, name), fm.remote_shell(host)],
             input="echo ok\n",
             text=True,
             capture_output=True,
             check=False,
         ).returncode
+        where = fr.ssh_destination(host)
         if probe:
-            print(f"  MISS  {name:<10} not reachable over its declared transport")
+            print(f"  MISS  {name:<10} not reachable at {where}")
             rc = 1
         else:
-            print(f"  ok    {name:<10} reachable")
+            print(f"  ok    {name:<10} reachable at {where}")
     return rc
 
 
@@ -616,6 +720,20 @@ def _parser() -> argparse.ArgumentParser:
     subs.add_parser("reach", help="probe every machine over its declared transport")
     inv = subs.add_parser("inventory", help="write the Ansible inventory")
     inv.add_argument("--stdout", action="store_true", help="print instead of writing")
+    ssh_config = subs.add_parser(
+        "ssh-config", help="the fleet's host aliases, generated from the declaration"
+    )
+    ssh_config.add_argument(
+        "--install",
+        action="store_true",
+        help=(
+            f"write ~/.ssh/{fr.SSH_FRAGMENT_NAME} and include it from ~/.ssh/config -- "
+            "the one command that makes this machine a control node"
+        ),
+    )
+    subs.add_parser(
+        "ssh-target", help="the ssh command that reaches one host from here"
+    ).add_argument("host")
     for mode in ("check", "apply", "remove"):
         sub = subs.add_parser(mode, help=f"{mode} a host against the declaration")
         sub.add_argument("host")
@@ -664,6 +782,8 @@ def main(argv: list[str] | None = None) -> int:
         "validate": cmd_validate,
         "reach": cmd_reach,
         "inventory": cmd_inventory,
+        "ssh-config": cmd_ssh_config,
+        "ssh-target": cmd_ssh_target,
         "check": cmd_converge,
         "apply": cmd_converge,
         "remove": cmd_converge,

@@ -14,6 +14,7 @@
 # Everything downstream reads this file:
 #   - scripts/dev/fleet.py           loader, validator, renderer, dispatcher
 #   - infra/ansible/inventory/hosts.ini   GENERATED (git-ignored)
+#   - ~/.ssh/ra8-fleet.config             GENERATED (`make infra-ssh-config`)
 #   - the role variables each play runs with (see CLASSES in fleet.py)
 #
 # The full narrative -- add a host, retune a host, quiet hours, remove a host,
@@ -62,6 +63,25 @@ sizing:
 
 # --- The machines -----------------------------------------------------------
 #
+# `connect` is HOW TO REACH THE MACHINE, and it holds facts rather than names
+# one computer happens to know:
+#
+#   address  an IP, or a DNS name a resolver can answer. NEVER an ~/.ssh/config
+#            alias. Bare aliases are what this block used to carry, and they
+#            resolved on exactly one laptop -- which had no ansible, while the
+#            box that had ansible could not resolve a single fleet host. Nothing
+#            was a working control node and a drained runner sat unconvergeable
+#            (#526). check_fleet_declaration.py now rejects a bare label here.
+#   user     the login account, if it is not the caller's own.
+#   jump     an optional ProxyJump through ANOTHER HOST IN THIS FILE, named by
+#            its fleet name -- so a bastion's address is also declared once.
+#
+# fleet.py builds every ssh and ansible invocation from these three, so all of
+# it works on a machine with an empty ~/.ssh/config. `make infra-ssh-config`
+# then GENERATES the friendly aliases from the same fields, which is what makes
+# any machine a control node in one command instead of by hand-copying somebody
+# else's private config.
+#
 # `class` selects the arithmetic, the plays and the variable mapping; the
 # classes themselves live in CLASSES in scripts/dev/fleet.py.
 #
@@ -94,7 +114,11 @@ hosts:
     class: arc_k8s
     summary: "k3s single node: ARC scale set + the OpenBao vault"
     connect:
-      ssh: k3s-pve
+      # The tailnet address, not the 192.168.1.221 LAN one: this VM IS the
+      # tailnet's 100.64.0.1, so the tailnet address answers from every control
+      # node while the LAN address answers only from inside the house.
+      address: 100.64.0.1
+      user: ubuntu
     # Two plays, in order: the cluster and vault first, the runner pool into
     # it. `make infra-apply HOST=k3s-pve` runs both; PLAY=<name> runs one.
     provisions: [k3s-node, ci-runner]
@@ -127,7 +151,10 @@ hosts:
     class: docker_linux
     summary: "TrueNAS SCALE: runner containers on the stripe pool"
     connect:
-      ssh: truenas
+      # The 10.10.10.0/29 link it shares with the k3s VM, verified reachable
+      # from both the Mac and the dev box; its 192.168.1.95 LAN address is not.
+      address: 10.10.10.1
+      user: truenas_admin
     provisions: [ci-runner-docker]
     runners:
       # Base name for the GitHub registrations. One instance keeps the base
@@ -168,7 +195,12 @@ hosts:
       # one (plus the inbound firewall hole to reach it) is not a reasonable
       # ask. fleet.py copies the play in over this path and runs it inside the
       # distro with --connection=local. See docs/CI_FLEET.md.
-      ssh: sikar@10.0.40.100
+      #
+      # 10.0.40.100 is on the isolated bench LAN, so the hop is the bench Pi --
+      # named as the fleet host `star`, whose own address is declared once,
+      # below, rather than repeated here.
+      address: 10.0.40.100
+      user: sikar
       jump: star
       distro: Ubuntu
       windows_user: sikar
@@ -277,7 +309,8 @@ hosts:
     class: dev_box
     summary: "the shared box every agent runs `make ci` on"
     connect:
-      ssh: dev
+      address: 100.64.0.9
+      user: bsikar
     provisions: [dev-box]
 
   # --- The bench Pi: hardware-in-the-loop (not a runner) ---------------------
@@ -285,5 +318,8 @@ hosts:
     class: hil_bench
     summary: "Raspberry Pi 5: EK-RA8D2, J-Link, ESP32-C6, AD2, smart plugs"
     connect:
-      ssh: star
+      # Tailnet, not the wlan0 DHCP lease: the LAN address moves, and this is
+      # also win-ci's jump host, so a stale one breaks two machines.
+      address: 100.64.0.6
+      user: star
     provisions: [hil-bench]

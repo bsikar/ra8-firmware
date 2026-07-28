@@ -49,7 +49,17 @@ say "Inventory"
 python3 "${ROOT}/scripts/dev/fleet.py" inventory
 echo "  generated from infra/fleet.yml; edit that file, not ${INVENTORY#"${ROOT}"/}"
 
-# 3. Secrets (git-ignored, never committed) ----------------------------------
+# 3. SSH aliases (generated, outside the repo) -------------------------------
+#
+# The declaration carries every machine's real address, so nothing here NEEDS
+# an alias -- but the docs, the runbooks and everyone's fingers say `ssh dev`
+# and `ssh truenas`, and those names used to exist on exactly one laptop. This
+# generates them from the same declaration, so a fresh control node has them
+# too (#526).
+say "SSH aliases"
+python3 "${ROOT}/scripts/dev/fleet.py" ssh-config --install
+
+# 4. Secrets (git-ignored, never committed) ----------------------------------
 say "Secrets"
 if [ -f "${SECRETS}" ]; then
   echo "  ${SECRETS#"${ROOT}"/} already exists -- leaving it."
@@ -73,7 +83,7 @@ else
   fi
 fi
 
-# 4. Deploy ------------------------------------------------------------------
+# 5. Deploy ------------------------------------------------------------------
 say "Ready"
 deploy_cmd=(ansible-playbook -i inventory/hosts.ini playbooks/ci-runner.yml)
 echo "  Deploy the CI runner pool with:"

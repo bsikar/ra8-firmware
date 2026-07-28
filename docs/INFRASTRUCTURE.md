@@ -146,11 +146,13 @@ make infra-remove HOST=ci-runner-docker
 ### The gaming PC -- Ryzen 9 7900X, WSL2
 
 Windows desktop running three runner instances (`win-ci-1/2/3`) under WSL2,
-carrying the `ra8-ci` and `ra8-win` labels. Reachable **from the Mac only**, and
-only through the bench Pi:
+carrying the `ra8-ci` and `ra8-win` labels. Reachable only through the bench Pi,
+which `infra/fleet.yml` declares as its `jump:` -- so any control node reaches
+it, not just the Mac:
 
 ```sh
-ssh -J star sikar@10.0.40.100
+ssh win-ci                        # after `make infra-ssh-config`
+ssh -J star sikar@10.0.40.100     # the same hop, spelled out
 ```
 
 The most powerful CPU in the estate and the newest addition. Because it answers
@@ -227,6 +229,7 @@ Order matters, because each step is the next one's prerequisite.
 
 ```sh
 make infra-doctor                      # can this machine drive any of it?
+make infra-ssh-config                  # the fleet's host aliases, from the declaration
 make infra-setup                       # inventory + credentials (git-ignored)
 make infra-check HOST=<class>          # ALWAYS dry-run first
 make infra-apply HOST=<class>
@@ -243,11 +246,14 @@ make infra-apply HOST=<class>
 | 7 | the HIL bench | `make infra-apply HOST=bench` | needs the board attached |
 | 8 | the bench LAN | `python3 infra/network/fg_bringup.py bootstrap` | from `ssh star` |
 
-**Where do you run these from?** Whichever machine has *both* ansible and ssh
-reach. Today that is nowhere by default, which `make infra-doctor` will tell you
-bluntly: the Mac reaches every host but has no ansible, and the dev box has
-ansible but cannot resolve the cluster hosts. Install ansible where the ssh
-access already is.
+**Where do you run these from?** Any machine with ansible and a key the hosts
+accept. It used to be *nowhere*: every host was addressed by an `~/.ssh/config`
+alias that existed on the Mac, which had no ansible, while the dev box had
+ansible and could resolve none of them (#526). `infra/fleet.yml` now carries
+each machine's real address, `fleet.py` builds every command from it, and
+`make infra-ssh-config` generates the friendly aliases -- so becoming a control
+node is `pipx install ansible-core` plus one command. `make infra-doctor` says
+which half you are missing.
 
 The first run of a class takes far longer than later ones. `make infra-apply
 HOST=dev` compiles gcc and cppcheck from source; re-runs skip both once the

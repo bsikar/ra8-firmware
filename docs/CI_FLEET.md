@@ -12,6 +12,7 @@ agents as a verification host (section 9). Section 7 explains how the numbers
 were arrived at, so a new machine can be sized without re-deriving anything.
 
 ```sh
+make infra-ssh-config              make THIS machine a control node
 make infra-list                    what is declared, and how it is sized
 make infra-show HOST=win-ci        one machine in full, with its derived vars
 make infra-status                  what every host is running, right now
@@ -108,8 +109,9 @@ hosts:
     class: arc_k8s | docker_linux | docker_wsl | dev_box | hil_bench
     summary: "one line"
     connect:
-      ssh: <alias or user@host>
-      jump: <ssh alias>          # optional ProxyJump
+      address: 10.10.10.1        # an IP or a resolvable name -- NEVER an ssh alias
+      user: truenas_admin        # optional login account
+      jump: star                 # optional ProxyJump through ANOTHER FLEET HOST
       distro: Ubuntu             # docker_wsl only
       windows_user: sikar        # docker_wsl only
     provisions: [play, play]     # from `make infra-list`
@@ -139,6 +141,82 @@ hosts:
     sizing_note: >-              # required if the count departs from the formula
       why this host is not sized by the formula
 ```
+
+### `connect` carries an ADDRESS, and that is what makes a control node
+
+`connect.address` is an IP or a name a resolver can answer. It is **never** an
+`~/.ssh/config` alias, and `check_fleet_declaration.py` rejects a bare label
+outright.
+
+That rule was bought with real work. Every host used to be addressed as
+`ssh: truenas` / `ssh: star` / `ssh: k3s-pve`, which resolve only through one
+machine's private config. The estate then split so that neither half worked:
+
+| | ansible | fleet host aliases |
+|---|---|---|
+| the Mac | no | yes |
+| the dev box | yes | no |
+
+So `fleet.py status truenas` from the dev box died on
+`Could not resolve hostname truenas` while the machine itself answered fine on
+`10.10.10.1`. It was a naming gap, not a routing one -- and it cost a NAS that
+sat at 1 of its declared 2 runners with nothing able to converge it back, plus
+a runner-image rollout done by hand on all three hosts (#513, #518, #526).
+
+`win-ci` hid it: it is `docker_wsl`, so `fleet.py` ships the play *into* the
+distro and runs it `--connection=local`, never asking the control node to
+resolve anything. Every `docker_linux` and `k8s` host does ask.
+
+**Everything is derived from the address now**, so no command in this tooling
+needs a name your machine happens to know:
+
+- `fleet.py` builds each `ssh` argv as
+  `ssh -J <hop address> <user>@<address>` -- literals only,
+- the generated inventory sets `ansible_host` / `ansible_user` and, for a
+  jumped host, `ansible_ssh_common_args='-o ProxyJump=...'`,
+- `connect.jump` names **another host in this file**, so a bastion's address is
+  declared once and resolved exactly the way its target is,
+- `scripts/dev/infra.sh` asks `fleet.py ssh-target <host>` rather than spelling
+  a host anywhere.
+
+The gate checks both ends: the declared address must be a literal, *and* every
+destination the model derives -- ssh argv and inventory line alike -- must be
+one too. A future `-J star` would pass every input rule and still only work
+where that alias existed.
+
+#### Make this machine a control node
+
+```sh
+make infra-ssh-config       # or: python3 scripts/dev/fleet.py ssh-config --install
+```
+
+That writes `~/.ssh/ra8-fleet.config` from the declaration and puts one
+`Include` line at the top of `~/.ssh/config`. Top, because ssh takes the
+**first** value it obtains for each keyword: the declaration wins over a stale
+hand-written alias of the same name, while anything the fragment does not set
+(your `IdentityFile`, a `Port`) still comes from your own block below it.
+`make infra-setup` runs it as part of onboarding.
+
+**Do not hand-write the aliases into a control node's `~/.ssh/config`.** That
+is the same per-machine prerequisite one level down, and it rots the same way.
+Print what would be installed with `python3 scripts/dev/fleet.py ssh-config`.
+
+The fragment is a **convenience, not a dependency**: it exists so `ssh truenas`
+works for a person and for the scripts and docs that already spell hosts that
+way. Nothing in `fleet.py` reads it, which is why a machine with an empty
+`~/.ssh/config` can still drive the whole fleet.
+
+Two things a fresh control node does still need, and neither is a name:
+
+1. **ansible** -- `pipx install ansible-core`, or `brew install ansible`.
+2. **a key each host accepts** for its declared `connect.user`. `make
+   infra-doctor` reports a host your key is not authorised on as `MISS`; that
+   is an authorisation gap, not a resolution one.
+
+Host keys are not a third prerequisite: every fleet ssh command carries
+`StrictHostKeyChecking=accept-new`, which pins a key on first use and still
+refuses one that later *changes*. That is strictly stronger than the fleet's
+Ansible transport, which sets `host_key_checking = False`.
 
 ### `class` picks the arithmetic, the plays and the variable mapping
 
@@ -177,8 +255,8 @@ will do nothing.
 ## 3. Add a host
 
 Worked example: a fourth machine arrives -- call it `bench-tower`, a
-Ryzen 7 5800X with 16 threads and 32 GB, running Ubuntu, reachable as
-`ssh tower`, that should give CI half of itself.
+Ryzen 7 5800X with 16 threads and 32 GB, running Ubuntu, at `192.168.1.40` as
+the `deploy` user, that should give CI half of itself.
 
 ### Step 1 -- size it
 
@@ -197,7 +275,8 @@ Section 7 explains where the two divisors come from.
     class: docker_linux
     summary: "Ryzen 7 5800X, Ubuntu: half the machine to CI"
     connect:
-      ssh: tower
+      address: 192.168.1.40
+      user: deploy
     provisions: [ci-runner-docker]
     runners:
       name: tower-ci
@@ -458,12 +537,10 @@ runners.
 
 ```sh
 # the schedule is installed and armed
-ssh -J star sikar@10.0.40.100 \
-  'wsl -d Ubuntu -u root -e systemctl list-timers ra8-fleet-capacity.timer'
+ssh win-ci 'wsl -d Ubuntu -u root -e systemctl list-timers ra8-fleet-capacity.timer'
 
 # what it decided last time it ran
-ssh -J star sikar@10.0.40.100 \
-  'wsl -d Ubuntu -u root -e journalctl -u ra8-fleet-capacity.service -n 40'
+ssh win-ci 'wsl -d Ubuntu -u root -e journalctl -u ra8-fleet-capacity.service -n 40'
 
 # and what the host is actually running
 make infra-status
@@ -647,6 +724,13 @@ grows.
 - **A registration or removal token.** Minted per operation and passed on the
   command line, never stored. That is the point: two hosts in this fleet must
   never hold a long-lived credential.
+- **Which keys a host authorises.** The declaration says where a machine is and
+  which account you enter it as; it deliberately does not carry key material or
+  an `authorized_keys` list. So a fresh control node can *resolve and reach*
+  every host the moment it runs `make infra-ssh-config`, and still be refused
+  by one whose `authorized_keys` it is not in -- `make infra-doctor` reports
+  that as `MISS`. Adding a key is a one-line `ssh-copy-id` from a machine that
+  already has access, not a fleet change.
 
 ---
 
@@ -717,7 +801,7 @@ token, and the model and the role are cross-checked against each other by the
 ### Using it (this is the part a person needs)
 
 ```sh
-ssh -J star sikar@10.0.40.100                 # into Windows
+ssh win-ci                                    # into Windows (make infra-ssh-config)
 wsl -d Ubuntu                                 # into the distro (root)
 
 make ws-new NAME=my-task                      # /opt/ra8-dev/ws/my-task

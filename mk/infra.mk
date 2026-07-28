@@ -10,7 +10,8 @@
 # SPDX-License-Identifier: MIT
 
 .PHONY: infra-help infra-setup infra-list infra-doctor infra-status \
-        infra-check infra-apply infra-remove infra-scale infra-show
+        infra-check infra-apply infra-remove infra-scale infra-show \
+        infra-ssh-config
 
 infra-help:
 	@echo "INFRASTRUCTURE -- the machines the project runs on"
@@ -22,6 +23,10 @@ infra-help:
 	@echo "  make infra-show HOST=x   one machine in full, with its derived vars"
 	@echo "  make infra-doctor        can THIS machine drive infra at all?"
 	@echo "  make infra-status        what every host is running, right now"
+	@echo ""
+	@echo "  make infra-ssh-config    make THIS machine a control node: generate the"
+	@echo "                           fleet's host aliases into ~/.ssh from the"
+	@echo "                           declaration, so 'ssh truenas' works here too"
 	@echo ""
 	@echo "  make infra-setup         first-run onboarding: inventory + credentials"
 	@echo "  make infra-check HOST=x  DRY RUN -- report what would change, change nothing"
@@ -52,6 +57,13 @@ infra-list:
 
 infra-doctor:
 	@bash $(ROOT)/scripts/dev/infra.sh doctor
+
+# Generate ~/.ssh/ra8-fleet.config from infra/fleet.yml and include it from
+# ~/.ssh/config. The tooling itself never needs this -- fleet.py passes literal
+# addresses -- but it is what makes `ssh truenas` work on a machine that is not
+# the maintainer's laptop, which is the half that used to be missing (#526).
+infra-ssh-config:
+	@bash $(ROOT)/scripts/dev/infra.sh ssh-config
 
 infra-status:
 	@bash $(ROOT)/scripts/dev/infra.sh status

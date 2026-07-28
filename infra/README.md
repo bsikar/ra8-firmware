@@ -11,10 +11,13 @@ git clone <this-repo> && cd ra8-firmware
 make infra-setup          # or: bash infra/bootstrap.sh
 ```
 
-The bootstrap checks prerequisites, writes your **git-ignored** inventory and
-GitHub token, and offers to run the deploy. Nothing secret is ever committed --
-your token lands in `infra/ansible/private/` (git-ignored) or, if you run one,
-in OpenBao. That's it: your machine joins as a CI runner pool.
+The bootstrap checks prerequisites, writes your **git-ignored** inventory, names
+the fleet's machines in your `~/.ssh/config` (generated from `fleet.yml`, so
+this machine can drive the estate without anyone hand-copying aliases -- see
+`docs/CI_FLEET.md` section 2), stores your GitHub token, and offers to run the
+deploy. Nothing secret is ever committed -- your token lands in
+`infra/ansible/private/` (git-ignored) or, if you run one, in OpenBao. That's
+it: your machine joins as a CI runner pool.
 
 ## What it does
 
@@ -35,10 +38,11 @@ in OpenBao. That's it: your machine joins as a CI runner pool.
 ## Layout
 
 ```
-fleet.yml    THE declaration: one block per machine -- how to reach it, what
-             kind of host it is, how many runner instances, its CPU and memory
-             per instance, its labels, its quiet-hours window. Everything below
-             is derived from it.
+fleet.yml    THE declaration: one block per machine -- its ADDRESS (an IP or a
+             resolvable name, never an ssh alias), what kind of host it is, how
+             many runner instances, its CPU and memory per instance, its labels,
+             its quiet-hours window. Everything below is derived from it, as is
+             the ~/.ssh fragment `make infra-ssh-config` installs.
 ansible/     configures machines (dev_box, ci_runner, ci_runner_docker,
              wsl_ci_host, fleet_capacity, hil_bench, c6_toolchain, ad2_tools)
 images/      the CI runner container image (devcontainer toolchain + runner)
