@@ -121,6 +121,17 @@ It was cosmetic -- an upstream doc link, no code -- but the lesson is
 that a repo-wide rename must exclude `libs/third_party/`. The 1.10.0
 re-vendor restored upstream content, so the claim holds again.
 
+That lesson is now a mechanism rather than a convention (#538).
+`scripts/gen/gen_sbom.py` re-derives a SHA-256 over this component's whole
+vendored tree on every run -- 827 files, by sorted component-relative path,
+git mode and content -- and `gen_sbom.py --check` in the `sbom` gate fails
+naming the component the moment any of those bytes change. The drift above
+went unnoticed because the SBOM's `aggregate_sha256` was a hand-transcribed
+literal that nothing ever computed, and NimBLE did not even carry one; a
+value re-derived from the tree is the only kind that can disagree with the
+tree. A repeat of `a823419b9` now fails at the gate instead of quietly
+falsifying this section.
+
 ## CVE monitoring
 
 The pinned commit is queried against OSV.dev weekly by

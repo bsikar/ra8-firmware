@@ -399,15 +399,27 @@ gate_doc_attachment() (
 )
 
 # --- cite-check -----------------------------------------------------------
-# cite-VALIDATION pass: every existing HUM cite must parse and point at a real
-# chapter/page. The complementary cite-COVERAGE pass (--require-cites: does
-# every MMIO access HAVE a cite?) surfaces a large libs/ra8_hal backlog and is
-# not yet gate-clean, so it is deliberately not wired blocking.
+# BOTH halves of the HUM citation policy, which needs both to mean anything:
+#
+#   cite-VALIDATION (cite_check --strict) -- every cite that EXISTS parses and
+#   points at a real chapter/page. Clean tree-wide, so it runs as a hard gate.
+#
+#   cite-COVERAGE (cite_ratchet --check) -- every MMIO access HAS a cite. This
+#   ran in NO gate until #534, so the headline rule ("every register read/write
+#   or access MUST have a citation") was enforced nowhere: an entirely uncited
+#   new driver passed --strict cleanly, because there was nothing there to
+#   validate. The measured backlog is 2884 uncited accesses across 254 files,
+#   which cannot be citation-filled mechanically -- a guessed subsection would
+#   pass validation while being factually false. So it is frozen in
+#   .github/cite-baseline.txt and RATCHETED: the existing debt burns down, a
+#   newly-added uncited access fails today.
 gate_cite_check() (
   set -e
   # --selftest FIRST (#358): proves a malformed cite fires and that tools/
   # (ra8_emulator cites the RA8 HUM) and port/ are back in scope, before trusting
-  # a clean run over the derived first-party-C set.
+  # a clean run over the derived first-party-C set. The ratchet's selftest does
+  # the same for the coverage pass -- it runs the REAL detector over a fixture
+  # tree, so a coverage pass that stopped matching cannot read as a burn-down.
   #
   # A `( set -e )` subshell, not a `{ }` block: run_gate_capture disables
   # ERREXIT around the call, and that suppression is live inside a block -- so
@@ -416,6 +428,8 @@ gate_cite_check() (
   # rejects the block form for every gate.
   python3 scripts/checks/cite_check.py --selftest
   python3 scripts/checks/cite_check.py --strict
+  python3 scripts/checks/cite_ratchet.py --selftest
+  python3 scripts/checks/cite_ratchet.py --check
 )
 
 # --- hil-eil-parity -------------------------------------------------------

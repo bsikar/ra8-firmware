@@ -32,12 +32,38 @@ gate_mcdc_delta_base() (
     CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
       bash scripts/report/mcdc_report.sh --in-container
   ) || echo "base-branch MC/DC build failed -- the delta will be PR-only"
+  # The STATUS file is what makes the failure legible downstream. This used to
+  # write an empty base-summary.txt, which the renderer could not tell from a
+  # base branch that genuinely measured nothing -- so every row's delta came
+  # out `n/a` and the posted comment read as "no MC/DC regressions" when in
+  # fact no comparison had been performed at all (#536). A failed build must
+  # say it failed, not hand downstream an empty file to misread.
   if [[ -f "$tree/build/mcdc-report/summary.txt" ]]; then
     cp "$tree/build/mcdc-report/summary.txt" base-summary.txt
+    echo "ok" >base-summary.status
   else
     : >base-summary.txt
+    echo "unavailable" >base-summary.status
   fi
   git worktree remove --force "$tree" || rm -rf "$tree"
+)
+
+# --- mcdc-delta-render (manual) -------------------------------------------
+# Renders the PR comment BODY. It is a gate, not inline YAML, on purpose: the
+# ~70 lines of JavaScript this replaces parsed llvm-cov output and computed
+# deltas inside an `actions/github-script` step, and check_ci_parity.py only
+# inspects steps with a `run:` key -- so a `uses:` step was entirely outside
+# the guard that exists to stop check logic growing a second home in the
+# workflows (#536). Moving it under scripts/ puts it back in scope and gives
+# it a --selftest.
+gate_mcdc_delta_render() (
+  set -e
+  python3 scripts/report/mcdc_delta_comment.py --selftest
+  python3 scripts/report/mcdc_delta_comment.py \
+    --pr pr-mcdc/summary.txt \
+    --base base-summary.txt \
+    --base-status base-summary.status \
+    --out mcdc-delta-comment.md
 )
 
 # --- osv-scan (manual) ----------------------------------------------------
@@ -222,7 +248,9 @@ gate_docs_publish() (
   require_cmd dot
   make docs
   # Verify the site about to be published actually contains its diagrams,
-  # against the real output tree `make docs` just wrote.
+  # against the real output tree `make docs` just wrote. --selftest first, so
+  # the publish path never trusts an unproven detector (#531).
+  python3 scripts/checks/check_doc_diagrams.py --selftest
   python3 scripts/checks/check_doc_diagrams.py --html build/docs/html
   bash scripts/builders/publish_docs.sh
 )

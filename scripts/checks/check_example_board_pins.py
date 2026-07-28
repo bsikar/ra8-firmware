@@ -28,7 +28,7 @@ Run::
     check_example_board_pins.py path/to/main.c ...  # scan listed files
 
 Exit 0 if no example hand-encodes a board pin, exit 1 (with the offenders)
-otherwise.
+otherwise, exit 2 when the whole-tree sweep collapses below FILE_FLOOR.
 """
 
 from __future__ import annotations
@@ -45,6 +45,13 @@ SCAN_ROOT = "examples"
 
 # ((uint16_t)k_ra8_port_N << 8) | (uint16_t)k_ra8_pin_M, tolerant of spacing.
 ENCODING_RE = re.compile(r"k_ra8_port_\d+\s*<<\s*8\s*\)\s*\|\s*\(\s*uint16_t\s*\)\s*k_ra8_pin_\d+")
+
+# An examples/ tree this size cannot legitimately collapse to a handful of
+# files. If the whole-tree sweep returns less than this, something broke (an
+# unreachable repo root, a renamed SCAN_ROOT) and reporting "none hand-encode a
+# board pin" would be a lie: the idiom cannot be found in a file nobody read.
+# Measured 2026-07-28: 408 example sources. Same trip-wire as check_ruff.py.
+FILE_FLOOR = 320
 
 
 def _is_source(path: Path) -> bool:
@@ -90,9 +97,25 @@ def main(argv: list[str]) -> int:
     Undecodable bytes are replaced rather than raising, so one bad file cannot
     abort the sweep; encoding is check-encoding's gate, not this one's.
 
-    Returns 1 listing each site, 0 when clean or when argv filtered to nothing.
+    FILE_FLOOR applies to the whole-tree sweep ONLY, and exits 2 below it. An
+    argv file list comes from the pre-commit hook and legitimately filters to
+    nothing when a commit touches no example source, so an empty list there is
+    a real answer; an empty SWEEP is a broken enumeration reporting a clean
+    tree because it read nothing.
+
+    Returns 1 listing each site, 0 when clean or when argv filtered to nothing,
+    2 when the whole-tree sweep enumerated too few files to trust.
     """
-    targets = _enumerate_targets(argv[1:])
+    paths = argv[1:]
+    targets = _enumerate_targets(paths)
+    if not paths and len(targets) < FILE_FLOOR:
+        print(
+            f"check_example_board_pins.py: FATAL -- only {len(targets)} example file(s) "
+            f"in scope, floor is {FILE_FLOOR}. A collapsed sweep reports a clean tree "
+            "because it scanned nothing.",
+            file=sys.stderr,
+        )
+        return 2
     if not targets:
         print("check_example_board_pins.py: no files to scan", file=sys.stderr)
         return 0

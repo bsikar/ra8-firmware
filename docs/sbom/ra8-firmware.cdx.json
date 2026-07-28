@@ -41,6 +41,12 @@
         }
       ],
       "purl": "pkg:github/eclipse-threadx/threadx@6.5.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7abed922e803e5bc8debb7888af6b218f834e6ae04b0833c2d201492cfb81d43"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -55,6 +61,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/threadx"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "4758"
         },
         {
           "name": "ra8:licenseFile",
@@ -82,6 +92,12 @@
         }
       ],
       "purl": "pkg:github/eclipse-threadx/netxduo@6.5.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "879b5ceee49a808ce4d3ad299e46d964a3a9d59b0d8396953821366a78607260"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -96,6 +112,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/netxduo"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "1227"
         },
         {
           "name": "ra8:licenseFile",
@@ -127,6 +147,12 @@
         }
       ],
       "purl": "pkg:github/eclipse-threadx/filex@6.5.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "bc2aa14516888a70ac28970ec87f0a85748f094d23a8638a84d4cf26bfa5b345"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -141,6 +167,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/filex"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "267"
         },
         {
           "name": "ra8:licenseFile",
@@ -168,6 +198,12 @@
         }
       ],
       "purl": "pkg:github/eclipse-threadx/usbx@6.5.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "83293dd1d77fc1313372a0ef62288b6b0067328bad0effb6ab836678c6674e51"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -182,6 +218,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/usbx"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "1036"
         },
         {
           "name": "ra8:licenseFile",
@@ -209,6 +249,12 @@
         }
       ],
       "purl": "pkg:github/eclipse-threadx/levelx@6.5.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "8fb1bb6d516e2afac605b29b1202eeb11ab4ba31ade82fccf707ef42842e85c1"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -223,6 +269,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/levelx"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "90"
         },
         {
           "name": "ra8:licenseFile",
@@ -251,6 +301,12 @@
       ],
       "copyright": "Dual-licensed; ra8-firmware elects the Apache-2.0 option.",
       "purl": "pkg:github/Mbed-TLS/mbedtls@4.1.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d00e4e32aafe21c14777c7eaa1969fccfbc1702a9b182f67e24cbaa576d18699"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -265,6 +321,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/mbedtls"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "256"
         },
         {
           "name": "ra8:licenseOriginal",
@@ -301,6 +361,12 @@
       ],
       "copyright": "Dual-licensed; ra8-firmware elects the Apache-2.0 option.",
       "purl": "pkg:github/Mbed-TLS/TF-PSA-Crypto@1.1.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0307fcaa21b35a63e2612c2e8988208ef8830630e66f9a8b984b55cccf76e828"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -315,6 +381,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/tf-psa-crypto"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "222"
         },
         {
           "name": "ra8:licenseOriginal",
@@ -351,6 +421,12 @@
       ],
       "copyright": "Ships its own NOTICE (Apache-2.0 section 4(d)).",
       "purl": "pkg:github/apache/mynewt-nimble@a7a156f28954819e158b62dd613008f22f9cf73b",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "72cde25f8bc8b364e12c3018717527d33a0dc695a729ebd16a38d0cb7bc6453d"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -365,6 +441,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/nimble"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "827"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -416,6 +496,12 @@
         }
       ],
       "purl": "pkg:github/litehtml/litehtml@8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4af469c0ec46828d290f9348293e557b50d0e026acab296b2754d997ed2a1e9e"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -430,6 +516,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/litehtml"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "215"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -470,6 +560,12 @@
       ],
       "copyright": "MIT text (upstream describes it as zlib-style).",
       "purl": "pkg:github/richgel999/miniz@11.0.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "cf5ca3079474cd9e8704633360d195e7ec1fe69bc112a6f5e4ab30608f953792"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -484,6 +580,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/miniz"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "3"
         },
         {
           "name": "ra8:licenseFile",
@@ -519,7 +619,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "9dc6c2af6988af773cdf64d383a450f70c31a6df467ec5bcf827901c21c95dd9"
+          "content": "fbb7570bbc96a549eeab67883fdad2391287d638aedbbff07c263583ead9837f"
         }
       ],
       "externalReferences": [
@@ -536,6 +636,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/xz_embedded"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "11"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -578,6 +682,12 @@
       ],
       "copyright": "Public-domain dual license; text lives only in the header tails -- no standalone LICENSE file in the directory (SOUP-5).",
       "purl": "pkg:github/nothings/stb",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "965fcb964aa7e86b510f8336eadf07aa17384b6f89e7caaf5d9c2730a111d616"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -592,6 +702,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/stb"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "4"
         },
         {
           "name": "ra8:modified",
@@ -620,6 +734,12 @@
       ],
       "copyright": "BSD-3-Clause plus an additional PATENTS grant (both mirrored in-tree).",
       "purl": "pkg:github/webmproject/libwebp@v1.5.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7b6c9b85bef27efa86066e0d89c5e8f5bc44dea42a0caffaf45da3b1d9e6ea79"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -634,6 +754,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/libwebp"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "102"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -681,6 +805,12 @@
         }
       ],
       "purl": "pkg:github/leethomason/tinyxml2@11.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6e05df2f062b94c3ee7bf17eee5ad896bbd4b7ae736d44f7237c327994259646"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -695,6 +825,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/tinyxml2"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "3"
         },
         {
           "name": "ra8:licenseFile",
@@ -726,6 +860,12 @@
         }
       ],
       "purl": "pkg:github/tensorflow/tflite-micro@fddd3707a3c5733af4cb866f18650441e6712504",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ec8d3c62d259b66186d93b43f529c94dab01240fc6e2873c4802efa011a47ae3"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -740,6 +880,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/tflite-micro"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "278"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -783,6 +927,12 @@
         }
       ],
       "purl": "pkg:github/google/flatbuffers@v25.9.23",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5d78b9898cdcb4d94a7200e02f9b64ed5b815feabda58ba293178869199a9308"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -797,6 +947,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/flatbuffers"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "31"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -836,6 +990,12 @@
         }
       ],
       "purl": "pkg:github/google/gemmlowp@719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "58e46eed4293578f57ef7df6a953f8e4e64cbb004b81dbe736a55406bbe91db0"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -850,6 +1010,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/gemmlowp"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "7"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -889,6 +1053,12 @@
         }
       ],
       "purl": "pkg:github/google/ruy@d37128311b445e758136b8602d1bbd2a755e115d",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a7b26d8c292bf793c4c5329f2a87d44ed105c951bc4c614d48c430c4b612dd06"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -903,6 +1073,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/ruy"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "2"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -946,7 +1120,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "718e4d454033ce5481e4cd846eb4e585731e1be41cb36dff0e8e214842037064"
+          "content": "89a659441fd2f84f871382dd7a48b1bcca3cf8ad9fc5b305820a64ea70890e92"
         }
       ],
       "externalReferences": [
@@ -963,6 +1137,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/fsp_blobs/r_sce_AMC"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "315"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -1002,7 +1180,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "79ae04974accce04871f64d6e5cfb1e46676a4e70a0252eed616405826d29cc0"
+          "content": "3dd137e253fcca11b6ac45befd6f2ee5fce6aaaa0558aa795e53f2c3c6c3acc3"
         }
       ],
       "externalReferences": [
@@ -1019,6 +1197,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/esp-hosted"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "80"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -1070,7 +1252,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "67da2264194eb142d30830ab92a8a64decb1557d4d4ee8a82dddd7f731784d7f"
+          "content": "b90c9e3ce8e1b1ad175caf1cb638627f4443a2447345ac4df36e43a2dbffe0ae"
         }
       ],
       "externalReferences": [
@@ -1087,6 +1269,10 @@
         {
           "name": "ra8:path",
           "value": "libs/third_party/esp-hosted/common/protobuf-c"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "3"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -1184,6 +1370,12 @@
         }
       ],
       "purl": "pkg:github/googlefonts/literata",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "859cda84bcd6412e9a6ecf7d2828d4e86387a929a09e6d825937649b499509ea"
+        }
+      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -1198,6 +1390,10 @@
         {
           "name": "ra8:path",
           "value": "libs/ra8_fonts/Literata-Regular.ttf"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "1"
         },
         {
           "name": "ra8:licenseFile",

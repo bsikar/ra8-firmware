@@ -7,9 +7,12 @@ Separate from the gate because it answers a different question.  The gate asks
 and how much of it is there", writes two artefacts, and always exits 0.
 
 It walks the same files the gate does, through
-:func:`doxy_scope.iter_function_files`, so the report can never describe a
+:func:`doxy_scope.function_files`, so the report can never describe a
 different set of files than the gate enforces over -- the two used to carry
-the same walk inline, twice.
+the same walk inline, twice.  That accessor also carries the shared vacuity
+floor: "always exits 0" is about findings, not about infrastructure, and a
+report sized from a collapsed walk would understate the remaining work as
+zero.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from __future__ import annotations
 from collections import Counter
 
 from doxy_functions import audit_file
-from doxy_scope import MODULE_PATH_MIN_DEPTH, iter_function_files, repo_root
+from doxy_scope import MODULE_PATH_MIN_DEPTH, function_files, repo_root
 
 # Maximum number of lines in the generated Markdown report (keep pre-commit
 # output brief).
@@ -31,7 +34,7 @@ TOP_FILES = 30
 def collect_rows() -> list:
     """Audit every in-scope file, sorted by path then line."""
     rows = []
-    for path in iter_function_files():
+    for path in function_files():
         rows.extend(audit_file(path))
     rows.sort(key=lambda r: (r[0], r[1]))
     return rows

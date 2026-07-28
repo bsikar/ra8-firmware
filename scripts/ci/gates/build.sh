@@ -258,6 +258,10 @@ gate_docs() (
   # publishes HTTP 200 with its prose intact. This counts what actually reached
   # the generated HTML and compares it against the source. It runs here, inside
   # the docs gate, because this is where the built HTML it inspects exists.
+  #
+  # --selftest first: the checker HAD one and no gate ran it, so the detector
+  # behind the diagram guarantee was itself unverified (#531).
+  python3 scripts/checks/check_doc_diagrams.py --selftest
   python3 scripts/checks/check_doc_diagrams.py --html build/docs-gate/html
 )
 
@@ -266,8 +270,17 @@ gate_docs() (
 # (docs/sbom/ra8-firmware.cdx.json) is stale or the vendored libs/third_party/
 # tree drifted from the registry -- an uncatalogued SOUP directory, or a
 # version macro that disagrees with the recorded version.
+# The --check pass is only worth its status because the SHA-256 digests it
+# compares are RE-DERIVED from libs/third_party/ on every run. They used to be
+# hand-transcribed literals in sbom_registry.py -- present on 4 of 23
+# components, absent from the one that had actually drifted -- so --check
+# compared a constant with itself and appending a line to a vendored source
+# still printed "SBOM matches the tree" with status 0 (#538). --selftest runs
+# FIRST and proves the digest fires on a mutated byte and stays quiet on an
+# unchanged tree, so a detector that stopped detecting cannot pass as clean.
 gate_sbom() (
   set -e
+  python3 scripts/gen/gen_sbom.py --selftest
   python3 scripts/gen/gen_sbom.py --check
 )
 

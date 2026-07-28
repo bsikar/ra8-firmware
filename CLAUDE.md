@@ -140,6 +140,33 @@ exits 0 when libclang is missing, so a strict gate silently reported nothing
 for months. Use `require_cmd` / `require_python_mod` in every gate body, and
 never let a gate degrade to a no-op.
 
+### Every detector carries a `--selftest`, and the gate runs it -- ENFORCED
+
+Two rules, both checked by `scripts/ci/check_selftest_coverage.py` in the
+`ci-parity` gate. This used to be a convention that nothing verified, so 28
+gate-wired detectors had no selftest at all and one had a selftest no gate ever
+ran (#531).
+
+1. **Any** script a gate body invokes that *has* a selftest must have it RUN by
+   that gate, before the scan. A selftest nobody executes is documentation.
+2. Every script under `scripts/checks/` (and every `scripts/ci/check_*.py`)
+   that a gate body invokes must ACCEPT a selftest. Those are the detectors --
+   the things that can stop detecting. `builders/`, `report/` and `hil/` are
+   out of scope by the `scripts/` taxonomy below, not by an allowlist.
+
+A selftest must assert **both directions**: at least one must-fire case and one
+must-stay-quiet case, driving the same entry point CI drives. One direction
+proves nothing -- a checker whose scope collapsed to zero files is also
+perfectly quiet, and `check_ci_parity.py`'s selftest once exercised only a
+helper and never `check_workflows()`, the mode CI actually runs. Pair it with a
+**non-vacuity floor** (see `check_asm.py`) so a collapsed scan fails instead of
+reporting clean.
+
+The pre-existing backlog is frozen in `.github/selftest-baseline.txt` and may
+only SHRINK: a new gate-wired detector with no selftest fails immediately, and
+a baselined checker that gains one fails until its row is deleted. Do not add
+rows.
+
 The **pre-push hook** (`scripts/git/pre-push`) runs the suite automatically and
 **blocks the push** if any gate fails. For emergencies, bypass it with
 `SKIP_CI_PUSH=1 git push` (skip just this gate) or `git push --no-verify` (skip
@@ -272,7 +299,9 @@ This repository utilizes specialized custom project subagents under `.claude/age
 - **HUM Citations Validation (`@citation-reviewer`)**:
   - **Purpose**: Meticulously audits direct register accesses to verify that each is immediately preceded by a valid Hardware User's Manual (HUM) citation, and strictly bans in-tree line-number citations.
   - **When to Trigger**: On any modification to register structures, inline register accessors, or HAL drivers interacting with MMIO (e.g. under `libs/ra8_hal/`).
-  - **Scope**: Checks for properly formatted `/* HUM Ch ... */` comments. Uses the `haiku` model and has `Bash` access to run the global verification script (`python3 scripts/checks/cite_check.py --strict`).
+  - **Scope**: Checks for properly formatted `/* HUM Ch ... */` comments. Uses the `haiku` model and has `Bash` access to run BOTH verification passes -- they answer different questions and neither alone is sufficient:
+    - `python3 scripts/checks/cite_check.py --strict` -- cite-VALIDATION: every cite that EXISTS parses and points at a real chapter/page.
+    - `python3 scripts/checks/cite_ratchet.py --check` -- cite-COVERAGE: every MMIO access HAS a cite, ratcheted against `.github/cite-baseline.txt`. Run `python3 scripts/checks/cite_check.py --require-cites <file>` to see the offending lines. **`--strict` alone cannot detect a missing citation**, so a review that runs only it will approve an entirely uncited driver.
 
 ### Agent Collaboration Protocol
 

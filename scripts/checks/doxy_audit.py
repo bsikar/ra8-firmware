@@ -55,6 +55,10 @@ Output:
   - (--members) stdout summary; optional --out=PATH member-gap CSV
 
 Audit-only: never edits source files.
+
+Exit 0 when clean or report-only, 1 when an enforcing mode found gaps, 2 when
+a scope walk collapsed below its floor (doxy_scope.FUNCTION_FILE_FLOOR /
+MEMBER_FILE_FLOOR).
 """
 
 from __future__ import annotations
@@ -68,7 +72,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from doxy_functions import audit_file
 from doxy_members import audit_members_file
 from doxy_report import run_report
-from doxy_scope import _iter_member_files, _top_dir, iter_function_files, repo_root
+from doxy_scope import _top_dir, function_files, member_files, repo_root
 from doxy_selftest import run_selftest
 
 #: Offender lines printed before the gate truncates, so a hook stays readable.
@@ -80,9 +84,12 @@ def run_check() -> int:
 
     Used by the pre-commit hook to keep documentation coverage at 100%.
     Does not write CSV/MD outputs -- read-only audit.
+
+    Scope comes from :func:`doxy_scope.function_files`, which exits 2 rather
+    than let a collapsed walk report ``gaps=0 (PASS)``.
     """
     all_rows = []
-    for path in iter_function_files():
+    for path in function_files():
         all_rows.extend(audit_file(path))
 
     gap_rows = [r for r in all_rows if r[3]]
@@ -111,9 +118,13 @@ def run_members_report(explicit: list[str], out_csv: str | None) -> int:
     across the first-party tree and prints an offender count per top-level dir
     so the owner can size the fallout wave (issue #246). This mode intentionally
     never fails: promoting the member checks to a hard gate is a follow-up.
+
+    "Never fails" covers findings, not infrastructure:
+    :func:`doxy_scope.member_files` still exits 2 on a collapsed repo-wide
+    walk, since a report sized from nothing is worse than no report.
     """
     all_rows = []
-    for p in _iter_member_files(explicit):
+    for p in member_files(explicit):
         all_rows.extend(audit_members_file(p))
 
     by_dir_kind = Counter((_top_dir(r[0]), r[2]) for r in all_rows)
@@ -163,9 +174,12 @@ def run_members_check(explicit: list[str]) -> int:
     Enforces the CLAUDE.md rule that every enum value, struct/union member, and
     macro carries documentation (issue #246). Wired into the pre-commit hook and
     CI alongside the function gate. Read-only -- writes no CSV/MD outputs.
+
+    Scope comes from :func:`doxy_scope.member_files`, which exits 2 rather than
+    let a collapsed repo-wide walk report ``offenders=0 (PASS)``.
     """
     all_rows = []
-    for p in _iter_member_files(explicit):
+    for p in member_files(explicit):
         all_rows.extend(audit_members_file(p))
     all_rows.sort(key=lambda r: (r[0], r[1]))
 
@@ -216,7 +230,9 @@ def main() -> int:
     the step measures the problem instead of failing on it.
 
     Returns 0 on a clean gate, a passing selftest, or any report-only run;
-    1 when an enforcing mode found offenders.
+    1 when an enforcing mode found offenders. Exits 2, from
+    :mod:`doxy_scope`, when either scope walk collapsed below its measured
+    file floor -- a scan that read nothing must never report a documented tree.
     """
     args = sys.argv[1:]
     if "--selftest" in args:

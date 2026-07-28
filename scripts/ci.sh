@@ -151,6 +151,7 @@ RA8_GATE_REGISTRY=(
   "emulator-io-fabric|slow|ra8_io fabric demos in ra8_emulator"
   "eil-integration|slow|every HIL app booted in ra8_emulator against its hil.conf"
   "mcdc-delta-base|manual|base-branch MC/DC summary for the PR delta comment"
+  "mcdc-delta-render|manual|render the PR MC/DC delta comment body"
   "osv-scan|manual|OSV CVE sweep of the vendored SOUP (network, scheduled)"
   "fuzz-sweep|manual|libFuzzer sweep of every harness (nightly budget)"
   "runner-clock|manual|no CI runner moved its wall clock under a running job"
@@ -670,6 +671,87 @@ run_suite() {
 # can never find a different branch's .gcda here, because "here" did not exist
 # a moment ago. Do NOT replace this with a fixed path -- a fixed path is a
 # cache, and a cache is exactly the bug.
+# Write HEAD's tree into $1 and make it a git repository.
+#
+# Materialised through a SCRATCH INDEX, not `git archive`. `git archive HEAD |
+# tar -x` is not a faithful copy of HEAD, and this file and CLAUDE.md both
+# claimed it was ("exactly what CI checks out"). Measured on 2026-07-28 it was
+# 441 tracked files short, by two independent mechanisms:
+#
+#   * `git archive` honours `export-ignore` in the NESTED .gitattributes of
+#     vendored trees. The ThreadX family ships one, so 37 files (every
+#     `.github/`, `.gitattributes` and `.gitignore` under filex, levelx,
+#     netxduo, usbx and threadx) never reached the tarball at all.
+#   * the following `git add -A` then respected .gitignore, dropping a further
+#     404 tracked files -- the ThreadX `example_build/` IDE projects, which are
+#     tracked in HEAD but match an ignore pattern.
+#
+# Neither is visible: the snapshot looks complete, and every gate that
+# enumerates with `git ls-files` silently scanned a smaller tree than CI does.
+# Surfaced by the SBOM integrity digest (#538) -- the first gate whose verdict
+# depends on the file set being COMPLETE rather than merely large.
+#
+# `read-tree` + `checkout-index` writes HEAD's tree and nothing else, with no
+# attribute filtering and no dependence on the working tree being clean.
+# GIT_LFS_SKIP_SMUDGE=1 still emits the content/library epub LFS pointers as-is
+# (no gate reads them, so no LFS object or network fetch is needed).
+materialise_head_snapshot() {
+  local work="$1"
+  GIT_LFS_SKIP_SMUDGE=1 GIT_INDEX_FILE="$work.index" \
+    git -C "$REPO_ROOT" read-tree HEAD
+  GIT_LFS_SKIP_SMUDGE=1 GIT_INDEX_FILE="$work.index" \
+    git -C "$REPO_ROOT" checkout-index --all --prefix="$work/"
+  rm -f "$work.index"
+  # Several gates shell out to git (ls-files, rev-list), so the snapshot needs
+  # to be a repository. One synthetic commit of the extracted tree is enough
+  # and keeps the snapshot independent of the host object store.
+  git -C "$work" init --quiet
+  # -f, because HEAD legitimately tracks files that .gitignore matches. Without
+  # it those 404 vendored files are dropped from the snapshot's index and the
+  # snapshot stops being HEAD -- the second mechanism above.
+  git -C "$work" add -A -f
+}
+
+# Assert the snapshot's tracked file set is EXACTLY HEAD's.
+#
+# The suite's whole claim is that a gate run here is the gate run CI performs.
+# A snapshot silently short of HEAD does not fail -- it reports success over a
+# smaller tree, which is the defect class the gate-honesty epic exists for. So
+# the fidelity is DERIVED and compared on every run rather than assumed from
+# the extraction method being "obviously" faithful; the method that was
+# obviously faithful was short by 441 files.
+snapshot_fidelity_check() {
+  local work="$1" head_n snap_n missing extra
+  head_n="$(git -C "$REPO_ROOT" ls-files | wc -l | tr -d ' ')"
+  snap_n="$(git -C "$work" ls-files | wc -l | tr -d ' ')"
+  if [[ "$head_n" == "$snap_n" ]]; then
+    echo "==> snapshot: $snap_n tracked path(s), identical to HEAD" >&2
+    return 0
+  fi
+  missing="$(comm -23 \
+    <(git -C "$REPO_ROOT" ls-files | sort) \
+    <(git -C "$work" ls-files | sort) | head -5)"
+  extra="$(comm -13 \
+    <(git -C "$REPO_ROOT" ls-files | sort) \
+    <(git -C "$work" ls-files | sort) | head -5)"
+  echo "ERROR: the snapshot is not HEAD -- $snap_n path(s) vs $head_n." >&2
+  echo "       Every gate that enumerates with \`git ls-files\` would scan a" >&2
+  echo "       different tree than CI does, and report success over it." >&2
+  _snapshot_report_paths "missing" "$missing"
+  _snapshot_report_paths "extra" "$extra"
+  return 1
+}
+
+# Print an indented sample of paths under a heading, or nothing when empty.
+_snapshot_report_paths() {
+  local label="$1" paths="$2" path
+  [[ -z "$paths" ]] && return 0
+  echo "       $label (first 5):" >&2
+  while IFS= read -r path; do
+    echo "         $path" >&2
+  done <<<"$paths"
+}
+
 run_suite_on_snapshot() {
   local fast="$1" only="${2:-}" work rc=0
   if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
@@ -679,15 +761,9 @@ run_suite_on_snapshot() {
   work="$(mktemp -d "${TMPDIR:-/tmp}/ra8-ci-snapshot.XXXXXXXX")"
   # shellcheck disable=SC2064
   # Expand $work now: the trap must not depend on the variable surviving.
-  trap "rm -rf '$work'" EXIT INT TERM
-  # GIT_LFS_SKIP_SMUDGE=1 emits the content/library epub LFS pointers as-is
-  # (no gate reads them, so no LFS object or network fetch is needed).
-  GIT_LFS_SKIP_SMUDGE=1 git -C "$REPO_ROOT" archive HEAD | tar -x -C "$work"
-  # Several gates shell out to git (ls-files, rev-list), so the snapshot needs
-  # to be a repository. One synthetic commit of the extracted tree is enough
-  # and keeps the snapshot independent of the host object store.
-  git -C "$work" init --quiet
-  git -C "$work" add -A
+  trap "rm -rf '$work' '$work.index'" EXIT INT TERM
+  materialise_head_snapshot "$work"
+  snapshot_fidelity_check "$work"
   git -C "$work" -c user.email=ci@localhost -c user.name=ci \
     commit --quiet --no-verify -m "ci.sh snapshot of HEAD" >/dev/null 2>&1 || true
   # That snapshot has ONE synthetic commit and none of the host's objects, so

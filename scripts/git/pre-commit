@@ -478,10 +478,14 @@ fi
 # to run it without --check to refresh).
 
 # ---- HUM citation validator (strict: cite-validation clean tree-wide) ----
-# NOTE: this is the cite-VALIDATION gate (does every existing cite parse and
+# NOTE: this is the cite-VALIDATION pass (does every existing cite parse and
 # point at a real chapter/page?). The complementary cite-COVERAGE pass (does
-# every MMIO access HAVE a cite?) is available via --require-cites but is not
-# yet gate-clean -- see docs and cite_check.py --help.
+# every MMIO access HAVE a cite?) is enforced too, as of #534 -- but as a
+# RATCHET in the `cite-check` CI gate (scripts/checks/cite_ratchet.py), which
+# the pre-push hook runs. It is deliberately not repeated here: no ratchet in
+# this tree runs per-commit (misra, tidy, matrix and mcdc-compound are all
+# gate-only), because a ratchet has to scan the whole tree -- 15s here, on
+# every commit, to re-detect something the push is already blocked on.
 if [[ -f scripts/checks/cite_check.py ]]; then
   if ! python3 scripts/checks/cite_check.py --strict; then
     echo "[FAIL] cite_check.py reported issues."

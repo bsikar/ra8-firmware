@@ -19,6 +19,13 @@ Editing rules:
     human license inventory is ``THIRD_PARTY_LICENSES.md``.  A registry edit
     that does not update those is half a change.
   * A newly vendored directory with no entry here fails the SBOM gate.
+  * There is NO integrity-hash field, deliberately.  ``aggregate_sha256`` used
+    to live here as a hand-transcribed literal on four of the twenty-three
+    entries, which meant ``gen_sbom.py --check`` compared a constant against
+    itself and a mutated vendored byte reported clean (#538).  The digest is
+    now DERIVED from the tree on every run by ``gen_sbom.tree_digest()``.  Do
+    not re-introduce a stored copy: a transcribed value never disagrees with
+    itself.
 """
 
 from __future__ import annotations
@@ -28,7 +35,7 @@ from dataclasses import dataclass, field
 # Provenance classes, most-to-least trustworthy.  Recorded per component in a
 # CycloneDX property so an auditor can see, at a glance, which components are
 # pinned versus inferred.
-PROV_COMMIT_PINNED = "commit-pinned-sha256"  # upstream SHA + integrity hash
+PROV_COMMIT_PINNED = "commit-pinned-sha256"  # upstream SHA + derived integrity hash
 PROV_VERSION_HEADER = "version-header"  # version from an in-tree header macro
 PROV_NOT_VENDORED = "not-vendored"  # documented but absent from the tree
 PROV_PROPRIETARY = "proprietary-unresolved"  # license not cleared; see notes
@@ -60,7 +67,6 @@ class Component:
     license_election: str | None = None  # license we consume it under
     license_file: str | None = None  # LICENSE path (root-relative) if present
     upstream_commit: str | None = None  # pinned upstream commit SHA
-    aggregate_sha256: str | None = None  # integrity hash of the vendored tree
     copyright: str | None = None  # copyright string (proprietary assets)
     modified: bool = False  # true if the vendored tree carries a local patch
     scope: str = "required"  # CycloneDX scope: required / excluded
@@ -305,7 +311,6 @@ REGISTRY: tuple[Component, ...] = (
         license_note="0BSD (upstream COPYING; SPDX headers per file).",
         license_file="libs/third_party/xz_embedded/COPYING",
         upstream_commit="ae63ae3a36ed01724674e8f3d750dc47bf125410",
-        aggregate_sha256=("9dc6c2af6988af773cdf64d383a450f70c31a6df467ec5bcf827901c21c95dd9"),
         extra_notes=(
             "Pinned by tree fingerprint: all 11 vendored files are "
             "byte-identical to upstream tag v2024-12-30 (commit ae63ae3a), "
@@ -513,7 +518,6 @@ REGISTRY: tuple[Component, ...] = (
         license_note="Per-file SPDX-BSD-3-Clause; upstream LICENSE.md mirrored.",
         license_file="libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md",
         upstream_commit="40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
-        aggregate_sha256=("718e4d454033ce5481e4cd846eb4e585731e1be41cb36dff0e8e214842037064"),
         extra_notes=(
             "Gold-standard provenance: commit pin + aggregate SHA-256 of the "
             "sorted per-file hashes (excludes UPSTREAM_LICENSE.md). See "
@@ -537,7 +541,6 @@ REGISTRY: tuple[Component, ...] = (
         license_note="Apache-2.0 (upstream LICENSE); no separate NOTICE file upstream.",
         license_file="libs/third_party/esp-hosted/LICENSE",
         upstream_commit="949bb30612747a3bd9e402eda8d01fbfa1f8503e",
-        aggregate_sha256=("79ae04974accce04871f64d6e5cfb1e46676a4e70a0252eed616405826d29cc0"),
         extra_notes=(
             "HOST half of esp-hosted: this is the driver compiled INTO the RA8 "
             "image. The peripheral-side co-processor firmware that runs on the "
@@ -573,7 +576,6 @@ REGISTRY: tuple[Component, ...] = (
         license_note="BSD-2-Clause (upstream LICENSE); distinct upstream from esp-hosted.",
         license_file="libs/third_party/esp-hosted/common/protobuf-c/LICENSE",
         upstream_commit="abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
-        aggregate_sha256=("67da2264194eb142d30830ab92a8a64decb1557d4d4ee8a82dddd7f731784d7f"),
         probe_file="protobuf-c/protobuf-c.h",
         probe_re=r"#\s*define\s+PROTOBUF_C_VERSION\s+\"([0-9.]+)\"",
         expected_version="1.4.1",

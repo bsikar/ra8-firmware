@@ -23,6 +23,13 @@
 #   ./scripts/checks/clang_tidy.sh --verbose    # Verbose output
 #   ./scripts/checks/clang_tidy.sh --help       # Show this help
 #
+# Exit codes:
+#   0  no violations
+#   1  clang-tidy reported violations (RC_VIOLATIONS -- the gate ratchets this)
+#   2  this script could not do its job (RC_INFRA): no clang-tidy, no
+#      .clang-tidy config, no helper bodies, or a file list that collapsed
+#      below RA8_TIDY_FILE_FLOOR
+#
 # Prerequisites:
 #   clang-tidy >= 16 (Ubuntu 24.04: sudo apt-get install clang-tidy)
 #   cmake (to configure the test build with compile_commands.json)
@@ -74,6 +81,16 @@ BUILD_DIR=""
 # pile of findings would let an infrastructure failure ratchet itself in.
 RC_VIOLATIONS=1
 RC_INFRA=2
+
+# A tree this size cannot legitimately collapse to a handful of files. If
+# collect_source_files returns less than this, something broke (a bad cwd, a
+# renamed scan root, a failed enumeration) and "no violations found" would be
+# a lie -- the previous behaviour printed "No source files found yet" and
+# exited 0, which is that lie in its purest form. Measured 2026-07-28: 2127
+# first-party C-family files. Below the floor this exits RC_INFRA, so the
+# tidy gate sees "could not run" and refuses to ratchet, rather than reading
+# an empty sweep as a clean one.
+readonly RA8_TIDY_FILE_FLOOR=1700
 
 # ---------------------------------------------------------------------------
 # Helper bodies, sourced from scripts/checks/tidy/.
@@ -196,9 +213,10 @@ run_clang_tidy() {
   local files
   mapfile -t files < <(collect_source_files)
 
-  if [[ ${#files[@]} -eq 0 ]]; then
-    print_warning "No source files found yet -- nothing to lint."
-    exit 0
+  if [[ ${#files[@]} -lt $RA8_TIDY_FILE_FLOOR ]]; then
+    print_error "clang_tidy.sh: FATAL -- only ${#files[@]} source file(s) in scope, floor is $RA8_TIDY_FILE_FLOOR."
+    print_error "  A collapsed scope reports a clean tree because it linted nothing."
+    exit "$RC_INFRA"
   fi
 
   print_status "Running $clang_tidy on ${#files[@]} file(s)..."

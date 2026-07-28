@@ -14,13 +14,23 @@ real SG-stub addresses) and fails the build if any veneer has drifted from the
 offset hard-coded in ``ns_main.c`` (the ``k_sg_off_*`` enum). If it fires,
 update both the enum and this table together.
 
+The veneer set is REQUIRED, not optional, once the ELF has an NSC region. Both
+callers -- the ``tz_nsc_cgc_usb.elf`` POST_BUILD command and the ``sg-offsets``
+gate -- pick that ELF precisely BECAUSE it binds all three ``ra8_nsc_cgc_*``
+veneers (its CMakeLists passes ``NSC_SRCS ra8_nsc_cgc.c``, whose three
+``RA8_NSC_VENEER`` definitions are the whole point of the app). So an absent
+veneer there is a broken secure gateway, not a build configuration, and the
+old ``any(...)`` guard turned exactly that defect into ``skipped.`` + exit 0.
+Only an ELF with no ``g_ra8_ls_sgstubs_start`` at all -- a link whose script
+never placed ``.gnu.sgstubs`` -- is still skipped.
+
 Usage:
     check_sg_offsets.py <elf> [--nm <nm-binary>]
 
 Exit codes:
-    0  -- offsets match, or the veneers are absent (non-TrustZone build)
-    1  -- a veneer slot drifted
-    2  -- usage / tool error
+    0  -- offsets match, or the ELF has no NSC region at all
+    1  -- a veneer slot drifted, or a required veneer is missing from the link
+    2  -- usage / tool error, or a symbol table too small to trust (SYMBOL_FLOOR)
 """
 
 import argparse
@@ -41,6 +51,14 @@ THUMB_MASK = 0xFFFFFFFE
 
 # nm output has 3 fields: address, type, name.
 NM_FIELD_COUNT = 3
+
+# A linked firmware image cannot legitimately define a handful of symbols. If
+# the parse returns less than this, something broke (the wrong file, a stripped
+# ELF, an nm that printed a format this parser does not recognise) and every
+# later lookup would miss -- which reads as "no SG veneers present" and exits 0
+# having verified nothing. Measured 2026-07-28: 187 defined symbols in
+# tz_nsc_cgc_usb.elf. Same trip-wire as check_ruff.py.
+SYMBOL_FLOOR = 140
 
 
 def read_symbols(elf: str, nm: str) -> dict[str, int]:
@@ -70,11 +88,21 @@ def main() -> int:
     function symbol carries bit 0 set, and comparing raw values would make
     every offset off by one.
 
-    An ELF with no veneers is skipped and exits 0, which is correct for a
-    non-TrustZone build rather than a silent pass: absent veneers cannot drift.
+    Only an ELF with no ``g_ra8_ls_sgstubs_start`` at all is skipped -- a link
+    whose script never placed ``.gnu.sgstubs``, where there is no NSC region to
+    have drifted. Once that base symbol exists, EVERY veneer in
+    EXPECTED_OFFSETS is required: the callers hand this the one ELF that binds
+    all three by construction, so a missing one is a broken secure gateway. The
+    previous ``any(...)`` guard reported that defect as ``skipped.`` and
+    exited 0.
 
-    Returns 0 when every offset matches or no veneers are present, 1 on drift
-    or a missing symbol, 2 when ``nm`` could not be run at all.
+    SYMBOL_FLOOR guards the layer beneath both: a parse that yields almost no
+    symbols makes every lookup miss, which the skip branch would then read as
+    "no veneers present".
+
+    Returns 0 when every offset matches or the ELF has no NSC region, 1 on
+    drift or a missing veneer, 2 when ``nm`` could not be run at all or its
+    output fell below SYMBOL_FLOOR.
     """
     ap = argparse.ArgumentParser()
     ap.add_argument("elf")
@@ -88,9 +116,20 @@ def main() -> int:
         print(f"check_sg_offsets: cannot run nm on {args.elf}: {exc}", file=sys.stderr)
         return 2
 
-    if BASE_SYMBOL not in syms or not any(s in syms for s in EXPECTED_OFFSETS):
-        # No veneers (TrustZone disabled / non-TZ build) -- nothing to verify.
-        print("check_sg_offsets: no SG veneers present -- skipped.")
+    if len(syms) < SYMBOL_FLOOR:
+        print(
+            f"check_sg_offsets: FATAL -- only {len(syms)} defined symbol(s) read from "
+            f"{args.elf}, floor is {SYMBOL_FLOOR}. A collapsed symbol table reports "
+            "'no SG veneers present' because every lookup missed.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if BASE_SYMBOL not in syms:
+        # No .gnu.sgstubs placement at all: there is no NSC region to drift.
+        # A PRESENT base with absent veneers is NOT this case -- it falls
+        # through and every missing veneer is reported below.
+        print("check_sg_offsets: no NSC region in this ELF -- skipped.")
         return 0
 
     base = syms[BASE_SYMBOL]
