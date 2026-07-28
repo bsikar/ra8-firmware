@@ -159,22 +159,22 @@ typedef enum : uint16_t {
 
 /**
  * @brief Build a `ra8_port_pin_t` from explicit port / pin indices.
- * @param port `ra8_port_t` value (0..`k_ra8_port_max`).
- * @param pin  `ra8_pin_t`  value (0..`k_ra8_pin_max`).
+ * @param[in] port `ra8_port_t` value (0..`k_ra8_port_max`).
+ * @param[in] pin  `ra8_pin_t`  value (0..`k_ra8_pin_max`).
  * @return Packed `ra8_port_pin_t`.
  */
 #define RA8_PIN(port, pin) ((ra8_port_pin_t)(((uint16_t)(port) << 8) | (uint16_t)(pin)))
 
 /**
  * @brief Extract the port index from a packed `ra8_port_pin_t`.
- * @param p Packed pin id.
+ * @param[in] p Packed pin id.
  * @return `ra8_port_t` value.
  */
 #define RA8_PIN_PORT(p) ((ra8_port_t)(((uint16_t)(p) >> 8) & 0xFFU))
 
 /**
  * @brief Extract the pin index from a packed `ra8_port_pin_t`.
- * @param p Packed pin id.
+ * @param[in] p Packed pin id.
  * @return `ra8_pin_t` value.
  */
 #define RA8_PIN_PIN(p) ((ra8_pin_t)((uint16_t)(p) & 0xFFU))

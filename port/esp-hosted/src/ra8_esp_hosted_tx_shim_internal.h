@@ -576,6 +576,13 @@ tx_byte_allocate(TX_BYTE_POOL* pool_ptr, void** memory_ptr, ULONG memory_size, U
   UINT injected = TX_SUCCESS;
   (void)wait_option;
   if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
+    /* Honour the documented postcondition on the injection path too: a test
+       that arms this family gets no block, whatever status it armed. Leaving
+       *memory_ptr untouched let an armed TX_SUCCESS report a successful
+       allocation that never happened. */
+    if (memory_ptr != nullptr) {
+      *memory_ptr = nullptr;
+    }
     return injected;
   }
   if ((pool_ptr == nullptr) || (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {

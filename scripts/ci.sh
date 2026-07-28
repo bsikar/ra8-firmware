@@ -142,6 +142,7 @@ RA8_GATE_REGISTRY=(
   "sbom|fast|CycloneDX SBOM freshness"
   "nsc-cmse|fast|ra8_nsc veneers compile under -mcmse"
   "cppcheck|slow|cppcheck static analysis"
+  "scan-build|slow|clang static analyzer over the host test build"
   "misra|slow|MISRA-C 2012 ratchet"
   "tidy|slow|clang-tidy"
   "unit-tests|slow|host unit tests (ctest)"

@@ -751,6 +751,24 @@ jobs:
       - run: bash scripts/ci.sh --gate cppcheck
 
   # ---------------------------------------------------------------------------
+  # Clang static analyzer (#532). docs/STATIC_ANALYSIS.md asserted that CI ran
+  # this for months while nothing did; this job is what makes that true. It
+  # analyses the host unit-test build, so it needs no cross-toolchain, and it
+  # is a full re-compile under the analyzer -- hence its own job rather than a
+  # step inside an existing one.
+  # ---------------------------------------------------------------------------
+  scan-build:
+    name: clang static analyzer
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/ci.sh --gate scan-build
+
+  # ---------------------------------------------------------------------------
   # PR-only: post a per-file MC/DC delta comment vs the base branch.
   # Limited to the first 50 rows so the comment stays readable.
   # ---------------------------------------------------------------------------

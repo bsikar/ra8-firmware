@@ -105,8 +105,8 @@ static inline uint32_t ra8_prot_scope_end(void)
  * so the expansion carries no comma operator and each clause touches only
  * the loop counter -- MISRA-C 2012 12.3 and 14.2 clean at every call site.
  *
- * @param unlock_val One of the `k_ra8_prcr_unlock_*` values from
- *                   `ra8_system_regs.h`.
+ * @param[in] unlock_val One of the `k_ra8_prcr_unlock_*` values from
+ *                       `ra8_system_regs.h`.
  */
 #define RA8_PROTECTED_WRITE(unlock_val)                                                            \
   for (uint32_t ra8_prot_once_ = ra8_prot_scope_begin((uint16_t)(unlock_val));                     \

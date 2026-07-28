@@ -60,8 +60,8 @@
  * size in bytes that the function is permitted to consume, as
  * verified against its `<file>.su` entry.
  *
- * @param bytes Approved upper bound on this function's stack frame
- *              (units: bytes, must match the corresponding `.su` line).
+ * @param[in] bytes Approved upper bound on this function's stack frame
+ *                  (units: bytes, must match the corresponding `.su` line).
  *
  * @note Place as the first statement inside the function body (so
  *       the preceding Doxygen block remains adjacent to the function

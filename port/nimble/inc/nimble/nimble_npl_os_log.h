@@ -33,8 +33,8 @@
  * enclosing ``BLE_NPL_LOG_MODULE``, matching the signature upstream call
  * sites use so the calls type-check and then optimise away.
  *
- * @param lvl Log level token (``DEBUG``, ``INFO``, ``WARN``, ``ERROR``,
- *            ``CRITICAL``) as passed by ``nimble_npl_log.h``.
+ * @param[in] lvl Log level token (``DEBUG``, ``INFO``, ``WARN``, ``ERROR``,
+ *                ``CRITICAL``) as passed by ``nimble_npl_log.h``.
  *
  * @note Vendored NimBLE headers use this; first-party code logs through
  *       ``ra8_log`` instead.

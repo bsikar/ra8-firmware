@@ -88,8 +88,8 @@ extern "C" {
  * runtime `RA8_ASSERT` macro and so the pre-commit hook can enforce the
  * C23 spelling instead of the older C11 underscore form.
  *
- * @param cond C-time constant boolean expression.
- * @param msg  String literal describing the invariant.
+ * @param[in] cond C-time constant boolean expression.
+ * @param[in] msg  String literal describing the invariant.
  *
  * @code{.c}
  * RA8_STATIC_ASSERT(sizeof(ra8_err_t) == 2, "ra8_err_t must be uint16_t");
@@ -114,8 +114,8 @@ extern "C" {
  * Failure path: logs `message` with tag `"ASSERT"` and calls
  * `internal_ra8_fatal_error`, which halts. No allocation, no RTT.
  *
- * @param condition Expression that must be true.
- * @param message   String literal shown if the assertion fires.
+ * @param[in] condition Expression that must be true.
+ * @param[in] message   String literal shown if the assertion fires.
  *
  * @note `condition` is evaluated exactly once.
  */
@@ -139,7 +139,7 @@ extern "C" {
  * where there is no meaningful recovery (clock bring-up, vector table
  * install, etc.).
  *
- * @param err `ra8_err_t` value to check.
+ * @param[in] err `ra8_err_t` value to check.
  *
  * @note Evaluates `err` exactly once via a local.
  */
@@ -159,7 +159,7 @@ extern "C" {
  * init paths where a failure is tolerated (e.g. an optional sensor not
  * being present).
  *
- * @param err `ra8_err_t` value to check.
+ * @param[in] err `ra8_err_t` value to check.
  */
 #define RA8_ERROR_CHECK_NO_ABORT(err)                                                              \
   do {                                                                                             \
@@ -172,9 +172,9 @@ extern "C" {
 /**
  * @brief Early return on error, propagating the code upward.
  *
- * @param err     `ra8_err_t` value to check.
- * @param tag     Component tag for logging.
- * @param message String literal to log on failure.
+ * @param[in] err     `ra8_err_t` value to check.
+ * @param[in] tag     Component tag for logging.
+ * @param[in] message String literal to log on failure.
  *
  * @note Must be used only inside a function whose return type is
  *       `ra8_err_t`. See `RA8_RETURN_VOID_ON_ERROR` / `RA8_RETURN_NULL_ON_ERROR`
@@ -193,9 +193,9 @@ extern "C" {
 /**
  * @brief Early return from a `void` function on error.
  *
- * @param err     `ra8_err_t` value to check.
- * @param tag     Component tag for logging.
- * @param message String literal to log on failure.
+ * @param[in] err     `ra8_err_t` value to check.
+ * @param[in] tag     Component tag for logging.
+ * @param[in] message String literal to log on failure.
  */
 #define RA8_RETURN_VOID_ON_ERROR(err, tag, message)                                                \
   do {                                                                                             \
@@ -210,9 +210,9 @@ extern "C" {
 /**
  * @brief Early return `nullptr` from a pointer-returning function on error.
  *
- * @param err     `ra8_err_t` value to check.
- * @param tag     Component tag for logging.
- * @param message String literal to log on failure.
+ * @param[in] err     `ra8_err_t` value to check.
+ * @param[in] tag     Component tag for logging.
+ * @param[in] message String literal to log on failure.
  */
 #define RA8_RETURN_NULL_ON_ERROR(err, tag, message)                                                \
   do {                                                                                             \
@@ -232,9 +232,9 @@ extern "C" {
 /**
  * @brief Reject `nullptr` pointer, returning `k_ra8_err_null_ptr`.
  *
- * @param ptr     Pointer expression to test.
- * @param tag     Component tag for logging.
- * @param message String literal identifying which argument is NULL.
+ * @param[in] ptr     Pointer expression to test.
+ * @param[in] tag     Component tag for logging.
+ * @param[in] message String literal identifying which argument is NULL.
  *
  * @note Expands to `return k_ra8_err_null_ptr;` on failure, so the
  *       enclosing function must return `ra8_err_t`.
@@ -250,10 +250,10 @@ extern "C" {
 /**
  * @brief Reject out-of-range value, returning `errcode`.
  *
- * @param value   Numeric expression to test.
- * @param min     Inclusive lower bound.
- * @param max     Inclusive upper bound.
- * @param errcode `ra8_err_t` value to return on failure.
+ * @param[in] value   Numeric expression to test.
+ * @param[in] min     Inclusive lower bound.
+ * @param[in] max     Inclusive upper bound.
+ * @param[in] errcode `ra8_err_t` value to return on failure.
  */
 #define RA8_CHECK_RANGE(value, min, max, errcode)                                                  \
   do {                                                                                             \
@@ -266,13 +266,13 @@ extern "C" {
 /**
  * @brief Tagged range check (adds a component tag to the log line).
  *
- * @param value   Numeric expression to test.
- * @param min     Inclusive lower bound (documented only; explicit check
- *                is omitted to avoid `-Wtype-limits` when `min == 0`
- *                and `value` is unsigned).
- * @param max     Inclusive upper bound.
- * @param errcode `ra8_err_t` value to return on failure.
- * @param tag     Component tag for logging.
+ * @param[in] value   Numeric expression to test.
+ * @param[in] min     Inclusive lower bound (documented only; explicit check
+ *                    is omitted to avoid `-Wtype-limits` when `min == 0`
+ *                    and `value` is unsigned).
+ * @param[in] max     Inclusive upper bound.
+ * @param[in] errcode `ra8_err_t` value to return on failure.
+ * @param[in] tag     Component tag for logging.
  */
 #define RA8_CHECK_RANGE_TAG(value, min, max, errcode, tag)                                         \
   do {                                                                                             \
@@ -291,9 +291,9 @@ extern "C" {
 /**
  * @brief Precondition: module must be initialized.
  *
- * @param initialized Boolean expression (`true` if init complete).
- * @param tag         Component tag for logging.
- * @param message     String literal identifying the module.
+ * @param[in] initialized Boolean expression (`true` if init complete).
+ * @param[in] tag         Component tag for logging.
+ * @param[in] message     String literal identifying the module.
  *
  * @note Returns `k_ra8_err_not_initialized` on failure.
  */

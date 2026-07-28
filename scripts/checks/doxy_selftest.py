@@ -18,6 +18,7 @@ from pathlib import Path
 from doxy_functions import audit_file
 from doxy_members import audit_members_file
 from doxy_scope import override_repo_root
+from doxy_style import _floor_failure, audit_text, partition
 
 # --------------------------------------------------------------------------
 # Self-test
@@ -243,22 +244,153 @@ def _check_member_mode(member_rows: list) -> list[str]:
     return failures
 
 
+#: Style-mode fixtures: (path, source, the rule codes the gate MUST report).
+#: An empty expectation is the other direction -- a legal form the gate must
+#: leave alone. Every rule appears in both directions, because a tag gate that
+#: silently stopped matching looks exactly like a compliant tree.
+_STYLE_FIXTURES: tuple[tuple[str, str, frozenset[str]], ...] = (
+    (
+        "libs/mod_sty/src/no_block.c",
+        "/* not a doxygen block */\nint f(void) { return 0; }\n",
+        frozenset({"FILE_BLOCK_MISSING"}),
+    ),
+    (
+        "libs/mod_sty/src/wrong_name.c",
+        "/**\n * @file some_other_file.c\n * @brief B.\n * @details D.\n */\n",
+        frozenset({"FILE_TAG_MISMATCH"}),
+    ),
+    (
+        "libs/mod_sty/src/no_brief.c",
+        "/**\n * @file no_brief.c\n * @details D.\n */\n",
+        frozenset({"BRIEF_MISSING"}),
+    ),
+    (
+        "libs/mod_sty/src/no_details.c",
+        "/**\n * @file no_details.c\n * @brief B.\n */\n",
+        frozenset({"DETAILS_MISSING"}),
+    ),
+    (
+        "libs/mod_sty/src/bare_param.c",
+        "/**\n * @file bare_param.c\n * @brief B.\n * @details D.\n */\n"
+        "/** @brief g. @param a The input. */\n",
+        frozenset({"PARAM_NO_DIRECTION"}),
+    ),
+    (
+        "libs/mod_sty/src/bad_dir.c",
+        "/**\n * @file bad_dir.c\n * @brief B.\n * @details D.\n */\n"
+        "/** @brief g. @param[inout] a The input. */\n",
+        frozenset({"PARAM_BAD_DIRECTION"}),
+    ),
+    # --- the forms that must stay CLEAN -----------------------------------
+    (
+        "libs/mod_sty/src/good.c",
+        "/**\n * @file good.c\n * @brief B.\n * @details D.\n */\n"
+        "/** @brief g. @param[in] a In. @param[out] b Out. @param[in,out] c Both. */\n",
+        frozenset(),
+    ),
+    (
+        # Doxygen's other command prefix. port/mbedtls carries upstream's
+        # backslash form, so a rule keyed on '@' alone exempts it silently.
+        "libs/mod_sty/src/backslash.c",
+        "/**\n * \\file backslash.c\n * \\brief B.\n * \\details D.\n */\n"
+        "/** \\brief g. \\param[in] a In. */\n",
+        frozenset(),
+    ),
+    (
+        # \file's argument is same-line-only; 17 headers here push the name to
+        # the next line, which doxygen reads as "this file". Not a mismatch.
+        "libs/mod_sty/src/continued.c",
+        "/**\n * @file\n * libs/mod_sty/src/continued.c\n * @brief B.\n * @details D.\n */\n",
+        frozenset(),
+    ),
+    (
+        # The full repo-relative spelling, which hundreds of files here use.
+        "libs/mod_sty/src/full_path.c",
+        "/**\n * @file libs/mod_sty/src/full_path.c\n * @brief B.\n * @details D.\n */\n",
+        frozenset(),
+    ),
+    (
+        # A @param inside a PLAIN comment is prose, not documentation.
+        "libs/mod_sty/src/plain_comment.c",
+        "/**\n * @file plain_comment.c\n * @brief B.\n * @details D.\n */\n"
+        "/* @param a is written like this in the style guide's own examples */\n",
+        frozenset(),
+    ),
+)
+
+
+def _check_style_mode() -> list[str]:
+    """The style gate must fire on each defect and spare each legal spelling."""
+    failures = []
+    for rel, source, expected in _STYLE_FIXTURES:
+        rows, _seen = audit_text(rel, source)
+        codes = {row[2] for row in rows}
+        failures.extend(
+            f"style gate went toothless: {rel} should report {code} and did not"
+            for code in sorted(expected - codes)
+        )
+        failures.extend(
+            f"style gate false positive: {rel} is a legal form but reported {code}"
+            for code in sorted(codes - expected)
+        )
+    return failures
+
+
+def _check_style_ratchet() -> list[str]:
+    """The @details ratchet must excuse frozen debt, and only frozen debt."""
+    rows = [
+        ("libs/frozen.c", 1, "DETAILS_MISSING", "no @details"),
+        ("libs/fresh.c", 1, "DETAILS_MISSING", "no @details"),
+        ("libs/fresh.c", 9, "PARAM_NO_DIRECTION", "plain @param"),
+    ]
+    violations, stale = partition(rows, {"libs/frozen.c", "libs/written.c"})
+    offenders = {(row[0], row[2]) for row in violations}
+    failures = []
+    if ("libs/frozen.c", "DETAILS_MISSING") in offenders:
+        failures.append("style ratchet: frozen @details debt was reported as a new violation")
+    if ("libs/fresh.c", "DETAILS_MISSING") not in offenders:
+        failures.append("style ratchet: a file outside the baseline escaped the @details rule")
+    if ("libs/fresh.c", "PARAM_NO_DIRECTION") not in offenders:
+        failures.append("style ratchet: the baseline excused a rule it does not cover")
+    if stale != ["libs/written.c"]:
+        failures.append(f"style ratchet: stale baseline entry not reported (got {stale})")
+    return failures
+
+
+def _check_style_floor() -> list[str]:
+    """The vacuity floors must fire on a collapsed scan and pass a real one."""
+    failures = []
+    if _floor_failure([], 0) is None:
+        failures.append("style gate: an EMPTY file list did not trip the vacuity floor")
+    if _floor_failure(["x.c"] * 9999, 0) is None:
+        failures.append("style gate: ZERO @param tags did not trip the vacuity floor")
+    if _floor_failure(["x.c"] * 9999, 99999) is not None:
+        failures.append("style gate: a plausible scan was rejected by the vacuity floor")
+    return failures
+
+
 def run_selftest() -> int:
     """Regression-test the auditor itself. Returns a process exit code.
 
-    ``--check`` and ``--members --check`` are both enforcing gates, and a
-    parser-driven gate has two ways to fail silently. It can stop recognising
-    a construct, in which case the offenders inside it vanish and the tree
-    looks documented; or it can start matching things that are not
+    ``--check``, ``--members --check`` and ``--style`` are all enforcing gates,
+    and a parser-driven gate has two ways to fail silently. It can stop
+    recognising a construct, in which case the offenders inside it vanish and
+    the tree looks documented; or it can start matching things that are not
     declarations at all, in which case it reports noise until somebody
-    switches it off. Both directions are asserted, for both modes.
+    switches it off. Both directions are asserted, for all three modes.
     """
     with tempfile.TemporaryDirectory() as td:
         root = Path(td).resolve()
         with override_repo_root(root):
             func_rows, member_rows = _audit_synthetic(root)
 
-    failures = [*_check_function_mode(func_rows), *_check_member_mode(member_rows)]
+    failures = [
+        *_check_function_mode(func_rows),
+        *_check_member_mode(member_rows),
+        *_check_style_mode(),
+        *_check_style_ratchet(),
+        *_check_style_floor(),
+    ]
     if failures:
         for f in failures:
             sys.stderr.write(f"[FAIL] doxy_audit selftest: {f}\n")
@@ -268,6 +400,9 @@ def run_selftest() -> int:
         "doxy_audit selftest: OK (function gate reports bare and thin blocks and "
         "spares definition-site, forward-prototype and control-flow forms; member "
         "gate reports undocumented macros, enum values and struct members and "
-        "spares documented ones)"
+        "spares documented ones; style gate reports a missing/stale file header, "
+        "a missing @brief/@details and a directionless @param, spares the "
+        "backslash, continued-name and full-path spellings, excuses only frozen "
+        "@details debt, and refuses a vacuous scan)"
     )
     return 0

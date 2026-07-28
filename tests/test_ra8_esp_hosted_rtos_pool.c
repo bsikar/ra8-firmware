@@ -258,14 +258,28 @@ static void test_calloc_zeroes_and_refuses_overflow(void)
  * @brief A refused pool allocation becomes a null return, never a fault.
  *
  * @details
- * Driven two ways: by arming the modelled pool family to refuse once, and by
- * draining the real fixed pool with repeated maximum-size requests until it
- * genuinely cannot serve another. The second is the case a badly sized
+ * Driven three ways: by arming the modelled pool family to refuse once, by
+ * arming it to report SUCCESS while handing back no block, and by draining the
+ * real fixed pool with repeated maximum-size requests until it genuinely
+ * cannot serve another. The last is the case a badly sized
  * ::k_ra8_esp_hosted_pool_bytes would produce on the bench.
  *
+ * The middle one is a contract break by the allocator rather than a refusal:
+ * `tx_byte_allocate` writes its out-parameter only on success, so a TX_SUCCESS
+ * with the block pointer still null must become a null return and not an
+ * address computed from zero. The clang static analyzer found that path before
+ * any test did (docs/STATIC_ANALYSIS.md).
+ *
  * @par MC/DC:
- * Single-condition decision `tx_byte_allocate(...) != TX_SUCCESS`; vectors are
- * the armed refusal, the natural exhaustion, and the ordinary success.
+ * Decision: `(tx_byte_allocate(...) != TX_SUCCESS) || (base == nullptr)`
+ * (2 conditions).
+ * - Vector 1: armed TX_NO_MEMORY        -> C1=T (short-circuits) -> true
+ * - Vector 2: armed TX_SUCCESS, no block -> C1=F, C2=T           -> true
+ * - Vector 3: ordinary success           -> C1=F, C2=F           -> false
+ * Vectors 2+3 prove C1=F holds while C2 alone flips the outcome; 1+3 prove C1
+ * flips it with C2 unable to contribute (short-circuit). N+1 = 3 vectors for
+ * N=2: minimal MC/DC. The natural pool exhaustion below re-drives vector 1
+ * through the real allocator rather than the injection seam.
  *
  * @pre The port is initialised.
  * @post The pool is left drained; the next test resets the port.
@@ -277,6 +291,8 @@ static void test_pool_exhaustion_reports_null(void)
   TEST_BEGIN("pool exhaustion reports null");
   reset_port();
   ra8_esp_hosted_tx_shim_arm(k_ra8_esp_hosted_tx_shim_family_pool, TX_NO_MEMORY);
+  TEST_ASSERT_NULL(s_funcs._h_malloc(64U));
+  ra8_esp_hosted_tx_shim_arm(k_ra8_esp_hosted_tx_shim_family_pool, TX_SUCCESS);
   TEST_ASSERT_NULL(s_funcs._h_malloc(64U));
   TEST_ASSERT_NOT_NULL(s_funcs._h_malloc(64U));
 
