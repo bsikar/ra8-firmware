@@ -98,6 +98,14 @@ ARG DOXYGEN_SHA256_LINUX_X64=a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4
 # that TU -- so keep this list in step with the runner install step in
 # .github/workflows/firmware.yml. Unicorn is NOT here: it is the pinned source
 # build below (docs/TOOLCHAIN.md), not an apt package.
+#
+# THE INVARIANT (#513): this list is a SUPERSET of every tool the gates declare
+# with require_cmd / require_python_mod. The `runner-image-deps` gate asserts it
+# against the DEPLOYED image rather than against this file, because the two are
+# free to disagree and have. openssh-client is here for exactly that reason and
+# no other: gate_bench_lock_selftest declares `ssh` and the image carried none
+# -- the third case of "a gate asserts a tool the image lacks" inside two days,
+# after `gh` and `jq`, and the first one found by a check instead of a person.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
@@ -123,6 +131,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       llvm-18 \
       locales \
       ninja-build \
+      openssh-client \
       pkg-config \
       python3 \
       python3-pip \
