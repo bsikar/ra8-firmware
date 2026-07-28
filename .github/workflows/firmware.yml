@@ -498,6 +498,7 @@ jobs:
       # they scan and proves nothing in the tree falls between them.
       - run: bash scripts/ci.sh --gate lint-coverage
       - run: bash scripts/ci.sh --gate cite-check
+      - run: bash scripts/ci.sh --gate hum-register-map
       - run: bash scripts/ci.sh --gate sbom
       # Runs next to sbom because it answers the other half of the same
       # question: sbom proves the vendored tree has not changed since we last
