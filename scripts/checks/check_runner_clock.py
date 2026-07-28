@@ -37,8 +37,8 @@ Run::
 
 Exit 0 when every step on every runner is time-ordered, 1 when any is not, and
 2 when the scan could not be performed at all -- which is a failure, not a
-pass. A clock checker that quietly reports "clean" because ``gh`` was missing
-is worse than no checker: it also removes the reason to look.
+pass. A clock checker that quietly reports "clean" because it had no token is
+worse than no checker: it also removes the reason to look.
 """
 
 from __future__ import annotations
@@ -46,9 +46,24 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
+
+# The API is spoken directly over HTTPS rather than through `gh api`, and that
+# is a deployment fact rather than a taste: the ra8-ci runner image does not
+# ship the GitHub CLI, so a gate built on it would fail nightly with a
+# provisioning error instead of a verdict. urllib is in the standard library
+# and is on every host this could ever run on.
+K_API_BASE = "https://api.github.com"
+
+# Marker for the line after a _fail() call. _fail() exits, so these raises are
+# unreachable -- they exist so a reader (and a type checker) can see that the
+# function does not fall through to an implicit None.
+K_UNREACHABLE = "unreachable: _fail() exits"
 
 # Whole-second timestamps and ordinary scheduling jitter mean adjacent steps can
 # appear to touch. A real clock step on the observed hosts is ~240 s wide, so a
@@ -69,30 +84,60 @@ def _fail(message: str) -> None:
     sys.exit(2)
 
 
-def _gh(args: list[str]) -> object:
-    """Call ``gh api`` and return the decoded JSON, or exit 2 explaining why not."""
+def _token() -> str:
+    """Return an API token, or exit 2 naming every way one could have been given.
+
+    In CI it is the workflow's own ``GITHUB_TOKEN``, whose rate budget is
+    per-repository and separate from the shared user quota. On a developer box
+    it falls back to whatever ``gh`` is already logged in as, so the gate runs
+    locally with nothing exported. No token at all is a failure, never a clean
+    scan.
+    """
+    for name in ("GH_TOKEN", "GITHUB_TOKEN"):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
     exe = shutil.which("gh")
-    if exe is None:
-        _fail(
-            "the GitHub CLI (gh) is not on PATH. This gate reads step timestamps "
-            "from the Actions API; without gh there is no scan to report on."
+    if exe is not None:
+        proc = subprocess.run(  # noqa: S603  # fixed argv, no shell; gh via shutil.which
+            [str(exe), "auth", "token"],
+            capture_output=True,
+            text=True,
+            check=False,
         )
-    proc = subprocess.run(  # noqa: S603  # fixed argv, no shell; gh resolved via shutil.which
-        [str(exe), "api", *args],
-        capture_output=True,
-        text=True,
-        check=False,
+        if proc.returncode == 0 and proc.stdout.strip():
+            return proc.stdout.strip()
+    _fail(
+        "no GitHub API token. Set GH_TOKEN or GITHUB_TOKEN (in a workflow, "
+        "`env: GH_TOKEN: ${{ github.token }}`), or log in with `gh auth login`. "
+        "This gate reads step timestamps from the Actions API; without a token "
+        "there is no scan to report on."
     )
-    if proc.returncode != 0:
-        _fail(
-            f"`gh api {' '.join(args)}` failed ({proc.returncode}). "
-            f"Is gh authenticated for this repository?\n{proc.stderr.strip()}"
-        )
+    raise AssertionError(K_UNREACHABLE)
+
+
+def _api(path: str, token: str) -> object:
+    """GET one Actions API path and return the decoded JSON, or exit 2 saying why."""
+    url = f"{K_API_BASE}/{path.lstrip('/')}"
+    if not url.startswith(f"{K_API_BASE}/"):
+        _fail(f"refusing to fetch a URL outside {K_API_BASE}: {url}")
+    request = urllib.request.Request(  # noqa: S310  # scheme pinned to K_API_BASE above
+        url,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "ra8-firmware-runner-clock",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
     try:
-        return json.loads(proc.stdout)
-    except json.JSONDecodeError as exc:
-        _fail(f"`gh api {' '.join(args)}` returned data that is not JSON: {exc}")
-        raise  # unreachable; keeps the type checker honest
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        _fail(f"GET {url} failed: HTTP {exc.code} {exc.reason}")
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        _fail(f"GET {url} failed: {exc}")
+    raise AssertionError(K_UNREACHABLE)
 
 
 def _parse_ts(value: str | None) -> dt.datetime | None:
@@ -156,9 +201,9 @@ def scan_job(job: dict) -> list[dict]:
     return findings
 
 
-def _runs(repo: str, limit: int, hours: int | None) -> list[dict]:
+def _runs(repo: str, token: str, limit: int, hours: int | None) -> list[dict]:
     """Fetch the most recent completed workflow runs, newest first."""
-    payload = _gh([f"repos/{repo}/actions/runs?status=completed&per_page={min(limit, 100)}"])
+    payload = _api(f"repos/{repo}/actions/runs?status=completed&per_page={min(limit, 100)}", token)
     runs = payload.get("workflow_runs", []) if isinstance(payload, dict) else []
     if hours is None:
         return runs[:limit]
@@ -205,11 +250,12 @@ def _report(findings: list[dict], scanned: dict) -> int:
 
 def scan(repo: str, limit: int, hours: int | None) -> int:
     """Scan recent runs of ``repo`` and report every clock-skew finding."""
+    token = _token()
     findings: list[dict] = []
     scanned = {"runs": 0, "jobs": 0, "steps": 0}
-    for run in _runs(repo, limit, hours):
+    for run in _runs(repo, token, limit, hours):
         scanned["runs"] += 1
-        payload = _gh([f"repos/{repo}/actions/runs/{run['id']}/jobs?per_page=100"])
+        payload = _api(f"repos/{repo}/actions/runs/{run['id']}/jobs?per_page=100", token)
         jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
         for job in jobs:
             scanned["jobs"] += 1
