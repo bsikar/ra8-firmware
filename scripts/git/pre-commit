@@ -592,7 +592,7 @@ fi
 
 # ---- Forbid obsolete safety-standard references (strict) ----------
 if [[ -f scripts/checks/check_obsolete_standards.py ]]; then
-  if ! python3 scripts/checks/check_obsolete_standards.py; then
+  if ! python3 scripts/checks/check_obsolete_standards.py --staged; then
     echo "[FAIL] Obsolete safety-standard reference (DO-178B)."
     echo "       Use DO-178C, IEC 61508 SIL 3, or ISO 26262 instead."
     error_found=1

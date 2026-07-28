@@ -14,8 +14,13 @@
 # gate compiles every ra8_nsc TU under the real Cortex-M85 / hard-float / -mcmse
 # ABI so a regression is caught immediately.
 #
-# Skips cleanly (exit 0) if the cross toolchain is absent, so it is a no-op on
-# hosts without arm-none-eabi-gcc; CI runners (and the dev box) have it.
+# FAILS (exit 2) if the cross toolchain is absent. It used to `exit 0` there --
+# the exact shape CLAUDE.md forbids ("a gate whose dependency is absent must
+# FAIL, not pass"), and the one this repo has been bitten by before. The gate
+# body in scripts/ci/gates/analysis.sh already requires the compiler before
+# calling this, so the change costs nothing in CI; what it buys is that any
+# OTHER caller -- a developer running it directly, a future gate -- can no
+# longer receive a clean bill of health from a run that compiled nothing.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -27,8 +32,12 @@ cd "$ROOT"
 
 GCC="${ARM_GCC:-arm-none-eabi-gcc}"
 if ! command -v "$GCC" >/dev/null 2>&1; then
-  echo "check_nsc_cmse: $GCC not found -- skipping (-mcmse gate needs the cross toolchain)"
-  exit 0
+  echo "check_nsc_cmse: FATAL -- $GCC is not on PATH." >&2
+  echo "  This gate is the only automated guard on the TrustZone Secure-Gateway" >&2
+  echo "  ABI, and it cannot run without the cross compiler. It FAILS rather" >&2
+  echo "  than skipping: a gate that compiled nothing has not passed." >&2
+  echo "  Install the Arm GNU Toolchain, or set ARM_GCC to its arm-none-eabi-gcc." >&2
+  exit 2
 fi
 
 # C23 standard flag: gcc >= 14 spells it `gnu23`, gcc <= 13 only accepts the

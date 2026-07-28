@@ -39,6 +39,17 @@ gate_ci_parity() (
   set -e
   require_python_mod yaml "pip install pyyaml (the CI runners ship it)"
   suite_errexit_selftest
+  suite_registry_selftest
+  # suite_errexit_selftest proves the RUNNER propagates a mid-body failure --
+  # but only for the shape it probes with, a `( set -e )` subshell. It is
+  # therefore blind to a gate written as a `{ }` block, which runs in the
+  # calling shell and so inherits run_gate_capture's `set +e`. Two gates were
+  # in exactly that state (#190): each ran a checker `--selftest` first "so a
+  # detector that stopped matching cannot pass as clean", then discarded that
+  # selftest's status. check_gate_bodies.py covers the other half -- every
+  # dispatched body must itself be capable of failing.
+  python3 scripts/ci/check_gate_bodies.py --selftest
+  python3 scripts/ci/check_gate_bodies.py
   python3 scripts/ci/check_ci_parity.py --selftest
   python3 scripts/ci/check_ci_parity.py
 )
@@ -94,6 +105,60 @@ suite_errexit_selftest() {
     return 1
   fi
   echo "ci.sh: suite-runner errexit self-test OK (mid-body failure propagates)."
+}
+
+# Assert that run_suite() refuses to report PASS for a suite that ran nothing.
+#
+# Two ways the suite could once do exactly that, both fixed in #190 and both
+# asserted here so neither can come back:
+#
+#   1. an EMPTY gate selection. The summary loop is bounded by `gate_names`,
+#      so with zero entries it never set `failed` and printed RESULT: PASS.
+#   2. an INVALID registry. run_suite consumed `list_gates` through a process
+#      substitution -- `done < <(list_gates)` -- whose exit status bash
+#      discards and `set -e` cannot see. list_gates `continue`s past a row
+#      whose gate_*() function does not exist, so that gate silently dropped
+#      out of the suite and the run still reported PASS.
+#
+# Both probes mutate RA8_GATE_REGISTRY, so each runs inside its own subshell
+# and the real registry is untouched.
+suite_registry_selftest() {
+  local probe_log rc=0 failures=0
+  probe_log="$(mktemp "${TMPDIR:-/tmp}/ra8-registry-probe.XXXXXXXX")"
+
+  # 1. empty registry -> the suite must FAIL, not pass on an empty summary.
+  rc=0
+  (
+    RA8_GATE_REGISTRY=()
+    run_suite 0
+  ) >"$probe_log" 2>&1 || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    echo "ERROR: run_suite reported success with an EMPTY gate registry." >&2
+    echo "       A suite that executed nothing has not passed." >&2
+    failures=1
+  fi
+
+  # 2. a registry row with no gate_*() behind it -> the suite must FAIL rather
+  #    than quietly drop the row and grade the remainder.
+  rc=0
+  (
+    # shellcheck disable=SC2034  # read by list_gates in scripts/ci.sh, which sources this file.
+    RA8_GATE_REGISTRY=("ra8-registry-probe-missing-fn|fast|probe row with no function")
+    run_suite 0
+  ) >"$probe_log" 2>&1 || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    echo "ERROR: run_suite reported success for a registry row whose gate" >&2
+    echo "       function does not exist. list_gates' failure status is being" >&2
+    echo "       discarded -- almost certainly by consuming it through a" >&2
+    echo "       process substitution (\`done < <(list_gates)\`)." >&2
+    failures=1
+  fi
+
+  rm -f "$probe_log"
+  if [[ "$failures" -ne 0 ]]; then
+    return 1
+  fi
+  echo "ci.sh: suite-runner registry self-test OK (empty and invalid registries fail)."
 }
 
 # Assert that the commit-message gates can still tell real history from a
@@ -295,12 +360,17 @@ gate_toolchain_parity() (
 )
 
 # --- no-ai-attribution ----------------------------------------------------
-gate_no_ai_attribution() {
+gate_no_ai_attribution() (
+  set -e
   # --selftest FIRST (#358): proves the ban fires and that tools/, .github/ and
   # every other tracked-text tree the old SCAN_DIRS omitted are back in scope.
+  #
+  # A `( set -e )` subshell for the reason spelled out on gate_ci_parity above:
+  # as a `{ }` block this ran under run_gate_capture's `set +e`, so the
+  # selftest's status was discarded and only the tree scan decided the verdict.
   python3 scripts/checks/check_no_ai_attribution.py --selftest
   python3 scripts/checks/check_no_ai_attribution.py
-}
+)
 
 # --- no-ai-attribution-commits --------------------------------------------
 # The file scanner cannot see commit messages -- trailers live in git
@@ -335,9 +405,10 @@ gate_no_ai_attribution_commits() (
 )
 
 # --- inclusive-terminology ------------------------------------------------
-gate_inclusive_terminology() {
+gate_inclusive_terminology() (
+  set -e
   python3 scripts/checks/check_inclusive_terminology.py
-}
+)
 
 # --- inclusive-terminology-commits ----------------------------------------
 gate_inclusive_terminology_commits() (

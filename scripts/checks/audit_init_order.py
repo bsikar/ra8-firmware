@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """audit_init_order.py -- per-app init-order linter.
 
-Walks every ``examples/<tier>/<app>/main.c`` in the tree, extracts the
+Walks every ``main.c`` under ``examples/`` at ANY depth, extracts the
 sequence of ``ra8_*_init(`` and ``ra8_board_*_init(`` calls in source
 order, and verifies the sequence respects the project-wide canonical
 ordering:
@@ -27,8 +27,23 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from selftest_assert import expect, report  # needs the sys.path line above
+
+# Minimum number of apps a healthy discovery finds. Measured at 217; the floor
+# sits well below that so adding or removing apps does not trip it, but far
+# above the 11 the old depth-capped glob returned -- which is the number this
+# floor exists to reject.
+APP_FLOOR = 150
+
+# Number of init calls in the selftest's well-ordered fixture. Named so the
+# assertion reads as an expectation rather than a bare literal.
+SELFTEST_ORDERED_CALLS = 3
 
 # Canonical init-order ranking. Higher rank = later in boot.
 #
@@ -155,12 +170,18 @@ def audit_app(app: str, main_path: Path) -> AppAudit:
 
 
 def collect_apps(repo_root: Path) -> list[tuple[str, Path]]:
-    """Discover every ``examples/<tier>/<app>/main.c`` under ``repo_root``."""
-    found: list[tuple[str, Path]] = []
-    for main in sorted(repo_root.glob("examples/*/*/main.c")):
-        app = main.parent.name
-        found.append((app, main))
-    return found
+    """Discover every app ``main.c`` under ``examples/``, at any depth.
+
+    The glob used to be ``examples/*/*/main.c`` -- exactly three levels -- while
+    the tree's real layout is ``examples/<tier>/.../<app>/``, up to five deep.
+    It therefore audited 11 of 217 apps and reported "0 with violations" on the
+    other 206, for as long as it had been wired into the pre-commit hook and the
+    ``pre-commit-checks`` gate. The same depth-capped glob had already been
+    found and fixed in the clang-tidy file collector; this is the second
+    instance, so the fix here is the recursive form plus the floor in ``main()``
+    that makes a collapsed discovery fail instead of pass.
+    """
+    return [(main.parent.name, main) for main in sorted(repo_root.glob("examples/**/main.c"))]
 
 
 def render_markdown(audits: list[AppAudit], repo_root: Path) -> str:
@@ -205,14 +226,57 @@ def render_markdown(audits: list[AppAudit], repo_root: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main() -> int:
-    """Report the firmware's initialisation order for review.
+def selftest() -> int:
+    """Prove the ordering detector and the discovery floor, in both directions.
 
-    An audit rather than a gate: it describes the order it finds and does not
-    encode an expected one, because the correct order is a design judgement
-    that changes with the peripheral set. Read the output; do not expect it
-    to fail on its own.
+    The two properties are asserted separately on purpose. A detector that has
+    stopped matching and a tree that is genuinely ordered produce identical
+    output, and so do a collapsed glob and an empty ``examples/``; only an
+    explicit assertion tells them apart.
+
+    Returns:
+        0 when every assertion held, 1 otherwise.
     """
+    failures: list[str] = []
+    root = Path(__file__).resolve().parents[2]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        app = Path(tmp) / "examples" / "tier" / "group" / "deep" / "app"
+        app.mkdir(parents=True)
+
+        # Written in the project's multi-line main() style: extract_calls walks
+        # braces to stay inside main()'s body, so a one-line body would open and
+        # close before any call is seen and BOTH directions would pass vacuously.
+        def app_main(*calls: str) -> str:
+            body = "\n".join(f"  {call}();" for call in calls)
+            return f"int main(void)\n{{\n{body}\n  return 0;\n}}\n"
+
+        (app / "main.c").write_text(app_main("ra8_cgc_init", "ra8_mstp_init", "ra8_sci_init"))
+        found = collect_apps(Path(tmp))
+        expect(len(found) == 1, "recursive discovery reaches a five-deep app main.c", failures)
+        ordered = audit_app("app", app / "main.c")
+        expect(
+            len(ordered.calls) == SELFTEST_ORDERED_CALLS,
+            "all three init calls are extracted from main()",
+            failures,
+        )
+        expect(not ordered.violations, "a correctly ordered app stays quiet", failures)
+
+        (app / "main.c").write_text(app_main("ra8_sci_init", "ra8_cgc_init"))
+        inverted = audit_app("app", app / "main.c")
+        expect(bool(inverted.violations), "a peripheral before CGC fires", failures)
+
+    live = collect_apps(root)
+    expect(
+        len(live) >= APP_FLOOR,
+        f"live discovery sees {len(live)} app(s) (floor {APP_FLOOR})",
+        failures,
+    )
+    return report(failures)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for this gate."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--repo-root",
@@ -227,6 +291,11 @@ def main() -> int:
         help="Optional Markdown report output path.",
     )
     parser.add_argument(
+        "--selftest",
+        action="store_true",
+        help="prove the ordering detector fires on a bad sequence and spares a good one",
+    )
+    parser.add_argument(
         "--strict",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -235,11 +304,40 @@ def main() -> int:
             "Use --no-strict to suppress the non-zero exit (warn-only mode)."
         ),
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> int:
+    """Gate the canonical CGC -> MSTP -> IOPORT -> peripheral init order.
+
+    Strict by default: an app whose init calls run out of canonical order
+    fails the run. ``--no-strict`` downgrades to warn-only output, which is
+    useful while landing a fix but is not what any caller in this tree passes.
+
+    Discovery is floored. A glob that stops matching does not report
+    violations it cannot see -- it reports a clean tree, which reads as an
+    improvement. So a discovery below ``APP_FLOOR`` is a hard error rather
+    than a quiet success.
+
+    Returns:
+        0 when every discovered app is ordered correctly, 1 when any is not
+        (strict mode), and 2 when discovery collapsed.
+    """
+    args = build_parser().parse_args()
+
+    if args.selftest:
+        return selftest()
 
     apps = collect_apps(args.repo_root)
-    if not apps:
-        print("audit_init_order: no apps discovered", file=sys.stderr)
+    if len(apps) < APP_FLOOR:
+        print(
+            f"audit_init_order: FATAL -- discovered only {len(apps)} app(s) under "
+            f"{args.repo_root / 'examples'}, below the floor of {APP_FLOOR}.\n"
+            "  A collapsed discovery reports success because it saw nothing. The\n"
+            "  glob was depth-capped at three levels for the life of this gate and\n"
+            "  audited 11 of 217 apps; the floor exists so that cannot recur.",
+            file=sys.stderr,
+        )
         return 2
 
     audits = [audit_app(app, main) for app, main in apps]
