@@ -35,11 +35,27 @@ in OpenBao. That's it: your machine joins as a CI runner pool.
 ## Layout
 
 ```
+fleet.yml    THE declaration: one block per machine -- how to reach it, what
+             kind of host it is, how many runner instances, its CPU and memory
+             per instance, its labels, its quiet-hours window. Everything below
+             is derived from it.
 ansible/     configures machines (dev_box, ci_runner, ci_runner_docker,
-             hil_bench, c6_toolchain, ad2_tools roles)
+             wsl_ci_host, fleet_capacity, hil_bench, c6_toolchain, ad2_tools)
 images/      the CI runner container image (devcontainer toolchain + runner)
 network/     the isolated ESP32-C6 bench LAN (FortiGate + OpenWrt AP)
 ```
+
+`ansible/inventory/hosts.ini` is **generated** from `fleet.yml` on every
+`make infra-*` run and is git-ignored; the committed half is
+`ansible/inventory/host_vars/`, which holds structural facts about a machine
+(where its runner tree lives, which pools CI must avoid) and never a capacity
+knob. `scripts/checks/check_fleet_declaration.py` fails a `host_vars` file that
+re-declares anything `fleet.yml` owns.
+
+**Adding a machine, retuning one, quiet hours, removing one:
+[`docs/CI_FLEET.md`](../docs/CI_FLEET.md).** It also carries the sizing formula
+and the measurements behind it, so a new host is sized by plugging in two
+numbers rather than re-deriving anything.
 
 ## What is codified, and what is not
 
