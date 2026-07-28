@@ -46,6 +46,37 @@ ci_runner_namespace: "arc-runners"
 # throughput, only overcommit. limit=4 matches that real ceiling: worst case
 # (all 6 pods bursting at once) is 24 cores of limit against 16 physical --
 # 150%, not 864%.
+#
+# Do NOT raise this back toward 10 just because the fleet grows -- read this
+# first. Two things changed the same night this was lowered, in opposite
+# directions, and both are correct:
+#
+#   1. This k3s node is not bare metal. It is a guest on a 10-core/16-thread
+#      i5-12600K, sharing that physical chip with the "dev" box guest (the
+#      shared verification box every agent's `make ci` runs on) at
+#      16 + 12 = 28 vCPU already committed to a 16-thread part before anything
+#      else on it. `uptime` on this node read load average 69-98 (1/5/15 min)
+#      against its own 16 vCPU while this fix was being verified here --
+#      `kubectl top` CPU% (87%) undersells it, since load average also counts
+#      threads runnable-but-starved, which is the oversubscribed-pods
+#      thrashing failure mode #485 exists to fix. That contention is
+#      physical-host-level; raising ci_runner_max does not relieve it, it
+#      adds to it.
+#   2. The fleet answering the `ra8-ci` label is no longer this node alone.
+#      `gh api repos/.../actions/runners` lists `truenas-ci-1` (a NAS box) and
+#      `win-ci-1`/`win-ci-2`/`win-ci-3` (three instances on a separate Ryzen 9
+#      7900X) carrying the same label GitHub schedules `runs-on: ra8-ci`
+#      against. Fleet-wide concurrency for that label is therefore roughly
+#      max=6 here + 1 NAS + 3 Windows = 10 -- the same total this node used to
+#      try to carry alone -- spread across four independent machines instead
+#      of piled onto the one that is already oversubscribed at the hypervisor
+#      level. Bumping this node's max back up does not add capacity the other
+#      three hosts have not already added; it only re-concentrates load onto
+#      the host least able to absorb it.
+#
+# If this node's own headroom genuinely improves later, the number to
+# re-check first is vCPU commitment on the physical host (this node's 16 plus
+# whatever "dev" and any other guest carry), not this value in isolation.
 ci_runner_scale_set_name: "ra8-ci"
 ci_runner_min: 0
 ci_runner_max: 6
