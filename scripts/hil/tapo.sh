@@ -46,6 +46,24 @@ case "$TARGET" in
   *) usage ;;
 esac
 
+# ---- bench mutual exclusion --------------------------------------------------
+# The BOARD plug is board power, and therefore also C6 power: cutting it in the
+# middle of somebody's flash is exactly the collision this lock exists for. So
+# `tapo.sh board` acquires like everything else, with the recovery break-glass
+# path for a wedged board.
+#
+# `tapo.sh pi` is the ONE genuine exemption in the whole design, and the reason
+# is structural rather than a judgement call: it power-cycles the HOST, so the
+# lock is unreachable by definition -- taking it would mean asking the machine
+# you are about to reboot for permission to reboot it. It already runs from the
+# workstation rather than through the Pi, which is what makes it possible at
+# all. It also invalidates every lease, which boot_id then handles on sight.
+if [[ "$TARGET" == "board" ]]; then
+  # shellcheck source=scripts/hil/lib/bench_lock.sh
+  source "$_hil_dir/lib/bench_lock.sh"
+  ra8_bench_require_recovery "board plug: ${CMD}" 10m || exit $?
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV_FILE="$ROOT/.env"

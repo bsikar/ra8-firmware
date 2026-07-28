@@ -284,6 +284,7 @@ bh_decode_fields() {
   BH_MAX_HOLD_S="900"
   BH_KIND="wrapped"
   BH_BREAK_GLASS="false"
+  BH_CONFIRM=""
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     k="${line%%=*}"
@@ -299,6 +300,7 @@ bh_decode_fields() {
       max_hold_s) BH_MAX_HOLD_S="$v" ;;
       hold_kind) BH_KIND="$v" ;;
       break_glass) BH_BREAK_GLASS="$v" ;;
+      confirm) BH_CONFIRM="$v" ;;
       *) ;;
     esac
   done <<EOF
@@ -310,6 +312,50 @@ EOF
     *) ;;
   esac
   return 0
+}
+
+# PRECEDENCE, enforced in code and not in a convention: human > agent, and
+# human > ci. CI never preempts anything, and an agent never preempts a human.
+#
+# The one case that needs a person's explicit acknowledgement is preempting a
+# HUMAN holder, because a human holder may be standing at the bench right now
+# with a probe on a test point, and nothing on this host can see that. So it
+# takes a phrase that cannot be typed by accident, and cannot be produced by a
+# script that did not mean it.
+BH_CONFIRM_PHRASE="someone-may-be-at-the-bench"
+
+bh_preempt() {
+  local cls name lock_id
+  if [ ! -f "$BH_REC" ]; then
+    # Held with no record: nobody to check precedence against, and nobody to
+    # signal either. Refuse rather than guess.
+    bh_log "held by an unidentified process -- refusing to preempt blind"
+    return 1
+  fi
+  cls="$(bh_json_get "$BH_REC" holder_class)"
+  name="$(bh_json_get "$BH_REC" holder_name)"
+  lock_id="$(bh_json_get "$BH_REC" lock_id)"
+  if [ "$BH_CLASS" = "ci" ]; then
+    bh_log "refusing: CI never preempts. It waits, or it reports UNKNOWN."
+    return 1
+  fi
+  if [ "$cls" = "human" ]; then
+    if [ "$BH_CLASS" != "human" ]; then
+      bh_log "refusing: a $BH_CLASS holder may not preempt a human ($name)."
+      return 1
+    fi
+    if [ "$BH_CONFIRM" != "$BH_CONFIRM_PHRASE" ]; then
+      bh_log "refusing: the bench is held by $name (human)."
+      bh_log "  A human holder can only be preempted by another human with an"
+      bh_log "  explicit acknowledgement that someone may physically be at the"
+      bh_log "  bench:  CONFIRM=$BH_CONFIRM_PHRASE"
+      return 1
+    fi
+  fi
+  bh_journal_add force-take "$lock_id" "$BH_CLASS" "$BH_NAME" \
+    "preempted $cls:$name -- $BH_INTENT"
+  bh_release "$lock_id" force >/dev/null
+  return $?
 }
 
 # bh_hold <mode> <wait_s> <fields_b64>
@@ -330,6 +376,19 @@ bh_hold() {
     flock -w "$wait_s" 9 && got=1
   else
     flock -n 9 && got=1
+  fi
+  if [ "$got" -eq 0 ] && [ "$BH_BREAK_GLASS" = "true" ]; then
+    # Break-glass: preempt the incumbent and try again, IN ONE OPERATION.
+    # Doing it as a separate `release` then `hold` would leave a window in
+    # which a third actor could take the bench between them -- and the whole
+    # reason someone is breaking glass is that the board is already wedged.
+    if bh_preempt; then
+      if [ "$wait_s" -gt 0 ] 2>/dev/null; then
+        flock -w "$wait_s" 9 && got=1
+      else
+        flock -w 15 9 && got=1
+      fi
+    fi
   fi
   if [ "$got" -eq 0 ]; then
     # Denied. Print the incumbent so the caller can name who to go and ask.
@@ -511,7 +570,11 @@ bh_doctor() {
   printf 'now_iso=%s\n' "$(date -Iseconds)"
   printf 'flock_bin=%s\n' "$(command -v flock 2>/dev/null)"
   [ -n "$(command -v flock 2>/dev/null)" ] || rc=3
-  printf 'reaper_timer=%s\n' "$(systemctl --user is-active ra8-bench-reap.timer 2>/dev/null || echo inactive)"
+  # `is-active` already PRINTS its verdict and exits non-zero for anything but
+  # active, so an `|| echo inactive` fallback appended a SECOND line to the
+  # substitution and the field came out as two lines.
+  printf 'reaper_timer=%s\n' \
+    "$(systemctl is-active ra8-bench-reap.timer 2>/dev/null | head -1)"
   return "$rc"
 }
 
@@ -565,6 +628,44 @@ bh_reap() {
   printf 'reap: OVERRUN %s:%s by %ss -- reaping\n' "$cls" "$name" "$over"
   bh_release "$lock_id" force
   return $?
+}
+
+# bh_extend <lock_id> <extra_seconds> -- push a hold's budget out.
+#
+# Only the budget moves. The hold itself is unaffected because the hold is not
+# a budget -- it is a live process on a flock -- so this changes exactly one
+# thing: when the reaper and `status` start calling it an overrun.
+bh_extend() {
+  local want="$1" extra="$2" cur new
+  [ -f "$BH_REC" ] || {
+    bh_log "nothing is held"
+    return "$BH_EXIT_UNKNOWN"
+  }
+  [ "$(bh_json_get "$BH_REC" lock_id)" = "$want" ] || {
+    bh_log "refusing: $want is not the current holder"
+    return "$BH_EXIT_HELD"
+  }
+  cur="$(bh_json_get "$BH_REC" max_hold_s)"
+  case "$cur$extra" in
+    '' | *[!0-9]*)
+      bh_log "unusable budget"
+      return "$BH_EXIT_UNKNOWN"
+      ;;
+    *) ;;
+  esac
+  new=$((cur + extra))
+  local tmp="$BH_REC.tmp.$$"
+  sed "s/^\([[:space:]]*\"max_hold_s\"[[:space:]]*:[[:space:]]*\)[0-9]*,/\1${new},/" \
+    "$BH_REC" >"$tmp" 2>/dev/null || return "$BH_EXIT_UNKNOWN"
+  chmod 666 "$tmp" 2>/dev/null || true
+  mv -f "$tmp" "$BH_REC" 2>/dev/null || {
+    rm -f "$tmp" 2>/dev/null
+    return "$BH_EXIT_UNKNOWN"
+  }
+  bh_journal_add extend "$want" "$(bh_json_get "$BH_REC" holder_class)" \
+    "$(bh_json_get "$BH_REC" holder_name)" "budget ${cur}s -> ${new}s"
+  printf 'bench: budget now %ss\n' "$new"
+  return "$BH_EXIT_OK"
 }
 
 # bh_touch <lock_id> -- record that the holder just started a bench operation.
@@ -664,6 +765,10 @@ bh_main() {
       ;;
     touch)
       bh_touch "${1:-}"
+      return $?
+      ;;
+    extend)
+      bh_extend "${1:-}" "${2:-0}"
       return $?
       ;;
     journal)

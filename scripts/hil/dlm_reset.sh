@@ -74,7 +74,16 @@ ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
 err() { printf "${RED}[FAIL]${NC} %s\n" "$*" >&2; }
 warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
 
-# ---- 0. Sanity-check the Pi reachable ---------------------------------------
+# ---- 0a. Bench mutual exclusion ----------------------------------------------
+# Recovery is not exempt: this erases every code and data block on the chip, so
+# doing it inside somebody else's suite is worse than an ordinary collision, not
+# better. Break-glass (RA8_BENCH_BREAK_GLASS="...") is the path for a wedged
+# board whose holder is dead or is the one that wedged it.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$_hil_dir/lib/bench_lock.sh"
+ra8_bench_require_recovery "DLM reset (rfp-cli Initialize) back to OEM_PL2" || exit $?
+
+# ---- 0b. Sanity-check the Pi reachable ---------------------------------------
 if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" "true" 2>/dev/null; then
   err "Cannot reach Pi at ${PI_HOST} -- check network / SSH key."
   exit 2

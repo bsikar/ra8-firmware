@@ -28,6 +28,14 @@ _hil_dir="$(cd "$_hil_dir" && pwd)"
 # shellcheck source=scripts/hil/lib/rig_env.sh
 source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST
+
+# ---- bench mutual exclusion --------------------------------------------------
+# One actor at a time on the physical bench. The hold lives exactly as long as
+# this script does -- it is a live process on a kernel flock, not a lease -- so
+# nothing here can leave the bench stale. See scripts/hil/bench.sh.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$_hil_dir/lib/bench_lock.sh"
+ra8_bench_require "hil usb-msc probe $*" || exit $?
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 APP=""

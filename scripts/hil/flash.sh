@@ -69,7 +69,16 @@ fi
 
 echo -e "${YELLOW}[hil_flash]${NC} app=${APP}"
 
-# ---- 0. Anti-recovery pre-flash guard ----------------------------------------
+# ---- 0a. Bench mutual exclusion ----------------------------------------------
+# One actor at a time on the physical bench: the J-Link, its VCOM console, the
+# C6 on Pmod1 and the board plug are one assembly and none of them is
+# separable. The hold lives exactly as long as this script does. See
+# scripts/hil/bench.sh.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$_hil_dir/lib/bench_lock.sh"
+ra8_bench_require "flash ${APP}" || exit $?
+
+# ---- 0b. Anti-recovery pre-flash guard ---------------------------------------
 # Inspect the FULL image (pre-strip) and the source tree BEFORE programming, so
 # a lockdown value in the disable-initialize / DLM-lock / permanent-block-protect
 # option-setting region can never reach the board. See preflash_guard.sh.
@@ -86,7 +95,8 @@ ra8_preflash_guard "$HEX" || exit $?
 # J-Link's RAMCode runs at this low clock and requires speed <= 1000 kHz to
 # communicate reliably.  Using 4000 kHz causes RAMCode timeout.
 ELF="${APP_DIR}/build/${APP}.elf"
-STRIPPED_HEX="/tmp/hil_${APP}_mram.hex"
+STRIPPED_HEX="$(mktemp "/tmp/hil_${APP}_mram.XXXXXX.hex")"
+trap 'rm -f "$STRIPPED_HEX"' EXIT
 OFS_ARGS=('--remove-section=.option_setting*')
 if [[ -f "$ELF" ]]; then
   arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null ||
@@ -102,8 +112,14 @@ if rig_is_local_pi; then
   RUN_LOCAL=1
 fi
 
-REMOTE_HEX="/tmp/hil_${APP}_mram.hex"
-LOG="/tmp/hil_jlink_${APP}.log"
+# Per-invocation staging paths. These used to be fixed (/tmp/hil_<app>_mram.hex
+# and friends), so two actors flashing the same app raced on the same file and
+# each could read the other's bytes -- and a stale one from a crashed run was
+# indistinguishable from a fresh one. The bench lock makes that collision rare;
+# a unique path per invocation makes it impossible.
+REMOTE_HEX="/tmp/hil_${APP}_mram.$$.hex"
+LOG="/tmp/hil_jlink_${APP}.$$.log"
+INIT_LOG="/tmp/hil_flash_init_${APP}.$$.log"
 
 if ((RUN_LOCAL == 0)); then
   # ---- 2. Check Pi reachable -----------------------------------------------
@@ -117,10 +133,10 @@ if ((RUN_LOCAL == 0)); then
   echo -e "${YELLOW}[hil_flash]${NC} uploading hex..."
   scp -q "$STRIPPED_HEX" "${PI_HOST}:${REMOTE_HEX}"
 else
-  # Local on Pi: STRIPPED_HEX and REMOTE_HEX resolve to the same path
-  # (both /tmp/hil_${APP}_mram.hex), so the cp would be a self-copy and
-  # `cp` refuses with "are the same file". Only copy when the paths
-  # differ.
+  # Local on the Pi: both paths are already on this filesystem. They differ
+  # now that STRIPPED_HEX is a mktemp, but the guard stays -- `cp` refuses a
+  # self-copy outright, and a future edit that makes them equal again should
+  # not turn into a hard failure mid-flash.
   if [[ "$STRIPPED_HEX" != "$REMOTE_HEX" ]]; then
     cp "$STRIPPED_HEX" "$REMOTE_HEX"
   fi
@@ -176,12 +192,12 @@ attempt_recover() {
   if grep -qiE "could not be halted|Failed to configure AP|Failed to power up DAP|Failed to initialize DAP|Could not read CPUID register|Attach to CPU failed|Could not find core in Coresight" "$log"; then
     echo "[hil_flash] J-Link halt/DAP failure detected -- running rfp-cli -erase-chip (Initialize) auto-recovery..." >&2
     rfp-cli -d ra -t "jlink:${JLINK_SN}" -if swd -s 1000000 -erase-chip \
-      >"/tmp/hil_flash_init_${APP}.log" 2>&1 || true
-    if grep -q "Operation successful" "/tmp/hil_flash_init_${APP}.log"; then
+      >"${INIT_LOG}" 2>&1 || true
+    if grep -q "Operation successful" "${INIT_LOG}"; then
       echo "[hil_flash] Initialize succeeded -- retrying flash..." >&2
       return 0
     else
-      echo "[hil_flash] Initialize failed -- see /tmp/hil_flash_init_${APP}.log" >&2
+      echo "[hil_flash] Initialize failed -- see ${INIT_LOG}" >&2
       return 1
     fi
   fi
@@ -226,12 +242,12 @@ echo "    log   : \${LOG}"
 # DLM recovery flow.
 if grep -qiE "could not be halted|Failed to configure AP|Failed to power up DAP|Failed to initialize DAP|Could not read CPUID register|Attach to CPU failed|Could not find core in Coresight" "\$LOG"; then
     echo "[hil_flash] J-Link halt/DAP failure detected -- running rfp-cli -erase-chip (Initialize) auto-recovery..." >&2
-    rfp-cli -d ra -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip > "/tmp/hil_flash_init_${APP}.log" 2>&1 || true
-    if grep -q "Operation successful" "/tmp/hil_flash_init_${APP}.log"; then
+    rfp-cli -d ra -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip > "${INIT_LOG}" 2>&1 || true
+    if grep -q "Operation successful" "${INIT_LOG}"; then
         echo "[hil_flash] Initialize succeeded -- retrying flash..." >&2
         JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP" > "\$LOG" 2>&1 || true
     else
-        echo "[hil_flash] Initialize failed -- see /tmp/hil_flash_init_${APP}.log" >&2
+        echo "[hil_flash] Initialize failed -- see ${INIT_LOG}" >&2
     fi
 fi
 

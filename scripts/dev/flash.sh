@@ -31,6 +31,16 @@ if [[ ! -f "$HEX" ]]; then
   exit 1
 fi
 
+# ---- bench mutual exclusion --------------------------------------------------
+# There is ONE EK-RA8D2 in this project. "Attached to this machine" is where it
+# happens to be plugged in today, not a different board -- so a local flash
+# takes the bench exactly like a remote one. If the bench host is unreachable
+# this fails closed, which is the correct answer: it cannot tell whether the
+# board is also being driven from the rig.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$SCRIPT_DIR/../hil/lib/bench_lock.sh"
+ra8_bench_require "local J-Link flash of $(basename "$HEX")" || exit $?
+
 # ---- anti-recovery pre-flash guard ------------------------------------------
 # Inspect the image + source tree before programming; refuse any lockdown value
 # in the disable-initialize / DLM-lock / permanent-block-protect option region.

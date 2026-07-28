@@ -65,6 +65,13 @@ set -- "${ARGS[@]}"
 CMD="$1"
 PORT="${2:-2}"
 
+# ---- bench mutual exclusion --------------------------------------------------
+# Hub ports 1/2/4 on 2-1.3 ARE J7, the J-Link and J11: cutting one mid-flash
+# takes the probe out from under whoever is using it.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$_hil_dir/lib/bench_lock.sh"
+ra8_bench_require_recovery "hub port ${PORT}: ${CMD}" 10m || exit $?
+
 RUN_LOCAL=0
 if rig_is_local_pi; then
   RUN_LOCAL=1

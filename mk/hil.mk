@@ -5,8 +5,9 @@
 
 .PHONY: $(RA8_FLASH) $(RA8_DEBUG) $(RA8_OZONE) flash-help debug-help ozone-help \
         hil hil-help hil-flash hil-recover hil-flash-retry hil-erase hil-dlm-reset \
-        hil-reflash hil-probe hil-find-jlink hil-suite hil-all hil-tapo hil-ppps \
-        flash-ocd debug-ocd bench-status bench-selftest
+        hil-reflash hil-probe hil-find-jlink hil-all hil-tapo hil-ppps \
+        flash-ocd debug-ocd bench-status bench-selftest bench-hold bench-free \
+        bench-extend bench-take bench-log bench-doctor
 
 # Local J-Link shorthands (board on THIS machine): build the app, then forward
 # to the per-app Makefile (scripts/{flash,debug,ozone}.sh).
@@ -60,6 +61,34 @@ bench-status:
 bench-selftest:
 	bash scripts/hil/bench.sh selftest --ssh-death
 
+# A human hold is a SHELL by default, not a lease: close it and the bench comes
+# back, so a laptop that dies cannot leave the board held. FOR= is optional here
+# and mandatory for the detached form, which is the only shape nothing but a
+# budget bounds.
+bench-hold:
+	@test -n "$(WHY)" || { echo 'usage: make bench-hold WHY="what you are doing" [FOR=2h]'; exit 2; }
+	bash scripts/hil/bench.sh hold --why "$(WHY)" $(if $(FOR),--for $(FOR),) $(if $(DETACHED),--detached,)
+
+bench-free:
+	@bash scripts/hil/bench.sh free
+
+bench-extend:
+	@test -n "$(FOR)" || { echo "usage: make bench-extend FOR=30m"; exit 2; }
+	@bash scripts/hil/bench.sh extend --for $(FOR)
+
+# Preempting somebody is journaled, always. Taking it from a HUMAN additionally
+# needs CONFIRM=someone-may-be-at-the-bench, because they may be standing there
+# with a probe on a test point and nothing here can see that.
+bench-take:
+	@test -n "$(WHY)" || { echo 'usage: make bench-take WHY="why you are taking it" [CONFIRM=...]'; exit 2; }
+	@bash scripts/hil/bench.sh take --reason "$(WHY)" $(if $(FOR),--for $(FOR),)
+
+bench-log:
+	@bash scripts/hil/bench.sh log $(or $(N),25)
+
+bench-doctor:
+	@bash scripts/hil/bench.sh doctor
+
 # Remote HIL (board on the Pi rig, driven over SSH). See scripts/hil/.
 hil:
 	bash scripts/hil/dev.sh
@@ -67,8 +96,15 @@ hil:
 hil-help:
 	@echo "HIL -- hardware-in-the-loop (board on the Pi rig, driven over SSH; see scripts/hil/)"
 	@echo ""
-	@echo "  make bench-status               who holds the bench right now (0 free / 1 held / 3 unknown)"
-	@echo "  make bench-selftest             prove the bench lock, including the ssh-death case"
+	@echo "BENCH -- one actor at a time on the physical board (#497)"
+	@echo "  make bench-status               who holds it (exit 0 free / 1 held / 3 unknown)"
+	@echo "  make bench-hold WHY=\"...\"        a shell that holds the bench; exit it to release"
+	@echo "  make bench-free                 give back your hold"
+	@echo "  make bench-extend FOR=30m       push your own budget out"
+	@echo "  make bench-take WHY=\"...\"        preempt (journaled; CONFIRM= to take from a human)"
+	@echo "  make bench-log [N=25]           tail the audit journal"
+	@echo "  make bench-doctor               state dir, perms, inode, clock, sshd bound"
+	@echo "  make bench-selftest             prove the lock, including the ssh-death case"
 	@echo ""
 	@echo "  make hil                        full HIL suite from this machine (build+flash+verify)"
 	@echo "  make hil-flash APP=<app>        build + flash to the Pi-attached board"
@@ -78,7 +114,6 @@ hil-help:
 	@echo "  make hil-dlm-reset              recover from OEM_PL0/PL1 lockout"
 	@echo "  make hil-probe                  quick J-Link + board diagnostic"
 	@echo "  make hil-find-jlink             print connected J-Link serial(s) for .env"
-	@echo "  make hil-suite                  run the HIL test suite (on the Pi)"
 	@echo "  make hil-all                    run the full HIL suite"
 	@echo "  make hil-tapo TARGET=<board|pi> CMD=<status|on|off|cycle>   board/Pi power via Tapo plug"
 	@echo "  make hil-ppps CMD=<off|on|cycle [port]>   per-port USB power"
@@ -111,17 +146,26 @@ hil-probe:
 hil-find-jlink:
 	bash scripts/hil/find_jlink.sh
 
-hil-suite:
-	bash scripts/hil/suite.sh
-
+# There is exactly ONE list of HIL apps, and it is the filesystem:
+# hil_discover_apps() in scripts/hil/lib/hil_conf.sh, shared with the SIL
+# suite. `make hil-suite` used to run a second HIL runner script, which carried a
+# SECOND, hand-maintained table of 18 apps against the 151 that are actually
+# discoverable -- so the default suite silently tested an eighth of the tree
+# and every app added since had to be remembered into a list nobody knew
+# existed. That file is deleted; this is the suite.
 hil-all:
 	bash scripts/hil/all.sh
 
 hil-tapo:
 	bash scripts/hil/tapo.sh $(or $(TARGET),board) $(or $(CMD),status)
 
+# No default verb. `make hil-ppps` used to default to `cycle`, so a bare
+# invocation -- a tab-completion, a copy-paste, a guess -- cut USB port power
+# on a live board. A destructive action does not get to be the default.
 hil-ppps:
-	bash scripts/hil/ppps.sh $(or $(CMD),cycle)
+	@test -n "$(CMD)" || { echo "usage: make hil-ppps CMD=<off|on|cycle> [PORT=<n>]"; \
+	  echo "       (no default: 'cycle' cuts power to a port that may be in use)"; exit 2; }
+	bash scripts/hil/ppps.sh $(CMD) $(PORT)
 
 flash-ocd:
 	@test -n "$(APP)" || { echo "usage: make flash-ocd APP=<app>"; exit 2; }

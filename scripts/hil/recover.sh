@@ -112,6 +112,17 @@ fi
   exit 1
 }
 
+# ---- bench mutual exclusion --------------------------------------------------
+# Recovery is MORE destructive than an ordinary flash, so it is not exempt.
+# Break-glass (RA8_BENCH_BREAK_GLASS="board wedged mid-flash") force-takes when
+# the incumbent is dead or is the one that wedged the board -- journaled, and
+# refused against a human holder without an explicit acknowledgement.
+#
+# The budget is generous because this loop power-cycles between attempts.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$_hil_dir/lib/bench_lock.sh"
+ra8_bench_require_recovery "recovery flash of ${APP}" 30m || exit $?
+
 # ---- anti-recovery pre-flash guard ------------------------------------------
 # Even a recovery flash must refuse an image that would brick recovery. Inspect
 # the full pre-strip image + the source tree before any programming. See
@@ -128,7 +139,7 @@ ra8_preflash_guard "$HEX" || exit $?
 # SWD speed: RA8D2 boots from the internal ~4 MHz oscillator after SYSRESETREQ.
 # J-Link's RAMCode runs at this low clock and requires speed <= 1000 kHz to
 # communicate reliably.  Using 4000 kHz causes RAMCode timeout.
-STRIPPED_HEX="/tmp/hil_recover_${APP}_mram.hex"
+STRIPPED_HEX="/tmp/hil_recover_${APP}_mram.$$.hex"
 OFS_SECTIONS=('--remove-section=.option_setting*')
 if [[ -f "$ELF" ]]; then
   arm-none-eabi-objcopy "${OFS_SECTIONS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null ||
@@ -141,8 +152,8 @@ tag "OFS-stripped hex: $STRIPPED_HEX"
 
 # ---- flash attempt function --------------------------------------------------
 internal_try_flash() {
-  local remote_hex="/tmp/hil_recover_${APP}_mram.hex"
-  local log="/tmp/hil_recover_jlink_${APP}.log"
+  local remote_hex="/tmp/hil_recover_${APP}_mram.$$.hex"
+  local log="/tmp/hil_recover_jlink_${APP}.$$.log"
 
   scp -q "$STRIPPED_HEX" "${PI_HOST}:${remote_hex}" 2>/dev/null || {
     printf '(cannot reach Pi %s)\n' "${PI_HOST}"
@@ -196,6 +207,42 @@ REMOTE
   return 1
 }
 
+# ---- between-attempt power cycle ---------------------------------------------
+# This used to be an unconditional `read -r` waiting for a person to press
+# ENTER. A non-interactive caller -- the HIL suite, a CI job, an agent -- had no
+# way to answer it, so the script sat there until the job timeout killed it,
+# which reads as "recovery hung" rather than "recovery asked a question nobody
+# could hear". MAX_ATTEMPTS=5 with an unbounded wait between each is not a
+# bounded loop at all.
+#
+# So: drive the Tapo plug when there is no terminal, and only ask a human when
+# there is one to ask. If neither is possible, fail fast and say why.
+power_cycle_between_attempts() {
+  warn "flash failed -- power-cycling the board"
+  if [[ -t 0 ]]; then
+    warn "(unplug and replug the USB cable, or hold the RESET button)"
+    printf "  Press ENTER when board is back on, or wait to use the Tapo plug..."
+    if read -r -t 30; then
+      echo ""
+      return 0
+    fi
+    echo ""
+    warn "no answer in 30s -- using the Tapo plug instead"
+  else
+    warn "stdin is not a terminal, so nobody can press ENTER -- using the Tapo plug"
+  fi
+  # We already hold the bench, so tapo.sh's own guard is a no-op here.
+  if bash "$_hil_dir/tapo.sh" board cycle; then
+    tag "board plug cycled -- waiting 5s for enumeration"
+    sleep 5
+    return 0
+  fi
+  err "cannot power-cycle the board: no terminal to ask, and the Tapo plug"
+  err "did not respond. Fix the plug (make hil-tapo TARGET=board CMD=status)"
+  err "or re-run this from a terminal."
+  return 1
+}
+
 # ---- flash loop --------------------------------------------------------------
 tag "flashing $APP (up to $MAX_ATTEMPTS attempts)..."
 attempt=0
@@ -211,11 +258,7 @@ while [[ $attempt -lt $MAX_ATTEMPTS ]]; do
 
   if [[ $attempt -lt $MAX_ATTEMPTS ]]; then
     echo ""
-    warn "flash failed -- please POWER CYCLE the board now"
-    warn "(unplug and replug the USB cable, or hold the RESET button)"
-    printf "  Press ENTER when board is back on..."
-    read -r
-    echo ""
+    power_cycle_between_attempts || exit 1
   fi
 done
 
@@ -227,7 +270,7 @@ if [[ $attempt -ge $MAX_ATTEMPTS ]]; then
     ok "flashed $APP on attempt $attempt"
   else
     printf "\n"
-    err "all $MAX_ATTEMPTS attempts failed -- see /tmp/hil_recover_jlink_${APP}.log on Pi"
+    err "all $MAX_ATTEMPTS attempts failed -- see /tmp/hil_recover_jlink_${APP}.$$.log on Pi"
     exit 1
   fi
 fi

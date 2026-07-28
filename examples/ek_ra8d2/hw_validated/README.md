@@ -12,4 +12,4 @@ split into three subdirectories based on how much HIL CI can automate:
 To build any app: `make <appname>` from the repo root.
 
 For apps to promote from `hw_pending/`: move with `git mv`, add to the
-appropriate subdir here, and add a HIL entry in `scripts/hil/suite.sh`.
+appropriate subdir here, and drop a `hil.conf` beside its `main.c` -- `scripts/hil/all.sh` discovers it.

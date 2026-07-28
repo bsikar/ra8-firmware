@@ -167,6 +167,18 @@ fi
 
 echo -e "${CYAN}[hil_all]${NC} discovered ${#APPS[@]} apps under hil/"
 
+# ---- bench mutual exclusion --------------------------------------------------
+# ONE hold for the whole suite, taken here and inherited by every per-mode
+# runner through RA8_BENCH_LOCK_ID, so 151 apps are one indivisible occupancy
+# of the bench rather than 151 chances for somebody to get in between them.
+# 2h: the sum of every HIL_TIMEOUT_S is already 43 minutes of verify budget
+# before a single flash, and hil.yml's 90-minute cap is a tight bound, not a
+# generous one.
+#
+# Listing is not a bench operation, so `--list` deliberately runs before this.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "${REPO_ROOT}/scripts/hil/lib/bench_lock.sh"
+
 if ((LIST_ONLY)); then
   printf "%-40s %s\n" "APP" "MODE"
   for app in "${APPS[@]}"; do
@@ -180,6 +192,8 @@ if ((LIST_ONLY)); then
   done
   exit 0
 fi
+
+ra8_bench_require "HIL suite: ${#APPS[@]} apps${ONLY:+ (only $ONLY)}" 2h || exit $?
 
 # Build everything first unless told otherwise. Build failures stop the run.
 if ((SKIP_BUILD == 0)); then

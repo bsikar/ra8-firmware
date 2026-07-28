@@ -23,6 +23,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FW_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# ---- bench mutual exclusion --------------------------------------------------
+# There is ONE EK-RA8D2 in this project; "attached to this machine" is where it
+# happens to be plugged in, not a second board. A debugger that halts the core
+# is every bit as disruptive to somebody else's run as a flash, so it takes the
+# same lock -- and holds it for the whole session, which is why the budget is
+# hours rather than minutes.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$SCRIPT_DIR/../hil/lib/bench_lock.sh"
+ra8_bench_require "local J-Link gdb session" 2h || exit $?
+
 # Optional J-Link serial from the gitignored .env (see .env.example). Only
 # needed to disambiguate multiple probes; single-probe machines can omit it.
 # shellcheck source=scripts/hil/lib/rig_env.sh

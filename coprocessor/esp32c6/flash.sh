@@ -43,6 +43,16 @@ if [[ ! -d "${BUILD_DIR}" ]]; then
   exit 1
 fi
 
+# ---- bench mutual exclusion --------------------------------------------------
+# The C6 is not a separate resource. It is soldered to Pmod1 (J26): powered by
+# the board, reset by power-cycling it, and sharing the SCI2 Simple-SPI bus and
+# the SW4-3 mux. Flashing it while somebody flashes the RA8 collides on the same
+# assembly, and esptool's `--after hard_reset` toggles lines the RA8 side is
+# reading. So it takes the same lock.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "${REPO_ROOT}/scripts/hil/lib/bench_lock.sh"
+ra8_bench_require "flash the ESP32-C6 co-processor on ${PORT}" || exit $?
+
 echo "==> flashing ESP32-C6 on ${PORT} (${C6_FLASH_SIZE}, ${C6_FLASH_MODE} @ ${C6_FLASH_FREQ})"
 python -m esptool \
   --chip "${ESP_TARGET}" \
