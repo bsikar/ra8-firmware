@@ -549,7 +549,16 @@ def cmd_reach(data: dict[str, Any], _args: argparse.Namespace) -> int:
     """
     rc = 0
     for name, host in data["hosts"].items():
-        probe = _run([*fm.ssh_target(host), fm.remote_shell(host)], stdin="echo ok\n")
+        # Captured, not streamed: the probe's own "ok" belongs to this function,
+        # not to the operator's terminal, and a failing host's ssh chatter would
+        # otherwise bury the one line that says which host failed.
+        probe = subprocess.run(  # noqa: S603 -- argv built from the declaration
+            [*fm.ssh_target(host), fm.remote_shell(host)],
+            input="echo ok\n",
+            text=True,
+            capture_output=True,
+            check=False,
+        ).returncode
         if probe:
             print(f"  MISS  {name:<10} not reachable over its declared transport")
             rc = 1
