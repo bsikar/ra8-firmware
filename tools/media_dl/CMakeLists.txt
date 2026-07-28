@@ -78,6 +78,7 @@ set(MDL_EPUB_COMPILE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../epub_compile)
 add_executable(
   media_dl
   src/main.c
+  src/mdl_atomic.c
   src/mdl_cli.c
   src/mdl_net.c
   src/mdl_net_curl.c
@@ -135,6 +136,7 @@ enable_testing()
 add_executable(
   test_media_dl
   tests/test_media_dl.c
+  src/mdl_atomic.c
   src/mdl_url_guard.c
   src/mdl_sanitize.c
   src/mdl_robots.c
@@ -172,6 +174,7 @@ add_test(NAME test_media_dl COMMAND test_media_dl)
 add_executable(
   test_media_dl_net
   tests/test_media_dl_net.c
+  src/mdl_atomic.c
   src/mdl_net.c
   src/mdl_net_curl.c
   src/mdl_politeness.c
@@ -244,6 +247,7 @@ add_test(NAME test_media_dl_state COMMAND test_media_dl_state)
 add_executable(
   test_media_dl_fetch
   tests/test_media_dl_fetch.c
+  src/mdl_atomic.c
   src/mdl_fetch.c
   src/mdl_state.c
   src/mdl_hash.c

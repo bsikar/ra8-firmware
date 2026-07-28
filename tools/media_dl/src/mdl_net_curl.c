@@ -26,10 +26,12 @@
 #include "mdl_net_curl.h"
 
 #include <curl/curl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "mdl_atomic.h"
 #include "mdl_net.h"
 #include "mdl_net_curl_internal.h"
 #include "mdl_url_guard.h"
@@ -358,7 +360,17 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
     return k_ra8_err_invalid_arg;
   }
 
-  FILE* fp = fopen(out_path, "wb");
+  /* Download to a sibling temp and rename in only once a complete good copy
+   * exists. Opening out_path directly would TRUNCATE an already-downloaded
+   * page the instant fopen() succeeded, and the remove() on the failure paths
+   * below would then delete the remains -- so a re-fetch that hit a 503 cost
+   * the user a file they already had. */
+  char tmp_path[PATH_MAX];
+  if (!mdl_atomic_tmp_path(out_path, tmp_path, sizeof(tmp_path))) {
+    return k_ra8_fail;
+  }
+
+  FILE* fp = fopen(tmp_path, "wb");
   if (fp == nullptr) {
     return k_ra8_fail;
   }
@@ -374,7 +386,7 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, on_file_write)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEDATA, &sink))) {
     (void)fclose(fp);
-    (void)remove(out_path);
+    mdl_atomic_abort(tmp_path);
     return k_ra8_fail;
   }
 
@@ -383,12 +395,15 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
 
   const long fsize = ftell(fp);
   if (fclose(fp) != 0) {
-    (void)remove(out_path);
+    mdl_atomic_abort(tmp_path);
     return k_ra8_fail;
   }
   if (rc != k_ra8_ok) {
-    (void)remove(out_path); /* Do not leave a truncated/oversized image behind. */
+    mdl_atomic_abort(tmp_path); /* Truncated/oversized: destination untouched. */
     return rc;
+  }
+  if (!mdl_atomic_commit(tmp_path, out_path)) {
+    return k_ra8_fail;
   }
   if (out_len != nullptr) {
     *out_len = (fsize < 0) ? 0U : (size_t)fsize;

@@ -16,11 +16,16 @@
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
  */
 #include <curl/curl.h>
+#include <dirent.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
+#include "mdl_atomic.h"
 #include "mdl_net.h"
+#include "mdl_net_curl.h"
 #include "mdl_net_curl_internal.h"
 #include "mdl_politeness.h"
 #include "unity_minimal.h"
@@ -506,6 +511,225 @@ static void test_politeness_null(void)
   TEST_END("politeness null");
 }
 
+/* ---- a failed re-fetch must not destroy the file already on disk --------- */
+
+/** @brief Fixture sizes for the atomic-write regression tests. */
+typedef enum : uint16_t {
+  k_atom_path_max   = 256,  /**< Fixture path buffer bytes.                  */
+  k_atom_body_max   = 128,  /**< Fixture file-content buffer bytes.          */
+  k_atom_timeout_ms = 5000, /**< Budget for the fetch that is meant to fail. */
+} mdl_atom_test_const_t;
+
+/**
+ * @var s_atom_good
+ * @brief The bytes a previously-downloaded, still-good page holds.
+ * @details Distinctive so a truncation to zero bytes, a partial write, or a
+ *          deletion are all distinguishable from "survived intact".
+ * @note Read-only fixture data.
+ * @since 0.1.0
+ */
+static const char s_atom_good[] = "GOOD-PAGE-BYTES";
+
+/** @brief Write `body` to `path`, returning whether every byte landed. */
+static bool atom_write(const char* path, const char* body)
+{
+  FILE* f = fopen(path, "wb");
+  if (f == nullptr) {
+    return false;
+  }
+  const size_t n  = strlen(body);
+  const bool   ok = (fwrite(body, 1U, n, f) == n);
+  return (fclose(f) == 0) && ok;
+}
+
+/** @brief Read `path` into `out`; returns the byte count, or -1 when absent. */
+static long atom_read(const char* path, char* out, size_t cap)
+{
+  FILE* f = fopen(path, "rb");
+  if (f == nullptr) {
+    return -1;
+  }
+  const size_t n = fread(out, 1U, cap - 1U, f);
+  out[n]         = '\0';
+  (void)fclose(f);
+  return (long)n;
+}
+
+/** @brief Whether `dir` still holds any `.mdl-tmp-` debris from a failed write. */
+static bool atom_has_debris(const char* dir)
+{
+  DIR* d = opendir(dir);
+  if (d == nullptr) {
+    return false;
+  }
+  bool                 found = false;
+  const struct dirent* e     = readdir(d);
+  while (e != nullptr) {
+    if (strncmp(e->d_name, ".mdl-tmp-", strlen(".mdl-tmp-")) == 0) {
+      found = true;
+      break;
+    }
+    e = readdir(d);
+  }
+  (void)closedir(d);
+  return found;
+}
+
+/**
+ * @test test_atomic_tmp_path_shape
+ *
+ * @par MC/DC:
+ * Decision: `(final_path == NULL) || (out == NULL) || (cap == 0)` in
+ * mdl_atomic_tmp_path (3 conditions, N+1 = 4 vectors).
+ * - V1: final="/d/f.cbz", out=buf,  cap=sizeof(buf) -> false (control)
+ * - V2: final=NULL,       out=buf,  cap=sizeof(buf) -> true  (varies final)
+ * - V3: final="/d/f.cbz", out=NULL, cap=sizeof(buf) -> true  (varies out)
+ * - V4: final="/d/f.cbz", out=buf,  cap=0           -> true  (varies cap)
+ * V1+V2 prove final_path independently drives the outcome; V1+V3 and V1+V4 do
+ * the same for out and cap.
+ */
+static void test_atomic_tmp_path_shape(void)
+{
+  TEST_BEGIN("atomic tmp path shape");
+  char buf[k_atom_path_max];
+
+  TEST_ASSERT(mdl_atomic_tmp_path("/d/f.cbz", buf, sizeof(buf)));      /* V1 */
+  TEST_ASSERT(!mdl_atomic_tmp_path(nullptr, buf, sizeof(buf)));        /* V2 */
+  TEST_ASSERT(!mdl_atomic_tmp_path("/d/f.cbz", nullptr, sizeof(buf))); /* V3 */
+  TEST_ASSERT(!mdl_atomic_tmp_path("/d/f.cbz", buf, 0U));              /* V4 */
+
+  /* A sibling in the destination's own directory, so rename() cannot EXDEV. */
+  TEST_ASSERT(mdl_atomic_tmp_path("/d/f.cbz", buf, sizeof(buf)));
+  TEST_ASSERT(strncmp(buf, "/d/.mdl-tmp-", strlen("/d/.mdl-tmp-")) == 0);
+  /* The extension survives: `rar` appends `.rar` to a name that lacks one. */
+  TEST_ASSERT(strcmp(buf + strlen(buf) - strlen(".cbz"), ".cbz") == 0);
+  /* Never the destination itself -- that is the whole point. */
+  TEST_ASSERT(strcmp(buf, "/d/f.cbz") != 0);
+
+  /* A bare leaf gets a dot-prefixed name in the current directory. */
+  TEST_ASSERT(mdl_atomic_tmp_path("f.jpg", buf, sizeof(buf)));
+  TEST_ASSERT(buf[0] == '.');
+
+  /* Too small to hold the prefixed name: refuse rather than retarget. */
+  char tiny[8];
+  TEST_ASSERT(!mdl_atomic_tmp_path("/d/some-long-name.cbz", tiny, sizeof(tiny)));
+  TEST_END("atomic tmp path shape");
+}
+
+/**
+ * @test test_atomic_commit_and_abort
+ *
+ * @par MC/DC:
+ * Decision: `(tmp_path == NULL) || (final_path == NULL)` in mdl_atomic_commit
+ * (2 conditions, N+1 = 3 vectors).
+ * - V1: tmp=valid, final=valid -> false (control: the real rename runs)
+ * - V2: tmp=NULL,  final=valid -> true  (varies tmp)
+ * - V3: tmp=valid, final=NULL  -> true  (varies final)
+ * V1+V2 prove tmp_path independently drives the outcome; V1+V3 the same for
+ * final_path. Also asserts the behavioural contract either side of the guard:
+ * commit REPLACES the destination, abort LEAVES it exactly as it was.
+ */
+static void test_atomic_commit_and_abort(void)
+{
+  TEST_BEGIN("atomic commit and abort");
+  char tmpl[k_atom_path_max];
+  (void)snprintf(tmpl, sizeof(tmpl), "%s", "/tmp/mdl_atomic_XXXXXX");
+  const char* dir = mkdtemp(tmpl);
+  TEST_ASSERT(dir != nullptr);
+
+  char dst[k_atom_path_max];
+  char tmp[k_atom_path_max];
+  char body[k_atom_body_max];
+  (void)snprintf(dst, sizeof(dst), "%s/page_0001.jpg", dir);
+
+  TEST_ASSERT(atom_write(dst, s_atom_good));
+  TEST_ASSERT(mdl_atomic_tmp_path(dst, tmp, sizeof(tmp)));
+
+  /* abort: the destination keeps the bytes it already had. */
+  TEST_ASSERT(atom_write(tmp, "HALF"));
+  mdl_atomic_abort(tmp);
+  TEST_ASSERT_EQ((long)strlen(s_atom_good), atom_read(dst, body, sizeof(body)));
+  TEST_ASSERT(strcmp(body, s_atom_good) == 0);
+  TEST_ASSERT(!atom_has_debris(dir));
+
+  /* commit: and only now is the destination replaced. */
+  TEST_ASSERT(atom_write(tmp, "NEWBYTES"));
+  TEST_ASSERT(mdl_atomic_commit(tmp, dst)); /* V1 */
+  TEST_ASSERT_EQ((long)strlen("NEWBYTES"), atom_read(dst, body, sizeof(body)));
+  TEST_ASSERT(strcmp(body, "NEWBYTES") == 0);
+  TEST_ASSERT(!atom_has_debris(dir));
+
+  TEST_ASSERT(!mdl_atomic_commit(nullptr, dst)); /* V2                         */
+  TEST_ASSERT(!mdl_atomic_commit(dst, nullptr)); /* V3                         */
+  mdl_atomic_abort(nullptr);                     /* no crash on the NULL no-op */
+
+  (void)unlink(dst);
+  (void)rmdir(dir);
+  TEST_END("atomic commit and abort");
+}
+
+/**
+ * @test test_curl_get_file_failure_keeps_existing
+ *
+ * @par MC/DC:
+ * Decision: `rc != k_ra8_ok` on curl_get_file's transfer-result path (single
+ * condition, N+1 = 2 vectors). This test drives the TRUE arm -- the arm that
+ * used to `remove(out_path)` -- and asserts the destination is untouched; the
+ * FALSE arm (a successful transfer commits the temp) is covered by the
+ * integration suite, which fetches real pages.
+ *
+ * @details
+ * The regression this exists for: `curl_get_file` opened `out_path` directly
+ * with `fopen(..., "wb")`, so the previously-downloaded page was TRUNCATED the
+ * instant the open succeeded, and the `remove(out_path)` on the failure path
+ * then deleted the remains. A re-fetch that hit a connection error therefore
+ * destroyed data the user already had. The fetch below is guaranteed to fail
+ * (loopback port 1 refuses the connection, so no network is touched) and the
+ * good file must come through it byte-for-byte, with no temp debris left.
+ */
+static void test_curl_get_file_failure_keeps_existing(void)
+{
+  TEST_BEGIN("curl get_file failure keeps existing");
+  char tmpl[k_atom_path_max];
+  (void)snprintf(tmpl, sizeof(tmpl), "%s", "/tmp/mdl_refetch_XXXXXX");
+  const char* dir = mkdtemp(tmpl);
+  TEST_ASSERT(dir != nullptr);
+
+  char dst[k_atom_path_max];
+  char body[k_atom_body_max];
+  (void)snprintf(dst, sizeof(dst), "%s/page_0001.jpg", dir);
+  TEST_ASSERT(atom_write(dst, s_atom_good));
+
+  /* allow_private_hosts so the SSRF guard does not reject the loopback URL
+   * before libcurl ever runs -- the failure under test must be the TRANSFER
+   * failing, not the request being refused up front. */
+  const mdl_net_policy_t pol = {.allow_private_hosts       = true,
+                                .allow_cross_host_redirect = false,
+                                .max_response_bytes        = 0U};
+  mdl_net_iface_t*       net = mdl_net_curl_create(&pol);
+  TEST_ASSERT(net != nullptr);
+
+  const mdl_net_req_t req  = {.user_agent = "media_dl-test",
+                              .referer    = nullptr,
+                              .timeout_ms = (uint32_t)k_atom_timeout_ms};
+  size_t              len  = 0U;
+  mdl_net_resp_t      resp = {};
+  /* Port 1 on loopback refuses immediately: deterministic, offline, fast. */
+  const ra8_err_t rc = mdl_net_get_file(net, "http://127.0.0.1:1/page.jpg", &req, dst, &len, &resp);
+  TEST_ASSERT(rc != k_ra8_ok);
+
+  /* THE POINT: the file the user already had is still there, intact. */
+  TEST_ASSERT_EQ((long)strlen(s_atom_good), atom_read(dst, body, sizeof(body)));
+  TEST_ASSERT(strcmp(body, s_atom_good) == 0);
+  /* ...and the failed attempt left no half-downloaded sibling behind. */
+  TEST_ASSERT(!atom_has_debris(dir));
+
+  mdl_net_destroy(net);
+  (void)unlink(dst);
+  (void)rmdir(dir);
+  TEST_END("curl get_file failure keeps existing");
+}
+
 /**
  * @brief Run every mdl_net + politeness unit test in sequence.
  * @return 0 when all tests passed, non-zero on the first failure.
@@ -522,6 +746,9 @@ int32_t main(void)
   test_politeness_clamp();
   test_politeness_bounds();
   test_politeness_null();
+  test_atomic_tmp_path_shape();
+  test_atomic_commit_and_abort();
+  test_curl_get_file_failure_keeps_existing();
   (void)fprintf(stderr, "[OK  ] test_media_dl_net.c\n");
   return 0;
 }
