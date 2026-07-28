@@ -90,6 +90,12 @@ typedef enum : uint32_t {
   k_ra8_bclk_hz    = 125000000UL,  /**< BCLK    = PLL1P/8 = 125 MHz.            */
   k_ra8_fclk_hz    = 125000000UL,  /**< FCK (MRPCLK) = PLL1P/8 = 125 MHz.       */
   k_ra8_mriclk_hz  = 250000000UL,  /**< MRICLK  = PLL1P/4 = 250 MHz (MRAM I/F). */
+  /** Highest ICLK the part is rated for. This is a DEVICE LIMIT, not the
+   *  configured rate: it is the denominator in HUM Ch 58.3.7 "Wait State"
+   *  p 3540, where SRAMWTSC.WTEN must be set once ICLK exceeds half of it.
+   *  R7KA8D2KFLCAC is a 250 MHz-ICLK part; the 200 MHz and 150 MHz classes
+   *  in that section belong to other RA8 variants. */
+  k_ra8_iclk_max_hz = 250000000UL,
 } ra8_clock_hz_t;
 
 /* =============================================================================

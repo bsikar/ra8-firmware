@@ -19,8 +19,9 @@
  *  - **Mode**: per-bank ECC mode + OAD via ``ra8_sram_set_mode``,
  *    1-bit latch via ``cfg.enable_1bit_latch``, ECC region size via
  *    ``ra8_sram_set_eccrgn``.
- *  - **Wait state**: ``ra8_sram_set_wait_state`` /
- *    ``ra8_sram_set_wait_state_for_clock`` per HUM Ch 58.3.7 thresholds.
+ *  - **Wait state**: ``ra8_sram_set_wait_state_for_clock`` per the
+ *    HUM Ch 58.3.7 thresholds -- called by ``ra8_cgc_init``, not by
+ *    applications; see that function for why it takes no raw bool.
  *  - **TrustZone**: ``ra8_sram_set_security``,
  *    ``ra8_sram_set_ecc_security``, ``ra8_sram_set_boundary``.
  *  - **Status**: ``ra8_sram_get_status``, ``ra8_sram_clear_status``,
@@ -150,15 +151,20 @@ typedef struct {
  * registers are touched at all. Leaving it ``false`` keeps the
  * post-reset (all-Secure) layout.
  *
- * ``wait_state`` toggles SRAMWTSC.WTEN. Set this manually if you
- * already know your ICLK frequency, or use
- * ``ra8_sram_set_wait_state_for_clock`` after init.
+ * There is deliberately no wait-state field. SRAMWTSC.WTEN is not a
+ * per-application preference: HUM Ch 58.3.7 "Wait State" p 3540 makes
+ * it a function of ICLK alone, and getting it wrong is not a
+ * performance choice but undefined operation. ``ra8_cgc_init`` owns it
+ * and programs it from the ICLK it is about to select, in the same
+ * window as the MRAM wait-state latches. A ``wait_state`` member here
+ * would let a zero-initialised config silently clear it after boot,
+ * which is exactly how the two ECC demos in this tree were re-breaking
+ * their own memory system (tracker #524).
  */
 typedef struct {
   ra8_sram_bank_cfg_t     banks[k_ra8_sram_bank_count]; /**< Per-bank settings.             */
   ra8_sram_security_cfg_t security;                     /**< CPSCU security attribution.    */
   bool                    apply_security;               /**< Touch CPSCU registers if true. */
-  bool                    wait_state;                   /**< SRAMWTSC.WTEN at init time.    */
 } ra8_sram_config_t;
 
 /* =============================================================================
@@ -240,11 +246,12 @@ typedef void (*ra8_sram_error_fn_t)(void* ctx, uint8_t bank, bool is_2bit, uintp
  *   1. Validate every bank cfg (mode + region in range).
  *   2. ``ra8_mstp_enable`` per bank (HUM 58.3.1 p 3538).
  *   3. Optionally apply ``security`` cfg via SRAMSAR / SRAMESAR / SRAMSABARn.
- *   4. Apply SRAMWTSC.WTEN per ``cfg->wait_state``.
- *   5. For each bank requested in ``zero_init``, run the deterministic
+ *   4. For each bank requested in ``zero_init``, run the deterministic
  *      ECC zero pass (HUM 58.3.2) before any with-check mode.
- *   6. Apply per-bank SRAMECCRGNn and SRAMCRn under SRAMPRCR_S unlock.
- *   7. Clear any latched SRAMESR / EAR state.
+ *   5. Apply per-bank SRAMECCRGNn and SRAMCRn under SRAMPRCR_S unlock.
+ *   6. Clear any latched SRAMESR / EAR state.
+ *
+ *   SRAMWTSC is not in that list: it belongs to ``ra8_cgc_init``.
  *
  * @note Not thread-safe.
  * @warning Per HUM 58.2.7 p 3533, enabling ``ecc_with_chk`` on
@@ -360,40 +367,38 @@ typedef void (*ra8_sram_error_fn_t)(void* ctx, uint8_t bank, bool is_2bit, uintp
 [[nodiscard]] ra8_err_t ra8_sram_set_eccrgn(uint8_t bank, ra8_sram_eccrgn_size_t region);
 
 /**
- * @brief Toggle SRAMWTSC.WTEN (one-wait insertion).
+ * @brief Derive SRAMWTSC.WTEN from an ICLK frequency and program it.
  *
- * @param[in] enable ``true`` -> WTEN=1; ``false`` -> WTEN=0.
- * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok Always.
+ * @details
+ * The ONLY way this driver writes SRAMWTSC, and deliberately so: the
+ * register has exactly one correct value at a given ICLK, so a raw
+ * `set(bool)` setter would only ever be a way to get it wrong.
  *
- * @pre  ``ra8_sram_init`` has run.
- * @pre  Caller has confirmed the desired ICLK class per HUM 58.3.7.
- * @post SRAMWTSC reads back the new WTEN.
- * @post SRAMPRCR_S is re-locked on return.
+ * HUM Ch 58.3.7 "Wait State" p 3540 states the rule and the stakes:
+ * above half the rated maximum ICLK a wait cycle must be inserted, and
+ * "when the wait is not inserted, the operation is not guaranteed". The
+ * observed failure is not a hang -- it is a single bit dropped out of a
+ * value read back from SRAM at full speed, silently, with the memory
+ * itself intact (tracker #524, and the Ethernet TX frame corruption of
+ * #499, which is the same fault seen through the GWCA's DMA reads).
  *
- * @note Not thread-safe.
- * @see ra8_sram_set_wait_state_for_clock
- * @since 0.1.0
- */
-[[nodiscard]] ra8_err_t ra8_sram_set_wait_state(bool enable);
-
-/**
- * @brief Auto-select SRAMWTSC.WTEN given an ICLK frequency.
+ * Called from ``ra8_cgc_init`` before the SCKSCR switch that raises
+ * ICLK, so no code ever executes in the unguaranteed window.
  *
- * @param[in] iclk_hz       Current ICLK frequency in Hz.
- * @param[in] iclk_max_hz   Configured maximum ICLK for the part variant
- *                          (250e6, 200e6, or 150e6 -- HUM 58.3.7).
+ * @param[in] iclk_hz       ICLK frequency in Hz, > 0.
+ * @param[in] iclk_max_hz   Rated maximum ICLK for the part variant
+ *                          (250e6, 200e6, or 150e6 -- HUM 58.3.7); on
+ *                          RA8D2 use ``k_ra8_iclk_max_hz``.
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok               WTEN written.
  * @retval k_ra8_err_invalid_arg  Either argument is zero.
  *
- * @pre  ``ra8_sram_init`` has run.
+ * @pre  The SRAM control window is reachable (it is out of reset).
  * @pre  ``iclk_max_hz`` matches the part-specific datasheet.
  * @post WTEN=1 iff ``iclk_hz > iclk_max_hz / 2``.
  * @post SRAMPRCR_S is re-locked on return.
  *
- * @note Per HUM 58.3.7 (p 3540): WTEN is required when ICLK exceeds
- *       half of the maximum, otherwise it stays cleared.
+ * @note Not thread-safe; boot context.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_sram_set_wait_state_for_clock(uint32_t iclk_hz, uint32_t iclk_max_hz);

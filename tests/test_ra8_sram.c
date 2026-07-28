@@ -108,7 +108,6 @@ static ra8_sram_config_t make_default_cfg(void)
     cfg.banks[i].zero_init         = false;
   }
   cfg.apply_security = false;
-  cfg.wait_state     = false;
   return cfg;
 }
 
@@ -225,17 +224,23 @@ static void test_init_invalid_eccrgn_for_bank3(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_init_with_wait_state(void)
+static void test_init_preserves_wait_state(void)
 {
-  TEST_BEGIN("sram init applies wait state");
+  TEST_BEGIN("sram init preserves the wait state cgc_init set");
   prep();
+  volatile r_sram_regs_t* regs = ra8_sram_regs();
+  /* Stand in for what ra8_cgc_init leaves behind (HUM Ch 58.3.7 p 3540). */
+  regs->SRAMWTSC = (uint8_t)k_ra8_sram_wtsc_wten;
+
   ra8_sram_config_t cfg = make_default_cfg();
-  cfg.wait_state        = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
 
-  volatile r_sram_regs_t* regs = ra8_sram_regs();
+  /* Configuring ECC says nothing about ICLK, so it must not disturb the
+   * wait state. A zero-initialised config used to clear it here, which
+   * is how two demos in this tree silently took their own memory system
+   * outside guaranteed operation (tracker #524). */
   TEST_ASSERT_EQ(k_ra8_sram_wtsc_wten, regs->SRAMWTSC);
-  TEST_END("sram init applies wait state");
+  TEST_END("sram init preserves the wait state cgc_init set");
 }
 
 /**
@@ -319,7 +324,7 @@ int32_t main(void)
   test_init_with_ecc_check_bank0();
   test_init_invalid_mode();
   test_init_invalid_eccrgn_for_bank3();
-  test_init_with_wait_state();
+  test_init_preserves_wait_state();
   test_init_with_security();
   test_deinit_clears_cr();
   test_enter_exit_stop();

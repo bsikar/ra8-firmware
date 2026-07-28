@@ -5,7 +5,7 @@
  * @details
  * Brings the RA8D2 clock tree from reset defaults (MOCO @ ~8 MHz) up
  * to the EK-RA8D2 quickstart target (CPUCLK0 = 1 GHz, ICLK = 250 MHz).
- * Mirrors the FSP `bsp_clocks.c` 10-step sequence for RA8 Gen2; on
+ * Mirrors the FSP `bsp_clocks.c` bring-up sequence for RA8 Gen2; on
  * RA8 Gen2 silicon, several non-obvious steps are mandatory and their
  * omission was previously HardFaulting the chip:
  *
@@ -25,14 +25,20 @@
  *  6. Programme MRMS wait-state frequency latches (MRCFREQ for MRICLK,
  *     MREFREQ for MRPCLK). The hardware refuses any write whose key
  *     byte is wrong, so we spin-poll until readback matches.
- *     FSP `bsp_clocks.c`. **This is the wait-state step --
+ *     FSP `bsp_clocks.c`. **This is the MRAM wait-state step --
  *     RA8D2 does NOT have legacy MEMWAIT / FLDWAITR / FLWT.**
- *  7. Programme SCKDIVCR + SCKDIVCR2 for the full divider tree.
+ *  7. Programme the SRAM wait state (SRAMWTSC.WTEN) for the ICLK about
+ *     to be selected. The SRAM's counterpart to step 6, and just as
+ *     mandatory: HUM Ch 58.3.7 p 3540 requires a wait cycle above half
+ *     the rated maximum ICLK, and without it "the operation is not
+ *     guaranteed" -- which on this part means a bit silently dropped
+ *     from an SRAM read, not a hang (tracker #524 / #499).
+ *  8. Programme SCKDIVCR + SCKDIVCR2 for the full divider tree.
  *     FSP `bsp_clocks.c`.
- *  8. Switch SCKSCR to PLL1.
- *  9. Re-enable the prefetch buffer (MRCPFB = 1) iff MRICLK >= 100 MHz.
+ *  9. Switch SCKSCR to PLL1.
+ * 10. Re-enable the prefetch buffer (MRCPFB = 1) iff MRICLK >= 100 MHz.
  *     FSP `bsp_clocks.c`.
- * 10. Programme SCICKCR + SCICKDIVCR per HUM 9.2.54 so SCI_B's TCLK
+ * 11. Programme SCICKCR + SCICKDIVCR per HUM 9.2.54 so SCI_B's TCLK
  *     has a real edge source.
  *
  * Every protected-register write is wrapped in `RA8_PROTECTED_WRITE` so
@@ -58,6 +64,7 @@
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 #include "ra8_register_protection.h"
+#include "ra8_sram.h"
 #include "ra8_system_regs.h"
 #include "ra8_time_constants.h"
 
@@ -495,7 +502,7 @@ static ra8_err_t internal_set_mrm_wait_states(uint32_t mriclk_hz, uint32_t mrpcl
 }
 
 /**
- * @brief Step 7: programme SCKDIVCR + SCKDIVCR2 for the FSP-quickstart tree.
+ * @brief Step 8: programme SCKDIVCR + SCKDIVCR2 for the FSP-quickstart tree.
  *
  * @details
  * Predicted register values:
@@ -541,7 +548,7 @@ static void internal_program_dividers(void)
 }
 
 /**
- * @brief Step 9: re-enable the MRAM prefetch buffer if MRICLK >= 100 MHz.
+ * @brief Step 10: re-enable the MRAM prefetch buffer if MRICLK >= 100 MHz.
  *
  * @details
  * Mirrors FSP `bsp_prv_set_pfb()` (`bsp_clocks.c`). Reading
@@ -570,7 +577,7 @@ static void internal_set_pfb(void)
 }
 
 /**
- * @brief Step 10: route SCICLK = PLL1R / 4 per HUM 9.2.54.
+ * @brief Step 11: route SCICLK = PLL1R / 4 per HUM 9.2.54.
  *
  * @details
  * Without this, SCI_B's TCLK is left at the reset default (MOCO @
@@ -696,6 +703,19 @@ static ra8_err_t internal_cgc_init_protected(void)
     err = internal_set_mrm_wait_states(k_ra8_mriclk_hz, k_ra8_fclk_hz);
   }
   if (err == k_ra8_ok) {
+    /* Step 7: the SRAM wait state, for exactly the same reason and in
+     * exactly the same window as step 6. HUM Ch 58.3.7 "Wait State"
+     * p 3540 is unambiguous -- above half the maximum ICLK, "when the
+     * wait is not inserted, the operation is not guaranteed" -- and
+     * SRAMWTSC.WTEN resets to 0 while this sequence takes ICLK to
+     * k_ra8_iclk_hz, its maximum. Programming it after the SCKSCR
+     * switch would leave a window in which .data, .bss and the stack
+     * are read at full speed with no wait; the ONE fault it is known
+     * to produce is a single dropped bit in a value read back out of
+     * SRAM, so that window has to be empty, not short (tracker #524). */
+    err = ra8_sram_set_wait_state_for_clock(k_ra8_iclk_hz, (uint32_t)k_ra8_iclk_max_hz);
+  }
+  if (err == k_ra8_ok) {
     internal_program_dividers();
     /* HUM Ch 9.2.5 "SCKSCR : System Clock Source Control Register" p 330 */
     *ra8_sys_sckscr() = k_ra8_cksel_pll1;
@@ -721,10 +741,10 @@ ra8_err_t ra8_cgc_init(void)
     return err;
   }
 
-  /* Step 9 happens after SCKSCR is on PLL1 -- MRMS isn't protected. */
+  /* Step 10 happens after SCKSCR is on PLL1 -- MRMS isn't protected. */
   internal_set_pfb();
 
-  /* Step 10 needs PRCR unlocked again. */
+  /* Step 11 needs PRCR unlocked again. */
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
   {
     err = internal_route_sciclk();

@@ -7,7 +7,7 @@
 # detector for it (cite_check.py --require-cites) ran in no gate at all, so
 # the rule was aspirational and the debt went unmeasured (#534).
 #
-# Total at this baseline: 2885 uncited access(es)
+# Total at this baseline: 2883 uncited access(es)
 # across 251 file(s).
 #
 # The gate fails on any INCREASE, so the debt is frozen and can only be
@@ -255,7 +255,7 @@ tests/test_ra8_spi_b.c	17
 tests/test_ra8_spi_b_target.c	6
 tests/test_ra8_spi_b_target_cov.c	4
 tests/test_ra8_sram.c	7
-tests/test_ra8_sram_ecc.c	20
+tests/test_ra8_sram_ecc.c	18
 tests/test_ra8_ssie.c	49
 tests/test_ra8_ssie_io.c	19
 tests/test_ra8_ssie_mcdc.c	10

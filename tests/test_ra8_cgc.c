@@ -12,6 +12,7 @@
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
 #include "ra8_mrms_regs.h"
+#include "ra8_sram_regs.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -420,12 +421,51 @@ static void test_mcdc_eswclk_pdctreswm(void)
   TEST_END("cgc MC/DC: PDCTRESWM power-on decision");
 }
 
+/**
+ * @test cgc_init_programs_sram_wait_state
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it asserts a single
+ * post-condition of ra8_cgc_init, that SRAMWTSC.WTEN is set; the
+ * decision inside ra8_sram_set_wait_state_for_clock is
+ * single-condition and is covered in test_ra8_sram_ecc.c)
+ *
+ * @details
+ * Regression guard for tracker #524. ra8_cgc_init takes ICLK to
+ * k_ra8_iclk_hz, above half the part's rated maximum, and HUM Ch 58.3.7
+ * "Wait State" p 3540 requires a wait cycle from that point on: "when
+ * the wait is not inserted, the operation is not guaranteed". It was
+ * never programmed, and the resulting failure was silent -- a single
+ * bit dropped from a value read back out of SRAM, with the SRAM itself
+ * holding the correct word. Nothing in the boot log, the emulator or
+ * any existing gate could see it; only the wire test and a bare-metal
+ * BusFault could, and both were misdiagnosed as an Ethernet DMA address
+ * constraint for a month (#499). A missing register write with that
+ * blast radius gets a unit test, so it cannot be quietly dropped again.
+ */
+static void test_init_programs_sram_wait_state(void)
+{
+  TEST_BEGIN("cgc init programs SRAMWTSC.WTEN");
+  cgc_test_reset();
+  *ra8_sys_oscsf() = (uint8_t)k_ra8_cgc_test_all_oscsf;
+
+  volatile r_sram_regs_t* sram = ra8_sram_regs();
+  /* HUM Ch 58.2.6 "SRAMWTSC : SRAM Wait State Control Register" p 3531 */
+  sram->SRAMWTSC = 0U;
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_init());
+  /* HUM Ch 58.2.6 "SRAMWTSC : SRAM Wait State Control Register" p 3531 */
+  TEST_ASSERT_EQ(k_ra8_sram_wtsc_wten, sram->SRAMWTSC);
+  TEST_END("cgc init programs SRAMWTSC.WTEN");
+}
+
 int32_t main(void)
 {
   test_get_clock_hz_null_out();
   test_get_clock_hz_all_ids();
   test_get_clock_hz_out_of_range();
   test_init_happy_with_oscsf_preseed();
+  test_init_programs_sram_wait_state();
   test_init_main_osc_timeout();
   test_init_oscsf_satisfy_after();
   test_init_vscr_timeout();

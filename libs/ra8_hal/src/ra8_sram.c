@@ -554,12 +554,10 @@ static void internal_apply_per_bank(const ra8_sram_config_t* cfg)
     internal_apply_security(&cfg->security);
   }
 
-  /* Wait state. HUM 58.2.6 p 3531. */
-  uint8_t wtsc_init = 0U;
-  if (cfg->wait_state) {
-    wtsc_init = k_ra8_sram_wtsc_wten;
-  }
-  internal_write_wtsc_locked(wtsc_init);
+  /* SRAMWTSC is deliberately NOT touched here -- ra8_cgc_init owns it,
+   * derived from ICLK per HUM Ch 58.3.7 p 3540. Clearing it from a
+   * zero-initialised config is how a caller silently takes the memory
+   * system outside guaranteed operation (tracker #524). */
 
   internal_apply_per_bank(cfg);
 
@@ -580,7 +578,10 @@ static void internal_apply_per_bank(const ra8_sram_config_t* cfg)
     internal_write_cr_locked(bank, 0U);
     internal_write_eccrgn_locked(bank, k_ra8_sram_eccrgn_off);
   }
-  internal_write_wtsc_locked(0U);
+  /* SRAMWTSC stays as ra8_cgc_init left it. Tearing down the ECC
+   * configuration says nothing about the clock, and the caller is still
+   * executing out of this SRAM: clearing WTEN here would leave every
+   * subsequent access outside the guarantee of HUM Ch 58.3.7 p 3540. */
 
   /* HUM Ch 58.3.1 "Module Stop Function", p 3538 -- re-gate the
    * clock for every bank (HUM 11.2.6 MSTPCRA p 443). */
@@ -647,16 +648,6 @@ static void internal_apply_per_bank(const ra8_sram_config_t* cfg)
     return k_ra8_err_invalid_arg;
   }
   internal_write_eccrgn_locked(bank, (uint8_t)region);
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_sram_set_wait_state(bool enable)
-{
-  uint8_t wtsc = 0U;
-  if (enable) {
-    wtsc = k_ra8_sram_wtsc_wten;
-  }
-  internal_write_wtsc_locked(wtsc);
   return k_ra8_ok;
 }
 
