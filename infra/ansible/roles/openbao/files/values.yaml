@@ -1,0 +1,45 @@
+---
+# OpenBao Helm values -- single-replica HA with integrated raft storage.
+#
+# Applied by the openbao Ansible role. These are exactly the user-supplied
+# values the live release carries, so `helm get values openbao -n openbao` and
+# this file can be diffed directly; if they disagree, someone changed the
+# release by hand and this file is the one to fix.
+#
+# No credential appears here and none can: OpenBao generates its own unseal
+# keys and root token at `bao operator init` time, on the node, into the
+# operator's hands. See scripts/secrets/README.md.
+global:
+  enabled: true
+
+# The sidecar injector and the CSI provider are both off. Nothing in this rig
+# consumes secrets through a mutating webhook or a volume -- every consumer
+# (the Ansible roles, the HIL tooling, the bench-network scripts) talks to the
+# HTTP API with an AppRole. Enabling them would add two more workloads to keep
+# alive for no reader.
+injector:
+  enabled: false
+csi:
+  enabled: false
+
+ui:
+  enabled: true
+
+server:
+  dataStorage:
+    enabled: true
+    size: 1Gi
+    storageClass: local-path
+  service:
+    enabled: true
+  ha:
+    enabled: true
+    replicas: 1
+    raft:
+      enabled: true
+      setNodeId: true
+    # A PodDisruptionBudget on a single-replica statefulset only blocks node
+    # drains: with one replica there is no disruption budget to satisfy, so the
+    # PDB would refuse every eviction and make a node upgrade hang.
+    disruptionBudget:
+      enabled: false

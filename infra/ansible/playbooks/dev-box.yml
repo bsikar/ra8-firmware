@@ -1,0 +1,19 @@
+---
+# Provision a shared verification box -- the machine agents run `make ci` /
+# `make ci-native` on -- from nothing to full toolchain parity.
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/dev-box.yml
+#
+# The role builds cppcheck and gcc from source (no Debian suite carries either
+# at the pinned version), so a FIRST run takes tens of minutes. Re-runs skip
+# both once the pinned versions are present and cost a handful of version
+# probes.
+#
+# Nothing here is CI-runner registration: this box runs gates locally and never
+# joins the Actions pool. That is playbooks/ci-runner.yml (ARC on k3s) or
+# playbooks/ci-runner-docker.yml (a plain runner in Docker).
+- name: Provision the dev / verification box
+  hosts: dev_boxes
+  gather_facts: true
+  roles:
+    - dev_box

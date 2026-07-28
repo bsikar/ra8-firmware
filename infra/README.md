@@ -35,11 +35,87 @@ in OpenBao. That's it: your machine joins as a CI runner pool.
 ## Layout
 
 ```
-terraform/   creates machines + cluster resources (Proxmox LXC/VM, k8s/Helm)
-ansible/     configures machines (ci_runner, ci_runner_docker, hil_bench,
-             c6_toolchain, ad2_tools roles)
+ansible/     configures machines (dev_box, ci_runner, ci_runner_docker,
+             hil_bench, c6_toolchain, ad2_tools roles)
 images/      the CI runner container image (devcontainer toolchain + runner)
+network/     the isolated ESP32-C6 bench LAN (FortiGate + OpenWrt AP)
 ```
+
+## What is codified, and what is not
+
+The rule this directory exists to serve is that **anything hand-installed is
+lost at the next re-provision**. That makes the honest status per host part of
+the documentation, not a footnote:
+
+| Host / service | Role | Status |
+|---|---|---|
+| dev / verification box | `dev_box` | codified |
+| k3s cluster + `helm` | `k3s_node` | codified |
+| OpenBao vault (deployment) | `openbao` | codified |
+| ARC runner pool | `ci_runner` | codified |
+| second build host (Docker) | `ci_runner_docker` | codified |
+| Windows/WSL2 build host | `wsl_ci_host` + `ci_runner_docker` | codified |
+| HIL bench Pi | `hil_bench`, `c6_toolchain`, `ad2_tools` | codified |
+| bench LAN (FortiGate + AP) | `network/` | codified |
+| vault init / unseal / secrets | `scripts/secrets/` | manual **by design** |
+| Proxmox guest topology | -- | **hand-built** (#500) |
+
+Two rows deserve their exact wording. Vault initialisation and unsealing are
+manual *by design*, not by omission: both produce secrets, and a playbook that
+handles a root token can log one. The Proxmox row is a genuine open gap -- the
+VM and LXC definitions the whole rig sits on exist only as live guest config.
+
+### Order of operations on a bare cluster
+
+`ci_runner` deploys ARC into "an existing k3s cluster" through helm, so it has
+always had two prerequisites that lived nowhere: the cluster, and a `helm` root
+could resolve. `k3s_node` is those prerequisites.
+
+```
+cd infra/ansible
+ansible-playbook -i inventory/hosts.ini playbooks/k3s-node.yml   # cluster + vault
+ansible-playbook -i inventory/hosts.ini playbooks/ci-runner.yml  # then ARC
+```
+
+k3s is pinned by release version *and* by the sha256 of the release binary, and
+the upstream installer is fetched to disk and checksummed rather than piped
+into a shell -- the same discipline the devcontainer applies to every download.
+When upstream re-cuts `get.k3s.io` the checksum stops matching and the role
+fails with the new digest, which is what a pin is for.
+
+The vault is deployed but never initialised or unsealed. The role reports which
+of the two the operator still owes it; the steps are in
+`scripts/secrets/README.md`.
+
+## The dev box
+
+The machine agents run `make ci` / `make ci-native` on. It is **not** a CI
+runner -- it never joins the Actions pool -- so it lives in its own inventory
+group and its own playbook:
+
+```
+cd infra/ansible
+ansible-playbook -i inventory/hosts.ini playbooks/dev-box.yml
+```
+
+Two of its tools are built from source, and that is a property of the
+distribution rather than a preference. **cppcheck 2.13.0** is compared in
+`exact` mode by the parity gate because neighbouring releases emit
+version-specific false positives against this tree -- Debian ships 2.10,
+Homebrew ships 2.21, and no Debian suite carries the pin at any version string.
+**gcc 14.2.0** is the second host-tool compiler arm (#356) and is not packaged
+on Debian 12 at all. Both are pinned by URL + sha256 and asserted afterwards,
+the same discipline as every vendor download here.
+
+A first run therefore takes tens of minutes. Re-runs skip both builds once the
+pinned versions are present.
+
+The role reads the *other* pins rather than restating them -- lint and format
+versions from `.devcontainer/Dockerfile`, the Unicorn pin from
+`scripts/ci/unicorn_pin.sh`, and the two systemd units from the scripts that
+generate them -- and finishes on `check_tool_versions.py --all`, the exact
+assertion the `toolchain-parity` gate makes. A box that cannot reach parity
+fails the play.
 
 ## The CI runner pool spans three hosts
 
@@ -328,8 +404,15 @@ The same holds for `JLinkExe` and `rfp-cli` on the HIL bench, which the
 ## Toolchain source of truth
 
 `.devcontainer/Dockerfile` pins every host tool. `make ci`, the CI runner pods,
-and `scripts/ci/provision_runner.sh` all consume those pins, and the
-`toolchain-parity` gate fails if any box drifts from them.
+the `dev_box` role and `scripts/ci/provision_runner.sh` all consume those pins,
+and the `toolchain-parity` gate fails if any box drifts from them.
+
+`provision_runner.sh` is the one definition of "bring a bare-metal host to the
+pinned toolchain", so the `dev_box` role calls it rather than carrying a second
+copy of the same installs. It requests the `gcc-14`/`g++-14` pair from apt only
+where apt has a candidate for it -- Debian has none -- and leaves the verdict to
+the parity check either way, which still fails loudly when neither path produced
+a pinned compiler.
 
 ## Secrets
 

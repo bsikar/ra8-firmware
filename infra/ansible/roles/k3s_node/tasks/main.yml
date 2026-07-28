@@ -1,0 +1,191 @@
+---
+# Bring a bare host up as the single-node k3s server the ARC runner pool runs
+# on, with helm present system-wide. Idempotent: an already-correct node is a
+# handful of version probes.
+#
+# This role is AUTHORITATIVE for how k3s and helm reach the node. It does NOT
+# deploy any workload -- ARC is roles/ci_runner, the vault is roles/openbao.
+
+- name: Install the node packages the runner build needs
+  become: true
+  ansible.builtin.apt:
+    name: "{{ k3s_node_apt_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install the Python k8s client kubernetes.core modules import
+  become: true
+  ansible.builtin.pip:
+    name: "{{ k3s_node_pip_packages }}"
+    extra_args: --break-system-packages
+    state: present
+
+# --- k3s --------------------------------------------------------------------
+
+- name: Check the installed k3s version
+  ansible.builtin.command:
+    cmd: "{{ k3s_node_bin }} --version"
+  register: k3s_node_probe
+  changed_when: false
+  failed_when: false
+
+- name: Install k3s at the pinned version
+  when: k3s_node_version not in (k3s_node_probe.stdout | default(''))
+  become: true
+  block:
+    - name: Download the pinned k3s binary (sha256-verified)
+      ansible.builtin.get_url:
+        url: "{{ k3s_node_binary_url }}"
+        dest: "{{ k3s_node_bin }}"
+        checksum: "sha256:{{ k3s_node_binary_sha256 }}"
+        mode: "0755"
+
+    - name: Download the k3s installer to disk (never piped into a shell)
+      ansible.builtin.get_url:
+        url: "{{ k3s_node_install_url }}"
+        dest: /tmp/k3s-install.sh
+        checksum: "sha256:{{ k3s_node_install_sha256 }}"
+        mode: "0755"
+
+    - name: Run the installer against the already-verified binary
+      # INSTALL_K3S_SKIP_DOWNLOAD makes this a unit-and-symlink step only: the
+      # binary it wires up is the one checksummed above, so the installer never
+      # fetches anything itself. INSTALL_K3S_VERSION still matters -- the script
+      # records it in the unit's environment file.
+      ansible.builtin.command:
+        cmd: /tmp/k3s-install.sh
+        creates: /etc/systemd/system/k3s.service
+      environment:
+        INSTALL_K3S_SKIP_DOWNLOAD: "true"
+        INSTALL_K3S_VERSION: "{{ k3s_node_version }}"
+  always:
+    - name: Remove the downloaded installer
+      become: true
+      ansible.builtin.file:
+        path: /tmp/k3s-install.sh
+        state: absent
+
+- name: Ensure k3s is enabled and running
+  become: true
+  ansible.builtin.systemd_service:
+    name: k3s
+    enabled: true
+    state: started
+
+- name: Wait for the node's kubeconfig to appear
+  become: true
+  ansible.builtin.wait_for:
+    path: "{{ k3s_node_kubeconfig }}"
+    timeout: 180
+
+- name: Read back the running k3s version
+  ansible.builtin.command:
+    cmd: "{{ k3s_node_bin }} --version"
+  register: k3s_node_installed
+  changed_when: false
+
+- name: Ask the API server whether the node is actually Ready
+  # `systemctl is-active k3s` proves a process is up, not that the control
+  # plane admits workloads. ARC's pods will be scheduled here; ask the thing
+  # that schedules them.
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ k3s_node_bin }} kubectl get nodes --no-headers"
+  register: k3s_node_ready
+  retries: 30
+  delay: 5
+  until: "' Ready ' in (' ' ~ k3s_node_ready.stdout ~ ' ')"
+  changed_when: false
+
+- name: Assert k3s is the pinned version and serving a Ready node
+  ansible.builtin.assert:
+    that:
+      - k3s_node_version in k3s_node_installed.stdout
+      - "' Ready ' in (' ' ~ k3s_node_ready.stdout ~ ' ')"
+    fail_msg: >-
+      k3s reports '{{ k3s_node_installed.stdout_lines | first | default('') | trim }}'
+      and `kubectl get nodes` says
+      '{{ k3s_node_ready.stdout | default('<nothing>') | trim }}'. The runner
+      pool cannot be deployed onto a cluster that is not serving.
+    success_msg: >-
+      {{ k3s_node_installed.stdout_lines | first | trim }},
+      node {{ k3s_node_ready.stdout_lines | first | trim }}
+
+# --- helm -------------------------------------------------------------------
+
+- name: Check the installed helm version
+  ansible.builtin.command:
+    cmd: "{{ k3s_node_helm_bin }} version --short"
+  register: k3s_node_helm_probe
+  changed_when: false
+  failed_when: false
+
+- name: Install helm at the pinned version
+  when: k3s_node_helm_version not in (k3s_node_helm_probe.stdout | default(''))
+  become: true
+  block:
+    - name: Create a scratch directory for the helm tarball
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: helm
+      register: k3s_node_helm_tmp
+
+    - name: Download the pinned helm tarball (sha256-verified)
+      ansible.builtin.get_url:
+        url: "{{ k3s_node_helm_url }}"
+        dest: "{{ k3s_node_helm_tmp.path }}/helm.tar.gz"
+        checksum: "sha256:{{ k3s_node_helm_sha256 }}"
+        mode: "0644"
+
+    - name: Unpack it
+      ansible.builtin.unarchive:
+        src: "{{ k3s_node_helm_tmp.path }}/helm.tar.gz"
+        dest: "{{ k3s_node_helm_tmp.path }}"
+        remote_src: true
+
+    - name: Install helm system-wide
+      # System-wide, not into a user's ~/bin: ci_runner's helm tasks run under
+      # `become: true`, and root's PATH does not include ~ubuntu/bin. The live
+      # node had it only there, which is why that role's prerequisites were
+      # invisible until a fresh node was tried.
+      ansible.builtin.copy:
+        src: "{{ k3s_node_helm_tmp.path }}/linux-amd64/helm"
+        dest: "{{ k3s_node_helm_bin }}"
+        remote_src: true
+        mode: "0755"
+  always:
+    - name: Remove the helm scratch directory
+      when: k3s_node_helm_tmp.path is defined
+      ansible.builtin.file:
+        path: "{{ k3s_node_helm_tmp.path }}"
+        state: absent
+
+- name: Read back the helm version, as root (the context ci_runner uses)
+  become: true
+  ansible.builtin.command:
+    cmd: helm version --short
+  register: k3s_node_helm_installed
+  changed_when: false
+  failed_when: false
+
+- name: Assert helm is the pinned version AND resolvable by root
+  ansible.builtin.assert:
+    that:
+      - k3s_node_helm_installed.rc == 0
+      - k3s_node_helm_version in k3s_node_helm_installed.stdout
+    fail_msg: >-
+      `helm version --short` as root reported rc={{ k3s_node_helm_installed.rc }}
+      '{{ k3s_node_helm_installed.stdout | default('') | trim }}', not
+      {{ k3s_node_helm_version }} on PATH. ci_runner drives helm through
+      kubernetes.core.helm under become, so a helm that only an interactive
+      login can find is a helm ARC cannot be deployed with.
+    success_msg: "helm {{ k3s_node_helm_installed.stdout | trim }} on root's PATH"
+
+- name: Report node state
+  ansible.builtin.debug:
+    msg: >-
+      k3s node ready: {{ k3s_node_installed.stdout_lines | first | trim }},
+      helm {{ k3s_node_helm_installed.stdout | trim }},
+      kubeconfig at {{ k3s_node_kubeconfig }}. Deploy workloads with
+      playbooks/ci-runner.yml (ARC) and playbooks/openbao.yml (the vault).
