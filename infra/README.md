@@ -59,15 +59,31 @@ Contention, not runner count, was the throughput ceiling; the fix is a second
 machine, not more pods on the first.
 
 **`ra8-ci` as a plain label is verified, not assumed.** `ra8-ci` is the ARC
-runner *scale-set name*, and scale-set names and runner labels share one
-namespace when GitHub resolves `runs-on:` -- ARC's own docs warn the two
-interact. Rather than trust that, the first runner deployed under this role was
-registered with the label and watched: it picked up `Unit tests (host)`
-(`runs-on: ra8-ci`, `labels: ["ra8-ci"]`) one second after coming online and
-finished green. A plain runner carrying the label therefore joins the existing
-pool with **no workflow edit at all**. If a future GitHub change breaks that,
-the fallback is already in place -- the runner also carries `ra8-nas`, so the
-heavy jobs can be pinned with `runs-on: [self-hosted, ra8-nas]`.
+runner *scale-set name*, and a scale-set name and a runner label are resolved
+from the same `runs-on:` string -- so whether a plain runner carrying that
+label joins the scale set's pool, shadows it, or is ignored is not something to
+guess at. The first runner deployed under this role was registered with the
+label and watched: it picked up `Unit tests (host)` (`runs-on: ra8-ci`, job
+`labels: ["ra8-ci"]`) one second after coming online and finished green, and
+has taken `ra8-ci` work continuously since. A plain runner carrying the label
+therefore joins the existing pool with **no workflow edit at all**. If a future
+GitHub change breaks that, the fallback is already in place -- the runner also
+carries `ra8-nas`, so the heavy jobs can be pinned with
+`runs-on: [self-hosted, ra8-nas]`.
+
+**What the second host bought.** Same job, same commit, truenas container
+against a pve1 ARC pod. The pve1 column is the status quo being fixed -- pods
+contending on a saturated host -- not an isolated benchmark, which is exactly
+the number that matters:
+
+| Job | truenas | pve1 |
+|---|---|---|
+| `ra8_emulator boot smoke` | 556s | 2500s / 2436s |
+| `Pre-commit gate suite` | 787s | 1331s / 1009s |
+| `clang-tidy` | 329s / 331s | 982s / 981s |
+| `MC/DC coverage gate` | 237s | 674s / 771s |
+| `Coverage (gcovr 90/80)` | 118s | 407s / 429s |
+| `Unit tests (host)` | 83s | 355s / 348s |
 
 The role's `self-hosted`/`Linux`/`X64` labels are added by the runner itself
 and cannot be removed, which also makes the host eligible for the
