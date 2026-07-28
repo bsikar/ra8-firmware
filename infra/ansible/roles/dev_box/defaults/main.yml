@@ -1,0 +1,217 @@
+---
+# dev_box role defaults -- provisions the shared verification box (the Debian
+# LXC every agent runs `make ci` / `make ci-native` on) from nothing.
+#
+# WHY THIS ROLE EXISTS
+# --------------------
+# The `toolchain-parity` gate proves the box currently matches its pins. It
+# does NOT make the box rebuildable: every tool it checks arrived by hand over
+# several months, and the two that matter most are not apt packages on this
+# distribution at all. A re-provision, a lost container, or a second dev box
+# would have had to reconstruct that from memory.
+#
+# WHAT IS DELIBERATELY NOT RESTATED HERE
+# --------------------------------------
+# The pinned VERSIONS of the lint/format/coverage tools are not in this file.
+# They live in `.devcontainer/Dockerfile`, which the toolchain-parity gate and
+# `scripts/ci/provision_runner.sh` already read, and this role reads the same
+# ARGs at run time. A second version list here would be a second thing to bump
+# and the first to go stale -- exactly the drift the gate exists to catch.
+#
+# Only pins the Dockerfile does NOT carry are declared below, and each says why
+# the version is load-bearing rather than incidental.
+
+# The unprivileged user agents work as. Its ~/.local/bin, ~/opt and ~/ra8-ws
+# are what the workspace machinery uses.
+dev_box_user: "{{ ansible_user | default('bsikar') }}"
+dev_box_home: "/home/{{ dev_box_user }}"
+
+# --- LLVM apt repository ----------------------------------------------------
+#
+# clang-format 22 and clang-tidy 22 are the exact binaries the format and tidy
+# gates pin, and no Debian release ships them. apt.llvm.org is the only source.
+# The 18 line is separate and equally load-bearing: clang-tidy-18 is what the
+# tidy gate pins (the tree's .clang-tidy is written to that major) and
+# libclang-rt-18-dev carries the profile runtime `make mcdc` links against.
+dev_box_llvm_keyring: /etc/apt/keyrings/llvm-snapshot.gpg
+dev_box_llvm_key_url: "https://apt.llvm.org/llvm-snapshot.gpg.key"
+dev_box_llvm_suites:
+  - name: llvm-22
+    suite: "llvm-toolchain-{{ ansible_distribution_release }}-22"
+  - name: llvm18
+    suite: "llvm-toolchain-{{ ansible_distribution_release }}-18"
+
+# --- apt packages -----------------------------------------------------------
+#
+# Split by WHY each group is here, so a future reader can tell a load-bearing
+# package from a convenience one.
+
+# The build/test substrate every gate needs.
+dev_box_apt_base:
+  - build-essential
+  - ca-certificates
+  - ccache
+  - cmake
+  - curl
+  - git
+  - git-lfs
+  - gnupg
+  - jq
+  - ninja-build
+  - pkg-config
+  - python3
+  - python3-pip
+  - python3-venv
+  - unzip
+  - wget
+  - xz-utils
+
+# Gate-specific dependencies. Each one is a gate that FAILS (never skips)
+# without it, so an absent package is an unrunnable gate, not a degraded one.
+#   doxygen + graphviz -- the `docs` gate, and @dot state diagrams
+#   libcapstone-dev    -- the header tools/ra8_emulator includes
+#   libcurl4-openssl-dev -- the header tools/media_dl includes
+#   gdb-multiarch, openocd -- the on-desk flash/debug inner loop
+dev_box_apt_gates:
+  - doxygen
+  - gdb-multiarch
+  - graphviz
+  - libcapstone-dev
+  - libcurl4-openssl-dev
+  - openocd
+
+# The clang family, from the apt.llvm.org suites above.
+dev_box_apt_llvm:
+  - clang-18
+  - clang-format-22
+  - clang-tidy-18
+  - clang-tidy-22
+  - clang-tools-18
+  - libclang-rt-18-dev
+  - llvm-18
+
+# Build dependencies for the two source builds below. They are listed as a
+# named group rather than folded into the base set because they exist ONLY to
+# compile gcc and cppcheck -- nothing at gate time uses them.
+dev_box_apt_source_build:
+  - bison
+  - flex
+  - libgmp-dev
+  - libisl-dev
+  - libmpc-dev
+  - libmpfr-dev
+  - texinfo
+
+# The container runtime `make ci` shells out to. See the profile.d fragment
+# below for why it runs as root inside this unprivileged LXC.
+dev_box_apt_runtime:
+  - podman
+  - uidmap
+
+# --- cppcheck: built from source, and the version is load-bearing -----------
+#
+# The `misra` / `cppcheck` gates are calibrated against 2.13.0 EXACTLY, which is
+# why check_tool_versions.py compares it in `exact` mode. Neighbouring releases
+# are not substitutable: Debian 12 ships 2.10 and Homebrew ships 2.21, and both
+# emit version-specific false positives against this tree.
+#
+# The devcontainer gets 2.13.0 as an Ubuntu noble apt package
+# (CPPCHECK_VERSION in .devcontainer/Dockerfile). No Debian suite carries it at
+# any version string, so on this box a pinned source build of the tagged
+# release is the ONLY way to reach the same pin -- the same reasoning
+# scripts/ci/install_unicorn.sh spells out for Unicorn.
+#
+# FILESDIR matters as much as the binary: cppcheck resolves its cfg/, addons/
+# and platforms/ relative to it, and a build installed without them runs but
+# analyses with no library configuration at all -- quietly, and with different
+# findings. The tasks assert both.
+dev_box_cppcheck_version: "2.13.0"
+dev_box_cppcheck_sha256: "8229afe1dddc3ed893248b8a723b428dc221ea014fbc76e6289840857c03d450"
+# yamllint disable-line rule:line-length
+dev_box_cppcheck_url: "https://github.com/danmar/cppcheck/archive/refs/tags/{{ dev_box_cppcheck_version }}.tar.gz"
+dev_box_cppcheck_prefix: /usr/local
+dev_box_cppcheck_filesdir: /usr/local/share/Cppcheck
+
+# --- gcc 14: built from source, for the same distribution reason ------------
+#
+# gcc-14 is the SECOND host-tool compiler arm (#356): the tools-build and
+# coverage gates compile the first-party host tools under clang-18 AND gcc-14
+# so each catches the warning families the other misses. Debian 12 ships gcc-12
+# and has no gcc-14 package, so this box builds the release from source into
+# /usr/local with `--program-suffix=-14` -- which is what puts `gcc-14` and
+# `g++-14` on PATH under the names every gate and the Dockerfile pin use.
+#
+# The PAIR is mandatory. A lone gcc-14 without g++-14 is what sank the coverage
+# gate for hours (the coverage build does enable_language(CXX)), so the
+# assertion below checks both.
+#
+# This is the slow task in the role -- tens of minutes on 12 cores. It is
+# skipped entirely once the pinned version is installed, so a re-run costs one
+# version probe.
+dev_box_gcc_version: "14.2.0"
+dev_box_gcc_sha256: "a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9"
+# yamllint disable-line rule:line-length
+dev_box_gcc_url: "https://ftp.gnu.org/gnu/gcc/gcc-{{ dev_box_gcc_version }}/gcc-{{ dev_box_gcc_version }}.tar.xz"
+dev_box_gcc_prefix: /usr/local
+dev_box_gcc_suffix: "-14"
+# Build knobs matching how the live box was configured. --disable-bootstrap
+# trades a 3-stage self-check for roughly a third of the build time; this
+# compiler is a warning-generating second opinion for host tools, not the
+# compiler any shipped artifact is built with.
+dev_box_gcc_languages: "c,c++"
+dev_box_gcc_configure_extra: "--disable-multilib --disable-bootstrap --disable-werror"
+
+# --- gcovr ------------------------------------------------------------------
+#
+# The one pinned tool whose version is NOT read from the Dockerfile. The
+# Dockerfile pins an Ubuntu apt version string (`GCOVR_VERSION=7.0-1`) that pip
+# cannot resolve, and check_tool_versions.py deliberately compares gcovr as a
+# FLOOR rather than an exact match: the container carries 7.0 and the native
+# boxes carry 8.x, both work, and the crash the floor guards against is the
+# ancient 5.2 line (apt's gcovr on this distribution is 5.2 and has a
+# merge_function bug). This is the release the box was proven on.
+dev_box_gcovr_version: "8.6"
+
+# --- Arm GNU Toolchain ------------------------------------------------------
+#
+# The cross-compiler, pinned to the release the devcontainer and the bench
+# install (#178: the miniz inflater's codegen is version-sensitive, and the
+# EIL==HIL goldens depend on it). The URL and sha256 are NOT restated -- they
+# are read from .devcontainer/Dockerfile's ARM_GCC_* ARGs at run time.
+#
+# Installed to /opt rather than ~/opt so every user on the box gets it and the
+# path matches the devcontainer and hil_bench. cmake/toolchain-ra8d2.cmake
+# HINTS search /opt and ~/opt both, so a box that already has the ~/opt copy
+# keeps working either way.
+dev_box_arm_gcc_prefix: /opt/arm-gnu-toolchain-13.3
+
+# --- Shared compiler cache --------------------------------------------------
+#
+# ONE cache for every agent and every containerised run on this box. The
+# settings live INSIDE the cache directory because ccache reads
+# $CCACHE_DIR/ccache.conf -- a per-user ~/.config/ccache/ccache.conf would have
+# silently given each agent a different cache, which is the failure this
+# directory exists to prevent.
+dev_box_ccache_dir: /var/cache/ccache-ra8
+dev_box_ccache_max_size: "30G"
+
+# --- Shell environment ------------------------------------------------------
+#
+# Set centrally in /etc/profile.d rather than per-agent so nobody has to
+# remember it. RA8_CONTAINER_RUNTIME is "sudo podman" for a reason recorded in
+# the fragment itself.
+dev_box_profile_d: /etc/profile.d/ra8-ci.sh
+dev_box_container_runtime: "sudo podman"
+
+# The base checkout `make ws-new` links its worktrees off, and the workspace
+# root itself.
+dev_box_repo_url: "git@github.com:bsikar/ra8-firmware.git"
+dev_box_base_checkout: "{{ dev_box_home }}/ra8-firmware"
+dev_box_workspace_root: "{{ dev_box_home }}/ra8-ws"
+
+# Whether to install the two systemd units the fleet depends on: the shared
+# GitHub status poller (so no agent runs `gh run watch` and burns the shared
+# REST quota) and the workspace reaper. Both are installed by invoking the
+# repo's own installers, never by writing unit files here -- the units are
+# generated from those scripts and a copy would drift from them.
+dev_box_install_services: true
