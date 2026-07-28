@@ -197,6 +197,13 @@ hosts:
     # signalled while it holds a job. A `docker stop` on a busy runner cancels
     # that job (actions/runner cancels the in-flight job on SIGTERM), which is
     # the orphaned-job failure this fleet has already seen once.
+    #
+    # THESE HOURS ARE A PLACEHOLDER, and deliberately a live one: weekend
+    # evenings are a guess at when this machine is wanted for something other
+    # than CI. Change the two lines below and re-run
+    # `python3 scripts/dev/fleet.py apply win-ci --tags capacity` -- that path
+    # touches no container and costs the host no runner time. Delete the block
+    # entirely and the same command removes the timer.
     quiet_hours:
       window: "18:00-23:59"
       days: "Fri,Sat,Sun"
