@@ -6,13 +6,14 @@
  * [Ring 4 / PORT] {World: S}
  *
  * @details
- * The curated build links NimBLE's host and NPL but not its
- * ``nimble/transport`` object library, so the symbols that library would
- * define are missing at link time while ``ble_hci_ra8_ble.c`` still
- * references them. ``nimble_npl_threadx.c`` supplies weak no-op
- * definitions to close the link; the linker prefers the strong upstream
- * symbols the moment the real transport TUs are added to the build, so
- * nothing here has to be removed first.
+ * The build compiles no upstream NimBLE source at all -- not the
+ * ``nimble/transport`` object library, and not the host or NPL either
+ * (``cmake/nimble.cmake`` contributes include directories only). So the
+ * symbols those libraries would define are missing at link time while
+ * ``ble_hci_ra8_ble.c`` still references them. ``nimble_npl_threadx.c``
+ * supplies weak no-op definitions to close the link; the linker prefers
+ * the strong upstream symbols the moment the real TUs are added to the
+ * build, so nothing here has to be removed first.
  *
  * These prototypes cannot come from upstream. The declarations live in
  * ``nimble/transport.h``, ``nimble/transport_impl.h`` and

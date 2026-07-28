@@ -142,7 +142,6 @@ crash reproducers added by the fuzzer or by hand.
 | `fuzz_ra8_jpeg_sw`   | 5     | `scripts/gen/gen_jpeg_fixture.py` at five (W,H) sizes             |
 | `fuzz_ra8_epub`      | 2     | Hand-crafted minimal EPUB ZIPs via Python `zipfile`                 |
 | `fuzz_ra8_modem_at`  | 10    | Plain-text AT response strings (`OK`, `+CSQ:`, `+CME ERROR:`, ...)  |
-| `fuzz_ra8_ble_att`   | 4     | Hand-built ATT PDUs (FIND_INFO, READ_BY_TYPE, READ, WRITE)          |
 | `fuzz_ra8_usb_pal`   | 4     | Endpoint-descriptor + payload packets (bulk in/out, intr, iso)      |
 | `fuzz_ra8_tls`       | 4     | TLS record headers (ClientHello, Alert close, AppData, Finished)    |
 | `fuzz_ra8_canfd`     | 5     | Raw `CFDRF[0]` frame blobs (classic, extended, FD, min, max DLC)    |

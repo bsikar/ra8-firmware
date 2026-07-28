@@ -211,26 +211,34 @@ REGISTRY: tuple[Component, ...] = (
     Component(
         key="nimble",
         name="Apache NimBLE",
-        version="1.9.0+git.8b6f3e81 (2026-04-28 default-branch snapshot)",
+        version="1.10.0 (nimble_1_10_0_tag, 2026-07-10)",
         ctype="library",
         group="apache",
         url="https://github.com/apache/mynewt-nimble",
         path="libs/third_party/nimble",
         provenance=PROV_COMMIT_PINNED,
         description="Bluetooth 5.4 host + controller stack (staged, not linked).",
-        purl="pkg:github/apache/mynewt-nimble@8b6f3e819118a1839e5f238bfe1797d64878dc3d",
+        purl="pkg:github/apache/mynewt-nimble@a7a156f28954819e158b62dd613008f22f9cf73b",
         spdx="Apache-2.0",
         license_note="Ships its own NOTICE (Apache-2.0 section 4(d)).",
         license_file="libs/third_party/nimble/LICENSE",
-        upstream_commit="8b6f3e819118a1839e5f238bfe1797d64878dc3d",
+        upstream_commit="a7a156f28954819e158b62dd613008f22f9cf73b",
         extra_notes=(
-            "Pinned by tree fingerprint: all 859 vendored files (including "
-            "the one symlink) are byte-identical to upstream commit 8b6f3e81, "
-            "the single exact match among the 5567 commits reachable from the "
-            "upstream default branch (42 commits past nimble_1_9_0_tag). The "
-            "vendored subset drops upstream apps/ only.",
-            "version.yml records repo.version 0.0.0 (upstream default-branch "
-            "placeholder); RELEASE_NOTES.md prose still reads 1.9.0.",
+            "Pinned to a release tag, not a default-branch snapshot: all 827 "
+            "vendored files (826 regular plus the one symlink) are "
+            "byte-identical to nimble_1_10_0_tag == commit a7a156f2. The "
+            "vendored subset drops upstream apps/ (163 files) only.",
+            "version.yml records repo.version 0.0.0 (upstream keeps that "
+            "placeholder on its default branch, which the release tag points "
+            "at); the 1.10.0 identity comes from the tag and "
+            "RELEASE_NOTES.md.",
+            "Bumped from 1.9.0+git.8b6f3e81, which OSV resolved into "
+            "CVE-2026-45811 / -45815 / -45816 / -46452. All four are fixed in "
+            "1.10.0 and OSV resolves this commit clean (#508). Moving to a "
+            "tagged release also closes the NimBLE half of SOUP-4.",
+            "1.10.0 removes the bundled ext/tinycrypt sub-component, dropping "
+            "its BSD-2-Clause / BSD-3-Clause text from our redistribution "
+            "surface.",
             "Second attribution file: libs/third_party/nimble/NOTICE.",
         ),
     ),
