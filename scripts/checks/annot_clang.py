@@ -74,6 +74,19 @@ GENERATED_HEADERS = frozenset(
     }
 )
 
+#: Headers a clean checkout legitimately lacks on THIS platform -- distinct
+#: from GENERATED_HEADERS (never produced without a build step, on any host):
+#: these exist only on the OS that ships them. ``sys/personality.h`` is
+#: glibc/Linux-only (the ``personality()`` syscall this checker's own probe
+#: (tests/mocks/ra8_sim_mmap.c) calls has no Darwin/BSD equivalent), so the
+#: include can never resolve on macOS. That is expected, not a parse defect:
+#: CLAUDE.md already documents that the host test suite does not run natively
+#: on macOS at all (mmap of peripheral RAM below 4 GiB is refused there), so
+#: this file's Linux-only code path is not exercised on that host either.
+#: Empty on Linux, where the header is real and a missing resolution there
+#: would still be the include-path defect this checker exists to catch.
+NON_LINUX_MISSING_HEADERS = frozenset({"personality.h"}) if sys.platform != "linux" else frozenset()
+
 #: Cached include flags -- the glob is stable for a whole run.
 _INCLUDE_ARGS: list[str] = []
 
@@ -234,6 +247,39 @@ def _probe_is_clean(extra: list[str]) -> bool:
             probe.unlink()
 
 
+def _homebrew_keg_only_clang_candidates() -> list[str]:
+    """Return full paths to keg-only Homebrew ``clang-<N>`` binaries, if any.
+
+    Homebrew's ``llvm@<N>`` formulas are keg-only (a system default `clang`
+    must stay whatever Apple or the unversioned `llvm` formula provides), so
+    their ``bin/`` is never linked onto PATH -- ``command -v clang-18`` fails
+    even when ``brew install llvm@18`` succeeded and the binary is sitting
+    right there. ``brew --prefix llvm@<N>`` finds it directly, tried at the
+    same versions ``_resource_dir_from_driver`` already tries by bare name
+    (which is enough on Linux, where the devcontainer's clang-18 package
+    installs onto PATH normally). A missing ``brew`` (Linux, or a Mac without
+    it) degrades to an empty list.
+    """
+    out: list[str] = []
+    for major in ("22", "21", "20", "19", "18"):
+        try:
+            res = subprocess.run(  # noqa: S603 -- fixed argv, no shell
+                ["brew", "--prefix", f"llvm@{major}"],  # noqa: S607 -- brew from PATH is intended
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if res.returncode != 0 or not res.stdout.strip():
+            continue
+        candidate = pathlib.Path(res.stdout.strip()) / "bin" / f"clang-{major}"
+        if candidate.is_file():
+            out.append(str(candidate))
+    return out
+
+
 def _resource_dir_from_driver() -> list[str]:
     """Ask a real clang binary where its builtin headers live."""
     candidates = [
@@ -244,6 +290,7 @@ def _resource_dir_from_driver() -> list[str]:
         "clang-20",
         "clang-19",
         "clang-18",
+        *_homebrew_keg_only_clang_candidates(),
     ]
     for exe in candidates:
         if not exe:
@@ -270,6 +317,65 @@ def _resource_dir_from_driver() -> list[str]:
         if _probe_is_clean([f"-isystem{inc}"]):
             return [f"-isystem{inc}"]
     return []
+
+
+def _darwin_sysroot_args() -> list[str]:
+    """Return -isysroot and Homebrew include flags, on macOS only.
+
+    libclang loaded through the Python bindings has no notion of the
+    platform SDK a real ``clang`` driver invocation picks up by default, so
+    on macOS libc headers behind the SDK sysroot (``<stdio.h>``, most of
+    ``<stdint.h>``'s transitive includes, and everything else under
+    ``usr/include``) do not resolve -- unlike the compiler's OWN builtin
+    headers (``stddef.h``, ``stdarg.h``, ...), which ``_builtin_include_args``
+    already supplies from the resource directory and which resolve with or
+    without a sysroot. ``xcrun --show-sdk-path`` reports the active SDK
+    regardless of whether it is a full Xcode install or just the Command
+    Line Tools, so ask it rather than hardcode a path that drifts with
+    every OS/Xcode update. Measured effect on this tree: 86.6% call-site
+    resolution without a sysroot, 99.9%+ with one (#488).
+
+    ``tools/ra8_emulator`` includes ``<unicorn/unicorn.h>``, which on macOS
+    is a Homebrew package living outside any path clang searches by
+    default (unlike Linux, where the devcontainer installs it under
+    ``/usr/local/include``). Add the active Homebrew prefix's ``include/``
+    so that header, and any other Homebrew-installed header, resolves the
+    same way it does for a real local ``clang`` invocation.
+
+    A missing ``xcrun`` / ``brew`` (this checker also runs on Linux, where
+    neither exists) degrades to an empty list rather than raising -- the
+    Linux parse already reaches the floor without either flag.
+    """
+    if sys.platform != "darwin":
+        return []
+    out: list[str] = []
+    try:
+        sdk = subprocess.run(
+            ["xcrun", "--show-sdk-path"],  # noqa: S607 -- xcrun from PATH is intended
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        sdk = None
+    if sdk is not None and sdk.returncode == 0 and sdk.stdout.strip():
+        out.append(f"-isysroot{sdk.stdout.strip()}")
+    try:
+        brew = subprocess.run(
+            ["brew", "--prefix"],  # noqa: S607 -- brew from PATH is intended
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        brew = None
+    if brew is not None and brew.returncode == 0 and brew.stdout.strip():
+        inc = pathlib.Path(brew.stdout.strip()) / "include"
+        if inc.is_dir():
+            out.append(f"-I{inc}")
+    return out
 
 
 def _builtin_include_args() -> list[str]:
@@ -335,7 +441,7 @@ def tu_args(path: pathlib.Path) -> list[str]:
     """
     global _INCLUDE_ARGS  # noqa: PLW0603  # one-shot memo of a pure repo-layout scan
     if not _INCLUDE_ARGS:
-        _INCLUDE_ARGS = _builtin_include_args() + _include_args()
+        _INCLUDE_ARGS = _builtin_include_args() + _darwin_sysroot_args() + _include_args()
     # -fsized-deallocation matches GCC, which builds every .cpp here and
     # turns it on from C++14. Clang leaves it off, so <new> compiles out
     # the two sized `operator delete` declarations and the replacements in
@@ -370,7 +476,10 @@ def parse_tu(path: pathlib.Path, stats: ParseStats) -> cindex.TranslationUnit | 
         if diag.severity < DIAG_ERROR:
             continue
         match = _MISSING_INCLUDE_RE.search(diag.spelling)
-        if match and pathlib.PurePath(match.group(1)).name not in GENERATED_HEADERS:
+        if not match:
+            continue
+        header_name = pathlib.PurePath(match.group(1)).name
+        if header_name not in GENERATED_HEADERS and header_name not in NON_LINUX_MISSING_HEADERS:
             stats.missing_includes.add((str(path), match.group(1)))
     return tu
 
