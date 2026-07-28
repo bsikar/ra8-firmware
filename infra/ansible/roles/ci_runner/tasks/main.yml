@@ -14,14 +14,68 @@
     name: buildah
     state: present
 
+# --- Build context ----------------------------------------------------------
+#
+# Staged from the CONTROL NODE'S checkout, which is the whole point: the image
+# is then built from the same tree whose gates assert what it contains. See
+# ci_runner_context_src in defaults/main.yml for the directory that used not to
+# exist and the drift it produced (#513).
+
+- name: Empty the staged build context
+  # Emptied rather than overlaid: `copy` never deletes, so a file removed from
+  # the tree would live on in the context and could still be COPYed into an
+  # image by a Dockerfile that no longer mentions it.
+  become: true
+  ansible.builtin.file:
+    path: "{{ ci_runner_context_dir }}"
+    state: absent
+
+- name: Stage the image build contexts onto the node
+  become: true
+  ansible.builtin.copy:
+    src: "{{ ci_runner_context_src }}/{{ item.src }}"
+    dest: "{{ ci_runner_context_dir }}/"
+    mode: "0644"
+    directory_mode: "0755"
+  loop:
+    - src: .devcontainer
+      what: the pinned toolchain
+    - src: infra/images/runner
+      what: the runner layer
+  loop_control:
+    label: "{{ item.src }} ({{ item.what }})"
+
+- name: Assert both Dockerfiles arrived
+  # A `buildah bud` against a missing -f is an error, but a HALF-staged context
+  # is not: it builds, from whatever did arrive. Check the two files the builds
+  # name before running either.
+  become: true
+  ansible.builtin.stat:
+    path: "{{ ci_runner_context_dir }}/{{ item }}"
+  register: ci_runner_context_stat
+  loop:
+    - .devcontainer/Dockerfile
+    - runner/Dockerfile
+
+- name: Fail loud when the staged context is incomplete
+  when: ci_runner_context_stat.results | rejectattr('stat.exists') | list | length > 0
+  ansible.builtin.fail:
+    msg: >-
+      The staged build context under {{ ci_runner_context_dir }} is missing
+      {{ ci_runner_context_stat.results | rejectattr('stat.exists')
+         | map(attribute='item') | join(', ') }}. It is copied from
+      {{ ci_runner_context_src }} on the control node, so this means the play
+      was run from somewhere that is not a checkout of this repository.
+      Building on would produce an image from half a tree.
+
 - name: Build the devcontainer toolchain image (single source of truth)
   become: true
   ansible.builtin.command:
     cmd: >-
       buildah bud --isolation chroot
       -t {{ ci_runner_devcontainer_image }}
-      -f {{ ci_runner_repo_dir }}/.devcontainer/Dockerfile
-      {{ ci_runner_repo_dir }}/.devcontainer
+      -f {{ ci_runner_context_dir }}/.devcontainer/Dockerfile
+      {{ ci_runner_context_dir }}/.devcontainer
   register: ci_runner_dc_build
   changed_when: ci_runner_dc_build.rc == 0
 
@@ -32,8 +86,8 @@
       buildah bud --isolation chroot
       --build-arg BASE_IMAGE={{ ci_runner_devcontainer_image }}
       -t {{ ci_runner_image }}
-      -f {{ ci_runner_repo_dir }}/infra/images/runner/Dockerfile
-      {{ ci_runner_repo_dir }}/infra/images/runner
+      -f {{ ci_runner_context_dir }}/runner/Dockerfile
+      {{ ci_runner_context_dir }}/runner
   register: ci_runner_runner_build
   changed_when: ci_runner_runner_build.rc == 0
 
