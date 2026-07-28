@@ -80,6 +80,17 @@ gate_fuzz_sweep() (
   fi
   echo "Registered harnesses:"
   bash scripts/checks/run_fuzz.sh --list
+  # Project the wall time BEFORE spending it. The sweep is serial -- every
+  # harness gets the full budget in turn -- so its duration is (registry size)
+  # x budget, and adding a harness silently lengthens the nightly job. That is
+  # exactly how the workflow's timeout eroded from 110 min of slack to 39
+  # without anyone noticing: the comment still said "13 harnesses" while the
+  # registry had grown to 20. Printing the projection at startup puts the
+  # number in the log every run, so the next growth is visible immediately
+  # instead of arriving as a truncated sweep at 3am.
+  local n_targets
+  n_targets="$(bash scripts/checks/run_fuzz.sh --list | grep -c .)"
+  echo "projected sweep: ${n_targets} harnesses x ${budget}s = ~$((n_targets * budget / 60)) min of fuzzing, plus the clang build"
   # Compiler probe: the same trivial -fsanitize=fuzzer link run_fuzz.sh
   # performs during auto-selection, done explicitly so a de-provisioned runner
   # is diagnosed in seconds instead of after hours.

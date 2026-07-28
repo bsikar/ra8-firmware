@@ -123,8 +123,14 @@ whichever host takes it. They differ only in shape:
 
 | Role | Host | Shape | `runs-on:` it answers |
 |---|---|---|---|
-| `ci_runner` | k3s node | ARC scale set, pods, autoscaling 0..8 | `ra8-ci` |
-| `ci_runner_docker` | any Docker host | one long-lived container | `ra8-ci`, `ra8-nas`, `[self-hosted, Linux, X64]` |
+| `ci_runner` | k3s node | ARC scale set, pods, autoscaling 0..`ci_runner_max` | `ra8-ci` |
+| `ci_runner_docker` | any Docker host | one long-lived container | `ra8-ci`, `ra8-nas` |
+
+**Every workflow targets `ra8-ci`.** The one exception is `hil.yml`, which
+targets `[self-hosted, hil, ra8d2]` -- a physical-bench label naming the Pi with
+the EK-RA8D2 attached, not a capacity pool. Nothing schedules against a bare
+`[self-hosted, Linux, X64]` any more; see "The legacy `k3s-runner-*` pool is
+retired" below for what that replaced.
 
 **Why two.** The build farm was one machine. The k3s node hosting the ARC pods
 and the dev container where every agent runs `make ci` are guests on a single
@@ -166,9 +172,44 @@ attempts of the *same workflow run* on the same commit, so the only variable is
 which host picked the job up.
 
 The role's `self-hosted`/`Linux`/`X64` labels are added by the runner itself
-and cannot be removed, which also makes the host eligible for the
-`runs-on: [self-hosted, Linux, X64]` jobs (docs-publish, fuzz-nightly,
-osv-scan).
+and cannot be removed. Nothing targets them: they are simply what GitHub
+attaches to every self-hosted Linux x86_64 runner.
+
+### The legacy `k3s-runner-*` pool is retired
+
+Before ARC, CI ran on up to 20 hand-registered GitHub runners installed as bare
+systemd services on the k3s node itself (`actions.runner.*.k3s-runner-N`,
+work dirs `/home/ubuntu/actions-runner*`). They were never provisioned from
+this tree -- no role ever created them -- which is precisely why they outlived
+their purpose: nothing in the repo described them, so nothing in the repo
+retired them either.
+
+The Jul-24 ARC migration moved the core workflows to `ra8-ci` but deliberately
+left `docs-publish`, `fuzz-nightly` and `osv-scan` on `[self-hosted, Linux,
+X64]` "until their tools are confirmed in the image". That condition was never
+revisited, so three low-frequency workflows kept seven bare runners alive on
+the node whose load average was already ~110 against 16 vCPU -- and made
+"retire the legacy pool" a trap, since deregistering them would have left those
+three permanently unrunnable.
+
+The condition has now been checked rather than assumed, against a live pod:
+
+| workflow | what it needs | where it comes from |
+|---|---|---|
+| `docs-publish` | `dot` | graphviz, in the image |
+| | doxygen pinned to 1.16.1 | the `/var/cache/ra8-tools` hostPath cache (#486); sha256-verified download on a cold cache |
+| `fuzz-nightly` | a clang that links `-fsanitize=fuzzer` | `clang-18` + `libclang-rt-18-dev`, in the image |
+| `osv-scan` | `osv-scanner` 2.4.0 | fetched per job, version + sha256 pinned in the workflow |
+
+All three now run on `ra8-ci`, the pool is deregistered, and its systemd units
+are stopped, disabled and removed from the node.
+
+One in-repo default depended on that pool and moved with it:
+`scripts/ci/monitor.sh runner-status` read job outcomes out of
+`/home/ubuntu/actions-runner*/_diag/`. It now reads the truenas container
+runner's `_diag` instead -- which is not merely a replacement but a fix, since
+the legacy pool only ever ran those three workflows and so could never show a
+`firmware` result.
 
 ### Storage: CI I/O is kept off a named pool, by assertion
 
