@@ -135,8 +135,12 @@ commands:
   drain-all     park every runner container ON THIS HOST, whatever it is
                 called -- what a re-provision runs first, because a converge
                 recreates containers and would cancel their jobs
-  window        scale to whatever the declared quiet-hours window says this
-                host should be RIGHT NOW; what the systemd timer runs
+  window        converge to what this host should be RIGHT NOW -- the
+                quiet-hours instance count inside a declared window, and its
+                declared capacity at every other time, INCLUDING on a host
+                that declares no window at all. What the systemd timer runs,
+                so a live `scale` is temporary on every host rather than only
+                on the ones with a window.
 
 options:
   --kind docker|k8s      host shape                     (RA8_FLEET_KIND)
@@ -430,13 +434,36 @@ in_quiet_window() {
   day_is_listed "${yesterday}" && [[ "${now}" < "${RA8_FLEET_QUIET_END}" ]]
 }
 
+# What should this host be RIGHT NOW -- and then make it that.
+#
+# A host with no quiet-hours window still has an answer, and it is its declared
+# instance count. This used to return "nothing to do" there, which made the
+# level-triggered timer level-triggered only on hosts that declared a window.
+# The consequence was measured: `make infra-scale HOST=truenas N=1` drained
+# ra8-ci-runner-2 during a bench session, `restart: unless-stopped` deliberately
+# does not undo an explicit stop, truenas declares no window and therefore had
+# no timer -- so the NAS served CI at half its declared capacity for hours with
+# nothing anywhere that would ever notice or correct it. win-ci, which declares
+# a window, would have healed the same fault in ten minutes.
+#
+# So a live scale-down is TEMPORARY by construction now, on every host. To stand
+# a host down durably, change `instances:` in infra/fleet.yml (or give it a
+# quiet_hours block) and re-converge -- change the declaration, not the machine.
+# That is the whole point of a declarative fleet, and it is the difference
+# between a capacity decision a human can find later and one they cannot.
 cmd_window() {
   local target
   if [ -z "${RA8_FLEET_QUIET_DAYS}" ]; then
-    log "no quiet-hours window declared for this host; nothing to do"
-    return 0
-  fi
-  if in_quiet_window; then
+    target="${RA8_FLEET_FULL_INSTANCES}"
+    # Zero here would mean "converge this host to no CI at all", which no host
+    # declares outside a window: it is what an unset RA8_FLEET_FULL_INSTANCES
+    # looks like. Draining a whole host on a missing environment variable is
+    # not a thing to do quietly.
+    [ "${target}" -gt 0 ] 2>/dev/null ||
+      die "no window declared and RA8_FLEET_FULL_INSTANCES is '${target}';" \
+        "refusing to drain this host to zero capacity on an unset value"
+    log "no window: target ${target} (this host's declared capacity)"
+  elif in_quiet_window; then
     target="${RA8_FLEET_QUIET_INSTANCES}"
     log "inside    ${RA8_FLEET_QUIET_DAYS} ${RA8_FLEET_QUIET_START}-${RA8_FLEET_QUIET_END}: target ${target}"
   else

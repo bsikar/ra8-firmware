@@ -52,10 +52,12 @@ fleet_capacity_scale_set: "ra8-ci"
 
 # --- quiet hours ------------------------------------------------------------
 
-# False when the host declares no window. The role then REMOVES any timer a
-# previous declaration installed: deleting a `quiet_hours:` block must undo it,
-# not orphan a timer that keeps standing the host down every Friday with
-# nothing in the tree left to explain why.
+# False when the host declares no window. It no longer decides whether the
+# timer is installed -- every runner host gets one, because the timer's job is
+# to converge the host to its DECLARED capacity and a host without a window
+# still has one (see the long note in tasks/main.yml, and the half-capacity NAS
+# that motivated it). It now only selects which message the read-back assert
+# prints, and whether `window` has a quiet-hours branch to take at all.
 fleet_capacity_enabled: false
 
 fleet_capacity_full_instances: 0

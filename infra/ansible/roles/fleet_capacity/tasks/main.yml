@@ -1,10 +1,12 @@
 ---
 # Install the drain-aware capacity script on a runner host, and the systemd
-# timer that applies the host's declared quiet-hours window unattended.
+# timer that converges the host to its declared capacity unattended -- honouring
+# a quiet-hours window when one is declared, and restoring the declared instance
+# count at every other time.
 #
-# Idempotent both ways: a re-run converges, and a host whose `quiet_hours:`
-# block was deleted from infra/fleet.yml has its timer removed rather than
-# left running with nothing in the tree to explain it.
+# Idempotent: a re-run converges, and deleting a host's `quiet_hours:` block
+# from infra/fleet.yml leaves the timer in place with nothing but the full
+# instance count to converge to, which is what that host then declares.
 #
 # This role NEVER stops a runner itself. Everything that touches a running
 # instance goes through fleet_capacity.sh, which drains -- see its header for
@@ -92,33 +94,53 @@
       RA8_FLEET_QUIET_END={{ fleet_capacity_quiet_end }}
       RA8_FLEET_QUIET_DAYS={{ fleet_capacity_quiet_days }}
 
-# --- quiet hours ------------------------------------------------------------
+# --- the capacity timer -----------------------------------------------------
+#
+# EVERY runner host gets this timer, not only the ones that declare a
+# quiet-hours window, and that is the fix for a measured outage rather than a
+# generalisation for its own sake.
+#
+# `make infra-scale HOST=truenas N=1` drained ra8-ci-runner-2 during a bench
+# session. `restart: unless-stopped` deliberately does not undo an explicit
+# stop; truenas declares no window, so under the old shape it got no timer; so
+# nothing ever re-asked what the host should be. The NAS then served CI at half
+# its declared capacity, and the only thing in the tree that knew was
+# `make infra-status`, which prints the drift and exits 0. win-ci, which does
+# declare a window, would have healed the identical fault within ten minutes.
+#
+# fleet_capacity.sh `window` answers "what should this host be right now" on a
+# host with no window too -- its declared capacity -- so the timer converges
+# capacity generally and the quiet-hours window is one input to it. The
+# consequence, deliberately: a live `make infra-scale` is TEMPORARY. Standing a
+# host down durably means changing `instances:` in infra/fleet.yml and
+# re-converging, which is a decision the next person can find.
 
 - name: Check whether systemd units can be installed on this host
-  when: fleet_capacity_enabled | bool
   become: true
   ansible.builtin.stat:
     path: "{{ fleet_capacity_units_dir }}"
   register: fleet_capacity_units_stat
 
-# TrueNAS SCALE mounts its appliance root read-only, so a quiet-hours window
-# declared for such a host cannot be honoured by a systemd timer and must say
-# so rather than be quietly dropped. The capacity script and the manual
-# `make infra-scale` path still work there; only the schedule does not.
-- name: Fail loud when a window is declared on a host that cannot hold a timer
-  when:
-    - fleet_capacity_enabled | bool
-    - not (fleet_capacity_units_stat.stat.writeable | default(false))
+# A capacity timer that cannot be installed is capacity nothing re-asserts, so
+# this fails rather than converging a host into that state. The case it was
+# written for is an appliance with a read-only root (TrueNAS SCALE mounts `/`
+# ro) -- though on SCALE 25 /etc/systemd/system is writable and the NAS does
+# hold the timer, which is why the condition is measured here rather than
+# inferred from the distribution.
+- name: Fail loud when this host cannot hold the capacity timer
+  when: not (fleet_capacity_units_stat.stat.writeable | default(false))
   ansible.builtin.fail:
     msg: >-
-      {{ inventory_hostname }} declares quiet_hours in infra/fleet.yml, but
-      {{ fleet_capacity_units_dir }} is not writable on it (a read-only
-      appliance root, e.g. TrueNAS SCALE). A timer cannot be installed, and a
-      window that silently never fires is worse than none. Either remove the
-      quiet_hours block for this host or give it a writable unit directory.
+      {{ fleet_capacity_units_dir }} is not writable on {{ inventory_hostname }}
+      (a read-only appliance root, e.g. an older TrueNAS SCALE). The capacity
+      timer cannot be installed there, so nothing would ever restore this host's
+      declared instance count after a drain -- the failure #513's sibling
+      investigation found on the NAS. The capacity script and the manual
+      `make infra-scale` path still work; only the unattended convergence does
+      not. Give the host a writable unit directory, or remove it from the
+      fleet declaration.
 
 - name: Install the capacity timer units
-  when: fleet_capacity_enabled | bool
   become: true
   notify: Reload systemd
   ansible.builtin.copy:
@@ -132,7 +154,7 @@
       body: |
         # Managed by the fleet_capacity Ansible role, from infra/fleet.yml.
         [Unit]
-        Description=Apply the declared CI capacity window (drains, never kills)
+        Description=Converge this host to its declared CI capacity (drains, never kills)
         Documentation=file://{{ fleet_capacity_bin }}
         After=docker.service
         [Service]
@@ -166,33 +188,11 @@
   ansible.builtin.meta: flush_handlers
 
 - name: Enable and start the capacity timer
-  when: fleet_capacity_enabled | bool
   become: true
   ansible.builtin.systemd_service:
     name: "{{ fleet_capacity_unit }}.timer"
     enabled: true
     state: started
-
-- name: Remove the capacity timer when no window is declared
-  when: not (fleet_capacity_enabled | bool)
-  become: true
-  ansible.builtin.systemd_service:
-    name: "{{ fleet_capacity_unit }}.timer"
-    enabled: false
-    state: stopped
-  failed_when: false
-  changed_when: false
-
-- name: Remove the unit files when no window is declared
-  when: not (fleet_capacity_enabled | bool)
-  become: true
-  notify: Reload systemd
-  ansible.builtin.file:
-    path: "{{ fleet_capacity_units_dir }}/{{ item }}"
-    state: absent
-  loop:
-    - "{{ fleet_capacity_unit }}.service"
-    - "{{ fleet_capacity_unit }}.timer"
 
 # --- read back, never assume ------------------------------------------------
 
@@ -214,7 +214,6 @@
     success_msg: "{{ fleet_capacity_bin }} is the tree's capacity script"
 
 - name: Read back the timer state
-  when: fleet_capacity_enabled | bool
   become: true
   ansible.builtin.command:
     cmd: systemctl is-active {{ fleet_capacity_unit }}.timer
@@ -222,18 +221,21 @@
   changed_when: false
   failed_when: false
 
-- name: Assert the declared window is actually scheduled
-  when: fleet_capacity_enabled | bool
+- name: Assert the capacity convergence is actually scheduled
   ansible.builtin.assert:
     that:
       - fleet_capacity_timer_state.stdout | trim == 'active'
     fail_msg: >-
       {{ fleet_capacity_unit }}.timer is
-      '{{ fleet_capacity_timer_state.stdout | trim }}', not active, so the
-      window declared in infra/fleet.yml would never fire. A schedule that is
-      written down and not running is the failure this assert exists to catch.
+      '{{ fleet_capacity_timer_state.stdout | trim }}', not active, so nothing
+      on this host would ever re-assert the capacity infra/fleet.yml declares
+      for it -- neither a quiet-hours window nor the recovery from a drain. A
+      schedule that is written down and not running is the failure this assert
+      exists to catch.
     success_msg: >-
-      quiet hours scheduled: {{ fleet_capacity_quiet_days }}
-      {{ fleet_capacity_quiet_start }}-{{ fleet_capacity_quiet_end }} ->
-      {{ fleet_capacity_quiet_instances }} instance(s), checked every
-      {{ fleet_capacity_interval }}
+      capacity convergence scheduled every {{ fleet_capacity_interval }}:
+      {{ fleet_capacity_full_instances }} instance(s){{
+        ', and ' ~ fleet_capacity_quiet_instances ~ ' during ' ~
+        fleet_capacity_quiet_days ~ ' ' ~ fleet_capacity_quiet_start ~ '-' ~
+        fleet_capacity_quiet_end
+        if fleet_capacity_enabled | bool else ' at all times (no window declared)' }}
