@@ -68,8 +68,9 @@ inference is never faked), writes are recorded, and the end-of-run report prints
 a `MAPPED BUT UNMODELLED` line with the access tally whenever the window was
 touched. A real Ethos-U55 command-stream model is a follow-up (issue #222). On
 the default RA8D2 profile this block is gated off entirely, so the RA8D2 run is
-byte-for-behaviour unchanged. (Note the RA8P1 has **no OFS3** option register; no
-in-tree app depends on it, so the shared OFS window is left mapped and harmless.)
+byte-for-behaviour unchanged. (An earlier note here claimed the RA8P1 has no OFS3
+option register; that was wrong -- both parts carry the identical OFS0..OFS3
+quartet, see #516 -- so the shared OFS window is correct for either profile.)
 
 ### Configuring the emulated devices
 

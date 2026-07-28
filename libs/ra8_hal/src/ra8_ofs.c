@@ -35,19 +35,21 @@
  * deployment should override each of these with a vetted value in
  * a tamper-resistant build step.
  *
- * ## Device gating: OFS3 is RA8D2-only
+ * ## OFS3 is NOT device-gated: both parts have it
  *
- * The RA8D2 (HUM R01UH1065EJ, Ch 7 "Option-Setting Memory") has an
- * OFS3 word -- plus its OFS3_SEC / OFS3_SEL TrustZone selectors --
- * carrying the M33-side WDT1 auto-start fields and RA8-family
- * extended settings. The RA8P1 (HUM R01UH1064EJ, "Option-Setting
- * Memory" chapter [CONFIRM: chapter/page not openable in this
- * environment]) has NO OFS3 word and therefore no OFS3_SEC / OFS3_SEL
- * either; its option-setting region ends at OFS2. The three OFS3-
- * family emissions below are consequently guarded by `RA8_HAS_OFS3`
- * from `ra8_device.h` (defined for RA8D2, undefined for RA8P1), so an
- * RA8P1 build places no `.option_setting_ofs3*` section at all. See
- * `ra8_ofs.h` for the device-gated OFS word inventory.
+ * The OFS3 word -- plus its OFS3_SEC / OFS3_SEL TrustZone selectors --
+ * carries the M33-side (CPU1) WDT1 auto-start fields, and is present
+ * on BOTH supported parts at the same addresses with the same bit
+ * fields: RA8D2 HUM R01UH1065EJ0130 Ch 7.2.6 p 287 / Ch 7.2.7 p 289,
+ * and RA8P1 HUM R01UH1064EJ0130 Ch 7.2.6 p 288 / Ch 7.2.7 p 290.
+ * The whole OFS3 family is therefore emitted unconditionally.
+ *
+ * Issue #223 previously gated these three emissions out of RA8P1
+ * builds behind `RA8_HAS_OFS3`, on the strength of FSP's
+ * `BSP_FEATURE_BSP_HAS_OFS3 == 0` for ra8p1 -- a value that
+ * contradicts Renesas' own RA8P1 manual. The effect was an RA8P1
+ * image with no OFS3 word at all, leaving WDT1's boot-latched
+ * configuration unprogrammed. Removed in #516; see `ra8_ofs.h`.
  *
  * ## Overriding
  *
@@ -69,11 +71,9 @@
  * @since 0.1.0
  */
 
-#include "ra8_ofs.h" /* device-gated OFS word inventory + presence helpers. */
+#include "ra8_ofs.h" /* OFS word inventory. */
 
 #include <stdint.h>
-
-#include "ra8_device.h" /* RA8_HAS_OFS3: OFS3 family exists on RA8D2, not RA8P1. */
 
 /* =============================================================================
  * Defaults (override by defining the macro before including this file)
@@ -176,12 +176,7 @@ RA8_SECTION(".option_setting_ofs1") static const uint32_t g_ra8_ofs1 = BSP_CFG_O
 
 RA8_SECTION(".option_setting_ofs2") static const uint32_t g_ra8_ofs2 = BSP_CFG_OPTION_SETTING_OFS2;
 
-/* OFS3 is RA8D2-only: the RA8P1 has no OFS3 option word, so emit nothing for
- * it on an RA8P1 build (RA8_HAS_OFS3 undefined). See the file-level "Device
- * gating" note and ra8_ofs.h. */
-#ifdef RA8_HAS_OFS3
 RA8_SECTION(".option_setting_ofs3") static const uint32_t g_ra8_ofs3 = BSP_CFG_OPTION_SETTING_OFS3;
-#endif
 
 RA8_SECTION(".option_setting_sas") static const uint32_t g_ra8_sas = BSP_CFG_OPTION_SETTING_SAS;
 
@@ -191,15 +186,13 @@ static const uint32_t g_ra8_ofs1_sec = BSP_CFG_OPTION_SETTING_OFS1_SEC;
 RA8_SECTION(".option_setting_ofs1_sel")
 static const uint32_t g_ra8_ofs1_sel = BSP_CFG_OPTION_SETTING_OFS1_SEL;
 
-/* OFS3_SEC / OFS3_SEL are the TrustZone secure-attribution selectors for OFS3;
- * with no OFS3 on the RA8P1 they do not exist there either -- gated out. */
-#ifdef RA8_HAS_OFS3
+/* OFS3_SEC / OFS3_SEL are the TrustZone secure-attribution selectors for OFS3,
+ * present on both parts alongside it. */
 RA8_SECTION(".option_setting_ofs3_sec")
 static const uint32_t g_ra8_ofs3_sec = BSP_CFG_OPTION_SETTING_OFS3_SEC;
 
 RA8_SECTION(".option_setting_ofs3_sel")
 static const uint32_t g_ra8_ofs3_sel = BSP_CFG_OPTION_SETTING_OFS3_SEL;
-#endif
 
 RA8_SECTION(".option_setting_bps") static const uint32_t g_ra8_bps = BSP_CFG_OPTION_SETTING_BPS;
 
@@ -228,18 +221,12 @@ RA8_SECTION(".option_setting_otp_zhuk")
 static const uint32_t g_ra8_otp_zhuk = BSP_CFG_OPTION_SETTING_OTP_ZHUK;
 
 /* =============================================================================
- * OFS boot-map inventory (device-gated) -- contract in ra8_ofs.h
+ * OFS boot-map inventory -- contract in ra8_ofs.h
  * =============================================================================
  *
- * These give the rest of the firmware a runtime-callable, host-testable view of
- * the compile-time OFS layout without spreading `#ifdef RA8_HAS_OFS3` across
- * call sites. Both are pure functions of compile-time device constants.
+ * Gives the rest of the firmware a runtime-callable, host-testable view of the
+ * compile-time OFS layout. A pure function of a compile-time constant.
  */
-
-bool ra8_ofs_has_ofs3(void)
-{
-  return (k_ra8_feat_ofs3 != 0U);
-}
 
 uint8_t ra8_ofs_word_count(void)
 {

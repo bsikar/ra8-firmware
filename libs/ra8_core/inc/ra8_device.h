@@ -141,16 +141,25 @@ static const ra8_device_id_t k_ra8_device_current = k_ra8_device_ra8d2;
  * too. The RA8P1's only Ethernet is the same R-Switch / ESWM subsystem as the
  * RA8D2 (identical HUM chapters 30-36 and register bases), so there is no
  * ETHERC feature flag. Do not re-add one without a primary-source register map.
+ *
+ * NOTE (issue #516): an earlier draft also listed "OFS3 / WDT1 option register"
+ * as RA8D2-only, behind an `RA8_HAS_OFS3` flag. That was a misread of Renesas
+ * FSP metadata and is deliberately absent here. BOTH parts have OFS3: RA8P1 HUM
+ * R01UH1064EJ0130 Ch 7.2.6 "OFS3, OFS3_SEC : Option Function Select Register 3"
+ * p 288 and Ch 7.2.7 "OFS3_SEL ... for Security" p 290 document the same word,
+ * at the same addresses and with the same WDT1 bit fields, as RA8D2 HUM
+ * R01UH1065EJ0130 Ch 7.2.6 p 287 / Ch 7.2.7 p 289. The RA8P1 likewise has the
+ * WDT1 that OFS3 configures (datasheet R01DS0439EJ0130: "Watchdog Timer (WDT)
+ * x 2"; WDT1 at 0x4020_2600). FSP's `BSP_FEATURE_BSP_HAS_OFS3` is 0 for ra8p1,
+ * which contradicts Renesas' own manual and has no consumer in open FSP source;
+ * it is not evidence. Do not re-add an OFS3 feature flag.
  */
 #ifdef RA8_DEVICE_RA8P1
 /** @brief RA8 HAS NPU. */
 #define RA8_HAS_NPU (1) /**< Arm Ethos-U55 NPU present (see ra8_npu_regs.h). */
 /** @brief RA8 HAS NPUCLK. */
 #define RA8_HAS_NPUCLK (1) /**< CGC drives a dedicated NPUCLK domain. */
-/* RA8_HAS_OFS3 intentionally undefined: RA8P1 has no OFS3/WDT1 option register. */
 #else
-/** @brief RA8 HAS OFS3. */
-#define RA8_HAS_OFS3 (1) /**< RA8D2 has the OFS3 / WDT1 option-setting register. */
 /* RA8_HAS_NPU / RA8_HAS_NPUCLK intentionally undefined (NPU is RA8P1-only). */
 #endif
 
@@ -171,13 +180,11 @@ static const ra8_device_id_t k_ra8_device_current = k_ra8_device_ra8d2;
  */
 typedef enum : uint8_t {
 #ifdef RA8_DEVICE_RA8P1
-  k_ra8_feat_npu    = 1U, /**< Ethos-U55 NPU: present on RA8P1.            */
-  k_ra8_feat_npuclk = 1U, /**< NPUCLK clock domain: present on RA8P1.      */
-  k_ra8_feat_ofs3   = 0U, /**< OFS3/WDT1 option register: absent on RA8P1. */
+  k_ra8_feat_npu    = 1U, /**< Ethos-U55 NPU: present on RA8P1.       */
+  k_ra8_feat_npuclk = 1U, /**< NPUCLK clock domain: present on RA8P1. */
 #else
-  k_ra8_feat_npu    = 0U, /**< Ethos-U55 NPU: absent on RA8D2.              */
-  k_ra8_feat_npuclk = 0U, /**< NPUCLK clock domain: absent on RA8D2.        */
-  k_ra8_feat_ofs3   = 1U, /**< OFS3/WDT1 option register: present on RA8D2. */
+  k_ra8_feat_npu    = 0U, /**< Ethos-U55 NPU: absent on RA8D2.       */
+  k_ra8_feat_npuclk = 0U, /**< NPUCLK clock domain: absent on RA8D2. */
 #endif /**< (anon). */
 } ra8_device_feature_t;
 
