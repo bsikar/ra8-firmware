@@ -57,6 +57,17 @@
 #   bash scripts/ci.sh --list-gates    # machine-readable registry dump
 #   bash scripts/ci.sh                 # containerised (the macOS path)
 #
+# The suite's exit status is a THREE-value contract, the same one
+# scripts/ci/monitor.sh uses:
+#
+#   0  PASS      every selected gate passed
+#   1  FAIL      a gate failed, or nothing was selected to run
+#   3  UNKNOWN   the run stopped being a measurement -- it was signalled, or
+#                the snapshot it was gating vanished under it. It prints
+#                RESULT: ABORTED and no per-gate FAIL row, because a killed run
+#                has no verdict. Never read it as a pass OR as a failure;
+#                re-run. scripts/ci/lib/abort.sh has the whole story (#542).
+#
 # On Linux the native path IS the CI environment, so `--native` is the
 # supported local run and needs no container runtime. The container exists to
 # give macOS developers an Ubuntu userland: the format gate pins
@@ -217,6 +228,14 @@ pick_clang_format() {
 # same way as parallelism.sh.
 # shellcheck source=scripts/ci/lib/tool_env.sh
 . "${SCRIPT_DIR}/ci/lib/tool_env.sh"
+
+# The abort machinery (#542): a run that was KILLED, or whose snapshot vanished
+# under it, reports UNKNOWN and stops -- it never invents gate failures against
+# a tree that is no longer there. Exit 3, the same "no verdict" code
+# scripts/ci/monitor.sh uses. Read that file's header before changing any of
+# it; the trap shape in particular is load-bearing.
+# shellcheck source=scripts/ci/lib/abort.sh
+. "${SCRIPT_DIR}/ci/lib/abort.sh"
 
 # Persistent PINNED-TOOL cache (#326). The docs gate builds with a
 # version-pinned doxygen that scripts/builders/provision_doxygen.sh downloads +
@@ -527,6 +546,12 @@ list_gates() {
 
 run_one_gate() {
   local name="$1" fn
+  # The tree under test must still be there (#542). This is the ONE choke point
+  # every dispatch passes through -- the --gate CLI path and run_suite via
+  # run_gate_capture both land here -- so no gate has to remember to check, and
+  # a vanished snapshot is refused with a named reason instead of being
+  # discovered by each remaining gate as a content failure.
+  ci_require_tree_intact "$name" || return "$RA8_CI_EXIT_ABORTED"
   # Deterministic tool resolution BEFORE any gate body runs (#333): normalise
   # PATH so a non-login shell resolves the same pinned binaries a login shell
   # does. This is the single choke point every gate passes through -- the
@@ -611,13 +636,25 @@ print_suite_summary() {
     echo "  A suite that executed nothing has not passed." >&2
     return 1
   fi
-  local failed=0 idx=0
+  local failed=0 aborted=0 idx=0
   while [[ "$idx" -lt "$count" ]]; do
     printf '  %-32s %s\n' "${names[$idx]}" "${results[$idx]}"
     [[ "${results[$idx]}" == "FAIL" ]] && failed=1
+    [[ "${results[$idx]}" == "ABORTED" ]] && aborted=1
     idx=$((idx + 1))
   done
   echo "-------------------------------------------------------------------"
+  # An abort outranks everything below it (#542). The rows above it were real
+  # measurements and are shown as such, but the RUN has no verdict: it stopped
+  # early, and the gates it never reached are unmeasured rather than green.
+  # UNKNOWN is a real answer here -- do not read it as either a pass or a fail.
+  if [[ "$aborted" -ne 0 ]]; then
+    echo "  RESULT: ABORTED -- $(ci_abort_reason)"
+    echo "  UNKNOWN (exit $RA8_CI_EXIT_ABORTED): neither a pass nor a fail."
+    echo "  The gates listed above ran before the abort; everything after it"
+    echo "  was never measured. Re-run to get a verdict."
+    return "$RA8_CI_EXIT_ABORTED"
+  fi
   if [[ "$failed" -ne 0 ]]; then
     echo "  RESULT: FAIL"
     return 1
@@ -648,6 +685,15 @@ run_suite() {
     # Dispatch via run_gate_capture -- see the ERREXIT warning on it. Never
     # inline this as `if run_one_gate "$name"; then`.
     run_gate_capture "$name"
+    # An abort is not a verdict (#542). A signalled run never reaches here at
+    # all -- ci_abort_on_signal exits -- so this arm is the other way a run
+    # stops being a measurement: the snapshot went away under it. Record it as
+    # ABORTED and STOP, because every gate after this one would be reporting on
+    # a tree that is not there.
+    if ci_aborted; then
+      gate_results+=("ABORTED")
+      break
+    fi
     if [[ "$RA8_GATE_RC" -eq 0 ]]; then
       gate_results+=("PASS")
     else
@@ -659,147 +705,11 @@ run_suite() {
     ${gate_results[@]+"${gate_results[@]}"}
 }
 
-# Run the suite against a CLEAN snapshot of committed HEAD -- exactly what CI
-# checks out. A working tree carries gitignored in-source build dirs whose
-# CMake-generated junk makes clang-format / cppcheck / check_magic_numbers
-# report failures CI never sees, and stale .gcda from another branch makes
-# coverage report bogus "no_working_dir_found" results.
-#
-# The snapshot dir is created fresh per run and destroyed on exit, so no build
-# output can outlive the run that produced it. That is what makes the
-# stale-artefact class impossible rather than merely remembered: a coverage run
-# can never find a different branch's .gcda here, because "here" did not exist
-# a moment ago. Do NOT replace this with a fixed path -- a fixed path is a
-# cache, and a cache is exactly the bug.
-# Write HEAD's tree into $1 and make it a git repository.
-#
-# Materialised through a SCRATCH INDEX, not `git archive`. `git archive HEAD |
-# tar -x` is not a faithful copy of HEAD, and this file and CLAUDE.md both
-# claimed it was ("exactly what CI checks out"). Measured on 2026-07-28 it was
-# 441 tracked files short, by two independent mechanisms:
-#
-#   * `git archive` honours `export-ignore` in the NESTED .gitattributes of
-#     vendored trees. The ThreadX family ships one, so 37 files (every
-#     `.github/`, `.gitattributes` and `.gitignore` under filex, levelx,
-#     netxduo, usbx and threadx) never reached the tarball at all.
-#   * the following `git add -A` then respected .gitignore, dropping a further
-#     404 tracked files -- the ThreadX `example_build/` IDE projects, which are
-#     tracked in HEAD but match an ignore pattern.
-#
-# Neither is visible: the snapshot looks complete, and every gate that
-# enumerates with `git ls-files` silently scanned a smaller tree than CI does.
-# Surfaced by the SBOM integrity digest (#538) -- the first gate whose verdict
-# depends on the file set being COMPLETE rather than merely large.
-#
-# `read-tree` + `checkout-index` writes HEAD's tree and nothing else, with no
-# attribute filtering and no dependence on the working tree being clean.
-# GIT_LFS_SKIP_SMUDGE=1 still emits the content/library epub LFS pointers as-is
-# (no gate reads them, so no LFS object or network fetch is needed).
-materialise_head_snapshot() {
-  local work="$1"
-  GIT_LFS_SKIP_SMUDGE=1 GIT_INDEX_FILE="$work.index" \
-    git -C "$REPO_ROOT" read-tree HEAD
-  GIT_LFS_SKIP_SMUDGE=1 GIT_INDEX_FILE="$work.index" \
-    git -C "$REPO_ROOT" checkout-index --all --prefix="$work/"
-  rm -f "$work.index"
-  # Several gates shell out to git (ls-files, rev-list), so the snapshot needs
-  # to be a repository. One synthetic commit of the extracted tree is enough
-  # and keeps the snapshot independent of the host object store.
-  git -C "$work" init --quiet
-  # -f, because HEAD legitimately tracks files that .gitignore matches. Without
-  # it those 404 vendored files are dropped from the snapshot's index and the
-  # snapshot stops being HEAD -- the second mechanism above.
-  git -C "$work" add -A -f
-}
-
-# Assert the snapshot's tracked file set is EXACTLY HEAD's.
-#
-# The suite's whole claim is that a gate run here is the gate run CI performs.
-# A snapshot silently short of HEAD does not fail -- it reports success over a
-# smaller tree, which is the defect class the gate-honesty epic exists for. So
-# the fidelity is DERIVED and compared on every run rather than assumed from
-# the extraction method being "obviously" faithful; the method that was
-# obviously faithful was short by 441 files.
-snapshot_fidelity_check() {
-  local work="$1" head_n snap_n missing extra
-  head_n="$(git -C "$REPO_ROOT" ls-files | wc -l | tr -d ' ')"
-  snap_n="$(git -C "$work" ls-files | wc -l | tr -d ' ')"
-  if [[ "$head_n" == "$snap_n" ]]; then
-    echo "==> snapshot: $snap_n tracked path(s), identical to HEAD" >&2
-    return 0
-  fi
-  missing="$(comm -23 \
-    <(git -C "$REPO_ROOT" ls-files | sort) \
-    <(git -C "$work" ls-files | sort) | head -5)"
-  extra="$(comm -13 \
-    <(git -C "$REPO_ROOT" ls-files | sort) \
-    <(git -C "$work" ls-files | sort) | head -5)"
-  echo "ERROR: the snapshot is not HEAD -- $snap_n path(s) vs $head_n." >&2
-  echo "       Every gate that enumerates with \`git ls-files\` would scan a" >&2
-  echo "       different tree than CI does, and report success over it." >&2
-  _snapshot_report_paths "missing" "$missing"
-  _snapshot_report_paths "extra" "$extra"
-  return 1
-}
-
-# Print an indented sample of paths under a heading, or nothing when empty.
-_snapshot_report_paths() {
-  local label="$1" paths="$2" path
-  [[ -z "$paths" ]] && return 0
-  echo "       $label (first 5):" >&2
-  while IFS= read -r path; do
-    echo "         $path" >&2
-  done <<<"$paths"
-}
-
-run_suite_on_snapshot() {
-  local fast="$1" only="${2:-}" work rc=0
-  if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
-    echo "NOTE: working tree is dirty -- ci.sh gates committed HEAD only (like" >&2
-    echo "      CI). Commit your changes to have them gated." >&2
-  fi
-  work="$(mktemp -d "${TMPDIR:-/tmp}/ra8-ci-snapshot.XXXXXXXX")"
-  # shellcheck disable=SC2064
-  # Expand $work now: the trap must not depend on the variable surviving.
-  trap "rm -rf '$work' '$work.index'" EXIT INT TERM
-  materialise_head_snapshot "$work"
-  snapshot_fidelity_check "$work"
-  git -C "$work" -c user.email=ci@localhost -c user.name=ci \
-    commit --quiet --no-verify -m "ci.sh snapshot of HEAD" >/dev/null 2>&1 || true
-  # That snapshot has ONE synthetic commit and none of the host's objects, so
-  # commit messages simply are not in it -- `git archive` carries a tree, not
-  # history. Point the message-scanning gates back at the real repository;
-  # everything else still reads the clean snapshot. Without this the two
-  # commit-metadata gates scan "ci.sh snapshot of HEAD" and report PASS,
-  # which is #348: the only local enforcement of the attribution-trailer ban
-  # and the inclusive-terminology rule, silently reading nothing.
-  export RA8_CI_HISTORY_REPO="$REPO_ROOT"
-  cd "$work"
-  # Disable errexit around the CALL only -- never `run_suite ... || rc=$?`.
-  # A `||` chain (like an `if` condition, or `!`) puts the callee into bash's
-  # inherited "ignoring errors" state, and that state propagates into every
-  # nested subshell where a plain `set -e` CANNOT clear it: $- shows `e` set
-  # while a failing command still does not abort. The whole suite then reduces
-  # to "did each gate's LAST command succeed", so a gate failing part-way --
-  # including require_cmd / require_python_mod reporting an absent tool --
-  # reports PASS. Measured: lint-py-shell reported PASS on a box with no ruff.
-  # This is the same discipline run_gate_capture documents, and
-  # suite_errexit_selftest is the regression test for it.
-  set +e
-  # ONE gate, or the suite -- same snapshot, and deliberately inside the same
-  # errexit discipline rather than in a second function: a `||` or an `if`
-  # around either CALL re-creates the "failed part-way, reported PASS" defect
-  # the block above exists to prevent. A branch here cannot.
-  if [[ -n "$only" ]]; then
-    run_one_gate "$only"
-  else
-    run_suite "$fast"
-  fi
-  rc=$?
-  set -e
-  cd "$REPO_ROOT"
-  return "$rc"
-}
+# The snapshot machinery (materialise the tree under test, prove it is HEAD, and
+# run the suite inside it). It sits beside abort.sh, which owns that snapshot's
+# lifecycle.
+# shellcheck source=scripts/ci/lib/snapshot.sh
+. "${SCRIPT_DIR}/ci/lib/snapshot.sh"
 
 # ===========================================================================
 # ARGUMENT PARSING
@@ -821,6 +731,12 @@ usage: bash scripts/ci.sh [--fast] [--native] [--rebuild]
   --fast         skip gates whose speed class is slow.
   --rebuild      force a devcontainer image rebuild first (container path).
 
+  --selftest-abort <mode>
+                 INTERNAL. Runs the real suite runner over fixture gates so
+                 suite_abort_selftest can prove a killed run reports no gate
+                 verdict (#542). Modes: hang | destroy | fail. Its output is a
+                 probe, never a suite verdict.
+
 With no flags: containerised on macOS; native on Linux when no container
 runtime is installed. See the header of this file for the design.
 EOF
@@ -831,6 +747,7 @@ rebuild=0
 native=0
 container=0
 gate=""
+selftest_abort=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -838,6 +755,15 @@ while [[ $# -gt 0 ]]; do
     --native) native=1 ;;
     --container) container=1 ;;
     --rebuild) rebuild=1 ;;
+    --selftest-abort)
+      shift
+      if [[ $# -eq 0 ]]; then
+        echo "ci.sh: --selftest-abort requires a mode (hang | destroy | fail)" >&2
+        usage >&2
+        exit 2
+      fi
+      selftest_abort="$1"
+      ;;
     --list-gates)
       list_gates
       exit $?
@@ -865,6 +791,16 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+# --- abort self-test probe: INTERNAL --------------------------------------
+# Driven only by suite_abort_selftest (scripts/ci/gates/hygiene.sh), which the
+# ci-parity gate runs. Placed before every other mode so a probe run can never
+# be confused with a real one.
+if [[ -n "$selftest_abort" ]]; then
+  cd "$REPO_ROOT"
+  ci_abort_probe "$selftest_abort"
+  exit $?
+fi
+
 # --- single-gate mode: the CI path ----------------------------------------
 # Runs in place (CI already provided a clean checkout) and natively (the
 # runner IS the target environment). No container, so this path has no
@@ -877,6 +813,11 @@ done
 if [[ -n "$gate" && "$container" != "1" ]]; then
   cd "$REPO_ROOT"
   export_tools_cache
+  # No snapshot on this path -- the checkout IS the tree under test, so there
+  # is nothing to delete under the run. The abort traps still go on, so a
+  # killed single-gate run says it was killed and exits UNKNOWN rather than
+  # handing its caller a gate's 143 to read as a content failure (#542).
+  ci_install_abort_traps
   run_one_gate "$gate"
   exit $?
 fi

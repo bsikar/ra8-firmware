@@ -102,9 +102,32 @@ refuses, so every test SIGKILLs before `main()`. The container exists to give
 the Mac an Ubuntu userland; a macOS-native "pass" would be a lie, so it refuses
 rather than reporting one.
 
-Both suite modes run against a clean `git archive HEAD` snapshot in a
+Both suite modes run against a clean snapshot of committed `HEAD` in a
 throwaway directory -- exactly what CI checks out. That is why a stale `.gcda`
 from another branch or in-source CMake junk cannot skew a gate here.
+
+**A gate reads the tree it is standing in.** The suite `cd`s into that
+snapshot, so a gate body uses `$PWD` and never `$REPO_ROOT`, which is the HOST
+checkout. `tools-build` reached for `$REPO_ROOT` and so never gated `HEAD` at
+all -- it built the working tree and left its output there -- and could not run
+on the containerised path, where the host repo is mounted read-only at
+`/workspace` (#546). `check_gate_bodies.py` now rejects `$REPO_ROOT` anywhere
+in `scripts/ci/gates/`. A gate needing the host repository's *history* calls
+`ci_history_repo`; there is no other legitimate use.
+
+### A killed run is UNKNOWN, not FAIL
+
+`make ci` uses the same three-value contract as `make ci-status`: `0` PASS,
+`1` FAIL, **`3` UNKNOWN**. Exit 3 means the run stopped being a measurement --
+it was signalled (a detached `nohup make ci-native &` is reaped by
+systemd-logind when the last ssh session for that user closes), or the snapshot
+it was gating vanished under it. It prints `RESULT: ABORTED` and no per-gate
+`FAIL` row, because a killed run has no verdict.
+
+That distinction is not cosmetic. The suite used to delete its own snapshot on
+SIGTERM and **keep running**, so every remaining gate "failed" on missing files
+and the run printed a FAIL table describing nothing about the tree under test
+(#542). **Never read an UNKNOWN as either a pass or a failure** -- re-run it.
 
 ### Adding a gate
 
@@ -208,7 +231,7 @@ run.
 
 `make ci` works from a workspace: `scripts/ci.sh` detects a linked worktree and
 bind-mounts the main repo's git directory alongside it, so the in-container
-`git archive HEAD` resolves (#334).
+read of `HEAD` resolves (#334).
 
 ### Do not poll GitHub: `make ci-status`
 

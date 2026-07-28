@@ -24,7 +24,7 @@
 #      immediately visible to all the others.
 #
 #   2. EPHEMERAL BUILD OUTPUT. Gates run via `make ci`, which builds inside a
-#      `--rm` container against a fresh `git archive HEAD` snapshot. Build
+#      `--rm` container against a fresh snapshot of committed HEAD. Build
 #      output therefore never lands in the workspace at all and cannot outlive
 #      the run that produced it. This is what makes the stale-.gcda class
 #      IMPOSSIBLE instead of prevented-by-habit: a coverage run cannot find

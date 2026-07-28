@@ -231,9 +231,11 @@ ci_extra_run_args() {
 
 # HOST MODE, end to end. Never returns.
 #
-# The host repo is bind-mounted READ-ONLY: the in-container step extracts a
-# clean `git archive HEAD` into a throwaway dir and builds there, so the host
-# source tree and its macOS CMake caches are never touched. It runs as root so
+# The host repo is bind-mounted READ-ONLY: the in-container step materialises
+# a clean copy of committed HEAD into a throwaway dir and builds there, so the
+# host source tree and its macOS CMake caches are never touched. A gate that
+# writes under the mount instead of the tree it is standing in therefore fails
+# outright, which is exactly what tools-build did (#546). It runs as root so
 # that throwaway tree (and its fresh build dirs) is writable.
 #
 # --rm is load-bearing, not hygiene: the snapshot tree and every build dir the
