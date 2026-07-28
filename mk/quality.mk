@@ -96,6 +96,7 @@ FUZZ_RUNS    ?= 10000
 FUZZ_CC      ?=
 FUZZ_CXX     ?=
 fuzz:
+	@bash scripts/checks/run_fuzz.sh --selftest
 	@CC="$(FUZZ_CC)" CXX="$(FUZZ_CXX)" FUZZ_RUNS="$(FUZZ_RUNS)" \
 	  bash scripts/checks/run_fuzz.sh --all "$(FUZZ_SECONDS)"
 
