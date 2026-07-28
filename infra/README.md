@@ -175,42 +175,6 @@ The role's `self-hosted`/`Linux`/`X64` labels are added by the runner itself
 and cannot be removed. Nothing targets them: they are simply what GitHub
 attaches to every self-hosted Linux x86_64 runner.
 
-### The legacy `k3s-runner-*` pool is retired
-
-Before ARC, CI ran on up to 20 hand-registered GitHub runners installed as bare
-systemd services on the k3s node itself (`actions.runner.*.k3s-runner-N`,
-work dirs `/home/ubuntu/actions-runner*`). They were never provisioned from
-this tree -- no role ever created them -- which is precisely why they outlived
-their purpose: nothing in the repo described them, so nothing in the repo
-retired them either.
-
-The Jul-24 ARC migration moved the core workflows to `ra8-ci` but deliberately
-left `docs-publish`, `fuzz-nightly` and `osv-scan` on `[self-hosted, Linux,
-X64]` "until their tools are confirmed in the image". That condition was never
-revisited, so three low-frequency workflows kept seven bare runners alive on
-the node whose load average was already ~110 against 16 vCPU -- and made
-"retire the legacy pool" a trap, since deregistering them would have left those
-three permanently unrunnable.
-
-The condition has now been checked rather than assumed, against a live pod:
-
-| workflow | what it needs | where it comes from |
-|---|---|---|
-| `docs-publish` | `dot` | graphviz, in the image |
-| | doxygen pinned to 1.16.1 | the `/var/cache/ra8-tools` hostPath cache (#486); sha256-verified download on a cold cache |
-| `fuzz-nightly` | a clang that links `-fsanitize=fuzzer` | `clang-18` + `libclang-rt-18-dev`, in the image |
-| `osv-scan` | `osv-scanner` 2.4.0 | fetched per job, version + sha256 pinned in the workflow |
-
-All three now run on `ra8-ci`, the pool is deregistered, and its systemd units
-are stopped, disabled and removed from the node.
-
-One in-repo default depended on that pool and moved with it:
-`scripts/ci/monitor.sh runner-status` read job outcomes out of
-`/home/ubuntu/actions-runner*/_diag/`. It now reads the truenas container
-runner's `_diag` instead -- which is not merely a replacement but a fix, since
-the legacy pool only ever ran those three workflows and so could never show a
-`firmware` result.
-
 ### Storage: CI I/O is kept off a named pool, by assertion
 
 The NAS this role was first deployed to has a **DEGRADED** 100T `raid-z2` pool:
@@ -307,6 +271,47 @@ are sized for a 6-core/12-thread NAS with 62 GiB of RAM:
 The play reads the caps back out of the container's cgroup and **asserts** them
 rather than trusting the compose file, because a cap that was silently ignored
 is worse than one that was never set.
+
+## The legacy `k3s-runner-*` pool is retired (#502)
+
+Before ARC, CI ran on up to 20 hand-registered GitHub runners installed as bare
+systemd services on the k3s node itself (`actions.runner.*.k3s-runner-N`, work
+dirs `/home/ubuntu/actions-runner*`). They were never provisioned from this tree
+-- no role ever created them -- which is precisely why they outlived their
+purpose: nothing in the repo described them, so nothing in the repo retired them
+either. This section exists so that cannot happen a second time.
+
+The Jul-24 ARC migration moved the core workflows to `ra8-ci` but deliberately
+left `docs-publish`, `fuzz-nightly` and `osv-scan` on
+`[self-hosted, Linux, X64]` "until their tools are confirmed in the image".
+That condition was never revisited, so three low-frequency workflows kept seven
+bare runners alive on the node whose load average was already ~110 against 16
+vCPU -- and made "retire the legacy pool" a trap, since deregistering them would
+have left those three permanently unrunnable.
+
+The condition was then checked rather than assumed, against a live pod:
+
+| workflow | what it needs | where it comes from |
+|---|---|---|
+| `docs-publish` | `dot` | graphviz, already in the image |
+| `docs-publish` | doxygen pinned to 1.16.1 | the `/var/cache/ra8-tools` hostPath cache (#486); sha256-verified download on a cold cache |
+| `fuzz-nightly` | a clang that links `-fsanitize=fuzzer` | `clang-18` + `libclang-rt-18-dev`, already in the image |
+| `osv-scan` | `osv-scanner` 2.4.0 | fetched per job, version + sha256 pinned in the workflow |
+
+Nothing had to be added to the image. All three now target `ra8-ci`; the seven
+registrations are deleted, and all 20 `actions.runner.*` units (7 enabled, 13
+disabled leftovers from the phantoms deregistered earlier) are stopped,
+disabled and removed along with their drop-in directories and the 81 GB of
+runner installs under `/home/ubuntu/`.
+
+One in-repo default depended on that pool and moved with it.
+`scripts/ci/monitor.sh runner-status` -- the zero-quota fallback that reads job
+outcomes straight off a runner's `_diag` logs -- pointed at
+`/home/ubuntu/actions-runner*/_diag/` on the k3s node. It needs a LONG-LIVED
+runner, which an ephemeral ARC pod can never be, so it now reads the truenas
+container runner's `_diag` (on a dataset outside the container). That is a fix
+rather than a relocation: by the end the legacy pool only ever ran these three
+workflows, so it could not show a `firmware` result at all.
 
 ## Vendor artifacts that cannot be fetched unattended
 
