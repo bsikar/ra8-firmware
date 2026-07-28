@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hil_needs_revalidation/threadx_netx_tcp_echo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/main.c
  * @brief ThreadX + NetX Duo TCP echo demo for EK-RA8D2
  *
  * @par Tag
@@ -68,6 +68,22 @@
  * sizing follows the standard NetX Duo demo recipe (16 packets at
  * 1568 bytes each; pool overhead allowed for) which fits easily in
  * the 2 MiB SRAM budget.
+ *
+ * @warning ``k_demo_pool_bytes`` is load-bearing beyond its own size, and
+ * growing it is how this app was broken for a month (#499). It is a static
+ * array, so its size sets where everything after it lands in ``.bss`` --
+ * including the GWCA DMA buffers in ``libs/ra8_hal/src/ra8_eth.c``. Raising it
+ * to 98304 (commit c14ad3b4b) pushed ``s_tx_pool_storage`` from 0x2200CA50 to
+ * 0x2201CA60, and from that address the Ethernet TX datapath corrupts bits 4
+ * and 5 of every byte at a frame offset congruent to 13 (mod 16) -- silently,
+ * with a valid FCS, in every frame including the 60-byte ARP reply, so the
+ * board stops being reachable at all. The SRAM itself is fine (a CPU
+ * write/readback of the exact byte values at the failing address round-trips
+ * clean), so the address-sensitivity is in the DMA/MAC path and the real fix
+ * belongs in the HAL, not here. Until #499 lands, treat this constant as
+ * pinned: bench-verified byte-exact at 8/64/256/512/1024-byte TCP payloads,
+ * and any change to it -- or to any earlier static in this app -- has to be
+ * re-tested on the wire, not just re-built.
  */
 typedef enum : uint32_t {
   k_demo_baud           = 115200U,     /**< Demo baud.                */
@@ -76,9 +92,8 @@ typedef enum : uint32_t {
   k_demo_app_thread_pri = 8U,          /**< Demo app thread priority. */
   k_demo_packet_size    = 1568U,       /**< Demo packet size.         */
   k_demo_packet_count   = 16U,         /**< Demo packet count.        */
-  k_demo_pool_bytes     = 98304U,      /**< large pool: MTU=128 fragments a frame into
-                                   * ~12 packets, so reassembly + echo needs a
-                                   * deep pool to avoid exhaustion stalls. */
+  k_demo_pool_bytes     = 32768U,      /**< Packet pool. DO NOT GROW without
+                                   * re-running the wire test -- see #499. */
   k_demo_ip_stack       = 4096U,       /**< Demo IP stack.                */
   k_demo_arp_cache      = 1024U,       /**< Demo arp cache.               */
   k_demo_echo_port      = 7U,          /**< Demo echo port.               */

@@ -3,7 +3,7 @@
  * @brief Integration test: ra8_eth NIC bring-up under the NetX-Duo demo
  *
  * @details
- * The production app at examples/ek_ra8d2/hil_needs_revalidation/threadx_netx_tcp_echo/main.c
+ * The production app at examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/main.c
  * brings the chip up via the ``ra8_etha`` HAL, hands control to ThreadX,
  * and asks NetX Duo (via the nx_ether_driver_ra8_eth shim)
  * to drive the NIC. NetX/ThreadX are not in the host test build, so

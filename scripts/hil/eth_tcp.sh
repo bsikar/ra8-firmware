@@ -241,6 +241,15 @@ if ! ip -4 addr show dev "$USB_ETH_IFACE" | grep -q "${PI_IP}/${PI_PREFIX}"; the
 fi
 sudo -n ip link set "$USB_ETH_IFACE" up 2>/dev/null || true
 
+# Drop any neighbour entry left over from a previous run. The board is held in
+# reset for the duration of the flash below, so the previous run's exit -- or
+# any probe that ran while the board was down -- leaves the board IP cached in
+# the FAILED state. Linux then answers from that cache instead of re-ARPing,
+# and the freshly-booted board looks unreachable for as long as the entry
+# lives. Symptom: back-to-back runs alternate PASS / "no ICMP/ARP reply" with
+# metronomic regularity, which reads as a flaky board and is not one.
+sudo -n ip neigh flush dev "$USB_ETH_IFACE" 2>/dev/null || true
+
 # ---- 3. Pre-flash LPSCR clear + flash ---------------------------------------
 TMP_SCRIPT="/tmp/hil_eth_jlink_${APP_NAME}.cmd"
 cat >"$TMP_SCRIPT" <<JLINK

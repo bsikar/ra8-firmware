@@ -29,8 +29,8 @@ examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/main.c	readability-fu
 examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/ra8_io_roundtrip.c	readability-function-size	2
 examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/ra8_io_roundtrip.c	readability-function-size	2
 examples/ek_ra8d2/hil_needs_revalidation/rot_verify_hil/src/psa_kat_shim.c	readability-identifier-naming	1
-examples/ek_ra8d2/hil_needs_revalidation/threadx_netx_tcp_echo/main.c	clang-diagnostic-cast-qual	3
-examples/ek_ra8d2/hil_needs_revalidation/threadx_netx_tcp_echo/main.c	readability-function-size	1
+examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/main.c	clang-diagnostic-cast-qual	3
+examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/main.c	readability-function-size	1
 examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_main.c	cert-dcl37-c	1
 examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/main.c	bugprone-casting-through-void	1
 examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/main.c	cert-dcl37-c	1
