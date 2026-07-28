@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "mdl_atomic.h"
 #include "mdl_export_internal.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
@@ -308,18 +309,29 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
     free(src);
     return k_ra8_err_invalid_size;
   }
-  FILE* out = fopen(out_path, "wb");
+  /* Produce into a sibling temp and rename on success: re-exporting a chapter
+   * must not destroy the `.jof` already sitting there if this page fails to
+   * decode (see mdl_atomic.h). */
+  char tmp[PATH_MAX];
+  if (!mdl_atomic_tmp_path(out_path, tmp, sizeof(tmp))) {
+    free(src);
+    return k_ra8_fail;
+  }
+  FILE* out = fopen(tmp, "wb");
   if (out == nullptr) {
     free(src);
     return k_ra8_fail;
   }
   rc = jof_produce_page(src, slen, w, h, tile_h, work_cap, out);
-  (void)fclose(out);
+  if (fclose(out) != 0) {
+    rc = (rc == k_ra8_ok) ? k_ra8_fail : rc;
+  }
   free(src);
   if (rc != k_ra8_ok) {
-    (void)remove(out_path);
+    mdl_atomic_abort(tmp);
+    return rc;
   }
-  return rc;
+  return mdl_atomic_commit(tmp, out_path) ? k_ra8_ok : k_ra8_fail;
 }
 
 RA8_PRIV ra8_err_t mdl_export_jof(const char* dir, const char names[][k_name_max], size_t count)

@@ -48,6 +48,7 @@
 #include <crt_externs.h>
 #endif
 
+#include "mdl_atomic.h"
 #include "mdl_export_internal.h"
 #include "mdl_sanitize.h"
 #include "miniz.h"
@@ -405,7 +406,12 @@ build_tar_to_file(const char* dir, char names[][k_name_max], size_t count, FILE*
   return (fwrite(trailer, 1U, sizeof(trailer), out) == sizeof(trailer)) ? k_ra8_ok : k_ra8_fail;
 }
 
-/** @brief Stream a ustar to `out_path`; remove a partial file on any failure. */
+/**
+ * @brief Stream a ustar to `out_path`.
+ * @details A partial file on failure is the CALLER's to discard: every path
+ *          into here now writes a temp that ::export_atomic aborts, so a second
+ *          remove() here would only race its own cleanup.
+ */
 RA8_INTERNAL static ra8_err_t
 write_tar_file(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
 {
@@ -417,9 +423,6 @@ write_tar_file(const char* dir, char names[][k_name_max], size_t count, const ch
   const bool close_ok = (fclose(f) == 0);
   if ((rc == k_ra8_ok) && !close_ok) {
     rc = k_ra8_fail;
-  }
-  if (rc != k_ra8_ok) {
-    (void)remove(out_path);
   }
   return rc;
 }
@@ -592,8 +595,13 @@ RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char* dir,
                                                  ra8_err_t (*compress)(const char* in_path,
                                                                        const char* out_path))
 {
-  char tmp[PATH_MAX];
-  (void)snprintf(tmp, sizeof(tmp), "%s.tar.tmp", out_path);
+  /* A truncated suffix would name a DIFFERENT file than intended -- possibly
+   * one that already exists -- so overflow aborts rather than proceeding. */
+  char      tmp[PATH_MAX];
+  const int n = snprintf(tmp, sizeof(tmp), "%s.tar.tmp", out_path);
+  if ((n < 0) || ((size_t)n >= sizeof(tmp))) {
+    return k_ra8_fail;
+  }
   ra8_err_t rc = write_tar_file(dir, names, count, tmp);
   if (rc == k_ra8_ok) {
     rc = compress(tmp, out_path);
@@ -844,9 +852,7 @@ export_epub(const char* dir, char names[][k_name_max], size_t count, const char*
   free(mani);
   free(spine);
   free(nav);
-  if (rc != k_ra8_ok) {
-    (void)remove(out_path);
-  }
+  /* A partial EPUB is ::export_atomic's temp to discard, not ours. */
   return rc;
 }
 
@@ -884,8 +890,12 @@ RA8_INTERNAL static ra8_err_t run_rabook_python(const char* cbz, const char* out
 RA8_INTERNAL static ra8_err_t
 export_rabook(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
 {
-  char tmp_cbz[PATH_MAX];
-  (void)snprintf(tmp_cbz, sizeof(tmp_cbz), "%s.tmp.cbz", out_path);
+  /* As in export_tar_wrapped: a truncated suffix would name a different file. */
+  char      tmp_cbz[PATH_MAX];
+  const int n = snprintf(tmp_cbz, sizeof(tmp_cbz), "%s.tmp.cbz", out_path);
+  if ((n < 0) || ((size_t)n >= sizeof(tmp_cbz))) {
+    return k_ra8_fail;
+  }
   ra8_err_t rc = export_cbz(dir, names, count, tmp_cbz);
   if (rc != k_ra8_ok) {
     return rc;
@@ -895,6 +905,64 @@ export_rabook(const char* dir, char names[][k_name_max], size_t count, const cha
   return rc;
 }
 
+/** @brief Run one format's writer, producing the container at `out_path`. */
+RA8_INTERNAL static ra8_err_t export_dispatch(mdl_format_t fmt,
+                                              const char*  dir,
+                                              char         names[][k_name_max],
+                                              size_t       count,
+                                              const char*  out_path)
+{
+  switch (fmt) {
+    case k_mdl_fmt_cbz:
+      return export_cbz(dir, names, count, out_path);
+    case k_mdl_fmt_cbt:
+      return write_tar_file(dir, names, count, out_path);
+    case k_mdl_fmt_cbt_gz:
+      return export_tar_wrapped(dir, names, count, out_path, gzip_file);
+    case k_mdl_fmt_cbt_xz:
+      return export_tar_wrapped(dir, names, count, out_path, xz_file);
+    case k_mdl_fmt_epub:
+      return export_epub(dir, names, count, out_path);
+    case k_mdl_fmt_rabook:
+      return export_rabook(dir, names, count, out_path);
+    case k_mdl_fmt_cbr:
+      return export_cbr(dir, out_path);
+    case k_mdl_fmt_jof:
+    case k_mdl_fmt_loose:
+    case k_mdl_fmt_invalid:
+    default:
+      return k_ra8_err_invalid_arg;
+  }
+}
+
+/**
+ * @brief Build `out_path` through a sibling temp, committing only on success.
+ * @details The ONE atomicity seam for every container format, rather than seven
+ *          writers each remembering. Each of them used to build straight on top
+ *          of out_path, so a re-export that failed part-way -- a missing
+ *          `rar`/`xz`, an undecodable page, a full disk -- left the
+ *          previously-good archive truncated or deleted. A failed re-export now
+ *          costs nothing: the destination is not touched until a complete good
+ *          copy exists. See mdl_atomic.h.
+ */
+RA8_INTERNAL static ra8_err_t export_atomic(mdl_format_t fmt,
+                                            const char*  dir,
+                                            char         names[][k_name_max],
+                                            size_t       count,
+                                            const char*  out_path)
+{
+  char tmp_path[PATH_MAX];
+  if (!mdl_atomic_tmp_path(out_path, tmp_path, sizeof(tmp_path))) {
+    return k_ra8_fail;
+  }
+  const ra8_err_t rc = export_dispatch(fmt, dir, names, count, tmp_path);
+  if (rc != k_ra8_ok) {
+    mdl_atomic_abort(tmp_path);
+    return rc;
+  }
+  return mdl_atomic_commit(tmp_path, out_path) ? k_ra8_ok : k_ra8_fail;
+}
+
 ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path)
 {
   if ((chapter_dir == nullptr) || (out_path == nullptr) || (fmt == k_mdl_fmt_loose) ||
@@ -902,7 +970,8 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
     return k_ra8_err_invalid_arg;
   }
   if (fmt == k_mdl_fmt_cbr) {
-    return export_cbr(chapter_dir, out_path);
+    /* `rar` archives the directory itself, so it needs no page table. */
+    return export_atomic(fmt, chapter_dir, nullptr, 0U, out_path);
   }
 
   static char  s_names[k_max_pages][k_name_max];
@@ -916,26 +985,11 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
   if (count == 0U) {
     return k_ra8_err_empty;
   }
-
-  switch (fmt) {
-    case k_mdl_fmt_cbz:
-      return export_cbz(chapter_dir, s_names, count, out_path);
-    case k_mdl_fmt_cbt:
-      return write_tar_file(chapter_dir, s_names, count, out_path);
-    case k_mdl_fmt_cbt_gz:
-      return export_tar_wrapped(chapter_dir, s_names, count, out_path, gzip_file);
-    case k_mdl_fmt_cbt_xz:
-      return export_tar_wrapped(chapter_dir, s_names, count, out_path, xz_file);
-    case k_mdl_fmt_epub:
-      return export_epub(chapter_dir, s_names, count, out_path);
-    case k_mdl_fmt_jof:
-      /* JOF writes one `.jof` sibling per page into chapter_dir; out_path names
-       * no single container (see mdl_format_is_dir_output). Callers report the
-       * directory rather than a phantom archive file. */
-      return mdl_export_jof(chapter_dir, s_names, count);
-    case k_mdl_fmt_rabook:
-      return export_rabook(chapter_dir, s_names, count, out_path);
-    default:
-      return k_ra8_err_invalid_arg;
+  if (fmt == k_mdl_fmt_jof) {
+    /* JOF writes one `.jof` sibling per page into chapter_dir; out_path names
+     * no single container (see mdl_format_is_dir_output), so there is no single
+     * file to rename into place -- mdl_export_jof commits each page itself. */
+    return mdl_export_jof(chapter_dir, s_names, count);
   }
+  return export_atomic(fmt, chapter_dir, s_names, count, out_path);
 }

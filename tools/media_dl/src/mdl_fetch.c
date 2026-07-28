@@ -14,6 +14,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "mdl_atomic.h"
 #include "mdl_fetch_internal.h"
 #include "mdl_hash.h"
 #include "mdl_net.h"
@@ -215,7 +216,14 @@ RA8_INTERNAL static bool copy_file(const char* src, const char* dst)
   if (in == nullptr) {
     return false;
   }
-  FILE* out = fopen(dst, "wb");
+  /* Same rule as every other writer here: a partial copy must not be able to
+   * destroy a good `dst` that already exists (see mdl_atomic.h). */
+  char tmp[PATH_MAX];
+  if (!mdl_atomic_tmp_path(dst, tmp, sizeof(tmp))) {
+    (void)fclose(in);
+    return false;
+  }
+  FILE* out = fopen(tmp, "wb");
   if (out == nullptr) {
     (void)fclose(in);
     return false;
@@ -236,9 +244,10 @@ RA8_INTERNAL static bool copy_file(const char* src, const char* dst)
   ok = ((fclose(out) == 0) && ok);
   (void)fclose(in);
   if (!ok) {
-    (void)remove(dst);
+    mdl_atomic_abort(tmp);
+    return false;
   }
-  return ok;
+  return mdl_atomic_commit(tmp, dst);
 }
 
 /** @brief Compose the `page_NNNN.ext` leaf for one page; false if it overran. */
