@@ -41,7 +41,7 @@
  * @note **Silicon note.** The 2-bit (uncorrectable) injection raises a
  * non-maskable ECC interrupt on real hardware (``on_error = interrupt``); the
  * bench bring-up must install an NMI handler (or mask faults around the 2-bit
- * self-test). board_sim does not raise the NMI, so the headless run reads
+ * self-test). ra8_emulator does not raise the NMI, so the headless run reads
  * ``SRAMESR`` synchronously and reports cleanly.
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.

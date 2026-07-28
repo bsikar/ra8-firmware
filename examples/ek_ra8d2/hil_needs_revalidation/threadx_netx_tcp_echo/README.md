@@ -16,16 +16,16 @@ to the SCI8 console as `[netx] echoed N bytes from a.b.c.d`.
   600+ bytes hits the accepted large-frame TX silicon limitation, so
   the driver keeps its MTU=128 clamp).
 
-- **SIL (board_sim, no hardware)**: `scripts/sim/sil_all.sh` boots the
-  same `.elf` headless. board_sim ships the peer in-process --
+- **EIL (ra8_emulator, no hardware)**: `scripts/emu/eil_all.sh` boots the
+  same `.elf` headless. ra8_emulator ships the peer in-process --
   `tools/ra8_emulator` models the R-Switch register cluster
   (`board_periph_eth.c`) and its virtual host `board_net`
   (192.168.1.1) resolves the firmware over ARP, pings it, TCP-connects
   to port 7, sends a fixed 21-byte payload, and byte-verifies the
-  echo. The SIL verdict asserts both the firmware's served-echo UART
+  echo. The EIL verdict asserts both the firmware's served-echo UART
   banner (`HIL_EXPECT`) and the peer's end-of-run `echo MATCH` report.
 
-## Run it locally in board_sim
+## Run it locally in ra8_emulator
 
 ```sh
 make threadx_netx_tcp_echo

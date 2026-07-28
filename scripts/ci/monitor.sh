@@ -7,7 +7,7 @@
 #
 # The problem:
 #   Each agent ran a blocking `gh run watch` against all three workflows
-#   (firmware, coverage, board-sim-smoke). Six agents therefore meant ~18
+#   (firmware, coverage, emulator-smoke). Six agents therefore meant ~18
 #   independent pollers plus issue queries, and the 5000/hour REST quota was
 #   exhausted TWICE in one day. The consequences were not cosmetic: two agents'
 #   watchers were killed mid-run, and one had to finish its task reporting
@@ -420,7 +420,7 @@ EOF
 # The fields actually present, all in Worker_<UTC>.log:
 #
 #   result   [JobRunner] Job result after all job steps finish: Succeeded
-#   job name "jobDisplayName": "board_sim boot smoke"
+#   job name "jobDisplayName": "ra8_emulator boot smoke"
 #   commit   "k": "sha",          followed by   "v": "<40 hex>"
 #   branch   "k": "ref_name",     followed by   "v": "dev"
 #   workflow "k": "workflow_ref",  followed by   "v": "owner/repo/.github/workflows/<f>.yml@refs/heads/<branch>"

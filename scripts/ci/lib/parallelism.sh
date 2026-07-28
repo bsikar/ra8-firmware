@@ -5,7 +5,7 @@
 # scripts/ci/lib/parallelism.sh -- the ONE canonical bounded-parallelism source.
 #
 # SOURCED, NEVER EXECUTED. Every parallel invocation in a CI gate body, a
-# builder, a check or a sim driver (make -j, cmake --build -j, ctest -j,
+# builder, a check or an emulator driver (make -j, cmake --build -j, ctest -j,
 # xargs -P, cppcheck -j, clang-tidy fan-out) MUST take its width from
 # ra8_max_jobs -- never from a raw `nproc` / `sysctl -n hw.ncpu`.
 #
@@ -16,7 +16,7 @@
 # 156 load on 12 vCPU, with 168 concurrent `ld` against an intended ceiling of
 # 24: CMAKE_BUILD_PARALLEL_LEVEL was set per job, but individual gates
 # self-parallelised past it (make, ctest, xargs, cppcheck and the cross-build
-# worker pool all defaulted to `nproc`). A board-sim gate then TIMED OUT under
+# worker pool all defaulted to `nproc`). An emulator gate then TIMED OUT under
 # that contention and read as a code regression rather than the load artefact
 # it was. Deriving every site's width from one bounded value keeps total
 # concurrency near the CPU budget regardless of how many jobs land at once.

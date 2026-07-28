@@ -20,8 +20,8 @@
  *
  * The window and payload are deliberately small (512 blocks = 256 KiB volume,
  * 256-byte payload) because every 512-byte write drives a 4 KiB erase +
- * reprogram RMW that is slow in board_sim; a large volume would blow the run
- * budget. board_sim models the 2 MiB OSPI NOR array internally, so the run is
+ * reprogram RMW that is slow in ra8_emulator; a large volume would blow the run
+ * budget. ra8_emulator models the 2 MiB OSPI NOR array internally, so the run is
  * headless and observable: a successful run prints
  * `ra8_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS`.
  *
@@ -210,7 +210,7 @@ static ra8_err_t demo_run(void)
  * @retval (none) The function does not return (final `while (true)`).
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
- * @pre The OSPI NOR array is present (modelled in board_sim, real on silicon).
+ * @pre The OSPI NOR array is present (modelled in ra8_emulator, real on silicon).
  * @post Exactly one PASS or FAIL verdict line has been queued on SCI8.
  * @post Control parks in an infinite loop; the function never returns.
  *

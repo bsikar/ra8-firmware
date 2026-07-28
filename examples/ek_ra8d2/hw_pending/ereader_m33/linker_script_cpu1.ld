@@ -18,7 +18,7 @@
  * The 32 KiB RGB565 page framebuffer does not fit (and does not belong) in the
  * 64 KiB SRAM_CPU1 alongside the stack, so it lives in external SDRAM via the
  * .sdram_bss section below -- the same arena-in-SDRAM pattern the sibling
- * compile_on_m33 image uses. On board_sim the SDRAM window is always mapped; on
+ * compile_on_m33 image uses. On ra8_emulator the SDRAM window is always mapped; on
  * silicon the M85 brings up the SDRAM controller before releasing the M33.
  *
  * Copyright (c) 2026 Brighton Sikarskie

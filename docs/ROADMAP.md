@@ -816,7 +816,7 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 44 p 2986 (re-init with new mode)
 [x] Power transition -- HUM Ch 44 p 2986 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 44 p 2986 (WRAPCFG/COMCFG/LIOCFG/INTC/CMDCFG0..2/CMDBUF/RDBUF/COMSTT)
-[x] Unit tests -- tests/test_ra8_xspi.c (sim-flash round trip)
+[x] Unit tests -- tests/test_ra8_xspi.c (emu-flash round trip)
 [x] World tag -- {World: S}
 [x] HUM cross-ref -- all Ch 44 register notes in src/ra8_xspi.c
 [x] Doxygen -- full file + member coverage

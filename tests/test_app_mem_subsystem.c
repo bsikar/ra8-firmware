@@ -17,8 +17,8 @@
  *   - ra8_vmem_stream  (byte windows through a fixed page cache over 1 MiB backing)
  *
  * Because ra8_mem is pure computation with no MMIO, the host result is identical
- * to board_sim and silicon, so the CRC + counters asserted here are the same
- * values the SIL / HIL gate pins (SIM == HIL). Two compound decisions carry
+ * to ra8_emulator and silicon, so the CRC + counters asserted here are the same
+ * values the EIL / HIL gate pins (EIL == HIL). Two compound decisions carry
  * MC/DC vectors.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -413,7 +413,7 @@ static void test_vmem_stream_windows(void)
   TEST_ASSERT(window_ok(got, 0U, bok)); /* fully past EOF */
 
   crc ^= (uint32_t)k_crc_xorout;
-  TEST_ASSERT_EQ(k_vmem_exp_crc, crc); /* == banner vmem_crc, SIM == HIL */
+  TEST_ASSERT_EQ(k_vmem_exp_crc, crc); /* == banner vmem_crc, EIL == HIL */
 
   uint32_t ev = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(&vm, nullptr, nullptr, &ev));

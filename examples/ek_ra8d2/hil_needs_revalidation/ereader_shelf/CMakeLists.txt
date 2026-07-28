@@ -56,28 +56,28 @@ ra8_add_app(
 #   * At -O0 the fully-linked reader (ra8_epub + miniz + tinyxml2 + stb +
 #     ra8_reflow + baked library.h ...) overflows the 1 MiB MRAM code region by
 #     ~17 KiB, so the top-level aggregate build (which defaults to Debug/-O0)
-#     and `make sim-ereader_shelf` cannot link it. A per-target option lands
+#     and `make emu-ereader_shelf` cannot link it. A per-target option lands
 #     after the build-type -O flag, so -Og wins (GCC honours the last -O) and
 #     the app builds regardless of how it was configured.
-#   * The pin is a board_sim GATE-SPEED choice, not a firmware limit. The
+#   * The pin is a ra8_emulator GATE-SPEED choice, not a firmware limit. The
 #     firmware is optimisation-stable: the identical source renders byte-
 #     identical at -O0/-O1/-O2/-O3 on the host (clang + gcc), UBSan- and ASan-
 #     clean (guarded by tests/test_ereader_shelf_geometry.c), and -- since
-#     board_sim's LOB decode was fixed (#233) -- board_sim now renders the -O1
+#     ra8_emulator's LOB decode was fixed (#233) -- ra8_emulator now renders the -O1
 #     reader byte-identically to -Og too (both fb=0ADB62C6). So real M85 silicon
 #     (which has the Armv8.1-M LOB + MVE hardware natively) runs the reader at
-#     -O1+ with no board_sim relaxation.
-#     What -Og buys is SPEED under the emulator: board_sim runs the Cortex-M85
+#     -O1+ with no ra8_emulator relaxation.
+#     What -Og buys is SPEED under the emulator: ra8_emulator runs the Cortex-M85
 #     image on a Unicorn Cortex-M33 that lacks the v8.1-M instructions GCC emits
 #     at higher -O (at -O1 the ra8_gfx fill path internal_fill_rect_565 becomes a
-#     Low-Overhead-Branch `dls`/`le` loop; -O2 auto-vectorises to MVE). board_sim
+#     Low-Overhead-Branch `dls`/`le` loop; -O2 auto-vectorises to MVE). ra8_emulator
 #     hand-emulates these via trap-and-relaunch -- one emulation chunk PER loop
 #     iteration -- so an -O1 render grinds the reader's counted loops through
 #     ~2.5M relaunches (tens of seconds), while -Og emits no LOB at all and the
 #     golden gate (hil.conf fb=0ADB62C6) runs in well under a second. Until the
 #     LOB seam batches whole loops, -Og stays the gated level for a fast gate.
-# NOTE: the earlier "board_sim has no LOB seam / -O1 is fb=DE69E794 corruption"
-# was the pre-#233 state -- board_sim's emulate_lob mis-decoded the LE branch
+# NOTE: the earlier "ra8_emulator has no LOB seam / -O1 is fb=DE69E794 corruption"
+# was the pre-#233 state -- ra8_emulator's emulate_lob mis-decoded the LE branch
 # offset (the scattered immediate LSB), branching mid-instruction; that bug is
 # fixed, so -O1 no longer diverges, only runs slower under emulation.
 target_compile_options(ereader_shelf.elf PRIVATE -Og)
@@ -98,7 +98,7 @@ target_compile_options(ereader_shelf.elf PRIVATE -Og)
 # Simple-SPI (CPU PIO, no DMA initiator) and needs no maintenance, and the app links
 # no ra8_drw, so the framebuffer is the only coherency boundary.
 #
-# board_sim has no cache model, so it renders identically with the flag on
+# ra8_emulator has no cache model, so it renders identically with the flag on
 # (validated: fb=FA3AB5B5 unchanged). The cache CORRECTNESS itself -- that the
 # clean prevents stale scan-out on real silicon with the D-cache live -- is
 # HIL-only and remains bench-validation-pending for this app.

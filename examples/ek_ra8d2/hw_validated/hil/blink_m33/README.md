@@ -27,13 +27,13 @@ portable app drops into `cpu1_main.c` the same way.
 ## Run it
 
 ```sh
-make sim-blink_m33      # both cores in board_sim, with the live board view
+make emu-blink_m33      # both cores in ra8_emulator, with the live board view
 make blink_m33          # cross-compile blink_m33.elf (+ blink_m33_cpu1.elf)
 ```
 
 In the board view, watch **LED1 (BLUE)** toggle; the `[itm]` stream shows the
 M85's release log (`ra8_cpu1_release rc (0 = ok)=0`) and then goes quiet as the
-M85 idles. (board_sim echoes only the primary core's ITM, so the M33 stays
+M85 idles. (ra8_emulator echoes only the primary core's ITM, so the M33 stays
 silent by design -- the LED is its output.)
 
 ## Memory map

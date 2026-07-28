@@ -3,7 +3,7 @@ Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
 -->
 
-# board_sim -- RA8D2 board emulator (companion dev tool)
+# ra8_emulator -- RA8D2 board emulator (companion dev tool)
 
 Boots the **real, unmodified firmware `.elf`** -- the same image that flashes to
 the EK-RA8D2 -- on an emulated Cortex-M and shows it in a graphical **board
@@ -11,7 +11,7 @@ view**: the GLCDC panel framebuffer on the left, plus a status sidebar on the
 right with three LED indicators (lit in the real GPIO LED colour) and live
 USB / UART / timer-IRQ / touch state. So a NON-display example (blink, USB,
 UART, timers) is observable graphically, and a display example still shows its
-screen beside the status panel. board_sim runs the actual cross-compiled ARM
+screen beside the status panel. ra8_emulator runs the actual cross-compiled ARM
 binary, so it exercises the genuine bring-up and peripheral-driver code path --
 the panel/UI you see is exactly what the flashed firmware draws.
 
@@ -20,13 +20,13 @@ capstone` on macOS. On Linux, Capstone is the distro `libcapstone-dev` package
 but **Unicorn is version-pinned** -- its decode of Armv8.1-M (Helium/MVE)
 differs across releases, so an unpinned emulator makes the same commit pass on
 one box and fault on another (#354). Provision the pin (currently 2.1.4) with
-`bash scripts/ci/install_unicorn.sh` (see `docs/TOOLCHAIN.md`); the board-sim
+`bash scripts/ci/install_unicorn.sh` (see `docs/TOOLCHAIN.md`); the emulator
 gates fail loudly if the runtime Unicorn is not the pin. Both are discovered via
 CMake's `find_library`/`find_path`. The live
 board view (`--view`) is a macOS Cocoa window; every other path -- headless
 boot, the MMIO report, `--ppm`, the console capture -- builds and runs headless
 on Linux as well (the CMake links a no-op window shim off the APPLE path and
-references zero AppKit symbols), which is what lets a board-sim smoke gate run
+references zero AppKit symbols), which is what lets an emulator smoke gate run
 on the Linux CI runner.
 
 ## Build & run
@@ -95,7 +95,7 @@ The microSD card is set up at launch with no pre-built image required:
   card : <N> MB FAT<bits> '<label>'` line, and the live sidebar shows the same
   `SD:` row alongside the USB / UART / IRQ state, so the configured devices are
   always visible. (`fsck_msdos`-validated FAT16 and FAT32; `tz_secure_only_sd`
-  mounts a freshly-created card and round-trips a file in-sim, no hardware.)
+  mounts a freshly-created card and round-trips a file inside the emulator, no hardware.)
 
 `--trace-sym <name>` is a debugging instrument: it arms a code hook on a symbol's
 entry address and logs every time control reaches it (with the calling LR), so a
@@ -105,23 +105,23 @@ e.g. tracing the USBX device worker (`ux_dcd_ra8_usb_initialize`,
 a stuck enumeration never reaches. Pair it with `--dump-sym <global>` (print a
 32-bit global after the run) and `--stop-sym <global> <N>` (end the run the
 instant a 32-bit global reaches `N` -- the counter analog of
-`BOARD_SIM_STOP_ON`; the sim resets every counter to 0 on boot, so this is how
-`scripts/sim/sil_all.sh` verifies a `jlink_memprobe` progress counter without a
+`RA8_EMU_STOP_ON`; the emulator resets every counter to 0 on boot, so this is how
+`scripts/emu/eil_all.sh` verifies a `jlink_memprobe` progress counter without a
 debugger) and the headless run-bounding env vars for post-mortems:
-`BOARD_SIM_MAX_CHUNKS` (chunk budget), `BOARD_SIM_WALL_S`
-(wall-clock floor), `BOARD_SIM_IDLE_STOP=N` (stop once observable state is
-unchanged for N chunks -- an RTOS idle spin), `BOARD_SIM_USB_STOP=N` (stop N
+`RA8_EMU_MAX_CHUNKS` (chunk budget), `RA8_EMU_WALL_S`
+(wall-clock floor), `RA8_EMU_IDLE_STOP=N` (stop once observable state is
+unchanged for N chunks -- an RTOS idle spin), `RA8_EMU_USB_STOP=N` (stop N
 chunks after the virtual host reports the device CONFIGURED -- the USB device
 apps never idle, so this is what makes the enumeration gate fast and
-deterministic), `BOARD_SIM_USBH_STOP=N` (the host-mode counterpart: stop N
+deterministic), `RA8_EMU_USBH_STOP=N` (the host-mode counterpart: stop N
 chunks after the virtual boot keyboard has streamed its reports / the MSC host
-reaches its read-only write test), and `BOARD_SIM_STOP_ON="<substr>"` (a generic
+reaches its read-only write test), and `RA8_EMU_STOP_ON="<substr>"` (a generic
 banner stop: end the run as soon as the console UART's last line contains
 `<substr>` -- used to stop an app that loops forever after a success line).
 
 The console UART is captured: every byte the firmware writes to an SCI TDR is
 echoed to stdout (`[uart] SCIn: ...`), so a console app's output is greppable
-(`board_sim uart_hello.elf | grep 'hello'`). `--input <str>` queues bytes into
+(`ra8_emulator uart_hello.elf | grep 'hello'`). `--input <str>` queues bytes into
 the EK-RA8D2 console channel's (SCI8) receive path, with `\n` / `\r` / `\t`
 escapes decoded -- so an echo example like `uart_irq_echo` can be driven
 headlessly.
@@ -130,10 +130,10 @@ The display is configurable: `--panel` takes a flat `key = value` descriptor
 (`name`, `width`, `height`, ... -- the files in `tools/ra8_emulator/panels/`),
 so the emulator presents any screen, not just the EK-RA8D2 1024x600.
 
-Or from the repo root: `make sim-<app> [PANEL=<name>]` (e.g.
-`make sim-ereader_ui`) cross-builds the app and opens its live window
+Or from the repo root: `make emu-<app> [PANEL=<name>]` (e.g.
+`make emu-ereader_ui`) cross-builds the app and opens its live window
 sized by `tools/ra8_emulator/panels/<PANEL>.toml` (default `ek_ra8d2`). Close to
-exit. board_sim is the single simulator: it boots the *real cross-compiled
+exit. ra8_emulator is the single emulator: it boots the *real cross-compiled
 `.elf`*, so a chrome app like `ereader_ui` doubles as the UI preview --
 there is no separate native UI tool.
 
@@ -226,7 +226,7 @@ be added without touching the core. Adding a block is exactly two steps:
    }
    ```
 
-   `board_sim` is a host program, so the constructor runs before `main` and the
+   `ra8_emulator` is a host program, so the constructor runs before `main` and the
    block is registered by the time `board_periph_init` resets it. To pend an
    interrupt, call `board_periph_icu_raise_event(uc, <ELC event>)` -- the core
    owns the IELSR table, the NVIC enable shadow and the IRQ ring; check
@@ -261,7 +261,7 @@ only if you exceed the registry capacity.
   `--usb-in <str>` the bulk bytes round-trip back through the device's echo
   (`sent N OUT, read N IN`). Final PC sits in the ThreadX run loop, not a panic.
   This is now a **regression gate** across all three device classes:
-  `scripts/sim/smoke.sh usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device
+  `scripts/emu/smoke.sh usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device
   usb_msc_device` asserts the `device CONFIGURED` milestone for CDC-ACM, HID
   (boot mouse), and MSC (BOT/SCSI + a sector read), so a change that breaks USB
   enumeration fails the smoke suite -- no hardware needed. The gate earned its
@@ -273,7 +273,7 @@ only if you exceed the registry capacity.
   already-correct `usb_msc_device`) restored full enumeration; the gate keeps it
   from regressing again.
 - Proven on `usb_host_keyboard`: the inverse path -- the firmware as USB **host**.
-  The USBHS host controller (`0x40351000`) is unmodelled, so board_sim seams the
+  The USBHS host controller (`0x40351000`) is unmodelled, so ra8_emulator seams the
   first-party `ra8_usb_host_*` primitives to a **virtual HID boot keyboard** (the
   same function-seam it uses for `ra8_eth_*`, since the register model "cannot
   satisfy" that sequence either). The firmware's real host stack enumerates the
@@ -281,7 +281,7 @@ only if you exceed the registry capacity.
   SET_CONFIGURATION), opens the interrupt-IN pipe, reads the boot-keyboard input
   reports and decodes the keycodes -- `ra8d2 hid: host decoded keys "RA8D2" ...
   USB HOST KEYBOARD PASS`.
-- Proven on `usb_host_msc_browse`: the host as USB **mass-storage host**. board_sim
+- Proven on `usb_host_msc_browse`: the host as USB **mass-storage host**. ra8_emulator
   seams the higher-level `ra8_usb_hmsc_*` class API (one level above BOT/SCSI) to a
   **virtual read-only FAT16 disk** whose single file `MRAM.BIN` is the live 1 MiB
   MRAM window -- the boot/FAT/root sectors are a byte-exact replica of the device's
@@ -297,7 +297,7 @@ only if you exceed the registry capacity.
   sectors), so the host's `ra8_fs` can create, read back, rename, and unlink a
   file: the app runs its full nine-step ladder (write `USBTEST.TXT`, verify the
   payload, rename to `USBDONE.TXT`, unlink) and prints `ra8d2 fileops: ALL FILE
-  OPS PASSED`. All three host apps are gated: `scripts/sim/smoke.sh
+  OPS PASSED`. All three host apps are gated: `scripts/emu/smoke.sh
   usb_host_keyboard usb_host_msc_browse usb_host_file_ops` asserts each PASS
   banner. The seam picks the virtual device's class + writability from the
   firmware's linked host stack (`ra8_usb_hmsc_*` -> disk, `fileops_backend_write`
@@ -318,7 +318,7 @@ only if you exceed the registry capacity.
 
 ## Example coverage
 
-Every EK-RA8D2 example was booted on the emulator (`scripts/sim/smoke.sh`
+Every EK-RA8D2 example was booted on the emulator (`scripts/emu/smoke.sh`
 gates a bare-metal subset in CI). **72 of 75 run to their main loop and produce
 their expected output.** The three that do not are one honest category:
 
@@ -334,7 +334,7 @@ core** (CPU1's real code in a second Unicorn engine over shared SRAM ->
 `g_cpu1_pingpong_mismatch == 0`), and `mpu_partition_simple` faults + recovers
 under the now-**enforced Armv8-M MPU** (`mpu: fault handled, recovered`).
 
-Host-Unicorn note: Unicorn is version-pinned (2.1.4) across every board_sim
+Host-Unicorn note: Unicorn is version-pinned (2.1.4) across every ra8_emulator
 environment -- dev box, devcontainer and CI runner (`docs/TOOLCHAIN.md`, #354) --
 so the Armv8.1-M decode is identical everywhere. An earlier version of this note
 claimed the runner ran 2.0.1; it did not. The runner carried a source-built
@@ -342,5 +342,5 @@ claimed the runner ran 2.0.1; it did not. The runner carried a source-built
 `EXCP_NOCP` on the Helium/MVE store family -- which is exactly what made the same
 commit fault locally and pass in CI. On the pinned build those stores decode
 natively; any residual ThreadX first-context-switch PendSV misbehaviour is a
-board_sim defect around the ICSR `PENDSVSET` write, not a Unicorn one, and is
+ra8_emulator defect around the ICSR `PENDSVSET` write, not a Unicorn one, and is
 tracked separately.

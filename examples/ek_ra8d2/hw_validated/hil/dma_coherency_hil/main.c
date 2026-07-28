@@ -39,17 +39,17 @@
  *      FAIL banner + LED2. Either way the function parks in WFI so the
  *      emulator's idle-stop terminates the run after the one-shot.
  *
- * @par board_sim note (sim path)
+ * @par ra8_emulator note (sim path)
  * ``tools/ra8_emulator`` DOES model the DMAC mem-to-mem transfer:
  * ``board_periph_dmac.c`` (``dmac_copy_units``) actually moves the bytes
  * in emulated memory on the ``DMREQ.SWREQ`` software trigger, so the
  * **real** ``ra8_dmac`` path runs in sim -- no CPU-memcpy fallback is
- * needed. board_sim's memory is byte-exact and it does **not** model the
+ * needed. ra8_emulator's memory is byte-exact and it does **not** model the
  * L1 D-cache, so the clean/invalidate calls are exercised (the line-size
  * and barrier logic run) but have no caching effect, and the copy
  * verifies trivially. The cache hazard this app guards against is only
  * observable on real silicon. ``RA8_SIMULATOR_MODE`` is a host-unit-test
- * define and is NOT set for the ARM cross-build that board_sim executes,
+ * define and is NOT set for the ARM cross-build that ra8_emulator executes,
  * so there is nothing to ``#ifdef`` here.
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
@@ -124,8 +124,8 @@ alignas(k_dma_coh_align) static uint32_t s_dst[k_dma_coh_buf_words];
  * @brief Halt forever in WFI -- panic stop on a fatal init failure.
  *
  * @details Parks the core; only a debugger or external reset wakes it.
- *          Under board_sim a WFI with no pending work triggers
- *          BOARD_SIM_IDLE_STOP, terminating the run cleanly.
+ *          Under ra8_emulator a WFI with no pending work triggers
+ *          RA8_EMU_IDLE_STOP, terminating the run cleanly.
  *
  * @pre Called only after a fatal error in boot or after the one-shot test.
  * @pre IRQs are in whatever state the caller left them.
@@ -368,7 +368,7 @@ static void dma_coh_report(uint8_t ok)
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit enabled the MPU + caches via RA8_BOOT_ENABLE_CACHE_MPU.
  * @post Exactly one PASS/FAIL banner is emitted, then the core parks.
- * @post The core ends in WFI so board_sim's idle-stop terminates the run.
+ * @post The core ends in WFI so ra8_emulator's idle-stop terminates the run.
  *
  * @since 0.1.0
  */

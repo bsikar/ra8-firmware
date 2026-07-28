@@ -73,17 +73,17 @@ value the standalone `ereader_comic` gate produces -- without disturbing the
 shelf render or its pinned `fb=` hash. To browse comics interactively, drop a
 `.cbz` / `.cbr` on the SD card and tap it on the shelf.
 
-Hold **SW1 at boot** (`board_sim --button 1`) to run a self-demo that walks every
-screen -- handy for a headless `board_sim --record`. The first touch takes over.
+Hold **SW1 at boot** (`ra8_emulator --button 1`) to run a self-demo that walks every
+screen -- handy for a headless `ra8_emulator --record`. The first touch takes over.
 Without SW1 the app just boots to the shelf and idles, so interactive use (and
-board_sim, which fast-forwards an idle core) stays responsive instead of grinding
+ra8_emulator, which fast-forwards an idle core) stays responsive instead of grinding
 through a continuous re-open loop.
 
 ### Performance notes
 
 Boot draws the shelf from **pre-baked gray8 cover thumbnails** embedded in
 `library.h` (decoded once by `tools/bake_library.py`), so it never touches a
-book just to paint the shelf. Under board_sim (a ~125x-slower instruction
+book just to paint the shelf. Under ra8_emulator (a ~125x-slower instruction
 emulator), this cut cold boot from ~17 s to ~2 s; on the real 1 GHz device both
 are sub-second. Opening a book costs only the chunk faults it actually touches
 (header, metadata, cover, current chapter) -- never a whole-book inflate --
@@ -126,18 +126,18 @@ tools/ra8_emulator/build/ra8_emulator .../ereader_shelf.elf --sd books.img --ppm
 The baked set is regenerated with `tools/bake_library.py` (see the head of
 `library.h`).
 
-## Caveat: board_sim SPI speed (and `--fast-sd`)
+## Caveat: ra8_emulator SPI speed (and `--fast-sd`)
 
-board_sim emulates the SD-over-SPI bus byte by byte, so even the demand-paged
+ra8_emulator emulates the SD-over-SPI bus byte by byte, so even the demand-paged
 chunk reads behind an open (header, chunk table, cover chunks) take far longer
 than a real card (which runs at 25 MHz and reads a chunk in ~ms). Mounting,
-directory scan, and the shelf's SD placeholders are board_sim-validated; the
-full seek -> chunk-inflate -> render path is proven in board_sim and validated
+directory scan, and the shelf's SD placeholders are ra8_emulator-validated; the
+full seek -> chunk-inflate -> render path is proven in ra8_emulator and validated
 at speed on the same `ra8_fs` / `ra8_sdmmc_spi` stack used by `pagecache` and
 `epub_open`. To keep boot instant, SD cover art loads lazily on first open
 rather than at boot.
 
-To open a **full-size** book at speed in board_sim, pass the opt-in `--fast-sd`
+To open a **full-size** book at speed in ra8_emulator, pass the opt-in `--fast-sd`
 flag: it serves whole 512-byte blocks straight from the card image
 (`board_sd_read_block`) in one step instead of clocking each byte through five
 MMIO callbacks, so a book whose chunk faults otherwise never finish opens in
@@ -147,19 +147,19 @@ plumbing is shortcut (still validated by `tests/test_ra8_sdmmc_card_reflow.c` an
 on hardware). It is off by default so the HIL gate exercises the full handshake.
 The SD read is then effectively instant; the residual cost for a large cover is
 the firmware's own per-pixel decode (a 683x1024 cover is ~700 K pixels),
-emulated at board_sim's ~125x compute slowdown -- sub-second on the real device.
+emulated at ra8_emulator's ~125x compute slowdown -- sub-second on the real device.
 
 ```sh
 tools/ra8_emulator/build/ra8_emulator .../ereader_shelf.elf \
   --sd oz.img --click 887 210 --fast-sd --ppm oz.ppm   # full Oz, fast
 ```
 
-`BOARD_SIM_CLICK_SETTLE=N` widens the post-`--click` drain when a tap kicks off a
+`RA8_EMU_CLICK_SETTLE=N` widens the post-`--click` drain when a tap kicks off a
 long load.
 
 ## HIL gate
 
-`hil.conf` runs the baked-only configuration under `board_sim` and matches a
+`hil.conf` runs the baked-only configuration under `ra8_emulator` and matches a
 banner that digests the rendered framebuffer
 (`ereader-shelf: books=N sd=B fb=HASH ok`), so a cover-decode or layout
 regression -- not just a boot failure -- trips the gate.

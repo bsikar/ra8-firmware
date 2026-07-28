@@ -72,7 +72,7 @@ ra8_err_t ra8_dtc_init(void* vector_base)
    * TrustZone part the secure (and flat-secure) DTC engine fetches its vector
    * table from DTCVBR_SEC (+0x14, HUM 18.2.6 p 789); the plain DTCVBR (+0x04)
    * is the Non-secure alias and a secure write to it is dropped. Program both
-   * so the table is found in either world (and so the board_sim DTC model,
+   * so the table is found in either world (and so the ra8_emulator DTC model,
    * which shadows DTCVBR, still sees the base). */
   reg->DTCCR        = 0U;
   reg->DTCVBR       = (uint32_t)(uintptr_t)vector_base;

@@ -393,7 +393,7 @@ def run_selftest() -> int:
       like a clean tree. The synthetic module contains one definition of
       every passing shape and one of every failing shape.
     * **A root silently out of scope.** ``tools/`` was absent from SCAN_DIRS,
-      so board_sim, media_dl and ra8_viewer were never checked and the gate
+      so ra8_emulator, media_dl and ra8_viewer were never checked and the gate
       reported a clean tree over code it had not read. The ``tools/`` fixture
       pins the scope from inside the rules rather than by reading the
       constant: ``host_unpublished`` is only reachable if is_first_party()

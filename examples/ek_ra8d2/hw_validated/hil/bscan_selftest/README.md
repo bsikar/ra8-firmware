@@ -36,8 +36,8 @@ then prints on the SCI8 J-Link OB console:
 bscan: idcode=085DA447 checks=17 PASS
 ```
 
-The driver touches no hardware, so the banner is identical on host, `board_sim`,
-and silicon -- a sim/silicon equivalence check.
+The driver touches no hardware, so the banner is identical on host, `ra8_emulator`,
+and silicon -- an emulator/silicon equivalence check.
 
 ## Build + run
 
@@ -49,17 +49,17 @@ scripts/hil/run_local.sh bscan_selftest      # flash + scrape the banner
 The gate (`hil.conf`, `uart_scrape`) asserts the PASS line and fails on
 `FAIL|HardFault|TIMEOUT`.
 
-## Result (validated 2026-06-19, board_sim)
+## Result (validated 2026-06-19, ra8_emulator)
 
 ```
 bscan-selftest: boot
 bscan: idcode=085DA447 checks=17 PASS
 ```
 
-`scripts/sim/smoke.sh bscan_selftest` PASS (final PC in the `main` WFI
+`scripts/emu/smoke.sh bscan_selftest` PASS (final PC in the `main` WFI
 idle loop; all 17 checks passed). The driver's logic is shared with the
 host unit tests in `tests/test_ra8_bscan.c`, so the same contract is covered
-two ways: host unit tests (logic) + board_sim (the firmware ELF, byte-for-byte
+two ways: host unit tests (logic) + ra8_emulator (the firmware ELF, byte-for-byte
 banner). On the bench the banner is expected identical -- the self-test reads a
 HUM constant and validates pure bookkeeping; there is no peripheral model to
 diverge.

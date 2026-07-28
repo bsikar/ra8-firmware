@@ -6,9 +6,9 @@ the core still runs correctly with them on. This is the on-silicon arm of the
 T4 cache-coherency chain: the shared boot's cache + MPU path is exercised
 end-to-end and the result is scraped over the J-Link OB VCOM console.
 
-## Status: hw_pending (passes board_sim; awaiting on-silicon HIL run)
+## Status: hw_pending (passes ra8_emulator; awaiting on-silicon HIL run)
 
-`board_sim` models memory byte-exact and does **not** model the L1 D-cache, so
+`ra8_emulator` models memory byte-exact and does **not** model the L1 D-cache, so
 the cacheable-RW step passes trivially in simulation -- the cache hazard this
 app guards against is only real on the chip. The sim run proves the app boots
 and reports PASS with the cache + MPU boot path compiled in; the bench run
@@ -54,13 +54,13 @@ From the repo root:
 ```sh
 make cache_mpu_hil                 # cross-compile -> build/cache_mpu_hil.elf / .hex / .bin
 make flash-cache_mpu_hil           # flash via on-board J-Link OB
-make sim-cache_mpu_hil             # boot the real .elf on the board_sim CPU emulator
+make emu-cache_mpu_hil             # boot the real .elf on the ra8_emulator CPU emulator
 ```
 
-Headless `board_sim` (one-shot banner, idle-stop):
+Headless `ra8_emulator` (one-shot banner, idle-stop):
 
 ```sh
-BOARD_SIM_WALL_S=15 BOARD_SIM_IDLE_STOP=1 \
+RA8_EMU_WALL_S=15 RA8_EMU_IDLE_STOP=1 \
   tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_validated/hil/cache_mpu_hil/build/cache_mpu_hil.elf \
     --panel tools/ra8_emulator/panels/ek_ra8d2.toml

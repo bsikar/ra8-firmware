@@ -21,7 +21,7 @@
  *        `ereader-link-hil: links=2 cross=Y frag=Y apage=<P> geom=<8 hex>`
  *
  * Ahem is a fixed-metric face, so the layout + link geometry are deterministic;
- * the banner is identical every boot and matches the host / board_sim run.
+ * the banner is identical every boot and matches the host / ra8_emulator run.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -89,7 +89,7 @@ static void lk_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void lk_panic_halt(const uint8_t* msg, uint32_t len)
 {
   lk_print(msg, len);

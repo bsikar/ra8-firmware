@@ -47,5 +47,5 @@ target_compile_definitions(dma_coherency_hil.elf PRIVATE RA8_BOOT_ENABLE_CACHE_M
 
 # Keep INFO-level logging in this RelWithDebInfo HIL build so the PASS/FAIL
 # result is also emitted over ITM (additive to the VCOM banner), which
-# board_sim surfaces on its [itm] tap.
+# ra8_emulator surfaces on its [itm] tap.
 target_compile_definitions(dma_coherency_hil.elf PRIVATE RA8_LOG_LEVEL=RA8_LOG_LEVEL_INFO)

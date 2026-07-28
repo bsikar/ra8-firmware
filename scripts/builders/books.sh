@@ -17,7 +17,7 @@
 # The ereader_shelf library.h bake is NOT reproducible across machines: the
 # cover-thumbnail bytes depend on the JPEG decoder's SIMD rounding (libjpeg
 # via Pillow differs between x86_64 and Apple-silicon even at the SAME
-# Pillow version -- verified 12.2.0 on both), and the SIL fb-hash golden
+# Pillow version -- verified 12.2.0 on both), and the EIL fb-hash golden
 # (ereader_shelf hil.conf, fb=FA3AB5B5) covers the rendered thumbnails.
 # library.h is therefore COMMITTED as an @generated fixture (see .gitignore
 # note) and CI never re-bakes it. Re-run this script only to change the
@@ -29,7 +29,7 @@
 #   build_books.sh --shelf-only   compile ONLY the three ereader_shelf books and
 #                                 bake examples/.../ereader_shelf/library.h, with
 #                                 no full-library compile or manifest. This is the
-#                                 fast path the SIL suite / CI use to make
+#                                 fast path the EIL suite / CI use to make
 #                                 ereader_shelf build on a clean checkout (its
 #                                 library.h is the only generated header the app
 #                                 needs, and it derives from just three epubs).

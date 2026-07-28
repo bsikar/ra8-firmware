@@ -139,7 +139,7 @@ SECTIONS
      *
      * This is a TWO-IMAGE app: the Non-Secure half is a SEPARATE, minimal
      * beacon ELF (ns_main.c linked with ns_image.ld) that carries NO libc and
-     * NO RTOS. Its bytes reach board_sim via --ns and the flash image via
+     * NO RTOS. Its bytes reach ra8_emulator via --ns and the flash image via
      * sign_and_merge.py; they are NOT part of this Secure ELF. So the .ns_*
      * output sections below hold ONLY .ns_*-attributed input (none on the
      * Secure side). They must NOT pull the Secure side own libc (memset,

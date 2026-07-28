@@ -18,7 +18,7 @@
  *   1. Light board LED1 (BLUE, P600 = PORT6 pin 0) as the "active core = M33"
  *      indicator. The M85 never drives this pin, so a toggling LED is honest
  *      proof the M33 is the core holding the page -- on silicon and in the
- *      board_sim GPIO/LED view alike.
+ *      ra8_emulator GPIO/LED view alike.
  *   2. Service the user switch SW1 (P009) as the page-turn input: on a press
  *      edge the M33 advances the held `page_num` and counts the event in the
  *      shared mailbox, without waking the M85.
@@ -29,7 +29,7 @@
  * assuming); the M33 holds the existing page and advances the page number, and
  * waking the M85 for the heavy re-render is the remaining piece tracked in #150.
  *
- * @note The M33 deliberately does NOT call `ra8_log`. board_sim echoes only the
+ * @note The M33 deliberately does NOT call `ra8_log`. ra8_emulator echoes only the
  *       primary core's ITM, so an M33 `ra8_log` line would be invisible; the
  *       proof-of-life is the LED + the mailbox heartbeat the M85 narrates.
  * @note Only PCNTR1/PCNTR2 are touched. The LED1 / SW1 pins power up routed to

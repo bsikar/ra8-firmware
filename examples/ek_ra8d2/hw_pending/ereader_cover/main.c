@@ -20,7 +20,7 @@
  *
  * where `<W>x<H>` is the blitted (scaled) size and `<8hex>` the framebuffer
  * hash. The whole chain is deterministic (a fixed blob through a deterministic
- * parser + decoder + scaler), so the banner is identical on host, board_sim,
+ * parser + decoder + scaler), so the banner is identical on host, ra8_emulator,
  * and silicon. Any failure on any stage prints a FAIL banner and halts on a
  * BKPT before the PASS line, so the gate is exact.
  *
@@ -91,7 +91,7 @@ static void ec_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void ec_panic_halt(const uint8_t* msg, uint32_t len)
 {
   ec_print(msg, len);

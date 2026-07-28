@@ -308,7 +308,7 @@ void ra8_flash_internal_set_prefetch(bool enable)
 /* Host-test MACI command capture (see ra8_flash_internal.h). The MACI port is a
  * single MMIO address, so RAM alone cannot retain the stream a host test needs
  * to assert the emitted opcode sequence (0xE8 Program vs 0x40 Config-Set).
- * Present only in the host unit-test binary; firmware / board_sim link neither
+ * Present only in the host unit-test binary; firmware / ra8_emulator link neither
  * RA8_SIMULATOR_MODE nor UNIT_TEST, so the whole block compiles out. */
 uint8_t  g_ra8_flash_maci_cmd8_log[k_ra8_flash_maci_log_cap];
 uint32_t g_ra8_flash_maci_cmd8_len;

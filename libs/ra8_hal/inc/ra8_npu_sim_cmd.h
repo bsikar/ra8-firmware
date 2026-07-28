@@ -1,6 +1,6 @@
 /**
  * @file ra8_npu_sim_cmd.h
- * @brief board_sim / host-test command-stream convention for the Ethos-U55 model
+ * @brief ra8_emulator / host-test command-stream convention for the Ethos-U55 model
  * @ingroup grp_hal_system
  *
  * @details
@@ -30,7 +30,7 @@
  * host emulator. Real Vela-compiled inference is the follow-up (see the RA8P1
  * NPU epic). Because it is a pure convention -- integer constants, no register
  * access -- it carries no hardware citation and is deliberately NOT guarded by
- * `RA8_HAS_NPU`: the host-side board_sim model (which does not target the RA8P1)
+ * `RA8_HAS_NPU`: the host-side ra8_emulator model (which does not target the RA8P1)
  * must include it too.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -52,7 +52,7 @@ extern "C" {
  *
  * @details
  * The first 32-bit word of a sim command stream is `magic | opcode`: the high 16
- * bits carry ::k_ra8_npu_sim_magic (an "SE55" = Sim-Ethos-U55 marker) and the low
+ * bits carry ::k_ra8_npu_sim_magic (an "SE55" = Emu-Ethos-U55 marker) and the low
  * 16 bits carry a ::ra8_npu_sim_op_t opcode. The marker lets a decoder tell a sim
  * program apart from a real Vela stream (whose first word is an Ethos-U55 opcode
  * that never matches this marker), so a decoder can HONESTLY reject a stream it
@@ -63,7 +63,7 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_npu_sim_magic      = 0x5E550000U, /**< Sim-Ethos-U55 marker in bits [31:16]. */
+  k_ra8_npu_sim_magic      = 0x5E550000U, /**< Emu-Ethos-U55 marker in bits [31:16]. */
   k_ra8_npu_sim_magic_mask = 0xFFFF0000U, /**< Bits [31:16] select the magic marker. */
   k_ra8_npu_sim_op_mask    = 0x0000FFFFU, /**< Bits [15:0] select the opcode.        */
 } ra8_npu_sim_word0_t;

@@ -310,7 +310,7 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
      * transmitted byte to the modem line model. Most bytes buffer silently; the
      * terminating CR closes an AT command and the model returns the modem's
      * reply, which we feed back into this channel's RX queue so the firmware's
-     * genuine ra8_modem_at -> ra8_sci_getc_polling path drains it (SIM == HIL). */
+     * genuine ra8_modem_at -> ra8_sci_getc_polling path drains it (EIL == HIL). */
     if ((ch == (uint32_t)board_modem_channel()) && board_modem_attached()) {
       uint8_t        mresp[k_sci_modem_resp_cap] = {};
       const uint32_t mn = board_modem_feed_tx(byte, mresp, (uint32_t)k_sci_modem_resp_cap);

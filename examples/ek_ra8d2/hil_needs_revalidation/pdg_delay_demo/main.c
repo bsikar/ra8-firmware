@@ -208,7 +208,7 @@ static void pdg_demo_setup_or_halt(void)
   }
   /* GTDLYRnA is not read-exposed on RA8D2 silicon: a write stages the delay
    * but the register reads back its 0x0000 reset value (confirmed by a debugger
-   * probe; FSP never reads it back either). board_sim shadows it as plain R/W,
+   * probe; FSP never reads it back either). ra8_emulator shadows it as plain R/W,
    * which is why the read-back only appears to work there. So this is recorded
    * for the emulator but NOT gated on. */
   g_pdg_delay_readback = (uint32_t)code;
@@ -228,7 +228,7 @@ int32_t main(void)
 {
   pdg_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
-   * SysTick path (board_sim does not advance DWT_CYCCNT). No NVIC sources
+   * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
   ra8_isr_globals_enable();
 

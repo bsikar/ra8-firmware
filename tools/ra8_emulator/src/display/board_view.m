@@ -1,6 +1,6 @@
 /**
  * @file board_view.m
- * @brief Cocoa implementation of the board_sim desktop window (see board_view.h)
+ * @brief Cocoa implementation of the ra8_emulator desktop window (see board_view.h)
  *
  * @details
  * A layer-backed NSView whose CALayer ``contents`` is set directly to a CGImage

@@ -46,7 +46,7 @@
  * This header defines a pure DATA FORMAT (constants + one endianness-safe
  * accessor) and touches no NPU register, so -- exactly like `ra8_npu_sim_cmd.h`
  * -- it is deliberately NOT gated behind `RA8_HAS_NPU`: the host-side generator's
- * companion tests and the board_sim model must be able to include it on a device
+ * companion tests and the ra8_emulator model must be able to include it on a device
  * that is not the RA8P1. The RA8P1-only piece is the loader, which turns a blob
  * into an ::ra8_npu_job_t.
  *
@@ -217,7 +217,7 @@ typedef enum : uint32_t {
  *          (offset >= ::k_ra8_npu_blob_header_bytes) with these constants and
  *          compare the result against the header `checksum` word, so a corrupted
  *          blob is rejected rather than executed. FNV-1a is used elsewhere in the
- *          NPU stand-in (board_sim, npu_smoke) for the same deterministic-digest
+ *          NPU stand-in (ra8_emulator, npu_smoke) for the same deterministic-digest
  *          reason.
  *
  * @invariant Both values are the published FNV-1a 32-bit basis / prime.

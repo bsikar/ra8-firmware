@@ -4,7 +4,7 @@
  *
  * @details
  * A registry that maps RA8D2 peripheral-register address ranges to per-block
- * read/write handlers backed by real state, dispatched from board_sim's MMIO
+ * read/write handlers backed by real state, dispatched from ra8_emulator's MMIO
  * callbacks. It SUPERSEDES the sparse reflect-then-settle fallback for the
  * blocks modelled here (the fallback still answers every UNmodelled address),
  * so a non-display example produces real peripheral data instead of faked
@@ -60,7 +60,7 @@ typedef enum : uint8_t {
  * @brief The RA8 device the emulator models for this run.
  *
  * @details
- * board_sim's peripheral models were written for the RA8D2; the RA8P1
+ * ra8_emulator's peripheral models were written for the RA8D2; the RA8P1
  * (R7KA8P1KFLCAC) shares the RA8D2's entire register map and memory map, so the
  * same models serve both parts. Only one RA8P1-only block differs -- the Arm
  * Ethos-U55 NPU (0x40140000) -- and it is gated with ::k_board_block_dev_ra8p1
@@ -173,7 +173,7 @@ void board_periph_init(bool trace);
 /**
  * @brief Record the cause of a warm reboot in the sticky RSTSRn flags.
  *
- * @details Called by the board_sim reboot path (main.c) just before it
+ * @details Called by the ra8_emulator reboot path (main.c) just before it
  * re-enters the firmware from the reset vector, so the next boot reads the
  * reset cause it expects. For a power-on reboot, leaves RSTSR0.PORF set and
  * asserts nothing else. For any other reset, clears PORF and latches the
@@ -266,7 +266,7 @@ void board_periph_sci_feed_rx(uint8_t channel, const uint8_t* data, uint32_t len
  * @brief Arm a pending touch contact for the modelled GT911 device.
  *
  * @details
- * board_sim turns a @c --click argument or a live board_view mouse-down into a
+ * ra8_emulator turns a @c --click argument or a live board_view mouse-down into a
  * single pending contact here. The contact is answered through the REAL firmware
  * path: ra8_touch_read issues a GT911 status read over ra8_i3c_transfer (the I3C
  * peripheral in legacy I2C mode), and the modelled GT911 device -- registered on
@@ -309,7 +309,7 @@ uint32_t board_periph_touch_reported(void);
  * the next queued point on each ``ra8_touch_read`` frame the firmware drains.
  * It exists so an interactive N-point flow -- e.g. the touch-calibration example
  * (touch_cal, #262), which must collect one raw sample per on-screen target --
- * can run headless in board_sim: on silicon a human taps N cross-hairs; in SIL
+ * can run headless in ra8_emulator: on silicon a human taps N cross-hairs; in EIL
  * the CLI (@c --touch-seq, ::board_periph_touch_seq_push) supplies N synthetic
  * raw taps that return through the genuine ``ra8_touch_read`` decode. Resetting
  * empties the queue and drops any point armed from it.
@@ -570,7 +570,7 @@ void board_periph_tick(uc_engine* uc);
  * @details
  * The Cortex-M NVIC ISER / ICER registers are set-enable / clear-enable: a
  * written 1 sets (ISER) or clears (ICER) that interrupt line and a written 0 is
- * ignored, so several independent stores accumulate. board_sim maps the PPB as
+ * ignored, so several independent stores accumulate. ra8_emulator maps the PPB as
  * plain RAM, where a raw @c "1 << bit" store to ISER would instead overwrite the
  * whole word and drop every other enabled line. main.c decodes ISER / ICER
  * writes and calls this so the ICU model sees the correct accumulated enable
@@ -639,7 +639,7 @@ typedef struct {
  *
  * @details
  * Reads the descriptor the GLCDC model snooped from the firmware's graphics-layer
- * register writes (GR1 preferred; GR2 if only it is enabled). Lets a board_sim
+ * register writes (GR1 preferred; GR2 if only it is enabled). Lets a ra8_emulator
  * harness locate and checksum the rendered framebuffer in emulated memory without
  * re-deriving the layout from raw registers. The pixels themselves are read with
  * @c uc_mem_read at @c base; this only returns the layout.

@@ -9,12 +9,12 @@
  * (fb=FA3AB5B5). Root-causing it proved the FIRMWARE is correct and
  * optimisation-stable: the identical C source renders byte-identically at
  * -O0/-O1/-O2/-O3 on the host (clang and gcc), is UBSan- and ASan-clean, and
- * matches fb=FA3AB5B5. The divergence is a board_sim emulation gap -- board_sim
+ * matches fb=FA3AB5B5. The divergence is a ra8_emulator emulation gap -- ra8_emulator
  * runs the Cortex-M85 firmware on a Unicorn Cortex-M33 (Armv8-M) core that
  * lacks the Armv8.1-M Low-Overhead-Branch loop instructions (`dls`/`le`) GCC 14
  * emits at -O1 for the ra8_gfx fill loop (`internal_fill_rect_565`) and the MVE
- * byte-fill it emits at -O2 -- neither of which board_sim has a hand-emulation
- * seam for -- so board_sim mis-executes them (wrong framebuffer + a runaway
+ * byte-fill it emits at -O2 -- neither of which ra8_emulator has a hand-emulation
+ * seam for -- so ra8_emulator mis-executes them (wrong framebuffer + a runaway
  * instruction count). See the app CMakeLists comment for the full note.
  *
  * These tests pin the two things the issue observed as broken, exercised
@@ -23,7 +23,7 @@
  * that carries the -O1 low-overhead loop) -- so a future change to those engines
  * that would shift the shelf or drop the header bar is caught on the host:
  *   1. The exact card geometry the shelf produces for 3 baked books
- *      (the rects board_sim measured at -Og: x=24/274/524, y=80, w=226, h=248).
+ *      (the rects ra8_emulator measured at -Og: x=24/274/524, y=80, w=226, h=248).
  *   2. The rendered header bar and card fills land where they should
  *      (px(0,0) is the bar colour, NOT the background -- the #233 symptom),
  *      and the render is deterministic (opt-stability is proven separately on
@@ -155,7 +155,7 @@ static void layout_shelf(ra8_box_t* store, ra8_ui_rect_t* out)
 
 /**
  * @brief The shelf grid places 3 cards at the golden coordinates (#233).
- * @details Pins the exact rects board_sim renders at -Og -- a regression in
+ * @details Pins the exact rects ra8_emulator renders at -Og -- a regression in
  *          ra8_box's grid maths that shifted the shelf would fail here.
  *
  * @par MC/DC:
@@ -186,7 +186,7 @@ static void test_shelf_card_geometry(void)
  *
  * @details
  * Goes through the same `internal_fill_rect_565` path the app uses -- the one
- * carrying the -O1 low-overhead loop board_sim mis-emulates -- so a rendering
+ * carrying the -O1 low-overhead loop ra8_emulator mis-emulates -- so a rendering
  * defect shows up here exactly as it would on the device. Card 0 is drawn in
  * the selected colour; the rest share the plain card fill.
  *

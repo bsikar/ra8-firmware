@@ -6,7 +6,7 @@
  * The companion `widget_app` gate proves the `ra8_widget` compositor (#145) and
  * `ra8_app` framework (#146) headlessly (off-screen framebuffer + CRC). This app
  * is the **visible, interactive** counterpart: it brings the GLCDC panel up so
- * the composition is shown on `board_sim`'s panel window, and drives it with the
+ * the composition is shown on `ra8_emulator`'s panel window, and drives it with the
  * physical SW1/SW2 push-buttons.
  *
  * What it shows:
@@ -30,7 +30,7 @@
  *
  *   `widget-app-demo: apps=<n> lib=<8hex> rdr=<8hex> route=ok flush=512x44 hint=fast PASS`
  *
- * so the app doubles as a `board_sim` regression gate; any failure prints a
+ * so the app doubles as a `ra8_emulator` regression gate; any failure prints a
  * `FAIL ...` banner and parks. The 512x512 RGB565 framebuffer lives in SRAM
  * (the full 1024x600 panel needs SDRAM, a separate task) and composites top-left
  * over the GLCDC background plane.

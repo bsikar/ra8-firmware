@@ -55,7 +55,7 @@ else()
 endif()
 
 # RA8_APP_UART_LOG mirrors ra8_log onto the SCI8 console (in ra8_nsc_periph_init) so
-# the e-reader's logs appear on the UART -- board_sim's on-screen console panel
+# the e-reader's logs appear on the UART -- ra8_emulator's on-screen console panel
 # and a real serial terminal -- not only on the ITM/SWO trace.
 target_compile_definitions(
   ra8d2-ereader.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_APP_UART_LOG

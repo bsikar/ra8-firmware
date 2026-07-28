@@ -12,7 +12,7 @@
  * rasterises a paragraph of XHTML into the GLCDC framebuffer through
  * @ref ra8_gfx. The same pipeline is covered on host by
  * @c tests/test_ra8_sdmmc_card_reflow.c; this app promotes it to a
- * board_sim-runnable binary:
+ * ra8_emulator-runnable binary:
  *
  *   @code
  *   tools/mkfontimg/build/mkfontimg libs/ra8_fonts/Literata-Regular.ttf /tmp/font.img
@@ -29,11 +29,11 @@
  *      mounts the FAT volume, and reads @c FONT.OTF into an SDRAM buffer --
  *      self-provisioning the file from a baked Latin-1 font when the card is blank.
  *   4. ra8_reflow_init / layout_chapter / render_page -> framebuffer.
- *   5. Idle; GLCDC scans out the rendered page (board_sim snapshots it).
+ *   5. Idle; GLCDC scans out the rendered page (ra8_emulator snapshots it).
  *
  * Because the font self-provisions, any FAT-formatted microSD works -- the card
  * need not be pre-loaded with @c FONT.OTF. On the physical board this needs a
- * Digilent PMOD MicroSD in J25; in board_sim the @c --sd image stands in.
+ * Digilent PMOD MicroSD in J25; in ra8_emulator the @c --sd image stands in.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -122,7 +122,7 @@ static const ra8_port_pin_t k_sfr_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_s
 /** @brief XHTML body the app reflows with the SD-loaded font.
  *
  * @details Deliberately short: every glyph is rasterised by stb_truetype in
- * software, which is fast on the panel but slow under the board_sim CPU
+ * software, which is fast on the panel but slow under the ra8_emulator CPU
  * emulator, so a compact line keeps the sim render time practical while still
  * exercising the full SD-font -> ra8_fs -> ra8_reflow -> framebuffer path. */
 static const char k_sfr_body[] = "<html><body><h1>SD font OK</h1>"
@@ -163,7 +163,7 @@ static display_fb_t s_fb;
 /** @brief Cached PCLKA rate (Hz) for the SPI clock shim. */
 static uint32_t s_pclka_hz = 0U;
 
-/* ---- J-Link / board_sim readable diagnostics ----------------------------- */
+/* ---- J-Link / ra8_emulator readable diagnostics ----------------------------- */
 
 /** @brief Last stage reached (::sfr_stage_t); read externally over SWD. */
 volatile uint32_t g_sfr_stage = k_sfr_stage_boot;
@@ -186,7 +186,7 @@ volatile uint32_t g_sfr_heartbeat = 0U;
 
 /** @brief Halt forever with the red board LED on (fatal init error marker).
  *
- * @details Also floods the framebuffer a stage-coded gray so a board_sim
+ * @details Also floods the framebuffer a stage-coded gray so a ra8_emulator
  * @c --ppm snapshot (or a glance at the panel) reveals which bring-up stage
  * failed without a debugger: low nibble of the stage code picks the level. */
 static void sfr_panic_halt(uint32_t stage)
@@ -339,7 +339,7 @@ int32_t main(void)
   sfr_render_or_halt();
 
   /* The page is rendered; GLCDC scans out the framebuffer continuously.
-   * board_sim snapshots it via --ppm. Idle with a heartbeat that advances only
+   * ra8_emulator snapshots it via --ppm. Idle with a heartbeat that advances only
    * on this success path -- the panic-halt loop does not bump it -- so a J-Link
    * memprobe gate proves the full SD-font render pipeline ran end to end. */
   while (1) {

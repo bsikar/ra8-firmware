@@ -22,7 +22,7 @@
  *     registered (the vendored stub returned ``nullptr``). This app links the
  *     vendored TFLite-micro runtime (``USES tflite_micro``).
  *
- * The NPU "operator" run under board_sim is the tiny deterministic add-constant
+ * The NPU "operator" run under ra8_emulator is the tiny deterministic add-constant
  * of the documented ``ra8_npu_sim_cmd.h`` convention (NOT a real Vela command
  * stream, which needs the offline Vela compiler + silicon -- a follow-up). So
  * the quantize -> NPU op -> dequantize pipeline is checkable byte-for-byte in the
@@ -132,7 +132,7 @@ static const float s_infer_deq_tol = 0.001F;
 /**
  * @var s_npu_cmd_stream
  * @brief Sim command stream in SRAM (ra8_npu_sim_cmd.h layout; add-constant op).
- * @details QBASE/QSIZE point the NPU at this; the board_sim model decodes it.
+ * @details QBASE/QSIZE point the NPU at this; the ra8_emulator model decodes it.
  * @note Not a real Vela program -- see the file header.
  * @since 0.1.0
  */
@@ -196,7 +196,7 @@ volatile uint32_t g_npu_infer_pass = 0U;
  * @brief Park the CPU forever in WFI after a fatal init error (a real panic).
  *
  * @details Reserved for failures BEFORE a verdict can be emitted (CGC or SCI8
- *          did not come up), so a board_sim gate scanning for a `*panic_halt`
+ *          did not come up), so a ra8_emulator gate scanning for a `*panic_halt`
  *          terminal PC correctly reads this as a failed run.
  *
  * @pre Called only after a fatal init error, before the verdict banner.
@@ -215,7 +215,7 @@ static void npu_infer_panic_halt(void)
  *
  * @details Distinct from ::npu_infer_panic_halt: a run that reached the verdict
  *          parks here, whose name deliberately does NOT match the `*panic_halt`
- *          pattern a board_sim gate treats as a give-up.
+ *          pattern a ra8_emulator gate treats as a give-up.
  *
  * @pre The verdict banner has been emitted over the SCI8 console.
  * @post CPU is parked; only a debugger or reset wakes it.

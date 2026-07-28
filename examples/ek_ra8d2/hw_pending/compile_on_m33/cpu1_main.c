@@ -38,7 +38,7 @@
  *       freestanding M33 image links only its own code plus the back-end (miniz,
  *       tinyxml2, ra8_epub, ra8_rabook_compile/pipeline/gray4) -- no stb_image, no
  *       ra8_fs (the M85 owns the filesystem; this core finalizes into a buffer).
- * @note The M33 deliberately does NOT call `ra8_log`: board_sim echoes only the
+ * @note The M33 deliberately does NOT call `ra8_log`: ra8_emulator echoes only the
  *       primary core's ITM, so an M33 log line would be invisible. Its
  *       proof-of-life is the mailbox the M85 narrates.
  *

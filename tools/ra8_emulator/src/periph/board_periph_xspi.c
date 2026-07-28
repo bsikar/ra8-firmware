@@ -1,6 +1,6 @@
 /**
  * @file board_periph_xspi.c
- * @brief Octal-SPI (xSPI) manual-command + NOR-flash peripheral model for board_sim
+ * @brief Octal-SPI (xSPI) manual-command + NOR-flash peripheral model for ra8_emulator
  *
  * @details
  * Models the RA8D2 XSPI0 manual-command engine (ra8_ospi_regs.h, ra8_xspi.c)
@@ -117,7 +117,7 @@ static xspi_state_t s_xspi;
  * @brief Backing NOR array for the full 64 MiB part, stored INVERTED.
  *
  * @details Each byte holds the bitwise complement of the flash content, so the
- * all-zero BSS image IS the erased (0xFF) part: a fresh board_sim process pays
+ * all-zero BSS image IS the erased (0xFF) part: a fresh ra8_emulator process pays
  * no resident memory for the 64 MiB until a sector is actually programmed or
  * erased (the zero page is never dirtied by reads). NOR semantics translate
  * directly: page-program clears flash bits = SETS stored bits (OR), sector

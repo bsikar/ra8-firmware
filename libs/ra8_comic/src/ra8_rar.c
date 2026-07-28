@@ -168,7 +168,7 @@ static uint32_t s_le32(const uint8_t* p)
  *          halves and assembled by memcpy rather than with a 64-bit variable shift:
  *          on Cortex-M a `uint64_t << reg` lowers to a libgcc `__ashldi3` call, so
  *          32-bit shifts keep this leaner (and side-step the emulator's 64-bit
- *          shift seam under board_sim).
+ *          shift seam under ra8_emulator).
  * @param[in]     buf Header scratch bytes.
  * @param[in]     len Valid bytes in @p buf.
  * @param[in,out] pos Cursor into @p buf; advanced past the vint on success.

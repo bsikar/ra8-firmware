@@ -23,7 +23,7 @@
  *      a non-zero hit count, proving the cache served repeated reads.
  *   6. Report progress on the SCI8 console through a ra8_io UART stream sink.
  *
- * The board_sim emulator captures the SCI8 console, so the PASS line and the
+ * The ra8_emulator captures the SCI8 console, so the PASS line and the
  * hit/miss counts are observable headlessly: a successful run prints
  * `ra8_io_cache_demo: re-read x8 hits=H misses=M ram:/HELLO.TXT PASS`.
  *

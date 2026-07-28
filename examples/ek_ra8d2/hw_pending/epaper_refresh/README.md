@@ -37,11 +37,11 @@ epaper: PASS
 Any failing stage prints `epaper: FAIL` and parks the CPU with the red LED on.
 
 The `ms=` timing is **informational**: on silicon a GC16 full refresh is
-hundreds of milliseconds and an A2 partial tens, but under `board_sim` the
+hundreds of milliseconds and an A2 partial tens, but under `ra8_emulator` the
 modelled controller completes instantly, so the numbers are near zero. The PASS
 verdict never depends on a timing value.
 
-## board_sim gate
+## ra8_emulator gate
 
 `tools/ra8_emulator` models the IT8951 as an SPI device attached with `--eink`
 (`board_periph_eink.c`). The model self-frames off the IT8951 SPI preambles
@@ -52,7 +52,7 @@ verdict never depends on a timing value.
 banner with no panel. The gate command is:
 
 ```
-bash scripts/sim/smoke.sh epaper_refresh
+bash scripts/emu/smoke.sh epaper_refresh
 ```
 
 Expected: `OK (IT8951 e-paper: epaper: PASS)`. The emulator's end-of-run summary
@@ -61,7 +61,7 @@ also prints an IT8951 line, e.g.
 (16384 full + 1024 partial pixels, two refreshes, last waveform A2 = 0x4),
 confirming the load + display path actually ran.
 
-**The model is load-bearing (SIM == HIL):** run without `--eink` and the panel's
+**The model is load-bearing (EIL == HIL):** run without `--eink` and the panel's
 `HRDY` never asserts, so `ra8_epaper_init` times out and the app honestly prints
 `epaper: FAIL`. The sim only passes because the modelled controller responds
 exactly as silicon would.
@@ -69,22 +69,22 @@ exactly as silicon would.
 ## Why this is in hw_pending
 
 The EK-RA8D2 ships a 7.0-inch **parallel-RGB TFT**, not e-paper, so there is no
-IT8951 panel on the bench. `board_sim` proves the whole firmware path headlessly,
+IT8951 panel on the bench. `ra8_emulator` proves the whole firmware path headlessly,
 but on-panel HIL is pending a real IT8951 carrier (a custom board or a Waveshare
 IT8951-AP HAT on the Pmod/SPI header). Until that hardware exists this app can
-compile, pass every CI gate, and pass the board_sim gate, but cannot be
+compile, pass every CI gate, and pass the ra8_emulator gate, but cannot be
 hardware-confirmed -- so it lives here rather than in `hw_validated/hil/`.
 
 ## Pin map (hypothetical carrier)
 
 These are **not** stock EK-RA8D2 board facts, so they live in the app rather than
-the board layer, and they match the pins the board_sim IT8951 model drives:
+the board layer, and they match the pins the ra8_emulator IT8951 model drives:
 
 | Signal        | Pin   | Direction | Notes                                  |
 |---------------|-------|-----------|----------------------------------------|
 | IT8951 /RESET | P4_00 | output    | pulsed low->high at init               |
 | IT8951 HRDY   | P4_01 | input     | panel "ready" -- polled before each op |
-| SPI_B SCK/COPI/CIPO | SPI_B ch0 defaults | -- | routed by the carrier; board_sim needs no routing |
+| SPI_B SCK/COPI/CIPO | SPI_B ch0 defaults | -- | routed by the carrier; ra8_emulator needs no routing |
 | Chip select   | SPI_B SSL0 | output | hardware chip select (not managed by `ra8_epaper`) |
 
 ## On-silicon bench plan

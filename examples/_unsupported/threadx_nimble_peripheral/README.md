@@ -2,7 +2,7 @@
 
 > **Status: UNVALIDATED SCAFFOLD (issue #286).** This app links and
 > passes the static gates, but has **never been hardware-validated** and
-> is **not sim-gated**: `board_sim` models no RA8D2 BLE controller / HCI
+> is **not emulator-gated**: `ra8_emulator` models no RA8D2 BLE controller / HCI
 > mailbox, so nothing in CI exercises the air interface, and the
 > underlying `ra8_ble` transport is itself unproven on this board (#86,
 > #91). The `port/nimble/` host port + ThreadX Native Porting Layer it

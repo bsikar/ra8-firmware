@@ -14,7 +14,7 @@
  *   `ereader-table-hil: glyphs=<N> geom=<8 hex>`
  *
  * Ahem's fixed metrics make the grid deterministic; the banner is identical
- * every boot and matches the host / board_sim run, so any drift in the column
+ * every boot and matches the host / ra8_emulator run, so any drift in the column
  * sizing, cell flow, or row stacking changes the hash.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -80,7 +80,7 @@ static void tb_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void tb_panic_halt(const uint8_t* msg, uint32_t len)
 {
   tb_print(msg, len);

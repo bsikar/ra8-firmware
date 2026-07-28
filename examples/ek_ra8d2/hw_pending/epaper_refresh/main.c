@@ -32,10 +32,10 @@
  * pending an IT8951 carrier on the bench (see README). ``tools/ra8_emulator``
  * models the IT8951 as an SPI device (``--eink``): it answers HRDY, the
  * GET_DEV_INFO drain and the LUTAFSR "LUT idle" poll, so this whole path runs
- * headlessly to its ``epaper: PASS`` banner -- SIM == HIL.
+ * headlessly to its ``epaper: PASS`` banner -- EIL == HIL.
  *
  * The reported refresh times are informational: on silicon a GC16 full refresh
- * is hundreds of milliseconds and an A2 partial tens; under board_sim the
+ * is hundreds of milliseconds and an A2 partial tens; under ra8_emulator the
  * modelled controller completes instantly, so the numbers are near zero. The
  * PASS verdict never depends on a timing value.
  *
@@ -72,7 +72,7 @@
  * @brief Panel + framebuffer geometry.
  *
  * @details A modest 128 x 128 8bpp panel keeps the per-pixel SPI streaming
- *          fast under board_sim while still exercising a full + partial
+ *          fast under ra8_emulator while still exercising a full + partial
  *          refresh. RGB565 framebuffer = 128 * 128 * 2 = 32 KiB in SRAM.
  *
  * @since 0.1.0
@@ -151,9 +151,9 @@ typedef enum : uint16_t {
  *
  * @details These are NOT stock EK-RA8D2 board facts -- the EK ships a parallel
  *          TFT -- so they live in the app, not the board layer. They match the
- *          pins the board_sim IT8951 model drives (P4_00 /RESET, P4_01 HRDY).
+ *          pins the ra8_emulator IT8951 model drives (P4_00 /RESET, P4_01 HRDY).
  *          The SPI_B COPI/CIPO/SCK routing for the carrier is documented in the
- *          README; board_sim does not require it.
+ *          README; ra8_emulator does not require it.
  *
  * @since 0.1.0
  */

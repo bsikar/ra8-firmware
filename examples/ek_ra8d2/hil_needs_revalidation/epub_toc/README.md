@@ -41,13 +41,13 @@ cmake --build tools/ra8_emulator/build -j
 
 `--sd-new 64:fat32` attaches a blank FAT32 card; the app formats/mounts
 it, provisions the three books, and parses them. miniz's ZIP 64-bit math
-relies on the Armv8.1-M long shifts board_sim emulates (the long-shift
+relies on the Armv8.1-M long shifts ra8_emulator emulates (the long-shift
 seam added for #139).
 
 ## Pass / fail (HIL gate)
 
 The gate is **memprobe**, not the console: an SD app drives the SCI0
-Simple-SPI bus and board_sim folds every SCI channel into one console
+Simple-SPI bus and ra8_emulator folds every SCI channel into one console
 line, so the SCI8 banner is interleaved with SPI traffic there (the same
 reason `epub_open` / `sd_font_render` / `fs_format_mount` gate on SWD
 globals). `g_etoc_heartbeat` advances only after all three books pass;
@@ -75,7 +75,7 @@ real-bench scope.
 Pmod2 (J25) microSD over `ra8_sdmmc_spi` (SCI0 Simple-SPI); SCI8 async
 console (TXD=PD02, RXD=PD03, 115200-8N1) on the J-Link OB virtual COM.
 
-Validated on board_sim (the Unicorn-based M85 simulator): deterministic
+Validated on ra8_emulator (the Unicorn-based M85 simulator): deterministic
 across repeated `--sd-new` runs -- `g_etoc_err 0`, ncx (kind 1, n 2, crc
 0xDBC4EA24, ch0 0), nav (kind 2, n 3, crc 0x4CC9A9C1, ch0 0), bad (kind
 0, chapters 2), heartbeat advancing, no invalid opcode or fault.

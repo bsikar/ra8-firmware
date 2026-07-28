@@ -30,7 +30,7 @@
  *
  * On success it prints exactly
  * `import_reader: miss->compile->cache->hit->read PASS`; any failed step prints
- * `import_reader: FAIL <stage>` and parks the core. The board_sim headless gate
+ * `import_reader: FAIL <stage>` and parks the core. The ra8_emulator headless gate
  * (and a future HIL runner) scrape for that PASS line.
  *
  * @note The cache uses the library's current v1 ROOT-level 8.3 name layout. The
@@ -44,7 +44,7 @@
  *
  * Required external hardware (on-bench): Digilent PMOD MicroSD (part 410-380)
  * in Pmod2 (J25) with a microSD card carrying a `BOOK.EPB` text EPUB. Under
- * board_sim attach an image with `--sd <image>` (build one with
+ * ra8_emulator attach an image with `--sd <image>` (build one with
  * `tools/mkfontimg <book.epub> card.img BOOK.EPB`).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -280,7 +280,7 @@ static void imp_print_uint(uint32_t value)
  * @pre @p stage is NUL-terminated.
  * @post The FAIL line is queued; the CPU traps then spins in WFI.
  * @post No further application code runs.
- * @note Not thread-safe; terminal panic path. board_sim halts on the BKPT.
+ * @note Not thread-safe; terminal panic path. ra8_emulator halts on the BKPT.
  * @since 0.1.0
  */
 static void imp_panic(const char* stage)

@@ -150,7 +150,7 @@ The command stream (`cms_data`) is the Vela output; the base-address array maps
 onto `ra8_npu_job_t.region_base[]` (region 0 = weight/bias arena). A first
 end-to-end test needs: (1) a tiny Vela-compiled `.tflite` for Ethos-U55, baked
 as a byte array; (2) the adapter above wired into an `examples/ra8p1_foundation`
-app that reuses the `npu_smoke` boot files; (3) the board_sim Ethos-U model
+app that reuses the `npu_smoke` boot files; (3) the ra8_emulator Ethos-U model
 (added separately) to gate it headlessly before on-silicon bring-up.
 
 ## Deviations / patches

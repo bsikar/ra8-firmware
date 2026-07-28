@@ -4,7 +4,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/ci/unicorn_pin.sh -- the ONE source of truth for the pinned Unicorn
-# CPU-emulator version that every board_sim environment must link.
+# CPU-emulator version that every ra8_emulator environment must link.
 #
 # WHY THIS FILE EXISTS
 # --------------------
@@ -17,14 +17,14 @@
 # the self-hosted runner ran a source-built 2.1.4 while the dev box + the
 # devcontainer ran 2.0.1, and 2.0.1 raises spurious EXCP_NOCP on MVE stores.
 #
-# Pinning makes the decode identical everywhere board_sim runs. 2.1.4 is the
+# Pinning makes the decode identical everywhere ra8_emulator runs. 2.1.4 is the
 # pin because it is what CI -- the authority (docs/TOOLCHAIN.md) -- already
-# links, it decodes the MVE stores real M85 silicon executes, and the board_sim
-# smoke / matrix / SIL suite is green on it.
+# links, it decodes the MVE stores real M85 silicon executes, and the ra8_emulator
+# smoke / matrix / EIL suite is green on it.
 #
 # This file is SOURCED by scripts/ci/install_unicorn.sh (which builds + installs
 # the pin) and by scripts/checks/check_unicorn_version.sh (which FAILS the
-# board_sim gates when the runtime Unicorn is not the pin). The devcontainer
+# ra8_emulator gates when the runtime Unicorn is not the pin). The devcontainer
 # duplicates the version + sha256 as Docker ARGs (.devcontainer/Dockerfile);
 # keep the two in step when moving the pin, the same way the arm-gcc pin is
 # duplicated between the Dockerfile and cmake/toolchain-ra8d2.cmake.
@@ -40,6 +40,6 @@ RA8_UNICORN_TARBALL_SHA256="ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af
 
 # Install prefix. /usr/local matches how the runner already carries the pin
 # (/usr/local/lib/libunicorn.so.2), so ldconfig resolves it ahead of any stale
-# distro package and board_sim's find_library(unicorn) picks it with no
+# distro package and ra8_emulator's find_library(unicorn) picks it with no
 # CMake change. Override with RA8_UNICORN_PREFIX for a per-user install.
 RA8_UNICORN_PREFIX="${RA8_UNICORN_PREFIX:-/usr/local}"

@@ -9,7 +9,7 @@
  * (`lx_nor_driver_ra8_xspi_initialize`) so the entire persistent-cache path --
  * LevelX standalone plus ra8_cache_store on top of it -- runs in SRAM with no
  * MMIO. Because nothing touches a peripheral register, the emulated
- * (board_sim) run and the on-silicon run execute byte-identical instructions:
+ * (ra8_emulator) run and the on-silicon run execute byte-identical instructions:
  * SIM equals HIL by construction.
  *
  * The backing SRAM persists across `lx_nor_flash_close` / `lx_nor_flash_open`

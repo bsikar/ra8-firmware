@@ -13,7 +13,7 @@
  *     160x120 RGB565 scratch cleared to 0x202028 -- and FNV-1a-32-hashes the
  *     scratch. The pipeline is a deterministic integer path, so the asserted
  *     numbers ARE the banner fields (`cbz=2:160x106:733D076C`, and the CBR is
- *     byte-identical). This test is the golden the board_sim / silicon run is
+ *     byte-identical). This test is the golden the ra8_emulator / silicon run is
  *     compared against.
  *
  *  2. The comic-screen decision logic: the RTL-aware edge mapping, the

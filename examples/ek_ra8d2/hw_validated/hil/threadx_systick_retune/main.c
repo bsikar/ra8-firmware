@@ -25,15 +25,15 @@
  *      ::g_threadx_retune_reload for observability.
  *   4. One worker thread toggles LED1 and advances
  *      ::g_threadx_retune_tick every wake -- the scheduler-liveness
- *      counter the HIL / board_sim probe samples.
+ *      counter the HIL / ra8_emulator probe samples.
  *
- * @par HIL / SIL contract
+ * @par HIL / EIL contract
  * `hil.conf` uses `HIL_MODE=jlink_memprobe`:
  *   - primary  ::g_threadx_retune_tick   must advance >= 3 (scheduler alive),
  *   - failure  ::g_threadx_retune_bad     must stay 0 (retune matched the
  *     live clock).
- * board_sim runs the identical ARM retune path -- the SYST_RVR write lands
- * in the emulated System Control Space and reads back -- so SIM == HIL.
+ * ra8_emulator runs the identical ARM retune path -- the SYST_RVR write lands
+ * in the emulated System Control Space and reads back -- so EIL == HIL.
  *
  * @par Threads
  *
@@ -101,8 +101,8 @@ typedef enum : uintptr_t {
 } retune_syst_addr_t;
 
 /* ---------------------------------------------------------------------------
- * HIL / SIL observables. Global (non-static) + volatile so the symbols stay
- * linker-visible for J-Link / board_sim --dump-sym and survive optimization.
+ * HIL / EIL observables. Global (non-static) + volatile so the symbols stay
+ * linker-visible for J-Link / ra8_emulator --dump-sym and survive optimization.
  * --------------------------------------------------------------------------- */
 
 /**

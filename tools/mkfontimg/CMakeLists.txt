@@ -1,6 +1,6 @@
 #
 # mkfontimg -- build a FAT16 SD-card image carrying a font file, written
-# through the real ra8_fs so the firmware (sd_font_render / board_sim --sd)
+# through the real ra8_fs so the firmware (sd_font_render / ra8_emulator --sd)
 # reads it back bit-for-bit.
 #
 #   cmake -B build -S . && cmake --build build

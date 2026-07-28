@@ -26,7 +26,7 @@
  * tracked in #150; this example lands the M85-parks / M33-holds foundation.
  *
  * @note `ra8_log_info` is compiled to a no-op unless the build defines INFO-level
- *       logging (a Debug build). The M33 cannot print in the emulator (board_sim
+ *       logging (a Debug build). The M33 cannot print in the emulator (ra8_emulator
  *       echoes only the primary core's ITM), so the M85 narrates the M33's hold
  *       heartbeat from the shared mailbox; a climbing heartbeat is honest proof
  *       the M33 is the live core while the M85 sleeps.
@@ -104,7 +104,7 @@ static void render_page0(volatile lowpower_mailbox_t* mb)
  *
  * @note On silicon WFI sleeps until an interrupt; with no wake source wired yet
  *       the M85 stays asleep, which is exactly the low-power posture. In
- *       board_sim WFI fast-forwards, so the narration still advances.
+ *       ra8_emulator WFI fast-forwards, so the narration still advances.
  * @since 0.1.0
  */
 [[noreturn]] static void park_low_power(volatile lowpower_mailbox_t* mb)

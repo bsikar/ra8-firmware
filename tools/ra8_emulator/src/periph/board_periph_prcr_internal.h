@@ -67,7 +67,7 @@ typedef enum : uint16_t {
  * @pre The PRCR block is registered (host constructor, before main).
  * @post No state is mutated.
  *
- * @note Not thread-safe; board_sim drives all blocks from one thread.
+ * @note Not thread-safe; ra8_emulator drives all blocks from one thread.
  * @since 0.1.0
  */
 RA8_PRIV bool board_prcr_group_unlocked(uint16_t group_mask);

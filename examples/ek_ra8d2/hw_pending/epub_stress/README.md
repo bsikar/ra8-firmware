@@ -12,7 +12,7 @@ reset, so the #390 print-once race cannot explain it) it prints
 extraction this gate exists to hold comes back short of 60 on the real part.
 The fixture is baked in memory -- no SD card, no external hardware, no
 provisioning -- so this is a firmware defect, not a rig gap, and it is tracked.
-board_sim cannot arbitrate it either (it stops on an Armv8.1-M encoding the
+ra8_emulator cannot arbitrate it either (it stops on an Armv8.1-M encoding the
 Unicorn M33 model has no seam for). See `hil.conf` for the full capture.
 Re-promote only from a bench capture showing the PASS banner.
 
@@ -61,7 +61,7 @@ central directory) and the OPF item **count** (tinyxml2 DOM), not the total
 byte size. A synthetic book with many tiny files reproduces -- and exceeds --
 a 7 MB book's shared-arena pressure in tens of KB, so it bakes into MRAM and
 stays committable. The `RA8_SIMULATOR_MODE` host build routes miniz + `operator
-new` to malloc, so only this on-target (board_sim / silicon) gate exercises the
+new` to malloc, so only this on-target (ra8_emulator / silicon) gate exercises the
 real static-pool path.
 
 ## Validation

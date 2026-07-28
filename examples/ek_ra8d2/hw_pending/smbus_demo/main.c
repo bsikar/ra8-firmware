@@ -23,7 +23,7 @@
  *
  *   `smbus: whoami=6C sendrecv=6C PASS`
  *
- * Under `board_sim` the modelled LSM6DSO answers on the modelled IIC_B bus,
+ * Under `ra8_emulator` the modelled LSM6DSO answers on the modelled IIC_B bus,
  * so the banner is deterministic; on the bench it needs the IMU 12 Click
  * fitted (same prerequisite as `imu_lsm6dso_demo`).
  *
@@ -97,7 +97,7 @@ static void sd_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void sd_panic_halt(const uint8_t* msg, uint32_t len)
 {
   sd_print(msg, len);

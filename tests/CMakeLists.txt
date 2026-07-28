@@ -57,7 +57,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_crypto.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_npu.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_xml.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_storage.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_board_sim.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_ra8_emulator.cmake)
 
 # ---------------------------------------------------------------------------
 # Optional libFuzzer harnesses (opt-in via -DRA8_FUZZ=ON; clang-only).

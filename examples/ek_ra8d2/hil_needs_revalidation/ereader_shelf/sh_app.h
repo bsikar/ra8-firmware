@@ -732,7 +732,7 @@ typedef struct {
  * @details Opens each baked fixture through the SAME ::ra8_comic path the live
  *          screen uses, decodes page 0 into an off-screen RGB565 scratch via the
  *          integer ::ra8_img_decode_blit pipeline, and FNV-hashes the scratch --
- *          a deterministic digest identical on host, board_sim, and silicon. It
+ *          a deterministic digest identical on host, ra8_emulator, and silicon. It
  *          also exercises ::sh_comic_edge_dir in both reading directions. The
  *          live display framebuffer binding is restored on return, so the shelf
  *          render (and its pinned `fb=` hash) is untouched.

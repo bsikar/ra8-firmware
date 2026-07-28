@@ -1,6 +1,6 @@
 /**
  * @file board_periph_npu.c
- * @brief Arm Ethos-U55 NPU command/queue execution model (RA8P1-only) for board_sim
+ * @brief Arm Ethos-U55 NPU command/queue execution model (RA8P1-only) for ra8_emulator
  *
  * @details
  * The RA8P1 (R7KA8P1KFLCAC) integrates an Arm Ethos-U55 micro-NPU that the
@@ -9,7 +9,7 @@
  * there against the RA8P1 FSP CMSIS header and the Zephyr device tree). This
  * block gives that window a WORKING model so the ra8_npu driver's
  * submit -> run -> poll -> read-output protocol runs end-to-end in the emulator.
- * It is tagged ::k_board_block_dev_ra8p1 so it is dispatched ONLY when board_sim
+ * It is tagged ::k_board_block_dev_ra8p1 so it is dispatched ONLY when ra8_emulator
  * runs the RA8P1 profile (``--device ra8p1``); on the RA8D2 the window falls
  * through to the sparse fallback, so the RA8D2 run is unchanged.
  *
@@ -29,9 +29,9 @@
  * (run / clear_irq), NPU_RESET (clears job state), QBASE / QSIZE (command-stream
  * pointer + length), and BASEP0..7 (per-tensor AXI region bases).
  *
- * ## The "execution" is a DETERMINISTIC BOARD_SIM STAND-IN, not real Vela
+ * ## The "execution" is a DETERMINISTIC RA8_EMULATOR STAND-IN, not real Vela
  *
- * board_sim is NOT a Vela interpreter (real Vela-compiled inference is the
+ * ra8_emulator is NOT a Vela interpreter (real Vela-compiled inference is the
  * follow-up on the RA8P1 NPU epic). When the driver kicks a job
  * (``CMD.transition_to_running_state``) this block reads the command stream at
  * QBASE and applies a tiny, DOCUMENTED sim-only convention -- see
@@ -452,7 +452,7 @@ static void npu_report(void)
   }
   (void)fprintf(stderr,
                 "  NPU(Ethos-U55): jobs=%u faults=%u last=%s bytes=%u check=0x%08X"
-                " (board_sim stand-in, not Vela)\n",
+                " (ra8_emulator stand-in, not Vela)\n",
                 s_npu.jobs,
                 s_npu.faults,
                 npu_op_name(s_npu.last_op),

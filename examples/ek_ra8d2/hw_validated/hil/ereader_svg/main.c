@@ -22,7 +22,7 @@
  *
  * where `100x100` is the SVG's intrinsic `viewBox` size and `<8hex>` the
  * framebuffer hash. The whole chain is deterministic (a fixed document through
- * a deterministic rasterizer), so the banner is identical on host, board_sim,
+ * a deterministic rasterizer), so the banner is identical on host, ra8_emulator,
  * and silicon. Any failure prints a FAIL banner and halts on a BKPT before the
  * PASS line, so the gate is exact.
  *
@@ -79,7 +79,7 @@ static void es_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void es_panic_halt(const uint8_t* msg, uint32_t len)
 {
   es_print(msg, len);

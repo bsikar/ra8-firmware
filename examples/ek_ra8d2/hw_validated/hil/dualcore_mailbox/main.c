@@ -22,14 +22,14 @@
  *
  * Everything the M85 does is logged with `ra8_log`, which the emulator echoes
  * as `[itm]` lines (the analog of the J-Link SWO trace console on hardware).
- * The M33 cannot print directly in the emulator (board_sim echoes only the
+ * The M33 cannot print directly in the emulator (ra8_emulator echoes only the
  * primary core's ITM), so the M85 logs the M33's mailbox replies on its
  * behalf -- and because a reply value of `operand*3+1` can only have been
  * produced by the M33 executing code, those lines are honest proof that the
  * second core is alive. See `README.md`.
  *
  * @note `ra8_log_info` is compiled to a no-op unless the build defines a
- *       log level of INFO or finer (a Debug build). `make sim-dualcore_mailbox`
+ *       log level of INFO or finer (a Debug build). `make emu-dualcore_mailbox`
  *       builds Debug, so the `[itm]` lines appear; a default release build
  *       still runs the dual-core exchange but stays silent.
  *

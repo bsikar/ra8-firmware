@@ -36,7 +36,7 @@
  * programming asserts above all hold -- any GLCDC bring-up failure prints
  * `glcdc-hil: FAIL glcdc` and trips the gate's negative match.
  *
- * On `board_sim` the panel compositor reads the GLCDC GR1 framebuffer registers
+ * On `ra8_emulator` the panel compositor reads the GLCDC GR1 framebuffer registers
  * to build the panel image, so a `--ppm` snapshot also shows the painted
  * pattern -- independent confirmation that the GR1 registers point at the
  * buffer. The same FNV-1a-32 globals are exported for `--dump-sym` memprobe.
@@ -137,7 +137,7 @@ static const display_cfg_t k_gh_display_cfg = {
 /**
  * @var g_glcdc_hil_ok
  * @brief 1 once the GLCDC layer-1 render path is confirmed programmed.
- * @note Exported for `board_sim --dump-sym` memprobe; the gate is uart_scrape.
+ * @note Exported for `ra8_emulator --dump-sym` memprobe; the gate is uart_scrape.
  * @warning Written only by ::main; readers must treat it as read-only.
  * @since 0.1.0
  */
@@ -145,7 +145,7 @@ volatile uint32_t g_glcdc_hil_ok = 0U;
 /**
  * @var g_glcdc_hil_crc
  * @brief FNV-1a-32 of the rendered framebuffer (the on-bench baseline).
- * @note Exported for `board_sim --dump-sym` memprobe.
+ * @note Exported for `ra8_emulator --dump-sym` memprobe.
  * @warning Written only by ::main.
  * @since 0.1.0
  */
@@ -153,7 +153,7 @@ volatile uint32_t g_glcdc_hil_crc = 0U;
 /**
  * @var g_glcdc_hil_status
  * @brief Last GLCDC SYS_STAT snapshot (diagnostic; not part of the CRC).
- * @note Non-deterministic register on `board_sim`; kept out of the banner.
+ * @note Non-deterministic register on `ra8_emulator`; kept out of the banner.
  * @warning Written only by ::main.
  * @since 0.1.0
  */
@@ -161,7 +161,7 @@ volatile uint32_t g_glcdc_hil_status = 0U;
 /**
  * @var g_glcdc_hil_heartbeat
  * @brief Bumps on every idle-loop pass after a passing render.
- * @note Exported for `board_sim --dump-sym` liveness checks.
+ * @note Exported for `ra8_emulator --dump-sym` liveness checks.
  * @warning Written only by ::main.
  * @since 0.1.0
  */

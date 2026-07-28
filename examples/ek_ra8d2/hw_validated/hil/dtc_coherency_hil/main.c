@@ -50,24 +50,24 @@
  *   7. PASS -> emit ``"dtc_coherency_hil: dtc coherent PASS\r\n"`` over VCOM and
  *      the same verdict over ITM (``ra8_log_info``), toggle LED1. Mismatch / timeout
  *      -> a distinct ``... FAIL`` line (never containing "PASS") + LED2. Either way
- *      the core parks in WFI so ``board_sim``'s idle-stop terminates the run.
+ *      the core parks in WFI so ``ra8_emulator``'s idle-stop terminates the run.
  *
  * The completion IRQ is intentionally left masked (the app never calls
  * ``ra8_isr_globals_enable``): the registered slot + ``DTCE`` still activate the
  * DTC, the app simply polls for the result instead of taking the interrupt, which
  * avoids the completion ISR (which writes ``DTCSTS``) racing the in-flight copy.
  *
- * @par board_sim note (sim path)
+ * @par ra8_emulator note (sim path)
  * ``tools/ra8_emulator`` DOES model the DTC transfer engine
  * (``board_periph_dtc.c``): the ELC software-event trigger reads the vector-table
  * entry at ``DTCVBR + slot*4``, fetches the TI, and actually MOVES the bytes in
  * emulated memory, so the **real** ``ra8_dtc`` + ELC path runs in sim and the copy
- * verifies. board_sim's memory is byte-exact and it does **not** model the L1
+ * verifies. ra8_emulator's memory is byte-exact and it does **not** model the L1
  * D-cache, so the clean / invalidate calls are exercised (the line-size and
  * barrier logic run) but have no caching effect, and the poll falls through on its
  * first iteration. The cache hazard this app guards against is only observable on
  * real silicon. ``RA8_SIMULATOR_MODE`` is a host-unit-test define and is NOT set
- * for the ARM cross-build that board_sim executes, so there is nothing to
+ * for the ARM cross-build that ra8_emulator executes, so there is nothing to
  * ``#ifdef`` here.
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
@@ -296,7 +296,7 @@ static uint16_t s_dtc_slot;
  * @brief Park the Cortex-M85 forever in a WFI idle loop.
  *
  * @details Reached after the one-shot banner has been emitted (pass or fail), or
- * on a fatal init failure. The WFI lets ``board_sim``'s idle detector stop the
+ * on a fatal init failure. The WFI lets ``ra8_emulator``'s idle detector stop the
  * run cleanly and models the low-power posture on silicon.
  *
  * @return This function never returns.
@@ -714,7 +714,7 @@ static void dtc_coh_report(uint8_t ok)
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit enabled the MPU + caches via RA8_BOOT_ENABLE_CACHE_MPU.
  * @post Exactly one PASS/FAIL banner is emitted, then the core parks.
- * @post The core ends in WFI so board_sim's idle-stop terminates the run.
+ * @post The core ends in WFI so ra8_emulator's idle-stop terminates the run.
  *
  * @note Single-threaded; the completion IRQ is left masked and the result polled.
  * @since 0.1.0

@@ -19,7 +19,7 @@ hide its `ping_payload` write from the cacheless M33), and the round-trip would
 mismatch. The non-cacheable region removes exactly that hazard.
 
 The Cortex-M33 has no data cache, so coherency is one-sided -- only the M85 cache
-matters. board_sim models byte-exact memory (no D-cache), so the test passes
+matters. ra8_emulator models byte-exact memory (no D-cache), so the test passes
 there trivially; the cache hazard is only real on silicon.
 
 ## How it runs
@@ -42,16 +42,16 @@ The loop then keeps round-tripping forever so the J-Link memprobe gate
 (`hil.conf`) sees `g_cache_coherency_match` advance across its sample window. A
 one-shot counter frozen after 8 rounds (e.g. a terminal `WFI`) would read an
 unchanged value at both probe halts and fail the delta check -- this mirrors the
-proven `cpu1_pingpong` structure. In board_sim the run ends on the
-`BOARD_SIM_WALL_S` cap after the banner has already printed.
+proven `cpu1_pingpong` structure. In ra8_emulator the run ends on the
+`RA8_EMU_WALL_S` cap after the banner has already printed.
 
 ## Build + run
 
 ```sh
 make cache_coherency_hil        # ARM cross-build (M85 + embedded M33 image)
 
-# headless board_sim (no GUI):
-BOARD_SIM_WALL_S=15 BOARD_SIM_IDLE_STOP=1 \
+# headless ra8_emulator (no GUI):
+RA8_EMU_WALL_S=15 RA8_EMU_IDLE_STOP=1 \
   tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/build/cache_coherency_hil.elf \
   --panel tools/ra8_emulator/panels/ek_ra8d2.toml

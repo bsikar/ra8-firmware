@@ -3,10 +3,10 @@
  * @brief Minimal self-contained macOS window for the board emulator
  *
  * @details
- * A tiny C-ABI over Cocoa so board_sim can SHOW what the emulated GLCDC is
+ * A tiny C-ABI over Cocoa so ra8_emulator can SHOW what the emulated GLCDC is
  * driving -- present an RGB565 framebuffer in a desktop window and report when
  * the user closes it. Deliberately standalone (no firmware display-PAL
- * dependency) to keep board_sim a self-contained tool. The real Objective-C
+ * dependency) to keep ra8_emulator a self-contained tool. The real Objective-C
  * lives in board_view.m; this header is plain C so main.c needs no AppKit.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

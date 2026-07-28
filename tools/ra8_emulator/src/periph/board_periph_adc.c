@@ -33,7 +33,7 @@
  * silicon-only test), the temperature channel returns ::k_adc_temp_code, and
  * every other extended source returns the mid-scale code. This lets
  * adc_diag_tsn_demo run its self-test + die-temperature path headless (paired
- * with the TSN factory-calibration seed board_sim writes at 0x02C1EDA0).
+ * with the TSN factory-calibration seed ra8_emulator writes at 0x02C1EDA0).
  *
  * Self-registers its descriptor with the board_periph core from a file-scope
  * constructor; the core keeps no central block list -- see board_periph_block.h.
@@ -171,7 +171,7 @@ typedef enum : uint32_t {
 /** @brief Plausible conversion result reported on every scan. */
 typedef enum : uint16_t {
   k_adc_sample_code = 2048U, /**< 12-bit half-scale (~VREFH/2) mid-scale. */
-  /* Temperature-sensor code: with the factory calibration board_sim seeds at
+  /* Temperature-sensor code: with the factory calibration ra8_emulator seeds at
    * 0x02C1EDA0 (TSCDR=3000 @125C, TSCDR2=1000 @-40C), the two-point math in
    * ra8_tsn_convert_to_milli_c maps this 12-bit code to ~26 degC -- a plausible,
    * deterministic die temperature. See main.c k_tsn_cal_* for the paired seed. */

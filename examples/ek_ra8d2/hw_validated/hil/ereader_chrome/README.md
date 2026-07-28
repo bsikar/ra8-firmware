@@ -3,7 +3,7 @@
 Headless **on-silicon HIL gate** for the e-reader chrome render pipeline
 (box model #76 + interaction core #80).
 
-The chrome is golden-validated on the `board_sim` emulator (`make
+The chrome is golden-validated on the `ra8_emulator` emulator (`make
 ereader-golden`). This app closes the *real-hardware* gap with no panel / SDRAM
 / touch / SD dependency:
 
@@ -26,7 +26,7 @@ hash and trips the gate.
 The render is deterministic (integer layout + a fixed bitmap font + a zeroed
 static framebuffer), so the hash is the same every boot. It is also the *same*
 hash the identical render produces on host -- so `crc=0DCB740F` doubles as a
-sim/silicon equivalence check.
+emulator/silicon equivalence check.
 
 ## Build + run
 

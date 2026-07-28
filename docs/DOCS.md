@@ -92,7 +92,7 @@ The `INPUT` block in `Doxyfile` covers:
   `ra8_mpu`, etc.)
 - `examples/` (every per-app demo under `examples/<tier>/<app>/`)
 - `scripts/` and `tools/` (first-party tooling, including the
-  `board_sim` host emulator)
+  `ra8_emulator` host emulator)
 
 `libs/third_party/` is explicitly excluded -- vendored SOUP is
 documented under `docs/SOUP/` instead, not via Doxygen. So is

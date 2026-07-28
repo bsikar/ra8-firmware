@@ -9,16 +9,16 @@ framebuffer deterministically, so we can pin the chrome with checked-in golden
 images and fail CI (or a local ``make`` target) when an unrelated change shifts
 a pixel.
 
-board_sim's ``--ppm`` snapshot is the panel framebuffer PLUS a fixed-width debug
+ra8_emulator's ``--ppm`` snapshot is the panel framebuffer PLUS a fixed-width debug
 sidebar on the right (LED / USB / IRQ state). The chrome golden must test the
-*firmware* output, not board_sim's overlay, so every snapshot is cropped to the
+*firmware* output, not ra8_emulator's overlay, so every snapshot is cropped to the
 panel region (total width minus the sidebar) before it is hashed or stored. The
 golden bytes are gzipped (the flat 16-level-grayscale chrome compresses ~30x).
 
 Usage
 -----
-    ereader_golden.py check  --elf E --board-sim B --golden-dir D [--out-dir O]
-    ereader_golden.py update --elf E --board-sim B --golden-dir D
+    ereader_golden.py check  --elf E --emulator B --golden-dir D [--out-dir O]
+    ereader_golden.py update --elf E --emulator B --golden-dir D
 
 ``check`` renders each screen, crops it, and compares against
 ``<golden-dir>/<name>.ppm.gz``; mismatches are reported (with the actual image
@@ -26,7 +26,7 @@ written to ``--out-dir`` for inspection) and exit status is non-zero.
 ``update`` regenerates the goldens in place.
 
 The script is stdlib-only (gzip / subprocess / argparse) so it runs anywhere the
-board_sim binary and the cross-built ``.elf`` exist.
+ra8_emulator binary and the cross-built ``.elf`` exist.
 """
 
 from __future__ import annotations
@@ -41,12 +41,12 @@ from pathlib import Path
 # Number of integer tokens in a PPM (P6) header: width, height, maxval.
 PPM_HEADER_TOKEN_COUNT = 3
 
-# Width board_sim appends on the right of the panel for its status sidebar.
+# Width ra8_emulator appends on the right of the panel for its status sidebar.
 # Mirrors ``k_ovl_sidebar_w`` in tools/ra8_emulator/src/display/board_overlay.c; the crop
 # removes it so the golden depends only on the firmware chrome.
 SIDEBAR_W = 520
 
-# The screens to capture: (golden name, board_sim extra args). Reading is
+# The screens to capture: (golden name, ra8_emulator extra args). Reading is
 # reached by tapping a Library book card; keyboard by tapping the toolbar
 # Search field -- both via the genuine touch path. battery_low drives the
 # modelled fuel gauge below the critical threshold (--battery 8) so the
@@ -97,17 +97,17 @@ def crop_panel(width: int, height: int, maxval: int, pixels: bytes) -> bytes:
     return header + bytes(out)
 
 
-def render_panel(board_sim: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
-    """Run board_sim for one screen and return its cropped-panel PPM bytes."""
+def render_panel(emulator: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
+    """Run ra8_emulator for one screen and return its cropped-panel PPM bytes."""
     with tempfile.NamedTemporaryFile(suffix=".ppm") as tmp:
-        cmd = [str(board_sim), str(elf), *extra, "--ppm", tmp.name]
-        # Capture as bytes, not text: board_sim's diagnostic stream can carry
+        cmd = [str(emulator), str(elf), *extra, "--ppm", tmp.name]
+        # Capture as bytes, not text: ra8_emulator's diagnostic stream can carry
         # raw bytes (e.g. 0xFF SPI idle bytes from an SD bring-up with no card),
         # which would crash a UTF-8 text decode.
-        proc = subprocess.run(cmd, capture_output=True, check=False)  # noqa: S603  # trusted: fixed board_sim argv built from caller-supplied paths
+        proc = subprocess.run(cmd, capture_output=True, check=False)  # noqa: S603  # trusted: fixed ra8_emulator argv built from caller-supplied paths
         if proc.returncode != 0:
             err = proc.stderr.decode("utf-8", "replace")
-            msg = f"board_sim failed: {' '.join(cmd)}\n{err}"
+            msg = f"ra8_emulator failed: {' '.join(cmd)}\n{err}"
             raise RuntimeError(msg)
         return crop_panel(*read_ppm(Path(tmp.name)))
 
@@ -132,7 +132,7 @@ def do_update(args: argparse.Namespace) -> int:
     """
     args.golden_dir.mkdir(parents=True, exist_ok=True)
     for name, extra in SCREENS:
-        panel = render_panel(args.board_sim, args.elf, extra)
+        panel = render_panel(args.emulator, args.elf, extra)
         golden_path(args.golden_dir, name).write_bytes(gzip.compress(panel, 9))
         print(f"  updated {name}.ppm.gz ({len(panel)} bytes -> gz)")
     return 0
@@ -154,7 +154,7 @@ def do_check(args: argparse.Namespace) -> int:
             print(f"  [FAIL] {name}: golden missing ({gpath}); run 'update'")
             failures += 1
             continue
-        actual = render_panel(args.board_sim, args.elf, extra)
+        actual = render_panel(args.emulator, args.elf, extra)
         expected = gzip.decompress(gpath.read_bytes())
         if actual == expected:
             print(f"  [PASS] {name}: chrome matches golden")
@@ -184,7 +184,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("check", "update"))
     parser.add_argument("--elf", type=Path, required=True, help="cross-built ereader_ui.elf")
-    parser.add_argument("--board-sim", type=Path, required=True, help="board_sim binary")
+    parser.add_argument("--emulator", type=Path, required=True, help="ra8_emulator binary")
     parser.add_argument("--golden-dir", type=Path, required=True, help="golden image directory")
     parser.add_argument("--out-dir", type=Path, default=None, help="where to dump mismatches")
     args = parser.parse_args()
@@ -192,8 +192,8 @@ def main() -> int:
     if not args.elf.exists():
         print(f"error: elf not found: {args.elf}", file=sys.stderr)
         return 2
-    if not args.board_sim.exists():
-        print(f"error: board_sim not found: {args.board_sim}", file=sys.stderr)
+    if not args.emulator.exists():
+        print(f"error: ra8_emulator not found: {args.emulator}", file=sys.stderr)
         return 2
 
     return do_update(args) if args.mode == "update" else do_check(args)

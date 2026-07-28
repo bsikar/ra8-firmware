@@ -32,7 +32,7 @@
  *     fast hint, and the composite CRC changes (the clock advanced). This is the
  *     Phase-1 partial-flush acceptance, now driven by a real chrome widget.
  *
- * It then emits one banner so the app doubles as a board_sim gate:
+ * It then emits one banner so the app doubles as a ra8_emulator gate:
  *
  *   `widget-chrome-demo: dirty0=5 crc0=<8hex> dirty1=1 crc1=<8hex> flush=512x44 hint=fast PASS`
  *

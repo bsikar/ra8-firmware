@@ -10,7 +10,7 @@ It builds on Phase 1 (`app_launch_demo`: the `ra8_app` registry + per-app vtable
 navigation back-stack) and adds the piece a home screen needs: a small
 **launcher** that lists the registered apps and launches the one the user picks,
 with "back" unwinding the navigation trail. **No display, no widgets** -- the
-launch path is observable headlessly on `board_sim` through the ITM log.
+launch path is observable headlessly on `ra8_emulator` through the ITM log.
 
 ## What it proves
 
@@ -63,7 +63,7 @@ make app_shell_demo                  # from the repo root
 # or:
 cd examples/ek_ra8d2/hw_pending/app_shell_demo && make
 
-# Headless on board_sim (ITM lines show up as `[itm] ...`):
+# Headless on ra8_emulator (ITM lines show up as `[itm] ...`):
 tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_pending/app_shell_demo/build/app_shell_demo.elf
 ```
@@ -81,6 +81,6 @@ A passing run emits (Debug build, INFO-level logs compiled in):
 
 ## Status
 
-`hw_pending`: validated on `board_sim` (boots, runs the launcher self-check,
+`hw_pending`: validated on `ra8_emulator` (boots, runs the launcher self-check,
 emits the PASS banner). Not yet run on the EK-RA8D2 hardware -- with a J-Link
 attached the same ITM lines appear in the SWV / RTT console.

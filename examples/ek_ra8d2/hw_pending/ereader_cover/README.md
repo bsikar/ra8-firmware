@@ -12,7 +12,7 @@ reset, so the #390 print-once race cannot explain it) it prints
 `ereader-cover-hil: boot` then `ereader-cover-hil: FAIL open`: `ra8_epub_open`
 fails outright on the real part against the same baked in-memory fixture the
 host tests use. There is no SD card, external hardware, or provisioning in this
-path, so this is a firmware defect, not a rig gap, and it is tracked. board_sim
+path, so this is a firmware defect, not a rig gap, and it is tracked. ra8_emulator
 cannot arbitrate it either (it stops on an Armv8.1-M encoding the Unicorn M33
 model has no seam for). See `hil.conf` for the full capture. Re-promote only
 from a bench capture showing the PASS banner and its CRC.
@@ -51,7 +51,7 @@ the gate. Part of the cover-art image-decode family (#143).
 
 ## Validation
 
-Deterministic, so the board_sim CRC gate is the regression net (the same way
+Deterministic, so the ra8_emulator CRC gate is the regression net (the same way
 `ereader_image` / `ereader_jpeg` / `epub_parse` gate). Run on
 `tools/ra8_emulator` (the firmware boots, the full open -> extract -> decode ->
 scale -> blit -> hash chain runs on the emulated M85, no fault):
@@ -63,7 +63,7 @@ scale -> blit -> hash chain runs on the emulated M85, no fault):
 
 The `ra8_epub` parse + `stb_image` decode paths are already silicon-proven
 (`epub_parse` #139, `ereader_image` #106); this app composes them, so
-the board_sim CRC gate plus those on-silicon precedents cover it end to end.
+the ra8_emulator CRC gate plus those on-silicon precedents cover it end to end.
 
 ## Regenerating the fixture
 

@@ -14,7 +14,7 @@
  * routes the page through ::ra8_comic_tiles (import-time JOF transcode +
  * `ra8_tile_cache` paging), decodes every tile in bounded RAM, and FNV-hashes the
  * concatenated tile payloads. The integer tile pipeline makes the digest
- * identical on host, board_sim, and silicon, so the boot banner can pin it.
+ * identical on host, ra8_emulator, and silicon, so the boot banner can pin it.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

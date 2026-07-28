@@ -8,9 +8,9 @@
  * (test_ra8_poeg.c); this test pins down:
  *
  *  - The app verdict ``ok = shutoff && reenabled && running`` with full MC/DC.
- *  - The board_sim POEG STATE-flag derivation (board_periph_poeg.c): an active
+ *  - The ra8_emulator POEG STATE-flag derivation (board_periph_poeg.c): an active
  *    request flag latches POEGG.ST; no request clears it. This is the exact
- *    semantics the SIL gate relies on, mirrored here as a pure function.
+ *    semantics the EIL gate relies on, mirrored here as a pure function.
  *  - The driver assert / clear register mechanics the app drives against the
  *    ra8_sim_mmap host MMIO shim (SSF set on trigger, cleared on ack), and that
  *    the GPT descriptor the app arms is accepted.
@@ -67,9 +67,9 @@ static uint8_t compute_ok(uint8_t shutoff, uint8_t reenabled, uint8_t running)
  * @brief Mirror of board_periph_poeg.c's ST-derivation (poeg_with_st).
  *
  * @details The output-disable STATE flag (POEGG.ST) is read-only and reflects
- * whether ANY request flag is set. The board_sim model strips any written ST
+ * whether ANY request flag is set. The ra8_emulator model strips any written ST
  * and re-derives it from the request bits; this mirror captures that exact
- * behaviour so the SIL-gate semantics are unit-tested on the host.
+ * behaviour so the EIL-gate semantics are unit-tested on the host.
  */
 static uint32_t derive_st(uint32_t writable)
 {
@@ -133,7 +133,7 @@ static void test_poeg_verdict_mcdc(void)
 }
 
 /**
- * @brief The board_sim ST-derivation latches / clears as the STATE flag does.
+ * @brief The ra8_emulator ST-derivation latches / clears as the STATE flag does.
  *
  * @par MC/DC:
  * Decision ``(base & trig) != 0`` -- one atomic condition x 2 vectors: a

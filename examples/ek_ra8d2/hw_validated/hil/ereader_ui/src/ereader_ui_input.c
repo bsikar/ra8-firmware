@@ -618,7 +618,7 @@ void er_poll_buttons(void)
  * Decision: `(s_batt_nag != k_ra8_batt_nag_none) && (chg || (soc > recover))`
  * (3 conditions: banner-active, charging, soc-recovered). The ra8_batt policy's
  * own edge / re-arm decisions are MC/DC-tested in tests/test_ra8_batt.c; this
- * clear-the-banner glue is exercised by the board_sim battery-slider gate
+ * clear-the-banner glue is exercised by the ra8_emulator battery-slider gate
  * (dragging below 20/10 percent raises the banner; back up or toggling charge
  * clears it) rather than a host unit test, per the hw_pending board-demo
  * convention (no host test, like smbus_demo).

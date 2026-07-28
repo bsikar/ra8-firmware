@@ -12,7 +12,7 @@
 # Needs Unicorn + Capstone:
 #   macOS: brew install unicorn capstone
 #   Linux: libunicorn-dev + libcapstone-dev (or a source install) -- found via
-#          pkg-config, so the board-sim smoke gate runs on the Linux CI runner.
+#          pkg-config, so the emulator smoke gate runs on the Linux CI runner.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -67,31 +67,31 @@ endif()
 add_executable(
   ra8_emulator
   src/main.c
-  src/engine/sim_console.c
-  src/engine/sim_elf.c
-  src/engine/sim_engine.c
-  src/engine/sim_memmap.c
-  src/engine/sim_mmio.c
-  src/engine/sim_mpu.c
-  src/engine/sim_prof.c
-  src/engine/sim_args.c
-  src/engine/sim_run.c
-  src/engine/sim_run_guards.c
-  src/engine/sim_run_inner.c
-  src/engine/sim_run_report.c
-  src/engine/sim_trace.c
-  src/engine/sim_tz.c
-  src/engine/sim_view.c
-  src/engine/sim_usbh_seam.c
-  src/engine/sim_cpu1.c
-  src/engine/sim_exc.c
-  src/engine/sim_exc_scs.c
-  src/engine/sim_idle.c
-  src/engine/sim_insn_seams.c
-  src/engine/sim_seam_div0.c
-  src/engine/sim_seam_longshift.c
-  src/engine/sim_seam_sd.c
-  src/engine/sim_seam_mve.c
+  src/engine/emu_console.c
+  src/engine/emu_elf.c
+  src/engine/emu_engine.c
+  src/engine/emu_memmap.c
+  src/engine/emu_mmio.c
+  src/engine/emu_mpu.c
+  src/engine/emu_prof.c
+  src/engine/emu_args.c
+  src/engine/emu_run.c
+  src/engine/emu_run_guards.c
+  src/engine/emu_run_inner.c
+  src/engine/emu_run_report.c
+  src/engine/emu_trace.c
+  src/engine/emu_tz.c
+  src/engine/emu_view.c
+  src/engine/emu_usbh_seam.c
+  src/engine/emu_cpu1.c
+  src/engine/emu_exc.c
+  src/engine/emu_exc_scs.c
+  src/engine/emu_idle.c
+  src/engine/emu_insn_seams.c
+  src/engine/emu_seam_div0.c
+  src/engine/emu_seam_longshift.c
+  src/engine/emu_seam_sd.c
+  src/engine/emu_seam_mve.c
   src/periph/board_periph.c
   ${BOARD_PERIPH_BLOCKS}
   src/usb/board_usb.c
@@ -115,7 +115,7 @@ endif()
 # The USB model includes the firmware's register/ELC headers for the exact
 # offsets + ELC event numbers it must mirror (ra8_usb_regs.h, ra8_elc_regs.h);
 # ra8_core/inc supplies ra8_attributes.h for the RA8_PRIV annotations on the
-# sim_* module-private cross-TU helpers.
+# emu_* module-private cross-TU helpers.
 target_include_directories(
   ra8_emulator
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc
@@ -126,7 +126,7 @@ target_include_directories(
 # use CMake's native find_* (works with or without pkg-config). Capstone is the
 # distro -dev package (disassembly only). Unicorn is the PINNED source build in
 # /usr/local (docs/TOOLCHAIN.md, #354): find_library(unicorn) resolves it there
-# ahead of any stale distro package, and the board-sim gates fail loudly via
+# ahead of any stale distro package, and the emulator gates fail loudly via
 # check_unicorn_version.sh if the runtime Unicorn is not the pin. A custom prefix
 # still works via CMAKE_PREFIX_PATH. Cocoa is linked on the APPLE path only.
 if(APPLE)

@@ -36,7 +36,7 @@
  *     (button A now shows its pressed face). This is the issue #145 partial-flush
  *     acceptance, driven by the concrete button widget.
  *
- * It then emits one banner so the app doubles as a board_sim gate:
+ * It then emits one banner so the app doubles as a ra8_emulator gate:
  *
  *   `widget-kit-demo: dirty0=3 crc0=<8hex> press=1 dirty1=1 crc1=<8hex> flush=512x440 hint=fast PASS`
  *

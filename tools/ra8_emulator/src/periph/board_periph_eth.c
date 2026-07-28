@@ -1,6 +1,6 @@
 /**
  * @file board_periph_eth.c
- * @brief R-Switch (ESWM / MFWD / COMA / ETHA / RMAC / GWCA) model for board_sim
+ * @brief R-Switch (ESWM / MFWD / COMA / ETHA / RMAC / GWCA) model for ra8_emulator
  *
  * @details
  * Models the RA8D2 Layer-3 Ethernet switch register cluster so a networking
@@ -615,7 +615,7 @@ static uint64_t eth_read(uc_engine* uc, uint64_t addr, unsigned size)
   }
   if (addr == (uint64_t)k_ra8_coma_base_addr + (uint64_t)k_ra8_coma_off_cabpirm) {
     /* CABPIRM.BPR self-sets after the BPIOG kick (buffer-pool init completes
-     * ~512 clocks later); modelling it lets the board bring-up's non-simulator
+     * ~512 clocks later); modelling it lets the board bring-up's non-emulator
      * BPR poll converge. */
     /* HUM Ch 31.3.2.7 "CABPIRM" p 1599 */
     const uint32_t v = eth_shadow_u32(off);

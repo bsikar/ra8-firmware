@@ -29,7 +29,7 @@
  * faithfully (``board_periph_drw.c``): with the graphics power domain on it
  * rasterizes the ORIGIN-anchored bounding box, so the register sequence paints
  * the same 16x16 green rectangle the bench does and the banner reports
- * ``match=Y`` in SIL and on hardware alike (SIM == HIL). This register/immediate
+ * ``match=Y`` in EIL and on hardware alike (EIL == HIL). This register/immediate
  * fill renders a byte-clean single rectangle; for a loop where the DRW clears
  * and repaints the framebuffer with no CPU write race, see ``drw_dlist_demo``
  * (the display-list route).
@@ -237,7 +237,7 @@ int32_t main(void)
 {
   drw_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
-   * SysTick path (board_sim does not advance DWT_CYCCNT). No NVIC sources
+   * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
   ra8_isr_globals_enable();
 

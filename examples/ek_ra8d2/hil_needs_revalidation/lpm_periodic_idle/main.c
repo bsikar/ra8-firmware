@@ -46,7 +46,7 @@
  * RTC alarm (which depends on the bare-board sub-clock crystal) this
  * wake source does not rely on the intermittent SOSC.
  *
- * @note board_sim does not model Software-Standby clock-gating: it
+ * @note ra8_emulator does not model Software-Standby clock-gating: it
  *       fast-forwards WFI to the next SysTick, so the periodic loop
  *       advances in the simulator (boot, the work banners, and PASS all
  *       print) but the genuine ULPT0 self-wake -- the LOCO-clocked

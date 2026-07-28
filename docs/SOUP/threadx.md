@@ -48,7 +48,7 @@ DO-178C Section 12.1.4 (previously developed software):
   Foundation development process, including Eclipse Quality Assurance
   reviews and the project's `SECURITY.md` disclosure policy.
 - **Vendor qualification data**: Pre-Eclipse, ThreadX held formal
-  pre-certifications for IEC 61508 SIL 4, IEC 62304 Class C, ISO 26262
+  pre-certifications for IEC 61508 EIL 4, IEC 62304 Class C, ISO 26262
   ASIL D, and EN 50128 SW-SIL 4 from SGS-TUV Saar; that evidence is
   referenced for context only and is not re-asserted by Eclipse.
 - **Bug tracker review**: Issues at

@@ -22,7 +22,7 @@
 # going red -- and media_dl could not build on Linux at all, which is the only
 # kind of runner this project has. tools/cache_bench, tools/glyph_bench and
 # tools/reader_vmem are already built by the cache-bench gate; tools/ra8_emulator
-# by the board-sim gates; tools/epub_compile, tools/mcp and tools/vela are
+# by the emulator gates; tools/epub_compile, tools/mcp and tools/vela are
 # Python and are covered by lint-py-shell.
 #
 # The gate also holds them to NASA Power of 10 Rule 10. media_dl used to

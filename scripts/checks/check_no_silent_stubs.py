@@ -30,7 +30,7 @@ gate flagged 27 candidates of which 24 were correct by design:
     ``check_stub_crypto_guarded.py`` *requires* to return a hard error;
   * callbacks matching a vtable / registry signature that genuinely have
     nothing to do (USBX activate / deactivate hooks, an empty ISR completion
-    callback, a board_sim MMIO write handler for a deliberately inert
+    callback, a ra8_emulator MMIO write handler for a deliberately inert
     peripheral);
   * MMIO read handlers that return module state rather than a constant.
 

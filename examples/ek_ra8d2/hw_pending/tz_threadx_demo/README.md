@@ -19,10 +19,10 @@ This example splits CPU0 (Cortex-M85) into a Secure and a Non-Secure project:
 ## Running in the Simulator
 
 ```sh
-make sim-tz_threadx_demo
+make emu-tz_threadx_demo
 ```
 
-This builds the secure and non-secure ELFs, then launches the `board_sim` emulator. 
+This builds the secure and non-secure ELFs, then launches the `ra8_emulator` emulator. 
 Expected terminal output will print heartbeats from both ThreadX threads:
 
 ```

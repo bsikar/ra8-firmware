@@ -19,7 +19,7 @@
 # its own LevelX NOR driver-initialise callback (an `ra8_cache_store_nor_init_fn`
 # / LevelX driver-init function). Production binds the real Octo-SPI driver; the
 # ra8_cache_store_demo example binds a RAM-backed NOR driver so the whole path
-# runs in SRAM (identical on hardware and in board_sim -- no MMIO to model).
+# runs in SRAM (identical on hardware and in ra8_emulator -- no MMIO to model).
 #
 # Apps opt in with `ra8_add_app(... USES levelx_standalone ...)`, whose per-app
 # Makefile forces `-DRA8_USE_LEVELX_STANDALONE=ON`. The two LevelX build modes

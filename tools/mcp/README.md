@@ -58,7 +58,7 @@ corrupt the protocol stream.
 | `build_app` | `make <app>` cross-compile, returns the log tail | no |
 | `run_tests` | `make test` host unit tests | no |
 | `quality_gate` | one of: format-check, tidy, ascii, version, cppcheck, check-annotations, mcdc, cite-check, ai-attribution, inclusive | no |
-| `sim_app` | boot an app's real `.elf` on the board_sim Unicorn emulator (headless smoke) | no |
+| `emu_app` | boot an app's real `.elf` on the ra8_emulator Unicorn emulator (headless smoke) | no |
 | `coverage` | `make mcdc` -- DO-178C Level B MC/DC coverage summary | no |
 | `git_status` | branch, working-tree status, recent commits, open PRs (read-only) | no |
 | `hum_citation` | emit the `/* HUM Ch X.Y "..." p NNNN */` citation skeleton | no |

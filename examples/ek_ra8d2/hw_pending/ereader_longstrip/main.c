@@ -10,7 +10,7 @@
  * the stock EK-RA8D2 1024x600 GLCDC panel: the headless sibling scrolled a
  * strip into a 160x120 scratch buffer and printed a CRC; this app binds the
  * engine's band-composite blit sink to the LIVE panel framebuffer, so
- * board_sim's `--view` window (or a `--ppm` capture) shows the reader screen.
+ * ra8_emulator's `--view` window (or a `--ppm` capture) shows the reader screen.
  *
  * Pipeline: boot clocks/MSTP/SysTick/console/LEDs, bring up external SDRAM + the
  * 1024x600 RGB565 GLCDC panel via `ra8_display_pal`
@@ -26,12 +26,12 @@
  * bounded-memory property) and `ra8_longstrip_render` composites the visible
  * range into the panel FB through `ra8_gfx_blit`.
  *
- * Navigation is discrete-tap only (the board_sim GT911 model has no swipe/drag
- * gesture, so this app needs zero board_sim change): a tap in the BOTTOM third
+ * Navigation is discrete-tap only (the ra8_emulator GT911 model has no swipe/drag
+ * gesture, so this app needs zero ra8_emulator change): a tap in the BOTTOM third
  * pages down, the TOP third pages up, the CENTRE third toggles the chrome
  * (status bar + scroll rail); SW1/SW2 page down/up as a button fallback. A
  * deterministic boot banner (band count, viewport, initial scroll, FNV-1a-32
- * over the panel FB) is emitted over SCI8 so the headless SIL / smoke gate still
+ * over the panel FB) is emitted over SCI8 so the headless EIL / smoke gate still
  * asserts a stable render, and ``g_ls_loop_ticks`` feeds the jlink liveness
  * probe.
  *
@@ -206,7 +206,7 @@ typedef enum : uint32_t {
  * @enum ls_touch_cfg_t
  * @brief GT911 touch-controller wiring (IIC_B channel 0, polled).
  *
- * @details board_sim feeds `--click` / `--touch-seq` / window taps through this
+ * @details ra8_emulator feeds `--click` / `--touch-seq` / window taps through this
  *          same `ra8_touch` -> I2C -> GT911 path unchanged.
  * @since 0.1.0
  */
@@ -908,7 +908,7 @@ static void ls_handle_tap(int32_t y)
  *
  * @details Each drained GT911 frame is treated as one discrete tap. The GT911
  *          reports a fresh "ready" frame on every poll while a contact is
- *          present (and board_sim serves one queued `--touch-seq` tap per read
+ *          present (and ra8_emulator serves one queued `--touch-seq` tap per read
  *          with no interposed release), so a rising-edge gate would collapse a
  *          whole tap sequence into a single action; acting per delivered frame
  *          makes each queued tap page independently. There is no swipe/drag

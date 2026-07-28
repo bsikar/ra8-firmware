@@ -35,7 +35,7 @@ Together with the EPUB cover-extraction (`ereader_cover`) and SVG vector
 
 ## Validation
 
-Deterministic, so the board_sim CRC gate is the regression net (the same way
+Deterministic, so the ra8_emulator CRC gate is the regression net (the same way
 `ereader_image` / `ereader_jpeg` gate). Run on `tools/ra8_emulator` (the
 firmware boots, both decode + scale + hash passes run on the emulated M85, no
 fault):

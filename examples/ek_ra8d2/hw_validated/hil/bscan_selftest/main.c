@@ -23,7 +23,7 @@
  * asserting it here is the firmware's authoritative cross-check. Every
  * sub-check (positive and negative API paths) must pass or the app halts
  * on a FAIL banner before reaching the PASS line, so the gate is exact.
- * The banner is identical on host, board_sim, and silicon.
+ * The banner is identical on host, ra8_emulator, and silicon.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -71,7 +71,7 @@ static void bs_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void bs_panic_halt(const uint8_t* msg, uint32_t len)
 {
   bs_print(msg, len);

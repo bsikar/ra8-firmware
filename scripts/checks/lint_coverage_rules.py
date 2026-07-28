@@ -304,7 +304,7 @@ KNOWN_GAPS: tuple[Gap, ...] = (
         "objc-needs-macos-runner",
         2,
         "#436",
-        "the two Objective-C host views (board_sim, ra8_viewer) are AppKit / "
+        "the two Objective-C host views (ra8_emulator, ra8_viewer) are AppKit / "
         "CoreGraphics code. clang-tidy can only parse them against the macOS "
         "SDK, so clang_tidy.sh claims them on Darwin and not on Linux -- where "
         "CI runs. The C++ half of #370 is fully closed: every .cpp/.cc finding "

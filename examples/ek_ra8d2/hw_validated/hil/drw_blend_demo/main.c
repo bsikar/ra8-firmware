@@ -25,7 +25,7 @@
  * The rendered framebuffer is byte-deterministic, so its hash is constant on
  * every boot. The app prints ``"drw: blit+blend crc=<8hex> PASS"`` over the
  * J-Link OB CDC channel once a second; the headless gate
- * (``board_sim_smoke.sh`` / ``hil.conf`` ``uart_scrape``) asserts that banner.
+ * (``ra8_emulator_smoke.sh`` / ``hil.conf`` ``uart_scrape``) asserts that banner.
  * No display panel is touched -- this is a pure compute + memory test.
  *
  * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the DRW engine
@@ -34,7 +34,7 @@
  * reads idle so ``ra8_drw_wait_idle`` returns, HWREVISION reads 0, and the
  * ORIGIN render trigger synthesises no pixel. The framebuffer therefore stays
  * zero, so the FNV-1a-32 hash is ``0x76EFDDC5`` -- the SAME value a real board
- * produces from its all-zero framebuffer. SIM == HIL: the SIL gate and the
+ * produces from its all-zero framebuffer. EIL == HIL: the EIL gate and the
  * bench print the identical banner. This app lives in ``hw_validated/hil/``
  * because that zero-framebuffer result is confirmed on silicon; the demo will
  * only report a genuinely composited CRC once #247 brings the engine to life.
@@ -442,7 +442,7 @@ int32_t main(void)
 {
   drw_blend_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
-   * SysTick path (board_sim does not advance DWT_CYCCNT). No NVIC sources
+   * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
   ra8_isr_globals_enable();
 

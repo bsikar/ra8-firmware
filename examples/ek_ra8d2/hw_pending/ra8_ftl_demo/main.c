@@ -32,7 +32,7 @@
  *      erase value), so ::ra8_ftl_checkpoint_load reloads the checkpoint from
  *      MRAM and the data -- and the exact physical mapping -- reappears.
  *
- * board_sim models the MACI program/erase sequence (board_periph_mram.c), so
+ * ra8_emulator models the MACI program/erase sequence (board_periph_mram.c), so
  * the whole run is observable headless over the SCI8 console. A successful run
  * ends with:
  * `ra8_ftl_demo: wear-level + power-cycle-survive on extra MRAM PASS`.
@@ -575,7 +575,7 @@ static ra8_err_t demo_run(void)
  * @retval (none) The function does not return (final `while (true)`).
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
- * @pre The extra-MRAM region is present (modelled in board_sim, real on silicon).
+ * @pre The extra-MRAM region is present (modelled in ra8_emulator, real on silicon).
  * @post Exactly one PASS or FAIL verdict line has been queued on SCI8.
  * @post Control parks in an infinite loop; the function never returns.
  *

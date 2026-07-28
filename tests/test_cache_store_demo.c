@@ -5,7 +5,7 @@
  * @details
  * Drives the exact `cache_store_demo_run` core the ARM example runs, bound to the
  * same RAM-backed LevelX NOR driver (`lx_nor_ram_init`) the example uses on the
- * target -- so the host test and the board_sim gate exercise byte-identical
+ * target -- so the host test and the ra8_emulator gate exercise byte-identical
  * logic. Asserts the end-to-end verdict (mount, put/get, pin, forced eviction,
  * reuse, checkpoint-close, remount-persistence), the survivor count, and the
  * NULL-argument guards. LevelX runs standalone (`LX_STANDALONE_ENABLE`).

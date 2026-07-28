@@ -14,7 +14,7 @@
  * line -- here `ra8_io_blockdev_ram_init` over an in-SRAM buffer (Phase 1, #156)
  * -- plus its own PASS banners.
  *
- * The board_sim emulator captures the SCI8 console, so the PASS/FAIL line and
+ * The ra8_emulator captures the SCI8 console, so the PASS/FAIL line and
  * the byte counts are observable headlessly: a successful run prints
  * `ra8_io_demo: wrote/read 128 bytes ram:/HELLO.TXT PASS` followed by
  * `ra8_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS`.

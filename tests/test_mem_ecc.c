@@ -11,7 +11,7 @@
  * RAM-backed host register file has no ECC engine, so each case stages the
  * exact ``SRAMESR`` latch the silicon engine would set before the call; the
  * self-test's real read-and-decode then proves the per-slot fidelity the
- * on-device board_sim model approximates (it latches both slots) and the
+ * on-device ra8_emulator model approximates (it latches both slots) and the
  * demo's globals report.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -85,7 +85,7 @@ static void test_mem_ecc_1bit_decodes_correctable(void)
    * sim models registers as plain RAM and does not replay the SRAMESCLR ->
    * SRAMESR clear linkage, so assert the clear call succeeds (as test_ra8_sram
    * does) rather than re-reading a zeroed latch -- the latch-clear itself is
-   * exercised on silicon (and in the board_sim SRAMESR model). */
+   * exercised on silicon (and in the ra8_emulator SRAMESR model). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_clear_status(st.raw_esr));
   TEST_END("mem_ecc: 1-bit injection decodes as correctable");
 }
@@ -125,7 +125,7 @@ static void test_mem_ecc_2bit_decodes_uncorrectable(void)
 
   /* See the 1-bit test: the host MMIO sim does not replay the SRAMESCLR ->
    * SRAMESR clear linkage, so assert the clear call succeeds rather than the
-   * re-read; the latch-clear is exercised on silicon + the board_sim model. */
+   * re-read; the latch-clear is exercised on silicon + the ra8_emulator model. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_clear_status(st.raw_esr));
   TEST_END("mem_ecc: 2-bit injection decodes as uncorrectable");
 }

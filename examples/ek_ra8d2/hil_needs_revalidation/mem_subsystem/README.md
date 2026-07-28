@@ -26,7 +26,7 @@ mem: slab_free=8 arena_free=4096 tile_evict=5 vmem_crc=D1E67963 PASS
 
 logged over SCI8 (115200 8N1, J-Link OB CDC). Every value is computed by the
 deterministic `ra8_mem` library with **no MMIO**, so the banner is byte-identical
-on the host unit test, board_sim, and silicon. Any layer that misbehaves prints
+on the host unit test, ra8_emulator, and silicon. Any layer that misbehaves prints
 `mem: FAIL <layer>` and traps on a `BKPT` before `PASS`; `hil.conf`'s negative
 regex catches that fast.
 
@@ -34,20 +34,20 @@ regex catches that fast.
 make mem_subsystem                       # cross-compile -> build/mem_subsystem.elf
 tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/build/mem_subsystem.elf
-bash scripts/sim/sil_all.sh --only mem_subsystem   # headless board_sim gate
+bash scripts/emu/eil_all.sh --only mem_subsystem   # headless ra8_emulator gate
 make hil-flash APP=mem_subsystem         # flash the Pi-attached board + scrape UART
 ```
 
-## Status: SIL-validated (board_sim)
+## Status: EIL-validated (ra8_emulator)
 
-`scripts/sim/sil_all.sh --only mem_subsystem` passes: board_sim boots the ELF headless
+`scripts/emu/eil_all.sh --only mem_subsystem` passes: ra8_emulator boots the ELF headless
 and scrapes the exact banner above. Because every layer is pure computation with
-no register access, board_sim (Unicorn executing the real Cortex-M85 instruction
+no register access, ra8_emulator (Unicorn executing the real Cortex-M85 instruction
 stream) reproduces the silicon result exactly -- the only modelled peripherals are
 the CGC / MSTP / SysTick bring-up and the SCI8 console, the same path the
 `epub_parse` sibling already validates. The host unit test
 `tests/test_app_mem_subsystem.c` asserts the same counters and the
-`vmem_crc=D1E67963` fingerprint, so the gate is SIM == HIL by construction.
+`vmem_crc=D1E67963` fingerprint, so the gate is EIL == HIL by construction.
 
 There is no external hardware and no card -- it needs only a stock EVM UART -- so
 the bench run is a formality once a board is free.

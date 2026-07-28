@@ -87,7 +87,7 @@
   changed_when: hil_bench_lfs_pull_result.rc == 0
   when: hil_bench_lfs_pull | bool
 
-- name: Health check -- the EK-RA8D2 must be reachable over J-Link (SIM==HIL ground truth)
+- name: Health check -- the EK-RA8D2 must be reachable over J-Link (EIL==HIL ground truth)
   ansible.builtin.shell:
     cmd: >-
       printf 'si 1\nspeed {{ hil_bench_jlink_speed }}\nr\nh\nq\n' > /tmp/hil_bench_ping.jlink &&

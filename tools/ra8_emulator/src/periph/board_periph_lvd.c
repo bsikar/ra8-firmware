@@ -1,6 +1,6 @@
 /**
  * @file board_periph_lvd.c
- * @brief LVD / PVD voltage-monitor status model for board_sim
+ * @brief LVD / PVD voltage-monitor status model for ra8_emulator
  *
  * @details
  * Models the RA8D2 low-voltage detection status registers (ra8_lvd_regs.h,

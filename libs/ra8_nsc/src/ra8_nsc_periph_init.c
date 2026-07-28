@@ -30,7 +30,7 @@
 
 #ifdef RA8_APP_UART_LOG
 /* The e-reader (src/app) defines RA8_APP_UART_LOG to mirror ra8_log onto the SCI8
- * J-Link console, so the logs appear on the UART (board_sim's on-screen console
+ * J-Link console, so the logs appear on the UART (ra8_emulator's on-screen console
  * + a real serial terminal) and not only on the ITM/SWO trace. Gated so other
  * ra8_nsc consumers do not pick up a ra8_board dependency. */
 #include "ra8_board_ek_ra8d2.h"
@@ -55,7 +55,7 @@ typedef enum : uint32_t {
  *
  * @details Installed via ::ra8_log_set_byte_sink, so every byte ra8_log would have
  *          written to the ITM stimulus port is instead transmitted on the SCI8
- *          console. That makes log output visible on the UART -- board_sim's
+ *          console. That makes log output visible on the UART -- ra8_emulator's
  *          on-screen console panel and a real serial terminal -- not only on the
  *          SWO/ITM trace.
  *
@@ -147,7 +147,7 @@ RA8_NSC_VENEER ra8_err_t ra8_nsc_periph_init(void)
 
 #ifdef RA8_APP_UART_LOG
   /* Bring up the SCI8 console and redirect ra8_log to it so the logs land on the
-   * UART (board_sim console + serial), not only ITM. ra8_cgc_init already ran in
+   * UART (ra8_emulator console + serial), not only ITM. ra8_cgc_init already ran in
    * SystemInit. Best-effort: a console bring-up failure must not fail the
    * substrate, so its result is dropped and ra8_log keeps its ITM default. */
   if (ra8_board_uart_console_init((uint32_t)k_ra8_nsc_uart_log_baud) == k_ra8_ok) {

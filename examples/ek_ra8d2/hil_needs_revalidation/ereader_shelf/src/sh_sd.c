@@ -12,7 +12,7 @@
  * chunks on demand -- the whole container is never resident. `.EPB` books use
  * the same discipline (#230): ::sh_sd_open_epub holds the source file open and
  * `ra8_epub` seeks + reads each ZIP entry on demand, so no whole-file buffer
- * exists for EPUBs either. Mounting is best-effort: with no card (board_sim
+ * exists for EPUBs either. Mounting is best-effort: with no card (ra8_emulator
  * run without `--sd`) ra8_sdmmc_spi_init() times out and the shelf stays
  * baked-only.
  *

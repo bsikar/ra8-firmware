@@ -36,16 +36,16 @@ make smbus_demo
 scripts/hil/run_local.sh smbus_demo      # flash + scrape the banner
 ```
 
-## Result (validated 2026-06-19, board_sim)
+## Result (validated 2026-06-19, ra8_emulator)
 
 ```
-$ board_sim smbus_demo.elf
+$ ra8_emulator smbus_demo.elf
 [uart] SCI8: smbus-demo: boot
 [uart] SCI8: smbus: whoami=6C sendrecv=6C PASS
   I3C/I2C LSM6DSO: 2 register read(s) answered (WHO_AM_I + samples)
 ```
 
-`scripts/sim/smoke.sh smbus_demo` PASS -- board_sim models the LSM6DSO on
+`scripts/emu/smoke.sh smbus_demo` PASS -- ra8_emulator models the LSM6DSO on
 the modelled IIC_B bus, so the SMBus transactions return through the genuine
 `ra8_smbus -> ra8_i3c -> GT911/IMU` I2C path (no stub) and the banner is
 deterministic. The SMBus PEC CRC-8 helper is covered on the host by

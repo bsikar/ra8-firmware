@@ -37,10 +37,10 @@
  *
  * ## Verification
  *
- * - **board_sim (SIL, headless):** the emulated chapter-9 host walks the
+ * - **ra8_emulator (EIL, headless):** the emulated chapter-9 host walks the
  *   enumeration script against the polled responder; the run reaches
  *   ``device CONFIGURED``. Gated by
- *   ``scripts/sim/smoke.sh usb_printer_vendor``.
+ *   ``scripts/emu/smoke.sh usb_printer_vendor``.
  * - **Hardware (TODO):** the print-job -> UART echo needs a real host print
  *   subsystem (CUPS / usblp) driving the printer interface, and the vendor
  *   bulk loopback needs a host-side libusb script; both are marked
@@ -373,7 +373,7 @@ static void demo_handle_dvst(void)
  * @brief Drain a bulk-OUT print job and echo it to the UART console.
  *
  * @details TODO(host-side print job): a physical host print subsystem
- * (CUPS / usblp) must send the job; board_sim reaches CONFIGURED but does not
+ * (CUPS / usblp) must send the job; ra8_emulator reaches CONFIGURED but does not
  * drive bulk traffic, so this path runs only on hardware.
  *
  * @pre ``ra8_usb_pprn_init`` succeeded.

@@ -142,7 +142,7 @@ draw_io_block(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const
  * @pre @p count is the live channel count.
  * @post The result is >= 1 (never zero -- safe as a divisor).
  * @post The result is <= max(1, @p count).
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static uint32_t console_tabs_per_row(int32_t panel_w, uint32_t count)
@@ -175,7 +175,7 @@ static uint32_t console_tabs_per_row(int32_t panel_w, uint32_t count)
  * @pre @p count is the live channel count.
  * @post The result is 0 only when @p count is 0.
  * @post rows * tabs-per-row >= @p count (every cell has a slot).
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static uint32_t console_tab_row_count(int32_t panel_w, uint32_t count)
@@ -206,7 +206,7 @@ static uint32_t console_tab_row_count(int32_t panel_w, uint32_t count)
  * @pre @p r is a non-NULL array of at least 4 int32_t.
  * @post @p r[0]/r[1] are within the console panel band.
  * @post @p r[2]/r[3] (w/h) are >= 0 (clamped, never negative).
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void
@@ -252,7 +252,7 @@ console_tab_rect(int32_t panel_x, int32_t panel_w, uint32_t idx, uint32_t count,
  * @pre @p out points at a @p w by @p h composite buffer.
  * @post Up to ::k_overlay_console_tabs_max tab cells are painted.
  * @post The console body area below the bar is left untouched.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void draw_console_tabs(uint16_t*             out,
@@ -613,7 +613,7 @@ draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const boar
             (int32_t)k_ovl_sidebar_w - 3,
             (int32_t)k_title_bar_h,
             (uint16_t)k_ovl_bg_alt);
-  draw_text(out, w, h, x, y, "EK-RA8D2  SIMULATOR", (uint16_t)k_ovl_accent, 2);
+  draw_text(out, w, h, x, y, "EK-RA8D2  EMULATOR", (uint16_t)k_ovl_accent, 2);
   y = (int32_t)k_title_bar_h + (int32_t)k_section_gap;
   draw_text(out,
             w,

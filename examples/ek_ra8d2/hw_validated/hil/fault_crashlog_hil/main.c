@@ -10,25 +10,25 @@
  * `.noinit` record the reset handler does not zero, counts crash-reboot
  * cycles, and latches a safe-mode request once the count crosses a
  * threshold. This app drives that state machine end to end so it is
- * provable BOTH headlessly (board_sim) and on the bench:
+ * provable BOTH headlessly (ra8_emulator) and on the bench:
  *
  * 1. Bring up clocks + the SCI8 J-Link VCOM console and route `ra8_log`
  *    there so a real fault dump would be visible.
  * 2. `ra8_crashlog_install()` -- arm the exception-persist hook.
  * 3. Peek the record. On a warm/watchdog reset a prior record survives and
- *    its `exc pc boot_loops` print; a cold boot (or the first board_sim
+ *    its `exc pc boot_loops` print; a cold boot (or the first ra8_emulator
  *    run) reads empty. If the loop counter crossed the threshold,
  *    `safe_mode_requested()` latches: print SAFE-MODE, `claim()` to reset
  *    the guard, and idle instead of running the risky path.
  * 4. In-process write+decode proof: synthesise a decoded snapshot and push
  *    it through the installed write path (`ra8_crashlog_record_fault`), then
- *    peek it back. This is the ONLY leg board_sim can show -- it cold-loads
+ *    peek it back. This is the ONLY leg ra8_emulator can show -- it cold-loads
  *    on reset (no warm-reset RAM survival) and its Unicorn core cannot take
  *    a real CPU fault -- so it stands in for the cross-reset write here. The
  *    record is left in place so a bench warm reset shows it survive and the
  *    `boot_loops` count climb toward safe mode.
  *
- * @note **Headless vs bench.** board_sim proves boot bring-up, the peek/
+ * @note **Headless vs bench.** ra8_emulator proves boot bring-up, the peek/
  * claim/safe-mode logic, and the synthesised write+read-back. The genuine
  * fault->hook->record path is proven in-process by the host unit test
  * (tests/test_ra8_crashlog.c, which drives `ra8_exception_report`); the real
@@ -184,7 +184,7 @@ static void fc_log_sink(void* ctx, uint8_t byte)
 }
 
 /**
- * @brief Print the fail banner and trap (board_sim halts on the BKPT).
+ * @brief Print the fail banner and trap (ra8_emulator halts on the BKPT).
  *
  * @param[in] msg Banner bytes.
  * @param[in] len Banner length.
@@ -304,7 +304,7 @@ int32_t main(void)
     fc_print(k_msg_none, (uint32_t)sizeof(k_msg_none) - 1U);
   }
 
-  /* In-process write+decode proof (the only leg board_sim can show): push
+  /* In-process write+decode proof (the only leg ra8_emulator can show): push
    * a synthesised decoded snapshot through the installed write path, then
    * read it back. Left in place so a bench warm reset shows survival. */
   ra8_exception_last_t synth = {};

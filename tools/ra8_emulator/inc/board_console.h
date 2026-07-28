@@ -87,7 +87,7 @@ typedef enum : uint32_t {
  * @pre The returned pointer is read-only and outlives the call (static storage).
  * @post The returned pointer is never NULL.
  * @post The store is left unchanged (pure query).
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 const char* board_console_name(board_console_ch_t ch);
@@ -108,7 +108,7 @@ const char* board_console_name(board_console_ch_t ch);
  * @pre @p line is a valid NUL-terminated string.
  * @post On a valid call the channel ring and the ALL ring each gain one line.
  * @post Invalid @p ch / NULL @p line leave every ring unchanged.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 void board_console_push(board_console_ch_t ch, const char* line);
@@ -126,7 +126,7 @@ void board_console_push(board_console_ch_t ch, const char* line);
  * @pre The store has been zero-initialised (static lifetime guarantees it).
  * @post The store is left unchanged (pure query).
  * @post The result never exceeds ::k_board_console_ring_depth.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 uint32_t board_console_count(board_console_ch_t ch);
@@ -145,7 +145,7 @@ uint32_t board_console_count(board_console_ch_t ch);
  * @pre The store has been zero-initialised (static lifetime guarantees it).
  * @post The store is left unchanged (pure query).
  * @post The result is monotonic non-decreasing between resets.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 uint32_t board_console_total(board_console_ch_t ch);
@@ -165,7 +165,7 @@ uint32_t board_console_total(board_console_ch_t ch);
  * @pre The returned pointer is used before the next ::board_console_push.
  * @post The store is left unchanged (pure query).
  * @post A non-NULL result points into the channel's static ring storage.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 const char* board_console_line(board_console_ch_t ch, uint32_t back);
@@ -182,7 +182,7 @@ const char* board_console_line(board_console_ch_t ch, uint32_t back);
  * @pre The store has been zero-initialised at least once (static lifetime).
  * @post Every channel reports ::board_console_count and ::board_console_total 0.
  * @post Subsequent ::board_console_line calls return NULL until a new push.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 void board_console_reset(void);

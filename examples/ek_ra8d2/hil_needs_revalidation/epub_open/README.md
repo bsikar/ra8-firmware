@@ -27,7 +27,7 @@ allocation reaches the trapped firmware heap.
 
 ## The gate is memprobe, not the console
 
-An SD app drives the SCI0 Simple-SPI bus, and board_sim folds every SCI channel
+An SD app drives the SCI0 Simple-SPI bus, and ra8_emulator folds every SCI channel
 into one console line, so on the simulator the SCI8 banner is interleaved with
 SPI traffic. The sibling SD HIL apps (`sd_font_render`, `fs_format_mount`) gate
 on SWD globals for the same reason, and so does this one:
@@ -53,7 +53,7 @@ make -C examples/epub_open flash       # flash via on-board J-Link OB
 
 ## Run on the M85 simulator (no hardware)
 
-board_sim has a writable SD model; `--dump-sym` reads result globals after the
+ra8_emulator has a writable SD model; `--dump-sym` reads result globals after the
 run (the headless equivalent of a J-Link memprobe):
 
 ```sh
@@ -94,7 +94,7 @@ already-present path.
 SCI8 async UART console (TXD = PD02, RXD = PD03, 115200-8N1) for the banner;
 Pmod2 / J25 SCI0 Simple-SPI for the microSD via `ra8_sdmmc_spi`.
 
-Validated on board_sim (the Unicorn-based M85 simulator): across the blank
+Validated on ra8_emulator (the Unicorn-based M85 simulator): across the blank
 (provision) and persisted (already-present) card paths and repeated runs,
 `g_eoh_heartbeat` advances with `g_eoh_err == 0`, `g_eoh_chapters == 2`, and
 `g_eoh_crc == 0xCF23AEEE`. Real-EK-RA8D2 bench confirmation (Pmod2 microSD) is

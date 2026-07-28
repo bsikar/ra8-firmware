@@ -19,7 +19,7 @@ The gate (`hil.conf`, `uart_scrape`) asserts that line. Any drift in the column
 sizing, cell flow, or row stacking changes the hash.
 
 Ahem has fixed glyph metrics, so the grid is deterministic: the banner is
-identical on host, `board_sim`, and silicon -- a sim/silicon equivalence check.
+identical on host, `ra8_emulator`, and silicon -- an emulator/silicon equivalence check.
 
 ## Build + run
 
@@ -28,18 +28,18 @@ make ereader_table
 scripts/hil/run_local.sh ereader_table      # flash + scrape the banner
 ```
 
-## Result (validated 2026-06-18, board_sim + host)
+## Result (validated 2026-06-18, ra8_emulator + host)
 
 ```
 ereader-table-hil: boot
 ereader-table-hil: glyphs=172 geom=E3181EE6
 ```
 
-`scripts/sim/smoke.sh ereader_table` PASS; the identical host layout
+`scripts/emu/smoke.sh ereader_table` PASS; the identical host layout
 produces the same `geom=E3181EE6` -- byte-for-byte agreement.
 
 ## Updating the baseline
 
 After an **intentional** change to the baked table or the grid math, recompute
-the hash (run under `board_sim` or on the bench) and update `HIL_EXPECT` in
+the hash (run under `ra8_emulator` or on the bench) and update `HIL_EXPECT` in
 `hil.conf`. The on-device banner is the source of truth.

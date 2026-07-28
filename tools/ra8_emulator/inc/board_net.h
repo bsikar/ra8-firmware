@@ -1,9 +1,9 @@
 /**
  * @file board_net.h
- * @brief Virtual network peer for board_sim -- talks TCP/IP to the firmware
+ * @brief Virtual network peer for ra8_emulator -- talks TCP/IP to the firmware
  *
  * @details
- * board_sim shims the firmware's ra8_eth frame API (ra8_eth_write / ra8_eth_read /
+ * ra8_emulator shims the firmware's ra8_eth frame API (ra8_eth_write / ra8_eth_read /
  * ra8_eth_link_status -- the same seam the NetX Duo driver uses) and routes the
  * Ethernet frames here. This module is the "other host on the wire": a tiny
  * userspace TCP/IP stack (Ethernet + ARP + IPv4 + ICMP + TCP) that resolves the

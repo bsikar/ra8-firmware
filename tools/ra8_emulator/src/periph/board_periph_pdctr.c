@@ -16,7 +16,7 @@
  *
  * Modelling this is what closes issue #247. The D/AVE 2D engine had never
  * rasterised a pixel on real silicon because nothing ever cleared @c PDDE;
- * board_sim, which modelled no power domain at all, happily let the firmware
+ * ra8_emulator, which modelled no power domain at all, happily let the firmware
  * drive a DRW that on the bench was simply switched off. Bench evidence on an
  * EK-RA8D2: with @c PDCTRGD at its @c 0x81 reset value the DRW @c HWREVISION
  * register reads @c 0x00000000; after clearing @c PDDE (with PRCR.PRC1

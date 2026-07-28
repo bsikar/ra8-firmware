@@ -10,8 +10,8 @@
  * sample plus its threshold into a 4-bit level. Because the threshold depends on
  * no neighbour state, a large image split into tiles dithers byte-for-byte the
  * same as the whole image, and the transform is pure integer arithmetic over a
- * `const` table -- host, board_sim, and silicon emit identical bytes (the
- * SIM==HIL rule). The single-pixel (::ra8_gfx_dither_gray4_level), bulk-pack
+ * `const` table -- host, ra8_emulator, and silicon emit identical bytes (the
+ * EIL==HIL rule). The single-pixel (::ra8_gfx_dither_gray4_level), bulk-pack
  * (::internal_pack_tile) and render-blit (::ra8_gfx_blit_gray8_dither) paths each
  * compose those primitives directly, so the hot loops carry no per-pixel call
  * through the public API. Scalar-first; a Helium/MVE lane-wise pass can replace

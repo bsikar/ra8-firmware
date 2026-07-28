@@ -1,6 +1,6 @@
 /**
  * @file board_periph_mram.c
- * @brief Extra-MRAM (data-flash) MACI program/erase model for board_sim.
+ * @brief Extra-MRAM (data-flash) MACI program/erase model for ra8_emulator.
  *
  * @details
  * Models the RA8D2 MRMS controller (ra8_flash_regs.h, ra8_flash.c) just enough
@@ -16,23 +16,23 @@
  *      trailer that starts processing). The opener is 0xE8 (Program command, HUM
  *      Ch 59.7.4.5 p 3591) for the extra-MRAM DATA area; the 0x40 Configuration
  *      Set opener (HUM Ch 59.7.4.8 p 3594, used only for the OFS config area) is
- *      also accepted so an OFS config-set round-trips in sim too.
+ *      also accepted so an OFS config-set round-trips in the emulator too.
  *   4. MSTATR  (0x4013E080) read       -> driver spins on MRDY (0x8000) and then
  *      checks the error mask (0x00B85020).
  *   5. MENTRYR = 0xAA00                -> leave program mode.
  *
  * On the 0xD0 trailer this model writes the accumulated halfword payload to the
  * latched MSADDR via @c uc_mem_write. The option-setting / OTP window is
- * host-backed by sim_memmap (it is readable on silicon, and the boot-ROM option
+ * host-backed by emu_memmap (it is readable on silicon, and the boot-ROM option
  * words live there), so an accepted Program at an in-window MSADDR round-trips
  * on the firmware's read-back. The model is deliberately *faithful* about the
  * command shape: one command carries eight halfwords (16 bytes), so a caller
  * that programs more than 16 bytes per `ra8_flash_extra_mram_write` call issues
  * one command per unit. What it does NOT model is the one-time-programmable
- * semantics -- a real OTP cell cannot be erased and re-programmed, so a sim pass
+ * semantics -- a real OTP cell cannot be erased and re-programmed, so an emulator pass
  * for an erase/rewrite demo is optimistic pending the #315 bench answer. Before
  * the extra-MRAM opcode fix, this model accepted ONLY the 0x40 opener, which is
- * why board_sim round-tripped the firmware's (wrong) config-set write and masked
+ * why ra8_emulator round-tripped the firmware's (wrong) config-set write and masked
  * the on-silicon blank-MRAM ECC fault.
  *
  * @par There is no data-flash at 0x2700_0000 (#170)
@@ -258,7 +258,7 @@ static void maci_commit(uc_engine* uc)
    * RA8D2 memory map -- is an illegal command on silicon. This model used to
    * write it straight through to mapped RAM, which let ra8_io_mram_demo round
    * trip in the emulator while the bench returned Error=516 (#170). Reject it
-   * here so the sim reports the bench result. */
+   * here so the emulator reports the bench result. */
   if (s_mram.msaddr < (uint32_t)k_mram_pgm_lo) {
     maci_reject();
     return;

@@ -1,6 +1,6 @@
 /**
  * @file board_periph_sd.c
- * @brief SD-card-over-SPI device model for board_sim (attached to SPI_B).
+ * @brief SD-card-over-SPI device model for ra8_emulator (attached to SPI_B).
  *
  * @details
  * Implements a high-capacity (SDHC) SD card running in SPI mode, backed by a
@@ -54,7 +54,7 @@ typedef enum : uint32_t {
  * @brief Count of SD-over-SPI data blocks staged for read this run.
  * @details Drives the console SD tab's read-tap rate limit so a book-sized
  *          multi-block read does not flood the ring (one line per N blocks).
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static uint32_t s_sd_spi_block_reads;
@@ -402,7 +402,7 @@ static void sd_write_crc(board_sd_state_t* c)
  * bytes into the backing image, swallow the 2 CRC bytes, then stage the
  * data-response token (0x05 accepted) + one busy byte + done. A CMD25 multi-write
  * advances to the next block and re-arms the token wait; the stop-tran token
- * (0xFD) ends it. board_sim has no real program delay, so a single busy byte
+ * (0xFD) ends it. ra8_emulator has no real program delay, so a single busy byte
  * suffices.
  *
  * @param[in,out] c  Card state (must be mid-write).

@@ -67,7 +67,7 @@ cxx_pass_args() {
 # ---------------------------------------------------------------------------
 # Arguments for the Objective-C pass (macOS only -- see collect_source_files).
 #
-# The two .m files are the Cocoa window backends for board_sim and ra8_viewer.
+# The two .m files are the Cocoa window backends for ra8_emulator and ra8_viewer.
 # They are compiled by their tools' own build files, so like the tools/ pass
 # they get a fixed compile command rather than a database entry: the tool
 # include directories, and -xobjective-c so clang parses the language it is.
@@ -205,13 +205,13 @@ firmware_pass_args() {
 # Arguments for the tools/ pass.
 #
 # The host dev tools are built by their own per-tool build files -- two CMake
-# projects (board_sim, mkbookimg/mkfontimg) and three Makefiles (cache_bench,
+# projects (ra8_emulator, mkbookimg/mkfontimg) and three Makefiles (cache_bench,
 # glyph_bench, reader_vmem) -- and none of them feed the host test compile
 # database. Rather than configure five separate build trees just to obtain a
 # compile command, hand clang-tidy a fixed one: the caller's include union
-# (every -I the firmware build uses, so the ra8_*_regs.h headers board_sim
+# (every -I the firmware build uses, so the ra8_*_regs.h headers ra8_emulator
 # consumes resolve), plus each tool's own source and inc directory, plus the
-# Unicorn/Capstone headers board_sim needs, discovered through pkg-config.
+# Unicorn/Capstone headers ra8_emulator needs, discovered through pkg-config.
 #
 # Nothing here is a per-file allowlist: the directories are globbed, so a new
 # tool or a new tools/<tool>/inc is picked up with no edit. A tool that grows
@@ -249,7 +249,7 @@ tools_pass_args() {
   # behind it. Without it here the TU degrades to clang-diagnostic-error and
   # is never actually linted.
   #
-  # CMAKE_C_EXTENSIONS is ON for every tool (board_sim) or -std=gnu23 is set
+  # CMAKE_C_EXTENSIONS is ON for every tool (ra8_emulator) or -std=gnu23 is set
   # explicitly (the Makefile tools), so lint them as GNU C23 too.
   printf '%s\n' '--' 'cc' '-std=gnu2x' '-D_GNU_SOURCE'
 }

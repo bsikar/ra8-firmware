@@ -26,7 +26,7 @@
  *      minimap, and present.
  *
  * A deterministic banner is printed once at boot over the SCI console so the
- * headless SIL gate still asserts a fixed render:
+ * headless EIL gate still asserts a fixed render:
  *
  *   ``ereader-manga: page 1536x2048 tiles=48 atlas=<N> view=0,0 zoom=1:1
  *   crc=<8hex> ok``
@@ -276,7 +276,7 @@ static void mg_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print a fail banner, then trap (board_sim halts on the BKPT). */
+/** @brief Print a fail banner, then trap (ra8_emulator halts on the BKPT). */
 static void mg_panic_halt(const uint8_t* msg, uint32_t len)
 {
   mg_print(msg, len);
@@ -432,7 +432,7 @@ static bool mg_build_atlas(void)
      * real decode-on-demand work (one bounded inflate into the pinned cell) --
      * the streaming-larger-than-RAM property the tile cache exists for. On the
      * 1 GHz M85 a 64 KiB-tile inflate is microseconds; the cost only shows under
-     * the board_sim CPU emulator, where boot still completes well inside budget. */
+     * the ra8_emulator CPU emulator, where boot still completes well inside budget. */
     .codec      = (uint8_t)k_ra8_jof_codec_deflate,
     .max_width  = (uint16_t)k_mg_cap_edge,
     .max_height = (uint16_t)k_mg_cap_edge,

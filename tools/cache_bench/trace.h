@@ -7,7 +7,7 @@
  * random TOC/bookmark jumps, back-and-forth re-reading (locality), image-tile
  * scroll, a hot-set-plus-scan scan-resistance case, a GB-class "huge book" whose
  * ~7 GiB footprint dwarfs every swept cache, and a mixed realistic session -- and
- * loads real traces captured from the reader (board_sim or the EK-RA8D2 over
+ * loads real traces captured from the reader (ra8_emulator or the EK-RA8D2 over
  * UART) as `<object> <page>` lines.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

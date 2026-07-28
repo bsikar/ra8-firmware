@@ -20,7 +20,7 @@ Console output per cycle:
     vref: raw=2730
     diag: selftest PASS
 
-hw_pending: `board_sim` models neither the SAR self-test (ADEXDR /
+hw_pending: `ra8_emulator` models neither the SAR self-test (ADEXDR /
 ADSGDCR.DIAGVAL) nor the temperature-sensor path (TSCR), so the demo is
 bench-only. Needs a real EK-RA8D2 with the J-Link OB CDC console.
 Promote to `hw_validated/hil/` once confirmed on silicon.

@@ -1,6 +1,6 @@
 /**
  * @file board_periph_sd.h
- * @brief SD-card-over-SPI device model for board_sim (attached to SPI_B).
+ * @brief SD-card-over-SPI device model for ra8_emulator (attached to SPI_B).
  *
  * @details
  * Models a high-capacity (SDHC) SD card running in SPI mode, backed by a
@@ -34,7 +34,7 @@
  * @return true if the image loaded and the card is armed; false on I/O error.
  * @retval false The file could not be opened or read.
  * @pre `path` is non-null.
- * @pre Called once during board_sim start-up (single-threaded).
+ * @pre Called once during ra8_emulator start-up (single-threaded).
  * @post On success @ref board_sd_attached returns true.
  * @post On failure no card is attached.
  * @note Not thread-safe.
@@ -69,7 +69,7 @@ bool board_sd_attached(void);
  *
  * @return true on success (a blank card is attached and serving).
  * @retval false Size too small or allocation failed.
- * @pre Called once during board_sim start-up (single-threaded).
+ * @pre Called once during ra8_emulator start-up (single-threaded).
  * @post On success @ref board_sd_attached returns true.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -126,7 +126,7 @@ uint8_t board_sd_exchange(uint8_t tx);
  *
  * @details
  * The byte-identical data CMD17 would stream back, served in a single call so
- * board_sim's `--fast-sd` block-read hook can fill the firmware's sector buffer
+ * ra8_emulator's `--fast-sd` block-read hook can fill the firmware's sector buffer
  * without clocking 512 individual SPI byte-exchanges through MMIO. Uses the same
  * SDHC block-addressing (@p lba * 512) as the modelled CMD17 path, so the bytes
  * delivered are exactly those the full protocol would produce.

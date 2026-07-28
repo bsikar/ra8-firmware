@@ -91,7 +91,7 @@ include(${_RA8_ADD_APP_DIR}/ra8_app/vendored.cmake)
 #   DESCRIPTION <text>         project() description
 #   BOARD       <lib>          board support library
 #   NO_NSC                     skip the TrustZone NSC veneer objects
-#   USES/LIBS/SIM_LIBS         extra link libraries (firmware / board_sim)
+#   USES/LIBS/SIM_LIBS         extra link libraries (firmware / ra8_emulator)
 #   NSC_SRCS/EXTRA_SRCS        extra sources
 # cmake-lint: disable=R0912,R0915
 #

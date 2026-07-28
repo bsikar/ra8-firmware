@@ -35,13 +35,13 @@
  *      byte buffer. Afterwards the captured bytes are replayed out of the UART
  *      sink (`ra8_io_stream_uart`), proving one writer, two destinations.
  *
- * board_sim models both the RAM region and the OSPI NOR array, so the run is
+ * ra8_emulator models both the RAM region and the OSPI NOR array, so the run is
  * headless and observable over the SCI8 / J-Link OB VCOM console: a successful
  * run prints `ra8_io_swap_demo: two-backend swap (ram + xs) PASS`. The OSPI RMW
- * is slow in the emulator, so give board_sim a generous instruction budget (see
+ * is slow in the emulator, so give ra8_emulator a generous instruction budget (see
  * this app's README). It lives under hw_pending because the xSPI leg writes the
  * non-volatile on-board NOR and has not yet been captured on the bench; the RAM,
- * VFS, and stdio legs are fully exercised in board_sim and in the host unit test
+ * VFS, and stdio legs are fully exercised in ra8_emulator and in the host unit test
  * `tests/test_app_ra8_io_swap_demo.c`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -499,7 +499,7 @@ static void demo_setup_or_halt(void)
  * @retval (none) The function does not return (final `while (true)`).
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
- * @pre The OSPI NOR array is present (modelled in board_sim, real on silicon).
+ * @pre The OSPI NOR array is present (modelled in ra8_emulator, real on silicon).
  * @post A PASS or FAIL verdict line has been queued on SCI8 for each abstraction.
  * @post Control parks in an infinite loop; the function never returns.
  *

@@ -5,7 +5,7 @@ paged CBZ/manga (`ra8_comic`): a chapter is one **continuous vertical strip** --
 tall image slices stacked seamlessly and read by scrolling, with **no page
 boundaries**. This app makes the scroll engine (`libs/ra8_longstrip`) **viewable**: the
 engine's band-composite blit sink is bound to the live 1024x600 GLCDC panel
-framebuffer, so board_sim's `--view` window (or a `--ppm` capture) shows the
+framebuffer, so ra8_emulator's `--view` window (or a `--ppm` capture) shows the
 actual reader screen.
 
 ## What it shows
@@ -30,8 +30,8 @@ actual reader screen.
    toggles the chrome (a top status bar showing `band N/16`, scroll `pos %`, and
    `skip` count, plus a right-edge scroll rail whose thumb tracks the position).
    SW1/SW2 page down/up as a button fallback. Navigation is **discrete-tap only**
-   -- there is no swipe/drag/pinch gesture (the board_sim GT911 model has none),
-   so this app needs zero board_sim change.
+   -- there is no swipe/drag/pinch gesture (the ra8_emulator GT911 model has none),
+   so this app needs zero ra8_emulator change.
 
 ## Boot banner (the headless golden)
 
@@ -41,23 +41,23 @@ ereader-longstrip: bands=16 view=1024x600 scroll=0 crc=795D27E6
 
 After the first render the app folds an FNV-1a-32 over the whole 1024x600 panel
 framebuffer and prints it. The FB bytes are written identically whether or not a
-panel is attached, so the hash is the same on the unit-test host, in board_sim,
-and on silicon (SIM == HIL). `hil.conf` pins the banner; the board-sim smoke gate
-(`scripts/sim/smoke.sh`) asserts it in CI. The full validation is the
+panel is attached, so the hash is the same on the unit-test host, in ra8_emulator,
+and on silicon (EIL == HIL). `hil.conf` pins the banner; the emulator smoke gate
+(`scripts/emu/smoke.sh`) asserts it in CI. The full validation is the
 rendered panel itself.
 
 ## View / drive
 
 ```sh
 make                                  # cross-compile -> build/ereader_longstrip.elf
-make sim-ereader_longstrip            # live window: click to page, centre to toggle chrome
+make emu-ereader_longstrip            # live window: click to page, centre to toggle chrome
 
 # Headless snapshots at three scroll positions (a discrete tap = one page):
-SIM=../../../../tools/ra8_emulator/build/ra8_emulator
-$SIM build/ereader_longstrip.elf --panel panels/ek_ra8d2.toml --ppm top.ppm
-$SIM build/ereader_longstrip.elf --panel panels/ek_ra8d2.toml \
+EMU=../../../../tools/ra8_emulator/build/ra8_emulator
+$EMU build/ereader_longstrip.elf --panel panels/ek_ra8d2.toml --ppm top.ppm
+$EMU build/ereader_longstrip.elf --panel panels/ek_ra8d2.toml \
     --touch-seq "512:500,512:500,512:500,512:500" --ppm mid.ppm
-$SIM build/ereader_longstrip.elf --panel panels/ek_ra8d2.toml \
+$EMU build/ereader_longstrip.elf --panel panels/ek_ra8d2.toml \
     --touch-seq "512:500,512:500,512:500,512:500,512:500,512:500,512:500,512:500" \
     --ppm bottom.ppm
 ```
@@ -67,7 +67,7 @@ bottom-zone taps land near the middle and eight scroll to the end.
 
 ## Status
 
-`hw_pending`: **sim-viewable** (board_sim panel render + deterministic banner).
+`hw_pending`: **emulator-viewable** (ra8_emulator panel render + deterministic banner).
 The on-chip render is bench-runnable on a stock EK-RA8D2 (panel + SCI8 / J-Link
 OB VCOM only, no external hardware), but has not yet been run on the rig. Promote
 to `hw_validated/hil/` after a bench run confirms the same banner + a live panel.

@@ -38,7 +38,7 @@ CRC is FNV-1a-32 over 4096 zero bytes.
 No display panel and no external hardware are required -- this is a pure
 compute + memory test, headless-gateable.
 
-## The DRW is inert on silicon (#247) -- SIM == HIL
+## The DRW is inert on silicon (#247) -- EIL == HIL
 
 The D/AVE 2D engine does not rasterize on the real EK-RA8D2 (issue #247):
 PERFCOUNT never advances, HWREVISION reads 0, and a J-Link dump of the
@@ -53,12 +53,12 @@ untouched zero framebuffer: `76EFDDC5`.
 discarded, STATUS reads idle, HWREVISION reads 0, and the ORIGIN render
 trigger synthesises nothing. The emulator therefore hashes the same zero
 framebuffer and prints the same `76EFDDC5` banner as the bench -- so this
-gate PASSES in both SIL and HIL by reproducing the silicon result, not by
+gate PASSES in both EIL and HIL by reproducing the silicon result, not by
 faking a render. The app sits in `hw_validated/hil/` because that
 zero-framebuffer CRC is confirmed on silicon; it will only report a
 genuinely composited CRC once #247 brings the engine to life (at which point
 re-baseline this CRC from a real bench render and update the inert model +
-`board_sim_smoke.sh` expectation together).
+`ra8_emulator_smoke.sh` expectation together).
 
 ## Notes (HUM R01UH1065EJ0130 Rev.1.30, Ch 62 "2D Drawing Engine")
 
@@ -69,7 +69,7 @@ re-baseline this CRC from a real bench render and update the inert model +
   register except STATUS and PERFCOUNT is write-only, and the driver shadows
   CONTROL2 / COLOR1 in software rather than reading them back; on silicon the
   only readable state -- STATUS and HWREVISION -- reads idle / 0 (#247), which
-  the inert board_sim model reproduces exactly.
+  the inert ra8_emulator model reproduces exactly.
 - **Cache coherency:** like `drw_fill_demo`, this demo leaves the DRW FB
   cache off (`enable_caches = false`) so the CPU reads the freshly-composited
   pixels. On the bench, if you enable the FB cache call `ra8_drw_cache_flush`
@@ -87,5 +87,5 @@ re-baseline this CRC from a real bench render and update the inert model +
 4. The `76EFDDC5` above is FNV-1a-32 over the all-zero framebuffer: today the
    DRW is inert (#247), so no pixel is composited on the bench. When #247 makes
    the engine render, dump `g_drw_blend_fb`, confirm a genuine composite, then
-   re-baseline the CRC in `hil.conf` + `board_sim_smoke.sh` and teach
-   `board_periph_drw.c` the real render so SIM == HIL still holds.
+   re-baseline the CRC in `hil.conf` + `ra8_emulator_smoke.sh` and teach
+   `board_periph_drw.c` the real render so EIL == HIL still holds.

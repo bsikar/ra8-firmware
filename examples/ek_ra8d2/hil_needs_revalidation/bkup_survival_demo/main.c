@@ -46,7 +46,7 @@
  * option memory in the sim), which is precisely why the sim reports ``rw=ok``
  * while the bench reports ``rw=BAD``. ``--reboot 1`` re-runs from the reset
  * vector with the retained domain, so the second boot finds the sentinel and
- * reports ``survived=Y`` (the ``board_sim_smoke.sh`` gate exercises this).
+ * reports ``survived=Y`` (the ``ra8_emulator_smoke.sh`` gate exercises this).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -302,7 +302,7 @@ int32_t main(void)
 {
   bkup_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
-   * SysTick path (board_sim does not advance DWT_CYCCNT). No NVIC sources
+   * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
   ra8_isr_globals_enable();
 

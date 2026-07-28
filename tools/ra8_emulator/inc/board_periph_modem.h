@@ -1,6 +1,6 @@
 /**
  * @file board_periph_modem.h
- * @brief Cellular AT-modem device model for board_sim (attached to SCI7 UART).
+ * @brief Cellular AT-modem device model for ra8_emulator (attached to SCI7 UART).
  *
  * @details
  * Models a 3GPP AT-command cellular modem (SIM7600 / Quectel BG95 class) wired
@@ -19,7 +19,7 @@
  * ``ra8_modem_at`` over ``ra8_sci`` polled TX/RX -- then runs byte for byte, so
  * the ``modem_at_demo`` example brings the modem up, walks its AT state machine
  * (sync / SIM / signal / registration / attach), dispatches a ``+CREG`` URC and
- * exercises the ``+CME ERROR`` path with no physical modem (SIM == HIL for the
+ * exercises the ``+CME ERROR`` path with no physical modem (EIL == HIL for the
  * protocol; the physical RF link is the only unmodelled part, hence the app is
  * hw_pending).
  *
@@ -52,12 +52,12 @@ extern "C" {
  * @return true once the modem is armed and answering.
  * @retval true Modem armed (always, on this in-memory model).
  *
- * @pre Called once during board_sim start-up (single-threaded arg parse).
+ * @pre Called once during ra8_emulator start-up (single-threaded arg parse).
  * @pre No physical hardware is required.
  * @post ::board_modem_attached returns true.
  * @post The command accumulator and response FIFO are empty.
  *
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 bool board_modem_attach(void);
@@ -73,7 +73,7 @@ bool board_modem_attach(void);
  * @post No state is modified.
  * @post No state is modified.
  *
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 bool board_modem_attached(void);
@@ -119,7 +119,7 @@ uint8_t board_modem_channel(void);
  * @post On a completed line @p out holds a full modem response (<= @p out_cap).
  * @post The command accumulator is reset after a completed line.
  *
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 uint32_t board_modem_feed_tx(uint8_t tx, uint8_t* out, uint32_t out_cap);

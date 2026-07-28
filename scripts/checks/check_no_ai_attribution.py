@@ -37,7 +37,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Scope is DERIVED, never a hardcoded directory list. The previous revision
 # named ``SCAN_DIRS = (libs, src, tests, examples, port, scripts, docs)`` and so
-# silently exempted every other tracked file -- tools/ (board_sim, media_dl,
+# silently exempted every other tracked file -- tools/ (ra8_emulator, media_dl,
 # ra8_viewer, ra8_fmt), .github/, .devcontainer/, cmake/ and the whole
 # repo root -- from a ban CLAUDE.md and docs/AI_ATTRIBUTION_POLICY.md apply to
 # "any tracked file" (#358). Enumeration now comes from git ls-files via

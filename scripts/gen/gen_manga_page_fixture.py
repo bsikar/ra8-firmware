@@ -9,7 +9,7 @@ deterministic tile grid -- each 256x256 tile is a distinct solid gray with a
 black inner frame and a big blocky "CcRr" label -- so that panning the
 viewport across the page visibly changes which labels are on screen. The page
 is the source ra8_jof_produce() transcodes into a JOF atlas at boot;
-it decodes to the same pixels on host, board_sim and silicon, so the render
+it decodes to the same pixels on host, ra8_emulator and silicon, so the render
 hash in the app banner is identical everywhere.
 
 Solid tile blocks + sparse labels compress to a few KiB of PNG, which keeps
@@ -163,7 +163,7 @@ def emit_header(png: bytes) -> tuple[Path, int]:
         ' * black inner frame and a big blocky "C<col>R<row>" label, so panning the',
         " * viewport across the page visibly changes which labels are on screen. The",
         " * page is the source ra8_jof_produce() transcodes into a JOF atlas",
-        " * at boot; it decodes to identical pixels on host, board_sim and silicon.",
+        " * at boot; it decodes to identical pixels on host, ra8_emulator and silicon.",
         " *",
         " * Regenerate: python3 scripts/gen/gen_manga_page_fixture.py",
         " *",

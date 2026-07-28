@@ -38,7 +38,7 @@
  * ``TODO(EK-RA8P1 UM / ra8p1_kicad)`` marker: the board-level "which LED sits on
  * which pin" is a schematic decision that is re-derived, and re-cited to the
  * board manual, once the RA8P1 board is defined and the first on-silicon
- * bring-up runs. This layer builds and runs in ``board_sim --device ra8p1``
+ * bring-up runs. This layer builds and runs in ``ra8_emulator --device ra8p1``
  * today; on-silicon validation is deferred to that board.
  *
  * Underlying chip register access is delegated to ``libs/ra8_hal``: the BSP

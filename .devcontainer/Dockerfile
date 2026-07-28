@@ -68,7 +68,7 @@ ARG ARM_GCC_SHA256_X86_64=95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97
 ARG ARM_GCC_SHA256_AARCH64=c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764
 
 # Unicorn CPU emulator -- pinned by URL + sha256 (built from source below) so
-# board_sim decodes Armv8.1-M (Helium/MVE) IDENTICALLY to the self-hosted
+# ra8_emulator decodes Armv8.1-M (Helium/MVE) IDENTICALLY to the self-hosted
 # runner. An unpinned Unicorn is exactly the #354 skew (runner 2.1.4 vs an old
 # 2.0.1). Keep these two in step with RA8_UNICORN_* in scripts/ci/unicorn_pin.sh.
 ARG UNICORN_VERSION=2.1.4
@@ -144,9 +144,9 @@ RUN set -eux; \
 ENV PATH="/opt/arm-gnu-toolchain-13.3/bin:${PATH}"
 
 # Unicorn ${UNICORN_VERSION} from source -> /usr/local (the runner's layout), so
-# `make ci`'s board_sim gates decode Armv8.1-M byte-identically to CI. Pinned by
+# `make ci`'s ra8_emulator gates decode Armv8.1-M byte-identically to CI. Pinned by
 # URL + sha256 so a corrupted/swapped/regenerated download fails loudly. Only
-# the arm target is built (board_sim emulates the Cortex-M core), which keeps
+# the arm target is built (ra8_emulator emulates the Cortex-M core), which keeps
 # the build small without changing the arm decode. Verified by re-reading the
 # installed header's UC_API_* version afterwards.
 RUN set -eux; \

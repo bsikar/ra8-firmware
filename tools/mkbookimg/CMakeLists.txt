@@ -1,6 +1,6 @@
 #
 # mkbookimg -- build a FAT32 SD-card image carrying compiled .rabook files,
-# written through the real ra8_fs so the firmware (ereader_shelf / board_sim
+# written through the real ra8_fs so the firmware (ereader_shelf / ra8_emulator
 # --sd) reads them back bit-for-bit.
 #
 #   cmake -B build -S . && cmake --build build

@@ -35,13 +35,13 @@
  *      sibling `compile_on_m33` publishes its emitted blob's base + length. The
  *      M33 also publishes a CRC-32 it computed over those rendered pixels.
  *
- * Why the M33 CRCs its own framebuffer: on the board_sim host emulator the two
+ * Why the M33 CRCs its own framebuffer: on the ra8_emulator host emulator the two
  * cores share only the on-chip SRAM host buffer; each core's external-SDRAM
  * window is a separate mapping, so the parked M85 cannot read back the bytes the
  * M33 wrote at 0x68000000. The M33 therefore reads its own SDRAM framebuffer
  * back to fold a CRC-32 -- which is itself the proof that real pixels landed in
  * SDRAM -- and publishes that value through the shared mailbox. The M85 reports
- * the published CRC; the board_sim gate asserts it against a golden. On silicon
+ * the published CRC; the ra8_emulator gate asserts it against a golden. On silicon
  * the single physical SDRAM is shared, so an M85 re-read would match.
  *
  * Coherency: this app's `system_init.c` leaves the M85 data cache OFF, so a store
@@ -132,7 +132,7 @@ typedef enum : uintptr_t {
  * wide by ::k_erm33_fb_height tall. With the 8x16 `ra8_gfx` font that is
  * ::k_erm33_fb_cols glyph columns by ::k_erm33_fb_rows glyph rows, enough for the
  * ::k_erm33_page_chars characters one held page carries. Kept deliberately tiny
- * so the CRC-32 over the whole plane is fast and stable for the board_sim gate.
+ * so the CRC-32 over the whole plane is fast and stable for the ra8_emulator gate.
  *
  * @invariant `k_erm33_fb_stride == k_erm33_fb_width * k_erm33_fb_bpp`.
  * @invariant `k_erm33_fb_bytes  == k_erm33_fb_stride * k_erm33_fb_height`.
@@ -184,7 +184,7 @@ typedef enum : uint32_t {
  * cores park for good. ::k_erm33_touch_dwell is the bounded count of hold-loop
  * iterations the M33 spins as a *simulated* touch latency between page turns --
  * a deterministic stand-in for polling the GT911 touch controller (the real
- * touch poll is a HIL follow-up, see the README). Kept small so the board_sim
+ * touch poll is a HIL follow-up, see the README). Kept small so the ra8_emulator
  * gate completes the whole cycle in a handful of instruction chunks. Both are
  * `uint32_t` so the M33 / M85 loop bounds are a single fixed type.
  *

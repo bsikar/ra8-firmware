@@ -34,14 +34,14 @@
  * POEG group when ``enable_pin`` is set and the GPT output-disable request is
  * wired to the group; this demo proves the request / STATE / clear path plus a
  * live PWM using the deterministic software trigger, which is what the headless
- * board_sim gate can verify with no physical pin to scope.
+ * ra8_emulator gate can verify with no physical pin to scope.
  *
  * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the POEG
  * register file (``board_periph_poeg.c``): a POEGG.SSF write latches the derived
  * output-disable STATE flag POEGG.ST, and clearing every request flag returns
  * ST to 0, so ``ra8_poeg_get_status`` observes the shutoff and the re-enable
- * exactly as the hardware STATE latch would. The ``board_sim_smoke.sh`` /
- * ``sil_all.sh`` gate keys on the ``ok=Y`` banner. Bare EK-RA8D2; no shields.
+ * exactly as the hardware STATE latch would. The ``ra8_emulator_smoke.sh`` /
+ * ``eil_all.sh`` gate keys on the ``ok=Y`` banner. Bare EK-RA8D2; no shields.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -305,7 +305,7 @@ int32_t main(void)
 {
   poeg_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the SysTick
-   * path (board_sim does not advance DWT_CYCCNT). No NVIC sources are armed. */
+   * path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources are armed. */
   ra8_isr_globals_enable();
 
   if (poeg_demo_arm_gpt() != k_ra8_ok) {

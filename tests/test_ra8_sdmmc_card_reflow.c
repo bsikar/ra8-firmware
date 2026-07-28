@@ -13,8 +13,8 @@
  * model, so the genuine ra8_sdmmc_spi command/response/data-token code runs.
  * `ra8_sdmmc_spi_bind_fs_backend` then plugs the card straight into ra8_fs.
  *
- * The SD card model here is the seed for board_sim's SD-over-SPI device
- * (so `make sim-ereader_ui` can serve a font from a simulated card).
+ * The SD card model here is the seed for ra8_emulator's SD-over-SPI device
+ * (so `make emu-ereader_ui` can serve a font from a simulated card).
  *
  * Pipeline: image (FAT) -> SD card model -> ra8_sdmmc_spi -> ra8_fs ->
  * ra8_reflow -> ra8_gfx framebuffer.
@@ -53,7 +53,7 @@ typedef enum : uint8_t {
 } t_bpb_off_t;
 
 /* ===========================================================================
- * SD SPI-mode card model (the seed for board_sim's board_sd device).
+ * SD SPI-mode card model (the seed for ra8_emulator's board_sd device).
  * ===========================================================================
  */
 typedef enum : uint16_t {

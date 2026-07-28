@@ -32,10 +32,10 @@ where free overwrite is available.
 4. Report on the SCI8 console through a `ra8_io` UART stream sink; `ra8_log` is
    routed into the same stream so any failing step is visible (Phase 2, #157).
 
-board_sim models the MACI program/erase sequence (`board_periph_mram.c`), so the
+ra8_emulator models the MACI program/erase sequence (`board_periph_mram.c`), so the
 round-trip runs headless.
 
-## Expected output (board_sim or J-Link RTT/UART)
+## Expected output (ra8_emulator or J-Link RTT/UART)
 
 ```
 ra8_io_mram_demo: boot
@@ -50,5 +50,5 @@ make            # -> build/ra8_io_mram_demo.elf
 
 ## Status
 
-`hw_pending`: written and proven in board_sim; not yet bench-validated on a
+`hw_pending`: written and proven in ra8_emulator; not yet bench-validated on a
 physical EK-RA8D2.

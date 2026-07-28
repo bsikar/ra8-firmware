@@ -32,14 +32,14 @@ npu-infer: id=0x10060000 tflm=OK irq=OK out=0x........ verdict=PASS
 
 ## Scope / honesty
 
-The NPU "operator" run under board_sim is the tiny deterministic add-constant of
+The NPU "operator" run under ra8_emulator is the tiny deterministic add-constant of
 the documented `ra8_npu_sim_cmd.h` convention -- NOT a real Vela command stream,
 which needs the offline Vela compiler (`tools/vela`, a follow-up) and silicon.
-board_sim's honest NPU model rejects a real Vela stream it cannot interpret, so
+ra8_emulator's honest NPU model rejects a real Vela stream it cannot interpret, so
 the quantize -> NPU op -> dequantize pipeline plus the IRQ completion path are
 checkable byte-for-byte in the emulator here, while the TFLite-micro
 `MicroInterpreter` model-driven path is proven to **link + register** and runs
 end-to-end on silicon later.
 
-SIL-only: there is no RA8P1 HIL rig, so this app is discovered by
-`scripts/sim/sil_all.sh` (board_sim) but not by `scripts/hil/all.sh`.
+EIL-only: there is no RA8P1 HIL rig, so this app is discovered by
+`scripts/emu/eil_all.sh` (ra8_emulator) but not by `scripts/hil/all.sh`.

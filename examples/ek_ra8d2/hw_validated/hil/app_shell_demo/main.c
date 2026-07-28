@@ -8,7 +8,7 @@
  * back-stack (`app_launch_demo`) and adds the piece a home screen needs: a small
  * launcher that lists the registered apps and launches the one the user picks,
  * with "back" unwinding the navigation trail. No display and no widgets this
- * increment -- the path is observable headlessly on `board_sim` through the ITM
+ * increment -- the path is observable headlessly on `ra8_emulator` through the ITM
  * log (each line shows up as `[itm] ...`).
  *
  * What it does, acting as the device "chrome":
@@ -38,9 +38,9 @@
  * every step, then emits:
  *
  *   `[app_shell] INFO: app_shell_demo PASS`
- *   (board_sim: `[itm] [app_shell] INFO: app_shell_demo PASS`)
+ *   (ra8_emulator: `[itm] [app_shell] INFO: app_shell_demo PASS`)
  *
- * so the app doubles as a `board_sim` regression gate; any failure logs a
+ * so the app doubles as a `ra8_emulator` regression gate; any failure logs a
  * `FAIL ...` line and parks in WFI.
  *
  * After the navigation legs the shell exercises the run-time "core uninstallable"
@@ -923,7 +923,7 @@ static void app_shell_banner(void)
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
  * @post On success the PASS banner is emitted; otherwise a FAIL line is.
- * @post The CPU parks in WFI (observable on board_sim until its budget).
+ * @post The CPU parks in WFI (observable on ra8_emulator until its budget).
  * @since 0.1.0
  */
 int32_t main(void)

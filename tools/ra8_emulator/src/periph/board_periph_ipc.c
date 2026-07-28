@@ -1,6 +1,6 @@
 /**
  * @file board_periph_ipc.c
- * @brief Inter-Processor Communication (IPC) peripheral-block model for board_sim
+ * @brief Inter-Processor Communication (IPC) peripheral-block model for ra8_emulator
  *
  * @details
  * Models the maskable-IRQ event path of the RA8D2 IPC unit (ra8_ipc_regs.h,
@@ -140,7 +140,7 @@ typedef struct {
 /**
  * @var s_ipc
  * @brief Single shared IPC model instance (both engines dispatch into it).
- * @warning Mutated only from the board_sim MMIO hooks; not for direct use.
+ * @warning Mutated only from the ra8_emulator MMIO hooks; not for direct use.
  */
 static ipc_state_t s_ipc;
 

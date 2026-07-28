@@ -34,7 +34,7 @@ SYST_RVR register it returns an error instead of truncating.
   (`tx_initialize_low_level.S` SysTick bring-up) plus the vendored
   upstream Cortex-M85 GNU port (PendSV / SVC / schedule).
 
-## HIL / SIL contract
+## HIL / EIL contract
 
 `hil.conf` uses `HIL_MODE=jlink_memprobe` with two symbols:
 
@@ -48,9 +48,9 @@ SYST_RVR register it returns an error instead of truncating.
 `g_threadx_retune_reload` publishes the computed reload (999999 at
 CPUCLK0 = 1 GHz) for observability.
 
-board_sim runs the identical ARM retune path -- the SYST_RVR write lands
-in the emulated System Control Space and reads back -- so the board_sim
-gate (`scripts/sim/sil_all.sh`) verdict equals the on-hardware probe: SIM ==
+ra8_emulator runs the identical ARM retune path -- the SYST_RVR write lands
+in the emulated System Control Space and reads back -- so the ra8_emulator
+gate (`scripts/emu/eil_all.sh`) verdict equals the on-hardware probe: EIL ==
 HIL.
 
 ## Build / flash

@@ -24,7 +24,7 @@ This is the persistence sibling of `fault_div0_hil`: that app provokes and
    through the installed write path (`ra8_crashlog_record_fault`), and reads
    it back.
 
-## Expected output (cold / first boot -- board_sim and bench)
+## Expected output (cold / first boot -- ra8_emulator and bench)
 
 ```
 crashlog: boot
@@ -65,11 +65,11 @@ then the synthesised fault is recorded and read back
 `.noinit` record with its software CRC-32 and boot-loop counter (T2-03).
 Recorded on tracker issue #191.
 
-**Simulator-in-the-loop (`scripts/sim/sil_all.sh`):** board_sim **cold-loads**
+**Simulator-in-the-loop (`scripts/emu/eil_all.sh`):** ra8_emulator **cold-loads**
 the image on every run, so it proves the boot bring-up, the peek / claim /
 safe-mode logic, and the synthesised in-process write+readback -- the
 `recorded+readback exc=6` gate `hil.conf` asserts. Two legs are proven
-elsewhere rather than in SIL:
+elsewhere rather than in EIL:
 
 - the genuine `ra8_exception_report` -> hook -> record path, plus the
   fill / validate / claim / loop-counter / threshold / corrupted-magic

@@ -1,6 +1,6 @@
 /**
  * @file board_periph_modem.c
- * @brief Cellular AT-modem device model for board_sim (attached to SCI7).
+ * @brief Cellular AT-modem device model for ra8_emulator (attached to SCI7).
  *
  * @details
  * Implements board_periph_modem.h. The modem is a line state machine on the
@@ -10,7 +10,7 @@
  * SIM7600 / BG95-class modem would send. The SCI_B block pushes that stream
  * back into the channel's RX queue (RDR / RDRF), so the firmware's genuine
  * polled ``ra8_sci_getc_polling`` path drains it exactly as on silicon
- * (SIM == HIL for the AT protocol).
+ * (EIL == HIL for the AT protocol).
  *
  * The AT script answered here mirrors the ``modem_at_demo`` example. An
  * unrecognised command is rejected with ``+CME ERROR: 4`` ("operation not

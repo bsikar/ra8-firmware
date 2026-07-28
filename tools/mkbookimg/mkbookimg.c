@@ -6,7 +6,7 @@
  * Builds a raw FAT32 disk image (512-byte sectors, no MBR) containing the given
  * .rabook files under 8.3 names BOOK01.RBK, BOOK02.RBK, ... It drives the SAME
  * first-party `ra8_fs` formatter/writer the firmware reads with, so the emulator
- * (`board_sim --sd image.img`) and the on-device ra8_sdmmc_spi -> ra8_fs path see
+ * (`ra8_emulator --sd image.img`) and the on-device ra8_sdmmc_spi -> ra8_fs path see
  * a byte-identical layout. The firmware reads each book's title/author/cover
  * from the .rabook header, so the 8.3 names need carry no metadata.
  *

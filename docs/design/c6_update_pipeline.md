@@ -155,7 +155,7 @@ loop must exercise the **production roles**:
 6. **ROM-loader recovery path**: vendor `esp-serial-flasher` (SOUP) + RA8
    port glue (see "Field recovery" below).
 7. **Two-USB self-test app** under `examples/` + sim models of the link so the
-   whole pipeline runs in `board_sim` with zero hardware.
+   whole pipeline runs in `ra8_emulator` with zero hardware.
 
 Note how the C6-side apply implementation (see `c6_wireless_architecture.md`)
 only changes step 5. The pipeline, the bundle, the staging, the RA8-side code,

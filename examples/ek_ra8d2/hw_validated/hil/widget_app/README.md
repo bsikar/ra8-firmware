@@ -47,7 +47,7 @@ This proves the foundation. Re-expressing the 2000-line `ereader_ui` monolith as
 a `library` + `epub_reader` + `settings` app composition (the remaining
 acceptance bullet of both issues) is the integration step that follows -- it is
 golden-gated (`make ereader-golden` must stay byte-identical) and best done once
-that golden baseline (currently in flux from the board_sim GUI work) settles.
+that golden baseline (currently in flux from the ra8_emulator GUI work) settles.
 
 ## Validation
 

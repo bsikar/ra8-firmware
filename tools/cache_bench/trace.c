@@ -4,7 +4,7 @@
  *
  * @details All synthetic workloads are driven by a fixed-seed xorshift PRNG so
  * every policy sees byte-identical input and runs are reproducible (the same
- * determinism board_sim gives the captured traces).
+ * determinism ra8_emulator gives the captured traces).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

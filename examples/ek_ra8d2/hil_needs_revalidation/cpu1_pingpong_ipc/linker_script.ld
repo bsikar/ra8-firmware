@@ -69,7 +69,7 @@ MEMORY
      * CPU1/M33 bank that begins at 0x22190000. A 1024K length put the top --
      * and therefore the NS initial MSP (g_ra8_ls_ns_stack_top below) -- at
      * 0x22200000, 384K off-chip, so on silicon BLXNS BusFaulted on the first
-     * NS stack push before the .ns_bss zero loop ran. board_sim masked it: its
+     * NS stack push before the .ns_bss zero loop ran. ra8_emulator masked it: its
      * flat SRAM window makes 0x22200000 a valid address. */
     NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 576K
 }

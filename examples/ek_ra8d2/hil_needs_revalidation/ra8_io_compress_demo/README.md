@@ -28,7 +28,7 @@ vendored miniz. An app opts in by including it directly and adding `miniz` to it
 `ra8_add_app(... LIBS ...)`, as this app's `CMakeLists.txt` does. Plain ra8_io
 consumers (e.g. `ra8_io_demo`) carry no compressor and no miniz dependency.
 
-## Expected output (board_sim or J-Link RTT/UART)
+## Expected output (ra8_emulator or J-Link RTT/UART)
 
 ```
 ra8_io_compress_demo: boot
@@ -45,5 +45,5 @@ make            # -> build/ra8_io_compress_demo.elf / .hex / .bin
 
 ## Status
 
-`hw_pending`: written and proven in board_sim; not yet bench-validated on a
+`hw_pending`: written and proven in ra8_emulator; not yet bench-validated on a
 physical EK-RA8D2.

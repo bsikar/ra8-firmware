@@ -363,7 +363,7 @@ def gen_examples() -> str:
         " * Each app is a self-contained directory under `examples/` with its",
         " * own `main.c`, boot files, and linker script. Pick a tier below;",
         " * every app links to its README. Build any of them with `make <app>`",
-        " * or run it on the emulator with `make sim-<app>`.",
+        " * or run it on the emulator with `make emu-<app>`.",
         " *",
     ]
     child_nodes = [root.children[k] for k in sorted(root.children)]

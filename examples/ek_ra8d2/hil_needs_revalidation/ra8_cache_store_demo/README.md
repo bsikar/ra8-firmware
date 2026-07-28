@@ -41,10 +41,10 @@ then idles, re-emitting it. On any failure it prints
 binds a RAM driver (`lx_nor_ram_init`) so the entire persistent-cache path runs
 in SRAM with **no MMIO**. Two payoffs:
 
-- **Sim-gateable.** issue #257 calls for the RAM-block-device path precisely
+- **Emu-gateable.** issue #257 calls for the RAM-block-device path precisely
   because it needs no external hardware.
 - **SIM equals HIL by construction.** Because the cache path touches no
-  peripheral register, the board_sim (SIL) run executes byte-identical
+  peripheral register, the ra8_emulator (EIL) run executes byte-identical
   instructions to the on-silicon run -- there is nothing for the emulator to
   model differently from the chip.
 
@@ -76,10 +76,10 @@ store itself is `libs/ra8_cache_store` (`USES levelx_standalone`,
 
 4. Watch the PASS banner stream out.
 
-## SIL / HIL gate
+## EIL / HIL gate
 
 `hil.conf` gates the app in `uart_scrape` mode on the success-only PASS banner.
-Because the whole path is RAM-resident, `scripts/sim/sil_all.sh` runs it headless in
+Because the whole path is RAM-resident, `scripts/emu/eil_all.sh` runs it headless in
 `tools/ra8_emulator` with no board attached and the emulated run matches the bench.
 
 ## Host test

@@ -30,12 +30,12 @@ gate. Part of the cover-art image-decode family (#143).
 
 The render is deterministic (integer nearest-neighbour scale + fixed
 RGB565 pack over a zeroed static framebuffer), so the hash is identical
-every boot and identical on host / board_sim / silicon. Captured baseline
-`crc=F71D21E8` (stable across 3 board_sim runs); `hil.conf` pins it.
+every boot and identical on host / ra8_emulator / silicon. Captured baseline
+`crc=F71D21E8` (stable across 3 ra8_emulator runs); `hil.conf` pins it.
 
 ```
 make ereader_jpeg
-# board_sim: ereader-jpeg-hil: img 160x120 crc=F71D21E8
+# ra8_emulator: ereader-jpeg-hil: img 160x120 crc=F71D21E8
 ```
 
 The fixture is the same 4-quadrant source image as the PNG `cover_fixture.h`,

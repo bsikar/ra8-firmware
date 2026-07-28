@@ -14,7 +14,7 @@
  *   `reflow-content-hil: pages=<N> crc=<8 hex> rpages=<M> crc=<8 hex>`
  *
  * Ahem's fixed metrics make pagination + render deterministic; the banner is
- * identical every boot (stable across resets) and matches the host / board_sim
+ * identical every boot (stable across resets) and matches the host / ra8_emulator
  * run, so any drift in the layout, pagination, or render changes the hash.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -90,7 +90,7 @@ static void rc_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void rc_panic_halt(const uint8_t* msg, uint32_t len)
 {
   rc_print(msg, len);

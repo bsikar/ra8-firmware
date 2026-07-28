@@ -51,12 +51,12 @@ the shared decoder prints `[EXC] ERROR: exception=6` +
 SCI8 VCOM console -- proof `CCR.DIV_0_TRP` is set (T2-01) and the frame
 decoder runs on hardware (T2-02). Recorded on tracker issue #191.
 
-**Simulator-in-the-loop (`scripts/sim/sil_all.sh`):** board_sim models the
+**Simulator-in-the-loop (`scripts/emu/eil_all.sh`):** ra8_emulator models the
 divide-by-zero trap faithfully. Its CPU-model seam scans the image for
 every `UDIV`/`SDIV` site and -- **only after** the firmware sets
 `CCR.DIV_0_TRP` (watched via the SCB control-register write hook) --
 overwrites those sites with a `UDF`, then services the resulting trap as
-a UsageFault latching `CFSR.DIVBYZERO`. A SIL run therefore reaches the
+a UsageFault latching `CFSR.DIVBYZERO`. An EIL run therefore reaches the
 same `cfsr =33554432` gate the bench does, with the same arm-then-fault
 ordering (a firmware that stopped arming the trap would instead print
 `fault-div0: FAIL trap not armed` and halt, tripping the negative gate).

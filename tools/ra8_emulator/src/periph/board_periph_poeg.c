@@ -10,7 +10,7 @@
  * Without this block the POEGG window falls through to the sparse fallback,
  * where the derived output-disable STATE flag (POEGG.ST) never asserts, so the
  * app could not observe the shutoff it just requested and its liveness counter
- * would never advance -- a real modelling gap, reported as a SIL FAIL.
+ * would never advance -- a real modelling gap, reported as an EIL FAIL.
  *
  * Four POEG groups (POEG0..POEG3) live at @c 0x40212000 with a @c 0x100 stride;
  * each group exposes a single 32-bit @c POEGG register (offset 0) carrying the
@@ -31,9 +31,9 @@
  *    and the outputs are driven again.
  *
  * The block is register-level only ("narrow"): it does not cross-wire ST into
- * the GPT counter model, because the safe-shutoff proof the SIL gate checks is
+ * the GPT counter model, because the safe-shutoff proof the EIL gate checks is
  * the register-observable ST transition (assert -> high-Z -> clear -> enabled),
- * which is precisely what board_sim can verify with no physical pin to scope.
+ * which is precisely what ra8_emulator can verify with no physical pin to scope.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -13,7 +13,7 @@ hil_bench_ref: "origin/dev"
 # apt packages the bench needs to build + flash + probe the firmware.
 # NOTE: gcc-arm-none-eabi is deliberately NOT here -- apt ships 13.2, but the
 # project pins Arm GNU Toolchain 13.3.rel1 for reproducible codegen (#178: the
-# miniz inflater is version-sensitive, which SIM==HIL goldens depend on). The
+# miniz inflater is version-sensitive, which EIL==HIL goldens depend on). The
 # pinned toolchain is installed to /opt below, matching the devcontainer.
 hil_bench_apt_packages:
   - git

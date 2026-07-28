@@ -31,16 +31,16 @@
  * Two-phase loop (the design reconciles the two HIL surfaces):
  *   - Self-test phase (rounds 0..N-1): each round toggles LED1, a
  *     peripheral (IOPORT) write. The cross-core hand-off itself is pure
- *     SRAM, which board_sim's MMIO-keyed idle detector cannot see; the
+ *     SRAM, which ra8_emulator's MMIO-keyed idle detector cannot see; the
  *     LED heartbeat keeps it awake so the success banner surfaces even
- *     under ``BOARD_SIM_IDLE_STOP=1``. On the bench the LED visibly
+ *     under ``RA8_EMU_IDLE_STOP=1``. On the bench the LED visibly
  *     blinks while the test runs.
  *   - Steady phase (rounds N..): keep round-tripping forever with no
  *     heartbeat so the J-Link memprobe HIL gate sees
  *     ::g_cache_coherency_match advance across its sample window (a
  *     one-shot counter frozen in a terminal WFI would read unchanged at
- *     both probe halts and fail the delta check). In board_sim this
- *     steady phase is pure SRAM, so ``BOARD_SIM_IDLE_STOP`` terminates
+ *     both probe halts and fail the delta check). In ra8_emulator this
+ *     steady phase is pure SRAM, so ``RA8_EMU_IDLE_STOP`` terminates
  *     the run cleanly right after the banner -- the same clean stop a
  *     terminal WFI would give, without breaking the memprobe gate.
  *
@@ -113,7 +113,7 @@ volatile uint32_t g_cache_coherency_mismatch = 0U;
 
 /**
  * @var k_cache_coherency_pass_banner
- * @brief Deterministic HIL success banner (uart_scrape / sim-scrape).
+ * @brief Deterministic HIL success banner (uart_scrape / emulator-scrape).
  * @details Emitted once, after ::k_cache_coherency_rounds rounds verify, on the
  *          success path only. Additive to the ``ra8_log`` ITM trace so a rig with
  *          no SWO capture can still gate the boot + cache + dual-core path.
@@ -160,7 +160,7 @@ static bool cache_coherency_console_init(void)
  *
  * @details Writes ::k_cache_coherency_pass_banner to the SCI8 / J-Link OB VCOM
  * console and flushes it, then mirrors the same verdict over ``ra8_log`` so
- * board_sim surfaces it as an ``[itm]`` line. A no-op on the wire if the console
+ * ra8_emulator surfaces it as an ``[itm]`` line. A no-op on the wire if the console
  * never came up (the write returns ``k_ra8_err_not_initialized``, ignored).
  *
  * @return Nothing.
@@ -330,9 +330,9 @@ int main(void)
   bool     banner_sent = false;
 
   while (1) {
-    /* Self-test heartbeat: one IOPORT write per round keeps board_sim's
+    /* Self-test heartbeat: one IOPORT write per round keeps ra8_emulator's
      * MMIO-keyed idle detector awake through the pure-SRAM hand-off so the
-     * banner surfaces under BOARD_SIM_IDLE_STOP=1 (and the LED visibly
+     * banner surfaces under RA8_EMU_IDLE_STOP=1 (and the LED visibly
      * blinks on the bench). Dropped once the self-test has passed, so the
      * steady phase below is pure SRAM and IDLE_STOP can stop the sim. */
     if (led_up && (round < (uint32_t)k_cache_coherency_rounds)) {

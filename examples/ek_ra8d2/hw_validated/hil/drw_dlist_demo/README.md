@@ -41,13 +41,13 @@ Bench-verified on an EK-RA8D2 (VTref 3.3V, over J-Link):
 - Across hundreds of clear+fill iterations `STATUS.BUSERRMFB` never latched and
   the wait-idle never timed out -- loop-stable.
 
-## SIM == HIL
+## EIL == HIL
 
 `tools/ra8_emulator` models the DLR (`board_periph_drw.c`): a DLISTSTART write
 executes the list from emulated memory, each ORIGIN write triggering the same
-render as a CPU ORIGIN write. board_sim therefore produces the byte-identical
+render as a CPU ORIGIN write. ra8_emulator therefore produces the byte-identical
 framebuffer and the identical `crc=E6B215C5 PASS` banner, so `hil.conf` gates
-the same string on the bench (`uart_scrape`) and in SIL.
+the same string on the bench (`uart_scrape`) and in EIL.
 
 ## Golden
 

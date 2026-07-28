@@ -15,10 +15,10 @@
  * drives board LED1 (BLUE, P600 = PORT6 pin 0) high and low forever with a
  * bounded busy-delay between toggles. A blinking LED that the M85 never touches
  * is honest proof the M33 came out of reset and is executing its own code -- on
- * silicon and in the board_sim GPIO/LED view alike.
+ * silicon and in the ra8_emulator GPIO/LED view alike.
  *
  * @note The M33 deliberately does NOT call `ra8_log`. On hardware each core has
- *       its own CoreSight ITM and the board_sim emulator echoes only the primary
+ *       its own CoreSight ITM and the ra8_emulator echoes only the primary
  *       core's ITM, so an M33 `ra8_log` line would be invisible in the simulator.
  *       The proof-of-life is the LED transition the M85 never drives.
  * @note Only PCNTR1 is touched (direction + output level); the LED pins power up

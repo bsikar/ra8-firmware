@@ -13,7 +13,7 @@ default: $(RA8_DEFAULT_APP)
 # `make apps` -- the app catalogue, grouped by tier dir (hardware-support
 # maturity). Descriptions come from ra8_add_app(DESCRIPTION ...) per app.
 apps:
-	@printf '== FIRMWARE apps (%s) -- build: make <app> | flash: make flash-<app> | simulate: make sim-<app>\n' "$(words $(RA8_APPS))"
+	@printf '== FIRMWARE apps (%s) -- build: make <app> | flash: make flash-<app> | emulate: make emu-<app>\n' "$(words $(RA8_APPS))"
 	@for tier_dir in $(ROOT)/examples/*/; do \
 		tier=$$(basename "$$tier_dir"); \
 		[ "$$tier" = "shared" ] && continue; \
@@ -26,7 +26,7 @@ apps:
 			printf '%s\t%s\t%s\n' "$$group" "$$app" "$$desc"; \
 		done; \
 	done | sort | awk -F'\t' '{ if ($$1 != g) { g=$$1; printf "\n  [%s]\n", g } printf "    %-30s %s\n", $$2, $$3 }'
-	@printf '\nUI preview: run the e-reader chrome on the emulator, e.g. make sim-ereader_ui [PANEL=ek_ra8d2]   (tools/ra8_emulator)\n'
+	@printf '\nUI preview: run the e-reader chrome on the emulator, e.g. make emu-ereader_ui [PANEL=ek_ra8d2]   (tools/ra8_emulator)\n'
 
 # Forward `make <app>` to the per-app Makefile via RA8_APP_DIR_<app>, keeping
 # build/compile_commands.json fresh when a CMake input changes (clangd reads it).

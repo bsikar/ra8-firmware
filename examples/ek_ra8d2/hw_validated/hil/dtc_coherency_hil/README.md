@@ -6,9 +6,9 @@ the **DTC descriptor cache-coherency wiring** keeps a software-triggered DTC
 mem-to-mem copy correct with the M85 D-cache turned ON. This is the on-silicon
 arm of the T4 cache-coherency chain for the DTC.
 
-## Status: hw_pending (passes board_sim; awaiting on-silicon HIL run)
+## Status: hw_pending (passes ra8_emulator; awaiting on-silicon HIL run)
 
-`board_sim` models memory byte-exact and does **not** model the L1 D-cache, so
+`ra8_emulator` models memory byte-exact and does **not** model the L1 D-cache, so
 the clean/invalidate calls are exercised (line-size + barrier logic run) but have
 no caching effect and the copy verifies trivially. The sim run proves the app
 boots, drives the real `ra8_dtc` + ELC path, and reports PASS with the cache + MPU
@@ -51,19 +51,19 @@ vector table, the TI block, and both 1 KiB data buffers live in MPU **region 1**
    coherency proof -- a stale descriptor leaves `s_dst` wrong and times it out.
 7. PASS -> `dtc_coherency_hil: dtc coherent PASS` over VCOM + ITM, LED1 toggles.
    Mismatch / timeout -> a distinct `... FAIL` line (never `PASS`) + LED2. Either
-   way the core parks in WFI so `board_sim`'s idle-stop terminates the run.
+   way the core parks in WFI so `ra8_emulator`'s idle-stop terminates the run.
 
 The completion IRQ is intentionally left masked (the app never calls
 `ra8_isr_globals_enable`): the registered slot + `DTCE` still activate the DTC, the
 app simply polls for the result rather than taking the interrupt, avoiding the
 completion ISR (which writes `DTCSTS`) racing the in-flight copy.
 
-## board_sim note
+## ra8_emulator note
 
 `tools/ra8_emulator` DOES model the DTC transfer engine (`board_periph_dtc.c`): the
 ELC software-event trigger reads the vector-table entry at `DTCVBR + slot*4`,
 fetches the TI, and actually MOVES the bytes in emulated memory, so the **real**
-`ra8_dtc` + ELC path runs in sim and the copy verifies. board_sim's memory is
+`ra8_dtc` + ELC path runs in sim and the copy verifies. ra8_emulator's memory is
 byte-exact and it does not model the L1 D-cache, so the poll falls through on its
 first iteration. The cache hazard this app guards against is only observable on
 real silicon.
@@ -75,13 +75,13 @@ From the repo root:
 ```sh
 make dtc_coherency_hil                 # cross-compile -> build/dtc_coherency_hil.elf / .hex / .bin
 make flash-dtc_coherency_hil           # flash via on-board J-Link OB
-make sim-dtc_coherency_hil             # boot the real .elf on the board_sim CPU emulator
+make emu-dtc_coherency_hil             # boot the real .elf on the ra8_emulator CPU emulator
 ```
 
-Headless `board_sim` (one-shot banner, idle-stop):
+Headless `ra8_emulator` (one-shot banner, idle-stop):
 
 ```sh
-BOARD_SIM_WALL_S=15 BOARD_SIM_IDLE_STOP=1 \
+RA8_EMU_WALL_S=15 RA8_EMU_IDLE_STOP=1 \
   tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_validated/hil/dtc_coherency_hil/build/dtc_coherency_hil.elf \
     --panel tools/ra8_emulator/panels/ek_ra8d2.toml

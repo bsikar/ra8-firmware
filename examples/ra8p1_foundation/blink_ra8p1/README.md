@@ -38,5 +38,5 @@ and every other RA8D2 target stay byte-for-behaviour unchanged.
 
 Build-foundation only -- **not** hardware-validated. The dedicated
 `ra8_board_ra8p1` board layer now exists (issue #226) and this app builds and
-runs against it under `board_sim --device ra8p1`, but there is no RA8P1 board for
+runs against it under `ra8_emulator --device ra8p1`, but there is no RA8P1 board for
 on-silicon bring-up yet; that is tracked as follow-up.

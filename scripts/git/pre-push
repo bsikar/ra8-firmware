@@ -24,7 +24,7 @@ PUSH_REFS="$(cat)"
 # core.hooksPath=scripts/git, which REPLACES git-lfs's own pre-push hook;
 # without chaining it here no push ever uploads LFS objects, and a fresh
 # CI checkout's `git lfs pull` 404s on every epub/font blob (exactly how
-# the sil-integration job broke after the repo rename). Runs before the
+# the eil-integration job broke after the repo rename). Runs before the
 # SKIP_CI_PUSH-gated sections so a gate bypass can never skip the upload.
 # NOTE: `git push --no-verify` skips this whole hook INCLUDING the LFS
 # upload -- after such a push run `git lfs push origin <branch>` by hand.

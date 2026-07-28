@@ -43,7 +43,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
 
   # Run the gates against a CLEAN snapshot of committed HEAD -- exactly what CI
   # checks out -- NOT the bind-mounted working tree. The host tree carries
-  # gitignored in-source build dirs (src/app/build-sim/, examples/*/*/build/,
+  # gitignored in-source build dirs (src/app/build-emu/, examples/*/*/build/,
   # tools/*/build/, ...) whose CMake-generated junk (CMakeCCompilerId.c, ...)
   # would otherwise make clang-format / cppcheck / check_magic_numbers report
   # failures CI never sees. Extracting `git archive HEAD` into a throwaway dir

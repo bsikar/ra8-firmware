@@ -22,17 +22,17 @@
  *      gone.
  *
  * On success it prints ``[rcs] cache_store demo PASS survivors=N ...`` -- the
- * success-only banner the HIL / SIL scrape keys on -- and then idles, re-emitting
- * it so the board_sim STOP_ON guard always sees the steady-state line. On any
+ * success-only banner the HIL / EIL scrape keys on -- and then idles, re-emitting
+ * it so the ra8_emulator STOP_ON guard always sees the steady-state line. On any
  * failure it prints ``[rcs] cache_store demo FAIL stage=S status=C`` instead,
  * which the negative regex catches.
  *
  * ## Why a RAM-backed NOR driver
  * ra8_cache_store's physical-flash bind is an injected callback. Production binds
  * the Octo-SPI driver; this demo binds a RAM driver so the entire path runs in
- * SRAM with no MMIO. That is what makes the run sim-gateable AND makes the
+ * SRAM with no MMIO. That is what makes the run emu-gateable AND makes the
  * emulated run byte-identical to the on-silicon run (SIM equals HIL): there is no
- * peripheral for board_sim to model differently from the chip.
+ * peripheral for ra8_emulator to model differently from the chip.
  *
  * @author Brighton Sikarskie
  * @date 2026-07-15

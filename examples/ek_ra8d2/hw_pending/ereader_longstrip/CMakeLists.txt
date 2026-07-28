@@ -26,7 +26,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # the ra8_longstrip engine's band-composite blit sink is bound to the live
 # 1024x600 GLCDC panel framebuffer (ra8_display_pal + k_display_backend_lcd_
 # ra8_glcdc, in external SDRAM) instead of an internal scratch buffer, so
-# board_sim's --view / --ppm shows the real reader screen. A tall colourful
+# ra8_emulator's --view / --ppm shows the real reader screen. A tall colourful
 # strip is streamed band-by-band through a deliberately small ra8_tile_cache
 # (ra8_mem) whose decode-on-miss seam paints each band procedurally, so the
 # eviction / bounded-memory path runs with no multi-megabyte atlas. Navigation

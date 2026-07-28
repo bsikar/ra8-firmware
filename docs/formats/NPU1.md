@@ -145,7 +145,7 @@ all, since anyone who can modify the payload can recompute the digest.
 
 `ra8_npu_blob.h` defines a pure **data format** -- constants plus one
 endianness-safe accessor -- and touches no NPU register. Gating it behind
-`RA8_HAS_NPU` would stop the host-side generator's tests and the `board_sim`
+`RA8_HAS_NPU` would stop the host-side generator's tests and the `ra8_emulator`
 model from including it on a device that is not an RA8P1, which is exactly where
 you most want to validate a container. The RA8P1-only piece is the *loader*,
 which turns a blob into an `ra8_npu_job_t`. Format definitions travel

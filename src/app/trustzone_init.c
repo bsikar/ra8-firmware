@@ -612,14 +612,14 @@ void ra8_trustzone_init(void)
 #ifdef RA8_EREADER_NS_XIP
   /* 3. XIP: no image copy. .text/.rodata execute in place from the OSPI NS
    *    alias (0x9000_0000); ns_reset_handler copies only .data into SRAM.
-   *    board_sim maps the OSPI window unconditionally, so the sim proof needs
+   *    ra8_emulator maps the OSPI window unconditionally, so the sim proof needs
    *    no controller arming here.
    *    TODO(OSPI XIP arming on silicon): before this BLXNS, call
    *    ra8_xspi_xip_enter(instance, enter_code, exit_code) with the EK-RA8D2
    *    OSPI flash's real XIP enter/exit opcodes so the 0x8000_0000/0x9000_0000
    *    window returns flash on hardware, and add a SAU region marking the OSPI
    *    NS alias Non-secure (the IDAU bit[28] alias alone is overridden Secure by
-   *    the default SAU). Both are unnecessary in board_sim. */
+   *    the default SAU). Both are unnecessary in ra8_emulator. */
 #else
   /* 3. Copy the NS image into the now-Non-secure SRAM alias. */
   tz_copy_ns_image();

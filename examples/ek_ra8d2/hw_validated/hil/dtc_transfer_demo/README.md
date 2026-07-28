@@ -30,12 +30,12 @@ No external hardware required.
 
 Confirmed on a real EK-RA8D2 (2026-06-28): the DTC performs the SRAM-to-SRAM
 block copy and the gate is green (`dtc: copied 1024B match=Y`). Two
-silicon-specific fixes were required, both of which `board_sim` had masked:
+silicon-specific fixes were required, both of which `ra8_emulator` had masked:
 
 1. **`DTCVBR_SEC`.** On a TrustZone part the secure DTC fetches its vector
    table from `DTCVBR_SEC` (+0x14), not the non-secure `DTCVBR` (+0x04) whose
    secure write is silently dropped. `ra8_dtc_init` now programs both, so the
-   secure DTC finds the table and the board_sim model (which shadows `DTCVBR`)
+   secure DTC finds the table and the ra8_emulator model (which shadows `DTCVBR`)
    still works.
 2. **Polled completion.** Enabling the DTC-complete CPU interrupt lets its ISR
    (`ra8_dtc_dispatch`, which writes `DTCSTS`) race and corrupt the in-flight
@@ -45,7 +45,7 @@ silicon-specific fixes were required, both of which `board_sim` had masked:
 `tools/ra8_emulator` (`tools/ra8_emulator/src/periph/board_periph_dtc.c`) runs the transfer
 synchronously on the `ELSEGR0` write -- resolving the DTCE-enabled `IELSR`
 slot, reading the Transfer Information block at `DTCVBR + slot*4`, decoding the
-`MR` mode word, and copying the block -- so the headless `board_sim_smoke.sh`
+`MR` mode word, and copying the block -- so the headless `ra8_emulator_smoke.sh`
 gate sees the same `match=Y` banner. (The emulator's synchronous model is
 exactly why neither silicon bug showed up there.)
 

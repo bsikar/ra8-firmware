@@ -23,7 +23,7 @@ The gate (`hil.conf`, `uart_scrape`) asserts that line. Any drift in the href
 capture, the link-rect math, or the resolve logic changes it.
 
 Ahem has fixed glyph metrics, so the layout + link geometry are deterministic:
-the banner is identical on host, `board_sim`, and silicon -- a sim/silicon
+the banner is identical on host, `ra8_emulator`, and silicon -- an emulator/silicon
 equivalence check.
 
 ## Build + run
@@ -33,19 +33,19 @@ make ereader_link
 scripts/hil/run_local.sh ereader_link      # flash + scrape the banner
 ```
 
-## Result (validated 2026-06-18, board_sim + host)
+## Result (validated 2026-06-18, ra8_emulator + host)
 
 ```
 ereader-link-hil: boot
 ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE
 ```
 
-`scripts/sim/smoke.sh ereader_link` runs the firmware ELF on the
+`scripts/emu/smoke.sh ereader_link` runs the firmware ELF on the
 emulated RA8D2 and scrapes the banner (PASS). The identical layout + nav run on
 host produces the same `geom=5B90D1EE` -- byte-for-byte agreement.
 
 ## Updating the baseline
 
 After an **intentional** change to the baked chapter or the link math, recompute
-the hash (run under `board_sim` or on the bench) and update `HIL_EXPECT` in
+the hash (run under `ra8_emulator` or on the bench) and update `HIL_EXPECT` in
 `hil.conf`. The on-device banner is the source of truth.

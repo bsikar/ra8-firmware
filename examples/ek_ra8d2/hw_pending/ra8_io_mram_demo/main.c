@@ -14,7 +14,7 @@
  *
  * @warning This window is one-time-programmable option-setting / OTP memory, not
  * a rewritable data-flash: the erase + re-program cycle this demo exercises does
- * NOT work on real silicon (there is no erase). board_sim maps the window and so
+ * NOT work on real silicon (there is no erase). ra8_emulator maps the window and so
  * the round-trip passes here, but that is optimistic -- a real rewritable-medium
  * home for this demo (OSPI / SD) is tracked by #315.
  *
@@ -28,7 +28,7 @@
  *   4. Report on the SCI8 console through a ra8_io UART stream sink; ra8_log is
  *      routed into the same stream so any failing step is visible (Phase 2 #157).
  *
- * board_sim models the MACI program/erase sequence (board_periph_mram.c), so the
+ * ra8_emulator models the MACI program/erase sequence (board_periph_mram.c), so the
  * round-trip runs headless: a successful run prints
  * `ra8_io_mram_demo: 512-byte block erase/program/read on extra MRAM PASS`.
  *
@@ -236,7 +236,7 @@ static ra8_err_t demo_roundtrip(void)
  * @retval (none) The function does not return (final `while (true)`).
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
- * @pre The extra-MRAM region is present (modelled in board_sim, real on silicon).
+ * @pre The extra-MRAM region is present (modelled in ra8_emulator, real on silicon).
  * @post Exactly one PASS or FAIL verdict line has been queued on SCI8.
  * @post Control parks in an infinite loop; the function never returns.
  *

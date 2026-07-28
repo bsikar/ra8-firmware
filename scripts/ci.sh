@@ -104,7 +104,7 @@ RA8_GATE_REGISTRY=(
   "ascii|fast|ASCII-only source files"
   "copyright|fast|SPDX + copyright headers"
   "since|fast|Doxygen @since tags on public headers"
-  "hil-sil-parity|fast|every HIL app is also exercised in board_sim"
+  "hil-eil-parity|fast|every HIL app is also exercised in ra8_emulator"
   "no-ai-attribution|fast|attribution ban (tracked files)"
   "no-ai-attribution-commits|fast|attribution ban (commit messages)"
   "inclusive-terminology|fast|OSHWA inclusive terminology (tracked files)"
@@ -140,10 +140,10 @@ RA8_GATE_REGISTRY=(
   "sg-offsets|slow|NSC SG-veneer slot offsets in the linked secure ELF"
   "stack-usage|slow|aggregate -fstack-usage frames"
   "docs|slow|Doxygen warning gate + authored-diagram render check"
-  "board-sim-smoke|slow|board_sim boot smoke over the example apps"
-  "board-sim-matrix|slow|every example booted in board_sim, ratcheted downward"
-  "board-sim-io-fabric|slow|ra8_io fabric demos in board_sim"
-  "sil-integration|slow|every HIL app booted in board_sim against its hil.conf"
+  "emulator-smoke|slow|ra8_emulator boot smoke over the example apps"
+  "emulator-matrix|slow|every example booted in ra8_emulator, ratcheted downward"
+  "emulator-io-fabric|slow|ra8_io fabric demos in ra8_emulator"
+  "eil-integration|slow|every HIL app booted in ra8_emulator against its hil.conf"
   "mcdc-delta-base|manual|base-branch MC/DC summary for the PR delta comment"
   "osv-scan|manual|OSV CVE sweep of the vendored SOUP (network, scheduled)"
   "fuzz-sweep|manual|libFuzzer sweep of every harness (nightly budget)"
@@ -194,7 +194,7 @@ pick_clang_format() {
 # cpu_count() and ra8_max_jobs() -- the ONE canonical bounded-parallelism
 # source (#328). Gate bodies derive every `-j` / `-P` width from ra8_max_jobs,
 # never a raw nproc, so N gate jobs on one shared box do not each grab all
-# cores. The standalone builders / checks / sim drivers a gate shells out to
+# cores. The standalone builders / checks / emulator drivers a gate shells out to
 # source the same file, so there is a single home for the policy.
 # shellcheck source=scripts/ci/lib/parallelism.sh
 . "${SCRIPT_DIR}/ci/lib/parallelism.sh"
@@ -256,13 +256,13 @@ use_pinned_arm_toolchain() {
   done
 }
 
-# Refuse to run a board_sim gate on an unpinned Unicorn.
+# Refuse to run a ra8_emulator gate on an unpinned Unicorn.
 #
-# board_sim boots the real firmware .elf on Unicorn, and different Unicorn
+# ra8_emulator boots the real firmware .elf on Unicorn, and different Unicorn
 # versions decode Armv8.1-M (Helium/MVE) differently, so an unpinned emulator
 # makes "same commit, different verdict" structural (#354). This is the
 # fail-loud counterpart to require_cmd: the check binds the ACTUAL libunicorn
-# board_sim will link and exits non-zero -- with remediation -- when it is not
+# ra8_emulator will link and exits non-zero -- with remediation -- when it is not
 # the pin, rather than letting a fossil produce an unreproducible green run.
 require_pinned_unicorn() {
   bash scripts/checks/check_unicorn_version.sh

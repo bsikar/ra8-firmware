@@ -103,7 +103,7 @@ source "${REPO_ROOT}/scripts/hil/lib/rig_env.sh"
 rig_require JLINK_SN
 PI_HOST="${PI_HOST:-}"
 
-# Shared app discovery + hil.conf sourcing (also used by scripts/sim/sil_all.sh).
+# Shared app discovery + hil.conf sourcing (also used by scripts/emu/eil_all.sh).
 # shellcheck source=scripts/hil/lib/hil_conf.sh
 source "${REPO_ROOT}/scripts/hil/lib/hil_conf.sh"
 
@@ -154,7 +154,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Auto-discover hil/<app>/ dirs (shared with sil_all.sh via hil_conf.sh).
+# Auto-discover hil/<app>/ dirs (shared with eil_all.sh via hil_conf.sh).
 declare -a APPS=()
 while IFS= read -r name; do
   APPS+=("$name")
@@ -305,7 +305,7 @@ for app in "${APPS[@]}"; do
   # Source the manifest. Reset known vars first so values from a previous
   # app's conf cannot leak, then export them so per-mode runners invoked as
   # subprocesses (e.g. hil_check_alive.sh) can read them. Shared with
-  # sil_all.sh via scripts/hil/lib/hil_conf.sh so both suites read the manifest
+  # eil_all.sh via scripts/hil/lib/hil_conf.sh so both suites read the manifest
   # identically.
   hil_conf_load "$conf"
 

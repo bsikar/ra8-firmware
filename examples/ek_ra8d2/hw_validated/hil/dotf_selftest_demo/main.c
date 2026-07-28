@@ -199,7 +199,7 @@ dotf_demo_verdict(ra8_err_t st0_err, ra8_err_t st1_err, ra8_err_t status_err)
  *
  * @param[out] out_ok 1 when both self-test calls AND the status read returned
  *                    k_ra8_ok. The opaque REG00 snapshots are reported via
- *                    globals, not gated (board_sim does not model the AES core).
+ *                    globals, not gated (ra8_emulator does not model the AES core).
  *
  * @return ``ra8_err_t`` -- the first non-ok status from the three sub-calls, or
  *         k_ra8_ok when all succeeded.
@@ -245,7 +245,7 @@ int32_t main(void)
 {
   dotf_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
-   * SysTick path (board_sim does not advance DWT_CYCCNT). No maskable NVIC
+   * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No maskable NVIC
    * source is armed; DOTF raises no IRQ of its own. */
   ra8_isr_globals_enable();
 

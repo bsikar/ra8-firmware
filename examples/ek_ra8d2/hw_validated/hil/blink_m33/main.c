@@ -26,7 +26,7 @@
  * blinking LED the M85 never drives. See `README.md`.
  *
  * @note `ra8_log_info` is compiled to a no-op unless the build defines a log
- *       level of INFO or finer (a Debug build). `make sim-blink_m33` builds
+ *       level of INFO or finer (a Debug build). `make emu-blink_m33` builds
  *       Debug so the `[itm]` lines appear.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

@@ -27,15 +27,15 @@
  *      existed at boot, so a second boot against a persisted card reports a hit
  *      (served from the on-disk cache without a fresh layout).
  *
- * The HIL gate is memprobe (J-Link / board_sim `--dump-sym`), not the console:
- * an SD app drives the SCI0 Simple-SPI bus, and board_sim folds every SCI channel
+ * The HIL gate is memprobe (J-Link / ra8_emulator `--dump-sym`), not the console:
+ * an SD app drives the SCI0 Simple-SPI bus, and ra8_emulator folds every SCI channel
  * into one console line, so a SCI8 banner is interleaved with SPI traffic there
  * (the same reason the sibling SD HIL apps gate on SWD globals). The success path
  * advances ::g_pc_heartbeat once per frame and only after every assertion passes;
  * any failure stamps ::g_pc_err and parks without bumping it.
  *
  * Required external hardware (on-bench): Digilent PMOD MicroSD (410-380) in Pmod2
- * (J25) with a microSD inserted. THIS APP MAY FORMAT THE CARD. Under board_sim
+ * (J25) with a microSD inserted. THIS APP MAY FORMAT THE CARD. Under ra8_emulator
  * attach a blank card with `--sd-new 64:fat32` (round-trip + invalidate), and a
  * second run against a `--save-sd` image to prove the cache-hit reset-survival.
  *
@@ -119,7 +119,7 @@ typedef enum : uint32_t {
   k_pc_frame_ms = 100U, /**< Heartbeat period in milliseconds. */
 } pc_pace_t;
 
-/* ---- J-Link / board_sim readable diagnostics (memprobe gate) ------------- */
+/* ---- J-Link / ra8_emulator readable diagnostics (memprobe gate) ------------- */
 
 /** @brief First failing stage (::pc_err_t), 0 on success. SWD / `--dump-sym`. */
 volatile uint32_t g_pc_err = (uint32_t)k_pc_err_none;

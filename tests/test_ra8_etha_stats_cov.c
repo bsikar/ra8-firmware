@@ -65,7 +65,7 @@ static void prep(void)
  *
  * @details
  * The function ``internal_etha_to_operation`` writes EAMC = OPERATION
- * and then polls EAMS until the OPS field matches.  In the board_sim the
+ * and then polls EAMS until the OPS field matches.  In the ra8_emulator the
  * hardware state machine that mirrors EAMC into EAMS is absent, so
  * without assistance the poll runs all 200000 iterations and returns
  * ``k_ra8_err_hw_timeout``, causing ``ra8_etha_open`` to return before it
@@ -85,7 +85,7 @@ static void prep(void)
  * code under test is a single condition; no ``&&`` or ``||``; the
  * single-condition guards are exercised via their false branch)
  *
- * @pre The board_sim MMIO backing is zeroed by ``prep()``.
+ * @pre The ra8_emulator MMIO backing is zeroed by ``prep()``.
  * @pre ETHA port 0 and RMAC port 0 are initialised before ``ra8_etha_open``.
  * @post EAMC register holds the OPERATION encoding.
  * @post ``out_link.up`` is false (auto-neg timed out).

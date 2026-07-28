@@ -14,7 +14,7 @@
  *  - The two reply-parsing helpers (first-uint-after-colon for CSQ / CGATT,
  *    last-uint for +CREG) that feed those decisions.
  *  - An end-to-end run of the REAL ra8_modem_at driver over an in-test AT
- *    responder that replays the exact bytes the board_sim SCI7 modem model
+ *    responder that replays the exact bytes the ra8_emulator SCI7 modem model
  *    answers (board_periph_modem.c), so the whole demo flow -- sync, SIM,
  *    signal, registration + URC, PS attach, +CME ERROR path -- is exercised
  *    against the production driver and the verdict is asserted PASS.
@@ -358,7 +358,7 @@ static void test_line_contains(void)
 
 /* ------------------------------------------------------------------------- */
 /* End-to-end: the real ra8_modem_at driver over an in-test AT responder */
-/* that replays the exact board_sim SCI7 modem model bytes. */
+/* that replays the exact ra8_emulator SCI7 modem model bytes. */
 /* ------------------------------------------------------------------------- */
 
 /** @brief FIFO sizing for the in-test transport. */
@@ -520,7 +520,7 @@ static uint8_t s_e2e_line[k_modem_line_cap];
  *
  * @par MC/DC:
  * No new compound decision -- this drives the real ra8_modem_at over the exact
- * board_sim SCI7 responder bytes and asserts the demo's five-condition verdict
+ * ra8_emulator SCI7 responder bytes and asserts the demo's five-condition verdict
  * (::modem_run_ok) evaluates true, confirming the mirrored decisions above
  * agree with the production driver on realistic modem traffic.
  */
@@ -593,7 +593,7 @@ static void test_end_to_end_pass(void)
  * No compound decision -- with no responder staging bytes, the first ``AT``
  * times out (rx returns no-data, ``now_ms`` never advances past the timeout so
  * the driver drains its bounded loop and reports ``k_ra8_err_hw_timeout``),
- * proving the demo would report FAIL rather than a false PASS (SIM == HIL: the
+ * proving the demo would report FAIL rather than a false PASS (EIL == HIL: the
  * app only passes when a modem answers).
  */
 static void test_end_to_end_no_modem(void)

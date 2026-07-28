@@ -27,7 +27,7 @@ What it exercises:
 
 The window and payload are kept small (512 blocks = 256 KiB, 256-byte payload)
 because each 512-byte write drives a 4 KiB erase-reprogram RMW that is slow in
-board_sim; a large volume would blow the run budget.
+ra8_emulator; a large volume would blow the run budget.
 
 ## Build
 
@@ -37,11 +37,11 @@ make            # -> build/ra8_io_xspi_demo.elf
 
 ## Run in the simulator
 
-board_sim models the 2 MiB OSPI NOR array internally, so no `--sd` flag is
+ra8_emulator models the 2 MiB OSPI NOR array internally, so no `--sd` flag is
 needed. The OSPI RMW is slow in the emulator, so give it a generous budget:
 
 ```
-BOARD_SIM_MAX_CHUNKS=4000000 BOARD_SIM_WALL_S=60 \
+RA8_EMU_MAX_CHUNKS=4000000 RA8_EMU_WALL_S=60 \
   tools/ra8_emulator/build/ra8_emulator build/ra8_io_xspi_demo.elf
 ```
 
@@ -54,6 +54,6 @@ Expected console output:
 
 ## Status
 
-`hw_pending`: the logic is proven in `board_sim`, which models the OSPI NOR
+`hw_pending`: the logic is proven in `ra8_emulator`, which models the OSPI NOR
 flash. The same code runs on silicon; promote to `hw_validated` after a bench
 run captures the PASS line over the J-Link UART against the real IS25LX512M.

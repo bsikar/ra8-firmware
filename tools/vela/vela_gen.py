@@ -23,7 +23,7 @@ What the committed descriptor actually is matters for reading a green run: it
 is a SIM model -- the tiny, documented "SE55" command-stream convention in
 libs/ra8_hal/inc/ra8_npu_sim_cmd.h -- and NOT a real Vela program. It is the
 only Ethos-U55 command stream this repo can produce deterministically without
-a Vela install and without inventing NPU opcodes. The board_sim NPU model and
+a Vela install and without inventing NPU opcodes. The ra8_emulator NPU model and
 the ra8_npu driver both decode that same convention, so the whole
 submit -> run -> read-output path is exercised end to end, but a passing gate
 says nothing about real Vela output. Distilling a REAL _vela.tflite into a

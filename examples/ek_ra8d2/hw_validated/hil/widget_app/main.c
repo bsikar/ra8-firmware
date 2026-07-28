@@ -25,7 +25,7 @@
  *   `widget-app-hil: apps=2 lib=<8hex> rdr=<8hex> flush=160x16 hint=fast PASS`
  *
  * Deterministic (fixed composition through deterministic layout + fills), so
- * the board_sim banner is the regression net. Any failure prints a FAIL banner
+ * the ra8_emulator banner is the regression net. Any failure prints a FAIL banner
  * and halts on a BKPT before PASS.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -112,7 +112,7 @@ static void wa_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void wa_panic_halt(const uint8_t* msg, uint32_t len)
 {
   wa_print(msg, len);

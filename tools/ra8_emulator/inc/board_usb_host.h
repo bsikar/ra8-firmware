@@ -28,7 +28,7 @@
  * Modelling boundary: single-packet-in-flight, polled transfers only -- what
  * the synchronous `ra8_usb_host_*` engine issues. A multi-chunk control-OUT
  * data stage overwrites the device's single DCP staging bank if the device
- * firmware does not drain between chunks (no consumer in the SIL suite does
+ * firmware does not drain between chunks (no consumer in the EIL suite does
  * this; DFU class flows stay on their C-level seams).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

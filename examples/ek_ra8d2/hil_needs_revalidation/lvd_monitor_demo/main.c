@@ -31,7 +31,7 @@
  * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the PVD
  * status (``board_periph_lvd.c``): ``PVD1SR.MON`` reads "above threshold" with
  * ``DET`` clear -- the steady state of a healthy 3.3 V rail -- so the banner
- * reports ``mon=above ok=Y`` and the ``board_sim_smoke.sh`` gate keys on it.
+ * reports ``mon=above ok=Y`` and the ``ra8_emulator_smoke.sh`` gate keys on it.
  * Confirmed on a real EK-RA8D2 (2026-06-28): the analog comparator (not a
  * synthesised status bit) drives ``MON`` above the threshold and the HIL gate
  * is green. See ``README.md`` for details.

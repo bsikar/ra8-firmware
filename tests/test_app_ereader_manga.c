@@ -10,7 +10,7 @@
  * initial 1:1 top-left viewport with the shared `mg_reader` into a 1024x600
  * RGB565 framebuffer. Every stage is a deterministic integer pipeline, so the
  * framebuffer FNV asserted here IS the `hil.conf` banner crc: this test is the
- * golden the board_sim / silicon run is compared against.
+ * golden the ra8_emulator / silicon run is compared against.
  *
  * The reader's pure navigation logic (tap-zone hit-test + pan/zoom mutation) is
  * unit-tested directly, and one decoded tile is byte-checked against the
@@ -414,7 +414,7 @@ static void test_manga_work_arena_covers_advertised_cap(void)
  * @test test_manga_render_golden
  * @brief produce -> tile-cache -> mg_reader initial render reproduces the golden
  *        banner numbers (page geometry, atlas byte count, framebuffer crc) --
- *        the exact values hil.conf asserts on board_sim / silicon.
+ *        the exact values hil.conf asserts on ra8_emulator / silicon.
  *
  * @par MC/DC:
  * (integration gate: the compound decisions in the producer, atlas reader and

@@ -1,6 +1,6 @@
 # ra8_io_sd_demo
 
-Status: **hw_pending** (board_sim-validated; not yet run on real silicon).
+Status: **hw_pending** (ra8_emulator-validated; not yet run on real silicon).
 
 Proves the `ra8_io` fabric's "swappable backend" promise (epic #155, phase #156):
 the **same** `ra8_io` VFS API that `ra8_io_demo` runs over a RAM disk, now running
@@ -36,7 +36,7 @@ ra8_io_sd_demo: card ready
 ra8_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS
 ```
 
-The HIL runner and the board_sim smoke gate scrape for the
+The HIL runner and the ra8_emulator smoke gate scrape for the
 `sd:/LOGS/A.TXT 512 bytes PASS` line.
 
 ## Hardware
@@ -58,9 +58,9 @@ make build
 
 Outputs `build/ra8_io_sd_demo.elf` / `.hex` / `.bin`.
 
-## Run in board_sim (no hardware)
+## Run in ra8_emulator (no hardware)
 
-board_sim models the microSD over `ra8_sdmmc_spi`; attach a blank card with
+ra8_emulator models the microSD over `ra8_sdmmc_spi`; attach a blank card with
 `--sd-new <MiB>[:fat16|fat32]`. From the repo root:
 
 ```
@@ -74,7 +74,7 @@ Success is the `... sd:/LOGS/A.TXT 512 bytes PASS` console line with no
 
 ## Run on the bench (real silicon)
 
-> The on-bench flash/run is the user's to perform. The repo build + board_sim
+> The on-bench flash/run is the user's to perform. The repo build + ra8_emulator
 > validation above is what is automated.
 
 1. Plug a PMOD MicroSD into Pmod2 (J25) with a **disposable** microSD inserted.

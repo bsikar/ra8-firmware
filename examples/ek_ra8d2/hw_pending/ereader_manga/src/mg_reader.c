@@ -10,7 +10,7 @@
  * The reader owns no hardware: it maps page pixels to panel pixels, pages the
  * covered tiles through ``ra8_tile_cache`` one at a time, packs gray8 to
  * RGB565, and draws the chrome through ``ra8_gfx`` -- so the same render runs
- * on the firmware, under board_sim, and in the host unit test.
+ * on the firmware, under ra8_emulator, and in the host unit test.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

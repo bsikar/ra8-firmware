@@ -6,13 +6,13 @@
  * Owns the five @c MSTPCRA..MSTPCRE words the RA8D2 uses to clock-gate every
  * peripheral (R_MSTP at @c 0x4020_3000 -- HUM Ch 11.2.6..11.2.10 p 443-450) and
  * the table that maps a peripheral register address to the module-stop bit that
- * governs it. ::board_mstp_addr_stopped answers the one question the board_sim
+ * governs it. ::board_mstp_addr_stopped answers the one question the ra8_emulator
  * core asks per MMIO access: "is the peripheral that owns this address currently
  * unclocked?" -- and if so the core reads 0 / drops the write, matching silicon.
  *
  * This translation unit deliberately takes NO Unicorn dependency: it is pure
  * state + arithmetic, so the gate table is unit-tested directly on the host
- * (tests/test_board_sim_mstp_gate.c) rather than only through a full emulation
+ * (tests/test_ra8_emulator_mstp_gate.c) rather than only through a full emulation
  * run. The board_periph block glue that needs the engine (register window
  * ownership, reset hook, end-of-run report) is the separate
  * @c board_periph_mstp.c.

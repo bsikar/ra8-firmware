@@ -31,7 +31,7 @@ EXCLUDED_PARTS = frozenset(
         "build-bench",
         "build-scan",
         "build-mcdc",
-        "build-sim",
+        "build-emu",
         "_deps",
         "CMakeFiles",
     }

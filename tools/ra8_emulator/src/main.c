@@ -22,7 +22,7 @@
  * firmware past ``ra8_delay_ms`` so it reaches its main loop (e.g. driving the
  * GLCDC), instead of spinning forever on a tick that never increments.
  *
- *   board_sim <firmware.elf>
+ *   ra8_emulator <firmware.elf>
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -52,22 +52,22 @@
 #include "board_usb.h"
 #include "board_usb_host.h"
 #include "board_view.h"
-#include "sim_args.h"
-#include "sim_console.h"
-#include "sim_cpu1.h"
-#include "sim_elf.h"
-#include "sim_engine.h"
-#include "sim_exc.h"
-#include "sim_memmap.h"
-#include "sim_mmio.h"
-#include "sim_mpu.h"
-#include "sim_prof.h"
-#include "sim_run.h"
-#include "sim_seams.h"
-#include "sim_trace.h"
-#include "sim_tz.h"
-#include "sim_usbh_seam.h"
-#include "sim_view.h"
+#include "emu_args.h"
+#include "emu_console.h"
+#include "emu_cpu1.h"
+#include "emu_elf.h"
+#include "emu_engine.h"
+#include "emu_exc.h"
+#include "emu_memmap.h"
+#include "emu_mmio.h"
+#include "emu_mpu.h"
+#include "emu_prof.h"
+#include "emu_run.h"
+#include "emu_seams.h"
+#include "emu_trace.h"
+#include "emu_tz.h"
+#include "emu_usbh_seam.h"
+#include "emu_view.h"
 
 /**
  * @brief Apply a --panel descriptor to the window size and title.
@@ -81,7 +81,7 @@
  * @param[in,out] view_w In: default width; out: panel width when adopted.
  * @param[in,out] view_h In: default height; out: panel height when adopted.
  * @return The window / sidebar caption string.
- * @retval "board_sim" No named panel was loaded.
+ * @retval "ra8_emulator" No named panel was loaded.
  * @pre @p args, @p view_w and @p view_h are non-NULL.
  * @pre @p view_w / @p view_h hold the default or --size dimensions.
  * @post @p view_w / @p view_h reflect the panel size iff adopted.
@@ -89,7 +89,7 @@
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0
  */
-static const char* main_apply_panel(const sim_args_t* args, uint16_t* view_w, uint16_t* view_h)
+static const char* main_apply_panel(const emu_args_t* args, uint16_t* view_w, uint16_t* view_h)
 {
   static board_panel_t s_panel    = {};
   bool                 have_panel = false;
@@ -100,7 +100,7 @@ static const char* main_apply_panel(const sim_args_t* args, uint16_t* view_w, ui
       *view_h = s_panel.height;
     }
   }
-  return (have_panel && (s_panel.name[0] != '\0')) ? s_panel.name : "board_sim";
+  return (have_panel && (s_panel.name[0] != '\0')) ? s_panel.name : "ra8_emulator";
 }
 
 /**
@@ -109,7 +109,7 @@ static const char* main_apply_panel(const sim_args_t* args, uint16_t* view_w, ui
  * @details Opens an Armv8-M (Thumb, M-class) engine on the closest emulated
  * core to the M85 (Cortex-M33), lays down the RA8D2 memory map, and hardwires
  * MPU_TYPE.DREGION to the M85's 8 data regions so ra8_mpu_configure validates
- * (board_sim does not enforce MPU permissions; the app takes its no-trap host
+ * (ra8_emulator does not enforce MPU permissions; the app takes its no-trap host
  * path).
  *
  * @param[out] uc_out Receives the opened engine on success.
@@ -131,7 +131,7 @@ static int main_open_engine(uc_engine** uc_out)
     return 1;
   }
   (void)uc_ctl_set_cpu_model(uc, UC_CPU_ARM_CORTEX_M33); /* closest to the M85. */
-  if (!sim_memmap_init(uc)) {
+  if (!emu_memmap_init(uc)) {
     return 1;
   }
   /* Seed hardwired MPU_TYPE.DREGION (=8) so ra8_mpu_configure validates; the PPB
@@ -188,7 +188,7 @@ static void main_arm_touch_seq(const char* touch_seq_str)
       p++;
     }
   }
-  (void)fprintf(stderr, "board_sim: --touch-seq armed %u raw point(s)\n", (unsigned)pushed);
+  (void)fprintf(stderr, "ra8_emulator: --touch-seq armed %u raw point(s)\n", (unsigned)pushed);
 }
 
 /**
@@ -207,13 +207,13 @@ static void main_arm_touch_seq(const char* touch_seq_str)
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0
  */
-static void main_apply_button_battery(const sim_args_t* args)
+static void main_apply_button_battery(const emu_args_t* args)
 {
   if (args->button_press != 0) {
     const uint8_t pin = (args->button_press == 2) ? (uint8_t)k_sim_sw2_pin : (uint8_t)k_sim_sw1_pin;
     board_periph_gpio_set_input((uint8_t)k_sim_sw_port, pin, false);
     (void)fprintf(stderr,
-                  "board_sim: --button %d held (SW pin P00%u low/pressed)\n",
+                  "ra8_emulator: --button %d held (SW pin P00%u low/pressed)\n",
                   args->button_press,
                   (unsigned)pin);
   }
@@ -223,7 +223,7 @@ static void main_apply_button_battery(const sim_args_t* args)
     const uint8_t soc = (args->battery_soc >= 0) ? (uint8_t)args->battery_soc : cur_soc;
     board_periph_battery_set(soc, args->battery_charging);
     (void)fprintf(stderr,
-                  "board_sim: battery %u%% %s (MAX17048 @ I2C 0x36)\n",
+                  "ra8_emulator: battery %u%% %s (MAX17048 @ I2C 0x36)\n",
                   (unsigned)soc,
                   args->battery_charging ? "charging" : "discharging");
   }
@@ -246,14 +246,14 @@ static void main_apply_button_battery(const sim_args_t* args)
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0
  */
-static void main_feed_inputs(const sim_args_t* args)
+static void main_feed_inputs(const emu_args_t* args)
 {
   if (args->input_str != nullptr) {
     uint8_t        rx[k_uart_line_max];
     const uint32_t n = decode_escapes(args->input_str, rx, (uint32_t)sizeof(rx));
     board_periph_sci_feed_rx(board_periph_sci_console_channel(), rx, n);
     (void)fprintf(stderr,
-                  "board_sim: queued %u byte(s) to SCI%u RX from --input\n",
+                  "ra8_emulator: queued %u byte(s) to SCI%u RX from --input\n",
                   n,
                   board_periph_sci_console_channel());
   }
@@ -263,13 +263,13 @@ static void main_feed_inputs(const sim_args_t* args)
     for (uint32_t k = 0U; k < n; k++) {
       board_input_push_key((char)kb[k]);
     }
-    (void)fprintf(stderr, "board_sim: queued %u keystroke(s) via --keys (window-key path)\n", n);
+    (void)fprintf(stderr, "ra8_emulator: queued %u keystroke(s) via --keys (window-key path)\n", n);
   }
   if (args->usb_in_str != nullptr) {
     uint8_t        ub[k_uart_line_max];
     const uint32_t n = decode_escapes(args->usb_in_str, ub, (uint32_t)sizeof(ub));
     board_usb_feed_bulk_in(ub, n);
-    (void)fprintf(stderr, "board_sim: queued %u byte(s) to the USB CDC bulk OUT pipe\n", n);
+    (void)fprintf(stderr, "ra8_emulator: queued %u byte(s) to the USB CDC bulk OUT pipe\n", n);
   }
 }
 
@@ -290,11 +290,11 @@ static void main_feed_inputs(const sim_args_t* args)
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0
  */
-static void main_bringup_peripherals(const sim_args_t* args)
+static void main_bringup_peripherals(const emu_args_t* args)
 {
   board_periph_init(args->want_trace);
   main_arm_touch_seq(args->touch_seq_str);
-  board_periph_set_device(args->sim_device); /* gates the RA8P1-only NPU block. */
+  board_periph_set_device(args->emu_device); /* gates the RA8P1-only NPU block. */
   /* --usbhs-loop: activate the on-chip USBHS host model and hand the USBFS device
    * to its bridge so the built-in virtual host stands down (chip-internal loop). */
   board_periph_set_usbhs_loop(args->usbhs_loop);
@@ -334,7 +334,7 @@ static int main_load_primary(uc_engine* uc, const char* elf_path, uint8_t** elf_
     (void)fprintf(stderr, "cannot read %s\n", elf_path);
     return 1;
   }
-  (void)fprintf(stderr, "board_sim: loading %s (%ld bytes)\n", elf_path, elf_len);
+  (void)fprintf(stderr, "ra8_emulator: loading %s (%ld bytes)\n", elf_path, elf_len);
   (void)fprintf(stderr,
                 "  device        : %s\n",
                 (board_periph_device() == k_board_device_ra8p1)
@@ -342,9 +342,9 @@ static int main_load_primary(uc_engine* uc, const char* elf_path, uint8_t** elf_
                   : "RA8D2 (R7KA8D2KFLCAC)");
   (void)fprintf(stderr,
                 "  primary core  : %s%s\n",
-                (sim_primary_core() == k_core_m33) ? "Cortex-M33 (Armv8-M)"
+                (emu_primary_core() == k_core_m33) ? "Cortex-M33 (Armv8-M)"
                                                    : "Cortex-M85 (Armv8.1-M, MVE seams armed)",
-                sim_low_power() ? "  [low-power: 1/4 chunk budget]" : "");
+                emu_low_power() ? "  [low-power: 1/4 chunk budget]" : "");
   if (load_elf(uc, elf, elf_len) != 0) {
     free(elf);
     return 1;
@@ -391,7 +391,7 @@ static int main_load_ns(uc_engine*  uc,
       free(elf);
       return 1;
     }
-    (void)fprintf(stderr, "board_sim: loading NS image %s (%ld bytes)\n", ns_elf_path, ns_len);
+    (void)fprintf(stderr, "ra8_emulator: loading NS image %s (%ld bytes)\n", ns_elf_path, ns_len);
     if (load_elf(uc, ns_elf, ns_len) != 0) {
       free(ns_elf);
       free(elf);
@@ -401,9 +401,9 @@ static int main_load_ns(uc_engine*  uc,
      * from OSPI) so the BLXNS world switch reads MSP/reset from the right place. */
     const uint32_t ns_vbase = elf_vector_base(ns_elf, ns_len);
     if (ns_vbase != 0U) {
-      sim_tz_set_ns_vector_base(ns_vbase);
+      emu_tz_set_ns_vector_base(ns_vbase);
     }
-    (void)fprintf(stderr, "board_sim: NS vector base @ 0x%08X\n", sim_tz_ns_vector_base());
+    (void)fprintf(stderr, "ra8_emulator: NS vector base @ 0x%08X\n", emu_tz_ns_vector_base());
   }
   *ns_out     = ns_elf;
   *ns_len_out = ns_len;
@@ -437,7 +437,7 @@ static void main_resolve_symbols(uint8_t*          elf,
                                  long              elf_len,
                                  uint8_t*          ns_elf,
                                  long              ns_len,
-                                 const sim_args_t* args,
+                                 const emu_args_t* args,
                                  uint32_t*         dump_sym_addrs,
                                  uint32_t*         stop_sym_addr)
 {
@@ -448,7 +448,7 @@ static void main_resolve_symbols(uint8_t*          elf,
     }
     if (dump_sym_addrs[d] == 0U) {
       (void)fprintf(stderr,
-                    "board_sim: --dump-sym %s not found in symbol table\n",
+                    "ra8_emulator: --dump-sym %s not found in symbol table\n",
                     args->dump_sym_names[d]);
     }
   }
@@ -460,7 +460,7 @@ static void main_resolve_symbols(uint8_t*          elf,
     }
     if (*stop_sym_addr == 0U) {
       (void)fprintf(stderr,
-                    "board_sim: --stop-sym %s not found in symbol table\n",
+                    "ra8_emulator: --stop-sym %s not found in symbol table\n",
                     args->stop_sym_name);
     }
   }
@@ -486,20 +486,21 @@ static uint32_t main_reset_vector(uc_engine* uc)
 {
   uint32_t sp = 0U;
   uint32_t pc = 0U;
-  (void)uc_mem_read(uc, sim_memmap_mram_base() + 0U, &sp, 4); /* MRAM[0]                 */
-  (void)uc_mem_read(uc, sim_memmap_mram_base() + 4U, &pc, 4); /* MRAM[4] (Thumb: bit0=1) */
+  (void)uc_mem_read(uc, emu_memmap_mram_base() + 0U, &sp, 4); /* MRAM[0]                 */
+  (void)uc_mem_read(uc, emu_memmap_mram_base() + 4U, &pc, 4); /* MRAM[4] (Thumb: bit0=1) */
   pc |= 1U;                               /* M-profile is always Thumb (EPSR.T must be 1). */
   uint32_t xpsr = (uint32_t)k_xpsr_t_bit; /* xPSR.T                                        */
   (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
   (void)uc_reg_write(uc, UC_ARM_REG_XPSR, &xpsr);
-  (void)fprintf(stderr,
-                "board_sim: reset SP=0x%08X PC=0x%08X -- running (<= %u x %u insns, %u s wall)\n",
-                sp,
-                pc,
-                (unsigned)k_run_max_chunks,
-                (unsigned)k_run_chunk_insns,
-                (unsigned)k_run_wall_s);
+  (void)fprintf(
+    stderr,
+    "ra8_emulator: reset SP=0x%08X PC=0x%08X -- running (<= %u x %u insns, %u s wall)\n",
+    sp,
+    pc,
+    (unsigned)k_run_max_chunks,
+    (unsigned)k_run_chunk_insns,
+    (unsigned)k_run_wall_s);
   return pc;
 }
 
@@ -524,15 +525,15 @@ static uint32_t main_reset_vector(uc_engine* uc)
  */
 static void main_install_core_seams(uc_engine* uc, uint8_t* elf, long elf_len)
 {
-  sim_insn_seams_install(uc);
-  sim_exc_install_core(uc);
+  emu_insn_seams_install(uc);
+  emu_exc_install_core(uc);
   /* Seed the ITM ready bits + echo stimulus-port writes so ra8_log prints [itm]. */
-  sim_console_install(uc);
+  emu_console_install(uc);
   /* TrustZone S->NS boot seams (SAU_TYPE seed + hand-emulated BLXNS), armed only
    * when the firmware links the secure boot. */
-  sim_tz_install(uc, elf, elf_len);
-  sim_exc_install_scb_nvic(uc);
-  sim_mpu_install(uc);
+  emu_tz_install(uc, elf, elf_len);
+  emu_exc_install_scb_nvic(uc);
+  emu_mpu_install(uc);
 }
 
 /**
@@ -558,7 +559,7 @@ static void main_install_core_seams(uc_engine* uc, uint8_t* elf, long elf_len)
  * @since 0.1.0
  */
 static void
-main_install_run_seams(uc_engine* uc, uint8_t* elf, long elf_len, const sim_args_t* args)
+main_install_run_seams(uc_engine* uc, uint8_t* elf, long elf_len, const emu_args_t* args)
 {
   bool usbh_seamed = false;
   if (!args->usbhs_loop) {
@@ -571,22 +572,22 @@ main_install_run_seams(uc_engine* uc, uint8_t* elf, long elf_len, const sim_args
   /* M85-only long-shift (LSLL/LSRL/ASRL) + MVE (Helium) seams: off under
    * --primary-core m33 (pure Armv8-M), inert but honest. CSEL rides the invalid-
    * instruction hook and stays armed (also inert for an M33 image). */
-  if (sim_primary_core() == k_core_m85) {
+  if (emu_primary_core() == k_core_m85) {
     long_shift_seam_install(uc, elf, elf_len);
   }
   div0_seam_install(elf, elf_len);        /* UDIV/SDIV sites, patched only under DIV_0_TRP. */
   fast_sd_seam_install(uc, elf, elf_len); /* --fast-sd whole-block serve; else inert.       */
-  prof_load(elf, elf_len);                /* BOARD_SIM_PROFILE FUNC symbols + code hook.    */
-  sim_prof_install(uc);
-  sim_cpu1_init(elf, elf_len); /* dual-core cpu1 engine (shares SRAM); NULL for single-core. */
+  prof_load(elf, elf_len);                /* RA8_EMU_PROFILE FUNC symbols + code hook.      */
+  emu_prof_install(uc);
+  emu_cpu1_init(elf, elf_len); /* dual-core cpu1 engine (shares SRAM); NULL for single-core. */
 }
 
 /**
- * @brief Build the run configuration handed to sim_run_and_report().
+ * @brief Build the run configuration handed to emu_run_and_report().
  *
  * @details Bundles the engine, image, resolved reset PC / vector base, the
  * output-mode CLI knobs and the resolved symbol probes into the read-only
- * ::sim_run_cfg_t. The @p dump_sym_addrs pointer aliases the caller's array,
+ * ::emu_run_cfg_t. The @p dump_sym_addrs pointer aliases the caller's array,
  * which must outlive the run.
  *
  * @param[in] args           The parsed CLI args.
@@ -608,7 +609,7 @@ main_install_run_seams(uc_engine* uc, uint8_t* elf, long elf_len, const sim_args
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0
  */
-static sim_run_cfg_t main_build_run_cfg(const sim_args_t* args,
+static emu_run_cfg_t main_build_run_cfg(const emu_args_t* args,
                                         uc_engine*        uc,
                                         uint8_t*          elf,
                                         long              elf_len,
@@ -620,7 +621,7 @@ static sim_run_cfg_t main_build_run_cfg(const sim_args_t* args,
                                         const uint32_t*   dump_sym_addrs,
                                         uint32_t          stop_sym_addr)
 {
-  return (sim_run_cfg_t){
+  return (emu_run_cfg_t){
     .uc              = uc,
     .elf             = elf,
     .elf_len         = elf_len,
@@ -650,8 +651,8 @@ static sim_run_cfg_t main_build_run_cfg(const sim_args_t* args,
 
 int main(int argc, char** argv)
 {
-  sim_args_t args = {};
-  if (!sim_args_parse(argc, argv, &args)) {
+  emu_args_t args = {};
+  if (!emu_args_parse(argc, argv, &args)) {
     return 2;
   }
   uint16_t          view_w    = args.view_w;
@@ -680,15 +681,15 @@ int main(int argc, char** argv)
   main_resolve_symbols(elf, elf_len, ns_elf, ns_len, &args, dump_sym_addrs, &stop_sym_addr);
   free(ns_elf); /* NS-image symbol table no longer needed (bytes are in Unicorn memory). */
   /* TrustZone NSC pointer validation: patch cmse_check_address_range to BX LR. */
-  sim_tz_patch_cmse(uc, elf, elf_len);
+  emu_tz_patch_cmse(uc, elf, elf_len);
 
   const uint32_t pc = main_reset_vector(uc);
   /* MRAM holds the vector table; the run loop passes this as the VTOR fallback. */
-  const uint32_t vtor_base = (uint32_t)sim_memmap_mram_base();
+  const uint32_t vtor_base = (uint32_t)emu_memmap_mram_base();
   main_install_core_seams(uc, elf, elf_len);
   main_install_run_seams(uc, elf, elf_len, &args);
 
-  const sim_run_cfg_t run_cfg = main_build_run_cfg(&args,
+  const emu_run_cfg_t run_cfg = main_build_run_cfg(&args,
                                                    uc,
                                                    elf,
                                                    elf_len,
@@ -699,5 +700,5 @@ int main(int argc, char** argv)
                                                    win_title,
                                                    dump_sym_addrs,
                                                    stop_sym_addr);
-  return sim_run_and_report(&run_cfg);
+  return emu_run_and_report(&run_cfg);
 }

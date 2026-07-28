@@ -14,7 +14,7 @@
  *
  * ethosu_invoke_v3() blocks in ra8_npu_wait() until STATUS.cmd_end latches;
  * nothing reaches cmd_end on its own in a host test, so each test pre-latches
- * STATUS.cmd_end (as the board_sim NPU model would after executing) before the
+ * STATUS.cmd_end (as the ra8_emulator NPU model would after executing) before the
  * invoke, so the bounded wait returns immediately.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

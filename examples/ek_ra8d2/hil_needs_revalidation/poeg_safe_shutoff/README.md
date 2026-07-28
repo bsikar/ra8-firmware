@@ -45,7 +45,7 @@ the GPT output-disable request of GPT0 to this POEG group.
 `tools/ra8_emulator` models the POEG register file in `board_periph_poeg.c`: a
 `POEGG.SSF` write latches the derived `POEGG.ST` output-disable STATE flag, and
 clearing every request flag returns ST to 0 -- exactly the STATE latch the
-hardware produces. So `scripts/sim/sil_all.sh` / `scripts/sim/smoke.sh` see the
+hardware produces. So `scripts/emu/eil_all.sh` / `scripts/emu/smoke.sh` see the
 same `assert -> high-Z -> clear -> re-enable` transition and assert the `ok=Y`
 banner with no board attached. The `hil.conf` `uart_scrape` gate keys on it.
 

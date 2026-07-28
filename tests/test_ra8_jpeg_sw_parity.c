@@ -13,7 +13,7 @@
  * sub-sampling, entropy packing, stripe windowing -- trips this suite.
  *
  * The codec is pure integer arithmetic, so the hashes are identical
- * on the x86_64 test host, in board_sim, and on the Cortex-M85 target.
+ * on the x86_64 test host, in ra8_emulator, and on the Cortex-M85 target.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

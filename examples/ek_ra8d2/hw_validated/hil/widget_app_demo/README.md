@@ -3,11 +3,11 @@
 Interactive, **panel-visible** demonstration of the `ra8_widget` compositor
 (#145) and the `ra8_app` framework (#146) on the live GLCDC display. Where
 `widget_app` (its headless sibling) CRC-gates an off-screen framebuffer, this
-app brings the GLCDC panel up so the composition is shown on `board_sim`'s panel
+app brings the GLCDC panel up so the composition is shown on `ra8_emulator`'s panel
 window and is driven by the physical **SW1 / SW2** push-buttons.
 
 ```
-make sim-widget_app_demo      # opens the board_sim panel window
+make emu-widget_app_demo      # opens the ra8_emulator panel window
 ```
 
 ## What it shows
@@ -37,7 +37,7 @@ SDRAM, a separate task) and composites top-left over the GLCDC background plane.
 ## Headless gate
 
 Before the interactive loop a deterministic self-check exercises the whole
-surface and emits one banner, so the app doubles as a `board_sim` regression
+surface and emits one banner, so the app doubles as a `ra8_emulator` regression
 gate (`hil.conf`, `uart_scrape`):
 
 ```
@@ -49,7 +49,7 @@ are distinct, the focus lifecycle fired exactly once each, a synthetic touch on
 the Library tab (while Reader is focused) routed through `ra8_app_route_input` ->
 `ra8_widget_dispatch` and selected Library, and a status-bar-only invalidation
 yields exactly the status-bar rect with the `fast` hint. Any failure prints a
-`FAIL ...` banner and parks. The composite CRCs are the board_sim baseline.
+`FAIL ...` banner and parks. The composite CRCs are the ra8_emulator baseline.
 
 The pure widget/app logic (layout, dispatch, routing, damage, lifecycle) is
 unit-tested with MC/DC on the host (`tests/test_ra8_widget.c`,

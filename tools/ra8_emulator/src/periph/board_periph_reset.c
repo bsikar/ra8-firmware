@@ -1,12 +1,12 @@
 /**
  * @file board_periph_reset.c
- * @brief Reset-cause status register (RSTSRn) model for board_sim
+ * @brief Reset-cause status register (RSTSRn) model for ra8_emulator
  *
  * @details
  * Models the RA8D2 reset-status registers (ra8_reset_regs.h, ra8_reset.c) so a
  * firmware can read back WHY it booted -- power-on, software reset, or watchdog
  * reset -- which the sparse fallback could not provide (the cause always read
- * back as cleared). The flags are sticky across a board_sim warm reboot (the
+ * back as cleared). The flags are sticky across a ra8_emulator warm reboot (the
  * @c --reboot path and the @c AIRCR.SYSRESETREQ / watchdog-timeout triggers in
  * main.c), so an example such as @c reset_cause_demo sees
  * @c k_ra8_reset_cause_software on the second boot after it asks for a software

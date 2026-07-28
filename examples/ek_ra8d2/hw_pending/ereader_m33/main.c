@@ -22,7 +22,7 @@
  *   3. Reads back the M33's published framebuffer descriptor -- SDRAM base,
  *      RGB565 geometry, glyph count and the CRC-32 the M33 folded over the
  *      rendered pixels -- validates it, and logs a single deterministic banner
- *      "ereader_m33: rgb565 256x64 sdram crc=<8 hex> PASS". board_sim echoes only
+ *      "ereader_m33: rgb565 256x64 sdram crc=<8 hex> PASS". ra8_emulator echoes only
  *      the primary core's ITM, so the M85 speaks for the M33.
  *   4. Runs the #150 MODE-SWITCH cycle ::k_erm33_max_turns times: it PARKS --
  *      writes the CGC clock-gate (an LPM clock-stop) and drops into Sleep-mode
@@ -32,7 +32,7 @@
  *      and re-parks. It logs the handoff verdict, then parks for good.
  *
  * Why the M85 reports the M33's CRC rather than re-CRCing the framebuffer: on the
- * board_sim emulator the two cores share only the on-chip SRAM mailbox; each
+ * ra8_emulator the two cores share only the on-chip SRAM mailbox; each
  * core's external-SDRAM window is a separate mapping, so the parked M85 cannot
  * read the bytes the M33 wrote at 0x68000000. The M33 reads its own SDRAM
  * framebuffer back to fold the CRC (the proof the pixels landed) and publishes it
@@ -40,7 +40,7 @@
  * physical SDRAM is shared, so an M85 re-read would match.
  *
  * @note `ra8_log_info` is compiled to a no-op unless the build defines INFO-level
- *       logging (a Debug build). `make sim-ereader_m33` builds Debug so `[itm]`
+ *       logging (a Debug build). `make emu-ereader_m33` builds Debug so `[itm]`
  *       lines appear; a release build runs the same logic but stays silent.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -69,7 +69,7 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  * @brief Bounded iteration limits for the M85 polling loops.
  * @details Large enough that a normally-running M33 always completes within
  *          budget, yet finite so the M85 never hangs if the M33 does not boot.
- *          board_sim runs cpu0 in 500k-instruction chunks and cpu1 in 100k
+ *          ra8_emulator runs cpu0 in 500k-instruction chunks and cpu1 in 100k
  *          chunks between them, so the M33's render lands in a few dozen
  *          interleaves -- far inside these budgets.
  * @since 0.1.0
@@ -114,7 +114,7 @@ typedef enum : uint8_t {
  * @brief Bound for the M85's deterministic "heavy next-page work" stand-in.
  * @details The on-wake compute the 1 GHz core owns on a page turn (pagination,
  *          decompression) is modelled here as a fixed-count integer fold so the
- *          board_sim cycle stays deterministic; the bound keeps it short.
+ *          ra8_emulator cycle stays deterministic; the bound keeps it short.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -407,7 +407,7 @@ static bool verify_page(volatile erm33_mailbox_t* mb)
  * @post Exactly one banner line is emitted.
  * @post No shared state is modified.
  *
- * @note The board_sim gate greps this line for `crc=<hex>` and the verdict word.
+ * @note The ra8_emulator gate greps this line for `crc=<hex>` and the verdict word.
  * @since 0.1.0
  */
 static void emit_verdict(uint32_t crc, bool pass)
@@ -561,7 +561,7 @@ static bool arm_ipc_wake(void)
  * @post LPSCR.LPMD == 0 (the next WFI is a plain CPU Sleep).
  * @post PRCR.PRC1 is re-locked.
  *
- * @note board_sim routes these SYSC writes to its catch-all (no fault); on
+ * @note ra8_emulator routes these SYSC writes to its catch-all (no fault); on
  *       silicon they are the real LPM register writes.
  * @since 0.1.0
  */
@@ -584,7 +584,7 @@ static void m85_lpm_configure(void)
  * high-speed on-chip oscillator while it is parked, so the park writes
  * HOCOCR.HCSTP through `ra8_lpm_set_clock_stop` to model the power drop, and the
  * wake clears it again. This is the "CGC clock-gate / down-clock" register write
- * the #150 model calls for: real on silicon, routed to board_sim's catch-all in
+ * the #150 model calls for: real on silicon, routed to ra8_emulator's catch-all in
  * simulation so it neither faults nor changes the run.
  *
  * @param[in] stop true -- gate the HOCO (park); false -- restore it (wake).
@@ -651,7 +651,7 @@ static bool m85_wait_turn(volatile erm33_mailbox_t* mb, uint32_t turn)
  * turn number. On a real e-reader this is where the 1 GHz core does the genuinely
  * heavy page work -- paginating / decompressing the next chapter -- that justifies
  * waking it from the slow-core hold. Here it is a bounded, side-effect-free
- * computation so the board_sim cycle stays byte-deterministic; the rendered page
+ * computation so the ra8_emulator cycle stays byte-deterministic; the rendered page
  * content is unchanged, so the framebuffer CRC the M33 re-folds stays stable.
  *
  * @param[in] turn The page-turn number being serviced (the work seed).
@@ -763,7 +763,7 @@ static bool run_handoff_cycle(volatile erm33_mailbox_t* mb)
  *
  * @details Emits "ereader_m33: handoff turns=<n> crc=<8 hex> PARKED" on success,
  * narrating the M33's re-render count (`turn_done`) and the stable framebuffer
- * CRC the M33 re-folded on every page turn. The board_sim gate greps this line.
+ * CRC the M33 re-folded on every page turn. The ra8_emulator gate greps this line.
  *
  * @param[in] mb   Pointer to the shared mailbox (never NULL).
  * @param[in] pass Whether the full cycle completed and the re-render published.

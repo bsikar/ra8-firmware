@@ -12,7 +12,7 @@
  * tile boundary, the packed/level cross-check, argument-validation MC/DC on both
  * compound guards, and a pinned rendered-framebuffer golden (FNV-1a). The render
  * is pure integer arithmetic over a `const` table, so this host golden is the
- * byte value board_sim and silicon also produce (the SIM==HIL rule).
+ * byte value ra8_emulator and silicon also produce (the EIL==HIL rule).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -243,7 +243,7 @@ static void test_seamless_tiling(void)
  * @details Blits a 0..255 horizontal ramp through ::ra8_gfx_blit_gray8_dither
  * into an ARGB8888 framebuffer and asserts the FNV-1a hash equals the committed
  * golden. Deterministic integer arithmetic over a const mask, so the host hash
- * is byte-identical to board_sim and silicon (SIM==HIL).
+ * is byte-identical to ra8_emulator and silicon (EIL==HIL).
  *
  * @par MC/DC:
  * No compound decisions in this test -- it hashes one rendered framebuffer and

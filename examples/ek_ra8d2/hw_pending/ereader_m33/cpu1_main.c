@@ -44,7 +44,7 @@
  *       the page-turn wake poke) are linked -- no decompression, no logging
  *       backend (RA8_LOG_LEVEL=0 collapses ra8_ipc's log calls), no panel driver --
  *       so this freestanding M33 image keeps a clean link.
- * @note The M33 deliberately does NOT call `ra8_log`: board_sim echoes only the
+ * @note The M33 deliberately does NOT call `ra8_log`: ra8_emulator echoes only the
  *       primary core's ITM, so an M33 log line would be invisible. Its
  *       proof-of-life is the mailbox the M85 narrates and the CRC it publishes.
  * @note The touch is *simulated* (a bounded page-dwell spin): on real hardware
@@ -180,7 +180,7 @@ typedef enum : uint8_t {
 /**
  * @enum m33_cycle_bound_t
  * @brief Static bound for the M33's wait-for-ack poll (NASA Rule 2).
- * @details The M85 acknowledges a page turn within a few board_sim interleaves;
+ * @details The M85 acknowledges a page turn within a few ra8_emulator interleaves;
  *          this bound is the backstop so a never-arriving ack still terminates
  *          the loop instead of hanging the held-page cycle.
  * @since 0.1.0
@@ -558,7 +558,7 @@ static bool book_is_valid(const void* base, uint32_t size)
  * CRC-32 over the rendered pixels. Pure of the mailbox and fully deterministic --
  * the same immutable blob renders the same bytes -- so every call (the first
  * render and each page-turn re-render) yields the identical CRC, keeping the
- * board_sim gate's golden stable.
+ * ra8_emulator gate's golden stable.
  *
  * @param[in]  base       Validated `RABOOK1` blob base (never NULL).
  * @param[out] out_crc    Receives the CRC-32 of the rendered framebuffer.
@@ -633,7 +633,7 @@ static void notify_m85(void)
  *
  * @details The real e-reader would poll the GT911 touch controller while holding
  * the page; here the M33 spins ::k_erm33_touch_dwell times on a volatile counter
- * so board_sim interleaves the cores a few times before the synthetic page turn
+ * so ra8_emulator interleaves the cores a few times before the synthetic page turn
  * fires. Deterministic and bounded (NASA Rule 2); replaced by a real touch poll
  * on hardware (a HIL follow-up).
  *
@@ -662,7 +662,7 @@ static void simulate_touch_dwell(void)
  *
  * @details After the M33 requests a page turn and pokes the M85, the woken M85
  * does its heavy next-page work and writes `turn_ack`. This bounded poll waits
- * for that ack across board_sim's core interleaves; the bound is the NASA Rule 2
+ * for that ack across ra8_emulator's core interleaves; the bound is the NASA Rule 2
  * backstop for an ack that never arrives.
  *
  * @param[in] mb   Shared mailbox (never NULL).

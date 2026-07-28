@@ -24,7 +24,7 @@
  *
  * The fixture is synthetic (not the copyrighted novel), tens of KB, so it bakes
  * into MRAM and opens in memory like `epub_parse`. Deterministic, so the
- * board_sim CRC-free banner is the regression net:
+ * ra8_emulator CRC-free banner is the regression net:
  *
  *   `epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS`
  *
@@ -79,7 +79,7 @@ static void est_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void est_panic_halt(const uint8_t* msg, uint32_t len)
 {
   est_print(msg, len);

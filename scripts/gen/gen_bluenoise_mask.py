@@ -8,8 +8,8 @@ levels; source figures carry 256. ``libs/ra8_gfx/src/ra8_gfx_dither.c`` breaks
 up the 256->16 banding by thresholding each pixel against a precomputed
 blue-noise mask indexed purely by ``(x, y)`` position plus the pixel's own
 value -- no neighbour state, so the dither is independent per pixel/tile
-(seamless across tile boundaries), fully deterministic (board_sim byte ==
-silicon, the SIM==HIL rule), and SIMD-friendly. This script bakes that mask as
+(seamless across tile boundaries), fully deterministic (ra8_emulator byte ==
+silicon, the EIL==HIL rule), and SIMD-friendly. This script bakes that mask as
 a committed C table, following the ``rabook_parity_gen.py`` /
 ``rabook_gray8_fixture.py`` generate-and-commit pattern.
 

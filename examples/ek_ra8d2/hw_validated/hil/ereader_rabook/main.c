@@ -24,7 +24,7 @@
  * The book's first chapter is short (a title + two paragraphs) and the second
  * is longer (paginates further) -- a small-to-large render in one book. The
  * fixed-metric Ahem face makes pagination + render deterministic, so the banner
- * on the SCI8 J-Link OB console is identical every boot and matches board_sim:
+ * on the SCI8 J-Link OB console is identical every boot and matches ra8_emulator:
  *
  *   `ereader-rabook-hil: chapters=<N> ch0 p=<P> crc=<8hex> ch1 p=<P> crc=<8hex> img <W>x<H> gray8 ok`
  *
@@ -105,7 +105,7 @@ static void erb_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void erb_panic_halt(const uint8_t* msg, uint32_t len)
 {
   erb_print(msg, len);
