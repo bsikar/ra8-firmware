@@ -473,17 +473,39 @@ pair of alarms would have had nothing to say until the next Friday.
 
 ### Deleting the block undoes it
 
-Remove `quiet_hours:` and re-apply, and the role stops and deletes the units. A
-window whose declaration is gone but whose timer still stands the host down
-every Friday would be worse than never having had one.
+Remove `quiet_hours:` and re-apply, and the host converges to its declared
+instance count at all times -- the timer stays, because the window was only ever
+one input to it.
 
-### One host cannot have quiet hours
+### The timer is not only for quiet hours
 
-**TrueNAS SCALE mounts its appliance root read-only**, so `/etc/systemd/system`
-cannot take a unit file. If a window is ever declared for it the role **fails**
-rather than skipping. Manual `make infra-scale HOST=truenas N=<n>` works
-normally there -- it pipes the capacity script over ssh and needs nothing
-installed.
+**Every runner host carries it**, window or not, and that is a fix rather than a
+generalisation. `make infra-scale HOST=truenas N=1` drained `ra8-ci-runner-2`
+during a bench session; `restart: unless-stopped` deliberately does not undo an
+explicit stop; truenas declares no window, so under the old shape it had no
+timer; so nothing ever re-asked what the host should be. The NAS served CI at
+half its declared capacity for hours, and the only thing in the tree that knew
+was `make infra-status`, which prints the drift and exits 0. win-ci, which does
+declare a window, healed the identical fault every ten minutes without anyone
+noticing there had been one.
+
+So `fleet_capacity.sh window` answers *"what should this host be right now"* on
+a host with no window too: its declared capacity. The consequence is
+deliberate -- **a live `make infra-scale` is temporary**. To stand a host down
+durably, change `instances:` in `infra/fleet.yml` (or give it a `quiet_hours`
+block) and re-converge. That is a capacity decision the next person can find;
+a parked container on a machine nobody is looking at is not.
+
+### A host that cannot hold the timer is refused
+
+`/etc/systemd/system` has to be writable, and the role **fails** on a host where
+it is not rather than converging a machine whose capacity nothing re-asserts.
+The case it was written for is an appliance with a read-only root: TrueNAS SCALE
+mounts `/` `ro`. On the SCALE release the NAS runs, `/etc/systemd/system` is
+writable and it does hold the timer -- which is why the role measures the
+directory instead of inferring it from the distribution. Manual
+`make infra-scale HOST=truenas N=<n>` works either way: it pipes the capacity
+script over ssh and needs nothing installed.
 
 ---
 
