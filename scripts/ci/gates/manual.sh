@@ -78,6 +78,13 @@ gate_fuzz_sweep() (
     echo "RA8_FUZZ_SECONDS must be >= 1 (0 means 'no limit' to libFuzzer)" >&2
     return 1
   fi
+  # Prove the budget check before spending the budget it guards. libFuzzer
+  # enforces -max_total_time off the steppable wall clock, so on a host that
+  # steps its clock a sweep stops after seconds and still exits 0 (#509);
+  # run_fuzz.sh times each harness on CLOCK_MONOTONIC and refuses to call that
+  # a pass. The selftest drives every branch of that rule with synthetic
+  # inputs, so a rule that quietly stopped matching cannot pass as clean.
+  bash scripts/checks/run_fuzz.sh --selftest
   echo "Registered harnesses:"
   bash scripts/checks/run_fuzz.sh --list
   # Project the wall time BEFORE spending it. The sweep is serial -- every
