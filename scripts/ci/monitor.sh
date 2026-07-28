@@ -138,6 +138,18 @@ need_jq() {
 # removes the failure mode instead of provisioning around it, and makes
 # `make ci-status` work on a bare machine with no jq at all.
 #
+# SKIPPED IS NOT SUCCESS -- the `verdict` mode below depends on it. Every
+# self-hosted job carries the fork guard `if: github.event_name !=
+# 'pull_request' || head.repo.full_name == github.repository`; when that is
+# false the jobs skip and the run's conclusion is `skipped`. Scoring that as
+# PASS meant a run in which NO GATE EXECUTED reported PASS (#530) -- the exact
+# shape this file is scrupulous about everywhere else. An all-skipped run is
+# UNKNOWN: no verdict could be established, because nothing ran.
+#
+# A PARTIALLY skipped run still passes. A conditional job that legitimately
+# does not apply is normal, and failing on it would cry wolf; the skipped names
+# are printed as evidence by `skipped-count` and `lines-sha` instead.
+#
 # One reader, one place: every field and every rendered view comes from here.
 _status_read() {
   python3 - "$RA8_CI_STATE" "$@" <<'PY'
@@ -170,15 +182,21 @@ if mode == "field":
 elif mode == "count":
     print(len(matching(arg)))
 elif mode == "verdict":
-    # A sha's verdict comes from that sha's runs and nothing else.
+    # A sha's verdict comes from that sha's runs and nothing else, and an
+    # all-skipped set is UNKNOWN. See the SKIPPED IS NOT SUCCESS note above
+    # this function.
     got = matching(arg)
     unfinished = {"failure", "timed_out", "cancelled"}
     if any(r.get("conclusion") in unfinished for r in got):
         print("FAIL")
     elif any(r.get("status") != "completed" for r in got):
         print("UNKNOWN")
+    elif got and all(r.get("conclusion") == "skipped" for r in got):
+        print("UNKNOWN")
     else:
         print("PASS")
+elif mode == "skipped-count":
+    print(sum(1 for r in matching(arg) if r.get("conclusion") == "skipped"))
 elif mode == "lines-sha":
     for r in matching(arg):
         print(line(r))
@@ -216,6 +234,21 @@ _ci_selftest_case() {
   return 0
 }
 
+# Assert that `status --sha <sha>` EXPLAINS itself, not just that it exits
+# right. The exit code alone cannot distinguish "UNKNOWN because nothing ran"
+# from "UNKNOWN because the daemon is dead", and a reader who cannot tell
+# those apart is back where #530 left them.
+_ci_selftest_says() {
+  local sha="$1" pattern="$2" label="$3" hits
+  hits="$(bash "$0" status --sha "$sha" 2>&1 | grep -cE "$pattern" || true)"
+  if [[ "$hits" == "0" ]]; then
+    echo "FAIL  $label -- no line matched /$pattern/"
+    return 1
+  fi
+  echo "ok    $label"
+  return 0
+}
+
 cmd_selftest() {
   local d fails=0
   d="$(mktemp -d)"
@@ -225,7 +258,11 @@ cmd_selftest() {
 {"overall":"PASS","reason":"","polled_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","runs":[
  {"name":"firmware","status":"completed","conclusion":"success","sha":"aaaaaaaaa1"},
  {"name":"firmware","status":"completed","conclusion":"failure","sha":"bbbbbbbbb2"},
- {"name":"docs","status":"in_progress","conclusion":null,"sha":"ccccccccc3"}]}
+ {"name":"docs","status":"in_progress","conclusion":null,"sha":"ccccccccc3"},
+ {"name":"firmware","status":"completed","conclusion":"skipped","sha":"ddddddddd4"},
+ {"name":"docs","status":"completed","conclusion":"skipped","sha":"ddddddddd4"},
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"eeeeeeeee5"},
+ {"name":"hil","status":"completed","conclusion":"skipped","sha":"eeeeeeeee5"}]}
 JSON
 
   _ci_selftest_case 0 "healthy branch head is PASS" status || fails=$((fails + 1))
@@ -233,6 +270,19 @@ JSON
     status --sha bbbbbbbbb2 || fails=$((fails + 1))
   _ci_selftest_case 3 "a still-running sha is UNKNOWN, not PASS" status --sha ccccccccc3 || fails=$((fails + 1))
   _ci_selftest_case 3 "an unrecorded sha is UNKNOWN, not PASS" status --sha deadbeef9 || fails=$((fails + 1))
+
+  # #530: skipped is not success. These are the two directions of that rule --
+  # all-skipped must NOT pass, and a partial skip must NOT start failing, or
+  # the fix would cry wolf on every legitimately-conditional job.
+  _ci_selftest_case 3 "an ALL-SKIPPED sha is UNKNOWN, not PASS (no gate executed)" \
+    status --sha ddddddddd4 || fails=$((fails + 1))
+  _ci_selftest_case 0 "a partially skipped sha still PASSes" \
+    status --sha eeeeeeeee5 || fails=$((fails + 1))
+
+  _ci_selftest_says ddddddddd4 'no gate executed' \
+    "an all-skipped sha states that no gate executed" || fails=$((fails + 1))
+  _ci_selftest_says eeeeeeeee5 '^note:.*skipped' \
+    "a partially skipped sha names the jobs that did not execute" || fails=$((fails + 1))
 
   # The precise trap that burned two agents: an `until` loop grepping for a
   # settled verdict must not match anything while the sha has no runs.
@@ -344,12 +394,20 @@ poll_once() {
 
   # Overall verdict covers only the newest sha seen, so a stale older red does
   # not mask a current green (or vice versa).
+  #
+  # The all-skipped arm is the #530 fix and must stay AHEAD of the success
+  # arm. `all(... =="success" or =="skipped")` alone scored a run in which
+  # every job skipped -- the fork-guard case, where no gate executed at all --
+  # as PASS. Nothing ran, so there is no verdict: that is UNKNOWN. A partially
+  # skipped run still passes; a conditional job that does not apply is normal
+  # and failing on it would cry wolf.
   local head_sha overall
   head_sha="$(printf '%s' "$runs" | jq -r 'if length>0 then .[0].sha else "" end')"
   overall="$(printf '%s' "$runs" | jq -r --arg s "$head_sha" '
       [ .[] | select(.sha==$s) ] as $cur
       | if ($cur|length)==0 then "UNKNOWN"
         elif any($cur[]; .conclusion=="failure" or .conclusion=="timed_out" or .conclusion=="cancelled") then "FAIL"
+        elif all($cur[]; .status=="completed") and all($cur[]; .conclusion=="skipped") then "UNKNOWN"
         elif all($cur[]; .status=="completed") and all($cur[]; .conclusion=="success" or .conclusion=="skipped") then "PASS"
         else "RUNNING" end')"
 
@@ -409,6 +467,17 @@ _status_for_sha() {
   fi
   sha_verdict="$(_status_read verdict "$want_sha")"
   echo "overall: $sha_verdict   for $want_sha (polled $polled, ${age_s}s ago)"
+  local skipped
+  skipped="$(_status_read skipped-count "$want_sha")"
+  if [[ "$skipped" != "0" ]]; then
+    if [[ "$skipped" == "$seen" ]]; then
+      echo "reason:  all $seen run(s) SKIPPED -- no gate executed, so there is no verdict."
+      echo "         Usually the fork guard on the self-hosted jobs; re-run on a"
+      echo "         branch in this repository. UNKNOWN is not a pass."
+    else
+      echo "note:    $skipped of $seen run(s) skipped and did not execute (listed below)"
+    fi
+  fi
   _status_read lines-sha "$want_sha"
   [[ -n "$warning" ]] && echo "$warning"
   case "$sha_verdict" in

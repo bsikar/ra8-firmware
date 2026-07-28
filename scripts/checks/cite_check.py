@@ -172,7 +172,14 @@ def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]
 # structs in this tree use lower_snake_case members, so an upper-case member
 # after `->` is a reliable register-access signal with a low false-positive
 # rate.
-ACCESS_RE = re.compile(r"(?:\)|[A-Za-z_]\w*)\s*->\s*[A-Z][A-Z0-9_]+")
+#
+# The trailing `\b` is load-bearing: without it the ALL-CAPS run is allowed to
+# stop in the middle of a CamelCase identifier, so a C++ member call whose first
+# two characters happen to be upper-case matched as a register. `text->CData()`
+# in the tinyxml2 shim was read as `text->CD` and reported as an uncited MMIO
+# access -- a class that grows with every C++ shim added, since `\b` is the only
+# thing that distinguishes `->CFDGSTS` (a real CAN-FD register) from `->CData`.
+ACCESS_RE = re.compile(r"(?:\)|[A-Za-z_]\w*)\s*->\s*[A-Z][A-Z0-9_]+\b")
 # Raw volatile-pointer dereference, e.g. `*(volatile uint32_t *)addr = ...`.
 RAW_DEREF_RE = re.compile(r"\*\s*\(\s*volatile\b")
 # A HUM cite token anywhere on a line (any recognised form: "HUM Ch",
@@ -302,9 +309,35 @@ def blank_comments_and_strings(text: str) -> str:
     return _Blanker(text).run()
 
 
-def _is_access_line(blanked_line: str) -> bool:
+def is_access_line(blanked_line: str) -> bool:
     """True if a code (comment/string-blanked) line performs an MMIO access."""
     return bool(ACCESS_RE.search(blanked_line)) or bool(RAW_DEREF_RE.search(blanked_line))
+
+
+def scan_access_coverage(path: pathlib.Path, text: str) -> tuple[list[str], int]:
+    """Return uncited-access findings AND the total access-line count, in one pass.
+
+    `cite_ratchet.py` needs both numbers for every file: the findings are the
+    debt it ratchets, and the total is its detector-health floor -- the uncited
+    count alone cannot distinguish "the tree got cited" from "ACCESS_RE stopped
+    matching", and the second reads as a burn-down. Blanking is the expensive
+    step (a per-character state machine over every source file), so both come
+    out of one blanking pass rather than two.
+
+    Args:
+        path: File the findings are reported against.
+        text: Raw source text.
+
+    Returns:
+        A ``(findings, access_line_count)`` pair. The count includes CITED
+        accesses; only the findings are uncited.
+    """
+    orig = text.splitlines()
+    blanked = blank_comments_and_strings(text).splitlines()
+    return (
+        _uncited_in_lines(path, orig, blanked),
+        sum(1 for line in blanked if is_access_line(line)),
+    )
 
 
 def _is_block_continuation(blanked_line: str) -> bool:
@@ -323,20 +356,25 @@ def _is_block_continuation(blanked_line: str) -> bool:
     return s[0] in ".|&)+*?:"
 
 
-def find_uncited_accesses(path: pathlib.Path, text: str) -> list[str]:
-    """Return findings for MMIO accesses lacking a preceding HUM cite.
+def _uncited_in_lines(path: pathlib.Path, orig: list[str], blanked: list[str]) -> list[str]:
+    """Findings for the already-blanked view of one file.
 
-    Models the tree convention that one `/* HUM ... */` comment covers the
-    contiguous block of register accesses directly beneath it: an access is
-    covered when walking upward -- past blank lines, comment-only lines, other
-    accesses in the same block, and statement continuations -- reaches a HUM
-    cite before any other statement.
+    The single definition of "this access lacks a citation". Both
+    `find_uncited_accesses` and `scan_access_coverage` delegate here so a
+    second, drifting copy of the block-walk cannot appear.
+
+    Args:
+        path: File the findings are reported against.
+        orig: Original source lines -- citations are read from these, since
+            blanking erases comment interiors.
+        blanked: The comment/string-blanked view, line for line with `orig`.
+
+    Returns:
+        One finding string per uncited access, in line order.
     """
-    orig = text.splitlines()
-    blanked = blank_comments_and_strings(text).splitlines()
     findings: list[str] = []
     for i, bline in enumerate(blanked):
-        if not _is_access_line(bline):
+        if not is_access_line(bline):
             continue
         # Same-line trailing cite, e.g. `reg->X = 1; /* HUM Ch .. */`.
         if HUM_ON_LINE_RE.search(orig[i]):
@@ -349,7 +387,7 @@ def find_uncited_accesses(path: pathlib.Path, text: str) -> list[str]:
             if blanked[j].strip() == "" and HUM_ON_LINE_RE.search(orig[j]):
                 covered = True
                 break
-            if _is_access_line(blanked[j]) or _is_block_continuation(blanked[j]):
+            if is_access_line(blanked[j]) or _is_block_continuation(blanked[j]):
                 j -= 1
                 steps += 1
                 continue
@@ -359,6 +397,25 @@ def find_uncited_accesses(path: pathlib.Path, text: str) -> list[str]:
                 f"{path}:{i + 1}: MMIO access without preceding HUM cite: {orig[i].strip()[:70]}"
             )
     return findings
+
+
+def find_uncited_accesses(path: pathlib.Path, text: str) -> list[str]:
+    """Return findings for MMIO accesses lacking a preceding HUM cite.
+
+    Models the tree convention that one `/* HUM ... */` comment covers the
+    contiguous block of register accesses directly beneath it: an access is
+    covered when walking upward -- past blank lines, comment-only lines, other
+    accesses in the same block, and statement continuations -- reaches a HUM
+    cite before any other statement.
+
+    Args:
+        path: File the findings are reported against.
+        text: Raw source text.
+
+    Returns:
+        One finding string per uncited access, in line order.
+    """
+    return _uncited_in_lines(path, text.splitlines(), blank_comments_and_strings(text).splitlines())
 
 
 def check_file(
@@ -484,6 +541,97 @@ def _report_findings(
 # Selftest -- both directions, plus a scope assertion under tools/, silently
 # omitted until #358.
 # ---------------------------------------------------------------------------
+
+# An uncited MMIO write. The cite-COVERAGE pass must FIRE on this.
+_ST_UNCITED_C = """\
+void drv_init(void)
+{
+  volatile r_canfd_regs_t* reg = canfd();
+  reg->CFDGSTS = 0U;
+}
+"""
+
+# The same write, cited. The pass must stay QUIET.
+_ST_CITED_C = """\
+void drv_init(void)
+{
+  volatile r_canfd_regs_t* reg = canfd();
+  /* HUM Ch 25 "Ultra-Low-Power Timer" p 1190 */
+  reg->CFDGSTS = 0U;
+}
+"""
+
+# Address-of a register field handed to a register-agnostic poll helper. The
+# load happens INSIDE the helper, so this call site is the only place the
+# register is named -- it must FIRE. Asserted so a future "precision" narrowing
+# that drops address-of has to argue with a failing selftest rather than with a
+# silently shrinking backlog.
+_ST_ADDR_OF_C = """\
+ra8_err_t drv_wait(void)
+{
+  volatile r_canfd_regs_t* reg = canfd();
+  return ra8_hw_wait_flag_set32(&reg->CFDGSTS, mask, spin);
+}
+"""
+
+# A C++ member call whose first two characters are upper-case. NOT a register;
+# the pass must stay QUIET (it read this as `text->CD` before the trailing \\b).
+_ST_CAMEL_CPP = """\
+bool shim_is_cdata(const XMLText* text)
+{
+  if (text->CData()) {
+    return true;
+  }
+  return false;
+}
+"""
+
+# A genuinely two-character register name, so the \\b fix cannot be satisfied by
+# simply demanding a longer ALL-CAPS run. Must FIRE.
+_ST_SHORT_REG_C = """\
+void drv_poke(void)
+{
+  volatile r_i3c_regs_t* reg = i3c();
+  reg->CD = 0U;
+}
+"""
+
+
+def _selftest_coverage(chapters: dict[int, tuple[int, int, str]], failures: list[str]) -> None:
+    """Assert the cite-COVERAGE pass fires and stays quiet on the right inputs.
+
+    Both directions, because a coverage pass that quietly stopped matching
+    reports a shrinking backlog -- which reads as progress.
+
+    Args:
+        chapters: Parsed chapter map, as returned by ``parse_chapter_map``.
+        failures: Accumulator that ``expect`` appends failed labels to.
+    """
+    cases: tuple[tuple[str, str, bool, str], ...] = (
+        ("uncited.c", _ST_UNCITED_C, True, "an uncited MMIO write fires under --require-cites"),
+        ("cited.c", _ST_CITED_C, False, "the same write with a HUM cite above stays quiet"),
+        ("addrof.c", _ST_ADDR_OF_C, True, "&reg->FIELD passed to a poll helper fires"),
+        ("shim.cpp", _ST_CAMEL_CPP, False, "a C++ `->CData()` member call stays quiet"),
+        ("short.c", _ST_SHORT_REG_C, True, "a two-character register name still fires"),
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, body, want_finding, label in cases:
+            path = pathlib.Path(tmp) / name
+            path.write_text(body, encoding="utf-8")
+            got = bool(check_file(path, chapters, require_cites=True))
+            expect(got == want_finding, label, failures)
+
+        # The coverage pass is opt-in: without --require-cites the very input
+        # that fires above must produce nothing, or the default mode would have
+        # been silently reporting a backlog it never promised to.
+        path = pathlib.Path(tmp) / "uncited.c"
+        expect(
+            not check_file(path, chapters),
+            "the coverage pass stays off unless --require-cites is given",
+            failures,
+        )
+
+
 def selftest() -> int:
     """Prove a malformed cite fires, a well-formed one is quiet, and scope holds."""
     print("cite_check.py --selftest")
@@ -500,6 +648,7 @@ def selftest() -> int:
             "a well-formed, in-range cite stays quiet",
             failures,
         )
+    _selftest_coverage(chapters, failures)
     scope = set(first_party_paths(SOURCE_SUFFIXES))
     expect(
         any(s.startswith("tools/") for s in scope),

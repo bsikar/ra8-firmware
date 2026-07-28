@@ -20,7 +20,8 @@ Run::
     check_final_newline.py                      # scan the whole tree
     check_final_newline.py path/to/file ...     # scan listed files
 
-Exit 0 if every file ends in a newline, exit 1 (with a list) otherwise.
+Exit 0 if every file ends in a newline, exit 1 (with a list) otherwise, exit 2
+when the whole-tree sweep collapses below FILE_FLOOR.
 """
 
 from __future__ import annotations
@@ -62,6 +63,13 @@ EXCLUDE_FRAGMENTS = (
     "port/threadx/",
     "_unsupported/",
 )
+
+# A tree this size cannot legitimately collapse to a handful of files. If the
+# whole-tree sweep returns less than this, something broke (an unreachable repo
+# root, a renamed SCAN_ROOTS entry, a runaway EXCLUDE_FRAGMENTS) and reporting
+# "all end in a newline" would be a lie. Measured 2026-07-28: 2773 first-party
+# source files. Same trip-wire as check_ruff.py.
+FILE_FLOOR = 2200
 
 
 def _ends_in_newline(path: Path) -> bool:
@@ -117,14 +125,28 @@ def main(argv: list[str]) -> int:
     ``InsertNewlineAtEOF`` only reaches C/C++ that goes through the formatter,
     leaving Python, shell, CMake and YAML unenforced.
 
-    Unlike the size gates, an empty target set exits 0 rather than FATAL: the
-    caller here is the pre-commit hook passing a staged file list, which
-    legitimately filters to nothing when a commit touches only excluded paths.
+    An empty target set exits 0 rather than FATAL only when a file list was
+    passed on argv: the caller there is the pre-commit hook handing over a
+    staged file list, which legitimately filters to nothing when a commit
+    touches only excluded paths. The WHOLE-TREE sweep gets the opposite
+    treatment -- FILE_FLOOR, exit 2 -- because nothing about this tree can
+    legitimately reduce it to a handful of files, and a sweep that read almost
+    nothing reports a clean tree for exactly the wrong reason.
 
-    Returns 1 with each offending path listed, 0 when clean or when there was
-    nothing in scope.
+    Returns 1 with each offending path listed, 0 when clean or when an argv
+    list filtered to nothing, 2 when the whole-tree sweep enumerated too few
+    files to trust.
     """
-    targets = _enumerate_targets(argv[1:])
+    paths = argv[1:]
+    targets = _enumerate_targets(paths)
+    if not paths and len(targets) < FILE_FLOOR:
+        print(
+            f"check_final_newline.py: FATAL -- only {len(targets)} file(s) in scope, "
+            f"floor is {FILE_FLOOR}. A collapsed sweep reports a clean tree because "
+            "it scanned nothing.",
+            file=sys.stderr,
+        )
+        return 2
     if not targets:
         print("check_final_newline.py: no files to scan", file=sys.stderr)
         return 0

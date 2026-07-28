@@ -28,7 +28,7 @@ instrumented.
 Exit:
   0  every hil.conf in hw_validated/hil/ satisfies the policy
   1  one or more hil.confs violate
-  2  usage / unreachable repo root
+  2  usage / unreachable repo root, or a collapsed scan (see HIL_CONF_FLOOR)
 """
 
 from __future__ import annotations
@@ -37,6 +37,13 @@ import pathlib
 import re
 import sys
 from collections.abc import Iterable
+
+# A hw_validated HIL suite this size cannot legitimately collapse to a handful
+# of apps. If the glob returns less than this, something broke (a bad repo
+# root, a renamed hil/ directory) and reporting "0 findings" would be a lie:
+# every app would be trivially compliant because none was read. Measured
+# 2026-07-28: 114 hil.conf files. Same trip-wire as check_ruff.py.
+HIL_CONF_FLOOR = 90
 
 ALLOWED_MODES: frozenset[str] = frozenset(
     {
@@ -88,13 +95,27 @@ def main() -> int:
     A missing HIL_MODE is treated as a violation rather than a default, since
     a silently defaulted mode is how an unasserted app would slip in.
 
+    Enforces HIL_CONF_FLOOR before reading anything and exits 2 below it. An
+    empty glob would otherwise report "0 findings" -- indistinguishable from a
+    fully compliant suite, and produced by the scan having read nothing.
+
     Returns 1 with one remediation-bearing message per offending hil.conf, 0
-    when every conf under hw_validated/hil/ declares an asserting mode.
+    when every conf under hw_validated/hil/ declares an asserting mode, 2 when
+    the enumeration is too small to trust.
     """
     repo_root = pathlib.Path(__file__).resolve().parents[2]
     violations: list[str] = []
 
-    for conf in sorted(_iter_hil_confs(repo_root)):
+    confs = sorted(_iter_hil_confs(repo_root))
+    if len(confs) < HIL_CONF_FLOOR:
+        sys.stderr.write(
+            f"check_hil_alive_policy.py: FATAL -- only {len(confs)} hil.conf file(s) in "
+            f"scope, floor is {HIL_CONF_FLOOR}.\n"
+            "  A collapsed scope reports a compliant suite because it checked nothing.\n"
+        )
+        return 2
+
+    for conf in confs:
         kv = _parse_kv(conf)
         mode = kv.get("HIL_MODE", "")
         fault_expected = kv.get("HIL_FAULT_EXPECTED", "0")
@@ -137,10 +158,7 @@ def main() -> int:
         )
         return 1
 
-    print(
-        f"check_hil_alive_policy.py: 0 findings across "
-        f"{sum(1 for _ in _iter_hil_confs(repo_root))} hil.conf file(s)."
-    )
+    print(f"check_hil_alive_policy.py: 0 findings across {len(confs)} hil.conf file(s).")
     return 0
 
 

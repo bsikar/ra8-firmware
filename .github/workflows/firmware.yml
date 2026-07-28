@@ -781,67 +781,24 @@ jobs:
           RA8_MCDC_BASE_REF: ${{ github.event.pull_request.base.ref }}
         continue-on-error: true
         run: bash scripts/ci.sh --gate mcdc-delta-base
-      - name: Render delta comment
+      - name: Render delta comment body
+        run: bash scripts/ci.sh --gate mcdc-delta-render
+      - name: Post delta comment
         uses: actions/github-script@v7
         with:
           script: |
+            // Plumbing only -- no check logic. The body is rendered by
+            // scripts/report/mcdc_delta_comment.py under the
+            // mcdc-delta-render gate, so it is in scope for
+            // check_ci_parity.py and carries its own --selftest. The JS that
+            // used to live here computed the deltas itself and treated a
+            // missing base report as an empty one, which rendered a failed
+            // base build as a complete-looking table of n/a deltas (#536).
             const fs = require('fs');
-            function loadSummary(path) {
-              if (!fs.existsSync(path)) return new Map();
-              const m = new Map();
-              const lines = fs.readFileSync(path, 'utf8').split(/\r?\n/);
-              for (const line of lines) {
-                // A typical llvm-cov report row looks like:
-                //   path/to/file.c   1   2   50.00%   3   4   75.00%   ...   12.34%
-                // We take the first whitespace-delimited token as the
-                // file path and the last %-suffixed token as MC/DC %.
-                const trimmed = line.trim();
-                if (!trimmed || trimmed.startsWith('---') ||
-                    trimmed.startsWith('Filename') ||
-                    trimmed.startsWith('TOTAL')) continue;
-                const cols = trimmed.split(/\s+/);
-                if (cols.length < 2) continue;
-                const pcts = cols.filter(c => /^[0-9]+(\.[0-9]+)?%$/.test(c));
-                if (!pcts.length) continue;
-                const file = cols[0];
-                const pct = parseFloat(pcts[pcts.length - 1]);
-                m.set(file, pct);
-              }
-              return m;
-            }
-            const pr = loadSummary('pr-mcdc/summary.txt');
-            const base = loadSummary('base-summary.txt');
-            const files = new Set([...pr.keys(), ...base.keys()]);
-            const rows = [];
-            for (const f of files) {
-              const a = base.has(f) ? base.get(f) : null;
-              const b = pr.has(f) ? pr.get(f) : null;
-              const delta = (a !== null && b !== null) ? (b - a) : null;
-              rows.push({ file: f, base: a, pr: b, delta });
-            }
-            rows.sort((x, y) => {
-              const dx = x.delta === null ? -Infinity : x.delta;
-              const dy = y.delta === null ? -Infinity : y.delta;
-              return dx - dy;
-            });
-            const top = rows.slice(0, 50);
-            const fmt = v => v === null ? "n/a" : v.toFixed(2) + "%";
-            const sign = v => v === null ? "" : (v > 0 ? "+" : "");
-            let body = "## MC/DC delta (PR vs base)\n\n";
-            body += "Showing up to 50 files sorted by delta (regressions first).\n\n";
-            body += "| file | base | PR | delta |\n|---|---|---|---|\n";
-            for (const r of top) {
-              const delta = `${sign(r.delta)}${fmt(r.delta)}`;
-              body +=
-                `| \`${r.file}\` | ${fmt(r.base)} | ${fmt(r.pr)} | ${delta} |\n`;
-            }
-            if (!top.length) {
-              body += "| _no rows_ | | | |\n";
-            }
+            const body = fs.readFileSync('mcdc-delta-comment.md', 'utf8');
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
             const marker = "<!-- mcdc-delta-comment -->";
-            body = marker + "\n" + body;
             const existing = await github.rest.issues.listComments({
               owner, repo, issue_number, per_page: 100,
             });

@@ -1,0 +1,460 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Enforce the ``--selftest`` requirement that nothing used to enforce.
+
+The repo's stated remedy for its dominant defect class -- a detector that has
+quietly stopped matching -- is a ``--selftest`` asserting BOTH directions.
+``scripts/ci.sh`` says so and ``CLAUDE.md`` says so.  Nothing checked it, so a
+new checker with no selftest, or one whose gate never ran it, landed clean
+(#531).  Two of the checkers that turned out to have no selftest were the two
+that had silently stopped seeing their subject -- ``check_obsolete_standards``
+scanning 0 files and ``audit_init_order`` reaching 11 of 217 apps.  That is not
+a coincidence, and it is why this gate exists.
+
+WHAT THE RULE IS, AND WHY IT IS NARROWED
+----------------------------------------
+
+An unenforceable rule in ``CLAUDE.md`` is itself the defect class, so the rule
+is scoped to where it can be both meaningful and true:
+
+  **Rule A (universal).**  ANY first-party script a gate body invokes that
+  *has* a selftest must have it RUN by that gate.  A selftest nobody executes
+  is documentation.  This has no exceptions and no baseline.
+
+  **Rule B (detectors).**  Every script under ``scripts/checks/`` -- plus the
+  ``scripts/ci/check_*.py`` meta-checkers -- that a gate body invokes must
+  ACCEPT a selftest.
+
+Rule B is keyed on the taxonomy ``CLAUDE.md`` already documents, in which
+``scripts/`` is organised by the QUESTION a script answers: ``checks/`` is
+"Is the tree OK?" -- read-only, exits non-zero when it is not.  Those are the
+detectors, and a detector is exactly the thing that can stop detecting.
+``builders/`` produce a build output, ``report/`` "never fails on content",
+and ``hil/`` drives the bench; demanding a both-directions selftest of
+``scripts/builders/docs.sh`` would be ceremony, and a gate that demands
+ceremony gets disabled.  Scoping by the repo's own stated organisation is a
+principle, not an allowlist.
+
+THE BACKLOG IS RATCHETED, NOT WAIVED
+------------------------------------
+
+Turning Rule B on found a real backlog.  Failing on all of it at once would
+turn the tree red and teach everyone to skip the gate, so the pre-existing
+offenders are frozen in ``.github/selftest-baseline.txt`` -- the same shape as
+``tidy_ratchet.py`` and ``misra_ratchet.py``.  A NEW gate-wired detector with
+no selftest fails immediately.  A baseline row whose checker has since GAINED
+a selftest also fails, so the list can only shrink: the ratchet tightens
+itself rather than waiting to be tidied.
+
+Run::
+
+    check_selftest_coverage.py             # the gate
+    check_selftest_coverage.py --list      # what is scanned, and its status
+    check_selftest_coverage.py --update    # re-seed the baseline (shrink only)
+    check_selftest_coverage.py --selftest  # prove both directions
+
+Exit 0 if clean, 1 on a violation, 2 when the scan itself collapsed.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+GATE_DIR = REPO_ROOT / "scripts" / "ci" / "gates"
+BASELINE_FILE = REPO_ROOT / ".github" / "selftest-baseline.txt"
+
+# A first-party script path as it appears in a gate body.
+INVOKE_RE = re.compile(r"(?<![\w./-])(scripts/[\w./-]+\.(?:py|sh))")
+
+# A selftest IMPLEMENTATION. Both spellings are live in this tree: the flag
+# form (`--selftest`, argparse or a bash `case` arm) and the subcommand form
+# (`monitor.sh selftest`, dispatched through a `cmd_selftest` function).
+# Matching only the flag form would report monitor.sh as having none, which is
+# false -- and a rule that fires on a compliant file is how a gate gets turned
+# off.
+IMPL_RE = re.compile(
+    r"""["']--selftest["']|--selftest\)|\bcmd_selftest\b|^\s*selftest\)""",
+    re.MULTILINE,
+)
+
+# A selftest INVOCATION on one line of a gate body, in either spelling.
+RUN_RE = re.compile(r"--selftest\b|\bselftest\b")
+
+# Directories whose scripts are DETECTORS and therefore owe a selftest under
+# Rule B. Derived from the scripts/ taxonomy documented in CLAUDE.md.
+DETECTOR_DIRS = ("scripts/checks/",)
+# The sibling meta-checkers, which live one directory up from checks/.
+DETECTOR_META_RE = re.compile(r"^scripts/ci/check_[\w.]+\.py$")  # PATHREF-OK: a regex, not a path
+
+# A tree with no gate-invoked scripts means the parser stopped matching, not
+# that the gates stopped calling checkers. Refuse to report clean against
+# nothing. Measured 94 gate-invoked first-party scripts on 2026-07-28.
+MIN_INVOKED = 40
+
+EXIT_OK = 0
+EXIT_VIOLATION = 1
+EXIT_VACUOUS = 2
+
+
+def is_detector(rel: str) -> bool:
+    """Report whether `rel` is a detector owing a selftest under Rule B.
+
+    Args:
+        rel: Repo-relative script path.
+
+    Returns:
+        True for ``scripts/checks/*`` and the ``scripts/ci/check_*.py`` meta
+        checkers, False for builders, reports, generators and bench drivers.
+    """
+    return rel.startswith(DETECTOR_DIRS) or bool(DETECTOR_META_RE.match(rel))
+
+
+def scan_gate_invocations(text: str) -> dict[str, bool]:
+    """Map every first-party script invoked in `text` to whether a selftest ran.
+
+    Args:
+        text: A gate fragment's source.
+
+    Returns:
+        ``script path -> True`` when at least one invocation of that script in
+        this text carried a selftest.
+    """
+    found: dict[str, bool] = {}
+    for line in text.splitlines():
+        if line.lstrip().startswith("#"):
+            continue
+        ran = bool(RUN_RE.search(line))
+        for match in INVOKE_RE.finditer(line):
+            rel = match.group(1)
+            found[rel] = found.get(rel, False) or ran
+    return found
+
+
+def collect() -> dict[str, bool]:
+    """Gather every gate-invoked script and whether any gate runs its selftest.
+
+    Returns:
+        ``script path -> selftest is invoked somewhere in the gate bodies``.
+    """
+    out: dict[str, bool] = {}
+    for fragment in sorted(GATE_DIR.glob("*.sh")):
+        for rel, ran in scan_gate_invocations(fragment.read_text(encoding="utf-8")).items():
+            out[rel] = out.get(rel, False) or ran
+    return out
+
+
+def has_selftest(rel: str) -> bool:
+    """Report whether the script at `rel` implements a selftest.
+
+    Args:
+        rel: Repo-relative script path.
+
+    Returns:
+        True when either selftest spelling appears in the file; False when the
+        file cannot be read (a stale invocation is caught separately).
+    """
+    path = REPO_ROOT / rel
+    if not path.is_file():
+        return False
+    return bool(IMPL_RE.search(path.read_text(encoding="utf-8", errors="replace")))
+
+
+def evaluate(invoked: dict[str, bool]) -> tuple[list[str], list[str]]:
+    """Split the gate-invoked scripts into Rule A and Rule B offenders.
+
+    Args:
+        invoked: Output of `collect`.
+
+    Returns:
+        ``(rule_a, rule_b)`` -- scripts with an unrun selftest, and detectors
+        with no selftest at all. Both sorted.
+    """
+    rule_a: list[str] = []
+    rule_b: list[str] = []
+    for rel, ran in sorted(invoked.items()):
+        if not (REPO_ROOT / rel).is_file():
+            continue
+        if has_selftest(rel):
+            if not ran:
+                rule_a.append(rel)
+        elif is_detector(rel):
+            rule_b.append(rel)
+    return rule_a, rule_b
+
+
+def load_baseline() -> set[str]:
+    """Read the frozen Rule B backlog.
+
+    Returns:
+        Repo-relative paths recorded as pre-existing offenders; empty when the
+        baseline file is absent (the seeding case).
+    """
+    if not BASELINE_FILE.is_file():
+        return set()
+    rows = set()
+    for line in BASELINE_FILE.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            rows.add(stripped)
+    return rows
+
+
+def write_baseline(rows: set[str]) -> None:
+    """Write the Rule B backlog, sorted, under a header that explains it.
+
+    Args:
+        rows: Repo-relative paths to freeze.
+    """
+    header = [
+        "# Gate-wired detectors that do not yet accept a --selftest.",
+        "# Consumed by scripts/ci/check_selftest_coverage.py --check",
+        "# (CI gate: ci-parity).",
+        "#",
+        "# CLAUDE.md and scripts/ci.sh both require a both-directions",
+        "# --selftest, and until #531 nothing enforced it. These rows predate",
+        "# enforcement. The gate fails on any NEW gate-wired detector with no",
+        "# selftest, so the debt is frozen and can only be burned down.",
+        "#",
+        "# A row whose checker has SINCE gained a selftest is also a failure:",
+        "# the list tightens itself rather than waiting to be tidied. Delete",
+        "# the row in the same change that adds the selftest.",
+        "#",
+        "# Closing this out means this file reaching zero rows and being",
+        "# DELETED -- never regenerated larger.",
+        f"# Rows at this baseline: {len(rows)}",
+        "",
+    ]
+    BASELINE_FILE.write_text("\n".join([*header, *sorted(rows), ""]), encoding="utf-8")
+
+
+def _report(rule_a: list[str], new_b: list[str], stale: list[str]) -> None:
+    """Print every violation with the fix spelled out.
+
+    Args:
+        rule_a: Scripts whose selftest no gate runs.
+        new_b: Detectors newly missing a selftest.
+        stale: Baseline rows whose checker gained a selftest.
+    """
+    for rel in rule_a:
+        sys.stderr.write(
+            f"  {rel}: implements a selftest that NO gate body runs.\n"
+            "      A selftest nobody executes is documentation. Add it to the gate,\n"
+            f"      before the scan:   python3 {rel} --selftest\n\n"
+        )
+    for rel in new_b:
+        sys.stderr.write(
+            f"  {rel}: a gate-wired detector with NO --selftest.\n"
+            "      A detector that has quietly stopped matching is indistinguishable\n"
+            "      from a clean tree. Add a --selftest asserting BOTH directions (a\n"
+            "      must-fire case and a must-stay-quiet case) and run it in the gate.\n"
+            "      Do NOT add a row to .github/selftest-baseline.txt -- that list is\n"
+            "      frozen pre-existing debt and may only shrink.\n\n"
+        )
+    for rel in stale:
+        sys.stderr.write(
+            f"  {rel}: baselined as having no selftest, but it now has one.\n"
+            "      Remove its row from .github/selftest-baseline.txt.\n\n"
+        )
+
+
+def run_check() -> int:
+    """Apply Rule A and Rule B against the frozen baseline.
+
+    Returns:
+        0 clean, 1 on a violation, 2 when the scan collapsed.
+    """
+    invoked = collect()
+    if len(invoked) < MIN_INVOKED:
+        sys.stderr.write(
+            f"check_selftest_coverage.py: FATAL -- only {len(invoked)} gate-invoked "
+            f"script(s) found, floor is {MIN_INVOKED}.\n"
+            "  A collapsed scan reports full selftest coverage because it saw nothing.\n"
+        )
+        return EXIT_VACUOUS
+
+    rule_a, rule_b = evaluate(invoked)
+    baseline = load_baseline()
+    new_b = [rel for rel in rule_b if rel not in baseline]
+    stale = sorted(rel for rel in baseline if rel not in rule_b)
+
+    if rule_a or new_b or stale:
+        sys.stderr.write("check_selftest_coverage.py: selftest requirement violated\n\n")
+        _report(rule_a, new_b, stale)
+        total = len(rule_a) + len(new_b) + len(stale)
+        sys.stderr.write(f"{total} violation(s).\n")
+        return EXIT_VIOLATION
+
+    print(
+        f"check_selftest_coverage.py: clean -- {len(invoked)} gate-invoked script(s); "
+        f"every selftest present is run; {len(baseline)} detector(s) still owe one "
+        "(frozen in .github/selftest-baseline.txt)."
+    )
+    return EXIT_OK
+
+
+def run_list() -> int:
+    """Print every gate-invoked script with its selftest status.
+
+    Returns:
+        Always 0.
+    """
+    invoked = collect()
+    for rel, ran in sorted(invoked.items()):
+        impl = has_selftest(rel)
+        kind = "detector" if is_detector(rel) else "other   "
+        print(f"{kind}  impl={'Y' if impl else 'n'}  run={'Y' if ran else 'n'}  {rel}")
+    print(f"total: {len(invoked)}")
+    return EXIT_OK
+
+
+def run_update() -> int:
+    """Re-seed the baseline, refusing to grow it.
+
+    Returns:
+        0 on success, 1 when the update would freeze new debt.
+    """
+    _, rule_b = evaluate(collect())
+    current = set(rule_b)
+    seeding = not BASELINE_FILE.is_file()
+    baseline = load_baseline()
+    grew = sorted(current - baseline)
+    if grew and not seeding:
+        sys.stderr.write(
+            f"refusing to --update: {len(grew)} row(s) would be ADDED. The baseline is "
+            "a burn-down; write the missing selftests instead.\n"
+        )
+        for rel in grew:
+            sys.stderr.write(f"  {rel}\n")
+        return EXIT_VIOLATION
+    write_baseline(current)
+    print(f"check_selftest_coverage.py: wrote {len(current)} row(s) to {BASELINE_FILE.name}")
+    return EXIT_OK
+
+
+def _selftest_cases() -> list[tuple[str, str, bool]]:
+    """Return ``(label, gate fragment text, must_fire)`` fixtures.
+
+    Both directions are covered deliberately: a meta-checker that only ever
+    sees compliant gate bodies cannot tell "compliant" from "stopped matching".
+
+    Returns:
+        The fixture list.
+    """
+    return [
+        (
+            "a detector whose selftest the gate runs (flag form)",
+            "gate_x() (\n  set -e\n  python3 scripts/checks/check_asm.py --selftest\n"
+            "  python3 scripts/checks/check_asm.py\n)\n",
+            False,
+        ),
+        (
+            "a detector whose selftest the gate SKIPS",
+            "gate_x() (\n  set -e\n  python3 scripts/checks/check_asm.py\n)\n",
+            True,
+        ),
+        (
+            "the subcommand selftest spelling counts as running one",
+            "gate_x() (\n  set -e\n  bash scripts/ci/monitor.sh selftest\n)\n",
+            False,
+        ),
+        (
+            "a commented-out invocation is not an invocation",
+            "gate_x() (\n  set -e\n  # python3 scripts/checks/check_asm.py\n  true\n)\n",
+            False,
+        ),
+    ]
+
+
+def selftest() -> int:
+    """Prove Rule A fires on an unrun selftest and spares a run one.
+
+    Returns:
+        0 when every case holds, 1 otherwise.
+    """
+    failures = 0
+    for label, text, must_fire in _selftest_cases():
+        invoked = scan_gate_invocations(text)
+        fired = any(
+            has_selftest(rel) and not ran
+            for rel, ran in invoked.items()
+            if (REPO_ROOT / rel).is_file()
+        )
+        ok = fired == must_fire
+        failures += 0 if ok else 1
+        expectation = "must fire" if must_fire else "must stay quiet"
+        print(f"  [{'ok' if ok else 'FAIL'}] {label} ({expectation})")
+
+    checks: list[tuple[str, bool]] = [
+        ("scripts/checks/ is classified as a detector", is_detector("scripts/checks/check_asm.py")),
+        (
+            "scripts/ci/check_*.py is classified as a detector",
+            is_detector("scripts/ci/check_ci_parity.py"),
+        ),
+        ("scripts/builders/ is NOT a detector", not is_detector("scripts/builders/docs.sh")),
+        ("scripts/report/ is NOT a detector", not is_detector("scripts/report/roadmap_stats.py")),
+        ("the flag selftest spelling is detected", has_selftest("scripts/checks/check_asm.py")),
+        ("the subcommand selftest spelling is detected", has_selftest("scripts/ci/monitor.sh")),
+    ]
+    live = collect()
+    checks.append(
+        (
+            f"live scan sees {len(live)} gate-invoked script(s) (floor {MIN_INVOKED})",
+            len(live) >= MIN_INVOKED,
+        )
+    )
+    baseline = load_baseline()
+    _, rule_b = evaluate(live)
+    checks.append(
+        (
+            "every baseline row is still a real offender (the list only shrinks)",
+            set(baseline) <= set(rule_b),
+        )
+    )
+    for label, ok in checks:
+        failures += 0 if ok else 1
+        print(f"  [{'ok' if ok else 'FAIL'}] {label}")
+
+    if failures:
+        sys.stderr.write(f"check_selftest_coverage.py --selftest: {failures} case(s) failed.\n")
+        return EXIT_VIOLATION
+    print("check_selftest_coverage.py --selftest: all cases pass (both directions).")
+    return EXIT_OK
+
+
+def main() -> int:
+    """Parse arguments and dispatch.
+
+    Returns:
+        A process exit status.
+    """
+    parser = argparse.ArgumentParser(description="enforce the --selftest requirement")
+    parser.add_argument("--check", action="store_true", help="apply the rules (the gate mode)")
+    parser.add_argument("--list", action="store_true", help="print the scanned set and status")
+    parser.add_argument("--update", action="store_true", help="re-seed the baseline (shrink only)")
+    parser.add_argument("--selftest", action="store_true", help="prove both directions, then exit")
+    args = parser.parse_args()
+
+    if not GATE_DIR.is_dir():
+        sys.stderr.write(
+            f"check_selftest_coverage.py: FATAL -- {GATE_DIR} does not exist; the gate "
+            "bodies moved and this checker is scanning nothing.\n"
+        )
+        return EXIT_VACUOUS
+    if args.selftest:
+        return selftest()
+    if args.list:
+        return run_list()
+    if args.update:
+        return run_update()
+    if not args.check:
+        parser.error("one of --check / --list / --update / --selftest is required")
+    return run_check()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

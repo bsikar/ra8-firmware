@@ -41,6 +41,9 @@ Exemptions:
   * Function-pointer discards like ``(void)ra8_trustzone_init;`` (no call
     parentheses) -- those silence -Wunused, they do not discard an error.
   * Any line carrying `TZ-DISCARD-OK: <reason>` (reason text required).
+
+Exit 0 when clean, 1 on any discard, 2 when the whole-tree sweep collapses
+below FILE_FLOOR (see the constant).
 """
 
 from __future__ import annotations
@@ -67,6 +70,14 @@ BOOT_TU_RE = re.compile(
     r"^\s*void\s+(?:SystemInit|ra8_trustzone_init)\s*\(\s*void\s*\)", re.MULTILINE
 )
 WAIVER_RE = re.compile(r"TZ-DISCARD-OK:\s*\S")
+
+# A tree this size cannot legitimately collapse to a handful of files. If the
+# whole-tree sweep returns less than this, something broke (a bad cwd -- ROOTS
+# are relative, so this walks nothing when run from elsewhere -- or a renamed
+# root) and reporting "clean" would be a lie: no boot TU would be read, so no
+# discard could ever be reported. Measured 2026-07-28: 2125 first-party C/C++
+# files. Same trip-wire as check_ruff.py.
+FILE_FLOOR = 1700
 
 
 def _is_comment_pos(line: str, pos: int) -> bool:
@@ -137,10 +148,25 @@ def main() -> int:
     control to the non-secure world with the boundary not actually in force.
     The build links, the board boots, and the isolation is simply absent.
 
-    Returns 1 listing each discard, 0 when clean.
+    FILE_FLOOR is enforced on the whole-tree sweep only, and exits 2 below it.
+    An explicit argv file list is a deliberately narrowed scope -- not a
+    collapsed one -- so it is exempt; the sweep is where a broken enumeration
+    would silently report the tree clean.
+
+    Returns 1 listing each discard, 0 when clean, 2 when the whole-tree sweep
+    enumerated too few files to trust.
     """
     args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    whole_tree = not args
     files = args or discover()
+    if whole_tree and len(files) < FILE_FLOOR:
+        print(
+            f"check_tz_boundary_discard.py: FATAL -- only {len(files)} first-party source "
+            f"file(s) in scope, floor is {FILE_FLOOR}. A collapsed sweep reports a "
+            "clean tree because it scanned nothing.",
+            file=sys.stderr,
+        )
+        return 2
     total = 0
     for path in sorted(set(files)):
         if (

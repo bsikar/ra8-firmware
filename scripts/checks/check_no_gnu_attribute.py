@@ -27,6 +27,9 @@ Other exemptions:
   * Comment lines / prose mentioning __attribute__ (lines whose attribute
     token sits inside a // or /* comment).
   * Any line carrying `ATTR-OK: <reason>` (reason text required).
+
+Exit 0 when clean, 1 on any violation, 2 when the whole-tree sweep collapses
+below FILE_FLOOR (see the constant).
 """
 
 from __future__ import annotations
@@ -50,6 +53,13 @@ WAIVER_RE = re.compile(r"ATTR-OK:\s*\S")
 # Length of a bare `____` wrapper (two leading + two trailing underscores); a
 # dunder name must exceed it to carry a body worth stripping.
 _MIN_DUNDER_LEN = 4
+
+# A tree this size cannot legitimately collapse to a handful of files. If the
+# whole-tree sweep returns less than this, something broke (a bad cwd -- ROOTS
+# are relative, so this walks nothing when run from elsewhere -- or a renamed
+# root) and reporting "clean" would be a lie. Measured 2026-07-28: 2125
+# first-party C/C++ files. Same trip-wire as check_ruff.py.
+FILE_FLOOR = 1700
 
 
 def _strip_us(name: str) -> str:
@@ -150,10 +160,25 @@ def main() -> int:
     worth finishing rather than a style preference: the two spellings do not
     sit in the same place, so mixed usage reads inconsistently.
 
-    Returns 1 listing each occurrence, 0 when clean.
+    FILE_FLOOR is enforced on the whole-tree sweep only, and exits 2 below it.
+    An explicit argv file list is a deliberately narrowed scope -- not a
+    collapsed one -- so it is exempt; the sweep is where a broken enumeration
+    would silently report the tree clean.
+
+    Returns 1 listing each occurrence, 0 when clean, 2 when the whole-tree
+    sweep enumerated too few files to trust.
     """
     args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    whole_tree = not args
     files = args or discover()
+    if whole_tree and len(files) < FILE_FLOOR:
+        print(
+            f"check_no_gnu_attribute.py: FATAL -- only {len(files)} first-party source "
+            f"file(s) in scope, floor is {FILE_FLOOR}. A collapsed sweep reports a "
+            "clean tree because it scanned nothing.",
+            file=sys.stderr,
+        )
+        return 2
     total = 0
     for path in sorted(set(files)):
         if (

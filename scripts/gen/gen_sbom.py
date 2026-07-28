@@ -29,6 +29,19 @@ the tree is:
   * **License-file presence** -- each entry that names a LICENSE file must
     have it on disk.  stb ships no standalone LICENSE (text in header tails)
     and is reported as a known gap rather than a hard failure.
+  * **Content integrity** -- every vendored component carries a SHA-256
+    ``aggregate`` digest over its whole tree, RE-DERIVED from disk on every
+    run (see ``tree_digest``).  A single mutated vendored byte changes the
+    digest, so ``--check`` fails.
+
+That last one used to be the hole.  ``aggregate_sha256`` was a hand-transcribed
+literal in ``sbom_registry.py``, present on four of twenty-three components and
+absent from NimBLE -- the one component that had actually drifted.  Nothing
+ever computed it, so ``--check``'s byte-comparison of regenerated-against-
+committed JSON compared a constant with itself, and appending a line to a
+vendored source still printed ``SBOM matches the tree`` with status 0 (#538).
+Provenance is now DERIVED, never transcribed: a value re-computed from the tree
+on each run is the only kind that can disagree with the tree.
 
 The emitted JSON is deterministic (no wall-clock timestamp, content-derived
 serial number, ``ensure_ascii``) so ``--check`` can compare it byte-for-byte
@@ -36,23 +49,30 @@ against the committed file and so the SBOM is reproducible.
 
 Run::
 
-    gen_sbom.py            # regenerate the committed SBOM + print a summary
-    gen_sbom.py --check    # fail if the committed SBOM is stale or the tree
-                           #   drifted from the registry (the CI/hook gate)
-    gen_sbom.py --print    # write nothing; print the SBOM JSON to stdout
-    gen_sbom.py --commits  # print `<key> <upstream-commit>` per pinned
-                           #   component (consumed by the weekly OSV scan)
+    gen_sbom.py             # regenerate the committed SBOM + print a summary
+    gen_sbom.py --check     # fail if the committed SBOM is stale, the tree
+                            #   drifted from the registry, or a vendored file
+                            #   changed (the CI/hook gate)
+    gen_sbom.py --print     # write nothing; print the SBOM JSON to stdout
+    gen_sbom.py --commits   # print `<key> <upstream-commit>` per pinned
+                            #   component (consumed by the weekly OSV scan)
+    gen_sbom.py --selftest  # prove the digest detects a mutation AND stays
+                            #   stable on an unchanged tree, then exit
 
 Exit 0 if clean, 1 on drift / a catalogued-tree mismatch (including a version
-macro that no longer parses). argparse exits 2 on a usage error.
+macro that no longer parses), 2 when the enumeration itself collapsed and no
+verdict is possible.  argparse exits 2 on a usage error.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
+import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 from typing import TextIO
@@ -75,8 +95,133 @@ CYCLONEDX_SPEC = "1.5"
 BOM_REVISION = 1
 GENERATOR_NAME = "gen_sbom.py"
 
+DIGEST_ALG = "SHA-256"
+GIT_MODE_SYMLINK = "120000"
+
+# Vacuity floors.  A digest over an empty file list is a perfectly stable
+# hash of nothing, and would report a component as verified when its
+# enumeration had collapsed -- the same shape as every other finding under the
+# gate-honesty epic.  Both floors are MEASURED, not round: 9738 file records
+# across the 22 vendored components on 2026-07-28 (nimble 827, threadx 4758,
+# ... fonts/Literata 1).  The total floor is set well below that so ordinary
+# vendored churn does not trip it, but far above any plausible collapse.
+COMPONENT_FILE_FLOOR = 1
+TOTAL_FILE_FLOOR = 5000
+
 EXIT_OK = 0
 EXIT_DRIFT = 1
+EXIT_VACUOUS = 2
+
+
+class VacuousScanError(Exception):
+    """Raised when an enumeration collapsed and no honest verdict is possible."""
+
+
+def _git_ls_files(rel_path: str) -> list[tuple[str, str]]:
+    """Return ``(git mode, repo-relative path)`` for every tracked file under `rel_path`.
+
+    Enumeration is ``git ls-files`` rather than a filesystem walk so the digest
+    covers exactly what is committed: build output, editor droppings and
+    ignored scratch files cannot perturb a provenance hash.  The mode comes
+    from git (not ``stat``) so it is identical on every platform -- a chmod is
+    still a real modification and is still caught, but a checkout on a
+    filesystem without an executable bit does not fabricate drift.
+
+    Args:
+        rel_path: Repo-relative path of a component (a directory or one file).
+
+    Returns:
+        ``(mode, path)`` pairs, unsorted; ``digest_entries`` imposes the order.
+
+    Raises:
+        VacuousScanError: When ``git ls-files`` cannot run at all.
+    """
+    proc = subprocess.run(  # noqa: S603  # trusted: fixed git argv, no shell
+        ["git", "ls-files", "-sz", "--", rel_path],  # noqa: S607 -- trusted: fixed git argv
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        message = f"`git ls-files -- {rel_path}` failed ({proc.returncode}): {proc.stderr.strip()}"
+        raise VacuousScanError(message)
+    entries: list[tuple[str, str]] = []
+    for record in proc.stdout.split("\0"):
+        if not record:
+            continue
+        meta, path = record.split("\t", 1)
+        entries.append((meta.split()[0], path))
+    return entries
+
+
+def digest_entries(base: Path, entries: list[tuple[str, str]], strip: str) -> str:
+    """Hash `entries` into one SHA-256 over path, mode and content.
+
+    Every field is length-framed before it is fed to the hash, so no rename can
+    be made to collide with a content edit by moving bytes across the boundary
+    between the two.  Paths are made component-relative (``strip`` is removed)
+    so relocating a vendored tree wholesale is not reported as a modification,
+    while renaming a file *inside* it is.
+
+    Args:
+        base: Directory the paths in `entries` are resolved against.
+        entries: ``(git mode, path)`` pairs from `_git_ls_files`.
+        strip: Path prefix to remove, making each path component-relative.
+
+    Returns:
+        The lower-case hex SHA-256 digest.
+
+    Raises:
+        VacuousScanError: When `entries` is empty -- a digest of nothing is stable
+            and meaningless, and must never render as a verified component.
+    """
+    if len(entries) < COMPONENT_FILE_FLOOR:
+        message = f"'{strip}' enumerated 0 tracked files, floor is {COMPONENT_FILE_FLOOR}"
+        raise VacuousScanError(message)
+    prefix = strip.rstrip("/") + "/"
+    hasher = hashlib.sha256()
+    for mode, path in sorted(entries, key=lambda item: item[1]):
+        inner = path[len(prefix) :] if path.startswith(prefix) else Path(path).name
+        target = base / path
+        payload = (
+            str(target.readlink()).encode() if mode == GIT_MODE_SYMLINK else target.read_bytes()
+        )
+        header = f"{mode} {len(inner)} {inner} {len(payload)}\n".encode()
+        hasher.update(header)
+        hasher.update(payload)
+    return hasher.hexdigest()
+
+
+_DIGEST_CACHE: dict[str, tuple[str, int]] = {}
+
+
+def tree_digest(comp: Component) -> tuple[str, int]:
+    """Re-derive `comp`'s integrity digest and tracked-file count from the tree.
+
+    Args:
+        comp: The registry component to hash.
+
+    Returns:
+        ``(hex digest, file count)``.
+
+    Raises:
+        VacuousScanError: When the component enumerates no tracked file.
+    """
+    if comp.path not in _DIGEST_CACHE:
+        entries = _git_ls_files(comp.path)
+        _DIGEST_CACHE[comp.path] = (digest_entries(REPO_ROOT, entries, comp.path), len(entries))
+    return _DIGEST_CACHE[comp.path]
+
+
+def hashed_components() -> tuple[Component, ...]:
+    """Return the registry entries that must carry a derived integrity digest.
+
+    Everything vendored qualifies.  ``PROV_NOT_VENDORED`` is the single
+    exclusion and it is self-proving: `cross_check` already errors when such a
+    path exists on disk, so the class cannot be used to hide a real tree.
+    """
+    return tuple(comp for comp in REGISTRY if comp.provenance != PROV_NOT_VENDORED)
 
 
 def _read_source(comp: Component) -> str | None:
@@ -170,7 +315,33 @@ def cross_check() -> tuple[list[str], list[str]]:
         _check_version(comp, errors)
         _check_license_file(comp, errors, warnings)
 
+    _check_scan_not_vacuous(errors)
     return errors, warnings
+
+
+def _check_scan_not_vacuous(errors: list[str]) -> None:
+    """Append an error if the vendored enumeration collapsed below its floor.
+
+    Every component is individually floored inside `digest_entries`; this is
+    the aggregate trip-wire that catches a whole-tree collapse (a bad cwd, a
+    git that ran but returned nothing) before it can render as 23 verified
+    components.
+
+    Args:
+        errors: Error list to append to, in place.
+    """
+    total = 0
+    for comp in hashed_components():
+        try:
+            total += tree_digest(comp)[1]
+        except VacuousScanError as exc:  # noqa: PERF203  # one bad component must not stop the sweep
+            errors.append(f"{comp.key}: {exc}")
+    if total and total < TOTAL_FILE_FLOOR:
+        errors.append(
+            f"only {total} vendored file(s) enumerated across the registry, floor is "
+            f"{TOTAL_FILE_FLOOR}. A collapsed enumeration reports every component "
+            "verified because it hashed nothing."
+        )
 
 
 def _check_version(comp: Component, errors: list[str]) -> None:
@@ -208,12 +379,27 @@ def _licenses_block(comp: Component) -> list[dict] | None:
     return None
 
 
-def _properties_block(comp: Component) -> list[dict]:
-    """Build the CycloneDX ``properties`` array for a component."""
+def _properties_block(comp: Component, file_count: int) -> list[dict]:
+    """Build the CycloneDX ``properties`` array for a component.
+
+    ``ra8:fileCount`` is published alongside the digest deliberately: a digest
+    alone is opaque, so a collapsed enumeration would change it without saying
+    why.  The count makes the size of the hashed set visible in the committed
+    SBOM and therefore in every diff.
+
+    Args:
+        comp: The registry component being rendered.
+        file_count: Tracked files that went into `comp`'s digest.
+
+    Returns:
+        The CycloneDX property objects, in stable order.
+    """
     props: list[dict] = [
         {"name": "ra8:provenance", "value": comp.provenance},
         {"name": "ra8:path", "value": comp.path},
     ]
+    if comp.provenance != PROV_NOT_VENDORED:
+        props.append({"name": "ra8:fileCount", "value": str(file_count)})
     if comp.upstream_commit is not None:
         props.append({"name": "ra8:upstreamCommit", "value": comp.upstream_commit})
     if comp.license_original is not None:
@@ -245,10 +431,13 @@ def component_entry(comp: Component) -> dict:
         entry["copyright"] = comp.license_note if comp.copyright is None else comp.copyright
     if comp.purl is not None:
         entry["purl"] = comp.purl
-    if comp.aggregate_sha256 is not None:
-        entry["hashes"] = [{"alg": "SHA-256", "content": comp.aggregate_sha256}]
+    if comp.provenance != PROV_NOT_VENDORED:
+        digest, count = tree_digest(comp)
+        entry["hashes"] = [{"alg": DIGEST_ALG, "content": digest}]
+    else:
+        count = 0
     entry["externalReferences"] = [{"type": "vcs", "url": comp.url}]
-    entry["properties"] = _properties_block(comp)
+    entry["properties"] = _properties_block(comp, count)
     return entry
 
 
@@ -328,10 +517,67 @@ def run_write(to_stdout: bool) -> int:
     return EXIT_OK
 
 
+def _committed_digests(text: str) -> dict[str, str]:
+    """Extract ``bom-ref -> SHA-256 content`` from a committed SBOM document.
+
+    Args:
+        text: The committed SBOM JSON.
+
+    Returns:
+        One entry per component that publishes a SHA-256 hash; components
+        without one are absent from the mapping.
+    """
+    try:
+        doc = json.loads(text)
+    except json.JSONDecodeError:
+        return {}
+    out: dict[str, str] = {}
+    for entry in doc.get("components", []):
+        for item in entry.get("hashes", []):
+            if item.get("alg") == DIGEST_ALG:
+                out[entry.get("bom-ref", "")] = item.get("content", "")
+    return out
+
+
+def _integrity_errors(committed: str) -> list[str]:
+    """Name every component whose vendored tree no longer hashes to its record.
+
+    This is the message that matters.  A bare "the SBOM is stale, regenerate
+    it" would invite exactly the wrong reflex -- regenerating adopts the
+    mutation and the provenance claim is quietly relaxed.  Naming the component
+    and the two digests says what actually happened: a file under a vendored
+    SOUP tree changed, and either the change is illegitimate or the component's
+    ``docs/SOUP/`` "Modifications" section owes an entry.
+
+    Args:
+        committed: Text of the committed SBOM document.
+
+    Returns:
+        Human-readable error strings, one per drifted component.
+    """
+    recorded = _committed_digests(committed)
+    errors: list[str] = []
+    for comp in hashed_components():
+        was = recorded.get(comp.key)
+        if was is None:
+            continue
+        try:
+            now, count = tree_digest(comp)
+        except VacuousScanError:
+            continue  # already reported by _check_scan_not_vacuous
+        if now != was:
+            errors.append(
+                f"{comp.key}: VENDORED TREE DRIFT -- {count} file(s) under '{comp.path}' "
+                f"now hash to {now}, the committed SBOM records {was}. A vendored SOUP "
+                "tree changed. Do not just regenerate: confirm the change is intended, "
+                f"and record it in docs/SOUP/ as a modification of the upstream pin."
+            )
+    return errors
+
+
 def run_check() -> int:
     """Fail if the committed SBOM is stale or the tree drifted from the registry."""
     errors, warnings = cross_check()
-    expected = serialize(build_bom())
     out = REPO_ROOT / SBOM_REL_PATH
     if not out.is_file():
         print(
@@ -340,7 +586,9 @@ def run_check() -> int:
         )
         return EXIT_DRIFT
     actual = out.read_text(encoding="utf-8")
-    if actual != expected:
+    integrity = _integrity_errors(actual)
+    errors = [*errors, *integrity]
+    if actual != serialize(build_bom()) and not integrity:
         print(
             f"{GENERATOR_NAME}: {SBOM_REL_PATH} is stale; run gen_sbom.py to regenerate",
             file=sys.stderr,
@@ -352,7 +600,12 @@ def run_check() -> int:
         for err in errors:
             print(f"  ERROR {err}", file=sys.stderr)
         return EXIT_DRIFT
-    print(f"{GENERATOR_NAME}: SBOM matches the tree ({len(REGISTRY)} components).")
+    hashed = len(hashed_components())
+    files = sum(tree_digest(comp)[1] for comp in hashed_components())
+    print(
+        f"{GENERATOR_NAME}: SBOM matches the tree ({len(REGISTRY)} components; "
+        f"{hashed} SHA-256 digests re-derived over {files} vendored files)."
+    )
     return EXIT_OK
 
 
@@ -376,6 +629,138 @@ def run_commits() -> int:
     return EXIT_OK
 
 
+def _selftest_tree(root: Path) -> list[tuple[str, str]]:
+    """Materialise a small fixture tree under `root` and return its entries.
+
+    Args:
+        root: Directory to create the fixture under.
+
+    Returns:
+        ``(mode, path)`` pairs in the shape `_git_ls_files` produces.
+    """
+    (root / "vendor" / "src").mkdir(parents=True)
+    (root / "vendor" / "src" / "a.c").write_bytes(b"int a;\n")
+    (root / "vendor" / "src" / "b.c").write_bytes(b"int b;\n")
+    (root / "vendor" / "LICENSE").write_bytes(b"MIT\n")
+    return [
+        ("100644", "vendor/src/a.c"),
+        ("100644", "vendor/src/b.c"),
+        ("100644", "vendor/LICENSE"),
+    ]
+
+
+def _selftest_shape_cases(
+    root: Path, entries: list[tuple[str, str]], base: str
+) -> list[tuple[str, bool]]:
+    """Assert that changing the SHAPE of the file set changes the digest.
+
+    Content mutation is covered by the caller; these are the cases a naive
+    "hash the concatenated bytes" digest would miss -- an added or removed
+    file, and a mode change.
+
+    Args:
+        root: The fixture root from `_selftest_tree`.
+        entries: That fixture's entry list, content-restored.
+        base: The digest of the unmodified fixture.
+
+    Returns:
+        One ``(label, passed)`` pair per assertion.
+    """
+    (root / "vendor" / "src" / "c.c").write_bytes(b"int a;\n")
+    vacuous = False
+    try:
+        digest_entries(root, [], "vendor")
+    except VacuousScanError:
+        vacuous = True
+    return [
+        (
+            "MUST FIRE: an added file changes the digest",
+            digest_entries(root, [*entries, ("100644", "vendor/src/c.c")], "vendor") != base,
+        ),
+        (
+            "MUST FIRE: a removed file changes the digest",
+            digest_entries(root, entries[:-1], "vendor") != base,
+        ),
+        (
+            "MUST FIRE: a mode change changes the digest",
+            digest_entries(root, [("100755", entries[0][1]), *entries[1:]], "vendor") != base,
+        ),
+        ("MUST FIRE: an empty enumeration raises rather than hashing nothing", vacuous),
+    ]
+
+
+def _selftest_cases(root: Path, entries: list[tuple[str, str]]) -> list[tuple[str, bool]]:
+    """Run every digest assertion against the fixture and return ``(label, ok)``.
+
+    Args:
+        root: The fixture root from `_selftest_tree`.
+        entries: That fixture's entry list.
+
+    Returns:
+        One ``(label, passed)`` pair per assertion, both directions covered.
+    """
+    base = digest_entries(root, entries, "vendor")
+    cases: list[tuple[str, bool]] = [
+        (
+            "MUST NOT FIRE: an unchanged tree hashes identically",
+            digest_entries(root, entries, "vendor") == base,
+        ),
+        (
+            "MUST NOT FIRE: enumeration order does not change the digest",
+            digest_entries(root, list(reversed(entries)), "vendor") == base,
+        ),
+    ]
+
+    (root / "vendor" / "src" / "a.c").write_bytes(b"int a;\n/* injected */\n")
+    cases.append(
+        (
+            "MUST FIRE: one mutated vendored byte changes the digest",
+            digest_entries(root, entries, "vendor") != base,
+        )
+    )
+    (root / "vendor" / "src" / "a.c").write_bytes(b"int a;\n")
+    cases.append(
+        (
+            "MUST NOT FIRE: restoring the byte restores the digest",
+            digest_entries(root, entries, "vendor") == base,
+        )
+    )
+
+    cases.extend(_selftest_shape_cases(root, entries, base))
+
+    cases.append(
+        (
+            "MUST FIRE: the live registry publishes a digest for every vendored component",
+            len(hashed_components()) == len(REGISTRY) - 1,
+        )
+    )
+    return cases
+
+
+def run_selftest() -> int:
+    """Prove the integrity digest fires on a mutation and stays quiet otherwise.
+
+    Both directions are asserted because only one of them was ever true before:
+    the old hardcoded ``aggregate_sha256`` was perfectly stable on an unchanged
+    tree and equally stable on a mutated one.  A selftest that checked only the
+    quiet direction would have passed against the broken code (#538).
+
+    Returns:
+        ``EXIT_OK`` when every case holds, ``EXIT_VACUOUS`` otherwise.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        cases = _selftest_cases(root, _selftest_tree(root))
+    failed = [label for label, ok in cases if not ok]
+    for label, ok in cases:
+        print(f"  {'ok  ' if ok else 'FAIL'} {label}")
+    if failed:
+        print(f"{GENERATOR_NAME}: selftest FAILED ({len(failed)} case(s))", file=sys.stderr)
+        return EXIT_VACUOUS
+    print(f"{GENERATOR_NAME}: selftest passed ({len(cases)} cases, both directions).")
+    return EXIT_OK
+
+
 def main(argv: list[str]) -> int:
     """Parse arguments and dispatch to the write / check / print / commits action."""
     parser = argparse.ArgumentParser(description="Generate/validate the ra8-firmware SBOM.")
@@ -383,6 +768,11 @@ def main(argv: list[str]) -> int:
         "--check",
         action="store_true",
         help="fail if the committed SBOM is stale or the tree drifted",
+    )
+    parser.add_argument(
+        "--selftest",
+        action="store_true",
+        help="prove the integrity digest detects a mutation, then exit",
     )
     parser.add_argument(
         "--print",
@@ -396,11 +786,17 @@ def main(argv: list[str]) -> int:
         help="print `<key> <upstream-commit>` per commit-pinned component",
     )
     args = parser.parse_args(argv)
-    if args.check:
-        return run_check()
-    if args.commits:
-        return run_commits()
-    return run_write(args.to_stdout)
+    if args.selftest:
+        return run_selftest()
+    try:
+        if args.check:
+            return run_check()
+        if args.commits:
+            return run_commits()
+        return run_write(args.to_stdout)
+    except VacuousScanError as exc:
+        print(f"{GENERATOR_NAME}: FATAL -- {exc}", file=sys.stderr)
+        return EXIT_VACUOUS
 
 
 if __name__ == "__main__":

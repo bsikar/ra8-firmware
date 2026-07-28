@@ -24,7 +24,8 @@ Run::
     check_shell.py --require   # fail (not skip) if a tool is absent
     check_shell.py --selftest  # prove the gate fires and stays quiet
 
-Exit 0 if clean, exit 1 on findings, exit 2 on tool error.
+Exit 0 if clean, exit 1 on findings, exit 2 on a tool error or a scope that
+collapsed below SCRIPT_FLOOR.
 """
 
 from __future__ import annotations
@@ -113,6 +114,13 @@ EXCLUDE_FRAGMENTS = (
     "libs/ra8_fonts/",
     "port/threadx/",
 )
+
+# A tree this size cannot legitimately collapse to a handful of scripts. If the
+# enumeration returns less than this, something broke (a failed `git ls-files`,
+# a runaway EXCLUDE_FRAGMENTS) and reporting "clean" would be a lie -- the old
+# `no shell scripts to scan` branch exited 0 on exactly that. Measured
+# 2026-07-28: 122 first-party shell scripts. Same trip-wire as check_ruff.py.
+SCRIPT_FLOOR = 95
 
 
 def _shellcheck_args() -> list[str]:
@@ -404,8 +412,13 @@ def main(argv: list[str]) -> int:
     question is what this gate covers, and a missing binary must not shrink
     the answer to nothing.
 
-    Returns 0 when clean, non-zero on findings, a formatting difference, or a
-    missing tool.
+    SCRIPT_FLOOR replaces the old ``no shell scripts to scan`` branch, which
+    exited 0 on an empty enumeration -- a result indistinguishable from a clean
+    tree and produced by having read nothing.
+
+    Returns 0 when clean, 1 on findings or a formatting difference, 2 when the
+    scope collapsed below SCRIPT_FLOOR, and 1 on a missing tool under
+    ``--require``.
     """
     if "--selftest" in argv[1:]:
         with tempfile.TemporaryDirectory() as td:
@@ -433,9 +446,13 @@ def main(argv: list[str]) -> int:
         sys.exit(0)
 
     files = first_party_scripts()
-    if not files:
-        print("check_shell.py: no shell scripts to scan")
-        return 0
+    if len(files) < SCRIPT_FLOOR:
+        sys.stderr.write(
+            f"check_shell.py: FATAL -- only {len(files)} shell script(s) in scope, "
+            f"floor is {SCRIPT_FLOOR}.\n"
+            "  A collapsed scope reports a clean tree because it checked nothing.\n"
+        )
+        return 2
     checks = _run_shellcheck(sc_tool, files)
     fmt = _run_shfmt(fmt_tool, files)
     if not checks and not fmt:

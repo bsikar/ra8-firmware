@@ -59,8 +59,9 @@ Run::
     check_doc_attachment.py --selftest  # synthetic both-direction fixtures
     check_doc_attachment.py PATH ...    # restrict to the given files/dirs
 
-Exit 0 when clean, 1 on findings in ``--check`` mode, 2 on a selftest failure
-or a missing/unusable libclang.
+Exit 0 when clean, 1 on findings in ``--check`` mode, 2 on a selftest failure,
+a missing/unusable libclang, or a whole-tree scan that collapsed below
+FILE_FLOOR.
 """
 
 from __future__ import annotations
@@ -76,13 +77,42 @@ from docattach_model import CODE_HELP, Finding
 from docattach_scope import default_targets, iter_sources
 from docattach_selftest import selftest
 
+# A tree this size cannot legitimately collapse to a handful of files. If the
+# whole-tree enumeration returns less than this, something broke (a renamed
+# root, an unreachable repo root) and reporting ``findings=0 (PASS)`` would be
+# a lie: a misattached block cannot be found in a file nobody parsed. Measured
+# 2026-07-28: 2116 first-party C sources. Same trip-wire as check_ruff.py.
+FILE_FLOOR = 1700
 
-def run(targets: list[Path], strict: bool) -> int:
-    """Scan ``targets`` and report."""
+
+def run(targets: list[Path], strict: bool, *, enforce_floor: bool) -> int:
+    """Scan ``targets`` and report.
+
+    Args:
+        targets: Files and/or directories to sweep.
+        strict: When true a finding fails the run (the ``--check`` gate mode);
+            otherwise findings are printed advisory-only.
+        enforce_floor: Apply FILE_FLOOR to the enumerated source list. Set only
+            for the default whole-tree scan -- an explicit argv path list is a
+            deliberately narrowed scope, not a collapsed one.
+
+    Returns:
+        0 when clean or running advisory-only, 1 on a finding under ``strict``,
+        2 when ``enforce_floor`` is set and the enumeration fell below
+        FILE_FLOOR.
+    """
     cindex = _require_libclang()
     args = ["-std=c23", "-x", "c", "-DRA8_HOST_BUILD=1", *_include_args(cindex)]
 
     files = iter_sources(targets)
+    if enforce_floor and len(files) < FILE_FLOOR:
+        print(
+            f"check_doc_attachment.py: FATAL -- only {len(files)} source file(s) in "
+            f"scope, floor is {FILE_FLOOR}. A collapsed scope reports a clean tree "
+            "because it parsed nothing.",
+            file=sys.stderr,
+        )
+        return 2
     findings: list[Finding] = []
     for path in files:
         findings.extend(check_file(path, cindex, args))
@@ -114,10 +144,14 @@ def main() -> int:
     is being cleaned up. CI must pass ``--check`` or the step cannot fail.
 
     With no positional paths the scan covers every first-party root, so the
-    argument list narrows the sweep and never widens it.
+    argument list narrows the sweep and never widens it. FILE_FLOOR is applied
+    only to that default sweep, and exits 2 below it: a narrowed scope is a
+    request, while a collapsed sweep is a broken enumeration reporting a clean
+    tree because it parsed nothing.
 
     Returns 0 when clean, when running advisory-only, or after a passing
-    ``--selftest``; 1 on a finding under ``--check`` or a failing selftest.
+    ``--selftest``; 1 on a finding under ``--check`` or a failing selftest;
+    2 when the default sweep enumerated too few files to trust.
     """
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--check", action="store_true", help="CI gate: exit 1 on any finding")
@@ -129,7 +163,7 @@ def main() -> int:
         return selftest()
 
     targets = [Path(p).resolve() for p in ns.paths] if ns.paths else default_targets()
-    return run(targets, strict=ns.check)
+    return run(targets, strict=ns.check, enforce_floor=not ns.paths)
 
 
 if __name__ == "__main__":

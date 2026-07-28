@@ -22,7 +22,8 @@ Run::
     check_core_layering.py path/to/file.c   # scan listed files
 
 Exit 0 if ``ra8_core`` has no upward lib dependency, exit 1 (with the
-offending edges) otherwise.
+offending edges) otherwise, exit 2 when the whole-tree sweep or the header
+ownership oracle collapses below its floor (FILE_FLOOR / OWNER_FLOOR).
 """
 
 from __future__ import annotations
@@ -47,6 +48,20 @@ EXCLUDE_FRAGMENTS = ("/third_party/", "/ra8_fonts/")
 # A lib header path under libs/ is <module>/<inc|src>/...: at least the module
 # component and the inc/src component must be present to attribute an owner.
 _MIN_LIB_PATH_PARTS = 2
+
+# The foundation lib cannot legitimately collapse to a handful of files; if the
+# whole-tree sweep returns less than this, something broke (an unreachable repo
+# root, a renamed FOUNDATION_LIB) and reporting "no upward lib dependency"
+# would be a lie. Measured 2026-07-28: 37 sources under libs/ra8_core.
+FILE_FLOOR = 28
+
+# Floor on the header-ownership ORACLE, which is the more dangerous vacuity of
+# the two: every finding here is `owners.get(name)` returning a non-empty set,
+# so an oracle that collapses reports a perfectly layered foundation no matter
+# what ra8_core includes -- with the full file list still scanned, and the
+# usual "N file(s) scanned" line still printed. Measured 2026-07-28: 425
+# distinct first-party lib header basenames.
+OWNER_FLOOR = 340
 
 
 def _header_owners() -> dict[str, set[str]]:
@@ -111,17 +126,43 @@ def main(argv: list[str]) -> int:
     ownership is compared as a set difference rather than by first match.
 
     Paths given on argv are filtered down to those under libs/ra8_core before
-    scanning, so pointing this at the whole staged file list is safe and cheap.
+    scanning, so pointing this at the whole staged file list is safe and cheap
+    -- and legitimately filters to nothing, which is why FILE_FLOOR guards the
+    whole-tree sweep only.
+
+    OWNER_FLOOR has no such exemption: the ownership map is the oracle every
+    finding is decided against, so it is checked on every path. A collapsed
+    oracle cannot report an edge no matter which files are scanned, and would
+    do it while printing the usual "N file(s) scanned, no upward lib
+    dependency".
 
     Returns 1 with the offending include sites listed, 0 when no upward edge
-    exists or when the argv filter left nothing under the foundation lib.
+    exists or when the argv filter left nothing under the foundation lib, 2
+    when either floor is not met.
     """
-    targets = _enumerate_targets(argv[1:])
+    paths = argv[1:]
+    targets = _enumerate_targets(paths)
+    if not paths and len(targets) < FILE_FLOOR:
+        print(
+            f"check_core_layering.py: FATAL -- only {len(targets)} {FOUNDATION_LIB} "
+            f"file(s) in scope, floor is {FILE_FLOOR}. A collapsed sweep reports a "
+            "clean layering because it scanned nothing.",
+            file=sys.stderr,
+        )
+        return 2
     if not targets:
         print("check_core_layering.py: no ra8_core files to scan", file=sys.stderr)
         return 0
 
     owners = _header_owners()
+    if len(owners) < OWNER_FLOOR:
+        print(
+            f"check_core_layering.py: FATAL -- header ownership map holds only "
+            f"{len(owners)} header(s), floor is {OWNER_FLOOR}. A collapsed oracle "
+            "reports a clean layering because it can attribute nothing.",
+            file=sys.stderr,
+        )
+        return 2
     edges = []
     for path in targets:
         try:

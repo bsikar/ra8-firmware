@@ -120,36 +120,60 @@ libwebp,
 pinned to release tag `v1.5.0` and byte-identical except its one
 allocator-fronting patch, and the esp-hosted host driver plus its nested
 protobuf-c, both pinned at vendor-in and verified file-by-file). The remaining ten source components'
-versions are *inferred from an in-tree header* with no upstream commit or
-`SHA256SUMS` manifest recorded -- the open **T5-09** finding; those trees
-are not independently reproducible or tamper-verifiable yet.
+versions are *inferred from an in-tree header* with no upstream commit
+recorded -- the remaining half of the open **T5-09** finding; those trees are
+not independently reproducible against upstream yet. All twenty-two vendored
+components ARE tamper-verifiable: each carries a derived integrity digest that
+the `sbom` gate re-computes and compares on every run (see below).
 
 | Component | Version source | Upstream commit | Integrity hash | Pinned? |
 |-----------|----------------|-----------------|----------------|---------|
-| ThreadX / NetX Duo / FileX / USBX / LevelX | `*_MAJOR/MINOR/PATCH_VERSION` macros | none | none | version only |
-| Mbed TLS | `MBEDTLS_VERSION_STRING_FULL` | none | none | version only |
-| TF-PSA-Crypto | `TF_PSA_CRYPTO_VERSION_STRING_FULL` | none | none | version only |
-| miniz | `MZ_VERSION` | none | none | version only |
-| TinyXML-2 | `TIXML2_*_VERSION` | none | none | version only (+patch) |
-| stb | header-tail version comments | none | none | version only |
-| libwebp (decode-only) | release tag `v1.5.0` (byte-identical except 1 patched TU) | `a4d7a715337ded4451fec90ff8ce79728e04126c` | none | **commit-pinned** (+patch) |
-| Apache NimBLE | release tag `nimble_1_10_0_tag` (827/827 files byte-identical) | `a7a156f28954819e158b62dd613008f22f9cf73b` | none | **commit-pinned** |
-| litehtml | tree fingerprint vs upstream (215/215 files byte-identical) | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | none | **commit-pinned** |
-| XZ Embedded | tree fingerprint vs upstream (11/11 files byte-identical, tag `v2024-12-30`) | `ae63ae3a36ed01724674e8f3d750dc47bf125410` | aggregate SHA-256 `9dc6c2af...c95dd9` | **fully pinned (gold standard)** |
-| TFLite-micro | commit pin (lean subset) | `fddd3707a3c5733af4cb866f18650441e6712504` | none | **commit-pinned** |
-| FlatBuffers | tag `v25.9.23` (+ `FLATBUFFERS_VERSION_*`) | `edbe17738352418245d7228e7fd9f12c3ddc34c4` | none | **commit-pinned** |
-| gemmlowp | commit pin | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | none | **commit-pinned** |
-| ruy | commit pin | `d37128311b445e758136b8602d1bbd2a755e115d` | none | **commit-pinned** |
-| esp-hosted host driver | commit pin (77/77 files byte-identical) | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | aggregate SHA-256 `79ae0497...d29cc0` | **fully pinned (gold standard)** |
-| protobuf-c (nested) | submodule pin + `PROTOBUF_C_VERSION` probe (3/3 files byte-identical) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | aggregate SHA-256 `67da2264...784d7f` | **fully pinned (gold standard)** |
-| RSIP-E50D (`r_sce_AMC`) | FSP release | `40bbaa11b1a1b87e0ee0675e401aea6351f90d14` | aggregate SHA-256 `718e4d45...037064` | **fully pinned (gold standard)** |
+| ThreadX / NetX Duo / FileX / USBX / LevelX | `*_MAJOR/MINOR/PATCH_VERSION` macros | none | derived (SBOM) | version only |
+| Mbed TLS | `MBEDTLS_VERSION_STRING_FULL` | none | derived (SBOM) | version only |
+| TF-PSA-Crypto | `TF_PSA_CRYPTO_VERSION_STRING_FULL` | none | derived (SBOM) | version only |
+| miniz | `MZ_VERSION` | none | derived (SBOM) | version only |
+| TinyXML-2 | `TIXML2_*_VERSION` | none | derived (SBOM) | version only (+patch) |
+| stb | header-tail version comments | none | derived (SBOM) | version only |
+| libwebp (decode-only) | release tag `v1.5.0` (byte-identical except 1 patched TU) | `a4d7a715337ded4451fec90ff8ce79728e04126c` | derived (SBOM) | **commit-pinned** (+patch) |
+| Apache NimBLE | release tag `nimble_1_10_0_tag` (827/827 files byte-identical) | `a7a156f28954819e158b62dd613008f22f9cf73b` | derived (SBOM) | **commit-pinned** |
+| litehtml | tree fingerprint vs upstream (215/215 files byte-identical) | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | derived (SBOM) | **commit-pinned** |
+| XZ Embedded | tree fingerprint vs upstream (11/11 files byte-identical, tag `v2024-12-30`) | `ae63ae3a36ed01724674e8f3d750dc47bf125410` | derived (SBOM) | **fully pinned (gold standard)** |
+| TFLite-micro | commit pin (lean subset) | `fddd3707a3c5733af4cb866f18650441e6712504` | derived (SBOM) | **commit-pinned** |
+| FlatBuffers | tag `v25.9.23` (+ `FLATBUFFERS_VERSION_*`) | `edbe17738352418245d7228e7fd9f12c3ddc34c4` | derived (SBOM) | **commit-pinned** |
+| gemmlowp | commit pin | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | derived (SBOM) | **commit-pinned** |
+| ruy | commit pin | `d37128311b445e758136b8602d1bbd2a755e115d` | derived (SBOM) | **commit-pinned** |
+| esp-hosted host driver | commit pin (77/77 files byte-identical) | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | derived (SBOM) | **fully pinned (gold standard)** |
+| protobuf-c (nested) | submodule pin + `PROTOBUF_C_VERSION` probe (3/3 files byte-identical) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | derived (SBOM) | **fully pinned (gold standard)** |
+| RSIP-E50D (`r_sce_AMC`) | FSP release | `40bbaa11b1a1b87e0ee0675e401aea6351f90d14` | derived (SBOM) | **fully pinned (gold standard)** |
 | BLE patch | not vendored | n/a | n/a | absent |
-| Literata | TTF `name` table (3.103) | n/a | none | version only; SIL OFL 1.1 |
+| Literata | TTF `name` table (3.103) | n/a | derived (SBOM) | version only; SIL OFL 1.1 |
 
-The RSIP aggregate SHA-256 (sorted per-file hashes, excluding
-`UPSTREAM_LICENSE.md`) and commit are recorded in
-[`docs/SOUP/r_sce_AMC_firmware.md`](docs/SOUP/r_sce_AMC_firmware.md). Adopt
-that pattern for the other components to close T5-09.
+### The integrity hashes are DERIVED, and the byte-identity claim is CHECKED
+
+Every "byte-identical to the pin" claim on this page is now machine-checked.
+`scripts/gen/gen_sbom.py` re-derives a SHA-256 over each vendored component's
+whole tree on every run -- sorted component-relative paths, git file mode and
+file content, each length-framed -- and publishes it in the SBOM alongside the
+file count that went into it. `gen_sbom.py --check` runs in the `sbom` gate, so
+a single mutated byte under `libs/third_party/` fails CI and names the
+component.
+
+That is why this column reads "derived (SBOM)" rather than a hash value. It
+used to say `none` for nineteen of the twenty-three components and carry a
+hand-transcribed `aggregate SHA-256` for four -- and **nothing had ever
+computed any of them**. `--check` compared a constant against itself, so
+appending a line to a vendored source still printed `SBOM matches the tree`
+with status 0 (#538). NimBLE, the one component that had actually drifted (see
+`docs/SOUP/nimble.md`), was not among the four. Transcribing the values back
+into this table would recreate exactly that: a number written once, true once,
+with no mechanism that would notice when it stopped being true. Read them from
+`docs/sbom/ra8-firmware.cdx.json`, which is regenerated from the tree.
+
+This closes the tamper-verifiability half of T5-09 for every vendored
+component. What remains open is *reproducibility against upstream*: the digest
+proves the tree has not changed since the SBOM was generated, not that it
+matches the upstream pin. That needs a networked fetch-and-diff and is tracked
+separately.
 
 ---
 

@@ -29,14 +29,13 @@ cppcheck:
 magic:
 	python3 scripts/checks/check_magic_numbers.py
 
+# Scope is DERIVED from git ls-files (--all), never a directory list. The two
+# loops that used to live here missed the repo root, .github/, cmake/,
+# coprocessor/, infra/ and mk/ -- 106 files including CLAUDE.md itself (#533).
+# Identical to what `bash scripts/ci.sh --gate ascii` runs.
 ascii:
-	@for dir in src libs tests examples port scripts tools docs; do \
-		python3 scripts/fix/fix-encoding.py --check "$$dir" || exit 1; \
-	done
-	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c $(ROOT)/examples/*/*/*/*/main.c; do \
-		[ -f "$$d" ] || continue; \
-		python3 scripts/fix/fix-encoding.py --check "$$(dirname $$d)" || exit 1; \
-	done
+	python3 scripts/fix/fix-encoding.py --selftest
+	python3 scripts/fix/fix-encoding.py --check --all
 
 version:
 	@echo "project VERSION: $$(cat VERSION)"

@@ -52,6 +52,13 @@ gate_ci_parity() (
   python3 scripts/ci/check_gate_bodies.py
   python3 scripts/ci/check_ci_parity.py --selftest
   python3 scripts/ci/check_ci_parity.py
+  # The third leg. check_gate_bodies proves a gate CAN fail; check_ci_parity
+  # proves it is SCHEDULED. Neither proves the checker inside it still
+  # detects anything -- the requirement CLAUDE.md and ci.sh both state and
+  # which nothing enforced, so 28 gate-wired detectors had no --selftest and
+  # one had a selftest no gate ran (#531).
+  python3 scripts/ci/check_selftest_coverage.py --selftest
+  python3 scripts/ci/check_selftest_coverage.py --check
 )
 
 # Assert that run_suite() still reports FAIL for a gate that fails PART-WAY
@@ -310,11 +317,17 @@ commit_range_selftest() (
 # Every first-party root. fix-encoding.py skips third_party and any non-text
 # extension, so vendored assets (the doxygen-awesome theme under docs/,
 # datasheets, fonts, epubs) are exempt automatically.
+# Scope is DERIVED from git ls-files, never a directory list. This gate used to
+# loop over `src libs tests examples port scripts tools docs`, so the encoding
+# policy never saw the repo root, .github/, cmake/, coprocessor/, infra/ or
+# mk/ -- 106 files, including CLAUDE.md, the file that STATES the policy
+# (#533). A hardcoded root list does not fail when it goes stale; it reports
+# success over a shrinking slice. --selftest proves the detector fires on a
+# non-ASCII byte before a clean run is believed.
 gate_ascii() (
   set -e
-  for dir in src libs tests examples port scripts tools docs; do
-    python3 scripts/fix/fix-encoding.py --check "$dir"
-  done
+  python3 scripts/fix/fix-encoding.py --selftest
+  python3 scripts/fix/fix-encoding.py --check --all
 )
 
 # --- copyright ------------------------------------------------------------

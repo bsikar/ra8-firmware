@@ -39,7 +39,7 @@ Run::
     check_comment_format.py --selftest      # run the built-in test battery
 
 Exit 0 if clean (or fixed), exit 1 on findings in check mode, exit 2 on a
-selftest failure.
+selftest failure or a whole-tree sweep that collapsed below FILE_FLOOR.
 """
 
 from __future__ import annotations
@@ -79,6 +79,14 @@ EXCLUDE_FRAGMENTS = (
     "libs/ra8_fonts/",
     "port/threadx/",
 )
+
+# A tree this size cannot legitimately collapse to a handful of files. If the
+# whole-tree sweep returns less than this, something broke (an unreachable repo
+# root, a renamed SCAN_ROOTS entry) and reporting "comments well-formed" would
+# be a lie -- the old `no files to scan` branch exited 0 on exactly that.
+# Measured 2026-07-28: 2124 first-party C/C++ sources. Same trip-wire as
+# check_ruff.py.
+FILE_FLOOR = 1700
 
 # Scan-state for the per-line C/C++ tokeniser.
 _ST_NORMAL = 0
@@ -383,8 +391,15 @@ def main(argv: list[str]) -> int:
     failed -- comment alignment is not the gate that should adjudicate
     encoding, and check-encoding already owns that and would report it twice.
 
+    FILE_FLOOR applies to the whole-tree sweep ONLY, and exits 2 below it. An
+    explicit path list is how format_code.sh and the pre-commit hook drive this
+    tool, and it legitimately filters to nothing when a commit touches no C
+    source; an empty SWEEP is a broken enumeration reporting well-formed
+    comments because it read nothing.
+
     Returns 0 when clean or when ``--fix`` rewrote everything it found, 1 when
-    the default mode found a file needing a rewrite.
+    the default mode found a file needing a rewrite, 2 when the whole-tree
+    sweep enumerated too few files to trust.
     """
     args = argv[1:]
     if "--selftest" in args:
@@ -393,6 +408,13 @@ def main(argv: list[str]) -> int:
     paths = [a for a in args if not a.startswith("--")]
 
     targets = _enumerate_targets(paths)
+    if not paths and len(targets) < FILE_FLOOR:
+        sys.stderr.write(
+            f"check_comment_format.py: FATAL -- only {len(targets)} file(s) in scope, "
+            f"floor is {FILE_FLOOR}.\n"
+            "  A collapsed sweep reports well-formed comments because it read nothing.\n"
+        )
+        return 2
     if not targets:
         print("check_comment_format.py: no files to scan")
         return 0
