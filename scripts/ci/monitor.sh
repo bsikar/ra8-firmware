@@ -119,6 +119,73 @@ need_jq() {
   }
 }
 
+# Read the status file with python3, NOT jq.
+#
+# python3 is a hard dependency of this whole CI system -- every gate driver in
+# scripts/checks is a python script -- so it is guaranteed present anywhere a
+# gate runs. jq is not: it is in neither .devcontainer/Dockerfile nor the
+# runner image built FROM it, and the ci-status-contract gate consequently
+# failed on every dev head from the moment it landed, with a require_cmd hint
+# that wrongly claimed "the CI runners ship it".
+#
+# Adding jq to the image is the obvious fix and is also being done, but it only
+# takes effect after a rebuild and redeploy -- the image-vs-Dockerfile lag
+# tracked in #513. Depending on the interpreter that is already guaranteed
+# removes the failure mode instead of provisioning around it, and makes
+# `make ci-status` work on a bare machine with no jq at all.
+#
+# One reader, one place: every field and every rendered view comes from here.
+_status_read() {
+  python3 - "$RA8_CI_STATE" "$@" <<'PY'
+import json
+import sys
+
+path, mode = sys.argv[1], sys.argv[2]
+arg = sys.argv[3] if len(sys.argv) > 3 else ""
+with open(path) as fh:
+    doc = json.load(fh)
+runs = doc.get("runs") or []
+
+
+def matching(sha):
+    return [r for r in runs if str(r.get("sha") or "").startswith(sha)]
+
+
+def line(run, with_sha=False):
+    tail = "  " + str(run.get("sha") or "")[:9] if with_sha else ""
+    return "  %s: %s/%s%s" % (
+        run.get("name"),
+        run.get("status"),
+        run.get("conclusion") or "-",
+        tail,
+    )
+
+
+if mode == "field":
+    print(doc.get(arg) or "")
+elif mode == "count":
+    print(len(matching(arg)))
+elif mode == "verdict":
+    # A sha's verdict comes from that sha's runs and nothing else.
+    got = matching(arg)
+    unfinished = {"failure", "timed_out", "cancelled"}
+    if any(r.get("conclusion") in unfinished for r in got):
+        print("FAIL")
+    elif any(r.get("status") != "completed" for r in got):
+        print("UNKNOWN")
+    else:
+        print("PASS")
+elif mode == "lines-sha":
+    for r in matching(arg):
+        print(line(r))
+elif mode == "lines-head":
+    for r in runs[:6]:
+        print(line(r, with_sha=True))
+else:
+    sys.exit("unknown mode: " + mode)
+PY
+}
+
 # rate_limit does not itself count against the REST quota, so this is safe to
 # call every cycle.
 quota_remaining() {
@@ -146,7 +213,6 @@ _ci_selftest_case() {
 }
 
 cmd_selftest() {
-  need_jq
   local d fails=0
   d="$(mktemp -d)"
   export RA8_CI_STATE_DIR="$d"
@@ -328,7 +394,7 @@ cmd_daemon() {
 _status_for_sha() {
   local want_sha="$1" polled="$2" age_s="$3" warning="$4"
   local seen sha_verdict
-  seen="$(jq -r --arg s "$want_sha" '[.runs[] | select(.sha|startswith($s))] | length' "$RA8_CI_STATE")"
+  seen="$(_status_read count "$want_sha")"
   if [[ "$seen" == "0" ]]; then
     echo "overall: UNKNOWN   for $want_sha (polled $polled, ${age_s}s ago)"
     echo "reason:  no run recorded for $want_sha yet -- UNKNOWN is not a pass and not a failure"
@@ -337,14 +403,9 @@ _status_for_sha() {
     [[ -n "$warning" ]] && echo "$warning"
     exit "$RA8_CI_EXIT_UNKNOWN"
   fi
-  sha_verdict="$(jq -r --arg s "$want_sha" '
-    [.runs[] | select(.sha|startswith($s))] as $r
-    | if   ($r | map(select(.conclusion == "failure" or .conclusion == "timed_out"
-                            or .conclusion == "cancelled")) | length) > 0 then "FAIL"
-      elif ($r | map(select(.status != "completed")) | length) > 0 then "UNKNOWN"
-      else "PASS" end' "$RA8_CI_STATE")"
+  sha_verdict="$(_status_read verdict "$want_sha")"
   echo "overall: $sha_verdict   for $want_sha (polled $polled, ${age_s}s ago)"
-  jq -r --arg s "$want_sha" '.runs[] | select(.sha|startswith($s)) | "  \(.name): \(.status)/\(.conclusion // "-")"' "$RA8_CI_STATE"
+  _status_read lines-sha "$want_sha"
   [[ -n "$warning" ]] && echo "$warning"
   case "$sha_verdict" in
     PASS) exit "$RA8_CI_EXIT_PASS" ;;
@@ -354,7 +415,6 @@ _status_for_sha() {
 }
 
 cmd_status() {
-  need_jq
   local want_sha=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -374,9 +434,9 @@ cmd_status() {
   local age_s
   age_s=$(($(date +%s) - $(stat -c %Y "$RA8_CI_STATE" 2>/dev/null || stat -f %m "$RA8_CI_STATE")))
   local overall reason polled
-  overall="$(jq -r '.overall' "$RA8_CI_STATE")"
-  reason="$(jq -r '.reason // ""' "$RA8_CI_STATE")"
-  polled="$(jq -r '.polled_at' "$RA8_CI_STATE")"
+  overall="$(_status_read field overall)"
+  reason="$(_status_read field reason)"
+  polled="$(_status_read field polled_at)"
   # A stale file is UNKNOWN, not a pass. The daemon may have died.
   if [[ "$age_s" -gt $((RA8_CI_INTERVAL * 5)) ]]; then
     echo "overall: UNKNOWN"
@@ -384,7 +444,7 @@ cmd_status() {
     exit "$RA8_CI_EXIT_UNKNOWN"
   fi
   local warning
-  warning="$(jq -r '.warning // ""' "$RA8_CI_STATE")"
+  warning="$(_status_read field warning)"
 
   if [[ -n "$want_sha" ]]; then
     _status_for_sha "$want_sha" "$polled" "$age_s" "$warning"
@@ -394,7 +454,7 @@ cmd_status() {
   [[ -n "$reason" ]] && echo "reason:  $reason"
   # Printed next to the verdict, never instead of it -- see the header note.
   [[ -n "$warning" ]] && echo "$warning"
-  jq -r '.runs[:6][] | "  \(.name): \(.status)/\(.conclusion // "-")  \(.sha[0:9])"' "$RA8_CI_STATE"
+  _status_read lines-head
   case "$overall" in
     PASS) exit "$RA8_CI_EXIT_PASS" ;;
     FAIL) exit "$RA8_CI_EXIT_FAIL" ;;

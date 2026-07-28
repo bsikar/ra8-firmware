@@ -116,6 +116,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       git \
       graphviz \
       iwyu \
+      jq \
       libcapstone-dev \
       libclang-rt-18-dev \
       libcurl4-openssl-dev \

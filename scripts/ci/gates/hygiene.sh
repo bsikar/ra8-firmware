@@ -31,7 +31,7 @@
 # both directions before anyone can trust it again.
 gate_ci_status_contract() (
   set -e
-  require_cmd jq "apt-get install -y jq (the CI runners ship it)"
+  require_cmd python3 "python3 is the interpreter every gate driver already needs"
   bash scripts/ci/monitor.sh selftest
 )
 
