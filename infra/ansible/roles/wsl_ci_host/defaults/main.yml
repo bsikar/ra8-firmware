@@ -9,9 +9,10 @@
 #
 # Why a Windows box is in the build farm at all: it is the fastest machine in
 # the fleet by a wide margin (Zen 4, 12 physical cores) and it was otherwise
-# contributing nothing to CI. It is also the owner's daily driver and gaming
-# PC, which is why every setting below is a CEILING chosen to leave the desktop
-# usable rather than a share chosen to maximise build throughput.
+# contributing nothing to CI. It is barely used interactively, so it is treated
+# as a DEDICATED BUILD HOST that happens to run Windows, and should carry the
+# largest share of the fleet's work. The caps below are ceilings that leave an
+# idle desktop responsive -- not a reservation for interactive use.
 #
 # This role runs INSIDE the distro (connection: local is the supported path --
 # see playbooks/wsl-ci-host.yml) and reaches the Windows side through the
@@ -62,8 +63,9 @@ wsl_ci_host_memory: "26GB"
 wsl_ci_host_swap: "8GB"
 
 # Return freed pages to Windows instead of holding the high-water mark for the
-# life of the VM. This is what makes a 20 GiB cap safe on a gaming machine: an
-# idle runner does not sit on 20 GiB while a game is loading.
+# life of the VM. This is what makes a cap this large safe: an idle runner does
+# not sit on 26 GiB of a 31 GiB machine, and the memory is available again to
+# Windows -- and to the future CUDA co-tenant (#228) -- between jobs.
 #
 # NOTE: on WSL 2.6.3 this key belongs under [experimental]. Under [wsl2] the
 # parser reports `Unknown key 'wsl2.autoMemoryReclaim'` -- placement is
@@ -166,14 +168,25 @@ wsl_ci_host_install_docker: true
 # Name of the Windows Scheduled Task that boots the distro.
 wsl_ci_host_task_name: "ra8-wsl-ci-runner-autostart"
 
-# Trigger. ONLOGON is used rather than ONSTART deliberately: a task that runs
-# at system start has to run as SYSTEM, and a distro booted in SYSTEM's context
-# is a DIFFERENT WSL instance from the owner's -- two VMs, two docker daemons,
-# and the runner in whichever one nobody is looking at. Running it at the
-# owner's logon keeps exactly one instance.
+# Trigger.
 #
-# The cost is stated rather than hidden: between a reboot and the owner logging
-# in, this runner is offline and jobs land on the other hosts in the pool.
+# ONLOGON rather than ONSTART, and the reason is a hard constraint rather than
+# a preference. A WSL distro is registered per-user, under the owning account's
+# HKCU -- so a boot-time task running as SYSTEM cannot start THIS distro at
+# all; `wsl -d Ubuntu` in SYSTEM's context does not find it. Running a
+# boot-triggered task as the owning user instead requires "run whether user is
+# logged on or not", which stores that user's Windows password, and this is
+# somebody's personal machine.
+#
+# THE COST, STATED RATHER THAN HIDDEN: this host has AutoAdminLogon disabled,
+# so after a reboot it sits at the login screen with the distro stopped and all
+# of its runners offline until somebody logs in. Jobs land on the other hosts
+# meanwhile, so the pool degrades rather than breaks -- but on a host that is
+# meant to carry the largest share of the fleet's work, that is a real gap.
+#
+# Closing it needs an OWNER DECISION, not more code: either enable automatic
+# logon for this account, or supply a credential so the task can be recreated
+# with ONSTART + /RU + /RP. Until then, treat reboot recovery as manual.
 wsl_ci_host_task_trigger: "ONLOGON"
 
 # --- Lifecycle --------------------------------------------------------------
