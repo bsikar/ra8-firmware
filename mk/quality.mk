@@ -162,7 +162,7 @@ vela-compile:
 # 4 GiB, which macOS arm64 refuses). On Linux with no container runtime it
 # falls back to running natively, because Linux native IS the CI environment.
 # `make ci-native` asks for that path explicitly -- use it on a box with no
-# docker/podman. Both run against a clean `git archive HEAD` snapshot, so
+# docker/podman. Both run against a clean snapshot of committed HEAD, so
 # in-source build junk and stale .gcda cannot skew a gate.
 # The container image refreshes ITSELF: it carries a sha256 of the
 # .devcontainer/ build context as a label, and a cached image whose label

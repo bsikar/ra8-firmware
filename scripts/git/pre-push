@@ -106,7 +106,21 @@ if [[ "${SKIP_CI_PUSH:-0}" == "1" ]]; then
 else
   echo "[pre-push] running 'make ci' (CI gates, in the devcontainer)..." >&2
   echo "           emergency bypass: SKIP_CI_PUSH=1 git push" >&2
-  if ! make -C "$ROOT_DIR" ci; then
+  make -C "$ROOT_DIR" ci
+  ci_rc=$?
+  # 3 is UNKNOWN, not FAIL (#542): the suite was KILLED -- signalled, or its
+  # snapshot went away under it -- so it reported no verdict at all. Blocking
+  # the push is still right (nothing was proven), but telling the developer to
+  # "fix the red gate(s) above" would send them hunting a failure that was
+  # never measured. Say which of the two happened.
+  if [[ "$ci_rc" -eq 3 ]]; then
+    echo "[FAIL] pre-push: 'make ci' was ABORTED (exit 3 = UNKNOWN) -- push blocked." >&2
+    echo "       The suite was killed, not failed: there is no verdict above to" >&2
+    echo "       act on and nothing red to fix. Re-run it, keeping the session" >&2
+    echo "       open (a detached run over ssh is reaped when it closes)." >&2
+    exit 1
+  fi
+  if [[ "$ci_rc" -ne 0 ]]; then
     echo "[FAIL] pre-push: 'make ci' failed -- push blocked." >&2
     echo "       Fix the red gate(s) above, or bypass with:" >&2
     echo "         SKIP_CI_PUSH=1 git push   (emergency only)" >&2

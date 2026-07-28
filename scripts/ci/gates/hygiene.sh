@@ -40,6 +40,11 @@ gate_ci_parity() (
   require_python_mod yaml "pip install pyyaml (the CI runners ship it)"
   suite_errexit_selftest
   suite_registry_selftest
+  # The runner must also be honest about runs that STOPPED. A SIGTERMed suite
+  # once deleted its own snapshot and kept going, inventing a FAIL for every
+  # gate that came after; a fabricated red costs a lane its time and teaches
+  # people to discount reds (#542).
+  suite_abort_selftest
   # suite_errexit_selftest proves the RUNNER propagates a mid-body failure --
   # but only for the shape it probes with, a `( set -e )` subshell. It is
   # therefore blind to a gate written as a `{ }` block, which runs in the
@@ -167,6 +172,216 @@ suite_registry_selftest() {
   fi
   echo "ci.sh: suite-runner registry self-test OK (empty and invalid registries fail)."
 }
+
+# --- the abort self-test (#542) -------------------------------------------
+# Assert that a run which STOPPED BEING A MEASUREMENT cannot emit a gate
+# verdict -- and that a run which merely failed still reports FAIL.
+#
+# The defect: run_suite_on_snapshot installed one trap for four events,
+# `trap "rm -rf '$work'" EXIT INT TERM`. A bash handler that does not itself
+# exit returns to where the shell was interrupted, so a SIGTERMed suite deleted
+# the snapshot every gate stands in and CARRIED ON inside it. The remaining
+# gates "failed" on missing files and the run printed a FAIL table describing
+# nothing about the tree under test. It cost three suite runs to attribute, and
+# a fabricated red is worse than a missing check in a tree whose rule is "own
+# every red".
+#
+# Both directions, as everywhere else here. A guard that only ever fires would
+# be just as useless: an abort machine that swallowed real failures would turn
+# every red into UNKNOWN, which is the same lie in the other direction.
+#
+# Assert the probe's exit status, naming what the run was supposed to be.
+_abort_expect_rc() {
+  local got="$1" want="$2" what="$3"
+  [[ "$got" == "$want" ]] && return 0
+  echo "ERROR: ci.sh abort self-test FAILED -- $what" >&2
+  echo "       the probe exited $got; expected $want." >&2
+  return 1
+}
+
+# Assert a pattern IS in the probe's output.
+_abort_expect() {
+  local log="$1" pattern="$2" what="$3"
+  grep -qE "$pattern" "$log" && return 0
+  echo "ERROR: ci.sh abort self-test FAILED -- $what" >&2
+  echo "       expected /$pattern/ in the probe output; it is not there." >&2
+  return 1
+}
+
+# Assert a pattern is NOT in the probe's output, and show it when it is.
+_abort_reject() {
+  local log="$1" pattern="$2" what="$3"
+  grep -qE "$pattern" "$log" || return 0
+  echo "ERROR: ci.sh abort self-test FAILED -- $what" >&2
+  echo "       found /$pattern/ in the probe output:" >&2
+  grep -nE "$pattern" "$log" | sed 's/^/         /' >&2
+  return 1
+}
+
+# Run the probe to completion, uninterrupted. Status in RA8_ABORT_PROBE_RC.
+_abort_run_probe() {
+  local mode="$1" log="$2"
+  RA8_ABORT_PROBE_RC=0
+  bash scripts/ci.sh --selftest-abort "$mode" >"$log" 2>&1
+  RA8_ABORT_PROBE_RC=$?
+  return 0
+}
+
+# Run the probe and KILL IT MID-GATE, the way systemd-logind kills a detached
+# run when the last ssh session for the user closes.
+#
+# The kill targets the process GROUP, which is what makes this a reproduction
+# rather than a lookalike. Signalling only the top-level PID would not do it:
+# bash defers a trap until the foreground command completes, so the run would
+# sit in the fixture's `sleep` for its full duration and the handler would fire
+# on an already-finished gate -- the opposite of the case under test. `set -m`
+# turns job control on for the launch, which puts the background job in its own
+# process group whose PGID is its PID, so `kill -- -$!` reaches the run AND the
+# `sleep` it is blocked in. (It is used instead of `setsid` because it is a
+# bash builtin: identical behaviour, one fewer external dependency, and it
+# works on macOS where util-linux is absent.)
+#
+# The marker is the non-vacuity floor: no marker means the probe never reached
+# a gate, and killing a run that had not started measuring anything would prove
+# nothing. That is a self-test failure, not a skip.
+_abort_run_killed_probe() {
+  local marker="$1" log="$2" job waited=0
+  RA8_ABORT_PROBE_RC=0
+  rm -f "$marker"
+  set -m
+  RA8_CI_PROBE_MARKER="$marker" bash scripts/ci.sh \
+    --selftest-abort hang >"$log" 2>&1 &
+  job=$!
+  set +m
+  # Bounded wait for the probe to be INSIDE a gate: it materialises a full HEAD
+  # snapshot first, measured at ~6 s on the dev box. The bound is 300 s -- 50x
+  # that -- because these boxes are shared and a tight bound would turn
+  # contention into a red, which is the failure mode this whole change exists
+  # to end. It stays BOUNDED, and timing out is a loud failure rather than a
+  # skip: see the caller.
+  while [[ ! -s "$marker" && "$waited" -lt 3000 ]]; do
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+  if [[ ! -s "$marker" ]]; then
+    kill -TERM -- "-$job" 2>/dev/null
+    wait "$job" 2>/dev/null
+    RA8_ABORT_PROBE_RC=-1
+    return 0
+  fi
+  kill -TERM -- "-$job" 2>/dev/null
+  wait "$job"
+  RA8_ABORT_PROBE_RC=$?
+  return 0
+}
+
+# Direction 1: a SIGNALLED suite emits no gate verdict at all.
+_abort_check_killed() {
+  local tmp="$1" failures=0
+  local log="$tmp/hang.log"
+  _abort_run_killed_probe "$tmp/marker" "$log"
+  # shellcheck disable=SC2154  # RA8_ABORT_PROBE_RC is set by the helper above.
+  if [[ "$RA8_ABORT_PROBE_RC" == "-1" ]]; then
+    echo "ERROR: ci.sh abort self-test FAILED -- the probe never entered a" >&2
+    echo "       gate, so nothing was killed mid-measurement and this" >&2
+    echo "       self-test proved nothing. Probe output:" >&2
+    sed 's/^/         /' "$log" >&2
+    return 1
+  fi
+  # The second half of the floor: the marker proves the fixture ran, this
+  # proves the runner had entered a GATE when the signal landed. Killing a run
+  # between gates would exercise a different path and quietly prove less.
+  _abort_expect "$log" '== GATE: ra8-probe-hang' \
+    "the kill must land while a gate is running" || failures=$((failures + 1))
+  _abort_expect_rc "$RA8_ABORT_PROBE_RC" 3 \
+    "a killed suite must exit 3 (UNKNOWN), not a pass or a fail" || failures=$((failures + 1))
+  _abort_expect "$log" 'ABORTED' \
+    "a killed suite must SAY it was killed" || failures=$((failures + 1))
+  _abort_reject "$log" 'RESULT: FAIL' \
+    "a killed suite must not report a suite verdict" || failures=$((failures + 1))
+  _abort_reject "$log" '^[[:space:]]+ra8-probe-[a-z-]+[[:space:]]+FAIL' \
+    "a killed suite must not invent a per-gate FAIL row" || failures=$((failures + 1))
+  _abort_reject "$log" 'RA8-PROBE-AFTER-RAN' \
+    "a killed suite must not run the gate after the abort" || failures=$((failures + 1))
+  return "$failures"
+}
+
+# Direction 2: the tree vanishing under the run is UNKNOWN too.
+#
+# The fixture does exactly what the old trap did -- deletes the snapshot from
+# under the still-running runner -- so this direction pins the ORIGINAL symptom
+# without needing a signal to produce it.
+_abort_check_destroyed() {
+  local tmp="$1" failures=0
+  local log="$tmp/destroy.log"
+  _abort_run_probe destroy "$log"
+  _abort_expect_rc "$RA8_ABORT_PROBE_RC" 3 \
+    "a suite whose tree disappeared must exit 3 (UNKNOWN)" || failures=$((failures + 1))
+  _abort_expect "$log" 'RESULT: ABORTED' \
+    "a suite whose tree disappeared must say so" || failures=$((failures + 1))
+  # The gate after the destroyer must be REACHED and REFUSED -- its header
+  # printed, its body never entered. Without this the direction would also pass
+  # if the runner had simply stopped early for some unrelated reason.
+  _abort_expect "$log" '== GATE: ra8-probe-after' \
+    "the gate after a vanished tree must be reached and refused" || failures=$((failures + 1))
+  _abort_reject "$log" 'RESULT: FAIL' \
+    "a vanished tree is not a content failure" || failures=$((failures + 1))
+  _abort_reject "$log" 'RA8-PROBE-AFTER-RAN' \
+    "no gate may be dispatched into a tree that is gone" || failures=$((failures + 1))
+  return "$failures"
+}
+
+# Direction 3: an UNINTERRUPTED run still reports a real failure.
+#
+# The must-stay-quiet half. An abort machine that turned every red into UNKNOWN
+# would pass both directions above and enforce nothing.
+_abort_check_failing() {
+  local tmp="$1" failures=0
+  local log="$tmp/fail.log"
+  _abort_run_probe fail "$log"
+  _abort_expect_rc "$RA8_ABORT_PROBE_RC" 1 \
+    "an uninterrupted suite with a failing gate must still exit 1 (FAIL)" || failures=$((failures + 1))
+  _abort_expect "$log" 'RESULT: FAIL' \
+    "a real gate failure must still be reported as FAIL" || failures=$((failures + 1))
+  _abort_expect "$log" '^[[:space:]]+ra8-probe-fail[[:space:]]+FAIL' \
+    "the failing gate must still be named in the table" || failures=$((failures + 1))
+  _abort_reject "$log" 'ABORTED' \
+    "a failing gate is not an abort" || failures=$((failures + 1))
+  _abort_reject "$log" 'RA8-PROBE-FAIL-CONTINUED' \
+    "a gate that fails mid-body must not continue" || failures=$((failures + 1))
+  return "$failures"
+}
+
+# ERREXIT is turned OFF here explicitly, not assumed off. gate_ci_parity calls
+# this under `set -e`, and a ( ) subshell INHERITS that, while every probe below
+# legitimately returns non-zero: a killed run exits 3, a failing suite exits 1,
+# and each `grep` assertion may not match. With errexit live the very first of
+# those aborts the self-test mid-way -- silently, printing no assertion at all
+# and handing the gate the probe's exit code as if it were the gate's own. That
+# is what it did before this line existed.
+suite_abort_selftest() (
+  set +e
+  set -uo pipefail
+  local tmp failures=0
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-abort-selftest.XXXXXXXX")"
+
+  _abort_check_killed "$tmp"
+  failures=$((failures + $?))
+  _abort_check_destroyed "$tmp"
+  failures=$((failures + $?))
+  _abort_check_failing "$tmp"
+  failures=$((failures + $?))
+
+  rm -rf "$tmp"
+  if [[ "$failures" -ne 0 ]]; then
+    echo "ERROR: ci.sh abort self-test FAILED ($failures assertion(s))." >&2
+    echo "       A killed suite is inventing gate results again (#542), or" >&2
+    echo "       the abort machinery has started swallowing real failures." >&2
+    return 1
+  fi
+  echo "ci.sh: abort self-test OK (SIGTERM -> UNKNOWN with no gate verdict;" \
+    "a vanished tree -> UNKNOWN; an uninterrupted failure -> FAIL)."
+)
 
 # Assert that the commit-message gates can still tell real history from a
 # synthetic snapshot -- in BOTH directions.

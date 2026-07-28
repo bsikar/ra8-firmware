@@ -48,13 +48,32 @@
 # CMake compiles ra8_viewer_view_stub.c in its place, so the portable reader
 # core still builds, links, and renders here -- the whole tool is gated on
 # Linux rather than skipped for the sake of its window backend.
+#
+# Every path below is $PWD -- the TREE UNDER TEST -- and never $REPO_ROOT
+# (#546). $REPO_ROOT is the host checkout the runner was invoked from, which is
+# not the tree the suite is gating: run_suite_on_snapshot cds into a clean
+# snapshot of HEAD and every other gate reads it from there. Reaching back to
+# $REPO_ROOT had two consequences, and the second one is what made it visible:
+#
+#   * the gate did not gate HEAD at all. In suite mode it configured, compiled
+#     and tested the WORKING TREE's tools/ -- whatever was dirty in it -- and
+#     left its build output there, while the snapshot beside it went unbuilt.
+#   * on the containerised path it could not run. The host repo is bind-mounted
+#     READ-ONLY at /workspace, so `cmake -B /workspace/build/tools-build/...`
+#     fails at configure time with `CMake Error: Unable to (re)create the
+#     private pkgRedirects directory`. That is what took win-ci -- the fleet's
+#     second verification host, where `ci-gate-container` is the normal path --
+#     out of ever reporting a full green, and it reproduces identically on the
+#     dev box through `make ci-gate-container GATE=tools-build`.
+#
+# check_gate_bodies.py now rejects $REPO_ROOT in any gate body, so a gate
+# cannot silently start measuring a different tree again.
 # media_dl: build, link, and run its own CTest suite under compiler $1.
 _tb_media_dl() (
   set -e
   local cc="$1" root="$2" jobs="$3"
   echo "tools-build[$cc]: media_dl"
-  # shellcheck disable=SC2154  # REPO_ROOT comes from scripts/ci.sh, the only thing that sources this file; shellcheck reports the variable once per file.
-  CC="$cc" cmake -S "$REPO_ROOT/tools/media_dl" -B "$root/media_dl" \
+  CC="$cc" cmake -S "$PWD/tools/media_dl" -B "$root/media_dl" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
   cmake --build "$root/media_dl" -j "$jobs"
   test -x "$root/media_dl/media_dl"
@@ -69,14 +88,14 @@ _tb_rabook_viewer() (
   set -e
   local cc="$1" root="$2" jobs="$3"
   echo "tools-build[$cc]: rabook_viewer"
-  CC="$cc" cmake -S "$REPO_ROOT/tools/rabook_viewer" -B "$root/rabook_viewer" \
+  CC="$cc" cmake -S "$PWD/tools/rabook_viewer" -B "$root/rabook_viewer" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
   cmake --build "$root/rabook_viewer" -j "$jobs"
   test -x "$root/rabook_viewer/rabook_viewer"
 
   local ppm="$root/viewer_page0.ppm"
   "$root/rabook_viewer/rabook_viewer" \
-    "$REPO_ROOT/tools/rabook_viewer/fixtures/sample.cbz" --headless --dump-ppm "$ppm"
+    "$PWD/tools/rabook_viewer/fixtures/sample.cbz" --headless --dump-ppm "$ppm"
   if [[ "$(head -c 2 "$ppm" 2>/dev/null)" != "P6" ]]; then
     echo "ERROR: rabook_viewer --headless did not write a P6 PPM." >&2
     echo "       A zero exit with no image would be a vacuous pass." >&2
@@ -90,7 +109,7 @@ _tb_rabook_viewer() (
   # still decodes a valid atlas -- a regression would otherwise need a human at
   # a window to notice.
   echo "tools-build: rabook_viewer malformed-input security corpus"
-  bash "$REPO_ROOT/tools/rabook_viewer/tests/run_corpus.sh" \
+  bash "$PWD/tools/rabook_viewer/tests/run_corpus.sh" \
     "$root/rabook_viewer/rabook_viewer" "$root/ra8_viewer_corpus"
 )
 
@@ -104,7 +123,7 @@ _tb_other_tools() (
   local cc="$1" root="$2" jobs="$3" tool
   for tool in rabook_imagepack mkbookimg mkfontimg; do
     echo "tools-build[$cc]: $tool"
-    CC="$cc" cmake -S "$REPO_ROOT/tools/$tool" -B "$root/$tool" \
+    CC="$cc" cmake -S "$PWD/tools/$tool" -B "$root/$tool" \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     cmake --build "$root/$tool" -j "$jobs"
     test -x "$root/$tool/$tool"
@@ -126,7 +145,7 @@ gate_tools_build() (
   # selftest now also asserts the second-arm coverage guard fires both ways.
   python3 scripts/checks/check_tool_warning_flags.py --selftest
 
-  local base="$REPO_ROOT/build/tools-build"
+  local base="$PWD/build/tools-build"
   local jobs
   jobs="$(ra8_max_jobs)"
   rm -rf "$base"

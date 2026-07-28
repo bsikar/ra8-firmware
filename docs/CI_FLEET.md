@@ -844,7 +844,7 @@ something about the runners beside it" is a checked fact.
 The consequence is that `make ci-gate GATE=x` -- which runs a gate *natively*,
 because that is what a CI runner does -- does not work in this distro. Use
 `make ci-gate-container GATE=x`, which runs the same gate on the same clean
-`git archive HEAD` snapshot inside that image. (It works on macOS too, where
+snapshot of committed `HEAD` inside that image. (It works on macOS too, where
 `make ci-gate` has never been able to.)
 
 ### Quiet hours freeze it, they do not kill it
@@ -887,7 +887,7 @@ than assumed.
 **The method.** A probe container given a **runner's exact caps** -- cpuset
 14-20, 7 CPU, 7 GiB, `--pids-limit 8192`, and the default `system.slice`
 parent, i.e. indistinguishable from `ra8-ci-runner-3` -- runs three real gates
-on a clean `git archive HEAD` snapshot. Identical work, identical caps,
+on a clean snapshot of committed `HEAD`. Identical work, identical caps,
 identical cores; the *only* difference between the phases is whether a full
 `ra8-dev make ci` is running in the slice at the same time.
 

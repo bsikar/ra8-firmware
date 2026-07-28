@@ -327,7 +327,7 @@ def first_party_sources(explicit: list[str]) -> list[Path]:
     ``<app>/build/CMakeFiles/*/CompilerIdC/CMakeCCompilerId.c`` -- so the set
     scanned depended on whether the caller had built, and generated code got
     held to a first-party rule. CI never saw it (it runs against a clean
-    ``git archive HEAD`` snapshot) but the pre-commit hook runs in the working
+    snapshot of committed ``HEAD``) but the pre-commit hook runs in the working
     tree, which is exactly where a spurious finding costs the most trust.
     ``git ls-files`` is also what the copyright and @since gates enumerate with.
     """
