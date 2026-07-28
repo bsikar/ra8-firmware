@@ -414,6 +414,16 @@ EOF
 # _diag/Worker_*.log, which costs no quota to read -- so a fleet that has burned
 # its budget can still SEE its results over ssh.
 #
+# This needs a LONG-LIVED runner: an ARC pod is ephemeral (one pod per job) and
+# its _diag tree dies with it, so the ra8-ci scale set on the k3s node can never
+# serve this. The defaults therefore point at the truenas container runner
+# (infra/ansible/roles/ci_runner_docker), whose _work / _diag live on a dataset
+# outside the container and survive it. That is also a strict improvement on
+# where these defaults used to point -- /home/ubuntu/actions-runner*/ on the
+# k3s node, the bare-metal `k3s-runner-*` pool, which by the end only ever
+# served docs-publish / fuzz-nightly / osv-scan and so could not show a
+# `firmware` result at all. That pool is retired.
+#
 # The log format is version-specific and was established empirically against
 # runner 2.335.1 (an earlier attempt failed because the widely-cited
 # "Job <name> completed with result: X" pattern is NOT what this version emits).
@@ -484,8 +494,8 @@ _runner_status_report() {
 }
 
 cmd_runner_status() {
-  local host="${RA8_CI_RUNNER_HOST:-k3s-pve}"
-  local glob="${RA8_CI_RUNNER_GLOB:-/home/ubuntu/actions-runner*/_diag/Worker_*.log}"
+  local host="${RA8_CI_RUNNER_HOST:-truenas}"
+  local glob="${RA8_CI_RUNNER_GLOB:-/mnt/stripe/ci-runner/home/_diag/Worker_*.log}"
   local want_sha="" limit=10
   while [[ $# -gt 0 ]]; do
     case "$1" in

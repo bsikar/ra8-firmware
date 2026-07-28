@@ -43,9 +43,19 @@ citations.
 (#21). The example's value is demonstrating the real forwarding API behind a
 clean ARM cross-build, matching the driver-gap example wave (#182-188).
 
-Proving a frame is actually forwarded to the correct egress port needs a
-multi-port topology (two links + a traffic source, bench wiring #89); promote
-to `hw_validated/hil/` once forwarding is confirmed on silicon.
+### Why this one cannot be promoted from this board
+
+Proving a frame is actually forwarded to the correct egress port needs two
+links. The RA8D2 has two ETHA/RMAC ports, but the **EK-RA8D2 breaks out a
+single RJ45** with one populated PHY, so there is no second port to observe an
+egress on. That is a board limitation, not a bench-configuration one: no
+cabling, peer, or instrument on the bench can make end-to-end forwarding
+assertable here. It needs the carrier PCB (#318) that breaks out the second
+port, or a second board.
+
+(An earlier revision of this file and of `hil.conf` blamed "bench wiring #89".
+That was wrong and sent the work to the wrong queue -- #89 is a bench task and
+would never have unblocked this.)
 
 Build:
 

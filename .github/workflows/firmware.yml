@@ -677,10 +677,16 @@ jobs:
       - name: Install graphviz
         run: |
           # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. Idempotent: skip apt entirely once `dot` is present
-          # on this long-lived runner. The docs gate hard-requires graphviz,
-          # because without it doxygen silently drops every authored diagram
-          # instead of rendering it.
+          # project check. The docs gate hard-requires graphviz, because
+          # without it doxygen silently drops every authored diagram instead
+          # of rendering it.
+          #
+          # Probe first, apt only if genuinely absent. ra8-ci is an ephemeral
+          # pod booted from the devcontainer image, which already carries
+          # graphviz, and the pod's runner user has NO passwordless sudo -- so
+          # an unconditional `sudo apt-get` would die on "sudo: a password is
+          # required". The probe no-ops on the pod and still provisions a bare
+          # host runner. Same shape as the coverage and emulator-smoke jobs.
           if ! command -v dot >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y graphviz

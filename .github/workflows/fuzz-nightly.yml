@@ -8,19 +8,26 @@
 # scripts/checks/run_fuzz.sh --all) with a real per-target budget, fails on
 # any crash, and uploads the crash reproducers from tests/build-fuzz/crashes/.
 #
+# The sweep is SERIAL by construction -- each harness gets the whole budget in
+# turn -- so its wall time is (registry size) x (budget), and adding a harness
+# lengthens the job rather than widening it. See the timeout note on the job.
+#
 # libFuzzer is clang-only. run_fuzz.sh auto-selects the first clang on PATH
-# able to link -fsanitize=fuzzer (the self-hosted runner ships versioned
-# clang majors plus the libclang-rt fuzzer runtime -- the same packages the
-# mcdc gate's -fprofile link path needs); the gate's preflight probe proves
-# that before spending the budget, so a de-provisioned runner fails in seconds
-# with an actionable message instead of after hours.
+# able to link -fsanitize=fuzzer. The ra8-ci pod image ships clang-18 plus
+# libclang-rt-18-dev (.devcontainer/Dockerfile) -- the same packages the mcdc
+# gate's -fprofile link path needs, and they carry libclang_rt.fuzzer-x86_64.a
+# with them, so nothing is provisioned per job. The gate's preflight probe
+# proves the link works before spending the budget, so a drifted image fails
+# in seconds with an actionable message instead of after hours.
 ---
 name: fuzz-nightly
 
 on:
   schedule:
-    # 07:23 UTC nightly -- off-peak for the self-hosted runner, which serves
-    # PR gates during the day (odd minute to avoid the on-the-hour stampede).
+    # 07:23 UTC nightly -- off-peak for the ra8-ci fleet, which serves PR gates
+    # during the day (odd minute to avoid the on-the-hour stampede). The sweep
+    # holds one pod of the scale set for its whole budget, so keeping it off
+    # peak is what stops it eating a slot the push gates need.
     - cron: "23 7 * * *"
   workflow_dispatch:
     inputs:
@@ -37,10 +44,18 @@ concurrency:
 jobs:
   fuzz:
     name: libFuzzer sweep (all harnesses)
-    runs-on: [self-hosted, Linux, X64]
-    # 13 harnesses x 600 s = ~130 min of fuzzing plus the clang build of the
-    # host tree. Generous slack so a slow runner does not truncate the sweep.
-    timeout-minutes: 240
+    runs-on: ra8-ci
+    # The budget SCALES WITH THE REGISTRY, so this number has to be re-derived
+    # whenever a harness is added -- it was written as "13 harnesses x 600 s =
+    # ~130 min" against a 240 min timeout, and the registry quietly grew to 20.
+    # At 20 x 600 s the sweep is 200 min of pure fuzzing before a single second
+    # of build, and the last green run on a host runner took 201 min: 39 min of
+    # margin, down from 110. An ra8-ci pod is ephemeral, so unlike the old
+    # long-lived host runner it starts with a COLD ccache and pays a full clang
+    # build (~10-15 min, cf. the mcdc gate's instrumented rebuild) every time.
+    # 300 restores real slack; the gate prints the projection at startup so the
+    # next erosion shows up in the log instead of as a 3am truncation.
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
 

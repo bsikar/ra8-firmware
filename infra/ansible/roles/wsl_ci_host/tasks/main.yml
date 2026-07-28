@@ -45,8 +45,9 @@
 
 - name: Assert the Windows profile is visible over drvfs
   # .wslconfig is per-user. Written to a profile that is not there, every cap
-  # in it is silently ignored and the VM comes up uncapped -- which on a gaming
-  # machine is the whole failure this role exists to prevent.
+  # in it is silently ignored and the VM comes up uncapped, which is the
+  # failure mode this check exists to catch: an uncapped VM looks fine right
+  # up until a build takes the whole machine.
   ansible.builtin.stat:
     path: "{{ wsl_ci_host_profile }}"
   register: wsl_ci_host_profile_stat
@@ -419,10 +420,12 @@
           dnsTunneling={{ wsl_ci_host_dns_tunneling | lower }}
           firewall={{ wsl_ci_host_firewall | lower }}
 
-          # This machine is a daily driver and a gaming PC first; the CI runner
-          # is a guest on it. These cap the whole WSL2 VM, so nothing the
-          # runner does inside it can take the host below the headroom left
-          # here. Rationale for each number is in the role defaults.
+          # This box is treated as a DEDICATED BUILD HOST that happens to run
+          # Windows: it is the fastest machine in the fleet and is barely used
+          # interactively, so work is pushed here in preference to the slower
+          # hosts. These cap the whole WSL2 VM, and what is left outside them
+          # is only what an idle desktop needs -- not a gaming reservation.
+          # Rationale for each number is in the role defaults.
           processors={{ wsl_ci_host_processors }}
           memory={{ wsl_ci_host_memory }}
           swap={{ wsl_ci_host_swap }}

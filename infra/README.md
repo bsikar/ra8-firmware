@@ -141,9 +141,22 @@ whichever host takes it. They differ only in shape and in where they run:
 
 | Role | Host | Shape | `runs-on:` it answers |
 |---|---|---|---|
-| `ci_runner` | k3s node | ARC scale set, pods, autoscaling 0..8 | `ra8-ci` |
-| `ci_runner_docker` | any Docker host | one long-lived container | `ra8-ci`, `ra8-nas`, `[self-hosted, Linux, X64]` |
-| `wsl_ci_host` + `ci_runner_docker` | Windows machine, in WSL2 | three long-lived containers | `ra8-ci`, `ra8-win`, `[self-hosted, Linux, X64]` |
+| `ci_runner` | k3s node | ARC scale set, pods, autoscaling 0..`ci_runner_max` | `ra8-ci` |
+| `ci_runner_docker` | any Docker host | N long-lived containers | `ra8-ci`, `ra8-nas` |
+| `wsl_ci_host` + `ci_runner_docker` | Windows machine, in WSL2 | N long-lived containers | `ra8-ci`, `ra8-win` |
+
+The counts are not properties of the roles: every one of them comes from that
+host's block in `infra/fleet.yml`. See [`docs/CI_FLEET.md`](../docs/CI_FLEET.md).
+
+**Every workflow targets `ra8-ci`.** The one exception is `hil.yml`, which
+targets `[self-hosted, hil, ra8d2]` -- a physical-bench label naming the Pi with
+the EK-RA8D2 attached, not a capacity pool. Nothing schedules against a bare
+`[self-hosted, Linux, X64]` any more; see "The legacy `k3s-runner-*` pool is
+retired" below for what that replaced.
+
+The per-host labels (`ra8-nas`, `ra8-win`) are escape hatches, not scheduling
+targets: nothing uses them today, and they exist so a specific host can be
+pinned or drained without editing every workflow.
 
 **Why more than one.** The build farm was one machine. The k3s node hosting the
 ARC pods and the dev container where every agent runs `make ci` are guests on a
@@ -202,9 +215,120 @@ attempts of the *same workflow run* on the same commit, so the only variable is
 which host picked the job up.
 
 The role's `self-hosted`/`Linux`/`X64` labels are added by the runner itself
-and cannot be removed, which also makes the host eligible for the
-`runs-on: [self-hosted, Linux, X64]` jobs (docs-publish, fuzz-nightly,
-osv-scan).
+and cannot be removed. Nothing targets them: they are simply what GitHub
+attaches to every self-hosted Linux x86_64 runner.
+
+### The Windows host runs three runners inside WSL2
+
+`wsl_ci_host` prepares the distro; `ci_runner_docker` then deploys into it
+**unmodified**. Keeping the platform-specific work in a separate role is what
+stops the shared role growing a second personality per host.
+
+The runner runs in WSL2 rather than on Windows because the toolchain image is
+the toolchain: every pinned tool lives in `localhost/ra8-ci-runner:v2`, and the
+`toolchain-parity` gate exists to fail a runner that drifts from those pins. A
+native Windows runner would need a separately assembled toolchain -- exactly
+the drift the gate is there to catch.
+
+**This host is sized to take the largest share of the fleet's work.** It is the
+fastest machine available and is barely used interactively, so the WSL VM is
+capped at 22 of 24 threads and 26 of 31 GiB -- enough for an idle Windows
+desktop and no more. Both are role variables, so the judgement is reversible in
+one place.
+
+**Three runners, and three is a memory result.** Queue depth is the fleet's
+bottleneck, not per-job latency, so a host with cores to spare runs several
+independent runners rather than one runner with a very wide `-j`. The count is
+bounded by clang-tidy, which has been OOM-killed at 8 GiB: 26/3 = 8.7 GiB per
+instance clears that, 26/4 = 6.5 GiB does not. Cores would divide fine at four
+-- memory is what says three. Each instance gets its own registration, home and
+`_work` tree, and is pinned to its own cpuset so `nproc` inside it reports its
+real share and `make -j$(nproc)` cannot oversubscribe the box. If clang-tidy is
+ever sharded, per-shard memory drops and a fourth becomes viable; re-measure
+then rather than assuming.
+
+Roughly 5 GiB of the VM is left uncommitted on purpose: this machine has an
+RTX 5070 and will later host the GPU side of the Ethos-U55 / NPU workstream
+(#228) in this same distro. GPU work and CI do not contend for an execution
+resource, but they do contend for system RAM.
+
+**Docker Engine in the distro, not Docker Desktop.** Docker Desktop is
+installed on this machine and is left completely alone, but it cannot host this
+runner: its daemon sits behind a Windows application that needs a logged-in
+interactive session, so the runner would stop being able to start containers
+the moment the owner logged out. That is not an unattended runner. Native
+`docker-ce` runs under the distro's own systemd. Because the Desktop
+integration also puts a `docker` shim on `PATH` from `/mnt/c`, the role
+*asserts* that the binary in use is the distro's own -- a silent switch back
+would reintroduce the GUI dependency with no other symptom.
+
+**The build tree stays off `/mnt/c`.** `ci_runner_docker_root` is
+`/opt/ra8-ci-runner` on the distro's ext4 root. `/mnt/c` is drvfs, a
+translation layer onto NTFS, and roughly an order of magnitude slower for the
+many-small-files work a checkout and a build are; putting `_work` there would
+hand back most of the CPU advantage this host was added for.
+
+**Mirrored networking needs a route fix here, and that is not optional.** The
+machine is multi-homed: an isolated bench LAN with **no uplink**, and the
+owner's Wi-Fi. Mirrored networking copies the Windows routing table into the
+distro, and the bench LAN's DHCP-supplied default gateway arrives with the
+*lower* metric -- so out of the box every packet the runner sends goes into a
+black hole. Windows itself is unaffected because it fails over, which is why
+this reads as a working machine right up until a job runs. Two things fix it,
+both inside the distro, and neither touches the owner's network:
+
+- `ra8-wsl-route-pin` finds the default gateway that actually carries traffic
+  (probed by IP, before DNS can be trusted) and pins it below every mirrored
+  route. A **timer** re-asserts it, because mirrored networking re-syncs the
+  Windows routing table on every host network change -- a boot-only fix would
+  let a Wi-Fi roam break a job already in flight.
+- `generateResolvConf=false` plus a resolv.conf the role owns. WSL's DNS
+  tunnelling endpoint (`10.255.255.254`) does **not** answer on this host: a
+  raw UDP/53 query to it times out while `1.1.1.1` answers in milliseconds over
+  the same interface. Left generated, every name lookup in a job stalls for the
+  full resolver timeout.
+
+**The VM must be told not to die.** WSL reaps an unattended VM regardless of
+what is running inside it, and this host was seen going `offline` with
+`busy=true` -- GitHub still had a job assigned to a VM that had been shut down
+underneath it. `vmIdleTimeout=-1` plus a blocking keep-alive in the autostart
+task fixes it. The keep-alive matters: a task running `wsl -e true` starts the
+VM and exits, and the VM is reaped moments later, which is an autostart that
+reliably leaves the runner offline while looking configured.
+
+**The clock must be right before the runners start.** A WSL2 VM does not boot
+with a trustworthy clock. Observed here: the VM came up ~4 minutes fast, the
+runner checked the tree out with those timestamps, `timesyncd` then stepped the
+clock back, and make spent the rest of the job reporting `Clock skew detected.
+Your build may be incomplete`. That is not cosmetic -- make's up-to-date
+decisions are timestamp comparisons. Docker is therefore ordered after
+`systemd-time-wait-sync`, and since the containers are `restart:
+unless-stopped`, the daemon's start time is exactly when this host begins
+accepting jobs.
+
+**What survives a reboot, stated precisely.** WSL does not start distros on
+boot, so a Windows Scheduled Task (`ra8-wsl-ci-runner-autostart`) starts it;
+that starts systemd, which starts docker, which starts the three runner
+containers.
+
+*Proven.* Running that task against a stopped distro brings the entire chain
+back -- distro, systemd, docker, all three containers -- in **under 5 seconds**.
+Verified by `wsl --shutdown` followed by `schtasks /Run` and nothing else
+touching the machine.
+
+*Not proven, and cannot be as configured.* That the trigger fires after an
+actual power cycle. A WSL distro is registered under the owning account's HKCU,
+so a boot-time task running as SYSTEM cannot start this distro at all -- `wsl
+-d Ubuntu` in SYSTEM's context does not find it. Running a boot-triggered task
+as the owning user instead requires "run whether user is logged on or not",
+which stores that user's Windows password, and this is a personal machine.
+This host also has `AutoAdminLogon` disabled, so after a reboot it sits at the
+login screen with all three runners offline until somebody logs in.
+
+Closing that gap needs an **owner decision, not more code**: either enable
+automatic logon for the account, or supply a credential so the task can be
+recreated as `ONSTART` with `/RU` + `/RP`. Until then reboot recovery here is
+manual, and the pool degrades onto its other two hosts rather than breaking.
 
 ### The Windows host runs three runners inside WSL2
 
@@ -391,6 +515,47 @@ are sized for a 6-core/12-thread NAS with 62 GiB of RAM:
 The play reads the caps back out of the container's cgroup and **asserts** them
 rather than trusting the compose file, because a cap that was silently ignored
 is worse than one that was never set.
+
+## The legacy `k3s-runner-*` pool is retired (#502)
+
+Before ARC, CI ran on up to 20 hand-registered GitHub runners installed as bare
+systemd services on the k3s node itself (`actions.runner.*.k3s-runner-N`, work
+dirs `/home/ubuntu/actions-runner*`). They were never provisioned from this tree
+-- no role ever created them -- which is precisely why they outlived their
+purpose: nothing in the repo described them, so nothing in the repo retired them
+either. This section exists so that cannot happen a second time.
+
+The Jul-24 ARC migration moved the core workflows to `ra8-ci` but deliberately
+left `docs-publish`, `fuzz-nightly` and `osv-scan` on
+`[self-hosted, Linux, X64]` "until their tools are confirmed in the image".
+That condition was never revisited, so three low-frequency workflows kept seven
+bare runners alive on the node whose load average was already ~110 against 16
+vCPU -- and made "retire the legacy pool" a trap, since deregistering them would
+have left those three permanently unrunnable.
+
+The condition was then checked rather than assumed, against a live pod:
+
+| workflow | what it needs | where it comes from |
+|---|---|---|
+| `docs-publish` | `dot` | graphviz, already in the image |
+| `docs-publish` | doxygen pinned to 1.16.1 | the `/var/cache/ra8-tools` hostPath cache (#486); sha256-verified download on a cold cache |
+| `fuzz-nightly` | a clang that links `-fsanitize=fuzzer` | `clang-18` + `libclang-rt-18-dev`, already in the image |
+| `osv-scan` | `osv-scanner` 2.4.0 | fetched per job, version + sha256 pinned in the workflow |
+
+Nothing had to be added to the image. All three now target `ra8-ci`; the seven
+registrations are deleted, and all 20 `actions.runner.*` units (7 enabled, 13
+disabled leftovers from the phantoms deregistered earlier) are stopped,
+disabled and removed along with their drop-in directories and the 81 GB of
+runner installs under `/home/ubuntu/`.
+
+One in-repo default depended on that pool and moved with it.
+`scripts/ci/monitor.sh runner-status` -- the zero-quota fallback that reads job
+outcomes straight off a runner's `_diag` logs -- pointed at
+`/home/ubuntu/actions-runner*/_diag/` on the k3s node. It needs a LONG-LIVED
+runner, which an ephemeral ARC pod can never be, so it now reads the truenas
+container runner's `_diag` (on a dataset outside the container). That is a fix
+rather than a relocation: by the end the legacy pool only ever ran these three
+workflows, so it could not show a `firmware` result at all.
 
 ## Vendor artifacts that cannot be fetched unattended
 
