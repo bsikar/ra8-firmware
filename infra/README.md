@@ -35,11 +35,27 @@ in OpenBao. That's it: your machine joins as a CI runner pool.
 ## Layout
 
 ```
+fleet.yml    THE declaration: one block per machine -- how to reach it, what
+             kind of host it is, how many runner instances, its CPU and memory
+             per instance, its labels, its quiet-hours window. Everything below
+             is derived from it.
 ansible/     configures machines (dev_box, ci_runner, ci_runner_docker,
-             hil_bench, c6_toolchain, ad2_tools roles)
+             wsl_ci_host, fleet_capacity, hil_bench, c6_toolchain, ad2_tools)
 images/      the CI runner container image (devcontainer toolchain + runner)
 network/     the isolated ESP32-C6 bench LAN (FortiGate + OpenWrt AP)
 ```
+
+`ansible/inventory/hosts.ini` is **generated** from `fleet.yml` on every
+`make infra-*` run and is git-ignored; the committed half is
+`ansible/inventory/host_vars/`, which holds structural facts about a machine
+(where its runner tree lives, which pools CI must avoid) and never a capacity
+knob. `scripts/checks/check_fleet_declaration.py` fails a `host_vars` file that
+re-declares anything `fleet.yml` owns.
+
+**Adding a machine, retuning one, quiet hours, removing one:
+[`docs/CI_FLEET.md`](../docs/CI_FLEET.md).** It also carries the sizing formula
+and the measurements behind it, so a new host is sized by plugging in two
+numbers rather than re-deriving anything.
 
 ## What is codified, and what is not
 
@@ -72,10 +88,11 @@ always had two prerequisites that lived nowhere: the cluster, and a `helm` root
 could resolve. `k3s_node` is those prerequisites.
 
 ```
-cd infra/ansible
-ansible-playbook -i inventory/hosts.ini playbooks/k3s-node.yml   # cluster + vault
-ansible-playbook -i inventory/hosts.ini playbooks/ci-runner.yml  # then ARC
+make infra-apply HOST=k3s-pve
 ```
+
+That runs both plays in the order the host declares them (`k3s-node` then
+`ci-runner`); `PLAY=` on `scripts/dev/fleet.py` runs one on its own.
 
 k3s is pinned by release version *and* by the sha256 of the release binary, and
 the upstream installer is fetched to disk and checksummed rather than piped
@@ -94,8 +111,7 @@ runner -- it never joins the Actions pool -- so it lives in its own inventory
 group and its own playbook:
 
 ```
-cd infra/ansible
-ansible-playbook -i inventory/hosts.ini playbooks/dev-box.yml
+make infra-apply HOST=dev
 ```
 
 Two of its tools are built from source, and that is a property of the
@@ -126,8 +142,11 @@ whichever host takes it. They differ only in shape and in where they run:
 | Role | Host | Shape | `runs-on:` it answers |
 |---|---|---|---|
 | `ci_runner` | k3s node | ARC scale set, pods, autoscaling 0..`ci_runner_max` | `ra8-ci` |
-| `ci_runner_docker` | any Docker host | one long-lived container | `ra8-ci`, `ra8-nas` |
-| `wsl_ci_host` + `ci_runner_docker` | Windows machine, in WSL2 | three long-lived containers | `ra8-ci`, `ra8-win` |
+| `ci_runner_docker` | any Docker host | N long-lived containers | `ra8-ci`, `ra8-nas` |
+| `wsl_ci_host` + `ci_runner_docker` | Windows machine, in WSL2 | N long-lived containers | `ra8-ci`, `ra8-win` |
+
+The counts are not properties of the roles: every one of them comes from that
+host's block in `infra/fleet.yml`. See [`docs/CI_FLEET.md`](../docs/CI_FLEET.md).
 
 **Every workflow targets `ra8-ci`.** The one exception is `hil.yml`, which
 targets `[self-hosted, hil, ra8d2]` -- a physical-bench label naming the Pi with
@@ -311,6 +330,94 @@ automatic logon for the account, or supply a credential so the task can be
 recreated as `ONSTART` with `/RU` + `/RP`. Until then reboot recovery here is
 manual, and the pool degrades onto its other two hosts rather than breaking.
 
+### The Windows host runs three runners inside WSL2
+
+`wsl_ci_host` prepares the distro; `ci_runner_docker` then deploys into it
+**unmodified**. Keeping the platform-specific work in a separate role is what
+stops the shared role growing a second personality per host.
+
+The runner runs in WSL2 rather than on Windows because the toolchain image is
+the toolchain: every pinned tool lives in `localhost/ra8-ci-runner:v2`, and the
+`toolchain-parity` gate exists to fail a runner that drifts from those pins. A
+native Windows runner would need a separately assembled toolchain -- exactly
+the drift the gate is there to catch.
+
+**This host is sized to take the largest share of the fleet's work.** It is the
+fastest machine available and is barely used interactively, so the WSL VM is
+capped at 22 of 24 threads and 26 of 31 GiB -- enough for an idle Windows
+desktop and no more. Both are role variables, so the judgement is reversible in
+one place.
+
+**Three runners, and three is a memory result.** Queue depth is the fleet's
+bottleneck, not per-job latency, so a host with cores to spare runs several
+independent runners rather than one runner with a very wide `-j`. The count is
+bounded by clang-tidy, which has been OOM-killed at 8 GiB: 26/3 = 8.7 GiB per
+instance clears that, 26/4 = 6.5 GiB does not. Cores would divide fine at four
+-- memory is what says three. Each instance gets its own registration, home and
+`_work` tree, and is pinned to its own cpuset so `nproc` inside it reports its
+real share and `make -j$(nproc)` cannot oversubscribe the box. If clang-tidy is
+ever sharded, per-shard memory drops and a fourth becomes viable; re-measure
+then rather than assuming.
+
+Roughly 5 GiB of the VM is left uncommitted on purpose: this machine has an
+RTX 5070 and will later host the GPU side of the Ethos-U55 / NPU workstream
+(#228) in this same distro. GPU work and CI do not contend for an execution
+resource, but they do contend for system RAM.
+
+**Docker Engine in the distro, not Docker Desktop.** Docker Desktop is
+installed on this machine and is left completely alone, but it cannot host this
+runner: its daemon sits behind a Windows application that needs a logged-in
+interactive session, so the runner would stop being able to start containers
+the moment the owner logged out. That is not an unattended runner. Native
+`docker-ce` runs under the distro's own systemd. Because the Desktop
+integration also puts a `docker` shim on `PATH` from `/mnt/c`, the role
+*asserts* that the binary in use is the distro's own -- a silent switch back
+would reintroduce the GUI dependency with no other symptom.
+
+**The build tree stays off `/mnt/c`.** `ci_runner_docker_root` is
+`/opt/ra8-ci-runner` on the distro's ext4 root. `/mnt/c` is drvfs, a
+translation layer onto NTFS, and roughly an order of magnitude slower for the
+many-small-files work a checkout and a build are; putting `_work` there would
+hand back most of the CPU advantage this host was added for.
+
+**Mirrored networking needs a route fix here, and that is not optional.** The
+machine is multi-homed: an isolated bench LAN with **no uplink**, and the
+owner's Wi-Fi. Mirrored networking copies the Windows routing table into the
+distro, and the bench LAN's DHCP-supplied default gateway arrives with the
+*lower* metric -- so out of the box every packet the runner sends goes into a
+black hole. Windows itself is unaffected because it fails over, which is why
+this reads as a working machine right up until a job runs. Two things fix it,
+both inside the distro, and neither touches the owner's network:
+
+- `ra8-wsl-route-pin` finds the default gateway that actually carries traffic
+  (probed by IP, before DNS can be trusted) and pins it below every mirrored
+  route. A **timer** re-asserts it, because mirrored networking re-syncs the
+  Windows routing table on every host network change -- a boot-only fix would
+  let a Wi-Fi roam break a job already in flight.
+- `generateResolvConf=false` plus a resolv.conf the role owns. WSL's DNS
+  tunnelling endpoint (`10.255.255.254`) does **not** answer on this host: a
+  raw UDP/53 query to it times out while `1.1.1.1` answers in milliseconds over
+  the same interface. Left generated, every name lookup in a job stalls for the
+  full resolver timeout.
+
+**The VM must be told not to die.** WSL reaps an unattended VM regardless of
+what is running inside it, and this host was seen going `offline` with
+`busy=true` -- GitHub still had a job assigned to a VM that had been shut down
+underneath it. `vmIdleTimeout=-1` plus a blocking keep-alive in the autostart
+task fixes it. The keep-alive matters: a task running `wsl -e true` starts the
+VM and exits, and the VM is reaped moments later, which is an autostart that
+reliably leaves the runner offline while looking configured.
+
+**The clock must be right before the runners start.** A WSL2 VM does not boot
+with a trustworthy clock. Observed here: the VM came up ~4 minutes fast, the
+runner checked the tree out with those timestamps, `timesyncd` then stepped the
+clock back, and make spent the rest of the job reporting `Clock skew detected.
+Your build may be incomplete`. That is not cosmetic -- make's up-to-date
+decisions are timestamp comparisons. Docker is therefore ordered after
+`systemd-time-wait-sync`, and since the containers are `restart:
+unless-stopped`, the daemon's start time is exactly when this host begins
+accepting jobs.
+
 ### Storage: CI I/O is kept off a named pool, by assertion
 
 The NAS this role was first deployed to has a **DEGRADED** 100T `raid-z2` pool:
@@ -371,16 +478,17 @@ back no matter what its restart policy says.
 
 ### Deploy and remove
 
-```
-cd infra/ansible
+```sh
+# deploy (and converge an existing deployment). Drains the host first: a
+# converge recreates containers, which would cancel the jobs they hold.
+make infra-apply HOST=truenas
 
-# deploy (and converge an existing deployment)
-ansible-playbook -i inventory/hosts.ini playbooks/ci-runner-docker.yml
+# just the drain script and the quiet-hours timer -- touches no container
+python3 scripts/dev/fleet.py apply truenas --tags capacity
 
-# remove: container down, runner deregistered from GitHub, image dropped,
+# remove: containers down, runners deregistered from GitHub, image dropped,
 # dataset destroyed. One command, nothing left behind.
-ansible-playbook -i inventory/hosts.ini playbooks/ci-runner-docker.yml \
-  -e ci_runner_docker_state=absent
+make infra-remove HOST=truenas
 ```
 
 Removal is a role path rather than a README snippet on purpose: a hand-written

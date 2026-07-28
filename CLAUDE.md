@@ -208,6 +208,45 @@ runner box over ssh and costs nothing.
 
 ---
 
+## The CI fleet is DECLARED, not hand-built
+
+Every machine that runs CI lives in one file, **`infra/fleet.yml`**: how to
+reach it, what kind of host it is, how many runner instances it carries, its
+CPU and memory per instance, its labels, and any quiet-hours window. The
+inventory, the playbook selection, the transport and every role variable are
+derived from it. **Adding a machine is adding a block; retuning one is changing
+a number in that block.** Never hand-edit a role, a `host_vars` file or an
+inventory to change capacity -- `scripts/checks/check_fleet_declaration.py`
+fails a `host_vars` file that re-declares anything the declaration owns.
+
+```sh
+make infra-list                    what is declared, and how it is sized
+make infra-status                  what every host is running, right now
+make infra-check HOST=truenas      DRY RUN -- report, change nothing
+make infra-apply HOST=truenas      converge that machine to the declaration
+make infra-scale HOST=win-ci N=1   live capacity change; shrinking DRAINS
+```
+
+**Read `docs/CI_FLEET.md` before touching any of it.** It is the runbook for
+adding a host (with a worked example), retuning one, quiet hours, removal, and
+how instance counts are derived rather than guessed.
+
+### A scale-down must DRAIN. Never stop a busy runner.
+
+`docker stop` on a runner that is executing a job **cancels that job** -- our
+image sets `RUNNER_MANUALLY_TRAP_SIG=1`, so `run.sh` forwards SIGTERM to the
+listener as SIGINT, and `JobDispatcher.ShutdownAsync()` calls
+`EnsureDispatchFinished(..., cancelRunningJob: true)`. A longer stop timeout
+does not help; the cancel is immediate and deliberate. This fleet has already
+lost three live jobs to it once, when WSL's idle timeout reaped the VM.
+
+So capacity changes go through `scripts/ci/fleet_capacity.sh`, which polls
+`docker top` for `Runner.Worker` and stops an instance only in the moment it is
+idle, and which reports rather than forces when it cannot converge in time. Do
+not add a "just stop the container" shortcut anywhere.
+
+---
+
 ## Subagents & Swarms
 
 This repository utilizes specialized custom project subagents under `.claude/agents/` <!-- AI-OK: reference to .claude directory --> to perform focused, token-efficient audits. These reviewers are configured for specific compliance checking, allowing the main agent to delegate verification tasks:

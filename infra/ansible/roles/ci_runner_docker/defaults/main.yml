@@ -30,7 +30,14 @@ ci_runner_docker_api: >-
   https://api.github.com/repos/{{ ci_runner_docker_repo_slug }}/actions
 
 # The runner's name in the GitHub UI and in `gh api .../actions/runners`.
-ci_runner_docker_name: "truenas-ci-1"
+#
+# EMPTY on purpose, and asserted non-empty in tasks/main.yml. It used to default
+# to the NAS's own runner name, which was a live hazard once this role served
+# more than one host: registration runs `config.sh --replace`, so a second host
+# deployed without overriding it would have silently REPLACED the NAS's
+# registration and taken its work. The name is a property of the host, so it
+# comes from that host's block in infra/fleet.yml; there is no sane default.
+ci_runner_docker_name: ""
 
 # Labels the runner answers to, as `runs-on:` targets.
 #
@@ -46,7 +53,11 @@ ci_runner_docker_name: "truenas-ci-1"
 # `self-hosted`, `Linux` and `X64` are added by the runner itself and cannot be
 # removed; they make this host eligible for the `runs-on: [self-hosted, Linux,
 # X64]` jobs (docs-publish, fuzz-nightly, osv-scan) as well.
-ci_runner_docker_labels: "ra8-ci,ra8-nas"
+#
+# Only the pool label is a default. The per-host escape-hatch label (`ra8-nas`,
+# `ra8-win`) belongs to the host, so it is declared in that host's block in
+# infra/fleet.yml and arrives as an override.
+ci_runner_docker_labels: "ra8-ci"
 
 # GitHub runner group. "Default" is the only group on a repo-scoped runner
 # unless one was created explicitly.
@@ -61,34 +72,39 @@ ci_runner_docker_gid: 1001
 
 # --- Storage ----------------------------------------------------------------
 #
-# EVERY byte of CI I/O must land on a healthy pool. On the NAS this role was
-# written for, the large pool is DEGRADED (a known backplane fault flagging
-# "too many slow I/Os" on 7 of 11 members; zero read/write/checksum errors and
-# no data errors, accepted and out of scope). Sending build I/O there would be
-# both slow and rude. The asserts in tasks/main.yml refuse to deploy when any
-# CI path resolves onto a forbidden pool -- a comment saying "keep it off
-# raid-z2" is not enforcement, so this is checked, not documented.
+# EVERY byte of CI I/O must land on a healthy pool. The asserts in
+# tasks/main.yml refuse to deploy when any CI path resolves onto a pool or
+# mountpoint the host declares forbidden -- a comment saying "keep it off the
+# degraded array" is not enforcement, so this is checked, not documented.
+#
+# The values below are the SHAPE, not any one host's storage. Where a machine
+# actually puts its runner tree, and which of its pools CI must stay off, are
+# facts about that machine: they live in its host_vars beside the block in
+# infra/fleet.yml that declares it. Defaulting them to the first host that
+# happened to use this role is how a second host silently inherits the first
+# one's storage layout.
 
-# ZFS dataset backing everything this role writes, and its mountpoint.
-ci_runner_docker_dataset: "stripe/ci-runner"
-ci_runner_docker_root: "/mnt/stripe/ci-runner"
+# ZFS dataset backing everything this role writes, and its mountpoint. An empty
+# dataset means "no ZFS here": the role then creates plain directories and the
+# pool asserts have nothing to inspect (they still resolve what backs the
+# paths, so a forbidden MOUNT is caught either way).
+ci_runner_docker_dataset: ""
+ci_runner_docker_root: "/opt/ra8-ci-runner"
 
-# Shown against the dataset in the TrueNAS UI, so the next person to look at
-# the pool knows what created it and why it is not on the big pool.
+# Shown against the dataset in the storage UI, so whoever next looks at the
+# pool knows what created it.
 ci_runner_docker_dataset_comment: >-
   GitHub Actions CI runner: image archive, runner home and build work dir.
-  Kept off the degraded pool.
 
-# Pools CI I/O may never touch. Checked against the pool that actually backs
+# Pools CI I/O may never touch, checked against the pool that actually backs
 # each CI path at deploy time, so a moved mountpoint fails the play instead of
-# silently relocating the build onto degraded spindles.
-ci_runner_docker_forbidden_pools:
-  - "raid-z2"
+# silently relocating the build. Empty by default: a host with nothing to
+# protect declares nothing, and the checks then pass rather than being skipped.
+ci_runner_docker_forbidden_pools: []
 
 # Mountpoints CI I/O may never land under. Belt-and-braces for a non-ZFS host,
 # where the pool check above has nothing to inspect.
-ci_runner_docker_forbidden_mounts:
-  - "/mnt/raid-z2"
+ci_runner_docker_forbidden_mounts: []
 
 # The runner's HOME, bind-mounted over /home/runner in the container.
 #

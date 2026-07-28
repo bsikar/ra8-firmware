@@ -399,6 +399,21 @@ if ! python3 scripts/checks/check_c6_pin_config.py; then
   error_found=1
 fi
 
+# infra/fleet.yml is the one registry of the machines CI runs on and how much of
+# each one it may use. It has to hold together on its own terms, no host_vars
+# file may re-declare a tunable it owns, and every variable the mapping emits
+# must be one some role actually reads.
+if ! python3 scripts/checks/check_fleet_declaration.py --selftest; then
+  echo "[FAIL] check_fleet_declaration.py selftest failed -- the fleet"
+  echo "       rules are broken; do not trust the verdict below."
+  error_found=1
+fi
+if ! python3 scripts/checks/check_fleet_declaration.py; then
+  echo "[FAIL] infra/fleet.yml does not describe a fleet that could be built."
+  echo "   See docs/CI_FLEET.md for the declaration format and the sizing rule."
+  error_found=1
+fi
+
 # Pinned-version guard for the three tools the two gates below resolve, exactly
 # as gate_lint_py_shell does it. --selftest first, so a comparator that stopped
 # judging versions turns THIS red instead of waving every version through.

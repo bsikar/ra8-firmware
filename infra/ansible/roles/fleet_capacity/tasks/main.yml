@@ -1,0 +1,239 @@
+---
+# Install the drain-aware capacity script on a runner host, and the systemd
+# timer that applies the host's declared quiet-hours window unattended.
+#
+# Idempotent both ways: a re-run converges, and a host whose `quiet_hours:`
+# block was deleted from infra/fleet.yml has its timer removed rather than
+# left running with nothing in the tree to explain it.
+#
+# This role NEVER stops a runner itself. Everything that touches a running
+# instance goes through fleet_capacity.sh, which drains -- see its header for
+# why a `docker stop` on a busy runner cancels the job it holds.
+
+- name: Assert a capacity kind this role implements
+  ansible.builtin.assert:
+    that:
+      - fleet_capacity_kind in ['docker', 'k8s']
+    fail_msg: >-
+      fleet_capacity_kind is '{{ fleet_capacity_kind }}'; this role implements
+      'docker' (long-lived runner containers) and 'k8s' (an ARC scale set).
+    success_msg: "kind={{ fleet_capacity_kind }}"
+
+- name: Assert the docker kind was told which containers to drain
+  when: fleet_capacity_kind == 'docker'
+  ansible.builtin.assert:
+    that:
+      - (fleet_capacity_containers | trim) | length > 0
+    fail_msg: >-
+      fleet_capacity_containers is empty, so the drain would walk no instances
+      and every scale-down would report success having stopped nothing. It is
+      derived from infra/fleet.yml by scripts/dev/fleet.py; an empty value here
+      means the play was run without those extra-vars.
+    success_msg: "instances: {{ fleet_capacity_containers }}"
+
+- name: Assert the capacity script exists in the checkout
+  delegate_to: localhost
+  become: false
+  ansible.builtin.stat:
+    path: "{{ fleet_capacity_src }}"
+  register: fleet_capacity_src_stat
+
+- name: Fail loud when the capacity script is not where the role was told
+  when: not fleet_capacity_src_stat.stat.exists
+  ansible.builtin.fail:
+    msg: >-
+      {{ fleet_capacity_src }} does not exist. There is exactly one copy of the
+      drain in this tree and this role deploys it; it does not carry its own.
+      On a WSL host the play runs inside the distro from a staged copy, so
+      fleet_capacity_src must point into that stage -- scripts/dev/fleet.py
+      passes it. Running the playbook by hand there needs the same.
+
+- name: Create the capacity directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ fleet_capacity_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the capacity script
+  become: true
+  ansible.builtin.copy:
+    src: "{{ fleet_capacity_src }}"
+    dest: "{{ fleet_capacity_bin }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+# Non-secret by construction: instance names, a schedule and two integers. The
+# drain deliberately needs no GitHub credential -- it answers "is this instance
+# busy" from `docker top`, locally -- which is what lets it run unattended on a
+# machine that must never hold a repo-scoped PAT.
+- name: Write the capacity environment the timer reads
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ fleet_capacity_env }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by the fleet_capacity Ansible role, from infra/fleet.yml.
+      # Edit the declaration, not this file; it is rewritten on every converge.
+      RA8_FLEET_KIND={{ fleet_capacity_kind }}
+      RA8_FLEET_DOCKER={{ fleet_capacity_docker }}
+      RA8_FLEET_CONTAINERS={{ fleet_capacity_containers }}
+      RA8_FLEET_KUBECTL={{ fleet_capacity_kubectl }}
+      RA8_FLEET_NAMESPACE={{ fleet_capacity_namespace }}
+      RA8_FLEET_SCALESET={{ fleet_capacity_scale_set }}
+      RA8_FLEET_FULL_INSTANCES={{ fleet_capacity_full_instances }}
+      RA8_FLEET_QUIET_INSTANCES={{ fleet_capacity_quiet_instances }}
+      RA8_FLEET_QUIET_START={{ fleet_capacity_quiet_start }}
+      RA8_FLEET_QUIET_END={{ fleet_capacity_quiet_end }}
+      RA8_FLEET_QUIET_DAYS={{ fleet_capacity_quiet_days }}
+
+# --- quiet hours ------------------------------------------------------------
+
+- name: Check whether systemd units can be installed on this host
+  when: fleet_capacity_enabled | bool
+  become: true
+  ansible.builtin.stat:
+    path: "{{ fleet_capacity_units_dir }}"
+  register: fleet_capacity_units_stat
+
+# TrueNAS SCALE mounts its appliance root read-only, so a quiet-hours window
+# declared for such a host cannot be honoured by a systemd timer and must say
+# so rather than be quietly dropped. The capacity script and the manual
+# `make infra-scale` path still work there; only the schedule does not.
+- name: Fail loud when a window is declared on a host that cannot hold a timer
+  when:
+    - fleet_capacity_enabled | bool
+    - not (fleet_capacity_units_stat.stat.writeable | default(false))
+  ansible.builtin.fail:
+    msg: >-
+      {{ inventory_hostname }} declares quiet_hours in infra/fleet.yml, but
+      {{ fleet_capacity_units_dir }} is not writable on it (a read-only
+      appliance root, e.g. TrueNAS SCALE). A timer cannot be installed, and a
+      window that silently never fires is worse than none. Either remove the
+      quiet_hours block for this host or give it a writable unit directory.
+
+- name: Install the capacity timer units
+  when: fleet_capacity_enabled | bool
+  become: true
+  notify: Reload systemd
+  ansible.builtin.copy:
+    dest: "{{ fleet_capacity_units_dir }}/{{ item.name }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ item.body }}"
+  loop:
+    - name: "{{ fleet_capacity_unit }}.service"
+      body: |
+        # Managed by the fleet_capacity Ansible role, from infra/fleet.yml.
+        [Unit]
+        Description=Apply the declared CI capacity window (drains, never kills)
+        Documentation=file://{{ fleet_capacity_bin }}
+        After=docker.service
+        [Service]
+        Type=oneshot
+        EnvironmentFile={{ fleet_capacity_env }}
+        ExecStart={{ fleet_capacity_bin }} window
+        # A drain waits for jobs to finish, so this unit is long-running by
+        # design. The ceiling is the script's own deadline plus slack; systemd
+        # killing it mid-drain would leave the host half-converged.
+        TimeoutStartSec=7200
+    - name: "{{ fleet_capacity_unit }}.timer"
+      body: |
+        # Managed by the fleet_capacity Ansible role, from infra/fleet.yml.
+        [Unit]
+        Description=Ask every {{ fleet_capacity_interval }} what CI capacity this host should be
+        [Timer]
+        # Level-triggered: the unit computes the target from the wall clock
+        # rather than the timer firing at the window's edges. A host that was
+        # off, asleep or upgrading at the edge would miss an edge trigger and
+        # sit at the wrong capacity until the next one -- all weekend, for a
+        # Friday-evening window.
+        OnBootSec=2min
+        OnUnitActiveSec={{ fleet_capacity_interval }}
+        Persistent=true
+        [Install]
+        WantedBy=timers.target
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Flush handlers so the timer is enabled against the units just written
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start the capacity timer
+  when: fleet_capacity_enabled | bool
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ fleet_capacity_unit }}.timer"
+    enabled: true
+    state: started
+
+- name: Remove the capacity timer when no window is declared
+  when: not (fleet_capacity_enabled | bool)
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ fleet_capacity_unit }}.timer"
+    enabled: false
+    state: stopped
+  failed_when: false
+  changed_when: false
+
+- name: Remove the unit files when no window is declared
+  when: not (fleet_capacity_enabled | bool)
+  become: true
+  notify: Reload systemd
+  ansible.builtin.file:
+    path: "{{ fleet_capacity_units_dir }}/{{ item }}"
+    state: absent
+  loop:
+    - "{{ fleet_capacity_unit }}.service"
+    - "{{ fleet_capacity_unit }}.timer"
+
+# --- read back, never assume ------------------------------------------------
+
+- name: Read back what the host will actually run
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ fleet_capacity_bin }} --help"
+  register: fleet_capacity_help
+  changed_when: false
+
+- name: Assert the installed script is the one this role deploys
+  ansible.builtin.assert:
+    that:
+      - "'window' in fleet_capacity_help.stdout"
+      - "'shrinking DRAINS' in fleet_capacity_help.stdout"
+    fail_msg: >-
+      {{ fleet_capacity_bin }} does not look like scripts/ci/fleet_capacity.sh.
+      Something else is installed at that path, so the timer would run it.
+    success_msg: "{{ fleet_capacity_bin }} is the tree's capacity script"
+
+- name: Read back the timer state
+  when: fleet_capacity_enabled | bool
+  become: true
+  ansible.builtin.command:
+    cmd: systemctl is-active {{ fleet_capacity_unit }}.timer
+  register: fleet_capacity_timer_state
+  changed_when: false
+  failed_when: false
+
+- name: Assert the declared window is actually scheduled
+  when: fleet_capacity_enabled | bool
+  ansible.builtin.assert:
+    that:
+      - fleet_capacity_timer_state.stdout | trim == 'active'
+    fail_msg: >-
+      {{ fleet_capacity_unit }}.timer is
+      '{{ fleet_capacity_timer_state.stdout | trim }}', not active, so the
+      window declared in infra/fleet.yml would never fire. A schedule that is
+      written down and not running is the failure this assert exists to catch.
+    success_msg: >-
+      quiet hours scheduled: {{ fleet_capacity_quiet_days }}
+      {{ fleet_capacity_quiet_start }}-{{ fleet_capacity_quiet_end }} ->
+      {{ fleet_capacity_quiet_instances }} instance(s), checked every
+      {{ fleet_capacity_interval }}

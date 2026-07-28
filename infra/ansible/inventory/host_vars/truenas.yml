@@ -1,0 +1,40 @@
+---
+# truenas -- the NAS that also carries CI runners.
+#
+# STRUCTURAL facts about this machine only: where its runner tree lives, and
+# which of its pools CI must never touch. Nothing here is a capacity knob.
+#
+# Instance count, CPU and memory caps, labels and any quiet-hours window are
+# declared in this host's block in infra/fleet.yml and arrive as extra-vars.
+# The fleet-declaration gate fails this file if it re-declares any of them, so
+# there is exactly one place to answer "how much of the NAS may CI use".
+
+# --- Storage ----------------------------------------------------------------
+#
+# EVERY byte of CI I/O must land on a healthy pool. This appliance's large pool
+# is DEGRADED (a known backplane fault flagging "too many slow I/Os" on 7 of 11
+# members; zero read/write/checksum errors and no data errors, accepted and out
+# of scope). Sending build I/O there would be both slow and rude, so it is
+# named below and the role's asserts refuse to deploy onto it.
+
+ci_runner_docker_dataset: "stripe/ci-runner"
+ci_runner_docker_root: "/mnt/stripe/ci-runner"
+
+ci_runner_docker_dataset_comment: >-
+  GitHub Actions CI runner: image archive, runner homes and build work dirs.
+  Kept off the degraded pool.
+
+ci_runner_docker_forbidden_pools:
+  - "raid-z2"
+
+ci_runner_docker_forbidden_mounts:
+  - "/mnt/raid-z2"
+
+# --- Quiet hours ------------------------------------------------------------
+#
+# None, and it could not have one: TrueNAS SCALE mounts its appliance root
+# read-only, so /etc/systemd/system cannot take a unit file. The fleet_capacity
+# role FAILS rather than skipping if a window is ever declared here, because a
+# schedule that silently never fires is worse than none. Manual
+# `make infra-scale HOST=truenas N=<n>` works normally -- it pipes the capacity
+# script over ssh and needs nothing installed.

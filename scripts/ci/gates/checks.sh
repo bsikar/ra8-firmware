@@ -123,6 +123,16 @@ _pcc_tree_structure() (
   # needed, so it runs here as well as on the bench (build.sh calls it too).
   python3 scripts/checks/check_c6_pin_config.py --selftest
   python3 scripts/checks/check_c6_pin_config.py
+  # infra/fleet.yml is the single registry of the machines CI runs on and how
+  # much of each one it may use. The declaration has to hold together on its
+  # own terms (capacity that fits the declared budget, per-instance floors, a
+  # parseable quiet-hours window, an instance count that is the sizing
+  # formula's or carries a written reason), no host_vars file may re-declare a
+  # tunable it owns, and every variable the mapping emits must be one some role
+  # actually reads. --selftest FIRST, both directions, so a rule that stopped
+  # firing cannot pass as clean.
+  python3 scripts/checks/check_fleet_declaration.py --selftest
+  python3 scripts/checks/check_fleet_declaration.py
 )
 
 # How source is written: trailing newline, named constants, C23 attribute

@@ -11,9 +11,15 @@ document themselves, and `infra/README.md` is the per-role index.
 
 ```sh
 make infra-status     # what is deployed across the estate, right now (read-only)
-make infra-list       # what can be provisioned, and by which playbook
+make infra-list       # what machines are declared, and how they are sized
 make infra-doctor     # can THIS machine drive any of it?
 ```
+
+**The machines themselves are declared in `infra/fleet.yml`** -- one block per
+host, and everything downstream is derived from it. This document is the
+narrative; [`CI_FLEET.md`](CI_FLEET.md) is the runbook for *changing* the
+fleet: adding a host, retuning one, giving one quiet hours, removing one, and
+how instance counts are derived rather than guessed.
 
 ---
 

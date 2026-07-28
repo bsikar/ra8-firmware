@@ -21,6 +21,21 @@
       implements 'present' (deploy + converge) and 'absent' (remove) only.
     success_msg: "state={{ ci_runner_docker_state }}"
 
+# Registration runs `config.sh --replace`, so a host deployed under another
+# host's runner name does not collide -- it silently TAKES that registration
+# over. The name therefore has no safe default and must be declared, which is
+# what the host's block in infra/fleet.yml does.
+- name: Assert this host was told which runner name to register
+  ansible.builtin.assert:
+    that:
+      - (ci_runner_docker_name | default('') | trim) | length > 0
+    fail_msg: >-
+      ci_runner_docker_name is empty. Declare this machine in infra/fleet.yml
+      and deploy it with `make infra-apply HOST=<name>`, which derives the
+      name (and every other tunable) from that block. Registering with an
+      inherited name would replace another host's runner.
+    success_msg: "runner base name: {{ ci_runner_docker_name }}"
+
 # --- Preflight: fail loud, never skip ---------------------------------------
 #
 # A missing dependency must FAIL the play. A role that quietly skips half its
