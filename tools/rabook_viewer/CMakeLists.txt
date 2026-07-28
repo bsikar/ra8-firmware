@@ -2,7 +2,7 @@
 # tools/rabook_viewer -- native macOS reader viewer (direct-call, not an emulator).
 #
 # Links the firmware's platform-agnostic reader libraries compiled host-side
-# (RA8_SIMULATOR_MODE, C23) and calls them directly to rasterise e-book / comic
+# (RA8_OFF_TARGET, C23) and calls them directly to rasterise e-book / comic
 # pages into an RGB565 framebuffer, which a layer-backed Cocoa NSWindow presents.
 # Unlike tools/ra8_emulator (which emulates the firmware ELF under Unicorn), this
 # tool runs no ARM code -- it is purely a viewer, so it is far faster.
@@ -106,7 +106,7 @@ endfunction()
 # ra8_reader: static archive of exactly the firmware reader sources the viewer
 # calls. Building an archive (not an object library) means the linker pulls only
 # the members needed to resolve the viewer's references -- transitively -- so the
-# HAL / RTOS / peripheral libraries are never dragged in. Under RA8_SIMULATOR_MODE
+# HAL / RTOS / peripheral libraries are never dragged in. Under RA8_OFF_TARGET
 # the CBZ backend uses miniz's default (malloc) allocator, so no ra8_epub source
 # is needed -- only its header (ra8_epub_miniz_alloc.h) sits on the include path.
 #
@@ -240,7 +240,7 @@ add_library(
   ${RA8_CORE_SRC}
   ${RA8_THIRD_PARTY_SRC}
 )
-target_compile_definitions(ra8_reader PUBLIC RA8_SIMULATOR_MODE)
+target_compile_definitions(ra8_reader PUBLIC RA8_OFF_TARGET)
 # The firmware sources in this archive are first-party and carry the project
 # warning bar (NASA Power of 10 Rule 10) here exactly as they do in the ARM and
 # host-test builds. The vendored decoders below override it with -w, which is

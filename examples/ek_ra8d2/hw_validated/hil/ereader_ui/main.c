@@ -432,7 +432,7 @@ static ra8_io_i2c_bus_t s_touch_bus;
  * Brings the app-owned IIC_B peripheral up in I2C-compat mode, binds it
  * through the ra8_io facade into the driver's injected seam, then opens
  * the driver. The fuel-gauge reads in ``ereader_ui_input.c`` share this
- * bus bring-up. Boards / sims without the GT911 simply return an error
+ * bus bring-up. Boards / emulator runs without the GT911 simply return an error
  * from ``ra8_touch_open``; the UI still renders, just without touch
  * input, so this is non-fatal (no panic).
  *

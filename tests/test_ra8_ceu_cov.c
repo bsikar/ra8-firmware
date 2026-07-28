@@ -39,8 +39,8 @@
 #include "ra8_ceu.h"
 #include "ra8_ceu_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /* ---------------------------------------------------------------------------
@@ -52,7 +52,7 @@
  * @brief 8-byte-aligned SDRAM addresses and one misaligned sentinel.
  *
  * @details
- * Addresses lie in the SDRAM range (0x68xxxxxx) that ra8_sim_mmap
+ * Addresses lie in the SDRAM range (0x68xxxxxx) that ra8_fake_mmap
  * exposes for the host build.  Every address has its lower 3 bits
  * clear (8-byte aligned) except k_test_cov_unaligned which exercises
  * the rejection path in internal_validate_buffers.
@@ -99,16 +99,16 @@ typedef enum : uint32_t {
  * --------------------------------------------------------------------------- */
 
 /**
- * @brief Reset the simulator register map and CEU module state.
+ * @brief Reset the fake register map and CEU module state.
  *
  * @details
- * Zeroes the ra8_sim_mmap window so no leftover register state from a
+ * Zeroes the ra8_fake_mmap window so no leftover register state from a
  * prior test leaks in, reinitialises the MSTP model to its powered-off
  * state, and detaches any stale CEU event callback registered by a
  * previous test.
  *
  * @pre May be called at any point; no prerequisites.
- * @post ra8_sim_mmap is zeroed; MSTP model is in its default state; any
+ * @post ra8_fake_mmap is zeroed; MSTP model is in its default state; any
  *       previously registered CEU callback has been cleared.
  *
  * @note Not thread-safe; used only in the single-threaded test binary.
@@ -116,7 +116,7 @@ typedef enum : uint32_t {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_ceu_attach_handler(nullptr, nullptr);
 }
@@ -609,7 +609,7 @@ static void test_cov_byte_swap_16_bit(void)
  *
  * @return int32_t 0 on success (never returns on failure).
  *
- * @pre Linked against ra8_core_hal OBJECT library with RA8_SIMULATOR_MODE
+ * @pre Linked against ra8_core_hal OBJECT library with RA8_OFF_TARGET
  *      defined at compile time.
  * @post All targeted uncovered source lines have been executed.
  *

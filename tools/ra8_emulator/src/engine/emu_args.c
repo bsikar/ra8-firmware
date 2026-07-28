@@ -335,7 +335,7 @@ static void args_attach_blank_sd(const char* spec)
     fat = (strstr(colon, "32") != nullptr) ? (uint8_t)32U : (uint8_t)16U;
   }
   if ((sectors > 0ULL) && (sectors <= (uint64_t)k_sd_u32_max)) {
-    (void)board_sd_attach_blank((uint32_t)sectors, fat, "BOARDSIM");
+    (void)board_sd_attach_blank((uint32_t)sectors, fat, "RA8EMU");
   } else if (sectors > (uint64_t)k_sd_u32_max) {
     (void)fprintf(stderr, "ra8_emulator: --sd-new: size exceeds the 2 TiB FAT limit\n");
   }

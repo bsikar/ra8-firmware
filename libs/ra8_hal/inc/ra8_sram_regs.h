@@ -55,7 +55,7 @@
  *
  * Per CLAUDE.md the driver never writes these registers via macros --
  * use the ``ra8_sram_regs()`` and ``ra8_sram_cpscu_regs()`` accessors so
- * the host-side simulator can intercept the writes.
+ * the host-side fake can intercept the writes.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -541,7 +541,7 @@ typedef struct {
  * Holes in the layout are modelled as opaque ``_rN[]`` padding so the
  * named fields land at exactly the offsets the HUM documents. The
  * struct size is rounded up to ``0x518`` bytes (after SRAMESAR) so
- * the simulator's 8 MiB peripheral window covers it.
+ * the fake's 8 MiB peripheral window covers it.
  */
 typedef struct {
   volatile uint8_t  _r0[0x010];                            /**< +0x000..+0x00F Reserved.       */
@@ -559,8 +559,8 @@ typedef struct {
  *
  * @details
  * On the bare-metal target this is real MMIO. Under
- * ``RA8_SIMULATOR_MODE`` the same address is backed by host RAM via
- * ``tests/mocks/ra8_sim_mmap.c``, so the same accessor works on host
+ * ``RA8_OFF_TARGET`` the same address is backed by host RAM via
+ * ``tests/mocks/ra8_fake_mmap.c``, so the same accessor works on host
  * tests without a separate mock header.
  */
 static inline volatile r_sram_regs_t* ra8_sram_regs(void)

@@ -58,7 +58,7 @@ typedef struct {
  */
 static inline void ra8_register_guard_enter(ra8_register_guard_t* guard)
 {
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   guard->saved_primask = 0U;
 #else
   uint32_t primask;
@@ -84,7 +84,7 @@ static inline void ra8_register_guard_enter(ra8_register_guard_t* guard)
  */
 static inline void ra8_register_guard_exit(const ra8_register_guard_t* guard)
 {
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   (void)guard;
 #else
   __asm__ volatile("msr primask, %0" ::"r"(guard->saved_primask) : "memory");

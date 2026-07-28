@@ -32,7 +32,7 @@
  *  1. confirms the trailer magic + version (missing / malformed trailer
  *     -> deny);
  *  2. re-computes SHA-256 over the body (the RSIP hardware hash on target,
- *     the ``ra8_psa`` software hash in ``RA8_SIMULATOR_MODE``);
+ *     the ``ra8_psa`` software hash in ``RA8_OFF_TARGET``);
  *  3. confirms the freshly-computed digest equals the trailer digest
  *     (tampered body -> deny); and
  *  4. verifies the ECDSA-P256 signature over the freshly-computed digest
@@ -66,7 +66,7 @@
  *       key is provisioned (see ra8_rot.c), and RoT enforcement is proven
  *       end-to-end by hw_validated/hil/secure_boot_hil. The host unit tests
  *       enable the flag and exercise the gate's decision logic against the
- *       ``RA8_SIMULATOR_MODE`` crypto stand-ins; the remaining production step is
+ *       ``RA8_OFF_TARGET`` crypto stand-ins; the remaining production step is
  *       to sign each shipped image and enable the flag on the boot path.
  *
  * @see @ref md_docs_2formats_2ROT1 -- the full ROT1 wire-format specification
@@ -127,7 +127,7 @@ typedef enum : uint32_t {
  * Laid out immediately after the ``body_len`` image body. Every field is
  * 32-bit aligned. ``sig_len`` records the active signature length so the
  * same struct carries a 64-byte ECDSA-P256 signature on target and the
- * 32-byte simulator stand-in signature in ``RA8_SIMULATOR_MODE`` (the unused
+ * 32-byte fake stand-in signature in ``RA8_OFF_TARGET`` (the unused
  * tail of ``sig`` is ignored). ``img_version`` is the monotonic anti-rollback
  * version consumed by ``ra8_dfu_antirollback.h`` (downgrade protection).
  *
@@ -173,7 +173,7 @@ static_assert(sizeof(ra8_rot_trailer_t) == (4U * sizeof(uint32_t)) + sizeof(uint
  * The shared root-of-trust gate for both the copy-to-run and BLXNS
  * boundaries. Re-computes SHA-256 over ``[body, body + body_len)``
  * (``ra8_rsip_sha256`` on target, ``ra8_psa_hash_compute`` under
- * ``RA8_SIMULATOR_MODE``), cross-checks it against ``trailer->digest``, then
+ * ``RA8_OFF_TARGET``), cross-checks it against ``trailer->digest``, then
  * verifies ``trailer->sig`` over the *freshly-computed* digest against the
  * provisioned root public key via ``ra8_psa_verify_hash`` (algorithm
  * ``k_ra8_psa_alg_ecdsa_sha_256``). The signature is the authority; the
@@ -253,7 +253,7 @@ const ra8_rot_trailer_t* ra8_rot_trailer_after(const void* image_base, uint32_t 
  * @details
  * Host-only accessor: lets the unit tests forge a correctly-signed trailer
  * using the *same* key bytes the verifier trusts, so the gate's decision
- * logic can be driven end-to-end against the ``RA8_SIMULATOR_MODE`` crypto
+ * logic can be driven end-to-end against the ``RA8_OFF_TARGET`` crypto
  * stand-ins. The key is a public value, so exposing it leaks nothing.
  *
  * @param[out] out_key Receives a pointer to the embedded key bytes; non-NULL.

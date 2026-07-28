@@ -152,7 +152,7 @@ ra8_threadx_systick_reload_for(uint32_t cpuclk_hz, uint32_t tick_hz, uint32_t* o
  * @post On ::k_ra8_ok, SYST_CVR == 0 (counter restarts at the new reload).
  *
  * @note Thread safety: not thread-safe; single-threaded init context only.
- * @note On the host unit-test build (`RA8_SIMULATOR_MODE`) the SYST_RVR /
+ * @note On the host unit-test build (`RA8_OFF_TARGET`) the SYST_RVR /
  *       SYST_CVR writes are skipped -- the System Control Space is not
  *       mapped -- but the clock query + reload validation still run.
  *

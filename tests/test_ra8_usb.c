@@ -15,8 +15,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_regs.h"
 #include "unity_minimal.h"
@@ -89,7 +89,7 @@ typedef enum : uint16_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -718,7 +718,7 @@ static void test_queue_in_fifo_tail_paths(void)
   /* USBFS trailing-odd-byte path now writes via MBW=8 to the low CFIFO
    * byte instead of a uint16 store. The even loop stores 0x2211 first,
    * then the byte write replaces the LOW byte with 0x33, so CFIFO reads
-   * back as 0x2233 in the sim (where MMIO has no DTLN model). Mirrors
+   * back as 0x2233 in the fake (where MMIO has no DTLN model). Mirrors
    * FSP hw_usb_write_fifo8 for USBFS; see internal_fifo_write in
    * libs/ra8_hal/src/ra8_usb.c (HUM Ch 36.2.6 CFIFOSEL.MBW). */
   TEST_ASSERT_EQ(0x2233U, freg->CFIFO);

@@ -768,7 +768,7 @@ static void test_get_time_ms_extends_across_a_32_bit_rollover(void)
  * duration.
  *
  * @pre The port is initialised.
- * @post The simulated kernel clock has advanced.
+ * @post The fake kernel clock has advanced.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */

@@ -37,7 +37,7 @@ set(MDL_MINIZ ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz/miniz.c)
 set_source_files_properties(${MDL_MINIZ} PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing")
 
 # The JOF exporter reuses the firmware's own JOF producer + streaming
-# JPEG decoder host-side (RA8_SIMULATOR_MODE), so a .jof the CLI writes is
+# JPEG decoder host-side (RA8_OFF_TARGET), so a .jof the CLI writes is
 # byte-identical to one the RA8 produces. These are hand-written first-party
 # files, so they carry the project warning bar (-Wall -Wextra -Werror) from the
 # target below like every other build that compiles them -- NOT the `-w` that
@@ -107,7 +107,7 @@ add_executable(
 target_include_directories(
   media_dl
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
-          # Reuse the firmware error contract host-side. RA8_SIMULATOR_MODE is the same
+          # Reuse the firmware error contract host-side. RA8_OFF_TARGET is the same
           # switch the host unit-test build uses so register-reaching code takes the
           # host-safe path.
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
@@ -119,7 +119,7 @@ target_include_directories(
 # `environ`, both of which glibc gates behind it. It must be set on the compile
 # line, not in the source, so it precedes every system header.
 target_compile_definitions(
-  media_dl PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE ${MDL_ADDCHDIR_DEF}
+  media_dl PRIVATE _GNU_SOURCE RA8_OFF_TARGET ${MDL_ADDCHDIR_DEF}
                    MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}"
 )
 target_compile_options(media_dl PRIVATE -Wall -Wextra -Werror)
@@ -156,7 +156,7 @@ target_include_directories(
           ${MDL_JOF_INC}
 )
 target_compile_definitions(
-  test_media_dl PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE ${MDL_ADDCHDIR_DEF}
+  test_media_dl PRIVATE _GNU_SOURCE RA8_OFF_TARGET ${MDL_ADDCHDIR_DEF}
                         MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}"
 )
 target_compile_options(test_media_dl PRIVATE -Wall -Wextra -Werror)
@@ -183,7 +183,7 @@ target_include_directories(
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
-target_compile_definitions(test_media_dl_net PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_definitions(test_media_dl_net PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_net PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(test_media_dl_net PRIVATE CURL::libcurl)
 add_test(NAME test_media_dl_net COMMAND test_media_dl_net)
@@ -209,7 +209,7 @@ target_include_directories(
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
-target_compile_definitions(test_media_dl_session PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_definitions(test_media_dl_session PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_session PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_session COMMAND test_media_dl_session)
 
@@ -230,7 +230,7 @@ target_include_directories(
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
-target_compile_definitions(test_media_dl_state PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_definitions(test_media_dl_state PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_state PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_state COMMAND test_media_dl_state)
 
@@ -263,7 +263,7 @@ target_include_directories(
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
-target_compile_definitions(test_media_dl_fetch PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_definitions(test_media_dl_fetch PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_fetch PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_fetch COMMAND test_media_dl_fetch)
 
@@ -278,7 +278,7 @@ target_include_directories(
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
-target_compile_definitions(test_media_dl_governor PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_definitions(test_media_dl_governor PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_governor PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_governor COMMAND test_media_dl_governor)
 
@@ -293,6 +293,6 @@ target_include_directories(
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
-target_compile_definitions(test_media_dl_search PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE)
+target_compile_definitions(test_media_dl_search PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_search PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_search COMMAND test_media_dl_search)

@@ -21,7 +21,7 @@ public-domain EPUB (e.g. Project Gutenberg), not a copyrighted book.
 ## Probe
 
 `epub_probe.c` opens an `.epub` through `ra8_epub_open()` (host /
-`RA8_SIMULATOR_MODE`, malloc-backed) and prints what our pipeline
+`RA8_OFF_TARGET`, malloc-backed) and prints what our pipeline
 extracts. Build + run via:
 
 ```

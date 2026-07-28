@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/dma_memcopy_demo/main.c bring-up. The
- * host ra8_sim_mmap shim does not actually move bytes through the
+ * host ra8_fake_mmap shim does not actually move bytes through the
  * mocked DMAC channel, so the test focuses on:
  *
  *  - ra8_dmac_start programmes DMSAR / DMDAR / DMCRA / DMCNT.
@@ -25,8 +25,8 @@
 #include "ra8_dmac.h"
 #include "ra8_dmac_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -40,7 +40,7 @@ static uint32_t s_dst[k_t_dma_words];
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)memset(s_src, 0, sizeof(s_src));
   (void)memset(s_dst, 0, sizeof(s_dst));
 }

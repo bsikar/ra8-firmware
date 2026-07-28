@@ -19,8 +19,8 @@
 #include <stdint.h>
 
 #include "ra8_device.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_ofs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -32,7 +32,7 @@
 static void test_ra8_ofs_compiled(void)
 {
   TEST_BEGIN("ra8_ofs.c compiled into ra8_core_hal");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* If ra8_ofs.c failed to compile, this entire test binary would
    * fail to link -- so reaching this line is itself the assertion. */
   TEST_ASSERT(1);
@@ -45,7 +45,7 @@ static void test_ra8_ofs_compiled(void)
  * @par MC/DC:
  * The only compound decision in libs/ra8_hal/src/ra8_ofs.c is the
  * preprocessor expression at line 128:
- * ``#if defined(UNIT_TEST) || defined(RA8_SIMULATOR_MODE) ||
+ * ``#if defined(UNIT_TEST) || defined(RA8_OFF_TARGET) ||
  *      defined(__APPLE__)``
  * Per DO-178C 6.4.4.3 and IEC 61508 SIL 3 guidance, preprocessor
  * conditionals are NOT runtime decisions and therefore have no MC/DC

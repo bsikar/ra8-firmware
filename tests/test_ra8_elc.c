@@ -9,8 +9,8 @@
 #include "ra8_elc.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -23,7 +23,7 @@ typedef enum : uint16_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -214,7 +214,7 @@ static void test_software_trigger(void)
 
   /* After the documented HUM Ch 19.2.2 sequence
    * (0x00 -> 0x40 -> 0x41) the last byte the driver wrote (which is
-   * what the simulator memory observes) is the trigger value 0x41. */
+   * what the fake memory observes) is the trigger value 0x41. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_elc_software_trigger(0U));
   TEST_ASSERT_EQ(k_ra8_elc_elsegr_step_trigger, *test_elsegr(0U));
 

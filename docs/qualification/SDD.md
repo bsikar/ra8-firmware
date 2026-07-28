@@ -95,12 +95,12 @@ Each module = one subdirectory under `libs/`. The columns are:
 
 | Module      | Public API (`libs/ra8_core/inc/`)                                                                                                                                   | Internal | Depends on | Consumed by | Implements              |
 |-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|-------------|-------------------------|
-| ra8_core     | `ra8_err.h`, `ra8_check.h`, `ra8_log.h`, `ra8_time.h`, `ra8_time_interface.h`, `ra8_pin_interface.h`, `ra8_pin_validator.h`, `ra8_register_protection.h`, `ra8_register_guard.h`, `ra8_exception.h`, `ra8_error_handler.h`, `ra8_error_interface.h`, `ra8_infrastructure.h`, `ra8_stack_budget.h`, `ra8_bit_constants.h`, `ra8_gpio_constants.h`, `ra8_port_constants.h`, `ra8_time_constants.h`, `ra8_simulator_config.h` | -        | (none)     | every Ring 2/3 driver | REQ-CORE-001..014       |
+| ra8_core     | `ra8_err.h`, `ra8_check.h`, `ra8_log.h`, `ra8_time.h`, `ra8_time_interface.h`, `ra8_pin_interface.h`, `ra8_pin_validator.h`, `ra8_register_protection.h`, `ra8_register_guard.h`, `ra8_exception.h`, `ra8_error_handler.h`, `ra8_error_interface.h`, `ra8_infrastructure.h`, `ra8_stack_budget.h`, `ra8_bit_constants.h`, `ra8_gpio_constants.h`, `ra8_port_constants.h`, `ra8_time_constants.h`, `ra8_off_target_config.h` | -        | (none)     | every Ring 2/3 driver | REQ-CORE-001..014       |
 
 Notes:
 - `ra8_time_interface.h` and `ra8_pin_interface.h` are the DIP injection
   seams (intentional NASA P10 Rule 9 deviation, REQ-SAFE-009).
-- `ra8_simulator_config.h` is the host-side substitute for the SysTick
+- `ra8_off_target_config.h` is the host-side substitute for the SysTick
   + IOPORT registers; it is included only when `RA8_BUILD_HOST` is set.
 
 ### 2.2 Ring 2 -- register layouts

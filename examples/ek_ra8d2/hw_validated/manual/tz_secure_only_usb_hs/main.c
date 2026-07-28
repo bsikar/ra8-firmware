@@ -246,7 +246,7 @@ int32_t main(void)
 
   ra8_isr_globals_enable();
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* tx_kernel_enter is __noreturn -- it never comes back. */
   tx_kernel_enter();
 #endif

@@ -494,7 +494,7 @@ fi
 
 # ---- stub-vs-production crypto guard (strict, #180) ---------------
 # Every insecure placeholder-crypto body must be wrapped in the
-# RA8_INSECURE_STUB_CRYPTO / RA8_SIMULATOR_MODE guard with a fail-closed #else,
+# RA8_INSECURE_STUB_CRYPTO / RA8_OFF_TARGET guard with a fail-closed #else,
 # so a release/HIL image that forgot to swap in real crypto fails closed
 # instead of silently shipping the deterministic-TRNG / forgeable-MAC stub.
 if [[ -f scripts/checks/check_stub_crypto_guarded.py ]]; then
@@ -520,13 +520,13 @@ if [[ -f scripts/checks/check_no_silent_stubs.py ]]; then
   fi
 fi
 
-# ---- No RA8_SIMULATOR_MODE-guarded asm in a HAL driver (#293) ------
+# ---- No RA8_OFF_TARGET-guarded asm in a HAL driver (#293) ------
 # wfi/dsb/isb/nop/cpsie/cpsid/reset-spin route through the shared seam
 # libs/ra8_hal/inc/ra8_hw_intrinsics.h (+ tests/mocks/ra8_host_asm_stub.c), so
-# a driver never carries its own #ifdef RA8_SIMULATOR_MODE around inline asm.
+# a driver never carries its own #ifdef RA8_OFF_TARGET around inline asm.
 if [[ -f scripts/checks/check_no_driver_asm_guard.py ]]; then
   if ! python3 scripts/checks/check_no_driver_asm_guard.py; then
-    echo "[FAIL] check_no_driver_asm_guard.py: a HAL driver guards asm on RA8_SIMULATOR_MODE."
+    echo "[FAIL] check_no_driver_asm_guard.py: a HAL driver guards asm on RA8_OFF_TARGET."
     error_found=1
   fi
 fi
@@ -598,7 +598,7 @@ if [[ -f scripts/checks/check_hil_alive_policy.py ]]; then
 fi
 
 # ---- EIL==HIL parity gate ---------------------------------------
-# Every hw_validated/hil app must also be exercised in the simulator:
+# Every hw_validated/hil app must also be exercised in the emulator:
 # it must carry a hil.conf, be discovered by eil_all.sh (not just
 # hil_all.sh), and declare a HIL_MODE ra8_emulator can check (no EIL
 # skips). Cheap structural gate -- re-derives both harnesses' app

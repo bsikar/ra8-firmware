@@ -9,7 +9,7 @@
  * linkStatusGet). The driver is hardware-agnostic: it does not own
  * an MDIO bus -- instead, it borrows one through a `ra8_ether_phy_io_t`
  * function-pointer pair, which can be backed by either the RMAC
- * MDC/MDIO state machine, the ETHER MIIM block, or a simulated bus
+ * MDC/MDIO state machine, the ETHER MIIM block, or a fake bus
  * for unit tests.
  *
  * Reference: FSP `r_ether_phy` driver shape, IEEE 802.3 Clause 22.

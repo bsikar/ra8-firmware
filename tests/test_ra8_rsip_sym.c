@@ -5,7 +5,7 @@
  * @details
  * Split sibling of the original test_ra8_rsip.c suite covering the
  * symmetric-crypto surface of ra8_rsip.c against the
- * ``ra8_sim_mmap``-backed register window:
+ * ``ra8_fake_mmap``-backed register window:
  *
  * - plaintext / OEM key install populates wrapped handles;
  * - AES ECB / CTR / GCM / CCM cipher paths incl. AEAD-mode rejection
@@ -17,7 +17,7 @@
  * Sibling suites: test_ra8_rsip_core.c (engine lifecycle + SHA-256)
  * and test_ra8_rsip_devsec.c (asymmetric + vault + device security).
  *
- * Each test resets ``ra8_sim_mmap``, ``ra8_sim_mmio`` and ``ra8_mstp``
+ * Each test resets ``ra8_fake_mmap``, ``ra8_fake_mmio`` and ``ra8_mstp``
  * first so cases stay independent.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -25,11 +25,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_rsip.h"
 #include "ra8_rsip_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -67,8 +67,8 @@ typedef enum : uint32_t {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -545,7 +545,7 @@ static void test_hash_family(void)
  * @brief HASH_STATUS.DONE never asserts -> ra8_rsip_hash reports the timeout.
   *
   * @par MC/DC:
-  * (no compound decisions in this test -- arms the ra8_sim_mmio wait
+  * (no compound decisions in this test -- arms the ra8_fake_mmio wait
   * seam on the HASH_STATUS register so ``internal_hash_wait_done``
   * runs its bounded poll to the budget and ``ra8_rsip_hash`` takes its
   * single-condition wait-error branch)
@@ -555,7 +555,7 @@ static void test_hash_done_timeout(void)
   TEST_BEGIN("rsip hash done timeout");
   prep_running();
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_hash_status)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_hash_status)));
   const uint8_t msg[3] = {'a', 'b', 'c'};
   uint8_t       d[32]  = {};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -851,7 +851,7 @@ static void test_mcdc_aes_cipher_block_align_quad(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, cipher_vec(&handle, k_ra8_rsip_aes_mode_cmac, nullptr, 5U));
 
   /* V4: CTR + 5 bytes -> outer-OR is all-false; alignment check skipped;
-   * function proceeds to dispatch and returns OK in the simulator. */
+   * function proceeds to dispatch and returns OK in the fake. */
   const uint8_t iv[16] = {};
   TEST_ASSERT_EQ(k_ra8_ok, cipher_vec(&handle, k_ra8_rsip_aes_mode_ctr, iv, 5U));
 

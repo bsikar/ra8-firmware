@@ -125,7 +125,7 @@ jobs:
       - run: bash scripts/ci.sh --gate since
 
   # ---------------------------------------------------------------------------
-  # EIL==HIL parity -- every HIL app is also exercised in the simulator (EIL).
+  # EIL==HIL parity -- every HIL app is also exercised in the emulator (EIL).
   # Cheap, hardware-free structural gate; guarantees an added HIL app cannot
   # escape EIL coverage.
   # ---------------------------------------------------------------------------
@@ -228,7 +228,7 @@ jobs:
   # any undefined behaviour is a hard test failure. This was a local-only tool
   # while ~8 tests injected register events via a SIGALRM/setitimer wall-clock
   # race that flaked under sanitizer slowdown; the injection now goes through
-  # the deterministic ra8_sim_mmio poll-hook, so the suite is load-stable and
+  # the deterministic ra8_fake_mmio poll-hook, so the suite is load-stable and
   # the gate can block PRs.
   # ---------------------------------------------------------------------------
   ubsan:

@@ -515,7 +515,7 @@ typedef void (*ra8_sram_error_fn_t)(void* ctx, uint8_t bank, bool is_2bit, uintp
  *   8. Confirm SRAMESR.ERR{bank}{0|1} latched.
  *
  * Each step is preceded by a Data Memory Barrier on the real chip;
- * under ``RA8_SIMULATOR_MODE`` the barrier is a no-op.
+ * under ``RA8_OFF_TARGET`` the barrier is a no-op.
  *
  * @param[in]  bank          Bank index 0..3.
  * @param[in]  probe_offset  Offset from the bank base, 8-byte aligned,

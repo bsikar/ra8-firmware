@@ -46,7 +46,7 @@ silicon-only and gate promotion out of `hw_pending`:
 
 - **Per-slot fidelity** -- a 1-bit injection setting *only* the 1-bit flag and a
   2-bit injection *only* the 2-bit flag (the host test `tests/test_mem_ecc.c`
-  proves this with `RA8_SIMULATOR_MODE`, which forges the correct slot, but it
+  proves this with `RA8_OFF_TARGET`, which forges the correct slot, but it
   must be confirmed on real hardware).
 - **1-bit correction** -- the corrected read returning good data.
 - **2-bit NMI** -- the uncorrectable injection raises a non-maskable ECC

@@ -9,8 +9,8 @@
 #include "ra8_agt.h"
 #include "ra8_agt_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -38,7 +38,7 @@ typedef enum : uint8_t {
 static void test_start_free_run_happy(void)
 {
   TEST_BEGIN("agt start_free_run happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_err_t err =
     ra8_agt_start_free_run((uint8_t)k_ra8_agt_test_channel_valid, (uint16_t)k_ra8_agt_test_reload);
@@ -62,7 +62,7 @@ static void test_start_free_run_happy(void)
 static void test_start_free_run_middle_channel(void)
 {
   TEST_BEGIN("agt start_free_run middle channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_agt_start_free_run((uint8_t)k_ra8_agt_test_channel_middle,
@@ -81,7 +81,7 @@ static void test_start_free_run_middle_channel(void)
 static void test_start_free_run_last_channel(void)
 {
   TEST_BEGIN("agt start_free_run last channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_agt_start_free_run((uint8_t)k_ra8_agt_test_channel_last, 0U));
   TEST_END("agt start_free_run last channel");
@@ -96,7 +96,7 @@ static void test_start_free_run_last_channel(void)
 static void test_start_free_run_bad_channel(void)
 {
   TEST_BEGIN("agt start_free_run bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_agt_start_free_run((uint8_t)k_ra8_agt_test_channel_bad, 0U));
@@ -112,7 +112,7 @@ static void test_start_free_run_bad_channel(void)
 static void test_start_free_run_huge_channel(void)
 {
   TEST_BEGIN("agt start_free_run huge channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_agt_start_free_run((uint8_t)k_ra8_agt_test_channel_way, 0U));
@@ -128,7 +128,7 @@ static void test_start_free_run_huge_channel(void)
 static void test_stop_happy(void)
 {
   TEST_BEGIN("agt stop happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -149,7 +149,7 @@ static void test_stop_happy(void)
 static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("agt stop bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_agt_stop((uint8_t)k_ra8_agt_test_channel_bad));
   TEST_END("agt stop bad channel");
@@ -169,7 +169,7 @@ static void stub_agt_cb(void* ctx, uint8_t ch)
 
 static void prep_w43(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* Drain the per-channel AGT MSTP latch (ra8_agt's s_agt_mstp_held) so it stays
    * in sync with the ra8_mstp refcount that ra8_mstp_init() is about to zero.
    * Otherwise a stale held=true over a fresh refcount=0 makes a later

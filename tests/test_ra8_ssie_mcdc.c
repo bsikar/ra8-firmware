@@ -14,8 +14,8 @@
 
 #include "ra8_dmac.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_ssie.h"
 #include "ra8_ssie_regs.h"
 #include "support/ssie_test_util.h"
@@ -232,7 +232,7 @@ static void test_mcdc_init_threshold(void)
  * Channel may be uninitialized; we only assert *not* invalid_arg for
  * V1..V3 (other ra8_err_t paths are acceptable -- the goal is to prove
  * the validation gate did not reject the dir value), and ==invalid_arg
- * for V4. With the channel un-init the simulator returns invalid_arg,
+ * for V4. With the channel un-init the fake returns invalid_arg,
  * so we initialise channel 0 first.
  */
 static void test_mcdc_start_dir(void)
@@ -322,7 +322,7 @@ static void test_mcdc_attach_dma_neither(void)
   };
   ra8_err_t v1 = ra8_ssie_attach_dma((uint8_t)k_ra8_ssie_test_ch0, &dma1);
   /* The "neither" gate must not have rejected the call. Other ra8_err_t
-   * outcomes are acceptable (DMA layer may or may not be ready in sim). */
+   * outcomes are acceptable (DMA layer may or may not be ready off-target). */
   (void)v1;
   /* V2 */
   ra8_ssie_dma_cfg_t dma2 = {

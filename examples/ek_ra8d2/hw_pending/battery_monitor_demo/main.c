@@ -25,7 +25,7 @@
  *
  * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the MAX17048
  * fuel gauge (``board_periph_i2c.c``): its SOC + CRATE registers are driven by
- * the simulated battery state (settable via ``--battery <pct>`` / ``--charge``),
+ * the fake battery state (settable via ``--battery <pct>`` / ``--charge``),
  * so this app reads a real percent over the modelled I2C bus and reaches its
  * banner headlessly. On a stock EK-RA8D2 the fuel gauge is not fitted (a NAK
  * banner prints), so the app lives in ``hw_pending/`` until a real fuel-gauge

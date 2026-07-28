@@ -124,7 +124,7 @@ def golden_path(golden_dir: Path, name: str) -> Path:
 def do_update(args: argparse.Namespace) -> int:
     """Re-render every screen and overwrite its golden image.
 
-    Accepts whatever the simulator currently produces as correct, so it must
+    Accepts whatever the emulator currently produces as correct, so it must
     only be run when the change in output is understood and intended -- this
     is the operation that can silently bless a rendering regression.
 

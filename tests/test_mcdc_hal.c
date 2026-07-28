@@ -7,7 +7,7 @@
  * Each test group closes a reachable MC/DC gap reported by the per-file floor
  * (scripts/checks/check_mcdc_floor.py) by driving the production decision to
  * full modified condition/decision coverage through the public API on the host
- * ra8_sim MMIO substrate. Every group is self-contained: it supplies the whole
+ * ra8_fake MMIO substrate. Every group is self-contained: it supplies the whole
  * N+1 vector set for its decision so the merged profile is complete regardless
  * of sibling test TUs.
  *
@@ -29,13 +29,13 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gfx.h"
 #include "ra8_i2c.h"
 #include "ra8_i2c_internal.h"
 #include "ra8_i2c_regs.h"
 #include "ra8_jpeg_sw.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /* ===========================================================================
@@ -215,7 +215,7 @@ static void i2c_prime_all(uint8_t channel)
  * public-API path that reaches internal_i2c_finish_tx with err != k_ra8_ok
  * (an address-phase timeout early-returns before this function).
  *
- * @pre The RIIC channel is initialised on the ra8_sim MMIO window.
+ * @pre The RIIC channel is initialised on the ra8_fake MMIO window.
  * @post V1 records bus_held; V2/V3 issue STOP (ICCR2.SP set).
  * @since 0.1.0
  */
@@ -224,7 +224,7 @@ static void test_i2c_finish_tx_mcdc(void)
   TEST_BEGIN("i2c MC/DC: internal_i2c_finish_tx (err!=ok) || send_stop");
 
   /* V1: everything primed, send_stop=false -> both conditions false. */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_i2c_ch, &k_i2c_cfg));
   i2c_prime_all((uint8_t)k_i2c_ch);
@@ -236,7 +236,7 @@ static void test_i2c_finish_tx_mcdc(void)
                                /*send_stop=*/false));
 
   /* V2: everything primed, send_stop=true -> C2 true -> STOP. */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_i2c_ch, &k_i2c_cfg));
   i2c_prime_all((uint8_t)k_i2c_ch);
@@ -251,7 +251,7 @@ static void test_i2c_finish_tx_mcdc(void)
 
   /* V3: prime only TDRE so the address + data phases succeed but the TEND
    * wait in finish_tx times out -> err != k_ra8_ok at the decision. */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_i2c_ch, &k_i2c_cfg));
   volatile r_i2c_regs_t* reg3 = ra8_i2c_regs((uint8_t)k_i2c_ch);
@@ -298,10 +298,10 @@ static ra8_i2c_peripheral_cfg_t tgt_make_cfg(void)
   return cfg;
 }
 
-/** @brief Reset the sim and disarm the target on the test channel. */
+/** @brief Reset the fake and disarm the target on the test channel. */
 static void tgt_prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_i2c_peripheral_deinit((uint8_t)k_tgt_ch);
 }
 
@@ -312,7 +312,7 @@ static void tgt_prep(void)
  * Decision: `if (((icsr2 & rdrf) != 0) && (count < capacity))` (2 conditions,
  * AND; the final-pending-byte drain guard,
  * libs/ra8_hal/src/ra8_i2c_peripheral.c@ra8_i2c_internal_target_drain_rx). The
- * guard is exercised by calling the promoted drain helper DIRECTLY: the ra8_sim
+ * guard is exercised by calling the promoted drain helper DIRECTLY: the ra8_fake
  * MMIO window is side-effect-free, so the public ra8_i2c_peripheral_receive path
  * cannot present RDRF set at its address-phase wait and clear at this guard,
  * which makes the C1=F arm unreachable through receive() alone.
@@ -322,7 +322,7 @@ static void tgt_prep(void)
  *  - V3: ICSR2=RDRF, fills capacity -> C1 T, C2 F -> false (got=capacity).
  * V1 vs V2 flips only C1 (rdrf pending); V1 vs V3 flips only C2 (count<cap).
  *
- * @pre The target register block is bound on the ra8_sim MMIO window.
+ * @pre The target register block is bound on the ra8_fake MMIO window.
  * @post *out_count matches the drained byte count for each vector.
  * @since 0.1.0
  */

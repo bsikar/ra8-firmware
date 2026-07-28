@@ -16,7 +16,7 @@
  *     zero-input guard.
  *   - ra8_threadx_systick_retune() -- the end-to-end path over the live CGC
  *     published-clock table (SYST_RVR writes compile out under
- *     RA8_SIMULATOR_MODE, so only the clock-query + arithmetic run here).
+ *     RA8_OFF_TARGET, so only the clock-query + arithmetic run here).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -27,7 +27,7 @@
 
 #include "ra8_cgc.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_system_regs.h"
 #include "ra8_threadx.h"
 #include "unity_minimal.h"
@@ -57,13 +57,13 @@ typedef enum : uint32_t {
 } test_retune_const_t;
 
 /**
- * @brief Re-seed the sim world so ra8_cgc_init() spin loops settle.
+ * @brief Re-seed the fake world so ra8_cgc_init() spin loops settle.
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
-   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+   * complete on the first iteration in RA8_OFF_TARGET. */
   *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
 }
 
@@ -254,7 +254,7 @@ static void test_retune_matches_live_clock(void)
  *
  * @return 0 if all tests pass; any failure calls exit(1) first.
  *
- * @pre The host build defines RA8_SIMULATOR_MODE (SCS writes compile out).
+ * @pre The host build defines RA8_OFF_TARGET (SCS writes compile out).
  * @pre None beyond the above.
  * @post Every registered test has run.
  * @post Process exit status reflects pass/fail.

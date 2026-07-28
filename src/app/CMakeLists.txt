@@ -3,7 +3,7 @@
 #
 # Configures a two-project TrustZone build:
 # 1. ra8d2-ereader.elf (Secure Boot + Key Vault + NSC Veneers)
-#    Note: This is named to match the app name so standard simulator
+#    Note: This is named to match the app name so standard emulator
 #          and flashing tools boot the Secure entry.
 # 2. ra8d2-ereader_ns.elf (Non-Secure UI + ThreadX + Graphics)
 #

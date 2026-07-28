@@ -40,7 +40,7 @@ shutoff on silicon, and drives the deterministic **software** trigger to make
 the cycle observable headlessly. On a real board you would additionally route
 the GPT output-disable request of GPT0 to this POEG group.
 
-## Board_sim gate
+## Emulator gate
 
 `tools/ra8_emulator` models the POEG register file in `board_periph_poeg.c`: a
 `POEGG.SSF` write latches the derived `POEGG.ST` output-disable STATE flag, and

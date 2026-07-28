@@ -7,7 +7,7 @@
  * test_motor_control_task.c. The actual app at
  * examples/ek_ra8d2/threadx_blink/main.c wires two ThreadX threads to two LED
  * GPIO toggles. The kernel is not linked into the host test build
- * (RA8_SIMULATOR_MODE), so this test exercises the same module surface
+ * (RA8_OFF_TARGET), so this test exercises the same module surface
  * the threads call (ra8_board_led_init / ra8_board_led_toggle) in the
  * exact sequence the app uses, plus failure-injection paths to verify
  * mid-flow error propagation.
@@ -26,9 +26,9 @@
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -36,7 +36,7 @@
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 
@@ -56,7 +56,7 @@ typedef enum : uint8_t {
  *
  * @details Replays the call order of examples/ek_ra8d2/threadx_blink/main.c:
  * led_init(LED1) then led_init(LED2). Both must succeed under the
- * simulator-mode HAL.
+ * off-target HAL.
  *
  * @par MC/DC:
  * Decision under test: ``ra8_board_led_init() != k_ra8_ok`` evaluated for

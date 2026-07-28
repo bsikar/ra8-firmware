@@ -12,7 +12,7 @@
  *  - Decoding PVD1SR.MON / PVD1SR.DET out of the status byte.
  *  - The PRCR.PRC3 unlock word the demo writes (0xA508 = key | PRC3).
  *
- * No ra8_sim_mmap MMIO is required, so this test runs in-process.
+ * No ra8_fake_mmap MMIO is required, so this test runs in-process.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

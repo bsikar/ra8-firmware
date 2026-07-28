@@ -5,7 +5,7 @@
  * @details
  * Split sibling of the original test_ra8_psa_crypto.c suite covering
  * the happy paths and first-line argument rejection of every public
- * entry point in ``ra8_psa_crypto.h`` against the simulator-mode
+ * entry point in ``ra8_psa_crypto.h`` against the off-target
  * stand-ins defined in ``ra8_psa_crypto.c``:
  *
  * - init / deinit symmetry and double-init guard

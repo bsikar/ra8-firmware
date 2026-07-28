@@ -749,7 +749,7 @@ static int internal_hold_gpio(void* gpio_port, uint32_t gpio_num, uint32_t hold_
  * @retval HOSTED_WAKEUP_UNDEFINED The cause could not be read.
  *
  * @pre The SYSC block is mapped (always true on target and under the host
- *      simulator mapping).
+ *      fake mapping).
  * @pre The reset flags have not been cleared since boot by another module.
  * @post No register is modified; the flags stay latched for other readers.
  * @post Exactly one of the three vendored values is returned.

@@ -4,7 +4,7 @@
  *
  * @details
  * Pure host tests -- ra8_ui is allocation-free plain-data logic, so no
- * register simulator is needed. Covers the functional contract of every
+ * register fake is needed. Covers the functional contract of every
  * entry point plus MC/DC vector sets for the three compound decisions:
  * ``ra8_ui_rect_contains`` (4-condition AND), ``ra8_ui_pager_next`` and
  * ``ra8_ui_pager_goto`` (2-condition ANDs).

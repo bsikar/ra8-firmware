@@ -25,7 +25,7 @@
  * "stop refreshing" stage takes a visible amount of time before the
  * reset fires.
  *
- * Note: in the simulator (host-side test) ``ra8_reset_software_reset``
+ * Note: in the fake (host-side test) ``ra8_reset_software_reset``
  * returns; on real silicon it never returns. The app's ``while`` loop
  * is the IWDT-stop stage, terminated only by the chip resetting.
  *

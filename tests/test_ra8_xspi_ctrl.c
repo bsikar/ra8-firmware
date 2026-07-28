@@ -20,11 +20,11 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_fake_xspi_flash.h"
 #include "ra8_mstp.h"
 #include "ra8_ospi_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
-#include "ra8_sim_xspi_flash.h"
 #include "ra8_system_regs.h"
 #include "ra8_xspi.h"
 #include "ra8_xspi_internal.h"
@@ -239,14 +239,14 @@ static void test_calibrate_dqs(void)
   TEST_ASSERT_EQ(k_ra8_xspi_ccctl0_mask_caen, (reg->CCCTLCS[0] & k_ra8_xspi_ccctl0_mask_caen));
 
   /* Retry leg: the phase-scan "completes" on the 3rd poll. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after((const volatile void*)&reg->CCCTLCS[0], 3U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after((const volatile void*)&reg->CCCTLCS[0], 3U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_calibrate_dqs((uint8_t)k_test_xspi_valid_inst0));
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   /* Timeout leg: CAEN never auto-clears -> bounded poll exhausts. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->CCCTLCS[0]));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->CCCTLCS[0]));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_xspi_calibrate_dqs((uint8_t)k_test_xspi_valid_inst0));
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_xspi_calibrate_dqs((uint8_t)k_test_xspi_bad_instance));
   TEST_END("xspi calibrate_dqs happy / retry / timeout legs");
@@ -267,14 +267,14 @@ static void test_octack_handshake_timeout_legs(void)
   /* Leg 1: OCTACKSRDY=1 never acknowledges (first wait-loop). */
   prep_w51();
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_octackcr(), 0U));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_octackcr(), 0U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra8_xspi_lio_1s1s1s));
 
   /* Leg 2: OCTACKSRDY=0 never acknowledges (second wait-loop). */
   prep_w51();
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_octackcr(), 1U));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_octackcr(), 1U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra8_xspi_lio_1s1s1s));
 

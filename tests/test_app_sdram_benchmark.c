@@ -15,9 +15,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_pin_validator.h"
 #include "ra8_sdramc.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -35,7 +35,7 @@ typedef enum : uint32_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 
@@ -47,7 +47,7 @@ static uint32_t app_mbps(uint32_t bytes, uint32_t ms)
 }
 
 /**
- * @brief ra8_sdramc_init succeeds in simulator mode.
+ * @brief ra8_sdramc_init succeeds in off-target mode.
  *
  * @par MC/DC:
  * Decision: ``ra8_sdramc_init != ok``. One atomic condition x 2

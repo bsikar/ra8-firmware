@@ -10,7 +10,7 @@
  * translation unit: the polled SCI8 text helpers that stream verdicts over
  * the J-Link OB CDC bridge. These are pure formatting routines (bounded
  * decimal / fixed-width hex / one-line FAIL diagnostics) with no USBX or
- * ThreadX dependency; they live behind the simulator guard solely because
+ * ThreadX dependency; they live behind the off-target guard solely because
  * the application as a whole is hardware-only.
  *
  * The public entry points (::hid_print, ::hid_print_dec, ::hid_print_hex,
@@ -31,7 +31,7 @@
 #include "ra8_err.h"
 #include "usb_selftest_hid_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /**
  * @enum hid_mask_t
@@ -186,4 +186,4 @@ static uint32_t hid_str_len(const char* text)
   return hid_print("\r\n");
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

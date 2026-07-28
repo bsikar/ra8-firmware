@@ -18,7 +18,7 @@
  *    bulk-OUT pipe (the no-data drain leg).
  *
  * All hardware is the host register-window model brought up by
- * `ra8_sim_mmap_reset` + `ra8_mstp_init`; no live controller, no timers,
+ * `ra8_fake_mmap_reset` + `ra8_mstp_init`; no live controller, no timers,
  * no SIGALRM. Register pre-seeding is used where a specific controller
  * status is required to make a leg deterministic.
  *
@@ -29,8 +29,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_cdc.h"
 #include "ra8_usb_regs.h"
@@ -53,12 +53,12 @@ typedef enum : uint16_t {
 } test_cdc_cov_t;
 
 /**
- * @brief Reset the simulator MMIO window and CDC singleton to a known
+ * @brief Reset the fake MMIO window and CDC singleton to a known
  * pre-init state.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_cdc_deinit();
 }

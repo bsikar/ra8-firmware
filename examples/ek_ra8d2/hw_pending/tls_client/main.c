@@ -58,7 +58,7 @@
 #include "ra8_time.h"
 #include "ra8_tls.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "mbedtls/net_sockets.h"
 #include "mbedtls/platform.h"
 #include "mbedtls/ssl.h"
@@ -188,7 +188,7 @@ static const char k_demo_server_name[] = "endpoint.test";
 /** @brief The one application record this demo sends after the handshake. */
 static const uint8_t k_demo_record[] = "PING over ra8_tls\n";
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* NetX Duo state. ThreadX requires statically-allocated control blocks
  * (NASA Power of 10 Rule 3 -- no dynamic memory). */
 static NX_PACKET_POOL s_packet_pool;
@@ -203,7 +203,7 @@ static TX_THREAD    s_demo_thread;
 static UCHAR        s_demo_stack[k_demo_thread_stack];
 static TX_BYTE_POOL s_byte_pool;
 static UCHAR        s_byte_pool_memory[k_demo_byte_pool_size];
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Halt forever in WFI. Called on any fatal error.
@@ -273,7 +273,7 @@ static void demo_print(const char* s)
   (void)ra8_board_uart_console_write((const uint8_t*)s, len);
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Pack a 4-octet IPv4 array into NetX's host-order ULONG.
  *
@@ -784,7 +784,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -804,7 +804,7 @@ int32_t main(void)
   ra8_isr_globals_enable();
   demo_print("[tls] booting ThreadX + NetX Duo + ra8_tls...\r\n");
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

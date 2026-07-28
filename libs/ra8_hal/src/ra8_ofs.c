@@ -162,7 +162,7 @@
  * script pins each section to a fixed MRAM address.
  */
 
-#if defined(UNIT_TEST) || defined(RA8_SIMULATOR_MODE) || defined(__APPLE__)
+#if defined(UNIT_TEST) || defined(RA8_OFF_TARGET) || defined(__APPLE__)
 /** @brief RA8 SECTION. */
 #define RA8_SECTION(name) [[gnu::used]]
 #else

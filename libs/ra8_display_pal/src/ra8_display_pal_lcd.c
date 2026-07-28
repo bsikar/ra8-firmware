@@ -83,7 +83,7 @@ static lcd_ctx_t s_lcd_ctx;
  * @brief DSB memory barrier on Cortex-M, no-op on the host test build.
  *
  * @details
- * Guarded with ``RA8_SIMULATOR_MODE`` so the host x86 build does not
+ * Guarded with ``RA8_OFF_TARGET`` so the host x86 build does not
  * try to assemble the ARMv8-M ``dsb`` instruction. Matches the
  * pattern used by ``ra8_reset.c`` and ``ra8_lpm.c``.
  *
@@ -99,7 +99,7 @@ static lcd_ctx_t s_lcd_ctx;
 RA8_INTERNAL
 static inline void internal_lcd_dsb(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("dsb 0xF" ::: "memory");
 #endif
 }

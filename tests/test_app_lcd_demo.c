@@ -8,7 +8,7 @@
  * framebuffers, programmes layer 1 (sprite) + layer 2 (background)
  * with an alpha blend, then enters a redraw-and-toggle loop. The LCD
  * panel is not present in the host test build, but every register
- * write the driver makes lands in the simulated MMIO window so we
+ * write the driver makes lands in the fake MMIO window so we
  * can exercise the same call sequence and assert on the resulting
  * register contents.
  *
@@ -25,10 +25,10 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_glcdc.h"
 #include "ra8_glcdc_regs.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_system_regs.h"
 #include "ra8_time.h"
 #include "unity_minimal.h"
@@ -66,10 +66,10 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
-   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+   * complete on the first iteration in RA8_OFF_TARGET. */
   *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
 }
 

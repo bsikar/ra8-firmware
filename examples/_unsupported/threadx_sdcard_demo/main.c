@@ -44,11 +44,11 @@
 #include "ra8_sdcard.h"
 
 /*
- * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_OFF_TARGET) does not link the
  * ThreadX vendor tree, so ``tx_api.h`` (and the ThreadX-port header
  * ``ra8_threadx.h``) are pulled in only on the cross-compile target.
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "ra8_threadx.h"
 #include "tx_api.h"
 #endif
@@ -114,7 +114,7 @@ typedef enum : uint16_t {
  * Vector table override and thread storage (cross-build only).
  * --------------------------------------------------------------------------- */
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) -- ThreadX-supplied symbol. */
 extern void _tx_timer_interrupt(void);
 /* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
@@ -313,7 +313,7 @@ void tx_application_define(void* first_unused_memory)
     }
   }
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /* ---------------------------------------------------------------------------
  * main() -- driver init, then drop into the ThreadX scheduler.
@@ -357,7 +357,7 @@ int32_t main(void)
       __asm__ volatile("wfi");
     }
   }
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   if (ra8_board_sdhi_pins_init() != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");

@@ -70,7 +70,7 @@
  * Every PVD register write requires PRCR.PRC3 = 1 (HUM Note on every
  * register description). The driver does not unlock PRCR itself --
  * callers must wrap each driver call with `ra8_pwr_unlock_pvd()` /
- * `ra8_pwr_lock_pvd()`. In unit tests the host sim mmap has no lock so
+ * `ra8_pwr_lock_pvd()`. In unit tests the host fake mmap has no lock so
  * the writes always land.
  *
  * @par Layout

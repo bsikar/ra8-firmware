@@ -115,7 +115,7 @@ typedef enum : uint8_t {
  *  - `enable_dtie`        : enable DMINT.DTIE (transfer-end IRQ at
  *                           full completion).
  */
-/* cppcheck reads ra8_dmac.h without seeing tests/ra8_sim_dma.c or the
+/* cppcheck reads ra8_dmac.h without seeing tests/ra8_fake_dma.c or the
  * DMAC register accesses in libs/ra8_hal/src/ra8_dmac.c, so it flags
  * every field as unused even though the driver reads all of them. */
 typedef struct {
@@ -205,7 +205,7 @@ typedef enum : uint8_t {
  * @brief Per-channel DMAC completion / half-complete callback signature.
  *
  * @details
- * Invoked from the matching DMAC ISR (or by the host test simulator
+ * Invoked from the matching DMAC ISR (or by the host test fake
  * via ``ra8_dmac_dispatch()``). ``ctx`` is the user-supplied opaque
  * pointer registered alongside the function.
  */

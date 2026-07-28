@@ -16,7 +16,7 @@
  *     temperature-sensor channel (CNVCS = 0x64) and feeds the raw code
  *     to the existing two-point calibration math (HUM Ch 55.3.1).
  *
- * The simulated MMIO window is plain RAM, so the tests inject ADEXDRn
+ * The fake MMIO window is plain RAM, so the tests inject ADEXDRn
  * results and calibration words by writing directly to the backing
  * store.
  *
@@ -29,8 +29,8 @@
 #include "ra8_adc.h"
 #include "ra8_adc_b_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_tsn.h"
 #include "ra8_tsn_regs.h"
 #include "unity_minimal.h"
@@ -46,11 +46,11 @@ typedef enum : uint16_t {
 } adc_selfdiag_code_t;
 
 /* ---------------------------------------------------------------------------
- * Sim helper: ADACT0 idle-state (deterministic, no wall-clock timer)
+ * Fake helper: ADACT0 idle-state (deterministic, no wall-clock timer)
  * --------------------------------------------------------------------------- */
 
 /* The ADC busy-poll reads ADSR.ADACT0 straight from the RAM-backed register
- * window. After ra8_sim_mmap_reset() ADACT0 reads 0 (idle), so the driver's
+ * window. After ra8_fake_mmap_reset() ADACT0 reads 0 (idle), so the driver's
  * bounded busy-wait observes the conversion already complete on its first poll
  * and takes the success path -- deterministically, with no wall-clock timer
  * signal to race the poll. Timeout cases below leave ADACT0 set (1) so the
@@ -114,7 +114,7 @@ static ra8_tsn_config_t make_tsn_cfg(void)
 static void test_self_diagnose_rejects(void)
 {
   TEST_BEGIN("self_diagnose rejects null + bad mode");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
 
   uint16_t code = 0U;
@@ -137,7 +137,7 @@ static void test_self_diagnose_rejects(void)
 static void test_self_diagnose_mode1_pass(void)
 {
   TEST_BEGIN("self_diagnose mode 1 ideal -> pass");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
 
   /* Inject the ideal mode-1 result (0x0000, ERR clear) into ADEXDR0. */
@@ -179,7 +179,7 @@ static void test_self_diagnose_mode1_pass(void)
 static void test_self_diagnose_mode2_mode3_pass(void)
 {
   TEST_BEGIN("self_diagnose mode 2/3 ideal -> pass");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
 
   *ra8_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode2_ideal;
@@ -203,7 +203,7 @@ static void test_self_diagnose_mode2_mode3_pass(void)
 static void test_self_diagnose_err_flag_fails(void)
 {
   TEST_BEGIN("self_diagnose ERR flag -> fail");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
 
   /* Ideal data but ERR bit set -> conversion invalid -> fail. */
@@ -223,7 +223,7 @@ static void test_self_diagnose_err_flag_fails(void)
 static void test_self_diagnose_timeout(void)
 {
   TEST_BEGIN("self_diagnose timeout");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
 
   /* Force ADACT0 stuck high (never cleared) so the busy poll never exits. */
@@ -249,7 +249,7 @@ static void test_self_diagnose_timeout(void)
 static void test_read_internal_null(void)
 {
   TEST_BEGIN("read_internal null out");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_adc_read_internal_channel(k_ra8_adc_chan_temperature, nullptr));
@@ -264,7 +264,7 @@ static void test_read_internal_null(void)
 static void test_read_internal_happy(void)
 {
   TEST_BEGIN("read_internal temp + vref happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
 
   /* Temperature channel -> ADEXDR4. */
@@ -298,7 +298,7 @@ static void test_read_internal_happy(void)
 static void test_die_temp_closed_loop(void)
 {
   TEST_BEGIN("die-temp closed loop -> 125000 mC");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   inject_cal_words((uint32_t)k_test_cal_hi_125, (uint32_t)k_test_cal_lo_n40);
@@ -324,7 +324,7 @@ static void test_die_temp_closed_loop(void)
 static void test_die_temp_guards(void)
 {
   TEST_BEGIN("die-temp guards (null + before init)");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_tsn_deinit(); /* Ensure the init flag is clear. */
 
@@ -379,7 +379,7 @@ static void test_mcdc_adc_selfdiag(void)
   bool     pass = false;
 
   /* --- Decision A: internal_selfdiag_in_band ---------------------- */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   *ra8_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode1_ideal; /* diff 0 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_self_diagnose(k_ra8_adc_selfdiag_mode_1, &code, &pass));
@@ -394,7 +394,7 @@ static void test_mcdc_adc_selfdiag(void)
   TEST_ASSERT(!pass); /* V3: C2 false */
 
   /* --- Decision B: (!err_flag) && in_band ------------------------- */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   *ra8_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode1_ideal; /* err 0, band T */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_self_diagnose(k_ra8_adc_selfdiag_mode_1, &code, &pass));
@@ -409,7 +409,7 @@ static void test_mcdc_adc_selfdiag(void)
   TEST_ASSERT(!pass); /* V3: in_band false */
 
   /* --- Decision C: internal_is_supported_ext_chan ----------------- */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   uint16_t raw                          = 0U;
   *ra8_adc_b_adexdr(k_test_adexdr_temp) = (uint32_t)k_test_temp_raw;

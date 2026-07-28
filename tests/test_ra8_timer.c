@@ -7,7 +7,7 @@
  */
 
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_time.h"
 #include "unity_minimal.h"
 
@@ -30,7 +30,7 @@ typedef enum : uint32_t {
 static void test_now_ms_matches_time_ms(void)
 {
   TEST_BEGIN("timer now_ms matches time_ms");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_time_init((uint32_t)k_ra8_timer_test_cpu_hz));
   const uint32_t a = ra8_time_ms();
@@ -48,7 +48,7 @@ static void test_now_ms_matches_time_ms(void)
 static void test_now_ms_advances_with_ticks(void)
 {
   TEST_BEGIN("timer now_ms advances with ticks");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_time_init((uint32_t)k_ra8_timer_test_cpu_hz));
   const uint32_t start = ra8_now_ms();
@@ -68,7 +68,7 @@ static void test_now_ms_advances_with_ticks(void)
 static void test_sleep_ms_zero_returns_immediately(void)
 {
   TEST_BEGIN("timer sleep_ms zero returns immediately");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_time_init((uint32_t)k_ra8_timer_test_cpu_hz));
   const uint32_t before = ra8_now_ms();

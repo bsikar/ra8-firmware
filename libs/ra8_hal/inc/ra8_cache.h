@@ -29,8 +29,8 @@
  *          primitives -- otherwise a cached write the peer never sees, or a stale
  *          line the CPU reads, silently corrupts data.
  *
- * @note On a host build (`RA8_SIMULATOR_MODE`) the SCB window is backed by the
- *       simulated MMIO map, so the maintenance writes are observable to tests but
+ * @note On a host build (`RA8_OFF_TARGET`) the SCB window is backed by the
+ *       fake MMIO map, so the maintenance writes are observable to tests but
  *       have no real cache effect; the loop and line-size logic are exercised
  *       exactly as on silicon.
  *

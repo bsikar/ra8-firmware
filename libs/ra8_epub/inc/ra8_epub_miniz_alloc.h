@@ -29,7 +29,7 @@
  * @note Not thread-safe: one shared static pool, single-book usage. `ra8_epub`
  *       drives a single archive at a time (file-scope OPF scratch), matching
  *       this constraint.
- * @note On the host unit-test build (``RA8_SIMULATOR_MODE``) `ra8_epub` leaves
+ * @note On the host unit-test build (``RA8_OFF_TARGET``) `ra8_epub` leaves
  *       miniz on its default `malloc`; these callbacks are wired only into the
  *       firmware build. They are still compiled and unit-tested everywhere.
  *

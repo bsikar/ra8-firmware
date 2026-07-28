@@ -15,7 +15,7 @@
  * - Ed25519 PureEdDSA sign / verify (RFC 8032).
  *
  * Every entry point is FAIL-CLOSED in production: HUM Ch 52 documents no
- * asymmetric command-register map for the RSIP-E50D, so the sim-only command
+ * asymmetric command-register map for the RSIP-E50D, so the off-target-only command
  * path is gated behind the stub-crypto guard and a production build returns
  * ``k_ra8_err_not_supported``. The real ECDSA-P256 / ECDH / Ed25519 backend is
  * tf-psa-crypto on the M85, silicon-proven in psa_crypto_hil (issues #214 +
@@ -27,7 +27,7 @@
  * via ``ra8_rsip_asym_internal.h``; the remaining cross-TU primitives
  * (``internal_load_handle``, ``internal_complete``) are declared in
  * ``ra8_rsip_internal.h``. The RSIP engine exposes no documented asymmetric
- * register interface (HUM Ch 52 is a feature overview, p 3302-3307), so the sim
+ * register interface (HUM Ch 52 is a feature overview, p 3302-3307), so the fake
  * command path here is a modelled fiction, not a real hardware sequence.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -67,15 +67,15 @@ static const char* s_tag = "RSIP";
  * six-page feature overview (p 3302-3307) with no command-register map; the
  * vendor engine is driven through an encrypted firmware mailbox, not the MMIO
  * opcodes modelled below. The command-path bodies here only round-trip the
- * host register simulator; they do NOT compute a real ECDSA / ECDH / RFC 8032
- * result. They compile only under the insecure-stub / simulator guard so a
+ * host register fake; they do NOT compute a real ECDSA / ECDH / RFC 8032
+ * result. They compile only under the insecure-stub / off-target guard so a
  * production image gets the fail-closed #else and can never mistake these
  * bytes for a valid signature or shared secret. The real ECDSA-P256 / ECDH /
  * Ed25519 backend is tf-psa-crypto on the M85, silicon-proven in
  * psa_crypto_hil (issues #214 + #181). The register pokes below therefore
  * carry NO HUM citation: there is no real register map to cite.
  */
-#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
 
 /**
  * @enum ra8_rsip_curve_bytes_t
@@ -328,12 +328,12 @@ ra8_err_t ra8_rsip_ecdh_compute(const ra8_rsip_key_handle_t* key,
   return k_ra8_ok;
 }
 
-#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_OFF_TARGET */
 
 /*
  * Fail-closed production variant. With no real RSIP asymmetric backend on this
  * silicon, every ECDSA / ECDH / Ed25519 entry point returns a hard error
- * (never k_ra8_ok) so a production image cannot mistake the simulator
+ * (never k_ra8_ok) so a production image cannot mistake the fake
  * command-path for a valid signature or shared secret. Callers use
  * tf-psa-crypto (ECDSA-P256 / ECDH / PSA_ALG_PURE_EDDSA) on the M85 instead.
  */
@@ -404,4 +404,4 @@ ra8_err_t ra8_rsip_ecdh_compute(const ra8_rsip_key_handle_t* key,
   return k_ra8_err_not_supported;
 }
 
-#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_OFF_TARGET */

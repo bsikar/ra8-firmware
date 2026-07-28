@@ -21,7 +21,7 @@
 
 #include "ra8_err.h"
 #include "ra8_wdt.h"
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 #include "ra8_wdt_sup_tx_shim_internal.h"
 #else
 #include "tx_api.h"

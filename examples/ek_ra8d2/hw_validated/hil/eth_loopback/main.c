@@ -17,8 +17,8 @@
  * The demo exists to exercise the ra8_etha lifecycle on the EK-RA8D2
  * (init -> set_mode CONFIG -> descriptor_ring_init -> set_mode
  * OPERATION -> account_traffic -> get_stats -> deinit) without needing
- * a peer node or any external physical link. On host (RA8_SIMULATOR_MODE)
- * the same code paths run against the simulated MMAP and surface the
+ * a peer node or any external physical link. On host (RA8_OFF_TARGET)
+ * the same code paths run against the fake MMAP and surface the
  * same stats.
  *
  * Sequence:

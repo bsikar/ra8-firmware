@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_phid.h"
 #include "ra8_usb_regs.h"
@@ -95,7 +95,7 @@ static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_phid_close();
   s_setup_cb_calls       = 0;
@@ -296,7 +296,7 @@ static void test_send_report_validation(void)
 
   /* Valid argument shape: every pre-check inside ra8_usb_phid_send_report
    * passes and the call forwards into ra8_usb_queue_in. The FRDY wait
-   * converges on its first poll via the unarmed ra8_sim_mmio seam (see
+   * converges on its first poll via the unarmed ra8_fake_mmio seam (see
    * internal_wait_frdy), so a well-formed call returns k_ra8_ok -- the
    * arg-validation path is exercised end-to-end. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_send_report(0U, buf, 4U));
@@ -317,7 +317,7 @@ static void test_send_report_with_id(void)
 
   uint8_t payload[3] = {k_t_report_b0, k_t_report_b1, k_t_report_b2};
   /* report_id=2 means framed_len = 1 + 3 = 4, fits inside FS default 8.
-   * The FRDY wait converges via the unarmed ra8_sim_mmio seam (see
+   * The FRDY wait converges via the unarmed ra8_fake_mmio seam (see
    * internal_wait_frdy), so a well-formed call returns k_ra8_ok; the
    * arg-validation path is fully exercised. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_send_report(2U, payload, 3U));
@@ -570,7 +570,7 @@ static void phid_mcdc_send_report(void)
                  ra8_usb_phid_send_report(0U, nullptr, (uint16_t)k_test_phid_send_len_zero));
   /* D-V2: rid!=0, len=0 -> exits via len overflow check or queue_in;
    * either way decision D stays false. The send may return ok or
-   * hw_error from the simulator; we only assert it is NOT invalid_arg. */
+   * hw_error from the fake; we only assert it is NOT invalid_arg. */
   const ra8_err_t d_v2 = ra8_usb_phid_send_report(1U, buf, (uint16_t)k_test_phid_send_len_zero);
   TEST_ASSERT(d_v2 != k_ra8_err_invalid_arg);
   /* D-V3: rid=0, len!=0 -> decision D false. */

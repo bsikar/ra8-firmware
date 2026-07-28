@@ -5,7 +5,7 @@
  * @details
  * Split sibling of the original test_ra8_mipi_csi.c suite covering
  * bring-up and the configuration surface of ra8_mipi_csi.c against
- * the host-side simulated MMIO (``ra8_sim_mmap``):
+ * the host-side fake MMIO (``ra8_fake_mmap``):
  *
  * - init happy path incl. ECC / frame / data-type / EPCT-EMCT / IRQ
  *   mask programming, plus null-cfg, lane and bad-arg rejection
@@ -22,10 +22,10 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mipi_csi.h"
 #include "ra8_mipi_csi_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -64,11 +64,11 @@ typedef enum : uint32_t {
 } ra8_mipi_csi_test_const_t;
 
 /**
- * @brief Reset sim mmap + ra8_mstp before each test.
+ * @brief Reset fake mmap + ra8_mstp before each test.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -363,7 +363,7 @@ static void test_reset(void)
   const ra8_mipi_csi_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_csi_init(&cfg));
 
-  /* RTST defaults to 0 in sim, so reset should succeed quickly. */
+  /* RTST defaults to 0 off-target, so reset should succeed quickly. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_csi_reset());
   TEST_ASSERT_EQ(
     k_ra8_mipi_csi_rtct_vsrst_mask,

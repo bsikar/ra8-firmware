@@ -9,8 +9,8 @@
 #include "ra8_err.h"
 #include "ra8_eth_mfwd.h"
 #include "ra8_ether_regs.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -43,7 +43,7 @@ static void stub_mfwd_cb(void* ctx, uint32_t mask)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_mfwd_cb_count     = 0U;
   s_mfwd_cb_last_mask = 0U;

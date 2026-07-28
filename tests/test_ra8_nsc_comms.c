@@ -9,12 +9,12 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i3c.h"
 #include "ra8_mstp.h"
 #include "ra8_nsc_comms.h"
 #include "ra8_sci.h"
 #include "ra8_sci_regs.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_spi.h"
 #include "ra8_spi_regs.h"
 #include "ra8_usb.h"
@@ -32,7 +32,7 @@ typedef enum : uint32_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

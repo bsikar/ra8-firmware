@@ -57,16 +57,16 @@
  * DTC, the app simply polls for the result instead of taking the interrupt, which
  * avoids the completion ISR (which writes ``DTCSTS``) racing the in-flight copy.
  *
- * @par ra8_emulator note (sim path)
+ * @par ra8_emulator note (off-target path)
  * ``tools/ra8_emulator`` DOES model the DTC transfer engine
  * (``board_periph_dtc.c``): the ELC software-event trigger reads the vector-table
  * entry at ``DTCVBR + slot*4``, fetches the TI, and actually MOVES the bytes in
- * emulated memory, so the **real** ``ra8_dtc`` + ELC path runs in sim and the copy
+ * emulated memory, so the **real** ``ra8_dtc`` + ELC path runs off-target and the copy
  * verifies. ra8_emulator's memory is byte-exact and it does **not** model the L1
  * D-cache, so the clean / invalidate calls are exercised (the line-size and
  * barrier logic run) but have no caching effect, and the poll falls through on its
  * first iteration. The cache hazard this app guards against is only observable on
- * real silicon. ``RA8_SIMULATOR_MODE`` is a host-unit-test define and is NOT set
+ * real silicon. ``RA8_OFF_TARGET`` is a host-unit-test define and is NOT set
  * for the ARM cross-build that ra8_emulator executes, so there is nothing to
  * ``#ifdef`` here.
  *

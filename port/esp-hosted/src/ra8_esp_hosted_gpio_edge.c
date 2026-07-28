@@ -41,7 +41,7 @@
 #include "ra8_pin_interface.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 #include "ra8_esp_hosted_tx_shim_sync_internal.h"
 #else
 #include "tx_api.h"

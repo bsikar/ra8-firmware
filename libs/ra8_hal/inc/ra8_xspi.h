@@ -56,7 +56,7 @@ ra8_xspi_direct_command(uint8_t instance, const uint8_t* cmd_buf, uint8_t len);
  * `INTS.CMDCMP` for completion, and copies the CDD0/CDD1 response
  * words into `buf`. Host unit tests exercise the identical sequence
  * against the register-level NOR model in
- * `tests/mocks/ra8_sim_xspi_flash.c`.
+ * `tests/mocks/ra8_fake_xspi_flash.c`.
  *
  * @param[in]  instance   xSPI instance (0 or 1).
  * @param[in]  flash_addr Flash offset to read from (3-byte addressable).
@@ -82,7 +82,7 @@ ra8_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf, uint32_
  * with chunks clamped to the 8-byte manual-command slot and to
  * 256-byte NOR page boundaries. Every build drives the identical
  * xSPI register sequence; host unit tests run it against the
- * register-level NOR model in `tests/mocks/ra8_sim_xspi_flash.c`.
+ * register-level NOR model in `tests/mocks/ra8_fake_xspi_flash.c`.
  *
  * @param[in] instance   xSPI instance.
  * @param[in] flash_addr Flash offset (3-byte addressable).

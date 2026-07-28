@@ -25,9 +25,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mipi_phy.h"
 #include "ra8_mipi_phy_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -90,7 +90,7 @@ static void stub_phy_cb(void* ctx, ra8_mipi_phy_event_t event, uint32_t sfr)
 
 static void prep_fixture(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_phy_cb_count      = 0U;
   s_phy_cb_last_sfr   = 0U;
   s_phy_cb_last_ctx   = nullptr;

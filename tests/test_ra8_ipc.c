@@ -14,11 +14,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_ipc.h"
 #include "ra8_ipc_regs.h"
 #include "ra8_isr.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "support/ipc_test_util.h"
 #include "unity_minimal.h"
 
@@ -368,7 +368,7 @@ static void test_send_burst_partial_on_full(void)
                                     data,
                                     (uint32_t)k_ra8_ipc_test_burst,
                                     &written));
-  /* Sim mmap returns whatever we wrote; STA stays at 0 so all 6 land. */
+  /* Fake mmap returns whatever we wrote; STA stays at 0 so all 6 land. */
   TEST_ASSERT_EQ(k_ra8_ipc_test_burst, written);
   TEST_ASSERT_EQ(0x66666666U, reg->TXD);
 

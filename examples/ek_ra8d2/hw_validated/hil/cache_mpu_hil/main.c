@@ -43,7 +43,7 @@
  *
  * @note ``ra8_emulator`` models memory byte-exact and does not model the L1 D-cache,
  *       so the cacheable-RW step passes there trivially; the cache hazard this
- *       app guards against is only real on silicon. The point of the sim run is
+ *       app guards against is only real on silicon. The point of the emulator run is
  *       to prove the app boots and reports PASS with the cache+MPU boot path
  *       compiled in.
  *

@@ -51,7 +51,7 @@
 #include "ra8_isr.h"
 #include "ra8_time.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "nx_api.h"
 #include "nx_ether_driver_ra8_eth.h"
 #include "tx_api.h"
@@ -177,7 +177,7 @@ static const uint8_t k_demo_ip[4] = {k_demo_ipaddr_0,
 /** @brief Subnet mask: 255.255.255.0. */
 static const uint8_t k_demo_mask[4] = {k_demo_netmask_b, k_demo_netmask_b, k_demo_netmask_b, 0U};
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* NetX Duo state. ThreadX requires statically-allocated control
  * blocks (NASA Power of 10 Rule 3 -- no dynamic memory). */
 static NX_PACKET_POOL s_packet_pool;
@@ -190,7 +190,7 @@ static ULONG          s_arp_cache[k_demo_arp_cache / sizeof(ULONG)];
 /* ThreadX worker thread. */
 static TX_THREAD s_demo_thread;
 static UCHAR     s_demo_stack[k_demo_thread_stack];
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Halt forever in WFI.
@@ -291,7 +291,7 @@ static char* demo_append_byte(char* buf, uint8_t v)
   return buf;
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Pack a 4-octet IPv4 array into NetX's host-order ULONG.
  *
@@ -591,7 +591,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -611,7 +611,7 @@ int32_t main(void)
   ra8_isr_globals_enable();
   demo_print("[netx] booting ThreadX + NetX Duo...\r\n");
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* Hands control over to ThreadX permanently. */
   tx_kernel_enter();
 #endif

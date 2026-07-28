@@ -64,7 +64,7 @@
 #include "ra8_rsip.h"
 #include "ra8_time.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* Mbed TLS 4.x relocated the legacy crypto primitive headers under
  * `mbedtls/private/`. The TLS / X.509 layer headers stay at the
  * public top level. */
@@ -232,7 +232,7 @@ static const uint8_t k_demo_cert_pin_sha256[32] = {
   0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
 };
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* NetX Duo state. ThreadX requires statically-allocated control
  * blocks (NASA Power of 10 Rule 3 -- no dynamic memory). */
 static NX_PACKET_POOL s_packet_pool;
@@ -258,7 +258,7 @@ static mbedtls_entropy_context  s_entropy;
 
 static UCHAR s_request_buf[k_demo_request_buf];
 static UCHAR s_response_buf[k_demo_response_buf];
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Halt forever in WFI. Called on any fatal error.
@@ -349,7 +349,7 @@ static void demo_write_bytes(const uint8_t* buf, uint32_t len)
   (void)ra8_board_uart_console_write(buf, (size_t)len);
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Pack a 4-octet IPv4 array into NetX's host-order ULONG.
  *
@@ -930,7 +930,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -950,7 +950,7 @@ int32_t main(void)
   ra8_isr_globals_enable();
   demo_print("[https] booting ThreadX + NetX Duo + Mbed TLS...\r\n");
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

@@ -12,7 +12,7 @@
  *     correctly classifies the whole region;
  *   - write-block rejects a span that crosses the 32-byte page boundary
  *     (start at byte 30 of a page with len > 2 must be rejected);
- *   - config-set write rollback simulation: the MACI sequence sets
+ *   - config-set write rollback scenario: the MACI sequence sets
  *     MSTATR.OTERR mid-sequence -> the call returns hw_error rather
  *     than reporting a phantom success;
  *   - extra-MRAM erase argument validation (address out of window);
@@ -27,10 +27,10 @@
 #include <stdio.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_flash.h"
 #include "ra8_flash_internal.h"
 #include "ra8_flash_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -75,7 +75,7 @@ static ra8_flash_cfg_t make_cfg(void)
 static void test_blank_check_partial_page(void)
 {
   TEST_BEGIN("flash blank_check on partially-erased page returns false");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
@@ -112,7 +112,7 @@ static void test_blank_check_partial_page(void)
 static void test_blank_check_page_boundary(void)
 {
   TEST_BEGIN("flash blank_check spanning page boundary");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
@@ -143,7 +143,7 @@ static void test_blank_check_page_boundary(void)
 static void test_write_block_crosses_page(void)
 {
   TEST_BEGIN("flash write_block rejects spans crossing the 32-byte page");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const uint8_t buf[32] = {};
   /* Start at byte 30 of a page with 8 bytes of payload -> would cross
    * into the next page. The driver must reject this without writing. */
@@ -160,7 +160,7 @@ static void test_write_block_crosses_page(void)
   TEST_END("flash write_block rejects spans crossing the 32-byte page");
 }
 
-/* --- config-set write rollback under simulated mid-sequence error --- */
+/* --- config-set write rollback under fake mid-sequence error --- */
 
 /**
  * @par MC/DC:
@@ -171,7 +171,7 @@ static void test_write_block_crosses_page(void)
 static void test_config_set_write_error_rollback(void)
 {
   TEST_BEGIN("flash config_set_write returns hw_error when MSTATR sets OTERR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pre-stage MSTATR with MRDY (so the wait succeeds) AND OTERR (so the
    * post-wait error scan reports hw_error). This mirrors a power-fail
@@ -197,7 +197,7 @@ static void test_config_set_write_error_rollback(void)
 static void test_extra_mram_erase_bad_addr(void)
 {
   TEST_BEGIN("flash extra_mram_erase rejects address outside the window");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_flash_extra_mram_erase((uint32_t)k_flash_edge_addr_extra_bad));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -216,7 +216,7 @@ static void test_extra_mram_erase_bad_addr(void)
 static void test_write_during_read_collision(void)
 {
   TEST_BEGIN("flash config_set_write returns hw_timeout if MRDY never asserts");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* MRDY left clear -> internal_wait_mrdy exhausts its budget. */
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = 0U;
 
@@ -279,7 +279,7 @@ static void test_mcdc_flash_window_allows_pure(void)
  *
  * Reaches the production helper directly through
  * @ref ra8_flash_internal_wait_buffer_ready_call (test-access wrapper)
- * with the simulator-backed MRCPS register pre-populated.
+ * with the fake-backed MRCPS register pre-populated.
  *
  * - V1: MRCPS = PRGBSYC|ABUFFULL -> C1=F, C2=F. Decision F. With limit=2
  *       the loop exhausts and returns hw_timeout.
@@ -292,7 +292,7 @@ static void test_mcdc_flash_window_allows_pure(void)
 static void test_mcdc_flash_wait_buffer_ready_pair(void)
 {
   TEST_BEGIN("flash MC/DC: wait_buffer_ready AND (line 150)");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* V1: both bits set -> decision F every iteration -> timeout. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) =
@@ -331,7 +331,7 @@ static void test_mcdc_flash_wait_buffer_ready_pair(void)
 static void test_mcdc_flash_wait_commit_done_pair(void)
 {
   TEST_BEGIN("flash MC/DC: wait_commit_done AND (line 181)");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* V1: ABUFEMP=0, PRGBSYC=0 -> C1=F shorts -> timeout. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = 0U;

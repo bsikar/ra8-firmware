@@ -11,10 +11,10 @@
 #include "ra8_err.h"
 #include "ra8_eth.h"
 #include "ra8_ether_regs.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_rmac.h"
 #include "ra8_rmac_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /** @brief Distinguishable frame payloads across the transmit cases. */
@@ -84,7 +84,7 @@ static void stub_eth_cb(void* ctx, uint32_t mask)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_eth_cb_count     = 0U;
   s_eth_cb_last_mask = 0U;
@@ -468,7 +468,7 @@ static void test_link_status_via_mdio(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
 
-  /* Both MDIO reads complete via the unarmed ra8_sim_mmio seam (each
+  /* Both MDIO reads complete via the unarmed ra8_fake_mmio seam (each
    * MPSM wait converges on its first poll); no MMIS1 pre-arm needed. */
   ra8_rmac(k_ra8_rmac_port_0)->MPSM = 0U; /* PRD = 0 -> link not up */
   ra8_eth_link_t out                = {};

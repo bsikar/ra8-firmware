@@ -6,7 +6,7 @@
  * Round-3 coverage: every public entry point in `ra8_lvd.h` is exercised
  * with at least one happy-path test plus the relevant bad-arg paths.
  * Sequencing is verified by reading back the registers through the
- * sim mmap. This sibling owns the init / deinit and single-bit setter
+ * fake mmap. This sibling owns the init / deinit and single-bit setter
  * contract tests; the runtime-control, dispatch, threshold-sweep, and
  * MC/DC vector tests live in test_ra8_lvd_ctrl.c.
  *
@@ -15,10 +15,10 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_lvd.h"
 #include "ra8_lvd_internal.h"
 #include "ra8_lvd_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -39,7 +39,7 @@ typedef enum : uint32_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* Always clear the static callbacks so leftover state from a previous
    * test doesn't fire when a later test only verifies registers. */
   (void)ra8_lvd_attach_handler(nullptr, nullptr);

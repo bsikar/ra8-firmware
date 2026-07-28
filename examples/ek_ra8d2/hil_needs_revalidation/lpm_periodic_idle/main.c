@@ -48,7 +48,7 @@
  *
  * @note ra8_emulator does not model Software-Standby clock-gating: it
  *       fast-forwards WFI to the next SysTick, so the periodic loop
- *       advances in the simulator (boot, the work banners, and PASS all
+ *       advances in the fake (boot, the work banners, and PASS all
  *       print) but the genuine ULPT0 self-wake -- the LOCO-clocked
  *       underflow cancelling Software Standby -- can only be confirmed
  *       on the bench, exactly as ``lpm_ulpt_standby`` was. This example

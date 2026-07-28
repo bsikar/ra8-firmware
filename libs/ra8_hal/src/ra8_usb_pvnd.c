@@ -184,7 +184,7 @@ ra8_err_t ra8_usb_pvnd_init(ra8_usb_speed_t speed)
      * only fails when ra8_usb_configure_endpoint rejects an argument, but the
      * class layer feeds it compile-time-constant, always-valid pipe / endpoint
      * / direction / type / max-packet values, so pipes_err is k_ra8_ok on every
-     * host run. No simulator register seed can change these constants. */
+     * host run. No fake register seed can change these constants. */
     (void)ra8_usb_device_deinit(speed);
     return pipes_err;
     /* GCOVR_EXCL_STOP */

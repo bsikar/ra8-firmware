@@ -22,11 +22,11 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_i3c_i2c.h"
 #include "ra8_i3c_i2c_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -73,8 +73,8 @@ static uint8_t s_iic_b_edge_long[k_i2c_oversize_bytes];
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -85,7 +85,7 @@ static void prime_ntst_and_bus(uint8_t channel)
   reg->BCST = (uint32_t)k_ra8_i3c_i2c_msk_bcst_bfref;
 }
 
-/* Deterministic NACK injection via the ra8_sim_mmio poll-hook -- it runs inline on
+/* Deterministic NACK injection via the ra8_fake_mmio poll-hook -- it runs inline on
  * the driver's OWN poll thread (no wall-clock timer, no concurrent servicer
  * thread to race or starve). We cannot pre-arm BST.NACKDF because the driver
  * clears BST at the start of every transfer; the hook instead re-asserts
@@ -117,7 +117,7 @@ static void iic_b_nack_hook(void)
 static void iic_b_nack_hook_arm(uint8_t channel)
 {
   s_nack_ch = channel;
-  ra8_sim_mmio_set_poll_hook(iic_b_nack_hook);
+  ra8_fake_mmio_set_poll_hook(iic_b_nack_hook);
 }
 
 /**
@@ -125,7 +125,7 @@ static void iic_b_nack_hook_arm(uint8_t channel)
  */
 static void iic_b_nack_hook_disarm(void)
 {
-  ra8_sim_mmio_set_poll_hook(nullptr);
+  ra8_fake_mmio_set_poll_hook(nullptr);
 }
 
 /* --- Bus-busy gate during repeated START attempts --- */

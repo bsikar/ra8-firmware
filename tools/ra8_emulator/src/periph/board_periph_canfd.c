@@ -9,7 +9,7 @@
  * out in the sparse fallback. Two behaviours are modelled on top of a flat
  * read-back register store:
  *
- *  - **Mode handshakes.** The driver (built without RA8_SIMULATOR_MODE for the
+ *  - **Mode handshakes.** The driver (built without RA8_OFF_TARGET for the
  *    real cross-compiled .elf) polls the global / channel state machine after
  *    each mode write and treats a stuck poll as a timeout. So a write to
  *    CFDGCTR.GMDC is reflected into CFDGSTS (reset -> GRSTSTS, halt -> GHLTSTS,

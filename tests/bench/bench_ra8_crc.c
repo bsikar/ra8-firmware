@@ -3,13 +3,13 @@
  * @brief Microbenchmark: CRC-32 (IEEE 802.3) over 1 KiB / 16 KiB / 1 MiB.
  *
  * @details
- * Drives `ra8_crc_compute()` via the host-side simulator MMIO mock
+ * Drives `ra8_crc_compute()` via the host-side fake MMIO mock
  * exactly as the unit-test suite does, then reports per-iteration
- * latency and effective throughput. The simulator's CRC accelerator
+ * latency and effective throughput. The fake's CRC accelerator
  * model is a portable C reference implementation, so the resulting
  * numbers reflect the host's general-purpose ALU rather than the
  * RA8D2's hardware CRC peripheral; the benchmark is still useful for
- * regression-tracking the simulator path and for sanity-checking the
+ * regression-tracking the off-target path and for sanity-checking the
  * driver-call overhead.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

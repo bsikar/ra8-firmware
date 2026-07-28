@@ -63,7 +63,7 @@ confirming the load + display path actually ran.
 
 **The model is load-bearing (EIL == HIL):** run without `--eink` and the panel's
 `HRDY` never asserts, so `ra8_epaper_init` times out and the app honestly prints
-`epaper: FAIL`. The sim only passes because the modelled controller responds
+`epaper: FAIL`. The fake only passes because the modelled controller responds
 exactly as silicon would.
 
 ## Why this is in hw_pending

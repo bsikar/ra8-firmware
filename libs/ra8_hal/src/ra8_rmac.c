@@ -286,7 +286,7 @@ static ra8_err_t internal_mdio_drain(volatile r_rmac_regs_t* reg)
    * to MPSM while PSME=1 has no effect, so the bus must be idle first).
    * ra8_hw_wait_flag_clear32 runs the same real poll/timeout loop on the
    * host unit-test build, where each iteration is routed through the
-   * ra8_sim_mmio seam so a test can drive PSME clearing or a timeout. */
+   * ra8_fake_mmio seam so a test can drive PSME clearing or a timeout. */
   return ra8_hw_wait_flag_clear32(&reg->MPSM,
                                   (uint32_t)k_ra8_rmac_mpsm_psme,
                                   (uint32_t)k_ra8_rmac_mdio_poll_budget);
@@ -306,10 +306,10 @@ static ra8_err_t internal_mdio_drain(volatile r_rmac_regs_t* reg)
  *
  * The real PSME poll runs on every build. On the host unit-test
  * build each poll's loop-exit decision is routed through the
- * ra8_sim_mmio fault seam keyed on MPSM: first-poll success when no
+ * ra8_fake_mmio fault seam keyed on MPSM: first-poll success when no
  * fault is armed, or a test-armed retry / timeout leg (T1-01). The
  * drain in ::internal_mdio_drain polls the same MPSM address, so a
- * test isolates THIS wait with ``ra8_sim_mmio_fail_nth_wait``.
+ * test isolates THIS wait with ``ra8_fake_mmio_fail_nth_wait``.
  *
  * @param[in] reg  RMAC register window.
  * @param[in] mask MMIS1 completion bit this op sets; cleared via MMID1
@@ -333,9 +333,9 @@ static ra8_err_t internal_mdio_wait(volatile r_rmac_regs_t* reg, uint32_t mask)
   for (uint32_t i = 0; i < k_ra8_rmac_mdio_poll_budget; ++i) {
     /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1708 */
     const bool done = ((reg->MPSM & (uint32_t)k_ra8_rmac_mpsm_psme) == 0U);
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam, keyed on MPSM (the polled register). */
-    if (ra8_sim_mmio_wait_eval(&reg->MPSM, i, done)) {
+    if (ra8_fake_mmio_wait_eval(&reg->MPSM, i, done)) {
       /* HUM Ch 33 "MMID1 / MMIS1" p 1707 */
       reg->MMID1 = mask;
       return k_ra8_ok;

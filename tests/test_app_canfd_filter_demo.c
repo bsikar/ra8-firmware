@@ -5,7 +5,7 @@
  * @details
  * Replays the two ``ra8_canfd_filter_set`` calls and the loopback
  * round-trip from the demo. All MMIO is via the host
- * tests/mocks/ra8_sim_mmap.c shim.
+ * tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -17,7 +17,7 @@
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -38,7 +38,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_canfd_init((uint8_t)k_test_filter_channel);
   (void)ra8_canfd_set_bitrate((uint8_t)k_test_filter_channel,
                               (uint32_t)k_test_filter_bitrate,

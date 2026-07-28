@@ -18,7 +18,7 @@
 #   7. Print overall line/function coverage % to stdout.
 #
 # On macOS the suite must run inside the project's Linux devcontainer
-# (the simulator's MAP_FIXED below 4 GiB is rejected by macOS arm64),
+# (the fake's MAP_FIXED below 4 GiB is rejected by macOS arm64),
 # so this script transparently shells out to docker just like
 # scripts/ci/test-docker.sh. On Linux it runs natively.
 #

@@ -612,7 +612,7 @@ static ra8_err_t internal_do_walk_desc(void)
  * @details The starter installs a "directed | broadcast | multicast"
  * default mask, mirroring the no-filter behaviour FSP installs in
  * `usb_hcdc_ecm_set_ethernet_packet_filter`. Stub MAC parsing fills
- * the device snapshot with a zero MAC since the simulated string
+ * the device snapshot with a zero MAC since the fake string
  * payload is not staged through the DCP data buffer; the production
  * CTRT path consumes the real GET_STRING_DESCRIPTOR data stage and
  * calls `ra8_usb_hcdc_ecm_parse_mac` directly. See USB CDC ECM 1.20

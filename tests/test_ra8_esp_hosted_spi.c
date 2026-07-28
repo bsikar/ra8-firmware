@@ -41,12 +41,12 @@
 #include "ra8_err.h"
 #include "ra8_esp_hosted_pins.h"
 #include "ra8_esp_hosted_spi_internal.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_io_spi_bus.h"
 #include "ra8_io_spi_bus_internal.h"
 #include "ra8_pin_interface.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_spi.h"
 #include "transport_drv.h"
 #include "unity_minimal.h"
@@ -222,13 +222,13 @@ static struct hosted_transport_context_t make_ctx(uint32_t len)
   return ctx;
 }
 
-/** @brief Restore every module and simulator fixture to a known state. */
+/** @brief Restore every module and fake fixture to a known state. */
 static void reset_state(void)
 {
   if (ra8_esp_hosted_spi_is_open()) {
     (void)ra8_esp_hosted_spi_close();
   }
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   for (uint32_t i = 0U; i < (uint32_t)k_spi_test_events_max; i++) {
     s_events[i] = (uint8_t)k_spi_test_event_none;

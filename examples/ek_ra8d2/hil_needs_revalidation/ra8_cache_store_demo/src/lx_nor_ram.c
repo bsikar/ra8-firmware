@@ -44,7 +44,7 @@ typedef enum : uint32_t {
 
 /**
  * @var s_ram_backing
- * @brief The simulated NOR media (persists across open/close within one boot).
+ * @brief The fake NOR media (persists across open/close within one boot).
  * @warning Written only through the driver callbacks and ::lx_nor_ram_wipe.
  * @since 0.1.0
  */

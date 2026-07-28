@@ -17,10 +17,10 @@
 #include "ra8_cnecc_regs.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_irq.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_irq.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -66,7 +66,7 @@ static void stub_cnecc_cb(void* ctx, uint8_t instance, bool is_2bit, uint16_t er
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_isr_init();
   s_cb_count         = 0U;
@@ -110,7 +110,7 @@ static void test_clear_status_writes_clear_mask(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cnecc_clear_status((uint8_t)k_ra8_cnecc_test_inst_first));
 
-  /* Sim mmap is dumb storage -- our clear writes the bundled
+  /* Fake mmap is dumb storage -- our clear writes the bundled
    * clear-all mask straight into EC710CTL. */
   TEST_ASSERT_EQ(k_ra8_cnecc_mask_clear_all, reg->EC710CTL);
   TEST_END("cnecc clear_status writes clear mask");
@@ -350,7 +350,7 @@ static void test_isr_handler_dispatches_and_clears(void)
                    (uint32_t)k_ra8_cnecc_mask_ecovff | (uint32_t)k_ra8_cnecc_mask_ecervf;
   reg->EC710EAD0 = (uint32_t)k_ra8_cnecc_test_addr_b;
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_irq_fire(k_ra8_elc_event_can1_mram_eri));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_irq_fire(k_ra8_elc_event_can1_mram_eri));
 
   /* Callback fired exactly once with 2-bit + correct address. */
   TEST_ASSERT_EQ(1, s_cb_count);
@@ -365,7 +365,7 @@ static void test_isr_handler_dispatches_and_clears(void)
   reg0->EC710CTL  = (uint32_t)k_ra8_cnecc_mask_ecer1f | (uint32_t)k_ra8_cnecc_mask_ecsedf0 |
                     (uint32_t)k_ra8_cnecc_mask_ecervf;
   reg0->EC710EAD0 = (uint32_t)k_ra8_cnecc_test_addr_a;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_irq_fire(k_ra8_elc_event_can0_mram_eri));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_irq_fire(k_ra8_elc_event_can0_mram_eri));
   TEST_ASSERT_EQ(2, s_cb_count);
   TEST_ASSERT_EQ(k_ra8_cnecc_test_inst_first, s_cb_last_instance);
   TEST_ASSERT(!s_cb_last_is_2bit);

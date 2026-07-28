@@ -11,7 +11,7 @@
 #     * The format gate pins clang-format-22; Homebrew (macOS) and Ubuntu ship
 #       different majors that disagree on edge cases.
 #     * The host unit tests install RAM with mmap(MAP_FIXED, 0x40000000, ...)
-#       (tests/mocks/ra8_sim_mmap.c). macOS arm64 refuses MAP_FIXED below 4 GiB,
+#       (tests/mocks/ra8_fake_mmap.c). macOS arm64 refuses MAP_FIXED below 4 GiB,
 #       so every test SIGKILLs before main() on the Mac.
 #   Running the gates inside the Ubuntu 24.04 devcontainer reproduces the runner
 #   environment, so a red gate is caught here instead of in CI.

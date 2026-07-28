@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_ipc.h"
 #include "ra8_isr.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 
 /**
  * @enum ipc_test_util_fixture_t
@@ -100,12 +100,12 @@ static inline void stub_ipc_nmi_cb(void* ctx, uint8_t unit)
 }
 
 /**
- * @brief Reset the sim mmap, the MMIO seam, and the callback counters.
+ * @brief Reset the fake mmap, the MMIO seam, and the callback counters.
  */
 static inline void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_isr_init();
   s_ipc_cb_count            = 0U;
   s_ipc_cb_last_channel     = k_ipc_ch_unset;

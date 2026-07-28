@@ -479,7 +479,7 @@ uint32_t board_periph_irq_total(void);
 bool board_periph_touch_last(uint16_t* x, uint16_t* y);
 
 /**
- * @brief Set the simulated battery state surfaced by the MAX17048 fuel gauge.
+ * @brief Set the emulated battery state surfaced by the MAX17048 fuel gauge.
  *
  * @details
  * The firmware reads state-of-charge + charge direction from a MAX17048-class
@@ -494,7 +494,7 @@ bool board_periph_touch_last(uint16_t* x, uint16_t* y);
 void board_periph_battery_set(uint8_t soc_pct, bool charging);
 
 /**
- * @brief Read back the simulated battery state (for the status overlay).
+ * @brief Read back the emulated battery state (for the status overlay).
  *
  * @param[out] out_soc      Receives the state-of-charge percent (NULL ok).
  * @param[out] out_charging Receives the charging flag (NULL ok).

@@ -25,7 +25,7 @@
  */
 
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_vreg.h"
 #include "ra8_vreg_regs.h"
 #include "unity_minimal.h"
@@ -95,7 +95,7 @@ static void stub_vreg_cb(void* ctx, uint8_t word)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_vreg_cb_count     = 0U;
   s_vreg_cb_last_word = 0U;
   /* Also detach any handler left over from a previous test. */
@@ -743,7 +743,7 @@ static void test_deinit_clears_regs(void)
 static void test_mcdc_ra8_vreg(void)
 {
   TEST_BEGIN("vreg MC/DC: set_mode + get_status 2-cond decisions");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_vreg_cfg_t cfg = make_cfg_dcdc();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vreg_init(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vreg_set_mode(k_ra8_vreg_mode_ldo));

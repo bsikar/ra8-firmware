@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: a HAL driver shall not guard bare CPU asm on RA8_SIMULATOR_MODE.
+"""Gate: a HAL driver shall not guard bare CPU asm on RA8_OFF_TARGET.
 
 Issue #293 (following #238) migrated every host-compatibility CPU primitive out
 of the HAL peripheral drivers and onto ONE shared seam:
@@ -11,14 +11,14 @@ of the HAL peripheral drivers and onto ONE shared seam:
 
 A driver that needs ``wfi`` / ``dsb`` / ``isb`` / ``nop`` / the ``cpsie i`` /
 ``cpsid i`` gate / the post-reset spin now calls ``ra8_hw_wfi()`` and friends;
-it carries NO ``#ifdef RA8_SIMULATOR_MODE`` of its own -- the seam owns the
+it carries NO ``#ifdef RA8_OFF_TARGET`` of its own -- the seam owns the
 host/target divergence. That keeps coverage and MC/DC landing on the real
 shipping path instead of a compiled-out detour, exactly as #238 intended.
 
 This gate keeps a NEW guard class from creeping back in. It FAILS if any
 translation unit under ``libs/ra8_hal/src/`` contains an inline-asm statement
 (``__asm`` / ``__asm__``) inside a preprocessor conditional whose controlling
-expression references ``RA8_SIMULATOR_MODE`` -- in EITHER branch. Comment text
+expression references ``RA8_OFF_TARGET`` -- in EITHER branch. Comment text
 is stripped first, so prose that merely mentions ``__asm__`` never trips it.
 
 Scope note: this is deliberately limited to ``libs/ra8_hal/src/`` -- the HAL
@@ -30,7 +30,7 @@ is not a peripheral-driver short-circuit; those are out of scope by design.
 
 There is no allowlist: route the primitive through ``ra8_hw_intrinsics.h`` (add
 a new one there and to the host stub if it is genuinely missing), never behind a
-fresh in-driver ``#ifdef RA8_SIMULATOR_MODE``.
+fresh in-driver ``#ifdef RA8_OFF_TARGET``.
 
 Run::
 
@@ -53,7 +53,7 @@ _RE_IF = re.compile(r"^\s*#\s*(if|ifdef|ifndef)\b(.*)$")
 _RE_ELIF = re.compile(r"^\s*#\s*elif\b(.*)$")
 _RE_ENDIF = re.compile(r"^\s*#\s*endif\b")
 _RE_ASM = re.compile(r"(?<![A-Za-z0-9_])__asm(__)?(?![A-Za-z0-9_])")
-_SIM = "RA8_SIMULATOR_MODE"
+_OFF_TARGET = "RA8_OFF_TARGET"
 
 
 def strip_comments(text: str) -> list[str]:
@@ -96,38 +96,38 @@ def check_file(path: Path) -> list[str]:
     lines = strip_comments(path.read_text(encoding="utf-8"))
 
     # Stack of booleans: does this open conditional's region reference the
-    # simulator flag (in its #if / any #elif)? A True anywhere on the stack
-    # means the current line compiles under a sim-conditioned region.
+    # fake flag (in its #if / any #elif)? A True anywhere on the stack
+    # means the current line compiles under a off-target-conditioned region.
     stack: list[bool] = []
     problems: list[str] = []
 
     for idx, line in enumerate(lines, start=1):
         m_if = _RE_IF.match(line)
         if m_if is not None:
-            stack.append(_SIM in m_if.group(2))
+            stack.append(_OFF_TARGET in m_if.group(2))
             continue
         m_elif = _RE_ELIF.match(line)
         if m_elif is not None:
             if stack:
-                stack[-1] = stack[-1] or (_SIM in m_elif.group(1))
+                stack[-1] = stack[-1] or (_OFF_TARGET in m_elif.group(1))
             continue
         if _RE_ENDIF.match(line):
             if stack:
                 stack.pop()
             continue
-        # #else keeps the frame's sim-reference flag: both branches of a
-        # `#ifdef RA8_SIMULATOR_MODE` are sim-conditioned regions.
+        # #else keeps the frame's off-target-reference flag: both branches of a
+        # `#ifdef RA8_OFF_TARGET` are off-target-conditioned regions.
         if _RE_ASM.search(line) and any(stack):
             problems.append(
                 f"{rel}:{idx}: inline asm '{line.strip()}' sits inside a "
-                f"{_SIM} conditional -- route it through "
+                f"{_OFF_TARGET} conditional -- route it through "
                 f"libs/ra8_hal/inc/ra8_hw_intrinsics.h instead"
             )
     return problems
 
 
 def main() -> int:
-    """Fail any HAL driver that guards bare CPU asm on RA8_SIMULATOR_MODE.
+    """Fail any HAL driver that guards bare CPU asm on RA8_OFF_TARGET.
 
     A missing driver directory exits 1 rather than 0. That is deliberate: this
     gate has a single hardcoded scan root, so the directory vanishing means
@@ -147,7 +147,7 @@ def main() -> int:
         all_problems.extend(check_file(path))
 
     if all_problems:
-        print("check_no_driver_asm_guard.py: a HAL driver guards bare asm on RA8_SIMULATOR_MODE:")
+        print("check_no_driver_asm_guard.py: a HAL driver guards bare asm on RA8_OFF_TARGET:")
         for p in all_problems:
             print(f"  {p}")
         print("Fix at the root -- call the ra8_hw_* primitive from")
@@ -158,7 +158,7 @@ def main() -> int:
 
     print(
         f"check_no_driver_asm_guard.py: PASS -- {len(drivers)} HAL driver TU(s) "
-        f"carry no RA8_SIMULATOR_MODE-guarded asm."
+        f"carry no RA8_OFF_TARGET-guarded asm."
     )
     return 0
 

@@ -58,21 +58,21 @@ typedef struct {
  */
 static ra8_dma_channel_state_t s_channels[k_ra8_dma_channel_count];
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 /**
- * @var s_sim_requests
+ * @var s_fake_requests
  * @brief Host-only copy of every submitted ``ra8_dma_request_t``.
  *
  * @details
  * The real DMSAR / DMDAR registers are 32-bit and cannot round-
  * trip a 64-bit host pointer. This side table stores the full
- * ``ra8_dma_request_t`` so test helpers like ``ra8_sim_dma_memcpy``
+ * ``ra8_dma_request_t`` so test helpers like ``ra8_fake_dma_memcpy``
  * can walk the real ``uintptr_t`` addresses instead of relying on
  * the truncated MMIO copy.
  *
  * Dropped by ``#ifdef`` on the target build.
  */
-static ra8_dma_request_t s_sim_requests[k_ra8_dma_channel_count];
+static ra8_dma_request_t s_fake_requests[k_ra8_dma_channel_count];
 #endif
 
 /**
@@ -335,8 +335,8 @@ ra8_err_t ra8_dma_request(const ra8_dma_request_t* req, uint8_t* out_channel)
   s_channels[ch].on_complete = req->on_complete;
   s_channels[ch].ctx         = req->ctx;
   s_channels[ch].in_use      = true;
-#ifdef RA8_SIMULATOR_MODE
-  s_sim_requests[ch] = *req;
+#ifdef RA8_OFF_TARGET
+  s_fake_requests[ch] = *req;
 #endif
   *out_channel = ch;
   return k_ra8_ok;
@@ -389,13 +389,13 @@ ra8_err_t ra8_dma_release(uint8_t channel)
   return k_ra8_ok;
 }
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 /**
  * @brief Host-only peek at the cached request for a channel.
  *
  * @details
  * Returns a pointer to the side-table copy of the original
- * ``ra8_dma_request_t`` so simulator code can inspect the full 64-bit
+ * ``ra8_dma_request_t`` so fake code can inspect the full 64-bit
  * host buffer pointers (the DMAC mirrors only hold 32-bit truncations).
  *
  * @param[in] channel Channel previously returned by ``ra8_dma_request()``.
@@ -404,7 +404,7 @@ ra8_err_t ra8_dma_release(uint8_t channel)
  * @retval non-NULL Pointer to the cached descriptor.
  * @retval nullptr  ``channel`` out of range or slot not in use.
  *
- * @pre Built with ``RA8_SIMULATOR_MODE`` defined.
+ * @pre Built with ``RA8_OFF_TARGET`` defined.
  * @pre ``ra8_dma_request()`` previously returned ``k_ra8_ok`` for ``channel``.
  * @post No firmware state mutated.
  * @post Returned pointer aliases the static side table.
@@ -412,7 +412,7 @@ ra8_err_t ra8_dma_release(uint8_t channel)
  * @note Test-only; not present on the target build.
  * @since 0.1.0
  */
-const ra8_dma_request_t* ra8_dma_sim_peek_request(uint8_t channel)
+const ra8_dma_request_t* ra8_dma_fake_peek_request(uint8_t channel)
 {
   if (channel >= k_ra8_dma_channel_count) {
     return nullptr;
@@ -420,7 +420,7 @@ const ra8_dma_request_t* ra8_dma_sim_peek_request(uint8_t channel)
   if (!s_channels[channel].in_use) {
     return nullptr;
   }
-  return &s_sim_requests[channel];
+  return &s_fake_requests[channel];
 }
 #endif
 
@@ -440,7 +440,7 @@ ra8_err_t ra8_dma_channel_is_busy(uint8_t channel, bool* out_busy)
  * @details
  * Looks up the stashed callback / context for ``channel`` and invokes
  * the callback if non-NULL. Called from the DMAC IRQ trampoline (or
- * from a unit-test driver in simulator mode). Out-of-range channels
+ * from a unit-test driver in off-target mode). Out-of-range channels
  * are silently ignored.
  *
  * @param[in] channel Channel whose completion just fired.

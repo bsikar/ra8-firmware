@@ -23,8 +23,8 @@
 #include <stdio.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_sram.h"
 #include "unity_minimal.h"
 
@@ -60,7 +60,7 @@ static ra8_sram_config_t mecc_test_cfg(void)
 static void test_mem_ecc_1bit_decodes_correctable(void)
 {
   TEST_BEGIN("mem_ecc: 1-bit injection decodes as correctable");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   const ra8_sram_config_t cfg = mecc_test_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
@@ -82,7 +82,7 @@ static void test_mem_ecc_1bit_decodes_correctable(void)
   TEST_ASSERT((st.two_bit_mask & (uint8_t)k_mecc_t_bank_bit) == 0U); /* not 2-bit     */
 
   /* clear_status writes the SRAMESCLR W1C register (HUM 58.2.13); the host MMIO
-   * sim models registers as plain RAM and does not replay the SRAMESCLR ->
+   * emulator models registers as plain RAM and does not replay the SRAMESCLR ->
    * SRAMESR clear linkage, so assert the clear call succeeds (as test_ra8_sram
    * does) rather than re-reading a zeroed latch -- the latch-clear itself is
    * exercised on silicon (and in the ra8_emulator SRAMESR model). */
@@ -103,7 +103,7 @@ static void test_mem_ecc_1bit_decodes_correctable(void)
 static void test_mem_ecc_2bit_decodes_uncorrectable(void)
 {
   TEST_BEGIN("mem_ecc: 2-bit injection decodes as uncorrectable");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   const ra8_sram_config_t cfg = mecc_test_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
@@ -123,7 +123,7 @@ static void test_mem_ecc_2bit_decodes_uncorrectable(void)
   TEST_ASSERT((st.two_bit_mask & (uint8_t)k_mecc_t_bank_bit) != 0U); /* 2-bit latched */
   TEST_ASSERT((st.one_bit_mask & (uint8_t)k_mecc_t_bank_bit) == 0U); /* not 1-bit     */
 
-  /* See the 1-bit test: the host MMIO sim does not replay the SRAMESCLR ->
+  /* See the 1-bit test: the host MMIO fake does not replay the SRAMESCLR ->
    * SRAMESR clear linkage, so assert the clear call succeeds rather than the
    * re-read; the latch-clear is exercised on silicon + the ra8_emulator model. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_clear_status(st.raw_esr));

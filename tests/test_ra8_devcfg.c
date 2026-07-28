@@ -6,7 +6,7 @@
  * Pure host tests. The durable medium is reached only through the injected
  * ::ra8_devcfg_store_t seam, so every branch is drivable from a RAM mock. A
  * final section drives the production ::ra8_devcfg_default_store binding
- * through its ``RA8_SIMULATOR_MODE`` RAM shadow.
+ * through its ``RA8_OFF_TARGET`` RAM shadow.
  *
  * What we cover:
  *   - Codec round-trip: commit then load reproduces every body field.

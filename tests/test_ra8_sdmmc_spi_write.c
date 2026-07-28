@@ -18,13 +18,13 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_fs.h"
 #include "ra8_mstp.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_sci_regs.h"
 #include "ra8_sdmmc_spi.h"
-#include "ra8_sim_mmap.h"
 #include "support/sdmmc_spi_test_util.h"
 #include "unity_minimal.h"
 

@@ -12,7 +12,7 @@ verifies the recovered plaintext matches the original byte-for-byte.
 - The result is logged over SCI8 (115200 8N1, J-Link OB CDC port) as
   `aes: round-trip OK` or `aes: round-trip FAIL`.
 
-The per-app CMake forces `RA8_SIMULATOR_MODE` so `ra8_psa_crypto` uses
+The per-app CMake forces `RA8_OFF_TARGET` so `ra8_psa_crypto` uses
 its in-tree soft-fallback AEAD implementation -- no RSIP keys, no
 Mbed TLS in the link. Once `RA8_USE_MBEDTLS=ON` ships, the same
 source rebuilds against real AES-GCM with no edits.

@@ -17,12 +17,12 @@
 
 #include "ra8_dma.h"
 #include "ra8_err.h"
+#include "ra8_fake_dma.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_sci.h"
 #include "ra8_sci_regs.h"
-#include "ra8_sim_dma.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -51,8 +51,8 @@ typedef enum : uint32_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -93,13 +93,13 @@ static void test_write_dma_streams_buffer_to_tdr(void)
     ra8_sci_write_dma(0U, src, (uint16_t)sizeof(src), stub_dma_done, nullptr, &dma_ch));
   TEST_ASSERT(dma_ch < 8U);
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_memcpy(dma_ch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_memcpy(dma_ch));
   volatile const r_sci_regs_t* reg = ra8_sci(0U);
   /* Last byte streamed lands in TDR (dst_inc=false). DMA writes are
    * byte-wide, so only the low 8 bits of TDR are loaded. */
   TEST_ASSERT_EQ(0xDDU, (reg->TDR & 0xFFU));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_complete(dma_ch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_complete(dma_ch));
   TEST_ASSERT_EQ(1, s_dma_complete_count);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_release(dma_ch));
   TEST_END("ra8_sci_write_dma: buffer streams into TDR via DMA");
@@ -128,13 +128,13 @@ static void test_read_dma_streams_rdr_to_buffer(void)
                  ra8_sci_read_dma(0U, out, (uint16_t)sizeof(out), stub_dma_done, nullptr, &dma_ch));
   TEST_ASSERT(dma_ch < 8U);
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_memcpy(dma_ch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_memcpy(dma_ch));
   /* RDR (src_inc=false) was 0x42 throughout, so all destinations match. */
   TEST_ASSERT_EQ(0x42U, out[0]);
   TEST_ASSERT_EQ(0x42U, out[1]);
   TEST_ASSERT_EQ(0x42U, out[2]);
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_complete(dma_ch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_complete(dma_ch));
   TEST_ASSERT_EQ(1, s_dma_complete_count);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_release(dma_ch));
   TEST_END("ra8_sci_read_dma: RDR streams into buffer via DMA");

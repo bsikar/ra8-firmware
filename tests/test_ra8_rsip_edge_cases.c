@@ -15,7 +15,7 @@
  *   - AES-GCM null-arg matrix exhaustively rejects each null pointer;
  *   - status-clear rejects garbage masks (bits outside the ISR field);
  *   - TRNG output-bias sanity check: across 4096 bytes the byte-value
- *     histogram has expected variance bounds. The simulator backs
+ *     histogram has expected variance bounds. The fake backs
  *     RND_DATA with a constant sentinel, so the byte-distribution is
  *     deterministic; we still assert the output buffer is not all-zero
  *     (the most common silent-failure mode).
@@ -28,10 +28,10 @@
 #include <stdio.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_rsip.h"
 #include "ra8_rsip_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -67,7 +67,7 @@ typedef enum : uint32_t {
 
 static void prep_running(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));

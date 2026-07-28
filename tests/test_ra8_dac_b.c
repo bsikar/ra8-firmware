@@ -9,8 +9,8 @@
 #include "ra8_dac_b.h"
 #include "ra8_dac_b_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -53,7 +53,7 @@ typedef enum : uint16_t {
 static void test_init_clears_regs(void)
 {
   TEST_BEGIN("dac_b init clears both instances");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_dac_b_regs_t* reg0 = ra8_dac_b((uint8_t)k_ra8_dac_b_test_ch_0);
   volatile r_dac_b_regs_t* reg1 = ra8_dac_b((uint8_t)k_ra8_dac_b_test_ch_1);
@@ -79,7 +79,7 @@ static void test_init_clears_regs(void)
 static void test_write_channel_0(void)
 {
   TEST_BEGIN("dac_b write channel 0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_init());
   /* Pre-arm channel 0 (FSP order: Open clears DACR0; Start sets DACEN). */
@@ -104,7 +104,7 @@ static void test_write_channel_0(void)
 static void test_write_channel_1(void)
 {
   TEST_BEGIN("dac_b write channel 1");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_set_output_enable(1U, true));
@@ -126,7 +126,7 @@ static void test_write_channel_1(void)
 static void test_write_clamps_over_range(void)
 {
   TEST_BEGIN("dac_b write clamps over-range");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_dac_b_write((uint8_t)k_ra8_dac_b_test_ch_0, (uint16_t)k_ra8_dac_b_test_over));
@@ -145,7 +145,7 @@ static void test_write_clamps_over_range(void)
 static void test_write_bad_channel(void)
 {
   TEST_BEGIN("dac_b write bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_dac_b_write((uint8_t)k_ra8_dac_b_test_ch_bad, (uint16_t)k_ra8_dac_b_test_mid));
@@ -166,7 +166,7 @@ static void stub_dac_cb(void* ctx, uint8_t ch)
 
 static void prep_w42(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_dac_cb_count   = 0U;
   s_dac_cb_last_ch = 0U;

@@ -15,7 +15,7 @@
  *     only after ``internal_etha_to_operation`` returns ``k_ra8_ok``.
  *     On the happy path ``ra8_rmac_phy_reset``,
  *     ``ra8_rmac_phy_set_advertise``, and ``ra8_rmac_phy_auto_neg_start``
- *     succeed (their MPSM waits consult the unarmed ra8_sim_mmio seam),
+ *     succeed (their MPSM waits consult the unarmed ra8_fake_mmio seam),
  *     while ``ra8_rmac_phy_auto_neg_wait`` times out because BMSR is 0.
  *     Each per-step error leg is reached by arming the seam to fail the
  *     matching MPSM wait-loop (fail_wait / fail_nth_wait).
@@ -27,32 +27,32 @@
 #include "ra8_err.h"
 #include "ra8_etha.h"
 #include "ra8_etha_regs.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_rmac.h"
 #include "ra8_rmac_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
- * @brief Reset all simulated peripheral state before each test.
+ * @brief Reset all fake peripheral state before each test.
  *
  * @details Wipes every peripheral register window to zero via
- * ``ra8_sim_mmap_reset``, then re-gates clocks via ``ra8_mstp_init`` so
+ * ``ra8_fake_mmap_reset``, then re-gates clocks via ``ra8_mstp_init`` so
  * subsequent ``ra8_etha_init`` / ``ra8_rmac_init`` calls see the expected
  * post-reset baseline.
  *
  * @pre None.
  * @pre None.
- * @post All simulated MMIO registers are zero.
+ * @post All fake MMIO registers are zero.
  * @post MSTP clock-gate registers are in their default enabled state.
  * @note Not thread-safe; each test is single-threaded.
  * @since 0.1.0
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -75,9 +75,9 @@ static void prep(void)
  * the call, the first poll iteration sees the expected value and exits
  * early.  Control then passes to the three MDIO calls --
  * ``ra8_rmac_phy_reset``, ``ra8_rmac_phy_set_advertise``, and
- * ``ra8_rmac_phy_auto_neg_start`` -- which all succeed in sim mode.
+ * ``ra8_rmac_phy_auto_neg_start`` -- which all succeed off-target mode.
  * ``ra8_rmac_phy_auto_neg_wait`` polls BMSR, which reads zero from the
- * sim backing (no auto-neg handshake possible), and times out after the
+ * fake backing (no auto-neg handshake possible), and times out after the
  * 100-iteration cap imposed by ``timeout_ms = 1``.
  *
  * @par MC/DC:
@@ -127,7 +127,7 @@ static void test_etha_open_covers_phy_seq(void)
 
   /* Expected outcome: EAMC -> OPERATION (internal_etha_to_operation converges
    * on its first poll); phy_reset, set_advertise, auto_neg_start all return
-   * k_ra8_ok in sim; auto_neg_wait times out because BMSR reads as 0
+   * k_ra8_ok off-target; auto_neg_wait times out because BMSR reads as 0
    * -> k_ra8_err_hw_timeout. */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_etha_open(k_ra8_etha_port_0, &phy, &lk));
   TEST_ASSERT_EQ(k_ra8_etha_opc_operation,
@@ -141,14 +141,14 @@ static void test_etha_open_covers_phy_seq(void)
  * @brief Bring ETHA port 0 + RMAC port 0 up and pre-seed EAMS.
  *
  * @details Shared fixture for the ``ra8_etha_open`` PHY-step error-leg
- * tests: resets the sim backing, initialises the ETHA and RMAC ports
+ * tests: resets the fake backing, initialises the ETHA and RMAC ports
  * with the same minimal configs the happy-path case uses, and
  * pre-seeds EAMS so ``internal_etha_to_operation`` converges on its
  * first poll, leaving the MPSM wait-loop count at zero when
  * ``ra8_etha_open`` reaches the PHY sequence.
  *
- * @pre The test binary owns the sim MMIO window (single-threaded).
- * @pre No ra8_sim_mmio fault is armed (prep disarms them).
+ * @pre The test binary owns the fake MMIO window (single-threaded).
+ * @pre No ra8_fake_mmio fault is armed (prep disarms them).
  * @post ETHA port 0 and RMAC port 0 are initialised.
  * @post EAMS reads OPERATION so the mode poll exits immediately.
  * @note Not thread-safe; call from the test body only.
@@ -190,7 +190,7 @@ static void open_fixture(void)
  * (write pair + one BMCR-poll read pair), set_advertise 4-5, and
  * auto_neg_start 6-7. Failing wait-loop 0 / 4 / 6 therefore lands on
  * the phy_reset / set_advertise / auto_neg_start error leg of
- * ``ra8_etha_open`` -- all three previously dead on host while the sim
+ * ``ra8_etha_open`` -- all three previously dead on host while the fake
  * MDIO path auto-completed via MMIS1 arming.
  */
 static void test_etha_open_phy_step_error_legs(void)
@@ -205,20 +205,20 @@ static void test_etha_open_phy_step_error_legs(void)
 
   /* Leg 1: phy_reset fails (its BMCR write's drain, wait-loop 0). */
   open_fixture();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(mpsm, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(mpsm, 0U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_etha_open(k_ra8_etha_port_0, &phy, &lk));
   TEST_ASSERT(!lk.up);
 
   /* Leg 2: phy_reset completes (loops 0-3), set_advertise's drain
    * (wait-loop 4) fails. */
   open_fixture();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(mpsm, 4U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(mpsm, 4U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_etha_open(k_ra8_etha_port_0, &phy, &lk));
 
   /* Leg 3: set_advertise completes (loops 4-5), auto_neg_start's drain
    * (wait-loop 6) fails. */
   open_fixture();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(mpsm, 6U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(mpsm, 6U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_etha_open(k_ra8_etha_port_0, &phy, &lk));
 
   TEST_END("etha_open: each PHY step's MDIO error leg is surfaced");
@@ -234,7 +234,7 @@ static void test_etha_open_phy_step_error_legs(void)
  * @return int32_t Always 0 on success.
  * @retval 0 All tests passed.
  *
- * @pre The process runs in an environment where ``RA8_SIMULATOR_MODE``
+ * @pre The process runs in an environment where ``RA8_OFF_TARGET``
  *      is defined (guaranteed by the test build system).
  * @pre Standard I/O is available for test reporting.
  * @post All test functions have completed without assertion failure.

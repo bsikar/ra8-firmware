@@ -21,7 +21,7 @@
 
 #include "ra8_err.h"
 #include "ra8_error_handler.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -62,7 +62,7 @@ static void install_sigill_handler(void)
 static void test_fatal_error_path(void)
 {
   TEST_BEGIN("internal_ra8_fatal_error executes body then traps");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_trap_hit = 0;
   install_sigill_handler();
 
@@ -84,7 +84,7 @@ static void test_fatal_error_path(void)
 static void test_fatal_error_zero_code(void)
 {
   TEST_BEGIN("internal_ra8_fatal_error with err=0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_trap_hit = 0;
   install_sigill_handler();
 
@@ -106,7 +106,7 @@ static void test_fatal_error_zero_code(void)
 static void test_fatal_error_large_code(void)
 {
   TEST_BEGIN("internal_ra8_fatal_error with large err");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_trap_hit = 0;
   install_sigill_handler();
 

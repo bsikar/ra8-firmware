@@ -56,20 +56,20 @@ typedef enum : uint32_t {
   k_ra8_rot_ar_erased = 0xFFFFFFFFU, /**< Erased word: no version stored yet. */
 } ra8_rot_ar_nv_t;
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 /**
- * @var s_sim_ar_counter
+ * @var s_fake_ar_counter
  * @brief Host-test RAM shadow of the extra-MRAM anti-rollback counter.
- * @details The host unit-test simulator models the flash MACI *registers* but
+ * @details The host unit-test fake models the flash MACI *registers* but
  *          not the extra-MRAM *data* side, so writes never round-trip through
- *          ``k_ra8_flash_extra_start``. Under RA8_SIMULATOR_MODE the durable read/commit use
+ *          ``k_ra8_flash_extra_start``. Under RA8_OFF_TARGET the durable read/commit use
  *          this word instead; silicon and ra8_emulator exercise the real
  *          extra-MRAM path in the ``#else`` branch.
  * @note File-private; the anti-rollback host test seeds it directly.
  * @warning Test seam only -- never compiled into a silicon image.
  * @since 0.1.0
  */
-static uint32_t s_sim_ar_counter = (uint32_t)k_ra8_rot_ar_erased;
+static uint32_t s_fake_ar_counter = (uint32_t)k_ra8_rot_ar_erased;
 #endif
 
 /**
@@ -94,7 +94,7 @@ ra8_err_t ra8_rot_antirollback_check(uint32_t image_version, uint32_t stored_min
   return k_ra8_ok;
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @var g_ra8_rot_ar_probing
  * @brief Set only while ::internal_probe_counter reads the counter word.
@@ -187,7 +187,7 @@ RA8_INTERNAL static uint32_t internal_probe_counter(bool* out_blank)
   *out_blank           = g_ra8_rot_ar_faulted;
   return g_ra8_rot_ar_faulted ? (uint32_t)k_ra8_rot_ar_erased : raw;
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Default-store read: load the durable highest-accepted version.
@@ -220,8 +220,8 @@ RA8_INTERNAL static uint32_t internal_probe_counter(bool* out_blank)
 RA8_INTERNAL static ra8_err_t internal_default_store_read(uint32_t* out_min_version)
 {
   RA8_CHECK_NULL_PTR(out_min_version, s_tag, "out_min_version");
-#ifdef RA8_SIMULATOR_MODE
-  const uint32_t raw = s_sim_ar_counter;
+#ifdef RA8_OFF_TARGET
+  const uint32_t raw = s_fake_ar_counter;
 #else
   bool           blank = false;
   const uint32_t raw   = internal_probe_counter(&blank);
@@ -259,8 +259,8 @@ RA8_INTERNAL static ra8_err_t internal_default_store_read(uint32_t* out_min_vers
  */
 RA8_INTERNAL static ra8_err_t internal_default_store_commit(uint32_t new_version)
 {
-#ifdef RA8_SIMULATOR_MODE
-  const uint32_t raw   = s_sim_ar_counter;
+#ifdef RA8_OFF_TARGET
+  const uint32_t raw   = s_fake_ar_counter;
   const bool     blank = false;
 #else
   bool           blank = false;
@@ -270,9 +270,9 @@ RA8_INTERNAL static ra8_err_t internal_default_store_commit(uint32_t new_version
   if (new_version <= stored) {
     return k_ra8_ok; /* already at or above the floor -- nothing to persist */
   }
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   (void)blank;
-  s_sim_ar_counter = new_version;
+  s_fake_ar_counter = new_version;
   return k_ra8_ok;
 #else
   uint8_t le[sizeof(uint32_t)] = {};

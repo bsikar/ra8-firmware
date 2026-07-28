@@ -339,7 +339,7 @@ typedef enum : uint32_t {
  * =============================================================================
  *
  * Accessors return ``volatile`` pointers to the underlying register so
- * the host-side ``ra8_sim_mmap`` shim can intercept reads / writes
+ * the host-side ``ra8_fake_mmap`` shim can intercept reads / writes
  * without any conditional compilation in the driver.
  */
 

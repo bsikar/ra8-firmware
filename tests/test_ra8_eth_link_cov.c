@@ -42,7 +42,7 @@
  * ra8_rmac.h (ra8_rmac_mdio_c22_read / ra8_rmac_set_link), ra8_etha_ops.h
  * (ra8_etha_set_mode) and every enum type the mocks need. */
 #include "ra8_etha.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_time.h"
 #include "unity_minimal.h"
 
@@ -126,7 +126,7 @@ static ra8_err_t s_setlink_err;
  *
  * @param[in]  port     Ignored -- the TU picks the port; the mock is
  *                      port-agnostic.
- * @param[in]  phy_addr Ignored -- single simulated PHY.
+ * @param[in]  phy_addr Ignored -- single fake PHY.
  * @param[in]  reg_addr Clause-22 register index to fetch.
  * @param[out] out      Receives the seeded register value on success.
  * @return k_ra8_ok on a served read, else the injected failure code.
@@ -248,7 +248,7 @@ static void mock_delay_ms(uint32_t ms)
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)memset(s_phy_regs, 0, sizeof(s_phy_regs));
   s_mdio_fail_enable = false;
   s_mdio_fail_reg    = 0U;

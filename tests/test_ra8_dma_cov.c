@@ -16,7 +16,7 @@
  *   272, 273      -- ra8_dma_deinit: ra8_mstp_disable failure path
  *   330, 331      -- ra8_dma_request: ra8_dmac_start failure path
  *   381, 382      -- ra8_dma_release: ra8_dmac_stop failure path
- *   417, 420      -- ra8_dma_sim_peek_request: out-of-range / not-in-use
+ *   417, 420      -- ra8_dma_fake_peek_request: out-of-range / not-in-use
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -27,9 +27,9 @@
 #include "ra8_dma.h"
 #include "ra8_dmac.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -50,10 +50,10 @@ typedef enum : uint8_t {
  * -------------------------------------------------------------------------
  */
 
-/** @brief Reset all sim MMIO, MSTP refcounts, and DMA channel table. */
+/** @brief Reset all fake MMIO, MSTP refcounts, and DMA channel table. */
 static void cov_reset(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_init());
 }
@@ -140,7 +140,7 @@ static void test_request_invalid_width(void)
  * - Vector 2: mst_err==k_ra8_err_invalid_state -> true (this test, line 221)
  * Both vectors are now provided.
  *
- * @pre ra8_sim_mmap_reset() and ra8_mstp_init() complete successfully.
+ * @pre ra8_fake_mmap_reset() and ra8_mstp_init() complete successfully.
  * @post ra8_dma_init() failed; no channel table was reset.
  *
  * @note Thread safety: single-threaded test context.
@@ -149,7 +149,7 @@ static void test_request_invalid_width(void)
 static void test_init_mstp_enable_fails(void)
 {
   TEST_BEGIN("ra8_dma_init: ra8_mstp_enable saturated -> k_ra8_err_hw_init_failed");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   /* Saturate the DMAC/DTC0 refcount to UINT8_MAX (255 enables). */
@@ -239,7 +239,7 @@ static void test_deinit_with_channel_in_use(void)
 static void test_deinit_mstp_disable_fails(void)
 {
   TEST_BEGIN("ra8_dma_deinit: ra8_mstp_disable underflow -> k_ra8_err_hw_error");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_init()); /* refcount becomes 1 */
 
@@ -342,12 +342,12 @@ static void test_release_dmac_stop_fails(void)
 }
 
 /**
- * @brief ra8_dma_sim_peek_request returns nullptr for out-of-range and
+ * @brief ra8_dma_fake_peek_request returns nullptr for out-of-range and
  *        not-in-use channels.
  *
  * @details
- * Exercises lines 417 and 420 of ra8_dma.c inside ra8_dma_sim_peek_request()
- * (RA8_SIMULATOR_MODE only):
+ * Exercises lines 417 and 420 of ra8_dma.c inside ra8_dma_fake_peek_request()
+ * (RA8_OFF_TARGET only):
  *   - Line 417: `return nullptr;` when channel >= k_ra8_dma_channel_count.
  *   - Line 420: `return nullptr;` when the slot is not in use.
  *
@@ -358,27 +358,27 @@ static void test_release_dmac_stop_fails(void)
  *
  * Decision 2: `if (!s_channels[channel].in_use)` (1 condition)
  * - Vector 1: channel==0, not in use -> true (line 420)
- * - Vector 2: channel==0, in use -> false (covered by test_sim_dma_memcpy_*
- *   in test_ra8_dma.c which peek-request via ra8_sim_dma_memcpy internals)
+ * - Vector 2: channel==0, in use -> false (covered by test_fake_dma_memcpy_*
+ *   in test_ra8_dma.c which peek-request via ra8_fake_dma_memcpy internals)
  *
  * @pre ra8_dma_init() has been called.
  * @post No state mutated.
  *
- * @note Compiled only under RA8_SIMULATOR_MODE; guarded by the same ifdef.
+ * @note Compiled only under RA8_OFF_TARGET; guarded by the same ifdef.
  * @since 0.1.0
  */
-static void test_sim_peek_request_edge_cases(void)
+static void test_fake_peek_request_edge_cases(void)
 {
-  TEST_BEGIN("ra8_dma_sim_peek_request: out-of-range and not-in-use -> nullptr");
+  TEST_BEGIN("ra8_dma_fake_peek_request: out-of-range and not-in-use -> nullptr");
   cov_reset();
 
   /* Line 417: channel >= k_ra8_dma_channel_count. */
-  TEST_ASSERT_NULL(ra8_dma_sim_peek_request(255U));
+  TEST_ASSERT_NULL(ra8_dma_fake_peek_request(255U));
 
   /* Line 420: channel in range but slot not in use. */
-  TEST_ASSERT_NULL(ra8_dma_sim_peek_request(0U));
+  TEST_ASSERT_NULL(ra8_dma_fake_peek_request(0U));
 
-  TEST_END("ra8_dma_sim_peek_request: out-of-range and not-in-use -> nullptr");
+  TEST_END("ra8_dma_fake_peek_request: out-of-range and not-in-use -> nullptr");
 }
 
 /* -------------------------------------------------------------------------
@@ -394,7 +394,7 @@ int32_t main(void)
   test_deinit_mstp_disable_fails();
   test_request_dmac_start_fails();
   test_release_dmac_stop_fails();
-  test_sim_peek_request_edge_cases();
+  test_fake_peek_request_edge_cases();
   (void)fprintf(stderr, "[OK  ] test_ra8_dma_cov.c\n");
   return 0;
 }

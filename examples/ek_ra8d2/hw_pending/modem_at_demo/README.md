@@ -51,7 +51,7 @@ A **live cellular modem on the wire is external hardware** (a populated
 MikroBUS cellular Click with a provisioned SIM and antenna), so this app lives
 under `hw_pending/`. The **AT protocol itself is faithfully modelled** in
 ra8_emulator, so the example boots and runs its whole state machine with zero
-skips in simulation:
+skips in ra8_emulator:
 
 ```
 tools/ra8_emulator/build/ra8_emulator build/modem_at_demo.elf --modem

@@ -11,7 +11,7 @@
  * bench-gated. On silicon both are **FAIL-CLOSED**: they run their argument /
  * idempotency checks and then return ``k_ra8_err_not_supported`` rather than a
  * fake ``k_ra8_ok`` for a commit that never touched flash (T5-10). Under
- * ``RA8_SIMULATOR_MODE`` they instead maintain an in-memory shadow of the
+ * ``RA8_OFF_TARGET`` they instead maintain an in-memory shadow of the
  * boot-bank option byte and the bank-config register so the unit tests can
  * drive the masking + single-shot state-machine logic host-safely. The real
  * ``ra8_flash_*`` + PRCR-unlock call sites are marked ``TODO`` at each fail-closed
@@ -85,7 +85,7 @@ ra8_err_t ra8_ota_commit_reset(void)
 }
 
 /** @brief Implementation of `ra8_ota_commit_swap_bank()` -- host shadow under
- *  RA8_SIMULATOR_MODE; fail-closed on silicon (the real option-byte write is
+ *  RA8_OFF_TARGET; fail-closed on silicon (the real option-byte write is
  *  bench-gated and brick-risky, so it must not fake success -- T5-10). */
 ra8_err_t ra8_ota_commit_swap_bank(ra8_ota_bank_t target)
 {
@@ -95,7 +95,7 @@ ra8_err_t ra8_ota_commit_swap_bank(ra8_ota_bank_t target)
   if (s_pending) {
     return k_ra8_err_invalid_state;
   }
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   /* Host shadow: record the armed target so the argument-validation + single-shot
    * idempotency policy stays unit-testable without touching real flash. */
   s_pending_target = target;
@@ -127,14 +127,14 @@ ra8_err_t ra8_ota_commit_pending(ra8_ota_bank_t* out_target)
 }
 
 /** @brief Implementation of `ra8_ota_commit_set_bank_config()` -- masks reserved
- *  bits, then host shadow under RA8_SIMULATOR_MODE / fail-closed on silicon (the
+ *  bits, then host shadow under RA8_OFF_TARGET / fail-closed on silicon (the
  *  real option-region write is bench-gated and brick-risky -- T5-10). */
 ra8_err_t ra8_ota_commit_set_bank_config(uint32_t raw_value)
 {
   /* Mask reserved bits so an NS caller can only touch the bank-select field.
    * This is the value the real option-region write would persist. */
   const uint32_t masked = raw_value & (uint32_t)k_ra8_ota_bank_config_allowed;
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   s_bank_config = masked;
   return k_ra8_ok;
 #else

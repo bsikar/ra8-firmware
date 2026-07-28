@@ -5,7 +5,7 @@
  * @details
  * Tests ``ra8_spi_b_target_init`` and ``ra8_spi_b_target_xfer`` from
  * ``libs/ra8_hal/src/ra8_spi_b_target.c`` against the RA8D2 SPI_B register
- * model exposed by the simulator (``RA8_SIMULATOR_MODE``).
+ * model exposed by the fake (``RA8_OFF_TARGET``).
  *
  * Coverage plan:
  *
@@ -21,7 +21,7 @@
  *     triggers ``k_ra8_err_null_ptr`` via RA8_CHECK_NULL_PTR.
  *  6. ``test_target_xfer_null_rx`` -- null ``rx`` pointer is accepted;
  *     result is discarded silently.
- *  7. ``test_target_xfer_timeout_sptef`` -- the ra8_sim_mmio fault seam arms
+ *  7. ``test_target_xfer_timeout_sptef`` -- the ra8_fake_mmio fault seam arms
  *     the SPSR wait to never satisfy, so the first (SPTEF) poll times out.
  *  8. ``test_target_xfer_timeout_sprf`` -- the same SPSR wait armed to fail
  *     surfaces the xfer timeout early-return and leaves rx untouched.
@@ -46,9 +46,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_spi.h"
 #include "ra8_spi_regs.h"
 #include "unity_minimal.h"
@@ -88,12 +88,12 @@ typedef enum : uint32_t {
  */
 
 /**
- * @brief Reset simulator state and re-enable MSTP between tests.
+ * @brief Reset fake state and re-enable MSTP between tests.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -162,9 +162,9 @@ static void test_target_init_register_image(void)
  *
  * @details
  * Pre-stages SPSR with SPTEF | SPRF (both flags set). Under
- * ``RA8_SIMULATOR_MODE`` the single-shot poll succeeds immediately.
+ * ``RA8_OFF_TARGET`` the single-shot poll succeeds immediately.
  * The SPDR is verified to hold the TX byte after the pre-load write,
- * and the rx byte is populated (simulator echoes TX because the TX
+ * and the rx byte is populated (fake echoes TX because the TX
  * write to SPDR overwrites the same backing word as the RX read).
  *
  * @par Single-condition coverage (rx != nullptr):
@@ -189,10 +189,10 @@ static void test_target_xfer_roundtrip(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_byte, &rx));
 
-  /* SPDR holds the last write (TX byte) in the plain-RAM simulator. */
+  /* SPDR holds the last write (TX byte) in the plain-RAM fake. */
   TEST_ASSERT_EQ(k_test_tx_byte, ra8_spi((uint8_t)k_test_channel_0)->SPDR);
 
-  /* Simulator echoes TX as RX (single backing word for TX/RX FIFO). */
+  /* Fake echoes TX as RX (single backing word for TX/RX FIFO). */
   TEST_ASSERT_EQ(k_test_tx_byte, rx);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_deinit((uint8_t)k_test_channel_0));
@@ -316,8 +316,8 @@ static void test_target_xfer_null_rx(void)
  *
  * @details
  * ``internal_target_wait_spsr`` polls SPSR through ``ra8_hw_wait_flag_set32``,
- * whose bounded loop is consulted by the ra8_sim_mmio fault seam on the host
- * test build (T1-01). Arming the SPSR word with ``ra8_sim_mmio_fail_wait``
+ * whose bounded loop is consulted by the ra8_fake_mmio fault seam on the host
+ * test build (T1-01). Arming the SPSR word with ``ra8_fake_mmio_fail_wait``
  * makes every poll report "not satisfied", so the SPTEF wait runs to its
  * budget and returns ``k_ra8_err_hw_timeout``; the xfer surfaces it on the
  * SPTEF leg -- the first SPSR poll.
@@ -341,7 +341,7 @@ static void test_target_xfer_timeout_sptef(void)
    * satisfies -> internal_target_wait_spsr returns k_ra8_err_hw_timeout. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_spi((uint8_t)k_test_channel_0)->SPSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_spi((uint8_t)k_test_channel_0)->SPSR));
 
   uint8_t rx = 0U;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -361,7 +361,7 @@ static void test_target_xfer_timeout_sptef(void)
  * @brief A failing SPSR wait returns k_ra8_err_hw_timeout without writing rx.
  *
  * @details
- * Post-T1-01 the bounded SPSR poll is driven by the ra8_sim_mmio fault seam,
+ * Post-T1-01 the bounded SPSR poll is driven by the ra8_fake_mmio fault seam,
  * not by the register's RAM value. Both the SPTEF and the SPRF waits poll the
  * same SPSR word, and the seam keys a fault on the register address, so it
  * cannot fail the second poll of SPSR while letting the first succeed -- the
@@ -389,7 +389,7 @@ static void test_target_xfer_timeout_sprf(void)
   /* Same SPSR word the target-mode wait polls, armed to fail. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_spi((uint8_t)k_test_channel_0)->SPSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_spi((uint8_t)k_test_channel_0)->SPSR));
 
   uint8_t rx = k_t_rx_unset;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -408,7 +408,7 @@ static void test_target_xfer_timeout_sprf(void)
 
 int32_t main(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_target_init_register_image();
   test_target_xfer_roundtrip();
   test_target_init_null_cfg();

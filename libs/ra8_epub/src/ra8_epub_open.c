@@ -350,7 +350,7 @@ static ra8_err_t priv_parse_archive(mz_zip_archive*  zip,
  * Shared by both the resident (`ra8_epub_open`) and streamed
  * (`ra8_epub_open_streamed`) open paths. On firmware (`_sbrk` traps, NASA Rule 3)
  * miniz's central-directory + decompressor allocations go through the static pool
- * in `ra8_epub_miniz_alloc.c`; the host unit-test build (`RA8_SIMULATOR_MODE`)
+ * in `ra8_epub_miniz_alloc.c`; the host unit-test build (`RA8_OFF_TARGET`)
  * leaves the allocators NULL so miniz uses its default malloc.
  *
  * @param[in,out] zip Inline archive to configure (must be zeroed first).
@@ -367,7 +367,7 @@ static void priv_set_miniz_alloc(mz_zip_archive* zip)
   if (zip == nullptr) {
     return; /* GCOVR_EXCL_LINE -- callers pass the book's inline storage, never NULL */
   }
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   zip->m_pAlloc        = ra8_epub_miniz_alloc;
   zip->m_pFree         = ra8_epub_miniz_free;
   zip->m_pRealloc      = ra8_epub_miniz_realloc;

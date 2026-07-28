@@ -14,7 +14,7 @@
  * `ra8_sdmmc_spi_bind_fs_backend` then plugs the card straight into ra8_fs.
  *
  * The SD card model here is the seed for ra8_emulator's SD-over-SPI device
- * (so `make emu-ereader_ui` can serve a font from a simulated card).
+ * (so `make emu-ereader_ui` can serve a font from a emulated card).
  *
  * Pipeline: image (FAT) -> SD card model -> ra8_sdmmc_spi -> ra8_fs ->
  * ra8_reflow -> ra8_gfx framebuffer.

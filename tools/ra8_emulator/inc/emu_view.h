@@ -33,9 +33,9 @@ extern "C" {
 
 /** @brief EK-RA8D2 user-switch GPIO coordinates (active-low): SW1 P009, SW2 P008. */
 typedef enum : uint8_t {
-  k_sim_sw_port = 0U, /**< Both user switches sit on PORT0. */
-  k_sim_sw1_pin = 9U, /**< SW1 -> P009.                     */
-  k_sim_sw2_pin = 8U, /**< SW2 -> P008.                     */
+  k_emu_sw_port = 0U, /**< Both user switches sit on PORT0. */
+  k_emu_sw1_pin = 9U, /**< SW1 -> P009.                     */
+  k_emu_sw2_pin = 8U, /**< SW2 -> P008.                     */
 } emu_sw_pin_t;
 
 /* Live-view (--view) and snapshot (--ppm) presentation settings. */

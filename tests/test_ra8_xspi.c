@@ -16,11 +16,11 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_fake_xspi_flash.h"
 #include "ra8_mstp.h"
 #include "ra8_ospi_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
-#include "ra8_sim_xspi_flash.h"
 #include "ra8_system_regs.h"
 #include "ra8_xspi.h"
 #include "ra8_xspi_internal.h"

@@ -11,8 +11,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_composite.h"
 #include "unity_minimal.h"
@@ -194,7 +194,7 @@ static const uint8_t s_test_config_desc[9] = {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_composite_close();
   s_cdc_state = (test_class_state_t){};

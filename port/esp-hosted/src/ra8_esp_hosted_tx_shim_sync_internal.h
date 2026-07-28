@@ -391,11 +391,11 @@ static inline UINT tx_thread_delete(TX_THREAD* thread_ptr)
 
 /**
  * @brief Host model of ``tx_thread_sleep``.
- * @details Does not block; it advances the simulated tick counter instead,
+ * @details Does not block; it advances the fake tick counter instead,
  * which is what makes an elapsed-time assertion possible without a clock.
  * @param[in] timer_ticks Ticks to sleep.
  * @return ThreadX status code.
- * @retval TX_SUCCESS The simulated clock advanced.
+ * @retval TX_SUCCESS The fake clock advanced.
  * @pre The shim has been reset at least once.
  * @pre The caller is not modelling interrupt context.
  * @post The tick counter has advanced by ``timer_ticks``.
@@ -538,9 +538,9 @@ static inline UINT tx_timer_delete(TX_TIMER* timer_ptr)
 
 /**
  * @brief Host model of ``tx_time_get``.
- * @details Returns the simulated 32-bit tick counter, which a test moves with
+ * @details Returns the fake 32-bit tick counter, which a test moves with
  * ::ra8_esp_hosted_tx_shim_set_ticks or by sleeping.
- * @return Current simulated tick count.
+ * @return Current fake tick count.
  * @retval 0 The shim was just reset.
  * @pre The shim has been reset at least once.
  * @pre The caller treats the value as wrapping at 2^32.

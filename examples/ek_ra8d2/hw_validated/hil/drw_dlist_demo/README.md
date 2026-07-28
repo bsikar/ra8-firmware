@@ -52,7 +52,7 @@ the same string on the bench (`uart_scrape`) and in EIL.
 ## Golden
 
 `E6B215C5` is a real silicon capture. If it ever changes, re-derive it from a
-bench framebuffer dump -- never from the simulator, and never by writing down
+bench framebuffer dump -- never from the emulator, and never by writing down
 whatever the demo happens to print.
 
 ## Notes (HUM R01UH1065EJ0130 Rev.1.30, Ch 62 "2D Drawing Engine")

@@ -6,7 +6,7 @@ suite for `ra8-firmware`. The benchmarks are intentionally simple
 trivial to run on any developer workstation and on CI.
 
 The numbers measured here are **host x86_64** numbers, not RA8D2
-numbers. They establish a regression baseline for the simulator path
+numbers. They establish a regression baseline for the off-target path
 and bound the algorithmic cost of each routine; once we have an
 EVM-resident HIL runner we will collect a parallel set of on-target
 measurements to compare against.
@@ -83,7 +83,7 @@ magnitude off probably are.
 | `jpeg_decode_64x64_q75`          | ~50000 - 500000      | varies w/ payload   |
 | `gfx_text_pangram_8x16_rgb565`   | ~10000 - 200000      | varies w/ FB size   |
 
-CRC throughput is dominated by the simulator's reference C
+CRC throughput is dominated by the fake's reference C
 implementation of the CRC peripheral, not by the host CPU's
 hardware CRC32 instruction. JPEG decode throughput depends on the
 encoded byte-stream size, which itself depends on the quality factor
@@ -116,7 +116,7 @@ To be filled in once the EVM HIL workflow lands. The plan is:
    harness (the harness header is portable C, no host-only deps).
 2. Stream CSV results out over the J-Link RTT channel.
 3. Diff against the host CSV to highlight where the production HW path
-   beats the simulator path (CRC, JPEG, GFX all benefit from on-die
+   beats the off-target path (CRC, JPEG, GFX all benefit from on-die
    accelerators on the RA8D2).
 
 ## Implementation notes
@@ -125,7 +125,7 @@ To be filled in once the EVM HIL workflow lands. The plan is:
   single-header, no-allocation, no-init utility -- include it and
   call `RA8_BENCH_TIME(...)` inside `main()`.
 - The bench binaries link against the existing `ra8_core_hal` OBJECT
-  library so they pick up the same simulator MMIO mocks as the unit
+  library so they pick up the same fake MMIO mocks as the unit
   tests. This guarantees that what the bench measures is exactly the
   same code the unit tests exercise; no parallel "perf-only" build
   variant.

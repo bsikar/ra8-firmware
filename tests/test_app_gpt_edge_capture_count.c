@@ -9,7 +9,7 @@
  *   2. the real driver call sequence the demo issues -- input capture
  *      (``ra8_gpt_capture_configure`` / ``ra8_gpt_capture_read``) and
  *      external pulse counting (``ra8_gpt_event_count_configure`` +
- *      ``ra8_gpt_read``) -- observed through the simulated MMIO window.
+ *      ``ra8_gpt_read``) -- observed through the fake MMIO window.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -19,11 +19,11 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpt.h"
 #include "ra8_gpt_capture.h"
 #include "ra8_gpt_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -53,7 +53,7 @@ typedef enum : uint32_t {
 } test_gpt_ecc_const_t;
 
 /**
- * @brief Reset the simulated MMIO window and MSTP model before a test.
+ * @brief Reset the fake MMIO window and MSTP model before a test.
  * @pre The host MMIO substrate is linked into the test binary.
  * @pre ``ra8_mstp_init`` is safe to call repeatedly.
  * @post All GPT registers in the window read as zero.
@@ -61,7 +61,7 @@ typedef enum : uint32_t {
  */
 static void prep_ecc(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

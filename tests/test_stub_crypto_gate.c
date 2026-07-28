@@ -10,13 +10,13 @@
  *
  *   - cmake/ra8_add_app.cmake defines RA8_INSECURE_STUB_CRYPTO (OFF by default),
  *   - each stub TU wraps its insecure body in
- *     `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)` with a
+ *     `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)` with a
  *     fail-closed #else (every entry point returns k_ra8_err_not_supported),
  *   - scripts/checks/check_stub_crypto_guarded.py fails the build at gate time if
  *     any insecure body escapes that guard.
  *
  * This ctest runs in the host build, which compiles the stub TUs under
- * RA8_SIMULATOR_MODE (the #if branch). It proves the OTHER half of the guard:
+ * RA8_OFF_TARGET (the #if branch). It proves the OTHER half of the guard:
  * that in stub mode every insecure entry point is REACHABLE and exhibits its
  * placeholder behaviour -- a deterministic (predictable) TRNG, a deterministic
  * vault challenge, and a round-tripping non-cryptographic RSIP key-wrap. If the

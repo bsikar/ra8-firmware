@@ -38,7 +38,7 @@
 
 #include "ra8_err.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #endif
 
@@ -121,7 +121,7 @@ typedef enum : uint8_t {
   k_hid_kc_2 = 0x1FU, /**< Keycode for '2'.                 */
 } hid_keycode_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* Shared mutable state (defined once in main.c) */
@@ -329,4 +329,4 @@ uint32_t hid_str_len(const char* text);
  */
 [[nodiscard]] ra8_err_t hid_print_fail(const char* what, ra8_err_t err);
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

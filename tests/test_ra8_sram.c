@@ -7,8 +7,8 @@
  * status, self-test, dispatch, and MC/DC vector tests live in
  * test_ra8_sram_ecc.c.
  *
- * Drives the host-side simulated SRAM control window provided by
- * ``tests/mocks/ra8_sim_mmap.c``. Both the SRAM control block at
+ * Drives the host-side fake SRAM control window provided by
+ * ``tests/mocks/ra8_fake_mmap.c``. Both the SRAM control block at
  * ``0x4000_2000`` and the SRAM data alias at ``0x2200_0000`` (2 MiB)
  * are mapped for tests, so the zero-init pass and the ECC self-test
  * exercise real memory.
@@ -39,8 +39,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_sram.h"
 #include "ra8_sram_regs.h"
 #include "unity_minimal.h"
@@ -93,7 +93,7 @@ typedef enum : uint32_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

@@ -9,9 +9,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_rtc.h"
 #include "ra8_rtc_regs.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -47,7 +47,7 @@ typedef enum : uint16_t {
 static void test_init_happy_path(void)
 {
   TEST_BEGIN("ra8_rtc_init writes RCR2 HR24+START");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
 
@@ -68,7 +68,7 @@ static void test_init_happy_path(void)
 static void test_set_null_rejected(void)
 {
   TEST_BEGIN("ra8_rtc_set rejects NULL");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rtc_set(nullptr));
   TEST_END("ra8_rtc_set rejects NULL");
 }
@@ -82,7 +82,7 @@ static void test_set_null_rejected(void)
 static void test_get_null_rejected(void)
 {
   TEST_BEGIN("ra8_rtc_get rejects NULL");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rtc_get(nullptr));
   TEST_END("ra8_rtc_get rejects NULL");
 }
@@ -96,7 +96,7 @@ static void test_get_null_rejected(void)
 static void test_set_rejects_year_before_2000(void)
 {
   TEST_BEGIN("ra8_rtc_set rejects year < 2000");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_rtc_datetime_t dt = {
     .year    = 1999U,
     .month   = 1U,
@@ -119,7 +119,7 @@ static void test_set_rejects_year_before_2000(void)
 static void test_set_then_get_round_trip(void)
 {
   TEST_BEGIN("ra8_rtc_set then ra8_rtc_get round-trips");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
 
@@ -157,7 +157,7 @@ static void test_set_then_get_round_trip(void)
 static void test_bcd_boundary_values(void)
 {
   TEST_BEGIN("ra8_rtc BCD 59 max");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
 
@@ -192,7 +192,7 @@ static void test_bcd_boundary_values(void)
 static void test_bcd_zero(void)
 {
   TEST_BEGIN("ra8_rtc BCD 0 minimum");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
 
@@ -238,7 +238,7 @@ static void stub_rtc_cb(void* ctx, uint8_t mask)
 static void test_deinit(void)
 {
   TEST_BEGIN("rtc deinit");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_deinit());
   TEST_ASSERT_EQ(0, ra8_rtc()->RCR1);
@@ -255,7 +255,7 @@ static void test_deinit(void)
 static void test_irq_enable_and_status(void)
 {
   TEST_BEGIN("rtc irq enable + status");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_rtc_set_irq_enable((uint8_t)k_ra8_rtc_irq_alarm | (uint8_t)k_ra8_rtc_irq_periodic));
@@ -280,7 +280,7 @@ static void test_irq_enable_and_status(void)
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("rtc attach + dispatch");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_rtc_cb_count     = 0U;
   s_rtc_cb_last_mask = 0U;
 
@@ -305,7 +305,7 @@ static void test_attach_and_dispatch(void)
 static void test_power_transition(void)
 {
   TEST_BEGIN("rtc power transition");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_enter_stop());
   TEST_ASSERT((ra8_rtc()->RCR2 & (uint8_t)0x01U) == 0U);
@@ -334,7 +334,7 @@ static void test_power_transition(void)
 static void test_mcdc_set_alarm_range_guard(void)
 {
   TEST_BEGIN("mcdc rtc_set_alarm range guard");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
   ra8_rtc_datetime_t a = {.year    = (uint16_t)k_t_year_valid,
                           .month   = (uint8_t)1,
@@ -371,7 +371,7 @@ static void test_mcdc_set_alarm_range_guard(void)
 static void test_clock_init_subclock(void)
 {
   TEST_BEGIN("ra8_rtc_clock_init sub-clock");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_clock_init(k_ra8_rtc_clk_subclock));
 
@@ -395,7 +395,7 @@ static void test_clock_init_subclock(void)
 static void test_clock_init_loco(void)
 {
   TEST_BEGIN("ra8_rtc_clock_init loco");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_clock_init(k_ra8_rtc_clk_loco));
 
@@ -420,7 +420,7 @@ static void test_clock_init_loco(void)
 static void test_clock_init_invalid_src(void)
 {
   TEST_BEGIN("ra8_rtc_clock_init rejects bad src");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rtc_clock_init((ra8_rtc_clk_src_t)2U));
 

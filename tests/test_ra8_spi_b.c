@@ -32,8 +32,8 @@
 #include "ra8_dma.h"
 #include "ra8_dmac.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_spi.h"
 #include "ra8_spi_regs.h"
 #include "unity_minimal.h"
@@ -80,11 +80,11 @@ static void stub_spei_cb(void* ctx, uint8_t mask)
 }
 
 /**
- * @brief Re-prime the simulator + DMA state between tests.
+ * @brief Re-prime the fake + DMA state between tests.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_dma_init();
   s_spei_calls     = 0U;
@@ -394,7 +394,7 @@ static void test_mcdc_dispatch_spei_callback_guard(void)
 
 int32_t main(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_mcdc_internal_spbr_zero_args();
   test_mcdc_internal_spcmd_cpha();
   test_mcdc_internal_spcmd_cpol();

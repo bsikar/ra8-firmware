@@ -26,7 +26,7 @@
  *     again timing + reporting.
  *  6. ``display_deinit`` sleeps the panel; print ``epaper: PASS``.
  *
- * ## Hardware / simulation
+ * ## Hardware / off-target
  *
  * The EK-RA8D2 ships a parallel-RGB TFT, not e-paper, so on-panel HIL is
  * pending an IT8951 carrier on the bench (see README). ``tools/ra8_emulator``

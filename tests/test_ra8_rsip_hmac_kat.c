@@ -24,10 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_rsip.h"
 #include "ra8_rsip_core.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -95,7 +95,7 @@ static void expect_hmac(const uint8_t* key,
 }
 
 /**
- * @brief Reset the sim and bring the RSIP up for the KAT vectors.
+ * @brief Reset the fake and bring the RSIP up for the KAT vectors.
  * @pre None.
  * @post The RSIP is initialised (or already-existing), ready for HMAC calls.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -103,7 +103,7 @@ static void expect_hmac(const uint8_t* key,
  */
 static void hmac_kat_init(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   const ra8_rsip_config_t cfg      = {.run_bist = false};
   const ra8_err_t         init_err = ra8_rsip_init(&cfg);

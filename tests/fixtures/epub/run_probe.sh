@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build + run the host EPUB probe against a real .epub.
 #   ./tests/fixtures/epub/run_probe.sh <file.epub>
-# Host-only diagnostic (RA8_SIMULATOR_MODE, malloc-backed); reports what
+# Host-only diagnostic (RA8_OFF_TARGET, malloc-backed); reports what
 # ra8_epub_open() extracts (parse result, spine, TOC, cover, chapter 0).
 #
 # @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -14,7 +14,7 @@ EPUB="${1:?usage: run_probe.sh <file.epub>}"
 OUT="$(mktemp -d)"
 INC=(-Ilibs/ra8_epub/inc -Ilibs/ra8_core/inc -Ilibs/third_party/miniz
   -Ilibs/third_party/tinyxml2 -Ilibs/third_party/stb -Ilibs/ra8_reflow/inc)
-D=(-DRA8_SIMULATOR_MODE=1 -w)
+D=(-DRA8_OFF_TARGET=1 -w)
 
 C_SRCS=(tests/fixtures/epub/epub_probe.c
   libs/ra8_epub/src/ra8_epub_open.c

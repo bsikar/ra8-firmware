@@ -20,9 +20,9 @@
 
 #include "ra8_dual_core.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_ipc.h"
 #include "ra8_ipc_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -47,17 +47,17 @@ typedef enum : uint8_t {
 
 /**
  * @brief Per-test fixture reset.
- * @details Clears the simulator world and forces CPU1 to "stopped".
+ * @details Clears the fake world and forces CPU1 to "stopped".
  * @pre None.
  * @pre None.
- * @post Sim mmap and CPU1 mock state at reset values.
+ * @post Fake mmap and CPU1 mock state at reset values.
  * @post ra8_cpu1_is_running() returns false.
  * @note Test-only helper.
  * @since 0.1.0
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_cpu1_halt();
 }
 
@@ -104,7 +104,7 @@ static void test_ppong_release_validates_inputs(void)
  * @pre None.
  * @pre None.
  * @post CPU1 mock running at exit.
- * @post Sim mmap reset before next test.
+ * @post Fake mmap reset before next test.
  * @note Test-only.
  * @since 0.1.0
  */
@@ -126,7 +126,7 @@ static void test_ppong_release_then_running(void)
  * @pre None.
  * @pre None.
  * @post CPU1 mock stopped at exit.
- * @post Sim mmap reset before next test.
+ * @post Fake mmap reset before next test.
  * @note Test-only.
  * @since 0.1.0
  */
@@ -158,7 +158,7 @@ static void test_ppong_halt_round_trip(void)
  * @pre None.
  * @pre None.
  * @post No persistent side effects.
- * @post Sim mmap reset before next test.
+ * @post Fake mmap reset before next test.
  * @note Test-only.
  * @since 0.1.0
  */
@@ -198,7 +198,7 @@ static void test_ppong_channel_pair_resolution(void)
  *
  * @pre None.
  * @pre None.
- * @post Sim mmap reset before next test.
+ * @post Fake mmap reset before next test.
  * @post No persistent side effects on channel mocks.
  * @note Test-only.
  * @since 0.1.0

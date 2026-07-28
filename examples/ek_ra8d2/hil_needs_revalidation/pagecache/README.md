@@ -44,11 +44,11 @@ without bumping it.
 | `g_pc_live_crc` / `g_pc_cache_crc` | The two serialised-blob CRC-32s |
 | `g_pc_heartbeat` | Idle heartbeat; advances only on the clean path |
 
-## Build + run on the M85 simulator (no hardware)
+## Build + run on the M85 emulator (no hardware)
 
 ```sh
 make pagecache
-# Round-trip + invalidation on a blank card (write is slow under the sim,
+# Round-trip + invalidation on a blank card (write is slow off-target,
 # so raise the wall/chunk budget):
 RA8_EMU_WALL_S=550 RA8_EMU_MAX_CHUNKS=8000000 \
   tools/ra8_emulator/build/ra8_emulator \

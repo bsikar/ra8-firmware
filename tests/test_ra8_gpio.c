@@ -7,6 +7,7 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpio_constants.h"
 #include "ra8_icu.h"
 #include "ra8_icu_regs.h"
@@ -17,7 +18,6 @@
 #include "ra8_port_constants.h"
 #include "ra8_port_regs.h"
 #include "ra8_port_utils.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -49,7 +49,7 @@ extern const ra8_pin_interface_t g_ra8_gpio_pin_interface;
  */
 static void reset_state(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 

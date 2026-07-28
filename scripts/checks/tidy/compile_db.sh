@@ -40,7 +40,7 @@ configure_build() {
   cmake -B "$BUILD_DIR" -S "$tests_dir" \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA8_SIMULATOR_MODE" \
+    -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA8_OFF_TARGET" \
     -DRA8_COVERAGE=OFF \
     -Wno-dev \
     >"$cmake_stdout"
@@ -82,7 +82,7 @@ configure_reflow_v2_db() {
   if cmake -B "$alt_dir" -S "$tests_dir" \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA8_SIMULATOR_MODE" \
+    -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA8_OFF_TARGET" \
     -DRA8_COVERAGE=OFF \
     -DRA8_REFLOW_USE_LITEHTML=ON \
     -Wno-dev \

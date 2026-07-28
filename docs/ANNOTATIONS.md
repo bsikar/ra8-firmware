@@ -175,7 +175,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 
 ### 12. `RA8_HOST_FRIENDLY`
 
-- **Purpose:** the function works under `RA8_SIMULATOR_MODE` on the host.
+- **Purpose:** the function works under `RA8_OFF_TARGET` on the host.
 - **Enforcement:** libclang AST walk: no unmocked `volatile` MMIO inside
   the call subtree.
 - **Example:**

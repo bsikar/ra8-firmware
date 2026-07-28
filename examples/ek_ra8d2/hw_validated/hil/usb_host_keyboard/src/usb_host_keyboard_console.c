@@ -26,7 +26,7 @@
 #include "ra8_err.h"
 #include "usb_host_keyboard_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 uint8_t hid_nibble_to_hex(uint32_t nibble)
 {
@@ -117,4 +117,4 @@ uint32_t hid_str_len(const char* text)
   return hid_print("\r\n");
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

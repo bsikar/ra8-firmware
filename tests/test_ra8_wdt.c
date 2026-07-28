@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_wdt.h"
 #include "ra8_wdt_regs.h"
 #include "unity_minimal.h"
@@ -32,7 +32,7 @@ typedef enum : uint8_t {
 static void test_wdt_init_ok(void)
 {
   TEST_BEGIN("ra8_wdt_init returns ok");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_wdt_cfg_t cfg = {
     .timeout       = k_ra8_wdt_timeout_16384,
     .clock_div     = k_ra8_wdt_clkdiv_8192,
@@ -54,7 +54,7 @@ static void test_wdt_init_ok(void)
 static void test_wdt_refresh_writes_sequence(void)
 {
   TEST_BEGIN("ra8_wdt_refresh_deferred writes 0xFF to WDTRR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_wdt_regs_t* reg = ra8_wdt();
   reg->WDTRR                 = k_t_wdtrr_sentinel;
@@ -75,7 +75,7 @@ static void test_wdt_refresh_writes_sequence(void)
 static void test_wdt_refresh_many(void)
 {
   TEST_BEGIN("ra8_wdt_refresh_deferred is safe to loop");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   for (uint8_t i = 0U; i < 8U; ++i) {
     ra8_wdt_refresh_deferred();
   }
@@ -104,7 +104,7 @@ static void stub_wdt_cb(void* ctx, uint16_t mask)
 static void test_wdt_get_status(void)
 {
   TEST_BEGIN("wdt get_status");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_wdt()->WDTSR = (uint16_t)k_ra8_wdt_status_underflow | (uint16_t)k_ra8_wdt_status_refresh;
 
   uint16_t mask = 0U;
@@ -123,7 +123,7 @@ static void test_wdt_get_status(void)
 static void test_wdt_clear_status(void)
 {
   TEST_BEGIN("wdt clear_status");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_wdt()->WDTSR = (uint16_t)k_ra8_wdt_status_underflow;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_clear_status());
   TEST_ASSERT_EQ(0, ra8_wdt()->WDTSR);
@@ -139,7 +139,7 @@ static void test_wdt_clear_status(void)
 static void test_wdt_attach_and_dispatch(void)
 {
   TEST_BEGIN("wdt attach + dispatch");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_wdt_cb_count     = 0U;
   s_wdt_cb_last_mask = 0U;
 

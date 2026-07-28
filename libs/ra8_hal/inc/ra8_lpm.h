@@ -791,7 +791,7 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @note Thread safety: not thread-safe.
  * @warning On host (test) builds WFI is replaced with a no-op so
  *          the test binary does not block. The LPSCR write is
- *          still observable via the sim mmap.
+ *          still observable via the fake mmap.
  *
  * @see ra8_lpm_set_wakeup_sources, ra8_lpm_arm_dpsier
  * @since 0.1.0

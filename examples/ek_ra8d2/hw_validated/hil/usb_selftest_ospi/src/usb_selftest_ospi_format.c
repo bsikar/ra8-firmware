@@ -32,7 +32,7 @@
 #include "ra8_xspi.h"
 #include "usb_selftest_ospi_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "tx_api.h"
 #include "ux_api.h"
@@ -488,4 +488,4 @@ static uint32_t selftest_str_len(const char* text)
   return selftest_print("\r\n");
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

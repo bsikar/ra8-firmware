@@ -3,7 +3,7 @@
  * @brief Unit tests for the ra8_touch (GT911) driver
  *
  * @details
- * Drives the touch driver against the host ``ra8_sim_mmap`` substrate.
+ * Drives the touch driver against the host ``ra8_fake_mmap`` substrate.
  * Status flags for the underlying IIC_B channel are pre-armed so the
  * polling driver does not time out. Lifecycle, bus-path, and handler
  * dispatch are covered here.
@@ -24,6 +24,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i2c_bus_ops.h"
 #include "ra8_i3c.h"
 #include "ra8_i3c_i2c.h"
@@ -31,7 +32,6 @@
 #include "ra8_io_i2c_bus.h"
 #include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_touch.h"
 #include "ra8_touch_gt911_regs.h"
 #include "unity_minimal.h"
@@ -222,7 +222,7 @@ static ra8_err_t tramp_transfer(void*          ctx,
 }
 
 /**
- * @brief Reset the simulator, bring MSTP up, and play the app's role:
+ * @brief Reset the fake, bring MSTP up, and play the app's role:
  *        initialise IIC_B channel 0, bind it through the ra8_io facade,
  *        and wrap the resulting seam in the controllable-RX trampoline.
  *
@@ -234,7 +234,7 @@ static ra8_err_t tramp_transfer(void*          ctx,
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   const ra8_i3c_cfg_t iic_cfg = {
     .mode     = k_ra8_i3c_mode_i2c,
@@ -418,7 +418,7 @@ static void test_read_returns_ok(void)
   prime_iic_b();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&s_cfg_default));
 
-  /* The simulator's NTDTBP0 read-back reflects whatever value the
+  /* The fake's NTDTBP0 read-back reflects whatever value the
    * driver last wrote (the address byte for the trailing read phase),
    * so the actual decoded got_count is implementation-defined here.
    * What this test asserts is the absence of error: the read path

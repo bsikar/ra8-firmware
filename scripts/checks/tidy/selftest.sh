@@ -106,7 +106,7 @@ selftest_scope() {
 # arm_system_includes must FAIL, never emit an empty success, when the compiler
 # cannot answer the -mcpu=cortex-m85 query (#387). Assert both directions:
 #
-#   * negative -- a compiler that exists but prints no search list (simulated
+#   * negative -- a compiler that exists but prints no search list (fake
 #     with `true`, exactly what gcc 12.2 does for cortex-m85), and a compiler
 #     that is not on PATH, must both make arm_system_includes return non-zero;
 #   * positive -- whatever arm-none-eabi-gcc on PATH CAN target cortex-m85 must

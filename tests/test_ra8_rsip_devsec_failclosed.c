@@ -10,21 +10,21 @@
  * SPA-DPA arm) used to drive an invented "RSIP security-state" register block
  * cited to HUM Ch 51 "Security Features" -- a prose feature index with no
  * register map. Issue #216 fail-closes that fiction the same way #214 / #215
- * did: the insecure host-sim command path stays behind
- * ``#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)`` and the
+ * did: the insecure off-target command path stays behind
+ * ``#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)`` and the
  * production ``#else`` returns ``k_ra8_err_not_supported`` for every entry point,
  * writing no fabricated state.
  *
  * The rest of the host build compiles ``ra8_rsip_devsec.c`` under
- * ``RA8_SIMULATOR_MODE`` (the guarded ``#if`` branch -- exercised by ``test_life``
+ * ``RA8_OFF_TARGET`` (the guarded ``#if`` branch -- exercised by ``test_life``
  * / ``test_debug_level`` / ``test_tamper`` in ``test_ra8_rsip.c``). This target
  * is registered by hand in ``tests/CMakeLists.txt`` and rebuilds JUST that TU
- * with the two guard flags UNDEFINED (``-URA8_SIMULATOR_MODE
+ * with the two guard flags UNDEFINED (``-URA8_OFF_TARGET
  * -URA8_INSECURE_STUB_CRYPTO``), so the fail-closed production ``#else`` is the
  * compiled body. It then proves the contract that matters most for a
  * security-state query: it must refuse rather than lie. Every entry point must
  * return ``k_ra8_err_not_supported`` and every output sentinel must be left
- * untouched -- if the sim ``#if`` branch were compiled instead, the getters
+ * untouched -- if the fake ``#if`` branch were compiled instead, the getters
  * would return ``k_ra8_ok`` and overwrite the sentinels, and this test would
  * fail. This is the host-side companion to
  * ``scripts/checks/check_stub_crypto_guarded.py`` (which enforces the guard at

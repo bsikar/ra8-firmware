@@ -33,7 +33,7 @@
 
 #include "ra8_err.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #endif
 
@@ -189,7 +189,7 @@ void hid_fill_report_body(uint8_t* out, uint32_t len);
  */
 [[nodiscard]] ra8_err_t hid_print_fail(const char* what, ra8_err_t err);
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Host-side worker: retry the full pass until it succeeds.
  *
@@ -208,4 +208,4 @@ void hid_fill_report_body(uint8_t* out, uint32_t len);
  * @since 0.1.0
  */
 VOID hid_host_worker(ULONG arg);
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

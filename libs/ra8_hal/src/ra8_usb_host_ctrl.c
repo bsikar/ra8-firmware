@@ -175,7 +175,7 @@ static ra8_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
  * SAME bounded poll loop: only the pre-loop W0C clear is skipped there (its
  * plain-RAM INTSTS1 cannot be re-latched after a clear, so wiping it would erase
  * a test's pre-loaded outcome), and each SACK poll is routed through the
- * ra8_sim_mmio host seam -- transparent when a test pre-loads INTSTS1, or armable
+ * ra8_fake_mmio host seam -- transparent when a test pre-loads INTSTS1, or armable
  * to force the timeout leg or step the loop for MC/DC. The SACK, SIGN, and
  * timeout legs thus each execute against the real code path in host unit tests.
  *
@@ -197,7 +197,7 @@ static ra8_err_t internal_host_setup_wait(volatile r_usb_regs_t* reg)
   const uint16_t sack  = (uint16_t)(1U << k_ra8_int1_bit_sack);
   const uint16_t sign  = (uint16_t)(1U << k_ra8_int1_bit_sign);
   const uint16_t sureq = (uint16_t)(1U << k_ra8_dcpctr_bit_sureq);
-#if !(defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST))
+#if !(defined(RA8_OFF_TARGET) && defined(UNIT_TEST))
   /* Clear the stale SACK/SIGN latches before asserting SUREQ. Skipped on the
    * host unit-test build: its plain-RAM INTSTS1 cannot be re-latched by a SIE
    * after a W0C clear, so wiping it here would erase the SACK/SIGN outcome a
@@ -207,8 +207,8 @@ static ra8_err_t internal_host_setup_wait(volatile r_usb_regs_t* reg)
   internal_rmw16(&reg->DCPCTR, sureq, 0U);
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_usb_ctrl_poll_limit; ++i) {
     const uint16_t sts1 = reg->INTSTS1;
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    const bool got_sack = ra8_sim_mmio_wait_eval(&reg->INTSTS1, i, ((sts1 & sack) != 0U));
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    const bool got_sack = ra8_fake_mmio_wait_eval(&reg->INTSTS1, i, ((sts1 & sack) != 0U));
 #else
     const bool got_sack = ((sts1 & sack) != 0U);
 #endif
@@ -271,11 +271,11 @@ static ra8_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra8_
   const uint8_t devsel = (uint8_t)((uint16_t)(reg->DCPMAXP >> (uint16_t)k_ra8_usb_devsel_shift) &
                                    (uint16_t)k_ra8_usb_devsel_field_mask);
   internal_host_program_devadd(reg, devsel);
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   /* BEMPSTS/BRDYSTS are W1C: on hardware, writing ~DCP clears every set status
-   * bit EXCEPT the DCP pipe. A plain-RAM sim would blind-assign 0xFFFE and zero
+   * bit EXCEPT the DCP pipe. A plain-RAM fake would blind-assign 0xFFFE and zero
    * the DCP bit a test pre-loaded for the DATA stage, so model the W1C (preserve
-   * DCP, clear the rest) explicitly under simulation. */
+   * DCP, clear the rest) explicitly off-target. */
   reg->BEMPSTS = (uint16_t)(reg->BEMPSTS & (uint16_t)k_ra8_usb_dcp_pipe0_bit);
   reg->BRDYSTS = (uint16_t)(reg->BRDYSTS & (uint16_t)k_ra8_usb_dcp_pipe0_bit);
 #else
@@ -598,7 +598,7 @@ ra8_err_t ra8_usb_dcp_out_arm(ra8_usb_speed_t speed)
   internal_dcp_pid(reg, k_ra8_pid_buf);
   if ((reg->BRDYENB & (uint16_t)k_ra8_usb_dcp_pipe0_bit) == 0U) {
     /* The line above OR-set the DCP bit into BRDYENB and no helper touches
-     * BRDYENB before this re-read of the same word, so under RA8_SIMULATOR_MODE
+     * BRDYENB before this re-read of the same word, so under RA8_OFF_TARGET
      * (plain-RAM registers) the bit is always present; this timeout is only
      * reachable on silicon where the SIE refuses the enable. */
     return k_ra8_err_hw_timeout; /* GCOVR_EXCL_LINE */

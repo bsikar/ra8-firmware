@@ -185,7 +185,7 @@ ra8_err_t ra8_board_sw_read(ra8_board_sw_id_t sw, ra8_board_sw_state_t* out_pres
   ra8_level_t lvl = k_ra8_level_high;
   err             = ra8_gpio_read(pin, &lvl);
   if (err != k_ra8_ok) {
-    /* ra8_gpio_read returns k_ra8_ok for valid port-0 SW pins in simulation. */
+    /* ra8_gpio_read returns k_ra8_ok for valid port-0 SW pins off-target. */
     return err; /* GCOVR_EXCL_LINE */
   }
   /* Buttons are active-low: low level == pressed. */
@@ -617,7 +617,7 @@ ra8_err_t ra8_board_lcd_panel_power_on(void)
   ra8_delay_ms(k_reset_pulse_ms);
   err = ra8_gpio_write(k_ra8_pin_lcd_reset_l, k_ra8_level_high);
   if (err != k_ra8_ok) {
-    /* ra8_gpio_write returns k_ra8_ok for valid port/pin pairs in simulation. */
+    /* ra8_gpio_write returns k_ra8_ok for valid port/pin pairs off-target. */
     return err; /* GCOVR_EXCL_LINE */
   }
   ra8_delay_ms(k_reset_pulse_ms);
@@ -713,7 +713,7 @@ ra8_err_t ra8_board_xspi_pins_init(void)
   /* Step 2: drive RESET_L high to release the chip. */
   err = ra8_gpio_write(reset_pin, k_ra8_level_high);
   if (err != k_ra8_ok) {
-    /* ra8_gpio_write returns k_ra8_ok for valid port/pin pairs in simulation. */
+    /* ra8_gpio_write returns k_ra8_ok for valid port/pin pairs off-target. */
     return err; /* GCOVR_EXCL_LINE */
   }
   ra8_delay_ms((uint32_t)k_ra8_board_xspi_reset_high_ms);

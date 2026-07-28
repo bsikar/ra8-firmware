@@ -134,7 +134,7 @@ static inline void internal_write32(uintptr_t addr, uint32_t value)
  * @brief Data Synchronization Barrier (DSB).
  * @details Stalls until every preceding memory access completes, so a register
  *          write (e.g. a cache or MPU enable) is in effect before later
- *          instructions observe it. Compiled out under @c RA8_SIMULATOR_MODE,
+ *          instructions observe it. Compiled out under @c RA8_OFF_TARGET,
  *          where the host emulator has no pipeline to drain.
  * @return Nothing.
  * @pre Called from the single-threaded reset path.
@@ -146,7 +146,7 @@ static inline void internal_write32(uintptr_t addr, uint32_t value)
  */
 static inline void internal_dsb(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("dsb 0xF" ::: "memory");
 #endif
 }
@@ -155,7 +155,7 @@ static inline void internal_dsb(void)
  * @brief Instruction Synchronization Barrier (ISB).
  * @details Flushes the pipeline so instructions after a context-altering
  *          register write (CPACR, CCR, ...) are re-fetched under the new
- *          context. Compiled out under @c RA8_SIMULATOR_MODE.
+ *          context. Compiled out under @c RA8_OFF_TARGET.
  * @return Nothing.
  * @pre Called from the single-threaded reset path.
  * @pre A preceding context-altering write (e.g. CPACR) has been issued.
@@ -166,7 +166,7 @@ static inline void internal_dsb(void)
  */
 static inline void internal_isb(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("isb 0xF" ::: "memory");
 #endif
 }
@@ -175,7 +175,7 @@ static inline void internal_isb(void)
  * @brief Mask all maskable IRQs at the core (PRIMASK = 1, @c cpsid @c i).
  * @details Gives the rest of @c SystemInit a deterministic, interrupt-free
  *          bring-up window; @c main() re-enables IRQs once every handler is
- *          wired up. Compiled out under @c RA8_SIMULATOR_MODE.
+ *          wired up. Compiled out under @c RA8_OFF_TARGET.
  * @return Nothing.
  * @pre Called from the single-threaded reset path before any IRQ source is on.
  * @pre PRIMASK is in its reset (interrupts-enabled) state.
@@ -186,7 +186,7 @@ static inline void internal_isb(void)
  */
 static inline void internal_disable_irq(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("cpsid i" ::: "memory");
 #endif
 }

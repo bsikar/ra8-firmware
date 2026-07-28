@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/crc_demo/main.c. The hardware path uses
- * the host ra8_sim_mmap shim to drive the CRC peripheral; the software
+ * the host ra8_fake_mmap shim to drive the CRC peripheral; the software
  * reference is a bit-serial CRC-32 (IEEE 802.3, reflected) copied from
  * the demo. Tests cover the bring-up, compute, and inner-loop branches
  * with MC/DC vectors.
@@ -19,7 +19,7 @@
 #include "ra8_crc.h"
 #include "ra8_crc_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -64,7 +64,7 @@ static const uint8_t k_t_crc_payload[k_t_crc_payload_n] = {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /** @brief Software reference -- copy of crc_demo_sw_crc32. */
@@ -105,7 +105,7 @@ static void test_crc_app_init_ok(void)
  * @details
  * For a 32-bit polynomial ``ra8_crc_compute`` pre-seeds CRCDOR with
  * 0xFFFFFFFF and XORs the readback with 0xFFFFFFFF before returning.
- * On the sim shim the "engine" leaves the seed in CRCDOR untouched, so
+ * On the fake shim the "engine" leaves the seed in CRCDOR untouched, so
  * the final ``got`` value collapses to ``seed XOR seed = 0`` -- which
  * is also the canonical CRC-32 of an empty message.
  *

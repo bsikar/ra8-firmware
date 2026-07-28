@@ -14,11 +14,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpt_regs.h"
 #include "ra8_mstp.h"
 #include "ra8_pdg.h"
 #include "ra8_pdg_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -70,7 +70,7 @@ static void*    s_pdg_cb_last_ctx;
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_pdg_cb_count    = 0U;
   s_pdg_cb_last_ctx = nullptr;

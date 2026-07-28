@@ -65,7 +65,7 @@ static void test_rng_app_random_ok(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_crypto_init());
   uint8_t buf[k_t_rng_bytes_per_line] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_crypto_random(buf, sizeof(buf)));
-  /* xorshift32 sim is deterministic; at least one of the 32 bytes
+  /* xorshift32 fake is deterministic; at least one of the 32 bytes
    * must differ from the all-zero seed buffer. */
   uint8_t accum = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_t_rng_bytes_per_line; ++i) {

@@ -248,7 +248,7 @@ typedef struct ra8_psa_key_attr {
  *
  * Algorithm:
  * 1. If already initialized, return ``k_ra8_err_exists``.
- * 2. Invoke ``psa_crypto_init`` (or the simulator stand-in).
+ * 2. Invoke ``psa_crypto_init`` (or the fake stand-in).
  * 3. Zero ``s_key_pool`` so close-without-import paths are well defined.
  * 4. Mark the module initialized.
  *
@@ -258,7 +258,7 @@ typedef struct ra8_psa_key_attr {
  * @retval k_ra8_err_hw_error TF-PSA-Crypto initialisation reported a fault.
  *
  * @pre TF-PSA-Crypto has been built into the firmware image
- *      (``RA8_USE_MBEDTLS=ON``) OR ``RA8_SIMULATOR_MODE`` is defined.
+ *      (``RA8_USE_MBEDTLS=ON``) OR ``RA8_OFF_TARGET`` is defined.
  * @pre Caller is on the boot thread; not safe to interleave with other
  *      crypto calls.
  * @post Module is in the initialized state on success.
@@ -285,7 +285,7 @@ ra8_err_t ra8_psa_crypto_init(void);
  *
  * @details
  * Destroys every still-imported key, calls ``mbedtls_psa_crypto_free``
- * (or the simulator stand-in), and clears the initialized flag so a
+ * (or the fake stand-in), and clears the initialized flag so a
  * subsequent ``ra8_psa_crypto_init`` succeeds again.
  *
  * @return ra8_err_t Error code.
@@ -635,7 +635,7 @@ ra8_err_t ra8_psa_aead_decrypt(ra8_psa_key_t  handle,
  * Wraps ``psa_generate_random`` (PSA Crypto API spec, ARM IHI 0086 v1.1.0,
  * Section 10.4 "Random number generation"). On the target the underlying
  * PSA implementation pulls entropy from the RSIP TRNG; in
- * ``RA8_SIMULATOR_MODE`` builds a deterministic xorshift32 stream seeded
+ * ``RA8_OFF_TARGET`` builds a deterministic xorshift32 stream seeded
  * from the call index is used so host-side tests are reproducible.
  *
  * @param[out] out     Destination buffer that receives ``out_len`` bytes.

@@ -9,8 +9,8 @@
 #include "ra8_crc.h"
 #include "ra8_crc_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -68,7 +68,7 @@ static uint32_t compute_with_preseeded_result(ra8_crc_poly_t poly, uint32_t pres
 static void test_init_programs_poly_crc8(void)
 {
   TEST_BEGIN("crc init programs poly crc8");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_8));
   volatile r_crc_regs_t* reg = ra8_crc();
@@ -88,7 +88,7 @@ static void test_init_programs_poly_crc8(void)
 static void test_init_programs_poly_crc16(void)
 {
   TEST_BEGIN("crc init programs poly crc16");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_16));
   volatile r_crc_regs_t* reg = ra8_crc();
@@ -105,7 +105,7 @@ static void test_init_programs_poly_crc16(void)
 static void test_init_programs_poly_crc32(void)
 {
   TEST_BEGIN("crc init programs poly crc32");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_32_ieee802_3));
   volatile r_crc_regs_t* reg = ra8_crc();
@@ -122,7 +122,7 @@ static void test_init_programs_poly_crc32(void)
 static void test_init_programs_poly_none(void)
 {
   TEST_BEGIN("crc init poly none");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_none));
   TEST_END("crc init poly none");
@@ -137,7 +137,7 @@ static void test_init_programs_poly_none(void)
 static void test_init_pulses_dorclr(void)
 {
   TEST_BEGIN("crc init pulses DORCLR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_16_ccitt));
   volatile r_crc_regs_t* reg = ra8_crc();
   /* DORCLR bit (0x80) should be set alongside GPS=3. */
@@ -155,12 +155,12 @@ static void test_init_pulses_dorclr(void)
 static void test_reset_sets_crccr0_dorclr(void)
 {
   TEST_BEGIN("crc reset sets CRCCR0.DORCLR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   (void)ra8_crc_init(k_ra8_crc_poly_8);
   ra8_crc_reset();
-  /* Driver read-modify-writes CRCCR0 with DORCLR (bit 7) set. The sim
-   * register does not auto-clear the bit (sim_mmap is raw memory), so
+  /* Driver read-modify-writes CRCCR0 with DORCLR (bit 7) set. The fake
+   * register does not auto-clear the bit (ra8_fake_mmap is raw memory), so
    * we should see the GPS bits plus DORCLR in the final value. */
   volatile r_crc_regs_t* reg = ra8_crc();
   const uint8_t expected = (uint8_t)((uint8_t)k_ra8_crc_poly_8 | (uint8_t)k_ra8_crc_test_dorclr);
@@ -177,7 +177,7 @@ static void test_reset_sets_crccr0_dorclr(void)
 static void test_compute_null_data(void)
 {
   TEST_BEGIN("crc compute null data");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint32_t out = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_crc_compute(nullptr, (uint32_t)k_ra8_crc_test_len, &out));
@@ -193,7 +193,7 @@ static void test_compute_null_data(void)
 static void test_compute_null_out(void)
 {
   TEST_BEGIN("crc compute null out");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_crc_compute(s_payload, (uint32_t)k_ra8_crc_test_len, nullptr));
@@ -209,13 +209,13 @@ static void test_compute_null_out(void)
 static void test_compute_crc8_reads_dor(void)
 {
   TEST_BEGIN("crc compute crc8 reads dor");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const uint32_t got =
     compute_with_preseeded_result(k_ra8_crc_poly_8, (uint32_t)k_ra8_crc_test_marker);
   TEST_ASSERT_EQ(k_ra8_crc_test_marker, got);
   /* CRC-8 path uses CRCDIR_BY (8-bit alias) -- last byte should be at
-   * the byte register. The sim_mmap union exposes the same address
+   * the byte register. The ra8_fake_mmap union exposes the same address
    * via reg->CRCDIR (low byte equals last write). */
   volatile r_crc_regs_t* reg = ra8_crc();
   TEST_ASSERT_EQ(s_payload[3], reg->CRCDIR_BY);
@@ -231,7 +231,7 @@ static void test_compute_crc8_reads_dor(void)
 static void test_compute_crc16_reads_dor(void)
 {
   TEST_BEGIN("crc compute crc16 reads dor");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const uint32_t marker = 0x1122UL;
   const uint32_t got    = compute_with_preseeded_result(k_ra8_crc_poly_16_ccitt, marker);
@@ -248,11 +248,11 @@ static void test_compute_crc16_reads_dor(void)
 static void test_compute_crc32_reads_dor(void)
 {
   TEST_BEGIN("crc compute crc32 reads dor");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* For 32-bit polynomials the driver pre-seeds CRCDOR with
    * 0xFFFFFFFF and XORs the readback with the same constant on the
-   * way out (IEEE 802.3 / Castagnoli convention). On the sim the
+   * way out (IEEE 802.3 / Castagnoli convention). On the fake the
    * "engine" doesn't transform the seed, so the readback equals the
    * seed and the final out_crc value is `seed XOR seed = 0`. */
   (void)ra8_crc_init(k_ra8_crc_poly_32c_rev);
@@ -277,7 +277,7 @@ static void test_compute_crc32_reads_dor(void)
 static void test_compute_zero_length(void)
 {
   TEST_BEGIN("crc compute zero length");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   (void)ra8_crc_init(k_ra8_crc_poly_8);
   volatile r_crc_regs_t* reg = ra8_crc();
@@ -294,7 +294,7 @@ static void test_compute_zero_length(void)
 
 static void prep_w44(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

@@ -6,7 +6,7 @@
  * @details
  * Binds both backends of the facade -- SPI_B (`ra8_io_spi_bus_bind_spi_b`)
  * and SCI Simple-SPI (`ra8_io_spi_bus_bind_sci_spi`) -- against the
- * ``ra8_sim_mmap`` register substrate and drives the vtable end to end:
+ * ``ra8_fake_mmap`` register substrate and drives the vtable end to end:
  *
  *  - dispatcher validation: NULL handle and never-bound handle rejected
  *    on every public entry point;
@@ -30,13 +30,13 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_io_spi_bus.h"
 #include "ra8_io_spi_bus_sci_spi.h"
 #include "ra8_io_spi_bus_spi_b.h"
 #include "ra8_mstp.h"
 #include "ra8_sci_regs.h"
 #include "ra8_sci_spi.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_spi.h"
 #include "ra8_spi_bus_ops.h"
 #include "ra8_spi_regs.h"
@@ -47,19 +47,19 @@
  * @brief Channels, rates and wire bytes used across the tests.
  */
 typedef enum : uint32_t {
-  k_test_spi_b_ch     = 0U,         /**< SPI_B channel under test.        */
-  k_test_spi_b_ch_oor = 2U,         /**< First invalid SPI_B channel.     */
-  k_test_sci_ch       = 0U,         /**< SCI channel under test.          */
-  k_test_sci_ch_oor   = 10U,        /**< First invalid SCI channel.       */
-  k_test_baud_hz      = 1000000U,   /**< 1 MHz bit-rate.                  */
-  k_test_pclk_hz      = 100000000U, /**< 100 MHz peripheral clock.        */
-  k_test_tx_byte      = 0xA5U,      /**< Byte shifted out on COPI.        */
-  k_test_rx_byte      = 0x5AU,      /**< Byte the sim returns in SCI RDR. */
-  k_test_multi_len    = 3U,         /**< Frames in the bulk transfers.    */
+  k_test_spi_b_ch     = 0U,         /**< SPI_B channel under test.         */
+  k_test_spi_b_ch_oor = 2U,         /**< First invalid SPI_B channel.      */
+  k_test_sci_ch       = 0U,         /**< SCI channel under test.           */
+  k_test_sci_ch_oor   = 10U,        /**< First invalid SCI channel.        */
+  k_test_baud_hz      = 1000000U,   /**< 1 MHz bit-rate.                   */
+  k_test_pclk_hz      = 100000000U, /**< 100 MHz peripheral clock.         */
+  k_test_tx_byte      = 0xA5U,      /**< Byte shifted out on COPI.         */
+  k_test_rx_byte      = 0x5AU,      /**< Byte the fake returns in SCI RDR. */
+  k_test_multi_len    = 3U,         /**< Frames in the bulk transfers.     */
 } ra8_io_spi_bus_test_const_t;
 
 /**
- * @brief Reset the simulated MMIO window and the MSTP model before a test.
+ * @brief Reset the fake MMIO window and the MSTP model before a test.
  *
  * @details Mirrors the ``prep`` helper in the wrapped drivers' tests: a
  * clean peripheral RAM image plus an initialized module-stop model.
@@ -73,15 +73,15 @@ typedef enum : uint32_t {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
 /**
  * @brief Bring SPI_B channel 0 up and pre-seed SPSR so polls fall through.
  *
- * @details The SPI_B driver's sim wait checks SPSR.SPTEF / SPSR.SPRF; the
- * sim never asserts them, so seed both once (SPSRC clears land in a
+ * @details The SPI_B driver's fake wait checks SPSR.SPTEF / SPSR.SPRF; the
+ * fake never asserts them, so seed both once (SPSRC clears land in a
  * separate RAM word and do not consume the seed).
  *
  * @pre ``prep`` ran (clean window + MSTP up).
@@ -222,7 +222,7 @@ static void test_spi_b_forwarding(void)
   ra8_io_spi_bus_t bus = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_spi_bus_bind_spi_b(&bus, (uint8_t)k_test_spi_b_ch));
 
-  /* xfer8: the sim SPDR is one RAM word, so the driver echoes tx as rx --
+  /* xfer8: the fake SPDR is one RAM word, so the driver echoes tx as rx --
    * seeing the tx byte back proves the call reached ra8_spi_xfer8. */
   uint8_t rx = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_spi_bus_xfer8(&bus, (uint8_t)k_test_tx_byte, &rx));

@@ -3,7 +3,7 @@
  * @brief Unit tests for ra8_reset.c (Reset cause + software reset driver)
  *
  * @details
- * Exercises the reset HAL driver against the host-side ``ra8_sim_mmap``
+ * Exercises the reset HAL driver against the host-side ``ra8_fake_mmap``
  * shim. The shim maps both the SYSC peripheral window (0x4001E000)
  * and the Cortex-M85 SCB AIRCR (0xE000ED0C), so writes from the
  * driver land in ordinary host RAM and the test can read them back.
@@ -21,9 +21,9 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_reset.h"
 #include "ra8_reset_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -42,13 +42,13 @@ typedef enum : uint32_t {
  * @brief Reset every state the driver caches between cases.
  *
  * @details
- * ``ra8_reset_init`` keeps a file-scope snapshot. We zero the sim mmap
+ * ``ra8_reset_init`` keeps a file-scope snapshot. We zero the fake mmap
  * (clears every register) **and** drop the driver's cached snapshot,
  * so each test starts with both hardware and driver state at zero.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_reset_test_only_reset_state();
 }
 
@@ -413,7 +413,7 @@ static void test_software_reset_writes_aircr(void)
 
   *ra8_reset_aircr() = (uint32_t)k_ra8_reset_test_aircr_zero;
 
-  /* On RA8_SIMULATOR_MODE this returns instead of looping. */
+  /* On RA8_OFF_TARGET this returns instead of looping. */
   ra8_reset_software_reset();
 
   const uint32_t expected =

@@ -189,7 +189,7 @@ static void internal_apply_resolution_code(uint32_t adprc)
  *
  * @details
  * On real silicon CLKSR follows ADCLKENR within a handful of cycles
- * (HUM Ch 53). On the host ``ra8_sim_mmap`` window CLKSR is just
+ * (HUM Ch 53). On the host ``ra8_fake_mmap`` window CLKSR is just
  * anonymous RAM, so the wait is a bounded no-op. We mirror the
  * FSP ``FSP_HARDWARE_REGISTER_WAIT`` pattern: poll a fixed budget
  * and continue regardless rather than fail-loud.

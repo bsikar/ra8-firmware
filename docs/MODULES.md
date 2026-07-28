@@ -29,7 +29,7 @@ peripheral the project drives: GPIO, SCI/UART, IIC, SPI, ADC, DAC,
 PWM/GPT, AGT, CANFD, ETHA + ESWM, USB FS/HS, GLCDC, RSIP TRNG, MSTP,
 clocks, ICU, watchdog, and a bank of `ra8d2_*_regs.h` register-map
 headers. Every driver returns `ra8_err_t` and is unit-tested against
-`tests/mocks/ra8_sim_mmap.c`, which presents the MCU peripheral
+`tests/mocks/ra8_fake_mmap.c`, which presents the MCU peripheral
 address space as host-side RAM.
 
 * Headers: `libs/ra8_hal/inc/ra8_*.h` and `libs/ra8_hal/inc/ra8d2_*_regs.h`

@@ -42,7 +42,7 @@ together in one binary.
 make            # -> build/ra8_io_swap_demo.elf
 ```
 
-## Run in the simulator
+## Run in the emulator
 
 ra8_emulator models both the RAM region and the OSPI NOR array, so no `--sd` flag is
 needed. The OSPI RMW is slow in the emulator, so give it a generous instruction
@@ -71,7 +71,7 @@ budget):
 The engine logic, the deterministic payload pattern, and the read-back verdict
 are covered on the host in `tests/test_app_ra8_io_swap_demo.c`, which runs the
 same drop-in swap over a RAM backend and the register-level xSPI NOR model
-(`tests/mocks/ra8_sim_xspi_flash.c`) plus the in-RAM stdio sink -- so the whole
+(`tests/mocks/ra8_fake_xspi_flash.c`) plus the in-RAM stdio sink -- so the whole
 fabric abstraction is exercised without hardware. MC/DC vectors cover the
 compound read-back verdict and the pattern-equality guard.
 

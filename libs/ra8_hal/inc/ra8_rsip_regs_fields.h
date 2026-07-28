@@ -268,7 +268,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra8_rsip_life_state_t
- * @brief Device-lifecycle state values (sim-only model -- no documented
+ * @brief Device-lifecycle state values (off-target-only model -- no documented
  *        RA8D2 register; real state is in the DLM, see ra8_rsip_devsec.c).
  */
 typedef enum : uint32_t {
@@ -282,7 +282,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra8_rsip_debug_level_t
- * @brief Debug authorisation levels AL0/AL1/AL2 (sim-only model -- no
+ * @brief Debug authorisation levels AL0/AL1/AL2 (off-target-only model -- no
  *        documented RA8D2 register; real state is in the DLM, see
  *        ra8_rsip_devsec.c).
  */
@@ -398,7 +398,7 @@ typedef enum : uint32_t {
  *        ``TAMPER_STATUS``.
  *
  * @details
- * Invented sim-only model: six external tamper lines plus three
+ * Invented off-target-only model: six external tamper lines plus three
  * internal sources (RSIP self-fault, voltage glitch, clock glitch).
  * The RA8D2 exposes no such RSIP tamper register -- real tamper is an
  * I/O-port feature whose response is handled by the RTC / MRAM / VBATT
@@ -471,7 +471,7 @@ typedef enum : uint16_t {
  *
  * @details
  * Mirrors the ``ra8_glcdc_reg32`` accessor pattern so the host test
- * build can intercept reads and writes via ``ra8_sim_mmap``. The
+ * build can intercept reads and writes via ``ra8_fake_mmap``. The
  * accessor performs no validation; callers pass a value from
  * ``ra8_rsip_off_t``.
  *

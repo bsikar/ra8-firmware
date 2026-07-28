@@ -155,8 +155,8 @@ static ra8_err_t internal_i2c_wait_icsr2(volatile const r_i2c_regs_t* reg, uint8
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_poll(&reg->ICSR2, i, (reg->ICSR2 & mask) != 0U)) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_poll(&reg->ICSR2, i, (reg->ICSR2 & mask) != 0U)) { /* GCOVR_EXCL_BR_LINE */
 #else
     if ((reg->ICSR2 & mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
 #endif

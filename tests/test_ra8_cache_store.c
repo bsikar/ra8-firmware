@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_cache_store.c
- * @brief Unit tests for ra8_cache_store over LevelX standalone + a RAM NOR sim (#201).
+ * @brief Unit tests for ra8_cache_store over LevelX standalone + a RAM NOR fake (#201).
  *
  * @details
  * Drives the persistent key->blob store end to end on the host: put/get random
@@ -8,7 +8,7 @@
  * eviction + sector reuse, pin-blocks-evict, and both recovery paths -- a clean
  * checkpoint reload and an unclean-shutdown log replay that discards a torn
  * (payload-written, header-missing) tail. LevelX runs standalone
- * (`LX_STANDALONE_ENABLE`) backed by ::lx_nor_sim_ram_init.
+ * (`LX_STANDALONE_ENABLE`) backed by ::lx_nor_fake_ram_init.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include "lx_api.h"
-#include "lx_nor_sim_ram.h"
+#include "lx_nor_fake_ram.h"
 #include "ra8_cache_store.h"
 #include "ra8_cache_store_internal.h"
 #include "ra8_err.h"
@@ -205,7 +205,7 @@ static LX_NOR_FLASH* t_next_flash(void)
 static ra8_cache_store_cfg_t t_cfg(LX_NOR_FLASH* f, bool format)
 {
   return (ra8_cache_store_cfg_t){.nor_flash         = f,
-                                 .nor_driver_init   = lx_nor_sim_ram_init,
+                                 .nor_driver_init   = lx_nor_fake_ram_init,
                                  .name              = "cs",
                                  .index             = s_index,
                                  .staging           = s_staging,
@@ -245,7 +245,7 @@ static void t_fill(uint8_t* buf, uint32_t len, uint8_t seed)
 static void test_put_get_roundtrip(void)
 {
   TEST_BEGIN("put/get roundtrip");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -281,7 +281,7 @@ static void test_put_get_roundtrip(void)
 static void test_vsource_integration(void)
 {
   TEST_BEGIN("vsource integration");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -322,7 +322,7 @@ static void test_vsource_integration(void)
 static void test_put_edge_cases(void)
 {
   TEST_BEGIN("put edge cases");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -351,7 +351,7 @@ static void test_put_edge_cases(void)
 static void test_evict_reuse(void)
 {
   TEST_BEGIN("evict + reuse");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -384,7 +384,7 @@ static void test_evict_reuse(void)
 static void test_pin_blocks_evict(void)
 {
   TEST_BEGIN("pin blocks evict");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -410,7 +410,7 @@ static void test_pin_blocks_evict(void)
 static void test_recovery_clean(void)
 {
   TEST_BEGIN("recovery: clean checkpoint");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -454,7 +454,7 @@ static void test_recovery_clean(void)
 static void test_recovery_crash_replay(void)
 {
   TEST_BEGIN("recovery: crash replay");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -590,7 +590,7 @@ static void test_init_validation(void)
 static void test_limits_and_sync(void)
 {
   TEST_BEGIN("limits + sync");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -635,7 +635,7 @@ static void test_limits_and_sync(void)
 static void test_evict_then_crash(void)
 {
   TEST_BEGIN("evict then crash");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -703,7 +703,7 @@ static void test_corrupt_super_replays(void)
 {
   TEST_BEGIN("corrupt super replays");
   for (uint32_t variant = 0U; variant < 2U; variant++) {
-    lx_nor_sim_ram_wipe();
+    lx_nor_fake_ram_wipe();
     ra8_cache_store_t     st  = {};
     ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -773,7 +773,7 @@ static void t_plant_hdr(ra8_cache_store_t* st,
 static void test_scan_rejects_bad_headers(void)
 {
   TEST_BEGIN("scan rejects bad headers");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -820,7 +820,7 @@ static void test_scan_rejects_bad_headers(void)
 static void test_write_fault_propagates(void)
 {
   TEST_BEGIN("write fault propagates");
-  lx_nor_sim_ram_wipe();
+  lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
@@ -831,9 +831,9 @@ static void test_write_fault_propagates(void)
 
   /* Store is now dirty; the next put skips the mark-dirty write and fails on
    * the payload/header write instead. */
-  lx_nor_sim_ram_fail_writes(1U);
+  lx_nor_fake_ram_fail_writes(1U);
   TEST_ASSERT_EQ(k_ra8_err_hw_init_failed, ra8_cache_store_put(&st, k_t_key_b, a, sizeof(a)));
-  lx_nor_sim_ram_fail_writes(0U);
+  lx_nor_fake_ram_fail_writes(0U);
   TEST_END("write fault propagates");
 }
 
@@ -841,7 +841,7 @@ static void test_write_fault_propagates(void)
  * @brief Run every ra8_cache_store test.
  * @return 0 on success (a failing assertion exits non-zero before returning).
  * @pre The host provides stdio for the Unity-style macros.
- * @pre The RAM NOR simulator backing is available (static storage).
+ * @pre The RAM NOR fake backing is available (static storage).
  * @post Every registered test has run.
  * @post A non-zero exit indicates the first failing assertion.
  * @since 0.1.0

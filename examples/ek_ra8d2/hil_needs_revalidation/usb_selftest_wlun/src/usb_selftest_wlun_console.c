@@ -28,7 +28,7 @@
 #include "ra8_err.h"
 #include "usb_selftest_wlun_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* Shared per-(LUN,LBA) pattern */
@@ -136,4 +136,4 @@ uint32_t wlun_str_len(const char* text)
   return wlun_print("\r\n");
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

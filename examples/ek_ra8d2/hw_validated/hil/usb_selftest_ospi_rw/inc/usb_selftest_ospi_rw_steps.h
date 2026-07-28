@@ -33,7 +33,7 @@
 
 #include "ra8_err.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #endif
 
@@ -138,7 +138,7 @@ typedef enum : uint32_t {
  */
 [[nodiscard]] ra8_err_t ospirw_ospi_provision(void);
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Host-side worker: retry the full pass until it succeeds.
  *
@@ -159,4 +159,4 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 VOID ospirw_host_worker(ULONG arg);
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

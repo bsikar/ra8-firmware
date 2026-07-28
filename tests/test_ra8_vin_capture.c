@@ -5,7 +5,7 @@
  * @details
  * Split sibling of the original test_ra8_vin.c suite covering the
  * lifecycle and capture surface of ra8_vin.c against the host-side
- * simulated MMIO (``ra8_sim_mmap``):
+ * fake MMIO (``ra8_fake_mmap``):
  *
  * - init happy path + null-cfg / zero-stride / IM / CLP rejection,
  *   reset
@@ -24,8 +24,8 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_vin.h"
 #include "ra8_vin_regs.h"
 #include "support/vin_test_util.h"
@@ -36,7 +36,7 @@
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

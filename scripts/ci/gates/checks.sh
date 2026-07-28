@@ -182,7 +182,7 @@ _pcc_security_invariants() (
   python3 scripts/checks/check_nsc_veneer_defs.py
   # Every insecure placeholder-crypto body (deterministic TRNG, forgeable
   # key-import MAC, plain-SRAM key vault, non-cryptographic RSIP key-wrap)
-  # must sit behind the RA8_INSECURE_STUB_CRYPTO / RA8_SIMULATOR_MODE guard
+  # must sit behind the RA8_INSECURE_STUB_CRYPTO / RA8_OFF_TARGET guard
   # with a fail-closed #else, so a release image that forgot to swap in real
   # crypto fails closed instead of shipping the stub (#180).
   python3 scripts/checks/check_stub_crypto_guarded.py
@@ -200,7 +200,7 @@ _pcc_security_invariants() (
   python3 scripts/checks/check_no_silent_stubs.py --selftest
   python3 scripts/checks/check_no_silent_stubs.py
   # A HAL peripheral driver must not guard bare CPU asm
-  # (wfi/dsb/isb/nop/cpsie/cpsid/reset-spin) on RA8_SIMULATOR_MODE -- those
+  # (wfi/dsb/isb/nop/cpsie/cpsid/reset-spin) on RA8_OFF_TARGET -- those
   # route through libs/ra8_hal/inc/ra8_hw_intrinsics.h +
   # tests/mocks/ra8_host_asm_stub.c so the driver stays branch-free and
   # coverage lands on the shipping path (#293).

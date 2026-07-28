@@ -28,7 +28,7 @@
 #include "ra8_adc.h"
 #include "ra8_adc_b_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -50,11 +50,11 @@ typedef enum : uint16_t {
 } adc_fixture2_t;
 
 /* ---------------------------------------------------------------------------
- * Sim helper: ADACT0 idle-state (deterministic, no wall-clock timer)
+ * Fake helper: ADACT0 idle-state (deterministic, no wall-clock timer)
  * --------------------------------------------------------------------------- */
 
 /* The ADC busy-poll reads ADSR.ADACT0 straight from the RAM-backed register
- * window. After ra8_sim_mmap_reset() ADACT0 reads 0 (idle), so the driver's
+ * window. After ra8_fake_mmap_reset() ADACT0 reads 0 (idle), so the driver's
  * bounded busy-wait observes the conversion already complete on its first poll
  * and takes the success path -- deterministically, with no wall-clock timer
  * signal to race the poll. Timeout cases below leave ADACT0 set (1) so the
@@ -128,7 +128,7 @@ static uint32_t adc_adprc_of(uint8_t ch)
 static void test_init_happy(void)
 {
   TEST_BEGIN("adc init happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   TEST_ASSERT((*ra8_adc_b_adclkenr() & k_ra8_adclkenr_mask_clken) != 0U);
@@ -149,7 +149,7 @@ static void test_init_happy(void)
 static void test_read_channel_null_out(void)
 {
   TEST_BEGIN("adc read_channel null out");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_adc_read_channel(k_ra8_adc_test_ch_zero, nullptr));
   TEST_END("adc read_channel null out");
@@ -164,7 +164,7 @@ static void test_read_channel_null_out(void)
 static void test_read_channel_out_of_range(void)
 {
   TEST_BEGIN("adc read_channel out of range");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint16_t raw = 0U;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_adc_read_channel(k_ra8_adc_test_ch_oor, &raw));
@@ -180,7 +180,7 @@ static void test_read_channel_out_of_range(void)
 static void test_read_channel_huge(void)
 {
   TEST_BEGIN("adc read_channel huge ch");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint16_t raw = 0U;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_adc_read_channel(k_ra8_adc_test_ch_huge, &raw));
@@ -200,7 +200,7 @@ static void test_read_channel_huge(void)
 static void test_read_channel_hcr_but_no_result(void)
 {
   TEST_BEGIN("adc read_channel: ch 23 (hcr valid, addr oob)");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   uint16_t raw = 0U;
   /* k_ra8_adc_b_max_channels = 24, k_ra8_adc_b_result_regs = 23. */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_adc_read_channel(23U, &raw));
@@ -219,7 +219,7 @@ static void test_read_channel_hcr_but_no_result(void)
 static void test_read_channel_completes(void)
 {
   TEST_BEGIN("adc read_channel: ADACT0 idle -> completes");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   *ra8_adc_b_addr(k_ra8_adc_test_ch_zero) = (uint32_t)k_ra8_adc_test_result_a;
 
@@ -246,7 +246,7 @@ static void test_read_channel_completes(void)
 static void test_read_channel_timeout(void)
 {
   TEST_BEGIN("adc read_channel: poll timeout");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Force ADACT0 stuck high so the busy poll never exits. */
   *ra8_adc_b_adsr() = k_ra8_adsr_mask_adact0;
@@ -278,7 +278,7 @@ static ra8_adc_cfg_t make_cfg(void)
 static void test_init_configured(void)
 {
   TEST_BEGIN("adc init configured: 14b right-aligned");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_adc_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
@@ -301,7 +301,7 @@ static void test_init_configured(void)
 static void test_init_configured_null(void)
 {
   TEST_BEGIN("adc init configured null");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_adc_init_configured(nullptr));
   TEST_END("adc init configured null");
@@ -316,7 +316,7 @@ static void test_init_configured_null(void)
 static void test_init_configured_scan(void)
 {
   TEST_BEGIN("adc init configured: scan mode");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_adc_cfg_t cfg = make_cfg();
   cfg.scan_mode     = true;
@@ -335,7 +335,7 @@ static void test_init_configured_scan(void)
 static void test_deinit(void)
 {
   TEST_BEGIN("adc deinit");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_adc_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
@@ -358,7 +358,7 @@ static void test_deinit(void)
 static void test_set_resolution(void)
 {
   TEST_BEGIN("adc set_resolution updates ADDOPCRC.ADPRC");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_adc_cfg_t cfg = make_cfg(); /* 14-bit. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
@@ -393,7 +393,7 @@ static void test_set_resolution(void)
 static void test_set_resolution_bad(void)
 {
   TEST_BEGIN("adc set_resolution bad");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_adc_set_resolution((ra8_adc_resolution_t)9U));
   TEST_END("adc set_resolution bad");
@@ -411,7 +411,7 @@ static void test_set_resolution_bad(void)
 static void test_init_configured_16bit(void)
 {
   TEST_BEGIN("adc init configured: 16-bit ADPRC");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_adc_cfg_t cfg = make_cfg();
   cfg.resolution    = k_ra8_adc_res_16bit;
@@ -433,7 +433,7 @@ static void test_init_configured_16bit(void)
 static void test_init_configured_bad_resolution(void)
 {
   TEST_BEGIN("adc init configured: bad resolution rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_adc_cfg_t cfg = make_cfg();
   cfg.resolution    = (ra8_adc_resolution_t)k_adc_resolution_invalid;
@@ -450,7 +450,7 @@ static void test_init_configured_bad_resolution(void)
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("adc status read + clear");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pre-set ADSR.ADACT0 (busy) and ADINTCR.ADIE0 (IE) to assert. */
   *ra8_adc_b_adsr()    = k_ra8_adsr_mask_adact0;
@@ -476,7 +476,7 @@ static void test_status_read_and_clear(void)
 static void test_status_null(void)
 {
   TEST_BEGIN("adc status null");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_adc_get_status(nullptr));
   TEST_END("adc status null");
 }
@@ -501,7 +501,7 @@ static void stub_adc_cb(void* ctx, uint16_t result)
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("adc attach + dispatch");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_adc_cb_count       = 0U;
   s_adc_cb_last_result = 0U;
   s_adc_cb_last_ctx    = nullptr;
@@ -526,7 +526,7 @@ static void test_attach_and_dispatch(void)
 static void test_dispatch_no_handler(void)
 {
   TEST_BEGIN("adc dispatch no handler");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_adc_cb_count = 0U;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_attach_handler(nullptr, nullptr));
@@ -545,7 +545,7 @@ static void test_dispatch_no_handler(void)
 static void test_power_transition(void)
 {
   TEST_BEGIN("adc power transition");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_adc_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));

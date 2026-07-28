@@ -9,11 +9,11 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_glcdc.h"
 #include "ra8_glcdc_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 /**
  * @enum glcdc_probe_t
@@ -83,7 +83,7 @@ typedef enum : uint8_t {
  * @details
  * Mirrors the file-static address enum in ra8_glcdc.c so the test can
  * observe the end state of internal_graphics_power_on (which now runs
- * on the host through the sim-mmap peripheral window). HUM Ch 11.2.1
+ * on the host through the fake-mmap peripheral window). HUM Ch 11.2.1
  * "PRCR : Protect Register" p 440 documents PRCR; PDCTRGD / LCDCKCR /
  * LCDCKDIVCR / HOCOCR live in the same SYSC block.
  */
@@ -183,8 +183,8 @@ typedef enum : uint32_t {
 static void test_init_happy_path(void)
 {
   TEST_BEGIN("ra8_glcdc_init happy path");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   const ra8_glcdc_config_t cfg = {
     .framebuffer_addr = (uint32_t)k_test_glcdc_fb_addr,
@@ -242,31 +242,31 @@ static void test_init_power_on_wait_legs(void)
 
   /* Exhaustion leg: both PDCTRGD polls run to their full budget (the
    * sequence is best-effort and must still complete + relock PRCR). */
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   *(volatile uint8_t*)k_test_glcdc_addr_pdctrgd = (uint8_t)k_test_glcdc_pdctrgd_gated;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)(uintptr_t)k_test_glcdc_addr_pdctrgd));
+    ra8_fake_mmio_fail_wait((const volatile void*)(uintptr_t)k_test_glcdc_addr_pdctrgd));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_init(&cfg));
   TEST_ASSERT_EQ(k_test_glcdc_pdctrgd_on, *(volatile uint8_t*)k_test_glcdc_addr_pdctrgd);
   TEST_ASSERT_EQ(k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
 
   /* Retry leg: the LCDCKCR SRDY polls converge on their 2nd poll. */
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_satisfy_after((const volatile void*)(uintptr_t)k_test_glcdc_addr_lcdckcr, 2U));
+    ra8_fake_mmio_satisfy_after((const volatile void*)(uintptr_t)k_test_glcdc_addr_lcdckcr, 2U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_init(&cfg));
   TEST_ASSERT_EQ(k_test_glcdc_lcdck_sel_pll1r, *(volatile uint8_t*)k_test_glcdc_addr_lcdckcr);
 
   /* Exhaustion leg on LCDCKCR: both SRDY polls burn their budget. */
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)(uintptr_t)k_test_glcdc_addr_lcdckcr));
+    ra8_fake_mmio_fail_wait((const volatile void*)(uintptr_t)k_test_glcdc_addr_lcdckcr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_init(&cfg));
   TEST_ASSERT_EQ(k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
 
@@ -282,8 +282,8 @@ static void test_init_power_on_wait_legs(void)
 static void test_init_null_cfg_rejected(void)
 {
   TEST_BEGIN("ra8_glcdc_init rejects NULL cfg");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_glcdc_init(nullptr));
   TEST_END("ra8_glcdc_init rejects NULL cfg");
 }
@@ -297,8 +297,8 @@ static void test_init_null_cfg_rejected(void)
 static void test_start_enable(void)
 {
   TEST_BEGIN("ra8_glcdc_start enables engine");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_start(true));
   TEST_ASSERT_EQ(1, *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_cfg));
   /* ra8_glcdc_start sequences VEN(bit8) then EN(bit0) into BG_EN per FSP
@@ -317,8 +317,8 @@ static void test_start_enable(void)
 static void test_start_disable(void)
 {
   TEST_BEGIN("ra8_glcdc_start disables engine");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   /* Prime with something non-zero first. */
   *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_cfg) = k_glcdc_probe_cfg;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_start(false));
@@ -344,8 +344,8 @@ static void stub_glcdc_cb(void* ctx, uint32_t mask)
 
 static void prep_w61(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   s_glcdc_cb_count     = 0U;
   s_glcdc_cb_last_mask = 0U;
@@ -441,8 +441,8 @@ static void test_power_transition(void)
 static void test_set_layer2_happy(void)
 {
   TEST_BEGIN("glcdc set_layer2 happy path");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   const ra8_glcdc_layer2_cfg_t cfg = {
     .framebuffer_addr  = (uint32_t)k_test_glcdc_fb2_addr,
     .line_stride_bytes = (uint32_t)k_test_layer2_strd,
@@ -497,8 +497,8 @@ static void test_set_layer2_happy(void)
 static void test_set_layer2_null_cfg(void)
 {
   TEST_BEGIN("glcdc set_layer2 rejects NULL");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_glcdc_set_layer2(nullptr));
   TEST_END("glcdc set_layer2 rejects NULL");
 }
@@ -512,8 +512,8 @@ static void test_set_layer2_null_cfg(void)
 static void test_layer2_show_happy(void)
 {
   TEST_BEGIN("glcdc layer2_show writes correct register images");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_glcdc_layer2_show((uintptr_t)k_test_glcdc_fb2_addr,
                                        (uint16_t)k_test_layer2_x,
@@ -555,8 +555,8 @@ static void test_layer2_show_happy(void)
 static void test_layer2_chroma_key_enable_fresh_ab1(void)
 {
   TEST_BEGIN("glcdc layer2_chroma_key_enable: fresh AB1 gets ARCON only");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   /* Red key; the driver forces an 0xFF alpha byte in AB8. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_layer2_chroma_key_enable((uint32_t)k_test_ckey_rgb));
   /* AB8 = 0xFF opaque-alpha-byte | masked 24-bit key. */
@@ -580,8 +580,8 @@ static void test_layer2_chroma_key_enable_fresh_ab1(void)
 static void test_layer2_chroma_key_enable_preserves_ab1(void)
 {
   TEST_BEGIN("glcdc layer2_chroma_key_enable: AB1 OR-in preserves DISPSEL");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   /* Pre-load AB1 with DISPSEL=ON_LOWER (3) as layer2_show leaves it. */
   *ra8_glcdc_reg32(k_ra8_glcdc_off_gr2_ab1) = (uint32_t)k_test_l2s_ab1;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_layer2_chroma_key_enable((uint32_t)k_test_ckey_rgb));
@@ -600,8 +600,8 @@ static void test_layer2_chroma_key_enable_preserves_ab1(void)
 static void test_set_blend_alpha(void)
 {
   TEST_BEGIN("glcdc set_blend k_ra8_blend_alpha");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_blend(k_ra8_blend_alpha, (uint8_t)k_test_alpha_half));
   /* AB1 should hold DISPSEL=2 (above) | ARCON bit (1 << 12) = 0x1002. */
   TEST_ASSERT_EQ(0x1002U, *ra8_glcdc_reg32(k_ra8_glcdc_off_gr1_ab1));
@@ -619,8 +619,8 @@ static void test_set_blend_alpha(void)
 static void test_set_blend_normal(void)
 {
   TEST_BEGIN("glcdc set_blend k_ra8_blend_normal");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_blend(k_ra8_blend_normal, 0xFFU));
   /* DISPSEL=2 with no ARCON. */
   TEST_ASSERT_EQ(2U, *ra8_glcdc_reg32(k_ra8_glcdc_off_gr1_ab1));
@@ -636,8 +636,8 @@ static void test_set_blend_normal(void)
 static void test_set_blend_overwrite(void)
 {
   TEST_BEGIN("glcdc set_blend k_ra8_blend_overwrite");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_blend(k_ra8_blend_overwrite, 0U));
   TEST_ASSERT_EQ(1U, *ra8_glcdc_reg32(k_ra8_glcdc_off_gr1_ab1));
   TEST_END("glcdc set_blend k_ra8_blend_overwrite");
@@ -652,8 +652,8 @@ static void test_set_blend_overwrite(void)
 static void test_set_blend_invalid_mode(void)
 {
   TEST_BEGIN("glcdc set_blend rejects invalid mode");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_glcdc_set_blend((ra8_glcdc_blend_mode_t)0xFFU, 0U));
   TEST_END("glcdc set_blend rejects invalid mode");
 }
@@ -667,8 +667,8 @@ static void test_set_blend_invalid_mode(void)
 static void test_set_background_color(void)
 {
   TEST_BEGIN("glcdc set_background_color");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_background_color((uint32_t)k_test_bgc_color));
   TEST_ASSERT_EQ(k_test_bgc_color, *ra8_glcdc_reg32(k_ra8_glcdc_off_bg_bgc));
   TEST_END("glcdc set_background_color");
@@ -685,8 +685,8 @@ static void test_set_background_color(void)
 static void test_clut_swap_now_false(void)
 {
   TEST_BEGIN("glcdc clut double_buffered swap_now=false");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   /* CLUTINT.SEL starts at 0 -> active plane is 0 -> writes go to plane 1. */
   /* Stamp distinct content into the CURRENTLY active plane (plane 0)
    * so we can prove we did NOT overwrite it. */
@@ -730,8 +730,8 @@ static void test_clut_swap_now_false(void)
 static void test_clut_swap_now_true(void)
 {
   TEST_BEGIN("glcdc clut double_buffered swap_now=true");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   const uint32_t src[k_test_clut_small] = {
     (uint32_t)k_test_clut_e0,
     (uint32_t)k_test_clut_e1,
@@ -764,8 +764,8 @@ static void test_clut_swap_now_true(void)
 static void test_clut_layer2(void)
 {
   TEST_BEGIN("glcdc clut double_buffered layer 2");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   const uint32_t src[k_test_clut_small] = {
     (uint32_t)k_test_clut_e0,
     (uint32_t)k_test_clut_e1,
@@ -794,8 +794,8 @@ static void test_clut_layer2(void)
 static void test_clut_null_rejected(void)
 {
   TEST_BEGIN("glcdc clut rejects NULL src");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_glcdc_set_clut_double_buffered((uint8_t)k_test_layer1,
                                                     nullptr,
@@ -813,8 +813,8 @@ static void test_clut_null_rejected(void)
 static void test_clut_invalid_args(void)
 {
   TEST_BEGIN("glcdc clut rejects bad layer / size");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   const uint32_t src[k_test_clut_small] = {0U, 0U, 0U, 0U};
   /* Layer >= 2 is invalid. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -839,8 +839,8 @@ static void test_clut_invalid_args(void)
 static void test_set_dithering_modes(void)
 {
   TEST_BEGIN("glcdc set_dithering modes");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_dithering(k_ra8_dither_off));
   TEST_ASSERT_EQ(0, *ra8_glcdc_reg32(k_ra8_glcdc_off_panel_dtha));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_dithering(k_ra8_dither_truncate));
@@ -860,8 +860,8 @@ static void test_set_dithering_modes(void)
 static void test_set_brightness(void)
 {
   TEST_BEGIN("glcdc set_brightness");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_brightness(0x11U, 0x22U, 0x33U));
   TEST_ASSERT_EQ(0x22U, *ra8_glcdc_reg32(k_ra8_glcdc_off_out_bright1));
   TEST_ASSERT_EQ(((0x33U << 16U) | 0x11U), *ra8_glcdc_reg32(k_ra8_glcdc_off_out_bright2));
@@ -877,8 +877,8 @@ static void test_set_brightness(void)
 static void test_set_contrast(void)
 {
   TEST_BEGIN("glcdc set_contrast");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_contrast(0x40U, 0x80U, 0xC0U));
   TEST_ASSERT_EQ(((0x80U << 16U) | (0xC0U << 8U) | 0x40U),
                  *ra8_glcdc_reg32(k_ra8_glcdc_off_out_contrast));
@@ -916,8 +916,8 @@ typedef enum : uint32_t {
 static void test_mcdc_set_clut_double_buffered_entries(void)
 {
   TEST_BEGIN("glcdc MC/DC set_clut_double_buffered entries range");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   static const uint32_t clut[(uint32_t)k_test_glcdc_mcdc_clut_in_range] = {
     (uint32_t)k_test_clut_e0,
     (uint32_t)k_test_clut_e1,

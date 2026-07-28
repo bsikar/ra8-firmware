@@ -65,7 +65,7 @@ then the synthesised fault is recorded and read back
 `.noinit` record with its software CRC-32 and boot-loop counter (T2-03).
 Recorded on tracker issue #191.
 
-**Simulator-in-the-loop (`scripts/emu/eil_all.sh`):** ra8_emulator **cold-loads**
+**Emulator-in-the-loop (`scripts/emu/eil_all.sh`):** ra8_emulator **cold-loads**
 the image on every run, so it proves the boot bring-up, the peek / claim /
 safe-mode logic, and the synthesised in-process write+readback -- the
 `recorded+readback exc=6` gate `hil.conf` asserts. Two legs are proven

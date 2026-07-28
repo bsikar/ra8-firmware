@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_wdt.h"
 #include "ra8_wdt_regs.h"
 #include "unity_minimal.h"
@@ -59,7 +59,7 @@ static const ra8_wdt_cfg_t k_valid_cfg = {
 static void test_wdt_init_null_cfg(void)
 {
   TEST_BEGIN("ra8_wdt_init null cfg rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wdt_init(nullptr));
   TEST_END("ra8_wdt_init null cfg rejected");
 }
@@ -80,7 +80,7 @@ static void test_wdt_init_null_cfg(void)
 static void test_wdt_init_bad_clock_div(void)
 {
   TEST_BEGIN("ra8_wdt_init bad clock_div rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_wdt_cfg_t cfg = k_valid_cfg;
   cfg.clock_div     = (ra8_wdt_clock_div_t)0U; /* "Setting prohibited" per HUM. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_wdt_init(&cfg));
@@ -103,7 +103,7 @@ static void test_wdt_init_bad_clock_div(void)
 static void test_wdt_init_bad_timeout(void)
 {
   TEST_BEGIN("ra8_wdt_init bad timeout rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_wdt_cfg_t cfg = k_valid_cfg;
   cfg.timeout       = (ra8_wdt_timeout_sel_t)k_t_u8_unset;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_wdt_init(&cfg));
@@ -126,7 +126,7 @@ static void test_wdt_init_bad_timeout(void)
 static void test_wdt_init_nmi_expiry(void)
 {
   TEST_BEGIN("ra8_wdt_init with on_expiry=nmi ok");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_wdt_cfg_t cfg = k_valid_cfg;
   cfg.on_expiry     = k_ra8_wdt_on_expiry_nmi;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_init(&cfg));
@@ -149,7 +149,7 @@ static void test_wdt_init_nmi_expiry(void)
 static void test_wdt_init_stop_in_sleep(void)
 {
   TEST_BEGIN("ra8_wdt_init stop_in_sleep variant ok");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_wdt_cfg_t cfg = k_valid_cfg;
   cfg.stop_in_sleep = k_ra8_wdt_sleep_stop_count;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_init(&cfg));
@@ -175,7 +175,7 @@ static void test_wdt_init_stop_in_sleep(void)
 static void test_wdt_deinit_ok(void)
 {
   TEST_BEGIN("ra8_wdt_deinit ok");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_init(&k_valid_cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_deinit());
   TEST_END("ra8_wdt_deinit ok");
@@ -202,7 +202,7 @@ static void test_wdt_deinit_ok(void)
 static void test_wdt_refresh_for_valid(void)
 {
   TEST_BEGIN("ra8_wdt_refresh_for valid instance");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_refresh_for((ra8_wdt_instance_t)0U));
   TEST_END("ra8_wdt_refresh_for valid instance");
 }
@@ -221,7 +221,7 @@ static void test_wdt_refresh_for_valid(void)
 static void test_wdt_refresh_for_oob(void)
 {
   TEST_BEGIN("ra8_wdt_refresh_for oob instance rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_wdt_refresh_for((ra8_wdt_instance_t)k_ra8_wdt_instance_count));
   TEST_END("ra8_wdt_refresh_for oob instance rejected");
@@ -246,7 +246,7 @@ static void test_wdt_refresh_for_oob(void)
 static void test_wdt_get_counter_null(void)
 {
   TEST_BEGIN("ra8_wdt_get_counter null rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wdt_get_counter(nullptr));
   TEST_END("ra8_wdt_get_counter null rejected");
 }
@@ -254,7 +254,7 @@ static void test_wdt_get_counter_null(void)
 /**
  * @brief Verify get_counter returns value from WDTSR.
  *
- * @pre ra8_sim_mmap_reset called.
+ * @pre ra8_fake_mmap_reset called.
  * @post out_count equals the masked CNTVAL field of WDTSR.
  *
  * @par MC/DC:
@@ -265,7 +265,7 @@ static void test_wdt_get_counter_null(void)
 static void test_wdt_get_counter_ok(void)
 {
   TEST_BEGIN("ra8_wdt_get_counter reads CNTVAL field");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* Write a canned value into the CNTVAL[13:0] field of WDTSR. */
   ra8_wdt()->WDTSR = (uint16_t)k_t_wdtsr_refresh;
   uint16_t cnt     = k_t_count_unset;
@@ -295,7 +295,7 @@ static void test_wdt_get_counter_ok(void)
 static void test_wdt_clear_status_blocking_bad_mask(void)
 {
   TEST_BEGIN("ra8_wdt_clear_status_blocking bad mask rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_wdt_clear_status_blocking(0x0001U));
   TEST_END("ra8_wdt_clear_status_blocking bad mask rejected");
 }
@@ -316,7 +316,7 @@ static void test_wdt_clear_status_blocking_bad_mask(void)
 static void test_wdt_clear_status_blocking_none(void)
 {
   TEST_BEGIN("ra8_wdt_clear_status_blocking mask=none returns ok");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_clear_status_blocking((uint16_t)k_ra8_wdt_status_none));
   TEST_END("ra8_wdt_clear_status_blocking mask=none returns ok");
 }
@@ -337,7 +337,7 @@ static void test_wdt_clear_status_blocking_none(void)
 static void test_wdt_clear_status_blocking_already_clear(void)
 {
   TEST_BEGIN("ra8_wdt_clear_status_blocking already clear returns ok");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* WDTSR starts at zero after reset -- asking to clear underflow is a no-op. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_clear_status_blocking((uint16_t)k_ra8_wdt_status_underflow));
   TEST_END("ra8_wdt_clear_status_blocking already clear returns ok");
@@ -612,7 +612,7 @@ static void stub_sub(void* ctx, uint16_t mask)
 static void test_wdt_subscribe_null_fn(void)
 {
   TEST_BEGIN("ra8_wdt_subscribe null fn rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_wdt_deinit();
   uint8_t slot = k_t_u8_unset;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wdt_subscribe(nullptr, nullptr, &slot));
@@ -635,7 +635,7 @@ static void test_wdt_subscribe_null_fn(void)
 static void test_wdt_subscribe_and_count(void)
 {
   TEST_BEGIN("ra8_wdt_subscribe and subscriber_count");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_wdt_deinit();
   s_sub_count = 0U;
 
@@ -667,7 +667,7 @@ static void test_wdt_subscribe_and_count(void)
 static void test_wdt_unsubscribe_free_slot(void)
 {
   TEST_BEGIN("ra8_wdt_unsubscribe free slot returns not_found");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_wdt_deinit();
 
   /* Slot 1 is free after deinit. */
@@ -709,7 +709,7 @@ static void test_wdt_unsubscribe_oob(void)
 static void test_wdt_subscribe_unsubscribe_roundtrip(void)
 {
   TEST_BEGIN("ra8_wdt_subscribe/unsubscribe round-trip");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_wdt_deinit();
 
   uint8_t slot = k_t_u8_unset;
@@ -736,7 +736,7 @@ static void test_wdt_subscribe_unsubscribe_roundtrip(void)
 static void test_wdt_subscribe_table_full(void)
 {
   TEST_BEGIN("ra8_wdt_subscribe table full returns no_mem");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_wdt_deinit();
 
   /* Fill every non-legacy slot (slots 1..k_ra8_wdt_max_subs-1). */
@@ -760,7 +760,7 @@ static void test_wdt_subscribe_table_full(void)
 /**
  * @brief Verify enter_stop sets SLCSTP in WDTCSTPR.
  *
- * @pre ra8_sim_mmap_reset.
+ * @pre ra8_fake_mmap_reset.
  * @post WDTCSTPR has SLCSTP bit set after enter_stop.
  *
  * @par MC/DC:
@@ -771,7 +771,7 @@ static void test_wdt_subscribe_table_full(void)
 static void test_wdt_enter_exit_stop(void)
 {
   TEST_BEGIN("ra8_wdt_enter_stop / ra8_wdt_exit_stop");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_enter_stop());
   TEST_ASSERT_EQ(k_ra8_wdt_cstpr_slcstp, ra8_wdt()->WDTCSTPR);
 
@@ -788,18 +788,18 @@ static void test_wdt_enter_exit_stop(void)
 /**
  * @brief Verify install_nmi returns ok.
  *
- * @pre ra8_sim_mmap_reset.
+ * @pre ra8_fake_mmap_reset.
  * @post install_nmi returns k_ra8_ok.
  *
  * @par MC/DC:
- * (no compound decisions -- sequential ICU calls; both return ok in sim)
+ * (no compound decisions -- sequential ICU calls; both return ok off-target)
  *
  * @since 0.1.0
  */
 static void test_wdt_install_uninstall_nmi(void)
 {
   TEST_BEGIN("ra8_wdt_install_nmi / ra8_wdt_uninstall_nmi");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_install_nmi());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_uninstall_nmi());
   TEST_END("ra8_wdt_install_nmi / ra8_wdt_uninstall_nmi");

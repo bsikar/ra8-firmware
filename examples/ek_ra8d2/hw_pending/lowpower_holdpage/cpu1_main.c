@@ -224,7 +224,7 @@ typedef enum : uint32_t {
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* The vector table is only meaningful in the cross-compiled M33 image. The host
  * unit-test build compile-checks this TU but never links it as an executable, so
  * dropping the table there costs no coverage. */

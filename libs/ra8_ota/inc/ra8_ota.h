@@ -535,7 +535,7 @@ ra8_ota_state_t ra8_ota_get_state(void);
  *
  * @details
  * Called instead of ``NVIC_SystemReset`` when the implementation
- * detects it is running outside the ARM target (``RA8_SIMULATOR_MODE``
+ * detects it is running outside the ARM target (``RA8_OFF_TARGET``
  * defined). Default implementation is a no-op. Tests override to
  * count invocations.
  *
