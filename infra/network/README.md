@@ -7,7 +7,9 @@ router by design: a FortiGate 81E-POE is the router/DHCP/switch, a Meraki MR18
 dedicated bench SSID.
 
 Everything here is reproducible from code plus OpenBao. No credential lives in
-this directory, any commit, or any kept log.
+this directory, any commit, or any kept log -- and that includes the chassis
+serial, which FortiOS turns into the `maintainer` recovery password (see
+[Why the chassis serial is treated as a credential](#why-the-chassis-serial-is-treated-as-a-credential)).
 
 ## Topology
 
@@ -18,7 +20,7 @@ this directory, any commit, or any kept log.
    |  FortiGate 81E-POE       |  port on ===============================+
    |  ra8-bench-fw            |  the LAN                                |
    |  FortiOS v6.4.6          |  hard-switch                            |
-   |  serial <redacted-see-openbao> |                                    +----------------+
+   |  serial: see OpenBao     |                                    +----------------+
    |  lan (hard-switch):      |                                    | Meraki MR18    |
    |    10.0.40.1/24          |                                    | OpenWrt (ath9k)|
    |  DHCP .100-.199          |                                    | static .10     |
@@ -27,7 +29,7 @@ this directory, any commit, or any kept log.
    +------------+------------+                                     | radio0 5GHz    |
                 | console (DB9, 9600 8N1)                          +--------+-------+
                 |                                                           | SSID: ra8-bench
-      /dev/serial/by-id/usb-FTDI_FT232R_..._A9MJ2SSQ                        | WPA2-PSK (radio1)
+      /dev/serial/by-id/usb-FTDI_FT232R_*                                   | WPA2-PSK (radio1)
                 |                                                           |
         +-------+--------+                                    +------------+-----------+
         | bench Pi (star)|                                    |  ESP32-C6 test client  |
@@ -69,7 +71,7 @@ existing read-only AppRole (`scripts/secrets/openbao_client.py`,
 | `fortigate_admin_pass`       | FortiGate admin password                      |
 | `fortigate_hostname`         | `ra8-bench-fw`                                 |
 | `fortigate_lan_ip`           | `10.0.40.1`                                    |
-| `fortigate_serial`           | `<redacted-see-openbao>` (not secret; kept together)|
+| `fortigate_serial`           | Chassis serial -- CREDENTIAL-EQUIVALENT, see below |
 | `fortigate_maintainer_pass`  | `bcpb<serial>` recovery password (secret)     |
 | `ap_ssh_user`                | AP OpenWrt ssh user (`root`)                   |
 | `ap_ssh_pass`                | AP OpenWrt ssh / LuCI password                |
@@ -86,15 +88,46 @@ The admin re-provision writer lives on the OpenBao host as
 `~/.openbao/configure_bench_network.sh` (root-token path, mirrors
 `configure_openbao.sh`); it preserves an already-generated `bench_psk`.
 
+### Why the chassis serial is treated as a credential
+
+FortiOS derives the console recovery account's password **mechanically** from
+the chassis serial: the account is `maintainer` and the password is
+`bcpb<serial>`. The serial is therefore not an inert asset tag -- publishing it
+publishes the recovery password, which is why `fortigate_serial` lives in
+OpenBao with the rest and appears nowhere in this tree.
+
+An earlier revision of this table called the serial "not secret" and printed
+it. That reasoning was wrong in exactly one step: it treated the serial as an
+identifier rather than as the input to a password derivation that the very next
+row of the same table documents. Do not reintroduce it -- neither here, nor in
+the topology diagram, nor in a status note.
+
+Two facts bound the blast radius, and neither is a reason to relax the rule:
+
+- `maintainer` is usable **only over the physical console cable**, and only
+  within roughly 60 seconds of a power cycle. It is not reachable over ssh,
+  https, or the network at all.
+- The unit is deliberately islanded (no WAN, no default route), so console
+  access implies physical access to the bench.
+
+A serial also cannot be rotated the way a password can -- it is stamped in the
+chassis. The durable mitigations are the two above, not re-keying.
+
 ## Console access recipe
 
 The FortiGate console cable is on the bench Pi:
 
 ```
 host:  ssh star
-tty:   /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9MJ2SSQ-if00-port0
+tty:   /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_*-if00-port0
 baud:  9600 8N1
 ```
+
+`fg_bringup.py` resolves that glob at run time and fails loudly if it matches
+zero or more than one device, the same identity-not-enumeration rule
+`scripts/hil/lib/tty_resolve.sh` applies to the other bench consoles. The
+cable's own serial is maintainer-specific and stays out of the tree; set
+`FG_CONSOLE_TTY` (or OpenBao `console_tty`) to pin a specific device.
 
 Drive it with `fg_bringup.py` (never an interactive `screen`). It reads every
 credential from OpenBao and masks them in the transcript
@@ -150,7 +183,7 @@ python3 infra/network/fg_bringup.py ap-status     # confirm ra8-bench hostapd is
 
 The bench LAN is wiped, reconfigured, and live:
 
-- **FortiGate** (`ra8-bench-fw`, <redacted-see-openbao>, FortiOS v6.4.6): factory
+- **FortiGate** (`ra8-bench-fw`, FortiOS v6.4.6): factory
   reset from the junk multi-VLAN config, then `lan` = 10.0.40.1/24, DHCP
   .100-.199 with `.10` reserved to the AP MAC, admin over ssh+https,
   fortiguard/central-management/autoupdate disabled. The routing table shows

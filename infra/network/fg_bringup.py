@@ -25,6 +25,7 @@ Every credential is read from OpenBao and masked in the transcript.
 from __future__ import annotations
 
 import contextlib
+import os
 import sys
 import time
 from pathlib import Path
@@ -37,7 +38,16 @@ sys.path.insert(0, str(Path.home() / "ra8-firmware" / "scripts" / "secrets"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "secrets"))
 from openbao_client import OpenBaoClient, load_config
 
-TTY = "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9MJ2SSQ-if00-port0"
+# The console cable is addressed by DEVICE CLASS, not by its serial number, for
+# the same two reasons scripts/hil/lib/tty_resolve.sh gives: /dev/ttyUSB<n> is
+# assignment order rather than identity, and baking a maintainer-specific serial
+# into the tree puts bench hardware identifiers in a public repo. Pin a specific
+# cable with FG_CONSOLE_TTY (or OpenBao `console_tty`) when two FTDI adapters
+# are attached.
+TTY_DIR = Path("/dev/serial/by-id")
+TTY_PATTERN = "usb-FTDI_FT232R_USB_UART_*-if00-port0"
+TTY_GLOB = f"{TTY_DIR}/{TTY_PATTERN}"
+TTY_ENV = "FG_CONSOLE_TTY"
 BAUD = 9600
 BENCH = Path.home() / "ra8-bench"
 LOG = BENCH / "fortigate_console.log"
@@ -51,6 +61,34 @@ PWP_NEWPW = 1
 PWP_HASH = 2
 PWP_DOLLAR = 3
 PWP_INCORRECT = 4
+
+
+def resolve_tty() -> str:
+    """Return the FortiGate console device, resolved by identity.
+
+    Order: the FG_CONSOLE_TTY override, then the single by-id path matching
+    TTY_GLOB. Zero or several matches is a hard error naming the override --
+    never a fallback to a guessed /dev/ttyUSB0, because reads from the wrong
+    device look exactly like a console that answered nothing.
+    """
+    override = os.environ.get(TTY_ENV, "").strip()
+    if override:
+        return override
+    hits = sorted(str(p) for p in TTY_DIR.glob(TTY_PATTERN))
+    if len(hits) == 1:
+        return hits[0]
+    if not hits:
+        msg = (
+            f"fg_bringup: no console matches {TTY_GLOB} -- is the FTDI cable "
+            f"plugged into this host? Set {TTY_ENV} to pin one explicitly."
+        )
+        raise SystemExit(msg)
+    msg = (
+        f"fg_bringup: {len(hits)} consoles match {TTY_GLOB} ({', '.join(hits)}) -- "
+        f"set {TTY_ENV} to pin the FortiGate cable."
+    )
+    raise SystemExit(msg)
+
 
 _SECRETS: list[str] = []
 
@@ -517,7 +555,8 @@ def main() -> int:
     """Parse the mode argument, open the console, and dispatch to the handler."""
     mode = sys.argv[1] if len(sys.argv) > 1 else "login"
     BENCH.mkdir(parents=True, exist_ok=True)
-    log(f"=== fg_bringup {mode} open {TTY} @{BAUD} ===")
+    tty = resolve_tty()
+    log(f"=== fg_bringup {mode} open {tty} @{BAUD} ===")
     handlers = {
         "login": do_login_mode,
         "bootstrap": do_bootstrap_mode,
@@ -528,7 +567,7 @@ def main() -> int:
         "ap-status": do_ap_status_mode,
         "ap-exec": do_ap_exec_mode,
     }
-    ser = serial.Serial(TTY, BAUD, timeout=0.3, write_timeout=5, exclusive=True)
+    ser = serial.Serial(tty, BAUD, timeout=0.3, write_timeout=5, exclusive=True)
     try:
         c = creds()
         # Register EVERY secret value so it is masked in the transcript -- uci

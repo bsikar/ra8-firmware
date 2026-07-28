@@ -55,7 +55,7 @@ RST, HUM Ch 20), `ra8_board_uart_console`.
 
 ## HIL status: BLOCKED -- sensor streams, CEU rejects the frame
 
-Bench-run 2026-07-09 on the rig (`ssh star`, J-Link SN 1086567198),
+Bench-run 2026-07-09 on the rig (`ssh star`, J-Link `.env` `JLINK_SN`),
 diagnosed by driving the CEU and reading PORT PIDR / CEU registers live
 over SWD. **Earlier "OV5640 not detected on the bus" reports are
 superseded:** the OV5640 now answers (chip ID `0x5640`) and **fully

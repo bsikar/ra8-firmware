@@ -70,8 +70,8 @@ pass**. No host tests are currently failing.
 ## 3. Per-app hardware results (on-target smoke)
 
 Source of truth: `docs/HARDWARE_BRINGUP.md`, "2026-05-02 night sweep"
-section (the latest end-to-end run). Probe: on-board J-Link OB SN
-1086567198 -> EK-RA8D2 v1, JLinkExe v9.38a.
+section (the latest end-to-end run). Probe: on-board J-Link OB
+(`.env` `JLINK_SN`) -> EK-RA8D2 v1, JLinkExe v9.38a.
 
 | App                            | Result   | PC          | Symbol                                       |
 |--------------------------------|----------|-------------|----------------------------------------------|

@@ -59,8 +59,8 @@ The self-hosted Pi runner (`star@star.local`) must have:
     USBFS, J-Link OB CDC + SWD, plus the on-board Ethernet to a
     USB-Ethernet adapter on the Pi). See `docs/HIL_WIRING.md` for the
     wiring map.
-  - `JLinkExe` installed and reachable (currently invoked as the
-    serial number `1086567198`, device `R7KA8D2KF_CPU0`).
+  - `JLinkExe` installed and reachable (invoked with the probe serial
+    from `.env` `JLINK_SN`, device `R7KA8D2KF_CPU0`).
   - The `arm-none-eabi-` toolchain on PATH (for `nm` and `addr2line`
     against the `.elf`s that ship alongside each `.hex`).
   - A VIA Labs USB hub on bus path `2-1.3` with PPPS support, so
@@ -110,7 +110,7 @@ self-contained, air-gapped LAN with **no uplink** to the home network:
 
   - **FortiGate 81E-POE** (`ra8-bench-fw`) -- router / DHCP / switch on
     `10.0.40.1/24`, admin over ssh + https, console on the Pi at
-    `/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9MJ2SSQ-if00-port0` (9600 8N1).
+    `/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_*-if00-port0` (9600 8N1).
   - **Meraki MR18** (OpenWrt) -- access point at static `10.0.40.10`, PoE-fed by
     FortiGate `port1`, publishing the 2.4 GHz bench SSID `ra8-bench` (WPA2-PSK).
 

@@ -1,6 +1,6 @@
 # Hardware Bring-up Report (EK-RA8D2 v1)
 
-**Probe**: J-Link OB-RA4M2, SN 1086567198, accessed via JLinkExe v9.38a
+**Probe**: J-Link OB-RA4M2 (serial in `.env` `JLINK_SN`), accessed via JLinkExe v9.38a
 **Tool chain**: arm-none-eabi-gcc, JLinkExe (SEGGER)
 **Date**: 2026-05-02
 
@@ -224,10 +224,13 @@ Caught additional bugs via continued hardware bring-up:
    bridge is on **SCI8**, not SCI3. PD02/PD03 routing under PSEL=`sci_async`
    maps to SCI8 on EK-RA8D2 v1. **Fixed.**
 
-4. **Wrong serial port** -- `/dev/cu.usbmodem508RMDZL10983` is something
-   else (possibly a parallel DAPLink interface). The actual J-Link OB VCOM
-   bridge is **`/dev/cu.usbmodem0010865671981`** (matches J-Link SN
-   001086567198).
+4. **Wrong serial port** -- the other `/dev/cu.usbmodem*` node on the bus is
+   something else (possibly a parallel DAPLink interface). The actual J-Link OB
+   VCOM bridge is the node whose digits match the probe's own serial,
+   **`/dev/cu.usbmodem<JLINK_SN>1`**. Find it with `make hil-find-jlink` and
+   pin it through `JLINK_SN` / `RA8_CONSOLE_TTY` in `.env` (template:
+   `.env.example`) -- bench-specific serials are deliberately not recorded in
+   the tree.
 
 ### Verified output
 At 115200 8N1 (with 2.7% baud-rate drift accepted by the J-Link OB CDC bridge):
@@ -237,14 +240,14 @@ hello, ra8d2!
 hello, ra8d2!
 ...
 ```
-SCI8 -> J-Link OB UART bridge -> USB-CDC -> /dev/cu.usbmodem0010865671981 -> host.
+SCI8 -> J-Link OB UART bridge -> USB-CDC -> /dev/cu.usbmodem<JLINK_SN>1 -> host.
 
 ## 2026-05-02 Tier-by-tier results
 
 | App | Tier | Result | Notes |
 |---|---|---|---|
 | blink | 1 (LED) | [PASS] Running | gdb halt confirmed PC in main loop, no fault |
-| uart_hello | 2 (UART) | [PASS] Verified | "hello, ra8d2!" stream at 115200 8N1 on SCI8 via /dev/cu.usbmodem0010865671981 |
+| uart_hello | 2 (UART) | [PASS] Verified | "hello, ra8d2!" stream at 115200 8N1 on SCI8 via the J-Link OB VCOM node |
 | threadx_blink | 1+RTOS | [PASS] Running | ThreadX scheduler in tx_thread_schedule idle; threads active |
 | threadx_lwip_tcp_echo | 5 (ETH) | [WARN]  Running but unreachable | Firmware up; static IP 192.168.1.50 mismatches host network 10.0.64.x. Needs DHCP or subnet-match. |
 | usb_hid_device | 3 (USB-FS) | [BUG] Init fails | PC parked at usb_hid_panic_halt (main.c). USB init returns error on real silicon -- likely ra8_cgc_usbhs_pll_enable timeout or a stub that we promoted assuming chip behaviour that doesn't match. |
@@ -376,7 +379,7 @@ inside newlib's rand()/srand() now boot cleanly:
 ## 2026-05-02 hardware verification of recent fixes
 
 Flashed each recently-touched app and read back PC + macOS USB tree
-with the J-Link probe (SN 1086567198).
+with the J-Link probe (serial in `.env` `JLINK_SN`).
 
 | App | Outcome | Evidence |
 |---|---|---|
@@ -697,7 +700,7 @@ never asserts.
 ## 2026-05-02 evening sweep (post-test-infrastructure work)
 
 Full smoke sweep of every app under `examples/ek_ra8d2/` (the EVM tier).
-Probe: on-board J-Link OB SN 1086567198 -> EK-RA8D2 v1, JLinkExe v9.38a.
+Probe: on-board J-Link OB (`.env` `JLINK_SN`) -> EK-RA8D2 v1, JLinkExe v9.38a.
 Per-app procedure (halt-PC classification, executed manually -- the
 since-retired developer-laptop smoke harness hung in this environment):
 
@@ -779,7 +782,7 @@ closure, etc.). Goal: confirm the USB-FS fix flipped `usb_hid_device`
 into a host-visible enumeration AND that no other EVM app regressed
 under the test/doc churn.
 
-Probe: on-board J-Link OB SN 1086567198 -> EK-RA8D2 v1, JLinkExe v9.38a.
+Probe: on-board J-Link OB (`.env` `JLINK_SN`) -> EK-RA8D2 v1, JLinkExe v9.38a.
 Per-app procedure identical to the evening sweep (executed manually --
 no automated sweep target in this environment):
 

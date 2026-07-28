@@ -384,7 +384,7 @@ A bit-exact rebuild of any historical state is achieved by:
 ### 7.2 Flash procedure
 
 - Tool: `JLinkExe` invoked via `scripts/dev/flash.sh <hex-path>`.
-- Probe: on-board J-Link OB SN 1086567198 on the EK-RA8D2.
+- Probe: on-board J-Link OB (`.env` `JLINK_SN`) on the EK-RA8D2.
 - Verification: the J-Link `verify` command is the post-flash
   readback. A flash run that fails verify is treated as a load
   failure.
