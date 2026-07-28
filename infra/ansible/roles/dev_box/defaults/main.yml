@@ -48,6 +48,14 @@ dev_box_llvm_suites:
 
 # The build/test substrate every gate needs.
 dev_box_apt_base:
+  # The dev box is the fleet's CONTROL NODE: `scripts/dev/fleet.py apply <host>`
+  # runs ansible-playbook from here against the machines in infra/fleet.yml.
+  # It was missing, so the declarative fleet could not be applied from either
+  # machine a person works on -- which is how truenas sat at 1 of its declared 2
+  # runners with nothing able to converge it back (#518), and why the runner
+  # image had to be rebuilt and redeployed entirely by hand (#513). A control
+  # node that cannot run the tool it exists to run is not a control node.
+  - ansible
   - build-essential
   - ca-certificates
   - ccache
