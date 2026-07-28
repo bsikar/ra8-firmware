@@ -315,7 +315,18 @@ void* ra8_esp_hosted_rtos_alloc(size_t size, size_t align)
   }
   void*       base  = nullptr;
   const ULONG total = (ULONG)(size + (size_t)k_ra8_esp_hosted_hdr_bytes + align - 1U);
-  if (tx_byte_allocate(&s_pool.transport, &base, total, TX_NO_WAIT) != TX_SUCCESS) {
+  /* Two ways to end up with no memory, and both must return null: the pool
+     refused, or -- a contract break by the allocator -- it reported success
+     without writing the block pointer. `tx_byte_allocate` writes its
+     out-parameter only on the success path, so the second term is what makes
+     that invariant locally provable; without it the header write below
+     computes its destination from address 0, which the clang static analyzer
+     reports as a null dereference (docs/STATIC_ANALYSIS.md).
+     ONE decision rather than a second early return: this file is at its
+     MISRA-C 15.5 single-exit budget, and both conditions get full MC/DC from
+     `test_pool_exhaustion_reports_null`. */
+  if ((tx_byte_allocate(&s_pool.transport, &base, total, TX_NO_WAIT) != TX_SUCCESS) ||
+      (base == nullptr)) {
     return nullptr;
   }
   const uintptr_t            raw     = (uintptr_t)base + (uintptr_t)k_ra8_esp_hosted_hdr_bytes;

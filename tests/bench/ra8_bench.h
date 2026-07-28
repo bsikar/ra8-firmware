@@ -104,9 +104,9 @@ ra8_bench_report(const char* name, uint64_t iters, uint64_t elapsed_ns, uint64_t
  * Doubles the iteration count until total elapsed time exceeds
  * `k_ra8_bench_min_us`, then reports the final measurement.
  *
- * @param name_str   Benchmark name as a string literal.
- * @param bytes_iter Bytes processed per iteration (0 disables MB/s).
- * @param body       Brace-enclosed statement(s) to time.
+ * @param[in] name_str   Benchmark name as a string literal.
+ * @param[in] bytes_iter Bytes processed per iteration (0 disables MB/s).
+ * @param[in] body       Brace-enclosed statement(s) to time.
  */
 #define RA8_BENCH_TIME(name_str, bytes_iter, body)                                                 \
   do {                                                                                             \

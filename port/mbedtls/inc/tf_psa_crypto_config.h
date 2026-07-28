@@ -2,7 +2,7 @@
 /* Copyright (c) 2026 Brighton Sikarskie */
 
 /**
- * \file psa/crypto_config.h
+ * \file tf_psa_crypto_config.h
  * \brief PSA crypto configuration options (set of defines)
  *
  */

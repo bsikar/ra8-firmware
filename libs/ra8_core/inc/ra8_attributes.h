@@ -187,8 +187,8 @@ extern "C" {
  * through the published vtable / function-pointer interface, not by
  * naming the symbol directly.
  *
- * @param role String literal naming the DI role (e.g. `"bus_read"`,
- *             `"clock_get_ticks"`).
+ * @param[in] role String literal naming the DI role (e.g. `"bus_read"`,
+ *                 `"clock_get_ticks"`).
  *
  * @par Enforcement:
  * libclang verifies (a) a mock exists under `tests/mocks/` for the role
@@ -325,10 +325,10 @@ extern "C" {
  * from MC/DC coverage (e.g. defensive programming guard, hardware
  * fault-injection-only path, unreachable in normal operation).
  *
- * @param reason String literal explaining the deactivation. The citation
- *               gate (`check_line_citations.py`) rejects any reason that
- *               contains a `<file>.<ext>:<line>` token; reference target
- *               functions or symbols by name instead.
+ * @param[in] reason String literal explaining the deactivation. The citation
+ *                   gate (`check_line_citations.py`) rejects any reason that
+ *                   contains a `<file>.<ext>:<line>` token; reference target
+ *                   functions or symbols by name instead.
  *
  * @par Enforcement:
  * - `check_line_citations.py` scans the macro's reason argument for
@@ -359,7 +359,7 @@ extern "C" {
  * alongside GCC's `-fstack-usage` `.su` files and fails the build if
  * the actual frame exceeds the budget.
  *
- * @param bytes Integer literal: maximum stack-frame size in bytes.
+ * @param[in] bytes Integer literal: maximum stack-frame size in bytes.
  *
  * @par Enforcement:
  * `scripts/checks/stack_usage_check.py` cross-checks against `.su` files.
@@ -416,8 +416,8 @@ extern "C" {
  * `RA8_RELEASE_LOCK(name)` pair (or itself carries the same
  * `RA8_EXPECTS_LOCK(name)` annotation, propagating the contract upward).
  *
- * @param name String literal naming the lock (e.g. `"i2c0_bus"`,
- *             `"global_irq"`).
+ * @param[in] name String literal naming the lock (e.g. `"i2c0_bus"`,
+ *                 `"global_irq"`).
  *
  * @par Enforcement:
  * libclang call-graph walk verifies caller has acquired `name` first.
@@ -472,7 +472,7 @@ extern "C" {
  * analysis pass can cross-check against the measured / computed bound
  * for the function's call subtree.
  *
- * @param n Integer literal: maximum execution time in nanoseconds.
+ * @param[in] n Integer literal: maximum execution time in nanoseconds.
  *
  * @par Enforcement:
  * Future WCET analysis pass (planned ).
@@ -533,8 +533,8 @@ extern "C" {
  * `RA8_LOOP_BOUND_RUNTIME` instead: those are real statements that sit directly
  * above the loop they describe.
  *
- * @param symbol Bare token naming the bounding constant (e.g.
- *               `k_max_retries`, `k_ringbuf_capacity`).
+ * @param[in] symbol Bare token naming the bounding constant (e.g.
+ *                   `k_max_retries`, `k_ringbuf_capacity`).
  *
  * @par Enforcement:
  * libclang loop analyzer.
@@ -582,9 +582,9 @@ extern "C" {
  * symbol (not a compile-time constant) cannot use this macro; use
  * `RA8_LOOP_BOUND_RUNTIME` instead rather than fake a `static_assert`.
  *
- * @param ceiling A positive integer compile-time constant expression (typically
- *                a typed enum value) that upper-bounds the loop's iteration
- *                count. Cast to `uint32_t` inside the assert, so it must fit.
+ * @param[in] ceiling A positive integer compile-time constant expression (typically
+ *                    a typed enum value) that upper-bounds the loop's iteration
+ *                    count. Cast to `uint32_t` inside the assert, so it must fit.
  *
  * @par Enforcement:
  * Two ways at once. (1) The `static_assert` fails the compile if @p ceiling is
@@ -634,8 +634,8 @@ extern "C" {
  * code (safe in a reset handler that runs before `.data` is copied) yet still
  * requires @p ceiling_ref to be a declared, addressable object.
  *
- * @param ceiling_ref An addressable object whose address upper-bounds the loop
- *                    (e.g. a linker end symbol). Must be declared and in scope.
+ * @param[in] ceiling_ref An addressable object whose address upper-bounds the loop
+ *                        (e.g. a linker end symbol). Must be declared and in scope.
  *
  * @par Enforcement:
  * `((void)sizeof(&(ceiling_ref)))` fails the compile if @p ceiling_ref is not a
@@ -672,7 +672,7 @@ extern "C" {
  * count `RA8_CHECK_*` / `RA8_VALIDATE_*` / `RA8_ASSERT` invocations in the
  * function body and fail if the count drops below `n`.
  *
- * @param n Integer literal: minimum number of validation calls.
+ * @param[in] n Integer literal: minimum number of validation calls.
  *
  * @par Enforcement:
  * libclang AST walk counts `RA8_CHECK_*` invocations.
@@ -702,7 +702,7 @@ extern "C" {
  * `RA8_RELEASES_RESOURCE(kind)` call before the function returns -- on
  * the success path and every error path.
  *
- * @param kind String literal naming the resource kind.
+ * @param[in] kind String literal naming the resource kind.
  *
  * @par Enforcement:
  * libclang control-flow walk: every return path releases the resource.
@@ -731,9 +731,9 @@ extern "C" {
  * the rule can only ever report that nothing releases anything, which is
  * why it is defined here rather than left to each caller to invent.
  *
- * @param kind String literal naming the resource kind. Must match the
- *             `RA8_OWNS_RESOURCE(kind)` it pairs with, character for
- *             character.
+ * @param[in] kind String literal naming the resource kind. Must match the
+ *                 `RA8_OWNS_RESOURCE(kind)` it pairs with, character for
+ *                 character.
  *
  * @par Enforcement:
  * libclang control-flow walk, paired with `RA8_OWNS_RESOURCE`.
@@ -763,7 +763,7 @@ extern "C" {
  * `docs/qualification/SVR.md` (Software Verification Report) so each
  * reviewed item has a traceable owner.
  *
- * @param name String literal: reviewer identity (e.g. `"bsikar"`).
+ * @param[in] name String literal: reviewer identity (e.g. `"bsikar"`).
  *
  * @par Enforcement:
  * `docs/qualification/SVR.md` auto-rollup.
@@ -793,8 +793,8 @@ extern "C" {
  * tool can list every accessor belonging to a given block (e.g. SCI0,
  * IIC1, GPT3).
  *
- * @param peripheral String literal naming the peripheral (e.g.
- *                   `"sci0"`, `"iic1"`, `"gpt3"`).
+ * @param[in] peripheral String literal naming the peripheral (e.g.
+ *                       `"sci0"`, `"iic1"`, `"gpt3"`).
  *
  * @par Enforcement:
  * Documentation generator groups accessors by `peripheral` name.

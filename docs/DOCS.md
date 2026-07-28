@@ -120,19 +120,35 @@ left-hand sidebar is grouped as:
   surfaced; `EXTRACT_PRIVATE = NO` keeps NSC-private and
   `priv_*` helpers hidden by default.
 
-Each function page renders the full Doxygen tag set the project
-mandates (see `CLAUDE.md` "Doxygen Documentation Requirements"):
-`@brief`, `@details`, `@param[in/out]`, `@return` / `@retval`,
-`@pre`, `@post`, `@note`, `@warning`, `@par MC/DC:`, `@since`,
-`@see`. Cross-references resolve to other pages automatically.
+Each function page renders the Doxygen tags the block carries.
+`@brief`, `@details`, `@param[in/out]`, `@return` / `@retval`, two
+`@pre`, two `@post`, `@note` and `@since` are **required and gated**
+(see the Workflow section below for by what). `@warning`,
+`@see` and `@par MC/DC:` also render, and are **conventions rather than
+requirements** -- see `docs/STYLE_GUIDE.md` "Function documentation" for
+the measurement behind that split. Cross-references resolve to other
+pages automatically.
 
 ## Workflow
 
 When you add a new function, struct, enum, or file:
 
-1. Write the full Doxygen header per the `CLAUDE.md` rules (every
-   applicable tag must be present -- this is gated by
-   `make tidy`).
+1. Write the full Doxygen header per the `CLAUDE.md` rules. Four
+   separate gates hold that, and none of them is `make tidy` --
+   clang-tidy has no Doxygen tag checking of any kind, and this line
+   used to name it:
+   - `doxy_audit.py --check` -- every function carries the required
+     tag set;
+   - `doxy_audit.py --members --check` -- every enum value,
+     struct/union member and macro carries a doc comment;
+   - `doxy_audit.py --style` -- the file-header block (`@file`
+     naming this file, `@brief`, `@details`) and the `@param`
+     direction bracket;
+   - `check_doc_attachment.py` -- the block describes the symbol it
+     is attached to.
+
+   All four run in the `pre-commit-checks` / `doc-attachment` CI gates
+   and in `scripts/git/pre-commit`.
 2. Run `make docs` locally and confirm the new symbol appears in
    the rendered HTML.
 3. Tail `build/docs/doxygen-warnings.log` for any new warnings

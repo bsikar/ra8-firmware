@@ -22,13 +22,23 @@
 # Usage:
 #     scripts/checks/scan_build.sh             # full analyze + summary
 #     scripts/checks/scan_build.sh --check     # exit non-zero on any
-#                                             #   first-party finding
-#                                             #   (CI gate; warn-only
-#                                             #   today, see pre-commit)
-#     scripts/checks/scan_build.sh --strict    # alias for --check (CI naming);
-#                                             #   exit non-zero on any
 #                                             #   actionable first-party
 #                                             #   finding after suppressions
+#     scripts/checks/scan_build.sh --strict    # alias for --check (CI naming)
+#
+# --strict is what the `scan-build` CI gate runs (RA8_GATE_REGISTRY ->
+# gate_scan_build in scripts/ci/gates/analysis.sh -> the scan-build job in
+# firmware.yml). It is blocking; there is no warn-only mode. Every run
+# reconfigures and rebuilds from scratch -- the analyzer only sees what the
+# build compiles, so an incremental run analyses nothing and would otherwise
+# report a clean tree.
+#
+# Exit codes:
+#     0  analysed, no actionable first-party findings
+#     1  analysed, findings (only reachable with --check / --strict)
+#     2  COULD NOT RUN -- no analyzer, unwritable tree, failed configure,
+#        failed build, or a scan too small to mean anything. Never 0: a
+#        caller must be able to tell "found nothing" from "never ran".
 #
 # Suppressions (applied AFTER the analyzer runs, by post-processing the
 # generated HTML reports):
@@ -43,9 +53,15 @@
 #     the entire HAL source/include partition is suppressed for this one
 #     check-id. See docs/STATIC_ANALYSIS.md for the rationale.
 #
+#     NOTE: clang-18 -- the project pin -- has no such checker (it arrives in
+#     a later major), so this filter currently matches nothing. It stays
+#     because moving the pin brings ~683 findings back at once.
+#
 # Environment overrides:
-#     CMAKE       -- cmake binary (default: cmake on PATH)
-#     SCAN_BUILD  -- scan-build binary (default: scan-build on PATH)
+#     CMAKE                 -- cmake binary (default: cmake on PATH)
+#     SCAN_BUILD            -- analyzer binary (default: scan-build-18, else
+#                              scan-build)
+#     MIN_TRANSLATION_UNITS -- vacuity floor on the analysed TU count
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -60,63 +76,50 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 . "$SCRIPT_DIR/../ci/lib/parallelism.sh"
 
 CMAKE="${CMAKE:-cmake}"
+# clang-tools-18 is the project pin (.devcontainer/Dockerfile) and installs
+# scan-build-18; a bare `scan-build` symlink comes from the unversioned
+# package and is absent on the CI image. Prefer the pinned major, so a run here
+# and a run on a runner analyse with the same checkers.
+if [[ -z "${SCAN_BUILD:-}" ]] && command -v scan-build-18 >/dev/null 2>&1; then
+  SCAN_BUILD=scan-build-18
+fi
 SCAN_BUILD="${SCAN_BUILD:-scan-build}"
 
-CHECK_MODE=0
-if [[ "${1:-}" == "--check" || "${1:-}" == "--strict" ]]; then
-  CHECK_MODE=1
-  shift
-fi
+# Vacuity floor: the compile database must list, and the build must produce,
+# at least this many translation units before a clean report means anything.
+# Measured 1128 on the current tree; this is a trip-wire for a collapsed
+# configure or a no-op incremental build, not a policy on suite size.
+MIN_TRANSLATION_UNITS="${MIN_TRANSLATION_UNITS:-800}"
 
-if ! command -v "$SCAN_BUILD" >/dev/null 2>&1; then
-  echo "scan_build.sh: SKIP -- $SCAN_BUILD not on PATH."
-  echo "  Install: sudo apt install clang-tools-18  (or brew install llvm)"
-  exit 0
-fi
+# ===========================================================================
+# THE TWO DECISIONS, FACTORED OUT SO --selftest CAN DRIVE THEM
+#
+# Everything else in this script is orchestration: configure, build, print.
+# These two are the judgement, and both can fail silently -- the classifier by
+# binning a real finding as suppressed, the floor by accepting a scan too
+# small to mean anything. Both are asserted in both directions below.
+# ===========================================================================
 
-BUILD_DIR="$REPO_ROOT/tests/build-scan"
-REPORT_DIR="$REPO_ROOT/build/scan-build-reports"
-
-mkdir -p "$BUILD_DIR" "$REPORT_DIR"
-
-# Parallelism: the bounded canonical width, not a raw nproc (#328).
-JOBS="$(ra8_max_jobs)"
-
-echo "==> scan-build: configuring host test build at $BUILD_DIR"
-"$SCAN_BUILD" --use-cc=clang --use-c++=clang++ \
-  "$CMAKE" -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-  -Wno-dev >/dev/null
-
-echo "==> scan-build: analyzing (this may take several minutes)..."
-# -o : per-run html report dir
-# --status-bugs : exit non-zero if bugs found (we re-implement filtering
-#   below since scan-build's exit code does not understand path filters).
-# Disable a couple of high-noise checks that fire mostly on test
-# scaffolding -- enabling them would drown out real first-party signal.
-"$SCAN_BUILD" --use-cc=clang --use-c++=clang++ \
-  -o "$REPORT_DIR" \
-  -disable-checker deadcode.DeadStores \
-  -disable-checker security.insecureAPI.DeprecatedOrUnsafeBufferHandling \
-  "$CMAKE" --build "$BUILD_DIR" --parallel "$JOBS" \
-  >"$REPORT_DIR/scan-build.log" 2>&1 || true
-
-# Locate the freshest report directory scan-build produced.
-LATEST_REPORT="$(find "$REPORT_DIR" -maxdepth 1 -mindepth 1 -type d |
-  sort | tail -n 1 || true)"
-
-# Count findings, partitioning first-party vs suppressed (third_party
-# SOUP + host-only test scaffolding + documented HAL MMIO suppression).
+#: Findings, by partition. Globals because `classify_reports` fills them and
+#: the summary reads them; a subshell would lose the counts.
 FIRST_PARTY_COUNT=0
 THIRD_PARTY_COUNT=0
 TEST_COUNT=0
 MMIO_SUPPRESSED_COUNT=0
-if [[ -n "$LATEST_REPORT" && -d "$LATEST_REPORT" ]]; then
+
+# Bin every report-*.html under $1 into the four counters.
+#
+# Each report embeds `<!-- BUGFILE /abs/path -->` and `<!-- BUGTYPE ... -->`
+# HTML comments naming the source file and the checker. An absent or empty
+# directory is legitimate: scan-build writes nothing when it finds nothing.
+classify_reports() {
+  local report_root="${1:-}" html bugfile bugtype
+  FIRST_PARTY_COUNT=0
+  THIRD_PARTY_COUNT=0
+  TEST_COUNT=0
+  MMIO_SUPPRESSED_COUNT=0
+  [[ -n "$report_root" && -d "$report_root" ]] || return 0
   while IFS= read -r html; do
-    # Each report html embeds a BUGFILE marker in an HTML comment
-    # (e.g. `<!-- BUGFILE /abs/path/to/file.c -->`) pointing at the
-    # source file the bug was reported against. Use that to bin the
-    # finding.
     bugfile="$(grep -oE '<!-- BUGFILE [^ ]+ -->' "$html" | head -1 |
       sed 's/<!-- BUGFILE //;s/ -->$//' || true)"
     if [[ -z "$bugfile" ]]; then
@@ -143,12 +146,205 @@ if [[ -n "$LATEST_REPORT" && -d "$LATEST_REPORT" ]]; then
     else
       FIRST_PARTY_COUNT=$((FIRST_PARTY_COUNT + 1))
     fi
-  done < <(find "$LATEST_REPORT" -name 'report-*.html' 2>/dev/null)
+  done < <(find "$report_root" -name 'report-*.html' 2>/dev/null)
+}
+
+# Whether a scan of $1 translation units is large enough to be worth a verdict.
+scan_is_big_enough() { [[ "$1" -ge "$MIN_TRANSLATION_UNITS" ]]; }
+
+# --- selftest -------------------------------------------------------------
+# Both directions for both decisions, because this script decides what counts
+# as an actionable finding and what counts as an analysis at all. A classifier
+# that binned everything as suppressed, or a floor that accepted an empty
+# scan, would report a clean tree forever -- and this script HAS shipped a
+# clean verdict over an analysis that never happened (#532).
+
+_sb_fixture() {
+  printf '<!-- BUGFILE %s -->\n<!-- BUGTYPE %s -->\n' "$2" "$3" >"$1"
+}
+
+_sb_expect() {
+  local label="$1" want="$2" got="$3"
+  if [[ "$want" == "$got" ]]; then
+    echo "  [ok] $label"
+  else
+    echo "  [FAIL] $label (want $want, got $got)"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+}
+
+_sb_selftest_classifier() {
+  local tmp
+  tmp="$(mktemp -d)"
+  # MUST be reported: ordinary first-party code, and a fixed-address finding
+  # OUTSIDE the documented MMIO partitions (the filter must not be a blanket).
+  _sb_fixture "$tmp/report-1.html" /w/port/esp-hosted/src/x.c "Memory leak"
+  _sb_fixture "$tmp/report-2.html" /w/libs/ra8_reflow/src/y.c "fixed address dereference"
+  # MUST stay quiet: SOUP, test scaffolding, and the MMIO accessor pattern.
+  _sb_fixture "$tmp/report-3.html" /w/libs/third_party/miniz/miniz.c "Memory leak"
+  _sb_fixture "$tmp/report-4.html" /w/tests/test_thing.c "Memory leak"
+  _sb_fixture "$tmp/report-5.html" /w/libs/ra8_hal/src/ra8_vin.c "fixed address dereference"
+  _sb_fixture "$tmp/report-6.html" /w/libs/ra8_core/src/ra8_log.c "fixed address dereference"
+  classify_reports "$tmp"
+  _sb_expect "actionable first-party findings are reported" 2 "$FIRST_PARTY_COUNT"
+  _sb_expect "vendored SOUP is suppressed" 1 "$THIRD_PARTY_COUNT"
+  _sb_expect "test scaffolding is suppressed" 1 "$TEST_COUNT"
+  _sb_expect "the MMIO accessor pattern is suppressed" 2 "$MMIO_SUPPRESSED_COUNT"
+  classify_reports "$tmp/does-not-exist"
+  _sb_expect "an absent report dir yields no findings" 0 "$FIRST_PARTY_COUNT"
+  rm -rf "$tmp"
+}
+
+_sb_selftest_floor() {
+  local rc
+  scan_is_big_enough 0 && rc=yes || rc=no
+  _sb_expect "a zero-TU scan is refused" no "$rc"
+  scan_is_big_enough $((MIN_TRANSLATION_UNITS - 1)) && rc=yes || rc=no
+  _sb_expect "a scan one TU short of the floor is refused" no "$rc"
+  scan_is_big_enough "$MIN_TRANSLATION_UNITS" && rc=yes || rc=no
+  _sb_expect "a scan at the floor is accepted" yes "$rc"
+}
+
+_sb_selftest_fail_loud() {
+  local rc=0
+  SCAN_BUILD=/nonexistent/scan-build bash "${BASH_SOURCE[0]}" --strict \
+    >/dev/null 2>&1 || rc=$?
+  _sb_expect "a missing analyzer exits 2, never 0" 2 "$rc"
+}
+
+run_selftest() {
+  SELFTEST_FAILURES=0
+  echo "scan_build.sh --selftest:"
+  _sb_selftest_classifier
+  _sb_selftest_floor
+  _sb_selftest_fail_loud
+  if [[ "$SELFTEST_FAILURES" -ne 0 ]]; then
+    echo "scan_build.sh: SELFTEST FAILED ($SELFTEST_FAILURES assertion(s))" >&2
+    exit 1
+  fi
+  echo "scan_build.sh: selftest OK (both directions, classifier + floor + fail-loud)."
+  exit 0
+}
+
+CHECK_MODE=0
+case "${1:-}" in
+  --selftest)
+    run_selftest
+    ;;
+  --check | --strict)
+    CHECK_MODE=1
+    shift
+    ;;
+esac
+
+# A missing analyzer is a FAILURE, never a skip. This used to `exit 0` with a
+# "SKIP" line, which is the shape a gate must never have: the caller cannot
+# tell "analysed and found nothing" from "never ran". Same rule as
+# check_nsc_cmse.sh and every require_cmd in scripts/ci.sh.
+if ! command -v "$SCAN_BUILD" >/dev/null 2>&1; then
+  echo "scan_build.sh: FATAL -- $SCAN_BUILD is not on PATH; nothing was analysed." >&2
+  echo "  The project pin is clang-tools-18, which installs scan-build-18." >&2
+  echo "  Ubuntu: sudo apt install clang-tools-18   macOS: brew install llvm" >&2
+  echo "  Override the binary with SCAN_BUILD=<path>." >&2
+  exit 2
 fi
+
+BUILD_DIR="$REPO_ROOT/tests/build-scan"
+REPORT_DIR="$REPO_ROOT/build/scan-build-reports"
+
+# BOTH directories are wiped first, and neither is an optimisation to reclaim.
+#
+# The BUILD tree: scan-build analyses what the build COMPILES, so an incremental
+# build analyses only what changed. A second local run over an up-to-date tree
+# compiles nothing, produces no report, and reads as a clean analysis.
+#
+# The REPORT tree: the summary below picks the newest directory under it, which
+# on a second run is the PREVIOUS run's. Measured here -- an incremental rerun
+# after the offending finding was fixed still reported it, because the numbers
+# came from a directory the run had not written. That is a verdict computed
+# from another run's evidence, and it is why both go.
+rm -rf "$BUILD_DIR" "$REPORT_DIR"
+if ! mkdir -p "$BUILD_DIR" "$REPORT_DIR"; then
+  echo "scan_build.sh: FATAL -- cannot create $BUILD_DIR / $REPORT_DIR." >&2
+  echo "  Nothing can be analysed from a tree this script cannot write to." >&2
+  exit 2
+fi
+
+# Parallelism: the bounded canonical width, not a raw nproc (#328).
+JOBS="$(ra8_max_jobs)"
+
+echo "==> scan-build: configuring host test build at $BUILD_DIR"
+# A failed configure is fatal. It used to fall through: cmake died, no TU was
+# ever compiled, and the summary below still printed "first-party bugs : 0"
+# and exited 0 -- a clean verdict over an analysis that never happened.
+if ! "$SCAN_BUILD" --use-cc=clang --use-c++=clang++ \
+  "$CMAKE" -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+  -Wno-dev >/dev/null; then
+  echo "scan_build.sh: FATAL -- cmake configure failed; nothing was analysed." >&2
+  exit 2
+fi
+
+# VACUITY FLOOR. scan-build emits no report directory at all when it finds
+# nothing, so "no reports" cannot be told from "nothing was analysed" by
+# looking at the output. The compile database can: it lists exactly the
+# translation units the analyzer will be handed. A collapsed one means the
+# clean verdict below would be a verdict over almost no code.
+TU_COUNT="$(grep -c '"file"' "$BUILD_DIR/compile_commands.json" 2>/dev/null || echo 0)"
+if ! scan_is_big_enough "$TU_COUNT"; then
+  echo "scan_build.sh: FATAL -- the compile database lists $TU_COUNT translation" >&2
+  echo "  unit(s); the floor is $MIN_TRANSLATION_UNITS. A clean report over a" >&2
+  echo "  collapsed scope is not a clean tree, it is an analysis that did not run." >&2
+  exit 2
+fi
+echo "==> scan-build: analyzing $TU_COUNT translation units (several minutes)..."
+# -o : per-run html report dir
+# Disable a couple of high-noise checks that fire mostly on test
+# scaffolding -- enabling them would drown out real first-party signal.
+#
+# --status-bugs is deliberately NOT passed: the path/check-id filtering below
+# is what decides the verdict, and scan-build's own exit status cannot express
+# it. That makes this exit status the BUILD's, so a non-zero one means the
+# compile failed and nothing downstream is trustworthy.
+BUILD_RC=0
+"$SCAN_BUILD" --use-cc=clang --use-c++=clang++ \
+  -o "$REPORT_DIR" \
+  -disable-checker deadcode.DeadStores \
+  -disable-checker security.insecureAPI.DeprecatedOrUnsafeBufferHandling \
+  "$CMAKE" --build "$BUILD_DIR" --parallel "$JOBS" \
+  >"$REPORT_DIR/scan-build.log" 2>&1 || BUILD_RC=$?
+if [[ "$BUILD_RC" -ne 0 ]]; then
+  echo "scan_build.sh: FATAL -- the analyzed build FAILED (exit $BUILD_RC)." >&2
+  echo "  Tail of $REPORT_DIR/scan-build.log:" >&2
+  tail -n 40 "$REPORT_DIR/scan-build.log" >&2 || true
+  exit 2
+fi
+
+# SECOND VACUITY FLOOR, on the other side of the build. The compile database
+# says what the analyzer was OFFERED; the object files say what it actually
+# compiled. Zero findings is a legitimate outcome, so an empty report directory
+# proves nothing on its own -- these do.
+OBJ_COUNT="$(find "$BUILD_DIR" -name '*.o' -type f | wc -l | tr -d ' ')"
+if ! scan_is_big_enough "$OBJ_COUNT"; then
+  echo "scan_build.sh: FATAL -- the analyzed build produced $OBJ_COUNT object" >&2
+  echo "  file(s) from $TU_COUNT translation units; the floor is" >&2
+  echo "  $MIN_TRANSLATION_UNITS. Nothing was analysed, so there is no verdict." >&2
+  exit 2
+fi
+
+# The report directory scan-build produced. It is unambiguous because
+# REPORT_DIR was wiped above: any directory in here is this run's.
+LATEST_REPORT="$(find "$REPORT_DIR" -maxdepth 1 -mindepth 1 -type d |
+  sort | tail -n 1 || true)"
+
+# Count findings, partitioning first-party vs suppressed (third_party
+# SOUP + host-only test scaffolding + documented HAL MMIO suppression).
+classify_reports "$LATEST_REPORT"
 
 echo ""
 echo "==> scan-build summary"
-echo "    report dir       : ${LATEST_REPORT:-<none>}"
+echo "    translation units: $TU_COUNT analysed, $OBJ_COUNT object(s) produced"
+echo "    report dir       : ${LATEST_REPORT:-<none, no findings>}"
 echo "    first-party bugs : $FIRST_PARTY_COUNT          (actionable)"
 echo "    HAL MMIO bugs    : $MMIO_SUPPRESSED_COUNT  (suppressed -- register accessor pattern)"
 echo "    third-party bugs : $THIRD_PARTY_COUNT  (suppressed -- SOUP)"

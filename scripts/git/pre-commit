@@ -152,6 +152,17 @@ if [[ -n "$c_files" ]]; then
       echo "       comment; macros need a /** @brief ... */ block."
       error_found=1
     fi
+    # Style gate (#532): the two docs/STYLE_GUIDE.md tag rules that attach
+    # to no symbol, so neither gate above ever saw them -- the file-header
+    # block and the @param direction bracket.
+    if ! python3 scripts/checks/doxy_audit.py --style; then
+      echo "[FAIL] doxy_audit.py --style reported file-header / @param gaps."
+      echo "       Every first-party C file opens with a @file block naming"
+      echo "       itself and carrying @brief (+ @details unless frozen in"
+      echo "       .github/doxy-details-baseline.txt), and every @param"
+      echo "       carries [in], [out] or [in,out]."
+      error_found=1
+    fi
   fi
 
   # ---- Doxygen attachment gate (strict: zero findings required) ---------
@@ -793,20 +804,19 @@ if [[ -f scripts/checks/stack_usage_check.py ]]; then
   fi
 fi
 
-# ---- Clang Static Analyzer (scan-build) -- LOCAL ONLY, NOT GATED --
-# scan-build is a multi-minute analyzer pass and is NOT invoked from
+# ---- Clang Static Analyzer (scan-build) -- CI-GATED, not per-commit --
+# scan-build is a multi-minute analyzed rebuild and is NOT invoked from
 # the per-commit hook. Run it locally with `make scan-build` (or
 # `make scan-build-strict`); see docs/STATIC_ANALYSIS.md for the
-# documented baseline -- currently 0 actionable first-party findings
-# once the HAL MMIO suppressions are applied.
+# documented baseline -- currently 0 actionable first-party findings.
 #
-# This comment used to promise that "regressions will be caught by
-# CI's scan_build.sh --strict invocation". No workflow runs it, and
-# RA8_GATE_REGISTRY in scripts/ci.sh has no scan-build gate, so that
-# was a false assurance -- exactly as misleading as a gate that
-# passes without checking anything. To make it true, add a gate to
-# the registry and schedule it in a workflow; the ci-parity gate
-# will hold the two halves together.
+# This comment used to say "no workflow runs it, and RA8_GATE_REGISTRY
+# has no scan-build gate", which was true and made the claim in
+# docs/STATIC_ANALYSIS.md false. #532 closed it the other way round:
+# there is now a `scan-build` row in the registry, a gate_scan_build
+# body in scripts/ci/gates/analysis.sh, and a scan-build job in
+# firmware.yml, held together by the ci-parity gate. Regressions ARE
+# caught in CI now; they are simply not caught here.
 
 # ---- include-what-you-use (IWYU) -- warn-only --------------------
 # Same as scan-build: too slow for the per-commit hook. Run locally

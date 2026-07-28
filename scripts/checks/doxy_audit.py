@@ -42,6 +42,16 @@ Modes
                     the pre-commit hook alongside the function gate (issue
                     #246). Optionally takes explicit file paths to gate just
                     those.
+  --style           ENFORCING gate for the two docs/STYLE_GUIDE.md tag rules
+                    that attach to no symbol, so neither the function nor the
+                    member gate ever saw them (#532): the file-header block
+                    (@file present and naming this file, @brief, @details) and
+                    the @param direction bracket. Unlike --members there is no
+                    report-only twin -- a mode that measures instead of failing
+                    is how the member gate was once mis-wired.
+  --style --update-baseline
+                    Shrink .github/doxy-details-baseline.txt to the files that
+                    still lack @details. Refuses to GROW it.
 
 CLAUDE.md ("Doxygen Documentation Requirements") demands that *every* enum
 value, struct/union member, and macro carry documentation -- an inline
@@ -74,6 +84,8 @@ from doxy_members import audit_members_file
 from doxy_report import run_report
 from doxy_scope import _top_dir, function_files, member_files, repo_root
 from doxy_selftest import run_selftest
+from doxy_style import run_check as run_style_check
+from doxy_style import run_update_baseline as run_style_update
 
 #: Offender lines printed before the gate truncates, so a hook stays readable.
 OFFENDER_CAP = 50
@@ -222,21 +234,27 @@ def _parse_members_args(argv: list[str]) -> tuple[list[str], str | None]:
 
 
 def main() -> int:
-    """Dispatch to the function gate, the member gate, or one of the report modes.
+    """Dispatch to the function gate, the member gate, the style gate, or a report.
 
     The two member modes are NOT interchangeable: ``--members`` alone is
     report-only and always exits 0 (it exists to size the #246 fallout), while
     ``--members --check`` is the enforcing gate. CI must pass both flags, or
-    the step measures the problem instead of failing on it.
+    the step measures the problem instead of failing on it. ``--style`` has no
+    such pair on purpose -- it is always enforcing, so there is no spelling of
+    it that measures instead of failing.
 
     Returns 0 on a clean gate, a passing selftest, or any report-only run;
-    1 when an enforcing mode found offenders. Exits 2, from
-    :mod:`doxy_scope`, when either scope walk collapsed below its measured
-    file floor -- a scan that read nothing must never report a documented tree.
+    1 when an enforcing mode found offenders. Exits 2 when a mode could not
+    run at all -- either scope walk collapsing below its measured file floor
+    (:mod:`doxy_scope`), or ``--style``'s file / ``@param`` floors
+    (:mod:`doxy_style`). A scan that read nothing must never report a
+    documented tree.
     """
     args = sys.argv[1:]
     if "--selftest" in args:
         return run_selftest()
+    if "--style" in args:
+        return run_style_update() if "--update-baseline" in args else run_style_check()
     if "--members" in args:
         explicit, out_csv = _parse_members_args(args)
         return (

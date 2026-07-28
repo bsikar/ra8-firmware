@@ -868,7 +868,8 @@ in the `.c`** must NOT duplicate that block.
 
 ### Required Tags by Code Element
 
-**Functions - Minimum Required Tags:**
+**Functions - Minimum Required Tags** (gated by `doxy_audit.py --check`, and
+the `@param` direction bracket by `doxy_audit.py --style`):
 - `@brief` - One-line summary
 - `@details` - Multi-paragraph explanation with algorithm description
 - `@param[in/out/in,out]` - ALL parameters with direction, valid range, units, constraints
@@ -877,9 +878,15 @@ in the `.c`** must NOT duplicate that block.
 - `@pre` - Preconditions (minimum 2 per NASA Rule 5)
 - `@post` - Postconditions (minimum 2 per NASA Rule 5)
 - `@note` - Thread safety statement
-- `@code` - Usage example (if non-trivial)
-- `@see` - Cross-references to related functions
 - `@since` - Version introduced
+
+**...and the conventions, which NOTHING checks.** Write them where they say
+something; do not add them to satisfy a list. `@code` (usage example, if
+non-trivial), `@see` (cross-references), `@warning`, `@par MC/DC:`. Measured
+2026-07-28: 3014 of the 3162 documented function blocks in the tree carry no
+`@see`, 3142 no `@warning`, 3099 no `@par MC/DC:`. A rule demanding them
+everywhere would be closed with filler, so `docs/STYLE_GUIDE.md` -- the source
+of truth -- records them as conventions rather than requirements (#532).
 
 **Structs/Enums - Minimum Required Tags:**
 - `@struct/@enum` - Structure/enumeration tag

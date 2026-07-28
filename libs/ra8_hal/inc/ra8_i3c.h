@@ -115,9 +115,9 @@ typedef enum : uint8_t {
  * @typedef ra8_i3c_event_fn_t
  * @brief Event callback fired by ::ra8_i3c_dispatch.
  *
- * @param ctx    Opaque context registered with ::ra8_i3c_attach_handler.
- * @param status In native mode the INST snapshot; in I2C mode the latched
- *               ::ra8_i3c_err_t mask.
+ * @param[in] ctx    Opaque context registered with ::ra8_i3c_attach_handler.
+ * @param[in] status In native mode the INST snapshot; in I2C mode the latched
+ *                   ::ra8_i3c_err_t mask.
  * @since 0.1.0
  */
 typedef void (*ra8_i3c_event_fn_t)(void* ctx, uint32_t status);

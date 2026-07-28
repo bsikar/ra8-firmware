@@ -22,8 +22,14 @@ restates the most-violated rules but **this file is the source of truth**.
 
 ## File-header Doxygen block
 
-Every `.c` and `.h` opens with the same Doxygen comment block. Order
-matters (the cite_check / world_tag scripts grep on it):
+Every `.c` and `.h` opens with the same Doxygen comment block, in the
+order below. The order itself is a readability convention: no tool parses
+it, and nothing breaks if you swap two tags. (This paragraph used to say
+"order matters -- the cite_check / world_tag scripts grep on it". Neither
+ever has. `cite_check.py` greps `HUM Ch`, `check_world_tags.py` greps the
+`[Ring N / X]` / `{World: X}` pair, and neither has ever read `@file`,
+`@brief` or `@details`. What the tags themselves are held to is in the
+table below, one enforcer named per row.)
 
 ```c
 /**
@@ -50,19 +56,23 @@ matters (the cite_check / world_tag scripts grep on it):
  */
 ```
 
-The mandatory tags are:
+Each row names the check that actually fails a build when the rule is
+broken. A row whose enforcer is `--` rests on review, and says so rather
+than implying a guarantee that does not exist. The counts are a dated
+measurement (2026-07-28, 2121 first-party C files), not a live invariant --
+they are here so the Required column can be audited rather than believed.
 
-| Tag | Required | Notes |
-|---|---|---|
-| `@file` | Yes | Filename only, not the path. |
-| `@brief` | Yes | One sentence, ends without a period. |
-| `@par Tag` | Yes for Ring 3+ | See [Ring and World tagging](#ring-and-world-tagging). |
-| `@details` | Yes | Multi-paragraph explanation. |
-| Named `@par <Name>` | Optional | Use for PRCR sequencing, IRQ wiring, state machines, anything subtle. |
-| `@author` | Yes | Single name or organisation. |
-| `@date` | Recommended | ISO 8601 (YYYY-MM-DD). |
-| `@copyright` + SPDX | Yes | `Copyright (c) YEAR <author>` then `SPDX-License-Identifier: MIT`. |
-| `@since` | Yes | Semantic version the file first appeared at. |
+| Tag | Required | Enforced by | Notes |
+|---|---|---|---|
+| `@file` | Yes | `doxy_audit.py --style` | Must be present and must name **this** file: the bare basename (1648 files), the repo-relative path (456), or no argument at all (17, doxygen then infers it). A `@file` left naming the old location after a `git mv` fails here rather than becoming a doxygen warning nobody reads. |
+| `@brief` | Yes | `doxy_audit.py --style` | One sentence, ends without a period. |
+| `@par Tag` | Yes for Ring 3+ | `check_world_tags.py` | See [Ring and World tagging](#ring-and-world-tagging). |
+| `@details` | Yes | `doxy_audit.py --style`, **ratcheted** | Multi-paragraph explanation. 130 files predate enforcement and are frozen in `.github/doxy-details-baseline.txt`; that list may only shrink, and a file outside it fails on sight. |
+| Named `@par <Name>` | Optional | -- | Use for PRCR sequencing, IRQ wiring, state machines, anything subtle. |
+| `@author` | Optional | -- | Review convention, not a rule: 104 of 2121 first-party C files carry one, and `@copyright` below already names the author. Keep it where it exists; a new file does not need it. This row said "Yes" for the life of the tree while 95% of it disagreed and nothing checked. |
+| `@date` | Optional | -- | ISO 8601 (YYYY-MM-DD) where present; 103 files carry one. |
+| `@copyright` + SPDX | Yes | `check-copyright.py` | `Copyright (c) YEAR <author>` then `SPDX-License-Identifier: MIT`. The check greps the SPDX line and the copyright holder's name anywhere in the file -- it does not require the `@copyright` tag spelling, which is why 63 files (54 in `tools/`, 9 in `port/`) satisfy it with a plain `/* SPDX... */` pair outside the header block. |
+| `@since` | Yes on public declarations | `check-since-version.py` | Semantic version the file first appeared at. **Presence** is gated only for `ra8_*` declarations in `libs/ra8_*/inc/`; the **value** of every `@since` anywhere in the tree must equal the top-level `VERSION`. |
 
 ## Function documentation
 
@@ -106,17 +116,33 @@ required tags are:
 ra8_err_t ra8_gpio_output_init(ra8_port_t port, uint8_t pin, ra8_level_t init_level);
 ```
 
-Minimums per CLAUDE.md and the pre-commit hook:
+Gated by `doxy_audit.py --check` (the `pre-commit-checks` gate and the
+pre-commit hook), over every function -- including statics -- in `libs/`,
+`src/` and `port/`:
 
 - `@brief`, `@details`, `@param` for every parameter, `@return`
 - At least 2 `@pre` and 2 `@post` (NASA Power of 10 Rule 5)
-- `@retval` for every distinct return value
+- `@retval` for every distinct return value, on any non-`void` function
 - `@note` mentioning thread safety
 - `@since` semantic version
-- `@see` cross-references to related functions
+
+`@see` is a **review convention, not a gate**. It is worth writing where a
+reader would genuinely want the pointer, and nothing checks it: measured
+2026-07-28, 3014 of the 3162 documented function blocks in the tree have
+none, and a rule that demanded one everywhere would be closed with filler
+cross-references rather than useful ones. The same applies to `@warning`
+(3142 without) and `@par MC/DC:` (3099 without) -- write them where they say
+something.
 
 `@param` direction tags are mandatory: `@param[in]`, `@param[out]`,
-`@param[in,out]`. Plain `@param` without the direction is rejected.
+`@param[in,out]`. Plain `@param` without the direction is rejected by
+`doxy_audit.py --style`, which reads every Doxygen comment in first-party C
+rather than only function blocks. That scope is the point: of the 55
+directionless tags the rule found when it was first enforced, **none** sat on
+a function declaration -- 53 documented function-like macros and 2 documented
+a callback typedef, and the function gate looks at neither. Any other bracket
+text (`@param[inout]`, `@param[i]`) is rejected too; a typo that silently
+means nothing to doxygen is not an improvement on a missing tag.
 
 ## Comment formatting
 

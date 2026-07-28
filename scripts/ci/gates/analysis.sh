@@ -51,6 +51,37 @@ gate_cppcheck() (
     src libs "${apps[@]}"
 )
 
+# --- scan-build -----------------------------------------------------------
+# The clang static analyzer over the host unit-test build: path-sensitive
+# symbolic execution, so it finds the null-deref / leak / garbage-read PATHS
+# cppcheck's pattern matching cannot.
+#
+# docs/STATIC_ANALYSIS.md claimed "CI runs bash scripts/checks/scan_build.sh
+# --strict" for months while no workflow ran it and RA8_GATE_REGISTRY had no
+# such gate (#532); scripts/git/pre-commit even carried a comment saying so, so
+# the tree contradicted itself. This row is what makes the sentence true.
+#
+# require_cmd on the PINNED major, not a bare `scan-build`: the CI image
+# installs clang-tools-18, which provides scan-build-18 and no unversioned
+# symlink, and analysing under a different clang major would be a different
+# checker set from the one the baseline was measured with.
+#
+# --selftest FIRST. This script decides what counts as an actionable finding
+# and what counts as an analysis at all, and it has already shipped a clean
+# verdict over an analysis that never happened. The selftest drives the real
+# classifier over synthetic reports in both directions (a first-party finding
+# and an off-partition fixed-address finding must be REPORTED; SOUP, test
+# scaffolding and the documented MMIO partitions must be SUPPRESSED), the
+# vacuity floor either side of its boundary, and the fail-loud path.
+gate_scan_build() (
+  set -e
+  require_cmd scan-build-18 \
+    "CI installs clang-tools-18; add it to .devcontainer/Dockerfile too."
+  require_cmd cmake
+  bash scripts/checks/scan_build.sh --selftest
+  bash scripts/checks/scan_build.sh --strict
+)
+
 # --- misra ----------------------------------------------------------------
 # misra_check.sh (cppcheck misra.py addon) over libs/ src/ port/, then
 # misra_ratchet.py compares per-file-per-rule finding counts against
