@@ -6,7 +6,7 @@
 .PHONY: $(RA8_FLASH) $(RA8_DEBUG) $(RA8_OZONE) flash-help debug-help ozone-help \
         hil hil-help hil-flash hil-recover hil-flash-retry hil-erase hil-dlm-reset \
         hil-reflash hil-probe hil-find-jlink hil-suite hil-all hil-tapo hil-ppps \
-        flash-ocd debug-ocd
+        flash-ocd debug-ocd bench-status bench-selftest
 
 # Local J-Link shorthands (board on THIS machine): build the app, then forward
 # to the per-app Makefile (scripts/{flash,debug,ozone}.sh).
@@ -47,12 +47,28 @@ ozone-help:
 	@echo "  make debug-<app>             plain gdb via J-Link (see make debug-help)"
 	@echo "  list apps:  make apps"
 
+# Bench mutual exclusion (#497). One kernel flock on the bench host covers the
+# whole target assembly -- board, C6, J-Link, hub ports, Tapo plug -- because
+# none of those is physically separable from the others.
+bench-status:
+	@bash scripts/hil/bench.sh status
+
+# The mechanism, proven rather than asserted. --ssh-death is the one that
+# matters: it kills a real ssh CLIENT with SIGKILL and asserts the flock drops,
+# because "a dead client releases the lock" is the claim the whole no-stale-lock
+# property rests on and ssh does not reap remote payloads in general.
+bench-selftest:
+	bash scripts/hil/bench.sh selftest --ssh-death
+
 # Remote HIL (board on the Pi rig, driven over SSH). See scripts/hil/.
 hil:
 	bash scripts/hil/dev.sh
 
 hil-help:
 	@echo "HIL -- hardware-in-the-loop (board on the Pi rig, driven over SSH; see scripts/hil/)"
+	@echo ""
+	@echo "  make bench-status               who holds the bench right now (0 free / 1 held / 3 unknown)"
+	@echo "  make bench-selftest             prove the bench lock, including the ssh-death case"
 	@echo ""
 	@echo "  make hil                        full HIL suite from this machine (build+flash+verify)"
 	@echo "  make hil-flash APP=<app>        build + flash to the Pi-attached board"
