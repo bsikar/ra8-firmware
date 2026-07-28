@@ -1,0 +1,2091 @@
+chapter,section,symbol,offset,offset_expr,page,page_end,name
+2,9.1.1,CPUSAR,0x170,0x170,126,127,CPU Security Attribution Register
+2,9.1.2,CPUnLCKUPCR,0x030,0x030 + 0x004 * n,127,127,"CPUn Lockup Control Register (n = 0, 1)"
+2,9.1.3,CPUnCRPT,0x840,0x840 + 0x004 * n,127,128,"CPUn Control Register Protection Register (n = 0, 1)"
+2,9.1.4,CPU0LOCKCR,0x400,0x400,128,128,CPU0 Function Lock Control Register
+2,9.1.5,CPU1LOCKCR,0x404,0x404,128,129,CPU1 Function Lock Control Register
+2,9.1.6,CPUnLOCKCRNS,0x500,0x500 + 0x004 * n,129,129,"CPUn Non-secure Function Lock Control Register (n = 0, 1)"
+2,9.1.7,CPUnINITVTOR,0x040,0x040 + 0x004 * n,129,130,"CPU Initial Vector Base Address Register (n = 0, 1)"
+2,9.1.8,CPUnWAITCR,0x050,0x050 + 0x004 * n,130,130,"CPUn CPUWAIT Control Register (n = 0, 1)"
+2,9.1.9,CPUnACTCSR,0x060,0x060 + 0x004 * n,130,131,"CPUn Activation Control and Status Register (n = 0, 1)"
+2,9.1.10,CPU0LMECR,0x070,0x070,131,131,CPU0 Local Memory Error Control Register
+2,9.1.11,CPUIDR,0x078,0x078,131,132,CPU Identification Register
+2,9.1.12,CPU0STATM,0x080,0x080,132,132,CPU0 Status Monitor Register
+2,9.1.13,CPU1STATM,0x084,0x084,132,133,CPU1 Status Monitor Register
+2,9.1.14,SECEXTMON,0x090,0x090,133,133,CPU SECEXT Monitor Register
+2,9.1.15,NSCPUCR,0x094,0x094,133,133,Non-secure CPU Control Register
+2,9.5.1,DEBUGSAR,0x180,0x180,140,141,Debug Security Attribution Register
+2,9.5.2,DBGSTR,0x000,0x000,141,141,Debug Status Register
+2,9.5.3,DBGSTOPCR,0x010,0x010,141,142,Debug Stop Control Register
+2,9.5.4,DBGAUTH0,0x020,0x020,142,143,Debug Authentication Control Register0
+2,9.5.5,CACHEDBGCR,0x040,0x040,143,144,Cache Debug Control Register
+2,9.5.6,TRPORTCR,0x030,0x030,144,145,Trace Port Control Register
+2,9.5.7,ALCTRL,0x100,0x100,145,146,Authentication Level Control Register
+2,9.5.8,FSBLSTAT,0x200,0x200,146,146,First Stage Boot Loader Status Register
+2,9.5.9,TRPORTSZ,0x038,0x038,146,147,Trace Port Size Control Register
+2,9.5.10,DBGNVMCR,0x050,0x050,147,147,Debug Non-volatile Memory Control Register
+2,9.6.1,MCUSTAT,,,148,150,MCU Status Register
+2,9.6.2,MCUERRSTAT,0x000,0x000,150,150,MCU Error Status Register
+2,9.6.3,MCUCTRL,0x004,0x004,150,151,MCU Control Register
+2,9.6.4.1,JBMDR,0x100,0x100,151,151,JTAG Boot Mode Entry Register
+2,9.6.4.2,JBRDR,0x120,0x120,151,152,JTAG Boot Receive Data Register
+2,9.6.4.3,JBTDR,0x130,0x130,152,152,JTAG Boot Transmit Data Register
+2,9.6.4.4,JBSTR,0x140,0x140,152,153,JTAG Boot Status Register
+2,9.6.4.5,JBICR,0x150,0x150,153,153,JTAG Boot Interrupt Control Register
+2,9.6.4.6,FSBLSTATM,0x300,0x300,153,154,First Stage Boot Loader Status Monitor Register
+2,16.3.1,CACHESAR,0x500,0x500,163,164,Cache Security Attribution Register
+2,16.3.2,CCACTL,0x000,0x000,164,165,C-Cache Control Register
+2,16.3.3,CCAFCT,0x004,0x004,165,166,C-Cache Flush Control Register
+2,16.3.4,CCAWTA,0x00C,0x00C,166,167,C-Cache Write Attribute
+2,16.3.5,CCAEDST,0x010,0x010,167,168,C-Cache Error Detection Status
+2,16.3.6,CCATAA,0x014,0x014,168,169,C-Cache Test Access Address
+2,16.3.7,CCATAD_DATA,0x018,0x018,169,170,C-Cache Test Access Data (DATA)
+2,16.3.8,CCATAD_ECC,0x018,0x018,170,171,C-Cache Test Access Data (ECC)
+2,16.3.10,CCATAD_LRU,0x018,0x018,171,172,C-Cache Test Access Data (LRU)
+2,16.3.9,CCATAD_TAG,0x018,0x018,171,171,C-Cache Test Access Data (TAG)
+2,16.3.11,CCATAD_TAGECC,0x018,0x018,172,173,C-Cache Test Access Data (TAGECC)
+2,16.3.12,SCACTL,0x040,0x040,173,174,S-Cache Control Register
+2,16.3.13,SCAFCT,0x044,0x044,174,175,S-Cache Flush Control Register
+2,16.3.14,SCAWTA,0x04C,0x04C,175,176,S-Cache Write Attribute
+2,16.3.15,SCAEDST,0x050,0x050,176,177,S-Cache Error Detection Status
+2,16.3.16,SCATAA,0x054,0x054,177,178,S-Cache Test Access Address
+2,16.3.17,SCATAD_DATA,0x058,0x058,178,179,S-Cache Test Access Data (DATA)
+2,16.3.18,SCATAD_ECC,0x058,0x058,179,180,S-Cache Test Access Data (ECC)
+2,16.3.19,SCATAD_TAG,0x058,0x058,180,180,S-Cache Test Access Data (TAG)
+2,16.3.20,SCATAD_LRU,0x058,0x058,180,181,S-Cache Test Access Data (LRU)
+2,16.3.21,SCATAD_TAGECC,0x058,0x058,181,182,S-Cache Test Access Data
+2,16.3.22,CAPOAD,0x200,0x200,182,183,Cache ECC Error Operation After Detection Register
+2,16.3.23,CAPRCR,0x204,0x204,183,183,Cache Protection Register
+2,17.3.1,TCMSAR,0x504,0x504,193,194,TCM Security Attribution Register
+2,17.3.2,TCMSABARx,0x508,0x508 or 0x50C,194,195,TCM Security Attribute Boundary Address Register (x = C or S)
+2,17.3.3,TCMPRCR_S,0x00,0x00,195,196,TCM Protection Control Register for Secure
+2,17.3.4,TCMPRCR_NS,0x04,0x04,196,196,TCM Protection Control Register for Non-Secure
+2,17.3.5,TCMCRx,0x10,0x10 or 0x14,196,197,TCM Control Register (x = C or S)
+2,17.3.6,TCMESR,0x40,0x40,197,198,TCM Error Status Register
+2,17.3.7,TCMESCLR,0x48,0x48,198,199,TCM Error Status Clear Register
+2,17.3.8,TCMEARxm,0x50,"0x50, 0x54, 0x58 or 0x5C",199,200,TCM Error Address Register (x = C or S) (m = 0 to 1)
+3,2.1,IPCSAR,0x610,0x610,205,208,IPC Security Attribution Register
+3,2.2,IPCPAR,0x614,0x614,208,210,IPC Privileged Attribution Register
+3,2.3,IPCSEMn,0x000,0x000 + 0x4 * n,210,210,Semaphore Register n (n = 0 to 15)
+3,2.4,IPC0NMISTA,0x080,0x080,210,211,Inter-Processor0 NMI Request Status Register
+3,2.5,IPC0NMISET,0x084,0x084,211,212,Inter-Processor0 NMI Request Set Register
+3,2.6,IPC0NMICLR,0x088,0x088,212,212,Inter-Processor0 NMI Request Clear Register
+3,2.7,IPC1NMISTA,0x090,0x090,212,213,Inter-Processor1 NMI Request Status Register
+3,2.8,IPC1NMISET,0x094,0x094,213,213,Inter-Processor1 NMI Request Set Register
+3,2.9,IPC1NMICLR,0x098,0x098,213,214,Inter-Processor1 NMI Request Clear Register
+3,2.10,IPC0STA0,0x0C0,0x0C0,214,215,Inter-Processor0 Status Register0
+3,2.11,IPC0ISET0,0x0C4,0x0C4,215,215,Inter-Processor0 IRQ Request Set Register0
+3,2.12,IPC0TXD0,0x0C8,0x0C8,215,216,Inter-Processor0 FIFO Transfer Data Register0
+3,2.13,IPC0RXD0,0x0CC,0x0CC,216,216,Inter-Processor0 FIFO Receive Data Register0
+3,2.14,IPC0CLR0,0x0D0,0x0D0,216,217,Inter-Processor0 Clear Register0
+3,2.15,IPC0STA1,0x0E0,0x0E0,217,218,Inter-Processor0 Status Register1
+3,2.16,IPC0ISET1,0x0E4,0x0E4,218,219,Inter-Processor0 IRQ Request Set Register1
+3,2.17,IPC0TXD1,0x0E8,0x0E8,219,219,Inter-Processor0 FIFO Transfer Data Register1
+3,2.18,IPC0RXD1,0x0EC,0x0EC,219,220,Inter-Processor0 FIFO Receive Data Register1
+3,2.19,IPC0CLR1,0x0F0,0x0F0,220,221,Inter-Processor0 Clear Register1
+3,2.20,IPC1STA0,0x100,0x100,221,222,Inter-Processor1 Status Register0
+3,2.21,IPC1ISET0,0x104,0x104,222,222,Inter-Processor1 IRQ Request Set Register0
+3,2.22,IPC1TXD0,0x108,0x108,222,223,Inter-Processor1 FIFO Transfer Data Register0
+3,2.23,IPC1RXD0,0x10C,0x10C,223,223,Inter-Processor1 FIFO Receive Data Register0
+3,2.24,IPC1CLR0,0x110,0x110,223,224,Inter-Processor1 Request Clear Register0
+3,2.25,IPC1STA1,0x120,0x120,224,225,Inter-Processor1 Request Status Register1
+3,2.26,IPC1ISET1,0x124,0x124,225,226,Inter-Processor1 IRQ Request Set Register1
+3,2.27,IPC1TXD1,0x128,0x128,226,226,Inter-Processor1 FIFO Transfer Data Register1
+3,2.28,IPC1RXD1,0x12C,0x12C,226,227,Inter-Processor1 FIFO Receive Data Register1
+3,2.29,IPC1CLR1,0x130,0x130,227,227,Inter-Processor1 Clear Register1
+6,2.1,RSTSAR,0x3C4,0x3C4,255,256,Reset Security Attribution Register
+6,2.2,RSTSR0,0xA40,0xA40,256,258,Reset Status Register 0
+6,2.3,RSTSR1,0x0C0,0x0C0,258,261,Reset Status Register 1
+6,2.4,RSTSR2,0xA44,0xA44,261,262,Reset Status Register 2
+6,2.5,RSTSR3,0xA48,0xA48,262,263,Reset Status Register 3
+6,2.6,SYRSTMSK0,0xAD0,0xAD0,263,263,System Reset Mask Control Register 0
+6,2.7,SYRSTMSK1,0xAD4,0xAD4,263,264,System Reset Mask Control Register 1
+6,2.8,SYRSTMSK2,0xAD8,0xAD8,264,264,System Reset Mask Control Register 2
+6,2.9,TEMPRCR,0xADC,0xADC,264,265,Temperature Monitor Reset Control Register
+6,2.10,TEMPRLR,0xAE0,0xAE0,265,265,Temperature Monitor Reset Lock Register
+7,2.1,OFS0,,,280,283,Option Function Select Register 0
+7,2.2,OFS2,,,283,284,Option Function Select Register 2
+7,2.3,SAS,,,284,284,Startup Area Setting Register
+7,2.4,OFS1,,,284,286,Option Function Select Register 1 for Non-Secure and Secure
+7,2.4,OFS1_SEC,,,284,286,Option Function Select Register 1 for Non-Secure and Secure
+7,2.5,OFS1_SEL,,,286,287,Option Function Select Register 1 for Security Attribution
+7,2.6,OFS3,,,287,289,Option Function Select Register 3
+7,2.6,OFS3_SEC,,,287,289,Option Function Select Register 3
+7,2.7,OFS3_SEL,,,289,290,Option Function Select Register 3 for Security
+7,2.8,BPS,,,290,290,Block Protect Setting Register
+7,2.8,BPS_SEC,,,290,290,Block Protect Setting Register
+7,2.9,PBPS,,,290,290,Permanent Block Protect Setting Register
+7,2.9,PBPS_SEC,,,290,290,Permanent Block Protect Setting Register
+7,2.11,FSBLCTRL0,,,291,292,FSBL Control Register 0
+7,2.12,FSBLCTRL1,,,292,292,FSBL Control Register 1
+7,2.13,FSBLCTRL2,,,292,293,FSBL Control Register 2
+7,2.14,SACC0n,,,293,293,Start Address of Code Certificate 0n (n = 0 to 3)
+7,2.15,SACC1n,,,293,293,Start Address of Code Certificate 1n (n= 0 to 3)
+7,2.16,SAMR,,,293,294,Start Address of Measurement Report
+7,2.17,REVOKE,,,294,294,REVOKE Enable
+7,2.18,HOEMRTRKn,,,294,295,Hash of OEM_ROOT_PKn (n= 0 to 3)
+7,2.19,ZHUK,,,295,295,Zeroization HUK Enable
+7,2.20,ARCLS,,,295,296,Anti-Rollback Counter Lock Setting
+7,2.21,ARCCS,,,296,296,Anti-Rollback Counter Configuration Setting for Non-secure Application
+7,2.22,ARC_SECn,,,296,297,"Anti-Rollback Counter for Secure Application n (n = 0, 1)"
+7,2.23,ARC_NSECn,,,297,297,Anti-Rollback Counter for Non-secure Application n (n = 0 to 7)
+7,2.24,ARC_OEMBLn,,,297,297,"Anti-Rollback Counter for OEMBL (n = 0, 1)"
+7,2.25,GPOTPn,,,297,297,General Purpose OTP (n = 0 to 23)
+8,2.1,PVDSAR,0x3CC,0x3CC,302,303,Programable Voltage Detection Security Attribution Register
+8,2.2,PVDmCMPCR,0xA58,0xA58 + 0x4 * (m - 1),303,304,"Voltage Monitor m Comparator Control Register (m = 1, 2)"
+8,2.3,PVDnCMPCR,0xA64,0xA64+ 0x4 * (n - 4),304,304,"Voltage Monitor n Comparator Control Register (n = 4, 5)"
+8,2.4,PVDmCR0,0xA70,0xA70 + 0x4 * (m - 1),304,306,"Voltage Monitor m Circuit Control Register 0 (m = 1, 2)"
+8,2.5,PVDnCR0,0xA7C,0xA7C + 0x4 * (n - 4),306,307,"Voltage Monitor n Circuit Control Register 0 (n = 4, 5)"
+8,2.6,PVDmCR1,0x0E0,0x0E0 + 0x2 * (m-1),307,307,"Voltage Monitor m Circuit Control Register (m = 1, 2)"
+8,2.7,PVDmSR,0x0E1,0x0E1 + 0x2 * (m - 1),307,308,"Voltage Monitor m Circuit Status Register (m = 1, 2)"
+8,2.8,PVDmFCR,0xB20,0xB20 + 0x4 * (m - 1),308,308,"Voltage Monitor m Function Control Register (m = 1, 2)"
+8,2.9,PVDnFCR,0xB2C,0xB2C + 0x4 * (n - 1),308,309,"Voltage Monitor n Function Control Register (n = 4, 5)"
+8,2.10,PVDLR,0xB34,0xB34,309,309,Voltage Monitor Lock Register
+9,2.1,CGFSAR,0x3C0,0x3C0,322,326,Clock Generation Function Security Attribute Register
+9,2.2,SCKDIVCR,0x020,0x020,326,328,System Clock Division Control Register
+9,2.3,SCKDIVCR2,0x024,0x024,328,330,System Clock Division Control Register 2
+9,2.4,SYRACCR,0xCC,0xCC,330,330,System Register Access Control Register
+9,2.5,SCKSCR,0x026,0x026,330,331,System Clock Source Control Register
+9,2.6,PLLCCR,0x0AC,0x0AC,331,332,PLL Clock Control Register
+9,2.7,PLLCCR2,0x4C,0x4C,332,333,PLL Clock Control Register 2
+9,2.8,PLLCR,0x02A,0x02A,333,334,PLL Control Register
+9,2.9,PLL2CCR,0x0C8,0x0C8,334,335,PLL2 Clock Control Register
+9,2.10,PLL2CCR2,0x4E,0x4E,335,336,PLL2 Clock Control Register 2
+9,2.11,PLL2CR,0x04A,0x04A,336,337,PLL2 Control Register
+9,2.12,BCKCR,0x030,0x030,337,338,External Bus Clock Control Register
+9,2.13,MOSCCR,0x032,0x032,338,339,Main Clock Oscillator Control Register
+9,2.14,SOSCCR,0xC00,0xC00,339,339,Sub-Clock Oscillator Control Register
+9,2.15,LOCOCR,0x400,0x400,339,340,Low-Speed On-Chip Oscillator Control Register
+9,2.16,HOCOCR,0x036,0x036,340,341,High-Speed On-Chip Oscillator Control Register
+9,2.17,HOCOCR2,0x037,0x037,341,341,High-Speed On-Chip Oscillator Control Register2
+9,2.18,MOCOCR,0x038,0x038,341,342,Middle-Speed On-Chip Oscillator Control Register
+9,2.19,FLLCR1,0x039,0x039,342,343,FLL Control Register1
+9,2.20,FLLCR2,0x03A,0x03A,343,344,FLL Control Register2
+9,2.21,OSCSF,0x03C,0x03C,344,345,Oscillation Stabilization Flag Register
+9,2.22,OSCMONR,0x43,0x43,345,346,Oscillator Monitor Register
+9,2.23,OSTDCR,0x040,0x040,346,347,Oscillation Stop Detection Control Register
+9,2.24,OSTDSR,0x041,0x041,347,348,Oscillation Stop Detection Status Register
+9,2.25,SOSTDCR,0xC04,0xC04,348,348,Sub-clock Oscillation Stop Detection Control Register
+9,2.26,SOSTDSR,0xC05,0xC05,348,349,Sub-clock Oscillation Stop Detection Status Register
+9,2.27,MOSCWTCR,0x0A2,0x0A2,349,350,Main Clock Oscillator Wait Control Register
+9,2.28,MOMCR,0xA50,0xA50,350,351,Main Clock Oscillator Mode Oscillation Control Register
+9,2.29,SOMCR,0xC01,0xC01,351,351,Sub-Clock Oscillator Mode Control Register
+9,2.30,CKOCR,0x03E,0x03E,351,352,Clock Out Control Register
+9,2.31,EBCKOCR,0x052,0x052,352,353,External Bus Clock Output Control Register
+9,2.32,SDCKOCR,0x053,0x053,353,353,SDRAM Clock Output Control Register
+9,2.33,LOCOUTCR,0x402,0x402,353,354,LOCO User Trimming Control Register
+9,2.34,MOCOUTCR,0x061,0x061,354,354,MOCO User Trimming Control Register
+9,2.35,HOCOUTCR,0x062,0x062,354,355,HOCO User Trimming Control Register
+9,2.36,MOSCSCR,0x07C,0x07C,355,355,Main Clock Oscillator Standby Control Register
+9,2.37,HOCOSCR,0x07D,0x07D,355,356,High-Speed On-Chip Oscillator Standby Control Register
+9,2.38,MOCOSCR,0x084,0x084,356,356,Middle-Speed On-Chip Oscillator Standby Control Register
+9,2.39,USBCKDIVCR,0x06C,0x06C,356,357,USB Clock Division Control Register
+9,2.40,OCTACKDIVCR,0x06D,0x06D,357,357,Octal-SPI Clock Division Control Register
+9,2.41,CANFDCKDIVCR,0x06E,0x06E,357,358,CANFD Core Clock Division Control Register
+9,2.42,USB60CKDIVCR,0x06F,0x06F,358,359,USB60 Clock Division Control Register
+9,2.43,I3CCKDIVCR,0x070,0x070,359,359,I3C Clock Division Control Register
+9,2.44,USBCKCR,0x074,0x074,359,360,USB Clock Control Register
+9,2.45,OCTACKCR,0x075,0x075,360,362,Octal-SPI Clock Control Register
+9,2.46,CANFDCKCR,0x076,0x076,362,363,CANFD Core Clock Control Register
+9,2.47,USB60CKCR,0x077,0x077,363,364,USB60 Clock Control Register
+9,2.48,I3CCKCR,0x078,0x078,364,365,I3C Clock Control Register
+9,2.49,SCICKDIVCR,0x054,0x054,365,366,SCI Clock Division Control Register
+9,2.50,SPICKDIVCR,0x056,0x056,366,366,SPI Clock Division Control Register
+9,2.51,ADCCKDIVCR,0x05A,0x05A,366,367,ADC Clock Division Control Register
+9,2.52,GPTCKDIVCR,0x05C,0x05C,367,368,GPT Clock Division Control Register
+9,2.53,LCDCKDIVCR,0x05E,0x05E,368,368,LCD Clock Division Control Register
+9,2.54,SCICKCR,0x055,0x055,368,369,SCI Clock Control Register
+9,2.55,SPICKCR,0x057,0x057,369,371,SPI Clock Control Register
+9,2.56,ADCCKCR,0x05B,0x05B,371,372,ADC Clock Control Register
+9,2.57,GPTCKCR,0x05D,0x05D,372,373,GPT Clock Control Register
+9,2.58,LCDCKCR,0x05F,0x05F,373,374,LCD Clock Control Register
+9,2.59,TRCKCR,0x03F,0x03F,374,376,Trace Clock Control Register
+9,2.60,BCKADIVCR,0x0D4,0x0D4,376,376,Asynchronous External Bus Clock Division Control Register
+9,2.61,ESWCKDIVCR,0x0D5,0x0D5,376,377,EtherSW Clock Division Control Register
+9,2.62,ESWPCKDIVCR,0x0D6,0x0D6,377,378,EtherSW-PHY Clock Division Control Register
+9,2.63,ETHPCKDIVCR,0x0D8,0x0D8,378,378,Ether-PHY Clock Division Control Register
+9,2.64,BCKACR,0x0DA,0x0DA,378,379,Asynchronous External Bus Clock Control Register
+9,2.65,ESWCKCR,0x0DB,0x0DB,379,381,EtherSW Clock Control Register
+9,2.66,ESWPCKCR,0x0DC,0x0DC,381,382,EtherSW-PHY Clock Control Register
+9,2.67,ETHPCKCR,0x0DE,0x0DE,382,383,Ether-PHY Clock Control Register
+9,2.68,USBCKSELR,0x0F0,0x0F0,383,384,USB Clock Selection Register
+10,2.1,CACR0,0x00,0x00,421,422,CAC Control Register 0
+10,2.2,CACR1,0x01,0x01,422,423,CAC Control Register 1
+10,2.3,CACR2,0x02,0x02,423,424,CAC Control Register 2
+10,2.4,CAICR,0x03,0x03,424,425,CAC Interrupt Control Register
+10,2.5,CASTR,0x04,0x04,425,426,CAC Status Register
+10,2.6,CAULVR,0x06,0x06,426,426,CAC Upper-Limit Value Setting Register
+10,2.7,CALLVR,0x08,0x08,426,426,CAC Lower-Limit Value Setting Register
+10,2.8,CACNTBR,0x0A,0x0A,426,427,CAC Counter Buffer Register
+11,2.1,LPMSAR,0x3C8,0x3C8,436,437,Low Power Mode Security Attribution Register
+11,2.2,PGCSAR,0x3D8,0x3D8,437,439,Power Gating Control Security Attribution Register
+11,2.3,DPFSAR,0x3E0,0x3E0,439,441,Deep Software Standby Interrupt Factor Security Attribution Register
+11,2.4,DPFSAR1,0x3E8,0x3E8,441,442,Deep Software Standby Interrupt Factor Security Attribution Register 1
+11,2.5,RSCSAR,0x3E4,0x3E4,442,443,RAM Standby Control Security Attribution Register
+11,2.6,MSTPCRA,0x00,0x00,443,444,Module Stop Control Register A
+11,2.7,MSTPCRB,0x04,0x04,444,446,Module Stop Control Register B
+11,2.8,MSTPCRC,0x08,0x08,446,448,Module Stop Control Register C
+11,2.9,MSTPCRD,0x0C,0x0C,448,449,Module Stop Control Register D
+11,2.10,MSTPCRE,0x10,0x10,449,451,Module Stop Control Register E
+11,2.11,OPCCR,0x0A0,0x0A0,451,451,Operating Power Control Register
+11,2.12,PGSCR,0x104,0x104,451,452,Power Gating Shift Control Register
+11,2.13,PSSTCRn,0x210,"0x210 + 0x2 * n (n = 0, 2 to 5)",452,452,"Power Switch Control Start Time Control Register n (n = 0, 2 to 5)"
+11,2.14,PDCTRGD,0x110,0x110,452,453,Graphics Power Domain Control Register
+11,2.15,PDCTRESWM,0x118,0x118,453,453,ESWM Power Domain Control Register
+11,2.16,PDRAMSCR0,0x140,0x140,453,455,SRAM Power Domain Standby Control Register 0
+11,2.17,PDRAMSCR1,0x142,0x142,455,456,SRAM Power Domain Standby Control Register 1
+11,2.18,SBYCR,0x00C,0x00C,456,456,Standby Control Register
+11,2.19,SSCR1,0xA98,0xA98,456,457,Software Standby Control Register 1
+11,2.20,LPSCR,0xA90,0xA90,457,458,Low Power State Control Register
+11,2.21,DPSBYCR,0xA00,0xA00,458,459,Deep Software Standby Control Register
+11,2.22,DPSIER0,0xA08,0xA08,459,459,Deep Software Standby Interrupt Enable Register 0
+11,2.23,DPSIER1,0xA0C,0xA0C,459,460,Deep Software Standby Interrupt Enable Register 1
+11,2.24,DPSIER2,0xA10,0xA10,460,461,Deep Software Standby Interrupt Enable Register 2
+11,2.25,DPSIER3,0xA14,0xA14,461,462,Deep Software Standby Interrupt Enable Register 3
+11,2.26,DPSIER4,0xB40,0xB40,462,462,Deep Software Standby Interrupt Enable Register 4
+11,2.27,DPSIER5,0xB44,0xB44,462,463,Deep Software Standby Interrupt Enable Register 5
+11,2.28,DPSIFR0,0xA18,0xA18,463,464,Deep Software Standby Interrupt Flag Register 0
+11,2.29,DPSIFR1,0xA1C,0xA1C,464,465,Deep Software Standby Interrupt Flag Register 1
+11,2.30,DPSIFR2,0xA20,0xA20,465,467,Deep Software Standby Interrupt Flag Register 2
+11,2.31,DPSIFR3,0xA24,0xA24,467,469,Deep Software Standby Interrupt Flag Register 3
+11,2.32,DPSIFR4,0xB48,0xB48,469,470,Deep Software Standby Interrupt Flag Register 4
+11,2.33,DPSIFR5,0xB4C,0xB4C,470,471,Deep Software Standby Interrupt Flag Register 5
+11,2.34,DPSIEGR0,0xA28,0xA28,471,471,Deep Software Standby Interrupt Edge Register 0
+11,2.35,DPSIEGR1,0xA2C,0xA2C,471,472,Deep Software Standby Interrupt Edge Register 1
+11,2.36,DPSIEGR2,0xA30,0xA30,472,473,Deep Software Standby Interrupt Edge Register 2
+11,2.37,DPSIEGR3,0xA34,0xA34,473,473,Deep Software Standby Interrupt Edge Register 3
+11,2.38,DPSIEGR4,0xB50,0xB50,473,474,Deep Software Standby Interrupt Edge Register 4
+11,2.39,SYOCDCR,0xA38,0xA38,474,475,System Control OCD Control Register
+11,2.40,PLL1LDOCR,0xB04,0xB04,475,475,PLL1-LDO Control Register
+11,2.41,PLL2LDOCR,0xB08,0xB08,475,476,PLL2-LDO Control Register
+11,2.42,HOCOLDOCR,0xB0C,0xB0C,476,477,HOCO-LDO Control Register
+11,2.43,VSCR,0x014,0x014,477,477,Voltage Scaling Control Register
+11,2.44,SVSCR,0xA9C,0xA9C,477,478,SSTBY Voltage Scaling Control Register
+11,2.45,CPUDSCR,0x100,0x100,478,478,CPU Deep Sleep Control Register
+12,2.1,BBFSAR,0x3D0,0x3D0,500,502,Battery Backup Function Security Attribute Register
+12,2.2,VBRSABAR,0x3B0,0x3B0,502,502,VBATT Backup Register Security Attribute Boundary Address
+12,2.3,VBRPABARS,0x3B4,0x3B4,502,503,VBATT Backup Register Privilege Attribute Boundary Address
+12,2.4,VBRPABARNS,0x3B8,0x3B8,503,503,VBATT Backup Register Privilege Attribute Boundary Address
+12,2.5,VBATTMNSELR,0xA84,0xA84,503,504,Battery Backup Voltage Monitor Function Select Register
+12,2.6,VBTBER,0xC40,0xC40,504,505,VBATT Backup Enable Register
+12,2.7,VBTBKRn,0xD00,0xD00 + 0x001 * n,505,505,VBATT Backup Register (n = 0 to 127)
+12,2.8,VBTICTLR,0xC4C,0xC4C,505,506,VBATT Input Control Register
+12,2.10,VBTIMONR,0xC4E,0xC4E,506,507,VBATT Input Monitor Register
+12,2.9,VBTICTLR2,0xC4D,0xC4D,506,506,VBATT Input Control Register 2
+12,2.11,VBTBPCR1,0xA88,0xA88,507,508,VBATT Battery Power Supply Control Register 1
+12,2.12,VBTBPCR2,0xC45,0xC45,508,509,VBATT Battery Power Supply Control Register 2
+12,2.13,VBTBPSR,0xC46,0xC46,509,509,VBATT Battery Power Supply Status Register
+12,2.14,VBTADSR,0xC48,0xC48,509,510,VBATT Tamper Detection Status Register
+12,2.15,VBTADCR1,0xC49,0xC49,510,511,VBATT Tamper Detection Control Register 1
+12,2.16,VBTADCR2,0xC4A,0xC4A,511,511,VBATT Tamper Detection Control Register 2
+12,2.17,VBTADCR3,0xC54,0xC54,511,512,VBATT Tamper Detection Control Register 3
+12,2.18,VBTNCWCR,0xC50,0xC50,512,512,VBATT Noise Canceler Width Control Register
+13,2.1,PRCR_S,0x3FA,0x3FA,521,522,Protect Register for Secure
+13,2.2,PRCR_NS,0x3FE,0x3FE,522,524,Protect Register for Non-Secure
+14,2.1,ICUSARA,0x40,0x40,527,527,Interrupt Controller Unit Security Attribution Register A
+14,2.2,ICUSARB,0x44,0x44,527,528,Interrupt Controller Unit Security Attribution Register B
+14,2.3,ICUSARE,0x50,0x50,528,530,Interrupt Controller Unit Security Attribution Register E
+14,2.4,ICUSARF,0x54,0x54,530,531,Interrupt Controller Unit Security Attribution Register F
+14,2.5,ICUSARG,0x70,0x70,531,531,Interrupt Controller Unit Security Attribution Register G
+14,2.6,ICUSARH,0x74,0x74,531,532,Interrupt Controller Unit Security Attribution Register H
+14,2.7,ICUSARI,0x78,0x78,532,532,Interrupt Controller Unit Security Attribution Register I
+14,2.8,ICUSARJ,0x7C,0x7C,532,533,Interrupt Controller Unit Security Attribution Register J
+14,2.10,ICUSARL,0x84,0x84,533,534,Interrupt Controller Unit Security Attribution Register L
+14,2.9,ICUSARK,0x80,0x80,533,533,Interrupt Controller Unit Security Attribution Register K
+14,2.11,TEVTRCR,0x600,0x600,534,535,Trusted Event Route Control Register
+14,2.12,IRQCRi,0x000,0x000 + 0x01 * i (i = 0 to 15),535,536,IRQ Control Register (i = 0 to 31)
+14,2.13,NMISR,0x120,0x120,536,541,Non-Maskable Interrupt Status Register
+14,2.14,NMIER,0x100,0x100,541,544,Non-Maskable Interrupt Enable Register
+14,2.15,NMICLR,0x110,0x110,544,546,Non-Maskable Interrupt Status Clear Register
+14,2.16,NMICR,0x10,0x10,546,547,NMI Pin Interrupt Control Register
+14,2.17,IELSRn,0x300,0x300 + 0x4 * n,547,549,Interrupt Controller Unit Event Link Setting Register n (n = 0 to 95)
+14,2.18,DELSRm,0x280,0x280 + 0x4 * m,549,550,DMAC Event Link Setting Register m (m = 0 to 7)
+14,2.19,WUPEN0,0x1A0,0x1A0,550,552,Wake Up Interrupt Enable Register 0
+14,2.20,WUPEN1,0x1A4,0x1A4,552,554,Wake Up Interrupt Enable Register 1
+14,2.21,DSLPWUPIRQENj,0x210,0x210 + 0x4 * j,554,554,Deep Sleep Wake Up IRQ Enable Register (j = 0 to 2)
+14,2.22,INTSELRp,0x40,0x40 + 0x4 * p,554,555,Interrupt Request Select Register (p = 0 to 31)
+15,3.1,BUSSARA,0x100,0x100,591,592,Bus Security Attribution Register A
+15,3.2,BUSSARB,0x104,0x104,592,592,Bus Security Attribution Register B
+15,3.3,BUSSARC,0x110,0x110,592,593,Bus Security Attribution Register C
+15,3.4,BUSPARC,0x114,0x114,593,594,Bus Privileged Attribution Register C
+15,3.5,CSnCR,0x802,0x802 + 0x10 * n (n = 0 to 7),594,595,CSn Control Register (n = 0 to 7)
+15,3.6,CSnREC,0x80A,0x80A + 0x10 * n,595,597,CSn Recovery Cycle Register (n = 0 to 7)
+15,3.7,CSRECEN,0x880,0x880,597,598,CS Recovery Cycle Insertion Enable Register
+15,3.8,CSnMOD,0x002,0x002 + 0x10 * n,598,600,CSn Mode Register (n = 0 to 7)
+15,3.9,CSnWCR1,0x004,0x004 + 0x10 * n,600,602,CSn Wait Control Register 1 (n = 0 to 7)
+15,3.10,CSnWCR2,0x008,0x008 + 0x10 * n,602,605,CSn Wait Control Register 2 (n = 0 to 7)
+15,3.11,SDCCR,0xC00,0xC00,605,605,SDC Control Register
+15,3.12,SDCMOD,0xC01,0xC01,605,606,SDC Mode Register
+15,3.13,SDAMOD,0xC02,0xC02,606,606,SDRAM Access Mode Register
+15,3.14,SDSELF,0xC10,0xC10,606,607,SDRAM Self-Refresh Control Register
+15,3.15,SDRFCR,0xC14,0xC14,607,608,SDRAM Refresh Control Register
+15,3.16,SDRFEN,0xC16,0xC16,608,608,SDRAM Auto-Refresh Control Register
+15,3.17,SDICR,0xC20,0xC20,608,609,SDRAM Initialization Sequence Control Register
+15,3.18,SDIR,0xC24,0xC24,609,610,SDRAM Initialization Register
+15,3.19,SDADR,0xC40,0xC40,610,611,SDRAM Address Register
+15,3.20,SDTR,0xC44,0xC44,611,612,SDRAM Timing Register
+15,3.21,SDMOD,0xC48,0xC48,612,613,SDRAM Mode Register
+15,3.22,SDSR,0xC50,0xC50,613,614,SDRAM Status Register
+15,3.23,BUSMABTGRAPHBI,0x1100,0x1100,614,615,Bus Master Arbitration Control Register
+15,3.25,BUSSABT1MRC0BI,0x1200,0x1200,616,617,Bus Slave Arbitration Control Register 1
+15,3.28,BUSOAD,0x1000,0x1000,619,620,BUS Operation After Detection Register
+15,3.29,BUSOADPT,0x1004,0x1004,620,621,BUS Operation After Detection Protect Register
+15,3.30,MBWERRSTAT,0x1B00,0x1B00,621,622,Master Bufferable Write Error Status Register
+15,3.31,MBWERRCLR,0x1B08,0x1B08,622,623,Master Bufferable Write Error Clear Register
+16,3.1.1,MMPUSARA,0x130,0x130,694,695,Master Memory Protection Unit Security Attribution Register A
+16,3.1.2,MMPUSARB,0x134,0x134,695,696,Master Memory Protection Unit Security Attribution Register B
+16,3.1.3,MMPUSDMACmn,0x0204,0x0204 + 0x0010 * n (DMAC0n),696,696,"MMPU Start Address Register for DMAC (m = 0, 1, n = 00 to 07)"
+16,3.1.4,MMPUSEDMACn,0x0604,0x0604 + 0x010 * n,696,697,MMPU Start Address Register for EDMAC (n = 0 to 4)
+16,3.1.5,MMPUSGLCDCn,0x0804,0x0804 + 0x010 * n,697,697,"MMPU Start Address Register for GLCDC (n = 0, 1)"
+16,3.1.6,MMPUSDRWn,0x0A04,0x0A04 + 0x010 * n,697,697,MMPU Start Address Register for DRW (n = 0 to 2)
+16,3.1.7,MMPUSMIPID,0x0C04,0x0C04,697,698,MMPU Start Address Register for MIPI-DSI
+16,3.1.8,MMPUSCEUn,0x0E04,0x0E04+ 0x010 * n,698,698,"MMPU Start Address Register for CEU (n = 0, 1)"
+16,3.1.9,MMPUSMIPICn,0x1004,0x1004 + 0x0010 * n,698,699,MMPU Start Address Register for MIPI-CSI via VIN (n = 0 to 2)
+16,3.1.10,MMPUEDMACmn,0x0208,0x0208 + 0x0010 * n (DMAC0n),699,699,"MMPU End Address Register for DMAC (m = 0, 1, n = 00 to 07)"
+16,3.1.11,MMPUEEDMACn,0x0608,0x0608 + 0x0010 * n,699,700,MMPU End Address Register for EDMAC (n = 0 to 4)
+16,3.1.12,MMPUEGLCDCn,0x0808,0x0808 + 0x010 * n,700,700,"MMPU End Address Register for GLCDC (n = 0, 1)"
+16,3.1.13,MMPUEDRWn,0x0A08,0x0A08 + 0x010 * n,700,700,MMPU End Address Register for DRW (n = 0 to 2)
+16,3.1.14,MMPUEMIPID,0x0C08,0x0C08,700,701,MMPU End Address Register for MIPI-DSI
+16,3.1.15,MMPUECEUn,0x0E08,0x0E08 + 0x010 * n,701,701,"MMPU End Address Register for CEU (n = 0, 1)"
+16,3.1.16,MMPUEMIPICn,0x1008,0x1008 + 0x0010 * n,701,702,MMPU End Address Register for MIPI-CSI via VIN (n = 0 to 2)
+16,3.1.17,MMPUACDMACmn,0x0200,0x0200 + 0x0010 * n (DMAC0n),702,703,"MMPU Access Control Register for DMAC (m = 0, 1, n = 00 to 07)"
+16,3.1.18,MMPUACEDMACn,0x0600,0x0600 + 0x0010 * n,703,703,MMPU Access Control Register for EDMAC (n = 0 to 4)
+16,3.1.19,MMPUACGLCDCn,0x0800,0x0800 + 0x010 * n,703,704,"MMPU Access Control Register for GLCDC (n = 0, 1)"
+16,3.1.20,MMPUACDRWn,0x0A00,0x0A00 + 0x010 * n,704,705,MMPU Access Control Register for DRW (n = 0 to 2)
+16,3.1.21,MMPUACMIPID,0x0C00,0x0C00,705,706,MMPU Access Control Register for MIPI-DSI
+16,3.1.22,MMPUACCEUn,0x0E00,0x0E00 + 0x010 * n,706,706,"MMPU Access Control Register for CEU (n = 0, 1)"
+16,3.1.23,MMPUACMIPICn,0x1000,0x1000 + 0x0010 * n,706,707,MMPU Access Control Register for MIPI-CSI via VIN (n = 0 to 2)
+16,3.1.24,MMPUENDMACm,0x0100,0x0100 (DMAC0n),707,708,"MMPU Enable Register for DMAC (m = 0, 1)"
+16,3.1.25,MMPUENEDMAC,0x0500,0x0500,708,709,MMPU Enable Register for EDMAC
+16,3.1.26,MMPUENGLCDC,0x0700,0x0700,709,709,MMPU Enable Register for GLCDC
+16,3.1.27,MMPUENDRW,0x0900,0x0900,709,710,MMPU Enable Register for DRW
+16,3.1.28,MMPUENMIPID,0x0B00,0x0B00,710,711,MMPU Enable Register for MIPI-DSI
+16,3.1.29,MMPUENCEU,0x0D00,0x0D00,711,711,MMPU Enable Register for CEU
+16,3.1.30,MMPUENMIPIC,0x0F00,0x0F00,711,712,MMPU Enable Register for MIPI-CSI by VIN
+16,3.1.31,MMPUENPTDMACm,0x0104,0x0104 (DMAC0n),712,713,"MMPU Enable Protect Register for DMAC m (m = 0, 1)"
+16,3.1.32,MMPUENPTEDMAC,0x0504,0x0504,713,713,MMPU Enable Protect Register for EDMAC
+16,3.1.33,MMPUENPTGLCDC,0x0704,0x0704,713,714,MMPU Enable Protect Register for GLCDC
+16,3.1.34,MMPUENPDRW,0x0904,0x0904,714,715,MMPU Enable Protect Register for DRW
+16,3.1.35,MMPUENPTMIPID,0x0B04,0x0B04,715,715,MMPU Enable Protect Register for MIPI-DSI
+16,3.1.36,MMPUENPTCEU,0x0D04,0x0D04,715,716,MMPU Enable Protect Register for CEU
+16,3.1.37,MMPUENPTMIPIC,0x0F04,0x0F04,716,717,MMPU Enable Protect Register for MIPI-CSI by VIN
+16,3.1.38,MMPURPTDMACm,0x0108,0x0108 (DMAC0n),717,717,MMPU Regions Protect Register for DMAC Non-secure m
+16,3.1.39,MMPURPTDMAC_SECm,0x010C,0x010C (DMAC0n),717,718,MMPU Regions Protect Register for DMAC Secure
+16,3.1.40,MMPURPTEDMAC,0x0508,0x0508,718,719,MMPU Regions Protect Register for EDMAC
+16,3.1.41,MMPURPTGLCDC,0x0708,0x0708,719,719,MMPU Regions Protect Register for GLCDC
+16,3.1.42,MMPURPTDRW,0x0908,0x0908,719,720,MMPU Regions Protect Register for DRW
+16,3.1.43,MMPURPTMIPID,0x0B08,0x0B08,720,721,MMPU Regions Protect Register for MIPI-DSI
+16,3.1.44,MMPURPTCEU,0x0D08,0x0D08,721,722,MMPU Regions Protect Register for CEU
+16,3.1.45,MMPURPTMIPIC,0x0F08,0x0F08,722,722,MMPU Regions Protect Register for MIPI-CSI by VIN
+16,3.1.46,MMPUOAD,0x0000,0x0000,722,723,MMPU Operation After Detection Register
+16,3.1.47,MMPUOADPT,0x0004,0x0004,723,724,MMPU Operation After Detection Protect Register
+17,2.1,DMACCHSAR,0x1A0,0x1A0,731,732,DMA Channel Security Attribution Register
+17,2.2,DMACCHPAR,0x1F0,0x1F0,732,734,DMA Channel Privilege Attribution Register
+17,2.3,DMACSAR,0x34,0x34,734,734,DMAC Controller Security Attribution Register
+17,2.4,DMSAR,0x00,0x00,734,735,DMA Source Address Register
+17,2.5,DMSRR,0x20,0x20,735,735,DMA Source Reload Address Register
+17,2.6,DMDAR,0x04,0x04,735,735,DMA Destination Address Register
+17,2.7,DMDRR,0x24,0x24,735,736,DMA Destination Reload Address Register
+17,2.8,DMCRA,0x08,0x08,736,737,DMA Transfer Count Register
+17,2.9,DMCRB,0x0C,0x0C,737,738,DMA Block Transfer Count Register
+17,2.10,DMTMD,0x10,0x10,738,739,DMA Transfer Mode Register
+17,2.11,DMINT,0x13,0x13,739,740,DMA Interrupt Setting Register
+17,2.12,DMAMD,0x14,0x14,740,743,DMA Address Mode Register
+17,2.13,DMOFR,0x18,0x18,743,743,DMA Offset Register
+17,2.14,DMCNT,0x1C,0x1C,743,744,DMA Transfer Enable Register
+17,2.15,DMREQ,0x1D,0x1D,744,745,DMA Software Start Register
+17,2.16,DMSTS,0x1E,0x1E,745,746,DMA Status Register
+17,2.17,DMSBS,0x28,0x28,746,747,DMA Source Buffer Size Register
+17,2.18,DMDBS,0x2C,0x2C,747,748,DMA Destination Buffer Size Register
+17,2.19,DMBWR,0x30,0x30,748,749,DMA Bufferable Write Enable Register
+17,2.20,DMAST,0x00,0x00,749,749,DMA Module Activation Register
+17,2.21,DMECHR,0x40,0x40,749,751,DMAC Error Channel Register
+17,2.22,DMCTL,0x10,0x10,751,751,DMAC Control Register
+18,2.1,DTCSAR,0x30,0x30,785,786,DTC Controller Security Attribution Register
+18,2.2,MRA,0x03,0x03 + 0x4 * Vector number,786,787,DTC Mode Register A
+18,2.3,MRB,0x02,0x02 + 0x4 * Vector number,787,789,DTC Mode Register B
+18,2.4,MRC,0x01,0x01 + 0x4 * Vector number,789,789,DTC Mode Register C
+18,2.5,SAR,0x04,0x04 + 0x4 * Vector number,789,789,DTC Transfer Source Register
+18,2.6,DAR,0x08,0x08 + 0x4 * Vector number,789,790,DTC Transfer Destination Register
+18,2.7,CRA,0x0E,0x0E + 0x4 * Vector number,790,791,DTC Transfer Count Register A
+18,2.8,CRB,0x0C,0x0C + 0x4 * Vector number,791,791,DTC Transfer Count Register B
+18,2.9,DTCCR,0x00,0x00,791,792,DTC Control Register
+18,2.10,DTCCR_SEC,0x10,0x10,792,792,DTC Control Register for Secure Region
+18,2.11,DTCVBR,0x04,0x04,792,793,DTC Vector Base Register
+18,2.12,DTCVBR_SEC,0x14,0x14,793,793,DTC Vector Base Register for Secure Region
+18,2.13,DTCST,0x0C,0x0C,793,794,DTC Module Start Register
+18,2.14,DTCSTS,0x0E,0x0E,794,794,DTC Status Register
+18,2.15,DTCDISP,0x18,0x18,794,795,DTC Address Displacement Register
+18,2.16,DTEVR,0x20,0x20,795,796,DTC Error Vector Register
+19,2.1,ELCR,0x000,0x000,819,819,Event Link Controller Register
+19,2.2,ELSEGRn,0x004,0x004 + 0x004 * n,819,820,Event Link Software Event Generation Register n (n = 0 to 3)
+19,2.3,ELSRn,0x020,0x020 + 0x004 * n,820,830,Event Link Setting Register n (n = 0 to 52)
+19,2.4,ELCSARA,,,830,831,Event Link Controller Security Attribution Register A
+19,2.5,ELCSARB,0x104,0x104,831,832,Event Link Controller Security Attribution Register B
+19,2.6,ELCSARC,0x108,0x108,832,832,Event Link Controller Security Attribution Register C
+19,2.7,ELCPARA,0x110,0x110,832,833,Event Link Controller Privilege Attribution Register A
+19,2.8,ELCPARB,0x114,0x114,833,834,Event Link Controller Privilege Attribution Register B
+19,2.9,ELCPARC,0x118,0x118,834,834,Event Link Controller Privilege Attribution Register C
+20,2.1,PCNTR1,0x000,0x000 (PCNTR1/PDR),840,841,Port Control Register 1
+20,2.1,PDR,0x000,0x000 (PCNTR1/PDR),840,841,Port Control Register 1
+20,2.1,PODR,0x000,0x000 (PCNTR1/PDR),840,841,Port Control Register 1
+20,2.2,EIDR,0x004,0x004 (PCNTR2/PIDR),841,842,Port Control Register 2
+20,2.2,PCNTR2,0x004,0x004 (PCNTR2/PIDR),841,842,Port Control Register 2
+20,2.2,PIDR,0x004,0x004 (PCNTR2/PIDR),841,842,Port Control Register 2
+20,2.3,PCNTR3,0x008,0x008 (PCNTR3/POSR),842,843,Port Control Register 3
+20,2.3,PORR,0x008,0x008 (PCNTR3/POSR),842,843,Port Control Register 3
+20,2.3,POSR,0x008,0x008 (PCNTR3/POSR),842,843,Port Control Register 3
+20,2.4,EORR,0x00C,0x00C (PCNTR4/EOSR),843,844,Port Control Register 4
+20,2.4,EOSR,0x00C,0x00C (PCNTR4/EOSR),843,844,Port Control Register 4
+20,2.4,PCNTR4,0x00C,0x00C (PCNTR4/EOSR),843,844,Port Control Register 4
+20,2.5,PmnPFS,0x000,0x000 + 0x040 * m + 0x004 * n (PmnPFS/PmnPFS_HA/PmnPFS_BY),844,846,"Port mn Pin Function Select Register (m = 0 to 9, A, B, C, D, n = 00 to 15)"
+20,2.5,PmnPFS_BY,0x000,0x000 + 0x040 * m + 0x004 * n (PmnPFS/PmnPFS_HA/PmnPFS_BY),844,846,"Port mn Pin Function Select Register (m = 0 to 9, A, B, C, D, n = 00 to 15)"
+20,2.5,PmnPFS_HA,0x000,0x000 + 0x040 * m + 0x004 * n (PmnPFS/PmnPFS_HA/PmnPFS_BY),844,846,"Port mn Pin Function Select Register (m = 0 to 9, A, B, C, D, n = 00 to 15)"
+20,2.6,PWPR_NS,0x50C,0x50C,846,846,Write-Protect Register for Non-secure
+20,2.7,PFENET,0x500,0x500,846,847,Ethernet Control Register
+20,2.8,PWPR_S,0x514,0x514,847,848,Write-Protect Register for Secure
+20,2.10,LVOCR,0xAB0,0xAB0,848,849,Low Voltage Operation Control Register
+20,2.9,PmSAR,0x530,0x530 + 0x004 * m,848,848,"Port Security Attribution Register (m = 0 to 9, A, B, C, D)"
+21,2.1,POEGGn,0x000,0x000 (POEGGA),872,874,POEG Group n Setting Register (n = A to D)
+22,2.1,GTWP,0x00,0x00,884,886,General PWM Timer Write-Protection Register
+22,2.2,GTSTR,0x04,0x04,886,887,General PWM Timer Software Start Register
+22,2.3,GTSTP,0x08,0x08,887,887,General PWM Timer Software Stop Register
+22,2.4,GTCLR,0x0C,0x0C,887,888,General PWM Timer Software Clear Register
+22,2.5,GTSSR,0x10,0x10,888,891,General PWM Timer Start Source Select Register
+22,2.6,GTPSR,0x14,0x14,891,894,General PWM Timer Stop Source Select Register
+22,2.7,GTCSR,0x18,0x18,894,898,General PWM Timer Clear Source Select Register
+22,2.8,GTUPSR,0x1C,0x1C,898,902,General PWM Timer Up Count Source Select Register
+22,2.9,GTDNSR,0x20,0x20,902,906,General PWM Timer Down Count Source Select Register
+22,2.10,GTICASR,0x24,0x24,906,909,General PWM Timer Input Capture Source Select Register A
+22,2.11,GTICBSR,0x28,0x28,909,913,General PWM Timer Input Capture Source Select Register B
+22,2.12,GTCR,0x2C,0x2C,913,916,General PWM Timer Control Register
+22,2.13,GTUDDTYC,0x30,0x30,916,918,General PWM Timer Count Direction and Duty Setting Register
+22,2.14,GTIOR,0x34,0x34,918,923,General PWM Timer I/O Control Register
+22,2.15,GTINTAD,0x38,0x38,923,926,General PWM Timer Interrupt Output Setting Register
+22,2.16,GTST,0x3C,0x3C,926,932,General PWM Timer Status Register
+22,2.17,GTBER,0x40,0x40,932,936,General PWM Timer Buffer Enable Register
+22,2.18,GTITC,0x44,0x44,936,938,General PWM Timer Interrupt and A/D Conversion Start Request
+22,2.19,GTCNT,0x48,0x48,938,938,General PWM Timer Counter
+22,2.20,GTCCRk,0x4C,0x4C (GTCCRA),938,938,General PWM Timer Compare Capture Register k (k = A to F)
+22,2.21,GTPR,0x64,0x64,938,939,General PWM Timer Cycle Setting Register
+22,2.22,GTPBR,0x68,0x68,939,939,General PWM Timer Cycle Setting Buffer Register
+22,2.23,GTPDBR,0x6C,0x6C,939,939,General PWM Timer Cycle Setting Double-Buffer Register
+22,2.24,GTADTRk,0x70,0x70 (GTADTRA),939,940,"A/D Conversion Start Request Timing Register k (k = A, B)"
+22,2.25,GTADTBRk,0x74,0x74 (GTADTBRA),940,940,"A/D Conversion Start Request Timing Buffer Register k (k = A, B)"
+22,2.26,GTADTDBRk,0x78,0x78 (GTADTDBRA),940,941,"A/D Conversion Start Request Timing Double-Buffer Register k (k = A, B)"
+22,2.27,GTDTCR,0x88,0x88,941,942,General PWM Timer Dead Time Control Register
+22,2.28,GTDVk,0x8C,0x8C (GTDVU),942,943,"General PWM Timer Dead Time Value Register k (k = U, D)"
+22,2.29,GTDBk,0x94,0x94 (GTDBU),943,943,"General PWM Timer Dead Time Buffer Register k (k = U, D)"
+22,2.30,GTSOS,0x9C,0x9C,943,944,General PWM Timer Output Protection Function Status Register
+22,2.31,GTSOTR,0xA0,0xA0,944,944,General PWM Timer Output Protection Function Temporary Release
+22,2.32,GTADSMR,0xA4,0xA4,944,946,General PWM Timer A/D Conversion Start Request Signal
+22,2.33,GTEITC,0xA8,0xA8,946,948,General PWM Timer Extended Interrupt Skipping Counter Control
+22,2.34,GTEITLI1,0xAC,0xAC,948,949,General PWM Timer Extended Interrupt Skipping Setting Register 1
+22,2.35,GTEITLI2,0xB0,0xB0,949,951,General PWM Timer Extended Interrupt Skipping Setting Register 2
+22,2.36,GTEITLB,0xB4,0xB4,951,953,General PWM Timer Extended Buffer Transfer Skipping Setting
+22,2.37,GTICLF,0xB8,0xB8,953,954,General PWM Timer Inter Channel Logical Operation Function Setting
+22,2.38,GTPC,0xBC,0xBC,954,955,General PWM Timer Period Count Register
+22,2.39,GTADCMSC,0xC0,0xC0,955,957,General PWM Timer A/D Conversion Start Request Compare
+22,2.40,GTADCMSS,0xC4,0xC4,957,959,General PWM Timer A/D Conversion Start Request Compare
+22,2.41,GTSECSR,0xD0,0xD0,959,961,General PWM Timer Operation Enable Bit Simultaneous Control
+22,2.42,GTSECR,0xD4,0xD4,961,963,General PWM Timer Operation Enable Bit Simultaneous Control
+22,2.43,GTBER2,0xE0,0xE0,963,968,General PWM Timer Buffer Enable Register 2
+22,2.44,GTOLBR,0xE4,0xE4,968,968,General PWM Timer Output Level Buffer Register
+22,2.45,GTICCR,0xEC,0xEC,968,972,General PWM Timer Inter Channel Cooperation Input Capture Control
+22,2.46,OPSCR,0x00,0x00,972,975,Output Phase Switching Control Register
+22,2.47,GTCLKCR,0x00,0x00,975,975,General PWM Timer Clock Control Register
+23,2.1,GTDLYCR,0x0000,0x0000,1154,1155,PWM Output Delay Control Register
+23,2.2,GTDLYCR2,0x0002,0x0002,1155,1156,PWM Output Delay Control Register 2
+23,2.3,GTDLYRnA,0x018,0x018 + 0x4 * n,1156,1156,GTIOCnA Rising Output Delay Register (n = 0 to 3)
+23,2.4,GTDLYFnA,0x028,0x028 + 0x4 * n,1156,1157,GTIOCnA Falling Output Delay Register (n = 0 to 3)
+23,2.5,GTDLYRnB,0x01A,0x01A + 0x4 * n,1157,1158,GTIOCnB Rising Output Delay Register (n = 0 to 3)
+23,2.6,GTDLYFnB,0x02A,0x02A + 0x4 * n,1158,1159,GTIOCnB Falling Output Delay Register (n = 0 to 3)
+24,2.1,AGT,0x00,0x00,1165,1166,AGT Counter Register
+24,2.2,AGTCMA,0x02,0x02,1166,1166,AGT Compare Match A Register
+24,2.3,AGTCMB,0x04,0x04,1166,1167,AGT Compare Match B Register
+24,2.4,AGTCR,0x08,0x08,1167,1168,AGT Control Register
+24,2.5,AGTMR1,0x09,0x09,1168,1169,AGT Mode Register 1
+24,2.6,AGTMR2,0x0A,0x0A,1169,1170,AGT Mode Register 2
+24,2.7,AGTIOC,0x0C,0x0C,1170,1172,AGT I/O Control Register
+24,2.8,AGTISR,0x0D,0x0D,1172,1172,AGT Event Pin Select Register
+24,2.9,AGTCMSR,0x0E,0x0E,1172,1173,AGT Compare Match Function Select Register
+24,2.10,AGTIOSEL,0x0F,0x0F,1173,1173,AGT Pin Select Register
+25,3.1,ULPTCNT,0x00,0x00,1188,1189,ULPT Counter Register
+25,3.2,ULPTCMA,0x04,0x04,1189,1189,ULPT Compare Match A Register
+25,3.3,ULPTCMB,0x08,0x08,1189,1190,ULPT Compare Match B Register
+25,3.4,ULPTCR,0x0C,0x0C,1190,1192,ULPT Control Register
+25,3.5,ULPTMR1,0x0D,0x0D,1192,1192,ULPT Mode Register 1
+25,3.6,ULPTMR2,0x0E,0x0E,1192,1193,ULPT Mode Register 2
+25,3.7,ULPTMR3,0x0F,0x0F,1193,1195,ULPT Mode Register 3
+25,3.8,ULPTIOC,0x10,0x10,1195,1195,ULPT I/O Control Register
+25,3.9,ULPTISR,0x11,0x11,1195,1196,ULPT Event Pin Select Register
+25,3.10,ULPTCMSR,0x12,0x12,1196,1197,ULPT Compare Match Function Select Register
+26,2.2,RSECCNT,0x02,0x02,1221,1222,Second Counter (in Calendar Count Mode)
+26,2.3,RMINCNT,0x04,0x04,1222,1222,Minute Counter (in Calendar Count Mode)
+26,2.4,RHRCNT,0x06,0x06,1222,1223,Hour Counter (in Calendar Count Mode)
+26,2.5,RWKCNT,0x08,0x08,1223,1223,Day-of-Week Counter (in Calendar Count Mode)
+26,2.6,BCNTn,0x02,0x02 + 0x02 * n,1223,1224,Binary Counter n (n = 0 to 3) (in Binary Count Mode)
+26,2.7,RDAYCNT,0x0A,0x0A,1224,1224,Day Counter
+26,2.8,RMONCNT,0x0C,0x0C,1224,1225,Month Counter
+26,2.10,RSECAR,0x10,0x10,1225,1226,Second Alarm Register (in Calendar Count Mode)
+26,2.9,RYRCNT,0x0E,0x0E,1225,1225,Year Counter
+26,2.11,RMINAR,0x12,0x12,1226,1226,Minute Alarm Register (in Calendar Count Mode)
+26,2.12,RHRAR,0x14,0x14,1226,1227,Hour Alarm Register (in Calendar Count Mode)
+26,2.13,RWKAR,0x16,0x16,1227,1228,Day-of-Week Alarm Register (in Calendar Count Mode)
+26,2.14,BCNTnAR,0x10,0x10 + 0x02 * n,1228,1228,Binary Counter n Alarm Register (n = 0 to 3) (in Binary Count Mode)
+26,2.15,RDAYAR,0x18,0x18,1228,1229,Date Alarm Register (in Calendar Count Mode)
+26,2.16,RMONAR,0x1A,0x1A,1229,1230,Month Alarm Register (in Calendar Count Mode)
+26,2.17,RYRAR,0x1C,0x1C,1230,1230,Year Alarm Register (in Calendar Count Mode)
+26,2.18,RYRAREN,0x1E,0x1E,1230,1231,Year Alarm Enable Register (in Calendar Count Mode)
+26,2.19,BCNTnAER,0x18,0x18 + 0x02 * n,1231,1231,Binary Counter n Alarm Enable Register (n = 0 to 3) (in Binary Count Mode)
+26,2.20,RCR1,0x22,0x22,1231,1232,RTC Control Register 1
+26,2.21,RCR2,0x24,0x24,1232,1234,RTC Control Register 2 (in Calendar Count Mode)
+26,2.22,RCR2,0x24,0x24,1234,1236,RTC Control Register 2 (in Binary Count Mode)
+26,2.23,RCR4,0x28,0x28,1236,1236,RTC Control Register 4
+26,2.24,RFRL,0x2C,0x2C,1236,1237,Frequency Register L
+26,2.25,RFRH,0x2A,0x2A,1237,1237,Frequency Register H
+26,2.26,RADJ,0x2E,0x2E,1237,1238,Time Error Adjustment Register
+26,2.27,RTCCRn,0x40,0x40 + 0x02 * n,1238,1239,Time Capture Control Register n (n = 0 to 2)
+26,2.28,RSECCPn,0x52,0x52 + 0x10 * n,1239,1239,Second Capture Register n (n = 0 to 2) (in Calendar Count Mode)
+26,2.29,RMINCPn,0x54,0x54 + 0x10 * n,1239,1240,Minute Capture Register n (n = 0 to 2) (in Calendar Count Mode)
+26,2.30,RHRCPn,0x56,0x56 + 0x10 * n,1240,1240,Hour Capture Register n (n = 0 to 2) (in Calendar Count Mode)
+26,2.31,RDAYCPn,0x5A,0x5A + 0x10 * n,1240,1241,Date Capture Register n (n = 0 to 2) (in Calendar Count Mode)
+26,2.32,RMONCPn,0x5C,0x5C + 0x10 * n,1241,1241,Month Capture Register n (n = 0 to 2) (in Calendar Count Mode)
+26,2.33,BCNTnCPm,0x52,0x52 + 0x10 * m (BCNT0CPm),1241,1242,"BCNTn Capture Register m (n= 0 to 3, m = 0 to 2) (in Binary Count Mode)"
+27,2.1,WDTRR,0x00,0x00,1257,1258,WDT Refresh Register
+27,2.2,WDTCR,0x02,0x02,1258,1260,WDT Control Register
+27,2.3,WDTSR,0x04,0x04,1260,1262,WDT Status Register
+27,2.4,WDTRCR,0x06,0x06,1262,1262,WDT Reset Control Register
+27,2.5,WDTCSTPR,0x08,0x08,1262,1263,WDT Count Stop Control Register
+28,2.1,IWDTRR,0x0,0x0,1272,1273,IWDT Refresh Register
+28,2.2,IWDTCR,0x2,0x2,1273,1275,IWDT Control Register
+28,2.3,IWDTSR,0x4,0x4,1275,1277,IWDT Status Register
+28,2.4,IWDTRCR,0x6,0x6,1277,1278,IWDT Reset Control Register
+28,2.5,IWDTCSTPR,0x8,0x8,1278,1278,IWDT Count Stop Control Register
+29,2.1.1,MIIRR,0x19400,0x19400,1289,1290,Media-independent Interface Reset Register
+29,2.1.2,MIICR0,0x19404,0x19404,1290,1290,Media-independent Interface Control Register 0
+29,2.1.3,MIICR1,0x19408,0x19408,1290,1291,Media-independent Interface Control Register 1
+29,2.1.4,MCCESR,0x19410,0x19410,1291,1291,Media Clock Capture Event Select Register
+29,2.1.5,TASSTSR,0x19420,0x19420,1291,1292,TAS Status Monitor Signal Select Register
+29,2.2.1,TPEMIMC1,0x0004,0x0004,1292,1294,Error and Monitoring Interrupt Mapping Configuration Register 1
+29,2.2.2,TPEMIMC2,0x0008,0x0008,1294,1294,Error and Monitoring Interrupt Mapping Configuration Register 2
+29,2.2.3,TPEMIMC3,0x000C,0x000C,1294,1295,Error and Monitoring Interrupt Mapping Configuration Register 3
+29,2.2.4,TPEMIMC4,0x0010,0x0010,1295,1296,Error and Monitoring Interrupt Mapping Configuration Register 4
+29,2.2.5,TPEMIMC6t,0x0080,0x0080 + 0x04 * t,1296,1297,Error and Monitoring Interrupt Mapping Configuration Register 6t (t = 0 to 1)
+29,2.2.6,TPEMIMC7t,0x0100,0x0100 + 0x04 * t,1297,1297,Error and Monitoring Interrupt Mapping Configuration Register 7t (t = 0 to 63)
+29,2.2.7,TSIM,0x0700,0x0700,1297,1298,Summarized Interrupt Mirroring Register
+29,2.2.8,TFIM,0x0704,0x0704,1298,1299,MFWD Interrupt Mirroring Register
+29,2.2.10,TGIM0,0x0710,0x0710,1299,1300,GWCA0 Interrupt Mirroring Register
+29,2.2.9,TCIM,0x0708,0x0708,1299,1299,COMA Interrupt Mirroring Register
+29,2.2.11,TEIM0,0x0720,0x0720,1300,1301,ETHA0 Interrupt Mirroring Register
+29,2.2.12,TEIM1,0x0724,0x0724,1301,1301,ETHA1 Interrupt Mirroring Register
+30,3.1.1.1,FWGC,0x0000,0x0000,1328,1329,General Configuration Register
+30,3.1.1.2,FWTTC0,0x0010,0x0010,1329,1329,TAG TPID Configuration Register 0
+30,3.1.1.3,FWTTC1,0x0014,0x0014,1329,1330,TAG TPID Configuration Register 1
+30,3.1.1.4,FWCEPTC,0x0020,0x0020,1330,1330,CPU Exceptional Path Target Configuration Register
+30,3.1.1.5,FWCEPRC0,0x0024,0x0024,1330,1332,CPU Exceptional Path Reason Configuration Register 0
+30,3.1.1.6,FWCEPRC1,0x0028,0x0028,1332,1333,CPU Exceptional Path Reason Configuration Register 1
+30,3.1.1.7,FWCEPRC2,0x002C,0x002C,1333,1334,CPU Exceptional Path Reason Configuration Register 2
+30,3.1.1.8,FWCLPTC,0x0030,0x0030,1334,1335,CPU Learning Path Target Configuration Register
+30,3.1.1.10,FWCMPTC,0x0040,0x0040,1335,1336,CPU Mirroring Path Target Configuration Register
+30,3.1.1.9,FWCLPRC,0x0034,0x0034,1335,1335,CPU Learning Path Reason Configuration Register
+30,3.1.1.11,FWEMPTC,0x0044,0x0044,1336,1337,Ethernet Mirroring Path Target Configuration Register
+30,3.1.1.12,FWSDMPTC,0x0050,0x0050,1337,1337,Source-Destination Mirroring Path Target Configuration
+30,3.1.1.13,FWSDMPVC,0x0054,0x0054,1337,1338,Source-Destination Mirroring Path Vector Configuration
+30,3.1.1.14,FWLBWMCi,0x0080,0x0080 + 0x4 * i,1338,1339,Port i Level Based Watermark Configuration Register (i = 0 to 2)
+30,3.1.1.15,FWPCi0,0x0100,0x0100 + 0x10 * i,1339,1340,Port i Configuration Register 0 (i = 0 to 2)
+30,3.1.1.16,FWPCi1,0x0104,0x0104 + 0x10 * i,1340,1341,Port i Configuration Register 1 (i = 0 to 2)
+30,3.1.1.17,FWPCi2,0x0108,0x0108 + 0x10 * i,1341,1341,Port i Configuration Register 2 (i = 0 to 2)
+30,3.1.2.1,FWCTGCi0,0x0400,0x0400 + 0x40 * i,1341,1343,Cut-Through General Configuration Register i0 (i = 0 to 7)
+30,3.1.2.2,FWCTGCi1,0x0404,0x0404 + 0x40 * i,1343,1343,Cut-Through General Configuration Register i1 (i = 0 to 7)
+30,3.1.2.3,FWCTTCi0,0x0408,0x0408 + 0x40 * i,1343,1344,Cut-Through Target Configuration Register i0 (i = 0 to 7)
+30,3.1.2.4,FWCTTCi1,0x040C,0x040C + 0x40 * i,1344,1344,Cut-Through Target Configuration Register i1 (i = 0 to 7)
+30,3.1.2.5,FWCTTCi20,0x0410,0x0410 + 0x40 * i,1344,1345,Cut-Through Target Configuration Register i20 (i = 0 to 7)
+30,3.1.2.6,FWCTSCi0,0x0420,0x0420 + 0x40 * i,1345,1345,Cut-Through Separation Configuration Register i0 (i = 0 to 7)
+30,3.1.2.7,FWCTSCi1,0x0424,0x0424 + 0x40 * i,1345,1345,Cut-Through Separation Configuration Register i1 (i = 0 to 7)
+30,3.1.2.8,FWCTSCi2,0x0428,0x0428 + 0x40 * i,1345,1346,Cut-Through Separation Configuration Register i2 (i = 0 to 7)
+30,3.1.2.10,FWCTSCi4,0x0430,0x0430 + 0x40 * i,1346,1347,Cut-Through Separation Configuration Register i4 (i = 0 to 7)
+30,3.1.2.9,FWCTSCi3,0x042C,0x042C + 0x40 * i,1346,1346,Cut-Through Separation Configuration Register i3 (i = 0 to 7)
+30,3.1.3.1,FWTWBFCi,0x1000,0x1000 + 0x10 * i,1347,1347,Two-Byte Filter Configuration Register i (i = 0 to 15)
+30,3.1.3.2,FWTWBFVCi,0x1004,0x1004 + 0x10 * i,1347,1348,Two-Byte Filter Value Configuration Register i (i = 0 to 15)
+30,3.1.3.3,FWTHBFCi,0x1400,0x1400 + 0x10 * i,1348,1348,Three-Byte Filter Configuration Register i (i = 0 to 15)
+30,3.1.3.4,FWTHBFV0Ci,0x1404,0x1404 + 0x10 * i,1348,1349,Three-Byte Filter Value 0 Configuration Register i (i = 0 to 15)
+30,3.1.3.5,FWTHBFV1Ci,0x1408,0x1408 + 0x10 * i,1349,1349,Three-Byte Filter Value 1 Configuration Register i (i = 0 to 15)
+30,3.1.3.6,FWFOBFCi,0x1800,0x1800 + 0x10 * i,1349,1350,Four-Byte Filter Configuration Register i (i = 0 to 15)
+30,3.1.3.7,FWFOBFV0Ci,0x1804,0x1804 + 0x10 * i,1350,1350,Four-Byte Filter Value 0 Configuration Register i (i = 0 to 15)
+30,3.1.3.8,FWFOBFV1Ci,0x1808,0x1808 + 0x10 * i,1350,1351,Four-Byte Filter Value 1 Configuration Register i (i = 0 to 15)
+30,3.1.3.10,FWRFVCi,0x1C04,0x1C04 + 0x10 * i,1351,1352,Range Filter Value Configuration Register i (i = 0 to 15)
+30,3.1.3.9,FWRFCi,0x1C00,0x1C00 + 0x10 * i,1351,1351,Range Filter Configuration Register i (i = 0 to 15)
+30,3.1.3.11,FWCFCi,0x2000,0x2000 + 0x40 * i,1352,1352,Cascade Filter Configuration Register i (i = 0 to 15)
+30,3.1.3.12,FWCFMCij,0x2004,0x2004 + 0x40 * i + 0x4 *j,1352,1353,Cascade Filter Mapping Configuration Register ij (i = 0 to 15) (j = 0 to 6)
+30,3.1.4.1,FWIP4SC,0x4008,0x4008,1353,1355,IPv4 Stream Configuration Register
+30,3.1.4.2,FWIP6SC,0x4018,0x4018,1355,1356,IPv6 Stream Configuration Register
+30,3.1.4.3,FWIP6OC,0x401C,0x401C,1356,1357,IPv6 Offset Configuration Register
+30,3.1.4.4,FWL2SC,0x4020,0x4020,1357,1358,Layer 2 Stream Configuration Register
+30,3.1.4.5,FWSFHEC,0x4030,0x4030,1358,1358,Stream Filter Hash Equation Configuration Register
+30,3.1.4.6,FWSHCR0,0x4040,0x4040,1358,1358,Software Hash Calculation Request Register 0
+30,3.1.4.7,FWSHCR1,0x4044,0x4044,1358,1359,Software Hash Calculation Request Register 1
+30,3.1.4.8,FWSHCR2,0x4048,0x4048,1359,1359,Software Hash Calculation Request Register 2
+30,3.1.4.9,FWSHCR3,0x404C,0x404C,1359,1360,Software Hash Calculation Request Register 3
+30,3.1.4.10,FWSHCR4,0x4050,0x4050,1360,1360,Software Hash Calculation Request Register 4
+30,3.1.4.11,FWSHCR5,0x4054,0x4054,1360,1360,Software Hash Calculation Request Register 5
+30,3.1.4.12,FWSHCR6,0x4058,0x4058,1360,1361,Software Hash Calculation Request Register 6
+30,3.1.4.13,FWSHCR7,0x405C,0x405C,1361,1361,Software Hash Calculation Request Register 7
+30,3.1.4.14,FWSHCR8,0x4060,0x4060,1361,1361,Software Hash Calculation Request Register 8
+30,3.1.4.15,FWSHCR9,0x4064,0x4064,1361,1362,Software Hash Calculation Request Register 9
+30,3.1.4.16,FWSHCR10,0x4068,0x4068,1362,1362,Software Hash Calculation Request Register 10
+30,3.1.4.17,FWSHCR11,0x406C,0x406C,1362,1362,Software Hash Calculation Request Register 11
+30,3.1.4.18,FWSHCR12,0x4070,0x4070,1362,1363,Software Hash Calculation Request Register 12
+30,3.1.4.19,FWSHCR13,0x4074,0x4074,1363,1363,Software Hash Calculation Request Register 13
+30,3.1.4.20,FWSHCRR,0x4078,0x4078,1363,1364,Software Hash Calculation Request Result Register
+30,3.1.5.1,FWLTHHEC,0x4090,0x4090,1364,1364,L3 Hash Entry Configuration Register
+30,3.1.5.2,FWLTHHC,0x4094,0x4094,1364,1365,L3 Hash Configuration Register
+30,3.1.5.3,FWLTHTL0,0x40A0,0x40A0,1365,1365,L3 Table Learn Register 0
+30,3.1.5.4,FWLTHTL1,0x40A4,0x40A4,1365,1366,L3 Table Learn Register 1
+30,3.1.5.5,FWLTHTL2,0x40A8,0x40A8,1366,1366,L3 Table Learn Register 2
+30,3.1.5.6,FWLTHTL3,0x40AC,0x40AC,1366,1366,L3 Table Learn Register 3
+30,3.1.5.7,FWLTHTL4,0x40B0,0x40B0,1366,1367,L3 Table Learn Register 4
+30,3.1.5.8,FWLTHTL5,0x40B4,0x40B4,1367,1367,L3 Table Learn Register 5
+30,3.1.5.9,FWLTHTL6,0x40B8,0x40B8,1367,1368,L3 Table Learn Register 6
+30,3.1.5.10,FWLTHTL7,0x40BC,0x40BC,1368,1368,L3 Table Learn Register 7
+30,3.1.5.11,FWLTHTL80,0x40C0,0x40C0 + 0x4 * i,1368,1369,L3 Table Learn Register 80
+30,3.1.5.12,FWLTHTL9,0x40D0,0x40D0,1369,1369,L3 Table Learn Register 9
+30,3.1.5.13,FWLTHTLR,0x40D4,0x40D4,1369,1370,L3 Table Learn Result Register
+30,3.1.5.14,FWLTHTIM,0x40E0,0x40E0,1370,1371,L3 Table Initialization Monitoring Register
+30,3.1.5.15,FWLTHTEM,0x40E4,0x40E4,1371,1371,L3 Table Entry Monitoring Register
+30,3.1.5.16,FWLTHTS0,0x4100,0x4100,1371,1372,L3 Table Search Register 0
+30,3.1.5.17,FWLTHTS1,0x4104,0x4104,1372,1372,L3 Table Search Register 1
+30,3.1.5.18,FWLTHTS2,0x4108,0x4108,1372,1372,L3 Table Search Register 2
+30,3.1.5.19,FWLTHTS3,0x410C,0x410C,1372,1373,L3 Table Search Register 3
+30,3.1.5.20,FWLTHTS4,0x4110,0x4110,1373,1373,L3 Table Search Register 4
+30,3.1.5.21,FWLTHTSR0,0x4120,0x4120,1373,1374,L3 Table Search Result Register 0
+30,3.1.5.22,FWLTHTSR1,0x4124,0x4124,1374,1374,L3 Table Search Result Register 1
+30,3.1.5.23,FWLTHTSR2,0x4128,0x4128,1374,1375,L3 Table Search Result Register 2
+30,3.1.5.24,FWLTHTSR3,0x412C,0x412C,1375,1375,L3 Table Search Result Register 3
+30,3.1.5.25,FWLTHTSR40,0x4130,0x4130 + 0x4 * i,1375,1376,L3 Table Search Result Register 40
+30,3.1.5.26,FWLTHTSR5,0x4140,0x4140,1376,1376,L3 Table Search Result Register 5
+30,3.1.5.27,FWLTHTR,0x4150,0x4150,1376,1377,L3 Table Read Register
+30,3.1.5.28,FWLTHTRR0,0x4154,0x4154,1377,1377,L3 Table Read Result Register 0
+30,3.1.5.29,FWLTHTRR1,0x4158,0x4158,1377,1378,L3 Table Read Result Register 1
+30,3.1.5.30,FWLTHTRR2,0x415C,0x415C,1378,1378,L3 Table Read Result Register 2
+30,3.1.5.31,FWLTHTRR3,0x4160,0x4160,1378,1378,L3 Table Read Result Register 3
+30,3.1.5.32,FWLTHTRR4,0x4164,0x4164,1378,1378,L3 Table Read Result Register 4
+30,3.1.5.33,FWLTHTRR5,0x4168,0x4168,1378,1379,L3 Table Read Result Register 5
+30,3.1.5.34,FWLTHTRR6,0x416C,0x416C,1379,1379,L3 Table Read Result Register 6
+30,3.1.5.35,FWLTHTRR7,0x4170,0x4170,1379,1380,L3 Table Read Result Register 7
+30,3.1.5.36,FWLTHTRR8,0x4174,0x4174,1380,1380,L3 Table Read Result Register 8
+30,3.1.5.37,FWLTHTRR90,0x4180,0x4180,1380,1381,L3 Table Read Result Register 90
+30,3.1.5.38,FWLTHTRR10,0x4190,0x4190,1381,1381,L3 Table Read Result Register 10
+30,3.1.6.1,FWMACHEC,0x4620,0x4620,1381,1382,MAC Hash Entry Configuration Register
+30,3.1.6.2,FWMACHC,0x4624,0x4624,1382,1382,MAC Hash Configuration Register
+30,3.1.6.3,FWMACTL0,0x4630,0x4630,1382,1383,MAC Table Learn Register 0
+30,3.1.6.4,FWMACTL1,0x4634,0x4634,1383,1383,MAC Table Learn Register 1
+30,3.1.6.5,FWMACTL2,0x4638,0x4638,1383,1383,MAC Table Learn Register 2
+30,3.1.6.6,FWMACTL3,0x463C,0x463C,1383,1384,MAC Table Learn Register 3
+30,3.1.6.7,FWMACTL40,0x4640,0x4640 + 0x4 * i,1384,1384,MAC Table Learn Register 40
+30,3.1.6.8,FWMACTL5,0x4650,0x4650,1384,1385,MAC Table Learn Register 5
+30,3.1.6.9,FWMACTLR,0x4654,0x4654,1385,1386,MAC Table Learn Result Register
+30,3.1.6.10,FWMACTIM,0x4660,0x4660,1386,1386,MAC Table Initialization Monitoring Register
+30,3.1.6.11,FWMACTEM,0x4664,0x4664,1386,1387,MAC Table Entry Monitoring Register
+30,3.1.6.12,FWMACTS0,0x4670,0x4670,1387,1387,MAC Table Search Register 0
+30,3.1.6.13,FWMACTS1,0x4674,0x4674,1387,1388,MAC Table Search Register 1
+30,3.1.6.14,FWMACTSR0,0x4678,0x4678,1388,1389,MAC Table Search Result Register 0
+30,3.1.6.15,FWMACTSR1,0x467C,0x467C,1389,1389,MAC Table Search Result Register 1
+30,3.1.6.16,FWMACTSR20,0x4680,0x4680 + 0x4 * i,1389,1390,MAC Table Search Result Register 20
+30,3.1.6.17,FWMACTSR3,0x4690,0x4690,1390,1390,MAC Table Search Result Register 3
+30,3.1.6.18,FWMACTR,0x46A0,0x46A0,1390,1391,MAC Table Read Register
+30,3.1.6.19,FWMACTRR0,0x46A4,0x46A4,1391,1391,MAC Table Read Result Register 0
+30,3.1.6.20,FWMACTRR1,0x46A8,0x46A8,1391,1392,MAC Table Read Result Register 1
+30,3.1.6.21,FWMACTRR2,0x46AC,0x46AC,1392,1392,MAC Table Read Result Register 2
+30,3.1.6.22,FWMACTRR3,0x46B0,0x46B0,1392,1392,MAC Table Read Result Register 3
+30,3.1.6.23,FWMACTRR4,0x46B4,0x46B4,1392,1393,MAC Table Read Result Register 4
+30,3.1.6.24,FWMACTRR50,0x46C0,0x46C0 + 0x4 * i,1393,1393,MAC Table Read Result Register 50
+30,3.1.6.25,FWMACTRR6,0x46D0,0x46D0,1393,1394,MAC Table Read Result Register 6
+30,3.1.6.26,FWMACAGUSPC,0x4880,0x4880,1394,1394,MAC Aging US Prescaler Configuration Register
+30,3.1.6.27,FWMACAGC,0x4884,0x4884,1394,1395,MAC Aging Configuration Register
+30,3.1.6.28,FWMACAGM0,0x4888,0x4888,1395,1395,MAC Aging Monitoring Register 0
+30,3.1.6.29,FWMACAGM1,0x488C,0x488C,1395,1396,MAC Aging Monitoring Register 1
+30,3.1.6.30,FWVLANTEC,0x4900,0x4900,1396,1396,VLAN Table Entry Configuration Register
+30,3.1.6.31,FWVLANTL0,0x4910,0x4910,1396,1397,VLAN Table Learn Register 0
+30,3.1.6.32,FWVLANTL1,0x4914,0x4914,1397,1397,VLAN Table Learn Register 1
+30,3.1.6.33,FWVLANTL2,0x4918,0x4918,1397,1397,VLAN Table Learn Register 2
+30,3.1.6.34,FWVLANTL30,0x4920,0x4920 + 0x4 * i,1397,1398,VLAN Table Learn Register 30
+30,3.1.6.35,FWVLANTL4,0x4930,0x4930,1398,1398,VLAN Table Learn Register 4
+30,3.1.6.36,FWVLANTLR,0x4934,0x4934,1398,1399,VLAN Table Learn Result Register
+30,3.1.6.37,FWVLANTIM,0x4940,0x4940,1399,1400,VLAN Table Initialization Monitoring Register
+30,3.1.6.38,FWVLANTEM,0x4944,0x4944,1400,1401,VLAN Table Entry Monitoring Register
+30,3.1.6.39,FWVLANTS,0x4950,0x4950,1401,1401,VLAN Table Search Register
+30,3.1.6.40,FWVLANTSR0,0x4954,0x4954,1401,1402,VLAN Table Search Result Register 0
+30,3.1.6.41,FWVLANTSR1,0x4958,0x4958,1402,1402,VLAN Table Search Result Register 1
+30,3.1.6.42,FWVLANTSR20,0x4960,0x4960 + 0x4 * i,1402,1403,VLAN Table Search Result Register 20
+30,3.1.6.43,FWVLANTSR3,0x4970,0x4970,1403,1403,VLAN Table Search Result Register 3
+30,3.1.7.1,FWPBFCi,0x4A00,0x4A00 + 0x10 * i,1403,1404,Port i Port Based Forwarding Configuration Register (i = 0 to 2)
+30,3.1.7.2,FWPBFCSDCi0,0x4A04,0x4A04 + 0x10 * i,1404,1405,Port i Port Based Forwarding CSD Configuration Register 0 (i = 0 to 2)
+30,3.1.8.1,FWL23URL0,0x4E00,0x4E00,1405,1405,Layer 2/Layer 3 Update Rule Learn Register 0
+30,3.1.8.2,FWL23URL1,0x4E04,0x4E04,1405,1406,Layer 2/Layer 3 Update Rule Learn Register 1
+30,3.1.8.3,FWL23URL2,0x4E08,0x4E08,1406,1406,Layer 2/Layer 3 Update Rule Learn Register 2
+30,3.1.8.4,FWL23URL3,0x4E0C,0x4E0C,1406,1407,Layer 2/Layer 3 Update Rule Learn Register 3
+30,3.1.8.5,FWL23URLR,0x4E10,0x4E10,1407,1407,Layer 2/Layer 3 Update Rule Learn Result Register
+30,3.1.8.6,FWL23UTIM,0x4E20,0x4E20,1407,1408,Layer 2/Layer 3 Update Table Initialization Monitoring Register
+30,3.1.8.7,FWL23URR,0x4E30,0x4E30,1408,1408,Layer 2/Layer 3 Update Rule Read Register
+30,3.1.8.8,FWL23URRR0,0x4E34,0x4E34,1408,1409,Layer 2/Layer 3 Update Rule Read Result Register 0
+30,3.1.8.9,FWL23URRR1,0x4E38,0x4E38,1409,1410,Layer 2/Layer 3 Update Rule Read Result Register 1
+30,3.1.8.10,FWL23URRR2,0x4E3C,0x4E3C,1410,1410,Layer 2/Layer 3 Update Rule Read Result Register 2
+30,3.1.8.11,FWL23URRR3,0x4E40,0x4E40,1410,1411,Layer 2/Layer 3 Update Rule Read Result Register 3
+30,3.1.8.12,FWL23URMCi,0x4F00,0x4F00 + 0x4 * i,1411,1411,Layer 2/Layer 3 Update Remapping Configuration Register i
+30,3.1.9.1,FWPMFGCi,0x5000,0x5000 + 0x4 * i,1411,1412,PSFP MSDU Filter Global Configuration Register i (i = 0 to 15)
+30,3.1.9.2,FWPMTRFCi,0x5600,0x5600 + 0x20 * i,1412,1413,PSFP Meter i Filter Configuration Register (i = 0 to 31)
+30,3.1.9.3,FWPMTRCBSCi,0x5604,0x5604 + 0x20 * i,1413,1413,PSFP Meter i CBS Configuration Register (i = 0 to 31)
+30,3.1.9.4,FWPMTRCIRCi,0x5608,0x5608 + 0x20 * i,1413,1414,PSFP Meter i CIR Configuration Register (i = 0 to 31)
+30,3.1.9.5,FWPMTREBSCi,0x560C,0x560C + 0x20 * i,1414,1414,PSFP Meter i EBS Configuration Register (i = 0 to 7)
+30,3.1.9.6,FWPMTREIRCi,0x5610,0x5610 + 0x20 * i,1414,1415,PSFP Meter i EIR Configuration Register (i = 0 to 7)
+30,3.1.10.1,FWFTL0,0x6000,0x6000,1415,1416,FRER Table Learn Register 0
+30,3.1.9.7,FWPMTRFMi,0x5614,0x5614 + 0x20 * i,1415,1415,PSFP Meter i Filter Monitoring Register (i = 0 to 31)
+30,3.1.10.2,FWFTL1,0x6004,0x6004,1416,1416,FRER Table Learn Register 1
+30,3.1.10.3,FWFTLR,0x6008,0x6008,1416,1417,FRER Table Learn Result Register
+30,3.1.10.4,FWFTOC,0x6010,0x6010,1417,1417,FRER Timeout Configuration Register
+30,3.1.10.5,FWFTOPC,0x6014,0x6014,1417,1418,FRER Timeout Prescaler Configuration Register 0
+30,3.1.10.6,FWFTIM,0x6020,0x6020,1418,1418,FRER Table Initialization Monitoring Register
+30,3.1.10.7,FWFTR,0x6030,0x6030,1418,1419,FRER Table Read Register
+30,3.1.10.8,FWFTRR0,0x6034,0x6034,1419,1419,FRER Table Read Result Register 0
+30,3.1.10.9,FWFTRR1,0x6038,0x6038,1419,1420,FRER Table Read Result Register 1
+30,3.1.10.10,FWFTRR2,0x603C,0x603C,1420,1420,FRER Table Read Result Register 2
+30,3.1.10.11,FWSEQNGCi,0x6100,0x6100 + 0x8 * i,1420,1421,Sequence Number Generation i Configuration Register (i = 0 to 31)
+30,3.1.10.12,FWSEQNGMi,0x6104,0x6104 + 0x8 * i,1421,1421,Sequence Number Generation i Monitoring Register (i = 0 to 31)
+30,3.1.10.13,FWSEQNRC,0x6200,0x6200,1421,1421,Sequence Number Reset Configuration Register
+30,3.2.1,FWCTFDCNi,0x6300,0x6300 + 0x20 * i,1422,1422,"Port i Cut-Through Forwarded Descriptor Counter Register (i = 0, 1)"
+30,3.2.2,FWDDFDCN2,0x6340,0x6340,1422,1423,Port 2 Direct Descriptor Forwarded Descriptor Counter Register
+30,3.2.3,FWLTHFDCNi,0x6304,0x6304 + 0x20 * i,1423,1423,Port i Layer 3 Forwarded Descriptor Counter Register (i = 0 to 2)
+30,3.2.4,FWLTWFDCNi,0x630C,0x630C + 0x20 * i,1423,1424,Port i Layer 2 Forwarded Descriptor Counter Register (i = 0 to 2)
+30,3.2.5,FWPBFDCNi,0x6310,0x6310 + 0x20 * i,1424,1424,Port i Port Based Forwarded Descriptor Counter Register (i = 0 to 2)
+30,3.2.6,FWMHLCNi,0x6314,0x6314 + 0x20 * i,1424,1425,Port i MAC Hardware Learn Counter Register (i = 0 to 2)
+30,3.2.7,FWWMRDCNi,0x6504,0x6504 + 0x20 * i,1425,1425,Port i Watermark Rejected Descriptor Counter Register (i = 0 to 2)
+30,3.2.8,FWCTRDCNi,0x6508,0x6508 + 0x20 * i,1425,1426,"Port i Cut-Through Rejected Descriptor Counter Register (i = 0, 1)"
+30,3.2.10,FWLTHRDCNi,0x650C,0x650C + 0x20 * i,1426,1427,Port i Layer 3 Rejected Descriptor Counter Register (i = 0 to 2)
+30,3.2.9,FWDDRDCN2,0x6548,0x6548,1426,1426,Port 2 Direct Descriptor Rejected Descriptor Counter Register
+30,3.2.11,FWLTWRDCNi,0x6514,0x6514 + 0x20 * i,1427,1427,Port i Layer 2 Rejected Descriptor Counter Register (i = 0 to 2)
+30,3.2.12,FWPBRDCNi,0x6518,0x6518 + 0x20 * i,1427,1428,Port i Port Based Rejected Descriptor Counter Register (i = 0 to 2)
+30,3.2.13,FWPMFDCNi,0x6700,0x6700 + 0x4 * i,1428,1429,PSFP MSDU i Filtered Descriptor Counter Register (i = 0 to 15)
+30,3.2.14,FWPMGDCNi,0x6800,0x6800 + 0x10 * i,1429,1429,PSFP Meter i Green Descriptor Counter Register (i = 0 to 31)
+30,3.2.15,FWPMYDCNi,0x6804,0x6804 + 0x10 * i,1429,1430,PSFP Meter i Yellow Descriptor Counter Register (i = 0 to 7)
+30,3.2.16,FWPMRDCNi,0x6808,0x6808 + 0x10 * i,1430,1430,PSFP Meter i Red Descriptor Counter Register (i = 0 to 31)
+30,3.2.17,FWFRPPCNi,0x6A00,0x6A00 + 0x8 * i,1430,1431,FRER i Passed Packet Counter Register (i = 0 to 127)
+30,3.2.18,FWFRDPCNi,0x6A04,0x6A04 + 0x8 * i,1431,1431,FRER i Discarded Packet Counter Register (i = 0 to 127)
+30,3.3.1,FWEIS0i,0x7900,0x7900 + 0x10 * i,1432,1438,Port i Error Interrupt Status Register 0 (i = 0 to 2)
+30,3.3.2,FWEIE0i,0x7904,0x7904 + 0x10 * i,1438,1442,Port i Error Interrupt Enable Register 0 (i = 0 to 2)
+30,3.3.3,FWEID0i,0x7908,0x7908 + 0x10 * i,1442,1443,Port i Error Interrupt Disable Register 0 (i = 0 to 2)
+30,3.3.4,FWEIS1,0x7A00,0x7A00,1443,1444,Error Interrupt Status Register 1
+30,3.3.5,FWEIE1,0x7A04,0x7A04,1444,1445,Error Interrupt Enable Register 1
+30,3.3.6,FWEID1,0x7A08,0x7A08,1445,1446,Error Interrupt Disable Register 1
+30,3.3.7,FWEIS2,0x7A10,0x7A10,1446,1446,Error Interrupt Status Register 2
+30,3.3.8,FWEIE2,0x7A14,0x7A14,1446,1447,Error Interrupt Enable Register 2
+30,3.3.10,FWEIS5,0x7A40,0x7A40,1447,1448,Error Interrupt Status Register 5
+30,3.3.9,FWEID2,0x7A18,0x7A18,1447,1447,Error Interrupt Disable Register 2
+30,3.3.11,FWEIE5,0x7A44,0x7A44,1448,1448,Error Interrupt Enable Register 5
+30,3.3.12,FWEID5,0x7A48,0x7A48,1448,1448,Error Interrupt Disable Register 5
+30,3.3.13,FWEIS60,0x7A50,0x7A50,1448,1449,Error Interrupt Status Register 60
+30,3.3.14,FWEIE60,0x7A54,0x7A54,1449,1449,Error Interrupt Enable Register 60
+30,3.3.15,FWEID60,0x7A58,0x7A58,1449,1450,Error Interrupt Disable Register 60
+30,3.3.16,FWEIS61,0x7A60,0x7A60,1450,1450,Error Interrupt Status Register 61
+30,3.3.17,FWEIE61,0x7A64,0x7A64,1450,1451,Error Interrupt Enable Register 61
+30,3.3.18,FWEID61,0x7A68,0x7A68,1451,1451,Error Interrupt Disable Register 61
+30,3.3.19,FWEIS62,0x7A70,0x7A70,1451,1451,Error Interrupt Status Register 62
+30,3.3.20,FWEIE62,0x7A74,0x7A74,1451,1452,Error Interrupt Enable Register 62
+30,3.3.21,FWEID62,0x7A78,0x7A78,1452,1452,Error Interrupt Disable Register 62
+30,3.3.22,FWEIS63,0x7A80,0x7A80,1452,1453,Error Interrupt Status Register 63
+30,3.3.23,FWEIE63,0x7A84,0x7A84,1453,1453,Error Interrupt Enable Register 63
+30,3.3.24,FWEID63,0x7A88,0x7A88,1453,1453,Error Interrupt Disable Register 63
+30,3.3.25,FWEIS70,0x7A90,0x7A90,1453,1454,Error Interrupt Status Register 70
+30,3.3.26,FWEIE70,0x7A94,0x7A94,1454,1454,Error Interrupt Enable Register 70
+30,3.3.27,FWEID70,0x7A98,0x7A98,1454,1455,Error Interrupt Disable Register 70
+30,3.3.28,FWEIS71,0x7AA0,0x7AA0,1455,1455,Error Interrupt Status Register 71
+30,3.3.29,FWEIE71,0x7AA4,0x7AA4,1455,1456,Error Interrupt Enable Register 71
+30,3.3.30,FWEID71,0x7AA8,0x7AA8,1456,1456,Error Interrupt Disable Register 71
+30,3.3.31,FWEIS72,0x7AB0,0x7AB0,1456,1456,Error Interrupt Status Register 72
+30,3.3.32,FWEIE72,0x7AB4,0x7AB4,1456,1457,Error Interrupt Enable Register 72
+30,3.3.33,FWEID72,0x7AB8,0x7AB8,1457,1457,Error Interrupt Disable Register 72
+30,3.3.34,FWEIS73,0x7AC0,0x7AC0,1457,1458,Error Interrupt Status Register 73
+30,3.3.35,FWEIE73,0x7AC4,0x7AC4,1458,1458,Error Interrupt Enable Register 73
+30,3.3.36,FWEID73,0x7AC8,0x7AC8,1458,1458,Forwarding Engine Error Interrupt Disable 73
+30,3.3.37,FWEIS80,0x7AD0,0x7AD0,1458,1459,Error Interrupt Status Register 80
+30,3.3.38,FWEIE80,0x7AD4,0x7AD4,1459,1459,Error Interrupt Enable Register 80
+30,3.3.39,FWEID80,0x7AD8,0x7AD8,1459,1460,Error Interrupt Disable Register 80
+30,3.3.40,FWEIS81,0x7AE0,0x7AE0,1460,1460,Error Interrupt Status Register 81
+30,3.3.41,FWEIE81,0x7AE4,0x7AE4,1460,1461,Error Interrupt Enable Register 81
+30,3.3.42,FWEID81,0x7AE8,0x7AE8,1461,1461,Error Interrupt Disable Register 81
+30,3.3.43,FWEIS82,0x7AF0,0x7AF0,1461,1461,Error Interrupt Status Register 82
+30,3.3.44,FWEIE82,0x7AF4,0x7AF4,1461,1462,Error Interrupt Enable Register 82
+30,3.3.45,FWEID82,0x7AF8,0x7AF8,1462,1462,Error Interrupt Disable Register 82
+30,3.3.46,FWEIS83,0x7B00,0x7B00,1462,1463,Error Interrupt Status Register 83
+30,3.3.47,FWEIE83,0x7B04,0x7B04,1463,1463,Error Interrupt Enable Register 83
+30,3.3.48,FWEID83,0x7B08,0x7B08,1463,1463,Error Interrupt Disable Register 83
+30,3.3.49,FWMIS0,0x7C00,0x7C00,1463,1464,Monitoring Interrupt Status Register 0
+30,3.3.50,FWMIE0,0x7C04,0x7C04,1464,1466,Monitoring Interrupt Enable Register 0
+30,3.3.51,FWMID0,0x7C08,0x7C08,1466,1466,Monitoring Interrupt Disable Register 0
+31,3.1.1,RIPV,0x0000,0x0000,1592,1592,IP Version Register
+31,3.1.2,RRC,0x0004,0x0004,1592,1593,Reset Configuration Register
+31,3.1.3,RCEC,0x0008,0x0008,1593,1594,Clock Enable Configuration Register
+31,3.1.4,RCDC,0x000C,0x000C,1594,1595,Clock Disable Configuration Register
+31,3.2.1,CABPIBWMCi,0x0020,0x0020 + 0x04 * i,1595,1596,Buffer Pool IPV Based Watermark Configuration Register i (i = 0 to 7)
+31,3.2.2,CABPWMLC,0x0040,0x0040,1596,1596,Buffer Pool Watermark Level Configuration Register
+31,3.2.3,CABPPFLCi,0x0050,0x0050 + 0x0004 * i,1596,1597,Buffer Pointer Pause Frame Level i Configuration Register
+31,3.2.4,CABPPWMLCi,0x0060,0x0060 + 0x0004 * i,1597,1597,Port i Buffer Pool Watermark Level Configuration Register (i = 0 to 2)
+31,3.2.5,CABPPPFLCij,0x00A0,0x00A0 + 0x04 * (i * 2 + j),1597,1598,Port i Buffer Pointer Pause Frame Level j Configuration Register
+31,3.2.6,CABPULCi,0x0100,0x0100 + 0x0004 * i,1598,1599,Port i Buffer Pointer Utilization Level Configuration Register (i = 0 to 2)
+31,3.2.7,CABPIRM,0x0140,0x0140,1599,1600,Buffer Pool Initialization Register Monitoring Register
+31,3.2.8,CABPPCM,0x0144,0x0144,1600,1600,Buffer Pool Pointer Count Monitoring Register
+31,3.2.9,CABPLCM,0x0148,0x0148,1600,1601,Buffer Pool Pointer Least Count Monitoring Register
+31,3.2.10,CABPCPMi,0x0180,0x0180 + 0x0004 * i,1601,1601,Port i Buffer Pointer Count Monitoring Register (i = 0 to 2)
+31,3.2.11,CABPMCPMi,0x0200,0x0200 + 0x0004 * i,1601,1602,Port i Buffer Pointer Maximum Count Monitoring Register (i = 0 to 2)
+31,3.2.12,CARDNM,0x0300,0x0300,1602,1603,Rejected Descriptor Number Monitoring Register
+31,3.2.13,CARDMNM,0x0304,0x0304,1603,1603,Rejected Descriptor Maximum Number Monitoring Register
+31,3.3.1,CARDCN,0x0310,0x0310,1603,1604,Rejected Descriptor Counter Register
+31,3.4.1,CAEIS0,0x0400,0x0400,1604,1605,Error Interrupt Status Register 0
+31,3.4.2,CAEIE0,0x0404,0x0404,1605,1606,Error Interrupt Enable Register 0
+31,3.4.3,CAEID0,0x0408,0x0408,1606,1606,Error Interrupt Disable Register 0
+31,3.4.4,CAEIS1,0x0410,0x0410,1606,1607,Error Interrupt Status Register 1
+31,3.4.5,CAEIE1,0x0414,0x0414,1607,1608,Error Interrupt Enable Register 1
+31,3.4.6,CAEID1,0x0418,0x0418,1608,1608,Error Interrupt Disable Register 1
+31,3.4.7,CAMIS0,0x0440,0x0440,1608,1609,Monitoring Interrupt Status Register 0
+31,3.4.8,CAMIE0,0x0444,0x0444,1609,1609,Monitoring Interrupt Enable Register 0
+31,3.4.9,CAMID0,0x0448,0x0448,1609,1610,Monitoring Interrupt Disable Register 0
+31,3.4.10,CAMIS1,0x0450,0x0450,1610,1610,Monitoring Interrupt Status Register 1
+31,3.4.11,CAMIE1,0x0454,0x0454,1610,1611,Monitoring Interrupt Enable Register 1
+31,3.4.12,CAMID1,0x0458,0x0458,1611,1612,Monitoring Interrupt Disable Register 1
+32,3.1.1,EAMC,0x0000,0x0000,1630,1631,Mode Configuration Register
+32,3.1.2,EAMS,0x0004,0x0004,1631,1631,Mode Status Register
+32,3.2.1,EAIRC,0x0010,0x0010,1631,1632,IPV Remapping Configuration Register [802.1Q]
+32,3.2.2,EATDQSC,0x0014,0x0014,1632,1633,TX Descriptor Queue Security Configuration Register
+32,3.2.3,EATDQC,0x0018,0x0018,1633,1634,TX Descriptor Queue Configuration Register
+32,3.2.4,EATDQAC,0x001C,0x001C,1634,1635,TX Descriptor Queue Arbitration Configuration Register
+32,3.2.5,EATPEC,0x0020,0x0020,1635,1635,TX Preemption Configuration Register
+32,3.2.6,EATMFSCq,0x0040,0x0040 + 0x4 * q,1635,1636,Transmission Maximum Frame Size Configuration Register q (q = 0 to 7)
+32,3.2.7,EATDQDCq,0x0060,0x0060 + 0x4 * q,1636,1636,Transmission Descriptor Queue Depth Configuration Register q (q = 0 to 7)
+32,3.2.8,EATDQMq,0x0080,0x0080 + 0x4 * q,1636,1637,Transmission Descriptor Queue q Monitoring Register (q = 0 to 7)
+32,3.2.10,EACTQC,0x0100,0x0100,1637,1638,Cut-Through Queue Configuration Register
+32,3.2.9,EATDQMLMq,0x00A0,0x00A0 + 0x4 * q,1637,1637,Transmission Descriptor Queue q Max Level Monitoring Register
+32,3.2.11,EACTDQDC,0x0104,0x0104,1638,1638,Cut-Through Descriptor Queue Depth Configuration Register
+32,3.2.12,EACTDQM,0x0108,0x0108,1638,1639,Cut-Through Descriptor Queue Monitoring Register
+32,3.2.13,EACTDQMLM,0x010C,0x010C,1639,1639,Cut-Through Descriptor Queue Max Level Monitoring Register
+32,3.3.1,EAVCC,0x0130,0x0130,1639,1640,VLAN Control Configuration Register
+32,3.3.2,EAVTC,0x0134,0x0134,1640,1641,VLAN TAG Configuration Register
+32,3.3.3,EARTFC,0x0138,0x0138,1641,1642,Reception TAG Filtering Configuration Register
+32,3.4.1,EACAEC,0x0200,0x0200,1642,1642,CBS Admin Enable Configuration Register
+32,3.4.2,EACC,0x0204,0x0204,1642,1643,CBS Configuration Register
+32,3.4.3,EACAIVCq,0x0220,0x0220 + 0x4 * q,1643,1643,CBS Admin Increment Value Configuration Register q (q = 0 to 7)
+32,3.4.4,EACAULCq,0x0240,0x0240 + 0x4 * q,1643,1644,CBS Admin Upper Limit Configuration Register q (q = 0 to 7)
+32,3.4.5,EACOEM,0x0260,0x0260,1644,1644,CBS Oper Enable Monitoring Register
+32,3.4.6,EACOIVMq,0x0280,0x0280 + 0x4 * q,1644,1645,CBS Oper Increment Value Monitoring Register q (q = 0 to 7)
+32,3.4.7,EACOULMq,0x02A0,0x02A0 + 0x4 * q,1645,1645,CBS Oper Upper Limit Monitoring Register q (q = 0 to 7)
+32,3.4.8,EACGSM,0x02C0,0x02C0,1645,1646,CBS Gate State Monitoring Register
+32,3.5.1,EATASC,0x0300,0x0300,1646,1647,TAS Configuration Register
+32,3.5.2,EATASIGSC,0x0304,0x0304,1647,1647,TAS Initial Gate State Configuration Register
+32,3.5.3,EATASENCi,0x0320,0x0320 + 0x4 * i,1647,1648,TAS Entry Number Configuration Register i (i = 0 to 7)
+32,3.5.4,EATASCTENC,0x0340,0x0340,1648,1648,TAS Cut-Through Entry Number Configuration Register
+32,3.5.5,EATASENMi,0x0360,0x0360 + 0x4 * i,1648,1649,TAS Entry Number Monitoring Register i (i = 0 to 7)
+32,3.5.6,EATASCTENM,0x0380,0x0380,1649,1649,TAS Cut-Through Entry Number Monitoring Register
+32,3.5.7,EATASCSTC0,0x03A0,0x03A0,1649,1650,TAS Cycle Start Time Configuration Register 0
+32,3.5.10,EATASCSTM1,0x03AC,0x03AC,1650,1651,TAS Cycle Start Time Monitoring Register 1
+32,3.5.8,EATASCSTC1,0x03A4,0x03A4,1650,1650,TAS Cycle Start Time Configuration Register 1
+32,3.5.9,EATASCSTM0,0x03A8,0x03A8,1650,1650,TAS Cycle Start Time Monitoring Register 0
+32,3.5.11,EATASCTC,0x03B0,0x03B0,1651,1651,TAS Cycle Time Configuration Register
+32,3.5.12,EATASCTM,0x03B4,0x03B4,1651,1652,TAS Cycle Time Monitoring Register
+32,3.5.13,EATASGL0,0x03C0,0x03C0,1652,1652,TAS Gate Learn Register 0
+32,3.5.14,EATASGL1,0x03C4,0x03C4,1652,1653,TAS Gate Learn Register 1
+32,3.5.15,EATASGLR,0x03C8,0x03C8,1653,1653,TAS Gate Learn Result Register
+32,3.5.16,EATASGR,0x03D0,0x03D0,1653,1654,TAS Gate Read Register
+32,3.5.17,EATASGRR,0x03D4,0x03D4,1654,1654,TAS Gate Read Result Register
+32,3.5.18,EATASHCC,0x03E0,0x03E0,1654,1655,TAS Hardware Calibration Configuration Register
+32,3.5.19,EATASRIRM,0x03E4,0x03E4,1655,1656,TAS RAM Initialization Register Monitoring Register
+32,3.5.20,EATASSM,0x03E8,0x03E8,1656,1656,TAS Status Monitoring Register
+32,3.6.1,EAUSMFSECN,0x0400,0x0400,1656,1657,Under Minimum Frame Size Error Counter Register
+32,3.6.2,EATFECN,0x0404,0x0404,1657,1658,TAG Filtering Error Counter Register
+32,3.6.3,EAFSECN,0x0408,0x0408,1658,1658,Frame Size Error Counter Register
+32,3.6.4,EADQOECN,0x040C,0x040C,1658,1659,Descriptor Queue Overflow Error Counter Register
+32,3.6.5,EADQSECN,0x0410,0x0410,1659,1659,Descriptor Queue Security Error Counter Register
+32,3.7.1.1,EAEIS0,0x0500,0x0500,1659,1661,Error Interrupt Status Register 0
+32,3.7.1.2,EAEIE0,0x0504,0x0504,1661,1662,Error Interrupt Enable Register 0
+32,3.7.1.3,EAEID0,0x0508,0x0508,1662,1662,Error Interrupt Disable Register 0
+32,3.7.1.4,EAEIS1,0x0510,0x0510,1662,1664,Error Interrupt Status Register 1
+32,3.7.1.5,EAEIE1,0x0514,0x0514,1664,1665,Error Interrupt Enable Register 1
+32,3.7.1.6,EAEID1,0x0518,0x0518,1665,1665,Error Interrupt Disable Register 1
+32,3.7.1.7,EAEIS2,0x0520,0x0520,1665,1667,Error Interrupt Status Register 2
+32,3.7.1.8,EAEIE2,0x0524,0x0524,1667,1668,Error Interrupt Enable Register 2
+32,3.7.1.9,EAEID2,0x0528,0x0528,1668,1668,Error Interrupt Disable Register 2
+33,4.1.1,MPSM,0x0000,0x0000,1707,1709,PHY Station Management Register
+33,4.1.2,MPIC,0x0004,0x0004,1709,1710,PHY Interfaces Configuration Register
+33,4.1.3,MPIM,0x0008,0x0008,1710,1711,PHY Interfaces Monitoring Register
+33,4.1.4,MIOC,0x0010,0x0010,1711,1711,I/O Configuration Register
+33,4.1.5,MTFFC,0x0020,0x0020,1711,1712,Transmission Frame Format Configuration Register
+33,4.1.6,MTPFC,0x0024,0x0024,1712,1713,Transmission Pause or PFC Frame Configuration Register
+33,4.1.7,MTPFC2,0x0028,0x0028,1713,1715,Transmission Pause or PFC Frame Configuration Register 2
+33,4.1.8,MTPFC3t,0x0030,0x0030 + 0x4 * t,1715,1715,Transmission Pause or PFC Frame Configuration Register 3 for
+33,4.1.9,MRGC,0x0080,0x0080,1715,1716,Reception General Configuration Register
+33,4.1.10,MRMAC0,0x0084,0x0084,1716,1717,Reception MAC Address Configuration Register 0
+33,4.1.11,MRMAC1,0x0088,0x0088,1717,1717,Reception MAC Address Configuration Register 1
+33,4.1.12,MRAFC,0x008C,0x008C,1717,1719,Reception Address Filter Configuration Register
+33,4.1.13,MRSCE,0x0090,0x0090,1719,1720,Reception Storm Configuration for E-Frames Register
+33,4.1.14,MRSCP,0x0094,0x0094,1720,1721,Reception Storm Configuration for P-Frames Register
+33,4.1.15,MRSCC,0x0098,0x0098,1721,1722,Reception Storm Counter Configuration Register
+33,4.1.16,MRFSCE,0x009C,0x009C,1722,1722,Reception Frame Size Configuration for E-Frames Register
+33,4.1.17,MRFSCP,0x00A0,0x00A0,1722,1723,Reception Frame Size Configuration for P-Frames Register
+33,4.1.18,MTRC,0x00A4,0x00A4,1723,1724,Timestamp Reception Configuration Register
+33,4.1.19,MRPFM,0x00AC,0x00AC,1724,1724,Reception Pause or PFC Frame Monitoring Register
+33,4.1.20,MPFCt,0x0100,0x0100 + 0x4 * t,1724,1725,PTP Filtering Register Configuration Register t (t = 0 to 15)
+33,4.1.21,MLVC,0x0180,0x0180,1725,1726,Link Verification Configuration Register
+33,4.1.22,MEEEC,0x0184,0x0184,1726,1726,Energy Efficient Ethernet Configuration Register
+33,4.1.23,MLBC,0x0188,0x0188,1726,1726,Loopback Configuration Register
+33,4.2.1,MMPFTCT,0x0300,0x0300,1727,1727,Manual Pause Frame Transmit Counter Register
+33,4.2.2,MAPFTCT,0x0304,0x0304,1727,1728,Automatic Pause Frame Transmit Counter Register
+33,4.2.3,MPFRCT,0x0308,0x0308,1728,1728,Pause Frame Receive Counter Register
+33,4.2.4,MFCICT,0x030C,0x030C,1728,1729,False Carrier Indication Counter Register
+33,4.2.5,MEEECT,0x0310,0x0310,1729,1729,Energy Efficient Ethernet Counter Register
+33,4.2.6,MMPCFTCTt,0x0320,0x0320 + 0x4 * t,1729,1730,"Manual PFC Frame Transmit Counter Register (t = 0, 1)"
+33,4.2.7,MAPCFTCTt,0x0330,0x0330 + 0x4 * t,1730,1730,"Automatic PFC Frame Transmit Counter Register (t = 0, 1)"
+33,4.2.8,MPCFRCTt,0x0340,0x0340 + 0x4 * t,1730,1731,"PFC Frame Receive Counter Register (t = 0, 1)"
+33,4.2.10,MRXBCEU,0x044C,0x044C,1731,1732,Received Byte Counter E-Frames Upper Side Register
+33,4.2.9,MROVFC,0x0360,0x0360,1731,1731,Receive Overflow Counter Register
+33,4.2.11,MRXBCEL,0x0450,0x0450,1732,1732,Received Byte Counter E-Frames Lower Side Register
+33,4.2.12,MRXBCPU,0x0454,0x0454,1732,1733,Received Byte Counter P-Frames Upper Side Register
+33,4.2.13,MRXBCPL,0x0458,0x0458,1733,1733,Received Byte Counter P-Frames Lower Side Register
+33,4.2.14,MRGFCE,0x0408,0x0408,1733,1734,Received Good Frame Counter E-Frames Register
+33,4.2.15,MRGFCP,0x040C,0x040C,1734,1734,Received Good Frame Counter P-Frames Register
+33,4.2.16,MRBFC,0x0410,0x0410,1734,1734,Received Good Broadcast Frame Counter Register
+33,4.2.17,MRMFC,0x0414,0x0414,1734,1735,Received Good Multicast Frame Counter Register
+33,4.2.18,MRUFC,0x0418,0x0418,1735,1735,Received Good Unicast Frame Counter Register
+33,4.2.19,MRPEFC,0x041C,0x041C,1735,1736,Received PHY Error Frame Count Register
+33,4.2.20,MRNEFC,0x0420,0x0420,1736,1736,Received Nibble Error Frame Count Register
+33,4.2.21,MRFMEFC,0x0424,0x0424,1736,1737,Received FCS/mCRC Error Frame Count Register
+33,4.2.22,MRFFMEFC,0x0428,0x0428,1737,1737,Received Final Fragment Missing Error Frame Count Register
+33,4.2.23,MRCFCEFC,0x042C,0x042C,1737,1738,Received C-Fragment Count Error Frame Count Register
+33,4.2.24,MRFCEFC,0x0430,0x0430,1738,1738,Received Fragment Count Error Frame Count Register
+33,4.2.25,MRRCFEFC,0x0434,0x0434,1738,1739,Received RMAC Filter Error Frame Count Register
+33,4.2.26,MRFC,0x0438,0x0438,1739,1739,Received Frame Count Register
+33,4.2.27,MRGUEFC,0x043C,0x043C,1739,1739,Received Good Undersize Error Frame Count Register
+33,4.2.28,MRBUEFC,0x0440,0x0440,1739,1740,Received Bad Undersize Error Frame Count Register
+33,4.2.29,MRGOEFC,0x0444,0x0444,1740,1740,Received Good Oversize Error Frame Count Register
+33,4.2.30,MRBOEFC,0x0448,0x0448,1740,1741,Received Bad Oversize Error Frame Count Register
+33,4.2.31,MTXBCEU,0x0520,0x0520,1741,1741,Transmitted Byte Counter E-Frames Upper Side Register
+33,4.2.32,MTXBCEL,0x0524,0x0524,1741,1742,Transmitted Byte Counter E-Frames Lower Side Register
+33,4.2.33,MTXBCPU,0x0528,0x0528,1742,1742,Transmitted Byte Counter P-Frames Upper Side Register
+33,4.2.34,MTXBCPL,0x052C,0x052C,1742,1743,Transmitted Byte Counter P-Frames Lower Side Register
+33,4.2.35,MTGFCE,0x0508,0x0508,1743,1743,Transmitted Good Frame Counter E-Frames Register
+33,4.2.36,MTGFCP,0x050C,0x050C,1743,1743,Transmitted Good Frame Counter P-Frames Register
+33,4.2.37,MTBFC,0x0510,0x0510,1743,1744,Transmitted Broadcast Frame Counter Register
+33,4.2.38,MTMFC,0x0514,0x0514,1744,1744,Transmitted Multicast Frame Counter Register
+33,4.2.39,MTUFC,0x0518,0x0518,1744,1745,Transmitted Unicast Frame Counter Register
+33,4.2.40,MTEFC,0x051C,0x051C,1745,1745,Transmitted Error Frame Counter Register
+33,4.3.1,MEIS,0x0200,0x0200,1745,1751,Error Interrupt Status Register
+33,4.3.2,MEIE,0x0204,0x0204,1751,1754,Error Interrupt Enable Register
+33,4.3.3,MEID,0x0208,0x0208,1754,1756,Error Interrupt Disable Register
+33,4.3.4,MMIS0,0x0210,0x0210,1756,1757,Monitoring Interrupt Status Register 0
+33,4.3.5,MMIE0,0x0214,0x0214,1757,1758,Monitoring Interrupt Enable Register 0
+33,4.3.6,MMID0,0x0218,0x0218,1758,1758,Monitoring Interrupt Disable Register 0
+33,4.3.7,MMIS1,0x0220,0x0220,1758,1759,Monitoring Interrupt Status Register 1
+33,4.3.8,MMIE1,0x0224,0x0224,1759,1760,Monitoring Interrupt Enable Register 1
+33,4.3.9,MMID1,0x0228,0x0228,1760,1761,Monitoring Interrupt Disable Register 1
+33,4.3.10,MMIS2,0x0230,0x0230,1761,1762,Monitoring Interrupt Status Register 2
+33,4.3.11,MMIE2,0x0234,0x0234,1762,1763,Monitoring Interrupt Enable Register 2
+33,4.3.12,MMID2,0x0238,0x0238,1763,1763,Monitoring Interrupt Disable Register 2
+34,3.1.1,GWMC,0x0000,0x0000,1792,1792,Mode Configuration Register
+34,3.1.2,GWMS,0x0004,0x0004,1792,1793,Mode Status Register
+34,3.2.1,GWIRC,0x0010,0x0010,1793,1794,IPV Remapping Configuration Register [802.1Q]
+34,3.2.2,GWRDQSC,0x0014,0x0014,1794,1794,RX Descriptor Queue Security Configuration Register
+34,3.2.3,GWRDQC,0x0018,0x0018,1794,1795,RX Descriptor Queue Control Register
+34,3.2.4,GWRDQAC,0x001C,0x001C,1795,1796,RX Descriptor Queue Arbitration Control Register
+34,3.2.5,GWRGC,0x0020,0x0020,1796,1797,RX General Configuration Register
+34,3.2.6,GWRMFSCq,0x0040,0x0040 + 0x04 * q,1797,1797,Reception Maximum Frame Size Configuration Register q (q = 0 to 7)
+34,3.2.7,GWRDQDCq,0x0060,0x0060 + 0x04 * q,1797,1798,Reception Descriptor Queue q Depth Configuration Register (q = 0 to 7)
+34,3.2.8,GWRDQMq,0x0080,0x0080 + 0x04 * q,1798,1798,RX Descriptor Queue q Monitoring Register (q = 0 to 7)
+34,3.2.9,GWRDQMLMq,0x00A0,0x00A0 + 0x04 * q,1798,1799,RX Descriptor Queue q Max Level Monitoring Register (q = 0 to 7)
+34,3.3.1,GWMTIRM,0x0100,0x0100,1799,1799,Multicast Table Initialization Register Monitoring Register
+34,3.3.2,GWMSTLS,0x0104,0x0104,1799,1800,Multicast Table Learning Setting Register
+34,3.3.3,GWMSTLR,0x0108,0x0108,1800,1800,Multicast Table Learning Result Register
+34,3.3.4,GWMSTSS,0x010C,0x010C,1800,1801,Multicast Table Searching Setting Register
+34,3.3.5,GWMSTSR,0x0110,0x0110,1801,1801,Multicast Table Searching Result Register
+34,3.4.1,GWMAC0,0x0120,0x0120,1801,1802,MAC Address Configuration Register 0
+34,3.4.2,GWMAC1,0x0124,0x0124,1802,1802,MAC Address Configuration Register 1
+34,3.5.1,GWVCC,0x0130,0x0130,1802,1803,VLAN Control Configuration Register
+34,3.5.2,GWVTC,0x0134,0x0134,1803,1803,VLAN TAG Configuration Register
+34,3.5.3,GWTTFC,0x0138,0x0138,1803,1804,Transmission TAG Filtering Configuration Register
+34,3.6.1,GWTDCACs0,0x0140,0x0140 + 0x08 * s,1804,1805,Timestamp Descriptor Chain s Address Configuration Register 0
+34,3.6.2,GWTDCACs1,0x0144,0x0144 + 0x08 * s,1805,1805,Timestamp Descriptor Chain s Address Configuration Register 1
+34,3.6.3,GWTSDCCs,0x0160,0x0160 + 0x04 * s,1805,1806,"Timestamp Descriptor Chain s Configuration Register (s = 0, 1)"
+34,3.6.4,GWTSNM,0x0180,0x0180,1806,1806,Timestamp Number Monitoring Register
+34,3.6.5,GWTSMNM,0x0184,0x0184,1806,1807,Timestamp Maximum Number Monitoring Register
+34,3.7.1,GWAC,0x0190,0x0190,1807,1807,AXI Control Register
+34,3.7.2,GWDCBAC0,0x0194,0x0194,1807,1808,Descriptor Chain Base Address Configuration Register 0
+34,3.7.3,GWDCBAC1,0x0198,0x0198,1808,1808,Descriptor Chain Base Address Configuration Register 1
+34,3.7.4,GWMDNC,0x01A0,0x01A0,1808,1809,Maximum Descriptor Number Configuration Register
+34,3.7.5,GWTRCi,0x0200,0x0200 + 0x04 * i,1809,1810,"Transmission Request Configuration Register i (i = 0, 1)"
+34,3.7.6,GWTPCp,0x0300,0x0300 + 0x04 * p,1810,1810,Transmission Pause Configuration Register p (p = 0 to 1)
+34,3.7.7,GWARIRM,0x0380,0x0380,1810,1811,AXI RAM Initialization Register Monitoring Register
+34,3.7.8,GWDCCi,0x0400,0x0400 + 0x04 * i,1811,1812,Descriptor Chain i Configuration Register (i = 0 to 63)
+34,3.7.10,GWAARSR0,0x0804,0x0804,1812,1813,AXI Address RAM Searching Result Register 0
+34,3.7.9,GWAARSS,0x0800,0x0800,1812,1812,AXI Address RAM Searching Setting Register
+34,3.7.11,GWAARSR1,0x0808,0x0808,1813,1813,AXI Address RAM Searching Result Register 1
+34,3.7.12,GWIDAUASi,0x0840,0x0840 + 0x04 * i,1813,1813,Incremental Data Area i Used Area Size Register (i = 0 to 3)
+34,3.7.13,GWIDASMi,0x0880,0x0880 + 0x04 * i,1813,1814,Incremental Data Area i Size Monitoring Register (i = 0 to 3)
+34,3.7.14,GWIDASAMi0,0x0900,0x0900 + 0x08 * i,1814,1814,Incremental Data Area i Start Address Monitoring Register 0 (i = 0 to 3)
+34,3.7.15,GWIDASAMi1,0x0904,0x0904 + 0x08 * i,1814,1815,Incremental Data Area i Start Address Monitoring Register 1 (i = 0 to 3)
+34,3.7.16,GWIDACAMi0,0x0980,0x0980 + 0x08 * i,1815,1815,Incremental Data Area i Current Address Monitoring Register 0
+34,3.7.17,GWIDACAMi1,0x0984,0x0984 + 0x08 * i,1815,1816,Incremental Data Area i Current Address Monitoring Register 1
+34,3.8.1,GWGRLC,0x0A00,0x0A00,1816,1816,Global Rate Limiter Configuration Register
+34,3.8.2,GWGRLULC,0x0A04,0x0A04,1816,1817,Global Rate Limiter Upper Limit Configuration Register
+34,3.8.3,GWRLCi,0x0A80,0x0A80 + 0x8 * i,1817,1817,Rate Limiter i Configuration Register (i = 0 to 7)
+34,3.8.4,GWRLULCi,0x0A84,0x0A84 + 0x8 * i,1817,1818,Rate Limiter i Upper Limit Configuration Register (i = 0 to 7)
+34,3.9.1,GWIDPC,0x0B80,0x0B80,1818,1818,Interrupt Delay Prescaler Configuration Register
+34,3.9.2,GWIDCi,0x0C000,0x0C000 + 0x4 * i,1818,1819,Interrupt Delay i Configuration Register (i = 0 to 63)
+34,3.10.1,GWRDCN,0x1000,0x1000,1819,1819,Received Data Counter Register
+34,3.10.2,GWTDCN,0x1004,0x1004,1819,1820,Transmitted Data Counter Register
+34,3.10.3,GWTSCN,0x1008,0x1008,1820,1820,Timestamp Counter Register
+34,3.10.4,GWTSOVFECN,0x100C,0x100C,1820,1821,Timestamp Overflow Error Counter Register
+34,3.10.5,GWUSMFSECN,0x1010,0x1010,1821,1821,Under Minimum Frame Size Error Counter Register
+34,3.10.6,GWTFECN,0x1014,0x1014,1821,1822,TAG Filtering Error Counter Register
+34,3.10.7,GWSEQECN,0x1018,0x1018,1822,1822,Sequence Error Counter Register
+34,3.10.8,GWTXDNECN,0x1020,0x1020,1822,1823,TX Descriptor Number Error Counter Register
+34,3.10.10,GWTDFECN,0x1028,0x1028,1823,1824,Timestamp Descriptor Full Error Counter Register
+34,3.10.9,GWFSECN,0x1024,0x1024,1823,1823,Frame Size Error Counter Register
+34,3.10.11,GWTSDNECN,0x102C,0x102C,1824,1825,Timestamp Descriptor Number Error Counter Register
+34,3.10.12,GWDQOECN,0x1030,0x1030,1825,1825,Descriptor Queue Overflow Error Counter Register
+34,3.10.13,GWDQSECN,0x1034,0x1034,1825,1826,Descriptor Queue Security Error Counter Register
+34,3.10.14,GWDFECN,0x1038,0x1038,1826,1826,Descriptor Full Error Counter Register
+34,3.10.15,GWDSECN,0x103C,0x103C,1826,1827,Descriptor Security Error Counter Register
+34,3.10.16,GWDSZECN,0x1040,0x1040,1827,1827,Data Size Error Counter Register
+34,3.10.17,GWDCTECN,0x1044,0x1044,1827,1828,Descriptor Chain Type Error Counter Register
+34,3.10.18,GWRXDNECN,0x1048,0x1048,1828,1828,RX Descriptor Number Error Counter Register
+34,3.11.1,GWDISi,0x1100,0x1100 + 0x10 * i,1828,1829,"Data Interrupt Status Register i (i = 0, 1)"
+34,3.11.2,GWDIEi,0x1104,0x1104 + 0x10 * i,1829,1830,"Data Interrupt Enable Register i (i = 0, 1)"
+34,3.11.3,GWDIDi,0x1108,0x1108 + 0x10 * i,1830,1830,"Data Interrupt Disable Register i (i = 0, 1)"
+34,3.11.4,GWDIDSi,0x110C,0x110C + 0x10 * i,1830,1830,"Data Interrupt Delayed Status Register i (i = 0, 1)"
+34,3.11.5,GWTSDIS,0x1180,0x1180,1830,1831,Timestamp Data Interrupt Status Register
+34,3.11.6,GWTSDIE,0x1184,0x1184,1831,1832,Timestamp Data Interrupt Enable Register
+34,3.11.7,GWTSDID,0x1188,0x1188,1832,1832,Timestamp Data Interrupt Disable Register
+34,3.11.8,GWEIS0,0x1190,0x1190,1832,1836,Error Interrupt Status Register 0
+34,3.11.9,GWEIE0,0x1194,0x1194,1836,1837,Error Interrupt Enable Register 0
+34,3.11.10,GWEID0,0x1198,0x1198,1837,1838,Error Interrupt Disable Register 0
+34,3.11.11,GWEIS1,0x11A0,0x11A0,1838,1839,Error Interrupt Status Register 1
+34,3.11.12,GWEIE1,0x11A4,0x11A4,1839,1840,Error Interrupt Enable Register 1
+34,3.11.13,GWEID1,0x11A8,0x11A8,1840,1840,Error Interrupt Disable Register 1
+34,3.11.14,GWEIS2i,0x1200,0x1200 + 0x10 * i,1840,1841,"Error Interrupt Status Register 2i (i = 0, 1)"
+34,3.11.15,GWEIE2i,0x1204,0x1204 + 0x10 * i,1841,1841,"Error Interrupt Enable Register 2i (i = 0, 1)"
+34,3.11.16,GWEID2i,0x1208,0x1208 + 0x10 * i,1841,1842,"Error Interrupt Disable Register 2i (i = 0, 1)"
+34,3.11.17,GWEIS3,0x1280,0x1280,1842,1843,Error Interrupt Status Register 3
+34,3.11.18,GWEIE3,0x1284,0x1284,1843,1843,Error Interrupt Enable Register 3
+34,3.11.19,GWEID3,0x1288,0x1288,1843,1844,Error Interrupt Disable Register 3
+34,3.11.20,GWEIS4,0x1290,0x1290,1844,1846,Error Interrupt Status Register 4
+34,3.11.21,GWEIE4,0x1294,0x1294,1846,1847,Error Interrupt Enable Register 4
+34,3.11.22,GWEID4,0x1298,0x1298,1847,1847,Error Interrupt Disable Register 4
+34,3.11.23,GWEIS5,0x12A0,0x12A0,1847,1849,Error Interrupt Status Register 5
+34,3.11.24,GWEIE5,0x12A4,0x12A4,1849,1850,Error Interrupt Enable Register 5
+34,3.11.25,GWEID5,0x12A8,0x12A8,1850,1851,Error Interrupt Disable Register 5
+35,3.1.1,PTPIPV,0x0000,0x0000,1927,1927,IP Version Register
+35,3.2.1,PTPTMEC,0x0010,0x0010,1927,1928,Timer Enable Configuration Register
+35,3.2.2,PTPTMDC,0x0014,0x0014,1928,1928,Timer Disable Configuration Register
+35,3.2.3,PTPTIVCt,0x0020,0x0020 + 0x40 * t,1928,1929,"Timer t Increment Value Configuration Register (t = 0, 1)"
+35,3.2.4,PTPTOVCtL,0x0030,0x0030 + 0x40 * t,1929,1929,"Timer t Offset Value Configuration Register L (t = 0, 1)"
+35,3.2.5,PTPTOVCMt,0x0034,0x0034 + 0x40 * t,1929,1930,"Timer t Offset Value Configuration Register M (t = 0, 1)"
+35,3.2.6,PTPTOVCtU,0x0038,0x0038 + 0x40 * t,1930,1930,"Timer t Offset Value Configuration Register U (t = 0, 1)"
+35,3.3.1,PTPAVTPTMtL,0x0040,0x0040 + 0x40 * t,1930,1931,"AVTP Timer t Monitoring Register L (t = 0, 1)"
+35,3.3.2,PTPAVTPTMtU,0x0044,0x0044 + 0x40 * t,1931,1931,"AVTP Timer t Monitoring Register U (t = 0, 1)"
+35,3.3.3,PTPGPTPTMtL,0x0050,0x0050 + 0x40 * t,1931,1931,"GPTP Timer t Monitoring Register L (t = 0, 1)"
+35,3.3.4,PTPGPTPTMtM,0x0054,0x0054 + 0x40 * t,1931,1932,"GPTP Timer t Monitoring Register M (t = 0, 1)"
+35,3.3.5,PTPGPTPTMtU,0x0058,0x0058 + 0x40 * t,1932,1932,"GPTP Timer t Monitoring Register U (t = 0, 1)"
+35,3.4.1,PTPMCCCm,0x0200,0x0200 + 0x10 * m,1932,1933,"Media Clock m Capture Configuration Register (m = 0, 1)"
+35,3.4.2,PTPMCCMmL,0x0204,0x0204 + 0x10 * m,1933,1933,"Media Clock m Capture Monitoring Register L (m = 0, 1)"
+35,3.4.3,PTPMCCMmM,0x0208,0x0208 + 0x10 * m,1933,1934,"Media Clock m Capture Monitoring Register M (m = 0, 1)"
+35,3.4.4,PTPMCCMmU,0x020C,0x020C + 0x10 * m,1934,1935,"Media Clock m Capture Monitoring Register U (m = 0, 1)"
+35,3.5.1,PTPMCRCm,0x0300,0x0300 + 0x10 * m,1935,1936,"Media Clock m Recovery Configuration Register (m = 0, 1)"
+35,3.5.2,PTPMCRTCmL,0x0304,0x0304 + 0x10 * m,1936,1936,"Media Clock m Recovery Time Configuration Register L (m = 0, 1)"
+35,3.5.3,PTPMCRTCmM,0x0308,0x0308 + 0x10 * m,1936,1937,"Media Clock m Recovery Time Configuration Register M (m = 0, 1)"
+35,3.5.4,PTPMCRTCmU,0x030C,0x030C + 0x10 * m,1937,1937,"Media Clock m Recovery Time Configuration Register U (m = 0, 1)"
+35,3.5.5,PTPMCPCm,0x0400,0x0400 + 0x04 * m,1937,1938,"Media Clock m Pin Configuration Register (m = 0, 1)"
+35,3.6.1,PTPCCCc0,0x0500,0x0500 + 0x8 * c,1938,1938,Cyclic Compare c Configuration Register 0 (c = 0 to 7)
+35,3.6.2,PTPCCCc1,0x0504,0x0504 + 0x8 * c,1938,1939,Cyclic Compare c Configuration Register 1 (c = 0 to 7)
+35,3.7.1,PTPIS0,0x0700,0x0700,1939,1940,Interrupt Status Register 0
+35,3.7.2,PTPIE0,0x0704,0x0704,1940,1941,Interrupt Enable Register 0
+35,3.7.3,PTPID0,0x0708,0x0708,1941,1941,Interrupt Disable Register 0
+35,3.7.4,PTPIS1,0x0710,0x0710,1941,1942,Interrupt Status Register 1
+35,3.7.5,PTPIE1,0x0714,0x0714,1942,1942,Interrupt Enable Register 1
+35,3.7.6,PTPID1,0x0718,0x0718,1942,1943,Interrupt Disable Register 1
+35,6.3.1,POTCFGR,0x1000,0x1000,1955,1955,Pulse Output Timer Configuration Register
+35,6.3.2,POTCRn,0x1004,0x1004 + 0x30 * n,1955,1956,Pulse Output Timer Control Register n (n = 0 to 3)
+35,6.3.3,POTSTRnU,0x1008,0x1008 + 0x30 * n,1956,1956,Pulse Output Start Time Setting Register nU (n = 0 to 3)
+35,6.3.4,POTSTRnM,0x100C,0x100C + 0x30 * n,1956,1956,Pulse Output Start Time Setting Register nM (n = 0 to 3)
+35,6.3.5,POTSTRnL,0x1010,0x1010 + 0x30 * n,1956,1957,Pulse Output Start Time Setting Register nL (n = 0 to 3)
+35,6.3.6,POTPERnU,0x1014,0x1014 + 0x30 * n,1957,1957,Period Setting Register nU (n = 0 to 3)
+35,6.3.7,POTPERnM,0x1018,0x1018 + 0x30 * n,1957,1958,Period Setting Register nM (n = 0 to 3)
+35,6.3.8,POTPERnL,0x101C,0x101C + 0x30 * n,1958,1958,Period Setting Register nL (n = 0 to 3)
+35,6.3.9,POTPWRn,0x1020,0x1020 + 0x30 * n,1958,1959,Pulse Width Setting Register n (n = 0 to 3)
+35,6.3.10,POTCPRnU,0x1028,0x1028 + 0x30 * n,1959,1959,Time Capture Register nU (n = 0 to 3)
+35,6.3.11,POTCPRnM,0x102C,0x102C + 0x30 * n,1959,1959,Time Capture Register nM (n = 0 to 3)
+35,6.3.12,POTCPRnL,0x1030,0x1030 + 0x30 * n,1959,1959,Time Capture Register nL (n = 0 to 3)
+36,2.1,SYSCFG,0x000,0x000,1967,1968,System Configuration Control Register
+36,2.2,SYSSTS0,0x004,0x004,1968,1969,System Configuration Status Register 0
+36,2.3,DVSTCTR0,0x008,0x008,1969,1972,Device State Control Register 0
+36,2.4,CFIFO,0x014,0x014,1972,1973,CFIFO Port Register
+36,2.4,CFIFOL,0x014,0x014,1972,1973,CFIFO Port Register
+36,2.5,DnFIFO,0x018,0x018 + 0x4 * n,1973,1974,"DnFIFO Port Register (n = 0, 1)"
+36,2.5,DnFIFOL,0x018,0x018 + 0x4 * n,1973,1974,"DnFIFO Port Register (n = 0, 1)"
+36,2.6,CFIFOSEL,0x020,0x020,1974,1976,CFIFO Port Select Register
+36,2.7,DnFIFOSEL,0x028,0x028 + 0x4 * n,1976,1977,"DnFIFO Port Select Register (n = 0, 1)"
+36,2.8,CFIFOCTR,0x022,0x022,1977,1979,CFIFO Port Control Register
+36,2.9,DnFIFOCTR,0x02A,0x02A + 0x4 * n,1979,1980,"DnFIFO Port Control Register (n = 0, 1)"
+36,2.10,INTENB0,0x030,0x030,1980,1981,Interrupt Enable Register 0
+36,2.11,INTENB1,0x032,0x032,1981,1982,Interrupt Enable Register 1
+36,2.12,BRDYENB,0x036,0x036,1982,1983,BRDY Interrupt Enable Register
+36,2.13,NRDYENB,0x038,0x038,1983,1984,NRDY Interrupt Enable Register
+36,2.14,BEMPENB,0x03A,0x03A,1984,1985,BEMP Interrupt Enable Register
+36,2.15,SOFCFG,0x03C,0x03C,1985,1986,SOF Output Configuration Register
+36,2.16,INTSTS0,0x040,0x040,1986,1988,Interrupt Status Register 0
+36,2.17,INTSTS1,0x042,0x042,1988,1991,Interrupt Status Register 1
+36,2.18,BRDYSTS,0x046,0x046,1991,1992,BRDY Interrupt Status Register
+36,2.19,NRDYSTS,0x048,0x048,1992,1992,NRDY Interrupt Status Register
+36,2.20,BEMPSTS,0x04A,0x04A,1992,1993,BEMP Interrupt Status Register
+36,2.21,FRMNUM,0x04C,0x04C,1993,1994,Frame Number Register
+36,2.22,DVCHGR,0x04E,0x04E,1994,1994,Device State Change Register
+36,2.23,USBADDR,0x050,0x050,1994,1995,USB Address Register
+36,2.24,USBREQ,0x054,0x054,1995,1996,USB Request Type Register
+36,2.25,USBVAL,0x056,0x056,1996,1997,USB Request Value Register
+36,2.26,USBINDX,0x058,0x058,1997,1997,USB Request Index Register
+36,2.27,USBLENG,0x05A,0x05A,1997,1998,USB Request Length Register
+36,2.28,DCPCFG,0x05C,0x05C,1998,1999,DCP Configuration Register
+36,2.29,DCPMAXP,0x05E,0x05E,1999,1999,DCP Maximum Packet Size Register
+36,2.30,DCPCTR,0x060,0x060,1999,2002,DCP Control Register
+36,2.31,PIPESEL,0x064,0x064,2002,2003,Pipe Window Select Register
+36,2.32,PIPECFG,0x068,0x068,2003,2005,Pipe Configuration Register
+36,2.33,PIPEMAXP,0x06C,0x06C,2005,2006,Pipe Maximum Packet Size Register
+36,2.34,PIPEPERI,0x06E,0x06E,2006,2007,Pipe Cycle Control Register
+36,2.35,PIPEnCTR,0x070,0x070 + 0x2 * (n - 1),2007,2011,PIPEn Control Registers (n = 1 to 5)
+36,2.36,PIPEnCTR,0x07A,0x07A + 0x2 * (n - 6),2011,2013,PIPEn Control Registers (n = 6 to 9)
+36,2.37,PIPEnTRE,0x090,0x090 + 0x4 * (n - 1),2013,2014,PIPEn Transaction Counter Enable Register (n = 1 to 5)
+36,2.38,PIPEnTRN,0x092,0x092 + 0x4 * (n - 1),2014,2015,PIPEn Transaction Counter Register (n = 1 to 5)
+36,2.39,DEVADDn,0x0D0,0x0D0 + 0x2 * n,2015,2015,Device Address n Configuration Register (n = 0 to 5)
+36,2.40,DPUSR0R,0x400,0x400,2015,2017,Deep Software Standby USB Transceiver Control/Pin Monitor
+36,2.41,DPUSR1R,0x404,0x404,2017,2018,Deep Software Standby USB Suspend/Resume Interrupt Register
+37,2.1,SYSCFG,0x000,0x000,2061,2063,System Configuration Control Register
+37,2.2,BUSWAIT,0x002,0x002,2063,2063,CPU Bus Wait Register
+37,2.3,SYSSTS0,0x004,0x004,2063,2065,System Configuration Status Register
+37,2.4,PLLSTA,0x006,0x006,2065,2065,PLL Status Register
+37,2.5,DVSTCTR0,0x008,0x008,2065,2068,Device State Control Register 0
+37,2.6,TESTMODE,0x00C,0x00C,2068,2069,USB Test Mode Register
+37,2.7,CFIFO,0x014,0x014 (CFIFO/CFIFOL/CFIFOLL),2069,2071,"FIFO Port Register (n = 0, 1)"
+37,2.7,DnFIFO,0x014,0x014 (CFIFO/CFIFOL/CFIFOLL),2069,2071,"FIFO Port Register (n = 0, 1)"
+37,2.8,CFIFOSEL,0x020,0x020,2071,2072,CFIFO Port Selection Register
+37,2.9,DnFIFOSEL,0x028,0x028 + 0x4 * n,2072,2074,"DnFIFO Port Selection Register (n = 0, 1)"
+37,2.10,CFIFOCTR,0x022,0x022 (CFIFOCTR),2074,2076,"FIFO Port Control Register (n = 0, 1)"
+37,2.10,DnFIFOCTR,0x022,0x022 (CFIFOCTR),2074,2076,"FIFO Port Control Register (n = 0, 1)"
+37,2.11,INTENB0,0x030,0x030,2076,2077,Interrupt Enable Register 0
+37,2.12,INTENB1,0x032,0x032,2077,2078,Interrupt Enable Register 1
+37,2.13,BRDYENB,0x036,0x036,2078,2078,BRDY Interrupt Enable Register
+37,2.14,NRDYENB,0x038,0x038,2078,2079,NRDY Interrupt Enable Register
+37,2.15,BEMPENB,0x03A,0x03A,2079,2079,BEMP Interrupt Enable Register
+37,2.16,SOFCFG,0x03C,0x03C,2079,2080,SOF Output Configuration Register
+37,2.17,PHYSET,0x03E,0x03E,2080,2081,PHY Setting Register
+37,2.18,INTSTS0,0x040,0x040,2081,2083,Interrupt Status Register 0
+37,2.19,INTSTS1,0x042,0x042,2083,2086,Interrupt Status Register 1
+37,2.20,BRDYSTS,0x046,0x046,2086,2087,BRDY Interrupt Status Register
+37,2.21,NRDYSTS,0x048,0x048,2087,2087,NRDY Interrupt Status Register
+37,2.22,BEMPSTS,0x04A,0x04A,2087,2088,BEMP Interrupt Status Register
+37,2.23,FRMNUM,0x04C,0x04C,2088,2088,Frame Number Register
+37,2.25,USBADDR,0x050,0x050,2089,2090,USB Address Register
+37,2.26,USBREQ,0x054,0x054,2090,2090,USB Request Type Register
+37,2.27,USBVAL,0x056,0x056,2090,2091,USB Request Value Register
+37,2.28,USBINDX,0x058,0x058,2091,2091,USB Request Index Register
+37,2.29,USBLENG,0x05A,0x05A,2091,2092,USB Request Length Register
+37,2.30,DCPCFG,0x05C,0x05C,2092,2092,DCP Configuration Register
+37,2.31,DCPMAXP,0x05E,0x05E,2092,2093,DCP Maximum Packet Size Register
+37,2.32,DCPCTR,0x060,0x060,2093,2097,DCP Control Register
+37,2.33,PIPESEL,0x064,0x064,2097,2097,Pipe Window Select Register
+37,2.34,PIPECFG,0x068,0x068,2097,2100,Pipe Configuration Register
+37,2.35,PIPEBUF,0x06A,0x06A,2100,2101,Pipe Buffer Register
+37,2.36,PIPEMAXP,0x06C,0x06C,2101,2102,Pipe Maximum Packet Size Register
+37,2.37,PIPEPERI,0x06E,0x06E,2102,2103,Pipe Cycle Control Register
+37,2.38,PIPEnCTR,0x070,0x070 + 0x2 * (n - 1),2103,2107,Pipe n Control Register (n = 1 to 9)
+37,2.39,PIPEnTRE,0x090,0x090 + 0x4 * (n - 1),2107,2108,Pipe n Transaction Counter Enable Register (n = 1 to 5)
+37,2.40,PIPEnTRN,0x092,0x092 + 0x4 * (n - 1),2108,2109,Pipe n Transaction Counter Register (n = 1 to 5)
+37,2.41,DEVADDn,0x0D0,0x0D0 + 0x2 * n (n = 0 to 9),2109,2110,"Device Address n Configuration Register (n = 0 to 9, A)"
+37,2.42,LPCTRL,0x100,0x100,2110,2111,Low Power Control Register
+37,2.43,LPSTS,0x102,0x102,2111,2112,Low Power Status Register
+37,2.44,BCCTRL,0x140,0x140,2112,2113,Battery Charging Control Register
+37,2.45,PL1CTRL1,0x144,0x144,2113,2114,Function L1 Control Register 1
+37,2.46,PL1CTRL2,0x146,0x146,2114,2115,Function L1 Control Register 2
+37,2.47,HL1CTRL1,0x148,0x148,2115,2116,Host L1 Control Register 1
+37,2.48,HL1CTRL2,0x14A,0x14A,2116,2117,Host L1 Control Register 2
+37,2.49,DPUSR0R,0x160,0x160,2117,2118,Deep Software Standby USB Transceiver Control/Pin Monitor
+37,2.50,DPUSR1R,0x164,0x164,2118,2118,Deep Software Standby USB Suspend/Resume Interrupt Register
+37,2.51,DPUSR2R,0x168,0x168,2118,2119,Deep Software Standby USB Suspend/Resume Interrupt Register
+37,2.52,DPUSRCR,0x16A,0x16A,2119,2119,Deep Software Standby USB Suspend/Resume Command Register
+38,2.1,RSR,,,2179,2180,Receive Shift Register
+38,2.2,RDR,0x00,0x00,2180,2181,Receive Data Register
+38,2.2,RDR_BY,0x00,0x00,2180,2181,Receive Data Register
+38,2.3,TDR,0x04,0x04 (TDR/TDRLL),2181,2182,Transmit Data Register
+38,2.3,TDRLH,0x04,0x04 (TDR/TDRLL),2181,2182,Transmit Data Register
+38,2.3,TDRLL,0x04,0x04 (TDR/TDRLL),2181,2182,Transmit Data Register
+38,2.4,TSR,,,2182,2182,Transmit Shift Register
+38,2.5,CCR0,0x08,0x08,2182,2185,Common Control Register 0
+38,2.6,CCR1,0x0C,0x0C,2185,2189,Common Control Register 1
+38,2.7,CCR2,0x10,0x10,2189,2195,Common Control Register 2
+38,2.8,CCR3,0x14,0x14,2203,2210,Common Control Register 3
+38,2.9,CCR4,0x18,0x18,2210,2212,Common Control Register 4
+38,2.10,ICR,0x20,0x20,2212,2215,Simple IIC Control Register
+38,2.11,FCR,0x24,0x24,2215,2216,FIFO Control Register
+38,2.12,MCR,0x2C,0x2C,2216,2219,Manchester Control Register
+38,2.13,DCR,0x30,0x30,2219,2220,Driver Control Register
+38,2.14,XCR0,0x34,0x34,2220,2223,Simple LIN Control Register 0
+38,2.15,XCR1,0x38,0x38,2223,2224,Simple LIN Control Register 1
+38,2.16,XCR2,0x3C,0x3C,2224,2225,Simple LIN Control Register 2
+38,2.17,CSR,0x48,0x48,2225,2230,Common Status Register
+38,2.18,ISR,0x4C,0x4C,2230,2231,Simple IIC Status Register
+38,2.19,FRSR,0x50,0x50,2231,2232,FIFO Receive Status Register
+38,2.20,FTSR,0x54,0x54,2232,2233,FIFO Transmit Status Register
+38,2.21,MSR,0x58,0x58,2233,2235,Manchester Status Register
+38,2.22,XSR0,0x5C,0x5C,2235,2237,Simple LIN Status Register 0
+38,2.23,XSR1,0x60,0x60,2237,2238,Simple LIN Status Register 1
+38,2.24,CFCLR,0x68,0x68,2238,2239,Common Flag Clear Register
+38,2.25,ICFCLR,0x6C,0x6C,2239,2239,Simple IIC Flag Clear Register
+38,2.26,FFCLR,0x70,0x70,2239,2240,FIFO Flag Clear Register
+38,2.27,MFCLR,0x74,0x74,2240,2240,Manchester Flag Clear Register
+38,2.28,XFCLR,0x78,0x78,2240,2241,Simple LIN Flag Clear Register
+38,2.29,CESR,0x1C,0x1C,2241,2241,Communication Enable Status Register
+39,2.1,ICCR1,0x00,0x00,2369,2371,I2C Bus Control Register 1
+39,2.2,ICCR2,0x01,0x01,2371,2374,I2C Bus Control Register 2
+39,2.3,ICMR1,0x02,0x02,2374,2375,I2C Bus Mode Register 1
+39,2.4,ICMR2,0x03,0x03,2375,2376,I2C Bus Mode Register 2
+39,2.5,ICMR3,0x04,0x04,2376,2378,I2C Bus Mode Register 3
+39,2.6,ICFER,0x05,0x05,2378,2380,I2C Bus Function Enable Register
+39,2.7,ICSER,0x06,0x06,2380,2381,I2C Bus Status Enable Register
+39,2.8,ICIER,0x07,0x07,2381,2382,I2C Bus Interrupt Enable Register
+39,2.9,ICSR1,0x08,0x08,2382,2384,I2C Bus Status Register 1
+39,2.10,ICSR2,0x09,0x09,2384,2388,I2C Bus Status Register 2
+39,2.11,ICWUR,0x02,0x02,2388,2389,I2C Bus Wakeup Unit Register
+39,2.12,ICWUR2,0x03,0x03,2389,2390,I2C Bus Wakeup Unit Register 2
+39,2.13,SARLy,0x0A,0x0A + 0x02 * y,2390,2391,Slave Address Register Ly (y = 0 to 2)
+39,2.14,SARUy,0x0B,0x0B + 0x02 * y,2391,2391,Slave Address Register Uy (y = 0 to 2)
+39,2.15,ICBRL,0x10,0x10,2391,2392,I2C Bus Bit Rate Low-Level Register
+39,2.16,ICBRH,0x11,0x11,2392,2393,I2C Bus Bit Rate High-Level Register
+39,2.17,ICDRT,0x12,0x12,2393,2393,I2C Bus Transmit Data Register
+39,2.18,ICDRR,0x13,0x13,2393,2394,I2C Bus Receive Data Register
+39,2.19,ICDRS,,n/a,2394,2394,I2C Bus Shift Register
+40,2.1,PRTS,0x000,0x000,2448,2449,Protocol Selection Register
+40,2.2,BCTL,0x014,0x014,2449,2450,Bus Control Register
+40,2.3,MSDVAD,0x018,0x018,2450,2451,Master Device Address Register
+40,2.4,RSTCTL,0x020,0x020,2451,2453,Reset Control Register
+40,2.5,PRSST,0x024,0x024,2453,2455,Present State Register
+40,2.6,INST,0x030,0x030,2455,2456,Internal Status Register
+40,2.7,INSTE,0x034,0x034,2456,2457,Internal Status Enable Register
+40,2.8,INIE,0x038,0x038,2457,2457,Internal Interrupt Enable Register
+40,2.9,INSTFC,0x03C,0x03C,2457,2458,Internal Status Force Register
+40,2.10,DVCT,0x044,0x044,2458,2459,Device Characteristic Table Register
+40,2.11,IBINCTL,0x058,0x058,2459,2459,IBI Notify Control Register
+40,2.12,BFCTL,0x060,0x060,2459,2461,Bus Function Control Register
+40,2.13,SVCTL,0x064,0x064,2461,2463,Slave Control Register
+40,2.14,REFCKCTL,0x070,0x070,2463,2463,Reference Clock Control Register
+40,2.15,STDBR,0x074,0x074,2463,2466,Standard Bit Rate Register
+40,2.16,EXTBR,0x078,0x078,2466,2467,Extended Bit Rate Register
+40,2.17,BFRECDT,0x07C,0x07C,2467,2467,Bus Free Condition Detection Time Register
+40,2.18,BAVLCDT,0x080,0x080,2467,2468,Bus Available Condition Detection Time Register
+40,2.19,BIDLCDT,0x084,0x084,2468,2468,Bus Idle Condition Detection Time Register
+40,2.20,OUTCTL,0x088,0x088,2468,2470,Output Control Register
+40,2.21,INCTL,0x08C,0x08C,2470,2471,Input Control Register
+40,2.22,TMOCTL,0x090,0x090,2471,2472,Timeout Control Register
+40,2.23,WUCTL,0x098,0x098,2472,2473,Wake Up Unit Control Register
+40,2.24,ACKCTL,0x0A0,0x0A0,2473,2474,Acknowledge Control Register
+40,2.25,SCSTRCTL,0x0A4,0x0A4,2474,2475,SCL Stretch Control Register
+40,2.26,SCSTLCTL,0x0B0,0x0B0,2475,2476,SCL Stalling Control Register
+40,2.27,SVTDLG0,0x0C0,0x0C0,2476,2477,Slave Transfer Data Length Register 0
+40,2.28,STCTL,0x120,0x120,2477,2477,Synchronous Timing Control Register
+40,2.29,ATCTL,0x124,0x124,2477,2478,Asynchronous Timing Control Register
+40,2.30,ATTRG,0x128,0x128,2478,2478,Asynchronous Timing Trigger Register
+40,2.31,ATCCNTE,0x12C,0x12C,2478,2479,Asynchronous Timing Control Counter Enable Register
+40,2.32,CNDCTL,0x140,0x140,2479,2480,Condition Control Register
+40,2.33,NCMDQP,0x150,0x150,2480,2481,Normal Command Queue Port Register
+40,2.34,NRSPQP,0x154,0x154,2481,2481,Normal Response Queue Port Register
+40,2.35,NTDTBP0,0x158,0x158,2481,2482,Normal Transfer Data Buffer Port Register 0
+40,2.35,NTDTBP0_BY,0x158,0x158,2481,2482,Normal Transfer Data Buffer Port Register 0
+40,2.36,NIBIQP,0x17C,0x17C,2482,2483,Normal IBI Queue Port Register
+40,2.37,NRSQP,0x180,0x180,2483,2483,Normal Receive Status Queue Port Register
+40,2.38,HCMDQP,0x184,0x184,2483,2483,High Priority Command Queue Port Register
+40,2.39,HRSPQP,0x188,0x188,2483,2484,High Priority Response Queue Port Register
+40,2.40,HTDTBP,0x18C,0x18C,2484,2484,High Priority Transfer Data Buffer Port Register
+40,2.41,NQTHCTL,0x190,0x190,2484,2486,Normal Queue Threshold Control Register
+40,2.42,NTBTHCTL0,0x194,0x194,2486,2487,Normal Transfer Data Buffer Threshold Control Register 0
+40,2.43,NRQTHCTL,0x1C0,0x1C0,2487,2488,Normal Receive Status Queue Threshold Control Register
+40,2.44,HQTHCTL,0x1C4,0x1C4,2488,2489,High Priority Queue Threshold Control Register
+40,2.45,HTBTHCTL,0x1C8,0x1C8,2489,2490,High Priority Transfer Data Buffer Threshold Control Register
+40,2.46,BST,0x1D0,0x1D0,2490,2494,Bus Status Register
+40,2.47,BSTE,0x1D4,0x1D4,2494,2495,Bus Status Enable Register
+40,2.48,BIE,0x1D8,0x1D8,2495,2497,Bus Interrupt Enable Register
+40,2.49,BSTFC,0x1DC,0x1DC,2497,2498,Bus Status Force Register
+40,2.50,NTST,0x1E0,0x1E0,2498,2502,Normal Transfer Status Register
+40,2.51,NTSTE,0x1E4,0x1E4,2502,2504,Normal Transfer Status Enable Register
+40,2.52,NTIE,0x1E8,0x1E8,2504,2505,Normal Transfer Interrupt Enable Register
+40,2.53,NTSTFC,0x1EC,0x1EC,2505,2507,Normal Transfer Status Force Register
+40,2.54,HTST,0x200,0x200,2507,2509,High Priority Transfer Status Register
+40,2.55,HTSTE,0x204,0x204,2509,2510,High Priority Transfer Status Enable Register
+40,2.56,HTIE,0x208,0x208,2510,2511,High Priority Transfer Interrupt Enable Register
+40,2.57,HTSTFC,0x20C,0x20C,2511,2512,High Priority Transfer Status Force Register
+40,2.58,BCST,0x210,0x210,2512,2514,Bus Condition Status Register
+40,2.59,SVST,0x214,0x214,2514,2516,Slave Status Register
+40,2.60,WUST,0x218,0x218,2516,2518,Wake Up Unit Operating Status Register
+40,2.61,MRCCPT,0x21C,0x21C,2518,2518,MSyncCNT Counter Capture Register
+40,2.62,DATBASm,0x224,0x224 + 0x08 * m,2518,2519,Device Address Table Basic Register m (m = 0 to 7)
+40,2.63,EXDATBAS,0x2A0,0x2A0,2519,2520,Extended Device Address Table Basic Register
+40,2.64,SDATBASn,0x2B0,0x2B0 + 0x04 * n,2520,2521,Slave Device Address Table Basic Register n (n = 0 to 2)
+40,2.65,MSDCTm,0x2D0,0x2D0 + 0x04 * m,2521,2523,Master Device Characteristic Table Register m (m = 0 to 7)
+40,2.66,SVDCT,0x320,0x320,2523,2524,Slave Device Characteristic Table Register
+40,2.67,SDCTPIDL,0x324,0x324,2524,2525,Slave Device Characteristic Table Provisional ID Low Register
+40,2.68,SDCTPIDH,0x328,0x328,2525,2525,Slave Device Characteristic Table Provisional ID High Register
+40,2.69,SVDVADn,0x330,0x330 + 0x04 * n,2525,2527,Slave Device Address Register n (n = 0 to 2)
+40,2.70,CSECMD,0x350,0x350,2527,2528,CCC Slave Events Command Register
+40,2.71,CEACTST,0x354,0x354,2528,2529,CCC Enter Activity State Register
+40,2.72,CMWLG,0x358,0x358,2529,2529,CCC Max Write Length Register
+40,2.73,CMRLG,0x35C,0x35C,2529,2530,CCC Max Read Length Register
+40,2.74,CETSTMD,0x360,0x360,2530,2531,CCC Enter Test Mode Register
+40,2.75,CGDVST,0x364,0x364,2531,2532,CCC Get Device Status Register
+40,2.76,CMDSPW,0x368,0x368,2532,2532,CCC Max Data Speed W (Write) Register
+40,2.77,CMDSPR,0x36C,0x36C,2532,2533,CCC Max Data Speed R (Read) Register
+40,2.78,CMDSPT,0x370,0x370,2533,2533,CCC Max Data Speed T (Turnaround) Register
+40,2.79,CETSM,0x374,0x374,2533,2535,CCC Exchange Timing Support Information M (Mode) Register
+40,2.80,CETSS,0x378,0x378,2535,2536,CCC Exchange Timing Support Information S (State) Register
+40,2.81,CGHDRCAP,0x37C,0x37C,2536,2537,CCC Get HDR Capability Register
+40,2.82,BITCNT,0x380,0x380,2537,2538,Bit Count Register
+40,2.83,NQSTLV,0x394,0x394,2538,2539,Normal Queue Status Level Register
+40,2.84,NDBSTLV0,0x398,0x398,2539,2539,Normal Data Buffer Status Level Register 0
+40,2.85,NRSQSTLV,0x3C0,0x3C0,2539,2540,Normal Receive Status Queue Status Level Register
+40,2.86,HQSTLV,0x3C4,0x3C4,2540,2540,High Priority Queue Status Level Register
+40,2.87,HDBSTLV,0x3C8,0x3C8,2540,2541,High Priority Data Buffer Status Level Register
+40,2.88,PRSTDBG,0x3CC,0x3CC,2541,2541,Present State Debug Register
+40,2.89,MSERRCNT,0x3D0,0x3D0,2541,2542,Master Error Counters Register
+40,2.90,SC1CPT,0x3E0,0x3E0,2542,2543,SC1 Capture Monitor Register
+40,2.91,SC2CPT,0x3E4,0x3E4,2543,2543,SC2 Capture Monitor Register
+40,2.92,CECTL,0x010,0x010,2543,2544,Clock Enable Control Resister
+41,2.2,CFDC0NCFG,0x0000,0x0000,2705,2706,Nominal Bitrate Configuration Register
+41,2.3,CFDC0CTR,0x0004,0x0004,2706,2711,Control Register
+41,2.4,CFDC0STS,0x0008,0x0008,2711,2713,Status Register
+41,2.5,CFDC0ERFL,0x000C,0x000C,2713,2718,Error Flag Register
+41,2.6,CFDC0DCFG,,,2718,2720,Data Bitrate Configuration Register
+41,2.7,CFDC0FDCFG,0x0104,0x0104,2720,2722,CANFD Configuration Register
+41,2.8,CFDC0FDCTR,0x0108,0x0108,2722,2723,CANFD Control Register
+41,2.9,CFDC0FDSTS,0x010C,0x010C,2723,2725,CANFD Status Register
+41,2.10,CFDC0FDCRC,0x0110,0x0110,2725,2726,CANFD CRC Register
+41,2.11,CFDGCFG,0x0014,0x0014,2726,2728,Global Configuration Register
+41,2.12,CFDGCTR,0x0018,0x0018,2728,2730,Global Control Register
+41,2.13,CFDGSTS,0x001C,0x001C,2730,2731,Global Status Register
+41,2.14,CFDGERFL,0x0020,0x0020,2731,2732,Global Error Flag Register
+41,2.15,CFDGTINTSTS,0x00A4,0x00A4,2732,2734,Global TX Interrupt Status Register
+41,2.16,CFDGTSC,0x0024,0x0024,2734,2734,Global Timestamp Counter Register
+41,2.17,CFDGAFLECTR,0x0028,0x0028,2734,2735,Global Acceptance Filter List Entry Control Register
+41,2.18,CFDGAFLCFG,0x002C,0x002C,2735,2735,Global Acceptance Filter List Configuration Register
+41,2.19,CFDGAFLIDr,0x0120,0x0120 + 0x0010 * (r - 1),2735,2736,Global Acceptance Filter List ID Registers (r = 1 to 16)
+41,2.20,CFDGAFLMr,0x0124,0x0124 + 0x0010 * (r - 1),2736,2738,Global Acceptance Filter List Mask Registers (r = 1 to 16)
+41,2.21,CFDGAFLP0r,0x0128,0x0128 + 0x0010 * (r - 1),2738,2740,Global Acceptance Filter List Pointer 0 Registers (r = 1 to 16)
+41,2.22,CFDGAFLP1r,0x012C,0x012C + 0x0010 * (r - 1),2740,2741,Global Acceptance Filter List Pointer 1 Registers (r = 1 to 16)
+41,2.23,CFDRMNB,0x0030,0x0030,2741,2741,RX Message Buffer Number Register
+41,2.24,CFDRMND,0x0034,0x0034,2741,2742,RX Message Buffer New Data Register
+41,2.25,CFDRFCCa,0x003C,0x003C + 0x04 * a,2742,2744,RX FIFO Configuration/Control Registers a (a = 0 to 1)
+41,2.26,CFDRFSTSa,0x0044,0x0044 + 0x04 * a,2744,2745,RX FIFO Status Registers a (a = 0 to 1)
+41,2.27,CFDRFPCTRa,0x004C,0x004C + 0x04 * a,2745,2746,RX FIFO Pointer Control Registers a (a = 0 to 1)
+41,2.28,CFDCFCC,0x0054,0x0054,2746,2749,Common FIFO Configuration/Control Register
+41,2.29,CFDCFSTS,0x0058,0x0058,2749,2751,Common FIFO Status Register
+41,2.30,CFDCFPCTR,0x005C,0x005C,2751,2752,Common FIFO Pointer Control Register
+41,2.31,CFDFESTS,0x0060,0x0060,2752,2752,FIFO Empty Status Register
+41,2.32,CFDFFSTS,0x0064,0x0064,2752,2753,FIFO Full Status Register
+41,2.33,CFDFMSTS,0x0068,0x0068,2753,2754,FIFO Message Lost Status Register
+41,2.34,CFDRFISTS,0x006C,0x006C,2754,2754,RX FIFO Interrupt Flag Status Register
+41,2.35,CFDCDTCT,0x00C8,0x00C8,2754,2755,DMA Transfer Control Register
+41,2.36,CFDCDTSTS,0x00CC,0x00CC,2755,2756,DMA Transfer Status Register
+41,2.37,CFDTMCi,0x0070,0x0070 + 0x01 * i,2756,2757,TX Message Buffer Control Registers i (i = 0 to 3)
+41,2.38,CFDTMSTSj,0x0074,0x0074 + 0x01 * j,2757,2759,TX Message Buffer Status Registers j (j = 0 to 3)
+41,2.39,CFDTMTRSTS,0x0078,0x0078,2759,2759,TX Message Buffer Transmission Request Status Register
+41,2.40,CFDTMTARSTS,0x007C,0x007C,2759,2760,TX Message Buffer Transmission Abort Request Status
+41,2.41,CFDTMTCSTS,0x0080,0x0080,2760,2760,TX Message Buffer Transmission Completion Status Register
+41,2.42,CFDTMTASTS,0x0084,0x0084,2760,2761,TX Message Buffer Transmission Abort Status Register
+41,2.43,CFDTMIEC,0x0088,0x0088,2761,2762,TX Message Buffer Interrupt Enable Configuration Register
+41,2.44,CFDTXQCC,0x008C,0x008C,2762,2763,TX Queue Configuration/Control Register
+41,2.45,CFDTXQSTS,0x0090,0x0090,2763,2764,TX Queue Status Register
+41,2.46,CFDTXQPCTR,0x0094,0x0094,2764,2765,TX Queue Pointer Control Register
+41,2.47,CFDTHLCC,0x0098,0x0098,2765,2766,TX History List Configuration/Control Register
+41,2.48,CFDTHLSTS,0x009C,0x009C,2766,2767,TX History List Status Register
+41,2.49,CFDTHLACC0,0x0740,0x0740,2767,2768,TX History List Access Register 0
+41,2.50,CFDTHLACC1,0x0744,0x0744,2768,2769,TX History List Access Register 1
+41,2.51,CFDTHLPCTR,0x00A0,0x00A0,2769,2769,TX History List Pointer Control Register
+41,2.52,CFDGRSTC,0x00D8,0x00D8,2769,2770,Global SW reset Register
+41,2.53,CFDGTSTCFG,0x00A8,0x00A8,2770,2771,Global Test Configuration Register
+41,2.54,CFDGTSTCTR,0x00AC,0x00AC,2771,2771,Global Test Control Register
+41,2.55,CFDGFDCFG,0x00B0,0x00B0,2771,2772,Global FD Configuration Register
+41,2.56,CFDGLOCKK,0x00B8,0x00B8,2772,2773,Global Lock Key Register
+41,2.57,CFDRPGACCk,0x0280,0x0280 + 0x0004 * k,2773,2773,RAM Test Page Access Registers k (k = 0 to 63)
+41,2.58,CFDGAFLIGNENT,0x00C0,0x00C0,2773,2774,Global AFL Ignore Entry Register
+41,2.59,CFDGAFLIGNCTR,0x00C4,0x00C4,2774,2774,Global AFL Ignore Control Register
+41,2.60,CFDRMIEC,0x0038,0x0038,2774,2775,RX Message Buffer Interrupt Enable Configuration Register
+41,2.61.3,CFDRMIDb,0x0920,0x0920 + 0x004C * b (b = 0 to 7),2777,2778,RX Message Buffer ID Registers (b = 0 to 15)
+41,2.61.4,CFDRMPTRb,0x0924,0x0924 + 0x004C * b (b = 0 to 7),2778,2779,RX Message Buffer Pointer Registers (b = 0 to 15)
+41,2.61.5,CFDRMFDSTSb,0x0928,0x0928 + 0x004C * b (b = 0 to 7),2779,2780,RX Message Buffer CANFD Status Registers (b = 0 to 15)
+41,2.61.6,CFDRMDFb_p,0x092C,"0x092C + 0x004C * b + 0x0004 * p (b = 0 to 7, p = 0 to 15)",2780,2780,"RX Message Buffer Data Field p Registers (p = 0 to 15, b = 0 to 15)"
+41,2.61.8,CFDRFIDb,0x0520,0x0520 + 0x004C * b,2782,2783,RX FIFO Access ID Register b (b = 0 to 1)
+41,2.61.10,CFDRFFDSTSb,0x0528,0x0528 + 0x004C * b,2783,2784,RX FIFO Access CANFD Status Register b (b = 0 to 1)
+41,2.61.9,CFDRFPTRb,0x0524,0x0524 + 0x004C * b,2783,2783,RX FIFO Access Pointer Register b (b = 0 to 1)
+41,2.61.11,CFDRFDFb_p,0x052C,0x052C + 0x004 * p + 0x04C * b,2784,2785,"RX FIFO Access Data Field p Register b (p = 0 to 15, b = 0 to 1)"
+41,2.61.13,CFDCFID,0x05B8,0x05B8,2786,2787,Common FIFO Access ID Register
+41,2.61.14,CFDCFPTR,0x05BC,0x05BC,2787,2788,Common FIFO Access Pointer Register
+41,2.61.15,CFDCFFDCSTS,0x05C0,0x05C0,2788,2790,Common FIFO Access CANFD Control/Status Register
+41,2.61.16,CFDCFDFp,0x05C4,0x05C4 + 0x004 * p,2790,2791,Common FIFO Access Data Field p Registers (p = 0 to 15)
+41,2.61.18,CFDTMIDb,0x0604,0x0604 + 0x004C * b,2792,2793,TX Message Buffer ID Registers (b = 0 to 3)
+41,2.61.19,CFDTMPTRb,0x0608,0x0608 + 0x004C * b,2793,2793,TX Message Buffer Pointer Register (b = 0 to 3)
+41,2.61.20,CFDTMFDCTRb,0x060C,0x060C + 0x004C * b,2793,2795,TX Message Buffer CANFD Control Register (b = 0 to 3)
+41,2.61.21,CFDTMDFb_p,0x0610,0x0610 + 0x004 * p + 0x004C * b,2795,2795,"TX Message Buffer Data Field Register (p = 0 to 15, b = 0 to 3)"
+42,2.1,EC710CTL,0x00,0x00,2868,2871,ECC Control Register
+42,2.2,EC710TMC,0x04,0x04,2871,2872,ECC Test Mode Control Register
+42,2.3,EC710TED,0x0C,0x0C,2872,2872,ECC Test Substitute Data Register
+42,2.4,EC710EAD0,0x10,0x10,2872,2873,ECC Error Address Register
+43,2.1,SPDR,0x00,0x00,2881,2883,SPI Data Register
+43,2.2,SPDECR,0x04,0x04,2883,2884,SPI Delay Control Register
+43,2.3,SPCR,0x08,0x08,2884,2889,SPI Control Register
+43,2.4,SPCR2,0x0C,0x0C,2889,2891,SPI Control Register 2
+43,2.5,SPCR3,0x10,0x10,2891,2893,SPI Control Register 3
+43,2.6,SPCMDm,0x14,0x14 + 0x04 * m,2893,2896,SPI Command Register (m = 0 to 7)
+43,2.7,SPDCR,0x40,0x40,2896,2897,SPI Data Control Register
+43,2.8,SPDCR2,0x44,0x44,2897,2898,SPI Data Control Register 2
+43,2.9,SPSR,0x50,0x50,2898,2904,SPI Status Register
+43,2.10,SPTFSR,0x58,0x58,2904,2904,SPI Transfer FIFO Status Register
+43,2.11,SPRFSR,0x5C,0x5C,2904,2905,SPI Receive FIFO Status Register
+43,2.12,SPPSR,0x60,0x60,2905,2905,SPI Polling Register
+43,2.13,SPSRC,0x68,0x68,2905,2906,SPI Status Clear Register
+43,2.14,SPFCR,0x6C,0x6C,2906,2906,SPI FIFO Clear Register
+44,2.1.1,WRAPCFG,0x000,0x000,2988,2988,OSPI Wrapper Configuration Register
+44,2.1.2,COMCFG,0x004,0x004,2988,2989,OSPI Common Configuration Register
+44,2.1.3,BMCFGCHn,0x008,0x008 + 0x004 * n,2989,2990,"OSPI Bridge Map Configuration Register Chn (n = 0, 1)"
+44,2.1.4,CMCFG0CSn,0x010,0x010 + 0x010 * n,2990,2991,"OSPI Command Map Configuration Register 0 CSn (n = 0, 1)"
+44,2.1.5,CMCFG1CSn,0x014,0x014 + 0x010 * n,2991,2992,"OSPI Command Map Configuration Register 1 CSn (n = 0, 1)"
+44,2.1.6,CMCFG2CSn,0x018,0x018 + 0x010 * n,2992,2993,"OSPI Command Map Configuration Register 2 CSn (n = 0, 1)"
+44,2.1.7,LIOCFGCSn,0x050,0x050 + 0x004 * n,2993,2995,"OSPI Link I/O Configuration Register CSn (n = 0, 1)"
+44,2.2.1,BMCTL0,0x060,0x060,2995,2996,OSPI Bridge Map Control Register 0
+44,2.2.2,BMCTL1,0x064,0x064,2996,2996,OSPI Bridge Map Control Register 1
+44,2.2.3,CMCTLCHn,0x0068,"0x0068 + 0x004 * n (n = 0, 1)",2996,2997,"OSPI Command Map Control Register CHn (n = 0, 1)"
+44,2.2.4,CDCTL0,0x070,0x070,2997,2998,OSPI Command Manual Control Register 0
+44,2.2.5,CDCTL1,0x074,0x074,2998,2998,OSPI Command Manual Control Register 1
+44,2.2.6,CDCTL2,0x078,0x078,2998,2999,OSPI Command Manual Control Register 2
+44,2.2.7,CDTBUFn,0x080,0x080 + 0x010 * n,2999,3000,OSPI Command Manual Type Buf n (n = 0 to 3)
+44,2.2.8,CDABUFn,0x084,0x084 + 0x10 * n,3000,3000,OSPI Command Manual Address Buf n (n = 0 to 3)
+44,2.2.9,CDD0BUFn,0x088,0x088 + 0x10 * n,3000,3001,OSPI Command Manual Data 0 Buf n (n = 0 to 3)
+44,2.2.10,CDD1BUFn,0x08C,0x08C + 0x10 * n,3001,3001,OSPI Command Manual Data 1 Buf n (n = 0 to 3)
+44,2.2.11,LPCTL0,0x100,0x100,3001,3002,OSPI Link Pattern Control Register 0
+44,2.2.12,LPCTL1,0x104,0x104,3002,3003,OSPI Link Pattern Control Register 1
+44,2.2.13,LIOCTL,0x108,0x108,3003,3004,OSPI Link I/O Control Register
+44,2.2.14,CCCTL0CSn,0x130,0x130 + 0x020 * n,3004,3005,"OSPI Command Calibration Control Register 0 CSn (n = 0, 1)"
+44,2.2.15,CCCTL1CSn,0x134,0x134 + 0x020 * n,3005,3006,"OSPI Command Calibration Control Register 1 CSn (n = 0, 1)"
+44,2.2.16,CCCTL2CSn,0x138,0x138 + 0x020 * n,3006,3006,"OSPI Command Calibration Control Register 2 CSn (n = 0, 1)"
+44,2.2.17,CCCTL3CSn,0x13C,0x13C + 0x020 * n,3006,3007,"OSPI Command Calibration Control Register 3 CSn (n = 0, 1)"
+44,2.2.18,CCCTL4CSn,0x140,0x140 + 0x020 * n,3007,3007,"OSPI Command Calibration Control Register 4 CSn (n = 0, 1)"
+44,2.2.19,CCCTL5CSn,0x144,0x144 + 0x020 * n,3007,3007,"OSPI Command Calibration Control Register 5 CSn (n = 0, 1)"
+44,2.2.20,CCCTL6CSn,0x148,0x148 + 0x020 * n,3007,3008,"OSPI Command Calibration Control Register 6 CSn (n = 0, 1)"
+44,2.2.21,CCCTL7CSn,0x14C,0x14C + 0x020 * n,3008,3008,"OSPI Command Calibration Control Register 7 CSn (n = 0, 1)"
+44,2.2.22,RACTL,0x208,0x208,3008,3008,OSPI Register Access Control Register
+44,2.2.23,MER,0x228,0x228,3008,3009,OSPI Map End Replace Register
+44,2.3.1,COMSTT,0x184,0x184,3009,3010,OSPI Common Status Register
+44,2.3.2,CASTTCSn,0x188,0x188 + 0x004 * n,3010,3010,"OSPI Calibration Status Register CSn (n = 0, 1)"
+44,2.4.1,INTS,0x190,0x190,3011,3012,OSPI Interrupt Status Register
+44,2.4.2,INTC,0x194,0x194,3012,3013,OSPI Interrupt Clear Register
+44,2.4.3,INTE,0x198,0x198,3013,3014,OSPI Interrupt Enable Register
+45,3.1,CONVAREAST,0x00,0x00,3049,3049,DOTF Conversion Area Start Address Register
+45,3.2,CONVAREAD,0x04,0x04,3049,3050,DOTF Conversion Area End Address Register
+46,2.1,SSICR,0x00,0x00,3056,3066,Control Register
+46,2.2,SSISR,0x04,0x04,3066,3077,Status Register
+46,2.3,SSIFCR,0x10,0x10,3077,3083,FIFO Control Register
+46,2.4,SSIFSR,0x14,0x14,3083,3086,FIFO Status Register
+46,2.5,SSIFTDR,0x18,0x18,3086,3089,Transmit FIFO Data Register
+46,2.6,SSIFRDR,0x1C,0x1C,3089,3091,Receive FIFO Data Register
+46,2.7,SSIOFR,0x20,0x20,3091,3094,Audio Format Register
+46,2.8,SSISCR,0x24,0x24,3094,3095,Status Control Register
+47,2.1,SD_CMD,0x000,0x000,3123,3124,Command Type Register
+47,2.2,SD_ARG,0x008,0x008,3124,3125,SD Command Argument Register
+47,2.3,SD_ARG1,0x00C,0x00C,3125,3125,SD Command Argument Register 1
+47,2.4,SD_STOP,0x010,0x010,3125,3126,Data Stop Register
+47,2.5,SD_SECCNT,0x014,0x014,3126,3127,Block Count Register
+47,2.6,SD_RSPi,0x018,0x018 (SD_RSP10),3127,3127,"SD Card Response Register i (i = 10, 32, 54)"
+47,2.7,SD_RSPj,0x01C,0x01C (SD_RSP1),3127,3128,"SD Card Response Register j (j = 1, 3, 5)"
+47,2.8,SD_RSP76,0x030,0x030,3128,3128,SD Card Response Register 76
+47,2.9,SD_RSP7,0x034,0x034,3128,3129,SD Card Response Register 7
+47,2.10,SD_INFO1,0x038,0x038,3129,3132,SD Card Interrupt Flag Register 1
+47,2.11,SD_INFO2,0x03C,0x03C,3132,3136,SD Card Interrupt Flag Register 2
+47,2.12,SD_INFO1_MASK,0x040,0x040,3136,3137,SD INFO1 Interrupt Mask Register
+47,2.13,SD_INFO2_MASK,0x044,0x044,3137,3138,SD INFO2 Interrupt Mask Register
+47,2.14,SD_CLK_CTRL,0x048,0x048,3138,3139,SD Clock Control Register
+47,2.15,SD_SIZE,0x04C,0x04C,3139,3139,Transfer Data Length Register
+47,2.16,SD_OPTION,0x050,0x050,3139,3141,SD Card Access Control Option Register
+47,2.17,SD_ERR_STS1,0x058,0x058,3141,3142,SD Error Status Register 1
+47,2.18,SD_ERR_STS2,0x05C,0x05C,3142,3143,SD Error Status Register 2
+47,2.19,SD_BUF0,0x060,0x060,3143,3144,SD Buffer Register
+47,2.20,SDIO_MODE,0x068,0x068,3144,3145,SDIO Mode Control Register
+47,2.21,SDIO_INFO1,0x06C,0x06C,3145,3146,SDIO Interrupt Flag Register
+47,2.22,SDIO_INFO1_MASK,0x070,0x070,3146,3147,SDIO INFO1 Interrupt Mask Register
+47,2.23,SD_DMAEN,0x1B0,0x1B0,3147,3148,DMA Mode Enable Register
+47,2.24,SOFT_RST,0x1C0,0x1C0,3148,3148,Software Reset Register
+47,2.25,SDIF_MODE,0x1CC,0x1CC,3148,3149,SD Interface Mode Setting Register
+47,2.26,EXT_SWAP,0x1E0,0x1E0,3149,3149,Swap Control Register
+48,2.1,CRCCR0,0x00,0x00,3181,3181,CRC Control Register 0
+48,2.2,CRCCR1,0x01,0x01,3181,3182,CRC Control Register 1
+48,2.3,CRCDIR,0x04,0x04,3182,3182,CRC Data Input Register
+48,2.3,CRCDIR_BY,0x04,0x04,3182,3182,CRC Data Input Register
+48,2.4,CRCDOR,0x08,0x08,3182,3183,CRC Data Output Register
+48,2.4,CRCDOR_BY,0x08,0x08,3182,3183,CRC Data Output Register
+48,2.4,CRCDOR_HA,0x08,0x08,3182,3183,CRC Data Output Register
+48,2.5,CRCSAR,0x0C,0x0C,3183,3184,Snoop Address Register
+49,2.2,PDCSTRTR,0x00,0x00,3196,3197,Channel Software Start Trigger Register
+49,2.3,PDCSTPTR,0x04,0x04,3197,3197,Channel Software Stop Trigger Register
+49,2.4,PDCCHGTR,0x08,0x08,3197,3198,Channel Software Change Trigger Register
+49,2.5,PDCICR,0x0C,0x0C,3198,3199,Channel Interrupt Control Register
+49,2.6,PDCSR,0x10,0x10,3199,3201,Channel Status Register
+49,2.7,PDCSCR,0x14,0x14,3201,3201,Channel Status Clear Register
+49,2.8,PDCSDCR,0x20,0x20,3201,3202,Channel Sound Detection Control Register
+49,2.10,PDCDCR,0x28,0x28,3202,3203,Channel Data Clear Register
+49,2.9,PDCDRCR,0x24,0x24,3202,3202,Channel Data Read Control Register
+49,2.11,PDVR,0x80,0x80,3203,3203,Version Register
+49,2.12,PDSTRTRCHn,0x100,0x100 + 0x100 * n,3203,3204,Software Start Trigger Register Channel n (n = 0 to 2)
+49,2.13,PDSTPTRCHn,0x104,0x104 + 0x100 * n,3204,3204,Software Stop Trigger Register Channel n (n = 0 to 2)
+49,2.14,PDCHGTRCHn,0x108,0x108 + 0x100 * n,3204,3205,Software Change Trigger Register Channel n (n = 0 to 2)
+49,2.15,PDICRCHn,0x10C,0x10C + 0x100 * n,3205,3205,Interrupt Control Register Channel n (n = 0 to 2)
+49,2.16,PDSDCRCHn,0x110,0x110 + 0x100 * n,3205,3206,Status Detection Control Register Channel n (n = 0 to 2)
+49,2.17,PDSRCHn,0x114,0x114 + 0x100 * n,3206,3208,Status Register Channel n (n = 0 to 2)
+49,2.18,PDSCRCHn,0x118,0x118 + 0x100 * n,3208,3208,Status Clear Register Channel n (n = 0 to 2)
+49,2.19,PDMDSRCHn,0x120,0x120 + 0x100 * n,3208,3210,Mode Setting Register Channel n (n = 0 to 2)
+49,2.20,PDSFCRCHn,0x124,0x124 + 0x100 * n,3210,3211,Sinc Filter Control Register Channel n (n = 0 to 2)
+49,2.21,PDHFCS0RCHn,0x128,0x128 + 0x100 * n,3211,3212,High-pass Filter Coefficient s(0) Register Channel n (n = 0 to 2)
+49,2.22,PDHFCK1RCHn,0x12C,0x12C + 0x100 * n,3212,3212,High-pass Filter Coefficient k(1) Register Channel n (n = 0 to 2)
+49,2.23,PDHFCH0RCHn,0x130,0x130 + 0x100 * n,3212,3212,High-pass Filter Coefficient h(0) Register Channel n (n = 0 to 2)
+49,2.24,PDHFCH1RCHn,0x134,0x134 + 0x100 * n,3212,3213,High-pass Filter Coefficient h(1) Register Channel n (n = 0 to 2)
+49,2.25,PDCFCH00RCHn,0x138,0x138 + 0x100 * n,3213,3213,Compensation Filter Coefficient h(0) Register Channel n (n = 0 to 2)
+49,2.26,PDCFCH01RCHn,0x13C,0x13C + 0x100 * n,3213,3213,Compensation Filter Coefficient h(1) Register Channel n (n = 0 to 2)
+49,2.27,PDCFCH02RCHn,0x140,0x140 + 0x100 * n,3213,3214,Compensation Filter Coefficient h(2) Register Channel n (n = 0 to 2)
+49,2.28,PDCFCH03RCHn,0x144,0x144 + 0x100 * n,3214,3214,Compensation Filter Coefficient h(3) Register Channel n (n = 0 to 2)
+49,2.29,PDCFCH04RCHn,0x148,0x148 + 0x100 * n,3214,3214,Compensation Filter Coefficient h(4) Register Channel n (n = 0 to 2)
+49,2.30,PDCFCH05RCHn,0x14C,0x14C + 0x100 * n,3214,3215,Compensation Filter Coefficient h(5) Register Channel n (n = 0 to 2)
+49,2.31,PDCFCH06RCHn,0x150,0x150 + 0x100 * n,3215,3215,Compensation Filter Coefficient h(6) Register Channel n (n = 0 to 2)
+49,2.32,PDCFCH07RCHn,0x154,0x154 + 0x100 * n,3215,3215,Compensation Filter Coefficient h(7) Register Channel n (n = 0 to 2)
+49,2.33,PDCFCH08RCHn,0x158,0x158 + 0x100 * n,3215,3216,Compensation Filter Coefficient h(8) Register Channel n (n = 0 to 2)
+49,2.34,PDCFCH09RCHn,0x15C,0x15C + 0x100 * n,3216,3216,Compensation Filter Coefficient h(9) Register Channel n (n = 0 to 2)
+49,2.35,PDCFCH10RCHn,0x160,0x160 + 0x100 * n,3216,3216,Compensation Filter Coefficient h(10) Register Channel n (n = 0 to 2)
+49,2.36,PDLFCH010RCHn,0x164,0x164 + 0x100 * n,3216,3217,Low-pass Filter Coefficient h0(10) Register Channel n (n = 0 to 2)
+49,2.37,PDLFCH100RCHn,0x168,0x168 + 0x100 * n,3217,3217,Low-pass Filter Coefficient h1(0) Register Channel n (n = 0 to 2)
+49,2.38,PDLFCH101RCHn,0x16C,0x16C + 0x100 * n,3217,3217,Low-pass Filter Coefficient h1(1) Register Channel n (n = 0 to 2)
+49,2.39,PDLFCH102RCHn,0x170,0x170 + 0x100 * n,3217,3218,Low-pass Filter Coefficient h1 (2) Register Channel n (n = 0 to 2)
+49,2.40,PDLFCH103RCHn,0x174,0x174 + 0x100 * n,3218,3218,Low-pass Filter Coefficient h1(3) Register Channel n (n = 0 to 2)
+49,2.41,PDLFCH104RCHn,0x178,0x178 + 0x100 * n,3218,3219,Low-pass Filter Coefficient h1(4) Register Channel n (n = 0 to 2)
+49,2.42,PDLFCH105RCHn,0x17C,0x17C + 0x100 * n,3219,3219,Low-pass Filter Coefficient h1(5) Register Channel n (n = 0 to 2)
+49,2.43,PDLFCH106RCHn,0x180,0x180 + 0x100 * n,3219,3219,Low-pass Filter Coefficient h1(6) Register Channel n (n = 0 to 2)
+49,2.44,PDLFCH107RCHn,0x184,0x184 + 0x100 * n,3219,3220,Low-pass Filter Coefficient h1(7) Register Channel n (n = 0 to 2)
+49,2.45,PDLFCH108RCHn,0x188,0x188 + 0x100 * n,3220,3220,Low-pass Filter Coefficient h1(8) Register Channel n (n = 0 to 2)
+49,2.46,PDLFCH109RCHn,0x18C,0x18C + 0x100 * n,3220,3221,Low-pass Filter Coefficient h1(9) Register Channel n (n = 0 to 2)
+49,2.47,PDLFCH110RCHn,0x190,0x190 + 0x100 * n,3221,3221,Low-pass Filter Coefficient h1(10) Register Channel n (n = 0 to 2)
+49,2.48,PDLFCH111RCHn,0x194,0x194 + 0x100 * n,3221,3221,Low-pass Filter Coefficient h1(11) Register Channel n (n = 0 to 2)
+49,2.49,PDLFCH112RCHn,0x198,0x198 + 0x100 * n,3221,3222,Low-pass Filter Coefficient h1(12) Register Channel n (n = 0 to 2)
+49,2.50,PDLFCH113RCHn,0x19C,0x19C + 0x100 * n,3222,3222,Low-pass Filter Coefficient h1(13) Register Channel n (n = 0 to 2)
+49,2.51,PDLFCH114RCHn,0x1A0,0x1A0 + 0x100 * n,3222,3223,Low-pass Filter Coefficient h1(14) Register Channel n (n = 0 to 2)
+49,2.52,PDLFCH115RCHn,0x1A4,0x1A4 + 0x100 * n,3223,3223,Low-pass Filter Coefficient h1(15) Register Channel n (n = 0 to 2)
+49,2.53,PDLFCH116RCHn,0x1A8,0x1A8 + 0x100 * n,3223,3223,Low-pass Filter Coefficient h1(16) Register Channel n (n = 0 to 2)
+49,2.54,PDLFCH117RCHn,0x1AC,0x1AC + 0x100 * n,3223,3224,Low-pass Filter Coefficient h1(17) Register Channel n (n = 0 to 2)
+49,2.55,PDLFCH118RCHn,0x1B0,0x1B0 + 0x100 * n,3224,3224,Low-pass Filter Coefficient h1(18) Register Channel n (n = 0 to 2)
+49,2.56,PDLFCH119RCHn,0x1B4,0x1B4 + 0x100 * n,3224,3224,Low-pass Filter Coefficient h1(19) Register Channel n (n = 0 to 2)
+49,2.57,PDSDLTRCHn,0x1B8,0x1B8 + 0x100 * n,3224,3225,Sound Detection Lower Threshold Register Channel n (n = 0 to 2)
+49,2.58,PDSDUTRCHn,0x1BC,0x1BC + 0x100 * n,3225,3225,Sound Detection Upper Threshold Register Channel n (n = 0 to 2)
+49,2.59,PDDBCRCHn,0x1C0,0x1C0 + 0x100 * n,3225,3226,Data Buffer Control Register Channel n (n = 0 to 2)
+49,2.60,PDSCTSRCHn,0x1C4,0x1C4 + 0x100 * n,3226,3226,Short Circuit Threshold Setting Register Channel n (n = 0 to 2)
+49,2.61,PDOVLTRCHn,0x1C8,0x1C8 + 0x100 * n,3226,3226,Overvoltage Lower Threshold Register Channel n (n = 0 to 2)
+49,2.62,PDOVUTRCHn,0x1CC,0x1CC + 0x100 * n,3226,3227,Overvoltage Upper Threshold Register Channel n (n = 0 to 2)
+49,2.63,PDDRCRCHn,0x1E0,0x1E0 + 0x100 * n,3227,3227,Data Read Control Register Channel n (n = 0 to 2)
+49,2.64,PDDCRCHn,0x1E4,0x1E4 + 0x100 * n,3227,3227,Data Clear Register Channel n (n = 0 to 2)
+49,2.65,PDDRRCHn,0x1E8,0x1E8 + 0x100 * n,3227,3228,Data Read Register Channel n (n = 0 to 2)
+49,2.66,PDDSRCHn,0x1EC,0x1EC + 0x100 * n,3228,3228,Data Status Register Channel n (n = 0 to 2)
+50,2.1,JTIR,,,3258,3258,Instruction Register
+50,2.2,JTIDR,,,3258,3259,ID Code Register
+50,2.3,JTBPR,,,3259,3259,Bypass Register
+50,2.4,JTBSR,,,3259,3259,Boundary Scan Register
+51,8.1,PSARB,0x04,0x04,3284,3286,Peripheral Security Attribution Register B
+51,8.2,PSARC,0x08,0x08,3286,3288,Peripheral Security Attribution Register C
+51,8.3,PSARD,0x0C,0x0C,3288,3289,Peripheral Security Attribution Register D
+51,8.4,PSARE,0x10,0x10,3289,3291,Peripheral Security Attribution Register E
+51,8.5,MSSAR,0x14,0x14,3291,3292,Module Stop Security Attribution Register
+51,8.6,PPARB,0x1C,0x1C,3292,3294,Peripheral Privilege Attribution Register B
+51,8.7,PPARC,0x20,0x20,3294,3295,Peripheral Privilege Attribution Register C
+51,8.8,PPARD,0x24,0x24,3295,3297,Peripheral Privilege Attribution Register D
+51,8.9,PPARE,0x28,0x28,3297,3299,Peripheral Privilege Attribution Register E
+51,8.10,MSPAR,0x2C,0x2C,3299,3299,Module Stop Privilege Attribution Register
+51,8.11,CMSAMON,0x30,0x30,3299,3299,Code MRAM Security Attribution Monitor Register
+51,8.12,SFSAMON,0x3C,0x3C,3299,3300,SiP Flash Security Attribution Monitor Register
+51,8.13,DLMMON,0x38,0x38,3300,3300,Device Lifecycle Management State Monitor Register
+51,8.14,MSAOAD,0x1010,0x1010,3300,3301,Master Security Attribution Operation After Detection Register
+51,8.15,MSAPT,0x1014,0x1014,3301,3301,Master Security Attribution Protect Register
+53,2.1.1,ADCLKENR,0x000,0x000,3317,3318,A/D Conversion Clock Enable Register
+53,2.1.2,ADCLKSR,0x004,0x004,3318,3318,A/D Conversion Clock Status Register
+53,2.1.3,ADCLKCR,0x008,0x008,3318,3319,A/D Conversion Clock Control Register
+53,2.1.4,ADSYCR,0x00C,0x00C,3319,3320,A/D Converter Synchronous Operation Control Register
+53,2.1.5,ADUSLPCR0,0x010,0x010,3320,3320,A/D Converter Unit Sleep Control Register 0
+53,2.1.6,ADUSLPCR1,0x014,0x014,3320,3321,A/D Converter Unit Sleep Control Register 1
+53,2.1.7,ADERINTCR,0x020,0x020,3321,3321,A/D Conversion Error Interrupt Enable Register
+53,2.1.8,ADOVFINTCR,0x024,0x024,3321,3322,A/D Conversion Overflow Interrupt Enable Register
+53,2.1.10,ADMDR,0x040,0x040,3322,3323,A/D Converter Mode Selection Register
+53,2.1.9,ADCALINTCR,0x028,0x028,3322,3322,Calibration Interrupt Enable Register
+53,2.2.1,ADGSPCR,0x044,0x044,3323,3324,A/D Group Scan Priority Control Register
+53,2.2.2,ADSGER,0x048,0x048,3324,3325,Scan Group Enable Register
+53,2.2.3,ADSGCR0,0x04C,0x04C,3325,3325,Scan Group Control Register 0
+53,2.2.4,ADSGCR1,0x050,0x050,3325,3326,Scan Group Control Register 1
+53,2.2.5,ADSGCR2,0x054,0x054,3326,3327,Scan Group Control Register 2
+53,2.2.6,ADINTCR,0x05C,0x05C,3327,3327,Scan End Interrupt Enable Register
+53,2.2.7,ADTRGEXTn,0x0C0,0x0C0 + 0x10 * n,3327,3328,External Trigger Enable Register n (n = 0 to 8)
+53,2.2.8,ADTRGELCn,0x0C4,0x0C4 + 0x10 * n,3328,3328,ELC Trigger Enable Register n (n = 0 to 8)
+53,2.2.9,ADTRGGPTn,0x0C8,0x0C8 + 0x10 * n,3328,3329,GPT Trigger Enable Register n (n = 0 to 8)
+53,2.2.10,ADTRGENR,0xC08,0xC08,3329,3329,A/D Conversion Start Trigger Enable Register
+53,2.2.11,ADTRGDLR0,0x1C0,0x1C0,3329,3330,A/D Conversion Start Trigger Delay Register 0
+53,2.2.12,ADTRGDLR1,0x1C4,0x1C4,3330,3330,A/D Conversion Start Trigger Delay Register 1
+53,2.2.13,ADTRGDLR2,0x1C8,0x1C8,3330,3330,A/D Conversion Start Trigger Delay Register 2
+53,2.2.14,ADTRGDLR3,0x1CC,0x1CC,3330,3331,A/D Conversion Start Trigger Delay Register 3
+53,2.2.15,ADTRGDLR4,0x1D0,0x1D0,3331,3331,A/D Conversion Start Trigger Delay Register 4
+53,2.2.16,ADSWNR0,0x060,0x060,3331,3332,A/D conversion times per scan Register 0
+53,2.2.17,ADSWNR1,0x064,0x064,3332,3334,A/D conversion times per scan Register 1
+53,2.2.18,ADDECCR,0x080,0x080,3334,3334,One-channel Continuous Scan Mode Decimation Control Register
+53,2.2.19,ADACMDR,0x084,0x084,3334,3335,A/D Converter Accuracy Mode Register
+53,2.3.1,ADCHCRn,0x600,0x600 + 0x10 * n,3335,3337,A/D Conversion Channel Configuration Register n (n = 0 to 32)
+53,2.3.2,ADDOPCRAn,0x604,0x604 + 0x10 * n,3337,3338,A/D Conversion Data Operation Control A Register n (n = 0 to 32)
+53,2.3.3,ADDOPCRBn,0x608,0x608 + 0x10 * n,3338,3339,A/D Conversion Data Operation Control B Register n (n = 0 to 32)
+53,2.3.4,ADDOPCRCn,0x60C,0x60C + 0x10 * n,3339,3340,A/D Conversion Data Operation Control C Register n (n = 0 to 32)
+53,2.4.1,ADSGDCRn,0x200,0x200 + 0x04 * n,3340,3341,Scan Group Diagnosis Function Control Register n (n = 0 to 8)
+53,2.4.2,ADSSTR0,0x240,0x240,3341,3342,Sampling State Table Register 0
+53,2.4.3,ADSSTR1,0x244,0x244,3342,3342,Sampling State Table Register 1
+53,2.4.4,ADSSTR2,0x248,0x248,3342,3342,Sampling State Table Register 2
+53,2.4.5,ADSSTR3,0x24C,0x24C,3342,3343,Sampling State Table Register 3
+53,2.4.6,ADSSTR4,0x250,0x250,3343,3343,Sampling State Table Register 4
+53,2.4.7,ADSSTR5,0x254,0x254,3343,3344,Sampling State Table Register 5
+53,2.4.10,ADCNVSTR,0x260,0x260,3344,3345,A/D Conversion State Register
+53,2.4.8,ADSSTR6,0x258,0x258,3344,3344,Sampling State Table Register 6
+53,2.4.9,ADSSTR7,0x25C,0x25C,3344,3344,Sampling State Table Register 7
+53,2.5.1,ADSHCR0,0x280,0x280,3345,3346,Channel-dedicated Sample-and-hold Circuit Control Register 0
+53,2.5.2,ADSHCR1,0x28C,0x28C,3346,3347,Channel-dedicated Sample-and-hold Circuit Control Register 1
+53,2.5.3,ADSHDCR0,0x284,0x284,3347,3348,Channel-dedicated Sample-and-hold Circuit Diagnosis Control
+53,2.5.4,ADSHDCR1,0x290,0x290,3348,3348,Channel-dedicated Sample-and-hold Circuit Diagnosis Control
+53,2.5.5,ADSHSTR0,0x288,0x288,3348,3349,Channel-dedicated Sample-and-hold Circuit State Register 0
+53,2.5.6,ADSHSTR1,0x294,0x294,3349,3349,Channel-dedicated Sample-and-hold Circuit State Register 1
+53,2.5.7,ADSHSBPCR,0x310,0x310,3349,3351,Channel-dedicated Sample-and-hold Circuit Single-ended Input
+53,2.5.8,ADSHDBPCR,0x314,0x314,3351,3352,Channel-dedicated Sample-and-hold Circuit Differential Input
+53,2.5.9,ADSHSDCR0,0x318,0x318,3352,3354,Channel-dedicated Sample-and-hold Circuit Self-diagnosis
+53,2.5.10,ADSHSDCR1,0x31C,0x31C,3354,3355,Channel-dedicated Sample-and-hold Circuit Self-diagnosis
+53,2.5.11,ADSHCSCR,0xC04,0xC04,3355,3355,Channel-Dedicated Sample & Hold Circuit Constant Sampling
+53,2.5.12,ADREFCR,0x320,0x320,3355,3356,Internal Reference Voltage Monitor Enable Register
+53,2.6.1,ADDFSRn,0x340,0x340 + 0x04 * n,3356,3356,"A/D Converter Digital Filter Selection Register n (n = 0, 1)"
+53,2.7.1,ADCALSTCR,0x264,0x264,3356,3357,A/D Converter Self-calibration State Register
+53,2.7.2,ADCALSHCR,0x2B0,0x2B0,3357,3357,Channel-dedicated Sample-and-hold Circuit Self-calibration State
+53,2.7.3,ADUOFTRn,0x360,0x360 + 0x04 * n,3357,3358,User Offset Table Register n (n = 0 to 7)
+53,2.7.4,ADUGTRn,0x380,0x380 + 0x04 * n,3358,3358,User Gain Table Register n (n = 0 to 7)
+53,2.8.1,ADLIMINTCR,0x3A0,0x3A0,3358,3359,Limiter Clip Interrupt Enable Register
+53,2.8.2,ADLIMTRn,0x3A4,0x3A4 + 0x04 * n,3359,3359,Limiter Clip Table Register n (n = 0 to 7)
+53,2.8.3,ADLIMGRSR,0xD28,0xD28,3359,3360,Limiter Clip Scan Group Status Register
+53,2.8.4,ADLIMCHSR0,0xD2C,0xD2C,3360,3360,Limiter Clip Channel Status Register 0
+53,2.8.5,ADLIMEXSR,0xD38,0xD38,3360,3361,Extended Analog Limiter Clip Status Register
+53,2.8.6,ADLIMGRSCR,0xD3C,0xD3C,3361,3362,Limiter Clip Scan Group Status Clear Register
+53,2.8.7,ADLIMCHSCR0,0xD40,0xD40,3362,3362,Limiter Clip Channel Status Clear Register 0
+53,2.8.8,ADLIMEXSCR,0xD4C,0xD4C,3362,3364,Extended Analog Limiter Clip Status Clear Register
+53,2.9.1,ADCMPENR,0x400,0x400,3364,3364,Compare Match Enable Register
+53,2.9.2,ADCMPINTCR,0x404,0x404,3364,3365,Compare Match Interrupt Enable Register
+53,2.9.3,ADCCMPCRn,0x408,0x408 + 0x04 * n,3365,3365,"Composite Compare Match Configuration Register n (n = 0, 1)"
+53,2.9.4,ADCMPMDR0,0x448,0x448,3365,3366,Compare Match Mode Selection Register 0
+53,2.9.5,ADCMPMDR1,0x44C,0x44C,3366,3367,Compare Match Mode Selection Register 1
+53,2.9.6,ADCMPTBRn,0x458,0x458 + 0x04 * n,3367,3367,Compare Match Table Register n (n = 0 to 7)
+53,2.9.7,ADCMPTBSR,0xD00,0xD00,3367,3368,Compare Match Table Status Register
+53,2.9.8,ADCMPTBSCR,0xD04,0xD04,3368,3368,Compare Match Table Status Clear Register
+53,2.9.9,ADCMPCHSR0,0xD08,0xD08,3368,3369,Compare Match Channel Status Register 0
+53,2.9.10,ADCMPEXSR,0xD14,0xD14,3369,3370,Extended Analog Compare Match Status Register
+53,2.9.11,ADCMPCHSCR0,0xD18,0xD18,3370,3370,Compare Match Channel Status Clear Register 0
+53,2.9.12,ADCMPEXSCR,0xD24,0xD24,3370,3372,Extended Analog Compare Match Status Clear Register
+53,2.10.1,ADCALSTR,0xC00,0xC00,3372,3373,A/D Converter Self-calibration Start Register
+53,2.10.2,ADSYSTR,0xC10,0xC10,3373,3373,A/D Conversion Synchronous Software Start Register
+53,2.10.3,ADSTRn,0xC20,0xC20 + 0x04 * n,3373,3374,A/D Conversion Software Start Register n (n = 0 to 8)
+53,2.10.4,ADSTOPR,0xC60,0xC60,3374,3375,A/D Conversion Stop Register
+53,2.11.1,ADSR,0xC80,0xC80,3375,3375,A/D Conversion Status Register
+53,2.11.2,ADGRSR,0xC84,0xC84,3375,3376,Scan Group Status Register
+53,2.11.3,ADSCANENDSR,0xD50,0xD50,3376,3376,Scan End Status Register
+53,2.11.4,ADSCANENDSCR,0xD54,0xD54,3376,3377,Scan End Status Clear Register
+53,2.11.5,ADERSR,0xC88,0xC88,3377,3377,A/D Conversion Error Status Register
+53,2.11.6,ADERSCR,0xC8C,0xC8C,3377,3378,A/D Conversion Error Status Clear Register
+53,2.11.7,ADCALENDSR,0xC98,0xC98,3378,3378,A/D Converter Self-calibration End Status Register
+53,2.11.8,ADCALENDSCR,0xC9C,0xC9C,3378,3379,A/D Converter Self-calibration End Status Clear Register
+53,2.11.10,ADOVFCHSR0,0xCA4,0xCA4,3379,3380,A/D Conversion Overflow Channel Status Register 0
+53,2.11.9,ADOVFERSR,0xCA0,0xCA0,3379,3379,A/D Conversion Overflow Error Status Register
+53,2.11.11,ADOVFEXSR,0xCB0,0xCB0,3380,3381,Extended Analog A/D Conversion Overflow Status Register
+53,2.11.12,ADOVFERSCR,0xCB4,0xCB4,3381,3381,A/D Conversion Overflow Error Status Clear Register
+53,2.11.13,ADOVFCHSCR0,0xCB8,0xCB8,3381,3382,A/D Conversion Overflow Channel Status Clear Register 0
+53,2.11.14,ADOVFEXSCR,0xCC4,0xCC4,3382,3383,Extended Analog A/D Conversion Overflow Status Clear
+53,2.12.1,ADFIFOCR,0x4C0,0x4C0,3383,3384,FIFO Control Register
+53,2.12.2,ADFIFOINTCR,0x4C4,0x4C4,3384,3384,FIFO Interrupt Control Register
+53,2.12.3,ADFIFOINTLR0,0x4C8,0x4C8,3384,3385,FIFO Interrupt Generation Level Register 0
+53,2.12.4,ADFIFOINTLR1,0x4CC,0x4CC,3385,3385,FIFO Interrupt Generation Level Register 1
+53,2.12.5,ADFIFOINTLR2,0x4D0,0x4D0,3385,3386,FIFO Interrupt Generation Level Register 2
+53,2.12.6,ADFIFOINTLR3,0x4D4,0x4D4,3386,3386,FIFO Interrupt Generation Level Register 3
+53,2.12.7,ADFIFOINTLR4,0x4D8,0x4D8,3386,3387,FIFO Interrupt Generation Level Register 4
+53,2.12.10,ADFIFOSR2,0xCD8,0xCD8,3387,3388,FIFO Status Register 2
+53,2.12.8,ADFIFOSR0,0xCD0,0xCD0,3387,3387,FIFO Status Register 0
+53,2.12.9,ADFIFOSR1,0xCD4,0xCD4,3387,3387,FIFO Status Register 1
+53,2.12.11,ADFIFOSR3,0xCDC,0xCDC,3388,3388,FIFO Status Register 3
+53,2.12.12,ADFIFOSR4,0xCE0,0xCE0,3388,3388,FIFO Status Register 4
+53,2.12.13,ADFIFODCR,0xCF0,0xCF0,3388,3389,FIFO Data Clear Register
+53,2.12.14,ADFIFOERSR,0xCF4,0xCF4,3389,3390,FIFO Error Status Register
+53,2.12.15,ADFIFOERSCR,0xCF8,0xCF8,3390,3390,FIFO Error Status Clear Register
+53,2.13.1,ADDRn,0x2000,0x2000 + 0x04 * n,3390,3391,A/D Data Register n (n = 0 to 22)
+53,2.13.2,ADEXDRn,0x2180,0x2180 + 0x04 * n,3391,3392,"A/D Extended Analog Data Register n (n = 0, 1, 4, 5, 6, 8, 9, 16, 17, 18, 20, 21, 22)"
+53,2.13.3,ADFIFODRn,0x2200,0x2200 + 0x04 * n,3392,3393,FIFO Data Register n (n = 0 to 8)
+54,2.1,DADR,0x0000,0x0000,3491,3491,D/A Data Register
+54,2.2,DACR0,0x0004,0x0004,3491,3493,D/A Control 0 Register
+54,2.3,DACR1,0x0008,0x0008,3493,3493,D/A Control 1 Register
+54,2.4,DACR2,0x000C,0x000C,3493,3493,D/A Control 2 Register
+55,2.1,TSCR,0x00,0x00,3498,3498,Temperature Sensor Control Register
+55,2.2,TSCDR,0x00,0x00,3498,3499,Temperature Sensor Calibration Data Register
+55,2.3,TSCDR2,0x04,0x04,3499,3499,Temperature Sensor Calibration Data Register 2
+56,2.1,CMPCTL,0x000,0x000,3509,3510,Comparator Control Register
+56,2.2,CMPSEL0,0x004,0x004,3510,3511,Comparator Input Select Register
+56,2.3,CMPSEL1,0x008,0x008,3511,3511,Comparator Reference Voltage Select Register
+56,2.4,CMPMON,0x00C,0x00C,3511,3512,Comparator Output Monitor Register
+56,2.5,CPIOC,0x010,0x010,3512,3512,Comparator Output Control Register
+56,2.6,CPINTCTL,0x040,0x040,3512,3513,Comparator Interrupt Control Register
+56,2.7,CPMSKCTL,0x044,0x044,3513,3513,Comparator Interrupt Mask Control Register
+57,2.1,DOCR,0x00,0x00,3519,3520,DOC Control Register
+57,2.2,DOSR,0x04,0x04,3520,3521,DOC Flag Status Register
+57,2.3,DOSCR,0x08,0x08,3521,3521,DOC Flag Status Clear Register
+57,2.4,DODIR,0x0C,0x0C,3521,3521,DOC Data Input Register
+57,2.5,DODSR0,0x10,0x10,3521,3522,DOC Data Setting Register 0
+57,2.6,DODSR1,0x14,0x14,3522,3522,DOC Data Setting Register 1
+58,2.1,SRAMSABARn,0x400,0x400 + 0x04 * n,3527,3528,SRAM Security Attribute Boundary Address Register (n = 0 to 3)
+58,2.2,SRAMSAR,0x10,0x10,3528,3529,SRAM Security Attribution Register
+58,2.3,SRAMESAR,0x510,0x510,3529,3530,SRAM ECC region Security Attribute Register
+58,2.4,SRAMPRCR_S,0x00,0x00,3530,3530,SRAM Protection Control Register for Secure
+58,2.5,SRAMPRCR_NS,0x04,0x04,3530,3531,SRAM Protection Control Register for Non-Secure
+58,2.6,SRAMWTSC,0x08,0x08,3531,3532,SRAM Wait State Control Register
+58,2.7,SRAMCRn,0x10,0x10 + 0x04 * n,3532,3533,SRAM Control Register n For ECC RAM (n = 0 to 3)
+58,2.8,SRAMECCRGN0,0x30,0x30,3533,3534,SRAM ECC Region Control Register 0
+58,2.10,SRAMECCRGN2,0x38,0x38,3534,3535,SRAM ECC Region Control Register 2
+58,2.9,SRAMECCRGN1,0x34,0x34,3534,3534,SRAM ECC Region Control Register 1
+58,2.11,SRAMECCRGN3,0x3C,0x3C,3535,3535,SRAM ECC Region Control Register 3
+58,2.12,SRAMESR,0x40,0x40,3535,3536,SRAM Error Status Register For ECC RAM
+58,2.13,SRAMESCLR,0x48,0x48,3536,3537,SRAM Error Status Clear Register For ECC RAM
+58,2.14,SRAMEARnm,0x50,0x50 + 0x10 * n + 0x04 * m,3537,3538,"SRAM Error Address Register nm For ECC RAM (n = 0 to 3, m = 0 to 1)"
+59,5.1,MRCPFB,0x000,0x000,3551,3551,Code MRAM Prefetch Buffer Enable Register
+59,5.2,MRCFREQ,0x004,0x004,3551,3552,Code MRAM Frequency Notifications Register
+59,5.3,MREFREQ,0x008,0x008,3552,3553,Extra MRAM Frequency Notifications Register
+59,5.4,MRCDECC,0x010,0x010,3553,3554,Code MRAM ECC Decoder Control Register
+59,5.5,MRCRAEINT,0x014,0x014,3554,3554,Code MRAM Read Access Error Interrupt Enable Register
+59,5.6,MRCRAES,0x018,0x018,3554,3555,Code MRAM Read Access Error Status Register
+59,5.7,MRCRTEA,0x01C,0x01C,3555,3556,Code MRAM TED Error Address Register
+59,5.8,MRCRDEA,0x020,0x020,3556,3556,Code MRAM DEC Error Address Register
+59,5.9,MRERAEINT,0x034,0x034,3556,3557,Extra MRAM Read Access Error Interrupt Enable Register
+59,5.10,MRERAES,0x038,0x038,3557,3558,Extra MRAM Read Access Error Status Register
+59,5.11,MRERTEA,0x03C,0x03C,3558,3559,Extra MRAM TED Error Address Register
+59,5.12,MRERDEA,0x040,0x040,3559,3559,Extra MRAM DEC Error Address Register
+59,5.13,MSAR,0x100,0x100,3559,3561,MRAM Security Attribution Register
+59,5.14,MREZS,0x400,0x400,3561,3561,Extra MRAM Zeroization Status Register
+59,5.15,MREZC,0x404,0x404,3561,3562,Extra MRAM Zeroization Control Register
+59,5.16,MASTAT,0x2010,0x2010,3562,3563,Extra MRAM Access Status Register
+59,5.17,MPAEINT,0x2014,0x2014,3563,3564,Extra MRAM Access Error Interrupt Enable Register
+59,5.18,MRDYIE,0x2018,0x2018,3564,3564,Extra MRAM Ready Interrupt Enable Register
+59,5.19,MSADDR,0x2030,0x2030,3564,3565,MACI Command Start Address Register
+59,5.20,MCNTSELR,0x2048,0x2048,3565,3566,MRAM Counter Select Register
+59,5.21,MCNTDTRn,0x204C,0x204C + 0x04 * n,3566,3566,"MRAM Counter Data Register (n = 0, 1)"
+59,5.22,MCTRCNTR,0x2060,0x2060,3566,3567,MRAM Configuration Update Transfer Control Register
+59,5.23,MCTRLSR,0x2064,0x2064,3567,3568,MRAM Configuration Update Transfer List Select Register
+59,5.24,MCTRSTATR,0x206C,0x206C,3568,3568,MRAM Configuration Update Transfer Status Register
+59,5.25,MSTATR,0x2080,0x2080,3568,3571,Extra MRAM Status Register
+59,5.26,MENTRYR,0x2084,0x2084,3571,3572,Extra MRAM Program Mode Entry Register
+59,5.27,MSUINITR,0x208C,0x208C,3572,3572,Extra MRAM Sequencer Setup Initialization Register
+59,5.28,MCMDR,0x20A0,0x20A0,3572,3573,MACI Command Register
+59,5.29,MSUASMON,0x20DC,0x20DC,3573,3574,MRAM Startup Area Select Monitor Register
+59,5.30,MSUACR,0x20E8,0x20E8,3574,3575,MRAM Startup Area Control Register
+59,5.31,MRPSC,0x2800,0x2800,3575,3575,MRAM Program Speed Control Register
+59,5.32,MRCPC0,0x3000,0x3000,3575,3576,Code MRAM Program Control Register
+59,5.33,MRCPC1,0x3004,0x3004,3576,3576,Code MRAM Program Control Register for Secure
+59,5.34,MRCBPROT0,0x3008,0x3008,3576,3577,Code MRAM Block Protection Register
+59,5.35,MRCBPROT1,0x300C,0x300C,3577,3577,Code MRAM Block Protection Register for Secure
+59,5.36,MRCPS,0x3010,0x3010,3577,3579,Code MRAM Program Status Register
+59,5.37,MRCPAEINT,0x3014,0x3014,3579,3579,Code MRAM Program Access Error Interrupt Enable Register
+59,5.38,MRCPEA,0x3018,0x3018,3579,3580,Code MRAM Program Error Address Register
+59,5.39,MRCFLR,0x3030,0x3030,3580,3580,Code MRAM Flush Register
+59,5.40,MRCEECC,0x3804,0x3804,3580,3581,Code MRAM ECC Encoder Control Register
+59,5.41,UIDRn,,,3581,3581,Unique ID Registers n (n = 0 to 3)
+59,5.42,PNRn,,,3581,3582,Part Numbering Register n (n = 0 to 3)
+59,5.43,MCUVER,,,3582,3582,MCU Version Register
+59,5.44,MWMCR,0xAB4,0xAB4,3582,3583,OTP Write Mode Control Register
+60,2.1,CAPSR,0x0000,0x0000,3630,3634,Capture Start Register
+60,2.2,CAPCR,0x0004,0x0004,3634,3636,Capture Control Register
+60,2.3,CAMCR,0x0008,0x0008,3636,3640,Capture Interface Control Register
+60,2.4,CMCYR,0x000C,0x000C,3640,3641,Capture Interface Cycle Register
+60,2.5,CAMOR,0x0010,0x0010 (CAMOR),3641,3643,"Capture Interface Offset Register (x = B, M)"
+60,2.5,CAMOR_x,0x0010,0x0010 (CAMOR),3641,3643,"Capture Interface Offset Register (x = B, M)"
+60,2.6,CAPWR,0x0014,0x0014 (CAPWR),3643,3644,"Capture Interface Width Register (x = B, M)"
+60,2.6,CAPWR_x,0x0014,0x0014 (CAPWR),3643,3644,"Capture Interface Width Register (x = B, M)"
+60,2.7,CAIFR,0x0018,0x0018,3644,3649,Capture Interface Input Format Register
+60,2.8,CRCNTR,0x0028,0x0028,3649,3650,CEU Register Control Register
+60,2.9,CRCMPR,0x002C,0x002C,3650,3651,CEU Register Forcible Control Register
+60,2.10,CFLCR,0x0030,0x0030 (CFLCR),3651,3653,"Capture Filter Control Register (x = B, M)"
+60,2.10,CFLCR_x,0x0030,0x0030 (CFLCR),3651,3653,"Capture Filter Control Register (x = B, M)"
+60,2.11,CFSZR,0x0034,0x0034 (CFSZR),3653,3654,"Capture Filter Size Clip Register (x = B, M)"
+60,2.11,CFSZR_x,0x0034,0x0034 (CFSZR),3653,3654,"Capture Filter Size Clip Register (x = B, M)"
+60,2.12,CDWDR,0x0038,0x0038 (CDWDR),3654,3655,"Capture Destination Width Register (x = B, M)"
+60,2.12,CDWDR_x,0x0038,0x0038 (CDWDR),3654,3655,"Capture Destination Width Register (x = B, M)"
+60,2.13,CDAYR,0x003C,0x003C (CDAYR),3655,3656,"Capture Data Address Y Register (x = B, M)"
+60,2.13,CDAYR_x,0x003C,0x003C (CDAYR),3655,3656,"Capture Data Address Y Register (x = B, M)"
+60,2.14,CDACR,0x0040,0x0040 (CDACR),3656,3658,"Capture Data Address C Register (x = B, M)"
+60,2.14,CDACR_x,0x0040,0x0040 (CDACR),3656,3658,"Capture Data Address C Register (x = B, M)"
+60,2.15,CDBYR,0x0044,0x0044 (CDBYR),3658,3659,"Capture Data Bottom-Field Address Y Register (x = B, M)"
+60,2.15,CDBYR_x,0x0044,0x0044 (CDBYR),3658,3659,"Capture Data Bottom-Field Address Y Register (x = B, M)"
+60,2.16,CDBCR,0x0048,0x0048 (CDBCR),3659,3660,"Capture Data Bottom-Field Address C Register (x = B, M)"
+60,2.16,CDBCR_x,0x0048,0x0048 (CDBCR),3659,3660,"Capture Data Bottom-Field Address C Register (x = B, M)"
+60,2.17,CBDSR,0x004C,0x004C (CBDSR),3660,3661,"Capture Bundle Destination Size Register (x = B, M)"
+60,2.17,CBDSR_x,0x004C,0x004C (CBDSR),3660,3661,"Capture Bundle Destination Size Register (x = B, M)"
+60,2.18,CFWCR,0x005C,0x005C,3661,3662,Firewall Operation Control Register
+60,2.19,CLFCR,0x0060,0x0060 (CLFCR),3662,3662,"Capture Low-Pass Filter Control Register (x = B, M)"
+60,2.19,CLFCR_x,0x0060,0x0060 (CLFCR),3662,3662,"Capture Low-Pass Filter Control Register (x = B, M)"
+60,2.20,CDOCR,0x0064,0x0064 (CDOCR),3662,3668,"Capture Data Output Control Register (x = B, M)"
+60,2.20,CDOCR_x,0x0064,0x0064 (CDOCR),3662,3668,"Capture Data Output Control Register (x = B, M)"
+60,2.21,CEIER,0x0070,0x0070,3668,3669,Capture Event Interrupt Enable Register
+60,2.22,CETCR,0x0074,0x0074,3669,3673,Capture Event Flag Clear Register
+60,2.23,CSTSR,0x007C,0x007C,3673,3674,Capture Status Register
+60,2.24,CDSSR,0x0084,0x0084,3674,3676,Capture Data Size Register
+60,2.25,CDAYR2,0x0090,0x0090 (CDAYR2),3676,3677,"Capture Data Address Y Register 2 (x = B, M)"
+60,2.25,CDAYR2_x,0x0090,0x0090 (CDAYR2),3676,3677,"Capture Data Address Y Register 2 (x = B, M)"
+60,2.26,CDACR2,0x0094,0x0094 (CDACR2),3677,3679,"Capture Data Address C Register 2 (x = B, M)"
+60,2.26,CDACR2_x,0x0094,0x0094 (CDACR2),3677,3679,"Capture Data Address C Register 2 (x = B, M)"
+60,2.27,CDBYR2,0x0098,0x0098 (CDBYR2),3679,3680,"Capture Data Bottom-Field Address Y Register 2 (x = B, M)"
+60,2.27,CDBYR2_x,0x0098,0x0098 (CDBYR2),3679,3680,"Capture Data Bottom-Field Address Y Register 2 (x = B, M)"
+60,2.28,CDBCR2,0x009C,0x009C (CDBCR2),3680,3681,"Capture Data Bottom-Field Address C Register 2 (x = B, M)"
+60,2.28,CDBCR2_x,0x009C,0x009C (CDBCR2),3680,3681,"Capture Data Bottom-Field Address C Register 2 (x = B, M)"
+60,2.29,CBWER,0x00A0,0x00A0,3681,3681,CEU Bufferable Write Enable Register
+62,2.1,CONTROL,0x00,0x00,3689,3690,Geometry Control Register
+62,2.2,CONTROL2,0x04,0x04,3690,3693,Surface Control Register
+62,2.3,IRQCTL,0xC0,0xC0,3693,3694,Interrupt Control Register
+62,2.4,CACHECTL,0xC4,0xC4,3694,3695,Cache Control Register
+62,2.5,STATUS,0x00,0x00,3695,3696,Status Control Register
+62,2.6,HWREVISION,0x04,0x04,3696,3697,Hardware Version and Feature Set ID Register
+62,2.7,COLOR1,0x64,0x64,3697,3697,Base Color Register
+62,2.8,COLOR2,0x68,0x68,3697,3698,Secondary Color Register
+62,2.10,LnSTART,0x10,0x10 + 0x4 * (n - 1),3698,3698,Limiter n Start Value Register (n = 1 to 6)
+62,2.11,LnXADD,0x28,0x28 + 0x4 * (n - 1),3698,3699,Limiter n X-Axis Increment Register (n = 1 to 6)
+62,2.9,PATTERN,0x74,0x74,3698,3698,Pattern Register
+62,2.12,LnYADD,0x40,0x40 + 0x4 * (n - 1),3699,3699,Limiter n Y-Axis Increment Register (n = 1 to 6)
+62,2.13,LmBAND,0x58,0x58 + 0x4,3699,3699,"Limiter m Band Width Parameter Register (n = 1, 2)"
+62,2.14,TEXORIGIN,0xBC,0xBC,3699,3700,Texture Base Address Register
+62,2.15,TEXPITCH,0xB4,0xB4,3700,3700,Texels Per Texture Line Register
+62,2.16,TEXMASK,0xB8,0xB8,3700,3700,Texture Size or Texture Address Mask Register
+62,2.17,LUSTART,0x90,0x90,3700,3701,U Limiter Start Value Register
+62,2.18,LUXADD,0x94,0x94,3701,3701,U Limiter X-Axis Increment Register
+62,2.19,LUYADD,0x98,0x98,3701,3701,U Limiter Y-Axis Increment Register
+62,2.20,LVSTARTI,0x9C,0x9C,3701,3702,V Limiter Start Value Integer Part Register
+62,2.21,LVSTARTF,0xA0,0xA0,3702,3702,V Limiter Start Value Fractional Part Register
+62,2.22,LVXADDI,0xA4,0xA4,3702,3702,V Limiter X-Axis Increment Integer Part Register
+62,2.23,LVYADDI,0xA8,0xA8,3702,3703,V Limiter Y-Axis Increment Integer Part Register
+62,2.24,LVYXADDF,0xAC,0xAC,3703,3703,V Limiter Increment Fractional Parts Register
+62,2.25,TEXCLADDR,0xDC,0xDC,3703,3703,CLUT Start Address Register
+62,2.26,TEXCLDATA,0xE0,0xE0,3703,3704,CLUT Data Register
+62,2.27,TEXCLOFFSET,0xE4,0xE4,3704,3704,CLUT Offset Register
+62,2.28,COLKEY,0xE8,0xE8,3704,3704,Color Key Register
+62,2.29,SIZE,0x78,0x78,3704,3705,Bounding Box Dimension Register
+62,2.30,PITCH,0x7C,0x7C,3705,3705,Framebuffer Pitch And Spanstore Delay Register
+62,2.31,ORIGIN,0x80,0x80,3705,3705,Framebuffer Base Address Register
+62,2.32,DLISTSTART,0xC8,0xC8,3705,3706,Display List Start Address Register
+62,2.33,PERFTRIGGER,0xD4,0xD4,3706,3706,Performance Counters Control Register
+62,2.34,PERFCOUNTk,0xCC,0xCC (PERFCOUNT1),3706,3707,"Performance Counter k (k = 1, 2)"
+62,2.35,DBWER,0x100,0x100,3707,3707,DRW Bufferable Write Enable Register
+63,2.2,BG_EN,0x1000,0x1000,3758,3760,Background Plane Setting Operation Control Register
+63,2.3,BG_PERI,0x1004,0x1004,3760,3760,Background Plane Setting Free-Running Period Register
+63,2.4,BG_SYNC,0x1008,0x1008,3760,3761,Background Plane Setting Synchronization Position Register
+63,2.5,BG_VSIZE,0x100C,0x100C,3761,3762,Background Plane Setting Full Image Vertical Size Register
+63,2.6,BG_HSIZE,0x1010,0x1010,3762,3763,Background Plane Setting Full Image Horizontal Size Register
+63,2.7,BG_BGC,0x1014,0x1014,3763,3763,Background Plane Setting Background Color Register
+63,2.8,BG_MON,0x1018,0x1018,3763,3764,Background Plane Setting Status Monitor Register
+63,2.9,GRn_VEN,0x1100,0x1100 + 0x100 * (n-1),3764,3765,Graphics n Register Update Control Register (n = 1 to 2)
+63,2.10,GRn_FLMRD,0x1104,0x1104 + 0x100 * (n -1),3765,3766,"Graphics n Frame Buffer Read Control Register (n = 1, 2)"
+63,2.11,GRn_FLM1,0x1108,0x1108 + 0x100 * (n -1),3766,3766,Graphics n Frame Buffer Control Register 1 (n = 1 to 2)
+63,2.12,GRn_FLM2,0x110C,0x110C + 0x100 * (n -1),3766,3767,Graphics n Frame Buffer Control Register 2 (n = 1 to 2)
+63,2.13,GRn_FLM3,0x1110,0x1110 + 0x100 * (n -1),3767,3767,Graphics n Frame Buffer Control Register 3 (n = 1 to 2)
+63,2.14,GRn_FLM5,0x1118,0x1118 + 0x100 * (n -1),3767,3768,Graphics n Frame Buffer Control Register 5 (n = 1 to 2)
+63,2.15,GRn_FLM6,0x111C,0x111C + 0x100 * (n -1),3768,3769,"Graphics n Frame Buffer Control Register 6 (n = 1, 2)"
+63,2.16,GRn_AB1,0x1120,0x1120 + 0x100 * (n -1),3769,3771,"Graphics n Alpha Blending Control Register 1 (n = 1, 2)"
+63,2.17,GRn_AB2,0x1124,0x1124 + 0x100 * (n -1),3771,3772,"Graphics n Alpha Blending Control Register 2 (n = 1, 2)"
+63,2.18,GRn_AB3,0x1128,0x1128 + 0x100 * (n -1),3772,3773,"Graphics n Alpha Blending Control Register 3 (n = 1, 2)"
+63,2.19,GRn_AB4,0x112C,0x112C + 0x100 * (n -1),3773,3773,"Graphics n Alpha Blending Control Register 4 (n = 1, 2)"
+63,2.20,GRn_AB5,0x1130,0x1130 + 0x100 * (n -1),3773,3774,"Graphics n Alpha Blending Control Register 5 (n = 1, 2)"
+63,2.21,GRn_AB6,0x1134,0x1134 + 0x100 * (n -1),3774,3775,"Graphics n Alpha Blending Control Register 6 (n = 1, 2)"
+63,2.22,GRn_AB7,0x1138,0x1138 + 0x100 * (n -1),3775,3776,"Graphics n Alpha Blending Control Register 7 (n = 1, 2)"
+63,2.23,GRn_AB8,0x113C,0x113C + 0x100 * (n -1),3776,3777,"Graphics n Alpha Blending Control Register 8 (n = 1, 2)"
+63,2.24,GRn_AB9,0x1140,0x1140 + 0x100 * (n -1),3777,3778,"Graphics n Alpha Blending Control Register 9 (n = 1, 2)"
+63,2.25,GRn_BASE,0x114C,0x114C + 0x100 * (n -1),3778,3778,"Graphics n Background Color Control Register (n = 1, 2)"
+63,2.26,GRn_CLUTINT,0x1150,0x1150 + 0x100 * (n -1),3778,3779,"Graphics n CLUT Table Interrupt Control Register (n = 1, 2)"
+63,2.27,GRn_MON,0x1154,0x1154 + 0x100 * (n -1),3779,3780,"Graphics n Status Monitor Register (n = 1, 2)"
+63,2.28,GAMn_LATCH,0x1300,0x1300 (GAMG_LATCH),3780,3781,"Gamma n Register Update Control Register (n = G, B, R)"
+63,2.29,GAM_SW,0x1304,0x1304,3781,3781,Gamma Correction Block Function Switch Register
+63,2.30,GAMn_LUT1,0x1308,0x1308 (GAMG_LUT1),3781,3783,"Gamma n Correction Block Table Setting Register 1 (n = G, B, R)"
+63,2.31,GAMn_LUT2,0x130C,0x130C (GAMG_LUT2),3783,3784,"Gamma n Correction Block Table Setting Register 2 (n = G, B, R)"
+63,2.32,GAMn_LUT3,0x1310,0x1310 (GAMG_LUT3),3784,3785,"Gamma n Correction Block Table Setting Register 3 (n = G, B, R)"
+63,2.33,GAMn_LUT4,0x1314,0x1314 (GAMG_LUT4),3785,3786,"Gamma n Correction Block Table Setting Register 4 (n = G, B, R)"
+63,2.34,GAMn_LUT5,0x1318,0x1318 (GAMG_LUT5),3786,3787,"Gamma n Correction Block Table Setting Register 5 (n = G, B, R)"
+63,2.35,GAMn_LUT6,0x131C,0x131C (GAMG_LUT6),3787,3788,"Gamma n Correction Block Table Setting Register 6 (n = G, B, R)"
+63,2.36,GAMn_LUT7,0x1320,0x1320 (GAMG_LUT7),3788,3789,"Gamma n Correction Block Table Setting Register 7 (n = G, B, R)"
+63,2.37,GAMn_LUT8,0x1324,0x1324 (GAMG_LUT8),3789,3789,"Gamma n Correction Block Table Setting Register 8 (n = G, B, R)"
+63,2.38,GAMn_AREA1,0x1328,0x1328 (GAMG_AREA1),3789,3790,"Gamma n Correction Block Area Setting Register 1 (n = G, B, R)"
+63,2.39,GAMn_AREA2,0x132C,0x132C (GAMG_AREA2),3790,3791,"Gamma n Correction Block Area Setting Register 2 (n = G, B, R)"
+63,2.40,GAMn_AREA3,0x1330,0x1330 (GAMG_AREA3),3791,3792,"Gamma n Correction Block Area Setting Register 3 (n = G, B, R)"
+63,2.41,GAMn_AREA4,0x1334,0x1334 (GAMG_AREA4),3792,3792,"Gamma n Correction Block Area Setting Register 4 (n = G, B, R)"
+63,2.42,GAMn_AREA5,0x1338,0x1338 (GAMG_AREA5),3792,3793,"Gamma n Correction Block Area Setting Register 5 (n = G, B, R)"
+63,2.43,OUT_VLATCH,0x13C0,0x13C0,3793,3794,Output Control Block Register Update Control Register
+63,2.44,OUT_SET,0x13C4,0x13C4,3794,3795,Output Control Block Output Interface Register
+63,2.45,OUT_BRIGHT1,0x13C8,0x13C8,3795,3796,Output Control Block Brightness Correction Register 1
+63,2.46,OUT_BRIGHT2,0x13CC,0x13CC,3796,3797,Output Control Block Brightness Correction Register 2
+63,2.47,OUT_CONTRAST,0x13D0,0x13D0,3797,3798,Output Control Block Contrast Correction Register
+63,2.48,OUT_PDTHA,0x13D4,0x13D4,3798,3800,Output Control Block Panel Dither Correction Register
+63,2.49,OUT_CLKPHASE,0x13E4,0x13E4,3800,3802,Output Control Block Output Phase Control Register
+63,2.50,TCON_TIM,0x1404,0x1404,3802,3804,TCON Reference Timing Setting Register
+63,2.51,TCON_STVx1,0x1408,0x1408 (TCON_STVA1),3804,3805,"TCON Vertical Timing Setting Register x1 (x = A, B)"
+63,2.52,TCON_STVx2,0x140C,0x140C (TCON_STVA2),3805,3806,"TCON Vertical Timing Setting Register x2 (x = A, B)"
+63,2.53,TCON_STHx1,0x1418,0x1418 (TCON_STHA1),3806,3808,"TCON Horizontal Timing Setting Register x1 (x = A, B)"
+63,2.54,TCON_STHx2,0x141C,0x141C (TCON_STHA2),3808,3809,"TCON Horizontal Timing Setting Register x2 (x = A, B)"
+63,2.55,TCON_DE,0x1428,0x1428,3809,3809,TCON Data Enable Polarity Setting Register
+63,2.56,SYSCNT_DTCTEN,0x1440,0x1440,3809,3810,System Control Block State Detection Control Register
+63,2.57,SYSCNT_INTEN,0x1444,0x1444,3810,3811,System Control Block Interrupt Request Enable Control
+63,2.58,SYSCNT_STCLR,0x1448,0x1448,3811,3812,System Control Block Status Clear Register
+63,2.59,SYSCNT_STMON,0x144C,0x144C,3812,3813,System Control Block Status Monitor Register
+63,2.60,SYSCNT_PANEL_CLK,0x1450,0x1450,3813,3814,System Control Block Version and Panel Clock Control
+64,2.1,DPHYREFCR,0x000,0x000,3822,3823,D-PHY Reference Clock Setting Register
+64,2.2,DPHYPLFCR,0x004,0x004,3823,3824,D-PHY PLL Frequency Control Register
+64,2.3,DPHYPLOCR,0x008,0x008,3824,3825,D-PHY PLL Operation Control Register
+64,2.4,DPHYESCCR,0x00C,0x00C,3825,3826,D-PHY Escape Mode Clock Control Register
+64,2.5,DPHYPWRCR,0x010,0x010,3826,3826,D-PHY Power Supplying Control Register
+64,2.6,DPHYSFR,0x01C,0x01C,3826,3827,D-PHY Status Flag Register
+64,2.7,DPHYOCR,0x020,0x020,3827,3827,D-PHY Operation Control Register
+64,2.8,DPHYTIM1,0x024,0x024,3827,3828,D-PHY Timing Control Register 1
+64,2.10,DPHYTIM3,0x02C,0x02C,3828,3829,D-PHY Timing Control Register 3
+64,2.9,DPHYTIM2,0x028,0x028,3828,3828,D-PHY Timing Control Register 2
+64,2.11,DPHYTIM4,0x030,0x030,3829,3830,D-PHY Timing Control Register 4
+64,2.12,DPHYTIM5,0x034,0x034,3830,3831,D-PHY Timing Control Register 5
+64,2.13,DPHYTIM6,0x038,0x038,3831,3836,D-PHY Timing Control Register 6
+64,2.14,DPHYMDC,0x048,0x048,3836,3837,D-PHY Mode Control Register
+65,2.1,ISR,0x000,0x000,3840,3841,Interrupt Status Register
+65,2.2,LINKSR,0x010,0x010,3841,3842,Link Status Register
+65,2.3,TXSETR,0x100,0x100,3842,3843,Transmit Set Register
+65,2.4,HSCLKSETR,0x104,0x104,3843,3844,HS Clock Set Register
+65,2.5,ULPSSETR,0x108,0x108,3844,3844,ULPS Set Register
+65,2.6,ULPSCR,0x10C,0x10C,3844,3845,ULPS Control Register
+65,2.7,RSTCR,0x110,0x110,3845,3846,Reset Control Register
+65,2.8,RSTSR,0x114,0x114,3846,3847,Reset Status Register
+65,2.9,DSISETR,0x120,0x120,3847,3849,DSI Set Register
+65,2.10,TXPPD0R,0x160,0x160,3849,3850,Transmit Packet Payload Data 0 Register
+65,2.11,TXPPD1R,0x164,0x164,3850,3850,Transmit Packet Payload Data 1 Register
+65,2.12,TXPPD2R,0x168,0x168,3850,3851,Transmit Packet Payload Data 2 Register
+65,2.13,TXPPD3R,0x16C,0x16C,3851,3852,Transmit Packet Payload Data 3 Register
+65,2.14,RXSR,0x200,0x200,3852,3855,Receive Status Register
+65,2.15,RXSCR,0x204,0x204,3855,3858,Receive Status Clear Register
+65,2.16,RXIER,0x208,0x208,3858,3861,Receive Interrupt Enable Register
+65,2.17,PRESPTOBTASETR,0x210,0x210,3861,3861,Peripheral Response Timeout BTA Set Register
+65,2.18,PRESPTOLPSETR,0x214,0x214,3861,3862,Peripheral Response Timeout LP Set Register
+65,2.19,PRESPTOHSSETR,0x218,0x218,3862,3863,Peripheral Response Timeout HS Set Register
+65,2.20,AKEPLATIR,0x220,0x220,3863,3864,Acknowledge and Error Report Packet Parameter Latest Info
+65,2.21,AKEPACMSR,0x224,0x224,3864,3865,Acknowledge and Error Report Packet Parameter Accumulate
+65,2.22,AKEPSCR,0x228,0x228,3865,3866,Acknowledge and Error Report Packet Parameter Status Clear
+65,2.23,RXRSSR,0x230,0x230,3866,3867,Receive Result Saved Status Register
+65,2.24,RXRSSCR,0x234,0x234,3867,3868,Receive Result Saved Status Clear Register
+65,2.25,RXRINFOOWSR,0x238,0x238,3868,3869,Receive Result Info Overwrite Status Register
+65,2.26,RXRINFOOWSCR,0x23C,0x23C,3869,3870,Receive Result Info Overwrite Status Clear Register
+65,2.27,RXRSSxR,0x240,0x240 + 0x4 * x,3870,3872,Receive Result Save Slot-x Register (x = 0 to 3)
+65,2.28,RXPPD0R,0x2C0,0x2C0,3872,3873,Receive Packet Payload Data 0 Register
+65,2.29,RXPPD1R,0x2C4,0x2C4,3873,3873,Receive Packet Payload Data 1 Register
+65,2.30,RXPPD2R,0x2C8,0x2C8,3873,3874,Receive Packet Payload Data 2 Register
+65,2.31,RXPPD3R,0x2CC,0x2CC,3874,3875,Receive Packet Payload Data 3 Register
+65,2.32,HSTXTOSETR,0x2E0,0x2E0,3875,3875,HS TX Timeout Set Register
+65,2.33,LRXHTOSETR,0x2E4,0x2E4,3875,3876,LRX-H Timeout Set Register
+65,2.34,TATOSETR,0x2E8,0x2E8,3876,3876,TA Timeout Set Register
+65,2.35,FERRSR,0x300,0x300,3876,3878,Fatal Error Status Register
+65,2.36,FERRSCR,0x304,0x304,3878,3879,Fatal Error Status Clear Register
+65,2.37,FERRIER,0x308,0x308,3879,3881,Fatal Error Interrupt Enable Register
+65,2.38,CLSTPTSETR,0x314,0x314,3881,3883,Clock Lane Stop Time Set Register
+65,2.39,LPTRNSTSETR,0x318,0x318,3883,3884,LP Transition Time Set Register
+65,2.40,PLSR,0x320,0x320,3884,3887,Physical Lane Status Register
+65,2.41,PLSCR,0x324,0x324,3887,3888,Physical Lane Status Clear Register
+65,2.42,PLIER,0x328,0x328,3888,3890,Physical Lane Interrupt Enable Register
+65,2.43,VMSET0R,0x400,0x400,3890,3891,Video Mode Set 0 Register
+65,2.44,VMSET1R,0x404,0x404,3891,3892,Video Mode Set 1 Register
+65,2.45,VMSR,0x410,0x410,3892,3894,Video Mode Status Register
+65,2.46,VMSCR,0x414,0x414,3894,3895,Video Mode Status Clear Register
+65,2.47,VMIER,0x418,0x418,3895,3896,Video Mode Interrupt Enable Register
+65,2.48,VMPPSETR,0x420,0x420,3896,3897,Video Mode Pixel Packet Set Register
+65,2.49,VMVSSETR,0x428,0x428,3897,3897,Video Mode Vertical Size Set Register
+65,2.50,VMVPSETR,0x42C,0x42C,3897,3898,Video Mode Vertical Porch Set Register
+65,2.51,VMHSSETR,0x430,0x430,3898,3899,Video Mode Horizontal Size Set Register
+65,2.52,VMHPSETR,0x434,0x434,3899,3899,Video Mode Horizontal Porch Set Register
+65,2.53,SQCH0SET0R,0x5C0,0x5C0,3899,3900,Sequence Channel 0 Set 0 Register
+65,2.54,SQCH0SR,0x5D0,0x5D0,3900,3902,Sequence Channel 0 Status Register
+65,2.55,SQCH0SCR,0x5D4,0x5D4,3902,3903,Sequence Channel 0 Status Clear Register
+65,2.56,SQCH0IER,0x5D8,0x5D8,3903,3905,Sequence Channel 0 Interrupt Enable Register
+65,2.57,SQCH1SET0R,0x600,0x600,3905,3905,Sequence Channel 1 Set 0 Register
+65,2.58,SQCH1SR,0x610,0x610,3905,3907,Sequence Channel 1 Status Register
+65,2.59,SQCH1SCR,0x614,0x614,3907,3909,Sequence Channel 1 Status Clear Register
+65,2.60,SQCH1IER,0x618,0x618,3909,3911,Sequence Channel 1 Interrupt Enable Register
+65,2.61,SQCHnDSCmAR,0x780,0x780 + (0x10 * m) + (0x80 * n),3911,3912,"Sequence Channel n Descriptor-m A Register (n = 0 to 1, m = 0 to 7)"
+65,2.62,SQCHnDSCmBR,0x784,0x784 + (0x10 * m) + (0x80 * n),3912,3913,"Sequence Channel n Descriptor-m B Register (n = 0 to 1, m = 0 to 7)"
+65,2.63,SQCHnDSCmCR,0x788,0x788 + (0x10 * m) + (0x80 * n),3913,3914,"Sequence Channel n Descriptor-m C Register (n = 0 to 1, m = 0 to 7)"
+65,2.64,SQCHnDSCmDR,0x78C,0x78C + (0x10 * m) + (0x80 * n),3914,3914,"Sequence Channel n Descriptor-m D Register (n = 0 to 1, m = 0 to 7)"
+66,3.1,MCG,0x000,0x000,3936,3936,Module Configuration Register
+66,3.2,MCT0,0x010,0x010,3936,3937,Module Control Register 0
+66,3.3,MCT2,0x018,0x018,3937,3938,Module Control Register 2
+66,3.4,MCT3,0x01C,0x01C,3938,3938,Module Control Register 3
+66,3.5,RTCT,0x028,0x028,3938,3939,Reset Control Register
+66,3.6,RTST,0x02C,0x02C,3939,3939,Reset Status Register
+66,3.7,EPCT,0x040,0x040,3939,3940,EPD Option Control Register
+66,3.8,EMCT,0x044,0x044,3940,3941,EPD Misc Option Control Register
+66,3.9,MIST,0x050,0x050,3941,3943,Module Interrupt Status Register
+66,3.10,DTEL,0x060,0x060,3943,3943,Receive Data Type Enable Low Register
+66,3.11,DTEH,0x064,0x064,3943,3944,Receive Data Type Enable High Register
+66,3.12,RXST,0x070,0x070,3944,3945,Receive Status Register
+66,3.13,RXSC,0x074,0x074,3945,3946,Receive Status Clear Register
+66,3.14,RXIE,0x078,0x078,3946,3946,Receive Interrupt Enable Register
+66,3.21,PMST,0x200,0x200,3954,3955,Power Management Status Register
+66,3.22,PMSC,0x204,0x204,3955,3956,Power Management Status Clear Register
+66,3.23,PMIE,0x208,0x208,3956,3957,Power Management Interrupt Enable Register
+66,3.24,GSCT,0x280,0x280,3957,3957,Generic Short Packet Control Register
+66,3.25,GSST,0x284,0x284,3957,3958,Generic Short Packet Status Register
+66,3.26,GSSC,0x288,0x288,3958,3958,Generic Short Packet Status Clear Register
+66,3.27,GSIE,0x28C,0x28C,3958,3959,Generic Short Packet Interrupt Enable Register
+66,3.28,GSHT,0x290,0x290,3959,3960,Generic Short Packet Register
+66,3.29,GSIU,0x294,0x294,3960,3960,Generic Short Packet Information Update Register
+67,2.1,MC,0x000,0x000,3975,3977,Main Control Register
+67,2.2,MS,0x004,0x004,3977,3979,Module Status Register
+67,2.3,FC,0x008,0x008,3979,3979,Frame Capture Register
+67,2.4,SLPRC,0x00C,0x00C,3979,3980,Start Line Pre-Clip Register
+67,2.5,ELPRC,0x010,0x010,3980,3980,End Line Pre-Clip Register
+67,2.6,SPPRC,0x014,0x014,3980,3981,Start Pixel Pre-Clip Register
+67,2.7,EPPRC,0x018,0x018,3981,3982,End Pixel Pre-Clip Register
+67,2.8,CSI_IFMD,0x020,0x020,3982,3983,CSI2 Interface Mode Register
+67,2.10,IS,0x02C,0x02C,3983,3985,Image Stride Register
+67,2.9,CSIFLD,0x024,0x024,3983,3983,Field Detection Control Register
+67,2.11,MB1,0x030,0x030,3985,3986,Memory Base 1 Register
+67,2.12,MB2,0x034,0x034,3986,3986,Memory Base 2 Register
+67,2.13,MB3,0x038,0x038,3986,3987,Memory Base 3 Register
+67,2.14,LC,0x03C,0x03C,3987,3987,Line Count Register
+67,2.15,IE,0x040,0x040,3987,3988,Interrupt Enable Register
+67,2.16,INTS,0x044,0x044,3988,3991,Interrupt Status Register
+67,2.17,SI,0x048,0x048,3991,3991,Scanline Interrupt Register
+67,2.18,MTCSTOP,0x054,0x054,3991,3992,AXI Transfer Stop Control Register
+67,2.19,DMR,0x058,0x058,3992,3994,Data Mode Register
+67,2.20,UVAOF,0x060,0x060,3994,3994,UV Address Offset Register
+67,2.21.1,CSCE1,0x300,0x300,3995,3995,YC to RGB Calculation Setting Extension Register 1
+67,2.21.2,CSCE2,0x304,0x304,3995,3996,YC to RGB Calculation Setting Extension Register 2
+67,2.21.3,CSCE3,0x308,0x308,3996,3996,YC to RGB Calculation Setting Extension Register 3
+67,2.21.4,CSCE4,0x30C,0x30C,3996,3997,YC to RGB Calculation Setting Extension Register 4
+67,2.22.1,UDS_CTRL,0x080,0x080,3997,3998,Scaling Control Registers
+67,2.22.2,UDS_SCALE,0x084,0x084,3998,4001,Scaling Factor Registers
+67,2.22.3,UDS_PASS_BWIDTH,0x090,0x090,4001,4002,Passband Registers
+67,2.22.4,UDS_CLIP_SIZE,0x0A4,0x0A4,4002,4003,UDS Output Size Clipping Registers
+67,2.23,LUTP,0x100,0x100,4003,4004,Lookup Table Pointer Register
+67,2.24,LUTD,0x104,0x104,4004,4004,Lookup Table Data Register
+67,2.25.1,YCCR1,0x228,0x228,4004,4005,RGB to Y Calculation Setting Register 1
+67,2.25.2,YCCR2,0x22C,0x22C,4005,4005,RGB to Y Calculation Setting Register 2
+67,2.25.3,YCCR3,0x230,0x230,4005,4006,RGB to Y Calculation Setting Register 3
+67,2.25.4,CBCCR1,0x234,0x234,4006,4007,RGB to Cb Calculation Setting Register 1
+67,2.25.5,CBCCR2,0x238,0x238,4007,4007,RGB to Cb Calculation Setting Register 2
+67,2.25.6,CBCCR3,0x23C,0x23C,4007,4008,RGB to Cb Calculation Setting Register 3
+67,2.25.7,CRCCR1,0x240,0x240,4008,4008,RGB to Cr Calculation Setting Register 1
+67,2.25.8,CRCCR2,0x244,0x244,4008,4009,RGB to Cr Calculation Setting Register 2
+67,2.25.9,CRCCR3,0x248,0x248,4009,4010,RGB to Cr Calculation Setting Register 3

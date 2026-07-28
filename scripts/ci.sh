@@ -138,6 +138,7 @@ RA8_GATE_REGISTRY=(
   "lint-devcontainer|fast|hadolint over the Dockerfile, zsh -n over the zshrc"
   "lint-coverage|fast|every code file is claimed by a linter and a formatter"
   "cite-check|fast|HUM citation validator (strict)"
+  "hum-register-map|fast|register symbols cross-checked against the HUM register tables"
   "roadmap-stats|fast|ROADMAP summary stats"
   "sbom|fast|CycloneDX SBOM freshness"
   "soup-upstream|fast|vendored SOUP matches the upstream blobs recorded for its pin"

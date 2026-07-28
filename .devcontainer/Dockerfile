@@ -133,6 +133,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ninja-build \
       openssh-client \
       pkg-config \
+      poppler-utils \
       python3 \
       python3-pip \
       sudo \
