@@ -13,7 +13,7 @@
  *
  * The bring-up half (`open=OK`) is the deterministic, finger-free part of the
  * gate -- it proves the real `ra8_touch_open` -> IIC_B -> GT911 path reached the
- * product-id check. The point half is exercised under `board_sim`, which models
+ * product-id check. The point half is exercised under `ra8_emulator`, which models
  * the GT911 on the modelled I2C bus and injects a tap via `--click X Y`; that
  * tap returns through the genuine `ra8_touch_read` decode, so the banner carries
  * a real decoded coordinate. On a bare bench with no finger the poll loop times
@@ -82,7 +82,7 @@ static void td_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void td_panic_halt(const uint8_t* msg, uint32_t len)
 {
   td_print(msg, len);
@@ -116,7 +116,7 @@ static void td_print_uint(uint32_t value)
  *
  * @details
  * Calls `ra8_touch_read` up to ::k_td_poll_max times (statically bounded).
- * board_sim re-arms an injected `--click` each SysTick chunk until the
+ * ra8_emulator re-arms an injected `--click` each SysTick chunk until the
  * firmware drains it, so the loop catches the tap within a few chunks; on a
  * bare bench with no finger it exhausts and reports zero points.
  *

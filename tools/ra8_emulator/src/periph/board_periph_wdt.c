@@ -1,6 +1,6 @@
 /**
  * @file board_periph_wdt.c
- * @brief Window Watchdog Timer (WDT0 / WWDT) model for board_sim
+ * @brief Window Watchdog Timer (WDT0 / WWDT) model for ra8_emulator
  *
  * @details
  * Models the RA8D2 WDT0 (ra8_wdt_regs.h, ra8_wdt.c) at @c 0x40202600 closely

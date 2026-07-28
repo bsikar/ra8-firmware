@@ -203,7 +203,7 @@ static void test_word_bad_args(void)
  * ``enable_backup == true`` sets VBAE (arming the window, plus the
  * >= 500 ns settle inside the driver), init with ``enable_backup == false``
  * leaves it 0 (window closed). The host MMIO map does not model the gate,
- * so silicon + board_sim prove the drop; this pins the register write.
+ * so silicon + ra8_emulator prove the drop; this pins the register write.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API

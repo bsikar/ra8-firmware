@@ -125,19 +125,19 @@ jobs:
       - run: bash scripts/ci.sh --gate since
 
   # ---------------------------------------------------------------------------
-  # SIM==HIL parity -- every HIL app is also exercised in the simulator (SIL).
+  # EIL==HIL parity -- every HIL app is also exercised in the simulator (EIL).
   # Cheap, hardware-free structural gate; guarantees an added HIL app cannot
-  # escape SIM coverage.
+  # escape EIL coverage.
   # ---------------------------------------------------------------------------
-  hil-sil-parity:
-    name: SIM==HIL parity
+  hil-eil-parity:
+    name: EIL==HIL parity
     runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
-      - run: bash scripts/ci.sh --gate hil-sil-parity
+      - run: bash scripts/ci.sh --gate hil-eil-parity
 
   format:
     name: clang-format check

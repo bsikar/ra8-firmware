@@ -1,6 +1,6 @@
 /**
  * @file board_periph_ceu.c
- * @brief Capture Engine Unit (CEU) peripheral-block model for board_sim
+ * @brief Capture Engine Unit (CEU) peripheral-block model for ra8_emulator
  *
  * @details
  * Models the RA8D2 Capture Engine Unit at 0x4034_8000 (ra8_ceu_regs.h /
@@ -9,7 +9,7 @@
  * capture with ``ra8_ceu_capture_arm`` (which programs the destination address
  * register ``CDAYR`` then sets ``CAPSR.CE``), and polls the event register
  * ``CETCR.CPE`` for one-frame-end. On silicon that end is raised by the sensor's
- * VD edge; in board_sim the capture is instantaneous.
+ * VD edge; in ra8_emulator the capture is instantaneous.
  *
  * On the ``CAPSR.CE`` arm this block synthesises the frame: it derives the
  * destination byte geometry from the capture registers (``CDWDR`` destination
@@ -24,7 +24,7 @@
  * headless.
  *
  * Honest-model boundaries: a capture with no destination address or no valid
- * geometry raises no CPE (no faked frame). And board_sim cannot reproduce the
+ * geometry raises no CPE (no faked frame). And ra8_emulator cannot reproduce the
  * real board's J1/TFT VIO_HD pin conflict (issue #119) -- this exercises the
  * register/capture flow, it is not a claim the silicon captures. Self-registers
  * with the board_periph core from a file-scope constructor -- see

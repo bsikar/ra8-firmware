@@ -16,7 +16,7 @@
 #
 # This file is included from THREE places, because no single listfile is on the
 # path of every build:
-#   - CMakeLists.txt              the root project (board_sim, host tools)
+#   - CMakeLists.txt              the root project (ra8_emulator, host tools)
 #   - tests/CMakeLists.txt        the host unit tests, included AFTER the
 #                                 coverage options it must inspect
 #   - cmake/toolchain-ra8d2.cmake for every cross build -- `make <app>`

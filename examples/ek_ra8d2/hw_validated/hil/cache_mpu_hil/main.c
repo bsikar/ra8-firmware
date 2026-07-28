@@ -38,10 +38,10 @@
  * J-Link OB VCOM console (SCI8, PD02/PD03 @ 115200 8N1) and mirrors the verdict
  * over ``ra8_log`` (the emulator echoes it as an ``[itm]`` line). On any mismatch
  * it emits a distinct ``... FAIL`` line (never containing "PASS") and parks. The
- * core ends every path in WFI so ``board_sim``'s ``BOARD_SIM_IDLE_STOP``
+ * core ends every path in WFI so ``ra8_emulator``'s ``RA8_EMU_IDLE_STOP``
  * terminates the run after the one-shot banner is scraped.
  *
- * @note ``board_sim`` models memory byte-exact and does not model the L1 D-cache,
+ * @note ``ra8_emulator`` models memory byte-exact and does not model the L1 D-cache,
  *       so the cacheable-RW step passes there trivially; the cache hazard this
  *       app guards against is only real on silicon. The point of the sim run is
  *       to prove the app boots and reports PASS with the cache+MPU boot path
@@ -194,7 +194,7 @@ static const uint8_t k_cache_mpu_fail_mmio[] = "cache_mpu_hil: device-MMIO FAIL\
  * @brief Park the Cortex-M85 forever in a WFI idle loop.
  *
  * @details Reached after the one-shot banner has been emitted (pass or fail).
- * The WFI lets ``board_sim``'s idle detector stop the run cleanly and models the
+ * The WFI lets ``ra8_emulator``'s idle detector stop the run cleanly and models the
  * low-power posture on silicon.
  *
  * @return This function never returns.

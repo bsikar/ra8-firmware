@@ -7,7 +7,7 @@
  *          band composite. The whole file is pure integer arithmetic over the
  *          parsed atlas geometry plus calls into `ra8_tile_cache` (band paging)
  *          and `ra8_jof` (per-band decode) -- no MMIO, so it runs
- *          identically on the target, in board_sim and on the unit-test host.
+ *          identically on the target, in ra8_emulator and on the unit-test host.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

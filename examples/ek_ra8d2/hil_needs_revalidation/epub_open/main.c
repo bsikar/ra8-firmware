@@ -20,14 +20,14 @@
  * demand -- and assert:
  *   - chapter (spine) count == 2,
  *   - chapter 0's decompressed XHTML CRC-32 == 0xCF23AEEE (byte-exact for the
- *     seed; identical on board_sim and silicon),
+ *     seed; identical on ra8_emulator and silicon),
  *   - Dublin Core metadata parses with a non-empty title.
  * The SCI8 console banner on success is:
  *
  *   `epub-hil: chapters=2 ch0_crc=CF23AEEE PASS`
  *
- * The HIL gate is memprobe (J-Link / board_sim `--dump-sym`), not the console:
- * an SD app drives the SCI0 Simple-SPI bus, and board_sim folds every SCI
+ * The HIL gate is memprobe (J-Link / ra8_emulator `--dump-sym`), not the console:
+ * an SD app drives the SCI0 Simple-SPI bus, and ra8_emulator folds every SCI
  * channel into one console line, so the SCI8 banner is interleaved with SPI
  * traffic there (the same reason the sibling SD HIL apps -- `sd_font_render`,
  * `fs_format_mount` -- gate on SWD globals). The success path advances
@@ -38,7 +38,7 @@
  * console banner remains for a real-bench scope and human triage.
  *
  * Required external hardware (on-bench): Digilent PMOD MicroSD (410-380) in Pmod2
- * (J25) with a microSD inserted. THIS APP MAY FORMAT THE CARD. Under board_sim
+ * (J25) with a microSD inserted. THIS APP MAY FORMAT THE CARD. Under ra8_emulator
  * attach a blank card with `--sd-new 64:fat32`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -307,7 +307,7 @@ static void eoh_init_card_or_halt(uint32_t* pclka_hz)
 /**
  * @brief Mount the card, formatting FAT32 first if it is blank/unmountable.
  *
- * @details Binds the SD backend, tries to mount; a blank card (e.g. board_sim's
+ * @details Binds the SD backend, tries to mount; a blank card (e.g. ra8_emulator's
  * `--sd-new` before any format, or a fresh bench card) fails to mount, so it is
  * formatted FAT32 and mounted. Halts on a hard failure.
  *

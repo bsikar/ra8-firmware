@@ -62,7 +62,7 @@ static void test_dotf_app_verdict_mcdc(void)
  *
  * @details
  * The demo reports the self-test REG00 snapshot via globals but never folds
- * it into the verdict (board_sim does not model the AES core, and the bit
+ * it into the verdict (ra8_emulator does not model the AES core, and the bit
  * auto-clears differently on host vs silicon). This test documents that the
  * verdict is independent of any snapshot value.
  *

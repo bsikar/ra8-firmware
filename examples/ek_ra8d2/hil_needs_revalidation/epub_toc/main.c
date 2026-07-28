@@ -19,8 +19,8 @@
  *   - `TOCBAD.EPB`: no TOC document -> assert graceful degradation: `toc_kind`
  *     none with the spine still readable (chapter count == 2), no HardFault.
  *
- * The HIL gate is memprobe (J-Link / board_sim `--dump-sym`), not the console:
- * an SD app drives the SCI0 Simple-SPI bus, and board_sim folds every SCI channel
+ * The HIL gate is memprobe (J-Link / ra8_emulator `--dump-sym`), not the console:
+ * an SD app drives the SCI0 Simple-SPI bus, and ra8_emulator folds every SCI channel
  * into one console line, so the SCI8 banner is interleaved with SPI traffic there
  * (the same reason the sibling SD HIL apps -- `epub_open`, `sd_font_render`,
  * `fs_format_mount` -- gate on SWD globals). The success path advances
@@ -31,7 +31,7 @@
  * a real-bench scope.
  *
  * Required external hardware (on-bench): Digilent PMOD MicroSD (410-380) in Pmod2
- * (J25) with a microSD inserted. THIS APP MAY FORMAT THE CARD. Under board_sim
+ * (J25) with a microSD inserted. THIS APP MAY FORMAT THE CARD. Under ra8_emulator
  * attach a blank card with `--sd-new 64:fat32`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

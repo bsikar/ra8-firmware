@@ -1,7 +1,7 @@
 # ra8_io_cache_demo -- caching block device (Phase 5, #160)
 
 A single self-contained app that drives the `ra8_io` caching block device with no
-external hardware, so it runs headlessly in `board_sim`.
+external hardware, so it runs headlessly in `ra8_emulator`.
 
 The caching block device is a decorator: it wraps any other `ra8_io_blockdev_t`
 and keeps a fixed set of recently-used 512-byte sectors in a caller-owned cache,
@@ -37,7 +37,7 @@ make            # -> build/ra8_io_cache_demo.elf
 ## Run in the simulator
 
 ```
-BOARD_SIM_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_cache_demo.elf
+RA8_EMU_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_cache_demo.elf
 ```
 
 Expected console output (exact hit/miss counts depend on FAT geometry):
@@ -49,7 +49,7 @@ Expected console output (exact hit/miss counts depend on FAT geometry):
 
 ## Status
 
-`hw_pending`: the logic is proven in `board_sim` (the RAM backend is pure
+`hw_pending`: the logic is proven in `ra8_emulator` (the RAM backend is pure
 memory, so no peripheral model is needed). The same code runs on silicon;
 promote to `hw_validated` after a bench run captures the PASS line over the
 J-Link UART.

@@ -140,7 +140,7 @@ typedef struct {
  * @details One controller instance exists on the RA8D2, so one model instance
  *          suffices; both engines dispatch into it through the shared MMIO
  *          hooks.
- * @note Mutated only from the board_sim MMIO hooks; not for direct use.
+ * @note Mutated only from the ra8_emulator MMIO hooks; not for direct use.
  * @warning Reset via ::board_usb_host_init only.
  * @since 0.1.0
  */
@@ -231,7 +231,7 @@ static uint16_t usbhs_dcp_mps(void)
  * @pre The USBREQ..USBLENG shadows hold the request to deliver.
  * @post SACK or SIGN is latched in the INTSTS1 shadow.
  * @post The per-transfer stage flags are re-armed for the new transfer.
- * @note Called from the MMIO write hook; board_sim is single-threaded.
+ * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void usbhs_do_setup(uc_engine* uc)
@@ -280,7 +280,7 @@ static void usbhs_do_setup(uc_engine* uc)
  * @pre The model is engaged.
  * @post Read status: device advanced to read-status; host DCP BEMP latched.
  * @post Write / no-data status: the status-ZLP source is armed or ready.
- * @note Called from the MMIO write hook; board_sim is single-threaded.
+ * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void usbhs_do_ccpl(uc_engine* uc)
@@ -315,7 +315,7 @@ static void usbhs_do_ccpl(uc_engine* uc)
  * @pre The loop transport is initialised (board_usb model live).
  * @post A consumed device CCPL is folded into the status-ZLP flag.
  * @post No other model state changes (compose-only otherwise).
- * @note Called from the MMIO read hook; board_sim is single-threaded.
+ * @note Called from the MMIO read hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static uint16_t usbhs_brdysts_value(uc_engine* uc)
@@ -358,7 +358,7 @@ static uint16_t usbhs_brdysts_value(uc_engine* uc)
  * @pre CFIFOSEL selects the pipe the caller is transferring on.
  * @post No model state changes (compose-only).
  * @post DTLN <= the selected pipe's max packet size.
- * @note Called from the MMIO read hook; board_sim is single-threaded.
+ * @note Called from the MMIO read hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static uint16_t usbhs_cfifoctr_value(void)
@@ -397,7 +397,7 @@ static uint16_t usbhs_cfifoctr_value(void)
  * @pre The caller observed FRDY (always ready here).
  * @post Up to @p size receive bytes are consumed from the staging.
  * @post A fully-drained bulk staging raises the device's BEMP for the pipe.
- * @note Called from the MMIO read hook; board_sim is single-threaded.
+ * @note Called from the MMIO read hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static uint64_t usbhs_cfifo_read(uc_engine* uc, unsigned size)
@@ -438,7 +438,7 @@ static uint64_t usbhs_cfifo_read(uc_engine* uc, unsigned size)
  * @pre The staging has room (bounded by ::k_usbhs_stage_cap).
  * @post Up to @p size bytes are appended to the staging.
  * @post Overflow bytes beyond the staging capacity are dropped.
- * @note Called from the MMIO write hook; board_sim is single-threaded.
+ * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void usbhs_cfifo_write(uint64_t value, unsigned size)
@@ -469,7 +469,7 @@ static void usbhs_cfifo_write(uint64_t value, unsigned size)
  * @pre Staged bytes (for BVAL) were pushed via the CFIFO port.
  * @post BCLR: the selected side's staging is empty.
  * @post BVAL: the packet is delivered and the staging reset.
- * @note Called from the MMIO write hook; board_sim is single-threaded.
+ * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void usbhs_cfifoctr_write(uc_engine* uc, uint16_t value)
@@ -519,7 +519,7 @@ static void usbhs_cfifoctr_write(uc_engine* uc, uint16_t value)
  * @pre The stored shadow holds the previous DVSTCTR0 control bits.
  * @post The shadow holds @p value minus RHST; RHST reflects the reset result.
  * @post On the reset release with a device attached the device re-defaults.
- * @note Called from the MMIO write hook; board_sim is single-threaded.
+ * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void usbhs_dvstctr_write(uc_engine* uc, uint16_t value)
@@ -554,7 +554,7 @@ static void usbhs_dvstctr_write(uc_engine* uc, uint16_t value)
  * @pre For SUREQ, the USBREQ..USBLENG mirrors hold the request.
  * @post The shadow holds the persistent bits (PID / CCPL) of @p value.
  * @post Any launched transaction's side effects are applied.
- * @note Called from the MMIO write hook; board_sim is single-threaded.
+ * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void usbhs_dcpctr_write(uc_engine* uc, uint16_t value)
@@ -596,7 +596,7 @@ static void usbhs_dcpctr_write(uc_engine* uc, uint16_t value)
  * @pre @p off < ::k_usbhs_span.
  * @post Receive-side reads consume staged bytes (CFIFO only).
  * @post All other reads leave the model unchanged.
- * @note Called from the MMIO read hook; board_sim is single-threaded.
+ * @note Called from the MMIO read hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static uint64_t usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
@@ -650,7 +650,7 @@ static uint64_t usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
  * @pre @p off < ::k_usbhs_span.
  * @post The write's semantics are applied (shadow / staging / transaction).
  * @post Pulse bits never persist in the stored shadows.
- * @note Called from the MMIO write hook; board_sim is single-threaded.
+ * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void usbhs_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value64)

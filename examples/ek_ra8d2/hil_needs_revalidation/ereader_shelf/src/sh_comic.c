@@ -29,7 +29,7 @@
  * @par Deterministic self-check
  * ::sh_comic_selfcheck decodes the baked CBZ + CBR fixtures' page 0 into an
  * off-screen scratch and FNV-hashes them (an integer pipeline -> a
- * toolchain-independent digest identical on host / board_sim / silicon), which
+ * toolchain-independent digest identical on host / ra8_emulator / silicon), which
  * the boot banner pins as the comic golden without disturbing the shelf render.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

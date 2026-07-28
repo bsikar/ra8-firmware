@@ -33,7 +33,7 @@
  *
  * Hardware: EK-RA8D2 v1 + an external I2C controller wired to RIIC1
  * (SDA1/SCL1) with bus pull-ups. hw_pending: the on-wire target role is
- * UNVERIFIED on silicon -- board_sim models RIIC only as a controller.
+ * UNVERIFIED on silicon -- ra8_emulator models RIIC only as a controller.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

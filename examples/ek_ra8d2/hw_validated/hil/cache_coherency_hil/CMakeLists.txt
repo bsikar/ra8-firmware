@@ -50,7 +50,7 @@ ra8_add_app(
 target_compile_definitions(cache_coherency_hil.elf PRIVATE RA8_BOOT_ENABLE_CACHE_MPU)
 
 # Keep INFO-level logging in this RelWithDebInfo HIL build so the PASS result is
-# also emitted over ITM (additive to the VCOM banner), which board_sim surfaces
+# also emitted over ITM (additive to the VCOM banner), which ra8_emulator surfaces
 # on its [itm] tap.
 target_compile_definitions(cache_coherency_hil.elf PRIVATE RA8_LOG_LEVEL=RA8_LOG_LEVEL_INFO)
 

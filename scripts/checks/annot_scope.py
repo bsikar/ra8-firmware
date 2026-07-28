@@ -40,7 +40,7 @@ _repo_root = _REAL_REPO_ROOT
 #: Every first-party source root. CLAUDE.md ("Scope") holds `tools/` to the
 #: same bar as the firmware -- "a file being a host tool or just a simulator
 #: is NOT a reason to relax the rules" -- but `tools/` was absent here, so
-#: board_sim, media_dl, ra8_viewer and the rest were never annotation-checked
+#: ra8_emulator, media_dl, ra8_viewer and the rest were never annotation-checked
 #: at all. `scripts/` holds no C. Vendored SOUP under `libs/third_party/` is
 #: dropped by is_excluded(), not by omission from this tuple.
 SCAN_DIRS = ("libs", "src", "examples", "tests", "port", "tools")
@@ -66,7 +66,7 @@ BUILD_OUTPUT_PARTS = frozenset(
 
 #: Source roots that are compiled by the host toolchain and never cross-compiled
 #: into a firmware image. `tests/` is the host unit-test suite; `tools/` is the
-#: host-side tooling (board_sim, media_dl, ra8_fmt, ...), which `scripts/ci.sh`
+#: host-side tooling (ra8_emulator, media_dl, ra8_fmt, ...), which `scripts/ci.sh`
 #: builds with ``CC=clang-18`` and which no `cmake/toolchain-ra8d2.cmake` target
 #: ever references.
 HOST_ONLY_ROOTS = frozenset({"tests", "tools"})
@@ -74,7 +74,7 @@ HOST_ONLY_ROOTS = frozenset({"tests", "tools"})
 #: Roots whose immediate child directory is one module for RA8_PRIV purposes.
 #: `libs/<module>` is the obvious one. `tools/<tool>` is the same shape: each
 #: tool is one module split across several TUs with its own `*_internal.h`
-#: (ra8_fmt says so in that header's own file comment), and board_sim calling
+#: (ra8_fmt says so in that header's own file comment), and ra8_emulator calling
 #: ra8_fmt's private helper is the same boundary violation as one library
 #: calling another's. Without this, an RA8_PRIV tag under tools/ is decorative
 #: -- module_of() returned None, the rule hit `if callee_mod is None: continue`

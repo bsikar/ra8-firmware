@@ -135,7 +135,7 @@ static void bm_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void bm_panic_halt(const uint8_t* msg, uint32_t len)
 {
   bm_print(msg, len);
@@ -217,7 +217,7 @@ static void bm_setup_or_halt(uint32_t* out_pclka_hz)
  *
  * @note Charge decode is a single condition: CRATE high-byte bit 7 clear means a
  * positive (charging) rate. Not a compound boolean decision, so no MC/DC vector
- * set applies; the path is exercised by the board_sim gate, not a host test.
+ * set applies; the path is exercised by the ra8_emulator gate, not a host test.
  *
  * @pre ::ra8_smbus_init succeeded.
  * @post ``*out_soc`` / ``*out_chg`` reflect the fuel gauge; halts on NAK.

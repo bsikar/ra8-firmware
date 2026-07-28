@@ -12,7 +12,7 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: pre-commit-checks, annotations, doc-attachment, cite-check, hil-sil-parity
+# Gates in this file: pre-commit-checks, annotations, doc-attachment, cite-check, hil-eil-parity
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
@@ -333,17 +333,17 @@ gate_doc_attachment() (
 # not yet gate-clean, so it is deliberately not wired blocking.
 gate_cite_check() {
   # --selftest FIRST (#358): proves a malformed cite fires and that tools/
-  # (board_sim cites the RA8 HUM) and port/ are back in scope, before trusting
+  # (ra8_emulator cites the RA8 HUM) and port/ are back in scope, before trusting
   # a clean run over the derived first-party-C set.
   python3 scripts/checks/cite_check.py --selftest
   python3 scripts/checks/cite_check.py --strict
 }
 
-# --- hil-sil-parity -------------------------------------------------------
-# SIM==HIL: re-derives each harness's app discovery from hil_all.sh /
-# sil_all.sh and fails if a hil/ app has no hil.conf, sits outside
-# sil_all.sh's run set, or declares a HIL_MODE board_sim cannot check.
-# Hardware-free, so an added HIL app cannot escape SIM coverage.
-gate_hil_sil_parity() {
-  python3 scripts/checks/check_hil_sil_parity.py
+# --- hil-eil-parity -------------------------------------------------------
+# EIL==HIL: re-derives each harness's app discovery from hil_all.sh /
+# eil_all.sh and fails if a hil/ app has no hil.conf, sits outside
+# eil_all.sh's run set, or declares a HIL_MODE ra8_emulator cannot check.
+# Hardware-free, so an added HIL app cannot escape EIL coverage.
+gate_hil_eil_parity() {
+  python3 scripts/checks/check_hil_eil_parity.py
 }

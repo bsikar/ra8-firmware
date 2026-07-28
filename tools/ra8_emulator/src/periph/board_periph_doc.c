@@ -1,6 +1,6 @@
 /**
  * @file board_periph_doc.c
- * @brief Data Operation Circuit (DOC) peripheral-block model for board_sim
+ * @brief Data Operation Circuit (DOC) peripheral-block model for ra8_emulator
  *
  * @details
  * Models the RA8D2 DOC (ra8_doc_regs.h, ra8_doc.c) at @c 0x40311000 so
@@ -9,7 +9,7 @@
  * software sum, lighting LED1 on a match and latching LED2 on any divergence;
  * against the sparse fallback DODSR0 read back garbage, so LED2 latched. (The
  * @c RA8_SIMULATOR_MODE shortcut in ra8_doc.c that stores the result in software
- * is compiled out of the real cross-target .elf board_sim runs, so the genuine
+ * is compiled out of the real cross-target .elf ra8_emulator runs, so the genuine
  * "write DODIR, read DODSR0" hardware path must work.)
  *
  * The unit is one accumulator DODSR0 updated by each DODIR write per DOCR.OMS:

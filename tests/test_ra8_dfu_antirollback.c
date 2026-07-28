@@ -15,7 +15,7 @@
  *       ``k_ra8_flash_extra_start``. Under RA8_SIMULATOR_MODE the store uses a RAM
  *       shadow (the host sim does not model the extra-MRAM data side), so these
  *       tests validate the decision logic and the monotonic round-trip; silicon
- *       and board_sim exercise the real flash path.
+ *       and ra8_emulator exercise the real flash path.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

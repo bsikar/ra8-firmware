@@ -1,7 +1,7 @@
 # ra8_io_fsfmt_demo -- pluggable filesystem-format registry (Phase 4, #159)
 
 A single self-contained app that drives the `ra8_io` filesystem-format registry
-with no external hardware, so it runs headlessly in `board_sim`.
+with no external hardware, so it runs headlessly in `ra8_emulator`.
 
 The registry lets the fabric recognise the on-disk filesystem on a block device
 and report what that format can do, without the upper layers hard-coding a
@@ -34,7 +34,7 @@ make            # -> build/ra8_io_fsfmt_demo.elf
 ## Run in the simulator
 
 ```
-BOARD_SIM_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_fsfmt_demo.elf
+RA8_EMU_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_fsfmt_demo.elf
 ```
 
 Expected console output:
@@ -46,7 +46,7 @@ Expected console output:
 
 ## Status
 
-`hw_pending`: the logic is proven in `board_sim` (the RAM backend is pure
+`hw_pending`: the logic is proven in `ra8_emulator` (the RAM backend is pure
 memory, so no peripheral model is needed). The same code runs on silicon;
 promote to `hw_validated` after a bench run captures the PASS line over the
 J-Link UART.

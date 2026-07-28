@@ -16,7 +16,7 @@
  *
  * This file owns boot (clocks, console, panel, touch, optional SD), the single
  * ::g_sh state, the miniz inflate callback, and the input loop that polls the
- * GT911 panel + SW1/SW2 and dispatches to the active screen. Under board_sim,
+ * GT911 panel + SW1/SW2 and dispatches to the active screen. Under ra8_emulator,
  * `--click X Y` drives it, `--sd img` attaches the card, and `--ppm` captures
  * a frame.
  *
@@ -106,7 +106,7 @@ static uint32_t sh_fb_hash(void)
 /**
  * @brief Emit the gate banner: book count, SD flag, framebuffer hash, comic digests.
  * @details The `fb=` hash digests the rendered SHELF (unchanged by this feature),
- *          so the board_sim uart_scrape gate still catches cover-decode / layout
+ *          so the ra8_emulator uart_scrape gate still catches cover-decode / layout
  *          regressions. The appended `cbz=`/`cbr=`/`rtl=` fields pin the newly
  *          integrated comic decode + RTL path (#236) -- a deterministic,
  *          toolchain-independent digest of page 0 of the baked CBZ + CBR
@@ -147,7 +147,7 @@ static void sh_print_banner(const sh_comic_probe_t* cbz, const sh_comic_probe_t*
   sh_print((const uint8_t*)b, (uint32_t)p);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void sh_panic_halt(void)
 {
   sh_print(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
@@ -219,7 +219,7 @@ static int32_t sh_center_x(const char* s)
 /**
  * @brief Paint a "Loading from SD card..." panel before a (blocking) SD open.
  * @details The chunk reads + inflates behind an SD open are synchronous; over
- *          board_sim's byte-emulated SPI the first faults (header, metadata,
+ *          ra8_emulator's byte-emulated SPI the first faults (header, metadata,
  *          cover chunks) take a while, so this gives immediate feedback
  *          instead of a frozen-looking shelf. On hardware the reads are
  *          instant.
@@ -681,7 +681,7 @@ typedef enum : uint32_t {
 /**
  * @brief Advance the idle self-demo one step (shelf -> cover -> TOC -> read ...).
  * @details Runs only until the user touches the panel; lets a headless
- *          board_sim --record walk every screen with no input. Wraps to the
+ *          ra8_emulator --record walk every screen with no input. Wraps to the
  *          shelf so the loop is closed.
  */
 static void sh_demo_step(uint32_t step)
@@ -728,7 +728,7 @@ static void sh_demo_step(uint32_t step)
  * input, advances the opt-in self-demo (hold SW1 at boot to enable), and blanks
  * or relights the backlight around `k_sh_idle_dim_ms` of idle. `prev1` starts at
  * the boot SW1 state so a held SW1 does not also fire as a button edge; the loop
- * idles in WFI between taps so board_sim fast-forwards.
+ * idles in WFI between taps so ra8_emulator fast-forwards.
  *
  * @pre The shelf has been presented and boot is complete (thumbs built, banner printed).
  * @pre The board switch/touch inputs are initialised.

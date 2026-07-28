@@ -27,7 +27,7 @@ work before it re-parks.
   format, glyph count and a CRC-32 into the shared SRAM mailbox, the way
   `compile_on_m33` publishes its emitted blob.
 - **The M33 self-CRCs its pixels; the gate asserts the CRC against a golden.**
-  On the board_sim emulator the two cores share only the on-chip SRAM mailbox;
+  On the ra8_emulator the two cores share only the on-chip SRAM mailbox;
   each core's external-SDRAM window is a separate mapping, so the parked M85
   cannot read the bytes the M33 wrote at 0x68000000. The M33 therefore reads its
   own SDRAM framebuffer back to fold a CRC-32 (reading the pixels back is itself
@@ -44,21 +44,21 @@ work before it re-parks.
   M33 then **re-renders** the held page (re-folding the identical CRC) and signals
   `turn_done`. This repeats `k_erm33_max_turns` (3) times, fully deterministically,
   then both cores park for good. The M85 narrates each wake and a final handoff
-  verdict (board_sim echoes only the primary core's ITM).
+  verdict (ra8_emulator echoes only the primary core's ITM).
 
 ## How to run (no hardware needed)
 
 ```sh
-make sim-ereader_m33                                   # watch both cores live
-examples/ek_ra8d2/hw_pending/ereader_m33/sim_render_gate.sh    # page-0 CRC gate
-examples/ek_ra8d2/hw_pending/ereader_m33/sim_handoff_gate.sh   # full mode-switch
+make emu-ereader_m33                                   # watch both cores live
+examples/ek_ra8d2/hw_pending/ereader_m33/emu_render_gate.sh    # page-0 CRC gate
+examples/ek_ra8d2/hw_pending/ereader_m33/emu_handoff_gate.sh   # full mode-switch
 ```
 
-`make sim-ereader_m33` cross-builds Debug (so log lines are compiled in), builds
-board_sim, and boots the M85 ELF; board_sim sees the embedded `.cpu1_image` and
-spins up a second Unicorn engine for the M33. `sim_render_gate.sh` asserts the
-first rendered framebuffer's CRC. `sim_handoff_gate.sh` drives the **full
-park / wake / re-render cycle** headlessly using only existing board_sim
+`make emu-ereader_m33` cross-builds Debug (so log lines are compiled in), builds
+ra8_emulator, and boots the M85 ELF; ra8_emulator sees the embedded `.cpu1_image` and
+spins up a second Unicorn engine for the M33. `emu_render_gate.sh` asserts the
+first rendered framebuffer's CRC. `emu_handoff_gate.sh` drives the **full
+park / wake / re-render cycle** headlessly using only existing ra8_emulator
 mechanisms (dual-core + IPC + WFI + SDRAM) and asserts: the page-0 verdict, one
 wake banner per scripted page turn, and the final handoff verdict carrying the
 re-render count + the stable CRC.
@@ -83,13 +83,13 @@ re-render count + the stable CRC.
 
 `crc=C0BA74D3` is the CRC-32 the M33 folded over the 256x64 RGB565 pixels; it is
 non-zero (the plane is not blank) and deterministic (page text, font, and
-geometry are fixed), and it stays identical across every re-render. board_sim's
+geometry are fixed), and it stays identical across every re-render. ra8_emulator's
 `IPC: sends=3 wakes=3` line corroborates the wake: the M33 poked IPC exactly
 three times and the M85's NVIC took three wakes -- one per page turn.
 
-## What board_sim cannot model (HIL follow-ups)
+## What ra8_emulator cannot model (HIL follow-ups)
 
-This increment proves the **mode-switch control flow** end to end in board_sim:
+This increment proves the **mode-switch control flow** end to end in ra8_emulator:
 the M85 really parks and is woken out of WFI by the M33's IPC poke, and the M33
 holds + re-renders deterministically. What the emulator cannot show -- and what
 HIL on real silicon must validate (#30) -- is the actual **power delta** of the
@@ -115,5 +115,5 @@ display-plane handoff, and (optionally) feeding the render through the full
 | `trustzone_init.c`      | SAU scaffold (not invoked in single-world build)         |
 | `CMakeLists.txt`        | Builds both images; links ra8_gfx + ra8_ipc into the M33   |
 | `Makefile`              | Per-app build / flash / debug wrapper                    |
-| `sim_render_gate.sh`    | board_sim CRC gate (asserts the page-0 render CRC)       |
-| `sim_handoff_gate.sh`   | board_sim gate for the full #150 park/wake/re-render cycle|
+| `emu_render_gate.sh`    | ra8_emulator CRC gate (asserts the page-0 render CRC)       |
+| `emu_handoff_gate.sh`   | ra8_emulator gate for the full #150 park/wake/re-render cycle|

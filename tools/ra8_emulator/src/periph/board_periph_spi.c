@@ -1,6 +1,6 @@
 /**
  * @file board_periph_spi.c
- * @brief SPI_B (Type-B SPI) controller peripheral-block model for board_sim
+ * @brief SPI_B (Type-B SPI) controller peripheral-block model for ra8_emulator
  *
  * @details
  * Models the RA8D2 SPI_B controller the ra8_spi_b.c polling driver drives, so

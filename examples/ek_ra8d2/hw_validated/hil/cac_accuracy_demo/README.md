@@ -37,7 +37,7 @@ ok=Y`).
 (`CACR0.CFME = 1`) latches `CASTR.MENDF` and loads `CACNTBR` with the
 midpoint of the firmware's programmed `[CALLVR, CAULVR]` window -- in-band
 by construction -- so `ra8_cac_measure` completes with `FERRF` / `OVFF`
-clear and the headless `board_sim_smoke.sh` gate sees the same `meas=ok ...
+clear and the headless `ra8_emulator_smoke.sh` gate sees the same `meas=ok ...
 ok=Y` banner (the simulator proves the driver start / poll / read-back
 sequence; silicon proves the real edge count).
 

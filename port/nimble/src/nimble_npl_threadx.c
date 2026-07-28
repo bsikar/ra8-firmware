@@ -20,7 +20,7 @@
  *
  * @warning UNVALIDATED SCAFFOLD (issue #286): this NimBLE port and its
  * ThreadX Native Porting Layer link and pass the static gates, but have
- * NEVER been hardware-validated and are NOT sim-gated -- board_sim models
+ * NEVER been hardware-validated and are NOT emulator-gated -- ra8_emulator models
  * no RA8D2 BLE controller / HCI mailbox, and the underlying ra8_ble
  * transport is itself unproven on this board (see #86, #91). Treat every
  * symbol here as a link-only stub, not a working BLE stack. Consumers stay

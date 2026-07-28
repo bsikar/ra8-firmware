@@ -20,7 +20,7 @@ The candidate bars considered:
 * **MISRA C only** -- rejected as insufficient. MISRA constrains
   *style*; it does not require coverage, traceability, or
   documented deviations.
-* **IEC 61508 SIL 2 / DO-178C Level C** -- requires statement +
+* **IEC 61508 EIL 2 / DO-178C Level C** -- requires statement +
   branch coverage but not MC/DC. Already the bar most "embedded
   with tests" projects implicitly target. Picking this bar would
   not stretch the codebase.
@@ -30,7 +30,7 @@ The candidate bars considered:
   bounded loops, and full deviation justifications. This is the
   highest bar that is achievable for a parts-on-the-bench
   research project without a certification authority in the loop.
-* **IEC 61508 SIL 4 / DO-178C Level A** -- requires source-to-object
+* **IEC 61508 EIL 4 / DO-178C Level A** -- requires source-to-object
   traceability of every machine instruction. Rejected as
   unachievable on the GCC + LTO toolchain in use without a
   qualified compiler.

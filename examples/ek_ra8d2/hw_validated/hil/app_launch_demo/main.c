@@ -6,7 +6,7 @@
  * The first runnable increment of the app framework (#146). It proves the
  * `ra8_app` registry + launcher + the navigation back-stack (`ra8_app_nav_t`)
  * end-to-end on the real Cortex-M85 image -- no display, no widgets, just the
- * lifecycle and routing so the path is observable headlessly on `board_sim`
+ * lifecycle and routing so the path is observable headlessly on `ra8_emulator`
  * via the ITM log (each line shows up as `[itm] ...`).
  *
  * What it does, acting as a tiny "chrome" / shell:
@@ -32,9 +32,9 @@
  * their lifecycle calls and log them. A deterministic self-check asserts the
  * exact call counts and back-stack depth at every step, then emits:
  *
- *   `[app_launch] INFO: demo PASS`  (board_sim: `[itm] [app_launch] INFO: demo PASS`)
+ *   `[app_launch] INFO: demo PASS`  (ra8_emulator: `[itm] [app_launch] INFO: demo PASS`)
  *
- * so the app doubles as a `board_sim` regression gate; any failure logs a
+ * so the app doubles as a `ra8_emulator` regression gate; any failure logs a
  * `FAIL ...` line and parks in WFI.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -628,7 +628,7 @@ static void app_launch_banner(void)
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
  * @post On success the PASS banner is emitted; otherwise a FAIL line is.
- * @post The CPU parks in WFI (observable on board_sim until its budget).
+ * @post The CPU parks in WFI (observable on ra8_emulator until its budget).
  * @since 0.1.0
  */
 int32_t main(void)

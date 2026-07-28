@@ -76,7 +76,7 @@ no such peripheral.** Verified by full-text search of both primary manuals:
 
 Consequently there is no `RA8_HAS_ETHERC_EDMAC` flag in
 `libs/ra8_core/inc/ra8_device.h`, no `ra8_etherc` / `ra8_edmac` driver, and no
-board_sim ETHERC model to add. Because the "MAC" that motivated the "#21 large-
+ra8_emulator ETHERC model to add. Because the "MAC" that motivated the "#21 large-
 frame TX defect is a different IP" angle does not exist, that angle is moot: the
 RA8P1's clean-vs-defect Ethernet story is identical to the RA8D2's R-Switch.
 

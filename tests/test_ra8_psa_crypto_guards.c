@@ -355,7 +355,7 @@ static void test_mcdc_verify_hash_arg_pair(void)
  * The cases below drive the single-condition error returns that the
  * happy-path and MC/DC vectors above never reach: the deinit pool
  * scrub, the not-initialized guards on every entry point, the
- * per-operation handle / usage / size guards, and the two sim-body
+ * per-operation handle / usage / size guards, and the two emu-body
  * ``k_ra8_err_invalid_size`` legs (oversized plaintext / undersized
  * output). None introduces a new compound-decision obligation.
  */

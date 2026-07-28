@@ -19,7 +19,7 @@ which are now settled on the bench (see the pin map below):
 ## Why `hw_pending`
 
 `ra8_emulator` does not model an ESP32-C6 on Pmod1, so this app cannot be
-gated by the SIL suite. It is also absent from the HIL suite (no `hil.conf`):
+gated by the EIL suite. It is also absent from the HIL suite (no `hil.conf`):
 a PASS needs a C6 soldered to J26 *and* SW4-4 OFF, which takes the Arduino and
 mikroBUS connectors off the board for every other app in the same run. It is a
 bench instrument, run by hand.

@@ -98,7 +98,7 @@ add_test(NAME test_ra8_cache_store COMMAND test_ra8_cache_store)
 # ---------------------------------------------------------------------------
 # test_cache_store_demo (#257): the ra8_cache_store_demo example core on the host.
 # Compiles the SAME demo core (cache_store_demo.c) and RAM NOR driver
-# (lx_nor_ram.c) the ARM example runs, so the host test and the board_sim gate
+# (lx_nor_ram.c) the ARM example runs, so the host test and the ra8_emulator gate
 # exercise byte-identical logic. Reuses the cache_store + LevelX-standalone
 # sources globbed for test_ra8_cache_store above; ra8_core_hal supplies ra8_log /
 # ra8_err / ra8_check. The example sources live under examples/ (outside the

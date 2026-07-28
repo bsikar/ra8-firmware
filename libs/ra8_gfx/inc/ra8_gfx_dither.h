@@ -14,13 +14,13 @@
  * (1993), NOT error diffusion.
  *
  * Why a position-indexed mask and not Floyd-Steinberg: the reader is tiled,
- * zoomable, must be deterministic (board_sim byte == silicon, the SIM==HIL
+ * zoomable, must be deterministic (ra8_emulator byte == silicon, the EIL==HIL
  * rule), and wants Helium/MVE. A mask threshold depends on no neighbour state,
  * so it is:
  *  - independent per pixel/tile -- abutting tiles share one continuous mask
  *    phase and never seam (the mask is indexed at absolute panel coordinates);
  *  - fully deterministic -- pure integer arithmetic over a `const` table, so the
- *    host unit test, board_sim, and silicon emit identical bytes;
+ *    host unit test, ra8_emulator, and silicon emit identical bytes;
  *  - re-dithered cleanly from the retained gray8 at every zoom level.
  *
  * @par Quantisation rule

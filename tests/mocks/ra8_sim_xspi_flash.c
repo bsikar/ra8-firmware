@@ -7,7 +7,7 @@
  *
  * @details
  * See ``ra8_sim_xspi_flash.h`` for the model contract. The implementation
- * mirrors the board_sim peripheral model
+ * mirrors the ra8_emulator peripheral model
  * (``tools/ra8_emulator/src/periph/board_periph_xspi.c``), including the inverted
  * backing-store trick: each byte stores the complement of the flash
  * content, so the all-zero BSS image IS the erased (0xFF) part and a fresh
@@ -34,7 +34,7 @@
  *
  * @details
  * Mirrors the opcode set the ``ra8_xspi_flash.c`` driver emits and the
- * board_sim model decodes. Software-reset / suspend / resume opcodes fall
+ * ra8_emulator model decodes. Software-reset / suspend / resume opcodes fall
  * through the ``default`` arm: they retire with CMDCMP but touch no flash.
  *
  * @see ra8_sim_xspi_flash_install() Model installation.
@@ -132,7 +132,7 @@ static uint32_t s_sim_xspi_busy_left[k_ra8_xspi_instance_count];
  * @details
  * ``internal_make_cdt`` in the driver left-justifies the opcode inside the
  * 16-bit ``CMD[31:16]`` field: ``shift = 8 * (2 - CMDSIZE)``. Recover the
- * low opcode byte the same way the board_sim model does. Raw
+ * low opcode byte the same way the ra8_emulator model does. Raw
  * ``ra8_xspi_direct_command`` payloads decode to arbitrary bytes here and
  * fall into the decoder's no-op arm.
  *
@@ -284,7 +284,7 @@ static void internal_sim_xspi_erase(uint8_t instance, uint32_t addr)
  * @brief Serve an RDSR: report WEL=1 plus WIP while a busy budget remains.
  *
  * @details
- * Matches the board_sim model's implicit write-enable latch (WEL always
+ * Matches the ra8_emulator model's implicit write-enable latch (WEL always
  * reads 1) and adds the WIP window ::ra8_sim_xspi_flash_set_busy_polls
  * arms, decrementing it once per poll so the driver's bounded WIP-clear
  * loop sees busy exactly @c n times.
@@ -315,7 +315,7 @@ static void internal_sim_xspi_status(uint8_t instance, volatile r_xspi_regs_t* r
  * @brief Execute the pending CDBUF slot-0 command and retire it.
  *
  * @details
- * Decodes the descriptor exactly like the board_sim model, dispatches the
+ * Decodes the descriptor exactly like the ra8_emulator model, dispatches the
  * flash-affecting opcodes, then raises ``INTS.CMDCMP`` and self-clears
  * ``CDCTL0.TRREQ`` -- the controller-completion behaviour the driver's
  * real CMDCMP poll observes.

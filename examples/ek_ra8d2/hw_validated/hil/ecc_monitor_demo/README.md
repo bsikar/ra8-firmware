@@ -36,7 +36,7 @@ stays NMI but no error is injected, so the NMI never fires here.
 
 `tools/ra8_emulator` shadows the SRAM ECC control window (`SRAMCRn` /
 `SRAMESR`) so the bring-up + round-trip run and report `ok=Y` -- but
-board_sim does **not** model ECC, so the actual error-detection path (a
+ra8_emulator does **not** model ECC, so the actual error-detection path (a
 real 1-bit / 2-bit flip setting `SRAMESR`) cannot be exercised on the
 emulator. The headless verdict therefore gates only on the deterministic
 round-trip; the latched error masks (`g_ecc_1bit` / `g_ecc_2bit`) are

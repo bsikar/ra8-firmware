@@ -1,10 +1,10 @@
 /**
  * @file mkfontimg.c
  * @brief Build a FAT16 SD-card image carrying a single font file, written
- *        through the real ra8_fs so board_sim's app reads it back bit-for-bit.
+ *        through the real ra8_fs so ra8_emulator's app reads it back bit-for-bit.
  *
  * @details
- * board_sim's @c --sd flag attaches a raw FAT image to the modelled SD card.
+ * ra8_emulator's @c --sd flag attaches a raw FAT image to the modelled SD card.
  * The firmware app (@c sd_font_render) mounts that image with @ref ra8_fs and
  * reads a font off it. To guarantee the on-card layout is exactly what
  * ra8_fs expects, this host tool formats the image with the SAME ra8_fs code

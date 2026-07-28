@@ -50,7 +50,7 @@ the build loudly if it is ever configured with the RA8D2 toolchain.
 tools/ra8_emulator/build/ra8_emulator build/npu_vela.elf --device ra8p1
 ```
 
-board_sim only maps the Ethos-U55 window (`0x40140000`) under `--device ra8p1`;
+ra8_emulator only maps the Ethos-U55 window (`0x40140000`) under `--device ra8p1`;
 its NPU model decodes the container's command stream (the documented SE55 sim
 convention, see `libs/ra8_hal/inc/ra8_npu_sim_cmd.h`) and applies the op to the
 tensor arenas, so the run is deterministic. The output checkword matches

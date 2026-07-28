@@ -17,7 +17,7 @@ hardware HIL probe AND the gap below is resolved.
 |-----|-----------------|
 | i3c_i2c_peripheral_demo | I2C/I3C peripheral mode needs an external controller to talk to; the bench has no controller wired up. |
 | imu_lsm6dso_demo | Needs an LSM6DSO IMU on the I2C/I3C bus; not fitted. |
-| manual/usb_msc_sdcard | Serves the live full-capacity Pmod2 SD card as a WRITABLE USB drive (#206 items 1-2). `scripts/sim/smoke.sh usb_msc_sdcard` proves the transport headlessly (enumeration + READ CAPACITY equal to the card image's block count + a 512-byte sector-0 read through the USB pipe), but #206 item 3 -- a real PC host copying a file on, unmounting, re-mounting, and verifying (multi-block WRITE(10) streaks, flush semantics, FS metadata updates) -- needs a human at a PC on J11; see the app README's bench procedure. |
+| manual/usb_msc_sdcard | Serves the live full-capacity Pmod2 SD card as a WRITABLE USB drive (#206 items 1-2). `scripts/emu/smoke.sh usb_msc_sdcard` proves the transport headlessly (enumeration + READ CAPACITY equal to the card image's block count + a 512-byte sector-0 read through the USB pipe), but #206 item 3 -- a real PC host copying a file on, unmounting, re-mounting, and verifying (multi-block WRITE(10) streaks, flush semantics, FS metadata updates) -- needs a human at a PC on J11; see the app README's bench procedure. |
 
 ### Blocked by a module / firmware gap
 
@@ -47,7 +47,7 @@ it writes a baked Latin-1 font (`libs/ra8_fonts/literata_latin1.ttf`) to the car
 reads it back -- so any FAT-formatted "random" card just works, no host-side
 image prep. Validated on real hardware with the prior Arno Pro face
 (`g_sfr_stage` = render_ok, font 404 KB, `g_sfr_ink` = 1254 inked pixels) and in
-board_sim against a blank card image (`mkfontimg --blank`), gated by a
+ra8_emulator against a blank card image (`mkfontimg --blank`), gated by a
 `g_sfr_heartbeat` memprobe, and moved to `hw_validated/hil/`; re-validation with
 Literata is a hardware follow-up. The same helper now backs `ereader_ui`'s font
 load.

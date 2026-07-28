@@ -10,7 +10,7 @@
 #   its own isolation, leaving stray checkouts (~/ra8-296, ~/ra8-base,
 #   ~/ra8-fmt-work, ~/wt-land296, /home/bsikar/wt-296) scattered across home.
 #   Two agents had their checkouts clobbered mid-run, corrupting a baseline
-#   measurement and a SIL run. A .gcda left behind by a build of a DIFFERENT
+#   measurement and an EIL run. A .gcda left behind by a build of a DIFFERENT
 #   branch made gcovr fail with no_working_dir_found -- a bogus coverage
 #   failure that reads exactly like a real one, worked around by remembering to
 #   `rm -rf tests/build build/tidy` before every coverage run.

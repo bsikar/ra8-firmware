@@ -20,14 +20,14 @@
  *
  * On a clean round-trip it prints exactly
  * `ra8_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS`; any failed step prints
- * `ra8_io_sd_demo: FAIL` and parks the CPU. The HIL runner and the board_sim
+ * `ra8_io_sd_demo: FAIL` and parks the CPU. The HIL runner and the ra8_emulator
  * smoke gate scrape for that PASS line.
  *
  * Required external hardware (on-bench): Digilent PMOD MicroSD (part 410-380)
  * in Pmod2 (J25) with any microSD card inserted. THIS APP ERASES THE CARD: it
  * self-formats a fresh FAT32 volume, so any blank card works (FAT32 handles the
  * multi-GB cards a real SD slot sees -- FAT16's 2 GB ceiling does not).
- * Under board_sim attach a blank card with `--sd-new 64:fat16` (the firmware
+ * Under ra8_emulator attach a blank card with `--sd-new 64:fat16` (the firmware
  * reformats it FAT32 regardless of the seed type; only the capacity matters).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -305,7 +305,7 @@ static void sd_demo_init_card_or_halt(uint32_t pclka_hz)
  *
  * @details Brings up the clocks, console, SPI, and SD card, then runs the shared
  *          `ra8_io` VFS round-trip over the SD-over-SPI block device. On success
- *          it prints the exact PASS banner the HIL runner and board_sim smoke
+ *          it prints the exact PASS banner the HIL runner and ra8_emulator smoke
  *          gate scrape for; on any failure it prints `FAIL` and parks the core.
  *
  * @return Never returns.

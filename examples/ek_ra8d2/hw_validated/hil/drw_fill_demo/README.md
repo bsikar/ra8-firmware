@@ -31,7 +31,7 @@ engine sits in the graphics power domain, which `PDCTRGD` gates OFF at reset
 limiters, `WRITEALPHA = 01`) the engine paints exactly pixels (8,8)..(23,23) in
 `0xFF00FF00` -- byte-verified by a J-Link savebin. `tools/ra8_emulator`
 (`board_periph_drw.c`) rasterizes the same bounding box, so `match=Y` holds in
-SIL and on hardware alike (SIM == HIL).
+EIL and on hardware alike (EIL == HIL).
 
 This demo exercises the register/immediate fill path (`ra8_drw_fill_rect`),
 which renders a byte-clean single rectangle. For a loop-stable clear+fill where

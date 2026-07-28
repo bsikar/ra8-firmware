@@ -12,7 +12,7 @@
  *     `tools/vela/vela_gen.py` from `tools/vela/models/npu_addk_sim.json`),
  *     loads it through `ra8_npu_load()`, byte-pins the extracted command stream
  *     and the resolved region bases, then drives the full submit -> run ->
- *     read-output path against a host mirror of the board_sim NPU model and
+ *     read-output path against a host mirror of the ra8_emulator NPU model and
  *     asserts the output arena holds `input + K` byte-for-byte. This is the
  *     regenerate-and-diff golden the issue asks the host test to pin.
  *
@@ -206,7 +206,7 @@ static uint8_t* lt_region_ptr(ra8_npu_region_idx_t idx)
   return (uint8_t*)(uintptr_t)base;
 }
 
-/** @brief Mirror the board_sim NPU model: decode QBASE, apply the op, latch STATUS. */
+/** @brief Mirror the ra8_emulator NPU model: decode QBASE, apply the op, latch STATUS. */
 static void lt_exec(void)
 {
   const uint64_t qbase =
@@ -334,7 +334,7 @@ static void test_load_golden_maps_job(void)
   TEST_ASSERT_EQ(exp_r1, job.region_base[k_ra8_npu_region_1]);
   TEST_ASSERT_EQ(exp_r2, job.region_base[k_ra8_npu_region_2]);
 
-  /* Run it: submit -> run -> sim-mirror exec -> poll -> read output. */
+  /* Run it: submit -> run -> emulator-mirror exec -> poll -> read output. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_submit(&job));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_run());
   lt_exec();

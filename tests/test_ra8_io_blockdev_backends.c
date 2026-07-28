@@ -12,7 +12,7 @@
  *   - mram : the data-MRAM fence (reject mis-aligned / out-of-region windows),
  *            capabilities, and a memory-mapped read of poked data.
  *   - sdspi / sdhi: bind + NULL-guard (the data path needs a real card, so it
- *            is exercised by board_sim / HIL, not here).
+ *            is exercised by ra8_emulator / HIL, not here).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -352,7 +352,7 @@ static void test_mram_write_and_erase(void)
 }
 
 /* =============================================================================
- * sdspi / sdhi -- bind + NULL guard (data path is board_sim / HIL)
+ * sdspi / sdhi -- bind + NULL guard (data path is ra8_emulator / HIL)
  * =============================================================================
  */
 

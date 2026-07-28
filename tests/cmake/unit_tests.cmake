@@ -230,12 +230,12 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_ethosu_sh
 # it for the RA8D2 and fail to resolve the ra8_npu_* API.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_npu_loader.c)
 
-# test_board_sim_mstp_gate.c (#405) compiles the engine-free board_sim MSTP
+# test_ra8_emulator_mstp_gate.c (#405) compiles the engine-free ra8_emulator MSTP
 # model (tools/ra8_emulator/src/periph/board_periph_mstp_model.c) alongside it to exercise
 # the address->module-stop-bit gate table directly, so it is registered by hand
-# in tests_board_sim.cmake rather than through the ra8_add_test() auto-glob
+# in tests_ra8_emulator.cmake rather than through the ra8_add_test() auto-glob
 # (which would build it against ra8_core_hal without the model source).
-list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_board_sim_mstp_gate.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_emulator_mstp_gate.c)
 
 foreach(src ${RA8_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)

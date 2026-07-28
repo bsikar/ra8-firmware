@@ -27,7 +27,7 @@ sleeps.
 ## Run it (no hardware)
 
 ```
-make sim-lowpower_holdpage          # live board view; LED1 toggled by the M33
+make emu-lowpower_holdpage          # live board view; LED1 toggled by the M33
 ```
 Or headless, holding SW1 to exercise the page-turn:
 ```
@@ -37,13 +37,13 @@ tools/ra8_emulator/build/ra8_emulator \
 ```
 Watch the `GPIO LEDs` summary: LED1 (P600) accumulates transitions driven by the
 **M33** (cpu1 engine), proving the held page runs on the secondary core. This
-relies on board_sim's cpu1 peripheral modelling (the M33's MMIO routes through
+relies on ra8_emulator's cpu1 peripheral modelling (the M33's MMIO routes through
 the same peripheral models as the M85).
 
 ## What's modelled vs. what's next (#150)
 
 Landed here: the **M85-parks / M33-holds** foundation -- the handoff, the slow-
-core hold loop, LED indicator, and SW1 page-turn, all sim-validated.
+core hold loop, LED indicator, and SW1 page-turn, all emu-validated.
 
 Still open in #150:
 - The real display-plane + framebuffer handoff to the M33 (GLCDC), instead of

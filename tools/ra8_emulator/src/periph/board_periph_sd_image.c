@@ -58,7 +58,7 @@ bool board_sd_attach(const char* path)
   }
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
-    (void)fprintf(stderr, "board_sim: --sd: cannot open '%s'\n", path);
+    (void)fprintf(stderr, "ra8_emulator: --sd: cannot open '%s'\n", path);
     return false;
   }
   (void)fseek(fp, 0L, SEEK_END);
@@ -66,7 +66,7 @@ bool board_sd_attach(const char* path)
   (void)fseek(fp, 0L, SEEK_SET);
   if (size <= 0L) {
     (void)fclose(fp);
-    (void)fprintf(stderr, "board_sim: --sd: empty image '%s'\n", path);
+    (void)fprintf(stderr, "ra8_emulator: --sd: empty image '%s'\n", path);
     return false;
   }
   board_sd_release_image();
@@ -85,7 +85,7 @@ bool board_sd_attach(const char* path)
   }
   s_sd.image_len = (uint64_t)size;
   s_sd.attached  = true;
-  (void)fprintf(stderr, "board_sim: SD card attached (%ld bytes) from %s\n", size, path);
+  (void)fprintf(stderr, "ra8_emulator: SD card attached (%ld bytes) from %s\n", size, path);
   return true;
 }
 
@@ -120,17 +120,17 @@ bool board_sd_attached(void)
  */
 static uint8_t* board_sd_map_blank_image(uint64_t bytes, int* out_fd)
 {
-  char tmpl[] = "/tmp/board_sim_sd.XXXXXX";
+  char tmpl[] = "/tmp/ra8_emulator_sd.XXXXXX";
   int  fd     = mkstemp(tmpl);
   if (fd < 0) {
-    (void)fprintf(stderr, "board_sim: --sd-new: mkstemp failed\n");
+    (void)fprintf(stderr, "ra8_emulator: --sd-new: mkstemp failed\n");
     return nullptr;
   }
   (void)unlink(tmpl); /* anonymous: the storage lives until the fd is closed. */
   if (ftruncate(fd, (off_t)bytes) != 0) {
     (void)close(fd);
     (void)fprintf(stderr,
-                  "board_sim: --sd-new: ftruncate to %llu bytes failed\n",
+                  "ra8_emulator: --sd-new: ftruncate to %llu bytes failed\n",
                   (unsigned long long)bytes);
     return nullptr;
   }
@@ -138,7 +138,7 @@ static uint8_t* board_sd_map_blank_image(uint64_t bytes, int* out_fd)
   if (img == MAP_FAILED) {
     (void)close(fd);
     (void)fprintf(stderr,
-                  "board_sim: --sd-new: mmap of %llu bytes failed\n",
+                  "ra8_emulator: --sd-new: mmap of %llu bytes failed\n",
                   (unsigned long long)bytes);
     return nullptr;
   }
@@ -168,14 +168,14 @@ static void board_sd_report_created(uint64_t bytes, uint8_t fat_bits, uint32_t s
 {
   if (bytes >= ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib * (uint64_t)k_unit_kib)) {
     (void)fprintf(stderr,
-                  "board_sim: SD card created (%llu GiB FAT%u, %u sec/clus) sparse + attached\n",
+                  "ra8_emulator: SD card created (%llu GiB FAT%u, %u sec/clus) sparse + attached\n",
                   (unsigned long long)(bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib *
                                                 (uint64_t)k_unit_kib)),
                   (unsigned)fat_bits,
                   (unsigned)spc);
   } else {
     (void)fprintf(stderr,
-                  "board_sim: SD card created (%llu MiB FAT%u, %u sec/clus) sparse + attached\n",
+                  "ra8_emulator: SD card created (%llu MiB FAT%u, %u sec/clus) sparse + attached\n",
                   (unsigned long long)(bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)),
                   (unsigned)fat_bits,
                   (unsigned)spc);
@@ -185,7 +185,7 @@ static void board_sd_report_created(uint64_t bytes, uint8_t fat_bits, uint32_t s
 bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char* label)
 {
   if (total_sectors < (uint32_t)k_sd_min_sectors) {
-    (void)fprintf(stderr, "board_sim: --sd-new: size too small (need >= 32 KiB)\n");
+    (void)fprintf(stderr, "ra8_emulator: --sd-new: size too small (need >= 32 KiB)\n");
     return false;
   }
   const uint64_t bytes = (uint64_t)total_sectors * (uint64_t)k_fmt_sec_bytes;
@@ -222,14 +222,14 @@ bool board_sd_save(const char* path)
   if (s_sd.image_len > (uint64_t)k_sd_save_max_bytes) {
     (void)fprintf(
       stderr,
-      "board_sim: --save-sd: card is %llu MiB (> %u MiB cap) -- skipped\n",
+      "ra8_emulator: --save-sd: card is %llu MiB (> %u MiB cap) -- skipped\n",
       (unsigned long long)(s_sd.image_len / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)),
       (unsigned)((uint64_t)k_sd_save_max_bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)));
     return false;
   }
   FILE* fp = fopen(path, "wb");
   if (fp == nullptr) {
-    (void)fprintf(stderr, "board_sim: --save-sd: cannot write '%s'\n", path);
+    (void)fprintf(stderr, "ra8_emulator: --save-sd: cannot write '%s'\n", path);
     return false;
   }
   const size_t put = fwrite(s_sd.image, 1U, (size_t)s_sd.image_len, fp);
@@ -238,7 +238,7 @@ bool board_sd_save(const char* path)
     return false;
   }
   (void)fprintf(stderr,
-                "board_sim: SD card image saved (%llu bytes) to %s\n",
+                "ra8_emulator: SD card image saved (%llu bytes) to %s\n",
                 (unsigned long long)s_sd.image_len,
                 path);
   return true;

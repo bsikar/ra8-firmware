@@ -1,10 +1,10 @@
 /**
  * @file board_periph_drw.c
- * @brief Bench-validated DRW ("D/AVE 2D") rasterizer model for board_sim
+ * @brief Bench-validated DRW ("D/AVE 2D") rasterizer model for ra8_emulator
  *
  * @details
  * Models the RA8D2 DRW 2D graphics engine (ra8_drw_regs.h, ra8_drw.c) at
- * @c 0x40444000. board_sim's governing invariant is SIM == HIL: an app must
+ * @c 0x40444000. ra8_emulator's governing invariant is EIL == HIL: an app must
  * produce the IDENTICAL result in the emulator and on hardware, hardware
  * defects included. Every rule encoded here was measured on an EK-RA8D2 over
  * J-Link, not inferred from the datasheet ideal.
@@ -258,7 +258,7 @@ typedef struct {
  * @var s_drw
  * @brief Module-private DRW model state.
  * @note Reset by ::drw_reset on every emulated system reset.
- * @warning Not thread-safe; board_sim drives one CPU thread.
+ * @warning Not thread-safe; ra8_emulator drives one CPU thread.
  */
 static drw_state_t s_drw;
 

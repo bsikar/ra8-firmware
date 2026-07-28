@@ -1,6 +1,6 @@
 /**
  * @file board_periph_eink.h
- * @brief IT8951 e-paper SPI-device model for board_sim (attached to SPI_B).
+ * @brief IT8951 e-paper SPI-device model for ra8_emulator (attached to SPI_B).
  *
  * @details
  * Models a Waveshare / IT8951 e-paper timing controller sitting on the SPI_B
@@ -55,7 +55,7 @@ extern "C" {
  * @return true once the controller is armed and serving.
  * @retval true Controller armed (always, on this in-memory model).
  *
- * @pre Called once during board_sim start-up (single-threaded arg parse).
+ * @pre Called once during ra8_emulator start-up (single-threaded arg parse).
  * @pre No physical hardware is required.
  * @post ::board_eink_attached returns true.
  * @post The command / read framing is reset to power-on.

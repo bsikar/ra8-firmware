@@ -16,7 +16,7 @@ format and baked (already inflated) into `rabook_fixture.h`. On boot the app:
 
 The first chapter is short and the second longer, so it renders **small to
 large** in one book. Ahem's fixed metrics make it deterministic; the banner on
-the SCI8 J-Link OB console is identical every boot and matches board_sim:
+the SCI8 J-Link OB console is identical every boot and matches ra8_emulator:
 
 ```
 ereader-rabook-hil: chapters=2 ch0 p=7 crc=60BD27C5 ch1 p=28 crc=26512625 ok
@@ -28,7 +28,7 @@ ereader-rabook-hil: chapters=2 ch0 p=7 crc=60BD27C5 ch1 p=28 crc=26512625 ok
 
 ```sh
 make ereader_rabook          # cross-compile -> build/ereader_rabook.elf
-make sim-ereader_rabook      # run under board_sim, scrape the banner
+make emu-ereader_rabook      # run under ra8_emulator, scrape the banner
 ```
 
 The gate is `hil.conf` (`HIL_MODE=uart_scrape`, exact banner in `HIL_EXPECT`).

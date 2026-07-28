@@ -8,7 +8,7 @@
  * @details
  * Models the xSPI manual-command engine plus the on-board IS25LX512M NOR
  * flash at REGISTER level for the host unit-test build, mirroring the
- * board_sim peripheral model in ``tools/ra8_emulator/src/periph/board_periph_xspi.c``.
+ * ra8_emulator peripheral model in ``tools/ra8_emulator/src/periph/board_periph_xspi.c``.
  * It replaces the deleted in-driver ``RA8_SIMULATOR_MODE`` fake-flash
  * short-circuits (#238): with the model installed, ``ra8_xspi_flash.c``
  * runs its real "fill CDBUF, set CDCTL0.TRREQ, poll INTS.CMDCMP, read
@@ -30,7 +30,7 @@
  * - ``0x20`` SE   -> restore the 4 KiB sector at CDA to 0xFF
  *
  * NOR semantics (program only clears bits; erase restores 0xFF) match the
- * real part and the board_sim model. A test drives the driver's WIP-poll
+ * real part and the ra8_emulator model. A test drives the driver's WIP-poll
  * retry / timeout legs with ::ra8_sim_xspi_flash_set_busy_polls; the CMDCMP
  * timeout leg is driven by arming ``ra8_sim_mmio_fail_wait(&reg->INTS)``,
  * which overrides the poll-loop exit even though the hook still services
@@ -69,7 +69,7 @@ extern "C" {
  * The backing array spans the full 3-byte JEDEC address space the driver
  * can emit (16 MiB), so every address that passes the driver's range
  * validation is genuinely backed. The JEDEC identity matches the on-board
- * EK-RA8D2 IS25LX512M and the board_sim model, packed in the
+ * EK-RA8D2 IS25LX512M and the ra8_emulator model, packed in the
  * ``(manufacturer << 16) | (type << 8) | capacity`` order that
  * ``ra8_xspi_flash_read_id()`` returns.
  *

@@ -39,7 +39,7 @@ gate is green (`lvd: pvd1 thr=2.80V mon=above det=0 ok=Y`).
 `tools/ra8_emulator` also models the PVD status
 (`tools/ra8_emulator/src/periph/board_periph_lvd.c`): `PVD1SR.MON` reads "above
 threshold" with `DET` clear -- the steady state of a healthy 3.3 V rail --
-so the headless `board_sim_smoke.sh` gate sees the same `mon=above ok=Y`
+so the headless `ra8_emulator_smoke.sh` gate sees the same `mon=above ok=Y`
 banner. The configuration path and the status-decode / verdict logic are
 also host-tested (`tests/test_app_lvd_monitor_demo.c`).
 

@@ -14,7 +14,7 @@
  * #131 was a driver (@c ra8_bkup.c) that wrote the entire VBATT backup
  * register file with PRCR locked. On silicon every write vanished and
  * @c bkup_survival_demo reported @c rw=BAD; in the emulator, which modelled
- * no protection at all, the same firmware reported @c rw=ok. The sim passed
+ * no protection at all, the same firmware reported @c rw=ok. The emulator passed
  * where the bench failed, which is the defect this block removes.
  *
  * The block is **observe-only**: it snoops the PRCR window so the sparse

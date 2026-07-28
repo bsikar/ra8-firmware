@@ -1,6 +1,6 @@
 # Example of adding a display: a generic 4.3" 480x272 RGB565 LCD.
-# The simulator becomes whatever a config describes -- drop a new .toml in this
-# directory and run `make sim PANEL=<basename>`.
+# The emulator becomes whatever a config describes -- drop a new .toml in this
+# directory and run `make emu-<app> PANEL=<basename>`.
 #
 # Note: the bundled bedroom UI is laid out for 1024x600, so it clips at this
 # size until the UI is made resolution-adaptive -- this config exists to show

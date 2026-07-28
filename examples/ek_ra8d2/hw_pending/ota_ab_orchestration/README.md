@@ -34,7 +34,7 @@ A healthy run prints, once per report cycle, on the J-Link OB VCOM console:
 ota_ab: stage=ok commit=Y rollback=Y ok=Y
 ```
 
-## Backends (SIM==HIL)
+## Backends (EIL==HIL)
 
 | Interface | Backing | Fidelity |
 |-----------|---------|----------|
@@ -52,12 +52,12 @@ make                 # cross-compile build/ota_ab_orchestration.elf / .hex / .bi
 Simulator (headless, no board):
 
 ```sh
-scripts/sim/smoke.sh ota_ab_orchestration     # or: scripts/sim/sil_all.sh
+scripts/emu/smoke.sh ota_ab_orchestration     # or: scripts/emu/eil_all.sh
 ```
 
 The `hil.conf` (`HIL_MODE=uart_scrape`) is checked by both `scripts/hil/all.sh`
-(bench) and `scripts/sim/sil_all.sh` (simulator), and the SIM==HIL parity gate
-(`scripts/checks/check_hil_sil_parity.py`) enforces that this app is exercised in
+(bench) and `scripts/emu/eil_all.sh` (simulator), and the EIL==HIL parity gate
+(`scripts/checks/check_hil_eil_parity.py`) enforces that this app is exercised in
 both.
 
 ## Not brick-territory

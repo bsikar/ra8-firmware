@@ -3,7 +3,7 @@
 A **viewable** reader for a page far larger than the 1024x600 panel. The baked
 page is transcoded into a JOF band-tile atlas (`libs/ra8_jof`) and paged
 **decode-on-demand** through a small `ra8_tile_cache`, with the viewport being
-the GLCDC panel itself. Navigation is discrete **tap-zones** (board_sim's GT911
+the GLCDC panel itself. Navigation is discrete **tap-zones** (ra8_emulator's GT911
 model has no gestures): the four screen edges pan the viewport, a centre tap
 toggles zoom.
 
@@ -24,12 +24,12 @@ toggles zoom.
    gray8 -> RGB565, a top status bar (`MANGA  1:1  x=.. y=..`), and a
    bottom-right minimap showing the viewport rectangle over the page bounds.
 5. Prints one deterministic banner over the SCI console at boot so the headless
-   SIL gate still asserts a fixed render:
+   EIL gate still asserts a fixed render:
 
    `ereader-manga: page 1536x2048 tiles=48 atlas=20384 view=0,0 zoom=1:1 crc=5CBD900B ok`
 
 The render (software gfx + integer tile decode) is deterministic, so the banner
-is identical on the host twin (`tests/test_app_ereader_manga.c`), board_sim, and
+is identical on the host twin (`tests/test_app_ereader_manga.c`), ra8_emulator, and
 silicon.
 
 ## Navigation (tap-zones)
@@ -60,15 +60,15 @@ Regenerate with `python3 scripts/gen/gen_manga_page_fixture.py`.
 
 ## Status
 
-Sim-viewable (`hw_pending`): the panel bring-up + tile pipeline are fully
-modelled by board_sim (`--ppm` / `--view` show the real reader screen); not yet
+Emulator-viewable (`hw_pending`): the panel bring-up + tile pipeline are fully
+modelled by ra8_emulator (`--ppm` / `--view` show the real reader screen); not yet
 run on a bench board.
 
 ## Build / view / drive
 
 ```
 make ereader_manga                      # cross-build from the repo root
-make sim-ereader_manga                  # live macOS window; click to navigate
+make emu-ereader_manga                  # live macOS window; click to navigate
 
 # Headless snapshot to a viewable image (initial 1:1 top-left):
 tools/ra8_emulator/build/ra8_emulator \

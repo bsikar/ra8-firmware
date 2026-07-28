@@ -19,7 +19,7 @@
  *      setting `reply_seq`.
  *
  * @note The M33 deliberately does NOT call `ra8_log`. On hardware each core has
- *       its own CoreSight ITM, and the board_sim emulator only echoes the
+ *       its own CoreSight ITM, and the ra8_emulator only echoes the
  *       primary core's ITM stream, so an M33 `ra8_log` line would be invisible
  *       in the simulator. The M33's proof-of-life is therefore the value it
  *       writes into the mailbox (the M85 reads it and logs it on the M33's

@@ -154,7 +154,7 @@ bool board_usb_configured(void);
  * of the modelled USBFS device -- the INTSTS0.DVSQ stage name (@c "Powered" /
  * @c "Default" / @c "Address" / @c "Configured" / @c "Suspended"), upgraded to
  * @c "CONFIGURED (CDC-ACM active)" once SET_CONFIGURATION has completed and
- * USBX's CDC-ACM activate callback has fired. board_sim's graphical board view
+ * USBX's CDC-ACM activate callback has fired. ra8_emulator's graphical board view
  * shows this verbatim on its "USB:" status line so a non-display USB example
  * (e.g. threadx_usbx_cdc_demo) is observable as it enumerates. The returned
  * pointer is to static storage and must not be freed; it is valid until the

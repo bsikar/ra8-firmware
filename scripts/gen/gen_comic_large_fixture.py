@@ -12,7 +12,7 @@ so it DEFLATEs to a few hundred bytes and the baked array stays tiny on disk
 while the decoded image is multiple megabytes.
 
 The output is deterministic (fixed art, fixed zlib level), so the tile digest the
-app prints is identical on host, board_sim, and silicon.
+app prints is identical on host, ra8_emulator, and silicon.
 
 Usage:
   python3 scripts/gen/gen_comic_large_fixture.py \

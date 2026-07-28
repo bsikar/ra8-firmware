@@ -543,12 +543,12 @@ void widget_reset(int id) { (void)id; }
         "typedef'd anonymous struct named by its @struct tag (the C23 house shape)",
         """
 /**
- * @struct sim_args_t
+ * @struct emu_args_t
  * @brief Parsed command line.
  */
 typedef struct {
   int verbose; /**< Verbosity level. */
-} sim_args_t;
+} emu_args_t;
 """,
         set(),
     ),

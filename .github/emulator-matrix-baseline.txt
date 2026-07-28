@@ -1,0 +1,25 @@
+# ra8_emulator example-matrix baseline -- see scripts/checks/matrix_ratchet.py
+#
+# Recorded debt from `bash scripts/emu/matrix.sh`, one
+# `app<TAB>verdict<TAB>cause` row each. This is a RATCHET: growth fails,
+# shrinking is free, and the end state is an EMPTY file. It is not an
+# allowlist -- no row here is a permanent exemption, and every one is work
+# still owed. The cause column is not decoration: a number nobody can
+# explain is indistinguishable from one nobody has looked at.
+#
+# MEASURE THIS ON THE CI RUNNER, NEVER ON A DEVELOPER BOX. The two disagree
+# by more than the tolerance of this gate -- the whole ThreadX family faults
+# on the shared dev box while the same commit is green on the runner (#400).
+# A baseline taken there would record ~40 CI-clean apps as expected-to-fail,
+# and because a ratchet only objects to GROWTH, every one could then break for
+# real without the gate noticing. That is baseline-as-grandfather, which is
+# the thing this design refuses to be.
+#
+# Seeded from the verified-clean CI run at 0522f9930: 204 ek_ra8d2 examples,
+# 202 booted OK, 0 build failures, 0 truncations, 99% of runnable, with
+# eil-integration green on the same commit.
+#
+# Re-baseline after burning debt down (causes are carried forward):
+#   bash scripts/emu/matrix.sh; python3 scripts/checks/matrix_ratchet.py --update
+# total: 1
+import_reader	FAULT	reaches 'card ready' + 'volume mounted', then 'FAIL import compile' and traps; wants a pre-populated library card (cf. sd_font_render's baked FONT.OTF image)

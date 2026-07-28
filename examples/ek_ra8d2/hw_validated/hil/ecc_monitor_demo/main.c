@@ -100,7 +100,7 @@ volatile uint32_t g_ecc_esr = 0U;
 /**
  * @var g_ecc_1bit
  * @brief Per-bank 1-bit-error bitmap from the last SRAMESR read (bit n = bank n).
- * @note Read externally only. Meaningful on silicon; board_sim does not model ECC.
+ * @note Read externally only. Meaningful on silicon; ra8_emulator does not model ECC.
  * @since 0.1.0
  */
 volatile uint32_t g_ecc_1bit = 0U;
@@ -108,7 +108,7 @@ volatile uint32_t g_ecc_1bit = 0U;
 /**
  * @var g_ecc_2bit
  * @brief Per-bank 2-bit-error bitmap from the last SRAMESR read (bit n = bank n).
- * @note Read externally only. Meaningful on silicon; board_sim does not model ECC.
+ * @note Read externally only. Meaningful on silicon; ra8_emulator does not model ECC.
  * @since 0.1.0
  */
 volatile uint32_t g_ecc_2bit = 0U;
@@ -217,7 +217,7 @@ static void ecc_demo_setup_or_halt(void)
  * Decision ``ok = rw_ok`` (the ECC-protected round-trip; single
  * condition) -- 2 vectors, match (steady state) + mismatch (host-tested).
  * The latched 1-bit / 2-bit error masks are reported via globals, not
- * gated, since board_sim does not model ECC.
+ * gated, since ra8_emulator does not model ECC.
  *
  * @return ``ra8_err_t`` from ``ra8_sram_get_status``.
  * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
@@ -254,7 +254,7 @@ static void ecc_demo_setup_or_halt(void)
   /* Verdict gates only on the ECC-protected round-trip, which is
    * deterministic. The latched 1-bit / 2-bit error masks (above) are the
    * hardware-error-reporting payload -- meaningful only on silicon, where a
-   * real bit-flip sets them; board_sim does not model ECC, so they stay out
+   * real bit-flip sets them; ra8_emulator does not model ECC, so they stay out
    * of the headless verdict (else it would flake on the unmodelled ESR). */
   *out_ok = (rw != 0U) ? 1U : 0U;
   return k_ra8_ok;
@@ -266,7 +266,7 @@ int32_t main(void)
 {
   ecc_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
-   * SysTick path (board_sim does not advance DWT_CYCCNT). The ECC NMI is
+   * SysTick path (ra8_emulator does not advance DWT_CYCCNT). The ECC NMI is
    * non-maskable and unaffected; no maskable NVIC source is armed. */
   ra8_isr_globals_enable();
 

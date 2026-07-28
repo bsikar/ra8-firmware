@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""matrix_ratchet.py -- board_sim example-matrix ratchet (compare vs baseline).
+"""matrix_ratchet.py -- ra8_emulator example-matrix ratchet (compare vs baseline).
 
-`scripts/sim/matrix.sh` boots EVERY example under `examples/ek_ra8d2/` on the
+`scripts/emu/matrix.sh` boots EVERY example under `examples/ek_ra8d2/` on the
 board emulator and writes one `app<pad>VERDICT` row per app to
-`build/board_sim_matrix.txt`. That sweep measures #67's own headline success
+`build/ra8_emulator_matrix.txt`. That sweep measures #67's own headline success
 criterion -- "every example runs in the simulator" -- and until #394 it was
 invoked by nothing: not ci.sh, not a workflow, not the Makefile. The repo's
 dominant defect class (a gate wired to nothing) applied to the epic's own
@@ -41,8 +41,8 @@ USAGE
     python3 scripts/checks/matrix_ratchet.py --check       # the gate
     python3 scripts/checks/matrix_ratchet.py --update      # re-baseline
 
-`--check` and `--update` read `build/board_sim_matrix.txt`; produce it first:
-    bash scripts/sim/matrix.sh
+`--check` and `--update` read `build/ra8_emulator_matrix.txt`; produce it first:
+    bash scripts/emu/matrix.sh
 
 Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
@@ -55,8 +55,8 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-REPORT_FILE = REPO_ROOT / "build" / "board_sim_matrix.txt"
-BASELINE_FILE = REPO_ROOT / ".github" / "board-sim-matrix-baseline.txt"
+REPORT_FILE = REPO_ROOT / "build" / "ra8_emulator_matrix.txt"
+BASELINE_FILE = REPO_ROOT / ".github" / "emulator-matrix-baseline.txt"
 
 MAX_DETAIL_LINES = 250
 """Cap on offending apps echoed before the report truncates.
@@ -92,7 +92,7 @@ def parse_report(text: str) -> dict[str, str]:
     ratcheting against a fraction of the sweep and calling it clean.
 
     Args:
-        text: The full contents of `build/board_sim_matrix.txt`.
+        text: The full contents of `build/ra8_emulator_matrix.txt`.
 
     Returns:
         A mapping of app name to its verdict string.
@@ -200,9 +200,9 @@ def write_baseline(path: Path, debt: dict[str, str], causes: dict[str, str] | No
     """
     causes = causes or {}
     lines = [
-        "# board_sim example-matrix baseline -- see scripts/checks/matrix_ratchet.py",
+        "# ra8_emulator example-matrix baseline -- see scripts/checks/matrix_ratchet.py",
         "#",
-        "# Recorded debt from `bash scripts/sim/matrix.sh`, one",
+        "# Recorded debt from `bash scripts/emu/matrix.sh`, one",
         "# `app<TAB>verdict<TAB>cause` row each. This is a RATCHET: growth fails,",
         "# shrinking is free, and the end state is an EMPTY file. It is not an",
         "# allowlist -- no row here is a permanent exemption, and every one is work",
@@ -212,7 +212,7 @@ def write_baseline(path: Path, debt: dict[str, str], causes: dict[str, str] | No
         "# MEASURE THIS ON THE CI RUNNER, NEVER ON A DEVELOPER BOX -- see #400.",
         "#",
         "# Re-baseline after burning debt down (causes are carried forward):",
-        "#   bash scripts/sim/matrix.sh; python3 scripts/checks/matrix_ratchet.py --update",
+        "#   bash scripts/emu/matrix.sh; python3 scripts/checks/matrix_ratchet.py --update",
         f"# total: {len(debt)}",
     ]
     for app, verdict in sorted(debt.items()):
@@ -244,7 +244,7 @@ def report_growth(grown: dict[str, str], baseline: dict[str, str]) -> None:
         baseline: The recorded baseline, used to explain a changed verdict.
     """
     sys.stderr.write(
-        f"\nmatrix_ratchet.py: FAIL -- {len(grown)} example(s) newly failing in board_sim.\n\n"
+        f"\nmatrix_ratchet.py: FAIL -- {len(grown)} example(s) newly failing in ra8_emulator.\n\n"
     )
     for app, verdict in sorted(grown.items())[:MAX_DETAIL_LINES]:
         was = baseline.get(app)
@@ -253,11 +253,11 @@ def report_growth(grown: dict[str, str], baseline: dict[str, str]) -> None:
     if len(grown) > MAX_DETAIL_LINES:
         sys.stderr.write(f"  ... and {len(grown) - MAX_DETAIL_LINES} more\n")
     sys.stderr.write(
-        "\n  This gate ratchets the board_sim example matrix DOWNWARD (#394): the\n"
+        "\n  This gate ratchets the ra8_emulator example matrix DOWNWARD (#394): the\n"
         "  count may shrink freely and may never grow. Either fix the example /\n"
-        "  the board_sim model gap, or -- if this is a verdict CHANGE rather than\n"
+        "  the ra8_emulator model gap, or -- if this is a verdict CHANGE rather than\n"
         "  a regression -- explain it in the commit and re-baseline with:\n"
-        "      bash scripts/sim/matrix.sh\n"
+        "      bash scripts/emu/matrix.sh\n"
         "      python3 scripts/checks/matrix_ratchet.py --update\n"
     )
 
@@ -275,7 +275,7 @@ def check(report_file: Path = REPORT_FILE, baseline_file: Path = BASELINE_FILE) 
     if not report_file.exists():
         sys.stderr.write(
             f"matrix_ratchet.py: FATAL -- no report at {report_file}.\n"
-            "       Run `bash scripts/sim/matrix.sh` first. A missing report is a\n"
+            "       Run `bash scripts/emu/matrix.sh` first. A missing report is a\n"
             "       hard failure, never a silent pass -- a gate that reports\n"
             "       nothing for work never done is the defect this closes.\n"
         )
@@ -291,8 +291,8 @@ def check(report_file: Path = REPORT_FILE, baseline_file: Path = BASELINE_FILE) 
 
     # The count is printed on EVERY run, pass or fail, so the burn-down is
     # visible in the log rather than buried in a baseline diff.
-    print(f"board_sim matrix: {len(verdicts)} example(s) -- {summarise(verdicts)}")
-    print(f"board_sim matrix: failing {len(debt)}, baseline {len(baseline)}")
+    print(f"ra8_emulator matrix: {len(verdicts)} example(s) -- {summarise(verdicts)}")
+    print(f"ra8_emulator matrix: failing {len(debt)}, baseline {len(baseline)}")
 
     grown = {app: v for app, v in debt.items() if baseline.get(app) != v}
     if grown:
@@ -300,7 +300,7 @@ def check(report_file: Path = REPORT_FILE, baseline_file: Path = BASELINE_FILE) 
         return 1
     fixed = {app: v for app, v in baseline.items() if debt.get(app) != v}
     if fixed:
-        print(f"board_sim matrix: {len(fixed)} example(s) improved since the baseline:")
+        print(f"ra8_emulator matrix: {len(fixed)} example(s) improved since the baseline:")
         for app, verdict in sorted(fixed.items())[:MAX_DETAIL_LINES]:
             print(f"  {app:<32} {verdict} -> {verdicts.get(app, 'gone')}")
         print(
@@ -308,7 +308,7 @@ def check(report_file: Path = REPORT_FILE, baseline_file: Path = BASELINE_FILE) 
             "  (until then the gate still passes, but the debt can grow back to the\n"
             "  old, larger baseline without failing.)"
         )
-    print("board_sim matrix: OK -- the failing-example count did not grow.")
+    print("ra8_emulator matrix: OK -- the failing-example count did not grow.")
     return 0
 
 

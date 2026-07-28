@@ -43,7 +43,7 @@ def tool_list_apps(args: dict[str, Any]) -> str:
     body = "\n".join(rows) if rows else "  (none matched)"
     return (
         f"{header}\n"
-        "  build: make <app> | flash: make flash-<app> | simulate: make sim-<app>\n\n"
+        "  build: make <app> | flash: make flash-<app> | emulate: make emu-<app>\n\n"
         f"{'  TIER/GROUP':<30} {'APP':<30} DESCRIPTION\n{body}\n"
     )
 
@@ -78,7 +78,7 @@ def tool_app_info(args: dict[str, Any]) -> str:
         "",
         "build:    make " + app["name"],
         "flash:    make flash-" + app["name"] + "   (local J-Link)",
-        "simulate: make sim-" + app["name"] + "     (tools/ra8_emulator emulator)",
+        "run on the emulator: make emu-" + app["name"] + "     (tools/ra8_emulator)",
     ]
     readme = app_dir / "README.md"
     if readme.is_file():
@@ -144,7 +144,7 @@ def tool_repo_overview(_args: dict[str, Any]) -> str:
         "COMMON WORKFLOWS (also exposed as tools):\n"
         "  make <app>            cross-compile one app\n"
         "  make flash-<app>      build + flash via local J-Link\n"
-        "  make sim-<app>        run the real .elf on the board_sim emulator\n"
+        "  make emu-<app>        run the real .elf on the ra8_emulator\n"
         "  make test             host unit tests\n"
         "  make mcdc             DO-178C Level B MC/DC coverage report\n"
         "  make check|tidy|ascii|version|cppcheck   quality gates\n"
@@ -215,16 +215,16 @@ def tool_coverage(args: dict[str, Any]) -> str:
     return run_command(["make", "mcdc"], timeout=1200)
 
 
-def tool_sim_app(args: dict[str, Any]) -> str:
-    """Boot one app's real ``.elf`` on the board_sim Unicorn emulator -- no hardware.
+def tool_emu_app(args: dict[str, Any]) -> str:
+    """Boot one app's real ``.elf`` on the ra8_emulator Unicorn emulator -- no hardware.
 
-    Runs ``scripts/sim/smoke.sh <app>`` headlessly: it builds the app + the
+    Runs ``scripts/emu/smoke.sh <app>`` headlessly: it builds the app + the
     emulator, runs the firmware, and asserts it reaches its run budget without
     faulting -- plus its real peripheral UART banner where known. Returns the
     per-app verdict + log tail. The single way to exercise an app without a board.
     """
     app = require_app(str(args.get("app", "")).strip())
-    return run_command(["bash", "scripts/sim/smoke.sh", app["name"]], timeout=900)
+    return run_command(["bash", "scripts/emu/smoke.sh", app["name"]], timeout=900)
 
 
 def _capture(argv: list[str], timeout: int = 20) -> str:
@@ -369,7 +369,7 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "app_info",
         "description": "Details for one firmware app: directory, description, which "
-        "boot files are present, build/flash/sim commands, README head.",
+        "boot files are present, build/flash/emulator commands, README head.",
         "inputSchema": _schema({"app": {"type": "string", "description": "app name"}}, ["app"]),
         "handler": tool_app_info,
     },
@@ -453,12 +453,12 @@ TOOLS: list[dict[str, Any]] = [
         "handler": tool_hil,
     },
     {
-        "name": "sim_app",
-        "description": "Boot one app's real .elf on the board_sim Unicorn emulator (no "
+        "name": "emu_app",
+        "description": "Boot one app's real .elf on the ra8_emulator Unicorn emulator (no "
         "hardware): build + run headless, assert it reaches its run budget "
         "without faulting plus its peripheral UART banner. Returns the verdict.",
         "inputSchema": _schema({"app": {"type": "string", "description": "app name"}}, ["app"]),
-        "handler": tool_sim_app,
+        "handler": tool_emu_app,
     },
     {
         "name": "coverage",

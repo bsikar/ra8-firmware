@@ -58,10 +58,10 @@ cmake --build tools/ra8_emulator/build -j
 ./tools/ra8_emulator/build/ra8_emulator build/epub_parse.elf
 ```
 
-board_sim runs the firmware on Unicorn's Cortex-M33 core and emulates the
+ra8_emulator runs the firmware on Unicorn's Cortex-M33 core and emulates the
 Armv8.1-M instructions the M85 uses but the M33 lacks. miniz's ZIP
 central-directory math leans on the 64-bit **long-shift** family
-(`LSLL` / `LSRL` / `ASRL`); board_sim's long-shift seam (added for #139)
+(`LSLL` / `LSRL` / `ASRL`); ra8_emulator's long-shift seam (added for #139)
 emulates them, without which the ZIP parse fails with miniz error 9
 (`INVALID_HEADER_OR_CORRUPTED`).
 
@@ -90,7 +90,7 @@ emulates them, without which the ZIP parse fails with miniz error 9
 SCI8 async UART, TXD = PD02, RXD = PD03, 115200-8N1, routed to the
 on-board J-Link OB virtual COM port.
 
-Validated on board_sim (the Unicorn-based M85 simulator): deterministic
+Validated on ra8_emulator (the Unicorn-based M85 simulator): deterministic
 `PASS` with the byte-exact `0xCF23AEEE` CRC across repeated runs, no
 invalid opcode or fault. Real-EK-RA8D2 bench confirmation is the next
 step (flash + scrape the SCI8 banner; the `hil.conf` already gates it).

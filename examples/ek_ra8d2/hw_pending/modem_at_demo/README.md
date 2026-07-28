@@ -50,7 +50,7 @@ make clean
 A **live cellular modem on the wire is external hardware** (a populated
 MikroBUS cellular Click with a provisioned SIM and antenna), so this app lives
 under `hw_pending/`. The **AT protocol itself is faithfully modelled** in
-board_sim, so the example boots and runs its whole state machine with zero
+ra8_emulator, so the example boots and runs its whole state machine with zero
 skips in simulation:
 
 ```
@@ -61,8 +61,8 @@ tools/ra8_emulator/build/ra8_emulator build/modem_at_demo.elf --modem
 (`tools/ra8_emulator/src/periph/board_periph_modem.c`), which answers the exact AT script
 above -- including a `+CREG` URC on `AT+CREG=1` and a `+CME ERROR: 4` for the
 unsupported command -- so `ra8_modem_at -> ra8_sci` runs byte-for-byte as on
-silicon (SIM == HIL for the AT protocol; only the RF link is unmodelled).
-`scripts/sim/smoke.sh modem_at_demo` gates it to the PASS banner.
+silicon (EIL == HIL for the AT protocol; only the RF link is unmodelled).
+`scripts/emu/smoke.sh modem_at_demo` gates it to the PASS banner.
 
 The compound decisions (registration OK, signal valid, per-step expected
 outcome, overall verdict) are host-tested with MC/DC in

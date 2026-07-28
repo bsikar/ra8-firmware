@@ -6,7 +6,7 @@
  * @details
  * The compiled-book path retains zoomable rasters at full source resolution
  * in continuous-tone gray8 (1 byte/pixel), never the panel-quantised 4bpp
- * form. This one-image book is the board_sim proof: ereader_rabook validates
+ * form. This one-image book is the ra8_emulator proof: ereader_rabook validates
  * it, confirms the image is 8bpp and holds more than the 16 distinct tones a
  * 4bpp store could reproduce, then blits it 1:1 at full resolution. The image
  * is a diagonal grayscale ramp whose tones sweep the full 0-255 range, so its

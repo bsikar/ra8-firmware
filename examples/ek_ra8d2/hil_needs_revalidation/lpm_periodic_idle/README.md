@@ -9,7 +9,7 @@ of periods before reporting `lpm_periodic_idle PASS` and parking.
 
 This is the clean pattern an idle-loop retrofit should follow: a real armed
 wake source (ULPT0 underflow) plus a per-period marker that survives clock
-gating -- not a `while(1){ wfi }` with no wake, which sim-passes but
+gating -- not a `while(1){ wfi }` with no wake, which emulator-passes but
 hardware-hangs (see issue #153).
 
 ## What it does
@@ -56,7 +56,7 @@ Two further HUM-required details, both handled here:
 
 ## Bench status (hw_pending)
 
-**Not yet bench-validated.** board_sim does not model Software-Standby
+**Not yet bench-validated.** ra8_emulator does not model Software-Standby
 clock-gating: it fast-forwards `wfi` to the next SysTick, so the periodic
 loop advances in the simulator (the boot banner, all eight `work` banners,
 and `PASS` print without fault) but the genuine ULPT0 self-wake -- the

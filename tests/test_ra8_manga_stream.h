@@ -41,8 +41,8 @@
  * stale, or offset-truncated read is caught by the byte compare that doubles as
  * the reference oracle.
  *
- * The real >SDRAM run off the Pmod2 SD card (board_sim, then EK-RA8D2 HIL) is an
- * owner/bench step (#232); this host gate is the sim==HIL golden it is compared
+ * The real >SDRAM run off the Pmod2 SD card (ra8_emulator, then EK-RA8D2 HIL) is an
+ * owner/bench step (#232); this host gate is the EIL==HIL golden it is compared
  * against.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

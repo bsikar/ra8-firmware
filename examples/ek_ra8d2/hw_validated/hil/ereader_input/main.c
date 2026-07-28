@@ -16,7 +16,7 @@
  *   `ui-hil: taps=<N> hits=<M> nav_ok=<0|1> PASS`
  *
  * Pure logic (no peripheral state), so the banner is identical every boot and
- * matches the host / board_sim run.
+ * matches the host / ra8_emulator run.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -109,7 +109,7 @@ static void iu_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void iu_panic_halt(void)
 {
   iu_print(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);

@@ -10,7 +10,7 @@
  * Streams bytes to the host over a USB-CDC bulk-IN endpoint via `ra8_usb_pal` --
  * the "print to the host over USB serial" target. The application must have
  * brought the USB device stack and the CDC class up first. The data path is
- * exercised on board_sim / HIL; on the host this sink binds and validates only.
+ * exercised on ra8_emulator / HIL; on the host this sink binds and validates only.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

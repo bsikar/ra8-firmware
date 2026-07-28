@@ -53,11 +53,11 @@ examples do not do together:
 ## Running it (no hardware needed)
 
 ```sh
-make sim-dualcore_mailbox
+make emu-dualcore_mailbox
 ```
 
 This cross-builds the app **Debug** (so the log lines are compiled in), builds
-the `board_sim` emulator, and boots the M85 ELF. board_sim sees the embedded
+the `ra8_emulator` emulator, and boots the M85 ELF. ra8_emulator sees the embedded
 `.cpu1_image` and automatically spins up a **second Unicorn engine for the
 M33**, sharing the SRAM buffer with the M85 engine -- so both cores really run.
 
@@ -65,7 +65,7 @@ M33**, sharing the SRAM buffer with the M85 engine -- so both cores really run.
 
 `ra8_log_info(...)` writes bytes to the Arm CoreSight **ITM** (Instrumented
 Trace Macrocell) stimulus port. On real hardware those bytes leave through the
-SWO pin to the J-Link SWO trace console. In the emulator, board_sim echoes them
+SWO pin to the J-Link SWO trace console. In the emulator, ra8_emulator echoes them
 to your terminal prefixed with `[itm]`. So **`[itm]` == "what you'd see on the
 SWO trace console on the bench."**
 
@@ -92,7 +92,7 @@ SWO trace console on the bench."**
 
 ### Why only the M85 prints
 
-board_sim echoes the **primary** core's ITM only. Each core has its own ITM on
+ra8_emulator echoes the **primary** core's ITM only. Each core has its own ITM on
 hardware, but the emulator does not wire the M33 engine's ITM to the console,
 so an `ra8_log` call on the M33 would be invisible here. Rather than print lines
 you cannot see, the M33 stays silent and the **M85 narrates the M33's mailbox
@@ -109,12 +109,12 @@ make flash-dualcore_mailbox    # flash the combined .hex (both cores) via J-Link
 
 A default (RelWithDebInfo) build still runs the full dual-core exchange; it is
 just silent because `ra8_log_info` is gated out below INFO level. Use the
-`sim-` target (or a Debug build) to see the `[itm]` lines.
+`emu-` target (or a Debug build) to see the `[itm]` lines.
 
 ## Status
 
 - **Emulator: validated.** Both cores run and the mailbox handshake completes
-  under `board_sim` (see the output above).
+  under `ra8_emulator` (see the output above).
 - **Hardware: pending.** This example has **not** yet been bench-validated on a
   physical EK-RA8D2, which is why it lives under `hw_pending/`. The dual-core
   release sequence it uses is the same one as the bench-validated

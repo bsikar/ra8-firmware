@@ -164,7 +164,7 @@ typedef enum : uint16_t {
  *
  * @details
  * The GoodIX GT911 sits on IIC_B channel 0 at its default 7-bit address;
- * polled from the loop (IRQ pin left unset). board_sim feeds --click /
+ * polled from the loop (IRQ pin left unset). ra8_emulator feeds --click /
  * window taps through this same ra8_touch -> I2C -> GT911 path.
  */
 typedef enum : uint8_t {
@@ -193,7 +193,7 @@ typedef enum : uint32_t {
  *
  * @details The fuel gauge sits at 7-bit 0x36 on the same IIC_B channel 0 the
  * GT911 touch already brought up, so the battery is read with raw ra8_i3c
- * register reads (no second bus init). board_sim models this gauge and drives
+ * register reads (no second bus init). ra8_emulator models this gauge and drives
  * its SOC / CRATE from the on-screen battery slider.
  */
 typedef enum : uint8_t {

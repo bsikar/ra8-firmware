@@ -29,9 +29,9 @@
  *
  * Every value is computed by the deterministic ra8_mem library from fixed inputs
  * with no MMIO, so the banner is byte-identical on the host unit test
- * (tests/test_app_mem_subsystem.c), board_sim, and silicon. Any failure on any
+ * (tests/test_app_mem_subsystem.c), ra8_emulator, and silicon. Any failure on any
  * layer prints a FAIL banner and traps on a BKPT before the PASS line, so the
- * SIL / HIL gate is exact.
+ * EIL / HIL gate is exact.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -195,7 +195,7 @@ static void mem_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void mem_panic_halt(const uint8_t* msg, uint32_t len)
 {
   mem_print(msg, len);
@@ -216,7 +216,7 @@ static uint32_t mem_crc32_byte(uint32_t crc, uint8_t b)
   return crc;
 }
 
-/** @brief Deterministic backing byte at absolute @p off (host/sim/silicon-equal). */
+/** @brief Deterministic backing byte at absolute @p off (host/emulator/silicon-equal). */
 static uint8_t mem_gen_byte(uint64_t off)
 {
   const uint32_t x = (uint32_t)off;

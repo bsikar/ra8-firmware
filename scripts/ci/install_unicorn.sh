@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/ci/install_unicorn.sh -- build + install the pinned Unicorn from
-# source, reproducibly, so board_sim decodes Armv8.1-M identically on every
+# source, reproducibly, so ra8_emulator decodes Armv8.1-M identically on every
 # machine (devcontainer, dev box, self-hosted runner). See scripts/ci/unicorn_pin.sh
 # for the pin and the reason it exists (#354).
 #
@@ -18,7 +18,7 @@
 # and run by hand when provisioning the dev box or a runner (docs/TOOLCHAIN.md).
 # It is deliberately NOT called from any GitHub-workflow step: the ci-parity
 # gate forbids a workflow "infra" step from invoking anything under scripts/,
-# and enforcing the pin is the board_sim gate's job (check_unicorn_version.sh),
+# and enforcing the pin is the ra8_emulator gate's job (check_unicorn_version.sh),
 # not the provisioning step's.
 #
 # Idempotent: if the pinned version is already installed at the prefix it prints
@@ -99,7 +99,7 @@ src="$work/unicorn-${RA8_UNICORN_VERSION}"
 }
 
 echo "[install_unicorn] building (arm only, Release) ..."
-# UNICORN_ARCH=arm: board_sim only emulates the Cortex-M (Armv8.1-M) core, so
+# UNICORN_ARCH=arm: ra8_emulator only emulates the Cortex-M (Armv8.1-M) core, so
 # building just the arm target keeps the build small + fast without changing the
 # arm decode. BUILD_SHARED_LIBS=ON produces libunicorn.so for dynamic linking +
 # ldconfig resolution, matching the runner's existing /usr/local layout.

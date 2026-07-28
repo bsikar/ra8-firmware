@@ -20,11 +20,11 @@ request/reply round.
 ## How to run (no hardware needed)
 
 ```sh
-make sim-dualcore_background_m33
+make emu-dualcore_background_m33
 ```
 
-This cross-builds Debug (so log lines are compiled in), builds the board_sim
-emulator, and boots the M85 ELF. board_sim sees the embedded `.cpu1_image`
+This cross-builds Debug (so log lines are compiled in), builds the ra8_emulator
+emulator, and boots the M85 ELF. ra8_emulator sees the embedded `.cpu1_image`
 and spins up a second Unicorn engine for the M33 sharing the SRAM buffer.
 
 ## Expected output

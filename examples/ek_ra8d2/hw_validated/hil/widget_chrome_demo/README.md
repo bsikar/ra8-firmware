@@ -33,7 +33,7 @@ damage rectangle + refresh hint, and renders only the dirty children.
   with the `fast` hint, and the composite CRC changes. This is the Phase-1
   partial-flush acceptance, now driven by a real chrome widget.
 
-It then prints a single banner so the app doubles as a `board_sim` gate:
+It then prints a single banner so the app doubles as a `ra8_emulator` gate:
 
 ```
 widget-chrome-demo: dirty0=5 crc0=5D5C1F5E dirty1=1 crc1=200D1857 flush=512x44 hint=fast PASS

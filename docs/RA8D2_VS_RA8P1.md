@@ -39,7 +39,7 @@ the NPU window is actually device-specific. Prefer the named `RA8_HAS_*` flag
 over a raw `RA8_DEVICE_RA8P1` check in feature code so the intent ("this chip has
 an NPU") survives the arrival of a future part.
 
-`board_sim` mirrors the switch at runtime: `board_sim <elf> --device ra8p1`
+`ra8_emulator` mirrors the switch at runtime: `ra8_emulator <elf> --device ra8p1`
 maps the Ethos-U55 register window (see section 4); the default RA8D2 profile
 leaves it unmapped.
 
@@ -47,11 +47,11 @@ leaves it unmapped.
 
 | Area | RA8D2 | RA8P1 | Gate | Status / code |
 |------|-------|-------|------|---------------|
-| Ethos-U55 NPU | absent | present @ `0x40140000` | `RA8_HAS_NPU` | ra8_npu driver + `ra8_npu_regs.h`; sim-modelled (#222). **Done.** |
+| Ethos-U55 NPU | absent | present @ `0x40140000` | `RA8_HAS_NPU` | ra8_npu driver + `ra8_npu_regs.h`; emulator-modelled (#222). **Done.** |
 | NPUCLK domain | absent | present | `RA8_HAS_NPUCLK` | CGC NPUCLK; on-silicon wiring #229. |
 | OFS3 / WDT1 option reg | present | **absent** | `RA8_HAS_OFS3` | `ra8_ofs.{h,c}` gates OFS3 out of the option map (#223). **Done.** |
 | M85 FPU width | single (`fpv5-sp-d16`) | **double** (`fpv5-d16`) | toolchain | `cmake/toolchain-ra8p1.cmake` appends `-mfpu=fpv5-d16`; witnessed by `ra8_fpu_probe` (#225). **Done.** |
-| ADC resolution | 12-bit default | **16-bit** (ADC16H) | `ADDOPCRC.ADPRC` | Same ADC16H block on both; `ra8_adc_resolution_t` carries 10/12/14/16-bit and `ra8_adc` programs the per-channel `ADDOPCRCn.ADPRC` data-format; sim-modelled (#225). **Done.** |
+| ADC resolution | 12-bit default | **16-bit** (ADC16H) | `ADDOPCRC.ADPRC` | Same ADC16H block on both; `ra8_adc_resolution_t` carries 10/12/14/16-bit and `ra8_adc` programs the per-channel `ADDOPCRCn.ADPRC` data-format; emulator-modelled (#225). **Done.** |
 | HUM | `R01UH1065EJ` | `R01UH1064EJ` | -- | cite the matching manual per device. |
 
 Package, 1 MB code MRAM, 1.6 MB dual-core ECC SRAM, and every non-NPU
@@ -75,7 +75,7 @@ The inference path is layered:
 4. **On-silicon** NPUCLK enable + IRQ wiring + a real inference (#229).
    **Hardware-blocked** (needs an RA8P1 part).
 
-`board_sim` models the window (`board_periph_npu.c`, `--device ra8p1`) using the
+`ra8_emulator` models the window (`board_periph_npu.c`, `--device ra8p1`) using the
 `ra8_npu_sim_cmd.h` SE55 command convention, so the whole driver + adapter path is
 verifiable headless (`npu_smoke` runs to `verdict=PASS`). The sim executes the
 SE55 convention, **not** real Vela command streams -- real-model inference is a
@@ -86,9 +86,9 @@ silicon (#229) step.
 - **Host (device-agnostic):** `ra8_ofs`, `ra8_fpu_probe`, `ra8_npu`,
   `ra8_ethosu_shim` unit tests build with `-DRA8_DEVICE_RA8P1` and pass on the
   Linux test host.
-- **SIL (headless board_sim):** RA8P1 apps under `examples/ra8p1_foundation/`
+- **EIL (headless ra8_emulator):** RA8P1 apps under `examples/ra8p1_foundation/`
   run with `--device ra8p1`; `npu_smoke` is the end-to-end NPU witness. Note
-  board_sim requires **gcc-13+** (C23 typed enums).
+  ra8_emulator requires **gcc-13+** (C23 typed enums).
 - **On-silicon (#229):** blocked on obtaining an RA8P1 EK; needs NPUCLK bring-up,
   NPU IRQ wiring, and a Vela-compiled model. Tracked separately.
 

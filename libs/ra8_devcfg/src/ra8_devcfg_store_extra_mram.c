@@ -16,7 +16,7 @@
  * address a RAM shadow instead: the flash MACI registers are modelled by the
  * simulator but the extra-MRAM *data* side is not, so the shadow lets the host
  * exercise the identical read / page-loop / offset control flow without MMIO.
- * Silicon and board_sim take the ``#else`` branch and drive the real window.
+ * Silicon and ra8_emulator take the ``#else`` branch and drive the real window.
  *
  * @note Blank (never-programmed) extra-MRAM reads back as 0xFF with valid ECC
  *       and does NOT bus-fault on the corrected window (#315); no fault-catch

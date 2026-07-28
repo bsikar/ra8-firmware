@@ -9,7 +9,7 @@
 #   make clean       # rm -rf build
 #
 # To watch both cores in the emulator (no hardware), run from the repo root:
-#   make sim-ereader_m33
+#   make emu-ereader_m33
 #
 # This file is a thin wrapper around the per-app CMakeLists.txt and
 # the shared scripts/ helpers in the repo root.
@@ -44,7 +44,7 @@ help:
 	@echo "  ozone        scripts/dev/ozone.sh $(ELF)"
 	@echo "  debug        scripts/dev/debug.sh $(ELF)"
 	@echo "  size         arm-none-eabi-size on the ELF"
-	@echo "  (from repo root) make sim-$(APP)  run both cores in board_sim"
+	@echo "  (from repo root) make emu-$(APP)  run both cores in ra8_emulator"
 
 build: $(ELF)
 

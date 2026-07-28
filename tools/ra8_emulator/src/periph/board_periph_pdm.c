@@ -1,6 +1,6 @@
 /**
  * @file board_periph_pdm.c
- * @brief PDM-IF (digital MEMS microphone) peripheral-block model for board_sim
+ * @brief PDM-IF (digital MEMS microphone) peripheral-block model for ra8_emulator
  *
  * @details
  * Models the single RA8D2 PDM-IF block at 0x4025_6000 (ra8_pdm_regs.h /
@@ -22,7 +22,7 @@
  * report ``active=Y`` on a real signal rather than on the sparse fallback's
  * degenerate 0/-1 toggle.
  *
- * The value path is synthetic (board_sim has no analog microphone); this is a
+ * The value path is synthetic (ra8_emulator has no analog microphone); this is a
  * run-headless enabler, not a claim about a physical mic. Self-registers its
  * descriptor with the board_periph core from a file-scope constructor -- see
  * board_periph_block.h.

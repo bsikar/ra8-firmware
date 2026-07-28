@@ -9,7 +9,7 @@
  * bound by the caller (its `ra8_io_blockdev_*_init` already ran); everything
  * above the block-device seam is identical, so it lives here once. The helpers
  * are silent: each demo's `main.c` owns its PASS banner so the existing
- * board_sim smoke expectations stay byte-identical.
+ * ra8_emulator smoke expectations stay byte-identical.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

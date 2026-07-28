@@ -25,7 +25,7 @@
  * This seam supplies exactly those. It is consulted from the shared bounded-wait
  * primitives in ``ra8_hw_err.h`` (and any driver that opts in) under
  * ``RA8_SIMULATOR_MODE && UNIT_TEST`` -- i.e. only in the host test binary, never
- * in firmware or board_sim, which link neither this TU nor the guard. When a
+ * in firmware or ra8_emulator, which link neither this TU nor the guard. When a
  * test has not armed a fault for a register the seam models a peripheral whose
  * flag is already at its wait condition: the wait succeeds on its first poll.
  * This is the drop-in replacement for the per-driver

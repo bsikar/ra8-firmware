@@ -74,7 +74,7 @@ extern "C" {
  * exercising the real poll/timeout legs on host with the driver short-circuits
  * deleted (T1-01). Forward-declared here -- rather than including the test-only
  * header -- so this production header stays test-clean; the definition links
- * only into the host test binary. Absent in firmware and board_sim builds, which
+ * only into the host test binary. Absent in firmware and ra8_emulator builds, which
  * do not define UNIT_TEST and take the plain register-read path below. */
 [[nodiscard]] bool ra8_sim_mmio_wait_eval(const volatile void* reg, uint32_t iter, bool real_cond);
 /* Real-condition-honoring poll consult for the raw-loop status polls in the

@@ -14,7 +14,7 @@
  * register address range plus read / write / tick / reset function pointers --
  * and registers that descriptor with the core. Registration is decentralized:
 [[gnu::constructor]]  * each block file self-registers from a file-scope @c
- * that runs before @c main (board_sim is a host program, so constructors are a
+ * that runs before @c main (ra8_emulator is a host program, so constructors are a
  * sound startup mechanism), so ADDING A BLOCK is exactly "(a) a new
  * board_periph_<blk>.c and (b) a CMakeLists source line" -- no other file
  * changes. Registration order does not matter: MMIO dispatch is by disjoint

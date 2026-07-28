@@ -597,16 +597,16 @@ if [[ -f scripts/checks/check_hil_alive_policy.py ]]; then
   fi
 fi
 
-# ---- SIM==HIL parity gate ---------------------------------------
+# ---- EIL==HIL parity gate ---------------------------------------
 # Every hw_validated/hil app must also be exercised in the simulator:
-# it must carry a hil.conf, be discovered by sil_all.sh (not just
-# hil_all.sh), and declare a HIL_MODE board_sim can check (no SIL
+# it must carry a hil.conf, be discovered by eil_all.sh (not just
+# hil_all.sh), and declare a HIL_MODE ra8_emulator can check (no EIL
 # skips). Cheap structural gate -- re-derives both harnesses' app
-# discovery from hil_all.sh / sil_all.sh, so an added HIL app cannot
-# silently escape SIM coverage.
-if [[ -f scripts/checks/check_hil_sil_parity.py ]]; then
-  if ! python3 scripts/checks/check_hil_sil_parity.py; then
-    echo "[FAIL] check_hil_sil_parity.py: a HIL app is not SIL-covered."
+# discovery from hil_all.sh / eil_all.sh, so an added HIL app cannot
+# silently escape EIL coverage.
+if [[ -f scripts/checks/check_hil_eil_parity.py ]]; then
+  if ! python3 scripts/checks/check_hil_eil_parity.py; then
+    echo "[FAIL] check_hil_eil_parity.py: a HIL app is not EIL-covered."
     error_found=1
   fi
 fi

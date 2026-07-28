@@ -1,6 +1,6 @@
 /**
  * @file board_net.c
- * @brief Virtual network peer (Ethernet/ARP/IPv4/ICMP/TCP) for board_sim
+ * @brief Virtual network peer (Ethernet/ARP/IPv4/ICMP/TCP) for ra8_emulator
  *
  * @details
  * Implements the "other host on the wire" behind the ra8_eth frame seam (see
@@ -139,7 +139,7 @@ static bool     s_tcp_need_data;  /**< Payload queued to send post-handshake.  *
 static uint32_t s_tcp_estab_wait; /**< Ticks since the connection established. */
 
 /** @brief Payload the peer sends to the firmware's TCP echo server. */
-static const uint8_t s_tcp_payload[] = "hello from board_sim\n";
+static const uint8_t s_tcp_payload[] = "hello from ra8_emulator\n";
 
 /* Ring of frames queued for the firmware to receive. The firmware's RX worker
  * drains all available frames per poll, so a handshake burst (ACK + data) can

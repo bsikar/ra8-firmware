@@ -28,7 +28,7 @@ From a fixed chapter laid out with an SD-loaded font:
 
 Like the sibling SD HIL apps (`sd_font_render`, `epub_open`), this
 gates on SWD-readable globals, not the UART banner: an SD app drives the
-SCI0 Simple-SPI bus and board_sim folds every SCI channel into one
+SCI0 Simple-SPI bus and ra8_emulator folds every SCI channel into one
 console line, so a SCI8 banner is interleaved with SPI traffic there.
 `g_pc_heartbeat` advances once per ~100 ms and **only** after every
 assertion passes; any failure stamps `g_pc_err` and parks in `wfi`
@@ -50,7 +50,7 @@ without bumping it.
 make pagecache
 # Round-trip + invalidation on a blank card (write is slow under the sim,
 # so raise the wall/chunk budget):
-BOARD_SIM_WALL_S=550 BOARD_SIM_MAX_CHUNKS=8000000 \
+RA8_EMU_WALL_S=550 RA8_EMU_MAX_CHUNKS=8000000 \
   tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hil_needs_revalidation/pagecache/build/pagecache.elf \
   --sd-new 64:fat32 --save-sd /tmp/pc.img --dump-sym g_pc_crc_match \

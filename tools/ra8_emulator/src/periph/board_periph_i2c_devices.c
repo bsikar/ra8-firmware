@@ -49,7 +49,7 @@ typedef enum : uint32_t {
  * register file of big-endian 16-bit values. The firmware writes a register
  * pointer then reads two bytes: VCELL (cell voltage, 78.125 uV/LSB), SOC
  * (state-of-charge, high byte = integer percent), VERSION, and CRATE (charge
- * rate, signed -- positive while charging). The simulator drives SOC + the
+ * rate, signed -- positive while charging). The emulator drives SOC + the
  * CRATE sign from the user-settable battery state (``--battery`` / ``--charge``).
  */
 typedef enum : uint32_t {

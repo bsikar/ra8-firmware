@@ -1,7 +1,7 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_comic/main.c
  * @brief Viewable page-turn comic reader -- baked CBZ decoded to the 1024x600
- *        GLCDC panel, tap-zone navigation (board_sim / sim-viewable).
+ *        GLCDC panel, tap-zone navigation (ra8_emulator / emulator-viewable).
  *
  * @par Tag
  * [Ring 7 / App] {World: NS}
@@ -21,14 +21,14 @@
  *   - a top status bar (title, ``Page N of M``, battery percent);
  *   - a bottom progress bar (filled fraction = read position).
  *
- * Navigation is discrete tap zones (board_sim ``--click`` / ``--touch-seq`` /
+ * Navigation is discrete tap zones (ra8_emulator ``--click`` / ``--touch-seq`` /
  * window taps -- never a swipe/drag, which the GT911 model does not provide):
  *   - tap the RIGHT third -> next page;
  *   - tap the LEFT third -> previous page;
  *   - tap the CENTER-top -> toggle the chrome bands.
  *
  * A deterministic banner is printed once over the SCI8 console after the first
- * render so the headless SIL gate still asserts a fixed framebuffer hash:
+ * render so the headless EIL gate still asserts a fixed framebuffer hash:
  *
  *   ``ereader-comic: pages=<N> <W>x<H> page=1 crc=<8hex> ok``
  *

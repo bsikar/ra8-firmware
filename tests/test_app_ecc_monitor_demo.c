@@ -79,7 +79,7 @@ static void test_ecc_app_rw_model(void)
 }
 
 /**
- * @brief Verdict gates on the round-trip only (board_sim can't model ECC).
+ * @brief Verdict gates on the round-trip only (ra8_emulator can't model ECC).
  *
  * @par MC/DC:
  * Decision ``ok = rw_ok`` (single condition). 2 vectors: rw_ok=1 -> 1,

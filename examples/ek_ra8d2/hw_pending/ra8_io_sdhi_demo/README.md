@@ -1,6 +1,6 @@
 # ra8_io_sdhi_demo
 
-Status: **hw_pending** (board_sim-validated; not yet run on real silicon).
+Status: **hw_pending** (ra8_emulator-validated; not yet run on real silicon).
 
 Proves the `ra8_io` fabric's "swappable backend" promise (epic #155, phase #156)
 on the **native 4-bit SDHI** controller (#123): the **same** `ra8_io` VFS API that
@@ -38,7 +38,7 @@ ra8_io_sdhi_demo: card ready
 ra8_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS
 ```
 
-The HIL runner and the board_sim smoke gate scrape for the
+The HIL runner and the ra8_emulator smoke gate scrape for the
 `sd:/LOGS/A.TXT 512 bytes PASS` line.
 
 ## Hardware
@@ -66,9 +66,9 @@ make build
 
 Outputs `build/ra8_io_sdhi_demo.elf` / `.hex` / `.bin`.
 
-## Run in board_sim (no hardware)
+## Run in ra8_emulator (no hardware)
 
-board_sim models the native SDHI host controller (`board_periph_sdhi.c`) over the
+ra8_emulator models the native SDHI host controller (`board_periph_sdhi.c`) over the
 same `--sd-new` card image as the SPI model; attach a blank card with
 `--sd-new <MiB>[:fat16|fat32]`. From the repo root:
 
@@ -83,7 +83,7 @@ Success is the `... sd:/LOGS/A.TXT 512 bytes PASS` console line with no
 
 ## Run on the bench (real silicon)
 
-> The on-bench flash/run is the user's to perform. The repo build + board_sim
+> The on-bench flash/run is the user's to perform. The repo build + ra8_emulator
 > validation above is what is automated.
 
 1. Wire a microSD card to the port-4 SDHI bus with a **disposable** card inserted.

@@ -886,7 +886,7 @@ RA8_INTERNAL
  * comparison. The LUTAFSR value is clocked in over the injected bus, so
  * the seam is keyed on the seam's context cookie -- a stable,
  * test-addressable object the test itself bound into cfg (a stack local
- * cannot be armed). Firmware and board_sim take the plain comparison path.
+ * cannot be armed). Firmware and ra8_emulator take the plain comparison path.
  *
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok             Controller reports no busy LUTs.

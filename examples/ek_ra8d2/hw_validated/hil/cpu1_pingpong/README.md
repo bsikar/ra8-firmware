@@ -7,7 +7,7 @@ increments on each successful round-trip.
 > **Memory-map correction (re-validate on bench):** the CPU1 SRAM origin
 > (`SRAM_CPU1`) was moved from a **reserved** address (`0x223F0000`, above the
 > 1.6 MB on-chip ECC SRAM that ends at `0x221A0000`) to `0x22190000`, the top
-> 64 KiB of physical SRAM. board_sim masked the original error with a wide SRAM
+> 64 KiB of physical SRAM. ra8_emulator masked the original error with a wide SRAM
 > window, so the JTAG bench results below predate this fix and must be
 > re-confirmed on hardware.
 

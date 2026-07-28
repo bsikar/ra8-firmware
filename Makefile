@@ -6,7 +6,7 @@
 # per-area rule modules under mk/. The rules themselves live in:
 #
 #   mk/apps.mk     firmware app discovery + build (`make <app>`, apps, clean)
-#   mk/sim.mk      board_sim emulator (sim-<app>, profile-<app>, ereader-gui, sil)
+#   mk/emu.mk      ra8_emulator (emu-<app>, profile-<app>, ereader-gui, eil)
 #   mk/tools.mk    host developer tools (media_dl, ra8_viewer, `make tools`, ...)
 #   mk/hil.mk      hardware: flash/debug/ozone (J-Link), remote Pi HIL, OpenOCD
 #   mk/quality.mk  format/tidy/cppcheck/test/coverage/misra/scan-build/ci/...
@@ -20,7 +20,7 @@
 #   make            -- build the default app ($(RA8_DEFAULT_APP))
 #   make <app>      -- build a cross-compiled firmware app, e.g. `make blink_hal`
 #   make apps       -- list every discovered firmware app
-#   make sim-<app>  -- boot an app's REAL .elf on the Unicorn CPU emulator
+#   make emu-<app>  -- boot an app's REAL .elf on the Unicorn CPU emulator
 #   make tools      -- build every host developer tool
 #   make help       -- grouped reference of every top-level target
 #
@@ -47,8 +47,8 @@ CLANG_FORMAT ?= clang-format
 DOXYGEN      ?= doxygen
 ARM_SIZE     ?= arm-none-eabi-size
 
-# Host tool directories (referenced by mk/sim.mk, mk/tools.mk, and clean).
-BOARD_SIM_DIR  := $(ROOT)/tools/ra8_emulator
+# Host tool directories (referenced by mk/emu.mk, mk/tools.mk, and clean).
+RA8_EMU_DIR  := $(ROOT)/tools/ra8_emulator
 MEDIA_DL_DIR   := $(ROOT)/tools/media_dl
 RA8_VIEWER_DIR := $(ROOT)/tools/rabook_viewer
 
@@ -79,10 +79,10 @@ RA8_APP_DIR_ra8d2-ereader := $(ROOT)/src/app
 RA8_FLASH := $(addprefix flash-,$(RA8_APPS))
 RA8_DEBUG := $(addprefix debug-,$(RA8_APPS))
 RA8_OZONE := $(addprefix ozone-,$(RA8_APPS))
-RA8_SIM   := $(addprefix sim-,$(RA8_APPS))
+RA8_EMU   := $(addprefix emu-,$(RA8_APPS))
 # The e-reader / dual-core / tz-threadx sims need dedicated Debug recipes (see
-# mk/sim.mk); drop them from the generic single-image sim rule.
-RA8_SIM_GENERIC := $(filter-out sim-ra8d2-ereader sim-dualcore_mailbox sim-tz_threadx_demo,$(RA8_SIM))
+# mk/emu.mk); drop them from the generic single-image emulator rule.
+RA8_EMU_GENERIC := $(filter-out emu-ra8d2-ereader emu-dualcore_mailbox emu-tz_threadx_demo,$(RA8_EMU))
 RA8_PROFILE := $(addprefix profile-,$(RA8_APPS))
 
 # hw_validated apps -- smoke + stack-usage sweeps run over this set only.
@@ -109,14 +109,14 @@ help:
 	@echo "  make clean             remove every app build dir, tests/build, and tool builds"
 	@echo "  make compile_commands  regenerate build/compile_commands.json for clangd"
 	@echo ""
-	@echo "RUN / PREVIEW / SIMULATE  (no board needed -- see 'make apps')          [make sim-help]"
-	@echo "  make sim-<app> [PANEL=ek_ra8d2]  boot an app's REAL .elf on the Unicorn CPU"
+	@echo "RUN / PREVIEW / EMULATE  (no board needed -- see 'make apps')           [make emu-help]"
+	@echo "  make emu-<app> [PANEL=ek_ra8d2]  boot an app's REAL .elf on the Unicorn CPU"
 	@echo "                             emulator, live panel/UI window (tools/ra8_emulator)"
 	@echo "  make ereader-gui           full hybrid e-reader GUI: baked + SD books on a live window"
-	@echo "  make sil [SIL_JOBS=N]      SIL: boot EVERY hil app in board_sim headless + assert"
-	@echo "  make sim-matrix            boot EVERY example in board_sim (the #67 coverage matrix)"
-	@echo "  make sim-matrix-triage     group the last sweep's failures by cause"
-	@echo "  make sim-matrix-baseline   re-baseline the matrix ratchet after burning debt down"
+	@echo "  make eil [EIL_JOBS=N]      EIL: boot EVERY hil app in ra8_emulator headless + assert"
+	@echo "  make emu-matrix            boot EVERY example in ra8_emulator (the #67 coverage matrix)"
+	@echo "  make emu-matrix-triage     group the last sweep's failures by cause"
+	@echo "  make emu-matrix-baseline   re-baseline the matrix ratchet after burning debt down"
 	@echo "                             its hil.conf expectation, in parallel (no board). CI-gated."
 	@echo ""
 	@echo "READER TOOLS  (host-native, not firmware -- macOS)                      [make tools-help]"
@@ -190,7 +190,7 @@ all: format tidy test default
 
 # --- rule modules ------------------------------------------------------------
 include $(ROOT)/mk/apps.mk
-include $(ROOT)/mk/sim.mk
+include $(ROOT)/mk/emu.mk
 include $(ROOT)/mk/tools.mk
 include $(ROOT)/mk/hil.mk
 include $(ROOT)/mk/quality.mk

@@ -3,7 +3,7 @@
  * @brief Headless no-op board view for non-Apple builds (Linux CI)
  *
  * @details
- * board_sim's live window (board_view.m) is Cocoa, so it only builds on macOS.
+ * ra8_emulator's live window (board_view.m) is Cocoa, so it only builds on macOS.
  * Off the APPLE path -- a Linux CI runner with no window server -- this file is
  * compiled in its place to satisfy the exact same C-ABI declared in
  * board_view.h, with zero AppKit/CoreGraphics references. Every entry point is a

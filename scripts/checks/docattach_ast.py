@@ -112,9 +112,9 @@ def typedef_names_for_anonymous(
 ) -> dict[tuple[int, int], str]:
     """Map each anonymous record/enum's location to the typedef that names it.
 
-    ``typedef struct { ... } sim_args_t;`` -- the C23 shape this codebase uses
+    ``typedef struct { ... } emu_args_t;`` -- the C23 shape this codebase uses
     almost everywhere -- produces a STRUCT_DECL whose spelling is
-    ``struct (unnamed at ...)``.  Comparing ``@struct sim_args_t`` against that
+    ``struct (unnamed at ...)``.  Comparing ``@struct emu_args_t`` against that
     spelling reports every correctly-documented struct in the tree as a name
     mismatch.  The typedef is the symbol's real name, so resolve it.
     """

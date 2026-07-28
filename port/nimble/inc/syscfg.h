@@ -32,7 +32,7 @@
  * @warning UNVALIDATED SCAFFOLD (issue #286): these syscfg knobs enable
  * NimBLE features (SMP, bonding, Mesh, GATT client) that link and pass the
  * static gates, but the whole NimBLE port has NEVER been hardware-validated
- * and is NOT sim-gated -- board_sim models no RA8D2 BLE controller / HCI
+ * and is NOT emulator-gated -- ra8_emulator models no RA8D2 BLE controller / HCI
  * mailbox, and the underlying ra8_ble transport is itself unproven on this
  * board (see #86, #91). Enabling a knob here does not imply the feature
  * runs on silicon; consumers stay under ``examples/_unsupported/`` until a

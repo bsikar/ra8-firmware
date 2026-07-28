@@ -1,6 +1,6 @@
 /**
  * @file board_periph_sdhi.c
- * @brief Native 4-bit SDHI host-controller model for board_sim (SDHI0).
+ * @brief Native 4-bit SDHI host-controller model for ra8_emulator (SDHI0).
  *
  * @details
  * Models the RA8D2 SDHI0 host controller (ra8_sdhi_regs.h, ra8_sdhi.c,

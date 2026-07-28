@@ -81,7 +81,7 @@
 
 /**
  * @dir tools
- * @brief Host-side tools: the board_sim RA8D2 emulator, cache/glyph benchmarks,
+ * @brief Host-side tools: the ra8_emulator RA8D2 emulator, cache/glyph benchmarks,
  *        the EPUB/book image builders, the root-of-trust signer, and the MCP
  *        server.
  */

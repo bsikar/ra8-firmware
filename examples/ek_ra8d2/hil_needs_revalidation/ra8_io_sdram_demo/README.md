@@ -6,7 +6,7 @@ thing changed: the block device is the SDRAM backend (`ra8_io_blockdev_sdram_ini
 which brings the controller up via `ra8_sdramc_init`) instead of an in-SRAM RAM
 disk. The `ra8_fs` + VFS layers above are byte-for-byte identical.
 
-No external hardware required; it runs headlessly in `board_sim`, which maps the
+No external hardware required; it runs headlessly in `ra8_emulator`, which maps the
 SDRAM region and models the controller bring-up.
 
 What it exercises:
@@ -33,7 +33,7 @@ make            # -> build/ra8_io_sdram_demo.elf
 ## Run in the simulator
 
 ```
-BOARD_SIM_WALL_S=20 tools/ra8_emulator/build/ra8_emulator build/ra8_io_sdram_demo.elf
+RA8_EMU_WALL_S=20 tools/ra8_emulator/build/ra8_emulator build/ra8_io_sdram_demo.elf
 ```
 
 Expected console output:
@@ -46,6 +46,6 @@ Expected console output:
 
 ## Status
 
-`hw_pending`: the logic is proven in `board_sim` (which maps the SDRAM region and
+`hw_pending`: the logic is proven in `ra8_emulator` (which maps the SDRAM region and
 models the controller bring-up). The same code runs on silicon; promote to
 `hw_validated` after a bench run captures the PASS line over the J-Link UART.

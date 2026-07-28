@@ -1,6 +1,6 @@
 /**
  * @file board_periph_rtt.c
- * @brief SEGGER RTT up-buffer drain model for board_sim
+ * @brief SEGGER RTT up-buffer drain model for ra8_emulator
  *
  * @details
  * Models the HOST side of the SEGGER Real-Time Transfer channel: the debug
@@ -10,7 +10,7 @@
  * with, then reads bytes out of up-buffer 0's ring (advancing the read offset
  * so the firmware sees the buffer emptying). This block does exactly that
  * against the emulated SRAM, so an RTT-logging app (rtt_log_demo) surfaces
- * its banner in board_sim with no UART pin -- the same text JLinkRTTViewer
+ * its banner in ra8_emulator with no UART pin -- the same text JLinkRTTViewer
  * would show on the bench.
  *
  * Control-block layout drained here (SEGGER_RTT.h, 32-bit target):
@@ -30,7 +30,7 @@
  * Drained bytes are assembled into lines (CR dropped, latched on LF) and
  * surfaced exactly like the SCI console: each completed line prints to stdout
  * as ``[rtt] <line>`` and lands in the board_console RTT channel, whose newest
- * line the run loop's BOARD_SIM_STOP_ON banner guard also checks -- so the SIL
+ * line the run loop's RA8_EMU_STOP_ON banner guard also checks -- so the EIL
  * gate scrapes an RTT banner the same way it scrapes a UART one.
  *
  * This block owns NO MMIO window (base = span = 0): RTT is a plain-RAM
@@ -130,7 +130,7 @@ static uint8_t s_rtt_seg[k_rtt_drain_max];
  * @pre @p addr points into mapped guest memory for a meaningful result.
  * @post No guest state is modified (pure read).
  * @post The returned value is 0 on any read failure.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static uint32_t rtt_rd32(uc_engine* uc, uint64_t addr)
@@ -162,7 +162,7 @@ static uint32_t rtt_rd32(uc_engine* uc, uint64_t addr)
  * @pre @p cb_addr begins with the 10-byte RTT ID (the caller matched it).
  * @post No guest state is modified (pure validation).
  * @post A true result means up-buffer 0 is safe to drain this tick.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static bool rtt_cb_valid(uc_engine* uc, uint64_t cb_addr)
@@ -199,7 +199,7 @@ static bool rtt_cb_valid(uc_engine* uc, uint64_t cb_addr)
  * @pre ::s_rtt_stage holds @p len bytes read from @p stage_addr.
  * @post No guest state is modified (pure match).
  * @post A non-zero result begins with the 10-byte RTT ID.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static uint64_t rtt_match_stage(uc_engine* uc, uint64_t stage_addr, uint64_t len)
@@ -240,7 +240,7 @@ static uint64_t rtt_match_stage(uc_engine* uc, uint64_t stage_addr, uint64_t len
  * @pre @c s_rtt.cb_addr is 0 (the caller only scans while undiscovered).
  * @post On a validated match @c s_rtt.cb_addr holds the block address.
  * @post No guest state is modified (pure scan).
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void rtt_scan(uc_engine* uc)
@@ -272,7 +272,7 @@ static void rtt_scan(uc_engine* uc)
  * @details Mirrors the ITM / UART console formatting: CR is dropped, and a
  * LF (or a full buffer) latches the pending text -- printed to stdout as
  * ``[rtt] <line>`` and pushed into the board_console RTT channel, where the
- * run loop's BOARD_SIM_STOP_ON banner guard reads the newest line back.
+ * run loop's RA8_EMU_STOP_ON banner guard reads the newest line back.
  *
  * @param[in] byte The drained up-buffer byte.
  * @return Nothing.
@@ -280,7 +280,7 @@ static void rtt_scan(uc_engine* uc)
  * @pre board_console is initialised (static storage guarantees it).
  * @post On LF the completed line is surfaced and the buffer reset.
  * @post Any other non-CR byte is appended to the pending line.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void rtt_line_feed(uint8_t byte)
@@ -322,7 +322,7 @@ static void rtt_line_feed(uint8_t byte)
  * @post The guest read offset equals the pre-drain write offset (or advanced
  *       by ::k_rtt_drain_max on an oversized backlog).
  * @post Every drained byte passed through ::rtt_line_feed in ring order.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void rtt_drain(uc_engine* uc)
@@ -382,7 +382,7 @@ static void rtt_drain(uc_engine* uc)
  * @pre @p uc is a live engine with the SRAM window mapped.
  * @post @c s_rtt.ticks advanced by one.
  * @post Any pending up-buffer bytes of a discovered block were surfaced.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void rtt_tick(uc_engine* uc)
@@ -413,7 +413,7 @@ static void rtt_tick(uc_engine* uc)
  * @pre The block registry owns the call cadence (never re-entered).
  * @post The control block is forgotten and the scan cadence re-armed.
  * @post All counters and the in-flight line buffer read zero/empty.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void rtt_reset(void)
@@ -431,7 +431,7 @@ static void rtt_reset(void)
  * @pre stderr is writable (the summary sink).
  * @post One summary line is printed iff a control block was discovered.
  * @post Model state is unchanged (pure report).
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void rtt_report(void)

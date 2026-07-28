@@ -14,7 +14,7 @@
  * `ra8_sdramc_init` and presents the window as 512-byte logical blocks) plus its
  * own PASS banners.
  *
- * board_sim maps the SDRAM region and models the SDRAM controller bring-up, so
+ * ra8_emulator maps the SDRAM region and models the SDRAM controller bring-up, so
  * the PASS/FAIL line is observable headlessly: a successful run prints
  * `ra8_io_sdram_demo: mkdir+nested dr:/SUB/NOTE.TXT PASS`.
  *

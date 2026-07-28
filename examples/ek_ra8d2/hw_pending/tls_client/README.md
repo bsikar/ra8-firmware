@@ -71,31 +71,31 @@ keeps building cleanly.
    make -C examples/ek_ra8d2/hw_pending/tls_client flash`.
 5. Reset the board and watch the `[tls] cipher=... verify=...` line.
 
-## Why this app is hw_pending (not sim-gated)
+## Why this app is hw_pending (not emulator-gated)
 
-board_sim runs the real firmware ELF, so a genuine handshake here needs
-two things board_sim does not yet provide:
+ra8_emulator runs the real firmware ELF, so a genuine handshake here needs
+two things ra8_emulator does not yet provide:
 
-- **A crypto-complete TLS server on the wire.** board_sim's in-process
+- **A crypto-complete TLS server on the wire.** ra8_emulator's in-process
   peer (`tools/ra8_emulator/src/io/board_net.c`) is a plaintext
   Ethernet/ARP/IPv4/ICMP/TCP stack with no TLS. It can echo TCP bytes
-  (that is how `threadx_netx_tcp_echo` sim-gates) but cannot complete an
+  (that is how `threadx_netx_tcp_echo` emu-gates) but cannot complete an
   Mbed TLS handshake.
 - **An entropy source under emulation.** The handshake seeds PSA from the
-  RSIP TRNG, which board_sim does not model (there is no
+  RSIP TRNG, which ra8_emulator does not model (there is no
   `board_periph_rsip.c`; the RSIP register file is documented as
   vendor-invented and is routed to software crypto on silicon).
 
-Until board_sim grows a TLS-server endpoint, the transport + facade glue
+Until ra8_emulator grows a TLS-server endpoint, the transport + facade glue
 is proven by the host unit test `tests/test_ra8_tls_net.c`, which drives
 the same `ra8_tls` API (open -> handshake -> send -> recv -> cipher /
 verify) over the `ra8_net_pal` loopback frame ring with MC/DC vectors for
 every compound decision. On the bench this app runs end-to-end against a
 real `openssl s_server` (recipe above).
 
-### Sim-gate follow-up (to reach hw_validated/hil/)
+### Emu-gate follow-up (to reach hw_validated/hil/)
 
-A `board_net` TLS-server endpoint that makes this app sim-gate the way
+A `board_net` TLS-server endpoint that makes this app emu-gate the way
 `threadx_netx_tcp_echo` does. The proper, no-shortcut design:
 
 1. Link the vendored Mbed TLS host-side into `tools/ra8_emulator` (a host
@@ -105,7 +105,7 @@ A `board_net` TLS-server endpoint that makes this app sim-gate the way
    `mbedtls_ssl` server context, complete the handshake, read one record,
    and reply. A PSK cipher suite keeps the emulated handshake fast and
    certless.
-3. Model the RSIP TRNG in board_sim (a new `board_periph_rsip.c`) or route
+3. Model the RSIP TRNG in ra8_emulator (a new `board_periph_rsip.c`) or route
    the PSA external-RNG hook to a deterministic seed under emulation so the
    handshake can draw randomness.
 4. Add a `hil.conf` with a new `hil_eth_tls` mode (Pi peer on hardware,

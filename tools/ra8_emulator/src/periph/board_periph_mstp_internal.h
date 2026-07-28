@@ -10,9 +10,9 @@
  * dropped. At reset every peripheral bit is 1 (stopped); firmware clears the
  * bit -- via ``ra8_mstp_enable`` -- before it may touch the peripheral.
  *
- * board_sim modelled no module-stop state at all, so a peripheral answered its
+ * ra8_emulator modelled no module-stop state at all, so a peripheral answered its
  * registers whether or not firmware had released it. A driver that forgot to
- * cancel module-stop therefore worked perfectly in the simulator and did
+ * cancel module-stop therefore worked perfectly in the emulator and did
  * nothing on hardware (#405, the same masked-pass shape as #247's power domain
  * and #131's protected writes).
  *
@@ -22,7 +22,7 @@
  * MMIO access to an owning block, and drops it -- read 0 / write ignored --
  * exactly as the silicon does when the block is stopped. The model half is
  * kept free of any Unicorn dependency so the gate table is unit-testable on the
- * host (tests/test_board_sim_mstp_gate.c); the block glue that needs the engine
+ * host (tests/test_ra8_emulator_mstp_gate.c); the block glue that needs the engine
  * lives in @c board_periph_mstp.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -45,7 +45,7 @@ extern "C" {
  * @brief R_MSTP register-window geometry (HUM Ch 11.2.6..11.2.10 p 443-450).
  *
  * @details
- * The Secure alias of the block is at @c 0x4020_3000; board_sim's MMIO
+ * The Secure alias of the block is at @c 0x4020_3000; ra8_emulator's MMIO
  * callbacks rebuild every access -- Secure and the IDAU bit[28] Non-secure
  * alias @c 0x5020_3000 alike -- onto this Secure base, so a single window
  * covers both views. @c MSTPCRA..MSTPCRE occupy the first five 32-bit words.
@@ -71,7 +71,7 @@ typedef enum : uint64_t {
  * @return Nothing.
  * @post Every application-peripheral module-stop bit reads 1 (stopped).
  * @post The dropped-access counters and the family-lookup cache are cleared.
- * @note Not thread-safe; board_sim drives all blocks from one thread.
+ * @note Not thread-safe; ra8_emulator drives all blocks from one thread.
  * @since 0.1.0
  */
 RA8_PRIV void board_mstp_reset(void);
@@ -124,7 +124,7 @@ RA8_PRIV uint32_t board_mstp_read_reg(uint64_t off, unsigned size);
  * Maps @p addr through the address->module-stop-bit gate table (each entry
  * cites the governing MSTPCRx bit from HUM Ch 11.2.6..11.2.10) and returns
  * whether that bit is currently set. An address covered by no gate entry -- a
- * peripheral with no module-stop control (GPIO, ICU, SYSC), or one board_sim
+ * peripheral with no module-stop control (GPIO, ICU, SYSC), or one ra8_emulator
  * does not gate -- is never stopped, so unmodelled and un-gated blocks answer
  * exactly as before.
  *

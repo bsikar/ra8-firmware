@@ -63,7 +63,7 @@ typedef enum : uint32_t {
  * @details The host unit-test simulator models the flash MACI *registers* but
  *          not the extra-MRAM *data* side, so writes never round-trip through
  *          ``k_ra8_flash_extra_start``. Under RA8_SIMULATOR_MODE the durable read/commit use
- *          this word instead; silicon and board_sim exercise the real
+ *          this word instead; silicon and ra8_emulator exercise the real
  *          extra-MRAM path in the ``#else`` branch.
  * @note File-private; the anti-rollback host test seeds it directly.
  * @warning Test seam only -- never compiled into a silicon image.

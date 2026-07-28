@@ -23,7 +23,7 @@ whose taps dispatched to the wrong handler -- invisible to the chrome render
 gate -- fails here.
 
 Pure logic (no peripheral state), so the banner is identical every boot and
-matches the host / board_sim run.
+matches the host / ra8_emulator run.
 
 ## Build + run
 
@@ -32,11 +32,11 @@ make ereader_input
 scripts/hil/run_local.sh ereader_input      # flash + scrape the banner
 ```
 
-## Result (validated 2026-06-18, board_sim + host)
+## Result (validated 2026-06-18, ra8_emulator + host)
 
 ```
 ui-hil: boot
 ui-hil: taps=7 hits=5 nav_ok=1 PASS
 ```
 
-`scripts/sim/smoke.sh ereader_input` PASS.
+`scripts/emu/smoke.sh ereader_input` PASS.

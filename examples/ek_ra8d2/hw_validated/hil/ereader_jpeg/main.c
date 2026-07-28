@@ -18,7 +18,7 @@
  *
  * The render is deterministic (integer nearest-neighbour + fixed RGB565 pack +
  * a zeroed static framebuffer), so the hash is identical every boot and -- by
- * construction -- the same value the identical host / board_sim render
+ * construction -- the same value the identical host / ra8_emulator render
  * produces. Any drift in the decoder, the scale math, or the toolchain output
  * changes the hash and trips the `uart_scrape` gate.
  *
@@ -92,7 +92,7 @@ static void iv_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the init-fail banner and spin (board_sim halts on the BKPT). */
+/** @brief Print the init-fail banner and spin (ra8_emulator halts on the BKPT). */
 static void iv_panic_halt(void)
 {
   iv_print(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);

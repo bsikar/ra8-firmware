@@ -31,9 +31,9 @@ checksum framing at the UART level. The **responder detection path**
 (`ra8_sci_lin_wait_break` -> `ra8_sci_lin_read_response` -> checksum verify) is
 proven by the host unit tests (`tests/test_ra8_sci_lin.c`), not yet on silicon.
 
-`board_sim` does not model the SCI_B Simple-LIN registers (break-field timer,
-`XSR0.BFDF` detection), so there is no `make sim-` gate for this app -- hence
-`hw_pending` rather than a board_sim-gated example.
+`ra8_emulator` does not model the SCI_B Simple-LIN registers (break-field timer,
+`XSR0.BFDF` detection), so there is no `make emu-` gate for this app -- hence
+`hw_pending` rather than a ra8_emulator-gated example.
 
 Pmod1 shares pins with the Octo-SPI bus; set the board's Pmod1 / OSPI mux
 (SW4) to the Pmod1 side before use.

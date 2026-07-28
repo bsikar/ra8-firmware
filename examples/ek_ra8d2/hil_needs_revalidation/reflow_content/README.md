@@ -20,8 +20,8 @@ paginates to more pages (`rpages` > `pages`), exercising the re-flow path; any
 drift in the layout, pagination, or glyph render changes a hash.
 
 Ahem has fixed glyph metrics, so pagination + render are deterministic: the
-banner is identical on host, `board_sim`, and silicon, and stable across fresh
-resets -- a sim/silicon equivalence check.
+banner is identical on host, `ra8_emulator`, and silicon, and stable across fresh
+resets -- an emulator/silicon equivalence check.
 
 ## Build + run
 
@@ -30,18 +30,18 @@ make reflow_content
 scripts/hil/run_local.sh reflow_content      # flash + scrape the banner
 ```
 
-## Result (validated 2026-06-18, board_sim + host)
+## Result (validated 2026-06-18, ra8_emulator + host)
 
 ```
 reflow-content-hil: boot
 reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5
 ```
 
-`scripts/sim/smoke.sh reflow_content` PASS; the identical host run
+`scripts/emu/smoke.sh reflow_content` PASS; the identical host run
 produces the same hashes -- byte-for-byte agreement.
 
 ## Updating the baseline
 
 After an **intentional** change to the baked chapter or the layout/render math,
-recompute the banner (run under `board_sim` or on the bench) and update
+recompute the banner (run under `ra8_emulator` or on the bench) and update
 `HIL_EXPECT` in `hil.conf`. The on-device banner is the source of truth.

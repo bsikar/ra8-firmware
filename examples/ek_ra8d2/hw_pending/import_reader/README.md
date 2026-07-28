@@ -41,7 +41,7 @@ Any failed step prints `import_reader: FAIL <stage>` and parks the core.
 
 ## Running it
 
-### board_sim (headless)
+### ra8_emulator (headless)
 
 Build a FAT16 card image carrying a text-only `.epub` as `BOOK.EPB` (the
 generic single-file image builder works for any file):

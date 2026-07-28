@@ -35,7 +35,7 @@ The harness is no longer the open question. The port is.
 ## Why `hw_pending`
 
 `ra8_emulator` does not model an ESP32-C6 on Pmod1, so this app cannot be
-gated by the SIL suite, and it is deliberately absent from the HIL suite (no
+gated by the EIL suite, and it is deliberately absent from the HIL suite (no
 `hil.conf`): a run needs SW4-4 OFF, which takes the Arduino and mikroBUS
 connectors off the board for every other app in the same pass. It is a bench
 instrument, run by hand, and it stays under `hw_pending/` because **the port

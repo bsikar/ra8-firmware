@@ -497,7 +497,7 @@ static void internal_drw_program_cache_options(const ra8_drw_config_t* cfg)
    * domain contents in HUM Ch 11.5.1 Table 11.7 p 480). Cancelling
    * module-stop is NOT sufficient: with the domain dark every DRW register
    * reads 0 and every write is lost, which is exactly why the engine never
-   * rasterised a pixel on silicon (#247) while board_sim -- modelling no
+   * rasterised a pixel on silicon (#247) while ra8_emulator -- modelling no
    * power domain -- rendered happily. Power the domain first.
    * Bench evidence: HWREVISION reads 0x00000000 before this call and
    * 0x0FBE0107 after it. */

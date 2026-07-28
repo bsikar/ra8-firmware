@@ -18,21 +18,21 @@ Screens drawn to the panel:
 ## Navigation (tap zones)
 
 Navigation is discrete tap zones only -- never a swipe/drag/pinch, which the
-board_sim GT911 model does not provide:
+ra8_emulator GT911 model does not provide:
 
 - tap the **right third** -> next page;
 - tap the **left third** -> previous page;
 - tap the **center-top** -> toggle the chrome bands.
 
-board_sim drives these through `--click X Y` / `--touch-seq "x0:y0,..."` / window
-taps, routed through the real `ra8_touch` -> I3C -> GT911 path (no board_sim
+ra8_emulator drives these through `--click X Y` / `--touch-seq "x0:y0,..."` / window
+taps, routed through the real `ra8_touch` -> I3C -> GT911 path (no ra8_emulator
 change).
 
 ## Headless banner
 
 After the first render the app FNV-1a-32-hashes the whole 1024x600 panel
 framebuffer and prints one deterministic banner over the SCI8 J-Link OB console,
-so the headless SIL gate (`hil.conf`) still asserts a fixed page-1 hash:
+so the headless EIL gate (`hil.conf`) still asserts a fixed page-1 hash:
 
 ```
 ereader-comic: pages=<N> <W>x<H> page=1 crc=<8hex> ok
@@ -40,7 +40,7 @@ ereader-comic: pages=<N> <W>x<H> page=1 crc=<8hex> ok
 
 ## Status
 
-`hw_pending`: sim-viewable through `board_sim` (`--ppm` / `--view`), with the
+`hw_pending`: emulator-viewable through `ra8_emulator` (`--ppm` / `--view`), with the
 pinned page-1 hash in `hil.conf`. Not yet silicon-validated (no rig in this
 workflow).
 
@@ -48,7 +48,7 @@ workflow).
 
 ```
 make                                     # cross-compile -> build/ereader_comic.elf
-make -C ../../../.. sim-ereader_comic    # live window: click to turn pages
+make -C ../../../.. emu-ereader_comic    # live window: click to turn pages
 
 # Headless render + drive (panel + sidebar composited to a PPM):
 cd ../../../../tools/ra8_emulator && cmake -B build -S . && cmake --build build -j

@@ -1,6 +1,6 @@
 /**
  * @file board_periph_ulpt.c
- * @brief Ultra-Low-Power Timer (ULPT) peripheral-block model for board_sim
+ * @brief Ultra-Low-Power Timer (ULPT) peripheral-block model for ra8_emulator
  *
  * @details
  * Models the RA8D2 ULPT (ra8_ulpt_regs.h, ra8_ulpt.c): two channels of a
@@ -101,7 +101,7 @@ typedef enum : uint8_t {
  * @details
  * Sized above the largest period the deep-idle examples load (ULPTCNT = 0x8000
  * in ulpt_demo, 0x4000 in lpm_periodic_idle) so an armed channel underflows on
- * its first idle tick. That matters because board_sim fast-forwards a Software
+ * its first idle tick. That matters because ra8_emulator fast-forwards a Software
  * Standby WFI one tick (one SysTick period) at a time: the ULPT underflow has to
  * be raised within that single idle tick to be the source that cancels standby
  * (and to pend the ULPT0_ULPTI IRQ before the firmware stops the channel),

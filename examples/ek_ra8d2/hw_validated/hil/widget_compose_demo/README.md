@@ -35,7 +35,7 @@ dirty children. A dirty nested panel repaints its whole subtree.
   changes. This is the acceptance bullet -- a status-only change flushes only
   the status rect.
 
-It then prints a single banner so the app doubles as a `board_sim` gate:
+It then prints a single banner so the app doubles as a `ra8_emulator` gate:
 
 ```
 widget-compose-demo: dirty0=3 crc0=<8hex> dirty1=1 crc1=<8hex> flush=512x44 hint=fast PASS

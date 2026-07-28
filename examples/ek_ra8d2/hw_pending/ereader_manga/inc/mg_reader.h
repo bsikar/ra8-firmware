@@ -12,9 +12,9 @@
  * (``ra8_tile_cache``). The reader owns no hardware -- it draws into a
  * caller-supplied RGB565 framebuffer through ``ra8_gfx`` and reads decoded
  * tiles through the cache -- so the identical render runs on the cross-built
- * firmware, under board_sim, and in the host unit test.
+ * firmware, under ra8_emulator, and in the host unit test.
  *
- * Navigation is discrete tap-zones (board_sim's GT911 model has no gestures):
+ * Navigation is discrete tap-zones (ra8_emulator's GT911 model has no gestures):
  *   - the four screen-edge bands pan the viewport one step in that direction;
  *   - a tap anywhere in the centre toggles the zoom between 1:1 (pan a page
  *     bigger than the screen) and fit-page (the whole page decimated to fit).
@@ -341,7 +341,7 @@ typedef struct {
  * @pre @p buf holds @p len readable bytes (or @p len is 0).
  * @pre None.
  * @post No state is mutated.
- * @post The digest is deterministic across host / board_sim / silicon.
+ * @post The digest is deterministic across host / ra8_emulator / silicon.
  *
  * @note Thread-safe (pure).
  * @since 0.1.0

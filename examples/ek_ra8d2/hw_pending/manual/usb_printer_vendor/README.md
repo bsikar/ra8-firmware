@@ -48,13 +48,13 @@ USB PRINTER+VENDOR CONFIGURED   # a host enumerated + configured the device
 
 ## Verification
 
-### board_sim (SIL, headless, no hardware)
+### ra8_emulator (EIL, headless, no hardware)
 
 The emulated chapter-9 host walks the enumeration script against the polled
 responder and the run reaches `device CONFIGURED`:
 
 ```
-scripts/sim/smoke.sh usb_printer_vendor
+scripts/emu/smoke.sh usb_printer_vendor
 ```
 
 This is the automated gate: it proves the descriptors, the polled EP0 SETUP
@@ -74,5 +74,5 @@ host to drive them:
   `g_usb_vendor_loops` advances per round trip.
 
 Because those steps cannot run without an attached PC, this app lives in
-`hw_pending/` and its disposition is **sim-validated enumeration, hardware
+`hw_pending/` and its disposition is **emulator-validated enumeration, hardware
 print-job / loopback pending** (see the issue).

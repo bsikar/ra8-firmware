@@ -16,7 +16,7 @@
  *   `epub: chapters=2 ch0_crc=<8hex> PASS`
  *
  * Deterministic (a fixed blob through a deterministic parser), so the banner is
- * identical on host, board_sim, and silicon. Any failure on any path prints a
+ * identical on host, ra8_emulator, and silicon. Any failure on any path prints a
  * FAIL banner and halts on a BKPT before the PASS line, so the gate is exact.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -74,7 +74,7 @@ static void ep_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void ep_panic_halt(const uint8_t* msg, uint32_t len)
 {
   ep_print(msg, len);

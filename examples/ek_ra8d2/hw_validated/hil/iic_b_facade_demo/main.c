@@ -36,7 +36,7 @@
  * @note **SIM vs bench.** ``tools/ra8_emulator`` models the IIC_B controller
  * bus (GT911 answers PRODUCT_ID) AND plays the EXTERNAL I2C controller that
  * drives the firmware's target role (``board_periph_i2c.c``), so both halves
- * run headless and the peripheral count is non-zero in SIL. On a bare bench
+ * run headless and the peripheral count is non-zero in EIL. On a bare bench
  * the controller half still ACKs the real GT911, but the target half needs an
  * external I2C controller wired to the bus (the stock rig has none), so
  * ``periph=0`` there -- informational, never gated. See ``README.md``.
@@ -159,7 +159,7 @@ static void iic_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner then trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner then trap (ra8_emulator halts on the BKPT). */
 static void iic_panic_halt(const uint8_t* msg, uint32_t len)
 {
   iic_print(msg, len);
@@ -261,7 +261,7 @@ static void iic_print_dec(uint32_t value)
  *
  * @details Polls ``ra8_i3c_peripheral_status`` once. On RX-full it drains one
  * byte into @p last_byte; on TX-empty it re-sends @p last_byte (echo). The
- * board_sim external-controller model paces these so a receive is always
+ * ra8_emulator external-controller model paces these so a receive is always
  * followed by the matching echo.
  *
  * @param[in,out] last_byte Latched controller-write byte; echoed on the next read.
@@ -344,7 +344,7 @@ static void iic_print_dec(uint32_t value)
  *
  * @details Opens the channel as an addressed I2C target (0x42) then services a
  * bounded number of polls, counting only a full round-trip (a received byte
- * immediately echoed back). In board_sim the external-controller model drives
+ * immediately echoed back). In ra8_emulator the external-controller model drives
  * these; on a bare bench with no external controller the count stays 0.
  *
  * @return Completed controller write+read round-trips (0 .. ::k_iic_periph_rounds).

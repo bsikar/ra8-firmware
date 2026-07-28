@@ -15,7 +15,7 @@
  * each demo collapses to: boot the console, bind ONE backend, hand the bound
  * ::ra8_io_blockdev_t to the helpers below, and print its own PASS banner. The
  * helpers never print -- the per-demo `main.c` owns its banner string so the
- * existing board_sim smoke expectations stay byte-identical.
+ * existing ra8_emulator smoke expectations stay byte-identical.
  *
  * Two phases are exposed so a demo can drive either or both:
  *   - ::ra8_io_roundtrip_mount       -- bridge + format + mount + VFS register.

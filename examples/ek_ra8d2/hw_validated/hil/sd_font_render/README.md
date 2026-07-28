@@ -4,7 +4,7 @@ Loads a TTF/OTF font off an **SD card** and renders a paragraph of XHTML with
 `ra8_reflow` into the GLCDC framebuffer. This is the firmware promotion of the
 host test `tests/test_ra8_sdmmc_card_reflow.c`: the exact same
 `SD card -> ra8_fs -> ra8_reflow -> framebuffer` pipeline, but running as a real
-RA8D2 binary (and inside `board_sim` against a `--sd` image).
+RA8D2 binary (and inside `ra8_emulator` against a `--sd` image).
 
 The SD bring-up + font load is handled by the shared **`libs/ra8_sdfont`** helper,
 which **self-provisions**: if the card carries no `FONT.OTF`, it writes a baked
@@ -32,7 +32,7 @@ SD card (FAT16, any -- font self-provisioned if absent)
 ## Run in the simulator (no hardware)
 
 ```sh
-# Build board_sim + the FAT-image tool:
+# Build ra8_emulator + the FAT-image tool:
 cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfontimg/build
 make -C examples/ek_ra8d2/hw_validated/hil/sd_font_render
 
@@ -51,14 +51,14 @@ tools/ra8_emulator/build/ra8_emulator \
 
 The rendered page appears in `/tmp/out.ppm` (and live with `--view`).
 
-> **Heads-up on sim speed.** board_sim is a CPU emulator (Unicorn), so reading a
+> **Heads-up on sim speed.** ra8_emulator is a CPU emulator (Unicorn), so reading a
 > font byte-by-byte over the emulated SPI bus and rasterising glyphs in software
 > is far slower than on the 1 GHz panel (where it is instant). The compact
 > `literata_latin1.ttf` (~37 KB) keeps the sim practical; a ~312 KB face may expire
-> the default run budget. Raise it with the env knobs board_sim honours:
+> the default run budget. Raise it with the env knobs ra8_emulator honours:
 >
 > ```sh
-> BOARD_SIM_WALL_S=180 BOARD_SIM_MAX_CHUNKS=400000000 \
+> RA8_EMU_WALL_S=180 RA8_EMU_MAX_CHUNKS=400000000 \
 >   tools/ra8_emulator/build/ra8_emulator .../sd_font_render.elf --sd /tmp/font.img --ppm /tmp/out.ppm
 > ```
 

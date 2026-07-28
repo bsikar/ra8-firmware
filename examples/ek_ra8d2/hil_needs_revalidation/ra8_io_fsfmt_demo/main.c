@@ -20,7 +20,7 @@
  *      plugs in with no change to the registry's built-ins.
  *   4. Report progress on the SCI8 console through a ra8_io UART stream sink.
  *
- * The board_sim emulator captures the SCI8 console, so the PASS line is
+ * The ra8_emulator captures the SCI8 console, so the PASS line is
  * observable headlessly: a successful run prints
  * `ra8_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS`.
  *

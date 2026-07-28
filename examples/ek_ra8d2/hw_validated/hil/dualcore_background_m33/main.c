@@ -24,7 +24,7 @@
  * round. Here the M85 yields and lets the M33 run at its own pace.
  *
  * @note `ra8_log_info` is a no-op unless the build defines a log level of INFO
- *       or finer (a Debug build). `make sim-dualcore_background_m33` builds
+ *       or finer (a Debug build). `make emu-dualcore_background_m33` builds
  *       Debug, so `[itm]` lines appear; a release build runs the same logic
  *       but stays silent.
  *

@@ -45,17 +45,17 @@ make touch_cal
 scripts/hil/run_local.sh touch_cal      # flash + scrape the bring-up sentinel
 ```
 
-## SIM==HIL
+## EIL==HIL
 
 The calibration solve is only reachable once **five distinct raw samples**
-arrive. On silicon a human taps the five cross-hairs. `board_sim` reproduces
+arrive. On silicon a human taps the five cross-hairs. `ra8_emulator` reproduces
 that by feeding five synthetic raw points through the modelled GT911
 (`--touch-seq "x0:y0,..."`, added for this example), which return through the
-genuine `ra8_touch_read` decode -- so under SIL the banner carries a **real**
+genuine `ra8_touch_read` decode -- so under EIL the banner carries a **real**
 solved + verified result with no board attached:
 
 ```
-$ board_sim touch_cal.elf --touch-seq 420:520,3868:520,3868:3968,420:3968,2148:2248
+$ ra8_emulator touch_cal.elf --touch-seq 420:520,3868:520,3868:3968,420:3968,2148:2248
 [uart] SCI8: touchcal: boot
 [uart] SCI8: touchcal: target 40,40
 [uart] SCI8: touchcal: target 471,40
@@ -70,8 +70,8 @@ $ board_sim touch_cal.elf --touch-seq 420:520,3868:520,3868:3968,420:3968,2148:2
 The five raw points are the five targets pushed through a synthetic panel
 transform (`raw = screen*8 + offset`), so the fit recovers the inverse exactly
 and every corrected coordinate lands on its target (`maxerr=0`). `hil.conf`
-declares that `--touch-seq` as `HIL_SIM_ARGS`, so `scripts/sim/sil_all.sh` runs the
-whole calibration headless with **0 skips** and `check_hil_sil_parity.py` keeps
+declares that `--touch-seq` as `HIL_EMU_ARGS`, so `scripts/emu/eil_all.sh` runs the
+whole calibration headless with **0 skips** and `check_hil_eil_parity.py` keeps
 the app SIM-visible. On a bare automated bench with no finger the read shim
 times out and the app reports `cal=SKIP got=0`, but `touchcal: ready` still
 holds -- so the gate passes in every environment.

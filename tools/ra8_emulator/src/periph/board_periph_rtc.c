@@ -1,6 +1,6 @@
 /**
  * @file board_periph_rtc.c
- * @brief Realtime Clock (RTC) calendar peripheral-block model for board_sim
+ * @brief Realtime Clock (RTC) calendar peripheral-block model for ra8_emulator
  *
  * @details
  * Models the RA8D2 RTC (ra8_rtc_regs.h, ra8_rtc.c) in 24-hour BCD calendar

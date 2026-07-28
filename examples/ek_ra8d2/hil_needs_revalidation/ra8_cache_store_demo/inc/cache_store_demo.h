@@ -10,7 +10,7 @@
  * callback (`ra8_cache_store_nor_init_fn`) plus all caller-owned buffers, so the
  * identical logic runs in two places: the ARM example's `main.c` binds a
  * RAM-backed NOR driver over SRAM, and the host unit test binds the same driver
- * on the x86_64 host. That shared core is what makes the board_sim gate and the
+ * on the x86_64 host. That shared core is what makes the ra8_emulator gate and the
  * host test exercise byte-identical behaviour.
  *
  * @note Not thread-safe: ra8_cache_store serialises access (one reader core).

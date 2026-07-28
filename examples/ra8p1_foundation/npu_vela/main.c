@@ -22,9 +22,9 @@
  * @endcode
  *
  * The container's command stream is NOT a real Vela program: it is the tiny,
- * documented board_sim / host-test convention in ``ra8_npu_sim_cmd.h``. Under
+ * documented ra8_emulator / host-test convention in ``ra8_npu_sim_cmd.h``. Under
  * ``tools/ra8_emulator --device ra8p1`` the NPU model decodes it and applies the op
- * to the tensor arenas, so this app is a DETERMINISTIC, sim-runnable proof of the
+ * to the tensor arenas, so this app is a DETERMINISTIC, emulator-runnable proof of the
  * FULL offline-build -> on-target-load -> run pipeline. It is still a FOUNDATION
  * app: there is no RA8P1 board yet, and real Vela-compiled inference is the
  * follow-up on the RA8P1 NPU epic. On silicon the NPU reaches the arenas over
@@ -122,7 +122,7 @@ volatile uint32_t g_npu_vela_pass = 0U;
  * @brief Park the CPU forever in WFI after a fatal init error (a real panic).
  *
  * @details Reserved for failures BEFORE a verdict can be emitted (CGC or the
- *          SCI8 console did not come up), so a board_sim gate that scans for a
+ *          SCI8 console did not come up), so a ra8_emulator gate that scans for a
  *          `*panic_halt` terminal PC correctly reads this as a failed run.
  *
  * @pre Called only after a fatal init error, before the verdict banner.
@@ -141,7 +141,7 @@ static void npu_vela_panic_halt(void)
  *
  * @details Distinct from ::npu_vela_panic_halt on purpose: a run that reached the
  *          verdict has done its job and parks here, whose name deliberately does
- *          NOT match the `*panic_halt` patterns a board_sim gate treats as a
+ *          NOT match the `*panic_halt` patterns a ra8_emulator gate treats as a
  *          give-up. The authoritative verdict is the emitted banner.
  *
  * @pre The verdict banner has been emitted over the SCI8 console.

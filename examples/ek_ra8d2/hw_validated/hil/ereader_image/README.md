@@ -24,8 +24,8 @@ output changes the hash and trips the gate.
 
 The render is deterministic (a fixed PNG, integer nearest-neighbour, a fixed
 RGB565 framebuffer), so the hash is identical every boot -- and the *same* hash
-the identical render produces on host and under `board_sim`, doubling as a
-sim/silicon equivalence check.
+the identical render produces on host and under `ra8_emulator`, doubling as a
+emulator/silicon equivalence check.
 
 ## Build + run
 
@@ -34,14 +34,14 @@ make ereader_image
 scripts/hil/run_local.sh ereader_image      # flash + scrape the banner
 ```
 
-## Result (validated 2026-06-18, board_sim + host)
+## Result (validated 2026-06-18, ra8_emulator + host)
 
 ```
 ereader-img-hil: boot
 ereader-img-hil: img 160x120 crc=BDC56EC5
 ```
 
-`scripts/sim/smoke.sh ereader_image` runs the firmware ELF on the
+`scripts/emu/smoke.sh ereader_image` runs the firmware ELF on the
 emulated RA8D2 and scrapes the banner:
 
 ```
@@ -51,7 +51,7 @@ ereader_image   OK (uart: 'ereader-img-hil: img 160x120 crc=BDC56EC5')
 The identical decode + scale + blit run on host (real `ra8_gfx` over an RGB565
 framebuffer, same fixture, same FNV) produces the **same** `crc=BDC56EC5` --
 byte-for-byte agreement between the host render and the emulated RA8D2, so the
-hash is a true sim/silicon equivalence check.
+hash is a true emulator/silicon equivalence check.
 
 > One non-obvious fix this gate caught: stb_image otherwise compiles its global
 > failure-reason / flag state as `_Thread_local` (emulated TLS), which has no
@@ -61,5 +61,5 @@ hash is a true sim/silicon equivalence check.
 ## Updating the baseline
 
 After an **intentional** change to the fixture or the decode/scale/blit math,
-recompute the hash (run under `board_sim` or on the bench) and update
+recompute the hash (run under `ra8_emulator` or on the bench) and update
 `HIL_EXPECT` in `hil.conf`. The on-device banner is the source of truth.

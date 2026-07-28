@@ -1,6 +1,6 @@
 /**
  * @file board_periph_glcdc.c
- * @brief Graphics LCD Controller (GLCDC) framebuffer-descriptor model for board_sim
+ * @brief Graphics LCD Controller (GLCDC) framebuffer-descriptor model for ra8_emulator
  *
  * @details
  * Models the RA8D2 GLCDC display controller (ra8_glcdc_regs.h, ra8_glcdc.c) at

@@ -1,5 +1,5 @@
 # mk/tools.mk -- host developer tools (native, NOT cross-compiled) and the host
-# codegen helpers. Tool dirs (MEDIA_DL_DIR, RA8_VIEWER_DIR, BOARD_SIM_DIR) come
+# codegen helpers. Tool dirs (MEDIA_DL_DIR, RA8_VIEWER_DIR, RA8_EMU_DIR) come
 # from the top Makefile.
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -10,9 +10,9 @@
 
 # `make tools` -- build every compiled host tool in one go.
 tools: media_dl viewer
-	@echo "== board_sim =="
-	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
-	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
+	@echo "== ra8_emulator =="
+	$(CMAKE) -B $(RA8_EMU_DIR)/build -S $(RA8_EMU_DIR)
+	$(CMAKE) --build $(RA8_EMU_DIR)/build -j
 	@echo "== mkbookimg =="
 	$(CMAKE) -B $(ROOT)/tools/mkbookimg/build -S $(ROOT)/tools/mkbookimg
 	$(CMAKE) --build $(ROOT)/tools/mkbookimg/build -j
@@ -38,7 +38,7 @@ tools-help:
 	@echo "  make bench-cache                     build + run the L1/L2/L3 cache benches"
 	@echo "  make books                           compile content/library/*.epub -> *.rabook"
 	@echo ""
-	@echo "board_sim (the emulator) is built on demand by 'make sim-<app>'  [make sim-help]"
+	@echo "ra8_emulator is built on demand by 'make emu-<app>'  [make emu-help]"
 
 # --- media_dl (downloader) --------------------------------------------------
 media_dl:
@@ -138,7 +138,7 @@ rabook-golden-update:
 	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33) $(RABOOK_REALBOOK_FIXTURE) $(RABOOK_DOWNSCALE_FIXTURE) $(RABOOK_COLOR_FIXTURE)
 
 # `make rabook-gray8-fixture-update` -- regenerate the ereader_rabook
-# full-resolution gray8 image board_sim fixture (#476) from the desktop
+# full-resolution gray8 image ra8_emulator fixture (#476) from the desktop
 # BlobBuilder (needs Pillow), then clang-format it. Re-pin the ereader_rabook
 # `img` framebuffer golden (its hil.conf HIL_EXPECT) in the same change.
 RABOOK_GRAY8_FIXTURE ?= examples/ek_ra8d2/hw_validated/hil/ereader_rabook/rabook_gray8_fixture.h

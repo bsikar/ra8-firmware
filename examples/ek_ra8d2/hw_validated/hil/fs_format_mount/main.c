@@ -30,11 +30,11 @@
  *
  * On a clean pass for a type it prints `... FS <TYPE> FORMAT+MOUNT PASS`; after
  * all of them it prints `FS FORMAT+MOUNT ALL PASS`. The HIL runner (and the
- * board_sim smoke gate) scrape for that banner. Any failure prints a `FAIL ...`
+ * ra8_emulator smoke gate) scrape for that banner. Any failure prints a `FAIL ...`
  * diagnostic and parks the CPU.
  *
  * The flow re-formats the card several times, so the card's initial contents are
- * irrelevant -- on the bench insert any microSD; under board_sim attach a blank
+ * irrelevant -- on the bench insert any microSD; under ra8_emulator attach a blank
  * card with `--sd-new <MiB>` (e.g. `--sd-new 64:fat32`). A 64 MiB card is large
  * enough that the auto cluster-size sweep lands every type in its valid band.
  *

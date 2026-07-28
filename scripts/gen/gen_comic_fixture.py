@@ -12,7 +12,7 @@ DEFLATE to a few hundred bytes each, so the whole archive stays small enough to
 bake as an ASCII array under the repo's per-file line cap.
 
 The output is deterministic (fixed art, fixed zlib level), so the render hash
-the app prints is identical on host, board_sim, and silicon.
+the app prints is identical on host, ra8_emulator, and silicon.
 
 Usage:
   python3 scripts/gen/gen_comic_fixture.py \

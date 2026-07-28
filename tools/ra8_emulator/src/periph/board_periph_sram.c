@@ -15,7 +15,7 @@
  * decoder self-test (``ra8_sram_self_test``). That routine drives each bank's
  * @c SRAMCRn through write (@c 0x08) -> bypass (@c 0x80) -> verify (@c 0x1C);
  * the bank's data line is corrupted while in bypass mode and the verify read
- * latches the error. board_sim cannot observe the syndrome data write (on-chip
+ * latches the error. ra8_emulator cannot observe the syndrome data write (on-chip
  * SRAM is host-backed RAM, not an MMIO hook), so it cannot tell a 1-bit fault
  * from a 2-bit one -- it latches BOTH @c SRAMESR slots for the bank on the
  * bypass->verify transition. That is enough for ``ra8_sram_self_test`` to report

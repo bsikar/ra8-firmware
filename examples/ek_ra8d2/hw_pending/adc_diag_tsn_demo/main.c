@@ -7,7 +7,7 @@
  *
  * @details
  * Exercises the two safety-relevant analog HAL entry points that
- * board_sim cannot model (the SAR self-test and the temperature-sensor
+ * ra8_emulator cannot model (the SAR self-test and the temperature-sensor
  * path are not emulated), so this app is bench-only:
  *
  *   1. ``ra8_adc_self_diagnose`` -- the ADC_B built-in reference

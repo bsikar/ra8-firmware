@@ -10,7 +10,7 @@
  * decoded footprint overruns the whole-decode budget, transcodes the page to a
  * JOF atlas through ::ra8_comic_tiles_import, and decodes every tile of the
  * atlas in bounded RAM, FNV-hashing the decoded pixels. The result feeds a
- * deterministic boot banner field that pins the fix on device (board_sim /
+ * deterministic boot banner field that pins the fix on device (ra8_emulator /
  * silicon). Every buffer is file-static SDRAM -- no heap (NASA P10 Rule 3) -- and
  * the panel framebuffer is never touched, so the reader's page-1 render is
  * undisturbed.

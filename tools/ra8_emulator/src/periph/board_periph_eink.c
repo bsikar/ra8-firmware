@@ -1,6 +1,6 @@
 /**
  * @file board_periph_eink.c
- * @brief IT8951 e-paper SPI-device model for board_sim.
+ * @brief IT8951 e-paper SPI-device model for ra8_emulator.
  *
  * @details
  * Implements board_periph_eink.h. The controller is a byte state machine on the
@@ -8,7 +8,7 @@
  * MSB-first, tracks the current preamble / command / register, and returns the
  * controller's response bytes during a read burst so the driver's
  * GET_DEV_INFO drain and its LUTAFSR "LUT idle" poll complete exactly as they
- * do on silicon (SIM == HIL).
+ * do on silicon (EIL == HIL).
  *
  * Wire protocol (IT8951 datasheet rev 0.2 chapter 3.4 "SPI Interface" +
  * chapter 4 "Application Note"): every transaction opens with a 16-bit
@@ -78,8 +78,8 @@ typedef enum : uint16_t {
  * A vendor-provisioned IT8951 driver board boots with the VCOM its own
  * configuration stores, and the firmware's calibration resolver reads it
  * back as its first-choice source. The model reports a plausible in-range
- * magnitude in millivolts so that path exercises end-to-end in sim exactly
- * as it does on silicon (SIM == HIL). This is a *modelled* controller
+ * magnitude in millivolts so that path exercises end-to-end in the emulator exactly
+ * as it does on silicon (EIL == HIL). This is a *modelled* controller
  * value, not a calibration default for any real panel -- real panels carry
  * their own VCOM printed on the flex cable.
  */

@@ -83,7 +83,7 @@ const char* board_console_name(board_console_ch_t ch)
  * @pre The copy is bounded by ::k_board_console_line_cap (no overrun possible).
  * @post @p dst is NUL-terminated within its capacity.
  * @post At most ::k_board_console_line_cap - 1 source chars are copied.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void slot_copy(char* dst, const char* src)
@@ -117,7 +117,7 @@ static void slot_copy(char* dst, const char* src)
  * @pre @p ring has space for the copy (a ring is never full -- it overwrites).
  * @post @p ring gains one line; @c count <= ::k_board_console_ring_depth.
  * @post @c total increased by one.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void ring_push(console_ring_t* ring, const char* line)
@@ -150,7 +150,7 @@ static void ring_push(console_ring_t* ring, const char* line)
  * @pre @p ch is a source lane with a valid ::board_console_name.
  * @post @p out is NUL-terminated within its capacity.
  * @post @p out begins with the channel name followed by a space.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void format_all_line(board_console_ch_t ch, const char* line, char* out)

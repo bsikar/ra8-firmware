@@ -3,10 +3,10 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/hil/lib/hil_conf.sh -- shared discovery + hil.conf sourcing for the HIL
-# (hardware-in-the-loop) and SIL (simulator-in-the-loop) suites.
+# (hardware-in-the-loop) and EIL (emulator-in-the-loop) suites.
 #
 # Both scripts/hil/all.sh (flash a real board, scrape its UART) and
-# scripts/sim/sil_all.sh (boot the same .elf in tools/ra8_emulator, scrape the
+# scripts/emu/eil_all.sh (boot the same .elf in tools/ra8_emulator, scrape the
 # emulated UART) discover the SAME apps under
 # examples/ek_ra8d2/hw_validated/hil/ and read the SAME per-app hil.conf
 # manifests. Factoring the two shared steps here keeps the two suites in
@@ -22,22 +22,22 @@
 # mapfile. Lists are returned on stdout, one item per line.
 
 # Authoritative list of every variable a hil.conf may declare. Kept here as
-# the single source of truth so hil_all.sh and sil_all.sh reset and export the
+# the single source of truth so hil_all.sh and eil_all.sh reset and export the
 # exact same set (a leaked value from a previous app's manifest is a silent
 # cross-contamination bug). Grep-derived from
 # examples/ek_ra8d2/hw_validated/hil/*/hil.conf; add new knobs here.
 #
-# Two SIL-only knobs, ignored by hil_all.sh and applied only by sil_all.sh:
-#   HIL_SIM_ARGS        extra board_sim flags an app needs under emulation
+# Two EIL-only knobs, ignored by hil_all.sh and applied only by eil_all.sh:
+#   HIL_EMU_ARGS        extra ra8_emulator flags an app needs under emulation
 #                       (e.g. `--device ra8p1` for an RA8P1/NPU app).
-#   HIL_SIM_MAX_CHUNKS  per-app instruction-chunk cap override -- raise it for a
+#   HIL_EMU_MAX_CHUNKS  per-app instruction-chunk cap override -- raise it for a
 #                       compute-heavy app whose banner lands past the default cap
 #                       (e.g. a software-crypto KAT) so the global cap can stay
 #                       low and a genuinely-stuck app fails fast.
 HIL_CONF_VARS="
   HIL_MODE
   HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK
-  HIL_TIMEOUT_S HIL_SIM_ARGS HIL_SIM_MAX_CHUNKS
+  HIL_TIMEOUT_S HIL_EMU_ARGS HIL_EMU_MAX_CHUNKS
   HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS
   HIL_BOOT_S HIL_FAULT_EXPECTED
   HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS HIL_PROBE_BOOT_S
@@ -57,8 +57,8 @@ HIL_EXPECT_NEGATIVE="${HIL_EXPECT_NEGATIVE:-}"
 HIL_EXPECT_SHORT_OK="${HIL_EXPECT_SHORT_OK:-}"
 HIL_EXPECT_OVERLAP_OK="${HIL_EXPECT_OVERLAP_OK:-}"
 HIL_TIMEOUT_S="${HIL_TIMEOUT_S:-}"
-HIL_SIM_ARGS="${HIL_SIM_ARGS:-}"
-HIL_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-}"
+HIL_EMU_ARGS="${HIL_EMU_ARGS:-}"
+HIL_EMU_MAX_CHUNKS="${HIL_EMU_MAX_CHUNKS:-}"
 HIL_VIDPID="${HIL_VIDPID:-}"
 HIL_HUB_PORT="${HIL_HUB_PORT:-}"
 HIL_PPPS_MODE="${HIL_PPPS_MODE:-}"
@@ -103,7 +103,7 @@ hil_discover_apps() {
 #
 # Reset every known HIL_* variable (so a value from a previously-loaded
 # manifest cannot leak), source <conf_path> into the current shell, then export
-# the whole set so child processes (per-mode runners, board_sim workers) inherit
+# the whole set so child processes (per-mode runners, ra8_emulator workers) inherit
 # them. Must be called in the shell that will read the variables -- NOT in a
 # `$(...)` subshell.
 hil_conf_load() {
@@ -113,7 +113,7 @@ hil_conf_load() {
     unset "$v"
   done
   # allexport: every variable the manifest assigns is auto-exported, so child
-  # processes (per-mode runners, board_sim workers) inherit exactly the knobs
+  # processes (per-mode runners, ra8_emulator workers) inherit exactly the knobs
   # this app declared -- no need to enumerate the export list a second time.
   set -a
   # shellcheck disable=SC1090  # path is a runtime argument.

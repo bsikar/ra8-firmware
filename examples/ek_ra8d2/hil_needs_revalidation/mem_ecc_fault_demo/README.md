@@ -26,7 +26,7 @@ latches it.
 
 LED1 toggles while both injections are caught; LED2 toggles on a miss.
 
-## Headless gate (board_sim)
+## Headless gate (ra8_emulator)
 
 `tools/ra8_emulator` (`board_periph_sram.c`) models the decoder self-test: it
 latches `SRAMESR` on the `bypass -> verify` `SRAMCRn` sequence, so
@@ -34,12 +34,12 @@ latches `SRAMESR` on the `bypass -> verify` `SRAMCRn` sequence, so
 reporting + clear plumbing is proven end to end:
 
 ```
-bash scripts/sim/smoke.sh mem_ecc_fault_demo
+bash scripts/emu/smoke.sh mem_ecc_fault_demo
 ```
 
 ## Why it is `hw_pending`
 
-board_sim cannot observe the syndrome **data** write that distinguishes a 1-bit
+ra8_emulator cannot observe the syndrome **data** write that distinguishes a 1-bit
 from a 2-bit fault (on-chip SRAM is host-backed RAM, not an MMIO hook), so it
 latches **both** ESR slots on any self-test. Three things are therefore
 silicon-only and gate promotion out of `hw_pending`:
@@ -51,14 +51,14 @@ silicon-only and gate promotion out of `hw_pending`:
 - **1-bit correction** -- the corrected read returning good data.
 - **2-bit NMI** -- the uncorrectable injection raises a non-maskable ECC
   interrupt on silicon (`on_error = interrupt`); the bench bring-up must install
-  an NMI handler (or mask faults around the 2-bit self-test). board_sim does not
+  an NMI handler (or mask faults around the 2-bit self-test). ra8_emulator does not
   raise the NMI, so the headless run reads `SRAMESR` synchronously.
 
 ## Build / run
 
 ```
 make                                         # cross-compile the .elf/.hex/.bin
-bash scripts/sim/smoke.sh mem_ecc_fault_demo   # headless detection gate
+bash scripts/emu/smoke.sh mem_ecc_fault_demo   # headless detection gate
 make flash                                   # JLink load (on the bench)
 ```
 

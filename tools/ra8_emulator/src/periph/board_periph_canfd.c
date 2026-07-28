@@ -247,7 +247,7 @@ static bool canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
  * @pre @p inst is a valid CANFD instance index (< k_canfd_count).
  * @post Exactly one line is appended to the CAN console lane.
  * @post No register, stdout, or stderr state is modified.
- * @note Not thread-safe; board_sim is single-threaded.
+ * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
 static void canfd_console_frame(uint32_t inst, uint32_t tx_id, uint32_t dlc, const char* outcome)

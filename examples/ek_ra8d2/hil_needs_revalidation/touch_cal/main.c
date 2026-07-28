@@ -39,17 +39,17 @@
  *
  *        `touchcal: ready dim=512x512`
  *
- * SIM==HIL discipline (the owner rule): the calibration solve is only reachable
+ * EIL==HIL discipline (the owner rule): the calibration solve is only reachable
  * once five distinct raw samples arrive. On real silicon a human taps the five
- * cross-hairs. `board_sim` reproduces that by feeding five synthetic raw points
+ * cross-hairs. `ra8_emulator` reproduces that by feeding five synthetic raw points
  * through the modelled GT911 (`--touch-seq`, declared in this app's `hil.conf`
- * as `HIL_SIM_ARGS`); those points return through the genuine `ra8_touch_read`
+ * as `HIL_EMU_ARGS`); those points return through the genuine `ra8_touch_read`
  * decode, so the banner carries a real solved+verified result with no board
  * attached. On a bare automated bench with no finger the read shim times out and
  * the app reports `cal=SKIP` -- so `hil.conf` asserts only the finger-free
  * `touchcal: ready` line (which prints in every environment) and lists
  * `verify=FAIL` / `cal=FAIL` in its negative set, so a solver regression trips
- * the SIL gate. This mirrors `touch_demo`, which likewise gates the finger-free
+ * the EIL gate. This mirrors `touch_demo`, which likewise gates the finger-free
  * bring-up and lets the simulator inject the touch.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -215,7 +215,7 @@ static void tc_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void tc_panic_halt(const uint8_t* msg, uint32_t len)
 {
   tc_print(msg, len);
@@ -689,7 +689,7 @@ int32_t main(void)
 
   tc_calibrate_and_report(disp);
 
-  /* Finger-free bring-up sentinel: prints in every environment (bench + SIL),
+  /* Finger-free bring-up sentinel: prints in every environment (bench + EIL),
    * so hil.conf asserts this line and lets the negative set catch a solver
    * regression (verify=FAIL / cal=FAIL). */
   tc_print(k_tc_msg_ready, (uint32_t)sizeof(k_tc_msg_ready) - 1U);

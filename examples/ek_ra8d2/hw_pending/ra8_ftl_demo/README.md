@@ -43,9 +43,9 @@ checkpoint of the mapping tables (`ra8_ftl_checkpoint_save`/`_load`), stored in 
 caller-chosen non-volatile block. The checkpoint blob is architecture-local
 (native layout) -- always restored on the same device that wrote it.
 
-## board_sim vs. silicon
+## ra8_emulator vs. silicon
 
-board_sim models the MACI program/erase sequence (`board_periph_mram.c`) and the
+ra8_emulator models the MACI program/erase sequence (`board_periph_mram.c`) and the
 MRAM retains its bytes for the whole run, so the in-process "power cycle" (drop
 SRAM state, keep MRAM) is a faithful model of a real reset and the demo runs
 headless. Run it with:
@@ -54,7 +54,7 @@ headless. Run it with:
 tools/ra8_emulator/build/ra8_emulator build/ra8_ftl_demo.elf
 ```
 
-## Expected output (board_sim or J-Link RTT/UART)
+## Expected output (ra8_emulator or J-Link RTT/UART)
 
 ```
 ra8_ftl_demo: boot
@@ -72,7 +72,7 @@ make            # -> build/ra8_ftl_demo.elf
 
 ## Status
 
-`hw_pending`: written and proven in board_sim; not yet bench-validated on a
+`hw_pending`: written and proven in ra8_emulator; not yet bench-validated on a
 physical EK-RA8D2. Like `ra8_io_mram_demo`, it programs on-chip MRAM, and it
-additionally relies on MRAM retention across a reset -- both are board_sim-proven
+additionally relies on MRAM retention across a reset -- both are ra8_emulator-proven
 but silicon-unverified here.

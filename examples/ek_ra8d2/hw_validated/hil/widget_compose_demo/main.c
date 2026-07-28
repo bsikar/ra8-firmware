@@ -8,7 +8,7 @@
  * compositor primitive** issue #145 adds: ::ra8_widget_panel -- a container that
  * is itself a ::ra8_widget_t, which is what turns the flat widget array into a
  * **tree**. It composes a small tree and shows the damage-tracked partial flush
- * on `board_sim`'s panel window.
+ * on `ra8_emulator`'s panel window.
  *
  * The tree (dwm-style, each piece opt-in):
  *
@@ -35,7 +35,7 @@
  *     CRC changes (the counter advanced). This is the acceptance bullet: a
  *     status-only change flushes only the status rect.
  *
- * It then emits one banner so the app doubles as a board_sim gate:
+ * It then emits one banner so the app doubles as a ra8_emulator gate:
  *
  *   `widget-compose-demo: dirty0=3 crc0=<8hex> dirty1=1 crc1=<8hex> flush=512x44 hint=fast PASS`
  *

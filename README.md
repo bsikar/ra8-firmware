@@ -18,7 +18,7 @@ make help
 ```sh
 make apps          # list apps
 make <app>         # build one, e.g. make blink
-make sim-<app>     # run it on the emulator, no board
+make emu-<app>     # run it on the emulator, no board
 ```
 
 - Per app: `make flash-<app>`, `make debug-<app>`, `make ozone-<app>`
@@ -37,9 +37,9 @@ typing feeds the console UART's receive path.
 
 ```sh
 brew install unicorn capstone  # macOS; Linux: libcapstone-dev + scripts/ci/install_unicorn.sh
-make sim-blink                 # live window: LEDs plus the USB/UART/IRQ sidebar
-make sim-ereader_ui            # the e-reader chrome, drawn by the firmware itself
-make sim-help                  # panels, profiling, the whole flag surface
+make emu-blink                 # live window: LEDs plus the USB/UART/IRQ sidebar
+make emu-ereader_ui            # the e-reader chrome, drawn by the firmware itself
+make emu-help                  # panels, profiling, the whole flag surface
 ```
 
 The live window is macOS-only (Cocoa). Every other path -- boot, MMIO report,
@@ -58,8 +58,8 @@ silicon does -- including real firmware bugs a short bench run never reaches
 (the `ra8_mstp` refcount saturation behind the AGT faults surfaced here first).
 It models hardware *handshakes* rather than silicon timing, and some app
 families are modelled further than others, so it complements the bench instead
-of replacing it. CI leans on it: `make sil` boots every HIL app headless and
-asserts its expectation, and `make sim-matrix` sweeps every example.
+of replacing it. CI leans on it: `make eil` boots every HIL app headless and
+asserts its expectation, and `make emu-matrix` sweeps every example.
 
 ## Examples
 
@@ -78,7 +78,7 @@ different checks. Git hooks install on the first `make`.
 
 ## Hardware and flashing
 
-`make sim-<app>` needs no hardware. To flash or debug a real board you need an
+`make emu-<app>` needs no hardware. To flash or debug a real board you need an
 EK-RA8D2 (on-board J-Link) and the SEGGER J-Link tools. Rig settings (probe
 serial, bench Pi) live in a gitignored `.env`; copy the template and fill in
 what you use:

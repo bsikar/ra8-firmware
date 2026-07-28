@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the ereader_rabook full-resolution gray8 image fixture (#476).
 
-The ereader_rabook HIL/board_sim gate proves the compiled-book path. This
+The ereader_rabook HIL/ra8_emulator gate proves the compiled-book path. This
 generator bakes a second, tiny `.rabook` blob whose one raster image is stored
 at ``PIXFMT_GRAY8`` -- the full-resolution, continuous-tone representation the
 compiler retains for zoomable content (#476), never the panel-quantised 4bpp
@@ -15,7 +15,7 @@ gray4 store would round them to the grid; keeping them verbatim is the proof
 that the compiled blob retains continuous tone at full source resolution. The
 image itself is grayscale ("L" mode) so the host decode is deterministic across
 Pillow versions (no colour->luma fold), which keeps the baked bytes -- and the
-board_sim framebuffer golden derived from them -- reproducible.
+ra8_emulator framebuffer golden derived from them -- reproducible.
 
 Regenerate with ``make rabook-gray8-fixture-update`` after any format change,
 then re-pin the ereader_rabook ``img`` framebuffer golden (its hil.conf
@@ -132,7 +132,7 @@ def main() -> int:
             " * @details",
             " * The compiled-book path retains zoomable rasters at full source resolution",
             " * in continuous-tone gray8 (1 byte/pixel), never the panel-quantised 4bpp",
-            " * form. This one-image book is the board_sim proof: ereader_rabook validates",
+            " * form. This one-image book is the ra8_emulator proof: ereader_rabook validates",
             " * it, confirms the image is 8bpp and holds more than the 16 distinct tones a",
             " * 4bpp store could reproduce, then blits it 1:1 at full resolution. The image",
             " * is a diagonal grayscale ramp whose tones sweep the full 0-255 range, so its",

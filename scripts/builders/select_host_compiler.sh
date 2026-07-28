@@ -2,19 +2,19 @@
 #
 # scripts/builders/select_host_compiler.sh -- shared C23-capable host-compiler
 # selection (and the matching gcov tool) for the host-test, coverage, and
-# board_sim builds.
+# ra8_emulator builds.
 #
 # C23 fixed-underlying-type enums ("typedef enum : uint8_t") require clang >= 17
 # or gcc >= 13. CMake otherwise defaults to a bare "cc", which on the Debian 12
 # dev box is gcc 12 and rejects the syntax outright -- breaking every host-test,
-# coverage, or board_sim configure that does not pin a compiler. This helper
+# coverage, or ra8_emulator configure that does not pin a compiler. This helper
 # compile-tests the feature rather than parsing version strings, so the same
 # probe works across gcc, clang, and future versions.
 #
 # Usage (source it first):
 #   ra8_select_host_compiler [candidate ...]   -- sets+exports CC and CXX to the
 #       first listed candidate that compiles a C23 typed enum (default order is
-#       clang-first; the coverage and board_sim builds pass a gcc-first list so
+#       clang-first; the coverage and ra8_emulator builds pass a gcc-first list so
 #       they match CI's gcov pipeline and only fall back to clang where gcc is
 #       too old).
 #   ra8_cmake_reset_if_compiler_changed "$dir"  -- wipe a cmake build dir whose

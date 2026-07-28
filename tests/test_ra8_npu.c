@@ -414,7 +414,7 @@ static void test_irq_fault_and_timeout(void)
 
 /* --------------------------------------------------------------------------
  * Execution-model coverage (issue #222): drive the FULL submit -> run ->
- * poll -> read-output path through a host-side MOCK of the board_sim NPU
+ * poll -> read-output path through a host-side MOCK of the ra8_emulator NPU
  * execution model. The mock decodes the command stream via the SHARED
  * ra8_npu_sim_cmd.h convention (so it can never drift from
  * tools/ra8_emulator/src/periph/board_periph_npu.c) and applies the op to the tensor
@@ -504,7 +504,7 @@ static bool npu_exec_decode(npu_exec_cmd_t* out)
   return true;
 }
 
-/** @brief Mirror the board_sim NPU model: decode, apply, latch STATUS. */
+/** @brief Mirror the ra8_emulator NPU model: decode, apply, latch STATUS. */
 static void npu_exec_mock(void)
 {
   npu_exec_cmd_t c = {};
@@ -576,7 +576,7 @@ static void test_exec_runs_addk_job(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_submit(&job));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_run());
 
-  /* Sim-mirror execution: applies the op + latches STATUS.cmd_end. */
+  /* Emulator-mirror execution: applies the op + latches STATUS.cmd_end. */
   npu_exec_mock();
 
   bool done = false;
@@ -620,7 +620,7 @@ static void test_exec_rejects_non_sim_stream(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_submit(&job));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_run());
 
-  /* Sim-mirror execution latches a parse fault (no faked completion). */
+  /* Emulator-mirror execution latches a parse fault (no faked completion). */
   npu_exec_mock();
 
   bool done = true;

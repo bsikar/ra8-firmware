@@ -21,14 +21,14 @@
  *   3. Once the M33 signals `done`, the M85 runs `ra8_book_validate` over the blob,
  *      cross-checks the reported CRC + chapter count, AND byte-compares it to the
  *      desktop/M85 golden -- proving the M33 compile is byte-identical. A mismatch
- *      traps (`bkpt`) so board_sim's smoke gate fails the run.
+ *      traps (`bkpt`) so ra8_emulator's smoke gate fails the run.
  *
- * board_sim echoes only the primary core's ITM, so the M85 narrates the whole
+ * ra8_emulator echoes only the primary core's ITM, so the M85 narrates the whole
  * exchange; the blob it validates can only exist because the M33 ran the compile,
  * so a PASS here proves the conversion ran byte-identically on the second core.
  *
  * @note `ra8_log_info` is compiled to a no-op unless the build defines INFO-level
- *       logging (a Debug build). `make sim-compile_on_m33` builds Debug so the
+ *       logging (a Debug build). `make emu-compile_on_m33` builds Debug so the
  *       `[itm]` lines appear; a release build runs the same logic but stays silent.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -60,7 +60,7 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  * @brief Bounded iteration limits for the M85 polling loops.
  * @details Large enough that a normally-running M33 always finishes the small
  *          emit within budget, yet finite so the M85 never hangs if the M33 does
- *          not boot. board_sim interleaves the cores in instruction chunks, so
+ *          not boot. ra8_emulator interleaves the cores in instruction chunks, so
  *          the whole emit lands in a few dozen interleaves -- far inside these.
  * @since 0.1.0
  */
@@ -473,9 +473,9 @@ int main(void)
   }
 
   /* The M33-produced blob did NOT equal the desktop/M85 golden byte for byte (or
-   * failed validation). Trap so the byte-identity is GATED: board_sim's smoke
+   * failed validation). Trap so the byte-identity is GATED: ra8_emulator's smoke
    * detects the BKPT and fails the run. A silent park here would read as a clean
-   * boot and hide a compile regression (e.g. a future board_sim long-shift seam
+   * boot and hide a compile regression (e.g. a future ra8_emulator long-shift seam
    * miss on a DEFLATE'd fixture). On real silicon with no debugger the BKPT
    * escalates to a HardFault -- a loud, visible failure for the demo. */
   ra8_log_info_val("M85", "compile_on_m33 FAIL -- status", mb->status);

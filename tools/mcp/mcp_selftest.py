@@ -95,8 +95,8 @@ _CASES: tuple[tuple[str, dict[str, Any], Callable[[dict[str, Any]], bool]], ...]
         lambda r: "HUM Ch 38.2.3" in _text(r),
     ),
     (
-        "sim_app rejects an unknown app (no build)",
-        _call("sim_app", app="no_such_app"),
+        "emu_app rejects an unknown app (no build)",
+        _call("emu_app", app="no_such_app"),
         lambda r: r["result"]["isError"] is True,
     ),
     (

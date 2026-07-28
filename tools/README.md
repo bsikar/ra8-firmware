@@ -10,8 +10,8 @@ board, plus the gate that keeps them honest.
 
 | You want to... | Use | How |
 |----------------|-----|-----|
-| Run a firmware **`.elf`** with no board: boot it, drive the panel, preview its UI | **`tools/ra8_emulator`** (Unicorn CPU emulator) | `make sim-<app> [PANEL=<name>]` |
-| Build a FAT **SD-card image** carrying a font (for `board_sim --sd` or a real card) | **`tools/mkfontimg`** | `cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfontimg/build` |
+| Run a firmware **`.elf`** with no board: boot it, drive the panel, preview its UI | **`tools/ra8_emulator`** (Unicorn CPU emulator) | `make emu-<app> [PANEL=<name>]` |
+| Build a FAT **SD-card image** carrying a font (for `ra8_emulator --sd` or a real card) | **`tools/mkfontimg`** | `cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfontimg/build` |
 | Give an **MCP-aware assistant** live repo context (app catalogue, build/test/HIL workflows, code search, project docs) | **`tools/mcp`** (zero-dependency MCP server) | `make mcp` self-tests it; an MCP client auto-loads it via the repo `.mcp.json` |
 | Compare **page-cache eviction policies** for the #147 memory hierarchy (the SLRU decision record) | **`tools/cache_bench`** | `make -C tools/cache_bench run` |
 | Measure the **block/frame/chunk size** for the chunked `.rabook` container / `ra8_vmem` `frame_bytes` (#208) | **`tools/cache_bench`** (`--sweep-block`) | `make -C tools/cache_bench sweep` |
@@ -38,21 +38,21 @@ Flags: `--view` (live macOS window), `--ppm <file>` (headless frame),
 (inject touch through the real GT911 path), `--sd <image>` (attach a FAT
 SD-card image to the modelled SD-over-SPI device -- see `tools/mkfontimg`).
 Panel descriptors live in `tools/ra8_emulator/panels/<name>.toml`. From the repo
-root, `make sim-<app>` builds the app and opens its live window; a chrome app
-(e.g. `make sim-ereader_ui`) doubles as the UI preview. Layout: `inc/`
+root, `make emu-<app>` builds the app and opens its live window; a chrome app
+(e.g. `make emu-ereader_ui`) doubles as the UI preview. Layout: `inc/`
 (headers) + `src/` (sources), matching the `libs/` convention. Details:
 `tools/ra8_emulator/README.md`.
 
 For heavy headless runs (a large SD font read + glyph rasterisation is slow
 under the CPU emulator), the run budget is env-overridable:
-`BOARD_SIM_WALL_S=<seconds>` and `BOARD_SIM_MAX_CHUNKS=<n>` (no effect in
+`RA8_EMU_WALL_S=<seconds>` and `RA8_EMU_MAX_CHUNKS=<n>` (no effect in
 `--view`).
 
 ## `tools/mkfontimg` -- FAT SD-card image builder
 
 Writes a font file into a FAT16 image **through the real `ra8_fs`**, so the
 on-card layout is byte-for-byte what the firmware reads back (same code path as
-`tests/test_ra8_sdmmc_card_reflow.c`). Used to feed `board_sim --sd` for the
+`tests/test_ra8_sdmmc_card_reflow.c`). Used to feed `ra8_emulator --sd` for the
 `sd_font_render` app, or to format a physical card.
 
 ```sh
@@ -100,7 +100,7 @@ with a `run` target.
 
 ## Regression gate
 
-- `scripts/sim/smoke.sh` -- boots each display app on the emulator and
+- `scripts/emu/smoke.sh` -- boots each display app on the emulator and
   asserts it runs to its main loop without faulting (no invalid opcode / unmapped
   access, not parked in the panic-halt loop), and for the chrome UI app renders one
   frame and asserts the panel drew rich content.

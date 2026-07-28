@@ -5,7 +5,7 @@
  *
  * @details
  * Proves the e-reader's SD-card storage path in software, with no board
- * and no board_sim: a real FAT16 volume is built in an in-memory block
+ * and no ra8_emulator: a real FAT16 volume is built in an in-memory block
  * device, the bundled Literata font is *written into it through ra8_fs*
  * (simulating "drop the font on the SD card"), read back out, and handed
  * to ra8_reflow, which lays out and rasterises a paragraph into an

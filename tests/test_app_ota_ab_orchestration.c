@@ -16,7 +16,7 @@
  *    streamed into a RAM "bank" verifies and COMMITS (state ``done``,
  *    ``set_startup`` latches the inactive bank); a corrupted image fails the
  *    real SHA-256 integrity re-hash and ROLLS BACK (state ``error``,
- *    ``set_startup`` never called), exactly the two paths the SIL gate asserts.
+ *    ``set_startup`` never called), exactly the two paths the EIL gate asserts.
  *
  * The crypto backend is the real software SHA-256 (``ra8_rsip_sha256*``), so the
  * integrity check that triggers the rollback is exercised for real, host-side.
@@ -383,7 +383,7 @@ static void test_rollback_path(void)
  *
  * @par MC/DC:
  * No compound decision -- confirms the demo's final ``ok`` is true only when the
- * good image committed AND the corrupted image rolled back, matching the SIL
+ * good image committed AND the corrupted image rolled back, matching the EIL
  * banner ``ota_ab: ... ok=Y``.
  */
 static void test_full_verdict(void)

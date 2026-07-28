@@ -8,7 +8,7 @@
 #   inc/ra8_longstrip.h   public API: open, geometry (y->band), scroll + fling
 #                       state machine, bounded prefetch, visible-band composite
 #   src/ra8_longstrip.c   pure-integer implementation (no MMIO -- runs identically
-#                       on target, board_sim and the unit-test host)
+#                       on target, ra8_emulator and the unit-test host)
 #
 # Dependencies: ra8_core (err/check/log), ra8_jof (parse + per-band
 # decode), ra8_mem (ra8_tile_cache band paging). The composite is a DIP blit

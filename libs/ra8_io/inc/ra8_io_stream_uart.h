@@ -9,7 +9,7 @@
  * @details
  * Streams bytes out of an `ra8_sci` channel by polling -- the "print to the host
  * over the serial console" target. The application must have brought the channel
- * up with `ra8_sci_init` first. The data path is exercised on board_sim / HIL;
+ * up with `ra8_sci_init` first. The data path is exercised on ra8_emulator / HIL;
  * on the host this sink binds and validates only.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

@@ -158,7 +158,7 @@ remembering a convention.
 **Never work directly in `~/ra8-firmware`, and never improvise your own
 checkout.** Improvised trees (`~/ra8-296`, `~/ra8-base`, `~/wt-land296`) are
 exactly how two agents had their working directories clobbered mid-run,
-corrupting a baseline measurement and a SIL run.
+corrupting a baseline measurement and an EIL run.
 
 ```sh
 make ws-new NAME=my-task            # isolated worktree at ~/ra8-ws/my-task
@@ -514,7 +514,7 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 > are all held to the same bar. The **only** exemption is vendored
 > third-party code under `libs/third_party/` (SOUP). Generated data under
 > `libs/ra8_fonts/` is likewise exempt as it is not hand-authored. A file being
-> a "host tool" or "just a simulator" is NOT a reason to relax the rules:
+> a "host tool" or "just an emulator" is NOT a reason to relax the rules:
 > uneven standards train sloppy habits. Every CI gate runs against this same
 > scope; if a gate or a `(RA8D2 C Firmware)` heading below ever reads as
 > firmware-only, treat it as repo-wide.
@@ -1046,7 +1046,7 @@ ra8-firmware/
     hil/                       Hardware-in-the-loop bench
       lib/                     Shared rig shell libraries
       usb/                     USB bench harnesses (need a board attached)
-    sim/                       board_sim smoke/matrix + the SIL suite
+    emu/                       ra8_emulator smoke/matrix + the EIL suite
     dev/                       Inner loop on a developer's desk: flash, debug,
                                ozone, openocd, agent workspaces
     secrets/                   Key material and credential handling (RoT, OpenBao)

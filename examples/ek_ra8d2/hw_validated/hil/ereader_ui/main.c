@@ -130,7 +130,7 @@ static_assert((sizeof(k_er_body_lines) / sizeof(k_er_body_lines[0])) ==
  *        font is present (the same prose as ::k_er_body_lines, but laid out
  *        live at the proportional type scale instead of pre-wrapped bitmap
  *        lines). Kept short so the software glyph rasteriser stays quick
- *        under the board_sim CPU emulator.
+ *        under the ra8_emulator CPU emulator.
  */
 static const char k_er_chapter_xhtml[] =
   "<html><head><style>h1 { text-align: center; color: maroon; }"

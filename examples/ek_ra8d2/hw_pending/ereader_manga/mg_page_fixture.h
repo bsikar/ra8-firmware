@@ -8,7 +8,7 @@
  * black inner frame and a big blocky "C<col>R<row>" label, so panning the
  * viewport across the page visibly changes which labels are on screen. The
  * page is the source ra8_jof_produce() transcodes into a JOF atlas
- * at boot; it decodes to identical pixels on host, board_sim and silicon.
+ * at boot; it decodes to identical pixels on host, ra8_emulator and silicon.
  *
  * Regenerate: python3 scripts/gen/gen_manga_page_fixture.py
  *

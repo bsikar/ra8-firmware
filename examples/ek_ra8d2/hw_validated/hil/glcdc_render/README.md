@@ -48,9 +48,9 @@ make glcdc_render
 scripts/hil/run_local.sh glcdc_render      # flash + scrape the banner
 ```
 
-## board_sim validation (2026-06-20)
+## ra8_emulator validation (2026-06-20)
 
-board_sim's panel compositor builds the panel image by reading the GLCDC GR1
+ra8_emulator's panel compositor builds the panel image by reading the GLCDC GR1
 framebuffer registers, so a `--ppm` snapshot independently confirms GR1 points
 at the buffer:
 
@@ -72,6 +72,6 @@ run.
 ## Updating the baseline
 
 After an **intentional** change to the render pattern or the GLCDC path,
-recompute the hash (re-run board_sim, read `g_glcdc_hil_crc`) and update
+recompute the hash (re-run ra8_emulator, read `g_glcdc_hil_crc`) and update
 `HIL_EXPECT` in `hil.conf` (and the value above). The on-device banner is the
 source of truth.

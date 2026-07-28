@@ -22,7 +22,7 @@
  *   3. Set `done = 1` to signal completion.
  *   4. Spin forever.
  *
- * @note The M33 deliberately does NOT call `ra8_log`. The board_sim emulator
+ * @note The M33 deliberately does NOT call `ra8_log`. The ra8_emulator
  *       only echoes the primary core's ITM stream, so an M33 `ra8_log` line
  *       would be invisible in the simulator. The M33's proof-of-life is the
  *       signature it writes and the counter it increments; the M85 reads and

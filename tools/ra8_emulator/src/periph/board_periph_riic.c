@@ -119,7 +119,7 @@ typedef enum : uint32_t {
  * The RA8D2 answers as an I2C target once the ra8_i2c target driver programmes an
  * own address (SARLy) and enables its slot (ICSER.SARyE) -- the
  * ``i2c_peripheral_responder`` example. On the bench a remote controller drives
- * the bus; headless, board_sim IS that controller. The stimulus drives a fixed
+ * the bus; headless, ra8_emulator IS that controller. The stimulus drives a fixed
  * write-then-read script: it writes a known payload to the target (the driver's
  * ``ra8_i2c_peripheral_receive`` path drains it), then reads the target back (the
  * ``_transmit`` path echoes it), for ::k_riic_tgt_cycles cycles, and verifies the
@@ -539,7 +539,7 @@ static void riic_iccr2_write(riic_state_t* s, uint64_t off, uint32_t value)
 }
 
 /* =============================================================================
- * RIIC target (peripheral) model -- board_sim is the synthetic external
+ * RIIC target (peripheral) model -- ra8_emulator is the synthetic external
  * controller, driving a write-then-read script at the firmware's own address so
  * the real ra8_i2c_peripheral_* driver (receive / transmit / dispatch) runs.
  * =============================================================================

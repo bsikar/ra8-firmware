@@ -26,7 +26,7 @@ satisfy the same lint/format/MC/DC gates as the EVM-validated tier.
 > `threadx_nimble_peripheral` sits on the `port/nimble/` host port +
 > ThreadX Native Porting Layer and drives the NimBLE host APIs directly.
 > It links and passes the static gates but has **never been
-> hardware-validated** and is **not sim-gated** -- `board_sim` models no
+> hardware-validated** and is **not emulator-gated** -- `ra8_emulator` models no
 > BLE controller / HCI link, and the `ra8_ble` HCI transport underneath
 > is itself unproven on this board (#86, #91). The BLE controller runs on
 > the ESP32-C6 companion, which is not yet wired up. Read this BLE app as

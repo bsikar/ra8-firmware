@@ -2,23 +2,23 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# scripts/checks/check_unicorn_version.sh -- FAIL a board_sim gate when the
+# scripts/checks/check_unicorn_version.sh -- FAIL a ra8_emulator gate when the
 # Unicorn the emulator will link is not the pinned version (scripts/ci/unicorn_pin.sh).
 #
-# WHY (#354): board_sim boots the real firmware .elf on Unicorn, and different
+# WHY (#354): ra8_emulator boots the real firmware .elf on Unicorn, and different
 # Unicorn versions decode Armv8.1-M (Helium/MVE) differently, so an unpinned
 # Unicorn makes "same commit, different verdict" structural. The provisioning
 # guard that created the skew (`if ! ldconfig | grep libunicorn; then apt ...`)
 # only checked that SOMETHING named libunicorn existed, never which version --
-# so a fossil install produced green board_sim runs nobody could reproduce.
+# so a fossil install produced green ra8_emulator runs nobody could reproduce.
 #
 # This is the gate-honesty half of the fix: rather than silently install
-# whatever apt offers, EVERY board_sim gate calls this check first and fails
+# whatever apt offers, EVERY ra8_emulator gate calls this check first and fails
 # loudly if the runtime Unicorn is not the pin. A skewed or absent Unicorn can
 # then never quietly produce a garbage pass again -- the same shape as
 # require_cmd / require_python_mod failing loudly on a missing tool.
 #
-# It binds the ACTUAL library board_sim will use: it compiles a tiny probe
+# It binds the ACTUAL library ra8_emulator will use: it compiles a tiny probe
 # against <unicorn/unicorn.h> and runs uc_version() through the resolved
 # libunicorn.so, then cross-checks the header macros and pkg-config. All three
 # must agree with the pin.
@@ -175,7 +175,7 @@ read -r hdr_ver rt_mm < <(probe_unicorn)
 [[ "$rt_mm" == "NA" ]] && rt_mm=""
 pc_ver="$(pkgconfig_version)"
 
-echo "board_sim Unicorn pin check:"
+echo "ra8_emulator Unicorn pin check:"
 echo "  pinned          : $pin (scripts/ci/unicorn_pin.sh)"
 echo "  header (compile): ${hdr_ver:-<none>}"
 echo "  uc_version (run): ${rt_mm:-<none>}"
@@ -191,7 +191,7 @@ fi
   echo "ERROR: the installed Unicorn does not match the pinned version."
   while IFS= read -r r; do echo "  - $r"; done <<<"$reasons"
   echo ""
-  echo "board_sim decodes Armv8.1-M (Helium/MVE) differently across Unicorn"
+  echo "ra8_emulator decodes Armv8.1-M (Helium/MVE) differently across Unicorn"
   echo "versions, so this gate refuses to run on an unpinned emulator (#354)."
   echo ""
   echo "Fix it by installing the pinned build:"

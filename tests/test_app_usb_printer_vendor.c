@@ -17,7 +17,7 @@
  * It also asserts the composite descriptor tables are internally consistent
  * (config `wTotalLength` matches `sizeof`, IF0 is Printer 0x07, IF1 is Vendor
  * 0xFF, and the four bulk endpoint addresses are present) so the byte tables
- * the firmware advertises stay in lock-step with the enumeration board_sim
+ * the firmware advertises stay in lock-step with the enumeration ra8_emulator
  * validates.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -310,7 +310,7 @@ static void test_clamp_len(void)
  * @details Asserts the CONFIGURATION descriptor advertises exactly the bytes
  * it contains (wTotalLength == sizeof), two interfaces, and that the first
  * interface is Printer 0x07 while the second is Vendor 0xFF -- the class codes
- * the board_sim host detects and the issue #265 requires.
+ * the ra8_emulator host detects and the issue #265 requires.
  *
  * @par MC/DC:
  * (no compound decision is varied by this case -- it reads one descriptor table

@@ -26,11 +26,11 @@
  *
  * On a clean round-trip it prints exactly
  * `ra8_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS`; any failed step prints
- * `ra8_io_sdhi_demo: FAIL` and parks the CPU. The HIL runner and the board_sim
+ * `ra8_io_sdhi_demo: FAIL` and parks the CPU. The HIL runner and the ra8_emulator
  * smoke gate scrape for that PASS line.
  *
  * Required external hardware (on-bench): a microSD card in the on-board SDHI
- * slot. THIS APP ERASES THE CARD. Under board_sim attach a blank card with
+ * slot. THIS APP ERASES THE CARD. Under ra8_emulator attach a blank card with
  * `--sd-new 64:fat16`; the native-SDHI host-controller model serves it.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -414,7 +414,7 @@ static void sdhi_demo_fill_payload(void)
  * @details Brings up the clocks, console, and SDHI bus pins, runs the native SD
  *          card identification, fills the payload, then runs the full `ra8_io` VFS
  *          round-trip over the native-SDHI block device. On success it prints the
- *          exact PASS banner the HIL runner and board_sim smoke gate scrape for;
+ *          exact PASS banner the HIL runner and ra8_emulator smoke gate scrape for;
  *          on any failure it prints `FAIL` and parks the core.
  *
  * @return Never returns.

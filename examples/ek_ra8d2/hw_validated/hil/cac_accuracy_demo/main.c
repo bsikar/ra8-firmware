@@ -35,7 +35,7 @@
  * edge counter (``board_periph_cac.c``): a CACR0.CFME start latches CASTR.MENDF
  * and returns a CACNTBR inside the programmed [CALLVR, CAULVR] window, so
  * ``ra8_cac_measure`` completes with FERRF / OVFF clear and the banner reports
- * ``ok=Y`` (the ``board_sim_smoke.sh`` gate keys on it). Confirmed on a real
+ * ``ok=Y`` (the ``ra8_emulator_smoke.sh`` gate keys on it). Confirmed on a real
  * EK-RA8D2 (2026-06-28): the real cross-clock edge count lands inside the
  * +/-6% window and the HIL gate is green -- the simulator proves the driver
  * start / poll / read-back sequence, silicon proves the real edge count. See
@@ -264,7 +264,7 @@ int32_t main(void)
 {
   cac_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
-   * SysTick path (board_sim does not advance DWT_CYCCNT). No NVIC sources
+   * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
   ra8_isr_globals_enable();
 

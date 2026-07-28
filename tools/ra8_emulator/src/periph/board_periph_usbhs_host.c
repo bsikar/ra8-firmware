@@ -24,11 +24,11 @@
  * model reflects back to the host as the descriptor / echo bytes. No host
  * interrupt, no second Unicorn core -- one image, both stacks, a modelled cable.
  *
- * This block only owns its window when board_sim is started with @c --usbhs-loop
+ * This block only owns its window when ra8_emulator is started with @c --usbhs-loop
  * (::board_periph_block_t::loop_only): without the flag the window falls through
  * to the sparse fallback, so the existing @c ra8_usb_host_* function-intercept
  * seam (main.c, the virtual HID keyboard / MSC disk for host-only apps) is
- * untouched. A self-loop app opts in through its hil.conf's @c HIL_SIM_ARGS.
+ * untouched. A self-loop app opts in through its hil.conf's @c HIL_EMU_ARGS.
  *
  * Register offsets and bit fields come from ra8_usb_regs.h (the same
  * first-party HUM transcription the driver uses). The few host-role fields not

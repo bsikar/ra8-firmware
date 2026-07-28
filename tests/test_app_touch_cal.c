@@ -14,12 +14,12 @@
  *  - the per-axis residual ``tc_axis_err``,
  *
  * and it closes the loop with an end-to-end solve over the EXACT synthetic raw
- * points the app's hil.conf feeds board_sim via ``--touch-seq``: it builds the
+ * points the app's hil.conf feeds ra8_emulator via ``--touch-seq``: it builds the
  * five ``ra8_touch_cal_run`` targets (four inset corners + centre of the 512x512
  * screen), distorts them through the same synthetic panel transform the
  * simulator replays, solves with ``ra8_touch_cal_compute``, round-trips through
  * ``ra8_touch_cal_save`` / ``ra8_touch_cal_load``, re-applies with
- * ``ra8_touch_cal_apply``, and asserts a zero residual -- proving the SIL feed
+ * ``ra8_touch_cal_apply``, and asserts a zero residual -- proving the EIL feed
  * the HIL gate relies on is mathematically exact.
  *
  * No MMIO is required, so this test runs in-process.
@@ -52,7 +52,7 @@ typedef enum : uint16_t {
  * @brief Synthetic panel transform the simulator replays (raw = screen*g + b).
  *
  * @details
- * The app's hil.conf feeds board_sim these raw points via ``--touch-seq``; the
+ * The app's hil.conf feeds ra8_emulator these raw points via ``--touch-seq``; the
  * fit must recover the inverse and reproduce each target exactly. Kept in one
  * place so a drift between this test and the HIL feed is a compile-time edit.
  */
@@ -211,7 +211,7 @@ static void test_tc_axis_err(void)
 }
 
 /* ===========================================================================
- * End-to-end calibration solve over the app's exact SIL feed
+ * End-to-end calibration solve over the app's exact EIL feed
  * ===========================================================================
  */
 
@@ -234,7 +234,7 @@ static void test_tc_end_to_end_solve(void)
     raws[i] = tc_synth_raw(targets[i]);
   }
 
-  /* Pin the raws to the exact points the app's hil.conf feeds board_sim, so a
+  /* Pin the raws to the exact points the app's hil.conf feeds ra8_emulator, so a
    * drift between the two is caught here. */
   TEST_ASSERT_EQ(420, raws[0].x);
   TEST_ASSERT_EQ(520, raws[0].y);

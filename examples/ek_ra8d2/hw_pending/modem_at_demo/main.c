@@ -14,9 +14,9 @@
  *
  * TODO(real modem): the physical RF link + a populated MikroBUS cellular Click
  * with a live SIM are external hardware this repo cannot carry, so the app is
- * hw_pending. board_sim answers the AT script faithfully with the SCI7 modem
+ * hw_pending. ra8_emulator answers the AT script faithfully with the SCI7 modem
  * model (``tools/ra8_emulator/src/periph/board_periph_modem.c``, ``--modem``), so the app
- * boots and walks its whole state machine 0-skip in SIL (SIM == HIL for the AT
+ * boots and walks its whole state machine 0-skip in EIL (EIL == HIL for the AT
  * protocol; only the antenna is unmodelled).
  *
  * State machine (each step is one blocking ``ra8_modem_at`` command):
@@ -32,7 +32,7 @@
  *                     ``k_ra8_err_hw_error`` and the app treats that as the
  *                     EXPECTED outcome for this step.
  *
- * On success the app prints (SCI8 console, scraped by board_sim / a HIL rig):
+ * On success the app prints (SCI8 console, scraped by ra8_emulator / a HIL rig):
  *
  *     modem: rssi=17 reg=1 attach=1 cme=ok PASS
  *
@@ -132,7 +132,7 @@ static uint8_t s_creg_stat;
  */
 static bool s_creg_seen;
 
-/* Banner strings scraped by board_sim / the HIL rig. The success line is
+/* Banner strings scraped by ra8_emulator / the HIL rig. The success line is
  * "modem: rssi=17 reg=1 attach=1 cme=ok PASS"; a failed verdict swaps PASS for
  * FAIL and reflects the actual cme= token. */
 static const uint8_t k_modem_banner_prefix[] = "modem: rssi=";

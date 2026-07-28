@@ -26,11 +26,11 @@
  *    never reached, and the boot-select record is left pointing at the still-good
  *    active bank A. This is the safe rollback a real bootloader relies on.
  *
- * @par Backends (SIM==HIL):
+ * @par Backends (EIL==HIL):
  *  - ``flash`` routes to the real ``ra8_flash`` extra-MRAM driver
  *    (``ra8_flash_extra_mram_write`` / ``_erase`` + direct read-back), so the
  *    stage / re-hash / boot-select persistence run the exact MACI register
- *    sequence board_sim models -- the same code path a bench run drives.
+ *    sequence ra8_emulator models -- the same code path a bench run drives.
  *  - ``crypto`` routes SHA-256 to the real software SHA backend
  *    (``ra8_rsip_sha256*``); identical on host, sim and silicon (there is no
  *    RSIP hash-hardware on this part). Image INTEGRITY (the digest match that
@@ -93,7 +93,7 @@ typedef enum : uint32_t {
  *
  * @warning This window is one-time-programmable option-setting / OTP memory, not
  * a rewritable data-flash bank: the erase + re-stage cycle an A/B updater needs
- * does NOT work on real silicon. board_sim maps the window so the demo passes
+ * does NOT work on real silicon. ra8_emulator maps the window so the demo passes
  * here, but a real inactive-bank home (OSPI / SD) is tracked by #315.
  */
 typedef enum : uintptr_t {
@@ -486,7 +486,7 @@ static ra8_err_t app_flash_erase(void* ctx, uint32_t addr, uint32_t len)
  * @brief Program bytes into the inactive bank (OTA ``flash.program``).
  *
  * @details Splits ``len`` into <= ``k_app_mram_block_bytes`` chunks, each a
- * single ``ra8_flash_extra_mram_write`` (the MACI Program command board_sim
+ * single ``ra8_flash_extra_mram_write`` (the MACI Program command ra8_emulator
  * models). Callers stage 32-aligned offsets, so no write crosses a page.
  *
  * @param[in] ctx  Unused opaque context.

@@ -43,11 +43,11 @@ book and the M85 proves it is well-formed.
 ## How to run (no hardware needed)
 
 ```sh
-make sim-compile_on_m33
+make emu-compile_on_m33
 ```
 
 This cross-builds Debug (so the `[itm]` log lines are compiled in), builds the
-board_sim emulator, and boots the M85 ELF. board_sim sees the embedded
+ra8_emulator, and boots the M85 ELF. ra8_emulator sees the embedded
 `.cpu1_image` and spins up a second Unicorn engine for the M33 sharing the SRAM.
 
 ## Expected output

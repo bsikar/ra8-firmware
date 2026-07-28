@@ -73,7 +73,7 @@ static const uint8_t k_msg_fail[]     = "fault-div0: FAIL init\r\n";
 static const uint8_t k_msg_armed[]    = "fault-div0: trap armed\r\n";
 static const uint8_t k_msg_unarmed[]  = "fault-div0: FAIL trap not armed\r\n";
 static const uint8_t k_msg_survived[] = "fault-div0: survived divide quotient=";
-static const uint8_t k_msg_sim_tail[] = " (trap not modelled -- board_sim)\r\n";
+static const uint8_t k_msg_emu_tail[] = " (trap not modelled -- ra8_emulator)\r\n";
 
 /**
  * @var s_fd_dividend
@@ -162,7 +162,7 @@ static void fd_log_sink(void* ctx, uint8_t byte)
 }
 
 /**
- * @brief Print the fail banner and trap (board_sim halts on the BKPT).
+ * @brief Print the fail banner and trap (ra8_emulator halts on the BKPT).
  *
  * @details Mirrors the sibling apps' panic idiom: one negative banner
  *          the HIL gate can match, then a debugger-visible stop.
@@ -255,7 +255,7 @@ int32_t main(void)
   fd_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   /* Prove the boot-path write landed before relying on it: CCR must
-   * read back with DIV_0_TRP set (works on silicon AND board_sim --
+   * read back with DIV_0_TRP set (works on silicon AND ra8_emulator --
    * the sim's SCS window stores the write even though its CPU model
    * ignores it). ARMv8-M SCB->CCR, read-only probe. */
   const uint32_t ccr = *(volatile uint32_t*)k_fd_scb_ccr_addr;
@@ -266,13 +266,13 @@ int32_t main(void)
 
   /* The guarded zero-divide. Volatile operands force a run-time UDIV.
    * Silicon: UsageFault here -> decoded dump prints -> halt (the app
-   * never reaches the next line). board_sim: quotient 0, fall through. */
+   * never reaches the next line). ra8_emulator: quotient 0, fall through. */
   const uint32_t quotient = s_fd_dividend / s_fd_divisor;
 
   g_fd_quotient = quotient;
   fd_print(k_msg_survived, (uint32_t)sizeof(k_msg_survived) - 1U);
   fd_print_uint(quotient);
-  fd_print(k_msg_sim_tail, (uint32_t)sizeof(k_msg_sim_tail) - 1U);
+  fd_print(k_msg_emu_tail, (uint32_t)sizeof(k_msg_emu_tail) - 1U);
 
   while (1) {
     g_fd_heartbeat++;

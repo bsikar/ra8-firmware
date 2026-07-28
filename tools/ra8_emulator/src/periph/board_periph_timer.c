@@ -99,7 +99,7 @@ typedef enum : uint16_t {
  * @brief Per-chunk advance for the modelled counters (one chunk == 1 tick).
  *
  * @details
- * The board_sim run loop advances the timer counters and SysTick in lockstep --
+ * The ra8_emulator run loop advances the timer counters and SysTick in lockstep --
  * one GPT/AGT step and one SysTick tick per emulation chunk. On silicon these
  * clocks are asynchronous: the GPT counts off PCLKD (megahertz) while a firmware
  * poll loop samples on the 1 kHz SysTick, so GTCNT never lands on the same value

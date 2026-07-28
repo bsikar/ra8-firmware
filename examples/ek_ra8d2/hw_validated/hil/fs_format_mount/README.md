@@ -49,7 +49,7 @@ type's cluster count in its valid band (FAT12 < 4085, FAT16 4085..65524,
 FAT32 >= 65525). On a typical multi-GB card, FAT12/FAT16 may exceed their
 cluster ceilings even at the maximum cluster size; a type that cannot fit the
 card is **skipped** (`SKIP: capacity out of range`), not failed, so the run
-still ends in `ALL PASS`. Use a small card (or a board_sim `--sd-new` card) to
+still ends in `ALL PASS`. Use a small card (or a ra8_emulator `--sd-new` card) to
 exercise every type.
 
 ## Build
@@ -60,9 +60,9 @@ make
 
 Outputs `build/fs_format_mount.elf` / `.hex` / `.bin`.
 
-## Run in board_sim (no hardware)
+## Run in ra8_emulator (no hardware)
 
-board_sim models the microSD over `ra8_sdmmc_spi` and can attach a blank card of
+ra8_emulator models the microSD over `ra8_sdmmc_spi` and can attach a blank card of
 any size with `--sd-new <MiB>[:fat16|fat32]`. The initial format does not matter
 (the app reformats it), but `--sd-new` gives the modelled card a correct CSD
 size so the SD bring-up reports a real capacity.
@@ -88,12 +88,12 @@ fsfmt: FS EXFAT FORMAT+MOUNT PASS
 fsfmt: FS FORMAT+MOUNT ALL PASS
 ```
 
-The same gate runs under `scripts/sim/smoke.sh fs_format_mount` (it stops
+The same gate runs under `scripts/emu/smoke.sh fs_format_mount` (it stops
 on the `PASS` banner with a bounded chunk/wall budget).
 
 ## Run on the bench (real silicon)
 
-> The on-bench flash/run is the user's to perform. The repo build + board_sim
+> The on-bench flash/run is the user's to perform. The repo build + ra8_emulator
 > validation above is what is automated.
 
 1. Plug a PMOD MicroSD into Pmod2 (J25) with a **disposable** microSD card

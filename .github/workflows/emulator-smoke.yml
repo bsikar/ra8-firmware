@@ -1,0 +1,270 @@
+# SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh (gates:
+# emulator-smoke, emulator-matrix, emulator-io-fabric, eil-integration). See
+# .github/workflows/firmware.yml for the design note.
+#
+# ra8_emulator (tools/ra8_emulator) is the Unicorn-based RA8D2 board emulator: it boots
+# the real cross-compiled firmware .elf on an emulated Cortex-M with the RA8D2
+# peripheral space modelled. These jobs build it headless on the Linux runner and
+# boot known-good example images, asserting each reaches its main loop without
+# faulting (no invalid opcode / unmapped access) and is not parked in a
+# panic/fault halt -- guarding the emulator, the GLCDC bring-up path, and the
+# modelled peripheral blocks (GPIO / SCI UART / GPT+ICU IRQ / USB CDC).
+#
+# ra8_emulator needs Unicorn + Capstone. Capstone (disassembly only) comes from the
+# distro package via the infra step below. UNICORN IS PINNED: its version
+# changes how Armv8.1-M (Helium/MVE) decodes, so an unpinned emulator makes the
+# same commit pass here and fault there (#354). It is provisioned as a
+# reproducible source build (docs/TOOLCHAIN.md) and each gate calls
+# require_pinned_unicorn, which FAILS LOUDLY if the runtime Unicorn is not the
+# pin -- the infra step no longer installs "whatever apt offers, once". The
+# build finds both with CMake's find_library (off the APPLE path -- no
+# pkg-config required). The live --view window is macOS-only (Cocoa); these jobs
+# are headless, which ra8_emulator supports via board_view_stub.c.
+#
+# This workflow is separate from firmware.yml and has been missed by a "local
+# green" run before, which is why the ci-parity gate walks EVERY workflow file.
+---
+name: emulator-smoke
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+# Concurrency key is per-SHA on push, per-ref otherwise (#366). On a push
+# burst to dev/main every commit lands under its own group
+# (<workflow>-<sha>), so cancel-in-progress cannot cancel a DISTINCT commit's
+# ra8_emulator run: a cancelled run marks its remaining gate steps `skipped`,
+# which reads as a green pass, silently converting "gate ran and passed" into
+# "gate never executed". Each landed commit must therefore get its own
+# complete, uncancelled run (per-commit ra8_emulator validation; bisectability).
+# On pull_request / workflow_dispatch the key stays the ref, so a fresh push
+# to a PR still supersedes that PR's own older, now-obsolete run -- correct,
+# because branch health is judged from the latest head. Matches the four
+# gate workflows (#422). Do NOT revert to a bare `github.ref`: that
+# reintroduces the burst-cancellation defect.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  emulator-smoke:
+    name: ra8_emulator boot smoke
+    runs-on: ra8-ci
+    # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
+    # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    # Two ra8_emulator_smoke.sh passes (boot smoke over every app + the ra8_io
+    # fabric gate) plus the emulator build. Now that ~100 example apps link the
+    # ra8_board_ek_ra8d2 BSP, the per-app build is a touch heavier and the job
+    # sat right at the old 20 min ceiling -- a slower runner got cancelled at
+    # the last ra8_io demo.
+    #
+    # 60, not 30, since this moved to ra8-ci. The 30 min figure was measured on
+    # a dedicated host runner; an ra8-ci pod shares one 16-core node with ~9
+    # other runner pods, and this job is CPU-bound (it builds every app, then
+    # emulates it). Measured on pods: 17-25 min idle, and 30 min 19 s under a
+    # full node -- i.e. it was passing on luck and got cancelled the first time
+    # several agents pushed at once. A timeout is a runaway guard, not a check:
+    # widening it hides no regression, and each ra8_emulator run is still bounded
+    # by the instruction-counted RA8_EMU_WALL_S / MAX_CHUNKS budget, so a real
+    # hang still fails fast inside the gate. The lasting fix is node capacity
+    # (CPU requests / maxRunners in infra/), which is not a workflow lever.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Capstone
+        run: |
+          # ci-parity: infra -- runner package provisioning only; runs no
+          # project check. Capstone is ra8_emulator's disassembly-only dependency
+          # (not the instruction-decode variable), so the distro package is fine
+          # and the header the build needs either exists or it does not -- there
+          # is no version to skew past, which is what makes a probe safe here.
+          #
+          # Probe-then-install, because ra8-ci is an ephemeral pod booted from
+          # the devcontainer image: libcapstone-dev is already in that image and
+          # the pod's runner user has NO passwordless sudo, so an unconditional
+          # `sudo apt-get` dies on "sudo: a password is required" before the
+          # gate ever runs. The probe no-ops on the pod and still provisions a
+          # bare host runner.
+          #
+          # This is NOT the #354 guard that was removed: that one skipped the
+          # version-pinned UNICORN install and let a skewed Unicorn go
+          # unnoticed. Unicorn is still deliberately NOT installed here -- it is
+          # pinned to an exact version (docs/TOOLCHAIN.md) and provisioned as a
+          # reproducible source build, and the emulator gates verify the
+          # runtime Unicorn matches the pin and FAIL LOUDLY otherwise, so a
+          # skewed or absent Unicorn can never silently produce a green run.
+          set -euo pipefail
+          if [ -f /usr/include/capstone/capstone.h ]; then
+            echo "libcapstone-dev already present -- nothing to install"
+          else
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libcapstone-dev
+          fi
+
+      - run: bash scripts/ci.sh --gate emulator-smoke
+      - run: bash scripts/ci.sh --gate emulator-io-fabric
+
+  # The BREADTH matrix (#394) to emulator-smoke's depth: every example under
+  # examples/ek_ra8d2/ built and booted on the emulator, with the failing count
+  # ratcheted DOWNWARD against .github/emulator-matrix-baseline.txt. This is
+  # #67's own headline success criterion -- "every example runs in the
+  # emulator" -- and the script that measures it (scripts/emu/matrix.sh) was
+  # invoked by nothing at all until this job existed.
+  #
+  # Its own job rather than a step on emulator-smoke: it builds and boots every
+  # example, so folding it into that job would push the pair past that job's
+  # ceiling and make one slow sweep cancel the other gate's result.
+  #
+  # DETERMINISM is a precondition for running here, not a nice-to-have. Until
+  # #394 the verdict depended on host load (ra8_emulator's clock() guard truncated
+  # a run earlier the busier the box was), and a load-correlated gate on a
+  # shared self-hosted runner produces flaky red and gets disabled. Runs are now
+  # bounded by the instruction-counted chunk budget alone, so a verdict is
+  # identical on an idle runner and a saturated one.
+  emulator-matrix:
+    name: ra8_emulator example matrix (ratcheted)
+    runs-on: ra8-ci
+    # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
+    # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    # Builds ~200 example apps and boots each one. The run phase is dominated by
+    # the handful of apps that execute the full chunk budget rather than parking
+    # early (measured on the dev box: most apps finish in under 2 s, the heaviest
+    # around 70 s). See the measured wall time recorded in the PR for #394.
+    #
+    # 90, not 60, for the same reason the sibling jobs went to 60: on an ra8-ci
+    # pod sharing a node with ~9 others this took 57 min 43 s, against a 60 min
+    # budget set from 20-36 min host-runner measurements. It is the longest job
+    # in the repository, so it feels the node's CPU oversubscription hardest.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Install Capstone
+        run: |
+          # ci-parity: infra -- runner package provisioning only; runs no
+          # project check. Capstone is ra8_emulator's disassembly-only dependency
+          # (not the instruction-decode variable), so the distro package is fine
+          # and the header the build needs either exists or it does not -- there
+          # is no version to skew past, which is what makes a probe safe here.
+          #
+          # Probe-then-install, because ra8-ci is an ephemeral pod booted from
+          # the devcontainer image: libcapstone-dev is already in that image and
+          # the pod's runner user has NO passwordless sudo, so an unconditional
+          # `sudo apt-get` dies on "sudo: a password is required" before the
+          # gate ever runs. The probe no-ops on the pod and still provisions a
+          # bare host runner.
+          #
+          # This is NOT the #354 guard that was removed: that one skipped the
+          # version-pinned UNICORN install and let a skewed Unicorn go
+          # unnoticed. Unicorn is still deliberately NOT installed here -- it is
+          # pinned to an exact version (docs/TOOLCHAIN.md) and provisioned as a
+          # reproducible source build, and the emulator gates verify the
+          # runtime Unicorn matches the pin and FAIL LOUDLY otherwise, so a
+          # skewed or absent Unicorn can never silently produce a green run.
+          set -euo pipefail
+          if [ -f /usr/include/capstone/capstone.h ]; then
+            echo "libcapstone-dev already present -- nothing to install"
+          else
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libcapstone-dev
+          fi
+
+      - run: bash scripts/ci.sh --gate emulator-matrix
+
+  # EIL (emulator-in-the-loop): the hardware-free mirror of the bench HIL suite
+  # (scripts/hil/all.sh). Every app under examples/ek_ra8d2/hw_validated/hil/ is
+  # booted in ra8_emulator headless and checked against the SAME per-app hil.conf
+  # expectation the real board is checked against -- the uart_scrape / alive UART
+  # banners, and the jlink_memprobe progress counters via ra8_emulator's --dump-sym /
+  # --stop-sym. No hardware, so it belongs in CI: it would have caught the recent
+  # ra8_emulator div-0 the moment it landed. Where hil_all.sh flashes one physical
+  # board serially, ra8_emulator instances share no hardware, so eil_all.sh runs the
+  # ~145 apps in PARALLEL at -j = the runner's core count; each run is bounded by
+  # the EIL_*_MAX_CHUNKS / EIL_*_WALL_S caps so a hung app cannot stall the job.
+  # rtt_scrape apps are checked like uart_scrape (ra8_emulator drains the SEGGER
+  # RTT control block and echoes `[rtt]` lines); hil_eth_tcp apps run for real
+  # against ra8_emulator's in-process TCP peer (board_net completes the ARP / ping /
+  # connect / echo exchange and byte-verifies the reply). Every EIL-capable mode
+  # is now checked -- there are no SKIPs left. If the app count ever outgrows one
+  # job, shard by passing a slice of `eil_all.sh --list` app names across a
+  # matrix of jobs; today the parallel single job stays well inside the
+  # emulator-smoke budget.
+  eil-integration:
+    name: EIL integration (all hil apps in ra8_emulator)
+    runs-on: ra8-ci
+    # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
+    # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    # 60, not 30, for the reason spelled out on the emulator-smoke job above:
+    # measured 18-30 min on an ra8-ci pod and cancelled at exactly 30 min 19 s
+    # once the node was carrying a full complement of runner pods.
+    timeout-minutes: 60
+    # ENFORCING. Every hw_validated/hil app now runs and passes in ra8_emulator:
+    # eil_all.sh is 147 passed / 0 failed / 0 skipped. The former modelling gaps
+    # are closed -- USBHS host controller (usb_selftest_* / dfu_selftest_*) and
+    # the two-image-TZ NS world (cpu1_pingpong_ipc, tz_nsc_cgc_usb) were modelled
+    # earlier; the SEGGER RTT host side (rtt_log_demo) and the in-process TCP
+    # peer verdict (threadx_netx_tcp_echo) removed the last two SKIPs; and the
+    # DRW/D2 engine is now modelled FAITHFULLY-INERT to match real silicon
+    # (#247, drw_blend_demo hashes the same zero framebuffer the board does), so
+    # EIL == HIL. A ra8_emulator modelling gap or a firmware regression now fails
+    # the gate rather than being logged and ignored.
+    steps:
+      # Do NOT fetch LFS during checkout (lfs: false). On the persistent
+      # self-hosted runner, actions/checkout's `git lfs install --local` aborts
+      # with exit 2 on a stale/conflicting LFS hook left in the reused
+      # workspace -- and this job no longer needs the LFS epubs at all: the
+      # ereader_shelf library fixture is committed (the eil-integration gate
+      # asserts it is present).
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Install Capstone
+        run: |
+          # ci-parity: infra -- runner package provisioning only; runs no
+          # project check. Capstone is ra8_emulator's disassembly-only dependency
+          # (not the instruction-decode variable), so the distro package is fine
+          # and the header the build needs either exists or it does not -- there
+          # is no version to skew past, which is what makes a probe safe here.
+          #
+          # Probe-then-install, because ra8-ci is an ephemeral pod booted from
+          # the devcontainer image: libcapstone-dev is already in that image and
+          # the pod's runner user has NO passwordless sudo, so an unconditional
+          # `sudo apt-get` dies on "sudo: a password is required" before the
+          # gate ever runs. The probe no-ops on the pod and still provisions a
+          # bare host runner.
+          #
+          # This is NOT the #354 guard that was removed: that one skipped the
+          # version-pinned UNICORN install and let a skewed Unicorn go
+          # unnoticed. Unicorn is still deliberately NOT installed here -- it is
+          # pinned to an exact version (docs/TOOLCHAIN.md) and provisioned as a
+          # reproducible source build, and the emulator gates verify the
+          # runtime Unicorn matches the pin and FAIL LOUDLY otherwise, so a
+          # skewed or absent Unicorn can never silently produce a green run.
+          set -euo pipefail
+          if [ -f /usr/include/capstone/capstone.h ]; then
+            echo "libcapstone-dev already present -- nothing to install"
+          else
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libcapstone-dev
+          fi
+
+      - run: bash scripts/ci.sh --gate eil-integration

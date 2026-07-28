@@ -43,7 +43,7 @@ ra8_add_app(
 # voltage monitoring 0 reset is enabled (OFS1.PVDAS bit is 0)". With the
 # permissive default OFS1 = 0xFFFFFFFF, PVDAS = 1 (LVD0 disabled), so the
 # VBATT-backed register area stays held in VBATT_POR reset (VBPORF = 1) and
-# every VBTBKRn write is silently dropped on silicon (rw=BAD) -- board_sim
+# every VBTBKRn write is silently dropped on silicon (rw=BAD) -- ra8_emulator
 # cannot model this, which is why the sim passed while the bench failed.
 # Enable LVD0 (PVDAS = 0, bit 3) with VDSEL0 = 000 = 2.85 V (HUM Ch 7 p 284):
 # below VCC 3.3 V so it never trips a spurious reset, and above the highest

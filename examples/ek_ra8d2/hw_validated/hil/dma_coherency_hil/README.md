@@ -44,23 +44,23 @@ operate on exactly the buffer with no partial-line spill.
   (and the same result over ITM via `ra8_log_info`), LED1 toggles.
 - FAIL: `dma_coherency_hil: dma coherent FAIL`, LED2 toggles.
 
-## board_sim
+## ra8_emulator
 
 `tools/ra8_emulator` **does** model the DMAC mem-to-mem transfer
 (`board_periph_dmac.c` `dmac_copy_units` moves the bytes in emulated
 memory on the software trigger), so the **real** `ra8_dmac` path runs in
-sim -- there is no CPU-memcpy fallback. board_sim's memory is byte-exact
+sim -- there is no CPU-memcpy fallback. ra8_emulator's memory is byte-exact
 and it does not model the L1 D-cache, so the clean/invalidate calls are
 exercised but have no caching effect and the copy verifies trivially.
 The cache hazard is only observable on real silicon. `RA8_SIMULATOR_MODE`
 is a host-unit-test define and is **not** set for the ARM cross-build
-board_sim runs, so nothing is `#ifdef`-ed out.
+ra8_emulator runs, so nothing is `#ifdef`-ed out.
 
 Headless sim run:
 
 ```sh
 make                                   # cross-compile -> build/dma_coherency_hil.elf
-BOARD_SIM_WALL_S=15 BOARD_SIM_IDLE_STOP=1 \
+RA8_EMU_WALL_S=15 RA8_EMU_IDLE_STOP=1 \
   tools/ra8_emulator/build/ra8_emulator \
   examples/ek_ra8d2/hw_validated/hil/dma_coherency_hil/build/dma_coherency_hil.elf \
   --panel tools/ra8_emulator/panels/ek_ra8d2.toml

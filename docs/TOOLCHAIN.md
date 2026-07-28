@@ -55,7 +55,7 @@ target; the "status" column flags the known skews.
 | `yamllint` | **1.37.1** | (install per section 3.5) | 1.37.1 (`~/.local/bin`) | CONVERGED -- see 3.5 |
 | `actionlint` | **1.7.7** | (install per section 3.5) | 1.7.7 (`~/.local/bin`) | CONVERGED -- see 3.5 |
 | `gcovr` | 8.6 (pip) | 8.6 | 8.6 (`~/.local/bin` + `/usr/bin`) | CONVERGED |
-| `libunicorn` (board_sim) | **2.1.4** (source build -> `/usr/local`) | 2.1.4 (`brew`, or source) | **2.1.4** (source build -> `/usr/local`) | pinned + FAIL-LOUD; dev box needs the source build -- see 3.6 (#354) |
+| `libunicorn` (ra8_emulator) | **2.1.4** (source build -> `/usr/local`) | 2.1.4 (`brew`, or source) | **2.1.4** (source build -> `/usr/local`) | pinned + FAIL-LOUD; dev box needs the source build -- see 3.6 (#354) |
 
 ---
 
@@ -178,7 +178,7 @@ directory makes gcovr resolve nothing and report `no_working_dir_found` -- a
 failure indistinguishable from a real coverage regression. Do not "fix" that
 opt-out.
 
-### 3.6 libunicorn (board_sim CPU emulator): pinned 2.1.4, source-built, fail-loud (#354)
+### 3.6 libunicorn (ra8_emulator CPU emulator): pinned 2.1.4, source-built, fail-loud (#354)
 
 `tools/ra8_emulator` boots the real cross-compiled firmware `.elf` on Unicorn
 (QEMU's core as a library). **Different Unicorn versions decode Armv8.1-M
@@ -189,11 +189,11 @@ structural, which is exactly what #354 was: the self-hosted runner linked a
 source-built **2.1.4** in `/usr/local`, while the dev box and the devcontainer
 linked Debian/Ubuntu apt **2.0.1** -- and 2.0.1 raises a spurious `EXCP_NOCP` on
 the MVE stores that 2.1.4 (and real M85 silicon) executes. That made ~6 EPUB /
-comic / crypto smoke apps and a wider SIL set fault under `make ci` on dev's own
+comic / crypto smoke apps and a wider EIL set fault under `make ci` on dev's own
 HEAD while CI stayed green.
 
 **The pin is 2.1.4** -- the version CI (the authority) already links and the one
-where the board_sim smoke / matrix / SIL suite is green. It is the same choice
+where the ra8_emulator smoke / matrix / EIL suite is green. It is the same choice
 as the arm-gcc pin: one exact upstream release, **built from source**, verified
 by sha256, so the library is byte-reproducible on every box rather than
 "whatever apt offered the day the runner was provisioned".
@@ -213,17 +213,17 @@ How it is enforced (three parts, no assumptions):
   the same source build in its `Dockerfile`. It is provisioning, **not** a gate,
   and is deliberately never invoked from a workflow step (the `ci-parity` gate
   forbids an "infra" step from calling anything under `scripts/`).
-- **Fail-loud check.** Every board-sim gate (`board-sim-smoke`,
-  `board-sim-matrix`, `board-sim-io-fabric`, `sil-integration`) calls
+- **Fail-loud check.** Every emulator gate (`emulator-smoke`,
+  `emulator-matrix`, `emulator-io-fabric`, `eil-integration`) calls
   `require_pinned_unicorn` in `scripts/ci.sh`, which runs
   `scripts/checks/check_unicorn_version.sh`. That check compiles a probe against
-  the ACTUAL `libunicorn` board_sim will link, reads `uc_version()` + the header
+  the ACTUAL `libunicorn` ra8_emulator will link, reads `uc_version()` + the header
   `UC_VERSION_*` macros + `pkg-config`, and **exits non-zero with remediation**
   when any disagrees with the pin. Run its `--selftest` to see it reject a 2.0.1
   skew and accept a 2.1.4 match. This is the honesty half: the removed guard
   (`if ! ldconfig | grep libunicorn; then apt-get install ...`) checked only that
   *something named libunicorn existed*, never which version -- so a fossil
-  install produced green board_sim runs nobody could reproduce. A skewed or
+  install produced green ra8_emulator runs nobody could reproduce. A skewed or
   absent Unicorn now fails the gate instead of quietly passing.
 
 **Provision a box** (dev box, or a fresh runner):
@@ -239,7 +239,7 @@ self-hosted runners in `k3s-pve` already carry the pinned **2.1.4** in
 of the stale apt `/usr/lib/.../libunicorn.so.2` still present from an old
 provision), which is why CI was green on it -- the pin matches the runner as-is,
 and no runner change is required to land this. IF a runner is ever re-imaged or
-drifts, the board-sim gates will FAIL LOUDLY on it (not silently pass), and the
+drifts, the emulator gates will FAIL LOUDLY on it (not silently pass), and the
 fix is to run `scripts/ci/install_unicorn.sh` on that runner. Optionally purge
 the leftover apt `libunicorn2` there so a single Unicorn remains. This is a
 manual step on `k3s-pve` (VM 300), outside this repo's reach -- the enforcement,
@@ -254,7 +254,7 @@ native IS the CI environment**:
 
 **Get your own workspace first.** `~/ra8-firmware` is shared by every agent on
 the box, and `git reset --hard` in it is how two agents had their checkouts
-clobbered mid-run, corrupting a baseline measurement and a SIL run. Never work
+clobbered mid-run, corrupting a baseline measurement and an EIL run. Never work
 there and never improvise a checkout of your own -- `make ws-new` exists so you
 do not have to:
 
@@ -322,9 +322,9 @@ Gotchas (each has bitten a push):
   on the dev box (host coverage matches CI). gcovr 8.6, shfmt 3.13.1 aligned.
 - **Done:** libunicorn **2.1.4 pinned + FAIL-LOUD** (section 3.6, #354) -- runner
   already at 2.1.4 (`/usr/local`), devcontainer builds it from source by
-  URL+sha256, `require_pinned_unicorn` fails every board-sim gate on a skew.
+  URL+sha256, `require_pinned_unicorn` fails every emulator gate on a skew.
   Provision the dev box with `scripts/ci/install_unicorn.sh` so `make ci`'s
-  board_sim gates match CI.
+  ra8_emulator gates match CI.
 - **Open (tracked):** Mac clang-format 22.1.8 (section 3.2); Mac ruff 0.15.19
   (section 3.4); re-provisioning the self-hosted runner's `/opt` toolchain on a
   future pin bump (manual runner step, section 3.1); re-running

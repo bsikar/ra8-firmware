@@ -48,14 +48,14 @@ stops at the `ra8_sdcard` block interface to confirm the SDHI HAL in isolation:
 
 That distinct regression value is why both apps exist.
 
-## board_sim gate
+## ra8_emulator gate
 
 Under `tools/ra8_emulator`, the native SDHI host-controller model
 (`board_periph_sdhi.c`) serves a blank card attached with `--sd-new 64:fat16`.
 The gate command is:
 
 ```
-bash scripts/sim/smoke.sh ra8_sdhi_card_demo
+bash scripts/emu/smoke.sh ra8_sdhi_card_demo
 ```
 
 Expected output: `ra8_sdhi_card_demo: native SDHI block round-trip PASS`.  The

@@ -25,7 +25,7 @@ kbd: q=Hi 9 commit=1 taps=7 PASS
 ```
 
 No panel / SD / touch hardware is needed (pure layout + hit-test + buffer), so
-the banner is identical on host, `board_sim`, and silicon. A mismatch prints a
+the banner is identical on host, `ra8_emulator`, and silicon. A mismatch prints a
 FAIL banner and halts on a BKPT before the PASS line.
 
 ## Build + run
@@ -35,19 +35,19 @@ make keyboard
 scripts/hil/run_local.sh keyboard      # flash + scrape the banner
 ```
 
-## Result (validated 2026-06-19, board_sim)
+## Result (validated 2026-06-19, ra8_emulator)
 
 ```
 keyboard-hil: boot
 kbd: q=Hi 9 commit=1 taps=7 PASS
 ```
 
-`scripts/sim/smoke.sh keyboard` PASS (final PC in the `main` WFI idle
+`scripts/emu/smoke.sh keyboard` PASS (final PC in the `main` WFI idle
 loop; 7 synthetic taps routed through `ra8_kbd_hit` -> `ra8_kbd_apply`). The
 widget logic -- case toggle, the 123/ABC layer switch, digits, edits -- is
 covered on the host by `tests/test_ra8_keyboard.c` (ASan + MC/DC for the
 frame-rejection decision); the same model + the same sequence produce the same
-banner, so host == board_sim == silicon.
+banner, so host == ra8_emulator == silicon.
 
 ## Relationship to #105
 

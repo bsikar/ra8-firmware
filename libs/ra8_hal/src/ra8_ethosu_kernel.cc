@@ -34,7 +34,7 @@
  * The kernel COMPILES and LINKS for the RA8P1 and its registration is
  * host/sim-checkable via ::ra8_ethosu_kernel_available. A full model-driven run
  * additionally needs a Vela-compiled `.tflite` (the offline Vela compiler is a
- * separate follow-up) and real silicon: board_sim's honest NPU model rejects a
+ * separate follow-up) and real silicon: ra8_emulator's honest NPU model rejects a
  * real Vela command stream it cannot interpret, so the end-to-end inference path
  * is exercised on-silicon, not in the emulator. The `custom_name` / `invoke`
  * wiring proven here is the piece this change lands.

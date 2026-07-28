@@ -118,7 +118,7 @@ endfunction()
 # ---------------------------------------------------------------------------
 
 # Whole-read-path libraries -- every src/ member is part of the reader path, so
-# a glob is the single source of truth (the host-test build and board_sim
+# a glob is the single source of truth (the host-test build and ra8_emulator
 # consume their firmware libraries the same way). ra8_comic pulls in the
 # gzip/xz/tar wrapped-container decoders (ra8_unarch, which sits on the vendored
 # xz-embedded decoder); ra8_longstrip renders the firmware-native `.jof`

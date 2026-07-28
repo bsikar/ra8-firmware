@@ -24,7 +24,7 @@
  * `ra8_sdhi_card_demo: native SDHI block round-trip PASS`; any failed step prints
  * `ra8_sdhi_card_demo: FAIL` and parks the CPU.
  *
- * Under board_sim the native-SDHI host-controller model (`board_periph_sdhi.c`)
+ * Under ra8_emulator the native-SDHI host-controller model (`board_periph_sdhi.c`)
  * serves a card attached with `--sd-new 64:fat16`. On the bench a real microSD
  * is wired to the port-4 SDHI bus. THIS APP OVERWRITES ONE BLOCK of the card.
  *

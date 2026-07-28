@@ -40,7 +40,7 @@
  * descriptor-table transfer engine (``board_periph_dtc.c``): the ELC
  * software-event trigger activates the controller, which reads the TI via
  * ``DTCVBR`` and copies the block in emulated memory, so the banner reports
- * ``match=Y`` and the ``board_sim_smoke.sh`` gate keys on it. Confirmed on a
+ * ``match=Y`` and the ``ra8_emulator_smoke.sh`` gate keys on it. Confirmed on a
  * real EK-RA8D2 (2026-06-28): on a TrustZone part the secure DTC reads its
  * vector table from ``DTCVBR_SEC`` (the HAL now programs it), and the demo
  * leaves the DTC-complete IRQ masked so its ISR cannot race the transfer.

@@ -14,7 +14,7 @@
  *
  * This block claims the VBTBKRn window plus the access-enable byte (@c VBTBER,
  * @c 0xC40) and holds the 128 backup bytes in a host-static buffer that the
- * block's reset hook deliberately does NOT clear. The board_sim run loop's
+ * block's reset hook deliberately does NOT clear. The ra8_emulator run loop's
  * @c --reboot path re-runs the firmware from its reset vector after resetting
  * the peripheral blocks; because this block preserves the backup bytes across
  * that reset, the second boot finds the sentinel intact -- exactly the
@@ -37,7 +37,7 @@
  * @c VBTBER resets to @c 0x08 (VBAE = 1) per its "Value after reset" row in
  * HUM Ch 12.2.6 p 504, matching a J-Link read of a live board, so VBAE alone
  * never blocks a first write -- which is precisely why modelling only VBAE
- * left the sim green while the bench was red. Writes to VBTBER itself are
+ * left the emulator green while the bench was red. Writes to VBTBER itself are
  * PRC1-gated too, so firmware that clears VBAE without unlocking does not
  * change it, exactly as on silicon.
  *

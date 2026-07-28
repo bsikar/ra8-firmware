@@ -31,7 +31,7 @@ RGB565 framebuffer lives in external SDRAM (`.sdram_data`).
 ## Run it in the simulator
 
 ```
-make sim-ereader_ui            # boot the real .elf on tools/ra8_emulator
+make emu-ereader_ui            # boot the real .elf on tools/ra8_emulator
 ```
 
 Headless render + navigation proof:
@@ -53,11 +53,11 @@ bus the GT911 touch uses, folds the state-of-charge into the `ra8_batt` nag poli
 (`libs/ra8_batt`), and draws a persistent banner overlay -- gray **Low battery**
 at <=20%, ink **Battery critical** at <=10% -- over whichever screen-app is
 active. It clears once the battery recovers (or is charging). The read is
-best-effort: a stock EVM with no gauge fitted simply shows no banner. board_sim
+best-effort: a stock EVM with no gauge fitted simply shows no banner. ra8_emulator
 models the gauge and drives it from the on-screen battery slider, so:
 
 ```
-make sim-ereader_ui                                          # drag the POWER slider below 20% / 10%
+make emu-ereader_ui                                          # drag the POWER slider below 20% / 10%
 ELF=examples/ek_ra8d2/hw_pending/ereader_ui/build/ereader_ui.elf
 tools/ra8_emulator/build/ra8_emulator "$ELF" --battery 8 --ppm /tmp/nag.ppm   # critical banner
 ```
@@ -67,11 +67,11 @@ and locks in the critical banner pixel-for-pixel.
 
 ## Roadmap (this example)
 
-- **A (done):** Reading chrome via `ra8_gfx`, verified in `board_sim`.
+- **A (done):** Reading chrome via `ra8_gfx`, verified in `ra8_emulator`.
 - **B (done):** `ra8_box` box-model layout + the **Library** screen (book
   grid) + `ra8_ui` screen-stack navigation.
 - **C (done):** live touch input -- GT911 tap -> `ra8_ui_hit_test` ->
-  screen change, proven with `board_sim --click`.
+  screen change, proven with `ra8_emulator --click`.
 - **D (done, #83):** real reflowed body text through `libs/ra8_reflow`. When a
   font is present on the microSD (`FONT.OTF`, the SD-load path proven by
   `sd_font_render`), the Reading body is laid out live by `ra8_reflow`
@@ -82,8 +82,8 @@ and locks in the critical banner pixel-for-pixel.
   `ra8_reflow_tokenize.c`, #82). A `FONT.OTF` on the microSD overrides the baked
   face; verify that path with a card image, e.g.
   `tools/mkfontimg/build/mkfontimg libs/ra8_fonts/Literata-Regular.ttf /tmp/font.img FONT.OTF`
-  then `board_sim <elf> --click 250 250 --sd /tmp/font.img --ppm out.ppm`
-  (give it a generous `BOARD_SIM_MAX_CHUNKS` -- the ~312 KB SPI font read is
+  then `ra8_emulator <elf> --click 250 250 --sd /tmp/font.img --ppm out.ppm`
+  (give it a generous `RA8_EMU_MAX_CHUNKS` -- the ~312 KB SPI font read is
   slow under emulation; instant on real hardware).
 - **E (done, #66):** a **Latin-1 subset of Literata baked into internal flash**
   (`libs/ra8_fonts/literata_latin1.ttf`, ~37 KB, generated into `.rodata` at build
@@ -92,7 +92,7 @@ and locks in the critical banner pixel-for-pixel.
   the body is now the baked reflow, not the old bitmap fallback (which remains
   only for a reflow-engine failure). The no-card golden (#84) was regenerated to
   the reflowed render. Reading from flash also sidesteps the slow emulated-SPI
-  read, so `board_sim <elf> --click 250 250 --ppm out.ppm` (no `--sd`) shows live
+  read, so `ra8_emulator <elf> --click 250 250 --ppm out.ppm` (no `--sd`) shows live
   text.
 - **F (done, #78/#80):** page-turn taps -- a tap in the right half of the body
   advances a `ra8_reflow` page, the left half goes back (`ra8_reflow_render_page_at`

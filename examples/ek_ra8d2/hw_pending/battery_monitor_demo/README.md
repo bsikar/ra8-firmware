@@ -64,8 +64,8 @@ state is driven two ways:
 
 ```
 # headless: set the percent and/or charge state before the run
-board_sim battery_monitor_demo.elf --battery 30           # 30%, on battery
-board_sim battery_monitor_demo.elf --battery 90 --charge  # 90%, charging
+ra8_emulator battery_monitor_demo.elf --battery 30           # 30%, on battery
+ra8_emulator battery_monitor_demo.elf --battery 90 --charge  # 90%, charging
 ```
 
 In the live window (`--view`), the sidebar's **POWER** section draws a battery
@@ -74,18 +74,18 @@ while charging) with the percent over it, plus a **CHG** toggle. Dragging the
 slider sets the percent and clicking CHG flips the charge state -- both write the
 same fuel-gauge model the firmware reads, so the banner tracks the slider live.
 
-## Result (validated 2026-06-21, board_sim)
+## Result (validated 2026-06-21, ra8_emulator)
 
 ```
-$ board_sim battery_monitor_demo.elf
+$ ra8_emulator battery_monitor_demo.elf
 [uart] SCI8: battery-monitor: boot
 [uart] SCI8: battery: soc=72% chg=N PASS
 
-$ board_sim battery_monitor_demo.elf --battery 55 --charge
+$ ra8_emulator battery_monitor_demo.elf --battery 55 --charge
 [uart] SCI8: battery: soc=55% chg=Y PASS
 ```
 
-`scripts/sim/smoke.sh battery_monitor_demo` PASS -- board_sim models the
+`scripts/emu/smoke.sh battery_monitor_demo` PASS -- ra8_emulator models the
 fuel gauge on the modelled IIC_B bus, so the SOC + CRATE reads return through the
 genuine `ra8_smbus -> ra8_i3c` I2C path (no stub) and the banner is deterministic.
 

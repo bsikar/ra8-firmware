@@ -524,7 +524,7 @@ static uint32_t internal_tx_info1_hi(uint8_t mac_port)
  * loop but routes the completion test through the ra8_sim_mmio seam -- keyed on
  * the descriptor base, since ``dt`` is a bitfield with no address of its own --
  * so a test can drive it to completion or to timeout (T1-01); firmware and
- * board_sim take the plain read. Extracted from ::ra8_eth_gwca_default_send to
+ * ra8_emulator take the plain read. Extracted from ::ra8_eth_gwca_default_send to
  * keep that function under the complexity cap.
  *
  * @param[in,out] state Post-default_open state; ``tx_chain[0]`` is in flight.

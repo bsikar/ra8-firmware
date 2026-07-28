@@ -1,6 +1,6 @@
 /**
  * @file board_periph_dtc.c
- * @brief DTC (Data Transfer Controller) transfer-engine model for board_sim
+ * @brief DTC (Data Transfer Controller) transfer-engine model for ra8_emulator
  *
  * @details
  * Models the RA8D2 DTC (ra8_dtc_regs.h, ra8_dtc.c) so an interrupt-activated

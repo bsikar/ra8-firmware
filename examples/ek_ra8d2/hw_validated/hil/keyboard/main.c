@@ -15,7 +15,7 @@
  *   `kbd: q=Hi 9 commit=1 taps=7 PASS`
  *
  * No panel / SD / touch hardware is needed -- the widget is pure layout +
- * hit-test + text-buffer logic, so the banner is identical on host, board_sim,
+ * hit-test + text-buffer logic, so the banner is identical on host, ra8_emulator,
  * and silicon. A mismatch halts on a BKPT before the PASS line.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -72,7 +72,7 @@ static void kb_print(const uint8_t* msg, uint32_t len)
   (void)ra8_board_uart_console_write((msg), (size_t)(len));
 }
 
-/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
 static void kb_panic_halt(const uint8_t* msg, uint32_t len)
 {
   kb_print(msg, len);

@@ -24,10 +24,10 @@
  * header for the ``TODO(EK-RA8P1 UM / ra8p1_kicad)`` rationale.
  *
  * The command stream is NOT a real Vela program: it uses the tiny, documented
- * board_sim / host-test convention in ``ra8_npu_sim_cmd.h`` (an "SE55" magic word
+ * ra8_emulator / host-test convention in ``ra8_npu_sim_cmd.h`` (an "SE55" magic word
  * plus an add-constant opcode). Under ``tools/ra8_emulator --device ra8p1`` the NPU
  * model decodes it and applies the op to the tensor arenas, so this app is a
- * DETERMINISTIC, sim-runnable check of the driver protocol + BASEPn region
+ * DETERMINISTIC, emulator-runnable check of the driver protocol + BASEPn region
  * programming -- run it twice and the banner is identical. It is still a
  * FOUNDATION app: there is no RA8P1 board yet, and real Vela-compiled inference
  * is the follow-up on the RA8P1 NPU epic. On silicon the NPU reaches the arenas
@@ -184,7 +184,7 @@ volatile uint32_t g_npu_smoke_pass = 0U;
  * @brief Park the CPU forever in WFI after a fatal init error (a real panic).
  *
  * @details Reserved for failures BEFORE a verdict can be emitted (CGC or the
- *          SCI8 console did not come up), so a board_sim gate that scans for a
+ *          SCI8 console did not come up), so a ra8_emulator gate that scans for a
  *          `*panic_halt` terminal PC correctly reads this as a failed run. The
  *          normal post-verdict terminal is ::npu_smoke_park, which is NOT a
  *          panic and must not be flagged as one.
@@ -206,7 +206,7 @@ static void npu_smoke_panic_halt(void)
  * @details Distinct from ::npu_smoke_panic_halt on purpose: a run that reached
  *          the verdict -- PASS or FAIL -- has done its job and parks here, whose
  *          name deliberately does NOT match the `*panic_halt` / `*_halt_loop`
- *          patterns a board_sim gate treats as a give-up. The authoritative
+ *          patterns a ra8_emulator gate treats as a give-up. The authoritative
  *          verdict is the emitted `verdict=PASS` / `verdict=FAIL` banner (and
  *          ::g_npu_smoke_pass for a memprobe), never the parked PC.
  *

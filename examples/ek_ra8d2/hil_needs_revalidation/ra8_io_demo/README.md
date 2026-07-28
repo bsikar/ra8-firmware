@@ -1,7 +1,7 @@
 # ra8_io_demo -- ra8_io fabric end-to-end (epic #155)
 
 A single self-contained app that drives the whole `ra8_io` I/O fabric with no
-external hardware, so it runs headlessly in `board_sim`.
+external hardware, so it runs headlessly in `ra8_emulator`.
 
 What it exercises:
 
@@ -25,7 +25,7 @@ make            # -> build/ra8_io_demo.elf
 ## Run in the simulator
 
 ```
-BOARD_SIM_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_demo.elf
+RA8_EMU_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_demo.elf
 ```
 
 Expected console output:
@@ -37,6 +37,6 @@ Expected console output:
 
 ## Status
 
-`hw_pending`: the logic is proven in `board_sim` (RAM backend is pure memory, so
+`hw_pending`: the logic is proven in `ra8_emulator` (RAM backend is pure memory, so
 no peripheral model is needed). The same code runs on silicon; promote to
 `hw_validated` after a bench run captures the PASS line over the J-Link UART.

@@ -4,7 +4,7 @@
 #
 # SECURITY (public-repo hardening): lightweight CI for FORK pull requests.
 #
-# Every self-hosted workflow (firmware.yml, coverage.yml, board-sim-smoke.yml,
+# Every self-hosted workflow (firmware.yml, coverage.yml, emulator-smoke.yml,
 # inclusive-terminology.yml, no-ai-attribution.yml) carries a job-level guard
 # that SKIPS the job for fork PRs, so untrusted fork code never runs on the
 # owner's self-hosted runners. That leaves an external contributor with zero CI

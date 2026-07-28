@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 The first runnable increment of the app framework (issue #146). It exercises
 the `ra8_app` lifecycle / registry / launcher plus the navigation back-stack
 (`ra8_app_nav_t`) end-to-end on the real Cortex-M85 image -- **no display, no
-widgets** -- so the launch path is observable headlessly on `board_sim` through
+widgets** -- so the launch path is observable headlessly on `ra8_emulator` through
 the ITM log.
 
 ## What it proves
@@ -47,7 +47,7 @@ make app_launch_demo                 # from the repo root
 # or:
 cd examples/ek_ra8d2/hw_pending/app_launch_demo && make
 
-# Headless on board_sim (ITM lines show up as `[itm] ...`):
+# Headless on ra8_emulator (ITM lines show up as `[itm] ...`):
 tools/ra8_emulator/build/ra8_emulator \
     examples/ek_ra8d2/hw_pending/app_launch_demo/build/app_launch_demo.elf
 ```
@@ -65,6 +65,6 @@ A passing run emits:
 
 ## Status
 
-`hw_pending`: validated on `board_sim` (boots, runs the self-check, emits the
+`hw_pending`: validated on `ra8_emulator` (boots, runs the self-check, emits the
 PASS banner). Not yet run on the EK-RA8D2 hardware -- with a J-Link attached the
 same ITM lines appear in the SWV / RTT console.

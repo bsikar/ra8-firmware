@@ -25,11 +25,11 @@
  * The TCP MSS is clamped with ``ra8_tls_mss_clamp`` so every segment fits
  * inside the #21-pinned 128-byte MTU (128 - 20 IPv4 - 20 TCP == 88).
  *
- * ## Why hw_pending (not sim-gated)
+ * ## Why hw_pending (not emulator-gated)
  *
- * board_sim runs the real firmware ELF, so a genuine handshake here needs
+ * ra8_emulator runs the real firmware ELF, so a genuine handshake here needs
  * (a) a crypto-complete TLS *server* on the wire and (b) a working entropy
- * source under emulation. Today board_sim's peer (``board_net``) is a
+ * source under emulation. Today ra8_emulator's peer (``board_net``) is a
  * plaintext TCP stack with no TLS and no RSIP/TRNG model, so it cannot
  * complete an Mbed TLS handshake. Bringing up a board_net TLS-server
  * endpoint (host-side mbedtls + a reverse TCP role + a TRNG model) is the

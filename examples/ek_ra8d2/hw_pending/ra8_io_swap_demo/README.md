@@ -44,12 +44,12 @@ make            # -> build/ra8_io_swap_demo.elf
 
 ## Run in the simulator
 
-board_sim models both the RAM region and the OSPI NOR array, so no `--sd` flag is
+ra8_emulator models both the RAM region and the OSPI NOR array, so no `--sd` flag is
 needed. The OSPI RMW is slow in the emulator, so give it a generous instruction
 budget:
 
 ```
-BOARD_SIM_MAX_CHUNKS=6000000 BOARD_SIM_WALL_S=120 \
+RA8_EMU_MAX_CHUNKS=6000000 RA8_EMU_WALL_S=120 \
   tools/ra8_emulator/build/ra8_emulator build/ra8_io_swap_demo.elf
 ```
 
@@ -77,10 +77,10 @@ compound read-back verdict and the pattern-equality guard.
 
 ## Status
 
-`hw_pending`: the RAM, VFS, and stdio legs are fully exercised in `board_sim` and
+`hw_pending`: the RAM, VFS, and stdio legs are fully exercised in `ra8_emulator` and
 in the host unit test. The xSPI leg programs the *non-volatile* on-board OSPI NOR
-and has not yet been captured on the bench -- it is proven in `board_sim` (which
-models the OSPI NOR flash) and is register-identical to the already-sim-proven
+and has not yet been captured on the bench -- it is proven in `ra8_emulator` (which
+models the OSPI NOR flash) and is register-identical to the already-emulator-proven
 `ra8_io_xspi_demo`. Promote to `hw_validated` after a bench run captures the
 `two-backend swap (ram + xs) PASS` line over the J-Link UART against the real
 IS25LX512M.

@@ -23,7 +23,7 @@
 #
 # UNVALIDATED SCAFFOLD (issue #286): the two sources surfaced here link
 # and pass the static gates, but the NimBLE port has NEVER been
-# hardware-validated and is NOT sim-gated -- board_sim models no RA8D2
+# hardware-validated and is NOT emulator-gated -- ra8_emulator models no RA8D2
 # BLE controller / HCI mailbox, and the underlying ra8_ble transport is
 # itself unproven on this board (see #86, #91). Every app that links
 # `nimble_port_threadx` therefore stays under `examples/_unsupported/`

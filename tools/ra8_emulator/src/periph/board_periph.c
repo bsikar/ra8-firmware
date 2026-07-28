@@ -1,6 +1,6 @@
 /**
  * @file board_periph.c
- * @brief Peripheral-block registry core + ICU/NVIC routing for board_sim
+ * @brief Peripheral-block registry core + ICU/NVIC routing for ra8_emulator
  *
  * @details
  * The framework half of the peripheral model: a dynamic registry of peripheral
@@ -254,7 +254,7 @@ static uint32_t s_irq_total;                  /**< Total IRQs delivered.     */
 
 /* NVIC set-enable shadow. The Cortex-M NVIC ISER/ICER registers are
  * set-enable / clear-enable (a written 1 sets / clears that line, a written 0
- * is ignored), but board_sim maps the PPB as plain RAM, so a raw store of
+ * is ignored), but ra8_emulator maps the PPB as plain RAM, so a raw store of
  * "1 << bit" to ISER would clobber every other already-enabled line. main.c
  * decodes ISER/ICER writes and routes the set/clear bits here, where this
  * accumulating mask is the authoritative enable state the ICU model checks --
@@ -393,7 +393,7 @@ static void icu_write(uint64_t addr, uint32_t value)
    * The emulator therefore ran every ISR-driven app cleanly while the bench
    * live-locked in an interrupt storm (#170: lpm_periodic_idle emitted no UART
    * at all, stuck in IRQ0_Handler with IELSR0 = 0x00010080). Modelling the real
-   * polarity makes the sim reproduce that storm, so the bug cannot hide here
+   * polarity makes the emulator reproduce that storm, so the bug cannot hide here
    * again. */
   const uint32_t ir_now  = s_ielsr[slot] & (uint32_t)k_ielsr_ir_mask;
   const uint32_t ir_keep = ((value & (uint32_t)k_ielsr_ir_mask) != 0U) ? ir_now : 0U;
@@ -476,7 +476,7 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
       /* Module-stopped peripheral: unclocked on silicon, so it reads 0 and the
        * modelled block must NOT answer (#405). This is the same fidelity shape
        * as the #247 graphics power domain -- a block whose enable was never
-       * cancelled does nothing on hardware, and now nothing in the sim. */
+       * cancelled does nothing on hardware, and now nothing in the emulator. */
       board_mstp_note_gated_access(addr, false);
       return 0U;
     }
