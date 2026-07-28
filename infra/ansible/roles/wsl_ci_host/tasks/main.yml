@@ -89,6 +89,34 @@
         - /etc/systemd/system/ra8-wsl-route-pin.service
         - /usr/local/sbin/ra8-wsl-route-pin
 
+    - name: Remove the slew-not-step chrony configuration
+      # The drop-in is ours; chrony itself is not uninstalled, for the same
+      # reason Docker is not. Removing a package from somebody's machine on the
+      # way out is not this role's call.
+      ansible.builtin.file:
+        path: /etc/chrony/conf.d/10-ra8-slew-not-step.conf
+        state: absent
+      register: wsl_ci_host_chrony_conf_removed
+
+    - name: Restart chronyd without the drop-in
+      when: wsl_ci_host_chrony_conf_removed.changed
+      ansible.builtin.systemd_service:
+        name: chronyd
+        state: restarted
+      failed_when: false
+
+    - name: Unmask systemd-timesyncd so the distro has a time daemon again
+      # The removal path leaves chrony installed (see above) but must not leave
+      # the machine with BOTH time daemons masked -- that would hand it back
+      # with no clock discipline at all, which is worse than how it was found.
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        masked: false
+      loop:
+        - systemd-timesyncd
+        - systemd-time-wait-sync
+      failed_when: false
+
     - name: Check for the .wslconfig backup taken on first run
       ansible.builtin.stat:
         path: "{{ wsl_ci_host_profile }}/.wslconfig.ra8-backup"
@@ -110,7 +138,7 @@
         msg: >-
           WSL host configuration removed: autostart task
           {{ wsl_ci_host_task_name }} deleted, route-pin units removed,
-          .wslconfig
+          slew-not-step chrony drop-in removed, .wslconfig
           {{ 'restored from backup' if wsl_ci_host_backup.stat.exists
              else 'left as-is (no backup found)' }}. Docker Engine and Docker
           Desktop were deliberately NOT touched. Run `wsl --shutdown` from
@@ -266,26 +294,184 @@
     #
     # That is not cosmetic: make's up-to-date decisions are timestamp
     # comparisons, so a build under a stepping clock can silently skip work or
-    # relink forever. It recurs on EVERY boot, which on this host means after
-    # every reboot -- exactly when the autostart chain is supposed to be
-    # bringing the runner back.
+    # relink forever.
     #
-    # The fix is ordering, not tuning: do not let the runner start until the
-    # clock has been synchronised.
+    # ORDERING WAS NECESSARY AND NOT SUFFICIENT (#509). Holding docker back
+    # until the clock is synchronised fixes the step that happens at BOOT. It
+    # does nothing about a step that happens at 07:13 on a host that booted
+    # hours earlier -- and that is what the fleet was measured doing. Scanning
+    # the 100 most recent completed workflow runs for a step whose recorded
+    # completed_at precedes its own started_at (scripts/checks/
+    # check_runner_clock.py, now a gate) found 16 such steps, all three
+    # runners on THIS host, none anywhere else in the fleet:
+    #
+    #   win-ci-3: 8   win-ci-1: 5   win-ci-2: 3
+    #   truenas-ci-1: 0   every ra8-ci ARC pod: 0
+    #
+    # The three win-ci runners are containers in one distro, so that is one
+    # clock, faulting repeatedly through the working day.
+    #
+    # WHAT IS ACTUALLY HAPPENING. Every full-size event is a backward step of
+    # 242-248 s, and the size does NOT grow with the interval between events --
+    # 16 minutes apart gives 247 s, 4 minutes apart gives 242 s. A clock that
+    # merely RAN FAST would produce a correction proportional to the gap. A
+    # constant ~245 s offset that keeps being re-introduced does not. So this
+    # is not drift: it is two time sources disagreeing by a fixed ~4 minutes
+    # and taking turns.
+    #
+    # The two are the Windows host (which a WSL2 VM takes its clock from, and
+    # which WSL re-asserts periodically and on resume) and NTP inside the
+    # distro. The Windows clock is ~4 minutes fast -- the same "the VM's RTC
+    # runs ~4 minutes ahead" this role already recorded, an RTC being exactly
+    # what the host hands the guest. WSL pushes host time in, the distro's
+    # timesyncd sees a 245 s offset, and timesyncd STEPS for anything past
+    # 0.2 s. The forward pushes are invisible in the API (they only make a step
+    # look longer); the backward corrections are the ones that show up.
+    #
+    # THE FIX HAS TO REMOVE ONE OF THE TWO SOURCES, and the half that is
+    # reachable from inside the distro is the second one. So:
+    #
+    #  1. chrony replaces timesyncd, configured to step only while starting up
+    #     and to SLEW every correction after that. A build farm wants slew: a
+    #     clock that is briefly wrong but monotonic keeps every duration and
+    #     every mtime comparison sound, while a clock that is instantaneously
+    #     right by way of a jump corrupts both. This is unconditional and
+    #     applies to any host this role is ever pointed at.
+    #  2. The Windows clock is asserted, not assumed. Fixing it needs an
+    #     elevated Windows action that WSL interop cannot perform (interop
+    #     launches .exe with the user's filtered token, so sc.exe / w32tm
+    #     /config are denied), which makes it an owner action -- and an owner
+    #     action nobody is told about is one nobody performs. The play fails
+    #     with the exact commands rather than converging on a host that will
+    #     resume stepping.
+    #
+    # The gate is what proves convergence: scripts/ci.sh --gate runner-clock,
+    # scheduled nightly, re-reads the fleet from the API and fails while any
+    # runner is still moving its clock under a job.
 
-    - name: Ensure NTP synchronisation is enabled
+    - name: Install chrony
+      ansible.builtin.apt:
+        name: chrony
+        state: present
+        update_cache: true
+
+    - name: Stop and disable systemd-timesyncd and its wait unit
+      # Explicit, not left to the chrony package's postinst. Two daemons
+      # disciplining one clock is the exact shape of the fault being fixed, and
+      # "the packaging probably handles it" is not a thing to find out from a
+      # 4-minute step in the middle of a nightly sweep. Disabling
+      # systemd-time-wait-sync in the same breath is why the Docker drop-in
+      # below orders against chrony-wait instead: a wait unit for a daemon that
+      # is not running would return instantly and order against nothing.
       ansible.builtin.systemd_service:
-        name: systemd-timesyncd
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      loop:
+        - systemd-timesyncd
+        - systemd-time-wait-sync
+      failed_when: false
+
+    - name: Mask systemd-timesyncd and its wait unit
+      # A separate task from the disable above, and after it: `systemctl
+      # disable` on an already-masked unit fails, so doing both in one call
+      # makes the outcome depend on the module's internal ordering.
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        masked: true
+      loop:
+        - systemd-timesyncd
+        - systemd-time-wait-sync
+      failed_when: false
+
+    - name: Read whether timesyncd is still disciplining the clock
+      ansible.builtin.command:
+        cmd: systemctl is-active systemd-timesyncd
+      register: wsl_ci_host_timesyncd_active
+      changed_when: false
+      failed_when: false
+
+    - name: Assert only one daemon is disciplining the clock
+      # The two tasks above are best-effort (`failed_when: false`) because a
+      # distro without timesyncd is fine. What is NOT fine is both daemons
+      # running, so the OUTCOME is asserted rather than the actions assumed --
+      # a silently-swallowed mask failure would otherwise leave exactly the
+      # two-source fight this section exists to end.
+      ansible.builtin.assert:
+        that:
+          - (wsl_ci_host_timesyncd_active.stdout | trim) != 'active'
+        fail_msg: >-
+          systemd-timesyncd is still active alongside chrony. Two daemons
+          disciplining one clock is what produced the repeating 4-minute
+          backward steps (#509); masking it did not take.
+        success_msg: >-
+          timesyncd is
+          {{ wsl_ci_host_timesyncd_active.stdout | trim | default('absent', true) }};
+          chrony alone disciplines this clock
+
+    - name: Ensure chrony's drop-in directory exists
+      # chrony.conf on Ubuntu carries `confdir /etc/chrony/conf.d`, so this is
+      # where a managed fragment belongs -- but a fragment written into a
+      # directory chrony is not reading is configuration that does nothing, so
+      # it is created rather than assumed.
+      ansible.builtin.file:
+        path: /etc/chrony/conf.d
+        state: directory
+        mode: "0755"
+
+    - name: Configure chrony to slew rather than step
+      # makestep <threshold> <updates>: allow a step for an offset over
+      # <threshold> seconds, but only for the first <updates> clock updates
+      # after chronyd starts -- a VM legitimately comes up with a wrong clock
+      # and has to be able to jump to the truth once, BEFORE any job is
+      # accepted -- and slew everything after that, forever. That is the whole
+      # behavioural difference from timesyncd, which has no such distinction
+      # and steps for any offset over 0.2 s at any time, including the middle
+      # of a 600 s fuzz budget.
+      #
+      # The distro's stock chrony.conf already ships `makestep 1 3`, so this
+      # line usually restates the default. It is written anyway because the
+      # property the whole fix rests on should be OWNED here, not inherited
+      # from a packaging default that can change under us in a release note
+      # nobody on this project reads.
+      #
+      # `confdir /etc/chrony/conf.d` is line 5 of that stock chrony.conf, which
+      # is why a fragment is the right shape -- verified against the package
+      # rather than assumed.
+      ansible.builtin.copy:
+        dest: /etc/chrony/conf.d/10-ra8-slew-not-step.conf
+        mode: "0644"
+        content: |
+          # Managed by the ra8-firmware wsl_ci_host Ansible role.
+          # A CI host's clock may be wrong; it may not be non-monotonic (#509).
+          {% for server in wsl_ci_host_ntp_servers %}
+          server {{ server }} iburst
+          {% endfor %}
+          makestep {{ wsl_ci_host_clock_step_threshold_s }} {{ wsl_ci_host_clock_step_updates }}
+      register: wsl_ci_host_chrony_conf
+
+    - name: Restart chronyd when its configuration changed
+      # Explicit rather than a handler: handlers run at the end of the play,
+      # long after the assertions below would have read the clock chronyd was
+      # still configured the old way to discipline.
+      when: wsl_ci_host_chrony_conf.changed
+      ansible.builtin.systemd_service:
+        name: chronyd
+        state: restarted
+        daemon_reload: true
+
+    - name: Enable chronyd and the unit that blocks until it has synchronised
+      # chrony-wait is chrony's equivalent of systemd-time-wait-sync: it holds
+      # time-sync.target until chronyd reports a disciplined clock, which is
+      # what the Docker drop-in below orders against.
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
         state: started
         enabled: true
-
-    - name: Enable the unit that blocks until the clock is synchronised
-      # Ships with systemd and is disabled by default. It is the supported way
-      # to say "later units may assume the clock is right".
-      ansible.builtin.systemd_service:
-        name: systemd-time-wait-sync
-        state: started
-        enabled: true
+        daemon_reload: true
+      loop:
+        - chronyd
+        - chrony-wait
 
     - name: Install Docker Engine inside the distro
       when: wsl_ci_host_install_docker | bool
@@ -355,14 +541,20 @@
           # means the daemon's start time IS the moment this host begins
           # accepting jobs. Ordering it after the clock settles is what stops
           # the first build after every boot running under a stepping clock.
+          #
+          # chrony-wait.service, not systemd-time-wait-sync.service: chrony is
+          # what disciplines this clock now (see the Clock section), and
+          # timesyncd's wait unit would be inert with timesyncd itself
+          # disabled -- an ordering constraint that orders against nothing is
+          # the most expensive kind of comment.
           ansible.builtin.copy:
             dest: /etc/systemd/system/docker.service.d/10-wait-for-clock.conf
             mode: "0644"
             content: |
               # Managed by the ra8-firmware wsl_ci_host Ansible role.
               [Unit]
-              After=systemd-time-wait-sync.service
-              Wants=systemd-time-wait-sync.service
+              After=chrony-wait.service
+              Wants=chrony-wait.service
 
         - name: Enable and start the Docker daemon
           ansible.builtin.systemd_service:
@@ -525,19 +717,21 @@
 
     - name: Wait for the clock to be synchronised
       # WAITED for, not sampled once. NTPSynchronized is reset to "no" whenever
-      # timesyncd (re)starts and only becomes "yes" after it has actually
-      # contacted a server, so a single reading taken moments after this play
-      # touched the unit races it and reports a false failure on a host whose
-      # clock is fine.
+      # the time daemon (re)starts and only becomes "yes" once it has actually
+      # disciplined the clock, so a single reading taken moments after this
+      # play restarted chronyd races it and reports a false failure on a host
+      # whose clock is fine. The property is read from the kernel's own
+      # synchronisation flag, so it answers for chrony exactly as it did for
+      # timesyncd.
       #
       # The underlying fault this guards is real and was measured here: the
-      # VM's RTC runs ~4 minutes ahead of true time, so timesyncd steps the
-      # system clock BACKWARD shortly after boot. A build straddling that step
-      # sees file modification times hundreds of seconds in the future, make
-      # reports "Clock skew detected. Your build may be incomplete", and its
-      # up-to-date decisions -- which are timestamp comparisons -- stop being
-      # sound. That presents as a flaky gate, not as a host fault, which is
-      # why it is worth blocking the deploy over.
+      # VM's RTC runs ~4 minutes ahead of true time, so the distro's clock is
+      # dragged BACKWARD to the truth. A build straddling that step sees file
+      # modification times hundreds of seconds in the future, make reports
+      # "Clock skew detected. Your build may be incomplete", and its up-to-date
+      # decisions -- which are timestamp comparisons -- stop being sound. That
+      # presents as a flaky gate, not as a host fault, which is why it is worth
+      # blocking the deploy over.
       ansible.builtin.command:
         cmd: timedatectl show --property=NTPSynchronized --value
       register: wsl_ci_host_ntp
@@ -545,6 +739,85 @@
       until: (wsl_ci_host_ntp.stdout | trim) == 'yes'
       retries: "{{ wsl_ci_host_clock_retries | int }}"
       delay: "{{ wsl_ci_host_clock_delay | int }}"
+
+    - name: Read the Windows host's own clock
+      # Through interop, because this is the OTHER time source and it is the
+      # one that is wrong. A WSL2 guest takes its clock from the host and WSL
+      # re-asserts host time periodically and on resume, so a Windows clock
+      # that disagrees with NTP is re-injected into the distro all day -- and
+      # is then corrected back out again. Reading it is how that disagreement
+      # stops being an inference and becomes a number the deploy can act on.
+      ansible.builtin.command:
+        argv:
+          - powershell.exe
+          - -NoProfile
+          - -Command
+          - "[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()"
+      register: wsl_ci_host_windows_epoch
+      changed_when: false
+      failed_when: false
+
+    - name: Read the distro's synchronised clock for comparison
+      ansible.builtin.command:
+        cmd: date -u +%s
+      register: wsl_ci_host_distro_epoch
+      changed_when: false
+
+    - name: Assert the Windows clock could be read at all
+      # No `when:` guard on the comparison below, so a host where interop is
+      # broken cannot skip the check and converge looking healthy. A check that
+      # disappears when its dependency does is the failure mode this repository
+      # keeps finding; it fails here instead.
+      ansible.builtin.assert:
+        that:
+          - wsl_ci_host_windows_epoch.rc == 0
+          - (wsl_ci_host_windows_epoch.stdout | trim) is match('^[0-9]+$')
+        fail_msg: >-
+          powershell.exe could not be run through WSL interop (rc
+          {{ wsl_ci_host_windows_epoch.rc }}), so the Windows clock -- the
+          other half of the pair that has to agree -- cannot be read. Interop
+          is required by this role anyway (the autostart task is created with
+          schtasks.exe), so this is a broken host rather than an unsupported
+          one.
+        success_msg: "Windows clock read through interop"
+
+    - name: Assert the Windows clock agrees with the distro's synchronised clock
+      # THE INVARIANT (#509). chrony above guarantees this distro never steps
+      # its own clock backward; it cannot stop WSL pushing the host's clock in.
+      # So if the two disagree, every push re-introduces the offset and every
+      # correction slews it back out, and the host is measuring durations with
+      # a ruler that keeps changing length.
+      #
+      # This is deliberately a FAILURE and not a warning. Fixing it needs an
+      # elevated Windows action, which WSL interop cannot perform -- interop
+      # launches .exe under the user's filtered token, so `sc.exe config` and
+      # `w32tm /config` are denied -- which makes it an owner action. An owner
+      # action recorded only in a debug message is one nobody performs, and
+      # this fault survived precisely that treatment once already.
+      ansible.builtin.assert:
+        that:
+          - (((wsl_ci_host_windows_epoch.stdout | trim | int)
+              - (wsl_ci_host_distro_epoch.stdout | trim | int)) | abs)
+            <= (wsl_ci_host_host_clock_tolerance_s | int)
+        fail_msg: >-
+          The Windows host clock is
+          {{ ((wsl_ci_host_windows_epoch.stdout | trim | int)
+              - (wsl_ci_host_distro_epoch.stdout | trim | int)) }}
+          seconds away from this distro's NTP-synchronised clock (tolerance
+          {{ wsl_ci_host_host_clock_tolerance_s }} s). WSL re-asserts host time
+          into the guest, so that offset will be pushed in and slewed back out
+          for as long as it exists, and every time-budgeted gate on this host
+          measures the wrong thing (#509). Fix it from an ELEVATED PowerShell
+          on Windows -- interop cannot, it has no admin token:
+          `sc.exe config w32time start= auto`;
+          `net start w32time`;
+          `w32tm /config /manualpeerlist:"{{ wsl_ci_host_ntp_servers | join(' ') }}"
+          /syncfromflags:manual /update`; `w32tm /resync /force`. Then re-run
+          this play, and confirm with `make ci-gate GATE=runner-clock`.
+        success_msg: >-
+          Windows and the distro agree to within
+          {{ ((wsl_ci_host_windows_epoch.stdout | trim | int)
+              - (wsl_ci_host_distro_epoch.stdout | trim | int)) | abs }}s
 
     - name: Prove the runner can actually reach GitHub
       # The point of the whole networking section. A runner that cannot resolve
@@ -564,7 +837,10 @@
           WSL host ready: {{ wsl_ci_host_nproc.stdout | trim }} processors,
           memory cap {{ wsl_ci_host_memory }}, swap {{ wsl_ci_host_swap }};
           default route pinned by ra8-wsl-route-pin.timer every
-          {{ wsl_ci_host_route_pin_interval }}; api.github.com reachable;
+          {{ wsl_ci_host_route_pin_interval }}; clock disciplined by chrony,
+          slew-only after the first {{ wsl_ci_host_clock_step_updates }}
+          updates, and in agreement with the Windows host;
+          api.github.com reachable;
           docker is {{ wsl_ci_host_which_docker.stdout | trim }}; the distro is
           started at {{ wsl_ci_host_task_trigger }} by the Windows task
           {{ wsl_ci_host_task_name }}. Deploy the runner itself with the

@@ -83,13 +83,58 @@ wsl_ci_host_auto_memory_reclaim: "gradual"
 # default behaviour is permanently hostile to it.
 wsl_ci_host_vm_idle_timeout: -1
 
-# How long to wait for timesyncd to report a synchronised clock before failing
-# the play. NTPSynchronized flips to "no" whenever the unit restarts and only
-# returns to "yes" after it has contacted a server, so this is a genuine wait
-# rather than a retry-until-lucky: 30 x 4s covers a cold boot on a link that
-# has to resolve and reach an NTP pool.
+# --- Clock ------------------------------------------------------------------
+#
+# A CI host's clock may be wrong. It may not be non-monotonic. Every gate whose
+# contract is a DURATION rather than a result is measured on it -- libFuzzer's
+# -max_total_time, every job's timeout-minutes, every benchmark -- and a clock
+# that steps makes all of them measure something else while still reporting
+# success. See the Clock section of tasks/main.yml for the measurement that
+# produced these settings (#509).
+
+# How long to wait for the time daemon to report a synchronised clock before
+# failing the play. NTPSynchronized flips to "no" whenever the daemon restarts
+# and only returns to "yes" after it has actually disciplined the clock, so this
+# is a genuine wait rather than a retry-until-lucky: 30 x 4s covers a cold boot
+# on a link that has to resolve and reach an NTP pool.
 wsl_ci_host_clock_retries: 30
 wsl_ci_host_clock_delay: 4
+
+# Time sources for chrony. Public pools by default for the same reason the
+# nameservers above are public: pinning the LAN gateway would couple the build
+# farm to the owner's home router keeping one address.
+wsl_ci_host_ntp_servers:
+  - "time.cloudflare.com"
+  - "pool.ntp.org"
+
+# chrony's `makestep <threshold> <updates>`: allow a step for an offset larger
+# than <threshold> seconds, but only for the first <updates> clock updates
+# after chronyd starts -- then slew, forever.
+#
+# The split is the whole point. A VM legitimately boots with a wrong clock and
+# has to be able to jump to the truth once, and it does that BEFORE docker (and
+# therefore the runners) are allowed to start. After that a jump is never the
+# right answer on a machine that is timing things: timesyncd's unconditional
+# "step anything over 0.2 s" is what put a backward 4-minute step in the middle
+# of a running fuzz budget.
+#
+# These are the distro's own chrony defaults. Stated here anyway so the value
+# the whole fix rests on is owned by this role rather than inherited from a
+# packaging default that can change without anyone here noticing.
+wsl_ci_host_clock_step_threshold_s: 1.0
+wsl_ci_host_clock_step_updates: 3
+
+# How far the WINDOWS clock may sit from this distro's synchronised clock
+# before the play fails.
+#
+# It is the other time source: WSL re-asserts host time into the guest
+# periodically and on resume, so a Windows clock that disagrees with NTP is
+# pushed in all day and corrected back out all day. 30 s is loose enough that
+# ordinary Windows Time behaviour (which polls infrequently) never trips it and
+# tight enough to catch the ~245 s disagreement that was actually measured
+# here. Fixing it is an elevated Windows action; the failure message names the
+# commands.
+wsl_ci_host_host_clock_tolerance_s: 30
 
 # --- Networking -------------------------------------------------------------
 #
