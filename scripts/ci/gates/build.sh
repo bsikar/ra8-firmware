@@ -164,11 +164,40 @@ gate_tools_build() (
 # #178: RA8_STRICT_TOOLCHAIN=1 promotes toolchain-ra8d2.cmake's version
 # mismatch warning to a hard error, so a runner with a skewed arm-gcc fails
 # loudly instead of silently shipping version-divergent miniz codegen.
+#
+# RA8_BUILD_SHARDS/RA8_BUILD_SHARD (both read by all_examples.sh, and passed
+# through from the workflow's matrix rather than as CLI arguments so the
+# workflow step stays the bare `--gate build-cross` driver ci-parity requires)
+# build only a stride slice of the app list. Unset -- the local suite -- builds
+# everything, exactly as before. Whatever the split, the build-cross-union gate
+# below proves the shards covered the tree.
 gate_build_cross() (
   set -e
   use_pinned_arm_toolchain
   require_cmd arm-none-eabi-gcc
   RA8_STRICT_TOOLCHAIN=1 bash scripts/builders/all_examples.sh
+)
+
+# --- build-cross-union ----------------------------------------------------
+# Proves the sharded cross-build was WHOLE. Sharding a gate across parallel
+# jobs silently weakens it unless something checks the union: a shard that was
+# skipped, cancelled, or sliced to nothing emits no error, and the stack-usage
+# aggregate downstream would just measure fewer .su files and still clear its
+# floor on the shards that did run -- a gate quietly checking less than it
+# claims, which is this tree's most-repeated defect.
+#
+# The checker re-derives the app list itself instead of trusting the manifest
+# a shard wrote (a broken discovery would otherwise agree with itself), and
+# fails on a missing shard, an unbuilt app, or an app claimed twice. Its
+# --selftest runs first and asserts both directions, so a detector that
+# stopped matching cannot pass as a clean gate.
+#
+# Unsharded (the local suite) this is N=1 and still a real check: it proves
+# every discovered app reached the build.
+gate_build_cross_union() (
+  set -e
+  python3 scripts/checks/check_build_shard_union.py --selftest
+  python3 scripts/checks/check_build_shard_union.py --shards "${RA8_BUILD_SHARDS:-1}"
 )
 
 # --- docs -----------------------------------------------------------------

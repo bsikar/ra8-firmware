@@ -534,20 +534,135 @@ jobs:
       - run: bash scripts/ci.sh --gate doc-attachment
 
   # ---------------------------------------------------------------------------
-  # Cross-compile all examples, then the two gates that read the build output.
-  # They share a job because sg-offsets needs the linked secure ELF and
-  # stack-usage needs the per-object .su files -- both artefacts of the build
-  # above, which a separate runner would not have.
+  # Cross-compile all 217 example apps, sharded four ways, then aggregate.
+  #
+  # This was the longest job in the workflow: 18.3-33.9 min measured across
+  # five runs, and the single term that set the floor on total wall clock
+  # (work/capacity was ~22 min, so a 34 min job genuinely bound the critical
+  # path). all_examples.sh now honours RA8_BUILD_SHARDS/RA8_BUILD_SHARD and
+  # builds a STRIDE slice -- interleaved, not contiguous, because the ~8
+  # shared-archive-ineligible apps (TrustZone, RA8P1) compile all ~180 library
+  # sources from source while an eligible app compiles ~16, and alphabetical
+  # order clusters the heavy ones together.
+  #
+  # WHY FOUR. Sized against the makespan floor, not picked for roundness.
+  # Capacity is ~13 concurrent ra8-ci runners (up to 8-9 ARC pods, the NAS
+  # host, and 3 Windows instances on the Ryzen box), and this workflow carries
+  # ~130 min of total work, so work/capacity is ~10 min. There is no point
+  # driving any single job below that floor -- and the MC/DC gate, which is one
+  # indivisible clang -fcoverage-mcdc rebuild, already sits at 10.4-13.8 min
+  # and is not shardable at all. Four shards land build-cross in the same band.
+  #
+  # Going wider costs more than it buys: every shard re-pays the unshardable
+  # serial prefix (the shared compile_commands configure plus the ~180-source
+  # universal archive), so a shard costs S + (T-S)/N. Past N=4 the (T-S)/N term
+  # is already under S, so each extra shard adds a whole S of duplicated work
+  # to the fleet while moving the makespan floor not at all -- and a matrix
+  # wider than the free-runner count simply re-queues, which is worse, since
+  # pushes key their concurrency group on the SHA (#366) and several full runs
+  # are legitimately in flight at once.
+  #
+  # RA8_MAX_JOBS is capped at 2 here on purpose. ra8_max_jobs would otherwise
+  # resolve to CMAKE_BUILD_PARALLEL_LEVEL=4 in every shard, and 4 shards x 4
+  # workers is 16 concurrent builds on an already-oversubscribed node (#485) --
+  # exactly the #328 blow-up that once made an unrelated gate time out and read
+  # as a code regression. 4 x 2 keeps the aggregate width where it was.
   # ---------------------------------------------------------------------------
   build-cross:
-    name: Cross-build all apps
+    name: Cross-build apps (shard ${{ matrix.shard }}/4)
     runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      # Every shard reports independently: fail-fast would cancel the siblings
+      # of a broken shard and leave the union check unable to say whether the
+      # rest of the tree builds.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      RA8_BUILD_SHARD: ${{ matrix.shard }}
+      RA8_BUILD_SHARDS: 4
+      RA8_MAX_JOBS: 2
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate build-cross
+      - name: Pack this shard's stack-usage output
+        run: |
+          # ci-parity: infra -- collects build artefacts for the aggregate job;
+          # runs no project check. The .su files and the shard manifest are
+          # inputs to gates that run in build-cross-aggregate, not checks in
+          # themselves. Tarred rather than uploaded loose because a full build
+          # leaves ~7550 small .su files and the file COUNT, not the ~10 MB,
+          # is what makes an artifact upload slow.
+          set -euo pipefail
+          mkdir -p shard-out
+          # Build an explicit path list, then archive from it. Every path here
+          # is repo-relative and space-free (app names are bare directory
+          # names), so a newline-delimited list is safe.
+          find examples -name '*.su' >pack-list.txt
+          if [ -d build/shared_libs ]; then
+            find build/shared_libs -name '*.su' >>pack-list.txt
+          fi
+          echo build/build_all_examples/.shard >>pack-list.txt
+          tar czf "shard-out/su-${RA8_BUILD_SHARD}.tgz" -T pack-list.txt
+          # The Secure ELF the sg-offsets gate reads. Only the shard that owns
+          # tz_nsc_cgc_usb has one; the others legitimately ship none, so an
+          # empty find is not an error here.
+          find examples -type f -name 'tz_nsc_cgc_usb.elf' >sg-list.txt
+          if [ -s sg-list.txt ]; then
+            tar czf "shard-out/sgelf-${RA8_BUILD_SHARD}.tgz" -T sg-list.txt
+          fi
+      - name: Upload shard build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-cross-shard-${{ matrix.shard }}
+          path: shard-out/
+          retention-days: 3
+
+  # ---------------------------------------------------------------------------
+  # Re-unite the shards and run the three gates that read the whole build.
+  #
+  # build-cross-union runs FIRST and is the load-bearing one: it re-derives the
+  # app list itself and fails unless the four manifests cover it exactly once.
+  # Without it, sharding would silently weaken everything downstream -- a shard
+  # that never ran leaves fewer .su files, and stack-usage's 5000-function
+  # floor is a whole-tree calibration (~90k functions) that three of four
+  # shards clear on their own. The floor cannot detect a missing quarter; the
+  # union check can, so it is what proves completeness, not the floor.
+  # ---------------------------------------------------------------------------
+  build-cross-aggregate:
+    name: Cross-build aggregate (union, SG offsets, stack usage)
+    runs-on: ra8-ci
+    needs: build-cross
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      RA8_BUILD_SHARDS: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download every shard's build output
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-cross-shard-*
+          path: shard-in
+      - name: Reassemble the sharded build tree
+        run: |
+          # ci-parity: infra -- unpacks the shard artefacts into the checkout;
+          # runs no project check. Paths inside the tarballs are repo-relative
+          # and must land back at their original depth: stack_usage_check.py
+          # attributes a .su to an app by the path component preceding the
+          # first build* segment, so a flattened restore would misattribute
+          # every frame.
+          set -euo pipefail
+          find shard-in -name '*.tgz' -print0 |
+            while IFS= read -r -d '' t; do tar xzf "$t"; done
+          echo "restored $(find examples -name '*.su' | wc -l) .su file(s) from examples/"
+          arch=$(find build/shared_libs -name '*.su' 2>/dev/null | wc -l)
+          echo "restored $arch .su file(s) from the shared archive"
+      - run: bash scripts/ci.sh --gate build-cross-union
       - run: bash scripts/ci.sh --gate sg-offsets
       - run: bash scripts/ci.sh --gate stack-usage
 
