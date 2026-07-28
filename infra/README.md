@@ -78,12 +78,17 @@ the number that matters:
 
 | Job | truenas | pve1 |
 |---|---|---|
+| `Cross-build all apps` | 808s | 1689s / 1201s |
 | `ra8_emulator boot smoke` | 556s | 2500s / 2436s |
 | `Pre-commit gate suite` | 787s | 1331s / 1009s |
 | `clang-tidy` | 329s / 331s | 982s / 981s |
 | `MC/DC coverage gate` | 237s | 674s / 771s |
 | `Coverage (gcovr 90/80)` | 118s | 407s / 429s |
 | `Unit tests (host)` | 83s | 355s / 348s |
+
+The `Cross-build all apps` row is the cleanest of these: both numbers are two
+attempts of the *same workflow run* on the same commit, so the only variable is
+which host picked the job up.
 
 The role's `self-hosted`/`Linux`/`X64` labels are added by the runner itself
 and cannot be removed, which also makes the host eligible for the
