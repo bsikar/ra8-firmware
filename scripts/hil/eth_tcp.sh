@@ -175,16 +175,38 @@ else
     cp "$HEX" "$STRIPPED_HEX"
 fi
 
-# ---- 2. Pre-arm the USB-Ethernet adapter ------------------------------------
-# Find the USB-Ethernet interface (enx* or usb*). It will likely be in
-# NO-CARRIER state until the firmware boots and the PHY negotiates.
-USB_ETH_IFACE="$(ip -o link show 2>/dev/null |
-  awk -F': ' '/enx|usb[0-9]+/ && !/lo/ {print $2; exit}' || true)"
+# ---- 2. Pre-arm the board-facing Ethernet interface --------------------------
+# The board may hang off a USB adapter (enx*/usb*) or the Pi's built-in port.
+# The built-in port is the better peer for anything timing-related: USB adapters
+# carry no PTP hardware clock, while the onboard MAC does (see `ethtool -T`).
+# So do not match on the name -- pick any wired interface that is NOT carrying
+# this host's own connectivity, and let HIL_ETH_IFACE pin one explicitly.
+#
+# The interface is usually still NO-CARRIER here: the PHY only negotiates once
+# the firmware boots, so carrier cannot be part of the selection.
+uplink_iface="$(ip -o route show default 2>/dev/null | awk '{print $5; exit}' || true)"
+if [[ -n "${HIL_ETH_IFACE:-}" ]]; then
+  USB_ETH_IFACE="$HIL_ETH_IFACE"
+  if ! ip link show "$USB_ETH_IFACE" >/dev/null 2>&1; then
+    echo -e "${RED}[HIL]${NC} HIL_ETH_IFACE=${USB_ETH_IFACE} does not exist on Pi" >&2
+    exit 1
+  fi
+else
+  USB_ETH_IFACE="$(ip -o link show 2>/dev/null |
+    awk -F': ' -v up="$uplink_iface" \
+      '$2 != "lo" && $2 != up && $0 ~ /LOOPBACK/ == 0 &&
+       ($2 ~ /^(enx|usb|eth|en[ospx])/) {print $2; exit}' || true)"
+fi
 if [[ -z "$USB_ETH_IFACE" ]]; then
-  echo -e "${RED}[HIL]${NC} no USB-Ethernet interface (enx*/usb*) found on Pi" >&2
+  echo -e "${RED}[HIL]${NC} no board-facing Ethernet interface found on Pi" >&2
+  echo -e "${RED}[HIL]${NC} (set HIL_ETH_IFACE to name one explicitly)" >&2
   exit 1
 fi
-echo -e "${YELLOW}[HIL]${NC} USB-Ethernet iface = ${USB_ETH_IFACE}"
+if [[ "$USB_ETH_IFACE" == "$uplink_iface" ]]; then
+  echo -e "${RED}[HIL]${NC} refusing to use ${USB_ETH_IFACE}: it carries the Pi's default route" >&2
+  exit 1
+fi
+echo -e "${YELLOW}[HIL]${NC} board-facing iface = ${USB_ETH_IFACE}"
 
 # shellcheck disable=SC2329  # invoked from cleanup(), itself a trap handler.
 restore_iface() {
