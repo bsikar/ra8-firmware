@@ -138,6 +138,7 @@ RA8_GATE_REGISTRY=(
   "cache-bench|slow|cache/glyph benchmark toolchain"
   "tools-build|slow|first-party host tools compile, link and test on Linux"
   "build-cross|slow|cross-build every example app"
+  "build-cross-union|slow|the cross-build shards covered every app exactly once"
   "sg-offsets|slow|NSC SG-veneer slot offsets in the linked secure ELF"
   "stack-usage|slow|aggregate -fstack-usage frames"
   "docs|slow|Doxygen warning gate + authored-diagram render check"

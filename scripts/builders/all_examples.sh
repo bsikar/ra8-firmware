@@ -107,10 +107,73 @@ if [ "${#apps[@]}" -eq 0 ]; then
 fi
 
 # Sort the discovered apps alphabetically for stable output.
-mapfile -t apps < <(printf '%s\n' "${apps[@]}" | sort)
+#
+# LC_ALL=C is load-bearing, not cosmetic. Sharding (below) slices this list by
+# index, so every shard must agree byte-for-byte on the ORDER or an app is
+# built twice while another is never built at all -- and the union check would
+# be the only thing standing between that and a green run. Locale-dependent
+# collation across heterogeneous runners is exactly how that drift happens.
+mapfile -t apps < <(printf '%s\n' "${apps[@]}" | LC_ALL=C sort)
 
 LOG_DIR="$REPO_ROOT/build/build_all_examples"
 mkdir -p "$LOG_DIR"
+
+# --- sharding -------------------------------------------------------------
+# RA8_BUILD_SHARDS=N + RA8_BUILD_SHARD=K (1-based) build only this shard's
+# slice. Both unset is the default and builds everything, so the local suite
+# (`make ci-native`, `make build-all`) is bit-for-bit unchanged.
+#
+# The slice is a STRIDE (i % N == K-1), never a contiguous block. Per-app cost
+# is wildly uneven -- the ~8 shared-archive-ineligible apps (TrustZone, RA8P1)
+# compile all ~180 library sources from source while an eligible app compiles
+# ~16 TUs -- and alphabetical order clusters related heavy apps together
+# (threadx_*, usb_*, npu_*). A contiguous split would hand one shard most of
+# the expensive apps; a stride interleaves them.
+#
+# The manifests written here are what scripts/checks/check_build_shard_union.py
+# reads to PROVE the shards covered every app exactly once. A shard that
+# silently built nothing leaves an empty manifest and fails that check rather
+# than passing quietly.
+SHARD_DIR="$LOG_DIR/.shard"
+mkdir -p "$SHARD_DIR"
+shard_n="${RA8_BUILD_SHARDS:-1}"
+shard_k="${RA8_BUILD_SHARD:-1}"
+case "$shard_n" in
+  '' | *[!0-9]*)
+    echo "error: RA8_BUILD_SHARDS must be a positive integer, got '$shard_n'" >&2
+    exit 1
+    ;;
+esac
+case "$shard_k" in
+  '' | *[!0-9]*)
+    echo "error: RA8_BUILD_SHARD must be a positive integer, got '$shard_k'" >&2
+    exit 1
+    ;;
+esac
+if [ "$shard_n" -lt 1 ] || [ "$shard_k" -lt 1 ] || [ "$shard_k" -gt "$shard_n" ]; then
+  echo "error: need 1 <= RA8_BUILD_SHARD ($shard_k) <= RA8_BUILD_SHARDS ($shard_n)" >&2
+  exit 1
+fi
+# The full discovered set, written identically by every shard. The union
+# checker re-derives this independently and cross-checks, so a shard cannot
+# vouch for its own idea of what the tree contains.
+printf '%s\n' "${apps[@]}" >"$SHARD_DIR/all-apps.txt"
+if [ "$shard_n" -gt 1 ]; then
+  sharded=()
+  for i in "${!apps[@]}"; do
+    if [ "$((i % shard_n))" -eq "$((shard_k - 1))" ]; then
+      sharded+=("${apps[$i]}")
+    fi
+  done
+  if [ "${#sharded[@]}" -eq 0 ]; then
+    echo "error: shard $shard_k/$shard_n selected 0 of ${#apps[@]} apps -- more" >&2
+    echo "       shards than apps is a scheduling bug, not an empty build." >&2
+    exit 1
+  fi
+  apps=("${sharded[@]}")
+  echo "==> shard $shard_k/$shard_n: ${#apps[@]} of $(wc -l <"$SHARD_DIR/all-apps.txt" | tr -d ' ') apps"
+fi
+printf '%s\n' "${apps[@]}" >"$SHARD_DIR/shard-${shard_k}-of-${shard_n}.txt"
 
 # Per-app exit codes are collected in a status directory: each worker writes
 # $STATUS_DIR/<app> containing the app's `make` return code. Completion order
