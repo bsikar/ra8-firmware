@@ -517,6 +517,48 @@ gh api graphql -f query='mutation($p:ID!,$c:ID!){addProjectV2ItemById(
 Rule of thumb: if a human would have to read this conversation to know the
 state of the work, the board is wrong -- fix the board, not the conversation.
 
+### `origin` carries exactly THREE branches
+
+`dev`, `main`, `gh-pages`. Nothing else, ever, once a piece of work is done.
+
+A leftover branch is not free clutter -- it is a question nobody can answer by
+looking. *Did this merge? Is it stale? Is there work in here I would lose?*
+That doubt has already cost real time, and the merge graph cannot resolve it
+here because everything lands rebased or squashed, so `git branch --merged`
+and `git cherry` both lie.
+
+**Delete your branch as part of landing it, not "later".** Landing is not
+finished until `git branch -r` shows three.
+
+To prove a branch holds nothing unlanded, do NOT trust the merge graph. Match
+each commit by SUBJECT against `dev`, then compare DIFFSTATS, and where they
+disagree diff the actual file contents. That sequence has caught a real
+discrepancy that subject-matching alone called clean (a `Doxyfile` change that
+had landed in a *different* commit -- content identical, so genuinely safe, but
+only a content probe could show it).
+
+```sh
+git log --format='%h|%s' origin/dev..origin/<branch> | while IFS='|' read -r h s; do
+  git log origin/dev --format=%s | grep -qxF "$s" && echo "LANDED: $s" || echo "UNLANDED: $h $s"
+done
+SKIP_CI_PUSH=1 git push origin --delete <branch>   # batch several in ONE push
+```
+
+Use ONE push for several deletions: each `git push --delete` fires the pre-push
+hook, and a hook running the full suite per branch is how a cleanup turns into
+a ten-minute stall.
+
+### An issue is not closed by the work being done
+
+Closing is a separate act and `dev` is not the default branch, so `Closes #N`
+never fires. When work lands: set Status `Landed`, then close the issue by hand
+citing the squash SHA and the evidence.
+
+Audit this periodically rather than trusting it: every OPEN issue should be
+genuinely open, every CLOSED one should sit in `Landed`, and every open issue
+should be on the board with all three fields set. Drift here is silent -- an
+issue fixed weeks ago but still open sends someone to redo it.
+
 ---
 
 ## Documentation Policy: docs/ is for reference, not scratch
