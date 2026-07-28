@@ -423,9 +423,14 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
         if rc:
             return _fail("could not drain the host; refusing to converge over running jobs")
     extra = (["--check", "--diff"] if args.mode == "check" else []) + _remove_flags(host, args)
-    # Short-lived credentials only: a registration or removal token, good for
-    # one hour, minted on the control node. Nothing long-lived is ever passed
-    # this way, and nothing is written to the repo.
+    # SHORT-LIVED credentials only, and preferably by file reference.
+    #
+    # Anything given as KEY=VALUE lands in this process's argv and in
+    # ansible-playbook's, where `ps` on the control node can read it. That is
+    # tolerable for a registration or removal token -- one hour, one use,
+    # minted on demand -- and it is NOT tolerable for a PAT. Ansible reads
+    # `-e @file` as well, so a long-lived credential goes in a mode-0600 file
+    # outside the checkout and is passed as `-e @/path/to/secrets.yml`.
     for pair in args.extra_var:
         extra += ["-e", pair]
     if fm.CLASSES[host["class"]].transport == "wsl":
@@ -574,7 +579,11 @@ def _parser() -> argparse.ArgumentParser:
             action="append",
             default=[],
             metavar="KEY=VALUE",
-            help="pass through to ansible; for a short-lived registration token",
+            help=(
+                "pass through to ansible. KEY=VALUE is visible in ps, so use it only "
+                "for a short-lived registration or removal token; pass anything "
+                "long-lived as @/path/to/secrets.yml (mode 0600, outside the checkout)"
+            ),
         )
     status = subs.add_parser("status", help="what each host is running, right now")
     status.add_argument("host", nargs="?")

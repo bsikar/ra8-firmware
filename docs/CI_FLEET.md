@@ -71,6 +71,24 @@ without a credential on the host, so it is **detected**: after every stop, the
 script reads that container's log for the stop's own time window and fails
 loudly if a job started or was cancelled in it.
 
+### A drain can take several job cycles, and that is correct
+
+Nothing token-free can stop GitHub *assigning* work to a runner that is up --
+only removing its labels does that, and that is an API call the machines with
+quiet hours must not be able to make. So the drain waits for an idle moment and
+takes it, and if the runner is handed another job first it simply waits again.
+
+The poll interval is 3 seconds because a busy runner's idle gap is only a few
+seconds wide: measured on the Windows host at a 15-second poll, an instance
+finished one job and started the next between two checks, costing a whole extra
+job cycle. Three seconds usually catches the first gap. On a saturated queue,
+expect a drain to take minutes rather than seconds -- the NAS took 8m18s and
+three job cycles -- and to report `NOT converged` rather than force anything if
+it is still busy at its 90-minute deadline.
+
+That is the trade the design makes on purpose: a slow scale-down that never
+loses work, over a fast one that sometimes does.
+
 **ARC (the k3s pool) is safe by construction** and needs none of this. Its
 runners are ephemeral -- one job, then the pod exits -- and the controller only
 deletes runners that hold no job, so lowering `maxRunners` never interrupts
@@ -243,6 +261,18 @@ python3 scripts/dev/fleet.py apply bench-tower \
 Registration produces long-lived runner credentials **on the host**, and only
 those are used to run jobs, so the token is needed once and never again -- not
 even across a reboot.
+
+> **`-e KEY=VALUE` is visible in `ps` on the control node.** That is tolerable
+> for a registration or removal token -- one hour, one use, minted on demand --
+> and it is not tolerable for a PAT. Ansible also reads `-e @file`, so a
+> long-lived credential goes in a mode-0600 file outside the checkout:
+>
+> ```sh
+> python3 scripts/dev/fleet.py apply bench-tower -e @~/.config/ra8/ci.yml
+> ```
+>
+> The normal path is neither: the PAT lives in OpenBao and
+> `infra/ansible/group_vars/all.yml` looks it up at run time.
 
 ### Step 6 -- verify
 

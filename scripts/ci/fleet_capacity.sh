@@ -81,7 +81,24 @@ RA8_FLEET_SCALESET="${RA8_FLEET_SCALESET:-ra8-ci}"
 # smoke, so 90 minutes covers a job that started just before the window opened
 # plus a retry, without waiting forever on a wedged runner.
 RA8_FLEET_DEADLINE="${RA8_FLEET_DEADLINE:-5400}"
-RA8_FLEET_POLL="${RA8_FLEET_POLL:-15}"
+
+# How often to re-ask whether an instance has gone idle.
+#
+# This is the ONE number that decides how fast a drain converges, and it is
+# short for a measured reason. A runner's idle gap -- between logging one job
+# complete and being handed the next -- is a few seconds on a saturated queue,
+# so a coarse poll walks straight past it and the instance is busy again by the
+# time the drain looks. Measured at 15s on the Windows host: instance 1's job
+# finished and a new one had started before the next check, costing a whole
+# extra job cycle.
+#
+# It does not CLOSE that gap -- nothing token-free can, since only GitHub can
+# stop assigning work -- it narrows it, so the drain usually catches the first
+# gap instead of the third. The drain stays correct either way: it never
+# signals a busy runner, it just takes longer. Each poll is two `docker
+# inspect`-class calls per instance, so this is cheap to run for the hour the
+# deadline allows.
+RA8_FLEET_POLL="${RA8_FLEET_POLL:-3}"
 
 # Only ever applied to an instance already proven idle, so this is headroom for
 # the listener's own clean exit -- not the drain mechanism. See the header.
@@ -186,7 +203,7 @@ busy_for() {
 # a log far longer than any tail worth reading, and the only lines that can
 # answer "did this stop cancel a job" are the ones written after the stop began.
 assert_not_interrupted() {
-  local name="$1" since="$2" window
+  local name="$1" since="$2" window last
   window="$(dk logs --since "${since}" "${name}" 2>&1 |
     grep -Eo '(Running job: .*|Job .* completed with result: [A-Za-z]+)$' || true)"
   case "${window}" in
@@ -195,20 +212,37 @@ assert_not_interrupted() {
       printf '%s\n' "${window}" | sed 's/^/            /'
       return 1
       ;;
-    *"Running job: "*)
-      log "INTERRUPTED ${name}: a job STARTED during the stop and did not finish"
+  esac
+  # The verdict is the LAST boundary in the window, not whether a "Running
+  # job:" line appears in it at all. A clean stop of a runner that finished a
+  # job seconds earlier has BOTH lines in its window, and an any-occurrence
+  # test calls that an interruption -- measured on the Windows host, where the
+  # runner logged "Job Pre-commit gate suite completed with result: Succeeded"
+  # at 07:17:19 and exited cleanly at 07:17:32, and the first cut of this check
+  # reported it INTERRUPTED. A detector that cries wolf on a correct drain is
+  # worse than none: the next real one gets ignored.
+  #
+  # A TRAILING "Running job:" is the real signal -- work taken and never
+  # logged finishing.
+  last="$(printf '%s' "${window}" | tail -1)"
+  case "${last}" in
+    "Running job: "*)
+      log "INTERRUPTED ${name}: a job started during the stop and never finished"
       printf '%s\n' "${window}" | sed 's/^/            /'
       return 1
       ;;
     *)
-      log "verified  ${name}: no job started or was cancelled during the stop"
+      log "verified  ${name}: nothing cancelled; last boundary: ${last:-none in window}"
       ;;
   esac
 }
 
 park_instance() {
   local name="$1" since
-  since="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  # Unix seconds: the one --since form docker parses without ambiguity, and the
+  # one that cannot be misread across the container's and the host's idea of a
+  # timezone.
+  since="$(date +%s)"
   log "parking   ${name}: idle, stopping with -t ${RA8_FLEET_STOP_GRACE}"
   dk stop -t "${RA8_FLEET_STOP_GRACE}" "${name}" >/dev/null
   assert_not_interrupted "${name}" "${since}"
