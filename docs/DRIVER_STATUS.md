@@ -146,9 +146,8 @@ work; subsequent fixes may live in later commits.
 | ra8_eth (gwca) | r_ether + r_ether_phy | feature-complete | sweep 2 (`4cde2a2`) | TX/RX descriptor rings, `ra8_eth_read` / `ra8_eth_write`, link state |
 | ra8_eth_coma | (RA8D2-only) | feature-complete | (pre-sweep) | management agent, IRQ dispatch |
 | ra8_eth_mfwd | (RA8D2-only) | feature-complete | (pre-sweep) | message-forwarding engine |
-| ra8_eth_gptp | r_gptp | feature-complete | (pre-sweep) | timestamp counter + IRQ |
+| ra8_eth_gptp | r_gptp | feature-complete | #498 | HUM Ch 35 timer: enable/disable, PTPTIVCt increment, 78-bit offset + time, AVTP view |
 | ra8_etha | r_ether | scaffold | (pre-sweep) | bring-up; the live datapath uses gwca |
-| ra8_ptp | r_ptp | feature-complete | sweep 6 (`3ff1a8d`) | IEEE 1588 controller/peripheral roles (per spec), sync/announce, time/rate adjust |
 | ra8_tsn | r_tsn | scaffold | (pre-sweep) | IEEE 802.1 TSN block |
 | ra8_rmac | r_rmac | scaffold | (pre-sweep) | reduced-MAC variant |
 | ra8_layer3_switch | r_layer3_switch | placeholder | sweep 11 (`ba54974`) | L3 packet switch; RA8D2 silicon presence unverified |

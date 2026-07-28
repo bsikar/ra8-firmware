@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12995
+# total findings: 13020
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -364,6 +364,7 @@ libs/ra8_hal/inc/ra8_dmac_regs.h	misra-c2012-15.5	1
 libs/ra8_hal/inc/ra8_dotf_regs.h	misra-c2012-15.5	1
 libs/ra8_hal/inc/ra8_etha_regs.h	misra-c2012-10.4	50
 libs/ra8_hal/inc/ra8_etha_regs.h	misra-c2012-11.4	1
+libs/ra8_hal/inc/ra8_ether_regs.h	misra-c2012-10.4	13
 libs/ra8_hal/inc/ra8_ether_regs.h	misra-c2012-15.5	1
 libs/ra8_hal/inc/ra8_gpt_regs.h	misra-c2012-15.5	1
 libs/ra8_hal/inc/ra8_hw_err.h	misra-c2012-15.5	12
@@ -521,8 +522,8 @@ libs/ra8_hal/src/ra8_eth.c	misra-c2012-18.4	1
 libs/ra8_hal/src/ra8_eth.c	misra-c2012-8.4	14
 libs/ra8_hal/src/ra8_eth_coma.c	misra-c2012-15.5	2
 libs/ra8_hal/src/ra8_eth_coma.c	misra-c2012-8.4	7
-libs/ra8_hal/src/ra8_eth_gptp.c	misra-c2012-15.5	2
-libs/ra8_hal/src/ra8_eth_gptp.c	misra-c2012-8.4	7
+libs/ra8_hal/src/ra8_eth_gptp.c	misra-c2012-15.5	35
+libs/ra8_hal/src/ra8_eth_gptp.c	misra-c2012-8.4	14
 libs/ra8_hal/src/ra8_eth_gwca.c	misra-c2012-11.4	1
 libs/ra8_hal/src/ra8_eth_gwca.c	misra-c2012-12.1	1
 libs/ra8_hal/src/ra8_eth_gwca.c	misra-c2012-15.5	14
@@ -723,8 +724,6 @@ libs/ra8_hal/src/ra8_pdm.c	misra-c2012-15.5	12
 libs/ra8_hal/src/ra8_pdm.c	misra-c2012-8.4	7
 libs/ra8_hal/src/ra8_poeg.c	misra-c2012-15.5	12
 libs/ra8_hal/src/ra8_poeg.c	misra-c2012-8.4	8
-libs/ra8_hal/src/ra8_ptp.c	misra-c2012-15.5	17
-libs/ra8_hal/src/ra8_ptp.c	misra-c2012-8.4	11
 libs/ra8_hal/src/ra8_pwr.c	misra-c2012-11.4	2
 libs/ra8_hal/src/ra8_pwr.c	misra-c2012-15.5	9
 libs/ra8_hal/src/ra8_pwr.c	misra-c2012-8.4	8

@@ -8,7 +8,7 @@
 # on any INCREASE, so the debt is frozen and can only be burned down; a
 # newly-added uncovered decision raises a count and fails.
 #
-# Total at this baseline: 968 uncovered compound decision(s)
+# Total at this baseline: 967 uncovered compound decision(s)
 # across 193 file(s).
 #
 # Burn one down: add a `test_mcdc_<decision>` function with N+1 vectors
@@ -306,7 +306,6 @@ libs/ra8_hal/src/ra8_pdg.c	ra8_pdg_check_constraints	2
 libs/ra8_hal/src/ra8_pdg.c	ra8_pdg_pin_disable	1
 libs/ra8_hal/src/ra8_pdg.c	ra8_pdg_required_write_ns	1
 libs/ra8_hal/src/ra8_pdg.c	ra8_pdg_set_delay_batch	1
-libs/ra8_hal/src/ra8_ptp.c	internal_send	1
 libs/ra8_hal/src/ra8_pwr.c	ra8_pwr_enter_software_standby	1
 libs/ra8_hal/src/ra8_rmac_mgmt.c	internal_phy_args_ok	1
 libs/ra8_hal/src/ra8_rmac_mgmt.c	ra8_rmac_phy_link_status	1

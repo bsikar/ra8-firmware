@@ -18,6 +18,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8_attributes.h"
@@ -467,27 +468,185 @@ static inline volatile uint32_t* ra8_gwca_gwdcc(uint32_t queue_index)
 }
 
 /**
- * @struct r_gptp_regs_t
- * @brief Minimal Generic PTP Timer (GPTP) register window.
+ * @enum ra8_gptp_timer_idx_t
+ * @brief GPTP timer instance index (HUM Table 35.3 lists `t = 0, 1`).
  *
  * @details
- * GPTP is the IEEE-1588 hardware timestamp counter shared by the
- * GMAC ports for boundary-clock and ordinary-clock applications.
- * The scaffold covers the lifecycle + IRQ surface; the actual
- * timestamp counter / sync-frame encode-decode logic lands with
- * a real PTP stack.
+ * The GPTP block instantiates two independent timer units. Every
+ * per-timer register is placed at `base + 0x0020 + 0x40 * t`, which is
+ * exactly the stride of ::r_gptp_timer_regs_t.
+ *
+ * @invariant A timer index is always `< k_ra8_gptp_timer_count`.
+ *
+ * @par Example:
+ * @code
+ * volatile r_gptp_timer_regs_t* t0 = &ra8_gptp()->TIMER[k_ra8_gptp_timer_0];
+ * @endcode
+ *
+ * @see r_gptp_timer_regs_t
+ */
+typedef enum : uint8_t {
+  k_ra8_gptp_timer_0     = 0U, /**< Timer unit 0 (registers at +0x0020). */
+  k_ra8_gptp_timer_1     = 1U, /**< Timer unit 1 (registers at +0x0060). */
+  k_ra8_gptp_timer_count = 2U, /**< Number of timer units on this part.  */
+} ra8_gptp_timer_idx_t;
+
+/**
+ * @enum ra8_gptp_layout_t
+ * @brief Byte offsets that ::r_gptp_regs_t / ::r_gptp_timer_regs_t must hit.
+ *
+ * @details
+ * Mirrors HUM Table 35.3 "gPTP timer registers" p 1926 so the
+ * `static_assert`s below cannot drift from the manual. Offsets marked
+ * `_t` are relative to a single timer block; the rest are absolute
+ * within the GPTP window.
+ *
+ * @invariant Every value is a multiple of 4 (all GPTP registers are 32 bit).
+ *
+ * @par Example:
+ * @code
+ * static_assert(offsetof(r_gptp_regs_t, PTPTMEC) == k_ra8_gptp_off_ptptmec, "");
+ * @endcode
+ *
+ * @see r_gptp_regs_t
+ */
+typedef enum : uint8_t {
+  k_ra8_gptp_off_ptpipv       = 0x0000U, /**< PTPIPV     IP Version.             */
+  k_ra8_gptp_off_ptptmec      = 0x0010U, /**< PTPTMEC    Timer Enable Cfg.       */
+  k_ra8_gptp_off_ptptmdc      = 0x0014U, /**< PTPTMDC    Timer Disable Cfg.      */
+  k_ra8_gptp_off_timer0       = 0x0020U, /**< First per-timer block.             */
+  k_ra8_gptp_timer_stride     = 0x0040U, /**< Per-timer block stride (0x40 x t). */
+  k_ra8_gptp_off_t_ptptivc    = 0x0000U, /**< PTPTIVCt   in-block offset.        */
+  k_ra8_gptp_off_t_ptptovcl   = 0x0010U, /**< PTPTOVCtL  in-block offset.        */
+  k_ra8_gptp_off_t_ptptovcm   = 0x0014U, /**< PTPTOVCtM  in-block offset.        */
+  k_ra8_gptp_off_t_ptptovcu   = 0x0018U, /**< PTPTOVCtU  in-block offset.        */
+  k_ra8_gptp_off_t_ptpavtptml = 0x0020U, /**< PTPAVTPTMtL in-block offset.       */
+  k_ra8_gptp_off_t_ptpavtptmu = 0x0024U, /**< PTPAVTPTMtU in-block offset.       */
+  k_ra8_gptp_off_t_ptpgptptml = 0x0030U, /**< PTPGPTPTMtL in-block offset.       */
+  k_ra8_gptp_off_t_ptpgptptmm = 0x0034U, /**< PTPGPTPTMtM in-block offset.       */
+  k_ra8_gptp_off_t_ptpgptptmu = 0x0038U, /**< PTPGPTPTMtU in-block offset.       */
+} ra8_gptp_layout_t;
+
+/**
+ * @struct r_gptp_timer_regs_t
+ * @brief One GPTP timer unit's register block (HUM Ch 35.3.2 / 35.3.3).
+ *
+ * @details
+ * The block repeats every ::k_ra8_gptp_timer_stride bytes starting at
+ * ::k_ra8_gptp_off_timer0, matching the `+ 0x40 x t` addressing of HUM
+ * Table 35.3 p 1926. Reserved gaps are spelled out so the members always
+ * line up with the manual.
+ *
+ * The unit holds three views of the same counter: the 78-bit GPTP time
+ * (`{PTPGPTPTMtU, PTPGPTPTMtM, PTPGPTPTMtL}`, seconds in bits [77:30]
+ * and nanoseconds in [29:0]), and the 64-/32-bit AVTP nanosecond views
+ * derived from it (HUM 35.5.1 p 1951). `PTPTIVCt` sets the per-clk
+ * increment and `{PTPTOVCtU, PTPTOVCtM, PTPTOVCtL}` the additive offset.
+ *
+ * @invariant Reading `PTPGPTPTMtL` latches `PTPGPTPTMtM` / `PTPGPTPTMtU`,
+ *            so an ordered read of L, M, U is atomic (HUM 35.4.1.3.4 p 1946).
+ * @invariant Writing `PTPTOVCtL` commits the whole 78-bit offset, so U and M
+ *            must be written first (HUM 35.4.1.3.1 p 1944-1945).
+ *
+ * @par Example:
+ * @code
+ * volatile r_gptp_timer_regs_t* t = &ra8_gptp()->TIMER[k_ra8_gptp_timer_0];
+ * const uint32_t ns = t->PTPGPTPTML;
+ * @endcode
+ *
+ * @see r_gptp_regs_t
  */
 typedef struct {
-  volatile uint32_t GPTP_CTRL; /**< +0x00 PTP Timer Control. */
-  volatile uint32_t GPTP_STS;  /**< +0x04 Status.            */
-  volatile uint32_t GPTP_IE;   /**< +0x08 Interrupt Enable.  */
-  volatile uint32_t GPTP_ICLR; /**< +0x0C Interrupt Clear.   */
+  volatile uint32_t PTPTIVC;       /**< +0x00 Timer Increment Value Cfg. */
+  volatile uint32_t reserved04[3]; /**< +0x04..0x0C Reserved.            */
+  volatile uint32_t PTPTOVCL;      /**< +0x10 Timer Offset Value Cfg L.  */
+  volatile uint32_t PTPTOVCM;      /**< +0x14 Timer Offset Value Cfg M.  */
+  volatile uint32_t PTPTOVCU;      /**< +0x18 Timer Offset Value Cfg U.  */
+  volatile uint32_t reserved1c;    /**< +0x1C Reserved.                  */
+  volatile uint32_t PTPAVTPTML;    /**< +0x20 AVTP Timer Monitoring L.   */
+  volatile uint32_t PTPAVTPTMU;    /**< +0x24 AVTP Timer Monitoring U.   */
+  volatile uint32_t reserved28[2]; /**< +0x28..0x2C Reserved.            */
+  volatile uint32_t PTPGPTPTML;    /**< +0x30 GPTP Timer Monitoring L.   */
+  volatile uint32_t PTPGPTPTMM;    /**< +0x34 GPTP Timer Monitoring M.   */
+  volatile uint32_t PTPGPTPTMU;    /**< +0x38 GPTP Timer Monitoring U.   */
+  volatile uint32_t reserved3c;    /**< +0x3C Reserved.                  */
+} r_gptp_timer_regs_t;
+
+/**
+ * @struct r_gptp_regs_t
+ * @brief Ethernet Generic PTP Timer (GPTP) register window, HUM Ch 35.
+ *
+ * @details
+ * Declares the timer surface of HUM Table 35.3 p 1926 -- the only part of
+ * the block this HAL addresses. The same window also carries media-clock
+ * capture (`PTPMCCCm`, +0x0200), media-clock recovery (`PTPMCRCm`, +0x0300),
+ * media-clock pin mapping (`PTPMCPCm`, +0x0400), cyclic compare
+ * (`PTPCCCc0/1`, +0x0500), the media-clock interrupt registers
+ * (`PTPIS0/IE0/ID0` +0x0700, `PTPIS1/IE1/ID1` +0x0710), security
+ * configuration (`PTPSCR0/1/2`, +0x0780) and the pulse-output timer
+ * submodule (`POTCFGR` and friends, +0x1000, HUM Table 35.9 p 1954).
+ * Those need the MEDIA_IN / MEDIA_OUT / CYCLIC_COMP pins, which no driver
+ * or board file in this tree routes, so they are deliberately not declared
+ * here rather than declared and left unused.
+ *
+ * **This block is a timer, not a protocol engine.** HUM Ch 35 defines no
+ * Sync / Announce / Follow_Up generator, no PTP domain, no clockIdentity
+ * and no BMCA: an IEEE 1588 / 802.1AS stack on this part is software above
+ * the HAL, fed by this counter and by the RMAC receive-timestamp capture
+ * (`MTRC` / `MPFCt`, HUM Ch 33).
+ *
+ * @invariant While `PTPTMEC.TEq` is 0 the corresponding timer's counters
+ *            read 0 (HUM 35.3.2.1 p 1927).
+ *
+ * @par Example:
+ * @code
+ * volatile r_gptp_regs_t* g = ra8_gptp();
+ * const uint32_t ipv = g->PTPIPV;
+ * @endcode
+ *
+ * @see r_gptp_timer_regs_t
+ */
+typedef struct {
+  volatile uint32_t PTPIPV;        /**< +0x0000 IP Version (read-only).      */
+  volatile uint32_t reserved04[3]; /**< +0x0004..0x000C Reserved.            */
+  volatile uint32_t PTPTMEC;       /**< +0x0010 Timer Enable Configuration.  */
+  volatile uint32_t PTPTMDC;       /**< +0x0014 Timer Disable Configuration. */
+  volatile uint32_t reserved18[2]; /**< +0x0018..0x001C Reserved.            */
+  volatile r_gptp_timer_regs_t
+    TIMER[k_ra8_gptp_timer_count]; /**< +0x0020 + 0x40 x t Per-timer blocks. */
 } r_gptp_regs_t;
+
+static_assert(sizeof(r_gptp_timer_regs_t) == (size_t)k_ra8_gptp_timer_stride,
+              "GPTP per-timer block must be 0x40 bytes (HUM Table 35.3)");
+static_assert(offsetof(r_gptp_timer_regs_t, PTPTIVC) == (size_t)k_ra8_gptp_off_t_ptptivc,
+              "PTPTIVCt offset");
+static_assert(offsetof(r_gptp_timer_regs_t, PTPTOVCL) == (size_t)k_ra8_gptp_off_t_ptptovcl,
+              "PTPTOVCtL offset");
+static_assert(offsetof(r_gptp_timer_regs_t, PTPTOVCM) == (size_t)k_ra8_gptp_off_t_ptptovcm,
+              "PTPTOVCtM offset");
+static_assert(offsetof(r_gptp_timer_regs_t, PTPTOVCU) == (size_t)k_ra8_gptp_off_t_ptptovcu,
+              "PTPTOVCtU offset");
+static_assert(offsetof(r_gptp_timer_regs_t, PTPAVTPTML) == (size_t)k_ra8_gptp_off_t_ptpavtptml,
+              "PTPAVTPTMtL offset");
+static_assert(offsetof(r_gptp_timer_regs_t, PTPAVTPTMU) == (size_t)k_ra8_gptp_off_t_ptpavtptmu,
+              "PTPAVTPTMtU offset");
+static_assert(offsetof(r_gptp_timer_regs_t, PTPGPTPTML) == (size_t)k_ra8_gptp_off_t_ptpgptptml,
+              "PTPGPTPTMtL offset");
+static_assert(offsetof(r_gptp_timer_regs_t, PTPGPTPTMM) == (size_t)k_ra8_gptp_off_t_ptpgptptmm,
+              "PTPGPTPTMtM offset");
+static_assert(offsetof(r_gptp_timer_regs_t, PTPGPTPTMU) == (size_t)k_ra8_gptp_off_t_ptpgptptmu,
+              "PTPGPTPTMtU offset");
+static_assert(offsetof(r_gptp_regs_t, PTPIPV) == (size_t)k_ra8_gptp_off_ptpipv, "PTPIPV offset");
+static_assert(offsetof(r_gptp_regs_t, PTPTMEC) == (size_t)k_ra8_gptp_off_ptptmec, "PTPTMEC offset");
+static_assert(offsetof(r_gptp_regs_t, PTPTMDC) == (size_t)k_ra8_gptp_off_ptptmdc, "PTPTMDC offset");
+static_assert(offsetof(r_gptp_regs_t, TIMER) == (size_t)k_ra8_gptp_off_timer0, "TIMER[0] offset");
 
 /** @brief Get pointer to the GPTP register block. */
 RA8_HW_REGISTER_ACCESS
 static inline volatile r_gptp_regs_t* ra8_gptp(void)
 {
+  /* HUM Ch 35.2 "gPTP Register List" Table 35.3 p 1926 -- base GPTP =
+   * 0x403E_0000 (secure) / GPTP_NS = 0x503E_0000. */
   return (volatile r_gptp_regs_t*)k_ra8_gptp_base_addr;
 }
 

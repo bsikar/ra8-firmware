@@ -76,8 +76,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | GWCA  | GateWay CPU Agent (Ethernet DMA gateway)                  | `ra8_eth_gwca.c` |
 | MFWD  | MAC ForWarDing engine                                     | `ra8_eth_mfwd.c` |
 | ESWM  | Ethernet SWitch Management                                | `ra8_layer3_switch.c` |
-| GPTP  | Generic Precision Time Protocol block                     | `ra8_eth_gptp.c` |
-| PTP   | Precision Time Protocol (IEEE 1588) SYNFP/STCA            | `ra8_ptp.c` |
+| GPTP  | Generic Precision Time Protocol timer (HUM Ch 35; a timer, not a 1588 message engine) | `ra8_eth_gptp.c` |
 | TSN   | Time-Sensitive Networking                                 | `ra8_tsn.c` |
 | PHY   | Physical-layer transceiver (Ethernet PHY)                 | `ra8_ether_phy.c`, `ra8_rmac_phy.c` |
 | BLE   | Bluetooth Low Energy (HCI transport seam; controller on the ESP32-C6 companion) | `ra8_ble.c`, `port/nimble` |
@@ -209,7 +208,7 @@ GPT, GPTP, GTIOC, GWCA, HAUD, Helium, HID, HUM, HW ERR, I3C, ICU, IIC_B,
 IPC, IRQ, ISR, ITCM, IWDT, JPEG_SW, LPM, LVD, MFWD, MIPI CSI, MIPI DSI,
 MIPI PHY, MMIO, MMPU, MPC, MPU, MRAM, MRMS, MSC, MSTP, MVE, NSC, NVIC,
 OFS, OSPI, PAUD, PDG, PDM, PFS, PHY, Pmod, PMISC, PMR, PODR, POEG,
-PORT, PPRN, PSEL, PTP, PVND, PWPR, PWPRS, PWR, RA, RA8D2, RESET, RMAC,
+PORT, PPRN, PSEL, PVND, PWPR, PWPRS, PWR, RA, RA8D2, RESET, RMAC,
 RSIP, RTC, SAU, SCB, SCI, SDHI, SDRAM, SDRAMC, SMBUS, SPI, SRAM, SSIE,
 SYSC, TCM, TCON, TFT, TOUCH, TSN, UART, ULPT, USB FS, USB HS, VBATT,
 VIN, VREG, WDT, WUPEN, XIP, XSPI.

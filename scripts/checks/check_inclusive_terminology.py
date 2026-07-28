@@ -115,7 +115,7 @@ PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 # Python's `\b` does not fire between an underscore and a letter (`_` is a
 # word character), so the prose patterns above miss the legacy words when
 # they are welded into a snake_case / SCREAMING_CASE symbol
-# (`k_ra8_ptp_role_master`, `internal_spcr_master`, `make_master_i2s_cfg`,
+# (`internal_spcr_master`, `make_master_i2s_cfg`,
 # ...). Instead of enumerating our own prefixes, flag ANY identifier that
 # carries `master`/`slave` as a leading component and is NOT part of a
 # vendored upstream namespace -- those APIs are referenced verbatim in our
