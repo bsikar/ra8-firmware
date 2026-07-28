@@ -163,6 +163,19 @@
     path: /tmp/ra8-ci-runner.tar
     state: absent
 
+# The pinned-tool cache backing store (#486). Chowned to the runner uid/gid
+# here, on the node, so the hostPath mount below is writable the moment a pod
+# starts -- an ephemeral, one-pod-per-job runner never gets the chance to run
+# its own one-time chown step.
+- name: Ensure the pinned-tool cache directory exists and is owned by the runner user
+  become: true
+  ansible.builtin.file:
+    path: "{{ ci_runner_tools_cache_node_dir }}"
+    state: directory
+    owner: "{{ ci_runner_uid }}"
+    group: "{{ ci_runner_gid }}"
+    mode: "0755"
+
 - name: Install the ARC controller
   become: true
   kubernetes.core.helm:
@@ -213,11 +226,25 @@
       maxRunners: "{{ ci_runner_max | int }}"
       template:
         spec:
+          # hostPath, not emptyDir (#486): an emptyDir is exactly as ephemeral
+          # as the pod, so it would still lose the cached doxygen download
+          # every time the (ephemeral, one-pod-per-job) runner is recycled.
+          # The single-node k3s cluster makes a node-local hostPath as durable
+          # as the ccache mount the containerised `make ci` path already uses
+          # for the same reason.
+          volumes:
+            - name: ra8-tools-cache
+              hostPath:
+                path: "{{ ci_runner_tools_cache_node_dir }}"
+                type: DirectoryOrCreate
           containers:
             - name: runner
               image: "{{ ci_runner_image }}"
               imagePullPolicy: Never
               command: ["/home/runner/run.sh"]
+              volumeMounts:
+                - name: ra8-tools-cache
+                  mountPath: "{{ ci_runner_tools_cache_mount }}"
               resources:
                 requests:
                   cpu: "{{ ci_runner_cpu_request }}"
