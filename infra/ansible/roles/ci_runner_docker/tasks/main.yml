@@ -139,14 +139,18 @@
         - not ci_runner_docker_root_stat.stat.exists
       become: true
       ansible.builtin.command:
+        # Built with to_json rather than hand-written JSON in a folded scalar.
+        # The folded form silently embedded newlines mid-string and midclt
+        # rejected the payload with "A dict was expected" -- and it went
+        # unnoticed because the first deployment had its dataset created by
+        # hand, so this task was skipped on every run that followed. Composing
+        # the dict and letting Jinja serialise it cannot produce that.
         argv:
           - midclt
           - call
           - pool.dataset.create
-          - >-
-            {"name": "{{ ci_runner_docker_dataset }}",
-             "comments": "GitHub Actions CI runner: image archive, runner home
-             and build work dir. Kept off the degraded pool."}
+          - "{{ {'name': ci_runner_docker_dataset,
+                 'comments': ci_runner_docker_dataset_comment} | to_json }}"
       changed_when: true
 
     - name: Create the runner root as a plain directory (non-appliance host)
@@ -231,6 +235,8 @@
         argv:
           - docker
           - compose
+          - --project-name
+          - "{{ ci_runner_docker_container }}"
           - --file
           - "{{ ci_runner_docker_compose_file }}"
           - down
@@ -560,6 +566,16 @@
           # runner home it mounts and the image archive beside it all live on
           # {{ ci_runner_docker_root }}.
 
+          # PINNED, and load-bearing. Compose derives a project name from the
+          # compose file's PARENT DIRECTORY when none is given, and every
+          # deployment of this role puts its file in a directory called
+          # `compose/`. Two runners on one host therefore both landed in a
+          # project literally named "compose", and the second `up
+          # --remove-orphans` deleted the first one's container as an orphan of
+          # its own project -- killing the job it was running. Naming the
+          # project after the container makes the deployments disjoint.
+          name: {{ ci_runner_docker_container }}
+
           services:
             runner:
               image: {{ ci_runner_docker_image }}
@@ -627,6 +643,8 @@
         argv:
           - docker
           - compose
+          - --project-name
+          - "{{ ci_runner_docker_container }}"
           - --file
           - "{{ ci_runner_docker_compose_file }}"
           - up

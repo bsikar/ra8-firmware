@@ -73,6 +73,12 @@ ci_runner_docker_gid: 1001
 ci_runner_docker_dataset: "stripe/ci-runner"
 ci_runner_docker_root: "/mnt/stripe/ci-runner"
 
+# Shown against the dataset in the TrueNAS UI, so the next person to look at
+# the pool knows what created it and why it is not on the big pool.
+ci_runner_docker_dataset_comment: >-
+  GitHub Actions CI runner: image archive, runner home and build work dir.
+  Kept off the degraded pool.
+
 # Pools CI I/O may never touch. Checked against the pool that actually backs
 # each CI path at deploy time, so a moved mountpoint fails the play instead of
 # silently relocating the build onto degraded spindles.
