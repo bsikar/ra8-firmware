@@ -406,6 +406,13 @@ remembering to do it.
 `ra8-fleet-capacity.{service,timer}` on that host. The window is evaluated in
 the **host's own local time**, not UTC.
 
+> That makes the host's clock load-bearing, and a WSL2 VM's clock is not
+> reliable on its own -- it drifts and jumps across host sleep, which is
+> visible in the drain logs as non-monotonic timestamps from a single process.
+> The `wsl_ci_host` role waits for `timesyncd` to report `NTPSynchronized=yes`
+> before it finishes for exactly this reason. If a window ever appears to fire
+> at the wrong time, check the clock before the schedule.
+
 ### How it works, and why it is a poll rather than two alarms
 
 The timer runs every 10 minutes and asks *"what should this host be right
