@@ -25,12 +25,18 @@ env:
 jobs:
   osv-scan:
     name: OSV CVE scan (SBOM purls + pinned upstream commits)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ra8-ci
     steps:
       - uses: actions/checkout@v4
       # The gate downloads the pinned + sha256-verified scanner, refuses to run
       # against a stale SBOM, then runs both legs (SBOM purls and the GIT-range
       # advisories for git-vendored SOUP). Exits 1 on any finding.
+      #
+      # The scanner stays a job-time fetch rather than a baked-in image layer:
+      # it is a single-use binary this one weekly workflow runs, pinned by
+      # version AND sha256 in the env block above, so fetching it here keeps
+      # the pin and the check that enforces it in the same file. Baking it in
+      # would put the pin two rebuilds away from the workflow that asserts it.
       - run: bash scripts/ci.sh --gate osv-scan
       - name: Upload JSON reports
         if: always()

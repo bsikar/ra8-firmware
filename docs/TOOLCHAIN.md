@@ -20,7 +20,7 @@ versa) -- the cause is almost always a version skew documented below.
 |-------------|------|--------|-----------|
 | **Mac** (Apple Silicon, this repo's authoring box) | ARM cross-builds + code authoring + `.py`/`.sh` lint | `arm-none-eabi-gcc` (Cortex-M85), clang-format/clang-tidy, ruff, shfmt, shellcheck, git | Run host unit tests / coverage (macOS arm64 SIGKILLs the `mmap MAP_FIXED <4 GiB` peripheral mock before `main`); `make ci` (Docker + resources) is unreliable |
 | **dev box** (`ssh dev`, x86-64 Debian 12, 6 cores) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 at `~/opt/arm-gnu-toolchain-13.3`) | Everything host-side + cross-build, FAST -- `make ci-native` runs every gate with no container at all | no Docker (which is fine: `make ci` falls back to native on Linux) |
-| **CI** (self-hosted Linux runners; `.github/workflows/`) | The authority -- every gate runs here on push/PR | All gates in the Ubuntu 24.04 devcontainer + a self-hosted `/opt` cross toolchain | -- |
+| **CI** (the self-hosted `ra8-ci` fleet; `.github/workflows/`) | The authority -- every gate runs here on push/PR | All gates in the Ubuntu 24.04 devcontainer image the runners boot, cross toolchain included | -- |
 | **HIL rig** (`ssh star@star.local`, Pi + on-board J-Link) | Silicon validation (flash + read the real EK-RA8D2) | The only oracle for cache/power/TZ/timing | -- |
 
 **Golden rule:** ARM builds on the **Mac**; host tests + coverage + lint gates on
@@ -95,10 +95,13 @@ at the standard path on the Mac + dev box (download from
 `~/opt/arm-gnu-toolchain-<rel>` with `--strip-components=1`). Keep the
 `-fno-strict-aliasing` SOUP guard.
 
-**Out-of-repo residual:** the self-hosted runner's `/opt/arm-gnu-toolchain-13.3`
-is provisioned outside this repo; the assertion + strict default catch a runner
-that drifts off 13.3, but re-provisioning it to a new release is a manual runner
-step (not blocking -- the pin is enforced, not just documented).
+**No longer an out-of-repo residual:** `/opt/arm-gnu-toolchain-13.3` used to be
+hand-provisioned on the bare-metal `k3s-runner-*` services. That pool is
+retired, and every runner answering `ra8-ci` now boots
+`localhost/ra8-ci-runner:v2`, which fetches that exact release to that exact
+path by URL + sha256 in `.devcontainer/Dockerfile`. Bumping the pin there and
+rebuilding the image reprovisions the whole fleet; the assertion + strict
+default still catch a box that drifts off 13.3.
 
 ### 3.2 clang-format / clang-tidy: Mac 22.1.7 vs CI/dev 22.1.8
 
@@ -233,17 +236,16 @@ bash scripts/ci/install_unicorn.sh            # -> /usr/local (needs sudo for a 
 RA8_UNICORN_PREFIX=$HOME/opt/unicorn bash scripts/ci/install_unicorn.sh   # per-user, no sudo
 ```
 
-**Out-of-repo residual (manual runner step, flagged for the owner).** The
-self-hosted runners in `k3s-pve` already carry the pinned **2.1.4** in
-`/usr/local/lib/libunicorn.so.2` (source-built, so `ldconfig` resolves it ahead
-of the stale apt `/usr/lib/.../libunicorn.so.2` still present from an old
-provision), which is why CI was green on it -- the pin matches the runner as-is,
-and no runner change is required to land this. IF a runner is ever re-imaged or
-drifts, the emulator gates will FAIL LOUDLY on it (not silently pass), and the
-fix is to run `scripts/ci/install_unicorn.sh` on that runner. Optionally purge
-the leftover apt `libunicorn2` there so a single Unicorn remains. This is a
-manual step on `k3s-pve` (VM 300), outside this repo's reach -- the enforcement,
-not the provisioning, is what this repo guarantees.
+**No longer an out-of-repo residual.** This used to be a manual step on the
+bare-metal `k3s-runner-*` services on `k3s-pve`, whose `/usr/local` Unicorn was
+hand-provisioned and would have needed re-running by hand after any re-image.
+That pool is retired: every runner answering `ra8-ci` -- the ARC pods and the
+truenas container alike -- boots `localhost/ra8-ci-runner:v2`, which builds
+Unicorn **2.1.4** from source by URL + sha256 in `.devcontainer/Dockerfile`. The
+pin is therefore provisioned by the same file that declares it, and a re-image
+reproduces it rather than losing it. The fail-loud check above is unchanged and
+is still what guarantees a skew cannot pass silently; `install_unicorn.sh`
+remains the recipe for a bare box (a dev box, or a new runner shape).
 
 ---
 
@@ -325,11 +327,14 @@ Gotchas (each has bitten a push):
   URL+sha256, `require_pinned_unicorn` fails every emulator gate on a skew.
   Provision the dev box with `scripts/ci/install_unicorn.sh` so `make ci`'s
   ra8_emulator gates match CI.
+- **Done:** both former manual runner steps are gone (#502). Re-provisioning
+  `/opt/arm-gnu-toolchain-13.3` (section 3.1) and re-running
+  `install_unicorn.sh` (section 3.6) were only ever needed on the bare-metal
+  `k3s-runner-*` pool; that pool is retired and the whole `ra8-ci` fleet now
+  boots the pinned runner image, so both tools are provisioned by the same
+  Dockerfile that declares their pins.
 - **Open (tracked):** Mac clang-format 22.1.8 (section 3.2); Mac ruff 0.15.19
-  (section 3.4); re-provisioning the self-hosted runner's `/opt` toolchain on a
-  future pin bump (manual runner step, section 3.1); re-running
-  `scripts/ci/install_unicorn.sh` on a re-imaged runner (manual runner step,
-  section 3.6).
+  (section 3.4).
 
 See also: `CLAUDE.md` (run the gates before every push; one gate definition, in
 `scripts/ci.sh`), the `dev-gcc14-coverage-parity` and `dev-box-ci-workflow`
