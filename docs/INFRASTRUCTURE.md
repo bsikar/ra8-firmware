@@ -261,18 +261,36 @@ Being honest about this is the point of the section.
   section 3.
 - **`k3s-runner-maintenance.sh`** on the k3s node (weekly image / journal /
   build-dir housekeeping, on a systemd timer) is hand-installed and in no repo.
+  One third of it is now dead: its build-dir step walks
+  `/home/ubuntu/actions-runner*/_work`, and #502 removed those trees with the
+  legacy runner pool. The loop is `nullglob`, so it reports "0 stale build/
+  dir(s)" rather than failing, and the image-prune and journald steps are
+  unaffected -- but a hand-installed script that silently lost a third of its
+  job is the argument for codifying it, not against.
 - **FortiGate port assignments** are not recorded in `infra/network/`. The unit
   is on an islanded LAN reachable only through the bench Pi console, so this was
   left rather than written down unverified.
 
-### Known cruft, not yet cleaned up
+### Known cruft, cleaned up (#502)
 
-`make infra-status` shows seven `k3s-runner*` runners registered and online.
-These are **pre-ARC leftovers** from before the repository was renamed
-(`ra8d2-firmware`), and they carry the bare `self-hosted,Linux,X64` labels --
-which means jobs using `runs-on: [self-hosted, Linux, X64]` (docs-publish,
-fuzz-nightly, osv-scan) can still land on them. Worth confirming dead and
-removing.
+`make infra-status` used to show seven `k3s-runner*` runners registered and
+online -- pre-ARC leftovers from before the repository was renamed
+(`ra8d2-firmware`), carrying the bare `self-hosted,Linux,X64` labels.
+
+They were **load-bearing, not dead**, which is why "confirm before removing"
+was the right instinct: `docs-publish`, `fuzz-nightly` and `osv-scan` were
+still scheduled against exactly those labels, so deregistering the pool would
+have left three workflows with no runner that could serve them. That was the
+unfinished half of the Jul-24 ARC migration, which moved the core workflows to
+`ra8-ci` but left those three behind "until their tools are confirmed in the
+image" and never revisited the condition.
+
+The condition was checked against a live pod, all three moved to `ra8-ci`, and
+only then was the pool retired: seven registrations deleted, all 20
+`actions.runner.*` units stopped, disabled and removed with their drop-in
+directories, and 81 GB of runner installs reclaimed from `/home/ubuntu`. The
+per-workflow dependency evidence is in `infra/README.md` under "The legacy
+`k3s-runner-*` pool is retired".
 
 ---
 
