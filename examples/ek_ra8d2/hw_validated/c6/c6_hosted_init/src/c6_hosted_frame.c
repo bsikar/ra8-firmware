@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6_hosted_init/src/c6_hosted_frame.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_frame.c
  * @brief The single esp-hosted transaction, its decode and its verdict.
  *
  * @par Tag
@@ -13,9 +13,12 @@
  * @par PASS criteria, in the order they are tested
  *   1. ``_h_do_bus_transfer`` returned ``RET_OK``.
  *   2. The received buffer is neither uniformly 0x00 nor uniformly 0xFF.
- *   3. ``offset`` equals ``sizeof(struct esp_payload_header)``.
- *   4. ``len`` is within ``MAX_PAYLOAD_SIZE``.
- *   5. The received checksum equals the recomputed one.
+ *   3. Either the frame is the co-processor's idle filler -- ``if_type =
+ *      ESP_MAX_IF``, ``if_num = 0x0F``, zero length -- which is a pass in its
+ *      own right, or every remaining test below holds.
+ *   4. ``offset`` equals ``sizeof(struct esp_payload_header)``.
+ *   5. ``len`` is within ``MAX_PAYLOAD_SIZE``.
+ *   6. The received checksum equals the recomputed one.
  *
  * The undriven-bus test comes before the header tests deliberately. The C6
  * holds its controller-in line with an internal pull-down, so a connected
@@ -67,6 +70,14 @@ typedef enum : uint16_t {
   /**< Largest payload a valid frame may advertise. */
   k_c6_hosted_byte_ones = 0xFFU,
   /**< The all-ones byte an unterminated RA8 input reads. */
+  k_c6_hosted_filler_if_num = 0x0FU,
+  /**< The ``if_num`` the co-processor stamps into a filler frame. Observed
+       on silicon on 2026-07-28 and matching what ``c6_spi_probe`` recorded:
+       a filler frame is ``if_type = ESP_MAX_IF``, ``if_num = 0x0F``, and
+       length, offset and checksum all zero. It is NOT a data frame with a
+       missing header, and judging it by a data frame's rules is a false
+       negative -- which is exactly what this application did on its first
+       silicon run. */
 } c6_hosted_proto_t;
 
 /**
@@ -94,7 +105,8 @@ typedef enum : uint8_t {
  * @brief Outcome of the single transaction, in the order it is tested.
  * @details One enumerator per failing check, so the printed reason names
  * the first thing that was actually wrong instead of a generic failure.
- * @invariant ::k_c6_hosted_verdict_pass is the only value that prints PASS.
+ * @invariant ::k_c6_hosted_verdict_pass and ::k_c6_hosted_verdict_idle are the
+ *            two values that print PASS; every other value prints FAIL.
  * @par Example:
  * @code
  * c6_hosted_puts(c6_hosted_verdict_text(verdict));
@@ -103,13 +115,16 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_c6_hosted_verdict_pass     = 0U, /**< Every check passed.                                */
-  k_c6_hosted_verdict_transfer = 1U, /**< The vtable transfer did not return RET_OK.         */
-  k_c6_hosted_verdict_zero     = 2U, /**< Receive buffer all-zero: bus not driven.           */
-  k_c6_hosted_verdict_ones     = 3U, /**< Receive buffer all-ones: bus not driven.           */
-  k_c6_hosted_verdict_offset   = 4U, /**< Header offset is not the payload-header size.      */
-  k_c6_hosted_verdict_length   = 5U, /**< Advertised length exceeds MAX_PAYLOAD_SIZE.        */
-  k_c6_hosted_verdict_csum     = 6U, /**< Received checksum differs from the recomputed one. */
+  k_c6_hosted_verdict_pass     = 0U, /**< A data frame arrived and verified. */
+  k_c6_hosted_verdict_idle     = 1U, /**< The co-processor's filler frame arrived: also a
+                                          pass, and the usual answer to a host that asked
+                                          nothing of a co-processor with nothing queued.     */
+  k_c6_hosted_verdict_transfer = 2U, /**< The vtable transfer did not return RET_OK.         */
+  k_c6_hosted_verdict_zero     = 3U, /**< Receive buffer all-zero: bus not driven.           */
+  k_c6_hosted_verdict_ones     = 4U, /**< Receive buffer all-ones: bus not driven.           */
+  k_c6_hosted_verdict_offset   = 5U, /**< Header offset is not the payload-header size.      */
+  k_c6_hosted_verdict_length   = 6U, /**< Advertised length exceeds MAX_PAYLOAD_SIZE.        */
+  k_c6_hosted_verdict_csum     = 7U, /**< Received checksum differs from the recomputed one. */
 } c6_hosted_verdict_t;
 
 /**
@@ -242,6 +257,7 @@ static uint16_t c6_hosted_rx_checksum(void)
  * @retval k_c6_hosted_verdict_offset   Offset is not the header size.
  * @retval k_c6_hosted_verdict_length   Length exceeds ``MAX_PAYLOAD_SIZE``.
  * @retval k_c6_hosted_verdict_csum     Checksum mismatch.
+ * @retval k_c6_hosted_verdict_idle     The co-processor's filler frame.
  * @retval k_c6_hosted_verdict_pass     Every check passed.
  * @pre The transfer has completed and ::s_c6_hosted_rx is stable.
  * @pre @p calc came from ::c6_hosted_rx_checksum for this same buffer.
@@ -265,6 +281,11 @@ static c6_hosted_verdict_t c6_hosted_classify(int32_t rc, uint16_t calc)
   if (fill == k_c6_hosted_fill_ones) {
     return k_c6_hosted_verdict_ones;
   }
+  if ((s_c6_hosted_rx.header.if_type == (uint8_t)ESP_MAX_IF) &&
+      (s_c6_hosted_rx.header.if_num == (uint8_t)k_c6_hosted_filler_if_num) &&
+      (s_c6_hosted_rx.header.len == 0U)) {
+    return k_c6_hosted_verdict_idle;
+  }
   if (s_c6_hosted_rx.header.offset != (uint16_t)k_c6_hosted_hdr_bytes) {
     return k_c6_hosted_verdict_offset;
   }
@@ -282,6 +303,8 @@ static c6_hosted_verdict_t c6_hosted_classify(int32_t rc, uint16_t calc)
  * @param[in] verdict Verdict to describe.
  * @return A static NUL-terminated reason string; never null.
  * @retval "link up" The verdict is ::k_c6_hosted_verdict_pass.
+ * @retval "link up -- co-processor returned its idle filler frame" The verdict
+ *         is ::k_c6_hosted_verdict_idle.
  * @pre @p verdict came from ::c6_hosted_classify.
  * @pre The caller prints the string rather than storing it.
  * @post No application state is modified.
@@ -295,6 +318,8 @@ static const char* c6_hosted_verdict_text(c6_hosted_verdict_t verdict)
   switch (verdict) {
     case k_c6_hosted_verdict_pass:
       return "link up";
+    case k_c6_hosted_verdict_idle:
+      return "link up -- co-processor returned its idle filler frame";
     case k_c6_hosted_verdict_transfer:
       return "bus transfer did not return RET_OK";
     case k_c6_hosted_verdict_zero:
@@ -364,8 +389,8 @@ void c6_hosted_run_transaction(void)
   c6_hosted_put_u32((uint32_t)k_c6_hosted_frame_bytes);
   c6_hosted_puts("\r\n");
   c6_hosted_print_rx_header(calc);
-  c6_hosted_puts((verdict == k_c6_hosted_verdict_pass) ? "c6_hosted_init: PASS "
-                                                       : "c6_hosted_init: FAIL ");
+  const bool ok = (verdict == k_c6_hosted_verdict_pass) || (verdict == k_c6_hosted_verdict_idle);
+  c6_hosted_puts(ok ? "c6_hosted_init: PASS " : "c6_hosted_init: FAIL ");
   c6_hosted_puts(c6_hosted_verdict_text(verdict));
   c6_hosted_puts("\r\n");
 }

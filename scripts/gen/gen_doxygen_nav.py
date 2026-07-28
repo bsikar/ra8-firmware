@@ -120,6 +120,7 @@ TIER_TITLES: dict[str, str] = {
     "ek_ra8d2": "EK-RA8D2 (stock evaluation kit)",
     "ek_ra8d2/hw_validated": "Hardware-validated",
     "ek_ra8d2/hw_validated/hil": "Hardware-in-the-loop (HIL)",
+    "ek_ra8d2/hw_validated/c6": "ESP32-C6 companion radio (make hil-c6)",
     "ek_ra8d2/hil_needs_revalidation": "HIL -- needs re-validation",
     "ek_ra8d2/hw_validated/manual": "Manual (jumper / button steps)",
     "ek_ra8d2/hw_pending": "Hardware-pending",
@@ -132,6 +133,10 @@ TIER_BRIEFS: dict[str, str] = {
     "ek_ra8d2/hil_needs_revalidation": "Apps moved out of the HIL-passing set: "
     "each is blocked by bench config, an SD reseat, absent external hardware, "
     "or is under triage -- see the tier README.",
+    "ek_ra8d2/hw_validated/c6": "Apps that talk to the ESP32-C6 companion radio "
+    "over esp-hosted. Hardware-validated, but on a DIP-switch configuration "
+    "(SW4-4 OFF) that excludes the default HIL pass -- run them with "
+    "`make hil-c6`.",
     "_unsupported": "Apps that need hardware not on the stock board "
     "(motor driver, audio CODEC, external radios, ...).",
     "ra8p1_foundation": "Foundation apps for the RA8P1 variant (RA8D2 + Ethos-U55 NPU).",

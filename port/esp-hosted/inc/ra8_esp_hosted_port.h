@@ -26,16 +26,20 @@
  *      ``ra8_esp_hosted_pin_irq_num``;
  *   6. publishes ``g_h`` so the vendored core can be started.
  *
- * @par Runtime status
- * This port compiles, links and is host-tested, but **no code in it has
- * ever run on silicon**. The wire it drives is proven: the probe
- * ``examples/ek_ra8d2/hw_pending/c6_spi_probe`` scope-qualified every J26
- * hole on 2026-07-27 and brought the raw link up at SPI mode 3 / 1 MHz with
- * zero bad checksums, which is where the map in ``ra8_esp_hosted_pins.h``
- * comes from. That probe drives the SCI directly, though, and reaches none
- * of this code, so every runtime claim about this port remains untested.
- * Nothing here fakes a result -- every function does its real work and
- * reports what the hardware actually did.
+ * @par Runtime status -- proven on silicon 2026-07-28
+ * This port runs on the bench. ``ra8_esp_hosted_port_init`` returns
+ * ``k_ra8_ok``, the pin map and interrupt routing resolve to the nets the
+ * board layer names, and ``_h_do_bus_transfer`` clocks 1600-byte full-duplex
+ * transactions at **5 MHz** -- five times the rate the original probe
+ * qualified -- with zero bad checksums and zero handshake timeouts.
+ * ``examples/ek_ra8d2/hw_validated/c6/c6_hosted_init`` established the
+ * transaction, and ``c6_fw_version`` then completed a full esp-hosted RPC
+ * round-trip through this vtable and checked the co-processor's answer.
+ * ``make hil-c6`` re-runs all of it.
+ *
+ * The physical map came from ``c6_spi_probe``, which scope-qualified every J26
+ * hole on 2026-07-27 at SPI mode 3 / 1 MHz; that probe drives the SCI directly
+ * and reaches none of this code, which is why the port needed its own proof.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

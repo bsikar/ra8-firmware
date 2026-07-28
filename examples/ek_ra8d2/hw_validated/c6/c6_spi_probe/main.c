@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6_spi_probe/main.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/main.c
  * @brief First raw SPI link probe against the ESP32-C6 wireless co-processor
  *
  * @par Tag

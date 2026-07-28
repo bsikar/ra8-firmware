@@ -46,7 +46,16 @@
 set -euo pipefail
 
 # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+#
+# The `:-$0` fallback is load-bearing, not defensive noise. The off-Pi branch
+# below re-invokes THIS FILE on the bench host by piping it into `bash -s`, and
+# a script read from stdin has an EMPTY BASH_SOURCE array -- so under `set -u`
+# the remote copy aborted here, on its first line of work, with
+# "BASH_SOURCE[0]: unbound variable". Every off-Pi `uart_scrape` run went that
+# way, which is every app `make hil-all` verifies. With the fallback, `$0` is
+# `bash` and this resolves to the working directory the ssh command sets --
+# which is why that command cds into the bench host's checkout.
+_hil_dir="$(dirname "${BASH_SOURCE[0]:-$0}")"
 _hil_dir="$(cd "$_hil_dir" && pwd)"
 # shellcheck source=scripts/hil/lib/rig_env.sh
 source "$_hil_dir/lib/rig_env.sh"
@@ -209,8 +218,15 @@ if ((LOCAL_PI == 0)); then
   # see no lock in its environment and try to take a SECOND one -- against the
   # hold this side is already keeping alive -- and deadlock against itself.
   [[ -n "${RA8_BENCH_LOCK_ID:-}" ]] && REMOTE_ENV+="RA8_BENCH_LOCK_ID=${RA8_BENCH_LOCK_ID} "
-  # shellcheck disable=SC2029  # ${REMOTE_ENV}/${REMOTE_ARGS} are composed locally for the piped copy of this script.
-  ssh "$PI_HOST" "${REMOTE_ENV}bash -s -- ${REMOTE_ARGS}" <"$0"
+  # The piped copy resolves its own `lib/` relative to the working directory
+  # (see the BASH_SOURCE note at the top of this file), so the ssh command has
+  # to put it somewhere those libraries exist: the bench host's own checkout,
+  # named by PI_REPO. Unlike run.sh -- which pastes the tty resolver into a
+  # self-contained heredoc precisely so the bench host needs no checkout -- this
+  # script sends itself whole and therefore needs one. `cd || exit` fails the
+  # run loudly rather than letting it proceed from the wrong directory.
+  # shellcheck disable=SC2029  # ${REMOTE_ENV}/${REMOTE_ARGS}/${PI_REPO} are composed locally for the piped copy of this script.
+  ssh "$PI_HOST" "cd ${PI_REPO}/scripts/hil || exit 2; ${REMOTE_ENV}bash -s -- ${REMOTE_ARGS}" <"$0"
   exit $?
 fi
 
@@ -252,8 +268,17 @@ TMP_SCRIPT="$(mktemp)"
 # including a colleague's `cat` on the same tty, mid-session, with no warning.
 # READER_PID is the one reader we launched; killing it by pid cannot reach
 # anybody else's. (It is still empty here: the reader starts after the flash.)
+# The trailing `true` was meant to make this trap always succeed, and could
+# not: `set -e` is still in force INSIDE an EXIT trap, so the `&&` list ahead
+# of it aborted the trap the moment `kill` failed -- and `kill` fails on the
+# normal path, because the reader has already been killed and reaped by then.
+# A trap that aborts sets the script's exit status to the failure, which
+# overrode the `exit 0` at the bottom of this file: every PASS was reported to
+# the caller as rc=1, so `make hil-all` scored zero passes while printing
+# "[HIL PASS]" for each app. Guarding the kill is what actually makes the trap
+# unconditional.
 # shellcheck disable=SC2016  # deliberate late expansion of $READER_PID, which is not set until the reader starts.
-trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"; [ -n "${READER_PID:-}" ] && kill "$READER_PID" 2>/dev/null; true' EXIT
+trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"; if [ -n "${READER_PID:-}" ]; then kill "$READER_PID" 2>/dev/null || true; fi' EXIT
 cat >"$TMP_SCRIPT" <<JLINK
 device ${JLINK_DEVICE}
 si SWD
@@ -295,7 +320,13 @@ echo -e "${YELLOW}[HIL]${NC} board console: ${UART}"
 # the bench is what keeps a second reader away; if one is here anyway, say so
 # loudly rather than shooting it, because it belongs to somebody.
 if command -v fuser >/dev/null 2>&1; then
-  OTHER_READERS="$(fuser "${UART}" 2>/dev/null | tr -s ' ' | sed 's/^ *//')"
+  # `|| true` is not decoration: fuser exits 1 when NOBODY has the file open,
+  # which is the healthy case and the overwhelmingly common one. Under
+  # `set -e` (plus `pipefail`, which makes the pipeline inherit fuser's
+  # status) the assignment therefore aborted the run right here, after the
+  # "board console:" line and before a single byte was flashed -- so every
+  # uart_scrape verification failed with no message at all.
+  OTHER_READERS="$(fuser "${UART}" 2>/dev/null | tr -s ' ' | sed 's/^ *//' || true)"
   if [[ -n "$OTHER_READERS" ]]; then
     echo -e "${YELLOW}[HIL]${NC} WARNING: ${UART} is already open by pid(s): ${OTHER_READERS}" >&2
     echo -e "${YELLOW}[HIL]${NC} Two readers split the byte stream. Whoever that is, it is not us --" >&2

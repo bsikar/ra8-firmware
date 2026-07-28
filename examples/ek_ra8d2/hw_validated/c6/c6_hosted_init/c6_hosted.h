@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6_hosted_init/c6_hosted.h
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/c6_hosted.h
  * @brief Shared contract for the esp-hosted port bring-up application.
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6_hosted_init/main.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/main.c
  * @brief Bring the RA8D2 + ThreadX esp-hosted port up against the ESP32-C6.
  *
  * @par Tag
@@ -30,17 +30,22 @@
  *   4. Worker: sample both side-band lines, run one transaction, dump pool
  *      occupancy, then heartbeat forever.
  *
- * @par Runtime status -- no hardware run has ever happened
- * This application compiles, links and is gate-checked, and it has **never
- * been flashed**. The wire underneath it is proven: the landed probe
- * ``examples/ek_ra8d2/hw_pending/c6_spi_probe`` scope-qualified every J26
- * hole on 2026-07-27 and brought the raw link up at SPI mode 3 / 1 MHz with
- * zero bad checksums, which is where the pin map in
- * ``ra8_esp_hosted_pins.h`` comes from. What is unproven is the port: no
- * application built on ``port/esp-hosted/`` has run on silicon, so neither
- * the PASS branch nor any FAIL branch below has been observed, and nothing
- * here pretends otherwise. A first run is a test of this firmware, not of
- * the harness.
+ * @par Runtime status -- proven on silicon 2026-07-28
+ * This application is the first thing built on ``port/esp-hosted/`` to have
+ * run on the board. The port comes up, the vtable samples both side-band
+ * lines, and a 5 MHz transaction returns the co-processor's idle filler frame
+ * with the transfer reporting ``RET_OK``. ``make hil-c6`` re-runs it against
+ * the app's own ``hil.conf``.
+ *
+ * The pin map comes from the probe
+ * ``examples/ek_ra8d2/hw_validated/c6/c6_spi_probe``, which scope-qualified
+ * every J26 hole on 2026-07-27 at SPI mode 3 / 1 MHz with zero bad checksums.
+ *
+ * That first run also found a defect in this application rather than in the
+ * port: its verdict demanded a payload-header ``offset`` of twelve from a
+ * frame that legitimately carries zero, so it reported FAIL at a healthy link.
+ * The idle filler is now a pass in its own right -- see
+ * ``src/c6_hosted_frame.c``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

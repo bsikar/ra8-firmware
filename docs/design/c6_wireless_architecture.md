@@ -145,7 +145,7 @@ GPIOs are not in the Octo-SPI path.
 ### Side-band assignment: resolved
 
 `P006` carries HANDSHAKE and `P402` carries DATA_READY, established on the
-bench by `examples/ek_ra8d2/hw_pending/c6_spi_probe` from the C6's own
+bench by `examples/ek_ra8d2/hw_validated/c6/c6_spi_probe` from the C6's own
 behaviour rather than from a wiring note. The two took different evidence,
 for the reason given in the transport section above:
 
@@ -201,9 +201,9 @@ the core includes by name, and the implementations behind the 72-entry
 exactly which vendored translation units compile today and what blocks the
 rest.
 
-`cmake/esp_hosted.cmake` wires it up behind `RA8_USE_ESP_HOSTED`; the consumer
-is `examples/ek_ra8d2/hw_pending/c6_hosted_init`, so the cross-build gate
-covers it on every push. The port:
+`cmake/esp_hosted.cmake` wires it up behind `RA8_USE_ESP_HOSTED`; its consumers
+are the apps under `examples/ek_ra8d2/hw_validated/c6/`, so the cross-build gate
+covers it on every push and `make hil-c6` re-runs it on the bench. The port:
 
 - Presents a single integration boundary for all C6 access, so the
   co-processor is never reached from application code directly.
@@ -215,11 +215,29 @@ covers it on every push. The port:
 - Carries its own host unit tests and MC/DC vectors under `tests/`.
 
 Separately, the first-light bench instrument for the *raw* link is
-`examples/ek_ra8d2/hw_pending/c6_spi_probe`. It hand-decodes the payload
+`examples/ek_ra8d2/hw_validated/c6/c6_spi_probe`. It hand-decodes the payload
 header from the same pinned upstream spec, but it is deliberately an app
 rather than a driver: its job was to prove the wire, resolve the Pmod1 mux
-position and identify the side-band pins, not to become the transport. It is
-what established that the C6 is not currently wired to the pins it probes.
+position and identify the side-band pins, not to become the transport.
+
+### Bring-up status, 2026-07-28
+
+Three rungs, all green on silicon and all re-runnable with `make hil-c6`:
+
+| Rung | Proven | By |
+|---|---|---|
+| The wire | SPI mode 3, pin map scope-qualified per J26 hole, zero bad checksums at 1 MHz | `c6_spi_probe` (2026-07-27) |
+| The port | `ra8_esp_hosted_port_init` returns ok; `_h_do_bus_transfer` clocks 1600-byte transactions at **5 MHz** and the co-processor answers with a well-formed frame | `c6_hosted_init` |
+| The protocol | A full RPC round-trip: `Req_GetCoprocessorFwVersion` up, `Resp_GetCoprocessorFwVersion` back, decoded by the vendored protobuf codec, fields checked (fw 2.12.11, chip id 0x0D, echoed UID, result 0) | `c6_fw_version` |
+
+Two protocol facts from that run that the layers above should be built on:
+
+- The co-processor's boot announcement that a host can actually use is
+  **`RPC_ID__Event_ESPInit`**, an unsolicited RPC event on `ESP_SERIAL_IF`.
+- The `ESP_PRIV_IF` `ESP_PRIV_EVENT_INIT` event -- upstream's usual source for
+  co-processor capabilities, chip id and firmware version -- **fails its own checksum**
+  on this co-processor build and is dropped by any conformant host, upstream's
+  included (#529). Do not depend on `process_init_event()`'s TLVs.
 
 ### The one file to edit when the harness is rebuilt
 

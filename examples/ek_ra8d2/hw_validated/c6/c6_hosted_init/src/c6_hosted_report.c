@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6_hosted_init/src/c6_hosted_report.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_report.c
  * @brief Banner, resolved pin map and side-band reporting for the bring-up.
  *
  * @par Tag

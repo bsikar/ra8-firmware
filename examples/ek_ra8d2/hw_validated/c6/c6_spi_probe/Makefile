@@ -2,7 +2,7 @@
 # Per-app Makefile for the `c6_spi_probe` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_pending/c6_spi_probe/
+#   cd examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/
 #   make             # configure + build -> build/c6_spi_probe.elf
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger

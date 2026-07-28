@@ -9,6 +9,14 @@
 # fail (loud) so nothing slips through silently. Truly-human-only apps must
 # live under `manual/` instead.
 #
+# `--dir <path-under-repo-root>` points the SAME runner at a different tier.
+# There is one HIL runner, not one per bench configuration: `make hil-c6`
+# is this script aimed at examples/ek_ra8d2/hw_validated/c6/, which needs a
+# DIP-switch setting (SW4-4 OFF) that takes Arduino and mikroBUS off the board
+# for every other app, so it cannot share a pass with the default tier. A
+# second copy of this file would be a second place for the discovery, the
+# bench hold and the six verifiers to drift.
+#
 # Per-app `hil.conf` (sourced as bash) declares HOW the app is verified.
 # Supported modes:
 #
@@ -82,6 +90,8 @@
 # Usage:
 #   bash scripts/hil/all.sh                  -- everything
 #   bash scripts/hil/all.sh --only blink     -- one app
+#   bash scripts/hil/all.sh --dir examples/ek_ra8d2/hw_validated/c6
+#                                            -- a different tier (see make hil-c6)
 #   bash scripts/hil/all.sh --skip-build     -- assume binaries are built
 #   bash scripts/hil/all.sh --mode uart_scrape  -- only one mode
 #   bash scripts/hil/all.sh --list           -- enumerate apps + modes, no run
@@ -125,8 +135,13 @@ ONLY=""
 MODE_FILTER=""
 SKIP_BUILD=0
 LIST_ONLY=0
+DIR_OVERRIDE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --dir)
+      DIR_OVERRIDE="$2"
+      shift 2
+      ;;
     --only)
       ONLY="$2"
       shift 2
@@ -144,7 +159,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -h | --help)
-      sed -n '5,46p' "$0"
+      sed -n '5,55p' "$0"
       exit 0
       ;;
     *)
@@ -153,6 +168,18 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# A tier override is resolved (and existence-checked) here rather than at the
+# default assignment above, so the default stays the plain
+# HIL_DIR="${REPO_ROOT}/..." line that check_hil_eil_parity.py parses to learn
+# this harness's root. A gate that cannot find that line stops policing the
+# EIL==HIL invariant, which is the failure mode this tree keeps re-learning.
+if [[ -n "$DIR_OVERRIDE" ]]; then
+  HIL_DIR="$(cd "${REPO_ROOT}/${DIR_OVERRIDE}" 2>/dev/null && pwd)" || {
+    echo -e "${RED}[hil_all]${NC} --dir ${DIR_OVERRIDE} does not exist under the repo root"
+    exit 2
+  }
+fi
 
 # Auto-discover hil/<app>/ dirs (shared with eil_all.sh via hil_conf.sh).
 declare -a APPS=()
@@ -165,7 +192,7 @@ if ((${#APPS[@]} == 0)); then
   exit 1
 fi
 
-echo -e "${CYAN}[hil_all]${NC} discovered ${#APPS[@]} apps under hil/"
+echo -e "${CYAN}[hil_all]${NC} discovered ${#APPS[@]} apps under ${HIL_DIR#"${REPO_ROOT}/"}"
 
 # ---- bench mutual exclusion --------------------------------------------------
 # ONE hold for the whole suite, taken here and inherited by every per-mode

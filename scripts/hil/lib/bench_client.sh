@@ -326,6 +326,27 @@ bench_field() {
   printf '%s' "$v"
 }
 
+# The lock_id currently recorded on the bench host, or nothing.
+#
+# Lives HERE, in the shared client half, because both consumers need it and
+# only one of them used to have it: bench.sh defined it while lib/bench_lock.sh
+# CALLED it, so `_ra8_bench_still_ours` aborted with "bench_lock_id_now:
+# command not found" in every guarded script. The visible effect was that a
+# guarded script invoked INSIDE another script's hold could not recognise the
+# hold as its own and was denied the bench by its own parent -- which is
+# exactly what `make hil-all` does for every app it runs.
+#
+# The probe is captured before it is filtered, deliberately: under `pipefail` a
+# pipeline whose FIRST stage exits 1 (which `probe` does whenever the bench is
+# held -- that is its verdict, not a failure) reports 1 no matter what the
+# filter found. Piping it straight into `grep` therefore reported "not my lock"
+# for every successful acquire.
+bench_lock_id_now() {
+  local probe
+  probe="$(bench_host probe 2>/dev/null)"
+  bench_field "$probe" f_lock_id
+}
+
 bench_human_age() {
   local secs="$1"
   case "$secs" in

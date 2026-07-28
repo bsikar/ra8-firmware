@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6_spi_probe/src/c6_frame.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_frame.c
  * @brief Hand-decoded esp-hosted payload header for the ESP32-C6 SPI probe
  *
  * @par Tag

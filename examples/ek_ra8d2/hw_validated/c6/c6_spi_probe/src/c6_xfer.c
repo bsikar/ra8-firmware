@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/c6_spi_probe/src/c6_xfer.c
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_xfer.c
  * @brief One full esp-hosted SPI full-duplex transaction against the C6
  *
  * @par Tag
