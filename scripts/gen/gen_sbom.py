@@ -34,6 +34,15 @@ the tree is:
     run (see ``tree_digest``).  A single mutated vendored byte changes the
     digest, so ``--check`` fails.
 
+That last check is *self*-referential by nature: it proves the tree has not
+changed since the SBOM was regenerated, never that the tree was right when it
+was vendored.  The complementary check lives in
+``scripts/checks/check_soup_upstream.py`` (#548), which compares every vendored
+file against the blob hash its upstream project publishes for the pinned
+revision.  The two are deliberately separate: this one needs no network and
+covers every byte under a component path, that one needs a fetch (done weekly)
+and covers the identity claim the digest cannot reach.
+
 That last one used to be the hole.  ``aggregate_sha256`` was a hand-transcribed
 literal in ``sbom_registry.py``, present on four of twenty-three components and
 absent from NimBLE -- the one component that had actually drifted.  Nothing
@@ -402,6 +411,10 @@ def _properties_block(comp: Component, file_count: int) -> list[dict]:
         props.append({"name": "ra8:fileCount", "value": str(file_count)})
     if comp.upstream_commit is not None:
         props.append({"name": "ra8:upstreamCommit", "value": comp.upstream_commit})
+    if comp.upstream_ref is not None:
+        props.append({"name": "ra8:upstreamRef", "value": comp.upstream_ref})
+    if comp.upstream_archive_sha256 is not None:
+        props.append({"name": "ra8:upstreamArchiveSha256", "value": comp.upstream_archive_sha256})
     if comp.license_original is not None:
         props.append({"name": "ra8:licenseOriginal", "value": comp.license_original})
     if comp.license_election is not None:

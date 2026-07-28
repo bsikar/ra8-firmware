@@ -1,0 +1,113 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: libwebp
+# upstream-url: https://chromium.googlesource.com/webm/libwebp
+# transport: git
+# ref: v1.5.0
+# commit: a4d7a715337ded4451fec90ff8ce79728e04126c
+# upstream-files: 341
+# vendored-files: 102
+# upstream-verified: 101
+# patched: 1
+# local: 0
+ok 100644 6772bcd127c7f26ccbc52f699bdee88d70d6f0c0 AUTHORS
+ok 100644 7a6f99547d4d6b4c5e6d5321acfaeba313e08de3 COPYING
+ok 100644 caedf607e95ae4c3dc84d057fddcc301cd0e4863 PATENTS
+ok 100644 b6c874fb84dcda2bd17771aff645f8cecf5ea6ee src/dec/alpha_dec.c
+ok 100644 a64104abeb33d0a62f2bd3159fe8950bd5026136 src/dec/alphai_dec.h
+ok 100644 11ce76f19e2b4b4ebbea778dab0012436c56ab21 src/dec/buffer_dec.c
+ok 100644 b158550a80b7eaa006a09bcace097b9296830897 src/dec/common_dec.h
+ok 100644 91ca1f8609a911b2e1a51c1fcfd9ec1ee1d6642b src/dec/frame_dec.c
+ok 100644 ad042a1ffcbea1cbc3600472bc43ae5ec1f1c306 src/dec/idec_dec.c
+ok 100644 5ef6298886eb978f3655e59fec4fe00bce313b71 src/dec/io_dec.c
+ok 100644 a0ac018b0f5448d29df8d25091f7dc7d4888323c src/dec/quant_dec.c
+ok 100644 8093e78b6da4ec6ab9203f3d7636234462c0baae src/dec/tree_dec.c
+ok 100644 2ee89006059901fe182f0dc20670f0132cc9daf8 src/dec/vp8_dec.c
+ok 100644 91fe10409312d6747527b9829224cade60521b25 src/dec/vp8_dec.h
+ok 100644 c07319e9b808714c2ce020c7bbe6c531af8ba601 src/dec/vp8i_dec.h
+ok 100644 d60f589278476c27ed1d5b5527ad6b0280fb0429 src/dec/vp8l_dec.c
+ok 100644 6f95b357f60b7f16ee38e4521b9979de821bc1bc src/dec/vp8li_dec.h
+ok 100644 49ef205c8b60f089e774db628e5ed19e45d14b3a src/dec/webp_dec.c
+ok 100644 77bf5264b7790a083b79c84e2ae3cbe06ed0b2fb src/dec/webpi_dec.h
+ok 100644 1d152f24dada3919f39376575dee951316df6dc5 src/dsp/alpha_processing.c
+ok 100644 0090e87cd1f603c381dd771732a51df71f3aa913 src/dsp/alpha_processing_mips_dsp_r2.c
+ok 100644 6716fb77f0d875c4e477292929ac0e796df1ec68 src/dsp/alpha_processing_neon.c
+ok 100644 aa0cc2848ae997c7c9c6f2473a9ee67520b610d0 src/dsp/alpha_processing_sse2.c
+ok 100644 1156ac3417b2656d7fbcc6fb6917deb3eba851ef src/dsp/alpha_processing_sse41.c
+ok 100644 e9f1ebff44f912d587e0866da312b184c3433dbd src/dsp/common_sse2.h
+ok 100644 2f173c024a9c0f066b3cf247f083a0978a147d1a src/dsp/common_sse41.h
+ok 100644 8ba8f683357b0afd430b8246713b9d7175aca358 src/dsp/cpu.c
+ok 100644 c86540f28013d3f0b4dd59f978c8384407e8f57b src/dsp/cpu.h
+ok 100644 dc1a7625cb814a52ad169d997e44ce5d1148e9d5 src/dsp/dec.c
+ok 100644 427b74f776c3031716424b33ccd2671eaf9557e3 src/dsp/dec_clip_tables.c
+ok 100644 89fe900992e911e0f25d12c9d03b6a8b57e8243c src/dsp/dec_mips32.c
+ok 100644 03b5f122b600dfdbf8057ccf1f84ae7bdaa27342 src/dsp/dec_mips_dsp_r2.c
+ok 100644 422b3632280b75fcfceef52988ef3e310355cd49 src/dsp/dec_msa.c
+ok 100644 f150692a4b1767f33e23de437bfb76ebebac187b src/dsp/dec_neon.c
+ok 100644 b0faada8a7780575cfbf7a04f5259b80c8f80470 src/dsp/dec_sse2.c
+ok 100644 08a36302722677e894806ce26e556af5a0f6edd1 src/dsp/dec_sse41.c
+ok 100644 1b37ef4b90856b1faffe108ad72844dd431c6b3c src/dsp/dsp.h
+ok 100644 f5e1e5f9f57d51ae879271ab02887ca6f4159986 src/dsp/filters.c
+ok 100644 c62bb872dc8926eecf4e3e0ca5cc1608a09c4879 src/dsp/filters_mips_dsp_r2.c
+ok 100644 ae3d3699c7ac096410f60c4fed5c6d80a4b813ea src/dsp/filters_msa.c
+ok 100644 4df10172604d142a0cdace55344d6d5fb43d94ca src/dsp/filters_neon.c
+ok 100644 d2ba789428269fb12b6c7beee8108f4e7058a968 src/dsp/filters_sse2.c
+ok 100644 a02443f190dc2442ff1c3fa2c8b47fbbf24cfae2 src/dsp/lossless.c
+ok 100644 bbc1b8d367a350034111d01e019c0b07b459f928 src/dsp/lossless.h
+ok 100644 66eadf1f46750fc996930de47b96fcc2d7b2c763 src/dsp/lossless_common.h
+ok 100644 bfe5ea6b3865c6debbd45d13f1f58de482af7237 src/dsp/lossless_mips_dsp_r2.c
+ok 100644 9f5472078d9ebda48e749ee8e11b7a8e3e3bafa6 src/dsp/lossless_msa.c
+ok 100644 93f41cef7f7e4f095fc56285d13fbf3a4f4f5b17 src/dsp/lossless_neon.c
+ok 100644 5b68d1cf05dac18649c5c28e9993df541197637a src/dsp/lossless_sse2.c
+ok 100644 a2d19144540c169129a754dd4c5298469f14e4fb src/dsp/lossless_sse41.c
+ok 100644 e810d3d382445cf51905b3b3e4b90b91f20387d9 src/dsp/mips_macro.h
+ok 100644 90adbbc3197ec64d099c5fa6def08b749449aeac src/dsp/msa_macro.h
+ok 100644 14acb4044ba6309871a75ef38788a4180d67d705 src/dsp/neon.h
+ok 100644 dcbc11c77c59758a8e0ffb0993376aaf0b9f2e55 src/dsp/quant.h
+ok 100644 a96ca6699e156d4680becc1c4f1e05bd56b6e9ec src/dsp/rescaler.c
+ok 100644 b5168caa179cd272f16983862198c15218fb9d6f src/dsp/rescaler_mips32.c
+ok 100644 419b741fa514fde1dd5d4ec4ccdf5fad4d73a843 src/dsp/rescaler_mips_dsp_r2.c
+ok 100644 954d0fdfc3fafb513419464bb6c2ab6ed893983e src/dsp/rescaler_msa.c
+ok 100644 ab4ddc0090adb7b76dc384d1f0eba082d4e9fa60 src/dsp/rescaler_neon.c
+ok 100644 e898e2ac4177367c7b7fb95568d85134e6dbcfa5 src/dsp/rescaler_sse2.c
+ok 100644 5953fe4887f757fa6e94f3e22783ac9fa2d4193f src/dsp/upsampling.c
+ok 100644 cbe8e71d40b5837d7c80ca78456a3f460536a442 src/dsp/upsampling_mips_dsp_r2.c
+ok 100644 72a526bc17d18c6e48409f73183822c89fbe9e11 src/dsp/upsampling_msa.c
+ok 100644 2bd3e931e8f9effefb0b46eaa0248ed7f4565a56 src/dsp/upsampling_neon.c
+ok 100644 36226fb12509e7947a33627cb83a766418880c73 src/dsp/upsampling_sse2.c
+ok 100644 823633c47193afdd4f19ead568891faaa9c7c750 src/dsp/upsampling_sse41.c
+ok 100644 c1320f28267b8a68d0a9eee0232737d60ff5fc44 src/dsp/yuv.c
+ok 100644 59b871aee5a462286cba8f990c5ec6ce831e1a29 src/dsp/yuv.h
+ok 100644 1f6348586a0513e3dcb99a9ea78dfe002a8cd1ed src/dsp/yuv_mips32.c
+ok 100644 816340fe0b9556f5dbe9187a13909a32dcf24315 src/dsp/yuv_mips_dsp_r2.c
+ok 100644 b1b7c6041e1ac4ee82dcfdd8de11d2cdc2466991 src/dsp/yuv_neon.c
+ok 100644 a96b452209a48fa02cabf9a96962afcc3a40b755 src/dsp/yuv_sse2.c
+ok 100644 071e4908feb3c9a230e60699ab21e38ec7c37e8e src/dsp/yuv_sse41.c
+ok 100644 4dff1c27b57c8c356f2962c71cfd0889fe215128 src/enc/backward_references_enc.h
+ok 100644 772eac789fe7a1b8b1e07866e9e249ad2e8208c7 src/enc/histogram_enc.h
+ok 100644 24f3af7b5454f245d2ac0fdad399a345a8b977b8 src/utils/bit_reader_inl_utils.h
+ok 100644 2707420f8a4a40a7d1a6d0d841c05b22d9d51a44 src/utils/bit_reader_utils.c
+ok 100644 b41a78813bdae7765187403fd4649392c5626d23 src/utils/bit_reader_utils.h
+ok 100644 7b5222b6e554d0b95e667ddeb373e315240ab41d src/utils/color_cache_utils.c
+ok 100644 b45d47c2d5c93ce2273c820b8bb49268dcc890d5 src/utils/color_cache_utils.h
+ok 100644 3630a293bfc4a3f59e1993dc81c1c95144fe214e src/utils/endian_inl_utils.h
+ok 100644 bbc2c34d93ab3251006e0d8fa56e820f725c384a src/utils/filters_utils.c
+ok 100644 61da66e2125766b70276d0df37a21c4ece83068c src/utils/filters_utils.h
+ok 100644 16f9faaa9a07790e62111854298a86138b5ca51c src/utils/huffman_utils.c
+ok 100644 d511dc052c4324382fc55a1bbd943f6ecc8f3a9b src/utils/huffman_utils.h
+ok 100644 8ae0a5cdbe167e98b04de24829aaecab4fa2b078 src/utils/palette.c
+ok 100644 417c61fa5ea8e1649ff1bce8348adfda88ae8bde src/utils/palette.h
+ok 100644 97e78937043edf143c6c9cdacb265d6135046677 src/utils/quant_levels_dec_utils.c
+ok 100644 327f19f3365e249894976e3ce78acf6e5737f0b1 src/utils/quant_levels_dec_utils.h
+ok 100644 7edb3fefbb85b7c274e455ed34db2135651a0748 src/utils/random_utils.c
+ok 100644 a5006f84f7a2acb024b404188d6b9f4f2412b119 src/utils/random_utils.h
+ok 100644 a0581a14b1a832cb9075e04b976ca72b984f67d5 src/utils/rescaler_utils.c
+ok 100644 ef201ef86c19966439e9e5982f58c33c0eec7fee src/utils/rescaler_utils.h
+ok 100644 4e470e17ac18d39070043512809cc6b41f934aef src/utils/thread_utils.c
+ok 100644 29ad49f74b5aa6741a6b66a191fe409c368092a6 src/utils/thread_utils.h
+patch 100644 408ce88f67f689da446d7bae2f0af845be8bea46 ef9b3b36aa27a7dd3bfa3b2a728e7c93cd3be81a src/utils/utils.c
+ok 100644 b2241fbf9bf76114c3550db76ebbf9b24985e282 src/utils/utils.h
+ok 100644 d6895f5c55503d95cd8f429baa6e9bfbb13d8430 src/webp/decode.h
+ok 100644 8b59351e400ea57ee2985f2b08459090220365e5 src/webp/encode.h
+ok 100644 9b007c8a9d1761394b5e1d42a869de3ae5ea56b9 src/webp/format_constants.h
+ok 100644 c585d2082f707c04a702848db2da3938ae29c38e src/webp/mux_types.h
+ok 100644 a0363f1cd7219b8bff8039ea1c8f01e357cc59af src/webp/types.h

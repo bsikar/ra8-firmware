@@ -15,22 +15,22 @@ basis.
 
 | Library         | Version  | Origin                      | Doc                                |
 | --------------- | -------- | --------------------------- | ---------------------------------- |
-| ThreadX         | 6.5.0    | Eclipse Foundation          | [threadx.md](threadx.md)           |
-| NetX Duo        | 6.5.0    | Eclipse Foundation          | [netxduo.md](netxduo.md)           |
-| FileX           | 6.5.0    | Eclipse Foundation          | [filex.md](filex.md)               |
-| USBX            | 6.5.0    | Eclipse Foundation          | [usbx.md](usbx.md)                 |
-| LevelX          | 6.5.0    | Eclipse Foundation          | [levelx.md](levelx.md)             |
-| Mbed TLS        | 4.1.0    | TrustedFirmware.org         | [mbedtls.md](mbedtls.md)           |
-| TF-PSA-Crypto   | 1.1.0    | TrustedFirmware.org         | [tf-psa-crypto.md](tf-psa-crypto.md) |
+| ThreadX         | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [threadx.md](threadx.md)           |
+| NetX Duo        | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [netxduo.md](netxduo.md)           |
+| FileX           | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [filex.md](filex.md)               |
+| USBX            | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [usbx.md](usbx.md)                 |
+| LevelX          | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [levelx.md](levelx.md)             |
+| Mbed TLS        | 4.1.0+dev git `d12fbb99` | TrustedFirmware.org     | [mbedtls.md](mbedtls.md)           |
+| TF-PSA-Crypto   | 1.1.0+dev git `bbf1eaf5` | TrustedFirmware.org     | [tf-psa-crypto.md](tf-psa-crypto.md) |
 | Apache NimBLE   | 1.10.0 tag `nimble_1_10_0_tag` git `a7a156f2` | Apache Software Foundation  | [nimble.md](nimble.md)             |
 | litehtml        | 0.9+dev git `8836bc1b` | Yuri Kobets / community     | [litehtml.md](litehtml.md)         |
-| miniz           | 11.0.2   | Rich Geldreich / RAD        | [miniz.md](miniz.md)               |
+| miniz           | 11.0.2 release zip `miniz-3.0.2.zip` | Rich Geldreich / RAD | [miniz.md](miniz.md)   |
 | XZ Embedded (decode) | tag `v2024-12-30` git `ae63ae3a` | Lasse Collin / Tukaani | [xz_embedded.md](xz_embedded.md) |
-| stb             | image v2.30 / truetype v1.26 | Sean Barrett | [stb.md](stb.md)              |
+| stb             | image v2.30 / truetype v1.26, base git `31c1ad37` | Sean Barrett | [stb.md](stb.md)     |
 | libwebp (decode) | 1.5.0   | Google / WebM Project       | [libwebp.md](libwebp.md)           |
-| TinyXML-2       | 11.0.0   | Lee Thomason / community    | [tinyxml2.md](tinyxml2.md)         |
+| TinyXML-2       | 11.0.0 tag `11.0.0` | Lee Thomason / community  | [tinyxml2.md](tinyxml2.md)         |
 | TFLite-micro    | git `fddd3707` | Google / TensorFlow   | [tflite-micro.md](tflite-micro.md) |
-| FlatBuffers     | 25.9.23  | Google                      | [flatbuffers.md](flatbuffers.md)   |
+| FlatBuffers     | 25.9.23 git `18724097` | Google                  | [flatbuffers.md](flatbuffers.md)   |
 | gemmlowp        | git `719139ce` | Google                | [gemmlowp.md](gemmlowp.md)         |
 | ruy             | git `d3712831` | Google                | [ruy.md](ruy.md)                   |
 | esp-hosted host driver | 2.12.11 git `949bb30` | Espressif Systems | [esp-hosted-host.md](esp-hosted-host.md) |
@@ -128,6 +128,41 @@ week: `.github/workflows/osv-scan.yml` downloads a pinned `osv-scanner`
 release and runs [`../../scripts/checks/osv_scan.sh`](../../scripts/checks/osv_scan.sh),
 which queries OSV.dev both with the SBOM purls and with each recorded
 upstream commit (the form OSV actually resolves for git-vendored C/C++).
+
+## The pins are checked, not asserted
+
+Every document in this directory makes the same load-bearing claim -- this
+tree is what upstream published -- and until #548 nothing verified it. The
+SBOM's integrity digest (#538) is re-derived from `libs/third_party/` on every
+run, which proves the tree has not changed since the SBOM was regenerated; it
+cannot prove the tree was right when it was vendored, because a bad copy is
+hashed just as faithfully as a good one.
+
+So each component's upstream revision is now recorded in the registry
+(`upstream_ref` / `upstream_commit`, or a SHA-256-pinned release artifact for
+miniz's amalgamation), and
+[`../sbom/upstream/`](../sbom/upstream/) holds one manifest per component
+listing **the git blob SHA-1 upstream publishes for every file we vendor**.
+Those hashes are written by a real fetch of the upstream project
+(`scripts/checks/check_soup_upstream.py --refresh`), never derived from our own
+tree, so the offline `soup-upstream` gate compares two independently produced
+hashes rather than a value against itself. The weekly
+`soup-upstream-refresh` job re-fetches and fails if a pinned ref has moved
+under us.
+
+Deliberate deviations are declared in the registry (`patched_files`,
+`local_files`) with a justification, and `--refresh` REFUSES to record a
+deviation the registry has not declared -- otherwise a corrupted file would be
+quietly re-recorded as "modified on purpose" and the gate would go green having
+absorbed it. As of 2026-07-28: 22 components, 9735 vendored files, 9716
+byte-identical to their pinned upstream revision, 19 declared deviations.
+
+Applying that check for the first time found five undeclared deviations that
+this catalog described as "unmodified": the `[attr]` edit to all five Eclipse
+ThreadX `.gitattributes` files, CRLF-converted USBX `.inf` templates, and a
+vendor-in formatter sweep over miniz, TinyXML-2 and `stb_image.h`. Everything
+that could be restored to upstream's bytes was; the rest is enumerated in the
+component's "Deviations / patches" section.
 
 ## Review cadence
 

@@ -85,11 +85,20 @@ OPT_OUT = "PATHREF-OK"
 # Vendored / generated / build trees. Their prose is the upstream maintainer's
 # call, and several vendor script trees (mbedtls, zephyr) legitimately mention
 # their OWN scripts/ paths, which do not exist here and never will.
+#
+# docs/sbom/upstream/ is the same fact one step removed: those manifests are
+# generated listings of UPSTREAM file paths (#548), and mbedtls, FileX and
+# LevelX each ship a `scripts/` directory of their own -- a row naming
+# `scripts/generate_errors.pl`  # PATHREF-OK: upstream's path, not ours
+# records what upstream publishes rather than referring to anything here, and
+# unlike prose there is no edit that could make it resolve. Those rows are not
+# unchecked either: check_soup_upstream.py parses every one of them strictly.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/ra8_fonts/",
     "port/threadx/",
     "tools/vela/generated/",
+    "docs/sbom/upstream/",
 )
 
 # Suffixes that are binary or generated payloads -- never scanned. Anything not

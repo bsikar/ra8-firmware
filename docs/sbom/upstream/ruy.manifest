@@ -1,0 +1,13 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: ruy
+# upstream-url: https://github.com/google/ruy
+# transport: git
+# ref: d37128311b445e758136b8602d1bbd2a755e115d
+# commit: d37128311b445e758136b8602d1bbd2a755e115d
+# upstream-files: 142
+# vendored-files: 2
+# upstream-verified: 2
+# patched: 0
+# local: 0
+ok 100644 d645695673349e3947e8e5ae42332d0ac3164cd7 LICENSE
+ok 100644 c4df1e68fb2e0c8560cbe8c3b8df7b66ffc177f1 ruy/profiler/instrumentation.h

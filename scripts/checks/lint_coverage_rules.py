@@ -166,6 +166,11 @@ EXT_CLASS: dict[str, str] = {
     ".defs": "text",
     ".env": "text",
     ".defaults": "text",
+    # docs/sbom/upstream/*.manifest -- generated evidence, one line per vendored
+    # file. Not code and not hand-authored, but not unvalidated either:
+    # check_soup_upstream.py parses every record strictly and fails on a
+    # malformed one, so this class is claimed by that gate rather than a linter.
+    ".manifest": "text",
     # Binary payloads
     ".png": "binary",
     ".jpg": "binary",

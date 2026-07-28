@@ -499,6 +499,12 @@ jobs:
       - run: bash scripts/ci.sh --gate lint-coverage
       - run: bash scripts/ci.sh --gate cite-check
       - run: bash scripts/ci.sh --gate sbom
+      # Runs next to sbom because it answers the other half of the same
+      # question: sbom proves the vendored tree has not changed since we last
+      # looked, soup-upstream proves it is what upstream published. Offline --
+      # the upstream hashes are committed manifests, refreshed weekly by
+      # osv-scan.yml's soup-upstream-refresh job.
+      - run: bash scripts/ci.sh --gate soup-upstream
       - run: bash scripts/ci.sh --gate roadmap-stats
 
   # ---------------------------------------------------------------------------

@@ -303,6 +303,30 @@ gate_sbom() (
   python3 scripts/gen/gen_sbom.py --check
 )
 
+# --- soup-upstream --------------------------------------------------------
+# The other half of the provenance claim (#548). The sbom gate above re-derives
+# a digest over each vendored tree, which proves only that the tree has not
+# changed since the SBOM was regenerated -- a tree that was already wrong at
+# vendor-in hashes faithfully and reports clean forever. This gate compares
+# every vendored file against the blob SHA-1 its UPSTREAM project publishes for
+# the pinned revision, recorded in docs/sbom/upstream/*.manifest by a real
+# fetch. Two hashes from two projects, so nothing is compared with itself.
+#
+# Offline by construction: the manifests are committed, so a push does not
+# depend on twenty upstream hosts being reachable. The networked half is the
+# weekly soup-upstream-refresh gate, which re-fetches and catches what this one
+# structurally cannot -- a tag that moved under a pin.
+#
+# --selftest FIRST, and it drives run_check() itself against a scratch git
+# repository: a mutated blob, a lost file, an undeclared patch, a collapsed
+# scan. This claim was asserted in three places and checked by nothing, so
+# every tree passed it -- including one that had drifted.
+gate_soup_upstream() (
+  set -e
+  python3 scripts/checks/check_soup_upstream.py --selftest
+  python3 scripts/checks/check_soup_upstream.py
+)
+
 # --- roadmap-stats --------------------------------------------------------
 gate_roadmap_stats() (
   set -e

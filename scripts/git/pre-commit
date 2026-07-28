@@ -478,6 +478,20 @@ if ! python3 scripts/gen/gen_sbom.py --check; then
   error_found=1
 fi
 
+# Vendored SOUP vs UPSTREAM (#548). The check above proves the tree has not
+# changed since the SBOM was regenerated; this one proves it is what upstream
+# published, against the blob hashes committed under docs/sbom/upstream/. It is
+# offline and takes about a second, so it belongs at commit time rather than
+# only at push: the failure it catches is a repo-wide rename reaching into
+# libs/third_party/, and that is exactly the commit you want to stop.
+if ! python3 scripts/checks/check_soup_upstream.py; then
+  echo "[FAIL] a vendored SOUP file no longer matches its pinned upstream revision."
+  echo "   Restore the upstream bytes, or declare the deviation in"
+  echo "   scripts/gen/sbom_registry.py, run 'make soup-refresh' (needs the"
+  echo "   network) and record it in the component's docs/SOUP/*.md."
+  error_found=1
+fi
+
 # -----------------------------------------------------------------------------
 # HUM citations, world tags, roadmap summary
 # -----------------------------------------------------------------------------
