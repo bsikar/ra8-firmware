@@ -150,7 +150,10 @@ if [[ -f "$ELF_FOR_STRINGS" ]] && command -v arm-none-eabi-strings >/dev/null 2>
 fi
 
 APP_NAME="$(basename "${HEX%.hex}")"
-LOG_FILE="/tmp/hil_jlink_${APP_NAME}.log"
+# Per-invocation, not fixed: /tmp/hil_jlink_<app>.log and /tmp/hil_uart_<app>.log
+# were shared by every actor running the same app, so two runs interleaved into
+# one log and each read the other's bytes.
+LOG_FILE="/tmp/hil_jlink_${APP_NAME}.$$.log"
 
 # Detect whether we're already on the Pi (matches the pattern used by
 # hil_usb_test.sh: hostname OR aarch64 with a CDC device attached).
@@ -158,6 +161,15 @@ LOCAL_PI=0
 if rig_is_local_pi; then
   LOCAL_PI=1
 fi
+
+# ---- bench mutual exclusion --------------------------------------------------
+# Taken on the WORKSTATION side (before the re-invocation below) and inherited
+# through the ssh by RA8_BENCH_LOCK_ID, so one run holds the bench end to end
+# rather than dropping it between the flash and the scrape. See
+# scripts/hil/bench.sh.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$_hil_dir/lib/bench_lock.sh"
+ra8_bench_require "hil run ${APP_NAME}" "$((TIMEOUT_S + 300))s" || exit $?
 
 # Off-Pi: scp the hex over, re-invoke ourselves on the Pi with --hex
 # pointing at the remote copy. This way every Pi-local step (JLinkExe,
@@ -193,6 +205,10 @@ if ((LOCAL_PI == 0)); then
   REMOTE_ENV=""
   [[ "${HIL_EXPECT_SHORT_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_SHORT_OK=1 "
   [[ "${HIL_EXPECT_OVERLAP_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_OVERLAP_OK=1 "
+  # Carry the bench hold across the ssh. Without this the Pi-side copy would
+  # see no lock in its environment and try to take a SECOND one -- against the
+  # hold this side is already keeping alive -- and deadlock against itself.
+  [[ -n "${RA8_BENCH_LOCK_ID:-}" ]] && REMOTE_ENV+="RA8_BENCH_LOCK_ID=${RA8_BENCH_LOCK_ID} "
   # shellcheck disable=SC2029  # ${REMOTE_ENV}/${REMOTE_ARGS} are composed locally for the piped copy of this script.
   ssh "$PI_HOST" "${REMOTE_ENV}bash -s -- ${REMOTE_ARGS}" <"$0"
   exit $?
@@ -205,7 +221,7 @@ echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIME
 # when TrustZone option bytes are involved.  Strip them so J-Link only programs
 # the MRAM bank at 0x02000000.
 ELF="${HEX%.hex}.elf"
-STRIPPED_HEX="/tmp/hil_${APP_NAME}_mram.hex"
+STRIPPED_HEX="/tmp/hil_${APP_NAME}_mram.$$.hex"
 OFS_ARGS=('--remove-section=.option_setting*')
 if [[ -f "$ELF" ]]; then
   arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null ||
@@ -231,11 +247,13 @@ fi
 # LPSCR via DAP (PRCR-unlock + write 0 + relock) makes RAMCode's WFI a plain
 # Sleep that any interrupt can wake.
 TMP_SCRIPT="$(mktemp)"
-# Single-quoted body: ${UART} is read at trap time, not now. It is still empty
-# here (the console is resolved after flashing), and a pkill pattern of a bare
-# "cat " would match far more than this script's reader.
-# shellcheck disable=SC2016  # deliberate late expansion of $UART, see above.
-trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"; [ -n "$UART" ] && pkill -f "cat $UART" 2>/dev/null; true' EXIT
+# Clean up only what THIS run started. The old form was
+# `pkill -f "cat $UART"`, which killed every console reader on the box --
+# including a colleague's `cat` on the same tty, mid-session, with no warning.
+# READER_PID is the one reader we launched; killing it by pid cannot reach
+# anybody else's. (It is still empty here: the reader starts after the flash.)
+# shellcheck disable=SC2016  # deliberate late expansion of $READER_PID, which is not set until the reader starts.
+trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"; [ -n "${READER_PID:-}" ] && kill "$READER_PID" 2>/dev/null; true' EXIT
 cat >"$TMP_SCRIPT" <<JLINK
 device ${JLINK_DEVICE}
 si SWD
@@ -269,13 +287,23 @@ if [ -z "$UART_EXPLICIT" ]; then
 fi
 echo -e "${YELLOW}[HIL]${NC} board console: ${UART}"
 
-# Kill any lingering readers from a previous test that didn't clean up.
-# Two cats on the same console each get only half the bytes, which silently
-# breaks pattern matching for the next test.
-pkill -f "cat ${UART}" 2>/dev/null || true
-sleep 0.1
+# Two readers on one console each get half the bytes, which silently breaks the
+# next test's pattern match -- so a second reader really is a problem. But the
+# fix used to be `pkill -f "cat $UART"`, which killed EVERY reader on the box:
+# a colleague tailing the console to watch their own board lost it, without
+# warning, on every flash anyone did. That is the bench lock's job now. Holding
+# the bench is what keeps a second reader away; if one is here anyway, say so
+# loudly rather than shooting it, because it belongs to somebody.
+if command -v fuser >/dev/null 2>&1; then
+  OTHER_READERS="$(fuser "${UART}" 2>/dev/null | tr -s ' ' | sed 's/^ *//')"
+  if [[ -n "$OTHER_READERS" ]]; then
+    echo -e "${YELLOW}[HIL]${NC} WARNING: ${UART} is already open by pid(s): ${OTHER_READERS}" >&2
+    echo -e "${YELLOW}[HIL]${NC} Two readers split the byte stream. Whoever that is, it is not us --" >&2
+    echo -e "${YELLOW}[HIL]${NC} check 'make bench-status'. Not killing it." >&2
+  fi
+fi
 stty -F "${UART}" "${BAUD}" raw -echo
-UART_LOG="/tmp/hil_uart_${APP_NAME}.log"
+UART_LOG="/tmp/hil_uart_${APP_NAME}.$$.log"
 : >"${UART_LOG}"
 # Drain any stale bytes from the previous test that are still queued in
 # the kernel-side tty receive buffer (`stty` doesn't tcflush). Without
@@ -338,11 +366,11 @@ echo "--- captured UART ---"
 sed 's/\r/\\r/g' "${UART_LOG}" | head -20 | sed 's/^/[uart] /'
 echo "--- end ---"
 
-# Stop the background tty reader.  It will keep running otherwise, consuming
-# data from the console and breaking the next test's reader.  setsid moved
-# it out of our process group, so we pkill by name too as a safety net.
+# Stop the background tty reader. It will keep running otherwise, consuming
+# data from the console and breaking the next test's reader. By pid only: the
+# old `pkill -f "cat $UART"` safety net also killed anyone else's reader, and
+# setsid does not make our own pid any harder to signal.
 kill "${READER_PID}" 2>/dev/null || true
-pkill -f "cat ${UART}" 2>/dev/null || true
 wait "${READER_PID}" 2>/dev/null || true
 
 # Negative-expect scan -- runs even on positive match. The point is

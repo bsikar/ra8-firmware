@@ -47,10 +47,24 @@ _hex="${_app_dir}/build/${APP}.hex"
 source "${here}/lib/preflash_guard.sh"
 ra8_preflash_guard "${_hex}" || exit $?
 
+# ---- bench mutual exclusion --------------------------------------------------
+# Taken HERE, once, and inherited by the two scripts below through
+# RA8_BENCH_LOCK_ID -- so the erase and the reflash are one indivisible
+# operation from the bench's point of view. Acquiring twice would let a third
+# actor in between them and flash over a freshly-erased chip.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "${here}/lib/bench_lock.sh"
+ra8_bench_require_recovery "TrustZone/RoT reset then reflash ${APP}" 30m || exit $?
+
 echo "[hil_reflash] full TrustZone/RoT reset via rfp-cli -erase-chip ..."
-bash "${here}/hil_dlm_reset.sh"
+# These two were `hil_dlm_reset.sh` and `hil_flash.sh` -- names that stopped
+# existing when the scripts were renamed, so `make hil-reflash` had been dead
+# for the whole life of the rename with nothing to notice: the paths are built
+# from a variable, which is exactly the shape check_script_references.py cannot
+# resolve.
+bash "${here}/dlm_reset.sh"
 
 echo "[hil_reflash] reset complete -- flashing ${APP} ..."
-bash "${here}/hil_flash.sh" "${APP}"
+bash "${here}/flash.sh" "${APP}"
 
 echo "[hil_reflash DONE] ${APP} flashed to a freshly-reset board"

@@ -118,6 +118,29 @@ cmd_selftest() {
     failures=$((failures + 1))
   fi
 
+  # 5. THE GUARD. Everything above proves the CLI; this proves the thing every
+  #    HIL script actually calls -- that `ra8_bench_require` holds for the life
+  #    of the calling script, no-ops when nested, and lets go when the script
+  #    dies WITHOUT running a trap. A guard that quietly released early, or
+  #    quietly held forever, would pass every test above.
+  bench_selftest_guard || failures=$((failures + 1))
+
+  # 6. The two halves of the human-preempt handshake are written down in two
+  #    files -- the client refuses without the phrase, the bench host enforces
+  #    it -- so they can drift, and if they did the client would refuse a
+  #    preempt the host would have allowed, or worse.
+  local host_phrase client_phrase
+  host_phrase="$(sed -n 's/^BH_CONFIRM_PHRASE="\(.*\)"$/\1/p' "$RA8_BENCH_HOST_SRC")"
+  client_phrase="$(sed -n 's/^RA8_BENCH_CONFIRM_PHRASE="\(.*\)"$/\1/p' \
+    "$(dirname "$RA8_BENCH_HOST_SRC")/bench_human.sh")"
+  if [ -n "$host_phrase" ] && [ "$host_phrase" = "$client_phrase" ]; then
+    printf '  ok: the CONFIRM phrase agrees between client and bench host\n'
+  else
+    printf '  FAIL: CONFIRM phrase drift -- host=%s client=%s\n' \
+      "${host_phrase:-<unset>}" "${client_phrase:-<unset>}"
+    failures=$((failures + 1))
+  fi
+
   if [ "$want_ssh_death" -eq 1 ]; then
     bench_selftest_ssh_death || failures=$((failures + 1))
   fi
@@ -130,6 +153,75 @@ cmd_selftest() {
   fi
   printf 'bench selftest: FAIL (%s)\n' "$failures"
   return "$RA8_BENCH_EXIT_HELD"
+}
+
+# The sourced guard, exercised the way a HIL script uses it -- as a real
+# child process that takes the lock, checks it is held, and is then killed
+# WITHOUT a chance to run any trap. `kill -9` is the case that matters: if the
+# only thing releasing the bench were the EXIT trap, every hard-killed HIL run
+# would leak the bench, and the fd-close mechanism this design relies on would
+# be doing nothing while looking like it worked.
+bench_selftest_guard() {
+  local lib script pid rc waited=0 probe
+  lib="$(dirname "$RA8_BENCH_HOST_SRC")"
+  script="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-guardtest.XXXXXX")"
+  cat >"$script" <<GUARDTEST
+#!/usr/bin/env bash
+set -uo pipefail
+source "$lib/bench_lock.sh"
+ra8_bench_require "selftest: sourced guard" 120s || exit \$?
+# Nested call: a script that calls another guarded script must NOT deadlock
+# against the hold it already owns.
+ra8_bench_require "selftest: nested" || exit \$?
+printf 'GUARD-HELD %s\n' "\$RA8_BENCH_LOCK_ID"
+# Hold still until killed.
+while :; do sleep 1; done
+GUARDTEST
+
+  RA8_BENCH_DIR="$RA8_BENCH_DIR" bash "$script" >"$script.out" 2>"$script.err" &
+  pid=$!
+  while [ "$waited" -lt 60 ]; do
+    grep -q '^GUARD-HELD ' "$script.out" 2>/dev/null && break
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 1
+    waited=$((waited + 1))
+  done
+  if ! grep -q '^GUARD-HELD ' "$script.out" 2>/dev/null; then
+    printf '  FAIL: ra8_bench_require never acquired\n'
+    sed 's/^/        /' "$script.err" 2>/dev/null | head -8
+    kill -9 "$pid" 2>/dev/null
+    rm -f "$script" "$script.out" "$script.err"
+    return 1
+  fi
+  probe="$(bench_host probe 2>/dev/null)"
+  if [ "$(bench_field "$probe" flock_held 0)" != "1" ]; then
+    printf '  FAIL: the guard reported a hold that the bench host does not have\n'
+    kill -9 "$pid" 2>/dev/null
+    rm -f "$script" "$script.out" "$script.err"
+    return 1
+  fi
+  printf '  ok: ra8_bench_require holds, and a nested call is a no-op\n'
+
+  kill -9 "$pid" 2>/dev/null
+  wait "$pid" 2>/dev/null
+  waited=0
+  while [ "$waited" -lt 60 ]; do
+    probe="$(bench_host probe 2>/dev/null)"
+    [ "$(bench_field "$probe" flock_held 1)" = "0" ] && break
+    sleep 1
+    waited=$((waited + 1))
+  done
+  rm -f "$script" "$script.out" "$script.err"
+  probe="$(bench_host probe 2>/dev/null)"
+  if [ "$(bench_field "$probe" flock_held 1)" = "0" ]; then
+    printf '  ok: SIGKILL of a guarded script released the bench in <=%ss (no trap ran)\n' \
+      "$((waited + 1))"
+    return 0
+  fi
+  printf '  FAIL: the bench stayed held %ss after a guarded script was SIGKILLed.\n' "$waited"
+  printf '        The fd-close release is not working; only the EXIT trap is.\n'
+  rc=1
+  return "$rc"
 }
 
 # THE experiment the design stands on.

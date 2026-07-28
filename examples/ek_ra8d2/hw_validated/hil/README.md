@@ -31,8 +31,9 @@ required to add a new app.
 
 ### UART-scrape (output on SCI8 -> `/dev/ttyACM0`)
 
-`scripts/hil/suite.sh` flashes the app, opens `/dev/ttyACM0`, and
-asserts an expected string appears within a per-app timeout.
+`scripts/hil/all.sh` flashes the app, opens the board console (resolved by
+device identity, never by ttyACM number), and asserts an expected string
+appears within the per-app timeout its `hil.conf` declares.
 
 | App | Expected UART string | Timeout |
 |-----|---------------------|---------|

@@ -28,6 +28,16 @@ NC='\033[0m'
 
 HEX="${1:-$FW_DIR/examples/ek_ra8d2/blink/build/blink.hex}"
 
+# ---- bench mutual exclusion --------------------------------------------------
+# There is ONE EK-RA8D2 in this project; "attached to this machine" is where it
+# happens to be plugged in, not a second board. A debugger that halts the core
+# is every bit as disruptive to somebody else's run as a flash, so it takes the
+# same lock -- and holds it for the whole session, which is why the budget is
+# hours rather than minutes.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$SCRIPT_DIR/../hil/lib/bench_lock.sh"
+ra8_bench_require "local OpenOCD flash" || exit $?
+
 if [[ ! -f "$HEX" ]]; then
   echo -e "${RED}Error:${NC} $HEX not found"
   echo "Build first with: 'make blink' (or 'make <app>')"

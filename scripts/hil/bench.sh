@@ -203,7 +203,7 @@ bench_print_health() {
 
 cmd_run() {
   local intent="" budget_s="$RA8_BENCH_DEFAULT_HOLD_S" wait_s=0 cls="" name=""
-  local glass=false
+  local glass=false confirm="${CONFIRM:-}"
   while [ $# -gt 0 ]; do
     case "$1" in
       --intent)
@@ -229,6 +229,10 @@ cmd_run() {
       --break-glass)
         glass=true
         shift
+        ;;
+      --confirm)
+        confirm="${2:-}"
+        shift 2
         ;;
       --)
         shift
@@ -267,7 +271,7 @@ cmd_run() {
   lock_id="$(bench_new_lock_id)"
 
   bench_start_holder "$lock_id" "$cls" "$name" "$intent" "$budget_s" \
-    "$wait_s" "$glass" "$tmp/hold.in" "$tmp/hold.out"
+    "$wait_s" "$glass" "$tmp/hold.in" "$tmp/hold.out" "$confirm"
   holder="$RA8_BENCH_HOLDER_PID"
   if [ -z "$holder" ]; then
     bench_say "could not start a holder (PI_HOST unset, or the host half is unreadable)"
@@ -296,7 +300,7 @@ cmd_run() {
     return "$RA8_BENCH_EXIT_UNKNOWN"
   fi
 
-  bench_say "holding ($lock_id, $cls:$name) -- $intent"
+  bench_say "holding ($lock_id, $name [$cls]) -- $intent"
   RA8_BENCH_LOCK_ID="$lock_id" RA8_BENCH_HOLDER_PID="$holder" \
     RA8_BENCH_INTENT="$intent" bench_supervise "$holder" "$@"
   rc=$?
@@ -345,7 +349,7 @@ bench_supervise() {
 # ---------------------------------------------------------------------------
 
 cmd_acquire() {
-  local intent="" budget_s="" wait_s=0 cls="" name="" glass=false
+  local intent="" budget_s="" wait_s=0 cls="" name="" glass=false confirm=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --intent)
@@ -377,6 +381,10 @@ cmd_acquire() {
         glass=true
         shift
         ;;
+      --confirm)
+        confirm="${2:-}"
+        shift 2
+        ;;
       *)
         bench_say "unknown option '$1'"
         return "$RA8_BENCH_EXIT_UNKNOWN"
@@ -406,7 +414,8 @@ cmd_acquire() {
 
   local lock_id fields cmd rc
   lock_id="$(bench_new_lock_id)"
-  fields="$(bench_fields_b64 "$lock_id" "$cls" "$name" "$intent" "$budget_s" detached "$glass")"
+  fields="$(bench_fields_b64 "$lock_id" "$cls" "$name" "$intent" "$budget_s" detached \
+    "$glass" "$confirm")"
   cmd="$(bench_host_cmd hold detached "$wait_s" "$fields")" || return "$RA8_BENCH_EXIT_UNKNOWN"
 
   if rig_is_local_pi; then
@@ -428,7 +437,7 @@ cmd_acquire() {
     seen="$(bench_lock_id_now)"
     if [ "$seen" = "$lock_id" ]; then
       printf '%s\n' "$lock_id"
-      bench_say "acquired ($cls:$name, detached, budget $(bench_human_age "$budget_s")) -- $intent"
+      bench_say "acquired ($name [$cls], detached, budget $(bench_human_age "$budget_s")) -- $intent"
       bench_say "release it with: make bench-free"
       return "$RA8_BENCH_EXIT_FREE"
     fi
@@ -524,6 +533,19 @@ bench.sh -- exclusive access to the EK-RA8D2 bench.
   bench.sh release [--lock-id <id>] [--force]
       Give back a hold. --force preempts somebody else's and is journaled.
 
+  bench.sh hold --why "<what you are doing>" [--for 2h] [--detached]
+      A shell that holds the bench. Close it and the bench comes back, so a
+      dead laptop cannot leave it held. --detached survives the command and
+      therefore REQUIRES --for; `status` shows which kind is in force.
+
+  bench.sh free                 give back the hold you own
+  bench.sh extend --for 30m     push your own budget out
+  bench.sh take --reason "..."  preempt. Humans only; preempting a HUMAN
+                                additionally needs CONFIRM=<phrase>.
+  bench.sh log [n]              tail the append-only journal
+  bench.sh doctor               state dir, perms, inode, clock, sshd bound
+  bench.sh reap                 SIGTERM agent/CI holds past their budget
+
   bench.sh selftest [--ssh-death]
       Prove the machinery against a throwaway state directory. --ssh-death
       additionally kills a real ssh client and asserts the lock drops.
@@ -537,6 +559,39 @@ USAGE
   return "$RA8_BENCH_EXIT_FREE"
 }
 
+# ---------------------------------------------------------------------------
+# journal / doctor / reap -- thin pass-throughs to the bench host
+# ---------------------------------------------------------------------------
+
+cmd_log() { bench_host journal "${1:-25}"; }
+
+# The failure this exists for is two actors flocking two DIFFERENT inodes,
+# which looks exactly like a working lock right up to the moment it is not.
+# So doctor reports the inode, the mode and the owner rather than asserting
+# they are fine, and it also reports the one sshd setting that bounds a
+# vanished client's release (see the header).
+cmd_doctor() {
+  local out rc sshd
+  out="$(bench_host doctor 2>&1)"
+  rc=$?
+  printf '%s\n' "$out"
+  if ! rig_is_local_pi && [ -n "${PI_HOST:-}" ]; then
+    sshd="$(ssh "${RA8_BENCH_SSH_OPTS[@]}" "$PI_HOST" \
+      'sudo -n sshd -T 2>/dev/null | sed -n "s/^clientaliveinterval //p"' </dev/null 2>/dev/null)"
+    printf 'sshd_clientaliveinterval=%s\n' "${sshd:-unknown}"
+    if [ "${sshd:-0}" = "0" ]; then
+      printf 'FINDING: sshd ClientAliveInterval is 0 on the bench host. A client that\n'
+      printf '         vanishes WITHOUT closing its socket (power cut, not a kill) then\n'
+      printf '         leaves the hold in place until TCP keepalive gives up -- hours.\n'
+      printf '         Fix: the hil_bench ansible role sets ClientAliveInterval.\n'
+      rc=3
+    fi
+  fi
+  return "$rc"
+}
+
+cmd_reap() { bench_host reap; }
+
 bench_main() {
   local verb="${1:-status}"
   shift 2>/dev/null || true
@@ -545,6 +600,16 @@ bench_main() {
     run) cmd_run "$@" ;;
     acquire) cmd_acquire "$@" ;;
     release) cmd_release "$@" ;;
+    log) cmd_log "$@" ;;
+    doctor) cmd_doctor "$@" ;;
+    reap) cmd_reap "$@" ;;
+    hold | free | extend | take)
+      # The human verbs, sourced on demand: `status` and `run` are what runs a
+      # thousand times a day and neither needs them.
+      # shellcheck source=scripts/hil/lib/bench_human.sh
+      source "$_bench_dir/lib/bench_human.sh"
+      "cmd_$verb" "$@"
+      ;;
     selftest)
       # Sourced on demand: the common path is `status` and `run`, and neither
       # of those should pay to parse 200 lines of proof.

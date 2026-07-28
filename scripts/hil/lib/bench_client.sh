@@ -34,6 +34,16 @@
 _bench_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${RA8_BENCH_HOST_SRC:=$_bench_lib_dir/bench_host.sh}"
 
+# PI_HOST and rig_is_local_pi come from rig_env.sh. Pulled in HERE rather than
+# left to the caller: several scripts source the guard before their own
+# rig_env.sh line, and a guard whose correctness depends on the order somebody
+# happened to write two `source` statements in is not a guard. Idempotent --
+# skipped when the caller already brought it in.
+if ! declare -f rig_is_local_pi >/dev/null 2>&1; then
+  # shellcheck source=scripts/hil/lib/rig_env.sh
+  source "$_bench_lib_dir/rig_env.sh"
+fi
+
 bench_say() { printf 'bench: %s\n' "$*" >&2; }
 
 # ---------------------------------------------------------------------------
@@ -182,6 +192,7 @@ bench_fields_b64() {
     printf 'max_hold_s=%s\n' "$5"
     printf 'hold_kind=%s\n' "$6"
     printf 'break_glass=%s\n' "$7"
+    printf 'confirm=%s\n' "${8:-}"
     printf 'origin=%s\n' "$(bench_origin)"
     printf 'git_ref=%s\n' "$(bench_git_ref)"
   } | base64 | tr -d '\n'
@@ -221,7 +232,7 @@ bench_human_age() {
 # ---------------------------------------------------------------------------
 
 # bench_start_holder <lock_id> <class> <name> <intent> <budget_s> <wait_s>
-#                    <break_glass> <fifo> <outfile>
+#                    <break_glass> <fifo> <outfile> [confirm]
 #
 # Starts the bench-host holder with its stdin connected to <fifo> and its
 # stdout to <outfile>, and sets RA8_BENCH_HOLDER_PID. The CALLER then opens the
@@ -241,9 +252,11 @@ RA8_BENCH_HOLDER_PID=""
 bench_start_holder() {
   local lock_id="$1" cls="$2" name="$3" intent="$4" budget="$5" wait_s="$6"
   local glass="$7" fifo="$8" out="$9"
+  local confirm="${10:-}"
   local fields cmd
   RA8_BENCH_HOLDER_PID=""
-  fields="$(bench_fields_b64 "$lock_id" "$cls" "$name" "$intent" "$budget" wrapped "$glass")"
+  fields="$(bench_fields_b64 "$lock_id" "$cls" "$name" "$intent" "$budget" wrapped \
+    "$glass" "$confirm")"
   if rig_is_local_pi; then
     local t
     t="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-host.XXXXXX")" || return 1

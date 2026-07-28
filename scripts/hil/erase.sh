@@ -36,6 +36,16 @@ tag() { printf "${YELLOW}[hil_erase]${NC} %s\n" "$*"; }
 ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
 err() { printf "${RED}[FAIL]${NC} %s\n" "$*"; }
 
+# ---- bench mutual exclusion --------------------------------------------------
+# A mass erase is MORE destructive than a normal flash, not less, so it is not
+# exempt: an -erase-chip landing in the middle of somebody's suite is the worst
+# collision available. When the board is wedged the incumbent is usually dead
+# or is the one that wedged it, so there is a break-glass path -- see
+# ra8_bench_require_recovery.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$_hil_dir/lib/bench_lock.sh"
+ra8_bench_require_recovery "mass-erase the MRAM" || exit $?
+
 tag "checking Pi ${PI_HOST}..."
 ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null ||
   {

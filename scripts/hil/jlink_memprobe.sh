@@ -42,6 +42,14 @@ _hil_dir="$(cd "$_hil_dir" && pwd)"
 source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST JLINK_SN
 
+# ---- bench mutual exclusion --------------------------------------------------
+# One actor at a time on the physical bench. The hold lives exactly as long as
+# this script does -- it is a live process on a kernel flock, not a lease -- so
+# nothing here can leave the bench stale. See scripts/hil/bench.sh.
+# shellcheck source=scripts/hil/lib/bench_lock.sh
+source "$_hil_dir/lib/bench_lock.sh"
+ra8_bench_require "hil jlink memprobe $*" || exit $?
+
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
