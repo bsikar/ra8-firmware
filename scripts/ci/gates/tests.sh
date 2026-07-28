@@ -44,8 +44,8 @@ gate_unit_tests() (
 # Dockerfile ARG pin (.devcontainer/Dockerfile), the dev box has it built from
 # source at /usr/local/bin/gcc-14 (docs/TOOLCHAIN.md, "CONVERGED"), and every
 # other host-compiler probe in this tree already prefers it first
-# (scripts/checks/coverage.sh, scripts/sim/sil_all.sh, scripts/sim/smoke.sh,
-# scripts/sim/matrix.sh all run `ra8_select_host_compiler gcc-14 gcc-13 ...`).
+# (scripts/checks/coverage.sh, scripts/emu/eil_all.sh, scripts/emu/smoke.sh,
+# scripts/emu/matrix.sh all run `ra8_select_host_compiler gcc-14 gcc-13 ...`).
 # Pinning ubsan to the one compiler every environment actually guarantees
 # turns "gate fails loudly on a missing tool" into "gate does not need the
 # missing tool", which is the stronger fix per CLAUDE.md's gate-honesty rule.
