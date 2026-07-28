@@ -97,7 +97,7 @@ RA8_COMPILE_COMMANDS := $(ROOT)/build/compile_commands.json
 _RA8_CMAKE_INPUTS := $(ROOT)/CMakeLists.txt $(wildcard $(ROOT)/cmake/*.cmake) \
 	$(shell find $(ROOT)/examples -name CMakeLists.txt -not -path '*/build/*' 2>/dev/null)
 
-.PHONY: help hooks all infra-setup
+.PHONY: help hooks all
 
 help:
 	@echo "ra8-firmware make targets   ($(words $(RA8_APPS)) firmware apps -- 'make apps' for the list)"
@@ -168,6 +168,14 @@ help:
 	@echo "  make app-sizes         summarise per-app .text/.data/.bss footprints"
 	@echo "  make audit-init        per-app init-order audit (docs/INIT_ORDER_AUDIT.md)"
 	@echo ""
+	@echo "INFRASTRUCTURE -- the machines themselves (dev box, runners, bench)   [make infra-help]"
+	@echo "  make infra-list        host classes, their playbooks and roles"
+	@echo "  make infra-doctor      can THIS machine drive infra at all?"
+	@echo "  make infra-status      what is deployed across the estate, right now (read-only)"
+	@echo "  make infra-check HOST=x  DRY RUN a provision; infra-apply does it for real"
+	@echo "  make infra-setup       first-run onboarding (inventory + credentials)"
+	@echo "                         the whole estate: docs/INFRASTRUCTURE.md"
+	@echo ""
 	@echo "DEV SETUP / DISCOVERY"
 	@echo "  make hooks             (re)install the tracked git hooks (auto-runs on every make)"
 	@echo "  make apps              list every discovered firmware app"
@@ -180,11 +188,6 @@ hooks:
 	@$(ROOT)/scripts/git/install-hooks.sh
 	@echo "git hooks active: core.hooksPath = $$(git config core.hooksPath)"
 
-# `make infra-setup` -- one-command onboarding for a fresh clone: prerequisites,
-# git-ignored inventory + token, then deploy. See infra/README.md.
-infra-setup:
-	@bash $(ROOT)/infra/bootstrap.sh
-
 # `make all` -- the local pre-commit meta-target.
 all: format tidy test default
 
@@ -196,3 +199,4 @@ include $(ROOT)/mk/hil.mk
 include $(ROOT)/mk/quality.mk
 include $(ROOT)/mk/docs.mk
 include $(ROOT)/mk/workspace.mk
+include $(ROOT)/mk/infra.mk

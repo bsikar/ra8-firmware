@@ -1,0 +1,60 @@
+---
+# openbao role defaults -- the secrets vault every other role reads credentials
+# from at run time.
+#
+# WHY THIS ROLE EXISTS
+# --------------------
+# OpenBao is a hard dependency of the rig: `ci_runner` and `ci_runner_docker`
+# both pull the GitHub PAT from it, the HIL tooling reads the Tapo smart-plug
+# credentials from it, and infra/network/ reads the entire bench-LAN credential
+# set from it. Its DEPLOYMENT existed only as a values.yaml and a handful of
+# shell scripts in one user's home directory on one node.
+#
+# WHAT THIS ROLE DELIBERATELY DOES NOT DO
+# ---------------------------------------
+# It does not initialise the vault and it does not unseal it. Both operations
+# PRODUCE secrets -- the Shamir unseal keys and the root token -- and those
+# belong in the operator's hands and nowhere near this repository. The role
+# deploys the vault, asserts it is serving, and reports the seal state
+# truthfully; a sealed vault is a correct outcome here, not a failure, because
+# a Shamir-sealed OpenBao comes up sealed after every restart by design.
+#
+# See scripts/secrets/README.md for the init / unseal / configure steps a human
+# runs afterwards.
+
+k3s_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+# The chart. Pinned like every other artifact here; the app version that ships
+# with it is recorded so a chart bump that moves the server version is visible
+# in the diff rather than discovered at run time.
+openbao_chart_repo_name: openbao
+openbao_chart_repo_url: "https://openbao.github.io/openbao-helm"
+openbao_chart_ref: "openbao/openbao"
+openbao_chart_version: "0.28.4"
+openbao_app_version: "v2.5.5"
+
+openbao_release_name: openbao
+openbao_namespace: openbao
+
+# Single-replica HA with integrated raft storage. Deployed from a file rather
+# than an inline dict so the values this role applies are diffable against
+# `helm get values` output byte for byte.
+openbao_values_file: "{{ role_path }}/files/values.yaml"
+
+# LAN NodePort. The vault is reached from the bench Pi, the dev box and the Mac
+# -- none of which are in-cluster -- so a NodePort is what makes BAO_ADDR a
+# usable address. It is NOT part of the chart: the chart's own service is a
+# ClusterIP, and this extra service was applied by hand on the live cluster.
+# Codifying it here is the difference between "the vault is deployed" and "the
+# vault is reachable by the things that need it".
+openbao_nodeport_enabled: true
+openbao_nodeport_name: openbao-nodeport
+openbao_nodeport_port: 8200
+openbao_nodeport_node_port: 32200
+
+# How long to wait for the statefulset's pod to be running. A freshly-deployed,
+# never-initialised OpenBao reports NOT ready (its readiness probe fails while
+# sealed), so the role waits on the POD PHASE and then reports the seal state,
+# rather than waiting on a readiness that correctly never arrives.
+openbao_pod_retries: 30
+openbao_pod_delay: 5

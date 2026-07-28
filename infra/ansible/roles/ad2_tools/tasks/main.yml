@@ -127,6 +127,11 @@
     cmd: "dpkg-deb -f {{ ad2_tools_waveforms_deb }} Version"
   register: ad2_tools_wf_deb_version
   changed_when: false
+  # A read-back changes nothing, so let it run in check mode too. Without this
+  # the command module is skipped, `.stdout` is empty, and the assert below
+  # compares '' against the pin and fails -- which made `make infra-check
+  # HOST=bench` impossible to pass on a bench where the deb is correctly staged.
+  check_mode: false
 
 - name: Assert the staged deb is the pinned WaveForms release
   ansible.builtin.assert:
@@ -247,6 +252,14 @@
       not one.
 
 # --- The instrument must actually be attached and usable -------------------
+#
+# Every probe below carries `check_mode: false`. They only READ -- a `lsusb`, a
+# grep over sysfs, a version query -- so running them under --check is safe, and
+# NOT running them is actively harmful: ansible skips command/shell tasks in
+# check mode, which leaves `.stdout` empty and makes the assertions that consume
+# it fail against a bench where the instrument is present and correct. That made
+# `make infra-check HOST=bench` impossible to pass. The one task deliberately
+# left to skip is the libdwf smoke test, which opens the device.
 
 - name: Probe the USB bus for the Analog Discovery 2
   ansible.builtin.command:
@@ -254,6 +267,7 @@
   register: ad2_tools_lsusb
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Probe sysfs for the pinned Digilent serial
   # Matched on serial as well as VID:PID -- any other FT232H on the bench
@@ -266,6 +280,7 @@
   register: ad2_tools_serial_probe
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Assert the Analog Discovery 2 is attached and enumerated
   ansible.builtin.assert:
@@ -300,6 +315,7 @@
   # on a host where the utilities package happens to be present.
   ansible.builtin.command:
     cmd: dadutil enum
+  check_mode: false
   register: ad2_tools_dadutil
   changed_when: false
   failed_when: false
@@ -316,6 +332,9 @@
       {{ ad2_tools_device_vidpid }} serial {{ ad2_tools_device_serial }}
       enumerated at
       {{ ad2_tools_serial_probe.stdout_lines | first | trim | dirname }};
-      smoke test: {{ ad2_tools_smoke.stdout_lines | last | trim }};
+      smoke test:
+      {{ (ad2_tools_smoke.stdout_lines | last | trim)
+         if (ad2_tools_smoke.stdout_lines is defined)
+         else 'SKIPPED (check mode -- it opens the device, so it is not a dry run)' }};
       dadutil {{ 'enumerates the device' if ad2_tools_dadutil.rc == 0
                  else 'not installed (Adept utilities package absent)' }}.
