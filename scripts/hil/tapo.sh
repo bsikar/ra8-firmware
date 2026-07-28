@@ -69,6 +69,7 @@ ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV_FILE="$ROOT/.env"
 TAPO_SCRIPT="$ROOT/scripts/hil/tapo_control.py"
 SECRETS_SCRIPT="$ROOT/scripts/hil/hil_secrets.py"
+BAO_SCRIPT="$ROOT/scripts/secrets/openbao_client.py"
 
 [[ -f "$TAPO_SCRIPT" ]] ||
   {
@@ -118,13 +119,27 @@ else
 
   echo -e "${YELLOW}[hil_tapo]${NC} board plug, uploading tapo_control.py..."
   REMOTE_DIR="/tmp/hil_tapo_$$"
+  # hil_secrets.py hard-imports openbao_client from `parents[1]/secrets`, so the
+  # upload has to reproduce the repo's scripts/{hil,secrets} shape rather than
+  # dump three files in one directory. Flattening it is why every board-plug
+  # power cycle from a dev machine died with ModuleNotFoundError while still
+  # printing DONE.
   # shellcheck disable=SC2029  # $REMOTE_DIR is chosen locally; the Pi cannot know it.
-  ssh "$PI_HOST" "mkdir -p $REMOTE_DIR"
-  scp -q "$TAPO_SCRIPT" "$SECRETS_SCRIPT" "$ENV_FILE" "$PI_HOST:$REMOTE_DIR/"
+  ssh "$PI_HOST" "mkdir -p $REMOTE_DIR/scripts/hil $REMOTE_DIR/scripts/secrets"
+  scp -q "$TAPO_SCRIPT" "$SECRETS_SCRIPT" "$ENV_FILE" "$PI_HOST:$REMOTE_DIR/scripts/hil/"
+  scp -q "$BAO_SCRIPT" "$PI_HOST:$REMOTE_DIR/scripts/secrets/"
 
   echo -e "${YELLOW}[hil_tapo]${NC} board plug, running: $CMD"
+  # The remote status is the ONLY evidence the plug actually switched, so it has
+  # to survive the cleanup and reach the caller -- `python3 ...; rm -rf` threw it
+  # away and the unconditional DONE below then reported a failed power cycle as
+  # a successful one.
   # shellcheck disable=SC2029  # $REMOTE_DIR and $CMD are local values naming the remote dir and the action.
-  ssh "$PI_HOST" "cd $REMOTE_DIR && python3 tapo_control.py board $CMD; rm -rf $REMOTE_DIR"
+  ssh "$PI_HOST" "cd $REMOTE_DIR/scripts/hil && python3 tapo_control.py board $CMD; rc=\$?; rm -rf $REMOTE_DIR; exit \$rc" ||
+    {
+      echo -e "${RED}[hil_tapo FAIL]${NC} ${TARGET} $CMD -- plug did not switch"
+      exit 1
+    }
 fi
 
 echo -e "${GREEN}[hil_tapo DONE]${NC} ${TARGET} $CMD"
