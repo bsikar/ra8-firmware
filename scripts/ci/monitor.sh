@@ -315,6 +315,44 @@ cmd_daemon() {
   done
 }
 
+# Report the verdict for ONE sha, derived from that sha's runs and nothing
+# else, and exit. The single "overall:" line printed here is the only one the
+# caller sees in this mode.
+#
+# That exclusivity is not cosmetic. Emitting the branch-level header first has
+# twice been misread as the per-sha answer -- once as a false FAIL, once as a
+# false PASS by an `until` loop grepping '^overall: (PASS|FAIL)', which matched
+# the header on the very first poll and exited before the run existed. Deciding
+# on the branch "$overall" was also wrong outright: an older sha whose runs
+# failed would inherit a PASS from a healthy branch head.
+_status_for_sha() {
+  local want_sha="$1" polled="$2" age_s="$3" warning="$4"
+  local seen sha_verdict
+  seen="$(jq -r --arg s "$want_sha" '[.runs[] | select(.sha|startswith($s))] | length' "$RA8_CI_STATE")"
+  if [[ "$seen" == "0" ]]; then
+    echo "overall: UNKNOWN   for $want_sha (polled $polled, ${age_s}s ago)"
+    echo "reason:  no run recorded for $want_sha yet -- UNKNOWN is not a pass and not a failure"
+    echo "         the daemon tracks pushes to dev/main, so a PR-event run on a"
+    echo "         feature branch is never recorded here; use 'gh pr checks <n>'"
+    [[ -n "$warning" ]] && echo "$warning"
+    exit "$RA8_CI_EXIT_UNKNOWN"
+  fi
+  sha_verdict="$(jq -r --arg s "$want_sha" '
+    [.runs[] | select(.sha|startswith($s))] as $r
+    | if   ($r | map(select(.conclusion == "failure" or .conclusion == "timed_out"
+                            or .conclusion == "cancelled")) | length) > 0 then "FAIL"
+      elif ($r | map(select(.status != "completed")) | length) > 0 then "UNKNOWN"
+      else "PASS" end' "$RA8_CI_STATE")"
+  echo "overall: $sha_verdict   for $want_sha (polled $polled, ${age_s}s ago)"
+  jq -r --arg s "$want_sha" '.runs[] | select(.sha|startswith($s)) | "  \(.name): \(.status)/\(.conclusion // "-")"' "$RA8_CI_STATE"
+  [[ -n "$warning" ]] && echo "$warning"
+  case "$sha_verdict" in
+    PASS) exit "$RA8_CI_EXIT_PASS" ;;
+    FAIL) exit "$RA8_CI_EXIT_FAIL" ;;
+    *) exit "$RA8_CI_EXIT_UNKNOWN" ;;
+  esac
+}
+
 cmd_status() {
   need_jq
   local want_sha=""
@@ -348,40 +386,8 @@ cmd_status() {
   local warning
   warning="$(jq -r '.warning // ""' "$RA8_CI_STATE")"
 
-  # When a sha is asked for, the verdict must be derived from THAT sha's runs
-  # and nothing else, and it must be the ONLY "overall:" line printed.
-  #
-  # This is not cosmetic. Emitting the branch-level header first has twice been
-  # misread as the per-sha answer -- once as a false FAIL, once as a false PASS
-  # by an `until` loop grepping '^overall: (PASS|FAIL)', which matched the
-  # header on the very first poll and exited before the run existed. Exiting on
-  # "$overall" here was also wrong outright: an older sha whose runs failed
-  # would inherit a PASS from a healthy branch head.
   if [[ -n "$want_sha" ]]; then
-    local seen sha_verdict
-    seen="$(jq -r --arg s "$want_sha" '[.runs[] | select(.sha|startswith($s))] | length' "$RA8_CI_STATE")"
-    if [[ "$seen" == "0" ]]; then
-      echo "overall: UNKNOWN   for $want_sha (polled $polled, ${age_s}s ago)"
-      echo "reason:  no run recorded for $want_sha yet -- UNKNOWN is not a pass and not a failure"
-      echo "         the daemon tracks pushes to dev/main, so a PR-event run on a"
-      echo "         feature branch is never recorded here; use 'gh pr checks <n>'"
-      [[ -n "$warning" ]] && echo "$warning"
-      exit "$RA8_CI_EXIT_UNKNOWN"
-    fi
-    sha_verdict="$(jq -r --arg s "$want_sha" '
-      [.runs[] | select(.sha|startswith($s))] as $r
-      | if   ($r | map(select(.conclusion == "failure" or .conclusion == "timed_out"
-                              or .conclusion == "cancelled")) | length) > 0 then "FAIL"
-        elif ($r | map(select(.status != "completed")) | length) > 0 then "UNKNOWN"
-        else "PASS" end' "$RA8_CI_STATE")"
-    echo "overall: $sha_verdict   for $want_sha (polled $polled, ${age_s}s ago)"
-    jq -r --arg s "$want_sha" '.runs[] | select(.sha|startswith($s)) | "  \(.name): \(.status)/\(.conclusion // "-")"' "$RA8_CI_STATE"
-    [[ -n "$warning" ]] && echo "$warning"
-    case "$sha_verdict" in
-      PASS) exit "$RA8_CI_EXIT_PASS" ;;
-      FAIL) exit "$RA8_CI_EXIT_FAIL" ;;
-      *) exit "$RA8_CI_EXIT_UNKNOWN" ;;
-    esac
+    _status_for_sha "$want_sha" "$polled" "$age_s" "$warning"
   fi
 
   echo "overall: $overall   (polled $polled, ${age_s}s ago)"
