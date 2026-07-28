@@ -566,10 +566,69 @@ run_gate_capture() {
 # FULL-SUITE RUNNER (native). Executes every registry gate in order and prints
 # a PASS/FAIL line per gate.
 # ===========================================================================
+# Materialise the registry and HONOUR ITS EXIT STATUS, writing the dump to
+# stdout for the caller to consume.
+#
+# run_suite used to read it as `done < <(list_gates)`. A process substitution's
+# exit status is unobservable -- bash discards it and `set -e` never sees it --
+# so list_gates' `return 1` was dropped, and since list_gates `continue`s past
+# any row whose gate_*() function is missing, such a gate vanished from the
+# suite while the run still printed RESULT: PASS. Only the ci-parity gate
+# re-reading the registry stood between that and a false green; the runner has
+# to be honest on its own (#190). suite_registry_selftest asserts it every run.
+registry_dump_or_die() {
+  local dump rc=0
+  dump="$(list_gates)" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    echo "" >&2
+    echo "ci.sh: the gate registry is INVALID (see the errors above)." >&2
+    echo "       Refusing to run a partial suite and report on it." >&2
+    return 1
+  fi
+  printf '%s\n' "$dump"
+}
+
+# Print the per-gate PASS/FAIL table and return the suite's verdict. An EMPTY
+# selection is never a pass: this loop is bounded by the gate array, so with
+# zero gates it never set `failed` and the run printed RESULT: PASS having
+# executed nothing -- the shape every gate-honesty defect takes (#190).
+print_suite_summary() {
+  local fast="$1"
+  shift
+  local count="$1"
+  shift
+  local names=("${@:1:count}") results=("${@:count+1}")
+
+  echo ""
+  echo "==================================================================="
+  echo "== ci.sh summary$([[ "$fast" == "1" ]] && echo "  (--fast: slow gates skipped)")"
+  echo "==================================================================="
+  if [[ "$count" -eq 0 ]]; then
+    echo "  RESULT: FAIL -- no gates were selected to run." >&2
+    echo "  A suite that executed nothing has not passed." >&2
+    return 1
+  fi
+  local failed=0 idx=0
+  while [[ "$idx" -lt "$count" ]]; do
+    printf '  %-32s %s\n' "${names[$idx]}" "${results[$idx]}"
+    [[ "${results[$idx]}" == "FAIL" ]] && failed=1
+    idx=$((idx + 1))
+  done
+  echo "-------------------------------------------------------------------"
+  if [[ "$failed" -ne 0 ]]; then
+    echo "  RESULT: FAIL"
+    return 1
+  fi
+  echo "  RESULT: PASS"
+  return 0
+}
+
 run_suite() {
   local fast="$1"
   local gate_names=() gate_results=()
-  local name speed gate_rc
+  local name speed registry_dump
+
+  registry_dump="$(registry_dump_or_die)" || return 1
 
   while read -r name speed _; do
     if [[ "$speed" == "manual" ]]; then
@@ -586,31 +645,15 @@ run_suite() {
     # Dispatch via run_gate_capture -- see the ERREXIT warning on it. Never
     # inline this as `if run_one_gate "$name"; then`.
     run_gate_capture "$name"
-    gate_rc="$RA8_GATE_RC"
-    if [[ "$gate_rc" -eq 0 ]]; then
+    if [[ "$RA8_GATE_RC" -eq 0 ]]; then
       gate_results+=("PASS")
     else
       gate_results+=("FAIL")
     fi
-  done < <(list_gates)
+  done <<<"$registry_dump"
 
-  echo ""
-  echo "==================================================================="
-  echo "== ci.sh summary$([[ "$fast" == "1" ]] && echo "  (--fast: slow gates skipped)")"
-  echo "==================================================================="
-  local failed=0 idx=0
-  while [[ "$idx" -lt "${#gate_names[@]}" ]]; do
-    printf '  %-32s %s\n' "${gate_names[$idx]}" "${gate_results[$idx]}"
-    [[ "${gate_results[$idx]}" == "FAIL" ]] && failed=1
-    idx=$((idx + 1))
-  done
-  echo "-------------------------------------------------------------------"
-  if [[ "$failed" -ne 0 ]]; then
-    echo "  RESULT: FAIL"
-    return 1
-  fi
-  echo "  RESULT: PASS"
-  return 0
+  print_suite_summary "$fast" "${#gate_names[@]}" ${gate_names[@]+"${gate_names[@]}"} \
+    ${gate_results[@]+"${gate_results[@]}"}
 }
 
 # Run the suite against a CLEAN snapshot of committed HEAD -- exactly what CI

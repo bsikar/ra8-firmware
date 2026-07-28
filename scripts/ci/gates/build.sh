@@ -266,15 +266,23 @@ gate_docs() (
 # (docs/sbom/ra8-firmware.cdx.json) is stale or the vendored libs/third_party/
 # tree drifted from the registry -- an uncatalogued SOUP directory, or a
 # version macro that disagrees with the recorded version.
-gate_sbom() {
+gate_sbom() (
+  set -e
   python3 scripts/gen/gen_sbom.py --check
-}
+)
 
 # --- roadmap-stats --------------------------------------------------------
-gate_roadmap_stats() {
-  if [[ -f docs/ROADMAP.md ]]; then
-    python3 scripts/report/roadmap_stats.py --check
-  else
-    echo "no docs/ROADMAP.md -- skipping roadmap_stats"
+gate_roadmap_stats() (
+  set -e
+  # A MISSING ROADMAP.md is a failure, not a skip. This gate used to `echo
+  # "no docs/ROADMAP.md -- skipping"` and return 0, so a `git mv` of that one
+  # file would have turned the gate green forever while checking nothing --
+  # the same shape as every other finding under the gate-honesty epic (#190).
+  if [[ ! -f docs/ROADMAP.md ]]; then
+    echo "ERROR: docs/ROADMAP.md is missing; the roadmap-stats gate has" >&2
+    echo "       nothing to check and must not report success." >&2
+    echo "       Restore the file, or delete this gate and its registry row." >&2
+    return 1
   fi
-}
+  python3 scripts/report/roadmap_stats.py --check
+)

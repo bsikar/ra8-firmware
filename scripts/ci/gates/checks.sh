@@ -30,7 +30,8 @@
 # init (NASA P10 Rule 3), AI attribution, and the C NULL macro.
 _pcc_banned_constructs() (
   set -e
-  python3 scripts/checks/check_obsolete_standards.py
+  # The obsolete-safety-standard ban moved to _pcc_cross_references, next to
+  # the other "does this reference still hold?" checks.
   # --selftest FIRST for each derived-scope checker (#358): it proves the rule
   # fires and that tools/ -- silently omitted by the old hardcoded scan lists --
   # is back in scope, before the tree is trusted. A re-narrowed scope turns the
@@ -265,9 +266,9 @@ _pcc_mcdc_discipline() (
   python3 scripts/checks/mcdc_compound_ratchet.py --check
 )
 
-# Documentation completeness, cross-reference integrity, and the test-side
-# discipline rules (HIL instrumentation, assert casts).
-_pcc_docs_and_tests() (
+# Cross-reference integrity: every in-tree reference points at something that
+# still exists, and none of them is a rot-prone file:line anchor.
+_pcc_cross_references() (
   set -e
   # The in-tree line-number citation ban: reference a symbol, never a file
   # plus line number, since line numbers rot. --selftest FIRST (#358): it
@@ -275,7 +276,36 @@ _pcc_docs_and_tests() (
   # old SCAN_ROOTS tuple -- is back in scope.
   python3 scripts/checks/check_line_citations.py --selftest
   python3 scripts/checks/check_line_citations.py
-  # Per-app SystemInit boot init-order audit.
+  # Every scripts/... path named anywhere in the tree resolves to a file that
+  # exists. A git mv inside scripts/ silently breaks doc links, hook comments
+  # and workflow steps -- no build error, no test failure, and ci-fast has
+  # already missed exactly that. The selftest runs first: a path checker that
+  # stopped matching would report a clean tree, which is worse than no gate.
+  python3 scripts/checks/check_script_references.py --selftest
+  python3 scripts/checks/check_script_references.py
+  # Ban citations of safety standards that have been superseded (the checker
+  # names them; this comment deliberately does not, since the ban applies to
+  # this file too). --all, not the bare invocation (#190): it read
+  # `git diff --cached` unconditionally, so in any CI checkout -- where nothing
+  # is staged -- it enumerated 0 files, printed "0 findings" and passed, having
+  # audited nothing for its whole life in this gate. Same defect class as
+  # #325 / #355; a bare invocation is an error now rather than the vacuous mode.
+  python3 scripts/checks/check_obsolete_standards.py --selftest
+  python3 scripts/checks/check_obsolete_standards.py --all
+)
+
+# Documentation completeness, cross-reference integrity, and the test-side
+# discipline rules (HIL instrumentation, assert casts).
+_pcc_docs_and_tests() (
+  set -e
+  _pcc_cross_references
+  # Per-app SystemInit boot init-order audit. --selftest FIRST (#190): the
+  # discovery glob was capped at three directory levels while the tree is up to
+  # five deep, so this saw 11 of 217 apps and reported the other 206 clean. The
+  # selftest asserts the detector fires on an inverted sequence AND that live
+  # discovery clears the app floor, so a re-collapsed glob fails instead of
+  # reporting the cleanest tree it has ever seen.
+  python3 scripts/checks/audit_init_order.py --selftest
   python3 scripts/checks/audit_init_order.py
   # OSHWA inclusive-terminology gate over first-party sources.
   python3 scripts/checks/check_inclusive_terminology.py
@@ -298,13 +328,6 @@ _pcc_docs_and_tests() (
   # HIL_MODE=jlink_memprobe) or explicitly HIL_FAULT_EXPECTED -- a bare
   # HIL_MODE=alive proves nothing.
   python3 scripts/checks/check_hil_alive_policy.py
-  # Every scripts/... path named anywhere in the tree resolves to a file that
-  # exists. A git mv inside scripts/ silently breaks doc links, hook comments
-  # and workflow steps -- no build error, no test failure, and ci-fast has
-  # already missed exactly that. The selftest runs first: a path checker that
-  # stopped matching would report a clean tree, which is worse than no gate.
-  python3 scripts/checks/check_script_references.py --selftest
-  python3 scripts/checks/check_script_references.py
   # Reject explicit integer casts inside TEST_ASSERT_EQ arguments. The macro
   # widens both args to int64_t, so an outer (int)/(uint32_t) cast is
   # redundant and latently buggy (a (int) cast on a uint32_t enum truncates
@@ -380,19 +403,27 @@ gate_doc_attachment() (
 # chapter/page. The complementary cite-COVERAGE pass (--require-cites: does
 # every MMIO access HAVE a cite?) surfaces a large libs/ra8_hal backlog and is
 # not yet gate-clean, so it is deliberately not wired blocking.
-gate_cite_check() {
+gate_cite_check() (
+  set -e
   # --selftest FIRST (#358): proves a malformed cite fires and that tools/
   # (ra8_emulator cites the RA8 HUM) and port/ are back in scope, before trusting
   # a clean run over the derived first-party-C set.
+  #
+  # A `( set -e )` subshell, not a `{ }` block: run_gate_capture disables
+  # ERREXIT around the call, and that suppression is live inside a block -- so
+  # this gate reported only `--strict`'s status and discarded the selftest's,
+  # defeating the whole point of running it first. check_gate_bodies.py now
+  # rejects the block form for every gate.
   python3 scripts/checks/cite_check.py --selftest
   python3 scripts/checks/cite_check.py --strict
-}
+)
 
 # --- hil-eil-parity -------------------------------------------------------
 # EIL==HIL: re-derives each harness's app discovery from hil_all.sh /
 # eil_all.sh and fails if a hil/ app has no hil.conf, sits outside
 # eil_all.sh's run set, or declares a HIL_MODE ra8_emulator cannot check.
 # Hardware-free, so an added HIL app cannot escape EIL coverage.
-gate_hil_eil_parity() {
+gate_hil_eil_parity() (
+  set -e
   python3 scripts/checks/check_hil_eil_parity.py
-}
+)
