@@ -45,6 +45,16 @@ fleet_capacity_docker: "docker"
 # fleet.py derives both from the same declaration.
 fleet_capacity_containers: ""
 
+# The low-priority dev slice this host lends its idle capacity to, if any.
+#
+# Quiet hours have to reach it as well as the runners, or standing CI down buys
+# the owner nothing: three parked containers while an agent's gate suite goes
+# on using the machine is exactly the outcome the window exists to prevent. The
+# capacity script FREEZES it -- suspend, never kill -- for the same reason the
+# runner drain never signals a busy instance. Empty on a host that lends none,
+# and every dev-slice path in the script is then a no-op.
+fleet_capacity_dev_slice: ""
+
 # ARC scale set to move, for the k8s kind.
 fleet_capacity_kubectl: "k3s kubectl"
 fleet_capacity_namespace: "arc-runners"

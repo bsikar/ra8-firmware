@@ -6,10 +6,10 @@ it. Changing how much of a machine CI is allowed to use is changing a number in
 that block. Nothing else has to be edited: the inventory, the playbook
 selection, the transport and every role variable are derived from it.
 
-This document is the runbook for the four things you will actually want to do:
-add a host, retune one, give one quiet hours, and remove one. It ends with how
-the numbers were arrived at, so a new machine can be sized without re-deriving
-anything.
+This document is the runbook for the five things you will actually want to do:
+add a host, retune one, give one quiet hours, remove one, and lend one back to
+agents as a verification host (section 9). Section 7 explains how the numbers
+were arrived at, so a new machine can be sized without re-deriving anything.
 
 ```sh
 make infra-list                    what is declared, and how it is sized
@@ -131,6 +131,11 @@ hosts:
       window: "18:00-23:59"
       days: "Fri,Sat,Sun"
       instances: 0
+    dev_slice:                   # optional; docker classes only -- section 9
+      cpu_weight: 10             # against 100 for CI
+      memory_gb: 5               # HARD cap, carved out of budget.memory_gb
+      swap_gb: 3
+      max_jobs: 6
     sizing_note: >-              # required if the count departs from the formula
       why this host is not sized by the formula
 ```
@@ -383,6 +388,7 @@ These are written into the Windows user's `.wslconfig`, and they are the
 | `cpus`, `memory_gb`, `pin_cpus` | needs `infra-apply` (recreates containers) |
 | `labels` | needs `infra-apply` (re-registration) |
 | `quiet_hours` | `fleet.py apply <host> --tags capacity` -- no drain, no container touched |
+| `dev_slice` | `fleet.py apply <host> --tags dev-slice` -- no drain, no container touched |
 | `budget.threads`, `budget.memory_gb` on `docker_wsl` | needs `infra-apply` **and** `wsl --shutdown` |
 | `instances` on `arc_k8s` | `infra-apply`, or live with `infra-scale` |
 
@@ -436,6 +442,17 @@ it in one place that can be reasoned about once.
 Entering the window runs the same drain as `make infra-scale`: instances are
 stopped as they go idle, never while they hold a job. Leaving it starts them
 again.
+
+A host that also lends a **dev slice** (section 9) has that frozen by the same
+run, because parking three idle containers while an agent's gate suite goes on
+using the machine would defeat the whole window. The rule is one line: *the dev
+slice is frozen exactly while the host's runner target is zero* -- so both the
+timer and a manual `make infra-scale HOST=win-ci N=0` stand down all of it, and
+both thaw it again the moment the target is non-zero. Note the consequence of
+the timer converging capacity generally: a manual `N=0` is undone within ten
+minutes, and the dev slice thaws with it. A durable stand-down is a
+`quiet_hours` block or an `instances:` change, exactly as it is for the
+runners.
 
 ### Verify it
 
@@ -630,6 +647,219 @@ grows.
 - **A registration or removal token.** Minted per operation and passed on the
   command line, never stored. That is the point: two hosts in this fleet must
   never hold a long-lived credential.
+
+---
+
+## 9. Lending a runner host back: the dev slice
+
+`win-ci` is the fleet's fastest machine and it is idle most of the time --
+measured at load ~2.8 of 22 threads in the troughs between CI bursts. A
+**dev slice** hands those troughs to agents: a workspace and a gate run on the
+same box the runners are on, without CI ever losing a scheduling contest.
+
+```yaml
+  win-ci:
+    dev_slice:
+      cpu_weight: 10     # against 100 for CI
+      memory_gb: 5       # HARD, and carved out of budget.memory_gb
+      swap_gb: 3
+      max_jobs: 6
+```
+
+```sh
+python3 scripts/dev/fleet.py apply win-ci --tags dev-slice   # no drain
+```
+
+Delete the block and re-apply, and the slice, its entry point, its shell
+environment and its reaper are removed. That is also how the 5 GiB goes back to
+the Ethos-U55 / NPU work (#228) when that starts: it is one block, in one file.
+
+### Why a weight and a wall, and not a share of the machine
+
+The two resources behave completely differently under contention, so they are
+declared differently.
+
+**CPU is a weight.** Every runner container is a scope under `system.slice`,
+which carries systemd's default `CPUWeight=100`. The dev slice is that slice's
+sibling at 10. On a thread a runner wants, dev work gets 1/11th of it; on a
+thread no runner wants, it gets all of it; and it yields within one scheduling
+period of a job arriving, with nothing to schedule and nobody to remember
+anything. A cpuset or a `--cpus` quota would have been exactly backwards --
+idle while CI is busy, and capped while CI is idle.
+
+**Memory is a hard wall,** because memory does not yield: a page a dev build
+holds is a page a `clang-tidy` job cannot have. `MemoryMax` is therefore taken
+out of the host's budget *before* the runners are sized, and
+`check_fleet_declaration.py` fails a declaration where
+`instances * memory_gb + dev_slice.memory_gb` overruns `budget.memory_gb`. On
+`win-ci` the arithmetic is closed: 3 x 7 + 5 = 26, the VM cap exactly.
+
+**Swap is allowed here and nowhere else in the fleet.** A runner that swaps is
+a job that has silently become an order of magnitude slower and presents as a
+timeout; a dev gate run that swaps is just slow, and slow beats an OOM kill.
+
+**I/O is deliberately not declared.** The WSL2 kernel exposes no `io.weight`
+(it builds neither BFQ nor blk-iocost), so an `IOWeight=` would be
+configuration that does nothing. Stated here so nobody re-derives it.
+
+### The one systemd trap in this, and it is silent
+
+The unit is `ra8dev.slice` -- **no dash**. systemd reads `-` in a slice name as
+*hierarchy*: `ra8-dev.slice` is created as a child of an auto-generated
+`ra8.slice`, and it is `ra8.slice`, at the default weight of 100, that would
+then face `system.slice`. The careful `CPUWeight=10` would be arbitrating
+between the dev slice and its zero siblings while CI and dev split the machine
+evenly one level up. Verified on the host: `systemd-run --slice=ra8-dev.slice`
+lands in `/ra8.slice/ra8-dev.slice/...`. The role asserts the name is a single
+token, and the model and the role are cross-checked against each other by the
+`fleet-declaration` gate.
+
+### Using it (this is the part a person needs)
+
+```sh
+ssh -J star sikar@10.0.40.100                 # into Windows
+wsl -d Ubuntu                                 # into the distro (root)
+
+make ws-new NAME=my-task                      # /opt/ra8-dev/ws/my-task
+cd /opt/ra8-dev/ws/my-task
+
+ra8-dev make ci                               # every gate, in the slice
+ra8-dev make ci-fast                          # ...minus the slow ones
+ra8-dev make ci-gate-container GATE=tidy      # exactly one gate
+make ws-free NAME=my-task
+```
+
+`ra8-dev` is the whole interface. Everything else -- the workspace root, the
+shared ccache, the bounded `-j`, and the `--cgroup-parent` that puts the gate
+container in the slice -- is exported from `/etc/profile.d/ra8-dev-slice.sh`
+and needs no thought.
+
+> **`ra8-dev`, not bare `make ci`.** Two kinds of work have to land in the
+> slice and they get there differently. Host-side work (`make`, `git`, a cross
+> build) is *moved* there by `ra8-dev`, which starts it in a transient scope in
+> the slice -- a login shell is otherwise in `user.slice`, beside CI rather
+> than under it. The gate *container* cannot be moved that way at all: the
+> docker daemon creates its cgroup, not your shell, so it inherits nothing.
+> That half is done by `RA8_CI_CONTAINER_ARGS=--cgroup-parent=ra8dev.slice`,
+> which `scripts/ci.sh` appends to its `run` command. A bare `make ci` from a
+> login shell therefore still caps the container correctly, but its `make` and
+> `git` run outside the slice. Use `ra8-dev`.
+
+### Why the gates run in a container here and natively on the dev box
+
+The dev box carries the pinned toolchain natively, because it is not a runner
+and nothing else on it defines one. `win-ci` already holds the exact image its
+own runners boot -- `.devcontainer/Dockerfile` plus the actions-runner layer --
+so a second, apt-installed toolchain beside it would be a drift source with no
+upside, and the `ci_runner_docker` role refuses to build a second image for
+precisely that reason. The dev slice therefore reuses the runners' image: the
+role tags it `ra8-ci:latest` (the name `scripts/ci.sh` boots) and **asserts
+both names resolve to one image id**, so "a gate run in the dev slice proves
+something about the runners beside it" is a checked fact.
+
+The consequence is that `make ci-gate GATE=x` -- which runs a gate *natively*,
+because that is what a CI runner does -- does not work in this distro. Use
+`make ci-gate-container GATE=x`, which runs the same gate on the same clean
+`git archive HEAD` snapshot inside that image. (It works on macOS too, where
+`make ci-gate` has never been able to.)
+
+### Quiet hours freeze it, they do not kill it
+
+The capacity script freezes the slice whenever the host's runner target is 0 --
+inside a declared window, or after a manual `make infra-scale HOST=x N=0`.
+`systemctl freeze` suspends every process in it -- including the gate
+container, whose scope is a child of the slice -- and thawing resumes them
+exactly where they stood. An agent's suite pauses for the evening instead of
+dying at 18:00, which is the same "never destroy work in flight" rule the
+runner drain follows.
+
+Because the capacity timer converges every host to its declared capacity every
+ten minutes, a manual `N=0` freeze is temporary: the next poll restores the
+runners and thaws the slice. Standing the machine down for an evening is a
+`quiet_hours` window, not a manual scale.
+
+The cost, stated rather than hidden: a run frozen for hours resumes with its
+wall-clock budgets already spent, so a time-budgeted gate can fail on the way
+out. That is why `ra8-dev` **refuses to start new work while the slice is
+frozen** and says how to check. A paused run is the caller's informed choice; a
+run that silently began five minutes before a window is not.
+
+`make infra-status` reports the slice beside the runners:
+
+```
+win-ci (docker_wsl, declared 3 instance(s)):
+  INSTANCE             STATE     BUSY  DETAIL
+  ra8-ci-runner-1      running   idle  ready to park
+  ra8-ci-runner-2      running   idle  ready to park
+  ra8-ci-runner-3      running   idle  ready to park
+  ra8dev.slice         active    running dev work runs at its weight, below CI
+```
+
+### What it cost CI: measured, not asserted
+
+The whole point of a weight is that CI does not notice. That was tested rather
+than assumed.
+
+**The method.** A probe container given a **runner's exact caps** -- cpuset
+14-20, 7 CPU, 7 GiB, `--pids-limit 8192`, and the default `system.slice`
+parent, i.e. indistinguishable from `ra8-ci-runner-3` -- runs three real gates
+on a clean `git archive HEAD` snapshot. Identical work, identical caps,
+identical cores; the *only* difference between the phases is whether a full
+`ra8-dev make ci` is running in the slice at the same time.
+
+Nothing was parked to make room. Two earlier attempts drained runner 3 so the
+probe owned its cpuset, and the fleet's own capacity timer put it straight back
+within ten minutes -- correctly, which is now the documented behaviour
+(section 4). So the *other* contention is **measured** instead: a sampler reads
+every runner's busy state every 5 seconds for the whole round, and a round in
+which runner 3 was ever busy is reported CONTAMINATED rather than quietly
+averaged in. Only clean rounds are compared below.
+
+| gate | dev slice idle | dev slice loaded | median change | observed range |
+|---|---|---|---|---|
+| `unit-tests` | 72.6 s | 77.0 s | **+6.0%** | +3.2% .. +16.8% |
+| `misra` | 107.0 s | 117.8 s | **+10.1%** | +4.3% .. +16.4% |
+| `tidy` | 202.2 s | 211.3 s | **+4.5%** | +1.7% .. +8.7% |
+
+4 clean control rounds, 7 clean loaded rounds. The absolute numbers are a
+cold-build worst case and are NOT comparable with the same gates' durations in
+the Actions history -- a real runner works incrementally in its own `_work`
+tree, the probe rebuilds from a fresh snapshot every time. The comparison
+between the two columns is the measurement.
+
+**Flakiness: none.** 33 of 33 gate runs across every round exited 0, in both
+phases. The slice sat *at* its `MemoryMax` for much of the loaded phase
+(98405 `memory.max` events in one 20-minute run) with `oom_kill 0` -- the hard
+cap plus swap turned the peak into a slow dev run rather than a dead one, and
+CI never saw it.
+
+**The residual cost is not the scheduler, and cannot be tuned away.** Two
+alternatives were measured on the same rig:
+
+- **`cpu.idle=1` (SCHED_IDLE)** on the slice, which is a strictly stronger
+  yield than any weight -- the cgroup runs only when nothing else wants the
+  CPU. Result: 75.0 / 112.2 / 205.7 against 75.7 / 111.6 / 206.1 at
+  `CPUWeight=10`. No measurable difference.
+- **`max_jobs: 3`** instead of 6, halving the number of dev threads competing
+  for cores. Result: 75.4 / 112.9 / 209.2. Again no measurable difference.
+
+Both point the same way: the weight has already reduced the *runqueue* share to
+near nothing, and what is left is SMT siblings and shared last-level cache --
+physics of two workloads on one die, which no cgroup knob reaches. Removing it
+would mean giving the slice cores no runner uses, and this host has exactly one
+spare thread. So `cpu.idle` was not adopted (it buys nothing and its setting
+does not survive a slice restart) and `max_jobs` stays at 6, where the smaller
+number would have cost dev half its throughput for no gain to CI.
+
+**For scale, the fleet already pays more than this to itself.** In the same
+run, the contaminated control rounds -- dev slice *idle*, a real CI job on
+runner 3 sharing the probe's cpuset -- came in at +0.3%..+10.1%,
++4.4%..+18.0% and +2.7%..+13.6% on the same three gates. Co-tenancy with the
+dev slice costs a CI job about what co-tenancy with another runner already
+costs it on this machine, and that is a trade the fleet made deliberately when
+it put three runners on one die.
+
+The harness is in issue #519.
 
 ---
 

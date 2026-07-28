@@ -78,6 +78,15 @@ sizing:
 #             instances * cpus and instances * memory_gb must FIT the budget.
 #   burst     the caps are ceilings a scheduler may oversubscribe, so the
 #             REQUESTS are what must fit. Only arc_k8s is honest as `burst`.
+#
+# `dev_slice` is the OTHER direction: what a runner host may lend back to
+# agents doing verification work on it. A runner host is CI first, so the slice
+# is declared as a CPU WEIGHT (it takes whatever CI is not using and yields the
+# instant a job arrives) plus a HARD memory cap (memory does not yield, so it
+# has to be reserved away from CI up front). It deliberately declares no thread
+# count: a thread reservation would idle when CI is busy AND cap the slice when
+# CI is idle, which is the opposite of what a weight buys. See docs/CI_FLEET.md
+# section 9.
 hosts:
 
   # --- VM 300 on pve1: the k3s cluster, the vault, and the ARC runner pool ---
@@ -170,11 +179,11 @@ hosts:
       # sharded and per-shard peak memory has been re-measured.
       instances: 3
       cpus: 7
-      # 7, not the 8.7 the division allows: this machine has an RTX 5070 and
-      # will later host the GPU side of the Ethos-U55 / NPU work (#228) in
-      # this same distro. GPU work and CI do not contend for an execution
-      # resource, but they do contend for system RAM, so ~5 GiB of the VM is
-      # left uncommitted on purpose.
+      # 7, not the 8.7 the division allows, so that 5 GiB of the VM stays
+      # outside the runners' reservation. That 5 GiB was originally held for
+      # the CUDA co-tenant of the Ethos-U55 / NPU work (#228); the owner has
+      # released it while that work is months out, and it is now the
+      # `dev_slice` below. It returns to #228 by deleting that block.
       memory_gb: 7
       pin_cpus: true
       labels: [ra8-ci, ra8-win]
@@ -208,12 +217,54 @@ hosts:
       window: "18:00-23:59"
       days: "Fri,Sat,Sun"
       instances: 0
+    # The other half of the machine's job: a SECOND verification host, so an
+    # agent can get a workspace and run gates here the way they do on the dev
+    # box, without CI ever noticing.
+    #
+    # CPU is a WEIGHT, not a quota or a cpuset. The runner containers are
+    # Docker's default parent (system.slice, systemd's default CPUWeight=100);
+    # this slice sits beside it at 10, so dev work gets ~1/11 of any thread a
+    # runner is contending for and 100% of every thread no runner is using. It
+    # yields within a scheduling period of a job arriving, with nothing to
+    # schedule and nothing to remember.
+    #
+    # MEMORY is the opposite and has to be a hard wall, because memory does not
+    # yield: a page a dev build holds is a page a clang-tidy job cannot have.
+    # 5 GiB is exactly what the runners' 3 x 7 GiB leaves of the 26 GiB VM cap,
+    # so the arithmetic is closed -- the fleet-declaration gate fails this
+    # block if the two ever stop summing to the budget.
+    #
+    # swap_gb is deliberately non-zero where the runners' is zero, and it earns
+    # its place: a full `make ci` in this slice REACHES the 5 GiB wall and
+    # stays there (98405 memory.max events in one 20-minute run) with
+    # oom_kill 0 -- swap is what turned that into a slow run instead of a dead
+    # one. A runner that swaps is a job that has silently become an order of
+    # magnitude slower and presents as a timeout; a dev gate run that swaps is
+    # just slow, and slow beats losing an agent's whole suite.
+    #
+    # max_jobs bounds every gate's parallel width (RA8_MAX_JOBS +
+    # CMAKE_BUILD_PARALLEL_LEVEL). It is a MEMORY bound wearing a CPU hat:
+    # nothing here needs to cap CPU -- that is what the weight is for -- but a
+    # 22-wide compile does not fit under a 5 GiB cap. 6 rather than something
+    # smaller because it was measured: halving it to 3 changed a co-tenant CI
+    # job's time by nothing measurable (the residual cost is SMT siblings and
+    # shared cache, which no scheduler knob reaches), so the smaller number
+    # would have bought CI nothing and cost dev half its throughput.
+    dev_slice:
+      cpu_weight: 10
+      memory_gb: 5
+      swap_gb: 3
+      max_jobs: 6
     sizing_note: >-
       Per-instance memory is 7 GB where the formula's divisor is 8. The count
       is the formula's -- min(22/4, 26/8) = 3 -- but each instance is given
-      one GB less than the division allows, so that ~5 GB of the VM stays
-      uncommitted for the CUDA process the Ethos-U55 / NPU work (#228) will
-      run in this same distro. The divisor is a conservative ceiling rather
+      one GB less than the division allows, so that 5 GB of the 26 GB VM cap
+      stays outside the runners' reservation. That 5 GB was first held for the
+      CUDA co-tenant of the Ethos-U55 / NPU work (#228); with that work months
+      out the owner released it, and it is now the dev_slice above -- the
+      machine's second job as a verification host. It goes back to #228 by
+      deleting that block, which is why the number lives in one place rather
+      than being described here. The divisor is a conservative ceiling rather
       than a measured per-job draw: a full cross-build peaked at 4.06 GiB RSS
       on this host and an idle listener holds ~95 MiB, so 7 GB has real
       headroom over anything measured here. If clang-tidy is ever measured

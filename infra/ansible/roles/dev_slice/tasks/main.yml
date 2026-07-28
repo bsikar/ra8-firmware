@@ -1,0 +1,684 @@
+---
+# Lend a CI runner host's idle capacity to agent verification work, under a
+# cgroup that cannot take anything CI was promised.
+#
+# See defaults/main.yml for why each property is what it is. This file is
+# AUTHORITATIVE for how the slice is configured; docs/CI_FLEET.md section 9 is
+# a description of it that can go stale.
+#
+# Idempotent, and undone by `-e dev_slice_enabled=false` (the declaration lost
+# its block) or `-e dev_slice_state=absent` (the host is being torn down).
+#
+# EVERY property below is READ BACK from /sys/fs/cgroup and asserted. A weight
+# or a cap that was silently not applied is worse than one never attempted: the
+# play would report a host whose dev work yields to CI, and the first symptom
+# would be a flaky gate on the runners beside it.
+
+- name: Assert a lifecycle state this role implements
+  ansible.builtin.assert:
+    that:
+      - dev_slice_state in ['present', 'absent']
+    fail_msg: >-
+      dev_slice_state is '{{ dev_slice_state }}'; this role implements
+      'present' (configure) and 'absent' (undo) only.
+    success_msg: "state={{ dev_slice_state }}"
+
+- name: Decide whether this host should carry a dev slice
+  ansible.builtin.set_fact:
+    dev_slice_wanted: "{{ (dev_slice_enabled | bool) and dev_slice_state == 'present' }}"
+
+# --- Removal ----------------------------------------------------------------
+#
+# Ordered so each step still works when the previous one had nothing to do, and
+# so nothing is deleted while processes are still inside it.
+
+- name: Remove the dev slice
+  when: not (dev_slice_wanted | bool)
+  block:
+    - name: Thaw the slice before removing it
+      # A frozen slice cannot have its processes stopped, and quiet hours may
+      # have frozen it. Removing it while frozen would leave those processes
+      # suspended in a cgroup nothing is left to thaw.
+      become: true
+      ansible.builtin.command:
+        argv: [systemctl, thaw, "{{ dev_slice_unit }}"]
+      register: dev_slice_thaw_rm
+      changed_when: dev_slice_thaw_rm.rc == 0
+      failed_when: false
+
+    - name: Stop the slice
+      become: true
+      ansible.builtin.systemd_service:
+        name: "{{ dev_slice_unit }}"
+        state: stopped
+      failed_when: false
+
+    - name: Remove the slice unit, the entry point and the shell environment
+      become: true
+      notify: Reload systemd
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ dev_slice_units_dir }}/{{ dev_slice_unit }}"
+        - "{{ dev_slice_bin }}"
+        - "{{ dev_slice_profile }}"
+
+    - name: Remove the workspace reaper this role installed
+      become: true
+      ansible.builtin.systemd_service:
+        name: ra8-workspace-reap.timer
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Remove the reaper units
+      become: true
+      notify: Reload systemd
+      ansible.builtin.file:
+        path: "{{ dev_slice_units_dir }}/{{ item }}"
+        state: absent
+      loop:
+        - ra8-workspace-reap.timer
+        - ra8-workspace-reap.service
+
+    - name: Drop the CI image alias
+      # The alias only, never the image: `localhost/ra8-ci-runner:v2` is what
+      # the runners on this host boot from, and untagging one name of a
+      # multi-tagged image leaves the other in place.
+      become: true
+      ansible.builtin.command:
+        argv: [docker, rmi, "{{ dev_slice_ci_image_alias }}"]
+      register: dev_slice_untag
+      changed_when: dev_slice_untag.rc == 0
+      failed_when: false
+
+    - name: Remove the dev tree, workspaces and caches
+      when: dev_slice_destroy_data | bool
+      become: true
+      ansible.builtin.file:
+        path: "{{ dev_slice_root }}"
+        state: absent
+
+    - name: Report what removal left behind
+      ansible.builtin.debug:
+        msg: >-
+          dev slice removed: {{ dev_slice_unit }} stopped and deleted,
+          {{ dev_slice_bin }} and {{ dev_slice_profile }} gone, the
+          {{ dev_slice_ci_image_alias }} alias dropped, the workspace reaper
+          uninstalled.
+          {{ dev_slice_root ~ ' destroyed'
+             if dev_slice_destroy_data | bool
+             else dev_slice_root ~ ' KEPT (it holds agent work; '
+                  ~ '-e dev_slice_destroy_data=true to reclaim it)' }}
+          The runner containers were not touched.
+
+# --- Configuration ----------------------------------------------------------
+
+- name: Configure the dev slice
+  when: dev_slice_wanted | bool
+  block:
+    - name: Assert the slice name is a ROOT-level slice
+      # systemd reads `-` as hierarchy, so `ra8-dev.slice` would be a child of
+      # an auto-created `ra8.slice` at the DEFAULT weight -- and it is that
+      # parent, not this unit, that would then face system.slice. The careful
+      # weight below would arbitrate between the dev slice and nothing while CI
+      # and dev split the machine evenly one level up. Caught here rather than
+      # discovered as "the slice does not seem to yield".
+      ansible.builtin.assert:
+        that:
+          - dev_slice_unit.endswith('.slice')
+          - "'-' not in (dev_slice_unit | regex_replace('\\.slice$', ''))"
+        fail_msg: >-
+          dev_slice_unit is '{{ dev_slice_unit }}'. A slice name containing '-'
+          is NESTED by systemd ('a-b.slice' is a child of 'a.slice'), so its
+          CPUWeight would be compared against its siblings inside that parent
+          rather than against system.slice, where every runner container lives.
+          Use a single-token name.
+        success_msg: "{{ dev_slice_unit }} is a root-level slice"
+
+    - name: Assert the dev slice is weighted BELOW CI
+      ansible.builtin.assert:
+        that:
+          - (dev_slice_cpu_weight | int) >= 1
+          - (dev_slice_cpu_weight | int) < (dev_slice_ci_cpu_weight | int)
+        fail_msg: >-
+          dev_slice_cpu_weight is {{ dev_slice_cpu_weight }} against CI's
+          {{ dev_slice_ci_cpu_weight }}. At or above CI's weight this is not a
+          low-priority slice: dev work would split contended threads with a
+          running job instead of yielding to it.
+        success_msg: >-
+          CPUWeight {{ dev_slice_cpu_weight }} vs
+          {{ dev_slice_ci_cpu_weight }} for CI
+
+    - name: Install what a dev shell needs on the host side
+      become: true
+      ansible.builtin.apt:
+        name: "{{ dev_slice_apt }}"
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Compute the reclaim threshold as an absolute size
+      # NOT a percentage. systemd resolves a percentage in MemoryHigh= against
+      # the machine's PHYSICAL memory rather than against this slice's
+      # MemoryMax, so `MemoryHigh=85%` on this host meant 21.6 GiB -- four
+      # times the cap it was supposed to sit under, and therefore inert. The
+      # read-back below asserts it lands under memory.max.
+      ansible.builtin.set_fact:
+        dev_slice_memory_high: >-
+          {{ ((dev_slice_memory | human_to_bytes)
+              * (dev_slice_memory_high_pct | int) / 100) | int }}
+
+    - name: Write the slice unit
+      become: true
+      notify: Reload systemd
+      ansible.builtin.copy:
+        dest: "{{ dev_slice_units_dir }}/{{ dev_slice_unit }}"
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # Managed by the ra8-firmware dev_slice Ansible role, from
+          # infra/fleet.yml. Edit the declaration, not this file.
+          #
+          # Agent verification work on a host whose FIRST job is CI. Every
+          # runner container is a scope under system.slice at systemd's default
+          # CPUWeight={{ dev_slice_ci_cpu_weight }}; this slice is its sibling
+          # at {{ dev_slice_cpu_weight }}, so dev work takes whatever CI is not
+          # using and yields within a scheduling period when a job arrives.
+          #
+          # MemoryMax is the half that cannot be a weight: memory does not
+          # yield, so it is carved out of the host's budget before CI is sized.
+          [Unit]
+          Description=RA8 low-priority agent verification work (yields to CI)
+          Documentation=file://{{ dev_slice_bin }}
+
+          [Slice]
+          CPUWeight={{ dev_slice_cpu_weight }}
+          MemoryMax={{ dev_slice_memory }}
+          MemoryHigh={{ dev_slice_memory_high }}
+          MemorySwapMax={{ dev_slice_swap }}
+
+    - name: Flush handlers so the slice is started against the unit just written
+      ansible.builtin.meta: flush_handlers
+
+    - name: Start the slice
+      # A slice with no units in it is inert but must be ACTIVE, or
+      # `systemctl freeze` (the quiet-hours path) has nothing to act on and
+      # /sys/fs/cgroup/<slice> does not exist to read the caps back from.
+      become: true
+      ansible.builtin.systemd_service:
+        name: "{{ dev_slice_unit }}"
+        state: started
+        enabled: false
+        daemon_reload: true
+
+    # --- Read the caps back, never assume they took -----------------------
+
+    - name: Read the cgroup properties the kernel is enforcing
+      become: true
+      ansible.builtin.command:
+        argv: [cat, "/sys/fs/cgroup/{{ dev_slice_unit }}/{{ item }}"]
+      loop: [cpu.weight, memory.max, memory.swap.max, memory.high]
+      register: dev_slice_cgroup
+      changed_when: false
+
+    - name: Read the weight CI's containers actually run at
+      # system.slice, read rather than assumed: `docker info` reports the
+      # systemd cgroup driver on this host, which puts every container in a
+      # scope under system.slice, and the whole arbitration is this number
+      # against ours.
+      become: true
+      ansible.builtin.command:
+        argv: [cat, /sys/fs/cgroup/system.slice/cpu.weight]
+      register: dev_slice_ci_weight
+      changed_when: false
+
+    - name: Assert the slice is genuinely capped and genuinely subordinate
+      ansible.builtin.assert:
+        that:
+          - (dev_slice_cgroup.results[0].stdout | trim | int) == (dev_slice_cpu_weight | int)
+          - (dev_slice_cgroup.results[1].stdout | trim | int)
+            == (dev_slice_memory | human_to_bytes)
+          - (dev_slice_cgroup.results[2].stdout | trim | int)
+            == (dev_slice_swap | human_to_bytes)
+          - (dev_slice_cgroup.results[3].stdout | trim | int)
+            < (dev_slice_cgroup.results[1].stdout | trim | int)
+          - (dev_slice_cpu_weight | int) < (dev_slice_ci_weight.stdout | trim | int)
+        fail_msg: >-
+          {{ dev_slice_unit }} reports cpu.weight
+          {{ dev_slice_cgroup.results[0].stdout | trim }}, memory.max
+          {{ dev_slice_cgroup.results[1].stdout | trim }}, memory.swap.max
+          {{ dev_slice_cgroup.results[2].stdout | trim }}, memory.high
+          {{ dev_slice_cgroup.results[3].stdout | trim }} against system.slice's
+          cpu.weight {{ dev_slice_ci_weight.stdout | trim }} -- not the
+          requested {{ dev_slice_cpu_weight }} / {{ dev_slice_memory }} /
+          {{ dev_slice_swap }} / a reclaim threshold BELOW the cap, all under
+          CI. An unapplied cap is worse than a missing one: the play would
+          report a slice that yields to CI, and the first symptom would be a
+          flaky gate on the runners beside it. A memory.high at or above
+          memory.max is the specific trap systemd's percentage syntax sets --
+          it resolves against PHYSICAL memory, not against this slice's cap.
+        success_msg: >-
+          {{ dev_slice_unit }}: cpu.weight {{ dev_slice_cpu_weight }} under
+          system.slice's {{ dev_slice_ci_weight.stdout | trim }}, memory.max
+          {{ dev_slice_memory }}, memory.high
+          {{ dev_slice_cgroup.results[3].stdout | trim }}, memory.swap.max
+          {{ dev_slice_swap }}
+
+    # --- The tree an agent works in ---------------------------------------
+
+    - name: Create the dev root, the workspace root and the caches
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        mode: "{{ item.mode }}"
+      loop:
+        - path: "{{ dev_slice_root }}"
+          mode: "0755"
+        - path: "{{ dev_slice_workspace_root }}"
+          mode: "0755"
+        # 1777 for the same reason the dev box's shared cache is: whoever runs
+        # a build has to be able to write and evict, and the sticky bit keeps
+        # one account from unlinking another's entries by name.
+        - path: "{{ dev_slice_ccache_dir }}"
+          mode: "1777"
+        - path: "{{ dev_slice_tools_cache_dir }}"
+          mode: "1777"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Configure the shared compiler cache from inside the cache
+      # $CCACHE_DIR/ccache.conf, so every shell that points here picks up
+      # identical settings without needing its own ~/.config/ccache. base_dir +
+      # hash_dir are load-bearing rather than tuning: every `make ci` run builds
+      # in a fresh mktemp snapshot, so without path normalisation every
+      # compilation hashes differently and the hit rate is flat zero.
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ dev_slice_ccache_dir }}/ccache.conf"
+        mode: "0644"
+        content: |
+          # Shared compiler cache for RA8 dev work on a CI runner host.
+          # Managed by the dev_slice Ansible role -- edit the role, not this file.
+          max_size = {{ dev_slice_ccache_max_size }}
+          base_dir = /
+          hash_dir = false
+          sloppiness = include_file_mtime,include_file_ctime,locale,time_macros
+          umask = 000
+
+    - name: Check out the base tree that `make ws-new` links worktrees off
+      # Deliberately NOT force/update: this is the object store every agent
+      # workspace on this host shares, and a force checkout here would discard
+      # commits that live only in a linked worktree.
+      become: true
+      ansible.builtin.git:
+        repo: "{{ dev_slice_repo_url }}"
+        dest: "{{ dev_slice_base_checkout }}"
+        version: dev
+        update: false
+        accept_hostkey: true
+      environment:
+        GIT_LFS_SKIP_SMUDGE: "1"
+
+    - name: Mark the base checkout and its worktrees safe for every account
+      # `make ci` bind-mounts the tree into a container that runs as root
+      # against files owned by whoever cloned them, and git refuses to operate
+      # on a repository it thinks belongs to someone else. Without this the
+      # suite dies before its first gate with "not a git repository".
+      become: true
+      ansible.builtin.command:
+        argv: [git, config, --global, --add, safe.directory, "{{ item }}"]
+      loop:
+        - "{{ dev_slice_base_checkout }}"
+        - "{{ dev_slice_workspace_root }}"
+      register: dev_slice_safe_dir
+      changed_when: dev_slice_safe_dir.rc == 0
+
+    # --- The toolchain the gates run in -----------------------------------
+
+    - name: Read the image id the runners on this host boot from
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - inspect
+          - --format
+          - "{% raw %}{{.Id}}{% endraw %}"
+          - "{{ dev_slice_source_image }}"
+      register: dev_slice_source_id
+      changed_when: false
+      failed_when: false
+
+    - name: Fail loud when the runner toolchain image is not on this host
+      # Deliberately not a build step, and not a pull. The gates in this slice
+      # must execute in the SAME image the runners beside them execute in, or
+      # "it passed on win-ci" stops meaning anything; and a second, separately
+      # built toolchain on the one host that already holds the first is a drift
+      # source with no upside. If the image is missing, the host is not a
+      # runner host yet -- deploy ci_runner_docker first.
+      when: dev_slice_source_id.rc != 0
+      ansible.builtin.fail:
+        msg: >-
+          {{ dev_slice_source_image }} is not loaded on this host, so there is
+          no CI toolchain for the dev slice to run gates in. This role does not
+          build or pull one on purpose: .devcontainer/Dockerfile is the single
+          source of truth for every pinned tool and the `toolchain-parity` gate
+          fails a host that drifts from it. Deploy the runners first
+          (`make infra-apply HOST=<host>`), which loads the image.
+
+    - name: Tag the runner image as the name scripts/ci.sh boots
+      # scripts/ci.sh builds `ra8-ci:latest` from .devcontainer/Dockerfile when
+      # it cannot find it. Here it can: the runner image IS that devcontainer
+      # image with the actions-runner layered on top, already on the host, so
+      # aliasing it skips a multi-gigabyte rebuild AND makes "the dev slice
+      # runs exactly what CI runs on this machine" true by construction rather
+      # than by two builds happening to agree.
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - tag
+          - "{{ dev_slice_source_image }}"
+          - "{{ dev_slice_ci_image_alias }}"
+      register: dev_slice_tag
+      changed_when: dev_slice_tag.rc == 0
+
+    - name: Read the id the alias resolves to
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - inspect
+          - --format
+          - "{% raw %}{{.Id}}{% endraw %}"
+          - "{{ dev_slice_ci_image_alias }}"
+      register: dev_slice_alias_id
+      changed_when: false
+
+    - name: Assert the alias and the runners' image are one image
+      ansible.builtin.assert:
+        that:
+          - (dev_slice_alias_id.stdout | trim) == (dev_slice_source_id.stdout | trim)
+        fail_msg: >-
+          {{ dev_slice_ci_image_alias }} resolves to
+          {{ dev_slice_alias_id.stdout | trim }} but the runners boot
+          {{ dev_slice_source_id.stdout | trim }}. A gate run in the dev slice
+          would then prove nothing about the runners on the same machine.
+        success_msg: >-
+          {{ dev_slice_ci_image_alias }} == {{ dev_slice_source_image }}
+          ({{ dev_slice_alias_id.stdout | trim | truncate(19, true, '') }})
+
+    - name: Neutralise the Docker Desktop credential helper
+      # WSL writes {"credsStore": "desktop.exe"} into the profile, and on a
+      # headless distro it fails: `docker pull` dies with "A specified logon
+      # session does not exist". The runners never notice (side-loaded images,
+      # pull_policy: never) but a dev `make ci --rebuild` would, with an error
+      # about Windows logon sessions rather than about the toolchain. The
+      # original is kept beside it, so this is reversible by hand.
+      when: dev_slice_fix_docker_creds | bool
+      become: true
+      block:
+        - name: Read the docker client configuration
+          ansible.builtin.slurp:
+            src: "{{ ansible_env.HOME }}/.docker/config.json"
+          register: dev_slice_docker_cfg
+          failed_when: false
+
+        - name: Back up and rewrite it without the Desktop helper
+          when:
+            - dev_slice_docker_cfg.content is defined
+            - "'desktop' in (dev_slice_docker_cfg.content | b64decode)"
+          block:
+            - name: Keep the original once
+              ansible.builtin.copy:
+                src: "{{ ansible_env.HOME }}/.docker/config.json"
+                dest: "{{ ansible_env.HOME }}/.docker/config.json.ra8-backup"
+                remote_src: true
+                force: false
+                mode: "0600"
+
+            - name: Write it back with credsStore removed
+              ansible.builtin.copy:
+                dest: "{{ ansible_env.HOME }}/.docker/config.json"
+                mode: "0600"
+                content: "{{ (dev_slice_docker_cfg.content | b64decode | from_json)
+                             | dict2items | rejectattr('key', 'equalto', 'credsStore')
+                             | items2dict | to_nice_json }}"
+
+    # --- The entry points -------------------------------------------------
+
+    - name: Install the dev-slice entry point
+      # Inlined rather than kept as templates/*.j2, for the same reason the
+      # ci_runner_docker compose body is: a Jinja template is a file type
+      # nothing in this tree lints or formats, and check_lint_coverage.py
+      # rejects unclassified types rather than admitting a blind spot.
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ dev_slice_bin }}"
+        owner: root
+        group: root
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          # Managed by the ra8-firmware dev_slice Ansible role.
+          #
+          # Run a command in this host's low-priority dev slice.
+          #
+          #   ra8-dev make ci                 the whole gate suite
+          #   ra8-dev make ci-gate GATE=tidy  one gate
+          #   ra8-dev make ws-new NAME=x      an isolated workspace
+          #
+          # WHY A WRAPPER AND NOT JUST AN ENVIRONMENT VARIABLE. Two kinds of
+          # work have to land in the slice and they get there differently:
+          #
+          #   - work run DIRECTLY on the host (make, git, a cross build) is
+          #     moved here, by starting it inside a transient scope in the
+          #     slice. A login shell is in user.slice or the ssh session's
+          #     scope, both of which sit beside system.slice at the DEFAULT
+          #     weight -- i.e. competing with CI, not yielding to it.
+          #   - the CONTAINER `make ci` launches cannot be moved this way at
+          #     all: the docker DAEMON creates that cgroup, not this shell, so
+          #     it does not inherit anything. It is placed by
+          #     RA8_CI_CONTAINER_ARGS=--cgroup-parent, exported alongside this
+          #     script in {{ dev_slice_profile }}.
+          #
+          # Both end up under the same MemoryMax, which is the point: the cap
+          # is on ALL dev work on this host at once, not per process.
+          set -euo pipefail
+
+          readonly SLICE={{ dev_slice_unit }}
+
+          if [ $# -eq 0 ]; then
+            echo "usage: ra8-dev <command> [args...]" >&2
+            echo "       e.g. ra8-dev make ci-gate GATE=format" >&2
+            exit 2
+          fi
+
+          # Quiet hours FREEZE this slice rather than killing what is in it, so
+          # a run started now would suspend mid-gate and resume hours later
+          # with its wall-clock budgets already blown. Refuse instead of
+          # producing a result nobody can trust.
+          state="$(systemctl show -p FreezerState --value "$SLICE" 2>/dev/null || true)"
+          case "$state" in
+            frozen | freezing)
+              echo "ra8-dev: $SLICE is FROZEN, so this host is standing CI down" >&2
+              echo "  (quiet hours, or someone ran 'make infra-scale HOST=<host> N=0')." >&2
+              echo "  Work started now would suspend mid-run. The capacity timer" >&2
+              echo "  converges this host every 10 minutes and thaws the slice as soon" >&2
+              echo "  as the runner target is non-zero again, so waiting is usually the" >&2
+              echo "  answer; thaw it deliberately with: systemctl thaw $SLICE" >&2
+              exit 3
+              ;;
+          esac
+
+          exec systemd-run --quiet --collect --scope --slice="$SLICE" -- "$@"
+
+    - name: Export the dev-slice environment for every shell on this host
+      # /etc/profile.d reaches the distro's own login shells and NOT the runner
+      # containers, which have their own filesystem -- so nothing here can
+      # change how a CI job runs.
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ dev_slice_profile }}"
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # Managed by the ra8-firmware dev_slice Ansible role, from
+          # infra/fleet.yml. Edit the declaration, not this file.
+          #
+          # This distro is a CI RUNNER HOST first. Everything below exists so
+          # that verification work done here yields to the runners in it.
+
+          # The slice ra8-dev puts host-side work in.
+          export RA8_DEV_SLICE={{ dev_slice_unit }}
+
+          # THE half that ra8-dev cannot do for itself. scripts/ci.sh runs the
+          # gates in a container, and the docker DAEMON creates that container's
+          # cgroup -- so it does not inherit the shell's slice and has to be
+          # placed explicitly. Without this line a `make ci` here would run at
+          # system.slice's default weight, beside the runners rather than under
+          # them, with no memory cap at all.
+          export RA8_CI_CONTAINER_ARGS="--cgroup-parent={{ dev_slice_unit }}"
+
+          # Bounded parallel width for every gate (scripts/ci/lib/parallelism.sh
+          # resolves RA8_MAX_JOBS first, then CMAKE_BUILD_PARALLEL_LEVEL). Both
+          # are set to one number so make/ctest/xargs/cppcheck and
+          # `cmake --build` cannot disagree. This is a MEMORY bound: the slice's
+          # MemoryMax is {{ dev_slice_memory }}, and a 22-wide compile does not
+          # fit in it.
+          export RA8_MAX_JOBS={{ dev_slice_max_jobs }}
+          export CMAKE_BUILD_PARALLEL_LEVEL={{ dev_slice_max_jobs }}
+
+          # Isolated workspaces, exactly as on the dev box: `make ws-new NAME=x`
+          # adds a linked worktree here off the shared base checkout.
+          export RA8_WS_ROOT={{ dev_slice_workspace_root }}
+          export RA8_WS_UPSTREAM={{ dev_slice_base_checkout }}
+
+          # One compiler cache for every workspace and every containerised run
+          # on this host. Two variables because two consumers read them:
+          # scripts/ci.sh bind-mounts RA8_CCACHE_DIR into the container, and
+          # ccache itself reads CCACHE_DIR for anything built directly here.
+          export RA8_CCACHE_DIR={{ dev_slice_ccache_dir }}
+          export CCACHE_DIR={{ dev_slice_ccache_dir }}
+
+          # Persistent pinned-tool cache (the docs gate's version-pinned
+          # doxygen). Every suite run builds in a throwaway snapshot, so without
+          # this the download repeats every run.
+          export RA8_TOOLS_CACHE_DIR={{ dev_slice_tools_cache_dir }}
+
+    - name: Install the workspace reaper
+      # The same lifecycle the dev box has, from the same script: workspaces
+      # are reaped on a timer and on every `ws-new`, and the reaper refuses to
+      # delete a tree that is in use, dirty, or holding commits that are on no
+      # remote branch. Run from the base checkout so the installed copy tracks
+      # the version agents are running.
+      become: true
+      ansible.builtin.command:
+        cmd: bash scripts/dev/agent_workspace.sh install-timer
+        chdir: "{{ dev_slice_base_checkout }}"
+      environment:
+        RA8_WS_ROOT: "{{ dev_slice_workspace_root }}"
+        RA8_WS_UPSTREAM: "{{ dev_slice_base_checkout }}"
+      register: dev_slice_reaper
+      changed_when: true
+
+    - name: Read back whether the reaper is actually armed
+      become: true
+      ansible.builtin.command:
+        argv: [systemctl, is-active, ra8-workspace-reap.timer]
+      register: dev_slice_reaper_state
+      changed_when: false
+      failed_when: false
+
+    - name: Assert the reaper timer is running
+      # A timer that was written and not armed is the silent nothing this tree
+      # keeps finding: workspaces accumulate, the disk fills, and nothing ever
+      # says why. The likely cause is named because it is not obvious --
+      # agent_workspace.sh installs a USER timer for an ordinary account and a
+      # SYSTEM one for root, and the base checkout below may predate that.
+      ansible.builtin.assert:
+        that:
+          - (dev_slice_reaper_state.stdout | trim) == 'active'
+        fail_msg: >-
+          ra8-workspace-reap.timer is
+          '{{ dev_slice_reaper_state.stdout | trim }}' after installing it, so
+          stale workspaces on this host would never be swept. This host runs
+          the installer as root on a headless distro with no lingering, where a
+          `systemctl --user` timer dies with the installing session -- check
+          that {{ dev_slice_base_checkout }} carries the agent_workspace.sh
+          that installs a SYSTEM timer for uid 0, and refresh it if not.
+        success_msg: "ra8-workspace-reap.timer active (system)"
+
+    # --- Prove it, end to end ---------------------------------------------
+
+    - name: Prove host-side work lands in the slice
+      # The entry point is what an agent will actually type, so it is what is
+      # tested -- not the mechanism underneath it. A wrapper that silently ran
+      # its command outside the slice would leave every property above true and
+      # every one of them irrelevant.
+      become: true
+      ansible.builtin.command:
+        argv: ["{{ dev_slice_bin }}", cat, /proc/self/cgroup]
+      register: dev_slice_probe_host
+      changed_when: false
+
+    - name: Prove a containerised gate run lands in the slice
+      # The other half, and the one that is easy to get wrong: this asks the
+      # docker daemon to place a container the way scripts/ci.sh will, then
+      # reads back from the HOST side which cgroup it went into. Reading
+      # /proc/self/cgroup INSIDE the container cannot answer it -- the daemon
+      # runs containers in a private cgroup namespace, so a container always
+      # reports itself at "/" no matter where it really is.
+      become: true
+      ansible.builtin.shell:
+        # A LITERAL block, not a folded one. `>-` keeps a more-indented
+        # continuation line on its own line, which silently split this command
+        # in half the first time it ran -- `docker run` with no image, then a
+        # bare `--entrypoint` as a command. Shell goes in `|`.
+        cmd: |
+          set -euo pipefail
+          cid=$(docker run -d --rm --cgroup-parent={{ dev_slice_unit }} \
+            --entrypoint sleep {{ dev_slice_ci_image_alias }} 20)
+          pid=$(docker inspect --format '{% raw %}{{.State.Pid}}{% endraw %}' "$cid")
+          cat "/proc/$pid/cgroup"
+          docker rm -f "$cid" >/dev/null
+        executable: /bin/bash
+      register: dev_slice_probe_container
+      changed_when: false
+
+    - name: Assert both halves of the dev slice actually contain their work
+      ansible.builtin.assert:
+        that:
+          - dev_slice_unit in dev_slice_probe_host.stdout
+          - dev_slice_unit in dev_slice_probe_container.stdout
+        fail_msg: >-
+          The dev slice does not contain what it is supposed to.
+          {{ dev_slice_bin }} placed host-side work in
+          '{{ dev_slice_probe_host.stdout | trim }}' and a --cgroup-parent
+          container landed in '{{ dev_slice_probe_container.stdout | trim }}';
+          both must be under {{ dev_slice_unit }}. Work outside the slice runs
+          at system.slice's weight with no memory cap -- i.e. competing with
+          the runners on this host, which is the failure this whole role
+          exists to make impossible.
+        success_msg: >-
+          host-side work and --cgroup-parent containers both land under
+          {{ dev_slice_unit }}
+
+    - name: Report the dev slice
+      ansible.builtin.debug:
+        msg: >-
+          dev slice ready on {{ inventory_hostname }}: {{ dev_slice_unit }} at
+          CPUWeight {{ dev_slice_cpu_weight }} (CI runs at
+          {{ dev_slice_ci_weight.stdout | trim }}), MemoryMax
+          {{ dev_slice_memory }} + {{ dev_slice_swap }} swap, gates at
+          -j{{ dev_slice_max_jobs }} in {{ dev_slice_ci_image_alias }} (the
+          runners' own image). Workspaces at {{ dev_slice_workspace_root }} off
+          {{ dev_slice_base_checkout }}; shared ccache at
+          {{ dev_slice_ccache_dir }} ({{ dev_slice_ccache_max_size }}).
+          Use it with `{{ dev_slice_bin }} <command>`; quiet hours FREEZE it.

@@ -150,6 +150,7 @@ help:
 	@echo "  make ci-native-fast    same, minus the slow gates"
 	@echo "  make ci-list           print the gate registry (name / speed class / description)"
 	@echo "  make ci-gate GATE=<n>  run exactly ONE gate -- the invocation CI itself uses"
+	@echo "  make ci-gate-container GATE=<n>  the same gate, but inside the toolchain image"
 	@echo "  make format / check    run clang-format in place / --dry-run"
 	@echo "  make tidy / cppcheck   run clang-tidy / the cppcheck gate"
 	@echo "  make ascii / version   encoding check / @since-tag check"

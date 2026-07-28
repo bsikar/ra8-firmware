@@ -9,7 +9,7 @@
         misra misra-check misra-baseline scan-build scan-build-strict iwyu \
         fuzz bench stack-usage check-annotations nsc-cmse-check \
         sbom sbom-check vela vela-check vela-regen vela-compile \
-        ci ci-fast ci-native ci-native-fast ci-list ci-gate
+        ci ci-fast ci-native ci-native-fast ci-list ci-gate ci-gate-container
 
 format:
 	bash scripts/checks/format_code.sh
@@ -184,3 +184,15 @@ ci-list:
 ci-gate:
 	@test -n "$(GATE)" || { echo "usage: make ci-gate GATE=<name>  (make ci-list to see them)" >&2; exit 2; }
 	bash scripts/ci.sh --gate $(GATE)
+
+# One gate, but in the toolchain container instead of on this host.
+#
+# `make ci-gate` is the invocation CI itself uses, so it runs the gate NATIVELY
+# and assumes the host is a CI-equivalent environment. Two hosts deliberately
+# are not: macOS cannot be, and a runner host whose only toolchain is the image
+# its runners boot is not either -- installing a second toolchain beside it is
+# exactly the drift the shared image exists to prevent. This runs the same gate
+# on the same clean HEAD snapshot, inside that image.
+ci-gate-container:
+	@test -n "$(GATE)" || { echo "usage: make ci-gate-container GATE=<name>" >&2; exit 2; }
+	bash scripts/ci.sh --container --gate $(GATE)

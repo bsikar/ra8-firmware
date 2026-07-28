@@ -20,7 +20,14 @@
       when: item is exists
   roles:
     - ci_runner_docker
-    # Second, and only second: the capacity script has to name the instance
+    # The host's OTHER job, if it declares one: a low-priority cgroup that
+    # lends agents whatever CI is not using. Disabled unless the host declares
+    # a `dev_slice:` block, and the role then removes any slice a previous
+    # declaration left. Tagged so `--tags dev-slice` retunes it without
+    # touching a container.
+    - role: dev_slice
+      tags: [dev-slice]
+    # Then the capacity script, which has to name the instance
     # containers the role above has just created.
     #
     # Tagged so `--tags capacity` can refresh the drain script and the
