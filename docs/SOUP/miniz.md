@@ -19,7 +19,11 @@ Software Of Unknown Provenance (SOUP).
   Valve Software / Copyright 2010-2014 Rich Geldreich and Tenacious
   Software LLC").
 - **How it entered our tree**: Vendored amalgamation drop-in (`miniz.c`
-  + `miniz.h`). Upstream commit hash unknown.
+  + `miniz.h`). The amalgamation is published only as a RELEASE ARTIFACT
+  and never existed in the upstream git tree, so it is pinned by artifact
+  rather than by commit (#548): `miniz-3.0.2.zip`, SHA-256
+  `ada38db0b703a56d3dd6d57bf84a9c5d664921d870d8fea4db153979fb5332c5`. All
+  three vendored files are byte-identical to members of that archive.
 
 ## Use case in this firmware
 
@@ -51,7 +55,15 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-None. The vendored tree is unmodified.
+None: all three vendored files are byte-identical to members of the pinned
+`miniz-3.0.2.zip` release artifact, verified on every CI run against
+`docs/sbom/upstream/miniz.manifest`.
+
+They were not, until #548. The vendor-in sweep (`75b635cc7`) ran the project
+formatter over the amalgamation, so `miniz.c` and `miniz.h` differed from the
+published bytes by macro-continuation and pointer-style re-spacing throughout
+-- semantically identical, and a complete break of the byte-identity claim this
+document makes. Both files were restored to the release artifact's bytes.
 
 ## Last review date
 

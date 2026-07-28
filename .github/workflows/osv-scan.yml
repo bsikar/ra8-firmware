@@ -45,3 +45,15 @@ jobs:
           name: osv-scan-report
           path: osv-report/
           if-no-files-found: ignore
+
+  soup-upstream-refresh:
+    name: SOUP upstream re-fetch (pinned refs still publish what we recorded)
+    runs-on: ra8-ci
+    steps:
+      - uses: actions/checkout@v4
+      # Same clock, same reason as the CVE sweep above: the committed upstream
+      # manifests are a snapshot of what twenty-odd projects published on the
+      # day they were fetched, and a moved tag or a rewritten history changes
+      # that without touching this repository. The per-push soup-upstream gate
+      # cannot see any of it. Writes nothing -- it reports, it does not adopt.
+      - run: bash scripts/ci.sh --gate soup-upstream-refresh

@@ -1,0 +1,15 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: stb
+# upstream-url: https://github.com/nothings/stb
+# transport: git
+# ref: 31c1ad37456438565541f4919958214b6e762fb4
+# commit: 31c1ad37456438565541f4919958214b6e762fb4
+# upstream-files: 431
+# vendored-files: 4
+# upstream-verified: 1
+# patched: 1
+# local: 2
+ok 100644 9eedabedc45b3e6fd88fae6f14a160b4d53272ec stb_image.h
+local 100644 7e10e9652e351abdb4ec47cbac3615781366b4fb stb_image_impl.c
+patch 100644 90a5c2e2b3fe563c98585294ca7a949876aec94c aa1f935ceadeed1c9817d5ad8ddb249b8acbacb8 stb_truetype.h
+local 100644 078c33d6b14e724836b9e2dd8db07dab0f3a0f36 stb_truetype_impl.c

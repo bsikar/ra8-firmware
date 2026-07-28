@@ -1,0 +1,14 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: esp-hosted/protobuf-c
+# upstream-url: https://github.com/protobuf-c/protobuf-c
+# transport: git
+# ref: abc67a11c6db271bedbb9f58be85d6f4e2ea8389
+# commit: abc67a11c6db271bedbb9f58be85d6f4e2ea8389
+# upstream-files: 83
+# vendored-files: 3
+# upstream-verified: 3
+# patched: 0
+# local: 0
+ok 100644 c84ada6d02889703c44750ec95d04db7f5df0ca4 LICENSE
+ok 100644 0606cf677da28e91052d0d32754b4b6a93e3d3e8 protobuf-c/protobuf-c.c
+ok 100755 5fa52da626aa6433260934683ab1490b40c7f23a protobuf-c/protobuf-c.h

@@ -56,7 +56,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -67,12 +67,20 @@
           "value": "4758"
         },
         {
+          "name": "ra8:upstreamCommit",
+          "value": "3726d7906b4808bfec7855fc088e073199df9120"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "v6.5.0.202601_rel"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/threadx/LICENSE.txt"
         },
         {
           "name": "ra8:modified",
-          "value": "false"
+          "value": "true"
         }
       ]
     },
@@ -107,7 +115,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -118,12 +126,20 @@
           "value": "1227"
         },
         {
+          "name": "ra8:upstreamCommit",
+          "value": "8b6e03ac30ab688bec02c69d42f2304b7f72a202"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "v6.5.0.202601_rel"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/netxduo/LICENSE.txt"
         },
         {
           "name": "ra8:modified",
-          "value": "false"
+          "value": "true"
         },
         {
           "name": "ra8:note0",
@@ -162,7 +178,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -173,12 +189,20 @@
           "value": "267"
         },
         {
+          "name": "ra8:upstreamCommit",
+          "value": "bb6e295af079f3cd903272982106b0ddd9537422"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "v6.5.0.202601_rel"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/filex/LICENSE.txt"
         },
         {
           "name": "ra8:modified",
-          "value": "false"
+          "value": "true"
         }
       ]
     },
@@ -201,7 +225,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "83293dd1d77fc1313372a0ef62288b6b0067328bad0effb6ab836678c6674e51"
+          "content": "ecc871cefadf40ddb87767f57d280b815fcf16630edc69d9895f54ab10196017"
         }
       ],
       "externalReferences": [
@@ -213,7 +237,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -224,12 +248,20 @@
           "value": "1036"
         },
         {
+          "name": "ra8:upstreamCommit",
+          "value": "6dc0cf233d5b7ee6e1a7434581964975f8d8d37b"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "v6.5.0.202601_rel"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/usbx/LICENSE.txt"
         },
         {
           "name": "ra8:modified",
-          "value": "false"
+          "value": "true"
         }
       ]
     },
@@ -264,7 +296,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -275,12 +307,20 @@
           "value": "90"
         },
         {
+          "name": "ra8:upstreamCommit",
+          "value": "a46b74fb8aa133796ccbc13e7902cb8bb818e12f"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "v6.5.0.202601_rel"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/levelx/LICENSE.txt"
         },
         {
           "name": "ra8:modified",
-          "value": "false"
+          "value": "true"
         }
       ]
     },
@@ -316,7 +356,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -325,6 +365,10 @@
         {
           "name": "ra8:fileCount",
           "value": "256"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "d12fbb991c0822f347bbc569badef904629ce605"
         },
         {
           "name": "ra8:licenseOriginal",
@@ -340,7 +384,7 @@
         },
         {
           "name": "ra8:modified",
-          "value": "false"
+          "value": "true"
         }
       ]
     },
@@ -376,7 +420,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -385,6 +429,10 @@
         {
           "name": "ra8:fileCount",
           "value": "222"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77"
         },
         {
           "name": "ra8:licenseOriginal",
@@ -449,6 +497,10 @@
         {
           "name": "ra8:upstreamCommit",
           "value": "a7a156f28954819e158b62dd613008f22f9cf73b"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "nimble_1_10_0_tag"
         },
         {
           "name": "ra8:licenseFile",
@@ -526,6 +578,10 @@
           "value": "8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e"
         },
         {
+          "name": "ra8:upstreamRef",
+          "value": "8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/litehtml/LICENSE"
         },
@@ -563,7 +619,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "cf5ca3079474cd9e8704633360d195e7ec1fe69bc112a6f5e4ab30608f953792"
+          "content": "29b31cd5d8239d94a02f943c992e5265015db05c34d5ad732c19ad720cf21fd3"
         }
       ],
       "externalReferences": [
@@ -575,7 +631,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "archive-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -584,6 +640,14 @@
         {
           "name": "ra8:fileCount",
           "value": "3"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "3.0.2"
+        },
+        {
+          "name": "ra8:upstreamArchiveSha256",
+          "value": "ada38db0b703a56d3dd6d57bf84a9c5d664921d870d8fea4db153979fb5332c5"
         },
         {
           "name": "ra8:licenseFile",
@@ -646,6 +710,10 @@
           "value": "ae63ae3a36ed01724674e8f3d750dc47bf125410"
         },
         {
+          "name": "ra8:upstreamRef",
+          "value": "v2024-12-30"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/xz_embedded/COPYING"
         },
@@ -685,7 +753,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "965fcb964aa7e86b510f8336eadf07aa17384b6f89e7caaf5d9c2730a111d616"
+          "content": "750f825060ef6804c3827cc3fff8e2cee8eb000bc6852e56ac795ea33b9ec622"
         }
       ],
       "externalReferences": [
@@ -697,7 +765,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -708,8 +776,16 @@
           "value": "4"
         },
         {
+          "name": "ra8:upstreamCommit",
+          "value": "31c1ad37456438565541f4919958214b6e762fb4"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "31c1ad37456438565541f4919958214b6e762fb4"
+        },
+        {
           "name": "ra8:modified",
-          "value": "false"
+          "value": "true"
         },
         {
           "name": "ra8:note0",
@@ -764,6 +840,10 @@
           "value": "a4d7a715337ded4451fec90ff8ce79728e04126c"
         },
         {
+          "name": "ra8:upstreamRef",
+          "value": "v1.5.0"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/libwebp/COPYING"
         },
@@ -808,7 +888,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "6e05df2f062b94c3ee7bf17eee5ad896bbd4b7ae736d44f7237c327994259646"
+          "content": "cc23a32046508b813f3e6e1e09c2a0aef45fc8e0b64a384c7bc73cc5503ab070"
         }
       ],
       "externalReferences": [
@@ -820,7 +900,7 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "version-header"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
@@ -829,6 +909,14 @@
         {
           "name": "ra8:fileCount",
           "value": "3"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "9148bdf719e997d1f474be6bcc7943881046dba1"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "11.0.0"
         },
         {
           "name": "ra8:licenseFile",
@@ -887,6 +975,10 @@
         },
         {
           "name": "ra8:upstreamCommit",
+          "value": "fddd3707a3c5733af4cb866f18650441e6712504"
+        },
+        {
+          "name": "ra8:upstreamRef",
           "value": "fddd3707a3c5733af4cb866f18650441e6712504"
         },
         {
@@ -954,7 +1046,11 @@
         },
         {
           "name": "ra8:upstreamCommit",
-          "value": "edbe17738352418245d7228e7fd9f12c3ddc34c4"
+          "value": "187240970746d00bbd26b0f5873ed54d2477f9f3"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "v25.9.23"
         },
         {
           "name": "ra8:licenseFile",
@@ -1017,6 +1113,10 @@
         },
         {
           "name": "ra8:upstreamCommit",
+          "value": "719139ce755a0f31cbf1c37f7f98adcc7fc9f425"
+        },
+        {
+          "name": "ra8:upstreamRef",
           "value": "719139ce755a0f31cbf1c37f7f98adcc7fc9f425"
         },
         {
@@ -1083,6 +1183,10 @@
           "value": "d37128311b445e758136b8602d1bbd2a755e115d"
         },
         {
+          "name": "ra8:upstreamRef",
+          "value": "d37128311b445e758136b8602d1bbd2a755e115d"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/ruy/LICENSE"
         },
@@ -1144,6 +1248,10 @@
         },
         {
           "name": "ra8:upstreamCommit",
+          "value": "40bbaa11b1a1b87e0ee0675e401aea6351f90d14"
+        },
+        {
+          "name": "ra8:upstreamRef",
           "value": "40bbaa11b1a1b87e0ee0675e401aea6351f90d14"
         },
         {
@@ -1279,6 +1387,10 @@
           "value": "abc67a11c6db271bedbb9f58be85d6f4e2ea8389"
         },
         {
+          "name": "ra8:upstreamRef",
+          "value": "abc67a11c6db271bedbb9f58be85d6f4e2ea8389"
+        },
+        {
           "name": "ra8:licenseFile",
           "value": "libs/third_party/esp-hosted/common/protobuf-c/LICENSE"
         },
@@ -1394,6 +1506,14 @@
         {
           "name": "ra8:fileCount",
           "value": "1"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "0c2761b727a1b3a7cffd313c37f0f5163dfc7a63"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "3.103"
         },
         {
           "name": "ra8:licenseFile",

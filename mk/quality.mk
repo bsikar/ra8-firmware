@@ -8,7 +8,8 @@
         test test-docker ubsan test-cov ctest coverage mcdc \
         misra misra-check misra-baseline scan-build scan-build-strict iwyu \
         fuzz bench stack-usage check-annotations nsc-cmse-check \
-        sbom sbom-check vela vela-check vela-regen vela-compile \
+        sbom sbom-check soup-check soup-refresh \
+        vela vela-check vela-regen vela-compile \
         ci ci-fast ci-native ci-native-fast ci-list ci-gate ci-gate-container
 
 format:
@@ -135,6 +136,18 @@ sbom:
 
 sbom-check:
 	python3 scripts/gen/gen_sbom.py --check
+
+# Vendored SOUP vs the upstream projects that published it (issue #548).
+# `soup-check` is offline -- it compares our index against the blob hashes
+# committed under docs/sbom/upstream/. `soup-refresh` NEEDS THE NETWORK: it
+# re-fetches every pinned upstream revision and rewrites those manifests, and
+# is the only way to record a newly declared patch or a re-vendored component.
+soup-check:
+	python3 scripts/checks/check_soup_upstream.py --selftest
+	python3 scripts/checks/check_soup_upstream.py
+
+soup-refresh:
+	python3 scripts/checks/check_soup_upstream.py --refresh
 
 # `make vela-check` -- regenerate the Ethos-U55 model header + diff vs the golden
 # (issue #227; no Vela toolchain needed). See tools/vela/README.md.

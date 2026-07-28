@@ -19,7 +19,10 @@ firmware as Software Of Unknown Provenance (SOUP).
 - **License**: MIT (`LICENSE.txt`, "Copyright (c) 2024 - present Microsoft
   Corporation").
 - **How it entered our tree**: Vendored snapshot of the upstream Eclipse
-  LevelX repository. Upstream commit hash unknown.
+  LevelX repository. Resolved (#548) to release tag
+  `v6.5.0.202601_rel`, commit `a46b74fb8aa133796ccbc13e7902cb8bb818e12f`:
+  89 of the 90 vendored files are byte-identical to it, the exception
+  being the `.gitattributes` edit recorded under "Deviations / patches".
 
 ## Use case in this firmware
 
@@ -49,7 +52,22 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-None. The vendored tree is unmodified.
+One file, `.gitattributes`, and it is a repository-hygiene edit rather than a
+change to any shipped source. Commit `368072a1a` dropped its two `[attr]`
+attribute-macro blocks (`our-c-style`, `generated`) from all five vendored
+Eclipse ThreadX trees: git honours `[attr]` definitions only in the top-level
+`.gitattributes` and printed a "not allowed" warning for each on EVERY git
+operation. The macro *uses* left behind reference undefined attributes, which
+git ignores silently, so no vendored file's checkout behaviour changes.
+
+Declared in `scripts/gen/sbom_registry.py` as `patched_files` and pinned by
+content in `docs/sbom/upstream/levelx.manifest`; every other file in this
+component is verified byte-identical to the upstream pin on each CI run
+(#548).
+
+The edit is from 2026-07-13 and went unrecorded here until #548 found it two
+weeks later, which is the point: "the vendored tree is unmodified" was prose,
+and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
 
 ## Last review date
 

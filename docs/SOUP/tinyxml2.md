@@ -19,7 +19,10 @@ as Software Of Unknown Provenance (SOUP).
 - **License**: zlib license (`LICENSE.txt`, "This software is provided
   'as-is', without any express or implied warranty...").
 - **How it entered our tree**: Vendored amalgamation drop-in (`.cpp` +
-  `.h`). Upstream commit hash unknown.
+  `.h`). Resolved (#548) to release tag `11.0.0`, commit
+  `9148bdf719e997d1f474be6bcc7943881046dba1`. `tinyxml2.h` and
+  `LICENSE.txt` are byte-identical to it; `tinyxml2.cpp` differs only by
+  the #151 patch recorded below.
 
 ## Use case in this firmware
 
@@ -77,6 +80,18 @@ hand-rolled SAX scanner (tracked on the EPUB-reader roadmap) removes the
 dependency entirely.
 
 ## Deviations / patches
+
+The exact set is declared in `scripts/gen/sbom_registry.py` and pinned by
+content in `docs/sbom/upstream/tinyxml2.manifest`, which the `soup-upstream`
+gate re-checks on every CI run (#548): `tinyxml2.h` and `LICENSE.txt` are
+byte-identical to tag `11.0.0`, and `tinyxml2.cpp` differs only by seam 2
+below.
+
+Neither source file was byte-identical before #548 -- the vendor-in sweep
+(`75b635cc7`) ran the project formatter over both, so they differed from the
+release throughout by preprocessor indentation and macro continuations. Both
+were restored to upstream's bytes and the #151 patch re-applied on top, so the
+recorded deviation is now exactly the deviation that exists.
 
 Two integration seams exist:
 

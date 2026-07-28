@@ -85,6 +85,26 @@ gate_osv_scan() (
   bash scripts/checks/osv_scan.sh --scanner ./osv-scanner --output-dir osv-report
 )
 
+# --- soup-upstream-refresh (manual) ---------------------------------------
+# The networked half of the SOUP provenance guarantee (#548). The per-push
+# soup-upstream gate verifies the tree against committed manifests; those
+# manifests are only as good as the moment they were fetched. This gate
+# re-fetches every pinned upstream revision and fails if what upstream now
+# publishes differs from what we recorded -- a moved tag, a rewritten history,
+# a replaced release artifact, a project that disappeared. None of that is
+# visible offline, and all of it silently invalidates the claim.
+#
+# It writes nothing (--verify-upstream): a scheduled job that quietly adopted
+# upstream's new bytes would launder exactly the event it exists to report.
+# Scheduled weekly alongside osv-scan for the same reason -- both are questions
+# about the outside world, which changes on its own clock and not on ours.
+gate_soup_upstream_refresh() (
+  set -e
+  require_cmd git
+  python3 scripts/checks/check_soup_upstream.py --selftest
+  python3 scripts/checks/check_soup_upstream.py --verify-upstream
+)
+
 # --- fuzz-sweep (manual) --------------------------------------------------
 # Deep-runs every registered harness (the RA8_FUZZ_TARGETS registry in
 # tests/fuzz/CMakeLists.txt, consumed through run_fuzz.sh --all) with a real

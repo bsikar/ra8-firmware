@@ -26,6 +26,13 @@ Editing rules:
     now DERIVED from the tree on every run by ``gen_sbom.tree_digest()``.  Do
     not re-introduce a stored copy: a transcribed value never disagrees with
     itself.
+  * The ``upstream_*`` / ``patched_files`` / ``local_files`` fields are the
+    machine-readable form of what ``docs/SOUP/*.md`` states in prose: which
+    upstream ref the tree claims to be, and every file that deliberately
+    departs from it.  ``scripts/checks/check_soup_upstream.py`` compares the
+    tree against upstream blob hashes fetched from the upstream project, so a
+    subset rule or a patch that lives only in prose is not enough -- an
+    undeclared deviation fails the gate (#548).
 """
 
 from __future__ import annotations
@@ -35,11 +42,31 @@ from dataclasses import dataclass, field
 # Provenance classes, most-to-least trustworthy.  Recorded per component in a
 # CycloneDX property so an auditor can see, at a glance, which components are
 # pinned versus inferred.
-PROV_COMMIT_PINNED = "commit-pinned-sha256"  # upstream SHA + derived integrity hash
-PROV_VERSION_HEADER = "version-header"  # version from an in-tree header macro
+PROV_COMMIT_PINNED = "commit-pinned-sha256"  # upstream commit + per-file upstream blob hashes
+PROV_ARCHIVE_PINNED = "archive-pinned-sha256"  # upstream release artifact pinned by SHA-256
+PROV_VERSION_HEADER = "version-header"  # version from an in-tree header macro only
 PROV_NOT_VENDORED = "not-vendored"  # documented but absent from the tree
 PROV_PROPRIETARY = "proprietary-unresolved"  # license not cleared; see notes
 PROV_OPEN_ASSET = "open-asset-versioned"  # cleared open asset (OFL font); version from name table
+
+# How the pinned upstream revision is fetched by check_soup_upstream.py.
+# GIT is a ref (tag or commit) in the upstream repository; ARCHIVE is a release
+# artifact that never existed in the upstream git tree -- miniz publishes its
+# single-file amalgamation only as a release zip, so a git ref cannot express
+# what we actually vendored.
+UPSTREAM_GIT = "git"
+UPSTREAM_ARCHIVE = "archive"
+
+# The five Eclipse ThreadX trees share one deliberate deviation, so its
+# justification is written once.  Repeating a justification string is how five
+# copies of it drift into four different claims.
+GITATTRIBUTES_PATCH = (
+    "Attribute-macro blocks ([attr]our-c-style, [attr]generated) removed: git "
+    "honours [attr] definitions only in the top-level .gitattributes and printed "
+    "a 'not allowed' warning on every git operation across five vendored trees. "
+    "The macro USES left behind reference undefined attributes, which git ignores "
+    "silently, so no vendored file's checkout behaviour changes."
+)
 
 
 @dataclass(frozen=True)
@@ -48,6 +75,14 @@ class Component:
 
     The required fields describe the component; the optional fields carry the
     provenance and license detail that the SBOM and the cross-checks consume.
+
+    The ``upstream_*`` group answers "what is this tree supposed to BE?", which
+    the version and integrity fields cannot: a digest re-derived from our own
+    tree proves only that we have not changed it since we last looked
+    (#538/#548).  ``upstream_ref`` names the revision the vendored subset is
+    claimed to come from; ``patched_files`` and ``local_files`` enumerate every
+    file that deliberately departs from it, so "modified" and "corrupted" are
+    distinguishable by a machine rather than by reading prose.
     """
 
     key: str  # registry key; direct child dir name under libs/third_party
@@ -67,6 +102,21 @@ class Component:
     license_election: str | None = None  # license we consume it under
     license_file: str | None = None  # LICENSE path (root-relative) if present
     upstream_commit: str | None = None  # pinned upstream commit SHA
+    upstream_transport: str = UPSTREAM_GIT  # UPSTREAM_GIT or UPSTREAM_ARCHIVE
+    upstream_repo: str | None = None  # clonable URL, when it differs from `url`
+    upstream_ref: str | None = None  # tag/branch/commit to fetch; None -> upstream_commit
+    upstream_archive_url: str | None = None  # release artifact URL (UPSTREAM_ARCHIVE only)
+    upstream_archive_sha256: str | None = None  # SHA-256 of that artifact
+    upstream_archive_prefix: str = ""  # path prefix inside the archive to strip
+    nested_paths: tuple[str, ...] = field(  # repo-relative sub-components to exclude
+        default_factory=tuple
+    )
+    patched_files: tuple[tuple[str, str], ...] = field(  # (component-rel path, why)
+        default_factory=tuple
+    )
+    local_files: tuple[tuple[str, str], ...] = field(  # (component-rel path, why) no upstream
+        default_factory=tuple
+    )
     copyright: str | None = None  # copyright string (proprietary assets)
     modified: bool = False  # true if the vendored tree carries a local patch
     scope: str = "required"  # CycloneDX scope: required / excluded
@@ -93,9 +143,13 @@ REGISTRY: tuple[Component, ...] = (
         group="eclipse-threadx",
         url="https://github.com/eclipse-threadx/threadx",
         path="libs/third_party/threadx",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_COMMIT_PINNED,
         description="Preemptive RTOS kernel under every threadx_* example.",
         purl="pkg:github/eclipse-threadx/threadx@6.5.0",
+        upstream_commit="3726d7906b4808bfec7855fc088e073199df9120",
+        upstream_ref="v6.5.0.202601_rel",
+        modified=True,
+        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
         spdx="MIT",
         license_file="libs/third_party/threadx/LICENSE.txt",
         probe_file="common/inc/tx_api.h",
@@ -110,9 +164,13 @@ REGISTRY: tuple[Component, ...] = (
         group="eclipse-threadx",
         url="https://github.com/eclipse-threadx/netxduo",
         path="libs/third_party/netxduo",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_COMMIT_PINNED,
         description="Dual IPv4/IPv6 TCP/IP + TLS stack (NetX echo / OTA path).",
         purl="pkg:github/eclipse-threadx/netxduo@6.5.0",
+        upstream_commit="8b6e03ac30ab688bec02c69d42f2304b7f72a202",
+        upstream_ref="v6.5.0.202601_rel",
+        modified=True,
+        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
         spdx="MIT",
         license_file="libs/third_party/netxduo/LICENSE.txt",
         probe_file="common/inc/nx_api.h",
@@ -131,9 +189,13 @@ REGISTRY: tuple[Component, ...] = (
         group="eclipse-threadx",
         url="https://github.com/eclipse-threadx/filex",
         path="libs/third_party/filex",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_COMMIT_PINNED,
         description="FAT / exFAT file system (FileX demos + OTA staging).",
         purl="pkg:github/eclipse-threadx/filex@6.5.0",
+        upstream_commit="bb6e295af079f3cd903272982106b0ddd9537422",
+        upstream_ref="v6.5.0.202601_rel",
+        modified=True,
+        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
         spdx="MIT",
         license_file="libs/third_party/filex/LICENSE.txt",
         probe_file="common/inc/fx_api.h",
@@ -148,9 +210,13 @@ REGISTRY: tuple[Component, ...] = (
         group="eclipse-threadx",
         url="https://github.com/eclipse-threadx/usbx",
         path="libs/third_party/usbx",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_COMMIT_PINNED,
         description="USB host / device stack (CDC, HID, MSC demos).",
         purl="pkg:github/eclipse-threadx/usbx@6.5.0",
+        upstream_commit="6dc0cf233d5b7ee6e1a7434581964975f8d8d37b",
+        upstream_ref="v6.5.0.202601_rel",
+        modified=True,
+        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
         spdx="MIT",
         license_file="libs/third_party/usbx/LICENSE.txt",
         probe_file="common/core/inc/ux_api.h",
@@ -165,9 +231,13 @@ REGISTRY: tuple[Component, ...] = (
         group="eclipse-threadx",
         url="https://github.com/eclipse-threadx/levelx",
         path="libs/third_party/levelx",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_COMMIT_PINNED,
         description="NOR-flash wear-leveling layer under FileX on Octo-SPI.",
         purl="pkg:github/eclipse-threadx/levelx@6.5.0",
+        upstream_commit="a46b74fb8aa133796ccbc13e7902cb8bb818e12f",
+        upstream_ref="v6.5.0.202601_rel",
+        modified=True,
+        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
         spdx="MIT",
         license_file="libs/third_party/levelx/LICENSE.txt",
         probe_file="common/inc/lx_api.h",
@@ -182,9 +252,35 @@ REGISTRY: tuple[Component, ...] = (
         group="Mbed-TLS",
         url="https://github.com/Mbed-TLS/mbedtls",
         path="libs/third_party/mbedtls",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_COMMIT_PINNED,
         description="TLS record layer + X.509, consumed via ra8_tls / ra8_ota.",
         purl="pkg:github/Mbed-TLS/mbedtls@4.1.0",
+        upstream_commit="d12fbb991c0822f347bbc569badef904629ce605",
+        modified=True,
+        patched_files=(
+            (
+                "library/.gitignore",
+                "Upstream ignores library/mbedtls_config_check_*.h as build "
+                "output; we vendor those three generated headers because the "
+                "firmware build never runs upstream's generator, so the ignore "
+                "block is dropped.",
+            ),
+        ),
+        local_files=(
+            (
+                "library/mbedtls_config_check_before.h",
+                "Generated by upstream's own generate_config_tests.py at "
+                "configure time; vendored because the cross build does not run it.",
+            ),
+            (
+                "library/mbedtls_config_check_final.h",
+                "Generated config-check header, vendored for the same reason.",
+            ),
+            (
+                "library/mbedtls_config_check_user.h",
+                "Generated config-check header, vendored for the same reason.",
+            ),
+        ),
         spdx="Apache-2.0",
         license_original="Apache-2.0 OR GPL-2.0-or-later",
         license_election="Apache-2.0",
@@ -202,9 +298,34 @@ REGISTRY: tuple[Component, ...] = (
         group="Mbed-TLS",
         url="https://github.com/Mbed-TLS/TF-PSA-Crypto",
         path="libs/third_party/tf-psa-crypto",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_COMMIT_PINNED,
         description="PSA Crypto API backing TLS, OTA signatures, key vault.",
         purl="pkg:github/Mbed-TLS/TF-PSA-Crypto@1.1.0",
+        upstream_commit="bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77",
+        local_files=(
+            (
+                "core/psa_crypto_driver_wrappers.h",
+                "Generated from the driver JSON by upstream's "
+                "generate_driver_wrappers.py at configure time; vendored because "
+                "the cross build does not run it.",
+            ),
+            (
+                "core/psa_crypto_driver_wrappers_no_static.c",
+                "Generated driver-wrapper TU, vendored for the same reason.",
+            ),
+            (
+                "core/tf_psa_crypto_config_check_before.h",
+                "Generated config-check header, vendored for the same reason.",
+            ),
+            (
+                "core/tf_psa_crypto_config_check_final.h",
+                "Generated config-check header, vendored for the same reason.",
+            ),
+            (
+                "core/tf_psa_crypto_config_check_user.h",
+                "Generated config-check header, vendored for the same reason.",
+            ),
+        ),
         spdx="Apache-2.0",
         license_original="Apache-2.0 OR GPL-2.0-or-later",
         license_election="Apache-2.0",
@@ -229,6 +350,7 @@ REGISTRY: tuple[Component, ...] = (
         license_note="Ships its own NOTICE (Apache-2.0 section 4(d)).",
         license_file="libs/third_party/nimble/LICENSE",
         upstream_commit="a7a156f28954819e158b62dd613008f22f9cf73b",
+        upstream_ref="nimble_1_10_0_tag",
         extra_notes=(
             "Pinned to a release tag, not a default-branch snapshot: all 827 "
             "vendored files (826 regular plus the one symlink) are "
@@ -262,6 +384,7 @@ REGISTRY: tuple[Component, ...] = (
         spdx="BSD-3-Clause",
         license_file="libs/third_party/litehtml/LICENSE",
         upstream_commit="8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e",
+        upstream_ref="8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e",
         extra_notes=(
             "Pinned by tree fingerprint: all 215 vendored files are "
             "byte-identical to upstream commit 8836bc1b, the single exact "
@@ -281,9 +404,17 @@ REGISTRY: tuple[Component, ...] = (
         group="richgel999",
         url="https://github.com/richgel999/miniz",
         path="libs/third_party/miniz",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_ARCHIVE_PINNED,
         description="Deflate / inflate / ZIP support for EPUB unpacking.",
         purl="pkg:github/richgel999/miniz@11.0.2",
+        upstream_transport=UPSTREAM_ARCHIVE,
+        upstream_ref="3.0.2",
+        upstream_archive_url=(
+            "https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip"
+        ),
+        upstream_archive_sha256=(
+            "ada38db0b703a56d3dd6d57bf84a9c5d664921d870d8fea4db153979fb5332c5"
+        ),
         spdx="MIT",
         license_note="MIT text (upstream describes it as zlib-style).",
         license_file="libs/third_party/miniz/LICENSE",
@@ -311,6 +442,7 @@ REGISTRY: tuple[Component, ...] = (
         license_note="0BSD (upstream COPYING; SPDX headers per file).",
         license_file="libs/third_party/xz_embedded/COPYING",
         upstream_commit="ae63ae3a36ed01724674e8f3d750dc47bf125410",
+        upstream_ref="v2024-12-30",
         extra_notes=(
             "Pinned by tree fingerprint: all 11 vendored files are "
             "byte-identical to upstream tag v2024-12-30 (commit ae63ae3a), "
@@ -336,9 +468,32 @@ REGISTRY: tuple[Component, ...] = (
         group="nothings",
         url="https://github.com/nothings/stb",
         path="libs/third_party/stb",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_COMMIT_PINNED,
         description="PNG/JPEG decode (stb_image) + TTF/OTF raster (stb_truetype).",
         purl="pkg:github/nothings/stb",
+        upstream_commit="31c1ad37456438565541f4919958214b6e762fb4",
+        upstream_ref="31c1ad37456438565541f4919958214b6e762fb4",
+        modified=True,
+        patched_files=(
+            (
+                "stb_truetype.h",
+                "Bounds-checked font parsing: every glyph/cmap/loca read is "
+                "range-checked against the buffer length, plus a NULL-scanline "
+                "guard on arena exhaustion; see docs/SOUP/stb.md.",
+            ),
+        ),
+        local_files=(
+            (
+                "stb_image_impl.c",
+                "First-party single TU that defines STB_IMAGE_IMPLEMENTATION "
+                "with the project's build knobs; not an upstream file.",
+            ),
+            (
+                "stb_truetype_impl.c",
+                "First-party single TU that defines STB_TRUETYPE_IMPLEMENTATION; "
+                "not an upstream file.",
+            ),
+        ),
         spdx="MIT OR Unlicense",
         license_note=(
             "Public-domain dual license; text lives only in the header "
@@ -365,6 +520,15 @@ REGISTRY: tuple[Component, ...] = (
             "WebP (VP8 / VP8L) decode-only codec for longstrip/manga raster (via ra8_webp)."
         ),
         purl="pkg:github/webmproject/libwebp@v1.5.0",
+        upstream_ref="v1.5.0",
+        patched_files=(
+            (
+                "src/utils/utils.c",
+                "RA8 LOCAL PATCH: under -DRA8_WEBP_USE_ARENA, "
+                "WebPSafe{Malloc,Calloc,Free} route through the heap-free "
+                "ra8_webp bump arena (NASA P10 Rule 3); see docs/SOUP/libwebp.md.",
+            ),
+        ),
         spdx="BSD-3-Clause",
         license_note="BSD-3-Clause plus an additional PATENTS grant (both mirrored in-tree).",
         license_file="libs/third_party/libwebp/COPYING",
@@ -392,9 +556,19 @@ REGISTRY: tuple[Component, ...] = (
         group="leethomason",
         url="https://github.com/leethomason/tinyxml2",
         path="libs/third_party/tinyxml2",
-        provenance=PROV_VERSION_HEADER,
+        provenance=PROV_COMMIT_PINNED,
         description="XML parser for EPUB container metadata + chapter DOM.",
         purl="pkg:github/leethomason/tinyxml2@11.0.0",
+        upstream_commit="9148bdf719e997d1f474be6bcc7943881046dba1",
+        upstream_ref="11.0.0",
+        patched_files=(
+            (
+                "tinyxml2.cpp",
+                "RA8 LOCAL PATCH (#151): XMLDocument::Identify emits a text node "
+                "for whitespace skipped before ANY element in PEDANTIC mode; see "
+                "docs/SOUP/tinyxml2.md.",
+            ),
+        ),
         spdx="Zlib",
         license_file="libs/third_party/tinyxml2/LICENSE.txt",
         modified=True,
@@ -424,6 +598,7 @@ REGISTRY: tuple[Component, ...] = (
         spdx="Apache-2.0",
         license_file="libs/third_party/tflite-micro/LICENSE",
         upstream_commit="fddd3707a3c5733af4cb866f18650441e6712504",
+        upstream_ref="fddd3707a3c5733af4cb866f18650441e6712504",
         extra_notes=(
             "LEAN subset (#228): MicroInterpreter / MicroAllocator / op-resolver "
             "core + reference kernels CONV_2D, DEPTHWISE_CONV_2D, "
@@ -448,9 +623,10 @@ REGISTRY: tuple[Component, ...] = (
         provenance=PROV_COMMIT_PINNED,
         description="Serialization headers for the .tflite model format read by TFLite-micro.",
         purl="pkg:github/google/flatbuffers@v25.9.23",
+        upstream_ref="v25.9.23",
         spdx="Apache-2.0",
         license_file="libs/third_party/flatbuffers/LICENSE",
-        upstream_commit="edbe17738352418245d7228e7fd9f12c3ddc34c4",
+        upstream_commit="187240970746d00bbd26b0f5873ed54d2477f9f3",
         extra_notes=(
             "Headers only (include/flatbuffers/*.h) -- the read/verify path "
             "TFLite-micro needs; no flatc compiler or codegen vendored.",
@@ -474,6 +650,7 @@ REGISTRY: tuple[Component, ...] = (
         spdx="Apache-2.0",
         license_file="libs/third_party/gemmlowp/LICENSE",
         upstream_commit="719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
+        upstream_ref="719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
         extra_notes=(
             "Header-only subset: fixedpoint/*.h + internal/detect_platform.h "
             "(the files the reference kernels include).",
@@ -497,6 +674,7 @@ REGISTRY: tuple[Component, ...] = (
         spdx="Apache-2.0",
         license_file="libs/third_party/ruy/LICENSE",
         upstream_commit="d37128311b445e758136b8602d1bbd2a755e115d",
+        upstream_ref="d37128311b445e758136b8602d1bbd2a755e115d",
         extra_notes=(
             "Single header vendored: ruy/profiler/instrumentation.h (a no-op "
             "profiler stub); no ruy GEMM backend.",
@@ -518,6 +696,7 @@ REGISTRY: tuple[Component, ...] = (
         license_note="Per-file SPDX-BSD-3-Clause; upstream LICENSE.md mirrored.",
         license_file="libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md",
         upstream_commit="40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
+        upstream_ref="40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
         extra_notes=(
             "Gold-standard provenance: commit pin + aggregate SHA-256 of the "
             "sorted per-file hashes (excludes UPSTREAM_LICENSE.md). See "
@@ -539,6 +718,7 @@ REGISTRY: tuple[Component, ...] = (
         purl="pkg:github/espressif/esp-hosted-mcu@949bb30612747a3bd9e402eda8d01fbfa1f8503e",
         spdx="Apache-2.0",
         license_note="Apache-2.0 (upstream LICENSE); no separate NOTICE file upstream.",
+        nested_paths=("libs/third_party/esp-hosted/common/protobuf-c",),
         license_file="libs/third_party/esp-hosted/LICENSE",
         upstream_commit="949bb30612747a3bd9e402eda8d01fbfa1f8503e",
         extra_notes=(
@@ -576,6 +756,7 @@ REGISTRY: tuple[Component, ...] = (
         license_note="BSD-2-Clause (upstream LICENSE); distinct upstream from esp-hosted.",
         license_file="libs/third_party/esp-hosted/common/protobuf-c/LICENSE",
         upstream_commit="abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
+        upstream_ref="abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
         probe_file="protobuf-c/protobuf-c.h",
         probe_re=r"#\s*define\s+PROTOBUF_C_VERSION\s+\"([0-9.]+)\"",
         expected_version="1.4.1",
@@ -636,6 +817,8 @@ REGISTRY: tuple[Component, ...] = (
         provenance=PROV_OPEN_ASSET,
         description="Reading-body serif font, rasterized at runtime by ra8_reflow.",
         purl="pkg:github/googlefonts/literata",
+        upstream_commit="0c2761b727a1b3a7cffd313c37f0f5163dfc7a63",
+        upstream_ref="3.103",
         spdx="OFL-1.1",
         license_file="libs/ra8_fonts/Literata-OFL.txt",
         copyright=(

@@ -24,7 +24,15 @@ libraries into this firmware as Software Of Unknown Provenance (SOUP).
   public domain. No `LICENSE` file is shipped in our subdirectory; the
   in-file headers carry the terms.
 - **How it entered our tree**: Vendored individual headers / impl files
-  from the upstream stb repository. Upstream commit hash unknown.
+  from the upstream stb repository. stb publishes no release tags, so the
+  base is pinned to upstream commit
+  `31c1ad37456438565541f4919958214b6e762fb4` (2026-04-15), the newest
+  upstream revision at vendor-in (#548). `stb_image.h` is byte-identical to
+  that base; `stb_truetype.h` deliberately is not, because it carries the
+  bounds-hardening enumerated below. It is therefore pinned by a recorded
+  upstream base hash PLUS a recorded local content hash, so an edit on top of
+  the reviewed patch still fails the gate even though upstream identity cannot
+  apply to the file itself.
 
 ## Use case in this firmware
 
@@ -63,7 +71,21 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-`stb_image.h` is unmodified.
+The exact set is declared in `scripts/gen/sbom_registry.py` and pinned by
+content in `docs/sbom/upstream/stb.manifest`, which the `soup-upstream` gate
+re-checks on every CI run (#548): one patched file, one byte-identical file,
+two first-party files.
+
+`stb_image.h` is byte-identical to the upstream pin. It was not until #548:
+the vendor-in sweep (`75b635cc7`) ran the project formatter over it, so it
+differed from upstream by operator placement, include ordering and macro
+continuations throughout. It was restored to upstream's bytes; every security
+change attributed to stb_image in this tree (the `STBI_MAX_DIMENSIONS` cap,
+T5-03/#179) lives in the first-party `stb_image_impl.c`, not in the header.
+
+`stb_image_impl.c` and `stb_truetype_impl.c` are first-party single translation
+units that define `STB_IMAGE_IMPLEMENTATION` / `STB_TRUETYPE_IMPLEMENTATION`
+with this project's build knobs. They are not upstream files and never were.
 
 `stb_truetype.h` carries local memory-safety hardening. Upstream
 stb_truetype performs no bounds checking on the offsets it reads out of

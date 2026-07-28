@@ -1,0 +1,22 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: xz_embedded
+# upstream-url: https://github.com/tukaani-project/xz-embedded
+# transport: git
+# ref: v2024-12-30
+# commit: ae63ae3a36ed01724674e8f3d750dc47bf125410
+# upstream-files: 32
+# vendored-files: 11
+# upstream-verified: 11
+# patched: 0
+# local: 0
+ok 100644 23afcf11d66ff107fe03a269504178aec2b7a528 AUTHORS
+ok 100644 f0c316128c9e889edaec4618e497f28aeec283b6 COPYING
+ok 100644 cdb2fd8730720d2dca36002765ad788bb3319e48 README
+moved 100644 c317c49415dc3caad247cf3630f21527af5149cf xz.h linux/include/linux/xz.h
+moved 100644 effdf34ec48de7e2fcf314a44eb7edd19f9e8e28 xz_crc32.c linux/lib/xz/xz_crc32.c
+moved 100644 20049ea554e5fe66122d5dd9e6e78b5535ac12e7 xz_crc64.c linux/lib/xz/xz_crc64.c
+moved 100644 475c378e22d27afb1a447a0e1ca73b9c1c751803 xz_dec_lzma2.c linux/lib/xz/xz_dec_lzma2.c
+moved 100644 33927e8e80c177263bf168acbaba56a939106c20 xz_dec_stream.c linux/lib/xz/xz_dec_stream.c
+moved 100644 d2632b7dfb9c825a5911eec48710bff651a1dbf9 xz_lzma2.h linux/lib/xz/xz_lzma2.h
+moved 100644 7387401da2f3d051d787f6bb793ca2d32d13acce xz_private.h linux/lib/xz/xz_private.h
+moved 100644 55f9f6f94b788d9b84c91dfe0b5675fce5ed1fc5 xz_stream.h linux/lib/xz/xz_stream.h

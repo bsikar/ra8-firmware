@@ -15,9 +15,10 @@ Both this file and the SBOM are generated/checked from one registry in
 a component, update that registry and run `make sbom`.
 
 > Closes the aggregation half of recon seed **T5-14** (SOUP-5). The
-> provenance-pinning half is **T5-09** (SOUP-1) and the toolchain-pinning
-> prerequisite is **T5-02**; both are called out below where they bear on a
-> component.
+> provenance-pinning half, **T5-09** (SOUP-1), is closed too: every vendored
+> component is pinned to an upstream revision and verified against it file by
+> file (#538, #548). The toolchain-pinning prerequisite **T5-02** is called out
+> below where it bears on a component.
 
 ---
 
@@ -89,13 +90,13 @@ Counts: **20 vendored source components** + **1 blob tree** (`fsp_blobs/`, holdi
 the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
 asset**. One of the twenty (protobuf-c) is *nested*: upstream esp-hosted carries
 it as a git submodule, so it is pinned and licensed in its own right rather than
-folded into its parent. TinyXML-2 and libwebp each carry a local in-tree patch
-(see below), so both are *modified* SOUP. The four ML-stack components
-(TFLite-micro, FlatBuffers, gemmlowp, ruy), the litehtml dev-branch snapshot,
-Apache NimBLE (pinned at its 1.10.0 release tag) and the two esp-hosted
-components are commit-pinned
-and unmodified; libwebp is commit-pinned (release tag
-`v1.5.0`) but modified (one allocator-fronting patch). Separately, **Arm Ethos-U
+folded into its parent. Ten of the twenty-two carry a declared deviation from
+their upstream pin -- TinyXML-2, libwebp and stb each an in-tree code patch, the
+five Eclipse ThreadX trees a `.gitattributes` edit, and Mbed TLS /
+TF-PSA-Crypto their build-generated sources -- so those are *modified* SOUP;
+the other twelve are byte-identical to their pin. Every deviation is
+enumerated in the component's `docs/SOUP/*.md` and machine-checked (see
+"Provenance and integrity" below). Separately, **Arm Ethos-U
 Vela** is a build-time host tool (pinned at `tools/vela/requirements.txt`),
 linked into nothing -- see the build-tools note below and
 [`docs/SOUP/vela.md`](docs/SOUP/vela.md).
@@ -109,71 +110,82 @@ the port plus the CMake wiring are a follow-on change. See
 
 ## Provenance and integrity
 
-Four components are pinned to an upstream commit *with* an integrity hash: the
-Renesas RSIP blob, XZ Embedded, and the two esp-hosted components. Eleven
-components carry an upstream commit pin (the ML
-stack, the RSIP blob, the litehtml dev snapshot and XZ Embedded --
-those two recovered by fingerprinting the vendored trees against their
-upstream histories, each a byte-identical single-commit match -- Apache
-NimBLE, pinned to release tag `nimble_1_10_0_tag` and byte-identical to it,
-libwebp,
-pinned to release tag `v1.5.0` and byte-identical except its one
-allocator-fronting patch, and the esp-hosted host driver plus its nested
-protobuf-c, both pinned at vendor-in and verified file-by-file). The remaining ten source components'
-versions are *inferred from an in-tree header* with no upstream commit
-recorded -- the remaining half of the open **T5-09** finding; those trees are
-not independently reproducible against upstream yet. All twenty-two vendored
-components ARE tamper-verifiable: each carries a derived integrity digest that
-the `sbom` gate re-computes and compares on every run (see below).
+**All twenty-two vendored components are now pinned to an upstream revision and
+verified against it file by file.** Ten of them had no upstream pin at all
+until #548 -- their version was read out of a header in our own tree, which
+says what the code calls itself, not where it came from. Each was resolved by
+fingerprinting the vendored files against the upstream project's published
+history, and the resolved revision is recorded in
+`scripts/gen/sbom_registry.py` and re-verified on every CI run.
 
-| Component | Version source | Upstream commit | Integrity hash | Pinned? |
-|-----------|----------------|-----------------|----------------|---------|
-| ThreadX / NetX Duo / FileX / USBX / LevelX | `*_MAJOR/MINOR/PATCH_VERSION` macros | none | derived (SBOM) | version only |
-| Mbed TLS | `MBEDTLS_VERSION_STRING_FULL` | none | derived (SBOM) | version only |
-| TF-PSA-Crypto | `TF_PSA_CRYPTO_VERSION_STRING_FULL` | none | derived (SBOM) | version only |
-| miniz | `MZ_VERSION` | none | derived (SBOM) | version only |
-| TinyXML-2 | `TIXML2_*_VERSION` | none | derived (SBOM) | version only (+patch) |
-| stb | header-tail version comments | none | derived (SBOM) | version only |
-| libwebp (decode-only) | release tag `v1.5.0` (byte-identical except 1 patched TU) | `a4d7a715337ded4451fec90ff8ce79728e04126c` | derived (SBOM) | **commit-pinned** (+patch) |
-| Apache NimBLE | release tag `nimble_1_10_0_tag` (827/827 files byte-identical) | `a7a156f28954819e158b62dd613008f22f9cf73b` | derived (SBOM) | **commit-pinned** |
-| litehtml | tree fingerprint vs upstream (215/215 files byte-identical) | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | derived (SBOM) | **commit-pinned** |
-| XZ Embedded | tree fingerprint vs upstream (11/11 files byte-identical, tag `v2024-12-30`) | `ae63ae3a36ed01724674e8f3d750dc47bf125410` | derived (SBOM) | **fully pinned (gold standard)** |
-| TFLite-micro | commit pin (lean subset) | `fddd3707a3c5733af4cb866f18650441e6712504` | derived (SBOM) | **commit-pinned** |
-| FlatBuffers | tag `v25.9.23` (+ `FLATBUFFERS_VERSION_*`) | `edbe17738352418245d7228e7fd9f12c3ddc34c4` | derived (SBOM) | **commit-pinned** |
-| gemmlowp | commit pin | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | derived (SBOM) | **commit-pinned** |
-| ruy | commit pin | `d37128311b445e758136b8602d1bbd2a755e115d` | derived (SBOM) | **commit-pinned** |
-| esp-hosted host driver | commit pin (77/77 files byte-identical) | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | derived (SBOM) | **fully pinned (gold standard)** |
-| protobuf-c (nested) | submodule pin + `PROTOBUF_C_VERSION` probe (3/3 files byte-identical) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | derived (SBOM) | **fully pinned (gold standard)** |
-| RSIP-E50D (`r_sce_AMC`) | FSP release | `40bbaa11b1a1b87e0ee0675e401aea6351f90d14` | derived (SBOM) | **fully pinned (gold standard)** |
-| BLE patch | not vendored | n/a | n/a | absent |
-| Literata | TTF `name` table (3.103) | n/a | derived (SBOM) | version only; SIL OFL 1.1 |
+The "verified" column is *upstream-identical files / vendored files*. Where
+they differ, the difference is a deliberate deviation enumerated in that
+component's `docs/SOUP/*.md` and declared in the registry; nothing else is
+permitted to differ.
 
-### The integrity hashes are DERIVED, and the byte-identity claim is CHECKED
+| Component | Upstream revision | Verified | Deviations |
+|-----------|-------------------|----------|------------|
+| ThreadX | tag `v6.5.0.202601_rel` `3726d7906b4808bfec7855fc088e073199df9120` | 4757/4758 | 1 patched (`.gitattributes`) |
+| NetX Duo | tag `v6.5.0.202601_rel` `8b6e03ac30ab688bec02c69d42f2304b7f72a202` | 1226/1227 | 1 patched (`.gitattributes`) |
+| FileX | tag `v6.5.0.202601_rel` `bb6e295af079f3cd903272982106b0ddd9537422` | 266/267 | 1 patched (`.gitattributes`) |
+| USBX | tag `v6.5.0.202601_rel` `6dc0cf233d5b7ee6e1a7434581964975f8d8d37b` | 1035/1036 | 1 patched (`.gitattributes`) |
+| LevelX | tag `v6.5.0.202601_rel` `a46b74fb8aa133796ccbc13e7902cb8bb818e12f` | 89/90 | 1 patched (`.gitattributes`) |
+| Mbed TLS | `development` `d12fbb991c0822f347bbc569badef904629ce605` | 252/256 | 1 patched, 3 generated |
+| TF-PSA-Crypto | `development` `bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77` | 217/222 | 5 generated |
+| Apache NimBLE | tag `nimble_1_10_0_tag` `a7a156f28954819e158b62dd613008f22f9cf73b` | 827/827 | none |
+| litehtml | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | 215/215 | none |
+| miniz | release artifact `miniz-3.0.2.zip`, SHA-256 `ada38db0...5332c5` | 3/3 | none |
+| XZ Embedded | tag `v2024-12-30` `ae63ae3a36ed01724674e8f3d750dc47bf125410` | 11/11 | none (8 relocated) |
+| stb | `31c1ad37456438565541f4919958214b6e762fb4` | 1/4 | 1 patched, 2 first-party |
+| libwebp (decode-only) | tag `v1.5.0` `a4d7a715337ded4451fec90ff8ce79728e04126c` | 101/102 | 1 patched (arena allocator) |
+| TinyXML-2 | tag `11.0.0` `9148bdf719e997d1f474be6bcc7943881046dba1` | 2/3 | 1 patched (#151) |
+| TFLite-micro | `fddd3707a3c5733af4cb866f18650441e6712504` | 278/278 | none |
+| FlatBuffers | tag `v25.9.23` `187240970746d00bbd26b0f5873ed54d2477f9f3` | 31/31 | none |
+| gemmlowp | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | 7/7 | none |
+| ruy | `d37128311b445e758136b8602d1bbd2a755e115d` | 2/2 | none |
+| esp-hosted host driver | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | 77/77 | none |
+| protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
+| RSIP-E50D (`r_sce_AMC`) | FSP `40bbaa11b1a1b87e0ee0675e401aea6351f90d14` | 315/315 | none (1 relocated) |
+| Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
+| BLE patch | not vendored | n/a | absent |
 
-Every "byte-identical to the pin" claim on this page is now machine-checked.
-`scripts/gen/gen_sbom.py` re-derives a SHA-256 over each vendored component's
-whole tree on every run -- sorted component-relative paths, git file mode and
-file content, each length-framed -- and publishes it in the SBOM alongside the
-file count that went into it. `gen_sbom.py --check` runs in the `sbom` gate, so
-a single mutated byte under `libs/third_party/` fails CI and names the
-component.
+**Totals: 22 components, 9735 vendored files, 9716 byte-identical to their
+pinned upstream revision, 19 declared deviations.**
 
-That is why this column reads "derived (SBOM)" rather than a hash value. It
-used to say `none` for nineteen of the twenty-three components and carry a
-hand-transcribed `aggregate SHA-256` for four -- and **nothing had ever
-computed any of them**. `--check` compared a constant against itself, so
-appending a line to a vendored source still printed `SBOM matches the tree`
-with status 0 (#538). NimBLE, the one component that had actually drifted (see
-`docs/SOUP/nimble.md`), was not among the four. Transcribing the values back
-into this table would recreate exactly that: a number written once, true once,
-with no mechanism that would notice when it stopped being true. Read them from
-`docs/sbom/ra8-firmware.cdx.json`, which is regenerated from the tree.
+### Why there are no hash values in this table
 
-This closes the tamper-verifiability half of T5-09 for every vendored
-component. What remains open is *reproducibility against upstream*: the digest
-proves the tree has not changed since the SBOM was generated, not that it
-matches the upstream pin. That needs a networked fetch-and-diff and is tracked
-separately.
+Two different machine checks stand behind the table above, and both re-derive
+their evidence rather than reading a number written here.
+
+1. **Tamper-verifiability** (#538). `scripts/gen/gen_sbom.py` re-derives a
+   SHA-256 over each vendored component's whole tree on every run -- sorted
+   component-relative paths, git file mode and file content, each
+   length-framed -- and publishes it in the SBOM alongside the file count that
+   went into it. `gen_sbom.py --check` runs in the `sbom` gate, so a single
+   mutated byte under `libs/third_party/` fails CI and names the component.
+2. **Upstream identity** (#548). `scripts/checks/check_soup_upstream.py`
+   compares every vendored file against the git blob SHA-1 its *upstream
+   project* publishes for the pinned revision, recorded per component in
+   `docs/sbom/upstream/*.manifest` by a real fetch of that project. The
+   `soup-upstream` gate runs it offline on every push; the weekly
+   `soup-upstream-refresh` job re-fetches and fails if a pinned ref has moved.
+
+The integrity column used to say `none` for nineteen of the twenty-three
+components and carry a hand-transcribed `aggregate SHA-256` for four -- and
+**nothing had ever computed any of them**. `--check` compared a constant
+against itself, so appending a line to a vendored source still printed `SBOM
+matches the tree` with status 0. Transcribing values back into this table would
+recreate exactly that: a number written once, true once, with no mechanism that
+would notice when it stopped being true. Read the digests from
+`docs/sbom/ra8-firmware.cdx.json` and the per-file upstream hashes from
+`docs/sbom/upstream/`, both regenerated from their sources.
+
+This closes **T5-09** in full. Applying the upstream check for the first time
+found five undeclared deviations this document had described as unmodified: the
+`[attr]` edit to five Eclipse ThreadX `.gitattributes` files, CRLF-converted
+USBX `.inf` templates, and a vendor-in formatter sweep over miniz, TinyXML-2
+and `stb_image.h`. Everything restorable was restored to upstream's bytes; what
+remains is enumerated above and justified per component.
 
 ---
 
@@ -297,11 +309,7 @@ These are real gaps, tracked so they are not forgotten. None blocks internal
 development (the project is unreleased), but each is a live obligation the
 moment a binary is shared.
 
-1. **No commit pins / integrity manifest for 10 source components (T5-09).**
-   Versions are inferred from headers only. Adopt the `fsp_blobs` pattern
-   (commit SHA + per-component SHA-256) or convert to submodules / a
-   vendoring lockfile.
-2. **litehtml is a dev-branch snapshot, not a tagged release (SOUP-4).**
+1. **litehtml is a dev-branch snapshot, not a tagged release (SOUP-4).**
    It is pinned to its exact upstream commit (byte-identical tree
    fingerprint; see the provenance table), which closes the unpinned half
    of the finding, but re-vendoring at a tagged release remains preferable
@@ -309,18 +317,20 @@ moment a binary is shared.
    `libs/ra8_reflow`). NimBLE was the other half of this finding and is
    now resolved: it is vendored at the `nimble_1_10_0_tag` release tag
    (#508).
-3. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
+2. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
    text exists only in the header tails. A standalone
    `libs/third_party/stb/LICENSE` would make the attribution self-contained.
-4. **CVE monitoring only covers commit-pinned components (SOUP-3).** The
+3. **CVE monitoring resolves only for commit-pinned components (SOUP-3).** The
    weekly [`osv-scan.yml`](.github/workflows/osv-scan.yml) workflow runs the
    pinned `osv-scanner` release against the SBOM and against every recorded
    upstream commit (`scripts/checks/osv_scan.sh`). OSV.dev resolves C/C++
-   advisories by GIT commit range only -- GitHub purls do not resolve -- so
-   the ten version-only components (ThreadX family, Mbed TLS, TF-PSA-Crypto,
-   miniz, TinyXML-2, stb) are NOT commit-queried until they gain pins under
-   item 1, and keep the manual <=12-month re-review cadence (NetX Duo CVE
-   notes live in `docs/SOUP/netxduo.md`).
+   advisories by GIT commit range only -- GitHub purls do not resolve. Every
+   vendored component now carries a commit pin (#548), so the ten that used to
+   be version-only are commit-queried too; the one remaining gap is miniz,
+   whose amalgamation is pinned by release-artifact SHA-256 rather than by a
+   commit and therefore has nothing for OSV to range-query. It keeps the
+   manual <=12-month re-review cadence (NetX Duo CVE notes live in
+   `docs/SOUP/netxduo.md`).
 
 The bundled reading font is no longer an open item: the proprietary Adobe
 Arno Pro face was replaced with **Literata** (SIL OFL 1.1) -- open and cleared

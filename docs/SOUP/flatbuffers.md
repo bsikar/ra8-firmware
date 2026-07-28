@@ -9,7 +9,11 @@ as Software Of Unknown Provenance (SOUP).
 - **Name**: FlatBuffers
 - **Version**: 25.9.23 (`include/flatbuffers/base.h`
   `FLATBUFFERS_VERSION_MAJOR/MINOR/REVISION = 25/9/23`), pinned to upstream tag
-  `v25.9.23` (commit `edbe17738352418245d7228e7fd9f12c3ddc34c4`).
+  `v25.9.23` (commit `187240970746d00bbd26b0f5873ed54d2477f9f3`). The pin
+  previously recorded `edbe17738352418245d7228e7fd9f12c3ddc34c4`, which is the
+  annotated *tag object* rather than the commit it points at -- a distinction
+  that matters because the weekly OSV scan materialises each pin as a commit
+  and would have queried an oid that is not one (#548).
 - **Upstream URL**: https://github.com/google/flatbuffers
 - **Local path**: `libs/third_party/flatbuffers/`
   - Files in tree: `include/flatbuffers/*.h` (30 headers) and `LICENSE`.
