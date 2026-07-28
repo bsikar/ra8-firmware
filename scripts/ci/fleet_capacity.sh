@@ -143,6 +143,8 @@ options:
   --sudo                 invoke docker through sudo     (RA8_FLEET_DOCKER)
   --container NAME       one instance container; repeat, in instance order
                                                         (RA8_FLEET_CONTAINERS)
+  --prefix NAME          name prefix drain-all discovers by
+                                                        (RA8_FLEET_PREFIX)
   --namespace NS         ARC runner namespace           (RA8_FLEET_NAMESPACE)
   --scale-set NAME       ARC scale set name             (RA8_FLEET_SCALESET)
   --deadline SECONDS     give up draining after this    (RA8_FLEET_DEADLINE)
@@ -471,6 +473,7 @@ parse_args() {
         RA8_FLEET_CONTAINERS="${RA8_FLEET_CONTAINERS:+${RA8_FLEET_CONTAINERS} }$2"
         shift 2
         ;;
+      --prefix) RA8_FLEET_PREFIX="$2" && shift 2 ;;
       --namespace) RA8_FLEET_NAMESPACE="$2" && shift 2 ;;
       --scale-set) RA8_FLEET_SCALESET="$2" && shift 2 ;;
       --deadline) RA8_FLEET_DEADLINE="$2" && shift 2 ;;
