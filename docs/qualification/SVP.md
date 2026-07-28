@@ -242,7 +242,7 @@ as possible.
 |-----------------------|------------------------------------------------------------------------|
 | Target board          | EK-RA8D2 (Renesas part 968-K7EKA8D2S01001BE) revision v1               |
 | MCU                   | Renesas R7KA8D2KFLCAC, Cortex-M85 + Cortex-M33                         |
-| Debug probe           | On-board SEGGER J-Link OB, serial number 1086567198                    |
+| Debug probe           | On-board SEGGER J-Link OB (serial in .env JLINK_SN)                    |
 | Flash tool            | `JLinkExe` invoked via `scripts/dev/flash.sh`                              |
 | Smoke harness         | `make smoke` -> `build/smoke/results.md`                               |
 | PC resolution         | `arm-none-eabi-addr2line` against the per-app ELF                      |

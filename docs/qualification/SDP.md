@@ -133,9 +133,10 @@ HIL posture is developer-laptop pre-push, not a leased runner farm).
 
 ### 2.4 Probe and target
 
-The reference probe is the on-board J-Link OB-RA4M2 (SN 1086567198 on
-the developer's bench). Target is EK-RA8D2 v1
-(R7KA8D2KFLCAC). VCOM is exposed on `/dev/cu.usbmodem0010865671981`
+The reference probe is the on-board J-Link OB-RA4M2 (its serial is bench
+configuration, set as `JLINK_SN` in the gitignored `.env`; see
+`.env.example`). Target is EK-RA8D2 v1
+(R7KA8D2KFLCAC). VCOM is exposed on `/dev/cu.usbmodem<JLINK_SN>1`
 on macOS and bridges SCI8 per the verified UART bring-up in
 [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) "2026-05-02
 follow-up: UART working".

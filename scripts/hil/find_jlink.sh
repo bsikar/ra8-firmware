@@ -35,7 +35,7 @@ FOUND=0
 if command -v JLinkExe >/dev/null 2>&1; then
   tag "querying JLinkExe (ShowEmuList)..."
   out="$(printf 'ShowEmuList\nexit\n' | JLinkExe -nogui 1 2>/dev/null || true)"
-  # Lines read: "J-Link[0]: Connection: USB, Serial number: 1086567198, ..."
+  # Lines read: "J-Link[0]: Connection: USB, Serial number: <digits>, ..."
   while IFS= read -r sn; do emit "$sn"; done < <(
     printf '%s\n' "$out" | grep -oE 'Serial number: [0-9]+' | grep -oE '[0-9]+'
   )

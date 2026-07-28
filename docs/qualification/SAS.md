@@ -55,7 +55,7 @@ unsupported applications.
 | Host toolchain      | `gcc-14` and `clang-18`                                      |
 | Build orchestrator  | `cmake` + `make`                                             |
 | RTOS                | None at firmware level; SOUP `ThreadX` available per app      |
-| Debug probe         | On-board SEGGER J-Link OB (SN 1086567198 on bench EVM)       |
+| Debug probe         | On-board SEGGER J-Link OB (serial in .env JLINK_SN)          |
 
 ## 3. Software life cycle compliance
 
