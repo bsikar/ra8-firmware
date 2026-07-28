@@ -176,6 +176,28 @@ CARVE_OUTS: dict[str, str] = {
     "scripts/checks/check_no_antirecovery.py": (
         "a checker whose PATTERNS name the tools; it invokes nothing"
     ),
+    # The contention harness. It must NOT hold the lock: it drives several
+    # independent machines that compete for it, and a driver holding the thing
+    # under test would prevent the very contention it exists to measure. It
+    # touches no hardware itself -- it ships a read-only /proc witness to the
+    # bench host, reads the journal, and leaves every actual bench operation to
+    # the actors, each of which goes through the guard.
+    "scripts/hil/bench_contention.sh": (
+        "drives the contention EXPERIMENT; holding the lock would prevent the "
+        "contention it measures. It never touches hardware -- the actors it "
+        "launches each take the lock through the ordinary guard"
+    ),
+    # The negative control, and the only file in the tree allowed to reach the
+    # bench unguarded. Without it, "the witness saw no collision" could equally
+    # mean "the witness sees nothing", which is this repo's most common tooling
+    # failure. It is read-only, refuses to run without an explicit opt-in, and
+    # refuses outright while anybody holds the lock.
+    "scripts/hil/bench_unguarded_probe.sh": (
+        "IS the negative control -- it proves the bench witness can see two "
+        "machines on the board at once, which is what makes a clean guarded "
+        "run mean anything. Read-only, gated behind "
+        "RA8_BENCH_NEGATIVE_CONTROL=1, and refuses while the bench is held"
+    ),
 }
 
 # --------------------------------------------------------------------------

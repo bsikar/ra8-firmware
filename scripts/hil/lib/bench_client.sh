@@ -31,6 +31,22 @@
 : "${RA8_BENCH_EXIT_HELD:=1}"
 : "${RA8_BENCH_EXIT_UNKNOWN:=3}"
 : "${RA8_BENCH_DIR:=/var/lib/ra8-bench}"
+
+# How long the bench host will wait, AFTER taking the flock, for a leftover
+# JLinkExe/rfp-cli/openocd from a dead holder to finish before handing the board
+# over. See bh_await_quiescent() in lib/bench_host.sh for why that wait exists.
+#
+# Declared HERE, on the client, and shipped with the hold request -- not as a
+# constant over there. Two copies of a timeout drift, and this one has to be
+# known on both sides at once: the host counts it down, and the client's
+# acknowledgement deadline has to cover it or the client gives up on a hold the
+# host was about to grant. That is exactly what happened with the first version
+# of this, which timed out at 30 s while the host waited 120.
+#
+# 120 s: the longest legitimate leftover is a J-Link session from a suite that
+# died mid-app, and no single app's programming step approaches that.
+: "${RA8_BENCH_QUIESCE_S:=120}"
+
 _bench_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${RA8_BENCH_HOST_SRC:=$_bench_lib_dir/bench_host.sh}"
 
@@ -307,6 +323,7 @@ bench_fields_b64() {
     printf 'hold_kind=%s\n' "$6"
     printf 'break_glass=%s\n' "$7"
     printf 'confirm=%s\n' "${8:-}"
+    printf 'quiesce_s=%s\n' "$RA8_BENCH_QUIESCE_S"
     printf 'origin=%s\n' "$(bench_origin)"
     printf 'git_ref=%s\n' "$(bench_git_ref)"
   } | base64 | tr -d '\n'
@@ -334,7 +351,10 @@ bench_field() {
 # command not found" in every guarded script. The visible effect was that a
 # guarded script invoked INSIDE another script's hold could not recognise the
 # hold as its own and was denied the bench by its own parent -- which is
-# exactly what `make hil-all` does for every app it runs.
+# exactly what `make hil-all` does for every app it runs. With a wait budget set
+# it is worse than a denial: the guard opens a SECOND channel on fd 7, and doing
+# so closes the first -- which is the hold -- so the bench is released and
+# re-taken mid-script, with a window in between that anyone can take.
 #
 # The probe is captured before it is filtered, deliberately: under `pipefail` a
 # pipeline whose FIRST stage exits 1 (which `probe` does whenever the bench is
