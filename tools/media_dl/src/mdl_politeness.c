@@ -212,14 +212,21 @@ RA8_INTERNAL static int64_t max_i64(int64_t a, int64_t b)
   return (a > b) ? a : b;
 }
 
-/** @brief Read the governor's clock: injected `now_fn`, else host wall time. */
+/** @brief Read the governor's clock: injected `now_fn`, else `CLOCK_MONOTONIC`. */
 RA8_INTERNAL static int64_t gov_now(const mdl_governor_t* g)
 {
   if (g->now_fn != nullptr) {
     return g->now_fn(g->now_ctx);
   }
+  /* CLOCK_MONOTONIC, not CLOCK_REALTIME (#509). The governor only ever
+   * subtracts two readings -- token refill, request spacing, the backoff
+   * gate -- and CLOCK_REALTIME is steppable: an NTP correction forward makes
+   * the governor believe the spacing has elapsed and hammer the remote host,
+   * and one backward makes it wait out the step. A ~4 minute backward step
+   * was measured happening repeatedly on a fleet host, so this is an observed
+   * hazard rather than a theoretical one. */
   struct timespec ts = {};
-  (void)clock_gettime(CLOCK_REALTIME, &ts);
+  (void)clock_gettime(CLOCK_MONOTONIC, &ts);
   return ((int64_t)ts.tv_sec * (int64_t)k_ms_per_s) + ((int64_t)ts.tv_nsec / (int64_t)k_ns_per_ms);
 }
 

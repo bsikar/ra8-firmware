@@ -18,8 +18,8 @@
  *
  * Both layers reach the outside world only through injectable seams so their
  * timing is unit-testable with no real sleeps and no real clock: production
- * wires the host clock (`nanosleep` / wall time), tests wire fakes that record
- * the requested delay and advance a virtual clock. The maths is identical
+ * wires the host clock (`nanosleep` / `CLOCK_MONOTONIC`), tests wire fakes that
+ * record the requested delay and advance a virtual clock. The maths is identical
  * either way, so a test asserts spacing, backoff growth/decay and `Retry-After`
  * precedence deterministically.
  */
@@ -146,15 +146,17 @@ uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms, uint32_t max_
  * ======================================================================== */
 
 /**
- * @brief Injected monotonic-ish wall clock: current time in milliseconds.
+ * @brief Injected monotonic clock: milliseconds since an arbitrary fixed epoch.
  *
  * @details
- * The governor reads time only through this seam. Production binds a real clock
- * (`CLOCK_REALTIME` in ms); a unit test binds a fake it can advance by hand, so
- * token refill, backoff scheduling and `Retry-After` HTTP-date deltas are all
- * deterministic. Milliseconds since an arbitrary but fixed epoch; only
- * differences are used for scheduling, and `value / 1000` gives the wall-clock
- * seconds an HTTP-date is compared against.
+ * The governor reads time only through this seam. Production binds
+ * `CLOCK_MONOTONIC` in ms; a unit test binds a fake it can advance by hand, so
+ * token refill and backoff scheduling are deterministic. Only DIFFERENCES are
+ * ever taken, and the clock must never run backward: a steppable wall clock
+ * jumped forward makes the governor believe the request spacing has elapsed
+ * and hammer the remote host (#509). The `Retry-After` HTTP-date form is
+ * therefore compared against a wall-clock second count passed explicitly to
+ * ::mdl_retry_after_parse, not derived from this seam.
  *
  * @param[in] ctx Opaque context supplied at ::mdl_governor_init_clock.
  * @return Current time in milliseconds.
@@ -218,7 +220,7 @@ typedef struct {
   char     host[k_mdl_gov_host_max]; /**< Host key; "" when the slot is free.      */
   int64_t  credit_ms;                /**< Token-bucket credit, ms of rate.         */
   int64_t  last_ms;                  /**< Wall-ms of the previous scheduled start. */
-  int64_t  earliest_next_ms;         /**< Backoff / Retry-After gate (wall-ms).    */
+  int64_t  earliest_next_ms;         /**< Backoff / Retry-After gate (mono-ms).    */
   uint16_t backoff_level;            /**< Consecutive-throttle exponent.           */
   uint16_t success_streak;           /**< Consecutive successes since last drop.   */
   uint16_t inflight;                 /**< Requests currently in flight.            */
@@ -247,7 +249,7 @@ typedef struct {
   mdl_gov_cfg_t  cfg;                        /**< Politeness tunables.            */
   mdl_host_rec_t hosts[k_mdl_gov_max_hosts]; /**< Per-host records.               */
   uint64_t       rng;                        /**< Seeded xorshift64 jitter state. */
-  mdl_now_fn     now_fn;                     /**< Injected wall clock (ms).       */
+  mdl_now_fn     now_fn;                     /**< Injected monotonic clock (ms).  */
   void*          now_ctx;                    /**< Context for @ref now_fn.        */
   mdl_sleep_fn   sleep_fn;                   /**< Injected sleeper, NULL = host.  */
   void*          sleep_ctx;                  /**< Context for @ref sleep_fn.      */
@@ -280,7 +282,7 @@ mdl_gov_cfg_t mdl_gov_cfg_default(void);
  *
  * @details
  * Equivalent to ::mdl_governor_init_clock with NULL clock seams: time comes from
- * the host wall clock and ::mdl_governor_acquire blocks on `nanosleep`. Clamps
+ * the host monotonic clock and ::mdl_governor_acquire blocks on `nanosleep`. Clamps
  * `cfg->burst` and `cfg->max_inflight` up to 1 and seeds the jitter PRNG.
  *
  * @param[out] g    Governor to initialise (non-NULL).
@@ -312,7 +314,7 @@ void mdl_governor_init(mdl_governor_t* g, const mdl_gov_cfg_t* cfg, uint64_t see
  * @param[out] g         Governor to initialise (non-NULL).
  * @param[in]  cfg       Tunables to copy, or NULL for ::mdl_gov_cfg_default.
  * @param[in]  seed      Jitter seed; 0 is remapped to a non-zero constant.
- * @param[in]  now_fn    Injected wall clock, or NULL for the host clock.
+ * @param[in]  now_fn    Injected monotonic clock, or NULL for the host clock.
  * @param[in]  now_ctx   Context forwarded to @p now_fn (may be NULL).
  * @param[in]  sleep_fn  Injected sleeper, or NULL for the host clock.
  * @param[in]  sleep_ctx Context forwarded to @p sleep_fn (may be NULL).
@@ -443,7 +445,7 @@ void mdl_governor_observe(mdl_governor_t* g,
  * @param[in]  g                Governor, or NULL.
  * @param[in]  host             Host key to look up; may be NULL.
  * @param[out] backoff_level    Receives the consecutive-throttle level. May be NULL.
- * @param[out] earliest_next_ms Receives the earliest-next gate (wall-ms). May be NULL.
+ * @param[out] earliest_next_ms Receives the earliest-next gate (mono-ms). May be NULL.
  *
  * @return Whether a record exists for `host`.
  * @retval true  A record exists; the requested outputs were written.
