@@ -42,6 +42,10 @@ jobs:
       # and three different gate steps while knowing nothing about clocks, and
       # it turns "the fleet's clocks are fine" from an assumption into an
       # observation (#509).
+      # GH_TOKEN, not a PAT: the checker speaks the API over urllib (the runner
+      # image ships no GitHub CLI), and the workflow's own token has a
+      # per-repository rate budget, separate from the shared user quota that
+      # `make ci-status` exists to protect.
       - env:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/ci.sh --gate runner-clock

@@ -136,7 +136,12 @@ gate_fuzz_sweep() (
 # the shared user quota `make ci-status` exists to protect.
 gate_runner_clock() (
   set -e
-  require_cmd gh "the runner-clock gate reads step timestamps from the Actions API"
+  # No require_cmd gh: the checker speaks the API over urllib, because the
+  # ra8-ci runner image does not ship the GitHub CLI and a gate that needed it
+  # would fail nightly with a provisioning error rather than a verdict. It
+  # takes GH_TOKEN / GITHUB_TOKEN, falling back to an authenticated gh on a
+  # developer box, and exits 2 -- not 0 -- when it has neither.
+  #
   # Prove the detector before trusting its verdict: a clean scan from a
   # detector that stopped detecting is indistinguishable from a healthy fleet.
   python3 scripts/checks/check_runner_clock.py --selftest
