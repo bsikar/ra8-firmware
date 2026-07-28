@@ -87,6 +87,25 @@ ci_runner_image_archive: "{{ ci_runner_image_dir }}/ra8-ci-runner.tar"
 ci_runner_image_stage_dir: "/var/lib/rancher/k3s/agent/ra8-image-staging"
 ci_runner_image_stage: "{{ ci_runner_image_stage_dir }}/ra8-ci-runner.tar"
 
+# Persistent, writable pinned-tool cache (#486). scripts/ci.sh's
+# RA8_TOOLS_CACHE_DIR defaults to /var/cache/ra8-tools INSIDE the pod, which
+# provision_doxygen.sh then caches a version-pinned doxygen under so the docs
+# gate does not download it on every run. That path's parent (/var/cache) is
+# root:root mode 0755 in the runner image, so the non-root "runner" user (uid
+# 1001, see infra/images/runner/Dockerfile) cannot even mkdir it -- the
+# directory is never created, RA8_TOOLS_CACHE never gets exported, and every
+# run degrades (silently; scripts/ci.sh treats an unwritable cache as an
+# optimization it can live without) to downloading into the ephemeral
+# checkout's build/tools/. A plain permission fix inside one pod's own
+# writable layer would not help either: the runner scale set is ephemeral
+# (one pod per job), so anything not backed by a hostPath volume dies with the
+# pod that created it. This directory is that backing store, chowned to the
+# runner uid/gid below so the mount is actually writable once mounted.
+ci_runner_tools_cache_node_dir: "/var/lib/ra8-ci/tools-cache"
+ci_runner_tools_cache_mount: "/var/cache/ra8-tools"
+ci_runner_uid: 1001
+ci_runner_gid: 1001
+
 # The k8s Secret ARC reads for the GitHub PAT (Administration: read/write).
 # The token value comes from OpenBao at run time (see group_vars example) and
 # is never written to this repo.
