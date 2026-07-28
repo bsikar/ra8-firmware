@@ -68,7 +68,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | Eclipse LevelX | 6.5.0 | MIT | `libs/third_party/levelx/` | <https://github.com/eclipse-threadx/levelx> |
 | Mbed TLS | 4.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/mbedtls/` | <https://github.com/Mbed-TLS/mbedtls> |
 | TF-PSA-Crypto | 1.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/tf-psa-crypto/` | <https://github.com/Mbed-TLS/TF-PSA-Crypto> |
-| Apache NimBLE | git `8b6f3e81` (post-1.9.0 dev snapshot) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
+| Apache NimBLE | 1.10.0 (tag `nimble_1_10_0_tag`, git `a7a156f2`) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
 | litehtml | git `8836bc1b` (post-v0.9 dev snapshot) | BSD-3-Clause | `libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
 | miniz | 11.0.2 | MIT (zlib-style) | `libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
 | XZ Embedded (decode-only) | tag `v2024-12-30` (git `ae63ae3a`) | 0BSD | `libs/third_party/xz_embedded/` | <https://github.com/tukaani-project/xz-embedded> |
@@ -91,8 +91,9 @@ asset**. One of the twenty (protobuf-c) is *nested*: upstream esp-hosted carries
 it as a git submodule, so it is pinned and licensed in its own right rather than
 folded into its parent. TinyXML-2 and libwebp each carry a local in-tree patch
 (see below), so both are *modified* SOUP. The four ML-stack components
-(TFLite-micro, FlatBuffers, gemmlowp, ruy), the two dev-branch snapshots
-(Apache NimBLE, litehtml) and the two esp-hosted components are commit-pinned
+(TFLite-micro, FlatBuffers, gemmlowp, ruy), the litehtml dev-branch snapshot,
+Apache NimBLE (pinned at its 1.10.0 release tag) and the two esp-hosted
+components are commit-pinned
 and unmodified; libwebp is commit-pinned (release tag
 `v1.5.0`) but modified (one allocator-fronting patch). Separately, **Arm Ethos-U
 Vela** is a build-time host tool (pinned at `tools/vela/requirements.txt`),
@@ -111,9 +112,11 @@ the port plus the CMake wiring are a follow-on change. See
 Four components are pinned to an upstream commit *with* an integrity hash: the
 Renesas RSIP blob, XZ Embedded, and the two esp-hosted components. Eleven
 components carry an upstream commit pin (the ML
-stack, the RSIP blob, the NimBLE / litehtml dev snapshots and XZ Embedded --
-those three recovered by fingerprinting the vendored trees against their
-upstream histories, each a byte-identical single-commit match -- libwebp,
+stack, the RSIP blob, the litehtml dev snapshot and XZ Embedded --
+those two recovered by fingerprinting the vendored trees against their
+upstream histories, each a byte-identical single-commit match -- Apache
+NimBLE, pinned to release tag `nimble_1_10_0_tag` and byte-identical to it,
+libwebp,
 pinned to release tag `v1.5.0` and byte-identical except its one
 allocator-fronting patch, and the esp-hosted host driver plus its nested
 protobuf-c, both pinned at vendor-in and verified file-by-file). The remaining ten source components'
@@ -130,7 +133,7 @@ are not independently reproducible or tamper-verifiable yet.
 | TinyXML-2 | `TIXML2_*_VERSION` | none | none | version only (+patch) |
 | stb | header-tail version comments | none | none | version only |
 | libwebp (decode-only) | release tag `v1.5.0` (byte-identical except 1 patched TU) | `a4d7a715337ded4451fec90ff8ce79728e04126c` | none | **commit-pinned** (+patch) |
-| Apache NimBLE | tree fingerprint vs upstream (859/859 files byte-identical) | `8b6f3e819118a1839e5f238bfe1797d64878dc3d` | none | **commit-pinned** |
+| Apache NimBLE | release tag `nimble_1_10_0_tag` (827/827 files byte-identical) | `a7a156f28954819e158b62dd613008f22f9cf73b` | none | **commit-pinned** |
 | litehtml | tree fingerprint vs upstream (215/215 files byte-identical) | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | none | **commit-pinned** |
 | XZ Embedded | tree fingerprint vs upstream (11/11 files byte-identical, tag `v2024-12-30`) | `ae63ae3a36ed01724674e8f3d750dc47bf125410` | aggregate SHA-256 `9dc6c2af...c95dd9` | **fully pinned (gold standard)** |
 | TFLite-micro | commit pin (lean subset) | `fddd3707a3c5733af4cb866f18650441e6712504` | none | **commit-pinned** |
@@ -274,12 +277,14 @@ moment a binary is shared.
    Versions are inferred from headers only. Adopt the `fsp_blobs` pattern
    (commit SHA + per-component SHA-256) or convert to submodules / a
    vendoring lockfile.
-2. **litehtml and NimBLE are dev-branch snapshots, not tagged releases
-   (SOUP-4).** Both are now pinned to their exact upstream commits
-   (byte-identical tree fingerprints; see the provenance table), which
-   closes the unpinned half of the finding. Re-vendoring at tagged releases
-   remains preferable; litehtml in particular is on the untrusted-EPUB path
-   (linked via `libs/ra8_reflow`).
+2. **litehtml is a dev-branch snapshot, not a tagged release (SOUP-4).**
+   It is pinned to its exact upstream commit (byte-identical tree
+   fingerprint; see the provenance table), which closes the unpinned half
+   of the finding, but re-vendoring at a tagged release remains preferable
+   -- litehtml is on the untrusted-EPUB path (linked via
+   `libs/ra8_reflow`). NimBLE was the other half of this finding and is
+   now resolved: it is vendored at the `nimble_1_10_0_tag` release tag
+   (#508).
 3. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
    text exists only in the header tails. A standalone
    `libs/third_party/stb/LICENSE` would make the attribution self-contained.

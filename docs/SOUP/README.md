@@ -22,7 +22,7 @@ basis.
 | LevelX          | 6.5.0    | Eclipse Foundation          | [levelx.md](levelx.md)             |
 | Mbed TLS        | 4.1.0    | TrustedFirmware.org         | [mbedtls.md](mbedtls.md)           |
 | TF-PSA-Crypto   | 1.1.0    | TrustedFirmware.org         | [tf-psa-crypto.md](tf-psa-crypto.md) |
-| Apache NimBLE   | 1.9.0+dev git `8b6f3e81` | Apache Software Foundation  | [nimble.md](nimble.md)             |
+| Apache NimBLE   | 1.10.0 tag `nimble_1_10_0_tag` git `a7a156f2` | Apache Software Foundation  | [nimble.md](nimble.md)             |
 | litehtml        | 0.9+dev git `8836bc1b` | Yuri Kobets / community     | [litehtml.md](litehtml.md)         |
 | miniz           | 11.0.2   | Rich Geldreich / RAD        | [miniz.md](miniz.md)               |
 | XZ Embedded (decode) | tag `v2024-12-30` git `ae63ae3a` | Lasse Collin / Tukaani | [xz_embedded.md](xz_embedded.md) |

@@ -15,12 +15,23 @@
 #          ra8_ble_hci_send_acl_data) and pumps inbound HCI events /
 #          ACL frames back into NimBLE via
 #          ble_transport_to_hs_evt / ble_transport_to_hs_acl.
-#   3. Compiles a curated subset of the upstream NimBLE host sources
-#      into a single `nimble` interface library so the per-app build
-#      can `target_link_libraries(<app>.elf PRIVATE nimble nimble_port_threadx)`.
+#   3. Surfaces the upstream NimBLE include directories through a single
+#      `nimble` INTERFACE library so the per-app build can
+#      `target_link_libraries(<app>.elf PRIVATE nimble nimble_port_threadx)`.
 #
 # Apps that want NimBLE link `nimble nimble_port_threadx` -- the
 # include dirs and ThreadX dependency flow through the interface.
+#
+# WHAT THIS DOES NOT DO: it compiles no upstream NimBLE source. `nimble`
+# is an INTERFACE target with no `target_sources` and no source list, so
+# the only sources a linking app gains are the two first-party files
+# carried by `nimble_port_threadx` (`port/nimble/src/`). The one upstream
+# header that reaches a compiled TU is `nimble/nimble_npl.h`. This file
+# used to claim it "compiles a curated subset of the upstream NimBLE host
+# sources"; it never has, and that claim -- read against a
+# `docs/SOUP/nimble.md` that said the opposite -- is what made the #508
+# CVE triage harder than it needed to be. Linking `nimble/host/src` for
+# real is #493; when that lands, this comment must change with it.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT

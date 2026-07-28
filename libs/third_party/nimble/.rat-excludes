@@ -8,14 +8,11 @@ RELEASE_NOTES.md
 Doxyfile
 .clang-format
 .mailmap
-.style_ignored_dirs
+.clang-format-ignore
 **/requirements.txt
 
 # Ignore documentation folder
 docs
-
-# tinycrypt - BSD License.
-ext/tinycrypt
 
 # mbuf implementation - BSD License
 porting/nimble/src/os_mbuf.c
