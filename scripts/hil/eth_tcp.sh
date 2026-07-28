@@ -41,20 +41,34 @@
 
 set -euo pipefail
 
-# Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
-_hil_dir="$(cd "$_hil_dir" && pwd)"
-# shellcheck source=scripts/hil/lib/rig_env.sh
-source "$_hil_dir/lib/rig_env.sh"
-rig_require PI_HOST JLINK_SN
+# This script re-execs ITSELF on the Pi, and it gets there down a pipe
+# (`ssh ... bash -s < "$0"`). A script read from stdin has no BASH_SOURCE and no
+# sibling `lib/` to source, so the remote half cannot repeat the local half's
+# setup: under `set -u` it aborted on `${BASH_SOURCE[0]}` before printing a
+# single line, which took the tree's only wire-side gate off the air whenever it
+# was driven from a dev machine. The remote half therefore takes its rig values
+# from the environment (exported on the ssh command line by the local half) and
+# its console resolver from the front of the same pipe -- and it must NOT take
+# the bench a second time, because the local half is already holding it and
+# would be denied by its own lock.
+if [[ -n "${RA8_HIL_ETH_REMOTE:-}" ]]; then
+  RA8_TTY_RESOLVER_SRC=""
+else
+  # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+  _hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+  _hil_dir="$(cd "$_hil_dir" && pwd)"
+  # shellcheck source=scripts/hil/lib/rig_env.sh
+  source "$_hil_dir/lib/rig_env.sh"
+  rig_require PI_HOST JLINK_SN
 
-# ---- bench mutual exclusion --------------------------------------------------
-# One actor at a time on the physical bench. The hold lives exactly as long as
-# this script does -- it is a live process on a kernel flock, not a lease -- so
-# nothing here can leave the bench stale. See scripts/hil/bench.sh.
-# shellcheck source=scripts/hil/lib/bench_lock.sh
-source "$_hil_dir/lib/bench_lock.sh"
-ra8_bench_require "hil ethernet tcp probe $*" 30m || exit $?
+  # ---- bench mutual exclusion ------------------------------------------------
+  # One actor at a time on the physical bench. The hold lives exactly as long as
+  # this script does -- it is a live process on a kernel flock, not a lease -- so
+  # nothing here can leave the bench stale. See scripts/hil/bench.sh.
+  # shellcheck source=scripts/hil/lib/bench_lock.sh
+  source "$_hil_dir/lib/bench_lock.sh"
+  ra8_bench_require "hil ethernet tcp probe $*" 30m || exit $?
+fi
 PI_IP="192.168.1.1"
 PI_PREFIX="24"
 
@@ -143,7 +157,10 @@ esac
 APP_NAME="$(basename "${HEX%.hex}")"
 
 LOCAL_PI=0
-if rig_is_local_pi; then
+if [[ -n "${RA8_HIL_ETH_REMOTE:-}" ]]; then
+  # We ARE the Pi-side half; rig_is_local_pi is not available here.
+  LOCAL_PI=1
+elif rig_is_local_pi; then
   LOCAL_PI=1
 fi
 
@@ -164,8 +181,12 @@ if ((LOCAL_PI == 0)); then
   # identity when left to it.
   REMOTE_UART=""
   [[ -n "$UART" ]] && REMOTE_UART="--uart '${UART}'"
+  # The remote half needs the console resolver but has no checkout to source it
+  # from, so it rides in at the FRONT of the same pipe that carries this script.
+  # Everything else it needs is a scalar and goes on the ssh command line.
   # shellcheck disable=SC2029  # every value is local rig/app config passed as args to the piped script.
-  ssh "$PI_HOST" "bash -s -- --hex '${REMOTE_HEX}' --board-ip '${BOARD_IP}' --port '${PORT}' --proto '${PROTO}' --payload-bytes '${PAYLOAD_BYTES}' --boot-timeout '${BOOT_TIMEOUT_S}' --probe-timeout '${PROBE_TIMEOUT_S}' ${REMOTE_UART} --baud '${BAUD}'" <"$0"
+  cat <(printf '%s\n' "$RA8_TTY_RESOLVER_SRC") "$0" |
+    ssh "$PI_HOST" "RA8_HIL_ETH_REMOTE=1 JLINK_SN='${JLINK_SN}' JLINK_DEVICE='${JLINK_DEVICE}' bash -s -- --hex '${REMOTE_HEX}' --board-ip '${BOARD_IP}' --port '${PORT}' --proto '${PROTO}' --payload-bytes '${PAYLOAD_BYTES}' --boot-timeout '${BOOT_TIMEOUT_S}' --probe-timeout '${PROBE_TIMEOUT_S}' ${REMOTE_UART} --baud '${BAUD}'"
   exit $?
 fi
 
@@ -218,7 +239,8 @@ echo -e "${YELLOW}[HIL]${NC} board-facing iface = ${USB_ETH_IFACE}"
 
 # shellcheck disable=SC2329  # invoked from cleanup(), itself a trap handler.
 restore_iface() {
-  # Remove our temporary address but leave anything we did not set.
+  # Remove our temporary address + host route, and leave anything we did not set.
+  sudo -n ip route del "${BOARD_IP}/32" dev "$USB_ETH_IFACE" 2>/dev/null || true
   sudo -n ip addr del "${PI_IP}/${PI_PREFIX}" dev "$USB_ETH_IFACE" 2>/dev/null || true
 }
 # shellcheck disable=SC2329  # invoked by `trap cleanup EXIT` below.
@@ -226,20 +248,44 @@ cleanup() {
   rm -f "$STRIPPED_HEX" "/tmp/hil_eth_jlink_${APP_NAME}.cmd"
   # Guarded: UART is still empty until the console is resolved further down,
   # and a pkill pattern of a bare "cat " would match unrelated processes.
-  [ -n "$UART" ] && pkill -f "cat ${UART}" 2>/dev/null
+  # The `|| true` is load-bearing: pkill exits 1 when it matches nothing, and
+  # under `set -e` a failing command inside an EXIT trap ABORTS the trap -- so
+  # on every run where the console reader had already gone, restore_iface below
+  # was never reached and the temporary address stayed on the interface.
+  if [ -n "$UART" ]; then
+    pkill -f "cat ${UART}" 2>/dev/null || true
+  fi
   restore_iface
 }
 trap cleanup EXIT
 
 # Assign 192.168.1.1/24 to the iface (idempotent).
+#
+# `noprefixroute` + an explicit host route to the board is load-bearing, not
+# tidiness. The bench Pi's own LAN is 192.168.1.0/24 as well, so the connected
+# route the kernel would otherwise install for this address takes the WHOLE of
+# that prefix and points it at the board-facing NIC, where nothing but the board
+# answers. Everything else on the LAN then disappears from the Pi -- including
+# the Tapo plug that powers the board, i.e. the one lever that recovers a wedged
+# bench. `restore_iface` runs from an EXIT trap, so a run that is killed (or
+# whose ssh dies) leaves that hijack in place indefinitely; this way there is no
+# hijack to leave behind. A host route reaches the board just as well.
 if ! ip -4 addr show dev "$USB_ETH_IFACE" | grep -q "${PI_IP}/${PI_PREFIX}"; then
-  sudo -n ip addr add "${PI_IP}/${PI_PREFIX}" dev "$USB_ETH_IFACE" 2>/dev/null ||
+  sudo -n ip addr add "${PI_IP}/${PI_PREFIX}" dev "$USB_ETH_IFACE" noprefixroute 2>/dev/null ||
     {
       echo -e "${RED}[HIL]${NC} could not assign ${PI_IP} to ${USB_ETH_IFACE} (need sudo NOPASSWD on ip)"
       exit 1
     }
 fi
 sudo -n ip link set "$USB_ETH_IFACE" up 2>/dev/null || true
+sudo -n ip route replace "${BOARD_IP}/32" dev "$USB_ETH_IFACE" src "$PI_IP" 2>/dev/null ||
+  {
+    echo -e "${RED}[HIL]${NC} could not route ${BOARD_IP} via ${USB_ETH_IFACE}"
+    exit 1
+  }
+# Our own MAC, so the failure dump below can filter this host's frames out and
+# show only what the board sent.
+PI_MAC="$(cat "/sys/class/net/${USB_ETH_IFACE}/address" 2>/dev/null || true)"
 
 # Drop any neighbour entry left over from a previous run. The board is held in
 # reset for the duration of the flash below, so the previous run's exit -- or
@@ -366,6 +412,20 @@ if ((PING_OK == 0)); then
   echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: no ICMP/ARP reply from ${BOARD_IP} within ${PROBE_TIMEOUT_S}s"
   echo "    iface=${USB_ETH_IFACE} pi_ip=${PI_IP}/${PI_PREFIX}"
   ip -o addr show dev "$USB_ETH_IFACE" 2>&1 | sed 's/^/    /'
+  # "Unreachable" covers two completely different faults and the message above
+  # cannot tell them apart: a board that emits NOTHING, and a board that answers
+  # with corrupted bytes so the peer discards the reply (#499 -- the ARP reply
+  # carried the wrong sender IP, and for a month that read as "no peer on the
+  # wire"). Show what the board actually put on the wire so the next reader does
+  # not have to guess. This runs only on the failing path.
+  echo "    --- frames seen from the board during a re-probe (empty = board silent) ---"
+  sudo -n timeout 6 tcpdump -i "$USB_ETH_IFACE" -n -e -c 12 \
+    "not ether src ${PI_MAC:-00:00:00:00:00:00}" 2>/dev/null |
+    sed 's/^/    /' &
+  _dump_pid=$!
+  sleep 1
+  ping -c 3 -W 1 -I "$USB_ETH_IFACE" "$BOARD_IP" >/dev/null 2>&1 || true
+  wait "$_dump_pid" 2>/dev/null || true
   exit 1
 fi
 echo -e "${YELLOW}[HIL]${NC} ${BOARD_IP} reachable"
