@@ -123,6 +123,27 @@ gate_hil_all() (
   bash scripts/hil/all.sh --skip-build
 )
 
+# --- bench-lock-selftest (manual) -----------------------------------------
+# The bench lock, proved against the REAL bench host rather than asserted.
+#
+# It has to be `manual` because it needs the bench host: a hosted runner has no
+# ssh path to it and no /var/lib/ra8-bench. It runs against a THROWAWAY state
+# directory, so it takes no instrument, touches no board, and cannot interfere
+# with a hold anybody else is keeping -- which is why it can sit in the HIL
+# workflow ahead of the suite instead of competing with it.
+#
+# --ssh-death is the case that matters. The whole no-stale-lock property rests
+# on ssh reaping its remote payload when the client dies, and ssh does not do
+# that in general -- it does it here only because the payload blocks on the ssh
+# channel as its stdin. So this SIGKILLs a real ssh client and asserts the flock
+# drops. If it ever fails, the design has silently degraded to a TTL lease and
+# the right answer is to say so, not to bolt a TTL on.
+gate_bench_lock_selftest() (
+  set -e
+  require_cmd ssh
+  bash scripts/hil/bench.sh selftest --ssh-death
+)
+
 # --- docs-publish (manual) ------------------------------------------------
 # Builds the Doxygen HTML and force-pushes it to the orphan gh-pages branch.
 # Not a pass/fail quality gate -- registered so ci-parity can bind the publish

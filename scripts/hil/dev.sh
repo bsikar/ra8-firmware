@@ -52,7 +52,7 @@ ra8_bench_require "HIL suite from this workstation${ONLY:+ (only $ONLY)}" 2h || 
 UART_DIR="examples/ek_ra8d2/hw_validated/hil"
 
 # The app list comes from the filesystem, via the SAME discovery the suite and
-# the SIL runner use. It used to be a hand-written array of 21 names here and a
+# the EIL runner use. It used to be a hand-written array of 21 names here and a
 # second hand-written table of 18 in a now-deleted runner, against 151 apps
 # that actually exist -- so `make hil` tested an eighth of the tree and every
 # app added since had to be remembered into two lists. One source of truth:

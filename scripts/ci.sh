@@ -111,6 +111,7 @@ RA8_GATE_REGISTRY=(
   "inclusive-terminology-commits|fast|inclusive terminology (commit messages)"
   "format|fast|clang-format dry run"
   "pre-commit-checks|fast|the check_*.py gate suite"
+  "bench-lock|fast|every bench-touching script takes the bench lock"
   "annotations|fast|RA8_* annotation attributes (libclang)"
   "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
   "lint-py-shell|fast|ruff + shellcheck + shfmt"
@@ -148,6 +149,7 @@ RA8_GATE_REGISTRY=(
   "osv-scan|manual|OSV CVE sweep of the vendored SOUP (network, scheduled)"
   "fuzz-sweep|manual|libFuzzer sweep of every harness (nightly budget)"
   "hil-all|manual|hardware-in-the-loop suite on the bench EK-RA8D2"
+  "bench-lock-selftest|manual|the bench lock proved against the real bench host"
   "docs-publish|manual|build + force-push the Doxygen site to gh-pages"
 )
 

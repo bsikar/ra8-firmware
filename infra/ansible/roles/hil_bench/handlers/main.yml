@@ -1,0 +1,24 @@
+---
+# Handlers for the hil_bench role.
+
+# Reload, never restart: a restart drops every live ssh session, and on this
+# host a live ssh session may BE a bench hold -- so restarting sshd to install
+# the setting that bounds stale holds would itself drop somebody's hold
+# mid-flash. Reload re-reads the config and leaves established sessions alone.
+- name: Reload sshd
+  become: true
+  ansible.builtin.service:
+    name: ssh
+    state: reloaded
+
+- name: Restart the bench reaper timer
+  # `enable --now` silently leaves an already-running old unit in place, which
+  # is the same bite scripts/dev/agent_workspace.sh documents for its own
+  # timer. daemon_reload + state=restarted is what actually picks up new unit
+  # text.
+  become: true
+  ansible.builtin.systemd_service:
+    name: ra8-bench-reap.timer
+    enabled: true
+    state: restarted
+    daemon_reload: true

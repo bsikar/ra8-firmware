@@ -95,6 +95,46 @@ _ra8_bench_still_ours() {
   [ -n "$seen" ] && [ "$seen" = "${RA8_BENCH_LOCK_ID:-}" ]
 }
 
+# Start the holder and open the liveness channel on fd 7 IN THIS SHELL. That
+# open fd is the whole binding: it is inherited from here, and the kernel closes
+# it when this shell dies, whatever kills it. It has to happen in the caller's
+# shell rather than a subshell, which is why the guard is sourced and not
+# executed.
+_ra8_bench_open_channel() {
+  local lock_id="$1" cls="$2" name="$3" intent="$4" budget_s="$5"
+  _RA8_BENCH_GUARD_TMP="$(mktemp -d "${TMPDIR:-/tmp}/ra8-bench-guard.XXXXXX")" || return 1
+  mkfifo "$_RA8_BENCH_GUARD_TMP/hold.in" || {
+    rm -rf "$_RA8_BENCH_GUARD_TMP"
+    _RA8_BENCH_GUARD_TMP=""
+    return 1
+  }
+  : >"$_RA8_BENCH_GUARD_TMP/hold.out"
+  bench_start_holder "$lock_id" "$cls" "$name" "$intent" "$budget_s" \
+    "${RA8_BENCH_WAIT_S:-0}" "${_RA8_BENCH_GLASS:-false}" \
+    "$_RA8_BENCH_GUARD_TMP/hold.in" "$_RA8_BENCH_GUARD_TMP/hold.out" "${CONFIRM:-}"
+  if [ -z "$RA8_BENCH_HOLDER_PID" ]; then
+    printf '[bench-guard] FATAL -- could not start a holder (PI_HOST unset?).\n' >&2
+    rm -rf "$_RA8_BENCH_GUARD_TMP"
+    _RA8_BENCH_GUARD_TMP=""
+    return 1
+  fi
+  eval "exec ${_RA8_BENCH_GUARD_FD}>\"$_RA8_BENCH_GUARD_TMP/hold.in\""
+}
+
+# Denied and could-not-tell get different words, because they are different
+# answers and only one of them is somebody else's fault.
+_ra8_bench_report_failure() {
+  if [ "$1" -eq 1 ]; then
+    printf '[bench-guard] REFUSED -- the bench is not yours.\n' >&2
+    bench_report_denial "$_RA8_BENCH_GUARD_TMP/hold.out"
+    printf '[bench-guard] wait for it, or preempt with:\n' >&2
+    printf '[bench-guard]   make bench-take WHY="..."\n' >&2
+    return 0
+  fi
+  printf '[bench-guard] UNKNOWN -- could not establish a hold. NOT touching the bench.\n' >&2
+  sed 's/^/[bench-guard]   /' "$_RA8_BENCH_GUARD_TMP/hold.out" >&2 2>/dev/null
+}
+
 # ra8_bench_require <intent> [budget]
 #
 # budget accepts 15m / 2h / 900s / 900 and defaults to 15 minutes -- the worst
@@ -126,44 +166,15 @@ ra8_bench_require() {
   name="$(bench_default_name "$cls")"
   lock_id="$(bench_new_lock_id)"
 
-  _RA8_BENCH_GUARD_TMP="$(mktemp -d "${TMPDIR:-/tmp}/ra8-bench-guard.XXXXXX")" || return 3
-  mkfifo "$_RA8_BENCH_GUARD_TMP/hold.in" || {
-    rm -rf "$_RA8_BENCH_GUARD_TMP"
-    _RA8_BENCH_GUARD_TMP=""
-    return 3
-  }
-  : >"$_RA8_BENCH_GUARD_TMP/hold.out"
-
-  bench_start_holder "$lock_id" "$cls" "$name" "$intent" "$budget_s" \
-    "${RA8_BENCH_WAIT_S:-0}" "${_RA8_BENCH_GLASS:-false}" \
-    "$_RA8_BENCH_GUARD_TMP/hold.in" "$_RA8_BENCH_GUARD_TMP/hold.out" "${CONFIRM:-}"
-  if [ -z "$RA8_BENCH_HOLDER_PID" ]; then
-    printf '[bench-guard] FATAL -- could not start a holder (PI_HOST unset?).\n' >&2
-    rm -rf "$_RA8_BENCH_GUARD_TMP"
-    _RA8_BENCH_GUARD_TMP=""
-    return 3
-  fi
-  # Opening the write end in THIS shell is what binds the hold to this script's
-  # lifetime. It has to happen here and not in a subshell, which is why the
-  # guard is sourced rather than executed.
-  eval "exec ${_RA8_BENCH_GUARD_FD}>\"$_RA8_BENCH_GUARD_TMP/hold.in\""
+  _ra8_bench_open_channel "$lock_id" "$cls" "$name" "$intent" "$budget_s" || return 3
 
   bench_await_ack "$lock_id" "$_RA8_BENCH_GUARD_TMP/hold.out" \
     "$RA8_BENCH_HOLDER_PID" $((${RA8_BENCH_WAIT_S:-0} + 30))
   rc=$?
-  if [ "$rc" -eq 1 ]; then
-    printf '[bench-guard] REFUSED -- the bench is not yours.\n' >&2
-    bench_report_denial "$_RA8_BENCH_GUARD_TMP/hold.out"
-    printf '[bench-guard] wait for it, or preempt with:\n' >&2
-    printf '[bench-guard]   make bench-take WHY="..."\n' >&2
-    ra8_bench_release_local
-    return 1
-  fi
   if [ "$rc" -ne 0 ]; then
-    printf '[bench-guard] UNKNOWN -- could not establish a hold. NOT touching the bench.\n' >&2
-    sed 's/^/[bench-guard]   /' "$_RA8_BENCH_GUARD_TMP/hold.out" >&2 2>/dev/null
+    _ra8_bench_report_failure "$rc"
     ra8_bench_release_local
-    return 3
+    return "$rc"
   fi
 
   RA8_BENCH_LOCK_ID="$lock_id"

@@ -147,7 +147,7 @@ hil-find-jlink:
 	bash scripts/hil/find_jlink.sh
 
 # There is exactly ONE list of HIL apps, and it is the filesystem:
-# hil_discover_apps() in scripts/hil/lib/hil_conf.sh, shared with the SIL
+# hil_discover_apps() in scripts/hil/lib/hil_conf.sh, shared with the EIL
 # suite. `make hil-suite` used to run a second HIL runner script, which carried a
 # SECOND, hand-maintained table of 18 apps against the 151 that are actually
 # discoverable -- so the default suite silently tested an eighth of the tree

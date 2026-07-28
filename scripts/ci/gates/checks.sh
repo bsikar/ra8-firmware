@@ -292,6 +292,24 @@ gate_pre_commit_checks() (
   _pcc_docs_and_tests
 )
 
+# --- bench-lock -----------------------------------------------------------
+# One EK-RA8D2, ~20 concurrent agents, a nightly CI job and two humans. Every
+# script that drives it must take the bench lock first (#497); this proves the
+# tree still does, and derives the set of bench-touching scripts MECHANICALLY
+# so a new one cannot be forgotten.
+#
+# --selftest FIRST, and it asserts three things rather than one: that a bare
+# JLinkExe call is caught, that a guarded one is not, and a DISCOVERY FLOOR --
+# the live scan must still find at least N bench-touching files and every file
+# in its named list. This repo's dominant tooling defect is a detector that
+# quietly stopped matching and reported a clean tree; the floor turns that into
+# a red gate instead of a green one.
+gate_bench_lock() (
+  set -e
+  python3 scripts/checks/check_bench_lock.py --selftest
+  python3 scripts/checks/check_bench_lock.py
+)
+
 # --- annotations ----------------------------------------------------------
 # check_annotations.py walks the AST via the libclang Python bindings and
 # enforces the ra8_* annotation rules (docs/ANNOTATIONS.md).
