@@ -418,14 +418,22 @@ if ((PING_OK == 0)); then
   # carried the wrong sender IP, and for a month that read as "no peer on the
   # wire"). Show what the board actually put on the wire so the next reader does
   # not have to guess. This runs only on the failing path.
-  echo "    --- frames seen from the board during a re-probe (empty = board silent) ---"
-  sudo -n timeout 6 tcpdump -i "$USB_ETH_IFACE" -n -e -c 12 \
-    "not ether src ${PI_MAC:-00:00:00:00:00:00}" 2>/dev/null |
-    sed 's/^/    /' &
-  _dump_pid=$!
-  sleep 1
-  ping -c 3 -W 1 -I "$USB_ETH_IFACE" "$BOARD_IP" >/dev/null 2>&1 || true
-  wait "$_dump_pid" 2>/dev/null || true
+  if ! sudo -n tcpdump --version >/dev/null 2>&1; then
+    # Say so rather than print an empty capture: an empty capture MEANS "the
+    # board sent nothing", and a diagnostic that renders "I could not look" and
+    # "I looked and saw nothing" identically is worse than no diagnostic.
+    echo "    (cannot capture: tcpdump unavailable under sudo -n on this host,"
+    echo "     so a silent board cannot be told apart from a corrupting one)"
+  else
+    echo "    --- frames seen from the board during a re-probe (empty = board silent) ---"
+    sudo -n timeout 6 tcpdump -i "$USB_ETH_IFACE" -n -e -c 12 \
+      "not ether src ${PI_MAC:-00:00:00:00:00:00}" 2>/dev/null |
+      sed 's/^/    /' &
+    _dump_pid=$!
+    sleep 1
+    ping -c 3 -W 1 -I "$USB_ETH_IFACE" "$BOARD_IP" >/dev/null 2>&1 || true
+    wait "$_dump_pid" 2>/dev/null || true
+  fi
   exit 1
 fi
 echo -e "${YELLOW}[HIL]${NC} ${BOARD_IP} reachable"
