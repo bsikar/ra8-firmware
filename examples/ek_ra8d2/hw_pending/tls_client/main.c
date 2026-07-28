@@ -341,10 +341,6 @@ static void demo_pack_mac(ULONG* msw, ULONG* lsw)
 psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context_t* context,
                                              uint8_t*                               output,
                                              size_t                                 output_size,
-                                             size_t*                                output_length);
-psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context_t* context,
-                                             uint8_t*                               output,
-                                             size_t                                 output_size,
                                              size_t*                                output_length)
 {
   (void)context;

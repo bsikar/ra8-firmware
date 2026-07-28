@@ -72,7 +72,7 @@
 /* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
  * counter (for ra8_delay_ms and the polled host stack's timeouts) AND
  * ThreadX's timer; the 1 ms pulse also recovers the DCD's storm-guard mask. */
-extern void ra8_time_on_tick(void);
+
 extern void _tx_timer_interrupt(void);
 
 /**

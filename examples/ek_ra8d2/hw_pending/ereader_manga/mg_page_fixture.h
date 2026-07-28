@@ -1254,4 +1254,4 @@ static const uint8_t k_mg_png[] = {
 };
 
 /** @brief Length of ::k_mg_png in bytes. */
-static const uint32_t k_mg_png_len = 19680u;
+static const uint32_t k_mg_png_len = 19680U;

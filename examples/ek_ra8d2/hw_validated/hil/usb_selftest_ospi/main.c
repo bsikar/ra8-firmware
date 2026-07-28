@@ -76,7 +76,7 @@
  * counter (for ra8_delay_ms and the polled host stack's timeouts) AND
  * ThreadX's timer (for tx_thread_sleep and USBX class-thread scheduling).
  * The 1 ms pulse also recovers the DCD's storm-guard NVIC mask. */
-extern void ra8_time_on_tick(void);
+
 extern void _tx_timer_interrupt(void);
 
 /**

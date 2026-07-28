@@ -76,7 +76,7 @@
  * tx_thread_sleep / USBX class-thread scheduling stall. The project's
  * tx_initialize_low_level.S configures SysTick but relies on the application
  * to publish the handler. */
-extern void ra8_time_on_tick(void);
+
 extern void _tx_timer_interrupt(void);
 void        SysTick_Handler(void);
 void        SysTick_Handler(void)
