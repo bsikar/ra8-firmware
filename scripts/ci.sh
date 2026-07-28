@@ -78,11 +78,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# The tag the containerised path boots. Where it comes from, and what stops it
+# going stale, is scripts/ci/devcontainer_image.sh -- the one place that knows
+# how to build it and how to tell a current image from an old one (#521).
 IMAGE_TAG="ra8-ci:latest"
 # Exit status of the most recent run_gate_capture call. Pre-declared so `set -u`
 # cannot abort a reader before the first gate has run.
 RA8_GATE_RC=0
-DOCKERFILE="$REPO_ROOT/.devcontainer/Dockerfile"
 
 # ===========================================================================
 # THE GATE REGISTRY -- the single source of truth.
@@ -840,4 +842,4 @@ fi
 # the gate registry. It ends in `exec`, so control does not come back.
 # shellcheck source=scripts/ci/lib/container.sh
 . "${SCRIPT_DIR}/ci/lib/container.sh"
-ci_host_mode_exec "$fast" "$gate" "$rebuild" "$IMAGE_TAG" "$DOCKERFILE" "$REPO_ROOT"
+ci_host_mode_exec "$fast" "$gate" "$rebuild" "$IMAGE_TAG" "$REPO_ROOT"

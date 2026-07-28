@@ -48,11 +48,80 @@
   environment:
     GIT_LFS_SKIP_SMUDGE: "1"
 
+# --- The provisioning context -----------------------------------------------
+#
+# Everything below reads its recipe from HERE, staged out of the control node's
+# checkout, and never from dev_box_base_checkout. That checkout is `update:
+# false` on purpose -- agents' linked worktrees hang off it -- so it is free to
+# sit arbitrarily far behind origin/dev, and a role that provisions from it
+# provisions from a tree nothing keeps fresh. Measured, not theorised: with the
+# box's checkout at 116e45f07 the role ran its own provision_runner.sh from
+# that revision, so a pin added to the script on the control node was installed
+# by nobody and the play still reported a converged box (#521, #522). It is the
+# #513 defect exactly -- a build input the tooling does not control is not a
+# build input, it is a rumour.
+#
+# The two systemd installers further down are the deliberate exception: they
+# are invoked from here too, but both copy themselves to ~/.local/bin and point
+# their units at that copy, so nothing durable ends up referencing this
+# directory -- which is emptied on the next converge.
+
+- name: Empty the staged provisioning context
+  # Emptied rather than overlaid: `copy` never deletes, so a file removed from
+  # the tree would live on here and could still be read by a task -- or reach an
+  # image built by a Dockerfile that no longer mentions it.
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_context_dir }}"
+    state: absent
+
+- name: Stage the recipes and the build context from the control node
+  become: true
+  ansible.builtin.copy:
+    src: "{{ dev_box_context_src }}/{{ item.src }}"
+    dest: "{{ dev_box_context_dir }}/"
+    mode: "0644"
+    directory_mode: "0755"
+  loop:
+    - src: .devcontainer
+      what: the pinned toolchain and the files it COPYs
+    - src: scripts
+      what: every provisioner and checker this role runs
+  loop_control:
+    label: "{{ item.src }} ({{ item.what }})"
+
+- name: Assert the staged context arrived
+  # Most of what is staged fails loudly on its own: `bash <missing script>`
+  # exits 127 and takes the play with it. These two do not, which is why they
+  # are named. A missing Dockerfile makes the pin slurp fail with a path error
+  # rather than a reason, and a missing scripts/ci.sh makes
+  # check_runner_image_deps.py scan for gate dependencies in a file that is not
+  # there -- it has its own floor for that, but this role must not depend on
+  # another checker's backstop to notice it staged half a tree.
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_context_dir }}/{{ item }}"
+  register: dev_box_context_stat
+  loop:
+    - .devcontainer/Dockerfile
+    - scripts/ci.sh
+
+- name: Fail loud when it did not
+  when: dev_box_context_stat.results | rejectattr('stat.exists') | list | length > 0
+  ansible.builtin.fail:
+    msg: >-
+      The staged context under {{ dev_box_context_dir }} is missing
+      {{ dev_box_context_stat.results | rejectattr('stat.exists')
+         | map(attribute='item') | join(', ') }}. It is copied from
+      {{ dev_box_context_src }} on the control node, so this means the play was
+      run from somewhere that is not a checkout of this repository. Provisioning
+      on would install from half a tree.
+
 # --- Pinned versions: read, never restated ----------------------------------
 
 - name: Read the devcontainer Dockerfile (the pinned-version source of truth)
   ansible.builtin.slurp:
-    src: "{{ dev_box_base_checkout }}/.devcontainer/Dockerfile"
+    src: "{{ dev_box_context_dir }}/.devcontainer/Dockerfile"
   register: dev_box_dockerfile
 
 - name: Parse its ARG pins
@@ -410,14 +479,14 @@
   become: true
   ansible.builtin.command:
     cmd: bash scripts/ci/install_unicorn.sh
-    chdir: "{{ dev_box_base_checkout }}"
+    chdir: "{{ dev_box_context_dir }}"
   register: dev_box_unicorn
   changed_when: "'already installed' not in dev_box_unicorn.stdout"
 
 - name: Assert the pinned Unicorn headers are installed
   ansible.builtin.command:
     cmd: bash scripts/checks/check_unicorn_version.sh
-    chdir: "{{ dev_box_base_checkout }}"
+    chdir: "{{ dev_box_context_dir }}"
   register: dev_box_unicorn_check
   changed_when: false
 
@@ -456,7 +525,7 @@
   become: true
   ansible.builtin.command:
     cmd: bash scripts/ci/provision_runner.sh
-    chdir: "{{ dev_box_base_checkout }}"
+    chdir: "{{ dev_box_context_dir }}"
   register: dev_box_provision
   changed_when: "'->' in dev_box_provision.stdout"
 
@@ -554,6 +623,56 @@
     group: "{{ dev_box_user }}"
     mode: "0755"
 
+# --- The image `make ci` boots ----------------------------------------------
+#
+# See dev_box_ci_image in defaults/main.yml for the four gates that failed in a
+# stale container while passing natively on this box (#521). The build itself is
+# NOT reimplemented here: scripts/ci/devcontainer_image.sh is the one definition
+# of how the image is built and of what makes a cached one current, and it is
+# the same script `make ci` calls. A second `podman build` in YAML would be a
+# second thing to drift, and the drift would be invisible -- both would produce
+# an image, and only one of them would be the image the gates expect.
+
+- name: Prove the staleness check itself works, before trusting its verdict
+  # The whole mechanism is one comparison: a digest stamped on the image against
+  # a digest computed from the context. If the label stopped round-tripping, or
+  # the digest stopped reacting to a context change, this role would report a
+  # converged box while converging nothing. Assert both directions first.
+  become: true
+  ansible.builtin.command:
+    cmd: bash scripts/ci/devcontainer_image.sh --selftest
+    chdir: "{{ dev_box_context_dir }}"
+  changed_when: false
+
+- name: Build the gate image unless the cached one matches this context
+  # Idempotent by construction: `ensure` compares the context digest recorded on
+  # the image with the staged context's and returns without building when they
+  # agree, so a re-converge costs one inspect.
+  become: true
+  ansible.builtin.command:
+    cmd: bash scripts/ci/devcontainer_image.sh ensure
+    chdir: "{{ dev_box_context_dir }}"
+  environment:
+    RA8_CI_IMAGE: "{{ dev_box_ci_image }}"
+  register: dev_box_image_build
+  changed_when: "'reusing cached' not in dev_box_image_build.stdout"
+
+- name: Assert every tool the gates declare resolves inside it
+  # The other question, and the one toolchain-parity structurally cannot answer:
+  # it compares the VERSIONS of tools that are present against the Dockerfile's
+  # ARG pins, so a dependency that is simply MISSING has no pin to disagree with
+  # (#513). This reads every require_cmd / require_python_mod out of
+  # scripts/ci.sh and the gate fragments and probes each one inside the image
+  # that was just built.
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      python3 scripts/checks/check_runner_image_deps.py
+      --image {{ dev_box_ci_image }}
+    chdir: "{{ dev_box_context_dir }}"
+  register: dev_box_image_deps
+  changed_when: false
+
 # --- Fleet services ---------------------------------------------------------
 
 - name: Install the shared CI status poller and the workspace reaper
@@ -571,7 +690,7 @@
   when: dev_box_install_services | bool
   ansible.builtin.command:
     cmd: "bash {{ item }}"
-    chdir: "{{ dev_box_base_checkout }}"
+    chdir: "{{ dev_box_context_dir }}"
   loop:
     - scripts/ci/monitor.sh install-service
     - scripts/dev/agent_workspace.sh install-timer
@@ -589,7 +708,7 @@
   # cannot reach parity fails the play rather than reporting a provisioned host.
   ansible.builtin.command:
     cmd: python3 scripts/checks/check_tool_versions.py --all
-    chdir: "{{ dev_box_base_checkout }}"
+    chdir: "{{ dev_box_context_dir }}"
   register: dev_box_parity
   changed_when: false
 
@@ -601,6 +720,7 @@
       gcc {{ dev_box_gcc_version }} (source),
       {{ dev_box_arm_installed.stdout_lines | first | trim }},
       {{ dev_box_unicorn_check.stdout_lines | last | default('unicorn pinned') | trim }};
+      {{ dev_box_ci_image }} {{ dev_box_image_deps.stdout_lines | last | trim }};
       shared ccache at {{ dev_box_ccache_dir }}
       ({{ dev_box_ccache_max_size }}), workspaces at
       {{ dev_box_workspace_root }},
