@@ -95,7 +95,7 @@ typedef enum : uint32_t {
  * @details
  * 2M spins on a 1 GHz CPU is ~2 ms of wall clock -- a sane SDHI
  * command-response timeout on real silicon. Host tests never race this
- * budget: they assert RSPEND synchronously from the ra8_sim_mmio
+ * budget: they assert RSPEND synchronously from the ra8_fake_mmio
  * poll-hook, which runs inline on each iteration of this loop, so the
  * flag is observed on the very next poll regardless of host load.
  */
@@ -197,11 +197,11 @@ ra8_err_t ra8_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, ui
   /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
   /* Poll SD_INFO1.RSPEND (bit 0) with bounded spin budget. */
   for (uint32_t i = 0U; i < k_ra8_sdhi_cmd_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_poll(&reg->SD_INFO1,
-                          i,
-                          (reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) !=
-                            0U)) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_poll(&reg->SD_INFO1,
+                           i,
+                           (reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) !=
+                             0U)) { /* GCOVR_EXCL_BR_LINE */
 #else
     if ((reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
 #endif
@@ -465,11 +465,11 @@ static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, u
 
   /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
   for (uint32_t i = 0U; i < k_ra8_sdhi_cmd_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_poll(&reg->SD_INFO1,
-                          i,
-                          (reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) !=
-                            0U)) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_poll(&reg->SD_INFO1,
+                           i,
+                           (reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) !=
+                             0U)) { /* GCOVR_EXCL_BR_LINE */
 #else
     if ((reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
 #endif
@@ -554,11 +554,11 @@ static ra8_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, 
   for (uint32_t w = 0U; w < words; ++w) {
     uint32_t spin = 0U;
     for (; spin < k_ra8_sdhi_fifo_spin; ++spin) { /* GCOVR_EXCL_BR_LINE */
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-      if (ra8_sim_mmio_poll(&reg->SD_INFO2,
-                            spin,
-                            (reg->SD_INFO2 & k_ra8_sdhi_info2_bre_mask) !=
-                              0U)) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+      if (ra8_fake_mmio_poll(&reg->SD_INFO2,
+                             spin,
+                             (reg->SD_INFO2 & k_ra8_sdhi_info2_bre_mask) !=
+                               0U)) { /* GCOVR_EXCL_BR_LINE */
 #else
       if ((reg->SD_INFO2 & k_ra8_sdhi_info2_bre_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
 #endif
@@ -613,11 +613,11 @@ static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* 
   for (uint32_t w = 0U; w < words; ++w) {
     uint32_t spin = 0U;
     for (; spin < k_ra8_sdhi_fifo_spin; ++spin) { /* GCOVR_EXCL_BR_LINE */
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-      if (ra8_sim_mmio_poll(&reg->SD_INFO2,
-                            spin,
-                            (reg->SD_INFO2 & k_ra8_sdhi_info2_bwe_mask) !=
-                              0U)) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+      if (ra8_fake_mmio_poll(&reg->SD_INFO2,
+                             spin,
+                             (reg->SD_INFO2 & k_ra8_sdhi_info2_bwe_mask) !=
+                               0U)) { /* GCOVR_EXCL_BR_LINE */
 #else
       if ((reg->SD_INFO2 & k_ra8_sdhi_info2_bwe_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
 #endif

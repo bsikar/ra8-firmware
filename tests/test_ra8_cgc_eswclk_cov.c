@@ -13,7 +13,7 @@
  * Paths covered:
  *  - ra8_cgc_eswclk_hz(nullptr) -- null-pointer guard (line 350 of source).
  *  - ra8_cgc_eswclk_hz before init -- published Hz is 0.
- *  - ra8_cgc_eswclk_init happy path -- successful bring-up in sim.
+ *  - ra8_cgc_eswclk_init happy path -- successful bring-up off-target.
  *  - ra8_cgc_eswclk_init clock-register programming -- verifies ESWCKCR /
  *    ESWPCKCR land on PLL1P with SREQ/SRDY drained and the ESWCKDIVCR /
  *    ESWPCKDIVCR dividers set to /4 and /2 (the internal_switch and
@@ -23,7 +23,7 @@
  *    the MSTP gate (source lines 334-335).
  *  - every bounded-wait timeout leg (HOCO stabilisation, PDCSF/PDPGSF
  *    stuck, ESWCKCR/ESWPCKCR CKSRDY handshakes), driven through the
- *    ra8_sim_mmio fault seam now that the sim short-circuits are gone.
+ *    ra8_fake_mmio fault seam now that the fake short-circuits are gone.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -35,9 +35,9 @@
 
 #include "ra8_cgc.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -66,11 +66,11 @@ typedef enum : uint32_t {
   k_eswclk_wait_second = 1U, /**< Second wait-loop on the register. */
 } eswclk_wait_idx_t;
 
-/** @brief Reset the sim register mirror and the MMIO fault seam together. */
+/** @brief Reset the fake register mirror and the MMIO fault seam together. */
 static void eswclk_test_reset(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 }
 
 /* ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ static void eswclk_test_reset(void)
  * Calls ra8_cgc_eswclk_hz with out_hz == nullptr and expects
  * k_ra8_err_null_ptr. Covers line 350 of ra8_cgc_eswclk.c.
  *
- * @pre ra8_sim_mmap_reset has been called.
+ * @pre ra8_fake_mmap_reset has been called.
  * @pre ra8_cgc_eswclk_init has NOT been called; s_eswclk_hz == 0.
  * @post Returns k_ra8_err_null_ptr without touching s_eswclk_hz.
  *
@@ -120,7 +120,7 @@ static void test_eswclk_hz_null(void)
  * successful ra8_cgc_eswclk_init call, the published frequency is 0.
  * This test runs first in the binary, before any init attempt.
  *
- * @pre ra8_sim_mmap_reset has been called.
+ * @pre ra8_fake_mmap_reset has been called.
  * @pre ra8_cgc_eswclk_init has not been called in this process.
  * @post out_hz == 0 and return value == k_ra8_ok.
  *
@@ -154,7 +154,7 @@ static void test_eswclk_hz_before_init(void)
  * @details
  * With no MMIO fault armed, every bounded wait (HOCOSF stabilisation,
  * the PDCTRESWM power-domain polls, and the ESWCKCR / ESWPCKCR
- * SREQ/SRDY handshakes) is satisfied by the ra8_sim_mmio seam on its
+ * SREQ/SRDY handshakes) is satisfied by the ra8_fake_mmio seam on its
  * first poll. The successful init sets s_eswclk_hz = 250000000;
  * ra8_cgc_eswclk_hz reflects this.
  *
@@ -276,10 +276,10 @@ static void test_eswclk_init_programs_clock_registers(void)
  * an error and return the failure code (source lines 334-335).
  *
  * The earlier steps (HOCO ensure, power-domain power-on) always
- * succeed in RA8_SIMULATOR_MODE, so the MSTP step is the first failure
+ * succeed in RA8_OFF_TARGET, so the MSTP step is the first failure
  * point.
  *
- * @pre ra8_sim_mmap_reset has been called.
+ * @pre ra8_fake_mmap_reset has been called.
  * @pre ra8_mstp_init has been called to zero all refcounts.
  * @pre The ethphyclk refcount has been driven to UINT8_MAX.
  * @post ra8_cgc_eswclk_init returns k_ra8_err_invalid_state.
@@ -355,7 +355,7 @@ static void test_eswclk_init_hoco_timeout(void)
   eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)ra8_sys_oscsf()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_sys_oscsf()));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_eswclk_init());
 
   TEST_END("eswclk init HOCO stabilisation timeout");
@@ -367,7 +367,7 @@ static void test_eswclk_init_hoco_timeout(void)
  * @details
  * internal_eswclk_power_on_domain polls PDCTRESWM twice (PDCSF, then
  * PDPGSF). fail-nth isolates each wait-loop so both "stuck" error
- * branches -- previously dead under the deleted sim short-circuit --
+ * branches -- previously dead under the deleted off-target short-circuit --
  * execute and propagate k_ra8_err_hw_timeout out of init.
  *
  * @pre eswclk_test_reset and ra8_mstp_init have been called.
@@ -389,16 +389,16 @@ static void test_eswclk_init_pdctreswm_stuck_legs(void)
   eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_pdctreswm(),
-                                            (uint32_t)k_eswclk_wait_first));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_pdctreswm(),
+                                             (uint32_t)k_eswclk_wait_first));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_eswclk_init());
 
   /* Leg 2: PDCSF clears but PDPGSF never does (second wait-loop). */
   eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_pdctreswm(),
-                                            (uint32_t)k_eswclk_wait_second));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_pdctreswm(),
+                                             (uint32_t)k_eswclk_wait_second));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_eswclk_init());
 
   TEST_END("eswclk init PDCSF/PDPGSF stuck legs");
@@ -434,24 +434,24 @@ static void test_eswclk_init_cksrdy_timeout_legs(void)
   eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_eswckcr(),
-                                            (uint32_t)k_eswclk_wait_first));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_eswckcr(),
+                                             (uint32_t)k_eswclk_wait_first));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_eswclk_init());
 
   /* Leg b: ESWCKCR SRDY=0 never acknowledges (second wait-loop). */
   eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_eswckcr(),
-                                            (uint32_t)k_eswclk_wait_second));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_eswckcr(),
+                                             (uint32_t)k_eswclk_wait_second));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_eswclk_init());
 
   /* Leg c: ESWCKCR completes, ESWPCKCR SRDY=1 times out. */
   eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_eswpckcr(),
-                                            (uint32_t)k_eswclk_wait_first));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_eswpckcr(),
+                                             (uint32_t)k_eswclk_wait_first));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_eswclk_init());
 
   TEST_END("eswclk init ESWCKCR/ESWPCKCR handshake timeout legs");

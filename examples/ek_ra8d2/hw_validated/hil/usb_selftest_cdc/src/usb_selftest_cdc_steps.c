@@ -34,7 +34,7 @@
 #include "ra8_time.h"
 #include "ra8_usb.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /**
  * @enum cdc_hex_t
@@ -801,4 +801,4 @@ VOID cdc_host_worker(ULONG arg)
   }
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

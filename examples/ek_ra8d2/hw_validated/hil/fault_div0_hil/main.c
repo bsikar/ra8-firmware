@@ -29,10 +29,10 @@
  * @note **Headless-emulator status.** `tools/ra8_emulator` models this trap:
  * a DIV_0_TRP-gated UDIV/SDIV seam takes the decoded UsageFault when (and
  * only when) the firmware has armed `CCR.DIV_0_TRP` and the divisor is
- * zero, so the sim run reproduces the silicon dump headlessly
+ * zero, so the emulator run reproduces the silicon dump headlessly
  * (`exception=6`, `cfsr =33554432`). The `survived divide` branch below is
  * therefore the on-silicon negative fallback -- reached only if the trap
- * ever fails to fire -- not the sim's normal path. The bench has captured
+ * ever fails to fire -- not the fake's normal path. The bench has captured
  * the real fault dump on silicon (tracker issue #191), so the app lives in
  * `hw_validated/hil/`.
  *
@@ -99,7 +99,7 @@ static volatile uint32_t s_fd_divisor = (uint32_t)k_fd_divisor;
 
 /**
  * @var g_fd_quotient
- * @brief Quotient observed when the trap did NOT fire (sim survival path).
+ * @brief Quotient observed when the trap did NOT fire (emulator survival path).
  * @details 0 by ARM default divide-by-zero semantics; exported volatile
  *          for headless probing.
  * @note Read externally only (HIL / board emulator).
@@ -256,7 +256,7 @@ int32_t main(void)
 
   /* Prove the boot-path write landed before relying on it: CCR must
    * read back with DIV_0_TRP set (works on silicon AND ra8_emulator --
-   * the sim's SCS window stores the write even though its CPU model
+   * the fake's SCS window stores the write even though its CPU model
    * ignores it). ARMv8-M SCB->CCR, read-only probe. */
   const uint32_t ccr = *(volatile uint32_t*)k_fd_scb_ccr_addr;
   if ((ccr & (uint32_t)k_fd_ccr_div_0_trp) == 0U) {

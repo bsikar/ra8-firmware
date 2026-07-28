@@ -54,7 +54,7 @@
  * land here as new consumers ask for them.
  *
  * On the host unit-test build the FW build maps these MMIO offsets
- * onto an anonymous ``ra8_sim_mmap`` window so the same accessors
+ * onto an anonymous ``ra8_fake_mmap`` window so the same accessors
  * work in tests as on silicon.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

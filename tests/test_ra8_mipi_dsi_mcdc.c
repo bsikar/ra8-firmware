@@ -23,10 +23,10 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mipi_dsi.h"
 #include "ra8_mipi_dsi_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "support/mipi_dsi_test_util.h"
 #include "unity_minimal.h"
 

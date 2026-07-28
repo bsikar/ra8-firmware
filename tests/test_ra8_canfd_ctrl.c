@@ -19,8 +19,8 @@
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -74,8 +74,8 @@ static void stub_canfd_cb(void* ctx, uint8_t ch, uint32_t mask)
 
 static void prep_w53(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   s_canfd_cb_count        = 0U;
   s_canfd_cb_last_mask    = 0U;
   s_canfd_cb_last_channel = 0U;
@@ -158,9 +158,9 @@ static void test_power_transition(void)
    * on host now (T1-01); arm the seam so each acknowledges on the first
    * poll. */
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_init((uint8_t)k_ra8_canfd_test_channel_0));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_enter_stop((uint8_t)k_ra8_canfd_test_channel_0));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_exit_stop((uint8_t)k_ra8_canfd_test_channel_0));
@@ -190,7 +190,7 @@ static void test_filter_set_writes_id_mask_dlc(void)
    * (T1-01). satisfy_after(0) makes both directions ack on the first
    * poll. */
   volatile r_canfd_t* reg = ra8_canfd(0U);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDGSTS, 0U));
 
   /* Filter 0 -> page 0, slot 0. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_filter_set(0U, 0x123U, 0x7FFU, 8U));
@@ -239,11 +239,11 @@ static void test_set_brs_updates_dcfg(void)
    * on host now (T1-01); arm the seam so each acknowledges on the first
    * poll. */
   volatile r_canfd_t* reg_init = ra8_canfd(0U);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg_init->CFDGSTS, 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg_init->CFDC[0].STS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg_init->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg_init->CFDC[0].STS, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_init(0U));
-  /* 1 Mbps fast phase resolves cleanly against the simulated PCLKA. */
+  /* 1 Mbps fast phase resolves cleanly against the fake PCLKA. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_set_brs(0U, 1000000U));
   volatile r_canfd_t* reg = ra8_canfd(0U);
   TEST_ASSERT(reg->CFDC2[0].DCFG != 0U);
@@ -296,8 +296,8 @@ static void test_set_iso_mode_toggles_niso(void)
 static void test_mcdc_set_bitrate_data_rate_guard(void)
 {
   TEST_BEGIN("canfd set_bitrate MC/DC: data_bitrate!=0 && data>nominal");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   /* All three vectors drive set_bitrate's real CH_RESET/CH_OPERATION
    * channel-mode acks on host now (T1-01); satisfy_after(0) acks each on
@@ -305,7 +305,7 @@ static void test_mcdc_set_bitrate_data_rate_guard(void)
    * each outcome. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_satisfy_after(&ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].STS, 0U));
+    ra8_fake_mmio_satisfy_after(&ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].STS, 0U));
 
   /* Vector 1: data=0 -> classic CAN path. */
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -350,7 +350,7 @@ static void test_mcdc_set_bitrate_data_rate_guard(void)
 static void test_mcdc_validate_frame_brs_without_fd(void)
 {
   TEST_BEGIN("canfd validate_frame MC/DC: is_brs && !is_fd");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Vector 1: brs=0, fd=0 -> classic CAN frame, ok. */
   ra8_canfd_frame_t f1 = {};
@@ -384,7 +384,7 @@ static void test_mcdc_validate_frame_brs_without_fd(void)
  * T1-01 / #177: real timeout + error-propagation legs.
  *
  * The bounded HW polls in ra8_canfd.c now run for real on host via the
- * ra8_hw_wait_flag_* primitives (ra8_hw_err.h) consulting the ra8_sim_mmio
+ * ra8_hw_wait_flag_* primitives (ra8_hw_err.h) consulting the ra8_fake_mmio
  * fault seam. Each case below arms fail_wait / fail_nth_wait on the EXACT
  * register a specific wait polls, then asserts the enclosing public
  * ra8_canfd_* function returns the propagated k_ra8_err_hw_timeout. Modelled
@@ -396,7 +396,7 @@ static void test_mcdc_validate_frame_brs_without_fd(void)
  *
  * @par MC/DC:
  * (single-condition ``if (err != k_ra8_ok)`` guard -- no compound decision
- * in the code under test. The leg is reached by arming the ra8_sim_mmio
+ * in the code under test. The leg is reached by arming the ra8_fake_mmio
  * seam to time out exactly one bounded poll.)
  *
  * @details Covers the CANFDCKSRDY=1 handshake timeout in
@@ -411,13 +411,13 @@ static void test_mcdc_validate_frame_brs_without_fd(void)
 static void test_canfd_clock_srdy_set_timeout(void)
 {
   TEST_BEGIN("canfd init CANFDCKSRDY=1 handshake timeout");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   /* Fail the first bounded wait on CANFDCKCR (SRDY-set). fail_wait fails
    * every wait on the register, but the driver breaks out after the first
    * one times out, so no later CANFDCKCR wait runs. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(ra8_sys_canfdckcr()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(ra8_sys_canfdckcr()));
 
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_canfd_init((uint8_t)k_ra8_canfd_test_channel_0));
   TEST_END("canfd init CANFDCKSRDY=1 handshake timeout");
@@ -428,7 +428,7 @@ static void test_canfd_clock_srdy_set_timeout(void)
  *
  * @par MC/DC:
  * (single-condition ``if (err != k_ra8_ok)`` guard -- no compound decision
- * in the code under test. The leg is reached by arming the ra8_sim_mmio
+ * in the code under test. The leg is reached by arming the ra8_fake_mmio
  * seam to time out exactly one bounded poll.)
  *
  * @details Covers the SECOND handshake timeout in
@@ -444,11 +444,11 @@ static void test_canfd_clock_srdy_set_timeout(void)
 static void test_canfd_clock_srdy_clear_timeout(void)
 {
   TEST_BEGIN("canfd init CANFDCKSRDY=0 handshake timeout");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   /* Wait-loop 0 = SRDY-set (succeeds), wait-loop 1 = SRDY-clear (fails). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(ra8_sys_canfdckcr(), 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(ra8_sys_canfdckcr(), 1U));
 
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_canfd_init((uint8_t)k_ra8_canfd_test_channel_0));
   TEST_END("canfd init CANFDCKSRDY=0 handshake timeout");
@@ -475,15 +475,15 @@ static void test_canfd_clock_srdy_clear_timeout(void)
 static void test_init_global_operation_timeout(void)
 {
   TEST_BEGIN("canfd init GL_OPERATION timeout");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
   /* CFDGSTS wait-loop 1 (GL_OPERATION ack) times out; wait-loop 0
    * (GL_RESET ack) succeeds. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(&reg->CFDGSTS, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(&reg->CFDGSTS, 1U));
 
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_canfd_init((uint8_t)k_ra8_canfd_test_channel_0));
   TEST_END("canfd init GL_OPERATION timeout");
@@ -509,13 +509,13 @@ static void test_init_global_operation_timeout(void)
 static void test_set_test_mode_happy_and_validation(void)
 {
   TEST_BEGIN("canfd set_test_mode happy + validation");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
   /* CH_HALT ack then CH_OPERATION ack both poll CFDC[0].STS. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
 
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -550,14 +550,14 @@ static void test_set_test_mode_happy_and_validation(void)
 static void test_set_test_mode_halt_timeout(void)
 {
   TEST_BEGIN("canfd set_test_mode CH_HALT timeout");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
   /* CFDC[0].STS wait-loop 0 (CH_HALT ack) times out; wait-loop 1
    * (recovery CH_OPERATION ack) succeeds. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(&reg->CFDC[0].STS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(&reg->CFDC[0].STS, 0U));
 
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,
@@ -593,22 +593,22 @@ static void test_filter_set_timeout_and_page1_legs(void)
   TEST_ASSERT_NOT_NULL((void*)reg);
 
   /* Leg 1: filter_id 16 -> page 1, slot 0; bump_rnc0 page-0-only skip. */
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDGSTS, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_filter_set(16U, 0x123U, 0x7FFU, 8U));
   TEST_ASSERT_EQ(0x123U, reg->CFDGAFL[0].ID);
 
   /* Leg 2: GL_RESET ack (CFDGSTS wait-loop 0) times out. */
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(&reg->CFDGSTS, 0U));
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(&reg->CFDGSTS, 0U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_canfd_filter_set(0U, 0x123U, 0x7FFU, 8U));
 
   /* Leg 3: GL_OPERATION ack (CFDGSTS wait-loop 1) times out; reset ack ok. */
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(&reg->CFDGSTS, 1U));
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(&reg->CFDGSTS, 1U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_canfd_filter_set(0U, 0x123U, 0x7FFU, 8U));
 
   TEST_END("canfd filter_set page-1 bump-skip + GL-mode timeouts");

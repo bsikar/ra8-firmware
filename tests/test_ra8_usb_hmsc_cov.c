@@ -20,9 +20,9 @@
  * (BOT) command-block-wrapper (CBW) push.
  *
  * The bulk-OUT completion wait (`internal_host_wait_pipe` on `BEMPSTS`)
- * cannot signal success under the host simulator: `ra8_usb_host_bulk_out`
+ * cannot signal success under the host fake: `ra8_usb_host_bulk_out`
  * W0C-clears the pipe's `BEMPSTS` bit before waiting, and the plain-RAM
- * `ra8_sim_mmap` backing has no active USB SIE model to re-assert it, so
+ * `ra8_fake_mmap` backing has no active USB SIE model to re-assert it, so
  * the CBW push deterministically returns `k_ra8_err_hw_timeout`. That is
  * exactly the leg these tests drive: the CDB builders, the CBW assembly,
  * the pipe push, and the error propagation back out of every entry point.
@@ -38,9 +38,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_hal_internal.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_hmsc.h"
 #include "ra8_usb_regs.h"
@@ -60,14 +60,14 @@ typedef enum : uint8_t {
 /**
  * @brief Reset the register mirror and driver state to a known baseline.
  *
- * @details Mirrors `test_ra8_usb_hmsc.c::prep`: wipes the simulated MMIO
+ * @details Mirrors `test_ra8_usb_hmsc.c::prep`: wipes the fake MMIO
  * windows, brings the module-stop gate up, and force-closes any prior
  * host-MSC session so each test starts from a clean, uninitialised
  * driver.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_hmsc_close();
 }
@@ -94,7 +94,7 @@ static void mark_attached(void)
  * (no compound decisions in the code this case touches -- the SCSI entry
  * point, `internal_check_ready` LUN-in-range leg, the INQUIRY CDB builder,
  * and the BOT CBW push are all straight-line; the bulk-OUT completion wait
- * returns `k_ra8_err_hw_timeout` because the simulator cannot re-assert the
+ * returns `k_ra8_err_hw_timeout` because the fake cannot re-assert the
  * pipe's BEMPSTS bit)
  */
 static void test_inquiry_attached_drives_bot_push(void)
@@ -108,7 +108,7 @@ static void test_inquiry_attached_drives_bot_push(void)
   /* Reaches internal_check_ready (LUN in range -> k_ra8_ok),
    * internal_build_inquiry_cdb, internal_run_data_in -> internal_issue_cbw
    * -> internal_send_cbw (bulk-OUT). The CBW push cannot complete under the
-   * simulator, so the whole command reports the bulk-OUT timeout. */
+   * fake, so the whole command reports the bulk-OUT timeout. */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_usb_hmsc_inquiry(k_test_lun_ok, &resp));
 
   TEST_END("inquiry (attached) builds CDB + pushes CBW, bulk-OUT wait times out");

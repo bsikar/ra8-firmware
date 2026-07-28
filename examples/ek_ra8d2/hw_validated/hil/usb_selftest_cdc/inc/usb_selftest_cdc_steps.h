@@ -66,7 +66,7 @@ typedef enum : uint32_t {
   k_cdc_byte_mask     = 0xFFU,       /**< Byte mask.                         */
 } cdc_geom_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 
 /**
@@ -88,4 +88,4 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 VOID cdc_host_worker(ULONG arg);
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

@@ -3,7 +3,7 @@
  * @brief Unit tests for the IT8951 e-paper SPI driver (``ra8_epaper.c``)
  *
  * @details
- * Host-only tests. The simulator mmap models SPI registers as host
+ * Host-only tests. The fake mmap models SPI registers as host
  * RAM, so the driver's SPI calls succeed with whatever last-write
  * value the test set. The test plays the app's role in the DI split:
  * it initialises SPI_B channel 0 itself, binds it through the ra8_io
@@ -12,7 +12,7 @@
  * ``ra8_epaper_init`` -- exercising the exact production wiring.
  * The HRDY busy-poll, the /RESET GPIO pulse, and the LUT-idle poll in
  * ``display_area`` all run for real on host (issues #177 / #238): the
- * two polls are driven through the ``ra8_sim_mmio`` fault seam (the
+ * two polls are driven through the ``ra8_fake_mmio`` fault seam (the
  * LUT poll keyed on the seam's ctx cookie, the bound bus handle) and
  * the reset pulse drives the RAM-backed PORT block.
  *
@@ -33,12 +33,12 @@
 
 #include "ra8_epaper.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_io_spi_bus.h"
 #include "ra8_io_spi_bus_spi_b.h"
 #include "ra8_mstp.h"
 #include "ra8_port_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_spi.h"
 #include "ra8_spi_bus_ops.h"
 #include "ra8_spi_regs.h"
@@ -69,7 +69,7 @@ typedef enum : uint32_t {
    * The only VCOM that round-trips on this fixture.
    *
    * ``ra8_epaper_set_vcom`` reads its write back and requires a match
-   * before it grants the INV-VCOM-1 permit. The sim SPI is plain mmap'd
+   * before it grants the INV-VCOM-1 permit. The fake SPI is plain mmap'd
    * RAM, so a read returns the last byte written to SPDR -- which for a
    * receive is the driver's own 0xFF dummy. The loopback therefore always
    * reports 0xFFFF, and that is the only value whose readback can match
@@ -150,8 +150,8 @@ static ra8_epaper_cfg_t make_cfg(void)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   /* The driver state is file-static; a "sleep" call resets it back
    * to uninit. We achieve the same effect between tests via the
    * sleep API; tests that don't init (NULL-arg paths) don't need it.
@@ -177,12 +177,12 @@ static void prep(void)
  *
  * @details
  * The host build of ``ra8_spi_b.c`` short-circuits ``internal_wait_spsr``
- * (RA8_SIMULATOR_MODE branch): it returns ``k_ra8_ok`` if the requested
+ * (RA8_OFF_TARGET branch): it returns ``k_ra8_ok`` if the requested
  * flag (SPTEF or SPRF) is asserted, otherwise ``k_ra8_err_hw_timeout``.
- * The simulator backs SPSR with plain mmap'd RAM that is zeroed by
- * ``ra8_sim_mmap_reset``, so a fresh test fixture has no flags
+ * The fake backs SPSR with plain mmap'd RAM that is zeroed by
+ * ``ra8_fake_mmap_reset``, so a fresh test fixture has no flags
  * asserted. Pre-staging once is sufficient because the driver clears
- * flags via SPSRC (a separate write-1-to-clear register that, in sim,
+ * flags via SPSRC (a separate write-1-to-clear register that, off-target,
  * is independent RAM and does not touch SPSR).
  */
 static void stage_spsr_ready(void)
@@ -314,9 +314,9 @@ static void test_happy_path(void)
                                        k_ra8_epaper_endian_little));
 
   /* Happy load + display + sleep. The display_area LUT-idle poll reads LUTAFSR
-   * over SPI; the sim SPI loopback returns the driver's own dummy byte (never
+   * over SPI; the fake SPI loopback returns the driver's own dummy byte (never
    * zero), so the real bounded poll (issue #177 / T1-01, no longer compiled
-   * out) is driven through the ra8_sim_mmio seam keyed on the injected seam's
+   * out) is driven through the ra8_fake_mmio seam keyed on the injected seam's
    * ctx cookie -- the bound bus handle &s_bus. Arm it to report "LUT idle" on
    * the 3rd poll so the real loop iterates twice then succeeds. */
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -329,7 +329,7 @@ static void test_happy_path(void)
    * is armed, because granting the permit costs bus traffic of its own. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
   grant_vcom_permit();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after((volatile const void*)&s_bus, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after((volatile const void*)&s_bus, 2U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_display_area(nullptr, k_ra8_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep());
@@ -343,7 +343,7 @@ static void test_happy_path(void)
  * @par MC/DC:
  * (no compound decisions in this test -- the display_area LUT-idle poll is a
  * single-condition ``status == 0U`` comparison. This case drives the real
- * bounded poll's timeout leg: the ra8_sim_mmio seam keyed on the seam's ctx
+ * bounded poll's timeout leg: the ra8_fake_mmio seam keyed on the seam's ctx
  * cookie (the bound bus handle) is armed to never report idle, so the loop runs to its budget
  * and returns ``k_ra8_err_hw_timeout``. Paired with ``test_happy_path`` (which
  * arms satisfy_after for the success leg), gcov sees both legs of the poll.)
@@ -361,7 +361,7 @@ static void test_display_area_lut_timeout(void)
   /* Arm the seam so the LUT-idle poll never reports idle: the real bounded loop
    * exhausts its budget and returns k_ra8_err_hw_timeout (SPI transfers still
    * succeed -- only the LUT-idle verdict is forced false). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((volatile const void*)&s_bus));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((volatile const void*)&s_bus));
   const ra8_epaper_area_t area = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
 
@@ -387,14 +387,14 @@ static void test_wait_ready_hrdy_timeout(void)
   /* Arm the HRDY busy-pin input register (the pin port's PCNTR2) so the panel
    * never signals ready: the next command's bounded HRDY wait exhausts its
    * budget and returns the real hardware timeout instead of the fake success
-   * the deleted RA8_SIMULATOR_MODE short-circuit used to return. */
+   * the deleted RA8_OFF_TARGET short-circuit used to return. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((volatile const void*)&ra8_port(RA8_PIN_PORT(cfg.busy_pin))->PCNTR2));
+    ra8_fake_mmio_fail_wait((volatile const void*)&ra8_port(RA8_PIN_PORT(cfg.busy_pin))->PCNTR2));
   const ra8_epaper_area_t area = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
 
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep());
   TEST_END("epaper HRDY wait timeout (real seam poll)");
 }
@@ -403,7 +403,7 @@ static void test_wait_ready_hrdy_timeout(void)
  * @brief The /RESET pulse in init drives the reset pin's PORT block.
  *
  * @details
- * The issue-238 migration deleted the ``RA8_SIMULATOR_MODE`` branch
+ * The issue-238 migration deleted the ``RA8_OFF_TARGET`` branch
  * that compiled the reset pulse out of the host build; init now runs
  * the real high -> low -> high ``ra8_gpio_write`` sequence against the
  * RAM-backed PORT window (``ra8_delay_ms`` is a host no-op). PCNTR3 is
@@ -747,7 +747,7 @@ static void test_vcom_before_init(void)
  * @test epaper_vcom_commands
  *
  * @details
- * Drives the VCOM get / set commands against the simulator-backed bus.
+ * Drives the VCOM get / set commands against the fake-backed bus.
  * The RAM-backed SPI window returns whatever the fixture last wrote rather
  * than a real panel's value, so the assertions are on the state-machine
  * guards and on the commands completing, not on a millivolt figure.

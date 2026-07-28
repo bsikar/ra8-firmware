@@ -21,7 +21,7 @@
  * @note The M33 deliberately does NOT call `ra8_log`. On hardware each core has
  *       its own CoreSight ITM, and the ra8_emulator only echoes the
  *       primary core's ITM stream, so an M33 `ra8_log` line would be invisible
- *       in the simulator. The M33's proof-of-life is therefore the value it
+ *       in the fake. The M33's proof-of-life is therefore the value it
  *       writes into the mailbox (the M85 reads it and logs it on the M33's
  *       behalf), which is honest in both the emulator and on silicon.
  *
@@ -176,7 +176,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* The vector table is only meaningful in the cross-compiled M33 image. The
  * host unit-test build compile-checks this TU but never links it as an
  * executable, so dropping the table there costs no coverage. */

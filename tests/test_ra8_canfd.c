@@ -22,8 +22,8 @@
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -73,22 +73,22 @@ typedef enum : uint32_t {
 static void test_init_channel0_happy(void)
 {
   TEST_BEGIN("canfd init channel 0 happy");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
   /* The CANFD clock handshake + global/channel mode-transition polls run
-   * for real on host now that the driver's RA8_SIMULATOR_MODE poll short-
+   * for real on host now that the driver's RA8_OFF_TARGET poll short-
    * circuit is gone (T1-01). Model the block acknowledging each requested
    * state on the first poll: satisfy_after(0) satisfies both the reset-
    * mode ack (flag SET) and the operation-mode ack (flag CLEAR) waits on
    * one status register, and the CANFDCKSRDY set/clear handshake -- which
    * the driver drives AFTER overwriting CANFDCKCR, so a pre-staged bit
    * cannot survive the write. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
 
   const ra8_err_t err = ra8_canfd_init((uint8_t)k_ra8_canfd_test_channel_0);
   TEST_ASSERT_EQ(k_ra8_ok, err);
@@ -106,17 +106,17 @@ static void test_init_channel0_happy(void)
 static void test_init_channel0_timeout(void)
 {
   TEST_BEGIN("canfd init channel 0 timeout path");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
   /* Same real-poll seam arming as the happy path (T1-01): the block
    * acknowledges each mode transition and the clock handshake on the
    * first poll. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
 
   const ra8_err_t err = ra8_canfd_init((uint8_t)k_ra8_canfd_test_channel_0);
   TEST_ASSERT_EQ(k_ra8_ok, err);
@@ -132,16 +132,16 @@ static void test_init_channel0_timeout(void)
 static void test_init_channel1(void)
 {
   TEST_BEGIN("canfd init channel 1");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_1);
   TEST_ASSERT_NOT_NULL((void*)reg);
   /* Channel-1 register block; arm the same real-poll seam (T1-01) so the
    * clock handshake + mode-transition acks succeed on the first poll. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(ra8_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
   const ra8_err_t err = ra8_canfd_init((uint8_t)k_ra8_canfd_test_channel_1);
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_END("canfd init channel 1");
@@ -156,7 +156,7 @@ static void test_init_channel1(void)
 static void test_init_channel_bad(void)
 {
   TEST_BEGIN("canfd init bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_canfd_init((uint8_t)k_ra8_canfd_test_channel_bad));
   TEST_END("canfd init bad channel");
@@ -171,7 +171,7 @@ static void test_init_channel_bad(void)
 static void test_deinit_happy(void)
 {
   TEST_BEGIN("canfd deinit happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_err_t err = ra8_canfd_deinit((uint8_t)k_ra8_canfd_test_channel_0);
   TEST_ASSERT_EQ(k_ra8_ok, err);
@@ -190,7 +190,7 @@ static void test_deinit_happy(void)
 static void test_deinit_bad_channel(void)
 {
   TEST_BEGIN("canfd deinit bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_canfd_deinit((uint8_t)k_ra8_canfd_test_channel_bad));
   TEST_END("canfd deinit bad channel");
@@ -205,15 +205,15 @@ static void test_deinit_bad_channel(void)
 static void test_set_bitrate_500k_happy(void)
 {
   TEST_BEGIN("canfd set_bitrate 500k happy");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   /* set_bitrate drives CH_RESET -> program NCFG -> CH_OPERATION; both
    * channel-mode acks (CRSTSTS SET, then CRSTSTS|CHLTSTS CLEAR) on
    * CFDC[0].STS run for real on host now (T1-01). satisfy_after(0) acks
    * both on the first poll. */
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
 
   const ra8_err_t err = ra8_canfd_set_bitrate((uint8_t)k_ra8_canfd_test_channel_0,
                                               (uint32_t)k_ra8_test_bitrate_500k,
@@ -233,13 +233,13 @@ static void test_set_bitrate_500k_happy(void)
 static void test_set_bitrate_250k_with_fd(void)
 {
   TEST_BEGIN("canfd set_bitrate 250k nominal + 1M data");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   /* set_bitrate drives the real CH_RESET/CH_OPERATION channel-mode acks
    * on CFDC[0].STS now (T1-01); satisfy_after(0) acks both on poll 0. */
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
 
   const ra8_err_t err = ra8_canfd_set_bitrate((uint8_t)k_ra8_canfd_test_channel_0,
                                               (uint32_t)k_ra8_test_bitrate_250k,
@@ -260,7 +260,7 @@ static void test_set_bitrate_250k_with_fd(void)
 static void test_set_bitrate_zero_rejected(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects zero");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_canfd_set_bitrate((uint8_t)k_ra8_canfd_test_channel_0,
@@ -278,7 +278,7 @@ static void test_set_bitrate_zero_rejected(void)
 static void test_set_bitrate_invalid_resolve(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects unresolvable rate");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_canfd_set_bitrate((uint8_t)k_ra8_canfd_test_channel_0,
@@ -296,7 +296,7 @@ static void test_set_bitrate_invalid_resolve(void)
 static void test_set_bitrate_prescaler_too_big(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects rate needing prescaler > 1024");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* 1 bps with 8 MHz PCLKA requires a prescaler of ~1 million, well
    * outside the 1..1024 nominal window, so the solver exhausts every
@@ -315,8 +315,8 @@ static void test_set_bitrate_prescaler_too_big(void)
 static void test_set_bitrate_bad_data_rate(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects bad data rate");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   /* Nominal 250k resolves fine, so set_bitrate reaches the real CH_RESET
    * channel-mode ack before the data-phase solve; arm the seam
@@ -325,7 +325,7 @@ static void test_set_bitrate_bad_data_rate(void)
    * not divide evenly into 8 MHz), not an hw_timeout. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_satisfy_after(&ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].STS, 0U));
+    ra8_fake_mmio_satisfy_after(&ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].STS, 0U));
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_canfd_set_bitrate((uint8_t)k_ra8_canfd_test_channel_0,
@@ -343,7 +343,7 @@ static void test_set_bitrate_bad_data_rate(void)
 static void test_set_bitrate_bad_channel(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_canfd_set_bitrate((uint8_t)k_ra8_canfd_test_channel_bad,
@@ -361,7 +361,7 @@ static void test_set_bitrate_bad_channel(void)
 static void test_transmit_standard_frame_happy(void)
 {
   TEST_BEGIN("canfd transmit standard frame happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_canfd_frame_t frame = {};
   frame.id                = (uint32_t)k_ra8_test_std_id;
@@ -396,8 +396,8 @@ static void test_transmit_standard_frame_happy(void)
 static void test_transmit_tmtrf_spin_legs(void)
 {
   TEST_BEGIN("canfd transmit TMTRF spin retry / full-budget legs");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   ra8_canfd_frame_t frame = {};
   frame.id                = (uint32_t)k_ra8_test_std_id;
@@ -406,15 +406,16 @@ static void test_transmit_tmtrf_spin_legs(void)
   TEST_ASSERT_NOT_NULL(reg);
 
   /* Retry leg: TMTRF asserts "done" on the 3rd poll. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after((const volatile void*)&reg->CFDTMSTS[0], 3U));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_fake_mmio_satisfy_after((const volatile void*)&reg->CFDTMSTS[0], 3U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_transmit((uint8_t)k_ra8_canfd_test_channel_0, &frame));
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   /* Full-budget leg: TMTRF never asserts; the bounded spin exhausts
    * and ra8_canfd_transmit still reports success (best-effort wait). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->CFDTMSTS[0]));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->CFDTMSTS[0]));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_transmit((uint8_t)k_ra8_canfd_test_channel_0, &frame));
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   TEST_END("canfd transmit TMTRF spin retry / full-budget legs");
 }
@@ -428,7 +429,7 @@ static void test_transmit_tmtrf_spin_legs(void)
 static void test_transmit_extended_fd_frame(void)
 {
   TEST_BEGIN("canfd transmit extended CAN-FD frame");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_canfd_frame_t frame = {};
   frame.id                = (uint32_t)k_ra8_test_ext_id;
@@ -456,7 +457,7 @@ static void test_transmit_extended_fd_frame(void)
 static void test_transmit_null_frame(void)
 {
   TEST_BEGIN("canfd transmit rejects NULL frame");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_canfd_transmit((uint8_t)k_ra8_canfd_test_channel_0, nullptr));
@@ -472,7 +473,7 @@ static void test_transmit_null_frame(void)
 static void test_transmit_bad_channel(void)
 {
   TEST_BEGIN("canfd transmit rejects bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_canfd_frame_t frame = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_canfd_transmit((uint8_t)k_ra8_canfd_test_channel_bad, &frame));
@@ -488,7 +489,7 @@ static void test_transmit_bad_channel(void)
 static void test_transmit_bad_dlc(void)
 {
   TEST_BEGIN("canfd transmit rejects DLC > 15");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_canfd_frame_t frame = {};
   frame.dlc               = 16U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -505,7 +506,7 @@ static void test_transmit_bad_dlc(void)
 static void test_transmit_oversized_std_id(void)
 {
   TEST_BEGIN("canfd transmit rejects 11-bit overflow");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_canfd_frame_t frame = {};
   frame.id                = (uint32_t)k_ra8_test_oversized_std_id;
   frame.is_extended       = 0U;
@@ -523,7 +524,7 @@ static void test_transmit_oversized_std_id(void)
 static void test_transmit_oversized_ext_id(void)
 {
   TEST_BEGIN("canfd transmit rejects 29-bit overflow");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_canfd_frame_t frame = {};
   frame.id                = (uint32_t)k_ra8_test_invalid_ext_id;
   frame.is_extended       = 1U;
@@ -541,7 +542,7 @@ static void test_transmit_oversized_ext_id(void)
 static void test_transmit_brs_without_fd(void)
 {
   TEST_BEGIN("canfd transmit rejects BRS without FD");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_canfd_frame_t frame = {};
   frame.is_fd             = 0U;
   frame.is_brs            = 1U;
@@ -559,7 +560,7 @@ static void test_transmit_brs_without_fd(void)
 static void test_receive_empty_fifo(void)
 {
   TEST_BEGIN("canfd receive returns no_data on empty FIFO");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Seed RFEMP so the driver reads empty. */
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
@@ -579,7 +580,7 @@ static void test_receive_empty_fifo(void)
 static void test_receive_standard_frame(void)
 {
   TEST_BEGIN("canfd receive decodes standard frame");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
   reg->CFDRFSTS[0]        = 0U; /* not empty */
@@ -613,7 +614,7 @@ static void test_receive_standard_frame(void)
 static void test_receive_extended_fd_frame(void)
 {
   TEST_BEGIN("canfd receive decodes extended FD frame");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_1);
   reg->CFDRFSTS[0]        = 0U;
@@ -641,7 +642,7 @@ static void test_receive_extended_fd_frame(void)
 static void test_receive_null_out(void)
 {
   TEST_BEGIN("canfd receive rejects NULL out");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_canfd_receive((uint8_t)k_ra8_canfd_test_channel_0, nullptr));
   TEST_END("canfd receive rejects NULL out");
@@ -656,7 +657,7 @@ static void test_receive_null_out(void)
 static void test_receive_bad_channel(void)
 {
   TEST_BEGIN("canfd receive rejects bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_canfd_frame_t out = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_canfd_receive((uint8_t)k_ra8_canfd_test_channel_bad, &out));
@@ -672,7 +673,7 @@ static void test_receive_bad_channel(void)
 static void test_get_error_state_happy(void)
 {
   TEST_BEGIN("canfd get_error_state happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* TEC[31:24] = 0x55, REC[23:16] = 0xAA in CFDC[0].STS. */
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
@@ -697,7 +698,7 @@ static void test_get_error_state_happy(void)
 static void test_get_error_state_null_tx(void)
 {
   TEST_BEGIN("canfd get_error_state rejects NULL tx_err");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint8_t rx_err = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -714,7 +715,7 @@ static void test_get_error_state_null_tx(void)
 static void test_get_error_state_null_rx(void)
 {
   TEST_BEGIN("canfd get_error_state rejects NULL rx_err");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint8_t tx_err = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -731,7 +732,7 @@ static void test_get_error_state_null_rx(void)
 static void test_get_error_state_bad_channel(void)
 {
   TEST_BEGIN("canfd get_error_state rejects bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint8_t tx_err = 0U;
   uint8_t rx_err = 0U;

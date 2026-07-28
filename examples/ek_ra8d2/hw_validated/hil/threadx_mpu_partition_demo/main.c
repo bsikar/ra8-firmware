@@ -36,7 +36,7 @@
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #endif
 
@@ -153,7 +153,7 @@ static const ra8_mpu_cfg_t s_mpu_cfg = {
  * to `_tx_timer_interrupt`) so no per-app override is needed.
  * --------------------------------------------------------------------------- */
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 [[gnu::aligned(8)]] static uint8_t s_thread_stack[k_mpu_thread_stack_bytes];
 static TX_THREAD                   s_thread;
 
@@ -217,7 +217,7 @@ void tx_application_define(void* first_unused_memory)
     }
   }
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Application entry: program MPU, init GPIO, dispatch ThreadX.
@@ -259,7 +259,7 @@ int32_t main(void)
     }
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

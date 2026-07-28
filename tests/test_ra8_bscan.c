@@ -19,7 +19,7 @@
 #include "ra8_bscan.h"
 #include "ra8_bscan_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -50,7 +50,7 @@ typedef enum : uint8_t {
 static void test_init_happy(void)
 {
   TEST_BEGIN("bscan init happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_deinit();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bscan_init());
@@ -76,7 +76,7 @@ static void test_init_happy(void)
 static void test_get_idcode_happy(void)
 {
   TEST_BEGIN("bscan get_idcode happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_deinit();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bscan_init());
 
@@ -95,7 +95,7 @@ static void test_get_idcode_happy(void)
 static void test_get_idcode_null(void)
 {
   TEST_BEGIN("bscan get_idcode null");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_init();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_bscan_get_idcode(nullptr));
@@ -111,7 +111,7 @@ static void test_get_idcode_null(void)
 static void test_get_idcode_not_initialized(void)
 {
   TEST_BEGIN("bscan get_idcode not initialized");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_deinit();
 
   uint32_t idcode = 0U;
@@ -128,7 +128,7 @@ static void test_get_idcode_not_initialized(void)
 static void test_get_status_null(void)
 {
   TEST_BEGIN("bscan get_status null");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_bscan_get_status(nullptr));
   TEST_END("bscan get_status null");
@@ -143,7 +143,7 @@ static void test_get_status_null(void)
 static void test_set_instruction_happy(void)
 {
   TEST_BEGIN("bscan set_instruction happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_deinit();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bscan_init());
 
@@ -168,7 +168,7 @@ static void test_set_instruction_happy(void)
 static void test_set_instruction_reserved(void)
 {
   TEST_BEGIN("bscan set_instruction reserved");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_deinit();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bscan_init());
 
@@ -190,7 +190,7 @@ static void test_set_instruction_reserved(void)
 static void test_set_instruction_not_initialized(void)
 {
   TEST_BEGIN("bscan set_instruction not initialized");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_deinit();
 
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_bscan_set_instruction(k_ra8_bscan_instr_extest));
@@ -206,7 +206,7 @@ static void test_set_instruction_not_initialized(void)
 static void test_clear_status_happy(void)
 {
   TEST_BEGIN("bscan clear_status happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_deinit();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bscan_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bscan_set_instruction(k_ra8_bscan_instr_extest));
@@ -233,7 +233,7 @@ static void test_clear_status_happy(void)
 static void test_clear_status_bad_mask(void)
 {
   TEST_BEGIN("bscan clear_status bad mask");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_init();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -250,7 +250,7 @@ static void test_clear_status_bad_mask(void)
 static void test_clear_status_not_initialized(void)
 {
   TEST_BEGIN("bscan clear_status not initialized");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_bscan_deinit();
 
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_bscan_clear_status(0U));
@@ -266,7 +266,7 @@ static void test_clear_status_not_initialized(void)
 static void test_deinit_idempotent(void)
 {
   TEST_BEGIN("bscan deinit idempotent");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bscan_deinit());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bscan_deinit());

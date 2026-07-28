@@ -1,6 +1,6 @@
 /**
  * @file examples/ra8p1_foundation/npu_smoke/main.c
- * @brief RA8P1 Arm Ethos-U55 NPU foundation smoke -- runs a checkable sim job
+ * @brief RA8P1 Arm Ethos-U55 NPU foundation smoke -- runs a checkable stand-in job
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -24,7 +24,7 @@
  * header for the ``TODO(EK-RA8P1 UM / ra8p1_kicad)`` rationale.
  *
  * The command stream is NOT a real Vela program: it uses the tiny, documented
- * ra8_emulator / host-test convention in ``ra8_npu_sim_cmd.h`` (an "SE55" magic word
+ * ra8_emulator / host-test convention in ``ra8_npu_fake_cmd.h`` (an "SE55" magic word
  * plus an add-constant opcode). Under ``tools/ra8_emulator --device ra8p1`` the NPU
  * model decodes it and applies the op to the tensor arenas, so this app is a
  * DETERMINISTIC, emulator-runnable check of the driver protocol + BASEPn region
@@ -53,8 +53,8 @@
 #include "ra8_device.h"
 #include "ra8_err.h"
 #include "ra8_npu.h"
+#include "ra8_npu_fake_cmd.h"
 #include "ra8_npu_regs.h"
-#include "ra8_npu_sim_cmd.h"
 
 /*
  * Compile-time proof that the RA8P1 toolchain selection reached this TU: the NPU
@@ -71,10 +71,10 @@
  * @brief Command-stream / tensor-arena sizes and the console baud.
  */
 typedef enum : uint32_t {
-  k_npu_smoke_baud        = 115200U,                /**< SCI8 J-Link OB console baud. */
-  k_npu_smoke_arena_bytes = 64U,                    /**< Tensor-arena length (bytes). */
-  k_npu_smoke_cmd_words   = k_ra8_npu_sim_word_num, /**< Command-stream word count.   */
-  k_npu_smoke_line_cap    = 80U,                    /**< Banner line buffer cap.      */
+  k_npu_smoke_baud        = 115200U,                 /**< SCI8 J-Link OB console baud. */
+  k_npu_smoke_arena_bytes = 64U,                     /**< Tensor-arena length (bytes). */
+  k_npu_smoke_cmd_words   = k_ra8_npu_fake_word_num, /**< Command-stream word count.   */
+  k_npu_smoke_line_cap    = 80U,                     /**< Banner line buffer cap.      */
 } npu_smoke_size_t;
 
 /**
@@ -110,8 +110,8 @@ typedef enum : uint32_t {
 
 /**
  * @var s_npu_cmd_stream
- * @brief Sim command stream in SRAM (ra8_npu_sim_cmd.h layout; add-constant op).
- * @details QBASE/QSIZE point the NPU at this; the sim model decodes it.
+ * @brief Stand-in command stream in SRAM (ra8_npu_fake_cmd.h layout; add-constant op).
+ * @details QBASE/QSIZE point the NPU at this; the fake model decodes it.
  * @note Not a real Vela program -- see the file header.
  * @since 0.1.0
  */
@@ -129,7 +129,7 @@ static uint8_t s_npu_weights[k_npu_smoke_arena_bytes];
 /**
  * @var s_npu_input
  * @brief Region 1 input tensor: seeded with a deterministic byte pattern.
- * @details The NPU (sim) reads this and writes input+K to the output arena.
+ * @details The NPU (fake) reads this and writes input+K to the output arena.
  * @note Seeded by npu_smoke_seed_arenas().
  * @since 0.1.0
  */
@@ -139,7 +139,7 @@ static uint8_t s_npu_input[k_npu_smoke_arena_bytes];
  * @var s_npu_output
  * @brief Region 2 output tensor: zeroed pre-run, holds the NPU result post-run.
  * @details Verified byte-for-byte against the expected input+K result.
- * @note Written by the NPU (sim), read back by the app.
+ * @note Written by the NPU (fake), read back by the app.
  * @since 0.1.0
  */
 static uint8_t s_npu_output[k_npu_smoke_arena_bytes];
@@ -242,23 +242,23 @@ static void npu_smoke_setup_or_halt(void)
 }
 
 /**
- * @brief Fill the command stream (add-constant op) per the sim convention.
+ * @brief Fill the command stream (add-constant op) per the stand-in convention.
  *
- * @details Writes the five header words of ra8_npu_sim_cmd.h: magic|opcode,
+ * @details Writes the five header words of ra8_npu_fake_cmd.h: magic|opcode,
  *          source region, destination region, byte count, constant addend.
  *
- * @pre s_npu_cmd_stream has k_ra8_npu_sim_word_num words.
+ * @pre s_npu_cmd_stream has k_ra8_npu_fake_word_num words.
  * @post s_npu_cmd_stream describes an add-constant of region 1 -> region 2.
  * @since 0.1.0
  */
 static void npu_smoke_build_stream(void)
 {
-  s_npu_cmd_stream[k_ra8_npu_sim_word_op] =
-    (uint32_t)k_ra8_npu_sim_magic | (uint32_t)k_ra8_npu_sim_op_addk;
-  s_npu_cmd_stream[k_ra8_npu_sim_word_src]   = (uint32_t)k_npu_smoke_region_input;
-  s_npu_cmd_stream[k_ra8_npu_sim_word_dst]   = (uint32_t)k_npu_smoke_region_output;
-  s_npu_cmd_stream[k_ra8_npu_sim_word_count] = (uint32_t)k_npu_smoke_arena_bytes;
-  s_npu_cmd_stream[k_ra8_npu_sim_word_const] = (uint32_t)k_npu_smoke_addk;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_op] =
+    (uint32_t)k_ra8_npu_fake_magic | (uint32_t)k_ra8_npu_fake_op_addk;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_src]   = (uint32_t)k_npu_smoke_region_input;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_dst]   = (uint32_t)k_npu_smoke_region_output;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_count] = (uint32_t)k_npu_smoke_arena_bytes;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_const] = (uint32_t)k_npu_smoke_addk;
 }
 
 /**

@@ -10,7 +10,7 @@
 #   2. The production extra-MRAM store binding
 #      (ra8_devcfg_store_extra_mram.c): reads the memory-mapped data-flash
 #      window, writes through ra8_flash_extra_mram_write. Under
-#      RA8_SIMULATOR_MODE both accessors address a RAM shadow so the host
+#      RA8_OFF_TARGET both accessors address a RAM shadow so the host
 #      build exercises the same control flow without MMIO.
 #
 # The module never calls malloc -- all buffers live on the stack or in static

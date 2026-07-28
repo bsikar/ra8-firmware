@@ -140,7 +140,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_phy_hw_reset(void)
   }
   err = ra8_gpio_write(rstn_pin, k_ra8_level_high);
   if (err != k_ra8_ok) {
-    /* ra8_gpio_write on a valid in-range mapped port/pin always returns k_ra8_ok in sim. */
+    /* ra8_gpio_write on a valid in-range mapped port/pin always returns k_ra8_ok off-target. */
     return err; /* GCOVR_EXCL_LINE */
   }
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_board_eth_phy_rst_post_iters; ++i) {
@@ -217,7 +217,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_route_alt_pins(void)
     const ra8_err_t err =
       ra8_pfs_set_drive_strength((ra8_port_pin_t)s_eth_tx_pins[i], k_ra8_pfs_dscr_middle);
     if (err != k_ra8_ok) {
-      /* ra8_pfs_set_drive_strength on valid mapped tx pins always returns k_ra8_ok in sim. */
+      /* ra8_pfs_set_drive_strength on valid mapped tx pins always returns k_ra8_ok off-target. */
       return err; /* GCOVR_EXCL_LINE */
     }
   }
@@ -299,7 +299,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_coma_reset(void)
    * HUM Ch 31.3.2.7 "CABPIRM" p 1599: writing BPIOG=1 starts the pool
    * reset; BPR self-sets clk_period x 512 later. On the host build the
    * CABPIRM register is mmap'd RAM with no hardware to self-set BPR, so
-   * the shared bounded waiter consults the ra8_sim_mmio fault seam --
+   * the shared bounded waiter consults the ra8_fake_mmio fault seam --
    * first-poll success unless a test arms a timeout on this register. */
   *ra8_coma_cabpirm() = (uint32_t)k_ra8_coma_cabpirm_bpiog;
   /* HUM Ch 31.3.2.7 "CABPIRM" p 1599 */
@@ -405,7 +405,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz
 {
   ra8_err_t err = ra8_cgc_eswclk_init();
   if (err != k_ra8_ok) {
-    /* ra8_cgc_eswclk_init always returns k_ra8_ok in RA8_SIMULATOR_MODE (polls auto-satisfied). */
+    /* ra8_cgc_eswclk_init always returns k_ra8_ok in RA8_OFF_TARGET (polls auto-satisfied). */
     return err; /* GCOVR_EXCL_LINE */
   }
   err = ra8_cgc_eswclk_hz(out_eswclk_hz);
@@ -415,7 +415,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz
   }
   err = ra8_mstp_enable(k_ra8_mstp_eswm);
   if (err != k_ra8_ok) {
-    /* ra8_mstp_enable returns k_ra8_ok in RA8_SIMULATOR_MODE (readback poll excluded on host). */
+    /* ra8_mstp_enable returns k_ra8_ok in RA8_OFF_TARGET (readback poll excluded on host). */
     return err; /* GCOVR_EXCL_LINE */
   }
   return internal_eth_coma_reset();
@@ -453,7 +453,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_etha_to_config(void)
   };
   ra8_err_t err = ra8_etha_init((ra8_etha_port_t)k_ra8_board_eth_etha_port, &etha_cfg);
   if (err != k_ra8_ok) {
-    /* ra8_etha_init returns k_ra8_ok with a valid port (1) and non-null cfg in sim. */
+    /* ra8_etha_init returns k_ra8_ok with a valid port (1) and non-null cfg off-target. */
     return err; /* GCOVR_EXCL_LINE */
   }
   static const ra8_etha_opc_t s_chain[] = {
@@ -463,7 +463,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_etha_to_config(void)
   for (uint8_t step = 0U; step < (uint8_t)(sizeof(s_chain) / sizeof(s_chain[0])); ++step) {
     err = ra8_etha_set_mode((ra8_etha_port_t)k_ra8_board_eth_etha_port, s_chain[step]);
     if (err != k_ra8_ok) {
-      /* ra8_etha_set_mode returns k_ra8_ok in RA8_SIMULATOR_MODE with a valid port and mode. */
+      /* ra8_etha_set_mode returns k_ra8_ok in RA8_OFF_TARGET with a valid port and mode. */
       return err; /* GCOVR_EXCL_LINE */
     }
     for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_board_eth_etha_step_iters; ++i) {

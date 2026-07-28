@@ -14,7 +14,7 @@
  * Mbed TLS is only linked into the firmware build when
  * ``RA8_USE_MBEDTLS=ON`` is set on the top-level CMake invocation. The
  * host unit-test build (``tests/CMakeLists.txt``) defines
- * ``RA8_SIMULATOR_MODE`` for every translation unit and intentionally
+ * ``RA8_OFF_TARGET`` for every translation unit and intentionally
  * does not link the heavy Mbed TLS object library; in that mode this
  * file replaces every ``mbedtls_ssl_*`` call with a tiny in-memory
  * stand-in that exercises the BIO callback contract end-to-end. The
@@ -40,16 +40,16 @@ typedef enum : uint8_t {
   k_tls_content_handshake = 0x16U, /**< TLS content handshake. */
 } tls_content_type_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "mbedtls/error.h"
 #include "mbedtls/ssl.h"
 #include "mbedtls/x509_crt.h"
 #include "psa/crypto.h"
 #endif
 
-#ifdef RA8_SIMULATOR_MODE
-/** @brief Deterministic cipher-suite name reported on the simulator path. */
-static const char* const k_ra8_tls_sim_cipher = "sim-tls-loopback";
+#ifdef RA8_OFF_TARGET
+/** @brief Deterministic cipher-suite name reported on the off-target path. */
+static const char* const k_ra8_tls_fake_cipher = "off-target-loopback";
 #endif
 
 /* =============================================================================
@@ -77,16 +77,16 @@ static const char* const k_ra8_tls_tag = "ra8_tls";
  */
 struct ra8_tls_session_handle {
   /* Field order places the aligned cfg block first so the host
-   * (RA8_SIMULATOR_MODE) slot -- cfg, in_use, handshake_done -- carries no
+   * (RA8_OFF_TARGET) slot -- cfg, in_use, handshake_done -- carries no
    * excess padding (clang-analyzer-optin.performance.Padding). */
   ra8_tls_session_cfg_t cfg;    /**< Cached caller configuration. */
   bool                  in_use; /**< Slot allocated.              */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   mbedtls_ssl_context ssl;    /**< Mbed TLS SSL context.                */
   mbedtls_ssl_config  config; /**< Mbed TLS SSL configuration block.    */
   mbedtls_x509_crt    ca;     /**< Parsed trust anchor (if cfg.ca_pem). */
 #else
-  bool handshake_done; /**< Simulator-only flag for the loopback test path. */
+  bool handshake_done; /**< Fake-only flag for the loopback test path. */
 #endif /**< Endif. */
 };
 
@@ -169,7 +169,7 @@ static void internal_pool_reset(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_tls_max_sessions; ++i) {
     struct ra8_tls_session_handle* slot = &s_session_pool[i];
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
     if (slot->in_use) {
       mbedtls_ssl_free(&slot->ssl);
       mbedtls_ssl_config_free(&slot->config);
@@ -228,7 +228,7 @@ ra8_err_t ra8_tls_global_init(void)
 
   internal_pool_reset();
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* Mbed TLS 4.x sources randomness from the PSA crypto layer
    * (``psa_generate_random``) rather than a facade-owned CTR_DRBG. Bring
    * PSA online here; the actual entropy is pulled lazily on the first
@@ -304,7 +304,7 @@ static ra8_err_t internal_session_validate_args(ra8_tls_session_t*           out
   return k_ra8_ok;
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Apply the caller's verify-mode and optional trust anchor to a slot.
  *
@@ -445,7 +445,7 @@ ra8_err_t ra8_tls_session_open(ra8_tls_session_t* out_session, const ra8_tls_ses
   slot->in_use = true;
   slot->cfg    = *cfg;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   const ra8_err_t setup_rc = internal_session_mbedtls_setup(slot, cfg);
   if (setup_rc != k_ra8_ok) {
     return setup_rc;
@@ -467,7 +467,7 @@ ra8_err_t ra8_tls_session_close(ra8_tls_session_t session)
     return k_ra8_err_invalid_arg;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   mbedtls_ssl_free(&session->ssl);
   mbedtls_ssl_config_free(&session->config);
   mbedtls_x509_crt_free(&session->ca);
@@ -485,7 +485,7 @@ ra8_err_t ra8_tls_handshake(ra8_tls_session_t session)
     return k_ra8_err_invalid_arg;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   const int rc = mbedtls_ssl_handshake(&session->ssl);
   if (rc == 0) {
     return k_ra8_ok;
@@ -496,11 +496,11 @@ ra8_err_t ra8_tls_handshake(ra8_tls_session_t session)
   ra8_log_error(k_ra8_tls_tag, "handshake failed");
   return k_ra8_err_comm_error;
 #else
-  /* Simulator path: drive a single round-trip through the BIO callbacks
+  /* Off-target path: drive a single round-trip through the BIO callbacks
    * so the loopback test exercises the function-pointer plumbing without
    * a real TLS handshake. */
-  uint8_t   sim_byte = k_tls_content_handshake;
-  const int send_rc  = session->cfg.bio_send(session->cfg.bio_ctx, &sim_byte, 1U);
+  uint8_t   fake_byte = k_tls_content_handshake;
+  const int send_rc   = session->cfg.bio_send(session->cfg.bio_ctx, &fake_byte, 1U);
   if (send_rc < 0) {
     return k_ra8_err_comm_error;
   }
@@ -534,7 +534,7 @@ ra8_err_t ra8_tls_send(ra8_tls_session_t session, const uint8_t* buf, size_t len
     return k_ra8_ok;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   const int rc = mbedtls_ssl_write(&session->ssl, buf, len);
   if (rc >= 0) {
     *out_sent = (size_t)rc;
@@ -574,7 +574,7 @@ ra8_err_t ra8_tls_recv(ra8_tls_session_t session, uint8_t* buf, size_t len, size
     return k_ra8_ok;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   const int rc = mbedtls_ssl_read(&session->ssl, buf, len);
   if (rc >= 0) {
     *out_received = (size_t)rc;
@@ -615,7 +615,7 @@ ra8_err_t ra8_tls_get_cipher_suite(ra8_tls_session_t session,
     return k_ra8_err_invalid_arg;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   const char* name = mbedtls_ssl_get_ciphersuite(&session->ssl);
   if (name != nullptr) {
     *out_id = (uint16_t)mbedtls_ssl_get_ciphersuite_id_from_ssl(&session->ssl);
@@ -623,7 +623,7 @@ ra8_err_t ra8_tls_get_cipher_suite(ra8_tls_session_t session,
   }
   return k_ra8_ok;
 #else
-  internal_copy_cstr(out_name, k_ra8_tls_sim_cipher, name_cap);
+  internal_copy_cstr(out_name, k_ra8_tls_fake_cipher, name_cap);
   return k_ra8_ok;
 #endif
 }
@@ -642,7 +642,7 @@ ra8_err_t ra8_tls_get_verify_result(ra8_tls_session_t session, uint32_t* out_fla
     return k_ra8_err_invalid_arg;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   *out_flags = mbedtls_ssl_get_verify_result(&session->ssl);
 #endif
   return k_ra8_ok;

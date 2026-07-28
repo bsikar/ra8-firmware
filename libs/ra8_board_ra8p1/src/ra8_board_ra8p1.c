@@ -193,7 +193,7 @@ ra8_err_t ra8_board_sw_read(ra8_board_sw_id_t sw, ra8_board_sw_state_t* out_pres
   ra8_level_t lvl = k_ra8_level_high;
   err             = ra8_gpio_read(pin, &lvl);
   if (err != k_ra8_ok) {
-    /* ra8_gpio_read returns k_ra8_ok for valid port-0 SW pins in simulation. */
+    /* ra8_gpio_read returns k_ra8_ok for valid port-0 SW pins off-target. */
     return err; /* GCOVR_EXCL_LINE */
   }
   /* Buttons are active-low: low level == pressed. */
@@ -312,7 +312,7 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   };
   err = ra8_sci_init((uint8_t)k_ra8_board_uart_console_sci_channel, &cfg);
   if (err != k_ra8_ok) {
-    /* ra8_sci_init on a valid channel with a non-null cfg always returns k_ra8_ok in RA8_SIMULATOR_MODE. */
+    /* ra8_sci_init on a valid channel with a non-null cfg always returns k_ra8_ok in RA8_OFF_TARGET. */
     return err; /* GCOVR_EXCL_LINE */
   }
   s_uart_console_initialized = true;

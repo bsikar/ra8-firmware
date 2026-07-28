@@ -30,7 +30,7 @@
 
 #include "usb_selftest_hs_host_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_fs.h"
@@ -715,4 +715,4 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
   return k_ra8_ok;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

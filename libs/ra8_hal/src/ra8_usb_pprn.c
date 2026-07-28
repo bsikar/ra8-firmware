@@ -219,7 +219,7 @@ ra8_err_t ra8_usb_pprn_init(ra8_usb_speed_t speed)
      * validation (internal_check_ep_args) or a NULL controller block. This layer calls it with
      * compile-time-constant valid arguments (PIPE3/PIPE4, EP1/EP2, valid dir/type, max-packet
      * 64/512 <= 1024 ceiling) and speed is already validated to FS/HS above, so internal_pick
-     * never returns NULL. No simulator register seed can force this leg. */
+     * never returns NULL. No fake register seed can force this leg. */
     (void)ra8_usb_device_deinit(speed);
     return pipes_err;
     /* GCOVR_EXCL_STOP */

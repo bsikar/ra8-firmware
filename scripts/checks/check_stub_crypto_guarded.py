@@ -4,7 +4,7 @@
 """Gate: every insecure placeholder-crypto body shall be guarded fail-closed.
 
 Several secure-side translation units ship an INSECURE placeholder body that is
-only safe under host simulation or an explicitly-declared insecure dev/eval
+only safe under an off-target build or an explicitly-declared insecure dev/eval
 image (issue #180):
 
   - src/secure_app/secure_trng.c        deterministic xorshift PRNG as a "TRNG"
@@ -18,7 +18,7 @@ image (issue #180):
 
 Each such body MUST be wrapped in the guard::
 
-    #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+    #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
         <insecure placeholder body>
     #else
         <fail-closed: every entry point returns a hard error, never k_ra8_ok>
@@ -28,7 +28,7 @@ so a real production/HIL image that sets NEITHER flag compiles the fail-closed
 #else and cannot silently ship the stub. This gate is the compile-time-of-CI
 guarantee the audit asked for: it FAILS if, for any listed TU,
 
-  1. the guard `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)`
+  1. the guard `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)`
      is absent, or has no matching #else / #endif;
   2. the #else branch is not fail-closed (no `#error` and no `k_ra8_err_` return);
   3. the TU's insecure signature token escapes the guarded region (appears before
@@ -79,7 +79,7 @@ def is_guard_open(line: str) -> bool:
     return bool(
         re.match(r"^\s*#\s*if\b", line)
         and "RA8_INSECURE_STUB_CRYPTO" in line
-        and "RA8_SIMULATOR_MODE" in line
+        and "RA8_OFF_TARGET" in line
     )
 
 
@@ -120,7 +120,7 @@ def check_file(rel: str, token: str) -> list[str]:
     if region is None:
         return [
             f"{rel}: missing the stub-crypto guard "
-            f"'#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)' "
+            f"'#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)' "
             f"with a matching #else / #endif"
         ]
     if_idx, else_idx, endif_idx = region
@@ -152,7 +152,7 @@ def check_file(rel: str, token: str) -> list[str]:
         problems.append(
             f"{rel}: insecure signature '{token}' appears OUTSIDE the guard "
             f"({where}) -- the insecure body must be fully inside the "
-            f"#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE) block"
+            f"#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET) block"
         )
 
     return problems
@@ -178,7 +178,7 @@ def main() -> int:
         for p in all_problems:
             print(f"  {p}")
         print("Fix each at the root -- wrap the insecure body in")
-        print("  #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)")
+        print("  #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)")
         print("and make the #else fail closed (return k_ra8_err_* / #error), or replace")
         print("the placeholder with a real crypto backend.")
         return 1

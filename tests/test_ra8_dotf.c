@@ -14,8 +14,8 @@
 #include "ra8_dotf.h"
 #include "ra8_dotf_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -96,7 +96,7 @@ static void stub_dotf_cb(void* ctx, uint8_t ch)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_cb_count   = 0U;
   s_cb_last_ch = 0U;

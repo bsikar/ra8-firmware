@@ -96,7 +96,7 @@ typedef enum : uint32_t {
    * 256 iters x ~3 cycles == sub-microsecond at 1 GHz. */
   k_ra8_usb_dblb_frdy_poll_limit = 256UL, /**< RA8 USB dblb frdy poll limit. */
   /* CFIFOSEL CURPIPE/ISEL readback settle bound (a handful of bus
-   * clocks; generous to stay simulator-safe). */
+   * clocks; generous to stay fake-safe). */
   k_ra8_usb_fifosel_settle_limit = 1000UL, /**< RA8 USB fifosel settle limit. */
 } ra8_usb_internal_lim32_t;
 /* =============================================================================
@@ -236,7 +236,7 @@ void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool i
  *
  * @details Runs the real bounded FRDY poll on every build. On the host
  * unit-test build each poll's loop-exit decision is routed through the
- * ra8_sim_mmio fault seam keyed on CFIFOCTR: first-poll success when no
+ * ra8_fake_mmio fault seam keyed on CFIFOCTR: first-poll success when no
  * fault is armed, or a test-armed retry / timeout leg (T1-01).
  * @param[in] reg Selected controller register block (non-NULL).
  * @retval k_ra8_ok FRDY observed before the deadline.
@@ -257,9 +257,9 @@ ra8_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
    * wire. See ra8_usb_internal_lim32_t for the rationale. */
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_usb_frdy_poll_limit; ++i) {
     const bool frdy = ((reg->CFIFOCTR & k_ra8_fifoctr_frdy) != 0U);
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam, keyed on CFIFOCTR (the polled register). */
-    if (ra8_sim_mmio_wait_eval(&reg->CFIFOCTR, i, frdy)) {
+    if (ra8_fake_mmio_wait_eval(&reg->CFIFOCTR, i, frdy)) {
       return k_ra8_ok;
     }
 #else

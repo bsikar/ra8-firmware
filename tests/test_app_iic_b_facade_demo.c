@@ -15,7 +15,7 @@
  *    target-mode service poll, under full MC/DC.
  *  - The real CONTROLLER path the app runs: bind the facade to IIC_B channel 0
  *    and issue the write-pointer / repeated-START / read of the GT911
- *    PRODUCT_ID, driven end to end against the ``ra8_sim_mmap`` register
+ *    PRODUCT_ID, driven end to end against the ``ra8_fake_mmap`` register
  *    substrate (flags pre-armed exactly as test_ra8_io_i2c_bus.c does).
  *  - The real PERIPHERAL path: open the channel as an addressed target and read
  *    status, with the demo's NULL / bad-channel guards.
@@ -32,12 +32,12 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i3c.h"
 #include "ra8_i3c_i2c_regs.h"
 #include "ra8_io_i2c_bus.h"
 #include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -106,7 +106,7 @@ static bool periph_acted(uint8_t mask)
 /** @brief Clean the register window + bring the MSTP layer up. */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

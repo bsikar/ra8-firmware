@@ -62,11 +62,11 @@ static volatile r_ipc_nmi_regs_t* internal_ra8_ipc_get_nmi(uint8_t unit)
  * documents "Set condition: Reading this register", and the read data
  * report the LOCK state from *before* the set. The host unit-test
  * register file is dumb RAM with no read side effects, so the host
- * test build routes the same read through the ``ra8_sim_mmio``
+ * test build routes the same read through the ``ra8_fake_mmio``
  * read-to-set model, which performs the read and then latches LOCK in
  * the backing RAM exactly as the silicon set condition does. A test
  * models a peer core releasing the semaphore mid-spin with
- * ``ra8_sim_mmio_set_poll_hook``.
+ * ``ra8_fake_mmio_set_poll_hook``.
  *
  * @param[in] sem Mapped IPCSEMn register. Must not be NULL (callers
  *                null-check the accessor result before calling).
@@ -85,11 +85,11 @@ RA8_INTERNAL
 RA8_ISR_SAFE
 static uint32_t internal_ra8_ipc_sem_read_take(volatile uint32_t* sem)
 {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- the seam performs the driver's read
    * and applies the "Set condition: Reading this register" latch that
    * dumb host RAM cannot. */
-  return ra8_sim_mmio_read_to_set32(sem, k_ra8_ipc_sem_mask_lock) & k_ra8_ipc_sem_mask_lock;
+  return ra8_fake_mmio_read_to_set32(sem, k_ra8_ipc_sem_mask_lock) & k_ra8_ipc_sem_mask_lock;
 #else
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Set condition: Reading this
    * register". Reading the register sets LOCK to 1; the read result
@@ -107,7 +107,7 @@ static uint32_t internal_ra8_ipc_sem_read_take(volatile uint32_t* sem)
  * unit-test register file is dumb RAM that would store the literal 1
  * (leaving the register file claiming "locked" after a release), so
  * the host test build routes the same write through the
- * ``ra8_sim_mmio`` write-1-to-clear model, which leaves LOCK cleared
+ * ``ra8_fake_mmio`` write-1-to-clear model, which leaves LOCK cleared
  * exactly as silicon does.
  *
  * @param[in] sem Mapped IPCSEMn register. Must not be NULL (callers
@@ -124,11 +124,11 @@ RA8_INTERNAL
 RA8_ISR_SAFE
 static void internal_ra8_ipc_sem_release_write(volatile uint32_t* sem)
 {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- the seam applies the driver's W1C
    * release command to the RAM register file the way the silicon clear
    * condition does. */
-  ra8_sim_mmio_write1_clear32(sem, k_ra8_ipc_sem_mask_lock, k_ra8_ipc_sem_mask_lock);
+  ra8_fake_mmio_write1_clear32(sem, k_ra8_ipc_sem_mask_lock, k_ra8_ipc_sem_mask_lock);
 #else
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Clear condition: Writing 1 to
    * this bit". */

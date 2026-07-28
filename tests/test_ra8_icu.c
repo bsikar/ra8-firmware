@@ -7,9 +7,9 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_icu.h"
 #include "ra8_icu_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -45,7 +45,7 @@ typedef enum : uint32_t {
 static void test_init_clears_irqcr_and_nmi(void)
 {
   TEST_BEGIN("ra8_icu_init: IRQCR + NMIER + WUPEN cleared");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pre-pollute IRQCR0, IRQCR16 (IRQCRb[0]), NMIER, WUPEN0, WUPEN1 so
    * we can observe the clear. */
@@ -88,7 +88,7 @@ static void test_ielsr_mask_is_10_bits(void)
 static void test_configure_irq_pin_irqcrb(void)
 {
   TEST_BEGIN("ra8_icu_configure_irq_pin: IRQCRb channel 20");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_icu_init();
 
   const ra8_icu_irq_cfg_t cfg = {
@@ -115,7 +115,7 @@ static void test_configure_irq_pin_irqcrb(void)
 static void test_configure_irq_pin(void)
 {
   TEST_BEGIN("ra8_icu_configure_irq_pin: rising-edge w/ filter");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_icu_init();
 
   const ra8_icu_irq_cfg_t cfg = {
@@ -141,7 +141,7 @@ static void test_configure_irq_pin(void)
 static void test_configure_irq_pin_bad_inputs(void)
 {
   TEST_BEGIN("ra8_icu_configure_irq_pin: bad inputs rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_icu_init();
 
   const ra8_icu_irq_cfg_t cfg = {
@@ -168,7 +168,7 @@ static void test_configure_irq_pin_bad_inputs(void)
 static void test_nmi_enable_disable_clear(void)
 {
   TEST_BEGIN("ra8_icu_nmi_enable / disable / clear");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_icu_init();
 
   /* FSP R_ICU_NMIER uses bits 0..20. Test with a broad mask so the

@@ -137,7 +137,7 @@ typedef enum : uint32_t {
   k_dfu_attach_spin    = 50000000U, /**< Attach spin cap (frozen-tick guard). */
 } dfu_enum_tune_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /**
  * @brief Run the full host pass: enumerate, download, upload-verify.
@@ -152,4 +152,4 @@ typedef enum : uint32_t {
  */
 [[nodiscard]] ra8_err_t dfu_host_pass(void);
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

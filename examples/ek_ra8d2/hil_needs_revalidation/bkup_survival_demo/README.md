@@ -46,7 +46,7 @@ VBATT area is held in `VBATT_POR` reset. Bench debugger reads confirm it:
 `VBTBKR0` reads back `0x00000000` -- writes to `VBTBPCR1` / `VBTBKRn` are
 dropped even with `VBTBER.VBAE = 1` (VBAE resets to 1, so it was never the
 gate). `tools/ra8_emulator` models `VBTBKRn` as plain retained RAM with no
-option memory, so the sim reports `rw=ok` while the bench reports `rw=BAD` --
+option memory, so the emulator reports `rw=ok` while the bench reports `rw=BAD` --
 the classic ra8_emulator-masks-silicon pattern.
 
 **Fix:** enable LVD0 by setting `OFS1 = 0xFFFFFFF0` (`PVDAS = 0`, `VDSEL0 =
@@ -73,8 +73,8 @@ buffer whose reset hook deliberately leaves them untouched, and writes are
 **gated on `VBTBER.VBAE`** (HUM Ch 12.2.6 p 504) so the read/write half
 passes headlessly (`g_bkup_rw_ok = 1`, banner `rw=ok`) only because the demo
 arms VBAE first -- a firmware that forgot the enable now reports `rw=BAD` on
-the sim too. The sim cannot model the `OFS1`/LVD0 option-byte prerequisite
-(no option memory in the emulator), which is why the sim passes while the
+the fake too. The fake cannot model the `OFS1`/LVD0 option-byte prerequisite
+(no option memory in the emulator), which is why the fake passes while the
 bench fails (see [Root cause](#root-cause--silicon-status-131)).
 ra8_emulator also has a **warm-reboot** capability (`--reboot N`) that re-runs
 the firmware from its reset vector with that domain retained, so:
@@ -86,7 +86,7 @@ ra8_emulator bkup_survival_demo.elf --reboot 1
 plants the sentinel on the first boot, warm-reboots, and the second boot
 finds it intact -- `g_bkup_survived = 1`, banner `survived=Y` -- which the
 `ra8_emulator_smoke.sh` gate asserts. The app stays in `hw_pending/` until
-reset survival is confirmed on silicon (the simulator proves the VBTBKRn
+reset survival is confirmed on silicon (the emulator proves the VBTBKRn
 read / write and the reset-retention contract, not the real battery-backed
 SRAM cell).
 

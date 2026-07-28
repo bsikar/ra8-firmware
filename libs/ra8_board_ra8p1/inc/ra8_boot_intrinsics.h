@@ -58,9 +58,9 @@ static inline void ra8_boot_write32(uintptr_t addr, uint32_t value)
 }
 
 /**
- * @brief Data synchronisation barrier (no-op under ``RA8_SIMULATOR_MODE``).
+ * @brief Data synchronisation barrier (no-op under ``RA8_OFF_TARGET``).
  * @details Completes all prior memory accesses before continuing.
- * @pre Running on the target core (or the host simulator).
+ * @pre Running on the target core (or the host fake).
  * @pre Used after an MMIO write that must take effect before the next step.
  * @post All earlier explicit memory accesses have completed.
  * @post Subsequent instructions observe those effects.
@@ -69,15 +69,15 @@ static inline void ra8_boot_write32(uintptr_t addr, uint32_t value)
  */
 static inline void ra8_boot_dsb(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("dsb 0xF" ::: "memory");
 #endif
 }
 
 /**
- * @brief Instruction synchronisation barrier (no-op under ``RA8_SIMULATOR_MODE``).
+ * @brief Instruction synchronisation barrier (no-op under ``RA8_OFF_TARGET``).
  * @details Flushes the pipeline so later instructions see prior context changes.
- * @pre Running on the target core (or the host simulator).
+ * @pre Running on the target core (or the host fake).
  * @pre A system-control register affecting fetch/exec was just written.
  * @post The pipeline is flushed; later instructions use the new context.
  * @post No data state is mutated.
@@ -86,15 +86,15 @@ static inline void ra8_boot_dsb(void)
  */
 static inline void ra8_boot_isb(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("isb 0xF" ::: "memory");
 #endif
 }
 
 /**
- * @brief Mask IRQs / set PRIMASK (no-op under ``RA8_SIMULATOR_MODE``).
+ * @brief Mask IRQs / set PRIMASK (no-op under ``RA8_OFF_TARGET``).
  * @details Disables maskable interrupt delivery for the critical boot window.
- * @pre Running on the target core (or the host simulator).
+ * @pre Running on the target core (or the host fake).
  * @pre Called early in Reset before handlers are armed.
  * @post Maskable interrupts are disabled (PRIMASK=1).
  * @post No data state is mutated.
@@ -103,7 +103,7 @@ static inline void ra8_boot_isb(void)
  */
 static inline void ra8_boot_disable_irq(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("cpsid i" ::: "memory");
 #endif
 }

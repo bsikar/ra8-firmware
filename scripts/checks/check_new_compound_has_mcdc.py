@@ -360,7 +360,7 @@ def compound_decision_lines(text: str) -> set[tuple[int, str]]:
         # compile-time conditional compilation, not runtime decisions, so
         # MC/DC -- a runtime coverage criterion -- does not apply. The
         # canonical case is the fail-closed stub-crypto guard
-        # `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)`
+        # `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)`
         # whose `||` selects a translation unit and is never evaluated at run
         # time. Skip any preprocessor line.
         if raw.lstrip().startswith("#"):

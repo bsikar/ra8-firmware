@@ -171,7 +171,7 @@ extern "C" {
  * @retval k_ra8_err_gpio_conflict      Pin is already claimed by
  *                                     another owner.
  * @retval k_ra8_err_hw_unmapped        Pin has no PFS mapping
- *                                     (host-test sim only).
+ *                                     (host-test fake only).
  *
  * @pre IOPORT module is reachable.
  * @pre Caller is single-threaded init context.

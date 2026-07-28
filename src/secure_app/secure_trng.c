@@ -27,13 +27,13 @@ static const char* s_tag = "SECTRNG";
  * Fail-closed stub-crypto gate (issue #180). The xorshift64* core below is a
  * DETERMINISTIC PRNG masquerading as a TRNG -- predictable "random" bytes were
  * the #1 severity finding in the security audit (predictable keys). It is only
- * safe under host simulation or an explicitly-declared insecure dev/eval image.
+ * safe under an off-target build or an explicitly-declared insecure dev/eval image.
  * A real production/HIL image (neither flag set) compiles the #else branch,
  * where every entry point hard-errors so predictable entropy can never be
  * drawn. scripts/checks/check_stub_crypto_guarded.py enforces that this guard
  * stays wrapped around the insecure body.
  */
-#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
 
 /**
  * @brief xorshift64* tuning constants (named to satisfy the
@@ -162,7 +162,7 @@ ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len)
   return k_ra8_ok;
 }
 
-#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_OFF_TARGET */
 
 /*
  * Fail-closed production variant. Without a real RSIP TRNG backend the
@@ -183,4 +183,4 @@ ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len)
   return k_ra8_err_not_supported;
 }
 
-#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_OFF_TARGET */

@@ -54,12 +54,12 @@
 #include "ra8_time.h"
 
 /*
- * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_OFF_TARGET) does not link the
  * ThreadX or NimBLE vendor trees, so `tx_api.h` and our adapter
  * headers are unreachable when clang-tidy walks this file. Pull
  * them in only on the cross-compile target.
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "ble_hci_ra8_ble.h"
 #include "nimble_npl_threadx.h"
 #include "ra8_ble.h"
@@ -111,12 +111,12 @@ static const char k_demo_local_name[] = "EK-RA8D2";
 /** @brief Tag used in SCI8 / ra8_log output to identify this app. */
 static const char* s_demo_tag = "ble_nimble";
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /** @brief Worker thread control block (statically allocated). */
 static TX_THREAD s_demo_thread;
 /** @brief Worker thread stack. ThreadX requires non-zero static storage. */
 static UCHAR s_demo_stack[k_demo_thread_stack];
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /** @brief Current battery percentage value (mirrored to GATT cache). */
 static uint8_t s_demo_battery_level = k_demo_battery_init;
@@ -185,7 +185,7 @@ static void demo_clocks_or_halt(void)
   }
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Bring the BLE controller + NimBLE adapter up.
  *
@@ -293,7 +293,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -317,7 +317,7 @@ int32_t main(void)
   demo_log(s_demo_tag);
   demo_log("\r\n");
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* Hands control over to ThreadX permanently. */
   tx_kernel_enter();
 #endif

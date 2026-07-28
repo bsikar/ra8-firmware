@@ -19,11 +19,11 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_ether_regs.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -37,8 +37,8 @@ typedef enum : uint8_t {
 
 static void reset_board_hal_state(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   ra8_pin_validator_reset();
 }
 
@@ -422,7 +422,7 @@ static void test_mipi_dsi_pins(void)
 static void test_stubs_return_not_supported(void)
 {
   TEST_BEGIN("usbhs / mipi-dsi stubs return not_supported");
-  /* USBHS device/host promoted to real in commit 28c4ed436; sim hits CGC
+  /* USBHS device/host promoted to real in commit 28c4ed436; fake hits CGC
    * MOSCSF-wait timeout. Just exercise both for crash-immunity. */
   (void)ra8_board_usbhs_device_init();
   (void)ra8_board_usbhs_host_init();
@@ -653,7 +653,7 @@ static void test_board_io_expander(void)
 {
   TEST_BEGIN("board_io_expander_set_usbhs_device_mode forwards to hal");
   reset_board_hal_state();
-  /* The simulator backs the RIIC block with plain memory and never
+  /* The fake backs the RIIC block with plain memory and never
    * raises TDRE, so the real ra8_i2c controller driver stalls waiting for
    * the first transmit-data-empty and reports hw_timeout. The contract
    * being checked is that the BSP propagates the HAL failure unchanged. */
@@ -701,10 +701,10 @@ static void test_board_ethernet_init_coma_bpr_timeout(void)
   /* Arm the COMA buffer-pool-ready register so BPR never asserts: the
    * COMA bring-up's bounded wait exhausts its budget and init returns
    * the real hardware-timeout error instead of the fake success the
-   * deleted RA8_SIMULATOR_MODE short-circuit used to return. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)ra8_coma_cabpirm()));
+   * deleted RA8_OFF_TARGET short-circuit used to return. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_coma_cabpirm()));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_board_ethernet_init());
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
   TEST_END("board_ethernet_init reports CABPIRM.BPR timeout");
 }
 

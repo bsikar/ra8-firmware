@@ -16,7 +16,7 @@
 #include "ra8_bkup.h"
 #include "ra8_bkup_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -124,7 +124,7 @@ static ra8_bkup_tamper_config_t make_tamper_cfg(void)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_bkup_cb_count      = 0U;
   s_bkup_cb_last_flags = 0U;
   s_bkup_cb_last_ctx   = nullptr;

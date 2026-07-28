@@ -1,10 +1,10 @@
 # usb_host_msc_browse (USB host MSC browse over the self-loop)
 
 Validates the first-party USB **host** MSC stack (`ra8_usb_hmsc`) with no external
-drive: the board hosts on one jack and **simulates the peripheral** on the other
+drive: the board hosts on one jack and **emulates the peripheral** on the other
 over the loop cable (J7 HS host <-> J11 FS device). One image runs both roles.
 
-- **USBFS (J11) = device (simulated peripheral):** a ThreadX + USBX Mass-Storage
+- **USBFS (J11) = device (emulated peripheral):** a ThreadX + USBX Mass-Storage
   class exposing the 1 MiB MRAM window at `0x02000000` as a read-only synthesized
   FAT16 volume (`MRAM.BIN`).
 - **USBHS (J7) = host:** the polled first-party host MSC stack (`ra8_usb_hmsc` +

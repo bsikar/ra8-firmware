@@ -3,7 +3,7 @@
  * @brief Unit tests for ra8_lpm.c (Low Power Mode HAL driver)
  *
  * @details
- * Drives every public API in ``ra8_lpm.h`` through the host sim mmap
+ * Drives every public API in ``ra8_lpm.h`` through the host fake mmap
  * and verifies the resulting register state. Covers lifecycle,
  * PRCR unlock/relock, raw + per-source WUPEN0/1 manipulation,
  * DPSIER/DPSIFR/DPSIEGR programming, snooze request/end source
@@ -17,9 +17,9 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_lpm.h"
 #include "ra8_lpm_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -75,7 +75,7 @@ static ra8_lpm_config_t make_default_cfg(void)
 static void test_init_happy(void)
 {
   TEST_BEGIN("lpm init happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_lpm_config_t cfg = make_default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
@@ -110,7 +110,7 @@ static void test_init_happy(void)
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("lpm init null cfg");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_lpm_init(nullptr));
   TEST_END("lpm init null cfg");
@@ -125,7 +125,7 @@ static void test_init_null_cfg(void)
 static void test_init_no_keep_no_bus(void)
 {
   TEST_BEGIN("lpm init no keep no bus");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_lpm_config_t cfg = make_default_cfg();
   cfg.io_port_keep     = false;
@@ -155,7 +155,7 @@ static void test_init_no_keep_no_bus(void)
 static void test_set_wakeup_sources(void)
 {
   TEST_BEGIN("lpm set_wakeup_sources");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_lpm_set_wakeup_sources((uint32_t)k_ra8_lpm_test_wupen0_pattern,
@@ -175,7 +175,7 @@ static void test_set_wakeup_sources(void)
 static void test_arm_clear_wupen0(void)
 {
   TEST_BEGIN("lpm arm/clear wupen0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_irq3));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_rtcalm));
@@ -196,7 +196,7 @@ static void test_arm_clear_wupen0(void)
 static void test_arm_clear_wupen1(void)
 {
   TEST_BEGIN("lpm arm/clear wupen1");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_ulpt0u));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_i3c0));
@@ -217,7 +217,7 @@ static void test_arm_clear_wupen1(void)
 static void test_arm_dpsier(void)
 {
   TEST_BEGIN("lpm arm_dpsier all four banks");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* DPSIER0 = IRQ0..IRQ7 mask. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_dpsier(k_ra8_lpm_dpsier_idx_0, 0xFFU));
@@ -252,7 +252,7 @@ static void test_arm_dpsier(void)
 static void test_clear_dpsifr(void)
 {
   TEST_BEGIN("lpm clear_dpsifr");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Stamp some 'pending' flags then clear them. */
   *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off) = k_lpm_all_ones;
@@ -277,7 +277,7 @@ static void test_clear_dpsifr(void)
 static void test_set_dpsiegr(void)
 {
   TEST_BEGIN("lpm set_dpsiegr");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_set_dpsiegr(k_ra8_lpm_dpsier_idx_0, 0x55U));
   TEST_ASSERT_EQ(0x55, *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsiegr0_off));
@@ -301,7 +301,7 @@ static void test_set_dpsiegr(void)
 static void test_snooze_request_sources(void)
 {
   TEST_BEGIN("lpm snooze_set_request_sources");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_snooze_set_request_sources(true, true, true));
 
@@ -320,7 +320,7 @@ static void test_snooze_request_sources(void)
 static void test_snooze_end_sources(void)
 {
   TEST_BEGIN("lpm snooze_set_end_sources");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pre-stamp DPSIFR3 to verify the dummy-read-then-clear sequence. */
   *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off) = k_lpm_all_ones;
@@ -343,7 +343,7 @@ static void test_snooze_end_sources(void)
 static void test_ram_retention(void)
 {
   TEST_BEGIN("lpm set_ram_retention");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_lpm_ram_retention_t cfg = {
     .pdramscr0_bits = (uint16_t)k_ra8_lpm_pdramscr0_all_keep,
@@ -374,7 +374,7 @@ static void test_ram_retention(void)
 static void test_ldo_standby(void)
 {
   TEST_BEGIN("lpm set_ldo_standby");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* OPCCR.OPCM = 0 (HSM) so writes are permitted. */
   *ra8_lpm_sysc_reg8(k_ra8_lpm_opccr_off) = 0U;
@@ -412,7 +412,7 @@ static void test_ldo_standby(void)
 static void test_clock_stop_each(void)
 {
   TEST_BEGIN("lpm set_clock_stop / get_clock_stop");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   bool                  v        = false;
   const ra8_lpm_clock_t clocks[] = {
@@ -454,7 +454,7 @@ static void test_clock_stop_each(void)
 static void test_opccr_read_and_wait(void)
 {
   TEST_BEGIN("lpm get_opccr + wait_for_opccr");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Hand-set OPCCR to "transition complete" (OPCMTSF=0). */
   *ra8_lpm_sysc_reg8(k_ra8_lpm_opccr_off) = 0x00U;
@@ -484,7 +484,7 @@ static void test_opccr_read_and_wait(void)
 static void test_graphics_power_on(void)
 {
   TEST_BEGIN("lpm graphics_power_on");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile uint8_t* pdctrgd = ra8_lpm_sysc_reg8(k_ra8_lpm_pdctrgd_off);
 
@@ -523,7 +523,7 @@ static void test_graphics_power_on(void)
 static void test_prcr_unlock_relock(void)
 {
   TEST_BEGIN("lpm prcr unlock/relock");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   /* Upper byte must be the 0xA5 key; lower byte must include PRC1=1. */
@@ -547,7 +547,7 @@ static void test_prcr_unlock_relock(void)
 static void test_enter_sleep_modes(void)
 {
   TEST_BEGIN("lpm enter sleep modes");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Plain sleep -- LPSCR.LPMD = 0. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep));
@@ -589,9 +589,9 @@ static void test_enter_sleep_modes(void)
 static void test_enter_sleep_scr_sleepdeep_rmw(void)
 {
   TEST_BEGIN("lpm enter_sleep drives SCR.SLEEPDEEP as RMW");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
-  /* Arm Cortex-M85 SCB->SCR, RAM-backed by the sim mmap core window.
+  /* Arm Cortex-M85 SCB->SCR, RAM-backed by the fake mmap core window.
    * Stage a sibling SCR bit the driver must never disturb. */
   volatile uint32_t* scr = ra8_lpm_scb_scr();
   *scr                   = (uint32_t)k_ra8_lpm_test_scr_sleeponexit;
@@ -624,7 +624,7 @@ static void test_enter_sleep_scr_sleepdeep_rmw(void)
 static void test_enter_deep_standby_helper(void)
 {
   TEST_BEGIN("lpm enter_deep_standby helper");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_deep_standby());
   /* LPSCR is cleared by the driver after WFI returns -- see
@@ -642,7 +642,7 @@ static void test_enter_deep_standby_helper(void)
 static void test_enter_sleep_bad_mode(void)
 {
   TEST_BEGIN("lpm enter sleep bad mode");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_lpm_enter_sleep((ra8_sleep_mode_t)k_ra8_lpm_test_bad_mode_value));
@@ -660,7 +660,7 @@ static void test_enter_sleep_bad_mode(void)
 static void test_get_status_packs_four_regs(void)
 {
   TEST_BEGIN("lpm get_status packs SBYCR/DPSBYCR/LPSCR/SSCR1");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Hand-set the four single-byte LPM control regs. */
   *ra8_lpm_sysc_reg8(k_ra8_lpm_sbycr_off)   = k_lpm_probe_sbycr;
@@ -685,7 +685,7 @@ static void test_get_status_packs_four_regs(void)
 static void test_get_exit_cause_packs_wupen(void)
 {
   TEST_BEGIN("lpm get_exit_cause packs WUPEN0/WUPEN1");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_lpm_set_wakeup_sources((uint32_t)k_ra8_lpm_test_wupen0_pattern,
@@ -710,7 +710,7 @@ static void test_get_exit_cause_packs_wupen(void)
 static void test_get_dpsi_state(void)
 {
   TEST_BEGIN("lpm get_dpsi_state snapshots all banks");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier0_off)  = k_lpm_probe_dpsier0;
   *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier1_off)  = k_lpm_probe_dpsier1;
@@ -749,7 +749,7 @@ static void test_get_dpsi_state(void)
 static void test_deinit_resets_registers(void)
 {
   TEST_BEGIN("lpm deinit resets registers");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Dirty state. */
   const ra8_lpm_config_t cfg = make_default_cfg();

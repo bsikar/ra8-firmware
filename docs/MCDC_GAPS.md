@@ -100,7 +100,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_app/src/ra8_app.c | 2 | (file scope) | `if ((next != nullptr) && (next->vt->on_enter != nullptr)) {` | Annotated deactivation: next=reg->apps[target] with targe... |
 | libs/ra8_box/src/ra8_box.c | 2 | internal_iter_live | `return (link != (int32_t)k_ra8_box_none) && (guard < count);` | Annotated deactivation: guard<count is an acyclic-tree cy... |
 | libs/ra8_core/src/ra8_log.c | 2 | internal_itm_put_u32 | `while (value != 0U && i < k_ra8_u32_max_digits) {` | Annotated deactivation: digit-buffer bound; uint32_t max ... |
-| libs/ra8_dfu/src/ra8_rot.c | 2 | internal_ct_equal | `if ((psa_err != k_ra8_ok) && (psa_err != k_ra8_err_exists...` | Annotated deactivation: DO-178C 6.4.4.3 -- under RA8_SIMU... |
+| libs/ra8_dfu/src/ra8_rot.c | 2 | internal_ct_equal | `if ((psa_err != k_ra8_ok) && (psa_err != k_ra8_err_exists...` | Annotated deactivation: DO-178C 6.4.4.3 -- under RA8_OFF_... |
 | libs/ra8_epub/src/ra8_epub_fs.c | 3 | priv_fs_stream_read | `if (io == nullptr \|\| io->file == nullptr \|\| buf == nu...` | TU-local static helper `priv_fs_stream_read` -- defensive... |
 | libs/ra8_epub/src/ra8_epub_open.c | 2 | priv_dirname | `if (dst == nullptr \|\| cap == 0U) {` | TU-local static helper `priv_dirname` -- defensive NULL g... |
 | libs/ra8_epub/src/ra8_epub_open.c | 2 | priv_stream_read | `if (sm == nullptr \|\| sm->read == nullptr) {` | TU-local static helper `priv_stream_read` -- defensive NU... |
@@ -159,11 +159,11 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_jof/src/ra8_jof_produce.c | 2 | priv_epilogue | `if ((st->geom_done == 0U) \|\| (st->rows_seen != (uint32_...` | Annotated deactivation: post-decode contract guard; both ... |
 | libs/ra8_longstrip/src/ra8_longstrip.c | 2 | ra8_longstrip_tick | `if ((wt->velocity == 0) \|\| wt_fling_should_stop(wt)) {` | Pointer(s) ['wt'] already null-checked upstream in the sa... |
 | libs/ra8_net_pal/src/ra8_net_pal.c | 2 | internal_eth_event | `if ((s_state.event_fn != nullptr) && (pal_mask != k_ra8_n...` | Annotated deactivation: TU-local helper internal_eth_even... |
-| libs/ra8_psa_crypto/src/ra8_psa_crypto_sim.c | 2 | ra8_psa_sim_sha256_oneshot | `for (size_t i = 0U; (i < key_len) && (off < sizeof(buf));...` | Defensive scratch-buffer bound: input length is capped by... |
-| libs/ra8_psa_crypto/src/ra8_psa_crypto_sim.c | 2 | ra8_psa_sim_sha256_oneshot | `for (size_t i = 0U; (i < nonce_len) && (off < sizeof(buf)...` | Defensive scratch-buffer bound: input length is capped by... |
-| libs/ra8_psa_crypto/src/ra8_psa_crypto_sim.c | 2 | ra8_psa_sim_sha256_oneshot | `for (size_t i = 0U; (i < aad_len) && (off < sizeof(buf));...` | Defensive scratch-buffer bound: input length is capped by... |
-| libs/ra8_psa_crypto/src/ra8_psa_crypto_sim.c | 2 | ra8_psa_sim_sha256_oneshot | `for (size_t i = 0U; (i < key_len) && (off < sizeof(seed))...` | Defensive scratch-buffer bound: input length is capped by... |
-| libs/ra8_psa_crypto/src/ra8_psa_crypto_sim.c | 2 | ra8_psa_sim_sha256_oneshot | `for (size_t i = 0U; (i < nonce_len) && (off < sizeof(seed...` | Defensive scratch-buffer bound: input length is capped by... |
+| libs/ra8_psa_crypto/src/ra8_psa_crypto_fake.c | 2 | internal_sha256_rotr | `for (size_t i = 0U; (i < key_len) && (off < sizeof(buf));...` | Defensive scratch-buffer bound: input length is capped by... |
+| libs/ra8_psa_crypto/src/ra8_psa_crypto_fake.c | 2 | internal_sha256_rotr | `for (size_t i = 0U; (i < nonce_len) && (off < sizeof(buf)...` | Defensive scratch-buffer bound: input length is capped by... |
+| libs/ra8_psa_crypto/src/ra8_psa_crypto_fake.c | 2 | internal_sha256_rotr | `for (size_t i = 0U; (i < aad_len) && (off < sizeof(buf));...` | Defensive scratch-buffer bound: input length is capped by... |
+| libs/ra8_psa_crypto/src/ra8_psa_crypto_fake.c | 2 | internal_sha256_rotr | `for (size_t i = 0U; (i < key_len) && (off < sizeof(seed))...` | Defensive scratch-buffer bound: input length is capped by... |
+| libs/ra8_psa_crypto/src/ra8_psa_crypto_fake.c | 2 | internal_sha256_rotr | `for (size_t i = 0U; (i < nonce_len) && (off < sizeof(seed...` | Defensive scratch-buffer bound: input length is capped by... |
 | libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.cpp | 2 | (file scope) | `if (val != nullptr && val[0] != '\0') {` | Annotated deactivation: DO-178C 6.4.4.3 -- both condition... |
 | libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.cpp | 2 | (file scope) | `if (node != nullptr && top < (uint16_t)k_xhtml_max_stack) {` | Annotated deactivation: DO-178C 6.4.4.3 -- C2 (top < k_xh... |
 | libs/ra8_reflow/src/ra8_reflow_css.c | 3 | priv_ci_contains | `if ((s == nullptr) \|\| (sl == 0U) \|\| (sl > len)) {` | Annotated deactivation: the sole caller passes priv_ci_co... |
@@ -199,7 +199,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_xml_shim | 84 | 62 | 8 | 14 |
 | mg_reader | 11 | 1 | 4 | 6 |
 | ra8_esp_hosted_rtos | 15 | 9 | 3 | 3 |
-| ra8_psa_crypto_sim | 6 | 1 | 5 | 0 |
+| ra8_psa_crypto_fake | 6 | 1 | 5 | 0 |
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
 | ra8_reflow_svg_shape | 15 | 12 | 3 | 0 |

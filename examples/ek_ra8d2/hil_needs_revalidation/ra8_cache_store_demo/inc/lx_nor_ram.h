@@ -10,7 +10,7 @@
  * LevelX standalone plus ra8_cache_store on top of it -- runs in SRAM with no
  * MMIO. Because nothing touches a peripheral register, the emulated
  * (ra8_emulator) run and the on-silicon run execute byte-identical instructions:
- * SIM equals HIL by construction.
+ * EIL equals HIL by construction.
  *
  * The backing SRAM persists across `lx_nor_flash_close` / `lx_nor_flash_open`
  * within one boot, which models the "reboot: control state lost, on-media
@@ -65,7 +65,7 @@ unsigned int lx_nor_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash);
 /**
  * @brief Erase the entire SRAM backing to the LevelX "erased" pattern.
  *
- * @details Resets the simulated NOR media to a blank (unformatted) device.
+ * @details Resets the fake NOR media to a blank (unformatted) device.
  *          Firmware never needs this -- reset zeroes the BSS backing and the
  *          first mount formats it -- but the host test calls it between
  *          independent scenarios that share the one static backing.

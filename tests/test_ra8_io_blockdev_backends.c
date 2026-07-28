@@ -3,10 +3,10 @@
  * @brief Unit tests for the ra8_io hardware block-device backends (issue #156).
  *
  * @details
- * Exercises the backends that are reachable under `RA8_SIMULATOR_MODE`:
- *   - sdram: full read/write/erase/caps over the simulated SDRAM window.
+ * Exercises the backends that are reachable under `RA8_OFF_TARGET`:
+ *   - sdram: full read/write/erase/caps over the fake SDRAM window.
  *   - xspi : geometry validation plus a NOR read-modify-write round-trip over
- *            the register-level NOR model in `tests/mocks/ra8_sim_xspi_flash.c`,
+ *            the register-level NOR model in `tests/mocks/ra8_fake_xspi_flash.c`,
  *            including the property that a write preserves untouched blocks in
  *            the same sector.
  *   - mram : the data-MRAM fence (reject mis-aligned / out-of-region windows),
@@ -22,6 +22,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_fake_xspi_flash.h"
 #include "ra8_flash_regs.h"
 #include "ra8_io_blockdev.h"
 #include "ra8_io_blockdev_mram.h"
@@ -31,8 +33,6 @@
 #include "ra8_io_blockdev_sdspi.h"
 #include "ra8_io_blockdev_xspi.h"
 #include "ra8_ospi_regs.h"
-#include "ra8_sim_mmio.h"
-#include "ra8_sim_xspi_flash.h"
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
@@ -60,7 +60,7 @@ typedef enum : uint8_t {
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_sdram_blocks   = 64,     /**< 32 KiB inside the simulated SDRAM window.     */
+  k_t_sdram_blocks   = 64,     /**< 32 KiB inside the fake SDRAM window.          */
   k_t_xspi_blocks    = 8,      /**< 4 KiB == one NOR sector of the model.         */
   k_t_mram_blocks    = 4,      /**< 2 KiB inside the extra-MRAM OTP window.       */
   k_t_mram_oversize  = 256,    /**< > 65 KiB / 512 -- past the extra-MRAM window. */
@@ -151,8 +151,8 @@ static void test_xspi_rmw_roundtrip(void)
   TEST_BEGIN("xspi RMW round-trip");
   /* The driver's real register sequence needs the tests/mocks NOR model
    * to service each TRREQ kick and back the flash data. */
-  ra8_sim_mmio_reset();
-  ra8_sim_xspi_flash_install();
+  ra8_fake_mmio_reset();
+  ra8_fake_xspi_flash_install();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init(0, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
@@ -312,7 +312,7 @@ static void test_mram_write_and_erase(void)
   /* Write chunk times out -- mram_write line 233 (condition true) and line 234 */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_io_blockdev_write(&bd, 0U, 1U, src));
 
-  /* Pre-arm MSTATR so subsequent MACI calls succeed in RA8_SIMULATOR_MODE. */
+  /* Pre-arm MSTATR so subsequent MACI calls succeed in RA8_OFF_TARGET. */
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = (uint32_t)k_ra8_mstatr_mask_mrdy;
 
   /* Read-only device: write rejected before touching medium -- mram_write lines 217-221 */

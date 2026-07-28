@@ -171,21 +171,21 @@ typedef enum : uint32_t {
  */
 bool ra8_cpu1_is_running(void);
 
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
 /**
  * @brief Host-test fault-seam key for the CPU1ACTCSR.ACT release poll.
  *
  * @details
  * Returns the address the ``ra8_cpu1_release()`` ACT poll reads on the host
- * build, so a unit test can arm ::ra8_sim_mmio_fail_wait / satisfy_after on the
+ * build, so a unit test can arm ::ra8_fake_mmio_fail_wait / satisfy_after on the
  * exact register the loop consults and drive its retry / timeout legs. The real
  * secondary-core activation cannot be modelled by host RAM (nothing self-sets
  * ACT), so the seam owns the loop-exit decision.
  *
  * @return Opaque fault-table key (address of the host ACTCSR mirror).
- * @retval non-NULL Stable per-process key usable with the ra8_sim_mmio seam.
+ * @retval non-NULL Stable per-process key usable with the ra8_fake_mmio seam.
  *
- * @pre Built with ``RA8_SIMULATOR_MODE`` and ``UNIT_TEST`` defined.
+ * @pre Built with ``RA8_OFF_TARGET`` and ``UNIT_TEST`` defined.
  * @pre Called from the single-threaded host test harness.
  * @post No module state is modified.
  * @post The returned key is stable for the lifetime of the process.

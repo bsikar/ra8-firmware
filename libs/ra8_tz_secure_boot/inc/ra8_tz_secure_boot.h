@@ -24,7 +24,7 @@
  *   6. Configure the NS main stack pointer via MSP_NS and jump to the
  *      NS reset vector with ``BLXNS``.
  *
- * On a host (``RA8_SIMULATOR_MODE`` defined) the module exposes a pure-C
+ * On a host (``RA8_OFF_TARGET`` defined) the module exposes a pure-C
  * implementation that writes to a mocked CPSCU window, so the unit
  * tests under ``tests/`` can drive the IPCSAR-unlock sequence without
  * touching real hardware.
@@ -289,7 +289,7 @@ typedef struct {
  * ``ns_vector_table + body_len`` -- the same self-describing ``[ body ]
  * [ trailer ]`` layout the copy-to-run boundary uses.
  *
- * On the host (``RA8_SIMULATOR_MODE`` defined) the function stamps the
+ * On the host (``RA8_OFF_TARGET`` defined) the function stamps the
  * progress counter, sets ``s_ra8_tz_secure_boot_blxns_target`` to the
  * supplied reset vector, and returns ``k_ra8_ok`` so unit tests can
  * assert the documented transition state; the gate's decision logic is
@@ -360,7 +360,7 @@ typedef struct {
  * @brief Reset the host-side state for unit-test fixtures.
  *
  * @details
- * Host-only helper that clears the simulated PRCR_S / IPCSAR / IPCPAR
+ * Host-only helper that clears the fake PRCR_S / IPCSAR / IPCPAR
  * captures and the BLXNS target so each test starts from a known
  * baseline. Cross-compiled (target) builds expose the symbol but the
  * body is empty.

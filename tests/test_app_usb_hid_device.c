@@ -28,8 +28,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb_pal.h"
 #include "unity_minimal.h"
 
@@ -59,7 +59,7 @@ static void test_usb_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t event_m
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   (void)ra8_usb_pal_deinit();
   s_last_event_mask  = 0U;

@@ -9,7 +9,7 @@
  * consume + guard-reset via `ra8_crashlog_claim`, the monotonic + saturating
  * `boot_loops` counter, the safe-mode threshold, and corrupted-record
  * rejection. The `.noinit` record is a plain zero-init static on the host
- * (`RA8_SIMULATOR_MODE`), so the white-box `ra8_crashlog_test_*` accessors
+ * (`RA8_OFF_TARGET`), so the white-box `ra8_crashlog_test_*` accessors
  * (ra8_crashlog_internal.h) plant specific `magic` / `crc` byte patterns to
  * drive the validation decision through its MC/DC vectors. One test also
  * proves the genuine `ra8_exception_report` -> persist-hook -> record path,
@@ -26,7 +26,7 @@
 #include "ra8_crashlog.h"
 #include "ra8_crashlog_internal.h"
 #include "ra8_exception.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -279,7 +279,7 @@ static void test_mcdc_crashlog_is_valid(void)
 static void test_crashlog_hook_persists_report(void)
 {
   TEST_BEGIN("ra8_exception_report persists through the installed hook");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_crashlog_test_wipe();
   s_fatal_hit = 0U;
 

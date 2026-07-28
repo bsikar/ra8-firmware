@@ -8,7 +8,7 @@
  * an 8-entry add through the DOC and compares the hardware sum to a portable
  * software sum, lighting LED1 on a match and latching LED2 on any divergence;
  * against the sparse fallback DODSR0 read back garbage, so LED2 latched. (The
- * @c RA8_SIMULATOR_MODE shortcut in ra8_doc.c that stores the result in software
+ * @c RA8_OFF_TARGET shortcut in ra8_doc.c that stores the result in software
  * is compiled out of the real cross-target .elf ra8_emulator runs, so the genuine
  * "write DODIR, read DODSR0" hardware path must work.)
  *

@@ -70,7 +70,7 @@ python3 scripts/checks/check_coverage.py
 
 ## On macOS
 
-The host test simulator uses `MAP_FIXED` below 4 GiB, which arm64
+The host test fake uses `MAP_FIXED` below 4 GiB, which arm64
 macOS rejects with SIGKILL. The script transparently re-execs
 itself inside the project's Linux devcontainer (Ubuntu 24.04 with
 gcc 13.3 and gcovr 7.0). Docker (and colima, if installed) is

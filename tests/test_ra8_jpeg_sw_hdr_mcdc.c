@@ -17,8 +17,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -693,7 +693,7 @@ static void test_mcdc_decode_skip_appn_marker(void)
 
 int32_t main(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_mcdc_decode_pad_byte_chain();
   test_mcdc_get_dimensions_seglen_independent();
   test_mcdc_decode_sos_without_sof();

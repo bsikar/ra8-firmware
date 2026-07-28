@@ -20,7 +20,7 @@
 # tests/, tools/, examples/ and port/. CLAUDE.md ("Scope: these
 # standards apply to EVERY first-party file in the repository") makes the
 # host tools, the host test suite and the firmware subject to exactly the
-# same rules; a file being "just a simulator", "just a test" or "just an
+# same rules; a file being "just an emulator", "just a test" or "just an
 # example" is not a reason to relax them.
 #
 # The ONLY exemptions are vendored SOUP (libs/third_party/)

@@ -10,9 +10,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_iwdt.h"
 #include "ra8_iwdt_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -44,7 +44,7 @@ typedef enum : uint16_t {
 static void test_init_returns_ok(void)
 {
   TEST_BEGIN("ra8_iwdt_init returns ok");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_iwdt_init());
   TEST_END("ra8_iwdt_init returns ok");
 }
@@ -83,7 +83,7 @@ static void test_register_layout_matches_fsp(void)
 static void test_refresh_writes_sequence(void)
 {
   TEST_BEGIN("ra8_iwdt_refresh_deferred writes 0x00,0xFF to IWDTRR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_iwdt_regs_t* reg = ra8_iwdt();
   reg->IWDTRR                 = k_iwdt_refresh_second;
@@ -106,7 +106,7 @@ static void test_refresh_writes_sequence(void)
 static void test_repeated_refresh_is_safe(void)
 {
   TEST_BEGIN("ra8_iwdt_refresh_deferred multiple calls");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   for (uint8_t i = 0U; i < k_iwdt_refresh_rounds; ++i) {
     ra8_iwdt_refresh_deferred();
   }
@@ -135,7 +135,7 @@ static void stub_iwdt_cb(void* ctx, uint16_t mask)
 static void test_get_status(void)
 {
   TEST_BEGIN("iwdt get_status");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_iwdt()->IWDTSR = (uint16_t)k_ra8_iwdt_status_underflow | (uint16_t)k_ra8_iwdt_status_refresh;
 
   uint16_t mask = 0U;
@@ -155,7 +155,7 @@ static void test_get_status(void)
 static void test_get_status_masks_cntval(void)
 {
   TEST_BEGIN("iwdt get_status masks out CNTVAL[13:0]");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* IWDTSR has CNTVAL in bits 13:0 and the flag bits 15:14. Verify
    * ra8_iwdt_get_status returns ONLY the flag bits even when CNTVAL is
    * non-zero. Mirrors FSP IWDT_PRV_STATUS_START_BIT semantics. */
@@ -176,7 +176,7 @@ static void test_get_status_masks_cntval(void)
 static void test_get_counter(void)
 {
   TEST_BEGIN("iwdt get_counter mirrors FSP R_IWDT_CounterGet");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* CNTVAL = 0x1234, plus a stray UNDFF flag at bit 14. Counter
    * readout must return 0x1234 (bits 13:0) only. */
   ra8_iwdt()->IWDTSR = (uint16_t)k_iwdt_status_counter | (uint16_t)k_ra8_iwdt_status_underflow;
@@ -197,7 +197,7 @@ static void test_get_counter(void)
 static void test_clear_status(void)
 {
   TEST_BEGIN("iwdt clear_status");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_iwdt()->IWDTSR = (uint16_t)k_ra8_iwdt_status_underflow;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_iwdt_clear_status());
   TEST_ASSERT_EQ(0, ra8_iwdt()->IWDTSR);
@@ -213,7 +213,7 @@ static void test_clear_status(void)
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("iwdt attach + dispatch");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_iwdt_cb_count     = 0U;
   s_iwdt_cb_last_mask = 0U;
 

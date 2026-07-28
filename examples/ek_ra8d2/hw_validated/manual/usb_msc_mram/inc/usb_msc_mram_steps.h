@@ -139,7 +139,7 @@ typedef enum : uint32_t {
   k_word_mask  = 0xFFFFU, /**< Low half-word mask. */
 } demo_word_pack_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "ux_api.h"
 
@@ -164,4 +164,4 @@ typedef enum : uint32_t {
  */
 void demo_fat_fill_sector(uint32_t lba, UCHAR* out);
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

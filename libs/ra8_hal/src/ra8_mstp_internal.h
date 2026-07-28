@@ -52,7 +52,7 @@ extern "C" {
  *
  * @note The settle decision `(reg & care_mask) == (expect & care_mask)` is a
  * single (masked-equality) condition, not a compound boolean. On the host the
- * loop-exit is routed through the ra8_sim_mmio fault seam (which overrides the
+ * loop-exit is routed through the ra8_fake_mmio fault seam (which overrides the
  * decision to model timing), so the mask's tolerance of Non-secure-owned bits
  * is verified on silicon (the TrustZone e-reader boots through ra8_mstp_init
  * with USBFS0 + USBHS delegated Non-secure), while the host tests cover the

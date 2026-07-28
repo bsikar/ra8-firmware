@@ -6,7 +6,7 @@
  * Mirrors the bring-up flow of examples/ek_ra8d2/i3c_loopback/main.c:
  * ra8_mstp_init -> PFS routing of SCL0/SDA0 -> ra8_i3c_init at 100 kHz
  * -> ra8_i3c_scan against 0x43. All MMIO is via the host
- * tests/mocks/ra8_sim_mmap.c shim.
+ * tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -16,12 +16,12 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpio_constants.h"
 #include "ra8_i3c.h"
 #include "ra8_mstp.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_utils.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -43,7 +43,7 @@ static const ra8_port_pin_t k_test_i3c_app_pin_sda =
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 

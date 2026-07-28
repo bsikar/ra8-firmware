@@ -7,7 +7,7 @@
  *
  * @details
  * Runs the vendored TF-PSA-Crypto software backend -- the exact ``psa_*``
- * primitives the production ``ra8_psa_crypto`` (non-sim) path calls -- on the real
+ * primitives the production ``ra8_psa_crypto`` (on-target) path calls -- on the real
  * M85 and checks it against published vectors:
  *   - SHA-256("abc")                         FIPS 180-4
  *   - AES-128-GCM encrypt + decrypt          GCM spec (McGrew/Viega) Test Case 3

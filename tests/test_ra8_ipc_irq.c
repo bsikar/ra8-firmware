@@ -12,11 +12,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_ipc.h"
 #include "ra8_ipc_regs.h"
 #include "ra8_isr.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "support/ipc_test_util.h"
 #include "unity_minimal.h"
 

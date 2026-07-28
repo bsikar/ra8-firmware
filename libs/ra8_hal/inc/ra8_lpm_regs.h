@@ -54,7 +54,7 @@ extern "C" {
  *
  * @details
  * Both bases live inside the 0x4000_0000 peripheral window so the
- * host simulator's blanket 8 MiB mmap covers them automatically.
+ * host fake's blanket 8 MiB mmap covers them automatically.
  */
 typedef enum : uintptr_t {
   k_ra8_lpm_sysc_base_addr = 0x4001E000UL, /**< SYSC base (HUM Ch 11.2.18 p 456).      */
@@ -464,7 +464,7 @@ typedef enum : uint32_t {
  * Standby instead of plain CPU sleep. This is an Arm core register
  * (Armv8-M SCS), not an RA8D2 peripheral, so it carries no HUM
  * citation. The host unit-test build backs the SCS window with RAM
- * (``ra8_sim_mmap`` core region at 0xE0000000), so the driver's
+ * (``ra8_fake_mmap`` core region at 0xE0000000), so the driver's
  * read-modify-write sequence runs unchanged on every build.
  *
  * @invariant The single enumerator is the architectural SCR address.
@@ -505,13 +505,13 @@ typedef enum : uint32_t {
  * @details
  * SCR is an Arm core register (Armv8-M System Control Space), shared
  * by the LPM driver (SLEEPDEEP toggling around WFI) and the host unit
- * tests (staging / asserting the toggle sequence through the sim mmap
+ * tests (staging / asserting the toggle sequence through the fake mmap
  * core window).
  *
  * @return Volatile pointer suitable for direct dereference.
  *
  * @pre Executing on the Cortex-M85 (or a host build with the SCS
- *      window RAM-backed by ``ra8_sim_mmap``).
+ *      window RAM-backed by ``ra8_fake_mmap``).
  * @pre The address enum matches the Armv8-M architectural SCS layout.
  *
  * @post No register has been modified by this call.

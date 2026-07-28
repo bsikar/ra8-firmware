@@ -7,7 +7,7 @@
  * brings RIIC channel 1 up (through the board U15 helper) and then loops
  * ra8_i2c_scan against 0x43 (the on-board PI4IOE5V6408 expander). Here we
  * drive ra8_i2c_init(ch1) + ra8_i2c_scan directly through the host
- * tests/mocks/ra8_sim_mmap.c shim; the board-side pin/pull-up bring-up is
+ * tests/mocks/ra8_fake_mmap.c shim; the board-side pin/pull-up bring-up is
  * covered by the board library's own tests.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -18,10 +18,10 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i2c.h"
 #include "ra8_mstp.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -37,7 +37,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 

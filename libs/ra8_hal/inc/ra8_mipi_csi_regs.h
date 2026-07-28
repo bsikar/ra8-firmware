@@ -638,7 +638,7 @@ typedef enum : uint32_t {
  * All MIPI CSI register accesses are 32 bits wide per HUM Ch 66.3
  * "Register Descriptions" p 3935. Going through this accessor (rather
  * than raw `(*(volatile uint32_t*)addr)` casts) lets the host-side
- * unit-test sim mmap intercept the access and back it with ordinary
+ * unit-test fake mmap intercept the access and back it with ordinary
  * heap memory.
  *
  * @param[in] off One of the ``k_ra8_mipi_csi_off_*`` enum values.

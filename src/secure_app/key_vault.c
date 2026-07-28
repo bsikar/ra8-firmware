@@ -40,13 +40,13 @@ static const char* s_tag = "KEYV";
  * Fail-closed stub-crypto gate (issue #180). The SHA-256 below is real
  * (FIPS 180-4), but the surrounding key vault is a software placeholder that
  * holds symmetric keys in a plain secure-SRAM array with no hardware-backed
- * protection -- a stand-in for a real key store. It is only meant for host
- * simulation or an explicitly-declared insecure dev/eval image. A real
+ * protection -- a stand-in for a real key store. It is only meant for an
+ * off-target build or an explicitly-declared insecure dev/eval image. A real
  * production/HIL image (neither flag set) compiles the #else branch, where
  * every entry point hard-errors so the placeholder vault cannot be relied on.
  * scripts/checks/check_stub_crypto_guarded.py enforces the guard.
  */
-#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
 
 /** @brief SHA-256 dimensions (FIPS 180-4). */
 typedef enum : uint16_t {
@@ -550,7 +550,7 @@ ra8_err_t ra8_key_vault_load_mac_key(uint8_t* out, uint16_t out_cap, uint16_t* o
   return k_ra8_ok;
 }
 
-#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_OFF_TARGET */
 
 /*
  * Fail-closed production variant. The software key store above is a placeholder
@@ -594,4 +594,4 @@ ra8_err_t ra8_key_vault_load_mac_key(uint8_t* out, uint16_t out_cap, uint16_t* o
   return k_ra8_err_not_supported;
 }
 
-#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_OFF_TARGET */

@@ -43,13 +43,13 @@ static const char* s_tag = "RSIP_KI";
 /*
  * Fail-closed stub-crypto gate (issue #180). The key-wrap and MAC below use a
  * NON-cryptographic xorshift mixer (see the @warning in the file banner), so
- * the wrapping is not cryptographically meaningful. It is only safe under host
- * simulation or an explicitly-declared insecure dev/eval image. A real
+ * the wrapping is not cryptographically meaningful. It is only safe under an
+ * off-target build or an explicitly-declared insecure dev/eval image. A real
  * production/HIL image (neither flag set) compiles the #else branch, where
  * every entry point hard-errors so keys are never wrapped or validated with the
  * stub. scripts/checks/check_stub_crypto_guarded.py enforces the guard.
  */
-#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
 
 /** @brief AES / RSA / ECC key element byte counts. */
 typedef enum : uint16_t {
@@ -543,7 +543,7 @@ ra8_err_t ra8_rsip_key_validate(const uint8_t*              installed_key_buf,
   return match ? k_ra8_ok : k_ra8_err_hw_error;
 }
 
-#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_OFF_TARGET */
 
 /*
  * Fail-closed production variant. Without a real RSIP/SCE key-injection backend
@@ -594,4 +594,4 @@ ra8_err_t ra8_rsip_key_validate(const uint8_t*              installed_key_buf,
   return k_ra8_err_not_supported;
 }
 
-#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_OFF_TARGET */

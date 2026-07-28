@@ -58,7 +58,7 @@ You need two toolchains:
   project's Ubuntu 24.04 dev container, invoked through
   [`scripts/ci/test-docker.sh`](scripts/ci/test-docker.sh). On macOS you
   need [Colima](https://github.com/abiosoft/colima) (or Docker Desktop)
-  running because the host test simulator uses `mmap(MAP_FIXED, ...)`
+  running because the host test fake uses `mmap(MAP_FIXED, ...)`
   at MCU peripheral addresses, which macOS arm64 refuses below 4 GiB.
 * **arm-none-eabi-gcc** (ARM GNU Toolchain) for the cross-compiled
   firmware build. Any reasonably recent version that knows about

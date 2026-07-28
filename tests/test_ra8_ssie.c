@@ -26,8 +26,8 @@
 
 #include "ra8_dmac.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_ssie.h"
 #include "ra8_ssie_regs.h"
 #include "support/ssie_test_util.h"

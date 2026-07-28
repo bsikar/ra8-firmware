@@ -1,5 +1,5 @@
 /**
- * @file lx_nor_sim_ram.h
+ * @file lx_nor_fake_ram.h
  * @brief RAM-backed LevelX NOR driver for host tests (the ra8_cache_store DIP seam).
  *
  * @details
@@ -52,12 +52,12 @@ struct LX_NOR_FLASH_STRUCT;
  * @post The backing RAM is left as-is (open uses it; format erases it).
  * @since 0.1.0
  */
-unsigned int lx_nor_sim_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash);
+unsigned int lx_nor_fake_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash);
 
 /**
  * @brief Erase the entire RAM backing to the LevelX "erased" pattern.
  *
- * @details Resets the simulated flash between independent test cases so a fresh
+ * @details Resets the fake flash between independent test cases so a fresh
  *          format starts from a blank device. Not needed to simulate a crash
  *          (leave the backing intact and reopen a new control block).
  *
@@ -68,7 +68,7 @@ unsigned int lx_nor_sim_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash);
  * @post A subsequent open sees a blank (unformatted) device.
  * @since 0.1.0
  */
-void lx_nor_sim_ram_wipe(void);
+void lx_nor_fake_ram_wipe(void);
 
 /**
  * @brief Force the next @p count write callbacks to fail (fault injection).
@@ -84,7 +84,7 @@ void lx_nor_sim_ram_wipe(void);
  * @post No backing word is changed by a failed write.
  * @since 0.1.0
  */
-void lx_nor_sim_ram_fail_writes(unsigned int count);
+void lx_nor_fake_ram_fail_writes(unsigned int count);
 
 #ifdef __cplusplus
 }

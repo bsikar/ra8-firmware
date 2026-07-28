@@ -205,7 +205,7 @@ bool ra8_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, u
  * buffer it drains a final pending byte (only when RDRF is set and room is
  * left) and stops. The loop is bounded by ``capacity + 1`` (NASA P10 Rule 2).
  * Promoted to TU-external linkage so the final-byte drain guard can be
- * exercised with independent influence: the ra8_sim MMIO window is
+ * exercised with independent influence: the ra8_fake MMIO window is
  * side-effect-free, so the public ``ra8_i2c_peripheral_receive`` path cannot
  * present RDRF set at the address-phase wait and clear at this guard.
  *

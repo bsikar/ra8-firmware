@@ -52,7 +52,7 @@
 #include "ra8_sdmmc_spi.h"
 #include "ra8_usb.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -559,4 +559,4 @@ VOID sdmsc_device_worker(ULONG arg)
   }
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

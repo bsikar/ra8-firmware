@@ -9,8 +9,8 @@ end-to-end and the result is scraped over the J-Link OB VCOM console.
 ## Status: hw_pending (passes ra8_emulator; awaiting on-silicon HIL run)
 
 `ra8_emulator` models memory byte-exact and does **not** model the L1 D-cache, so
-the cacheable-RW step passes trivially in simulation -- the cache hazard this
-app guards against is only real on the chip. The sim run proves the app boots
+the cacheable-RW step passes trivially off-target -- the cache hazard this
+app guards against is only real on the chip. The emulator run proves the app boots
 and reports PASS with the cache + MPU boot path compiled in; the bench run
 proves the same on real silicon (where a missing clean/invalidate or a
 mis-mapped MPU region would corrupt data or fault).

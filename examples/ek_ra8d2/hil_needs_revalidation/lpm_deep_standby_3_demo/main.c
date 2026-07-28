@@ -214,7 +214,7 @@ int32_t main(void)
     }
     /* On hardware this never returns -- Deep Software Standby resets
      * the CPU on wake, so control re-enters Reset_Handler. On the
-     * host (RA8_SIMULATOR_MODE) WFI is a no-op so the loop simply
+     * host (RA8_OFF_TARGET) WFI is a no-op so the loop simply
      * iterates. */
     if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_3) != k_ra8_ok) {
       break;

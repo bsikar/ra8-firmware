@@ -45,7 +45,7 @@ a steady or jittering low battery does not spam. Charging suppresses warnings.
 The decision logic is pure (no MMIO), so it is host-unit-tested with full MC/DC
 in `tests/test_ra8_batt.c`; this app is the on-target consumer.
 
-In the simulator window you can drag the POWER slider down through 20% and 10%
+In the emulator window you can drag the POWER slider down through 20% and 10%
 to watch each nag fire once in the console, then back up and down to see it
 re-arm.
 
@@ -56,7 +56,7 @@ make battery_monitor_demo
 scripts/hil/run_local.sh battery_monitor_demo      # flash + scrape the banner
 ```
 
-## Simulator: battery control + on-screen gauge
+## Emulator: battery control + on-screen gauge
 
 `tools/ra8_emulator` models the MAX17048 fuel gauge, so this app reads a real
 percent over the modelled I2C bus and reaches its banner headlessly. The battery

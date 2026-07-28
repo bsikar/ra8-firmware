@@ -17,7 +17,7 @@
  *    write-1-clearing the RW1C IR flag.
  *
  * Each test exercises one branch of the demo's compound decisions for
- * MC/DC coverage. No ra8_sim_mmap MMIO is required.
+ * MC/DC coverage. No ra8_fake_mmap MMIO is required.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

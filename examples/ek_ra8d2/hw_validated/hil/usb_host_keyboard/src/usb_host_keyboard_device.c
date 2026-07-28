@@ -7,7 +7,7 @@
  *
  * @details
  * The USBFS (J11) device half carved out of `usb_host_keyboard/main.c` so each
- * translation unit stays under the 1000-line cap. This TU owns the simulated
+ * translation unit stays under the 1000-line cap. This TU owns the fake
  * boot-keyboard: the HID report + USB descriptor frameworks, the HID class
  * activate / deactivate callbacks, the USBX system + device-stack bring-up, the
  * interrupt-IN report send loop, and the device worker thread (TCB + stack).
@@ -31,7 +31,7 @@
 #include "ra8_usb.h"
 #include "usb_host_keyboard_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -61,10 +61,10 @@ typedef enum : uint8_t {
 } usb_langid_byte_t;
 
 /* -------------------------------------------------------------------------- */
-/* Typed keycodes the simulated keyboard "types" */
+/* Typed keycodes the fake keyboard "types" */
 /* -------------------------------------------------------------------------- */
 
-/** @brief Keycodes the simulated keyboard "types": R, A, 8, D, 2. */
+/** @brief Keycodes the fake keyboard "types": R, A, 8, D, 2. */
 static const uint8_t s_kbd_keys[k_hid_nkeys] = {
   (uint8_t)k_hid_kc_r,
   (uint8_t)k_hid_kc_a,
@@ -564,4 +564,4 @@ void usb_host_keyboard_device_thread_create(void)
                          TX_AUTO_START);
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

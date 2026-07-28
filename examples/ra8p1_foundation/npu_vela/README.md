@@ -6,8 +6,8 @@ on the way to issue #227: instead of hand-building a command stream in SRAM (as
 container** through the on-target loader `ra8_npu_load()` and runs it on the
 Ethos-U55 NPU.
 
-The container's command stream is the documented **SE55 sim convention**
-(`libs/ra8_hal/inc/ra8_npu_sim_cmd.h`), **not** a Vela-compiled program. So this
+The container's command stream is the documented **SE55 stand-in convention**
+(`libs/ra8_hal/inc/ra8_npu_fake_cmd.h`), **not** a Vela-compiled program. So this
 app exercises the full offline-build -> load -> submit -> run path
 deterministically, but it does **not** close #227: lowering a real quantized
 `.tflite` into a genuine Ethos-U55 command stream with Arm's Vela compiler, and
@@ -18,7 +18,7 @@ pinning a golden to *that*, remains open (see **Status**).
 1. `ra8_npu_init()` -- release the NPU module-stop (MSTPCRA bit 16) and soft-reset.
 2. `ra8_npu_read_id()` -- read the `NPU_ID` presence/revision probe.
 3. `ra8_npu_load()` -- validate the committed `.npub` container
-   (`tools/vela/generated/ra8_npu_model_addk_sim.h`, produced offline by
+   (`tools/vela/generated/ra8_npu_model_addk_fake.h`, produced offline by
    `tools/vela/vela_gen.py`) and map it into an `ra8_npu_job_t`: the command
    stream plus every resolved region base (baked weights/input inside the blob,
    the output activation carved from a runtime SRAM arena).
@@ -51,8 +51,8 @@ tools/ra8_emulator/build/ra8_emulator build/npu_vela.elf --device ra8p1
 ```
 
 ra8_emulator only maps the Ethos-U55 window (`0x40140000`) under `--device ra8p1`;
-its NPU model decodes the container's command stream (the documented SE55 sim
-convention, see `libs/ra8_hal/inc/ra8_npu_sim_cmd.h`) and applies the op to the
+its NPU model decodes the container's command stream (the documented SE55 stand-in
+convention, see `libs/ra8_hal/inc/ra8_npu_fake_cmd.h`) and applies the op to the
 tensor arenas, so the run is deterministic. The output checkword matches
 `npu_smoke`'s, proving the loader-built job is byte-identical to the hand-built
 one.
@@ -60,7 +60,7 @@ one.
 ## Status
 
 **Build-foundation only -- NOT hardware-validated.** There is no RA8P1 board
-yet, and the container's command stream is the SE55 sim convention, not a real
+yet, and the container's command stream is the SE55 stand-in convention, not a real
 Vela-compiled program, so a real inference would not complete on silicon. The
 host unit test `tests/test_ra8_npu_loader.c` byte-pins the loader's extracted
 command stream + region layout with mock MMIO. **Issue #227 (a Vela-compiled

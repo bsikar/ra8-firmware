@@ -32,8 +32,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pmsc.h"
 #include "unity_minimal.h"
@@ -120,7 +120,7 @@ static const ra8_usb_pmsc_storage_t s_test_storage = {
 /** @brief Return the driver to a closed, freshly-mapped state before each arm. */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_pmsc_close();
 }

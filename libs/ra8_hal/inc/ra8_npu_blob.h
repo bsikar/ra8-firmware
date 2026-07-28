@@ -44,7 +44,7 @@
  * ## Not guarded by `RA8_HAS_NPU`
  *
  * This header defines a pure DATA FORMAT (constants + one endianness-safe
- * accessor) and touches no NPU register, so -- exactly like `ra8_npu_sim_cmd.h`
+ * accessor) and touches no NPU register, so -- exactly like `ra8_npu_fake_cmd.h`
  * -- it is deliberately NOT gated behind `RA8_HAS_NPU`: the host-side generator's
  * companion tests and the ra8_emulator model must be able to include it on a device
  * that is not the RA8P1. The RA8P1-only piece is the loader, which turns a blob

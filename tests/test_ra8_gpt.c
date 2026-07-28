@@ -13,11 +13,11 @@
 
 #include "ra8_dma.h"
 #include "ra8_err.h"
+#include "ra8_fake_dma.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpt.h"
 #include "ra8_gpt_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_dma.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -45,7 +45,7 @@ typedef enum : uint32_t {
 static void test_start_happy(void)
 {
   TEST_BEGIN("gpt start happy channel 0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -68,7 +68,7 @@ static void test_start_happy(void)
 static void test_start_last_channel(void)
 {
   TEST_BEGIN("gpt start last channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_start_free_run((uint8_t)k_ra8_gpt_test_channel_last, 0U));
   TEST_END("gpt start last channel");
@@ -83,7 +83,7 @@ static void test_start_last_channel(void)
 static void test_start_bad_channel(void)
 {
   TEST_BEGIN("gpt start bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_gpt_start_free_run((uint8_t)k_ra8_gpt_test_channel_bad, 0U));
@@ -99,7 +99,7 @@ static void test_start_bad_channel(void)
 static void test_start_huge_channel(void)
 {
   TEST_BEGIN("gpt start huge channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_gpt_start_free_run((uint8_t)k_ra8_gpt_test_channel_huge, 0U));
@@ -115,7 +115,7 @@ static void test_start_huge_channel(void)
 static void test_stop_happy(void)
 {
   TEST_BEGIN("gpt stop happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -136,7 +136,7 @@ static void test_stop_happy(void)
 static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("gpt stop bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_gpt_stop((uint8_t)k_ra8_gpt_test_channel_bad));
   TEST_END("gpt stop bad channel");
@@ -151,7 +151,7 @@ static void test_stop_bad_channel(void)
 static void test_read_happy(void)
 {
   TEST_BEGIN("gpt read happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_gpt_channel_regs_t* reg = ra8_gpt((uint8_t)k_ra8_gpt_test_channel_valid);
   reg->GTCNT                         = (uint32_t)k_ra8_gpt_test_count;
@@ -172,7 +172,7 @@ static void test_read_happy(void)
 static void test_read_null_out(void)
 {
   TEST_BEGIN("gpt read null out");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_gpt_read((uint8_t)k_ra8_gpt_test_channel_valid, nullptr));
   TEST_END("gpt read null out");
@@ -187,7 +187,7 @@ static void test_read_null_out(void)
 static void test_read_bad_channel(void)
 {
   TEST_BEGIN("gpt read bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint32_t out = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_gpt_read((uint8_t)k_ra8_gpt_test_channel_bad, &out));
@@ -217,7 +217,7 @@ static void stub_gpt_cb(void* ctx, uint32_t mask)
 
 static void prep_w35(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_gpt_cb_count     = 0U;
   s_gpt_cb_last_mask = 0U;

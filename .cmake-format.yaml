@@ -27,7 +27,7 @@ parse:
         BOARD: 1
         USES: '*'
         LIBS: '*'
-        SIM_LIBS: '*'
+        OFF_TARGET_LIBS: '*'
         NSC_SRCS: '*'
         EXTRA_SRCS: '*'
     ra8_add_cpu1_image:

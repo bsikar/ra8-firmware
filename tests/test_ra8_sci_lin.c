@@ -14,7 +14,7 @@
  * checksum helpers against known LIN vectors, and the pure header-validation
  * predicate (whose ``sync_ok && pid_ok`` compound decision carries an MC/DC
  * vector set). Status-flag polls are driven by pre-seeding CSR.TDRE /
- * CSR.RDRF / XSR0.BFDF or by arming the ra8_sim_mmio wait seam; no SIGALRM
+ * CSR.RDRF / XSR0.BFDF or by arming the ra8_fake_mmio wait seam; no SIGALRM
  * injection is used.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -24,12 +24,12 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_sci.h"
 #include "ra8_sci_lin.h"
 #include "ra8_sci_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -155,7 +155,7 @@ static const ra8_sci_lin_cfg_t k_lin_cfg_responder = {
 };
 
 /**
- * @brief Reset the simulated MMIO window and the MSTP model before a test.
+ * @brief Reset the fake MMIO window and the MSTP model before a test.
  *
  * @pre The host MMIO substrate is linked into the test binary.
  * @pre ``ra8_mstp_init`` is safe to call repeatedly.
@@ -165,8 +165,8 @@ static const ra8_sci_lin_cfg_t k_lin_cfg_responder = {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -308,7 +308,7 @@ static void test_lin_send_header_guards(void)
    * so ra8_sci_putc_polling runs to its budget and reports a hardware timeout. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_lin_test_channel)->CSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_lin_test_channel)->CSR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_sci_lin_send_header((uint8_t)k_lin_test_channel, (uint8_t)k_lin_id_00));
   TEST_END("ra8_sci_lin_send_header: guards + timeout");
@@ -498,7 +498,7 @@ static void test_lin_wait_break(void)
   /* Arm the XSR0 wait to fail -> the poll runs to its budget and times out. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_lin_test_channel)->XSR0));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_lin_test_channel)->XSR0));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_sci_lin_wait_break((uint8_t)k_lin_test_channel));
 
   /* Bad channel -> null-guard. */
@@ -637,7 +637,7 @@ static void test_lin_send_response(void)
   /* Mid-frame timeout: arm CSR.TDRE to never assert. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_lin_test_channel)->CSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_lin_test_channel)->CSR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_sci_lin_send_response((uint8_t)k_lin_test_channel,
                                            k_ra8_sci_lin_checksum_classic,
@@ -703,7 +703,7 @@ static void test_lin_read_response(void)
   /* Mid-frame timeout: arm CSR.RDRF to never assert. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_lin_test_channel)->CSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_lin_test_channel)->CSR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_sci_lin_read_response((uint8_t)k_lin_test_channel,
                                            data,

@@ -14,7 +14,7 @@
  * callbacks that drive the live SD card). The header is self-contained: it
  * pulls in ``<stdint.h>`` for the typed-enum underlying types and ``ra8_err.h``
  * for ::ra8_err_t. The ThreadX worker entry point is only declared when the
- * firmware (non-simulator) USB stack is compiled in.
+ * firmware (on-target) USB stack is compiled in.
  *
  * @author Brighton Sikarskie
  * @date 2026-07-08
@@ -193,7 +193,7 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  */
 [[nodiscard]] ra8_err_t sdmsc_print_fail(const char* what, ra8_err_t err);
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 
 /**
@@ -216,4 +216,4 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  * @since 0.1.0
  */
 VOID sdmsc_device_worker(ULONG arg);
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

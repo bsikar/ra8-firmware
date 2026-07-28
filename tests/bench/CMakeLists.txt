@@ -53,7 +53,7 @@ foreach(_t ${RA8_BENCH_TARGETS})
   set_target_properties(${_t} PROPERTIES LINKER_LANGUAGE CXX)
   if(APPLE)
     # Same MAP_FIXED-friendly link layout the unit-test executables
-    # use: shrink __PAGEZERO down to 16 KiB so the simulator MMIO
+    # use: shrink __PAGEZERO down to 16 KiB so the fake MMIO
     # windows under 0x80000000 can be mapped on macOS arm64.
     target_link_options(${_t} PRIVATE "-Wl,-pagezero_size,0x4000" "-Wl,-segalign,0x4000")
     # Re-codesign after the linker emits the binary; macOS sometimes

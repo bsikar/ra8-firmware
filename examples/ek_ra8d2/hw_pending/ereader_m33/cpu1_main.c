@@ -31,7 +31,7 @@
  *      itself the proof real pixels landed -- and PUBLISH the framebuffer base,
  *      geometry, format, glyph count and CRC into the shared mailbox.
  *   6. Set `status = ok`, `done = 1`, then enter the #150 MODE-SWITCH hold loop:
- *      the M33 holds the page and polls a (simulated) touch input. On each
+ *      the M33 holds the page and polls a (fake) touch input. On each
  *      page turn it bumps `turn_req`, POKES the parked M85 over IPC0
  *      (`ra8_ipc_send_event`, HUM Ch 3.2.11 p 215) to wake it, waits for the
  *      M85's heavy-work ack (`turn_ack`), RE-RENDERS the held page (re-folding
@@ -47,7 +47,7 @@
  * @note The M33 deliberately does NOT call `ra8_log`: ra8_emulator echoes only the
  *       primary core's ITM, so an M33 log line would be invisible. Its
  *       proof-of-life is the mailbox the M85 narrates and the CRC it publishes.
- * @note The touch is *simulated* (a bounded page-dwell spin): on real hardware
+ * @note The touch is *fake* (a bounded page-dwell spin): on real hardware
  *       this is replaced by a GT911 touch-controller poll, a HIL follow-up.
  * @note The framebuffer is the M33's own RGB565 plane in external SDRAM, not yet
  *       the GLCDC scan-out plane; wiring the held plane to the live panel + the
@@ -919,7 +919,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* The vector table is only meaningful in the cross-compiled M33 image. The host
  * unit-test build compile-checks this TU but never links it as an executable, so
  * dropping the table there costs no coverage. */

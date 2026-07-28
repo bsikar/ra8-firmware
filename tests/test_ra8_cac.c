@@ -9,8 +9,8 @@
 #include "ra8_cac.h"
 #include "ra8_cac_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -32,7 +32,7 @@ typedef enum : uint8_t {
 static void test_init_writes_limits(void)
 {
   TEST_BEGIN("cac init writes limits");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_err_t err =
     ra8_cac_init((uint16_t)k_ra8_cac_test_upper, (uint16_t)k_ra8_cac_test_lower);
@@ -56,7 +56,7 @@ static void test_init_writes_limits(void)
 static void test_measure_null_out_pointer(void)
 {
   TEST_BEGIN("cac measure null out pointer");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cac_measure(nullptr));
   TEST_END("cac measure null out pointer");
@@ -71,7 +71,7 @@ static void test_measure_null_out_pointer(void)
 static void test_measure_happy_path(void)
 {
   TEST_BEGIN("cac measure happy path");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pre-seed CASTR.MENDF so the poll loop exits immediately, and
    * pre-seed CACNTBR so the captured value is predictable. */
@@ -97,7 +97,7 @@ static void test_measure_happy_path(void)
 static void test_measure_timeout(void)
 {
   TEST_BEGIN("cac measure timeout");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Leave CASTR.MENDF clear so the poll loop burns its budget
    * and eventually returns k_ra8_err_hw_timeout. */
@@ -121,7 +121,7 @@ static void stub_cac_cb(void* ctx, uint8_t mask)
 
 static void prep_w43(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_cac_cb_count     = 0U;
   s_cac_cb_last_mask = 0U;

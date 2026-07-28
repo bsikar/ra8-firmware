@@ -1,5 +1,5 @@
 /**
- * @file ra8_sim_irq.h
+ * @file ra8_fake_irq.h
  * @brief Host-test interrupt-injection shim
  *
  * @par Tag
@@ -8,11 +8,11 @@
  * @details
  * Unit tests that exercise an ISR-path need a way to simulate an
  * interrupt firing without actually running on the Cortex-M85.
- * ``ra8_sim_irq`` is the minimal helper that lets a test:
+ * ``ra8_fake_irq`` is the minimal helper that lets a test:
  *
  * 1. Build up the ``ra8_isr`` dispatch table as usual (register
  * the handlers through ``ra8_isr_register``).
- * 2. Call ``ra8_sim_irq_fire(event)`` to look up the registered
+ * 2. Call ``ra8_fake_irq_fire(event)`` to look up the registered
  * slot for ``event`` and invoke ``ra8_isr_dispatch(slot)``
  * directly.
  *
@@ -26,7 +26,7 @@
  *
  * - Tests for IRQ-driven SCI / SPI / IIC drivers that want to
  * "drive" an RX-ready interrupt after staging some bytes in
- * the simulated MMIO.
+ * the fake MMIO.
  * - GPT compare-match tests that want to simulate an edge event.
  * - Any driver that registers a completion callback via
  * ``ra8_isr`` and needs to verify the callback runs.
@@ -66,7 +66,7 @@ extern "C" {
  * @retval k_ra8_err_not_found ``event`` had no registered slot.
  *
  * @pre ``ra8_isr_init`` and ``ra8_isr_register`` have been called.
- * @pre The test is running under ``RA8_SIMULATOR_MODE``.
+ * @pre The test is running under ``RA8_OFF_TARGET``.
  *
  * @post On success, the caller's registered handler ran exactly
  * once.
@@ -74,7 +74,7 @@ extern "C" {
  * @note Thread safety: test code only, single-threaded.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_sim_irq_fire(ra8_elc_event_t event);
+[[nodiscard]] ra8_err_t ra8_fake_irq_fire(ra8_elc_event_t event);
 
 #ifdef __cplusplus
 }

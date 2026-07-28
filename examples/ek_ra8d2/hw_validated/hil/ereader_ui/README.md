@@ -28,7 +28,7 @@ dimensions the display backend reports (`ra8_panel.h`), so a different
 panel descriptor reflows the shell with no code change. The full 1024x600
 RGB565 framebuffer lives in external SDRAM (`.sdram_data`).
 
-## Run it in the simulator
+## Run it in the emulator
 
 ```
 make emu-ereader_ui            # boot the real .elf on tools/ra8_emulator

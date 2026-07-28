@@ -216,7 +216,7 @@ void ra8_reset_test_only_reset_state(void);
  *
  * @pre ``out != nullptr``.
  * @pre The host or target has the SYSC block mapped (always true on RA8D2
- *      and via ``ra8_sim_mmap`` in host tests).
+ *      and via ``ra8_fake_mmap`` in host tests).
  * @post ``*out`` holds the decoded cause.
  * @post No hardware state is modified.
  *
@@ -340,7 +340,7 @@ void ra8_reset_test_only_reset_state(void);
  * bit set, exactly as ``CMSIS NVIC_SystemReset`` does. The reset
  * **does not return** -- on real hardware control is given to the
  * reset exception handler within a few cycles. The function ends with
- * a ``__DSB`` (or its sim-mode equivalent) so the AIRCR write is
+ * a ``__DSB`` (or its off-target equivalent) so the AIRCR write is
  * observable before the CPU stalls waiting for reset.
  *
  * After the reset completes ``RSTSR1.SWRF`` will read 1 and

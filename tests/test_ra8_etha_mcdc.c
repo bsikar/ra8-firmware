@@ -18,8 +18,8 @@
 #include "ra8_err.h"
 #include "ra8_etha.h"
 #include "ra8_etha_regs.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -45,7 +45,7 @@ typedef enum : uint32_t {
 /** @brief Per-test fixture reset: fresh peripheral RAM + MSTP model. */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -123,7 +123,7 @@ static void test_set_mode_mcdc_port_mode(void)
 
   /* Vector 2: port valid, mode within mask. C1=F, C2=F -> Decision F.
    * Pre-stage EAMS.OPS at CONFIG so the driver's real bounded EAMS poll
-   * (no longer short-circuited under RA8_SIMULATOR_MODE, T1-01) is
+   * (no longer short-circuited under RA8_OFF_TARGET, T1-01) is
    * satisfied on poll 0 and the decision-F leg returns k_ra8_ok. */
   ra8_etha(k_ra8_etha_port_0)->EAMS = (uint32_t)k_ra8_etha_ops_config;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_set_mode(k_ra8_etha_port_0, k_ra8_etha_opc_config));

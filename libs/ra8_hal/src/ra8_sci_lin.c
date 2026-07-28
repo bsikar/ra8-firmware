@@ -166,13 +166,13 @@ static void internal_lin_program_mode(volatile r_sci_regs_t* reg,
  * @details
  * On the target, TCST holds 1 while the break field is on the wire and
  * self-clears when the BFLW-programmed dominant time completes. On the
- * host (``RA8_SIMULATOR_MODE``) the timer drain is not modelled, so the
+ * host (``RA8_OFF_TARGET``) the timer drain is not modelled, so the
  * routine short-circuits to success.
  *
  * @param[in] reg Channel register bank, non-NULL.
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok            TCST observed clear (or simulator stub).
+ * @retval k_ra8_ok            TCST observed clear (or fake stub).
  * @retval k_ra8_err_hw_timeout TCST did not clear within the budget.
  *
  * @pre ``reg`` is non-NULL.
@@ -186,7 +186,7 @@ static void internal_lin_program_mode(volatile r_sci_regs_t* reg,
 static ra8_err_t internal_lin_wait_break_done(volatile const r_sci_regs_t* reg)
 {
   /* HUM Ch 38.2.15 "XCR1 : Simple LIN Control Register 1" p 2223 -- TCST holds 1
-   * during break output and clears on completion. The ra8_sim_mmio host seam
+   * during break output and clears on completion. The ra8_fake_mmio host seam
    * drives this real poll on the unit-test build (T1-01): default RAM (TCST
    * clear) takes the success leg, a staged TCST runs the loop to its timeout. */
   const uint32_t mask = (1U << k_ra8_sci_xcr1_bit_tcst);
@@ -380,7 +380,7 @@ ra8_err_t ra8_sci_lin_wait_break(uint8_t channel)
   volatile const r_sci_regs_t* reg = ra8_sci(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "lin_wait_break: channel out of range");
   /* HUM Ch 38.2.22 "XSR0 : Simple LIN Status Register 0" p 2235 -- spin until
-   * BFDF = 1 (break field detected). The ra8_sim_mmio host seam drives this
+   * BFDF = 1 (break field detected). The ra8_fake_mmio host seam drives this
    * real poll on the unit-test build: a staged BFDF takes the success leg, an
    * armed fail runs the loop to its timeout. */
   const uint32_t mask = (1U << k_ra8_sci_xsr0_bit_bfdf);

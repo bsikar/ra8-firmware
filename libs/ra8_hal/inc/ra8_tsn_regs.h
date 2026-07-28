@@ -125,7 +125,7 @@ typedef struct {
  *
  * @note The cells live in the MRAM trim region (``0x02C1EDA0``).
  *       Hardware exposes them as read-only; tests inject values by
- *       writing to the simulated mmap backing store.
+ *       writing to the fake mmap backing store.
  *
  * @see ra8_tsn_cal()
  */

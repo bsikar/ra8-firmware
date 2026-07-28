@@ -5,7 +5,7 @@
  *        handshake + record exchange driven over ``ra8_net_pal`` frames.
  *
  * @details
- * Compiled with ``RA8_SIMULATOR_MODE`` defined, so ``ra8_tls.c`` runs its
+ * Compiled with ``RA8_OFF_TARGET`` defined, so ``ra8_tls.c`` runs its
  * loopback BIO drain instead of a real Mbed TLS handshake. That lets the
  * host build exercise the full public contract of the new facade surface
  * added for the TLS-client example (issue #261):
@@ -216,9 +216,9 @@ static void test_mcdc_mss_clamp(void)
  * (no compound decisions in this test -- happy-path introspection contract;
  * the argument guard's decision is covered by test_mcdc_cipher_arg_guard)
  */
-static void test_cipher_and_verify_sim(void)
+static void test_cipher_and_verify_fake(void)
 {
-  TEST_BEGIN("get_cipher_suite/get_verify_result report the sim sentinels");
+  TEST_BEGIN("get_cipher_suite/get_verify_result report the fake sentinels");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
   ra8_tls_session_t     s   = nullptr;
   ra8_tls_session_cfg_t cfg = make_np_cfg();
@@ -230,7 +230,7 @@ static void test_cipher_and_verify_sim(void)
   char     name[k_ra8_tls_cipher_name_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_cipher_suite(s, &id, name, sizeof(name)));
   TEST_ASSERT_EQ(0, id);
-  TEST_ASSERT_EQ(0, strcmp(name, "sim-tls-loopback"));
+  TEST_ASSERT_EQ(0, strcmp(name, "off-target-loopback"));
 
   uint32_t flags = k_t_flags_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_verify_result(s, &flags));
@@ -242,7 +242,7 @@ static void test_cipher_and_verify_sim(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_close(s));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_deinit());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_deinit());
-  TEST_END("get_cipher_suite/get_verify_result report the sim sentinels");
+  TEST_END("get_cipher_suite/get_verify_result report the fake sentinels");
 }
 
 /**
@@ -290,11 +290,11 @@ static void test_mcdc_cipher_arg_guard(void)
  * @par MC/DC:
  * Decision: the ``while ((i < last) && (src[i] != '\0'))`` copy loop in
  * ``internal_copy_cstr`` (libs/ra8_tls/src/ra8_tls.c), exercised through
- * ``ra8_tls_get_cipher_suite`` with the 16-char sim name "sim-tls-loopback".
+ * ``ra8_tls_get_cipher_suite`` with the 19-char off-target name "off-target-loopback".
  * 2 conditions, N+1 = 3 vectors.
  * - V1: mid-copy, i<last AND src[i]!=0 -> C1=T,C2=T -> body runs (both cases).
- * - V2: cap=4 -> i reaches last(=3) before NUL -> C1=F -> truncated to "sim".
- * - V3: cap=48 -> src[i]==NUL before last -> C2=F -> full "sim-tls-loopback".
+ * - V2: cap=4 -> i reaches last(=3) before NUL -> C1=F -> truncated to "off".
+ * - V3: cap=48 -> src[i]==NUL before last -> C2=F -> full "off-target-loopback".
  * (V1,V2) isolates C1 (loop-bound stop); (V1,V3) isolates C2 (NUL stop).
  */
 static void test_mcdc_cipher_name_copy(void)
@@ -311,11 +311,11 @@ static void test_mcdc_cipher_name_copy(void)
   /* V2 (C1 false: loop-bound truncation): cap 4 keeps 3 chars + NUL. */
   char small[4] = {'x', 'x', 'x', 'x'};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_cipher_suite(s, &id, small, sizeof(small)));
-  TEST_ASSERT_EQ(0, strcmp(small, "sim"));
+  TEST_ASSERT_EQ(0, strcmp(small, "off"));
   /* V3 (C2 false: NUL termination): full name fits. */
   char full[k_ra8_tls_cipher_name_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_cipher_suite(s, &id, full, sizeof(full)));
-  TEST_ASSERT_EQ(0, strcmp(full, "sim-tls-loopback"));
+  TEST_ASSERT_EQ(0, strcmp(full, "off-target-loopback"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_close(s));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_deinit());
@@ -402,7 +402,7 @@ static void test_end_to_end_over_net_pal(void)
   uint32_t flags                           = k_t_u16_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_cipher_suite(s, &id, name, sizeof(name)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_verify_result(s, &flags));
-  TEST_ASSERT_EQ(0, strcmp(name, "sim-tls-loopback"));
+  TEST_ASSERT_EQ(0, strcmp(name, "off-target-loopback"));
   TEST_ASSERT_EQ(0, flags);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_close(s));
@@ -415,7 +415,7 @@ int main(void)
 {
   test_mss_clamp_values();
   test_mcdc_mss_clamp();
-  test_cipher_and_verify_sim();
+  test_cipher_and_verify_fake();
   test_mcdc_cipher_arg_guard();
   test_mcdc_cipher_name_copy();
   test_accessor_state_guards();

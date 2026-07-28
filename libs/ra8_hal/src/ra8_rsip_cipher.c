@@ -20,7 +20,7 @@
  *
  * The key-install and cipher / AEAD / MAC entry points are FAIL-CLOSED in
  * production: HUM Ch 52 documents no symmetric command-register map for the
- * RSIP-E50D, so the sim-only command path is gated behind the stub-crypto
+ * RSIP-E50D, so the off-target-only command path is gated behind the stub-crypto
  * guard and a production build returns ``k_ra8_err_not_supported``. The shipping
  * symmetric crypto is tf-psa-crypto on the M85. NetX Crypto is linked with its
  * own built-in software AES / SHA-256 (there is no RSIP ALT shim), so no NetX
@@ -29,7 +29,7 @@
  * Cross-TU primitives shared with ``ra8_rsip.c`` and ``ra8_rsip_asym.c`` are
  * declared in ``ra8_rsip_internal.h`` and remain compiled in every build. The
  * RSIP engine exposes no documented symmetric register interface (HUM Ch 52 is
- * a feature overview, p 3302-3307), so the sim command path here is a modelled
+ * a feature overview, p 3302-3307), so the fake command path here is a modelled
  * fiction, not a real hardware sequence.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -132,7 +132,7 @@ uint32_t internal_handle_words_for(ra8_rsip_oem_cmd_t cmd)
 ra8_err_t internal_complete(uint32_t done_mask)
 {
   /* HUM Ch 52.1 "Overview" p 3302 */
-  /* Pre-assert the DONE bit so the host sim spin terminates. */
+  /* Pre-assert the DONE bit so the host fake spin terminates. */
   *ra8_rsip_reg32(k_ra8_rsip_off_isr) |= done_mask;
 
   const ra8_err_t wait_err = internal_wait_bit(k_ra8_rsip_off_isr, done_mask);
@@ -219,9 +219,9 @@ uint8_t internal_aes_alg_byte(uint32_t alg)
  * Ch 52 "Renesas Secure IP (RSIP-E50D)" is a six-page feature overview
  * (p 3302-3307) with no command-register map; the vendor engine is driven
  * through an encrypted firmware mailbox, not the MMIO opcodes modelled below.
- * The command-path bodies here only round-trip the host register simulator;
+ * The command-path bodies here only round-trip the host register fake;
  * they do NOT compute a real cipher / AEAD / MAC result. They compile only
- * under the insecure-stub / simulator guard so a production image gets the
+ * under the insecure-stub / off-target guard so a production image gets the
  * fail-closed #else and can never mistake these bytes for real ciphertext or a
  * valid tag. The shipping symmetric crypto is tf-psa-crypto on the M85,
  * silicon-proven in psa_crypto_hil; NetX Crypto is linked with its own built-in
@@ -229,7 +229,7 @@ uint8_t internal_aes_alg_byte(uint32_t alg)
  * depends on this fail-closed path (issue #214). The register pokes below
  * therefore carry NO HUM citation: there is no real register map to cite.
  */
-#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
 
 /* Stream ``len`` bytes into the data input window -- see surrounding code and HUM citations. */
 RA8_INTERNAL
@@ -744,12 +744,12 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
   return k_ra8_ok;
 }
 
-#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_OFF_TARGET */
 
 /*
  * Fail-closed production variant. With no real RSIP symmetric-cipher /
  * key-install backend on this silicon, every entry point returns a hard error
- * (never k_ra8_ok) so a production image cannot mistake the simulator
+ * (never k_ra8_ok) so a production image cannot mistake the fake
  * command-path for real ciphertext, a valid tag, or an installed key handle.
  * No production caller depends on a real result here: NetX Crypto uses its own
  * built-in software AES / SHA-256, and general callers use tf-psa-crypto on the
@@ -922,4 +922,4 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
   return k_ra8_err_not_supported;
 }
 
-#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_OFF_TARGET */

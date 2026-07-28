@@ -10,7 +10,7 @@
  * ra8_trustzone_init, which configures the SAU regions and transitions the CPU
  * to the Non-Secure world to run the actual e-reader firmware.
  *
- * If the transition fails or is bypassed (e.g. on host simulation builds),
+ * If the transition fails or is bypassed (e.g. on off-target builds),
  * main() runs as a fallback, increments a diagnostic counter, and parks
  * the CPU safely.
  *

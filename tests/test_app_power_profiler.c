@@ -7,7 +7,7 @@
  * the LPM block + the power profiler and walking through the
  * ACTIVE / SLEEP / DEEP_STANDBY / SOFTWARE_STANDBY regions, then
  * snapshotting the accumulator. Host WFI is a no-op so the cycle
- * completes immediately under RA8_SIMULATOR_MODE.
+ * completes immediately under RA8_OFF_TARGET.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -17,9 +17,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_lpm.h"
 #include "ra8_power_profile.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -35,7 +35,7 @@ static uint64_t s_now_us = 0U;
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_now_us = 0U;
 }
 

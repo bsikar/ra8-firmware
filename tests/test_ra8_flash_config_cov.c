@@ -7,13 +7,13 @@
  * anti-rollback-counter (ARC) read / increment paths were left
  * uncovered on the host. The reason is memory topology: the ARCCS,
  * ARC_SEC and ARC_NSEC counter pages live at ``0x02E17932`` and
- * ``0x02F27E00`` -- OUTSIDE every window the shared ``ra8_sim_mmap``
+ * ``0x02F27E00`` -- OUTSIDE every window the shared ``ra8_fake_mmap``
  * harness backs (its MRAM window is only ``0x02C00000 .. 0x02D00000``).
  * A real load from those addresses on the host segfaults, so the
  * counter-summation helpers were never entered.
  *
  * This file backs those two counter pages itself with a ``MAP_FIXED``
- * mmap in a module constructor (exactly the mechanism ``ra8_sim_mmap``
+ * mmap in a module constructor (exactly the mechanism ``ra8_fake_mmap``
  * uses for the windows it does own), then drives the *real*
  * ra8_flash_config.c code with seeded register / counter contents and
  * injected error bits. No statements are split; nothing is excluded.
@@ -24,12 +24,12 @@
  *  - the ``words_per`` clamp -- ``words_per`` is only ever 16 or 2, so
  *    ``words_per > k_ra8_mram_arc_max_words`` (16) can never fire.
  *  - every ``ra8_flash_enter_pe_mode() != k_ra8_ok`` early-return -- the
- *    simulator reads back the keyed value the driver just wrote, so the
+ *    fake reads back the keyed value the driver just wrote, so the
  *    PE-entry poll always succeeds on its first iteration.
  * These are genuinely undrivable on the host; the module still clears
  * the 90% bar without them, so no source line is excluded. The
  * MSUINITR-kick timeout, previously listed here, is now driven in
- * test_ra8_flash.c through the ra8_sim_mmio fault seam.
+ * test_ra8_flash.c through the ra8_fake_mmio fault seam.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -42,9 +42,9 @@
 #include <unistd.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_flash.h"
 #include "ra8_flash_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -99,7 +99,7 @@ typedef enum : uint32_t {
  * @brief Install RAM backing for the two ARC counter pages.
  *
  * @details Runs before main via the constructor attribute, mirroring
- *          ``ra8_sim_mmap``. A failed map would segfault every ARC test,
+ *          ``ra8_fake_mmap``. A failed map would segfault every ARC test,
  *          so a map failure aborts the process loudly.
  *
  * @pre The host permits MAP_FIXED at the requested low addresses.
@@ -169,10 +169,10 @@ static ra8_flash_cfg_t make_cfg(void)
   return cfg;
 }
 
-/** @brief Reset simulator MMIO + ARC pages and re-init the driver. */
+/** @brief Reset fake MMIO + ARC pages and re-init the driver. */
 static void fresh_init(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   arc_pages_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
@@ -395,7 +395,7 @@ static void test_arc_increment_nsec_multiple_max(void)
 static void test_set_startup_area_permanent_hw_error(void)
 {
   TEST_BEGIN("flash set_startup_area permanent hw error");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   arc_pages_reset();
 
   /* MRDY high so the MACI wait passes, plus a composite error bit so the
@@ -426,7 +426,7 @@ static void test_set_startup_area_permanent_hw_error(void)
 static void test_extra_mram_write_end_past_extra(void)
 {
   TEST_BEGIN("flash extra_mram_write end past extra");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const uint8_t  buf[k_ra8_mram_write_size_bytes] = {};
   const uint32_t near_end =

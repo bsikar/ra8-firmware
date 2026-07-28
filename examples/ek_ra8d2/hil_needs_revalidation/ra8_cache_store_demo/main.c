@@ -31,7 +31,7 @@
  * ra8_cache_store's physical-flash bind is an injected callback. Production binds
  * the Octo-SPI driver; this demo binds a RAM driver so the entire path runs in
  * SRAM with no MMIO. That is what makes the run emu-gateable AND makes the
- * emulated run byte-identical to the on-silicon run (SIM equals HIL): there is no
+ * emulated run byte-identical to the on-silicon run (EIL equals HIL): there is no
  * peripheral for ra8_emulator to model differently from the chip.
  *
  * @author Brighton Sikarskie

@@ -6,8 +6,8 @@
  * Covers the lifecycle / status / IRQ surface that the original
  * scaffold provided, plus the CCC engine (ENTDAA, SETDASA, RSTDAA,
  * generic send/recv), private read / write, and the IBI inbound
- * queue.  Every test resets the simulated MMIO backing store via
- * ``ra8_sim_mmap_reset`` so the FIFO ports start zeroed, then drives
+ * queue.  Every test resets the fake MMIO backing store via
+ * ``ra8_fake_mmap_reset`` so the FIFO ports start zeroed, then drives
  * the driver through one verifiable register sequence.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -15,11 +15,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i3c.h"
 #include "ra8_i3c_internal.h"
 #include "ra8_i3c_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -79,7 +79,7 @@ static void stub_i3c_cb(void* ctx, uint32_t mask)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_i3c_cb_count     = 0U;
   s_i3c_cb_last_mask = 0U;
@@ -234,7 +234,7 @@ static void test_dynamic_address_assign(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
 
-  /* Pre-stage one PID/BCR/DCR response in the simulated NTDTBP0 cell --
+  /* Pre-stage one PID/BCR/DCR response in the fake NTDTBP0 cell --
    * with a single backing word the driver's two consecutive reads return
    * the same value, so the test only verifies the *first* drained 4 bytes
    * landed in the target.pid[]. */
@@ -409,7 +409,7 @@ static void test_write_regular(void)
   const uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_write(0U, 0x55U, data, sizeof(data), false));
   /* The FIFO backing memory holds the LAST word that was written --
-   * with the simulated MMIO NTDTBP0 maps to a single 32-bit cell, so
+   * with the fake MMIO NTDTBP0 maps to a single 32-bit cell, so
    * the second word ({5,6,7,8}) is what remains. */
   TEST_ASSERT_EQ(0x08070605U, ra8_i3c()->NTDTBP0);
   TEST_END("i3c write (regular FIFO)");

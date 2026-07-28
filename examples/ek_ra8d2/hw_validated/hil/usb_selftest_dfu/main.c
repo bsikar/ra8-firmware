@@ -56,7 +56,7 @@
 #include "ra8_usb.h"
 #include "usb_selftest_dfu_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -114,7 +114,7 @@ static const ra8_port_pin_t k_dfu_pin_hs_pwr = (ra8_port_pin_t)k_ra8_board_usbhs
  * progress-phase markers, and the Chapter-9 + DFU request constants all live in
  * "usb_selftest_dfu_steps.h" (shared with the host-ladder sibling). */
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX workers + USBX pool storage */
@@ -620,7 +620,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /* -------------------------------------------------------------------------- */
 /* Startup */
@@ -736,7 +736,7 @@ int32_t main(void)
 
   ra8_isr_globals_enable();
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

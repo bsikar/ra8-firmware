@@ -3,14 +3,14 @@
  * @brief Unit tests for ra8_sdcard.c (SD card high-level driver)
  *
  * @details
- * The SDHI hardware is faked via tests/mocks/ra8_sim_mmap.c -- writes
+ * The SDHI hardware is faked via tests/mocks/ra8_fake_mmap.c -- writes
  * to SD_CMD / SD_ARG land in plain RAM, and the polled RSPEND flag in
- * SD_INFO1 is asserted by the ra8_sim_mmio poll-hook (no timer, no thread).
+ * SD_INFO1 is asserted by the ra8_fake_mmio poll-hook (no timer, no thread).
  *
  * The interesting bit is that ::ra8_sdcard_init issues a sequence of
  * SD commands (CMD0, CMD8, CMD55, ACMD41, CMD2, CMD3, CMD9, CMD7)
  * and reads a different response shape for each one. The poll-hook
- * (installed via ra8_sim_mmio_set_poll_hook) inspects the driver's
+ * (installed via ra8_fake_mmio_set_poll_hook) inspects the driver's
  * most-recently-written SD_CMD register, stuffs
  * the matching response into SD_RSP10..SD_RSP76, asserts RSPEND, then
  * overwrites SD_CMD with a sentinel (> 63) so each command is served
@@ -24,12 +24,12 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_sdcard.h"
 #include "ra8_sdhi.h"
 #include "ra8_sdhi_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -65,7 +65,7 @@ typedef enum : uint32_t {
 /** @brief When non-zero the CMD55 mock withholds APP_CMD, forcing a 4-bit decline. */
 static uint8_t s_decline_4bit;
 
-/* Deterministic SD command servicing via the ra8_sim_mmio poll-hook -- no
+/* Deterministic SD command servicing via the ra8_fake_mmio poll-hook -- no
  * wall-clock timer, no servicer thread. The hook decodes each command from the
  * driver's SD_CMD write on its OWN poll thread rather than off a timer, and
  * gates each response behind a sentinel so a command is served exactly once:
@@ -129,7 +129,7 @@ static void sdcard_srv_respond(volatile r_sdhi_regs_t* reg, uint32_t cmd)
  *
  * @details
  * Runs inline on the driver's own SDHI RSPEND / FIFO poll (see
- * ra8_sim_mmio_set_poll_hook). It holds SD_INFO2.BRE/BWE asserted for the block
+ * ra8_fake_mmio_set_poll_hook). It holds SD_INFO2.BRE/BWE asserted for the block
  * FIFO drains, then -- when SD_CMD holds a real command (not the served
  * sentinel) -- stuffs the per-command response, asserts RSPEND, and rewrites
  * SD_CMD to the sentinel so each command is answered exactly once. Because it
@@ -159,7 +159,7 @@ static void sdcard_hook(void)
 static void sdcard_hook_arm(uint8_t inst)
 {
   s_srv_inst = inst;
-  ra8_sim_mmio_set_poll_hook(sdcard_hook);
+  ra8_fake_mmio_set_poll_hook(sdcard_hook);
 }
 
 /**
@@ -167,13 +167,13 @@ static void sdcard_hook_arm(uint8_t inst)
  */
 static void sdcard_hook_disarm(void)
 {
-  ra8_sim_mmio_set_poll_hook(nullptr);
+  ra8_fake_mmio_set_poll_hook(nullptr);
 }
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   s_decline_4bit = 0U;
   /* Force the driver back to clean state in case a prior test left

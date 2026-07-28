@@ -9,7 +9,7 @@
  * ``CFDRFSTS[0]`` with exactly the values the silicon RX engine would
  * have latched after a frame landed in RX FIFO 0, then asserts the
  * driver's real read-and-decode plus its register side effects. (The
- * old in-driver ``RA8_SIMULATOR_MODE`` staging veneer this file used
+ * old in-driver ``RA8_OFF_TARGET`` staging veneer this file used
  * to cover was deleted by the issue-238 seam migration: the driver now
  * compiles one register sequence on every build and the staging lives
  * here, in the test.)
@@ -32,7 +32,7 @@
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -158,7 +158,7 @@ static void stage_rx_frame(volatile r_canfd_t* reg,
  * - Vector 2: RFEMP clear -> false (the two receive tests below).
  * Single-condition decisions satisfy MC/DC trivially.
  *
- * @pre ra8_sim_mmap_reset() has been called.
+ * @pre ra8_fake_mmap_reset() has been called.
  * @post CFDRFPCTR[0] is still 0 (no ack write happened).
  * @note Not thread-safe.
  * @since 0.1.0
@@ -166,7 +166,7 @@ static void stage_rx_frame(volatile r_canfd_t* reg,
 static void test_receive_empty_fifo_no_data(void)
 {
   TEST_BEGIN("receive: RFEMP set returns no_data without a pop");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_rx_ch0);
   reg->CFDRFSTS[0]        = (uint32_t)k_ra8_rfsts_bit_empty;
@@ -201,7 +201,7 @@ static void test_receive_empty_fifo_no_data(void)
  * The false arms run in test_receive_standard_classic_ch1.
  * Single-condition decisions satisfy MC/DC trivially.
  *
- * @pre ra8_sim_mmap_reset() has been called.
+ * @pre ra8_fake_mmap_reset() has been called.
  * @post out mirrors the staged frame; CFDRFPCTR[0] == 0xFF.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -209,7 +209,7 @@ static void test_receive_empty_fifo_no_data(void)
 static void test_receive_full_payload_ext_fd(void)
 {
   TEST_BEGIN("receive: 64-byte extended FD frame decodes + acks");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint8_t data[k_ra8_canfd_data_bytes_max];
   fill_pattern(data, (uint32_t)k_ra8_canfd_data_bytes_max);
@@ -261,7 +261,7 @@ static void test_receive_full_payload_ext_fd(void)
  * The true arms run in test_receive_full_payload_ext_fd.
  * Single-condition decisions satisfy MC/DC trivially.
  *
- * @pre ra8_sim_mmap_reset() has been called.
+ * @pre ra8_fake_mmap_reset() has been called.
  * @post out.id == k_rx_std_id, out.is_extended == 0, out.dlc == 8.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -269,7 +269,7 @@ static void test_receive_full_payload_ext_fd(void)
 static void test_receive_standard_classic_ch1(void)
 {
   TEST_BEGIN("receive: standard classic frame on channel 1");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint8_t data[k_rx_len_short];
   fill_pattern(data, (uint32_t)k_rx_len_short);

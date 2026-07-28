@@ -11,11 +11,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_rmac.h"
 #include "ra8_rmac_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -100,8 +100,8 @@ stub_cb(void* ctx, ra8_rmac_port_t port, uint32_t err, uint32_t m0, uint32_t m1,
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   s_cb_count     = 0U;
   s_cb_last_err  = 0U;

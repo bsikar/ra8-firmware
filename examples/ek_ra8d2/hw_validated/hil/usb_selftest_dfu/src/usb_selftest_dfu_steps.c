@@ -34,7 +34,7 @@
 #include "ra8_time.h"
 #include "ra8_usb.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes (host ladder) */
@@ -676,4 +676,4 @@ static uint32_t dfu_str_len(const char* text)
   return k_ra8_ok;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

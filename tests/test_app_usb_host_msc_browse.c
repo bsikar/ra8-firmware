@@ -22,10 +22,10 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb_hmsc.h"
 #include "unity_minimal.h"
 
@@ -54,7 +54,7 @@ static void test_hmsc_on_attach(void* ctx, const ra8_usb_hmsc_device_t* device)
 /** @brief Per-test fixture reset. */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   (void)ra8_usb_hmsc_close();
   s_test_hmsc_attach_ctx    = 0U;

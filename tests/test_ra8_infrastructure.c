@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_infrastructure.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /* ra8_stack_canary_check() has no public header declaration; forward it
@@ -25,7 +25,7 @@
 static void test_infrastructure_init_runs(void)
 {
   TEST_BEGIN("ra8_infrastructure_init runs without crashing");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_infrastructure_init();
   TEST_END("ra8_infrastructure_init runs without crashing");
 }
@@ -39,9 +39,9 @@ static void test_infrastructure_init_runs(void)
 static void test_stack_canary_check_host(void)
 {
   TEST_BEGIN("ra8_stack_canary_check returns ok on host");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* On the host the canary range is compiled out via
-   * RA8_SIMULATOR_MODE and the function always reports success. */
+   * RA8_OFF_TARGET and the function always reports success. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_stack_canary_check());
   TEST_END("ra8_stack_canary_check returns ok on host");
 }
@@ -55,7 +55,7 @@ static void test_stack_canary_check_host(void)
 static void test_double_init_is_safe(void)
 {
   TEST_BEGIN("ra8_infrastructure_init is safe to call twice");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_infrastructure_init();
   ra8_infrastructure_init();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_stack_canary_check());

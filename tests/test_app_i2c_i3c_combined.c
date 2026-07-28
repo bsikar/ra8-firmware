@@ -6,7 +6,7 @@
  * Mirrors examples/ek_ra8d2/i2c_i3c_combined/main.c, which brings up RIIC
  * channel 1 (ra8_i2c -> U15) and the I3C channel 0 controller (ra8_i3c in
  * I2C-compat mode) in one firmware. Here we drive both inits + their scan
- * reject paths through the host tests/mocks/ra8_sim_mmap.c shim.
+ * reject paths through the host tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -16,11 +16,11 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i2c.h"
 #include "ra8_i3c.h"
 #include "ra8_mstp.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -37,7 +37,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   (void)ra8_mstp_init();
 }

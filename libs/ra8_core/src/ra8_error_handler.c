@@ -40,8 +40,8 @@
  * prevent the fault handler from running.
  *
  * @pre None -- callable from any context, including a fault handler.
- * @pre Build is not `RA8_SIMULATOR_MODE` (no-op on the host).
- * @post PRIMASK.PM = 1 on the target; no-op on the simulator host.
+ * @pre Build is not `RA8_OFF_TARGET` (no-op on the host).
+ * @post PRIMASK.PM = 1 on the target; no-op on the off-target host.
  * @post No other CPU register is touched (clobber list is `memory`).
  *
  * @note Trivially thread-safe -- single CPSID instruction.
@@ -50,7 +50,7 @@
  */
 RA8_INTERNAL static inline void internal_disable_irq(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("cpsid i" ::: "memory");
 #endif
 }
@@ -65,7 +65,7 @@ RA8_INTERNAL static inline void internal_disable_irq(void)
  * decided that continuing is unsafe.
  *
  * @pre Caller has already decided the firmware cannot continue.
- * @pre Build is not `RA8_SIMULATOR_MODE` (no-op on the host).
+ * @pre Build is not `RA8_OFF_TARGET` (no-op on the host).
  * @post Execution halts under debugger; otherwise faults to HardFault.
  * @post Returns only if debugger steps over the BKPT.
  *
@@ -75,12 +75,12 @@ RA8_INTERNAL static inline void internal_disable_irq(void)
  */
 RA8_INTERNAL static inline void internal_bkpt(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("bkpt #0");
 #endif
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Architectural `__WFI` wrapper used inside the halt loop.
  *
@@ -89,12 +89,12 @@ RA8_INTERNAL static inline void internal_bkpt(void)
  *          is not burning power spinning.
  *
  *          The whole definition -- not just its body -- sits inside the
- *          non-simulator guard because the sole call site is the firmware
- *          halt loop below, which is itself compiled only off the simulator
+ *          on-target guard because the sole call site is the firmware
+ *          halt loop below, which is itself compiled only off the fake
  *          path. A host build that kept an empty definition would carry a
  *          function nothing calls, which -Wunused-function reports.
  *
- * @pre Build is not `RA8_SIMULATOR_MODE` (the host does not compile this).
+ * @pre Build is not `RA8_OFF_TARGET` (the host does not compile this).
  * @pre Called from the halt loop after IRQs have been masked.
  * @post CPU enters WFI sleep until any exception wakes it.
  * @post No register state modified.
@@ -114,7 +114,7 @@ RA8_INTERNAL static inline void internal_wfi(void)
  *
  * @details Disables interrupts, emits a best-effort error line plus the
  *          numeric @p err code, then traps via BKPT and an infinite loop
- *          (or @c __builtin_trap on the simulator host so unit tests fail
+ *          (or @c __builtin_trap on the off-target host so unit tests fail
  *          loudly instead of spinning forever).
  *
  * @param[in] tag     NUL-terminated module/component tag.
@@ -141,7 +141,7 @@ RA8_INTERNAL static inline void internal_wfi(void)
 
   internal_bkpt();
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   /* On the host we cannot actually halt; abort makes the unit test
    * runner fail loudly instead of spinning. */
   __builtin_trap();

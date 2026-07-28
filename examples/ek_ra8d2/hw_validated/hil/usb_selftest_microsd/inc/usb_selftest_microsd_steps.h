@@ -14,7 +14,7 @@
  * callbacks, and the polled host enumerate/verify ladder). The header is
  * self-contained: it pulls in ``<stdint.h>`` for the typed-enum underlying
  * types and ``ra8_err.h`` for ::ra8_err_t. The ThreadX worker entry points are
- * only declared when the firmware (non-simulator) USB stack is compiled in.
+ * only declared when the firmware (on-target) USB stack is compiled in.
  *
  * @author Brighton Sikarskie
  * @date 2026-06-13
@@ -222,7 +222,7 @@ extern volatile uint32_t s_usb_selftest_microsd_dbg_bootsig;
  */
 [[nodiscard]] ra8_err_t microsd_print_fail(const char* what, ra8_err_t err);
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 
 /**
@@ -262,4 +262,4 @@ VOID microsd_device_worker(ULONG arg);
  * @since 0.1.0
  */
 VOID microsd_host_worker(ULONG arg);
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

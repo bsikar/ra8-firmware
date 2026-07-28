@@ -3,7 +3,7 @@
  * @brief libFuzzer harness for the ra8_tls Mbed TLS facade.
  *
  * @details
- * The host test build defines ``RA8_SIMULATOR_MODE`` for every TU, so
+ * The host test build defines ``RA8_OFF_TARGET`` for every TU, so
  * ``ra8_tls.c`` substitutes a single-byte loopback drain for each
  * ``mbedtls_ssl_*`` call. That keeps the harness self-contained
  * (no real Mbed TLS link dependency) while still exercising:

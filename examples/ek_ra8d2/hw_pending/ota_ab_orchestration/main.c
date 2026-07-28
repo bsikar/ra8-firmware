@@ -32,7 +32,7 @@
  *    stage / re-hash / boot-select persistence run the exact MACI register
  *    sequence ra8_emulator models -- the same code path a bench run drives.
  *  - ``crypto`` routes SHA-256 to the real software SHA backend
- *    (``ra8_rsip_sha256*``); identical on host, sim and silicon (there is no
+ *    (``ra8_rsip_sha256*``); identical on host, emulator and silicon (there is no
  *    RSIP hash-hardware on this part). Image INTEGRITY (the digest match that
  *    triggers the rollback) is therefore verified for real.
  *  - ``net`` is a local in-RAM image source (no TLS stack is wired yet). The

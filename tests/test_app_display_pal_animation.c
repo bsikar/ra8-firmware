@@ -8,7 +8,7 @@
  * drives the display PAL through ``display_init`` -> ``get_caps``
  * -> ``get_framebuffer`` -> ``clear`` -> paint -> ``flush`` (with a
  * caps-driven refresh hint).  This host integration test re-plays
- * that exact call sequence against the simulator-mocked HAL so a
+ * that exact call sequence against the fake-mocked HAL so a
  * regression in the bring-up order surfaces here long before it
  * reaches the bench.
  *
@@ -27,10 +27,10 @@
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_panel_timing.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -57,7 +57,7 @@ typedef enum : uint32_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   (void)ra8_mstp_init();
   (void)memset(s_test_fb, 0, sizeof(s_test_fb));

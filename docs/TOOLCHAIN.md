@@ -310,7 +310,7 @@ Gotchas (each has bitten a push):
   others) aborts ~random tests under coverage instrumentation and kills
   `coverage.sh` at its `set -e` ctest step BEFORE the floor check. Defeat with
   `ctest --repeat until-pass:4` then run the gcovr + `check_coverage_floor.py`
-  steps by hand. Root fix: the T1-01 deterministic MMIO seam (`ra8_sim_mmio_*`).
+  steps by hand. Root fix: the T1-01 deterministic MMIO seam (`ra8_fake_mmio_*`).
 - **The dev box is shared** -- another session may `git reset --hard` it between
   your ssh calls, wiping untracked files. Sync + validate in ONE session.
 

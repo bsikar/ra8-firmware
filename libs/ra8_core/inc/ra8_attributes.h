@@ -438,7 +438,7 @@ extern "C" {
  */
 
 /**
- * @brief The function is safe to invoke under `RA8_SIMULATOR_MODE` on the host.
+ * @brief The function is safe to invoke under `RA8_OFF_TARGET` on the host.
  *
  * @details
  * Tagged functions either avoid all `volatile`-qualified MMIO access or

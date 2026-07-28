@@ -180,12 +180,12 @@ if(NOT RA8_MCDC)
 endif()
 
 # test_psa_real_kat.c links the REAL crypto backend (TF-PSA-Crypto), not the
-# sim'd ra8_core_hal, so it is registered by hand below rather than through the
-# ra8_add_test() auto-glob (which would splice in the RA8_SIMULATOR_MODE build).
+# off-target ra8_core_hal, so it is registered by hand below rather than through the
+# ra8_add_test() auto-glob (which would splice in the RA8_OFF_TARGET build).
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_psa_real_kat.c)
 
 # test_ra8_cache_store.c needs the vendored LevelX NOR sources + a RAM NOR
-# simulator + LX_STANDALONE_ENABLE, so it is registered by hand below rather
+# fake + LX_STANDALONE_ENABLE, so it is registered by hand below rather
 # than through the ra8_add_test() auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_cache_store.c)
 
@@ -198,8 +198,8 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_cache_store_d
 # test_ra8_rsip_devsec_failclosed.c (issue #216) must compile ra8_rsip_devsec.c
 # with the stub-crypto guard flags UNDEFINED so the production fail-closed #else
 # is the body under test. The rest of the host build force-defines
-# RA8_SIMULATOR_MODE, so it is registered by hand below rather than through the
-# ra8_add_test() auto-glob (which would splice in the RA8_SIMULATOR_MODE build).
+# RA8_OFF_TARGET, so it is registered by hand below rather than through the
+# ra8_add_test() auto-glob (which would splice in the RA8_OFF_TARGET build).
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_rsip_devsec_failclosed.c)
 
 # test_ra8_npu.c (issue #221) drives the Arm Ethos-U55 NPU driver, whose body in
@@ -224,7 +224,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_ethosu_sh
 # test_ra8_npu_loader.c (issue #227) drives the .npub Vela-blob loader
 # (ra8_npu_loader.c), which -- like ra8_npu.c -- is device-gated behind
 # RA8_HAS_NPU (RA8P1-only) and turns a committed golden model container
-# (tools/vela/generated/ra8_npu_model_addk_sim.h) into an ra8_npu_job_t. It is
+# (tools/vela/generated/ra8_npu_model_addk_fake.h) into an ra8_npu_job_t. It is
 # registered by hand below with -DRA8_DEVICE_RA8P1 (same pattern as test_ra8_npu)
 # so the live loader + driver bodies compile and link; the auto-glob would build
 # it for the RA8D2 and fail to resolve the ra8_npu_* API.

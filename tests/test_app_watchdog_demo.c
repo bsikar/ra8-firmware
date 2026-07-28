@@ -19,9 +19,9 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_iwdt.h"
 #include "ra8_reset.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 static const uint8_t k_t_msg_pwr[]   = "wdt: boot reason=power_on\r\n";
@@ -47,7 +47,7 @@ static const uint8_t* banner_for(ra8_reset_cause_t cause, uint32_t* out_len)
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_reset_test_only_reset_state();
 }
 

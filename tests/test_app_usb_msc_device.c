@@ -31,11 +31,11 @@
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpio_constants.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb_pal.h"
 #include "unity_minimal.h"
 
@@ -70,7 +70,7 @@ static uint8_t s_test_msc_ramdisk[k_test_msc_block_count * k_test_msc_block_size
 /** @brief Per-test fixture reset. */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   (void)ra8_usb_pal_deinit();
   (void)memset(s_test_msc_ramdisk, 0, sizeof(s_test_msc_ramdisk));

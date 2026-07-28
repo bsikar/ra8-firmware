@@ -81,7 +81,7 @@ typedef enum : uint32_t {
 /**
  * @brief Accessor for the architectural Cortex-M85 MPU register block.
  * @return Pointer to the live MPU registers.
- * @pre Called from privileged mode (or RA8_SIMULATOR_MODE).
+ * @pre Called from privileged mode (or RA8_OFF_TARGET).
  * @post Returned pointer is non-null and word-aligned.
  * @note Not thread-safe.
  * @since 0.1.0

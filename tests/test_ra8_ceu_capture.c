@@ -23,9 +23,9 @@
 #include "ra8_ceu.h"
 #include "ra8_ceu_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -73,7 +73,7 @@ typedef enum : uint32_t {
 
 typedef enum : uintptr_t {
   /* Picked so the lower 3 bits are zero (8-byte aligned). SDRAM head
-   * range mapped by `ra8_sim_mmap`. */
+   * range mapped by `ra8_fake_mmap`. */
   k_test_ceu_buffer_addr = 0x68000040UL, /**< Test CEU buffer address. */
   k_test_ceu_buffer_b    = 0x68001000UL, /**< Test CEU buffer b.       */
   k_test_ceu_buffer_c    = 0x68002000UL, /**< Test CEU buffer c.       */
@@ -89,8 +89,8 @@ typedef enum : uint32_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   /* Detach any leftover callback from prior test cases. */
   (void)ra8_ceu_attach_handler(nullptr, nullptr);
@@ -398,7 +398,7 @@ static void test_capture_arm_busy(void)
   prep();
 
   /* Force the busy path: pretend a capture is in flight by setting
-   * CSTSR.CPTON in the simulated mmap. */
+   * CSTSR.CPTON in the fake mmap. */
   *ra8_ceu_reg32(k_ra8_ceu_off_cstsr) = (uint32_t)k_ra8_ceu_cstsr_mask_cpton;
   TEST_ASSERT_EQ(k_ra8_err_busy, ra8_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
 

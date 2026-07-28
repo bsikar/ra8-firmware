@@ -139,8 +139,8 @@ sbom-check:
 # `make vela-check` -- regenerate the Ethos-U55 model header + diff vs the golden
 # (issue #227; no Vela toolchain needed). See tools/vela/README.md.
 VELA_GEN    := python3 tools/vela/vela_gen.py
-VELA_DESC   := tools/vela/models/npu_addk_sim.json
-VELA_HEADER := tools/vela/generated/ra8_npu_model_addk_sim.h
+VELA_DESC   := tools/vela/models/npu_addk_fake.json
+VELA_HEADER := tools/vela/generated/ra8_npu_model_addk_fake.h
 vela: vela-check
 vela-check:
 	$(VELA_GEN) check $(VELA_DESC) $(VELA_HEADER)

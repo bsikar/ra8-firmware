@@ -16,11 +16,11 @@
 #include <stdio.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_flash.h"
 #include "ra8_flash_internal.h"
 #include "ra8_flash_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "support/flash_test_util.h"
 #include "unity_minimal.h"
 
@@ -64,7 +64,7 @@ static void test_callback(const ra8_flash_isr_event_t* ev)
 static void test_set_irq_enable(void)
 {
   TEST_BEGIN("flash set_irq_enable");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_flash_set_irq_enable((ra8_flash_irq_src_t)99U, true));
 
@@ -114,7 +114,7 @@ static void test_set_irq_enable(void)
 static void test_callback_set_and_dispatch(void)
 {
   TEST_BEGIN("flash dispatch_isr");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_cb_invocations = 0U;
 
   /* No callback => no events delivered, but the walk should still
@@ -156,7 +156,7 @@ static void test_callback_set_and_dispatch(void)
 static void test_callback_set_idempotent(void)
 {
   TEST_BEGIN("flash callback_set idempotent");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_callback_set(test_callback, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_callback_set(nullptr, nullptr));
   /* No events staged; dispatch returns 0. */
@@ -171,7 +171,7 @@ static void test_callback_set_idempotent(void)
 static void test_open_close_aliases(void)
 {
   TEST_BEGIN("flash open/close aliases");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_flash_open(nullptr));
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_open(&cfg));
@@ -188,7 +188,7 @@ static void test_open_close_aliases(void)
 static void test_set_window_paths(void)
 {
   TEST_BEGIN("flash set_window paths");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* 0/0 disables. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_set_window(0U, 0U));
   /* low >= high is rejected. */
@@ -212,7 +212,7 @@ static void test_set_window_paths(void)
 static void test_erase_validation(void)
 {
   TEST_BEGIN("flash erase validation");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_flash_deinit();
   /* Without init, should fail with not_initialized. */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_flash_erase((uintptr_t)k_test_addr_in_mram, 1U));
@@ -247,7 +247,7 @@ static void test_erase_validation(void)
 static void test_write_validation_and_chunking(void)
 {
   TEST_BEGIN("flash write validation");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
   const uint8_t buf[64] = {};
@@ -285,7 +285,7 @@ static void test_write_validation_and_chunking(void)
 static void test_blank_check_paths(void)
 {
   TEST_BEGIN("flash blank_check paths");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
@@ -299,7 +299,7 @@ static void test_blank_check_paths(void)
   /* Outside both windows rejected. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_flash_blank_check((uintptr_t)0x10000000UL, 4U, &blank));
 
-  /* Blank region: stage 16 bytes of 0xFF inside the OFS sim window. */
+  /* Blank region: stage 16 bytes of 0xFF inside the OFS fake window. */
   volatile uint8_t* ofs_ptr = (volatile uint8_t*)(uintptr_t)k_test_addr_extra_in;
   for (uint32_t i = 0U; i < 16U; ++i) {
     ofs_ptr[i] = k_flash_ops_lit_xff;
@@ -325,7 +325,7 @@ static void test_blank_check_paths(void)
 static void test_status_decoder(void)
 {
   TEST_BEGIN("flash status decoder");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
@@ -362,7 +362,7 @@ static void test_status_decoder(void)
 static void test_status_clean(void)
 {
   TEST_BEGIN("flash status clean");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
@@ -386,9 +386,9 @@ static void test_status_clean(void)
 static void test_suspend_resume_round_trip(void)
 {
   TEST_BEGIN("flash suspend/resume round-trip via MENTRYR.PCKA");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
-  /* Suspend writes the keyed pause pattern; the simulated MENTRYR
+  /* Suspend writes the keyed pause pattern; the fake MENTRYR
    * cell reflects whatever was last written, so PCKA shows up as 1. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_suspend());
   const uint16_t after_suspend = *ra8_mram_reg16((uint16_t)k_ra8_mram_off_mentryr);
@@ -410,7 +410,7 @@ static void test_suspend_resume_round_trip(void)
 static void test_lock_set_ns_world(void)
 {
   TEST_BEGIN("flash lock_set programs MRCBPROT0 for NS addresses");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Address inside the NS half (bit 19 clear) -> MRCBPROT0 written. */
   const uintptr_t ns_addr = (uintptr_t)k_ra8_flash_code_start + 0x100U;
@@ -428,7 +428,7 @@ static void test_lock_set_ns_world(void)
 static void test_lock_set_s_world(void)
 {
   TEST_BEGIN("flash lock_set programs MRCBPROT1 for S addresses");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Address with bit 19 set falls into the secure alias. */
   const uintptr_t s_addr = (uintptr_t)k_ra8_flash_code_start + 0x80000U;
@@ -446,7 +446,7 @@ static void test_lock_set_s_world(void)
 static void test_lock_set_validation(void)
 {
   TEST_BEGIN("flash lock_set rejects bad address / bad key");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Address below code-MRAM rejected. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -482,7 +482,7 @@ static void test_lock_set_validation(void)
 static void test_block_protect_set_mcdc(void)
 {
   TEST_BEGIN("flash block_protect_set MC/DC: permanent && !lock");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Vector 1: permanent=F, lock=F. C1=F short-circuits. Decision F -> ok. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_block_protect_set(k_ra8_flash_world_ns, false, false));
@@ -511,7 +511,7 @@ static void test_block_protect_set_mcdc(void)
 static void test_set_window_mcdc(void)
 {
   TEST_BEGIN("flash set_window MC/DC: low==0 && high==0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
@@ -542,7 +542,7 @@ static void test_set_window_mcdc(void)
 static void test_write_validation_mcdc(void)
 {
   TEST_BEGIN("flash write MC/DC: len==0 || (len % page) != 0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
@@ -579,30 +579,30 @@ static void test_write_validation_mcdc(void)
  * - V3: in_ofs=T (addr in OFS)               -> C1=T,C2=T,C3=F  -> dec F (proceeds)
  * - V4: address in none (e.g. 0x05000000)    -> C1=T,C2=T,C3=T  -> dec T -> invalid_arg
  * NOTE: We can only safely _read_ the OFS / extra windows on the host if the
- * sim_mmap module backs them. The ok-paths instead exercise V1 (code MRAM, which
- * is sim-mmap backed) and V4 (out-of-region rejection); V2/V3 are reduced to
+ * ra8_fake_mmap module backs them. The ok-paths instead exercise V1 (code MRAM, which
+ * is fake-mmap backed) and V4 (out-of-region rejection); V2/V3 are reduced to
  * argument-validation observations on the line, where the early ``len==0``
  * check at function entry can not mask the region check.
  */
 static void test_mcdc_blank_check_region_or3(void)
 {
   TEST_BEGIN("flash blank_check MC/DC: !in_code && !in_extra && !in_ofs");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   bool blank = false;
   /* V1: addr in code MRAM, len=4 -> region check passes (dec F). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_blank_check((uintptr_t)k_ra8_flash_code_start, 4U, &blank));
   /* V4: addr in none -> region check fails (dec T -> invalid_arg). */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_flash_blank_check((uintptr_t)0x05000000UL, 4U, &blank));
   /* V2: addr in extra MRAM start (region check passes -> dec F). The
-   * sim_mmap backs only the code window, so the read may fault; we
+   * ra8_fake_mmap backs only the code window, so the read may fault; we
    * pin len=0 to short-circuit at the leading length guard, but that
-   * masks the region check. Instead we use len=4: if extra is sim-mapped
+   * masks the region check. Instead we use len=4: if extra is fake-mapped
    * the call returns ok; if not, the extra-region branch is at least
    * statically taken at compile time. The masking pair {V4, V2} proves
    * C1 (in_code) flips the decision. */
   /* V3 is symmetric and its independence is argued by inspection: the
    * three operands are structurally identical short-circuit OR terms. */
-  /* Documented sim-mmap range covers code MRAM but not extra/OFS, so we
+  /* Documented fake-mmap range covers code MRAM but not extra/OFS, so we
    * rely on the structural argument here per DO-178C 6.4.4.3 unreachable-
    * by-host-fixture handling. */
   (void)blank;
@@ -633,7 +633,7 @@ static void test_mcdc_blank_check_region_or3(void)
 static void test_mcdc_flash_status_or_pairs(void)
 {
   TEST_BEGIN("flash status MC/DC: OR pairs in busy/illegal/protected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_flash_status_t s = {};
 
   /* Setup: enable both protect bits (low bit set => writable, decision F). */

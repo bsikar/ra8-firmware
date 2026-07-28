@@ -17,7 +17,7 @@
 # ra8_npu.c is device-gated behind RA8_HAS_NPU, so it is recompiled here with
 # -DRA8_DEVICE_RA8P1 (ra8_device.h then defines RA8_HAS_NPU) to make the driver body
 # live. It links ra8_core_hal for ra8_mstp / ra8_log / ra8_err and the host MMIO
-# backing store (tests/mocks/ra8_sim_mmap.c) -- the NPU window 0x40140000 lies
+# backing store (tests/mocks/ra8_fake_mmap.c) -- the NPU window 0x40140000 lies
 # inside the emulated peripheral region, so register writes land in RAM and the
 # test asserts the QBASE / QSIZE / BASEPn / CMD submission sequence. Only ra8_npu.c
 # and the test TU see RA8_DEVICE_RA8P1; the prebuilt ra8_core_hal stays RA8D2, so
@@ -54,7 +54,7 @@ add_test(NAME test_ra8_npu COMMAND test_ra8_npu)
 # so both are recompiled here with -DRA8_DEVICE_RA8P1 (ra8_device.h then defines
 # RA8_HAS_NPU) to make the adapter + driver bodies live. It links ra8_core_hal for
 # ra8_mstp / ra8_log / ra8_err and the host MMIO backing store (tests/mocks/
-# ra8_sim_mmap.c) -- the NPU window 0x40140000 lies inside the emulated peripheral
+# ra8_fake_mmap.c) -- the NPU window 0x40140000 lies inside the emulated peripheral
 # region, so the adapter's register writes (via ra8_npu) land in RAM and the test
 # asserts the QBASE / QSIZE / BASEPn / CMD programming plus the int return code.
 # Only these two TUs and the test see RA8_DEVICE_RA8P1; the prebuilt ra8_core_hal

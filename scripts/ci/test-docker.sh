@@ -5,14 +5,14 @@
 # scripts/ci/test-docker.sh -- run the host unit-test suite in a Linux container.
 #
 # Why this exists:
-#   On Apple Silicon macOS the simulator backing in tests/mocks/ra8_sim_mmap.c
+#   On Apple Silicon macOS the fake backing in tests/mocks/ra8_fake_mmap.c
 #   uses `mmap(MAP_FIXED, 0x40000000, ...)` to install RAM at the same
 #   virtual addresses the RA8D2 chip exposes its peripherals at. macOS
 #   arm64 refuses MAP_FIXED below 4 GiB regardless of -pagezero_size, so
 #   the constructor aborts and every test exits with SIGKILL before
 #   `main()` runs. This wrapper sidesteps the issue by running the tests
 #   inside the project's existing Ubuntu 24.04 devcontainer, where the
-#   simulator's MAP_FIXED works as designed.
+#   fake's MAP_FIXED works as designed.
 #
 #   On Linux this wrapper is unnecessary -- just run `make test`.
 #

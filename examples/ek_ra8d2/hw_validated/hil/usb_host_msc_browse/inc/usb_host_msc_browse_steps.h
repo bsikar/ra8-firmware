@@ -13,7 +13,7 @@
  * defines but `main.c`'s class-register helper still wires into the LUN.
  *
  * The header is self-contained: it pulls in `<stdint.h>` for the typed-enum
- * underlying types and, only in the non-simulator firmware build, `ux_api.h`
+ * underlying types and, only in the on-target firmware build, `ux_api.h`
  * for the USBX `UINT`/`VOID`/`UCHAR`/`ULONG` types used by the callback
  * signatures.
  *
@@ -30,7 +30,7 @@
 
 #include "ra8_err.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "ux_api.h"
 #endif
 
@@ -130,7 +130,7 @@ typedef enum : uint8_t {
   k_byte_mask          = 0xFFU, /**< Low-byte mask.                */
 } selftest_fat_off_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /**
  * @brief Storage media-read callback: synthesize sectors over MRAM.
@@ -248,4 +248,4 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  */
 [[nodiscard]] ra8_err_t selftest_host_pass(void);
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

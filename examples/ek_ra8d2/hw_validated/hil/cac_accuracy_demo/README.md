@@ -38,7 +38,7 @@ ok=Y`).
 midpoint of the firmware's programmed `[CALLVR, CAULVR]` window -- in-band
 by construction -- so `ra8_cac_measure` completes with `FERRF` / `OVFF`
 clear and the headless `ra8_emulator_smoke.sh` gate sees the same `meas=ok ...
-ok=Y` banner (the simulator proves the driver start / poll / read-back
+ok=Y` banner (the emulator proves the driver start / poll / read-back
 sequence; silicon proves the real edge count).
 
 ## Configuration (HUM R01UH1065EJ0130 Rev.1.30, Ch 10 "CAC")

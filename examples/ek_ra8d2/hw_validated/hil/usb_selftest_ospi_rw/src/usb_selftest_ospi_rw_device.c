@@ -31,7 +31,7 @@
 #include "ra8_xspi.h"
 #include "usb_selftest_ospi_rw_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes (OSPI bring-up side) */
@@ -72,4 +72,4 @@ static volatile uint32_t s_dbg_ospi_id;
   return k_ra8_ok;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

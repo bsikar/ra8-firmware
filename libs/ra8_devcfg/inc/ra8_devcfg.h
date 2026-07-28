@@ -509,12 +509,12 @@ void ra8_devcfg_reset(void);
  * (a blank word reads back as 0xFF and does not fault -- #315), writes go
  * through ``ra8_flash_extra_mram_write`` in ::k_ra8_devcfg_page_bytes pages
  * (HUM Ch 59.7.4.5 "Program Command" Table 59.15 p 3592). Under
- * ``RA8_SIMULATOR_MODE`` both members address a RAM shadow so host tests
+ * ``RA8_OFF_TARGET`` both members address a RAM shadow so host tests
  * exercise the same control flow without MMIO. The returned pointer has static
  * lifetime; the caller must not free it.
  *
  * @return Pointer to the process-lifetime default store; never NULL.
- * @retval non-NULL The extra-MRAM (or, under simulation, RAM-shadow) store.
+ * @retval non-NULL The extra-MRAM (or, off-target, RAM-shadow) store.
  *
  * @pre On silicon, ``ra8_flash_init`` has run before a commit.
  * @post The same pointer is returned on every call.

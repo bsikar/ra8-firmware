@@ -62,12 +62,12 @@ load.
 (format -> FAT -> create/list/read-verify/delete -> `ospi FAT roundtrip ok`), and
 moved to `hw_validated/hil/`.
 
-`usb_host_msc_browse` was re-based onto the self-loop (board hosts AND simulates
+`usb_host_msc_browse` was re-based onto the self-loop (board hosts AND emulates
 the MSC peripheral over the J7<->J11 cable, no external drive): the host
 enumerates, mounts, and BROWSES the device's FAT root before read-verify
 (`USB HOST MSC BROWSE PASS`), and moved to `hw_validated/hil/`.
 
-`usb_host_keyboard` was likewise re-based onto the self-loop: the board simulates
+`usb_host_keyboard` was likewise re-based onto the self-loop: the board emulates
 a boot-keyboard device and the host decodes its keycodes back to "RA8D2"
 (`USB HOST KEYBOARD PASS`), and moved to `hw_validated/hil/`.
 

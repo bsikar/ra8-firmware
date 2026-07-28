@@ -23,8 +23,8 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_system_regs.h"
 #include "ra8_time.h"
 #include "unity_minimal.h"
@@ -48,10 +48,10 @@ typedef enum : uint32_t {
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
-   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+   * complete on the first iteration in RA8_OFF_TARGET. */
   *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
 }
 

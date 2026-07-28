@@ -16,7 +16,7 @@
  * The demo deliberately does **not** wire AGT0 into NVIC / ra8_isr -- it
  * polls the AGTCR status bits via ``ra8_agt_get_status`` to keep the
  * code path identical between the EK-RA8D2 target build and the host
- * unit-test build (``RA8_SIMULATOR_MODE``).
+ * unit-test build (``RA8_OFF_TARGET``).
  *
  * Sequence:
  *   1. CGC + SysTick + UART bring-up (panic-halt on any error).
@@ -47,7 +47,7 @@ typedef enum : uint32_t {
 /** @brief AGT channel + reload (16-bit, ~1 Hz at PCLKB / 8192 div). */
 typedef enum : uint16_t {
   k_agt_periodic_channel = 0U, /**< AGT periodic channel. */
-  /* Reload tuned for the simulator -- on real silicon AGT prescaler
+  /* Reload tuned for the fake -- on real silicon AGT prescaler
    * setup happens inside ra8_agt_start_free_run. */
   k_agt_periodic_reload = 0x7FFFU, /**< AGT periodic reload. */
 } agt_periodic_timer_t;

@@ -24,9 +24,9 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i3c_i2c_peripheral.h"
 #include "ra8_i3c_i2c_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -55,7 +55,7 @@ typedef enum : uint32_t {
  * guard inside internal_i3c_i2c_peripheral_open. Passing 0x80 must yield
  * k_ra8_err_invalid_arg without touching the hardware registers.
  *
- * @pre ra8_i3c_i2c_peripheral module compiled with RA8_SIMULATOR_MODE.
+ * @pre ra8_i3c_i2c_peripheral module compiled with RA8_OFF_TARGET.
  * @post No register side-effects (guard fires before any register write).
  *
  * @note Not thread-safe; tests are single-threaded.
@@ -91,7 +91,7 @@ static void test_cov_open_addr_oor(void)
  * exists), so i3c_i2c_regs returns nullptr and the function returns
  * k_ra8_err_invalid_arg immediately.
  *
- * @pre ra8_i3c_i2c_peripheral module compiled with RA8_SIMULATOR_MODE.
+ * @pre ra8_i3c_i2c_peripheral module compiled with RA8_OFF_TARGET.
  * @post No register side-effects.
  *
  * @note Not thread-safe; tests are single-threaded.
@@ -120,7 +120,7 @@ static void test_cov_close_oor_channel(void)
  * The guard fires before any null-pointer or length check, so no data
  * pre-arming is required.
  *
- * @pre ra8_i3c_i2c_peripheral module compiled with RA8_SIMULATOR_MODE.
+ * @pre ra8_i3c_i2c_peripheral module compiled with RA8_OFF_TARGET.
  * @post No register side-effects.
  *
  * @note Not thread-safe; tests are single-threaded.
@@ -150,7 +150,7 @@ static void test_cov_send_oor_channel(void)
  * Exercises the `reg == nullptr` guard in internal_i3c_i2c_peripheral_receive.
  * The guard fires before any null-pointer or length check.
  *
- * @pre ra8_i3c_i2c_peripheral module compiled with RA8_SIMULATOR_MODE.
+ * @pre ra8_i3c_i2c_peripheral module compiled with RA8_OFF_TARGET.
  * @post No register side-effects.
  *
  * @note Not thread-safe; tests are single-threaded.
@@ -181,7 +181,7 @@ static void test_cov_receive_oor_channel(void)
  * A valid (non-null) out_mask pointer is supplied so RA8_CHECK_NULL_PTR
  * does not fire first, allowing execution to reach the channel-range guard.
  *
- * @pre ra8_i3c_i2c_peripheral module compiled with RA8_SIMULATOR_MODE.
+ * @pre ra8_i3c_i2c_peripheral module compiled with RA8_OFF_TARGET.
  * @post No register side-effects.
  *
  * @note Not thread-safe; tests are single-threaded.
@@ -215,8 +215,8 @@ static void test_cov_status_oor_channel(void)
  * k_ra8_i3c_i2c_peripheral_status_stop. The existing test_status covers
  * only the NACKDF bit and leaves this if-arm uncovered.
  *
- * @pre ra8_i3c_i2c_peripheral module compiled with RA8_SIMULATOR_MODE.
- * @pre ra8_sim_mmap_reset() clears all backing registers to zero.
+ * @pre ra8_i3c_i2c_peripheral module compiled with RA8_OFF_TARGET.
+ * @pre ra8_fake_mmap_reset() clears all backing registers to zero.
  * @post mask includes k_ra8_i3c_i2c_peripheral_status_stop.
  *
  * @note Not thread-safe; tests are single-threaded.
@@ -232,7 +232,7 @@ static void test_cov_status_oor_channel(void)
 static void test_cov_status_stop_bit(void)
 {
   TEST_BEGIN("internal_i3c_i2c_peripheral_status BST.SPCNDDF -> stop");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs((uint8_t)k_cov_ch0);
   /* Stop-condition-detected flag (BST bit 1). HUM Ch 40.2 "BST" p 2482 */
   reg->BST     = (uint32_t)k_ra8_i3c_i2c_msk_bst_spcnddf;
@@ -257,11 +257,11 @@ static void test_cov_status_stop_bit(void)
  * The spin executes 50000 volatile host-RAM reads (approximately 250 us
  * on a modern CPU), which is well within the test time budget and does
  * not use any signal/alarm mechanism. NTST stays zero after
- * ra8_sim_mmap_reset(); no register pre-seeding is required to reach
+ * ra8_fake_mmap_reset(); no register pre-seeding is required to reach
  * the timeout path.
  *
- * @pre ra8_i3c_i2c_peripheral module compiled with RA8_SIMULATOR_MODE.
- * @pre ra8_sim_mmap_reset() clears NTST to zero.
+ * @pre ra8_i3c_i2c_peripheral module compiled with RA8_OFF_TARGET.
+ * @pre ra8_fake_mmap_reset() clears NTST to zero.
  * @post Function returns k_ra8_err_hw_timeout.
  *
  * @note Not thread-safe; tests are single-threaded.
@@ -284,7 +284,7 @@ static void test_cov_status_stop_bit(void)
 static void test_cov_send_timeout(void)
 {
   TEST_BEGIN("internal_i3c_i2c_peripheral_send NTST timeout");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* NTST.TDBEF0 is zero after reset; withhold pre-arming so the spin exhausts. */
   const uint8_t data[1] = {(uint8_t)k_cov_byte_a};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,

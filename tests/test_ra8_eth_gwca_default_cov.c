@@ -17,7 +17,7 @@
  * uncovered rather than excluded (see the file-level note at the
  * bottom): the two ::ra8_eth_gwca_set_operation_mode call sites and the
  * three ::ra8_eth_gwca_reload_queue / ::ra8_eth_gwca_kick_tx failure
- * returns can only fail on real silicon (the RA8_SIMULATOR_MODE build
+ * returns can only fail on real silicon (the RA8_OFF_TARGET build
  * short-circuits the poll to k_ra8_ok, and every index that would make
  * a reload/kick reject is already rejected by the identical range
  * guard earlier in the same call chain).
@@ -30,8 +30,8 @@
 #include "ra8_eth_gwca.h"
 #include "ra8_eth_gwca_internal.h"
 #include "ra8_ether_regs.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -72,13 +72,13 @@ typedef enum : uint16_t {
 /**
  * @brief Reset the mmap'd peripheral window + MSTP ref counts.
  *
- * @details Mirrors the base test's setUp: zero the simulated register
+ * @details Mirrors the base test's setUp: zero the fake register
  * space and re-gate every module so ::ra8_eth_gwca_init can re-enable
  * the ESWM stop bit cleanly.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -166,7 +166,7 @@ static void test_default_send_guards_and_rearm(void)
 
   /* Re-arm leg: terminator idle-disabled to LEMPTY. default_send must
    * restore it to LINK, fill slot 0 (FSINGLE), and return ok under
-   * RA8_SIMULATOR_MODE (the write-back spin is host-compiled-out). */
+   * RA8_OFF_TARGET (the write-back spin is host-compiled-out). */
   s_tx_chain[1].dt = (uint8_t)k_ra8_gwdcc_dt_lempty;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_default_send(&st, s_frame, 64U));
   TEST_ASSERT_EQ(k_ra8_gwdcc_dt_link, s_tx_chain[1].dt);
@@ -480,7 +480,7 @@ static void test_default_open_init_saturation(void)
   TEST_BEGIN("default_open init saturation");
   /* Deliberately does NOT call prep() after saturating: ra8_mstp_init
    * would zero the ref count we are about to fill. */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   for (uint32_t i = 0U; i < k_gwca_drain_attempts; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init());

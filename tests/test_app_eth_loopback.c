@@ -6,7 +6,7 @@
  * Mirrors examples/ek_ra8d2/eth_loopback/main.c bring-up flow:
  * ra8_etha_init(CONFIG) -> ra8_etha_descriptor_ring_init -> ra8_etha_set_mode(OPERATION)
  * -> ra8_etha_account_traffic -> ra8_etha_get_stats -> ra8_etha_deinit. All
- * MMIO is via the host tests/mocks/ra8_sim_mmap.c shim.
+ * MMIO is via the host tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -17,8 +17,8 @@
 
 #include "ra8_err.h"
 #include "ra8_etha.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -30,7 +30,7 @@ typedef enum : uint16_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

@@ -8,7 +8,7 @@
  * 593, 615, 618, 632, 660, 663, 701, 704, 709-718, 723, 726, 731-740,
  * 742-751, 753-762, 787-796, 798-807, 809-818, 823, 826, 939-941, 947-948.
  *
- * Harness: identical to test_ra8_i3c.c -- RA8_SIMULATOR_MODE mmap backing
+ * Harness: identical to test_ra8_i3c.c -- RA8_OFF_TARGET mmap backing
  * store, ra8_mstp_init() before each case, unity_minimal.h assertions.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -16,11 +16,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i3c.h"
 #include "ra8_i3c_internal.h"
 #include "ra8_i3c_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -87,7 +87,7 @@ static const ra8_i3c_cfg_t k_i2c_cfg = {
 };
 
 /**
- * @brief Reset the simulated MMIO and re-initialise the MSTP mock.
+ * @brief Reset the fake MMIO and re-initialise the MSTP mock.
  *
  * @details Mirrors the prep() helper in test_ra8_i3c.c.  Does NOT reset
  * the module-level s_i3c_chan[] state; callers must call ra8_i3c_deinit()
@@ -95,7 +95,7 @@ static const ra8_i3c_cfg_t k_i2c_cfg = {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_cb_count = 0U;
   s_cb_mask  = 0U;
@@ -467,7 +467,7 @@ static void test_abort_coverage(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_abort(0U));
 
   /* Lines 761, 762: I2C mode -- happy path.  internal_i3c_i2c_abort
-   * performs only register writes (no polling), safe in the sim. */
+   * performs only register writes (no polling), safe in the fake. */
   prep_i2c();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_abort(0U));
   TEST_END("i3c abort: full function coverage (lines 753-762)");

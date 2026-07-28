@@ -24,7 +24,7 @@
  *    control endpoint via `ra8_usb_control_response(speed, false)`.
  *
  * All hardware is the host register-window model brought up by
- * `ra8_sim_mmap_reset` + `ra8_mstp_init`; no live controller, no timers,
+ * `ra8_fake_mmap_reset` + `ra8_mstp_init`; no live controller, no timers,
  * no SIGALRM. Register pre-seeding (BRDYSTS / CFIFOCTR) is used where a
  * specific controller status is required to make a leg deterministic.
  *
@@ -39,8 +39,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pprn.h"
 #include "ra8_usb_regs.h"
@@ -100,12 +100,12 @@ static ra8_err_t test_fail_cb(void* ctx, const ra8_usb_setup_t* setup)
 }
 
 /**
- * @brief Reset the simulator MMIO window and the Printer singleton to a
+ * @brief Reset the fake MMIO window and the Printer singleton to a
  * known pre-init state.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_pprn_close();
   s_cb_calls = 0;

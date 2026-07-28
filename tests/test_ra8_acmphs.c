@@ -9,9 +9,9 @@
 #include "ra8_acmphs.h"
 #include "ra8_acmphs_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_port_constants.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -40,7 +40,7 @@ typedef enum : uint8_t {
 static void test_init_happy(void)
 {
   TEST_BEGIN("acmphs init happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_acmphs_regs_t* reg = ra8_acmphs((uint8_t)k_ra8_acmphs_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -60,7 +60,7 @@ static void test_init_happy(void)
 static void test_enable_first_channel(void)
 {
   TEST_BEGIN("acmphs enable first channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_channel_enable((uint8_t)k_ra8_acmphs_test_ch_first));
@@ -78,7 +78,7 @@ static void test_enable_first_channel(void)
 static void test_enable_mid_channel(void)
 {
   TEST_BEGIN("acmphs enable mid channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_channel_enable((uint8_t)k_ra8_acmphs_test_ch_mid));
   TEST_END("acmphs enable mid channel");
@@ -93,7 +93,7 @@ static void test_enable_mid_channel(void)
 static void test_enable_last_channel(void)
 {
   TEST_BEGIN("acmphs enable last channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_channel_enable((uint8_t)k_ra8_acmphs_test_ch_last));
   TEST_END("acmphs enable last channel");
@@ -108,7 +108,7 @@ static void test_enable_last_channel(void)
 static void test_enable_bad_channel(void)
 {
   TEST_BEGIN("acmphs enable bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_acmphs_channel_enable((uint8_t)k_ra8_acmphs_test_ch_bad));
@@ -126,7 +126,7 @@ static void test_enable_bad_channel(void)
 static void test_read_output_high(void)
 {
   TEST_BEGIN("acmphs read output high");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_acmphs_regs_t* reg = ra8_acmphs((uint8_t)k_ra8_acmphs_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -147,7 +147,7 @@ static void test_read_output_high(void)
 static void test_read_output_low(void)
 {
   TEST_BEGIN("acmphs read output low");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_level_t level = k_ra8_level_high;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_read_output((uint8_t)k_ra8_acmphs_test_ch_first, &level));
@@ -164,7 +164,7 @@ static void test_read_output_low(void)
 static void test_read_output_null_out(void)
 {
   TEST_BEGIN("acmphs read output null");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_acmphs_read_output((uint8_t)k_ra8_acmphs_test_ch_first, nullptr));
@@ -180,7 +180,7 @@ static void test_read_output_null_out(void)
 static void test_read_output_bad_channel(void)
 {
   TEST_BEGIN("acmphs read output bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_level_t level = k_ra8_level_low;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -205,7 +205,7 @@ static void stub_acmphs_cb(void* ctx, uint8_t ch)
 
 static void prep_w42(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_acmphs_cb_count   = 0U;
   s_acmphs_cb_last_ch = 0U;

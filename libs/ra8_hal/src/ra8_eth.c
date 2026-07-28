@@ -161,7 +161,7 @@ alignas(16) static ra8_gwca_ext_descriptor_t s_tx_chain[k_ra8_eth_tx_ring_depth]
  * On the chip target the pool lives in BSS, which fits in the 40-bit
  * PTR field every ::ra8_gwca_basic_descriptor_t encodes. On host the
  * BSS sits above the 40-bit cap; ::internal_eth_rx_pool / _tx_pool
- * redirect there to the simulator-mmap'd SRAM region instead so the
+ * redirect there to the fake mmap'd SRAM region instead so the
  * descriptor PTR round-trips through ::ra8_eth_gwca_default_recv.
  *
  * @note File-scope, not thread-safe.
@@ -183,7 +183,7 @@ alignas(16) static uint8_t s_tx_pool_storage[k_ra8_eth_num_tx_desc * k_ra8_eth_b
 
 /**
  * @enum ra8_eth_host_pool_layout_t
- * @brief Host-test pool addresses in the simulator-mmap'd SRAM region.
+ * @brief Host-test pool addresses in the fake mmap'd SRAM region.
  *
  * @details
  * The host SRAM mmap window is 2 MiB at 0x22000000; the RX + TX pools
@@ -205,7 +205,7 @@ typedef enum : uintptr_t {
  *
  * @details See implementation.
  * @retval pointer Non-null pool base address.
- * @pre Storage is reserved (BSS on chip; sim-mmap'd SRAM on host).
+ * @pre Storage is reserved (BSS on chip; fake-mapped SRAM on host).
  * @pre Caller invokes this once per ::ra8_eth_open.
  * @post Returned pointer is 16-byte aligned.
  * @post No global state is modified.
@@ -231,7 +231,7 @@ static inline uint8_t* internal_eth_rx_pool(void)
  *
  * @details See implementation.
  * @retval pointer Non-null pool base address.
- * @pre Storage is reserved (BSS on chip; sim-mmap'd SRAM on host).
+ * @pre Storage is reserved (BSS on chip; fake-mapped SRAM on host).
  * @pre Caller invokes this once per ::ra8_eth_open.
  * @post Returned pointer is 16-byte aligned.
  * @post No global state is modified.
@@ -929,7 +929,7 @@ static uint32_t internal_test_rx_slot(void)
  * next ::ra8_eth_read will pop, then marks the matching descriptor
  * FSINGLE with the encoded DS so the read returns the bytes. The
  * pool address is supplied by ::internal_eth_rx_pool which yields
- * the chip BSS on target builds and the simulator-mmap'd SRAM
+ * the chip BSS on target builds and the fake mmap'd SRAM
  * region (fits in 40 bits) on host. This function is gated by
  * ``UNIT_TEST`` so it cannot reach firmware targets.
  *

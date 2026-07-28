@@ -20,7 +20,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 # The RoT launch closure compiled straight in with RA8_ENABLE_ROOT_OF_TRUST:
 # ra8_dfu_launch + its run-target check (ra8_dfu_boot) + anti-rollback + ra8_rot +
-# the real (non-sim) ra8_psa_crypto. ra8_rsip (software SHA) auto-globbed.
+# the real (on-target) ra8_psa_crypto. ra8_rsip (software SHA) auto-globbed.
 ra8_add_app(
   NAME secure_boot_hil
   STACK_BYTES 32768

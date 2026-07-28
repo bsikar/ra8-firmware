@@ -210,8 +210,8 @@ static void main_arm_touch_seq(const char* touch_seq_str)
 static void main_apply_button_battery(const emu_args_t* args)
 {
   if (args->button_press != 0) {
-    const uint8_t pin = (args->button_press == 2) ? (uint8_t)k_sim_sw2_pin : (uint8_t)k_sim_sw1_pin;
-    board_periph_gpio_set_input((uint8_t)k_sim_sw_port, pin, false);
+    const uint8_t pin = (args->button_press == 2) ? (uint8_t)k_emu_sw2_pin : (uint8_t)k_emu_sw1_pin;
+    board_periph_gpio_set_input((uint8_t)k_emu_sw_port, pin, false);
     (void)fprintf(stderr,
                   "ra8_emulator: --button %d held (SW pin P00%u low/pressed)\n",
                   args->button_press,

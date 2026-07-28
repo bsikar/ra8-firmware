@@ -7,7 +7,7 @@
  * branches and alternate switch arms that the primary test deliberately
  * omitted (it favoured API shape over branch depth).  Every test in
  * this file is deterministic: register-window state is reset via
- * ra8_sim_mmap_reset() + ra8_pin_validator_reset() before each claim
+ * ra8_fake_mmap_reset() + ra8_pin_validator_reset() before each claim
  * sequence, so no ordering dependency exists between this binary and
  * the primary test binary.
  *
@@ -33,9 +33,9 @@
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /* -------------------------------------------------------------------------
@@ -44,7 +44,7 @@
  */
 
 /**
- * @brief Reset all simulated peripheral state and pin ownership.
+ * @brief Reset all fake peripheral state and pin ownership.
  *
  * @details
  * Mirrors reset_board_hal_state() in test_ra8_board_ek_ra8d2.c.  Called
@@ -52,14 +52,14 @@
  * clean slate regardless of execution order within this binary.
  *
  * @pre None.
- * @post ra8_sim_mmap register window cleared; pin validator bitmap zeroed.
+ * @post ra8_fake_mmap register window cleared; pin validator bitmap zeroed.
  *
  * @note Not thread-safe; single-threaded test context only.
  * @since 0.1.0
  */
 static void reset_state(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 
@@ -79,7 +79,7 @@ static void reset_state(void)
  * @par MC/DC:
  * (no compound decisions -- single-condition guard `out_pin == nullptr`)
  *
- * @pre ra8_sim_mmap and pin validator in any state (no claims made here).
+ * @pre ra8_fake_mmap and pin validator in any state (no claims made here).
  * @post No side effects beyond the early return.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -460,7 +460,7 @@ static void test_arduino_pin_init_valid_modes(void)
  *
  * @return 0 on success.
  *
- * @pre ra8_sim_mmap register window allocated by the test framework.
+ * @pre ra8_fake_mmap register window allocated by the test framework.
  * @post All targeted source lines are instrumented with gcov data.
  *
  * @note Not thread-safe; single-threaded test runner.

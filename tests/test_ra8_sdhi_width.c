@@ -10,9 +10,9 @@
  * and the two-condition ACMD6 acknowledgement check -- carry MC/DC
  * vector blocks below.
  *
- * The simulator backs every SDHI register with plain RAM, so the
+ * The fake backs every SDHI register with plain RAM, so the
  * ACMD6 tests pre-seed SD_RSP10 with a synthetic R1 card-status word
- * and use the ra8_sim_mmio poll-hook to keep SD_INFO1.RSPEND asserted
+ * and use the ra8_fake_mmio poll-hook to keep SD_INFO1.RSPEND asserted
  * while the polled command path spins (no wall-clock timer).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -20,11 +20,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_sdhi.h"
 #include "ra8_sdhi_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -61,7 +61,7 @@ typedef enum : uint32_t {
   k_test_rca          = 0xB368UL,     /**< Test rca.                                       */
 } ra8_sdhi_width_test_const_t;
 
-/* Deterministic RSPEND servicing via the ra8_sim_mmio poll-hook -- it runs inline
+/* Deterministic RSPEND servicing via the ra8_fake_mmio poll-hook -- it runs inline
  * on the driver's OWN poll (no wall-clock timer, no concurrent thread). The polled
  * command path clears SD_INFO1.RSPEND after each send, so the hook re-asserts it
  * on every poll while the CMD55 + ACMD6/CMD6 negotiation runs; each bounded send
@@ -95,7 +95,7 @@ static void rspend_hook(void)
 static void rspend_hook_arm(uint8_t inst)
 {
   s_srv_inst = inst;
-  ra8_sim_mmio_set_poll_hook(rspend_hook);
+  ra8_fake_mmio_set_poll_hook(rspend_hook);
 }
 
 /**
@@ -103,21 +103,21 @@ static void rspend_hook_arm(uint8_t inst)
  */
 static void rspend_hook_disarm(void)
 {
-  ra8_sim_mmio_set_poll_hook(nullptr);
+  ra8_fake_mmio_set_poll_hook(nullptr);
 }
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
 /**
- * @brief Seed the simulated R1 response and prime RSPEND for a negotiate run.
+ * @brief Seed the fake R1 response and prime RSPEND for a negotiate run.
  *
  * @details
- * Both CMD55 and ACMD6 read SD_RSP10 in the simulator, so a single
+ * Both CMD55 and ACMD6 read SD_RSP10 in the fake, so a single
  * seed feeds both responses. SD_INFO1.RSPEND is set up front for the
  * first command; the poll-hook re-asserts it for the second.
  */

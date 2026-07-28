@@ -35,7 +35,7 @@
  * untouched. Only the generic ``ra8_tz_secure_boot_jump_ns`` primitive is
  * reused.
  *
- * On a host build (``RA8_SIMULATOR_MODE``) this function is a no-op.
+ * On a host build (``RA8_OFF_TARGET``) this function is a no-op.
  *
  * @par TrustZone Safety:
  *  - **Validates:** SAU_TYPE.SREGION >= 4 before programming.
@@ -612,7 +612,7 @@ void ra8_trustzone_init(void)
 #ifdef RA8_EREADER_NS_XIP
   /* 3. XIP: no image copy. .text/.rodata execute in place from the OSPI NS
    *    alias (0x9000_0000); ns_reset_handler copies only .data into SRAM.
-   *    ra8_emulator maps the OSPI window unconditionally, so the sim proof needs
+   *    ra8_emulator maps the OSPI window unconditionally, so the fake proof needs
    *    no controller arming here.
    *    TODO(OSPI XIP arming on silicon): before this BLXNS, call
    *    ra8_xspi_xip_enter(instance, enter_code, exit_code) with the EK-RA8D2
@@ -645,7 +645,7 @@ void ra8_trustzone_init(void)
     return;
   }
 
-  /* On host (RA8_SIMULATOR_MODE) the library stubs BLXNS and returns
+  /* On host (RA8_OFF_TARGET) the library stubs BLXNS and returns
    * k_ra8_ok; on target this point is unreachable. */
 #endif
 }

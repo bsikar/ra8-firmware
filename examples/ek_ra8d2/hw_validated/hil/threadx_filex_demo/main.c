@@ -44,11 +44,11 @@
 #include "ra8_time.h"
 
 /*
- * The host unit-test build (RA8_SIMULATOR_MODE) does not link the ThreadX /
+ * The host unit-test build (RA8_OFF_TARGET) does not link the ThreadX /
  * FileX / LevelX vendor trees, so their headers are unreachable when clang-tidy
  * walks this file. Pull them in only on the cross-compile target.
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "fx_api.h"
 #include "lx_api.h"
 #include "lx_filex_adapter.h"
@@ -65,7 +65,7 @@ typedef enum : uint32_t {
   k_demo_sector_bytes   = 512U,    /**< LevelX logical sector size.       */
 } demo_config_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* Statically-allocated control blocks (NASA P10 Rule 3 -- no dynamic memory). */
 static LX_NOR_FLASH s_nor_flash;
 static FX_MEDIA     s_media;
@@ -81,7 +81,7 @@ static char s_fx_volume_name[] = "FXOSPI";
 static char s_readme_path[]    = "readme.txt";
 static char s_scratch_path[]   = "scratch.txt";
 static char s_readme_text[]    = "FileX FAT on OSPI flash via LevelX.\r\n";
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Halt forever in WFI.
@@ -138,7 +138,7 @@ static void demo_print(const char* s)
   (void)ra8_board_uart_console_write((const uint8_t*)s, len);
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Format + open the LevelX NOR partition on the OSPI flash.
  *
@@ -416,7 +416,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -434,7 +434,7 @@ int32_t main(void)
   ra8_isr_globals_enable();
   demo_print("[filex] booting ThreadX + FileX on OSPI flash...\r\n");
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

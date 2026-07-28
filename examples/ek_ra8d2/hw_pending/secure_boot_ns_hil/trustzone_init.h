@@ -49,7 +49,7 @@ typedef enum : uintptr_t {
  * bit[28] SAU (the IDAU-NS ranges Non-secure, ALLNS = 0 default-deny), and
  * copies the NS image from its MRAM LMA to the SRAM run base. It deliberately
  * does NOT jump: ``main()`` performs the root-of-trust verify + BLXNS after the
- * C runtime (and the crypto heap) is live. On a host build (``RA8_SIMULATOR_MODE``
+ * C runtime (and the crypto heap) is live. On a host build (``RA8_OFF_TARGET``
  * or no ``RA8_TRUSTZONE_ENABLE``) it is a no-op.
  *
  * @return void.

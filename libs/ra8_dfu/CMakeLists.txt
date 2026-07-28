@@ -10,7 +10,7 @@
 #   3. USBX DFU device class wired to real MRAM + the polled host DFU
 #      driver (ra8_dfu_device.c / ra8_dfu_host.c), each bound to either USB
 #      controller through the ux_dcd_ra8_usb bridge via ra8_usb_speed_t.
-#      These two TUs are firmware-only (guarded by RA8_SIMULATOR_MODE) so
+#      These two TUs are firmware-only (guarded by RA8_OFF_TARGET) so
 #      the host test build compiles them away.
 #
 # The module never calls malloc -- all buffers live in static storage.

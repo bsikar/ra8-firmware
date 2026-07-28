@@ -334,7 +334,7 @@ int main(void)
      * MMIO-keyed idle detector awake through the pure-SRAM hand-off so the
      * banner surfaces under RA8_EMU_IDLE_STOP=1 (and the LED visibly
      * blinks on the bench). Dropped once the self-test has passed, so the
-     * steady phase below is pure SRAM and IDLE_STOP can stop the sim. */
+     * steady phase below is pure SRAM and IDLE_STOP can stop the fake. */
     if (led_up && (round < (uint32_t)k_cache_coherency_rounds)) {
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     }

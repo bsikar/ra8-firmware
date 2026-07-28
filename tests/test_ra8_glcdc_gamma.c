@@ -5,7 +5,7 @@
  * @details
  * Exercises `ra8_glcdc_set_gamma` (per-channel LUT + AREA register writes)
  * and `ra8_glcdc_gamma_enable` (GAMSW.GAMON bit).  Every register write is
- * observed through the simulated MMIO window provided by `ra8_sim_mmap`.
+ * observed through the fake MMIO window provided by `ra8_fake_mmap`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -14,9 +14,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_glcdc.h"
 #include "ra8_glcdc_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /* =============================================================================
@@ -130,7 +130,7 @@ static const uint16_t k_thresholds[16] = {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /* =============================================================================

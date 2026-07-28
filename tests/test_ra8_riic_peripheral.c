@@ -11,7 +11,7 @@
  *
  * Register sequencing cannot be driven by real hardware on the host, so each
  * transfer test pre-loads the RIIC status registers (RDRF / STOP / TDRE /
- * TEND / NACKF) in the simulated MMIO window and checks the resulting data
+ * TEND / NACKF) in the fake MMIO window and checks the resulting data
  * path and flag clears.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -21,10 +21,10 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i2c.h"
 #include "ra8_i2c_internal.h"
 #include "ra8_i2c_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -55,7 +55,7 @@ typedef enum : uint32_t {
 } ra8_riic_t_size_t;
 
 /**
- * @brief Reset the simulated MMIO and disarm the target on the test channel.
+ * @brief Reset the fake MMIO and disarm the target on the test channel.
  *
  * @details Clears the per-channel ``peripheral_active`` flag (it lives in the
  * persistent ``s_i2c_state`` table, not in MMIO) so each test starts from a
@@ -63,7 +63,7 @@ typedef enum : uint32_t {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_i2c_peripheral_deinit((uint8_t)k_t_ch);
 }
 

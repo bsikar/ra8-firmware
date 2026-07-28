@@ -3,7 +3,7 @@
  * @brief Unit tests for per-device e-paper VCOM calibration (``ra8_epd_cal.c``)
  *
  * @details
- * Pure host tests -- no register simulator. The module reaches the panel
+ * Pure host tests -- no register fake. The module reaches the panel
  * and the non-volatile store only through injected function-pointer seams,
  * so every branch is drivable from a mock.
  *

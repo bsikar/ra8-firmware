@@ -75,7 +75,7 @@ typedef enum : uint32_t {
  * @details
  * On the firmware build it lives in `.noinit` (NOLOAD, pinned at the top of
  * SRAM by `libs/ra8_board_ek_ra8d2/ld/linker_script.ld`) so a warm/watchdog
- * reset does not clear it. On the host test build (`RA8_SIMULATOR_MODE`) the
+ * reset does not clear it. On the host test build (`RA8_OFF_TARGET`) the
  * section attribute is dropped -- Mach-O rejects a bare section name and a
  * single test process has no reset to survive -- leaving a plain zero-init
  * static.
@@ -87,7 +87,7 @@ typedef enum : uint32_t {
  *          exposed as `g_ra8_ls_noinit_start` for debugger inspection.
  * @since 0.1.0
  */
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 static volatile ra8_crashlog_record_t s_ra8_crashlog_record;
 #else
 [[gnu::section(".noinit")]] static volatile ra8_crashlog_record_t s_ra8_crashlog_record;
@@ -250,7 +250,7 @@ bool ra8_crashlog_safe_mode_requested(void)
   return rec.boot_loops > (uint32_t)k_ra8_crashlog_loop_threshold;
 }
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 /** @brief Implementation of `ra8_crashlog_test_record()` -- raw record pointer. */
 volatile ra8_crashlog_record_t* ra8_crashlog_test_record(void)
 {
@@ -265,4 +265,4 @@ void ra8_crashlog_test_wipe(void)
     p[i] = 0U;
   }
 }
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */

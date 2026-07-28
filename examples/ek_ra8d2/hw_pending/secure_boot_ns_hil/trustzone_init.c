@@ -29,7 +29,7 @@
  *
  * It deliberately does NOT BLXNS: ``main()`` runs the root-of-trust verify (which
  * needs the crypto heap the C runtime sets up) and then jumps. On a host build
- * (``RA8_SIMULATOR_MODE`` or no ``RA8_TRUSTZONE_ENABLE``) this is a no-op.
+ * (``RA8_OFF_TARGET`` or no ``RA8_TRUSTZONE_ENABLE``) this is a no-op.
  *
  * @par TrustZone Safety:
  *  - **Validates:** SAU_TYPE.SREGION >= 3 before programming.

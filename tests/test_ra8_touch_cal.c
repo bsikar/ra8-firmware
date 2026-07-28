@@ -4,7 +4,7 @@
  *
  * @details
  * Drives the calibration utility entirely on the host -- no register
- * simulator needed. The tests exercise:
+ * fake needed. The tests exercise:
  *
  *   1. ``ra8_touch_cal_compute`` against a synthetic linear ground-truth
  *      transform with known coefficients (3 and 5 sample variants).

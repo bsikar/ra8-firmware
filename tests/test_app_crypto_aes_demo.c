@@ -5,7 +5,7 @@
  * @details
  * Mirrors examples/ek_ra8d2/crypto_aes_demo/main.c bring-up flow and
  * exercises the soft-fallback ra8_psa_crypto AEAD path in
- * RA8_SIMULATOR_MODE (always defined for the host test build).
+ * RA8_OFF_TARGET (always defined for the host test build).
  * Confirms key import, encrypt, decrypt, byte compare, and
  * destroy succeed end to end, plus the negative paths (NULL handle,
  * tampered ciphertext).

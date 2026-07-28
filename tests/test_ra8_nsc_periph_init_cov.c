@@ -17,7 +17,7 @@
  *
  * The four error-return branches after each init call are GCOVR_EXCL_START /
  * GCOVR_EXCL_STOP excluded in the source because all four substrate init
- * functions always return k_ra8_ok in RA8_SIMULATOR_MODE -- the host simulator
+ * functions always return k_ra8_ok in RA8_OFF_TARGET -- the host fake
  * backs MMIO with ordinary RAM and read-back checks always pass on the first
  * iteration. Those paths exist for the Cortex-M85 target only.
  *
@@ -34,9 +34,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_nsc.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /* =============================================================================
@@ -45,7 +45,7 @@
  */
 
 /**
- * @brief Reset the simulator MMIO backing store before each test group.
+ * @brief Reset the fake MMIO backing store before each test group.
  *
  * @details
  * Zeroes every register window so peripheral drivers start from a clean
@@ -54,7 +54,7 @@
  * Tests are therefore ordered: the first call in this binary exercises the
  * full init path; later calls exercise the idempotent fast path.
  *
- * @pre Binary is running under RA8_SIMULATOR_MODE.
+ * @pre Binary is running under RA8_OFF_TARGET.
  * @post All MMIO backing regions read zero.
  *
  * @note Not thread-safe; tests are single-threaded.
@@ -62,7 +62,7 @@
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /* =============================================================================
@@ -76,7 +76,7 @@ static void prep(void)
  * @details
  * When s_initialized is false (process start, never called before in this
  * binary), ra8_nsc_periph_init() must run the four-step substrate sequence:
- * ra8_mstp_init, ra8_pwr_init, ra8_isr_init, ra8_dma_init.  On the simulator all
+ * ra8_mstp_init, ra8_pwr_init, ra8_isr_init, ra8_dma_init.  On the fake all
  * four always succeed, so the call must return k_ra8_ok and set the internal
  * s_initialized flag to true.
  *
@@ -89,7 +89,7 @@ static void prep(void)
  * the full init body runs). Pairs with test_periph_init_idempotent_second_call
  * for the true branch.
  *
- * @pre ra8_sim_mmap_reset() has been called.
+ * @pre ra8_fake_mmap_reset() has been called.
  * @pre ra8_nsc_periph_init() has never been called in this process.
  * @post ra8_nsc_periph_init() returned k_ra8_ok.
  * @post Internal s_initialized is now true.
@@ -140,12 +140,12 @@ static void test_periph_init_idempotent_second_call(void)
 }
 
 /**
- * @brief ra8_nsc_periph_init: return value is always k_ra8_ok on the simulator.
+ * @brief ra8_nsc_periph_init: return value is always k_ra8_ok on the fake.
  *
  * @details
  * Verifies that repeated ra8_nsc_periph_init() calls in different orderings
- * (with intervening ra8_sim_mmap_reset() calls) still return k_ra8_ok.
- * ra8_sim_mmap_reset() zeroes register windows but does NOT reset the static
+ * (with intervening ra8_fake_mmap_reset() calls) still return k_ra8_ok.
+ * ra8_fake_mmap_reset() zeroes register windows but does NOT reset the static
  * s_initialized flag, so these calls all take the idempotent fast path.
  *
  * @pre test_periph_init_first_call() has already run.
@@ -192,7 +192,7 @@ static void test_periph_init_always_ok_after_first(void)
  *
  * @retval 0 All tests passed.
  *
- * @pre RA8_SIMULATOR_MODE is defined (test build).
+ * @pre RA8_OFF_TARGET is defined (test build).
  * @post All reachable lines in ra8_nsc_periph_init.c have been exercised.
  *
  * @note Not thread-safe.

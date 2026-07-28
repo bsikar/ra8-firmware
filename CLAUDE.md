@@ -876,7 +876,7 @@ The `RA8_*` annotation macros in `libs/ra8_core/inc/ra8_attributes.h` record arc
 | `RA8_MAX_STACK(bytes)` | Per-function stack-frame budget (cross-checked via `.su`). |
 | `RA8_ISR_SAFE` | Function is callable from interrupt context. |
 | `RA8_EXPECTS_LOCK(name)` | Caller must hold the named lock on entry. |
-| `RA8_HOST_FRIENDLY` | Safe under `RA8_SIMULATOR_MODE` (no unmocked MMIO). |
+| `RA8_HOST_FRIENDLY` | Safe under `RA8_OFF_TARGET` (no unmocked MMIO). |
 | `RA8_LATENCY_BUDGET_NS(n)` | Real-time WCET deadline in nanoseconds. |
 | `RA8_NO_RECURSION` | NASA P10 Rule 1: no direct or indirect self-call. |
 | `RA8_BOUNDED_LOOP(symbol)` | NASA P10 Rule 2: every loop bounded by `symbol`. |

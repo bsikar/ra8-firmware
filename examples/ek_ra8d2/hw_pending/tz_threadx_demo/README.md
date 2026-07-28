@@ -16,7 +16,7 @@ This example splits CPU0 (Cortex-M85) into a Secure and a Non-Secure project:
    - **Worker Thread**: Periodically logs worker/sensor heartbeats.
 5. **Veneer Logging**: Logs are emitted using `ra8_nsc_log_emit(...)` which copies messages to a secure scratch buffer and writes them to the ITM stimulus port.
 
-## Running in the Simulator
+## Running in the Emulator
 
 ```sh
 make emu-tz_threadx_demo

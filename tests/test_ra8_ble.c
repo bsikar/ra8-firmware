@@ -19,7 +19,7 @@
 
 #include "ra8_ble.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /* Test hooks declared with external linkage in the driver. */
@@ -55,7 +55,7 @@ typedef enum : uint16_t {
 
 static void prep_open(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* If a previous test left the driver open, force-close. */
   (void)ra8_ble_close();
   const ra8_ble_config_t cfg = {.use_external_osc = 1U, .deep_sleep_enable = 1U};
@@ -103,7 +103,7 @@ static void stub_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint
 static void test_open_close(void)
 {
   TEST_BEGIN("ble open + close");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_ble_close();
   const ra8_ble_config_t cfg = {.use_external_osc = 0U, .deep_sleep_enable = 0U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_open(&cfg));
@@ -122,7 +122,7 @@ static void test_open_close(void)
 static void test_open_null_cfg(void)
 {
   TEST_BEGIN("ble open NULL cfg");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_ble_close();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ble_open(nullptr));
   TEST_END("ble open NULL cfg");
@@ -137,7 +137,7 @@ static void test_open_null_cfg(void)
 static void test_send_command_before_open(void)
 {
   TEST_BEGIN("ble cmd before open rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_ble_close();
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
                  ra8_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, nullptr, 0U));
@@ -398,7 +398,7 @@ static void test_scan_start(void)
 static void test_dispatch_before_open(void)
 {
   TEST_BEGIN("ble dispatch before open rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_ble_close();
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_dispatch());
   TEST_END("ble dispatch before open rejected");

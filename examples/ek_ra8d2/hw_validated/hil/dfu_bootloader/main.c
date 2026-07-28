@@ -71,7 +71,7 @@
 #include "ra8_psa_crypto.h"
 #endif
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -182,7 +182,7 @@ typedef enum : uint32_t {
  */
 [[gnu::section(".noinit")]] static volatile uint32_t g_dfu_trigger;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX worker + USBX pool storage */
@@ -321,7 +321,7 @@ typedef enum : uint8_t {
 /** @brief USBX language-id table -- US English. */
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes */
@@ -535,7 +535,7 @@ static void blc_boot_slot(ra8_dfu_slot_t slot)
   /* Returns only if ra8_dfu_run_target_valid rejected the image -> main -> DFU. */
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /**
  * @brief Request a system reset via AIRCR.SYSRESETREQ. Never returns.
@@ -630,7 +630,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /* -------------------------------------------------------------------------- */
 /* Startup */
@@ -802,7 +802,7 @@ int32_t main(void)
   /* k_ra8_dfu_action_dfu (or a slot whose run target failed validation): no
    * bootable slot -- accept a DFU update into the inactive slot over USB-FS. */
   (void)blc_print("dfu-bootloader: no bootable slot -- entering DFU\r\n");
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   ra8_dfu_device_set_target(target);
   tx_kernel_enter();
 #endif

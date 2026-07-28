@@ -21,7 +21,7 @@ WITHOUT the heavy, optional Vela toolchain:
 
 What the committed descriptor actually is matters for reading a green run: it
 is a SIM model -- the tiny, documented "SE55" command-stream convention in
-libs/ra8_hal/inc/ra8_npu_sim_cmd.h -- and NOT a real Vela program. It is the
+libs/ra8_hal/inc/ra8_npu_fake_cmd.h -- and NOT a real Vela program. It is the
 only Ethos-U55 command stream this repo can produce deterministically without
 a Vela install and without inventing NPU opcodes. The ra8_emulator NPU model and
 the ra8_npu driver both decode that same convention, so the whole
@@ -31,10 +31,10 @@ says nothing about real Vela output. Distilling a REAL _vela.tflite into a
 validated Vela output and an RA8P1 board.
 
 Usage:
-    python3 tools/vela/vela_gen.py emit  tools/vela/models/npu_addk_sim.json \
-            -o tools/vela/generated/ra8_npu_model_addk_sim.h
-    python3 tools/vela/vela_gen.py check tools/vela/models/npu_addk_sim.json \
-            tools/vela/generated/ra8_npu_model_addk_sim.h
+    python3 tools/vela/vela_gen.py emit  tools/vela/models/npu_addk_fake.json \
+            -o tools/vela/generated/ra8_npu_model_addk_fake.h
+    python3 tools/vela/vela_gen.py check tools/vela/models/npu_addk_fake.json \
+            tools/vela/generated/ra8_npu_model_addk_fake.h
     python3 tools/vela/vela_gen.py compile model_int8.tflite -o build/vela
 """
 
@@ -66,9 +66,9 @@ FNV_PRIME = 0x01000193
 U32_MASK = 0xFFFFFFFF
 BYTE_MASK = 0xFF
 
-# Sim command-stream convention -- MUST match libs/ra8_hal/inc/ra8_npu_sim_cmd.h.
-SIM_MAGIC = 0x5E550000
-SIM_OP = {"copy": 0x0001, "addk": 0x0002}
+# Fake command-stream convention -- MUST match libs/ra8_hal/inc/ra8_npu_fake_cmd.h.
+FAKE_MAGIC = 0x5E550000
+FAKE_OP = {"copy": 0x0001, "addk": 0x0002}
 
 ROLE = {
     "weights": 0,
@@ -113,13 +113,13 @@ def _region_payload(region: dict) -> bytes:
 
 
 def _build_command_stream(desc: dict) -> bytes:
-    """Pack the SE55 sim command stream (5 little-endian 32-bit words)."""
+    """Pack the SE55 stand-in command stream (5 little-endian 32-bit words)."""
     op_name = desc["op"]
-    if op_name not in SIM_OP:
-        msg = f"unknown op '{op_name}' (expected one of {sorted(SIM_OP)})"
+    if op_name not in FAKE_OP:
+        msg = f"unknown op '{op_name}' (expected one of {sorted(FAKE_OP)})"
         raise ValueError(msg)
     words = [
-        SIM_MAGIC | SIM_OP[op_name],
+        FAKE_MAGIC | FAKE_OP[op_name],
         int(desc["src_region"]),
         int(desc["dst_region"]),
         int(desc["count"]),
@@ -202,8 +202,8 @@ def emit_header(desc: dict, blob: bytes) -> str:
         " * A '.npub' Ethos-U55 model container (see libs/ra8_hal/inc/ra8_npu_blob.h):",
         " * an Ethos-U55 command stream plus its tensor region layout, baked as a byte",
         " * array the firmware links and the on-target loader (ra8_npu_loader.h) maps",
-        " * into an ra8_npu_job_t. The command stream here is the documented SE55 sim",
-        " * convention (ra8_npu_sim_cmd.h), NOT a real Vela program -- see vela_gen.py.",
+        " * into an ra8_npu_job_t. The command stream here is the documented SE55 stand-in",
+        " * convention (ra8_npu_fake_cmd.h), NOT a real Vela program -- see vela_gen.py.",
         " */",
         "",
         "#pragma once",
@@ -305,7 +305,7 @@ def cmd_compile(args: argparse.Namespace) -> int:
     # TODO(#227 follow-up): distilling this real _vela.tflite (the ethos-u custom
     # op command stream + region layout) into a .npub requires a validated Vela
     # output and an RA8P1 board to confirm the extracted stream runs on silicon.
-    # Until then the committed golden uses the SE55 sim descriptor via `emit`.
+    # Until then the committed golden uses the SE55 stand-in descriptor via `emit`.
     print(
         "vela_gen: NOTE -- extracting the command stream from _vela.tflite into a "
         ".npub is a documented follow-up; use `emit` on a model descriptor for now.",

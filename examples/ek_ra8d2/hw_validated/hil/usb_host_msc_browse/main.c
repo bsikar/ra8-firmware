@@ -11,7 +11,7 @@
  * drive needed. The two USB jacks are cabled to each other and one image runs
  * both roles:
  *
- *  - USBFS (J11) = DEVICE (the simulated peripheral): a ThreadX + USBX
+ *  - USBFS (J11) = DEVICE (the fake peripheral): a ThreadX + USBX
  *    Mass-Storage class exposing the 1 MiB MRAM window at 0x02000000 as a
  *    read-only synthesized FAT16 volume with one file ``MRAM.BIN``.
  *  - USBHS (J7) = HOST: the polled first-party host stack (`ra8_usb_hmsc` +
@@ -55,7 +55,7 @@
 #include "ra8_usb_hmsc.h"
 #include "usb_host_msc_browse_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -115,7 +115,7 @@ static const ra8_port_pin_t k_selftest_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board
 /** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
 static const ra8_port_pin_t k_selftest_pin_hs_pwr = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX workers + USBX pool storage */
@@ -508,7 +508,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /* -------------------------------------------------------------------------- */
 /* Startup helpers */
@@ -650,7 +650,7 @@ int32_t main(void)
 
   ra8_isr_globals_enable();
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* tx_kernel_enter is __noreturn -- it never comes back. */
   tx_kernel_enter();
 #endif

@@ -25,7 +25,7 @@
  * program behind the PRCR unlock), which is brick-risky and not yet wired --
  * it is bench-gated. On silicon both functions are therefore **FAIL-CLOSED**:
  * they validate their arguments and then return ``k_ra8_err_not_supported``
- * instead of a fake ``k_ra8_ok`` (T5-10). Under ``RA8_SIMULATOR_MODE`` they run
+ * instead of a fake ``k_ra8_ok`` (T5-10). Under ``RA8_OFF_TARGET`` they run
  * against an in-memory shadow so the unit tests can verify the masking and
  * re-entry guards without touching real flash. The real ``ra8_flash_*`` call
  * sites are marked ``TODO`` at each fail-closed branch in the implementation.
@@ -92,7 +92,7 @@ typedef enum : uint32_t {
  * this function is **FAIL-CLOSED**: after the argument + idempotency checks it
  * returns ``k_ra8_err_not_supported`` and arms nothing, rather than reporting a
  * fake ``k_ra8_ok`` for a commit that never touched flash (T5-10). Under
- * ``RA8_SIMULATOR_MODE`` it instead records the request in a host shadow so the
+ * ``RA8_OFF_TARGET`` it instead records the request in a host shadow so the
  * unit tests can exercise the argument-validation + single-shot idempotency
  * policy without real flash. A caller therefore never mistakes an unwritten
  * option byte for an armed swap.
@@ -100,7 +100,7 @@ typedef enum : uint32_t {
  * @param[in] target Bank selector (``k_ra8_ota_bank_a`` / ``k_ra8_ota_bank_b``).
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok                (``RA8_SIMULATOR_MODE`` only) swap armed in the
+ * @retval k_ra8_ok                (``RA8_OFF_TARGET`` only) swap armed in the
  *                                host shadow.
  * @retval k_ra8_err_invalid_arg   ``target`` not in ``ra8_ota_bank_t``.
  * @retval k_ra8_err_invalid_state Another commit is already pending.
@@ -111,7 +111,7 @@ typedef enum : uint32_t {
  * @pre Caller has already validated firmware integrity on ``target``.
  * @pre IRQs masked (or single-threaded boot context).
  *
- * @post On ``k_ra8_ok`` (sim), the shadow records ``target`` as pending.
+ * @post On ``k_ra8_ok`` (fake), the shadow records ``target`` as pending.
  * @post On any error, no shadow state changes and no option byte is written.
  *
  * @note Thread safety: not thread-safe; serialise via secure-side
@@ -151,14 +151,14 @@ typedef enum : uint32_t {
  * an option-region write (same PRCR-unlocked, brick-risky path as
  * ``ra8_ota_commit_swap_bank``); it is not yet wired, so on silicon this function
  * is **FAIL-CLOSED**: it returns ``k_ra8_err_not_supported`` and writes nothing,
- * rather than a fake ``k_ra8_ok`` (T5-10). Under ``RA8_SIMULATOR_MODE`` it records
+ * rather than a fake ``k_ra8_ok`` (T5-10). Under ``RA8_OFF_TARGET`` it records
  * the masked value in the host shadow so the masking policy stays unit-testable.
  * This is the entry point behind the ``ra8_nsc_flash_bank_config`` veneer.
  *
  * @param[in] raw_value Raw register value supplied by NS code.
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok                (``RA8_SIMULATOR_MODE`` only) masked value
+ * @retval k_ra8_ok                (``RA8_OFF_TARGET`` only) masked value
  *                                recorded in the host shadow.
  * @retval k_ra8_err_not_supported (silicon build) the real option-region write is
  *                                bench-gated -- fail-closed, nothing written.
@@ -166,7 +166,7 @@ typedef enum : uint32_t {
  * @pre IRQs masked (or single-threaded boot context).
  * @pre ``raw_value`` may take any uint32_t value (reserved bits are masked off).
  *
- * @post On ``k_ra8_ok`` (sim), the shadow holds ``raw_value`` masked to the
+ * @post On ``k_ra8_ok`` (fake), the shadow holds ``raw_value`` masked to the
  *       allowed bits.
  * @post On any error, no shadow state changes and no option region is written.
  *

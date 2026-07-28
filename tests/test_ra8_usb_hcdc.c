@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_hcdc.h"
 #include "ra8_usb_regs.h"
@@ -27,7 +27,7 @@ static const uintptr_t       k_test_hcdc_ctx_token = 0xCAFEBABEU;
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_hcdc_close();
   s_attach_count       = 0U;
@@ -116,7 +116,7 @@ static void test_close_without_init(void)
   TEST_END("ra8_usb_hcdc_close before init returns invalid_state");
 }
 
-/* ---- Attach callback fires once after a simulated descriptor walk ---- */
+/* ---- Attach callback fires once after a fake descriptor walk ---- */
 
 /**
  * @par MC/DC:
@@ -137,7 +137,7 @@ static void test_attach_callback_fires_once(void)
     if (s_attach_count != 0U) {
       break;
     }
-    /* Clear DCPCTR.SUREQ in the simulated regs so subsequent SETUP
+    /* Clear DCPCTR.SUREQ in the fake regs so subsequent SETUP
      * requests don't trip the busy guard. */
     ra8_usb_fs()->DCPCTR = 0U;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hcdc_step());

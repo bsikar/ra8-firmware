@@ -129,7 +129,7 @@ ra8_err_t ra8_rmac_clear_status(ra8_rmac_port_t port,
   /* The disable registers act as the clear-on-write counterpart of
    * each status register; writing 1 to a bit clears the matching bit
    * in MEIS / MMIS{0,1,2}. The driver also writes the explicit
-   * masked-out value so simulator backings (which lack RW1C) end up
+   * masked-out value so fake backings (which lack RW1C) end up
    * in the same observable state as real hardware. */
   /* HUM Ch 33.4 "MEID : MAC Error Interrupt Disable Register" p 1706 */
   reg->MEID = err_mask;
@@ -342,7 +342,7 @@ ra8_err_t ra8_rmac_phy_reset(ra8_rmac_port_t port, uint8_t phy_addr)
                                               (uint8_t)k_ra8_rmac_phy_reg_bmcr,
                                               (uint16_t)k_ra8_rmac_phy_bmcr_reset);
   if (w != k_ra8_ok) {
-    /* Reached on host by arming the ra8_sim_mmio seam on MPSM so the
+    /* Reached on host by arming the ra8_fake_mmio seam on MPSM so the
      * MDIO write's drain or post-wait times out. */
     ra8_log_error(s_tag, "phy_reset: bmcr write");
     return w;
@@ -352,7 +352,7 @@ ra8_err_t ra8_rmac_phy_reset(ra8_rmac_port_t port, uint8_t phy_addr)
     const ra8_err_t r =
       ra8_rmac_mdio_c22_read(port, phy_addr, (uint8_t)k_ra8_rmac_phy_reg_bmcr, &bmcr);
     if (r != k_ra8_ok) {
-      /* Reached on host via ra8_sim_mmio_fail_nth_wait on MPSM: the
+      /* Reached on host via ra8_fake_mmio_fail_nth_wait on MPSM: the
        * write's two MPSM wait-loops succeed, the read's drain fails. */
       ra8_log_error(s_tag, "phy_reset: bmcr read");
       return r;
@@ -361,12 +361,12 @@ ra8_err_t ra8_rmac_phy_reset(ra8_rmac_port_t port, uint8_t phy_addr)
       return k_ra8_ok;
     }
     /* GCOVR_EXCL_START
-     * Host-sim MDIO returns BMCR = 0 on every read (ra8_rmac.c
+     * Off-target MDIO returns BMCR = 0 on every read (ra8_rmac.c
      * internal_mpsm_issue writes PRD = 0 for reads and the pure-RAM
      * MPSM readback returns that word), so BMCR.RESET always reads
      * clear and the loop returns above on the first iteration. The
      * natural loop exit and this timeout leg require a PHY that holds
-     * BMCR.RESET asserted -- read DATA the ra8_sim_mmio wait seam
+     * BMCR.RESET asserted -- read DATA the ra8_fake_mmio wait seam
      * cannot synthesize. */
   }
   ra8_log_error(s_tag, "phy_reset: bmcr.reset never cleared");
@@ -427,16 +427,16 @@ ra8_err_t ra8_rmac_phy_auto_neg_wait(ra8_rmac_port_t      port,
     const ra8_err_t r =
       ra8_rmac_mdio_c22_read(port, phy_addr, (uint8_t)k_ra8_rmac_phy_reg_bmsr, &bmsr);
     if (r != k_ra8_ok) {
-      /* Reached on host by arming the ra8_sim_mmio seam on MPSM. */
+      /* Reached on host by arming the ra8_fake_mmio seam on MPSM. */
       return r;
     }
     const uint16_t need =
       (uint16_t)((uint16_t)k_ra8_rmac_phy_bmsr_an_done | (uint16_t)k_ra8_rmac_phy_bmsr_link_up);
     if ((bmsr & need) == need) {
       /* GCOVR_EXCL_START
-       * Host-sim MDIO delivers BMSR = 0 on every read (ra8_rmac.c
+       * Off-target MDIO delivers BMSR = 0 on every read (ra8_rmac.c
        * internal_mpsm_issue writes PRD = 0 for reads -- read DATA the
-       * ra8_sim_mmio wait seam cannot synthesize), so (bmsr & need)
+       * ra8_fake_mmio wait seam cannot synthesize), so (bmsr & need)
        * is never equal to need and this link-up read-back body -- the
        * ANLPAR fetch, its MDIO-error return, and the resolved-speed
        * decode -- is unreachable from the host. */
@@ -473,14 +473,14 @@ ra8_rmac_phy_link_status(ra8_rmac_port_t port, uint8_t phy_addr, ra8_rmac_phy_li
   const ra8_err_t r =
     ra8_rmac_mdio_c22_read(port, phy_addr, (uint8_t)k_ra8_rmac_phy_reg_bmsr, &bmsr);
   if (r != k_ra8_ok) {
-    /* Reached on host by arming the ra8_sim_mmio seam on MPSM. */
+    /* Reached on host by arming the ra8_fake_mmio seam on MPSM. */
     return r;
   }
   out_link->up = (bmsr & (uint16_t)k_ra8_rmac_phy_bmsr_link_up) != 0U;
   // mcdc-deactivated: ra8_rmac_phy_auto_neg_start link-up + an-done gate; both bits come from the same BMSR read; PHY hardware sets BMSR.AN_DONE only after BMSR.LINK_STATUS asserts (IEEE 802.3 Clause 22 22.2.4.2 ordering) -- the second condition cannot be true while the first is false on any conformant PHY.
   if (out_link->up && ((bmsr & (uint16_t)k_ra8_rmac_phy_bmsr_an_done) != 0U)) {
     /* GCOVR_EXCL_START
-     * Same host-sim MDIO limitation: BMSR reads 0, so out_link->up is
+     * Same off-target MDIO limitation: BMSR reads 0, so out_link->up is
      * always false and this AN-resolved-speed read-back body (ANLPAR
      * fetch, MDIO-error return, and decode) is unreachable from the
      * host. */

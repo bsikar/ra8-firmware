@@ -60,7 +60,7 @@ The pool pressure during `ra8_epub_open` comes from the file **count** (miniz
 central directory) and the OPF item **count** (tinyxml2 DOM), not the total
 byte size. A synthetic book with many tiny files reproduces -- and exceeds --
 a 7 MB book's shared-arena pressure in tens of KB, so it bakes into MRAM and
-stays committable. The `RA8_SIMULATOR_MODE` host build routes miniz + `operator
+stays committable. The `RA8_OFF_TARGET` host build routes miniz + `operator
 new` to malloc, so only this on-target (ra8_emulator / silicon) gate exercises the
 real static-pool path.
 

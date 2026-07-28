@@ -69,7 +69,7 @@ typedef enum : uint32_t {
   k_fat_entry0           = 0xFFF8U, /**< FAT[0]: media F8 + filler.         */
 } demo_fat_geom_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "tx_api.h"
 #include "ux_api.h"
@@ -95,4 +95,4 @@ typedef enum : uint32_t {
  */
 void demo_fat_fill_sector(uint32_t lba, UCHAR* out);
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

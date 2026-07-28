@@ -90,7 +90,7 @@ typedef enum : uint8_t {
  * @post LPSCR = 0; next WFI enters plain Sleep, not Software Standby.
  * @post SBYCR / DPSBYCR restored to documented reset values.
  *
- * @note No-op on host (``RA8_SIMULATOR_MODE``).
+ * @note No-op on host (``RA8_OFF_TARGET``).
  *
  * @see HUM Ch 11.2.18 "SBYCR / PRCR" p 456.
  * @see HUM Ch 11.2.20 "LPSCR" p 457.
@@ -100,7 +100,7 @@ typedef enum : uint8_t {
  */
 [[gnu::always_inline]] static inline void ra8_lpm_safe_boot(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* SYSC.PRCR (16-bit, write-protect key) @ 0x4001E3FA */
   volatile uint16_t* const prcr = (volatile uint16_t*)0x4001E3FAUL;
   /* SBYCR (8-bit) @ 0x4001E00C  -- Standby Control Register */
@@ -115,7 +115,7 @@ typedef enum : uint8_t {
   *sbycr   = (uint8_t)k_ra8_lpm_safe_boot_sbycr_reset;
   *dpsbycr = (uint8_t)k_ra8_lpm_safe_boot_dpsbycr_reset;
   *prcr    = (uint16_t)k_ra8_lpm_safe_boot_prcr_relock;
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */
 }
 
 #ifdef __cplusplus

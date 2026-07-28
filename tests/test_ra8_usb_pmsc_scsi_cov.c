@@ -25,8 +25,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pmsc.h"
 #include "ra8_usb_pmsc_internal.h"
@@ -225,7 +225,7 @@ static const ra8_usb_pmsc_storage_t s_ok_storage = {
  */
 static void setup_with(const ra8_usb_pmsc_storage_t* storage)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_pmsc_close();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));

@@ -203,9 +203,9 @@ static void internal_graphics_domain_power_on(void)
 
   /* Wait for "fully gated" state before issuing the power-on request. */
   for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam: tests drive the retry / exhaustion legs. */
-    if (ra8_sim_mmio_wait_eval(
+    if (ra8_fake_mmio_wait_eval(
           pdctrgd,
           i,
           ((*pdctrgd & (uint8_t)k_pdctrgd_status) == (uint8_t)k_pdctrgd_pdpgsf))) {
@@ -220,8 +220,8 @@ static void internal_graphics_domain_power_on(void)
   *pdctrgd = (uint8_t)k_pdctrgd_on;
   /* Wait for "fully on" state -- both PDCSF and PDPGSF must clear. */
   for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(pdctrgd, i, ((*pdctrgd & (uint8_t)k_pdctrgd_status) == 0U))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(pdctrgd, i, ((*pdctrgd & (uint8_t)k_pdctrgd_status) == 0U))) {
       break;
     }
 #else
@@ -259,9 +259,9 @@ static void internal_lcdclk_switch_pll1r(void)
   *prcr    = (uint16_t)k_prcr_unlock_cgc;
   *lcdckcr = (uint8_t)k_lcdck_sreq;
   for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam: tests drive the retry / exhaustion legs. */
-    if (ra8_sim_mmio_wait_eval(lcdckcr, i, ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) != 0U))) {
+    if (ra8_fake_mmio_wait_eval(lcdckcr, i, ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) != 0U))) {
       break;
     }
 #else
@@ -274,8 +274,8 @@ static void internal_lcdclk_switch_pll1r(void)
   *lcdckcr    = (uint8_t)(k_lcdck_sreq | k_lcdck_sel_pll1r);
   *lcdckcr    = (uint8_t)k_lcdck_sel_pll1r;
   for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(lcdckcr, i, ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) == 0U))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(lcdckcr, i, ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) == 0U))) {
       break;
     }
 #else
@@ -297,8 +297,8 @@ static void internal_lcdclk_switch_pll1r(void)
  *   2. internal_graphics_domain_power_on()-- PDCTRGD power-on
  *   3. internal_lcdclk_switch_pll1r()     -- LCDCKCR -> PLL1R / 4
  * Runs on every build: the raw SYSC addresses fall inside the host
- * test's sim-mmap peripheral window and the status polls consult the
- * ra8_sim_mmio seam, so the real sequence executes on host too.
+ * test's fake-mmap peripheral window and the status polls consult the
+ * ra8_fake_mmio seam, so the real sequence executes on host too.
  *
  * @pre Caller is in single-threaded init context with IRQs masked or not
  *      yet enabled.

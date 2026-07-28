@@ -213,7 +213,7 @@ typedef ra8_err_t (*ra8_touch_cal_read_raw_fn_t)(void* ctx, ra8_touch_cal_point_
  * The library does not include ra8_lcd.h or ra8_touch.h; the caller
  * provides function-pointer shims, satisfying SOLID-D (Dependency
  * Inversion) and keeping ``ra8_touch_cal`` host-testable without the
- * register simulator.
+ * register fake.
  */
 typedef struct {
   uint16_t                       screen_width;  /**< Panel width, pixels.  */

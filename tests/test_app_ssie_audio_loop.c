@@ -6,7 +6,7 @@
  * Mirrors examples/ek_ra8d2/ssie_audio_loop/main.c bring-up flow:
  * ra8_ssie_init -> ra8_ssie_start(TX_RX) -> ra8_ssie_write_sample x N
  * -> ra8_ssie_stop -> ra8_ssie_deinit. All MMIO is via the host
- * tests/mocks/ra8_sim_mmap.c shim.
+ * tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -16,8 +16,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_ssie.h"
 #include "ra8_ssie_regs.h"
 #include "unity_minimal.h"
@@ -74,7 +74,7 @@ static ra8_ssie_cfg_t default_cfg(void)
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

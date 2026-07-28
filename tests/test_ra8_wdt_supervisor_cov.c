@@ -22,7 +22,7 @@
  *    initialising without calling ``ra8_wdt_supervisor_set_refresh_hook``,
  *    registering one alive worker, and calling ``ra8_wdt_supervisor_tick``.
  *    ``ra8_wdt_refresh_deferred`` writes to the WDT peripheral register at
- *    0x40202600, which falls inside the simulator's anonymous-mmap
+ *    0x40202600, which falls inside the fake's anonymous-mmap
  *    peripheral window (0x40000000 + 8 MiB); the write succeeds on the
  *    Linux test runner.
  *
@@ -66,7 +66,7 @@ static uint8_t s_cov_stack[k_t_stack_bytes];
 
 /**
  * @var s_cov_now_ms
- * @brief Simulated monotonic time driven by ``hook_cov_now``.
+ * @brief Fake monotonic time driven by ``hook_cov_now``.
  * @note Tests freeze it at 0 so deadline arithmetic is deterministic.
  * @since 0.1.0
  */
@@ -87,7 +87,7 @@ static uint32_t s_cov_refresh_calls;
  * the clock at zero so that every registered thread is always within
  * its deadline when ``ra8_wdt_supervisor_tick`` evaluates the registry.
  *
- * @return ``s_cov_now_ms`` -- current simulated time in milliseconds.
+ * @return ``s_cov_now_ms`` -- current fake time in milliseconds.
  *
  * @pre None.
  * @post No state is mutated.
@@ -211,7 +211,7 @@ static void test_default_now_hook_called_by_register(void)
  * ``all_alive`` remains true and ``will_refresh`` is set.
  *
  * ``ra8_wdt_refresh_deferred`` writes to the WDT peripheral WDTRR register
- * at 0x40202600.  The ``ra8_sim_mmap`` constructor maps the full peripheral
+ * at 0x40202600.  The ``ra8_fake_mmap`` constructor maps the full peripheral
  * bus (0x40000000, 8 MiB) as anonymous RAM before ``main`` executes, so
  * the write is safe on the Linux test runner.
  *
@@ -221,7 +221,7 @@ static void test_default_now_hook_called_by_register(void)
  *
  * @pre None.
  * @post Module is left initialised; the WDT register backing store
- *       (simulator RAM) may hold 0xFF from the refresh sequence.
+ *       (fake RAM) may hold 0xFF from the refresh sequence.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */

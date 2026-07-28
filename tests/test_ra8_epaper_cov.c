@@ -6,7 +6,7 @@
  * @details
  * The public happy-path / rejection contract of ``ra8_epaper.c`` is already
  * exercised by ``test_ra8_epaper.c`` through the ``ra8_core_hal`` link. That
- * production copy runs in ``RA8_SIMULATOR_MODE`` where the SPI bus never
+ * production copy runs in ``RA8_OFF_TARGET`` where the SPI bus never
  * fails, so every mid-sequence ``if (err != k_ra8_ok) return err;`` leg in
  * the send / receive / command / register helpers stays dark. Those legs are
  * the driver's real defensive logic and this TU proves each one is testable.
@@ -32,7 +32,7 @@
  * display LUT-idle loop all run for real on host (issues #177 / #238):
  * this TU drives the LUT loop's idle-success exit (mock RX 0) and its
  * budget-exhaustion timeout (mock RX always busy), and the HRDY wait's
- * first-poll success through the unarmed ``ra8_sim_mmio`` seam.
+ * first-poll success through the unarmed ``ra8_fake_mmio`` seam.
  *
  * @par Tag
  * [Ring 3 / HAL]
@@ -49,9 +49,9 @@
 #include "ra8_check.h"
 #include "ra8_epaper.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_log.h"
 #include "ra8_port_utils.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_spi_bus_ops.h"
 #include "ra8_time.h"
 #include "unity_minimal.h"
@@ -293,15 +293,15 @@ static void test_send16_recv16_legs(void)
 }
 
 /**
- * @test test_wait_ready_sim_leg
+ * @test test_wait_ready_fake_leg
  *
  * @par MC/DC:
  * (no compound decisions -- the real HRDY poll loop runs and its loop-exit is
- * a single-condition seam consult; the unarmed ``ra8_sim_mmio`` seam models a
+ * a single-condition seam consult; the unarmed ``ra8_fake_mmio`` seam models a
  * panel whose HRDY is already high, so the first poll succeeds. The timeout
  * leg is driven in test_ra8_epaper.c by arming the busy pin's PCNTR2.)
  */
-static void test_wait_ready_sim_leg(void)
+static void test_wait_ready_fake_leg(void)
 {
   TEST_BEGIN("wait_ready: unarmed seam reports ready on the first poll");
   TEST_ASSERT_EQ(k_ra8_ok, internal_ra8_epaper_wait_ready());
@@ -747,7 +747,7 @@ static void test_display_area_api_legs(void)
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_epaper_display_area_cov(&area, k_ra8_epaper_wf_gc16));
 
   /* Clean refresh, LUT reads back zero -> status==0 satisfies the real poll on
-   * its first iteration (the ra8_sim_mmio seam is unarmed here, so it honours the
+   * its first iteration (the ra8_fake_mmio seam is unarmed here, so it honours the
    * driver's real status comparison) -> k_ra8_ok early exit. */
   set_ready();
   s_xfer_rx = (uint8_t)k_cov_rx_zero;
@@ -755,16 +755,16 @@ static void test_display_area_api_legs(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_display_area_cov(&area, k_ra8_epaper_wf_gc16));
   /* Clean refresh, LUT never reports idle -> the real bounded poll exhausts its
    * budget and returns k_ra8_err_hw_timeout. The LUT-idle poll consults the
-   * ra8_sim_mmio seam keyed on the injected seam's ctx cookie (ra8_epaper.c
+   * ra8_fake_mmio seam keyed on the injected seam's ctx cookie (ra8_epaper.c
    * lut_probe == cfg.bus.ctx == &s_bus_probe here); with the unarmed=succeed
    * contract we arm fail_wait on that key so the loop runs to exhaustion
    * deterministically. Covers the loop-exhaustion leg. */
   set_ready();
   s_xfer_rx = (uint8_t)k_cov_rx_busy;
   arm_fault((uint32_t)k_cov_fail_never);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((volatile const void*)&s_bus_probe));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((volatile const void*)&s_bus_probe));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_epaper_display_area_cov(&area, k_ra8_epaper_wf_gc16));
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   TEST_END("display_area: cmd fault, args fault, LUT read fault, both exits");
 }
@@ -939,7 +939,7 @@ static void test_validate_and_size_mcdc(void)
 int32_t main(void)
 {
   test_send16_recv16_legs();
-  test_wait_ready_sim_leg();
+  test_wait_ready_fake_leg();
   test_write_cmd_data_read_legs();
   test_reg_write_read_legs();
   test_read_dev_info_legs();
