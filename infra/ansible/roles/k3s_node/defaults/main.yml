@@ -1,0 +1,61 @@
+---
+# k3s_node role defaults -- the cluster substrate the ARC runner pool needs.
+#
+# WHY THIS ROLE EXISTS
+# --------------------
+# `ci_runner` deploys ARC into "an existing k3s cluster" and calls
+# kubernetes.core.helm to do it. Neither the cluster nor helm was reproducible
+# from this repo: k3s came from a piped get.k3s.io run, and `helm` was a loose
+# binary in a user's ~/bin. On a fresh node `ci_runner` would fail at its first
+# helm task -- so the role that is codified could not actually run without a
+# hand-built prerequisite. This role is that prerequisite.
+#
+# It is deliberately SEPARATE from ci_runner: one is the cluster, the other is
+# a workload on it. A node can be rebuilt and rejoined without redeploying ARC,
+# and ARC can be redeployed without touching the cluster.
+
+# --- k3s --------------------------------------------------------------------
+#
+# Pinned by version AND by the sha256 of the release binary, then asserted. The
+# upstream one-liner (`curl -sfL https://get.k3s.io | sh -`) is not used as a
+# pipe: this tree does not pipe a live installer into a shell (see the pinned
+# git clones in .devcontainer/Dockerfile for the same reasoning). The script is
+# fetched to disk, checked against a recorded sha256, and then run with
+# INSTALL_K3S_SKIP_DOWNLOAD so it only writes the systemd unit and the symlinks
+# around a binary this role already verified.
+#
+# When upstream re-cuts get.k3s.io the checksum stops matching and the role
+# FAILS with the new digest in the message. That is the intended behaviour: an
+# installer script that silently changed under a provisioning run is exactly
+# what a pin is for. Re-pin deliberately after reading the diff.
+k3s_node_version: "v1.34.5+k3s1"
+k3s_node_binary_sha256: "efaa84416cf59f36f7c1b45bd12988dcf0112288f588a9fd5c0fbca6d309e9d9"
+k3s_node_install_sha256: "d264d4d43f7c5a27b44de0075513fb22dfb02d0b7cd33ba7a3838cb822f4729c"
+k3s_node_install_url: "https://get.k3s.io"
+# URLs are the standard line-length exception.
+# yamllint disable-line rule:line-length
+k3s_node_binary_url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_node_version | urlencode }}/k3s"
+k3s_node_bin: /usr/local/bin/k3s
+k3s_node_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+# --- helm -------------------------------------------------------------------
+#
+# The binary kubernetes.core.helm shells out to. Installed system-wide to
+# /usr/local/bin rather than a user's ~/bin so the ci_runner role's `become:
+# true` helm tasks resolve it: the live node had it only in ~ubuntu/bin, which
+# works from an interactive login and not from a root task.
+k3s_node_helm_version: "v4.2.2"
+k3s_node_helm_sha256: "9adafecab4d406853bba163a70e9f104f47dbbf65ce24b7653bae7e36150bcb6"
+# yamllint disable-line rule:line-length
+k3s_node_helm_url: "https://get.helm.sh/helm-{{ k3s_node_helm_version }}-linux-amd64.tar.gz"
+k3s_node_helm_bin: /usr/local/bin/helm
+
+# buildah, which the ci_runner role uses to build the runner image on the node.
+# Listed here rather than there because it is a property of the node, not of
+# the workload, and a node rebuilt without it fails ci_runner's first task.
+k3s_node_apt_packages:
+  - buildah
+
+# The Python client kubernetes.core needs on the target for its k8s modules.
+k3s_node_pip_packages:
+  - kubernetes

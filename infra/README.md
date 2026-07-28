@@ -46,20 +46,44 @@ The rule this directory exists to serve is that **anything hand-installed is
 lost at the next re-provision**. That makes the honest status per host part of
 the documentation, not a footnote:
 
-| Host | Role | Status |
+| Host / service | Role | Status |
 |---|---|---|
 | dev / verification box | `dev_box` | codified |
-| k3s node -- ARC runner pool | `ci_runner` | codified |
+| k3s cluster + `helm` | `k3s_node` | codified |
+| OpenBao vault (deployment) | `openbao` | codified |
+| ARC runner pool | `ci_runner` | codified |
 | second build host (Docker) | `ci_runner_docker` | codified |
 | HIL bench Pi | `hil_bench`, `c6_toolchain`, `ad2_tools` | codified |
 | bench LAN (FortiGate + AP) | `network/` | codified |
-| k3s itself, `helm`, OpenBao | -- | **hand-installed** (#500) |
+| vault init / unseal / secrets | `scripts/secrets/` | manual **by design** |
 | Proxmox guest topology | -- | **hand-built** (#500) |
 
-The two rows at the bottom are open gaps, tracked rather than implied: the k3s
-node's own cluster install and the OpenBao deployment on it are reproducible
-only from a human's memory today, and the Proxmox VM/LXC definitions exist only
-as live guest config.
+Two rows deserve their exact wording. Vault initialisation and unsealing are
+manual *by design*, not by omission: both produce secrets, and a playbook that
+handles a root token can log one. The Proxmox row is a genuine open gap -- the
+VM and LXC definitions the whole rig sits on exist only as live guest config.
+
+### Order of operations on a bare cluster
+
+`ci_runner` deploys ARC into "an existing k3s cluster" through helm, so it has
+always had two prerequisites that lived nowhere: the cluster, and a `helm` root
+could resolve. `k3s_node` is those prerequisites.
+
+```
+cd infra/ansible
+ansible-playbook -i inventory/hosts.ini playbooks/k3s-node.yml   # cluster + vault
+ansible-playbook -i inventory/hosts.ini playbooks/ci-runner.yml  # then ARC
+```
+
+k3s is pinned by release version *and* by the sha256 of the release binary, and
+the upstream installer is fetched to disk and checksummed rather than piped
+into a shell -- the same discipline the devcontainer applies to every download.
+When upstream re-cuts `get.k3s.io` the checksum stops matching and the role
+fails with the new digest, which is what a pin is for.
+
+The vault is deployed but never initialised or unsealed. The role reports which
+of the two the operator still owes it; the steps are in
+`scripts/secrets/README.md`.
 
 ## The dev box
 
