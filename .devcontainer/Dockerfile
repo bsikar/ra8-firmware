@@ -74,6 +74,21 @@ ARG ARM_GCC_SHA256_AARCH64=c8824bffd057afce2259f7618254e840715f33523a3d4e4294f47
 ARG UNICORN_VERSION=2.1.4
 ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce5601f4
 
+# doxygen -- pinned by URL + sha256 so the `docs` gate's doxygen matches the
+# release docs/doxygen_theme/header.html and the vendored doxygen-awesome
+# theme were generated against (#486). Ubuntu's apt package is 1.9.8, which
+# leaves the templates rendering with unexpanded placeholders like
+# $mermaidjs; scripts/builders/provision_doxygen.sh already pins the same
+# 1.16.1 release + sha256 for a bare host run, and used to have to download it
+# on every single ra8-ci pod (the runner is ephemeral -- one pod per job --
+# and had no writable persistent cache either, see infra/ansible/roles/
+# ci_runner). Baking the exact release in here means `command -v doxygen`
+# resolves it directly and provision_doxygen.sh never touches the network.
+# Bump this value and DOXYGEN_SHA256_LINUX_X64 together with PINNED_VERSION /
+# SHA256_LINUX_X64 in provision_doxygen.sh -- one release, cited twice.
+ARG DOXYGEN_VERSION=1.16.1
+ARG DOXYGEN_SHA256_LINUX_X64=a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4f9fa4baf1d8bd
+
 # libcapstone-dev is the Capstone header that tools/ra8_emulator includes (for
 # disassembly only -- NOT the decode variable), and libcurl4-openssl-dev is the
 # libcurl header tools/media_dl's network backend includes. `make ci` lints
@@ -162,6 +177,28 @@ RUN set -eux; \
     ldconfig; \
     rm -rf /tmp/unicorn.tar.gz "/tmp/unicorn-${UNICORN_VERSION}" /tmp/unicorn-build; \
     grep -E 'UC_API_(MAJOR|MINOR|PATCH)' /usr/local/include/unicorn/unicorn.h
+
+# doxygen ${DOXYGEN_VERSION} official Linux binary -> /usr/local/bin (#486).
+# Only x86_64: doxygen publishes no official linux-arm64 binary, so an
+# Apple-Silicon-hosted `make ci` container (this same Dockerfile, built
+# natively arm64) keeps the unpinned apt doxygen installed above -- exactly
+# today's behaviour, not a regression. /usr/local/bin sorts before /usr/bin on
+# $PATH, so this shadows the apt package's `doxygen` on x86_64 without having
+# to uninstall it. The real ra8-ci runner node is x86_64 (confirmed via
+# `uname -m` on the k3s host), so this is the build that actually matters for
+# #486.
+RUN set -eux; \
+    if [ "$(uname -m)" = "x86_64" ]; then \
+      url="https://github.com/doxygen/doxygen/releases/download/Release_$(echo "${DOXYGEN_VERSION}" | tr . _)/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"; \
+      curl -fsSL "$url" -o /tmp/doxygen.tar.gz; \
+      echo "${DOXYGEN_SHA256_LINUX_X64}  /tmp/doxygen.tar.gz" | sha256sum -c -; \
+      tar -xzf /tmp/doxygen.tar.gz -C /tmp; \
+      install -m 0755 "/tmp/doxygen-${DOXYGEN_VERSION}/bin/doxygen" /usr/local/bin/doxygen; \
+      rm -rf /tmp/doxygen.tar.gz "/tmp/doxygen-${DOXYGEN_VERSION}"; \
+      test "$(doxygen --version | awk '{print $1}')" = "${DOXYGEN_VERSION}"; \
+    else \
+      echo "doxygen: skipping the pinned x86_64 binary on $(uname -m); apt's doxygen stays unpinned here (#486)"; \
+    fi
 
 # Sanity-check that the clang-18 profile runtime is present. MC/DC
 # instrumented binaries link against libclang_rt.profile-<arch>.a; if

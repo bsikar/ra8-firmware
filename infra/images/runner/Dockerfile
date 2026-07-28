@@ -23,16 +23,23 @@ FROM ${BASE_IMAGE}
 
 # The official runner image runs as uid 1001 ("runner"); the devcontainer's
 # vscode user is uid 1000, so the two never clash. Every pinned tool lives in
-# /usr/local, /usr/bin and /opt, so the runner user resolves them all. The
-# runner also gets passwordless sudo, matching the official image: workflow
-# steps that provision packages on a bare-metal runner (e.g. the coverage
-# gate's apt-get) then run as harmless no-ops in the pod, whose toolchain is
-# already complete, instead of failing on a password prompt with no terminal.
+# /usr/local, /usr/bin and /opt, so the runner user resolves them all.
+#
+# No sudoers entry (#487): every workflow step that used to provision packages
+# on a bare-metal runner (e.g. the coverage gate's apt-get) was made
+# unconditionally sudo-free in 5f4e8fd10, because the pod's toolchain is
+# already complete and there is nothing left for such a step to install. A
+# 'runner ALL=(ALL) NOPASSWD:ALL' line used to live here to match the official
+# actions-runner image, but the deployed localhost/ra8-ci-runner:v2 image was
+# built and imported without it (confirmed by exec into a live pod) and no job
+# has needed it since -- the Dockerfile and the running image agreed on every
+# other point, so the gap was pure drift, not a deliberate choice one of them
+# made. Keeping the line here would have re-added a capability the fleet does
+# not have and no gate exercises, the exact opposite of the honest-provisioning
+# rule this file otherwise follows. Pods are sudo-less; keep it that way.
 USER root
 RUN groupadd -g 1001 runner \
-    && useradd -m -u 1001 -g 1001 -G sudo,users -s /bin/bash runner \
-    && echo 'runner ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/runner \
-    && chmod 0440 /etc/sudoers.d/runner
+    && useradd -m -u 1001 -g 1001 -G users -s /bin/bash runner
 
 # Bring the runner and its ARC hooks over verbatim, then install the runner's
 # own runtime dependencies (libicu, openssl, ...) into this base -- copying
