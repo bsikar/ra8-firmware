@@ -10,7 +10,7 @@
 # (clocks / SDRAM / GLCDC). For the UI apps in $render_assert_apps it ALSO
 # renders one frame to a PPM and asserts the panel drew rich content (a floor on
 # distinct colors) -- this folds in the pixel-content check the retired
-# ui_render_check.sh used to do against the (now removed) native UI simulator.
+# ui_render_check.sh used to do against the (now removed) native UI emulator.
 #
 #   scripts/emu/smoke.sh                 # default display apps
 #   scripts/emu/smoke.sh blink lcd_draw_x  # explicit app list

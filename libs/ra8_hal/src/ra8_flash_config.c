@@ -169,7 +169,7 @@ static uint32_t internal_arc_max_count(ra8_flash_arc_id_t id)
  */
 static uint32_t internal_popcount32(uint32_t x)
 {
-  /* Avoid relying on __builtin_popcount so the simulator host build
+  /* Avoid relying on __builtin_popcount so the off-target build
    * does not pick up a different implementation than the firmware
    * target. NASA Rule 2 -- bounded loop. */
   uint32_t count = 0U;
@@ -522,14 +522,14 @@ ra8_err_t ra8_flash_msuinitr_kick(void)
   for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) {
     /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
     const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_msuinitr);
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam: on real HW the sequencer auto-clears
      * SUINIT once the init completes; host RAM cannot, so the seam
      * owns the loop-exit decision (first-poll success unless a test
      * arms a fault to drive the retry / timeout legs). */
-    if (ra8_sim_mmio_wait_eval(ra8_mram_reg16(k_ra8_mram_off_msuinitr),
-                               i,
-                               ((v & k_ra8_msuinitr_mask_suinit) == 0U))) {
+    if (ra8_fake_mmio_wait_eval(ra8_mram_reg16(k_ra8_mram_off_msuinitr),
+                                i,
+                                ((v & k_ra8_msuinitr_mask_suinit) == 0U))) {
       return k_ra8_ok;
     }
 #else

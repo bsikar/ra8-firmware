@@ -25,9 +25,9 @@
  * hash surface (``ra8_rsip_asym.c``, issues #214 / #215) and the device-
  * security surface -- lifecycle, debug authorisation, tamper, DPA arm
  * (``ra8_rsip_devsec.c``, issue #216) -- therefore return
- * ``k_ra8_err_not_supported`` outside the insecure host-simulator build
+ * ``k_ra8_err_not_supported`` outside the insecure off-target build
  * rather than fabricate a digest, key, or security-state answer. The
- * ``k_ra8_ok`` / ``@post`` contracts below describe the guarded simulator
+ * ``k_ra8_ok`` / ``@post`` contracts below describe the guarded fake
  * command path only; real key management runs on tf-psa-crypto (M85) and
  * real device-security state lives in the DLM / option-setting memory /
  * SAU, not an RSIP MMIO read.

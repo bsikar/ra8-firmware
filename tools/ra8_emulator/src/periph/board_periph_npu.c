@@ -34,8 +34,8 @@
  * ra8_emulator is NOT a Vela interpreter (real Vela-compiled inference is the
  * follow-up on the RA8P1 NPU epic). When the driver kicks a job
  * (``CMD.transition_to_running_state``) this block reads the command stream at
- * QBASE and applies a tiny, DOCUMENTED sim-only convention -- see
- * libs/ra8_hal/inc/ra8_npu_sim_cmd.h -- to the tensor arenas at BASEPn: the first
+ * QBASE and applies a tiny, DOCUMENTED stand-in convention -- see
+ * libs/ra8_hal/inc/ra8_npu_fake_cmd.h -- to the tensor arenas at BASEPn: the first
  * command word carries a "SE55" magic marker plus a COPY or add-constant opcode,
  * and the model moves the referenced bytes from the source region to the
  * destination region so the OUTPUT arena holds a checkable, deterministic result.
@@ -44,7 +44,7 @@
  * completion.
  *
  * HONEST-MODEL rule (the ra8_rsip "invented register" history is the cautionary
- * tale): a command stream that does NOT carry the sim magic is a real Vela
+ * tale): a command stream that does NOT carry the fake magic is a real Vela
  * program this model cannot interpret, so it latches STATUS.cmd_parse (a fault)
  * rather than faking a completion. Nothing here claims real NPU numerics.
  *
@@ -59,7 +59,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
-#include "ra8_npu_sim_cmd.h"
+#include "ra8_npu_fake_cmd.h"
 
 /**
  * @brief Ethos-U55 NPU register-window geometry (mirrors ra8_npu_regs.h).
@@ -154,28 +154,28 @@ typedef enum : uint32_t {
  * @brief Stand-in "execution" bounds + checkword constants (deterministic).
  *
  * @details ::k_npu_chunk_bytes / ::k_npu_max_chunks give the transfer loop a
- *          static upper bound (::k_ra8_npu_sim_max_bytes total). The FNV-1a
+ *          static upper bound (::k_ra8_npu_fake_max_bytes total). The FNV-1a
  *          constants fold the output bytes into a report/console checkword.
  */
 typedef enum : uint32_t {
-  k_npu_chunk_bytes = 256U,        /**< Bytes moved per transfer-loop chunk.     */
-  k_npu_max_chunks  = 16U,         /**< k_ra8_npu_sim_max_bytes / chunk (bound). */
-  k_npu_fnv_offset  = 0x811C9DC5U, /**< FNV-1a 32-bit offset basis.              */
-  k_npu_fnv_prime   = 0x01000193U, /**< FNV-1a 32-bit prime.                     */
-  k_npu_line_cap    = 64U,         /**< Console line buffer cap.                 */
+  k_npu_chunk_bytes = 256U,        /**< Bytes moved per transfer-loop chunk.      */
+  k_npu_max_chunks  = 16U,         /**< k_ra8_npu_fake_max_bytes / chunk (bound). */
+  k_npu_fnv_offset  = 0x811C9DC5U, /**< FNV-1a 32-bit offset basis.               */
+  k_npu_fnv_prime   = 0x01000193U, /**< FNV-1a 32-bit prime.                      */
+  k_npu_line_cap    = 64U,         /**< Console line buffer cap.                  */
 } npu_exec_const_t;
 
 /**
  * @brief Result of decoding one submitted command stream.
  */
 typedef enum : uint8_t {
-  k_npu_dec_ok    = 0U, /**< Recognised sim program; fields valid.      */
+  k_npu_dec_ok    = 0U, /**< Recognised fake program; fields valid.     */
   k_npu_dec_parse = 1U, /**< Bad magic / field: real-Vela or malformed. */
   k_npu_dec_bus   = 2U, /**< Guest-memory read of the stream failed.    */
 } npu_dec_t;
 
 /**
- * @brief One decoded sim command (see ra8_npu_sim_cmd.h).
+ * @brief One decoded fake command (see ra8_npu_fake_cmd.h).
  */
 typedef struct {
   uint32_t op;    /**< Opcode (COPY / add-constant).      */
@@ -255,32 +255,32 @@ static void npu_fault(uint32_t status_bit)
   s_npu.faults++;
 }
 
-/** @brief Decode the submitted command stream at QBASE per ra8_npu_sim_cmd.h. */
+/** @brief Decode the submitted command stream at QBASE per ra8_npu_fake_cmd.h. */
 static npu_dec_t npu_decode(uc_engine* uc, npu_cmd_t* out)
 {
   const uint64_t qbase = npu_reg64((uint64_t)k_npu_off_qbase);
   const uint32_t qsize = s_npu.reg[npu_word((uint64_t)k_npu_off_qsize)];
-  if (qsize < (uint32_t)k_ra8_npu_sim_header_bytes) {
+  if (qsize < (uint32_t)k_ra8_npu_fake_header_bytes) {
     return k_npu_dec_parse;
   }
-  uint32_t w[k_ra8_npu_sim_word_num] = {};
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_npu_sim_word_num; i++) {
+  uint32_t w[k_ra8_npu_fake_word_num] = {};
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_npu_fake_word_num; i++) {
     if (!npu_guest_word(uc, qbase + ((uint64_t)i * 4UL), &w[i])) {
       return k_npu_dec_bus;
     }
   }
-  if ((w[k_ra8_npu_sim_word_op] & (uint32_t)k_ra8_npu_sim_magic_mask) !=
-      (uint32_t)k_ra8_npu_sim_magic) {
+  if ((w[k_ra8_npu_fake_word_op] & (uint32_t)k_ra8_npu_fake_magic_mask) !=
+      (uint32_t)k_ra8_npu_fake_magic) {
     return k_npu_dec_parse; /* Real Vela stream / not ours: cannot interpret. */
   }
-  out->op    = w[k_ra8_npu_sim_word_op] & (uint32_t)k_ra8_npu_sim_op_mask;
-  out->src   = w[k_ra8_npu_sim_word_src];
-  out->dst   = w[k_ra8_npu_sim_word_dst];
-  out->count = w[k_ra8_npu_sim_word_count];
-  out->konst = w[k_ra8_npu_sim_word_const];
+  out->op    = w[k_ra8_npu_fake_word_op] & (uint32_t)k_ra8_npu_fake_op_mask;
+  out->src   = w[k_ra8_npu_fake_word_src];
+  out->dst   = w[k_ra8_npu_fake_word_dst];
+  out->count = w[k_ra8_npu_fake_word_count];
+  out->konst = w[k_ra8_npu_fake_word_const];
   const bool bad_region =
     (out->src >= (uint32_t)k_npu_region_count) || (out->dst >= (uint32_t)k_npu_region_count);
-  const bool bad_count = (out->count == 0U) || (out->count > (uint32_t)k_ra8_npu_sim_max_bytes);
+  const bool bad_count = (out->count == 0U) || (out->count > (uint32_t)k_ra8_npu_fake_max_bytes);
   if (bad_region || bad_count) {
     return k_npu_dec_parse;
   }
@@ -305,9 +305,9 @@ npu_apply(uc_engine* uc, const npu_cmd_t* c, uint64_t src, uint64_t dst, uint32_
     if (uc_mem_read(uc, src + done, buf, n) != UC_ERR_OK) {
       return false;
     }
-    if (c->op == (uint32_t)k_ra8_npu_sim_op_addk) {
+    if (c->op == (uint32_t)k_ra8_npu_fake_op_addk) {
       for (uint32_t i = 0U; i < n; i++) {
-        buf[i] = (uint8_t)((buf[i] + c->konst) & (uint32_t)k_ra8_npu_sim_byte_mask);
+        buf[i] = (uint8_t)((buf[i] + c->konst) & (uint32_t)k_ra8_npu_fake_byte_mask);
       }
     }
     if (uc_mem_write(uc, dst + done, buf, n) != UC_ERR_OK) {
@@ -322,13 +322,13 @@ npu_apply(uc_engine* uc, const npu_cmd_t* c, uint64_t src, uint64_t dst, uint32_
   return true;
 }
 
-/** @brief Human label for a sim opcode (report / console). */
+/** @brief Human label for a fake opcode (report / console). */
 static const char* npu_op_name(uint32_t op)
 {
-  if (op == (uint32_t)k_ra8_npu_sim_op_copy) {
+  if (op == (uint32_t)k_ra8_npu_fake_op_copy) {
     return "copy";
   }
-  if (op == (uint32_t)k_ra8_npu_sim_op_addk) {
+  if (op == (uint32_t)k_ra8_npu_fake_op_addk) {
     return "add-const";
   }
   return "unknown";

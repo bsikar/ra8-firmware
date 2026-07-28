@@ -51,7 +51,7 @@ make flash
 make clean
 ```
 
-## Run on the M85 simulator (no hardware)
+## Run on the M85 emulator (no hardware)
 
 ```sh
 cmake --build tools/ra8_emulator/build -j
@@ -90,7 +90,7 @@ emulates them, without which the ZIP parse fails with miniz error 9
 SCI8 async UART, TXD = PD02, RXD = PD03, 115200-8N1, routed to the
 on-board J-Link OB virtual COM port.
 
-Validated on ra8_emulator (the Unicorn-based M85 simulator): deterministic
+Validated on ra8_emulator (the Unicorn-based M85 emulator): deterministic
 `PASS` with the byte-exact `0xCF23AEEE` CRC across repeated runs, no
 invalid opcode or fault. Real-EK-RA8D2 bench confirmation is the next
 step (flash + scrape the SCI8 banner; the `hil.conf` already gates it).

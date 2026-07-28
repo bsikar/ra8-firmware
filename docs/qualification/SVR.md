@@ -220,7 +220,7 @@ recorded as deferred work for the SAS to roll up.
 - **Root cause** (per `docs/HARDWARE_BRINGUP.md`
   "threadx_https_client RSIP BIST root cause"): the hand-rolled
   CTRL/STATUS register layout in `libs/ra8_hal/inc/ra8_rsip_regs.h`
-  is inferred from a host-sim hack and does not match the AMC
+  is inferred from a off-target hack and does not match the AMC
   firmware sequence the RSIP-E engine actually requires. Multi-day
   port comparable to OP-001 in scope.
 - **Disposition**: deferred. Tracked alongside OP-004 as a deferred,

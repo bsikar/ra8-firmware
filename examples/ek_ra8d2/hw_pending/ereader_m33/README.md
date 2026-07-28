@@ -4,7 +4,7 @@ The #150 power-saving model: an e-reader spends almost all its time idle on a
 rendered page, so the M85 @ 1 GHz is wasted holding it. This app hands the
 **reader** to the Cortex-M33 @ 250 MHz and parks the M85 -- "power saving =
 drop to the slow core" -- and then runs the full **MODE-SWITCH cycle**: the M85
-parks (CGC clock-gate + WFI), the M33 holds the page and polls a simulated touch,
+parks (CGC clock-gate + WFI), the M33 holds the page and polls a emulated touch,
 and on each page turn the M33 wakes the M85 over IPC to do the heavy next-page
 work before it re-parks.
 
@@ -37,7 +37,7 @@ work before it re-parks.
   page-0 verdict the M85 enters the cycle. It **parks** -- writes the CGC
   clock-gate (HOCO stop via the `ra8_lpm` clock-stop matrix) and drops into
   Sleep-mode WFI -- handing the live core to the slow M33. The M33 holds the page
-  and polls a **simulated touch**; on each page turn it bumps `turn_req` and
+  and polls a **emulated touch**; on each page turn it bumps `turn_req` and
   **pokes the M85 over IPC0** (`ra8_ipc_send_event`, the same #149 wake the
   `compile_on_m33` driver uses). The woken M85 restores its clock, does the
   "heavy" next-page work the 1 GHz core owns, acks `turn_ack`, and re-parks; the
@@ -94,7 +94,7 @@ the M85 really parks and is woken out of WFI by the M33's IPC poke, and the M33
 holds + re-renders deterministically. What the emulator cannot show -- and what
 HIL on real silicon must validate (#30) -- is the actual **power delta** of the
 M85 park (the CGC clock-gate + WFI is functionally exercised but its current draw
-is not modelled), and the **real touch input** (the simulated page-dwell stands
+is not modelled), and the **real touch input** (the emulated page-dwell stands
 in for a GT911 touch-controller poll). The remaining #150 display work is also
 HIL-bound: pointing the GLCDC scan-out plane at the M33's framebuffer for a real
 display-plane handoff, and (optionally) feeding the render through the full

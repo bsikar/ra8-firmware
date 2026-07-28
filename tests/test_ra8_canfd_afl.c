@@ -6,7 +6,7 @@
  * Exercises ``ra8_canfd_set_accept_filter`` (libs/ra8_hal/src/ra8_canfd_afl.c):
  * the paged GAFL programming path that hardware-matches received frames by
  * ID / mask and routes them into an RX FIFO. Each register write is
- * observed through the simulated MMIO window provided by ``ra8_sim_mmap``:
+ * observed through the fake MMIO window provided by ``ra8_fake_mmap``:
  * the CFDGAFL[] slot quartet (ID / M / P0 / P1), the CFDGAFLCFG0.RNC0 rule
  * count, and the CFDGAFLECTR unlock / re-lock bracket. Standard vs extended
  * IDs, RTR routing, and every validation reject path are covered.
@@ -22,7 +22,7 @@
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -55,13 +55,13 @@ typedef enum : uint32_t {
 } ra8_canfd_afl_test_vals_t;
 
 /**
- * @brief Reset the simulated MMIO window before a test.
+ * @brief Reset the fake MMIO window before a test.
  * @pre The host MMIO substrate is linked into the test binary.
  * @post All CANFD registers in the window read as zero.
  */
 static void prep_afl(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /**

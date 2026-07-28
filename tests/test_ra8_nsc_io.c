@@ -11,11 +11,11 @@
 #include "ra8_acmphs.h"
 #include "ra8_crc.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_glcdc.h"
 #include "ra8_gpt.h"
 #include "ra8_mstp.h"
 #include "ra8_nsc_io.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -36,7 +36,7 @@ typedef enum : uint16_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -79,7 +79,7 @@ static void test_adc_dac_acmphs_init_forwards(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_dac_b_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_acmphs_init());
   uint16_t raw = 0U;
-  /* The host ADC sim does not set conversion-done flags, so the
+  /* The host ADC fake does not set conversion-done flags, so the
    * driver returns hw_timeout. The veneer test only cares that the
    * forwarding path runs and the null-ptr guard fires. */
   (void)ra8_nsc_adc_read_channel(0U, &raw);

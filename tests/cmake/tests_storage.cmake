@@ -52,7 +52,7 @@ add_test(NAME test_ra8_fs_exfat COMMAND test_ra8_fs_exfat)
 # ---------------------------------------------------------------------------
 # test_ra8_cache_store (#201): persistent key->blob cache over LevelX standalone.
 # Builds ra8_cache_store's own sources plus the vendored LevelX NOR sources
-# (LX_STANDALONE_ENABLE, no ThreadX) and the RAM NOR simulator mock. ra8_core_hal
+# (LX_STANDALONE_ENABLE, no ThreadX) and the RAM NOR fake. ra8_core_hal
 # supplies ra8_log / ra8_err / ra8_vsource. LevelX is SOUP: compile it -w and it is
 # already outside the coverage filter (libs/third_party/).
 # ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ add_executable(
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_cache_store.c
   ${RA8_CACHE_STORE_SOURCES}
   ${RA8_LEVELX_NOR_STANDALONE}
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/lx_nor_sim_ram.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/lx_nor_fake_ram.c
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_cache_store PROPERTIES LINKER_LANGUAGE CXX)

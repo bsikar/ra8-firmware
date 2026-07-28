@@ -22,7 +22,7 @@
  * caller's ``display_refresh_hint_t`` (fast -> A2, quality -> GC16,
  * init -> INIT). On-panel HIL validation needs an IT8951 panel on the
  * bench; the vtable + conversion are host-verified against the
- * simulator-backed ``ra8_epaper`` driver.
+ * fake-backed ``ra8_epaper`` driver.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

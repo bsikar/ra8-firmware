@@ -58,7 +58,7 @@ Two further HUM-required details, both handled here:
 
 **Not yet bench-validated.** ra8_emulator does not model Software-Standby
 clock-gating: it fast-forwards `wfi` to the next SysTick, so the periodic
-loop advances in the simulator (the boot banner, all eight `work` banners,
+loop advances in the emulator (the boot banner, all eight `work` banners,
 and `PASS` print without fault) but the genuine ULPT0 self-wake -- the
 LOCO-clocked underflow cancelling Software Standby -- can only be confirmed
 on the EK-RA8D2. This example is correct-by-construction against the

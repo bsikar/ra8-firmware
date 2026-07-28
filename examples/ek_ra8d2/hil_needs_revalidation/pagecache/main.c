@@ -90,7 +90,7 @@ static const ra8_port_pin_t k_pc_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_sp
 static const char k_pc_font_path[]  = "FONT.OTF";
 static const char k_pc_cache_path[] = "PCACHE.BIN";
 
-/** @brief Fixed chapter laid out + cached (short: sim stb_truetype is slow). */
+/** @brief Fixed chapter laid out + cached (short: emulator stb_truetype is slow). */
 static const char k_pc_body[] = "<html><body><h1>Cache</h1>"
                                 "<p>Pagination cache round-trip on silicon.</p>"
                                 "<p>Second paragraph for the break engine.</p></body></html>";

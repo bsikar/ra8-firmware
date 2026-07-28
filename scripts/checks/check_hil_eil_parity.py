@@ -247,7 +247,7 @@ def _msg_no_conf(appdir_rel: str) -> str:
     )
 
 
-def _msg_escapes_sim(app: str) -> str:
+def _msg_escapes_eil(app: str) -> str:
     return (
         f"{app}: hil_all.sh would run it but eil_all.sh would not -- the HIL app "
         "escapes EIL coverage. Ensure eil_all.sh discovers it (same hil/ root) so "
@@ -287,7 +287,7 @@ def check_set_drift(model: Model) -> list[str]:
     if model.hil_root_hilall != model.hil_root_silall:
         offenders.append(_msg_root_drift(model))
     eil_set = set(model.eil_apps)
-    offenders.extend(_msg_escapes_sim(app) for app in model.hil_apps if app not in eil_set)
+    offenders.extend(_msg_escapes_eil(app) for app in model.hil_apps if app not in eil_set)
     return offenders
 
 

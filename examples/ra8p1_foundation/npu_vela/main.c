@@ -9,7 +9,7 @@
  * Companion to ``examples/ra8p1_foundation/npu_smoke`` on the way to issue #227:
  * instead of hand-building a command stream in SRAM, this app LOADS a
  * committed, generated ``.npub`` model container
- * (``tools/vela/generated/ra8_npu_model_addk_sim.h``, produced offline by
+ * (``tools/vela/generated/ra8_npu_model_addk_fake.h``, produced offline by
  * ``tools/vela/vela_gen.py``) through the on-target loader ``ra8_npu_load()``,
  * which maps it into an ``ra8_npu_job_t`` -- command stream plus resolved region
  * bases (baked weights/input inside the blob, the output activation carved from a
@@ -22,7 +22,7 @@
  * @endcode
  *
  * The container's command stream is NOT a real Vela program: it is the tiny,
- * documented ra8_emulator / host-test convention in ``ra8_npu_sim_cmd.h``. Under
+ * documented ra8_emulator / host-test convention in ``ra8_npu_fake_cmd.h``. Under
  * ``tools/ra8_emulator --device ra8p1`` the NPU model decodes it and applies the op
  * to the tensor arenas, so this app is a DETERMINISTIC, emulator-runnable proof of the
  * FULL offline-build -> on-target-load -> run pipeline. It is still a FOUNDATION
@@ -51,10 +51,10 @@
 #include "ra8_err.h"
 #include "ra8_npu.h"
 #include "ra8_npu_blob.h"
+#include "ra8_npu_fake_cmd.h"
 #include "ra8_npu_loader.h"
-#include "ra8_npu_model_addk_sim.h"
+#include "ra8_npu_model_addk_fake.h"
 #include "ra8_npu_regs.h"
-#include "ra8_npu_sim_cmd.h"
 
 #ifndef RA8_HAS_NPU
 #error "npu_vela must be built with cmake/toolchain-ra8p1.cmake (RA8_DEVICE_RA8P1)."
@@ -85,8 +85,8 @@ typedef enum : uint32_t {
  * @var s_npu_vela_arena
  * @brief Runtime arena the loader carves the output activation from.
  * @details Passed to ra8_npu_load() as the runtime region backing store; the
- *          NPU (sim) writes the model output here.
- * @note Written by the NPU (sim), read back by the app.
+ *          NPU (fake) writes the model output here.
+ * @note Written by the NPU (fake), read back by the app.
  * @since 0.1.0
  */
 static uint8_t s_npu_vela_arena[k_npu_vela_arena];
@@ -185,7 +185,7 @@ static void npu_vela_setup_or_halt(void)
  * @post No state is modified; the function is pure.
  * @since 0.1.0
  */
-static uint32_t npu_vela_cmd_word(const ra8_npu_job_t* job, ra8_npu_sim_word_idx_t widx)
+static uint32_t npu_vela_cmd_word(const ra8_npu_job_t* job, ra8_npu_fake_word_idx_t widx)
 {
   return ra8_npu_blob_read_word((const uint8_t*)job->cmd_stream,
                                 (uint32_t)widx * (uint32_t)k_npu_vela_word_bytes);
@@ -211,8 +211,8 @@ static bool npu_vela_verify(const ra8_npu_job_t* job, uint32_t* out_check)
 {
   const uint8_t* input  = (const uint8_t*)(uintptr_t)job->region_base[k_ra8_npu_region_1];
   const uint8_t* output = (const uint8_t*)(uintptr_t)job->region_base[k_ra8_npu_region_2];
-  const uint32_t konst  = npu_vela_cmd_word(job, k_ra8_npu_sim_word_const);
-  const uint32_t count  = npu_vela_cmd_word(job, k_ra8_npu_sim_word_count);
+  const uint32_t konst  = npu_vela_cmd_word(job, k_ra8_npu_fake_word_const);
+  const uint32_t count  = npu_vela_cmd_word(job, k_ra8_npu_fake_word_count);
   uint32_t       check  = (uint32_t)k_npu_vela_fnv_offset;
   bool           ok     = true;
   for (uint32_t i = 0U; i < count; i++) {
@@ -240,7 +240,7 @@ static ra8_err_t npu_vela_run_job(ra8_npu_job_t* out_job)
 {
   const ra8_npu_arena_t arena = {.base = s_npu_vela_arena, .bytes = (uint32_t)k_npu_vela_arena};
   const ra8_err_t       ld =
-    ra8_npu_load(ra8_npu_model_addk_sim_blob(), ra8_npu_model_addk_sim_bytes(), &arena, out_job);
+    ra8_npu_load(ra8_npu_model_addk_fake_blob(), ra8_npu_model_addk_fake_bytes(), &arena, out_job);
   if (ld != k_ra8_ok) {
     return ld;
   }

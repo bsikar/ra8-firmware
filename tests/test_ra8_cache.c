@@ -3,7 +3,7 @@
  * @brief Unit tests for ra8_cache.c (Cortex-M85 L1 D-cache maintenance).
  *
  * @details
- * The SCB cache window (0xE000Exxx) is backed by the simulated MMIO map, so the
+ * The SCB cache window (0xE000Exxx) is backed by the fake MMIO map, so the
  * tests seed CTR / CCSIDR and read back the maintenance registers (DCCMVAC /
  * DCIMVAC / DCCIMVAC / DCISW) to verify the line-size decode, the by-address
  * line span, the validation guards, and the set/way invalidate-all.
@@ -16,7 +16,7 @@
 
 #include "ra8_cache.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -50,7 +50,7 @@ typedef enum : uint32_t {
   k_t_ccsidr_assoc_sh = 3U,          /**< CCSIDR.Associativity position.       */
 } ra8_cache_test_const_t;
 
-/** @brief Typed access to a seeded/observed SCB register in the sim map. */
+/** @brief Typed access to a seeded/observed SCB register in the fake map. */
 static volatile uint32_t* reg(ra8_cache_test_reg_t addr)
 {
   return (volatile uint32_t*)addr;
@@ -68,7 +68,7 @@ static void seed_line(uint32_t dmin)
 static void test_line_bytes_decodes_ctr(void)
 {
   TEST_BEGIN("ra8_cache: line size decodes CTR.DminLine");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   seed_line((uint32_t)k_t_dmin_for_32);
   TEST_ASSERT_EQ(k_t_line_32, ra8_cache_dcache_line_bytes());
   seed_line((uint32_t)k_t_dmin_for_16);
@@ -83,7 +83,7 @@ static void test_line_bytes_decodes_ctr(void)
 static void test_clean_aligned_single_line(void)
 {
   TEST_BEGIN("ra8_cache: clean of one aligned line hits that line");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   seed_line((uint32_t)k_t_dmin_for_32);
   *reg(k_t_dccmvac) = (uint32_t)k_t_sentinel;
   TEST_ASSERT_EQ(
@@ -101,7 +101,7 @@ static void test_clean_aligned_single_line(void)
 static void test_clean_spans_into_next_line(void)
 {
   TEST_BEGIN("ra8_cache: clean spanning a line boundary walks both lines");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   seed_line((uint32_t)k_t_dmin_for_32);
   /* One byte past the first 32-byte line -> two lines; last write = addr+32. */
   TEST_ASSERT_EQ(
@@ -117,7 +117,7 @@ static void test_clean_spans_into_next_line(void)
 static void test_unaligned_start_rounds_down(void)
 {
   TEST_BEGIN("ra8_cache: invalidate of an unaligned range covers the head line");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   seed_line((uint32_t)k_t_dmin_for_32);
   /* 0x2010 + 32 bytes -> lines 0x2000 and 0x2020; last DCIMVAC write = 0x2020. */
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -133,7 +133,7 @@ static void test_unaligned_start_rounds_down(void)
 static void test_clean_invalidate_uses_dccimvac(void)
 {
   TEST_BEGIN("ra8_cache: clean+invalidate writes DCCIMVAC");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   seed_line((uint32_t)k_t_dmin_for_32);
   *reg(k_t_dccimvac) = (uint32_t)k_t_sentinel;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -150,7 +150,7 @@ static void test_clean_invalidate_uses_dccimvac(void)
 static void test_null_addr_rejected(void)
 {
   TEST_BEGIN("ra8_cache: NULL address is rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   seed_line((uint32_t)k_t_dmin_for_32);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_cache_dcache_clean_by_addr(nullptr, (uint32_t)k_t_line_32));
@@ -164,7 +164,7 @@ static void test_null_addr_rejected(void)
 static void test_zero_size_is_noop(void)
 {
   TEST_BEGIN("ra8_cache: zero size is a no-op success");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   seed_line((uint32_t)k_t_dmin_for_32);
   *reg(k_t_dccmvac) = (uint32_t)k_t_sentinel;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_dcache_clean_by_addr((const void*)(uintptr_t)k_t_addr_a, 0U));
@@ -197,21 +197,21 @@ static void test_invalidate_all_geometry_guard(void)
   TEST_BEGIN("ra8_cache: invalidate_all guards a degenerate CCSIDR (MC/DC)");
 
   /* Vector 1: valid geometry -> the set/way loop runs (DCISW changes). */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   *reg(k_t_ccsidr) = ccsidr_one_set_one_way();
   *reg(k_t_dcisw)  = (uint32_t)k_t_sentinel;
   ra8_cache_dcache_invalidate_all();
   TEST_ASSERT(*reg(k_t_dcisw) != (uint32_t)k_t_sentinel);
 
   /* Vector 2: CCSIDR == 0 -> early return, DCISW untouched. */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   *reg(k_t_ccsidr) = 0U;
   *reg(k_t_dcisw)  = (uint32_t)k_t_sentinel;
   ra8_cache_dcache_invalidate_all();
   TEST_ASSERT_EQ(k_t_sentinel, *reg(k_t_dcisw));
 
   /* Vector 3: CCSIDR == all-ones -> early return, DCISW untouched. */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   *reg(k_t_ccsidr) = UINT32_MAX;
   *reg(k_t_dcisw)  = (uint32_t)k_t_sentinel;
   ra8_cache_dcache_invalidate_all();

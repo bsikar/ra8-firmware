@@ -29,7 +29,7 @@ SD card (FAT16, any -- font self-provisioned if absent)
   -> GLCDC        (scans out the panel)
 ```
 
-## Run in the simulator (no hardware)
+## Run in the emulator (no hardware)
 
 ```sh
 # Build ra8_emulator + the FAT-image tool:
@@ -51,10 +51,10 @@ tools/ra8_emulator/build/ra8_emulator \
 
 The rendered page appears in `/tmp/out.ppm` (and live with `--view`).
 
-> **Heads-up on sim speed.** ra8_emulator is a CPU emulator (Unicorn), so reading a
+> **Heads-up on emulator speed.** ra8_emulator is a CPU emulator (Unicorn), so reading a
 > font byte-by-byte over the emulated SPI bus and rasterising glyphs in software
 > is far slower than on the 1 GHz panel (where it is instant). The compact
-> `literata_latin1.ttf` (~37 KB) keeps the sim practical; a ~312 KB face may expire
+> `literata_latin1.ttf` (~37 KB) keeps the fake practical; a ~312 KB face may expire
 > the default run budget. Raise it with the env knobs ra8_emulator honours:
 >
 > ```sh

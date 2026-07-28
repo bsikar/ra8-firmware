@@ -23,7 +23,7 @@
  *   - anything else (8D/1S software-reset opcodes, mode switches) -> no-op
  * then sets INTS.CMDCMP and clears CDCTL0.TRREQ. NOR semantics (program only
  * clears bits; erase restores 0xFF) match the real part and the host-test
- * register-level model in tests/mocks/ra8_sim_xspi_flash.c.
+ * register-level model in tests/mocks/ra8_fake_xspi_flash.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

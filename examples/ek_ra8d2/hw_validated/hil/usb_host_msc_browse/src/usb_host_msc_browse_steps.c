@@ -8,15 +8,15 @@
  * @details
  * Device-side step routines split out of the `usb_host_msc_browse` self-loop
  * app's `main.c` to keep every translation unit under the file-size cap. This
- * TU synthesizes the read-only FAT16 volume the simulated peripheral exposes
+ * TU synthesizes the read-only FAT16 volume the fake peripheral exposes
  * (boot sector / FAT chain / root directory / data region over the 1 MiB MRAM
  * window) and implements the three USBX storage media callbacks
  * (read / write / status) that `main.c`'s class-register helper wires into the
  * single LUN. The host-side browse/verify ladder and all bring-up code remain
  * in `main.c`.
  *
- * The whole TU is compiled only in the non-simulator firmware build, mirroring
- * the original placement inside `main.c`'s ``#ifndef RA8_SIMULATOR_MODE`` block.
+ * The whole TU is compiled only in the on-target firmware build, mirroring
+ * the original placement inside `main.c`'s ``#ifndef RA8_OFF_TARGET`` block.
  *
  * @author Brighton Sikarskie
  * @date 2026-06-25
@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ux_api.h"
@@ -358,4 +358,4 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
   return UX_SUCCESS;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

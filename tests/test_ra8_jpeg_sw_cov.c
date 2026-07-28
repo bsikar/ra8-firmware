@@ -59,9 +59,9 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
 #include "ra8_jpeg_sw_internal.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -524,7 +524,7 @@ static void test_get_dim_sof0_bad_precision(void)
  *
  * @details
  * Runs all coverage-supplement tests for ra8_jpeg_sw.c.  The
- * ra8_sim_mmap_reset() call clears the RA8D2 MMIO backing store;
+ * ra8_fake_mmap_reset() call clears the RA8D2 MMIO backing store;
  * none of these tests touch MMIO, but the call matches the
  * project convention for test binaries.
  *
@@ -533,7 +533,7 @@ static void test_get_dim_sof0_bad_precision(void)
  */
 int32_t main(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_br_fill_empty_buffer();
   test_br_fill_marker_at_end_of_stream();
   test_br_get_bits_refill_and_succeed();

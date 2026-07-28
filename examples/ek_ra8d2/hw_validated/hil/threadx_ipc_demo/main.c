@@ -70,7 +70,7 @@
 #include "ra8_isr.h"
 #include "ra8_time.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #endif
 
@@ -213,7 +213,7 @@ static void ipc_demo_setup_or_halt(void)
  * ThreadX bring-up.
  * --------------------------------------------------------------------------- */
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the project's
  * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
  * to `_tx_timer_interrupt`) so no per-app override is needed. */
@@ -385,7 +385,7 @@ void tx_application_define(void* first_unused_memory)
     ipc_demo_panic_halt();
   }
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /* ---------------------------------------------------------------------------
  * main()
@@ -412,7 +412,7 @@ int32_t main(void)
 
   ra8_isr_globals_enable();
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

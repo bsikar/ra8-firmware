@@ -101,21 +101,21 @@ static inline void internal_write32(uintptr_t addr, uint32_t value)
 
 static inline void internal_dsb(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("dsb 0xF" ::: "memory");
 #endif
 }
 
 static inline void internal_isb(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("isb 0xF" ::: "memory");
 #endif
 }
 
 static inline void internal_disable_irq(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("cpsid i" ::: "memory");
 #endif
 }

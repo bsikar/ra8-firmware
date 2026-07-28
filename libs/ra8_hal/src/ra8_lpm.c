@@ -29,9 +29,9 @@
  *
  * On host builds the WFI routes through the ``ra8_hw_intrinsics`` seam,
  * whose host stub returns at once, so unit tests can drive
- * ``ra8_lpm_enter_sleep`` and observe the LPSCR write through the sim mmap
+ * ``ra8_lpm_enter_sleep`` and observe the LPSCR write through the fake mmap
  * without the test binary actually halting. The SCR.SLEEPDEEP read-modify-write runs
- * unchanged on every build: the sim mmap backs the Cortex-M System
+ * unchanged on every build: the fake mmap backs the Cortex-M System
  * Control Space window (core region at 0xE0000000), so host tests
  * stage and assert the real toggle sequence.
  *
@@ -122,13 +122,13 @@ static inline void internal_wait_for_interrupt(void)
  * Reads-modify-writes SCR so sibling SCR bits (e.g. SLEEPONEXIT,
  * SEVONPEND) are preserved. SCR is an Arm core register (Armv8-M SCS,
  * not in the HUM); the same sequence runs on every build -- the host
- * unit-test sim mmap backs the SCS window with RAM, so tests stage
+ * unit-test fake mmap backs the SCS window with RAM, so tests stage
  * and assert the toggle directly.
  *
  * @param[in] enable true -- set SLEEPDEEP; false -- clear.
  *
  * @pre The SCS window is accessible (always true on target and in the
- *      host test binary via ``ra8_sim_mmap``).
+ *      host test binary via ``ra8_fake_mmap``).
  * @pre Interrupt-free context is NOT required; the RMW is only racy
  *      against other SCR writers, which the LPM contract forbids.
  * @post SCR.SLEEPDEEP equals ``enable``.

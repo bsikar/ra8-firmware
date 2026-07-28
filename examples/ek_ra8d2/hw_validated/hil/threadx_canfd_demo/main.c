@@ -42,7 +42,7 @@
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #endif
 
@@ -96,7 +96,7 @@ typedef enum : uint32_t {
  * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
  * to `_tx_timer_interrupt`) so no per-app override is needed. */
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 [[gnu::aligned(8)]] static uint8_t s_thread_tx_stack[k_canfd_thread_stack_bytes];
 [[gnu::aligned(8)]] static uint8_t s_thread_rx_stack[k_canfd_thread_stack_bytes];
 static TX_THREAD                   s_thread_tx;
@@ -269,7 +269,7 @@ void tx_application_define(void* first_unused_memory)
     }
   }
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Application entry: GPIO bring-up then ThreadX dispatch.
@@ -331,7 +331,7 @@ int32_t main(void)
 
   ra8_isr_globals_enable();
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

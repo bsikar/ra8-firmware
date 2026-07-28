@@ -156,7 +156,7 @@ def _measure_body(lines: list[str], brace_idx: int, n: int) -> int:
     ``#elif``/``#else`` arm from double-counting a brace the first arm already
     opened -- only one arm is ever compiled, so counting both would run the
     depth off the true closing ``}`` (e.g. the poll-vs-direct
-    ``#if RA8_SIMULATOR_MODE { ... #else { ... #endif`` idiom).  Each stack
+    ``#if RA8_OFF_TARGET { ... #else { ... #endif`` idiom).  Each stack
     entry is False in the first arm and True once an ``#elif``/``#else`` is
     seen; brace deltas are applied only while every entry is False.
     """

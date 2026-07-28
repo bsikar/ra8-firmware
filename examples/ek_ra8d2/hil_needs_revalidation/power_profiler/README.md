@@ -31,4 +31,4 @@ make -C examples/ek_ra8d2/power_profiler flash
 
 Bare EK-RA8D2 only -- the profiler hooks into `ra8_time_ms` for the
 timestamp source so the same binary works on the host test build
-under `RA8_SIMULATOR_MODE`.
+under `RA8_OFF_TARGET`.

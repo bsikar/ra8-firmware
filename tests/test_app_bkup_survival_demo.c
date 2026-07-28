@@ -12,7 +12,7 @@
  *  - The reset-survival decision (warm vs cold boot) and the boot-counter
  *    increment (MC/DC on ``sentinel == MAGIC``).
  *
- * No ra8_sim_mmap MMIO is required, so this test runs in-process.
+ * No ra8_fake_mmap MMIO is required, so this test runs in-process.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

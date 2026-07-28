@@ -41,7 +41,7 @@
 #include "ra8_error_handler.h"
 #include "ra8_log.h"
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 /* Host-side test builds get the legacy halt-via-fatal-error path so
  * tests can override `internal_ra8_fatal_error` to longjmp out. */
 /** @brief RA8 EXCEPTION HALT. */
@@ -185,7 +185,7 @@ void ra8_exception_set_persist_hook(ra8_exception_persist_fn hook)
   s_ra8_exception_persist = hook;
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Spin halt with a known PC at a named symbol.
  *
@@ -340,7 +340,7 @@ void ra8_exception_report(const ra8_exception_frame_t* frame, uint32_t exc_numbe
    * `bkpt #0`, which on a board without an attached debugger re-enters
    * HardFault and can escalate to LOCKUP at PC=0xEFFFFFFE. The
    * dedicated halt loop parks PC at a symbol the debugger can name.
-   * On host (simulator) builds we still go through the overridable
+   * On host (fake) builds we still go through the overridable
    * fatal hook so unit tests can longjmp out. */
   RA8_EXCEPTION_HALT("EXC", "fault", exc_number);
 }

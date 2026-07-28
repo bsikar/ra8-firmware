@@ -6,7 +6,7 @@
 #
 #   1. Host unit tests (tests/CMakeLists.txt) glob libs/ra8_tls/src/*.c
 #      directly into ra8_core_hal so the test build never has to link
-#      Mbed TLS. ra8_tls.c uses #ifdef RA8_SIMULATOR_MODE to short-circuit
+#      Mbed TLS. ra8_tls.c uses #ifdef RA8_OFF_TARGET to short-circuit
 #      every mbedtls_* call to a loopback BIO drain in that mode.
 #
 #   2. Per-app firmware builds (examples/<app>/CMakeLists.txt) opt in

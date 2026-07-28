@@ -5,7 +5,7 @@
  * @details
  * Mirrors the ``test_ra8_sce.c`` protected-side tests for the RSIP
  * stub layer. The RSIP engine itself is software-emulated through
- * ``ra8_sim_mmap`` so the round-trip tests preload the AES DATA_OUT
+ * ``ra8_fake_mmap`` so the round-trip tests preload the AES DATA_OUT
  * lanes with a sentinel pattern that the cipher path XORs back into
  * the caller's buffer. Any plumbing failure in the protected layer
  * (validation, install, latching, dispatch) shows up as a non-OK
@@ -29,12 +29,12 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_rsip.h"
 #include "ra8_rsip_key_injection.h"
 #include "ra8_rsip_protected.h"
 #include "ra8_rsip_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -95,12 +95,12 @@ typedef enum : uint32_t {
 } ra8_rsip_p_test_ext_const_t;
 
 /**
- * @brief Reset ra8_sim_mmap and bring the engine to ENABLE for every test.
+ * @brief Reset ra8_fake_mmap and bring the engine to ENABLE for every test.
  * @since 0.1.0
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));

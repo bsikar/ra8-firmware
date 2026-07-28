@@ -8,7 +8,7 @@
  * ``ra8_board_ek_ra8d2_audio_usb.c`` (bad sample rate / depth / channels,
  * null buffers, not-initialized states) and the single U15-timeout leg.
  * This file drives the register-level happy paths and the error-return
- * legs that only become reachable once the simulated peripheral state is
+ * legs that only become reachable once the fake peripheral state is
  * pre-seeded so each state-machine step advances:
  *
  *   Audio CODEC (internal_audio_bits_to_word / route_pins / build_ssie_cfg
@@ -17,7 +17,7 @@
  *       (8/16/18/20/22/24/32) so each SSIE DWL/SWL switch arm executes,
  *       and with both mono and stereo so both ternary arms of the SSIE
  *       config builder run.  With a clean pin-validator the six DA7212
- *       pins route cleanly and ra8_ssie_init succeeds in RA8_SIMULATOR_MODE,
+ *       pins route cleanly and ra8_ssie_init succeeds in RA8_OFF_TARGET,
  *       so the success tail (s_audio_initialized = true) is covered.
  *     - Pre-claim the BCLK pin so internal_audio_route_pins returns a
  *       gpio-conflict from its first ra8_pfs_route_peripheral, covering the
@@ -60,7 +60,7 @@
  * No source line in ra8_board_ek_ra8d2_audio_usb.c is marked GCOVR_EXCL by
  * this work.  A small set of error-return legs remain genuinely
  * undrivable from the host (they depend on a HAL sub-call that cannot
- * fail in RA8_SIMULATOR_MODE with the fixed board constants); they are
+ * fail in RA8_OFF_TARGET with the fixed board constants); they are
  * documented in the accompanying task notes rather than excluded, because
  * the file clears the 90% line-coverage bar without them and the shared
  * source is left untouched.
@@ -74,11 +74,11 @@
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i2c_regs.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_regs.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_ssie_regs.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
@@ -97,7 +97,7 @@ typedef enum : uint8_t {
  * file-scope volatiles (non-static) so a JLink session can read them on the
  * target; here they let a test assert that a state-machine step executed
  * without depending on the final return value of a HAL sub-call that may
- * differ between the host simulator and silicon.
+ * differ between the host fake and silicon.
  * -------------------------------------------------------------------------
  */
 
@@ -121,10 +121,10 @@ typedef enum : uint32_t {
 } test_audio_usb_sentinel_t;
 
 /**
- * @brief Reset all simulated peripheral state and pin ownership.
+ * @brief Reset all fake peripheral state and pin ownership.
  *
  * @details
- * Zeroes every hardware register window (ra8_sim_mmap_reset) and frees all
+ * Zeroes every hardware register window (ra8_fake_mmap_reset) and frees all
  * claimed pins (ra8_pin_validator_reset).  Called at the start of each test
  * that issues pin claims or register pre-seeds so ordering cannot create a
  * false conflict.  Note: it does NOT reset the module's static
@@ -138,7 +138,7 @@ typedef enum : uint32_t {
  */
 static void reset_state(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 
@@ -155,7 +155,7 @@ static void reset_state(void)
  * switch default.  This test feeds each supported depth so every non-default
  * arm of internal_audio_bits_to_word executes and returns k_ra8_ok, after
  * which the six DA7212 pins route cleanly (clean pin validator) and
- * ra8_ssie_init succeeds in RA8_SIMULATOR_MODE (SSIRST/FIFO-reset polls read
+ * ra8_ssie_init succeeds in RA8_OFF_TARGET (SSIRST/FIFO-reset polls read
  * back clear immediately).  The success tail sets s_audio_initialized.
  * A mono call and stereo calls together cover both arms of the SSIE-config
  * builder's channel ternary.
@@ -169,7 +169,7 @@ static void reset_state(void)
  * in test_ra8_board_ek_ra8d2.c and the source carries an mcdc-deactivated
  * annotation for that guard; no new vector is introduced here.
  *
- * @pre Clean simulated state before each sub-call.
+ * @pre Clean fake state before each sub-call.
  * @post s_audio_initialized is true; SSIE0 config registers written.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -405,7 +405,7 @@ static void test_io_expander_bus_recover_sda_conflict(void)
  * (read ok, sda high) that reaches the break.  The both-continue vector
  * (sda low) is supplied by the primary board test.
  *
- * @pre Clean simulated state, then P511 input latch high.
+ * @pre Clean fake state, then P511 input latch high.
  * @post Bus recovered via the early break; U15 write NACKs.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -481,7 +481,7 @@ static void test_io_expander_pullup_conflict(void)
  * (success) vectors.  The taken vectors are supplied by the conflict / NACK
  * tests above and the primary board test.
  *
- * @pre Clean simulated state, then RIIC1 ICSR2 = TDRE | TEND.
+ * @pre Clean fake state, then RIIC1 ICSR2 = TDRE | TEND.
  * @post U15 output/hiz/iodir writes ACK; apply returns success.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -521,7 +521,7 @@ static void test_io_expander_apply_success(void)
  * (no compound decisions in the delegation lines themselves; the apply
  * decisions are covered by tests 5-9)
  *
- * @pre Clean simulated state before each entry point.
+ * @pre Clean fake state before each entry point.
  * @post Each entry point exercised for its delegation line.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -599,7 +599,7 @@ static void test_usbhs_device_role_pin_conflict(void)
  * (success) vectors.  The taken vectors are supplied by the primary board
  * test (which runs with OSCSF clear so pll-enable times out).
  *
- * @pre Clean simulated state, then OSCSF pre-seeded.
+ * @pre Clean fake state, then OSCSF pre-seeded.
  * @post s_usbhs_probe == post-device-init step value.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -627,14 +627,14 @@ static void test_usbhs_device_init_full_bringup(void)
  * @details
  * With OSCSF pre-seeded, internal_usbhs_clock_and_mstp succeeds and
  * ra8_board_usbhs_host_init reaches ra8_usb_host_init, whose HS bring-up skips
- * the real PHY PLL-lock poll in RA8_SIMULATOR_MODE and returns k_ra8_ok, so the
+ * the real PHY PLL-lock poll in RA8_OFF_TARGET and returns k_ra8_ok, so the
  * board host-init returns k_ra8_ok.
  *
  * @par MC/DC:
  * The bring-up guard ``if (err != k_ra8_ok)`` after clock-and-mstp is
  * single-condition; this test supplies the not-taken (success) vector.
  *
- * @pre Clean simulated state, then OSCSF pre-seeded.
+ * @pre Clean fake state, then OSCSF pre-seeded.
  * @post ra8_usb_host_init reached; board host-init returned k_ra8_ok.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -662,12 +662,12 @@ static void test_usbhs_host_init_full_bringup(void)
  * Runs every coverage-boosting test in sequence.  Returns 0 on success; any
  * TEST_ASSERT failure calls exit(1) before this function returns.  The audio
  * success tests run before the play tests so s_audio_initialized is set; each
- * test otherwise resets the simulated state so ordering cannot create a false
+ * test otherwise resets the fake state so ordering cannot create a false
  * conflict.
  *
  * @return 0 on success.
  *
- * @pre ra8_sim_mmap register window allocated by the test framework.
+ * @pre ra8_fake_mmap register window allocated by the test framework.
  * @post Targeted source lines are instrumented with gcov data.
  *
  * @note Not thread-safe; single-threaded test runner.

@@ -295,7 +295,7 @@ static void internal_clear_csr_flags(volatile r_sci_regs_t* reg)
  * use a bounded medium-budget spin so the call returns in finite
  * time even if the line is wedged.
  *
- * On the host (`RA8_SIMULATOR_MODE`) the simulator does not model the
+ * On the host (`RA8_OFF_TARGET`) the fake does not model the
  * shift-register drain -- `*reg` would never see TEND assert -- so we
  * short-circuit and return success.
  *
@@ -313,7 +313,7 @@ static ra8_err_t internal_wait_tx_end(volatile r_sci_regs_t* reg)
 {
   /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- TEND (bit 30) goes
    * high when both the data register and the shift register are empty. The
-   * ra8_sim_mmio host fault seam drives this real poll on the unit-test build, so
+   * ra8_fake_mmio host fault seam drives this real poll on the unit-test build, so
    * the success and timeout legs run on host (T1-01) rather than short-circuit. */
   const uint32_t mask = (1U << k_ra8_sci_csr_bit_tend);
   return ra8_hw_wait_flag_set32(&reg->CSR, mask, k_ra8_hw_budget_medium);

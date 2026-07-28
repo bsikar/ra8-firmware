@@ -204,9 +204,9 @@ static volatile uint32_t* internal_reg_ptr(uint8_t reg)
  * spin-budget exhaustion.
  *
  * @note On the Cortex-M85 target the timeout fires if the SYSC bus is
- * wedged or the MSTP block is power-gated. The host simulator backs
+ * wedged or the MSTP block is power-gated. The host fake backs
  * MMIO with ordinary RAM, so the raw readback matches immediately;
- * the loop-exit decision is therefore routed through the ra8_sim_mmio
+ * the loop-exit decision is therefore routed through the ra8_fake_mmio
  * fault seam keyed on the polled MSTPCR register, letting a test
  * drive the retry and timeout legs deterministically (T1-01).
  *
@@ -228,9 +228,9 @@ static ra8_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_
   for (uint16_t i = 0U; i < k_ra8_mstp_readback_spin; ++i) {
     const bool seen_stopped = (*p & mask) != 0U;
     const bool settled      = (seen_stopped == expected_stopped);
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam, keyed on the polled MSTPCR register. */
-    if (ra8_sim_mmio_wait_eval(p, (uint32_t)i, settled)) {
+    if (ra8_fake_mmio_wait_eval(p, (uint32_t)i, settled)) {
       return k_ra8_ok;
     }
 #else
@@ -248,9 +248,9 @@ ra8_err_t ra8_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32
   volatile const uint32_t* p = internal_reg_ptr(reg);
   for (uint16_t i = 0U; i < k_ra8_mstp_readback_spin; ++i) {
     const bool settled = ((*p & care_mask) == (expect & care_mask));
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam, keyed on the polled MSTPCR register. */
-    if (ra8_sim_mmio_wait_eval(p, (uint32_t)i, settled)) {
+    if (ra8_fake_mmio_wait_eval(p, (uint32_t)i, settled)) {
       return k_ra8_ok;
     }
 #else

@@ -191,7 +191,7 @@ body_len` and is exactly **116 bytes**. Every field is 32-bit aligned.
 
 `sig_len` exists because the same struct serves two builds: 64 bytes for a real
 ECDSA-P256 signature on target, and a 32-byte stand-in under
-`RA8_SIMULATOR_MODE` so host tests can exercise the plumbing without a real
+`RA8_OFF_TARGET` so host tests can exercise the plumbing without a real
 key. The unused tail of `sig` is ignored. It is **not** a negotiation
 mechanism: a target build requires the full 64.
 
@@ -392,7 +392,7 @@ the key holder did not authorise".
 | Trailer present but body shorter than `body_len` | Hash covers a bounded, validated range; digest mismatch -> DENY |
 | Bit flip anywhere in the body | Digest mismatch -> DENY |
 | Public key extracted from the firmware | Expected and harmless -- it is public. It verifies; it cannot sign. |
-| Simulator stand-in signature on a target build | `RA8_SIMULATOR_MODE` is a build-time mode, not a runtime field; a target build requires a full 64-byte ECDSA signature |
+| Fake stand-in signature on a target build | `RA8_OFF_TARGET` is a build-time mode, not a runtime field; a target build requires a full 64-byte ECDSA signature |
 
 ### What ROT1 does *not* protect against
 

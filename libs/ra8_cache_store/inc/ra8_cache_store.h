@@ -24,7 +24,7 @@
  * ## Dependency-inversion seam (host-testable)
  * The bind to a physical flash is the injected @ref ra8_cache_store_nor_init_fn
  * driver-initialise callback -- `lx_nor_driver_ra8_xspi_initialize` on the
- * EK-RA8D2 Octo-SPI flash, or a RAM NOR simulator under the host tests. This
+ * EK-RA8D2 Octo-SPI flash, or a RAM NOR fake under the host tests. This
  * header therefore never includes `lx_api.h`; the `LX_NOR_FLASH` control block
  * is passed as an opaque, forward-declared pointer the caller owns.
  *
@@ -84,7 +84,7 @@ struct LX_NOR_FLASH_STRUCT;
  *
  * @details Passed straight to `lx_nor_flash_open()` / `lx_nor_flash_format()`.
  *          Production binds `lx_nor_driver_ra8_xspi_initialize`; host tests bind
- *          a RAM NOR simulator. The `unsigned int` return mirrors LevelX's
+ *          a RAM NOR fake. The `unsigned int` return mirrors LevelX's
  *          `UINT` (`LX_SUCCESS` == 0) without needing the LevelX typedefs here.
  *
  * @param[in,out] nor_flash LevelX control block to populate (geometry +

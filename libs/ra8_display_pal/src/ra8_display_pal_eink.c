@@ -27,7 +27,7 @@
  * buffer is needed regardless of panel size (NASA P10 Rule 3: no
  * unbounded allocation). On-panel HIL validation needs an IT8951 panel on
  * the bench; the vtable + conversion are host-verified against the
- * simulator-backed ``ra8_epaper`` (see tests/test_ra8_display_pal.c).
+ * fake-backed ``ra8_epaper`` (see tests/test_ra8_display_pal.c).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

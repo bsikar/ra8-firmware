@@ -10,9 +10,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mpu.h"
 #include "ra8_mpu_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -39,16 +39,16 @@ typedef enum : uint32_t {
 } test_mpu_layout_t;
 
 /**
- * @brief Reset the simulated MPU register block.
+ * @brief Reset the fake MPU register block.
  *
  * @details
- * `ra8_sim_mmap_reset()` zeros every backing region. Tests then write
+ * `ra8_fake_mmap_reset()` zeros every backing region. Tests then write
  * MPU_TYPE.DREGION = 16 directly so `ra8_mpu_dregion_count()` returns
  * a useful value when the helper validates region indices.
  */
 static void mpu_test_setup(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_mpu_regs()->TYPE = (uint32_t)k_test_mpu_type_dregion;
 }
 

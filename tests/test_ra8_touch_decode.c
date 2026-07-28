@@ -8,7 +8,7 @@
  * two emit clamps (caller cap and 5-contact hardware limit), and the
  * hook's own argument validation. No bus traffic is involved -- the
  * parser runs against caller-built byte buffers, so this TU needs no
- * simulator priming. Driver lifecycle / bus-path tests live in
+ * fake priming. Driver lifecycle / bus-path tests live in
  * ``test_ra8_touch.c``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

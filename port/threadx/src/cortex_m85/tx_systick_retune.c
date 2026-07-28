@@ -9,7 +9,7 @@
  * architectural (Arm), not Renesas peripherals -- so they carry no HUM
  * citation, matching the sibling accessors in
  * `libs/ra8_core/src/ra8_time.c`. On the host unit-test build the SCS is
- * unmapped, so the register writes compile out under `RA8_SIMULATOR_MODE`
+ * unmapped, so the register writes compile out under `RA8_OFF_TARGET`
  * while the clock query + reload arithmetic still run and are testable.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -36,7 +36,7 @@ typedef enum : uintptr_t {
   k_ra8_syst_cvr_addr = 0xE000E018UL, /**< SYST_CVR current value register. */
 } ra8_syst_addr_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Get the SysTick Reload Value Register (SYST_RVR) pointer.
  *
@@ -78,7 +78,7 @@ static inline volatile uint32_t* internal_syst_cvr(void)
 {
   return (volatile uint32_t*)k_ra8_syst_cvr_addr;
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 ra8_err_t ra8_threadx_systick_reload_for(uint32_t cpuclk_hz, uint32_t tick_hz, uint32_t* out_reload)
 {
@@ -123,7 +123,7 @@ ra8_err_t ra8_threadx_systick_retune(void)
     s_tag,
     "SysTick reload computation failed");
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* Re-arm SysTick for the live clock. Only the reload + current-value
    * words change; the enable / clock-source / tick-interrupt bits set by
    * _tx_initialize_low_level.S are left as-is. Writing SYST_CVR (any

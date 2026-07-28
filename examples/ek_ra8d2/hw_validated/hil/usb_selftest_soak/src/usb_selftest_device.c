@@ -26,7 +26,7 @@
 #include "ra8_usb.h"
 #include "usb_selftest_common.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -673,4 +673,4 @@ VOID selftest_device_worker(ULONG arg)
   }
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

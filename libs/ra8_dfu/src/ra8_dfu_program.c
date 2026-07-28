@@ -10,8 +10,8 @@
  * over `ra8_flash`, and reads slot headers for the boot decision. The MRAM
  * controller's program loop must NOT execute from the MRAM it touches (see
  * `ra8_flash.h`); on the firmware target each consumer's linker script places
- * this TU and `ra8_flash` in SRAM. Under `RA8_SIMULATOR_MODE` the code-MRAM
- * window is backed by simulator memory, so the program -> read-back -> verify
+ * this TU and `ra8_flash` in SRAM. Under `RA8_OFF_TARGET` the code-MRAM
+ * window is backed by fake memory, so the program -> read-back -> verify
  * round-trip is exercised directly by the host unit tests.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

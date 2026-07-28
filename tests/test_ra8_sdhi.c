@@ -7,11 +7,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_sdhi.h"
 #include "ra8_sdhi_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -44,7 +44,7 @@ typedef enum : uint32_t {
   k_t_rsp76       = 0x44444444UL, /**< R2 response word 3. */
 } t_sdhi_reg_t;
 
-/* Deterministic SDHI response servicing via the ra8_sim_mmio poll-hook -- it runs
+/* Deterministic SDHI response servicing via the ra8_fake_mmio poll-hook -- it runs
  * inline on the driver's OWN poll (no wall-clock timer, no concurrent thread).
  * The polled driver clears SD_INFO1.RSPEND after each command and its FIFO drains
  * poll SD_INFO2.BRE/BWE, so the hook re-asserts all three flags on every poll;
@@ -81,7 +81,7 @@ static void sdhi_flags_hook(void)
 static void sdhi_flags_hook_arm(uint8_t inst)
 {
   s_srv_inst = inst;
-  ra8_sim_mmio_set_poll_hook(sdhi_flags_hook);
+  ra8_fake_mmio_set_poll_hook(sdhi_flags_hook);
 }
 
 /**
@@ -89,7 +89,7 @@ static void sdhi_flags_hook_arm(uint8_t inst)
  */
 static void sdhi_flags_hook_disarm(void)
 {
-  ra8_sim_mmio_set_poll_hook(nullptr);
+  ra8_fake_mmio_set_poll_hook(nullptr);
 }
 
 typedef enum : uint8_t {
@@ -112,8 +112,8 @@ static void stub_sdhi_cb(void* ctx, uint8_t inst, uint32_t mask)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   s_sdhi_cb_count     = 0U;
   s_sdhi_cb_last_mask = 0U;
@@ -316,7 +316,7 @@ static void test_set_clock(void)
  * @brief Lab pattern stamped into SD_BUF0 for the read_block test.
  *
  * @details
- * The simulator backs SD_BUF0 with plain RAM, so reading the
+ * The fake backs SD_BUF0 with plain RAM, so reading the
  * register N times in a row returns whatever value was last
  * written. The driver's polled FIFO drain copies SD_BUF0 unchanged
  * into the destination buffer in little-endian order; with a
@@ -335,7 +335,7 @@ typedef enum : uint32_t {
  * @details
  * The polled block-transfer driver checks SD_INFO1.RSPEND after
  * each command issue and SD_INFO2.BRE/BWE before each FIFO word.
- * Because the simulator backing store is plain RAM, asserting the
+ * Because the fake backing store is plain RAM, asserting the
  * flags once is enough -- they stay set for the full duration of
  * the transfer.
  */
@@ -380,7 +380,7 @@ static void test_read_block_single(void)
   /* Single-block: SD_STOP cleared, SD_SECCNT not configured. */
   TEST_ASSERT_EQ(0, reg->SD_STOP);
 
-  /* The simulator returns the same SD_BUF0 word on every read so
+  /* The fake returns the same SD_BUF0 word on every read so
    * each 4-byte slot in the destination should equal the pattern. */
   for (size_t i = 0U; i < sizeof(buf); i += 4U) {
     TEST_ASSERT_EQ((k_ra8_sdhi_test_pattern & 0xFFU), buf[i + 0U]);
@@ -449,7 +449,7 @@ static void test_write_block_single(void)
   TEST_ASSERT_EQ(k_ra8_sdhi_test_lba, reg->SD_ARG);
   TEST_ASSERT_EQ(k_ra8_sdhi_block_bytes, reg->SD_SIZE);
   /* Last-pushed FIFO word: bytes 508..511 of the buffer
-   * (the simulator's SD_BUF0 backing store is overwritten on
+   * (the fake's SD_BUF0 backing store is overwritten on
    * every push so it ends up holding the final word). */
   const uint32_t last_word = (uint32_t)buf[508] | ((uint32_t)buf[509] << 8U) |
                              ((uint32_t)buf[510] << 16U) | ((uint32_t)buf[511] << 24U);

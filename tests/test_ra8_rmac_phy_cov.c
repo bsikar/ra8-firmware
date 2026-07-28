@@ -35,8 +35,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_rmac_phy.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -174,7 +174,7 @@ static ra8_err_t bus_write(void* ctx, uint8_t phy, uint8_t reg, uint16_t data)
 }
 
 /**
- * @brief Reset the sim + driver + mock between cases.
+ * @brief Reset the fake + driver + mock between cases.
  *
  * @details
  * ``reset_reads_remaining`` stays 0 so the first reg-0 poll read clears
@@ -183,14 +183,14 @@ static ra8_err_t bus_write(void* ctx, uint8_t phy, uint8_t reg, uint16_t data)
  * @pre None.
  * @pre None.
  * @post Driver is closed and the mock is zeroed.
- * @post ``ra8_sim_mmap`` window is reset.
+ * @post ``ra8_fake_mmap`` window is reset.
  *
  * @note Test-only helper.
  * @since 0.1.0
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_rmac_phy_close();
   (void)memset(&s_io, 0, sizeof(s_io));
 }

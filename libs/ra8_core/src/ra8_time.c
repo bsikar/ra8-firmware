@@ -122,7 +122,7 @@ RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_cvr(void)
  * @brief Implementation of `ra8_time_init()` -- programme SysTick.
  *
  * @details Computes the reload as `cpu_hz / 1000 - 1`, programmes
- *          SYST_RVR/CVR/CSR. On the simulator host the SCS writes are
+ *          SYST_RVR/CVR/CSR. On the off-target host the SCS writes are
  *          skipped.
  *
  * @param[in] cpu_hz Current CPU clock in Hz.
@@ -153,7 +153,7 @@ ra8_err_t ra8_time_init(uint32_t cpu_hz)
     return k_ra8_err_invalid_arg;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* Disable, programme reload, clear current count, re-enable with
    * IRQ and CPU clock source. The SysTick registers live in the
    * Cortex-M System Control Space and are not mapped on the host
@@ -219,8 +219,8 @@ uint32_t ra8_time_ms(void)
  */
 void ra8_delay_ms(uint32_t ms)
 {
-#ifdef RA8_SIMULATOR_MODE
-  (void)ms; /* No SysTick in simulator -- s_tick_ms never advances. */
+#ifdef RA8_OFF_TARGET
+  (void)ms; /* No SysTick off-target -- s_tick_ms never advances. */
 #else
   /* If PRIMASK is set the SysTick IRQ cannot dispatch and s_tick_ms */
   /* never advances -- a wfi-loop on s_tick_ms would hang forever. */
@@ -290,14 +290,14 @@ void ra8_time_on_tick(void)
  * once its work is just "tick threadx and tick usb".
  */
 /* The default SysTick_Handler below and its weak externs are firmware-only.
- * The host unit-test build (RA8_SIMULATOR_MODE) has no SysTick ISR, never calls
+ * The host unit-test build (RA8_OFF_TARGET) has no SysTick ISR, never calls
  * this handler, and must not drag in the ThreadX / USB weak externs: the macOS
  * test linker (ld64) does NOT resolve an undefined `weak` reference to NULL the
  * way the ELF firmware linker does, so leaving them visible breaks every host
  * test that links ra8_time.c. Compile the whole ISR + its externs for the
  * firmware target only; on ELF the `weak` references still fold to NULL when a
  * subsystem is absent and to its strong defn when present. */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- vendor (ThreadX) symbol; we must use Eclipse ThreadX's actual entry-point name. */
 [[gnu::weak]] extern void _tx_timer_interrupt(void);
@@ -351,7 +351,7 @@ void SysTick_Handler(void);
   }
 }
 
-#else /* RA8_SIMULATOR_MODE */
+#else /* RA8_OFF_TARGET */
 
 /* Host unit-test build: test_ra8_time exercises SysTick_Handler directly, so the
  * symbol must exist -- but there is no ThreadX kernel or USB bridge to tick,
@@ -366,4 +366,4 @@ void SysTick_Handler(void);
   ra8_time_on_tick();
 }
 
-#endif /* RA8_SIMULATOR_MODE -- firmware vs host-test SysTick_Handler */
+#endif /* RA8_OFF_TARGET -- firmware vs host-test SysTick_Handler */

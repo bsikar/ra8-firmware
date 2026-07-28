@@ -4,8 +4,8 @@
  *
  * @details
  * Split sibling of the original test_ra8_vin.c suite covering the
- * configuration surface of ra8_vin.c against the host-side simulated
- * MMIO (``ra8_sim_mmap``):
+ * configuration surface of ra8_vin.c against the host-side fake
+ * MMIO (``ra8_fake_mmap``):
  *
  * - pre-clip window + UDS scale / passband / clip / control and the
  *   scaling enable
@@ -25,8 +25,8 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_vin.h"
 #include "ra8_vin_regs.h"
 #include "support/vin_test_util.h"
@@ -76,7 +76,7 @@ static void*    s_vin_cb_last_ctx;
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_vin_cb_count     = 0U;
   s_vin_cb_last_mask = 0U;

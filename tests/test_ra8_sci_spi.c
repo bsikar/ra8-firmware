@@ -5,7 +5,7 @@
  *
  * @details
  * Exercises all five public entry points of the SCI_B Simple-SPI driver
- * against the ``ra8_sim_mmap``-backed register window:
+ * against the ``ra8_fake_mmap``-backed register window:
  *
  *  - ``ra8_sci_spi_init``      -- MSTP enable + Simple-SPI CCR programming;
  *  - ``ra8_sci_spi_deinit``    -- TE/RE clear + MSTP release;
@@ -14,7 +14,7 @@
  *  - ``ra8_sci_spi_xfer``      -- multi-byte full-duplex exchange.
  *
  * Determinism note: the xfer paths poll CSR.TDRE then CSR.RDRF via the
- * bounded ``ra8_hw_wait_flag_set32`` helper. The simulator backs MMIO with
+ * bounded ``ra8_hw_wait_flag_set32`` helper. The fake backs MMIO with
  * ordinary RAM, so a test makes the poll succeed simply by pre-seeding the
  * relevant status bits in CSR before the call -- the very first read then
  * observes "ready" and the loop body runs. Timeout cases are produced by
@@ -29,11 +29,11 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_sci_regs.h"
 #include "ra8_sci_spi.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -56,8 +56,8 @@ typedef enum : uint32_t {
  * @brief Frame bytes exchanged by the xfer tests.
  */
 typedef enum : uint8_t {
-  k_spi_test_tx_byte = 0xA5U, /**< Byte shifted out on COPI.    */
-  k_spi_test_rx_byte = 0x5AU, /**< Byte the sim returns in RDR. */
+  k_spi_test_tx_byte = 0xA5U, /**< Byte shifted out on COPI.     */
+  k_spi_test_rx_byte = 0x5AU, /**< Byte the fake returns in RDR. */
 } ra8_sci_spi_test_byte_t;
 
 /**
@@ -71,7 +71,7 @@ static const ra8_sci_spi_cfg_t k_spi_cfg = {
 };
 
 /**
- * @brief Reset the simulated MMIO window and the MSTP model before a test.
+ * @brief Reset the fake MMIO window and the MSTP model before a test.
  *
  * @details Mirrors the ``prep`` helper in the sibling SCI tests: a clean
  * peripheral RAM image plus an initialized module-stop model so every
@@ -84,8 +84,8 @@ static const ra8_sci_spi_cfg_t k_spi_cfg = {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -346,7 +346,7 @@ static void test_xfer8_timeout_tdre(void)
   uint8_t rx                           = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_spi_test_ch)->CSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_spi_test_ch)->CSR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_sci_spi_xfer8((uint8_t)k_spi_test_ch, (uint8_t)k_spi_test_tx_byte, &rx));
   TEST_END("ra8_sci_spi_xfer8: TDRE poll times out");
@@ -372,7 +372,7 @@ static void test_xfer8_timeout_rdrf(void)
   uint8_t rx                           = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_spi_test_ch)->CSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_spi_test_ch)->CSR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_sci_spi_xfer8((uint8_t)k_spi_test_ch, (uint8_t)k_spi_test_tx_byte, &rx));
   TEST_END("ra8_sci_spi_xfer8: CSR poll times out despite a staged bit");
@@ -396,7 +396,7 @@ static void test_xfer_multibyte(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_spi_init((uint8_t)k_spi_test_ch, &k_spi_cfg));
 
   volatile r_sci_regs_t* reg = ra8_sci((uint8_t)k_spi_test_ch);
-  /* Both flags stay set across frames (the sim does not auto-clear W1C),
+  /* Both flags stay set across frames (the fake does not auto-clear W1C),
    * so a single seed covers every iteration of the loop. */
   seed_ready((uint8_t)k_spi_test_ch);
   reg->RDR = (uint32_t)k_spi_test_rx_byte;
@@ -462,7 +462,7 @@ static void test_xfer_propagates_timeout(void)
   ra8_sci((uint8_t)k_spi_test_ch)->CSR = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_spi_test_ch)->CSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_sci((uint8_t)k_spi_test_ch)->CSR));
   const uint8_t tx[2] = {0x01U, 0x02U};
   uint8_t       rx[2] = {0U, 0U};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_sci_spi_xfer((uint8_t)k_spi_test_ch, tx, rx, 2U));

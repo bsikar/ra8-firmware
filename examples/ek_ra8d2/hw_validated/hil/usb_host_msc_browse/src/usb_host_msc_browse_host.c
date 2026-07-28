@@ -15,8 +15,8 @@
  * `selftest_host_pass` driver the host worker thread loops on. The J-Link
  * progress probes that only this ladder touches live here too.
  *
- * The whole TU is compiled only in the non-simulator firmware build, mirroring
- * the original placement inside `main.c`'s ``#ifndef RA8_SIMULATOR_MODE`` block.
+ * The whole TU is compiled only in the on-target firmware build, mirroring
+ * the original placement inside `main.c`'s ``#ifndef RA8_OFF_TARGET`` block.
  *
  * @author Brighton Sikarskie
  * @date 2026-06-25
@@ -30,7 +30,7 @@
 
 #include "usb_host_msc_browse_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
@@ -732,7 +732,7 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
  * label occupies entry 0, the file MRAM.BIN entry 1). Prints the 8.3 name and
  * the 32-bit little-endian size. This is the host-side directory-browse that
  * distinguishes this app from the raw read-verify self-tests -- it walks the
- * on-disk FAT metadata of the simulated peripheral.
+ * on-disk FAT metadata of the fake peripheral.
  *
  * @return k_ra8_ok if the root sector was read and the entry parsed + printed.
  * @retval k_ra8_ok            Browse line emitted.
@@ -801,7 +801,7 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
   }
   (void)ra8_fs_unmount(mount);
 
-  /* Browse the FAT directory of the simulated peripheral (the host-side
+  /* Browse the FAT directory of the fake peripheral (the host-side
    * directory walk this app adds on top of the raw integrity check). */
   err = selftest_browse_root();
   if (err != k_ra8_ok) {
@@ -833,4 +833,4 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
   return k_ra8_ok;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

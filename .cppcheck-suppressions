@@ -168,7 +168,8 @@ missingInclude:tools/ra8_emulator/*
 #            handlers via function-pointer casts; both are unavoidable.
 #   15.5  -- guard-clause early returns are the house style (advisory).
 #   17.7  -- some libc / Unicorn return values are intentionally ignored.
-# See docs/qualification/MISRA_DEVIATIONS.md (D-BSIM) for the rationale. These
+# The rationale for each rule is given above; docs/qualification/MISRA_DEVIATIONS.md
+# holds the project deviation register (D-001..D-008). These
 # scope to tools/ra8_emulator only; every other MISRA rule is still enforced there,
 # so a genuine defect (e.g. an uninitialised read) is still reported.
 # ---------------------------------------------------------------------------

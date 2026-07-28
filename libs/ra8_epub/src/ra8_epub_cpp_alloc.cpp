@@ -13,7 +13,7 @@
  * This translation unit replaces the global allocation operators with thin
  * wrappers over the same static first-fit arena miniz already uses
  * (::ra8_epub_miniz_alloc / ::ra8_epub_miniz_free). It is compiled into the
- * firmware only: under `RA8_SIMULATOR_MODE` (the host unit-test build) the body
+ * firmware only: under `RA8_OFF_TARGET` (the host unit-test build) the body
  * is empty, so the host keeps the standard library's `malloc`-backed operators.
  *
  * The override is a documented NASA Rule 3 deviation of the same class as the
@@ -45,7 +45,7 @@
 
 #include <cstddef>
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include <new>
 
@@ -159,4 +159,4 @@ void operator delete[](void* ptr, std::size_t size) noexcept
   ra8_epub_miniz_free(nullptr, ptr);
 }
 
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */

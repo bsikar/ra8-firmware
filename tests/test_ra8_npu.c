@@ -15,10 +15,10 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_npu.h"
+#include "ra8_npu_fake_cmd.h"
 #include "ra8_npu_regs.h"
-#include "ra8_npu_sim_cmd.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -74,7 +74,7 @@ static void npu_fill_job(ra8_npu_job_t* job)
 static void npu_prep(void)
 {
   (void)ra8_npu_deinit();
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_init());
 }
 
@@ -101,7 +101,7 @@ static void npu_assert_region(ra8_npu_region_idx_t idx, uint64_t base)
 static void test_uninitialized_rejects(void)
 {
   TEST_BEGIN("npu rejects ops before init");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_npu_job_t job = {};
   npu_fill_job(&job);
@@ -416,9 +416,9 @@ static void test_irq_fault_and_timeout(void)
  * Execution-model coverage (issue #222): drive the FULL submit -> run ->
  * poll -> read-output path through a host-side MOCK of the ra8_emulator NPU
  * execution model. The mock decodes the command stream via the SHARED
- * ra8_npu_sim_cmd.h convention (so it can never drift from
+ * ra8_npu_fake_cmd.h convention (so it can never drift from
  * tools/ra8_emulator/src/periph/board_periph_npu.c) and applies the op to the tensor
- * arenas, then latches STATUS exactly as the sim does: cmd_end on success, a
+ * arenas, then latches STATUS exactly as the fake does: cmd_end on success, a
  * cmd_parse fault on a stream it cannot interpret (honest model -- no faked
  * completion). The NPU register window is plain host RAM here, so the driver
  * reads back the QBASE / QSIZE / BASEPn the mock consumes.
@@ -436,8 +436,8 @@ typedef enum : uint32_t {
   k_test_exec_byte_mask = 0xFFU, /**< 8-bit element wrap (matches the op).  */
 } ra8_npu_exec_const_t;
 
-/** @brief Sim command stream (ra8_npu_sim_cmd.h layout) for the exec tests. */
-static uint32_t s_exec_cmd[k_ra8_npu_sim_word_num];
+/** @brief Stand-in command stream (ra8_npu_fake_cmd.h layout) for the exec tests. */
+static uint32_t s_exec_cmd[k_ra8_npu_fake_word_num];
 /** @brief Region 0 weight arena (present by convention; unused by the op). */
 static uint8_t s_exec_weights[k_test_exec_bytes];
 /** @brief Region 1 input tensor (op source). */
@@ -445,7 +445,7 @@ static uint8_t s_exec_input[k_test_exec_bytes];
 /** @brief Region 2 output tensor (op destination). */
 static uint8_t s_exec_output[k_test_exec_bytes];
 
-/** @brief One decoded sim command (mirrors board_periph_npu.c npu_cmd_t). */
+/** @brief One decoded fake command (mirrors board_periph_npu.c npu_cmd_t). */
 typedef struct {
   uint32_t op;    /**< Opcode (COPY / add-constant).      */
   uint32_t src;   /**< Source region index.               */
@@ -466,9 +466,9 @@ static uint8_t* npu_exec_region(ra8_npu_region_idx_t idx)
 }
 
 /**
- * @brief Decode the submitted stream at QBASE per the sim convention.
+ * @brief Decode the submitted stream at QBASE per the stand-in convention.
  * @param[out] out Filled with the command fields on success.
- * @return true when the stream is a valid sim program, else false.
+ * @return true when the stream is a valid fake program, else false.
  */
 static bool npu_exec_decode(npu_exec_cmd_t* out)
 {
@@ -476,19 +476,19 @@ static bool npu_exec_decode(npu_exec_cmd_t* out)
     (uint64_t)*ra8_npu_reg(k_ra8_npu_off_qbase_lo) |
     ((uint64_t)*ra8_npu_reg(k_ra8_npu_off_qbase_hi) << k_test_npu_addr_hi_shift);
   const uint32_t qsize = *ra8_npu_reg(k_ra8_npu_off_qsize);
-  if (qsize < (uint32_t)k_ra8_npu_sim_header_bytes) {
+  if (qsize < (uint32_t)k_ra8_npu_fake_header_bytes) {
     return false;
   }
   const uint32_t* w = (const uint32_t*)(uintptr_t)qbase;
-  if ((w[k_ra8_npu_sim_word_op] & (uint32_t)k_ra8_npu_sim_magic_mask) !=
-      (uint32_t)k_ra8_npu_sim_magic) {
+  if ((w[k_ra8_npu_fake_word_op] & (uint32_t)k_ra8_npu_fake_magic_mask) !=
+      (uint32_t)k_ra8_npu_fake_magic) {
     return false;
   }
-  out->op    = w[k_ra8_npu_sim_word_op] & (uint32_t)k_ra8_npu_sim_op_mask;
-  out->src   = w[k_ra8_npu_sim_word_src];
-  out->dst   = w[k_ra8_npu_sim_word_dst];
-  out->count = w[k_ra8_npu_sim_word_count];
-  out->konst = w[k_ra8_npu_sim_word_const];
+  out->op    = w[k_ra8_npu_fake_word_op] & (uint32_t)k_ra8_npu_fake_op_mask;
+  out->src   = w[k_ra8_npu_fake_word_src];
+  out->dst   = w[k_ra8_npu_fake_word_dst];
+  out->count = w[k_ra8_npu_fake_word_count];
+  out->konst = w[k_ra8_npu_fake_word_const];
   if (out->src >= (uint32_t)k_ra8_npu_region_count) {
     return false;
   }
@@ -498,7 +498,7 @@ static bool npu_exec_decode(npu_exec_cmd_t* out)
   if (out->count == 0U) {
     return false;
   }
-  if (out->count > (uint32_t)k_ra8_npu_sim_max_bytes) {
+  if (out->count > (uint32_t)k_ra8_npu_fake_max_bytes) {
     return false;
   }
   return true;
@@ -516,8 +516,8 @@ static void npu_exec_mock(void)
   uint8_t* s = npu_exec_region((ra8_npu_region_idx_t)c.src);
   uint8_t* d = npu_exec_region((ra8_npu_region_idx_t)c.dst);
   for (uint32_t i = 0U; i < c.count; i++) {
-    d[i] = (c.op == (uint32_t)k_ra8_npu_sim_op_addk)
-             ? (uint8_t)((s[i] + c.konst) & (uint32_t)k_ra8_npu_sim_byte_mask)
+    d[i] = (c.op == (uint32_t)k_ra8_npu_fake_op_addk)
+             ? (uint8_t)((s[i] + c.konst) & (uint32_t)k_ra8_npu_fake_byte_mask)
              : s[i];
   }
   *ra8_npu_reg(k_ra8_npu_off_status) = ((uint32_t)1U << k_ra8_npu_status_cmd_end_bit) |
@@ -527,12 +527,12 @@ static void npu_exec_mock(void)
 /** @brief Program s_exec_cmd with an add-constant of region 1 -> region 2. */
 static void npu_exec_build_stream(void)
 {
-  s_exec_cmd[k_ra8_npu_sim_word_op] =
-    (uint32_t)k_ra8_npu_sim_magic | (uint32_t)k_ra8_npu_sim_op_addk;
-  s_exec_cmd[k_ra8_npu_sim_word_src]   = (uint32_t)k_ra8_npu_region_1;
-  s_exec_cmd[k_ra8_npu_sim_word_dst]   = (uint32_t)k_ra8_npu_region_2;
-  s_exec_cmd[k_ra8_npu_sim_word_count] = (uint32_t)k_test_exec_bytes;
-  s_exec_cmd[k_ra8_npu_sim_word_const] = (uint32_t)k_test_exec_addk;
+  s_exec_cmd[k_ra8_npu_fake_word_op] =
+    (uint32_t)k_ra8_npu_fake_magic | (uint32_t)k_ra8_npu_fake_op_addk;
+  s_exec_cmd[k_ra8_npu_fake_word_src]   = (uint32_t)k_ra8_npu_region_1;
+  s_exec_cmd[k_ra8_npu_fake_word_dst]   = (uint32_t)k_ra8_npu_region_2;
+  s_exec_cmd[k_ra8_npu_fake_word_count] = (uint32_t)k_test_exec_bytes;
+  s_exec_cmd[k_ra8_npu_fake_word_const] = (uint32_t)k_test_exec_addk;
 }
 
 /** @brief Seed s_exec_input with a deterministic pattern; zero s_exec_output. */
@@ -600,17 +600,17 @@ static void test_exec_runs_addk_job(void)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- it drives the honest-model reject: a
- * stream with no sim magic makes the mock latch cmd_parse, and poll's
+ * stream with no fake magic makes the mock latch cmd_parse, and poll's
  * single-condition fault-mask test then surfaces k_ra8_err_hw_error)
  */
-static void test_exec_rejects_non_sim_stream(void)
+static void test_exec_rejects_non_fake_stream(void)
 {
-  TEST_BEGIN("npu exec rejects non-sim stream");
+  TEST_BEGIN("npu exec rejects non-fake stream");
   npu_prep();
 
   /* A zeroed stream carries no SE55 magic: a real Vela program the model
    * cannot interpret. The driver accepts the submit (non-null, bytes > 0). */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_npu_sim_word_num; i++) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_npu_fake_word_num; i++) {
     s_exec_cmd[i] = 0U;
   }
   npu_exec_seed();
@@ -630,7 +630,7 @@ static void test_exec_rejects_non_sim_stream(void)
   for (uint32_t i = 0U; i < (uint32_t)k_test_exec_bytes; i++) {
     TEST_ASSERT_EQ(0U, s_exec_output[i]);
   }
-  TEST_END("npu exec rejects non-sim stream");
+  TEST_END("npu exec rejects non-fake stream");
 }
 
 int32_t main(void)
@@ -648,7 +648,7 @@ int32_t main(void)
   test_irq_driven_completion();
   test_irq_fault_and_timeout();
   test_exec_runs_addk_job();
-  test_exec_rejects_non_sim_stream();
+  test_exec_rejects_non_fake_stream();
   (void)fprintf(stderr, "[OK ] test_ra8_npu.c\n");
   return 0;
 }

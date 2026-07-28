@@ -512,7 +512,7 @@ SELFTEST_CASES: list[tuple[str, str, bool, str]] = [
     (
         "fail-closed half of the placeholder-crypto guard",
         """
-        #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+        #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
         ra8_err_t ra8_rsip_tamper_enable(uint32_t sources)
         {
           return simulate(sources);

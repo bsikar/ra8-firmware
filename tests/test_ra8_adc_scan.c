@@ -10,7 +10,7 @@
  * resolution / status / dispatch contract tests stay in test_ra8_adc.c.
  *
  * The ADC busy-poll reads ADSR.ADACT0 straight from the RAM-backed register
- * window. After ra8_sim_mmap_reset() ADACT0 reads 0 (idle), so the driver's
+ * window. After ra8_fake_mmap_reset() ADACT0 reads 0 (idle), so the driver's
  * bounded busy-wait observes the conversion already complete on its first
  * poll and takes the success path deterministically.
  *
@@ -23,7 +23,7 @@
 #include "ra8_adc.h"
 #include "ra8_adc_b_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -132,7 +132,7 @@ static ra8_adc_scan_group_cfg_t make_scan_cfg(void)
 static void test_configure_scan_group_happy(void)
 {
   TEST_BEGIN("adc scan-group: configure happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   const ra8_adc_scan_group_cfg_t cfg = make_scan_cfg();
@@ -164,7 +164,7 @@ static void test_configure_scan_group_happy(void)
 static void test_configure_scan_group_elc_trigger(void)
 {
   TEST_BEGIN("adc scan-group: ELC trigger arms ADTRGENR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   ra8_adc_scan_group_cfg_t cfg = make_scan_cfg();
@@ -183,7 +183,7 @@ static void test_configure_scan_group_elc_trigger(void)
 static void test_configure_scan_group_rejects_null(void)
 {
   TEST_BEGIN("adc scan-group: null cfg");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_adc_configure_scan_group(0U, nullptr));
   TEST_END("adc scan-group: null cfg");
 }
@@ -197,7 +197,7 @@ static void test_configure_scan_group_rejects_null(void)
 static void test_configure_scan_group_rejects_oor(void)
 {
   TEST_BEGIN("adc scan-group: out-of-range group/channels");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_adc_scan_group_cfg_t cfg = make_scan_cfg();
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
                  ra8_adc_configure_scan_group(k_ra8_adc_test_group_oor, &cfg));
@@ -223,7 +223,7 @@ static void test_configure_scan_group_rejects_oor(void)
 static void test_start_stop_group(void)
 {
   TEST_BEGIN("adc scan-group: start/stop sets ADSTR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_start_group(k_ra8_adc_test_group_one));
@@ -248,7 +248,7 @@ static void test_start_stop_group(void)
 static void test_read_group_results_happy(void)
 {
   TEST_BEGIN("adc scan-group: read multi-channel results");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   const ra8_adc_scan_group_cfg_t cfg = make_scan_cfg();
@@ -278,7 +278,7 @@ static void test_read_group_results_happy(void)
 static void test_read_group_results_rejects(void)
 {
   TEST_BEGIN("adc scan-group: read rejects null/oor/unconfigured");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   uint16_t buf   = 0U;
@@ -302,7 +302,7 @@ static void test_read_group_results_rejects(void)
 static void test_continuous_scan(void)
 {
   TEST_BEGIN("adc scan-group: continuous-scan toggles ADMDR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_set_continuous_scan(k_ra8_adc_test_group_one, true));
@@ -325,7 +325,7 @@ static void test_continuous_scan(void)
 static void test_compare_window_happy(void)
 {
   TEST_BEGIN("adc compare-window: programs ADCMPTBR/MDR/ENR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -360,7 +360,7 @@ static void test_compare_window_happy(void)
 static void test_compare_window_rejects(void)
 {
   TEST_BEGIN("adc compare-window: rejects high<low and oor table");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
@@ -381,7 +381,7 @@ static void test_compare_window_rejects(void)
 static void test_oversampling_encoding(void)
 {
   TEST_BEGIN("adc oversampling: AVEMD/ADC encoding");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
 
@@ -410,7 +410,7 @@ static void test_oversampling_encoding(void)
 static void test_oversampling_rejects(void)
 {
   TEST_BEGIN("adc oversampling: rejects bad mode and oor channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_adc_set_oversampling(0U, (ra8_adc_oversample_t)0xFFU));
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
                  ra8_adc_set_oversampling(k_ra8_adc_test_ch_oor, k_ra8_adc_oversample_4x));
@@ -450,7 +450,7 @@ static void test_mcdc_adc(void)
   TEST_BEGIN("adc MC/DC: read_channel OR + validate_group_cfg OR");
 
   /* --- Decision A: ra8_adc_read_channel line 311 ------------------ */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   uint16_t raw = 0U;
   /* V1: channel=5 (both pointers valid) -> dec F.  ADACT0 reads idle
@@ -462,7 +462,7 @@ static void test_mcdc_adc(void)
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_adc_read_channel(k_ra8_adc_test_ch_oor, &raw));
 
   /* --- Decision B: internal_validate_group_cfg line 612 ---------- */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
   ra8_adc_scan_group_cfg_t good = make_scan_cfg();
   /* V1: num_channels=3 -> dec F, accepted. */
@@ -508,7 +508,7 @@ static void test_mcdc_adc(void)
 static void test_accessor_edge_pointers(void)
 {
   TEST_BEGIN("adc header accessors: out-of-range guard legs");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* ra8_adc_b_adcmpmdr: which==1 selects ADCMPMDR1 (valid, live window). */
   volatile uint32_t* mdr0 = ra8_adc_b_adcmpmdr(k_ra8_adc_test_cmpmdr_sel0);

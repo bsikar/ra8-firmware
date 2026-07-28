@@ -24,10 +24,10 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_ipc.h"
 #include "ra8_ipc_regs.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -52,7 +52,7 @@ typedef enum : uint32_t {
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 
@@ -125,7 +125,7 @@ static void test_ipc_demo_init_both_channels(void)
  * @par MC/DC:
  * Decision vector under test: ``ra8_ipc_send_message_retry`` retry-loop
  * exit (success vs. timeout). This case covers the success vector
- * against the simulator's empty FIFO.
+ * against the fake's empty FIFO.
  */
 static void test_ipc_demo_send_ping_with_retry(void)
 {

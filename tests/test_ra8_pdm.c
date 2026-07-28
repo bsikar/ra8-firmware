@@ -3,7 +3,7 @@
  * @brief Unit tests for ra8_pdm.c (PDM-IF capture driver)
  *
  * @details
- * Exercises the real PDM-IF register model against the ``ra8_sim_mmap``
+ * Exercises the real PDM-IF register model against the ``ra8_fake_mmap``
  * peripheral window: configuration writes, the start / read-enable /
  * read / stop sequence (HUM Ch 49.4), 20-bit sign extension and the
  * argument-validation contract. The receive FIFO is emulated by
@@ -15,10 +15,10 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_pdm.h"
 #include "ra8_pdm_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -72,7 +72,7 @@ enum : uint8_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

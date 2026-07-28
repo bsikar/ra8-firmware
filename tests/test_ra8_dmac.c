@@ -10,7 +10,7 @@
 #include "ra8_dmac_internal.h"
 #include "ra8_dmac_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -53,7 +53,7 @@ typedef enum : uint8_t {
 static void test_start_null_cfg(void)
 {
   TEST_BEGIN("dmac start null cfg");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_dmac_start((uint8_t)k_ra8_dmac_test_channel_valid, nullptr));
@@ -69,7 +69,7 @@ static void test_start_null_cfg(void)
 static void test_start_bad_channel(void)
 {
   TEST_BEGIN("dmac start bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_dmac_config_t cfg = {
     .src     = (uint32_t)k_ra8_dmac_test_src,
@@ -93,7 +93,7 @@ static void test_start_bad_channel(void)
 static void test_start_happy_both_inc(void)
 {
   TEST_BEGIN("dmac start happy both inc");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_dmac_config_t cfg = {
     .src     = (uint32_t)k_ra8_dmac_test_src,
@@ -123,7 +123,7 @@ static void test_start_happy_both_inc(void)
 static void test_start_no_src_inc(void)
 {
   TEST_BEGIN("dmac start no src inc");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_dmac_config_t cfg = {
     .src     = (uint32_t)k_ra8_dmac_test_src,
@@ -146,7 +146,7 @@ static void test_start_no_src_inc(void)
 static void test_start_no_dst_inc(void)
 {
   TEST_BEGIN("dmac start no dst inc");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_dmac_config_t cfg = {
     .src     = (uint32_t)k_ra8_dmac_test_src,
@@ -169,7 +169,7 @@ static void test_start_no_dst_inc(void)
 static void test_start_neither_inc(void)
 {
   TEST_BEGIN("dmac start neither inc");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_dmac_config_t cfg = {
     .src     = (uint32_t)k_ra8_dmac_test_src,
@@ -192,7 +192,7 @@ static void test_start_neither_inc(void)
 static void test_stop_happy(void)
 {
   TEST_BEGIN("dmac stop happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_stop((uint8_t)k_ra8_dmac_test_channel_valid));
 
@@ -210,7 +210,7 @@ static void test_stop_happy(void)
 static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("dmac stop bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_dmac_stop((uint8_t)k_ra8_dmac_test_channel_bad));
   TEST_END("dmac stop bad channel");
@@ -239,7 +239,7 @@ static void stub_dmac_half_cb(void* ctx)
 
 static void prep_dmac_ext(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_dmac_full_count = 0U;
   s_dmac_half_count = 0U;
   s_dmac_last_ctx   = nullptr;

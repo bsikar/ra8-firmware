@@ -136,7 +136,7 @@ typedef enum : uint32_t {
  * DLL into the locked / running state, i.e. GTDLYCR.DLLEN == 1 and
  * GTDLYCR.DLYRST == 0 (HUM Ch 23.2.1 p 1154). Reading the register
  * directly avoids stale-static-flag bugs across host-test resets that
- * wipe the simulated MMIO without touching driver-side TU statics.
+ * wipe the fake MMIO without touching driver-side TU statics.
  *
  * @return ``true`` when DLLEN is asserted and DLYRST is cleared.
  *

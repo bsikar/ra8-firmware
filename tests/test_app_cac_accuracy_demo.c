@@ -12,7 +12,7 @@
  *  - The verdict ``ok = meas_ok && !ferrf && !ovff`` with full MC/DC.
  *  - The CACR1 / CACR2 clock-select encodings.
  *
- * No ra8_sim_mmap MMIO is required, so this test runs in-process.
+ * No ra8_fake_mmap MMIO is required, so this test runs in-process.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

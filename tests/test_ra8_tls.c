@@ -3,7 +3,7 @@
  * @brief Unit tests for the ``ra8_tls`` Mbed TLS facade.
  *
  * @details
- * Compiled with ``RA8_SIMULATOR_MODE`` defined, so ``ra8_tls.c``
+ * Compiled with ``RA8_OFF_TARGET`` defined, so ``ra8_tls.c``
  * substitutes its loopback BIO drain for every ``mbedtls_ssl_*`` call.
  * That keeps the host test build free of any hard dependency on the
  * heavy Mbed TLS object library while still exercising:
@@ -284,7 +284,7 @@ static void test_loopback_handshake_and_io(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
   TEST_ASSERT_NOT_NULL(s);
 
-  /* Simulator handshake drives one byte through the BIO pair. */
+  /* Fake handshake drives one byte through the BIO pair. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_handshake(s));
 
   /* Send returns the count buffered by loop_bio_send. */

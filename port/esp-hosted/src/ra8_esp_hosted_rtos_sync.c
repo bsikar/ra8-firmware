@@ -34,7 +34,7 @@
 #include "ra8_esp_hosted_rtos_internal.h"
 #include "ra8_log.h"
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 #include "ra8_esp_hosted_tx_shim_sync_internal.h"
 #else
 #include "tx_api.h"

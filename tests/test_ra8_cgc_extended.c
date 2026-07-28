@@ -11,8 +11,8 @@
 #include "ra8_cgc.h"
 #include "ra8_cgc_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -24,11 +24,11 @@ typedef enum : uint32_t {
   k_cgc_ext_second_wait = 1U, /**< fail-nth index of the 2nd OSCSF wait-loop. */
 } ra8_cgc_ext_wait_idx_t;
 
-/** @brief Reset the sim register mirror and the MMIO fault seam together. */
+/** @brief Reset the fake register mirror and the MMIO fault seam together. */
 static void cgc_ext_reset(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 }
 
 /* ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ static void cgc_ext_reset(void)
 /**
  * @brief Verify get_clock_hz returns MOCO rate before init.
  *
- * @pre ra8_sim_mmap_reset called; no ra8_cgc_init.
+ * @pre ra8_fake_mmap_reset called; no ra8_cgc_init.
  * @post Returns k_ra8_ok and a non-zero Hz value.
  *
  * @par MC/DC:
@@ -149,7 +149,7 @@ static void test_cgc_stop_detection_null_handler(void)
  * @post Callback count stays at 0 after trigger with handler disabled.
  *
  * @par MC/DC:
- * Decision: ``s_ostd_enabled`` (inside sim_trigger)
+ * Decision: ``s_ostd_enabled`` (inside fake_trigger)
  * - V1: enabled=true  -> fires  (tested in base test_ra8_cgc.c).
  * - V2: enabled=false -> no-op.
  *
@@ -162,7 +162,7 @@ static void test_cgc_stop_detection_disabled_no_fire(void)
   s_cgc_ext_ostd_count = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_enable_stop_detection(stub_ostd, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_disable_stop_detection());
-  ra8_cgc_sim_trigger_stop_detection();
+  ra8_cgc_fake_trigger_stop_detection();
   TEST_ASSERT_EQ(0, s_cgc_ext_ostd_count);
   TEST_END("cgc stop detection no fire when disabled");
 }
@@ -278,8 +278,8 @@ static void test_cgc_pll2_enable_timeout(void)
    * first loop (the PLL2SF stop-clear poll) succeeds, so the timeout
    * surfaces from the lock leg specifically. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_oscsf(),
-                                            (uint32_t)k_cgc_ext_second_wait));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_oscsf(),
+                                             (uint32_t)k_cgc_ext_second_wait));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_pll2_enable(80U, 0U, k_ra8_plodiv_div4));
   TEST_END("cgc pll2_enable times out when PLL2 never locks");
 }
@@ -328,8 +328,8 @@ static void test_cgc_usbfs_clock_enable_timeout(void)
    * PLL2SF lock poll inside the nested pll2_enable times out and the
    * error propagates out of usbfs_clock_enable. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_oscsf(),
-                                            (uint32_t)k_cgc_ext_second_wait));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_oscsf(),
+                                             (uint32_t)k_cgc_ext_second_wait));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_usbfs_clock_enable());
   TEST_END("cgc usbfs_clock_enable times out when PLL2 never locks");
 }
@@ -376,7 +376,7 @@ static void test_cgc_usbhs_pll_enable_timeout(void)
   cgc_ext_reset();
   /* Fail the first OSCSF wait-loop: the main-XTAL stabilisation poll
    * at the top of usbhs_pll_enable burns its budget and returns. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)ra8_sys_oscsf()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_sys_oscsf()));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_usbhs_pll_enable());
   TEST_END("cgc usbhs_pll_enable times out when MOSCSF never sets");
 }

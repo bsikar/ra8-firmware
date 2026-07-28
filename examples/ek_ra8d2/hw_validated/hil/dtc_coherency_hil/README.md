@@ -10,7 +10,7 @@ arm of the T4 cache-coherency chain for the DTC.
 
 `ra8_emulator` models memory byte-exact and does **not** model the L1 D-cache, so
 the clean/invalidate calls are exercised (line-size + barrier logic run) but have
-no caching effect and the copy verifies trivially. The sim run proves the app
+no caching effect and the copy verifies trivially. The emulator run proves the app
 boots, drives the real `ra8_dtc` + ELC path, and reports PASS with the cache + MPU
 boot path compiled in; the bench run proves the same on real silicon, where a
 missing descriptor clean would let the DTC fetch a stale vector-table entry or TI
@@ -63,7 +63,7 @@ completion ISR (which writes `DTCSTS`) racing the in-flight copy.
 `tools/ra8_emulator` DOES model the DTC transfer engine (`board_periph_dtc.c`): the
 ELC software-event trigger reads the vector-table entry at `DTCVBR + slot*4`,
 fetches the TI, and actually MOVES the bytes in emulated memory, so the **real**
-`ra8_dtc` + ELC path runs in sim and the copy verifies. ra8_emulator's memory is
+`ra8_dtc` + ELC path runs off-target and the copy verifies. ra8_emulator's memory is
 byte-exact and it does not model the L1 D-cache, so the poll falls through on its
 first iteration. The cache hazard this app guards against is only observable on
 real silicon.

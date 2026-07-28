@@ -5,7 +5,7 @@
  *
  * @details
  * Not part of the public API. On the host unit-test build
- * (`RA8_SIMULATOR_MODE`) the `.noinit` record is an ordinary zero-init
+ * (`RA8_OFF_TARGET`) the `.noinit` record is an ordinary zero-init
  * static rather than a warm-reset-surviving SRAM region, so the tests
  * cannot reproduce a cold-boot "random SRAM" or a corrupted checksum by
  * resetting the board. Instead these helpers expose the raw record so a
@@ -25,7 +25,7 @@
 extern "C" {
 #endif
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 
 #include "ra8_attributes.h"
 #include "ra8_crashlog.h"
@@ -37,7 +37,7 @@ extern "C" {
  * Promoted access to the TU-private record instance so a white-box test
  * can corrupt `magic` or `crc` in isolation and assert that
  * ra8_crashlog_peek() rejects the record. Never linked into a firmware
- * build (guarded by `RA8_SIMULATOR_MODE`).
+ * build (guarded by `RA8_OFF_TARGET`).
  *
  * @par MC/DC:
  * Backs the vectors for `libs/ra8_core/src/ra8_crashlog.c@ra8_crashlog_is_valid`:
@@ -47,7 +47,7 @@ extern "C" {
  * @return Address of the module's `volatile` record instance (never `nullptr`).
  * @retval non-null Always: the record is a statically-allocated object.
  *
- * @pre Host unit-test build (`RA8_SIMULATOR_MODE`).
+ * @pre Host unit-test build (`RA8_OFF_TARGET`).
  * @pre The caller is a test under `tests/`.
  * @post No state is modified by the accessor itself.
  * @post The returned pointer stays valid for the process lifetime.
@@ -68,7 +68,7 @@ RA8_TEST_HELPER volatile ra8_crashlog_record_t* ra8_crashlog_test_record(void);
  *
  * @return Nothing.
  *
- * @pre Host unit-test build (`RA8_SIMULATOR_MODE`).
+ * @pre Host unit-test build (`RA8_OFF_TARGET`).
  * @pre The caller is a test under `tests/`.
  * @post The record reads as all-zero; ra8_crashlog_peek() returns `false`.
  * @post `boot_loops` reads back zero.
@@ -78,7 +78,7 @@ RA8_TEST_HELPER volatile ra8_crashlog_record_t* ra8_crashlog_test_record(void);
  */
 RA8_TEST_HELPER void ra8_crashlog_test_wipe(void);
 
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */
 
 #ifdef __cplusplus
 }

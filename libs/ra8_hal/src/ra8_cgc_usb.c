@@ -165,7 +165,7 @@ static ra8_err_t internal_wait_usbcksrdy(uint8_t expected)
 {
   volatile uint8_t* const usbckcr = ra8_sys_usbckcr();
   const uint8_t           mask    = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
-  /* Bounded wait through ra8_hw_err.h: on host tests the ra8_sim_mmio
+  /* Bounded wait through ra8_hw_err.h: on host tests the ra8_fake_mmio
    * seam decides the poll (first-poll success unless a test arms a
    * fault), so the real timeout leg is reachable everywhere. */
   if (expected != 0U) {
@@ -488,7 +488,7 @@ static ra8_err_t internal_wait_usb60cksrdy(uint8_t expected)
 {
   volatile uint8_t* const usb60ckcr = ra8_sys_usb60ckcr();
   const uint8_t           mask      = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
-  /* Bounded wait through ra8_hw_err.h: on host tests the ra8_sim_mmio
+  /* Bounded wait through ra8_hw_err.h: on host tests the ra8_fake_mmio
    * seam decides the poll (first-poll success unless a test arms a
    * fault), so the real timeout leg is reachable everywhere. */
   if (expected != 0U) {
@@ -571,7 +571,7 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck(void)
       *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t)~(1U << k_ra8_hococr_hcstp));
     }
   }
-  /* On host tests the OSCSF wait consults the ra8_sim_mmio seam and
+  /* On host tests the OSCSF wait consults the ra8_fake_mmio seam and
    * succeeds on its first poll unless a test arms a fault -- no HOCOSF
    * RAM seeding is needed for callers (USB60CKCR / ESWCKCR SREQ->SRDY
    * handshakes) to make progress. */

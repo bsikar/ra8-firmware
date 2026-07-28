@@ -662,7 +662,7 @@ ra8_err_t ra8_sdcard_deinit(void)
   const ra8_err_t err      = ra8_sdhi_deinit(inst);
   if (err != k_ra8_ok) {
     /* ra8_sdhi_deinit fails only if ra8_mstp_disable times out on the MSTP
-     * readback loop. Reached on host by arming the ra8_sim_mmio seam on the
+     * readback loop. Reached on host by arming the ra8_fake_mmio seam on the
      * SDHI module's MSTPCR register so that readback never settles. */
     return k_ra8_err_invalid_state;
   }

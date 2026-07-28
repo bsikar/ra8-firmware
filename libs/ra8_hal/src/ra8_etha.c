@@ -485,8 +485,8 @@ internal_etha_wait_for_mode(ra8_etha_port_t port, volatile r_etha_regs_t* reg, r
     for (uint32_t i = 0U; i < (uint32_t)k_inner; ++i) {
       const uint32_t eams                            = reg->EAMS & k_ra8_etha_mask_ops;
       g_ra8_etha_diag_last_eams[(uint32_t)port & 1U] = eams;
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-      if (ra8_sim_mmio_wait_eval(&reg->EAMS, i, (eams == target))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+      if (ra8_fake_mmio_wait_eval(&reg->EAMS, i, (eams == target))) {
         return k_ra8_ok;
       }
 #else

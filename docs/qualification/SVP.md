@@ -156,7 +156,7 @@ repository is:
 
 No formal model-in-the-loop simulation environment is in scope for this
 release. The HAL test doubles under `libs/ra8_*_pal/` (mock register
-files in host tests) provide a simulation-equivalent layer for unit
+files in host tests) provide an off-target equivalent layer for unit
 verification; they are not a replacement for hardware-in-the-loop
 smoke.
 

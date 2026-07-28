@@ -1,13 +1,13 @@
 /**
- * @file ra8_psa_crypto_sim.c
- * @brief Simulator-mode crypto primitives for the ``ra8_psa_crypto`` facade.
+ * @file ra8_psa_crypto_fake.c
+ * @brief Off-target crypto primitives for the ``ra8_psa_crypto`` facade.
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}
  *
  * @details
  * Companion translation unit to ``ra8_psa_crypto.c``. When the host
- * unit-test build defines ``RA8_SIMULATOR_MODE`` the heavy TF-PSA-Crypto
+ * unit-test build defines ``RA8_OFF_TARGET`` the heavy TF-PSA-Crypto
  * object library is not linked; this file supplies tiny in-memory crypto
  * stand-ins so the public ``ra8_psa_*`` surface still behaves:
  *
@@ -18,7 +18,7 @@
  *   detection) without requiring the real AES core.
  *
  * None of this code is compiled into a firmware image: the whole unit is
- * guarded by ``RA8_SIMULATOR_MODE`` and never runs on the target.
+ * guarded by ``RA8_OFF_TARGET`` and never runs on the target.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -33,10 +33,10 @@
 #include "ra8_psa_crypto.h"
 #include "ra8_psa_crypto_internal.h"
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 
 /* ===========================================================================
- * Simulator-mode crypto primitives
+ * Off-target crypto primitives
  * ===========================================================================
  *
  * Real SHA-256 + tiny stand-ins for AES-GCM and ECDSA. These are
@@ -141,7 +141,9 @@ static void internal_sha256_block(uint32_t      state[k_ra8_psa_sha256_state_wor
   internal_sha256_rounds(state, schedule);
 }
 
-void ra8_psa_sim_sha256_oneshot(const uint8_t* in, size_t in_len, uint8_t out[k_ra8_psa_sha256_len])
+void ra8_psa_fake_sha256_oneshot(const uint8_t* in,
+                                 size_t         in_len,
+                                 uint8_t        out[k_ra8_psa_sha256_len])
 {
   uint32_t state[k_ra8_psa_sha256_state_words] = {
     k_ra8_psa_sha256_h0,
@@ -195,11 +197,11 @@ void ra8_psa_sim_sha256_oneshot(const uint8_t* in, size_t in_len, uint8_t out[k_
 }
 
 /**
- * @brief Compute the AEAD tag stand-in for the simulator path.
+ * @brief Compute the AEAD tag stand-in for the off-target path.
  *
  * @details
  * Real AES-GCM produces a 16-byte tag from key, nonce, ciphertext and
- * AAD. The simulator replaces it with SHA-256(key || nonce || aad ||
+ * AAD. The fake replaces it with SHA-256(key || nonce || aad ||
  * cipher) truncated to 16 bytes. This is *not* cryptographically
  * secure but reproduces the same input dependencies, so tampering any
  * byte changes the tag and the decrypt-side check fails.
@@ -220,17 +222,17 @@ void ra8_psa_sim_sha256_oneshot(const uint8_t* in, size_t in_len, uint8_t out[k_
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_sim_aead_tag(const uint8_t* key,
-                                  size_t         key_len,
-                                  const uint8_t* nonce,
-                                  size_t         nonce_len,
-                                  const uint8_t* aad,
-                                  size_t         aad_len,
-                                  const uint8_t* cipher,
-                                  size_t         cipher_len,
-                                  uint8_t        out_tag[k_ra8_psa_gcm_tag_len])
+static void internal_fake_aead_tag(const uint8_t* key,
+                                   size_t         key_len,
+                                   const uint8_t* nonce,
+                                   size_t         nonce_len,
+                                   const uint8_t* aad,
+                                   size_t         aad_len,
+                                   const uint8_t* cipher,
+                                   size_t         cipher_len,
+                                   uint8_t        out_tag[k_ra8_psa_gcm_tag_len])
 {
-  uint8_t buf[k_ra8_psa_sim_scratch_bytes];
+  uint8_t buf[k_ra8_psa_fake_scratch_bytes];
   size_t  off = 0U;
   for (size_t i = 0U; (i < key_len) && (off < sizeof(buf)); ++i) {
     buf[off++] = key[i];
@@ -245,14 +247,14 @@ static void internal_sim_aead_tag(const uint8_t* key,
     buf[off++] = cipher[i];
   }
   uint8_t digest[k_ra8_psa_sha256_len];
-  ra8_psa_sim_sha256_oneshot(buf, off, digest);
+  ra8_psa_fake_sha256_oneshot(buf, off, digest);
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_psa_gcm_tag_len; ++i) {
     out_tag[i] = digest[i];
   }
 }
 
 /**
- * @brief Generate the keystream byte for offset ``i`` (sim AES-GCM).
+ * @brief Generate the keystream byte for offset ``i`` (fake AES-GCM).
  *
  * @details
  * Derives a per-position keystream from SHA-256(key || nonce || "ks").
@@ -271,14 +273,14 @@ static void internal_sim_aead_tag(const uint8_t* key,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_sim_keystream(const uint8_t* key,
-                                   size_t         key_len,
-                                   const uint8_t* nonce,
-                                   size_t         nonce_len,
-                                   uint8_t*       dst,
-                                   size_t         len)
+static void internal_fake_keystream(const uint8_t* key,
+                                    size_t         key_len,
+                                    const uint8_t* nonce,
+                                    size_t         nonce_len,
+                                    uint8_t*       dst,
+                                    size_t         len)
 {
-  uint8_t seed[k_ra8_psa_sim_scratch_bytes];
+  uint8_t seed[k_ra8_psa_fake_scratch_bytes];
   size_t  off = 0U;
   for (size_t i = 0U; (i < key_len) && (off < sizeof(seed)); ++i) {
     seed[off++] = key[i];
@@ -294,7 +296,7 @@ static void internal_sim_keystream(const uint8_t* key,
     seed[off + 1U] = (uint8_t)(counter >> k_ra8_psa_shift_b2);
     seed[off + 2U] = (uint8_t)(counter >> k_ra8_psa_shift_b1);
     seed[off + 3U] = (uint8_t)counter;
-    ra8_psa_sim_sha256_oneshot(seed, off + (size_t)k_ra8_psa_bytes_per_word, block);
+    ra8_psa_fake_sha256_oneshot(seed, off + (size_t)k_ra8_psa_bytes_per_word, block);
     const size_t take = ((len - produced) < (size_t)k_ra8_psa_sha256_len)
                           ? (len - produced)
                           : (size_t)k_ra8_psa_sha256_len;
@@ -306,59 +308,59 @@ static void internal_sim_keystream(const uint8_t* key,
   }
 }
 
-ra8_err_t ra8_psa_sim_aead_encrypt(const struct ra8_psa_key_handle* slot,
-                                   const uint8_t*                   nonce,
-                                   size_t                           nonce_len,
-                                   const uint8_t*                   aad,
-                                   size_t                           aad_len,
-                                   const uint8_t*                   plain,
-                                   size_t                           plain_len,
-                                   uint8_t*                         out,
-                                   size_t*                          out_len)
+ra8_err_t ra8_psa_fake_aead_encrypt(const struct ra8_psa_key_handle* slot,
+                                    const uint8_t*                   nonce,
+                                    size_t                           nonce_len,
+                                    const uint8_t*                   aad,
+                                    size_t                           aad_len,
+                                    const uint8_t*                   plain,
+                                    size_t                           plain_len,
+                                    uint8_t*                         out,
+                                    size_t*                          out_len)
 {
   if (plain_len > 0U) {
-    uint8_t ks[k_ra8_psa_sim_scratch_bytes];
+    uint8_t ks[k_ra8_psa_fake_scratch_bytes];
     if (plain_len > sizeof(ks)) {
       return k_ra8_err_invalid_size;
     }
-    internal_sim_keystream(slot->key, slot->key_len, nonce, nonce_len, ks, plain_len);
+    internal_fake_keystream(slot->key, slot->key_len, nonce, nonce_len, ks, plain_len);
     for (size_t i = 0U; i < plain_len; ++i) {
       out[i] = (uint8_t)(plain[i] ^ ks[i]);
     }
   }
-  internal_sim_aead_tag(slot->key,
-                        slot->key_len,
-                        nonce,
-                        nonce_len,
-                        aad,
-                        aad_len,
-                        out,
-                        plain_len,
-                        &out[plain_len]);
+  internal_fake_aead_tag(slot->key,
+                         slot->key_len,
+                         nonce,
+                         nonce_len,
+                         aad,
+                         aad_len,
+                         out,
+                         plain_len,
+                         &out[plain_len]);
   *out_len = plain_len + (size_t)k_ra8_psa_gcm_tag_len;
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_psa_sim_aead_decrypt(const struct ra8_psa_key_handle* slot,
-                                   const uint8_t*                   nonce,
-                                   size_t                           nonce_len,
-                                   const uint8_t*                   aad,
-                                   size_t                           aad_len,
-                                   const uint8_t*                   cipher,
-                                   size_t                           plain_len,
-                                   uint8_t*                         out,
-                                   size_t*                          out_len)
+ra8_err_t ra8_psa_fake_aead_decrypt(const struct ra8_psa_key_handle* slot,
+                                    const uint8_t*                   nonce,
+                                    size_t                           nonce_len,
+                                    const uint8_t*                   aad,
+                                    size_t                           aad_len,
+                                    const uint8_t*                   cipher,
+                                    size_t                           plain_len,
+                                    uint8_t*                         out,
+                                    size_t*                          out_len)
 {
   uint8_t expected_tag[k_ra8_psa_gcm_tag_len];
-  internal_sim_aead_tag(slot->key,
-                        slot->key_len,
-                        nonce,
-                        nonce_len,
-                        aad,
-                        aad_len,
-                        cipher,
-                        plain_len,
-                        expected_tag);
+  internal_fake_aead_tag(slot->key,
+                         slot->key_len,
+                         nonce,
+                         nonce_len,
+                         aad,
+                         aad_len,
+                         cipher,
+                         plain_len,
+                         expected_tag);
   uint8_t diff = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_psa_gcm_tag_len; ++i) {
     diff |= (uint8_t)(expected_tag[i] ^ cipher[plain_len + i]);
@@ -367,11 +369,11 @@ ra8_err_t ra8_psa_sim_aead_decrypt(const struct ra8_psa_key_handle* slot,
     return k_ra8_err_crc_mismatch;
   }
   if (plain_len > 0U) {
-    uint8_t ks[k_ra8_psa_sim_scratch_bytes];
+    uint8_t ks[k_ra8_psa_fake_scratch_bytes];
     if (plain_len > sizeof(ks)) {
       return k_ra8_err_invalid_size;
     }
-    internal_sim_keystream(slot->key, slot->key_len, nonce, nonce_len, ks, plain_len);
+    internal_fake_keystream(slot->key, slot->key_len, nonce, nonce_len, ks, plain_len);
     for (size_t i = 0U; i < plain_len; ++i) {
       out[i] = (uint8_t)(cipher[i] ^ ks[i]);
     }
@@ -380,4 +382,4 @@ ra8_err_t ra8_psa_sim_aead_decrypt(const struct ra8_psa_key_handle* slot,
   return k_ra8_ok;
 }
 
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */

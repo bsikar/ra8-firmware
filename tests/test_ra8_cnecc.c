@@ -5,7 +5,7 @@
  * @details
  * Covers every public API entry point in ``ra8_cnecc.h`` plus every
  * register field documented in HUM Ch 42 (EC710CTL bits, EC710TMC
- * bits, EC710TED, EC710EAD0). Each test acquires a fresh sim mmap
+ * bits, EC710TED, EC710EAD0). Each test acquires a fresh fake mmap
  * via ``prep`` so register state never leaks between cases. This
  * sibling owns the init / status / counter contract tests; the
  * clear-status, dispatch, fault-injection, ISR, standby, deinit, and
@@ -19,10 +19,10 @@
 #include "ra8_cnecc_regs.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_irq.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_irq.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -86,7 +86,7 @@ static void stub_cnecc_cb(void* ctx, uint8_t instance, bool is_2bit, uint16_t er
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_isr_init();
   s_cb_count         = 0U;
@@ -366,7 +366,7 @@ static void test_get_status_decodes_flags(void)
   const ra8_cnecc_config_t cfg = make_default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cnecc_init(&cfg));
 
-  /* Force a 1-bit error + captured address into the simulator. */
+  /* Force a 1-bit error + captured address into the fake. */
   volatile r_cnecc_regs_t* reg = ra8_cnecc((uint8_t)k_ra8_cnecc_test_inst_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->EC710CTL  = (uint32_t)k_ra8_cnecc_mask_ecer1f | (uint32_t)k_ra8_cnecc_mask_ecsedf0 |

@@ -8,17 +8,17 @@
  *
  * @details
  * The black-box tests in `test_ra8_cgc_extended.c` link against the production
- * `ra8_cgc_usb.c` and drive it through the sim register mirror. Two families of
+ * `ra8_cgc_usb.c` and drive it through the fake register mirror. Two families of
  * lines stay unreachable that way:
  *
  *  1. The PLL2 / HOCO / main-XTAL "stabilization poll failed" error legs.
  *     Those legs fire only when ::ra8_cgc_wait_oscsf_set / ::ra8_cgc_wait_oscsf_clear
- *     time out, but in the sim mirror the OSCSF flags are seeded so the polls
+ *     time out, but in the fake mirror the OSCSF flags are seeded so the polls
  *     always succeed on the happy path -- the failure return is never taken.
  *  2. The USBCKCR / USB60CKCR SREQ->SRDY handshake timeout legs. In
- *     `RA8_SIMULATOR_MODE` the static `internal_wait_usbck*srdy` helpers fake the
+ *     `RA8_OFF_TARGET` the static `internal_wait_usbck*srdy` helpers fake the
  *     SRDY toggle and return success on the first loop iteration, so their
- *     bounded-poll timeout return and the handshake error legs are dead in sim.
+ *     bounded-poll timeout return and the handshake error legs are dead off-target.
  *
  * This TU compiles a second, instrumented copy of `ra8_cgc_usb.c` to reach both
  * families the same way `test_ra8_usb_hmsc_enum_cov.c` reaches its ladder:
@@ -29,12 +29,12 @@
  *    `ra8_cgc_wait_oscsf_clear`) are redirected to deterministic, per-bit
  *    scriptable mocks. Returning failure from a mock hits the corresponding
  *    error return; returning success lets the happy path proceed.
- *  - `RA8_SIMULATOR_MODE` is undefined ONLY for the included `.c` body so the
+ *  - `RA8_OFF_TARGET` is undefined ONLY for the included `.c` body so the
  *    SRDY poll helpers read the (mmap-backed) register mirror directly. With
  *    the SRDY bit never asserted the bounded poll runs to its cap and returns
  *    the timeout, exercising the handshake error legs. The headers the module
- *    pulls in do not reference `RA8_SIMULATOR_MODE`, so only the driver body is
- *    affected; the `ra8_sim_mmap` backing (a separate TU) is unchanged.
+ *    pulls in do not reference `RA8_OFF_TARGET`, so only the driver body is
+ *    affected; the `ra8_fake_mmap` backing (a separate TU) is unchanged.
  *
  * No hardware line is bypassed by an exclusion marker. The two USB60CKCR /
  * USBCKCR "SRDY=0" (second-wait) legs remain uncovered because reaching them
@@ -51,7 +51,7 @@
 
 #include "ra8_cgc_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -74,10 +74,10 @@ static const uint8_t k_cov_hococr_hcstp = (uint8_t)(1U << k_ra8_hococr_hcstp);
 /** @brief PLL2 USB-path multiplier (matches the driver's k_ra8_pll2_usbfs_mul). */
 static const uint8_t k_cov_pll2_mul = 80U;
 
-/** @brief Reset the sim register mirror and the mock scripts to a clean baseline. */
+/** @brief Reset the fake register mirror and the mock scripts to a clean baseline. */
 static void cov_reset(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_clear_result = k_ra8_ok;
   s_set_fail_bit = -1;
 }
@@ -120,10 +120,10 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck_cov(void);
 #define ra8_cgc_wait_oscsf_clear mock_wait_oscsf_clear
 // NOLINTEND(readability-identifier-naming)
 
-/* Undefine RA8_SIMULATOR_MODE for the driver body ONLY (all of its headers are
+/* Undefine RA8_OFF_TARGET for the driver body ONLY (all of its headers are
  * already free of the macro), so the static SRDY poll helpers read the register
  * mirror directly instead of faking the handshake ack. */
-#undef RA8_SIMULATOR_MODE
+#undef RA8_OFF_TARGET
 #include "ra8_cgc_usb.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 
 /** @brief Mock for `ra8_cgc_wait_oscsf_clear()` -- returns the scripted result. */
@@ -152,7 +152,7 @@ static ra8_err_t mock_wait_oscsf_set(uint8_t bit)
  *
  * @brief PLL2 stop/program/lock completes when both OSCSF polls succeed.
  *
- * @details With OSCSF.PLL2SF clear at entry (fresh sim mirror) the idempotency
+ * @details With OSCSF.PLL2SF clear at entry (fresh fake mirror) the idempotency
  * short-circuit is skipped, so the driver programs PLL2CCR/PLL2CCR2, restarts
  * PLL2, and both the stop poll (clear) and the lock poll (set) return ok from
  * the mocks -- covering the "pll2 locked" success return that the black-box
@@ -266,7 +266,7 @@ static void test_usbfs_hoco_stabilize_timeout(void)
  *
  * @details PLL2 locks and HOCO stabilizes (both mocked ok). HOCOCR.HCSTP is
  * preseeded so the in-line HOCO-restart branch also runs. With the driver body
- * built without `RA8_SIMULATOR_MODE`, the static USBCKSRDY poll reads the plain
+ * built without `RA8_OFF_TARGET`, the static USBCKSRDY poll reads the plain
  * register mirror (SRDY never asserts), so the bounded poll runs to its cap and
  * returns the timeout, driving the "SRDY=1 timeout" handshake leg and the
  * handshake error return in the enable entry point.
@@ -366,7 +366,7 @@ static void test_usbhs_hoco_stabilize_timeout(void)
  *
  * @details Every OSCSF poll succeeds (MOSCSF, PLL2SF, HOCOSF), so the routine
  * reaches the USB60CKCR handshake. With the body built without
- * `RA8_SIMULATOR_MODE`, the static USB60CKSRDY poll reads the plain register
+ * `RA8_OFF_TARGET`, the static USB60CKSRDY poll reads the plain register
  * mirror (SRDY never asserts) and runs to its cap, driving the "SRDY=1
  * timeout" handshake leg, the diagnostic probe read-back, and the handshake
  * error return.

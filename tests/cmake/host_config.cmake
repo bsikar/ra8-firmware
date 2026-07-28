@@ -29,9 +29,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/ra8_warnings.cmake)
 
-# Every TU is compiled with RA8_SIMULATOR_MODE so code that normally
+# Every TU is compiled with RA8_OFF_TARGET so code that normally
 # reaches into MCU register blocks takes the host-safe path instead.
-add_compile_definitions(RA8_SIMULATOR_MODE UNIT_TEST)
+add_compile_definitions(RA8_OFF_TARGET UNIT_TEST)
 
 # Host warnings are applied per target below. We deliberately do NOT use
 # -Wstack-usage=2200 here because the host compiler ABI pushes wider
@@ -193,10 +193,10 @@ if(RA8_SANITIZE)
   add_link_options(-fsanitize=${RA8_SANITIZE})
   # UBSan reserves no low-memory shadow (unlike ASan), so it can still take the
   # image pin below that keeps text/.data/.bss/brk clear of the MAP_FIXED
-  # peripheral windows. Without it a ~40 MiB test image -- the 32 MiB XSPI sim
+  # peripheral windows. Without it a ~40 MiB test image -- the 32 MiB XSPI fake
   # backing bundled into ra8_core_hal dominates every test's .bss -- loads at
   # 0x400000 and its .bss crosses the code-MRAM window at 0x02000000, so
-  # ra8_sim_mmap_install aborts before main(). Apply the pin for every sanitizer
+  # ra8_fake_mmap_install aborts before main(). Apply the pin for every sanitizer
   # except address, which owns its own low-address layout and skips the
   # shadow-gap window at runtime instead.
   if(NOT RA8_SANITIZE MATCHES "address")
@@ -204,13 +204,13 @@ if(RA8_SANITIZE)
   endif()
 else()
   # The MAP_FIXED peripheral windows span [0x02000000, 0x68100000) (see
-  # tests/mocks/ra8_sim_mmap.c). On toolchains that default to non-PIE the
+  # tests/mocks/ra8_fake_mmap.c). On toolchains that default to non-PIE the
   # image loads at 0x400000, so a large-enough .bss (the gcov counters of a
   # coverage build crossed 0x02000000 in practice) pushes static data and the
   # brk heap INTO a window; the constructor's mmap then silently replaces live
   # pages and glibc aborts on the first heap extension. Pin the image above
   # every window so text/.data/.bss/brk can never intersect one. AddressSanitizer
   # is excluded above: it owns its low layout and skips the shadow-gap window
-  # instead (ra8_sim_mmap_install still checks overlap at runtime).
+  # instead (ra8_fake_mmap_install still checks overlap at runtime).
   add_link_options(-no-pie -Wl,-Ttext-segment=0x70000000)
 endif()

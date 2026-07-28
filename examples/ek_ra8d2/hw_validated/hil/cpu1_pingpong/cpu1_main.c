@@ -142,7 +142,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* Vector table only built for the cross-compiled M33 image. The host
  * build does not link this TU as an executable -- it is compile-checked
  * only -- so we can drop the table without losing test coverage. */

@@ -8,12 +8,12 @@
  * (``ra8_sci_deinit``) are wrapped in the existing ``ra8_register_guard``
  * IRQ-mask primitive so a TXI/RXI interrupt cannot tear the register or
  * the in-flight async descriptor mid-update. The guard is a host no-op
- * under ``RA8_SIMULATOR_MODE``, so these tests assert the *result* of the
+ * under ``RA8_OFF_TARGET``, so these tests assert the *result* of the
  * guarded sequence: the reconfigure must compute the correct final
  * CCR2 value while leaving the ISR-owned CCR0 untouched, and the
  * teardown must clear CCR0 plus every per-channel descriptor field so a
  * late ISR dispatch is a harmless no-op. Register state is observed
- * through the simulated MMIO window provided by ``ra8_sim_mmap``.
+ * through the fake MMIO window provided by ``ra8_fake_mmap``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -22,10 +22,10 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_sci.h"
 #include "ra8_sci_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -92,7 +92,7 @@ static const ra8_sci_cfg_t k_race_cfg = {
 };
 
 /**
- * @brief Reset the simulated MMIO window and the MSTP model before a test.
+ * @brief Reset the fake MMIO window and the MSTP model before a test.
  *
  * @details Mirrors the ``prep`` helper in ``test_ra8_sci.c``: a clean
  * peripheral RAM image plus an initialized module-stop model so every
@@ -104,7 +104,7 @@ static const ra8_sci_cfg_t k_race_cfg = {
  */
 static void prep_race(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

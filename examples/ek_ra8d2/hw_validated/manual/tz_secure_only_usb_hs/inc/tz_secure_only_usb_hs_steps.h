@@ -35,7 +35,7 @@
 
 #include <stdint.h>
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #include "ux_api.h"
 
@@ -118,4 +118,4 @@ extern UCHAR
  * @since 0.1.0
  */
 VOID tx_application_define(VOID* first_unused_memory);
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

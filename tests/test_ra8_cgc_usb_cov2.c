@@ -30,7 +30,7 @@
  *  4. The USB-FS success return and the in-line HOCO-restart branch.
  *
  * As in the sibling, the two external OSCSF poll helpers are redirected to
- * deterministic per-bit mocks, and `RA8_SIMULATOR_MODE` is undefined for the
+ * deterministic per-bit mocks, and `RA8_OFF_TARGET` is undefined for the
  * driver body only so the static SRDY poll helpers read the (mocked) register
  * model directly. No hardware line is bypassed by an exclusion marker.
  *
@@ -44,7 +44,7 @@
 
 #include "ra8_cgc_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -129,10 +129,10 @@ static volatile uint8_t* mock_ra8_sys_usb60ckcr(void)
   return &s_usb60ckcr;
 }
 
-/** @brief Reset the sim mirror, the OSCSF mocks, and the SRDY model to baseline. */
+/** @brief Reset the fake mirror, the OSCSF mocks, and the SRDY model to baseline. */
 static void cov_reset(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_clear_result = k_ra8_ok;
   s_set_fail_bit = -1;
   s_srdy_mode    = k_cov2_srdy_follow;
@@ -182,9 +182,9 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck_cov2(void);
 #define ra8_sys_usb60ckcr mock_ra8_sys_usb60ckcr
 // NOLINTEND(readability-identifier-naming)
 
-/* Undefine RA8_SIMULATOR_MODE for the driver body ONLY so the static SRDY poll
+/* Undefine RA8_OFF_TARGET for the driver body ONLY so the static SRDY poll
  * helpers read the (mocked) register model instead of faking the handshake. */
-#undef RA8_SIMULATOR_MODE
+#undef RA8_OFF_TARGET
 #include "ra8_cgc_usb.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 
 /** @brief Mock for `ra8_cgc_wait_oscsf_clear()` -- returns the scripted result. */

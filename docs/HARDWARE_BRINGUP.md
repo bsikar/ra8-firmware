@@ -562,13 +562,13 @@ Conclusion: the panicking call is line 278, fired by
 
 ```c
 *ctrl   |= k_ra8_rsip_mask_ctrl_bist;     /* arm BIST */
-*status |= k_ra8_rsip_mask_status_bistok; /* host-sim hack */
+*status |= k_ra8_rsip_mask_status_bistok; /* off-target hack */
 return internal_wait_bit(k_ra8_rsip_off_status,
                          k_ra8_rsip_mask_status_bistok); /* spin */
 ```
 
 The OR-write into `STATUS` is described in the source comment as a
-"no-op on silicon" host-sim hack so the unit test deterministically
+"no-op on silicon" off-target hack so the unit test deterministically
 terminates the spin without modelling the BIST sequencer. On the
 RA8D2, the `STATUS.BIST_OK` bit is set by the access-management
 circuit (AMC) inside the sealed RSIP-E engine, **not** by the host
@@ -585,7 +585,7 @@ ENABLE/RESET/BIST bit assignments) is **not documented in the RA8D2
 Hardware User's Manual**. RSIP-E (a.k.a. SCE9) is a sealed-engine
 peripheral whose only Renesas-supported entry point is the FSP
 `r_sce_*` driver family. The current `ra8_rsip` register definitions
-were inferred for the host-sim test path and have never been
+were inferred for the off-target test path and have never been
 validated against silicon.
 
 ### Fix scope
@@ -599,7 +599,7 @@ Bringing real RSIP/SCE up requires:
    third-party blob behind a thin `ra8_rsip_*` shim.
 3. Re-validating CTRL/STATUS/CMD/MAILBOX register offsets against
    FSP's `bsp_sec.h` (the canonical layout) instead of the inferred
-   host-sim layout.
+   off-target layout.
 
 This is a multi-day port comparable in scope to the USB enumeration
 work (~2000 LOC of vendor driver state machine plus a binary blob

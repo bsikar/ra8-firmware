@@ -14,7 +14,7 @@
  * - RSAES encrypt / decrypt with OAEP / PKCS1 padding.
  *
  * All four entry points are FAIL-CLOSED in production: HUM Ch 52 documents no
- * asymmetric command-register map for the RSIP-E50D, so the sim-only command
+ * asymmetric command-register map for the RSIP-E50D, so the off-target-only command
  * path is gated behind the stub-crypto guard and a production build returns
  * ``k_ra8_err_not_supported`` (issues #214 + #187).
  *
@@ -25,7 +25,7 @@
  * (``internal_load_handle``, ``internal_complete``) are declared in
  * ``ra8_rsip_internal.h``. The RSIP engine exposes no documented asymmetric
  * register interface (HUM Ch 52 is a feature overview, p 3302-3307), so the
- * sim command path here is a modelled fiction, not a real hardware sequence.
+ * fake command path here is a modelled fiction, not a real hardware sequence.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -63,16 +63,16 @@ static const char* s_tag = "RSIP";
  * "Renesas Secure IP (RSIP-E50D)" is a six-page feature overview (p 3302-3307)
  * with no asymmetric command-register map; the vendor engine is driven through
  * an encrypted firmware mailbox, not the MMIO opcodes modelled below. The
- * command-path bodies here only round-trip the host register simulator; they do
+ * command-path bodies here only round-trip the host register fake; they do
  * NOT compute a real RSASP1 / RFC 8017 result. They compile only under the
- * insecure-stub / simulator guard so a production image gets the fail-closed
+ * insecure-stub / off-target guard so a production image gets the fail-closed
  * #else and can never mistake these bytes for a valid RSA signature or
  * ciphertext. No plain-key RSA backend ships on this part; RSA (if ever needed)
  * is provided by tf-psa-crypto on the M85 (issues #214 + #187). The register
  * pokes below therefore carry NO HUM citation: there is no real register map to
  * cite.
  */
-#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
 
 ra8_err_t ra8_rsip_rsa_sign(const ra8_rsip_key_handle_t* key,
                             ra8_rsip_rsa_size_t          size,
@@ -353,12 +353,12 @@ ra8_err_t ra8_rsip_rsa_decrypt(const ra8_rsip_key_handle_t* key,
   return k_ra8_ok;
 }
 
-#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_OFF_TARGET */
 
 /*
  * Fail-closed production variant. With no real RSIP RSA backend on this
  * silicon, every RSASSA / RSAES entry point returns a hard error (never
- * k_ra8_ok) so a production image cannot mistake the simulator command-path for
+ * k_ra8_ok) so a production image cannot mistake the fake command-path for
  * a valid RSA signature or ciphertext. Callers use tf-psa-crypto on the M85.
  */
 
@@ -424,4 +424,4 @@ ra8_err_t ra8_rsip_rsa_decrypt(const ra8_rsip_key_handle_t* key,
   return k_ra8_err_not_supported;
 }
 
-#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_OFF_TARGET */

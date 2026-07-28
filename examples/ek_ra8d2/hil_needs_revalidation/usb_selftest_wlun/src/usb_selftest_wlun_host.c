@@ -33,7 +33,7 @@
 #include "tx_api.h"
 #include "usb_selftest_wlun_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes (host ladder) */
@@ -312,4 +312,4 @@ VOID wlun_host_worker(ULONG arg)
   }
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

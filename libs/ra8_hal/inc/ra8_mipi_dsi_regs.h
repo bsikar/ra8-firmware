@@ -894,7 +894,7 @@ static_assert(offsetof(r_mipi_dsi_regs_t, AKEPLATIR) == (size_t)k_ra8_mipi_dsi_o
  * @brief Pointer to the RA8D2 MIPI DSI host register block.
  *
  * @details
- * Always returns the Secure-world alias. In `RA8_SIMULATOR_MODE` the
+ * Always returns the Secure-world alias. In `RA8_OFF_TARGET` the
  * host test harness has already mmap'd the peripheral window so this
  * pointer is dereferenceable.
  *

@@ -37,7 +37,7 @@
 #include "ra8_err.h"
 #include "ra8_usb_hmsc.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "tx_api.h"
 #include "ux_api.h"
@@ -511,4 +511,4 @@ VOID mlun_host_worker(ULONG arg)
   }
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

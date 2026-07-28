@@ -278,8 +278,8 @@ static ra8_err_t internal_usbhs_wait_pll_lock_short(void)
   volatile uint16_t* const pllsta = ra8_usbhs_pllsta();
   ra8_err_t                lock   = k_ra8_err_hw_timeout;
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_usbhs_pll_lock_attempt_limit; ++i) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(pllsta, i, ((*pllsta & (uint16_t)k_ra8_pllsta_plllock) != 0U))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(pllsta, i, ((*pllsta & (uint16_t)k_ra8_pllsta_plllock) != 0U))) {
       lock = k_ra8_ok;
       break;
     }

@@ -39,16 +39,16 @@
  *      FAIL banner + LED2. Either way the function parks in WFI so the
  *      emulator's idle-stop terminates the run after the one-shot.
  *
- * @par ra8_emulator note (sim path)
+ * @par ra8_emulator note (off-target path)
  * ``tools/ra8_emulator`` DOES model the DMAC mem-to-mem transfer:
  * ``board_periph_dmac.c`` (``dmac_copy_units``) actually moves the bytes
  * in emulated memory on the ``DMREQ.SWREQ`` software trigger, so the
- * **real** ``ra8_dmac`` path runs in sim -- no CPU-memcpy fallback is
+ * **real** ``ra8_dmac`` path runs off-target -- no CPU-memcpy fallback is
  * needed. ra8_emulator's memory is byte-exact and it does **not** model the
  * L1 D-cache, so the clean/invalidate calls are exercised (the line-size
  * and barrier logic run) but have no caching effect, and the copy
  * verifies trivially. The cache hazard this app guards against is only
- * observable on real silicon. ``RA8_SIMULATOR_MODE`` is a host-unit-test
+ * observable on real silicon. ``RA8_OFF_TARGET`` is a host-unit-test
  * define and is NOT set for the ARM cross-build that ra8_emulator executes,
  * so there is nothing to ``#ifdef`` here.
  *

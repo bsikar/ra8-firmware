@@ -21,7 +21,7 @@ Brings the chip up like `crc_demo` (CGC + SysTick + the J-Link OB VCOM console @
 4. **Reuse.** Re-put a new blob, proving the evicted entry's sectors were
    reclaimed.
 5. **Persist across a remount.** Checkpoint-close, then re-mount over the same
-   media with a fresh (zeroed) control block -- a simulated reboot -- and confirm
+   media with a fresh (zeroed) control block -- a emulated reboot -- and confirm
    the survivors (including the pinned atlas) come back byte-identical, the
    evicted key stays gone, and the pin persisted across the checkpoint.
 
@@ -43,7 +43,7 @@ in SRAM with **no MMIO**. Two payoffs:
 
 - **Emu-gateable.** issue #257 calls for the RAM-block-device path precisely
   because it needs no external hardware.
-- **SIM equals HIL by construction.** Because the cache path touches no
+- **EIL equals HIL by construction.** Because the cache path touches no
   peripheral register, the ra8_emulator (EIL) run executes byte-identical
   instructions to the on-silicon run -- there is nothing for the emulator to
   model differently from the chip.

@@ -126,8 +126,8 @@ static uint32_t internal_round_up_to_cache_line(uint32_t bytes)
  *
  * @details
  * Installed as ``req.on_complete`` for every ::ra8_spi_read_dma transfer. Runs
- * from the DMAC transfer-end ISR (or ``ra8_sim_dma_complete`` under
- * ``RA8_SIMULATOR_MODE``) once the engine has finished writing ``out_buf`` to
+ * from the DMAC transfer-end ISR (or ``ra8_fake_dma_complete`` under
+ * ``RA8_OFF_TARGET``) once the engine has finished writing ``out_buf`` to
  * memory. It invalidates the cache lines spanning ``out_buf`` (rounded up to a
  * whole number of lines) so the CPU and the caller's callback re-read the
  * engine-written bytes from memory, then invokes the caller's original

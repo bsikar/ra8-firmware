@@ -1,11 +1,11 @@
 /**
- * @file ra8_sim_mmap.h
+ * @file ra8_fake_mmap.h
  * @brief Host-test helper to reset RA8D2 MMIO backing memory
  *
  * @details
- * Test binaries that link ``ra8_sim_mmap.c`` get the full RA8D2
+ * Test binaries that link ``ra8_fake_mmap.c`` get the full RA8D2
  * register windows wired up to ordinary host RAM via a constructor.
- * Individual tests call `ra8_sim_mmap_reset()` from their `setUp()`
+ * Individual tests call `ra8_fake_mmap_reset()` from their `setUp()`
  * routine to scrub the backing memory between cases.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -25,13 +25,13 @@ extern "C" {
  * Safe to call from test setup/teardown. Leaves the mappings in
  * place -- only clears their contents.
  *
- * @pre Called from a host (`RA8_SIMULATOR_MODE`) test binary.
+ * @pre Called from a host (`RA8_OFF_TARGET`) test binary.
  * @post Every byte in the mapped hardware windows reads zero.
  *
  * @note Not thread-safe. Tests are single-threaded.
  * @since 0.1.0
  */
-void ra8_sim_mmap_reset(void);
+void ra8_fake_mmap_reset(void);
 
 #ifdef __cplusplus
 }

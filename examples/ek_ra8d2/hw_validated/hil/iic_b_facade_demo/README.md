@@ -43,7 +43,7 @@ channel would swap only the one `ra8_io_i2c_bus_bind_i3c_compat` call for
 `ra8_io_i2c_bus_bind_riic`; every transfer stays byte-identical. That is the
 Liskov-substitutable "twin I2C backends" property the facade exists to provide.
 
-## SIM vs bench
+## EIL vs bench
 
 `tools/ra8_emulator` (`board_periph_i2c.c`) models the IIC_B controller bus (the
 GT911 answers `PRODUCT_ID`) AND plays the **external** I2C controller that

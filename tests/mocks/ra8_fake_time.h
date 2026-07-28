@@ -1,5 +1,5 @@
 /**
- * @file ra8_sim_time.h
+ * @file ra8_fake_time.h
  * @brief Host-test deterministic time source
  *
  * @par Tag
@@ -7,13 +7,13 @@
  *
  * @details
  * Unit tests that depend on ``ra8_time_ms`` advancing need a way
- * to move time forward without spinning. ``ra8_sim_time`` wraps
+ * to move time forward without spinning. ``ra8_fake_time`` wraps
  * ``ra8_time_on_tick`` in two test-friendly helpers:
  *
- *  - ``ra8_sim_time_reset()`` -- call ``ra8_time_init`` with a known
+ *  - ``ra8_fake_time_reset()`` -- call ``ra8_time_init`` with a known
  *    clock and reset the tick counter to zero.
  *
- *  - ``ra8_sim_time_advance_ms(n)`` -- call ``ra8_time_on_tick`` n
+ *  - ``ra8_fake_time_advance_ms(n)`` -- call ``ra8_time_on_tick`` n
  *    times so ``ra8_time_ms`` returns the previous value + n.
  *
  * This keeps tests deterministic regardless of host CPU speed
@@ -40,14 +40,14 @@ extern "C" {
  * frequency that passes the reload check) and resets the tick
  * counter to zero.
  *
- * @pre Test is running under ``RA8_SIMULATOR_MODE``.
+ * @pre Test is running under ``RA8_OFF_TARGET``.
  * @post ``ra8_time_ms()`` returns 0.
  * @post ``ra8_time_on_tick`` works as normal afterwards.
  *
  * @note Thread safety: test code only, single-threaded.
  * @since 0.1.0
  */
-void ra8_sim_time_reset(void);
+void ra8_fake_time_reset(void);
 
 /**
  * @brief Advance the tick counter by ``n`` milliseconds.
@@ -58,13 +58,13 @@ void ra8_sim_time_reset(void);
  *
  * @param[in] n Number of milliseconds to advance.
  *
- * @pre Test is running under ``RA8_SIMULATOR_MODE``.
+ * @pre Test is running under ``RA8_OFF_TARGET``.
  * @post ``ra8_time_ms`` is increased by ``n`` relative to before.
  *
  * @note Thread safety: test code only, single-threaded.
  * @since 0.1.0
  */
-void ra8_sim_time_advance_ms(uint32_t n);
+void ra8_fake_time_advance_ms(uint32_t n);
 
 #ifdef __cplusplus
 }

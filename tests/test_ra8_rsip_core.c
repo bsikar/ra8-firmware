@@ -5,11 +5,11 @@
  * @details
  * Split sibling of the original test_ra8_rsip.c suite covering the
  * engine-lifecycle surface of ra8_rsip.c against the
- * ``ra8_sim_mmap``-backed register window:
+ * ``ra8_fake_mmap``-backed register window:
  *
  * - happy-path init runs MSTP release + BIST gate;
  * - the BIST timeout / late-pass legs are driven through the
- * ``ra8_sim_mmio`` wait seam (``fail_wait`` / ``satisfy_after``),
+ * ``ra8_fake_mmio`` wait seam (``fail_wait`` / ``satisfy_after``),
  * never by forging ``STATUS.BIST_OK`` inside the driver;
  * - null-arg rejection on the lifecycle APIs;
  * - TRNG read fails closed (no register backend on this silicon);
@@ -23,7 +23,7 @@
  * ciphers + hash family) and test_ra8_rsip_devsec.c (asymmetric +
  * vault + device security).
  *
- * Each test resets ``ra8_sim_mmap``, ``ra8_sim_mmio`` and ``ra8_mstp``
+ * Each test resets ``ra8_fake_mmap``, ``ra8_fake_mmio`` and ``ra8_mstp``
  * first so cases stay independent.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -31,11 +31,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_rsip.h"
 #include "ra8_rsip_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -110,8 +110,8 @@ static void stub_rsip_cb(void* ctx, uint32_t isr)
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   s_test_isr_count = 0U;
   s_test_isr_last  = 0U;
@@ -150,7 +150,7 @@ static void test_init_happy(void)
  * @brief BIST timeout: STATUS.BIST_OK never asserts -> init fails closed.
   *
   * @par MC/DC:
-  * (no compound decisions in this test -- arms the ra8_sim_mmio wait
+  * (no compound decisions in this test -- arms the ra8_fake_mmio wait
   * seam so `internal_wait_bit` runs to its budget and `internal_run_bist`
   * takes its single-condition failure branch; no `&&` or `||` involved)
  */
@@ -162,12 +162,12 @@ static void test_init_bist_timeout(void)
   /* Arm the exact register internal_run_bist polls: the wait now runs
    * its full budget and times out, so init reports the BIST failure
    * and backs the module out (MSTP re-gated). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_status)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_status)));
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_err_hw_init_failed, ra8_rsip_init(&cfg));
 
   /* Disarm; a clean retry must succeed on the same engine. */
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
 
   TEST_END("rsip init bist timeout");
@@ -177,7 +177,7 @@ static void test_init_bist_timeout(void)
  * @brief Late BIST pass: the poll loop iterates before BIST_OK asserts.
   *
   * @par MC/DC:
-  * (no compound decisions in this test -- ra8_sim_mmio_satisfy_after
+  * (no compound decisions in this test -- ra8_fake_mmio_satisfy_after
   * steps `internal_wait_bit` through its continuation iterations before
   * the wait is satisfied, exercising the loop-iteration branch)
  */
@@ -189,8 +189,8 @@ static void test_init_bist_late_pass(void)
   /* The "engine" asserts BIST_OK on the 3rd poll: the bounded wait
    * must iterate and still converge to success. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_satisfy_after(ra8_rsip_reg32(k_ra8_rsip_off_status),
-                                            (uint32_t)k_ra8_rsip_test_bist_polls));
+                 ra8_fake_mmio_satisfy_after(ra8_rsip_reg32(k_ra8_rsip_off_status),
+                                             (uint32_t)k_ra8_rsip_test_bist_polls));
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
   TEST_ASSERT_EQ(k_ra8_rsip_mask_ctrl_enable, *ra8_rsip_reg32(k_ra8_rsip_off_ctrl));
@@ -489,7 +489,7 @@ static void test_power_transition(void)
  * @brief Exit-stop propagates a BIST failure and re-gates the module.
   *
   * @par MC/DC:
-  * (no compound decisions in this test -- arms the ra8_sim_mmio wait
+  * (no compound decisions in this test -- arms the ra8_fake_mmio wait
   * seam so the post-wake BIST times out and ra8_rsip_exit_stop takes
   * its single-condition failure branch)
  */
@@ -504,7 +504,7 @@ static void test_exit_stop_bist_timeout(void)
 
   /* The post-wake self-test never completes: exit_stop must fail
    * closed instead of reporting a ready engine. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_status)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_status)));
   TEST_ASSERT_EQ(k_ra8_err_hw_init_failed, ra8_rsip_exit_stop());
 
   TEST_END("rsip exit stop bist timeout");

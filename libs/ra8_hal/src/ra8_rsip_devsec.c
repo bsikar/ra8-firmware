@@ -41,11 +41,11 @@
  * answer is worse than one that refuses -- a caller could trust a lie about
  * the lifecycle or debug level -- so every entry point here FAILS CLOSED in a
  * production build: it returns ``k_ra8_err_not_supported`` and writes no
- * fabricated state. The insecure host-sim command path (which only round-trips
- * the register simulator) is retained behind the established stub-crypto guard
+ * fabricated state. The insecure off-target command path (which only round-trips
+ * the register fake) is retained behind the established stub-crypto guard
  * so ``ra8_rsip_devsec.c`` is enforced by ``check_stub_crypto_guarded.py``; a
  * production image compiles the fail-closed ``#else`` and can never mistake the
- * simulator bytes for a real lifecycle / debug / tamper state.
+ * fake bytes for a real lifecycle / debug / tamper state.
  *
  * @note TODO(no in-tree DLM / option-byte / secure-debug driver): there is no
  * real RA8D2 device-lifecycle / debug-authorisation / tamper backend in this
@@ -87,14 +87,14 @@ static const char* s_tag = "RSIP";
  * Ch 52 "Renesas Secure IP (RSIP-E50D)" (p 3302-3307) is a conceptual overview
  * with no register map -- the real state lives in the DLM / option-setting
  * memory / SAU, not an RSIP MMIO word. The command-path bodies here only
- * round-trip the host register simulator; they compute no real security state.
- * They compile only under the insecure-stub / simulator guard so a production
+ * round-trip the host register fake; they compute no real security state.
+ * They compile only under the insecure-stub / off-target guard so a production
  * image gets the fail-closed #else and can never mistake these bytes for a
  * genuine lifecycle / debug / tamper reading. The register pokes below
  * therefore carry NO HUM citation -- there is no real register map to cite; the
  * former "HUM Ch 51.1 / 51.5 / 51.6" citations were fabricated and are removed.
  */
-#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
 
 ra8_err_t ra8_rsip_life_get(ra8_rsip_life_state_t* out)
 {
@@ -172,14 +172,14 @@ ra8_err_t ra8_rsip_dpa_arm(bool enable)
   return k_ra8_ok;
 }
 
-#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_OFF_TARGET */
 
 /*
  * Fail-closed production variant. With no documented RA8D2 device-security
  * register interface (the real lifecycle / debug / tamper state lives in the
  * DLM / option-setting memory / SAU, not an RSIP MMIO word), every entry point
  * returns a hard error (never k_ra8_ok) and writes no fabricated state, so a
- * production image cannot mistake the simulator command-path for a real
+ * production image cannot mistake the fake command-path for a real
  * lifecycle, debug-authorisation, tamper, or side-channel reading.
  */
 
@@ -231,4 +231,4 @@ ra8_err_t ra8_rsip_dpa_arm(bool enable)
   return k_ra8_err_not_supported;
 }
 
-#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_OFF_TARGET */

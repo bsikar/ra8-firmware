@@ -29,7 +29,7 @@
 #include "ra8_err.h"
 #include "usb_selftest_microsd_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* Console helpers (SCI8 -> J-Link OB CDC) */
@@ -182,4 +182,4 @@ static uint32_t microsd_str_len(const char* text)
   return microsd_print("\r\n");
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

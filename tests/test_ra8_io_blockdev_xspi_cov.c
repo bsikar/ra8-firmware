@@ -10,8 +10,8 @@
  *
  * The HAL-error paths are driven through the real driver register
  * sequence: the register-level NOR model in
- * ``tests/mocks/ra8_sim_xspi_flash.c`` services every ``TRREQ`` kick, and
- * the ``ra8_sim_mmio`` seam arms a CMDCMP fault on ``INTS`` -- either for
+ * ``tests/mocks/ra8_fake_xspi_flash.c`` services every ``TRREQ`` kick, and
+ * the ``ra8_fake_mmio`` seam arms a CMDCMP fault on ``INTS`` -- either for
  * every command (``fail_wait``) or for exactly one command in the
  * read -> erase -> program chain (``fail_nth_wait``), which isolates the
  * erase-leg and program-leg error returns inside ``write_one_sector`` /
@@ -31,11 +31,11 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_fake_xspi_flash.h"
 #include "ra8_io_blockdev.h"
 #include "ra8_io_blockdev_xspi.h"
 #include "ra8_ospi_regs.h"
-#include "ra8_sim_mmio.h"
-#include "ra8_sim_xspi_flash.h"
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
@@ -88,7 +88,7 @@ typedef enum : uint32_t {
  * progress. Register RAM is deliberately NOT reset: this binary shares
  * one mapped window across tests, exactly as the sibling suites do.
  *
- * @pre Host test binary (``RA8_SIMULATOR_MODE`` + ``UNIT_TEST``).
+ * @pre Host test binary (``RA8_OFF_TARGET`` + ``UNIT_TEST``).
  * @pre No other thread touches the xSPI registers (single-threaded test).
  * @post The seam holds no armed faults and the model hook is installed.
  * @post Both model instances read back fully erased (0xFF).
@@ -98,8 +98,8 @@ typedef enum : uint32_t {
  */
 static void prep(void)
 {
-  ra8_sim_mmio_reset();
-  ra8_sim_xspi_flash_install();
+  ra8_fake_mmio_reset();
+  ra8_fake_xspi_flash_install();
 }
 
 /**
@@ -231,7 +231,7 @@ static void test_xspi_bounds_lba_overflow(void)
  * @brief xspi_read_chunked: HAL read failure propagates up the call chain.
  *
  * @details
- * Arms ``ra8_sim_mmio_fail_wait`` on ``INTS`` so the first read command's
+ * Arms ``ra8_fake_mmio_fail_wait`` on ``INTS`` so the first read command's
  * CMDCMP poll exhausts its budget: ra8_xspi_flash_read returns the
  * hardware timeout, and xspi_read_chunked propagates it through xspi_read
  * back to the caller.
@@ -253,7 +253,7 @@ static void test_xspi_read_hal_error(void)
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->INTS));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->INTS));
   uint8_t         buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e = ra8_io_blockdev_read(&bd,
                                            (uint32_t)k_cov_bd_lba_zero,
@@ -328,7 +328,7 @@ static void test_xspi_write_bounds_overflow(void)
  * @brief xspi_write -> write_one_sector: HAL read failure propagates up.
  *
  * @details
- * Arms ``ra8_sim_mmio_fail_wait`` on ``INTS`` (writable device, bounds
+ * Arms ``ra8_fake_mmio_fail_wait`` on ``INTS`` (writable device, bounds
  * pass for lba=0, count=8).  Inside write_one_sector the sector pre-read's
  * first command times out; the error propagates from write_one_sector
  * through xspi_write back to the caller.
@@ -350,7 +350,7 @@ static void test_xspi_write_hal_error(void)
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->INTS));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->INTS));
   const uint8_t   buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e = ra8_io_blockdev_write(&bd,
                                             (uint32_t)k_cov_bd_lba_zero,
@@ -364,7 +364,7 @@ static void test_xspi_write_hal_error(void)
  * @brief write_one_sector: an erase failure AFTER a good read propagates.
  *
  * @details
- * Arms ``ra8_sim_mmio_fail_nth_wait`` on ``INTS`` for wait-loop ordinal
+ * Arms ``ra8_fake_mmio_fail_nth_wait`` on ``INTS`` for wait-loop ordinal
  * ::k_cov_bd_nth_erase_se -- the RMW's 0x20 sector-erase kick.  The 512
  * sector pre-read commands and the erase's WREN succeed (the NOR model
  * services them), then the SE command's CMDCMP poll times out, driving
@@ -391,7 +391,7 @@ static void test_xspi_write_erase_leg_error(void)
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_cov_bd_nth_erase_se));
+    ra8_fake_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_cov_bd_nth_erase_se));
   const uint8_t   buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e = ra8_io_blockdev_write(&bd,
                                             (uint32_t)k_cov_bd_lba_zero,
@@ -405,7 +405,7 @@ static void test_xspi_write_erase_leg_error(void)
  * @brief xspi_program_chunked: a program failure AFTER read + erase propagates.
  *
  * @details
- * Arms ``ra8_sim_mmio_fail_nth_wait`` on ``INTS`` for wait-loop ordinal
+ * Arms ``ra8_fake_mmio_fail_nth_wait`` on ``INTS`` for wait-loop ordinal
  * ::k_cov_bd_nth_first_pp -- the first 0x02 page-program kick of the RMW's
  * program-back phase.  The sector pre-read, the erase (WREN + SE + WIP
  * RDSR) and the first chunk's WREN all succeed, then the PP command's
@@ -431,7 +431,7 @@ static void test_xspi_write_program_leg_error(void)
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_cov_bd_nth_first_pp));
+    ra8_fake_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_cov_bd_nth_first_pp));
   const uint8_t   buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e = ra8_io_blockdev_write(&bd,
                                             (uint32_t)k_cov_bd_lba_zero,
@@ -561,7 +561,7 @@ static void test_xspi_erase_bounds_overflow(void)
  * @brief xspi_erase: HAL erase failure propagates back to caller.
  *
  * @details
- * Arms ``ra8_sim_mmio_fail_wait`` on ``INTS`` so the erase's first command
+ * Arms ``ra8_fake_mmio_fail_wait`` on ``INTS`` so the erase's first command
  * (the WREN) times out.  All alignment and bounds checks pass for lba=0,
  * count=8; inside the erase loop ra8_xspi_flash_erase_sector returns the
  * hardware timeout, and xspi_erase propagates it to the caller.
@@ -583,7 +583,7 @@ static void test_xspi_erase_hal_error(void)
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->INTS));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->INTS));
   const ra8_err_t e =
     ra8_io_blockdev_erase(&bd, (uint32_t)k_cov_bd_lba_zero, (uint32_t)k_cov_bd_blocks_per_sector);
   TEST_ASSERT(e != k_ra8_ok);
@@ -643,7 +643,7 @@ static void test_xspi_get_caps(void)
  *
  * @return 0 on success; calls exit(1) on the first assertion failure.
  *
- * @pre ra8_ospi_regs mmap region is accessible (RA8_SIMULATOR_MODE).
+ * @pre ra8_ospi_regs mmap region is accessible (RA8_OFF_TARGET).
  * @pre The ra8_core_hal OBJECT library was built with --coverage.
  * @post All previously uncovered lines in ra8_io_blockdev_xspi.c -- now
  *       including the erase-leg and program-leg error returns -- have

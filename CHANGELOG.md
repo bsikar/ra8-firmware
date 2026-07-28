@@ -91,7 +91,7 @@ three weeks.
   `libs/ra8_nsc` veneer set (comms drivers, I/O drivers, xspi_read,
   live `cmse` veneers).
 - **Platform abstraction layers** `ra8_net_pal` and `ra8_usb_pal` with
-  in-memory loopback rings, plus `ra8_sim_world` host mock.
+  in-memory loopback rings, plus `ra8_fake_world` host mock.
 - **Third-party stacks vendored as git subtrees**: Eclipse ThreadX kernel,
   FileX, LevelX, NetX, USBX (CDC, HID, MSC, audio, MSC host), lwIP
   (with ThreadX `sys_arch` port and `ra8_etha` netif glue), NimBLE host
@@ -189,7 +189,7 @@ three weeks.
   wired in.
 - **USBHS test** assertion relaxed after USBHS init was promoted into
   `ra8_board_ek_ra8d2`.
-- **`ra8_spi_b`** sim-mode short-circuit added; `test_ra8_epaper` happy-path
+- **`ra8_spi_b`** off-target short-circuit added; `test_ra8_epaper` happy-path
   re-enabled. `test_ra8_smbus` and `test_ra8_touch_cal` re-enabled.
 
 ### Documentation

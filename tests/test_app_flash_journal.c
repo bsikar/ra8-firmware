@@ -5,7 +5,7 @@
  * @details
  * Replays the pack/unpack helpers and the round-trip wrapper around
  * ``ra8_xspi_flash_*``. The register-level NOR model in
- * ``tests/mocks/ra8_sim_xspi_flash.c`` services the driver's real
+ * ``tests/mocks/ra8_fake_xspi_flash.c`` services the driver's real
  * erase + program + read register sequence so the round-trip closes.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -16,9 +16,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
-#include "ra8_sim_xspi_flash.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_fake_xspi_flash.h"
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
@@ -49,9 +49,9 @@ typedef enum : uint32_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
-  ra8_sim_xspi_flash_install();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
+  ra8_fake_xspi_flash_install();
   (void)ra8_xspi_init((uint8_t)k_test_flash_instance, k_ra8_xspi_lio_1s1s1s);
 }
 

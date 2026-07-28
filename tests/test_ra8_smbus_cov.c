@@ -26,7 +26,7 @@
  * -------------------------------------------------------
  * - Line 229: closing brace of PEC block in receive_byte after a PEC
  *   match -- requires the bus to return the exact matching PEC byte,
- *   which the host simulator (fixed NTDTBP0 RAM) cannot produce.
+ *   which the host fake (fixed NTDTBP0 RAM) cannot produce.
  * - Line 283: same for read_byte_data.
  * - Line 368: same for block_read.
  *
@@ -37,6 +37,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i2c_bus_ops.h"
 #include "ra8_i3c.h"
 #include "ra8_i3c_i2c.h"
@@ -44,7 +45,6 @@
 #include "ra8_io_i2c_bus.h"
 #include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_smbus.h"
 #include "unity_minimal.h"
 
@@ -79,13 +79,13 @@ static ra8_io_i2c_bus_t s_bus;
  * @brief Play the app's role: initialise IIC_B channel 0 in I2C-compat
  *        mode and bind it through the ra8_io facade into a fresh seam.
  *
- * @details Must re-run after every ``ra8_sim_mmap_reset`` because the
+ * @details Must re-run after every ``ra8_fake_mmap_reset`` because the
  * reset wipes the registers ``ra8_i3c_init`` programmed. Mirrors the
  * helper in test_ra8_smbus.c exactly.
  *
  * @param[out] out Seam to fill for the SMBus cfg.
  *
- * @pre The simulator window is mapped and MSTP is initialised.
+ * @pre The fake window is mapped and MSTP is initialised.
  * @pre ``out`` is writable.
  * @post ``*out`` forwards into IIC_B channel 0 via the bound facade.
  * @post ::s_bus is bound to the I3C I2C-compat backend.
@@ -108,13 +108,13 @@ static void bind_bus(ra8_i2c_bus_ops_t* out)
  * @brief Build an SMBus cfg over a freshly-bound seam.
  *
  * @details Wraps ::bind_bus so each test gets a live seam after its
- * simulator reset.
+ * fake reset.
  *
  * @param[in] pec_enabled PEC policy for the returned cfg.
  *
  * @return Config carrying the bound seam and the PEC flag.
  *
- * @pre The simulator window is mapped and MSTP is initialised.
+ * @pre The fake window is mapped and MSTP is initialised.
  * @pre ::s_bus is safe to (re)bind.
  * @post The returned cfg's seam forwards into IIC_B channel 0.
  * @post ::s_bus is bound.
@@ -134,7 +134,7 @@ static ra8_smbus_cfg_t make_cfg(bool pec_enabled)
  */
 
 /**
- * @brief Reset the simulator and initialize the SMBus layer.
+ * @brief Reset the fake and initialize the SMBus layer.
  *
  * @details Mirrors the prep() helper in test_ra8_smbus.c exactly.
  *
@@ -147,7 +147,7 @@ static ra8_smbus_cfg_t make_cfg(bool pec_enabled)
  */
 static void prep_pec(bool pec_enabled)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_smbus_deinit();
   const ra8_smbus_cfg_t cfg = make_cfg(pec_enabled);
@@ -161,7 +161,7 @@ static void prep_pec(bool pec_enabled)
  * flags) and BCST.BFREF (bus-free flag) so the underlying transfer
  * helpers do not spin. Identical to prime_iic_b() in test_ra8_smbus.c.
  *
- * @pre The simulator memory for channel 0 has been reset.
+ * @pre The fake memory for channel 0 has been reset.
  * @post NTST holds both ready bits; BCST holds the free bit.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -176,7 +176,7 @@ static void prime_iic_b(void)
 /**
  * @brief Reset state so the driver reports not-initialized.
  *
- * @details Resets the simulator, initializes MSTP, then best-effort
+ * @details Resets the fake, initializes MSTP, then best-effort
  * deinits (so s_state.initialized becomes false) without calling
  * ra8_smbus_init.  Every API call after this should return
  * k_ra8_err_not_initialized.
@@ -188,7 +188,7 @@ static void prime_iic_b(void)
  */
 static void reset_to_uninit(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_smbus_deinit();
 }
@@ -321,7 +321,7 @@ static void test_block_read_not_initialized(void)
 /* =============================================================================
  * Error-propagation paths (lines 219, 270, 343, 396)
  *
- * Strategy: call prep() (which resets simulator registers to zero) but
+ * Strategy: call prep() (which resets fake registers to zero) but
  * do NOT call prime_iic_b().  With BCST.BFREF=0 the bus-busy gate
  * internal_i3c_i2c_busy_gate() returns k_ra8_err_busy immediately
  * (no spin-loop), and that error propagates up through the SMBus layer.
@@ -350,7 +350,7 @@ static void test_receive_byte_xfer_error(void)
   TEST_BEGIN("ra8_smbus_receive_byte: propagates ra8_i3c_read error (line 219)");
   /* prep resets registers (BCST.BFREF=0); do not prime. */
   prep_pec(false);
-  /* BCST.BFREF is 0 after sim reset -> busy gate fires immediately. */
+  /* BCST.BFREF is 0 after fake reset -> busy gate fires immediately. */
   uint8_t out = 0U;
   TEST_ASSERT_EQ(k_ra8_err_busy, ra8_smbus_receive_byte((uint8_t)k_cov_target, &out));
   TEST_END("ra8_smbus_receive_byte: propagates ra8_i3c_read error (line 219)");
@@ -439,7 +439,7 @@ static void test_alert_dispatch_xfer_error(void)
  * inside ``ra8_smbus_read_byte_data`` when ``pec_enabled`` is true.
  *
  * With prime_iic_b() armed, ``ra8_i3c_transfer`` succeeds.  The
- * simulator always returns the same value from NTDTBP0 for every read
+ * fake always returns the same value from NTDTBP0 for every read
  * (after the write phase NTDTBP0 holds the read-address byte 0x81),
  * so ``rx[0] == rx[1] == 0x81``.  The computed PEC over the sequence
  * (addr_w, cmd, addr_r, rx[0]) is not 0x81, so the check fails and
@@ -516,7 +516,7 @@ static void test_block_read_pec_mismatch(void)
  * when the peripheral's returned byte-count exceeds the caller's
  * buffer capacity.
  *
- * After the write+read-address sequence the simulator leaves the
+ * After the write+read-address sequence the fake leaves the
  * read-address byte (0x81 = 129) latched in NTDTBP0.  With cap=1 the
  * driver reads want=2 bytes; rx[0]=0x81=129 > 1=cap, so it writes
  * out_len=129 and returns k_ra8_err_invalid_size.
@@ -558,7 +558,7 @@ static void test_block_read_count_overflow(void)
  *
  * @return 0 on success; exits via abort() on first failure.
  *
- * @pre Host-side simulator is available (RA8_SIMULATOR_MODE).
+ * @pre Host-side fake is available (RA8_OFF_TARGET).
  * @post All listed coverage branches have been exercised.
  * @note Not thread-safe.
  * @since 0.1.0

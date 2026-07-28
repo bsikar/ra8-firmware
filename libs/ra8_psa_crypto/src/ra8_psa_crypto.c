@@ -12,7 +12,7 @@
  * TF-PSA-Crypto is only linked into the firmware build when
  * ``RA8_USE_MBEDTLS=ON`` (the same option that pulls in Mbed TLS). The
  * host unit-test build (``tests/CMakeLists.txt``) defines
- * ``RA8_SIMULATOR_MODE`` for every translation unit and intentionally
+ * ``RA8_OFF_TARGET`` for every translation unit and intentionally
  * does not link the heavy PSA object library; in that mode this file
  * substitutes a tiny in-memory crypto stand-in:
  *
@@ -28,7 +28,7 @@
  *   pulling in P-256.
  *
  * The public ``ra8_psa_*`` surface is identical in either build, so a
- * caller migrating from simulator mode to a real firmware image only
+ * caller migrating from off-target mode to a real firmware image only
  * has to flip the build flag.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -46,7 +46,7 @@
 #include "ra8_log.h"
 #include "ra8_psa_crypto_internal.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "psa/crypto.h"
 #endif
 
@@ -64,7 +64,7 @@
  *
  * The internal typed-constant enums and the concrete
  * ``struct ra8_psa_key_handle`` definition live in
- * ``ra8_psa_crypto_internal.h`` so the simulator TU can share them.
+ * ``ra8_psa_crypto_internal.h`` so the fake TU can share them.
  */
 
 /** @brief Per-handle state pool sized at compile time. */
@@ -118,7 +118,7 @@ ra8_err_t ra8_psa_crypto_init(void)
     return k_ra8_err_exists;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   const psa_status_t st = psa_crypto_init();
   if (st != PSA_SUCCESS) {
     ra8_log_error(k_ra8_psa_tag, "psa_crypto_init failed");
@@ -143,7 +143,7 @@ ra8_err_t ra8_psa_crypto_deinit(void)
 
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_psa_max_keys; ++i) {
     if (s_key_pool[i].in_use) {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
       (void)psa_destroy_key(s_key_pool[i].psa_id);
 #endif
       (void)memset(s_key_pool[i].key, 0, sizeof(s_key_pool[i].key));
@@ -152,7 +152,7 @@ ra8_err_t ra8_psa_crypto_deinit(void)
     }
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   mbedtls_psa_crypto_free();
 #endif
 
@@ -160,7 +160,7 @@ ra8_err_t ra8_psa_crypto_deinit(void)
   return k_ra8_ok;
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* Translate ``ra8_psa_key_type_t`` to its ``PSA_KEY_TYPE_*`` peer -- see implementation for details. */
 static psa_key_type_t internal_map_key_type(ra8_psa_key_type_t type)
@@ -238,7 +238,7 @@ static ra8_err_t internal_psa_import_into_slot(struct ra8_psa_key_handle* slot,
   return k_ra8_ok;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 ra8_err_t ra8_psa_key_import(ra8_psa_key_t*            out_handle,
                              const ra8_psa_key_attr_t* attr,
@@ -266,7 +266,7 @@ ra8_err_t ra8_psa_key_import(ra8_psa_key_t*            out_handle,
     return k_ra8_err_no_mem;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   const ra8_err_t pst = internal_psa_import_into_slot(slot, attr, data, data_len);
   if (pst != k_ra8_ok) {
     return pst;
@@ -291,7 +291,7 @@ ra8_err_t ra8_psa_key_destroy(ra8_psa_key_t handle)
     return k_ra8_err_invalid_arg;
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   (void)psa_destroy_key(handle->psa_id);
 #endif
   (void)memset(handle->key, 0, sizeof(handle->key));
@@ -326,8 +326,8 @@ ra8_err_t ra8_psa_hash_compute(ra8_psa_alg_t  alg,
     return k_ra8_err_invalid_size;
   }
 
-#ifdef RA8_SIMULATOR_MODE
-  ra8_psa_sim_sha256_oneshot(input, input_len, out);
+#ifdef RA8_OFF_TARGET
+  ra8_psa_fake_sha256_oneshot(input, input_len, out);
 #else
   size_t             produced = 0U;
   const psa_status_t st =
@@ -375,13 +375,13 @@ ra8_err_t ra8_psa_sign_hash(ra8_psa_key_t  handle,
     return k_ra8_err_invalid_size;
   }
 
-#ifdef RA8_SIMULATOR_MODE
-  /* Sim "signature" = SHA-256(key || hash). 32 bytes. */
+#ifdef RA8_OFF_TARGET
+  /* Fake "signature" = SHA-256(key || hash). 32 bytes. */
   uint8_t buf[k_ra8_psa_max_key_bytes + k_ra8_psa_sha256_len];
   (void)memcpy(buf, handle->key, handle->key_len);
   (void)memcpy(&buf[handle->key_len], hash, hash_len);
   uint8_t digest[32];
-  ra8_psa_sim_sha256_oneshot(buf, handle->key_len + hash_len, digest);
+  ra8_psa_fake_sha256_oneshot(buf, handle->key_len + hash_len, digest);
   (void)memcpy(sig, digest, sizeof(digest));
   *sig_len = sizeof(digest);
 #else
@@ -428,7 +428,7 @@ ra8_err_t ra8_psa_verify_hash(ra8_psa_key_t  handle,
     return k_ra8_err_invalid_size;
   }
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   if (sig_len != (size_t)k_ra8_psa_sha256_len) {
     return k_ra8_err_crc_mismatch;
   }
@@ -436,7 +436,7 @@ ra8_err_t ra8_psa_verify_hash(ra8_psa_key_t  handle,
   (void)memcpy(buf, handle->key, handle->key_len);
   (void)memcpy(&buf[handle->key_len], hash, hash_len);
   uint8_t digest[32];
-  ra8_psa_sim_sha256_oneshot(buf, handle->key_len + hash_len, digest);
+  ra8_psa_fake_sha256_oneshot(buf, handle->key_len + hash_len, digest);
   /* Constant-time compare. */
   uint8_t diff = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_psa_sha256_len; ++i) {
@@ -519,17 +519,17 @@ ra8_err_t ra8_psa_aead_encrypt(ra8_psa_key_t  handle,
     return ck;
   }
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   /* Encrypt = plaintext XOR keystream(key, nonce). Tag = SHA-256-trunc16. */
-  const ra8_err_t ser = ra8_psa_sim_aead_encrypt(handle,
-                                                 nonce,
-                                                 nonce_len,
-                                                 aad,
-                                                 aad_len,
-                                                 plain,
-                                                 plain_len,
-                                                 out,
-                                                 out_len);
+  const ra8_err_t ser = ra8_psa_fake_aead_encrypt(handle,
+                                                  nonce,
+                                                  nonce_len,
+                                                  aad,
+                                                  aad_len,
+                                                  plain,
+                                                  plain_len,
+                                                  out,
+                                                  out_len);
   if (ser != k_ra8_ok) {
     return ser;
   }
@@ -629,16 +629,16 @@ ra8_err_t ra8_psa_aead_decrypt(ra8_psa_key_t  handle,
     return ck;
   }
 
-#ifdef RA8_SIMULATOR_MODE
-  const ra8_err_t sdr = ra8_psa_sim_aead_decrypt(handle,
-                                                 nonce,
-                                                 nonce_len,
-                                                 aad,
-                                                 aad_len,
-                                                 cipher,
-                                                 plain_len,
-                                                 out,
-                                                 out_len);
+#ifdef RA8_OFF_TARGET
+  const ra8_err_t sdr = ra8_psa_fake_aead_decrypt(handle,
+                                                  nonce,
+                                                  nonce_len,
+                                                  aad,
+                                                  aad_len,
+                                                  cipher,
+                                                  plain_len,
+                                                  out,
+                                                  out_len);
   if (sdr != k_ra8_ok) {
     return sdr;
   }
@@ -672,7 +672,7 @@ ra8_err_t ra8_psa_aead_decrypt(ra8_psa_key_t  handle,
  *
  * @details See the matching header declaration for the full contract.
  * On the target this delegates to ``psa_generate_random``; in
- * ``RA8_SIMULATOR_MODE`` builds a deterministic xorshift32 stream is
+ * ``RA8_OFF_TARGET`` builds a deterministic xorshift32 stream is
  * used so host-side tests are reproducible across runs.
  *
  * @param[out] out     Destination buffer.
@@ -704,7 +704,7 @@ ra8_err_t ra8_psa_crypto_random(uint8_t* out, size_t out_len)
     return k_ra8_err_not_initialized;
   }
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   /* Deterministic xorshift32 -- reproducible host-test entropy.
    * Constants from Marsaglia 2003 "Xorshift RNGs" J. Stat. Soft. 8(14). */
   static uint32_t s_state = (uint32_t)k_xs32_seed;

@@ -6,7 +6,7 @@
  * Mirrors the bring-up flow of examples/ek_ra8d2/canfd_loopback/main.c:
  * ra8_canfd_init -> ra8_canfd_set_bitrate -> ra8_canfd_set_test_mode ->
  * transmit + receive cycle. All MMIO is via the host
- * tests/mocks/ra8_sim_mmap.c shim.
+ * tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -18,7 +18,7 @@
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -48,7 +48,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /**
@@ -86,7 +86,7 @@ static void test_canfd_app_loopback_bits_set(void)
   TEST_BEGIN("canfd_loopback: CTME / CTMS bits stamped");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_init((uint8_t)k_test_canfd_app_channel));
   /* The set_test_mode helper polls CFDC[0].STS.CHLTSTS after dropping
-   * the channel into CH_HALT.  Pre-set the sim STS register so the
+   * the channel into CH_HALT.  Pre-set the fake STS register so the
    * spin loop sees halt asserted immediately (HUM Ch 41 "CFDCnSTS"
    * p 2711). */
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_test_canfd_app_channel);

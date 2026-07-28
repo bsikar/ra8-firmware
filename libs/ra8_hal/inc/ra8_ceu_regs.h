@@ -683,7 +683,7 @@ typedef enum : uint32_t {
  * @post Returned pointer is non-null and properly aligned for a
  *       32-bit access.
  *
- * @note Routes through `ra8_sim_mmap` on host test builds so that
+ * @note Routes through `ra8_fake_mmap` on host test builds so that
  *       writes target real RAM rather than segfaulting.
  *
  * @since 0.1.0
@@ -719,7 +719,7 @@ static inline volatile uint32_t* ra8_ceu_reg32(ra8_ceu_off_t offset)
  *       CRCNTR, CRCMPR, CFWCR, CEIER, CETCR, CSTSR, CDSSR) ignore
  *       the +0x1000 / +0x2000 offsets at hardware level; addresses
  *       outside the 3-plane subset behave as ordinary RAM on host
- *       tests via `ra8_sim_mmap`.
+ *       tests via `ra8_fake_mmap`.
  *
  * @since 0.1.0
  */

@@ -30,7 +30,7 @@ make epub_toc                          # cross-compile -> build/epub_toc.elf
 make -C examples/epub_toc flash        # flash via on-board J-Link OB
 ```
 
-## Run on the M85 simulator (no hardware)
+## Run on the M85 emulator (no hardware)
 
 ```sh
 cmake --build tools/ra8_emulator/build -j
@@ -75,7 +75,7 @@ real-bench scope.
 Pmod2 (J25) microSD over `ra8_sdmmc_spi` (SCI0 Simple-SPI); SCI8 async
 console (TXD=PD02, RXD=PD03, 115200-8N1) on the J-Link OB virtual COM.
 
-Validated on ra8_emulator (the Unicorn-based M85 simulator): deterministic
+Validated on ra8_emulator (the Unicorn-based M85 emulator): deterministic
 across repeated `--sd-new` runs -- `g_etoc_err 0`, ncx (kind 1, n 2, crc
 0xDBC4EA24, ch0 0), nav (kind 2, n 3, crc 0x4CC9A9C1, ch0 0), bad (kind
 0, chapters 2), heartbeat advancing, no invalid opcode or fault.

@@ -9,9 +9,9 @@
  * See ``ra8_tz_secure_boot.h`` for the full contract. This file owns
  * the actual MMIO writes. The implementation is split into three
  * phases (SAU init, security init, BLXNS) so unit tests can drive
- * each phase against the host-side simulator mmap.
+ * each phase against the host-side fake mmap.
  *
- * The host-build path uses ``RA8_SIMULATOR_MODE`` to swap the SAU /
+ * The host-build path uses ``RA8_OFF_TARGET`` to swap the SAU /
  * CPSCU MMIO writes for in-memory captures, lets the tests assert on
  * the documented PRCR-unlock / IPCSAR-write sequence, and replaces
  * the ``BLXNS`` instruction with a captured-target-then-return path.
@@ -153,7 +153,7 @@ typedef enum : uint32_t {
   k_ra8_tz_part_ns_per_limit = 0x5FFFFFE0U, /**< RA8 TrustZone part ns per limit. */
 } ra8_tz_secure_boot_partition_t;
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 
 /* =============================================================================
  * Host-side captures
@@ -192,7 +192,7 @@ typedef struct {
 
 /**
  * @var s_host
- * @brief Host-side simulation state (zero-initialised by BSS).
+ * @brief Host-side fake state (zero-initialised by BSS).
  *
  * @details See ``ra8_tz_secure_boot_host_state_t`` for the field set.
  * @note    File-private; cleared by ``ra8_tz_secure_boot_host_reset``.
@@ -220,7 +220,7 @@ uint32_t ra8_tz_secure_boot_host_blxns_target(void)
   return s_host.blxns_target;
 }
 
-#else /* !RA8_SIMULATOR_MODE */
+#else /* !RA8_OFF_TARGET */
 
 void ra8_tz_secure_boot_host_reset(void)
 {
@@ -236,7 +236,7 @@ uint32_t ra8_tz_secure_boot_host_blxns_target(void)
   return 0U;
 }
 
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */
 
 /* =============================================================================
  * Small register helpers (host-aware)
@@ -247,7 +247,7 @@ uint32_t ra8_tz_secure_boot_host_blxns_target(void)
  * @brief Write a 32-bit MMIO register (or capture on host).
  *
  * @details On target the value is stored directly into the MMIO register
- *          at ``addr``. On host (``RA8_SIMULATOR_MODE``) the value is
+ *          at ``addr``. On host (``RA8_OFF_TARGET``) the value is
  *          captured in ``s_host`` so unit tests can inspect the write.
  *
  * @param[in] addr Target address.
@@ -262,7 +262,7 @@ uint32_t ra8_tz_secure_boot_host_blxns_target(void)
  */
 RA8_INTERNAL static void internal_write32(uintptr_t addr, uint32_t value)
 {
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   if (addr == (uintptr_t)k_ra8_tz_ipcsar_addr) {
     s_host.ipcsar_value = value;
   } else if (addr == (uintptr_t)k_ra8_tz_ipcpar_addr) {
@@ -285,7 +285,7 @@ RA8_INTERNAL static void internal_write32(uintptr_t addr, uint32_t value)
  * @brief Read a 32-bit MMIO register (or canned host value).
  *
  * @details On target the function dereferences the MMIO address.
- *          On host (``RA8_SIMULATOR_MODE``) it returns the canned values
+ *          On host (``RA8_OFF_TARGET``) it returns the canned values
  *          tests expect for SAU_TYPE (= 8 regions) and IPCSAR.
  *
  * @param[in] addr Target address.
@@ -303,7 +303,7 @@ RA8_INTERNAL static void internal_write32(uintptr_t addr, uint32_t value)
  */
 RA8_INTERNAL static uint32_t internal_read32(uintptr_t addr)
 {
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   if (addr == (uintptr_t)k_ra8_tz_sau_type_addr) {
     /* Cortex-M85 implements 8 SAU regions; tests rely on that. */
     return 8U;
@@ -339,7 +339,7 @@ RA8_INTERNAL static uint32_t internal_read32(uintptr_t addr)
  */
 RA8_INTERNAL static void internal_write16(uintptr_t addr, uint16_t value)
 {
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   s_host.prcr_s_last = value;
   if ((value & (uint16_t)k_ra8_tz_prcr_s_prc4_open) != 0U) {
     s_host.prcr_unlock_count = (uint8_t)(s_host.prcr_unlock_count + 1U);
@@ -368,7 +368,7 @@ RA8_INTERNAL static void internal_write16(uintptr_t addr, uint16_t value)
  */
 RA8_INTERNAL static inline void internal_dsb(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("dsb 0xF" ::: "memory");
 #endif
 }
@@ -388,7 +388,7 @@ RA8_INTERNAL static inline void internal_dsb(void)
  */
 RA8_INTERNAL static inline void internal_isb(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("isb 0xF" ::: "memory");
 #endif
 }
@@ -429,7 +429,7 @@ internal_sau_set_region(uint8_t region, uint32_t base, uint32_t limit, bool is_n
   }
   internal_write32(k_ra8_tz_sau_rlar_addr, rlar);
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   if ((uint32_t)region < (uint32_t)k_ra8_tz_sau_region_count) {
     s_host.sau_region_base[region]  = base;
     s_host.sau_region_limit[region] = limit;
@@ -560,7 +560,7 @@ uint32_t ra8_tz_ns_signed_body_len(const uint32_t* ns_vector_table)
  * signature check and default-denies. (Here ``body_len`` is additionally covered
  * by the signature, since the header word sits inside the signed body.)
  *
- * With the flag OFF (default) -- or under ``RA8_SIMULATOR_MODE``, where the NS
+ * With the flag OFF (default) -- or under ``RA8_OFF_TARGET``, where the NS
  * image and trailer do not exist at a real address on the unit-test host -- the
  * gate is absent and this returns ``k_ra8_ok`` so the jump proceeds unverified,
  * exactly as before. The gate's decision logic is covered directly in
@@ -589,7 +589,7 @@ uint32_t ra8_tz_ns_signed_body_len(const uint32_t* ns_vector_table)
 RA8_INTERNAL static ra8_err_t internal_ns_verify_or_deny(const uint32_t* ns_vector_table)
 {
   RA8_CHECK_NULL_PTR(ns_vector_table, s_tag, "ns_vector_table");
-#if !defined(RA8_SIMULATOR_MODE) && defined(RA8_ENABLE_ROOT_OF_TRUST)
+#if !defined(RA8_OFF_TARGET) && defined(RA8_ENABLE_ROOT_OF_TRUST)
   const uint32_t ns_body_len = ra8_tz_ns_signed_body_len(ns_vector_table);
   if (ns_body_len == 0U) {
     ra8_log_error(s_tag, "NS RoT header missing/invalid -- denying BLXNS");
@@ -606,7 +606,7 @@ RA8_INTERNAL static ra8_err_t internal_ns_verify_or_deny(const uint32_t* ns_vect
 #else
   (void)ns_vector_table;
   return k_ra8_ok; /* root of trust disabled (or host build): no verification */
-#endif /* !RA8_SIMULATOR_MODE && RA8_ENABLE_ROOT_OF_TRUST */
+#endif /* !RA8_OFF_TARGET && RA8_ENABLE_ROOT_OF_TRUST */
 }
 
 ra8_err_t ra8_tz_secure_boot_jump_ns(const uint32_t* ns_vector_table)
@@ -641,7 +641,7 @@ ra8_err_t ra8_tz_secure_boot_jump_ns(const uint32_t* ns_vector_table)
   internal_write32(k_ra8_tz_scb_vtor_ns_addr, (uint32_t)(uintptr_t)ns_vector_table);
   s_step = k_ra8_tz_secure_boot_step_blxns_armed;
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   s_host.blxns_target = reset_entry;
   s_host.blxns_msp_ns = initial_sp;
   s_step              = k_ra8_tz_secure_boot_step_branched;

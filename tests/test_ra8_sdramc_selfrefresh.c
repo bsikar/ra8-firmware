@@ -4,8 +4,8 @@
  *
  * @details
  * Exercises `ra8_sdramc_enter_self_refresh` and
- * `ra8_sdramc_exit_self_refresh` via the simulated MMIO window
- * provided by `ra8_sim_mmap`. The mock faithfully reflects register
+ * `ra8_sdramc_exit_self_refresh` via the fake MMIO window
+ * provided by `ra8_fake_mmap`. The mock faithfully reflects register
  * writes, so each test verifies the exact register image left by the
  * driver after a successful transition or the error code returned on
  * a violated precondition.
@@ -23,13 +23,13 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpio_constants.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_sdramc.h"
 #include "ra8_sdramc_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -46,20 +46,20 @@ typedef enum : uint8_t {
 } test_sdramc_sr_bits_t;
 
 /**
- * @brief Reset the simulated MMIO backing store before each test.
+ * @brief Reset the fake MMIO backing store before each test.
  *
  * @details Zeroes the peripheral RAM image so all register reads
  * return 0 (idle state). No pin-validator reset is needed here
  * because the self-refresh tests do not call `ra8_sdramc_init`.
  *
  * @pre Host MMIO substrate is linked.
- * @pre `ra8_sim_mmap_reset` is safe to call repeatedly.
+ * @pre `ra8_fake_mmap_reset` is safe to call repeatedly.
  * @post All SDRAMC registers read as 0.
  * @post SDSR, SDSELF, and SDRFEN are all 0.
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /* =========================================================================

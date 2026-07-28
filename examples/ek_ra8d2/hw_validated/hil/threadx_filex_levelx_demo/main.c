@@ -48,12 +48,12 @@
 #include "ra8_time.h"
 
 /*
- * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_OFF_TARGET) does not link the
  * ThreadX / FileX / LevelX vendor trees, so their headers are
  * unreachable when clang-tidy walks this file. Pull them in only on
  * the cross-compile target.
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "fx_api.h"
 #include "lx_api.h"
 #include "lx_filex_adapter.h"
@@ -99,7 +99,7 @@ static char s_demo_file_path[] = "levelx_test.txt";
 /** @brief Worker-thread name (mutable so ThreadX can take CHAR*). */
 static char s_demo_thread_name[] = "fxlx_demo";
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* LevelX state. ThreadX requires statically-allocated control blocks
  * (NASA Power of 10 Rule 3 -- no dynamic memory). */
 static LX_NOR_FLASH s_nor_flash;
@@ -112,7 +112,7 @@ static UCHAR    s_media_memory[k_demo_media_buf_size];
 /* ThreadX worker thread. */
 static TX_THREAD s_demo_thread;
 static UCHAR     s_demo_stack[k_demo_thread_stack];
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Halt forever in WFI, after draining the SCI8 TX shift register.
@@ -184,7 +184,7 @@ static void demo_print(const char* s)
   (void)ra8_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Format + open the LevelX partition. Panics on any failure.
  *
@@ -395,7 +395,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -415,7 +415,7 @@ int32_t main(void)
   ra8_isr_globals_enable();
   demo_print("[fxlx] booting ThreadX + FileX-on-LevelX...\r\n");
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* Hands control over to ThreadX permanently. */
   tx_kernel_enter();
 #endif

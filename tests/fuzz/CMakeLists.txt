@@ -40,9 +40,9 @@ message(STATUS "RA8_FUZZ=ON: building libFuzzer harnesses with "
 )
 
 # AddressSanitizer reserves the low 4 GB of address space on macOS,
-# which conflicts with the ra8_sim_mmap MAP_FIXED windows at
+# which conflicts with the ra8_fake_mmap MAP_FIXED windows at
 # 0x02000000..0x68000000. On macOS we drop ASan and rely on libFuzzer
-# coverage + UBSan; the simulator's own MAP_FIXED guards still flag
+# coverage + UBSan; the fake's own MAP_FIXED guards still flag
 # bad accesses. Linux has no such conflict and gets the full set.
 if(APPLE)
   set(RA8_FUZZ_SAN_FLAGS
@@ -63,22 +63,22 @@ else()
 endif()
 
 # Each fuzz target links against the slim ra8_core_hal_fuzz OBJECT library
-# (ra8_core_hal MINUS tests/mocks/ra8_sim_mmap.c; defined in
+# (ra8_core_hal MINUS tests/mocks/ra8_fake_mmap.c; defined in
 # tests/CMakeLists.txt). That library is compiled WITHOUT the fuzzer
 # sanitizer flags, so coverage feedback only spans the harness translation
 # unit. ASan and UBSan still observe out-of-bounds reads / integer UB
 # inside the linked-in production code, which is the primary value we are
 # after.
 #
-# ra8_sim_mmap.c is excluded from that library because its load-time
+# ra8_fake_mmap.c is excluded from that library because its load-time
 # MAP_FIXED constructor maps 0xE0000000, which lands in ASan's shadow gap
 # and aborts the process before main() (issue #193). The pure-computation
 # harnesses -- parsers/codecs driven purely by their input buffer or by
 # injected dependencies -- never touch peripheral MMIO, so they simply omit
 # it. Only the harnesses in RA8_FUZZ_MMIO_TARGETS dereference real
-# peripheral registers; they add ra8_sim_mmap.c back as a direct source, so
+# peripheral registers; they add ra8_fake_mmap.c back as a direct source, so
 # it is compiled with THIS target's ASan flags and skips the shadow-gap
-# region (ra8_sim_region_mappable()) instead of aborting.
+# region (ra8_fake_region_mappable()) instead of aborting.
 set(RA8_FUZZ_TARGETS
     fuzz_ra8_jpeg_sw
     fuzz_ra8_jpeg_sw_block
@@ -103,9 +103,9 @@ set(RA8_FUZZ_TARGETS
 )
 
 # Harnesses that dereference real peripheral registers and therefore need
-# the ra8_sim_mmap host backing store. All touch only peripheral-bus
+# the ra8_fake_mmap host backing store. All touch only peripheral-bus
 # addresses (0x40000000-class), never the 0xE0000000 SCB/MPU window, so the
-# shadow-gap skip in ra8_sim_mmap.c does not affect them:
+# shadow-gap skip in ra8_fake_mmap.c does not affect them:
 #   fuzz_ra8_canfd    -- stages a CFDRF[0] RX block and decodes via ra8_canfd_receive
 #   fuzz_ra8_usb_pal  -- ra8_mstp_init + ra8_usb_pal_init / _ep_* touch USBFS regs
 set(RA8_FUZZ_MMIO_TARGETS fuzz_ra8_canfd fuzz_ra8_usb_pal)
@@ -116,7 +116,7 @@ foreach(_t ${RA8_FUZZ_TARGETS})
   # here -- see fuzz_log_sink.c and issue #193). Linked into every harness.
   set(_t_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${_t}.c ${CMAKE_CURRENT_SOURCE_DIR}/fuzz_log_sink.c)
   if(_t IN_LIST RA8_FUZZ_MMIO_TARGETS)
-    list(APPEND _t_srcs ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/ra8_sim_mmap.c)
+    list(APPEND _t_srcs ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/ra8_fake_mmap.c)
   endif()
   add_executable(${_t} ${_t_srcs} $<TARGET_OBJECTS:ra8_core_hal_fuzz>)
   target_compile_options(${_t} PRIVATE ${RA8_FUZZ_SAN_FLAGS})

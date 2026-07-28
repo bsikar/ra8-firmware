@@ -32,7 +32,7 @@
  * non-existent option word.
  *
  * @note Host-friendly: compile-time constants only, touches no hardware, so it
- *       builds unchanged under `RA8_SIMULATOR_MODE` and in the host unit tests
+ *       builds unchanged under `RA8_OFF_TARGET` and in the host unit tests
  *       (which default to the RA8D2 device selection).
  *
  * @see ra8_device.h  RA8D2/RA8P1 compile-time device switch and `RA8_HAS_OFS3`.

@@ -14,9 +14,9 @@
  * `.gcda` produced here with the sibling target's for the same source.
  *
  * All hardware effects are produced by pre-seeding the memory-mapped
- * register RAM exposed by `RA8_SIMULATOR_MODE` + `ra8_sim_mmap` (BRDYSTS /
+ * register RAM exposed by `RA8_OFF_TARGET` + `ra8_fake_mmap` (BRDYSTS /
  * CFIFOCTR / CFIFO). `internal_wait_frdy` converges on its first poll
- * via the unarmed ra8_sim_mmio seam, so no timing/SIGALRM injection is
+ * via the unarmed ra8_fake_mmio seam, so no timing/SIGALRM injection is
  * used.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -26,8 +26,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_paud.h"
 #include "ra8_usb_regs.h"
@@ -82,10 +82,10 @@ static ra8_err_t test_paud_cov_cb(void* ctx, const ra8_usb_setup_t* setup)
   return s_cb_return;
 }
 
-/** @brief Reset the simulator, module-stop table, and class singleton. */
+/** @brief Reset the fake, module-stop table, and class singleton. */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_paud_close();
   s_cb_calls  = 0;
@@ -180,7 +180,7 @@ static void test_recv_frame_post_init(void)
  *
  * @details A registered class handler that returns a non-`k_ra8_ok` code
  * makes `ra8_usb_paud_handle_setup` STALL EP0 via
- * `ra8_usb_control_response(speed, false)`. Under simulation that helper
+ * `ra8_usb_control_response(speed, false)`. Off-target that helper
  * returns `k_ra8_ok` (it only drives the DCPCTR PID=STALL register), so
  * the dispatcher itself reports `k_ra8_ok` while the callback fired once.
  */

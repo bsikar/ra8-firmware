@@ -559,7 +559,7 @@ typedef enum : uint16_t {
  * HUM citation; this veneer touches no registers.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok                  Transmit complete (or simulator stub).
+ * @retval k_ra8_ok                  Transmit complete (or fake stub).
  * @retval k_ra8_err_not_initialized console_init not called.
  * @retval k_ra8_err_hw_timeout      Spin budget elapsed without completion.
  *

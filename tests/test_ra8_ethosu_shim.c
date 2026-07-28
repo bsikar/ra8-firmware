@@ -23,9 +23,9 @@
 
 #include "ra8_err.h"
 #include "ra8_ethosu_shim.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_npu.h"
 #include "ra8_npu_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -60,11 +60,11 @@ static uint8_t s_shim_output[k_test_shim_arena_bytes];
  */
 static struct ethosu_driver* shim_prep(void)
 {
-  ra8_sim_mmap_reset();                                /**< RA8 sim mmap reset.    */
+  ra8_fake_mmap_reset();                               /**< RA8 fake mmap reset.   */
   struct ethosu_driver* drv = ethosu_reserve_driver(); /**< Ethosu reserve driver. */
   TEST_ASSERT_NOT_NULL(drv);                           /**< Drv.                   */
   /* No real NPU reaches cmd_end here: latch it so the blocking ra8_npu_wait()
-   * inside ethosu_invoke_v3() returns immediately (as the sim model would). */
+   * inside ethosu_invoke_v3() returns immediately (as the fake model would). */
   *ra8_npu_reg(k_ra8_npu_off_status) =
     ((uint32_t)1U << k_ra8_npu_status_cmd_end_bit); /**< RA8 npu status cmd end bit. */
   return drv;                                       /**< Drv.                        */
@@ -179,7 +179,7 @@ static void test_invoke_two_regions(void)
 static void test_reserve_idempotent_release_noop(void)
 {
   TEST_BEGIN("ethosu reserve idempotent + release no-op");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   struct ethosu_driver* a = ethosu_reserve_driver();
   struct ethosu_driver* b = ethosu_reserve_driver();
@@ -348,7 +348,7 @@ static void test_invoke_null_base_addr_guard_mcdc(void)
 static void test_reserve_reports_init_failure(void)
 {
   TEST_BEGIN("ethosu reserve returns NULL when npu_init fails");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* Latch STATUS.reset stuck-high: the reset poll in ra8_npu_init() can never see
    * it clear, so the bounded spin times out and init fails. */
   *ra8_npu_reg(k_ra8_npu_off_status) = ((uint32_t)1U << k_ra8_npu_status_reset_bit);
@@ -357,7 +357,7 @@ static void test_reserve_reports_init_failure(void)
   TEST_ASSERT_NULL(drv);
 
   /* Clear the stuck bit so the next test's reserve reset succeeds. */
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_END("ethosu reserve returns NULL when npu_init fails");
 }
 
@@ -378,7 +378,7 @@ static void test_reserve_reports_init_failure(void)
 static void test_invoke_reports_wait_fault(void)
 {
   TEST_BEGIN("ethosu invoke fails when the NPU latches a fault");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   struct ethosu_driver* drv = ethosu_reserve_driver();
   TEST_ASSERT_NOT_NULL(drv);
   /* Latch a bus-error fault (and deliberately NOT cmd_end) so the wait poll
@@ -414,7 +414,7 @@ static void test_release_tolerates_null(void)
   TEST_BEGIN("ethosu release tolerates a NULL handle");
   ethosu_release_driver(nullptr); /* must not crash: null-guarded, returns early. */
 
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   struct ethosu_driver* drv = ethosu_reserve_driver();
   TEST_ASSERT_NOT_NULL(drv);
   ethosu_release_driver(drv); /* valid handle: clears reserved, no-op otherwise. */
@@ -440,7 +440,7 @@ static void test_release_tolerates_null(void)
 static void test_invoke_rejected_after_deinit(void)
 {
   TEST_BEGIN("ethosu invoke fails after the NPU is de-initialised");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   struct ethosu_driver* drv = ethosu_reserve_driver();
   TEST_ASSERT_NOT_NULL(drv);
   /* Tear the NPU down under the still-held handle (deinit requires it up, so a

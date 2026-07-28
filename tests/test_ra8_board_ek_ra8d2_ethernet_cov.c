@@ -20,7 +20,7 @@
  *       at line 775.
  *
  * All other uncovered branches in the module are error-return paths where
- * the called HAL function cannot fail under RA8_SIMULATOR_MODE given the
+ * the called HAL function cannot fail under RA8_OFF_TARGET given the
  * fixed, valid arguments that the ethernet module always passes; those
  * lines carry GCOVR_EXCL_LINE in the source with a justification comment.
  *
@@ -38,9 +38,9 @@
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /* -------------------------------------------------------------------------
@@ -49,7 +49,7 @@
  */
 
 /**
- * @brief Reset all simulated peripheral state and pin ownership.
+ * @brief Reset all fake peripheral state and pin ownership.
  *
  * @details
  * Mirrors reset_board_hal_state() in test_ra8_board_ek_ra8d2.c.  Called
@@ -57,14 +57,14 @@
  * clean slate regardless of execution order within this binary.
  *
  * @pre None.
- * @post ra8_sim_mmap register window cleared; pin validator bitmap zeroed.
+ * @post ra8_fake_mmap register window cleared; pin validator bitmap zeroed.
  *
  * @note Not thread-safe; single-threaded test context only.
  * @since 0.1.0
  */
 static void reset_state(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 
@@ -210,7 +210,7 @@ static void test_eth_route_alt_pins_pfs_conflict(void)
  *
  * @return 0 on success.
  *
- * @pre ra8_sim_mmap register window allocated by the test framework constructor.
+ * @pre ra8_fake_mmap register window allocated by the test framework constructor.
  * @post All targeted source lines are instrumented with gcov data.
  *
  * @note Not thread-safe; single-threaded test runner.

@@ -19,14 +19,14 @@
 
 #include "ra8_err.h"
 #include "ra8_exception.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 /**
  * @enum exc_scb_reg_t
  * @brief Armv8-M System Control Block fault registers this test plants values in.
  *
  * @details
- * The host build maps the core's register window (::ra8_sim_mmap), so the test
+ * The host build maps the core's register window (::ra8_fake_mmap), so the test
  * writes each fault-status register directly and then checks that the capture
  * read the right one. Addresses are `uintptr_t` because they are addresses.
  */
@@ -96,7 +96,7 @@ void internal_ra8_fatal_error(const char* tag, const char* message, uint32_t err
 static void test_capture_diagnostics_happy(void)
 {
   TEST_BEGIN("ra8_exception_capture_diagnostics fills buffer");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pre-load the SCB fault status registers via the mapped core
    * window so the capture has something to read. */
@@ -134,7 +134,7 @@ static void test_capture_diagnostics_happy(void)
 static void test_capture_diagnostics_null(void)
 {
   TEST_BEGIN("ra8_exception_capture_diagnostics tolerates NULL");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* Must early-return without touching anything. */
   ra8_exception_capture_diagnostics(nullptr);
   TEST_END("ra8_exception_capture_diagnostics tolerates NULL");
@@ -149,7 +149,7 @@ static void test_capture_diagnostics_null(void)
 static void test_exception_report_with_frame(void)
 {
   TEST_BEGIN("ra8_exception_report logs frame and halts via fatal");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_fatal_hit = 0U;
 
   const ra8_exception_frame_t frame = {
@@ -181,7 +181,7 @@ static void test_exception_report_with_frame(void)
 static void test_exception_report_null_frame(void)
 {
   TEST_BEGIN("ra8_exception_report accepts NULL frame");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_fatal_hit = 0U;
 
   if (setjmp(s_fatal_jmp) == 0) {
@@ -206,7 +206,7 @@ static void test_exception_report_null_frame(void)
 static void test_exception_report_securefault_records_sfsr_sfar(void)
 {
   TEST_BEGIN("ra8_exception_report exc 7 snapshots SFSR/SFAR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_fatal_hit = 0U;
 
   /* Synthetic SecureFault cause: SFSR = AUVIOL|SFARVALID (0x48), SFAR
@@ -242,7 +242,7 @@ static void test_exception_report_securefault_records_sfsr_sfar(void)
 static void test_exception_report_nmi_records_cause(void)
 {
   TEST_BEGIN("ra8_exception_report_nmi records the NMISR cause");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_fatal_hit = 0U;
 
   /* Synthetic RA8D2 NMISR: WDTST (bit 1) + LMST local-memory / SRAM
@@ -274,7 +274,7 @@ static void test_exception_report_nmi_records_cause(void)
 static void test_exception_report_clears_stale_nmi_cause(void)
 {
   TEST_BEGIN("ra8_exception_report clears the staged NMI cause");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_fatal_hit = 0U;
 
   /* First: an NMI report stages + records a cause. */

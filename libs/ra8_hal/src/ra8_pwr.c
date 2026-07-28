@@ -14,7 +14,7 @@
  * WUPEN1 directly. The full WUPEN field map will be added in
  * (RTC, ULPT, AGT bring-up).
  * - ``ra8_pwr_enter_sleep()`` issues a single WFI on the target
- * and is a no-op in ``RA8_SIMULATOR_MODE``.
+ * and is a no-op in ``RA8_OFF_TARGET``.
  * - ``ra8_pwr_enter_software_standby()`` validates that at least
  * one wake source is armed, then sets LPMD and SLEEPDEEP and
  * issues WFI. The WFI is host-no-op so unit tests do not stall.

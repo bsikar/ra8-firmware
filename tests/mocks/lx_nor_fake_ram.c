@@ -1,5 +1,5 @@
 /**
- * @file lx_nor_sim_ram.c
+ * @file lx_nor_fake_ram.c
  * @brief RAM-backed LevelX NOR driver for host tests -- implementation.
  *
  * @par Tag
@@ -20,48 +20,48 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "lx_nor_sim_ram.h"
+#include "lx_nor_fake_ram.h"
 
 #include "lx_api.h"
 
 /**
- * @enum lx_nor_sim_const_t
- * @brief Geometry + sentinel constants for the RAM NOR simulator.
+ * @enum lx_nor_fake_const_t
+ * @brief Geometry + sentinel constants for the RAM NOR fake.
  * @details 64 blocks * 1024 words/block gives LevelX an ample logical-sector
  *          space (hundreds of 512-byte sectors) so the cache-store tests never
  *          run the underlying device out of physical sectors.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_lx_nor_sim_total_blocks    = 64U,         /**< NOR blocks.         */
-  k_lx_nor_sim_words_per_block = 1024U,       /**< ULONG words/block.  */
-  k_lx_nor_sim_total_words     = 64U * 1024U, /**< Backing word count. */
-  k_lx_nor_sim_erased          = 0xFFFFFFFFU, /**< LevelX erased word. */
-} lx_nor_sim_const_t;
+  k_lx_nor_fake_total_blocks    = 64U,         /**< NOR blocks.         */
+  k_lx_nor_fake_words_per_block = 1024U,       /**< ULONG words/block.  */
+  k_lx_nor_fake_total_words     = 64U * 1024U, /**< Backing word count. */
+  k_lx_nor_fake_erased          = 0xFFFFFFFFU, /**< LevelX erased word. */
+} lx_nor_fake_const_t;
 
 /**
- * @var s_sim_backing
- * @brief The simulated NOR media (persists across open/close within a process).
- * @warning Written only through the driver callbacks and ::lx_nor_sim_ram_wipe.
+ * @var s_fake_backing
+ * @brief The fake NOR media (persists across open/close within a process).
+ * @warning Written only through the driver callbacks and ::lx_nor_fake_ram_wipe.
  * @since 0.1.0
  */
-static ULONG s_sim_backing[k_lx_nor_sim_total_words];
+static ULONG s_fake_backing[k_lx_nor_fake_total_words];
 
 /**
- * @var s_sim_sector_buf
+ * @var s_fake_sector_buf
  * @brief LevelX per-open sector scratch (one logical sector wide).
  * @warning Owned by LevelX between open and close; not for other use.
  * @since 0.1.0
  */
-static ULONG s_sim_sector_buf[LX_NOR_SECTOR_SIZE];
+static ULONG s_fake_sector_buf[LX_NOR_SECTOR_SIZE];
 
 /**
- * @var s_sim_fail_writes
+ * @var s_fake_fail_writes
  * @brief Countdown of write callbacks to fail (fault injection); 0 = off.
- * @warning Set only through ::lx_nor_sim_ram_fail_writes.
+ * @warning Set only through ::lx_nor_fake_ram_fail_writes.
  * @since 0.1.0
  */
-static unsigned int s_sim_fail_writes;
+static unsigned int s_fake_fail_writes;
 
 /**
  * @brief Read @p words ULONGs from the backing pointer into @p destination.
@@ -79,7 +79,7 @@ static unsigned int s_sim_fail_writes;
  */
 /* Signature is fixed by the LevelX driver-read callback type (non-const). */
 /* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
-static UINT sim_read(ULONG* flash_address, ULONG* destination, ULONG words)
+static UINT fake_read(ULONG* flash_address, ULONG* destination, ULONG words)
 {
   if (flash_address == LX_NULL) {
     return (UINT)LX_ERROR;
@@ -109,7 +109,7 @@ static UINT sim_read(ULONG* flash_address, ULONG* destination, ULONG words)
  */
 /* Signature is fixed by the LevelX driver-write callback type (non-const). */
 /* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
-static UINT sim_write(ULONG* flash_address, ULONG* source, ULONG words)
+static UINT fake_write(ULONG* flash_address, ULONG* source, ULONG words)
 {
   if (flash_address == LX_NULL) {
     return (UINT)LX_ERROR;
@@ -117,8 +117,8 @@ static UINT sim_write(ULONG* flash_address, ULONG* source, ULONG words)
   if (source == LX_NULL) {
     return (UINT)LX_ERROR;
   }
-  if (s_sim_fail_writes != 0U) {
-    s_sim_fail_writes--;
+  if (s_fake_fail_writes != 0U) {
+    s_fake_fail_writes--;
     return (UINT)LX_ERROR;
   }
   for (ULONG i = 0U; i < words; i++) {
@@ -140,15 +140,15 @@ static UINT sim_write(ULONG* flash_address, ULONG* source, ULONG words)
  * @post No other block is touched.
  * @since 0.1.0
  */
-static UINT sim_block_erase(ULONG block, ULONG erase_count)
+static UINT fake_block_erase(ULONG block, ULONG erase_count)
 {
   LX_PARAMETER_NOT_USED(erase_count);
-  if (block >= (ULONG)k_lx_nor_sim_total_blocks) {
+  if (block >= (ULONG)k_lx_nor_fake_total_blocks) {
     return (UINT)LX_ERROR;
   }
-  ULONG base = block * (ULONG)k_lx_nor_sim_words_per_block;
-  for (ULONG i = 0U; i < (ULONG)k_lx_nor_sim_words_per_block; i++) {
-    s_sim_backing[base + i] = (ULONG)k_lx_nor_sim_erased;
+  ULONG base = block * (ULONG)k_lx_nor_fake_words_per_block;
+  for (ULONG i = 0U; i < (ULONG)k_lx_nor_fake_words_per_block; i++) {
+    s_fake_backing[base + i] = (ULONG)k_lx_nor_fake_erased;
   }
   return (UINT)LX_SUCCESS;
 }
@@ -165,45 +165,45 @@ static UINT sim_block_erase(ULONG block, ULONG erase_count)
  * @post A success result means the block may be programmed.
  * @since 0.1.0
  */
-static UINT sim_block_erased_verify(ULONG block)
+static UINT fake_block_erased_verify(ULONG block)
 {
-  if (block >= (ULONG)k_lx_nor_sim_total_blocks) {
+  if (block >= (ULONG)k_lx_nor_fake_total_blocks) {
     return (UINT)LX_ERROR;
   }
-  ULONG base = block * (ULONG)k_lx_nor_sim_words_per_block;
-  for (ULONG i = 0U; i < (ULONG)k_lx_nor_sim_words_per_block; i++) {
-    if (s_sim_backing[base + i] != (ULONG)k_lx_nor_sim_erased) {
+  ULONG base = block * (ULONG)k_lx_nor_fake_words_per_block;
+  for (ULONG i = 0U; i < (ULONG)k_lx_nor_fake_words_per_block; i++) {
+    if (s_fake_backing[base + i] != (ULONG)k_lx_nor_fake_erased) {
       return (UINT)LX_ERROR;
     }
   }
   return (UINT)LX_SUCCESS;
 }
 
-unsigned int lx_nor_sim_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash)
+unsigned int lx_nor_fake_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash)
 {
   if (nor_flash == LX_NULL) {
     return (UINT)LX_ERROR;
   }
-  nor_flash->lx_nor_flash_base_address               = &s_sim_backing[0];
-  nor_flash->lx_nor_flash_total_blocks               = (ULONG)k_lx_nor_sim_total_blocks;
-  nor_flash->lx_nor_flash_words_per_block            = (ULONG)k_lx_nor_sim_words_per_block;
-  nor_flash->lx_nor_flash_driver_read                = sim_read;
-  nor_flash->lx_nor_flash_driver_write               = sim_write;
-  nor_flash->lx_nor_flash_driver_block_erase         = sim_block_erase;
-  nor_flash->lx_nor_flash_driver_block_erased_verify = sim_block_erased_verify;
-  nor_flash->lx_nor_flash_sector_buffer              = &s_sim_sector_buf[0];
+  nor_flash->lx_nor_flash_base_address               = &s_fake_backing[0];
+  nor_flash->lx_nor_flash_total_blocks               = (ULONG)k_lx_nor_fake_total_blocks;
+  nor_flash->lx_nor_flash_words_per_block            = (ULONG)k_lx_nor_fake_words_per_block;
+  nor_flash->lx_nor_flash_driver_read                = fake_read;
+  nor_flash->lx_nor_flash_driver_write               = fake_write;
+  nor_flash->lx_nor_flash_driver_block_erase         = fake_block_erase;
+  nor_flash->lx_nor_flash_driver_block_erased_verify = fake_block_erased_verify;
+  nor_flash->lx_nor_flash_sector_buffer              = &s_fake_sector_buf[0];
   return (UINT)LX_SUCCESS;
 }
 
-void lx_nor_sim_ram_wipe(void)
+void lx_nor_fake_ram_wipe(void)
 {
-  s_sim_fail_writes = 0U;
-  for (ULONG i = 0U; i < (ULONG)k_lx_nor_sim_total_words; i++) {
-    s_sim_backing[i] = (ULONG)k_lx_nor_sim_erased;
+  s_fake_fail_writes = 0U;
+  for (ULONG i = 0U; i < (ULONG)k_lx_nor_fake_total_words; i++) {
+    s_fake_backing[i] = (ULONG)k_lx_nor_fake_erased;
   }
 }
 
-void lx_nor_sim_ram_fail_writes(unsigned int count)
+void lx_nor_fake_ram_fail_writes(unsigned int count)
 {
-  s_sim_fail_writes = count;
+  s_fake_fail_writes = count;
 }

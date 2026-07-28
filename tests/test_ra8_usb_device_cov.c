@@ -14,12 +14,12 @@
  *     (DCPCFG / DCPMAXP / CFIFO / CFIFOCTR.BCLR), and the ``INTENB0``
  *     re-arm store.
  *
- * Every leg is driven deterministically by pre-seeding the simulator's
+ * Every leg is driven deterministically by pre-seeding the fake's
  * register RAM (``PIPECTR`` / ``BRDYSTS`` / ``NRDYSTS`` / ``BEMPSTS`` /
  * ``INTENB0``) to non-default values, then asserting the rearm cleared or
  * re-programmed each one. No timing injection (SIGALRM) is used. Every
  * line targeted here is a plain register store or a return after a
- * pointer-null check, all reachable from the host simulator -- so this
+ * pointer-null check, all reachable from the host fake -- so this
  * file adds NO ``GCOVR_EXCL`` markers and ``ra8_usb_device.c`` is not
  * modified.
  *
@@ -30,8 +30,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_device.h"
 #include "ra8_usb_regs.h"
@@ -55,7 +55,7 @@ typedef enum : uint16_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

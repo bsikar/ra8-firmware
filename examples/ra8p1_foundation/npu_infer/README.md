@@ -33,7 +33,7 @@ npu-infer: id=0x10060000 tflm=OK irq=OK out=0x........ verdict=PASS
 ## Scope / honesty
 
 The NPU "operator" run under ra8_emulator is the tiny deterministic add-constant of
-the documented `ra8_npu_sim_cmd.h` convention -- NOT a real Vela command stream,
+the documented `ra8_npu_fake_cmd.h` convention -- NOT a real Vela command stream,
 which needs the offline Vela compiler (`tools/vela`, a follow-up) and silicon.
 ra8_emulator's honest NPU model rejects a real Vela stream it cannot interpret, so
 the quantize -> NPU op -> dequantize pipeline plus the IRQ completion path are

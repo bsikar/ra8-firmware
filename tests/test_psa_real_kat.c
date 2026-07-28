@@ -7,22 +7,22 @@
  *
  * @details
  * The regular host test build compiles ``ra8_psa_crypto.c`` under
- * ``RA8_SIMULATOR_MODE``, which substitutes a deterministic stand-in for AES-GCM
+ * ``RA8_OFF_TARGET``, which substitutes a deterministic stand-in for AES-GCM
  * and an HMAC tautology for the ECDSA "verify" -- so the AEAD / signature paths
  * are never checked against a real cipher. This test instead links the vendored
  * TF-PSA-Crypto library (the exact primitives the production ``#ifndef
- * RA8_SIMULATOR_MODE`` path calls through ``psa_*``) directly, with NO
- * RA8_SIMULATOR_MODE, and pins it to published vectors:
+ * RA8_OFF_TARGET`` path calls through ``psa_*``) directly, with NO
+ * RA8_OFF_TARGET, and pins it to published vectors:
  *
  *   - SHA-256("abc")                         FIPS 180-4
  *   - AES-128-GCM encrypt + decrypt          GCM spec (McGrew/Viega) Test Case 3
  *   - ECDSA-P256 / SHA-256 verify            RFC 6979 A.2.5 ("sample")
  *   - ECDSA verify of a tampered signature   must be rejected (not a stub)
  *
- * A stub backend cannot satisfy these; the sim ``ra8_psa_crypto_sim.c`` would
+ * A stub backend cannot satisfy these; the fake ``ra8_psa_crypto_fake.c`` would
  * fail every one, which is precisely the placeholder-vs-production distinction
  * the audit asked the build to make. The test is self-contained (psa_* + libc
- * only) and does not link the sim'd ``ra8_core_hal``.
+ * only) and does not link the fake'd ``ra8_core_hal``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

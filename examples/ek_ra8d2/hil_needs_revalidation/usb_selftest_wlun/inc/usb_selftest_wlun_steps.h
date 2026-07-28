@@ -38,7 +38,7 @@
 #include "ra8_err.h"
 #include "ra8_usb_hmsc.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "ux_api.h"
 #endif
 
@@ -115,7 +115,7 @@ typedef enum : uint32_t {
   k_wlun_phase_pass   = 4U, /**< All LUNs verified.        */
 } wlun_phase_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* Shared per-(LUN,LBA) pattern */
@@ -314,4 +314,4 @@ uint32_t wlun_str_len(const char* text);
  */
 VOID wlun_host_worker(ULONG arg);
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

@@ -227,9 +227,9 @@ ra8_err_t ra8_cgc_wait_oscsf_set(uint8_t bit)
 {
   /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
   volatile uint8_t* const oscsf = ra8_sys_oscsf();
-  /* On host tests the bounded wait consults the ra8_sim_mmio seam: it
+  /* On host tests the bounded wait consults the ra8_fake_mmio seam: it
    * succeeds on the first poll unless a test arms a fault, so the real
-   * poll/timeout legs run everywhere (T1-01, no sim short-circuit). */
+   * poll/timeout legs run everywhere (T1-01, no off-target short-circuit). */
   return ra8_hw_wait_flag_set8(oscsf, (uint8_t)(1U << bit), (uint32_t)k_ra8_cgc_osc_spin_limit);
 }
 
@@ -429,12 +429,12 @@ static ra8_err_t internal_program_and_start_pll1(void)
 static ra8_err_t internal_wait_mrm_freq(volatile uint32_t* reg, uint32_t key, uint32_t freq_mhz)
 {
   for (uint32_t i = 0U; i < k_ra8_cgc_mrm_spin_limit; i++) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam: the loop-exit decision comes from
-     * ra8_sim_mmio_wait_eval (satisfied on the first poll unless a test
+     * ra8_fake_mmio_wait_eval (satisfied on the first poll unless a test
      * arms a fault) because plain host RAM cannot strip the key byte
      * on readback the way the silicon latch does. */
-    if (ra8_sim_mmio_wait_eval(reg, i, (*reg == freq_mhz))) {
+    if (ra8_fake_mmio_wait_eval(reg, i, (*reg == freq_mhz))) {
       return k_ra8_ok;
     }
 #else
@@ -843,7 +843,7 @@ ra8_err_t ra8_cgc_enable_stop_detection(ra8_cgc_ostd_fn_t handler, void* ctx)
   s_ostd_enabled = true;
   /* HUM Ch 9.2.23 "OSTDCR : Oscillation Stop Detection Control Register", p 346
    * -- target programming deferred until the first real NMI wiring
-   * lands. On host (simulator) the enable-flag is tracked
+   * lands. On host (fake) the enable-flag is tracked
    * purely in software and the test helper fires the stored
    * callback directly. */
   ra8_log_info(s_tag, "stop detection armed");
@@ -859,7 +859,7 @@ ra8_err_t ra8_cgc_disable_stop_detection(void)
   return k_ra8_ok;
 }
 
-void ra8_cgc_sim_trigger_stop_detection(void)
+void ra8_cgc_fake_trigger_stop_detection(void)
 {
   if (!s_ostd_enabled) {
     return;

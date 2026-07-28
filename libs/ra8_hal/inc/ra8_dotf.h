@@ -570,7 +570,7 @@ typedef void (*ra8_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * HUM Ch 45.1 p 3048 ("Supports self-test function"). Sets bit 20 of
  * REG00, polls for completion by re-reading REG00 a bounded number
  * of times, and returns the post-test snapshot via ``out_status``.
- * The bit auto-clears in real hardware; in the simulator the bit
+ * The bit auto-clears in real hardware; in the fake the bit
  * remains set after the spin (the host has no way to model AES
  * timing) -- callers MUST treat ``out_status`` as opaque diagnostic
  * data, not a pass/fail indicator on the host.

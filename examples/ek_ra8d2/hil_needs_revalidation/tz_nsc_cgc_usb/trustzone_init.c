@@ -35,7 +35,7 @@
  * untouched. Only the generic ``ra8_tz_secure_boot_jump_ns`` primitive is
  * reused.
  *
- * On a host build (``RA8_SIMULATOR_MODE``) this function is a no-op.
+ * On a host build (``RA8_OFF_TARGET``) this function is a no-op.
  *
  * @par TrustZone Safety:
  *  - **Validates:** SAU_TYPE.SREGION >= 4 before programming.
@@ -628,7 +628,7 @@ void ra8_trustzone_init(void)
     return;
   }
 
-  /* On host (RA8_SIMULATOR_MODE) the library stubs BLXNS and returns
+  /* On host (RA8_OFF_TARGET) the library stubs BLXNS and returns
    * k_ra8_ok; on target this point is unreachable. */
 #endif
 }

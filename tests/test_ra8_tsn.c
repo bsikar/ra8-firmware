@@ -6,15 +6,15 @@
  * The TSN driver only owns TSCR (HUM Ch 55.2.1 p 3498) plus the
  * two-point calibration math (HUM Ch 55.3.1 p 3499-3500). These
  * tests stub the calibration words and the raw ADC code by
- * writing directly to the simulated MMIO backing store.
+ * writing directly to the fake MMIO backing store.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_tsn.h"
 #include "ra8_tsn_regs.h"
 #include "unity_minimal.h"
@@ -43,11 +43,11 @@ typedef enum : uint16_t {
 } ra8_tsn_test_const_t;
 
 /**
- * @brief Inject calibration words into the simulated MRAM trim area.
+ * @brief Inject calibration words into the fake MRAM trim area.
  *
  * @details
  * ``r_tsn_cal_regs_t`` is read-only on hardware but the underlying
- * mmap region in ``ra8_sim_mmap`` is plain RAM, so casting away
+ * mmap region in ``ra8_fake_mmap`` is plain RAM, so casting away
  * const for the test injection is safe and confined to this file.
  */
 static void inject_cal_words(uint32_t hi_code, uint32_t lo_code)
@@ -76,7 +76,7 @@ static ra8_tsn_config_t make_cfg(void)
 static void test_init_happy(void)
 {
   TEST_BEGIN("tsn init happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   const ra8_tsn_config_t cfg = make_cfg();
@@ -101,7 +101,7 @@ static void test_init_happy(void)
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("tsn init null cfg");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tsn_init(nullptr));
@@ -117,7 +117,7 @@ static void test_init_null_cfg(void)
 static void test_init_bad_stab(void)
 {
   TEST_BEGIN("tsn init bad stab");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   ra8_tsn_config_t cfg = make_cfg();
@@ -135,7 +135,7 @@ static void test_init_bad_stab(void)
 static void test_init_bad_high_ref(void)
 {
   TEST_BEGIN("tsn init bad high ref");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   ra8_tsn_config_t cfg = make_cfg();
@@ -154,7 +154,7 @@ static void test_init_bad_high_ref(void)
 static void test_read_raw_masks_to_12_bits(void)
 {
   TEST_BEGIN("tsn read_raw masks to 12 bits");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   const ra8_tsn_config_t cfg = make_cfg();
@@ -179,7 +179,7 @@ static void test_read_raw_masks_to_12_bits(void)
 static void test_read_raw_null_out(void)
 {
   TEST_BEGIN("tsn read_raw null out");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   const ra8_tsn_config_t cfg = make_cfg();
@@ -198,7 +198,7 @@ static void test_read_raw_null_out(void)
 static void test_read_raw_before_init(void)
 {
   TEST_BEGIN("tsn read_raw before init");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   /* deinit first to make sure the global-init flag is cleared
    * regardless of test ordering. */
@@ -218,7 +218,7 @@ static void test_read_raw_before_init(void)
 static void test_convert_at_high_ref(void)
 {
   TEST_BEGIN("tsn convert at high ref returns 125000 mC");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   inject_cal_words((uint32_t)k_ra8_tsn_test_cal_hi_125, (uint32_t)k_ra8_tsn_test_cal_lo_n40);
@@ -241,7 +241,7 @@ static void test_convert_at_high_ref(void)
 static void test_convert_at_low_ref(void)
 {
   TEST_BEGIN("tsn convert at low ref returns -40000 mC");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   inject_cal_words((uint32_t)k_ra8_tsn_test_cal_hi_125, (uint32_t)k_ra8_tsn_test_cal_lo_n40);
@@ -264,7 +264,7 @@ static void test_convert_at_low_ref(void)
 static void test_convert_unprogrammed_cal_rejected(void)
 {
   TEST_BEGIN("tsn convert refuses unprogrammed calibration");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   inject_cal_words(0U, 0U); /* both 0 -> no slope */
@@ -285,7 +285,7 @@ static void test_convert_unprogrammed_cal_rejected(void)
 static void test_convert_null_out(void)
 {
   TEST_BEGIN("tsn convert null out");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   inject_cal_words((uint32_t)k_ra8_tsn_test_cal_hi_125, (uint32_t)k_ra8_tsn_test_cal_lo_n40);
@@ -305,7 +305,7 @@ static void test_convert_null_out(void)
 static void test_get_and_clear_status(void)
 {
   TEST_BEGIN("tsn get + clear status");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   const ra8_tsn_config_t cfg = make_cfg();
@@ -332,7 +332,7 @@ static void test_get_and_clear_status(void)
 static void test_power_transition(void)
 {
   TEST_BEGIN("tsn power transition");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 
   const ra8_tsn_config_t cfg = make_cfg();
@@ -365,7 +365,7 @@ static void test_power_transition(void)
 static void test_mcdc_ra8_tsn(void)
 {
   TEST_BEGIN("tsn MC/DC: validate_cfg high/low ref decisions");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   ra8_tsn_config_t cfg = make_cfg();
   cfg.high_ref_degc    = k_ra8_tsn_cal_temp_high_125;

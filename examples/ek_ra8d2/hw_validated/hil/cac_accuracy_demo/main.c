@@ -37,7 +37,7 @@
  * ``ra8_cac_measure`` completes with FERRF / OVFF clear and the banner reports
  * ``ok=Y`` (the ``ra8_emulator_smoke.sh`` gate keys on it). Confirmed on a real
  * EK-RA8D2 (2026-06-28): the real cross-clock edge count lands inside the
- * +/-6% window and the HIL gate is green -- the simulator proves the driver
+ * +/-6% window and the HIL gate is green -- the fake proves the driver
  * start / poll / read-back sequence, silicon proves the real edge count. See
  * ``README.md`` for details.
  *

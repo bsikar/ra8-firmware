@@ -1,21 +1,21 @@
 /**
- * @file ra8_sim_dma.h
- * @brief Host-test DMA transfer simulator
+ * @file ra8_fake_dma.h
+ * @brief Host-test DMA transfer fake
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}
  *
  * @details
  * Tests that exercise a DMA path need a way to simulate a
- * transfer without a real DMAC engine. ``ra8_sim_dma`` provides
+ * transfer without a real DMAC engine. ``ra8_fake_dma`` provides
  * two helpers:
  *
- *  - ``ra8_sim_dma_memcpy(ch)`` -- reads the DMAC channel's
+ *  - ``ra8_fake_dma_memcpy(ch)`` -- reads the DMAC channel's
  *    DMSAR / DMDAR / DMCRA / DMTMD / DMAMD registers and
  *    performs the requested copy directly in host RAM, as if
  *    the DMA engine had done the work.
  *
- *  - ``ra8_sim_dma_complete(ch)`` -- calls
+ *  - ``ra8_fake_dma_complete(ch)`` -- calls
  *    ``ra8_dma_dispatch_complete(ch)`` to fire the
  *    registered completion callback, as if the DMAC
  *    transfer-end interrupt had just arrived.
@@ -24,12 +24,12 @@
  *
  * @code{.c}
  * ra8_dma_request(...);
- * ra8_sim_dma_memcpy(channel);
- * ra8_sim_dma_complete(channel);
+ * ra8_fake_dma_memcpy(channel);
+ * ra8_fake_dma_complete(channel);
  * // assertions on the destination buffer + callback side-effects.
  * @endcode
  *
- * ``ra8_sim_dma_memcpy`` honours the ``src_inc`` / ``dst_inc``
+ * ``ra8_fake_dma_memcpy`` honours the ``src_inc`` / ``dst_inc``
  * mode bits by walking the DMAMD fields; fixed-address transfers
  * read or write the same location N times.
  *
@@ -69,7 +69,7 @@ extern "C" {
  * @retval k_ra8_ok                Copy completed.
  * @retval k_ra8_err_invalid_arg   Channel out of range.
  *
- * @pre Test is running under ``RA8_SIMULATOR_MODE``.
+ * @pre Test is running under ``RA8_OFF_TARGET``.
  * @pre ``ra8_dma_request`` has programmed the channel.
  *
  * @post DMCRA is zeroed (transfer complete).
@@ -77,7 +77,7 @@ extern "C" {
  * @note Thread safety: test code only, single-threaded.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_sim_dma_memcpy(uint8_t channel);
+[[nodiscard]] ra8_err_t ra8_fake_dma_memcpy(uint8_t channel);
 
 /**
  * @brief Fire the registered completion callback for a channel.
@@ -91,14 +91,14 @@ extern "C" {
  * @retval k_ra8_ok                Callback fired (or was NULL).
  * @retval k_ra8_err_invalid_arg   Channel out of range.
  *
- * @pre Test is running under ``RA8_SIMULATOR_MODE``.
+ * @pre Test is running under ``RA8_OFF_TARGET``.
  *
  * @post The registered ``on_complete`` callback ran exactly once.
  *
  * @note Thread safety: test code only, single-threaded.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_sim_dma_complete(uint8_t channel);
+[[nodiscard]] ra8_err_t ra8_fake_dma_complete(uint8_t channel);
 
 #ifdef __cplusplus
 }

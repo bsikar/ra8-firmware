@@ -8,7 +8,7 @@
  * entry points (``ra8_usb_host_set_target``, ``ra8_usb_host_pipe_setup``,
  * ``ra8_usb_host_bulk_out`` / ``ra8_usb_host_bulk_in``, and
  * ``ra8_usb_host_line_state``) against the RAM-backed peripheral window
- * installed by ``ra8_sim_mmap``. Because the host simulator models the
+ * installed by ``ra8_fake_mmap``. Because the host fake models the
  * USB register block as plain memory, the transfer state machine is
  * advanced deterministically by pre-seeding the BRDY/BEMP status words,
  * the CFIFOCTR.DTLN field, and the selected-pipe PIPEMAXP register
@@ -20,9 +20,9 @@
  * host cannot present the register transition that reaches it: the
  * STALL return in ``internal_host_wait_pipe`` (the SIE raises
  * PIPECTR.PID[1] asynchronously; both callers force PID=BUF before the
- * synchronous spin so the RAM sim never shows STALL). The FRDY-timeout
+ * synchronous spin so the RAM fake never shows STALL). The FRDY-timeout
  * return in ``internal_host_bulk_rx_packet`` is reached by arming the
- * ra8_sim_mmio fault seam on CFIFOCTR, which ``internal_wait_frdy``
+ * ra8_fake_mmio fault seam on CFIFOCTR, which ``internal_wait_frdy``
  * consults on every poll of its real bounded loop.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -32,8 +32,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_usb.h"
 #include "ra8_usb_internal.h"
 #include "ra8_usb_regs.h"
@@ -80,7 +80,7 @@ typedef enum : uint16_t {
 } thb_const_t;
 
 /**
- * @brief Reset the simulated peripheral window before each test.
+ * @brief Reset the fake peripheral window before each test.
  *
  * @details Clears every mapped register region so a prior test's writes
  * cannot leak into the next; the host bulk engine needs no MSTP or
@@ -88,8 +88,8 @@ typedef enum : uint16_t {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 }
 
 /** @brief Pipe-bit helper matching (1 << pipe_num) used by the module. */
@@ -300,7 +300,7 @@ static void test_bulk_out_wait_timeout(void)
 
   uint8_t data[k_thb_len_ok] = {0x10U, 0x20U, k_t_payload_b2, k_t_payload_b3};
 
-  /* The sim cannot re-assert BEMPSTS after the engine clears it, so the
+  /* The fake cannot re-assert BEMPSTS after the engine clears it, so the
    * bounded spin runs to the poll limit and reports a hardware timeout. */
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,
@@ -569,11 +569,11 @@ static void test_line_state(void)
  * fail drives its timeout leg through ``internal_host_bulk_rx_packet``)
  *
  * @details Pre-seeds a pending BRDY edge so the pipe wait passes, then
- * arms the ra8_sim_mmio seam on CFIFOCTR to fail so the packet drain's
+ * arms the ra8_fake_mmio seam on CFIFOCTR to fail so the packet drain's
  * FRDY wait runs to its budget. ``ra8_usb_host_bulk_in`` must surface
  * ``k_ra8_err_hw_timeout`` with a zero partial count and park the pipe
  * NAK -- the leg that was host-dead while ``internal_wait_frdy``
- * short-circuited under RA8_SIMULATOR_MODE.
+ * short-circuited under RA8_OFF_TARGET.
  */
 static void test_bulk_in_frdy_timeout(void)
 {
@@ -584,7 +584,7 @@ static void test_bulk_in_frdy_timeout(void)
   const uint16_t         pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
   reg->PIPEMAXP                   = (uint16_t)k_thb_mps; /* mps = 64          */
   reg->BRDYSTS                    = pipe_bit;            /* pending BRDY edge */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
 
   uint8_t  buf[k_thb_mps] = {};
   uint16_t got            = k_t_got_unset;

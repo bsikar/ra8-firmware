@@ -5,7 +5,7 @@
  * @details
  * Split sibling of the original test_ra8_mipi_dsi.c suite covering
  * the video-mode datapath of ra8_mipi_dsi.c against the
- * ``ra8_sim_mmap``-backed register window:
+ * ``ra8_fake_mmap``-backed register window:
  *
  * - video configure / pixel formats / start-stop and HS clock control
  * - link-status snapshot, ACK error, RX result + payload reads,
@@ -26,10 +26,10 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mipi_dsi.h"
 #include "ra8_mipi_dsi_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "support/mipi_dsi_test_util.h"
 #include "unity_minimal.h"
 

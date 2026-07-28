@@ -85,7 +85,7 @@ internal_host_wait_pipe(volatile r_usb_regs_t* reg, volatile const uint16_t* sts
       return k_ra8_ok;
     }
     if ((reg->PIPECTR[idx] & (uint16_t)k_ra8_usb_pid_stall_bit) != 0U) {
-      /* STALL bit is SIE-async; callers force PID=BUF before this spin, sim cannot raise it. */
+      /* STALL bit is SIE-async; callers force PID=BUF before this spin, the fake cannot raise it. */
       return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE */
     }
   }

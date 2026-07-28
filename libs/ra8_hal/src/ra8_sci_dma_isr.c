@@ -57,7 +57,7 @@ static ra8_dma_request_t internal_make_dma_request(uintptr_t             src,
   req.dst_inc           = dst_inc;
   /* HUM Ch 19 "Event Link Controller (ELC)" p 817 -- trigger routing is a
    * task; until then use software-start and drive the first
-   * element from the polling path or rely on ra8_sim_dma for host tests. */
+   * element from the polling path or rely on ra8_fake_dma for host tests. */
   req.trigger     = (ra8_elc_event_t)0;
   req.on_complete = on_complete;
   req.ctx         = ctx;

@@ -17,7 +17,7 @@
  * These are Arm-architecture registers, so the inline comments reference the
  * Arm v8-M Architecture Reference Manual (the "Arm v8-M ARM") rather than the
  * RA8D2 Hardware User's Manual. On a host build the SCB window is backed by the
- * simulated MMIO map, so the writes are observable to unit tests.
+ * fake MMIO map, so the writes are observable to unit tests.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -38,7 +38,7 @@ static const char* const s_tag = "ra8_cache";
 /**
  * @enum ra8_cache_reg_addr_t
  * @brief Arm v8-M SCB cache-maintenance register addresses (PPB 0xE000Exxx).
- * @details Arm v8-M ARM B11 "System Control Block". Mapped into the simulated
+ * @details Arm v8-M ARM B11 "System Control Block". Mapped into the fake
  *          core window (0xE0000000) on a host build, real PPB on silicon.
  */
 typedef enum : uintptr_t {
@@ -73,7 +73,7 @@ typedef enum : uint32_t {
  * @param[in] addr One of ::ra8_cache_reg_addr_t.
  * @return Volatile pointer for a single read or write.
  * @pre @p addr is a valid SCB cache-register address.
- * @pre The PPB / simulated core window is accessible.
+ * @pre The PPB / fake core window is accessible.
  * @post No state changed by forming the pointer.
  * @post The returned pointer aliases the live register.
  * @note Arm v8-M ARM B11 "System Control Block".

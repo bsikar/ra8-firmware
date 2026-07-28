@@ -62,7 +62,7 @@
  *      "ereader_m33 ... crc=<hex> PASS", then enters the MODE-SWITCH cycle.
  *   5. M85 PARKS: writes the CGC clock-gate (down-clocks an idle oscillator via
  *      the LPM clock-stop matrix) and drops into Sleep-mode WFI. The slow M33 is
- *      now the only running core, holding the page and polling a (simulated)
+ *      now the only running core, holding the page and polling a (fake)
  *      touch input -- the e-reader's steady-state idle posture.
  *   6. On a page-turn touch the M33 bumps `turn_req` and POKES the M85 over IPC0
  *      (`ra8_ipc_send_event`), waking it from WFI -- the #149 wake mechanism.
@@ -182,7 +182,7 @@ typedef enum : uint32_t {
  * @details The M85 parks and the M33 holds the page; ::k_erm33_max_turns is the
  * deterministic number of page-turn handoffs the demo exercises before both
  * cores park for good. ::k_erm33_touch_dwell is the bounded count of hold-loop
- * iterations the M33 spins as a *simulated* touch latency between page turns --
+ * iterations the M33 spins as a *fake* touch latency between page turns --
  * a deterministic stand-in for polling the GT911 touch controller (the real
  * touch poll is a HIL follow-up, see the README). Kept small so the ra8_emulator
  * gate completes the whole cycle in a handful of instruction chunks. Both are

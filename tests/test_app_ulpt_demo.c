@@ -5,7 +5,7 @@
  * @details
  * Mirrors examples/ek_ra8d2/ulpt_demo/main.c bring-up flow:
  * ra8_ulpt_init -> ra8_ulpt_start -> ra8_ulpt_get_status -> ra8_ulpt_stop
- * -> re-arm. All MMIO is via the host tests/mocks/ra8_sim_mmap.c shim.
+ * -> re-arm. All MMIO is via the host tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_ulpt.h"
 #include "unity_minimal.h"
 
@@ -31,7 +31,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_ulpt_init();
 }
 

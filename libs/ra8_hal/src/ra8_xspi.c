@@ -43,8 +43,8 @@
  *
  * Every build emits the identical register sequence; host unit tests
  * round-trip data through the register-level NOR-flash model in
- * ``tests/mocks/ra8_sim_xspi_flash.c``, which services each TRREQ kick
- * from the CMDCMP poll's ``ra8_sim_mmio`` seam consult (#238). Every
+ * ``tests/mocks/ra8_fake_xspi_flash.c``, which services each TRREQ kick
+ * from the CMDCMP poll's ``ra8_fake_mmio`` seam consult (#238). Every
  * register write carries a
  * ``HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986``
  * citation comment for the cite checker.
@@ -161,7 +161,7 @@ static ra8_err_t internal_wait_octacksrdy(uint8_t expected)
   /* HUM Ch 9.2.45 "OCTACKCR.OCTACKSRDY" p 360 */
   volatile uint8_t* const ckcr = ra8_sys_octackcr();
   const uint8_t           mask = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
-  /* Bounded wait through ra8_hw_err.h: on host tests the ra8_sim_mmio
+  /* Bounded wait through ra8_hw_err.h: on host tests the ra8_fake_mmio
    * seam decides the poll (first-poll success unless a test arms a
    * fault), so the real timeout leg is reachable everywhere. */
   if (expected != 0U) {
@@ -669,7 +669,7 @@ ra8_err_t ra8_xspi_calibrate_dqs(uint8_t instance)
    * controller to clear it once the phase-scan completes. The full
    * preamble-pattern + CARDCMD descriptor is owned by board-level
    * code in higher-level callers. On host tests the bounded wait
-   * consults the ra8_sim_mmio seam (first-poll success unless a test
+   * consults the ra8_fake_mmio seam (first-poll success unless a test
    * arms a fault); the CAEN bit itself stays set in host RAM because
    * only the real controller clears it. */
   reg->CCCTLCS[0] |= k_ra8_xspi_ccctl0_mask_caen;

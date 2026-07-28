@@ -29,7 +29,7 @@
 
 #include "usb_selftest_hs_host_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "ra8_board_ek_ra8d2.h"
 #include "tx_api.h"
@@ -316,4 +316,4 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
   return UX_SUCCESS;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

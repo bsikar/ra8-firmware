@@ -7,12 +7,12 @@
  * Non-Secure Callable gateways the e-reader's ThreadX watchdog supervisor uses
  * to arm and heartbeat the Secure-owned WDT. In the host (single-world) build
  * ``RA8_NSC_VENEER`` compiles away, so both veneers reduce to a direct forward
- * into the ``ra8_wdt`` driver over the simulated register block: the arm veneer
+ * into the ``ra8_wdt`` driver over the fake register block: the arm veneer
  * calls ``ra8_wdt_init`` with the fixed Secure-side config, and the refresh
  * veneer calls ``ra8_wdt_refresh_deferred`` (the WDTRR 0x00/0xFF unlock).
  *
  * The suite drives both from the host with the WDT register block mapped by
- * ``ra8_sim_mmap_reset``: it proves the arm veneer configures and arms cleanly
+ * ``ra8_fake_mmap_reset``: it proves the arm veneer configures and arms cleanly
  * (its fixed 1024-cycle / div-4 config is a legal encoding) and that the refresh
  * veneer leaves 0xFF -- the final unlock byte -- in WDTRR.
  *
@@ -23,8 +23,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_nsc.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_wdt.h"
 #include "ra8_wdt_regs.h"
 #include "unity_minimal.h"
@@ -50,7 +50,7 @@ typedef enum : uint8_t {
 static void test_nsc_wdt_start_arms(void)
 {
   TEST_BEGIN("ra8_nsc_wdt_start arms the secure WDT");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* The fixed ::s_wdt_cfg (1024 cycles, div 4, open window, NMI on expiry) is a
    * legal WDTCR encoding, so the arm veneer configures + refreshes and returns
    * k_ra8_ok. */
@@ -69,7 +69,7 @@ static void test_nsc_wdt_start_arms(void)
 static void test_nsc_wdt_refresh_kicks(void)
 {
   TEST_BEGIN("ra8_nsc_wdt_refresh writes the WDTRR unlock byte");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_wdt_start());
 
   volatile r_wdt_regs_t* reg = ra8_wdt();

@@ -15,8 +15,8 @@
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpt.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -30,7 +30,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /* Mirror of the app's edge detector. */

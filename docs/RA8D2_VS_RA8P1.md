@@ -76,8 +76,8 @@ The inference path is layered:
    **Hardware-blocked** (needs an RA8P1 part).
 
 `ra8_emulator` models the window (`board_periph_npu.c`, `--device ra8p1`) using the
-`ra8_npu_sim_cmd.h` SE55 command convention, so the whole driver + adapter path is
-verifiable headless (`npu_smoke` runs to `verdict=PASS`). The sim executes the
+`ra8_npu_fake_cmd.h` SE55 command convention, so the whole driver + adapter path is
+verifiable headless (`npu_smoke` runs to `verdict=PASS`). The fake executes the
 SE55 convention, **not** real Vela command streams -- real-model inference is a
 silicon (#229) step.
 

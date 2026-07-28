@@ -227,7 +227,7 @@ ra8_err_t ra8_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
       ra8_log_error(s_tag, "receive_byte: PEC mismatch");
       return k_ra8_err_crc_mismatch;
     }
-  } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host sim returns constant NTDTBP0 */
+  } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host fake returns constant NTDTBP0 */
   *out_data = buf[0];
   return k_ra8_ok;
 }
@@ -281,7 +281,7 @@ ra8_err_t ra8_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_
       ra8_log_error(s_tag, "read_byte_data: PEC mismatch");
       return k_ra8_err_crc_mismatch;
     }
-  } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host sim returns constant NTDTBP0 */
+  } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host fake returns constant NTDTBP0 */
   *out_data = rx[0];
   return k_ra8_ok;
 }
@@ -425,7 +425,7 @@ static ra8_err_t internal_block_read_finish(uint8_t        target_7b,
     if (pec_err != k_ra8_ok) {
       return pec_err;
     }
-  } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host sim returns constant NTDTBP0 */
+  } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host fake returns constant NTDTBP0 */
   return k_ra8_ok;
 }
 

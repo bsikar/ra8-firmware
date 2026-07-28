@@ -277,7 +277,7 @@ RA8_PRIV bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
  * @details Promoted from TU-private static linkage so tests can drive
  *          the line-150 ``(s & PRGBSYC == 0) && (s & ABUFFULL == 0)``
  *          AND-decision under @c -fcoverage-mcdc on the production
- *          source. Tests poke the simulator-backed MRCPS register to
+ *          source. Tests poke the fake-backed MRCPS register to
  *          present each pair of bit values across calls.
  *
  * @param[in] limit Maximum spin iterations.
@@ -286,7 +286,7 @@ RA8_PRIV bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
  * @retval k_ra8_ok            Both bits observed clear within @p limit.
  * @retval k_ra8_err_hw_timeout Limit exhausted without both bits clear.
  *
- * @pre Simulator mmap window for MRCPS is mapped (host-test only).
+ * @pre Fake mmap window for MRCPS is mapped (host-test only).
  * @pre Caller has staged the desired MRCPS bit pattern.
  * @post No persistent state mutated outside of MRCPS read.
  * @post Return value reflects the observed register sequence.
@@ -307,7 +307,7 @@ RA8_PRIV ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit);
  * @details Promoted from TU-private static linkage so tests can drive
  *          the line-181 ``(s & ABUFEMP) != 0 && (s & PRGBSYC) == 0``
  *          AND-decision under @c -fcoverage-mcdc on the production
- *          source. Tests poke the simulator-backed MRCPS register to
+ *          source. Tests poke the fake-backed MRCPS register to
  *          present each pair of bit values across calls.
  *
  * @param[in] limit Maximum spin iterations.
@@ -316,7 +316,7 @@ RA8_PRIV ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit);
  * @retval k_ra8_ok            Commit observed within @p limit iterations.
  * @retval k_ra8_err_hw_timeout Limit exhausted without commit observed.
  *
- * @pre Simulator mmap window for MRCPS is mapped (host-test only).
+ * @pre Fake mmap window for MRCPS is mapped (host-test only).
  * @pre Caller has staged the desired MRCPS bit pattern.
  * @post No persistent state mutated outside of MRCPS read.
  * @post Return value reflects the observed register sequence.
@@ -331,7 +331,7 @@ RA8_PRIV ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit);
  */
 RA8_PRIV ra8_err_t ra8_flash_internal_wait_commit_done_call(uint32_t limit);
 
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
 /**
  * @enum ra8_flash_maci_log_const_t
  * @brief Capacity of the host-test MACI command capture logs.
@@ -354,7 +354,7 @@ typedef enum : uint32_t {
  *
  * @details
  * The MACI command-issuing area is a single MMIO address, so the host
- * ``ra8_sim_mmap`` backing keeps only the last byte written. To let a host test
+ * ``ra8_fake_mmap`` backing keeps only the last byte written. To let a host test
  * assert the *sequence* of opcodes the driver emits -- notably the 0xE8 Program
  * opener (HUM Ch 59.7.4.5 p 3591) versus the 0x40 Configuration Set opener
  * (HUM Ch 59.7.4.8 p 3594) -- ``ra8_flash_internal_maci_cmd8`` appends each byte
@@ -414,7 +414,7 @@ extern uint32_t g_ra8_flash_maci_cmd16_len;
  *
  * @return Nothing.
  *
- * @pre Called from a host (``RA8_SIMULATOR_MODE`` + ``UNIT_TEST``) test binary.
+ * @pre Called from a host (``RA8_OFF_TARGET`` + ``UNIT_TEST``) test binary.
  * @pre No driver MACI call is mid-flight (tests are single-threaded).
  * @post Both capture-log lengths read back as zero.
  * @post The captured-byte arrays are treated as empty (stale bytes ignored).
@@ -423,7 +423,7 @@ extern uint32_t g_ra8_flash_maci_cmd16_len;
  * @since 0.1.0
  */
 void ra8_flash_internal_maci_log_reset(void);
-#endif /* RA8_SIMULATOR_MODE && UNIT_TEST */
+#endif /* RA8_OFF_TARGET && UNIT_TEST */
 
 #ifdef __cplusplus
 }

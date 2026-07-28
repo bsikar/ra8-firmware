@@ -6,7 +6,7 @@
  * @details
  * Binds both backends of the facade -- classic RIIC
  * (`ra8_io_i2c_bus_bind_riic`) and the I3C block's I2C-compatibility mode
- * (`ra8_io_i2c_bus_bind_i3c_compat`) -- against the ``ra8_sim_mmap``
+ * (`ra8_io_i2c_bus_bind_i3c_compat`) -- against the ``ra8_fake_mmap``
  * register substrate and drives the vtable end to end:
  *
  *  - dispatcher validation: NULL handle and never-bound handle rejected
@@ -32,6 +32,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i2c.h"
 #include "ra8_i2c_bus_ops.h"
 #include "ra8_i2c_regs.h"
@@ -41,7 +42,6 @@
 #include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_io_i2c_bus_riic.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -66,7 +66,7 @@ typedef enum : uint32_t {
 static const uint8_t s_payload[2] = {(uint8_t)k_test_byte_a, (uint8_t)k_test_byte_b};
 
 /**
- * @brief Reset the simulated MMIO window and the MSTP model before a test.
+ * @brief Reset the fake MMIO window and the MSTP model before a test.
  *
  * @details Mirrors the ``prep`` helper in the wrapped drivers' tests: a
  * clean peripheral RAM image plus an initialized module-stop model.
@@ -80,7 +80,7 @@ static const uint8_t s_payload[2] = {(uint8_t)k_test_byte_a, (uint8_t)k_test_byt
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

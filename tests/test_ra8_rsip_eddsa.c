@@ -15,10 +15,10 @@
  *    FAIL-CLOSED in a production build (return ``k_ra8_err_not_supported``)
  *    and drive a placeholder EdDSA command path -- separate from, and
  *    never on, the ECDSA opcode -- ONLY under the insecure-stub /
- *    simulator guard. ``ra8_rsip_ecdsa_sign`` / ``ra8_rsip_ecdsa_verify``
+ *    off-target guard. ``ra8_rsip_ecdsa_sign`` / ``ra8_rsip_ecdsa_verify``
  *    reject the Ed25519 curve outright. The host suite compiles under
- *    ``RA8_SIMULATOR_MODE`` (the guarded #if branch), so the cases below
- *    assert that a simulator Ed25519 operation lands on
+ *    ``RA8_OFF_TARGET`` (the guarded #if branch), so the cases below
+ *    assert that a fake Ed25519 operation lands on
  *    ``k_ra8_rsip_asym_op_eddsa_*`` and NEVER on
  *    ``k_ra8_rsip_asym_op_ecdsa_sign``; the production fail-closed #else is
  *    proven by ``scripts/checks/check_stub_crypto_guarded.py`` and the ARM
@@ -27,8 +27,8 @@
  *    ``..._decrypt``) has no documented RSIP register backend either
  *    (issues #214 + #187), so it too is FAIL-CLOSED in a production build
  *    (``k_ra8_err_not_supported``) and drives the modelled command path only
- *    under the insecure-stub / simulator guard. The cases below assert that a
- *    simulator RSA operation writes the opcode, padding-scheme, and
+ *    under the insecure-stub / off-target guard. The cases below assert that a
+ *    fake RSA operation writes the opcode, padding-scheme, and
  *    modulus-size argument registers as expected; the production fail-closed
  *    #else is proven by ``check_stub_crypto_guarded.py`` and the ARM
  *    cross-build.
@@ -39,7 +39,7 @@
  *          deliberately no RFC 8032 known-answer test -- a real Ed25519
  *          KAT belongs with tf-psa-crypto (``PSA_ALG_PURE_EDDSA``) if a
  *          consumer ever needs it. RSA is likewise fiction with no RSIP
- *          backend: the ``ra8_sim_mmap`` register window backs MMIO with plain
+ *          backend: the ``ra8_fake_mmap`` register window backs MMIO with plain
  *          memory and does NOT model the engine maths, so these host tests
  *          verify the COMMAND PATH only, never the signature / ciphertext
  *          bytes. RSA is FAIL-CLOSED in production, so nothing ships the
@@ -56,10 +56,10 @@
 #include <stdio.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_rsip.h"
 #include "ra8_rsip_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -90,12 +90,12 @@ typedef enum : uint32_t {
 } ra8_rsip_eddsa_test_const_t;
 
 /**
- * @brief Bring the simulated RSIP engine up to a running state.
+ * @brief Bring the fake RSIP engine up to a running state.
  * @since 0.1.0
  */
 static void prep_running(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
@@ -394,9 +394,9 @@ static void test_rsa_encrypt_reaches_opcode(void)
  * @details
  * The recovered-message length is read back from ASYM_ARG, which the
  * silicon engine overwrites with the unpadded length. The host
- * ``ra8_sim_mmap`` window does NOT model the engine, so ASYM_ARG retains
+ * ``ra8_fake_mmap`` window does NOT model the engine, so ASYM_ARG retains
  * the padding descriptor that the driver wrote -- hence the recovered
- * length observed here equals the pad selector value. This is a sim
+ * length observed here equals the pad selector value. This is a fake
  * artifact, asserted only to confirm the read-back plumbing; the real
  * length is a HARDWARE-GATED value.
  *
@@ -450,7 +450,7 @@ static void test_rsa_decrypt_reaches_opcode(void)
                          sizeof(pt),
                          &rlen));
 
-  /* recovered (== pad descriptor in sim == 2) > cap=1 -> invalid_arg. */
+  /* recovered (== pad descriptor off-target == 2) > cap=1 -> invalid_arg. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  rsa_dec(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, ct, pt, 1U, &rlen));
 
@@ -461,7 +461,7 @@ static void test_rsa_decrypt_reaches_opcode(void)
   TEST_ASSERT_EQ(k_ra8_rsip_asym_op_rsa_decrypt, *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl));
   TEST_ASSERT_EQ(k_ra8_rsip_asym_op_rsa_decrypt, *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op));
   TEST_ASSERT_EQ(k_ra8_rsip_rsa_2048, *ra8_rsip_reg32(k_ra8_rsip_off_asym_rsa_size));
-  /* Sim artifact: ASYM_ARG retains the pad descriptor as the "length". */
+  /* Fake artifact: ASYM_ARG retains the pad descriptor as the "length". */
   TEST_ASSERT_EQ(k_ra8_rsip_rsa_pad_oaep, rlen);
 
   TEST_END("rsip rsa decrypt reaches opcode");

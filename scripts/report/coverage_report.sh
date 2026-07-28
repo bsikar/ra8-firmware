@@ -21,7 +21,7 @@
 #      details, Cobertura XML (consumed by check_coverage.py), and
 #      a printed line/branch summary.
 #
-# On macOS the test executables segfault because the simulator uses
+# On macOS the test executables segfault because the fake uses
 # MAP_FIXED below 4 GiB which arm64 macOS rejects, so we re-exec
 # inside the project's Linux devcontainer just like
 # scripts/report/coverage_report_host.sh and scripts/report/mcdc_report.sh.

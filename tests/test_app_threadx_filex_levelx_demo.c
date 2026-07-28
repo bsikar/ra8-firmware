@@ -7,7 +7,7 @@
  * stands up ThreadX + LevelX + FileX, lays a FAT12 superblock on top
  * of LevelX-managed wear-levelled NOR sectors, then writes and reads
  * a known message back. None of ThreadX, LevelX, or FileX are linked
- * into the host test build (RA8_SIMULATOR_MODE), so this test exercises
+ * into the host test build (RA8_OFF_TARGET), so this test exercises
  * the same call surface the FileX-to-LevelX adapter ultimately drives:
  *   - ra8_cgc / ra8_time pre-kernel boot.
  *   - The SCI panic-flush helper used by demo_panic_halt().
@@ -24,10 +24,10 @@
 
 #include "ra8_cgc.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_fs.h"
 #include "ra8_pin_validator.h"
 #include "ra8_sci.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_system_regs.h"
 #include "ra8_time.h"
 #include "unity_minimal.h"
@@ -97,10 +97,10 @@ static ra8_fs_backend_t make_mock_backend(void)
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
-   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+   * complete on the first iteration in RA8_OFF_TARGET. */
   *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
 }
 
@@ -220,7 +220,7 @@ static void test_fxlx_panic_flush_before_init(void)
 {
   reset_world();
   TEST_BEGIN("fxlx_demo: panic flush before SCI init returns cleanly");
-  /* In RA8_SIMULATOR_MODE the TEND wait is short-circuited to ok, so
+  /* In RA8_OFF_TARGET the TEND wait is short-circuited to ok, so
    * the flush returns ok even when the channel was never opened.
    * The demo_panic_halt() caller (void)-casts the return value so any
    * defined ra8_err_t is acceptable; we just assert no crash. */

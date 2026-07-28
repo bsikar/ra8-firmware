@@ -376,7 +376,7 @@ static void test_bdsink_write_error_propagates_no_out_written(void)
  *
  * @return int32_t Always 0 on success; exit(1) on the first assertion failure.
  *
- * @pre RA8_SIMULATOR_MODE is active (host build, no hardware access).
+ * @pre RA8_OFF_TARGET is active (host build, no hardware access).
  * @pre The ra8_core_hal OBJECT library was built with --coverage instrumentation.
  * @post All eight uncovered lines in ra8_io_stream_blockdev.c have been executed.
  * @post Exit code 0 signals success to the CI coverage runner.

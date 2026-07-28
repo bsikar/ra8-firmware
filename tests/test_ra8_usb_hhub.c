@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_hhub.h"
 #include "ra8_usb_regs.h"
@@ -46,7 +46,7 @@ static const uintptr_t       k_test_hhub_ctx_token = 0xCAFEBABEU;
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_hhub_close();
   s_attach_count       = 0U;

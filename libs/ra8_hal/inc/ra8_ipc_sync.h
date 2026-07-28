@@ -63,14 +63,14 @@ extern "C" {
  *
  * @note Safe in interrupt context: one barrier instruction, no memory
  *       access, no lock taken.
- * @note On a host build (``RA8_SIMULATOR_MODE``) the simulated cores share a
+ * @note On a host build (``RA8_OFF_TARGET``) the fake cores share a
  *       single-threaded address space, so the barrier compiles to a no-op.
  * @since 0.1.0
  */
 RA8_ISR_SAFE
 static inline void ra8_ipc_barrier(void)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("dmb 0xF" ::: "memory");
 #endif
 }

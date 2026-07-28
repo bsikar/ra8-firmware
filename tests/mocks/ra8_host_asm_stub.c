@@ -14,11 +14,11 @@
  *   - ``ra8_hw_wfi``            -> return (an x86 test binary must not halt)
  *   - ``ra8_hw_dsb`` / ``_isb`` -> compiler barrier (host RAM needs no HW fence)
  *   - ``ra8_hw_nop``            -> return (a calibrated pad has no host meaning)
- *   - ``ra8_hw_irq_enable/disable`` -> return (IRQs dispatch via ra8_sim_irq)
+ *   - ``ra8_hw_irq_enable/disable`` -> return (IRQs dispatch via ra8_fake_irq)
  *   - ``ra8_hw_wait_for_reset`` -> return (so a test can inspect the reset write)
  *
  * Keeping every host substitution here is what lets the driver ``.c`` files
- * stay free of any ``#ifdef RA8_SIMULATOR_MODE`` -- the seam, not the driver,
+ * stay free of any ``#ifdef RA8_OFF_TARGET`` -- the seam, not the driver,
  * owns the divergence. Each function's documented contract lives on its
  * declaration in ``ra8_hw_intrinsics.h``; per the definition-site policy the
  * bodies below carry no restating comment.
@@ -27,7 +27,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 
 #include "ra8_hw_intrinsics.h"
 
@@ -53,12 +53,12 @@ void ra8_hw_nop(void)
 
 void ra8_hw_irq_enable(void)
 {
-  /* Host IRQs dispatch through the ra8_sim_irq seam, not PRIMASK. */
+  /* Host IRQs dispatch through the ra8_fake_irq seam, not PRIMASK. */
 }
 
 void ra8_hw_irq_disable(void)
 {
-  /* Host IRQs dispatch through the ra8_sim_irq seam, not PRIMASK. */
+  /* Host IRQs dispatch through the ra8_fake_irq seam, not PRIMASK. */
 }
 
 void ra8_hw_wait_for_reset(void)
@@ -67,6 +67,6 @@ void ra8_hw_wait_for_reset(void)
 }
 
 #else
-/* Non-simulator build: this translation unit is empty. */
+/* On-target build: this translation unit is empty. */
 typedef int ra8_host_asm_stub_placeholder_t;
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */

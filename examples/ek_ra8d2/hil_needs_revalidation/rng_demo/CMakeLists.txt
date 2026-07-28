@@ -34,5 +34,5 @@ ra8_add_app(
   STACK_BYTES 2200
   LIBS ra8_board_ek_ra8d2
   DESCRIPTION "rng_demo firmware for RA8D2"
-  SIM_LIBS ra8_psa_crypto
+  OFF_TARGET_LIBS ra8_psa_crypto
 )

@@ -38,7 +38,7 @@ db_pass_args() {
     "-p=$BUILD_DIR" \
     "--extra-arg-before=-std=c2x" \
     "--extra-arg=-DUNIT_TEST" \
-    "--extra-arg=-DRA8_SIMULATOR_MODE" \
+    "--extra-arg=-DRA8_OFF_TARGET" \
     "--extra-arg=-Wno-unknown-warning-option"
 }
 
@@ -60,7 +60,7 @@ cxx_pass_args() {
     "--extra-arg-before=-xc++" \
     "--extra-arg-before=-std=c++17" \
     "--extra-arg=-DUNIT_TEST" \
-    "--extra-arg=-DRA8_SIMULATOR_MODE" \
+    "--extra-arg=-DRA8_OFF_TARGET" \
     "--extra-arg=-Wno-unknown-warning-option"
 }
 

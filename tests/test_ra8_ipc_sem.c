@@ -13,11 +13,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_ipc.h"
 #include "ra8_ipc_regs.h"
 #include "ra8_isr.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "support/ipc_test_util.h"
 #include "unity_minimal.h"
 
@@ -69,14 +69,14 @@ static void test_sem_try_take_and_release(void)
   *sem = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_sem_try_take(3U));
   /* The successful take's read latched LOCK = 1 (HUM Ch 3.2.3 set
-   * condition, applied to the RAM register file by the ra8_sim_mmio
+   * condition, applied to the RAM register file by the ra8_fake_mmio
    * read-to-set model). */
   TEST_ASSERT((*sem & (uint32_t)k_ra8_ipc_sem_mask_lock) != 0U);
   /* Mutual exclusion: a second take must observe the latch and report
    * busy -- the driver runs its real read-and-decode, no in-driver
    * host model involved. */
   TEST_ASSERT_EQ(k_ra8_err_busy, ra8_ipc_sem_try_take(3U));
-  /* Release: HUM Ch 3.2.3 says writing 1 clears LOCK; the ra8_sim_mmio
+  /* Release: HUM Ch 3.2.3 says writing 1 clears LOCK; the ra8_fake_mmio
    * write-1-to-clear model applies the clear the way silicon does, so
    * post-release LOCK reads back 0 (free). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_sem_release(3U));
@@ -132,14 +132,14 @@ static uint32_t s_sem_hook_release_at;
  * @brief Poll hook modelling a peer core releasing an IPCSEM mid-spin.
  *
  * @details
- * Installed via ``ra8_sim_mmio_set_poll_hook``; the seam invokes it on
+ * Installed via ``ra8_fake_mmio_set_poll_hook``; the seam invokes it on
  * the driver's own thread right before each seam-routed IPCSEM read.
  * From the configured poll onward it clears LOCK in the backing word,
  * exactly what the driver would observe on silicon when the peer core
  * writes the IPCSEMn release command mid-spin.
  *
  * @pre ::s_sem_hook_target / ::s_sem_hook_release_at configured.
- * @pre Installed through ``ra8_sim_mmio_set_poll_hook``.
+ * @pre Installed through ``ra8_fake_mmio_set_poll_hook``.
  * @post ::s_sem_hook_polls counts every invocation.
  * @post LOCK is cleared from the configured poll onward.
  * @note Single-threaded (runs inline with the driver's poll).
@@ -174,14 +174,14 @@ static void test_sem_take_timeout_spins_then_acquires(void)
   *sem = (uint32_t)k_ra8_ipc_sem_mask_lock;
   /* Model the peer writing the release command right before our 3rd
    * poll -- the hook runs on the driver's own spin thread via the
-   * ra8_sim_mmio read-to-set model, so the loop's continuation branch
+   * ra8_fake_mmio read-to-set model, so the loop's continuation branch
    * executes for real on the first two polls. */
   s_sem_hook_polls      = 0U;
   s_sem_hook_target     = sem;
   s_sem_hook_release_at = 3U;
-  ra8_sim_mmio_set_poll_hook(hook_release_sem_at_nth_poll);
+  ra8_fake_mmio_set_poll_hook(hook_release_sem_at_nth_poll);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_sem_take_timeout(5U, 8U));
-  ra8_sim_mmio_set_poll_hook(nullptr);
+  ra8_fake_mmio_set_poll_hook(nullptr);
   s_sem_hook_target = nullptr;
   /* Acquired on exactly the 3rd poll -- the first two spun. */
   TEST_ASSERT_EQ(3U, s_sem_hook_polls);
@@ -246,7 +246,7 @@ static void test_sem_is_locked(void)
   TEST_ASSERT(locked == false);
   /* Side-effect: the read inside is_locked took the lock; the
    * function should have re-released it for unlocked, leaving LOCK=0
-   * in our sim memory. */
+   * in our fake memory. */
   TEST_ASSERT(*sem == 0U);
 
   *sem = (uint32_t)k_ra8_ipc_sem_mask_lock;

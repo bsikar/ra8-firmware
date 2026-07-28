@@ -43,9 +43,9 @@ typedef enum : uint32_t {
 
 /** @brief AGT channel + pulse-output settings. */
 typedef enum : uint16_t {
-  k_agt_pulse_channel = 0U,      /**< AGT pulse channel.              */
-  k_agt_pulse_period  = 0x7FFFU, /**< ~1 Hz at the simulator default. */
-  k_agt_pulse_duty    = 0x3FFFU, /**< 50% via compare-match A.        */
+  k_agt_pulse_channel = 0U,      /**< AGT pulse channel.         */
+  k_agt_pulse_period  = 0x7FFFU, /**< ~1 Hz at the fake default. */
+  k_agt_pulse_duty    = 0x3FFFU, /**< 50% via compare-match A.   */
 } agt_pulse_timer_t;
 
 /** @brief Hex-digit width + mask for the per-tick banner formatter. */

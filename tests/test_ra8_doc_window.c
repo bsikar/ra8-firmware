@@ -4,7 +4,7 @@
  *
  * @details
  * Exercises ra8_doc_set_window() and ra8_doc_window_compare() using the
- * simulated MMIO window provided by ra8_sim_mmap. The RAM-backed host
+ * fake MMIO window provided by ra8_fake_mmap. The RAM-backed host
  * register file has no DOC comparator engine, so the flag tests stage
  * DOSR.DOPCF before the call and assert the driver's real MMIO trace
  * (DODIR trigger write, DOSR decode, DOSCR clear command); the silicon
@@ -26,7 +26,7 @@
 #include "ra8_doc.h"
 #include "ra8_doc_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -52,10 +52,10 @@ typedef enum : uint8_t {
 } ra8_doc_win_test_misc_t;
 
 /**
- * @brief Reset sim MMIO and call ra8_doc_init() before each test.
+ * @brief Reset fake MMIO and call ra8_doc_init() before each test.
  *
  * @details
- * Zeroes the simulated peripheral RAM and initialises the DOC so all
+ * Zeroes the fake peripheral RAM and initialises the DOC so all
  * tests start from a clean, well-defined state.
  *
  * @pre Host MMIO substrate is linked into the test binary.
@@ -64,7 +64,7 @@ typedef enum : uint8_t {
  */
 static void prep_window(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_doc_init();
 }
 

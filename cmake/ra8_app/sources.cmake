@@ -95,18 +95,18 @@ macro(_ra8_app_collect_sources)
     file(GLOB_RECURSE _ra8_lib_nsc CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_nsc/src/*.c)
   endif()
 
-  # Extra first-party libraries (plain + simulator-mode).
+  # Extra first-party libraries (plain + off-target).
   set(_ra8_lib_extra "")
-  set(_ra8_lib_extra_sim "")
+  set(_ra8_lib_extra_off_target "")
   set(_ra8_lib_inc "")
   foreach(_ra8_lib ${_RA8_APP_LIBS})
     file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/${_ra8_lib}/src/*.c)
     list(APPEND _ra8_lib_extra ${_ra8_lib_one})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/${_ra8_lib}/inc)
   endforeach()
-  foreach(_ra8_lib ${_RA8_APP_SIM_LIBS})
+  foreach(_ra8_lib ${_RA8_APP_OFF_TARGET_LIBS})
     file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/${_ra8_lib}/src/*.c)
-    list(APPEND _ra8_lib_extra_sim ${_ra8_lib_one})
+    list(APPEND _ra8_lib_extra_off_target ${_ra8_lib_one})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/${_ra8_lib}/inc)
   endforeach()
 

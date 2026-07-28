@@ -15,11 +15,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_rmac.h"
 #include "ra8_rmac_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -40,8 +40,8 @@ typedef enum : uint32_t {
 /** @brief Per-test fixture reset: fresh peripheral RAM, MMIO seam, MSTP. */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -72,7 +72,7 @@ static void test_mdio_c22(void)
   const ra8_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
 
-  /* The MPSM waits consult the unarmed ra8_sim_mmio seam and complete
+  /* The MPSM waits consult the unarmed ra8_fake_mmio seam and complete
    * on their first poll, so no register pre-staging is needed. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_mdio_c22_write(k_ra8_rmac_port_0, 0x1FU, 0x1AU, 0xBEEFU));
   /* MPSM should have been written with the encoded transaction. */
@@ -112,10 +112,10 @@ static void test_mdio_c45(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
 
   /* Every MPSM wait (each op's drain AND post-issue PSME wait) consults
-   * the ra8_sim_mmio seam; satisfy-after-2 steps each loop twice before
+   * the ra8_fake_mmio seam; satisfy-after-2 steps each loop twice before
    * it converges, covering the loop-continuation branch (T1-01).
    * Stays armed across the write + read below. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rmac_mdio_c45_write(k_ra8_rmac_port_0, 0x07U, 0x03U, 0x1234U, 0xABCDU));
 
@@ -134,7 +134,7 @@ static void test_mdio_c45(void)
 
 /* --- PHY auto-negotiation state machine ---
  *
- * Every MDIO wait consults the ra8_sim_mmio seam and completes on its
+ * Every MDIO wait consults the ra8_fake_mmio seam and completes on its
  * first poll when unarmed. We pre-stage MPSM so the driver's read
  * fetches a chosen value (the driver clears PRD bits during issue, so
  * reads always return 0 -- we leverage this for negative-path tests).
@@ -161,7 +161,7 @@ static void test_phy_reset_happy(void)
   /* phy_reset issues a BMCR write then polls with a BMCR read; each MDIO op
    * pre-drains MPSM.PSME to CLEAR and the driver set PSME on the prior issue,
    * so arm the seam to satisfy every drain clear-wait (T1-01, pattern B). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_reset(k_ra8_rmac_port_0, 5U));
   TEST_END("rmac phy reset happy");
 }
@@ -247,7 +247,7 @@ static void test_phy_auto_neg_wait_happy(void)
   prep();
   const ra8_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
-  /* Simulator returns 0 from MPSM PRD on every read; AN_COMPLETE will
+  /* Fake returns 0 from MPSM PRD on every read; AN_COMPLETE will
    * never be observed, so the call returns hw_timeout. We check the
    * MPSM transaction shape (PRA = BMSR = 1, PSME = 1) regardless. */
   prime_mdio(k_ra8_rmac_port_0, 0U);
@@ -255,7 +255,7 @@ static void test_phy_auto_neg_wait_happy(void)
    * MPSM.PSME to CLEAR (set by the prior issue), so arm the seam so the loop
    * runs to its full budget and times out on AN_COMPLETE rather than stalling
    * on a pre-drain (T1-01, pattern B). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
   ra8_rmac_phy_link_t link = {};
   const ra8_err_t     r    = ra8_rmac_phy_auto_neg_wait(k_ra8_rmac_port_0, 0U, 1U, &link);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, r);
@@ -280,9 +280,9 @@ static void test_phy_auto_neg_wait_timeout(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
   /* Each per-read MDIO wait completes via the seam (satisfy-after-2 also
    * steps the loop-continuation branch); the AN loop instead exhausts its
-   * own timeout budget because the simulated BMSR never asserts
+   * own timeout budget because the fake BMSR never asserts
    * AN_COMPLETE (reads deliver PRD = 0). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
   ra8_rmac_phy_link_t link = {.up = true, .speed = k_ra8_rmac_phy_speed_100_fd};
   const ra8_err_t     r    = ra8_rmac_phy_auto_neg_wait(k_ra8_rmac_port_0, 1U, 1U, &link);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, r);
@@ -308,7 +308,7 @@ static void test_phy_link_status(void)
   prep();
   const ra8_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
-  /* Simulator returns 0 -> link reads as down. */
+  /* Fake returns 0 -> link reads as down. */
   prime_mdio(k_ra8_rmac_port_0, 0U);
   ra8_rmac_phy_link_t link = {.up = true, .speed = k_ra8_rmac_phy_speed_100_fd};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_link_status(k_ra8_rmac_port_0, 3U, &link));
@@ -334,9 +334,9 @@ static void test_phy_link_status(void)
  *
  * Decision B: ``ra8_rmac_phy_link_status`` line 1047,
  * ``if (out_link->up && ((bmsr & an_done) != 0U))`` (2 conditions, ``&&``).
- * Simulator MDIO returns 0 -> only V1 (C1=F short-circuit) is
+ * Fake MDIO returns 0 -> only V1 (C1=F short-circuit) is
  * achievable. Representative-subset rationale per DO-178C 6.4.4.3
- * (environment constraint: MDIO simulator does not deliver a non-zero
+ * (environment constraint: MDIO fake does not deliver a non-zero
  * BMSR response without an injection mock; documented limitation).
  */
 static void test_mcdc_ra8_rmac(void)
@@ -349,7 +349,7 @@ static void test_mcdc_ra8_rmac(void)
   /* Each phy_link_status issues one BMSR read whose pre-drain waits MPSM.PSME
    * to CLEAR; the second happy-path read below drains a PSME the first read's
    * issue set, so arm the seam to satisfy every clear-wait (T1-01, pattern B). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&ra8_rmac(k_ra8_rmac_port_0)->MPSM, 2U));
   ra8_rmac_phy_link_t link = {.up = true, .speed = k_ra8_rmac_phy_speed_100_fd};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_link_status(k_ra8_rmac_port_0, 5U, &link));
   TEST_ASSERT_EQ(
@@ -418,14 +418,14 @@ static void test_mcdc_ra8_rmac_psmcs_clamp(void)
  * (no compound decisions under test -- the pre-issue drain in
  * ``internal_mdio_drain`` and the post-issue PSME poll in
  * ``internal_mdio_wait`` are single-condition loop exits; each armed
- * ``ra8_sim_mmio_fail_nth_wait`` vector isolates one MPSM wait-loop's
+ * ``ra8_fake_mmio_fail_nth_wait`` vector isolates one MPSM wait-loop's
  * timeout leg while every other loop converges on its first poll)
  *
  * @details Every MDIO op runs two bounded waits on MPSM: the pre-issue
  * PSME drain (wait-loop 2n) and the post-issue PSME completion wait
  * (wait-loop 2n+1). C45 ops chain two such pairs (address, then data).
  * Failing the n-th wait-loop drives each timeout leg -- all previously
- * dead on host while the sim path accepted a pre-armed MMIS1 bit.
+ * dead on host while the off-target path accepted a pre-armed MMIS1 bit.
  */
 static void test_mdio_wait_timeout_legs(void)
 {
@@ -436,26 +436,26 @@ static void test_mdio_wait_timeout_legs(void)
   volatile uint32_t* mpsm = &ra8_rmac(k_ra8_rmac_port_0)->MPSM;
 
   /* Wait-loop 0: the c22 write's pre-issue drain times out. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(mpsm, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(mpsm, 0U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_rmac_mdio_c22_write(k_ra8_rmac_port_0, 0x1FU, 0x1AU, 0xBEEFU));
 
   /* Wait-loop 1: the c22 write's post-issue PSME wait times out
    * (internal_mdio_wait runs its full budget). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(mpsm, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(mpsm, 1U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_rmac_mdio_c22_write(k_ra8_rmac_port_0, 0x1FU, 0x1AU, 0xBEEFU));
 
   /* Wait-loop 2: the c45 read's second (data-phase) drain times out
    * after the address phase completed. */
   uint16_t v = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(mpsm, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(mpsm, 2U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_rmac_mdio_c45_read(k_ra8_rmac_port_0, 0x07U, 0x03U, 0x1234U, &v));
 
   /* Wait-loop 3: the c45 write's data-phase post-issue wait times out
    * after both drains and the address-phase wait completed. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(mpsm, 3U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(mpsm, 3U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_rmac_mdio_c45_write(k_ra8_rmac_port_0, 0x07U, 0x03U, 0x1234U, 0xABCDU));
 

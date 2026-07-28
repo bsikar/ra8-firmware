@@ -7,9 +7,9 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_ulpt.h"
 #include "ra8_ulpt_regs.h"
 #include "unity_minimal.h"
@@ -43,7 +43,7 @@ typedef enum : uint32_t {
 static void test_init_clears_regs(void)
 {
   TEST_BEGIN("ulpt init clears regs");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_ulpt_regs_t* reg = ra8_ulpt((uint8_t)k_ra8_ulpt_test_ch_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -63,7 +63,7 @@ static void test_init_clears_regs(void)
 static void test_start_channel_0(void)
 {
   TEST_BEGIN("ulpt start channel 0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ulpt_start((uint8_t)k_ra8_ulpt_test_ch_0, (uint32_t)k_ra8_ulpt_test_period));
@@ -83,7 +83,7 @@ static void test_start_channel_0(void)
 static void test_start_channel_1(void)
 {
   TEST_BEGIN("ulpt start channel 1");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ulpt_start((uint8_t)k_ra8_ulpt_test_ch_1, (uint32_t)k_ra8_ulpt_test_period));
@@ -99,7 +99,7 @@ static void test_start_channel_1(void)
 static void test_start_bad_channel(void)
 {
   TEST_BEGIN("ulpt start bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ulpt_start((uint8_t)k_ra8_ulpt_test_ch_bad, 0U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ulpt_start((uint8_t)k_ra8_ulpt_test_ch_way, 0U));
@@ -115,7 +115,7 @@ static void test_start_bad_channel(void)
 static void test_stop_happy(void)
 {
   TEST_BEGIN("ulpt stop happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ulpt_start((uint8_t)k_ra8_ulpt_test_ch_0, (uint32_t)k_ra8_ulpt_test_period));
@@ -135,7 +135,7 @@ static void test_stop_happy(void)
 static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("ulpt stop bad channel");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ulpt_stop((uint8_t)k_ra8_ulpt_test_ch_bad));
   TEST_END("ulpt stop bad channel");
@@ -151,8 +151,8 @@ static void test_stop_bad_channel(void)
 static void test_stop_confirms_tcstf_clear(void)
 {
   TEST_BEGIN("ulpt stop confirms TCSTF low");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ulpt_start((uint8_t)k_ra8_ulpt_test_ch_0, (uint32_t)k_ra8_ulpt_test_period));
@@ -170,14 +170,14 @@ static void test_stop_confirms_tcstf_clear(void)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- drives the ra8_ulpt_stop timeout
- * leg via the ra8_sim_mmio fault seam. The loop-bound decision inside
+ * leg via the ra8_fake_mmio fault seam. The loop-bound decision inside
  * `ra8_hw_wait_flag_clear8` is MC/DC-covered by test_ra8_hw_err_cov.c)
  */
 static void test_stop_tcstf_stuck_times_out(void)
 {
   TEST_BEGIN("ulpt stop TCSTF stuck -> timeout");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_ulpt_regs_t* reg = ra8_ulpt((uint8_t)k_ra8_ulpt_test_ch_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -185,10 +185,10 @@ static void test_stop_tcstf_stuck_times_out(void)
   /* Arm the ULPTCR window so every TCSTF-clear poll reports "still set":
    * models a counter whose count-status flag never drops (the >=2-wake
    * Software-Standby re-arm hang this guard prevents). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(&reg->ULPTCR));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(&reg->ULPTCR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_ulpt_stop((uint8_t)k_ra8_ulpt_test_ch_0));
 
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
   TEST_END("ulpt stop TCSTF stuck -> timeout");
 }
 
@@ -206,7 +206,7 @@ static void stub_ulpt_cb(void* ctx, uint8_t ch)
 
 static void prep_w43(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_ulpt_cb_count   = 0U;
   s_ulpt_cb_last_ch = 0U;

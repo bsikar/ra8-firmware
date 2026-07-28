@@ -255,7 +255,7 @@ const ra8_rot_antirollback_store_t* ra8_rot_antirollback_default_store(void);
  * advances the stacked PC past the faulting load, clears the sticky fault status,
  * and returns true so the handler does a plain exception return (the read then maps
  * the blank word to version 0). Outside a probe it returns false and the handler
- * proceeds with its normal fault reporting. No-op under ``RA8_SIMULATOR_MODE``.
+ * proceeds with its normal fault reporting. No-op under ``RA8_OFF_TARGET``.
  *
  * @param[in,out] exc_frame Exception stack frame captured at handler entry (MSP or
  *                          PSP per EXC_RETURN); its stacked PC (index 6) is advanced.

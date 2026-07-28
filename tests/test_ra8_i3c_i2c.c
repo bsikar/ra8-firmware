@@ -4,7 +4,7 @@
  *
  * @details
  * Drives the polling-mode IIC_B controller against the host-side
- * ``ra8_sim_mmap`` substrate. Status flags are pre-armed where the
+ * ``ra8_fake_mmap`` substrate. Status flags are pre-armed where the
  * driver expects them (BST.STCNDDF, BST.SPCNDDF, NTST.TDBEF0,
  * NTST.RDBFF0, BST.TENDF) so the wait loops fall through immediately.
  *
@@ -19,12 +19,12 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_i3c_i2c.h"
 #include "ra8_i3c_i2c_internal.h"
 #include "ra8_i3c_i2c_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -90,12 +90,12 @@ static void prime_ntst(uint8_t channel)
 }
 
 /**
- * @brief Reset the simulator and ensure MSTP / channel state is fresh.
+ * @brief Reset the fake and ensure MSTP / channel state is fresh.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -309,7 +309,7 @@ static void test_write_busy_rejection(void)
 }
 
 /* =============================================================================
- * Deterministic NACK injection via the ra8_sim_mmio poll-hook.
+ * Deterministic NACK injection via the ra8_fake_mmio poll-hook.
  * =============================================================================
  *
  * The hook runs inline on the driver's OWN poll thread (no wall-clock timer, no
@@ -318,7 +318,7 @@ static void test_write_busy_rejection(void)
  * instead re-asserts BST.NACKDF on every internal_i3c_i2c_wait_ntst poll while
  * TDBEF0 stays primed, so internal_i3c_i2c_drain_tx observes it on one of its
  * per-byte polls and the write returns k_ra8_err_nack. The long-buffer TIMEOUT
- * legs use ra8_sim_mmio_fail_nth_wait instead (see the tests further down). */
+ * legs use ra8_fake_mmio_fail_nth_wait instead (see the tests further down). */
 
 /** @brief Channel the NACK poll-hook operates on. */
 static uint8_t s_nack_ch;
@@ -342,7 +342,7 @@ static void i3c_nack_hook(void)
 static void i3c_nack_hook_arm(uint8_t channel)
 {
   s_nack_ch = channel;
-  ra8_sim_mmio_set_poll_hook(i3c_nack_hook);
+  ra8_fake_mmio_set_poll_hook(i3c_nack_hook);
 }
 
 /**
@@ -350,7 +350,7 @@ static void i3c_nack_hook_arm(uint8_t channel)
  */
 static void i3c_nack_hook_disarm(void)
 {
-  ra8_sim_mmio_set_poll_hook(nullptr);
+  ra8_fake_mmio_set_poll_hook(nullptr);
 }
 
 /**
@@ -644,7 +644,7 @@ static void test_abort_resets_channel(void)
 }
 
 /* =============================================================================
- * Long-buffer breaks via ra8_sim_mmio_fail_nth_wait (deterministic, no servicer).
+ * Long-buffer breaks via ra8_fake_mmio_fail_nth_wait (deterministic, no servicer).
  * =============================================================================
  */
 
@@ -663,7 +663,7 @@ static void test_write_long_break(void)
   /* Fail drain_tx's first NTST wait (the 2nd wait-loop on NTST, after the one in
    * send_address) so the payload push times out mid-transfer -- deterministic,
    * with no concurrent servicer. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(&i3c_i2c_regs(0U)->NTST, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(&i3c_i2c_regs(0U)->NTST, 1U));
   const ra8_err_t err = internal_i3c_i2c_write(0U,
                                                (uint8_t)k_ra8_i3c_i2c_test_target,
                                                s_long_buffer,
@@ -688,7 +688,7 @@ static void test_read_long_break(void)
   /* Fail drain_rx's first NTST wait (the 3rd wait-loop on NTST: after
    * send_address and the rx-phase priming read) so the receive times out
    * mid-transfer -- deterministic, with no concurrent servicer. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(&i3c_i2c_regs(0U)->NTST, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(&i3c_i2c_regs(0U)->NTST, 2U));
   const ra8_err_t err = internal_i3c_i2c_read(0U,
                                               (uint8_t)k_ra8_i3c_i2c_test_target,
                                               s_long_buffer,
@@ -714,7 +714,7 @@ static void test_scan_no_response(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
   prime_ntst(0U);
-  /* No bus activity in the simulator; the scan times out waiting for
+  /* No bus activity in the fake; the scan times out waiting for
    * either TENDF or NACKDF, which is the correct behaviour for an
    * empty bus. */
   bool acked = true;

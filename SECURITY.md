@@ -60,6 +60,6 @@ memory-safety warnings kept as hard errors rather than blanket-disabled.
 This is a hobby / research firmware codebase, not a certified product. Where the
 code targets a safety or security bar (for example DO-178C / IEC 61508 coding
 discipline, or a TrustZone root of trust), that intent is documented alongside
-its current enforcement state; features that are scaffolded, simulated, or not
+its current enforcement state; features that are scaffolded, fake, or not
 yet hardware-validated are labelled as such in-tree. Do not assume a security
 control is active on real silicon unless the code and its tests say so.

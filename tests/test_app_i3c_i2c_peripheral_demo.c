@@ -4,7 +4,7 @@
  *
  * @details
  * Replays the IIC_B peripheral open + status / receive / send sequence
- * from the demo. All MMIO is via the host tests/mocks/ra8_sim_mmap.c
+ * from the demo. All MMIO is via the host tests/mocks/ra8_fake_mmap.c
  * shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -15,8 +15,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i3c.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -35,7 +35,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /**
@@ -109,7 +109,7 @@ static void test_iic_peripheral_status_null_rejected(void)
 /**
  * @par MC/DC:
  * Decision: ``ra8_i3c_peripheral_status(good) == ok``. Golden path
- * vector; mask returned will be idle in the simulator.
+ * vector; mask returned will be idle in the fake.
  */
 static void test_iic_peripheral_status_idle(void)
 {

@@ -24,9 +24,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_ospi_regs.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
@@ -54,7 +54,7 @@ typedef enum : uint8_t {
 } test_xspi_cov_code_t;
 
 /**
- * @brief Bring the sim mmap + MSTP back to a known state and open XSPI0.
+ * @brief Bring the fake mmap + MSTP back to a known state and open XSPI0.
  *
  * @details
  * Mirrors the ``prep_w51`` pattern in ``test_ra8_xspi.c``: reset the fake
@@ -63,7 +63,7 @@ typedef enum : uint8_t {
  * points operate against a realistic post-init state. The clock-block
  * handshake helper is idempotent, so re-running init across tests is safe.
  *
- * @pre The host sim mmap window is available (linked ra8_sim_mmap mock).
+ * @pre The host fake mmap window is available (linked ra8_fake_mmap mock).
  * @pre No other thread touches the xSPI registers (single-threaded test).
  * @post XSPI0 is initialised and its register window is writable.
  * @post ``ra8_xspi(k_test_xspi_cov_inst0)`` returns a non-null pointer.
@@ -72,7 +72,7 @@ typedef enum : uint8_t {
  */
 static void prep_xip(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_test_xspi_cov_inst0, k_ra8_xspi_lio_1s8s8s));
 }

@@ -44,7 +44,7 @@
  *
  * @note This header is host-friendly: it defines only compile-time constants
  *       and touches no hardware, so it compiles unchanged under
- *       `RA8_SIMULATOR_MODE`.
+ *       `RA8_OFF_TARGET`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

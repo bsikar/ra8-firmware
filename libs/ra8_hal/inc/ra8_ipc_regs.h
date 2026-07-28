@@ -63,7 +63,7 @@ extern "C" {
  * @details
  * Secure / non-secure aliases differ by bit 28 (0x40000000 vs
  * 0x50000000). HAL code uses the secure alias since unit tests run
- * with `RA8_SIMULATOR_MODE` and the sim mmap covers the secure
+ * with `RA8_OFF_TARGET` and the fake mmap covers the secure
  * 0x4xxxxxxx peripheral window.
  */
 typedef enum : uintptr_t {

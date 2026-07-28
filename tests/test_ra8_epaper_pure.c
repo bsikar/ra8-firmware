@@ -8,7 +8,7 @@
  * sizing, the 32-pixel 1 bpp alignment grid, the waveform-map lookup,
  * descriptor validation, the ``GET_DEV_INFO`` decode, and the reported-vs-
  * configured geometry check. None of them touch a bus, a GPIO or driver
- * state, so none of them need the SPI simulator fixture that
+ * state, so none of them need the SPI fake fixture that
  * ``test_ra8_epaper.c`` builds -- they are called directly here.
  *
  * That separation is the point rather than a convenience. Several of these

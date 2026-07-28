@@ -17,8 +17,8 @@
 #include "ra8_drw_internal.h"
 #include "ra8_drw_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -69,11 +69,11 @@ typedef enum : uint32_t {
 } ra8_drw_test_const_t;
 
 /**
- * @brief Reset hardware sim, ref-count table, and callback latches.
+ * @brief Reset hardware fake, ref-count table, and callback latches.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

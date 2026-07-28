@@ -49,14 +49,14 @@ operate on exactly the buffer with no partial-line spill.
 `tools/ra8_emulator` **does** model the DMAC mem-to-mem transfer
 (`board_periph_dmac.c` `dmac_copy_units` moves the bytes in emulated
 memory on the software trigger), so the **real** `ra8_dmac` path runs in
-sim -- there is no CPU-memcpy fallback. ra8_emulator's memory is byte-exact
+emulator -- there is no CPU-memcpy fallback. ra8_emulator's memory is byte-exact
 and it does not model the L1 D-cache, so the clean/invalidate calls are
 exercised but have no caching effect and the copy verifies trivially.
-The cache hazard is only observable on real silicon. `RA8_SIMULATOR_MODE`
+The cache hazard is only observable on real silicon. `RA8_OFF_TARGET`
 is a host-unit-test define and is **not** set for the ARM cross-build
 ra8_emulator runs, so nothing is `#ifdef`-ed out.
 
-Headless sim run:
+Headless emulator run:
 
 ```sh
 make                                   # cross-compile -> build/dma_coherency_hil.elf

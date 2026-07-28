@@ -6,7 +6,7 @@
  * Mirrors examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_1_demo/main.c bring-up:
  * ra8_lpm_init -> ra8_lpm_arm_dpsier(2, DRTCAIE) ->
  * ra8_lpm_arm_wupen0_bits(RTCALM) ->
- * ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_1). The host sim
+ * ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_1). The host fake
  * mmap records each register write so the test can verify the
  * DPSIER2 / WUPEN0 / LPSCR state.
  *
@@ -18,14 +18,14 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_lpm.h"
 #include "ra8_lpm_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 static ra8_lpm_config_t make_demo_cfg(void)

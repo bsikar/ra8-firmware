@@ -9,9 +9,9 @@
 #include "ra8_cgc.h"
 #include "ra8_cgc_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mrms_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -33,11 +33,11 @@ typedef enum : uint32_t {
   k_ra8_cgc_test_satisfy_iter = 2U,   /**< Poll index for succeed-after-N.  */
 } ra8_cgc_test_mrm_t;
 
-/** @brief Reset the sim register mirror and the MMIO fault seam together. */
+/** @brief Reset the fake register mirror and the MMIO fault seam together. */
 static void cgc_test_reset(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 }
 
 /**
@@ -145,7 +145,7 @@ static void test_init_main_osc_timeout(void)
   /* Arm the MMIO fault seam so the first OSCSF wait (the main-osc
    * stabilisation poll) burns its full budget and ra8_cgc_init
    * propagates k_ra8_err_hw_timeout. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)ra8_sys_oscsf()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_sys_oscsf()));
   const ra8_err_t err = ra8_cgc_init();
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, err);
   TEST_END("cgc init main-osc timeout");
@@ -166,8 +166,8 @@ static void test_init_oscsf_satisfy_after(void)
    * OSCSF waits iterate before converging, exercising the loop
    * continuation branch instead of the first-poll exit. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_satisfy_after((const volatile void*)ra8_sys_oscsf(),
-                                            (uint32_t)k_ra8_cgc_test_satisfy_iter));
+                 ra8_fake_mmio_satisfy_after((const volatile void*)ra8_sys_oscsf(),
+                                             (uint32_t)k_ra8_cgc_test_satisfy_iter));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_init());
   TEST_END("cgc init oscsf wait succeeds after N polls");
 }
@@ -183,7 +183,7 @@ static void test_init_vscr_timeout(void)
   cgc_test_reset();
 
   *ra8_sys_oscsf() = (uint8_t)k_ra8_cgc_test_all_oscsf;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)ra8_sys_vscr()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_sys_vscr()));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_init());
   TEST_END("cgc init VSCMTSF timeout");
 }
@@ -200,13 +200,13 @@ static void test_init_mrm_freq_timeout(void)
   /* MRCFREQ never latches -> step 6 propagates hw_timeout. */
   cgc_test_reset();
   *ra8_sys_oscsf() = (uint8_t)k_ra8_cgc_test_all_oscsf;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)ra8_mrms_mrcfreq()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_mrms_mrcfreq()));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_init());
 
   /* MRCFREQ latches but MREFREQ never does -> same error, later leg. */
   cgc_test_reset();
   *ra8_sys_oscsf() = (uint8_t)k_ra8_cgc_test_all_oscsf;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)ra8_mrms_mrefreq()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_mrms_mrefreq()));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_init());
   TEST_END("cgc init MRCFREQ/MREFREQ latch timeout");
 }
@@ -223,13 +223,15 @@ static void test_init_sciclk_timeout_legs(void)
   /* Leg 1: CKSRDY never asserts after CKSREQ=1 (wait-loop 0). */
   cgc_test_reset();
   *ra8_sys_oscsf() = (uint8_t)k_ra8_cgc_test_all_oscsf;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_scickcr(), 0U));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_scickcr(), 0U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_init());
 
   /* Leg 2: CKSRDY never de-asserts after CKSREQ clears (wait-loop 1). */
   cgc_test_reset();
   *ra8_sys_oscsf() = (uint8_t)k_ra8_cgc_test_all_oscsf;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait((const volatile void*)ra8_sys_scickcr(), 1U));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_scickcr(), 1U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_init());
   TEST_END("cgc init SCICKCR handshake timeout legs");
 }
@@ -292,7 +294,7 @@ static void test_use_hoco_timeout(void)
   cgc_test_reset();
 
   /* Arm the seam: the HOCOSF wait burns its budget and times out. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)ra8_sys_oscsf()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_sys_oscsf()));
   const ra8_err_t err = ra8_cgc_use_hoco();
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, err);
   TEST_END("cgc use_hoco timeout");
@@ -340,7 +342,7 @@ static void test_switch_pll1_target_updates_cpuclk0(void)
  */
 static void test_stop_detection_arm_and_fire(void)
 {
-  TEST_BEGIN("cgc stop detection: handler fires via sim trigger");
+  TEST_BEGIN("cgc stop detection: handler fires via fake trigger");
   cgc_test_reset();
   s_ostd_count    = 0;
   s_ostd_last_val = 0;
@@ -349,16 +351,16 @@ static void test_stop_detection_arm_and_fire(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cgc_enable_stop_detection(nullptr, &ctx_val));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_enable_stop_detection(stub_ostd_handler, &ctx_val));
 
-  /* Fire via the sim helper. */
-  ra8_cgc_sim_trigger_stop_detection();
+  /* Fire via the fake helper. */
+  ra8_cgc_fake_trigger_stop_detection();
   TEST_ASSERT_EQ(1, s_ostd_count);
   TEST_ASSERT_EQ(0xCAFE, s_ostd_last_val);
 
   /* Disable and verify the callback no longer fires. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_disable_stop_detection());
-  ra8_cgc_sim_trigger_stop_detection();
+  ra8_cgc_fake_trigger_stop_detection();
   TEST_ASSERT_EQ(1, s_ostd_count); /* unchanged */
-  TEST_END("cgc stop detection: handler fires via sim trigger");
+  TEST_END("cgc stop detection: handler fires via fake trigger");
 }
 
 /**
@@ -373,7 +375,7 @@ static void test_stop_detection_arm_and_fire(void)
  * write).
  *
  * Verifying the gate is exercised under all combinations is tricky
- * on the host simulator because PDCTRESWM is plain RAM and the
+ * on the host fake because PDCTRESWM is plain RAM and the
  * production code can only observe the read it does itself. Drive
  * the three branches by pre-seeding PDCTRESWM and re-running
  * ``ra8_cgc_eswclk_init``; the inner write only fires when the
@@ -395,7 +397,7 @@ static void test_mcdc_eswclk_pdctreswm(void)
   const uint8_t pdpgsf_mask = (uint8_t)(1U << 7U);
   /* V1: domain is gated (PDCSF=0 && PDPGSF=1) -> condition TRUE,
    * write fires and clears PDDE. The init also asserts CKSREQ/SRDY
-   * for ESWCKCR + ESWPCKCR; the sim handlers handle that. */
+   * for ESWCKCR + ESWPCKCR; the fake handlers handle that. */
   cgc_test_reset();
   *ra8_sys_oscsf()     = (uint8_t)(1U << 0U); /* HOCOSF, satisfies HOCO wait. */
   *ra8_sys_pdctreswm() = (uint8_t)(pdde_mask | pdpgsf_mask);

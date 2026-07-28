@@ -268,7 +268,7 @@ ra8_glcdc()->BG_PERI = 0x12345678U;
 GLCDC_BASE->BG_PERI = 0x12345678U;
 ```
 
-The inline-accessor approach lets the host `RA8_SIMULATOR_MODE` build
+The inline-accessor approach lets the host `RA8_OFF_TARGET` build
 intercept register writes by linking a different `ra8_glcdc()` body.
 Macros foreclose that.
 

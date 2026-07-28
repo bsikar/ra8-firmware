@@ -10,7 +10,7 @@
  * `ra8_dfu_launch` is the shared copy-to-run hand-off behind the DFU
  * bootloader. On the firmware target it copies an image to the SRAM run base
  * and branches into it; that copy + VTOR/MSP switch + `bx` all live inside
- * `#ifndef RA8_SIMULATOR_MODE`. Under the host test build `RA8_SIMULATOR_MODE`
+ * `#ifndef RA8_OFF_TARGET`. Under the host test build `RA8_OFF_TARGET`
  * is defined for every TU (see tests/CMakeLists.txt), so the hardware branch
  * is compiled out and never counted. What remains is host-compilable and is
  * covered here:
@@ -77,7 +77,7 @@ typedef enum : uint32_t {
  * - `!ra8_dfu_run_target_valid(entry, img_len)`: V1 valid target -> false
  *   (continue); V2 bad entry -> true (return).
  * The third call (src!=0, valid target) falls through both guards; the
- * hardware copy/branch is `#ifndef RA8_SIMULATOR_MODE` and compiled out on the
+ * hardware copy/branch is `#ifndef RA8_OFF_TARGET` and compiled out on the
  * host, so control simply returns.
  */
 static void test_launch_production_default_paths(void)
@@ -93,7 +93,7 @@ static void test_launch_production_default_paths(void)
   ra8_dfu_launch((uintptr_t)img, (uint32_t)k_tc_img_len, (uint32_t)k_tc_entry_bad);
 
   /* Valid: entry == run base, len is a 32-byte page. Both guards fall
-   * through; the copy/branch is compiled out under RA8_SIMULATOR_MODE, so the
+   * through; the copy/branch is compiled out under RA8_OFF_TARGET, so the
    * call returns without touching MSP/VTOR. Reaching here proves it. */
   ra8_dfu_launch((uintptr_t)img, (uint32_t)k_tc_img_len, (uint32_t)k_ra8_dfu_run_base);
 
@@ -262,7 +262,7 @@ static void test_launch_cov_rot_antirollback_deny(void)
  * - `ra8_rot_verify_image(...) != k_ra8_ok` -> false (verify == k_ra8_ok);
  * - `ra8_rot_antirollback_verify(...) != k_ra8_ok` -> false (== k_ra8_ok).
  * Both guards fall through to the hardware copy/branch, which is
- * `#ifndef RA8_SIMULATOR_MODE` and compiled out on the host, so the accepted
+ * `#ifndef RA8_OFF_TARGET` and compiled out on the host, so the accepted
  * launch reaches the end of the function and returns. This vector pairs with
  * the two deny tests to prove each guard independently forces the outcome.
  */

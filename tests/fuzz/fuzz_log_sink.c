@@ -3,13 +3,13 @@
  * @brief Route ra8_log away from the ITM registers for every fuzz harness.
  *
  * @details
- * Under `RA8_SIMULATOR_MODE`, and absent an installed byte sink, `ra8_log`
+ * Under `RA8_OFF_TARGET`, and absent an installed byte sink, `ra8_log`
  * emits through the Cortex-M85 ITM stimulus registers at 0xE0000000. The
  * host unit-test build backs that window with anonymous RAM via
- * `tests/mocks/ra8_sim_mmap.c`, so those reads are harmless there. The
+ * `tests/mocks/ra8_fake_mmap.c`, so those reads are harmless there. The
  * libFuzzer harnesses (issue #193) run under AddressSanitizer, where that
  * address is inside ASan's reserved shadow gap and cannot be mapped: the
- * pure-computation harnesses omit `ra8_sim_mmap.c` entirely, and the two
+ * pure-computation harnesses omit `ra8_fake_mmap.c` entirely, and the two
  * MMIO harnesses that keep it skip exactly the shadow-gap region. An
  * `ra8_log` call from linked-in production code (for example
  * `ra8_canfd_init()` logging a clock-ready timeout) would therefore
@@ -25,13 +25,13 @@
  * findings, not log text, and routing to stderr would flood a fuzz session.
  *
  * The file is compiled into every harness (see the foreach in
- * tests/fuzz/CMakeLists.txt) and is a no-op outside `RA8_SIMULATOR_MODE`.
+ * tests/fuzz/CMakeLists.txt) and is a no-op outside `RA8_OFF_TARGET`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 
 #include <stdint.h>
 
@@ -86,6 +86,6 @@ static void fuzz_log_discard(void* ctx, uint8_t byte)
 }
 
 #else
-/* Non-simulator build: this TU contributes nothing. */
+/* On-target build: this TU contributes nothing. */
 typedef int fuzz_log_sink_placeholder_t;
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */

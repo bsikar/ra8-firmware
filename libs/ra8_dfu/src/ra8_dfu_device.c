@@ -13,7 +13,7 @@
  * the header on end-of-download. `dfu_get_status` reports dfuDNBUSY until the
  * worker catches up; `dfu_read` serves DFU_UPLOAD straight out of the target
  * slot's MRAM body. The whole TU is firmware-only (the host test build defines
- * `RA8_SIMULATOR_MODE` and has no USBX).
+ * `RA8_OFF_TARGET` and has no USBX).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -21,12 +21,12 @@
 
 #include "ra8_dfu_device.h"
 
-/* Firmware + USBX only. The host test build defines RA8_SIMULATOR_MODE (no USBX),
+/* Firmware + USBX only. The host test build defines RA8_OFF_TARGET (no USBX),
  * and a firmware build that does not pull in USBX -- e.g. dfu_copy_to_run, which
  * only needs the ra8_dfu core (boot/program/launch) -- has no ux_api.h on the
  * include path. In both cases this whole TU is empty; the only consumers of the
  * DFU device API are apps that `USES usbx`. */
-#if !defined(RA8_SIMULATOR_MODE) && __has_include("ux_api.h")
+#if !defined(RA8_OFF_TARGET) && __has_include("ux_api.h")
 
 #include <string.h>
 
@@ -432,7 +432,7 @@ ra8_err_t ra8_dfu_device_worker_step(void)
    * end-of-download (zero-length DFU_DNLOAD). The self-test twins use DFU_ABORT
    * instead of a manifest, so they never reach this branch -- only the
    * bootloader's real download path does. */
-  // mcdc-deactivated: this whole TU is #ifndef RA8_SIMULATOR_MODE (USBX is not in
+  // mcdc-deactivated: this whole TU is #ifndef RA8_OFF_TARGET (USBX is not in
   // the host build), so the 4-condition manifest/commit guard is outside the
   // host MC/DC scope; it is exercised by the dfu_bootloader DFU-program path.
   if (s_dev.manifest && !s_dev.committed && s_dev.prepared && (s_dev.prog_err == k_ra8_ok)) {
@@ -473,4 +473,4 @@ bool ra8_dfu_device_committed(void)
   return s_dev.committed;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

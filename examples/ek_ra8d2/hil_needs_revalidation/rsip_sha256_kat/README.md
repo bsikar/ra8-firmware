@@ -46,7 +46,7 @@ Root cause: the **RSIP-E50D is not register-mapped**. HUM Ch 52
 "Renesas Secure IP (RSIP-E50D)" is a 6-page feature overview (p 3302-3307) with no
 register interface; Renesas drives the engine through FSP's opaque procedural
 "primitive" command sequences. The register map in `ra8_rsip.c` was invented and
-had never run on silicon -- the host tests all use `RA8_SIMULATOR_MODE`, i.e. the
+had never run on silicon -- the host tests all use `RA8_OFF_TARGET`, i.e. the
 software fallback, so they could not catch it.
 
 ### The fix

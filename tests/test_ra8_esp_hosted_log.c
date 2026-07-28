@@ -30,7 +30,7 @@
  * assert silence when it is not -- both are real assertions, and one of them
  * is always the correct one.
  *
- * No hardware registers are touched; no ``ra8_sim_mmap`` window is required.
+ * No hardware registers are touched; no ``ra8_fake_mmap`` window is required.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

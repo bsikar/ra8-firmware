@@ -68,25 +68,25 @@ extern "C" {
 
 #include "ra8_err.h"
 
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-/* Host unit-test MMIO fault seam (tests/mocks/ra8_sim_mmio.c). Consulted once per
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+/* Host unit-test MMIO fault seam (tests/mocks/ra8_fake_mmio.c). Consulted once per
  * poll below so a test can drive a bounded wait to timeout or succeed-after-N,
  * exercising the real poll/timeout legs on host with the driver short-circuits
  * deleted (T1-01). Forward-declared here -- rather than including the test-only
  * header -- so this production header stays test-clean; the definition links
  * only into the host test binary. Absent in firmware and ra8_emulator builds, which
  * do not define UNIT_TEST and take the plain register-read path below. */
-[[nodiscard]] bool ra8_sim_mmio_wait_eval(const volatile void* reg, uint32_t iter, bool real_cond);
+[[nodiscard]] bool ra8_fake_mmio_wait_eval(const volatile void* reg, uint32_t iter, bool real_cond);
 /* Real-condition-honoring poll consult for the raw-loop status polls in the
  * i2c / i3c / sdhi drivers -- those were NOT written against ra8_hw_wait_* and
  * must keep their "flag_set -> exit, else spin to the bounded timeout" contract.
- * Unlike ra8_sim_mmio_wait_eval (unarmed -> true, the T1-01 short-circuit drop-in),
+ * Unlike ra8_fake_mmio_wait_eval (unarmed -> true, the T1-01 short-circuit drop-in),
  * this returns @p flag_set when the register is unarmed, so an unprimed flag
  * still times out exactly as the pre-seam raw loop did and every existing test
  * keeps its behaviour. It also invokes any registered synchronous poll-hook first
- * (see ra8_sim_mmio_set_poll_hook) so a host test can model the peripheral on the
+ * (see ra8_fake_mmio_set_poll_hook) so a host test can model the peripheral on the
  * driver's OWN poll thread, deterministically and thread-free. */
-[[nodiscard]] bool ra8_sim_mmio_poll(const volatile void* reg, uint32_t iter, bool flag_set);
+[[nodiscard]] bool ra8_fake_mmio_poll(const volatile void* reg, uint32_t iter, bool flag_set);
 /**
  * @brief Host-seam model of a "set condition: reading this register" bit.
  *
@@ -96,7 +96,7 @@ extern "C" {
  * silicon through this; the seam then latches ``set_mask`` into the
  * RAM-backed register (e.g. IPCSEMn.LOCK, HUM Ch 3.2.3) so composed host
  * flows (take -> release -> take) observe silicon-faithful state. Runs any
- * registered synchronous poll hook first (``ra8_sim_mmio_set_poll_hook``)
+ * registered synchronous poll hook first (``ra8_fake_mmio_set_poll_hook``)
  * so a test can model a peer core mutating the register right before the
  * driver's read, deterministically on the driver's own thread.
  *
@@ -109,15 +109,15 @@ extern "C" {
  *         silicon read data report.
  * @retval 0 ``reg`` was NULL, or the register held 0 before the latch.
  *
- * @pre Host test binary (``RA8_SIMULATOR_MODE`` and ``UNIT_TEST``).
- * @pre ``reg`` points into a ``ra8_sim_mmap`` backed window when non-NULL.
+ * @pre Host test binary (``RA8_OFF_TARGET`` and ``UNIT_TEST``).
+ * @pre ``reg`` points into a ``ra8_fake_mmap`` backed window when non-NULL.
  * @post ``*reg`` has ``set_mask`` latched on top of the pre-read value.
  * @post Any registered poll hook ran once before the read.
  *
  * @note Test-only. Not thread-safe (tests are single-threaded).
  * @since 0.1.0
  */
-[[nodiscard]] uint32_t ra8_sim_mmio_read_to_set32(volatile uint32_t* reg, uint32_t set_mask);
+[[nodiscard]] uint32_t ra8_fake_mmio_read_to_set32(volatile uint32_t* reg, uint32_t set_mask);
 
 /**
  * @brief Host-seam model of a write-1-to-clear register write.
@@ -136,15 +136,15 @@ extern "C" {
  * @param[in]     w1c_mask Bits with write-1-to-clear behaviour.
  * @param[in]     value    The command word the driver writes on silicon.
  *
- * @pre Host test binary (``RA8_SIMULATOR_MODE`` and ``UNIT_TEST``).
- * @pre ``reg`` points into a ``ra8_sim_mmap`` backed window when non-NULL.
+ * @pre Host test binary (``RA8_OFF_TARGET`` and ``UNIT_TEST``).
+ * @pre ``reg`` points into a ``ra8_fake_mmap`` backed window when non-NULL.
  * @post W1C bits written 1 read back 0; W1C bits written 0 are unchanged.
  * @post Non-W1C bits hold the written ``value`` bits.
  *
  * @note Test-only. Not thread-safe (tests are single-threaded).
  * @since 0.1.0
  */
-void ra8_sim_mmio_write1_clear32(volatile uint32_t* reg, uint32_t w1c_mask, uint32_t value);
+void ra8_fake_mmio_write1_clear32(volatile uint32_t* reg, uint32_t w1c_mask, uint32_t value);
 #endif
 
 /* =============================================================================
@@ -222,8 +222,8 @@ ra8_hw_wait_flag_set8(volatile const uint8_t* reg, uint8_t mask, uint32_t budget
     return k_ra8_err_null_ptr;
   }
   for (uint32_t i = 0U; i < budget; ++i) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(reg, i, ((*reg & mask) != 0U))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(reg, i, ((*reg & mask) != 0U))) {
       return k_ra8_ok;
     }
 #else
@@ -265,8 +265,8 @@ ra8_hw_wait_flag_clear8(volatile const uint8_t* reg, uint8_t mask, uint32_t budg
     return k_ra8_err_null_ptr;
   }
   for (uint32_t i = 0U; i < budget; ++i) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(reg, i, ((*reg & mask) == 0U))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(reg, i, ((*reg & mask) == 0U))) {
       return k_ra8_ok;
     }
 #else
@@ -312,8 +312,8 @@ ra8_hw_wait_flag_set32(volatile const uint32_t* reg, uint32_t mask, uint32_t bud
     return k_ra8_err_null_ptr;
   }
   for (uint32_t i = 0U; i < budget; ++i) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(reg, i, ((*reg & mask) != 0U))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(reg, i, ((*reg & mask) != 0U))) {
       return k_ra8_ok;
     }
 #else
@@ -354,8 +354,8 @@ ra8_hw_wait_flag_clear32(volatile const uint32_t* reg, uint32_t mask, uint32_t b
     return k_ra8_err_null_ptr;
   }
   for (uint32_t i = 0U; i < budget; ++i) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(reg, i, ((*reg & mask) == 0U))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(reg, i, ((*reg & mask) == 0U))) {
       return k_ra8_ok;
     }
 #else

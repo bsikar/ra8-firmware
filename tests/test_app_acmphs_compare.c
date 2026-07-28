@@ -17,8 +17,8 @@
 
 #include "ra8_acmphs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_port_constants.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -28,7 +28,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /**

@@ -191,7 +191,7 @@ fi
 
 # ---------------------------------------------------------------------------
 # macOS shim: the host test harness uses MAP_FIXED below 4 GiB for the
-# simulated MMIO region; macOS arm64 SIGKILLs the process. Re-exec
+# fake MMIO region; macOS arm64 SIGKILLs the process. Re-exec
 # inside the project's Linux devcontainer just like
 # scripts/report/coverage_report_host.sh does. Pass --in-container to skip this.
 # ---------------------------------------------------------------------------

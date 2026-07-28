@@ -365,12 +365,12 @@ static void test_mcdc_verify_hash_arg_pair(void)
  * @brief Magic-number-free inputs for the error-leg coverage tests.
  */
 typedef enum : uint16_t {
-  k_psa_leg_big_plain  = 257U, /**< Plaintext > sim keystream scratch (256).     */
-  k_psa_leg_wrong_hash = 16U,  /**< hash_len != k_ra8_psa_sha256_len.            */
-  k_psa_leg_short_sig  = 16U,  /**< sig_len != k_ra8_psa_sha256_len (sim guard). */
-  k_psa_leg_small_cap  = 2U,   /**< out_cap below the recovered plaintext.       */
-  k_psa_leg_extra      = 4U,   /**< Spare bytes past the AEAD tag.               */
-  k_psa_leg_cipher_len = 32U,  /**< cipher_len -> plain_len 16.                  */
+  k_psa_leg_big_plain  = 257U, /**< Plaintext > fake keystream scratch (256).     */
+  k_psa_leg_wrong_hash = 16U,  /**< hash_len != k_ra8_psa_sha256_len.             */
+  k_psa_leg_short_sig  = 16U,  /**< sig_len != k_ra8_psa_sha256_len (fake guard). */
+  k_psa_leg_small_cap  = 2U,   /**< out_cap below the recovered plaintext.        */
+  k_psa_leg_extra      = 4U,   /**< Spare bytes past the AEAD tag.                */
+  k_psa_leg_cipher_len = 32U,  /**< cipher_len -> plain_len 16.                   */
 } ra8_psa_errleg_const_t;
 
 /** @brief Helper: import a P-256 key with the requested usage mask. */
@@ -546,7 +546,7 @@ static void test_sign_error_size_legs(void)
  * `!s_initialized`, `!internal_handle_valid(handle)`,
  * `alg != k_ra8_psa_alg_ecdsa_sha_256`,
  * `(usage & k_ra8_psa_usage_verify) == 0`, `hash_len != k_ra8_psa_sha256_len`,
- * and the sim `sig_len != k_ra8_psa_sha256_len` tag-length guard. Each is a
+ * and the fake `sig_len != k_ra8_psa_sha256_len` tag-length guard. Each is a
  * lone condition; the `hash||sig` guard they transit is covered above.
  */
 static void test_verify_error_legs(void)
@@ -589,7 +589,7 @@ static void test_verify_error_legs(void)
                                      (size_t)k_psa_leg_wrong_hash,
                                      sig,
                                      sizeof(sig)));
-  /* sig_len != 32 (sim tag-length guard) */
+  /* sig_len != 32 (fake tag-length guard) */
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
                  ra8_psa_verify_hash(kv,
                                      k_ra8_psa_alg_ecdsa_sha_256,
@@ -614,7 +614,7 @@ static void test_verify_error_legs(void)
  * @par MC/DC:
  * Two single-condition legs: `!s_initialized` in
  * ``internal_aead_encrypt_check`` and `if (ser != k_ra8_ok)` in
- * ``ra8_psa_aead_encrypt`` (the sim body returns invalid_size when the
+ * ``ra8_psa_aead_encrypt`` (the fake body returns invalid_size when the
  * plaintext exceeds the 256-byte keystream scratch). Neither is a
  * compound decision.
  */
@@ -644,7 +644,7 @@ static void test_aead_encrypt_error_legs(void)
   prep_init();
   ra8_psa_key_t k = mcdc_import_aes_key(k_ra8_psa_usage_encrypt);
   TEST_ASSERT_NOT_NULL(k);
-  /* plaintext exceeds the sim keystream scratch (256 bytes) */
+  /* plaintext exceeds the fake keystream scratch (256 bytes) */
   uint8_t big_plain[k_psa_leg_big_plain]                       = {};
   uint8_t big_out[k_psa_leg_big_plain + k_ra8_psa_gcm_tag_len] = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,

@@ -21,7 +21,7 @@
  *      PRC4 = 0x0010 (security),
  *      PRC5 = 0x0020 (RESET).
  *
- * The host-side simulator maps a writable page at the SYSTEM block
+ * The host-side fake maps a writable page at the SYSTEM block
  * base address, so `*ra8_sys_prcr() = ...` lands in observable host
  * memory and the asserts below read it back directly.
  *
@@ -31,8 +31,8 @@
 
 #include <stdint.h>
 
+#include "ra8_fake_mmap.h"
 #include "ra8_register_protection.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -81,9 +81,9 @@ static void test_unlock_value_constant(void)
 static void test_protected_write_unlocks_then_relocks(void)
 {
   TEST_BEGIN("RA8_PROTECTED_WRITE unlocks for body, relocks after");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
-  /* Sanity: PRCR starts at 0 in the simulated mmap. */
+  /* Sanity: PRCR starts at 0 in the fake mmap. */
   TEST_ASSERT_EQ(0, *ra8_sys_prcr());
 
   uint16_t observed_during_body = 0U;
@@ -114,7 +114,7 @@ static void test_protected_write_unlocks_then_relocks(void)
 static void test_protected_write_relocks_on_break(void)
 {
   TEST_BEGIN("RA8_PROTECTED_WRITE relocks even when body breaks early");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint16_t observed_during_body = 0U;
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
@@ -151,7 +151,7 @@ static void test_protected_write_relocks_on_break(void)
 static void test_inline_unlock_helper_writes_key_plus_prc0(void)
 {
   TEST_BEGIN("ra8_sys_prcr_unlock_cgc / lock_all helpers");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_sys_prcr_unlock_cgc();
   TEST_ASSERT_EQ(((uint16_t)k_ra8_prcr_unlock_cgc), *ra8_sys_prcr());

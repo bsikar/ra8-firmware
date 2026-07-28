@@ -206,7 +206,7 @@ typedef struct {
  *
  * @pre Caller is single-threaded with respect to this driver.
  * @pre ESWM MSTP gate is unrestricted (S/NS mapping permits it).
- * @post EDMAC TX engine running (EDTRR.TR=1) on the simulator and
+ * @post EDMAC TX engine running (EDTRR.TR=1) on the fake and
  *       on silicon.
  * @post EDMAC RX engine running (EDRRR.RR=1).
  *
@@ -366,7 +366,7 @@ typedef struct {
  * @details
  * Drops ``payload`` bytes into the RX descriptor buffer at the head of
  * the ring and clears RACT so the next ::ra8_eth_read pops it. The host
- * simulator has no real EDMAC engine, so this is the bridge that lets
+ * fake has no real EDMAC engine, so this is the bridge that lets
  * unit tests exercise the receive path. Gated on ``UNIT_TEST`` so it
  * cannot leak into firmware target builds.
  *

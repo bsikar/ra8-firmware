@@ -18,7 +18,7 @@
  * six-page feature overview (p 3302-3307) with no hash / key command-register
  * map, so the ``HUM Ch 52.1`` / ``52.2.3`` citations that used to sit on
  * those register pokes were fabricated (they passed cite_check while being
- * false, exactly the #214 / #181 finding). The sim-only command path is
+ * false, exactly the #214 / #181 finding). The off-target-only command path is
  * gated behind the stub-crypto guard and a production build returns
  * ``k_ra8_err_not_supported`` -- never a plausible-looking wrong digest, MAC,
  * wrapped key, or derived key. The only real hash path on this part is
@@ -80,8 +80,8 @@ static const char* s_tag = "RSIP";
  * six-page feature overview (p 3302-3307) with no hash / key command-register
  * map; the vendor engine is driven through an encrypted firmware mailbox, not
  * the MMIO opcodes modelled below. The command-path bodies here only round-trip
- * the host register simulator; they do NOT compute a real digest, HMAC, wrapped
- * key, or derived key. They compile only under the insecure-stub / simulator
+ * the host register fake; they do NOT compute a real digest, HMAC, wrapped
+ * key, or derived key. They compile only under the insecure-stub / fake
  * guard so a production image gets the fail-closed #else and can never mistake
  * these bytes for a valid hash, MAC, or key handle. The only real hash path is
  * ra8_rsip_sha256 -> the software SHA-256 backend in ra8_rsip.c (untouched); any
@@ -90,10 +90,10 @@ static const char* s_tag = "RSIP";
  * therefore carry NO HUM citation: there is no real register map to cite. The
  * former "HUM Ch 52.1" / "52.2.3" citations were fabricated and are removed.
  */
-#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
 
 /* ===========================================================================
- * Round-3 entry points: hash + HMAC (sim-only fiction)
+ * Round-3 entry points: hash + HMAC (off-target-only fiction)
  * ===========================================================================
  */
 
@@ -154,7 +154,7 @@ static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
   uint32_t i   = 0U;
   uint32_t off = (uint32_t)k_ra8_rsip_off_hash_digest;
   while ((i + (uint32_t)k_ra8_rsip_trng_word_bytes) <= to_read) {
-    /* Computed digest-word offset is a modelled register location (sim-only
+    /* Computed digest-word offset is a modelled register location (off-target-only
      * fiction), not a literal enumerator -- the analyzer can't see that. */
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed digest-word offset, not an enumerator.
     const uint32_t word = *ra8_rsip_reg32((ra8_rsip_off_t)off);
@@ -257,7 +257,7 @@ void internal_zero_handle_tail(ra8_rsip_key_handle_t* handle, uint32_t words)
   }
 }
 
-/* Push a buffer through an asymmetric input lane (sim-only fiction) -- see implementation for details. */
+/* Push a buffer through an asymmetric input lane (off-target-only fiction) -- see implementation for details. */
 void internal_asym_push(ra8_rsip_off_t off, const uint8_t* buf, uint32_t len)
 {
   uint32_t i = 0U;
@@ -274,7 +274,7 @@ void internal_asym_push(ra8_rsip_off_t off, const uint8_t* buf, uint32_t len)
   }
 }
 
-/* Pull a buffer back through an asymmetric output lane (sim-only fiction) -- see implementation for details. */
+/* Pull a buffer back through an asymmetric output lane (off-target-only fiction) -- see implementation for details. */
 void internal_asym_pull(ra8_rsip_off_t off, uint8_t* buf, uint32_t len)
 {
   uint32_t i = 0U;
@@ -291,7 +291,7 @@ void internal_asym_pull(ra8_rsip_off_t off, uint8_t* buf, uint32_t len)
 }
 
 /* ===========================================================================
- * Round-3 entry points: OEM boot loader version (anti-rollback, sim-only fiction)
+ * Round-3 entry points: OEM boot loader version (anti-rollback, off-target-only fiction)
  * ===========================================================================
  */
 
@@ -320,7 +320,7 @@ ra8_err_t ra8_rsip_oem_bl_version_lock(void)
 }
 
 /* ===========================================================================
- * Round-3 entry points: wrapped-key vault (sim-only fiction)
+ * Round-3 entry points: wrapped-key vault (off-target-only fiction)
  * ===========================================================================
  */
 
@@ -380,7 +380,7 @@ ra8_err_t ra8_rsip_kv_count(uint32_t* out)
 }
 
 /* ===========================================================================
- * Round-3 entry points: key wrap / unwrap engine (sim-only fiction)
+ * Round-3 entry points: key wrap / unwrap engine (off-target-only fiction)
  * ===========================================================================
  */
 
@@ -504,7 +504,7 @@ ra8_err_t ra8_rsip_key_unwrap(const ra8_rsip_key_handle_t* kek,
 }
 
 /* ===========================================================================
- * Round-3 entry points: key derivation (sim-only fiction)
+ * Round-3 entry points: key derivation (off-target-only fiction)
  * ===========================================================================
  */
 
@@ -598,7 +598,7 @@ ra8_err_t ra8_rsip_kdf(ra8_rsip_kdf_op_t            op,
 }
 
 /* ===========================================================================
- * Round-3 entry points: DOTF key delivery routing (sim-only fiction)
+ * Round-3 entry points: DOTF key delivery routing (off-target-only fiction)
  * ===========================================================================
  */
 
@@ -620,12 +620,12 @@ ra8_err_t ra8_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
   return k_ra8_ok;
 }
 
-#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_OFF_TARGET */
 
 /*
  * Fail-closed production variant. With no real RSIP hash / HMAC / key-management
  * backend on this silicon, every entry point returns a hard error (never
- * k_ra8_ok) so a production image cannot mistake the simulator command-path for a
+ * k_ra8_ok) so a production image cannot mistake the fake command-path for a
  * real digest, MAC, wrapped key, or derived key. The only real hash is
  * ra8_rsip_sha256 -> the software SHA-256 backend in ra8_rsip.c; callers needing
  * hash / HMAC / KDF use tf-psa-crypto on the M85 (issue #215).
@@ -753,4 +753,4 @@ ra8_err_t ra8_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
   return k_ra8_err_not_supported;
 }
 
-#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_OFF_TARGET */

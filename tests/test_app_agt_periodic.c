@@ -5,7 +5,7 @@
  * @details
  * Mirrors examples/ek_ra8d2/agt_periodic/main.c bring-up flow:
  * ra8_agt_start_free_run -> ra8_agt_get_status -> ra8_agt_stop ->
- * re-arm. All MMIO is via the host tests/mocks/ra8_sim_mmap.c shim.
+ * re-arm. All MMIO is via the host tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -16,7 +16,7 @@
 
 #include "ra8_agt.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -30,7 +30,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /**

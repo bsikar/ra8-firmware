@@ -42,7 +42,7 @@ extern "C" {
  *
  * @details ~10 ms ceiling at 1 GHz CPU with ~5 cycles per iter. The
  * state machine transitions in FSP take a handful of CANFDCLK ticks
- * on real silicon. On host (RA8_SIMULATOR_MODE) the loops run against
+ * on real silicon. On host (RA8_OFF_TARGET) the loops run against
  * the mmap'd peri region and the bits flip immediately, so the
  * budget is mostly hit-once. Shared because ra8_eth_gwca.c spins on
  * GWMS.OPS / GWARIRM.ARR, ra8_eth_gwca_queue.c spins on GWDCCi.BALR,

@@ -20,8 +20,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_sdmmc_spi.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**

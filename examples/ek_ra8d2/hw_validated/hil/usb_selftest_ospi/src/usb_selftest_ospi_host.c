@@ -35,7 +35,7 @@
 #include "ra8_usb_hmsc.h"
 #include "usb_selftest_ospi_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes */
@@ -498,4 +498,4 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
   return k_ra8_ok;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

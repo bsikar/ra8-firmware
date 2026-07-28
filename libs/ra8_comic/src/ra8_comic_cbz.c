@@ -17,7 +17,7 @@
  *
  * On firmware, miniz's central-directory and decompressor allocations route
  * through the zero-heap `ra8_epub_miniz_alloc` static pool (NASA Rule 3), exactly
- * as `ra8_epub` does; the host unit-test build (`RA8_SIMULATOR_MODE`) leaves miniz
+ * as `ra8_epub` does; the host unit-test build (`RA8_OFF_TARGET`) leaves miniz
  * on its default allocator.
  *
  * @since Version 0.1.0
@@ -34,7 +34,7 @@
 #include "ra8_comic_internal.h"
 #include "ra8_decomp_limits.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "ra8_attributes.h"
 #include "ra8_epub_miniz_alloc.h"
 #endif
@@ -120,7 +120,7 @@ static size_t s_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t 
  * @brief Route miniz allocations through the static pool on firmware.
  * @details Firmware (`_sbrk` traps, NASA Rule 3) needs miniz's central-directory
  *          and inflate allocations to come from the `ra8_epub_miniz_alloc` pool;
- *          the host build (`RA8_SIMULATOR_MODE`) leaves the default allocator.
+ *          the host build (`RA8_OFF_TARGET`) leaves the default allocator.
  * @param[in,out] zip Inline archive to configure (must be zeroed first).
  * @pre @p zip addresses the comic's zeroed inline storage.
  * @pre Called before `mz_zip_reader_init`.
@@ -132,7 +132,7 @@ static size_t s_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t 
 RA8_INTERNAL
 static void s_set_alloc(mz_zip_archive* zip)
 {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   zip->m_pAlloc        = ra8_epub_miniz_alloc;
   zip->m_pFree         = ra8_epub_miniz_free;
   zip->m_pRealloc      = ra8_epub_miniz_realloc;

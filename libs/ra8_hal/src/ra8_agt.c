@@ -884,7 +884,7 @@ static void agt_cascade_install_callback(const ra8_agt_cascade_cfg_t* cfg)
  * @details
  * Cascade only works on the AGT0 / AGT1 pair (HUM Ch 24.1 Table 24.1
  * p 1164). This helper resolves the two channel pointers and rejects
- * any host where the simulator window is missing.
+ * any host where the fake window is missing.
  *
  * @param[out] out_lo Receives the AGT0 channel window pointer.
  * @param[out] out_hi Receives the AGT1 channel window pointer.

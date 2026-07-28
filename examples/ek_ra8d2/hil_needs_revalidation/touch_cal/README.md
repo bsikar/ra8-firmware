@@ -72,7 +72,7 @@ transform (`raw = screen*8 + offset`), so the fit recovers the inverse exactly
 and every corrected coordinate lands on its target (`maxerr=0`). `hil.conf`
 declares that `--touch-seq` as `HIL_EMU_ARGS`, so `scripts/emu/eil_all.sh` runs the
 whole calibration headless with **0 skips** and `check_hil_eil_parity.py` keeps
-the app SIM-visible. On a bare automated bench with no finger the read shim
+the app EIL-visible. On a bare automated bench with no finger the read shim
 times out and the app reports `cal=SKIP got=0`, but `touchcal: ready` still
 holds -- so the gate passes in every environment.
 

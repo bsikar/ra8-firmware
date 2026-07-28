@@ -153,7 +153,7 @@ ra8_err_t ra8_board_mipi_dsi_init(void)
    * k_ra8_board_mipi_dsi_backlight (P514) between init and clock start. */
   err = ra8_mipi_dsi_init(&s_mipi_panel_cfg);
   if (err != k_ra8_ok) {
-    /* ra8_mipi_dsi_init with a valid static cfg always returns k_ra8_ok in RA8_SIMULATOR_MODE. */
+    /* ra8_mipi_dsi_init with a valid static cfg always returns k_ra8_ok in RA8_OFF_TARGET. */
     return err; /* GCOVR_EXCL_LINE */
   }
 
@@ -254,7 +254,7 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   };
   err = ra8_sci_init((uint8_t)k_ra8_board_uart_console_sci_channel, &cfg);
   if (err != k_ra8_ok) {
-    /* ra8_sci_init on a valid channel with a non-null cfg always returns k_ra8_ok in RA8_SIMULATOR_MODE. */
+    /* ra8_sci_init on a valid channel with a non-null cfg always returns k_ra8_ok in RA8_OFF_TARGET. */
     return err; /* GCOVR_EXCL_LINE */
   }
   s_uart_console_initialized = true;

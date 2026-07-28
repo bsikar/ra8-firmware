@@ -19,9 +19,9 @@
 
 #include <stdint.h>
 
+#include "ra8_fake_mmap.h"
 #include "ra8_mipi_dsi.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 
 /**
  * @enum ra8_mipi_dsi_test_const_t
@@ -56,11 +56,11 @@ typedef enum : uint32_t {
 } ra8_mipi_dsi_test_const_t;
 
 /**
- * @brief Reset the simulated peripheral memory + MSTP table.
+ * @brief Reset the fake peripheral memory + MSTP table.
  */
 static inline void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

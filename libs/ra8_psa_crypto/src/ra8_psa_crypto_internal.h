@@ -9,16 +9,16 @@
  * @details
  * The ``ra8_psa_crypto`` facade is split across two translation units:
  * ``ra8_psa_crypto.c`` (public API + key-handle pool) and
- * ``ra8_psa_crypto_sim.c`` (simulator-mode SHA-256 / AEAD stand-ins). This
+ * ``ra8_psa_crypto_fake.c`` (off-target SHA-256 / AEAD stand-ins). This
  * private header holds the definitions both TUs need:
  *
  * - The concrete ``struct ra8_psa_key_handle`` slot layout (the public
  *   header only forward-declares it).
  * - The internal typed-enum numeric constants (no magic numbers) used by
- *   the SHA-256 reference path, the AEAD simulator, and the xorshift32
+ *   the SHA-256 reference path, the AEAD fake, and the xorshift32
  *   RNG.
- * - ``extern`` declarations for the simulator helpers that are defined in
- *   ``ra8_psa_crypto_sim.c`` but called from the public API in
+ * - ``extern`` declarations for the fake helpers that are defined in
+ *   ``ra8_psa_crypto_fake.c`` but called from the public API in
  *   ``ra8_psa_crypto.c``.
  *
  * This header is internal to the library; consumers include the public
@@ -37,9 +37,9 @@
 #include "ra8_err.h"
 #include "ra8_psa_crypto.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* The real backend stores a PSA key handle in each slot; pull in the type the
- * struct below references. Skipped under RA8_SIMULATOR_MODE, which keeps its own
+ * struct below references. Skipped under RA8_OFF_TARGET, which keeps its own
  * software key material and never links tf-psa-crypto. */
 #include "psa/crypto.h"
 #endif
@@ -55,7 +55,7 @@
  *
  * @details
  * Centralizes all sizes, byte offsets, and bit counts referenced by the
- * SHA-256 reference implementation and AEAD simulator paths so that no
+ * SHA-256 reference implementation and AEAD fake paths so that no
  * magic numbers leak into the source.
  */
 typedef enum : uint16_t {
@@ -65,7 +65,7 @@ typedef enum : uint16_t {
   k_ra8_psa_sha256_init_words    = 16U,   /**< Initial copy from block to W[].      */
   k_ra8_psa_sha256_pad_buf_len   = 128U,  /**< Two-block padding scratch.           */
   k_ra8_psa_sha256_pad_threshold = 56U,   /**< If remaining < this, one tail block. */
-  k_ra8_psa_sim_scratch_bytes    = 256U,  /**< AEAD-sim scratch buffer size.        */
+  k_ra8_psa_fake_scratch_bytes   = 256U,  /**< AEAD fake scratch buffer size.       */
   k_ra8_psa_word_bits            = 32U,   /**< Word width in bits.                  */
   k_ra8_psa_byte_bits            = 8U,    /**< Bits per byte.                       */
   k_ra8_psa_bytes_per_word       = 4U,    /**< Bytes packed per 32-bit word.        */
@@ -102,7 +102,7 @@ typedef enum : uint16_t {
 
 /**
  * @enum ra8_psa_xs32_const_t
- * @brief xorshift32 simulator-mode RNG constants (Marsaglia 2003).
+ * @brief xorshift32 off-target RNG constants (Marsaglia 2003).
  */
 typedef enum : uint32_t {
   k_xs32_seed   = 0xACE1ACE1U, /**< Default seed.                         */
@@ -153,16 +153,16 @@ struct ra8_psa_key_handle {
   bool               in_use;                       /**< Slot allocated.           */
   ra8_psa_key_attr_t attr;                         /**< Cached caller attributes. */
   size_t             key_len;                      /**< Bytes valid in ``key``.   */
-  uint8_t            key[k_ra8_psa_max_key_bytes]; /**< Raw key material (sim).   */
-#ifndef RA8_SIMULATOR_MODE
+  uint8_t            key[k_ra8_psa_max_key_bytes]; /**< Raw key material (fake).  */
+#ifndef RA8_OFF_TARGET
   psa_key_id_t psa_id; /**< Underlying PSA key identifier. */
 #endif                 /**< Endif.                         */
 };
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 
 /* =============================================================================
- * Simulator-mode crypto helpers (defined in ra8_psa_crypto_sim.c)
+ * Off-target crypto helpers (defined in ra8_psa_crypto_fake.c)
  * =============================================================================
  */
 
@@ -185,15 +185,15 @@ struct ra8_psa_key_handle {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void ra8_psa_sim_sha256_oneshot(const uint8_t* in,
-                                size_t         in_len,
-                                uint8_t        out[k_ra8_psa_sha256_len]);
+void ra8_psa_fake_sha256_oneshot(const uint8_t* in,
+                                 size_t         in_len,
+                                 uint8_t        out[k_ra8_psa_sha256_len]);
 
 /**
- * @brief Simulator AEAD encrypt body shared by ``ra8_psa_aead_encrypt``.
+ * @brief Fake AEAD encrypt body shared by ``ra8_psa_aead_encrypt``.
  *
  * @details
- * Encrypts ``plain`` into ``out`` with the simulator XOR keystream and
+ * Encrypts ``plain`` into ``out`` with the fake XOR keystream and
  * appends a 16-byte SHA-256 tag at ``out[plain_len..plain_len+16)``.
  *
  * @param[in]  slot      Validated key slot.
@@ -217,18 +217,18 @@ void ra8_psa_sim_sha256_oneshot(const uint8_t* in,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t ra8_psa_sim_aead_encrypt(const struct ra8_psa_key_handle* slot,
-                                   const uint8_t*                   nonce,
-                                   size_t                           nonce_len,
-                                   const uint8_t*                   aad,
-                                   size_t                           aad_len,
-                                   const uint8_t*                   plain,
-                                   size_t                           plain_len,
-                                   uint8_t*                         out,
-                                   size_t*                          out_len);
+ra8_err_t ra8_psa_fake_aead_encrypt(const struct ra8_psa_key_handle* slot,
+                                    const uint8_t*                   nonce,
+                                    size_t                           nonce_len,
+                                    const uint8_t*                   aad,
+                                    size_t                           aad_len,
+                                    const uint8_t*                   plain,
+                                    size_t                           plain_len,
+                                    uint8_t*                         out,
+                                    size_t*                          out_len);
 
 /**
- * @brief Simulator AEAD decrypt body shared by ``ra8_psa_aead_decrypt``.
+ * @brief Fake AEAD decrypt body shared by ``ra8_psa_aead_decrypt``.
  *
  * @details
  * Verifies the 16-byte tag at the tail of ``cipher`` and, on success,
@@ -256,14 +256,14 @@ ra8_err_t ra8_psa_sim_aead_encrypt(const struct ra8_psa_key_handle* slot,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t ra8_psa_sim_aead_decrypt(const struct ra8_psa_key_handle* slot,
-                                   const uint8_t*                   nonce,
-                                   size_t                           nonce_len,
-                                   const uint8_t*                   aad,
-                                   size_t                           aad_len,
-                                   const uint8_t*                   cipher,
-                                   size_t                           plain_len,
-                                   uint8_t*                         out,
-                                   size_t*                          out_len);
+ra8_err_t ra8_psa_fake_aead_decrypt(const struct ra8_psa_key_handle* slot,
+                                    const uint8_t*                   nonce,
+                                    size_t                           nonce_len,
+                                    const uint8_t*                   aad,
+                                    size_t                           aad_len,
+                                    const uint8_t*                   cipher,
+                                    size_t                           plain_len,
+                                    uint8_t*                         out,
+                                    size_t*                          out_len);
 
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */

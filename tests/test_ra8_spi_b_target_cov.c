@@ -18,7 +18,7 @@
  *  - 231-232 : ``if (cfg->lsb_first)`` true branch -- sets LSBF (bit 12).
  *
  * Each test calls ``ra8_spi_b_target_init`` and reads the SPCMD[0] word
- * back from the plain-RAM simulator window to assert the expected bits.
+ * back from the plain-RAM fake window to assert the expected bits.
  *
  * @par MC/DC: switch arm isolation
  * ``internal_spcmd_target`` uses a switch rather than compound boolean
@@ -40,8 +40,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_spi.h"
 #include "ra8_spi_regs.h"
 #include "unity_minimal.h"
@@ -99,14 +99,14 @@ typedef enum : uint32_t {
  */
 
 /**
- * @brief Reset simulator and MSTP state between tests.
+ * @brief Reset fake and MSTP state between tests.
  *
  * @details Mirrors the ``prep`` helper in ``test_ra8_spi_b_target.c`` so
  *          each test starts from a clean register image.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -121,7 +121,7 @@ static void prep(void)
  *
  * @details
  * Calls ``ra8_spi_b_target_init`` with ``k_ra8_spi_mode_1`` and reads the
- * SPCMD[0] register back from the simulator RAM window.  The expected
+ * SPCMD[0] register back from the fake RAM window.  The expected
  * value is ``k_cov_spcmd_mode1``: only CPHA (bit 0) and the 8-bit SPB
  * encoding (bits 20:16 = 0x7) are set.
  *
@@ -282,7 +282,7 @@ static void test_target_spcmd_lsb_first(void)
 
 int32_t main(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_target_spcmd_mode1();
   test_target_spcmd_mode2();
   test_target_spcmd_mode3();

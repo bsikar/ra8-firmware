@@ -6,8 +6,8 @@
  * Exercises ``ra8_gpt_capture_configure`` / ``ra8_gpt_capture_read`` (input
  * capture via GTICASR / GTICBSR -> GTCCRA / GTCCRB) and
  * ``ra8_gpt_event_count_configure`` (external edge counting via GTUPSR /
- * GTDNSR). Each register write is observed through the simulated MMIO
- * window provided by ``ra8_sim_mmap``; the two compound argument guards
+ * GTDNSR). Each register write is observed through the fake MMIO
+ * window provided by ``ra8_fake_mmap``; the two compound argument guards
  * carry minimal MC/DC vector sets.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -15,11 +15,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpt.h"
 #include "ra8_gpt_capture.h"
 #include "ra8_gpt_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -46,7 +46,7 @@ typedef enum : uint32_t {
 } ra8_gpt_cap_test_const_t;
 
 /**
- * @brief Reset the simulated MMIO window and the MSTP model before a test.
+ * @brief Reset the fake MMIO window and the MSTP model before a test.
  *
  * @details Mirrors the ``prep_w35`` helper in ``test_ra8_gpt.c``: a clean
  * peripheral RAM image plus an initialized module-stop model so the
@@ -59,7 +59,7 @@ typedef enum : uint32_t {
  */
 static void prep_capture(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

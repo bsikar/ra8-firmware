@@ -8,7 +8,7 @@
  *
  * @details
  * On the cross-compiled target, the supervisor pulls in the real
- * ``tx_api.h``. On the host unit-test build (``RA8_SIMULATOR_MODE``)
+ * ``tx_api.h``. On the host unit-test build (``RA8_OFF_TARGET``)
  * ThreadX is not linked, so this header provides degenerate stand-ins
  * for the handful of TX symbols the supervisor uses. The stubs let
  * the implementation file compile and link unchanged; tests drive the

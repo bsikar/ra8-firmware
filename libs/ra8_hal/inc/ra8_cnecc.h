@@ -580,7 +580,7 @@ typedef void (*ra8_cnecc_error_fn_t)(void* ctx, uint8_t instance, bool is_2bit, 
  *   4. Select EC710TED as decoder input (EC710TMC = 0x8082).
  *
  * The caller is responsible for the actual MBRAM read that triggers
- * the decoder pass and surfaces the simulated fault on the next
+ * the decoder pass and surfaces the fake fault on the next
  * ``ra8_cnecc_dispatch`` -- this helper only programs the registers.
  *
  * Pass ``one_bit_flip = true`` to flip exactly one bit of the

@@ -485,7 +485,7 @@ typedef enum : uint32_t {
   k_ra8_vector_usagefault = 6U, /**< RA8 vector usagefault. */
 } ra8_vector_exc_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
 #include "ra8_boot_entry.h"
 #include "ra8_dfu_antirollback.h"
@@ -590,7 +590,7 @@ typedef enum : uint32_t {
 void Default_Handler(void)
 {
   /* Stop here so an attached debugger can inspect stack / faults. */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("bkpt #0");
   while (1) {
     __asm__ volatile("wfi");

@@ -14,11 +14,11 @@
  *     (valid re-arm/park plus the speed and pipe-range rejections),
  *     including MC/DC vectors for the pipe-range compound decision.
  *
- * Every leg is driven deterministically by pre-seeding the simulator's
+ * Every leg is driven deterministically by pre-seeding the fake's
  * register RAM (BRDYSTS / CFIFOCTR / NRDYSTS / PIPECTR); no timing
  * injection (SIGALRM) is used. The bounded FRDY wait in
  * ``internal_wait_frdy`` runs its real poll loop on the host and
- * consults the ra8_sim_mmio fault seam keyed on CFIFOCTR, so the
+ * consults the ra8_fake_mmio fault seam keyed on CFIFOCTR, so the
  * FRDY-timeout and retry legs are driven here by arming that seam.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -28,9 +28,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_usb.h"
 #include "ra8_usb_regs.h"
 #include "unity_minimal.h"
@@ -61,8 +61,8 @@ typedef enum : uint16_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -273,10 +273,10 @@ static void test_mcdc_park_out_pipe_pipe_num(void)
  * fail drives the timeout leg and the satisfy-after arm drives the
  * loop-continuation leg, each in isolation)
  *
- * @details Arms the ra8_sim_mmio seam on CFIFOCTR so the bounded FRDY
+ * @details Arms the ra8_fake_mmio seam on CFIFOCTR so the bounded FRDY
  * wait inside ``ra8_usb_queue_in`` runs to its budget and surfaces
  * ``k_ra8_err_hw_timeout`` -- the leg that was dead while
- * ``internal_wait_frdy`` short-circuited under RA8_SIMULATOR_MODE.
+ * ``internal_wait_frdy`` short-circuited under RA8_OFF_TARGET.
  * Then re-arms with satisfy-after-2 so the wait converges on its third
  * poll, proving the retry path completes the queue (BVAL raised).
  */
@@ -288,13 +288,13 @@ static void test_queue_in_frdy_timeout_and_retry(void)
   volatile r_usb_regs_t* reg = ra8_usb_fs();
 
   const uint8_t payload[4] = {0x11U, 0x22U, 0x33U, 0x44U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_usb_queue_in(k_ra8_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok, payload, 4U));
 
   /* Retry leg: FRDY "asserts" on the third poll; the queue completes. */
-  ra8_sim_mmio_reset();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after((const volatile void*)&reg->CFIFOCTR, 2U));
+  ra8_fake_mmio_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after((const volatile void*)&reg->CFIFOCTR, 2U));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_queue_in(k_ra8_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok, payload, 4U));
   /* A completed queue raises BVAL on the staged bank. */
@@ -312,7 +312,7 @@ static void test_queue_in_frdy_timeout_and_retry(void)
  * surfaced through ``internal_dcp_push_chunk`` for the payload leg and
  * ``internal_dcp_in_zlp`` for the zero-length leg)
  *
- * @details Arms the ra8_sim_mmio seam on CFIFOCTR to fail, then drives
+ * @details Arms the ra8_fake_mmio seam on CFIFOCTR to fail, then drives
  * ``ra8_usb_dcp_in_data`` twice: once with a payload (the chunk-push
  * FRDY timeout propagates through the ``chunk push failed`` leg) and
  * once with ``len == 0`` (the ZLP-path FRDY timeout). Both were dead
@@ -326,7 +326,7 @@ static void test_dcp_in_data_frdy_timeouts(void)
   volatile r_usb_regs_t* reg = ra8_usb_fs();
 
   const uint8_t payload[4] = {0xA1U, 0xA2U, 0xA3U, 0xA4U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
   /* Payload leg: internal_dcp_push_chunk's FRDY wait times out. */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_usb_dcp_in_data(k_ra8_usb_speed_fs, payload, 4U));
   /* ZLP leg: internal_dcp_in_zlp's FRDY wait times out. */
@@ -344,7 +344,7 @@ static void test_dcp_in_data_frdy_timeouts(void)
  * times out is a single-condition loop exit)
  *
  * @details Pre-seeds BRDYSTS so ``ra8_usb_queue_out`` passes its
- * no-data fast path, then arms the ra8_sim_mmio seam on CFIFOCTR to
+ * no-data fast path, then arms the ra8_fake_mmio seam on CFIFOCTR to
  * fail so the drain's FRDY wait runs to its budget and returns
  * ``k_ra8_err_hw_timeout`` instead of touching the FIFO.
  */
@@ -358,7 +358,7 @@ static void test_queue_out_frdy_timeout(void)
   uint8_t  out[8] = {};
   uint16_t len    = 8U;
   reg->BRDYSTS    = (uint16_t)k_test_usb_pipe1_bit;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,
     ra8_usb_queue_out(k_ra8_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok, out, &len, true));

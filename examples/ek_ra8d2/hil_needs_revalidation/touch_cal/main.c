@@ -50,7 +50,7 @@
  * `touchcal: ready` line (which prints in every environment) and lists
  * `verify=FAIL` / `cal=FAIL` in its negative set, so a solver regression trips
  * the EIL gate. This mirrors `touch_demo`, which likewise gates the finger-free
- * bring-up and lets the simulator inject the touch.
+ * bring-up and lets the fake inject the touch.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

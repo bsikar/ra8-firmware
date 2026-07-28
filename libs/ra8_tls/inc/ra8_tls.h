@@ -296,7 +296,7 @@ typedef struct ra8_tls_session_handle* ra8_tls_session_t;
  * Algorithm:
  * 1. If already initialized, return ``k_ra8_err_exists``.
  * 2. Reset the session pool so close-without-open paths are well-defined.
- * 3. Call ``psa_crypto_init`` (skipped in simulator mode).
+ * 3. Call ``psa_crypto_init`` (skipped in off-target mode).
  * 4. Mark the module initialized.
  *
  * @return ra8_err_t Error code.
@@ -305,9 +305,9 @@ typedef struct ra8_tls_session_handle* ra8_tls_session_t;
  * @retval k_ra8_err_hw_error  ``psa_crypto_init`` failed.
  *
  * @pre Mbed TLS has been built into the firmware image (``RA8_USE_MBEDTLS=ON``)
- *      OR ``RA8_SIMULATOR_MODE`` is defined for the host unit-test build.
+ *      OR ``RA8_OFF_TARGET`` is defined for the host unit-test build.
  * @pre On hardware, the RSIP TRNG that backs the PSA external-RNG hook is
- *      reachable before the first handshake (skipped in simulator mode).
+ *      reachable before the first handshake (skipped in off-target mode).
  * @post Module is in the initialized state on success.
  * @post Session pool is fully reset (no slot held).
  *
@@ -429,7 +429,7 @@ ra8_err_t ra8_tls_session_close(ra8_tls_session_t session);
  * underlying BIO is non-blocking and waiting for I/O so the caller can
  * loop without consuming the entire transport-level event budget.
  *
- * In ``RA8_SIMULATOR_MODE`` (host unit-test build) the call short-
+ * In ``RA8_OFF_TARGET`` (host unit-test build) the call short-
  * circuits to ``k_ra8_ok`` after a single BIO drain so the loopback
  * test path can complete without a real cryptographic handshake.
  *
@@ -534,15 +534,15 @@ ra8_err_t ra8_tls_recv(ra8_tls_session_t session, uint8_t* buf, size_t len, size
  * After a successful ``ra8_tls_handshake`` this returns the IANA
  * cipher-suite name (e.g. ``TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256``)
  * and its 16-bit IANA identifier so an application can log exactly what
- * was negotiated. In ``RA8_SIMULATOR_MODE`` (host unit-test build) the
+ * was negotiated. In ``RA8_OFF_TARGET`` (host unit-test build) the
  * handshake is a loopback drain rather than a real negotiation, so a
  * deterministic sentinel is reported: ``out_name`` becomes
- * ``"sim-tls-loopback"`` and ``*out_id`` becomes ``0``. The output name
+ * ``"off-target-loopback"`` and ``*out_id`` becomes ``0``. The output name
  * is always NUL-terminated and never exceeds ``name_cap`` bytes.
  *
  * @param[in]  session  Open session handle in the application-data state.
  * @param[out] out_id   Receives the 16-bit IANA cipher-suite id
- *                      (``0`` when unknown / simulator).
+ *                      (``0`` when unknown / fake).
  * @param[out] out_name Receives the NUL-terminated cipher-suite name.
  *                      Truncated to fit when the real name is longer.
  * @param[in]  name_cap Capacity of ``out_name`` in bytes; must be >= 1.
@@ -576,7 +576,7 @@ ra8_err_t ra8_tls_get_cipher_suite(ra8_tls_session_t session,
  * Wraps ``mbedtls_ssl_get_verify_result``: ``0`` means the peer chain
  * satisfied the configured ``verify_mode``; any non-zero value is the OR
  * of ``MBEDTLS_X509_BADCERT_*`` / ``MBEDTLS_X509_BADCRL_*`` flags. In
- * ``RA8_SIMULATOR_MODE`` the loopback path reports ``0`` (verified).
+ * ``RA8_OFF_TARGET`` the loopback path reports ``0`` (verified).
  *
  * @param[in]  session   Open session handle in the application-data state.
  * @param[out] out_flags Receives the verification bit set (``0`` == OK).

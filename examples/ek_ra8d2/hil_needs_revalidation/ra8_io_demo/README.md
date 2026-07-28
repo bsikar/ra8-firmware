@@ -22,7 +22,7 @@ What it exercises:
 make            # -> build/ra8_io_demo.elf
 ```
 
-## Run in the simulator
+## Run in the emulator
 
 ```
 RA8_EMU_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_demo.elf

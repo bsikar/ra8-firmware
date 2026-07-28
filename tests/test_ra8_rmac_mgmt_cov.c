@@ -6,7 +6,7 @@
  * Companion coverage test to test_ra8_rmac.c. It targets the
  * host-reachable branches of ra8_rmac_mgmt.c that the existing suite
  * leaves uncovered, using the same pure-RAM MMIO backing
- * (::ra8_sim_mmap) that every RMAC test relies on:
+ * (::ra8_fake_mmap) that every RMAC test relies on:
  *
  *   - ::ra8_rmac_get_status port-out-of-range rejection.
  *   - ::ra8_rmac_clear_status port-out-of-range rejection.
@@ -14,7 +14,7 @@
  *     ``timeout_ms * iters_per_ms`` product wraps a uint32_t to 0.
  *   - The MDIO bus-error legs of ::ra8_rmac_phy_reset,
  *     ::ra8_rmac_phy_auto_neg_wait and ::ra8_rmac_phy_link_status,
- *     driven by arming the ra8_sim_mmio fault seam on the RMAC MPSM
+ *     driven by arming the ra8_fake_mmio fault seam on the RMAC MPSM
  *     register so a chosen MDIO wait-loop times out.
  *
  * The remaining excluded legs of ra8_rmac_mgmt.c are the Clause-22 PHY
@@ -31,11 +31,11 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_rmac.h"
 #include "ra8_rmac_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -84,8 +84,8 @@ typedef enum : uint32_t {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
@@ -190,7 +190,7 @@ static void test_auto_neg_wait_cap_wrap(void)
  * then polls BMCR via reads (wait-loops 2-3, ...). Failing wait-loop 0
  * fails the write's drain and lands on the bmcr-write-error leg;
  * failing wait-loop 2 fails the first read's drain and lands on the
- * bmcr-read-error leg. Both legs were host-dead while the sim MDIO
+ * bmcr-read-error leg. Both legs were host-dead while the fake MDIO
  * path auto-completed via MMIS1 arming.
  */
 static void test_phy_reset_mdio_error_legs(void)
@@ -202,13 +202,13 @@ static void test_phy_reset_mdio_error_legs(void)
   volatile uint32_t* mpsm = &ra8_rmac(k_ra8_rmac_port_0)->MPSM;
 
   /* Write leg: the BMCR write's drain (wait-loop 0) times out. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(mpsm, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(mpsm, 0U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_rmac_phy_reset(k_ra8_rmac_port_0, (uint8_t)k_test_phy_addr));
 
   /* Read leg: the write completes (loops 0-1), the first BMCR read's
    * drain (wait-loop 2) times out. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(mpsm, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(mpsm, 2U));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_rmac_phy_reset(k_ra8_rmac_port_0, (uint8_t)k_test_phy_addr));
 
@@ -223,7 +223,7 @@ static void test_phy_reset_mdio_error_legs(void)
  * ra8_rmac_phy_auto_neg_wait's poll loop is a single-condition ``if``,
  * driven by failing the BMSR read's MPSM drain)
  *
- * @details Arms the ra8_sim_mmio seam on MPSM to fail so the first BMSR
+ * @details Arms the ra8_fake_mmio seam on MPSM to fail so the first BMSR
  * read inside the auto-negotiation poll loop reports an MDIO error,
  * which the function must propagate instead of spinning its budget.
  */
@@ -234,7 +234,7 @@ static void test_auto_neg_wait_mdio_error_leg(void)
   const ra8_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(&ra8_rmac(k_ra8_rmac_port_0)->MPSM));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(&ra8_rmac(k_ra8_rmac_port_0)->MPSM));
   ra8_rmac_phy_link_t link = {.up = true, .speed = k_ra8_rmac_phy_speed_100_fd};
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,
@@ -254,7 +254,7 @@ static void test_auto_neg_wait_mdio_error_leg(void)
  * ra8_rmac_phy_link_status is a single-condition ``if``, driven by
  * failing the BMSR read's MPSM drain)
  *
- * @details Arms the ra8_sim_mmio seam on MPSM to fail so the BMSR read
+ * @details Arms the ra8_fake_mmio seam on MPSM to fail so the BMSR read
  * inside ra8_rmac_phy_link_status reports an MDIO error, which the
  * function must propagate with the link left marked down.
  */
@@ -265,7 +265,7 @@ static void test_link_status_mdio_error_leg(void)
   const ra8_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(&ra8_rmac(k_ra8_rmac_port_0)->MPSM));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(&ra8_rmac(k_ra8_rmac_port_0)->MPSM));
   ra8_rmac_phy_link_t link = {.up = true, .speed = k_ra8_rmac_phy_speed_100_fd};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_rmac_phy_link_status(k_ra8_rmac_port_0, (uint8_t)k_test_phy_addr, &link));

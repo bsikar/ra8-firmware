@@ -100,7 +100,7 @@ typedef enum : uint32_t {
   k_mlun_phase_pass   = 4U, /**< All LUNs verified.        */
 } mlun_phase_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "tx_api.h"
 #include "ux_api.h"
@@ -148,4 +148,4 @@ void mlun_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out);
  */
 VOID mlun_host_worker(ULONG arg);
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

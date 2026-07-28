@@ -4,7 +4,7 @@
  *
  * @details
  * Exercises the public contract of `ra8_usb_hmsc` against the register
- * simulator: lifecycle (init/close), the polled `ra8_usb_hmsc_enumerate`
+ * fake: lifecycle (init/close), the polled `ra8_usb_hmsc_enumerate`
  * failure path (the dumb register mirror cannot answer GET_DESCRIPTOR,
  * so a full attach is end-to-end hardware territory -- see
  * `examples/ek_ra8d2/hw_pending/usb_host_msc_browse` and
@@ -21,8 +21,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_hmsc.h"
 #include "ra8_usb_regs.h"
@@ -80,7 +80,7 @@ static const uintptr_t       k_test_hmsc_ctx_token = 0xDEADBEEFU;
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_hmsc_close();
   s_attach_count       = 0U;
@@ -150,7 +150,7 @@ static void test_close_without_init(void)
   TEST_END("ra8_usb_hmsc_close before init returns invalid_state");
 }
 
-/* ---- Enumerate failure path (no answering device in the simulator) ---- */
+/* ---- Enumerate failure path (no answering device in the fake) ---- */
 
 /**
  * @par MC/DC:

@@ -3,7 +3,7 @@
 #
 # Tests that must be built against the REAL crypto backend.
 #
-# The rest of the host build compiles under RA8_SIMULATOR_MODE, where the
+# The rest of the host build compiles under RA8_OFF_TARGET, where the
 # crypto paths are deterministic stand-ins. These targets recompile the same
 # sources without that define, which is the only way the production branch is
 # ever executed on the host -- so they are exactly the tests that would go
@@ -16,7 +16,7 @@
 # ---------------------------------------------------------------------------
 # test_stub_crypto_gate (issue #180): reachability half of the stub-vs-production
 # crypto gate. The auto-glob above already registered it (it links ra8_core_hal,
-# built under RA8_SIMULATOR_MODE, so the guarded #if branch is active). Define
+# built under RA8_OFF_TARGET, so the guarded #if branch is active). Define
 # RA8_INSECURE_STUB_CRYPTO on it too, so it faithfully compiles under the opt-in
 # flag the gate governs -- both flags select the same insecure #if branch, and
 # the test asserts those stub bodies are reachable-but-insecure (a fail-closed
@@ -29,9 +29,9 @@ endif()
 # ---------------------------------------------------------------------------
 # test_ra8_rsip_devsec_failclosed (issue #216): production fail-closed reachability
 # for the RSIP device-security path (lifecycle / debug / tamper / DPA arm). The
-# rest of the host build compiles ra8_rsip_devsec.c under RA8_SIMULATOR_MODE (the
+# rest of the host build compiles ra8_rsip_devsec.c under RA8_OFF_TARGET (the
 # guarded #if branch, exercised by test_life / test_debug_level / test_tamper in
-# test_ra8_rsip_devsec.c). This self-contained target (no ra8_core_hal, no sim) rebuilds
+# test_ra8_rsip_devsec.c). This self-contained target (no ra8_core_hal, no fake) rebuilds
 # JUST that TU with the two guard flags UNDEFINED so the production #else is the
 # compiled body, and asserts every entry point returns k_ra8_err_not_supported and
 # writes no fabricated state. -U wins over the directory-level -D because CMake
@@ -54,7 +54,7 @@ target_compile_options(
           -Wno-unused-function
           -Wno-unused-parameter
           -Wno-unused-variable
-          -URA8_SIMULATOR_MODE
+          -URA8_OFF_TARGET
           -URA8_INSECURE_STUB_CRYPTO
           -DRA8_LOG_LEVEL=0
 )
@@ -62,12 +62,12 @@ add_test(NAME test_ra8_rsip_devsec_failclosed COMMAND test_ra8_rsip_devsec_failc
 
 # ---------------------------------------------------------------------------
 # T5-04: real-backend crypto known-answer test. The rest of the host build
-# compiles ra8_psa_crypto.c under RA8_SIMULATOR_MODE (a deterministic AES-GCM
+# compiles ra8_psa_crypto.c under RA8_OFF_TARGET (a deterministic AES-GCM
 # stand-in + an HMAC-tautology ECDSA "verify"), so the AEAD / signature paths
 # are never checked against a real cipher. This target links the vendored
 # TF-PSA-Crypto library directly -- the exact psa_* primitives the production
-# !RA8_SIMULATOR_MODE path calls -- and pins them to NIST/RFC vectors. It is a
-# self-contained executable (no ra8_core_hal, no sim). TF-PSA-Crypto is SOUP:
+# !RA8_OFF_TARGET path calls -- and pins them to NIST/RFC vectors. It is a
+# self-contained executable (no ra8_core_hal, no fake). TF-PSA-Crypto is SOUP:
 # compile it -w -fno-strict-aliasing like the other vendored trees; it is
 # already excluded from the coverage filter (libs/third_party/).
 set(_RA8_TFPSA_KAT_DIR ${FW_ROOT}/libs/third_party/tf-psa-crypto)

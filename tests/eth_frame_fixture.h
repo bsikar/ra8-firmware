@@ -12,7 +12,7 @@
  * frames) without any driver state.
  *
  * This helper deliberately lives under `tests/` and NOT in the HAL: it was
- * previously compiled into `ra8_etha_stats.c` behind `RA8_SIMULATOR_MODE`
+ * previously compiled into `ra8_etha_stats.c` behind `RA8_OFF_TARGET`
  * (as `ra8_etha_test_inject_rx`), which made the host build carry test-only
  * API surface the firmware never ships. It touches no MMIO and no driver
  * state, so issue #238 moved it here and the driver TU now compiles

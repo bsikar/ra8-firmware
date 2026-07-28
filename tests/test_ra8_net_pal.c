@@ -11,9 +11,9 @@
 
 #include "ra8_err.h"
 #include "ra8_eth.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_net_pal.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /** @brief Poison byte the call under test must overwrite. */
@@ -34,7 +34,7 @@ typedef enum : uint16_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   /* Force-deinit between tests; the PAL state is a singleton. */
   (void)ra8_net_pal_deinit();

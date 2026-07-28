@@ -49,7 +49,7 @@ extern "C" {
 
 /*
  * Pull in ThreadX so the struct definitions below have ``TX_MUTEX``
- * etc. The host unit-test build (``RA8_SIMULATOR_MODE``) does not
+ * etc. The host unit-test build (``RA8_OFF_TARGET``) does not
  * cross-link ThreadX -- this file is only compiled into the
  * cross-target build, so the include is unconditional.
  */

@@ -521,7 +521,7 @@ static uint32_t internal_tx_info1_hi(uint8_t mac_port)
  * @details The single-slot TX path always reuses ``tx_chain[0]``, so a send must
  * observe the GWCA clear ``dt`` from FSINGLE before the next send can overwrite
  * the buffer. This is a bounded spin. The host unit-test build runs the same
- * loop but routes the completion test through the ra8_sim_mmio seam -- keyed on
+ * loop but routes the completion test through the ra8_fake_mmio seam -- keyed on
  * the descriptor base, since ``dt`` is a bitfield with no address of its own --
  * so a test can drive it to completion or to timeout (T1-01); firmware and
  * ra8_emulator take the plain read. Extracted from ::ra8_eth_gwca_default_send to
@@ -545,10 +545,10 @@ RA8_INTERNAL
 static ra8_err_t internal_wait_tx0_done(ra8_eth_gwca_default_state_t* state)
 {
   for (uint32_t i = 0U; i < k_ra8_eth_gwca_tx_done_spin; ++i) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(&state->tx_chain[0],
-                               i,
-                               (state->tx_chain[0].dt != (uint8_t)k_ra8_gwdcc_dt_fsingle))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(&state->tx_chain[0],
+                                i,
+                                (state->tx_chain[0].dt != (uint8_t)k_ra8_gwdcc_dt_fsingle))) {
       return k_ra8_ok;
     }
 #else

@@ -97,7 +97,7 @@ static ra8_err_t internal_wait_status_bit(volatile r_canfd_t* reg, uint8_t statu
 {
   /* HUM Ch 41 p 2766 "CFDCnSTS" -- wait for the requested mode-ack bit
    * (CRSTSTS / CHLTSTS / ...) to latch. The host unit-test build runs this
-   * same loop through the ra8_sim_mmio seam (ra8_hw_err.h), so a stuck
+   * same loop through the ra8_fake_mmio seam (ra8_hw_err.h), so a stuck
    * channel surfaces here as an hw_timeout instead of short-circuiting. */
   return ra8_hw_wait_flag_set32(&reg->CFDC[0].STS,
                                 (uint32_t)(1UL << status_bit),
@@ -170,7 +170,7 @@ ra8_err_t ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra8_chmdc
   /* Operation: poll for (CRSTSTS|CHLTSTS) == 0 so a subsequent CHMDC
    * write does not race the in-flight transition. Real silicon
    * converges within a handful of CANFDCLK ticks; the host unit-test
-   * build drives this same loop through the ra8_sim_mmio seam
+   * build drives this same loop through the ra8_fake_mmio seam
    * (ra8_hw_err.h) so a stuck channel surfaces here as an hw_timeout
    * rather than at the next mode write, which is what made
    * canfd_loopback report a phantom test_mode failure with the real
@@ -221,7 +221,7 @@ static ra8_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc
   }
   /* Global OPERATION is the state where BOTH GRSTSTS and GHLTSTS
    * read 0. The host unit-test build drives this same loop through the
-   * ra8_sim_mmio seam (ra8_hw_err.h) so a stuck global block surfaces
+   * ra8_fake_mmio seam (ra8_hw_err.h) so a stuck global block surfaces
    * here as an hw_timeout rather than at the next channel-mode write.
    * HUM Ch 41 p 2746 "CFDGSTS" */
   const uint32_t reset_or_halt =
@@ -365,7 +365,7 @@ static ra8_err_t internal_wait_canfdcksrdy(uint8_t expected)
 {
   /* SRDY (clock-source ready) is bit 7 of CANFDCKCR. @p expected is
    * always 0 or 1, so this reduces to a single-bit set/clear wait; the
-   * host unit-test build runs the same loop through the ra8_sim_mmio
+   * host unit-test build runs the same loop through the ra8_fake_mmio
    * seam (ra8_hw_err.h) instead of faking the ack write. */
   /* HUM Ch 9.2.46 "CANFDCKCR.CANFDCKSRDY" p 366 */
   volatile uint8_t* const ckcr = ra8_sys_canfdckcr();

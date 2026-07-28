@@ -16,7 +16,7 @@
 #include "ra8_doc.h"
 #include "ra8_doc_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -52,7 +52,7 @@ typedef enum : uint16_t {
 static void test_init_clears_regs(void)
 {
   TEST_BEGIN("doc init clears regs");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   volatile r_doc_regs_t* reg = ra8_doc();
   reg->DOCR                  = k_doc_probe_docr;
@@ -75,7 +75,7 @@ static void test_init_clears_regs(void)
 static void test_add16_programs_trace(void)
 {
   TEST_BEGIN("doc add16 programs the add-mode register trace");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint16_t sum = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -105,7 +105,7 @@ static void test_add16_programs_trace(void)
 static void test_add16_null_out(void)
 {
   TEST_BEGIN("doc add16 null out");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_doc_add16(1U, 2U, nullptr));
   TEST_END("doc add16 null out");
@@ -120,7 +120,7 @@ static void test_add16_null_out(void)
 static void test_sub16_programs_trace(void)
 {
   TEST_BEGIN("doc sub16 programs the subtract-mode register trace");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   uint16_t diff = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -147,7 +147,7 @@ static void test_sub16_programs_trace(void)
 static void test_sub16_null_out(void)
 {
   TEST_BEGIN("doc sub16 null out");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_doc_sub16(10U, 4U, nullptr));
   TEST_END("doc sub16 null out");

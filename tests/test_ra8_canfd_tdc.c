@@ -3,8 +3,8 @@
  * @brief Unit tests for ra8_canfd_set_tdc (CANFD Transmitter Delay Compensation).
  *
  * @details
- * Exercises ``ra8_canfd_set_tdc`` against the simulated MMIO window provided
- * by ``ra8_sim_mmap``. Each test verifies a distinct slice of the function's
+ * Exercises ``ra8_canfd_set_tdc`` against the fake MMIO window provided
+ * by ``ra8_fake_mmap``. Each test verifies a distinct slice of the function's
  * contract:
  *
  *  - Enable with manual offset: FDCFG.TDE set, FDCFG.TDCO correct, FDCFG.TDCOC set.
@@ -22,7 +22,7 @@
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -59,19 +59,19 @@ typedef enum : uint32_t {
 } ra8_canfd_tdc_test_u32_t;
 
 /**
- * @brief Reset the simulated MMIO window before each TDC test.
+ * @brief Reset the fake MMIO window before each TDC test.
  *
  * @details
- * Zeros all peripheral registers in the simulated memory window so that
+ * Zeros all peripheral registers in the fake memory window so that
  * each test starts from a clean, deterministic baseline.
  *
- * @pre The host MMIO substrate (ra8_sim_mmap) is linked into the test binary.
- * @pre The simulated CANFD base addresses map into ra8_sim_mmap's window.
- * @post All CANFD registers in the simulated window read as zero.
+ * @pre The host MMIO substrate (ra8_fake_mmap) is linked into the test binary.
+ * @pre The fake CANFD base addresses map into ra8_fake_mmap's window.
+ * @post All CANFD registers in the fake window read as zero.
  */
 static void prep_tdc(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /**

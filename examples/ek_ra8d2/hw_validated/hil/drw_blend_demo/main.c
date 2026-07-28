@@ -141,7 +141,7 @@ static const uint8_t k_drw_blend_fail_msg[] = "drw: blit+blend FAIL\r\n";
 /**
  * @var g_drw_blend_fb
  * @brief 32 x 32 ARGB8888 framebuffer the DRW composites into.
- * @note 4-byte aligned (ARGB8888 invariant). Read externally (HIL / sim).
+ * @note 4-byte aligned (ARGB8888 invariant). Read externally (HIL / emulator).
  * @since 0.1.0
  */
 [[gnu::aligned(4)]] volatile uint32_t

@@ -54,12 +54,12 @@
 #include "ra8_time.h"
 
 /*
- * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_OFF_TARGET) does not link the
  * ThreadX / LevelX vendor trees, so `tx_api.h` and `lx_api.h` are
  * unreachable when clang-tidy walks this file. Pull them in only on
  * the cross-compile target.
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "lx_api.h"
 #include "lx_nor_driver_ra8_xspi.h"
 #include "tx_api.h"
@@ -98,7 +98,7 @@ typedef enum : uint32_t {
   k_demo_u32_buf_size = 12U,
 } demo_config_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* LevelX state. ThreadX requires statically-allocated control blocks
  * (NASA Power of 10 Rule 3 -- no dynamic memory). */
 static LX_NOR_FLASH s_nor_flash;
@@ -109,7 +109,7 @@ static ULONG s_demo_sector_io[k_demo_sector_bytes / sizeof(ULONG)];
 /* ThreadX worker thread. */
 static TX_THREAD s_demo_thread;
 static UCHAR     s_demo_stack[k_demo_thread_stack];
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Halt forever in WFI, after draining the J-Link OB VCOM TX FIFO.
@@ -209,7 +209,7 @@ static void demo_print_u32(uint32_t value)
   demo_print(&buf[i]);
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Print one labelled ``ULONG`` LevelX statistic line over SCI8.
  *
@@ -436,7 +436,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -456,7 +456,7 @@ int32_t main(void)
   ra8_isr_globals_enable();
   demo_print("[lx] booting ThreadX + LevelX...\r\n");
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* Hands control over to ThreadX permanently. */
   tx_kernel_enter();
 #endif

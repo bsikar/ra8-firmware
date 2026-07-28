@@ -51,8 +51,8 @@
 #                       middleware is OFF skips itself.
 #   LIBS <l>...         extra first-party libraries under libs/<l> to glob +
 #                       add to the include path.
-#   SIM_LIBS <l>...     like LIBS, but the library's sources are compiled with
-#                       RA8_SIMULATOR_MODE defined.
+#   OFF_TARGET_LIBS <l>...     like LIBS, but the library's sources are compiled with
+#                       RA8_OFF_TARGET defined.
 #   EXTRA_SRCS <f>...   explicit extra .c files compiled into this app (paths
 #                       relative to the app dir or absolute). Each file's parent
 #                       directory is added to the include path so a co-located
@@ -91,13 +91,13 @@ include(${_RA8_ADD_APP_DIR}/ra8_app/vendored.cmake)
 #   DESCRIPTION <text>         project() description
 #   BOARD       <lib>          board support library
 #   NO_NSC                     skip the TrustZone NSC veneer objects
-#   USES/LIBS/SIM_LIBS         extra link libraries (firmware / ra8_emulator)
+#   USES/LIBS/OFF_TARGET_LIBS         extra link libraries (firmware / ra8_emulator)
 #   NSC_SRCS/EXTRA_SRCS        extra sources
 # cmake-lint: disable=R0912,R0915
 #
 # The branch and statement ceilings are waived for this macro alone. Its 51
 # branches ARE the app matrix -- one arm per optional feature an app can ask
-# for (TrustZone NSC, CPU1 image, board, sim libs, extra sources). Splitting
+# for (TrustZone NSC, CPU1 image, board, off-target libs, extra sources). Splitting
 # it into helpers would not remove a branch, only move it somewhere the app
 # author has to go and find. The waiver is per-file and deliberate; the
 # global ceilings in .cmake-format.yaml stay at cmakelang defaults so no
@@ -107,7 +107,7 @@ macro(ra8_add_app)
     _RA8_APP
     "NO_NSC"
     "NAME;STACK_BYTES;DESCRIPTION;BOARD"
-    "USES;LIBS;SIM_LIBS;NSC_SRCS;EXTRA_SRCS"
+    "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS"
     ${ARGN}
   )
 
@@ -199,14 +199,14 @@ macro(ra8_add_app)
   # Several secure-side TUs (src/secure_app/{secure_trng,key_import,key_vault}.c
   # and libs/ra8_hal/src/ra8_rsip_key_injection.c) ship an INSECURE placeholder
   # body (a deterministic PRNG "TRNG", a forgeable key-import MAC, a plain-SRAM
-  # key vault, a non-cryptographic RSIP key-wrap) that is only safe under host
-  # simulation or an explicitly-declared dev/eval image. Each such body is
-  # wrapped in `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)`
+  # key vault, a non-cryptographic RSIP key-wrap) that is only safe under an
+  # off-target build or an explicitly-declared dev/eval image. Each such body is
+  # wrapped in `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)`
   # and its `#else` fails closed (every entry point returns a hard error). This
   # option is OFF by default so a release/HIL firmware image that forgets to
   # swap in a real crypto backend fails closed instead of silently shipping the
   # stub. A dev/eval firmware image opts in with -DRA8_INSECURE_STUB_CRYPTO=ON.
-  option(RA8_INSECURE_STUB_CRYPTO "compile insecure placeholder crypto (host/sim only)" OFF)
+  option(RA8_INSECURE_STUB_CRYPTO "compile insecure placeholder crypto (off-target only)" OFF)
 
   include(${RA8_REPO_ROOT}/cmake/ra8_warnings.cmake)
   include(${RA8_REPO_ROOT}/cmake/ra8_shared_libs.cmake)
@@ -259,8 +259,8 @@ macro(ra8_add_app)
     # _ra8_lib_extra above -- a SECOND copy that would multiply-define
     # against the archive. Filter those exact universal source trees back
     # out of the extra list (their objects come from the archive; the
-    # include paths the LIBS loop added stay). SIM_LIBS is never a
-    # universal library, so _ra8_lib_extra_sim needs no filtering.
+    # include paths the LIBS loop added stay). OFF_TARGET_LIBS is never a
+    # universal library, so _ra8_lib_extra_off_target needs no filtering.
     foreach(
       _ra8_univ_frag
       "/libs/ra8_core/src/"
@@ -291,7 +291,7 @@ macro(ra8_add_app)
     ${_ra8_lib_board}
     ${_ra8_secure_app}
     ${_ra8_lib_extra}
-    ${_ra8_lib_extra_sim}
+    ${_ra8_lib_extra_off_target}
   )
 
   if(_ra8_use_shared_archive)
@@ -305,9 +305,9 @@ macro(ra8_add_app)
     )
   endif()
 
-  if(_ra8_lib_extra_sim)
+  if(_ra8_lib_extra_off_target)
     set_source_files_properties(
-      ${_ra8_lib_extra_sim} PROPERTIES COMPILE_DEFINITIONS "RA8_SIMULATOR_MODE"
+      ${_ra8_lib_extra_off_target} PROPERTIES COMPILE_DEFINITIONS "RA8_OFF_TARGET"
     )
   endif()
 
@@ -417,7 +417,7 @@ endmacro()
 #
 # Generalises the copy-pasted second-executable + objcopy recipe so any app opts
 # in an M33 image with one call. Cross-build only: on the host
-# (RA8_SIMULATOR_MODE / __APPLE__) there is no arm-none-eabi toolchain, so this is
+# (RA8_OFF_TARGET / __APPLE__) there is no arm-none-eabi toolchain, so this is
 # a no-op and `make test` keeps building the M85 side alone.
 #
 # Usage:

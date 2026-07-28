@@ -8,7 +8,7 @@
  * routed through the slice's own ``ra8_pin_interface_t`` seam, so the tests
  * drive pin levels directly instead of reaching for hardware; pin
  * configuration, claiming and interrupt attachment still run for real against
- * the simulator's RAM-backed PORT, PFS and ICU blocks.
+ * the fake's RAM-backed PORT, PFS and ICU blocks.
  *
  * What we cover:
  *   - the port/pin encode-decode round trip, including port 0 (which encodes
@@ -33,6 +33,7 @@
 #include "ra8_err.h"
 #include "ra8_esp_hosted_gpio_internal.h"
 #include "ra8_esp_hosted_pins.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_icu.h"
 #include "ra8_icu_regs.h"
 #include "ra8_isr.h"
@@ -41,7 +42,6 @@
 #include "ra8_port_constants.h"
 #include "ra8_reset.h"
 #include "ra8_reset_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -196,10 +196,10 @@ static hosted_osi_funcs_t bound_vtable(void)
   return funcs;
 }
 
-/** @brief Restore every module and simulator fixture to a known state. */
+/** @brief Restore every module and fake fixture to a known state. */
 static void reset_state(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   (void)ra8_icu_init();
   (void)ra8_isr_init();

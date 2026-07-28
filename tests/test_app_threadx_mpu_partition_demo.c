@@ -7,7 +7,7 @@
  * main.c programs three MPU regions (MRAM-RX, SRAM-RW, peripheral
  * block-RW), initialises LED1, then hands control to ThreadX which
  * blinks the LED at 1 Hz. ThreadX is not linked into the host test
- * build (RA8_SIMULATOR_MODE), so this test exercises the same MPU
+ * build (RA8_OFF_TARGET), so this test exercises the same MPU
  * configuration path main() drives plus the BSP LED surface the
  * worker thread calls inside its blink loop.
  *
@@ -25,10 +25,10 @@
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mpu.h"
 #include "ra8_mpu_regs.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums -- mirror the demo's static MPU table. */
@@ -59,7 +59,7 @@ typedef enum : uint32_t {
 /** @brief Mock the silicon's region count so the configure() bound check passes. */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   ra8_mpu_regs()->TYPE = (uint32_t)k_test_mpu_dregion16;
 }

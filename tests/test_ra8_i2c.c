@@ -4,7 +4,7 @@
  *
  * @details
  * Drives the polling-mode RIIC controller against the host-side
- * ``ra8_sim_mmap`` substrate. ICSR2 status flags are pre-armed where the
+ * ``ra8_fake_mmap`` substrate. ICSR2 status flags are pre-armed where the
  * driver expects them (TDRE, TEND, RDRF) so the bounded wait loops fall
  * through immediately. ICCR2.BBSY is left clear (= bus free) so the
  * bus-busy gate accepts each transaction.
@@ -17,12 +17,12 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_i2c.h"
 #include "ra8_i2c_internal.h"
 #include "ra8_i2c_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -86,15 +86,15 @@ static void prime_status(uint8_t channel)
 }
 
 /**
- * @brief Reset the simulator and refresh MSTP state before each case.
+ * @brief Reset the fake and refresh MSTP state before each case.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
-/* Deterministic NACK injection via the ra8_sim_mmio poll-hook -- it runs inline on
+/* Deterministic NACK injection via the ra8_fake_mmio poll-hook -- it runs inline on
  * the driver's OWN poll thread, so there is no wall-clock timer and no concurrent
  * servicer thread to race or starve. The RIIC driver clears ICSR2's condition /
  * fault flags at the start of every transaction, so a pre-armed NACKF would be
@@ -124,7 +124,7 @@ static void i2c_nack_hook(void)
 static void i2c_nack_hook_arm(uint8_t channel)
 {
   s_nack_ch = channel;
-  ra8_sim_mmio_set_poll_hook(i2c_nack_hook);
+  ra8_fake_mmio_set_poll_hook(i2c_nack_hook);
 }
 
 /**
@@ -132,7 +132,7 @@ static void i2c_nack_hook_arm(uint8_t channel)
  */
 static void i2c_nack_hook_disarm(void)
 {
-  ra8_sim_mmio_set_poll_hook(nullptr);
+  ra8_fake_mmio_set_poll_hook(nullptr);
 }
 
 /* =============================================================================
@@ -693,7 +693,7 @@ static void (*const s_test_roster[])(void) = {
  *
  * @return 0 when all cases pass (Unity aborts the process on failure).
  *
- * @pre The ``ra8_sim_mmap`` constructor has installed the MMIO windows.
+ * @pre The ``ra8_fake_mmap`` constructor has installed the MMIO windows.
  * @post Every registered case has executed.
  * @note Thread safety: single-threaded test harness.
  * @since 0.1.0

@@ -66,7 +66,7 @@ loader maps that container straight into an `ra8_npu_job_t` for `ra8_npu_submit(
   on-target loader: validate the container, resolve every region base (baked
   regions -> the blob; runtime regions -> a caller arena), and fill an
   `ra8_npu_job_t`.
-- **`tools/vela/generated/ra8_npu_model_addk_sim.h`** -- the committed golden,
+- **`tools/vela/generated/ra8_npu_model_addk_fake.h`** -- the committed golden,
   pinned byte-for-byte by `tests/test_ra8_npu_loader.c`.
 
 ### Make targets
@@ -78,8 +78,8 @@ make vela-compile TFLITE=m.tflite  # run the pinned Vela on a real .tflite (opti
 ```
 
 `make vela-check` needs no Vela toolchain, so a CI job that never installs Vela
-still passes; the committed golden's command stream is the documented SE55 sim
-convention (`libs/ra8_hal/inc/ra8_npu_sim_cmd.h`), the only Ethos-U55 stream this
+still passes; the committed golden's command stream is the documented SE55 stand-in
+convention (`libs/ra8_hal/inc/ra8_npu_fake_cmd.h`), the only Ethos-U55 stream this
 repo can produce deterministically without a Vela install. Distilling a REAL
 `_vela.tflite` into a `.npub` is a documented follow-up on the RA8P1 NPU epic
 (it needs a validated Vela output and an RA8P1 board to confirm on silicon).

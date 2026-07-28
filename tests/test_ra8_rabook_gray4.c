@@ -58,9 +58,9 @@
  *   - Vector 1: i=0 (even) -> high nibble path taken
  *   - Vector 2: i=1 (odd)  -> low nibble path taken
  *
- * Build (standalone -- does not link ra8_hal or ra8_sim_mmap):
+ * Build (standalone -- does not link ra8_hal or ra8_fake_mmap):
  * @code
- *   clang -std=c2x -DRA8_SIMULATOR_MODE \
+ *   clang -std=c2x -DRA8_OFF_TARGET \
  *     -I libs/ra8_core/inc -I libs/ra8_rabook_compile/inc \
  *     tests/test_ra8_rabook_gray4.c \
  *     libs/ra8_rabook_compile/src/ra8_rabook_gray4.c \

@@ -12,11 +12,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_ipc.h"
 #include "ra8_ipc_regs.h"
 #include "ra8_isr.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "support/ipc_test_util.h"
 #include "unity_minimal.h"
 
@@ -369,7 +369,7 @@ static void test_channel_out_of_range_sweep(void)
  * @brief Filling the FIFO past its 4-stage depth must report busy.
  *
  * @details
- * Sets STA.FULL via the sim mmap (the simplest way to express "FIFO is
+ * Sets STA.FULL via the fake mmap (the simplest way to express "FIFO is
  * full" without enumerating per-channel FIFO state) and confirms the
  * driver returns ``k_ra8_err_busy`` instead of silently dropping the
  * write -- matching the user-visible "mailbox full" rejection.
@@ -410,7 +410,7 @@ static void test_mailbox_empty_rejection(void)
   const ra8_ipc_config_t cfg = make_cfg((uint8_t)k_ra8_ipc_test_ch_first);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_init(&cfg));
 
-  /* prep() already cleared the sim mmap, so RDY is 0 here. */
+  /* prep() already cleared the fake mmap, so RDY is 0 here. */
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_ipc_recv_message((uint8_t)k_ra8_ipc_test_ch_first, &got));
   TEST_END("ipc mailbox empty rejection");

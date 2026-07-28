@@ -59,7 +59,7 @@ typedef enum : uint32_t {
   k_ra8_hmsc_addr_alt_mask  = 0x03U, /**< Alternate addr 0..3 per attempt. */
   k_ra8_hmsc_cfg_buf_len    = 128U,  /**< Full-configuration read buffer.  */
   /** P10 iteration bound on the attach wait: the loop is primarily
-   * ms-bounded via `ra8_time_ms`, but if the tick is frozen (simulator
+   * ms-bounded via `ra8_time_ms`, but if the tick is frozen (fake
    * builds, SysTick masked) the spin cap guarantees termination. */
   k_ra8_hmsc_attach_spin_limit = 50000000UL,
 } ra8_usb_hmsc_enum_tune_t;

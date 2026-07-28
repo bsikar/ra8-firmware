@@ -6,7 +6,7 @@
  * The production app at examples/ek_ra8d2/threadx_filex_demo/main.c
  * stands up ThreadX + FileX against the SDHI driver and walks the FAT
  * root directory. Neither ThreadX nor FileX are linked into the host
- * test build (RA8_SIMULATOR_MODE), so this test exercises the same
+ * test build (RA8_OFF_TARGET), so this test exercises the same
  * filesystem surface the FileX-to-ra8_sdhi shim ultimately drives:
  * the ra8_fs FAT adapter and its block-device backend.
  *
@@ -31,9 +31,9 @@
 
 #include "ra8_cgc.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_fs.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_system_regs.h"
 #include "ra8_time.h"
 #include "unity_minimal.h"
@@ -58,10 +58,10 @@ typedef enum : uint32_t {
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
-   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+   * complete on the first iteration in RA8_OFF_TARGET. */
   *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
 }
 

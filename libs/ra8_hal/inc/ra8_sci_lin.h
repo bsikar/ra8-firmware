@@ -231,13 +231,13 @@ typedef struct {
  * SCI_B holds TXD dominant for the ``(BFLW + 1) x`` timer-clock period set
  * at init and self-clears TCST when the field completes. The call then
  * blocks (bounded spin) until TCST reads back clear. On the host
- * (``RA8_SIMULATOR_MODE``) the timer drain is not modelled, so the wait
+ * (``RA8_OFF_TARGET``) the timer drain is not modelled, so the wait
  * returns success immediately.
  *
  * @param[in] channel SCI channel number (0..9).
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok            Break field emitted (or simulator stub).
+ * @retval k_ra8_ok            Break field emitted (or fake stub).
  * @retval k_ra8_err_null_ptr  ``channel`` out of range.
  * @retval k_ra8_err_hw_timeout TCST did not self-clear within the budget.
  *
@@ -321,7 +321,7 @@ typedef struct {
  *
  * @details
  * Spins on XSR0.BFDF with a bounded budget; returns as soon as the break
- * field is detected. On the host (``RA8_SIMULATOR_MODE``) the poll runs
+ * field is detected. On the host (``RA8_OFF_TARGET``) the poll runs
  * against the programmable MMIO seam, so a test pre-stages BFDF or arms a
  * timeout. Does not clear the flag -- call ``ra8_sci_lin_clear_status``
  * before waiting for the next frame.

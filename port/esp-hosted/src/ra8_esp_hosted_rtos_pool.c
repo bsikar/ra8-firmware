@@ -30,7 +30,7 @@
 #include "ra8_esp_hosted_rtos_internal.h"
 #include "ra8_log.h"
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 /**
  * @def RA8_ESP_HOSTED_TX_SHIM_IMPL
  * @brief Elect this translation unit as owner of the ThreadX model state.

@@ -34,7 +34,7 @@
 #include "ra8_usb.h"
 #include "usb_selftest_hid_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "tx_api.h"
 
@@ -516,4 +516,4 @@ VOID hid_host_worker(ULONG arg)
   }
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

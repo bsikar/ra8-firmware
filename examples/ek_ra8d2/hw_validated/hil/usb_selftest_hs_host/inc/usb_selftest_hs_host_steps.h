@@ -231,7 +231,7 @@ typedef enum : uint32_t {
   k_word_mask  = 0xFFFFU, /**< Low half-word mask. */
 } selftest_word_pack_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "tx_api.h"
 #include "ux_api.h"
@@ -357,4 +357,4 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  */
 [[nodiscard]] ra8_err_t selftest_host_pass(void);
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

@@ -10,14 +10,14 @@
  * Drives the polled host-mode control engine through its PUBLIC entry points
  * -- ``ra8_usb_host_control_xfer``, ``ra8_usb_dcp_out_arm``,
  * ``ra8_usb_dcp_out_read`` and the ``ra8_usb_host_ctrl_stage`` diagnostic getter
- * -- against the RAM-backed peripheral window installed by ``ra8_sim_mmap``.
+ * -- against the RAM-backed peripheral window installed by ``ra8_fake_mmap``.
  * These entry points link from the single production object in ``ra8_core_hal``,
  * so every line they execute is credited to the ONE shared production ``.gcda``
  * and merges cleanly into the aggregate gcovr report (unlike a renamed
  * ``#include`` copy, whose unique-reach lines never union into the production
  * counts).
  *
- * Because the host simulator backs the USB register block with plain memory
+ * Because the host fake backs the USB register block with plain memory
  * (no write-1-to-clear / no SIE re-latch), the transfer state machine is
  * advanced deterministically by pre-seeding the status words each stage polls
  * BEFORE the call -- exactly the technique the sibling
@@ -25,7 +25,7 @@
  *
  *  - ``INTSTS1`` SACK / SIGN / neither selects the SETUP-ACK, transmit-error,
  *    and timeout legs of the seam ``internal_host_setup_wait`` honours under
- *    ``RA8_SIMULATOR_MODE`` (it does NOT W0C-clear INTSTS1, so a pre-loaded
+ *    ``RA8_OFF_TARGET`` (it does NOT W0C-clear INTSTS1, so a pre-loaded
  *    outcome survives the assert-SUREQ read).
  *  - ``DCPCTR.SUREQ`` pre-set drives the FS + HS "a control transfer is already
  *    pending" busy-abort.
@@ -33,7 +33,7 @@
  *    timeout leg of the DATA-IN wait.
  *  - ``BRDYSTS`` DCP bit pre-seeded before a control-READ now SURVIVES the SETUP
  *    stage: ``internal_host_ctrl_setup`` models the BEMPSTS/BRDYSTS write-1-to-
- *    clear semantics under ``RA8_SIMULATOR_MODE`` (preserve the DCP pipe bit,
+ *    clear semantics under ``RA8_OFF_TARGET`` (preserve the DCP pipe bit,
  *    clear the rest), so ``internal_host_dcp_in_wait`` observes the edge and the
  *    DATA-IN receive body runs, the transfer completes, and the control-read
  *    OUT-ZLP status branch executes (stage advances to done).
@@ -44,7 +44,7 @@
  *    a real payload. The control-READ receive body reads its length from
  *    ``CFIFOCTR.DTLN``, but ``internal_host_ctrl_data_arm`` re-clears CFIFOCTR
  *    to BCLR (DTLN = 0) before the first read, so every control-read drains as
- *    a zero-length packet in the sim -- the non-zero copy / clamp of the same
+ *    a zero-length packet in the fake -- the non-zero copy / clamp of the same
  *    loop is credited through ``ra8_usb_dcp_out_read`` above.
  *
  * All waits are bounded by the module's ``k_ra8_usb_ctrl_poll_limit`` spin, so
@@ -60,8 +60,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_usb.h"
 #include "ra8_usb_internal.h"
 #include "ra8_usb_regs.h"
@@ -132,10 +132,10 @@ typedef enum : uint8_t {
 } thc_stage_t;
 
 /**
- * @brief Reset the simulated peripheral window before each test.
+ * @brief Reset the fake peripheral window before each test.
  *
  * @details Clears every mapped register region so a prior test's writes cannot
- * leak into the next, and disarms any ``ra8_sim_mmio`` wait faults a prior case
+ * leak into the next, and disarms any ``ra8_fake_mmio`` wait faults a prior case
  * armed so an armed timeout cannot bleed into a later stage's bounded wait. The
  * host control engine needs no MSTP or device-init bring-up: ``internal_pick``
  * resolves a fixed controller base and the engine only touches that register
@@ -143,8 +143,8 @@ typedef enum : uint8_t {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 }
 
 /**
@@ -202,13 +202,13 @@ static void test_setup_error_legs(void)
 
   /* SIGN latched: three SETUP transmission attempts failed -> hw_error. Arm the
    * INTSTS1 SETUP-ACK poll to FAIL so the SACK wait does not spuriously succeed
-   * on an unarmed sim seam (which would advance past SETUP and time out at a
+   * on an unarmed fake seam (which would advance past SETUP and time out at a
    * later stage); the driver then reads the pre-seeded SIGN from RAM and reports
    * hw_error. The polled register is exactly the reg->INTSTS1 the SETUP wait
    * spins on. */
   prep();
   ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sign_bit;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->INTSTS1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->INTSTS1));
   TEST_ASSERT_EQ(
     k_ra8_err_hw_error,
     ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &setup, buf, (uint16_t)k_thc_buf_in, &rx));
@@ -217,10 +217,10 @@ static void test_setup_error_legs(void)
 
   /* Neither SACK nor SIGN latched: arm the same INTSTS1 poll to fail so the
    * bounded SETUP wait terminates at the SETUP stage with hw_timeout instead of
-   * the sim seam succeeding the SACK poll and advancing into a later stage. */
+   * the fake seam succeeding the SACK poll and advancing into a later stage. */
   prep();
   ra8_usb_fs()->INTSTS1 = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->INTSTS1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->INTSTS1));
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,
     ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &setup, buf, (uint16_t)k_thc_buf_in, &rx));
@@ -338,10 +338,10 @@ static void thc_vector_read(void)
  * V4 isolates C3. Each vector is driven end-to-end through the public
  * ``ra8_usb_host_control_xfer`` with a SACK-seeded SETUP.
  *
- * @note V1's DATA-OUT completes (FRDY is forced OK in sim) but its IN status
- * stage then times out (the status stage clears BRDYSTS itself with no sim
+ * @note V1's DATA-OUT completes (FRDY is forced OK off-target) but its IN status
+ * stage then times out (the status stage clears BRDYSTS itself with no fake
  * seam, so no BRDY edge is reproducible there), so a control-write reports
- * hw_timeout at the status stage here; that is the deterministic sim outcome,
+ * hw_timeout at the status stage here; that is the deterministic fake outcome,
  * not a wire failure. V3 pre-seeds NO BRDYSTS edge, so its DATA-IN deliberately
  * takes the arm + NRDY re-arm + bounded-wait timeout leg; the BRDY-satisfied
  * receive body and the OUT-ZLP status stage are driven by
@@ -431,7 +431,7 @@ static void test_control_write_mxps_zero(void)
  *
  * @details A control-READ with the DCP BRDYSTS bit pre-seeded now runs to
  * completion: ``internal_host_ctrl_setup`` preserves the pre-loaded DCP bit
- * (its RA8_SIMULATOR_MODE write-1-to-clear seam), ``internal_host_dcp_in_wait``
+ * (its RA8_OFF_TARGET write-1-to-clear seam), ``internal_host_dcp_in_wait``
  * observes it, and the receive body executes. ``internal_host_ctrl_data_arm``
  * re-clears CFIFOCTR to BCLR before the first ``CFIFOCTR.DTLN`` read, so DTLN
  * reads 0 and the packet drains as a zero-length read (rx == 0); the non-zero
@@ -495,11 +495,11 @@ static void test_control_read_completes(void)
  *
  * @details A control-READ whose SETUP succeeds (pre-seeded SACK) and whose
  * DCP BRDY edge is pre-seeded so ``internal_host_dcp_in_wait`` passes, but
- * with the ra8_sim_mmio seam armed on CFIFOCTR so the packet drain's FRDY
+ * with the ra8_fake_mmio seam armed on CFIFOCTR so the packet drain's FRDY
  * wait runs to its budget. The transfer must surface ``k_ra8_err_hw_timeout``
  * with the DCP parked NAK and the stage latched at the first DATA packet --
  * the leg that was host-dead while ``internal_wait_frdy`` short-circuited
- * under RA8_SIMULATOR_MODE.
+ * under RA8_OFF_TARGET.
  */
 static void test_data_in_frdy_timeout(void)
 {
@@ -511,7 +511,7 @@ static void test_data_in_frdy_timeout(void)
   ra8_usb_fs()->INTSTS1      = (uint16_t)k_thc_sack_bit;
   ra8_usb_fs()->BRDYSTS      = (uint16_t)k_thc_dcp_bit;
   ra8_usb_fs()->DCPMAXP      = (uint16_t)k_thc_mps_dcp;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->CFIFOCTR));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->CFIFOCTR));
 
   const ra8_usb_setup_t rd = {
     .bm_request_type = (uint8_t)k_thc_dir_in,
@@ -638,7 +638,7 @@ static void test_mcdc_dcp_out_read(void)
  * exit; the armed fail drives the dcp_out_read timeout leg)
  *
  * @details Pre-seeds the DCP BRDY latch so the drain proceeds past the
- * no-data guard, then arms the ra8_sim_mmio seam on CFIFOCTR to fail so
+ * no-data guard, then arms the ra8_fake_mmio seam on CFIFOCTR to fail so
  * the FRDY wait runs to its budget. ``ra8_usb_dcp_out_read`` must report
  * ``k_ra8_err_hw_timeout`` with the DCP parked NAK and a zero byte count.
  */
@@ -650,7 +650,7 @@ static void test_dcp_out_read_frdy_timeout(void)
   uint8_t  buf[k_thc_cap] = {};
   uint16_t rx             = k_t_rx_poison;
   ra8_usb_fs()->BRDYSTS   = (uint16_t)k_thc_dcp_bit;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->CFIFOCTR));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->CFIFOCTR));
 
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_usb_dcp_out_read(k_ra8_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));

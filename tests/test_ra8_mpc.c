@@ -9,9 +9,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mpc.h"
 #include "ra8_pfs_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -32,7 +32,7 @@ typedef enum : uint32_t {
 static void test_route_peripheral_sets_pmr_and_psel(void)
 {
   TEST_BEGIN("ra8_mpc_route_peripheral: PMR+PSEL set");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_route_peripheral(k_ra8_port_1, 5U, k_ra8_mpc_psel_sci0));
 
@@ -55,7 +55,7 @@ static void test_route_peripheral_sets_pmr_and_psel(void)
 static void test_set_gpio_output_clears_pmr(void)
 {
   TEST_BEGIN("ra8_mpc_set_gpio output: clears PMR, sets PDR");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pollute the register first. */
   volatile uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_3, k_ra8_pin_7);
@@ -77,7 +77,7 @@ static void test_set_gpio_output_clears_pmr(void)
 static void test_set_gpio_input(void)
 {
   TEST_BEGIN("ra8_mpc_set_gpio input: all bits clear");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   volatile uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_2, 0U);
   TEST_ASSERT_NOT_NULL((void*)pfs);
   *pfs = k_t_pfs_pattern;
@@ -96,7 +96,7 @@ static void test_set_gpio_input(void)
 static void test_set_analog(void)
 {
   TEST_BEGIN("ra8_mpc_set_analog: ASEL set");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_set_analog(k_ra8_port_0, 1U));
   TEST_ASSERT_EQ(k_ra8_pfs_mask_asel, *ra8_pfs_pmn(k_ra8_port_0, 1U));
   TEST_END("ra8_mpc_set_analog: ASEL set");
@@ -111,7 +111,7 @@ static void test_set_analog(void)
 static void test_set_irq(void)
 {
   TEST_BEGIN("ra8_mpc_set_irq: ISEL set");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_set_irq(k_ra8_port_4, 2U));
   TEST_ASSERT_EQ(k_ra8_pfs_mask_isel, *ra8_pfs_pmn(k_ra8_port_4, 2U));
   TEST_END("ra8_mpc_set_irq: ISEL set");
@@ -126,7 +126,7 @@ static void test_set_irq(void)
 static void test_set_pull_up_then_off(void)
 {
   TEST_BEGIN("ra8_mpc_set_pull: up -> off");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_set_pull(k_ra8_port_5, 3U, k_ra8_mpc_pull_up));
   volatile const uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_5, 3U);
@@ -146,7 +146,7 @@ static void test_set_pull_up_then_off(void)
 static void test_set_open_drain(void)
 {
   TEST_BEGIN("ra8_mpc_set_open_drain: NCODR toggled");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_set_open_drain(k_ra8_port_6, 4U, true));
   volatile const uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_6, 4U);
@@ -166,7 +166,7 @@ static void test_set_open_drain(void)
 static void test_read_pfs_null_out(void)
 {
   TEST_BEGIN("ra8_mpc_read_pfs: NULL out rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mpc_read_pfs(k_ra8_port_0, 0U, nullptr));
   TEST_END("ra8_mpc_read_pfs: NULL out rejected");
 }
@@ -180,7 +180,7 @@ static void test_read_pfs_null_out(void)
 static void test_read_pfs_roundtrip(void)
 {
   TEST_BEGIN("ra8_mpc_read_pfs: round-trip");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_set_analog(k_ra8_port_0, 2U));
   uint32_t v = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_read_pfs(k_ra8_port_0, 2U, &v));
@@ -197,7 +197,7 @@ static void test_read_pfs_roundtrip(void)
 static void test_bounds_checks(void)
 {
   TEST_BEGIN("ra8_mpc: bounds checks");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_port_t bad_port = (ra8_port_t)(k_ra8_port_max + 1U);
   const ra8_pin_t  bad_pin  = (ra8_pin_t)(k_ra8_pin_max + 1U);

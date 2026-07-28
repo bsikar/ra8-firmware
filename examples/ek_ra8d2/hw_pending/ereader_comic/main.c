@@ -577,7 +577,7 @@ static void cm_bringup_panel(void)
 /**
  * @brief Open the GT911 touch controller (best-effort, polled).
  * @details Brings up IIC_B in I2C-compat mode, binds it through the ra8_io
- *          facade into the driver seam, then opens the driver. Sims / boards
+ *          facade into the driver seam, then opens the driver. Emulator runs / boards
  *          without a GT911 simply leave touch unavailable (non-fatal).
  * @pre ::cm_bringup_clocks has run (IIC_B clock + MSTP up).
  * @pre None.

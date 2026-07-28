@@ -25,7 +25,7 @@
  * value through ``ra8_esp_hosted_fmt_utoa`` and compares -- which is the
  * property that actually matters (the two agree) without pinning an address.
  *
- * No hardware registers are touched; no ``ra8_sim_mmap`` window is required.
+ * No hardware registers are touched; no ``ra8_fake_mmap`` window is required.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

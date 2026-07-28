@@ -21,7 +21,7 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# ra8_rot.c + the real (non-sim) ra8_psa_crypto.c are compiled straight into the
+# ra8_rot.c + the real (on-target) ra8_psa_crypto.c are compiled straight into the
 # app via EXTRA_SRCS; the whole root of trust is behind RA8_ENABLE_ROOT_OF_TRUST,
 # defined below. ra8_rsip (software SHA-256) is auto-globbed from ra8_hal.
 ra8_add_app(

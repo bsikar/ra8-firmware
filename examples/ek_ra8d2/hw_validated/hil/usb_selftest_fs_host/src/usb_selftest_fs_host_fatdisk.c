@@ -36,7 +36,7 @@
 
 #include "usb_selftest_fs_host_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
@@ -802,4 +802,4 @@ VOID selftest_device_worker(ULONG arg)
   }
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

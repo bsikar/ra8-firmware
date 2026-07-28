@@ -18,8 +18,8 @@
 #include "ra8_dotf.h"
 #include "ra8_dotf_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -97,7 +97,7 @@ static void stub_dotf_cb(void* ctx, uint8_t ch)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_cb_count   = 0U;
   s_cb_last_ch = 0U;
@@ -245,7 +245,7 @@ static void test_run_self_test(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_init());
   uint32_t snap = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_run_self_test((uint8_t)k_dotf_test_ch0, &snap));
-  /* In sim, the bit stays set across the spin -- caller treats `snap` as
+  /* Off-target, the bit stays set across the spin -- caller treats `snap` as
    * opaque diagnostic data. We only verify REG00 was restored to its
    * pre-test value (0 for a freshly-initted channel). */
   volatile ra8_dotf_regs_t* reg = ra8_dotf_regs((uint8_t)k_dotf_test_ch0);

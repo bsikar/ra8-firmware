@@ -137,7 +137,7 @@ static uint32_t s_ceu_dma_len;
  *         on overrun.
  *
  * @details Polls the real two-register idle condition on every build.
- * On host tests the loop-exit decision comes from the ra8_sim_mmio seam
+ * On host tests the loop-exit decision comes from the ra8_fake_mmio seam
  * keyed on CSTSR (first-poll success unless a test arms a fault), so
  * both the retry and the timeout legs are testable.
  * @retval k_ra8_ok Success path.
@@ -159,9 +159,9 @@ static ra8_err_t internal_wait_idle(void)
     const uint32_t capsr = *ra8_ceu_reg32(k_ra8_ceu_off_capsr);
     const bool     idle  = ((cstsr & (uint32_t)k_ra8_ceu_cstsr_mask_cpton) == 0U) &&
                            ((capsr & (uint32_t)k_ra8_ceu_capsr_mask_cpkil) == 0U);
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam, keyed on CSTSR (the primary status reg). */
-    if (ra8_sim_mmio_wait_eval(ra8_ceu_reg32(k_ra8_ceu_off_cstsr), i, idle)) {
+    if (ra8_fake_mmio_wait_eval(ra8_ceu_reg32(k_ra8_ceu_off_cstsr), i, idle)) {
       return k_ra8_ok;
     }
 #else

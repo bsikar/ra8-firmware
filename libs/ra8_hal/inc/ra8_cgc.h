@@ -206,7 +206,7 @@ typedef void (*ra8_cgc_ostd_fn_t)(void* ctx);
  *    cannot lock without a stable XTAL reference.
  * 2. Inside a PRCR-CGC unlock window, the USBHS module clock select
  *    is committed (USBCKCR.USBCKSREQ / USBCKSRDY handshake on
- *    silicon; plain RAM on the host simulator).
+ *    silicon; plain RAM on the host fake).
  * 3. Re-lock PRCR.
  *
  * After this returns ::k_ra8_ok the caller is free to invoke
@@ -448,7 +448,7 @@ ra8_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra8_plodiv_t p_div_co
  *
  * @pre Module state is consistent.
  */
-void ra8_cgc_sim_trigger_stop_detection(void);
+void ra8_cgc_fake_trigger_stop_detection(void);
 
 #ifdef __cplusplus
 }

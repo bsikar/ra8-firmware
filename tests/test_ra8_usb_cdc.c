@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_cdc.h"
 #include "ra8_usb_regs.h"
@@ -35,7 +35,7 @@ typedef enum : uint16_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_cdc_deinit();
 }
@@ -87,7 +87,7 @@ static void test_init_hs_picks_512_bulk(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_cdc_init(k_ra8_usb_speed_hs));
   /* configure_endpoint deselects the pipe window (PIPESEL=0) before returning;
-   * PIPEMAXP in simulator retains the last value written (interrupt pipe size). */
+   * PIPEMAXP off-target retains the last value written (interrupt pipe size). */
   volatile r_usb_regs_t* reg = ra8_usb_hs();
   TEST_ASSERT_EQ(0U, reg->PIPESEL);
   TEST_ASSERT_EQ(k_ra8_cdc_intr_max_packet, reg->PIPEMAXP);
@@ -335,7 +335,7 @@ static void test_mcdc_cdc(void)
   uint8_t buf[8] = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_cdc_send(nullptr, 4U));
   /* V1 NULL,0: forwarded to ra8_usb_queue_in which may return ok or
-   * hw_error from the simulator -- we only assert it is NOT
+   * hw_error from the fake -- we only assert it is NOT
    * invalid_arg, which is the only outcome for B-V1 false. */
   const ra8_err_t b_v1 = ra8_usb_cdc_send(nullptr, 0U);
   TEST_ASSERT(b_v1 != k_ra8_err_invalid_arg);

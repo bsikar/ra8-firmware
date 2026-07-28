@@ -109,7 +109,7 @@ A `board_net` TLS-server endpoint that makes this app emu-gate the way
    the PSA external-RNG hook to a deterministic seed under emulation so the
    handshake can draw randomness.
 4. Add a `hil.conf` with a new `hil_eth_tls` mode (Pi peer on hardware,
-   `board_net` peer in sim) and assert the `[tls] cipher=...` banner plus
+   `board_net` peer off-target) and assert the `[tls] cipher=...` banner plus
    the peer's handshake-complete verdict.
 
 Tracked against issue #261.

@@ -5,7 +5,7 @@
  * @details
  * Split sibling of the original test_ra8_rsip.c suite covering the
  * device-security surface of ra8_rsip.c against the
- * ``ra8_sim_mmap``-backed register window:
+ * ``ra8_fake_mmap``-backed register window:
  *
  * - RSA sign / verify / encrypt / decrypt incl. engine-error
  * forwarding and the 4-condition size-selector MC/DC vectors;
@@ -20,7 +20,7 @@
  * Sibling suites: test_ra8_rsip_core.c (engine lifecycle + SHA-256)
  * and test_ra8_rsip_sym.c (key install + symmetric ciphers).
  *
- * Each test resets ``ra8_sim_mmap``, ``ra8_sim_mmio`` and ``ra8_mstp``
+ * Each test resets ``ra8_fake_mmap``, ``ra8_fake_mmio`` and ``ra8_mstp``
  * first so cases stay independent.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -28,11 +28,11 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_rsip.h"
 #include "ra8_rsip_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -78,8 +78,8 @@ typedef enum : uint32_t {
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 

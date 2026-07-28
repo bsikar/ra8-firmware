@@ -10,11 +10,11 @@
 
 #include "ra8_cgc.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_lpm_regs.h"
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 #include "ra8_pwr.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -50,7 +50,7 @@ static volatile uint32_t* wupen1_ptr(void)
 static void test_init_clears_wupen_and_resets_mstp(void)
 {
   TEST_BEGIN("ra8_pwr_init: WUPEN0/1 cleared, MSTP table reset");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pollute WUPEN0/1 first to prove init clears them. */
   *wupen0_ptr() = k_t_wupen0_pattern;
@@ -74,7 +74,7 @@ static void test_init_clears_wupen_and_resets_mstp(void)
 static void test_module_request_release_round_trip(void)
 {
   TEST_BEGIN("ra8_pwr_module_request / release: round trip");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_module_request(k_ra8_mstp_sci0));
@@ -99,7 +99,7 @@ static void test_module_request_release_round_trip(void)
 static void test_set_clear_wake_source(void)
 {
   TEST_BEGIN("ra8_pwr_set_wake_source / clear_wake_source");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_set_wake_source(k_ra8_pwr_wake_irq3));
@@ -128,7 +128,7 @@ static void test_set_clear_wake_source(void)
 static void test_wake_source_wupen1(void)
 {
   TEST_BEGIN("ra8_pwr_set_wake_source: WUPEN1 source (AGT0)");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_set_wake_source(k_ra8_pwr_wake_agt0));
@@ -147,7 +147,7 @@ static void test_wake_source_wupen1(void)
 static void test_wake_source_invalid_id(void)
 {
   TEST_BEGIN("ra8_pwr_set_wake_source: invalid id rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
 
   /* reg=2 -> out of range (only WUPEN0/1 exist). */
@@ -171,10 +171,10 @@ static void test_wake_source_invalid_id(void)
 static void test_enter_sleep_is_no_op_on_host(void)
 {
   TEST_BEGIN("ra8_pwr_enter_sleep: returns immediately on host");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
 
-  /* On RA8_SIMULATOR_MODE this is a no-op so the test simply
+  /* On RA8_OFF_TARGET this is a no-op so the test simply
    * proves the function compiles and links cleanly. */
   ra8_pwr_enter_sleep();
 
@@ -190,7 +190,7 @@ static void test_enter_sleep_is_no_op_on_host(void)
 static void test_software_standby_requires_wake_source(void)
 {
   TEST_BEGIN("ra8_pwr_enter_software_standby: refuses without wake source");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_pwr_enter_software_standby());
@@ -210,7 +210,7 @@ static void test_software_standby_requires_wake_source(void)
 static void test_get_clock_hz_forwards_to_cgc(void)
 {
   TEST_BEGIN("ra8_pwr_get_clock_hz: forwards to ra8_cgc_get_clock_hz");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
 
   uint32_t hz = 0U;
@@ -237,7 +237,7 @@ static void test_get_clock_hz_forwards_to_cgc(void)
 static void test_mcdc_software_standby_wupen(void)
 {
   TEST_BEGIN("ra8_pwr_enter_software_standby MC/DC: wupen0==0 && wupen1==0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
 
   /* Vector 1: both zero -> T,T -> decision T -> invalid_state. */

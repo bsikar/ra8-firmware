@@ -17,7 +17,7 @@
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -47,7 +47,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /**
@@ -84,7 +84,7 @@ static void test_can_classic_loopback_bits(void)
   TEST_BEGIN("can_classic_loopback: CTME / CTMS bits stamped");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_init((uint8_t)k_test_can_classic_channel));
   /* The set_test_mode helper polls CFDC[0].STS.CHLTSTS after dropping
-   * the channel into CH_HALT.  Pre-set the sim STS register so the
+   * the channel into CH_HALT.  Pre-set the fake STS register so the
    * spin loop sees halt asserted immediately (HUM Ch 41 "CFDCnSTS"
    * p 2711). */
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_test_can_classic_channel);

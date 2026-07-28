@@ -8,7 +8,7 @@
  * @details
  * See ``ra8_rot.h`` for the full contract and signed-image format. This file
  * owns the provisioned root public key, the digest re-computation (RSIP on
- * target, ``ra8_psa`` software hash under ``RA8_SIMULATOR_MODE``), and the
+ * target, ``ra8_psa`` software hash under ``RA8_OFF_TARGET``), and the
  * default-deny decision logic shared by the copy-to-run
  * (``ra8_dfu_launch``) and BLXNS (``ra8_tz_secure_boot_jump_ns``) boundaries.
  *
@@ -127,7 +127,7 @@ RA8_INTERNAL static bool internal_ct_equal(const uint8_t* a, const uint8_t* b, u
  *
  * @details
  * On target the Secure RSIP HASH engine (``ra8_rsip_sha256``) is used. Under
- * ``RA8_SIMULATOR_MODE`` the engine is unavailable, so the ``ra8_psa`` software
+ * ``RA8_OFF_TARGET`` the engine is unavailable, so the ``ra8_psa`` software
  * SHA-256 stand-in is used instead; both produce an identical 32-byte digest.
  *
  * @param[in]  body     Image body; non-NULL.
@@ -139,7 +139,7 @@ RA8_INTERNAL static bool internal_ct_equal(const uint8_t* a, const uint8_t* b, u
  * @retval k_ra8_err_null_ptr  ``body`` or ``digest`` was NULL.
  * @retval k_ra8_err_hw_error  Underlying hash engine reported a fault.
  *
- * @pre On target, ``ra8_rsip_init`` ran; under sim, ``ra8_psa_crypto_init`` ran.
+ * @pre On target, ``ra8_rsip_init`` ran; off-target, ``ra8_psa_crypto_init`` ran.
  * @pre ``digest`` addresses at least ::k_ra8_rot_digest_bytes bytes.
  * @post On ``k_ra8_ok``, ``digest`` holds SHA-256 of ``body``.
  * @post No image bytes are modified.
@@ -153,7 +153,7 @@ internal_compute_digest(const uint8_t* body, uint32_t body_len, uint8_t* digest)
   RA8_CHECK_NULL_PTR(body, s_tag, "body");
   RA8_CHECK_NULL_PTR(digest, s_tag, "digest");
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   size_t produced = 0U;
   return ra8_psa_hash_compute(k_ra8_psa_alg_sha_256,
                               body,
@@ -302,10 +302,10 @@ ra8_rot_verify_image(const uint8_t* body, uint32_t body_len, const ra8_rot_trail
     return k_ra8_err_invalid_size;
   }
 
-  /* Ensure the PSA facade is ready (the sim hash and the ECDSA verify both
+  /* Ensure the PSA facade is ready (the fake hash and the ECDSA verify both
    * route through it). Already-initialized is fine. */
   const ra8_err_t psa_err = ra8_psa_crypto_init();
-  // mcdc-deactivated: DO-178C 6.4.4.3 -- under RA8_SIMULATOR_MODE (the only host-testable build) ra8_psa_crypto_init() returns exactly k_ra8_ok (first init) or k_ra8_err_exists (already initialized) and never a backend-fault code, so both conditions cannot be true together on the host; the fail-closed abort on a genuine PSA/RSIP init fault is exercisable only on target, where the crypto backend can fault, and is not host-instrumentable.
+  // mcdc-deactivated: DO-178C 6.4.4.3 -- under RA8_OFF_TARGET (the only host-testable build) ra8_psa_crypto_init() returns exactly k_ra8_ok (first init) or k_ra8_err_exists (already initialized) and never a backend-fault code, so both conditions cannot be true together on the host; the fail-closed abort on a genuine PSA/RSIP init fault is exercisable only on target, where the crypto backend can fault, and is not host-instrumentable.
   if ((psa_err != k_ra8_ok) && (psa_err != k_ra8_err_exists)) {
     ra8_log_error(s_tag, "rot: psa init failed");
     return psa_err;

@@ -257,7 +257,7 @@ RA8_INTERNAL
  * @details
  * Polls ``cfg.busy_pin`` through ``ra8_gpio_read`` with a bounded
  * retry budget. On the host unit-test build the busy pin is mmap'd
- * RAM with no panel to deassert it, so the ra8_sim_mmio fault seam owns
+ * RAM with no panel to deassert it, so the ra8_fake_mmio fault seam owns
  * the loop-exit decision -- first-poll success unless a test arms a
  * fault on the pin's input register (PCNTR2) to drive the timeout leg.
  *
@@ -269,7 +269,7 @@ RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_wait_ready(void)
 {
   const ra8_port_pin_t pin = (ra8_port_pin_t)s_panel.cfg.busy_pin;
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
   volatile const void* hrdy_key = (volatile const void*)&ra8_port(RA8_PIN_PORT(pin))->PCNTR2;
 #endif
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_epaper_busy_poll_max; i++) {
@@ -278,8 +278,8 @@ RA8_INTERNAL
     if (ra8_gpio_read(pin, &level) == k_ra8_ok) {
       ready = (level == k_ra8_level_high);
     }
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(hrdy_key, i, ready)) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(hrdy_key, i, ready)) {
       return k_ra8_ok;
     }
 #else
@@ -879,7 +879,7 @@ RA8_INTERNAL
  * @brief Poll REG_LUTAFSR until the controller reports every LUT idle.
  *
  * @details
- * The per-poll "LUT idle" comparison is routed through the ra8_sim_mmio
+ * The per-poll "LUT idle" comparison is routed through the ra8_fake_mmio
  * fault seam under the host unit-test build (issue #177 / T1-01) so this
  * real poll/timeout loop executes on host instead of a compiled-out
  * short-circuit; un-armed the seam is transparent and honours the
@@ -901,7 +901,7 @@ RA8_INTERNAL
 RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_wait_lut_idle(void)
 {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
   /* Not a register access: the address is only used as a fault-table key. */
   volatile const void* lut_probe = (volatile const void*)s_panel.cfg.bus.ctx;
 #endif
@@ -911,8 +911,8 @@ RA8_INTERNAL
     if (err != k_ra8_ok) {
       return err;
     }
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(lut_probe, i, (status == 0U))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(lut_probe, i, (status == 0U))) {
       return k_ra8_ok;
     }
 #else

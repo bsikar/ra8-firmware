@@ -9,7 +9,7 @@
  *
  * - ``ra8_psa_aead_encrypt`` / ``ra8_psa_aead_decrypt`` argument,
  *   AAD, handle / algorithm / usage and size-guard decisions
- * - the simulator keystream scratch loops incl. the overflow leg
+ * - the fake keystream scratch loops incl. the overflow leg
  *
  * Each test follows the canonical N+1 vector pattern (see
  * tests/test_ra8_xspi.c::test_set_xip_mode_mcdc_addr_bytes for the
@@ -596,10 +596,10 @@ static void test_mcdc_aead_decrypt_out_pair(void)
 }
 
 /**
- * @test test_mcdc_sim_aead_buf_loops
+ * @test test_mcdc_fake_aead_buf_loops
  * @par MC/DC:
- * Loop guards in `internal_sim_aead_tag` (lines 381, 384, 387, 390) and
- * `internal_sim_keystream` (lines 416, 419) -- each is a 2-condition AND
+ * Loop guards in `internal_fake_aead_tag` (lines 381, 384, 387, 390) and
+ * `internal_fake_keystream` (lines 416, 419) -- each is a 2-condition AND
  * `(i < N) && (off < sizeof(buf))`. The C2 flip (off >= 256) is structurally
  * unreachable through the public API: max(key + nonce + aad + cipher) is
  * bounded by the input-validation checks at lines 894-908 well below 256.
@@ -607,9 +607,9 @@ static void test_mcdc_aead_decrypt_out_pair(void)
  * C1's entered-body and exit transitions for all six loops via an encrypt +
  * decrypt round-trip with non-trivial inputs.
  */
-static void test_mcdc_sim_aead_buf_loops(void)
+static void test_mcdc_fake_aead_buf_loops(void)
 {
-  TEST_BEGIN("psa MC/DC: sim AEAD/keystream buffer loop guards (C1)");
+  TEST_BEGIN("psa MC/DC: fake AEAD/keystream buffer loop guards (C1)");
   prep_init();
   ra8_psa_key_t k =
     mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt));
@@ -659,19 +659,19 @@ static void test_mcdc_sim_aead_buf_loops(void)
                                       &ctl0));
   (void)ra8_psa_key_destroy(k);
   teardown();
-  TEST_END("psa MC/DC: sim AEAD/keystream buffer loop guards (C1)");
+  TEST_END("psa MC/DC: fake AEAD/keystream buffer loop guards (C1)");
 }
 
 /**
- * @test test_mcdc_sim_aead_buf_loops_overflow
+ * @test test_mcdc_fake_aead_buf_loops_overflow
  *
  * @par MC/DC:
- * Decisions in libs/ra8_psa_crypto/src/ra8_psa_crypto.c (sim AEAD path):
+ * Decisions in libs/ra8_psa_crypto/src/ra8_psa_crypto.c (fake AEAD path):
  * lines 476/479/482/485 (encrypt scratch fill loops) and 524/527 (HKDF
  * keystream seed fill loops). Each is a 2-cond AND short-circuit:
  *   ``(i < <len>) && (off < sizeof(buf))``
- * with sizeof(buf) == k_ra8_psa_sim_scratch_bytes (256). The pre-existing
- * ``test_mcdc_sim_aead_buf_loops`` covers C1 by varying lengths but never
+ * with sizeof(buf) == k_ra8_psa_fake_scratch_bytes (256). The pre-existing
+ * ``test_mcdc_fake_aead_buf_loops`` covers C1 by varying lengths but never
  * exhausts ``off`` because total input stays well under 256 bytes.
  *
  * This test forces ``off >= 256`` by feeding a single AEAD encrypt with
@@ -688,9 +688,9 @@ static void test_mcdc_sim_aead_buf_loops(void)
  *   key+nonce -- here we focus on the encrypt path because it's the
  *   only one with a public API that lets us drive the lengths.
  */
-static void test_mcdc_sim_aead_buf_loops_overflow(void)
+static void test_mcdc_fake_aead_buf_loops_overflow(void)
 {
-  TEST_BEGIN("psa MC/DC: sim AEAD scratch overflow (C2 for line 485)");
+  TEST_BEGIN("psa MC/DC: fake AEAD scratch overflow (C2 for line 485)");
   prep_init();
   ra8_psa_key_t k =
     mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt));
@@ -727,7 +727,7 @@ static void test_mcdc_sim_aead_buf_loops_overflow(void)
                                       &ol));
   (void)ra8_psa_key_destroy(k);
   teardown();
-  TEST_END("psa MC/DC: sim AEAD scratch overflow (C2 for line 485)");
+  TEST_END("psa MC/DC: fake AEAD scratch overflow (C2 for line 485)");
 }
 
 int32_t main(void)
@@ -741,8 +741,8 @@ int32_t main(void)
   test_mcdc_aead_decrypt_handle_alg_usage();
   test_mcdc_aead_decrypt_size_pair();
   test_mcdc_aead_decrypt_out_pair();
-  test_mcdc_sim_aead_buf_loops();
-  test_mcdc_sim_aead_buf_loops_overflow();
+  test_mcdc_fake_aead_buf_loops();
+  test_mcdc_fake_aead_buf_loops_overflow();
   (void)fprintf(stderr, "[OK  ] test_ra8_psa_crypto_aead_mcdc.c\n");
   return 0;
 }

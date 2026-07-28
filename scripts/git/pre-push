@@ -85,7 +85,7 @@ fi
 # leaves the laptop. CI (.github/workflows/firmware.yml) runs on a
 # self-hosted Linux runner and diverges from this macOS host: clang-
 # format is pinned to clang-format-22, and the host unit tests SIGKILL
-# under macOS arm64 (ra8_sim_mmap's MAP_FIXED below 4 GiB is refused).
+# under macOS arm64 (ra8_fake_mmap's MAP_FIXED below 4 GiB is refused).
 # `make ci` runs those gates inside the Ubuntu 24.04 devcontainer, so a
 # red gate is caught here rather than after the push. On Linux, where no
 # container runtime is installed, it falls back to running them natively --

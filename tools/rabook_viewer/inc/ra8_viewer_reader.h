@@ -4,7 +4,7 @@
  *
  * @details
  * The desktop viewer links the firmware's platform-agnostic reader libraries
- * (compiled host-side with RA8_SIMULATOR_MODE) and calls them directly -- there
+ * (compiled host-side with RA8_OFF_TARGET) and calls them directly -- there
  * is no ARM emulation. This module is the C core: it opens a file from disk
  * behind a seek+read callback and drives the comic (ra8_comic) and webtoon
  * (ra8_longstrip) engines. It exposes two render surfaces: a fixed RGB565

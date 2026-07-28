@@ -7,7 +7,7 @@
  * "hello" demo at examples/ek_ra8d2/uart_hello/main.c. Exercises the full
  * bring-up sequence (PFS routing -> ra8_sci_init -> LED init) and
  * the steady-state loop (write_polling + led_toggle), with mocked
- * MMIO via the existing tests/mocks/ra8_sim_mmap.c.
+ * MMIO via the existing tests/mocks/ra8_fake_mmap.c.
  *
  * Exercised modules:
  *   - ra8_pfs (peripheral pin routing)
@@ -23,13 +23,13 @@
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpio_constants.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_sci.h"
 #include "ra8_sci_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums. */
@@ -55,10 +55,10 @@ static const ra8_port_pin_t k_test_uart_pin_rxd =
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
   /* Pre-seed CSR.TDRE for the channel under test so putc spins
-   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+   * complete on the first iteration in RA8_OFF_TARGET. */
   ra8_sci((uint8_t)k_test_uart_sci_channel)->CSR =
     (uint32_t)(1U << (uint8_t)k_ra8_sci_csr_bit_tdre);
 }
@@ -141,7 +141,7 @@ static void test_uart_steady_state_write_and_toggle(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_init(k_ra8_board_led1));
 
   /* ra8_sci_init clears CSR via CFCLR; re-seed TDRE so each putc spin
-   * completes immediately under RA8_SIMULATOR_MODE. */
+   * completes immediately under RA8_OFF_TARGET. */
   volatile r_sci_regs_t* sci_reg = ra8_sci((uint8_t)k_test_uart_sci_channel);
   for (uint8_t i = 0; i < (uint8_t)k_test_uart_loop_iters; i++) {
     sci_reg->CSR = (uint32_t)(1U << (uint8_t)k_ra8_sci_csr_bit_tdre);

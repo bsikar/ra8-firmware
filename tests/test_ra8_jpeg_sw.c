@@ -22,8 +22,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -372,7 +372,7 @@ static void test_mcdc_encode_quality_range(void)
 
 int32_t main(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_get_dimensions_parses_sof0();
   test_get_dimensions_null_args();
   test_get_dimensions_invalid();

@@ -646,7 +646,7 @@ typedef enum : uint16_t {
  * remaining FIFO contents.
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok TEND observed (or simulator stub).
+ * @retval k_ra8_ok TEND observed (or fake stub).
  * @retval k_ra8_err_not_initialized ``ra8_board_uart_console_init`` not called.
  * @retval k_ra8_err_hw_timeout Spin budget elapsed without TEND.
  *

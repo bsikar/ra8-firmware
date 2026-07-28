@@ -294,7 +294,7 @@ internal_build_ssicr(const ra8_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8
  *         ``k_ra8_err_hw_timeout``.
  *
  * @details See HUM Ch 46.2.3 "SSIRST" description, p 3077-3078.
- * In simulator/host mode the bit clears immediately after we
+ * In fake/host mode the bit clears immediately after we
  * write 0; in production a few PCLK cycles are required.
  *
  * @param[in] reg See implementation.

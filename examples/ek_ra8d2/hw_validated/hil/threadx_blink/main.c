@@ -52,11 +52,11 @@
 #include "ra8_port_utils.h"
 
 /*
- * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_OFF_TARGET) does not link the
  * ThreadX vendor tree, so `tx_api.h` is unreachable when clang-tidy
  * walks this file. Pull it in only on the cross-compile target.
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #endif
 
@@ -97,7 +97,7 @@ typedef enum : uint16_t {
   k_blink_b_ticks = 1000U, /**< Blink b ticks. */
 } blink_period_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* ---------------------------------------------------------------------------
  * Static thread + stack storage. Only meaningful on the cross build,
  * where TX_THREAD is defined by the ThreadX vendor headers.
@@ -260,7 +260,7 @@ void tx_application_define(void* first_unused_memory)
     }
   }
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /* ---------------------------------------------------------------------------
  * main() -- driver init, then drop into the ThreadX scheduler.
@@ -315,7 +315,7 @@ int32_t main(void)
 
   /* Drop into ThreadX. Returns only on internal scheduler error.
    * The host build has no kernel, so it just falls into the WFI loop. */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

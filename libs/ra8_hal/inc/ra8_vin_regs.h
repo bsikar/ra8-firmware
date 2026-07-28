@@ -16,7 +16,7 @@
  * "Register Description" p 3974, "Access the following registers
  * only in units of 32 bits"). The driver exposes a typed-enum offset
  * table plus an inline accessor that returns a `volatile uint32_t*`
- * so the host-side `ra8_sim_mmap` shim can intercept every read/write.
+ * so the host-side `ra8_fake_mmap` shim can intercept every read/write.
  *
  * ## Register window summary
  *

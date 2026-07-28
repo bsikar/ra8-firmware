@@ -32,9 +32,9 @@
 #include <stdio.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_flash.h"
 #include "ra8_flash_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -154,7 +154,7 @@ static ra8_flash_cfg_t cfg_make(void)
  * (no compound decisions in this test -- the if at line 300 is a single
  * condition: `(mastat & k_ra8_mastat_mask_mreae) != 0U`)
  *
- * @pre ra8_sim_mmap_reset() called.
+ * @pre ra8_fake_mmap_reset() called.
  * @post s_cov_cb_count == 1, s_cov_cb_last == k_ra8_flash_irq_extra_err.
  *
  * @note Not thread-safe.
@@ -163,7 +163,7 @@ static ra8_flash_cfg_t cfg_make(void)
 static void test_dispatch_mastat_mreae(void)
 {
   TEST_BEGIN("flash dispatch: MASTAT.MREAE fires extra_err callback");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_cov_cb_count = 0U;
   s_cov_cb_last  = (ra8_flash_irq_src_t)0U;
 
@@ -193,7 +193,7 @@ static void test_dispatch_mastat_mreae(void)
  * (no compound decisions in this test -- the if at line 304 is a single
  * condition: `(mastat & k_ra8_mastat_mask_cmdlk) != 0U`)
  *
- * @pre ra8_sim_mmap_reset() called.
+ * @pre ra8_fake_mmap_reset() called.
  * @post s_cov_cb_count == 1, s_cov_cb_last == k_ra8_flash_irq_extra_cmdlk.
  *
  * @note Not thread-safe.
@@ -202,7 +202,7 @@ static void test_dispatch_mastat_mreae(void)
 static void test_dispatch_mastat_cmdlk(void)
 {
   TEST_BEGIN("flash dispatch: MASTAT.CMDLK fires extra_cmdlk callback");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_cov_cb_count = 0U;
   s_cov_cb_last  = (ra8_flash_irq_src_t)0U;
 
@@ -241,7 +241,7 @@ static void test_dispatch_mastat_cmdlk(void)
 static void test_validate_range_below_code_start_aligned(void)
 {
   TEST_BEGIN("flash erase: aligned addr below code-MRAM rejected (line 418)");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_flash_deinit();
   const ra8_flash_cfg_t cfg = cfg_make();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
@@ -283,7 +283,7 @@ static void test_validate_range_below_code_start_aligned(void)
 static void test_erase_happy_path(void)
 {
   TEST_BEGIN("flash erase: happy path covers loop and success return");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_flash_deinit();
   const ra8_flash_cfg_t cfg = cfg_make();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
@@ -326,7 +326,7 @@ static void test_erase_happy_path(void)
 static void test_erase_loop_hw_error(void)
 {
   TEST_BEGIN("flash erase: loop propagates erase_block hw error (line 446)");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_flash_deinit();
   const ra8_flash_cfg_t cfg = cfg_make();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
@@ -369,7 +369,7 @@ static void test_erase_loop_hw_error(void)
 static void test_write_happy_path(void)
 {
   TEST_BEGIN("flash write: happy path covers loop and success return");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_flash_deinit();
   const ra8_flash_cfg_t cfg = cfg_make();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
@@ -410,7 +410,7 @@ static void test_write_happy_path(void)
 static void test_write_loop_hw_error(void)
 {
   TEST_BEGIN("flash write: loop propagates write_block hw error (line 473)");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_flash_deinit();
   const ra8_flash_cfg_t cfg = cfg_make();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
@@ -447,7 +447,7 @@ static void test_write_loop_hw_error(void)
  * comment on lines 502-504 of the source documents why the in_extra && is
  * exempt from MC/DC measurement)
  *
- * @pre Extra-MRAM sim region at k_ra8_flash_extra_start is mmap-backed.
+ * @pre Extra-MRAM fake region at k_ra8_flash_extra_start is mmap-backed.
  * @post ra8_flash_blank_check returns k_ra8_ok with out_blank = true.
  *
  * @note No ra8_flash_init required; blank_check has no init guard.
@@ -456,9 +456,9 @@ static void test_write_loop_hw_error(void)
 static void test_blank_check_extra_mram_path(void)
 {
   TEST_BEGIN("flash blank_check: in_extra RHS evaluated for extra-MRAM addr");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
-  /* Stage erased-state (0xFF) bytes in the sim-backed extra-MRAM window so
+  /* Stage erased-state (0xFF) bytes in the fake-backed extra-MRAM window so
    * blank_check can complete a real read without faulting. */
   volatile uint8_t* p = (volatile uint8_t*)(uintptr_t)k_ra8_flash_extra_start;
   for (uint32_t i = 0U; i < 16U; ++i) {
@@ -482,7 +482,7 @@ static void test_blank_check_extra_mram_path(void)
  *
  * @return 0 on success (individual test failures exit via TEST_FAIL_FMT).
  *
- * @pre Host test binary linked against ra8_core_hal with RA8_SIMULATOR_MODE.
+ * @pre Host test binary linked against ra8_core_hal with RA8_OFF_TARGET.
  * @post All uncovered branches in ra8_flash_irq.c are exercised.
  *
  * @note Not thread-safe.

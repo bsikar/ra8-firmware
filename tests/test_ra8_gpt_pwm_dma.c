@@ -17,11 +17,11 @@
 
 #include "ra8_dma.h"
 #include "ra8_err.h"
+#include "ra8_fake_dma.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpt.h"
 #include "ra8_gpt_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_dma.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -58,7 +58,7 @@ typedef enum : uint32_t {
 
 static void prep_w35(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -108,10 +108,10 @@ static void test_gpt_write_dma_streams_periods_to_gtpr(void)
                                    nullptr,
                                    &dch));
   TEST_ASSERT(dch < 8U);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_memcpy(dch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_memcpy(dch));
   volatile const r_gpt_channel_regs_t* reg = ra8_gpt((uint8_t)k_ra8_gpt_test_channel_valid);
   TEST_ASSERT_EQ(0x33333333UL, reg->GTPR);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_complete(dch));
   TEST_ASSERT_EQ(1, s_gpt_dma_done);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_release(dch));
   TEST_END("ra8_gpt_write_dma: periods stream into GTPR");
@@ -144,10 +144,10 @@ static void test_gpt_read_dma_captures_gtcnt(void)
                                   stub_gpt_dma_done,
                                   nullptr,
                                   &dch));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_memcpy(dch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_memcpy(dch));
   TEST_ASSERT_EQ(0xDEADC0DEUL, out[0]);
   TEST_ASSERT_EQ(0xDEADC0DEUL, out[1]);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_complete(dch));
   TEST_ASSERT_EQ(1, s_gpt_dma_done);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_release(dch));
   TEST_END("ra8_gpt_read_dma: GTCNT streams into out_counts");

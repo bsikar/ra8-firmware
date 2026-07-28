@@ -9,9 +9,9 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i3c_i2c_peripheral.h"
 #include "ra8_i3c_i2c_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -93,7 +93,7 @@ static void test_open_oor(void)
 static void test_open_close(void)
 {
   TEST_BEGIN("internal_i3c_i2c_peripheral_open + close happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs((uint8_t)k_ra8_i3c_i2c_peripheral_test_ch0);
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -119,7 +119,7 @@ static void test_open_close(void)
 static void test_send_ok(void)
 {
   TEST_BEGIN("internal_i3c_i2c_peripheral_send ok");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs((uint8_t)k_ra8_i3c_i2c_peripheral_test_ch0);
   prearm(reg);
   const uint8_t data[1] = {(uint8_t)k_ra8_i3c_i2c_peripheral_test_byte_a};
@@ -162,7 +162,7 @@ static void test_send_null(void)
 static void test_receive_ok(void)
 {
   TEST_BEGIN("internal_i3c_i2c_peripheral_receive ok");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs((uint8_t)k_ra8_i3c_i2c_peripheral_test_ch0);
   prearm(reg);
   reg->NTDTBP0   = (uint32_t)k_ra8_i3c_i2c_peripheral_test_byte_b;
@@ -189,7 +189,7 @@ static void test_receive_ok(void)
 static void test_status(void)
 {
   TEST_BEGIN("internal_i3c_i2c_peripheral_status reflects flags");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs((uint8_t)k_ra8_i3c_i2c_peripheral_test_ch0);
   reg->NTST                      = (uint32_t)((uint32_t)k_ra8_i3c_i2c_peripheral_test_ntst_tdbef0 |
                                               (uint32_t)k_ra8_i3c_i2c_peripheral_test_ntst_rdbff0);
@@ -224,7 +224,7 @@ static void test_status(void)
 static void test_mcdc_ra8_i3c_i2c_peripheral(void)
 {
   TEST_BEGIN("iic_b_peripheral MC/DC: send/receive 2-cond null+len");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(
     k_ra8_ok,
     internal_i3c_i2c_peripheral_open((uint8_t)k_ra8_i3c_i2c_peripheral_test_ch0, &k_cfg));

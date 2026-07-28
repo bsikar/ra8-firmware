@@ -335,7 +335,7 @@ def _rule_host_friendly(sym: AnnotatedSymbol, _arg: str, ctx: RuleCtx) -> list[V
                     cs,
                     "ra8_host_friendly",
                     f"host-friendly '{sym.name}' calls MMIO accessor "
-                    f"'{cs.callee_name}' (would break in sim)",
+                    f"'{cs.callee_name}' (would break off-target)",
                 )
             )
     return out

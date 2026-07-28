@@ -26,9 +26,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mipi_phy.h"
 #include "ra8_mipi_phy_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -77,7 +77,7 @@ static void stub_phy_cb(void* ctx, ra8_mipi_phy_event_t event, uint32_t sfr)
 
 static void prep_fixture(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   s_phy_cb_count      = 0U;
   s_phy_cb_last_sfr   = 0U;
   s_phy_cb_last_ctx   = nullptr;
@@ -402,7 +402,7 @@ static void test_init_lane_count_1_accepted(void)
 static void test_init_ldo_timeout(void)
 {
   TEST_BEGIN("mipi_phy init reports LDO timeout");
-  ra8_sim_mmap_reset(); /* zeros DPHYSFR -- LDO never asserts. */
+  ra8_fake_mmap_reset(); /* zeros DPHYSFR -- LDO never asserts. */
 
   const ra8_mipi_phy_timing_t tim = make_timing();
   const ra8_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
@@ -422,7 +422,7 @@ static void test_init_ldo_timeout(void)
 static void test_init_pll_timeout(void)
 {
   TEST_BEGIN("mipi_phy init reports PLL timeout");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* LDO ready, PLL never locks. */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_sfr) = (uint32_t)k_ra8_mipi_phy_sfr_pwrsf;
 

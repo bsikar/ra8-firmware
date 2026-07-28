@@ -15,11 +15,11 @@
  *    ``ra8_cnecc_compute`` / ``ra8_cnecc_verify``.
  *
  * The compute / verify cases feed addresses that live inside the
- * simulator's mapped SRAM window (base ``0x22000000``) rather than a
+ * fake's mapped SRAM window (base ``0x22000000``) rather than a
  * static test-binary buffer: the driver takes a ``uint32_t addr`` and
  * casts it back to a pointer, so a real 64-bit host pointer would be
  * truncated. The mapped SRAM window is sub-4-GiB and is zeroed by
- * ``ra8_sim_mmap_reset``, so the round trip is exact on both the target
+ * ``ra8_fake_mmap_reset``, so the round trip is exact on both the target
  * and the x86_64 test host.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -30,10 +30,10 @@
 #include "ra8_cnecc_regs.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_irq.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_irq.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -50,16 +50,16 @@ typedef enum : uint16_t {
 
 /**
  * @enum ra8_cnecc_cov_ram_t
- * @brief Sim-mapped SRAM window used as a compute / verify source.
+ * @brief Fake-mapped SRAM window used as a compute / verify source.
  *
  * @details
- * ``0x22000000`` is region ``k_ra8_sim_region_sram`` in ra8_sim_mmap.c
- * (2 MiB, zeroed by ``ra8_sim_mmap_reset``). It fits in a ``uint32_t``,
+ * ``0x22000000`` is region ``k_ra8_fake_region_sram`` in ra8_fake_mmap.c
+ * (2 MiB, zeroed by ``ra8_fake_mmap_reset``). It fits in a ``uint32_t``,
  * so the driver's ``(const uint8_t*)(uintptr_t)addr`` round trip is
  * lossless on the 64-bit test host.
  */
 typedef enum : uint32_t {
-  k_ra8_cnecc_cov_ram_base = 0x22000000UL, /**< Sim SRAM window base.       */
+  k_ra8_cnecc_cov_ram_base = 0x22000000UL, /**< Fake SRAM window base.      */
   k_ra8_cnecc_cov_ram_len  = 16U,          /**< Bytes hashed by compute.    */
   k_ra8_cnecc_cov_word0    = 0xDEADBEEFUL, /**< Seed word 0 of the source.  */
   k_ra8_cnecc_cov_word1    = 0xCAFEBABEUL, /**< Seed word 1 of the source.  */
@@ -70,7 +70,7 @@ typedef enum : uint32_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_isr_init();
 }
@@ -93,7 +93,7 @@ static void cov_dummy_isr(void* ctx)
   (void)ctx;
 }
 
-/** @brief Write the fixed 16-byte seed pattern into the sim SRAM source. */
+/** @brief Write the fixed 16-byte seed pattern into the fake SRAM source. */
 static void cov_seed_source(void)
 {
   volatile uint32_t* words = (volatile uint32_t*)(uintptr_t)k_ra8_cnecc_cov_ram_base;

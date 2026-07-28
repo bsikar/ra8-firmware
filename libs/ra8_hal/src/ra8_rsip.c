@@ -32,10 +32,10 @@
  * code is included verbatim.
  *
  * The host unit-test build runs every register access through
- * ``ra8_sim_mmap``-backed pages and routes the bounded BIST / DONE
- * polls through the ``ra8_sim_mmio`` wait seam (issue #238): an
+ * ``ra8_fake_mmap``-backed pages and routes the bounded BIST / DONE
+ * polls through the ``ra8_fake_mmio`` wait seam (issue #238): an
  * unarmed register satisfies its wait on the first poll, and a test
- * arms ``ra8_sim_mmio_fail_wait`` / ``ra8_sim_mmio_satisfy_after``
+ * arms ``ra8_fake_mmio_fail_wait`` / ``ra8_fake_mmio_satisfy_after``
  * to drive the timeout / continuation legs of the real loop. The
  * driver itself runs the identical register sequence on every build
  * and never forges an engine-side status bit.
@@ -69,7 +69,7 @@
  * driver is ported, the software SHA-256 is the ONLY working backend, so it is
  * enabled unconditionally. The register-sequence model is retained (never
  * compiled) behind RA8_RSIP_HASH_HARDWARE as a reference for the future port and
- * for the host register-plumbing tests, which drive it against ra8_sim_mmap.
+ * for the host register-plumbing tests, which drive it against ra8_fake_mmap.
  */
 #ifndef RA8_RSIP_SOFTWARE_BACKEND
 /** @brief RA8 RSIP SOFTWARE BACKEND. */
@@ -121,11 +121,11 @@ ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask)
 {
   volatile uint32_t* reg = ra8_rsip_reg32(offset);
   for (uint32_t i = 0U; i < k_ra8_rsip_poll_budget; ++i) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    /* Host unit-test MMIO wait seam (tests/mocks/ra8_sim_mmio.c): an unarmed
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    /* Host unit-test MMIO wait seam (tests/mocks/ra8_fake_mmio.c): an unarmed
      * register satisfies the wait on its first poll; a test arms fail_wait /
      * satisfy_after to drive the timeout / continuation legs of this loop. */
-    if (ra8_sim_mmio_wait_eval(reg, i, ((*reg & mask) == mask))) {
+    if (ra8_fake_mmio_wait_eval(reg, i, ((*reg & mask) == mask))) {
       return k_ra8_ok;
     }
 #else
@@ -145,8 +145,8 @@ ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask)
  * access-management circuit asserts once the on-board firmware
  * finishes the self-test. The driver never forges the bit itself:
  * on the host build the bounded wait routes through the
- * ``ra8_sim_mmio`` seam (unarmed = pass on the first poll; a test
- * arms ``ra8_sim_mmio_fail_wait`` to reach the failure leg).
+ * ``ra8_fake_mmio`` seam (unarmed = pass on the first poll; a test
+ * arms ``ra8_fake_mmio_fail_wait`` to reach the failure leg).
  *
  * @return ``k_ra8_ok`` on pass, ``k_ra8_err_hw_init_failed`` on fail.
  *
@@ -205,7 +205,7 @@ ra8_err_t internal_hash_wait_done(void)
 {
   /* On hardware the engine raises HASH_STATUS.DONE once it absorbs the
    * trailing block + length; the bounded wait routes through the host
-   * ra8_sim_mmio seam inside internal_wait_bit. */
+   * ra8_fake_mmio seam inside internal_wait_bit. */
   return internal_wait_bit(k_ra8_rsip_off_hash_status, k_ra8_rsip_mask_isr_done);
 }
 
@@ -355,7 +355,7 @@ ra8_err_t ra8_rsip_trng_read(uint8_t* buf, uint32_t len)
   const uint32_t words = len >> k_ra8_rsip_word_shift;
   for (uint32_t w = 0U; w < words; ++w) {
     /* On hardware the engine asserts READY when a fresh word is
-     * available. The host sim has no producer thread, so we
+     * available. The host fake has no producer thread, so we
      * pre-assert and re-assert each iteration to keep the spin
      * deterministic. */
     *status |= k_ra8_rsip_mask_status_ready;

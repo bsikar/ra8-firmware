@@ -63,7 +63,7 @@
 #include "ra8_time.h"
 #include "usb_msc_sdcard_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #include "ux_dcd_ra8_usb.h"
 
@@ -340,7 +340,7 @@ static void sdmsc_setup_or_halt(void)
   sdmsc_route_usb_or_halt();
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX worker storage + kernel entry */
@@ -393,7 +393,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -419,7 +419,7 @@ int32_t main(void)
 
   ra8_isr_globals_enable();
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

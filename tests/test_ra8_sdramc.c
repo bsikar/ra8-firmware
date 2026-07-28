@@ -15,10 +15,10 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_pin_validator.h"
 #include "ra8_sdramc.h"
 #include "ra8_sdramc_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -52,7 +52,7 @@ typedef enum : uint32_t {
 /** @brief Reset the mock MMIO backing and the pin-validator bitmap. */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 

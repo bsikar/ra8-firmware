@@ -35,7 +35,7 @@ ra8_emulator; a large volume would blow the run budget.
 make            # -> build/ra8_io_xspi_demo.elf
 ```
 
-## Run in the simulator
+## Run in the emulator
 
 ra8_emulator models the 2 MiB OSPI NOR array internally, so no `--sd` flag is
 needed. The OSPI RMW is slow in the emulator, so give it a generous budget:

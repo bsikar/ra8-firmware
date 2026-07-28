@@ -71,7 +71,7 @@ the default RA8D2 profile this block is gated off entirely, so the RA8D2 run is
 byte-for-behaviour unchanged. (Note the RA8P1 has **no OFS3** option register; no
 in-tree app depends on it, so the shared OFS window is left mapped and harmless.)
 
-### Configuring the simulated devices
+### Configuring the emulated devices
 
 The microSD card is set up at launch with no pre-built image required:
 

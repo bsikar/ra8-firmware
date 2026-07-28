@@ -212,8 +212,8 @@ static void fill_status_hw(board_status_t* st, const char* app_name)
   st->irq1      = board_periph_irq_count(1U);
   st->has_touch = board_periph_touch_last(&st->touch_x, &st->touch_y);
   /* User switches are active-low: a held button reads its pin low. */
-  st->sw1_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw1_pin);
-  st->sw2_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw2_pin);
+  st->sw1_pressed = !board_periph_gpio_get_input((uint8_t)k_emu_sw_port, (uint8_t)k_emu_sw1_pin);
+  st->sw2_pressed = !board_periph_gpio_get_input((uint8_t)k_emu_sw_port, (uint8_t)k_emu_sw2_pin);
   board_periph_battery_get(&st->battery_soc, &st->battery_charging);
   st->low_power   = s_low_power;
   st->core_is_m33 = (s_primary_core == k_core_m33);
@@ -408,12 +408,12 @@ void unrotate_click(uint16_t  cx,
 void set_switch(board_overlay_btn_t btn, bool pressed)
 {
   const uint8_t pin =
-    (btn == k_board_overlay_btn_sw2) ? (uint8_t)k_sim_sw2_pin : (uint8_t)k_sim_sw1_pin;
+    (btn == k_board_overlay_btn_sw2) ? (uint8_t)k_emu_sw2_pin : (uint8_t)k_emu_sw1_pin;
   /* SW1/SW2 are momentary push-buttons wired active-low (internal pull-up): held
    * down drives the pin LOW (input false), released lets it return HIGH (true).
    * Driving the level directly -- instead of toggling -- makes a click behave as a
    * real button (press on mouse-down, release on mouse-up), not a latching switch. */
-  board_periph_gpio_set_input((uint8_t)k_sim_sw_port, pin, !pressed);
+  board_periph_gpio_set_input((uint8_t)k_emu_sw_port, pin, !pressed);
 }
 
 /**

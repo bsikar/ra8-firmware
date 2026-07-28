@@ -7,7 +7,7 @@
  * tail past the object end), the XIP direct-pointer path with bounds checks, the
  * validation guards, and -- the headline -- the Layer 1 + Layer 2 integration: a
  * page cache wired to ra8_vsource_loader pages a file-like object in from a
- * simulated backing and reads back the exact bytes.
+ * fake backing and reads back the exact bytes.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -41,7 +41,7 @@ typedef enum : uint32_t {
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_store_bytes = 2048U, /**< Simulated backing size.  */
+  k_t_store_bytes = 2048U, /**< Fake backing size.       */
   k_t_objs        = 4U,    /**< Registry capacity.       */
   k_t_frame_bytes = 64U,   /**< Page-cache frame size.   */
   k_t_frames      = 8U,    /**< Page-cache frames.       */
@@ -49,11 +49,11 @@ typedef enum : uint32_t {
   k_t_xip_bytes   = 256U,  /**< XIP object size.         */
 } t_vs_const_t;
 
-static uint8_t           s_store[(size_t)k_t_store_bytes]; /**< Simulated slow storage. */
-static uint8_t           s_xip[(size_t)k_t_xip_bytes];     /**< Simulated XIP region.   */
+static uint8_t           s_store[(size_t)k_t_store_bytes]; /**< Fake slow storage. */
+static uint8_t           s_xip[(size_t)k_t_xip_bytes];     /**< Fake XIP region.   */
 static ra8_vsource_obj_t s_objs[(size_t)k_t_objs];
 
-/** @brief Backing read callback over the simulated storage buffer. */
+/** @brief Backing read callback over the fake storage buffer. */
 static ra8_err_t t_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
   (void)ctx;

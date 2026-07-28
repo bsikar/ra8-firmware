@@ -17,7 +17,7 @@
  * points the app's hil.conf feeds ra8_emulator via ``--touch-seq``: it builds the
  * five ``ra8_touch_cal_run`` targets (four inset corners + centre of the 512x512
  * screen), distorts them through the same synthetic panel transform the
- * simulator replays, solves with ``ra8_touch_cal_compute``, round-trips through
+ * fake replays, solves with ``ra8_touch_cal_compute``, round-trips through
  * ``ra8_touch_cal_save`` / ``ra8_touch_cal_load``, re-applies with
  * ``ra8_touch_cal_apply``, and asserts a zero residual -- proving the EIL feed
  * the HIL gate relies on is mathematically exact.
@@ -49,7 +49,7 @@ typedef enum : uint16_t {
 
 /**
  * @enum t_tc_synth_t
- * @brief Synthetic panel transform the simulator replays (raw = screen*g + b).
+ * @brief Synthetic panel transform the fake replays (raw = screen*g + b).
  *
  * @details
  * The app's hil.conf feeds ra8_emulator these raw points via ``--touch-seq``; the

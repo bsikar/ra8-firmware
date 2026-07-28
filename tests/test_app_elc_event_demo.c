@@ -6,7 +6,7 @@
  * Mirrors examples/ek_ra8d2/elc_event_demo/main.c bring-up:
  * ra8_elc_init -> ra8_elc_link(slot, event) ->
  * ra8_elc_software_trigger(idx) -> ra8_elc_is_enabled. All MMIO
- * is via the host tests/mocks/ra8_sim_mmap.c shim.
+ * is via the host tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -18,7 +18,7 @@
 #include "ra8_elc.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -30,7 +30,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /**
@@ -40,7 +40,7 @@ static void reset_world(void)
  * Compound decision in app: ``ra8_elc_init != ok || ra8_elc_link != ok``.
  * Two atomic conditions x N+1 = 3 vectors -- this covers both-ok;
  * bad-slot covers link-fails; the init failure path runs only on
- * a malformed register block which the simulator never produces.
+ * a malformed register block which the fake never produces.
  */
 static void test_elc_app_bringup_ok(void)
 {

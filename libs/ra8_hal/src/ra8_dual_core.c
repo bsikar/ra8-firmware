@@ -14,7 +14,7 @@
  * do not exist on RA8D2; those silently dropped writes, which is what made
  * cpu1_pingpong's CPU1 stay in reset forever.
  *
- * Host (RA8_SIMULATOR_MODE) builds back the registers with a small
+ * Host (RA8_OFF_TARGET) builds back the registers with a small
  * static state struct so unit tests can drive the API without a chip.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -47,56 +47,56 @@ typedef enum : uint32_t {
 /* ----------------------------------------------------------------------------
  * Host shim
  * --------------------------------------------------------------------------*/
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 
 /**
- * @struct ra8_dual_core_sim_state_t
+ * @struct ra8_dual_core_fake_state_t
  * @brief Host-only mirror of the CPU_CTRL multi-core registers.
  */
 typedef struct {
   uint32_t initvtor; /**< Mirrors CPU1INITVTOR. */
   uint16_t actcsr;   /**< Mirrors CPU1ACTCSR.   */
   uint8_t  waitcr;   /**< Mirrors CPU1WAITCR.   */
-} ra8_dual_core_sim_state_t;
+} ra8_dual_core_fake_state_t;
 
 /**
- * @var s_sim
+ * @var s_fake
  * @brief Host-only register mirror, initialized to "CPU1 not activated"
  *        (ACT=0, ACTREQ=0, CPUWAIT=0). On a real chip the secondary CPU
  *        comes out of system reset with ACT=0.
  */
-static ra8_dual_core_sim_state_t s_sim = {
+static ra8_dual_core_fake_state_t s_fake = {
   .initvtor = 0U,
   .actcsr   = 0U,
   .waitcr   = 0U,
 };
 
 /**
- * @brief Read the simulated CPU1ACTCSR register.
+ * @brief Read the fake CPU1ACTCSR register.
  *
  * @details
- * Host-build (RA8_SIMULATOR_MODE) shim that returns ``s_sim.actcsr``
+ * Host-build (RA8_OFF_TARGET) shim that returns ``s_fake.actcsr``
  * verbatim. Used to assert the modeled ACT bit follows the expected
  * release / halt sequence; no hardware access here.
  *
  * @return uint16_t Current 16-bit ACTCSR value.
  * @retval 0..UINT16_MAX Whatever the test harness most recently wrote.
  *
- * @pre Module file-static state ``s_sim`` is initialized.
- * @pre Caller does not concurrently mutate ``s_sim.actcsr``.
- * @post ``s_sim`` is unchanged.
- * @post Returned value equals ``s_sim.actcsr`` at call time.
+ * @pre Module file-static state ``s_fake`` is initialized.
+ * @pre Caller does not concurrently mutate ``s_fake.actcsr``.
+ * @post ``s_fake`` is unchanged.
+ * @post Returned value equals ``s_fake.actcsr`` at call time.
  *
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
 static inline uint16_t internal_actcsr_read(void)
 {
-  return s_sim.actcsr;
+  return s_fake.actcsr;
 }
 
 /**
- * @brief Write the simulated CPU1ACTCSR register.
+ * @brief Write the fake CPU1ACTCSR register.
  *
  * @details
  * Mirrors the chip's KEY gate: writes that do not present
@@ -105,9 +105,9 @@ static inline uint16_t internal_actcsr_read(void)
  *
  * @param[in] value New ACTCSR value to latch into the host mirror.
  *
- * @pre Module file-static state ``s_sim`` is initialized.
- * @pre Caller serialises mutations of ``s_sim.actcsr``.
- * @post ``s_sim.actcsr`` reflects the write with ACT mirroring ACTREQ.
+ * @pre Module file-static state ``s_fake`` is initialized.
+ * @pre Caller serialises mutations of ``s_fake.actcsr``.
+ * @post ``s_fake.actcsr`` reflects the write with ACT mirroring ACTREQ.
  * @post No other shim fields are modified.
  *
  * @note Host-shim only; not thread-safe.
@@ -121,26 +121,26 @@ static inline void internal_actcsr_write(uint16_t value)
     /* Only caller ra8_cpu1_release always presents KEY=0xA5; wrong-key drop is host-unreachable. */
     return; /* Silent drop -- matches HUM Ch 2.9.1.9 KEY gate. */ /* GCOVR_EXCL_LINE */
   }
-  uint16_t actcsr = s_sim.actcsr;
+  uint16_t actcsr = s_fake.actcsr;
   if ((value & (uint16_t)k_ra8_dual_core_actcsr_actreq_mask) != 0U) {
     actcsr |= (uint16_t)k_ra8_dual_core_actcsr_act_mask;
   }
-  s_sim.actcsr = actcsr;
+  s_fake.actcsr = actcsr;
 }
 
 /**
- * @brief Write the simulated CPU1WAITCR register.
+ * @brief Write the fake CPU1WAITCR register.
  *
  * @details
  * Host-build shim. Stores ``value`` masked to the CPUWAIT bit into
- * ``s_sim.waitcr``. Mirrors the chip-side single-bit register so
+ * ``s_fake.waitcr``. Mirrors the chip-side single-bit register so
  * tests can drive ``ra8_cpu1_halt`` / ``ra8_cpu1_release`` paths.
  *
  * @param[in] value New 8-bit WAITCR value (only bit 0 is significant).
  *
- * @pre Module file-static state ``s_sim`` is initialized.
- * @pre Caller serialises mutations of ``s_sim.waitcr``.
- * @post ``s_sim.waitcr == (value & 0x01)``.
+ * @pre Module file-static state ``s_fake`` is initialized.
+ * @pre Caller serialises mutations of ``s_fake.waitcr``.
+ * @post ``s_fake.waitcr == (value & 0x01)``.
  * @post No other shim fields are modified.
  *
  * @note Host-shim only; not thread-safe.
@@ -148,47 +148,47 @@ static inline void internal_actcsr_write(uint16_t value)
  */
 static inline void internal_waitcr_write(uint8_t value)
 {
-  s_sim.waitcr = (uint8_t)(value & (uint8_t)k_ra8_dual_core_waitcr_cpuwait_mask);
+  s_fake.waitcr = (uint8_t)(value & (uint8_t)k_ra8_dual_core_waitcr_cpuwait_mask);
 }
 
 /**
- * @brief Read the simulated CPU1WAITCR register.
+ * @brief Read the fake CPU1WAITCR register.
  *
  * @details
- * Host-build shim that returns ``s_sim.waitcr`` verbatim so the
+ * Host-build shim that returns ``s_fake.waitcr`` verbatim so the
  * scheduler-vs-active queries in ``ra8_cpu1_is_running`` resolve
- * against the simulator state instead of MMIO.
+ * against the fake state instead of MMIO.
  *
  * @return uint8_t Current 8-bit WAITCR value (CPUWAIT in bit 0).
  * @retval 0..1 Whatever the test harness most recently wrote
  *              (masked to the CPUWAIT bit).
  *
- * @pre Module file-static state ``s_sim`` is initialized.
- * @pre Caller does not concurrently mutate ``s_sim.waitcr``.
- * @post ``s_sim`` is unchanged.
- * @post Returned value equals ``s_sim.waitcr`` at call time.
+ * @pre Module file-static state ``s_fake`` is initialized.
+ * @pre Caller does not concurrently mutate ``s_fake.waitcr``.
+ * @post ``s_fake`` is unchanged.
+ * @post Returned value equals ``s_fake.waitcr`` at call time.
  *
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
 static inline uint8_t internal_waitcr_read(void)
 {
-  return s_sim.waitcr;
+  return s_fake.waitcr;
 }
 
 /**
- * @brief Write the simulated CPU1INITVTOR register.
+ * @brief Write the fake CPU1INITVTOR register.
  *
  * @details
- * Host-build shim. Stores ``value`` into ``s_sim.initvtor`` so the
+ * Host-build shim. Stores ``value`` into ``s_fake.initvtor`` so the
  * test harness can observe the vector-table base the release path
  * wrote without poking real MMIO.
  *
  * @param[in] value New 32-bit vector-table base.
  *
- * @pre Module file-static state ``s_sim`` is initialized.
- * @pre Caller serialises mutations of ``s_sim.initvtor``.
- * @post ``s_sim.initvtor == value``.
+ * @pre Module file-static state ``s_fake`` is initialized.
+ * @pre Caller serialises mutations of ``s_fake.initvtor``.
+ * @post ``s_fake.initvtor == value``.
  * @post No other shim fields are modified.
  *
  * @note Host-shim only; not thread-safe.
@@ -196,17 +196,17 @@ static inline uint8_t internal_waitcr_read(void)
  */
 static inline void internal_initvtor_write(uint32_t value)
 {
-  s_sim.initvtor = value;
+  s_fake.initvtor = value;
 }
 
 #ifdef UNIT_TEST
 volatile const void* ra8_dual_core_test_actcsr_key(void)
 {
-  return (volatile const void*)&s_sim.actcsr;
+  return (volatile const void*)&s_fake.actcsr;
 }
 #endif /* UNIT_TEST */
 
-#else /* !RA8_SIMULATOR_MODE */
+#else /* !RA8_OFF_TARGET */
 
 /**
  * @brief Address of CPU1ACTCSR on the live chip.
@@ -371,7 +371,7 @@ static inline void internal_initvtor_write(uint32_t value)
   *internal_initvtor_ptr() = value;
 }
 
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */
 
 /**
  * @brief Compile-time check that the caller is CPU0.
@@ -410,7 +410,7 @@ static inline bool internal_is_cpu0(void)
  * Spins up to ::k_ra8_dual_core_release_poll_max reads of CPU1ACTCSR
  * waiting for the ACT bit, extracted from ::ra8_cpu1_release to keep that
  * function within the NASA Power of 10 Rule 4 line budget. On the host
- * build nothing self-sets ACT, so the ra8_sim_mmio fault seam owns the
+ * build nothing self-sets ACT, so the ra8_fake_mmio fault seam owns the
  * loop-exit decision -- first-poll success unless a test arms a fault on
  * the ACTCSR key to drive the retry / timeout legs.
  *
@@ -428,13 +428,13 @@ static inline bool internal_is_cpu0(void)
  */
 static ra8_err_t internal_wait_act_set(void)
 {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
   volatile const void* act_key = ra8_dual_core_test_actcsr_key();
 #endif
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_dual_core_release_poll_max; ++i) {
     const bool act_set = (internal_actcsr_read() & (uint16_t)k_ra8_dual_core_actcsr_act_mask) != 0U;
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(act_key, i, act_set)) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(act_key, i, act_set)) {
       return k_ra8_ok;
     }
 #else

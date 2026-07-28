@@ -290,7 +290,7 @@ bool ra8_dfu_run_target_valid(uint32_t entry, uint32_t img_len);
  * constant, never `entry`, so a corrupted `entry` cannot redirect it.
  *
  * Interrupts are masked across the copy and switch; the launched image re-enables
- * them after its own bring-up. Under `RA8_SIMULATOR_MODE` the branch is elided (a
+ * them after its own bring-up. Under `RA8_OFF_TARGET` the branch is elided (a
  * host cannot reset MSP/VTOR), so the function validates and returns.
  *
  * @param[in] src     Source image base (image body, vector table first); non-zero.
@@ -381,7 +381,7 @@ ra8_dfu_boot_decide(bool dfu_trigger, bool a_valid, uint32_t a_seq, bool b_valid
  * These touch the code-MRAM window. On the firmware target the program path
  * must execute from SRAM (the code-MRAM program loop must not run from MRAM --
  * see ra8_flash.h); each consumer's linker script places this TU + ra8_flash in
- * SRAM. The host test backs the MRAM window with simulator memory, so the
+ * SRAM. The host test backs the MRAM window with fake memory, so the
  * full program -> read-back -> verify round-trip is unit-testable.
  * =============================================================================
  */
@@ -454,7 +454,7 @@ ra8_dfu_slot_t ra8_dfu_other_slot(ra8_dfu_slot_t slot);
  * @retval k_ra8_err_null_ptr    `out_hdr` is NULL.
  *
  * @pre `out_hdr` non-NULL; `slot` is A or B.
- * @pre The MRAM window is readable (always true post-reset / in sim).
+ * @pre The MRAM window is readable (always true post-reset / off-target).
  * @post `*out_hdr` holds the slot's first 32 bytes; no MRAM mutated.
  * @note Not thread-safe vs a concurrent program of the same slot. @since 0.1.0
  */

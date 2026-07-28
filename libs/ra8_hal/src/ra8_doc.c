@@ -6,7 +6,7 @@
  * Thin wrapper that drives the DOC_B block through its add / sub /
  * compare modes. Register writes go through the accessor from
  * `ra8_doc_regs.h`, which returns a pointer to host RAM in
- * `RA8_SIMULATOR_MODE` and a real hardware address on target.
+ * `RA8_OFF_TARGET` and a real hardware address on target.
  *
  * Per HUM Ch 57.2 p 3521 the DODSR0 register holds the running
  * accumulator AND the operand reference; DODIR is the data input

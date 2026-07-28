@@ -14,11 +14,11 @@
 
 #include "ra8_dma.h"
 #include "ra8_err.h"
+#include "ra8_fake_dma.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
-#include "ra8_sim_dma.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_spi.h"
 #include "ra8_spi_regs.h"
 #include "unity_minimal.h"
@@ -88,8 +88,8 @@ typedef enum : uint32_t {
 static void test_controller_init_happy_ch0(void)
 {
   TEST_BEGIN("spi controller_init ch0");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   const ra8_err_t err = ra8_spi_controller_init(k_ra8_spi_test_ch_zero);
   TEST_ASSERT_EQ(k_ra8_ok, err);
@@ -115,8 +115,8 @@ static void test_controller_init_happy_ch0(void)
 static void test_controller_init_happy_ch1(void)
 {
   TEST_BEGIN("spi controller_init ch1");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_controller_init(k_ra8_spi_test_ch_one));
   TEST_END("spi controller_init ch1");
@@ -131,8 +131,8 @@ static void test_controller_init_happy_ch1(void)
 static void test_controller_init_bad_channel(void)
 {
   TEST_BEGIN("spi controller_init bad channel");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_spi_controller_init(k_ra8_spi_test_ch_oor));
   TEST_END("spi controller_init bad channel");
@@ -147,8 +147,8 @@ static void test_controller_init_bad_channel(void)
 static void test_controller_init_huge_channel(void)
 {
   TEST_BEGIN("spi controller_init huge channel");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_spi_controller_init(k_ra8_spi_test_ch_huge));
   TEST_END("spi controller_init huge channel");
@@ -163,8 +163,8 @@ static void test_controller_init_huge_channel(void)
 static void test_xfer8_happy_with_rx(void)
 {
   TEST_BEGIN("spi xfer8 happy with rx");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_spi_regs_t* reg = ra8_spi(k_ra8_spi_test_ch_zero);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -190,8 +190,8 @@ static void test_xfer8_happy_with_rx(void)
 static void test_xfer8_happy_null_rx(void)
 {
   TEST_BEGIN("spi xfer8 happy null rx");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_spi_regs_t* reg = ra8_spi(k_ra8_spi_test_ch_one);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -211,8 +211,8 @@ static void test_xfer8_happy_null_rx(void)
 static void test_xfer8_timeout_sptef(void)
 {
   TEST_BEGIN("spi xfer8 timeout sptef");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   /* Arm the SPSR poll to never satisfy -> the first (SPTEF) bounded wait in
    * ra8_spi_xfer8 spins to its budget and returns k_ra8_err_hw_timeout. The
@@ -220,7 +220,7 @@ static void test_xfer8_timeout_sptef(void)
    * so the fault seam keys on &reg->SPSR (T1-01/#177). */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_spi(k_ra8_spi_test_ch_zero)->SPSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_spi(k_ra8_spi_test_ch_zero)->SPSR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_spi_xfer8(k_ra8_spi_test_ch_zero, (uint8_t)k_ra8_spi_test_tx_byte, nullptr));
   TEST_END("spi xfer8 timeout sptef");
@@ -235,8 +235,8 @@ static void test_xfer8_timeout_sptef(void)
 static void test_xfer8_timeout_sprf(void)
 {
   TEST_BEGIN("spi xfer8 timeout sprf");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   volatile r_spi_regs_t* reg = ra8_spi(k_ra8_spi_test_ch_zero);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -249,7 +249,7 @@ static void test_xfer8_timeout_sprf(void)
    * only on the success path, which is never reached here). */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait((const volatile void*)&ra8_spi(k_ra8_spi_test_ch_zero)->SPSR));
+    ra8_fake_mmio_fail_wait((const volatile void*)&ra8_spi(k_ra8_spi_test_ch_zero)->SPSR));
 
   uint8_t rx = k_t_rx_unset;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -266,8 +266,8 @@ static void test_xfer8_timeout_sprf(void)
 static void test_xfer8_bad_channel(void)
 {
   TEST_BEGIN("spi xfer8 bad channel");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   uint8_t rx = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -291,8 +291,8 @@ static void    stub_spi_cb(void* ctx, uint8_t err_mask)
 
 static void prep_w33(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   s_spi_cb_count = 0;
   s_spi_cb_err   = 0;
@@ -528,10 +528,10 @@ static void test_spi_write_dma_streams_to_spdr(void)
     k_ra8_ok,
     ra8_spi_write_dma(0U, src, (uint16_t)sizeof(src), stub_spi_dma_done, nullptr, &dch));
   TEST_ASSERT(dch < 8U);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_memcpy(dch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_memcpy(dch));
   volatile const r_spi_regs_t* reg = ra8_spi(0U);
   TEST_ASSERT_EQ(0x99U, (reg->SPDR & 0xFFU));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_complete(dch));
   TEST_ASSERT_EQ(1, s_spi_dma_done);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_release(dch));
   TEST_END("ra8_spi_write_dma: buffer streams into SPDR");
@@ -559,10 +559,10 @@ static void test_spi_read_dma_streams_from_spdr(void)
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_spi_read_dma(0U, out, (uint16_t)sizeof(out), stub_spi_dma_done, nullptr, &dch));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_memcpy(dch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_memcpy(dch));
   TEST_ASSERT_EQ(0x66U, out[0]);
   TEST_ASSERT_EQ(0x66U, out[1]);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_complete(dch));
   TEST_ASSERT_EQ(1, s_spi_dma_done);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_release(dch));
   TEST_END("ra8_spi_read_dma: SPDR streams into buffer");
@@ -818,7 +818,7 @@ static void test_spi_multi_bad_channel(void)
 
 /**
  * @brief MC/DC decision E: `ra8_spi_dispatch_spei` mask/callback short-circuit.
- * @pre The SPI simulation mmap/mmio windows are resettable.
+ * @pre The SPI fake mmap/mmio windows are resettable.
  * @post No callback fires until both the error mask and the handler are set.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
@@ -827,8 +827,8 @@ static void spi_mcdc_dispatch_spei(void)
 {
   /* V1: mask=0, cb=NULL (no attach yet on a fresh init).
    * C1 short-circuits F -> no callback. */
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_controller_init(k_ra8_spi_test_ch_zero));
   s_spi_cb_count = 0;
   ra8_spi_dispatch_spei(k_ra8_spi_test_ch_zero);
@@ -897,8 +897,8 @@ static void test_mcdc_ra8_spi_b(void)
   TEST_BEGIN("spi_b MC/DC: write/read/dma/dispatch_spei vectors");
 
   /* --- Decision A: ra8_spi_write line 766 -------------------------- */
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_controller_init(k_ra8_spi_test_ch_zero));
   prep_spsr_both(k_ra8_spi_test_ch_zero);
   uint8_t one_byte = (uint8_t)k_ra8_spi_test_tx_byte;

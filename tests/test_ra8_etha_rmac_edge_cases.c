@@ -27,15 +27,15 @@
 #include "ra8_err.h"
 #include "ra8_etha.h"
 #include "ra8_etha_regs.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_rmac.h"
 #include "ra8_rmac_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -130,7 +130,7 @@ static void test_phy_auto_neg_wait_race(void)
   prep();
   const ra8_rmac_config_t cfg = default_rmac_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
-  /* Each per-read MDIO wait completes via the unarmed ra8_sim_mmio seam,
+  /* Each per-read MDIO wait completes via the unarmed ra8_fake_mmio seam,
    * but BMSR reads deliver 0 (PRD zeroed by issue), so auto_neg_wait
    * must exhaust its own budget and return hw_timeout cleanly with
    * out_link.up false. */

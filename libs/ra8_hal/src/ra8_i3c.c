@@ -119,7 +119,7 @@ static ra8_i3c_chan_state_t s_i3c_chan[k_ra8_i3c_i2c_channel_count];
  * 2. Drop BCTL.BUSE so the bus is idle before any reset.
  * 3. Pulse RSTCTL.RI3CRST -- on real silicon the bit auto-clears
  *    when the I3C internal reset completes; here we issue an
- *    explicit clear so the simulated-mmap unit-test back-end does
+ *    explicit clear so the fake-mmap unit-test back-end does
  *    not spin forever (FSP relies on
  *    ``FSP_HARDWARE_REGISTER_WAIT`` for the same thing on target).
  * 4. Pulse RSTCTL.INTLRST to flush the internal state machines.
@@ -144,7 +144,7 @@ static void priv_ra8_i3c_reset_sequence(volatile r_i3c_regs_t* reg)
   reg->BCTL = 0U;
   /* HUM Ch 40 "RSTCTL : Reset Control Register" p 2445-2701 */
   reg->RSTCTL = k_ra8_i3c_rstctl_ri3crst_mask;
-  reg->RSTCTL = 0U; /* simulated-mmap clear / target HW already auto-cleared */
+  reg->RSTCTL = 0U; /* fake-mmap clear / target HW already auto-cleared */
   reg->RSTCTL = k_ra8_i3c_rstctl_intlrst_mask;
   reg->RSTCTL = 0U;
   reg->PRTS   = 0U;
@@ -221,7 +221,7 @@ static uint32_t priv_ra8_i3c_ccc_cmd_word(uint8_t ccc, uint8_t target_addr, bool
  *
  * @details
  * NTDTBP0 is a 32-bit FIFO; partial trailing words are padded with
- * zero, matching FSP ``i3c_fifo_write``.  The simulated-mmap test
+ * zero, matching FSP ``i3c_fifo_write``.  The fake-mmap test
  * back-end is happy to accept the writes -- on silicon the
  * controller drains them onto the bus.
  *

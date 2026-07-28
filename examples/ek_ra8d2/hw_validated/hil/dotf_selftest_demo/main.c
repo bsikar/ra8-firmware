@@ -17,7 +17,7 @@
  *  1. ``ra8_dotf_init`` -- clock-ungate both channels (MSTPB16/17, shared with
  *     OSPI0/1) and reset REG00 to its bypass value. Neither channel is armed.
  *  2. ``ra8_dotf_run_self_test`` on channels 0 and 1 -- set REG00 bit 20, poll
- *     for it to clear (bounded), and snapshot REG00. The host/sim result is
+ *     for it to clear (bounded), and snapshot REG00. The host / off-target result is
  *     opaque diagnostic data (the AES pass/fail timing only exists on
  *     silicon), so the verdict gates on the calls *succeeding*, not on the
  *     snapshot value.
@@ -111,7 +111,7 @@ volatile uint32_t g_dotf_reg00 = 0U;
 
 /**
  * @var g_dotf_st0_snap
- * @brief Channel-0 self-test REG00 snapshot (opaque on host/sim).
+ * @brief Channel-0 self-test REG00 snapshot (opaque on host / off-target).
  * @note Read externally only. Meaningful on silicon (real AES BIST).
  * @since 0.1.0
  */
@@ -119,7 +119,7 @@ volatile uint32_t g_dotf_st0_snap = 0U;
 
 /**
  * @var g_dotf_st1_snap
- * @brief Channel-1 self-test REG00 snapshot (opaque on host/sim).
+ * @brief Channel-1 self-test REG00 snapshot (opaque on host / off-target).
  * @note Read externally only. Meaningful on silicon (real AES BIST).
  * @since 0.1.0
  */

@@ -26,7 +26,7 @@
 
 #include "ra8_err.h"
 #include "ra8_ether_phy.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -87,7 +87,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint16_t regs[k_cov_reg_count]; /**< Simulated PHY register bank.                */
+  uint16_t regs[k_cov_reg_count]; /**< Fake PHY register bank.                     */
   uint16_t reset_reads_remaining; /**< Counts before BMCR.RESET auto-clears.       */
   uint8_t  fail_next_read;        /**< When non-zero the next read returns error.  */
   uint8_t  fail_next_write;       /**< When non-zero the next write returns error. */
@@ -202,7 +202,7 @@ static ra8_err_t cov_bus_write(void* ctx, uint8_t phy, uint8_t reg, uint16_t dat
  */
 static void cov_prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_ether_phy_close();
   (void)memset(&s_cov_io, 0, sizeof(s_cov_io));
   s_cov_io.reset_reads_remaining = 1U;

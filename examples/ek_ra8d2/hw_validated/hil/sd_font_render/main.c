@@ -98,7 +98,7 @@ typedef enum : uint32_t {
   k_sfr_diag_shift_g     = 8U,          /**< Green byte position in ARGB.       */
 } sfr_diag_fill_t;
 
-/** @brief Diagnostic stage codes stamped to ::g_sfr_stage (J-Link / sim). */
+/** @brief Diagnostic stage codes stamped to ::g_sfr_stage (J-Link / emulator). */
 typedef enum : uint32_t {
   k_sfr_stage_boot        = 0U,    /**< Pre-init.                        */
   k_sfr_stage_panel_ok    = 1U,    /**< SDRAM + GLCDC + ra8_gfx up.      */
@@ -123,7 +123,7 @@ static const ra8_port_pin_t k_sfr_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_s
  *
  * @details Deliberately short: every glyph is rasterised by stb_truetype in
  * software, which is fast on the panel but slow under the ra8_emulator CPU
- * emulator, so a compact line keeps the sim render time practical while still
+ * emulator, so a compact line keeps the fake render time practical while still
  * exercising the full SD-font -> ra8_fs -> ra8_reflow -> framebuffer path. */
 static const char k_sfr_body[] = "<html><body><h1>SD font OK</h1>"
                                  "<p>Read off the card.</p></body></html>";
@@ -312,7 +312,7 @@ static void sfr_render_or_halt(void)
     sfr_panic_halt(k_sfr_stage_reflow_fail);
   }
 
-  /* Count inked pixels so a HIL probe / sim can prove text actually landed. */
+  /* Count inked pixels so a HIL probe / emulator can prove text actually landed. */
   uint32_t       ink      = 0U;
   const uint16_t paper565 = (uint16_t)k_sfr_paper_rgb565;
   for (size_t i = 0U; i < (size_t)k_sfr_fb_w * (size_t)k_sfr_fb_h; i++) {

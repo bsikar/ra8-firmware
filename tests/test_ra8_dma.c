@@ -12,9 +12,9 @@
 #include "ra8_dma.h"
 #include "ra8_dmac.h"
 #include "ra8_err.h"
+#include "ra8_fake_dma.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_dma.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -35,7 +35,7 @@ static int32_t s_complete_last_ctx = 0;
 
 static void reset_state(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_init());
   s_complete_count    = 0;
@@ -235,9 +235,9 @@ static void test_channel_exhaustion(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_sim_dma_memcpy_byte(void)
+static void test_fake_dma_memcpy_byte(void)
 {
-  TEST_BEGIN("ra8_sim_dma_memcpy: byte transfer");
+  TEST_BEGIN("ra8_fake_dma_memcpy: byte transfer");
   reset_state();
 
   /* Six distinct bytes: enough to see a mis-strided or short transfer. */
@@ -254,11 +254,11 @@ static void test_sim_dma_memcpy_byte(void)
   uint8_t ch = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_request(&req, &ch));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_memcpy(ch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_memcpy(ch));
 
   TEST_ASSERT_EQ(0x10, dst[0]);
   TEST_ASSERT_EQ(0x60, dst[5]);
-  TEST_END("ra8_sim_dma_memcpy: byte transfer");
+  TEST_END("ra8_fake_dma_memcpy: byte transfer");
 }
 
 /**
@@ -267,9 +267,9 @@ static void test_sim_dma_memcpy_byte(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_sim_dma_memcpy_word(void)
+static void test_fake_dma_memcpy_word(void)
 {
-  TEST_BEGIN("ra8_sim_dma_memcpy: word transfer");
+  TEST_BEGIN("ra8_fake_dma_memcpy: word transfer");
   reset_state();
 
   /* Word-width stimulus; no byte-repeating value, so a width mix-up is visible. */
@@ -285,12 +285,12 @@ static void test_sim_dma_memcpy_word(void)
   };
   uint8_t ch = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_request(&req, &ch));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_memcpy(ch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_memcpy(ch));
 
   TEST_ASSERT_EQ(0xDEADBEEFU, dst[0]);
   TEST_ASSERT_EQ(0xCAFEBABEU, dst[1]);
   TEST_ASSERT_EQ(0x12345678U, dst[2]);
-  TEST_END("ra8_sim_dma_memcpy: word transfer");
+  TEST_END("ra8_fake_dma_memcpy: word transfer");
 }
 
 /**
@@ -299,9 +299,9 @@ static void test_sim_dma_memcpy_word(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_sim_dma_complete_fires_callback(void)
+static void test_fake_dma_complete_fires_callback(void)
 {
-  TEST_BEGIN("ra8_sim_dma_complete: callback invoked with ctx");
+  TEST_BEGIN("ra8_fake_dma_complete: callback invoked with ctx");
   reset_state();
 
   int32_t                 ctx_val = k_dma_ctx_token;
@@ -317,10 +317,10 @@ static void test_sim_dma_complete_fires_callback(void)
   uint8_t ch = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_request(&req, &ch));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_dma_complete(ch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_dma_complete(ch));
   TEST_ASSERT_EQ(1, s_complete_count);
   TEST_ASSERT_EQ(0xABCD, s_complete_last_ctx);
-  TEST_END("ra8_sim_dma_complete: callback invoked with ctx");
+  TEST_END("ra8_fake_dma_complete: callback invoked with ctx");
 }
 
 /**
@@ -332,7 +332,7 @@ static void test_sim_dma_complete_fires_callback(void)
 static void test_dma_request_without_init_fails(void)
 {
   TEST_BEGIN("ra8_dma_request: not-initialized rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   /* Deinit explicitly so s_initialized is false. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_init());
@@ -391,9 +391,9 @@ int32_t main(void)
   test_release_round_trip();
   test_release_bad_channel();
   test_channel_exhaustion();
-  test_sim_dma_memcpy_byte();
-  test_sim_dma_memcpy_word();
-  test_sim_dma_complete_fires_callback();
+  test_fake_dma_memcpy_byte();
+  test_fake_dma_memcpy_word();
+  test_fake_dma_complete_fires_callback();
   test_dma_request_without_init_fails();
   test_channel_is_busy_bad_inputs();
   test_dispatch_out_of_range();

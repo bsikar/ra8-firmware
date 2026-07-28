@@ -80,7 +80,7 @@ RA8_FLASH := $(addprefix flash-,$(RA8_APPS))
 RA8_DEBUG := $(addprefix debug-,$(RA8_APPS))
 RA8_OZONE := $(addprefix ozone-,$(RA8_APPS))
 RA8_EMU   := $(addprefix emu-,$(RA8_APPS))
-# The e-reader / dual-core / tz-threadx sims need dedicated Debug recipes (see
+# The e-reader / dual-core / tz-threadx runs need dedicated Debug recipes (see
 # mk/emu.mk); drop them from the generic single-image emulator rule.
 RA8_EMU_GENERIC := $(filter-out emu-ra8d2-ereader emu-dualcore_mailbox emu-tz_threadx_demo,$(RA8_EMU))
 RA8_PROFILE := $(addprefix profile-,$(RA8_APPS))

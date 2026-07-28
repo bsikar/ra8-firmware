@@ -272,7 +272,7 @@ typedef enum : uint16_t {
  * fires. Peripherals run normally because LPMD bits are not
  * touched.
  *
- * On the host (``RA8_SIMULATOR_MODE``) this is a no-op so unit
+ * On the host (``RA8_OFF_TARGET``) this is a no-op so unit
  * tests do not stall.
  *
  * @pre IRQs are masked at the level the caller wants to wake on.

@@ -7,7 +7,7 @@
  * ra8_mstp_init -> ra8_spi_init(cfg.loopback=true) -> ra8_spi_xfer8.
  * The HAL programmes SPCR2.SPLP while SPE=0 (HUM Ch 43.2.5 p 2889);
  * a stamp after SPE=1 would be silently dropped. All MMIO is via the
- * host tests/mocks/ra8_sim_mmap.c shim.
+ * host tests/mocks/ra8_fake_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -17,8 +17,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_spi.h"
 #include "ra8_spi_regs.h"
 #include "unity_minimal.h"
@@ -37,7 +37,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 /**

@@ -12,7 +12,7 @@
  *
  * The four lines are reached only when `ra8_sci_write_polling` returns
  * `k_ra8_ok`.  Using `len = 0` achieves this deterministically in
- * RA8_SIMULATOR_MODE: the byte-loop is skipped and `internal_wait_tx_end`
+ * RA8_OFF_TARGET: the byte-loop is skipped and `internal_wait_tx_end`
  * is not reached, so no CSR.TDRE pre-seeding is required.
  *
  * A second suite pre-seeds CSR.TDRE and writes one real byte to confirm
@@ -37,10 +37,10 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_io_stream.h"
 #include "ra8_io_stream_uart.h"
 #include "ra8_sci_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -83,12 +83,12 @@ typedef enum : uint8_t {
  * @brief Reset all MMIO backing memory and pre-seed CSR.TDRE for channel 0.
  *
  * @details
- * Mirrors the technique used in test_ra8_uart.c: the simulator peripheral
+ * Mirrors the technique used in test_ra8_uart.c: the fake peripheral
  * window is zeroed first, then the TDRE bit in CSR is set so that the
  * ra8_sci_putc_polling spin resolves on the first iteration without
  * busy-waiting.
  *
- * @pre RA8_SIMULATOR_MODE is defined and ra8_sim_mmap_install has run.
+ * @pre RA8_OFF_TARGET is defined and ra8_fake_mmap_install has run.
  * @post CSR[k_ra8_sci_csr_bit_tdre] is 1 for SCI channel 0.
  * @post All other MMIO registers read zero.
  *
@@ -97,7 +97,7 @@ typedef enum : uint8_t {
  */
 static void fixture_seed_tdre(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   volatile r_sci_regs_t* reg = ra8_sci((uint8_t)k_uart_cov_channel);
   reg->CSR                   = (uint32_t)(1U << (uint8_t)k_ra8_sci_csr_bit_tdre);
 }
@@ -123,7 +123,7 @@ static void fixture_seed_tdre(void)
  * Pairs with test_write_success_null_out_written (Vector B, false arm)
  * for full MC/DC coverage of the single-condition decision.
  *
- * @pre ra8_sim_mmap is installed (constructor, runs before main).
+ * @pre ra8_fake_mmap is installed (constructor, runs before main).
  * @pre SCI channel 0 is a valid channel (0..9).
  * @post out_written receives 0 (== len).
  * @post Stream handle is in a consistent bound state after the call.
@@ -134,7 +134,7 @@ static void fixture_seed_tdre(void)
 static void test_write_success_with_out_written(void)
 {
   TEST_BEGIN("uart write success: out_written supplied");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_io_stream_t            s     = {};
   ra8_io_stream_uart_state_t state = {};
@@ -168,7 +168,7 @@ static void test_write_success_with_out_written(void)
  * Decision: `if (out_written != nullptr)` -- Vector B (false arm).
  * Pairs with test_write_success_with_out_written (Vector A, true arm).
  *
- * @pre ra8_sim_mmap is installed (constructor, runs before main).
+ * @pre ra8_fake_mmap is installed (constructor, runs before main).
  * @pre SCI channel 0 is a valid channel (0..9).
  * @post No side effects beyond the internal write (len = 0 transmits nothing).
  * @post Stream handle remains in a consistent bound state.
@@ -179,7 +179,7 @@ static void test_write_success_with_out_written(void)
 static void test_write_success_null_out_written(void)
 {
   TEST_BEGIN("uart write success: out_written nullptr");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   ra8_io_stream_t            s     = {};
   ra8_io_stream_uart_state_t state = {};
@@ -210,7 +210,7 @@ static void test_write_success_null_out_written(void)
  * this case is a second true-arm vector for the out_written branch,
  * confirming the assignment `*out_written = len` with len = 1)
  *
- * @pre ra8_sim_mmap is installed (constructor, runs before main).
+ * @pre ra8_fake_mmap is installed (constructor, runs before main).
  * @pre CSR.TDRE is pre-set so the TDRE spin completes immediately.
  * @post out_written receives 1 (== len).
  * @post TDR holds the transmitted byte.
@@ -246,14 +246,14 @@ static void test_write_one_byte_tdre_seeded(void)
  *
  * @details
  * Drives uart_flush through the ra8_io_stream_flush dispatcher.  In
- * RA8_SIMULATOR_MODE internal_wait_tx_end returns k_ra8_ok immediately, so
+ * RA8_OFF_TARGET internal_wait_tx_end returns k_ra8_ok immediately, so
  * this test is deterministic with no pre-seeding required.
  *
  * @par MC/DC:
  * (no compound decisions in uart_flush itself; single-condition guard on
  * ctx that is always true here)
  *
- * @pre ra8_sim_mmap is installed.
+ * @pre ra8_fake_mmap is installed.
  * @pre SCI channel 0 is valid.
  * @post Flush returns k_ra8_ok.
  * @post No MMIO registers are mutated by a zero-byte send + flush.
@@ -263,15 +263,15 @@ static void test_write_one_byte_tdre_seeded(void)
  */
 static void test_flush_uart_stream(void)
 {
-  TEST_BEGIN("uart flush: returns ok in simulator mode");
-  ra8_sim_mmap_reset();
+  TEST_BEGIN("uart flush: returns ok in off-target mode");
+  ra8_fake_mmap_reset();
 
   ra8_io_stream_t            s     = {};
   ra8_io_stream_uart_state_t state = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_uart_init(&s, &state, (uint8_t)k_uart_cov_channel));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_flush(&s));
 
-  TEST_END("uart flush: returns ok in simulator mode");
+  TEST_END("uart flush: returns ok in off-target mode");
 }
 
 /* =========================================================================
@@ -289,8 +289,8 @@ static void test_flush_uart_stream(void)
  *
  * @return int32_t 0 on success.
  *
- * @pre All MMIO windows are mapped (ra8_sim_mmap_install constructor has run).
- * @pre The test binary is compiled with RA8_SIMULATOR_MODE defined.
+ * @pre All MMIO windows are mapped (ra8_fake_mmap_install constructor has run).
+ * @pre The test binary is compiled with RA8_OFF_TARGET defined.
  * @post Each test function has executed.
  * @post All assertions passed (or the process exited early on failure).
  *

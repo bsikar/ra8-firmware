@@ -8,8 +8,8 @@
  * headers are includable. Two halves:
  *
  *  1. The COMMITTED GOLDEN: includes the generated
- *     `tools/vela/generated/ra8_npu_model_addk_sim.h` (produced by
- *     `tools/vela/vela_gen.py` from `tools/vela/models/npu_addk_sim.json`),
+ *     `tools/vela/generated/ra8_npu_model_addk_fake.h` (produced by
+ *     `tools/vela/vela_gen.py` from `tools/vela/models/npu_addk_fake.json`),
  *     loads it through `ra8_npu_load()`, byte-pins the extracted command stream
  *     and the resolved region bases, then drives the full submit -> run ->
  *     read-output path against a host mirror of the ra8_emulator NPU model and
@@ -24,20 +24,20 @@
  *
  * The NPU register window (`0x40140000`) sits inside the host MMIO backing
  * store, so `ra8_npu_submit()` writes land in RAM and the mirror reads QBASE /
- * BASEPn back exactly as the sim does.
+ * BASEPn back exactly as the fake does.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_npu.h"
 #include "ra8_npu_blob.h"
+#include "ra8_npu_fake_cmd.h"
 #include "ra8_npu_loader.h"
-#include "ra8_npu_model_addk_sim.h"
+#include "ra8_npu_model_addk_fake.h"
 #include "ra8_npu_regs.h"
-#include "ra8_npu_sim_cmd.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -83,7 +83,7 @@ static uint8_t s_scratch[k_lt_scratch_bytes];
 static void lt_prep(void)
 {
   (void)ra8_npu_deinit();
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_init());
 }
 
@@ -129,19 +129,19 @@ static uint32_t lt_build(uint8_t* buf, const lt_region_t* regs, uint32_t nreg)
 {
   const uint32_t hdr    = (uint32_t)k_ra8_npu_blob_header_bytes;
   const uint32_t rdb    = (uint32_t)k_ra8_npu_blob_region_desc_bytes;
-  const uint32_t cmd_n  = (uint32_t)k_ra8_npu_sim_word_num;
+  const uint32_t cmd_n  = (uint32_t)k_ra8_npu_fake_word_num;
   const uint32_t cmd_b  = cmd_n * (uint32_t)k_lt_word_bytes;
   const uint32_t coff   = hdr + (nreg * rdb);
   uint32_t       cursor = coff + cmd_b;
 
   /* SE55 add-constant command stream (contents valid but unused by these tests). */
   lt_put_word(buf,
-              coff + ((uint32_t)k_ra8_npu_sim_word_op * (uint32_t)k_lt_word_bytes),
-              (uint32_t)k_ra8_npu_sim_magic | (uint32_t)k_ra8_npu_sim_op_addk);
-  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_sim_word_src * (uint32_t)k_lt_word_bytes), 0U);
-  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_sim_word_dst * (uint32_t)k_lt_word_bytes), 0U);
-  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_sim_word_count * (uint32_t)k_lt_word_bytes), 1U);
-  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_sim_word_const * (uint32_t)k_lt_word_bytes), 0U);
+              coff + ((uint32_t)k_ra8_npu_fake_word_op * (uint32_t)k_lt_word_bytes),
+              (uint32_t)k_ra8_npu_fake_magic | (uint32_t)k_ra8_npu_fake_op_addk);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_src * (uint32_t)k_lt_word_bytes), 0U);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_dst * (uint32_t)k_lt_word_bytes), 0U);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_count * (uint32_t)k_lt_word_bytes), 1U);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_const * (uint32_t)k_lt_word_bytes), 0U);
 
   for (uint32_t r = 0U; r < nreg; r++) {
     const uint32_t desc  = hdr + (r * rdb);
@@ -213,19 +213,19 @@ static void lt_exec(void)
     (uint64_t)*ra8_npu_reg(k_ra8_npu_off_qbase_lo) |
     ((uint64_t)*ra8_npu_reg(k_ra8_npu_off_qbase_hi) << (uint32_t)k_lt_addr_hi_shift);
   const uint32_t* w = (const uint32_t*)(uintptr_t)qbase;
-  if ((w[k_ra8_npu_sim_word_op] & (uint32_t)k_ra8_npu_sim_magic_mask) !=
-      (uint32_t)k_ra8_npu_sim_magic) {
+  if ((w[k_ra8_npu_fake_word_op] & (uint32_t)k_ra8_npu_fake_magic_mask) !=
+      (uint32_t)k_ra8_npu_fake_magic) {
     *ra8_npu_reg(k_ra8_npu_off_status) = ((uint32_t)1U << k_ra8_npu_status_cmd_parse_bit);
     return;
   }
-  const uint32_t src   = w[k_ra8_npu_sim_word_src];
-  const uint32_t dst   = w[k_ra8_npu_sim_word_dst];
-  const uint32_t count = w[k_ra8_npu_sim_word_count];
-  const uint32_t konst = w[k_ra8_npu_sim_word_const];
+  const uint32_t src   = w[k_ra8_npu_fake_word_src];
+  const uint32_t dst   = w[k_ra8_npu_fake_word_dst];
+  const uint32_t count = w[k_ra8_npu_fake_word_count];
+  const uint32_t konst = w[k_ra8_npu_fake_word_const];
   const uint8_t* s     = lt_region_ptr((ra8_npu_region_idx_t)src);
   uint8_t*       d     = lt_region_ptr((ra8_npu_region_idx_t)dst);
   for (uint32_t i = 0U; i < count; i++) {
-    d[i] = (uint8_t)((s[i] + konst) & (uint32_t)k_ra8_npu_sim_byte_mask);
+    d[i] = (uint8_t)((s[i] + konst) & (uint32_t)k_ra8_npu_fake_byte_mask);
   }
   *ra8_npu_reg(k_ra8_npu_off_status) = ((uint32_t)1U << k_ra8_npu_status_cmd_end_bit) |
                                        ((uint32_t)1U << k_ra8_npu_status_irq_raised_bit);
@@ -236,7 +236,7 @@ static uint32_t lt_golden_rfield(uint32_t r, ra8_npu_blob_rdesc_t field)
 {
   const uint32_t desc =
     (uint32_t)k_ra8_npu_blob_header_bytes + (r * (uint32_t)k_ra8_npu_blob_region_desc_bytes);
-  return ra8_npu_blob_read_word(ra8_npu_model_addk_sim_blob(),
+  return ra8_npu_blob_read_word(ra8_npu_model_addk_fake_blob(),
                                 desc + ((uint32_t)field * (uint32_t)k_lt_word_bytes));
 }
 
@@ -251,26 +251,26 @@ static uint32_t lt_golden_rfield(uint32_t r, ra8_npu_blob_rdesc_t field)
 static void lt_check_cmd_stream(const ra8_npu_job_t* job)
 {
   const uint8_t* cs      = (const uint8_t*)job->cmd_stream;
-  const uint32_t exp_op  = (uint32_t)k_ra8_npu_sim_magic | (uint32_t)k_ra8_npu_sim_op_addk;
+  const uint32_t exp_op  = (uint32_t)k_ra8_npu_fake_magic | (uint32_t)k_ra8_npu_fake_op_addk;
   const uint32_t exp_src = (uint32_t)k_ra8_npu_region_1;
   const uint32_t exp_dst = (uint32_t)k_ra8_npu_region_2;
   const uint32_t exp_cnt = (uint32_t)k_lt_out_bytes;
   const uint32_t exp_k   = (uint32_t)k_lt_addk;
   TEST_ASSERT_EQ(
     exp_op,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_op * (uint32_t)k_lt_word_bytes));
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_fake_word_op * (uint32_t)k_lt_word_bytes));
   TEST_ASSERT_EQ(
     exp_src,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_src * (uint32_t)k_lt_word_bytes));
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_fake_word_src * (uint32_t)k_lt_word_bytes));
   TEST_ASSERT_EQ(
     exp_dst,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_dst * (uint32_t)k_lt_word_bytes));
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_fake_word_dst * (uint32_t)k_lt_word_bytes));
   TEST_ASSERT_EQ(
     exp_cnt,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_count * (uint32_t)k_lt_word_bytes));
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_fake_word_count * (uint32_t)k_lt_word_bytes));
   TEST_ASSERT_EQ(
     exp_k,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_const * (uint32_t)k_lt_word_bytes));
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_fake_word_const * (uint32_t)k_lt_word_bytes));
 }
 
 /**
@@ -302,8 +302,8 @@ static void test_load_golden_maps_job(void)
   TEST_BEGIN("loader maps the golden blob into a runnable job");
   lt_prep();
 
-  const uint8_t*  blob  = ra8_npu_model_addk_sim_blob();
-  const uint32_t  bytes = ra8_npu_model_addk_sim_bytes();
+  const uint8_t*  blob  = ra8_npu_model_addk_fake_blob();
+  const uint32_t  bytes = ra8_npu_model_addk_fake_bytes();
   ra8_npu_arena_t arena = lt_arena((uint32_t)sizeof(s_arena));
   ra8_npu_job_t   job   = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_load(blob, bytes, &arena, &job));
@@ -355,8 +355,8 @@ static void test_load_golden_maps_job(void)
 static void test_load_rejects_null(void)
 {
   TEST_BEGIN("loader rejects null arguments");
-  const uint8_t*  blob  = ra8_npu_model_addk_sim_blob();
-  const uint32_t  bytes = ra8_npu_model_addk_sim_bytes();
+  const uint8_t*  blob  = ra8_npu_model_addk_fake_blob();
+  const uint32_t  bytes = ra8_npu_model_addk_fake_bytes();
   ra8_npu_arena_t arena = lt_arena((uint32_t)sizeof(s_arena));
   ra8_npu_job_t   job   = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_npu_load(nullptr, bytes, &arena, &job));

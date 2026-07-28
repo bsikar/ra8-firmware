@@ -87,7 +87,7 @@ static_assert((uint16_t)k_ra8_isr_slot_count == (uint16_t)k_ra8_icu_num_ielsr,
  * NVIC pokes (no-op on host)
  * =============================================================================
  *
- * The simulator maps the SCB / NVIC window via ra8_sim_mmap (core
+ * The fake maps the SCB / NVIC window via ra8_fake_mmap (core
  * region base 0xE0000000, size 0x100000). Writes land in host
  * RAM; the tests observe the register state via the same aliases.
  */

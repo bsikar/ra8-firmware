@@ -85,9 +85,9 @@ typedef enum : uint32_t {
  * @details
  * Bounded busy-wait. NASA Power of 10 Rule 2 satisfied via a hard
  * iteration cap (``k_ra8_rsip_poll_budget``). On the host unit-test
- * build the poll routes through the ``ra8_sim_mmio`` wait seam
+ * build the poll routes through the ``ra8_fake_mmio`` wait seam
  * (unarmed register = satisfied on the first poll; a test arms
- * ``ra8_sim_mmio_fail_wait`` / ``ra8_sim_mmio_satisfy_after`` for the
+ * ``ra8_fake_mmio_fail_wait`` / ``ra8_fake_mmio_satisfy_after`` for the
  * timeout / continuation legs). Defined in ``ra8_rsip.c``; shared with
  * the mailbox-completion driver in ``ra8_rsip_cipher.c``.
  *
@@ -115,7 +115,7 @@ RA8_PRIV ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask);
  * @details
  * On hardware the engine raises ``HASH_STATUS.DONE`` once it absorbs the
  * trailing block + length. The bounded wait routes through the host
- * ``ra8_sim_mmio`` seam inside ``internal_wait_bit`` (never forged by the
+ * ``ra8_fake_mmio`` seam inside ``internal_wait_bit`` (never forged by the
  * driver). Defined in ``ra8_rsip.c``; shared with the generic hash /
  * HMAC path in ``ra8_rsip_cipher.c``.
  *
@@ -205,7 +205,7 @@ RA8_PRIV void internal_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in,
  * @brief Drive a single mailbox completion (DONE poll + ack).
  *
  * @details
- * Pre-asserts the DONE bit so the host sim spin terminates, waits on it,
+ * Pre-asserts the DONE bit so the host fake spin terminates, waits on it,
  * reads ``MBOX_RET`` (non-zero indicates an engine-side error), then
  * W1C-acks the completion bit. Defined in ``ra8_rsip_cipher.c``; shared
  * with the asymmetric / key-management entry points in ``ra8_rsip_asym.c``.

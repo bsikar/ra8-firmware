@@ -23,9 +23,9 @@
 #include "ra8_ceu.h"
 #include "ra8_ceu_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -58,7 +58,7 @@ typedef enum : uint32_t {
 
 typedef enum : uintptr_t {
   /* Picked so the lower 3 bits are zero (8-byte aligned). SDRAM head
-   * range mapped by `ra8_sim_mmap`. */
+   * range mapped by `ra8_fake_mmap`. */
   k_test_ceu_buffer_addr = 0x68000040UL, /**< Test CEU buffer address. */
   k_test_ceu_buffer_b    = 0x68001000UL, /**< Test CEU buffer b.       */
   k_test_ceu_buffer_c    = 0x68002000UL, /**< Test CEU buffer c.       */
@@ -85,8 +85,8 @@ static void stub_ceu_cb(void* ctx, uint32_t mask)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   s_ceu_cb_count     = 0U;
   s_ceu_cb_last_mask = 0U;
@@ -350,32 +350,32 @@ static void test_wait_idle_timeout_and_mcdc(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
   *ra8_ceu_reg32(k_ra8_ceu_off_cstsr) = (uint32_t)k_ra8_ceu_cstsr_mask_cpton;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_wait((const volatile void*)ra8_ceu_reg32(k_ra8_ceu_off_cstsr)));
+                 ra8_fake_mmio_fail_wait((const volatile void*)ra8_ceu_reg32(k_ra8_ceu_off_cstsr)));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_ceu_reset());
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   /* V2: CPTON clear but CPKIL stuck (ra8_ceu_reset itself asserts
    * CPKIL before the wait) -> hw_timeout through the second condition. */
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_wait((const volatile void*)ra8_ceu_reg32(k_ra8_ceu_off_cstsr)));
+                 ra8_fake_mmio_fail_wait((const volatile void*)ra8_ceu_reg32(k_ra8_ceu_off_cstsr)));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_ceu_reset());
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   /* Retry leg: the engine goes idle on the 2nd poll. */
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_satisfy_after((const volatile void*)ra8_ceu_reg32(k_ra8_ceu_off_cstsr), 2U));
+    ra8_fake_mmio_satisfy_after((const volatile void*)ra8_ceu_reg32(k_ra8_ceu_off_cstsr), 2U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_reset());
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   /* Init-path leg: the wait-idle failure propagates out of init too. */
   prep();
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_wait((const volatile void*)ra8_ceu_reg32(k_ra8_ceu_off_cstsr)));
+                 ra8_fake_mmio_fail_wait((const volatile void*)ra8_ceu_reg32(k_ra8_ceu_off_cstsr)));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_ceu_init(&cfg));
 
   TEST_END("ceu wait_idle timeout + MC/DC vectors");

@@ -9,7 +9,7 @@
  * Enumerate -> DFU_DNLOAD -> DFU_ABORT -> DFU_UPLOAD -> byte-verify, on whichever
  * controller the caller names via `ra8_usb_speed_t`. Built entirely on the
  * first-party polled `ra8_usb_host_*` + `ra8_usb_host_control_xfer` primitives,
- * with no USBX on the host side. Firmware-only (`RA8_SIMULATOR_MODE` skips it).
+ * with no USBX on the host side. Firmware-only (`RA8_OFF_TARGET` skips it).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -17,7 +17,7 @@
 
 #include "ra8_dfu_host.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 #include <string.h>
 
@@ -753,4 +753,4 @@ ra8_err_t ra8_dfu_host_program(ra8_usb_speed_t        host_speed,
   return err;
 }
 
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

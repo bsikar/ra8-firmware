@@ -23,7 +23,7 @@
  *     vendored TFLite-micro runtime (``USES tflite_micro``).
  *
  * The NPU "operator" run under ra8_emulator is the tiny deterministic add-constant
- * of the documented ``ra8_npu_sim_cmd.h`` convention (NOT a real Vela command
+ * of the documented ``ra8_npu_fake_cmd.h`` convention (NOT a real Vela command
  * stream, which needs the offline Vela compiler + silicon -- a follow-up). So
  * the quantize -> NPU op -> dequantize pipeline is checkable byte-for-byte in the
  * emulator, while the TFLite-micro `MicroInterpreter` model-driven path is proven
@@ -55,9 +55,9 @@
 #include "ra8_ethosu_kernel.h"
 #include "ra8_isr.h"
 #include "ra8_npu.h"
+#include "ra8_npu_fake_cmd.h"
 #include "ra8_npu_quant.h"
 #include "ra8_npu_regs.h"
-#include "ra8_npu_sim_cmd.h"
 
 /*
  * Compile-time proof that the RA8P1 toolchain selection reached this TU: the NPU
@@ -73,10 +73,10 @@
  * @brief Command-stream / tensor-arena sizes and the console baud.
  */
 typedef enum : uint32_t {
-  k_npu_infer_baud        = 115200U,                /**< SCI8 J-Link OB console baud. */
-  k_npu_infer_arena_bytes = 32U,                    /**< Tensor-arena length (bytes). */
-  k_npu_infer_cmd_words   = k_ra8_npu_sim_word_num, /**< Command-stream word count.   */
-  k_npu_infer_line_cap    = 96U,                    /**< Banner line buffer cap.      */
+  k_npu_infer_baud        = 115200U,                 /**< SCI8 J-Link OB console baud. */
+  k_npu_infer_arena_bytes = 32U,                     /**< Tensor-arena length (bytes). */
+  k_npu_infer_cmd_words   = k_ra8_npu_fake_word_num, /**< Command-stream word count.   */
+  k_npu_infer_line_cap    = 96U,                     /**< Banner line buffer cap.      */
 } npu_infer_size_t;
 
 /**
@@ -131,7 +131,7 @@ static const float s_infer_deq_tol = 0.001F;
 
 /**
  * @var s_npu_cmd_stream
- * @brief Sim command stream in SRAM (ra8_npu_sim_cmd.h layout; add-constant op).
+ * @brief Stand-in command stream in SRAM (ra8_npu_fake_cmd.h layout; add-constant op).
  * @details QBASE/QSIZE point the NPU at this; the ra8_emulator model decodes it.
  * @note Not a real Vela program -- see the file header.
  * @since 0.1.0
@@ -159,7 +159,7 @@ static float s_infer_input_f[k_npu_infer_arena_bytes];
 /**
  * @var s_npu_input
  * @brief Region 1 UINT8 input tensor (quantized ::s_infer_input_f).
- * @details The NPU (sim) reads this and writes input+K to the output arena.
+ * @details The NPU (fake) reads this and writes input+K to the output arena.
  * @note Written by ra8_npu_quantize_u8().
  * @since 0.1.0
  */
@@ -169,7 +169,7 @@ static uint8_t s_npu_input[k_npu_infer_arena_bytes];
  * @var s_npu_output
  * @brief Region 2 UINT8 output tensor: zeroed pre-run, holds the NPU result.
  * @details Dequantized into ::s_infer_output_f and verified byte-for-byte.
- * @note Written by the NPU (sim), read back by the app.
+ * @note Written by the NPU (fake), read back by the app.
  * @since 0.1.0
  */
 static uint8_t s_npu_output[k_npu_infer_arena_bytes];
@@ -252,20 +252,20 @@ static void npu_infer_setup_or_halt(void)
 }
 
 /**
- * @brief Fill the command stream (add-constant op) per the sim convention.
+ * @brief Fill the command stream (add-constant op) per the stand-in convention.
  *
- * @pre s_npu_cmd_stream has k_ra8_npu_sim_word_num words.
+ * @pre s_npu_cmd_stream has k_ra8_npu_fake_word_num words.
  * @post s_npu_cmd_stream describes an add-constant of region 1 -> region 2.
  * @since 0.1.0
  */
 static void npu_infer_build_stream(void)
 {
-  s_npu_cmd_stream[k_ra8_npu_sim_word_op] =
-    (uint32_t)k_ra8_npu_sim_magic | (uint32_t)k_ra8_npu_sim_op_addk;
-  s_npu_cmd_stream[k_ra8_npu_sim_word_src]   = (uint32_t)k_npu_infer_region_input;
-  s_npu_cmd_stream[k_ra8_npu_sim_word_dst]   = (uint32_t)k_npu_infer_region_output;
-  s_npu_cmd_stream[k_ra8_npu_sim_word_count] = (uint32_t)k_npu_infer_arena_bytes;
-  s_npu_cmd_stream[k_ra8_npu_sim_word_const] = (uint32_t)k_npu_infer_addk;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_op] =
+    (uint32_t)k_ra8_npu_fake_magic | (uint32_t)k_ra8_npu_fake_op_addk;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_src]   = (uint32_t)k_npu_infer_region_input;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_dst]   = (uint32_t)k_npu_infer_region_output;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_count] = (uint32_t)k_npu_infer_arena_bytes;
+  s_npu_cmd_stream[k_ra8_npu_fake_word_const] = (uint32_t)k_npu_infer_addk;
 }
 
 /**

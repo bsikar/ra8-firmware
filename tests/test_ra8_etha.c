@@ -13,10 +13,10 @@
 #include "ra8_err.h"
 #include "ra8_etha.h"
 #include "ra8_etha_regs.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_rmac.h"
 #include "ra8_rmac_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -63,7 +63,7 @@ static void stub_etha_cb(void* ctx, ra8_etha_port_t port, uint32_t s0, uint32_t 
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_etha_cb_count     = 0U;
   s_etha_cb_eaeis0    = 0U;
@@ -304,7 +304,7 @@ static void test_power_transition(void)
   TEST_ASSERT_EQ(k_ra8_etha_opc_operation,
                  (ra8_etha(k_ra8_etha_port_0)->EAMC & (uint32_t)k_ra8_etha_mask_opc));
   /* ra8_etha_set_mode now runs a real bounded EAMS.OPS poll on host (the
-   * RA8_SIMULATOR_MODE short-circuit was removed, T1-01). Pre-stage
+   * RA8_OFF_TARGET short-circuit was removed, T1-01). Pre-stage
    * EAMS.OPS at CONFIG so the state-machine wait is satisfied on poll 0;
    * the driver only reads EAMS, so RAM staging is enough. */
   ra8_etha(k_ra8_etha_port_0)->EAMS = (uint32_t)k_ra8_etha_ops_config;
@@ -900,7 +900,7 @@ static void test_etha_open_eamc_transition(void)
                                   .link_speed      = k_ra8_rmac_lsc_100mbit,
                                   .duplex          = k_ra8_rmac_duplex_full};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &rcfg));
-  /* MDIO waits complete via the unarmed ra8_sim_mmio seam; the driver's
+  /* MDIO waits complete via the unarmed ra8_fake_mmio seam; the driver's
    * reads return 0 (PRD bits zeroed by issue), so BMCR.RESET appears
    * already cleared and phy_reset succeeds. Auto-neg wait never sees
    * AN_COMPLETE and times out, but EAMC must already be OPERATION at

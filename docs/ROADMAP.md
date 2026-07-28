@@ -111,7 +111,7 @@ both pass for that driver's files.
 [ ] Runtime reconfig - baud/mode change without full deinit -- HUM Ch X.Y p NNNN
 [ ] Power transition - ra8_pwr_module_enter_stop + restore, wake event register -- HUM Ch X.Y p NNNN
 [ ] Register coverage- every field in ra8_xxx_regs.h reachable from public API-- HUM Ch X.Y p NNNN
-[ ] Unit tests - line + branch >= 90% (ra8_sim_irq + ra8_sim_dma exercised) -- n/a
+[ ] Unit tests - line + branch >= 90% (ra8_fake_irq + ra8_fake_dma exercised) -- n/a
 [ ] World tag - {World: S | NS | NSC} tag in file header + veneer path -- n/a
 [ ] HUM cross-ref - every register write carries /* HUM Ch X.Y p NNNN */ -- all
 [ ] Doxygen - zero warnings, full tag set per CLAUDE.md -- n/a
@@ -1323,11 +1323,11 @@ no-ops so the host-test build keeps working unchanged.
       Decision recorded in trustzone_init.c: single-ELF with the
       veneer section (`.gnu.sgstubs`) carved out by the linker --
       revisit if J-Link flow forces two-ELF emit later.
-- [x] Session 9.2 -- NSC veneer scaffold goes live + `ra8_sim_world`
+- [x] Session 9.2 -- NSC veneer scaffold goes live + `ra8_fake_world`
       host mock. Adds `RA8_NSC_VENEER`
       (= `__attribute__((cmse_nonsecure_entry))`) + the
       `RA8_NSC_CHECK_NS_RANGE_R/RW` macros to every veneer.
-      `tests/mocks/ra8_sim_world.{c,h}` give host tests a
+      `tests/mocks/ra8_fake_world.{c,h}` give host tests a
       tag-based equivalent of `cmse_check_address_range`.
       Linker script grows a `.gnu.sgstubs` placement so the
       `-mcmse` link no longer aborts on `no address assigned to

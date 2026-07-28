@@ -54,11 +54,11 @@
 #include "ra8_isr.h"
 
 /*
- * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_OFF_TARGET) does not link the
  * ThreadX vendor tree, so `tx_api.h` (and the ThreadX-port header
  * `ra8_threadx.h`) are pulled in only on the cross-compile target.
  */
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "ra8_threadx.h"
 #include "tx_api.h"
 #endif
@@ -132,7 +132,7 @@ volatile uint32_t g_threadx_retune_reload = 0U;
  */
 volatile uint32_t g_threadx_retune_bad = 0U;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /* ---------------------------------------------------------------------------
  * Static thread + stack storage (cross build only -- TX_THREAD is a vendor
  * type unavailable on the host clang-tidy pass).
@@ -250,7 +250,7 @@ void tx_application_define(void* first_unused_memory)
     }
   }
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /* ---------------------------------------------------------------------------
  * main() -- raise the clock, bring up the LED, then drop into ThreadX.
@@ -285,7 +285,7 @@ int32_t main(void)
     }
   }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   ra8_isr_globals_enable();
   tx_kernel_enter();
 #endif

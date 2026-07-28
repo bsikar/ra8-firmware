@@ -9,7 +9,7 @@
  * Hardware-agnostic PHY driver. The MDIO bus itself is plugged in
  * via `ra8_ether_phy_io_t` callbacks so the same code can drive the
  * RA8D2 RMAC MIIM block, the legacy ETHER MIIM, an external
- * SMI-over-GPIO bit-banger, or a host simulator. State is kept in
+ * SMI-over-GPIO bit-banger, or a host fake. State is kept in
  * a single static control block; only one PHY is tracked at a time
  * because the underlying MAC ports each use their own driver
  * instance (ra8_ethercat_phy / ra8_rmac_phy).

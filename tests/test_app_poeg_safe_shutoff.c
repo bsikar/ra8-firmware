@@ -12,7 +12,7 @@
  *    request flag latches POEGG.ST; no request clears it. This is the exact
  *    semantics the EIL gate relies on, mirrored here as a pure function.
  *  - The driver assert / clear register mechanics the app drives against the
- *    ra8_sim_mmap host MMIO shim (SSF set on trigger, cleared on ack), and that
+ *    ra8_fake_mmap host MMIO shim (SSF set on trigger, cleared on ack), and that
  *    the GPT descriptor the app arms is accepted.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -23,11 +23,11 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_gpt.h"
 #include "ra8_mstp.h"
 #include "ra8_poeg.h"
 #include "ra8_poeg_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -84,7 +84,7 @@ static uint32_t derive_st(uint32_t writable)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

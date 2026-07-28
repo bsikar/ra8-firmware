@@ -61,7 +61,7 @@ are replaced, firmware-only, by `libs/ra8_epub/src/ra8_epub_cpp_alloc.cpp`,
 which routes them through the same bounded static first-fit arena miniz
 uses (`ra8_epub_miniz_alloc`). No TinyXML-2 allocation reaches `malloc`.
 The host unit-test build keeps the standard `malloc`-backed operators
-(the override is gated `#ifndef RA8_SIMULATOR_MODE`).
+(the override is gated `#ifndef RA8_OFF_TARGET`).
 
 **Known limitation -- fault, not error, on pool exhaustion.** The target
 is built `-fno-exceptions`, so the replacement `operator new` returns

@@ -5,7 +5,7 @@
  * @details
  * Mirrors examples/ek_ra8d2/hil_needs_revalidation/lpm_wake_matrix_demo/main.c bring-up:
  * ra8_lpm_init -> arm WUPEN0 bits in sequence -> arm WUPEN1 bits in
- * sequence -> clear both -> verify zero. The host sim mmap records
+ * sequence -> clear both -> verify zero. The host fake mmap records
  * each register write so the test can verify the bits actually
  * landed and that ``ra8_lpm_get_exit_cause`` returns the packed
  * snapshot the demo relies on.
@@ -18,9 +18,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_lpm.h"
 #include "ra8_lpm_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -39,7 +39,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 }
 
 static ra8_lpm_config_t make_demo_cfg(void)

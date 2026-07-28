@@ -434,12 +434,12 @@ ra8_spi_attach_transfer_handler(uint8_t channel, ra8_spi_complete_fn_t fn, void*
  *     controller has completed clocking one SPI frame.
  *  4. Reads SPDR into ``*rx`` (the COPI byte received from the controller).
  *
- * Under ``RA8_SIMULATOR_MODE`` the SPSR wait reduces to a single-shot
+ * Under ``RA8_OFF_TARGET`` the SPSR wait reduces to a single-shot
  * register read: pre-seed the register as shown below.
  *
  * @par Example:
  * @code
- * // Simulator (or pre-staged hardware test):
+ * // Off-target (or pre-staged hardware test):
  * ra8_spi(0)->SPSR = k_ra8_spsr_mask_sptef | k_ra8_spsr_mask_sprf;
  * uint8_t rx = 0U;
  * ra8_spi_b_target_xfer(0, 0xA5U, &rx);
@@ -464,8 +464,8 @@ ra8_spi_attach_transfer_handler(uint8_t channel, ra8_spi_complete_fn_t fn, void*
  *
  * @note Thread safety: not thread-safe.
  * @note The SPI_B SPDR register backs TX and RX through separate FIFO
- *       queues on hardware; they share a single address in the simulator's
- *       plain-RAM model, so the simulator echoes ``tx`` back as ``*rx``.
+ *       queues on hardware; they share a single address in the fake's
+ *       plain-RAM model, so the fake echoes ``tx`` back as ``*rx``.
  *
  * @see ra8_spi_b_target_init  Initialise the channel first.
  * @see ra8_spi_xfer8           Controller-mode equivalent.

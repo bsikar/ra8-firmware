@@ -8,9 +8,9 @@
  *   - Argument validation on every public entry point.
  *   - LCD backend end-to-end: init, get_caps, get_framebuffer,
  *     clear, flush, deinit. The LCD backend's hardware accesses
- *     are intercepted by ``ra8_sim_mmap`` so the bring-up sequence
+ *     are intercepted by ``ra8_fake_mmap`` so the bring-up sequence
  *     can run under host gcc with no real GPIO / GLCDC.
- *   - E-ink (IT8951) backend end-to-end against the simulator-backed
+ *   - E-ink (IT8951) backend end-to-end against the fake-backed
  *     ``ra8_epaper`` driver: init / get_caps / get_framebuffer / clear /
  *     flush / deinit all succeed, plus the RGB565 -> 8bpp luma
  *     conversion the flush path relies on.
@@ -31,13 +31,13 @@
 #include "ra8_display_pal_policy.h"
 #include "ra8_epaper.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_io_spi_bus.h"
 #include "ra8_io_spi_bus_spi_b.h"
 #include "ra8_mstp.h"
 #include "ra8_panel_timing.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_spi.h"
 #include "ra8_spi_bus_ops.h"
 #include "ra8_spi_regs.h"
@@ -82,14 +82,14 @@ typedef enum : uint32_t {
 
 /* IT8951 descriptor the board BSP would supply through panel_timing,
  * sized to the test framebuffer. In host tests this drives the
- * simulator-backed ra8_epaper (SPI/HRDY short-circuited under sim). The
+ * fake-backed ra8_epaper (SPI/HRDY short-circuited off-target). The
  * descriptor's injected bus seam is bound in harness_reset_world()
  * through the ra8_io SPI facade -- the same wiring a real BSP performs. */
 typedef enum : uint32_t {
   k_eink_spi_baud_hz = 12000000U,  /**< 12 MHz SPI clock. */
   k_eink_pclka_hz    = 100000000U, /**< 100 MHz PCLKA.    */
   /**
-   * The only VCOM the sim SPI loopback echoes back, so the only one whose
+   * The only VCOM the fake SPI loopback echoes back, so the only one whose
    * readback can satisfy ``ra8_epaper_set_vcom``. See the call site.
    */
   k_eink_vcom_loopback = 0xFFFFU,
@@ -123,15 +123,15 @@ static ra8_epaper_cfg_t s_eink_panel_cfg_bad = {
 
 static void harness_reset_world(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   ra8_pin_validator_reset();
   (void)ra8_mstp_init();
   (void)memset(s_test_fb, 0, sizeof(s_test_fb));
-  /* The e-ink backend drives the IT8951 over SPI (ra8_spi_xfer8), whose sim
-   * wait_spsr returns OK only when the status flags are set -- the sim backs
+  /* The e-ink backend drives the IT8951 over SPI (ra8_spi_xfer8), whose fake
+   * wait_spsr returns OK only when the status flags are set -- the fake backs
    * SPSR with zeroed memory and has no controller to assert them. Prime SPI ch0
-   * "TX-empty + RX-full" once; ra8_spi_xfer8 never writes SPSR in the sim (its
+   * "TX-empty + RX-full" once; ra8_spi_xfer8 never writes SPSR in the fake (its
    * SPSRC clears hit a separate register), so a single prime carries every
    * transfer of an e-ink bring-up. Same accommodation test_ra8_spi_b.c uses. */
   ra8_spi((uint8_t)0)->SPSR = (uint32_t)k_ra8_spsr_mask_sptef | (uint32_t)k_ra8_spsr_mask_sprf;
@@ -474,7 +474,7 @@ static void test_mcdc_eink_rejects_zero_dimensions(void)
 /**
  * @par MC/DC:
  * E-ink backend init runs the same validation path as the LCD backend;
- * this test covers the happy path (init brings up the simulator-backed
+ * this test covers the happy path (init brings up the fake-backed
  * IT8951 via ra8_epaper) so the validation-rejection vectors are
  * exercised the same way.
  */
@@ -502,7 +502,7 @@ static void test_eink_init_get_caps(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the wired e-ink
  * vtable: get_framebuffer hands back the RGB565 buffer, clear fills it,
- * flush converts + pushes to the simulator-backed IT8951, and an
+ * flush converts + pushes to the fake-backed IT8951, and an
  * out-of-bounds rect is rejected by the simple bounds checks.)
  */
 static void test_eink_flush_clear_get_fb(void)
@@ -530,13 +530,13 @@ static void test_eink_flush_clear_get_fb(void)
    * calibration therefore gets a refusal, not a biased panel. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  display_flush(d, display_full_rect(d), k_display_refresh_quality));
-  /* Grant the permit. The sim SPI is a loopback that always echoes the
+  /* Grant the permit. The fake SPI is a loopback that always echoes the
    * driver's own 0xFF dummy, so 0xFFFF is the only value whose readback
    * can match here -- a fixture artefact, not a plausible bias. The value
    * comparison itself is covered in test_ra8_epaper_cov.c. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom((uint16_t)k_eink_vcom_loopback));
 
-  /* full-screen flush converts + pushes to the IT8951 (sim SPI). */
+  /* full-screen flush converts + pushes to the IT8951 (fake SPI). */
   TEST_ASSERT_EQ(k_ra8_ok, display_flush(d, display_full_rect(d), k_display_refresh_quality));
   /* a fast partial flush also succeeds. */
   const display_rect_t part = {.x = 0U, .y = 0U, .w = 8U, .h = 8U};
@@ -568,12 +568,12 @@ static void test_eink_luma_conversion(void)
 }
 
 /**
- * @brief Drive the refresh-cadence policy end-to-end through the sim e-ink backend.
+ * @brief Drive the refresh-cadence policy end-to-end through the fake e-ink backend.
  *
  * @details Proves the policy integrates with the real backend: every hint the
  * fast_clean policy issues (INIT on open, A2 for the first N-1 turns, GC16 on
  * the Nth, GC16 on a chapter boundary) is accepted by display_flush on the
- * IT8951 sim. Closes the loop the pure-logic test in
+ * IT8951 fake. Closes the loop the pure-logic test in
  * test_ra8_display_pal_policy.c opens (it asserts the cadence; this asserts the
  * backend honours each issued waveform hint).
  *
@@ -584,7 +584,7 @@ static void test_eink_luma_conversion(void)
  */
 static void test_eink_policy_sequence(void)
 {
-  TEST_BEGIN("e-ink: refresh policy sequence drives the sim backend");
+  TEST_BEGIN("e-ink: refresh policy sequence drives the fake backend");
   harness_reset_world();
 
   display_handle_t*   d   = nullptr;
@@ -624,7 +624,7 @@ static void test_eink_policy_sequence(void)
   TEST_ASSERT_EQ(k_ra8_ok, display_flush(d, display_full_rect(d), dec.hint));
 
   TEST_ASSERT_EQ(k_ra8_ok, display_deinit(d));
-  TEST_END("e-ink: refresh policy sequence drives the sim backend");
+  TEST_END("e-ink: refresh policy sequence drives the fake backend");
 }
 
 /**
@@ -766,7 +766,7 @@ static void test_eink_backend_rejects_double_init(void)
  * inside ``internal_eink_load_rect`` after ``ra8_epaper_load_image``. The
  * false legs are the happy-path flush; the true legs are driven here by
  * clearing the primed SPI status flags after init, so the first SPI
- * transfer of the row load times out deterministically (the sim's
+ * transfer of the row load times out deterministically (the fake's
  * ``internal_wait_spsr`` returns k_ra8_err_hw_timeout at once when the
  * flag is clear -- no spin, no SIGALRM). The rect is fully in bounds so
  * the load path is reached before the error surfaces.
@@ -787,7 +787,7 @@ static void test_eink_flush_load_failure(void)
    * flag now satisfies the wait on the first poll (T1-01 seam contract). */
   ra8_spi((uint8_t)0)->SPSR = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_wait((const volatile void*)&ra8_spi((uint8_t)0)->SPSR));
+                 ra8_fake_mmio_fail_wait((const volatile void*)&ra8_spi((uint8_t)0)->SPSR));
 
   const display_rect_t full = {0U, 0U, (uint16_t)k_test_fb_width, (uint16_t)k_test_fb_height};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -795,7 +795,7 @@ static void test_eink_flush_load_failure(void)
 
   /* Disarm the seam and re-prime so the teardown SLEEP command completes
    * cleanly (the deinit SPI wait must succeed again). */
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
   ra8_spi((uint8_t)0)->SPSR = (uint32_t)k_ra8_spsr_mask_sptef | (uint32_t)k_ra8_spsr_mask_sprf;
   TEST_ASSERT_EQ(k_ra8_ok, k_display_backend_eink_it8951.deinit(ctx));
   TEST_END("e-ink backend flush forwards a row-load failure");

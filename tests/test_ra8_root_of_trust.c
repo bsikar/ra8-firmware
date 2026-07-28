@@ -19,7 +19,7 @@
  * magic/version, body-length sanity, signature-length sanity).
  *
  * @note The real ECDSA-P256 math is hardware / PSA-backed. Under
- *       ``RA8_SIMULATOR_MODE`` the PSA facade substitutes a deterministic
+ *       ``RA8_OFF_TARGET`` the PSA facade substitutes a deterministic
  *       SHA-256-based signature stand-in, so these tests validate the gate's
  *       *decision logic around the verify result*, not the ECDSA arithmetic.
  *       On-silicon ECDSA known-answer-test validation and provisioning of the
@@ -130,7 +130,7 @@ static void build_signed_trailer(const uint8_t* body, uint32_t body_len, ra8_rot
   uint32_t       rootlen = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rot_root_public_key(&rootkey, &rootlen));
 
-  /* In RA8_SIMULATOR_MODE the PSA sign primitive is SHA-256(key || hash), so
+  /* In RA8_OFF_TARGET the PSA sign primitive is SHA-256(key || hash), so
    * signing the digest with the root key bytes yields exactly what the
    * verifier recomputes for that same key. */
   const ra8_psa_key_attr_t sattr = {

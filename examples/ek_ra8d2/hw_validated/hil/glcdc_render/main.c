@@ -279,7 +279,7 @@ static void gh_render_pattern(void)
   gh_fb_fill((uint16_t)k_gh_color_bg);
   gh_draw_x((uint16_t)k_gh_color_x);
   gh_draw_border((uint16_t)k_gh_color_border);
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   __asm__ volatile("dsb" ::: "memory");
 #endif
 }

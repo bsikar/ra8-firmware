@@ -6,8 +6,8 @@
 #
 #   1. Host unit tests (tests/CMakeLists.txt) glob libs/ra8_psa_crypto/src/*.c
 #      directly into ra8_core_hal so the test build never has to link the
-#      real TF-PSA-Crypto. ra8_psa_crypto.c uses #ifdef RA8_SIMULATOR_MODE
-#      to substitute small in-tree stand-ins (real SHA-256 + a sim AEAD)
+#      real TF-PSA-Crypto. ra8_psa_crypto.c uses #ifdef RA8_OFF_TARGET
+#      to substitute small in-tree stand-ins (real SHA-256 + a fake AEAD)
 #      so round-trip tests pass without the heavy crypto core.
 #
 #   2. Per-app firmware builds (examples/<app>/CMakeLists.txt) opt in

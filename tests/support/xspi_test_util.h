@@ -18,9 +18,9 @@
 
 #include <stdint.h>
 
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
-#include "ra8_sim_xspi_flash.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_fake_xspi_flash.h"
 
 typedef enum : uint8_t {
   k_test_xspi_bad_instance = 99U, /**< Test XSPI bad instance. */
@@ -48,14 +48,14 @@ typedef enum : uint32_t {
 } test_xspi_vals_t;
 
 /**
- * @brief Reset the sim world and install the register-level NOR model.
+ * @brief Reset the fake world and install the register-level NOR model.
  *
  * @details
- * The ``ra8_sim_mmio_reset`` clears any installed poll hook, so the
- * ``ra8_sim_xspi_flash`` model (which services every ``TRREQ`` kick and
+ * The ``ra8_fake_mmio_reset`` clears any installed poll hook, so the
+ * ``ra8_fake_xspi_flash`` model (which services every ``TRREQ`` kick and
  * backs the flash data) must be re-installed afterwards, per test case.
  *
- * @pre Host test binary (``RA8_SIMULATOR_MODE`` + ``UNIT_TEST``).
+ * @pre Host test binary (``RA8_OFF_TARGET`` + ``UNIT_TEST``).
  * @pre No other thread touches the xSPI registers (single-threaded test).
  * @post Register RAM is zeroed and the seam holds no armed faults.
  * @post The NOR model is installed with fully-erased backing arrays.
@@ -65,7 +65,7 @@ typedef enum : uint32_t {
  */
 static inline void prep_flash(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
-  ra8_sim_xspi_flash_install();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
+  ra8_fake_xspi_flash_install();
 }

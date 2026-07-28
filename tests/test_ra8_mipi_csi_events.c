@@ -5,7 +5,7 @@
  * @details
  * Split sibling of the original test_ra8_mipi_csi.c suite covering
  * the event surface of ra8_mipi_csi.c against the host-side
- * simulated MMIO (``ra8_sim_mmap``):
+ * fake MMIO (``ra8_fake_mmap``):
  *
  * - per-data-lane / per-VC / power-management status get + clear
  * - short-packet FIFO configure, status, read, clear and re-enable
@@ -21,10 +21,10 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mipi_csi.h"
 #include "ra8_mipi_csi_regs.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -186,11 +186,11 @@ static void stub_gst_cb(void* ctx, uint32_t mask)
 }
 
 /**
- * @brief Reset sim mmap + ra8_mstp + callback statistics.
+ * @brief Reset fake mmap + ra8_mstp + callback statistics.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_cb_count     = 0U;
   s_cb_last_rxst = 0U;

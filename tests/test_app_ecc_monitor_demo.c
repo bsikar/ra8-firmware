@@ -8,7 +8,7 @@
  * pins down the app-level pure logic: the rw-test pattern and the
  * "ECC-protected round-trip OK" verdict.
  *
- * No ra8_sim_mmap MMIO is required, so this test runs in-process.
+ * No ra8_fake_mmap MMIO is required, so this test runs in-process.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -15,12 +15,12 @@
 
 #include "ra8_dma.h"
 #include "ra8_err.h"
+#include "ra8_fake_dma.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_sci.h"
 #include "ra8_sci_regs.h"
-#include "ra8_sim_dma.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -66,8 +66,8 @@ static bool stub_tx(void* ctx, uint8_t* byte)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   s_rx_count   = 0;
   s_rx_last    = 0;
@@ -163,7 +163,7 @@ static void test_polling_tx_timeout(void)
    * so key the fail on &ra8_sci(0)->CSR. Without arming, an unstaged flag now
    * satisfies the wait on the first poll (T1-01 seam contract). */
   ra8_sci(0U)->CSR = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&ra8_sci(0U)->CSR));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&ra8_sci(0U)->CSR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_sci_putc_polling(0U, 0x00U));
   TEST_END("ra8_sci polling tx timeout");
 }
@@ -301,7 +301,7 @@ static void test_errors_mask_and_clear(void)
                   (uint8_t)k_ra8_sci_err_parity),
                  mask);
 
-  /* The simulator backs MMIO with ordinary RAM, so write-1-to-clear
+  /* The fake backs MMIO with ordinary RAM, so write-1-to-clear
    * does not auto-clear the source flags; emulate hardware by
    * zeroing CSR after the clear-register write. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_clear_errors(6U));
@@ -457,7 +457,7 @@ static void test_getc_polling_null(void)
   /* Timeout path on RX. The getc wait polls ra8_hw_wait_flag_set32(&reg->CSR,
    * ...) for RDRF, so key the fail on &ra8_sci(0)->CSR (T1-01 seam contract). */
   ra8_sci(0U)->CSR = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&ra8_sci(0U)->CSR));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&ra8_sci(0U)->CSR));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_sci_getc_polling(0U, &got));
   TEST_END("ra8_sci_getc_polling: null + bad channel");
 }
@@ -528,7 +528,7 @@ static void test_eri_dispatch_clears_errors(void)
   reg->CSR                   = reg->CSR | (1U << (uint8_t)k_ra8_sci_csr_bit_orer);
 
   ra8_sci_dispatch_eri(0U);
-  /* The simulator can't auto-clear write-1-to-clear bits, so emulate
+  /* The fake can't auto-clear write-1-to-clear bits, so emulate
    * the hardware effect manually before re-reading the mask. */
   reg->CSR     = 0U;
   uint8_t mask = 0U;

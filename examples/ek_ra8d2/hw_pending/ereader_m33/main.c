@@ -27,7 +27,7 @@
  *   4. Runs the #150 MODE-SWITCH cycle ::k_erm33_max_turns times: it PARKS --
  *      writes the CGC clock-gate (an LPM clock-stop) and drops into Sleep-mode
  *      WFI -- handing the live core to the slow M33, which holds the page and
- *      polls a (simulated) touch. On a page turn the M33 pokes IPC0 and the M85
+ *      polls a (fake) touch. On a page turn the M33 pokes IPC0 and the M85
  *      wakes, does the "heavy" next-page work the 1 GHz core owns, acknowledges,
  *      and re-parks. It logs the handoff verdict, then parks for good.
  *
@@ -585,7 +585,7 @@ static void m85_lpm_configure(void)
  * HOCOCR.HCSTP through `ra8_lpm_set_clock_stop` to model the power drop, and the
  * wake clears it again. This is the "CGC clock-gate / down-clock" register write
  * the #150 model calls for: real on silicon, routed to ra8_emulator's catch-all in
- * simulation so it neither faults nor changes the run.
+ * the emulator so it neither faults nor changes the run.
  *
  * @param[in] stop true -- gate the HOCO (park); false -- restore it (wake).
  *

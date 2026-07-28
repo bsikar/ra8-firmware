@@ -12,8 +12,8 @@
  * downgrade and accepts same-or-newer).
  *
  * @note The durable counter lives in extra-MRAM (data-flash) at
- *       ``k_ra8_flash_extra_start``. Under RA8_SIMULATOR_MODE the store uses a RAM
- *       shadow (the host sim does not model the extra-MRAM data side), so these
+ *       ``k_ra8_flash_extra_start``. Under RA8_OFF_TARGET the store uses a RAM
+ *       shadow (the host fake does not model the extra-MRAM data side), so these
  *       tests validate the decision logic and the monotonic round-trip; silicon
  *       and ra8_emulator exercise the real flash path.
  *
@@ -319,7 +319,7 @@ static void test_verify_read_failure_denied(void)
  *      read/commit round-trip, its monotonic (no-downgrade) commit, and the
  *      verify accept/deny it now enforces.
  *
- * @pre The extra-MRAM counter starts erased (fresh sim / device).
+ * @pre The extra-MRAM counter starts erased (fresh fake / device).
  * @pre The default store exposes non-null read and commit.
  * @post The durable counter holds the highest committed version.
  * @post No unrelated global state changes.
@@ -338,8 +338,8 @@ static void test_default_store_nv_backed(void)
   /* Simulate a fresh device: force the durable counter (host RAM shadow) to its
    * erased value. The store must map erased -> version 0, and the null guard
    * still fires. */
-  s_sim_ar_counter = (uint32_t)k_ra8_rot_ar_erased;
-  uint32_t stored  = k_test_arb_stored;
+  s_fake_ar_counter = (uint32_t)k_ra8_rot_ar_erased;
+  uint32_t stored   = k_test_arb_stored;
   TEST_ASSERT_EQ(k_ra8_ok, store->read(&stored));
   TEST_ASSERT_EQ(0U, stored);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, store->read(nullptr));

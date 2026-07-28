@@ -8,8 +8,8 @@
  * BSS-resident TX pool sits above the descriptor's 40-bit PTR field, so
  * the decoded destination pointer would not round-trip on x86_64 and the
  * real memcpy would fault. This TU removes that assumption by placing the
- * TX buffer pool INSIDE the sim's SRAM window (0x22000000, mapped RW by
- * ra8_sim_mmap's constructor). A pointer into that window is below 2^32,
+ * TX buffer pool INSIDE the fake's SRAM window (0x22000000, mapped RW by
+ * ra8_fake_mmap's constructor). A pointer into that window is below 2^32,
  * so ::ra8_eth_gwca_set_descriptor_buffer / ::ra8_eth_gwca_decode_ptr
  * round-trip it exactly and the frame copy lands in real, writable,
  * host-backed memory. That lets the full enqueue path (find slot ->
@@ -31,8 +31,8 @@
 #include "ra8_eth_gwca.h"
 #include "ra8_eth_gwca_internal.h"
 #include "ra8_ether_regs.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -49,7 +49,7 @@ typedef enum : uint8_t {
 /**
  * @brief SRAM-window base for host-round-trippable TX buffers.
  *
- * @details ra8_sim_mmap maps 0x22000000..0x221FFFFF (2 MiB SRAM) as
+ * @details ra8_fake_mmap maps 0x22000000..0x221FFFFF (2 MiB SRAM) as
  * ordinary RW host RAM. An address in this window fits in 32 bits, so it
  * survives the descriptor's 40-bit ptr_h/ptr_l split-and-rejoin exactly.
  * 0x22080000 is 512 KiB into the window, clear of the head that other
@@ -62,13 +62,13 @@ enum : uintptr_t {
 /**
  * @brief Reset the mmap'd peripheral window + MSTP ref counts.
  *
- * @details Mirrors the base suite's setUp: scrub the simulated register
+ * @details Mirrors the base suite's setUp: scrub the fake register
  * space and re-gate every module so descriptor-register writes land in a
  * known-zero backing.
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
@@ -142,7 +142,7 @@ static void test_decode_ptr_null(void)
  * branches are driven by test_tx_frame_queue_full and
  * test_tx_frame_unbacked_slot below.
  *
- * @details Places the TX pool at ::k_sram_tx_pool_addr inside the sim
+ * @details Places the TX pool at ::k_sram_tx_pool_addr inside the fake
  * SRAM window so the decoded destination pointer is valid, writable host
  * memory. Confirms the frame bytes actually land, DS is stamped to
  * frame_len, DT flips to FSINGLE, and the tail cursor advances.

@@ -24,8 +24,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -301,7 +301,7 @@ static void test_parity_stream_equals_whole_buffer(void)
 
 int32_t main(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_parity_encoder_bytes();
   test_parity_decoder_pixels();
   test_parity_stream_equals_whole_buffer();

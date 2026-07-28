@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pprn.h"
 #include "unity_minimal.h"
@@ -75,7 +75,7 @@ static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_pprn_close();
   s_setup_cb_calls       = 0;
@@ -366,7 +366,7 @@ static void test_mcdc_pprn(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pprn_send(nullptr, 0U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pprn_send(nullptr, 4U));
   /* B-V2 + C-V2: forwards into ra8_usb_queue_in. The FRDY wait
-   * converges via the unarmed ra8_sim_mmio seam (see internal_wait_frdy),
+   * converges via the unarmed ra8_fake_mmio seam (see internal_wait_frdy),
    * so a well-formed call returns k_ra8_ok. The MC/DC obligation is met
    * because every pre-check inside ra8_usb_pprn_send was exercised
    * end-to-end. */

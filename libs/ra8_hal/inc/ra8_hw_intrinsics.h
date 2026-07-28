@@ -18,12 +18,12 @@
  * exactly the inline asm the drivers used before -- so the shipping code is
  * byte-for-byte unchanged and, critically, the calibrated ``nop`` pads stay
  * inline (no per-iteration call overhead skews the delay). On the host build
- * (``RA8_SIMULATOR_MODE`` defined) this header declares the primitives
+ * (``RA8_OFF_TARGET`` defined) this header declares the primitives
  * ``extern`` and their host-safe bodies (wfi -> return, dsb/isb -> compiler
  * barrier, nop -> no-op, irq gate -> no-op, reset spin -> return) live in ONE
  * translation unit, ``tests/mocks/ra8_host_asm_stub.c``. The test harness
  * therefore owns the whole host model and the driver ``.c`` files carry no
- * ``#ifdef RA8_SIMULATOR_MODE`` of their own; the gate
+ * ``#ifdef RA8_OFF_TARGET`` of their own; the gate
  * ``scripts/checks/check_no_driver_asm_guard.py`` keeps it that way.
  *
  * @note The barriers are Arm architectural instructions (Armv8-M ARM), not
@@ -39,7 +39,7 @@
 
 #include <stdint.h>
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /**
  * @brief Wait For Interrupt: place the core in low-power wait.
@@ -131,7 +131,7 @@ static inline void ra8_hw_nop(void)
  * @details
  * Issues ``cpsie i`` so maskable IRQs may dispatch again. On the host this is
  * a no-op because the test harness dispatches interrupts through the
- * ``ra8_sim_irq`` seam rather than the core's PRIMASK.
+ * ``ra8_fake_irq`` seam rather than the core's PRIMASK.
  *
  * @pre A prior ::ra8_hw_irq_disable opened the critical section.
  * @pre Running on the Cortex-M85 target or the host stub.
@@ -189,7 +189,7 @@ static inline void ra8_hw_wait_for_reset(void)
   }
 }
 
-#else /* RA8_SIMULATOR_MODE -- host bodies live in the stub TU */
+#else /* RA8_OFF_TARGET -- host bodies live in the stub TU */
 
 /* Host build: ra8_hw_wfi is defined in tests/mocks/ra8_host_asm_stub.c;
    see implementation for details. */
@@ -213,4 +213,4 @@ void ra8_hw_irq_disable(void);
    see implementation for details. */
 void ra8_hw_wait_for_reset(void);
 
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */

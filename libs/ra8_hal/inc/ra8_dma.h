@@ -111,7 +111,7 @@ typedef void (*ra8_dma_complete_fn_t)(void* ctx);
  */
 /* cppcheck cannot see tests/ so it flags every ra8_dma_request_t
  * field as unused; the fields are read in ra8_dma.c and in
- * tests/mocks/ra8_sim_dma.c. */
+ * tests/mocks/ra8_fake_dma.c. */
 typedef struct {
   uintptr_t             src_addr;    /**< Src address. */
   uintptr_t             dst_addr;    /**< Dst address. */
@@ -255,17 +255,17 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t ra8_dma_channel_is_busy(uint8_t channel, bool* out_busy);
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 /**
  * @brief Host-only peek at the ``ra8_dma_request_t`` stashed for a channel.
  *
  * @details
  * The DMAC's DMSAR / DMDAR registers are 32-bit, but host-side
  * test buffers sit at 64-bit addresses. ``ra8_dma_request`` copies
- * the full ``ra8_dma_request_t`` into a sim-only side table keyed
- * by channel so ``ra8_sim_dma_memcpy`` can walk the real
+ * the full ``ra8_dma_request_t`` into a off-target-only side table keyed
+ * by channel so ``ra8_fake_dma_memcpy`` can walk the real
  * ``uintptr_t`` values instead of the truncated 32-bit copies in
- * the simulated MMIO.
+ * the fake MMIO.
  *
  * @param[in] channel DMAC channel number 0..7.
  * @return Pointer to the stashed request, or ``nullptr`` if the
@@ -273,7 +273,7 @@ typedef struct {
  * @retval non-NULL Pointer to the cached ``ra8_dma_request_t``.
  * @retval nullptr  ``channel`` out of range or slot not in use.
  *
- * @pre Test is running under ``RA8_SIMULATOR_MODE``.
+ * @pre Test is running under ``RA8_OFF_TARGET``.
  * @pre ``ra8_dma_request()`` previously returned ``k_ra8_ok`` for ``channel``.
  * @post No firmware state is modified.
  * @post Returned pointer aliases the static side-table entry.
@@ -281,7 +281,7 @@ typedef struct {
  * @note Test-only; not declared on the target build.
  * @since 0.1.0
  */
-const ra8_dma_request_t* ra8_dma_sim_peek_request(uint8_t channel);
+const ra8_dma_request_t* ra8_dma_fake_peek_request(uint8_t channel);
 #endif
 
 /**
@@ -296,7 +296,7 @@ const ra8_dma_request_t* ra8_dma_sim_peek_request(uint8_t channel);
  * @param[in] channel Channel whose completion just fired.
  *
  * @pre Called from ISR context or (for tests) from a direct test
- * helper such as ``ra8_sim_dma_complete``.
+ * helper such as ``ra8_fake_dma_complete``.
  * @pre ``ra8_dma_init()`` previously succeeded.
  * @post On exit, the stored completion callback has been
  * invoked exactly once (if non-NULL).

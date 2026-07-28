@@ -232,7 +232,7 @@ ra8_err_t ra8_etha_open(ra8_etha_port_t            channel,
 
   /* Each PHY step below is an MDIO transaction pair (drain + post-wait)
    * polling the RMAC MPSM register. On the host unit-test build those
-   * waits consult the ra8_sim_mmio seam, so each error leg is reached by
+   * waits consult the ra8_fake_mmio seam, so each error leg is reached by
    * failing the matching MPSM wait-loop (fail_wait / fail_nth_wait). */
   ra8_err_t err = ra8_rmac_phy_reset(rmac_port, phy->phy_addr);
   if (err != k_ra8_ok) {

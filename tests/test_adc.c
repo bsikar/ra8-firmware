@@ -11,8 +11,8 @@
 #include "ra8_adc.h"
 #include "ra8_adc_b_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -35,7 +35,7 @@ typedef enum : uint8_t {
  */
 static void test_setup(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
 }

@@ -14,8 +14,8 @@
 
 #include "ra8_dmac.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_ssie.h"
 #include "ra8_ssie_regs.h"
 #include "support/ssie_test_util.h"
@@ -121,11 +121,11 @@ static void test_write_buffer(void)
   uint32_t buf[k_ssie_src_words];
   for (uint8_t i = 0U; i < (uint8_t)k_ssie_src_words; i++) {
     buf[i] = k_ssie_io_lit_xaa00 + i;
-    /* keep TDC at 2 so the loop sees space (sim mmap is just RAM). */
+    /* keep TDC at 2 so the loop sees space (fake mmap is just RAM). */
   }
   uint16_t written = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_write_buffer((uint8_t)k_ra8_ssie_test_ch0, buf, 40U, &written));
-  /* The simulator returns whatever we wrote into SSIFSR; since we
+  /* The fake returns whatever we wrote into SSIFSR; since we
    * keep TDC=2 throughout, all 40 samples should fit. */
   TEST_ASSERT_EQ(40, written);
 

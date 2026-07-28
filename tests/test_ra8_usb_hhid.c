@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_hhid.h"
 #include "ra8_usb_regs.h"
@@ -54,7 +54,7 @@ static const uintptr_t       k_test_hhid_ctx_token = 0xFEEDFACEU;
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_hhid_close();
   s_attach_count       = 0U;
@@ -77,7 +77,7 @@ static void walk_to_attach(void)
     if (s_attach_count != 0U) {
       break;
     }
-    /* Clear DCPCTR.SUREQ in the simulated regs so subsequent SETUP
+    /* Clear DCPCTR.SUREQ in the fake regs so subsequent SETUP
      * requests don't trip the busy guard. */
     ra8_usb_fs()->DCPCTR = 0U;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hhid_step());
@@ -140,7 +140,7 @@ static void test_close_without_init(void)
   TEST_END("ra8_usb_hhid_close before init returns invalid_state");
 }
 
-/* ---- Attach callback fires once after a simulated descriptor walk ---- */
+/* ---- Attach callback fires once after a fake descriptor walk ---- */
 
 /**
  * @par MC/DC:
@@ -434,7 +434,7 @@ static void test_get_report_drains_in_data_phase(void)
   ra8_usb_fs()->DCPCTR = 0U;
 
   /* Stage two bytes into the DCP CFIFO via CFIFOCTR.DTLN + CFIFO.
-   * The simulated mmap backs CFIFOCTR/CFIFO with simple 32-bit cells,
+   * The fake mmap backs CFIFOCTR/CFIFO with simple 32-bit cells,
    * so we set DTLN=2 (FRDY left set) and stage 0xCAFE LE. */
   volatile r_usb_regs_t* reg = ra8_usb_fs();
   /* FRDY (0x2000) | DTLN=2 -> drain helper sees "2 bytes ready". */

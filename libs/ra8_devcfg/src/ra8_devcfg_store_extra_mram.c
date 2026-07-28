@@ -12,9 +12,9 @@
  * pages. The window is untouched by any DFU slot program or erase, so the
  * record survives an A/B update and a rollback alike.
  *
- * Under ``RA8_SIMULATOR_MODE`` (the host unit-test build) both accessors
+ * Under ``RA8_OFF_TARGET`` (the host unit-test build) both accessors
  * address a RAM shadow instead: the flash MACI registers are modelled by the
- * simulator but the extra-MRAM *data* side is not, so the shadow lets the host
+ * fake but the extra-MRAM *data* side is not, so the shadow lets the host
  * exercise the identical read / page-loop / offset control flow without MMIO.
  * Silicon and ra8_emulator take the ``#else`` branch and drive the real window.
  *
@@ -38,7 +38,7 @@
 #include "ra8_devcfg.h"
 #include "ra8_err.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "ra8_flash_core.h"
 #include "ra8_flash_regs.h"
 #endif
@@ -63,15 +63,15 @@ typedef enum : uint32_t {
   (uint32_t)k_ra8_devcfg_copy1_off + (uint32_t)k_ra8_devcfg_slot_bytes,
 } ra8_devcfg_xm_span_t;
 
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
 
 /**
- * @enum ra8_devcfg_xm_sim_t
+ * @enum ra8_devcfg_xm_shadow_t
  * @brief Host-shadow constants.
  */
 typedef enum : uint8_t {
   k_ra8_devcfg_xm_blank = 0xFFU, /**< Value an unprogrammed byte reads back as. */
-} ra8_devcfg_xm_sim_t;
+} ra8_devcfg_xm_shadow_t;
 
 /**
  * @var s_shadow
@@ -103,7 +103,7 @@ static bool s_shadow_ready = false;
  * @return Pointer to the process-lifetime shadow; never NULL.
  * @retval non-NULL The blank-filled RAM shadow.
  *
- * @pre  Host (``RA8_SIMULATOR_MODE``) build only.
+ * @pre  Host (``RA8_OFF_TARGET``) build only.
  * @pre  Called only from the extra-MRAM read / write backends.
  * @post The shadow is blank-filled exactly once.
  * @post Subsequent calls return the same pointer without re-filling.
@@ -121,14 +121,14 @@ static uint8_t* internal_devcfg_xm_shadow(void)
   return s_shadow;
 }
 
-#endif /* RA8_SIMULATOR_MODE */
+#endif /* RA8_OFF_TARGET */
 
 /**
  * @brief Extra-MRAM read backend (::ra8_devcfg_read_fn_t).
  *
  * @details On silicon, copies ``len`` bytes out of the memory-mapped
  *          extra-MRAM window; a blank word reads back as 0xFF without faulting
- *          (#315). Under simulation, copies from the RAM shadow.
+ *          (#315). Off-target, copies from the RAM shadow.
  *
  * @param[in]  offset Byte offset into the devcfg region.
  * @param[out] dst    Destination; non-NULL, at least ``len`` bytes.
@@ -153,7 +153,7 @@ RA8_INTERNAL
   if ((offset + len) > (uint32_t)k_ra8_devcfg_xm_span) {
     return k_ra8_err_out_of_range;
   }
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   (void)memcpy(dst, &internal_devcfg_xm_shadow()[offset], (size_t)len);
 #else
   /* HUM Ch 59.1 "Address Map" p 3543 -- the extra-MRAM window is directly
@@ -173,8 +173,8 @@ RA8_INTERNAL
  *
  * @details On silicon, programs ``len`` bytes through
  *          ``ra8_flash_extra_mram_write`` in ::k_ra8_devcfg_page_bytes pages
- *          (HUM Ch 59.7.4.5 "Program Command" Table 59.15 p 3592). Under
- *          simulation, copies into the RAM shadow.
+ *          (HUM Ch 59.7.4.5 "Program Command" Table 59.15 p 3592). Off-target,
+ *          copies into the RAM shadow.
  *
  * @param[in] offset Byte offset into the devcfg region.
  * @param[in] src    Source; non-NULL, at least ``len`` bytes.
@@ -201,7 +201,7 @@ internal_devcfg_xm_write(uint32_t offset, const uint8_t* src, uint32_t len)
   if ((offset + len) > (uint32_t)k_ra8_devcfg_xm_span) {
     return k_ra8_err_out_of_range;
   }
-#ifdef RA8_SIMULATOR_MODE
+#ifdef RA8_OFF_TARGET
   (void)memcpy(&internal_devcfg_xm_shadow()[offset], src, (size_t)len);
   return k_ra8_ok;
 #else

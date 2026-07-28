@@ -15,7 +15,7 @@
  * mismatch).
  *
  * Build configuration:
- * - The per-app CMake forces ``RA8_SIMULATOR_MODE`` so the facade
+ * - The per-app CMake forces ``RA8_OFF_TARGET`` so the facade
  *   uses its in-tree soft-fallback AEAD implementation. This means
  *   the demo runs on a bare EK-RA8D2 with no RSIP keys provisioned
  *   and no Mbed TLS in the link. The same source file works

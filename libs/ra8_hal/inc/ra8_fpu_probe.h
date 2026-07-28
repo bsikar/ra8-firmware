@@ -26,7 +26,7 @@
  * check whose numeric result is validated by the host unit test.
  *
  * @note Host-friendly: pure numeric leaf function, touches no hardware, so it
- *       runs unchanged under `RA8_SIMULATOR_MODE` and in the host unit tests
+ *       runs unchanged under `RA8_OFF_TARGET` and in the host unit tests
  *       (which compute it on the host's native binary64 hardware).
  *
  * @see cmake/toolchain-ra8p1.cmake  Overrides `-mfpu` to the DP-FPU for RA8P1.

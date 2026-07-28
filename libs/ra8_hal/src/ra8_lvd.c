@@ -14,7 +14,7 @@
  * SYSC region -- so this driver does **not** call `ra8_mstp_enable`.
  * Per HUM 8.2.* register notes, every control-register write requires
  * PRCR.PRC3 = 1; the driver does NOT take the lock itself (callers
- * must wrap each call), but the host-side simulator mmap has no lock
+ * must wrap each call), but the host-side fake mmap has no lock
  * so unit tests still see writes land.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

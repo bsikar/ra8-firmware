@@ -6,7 +6,7 @@
 # harnesses use.
 #
 # The mirror lives beside the original deliberately: it is defined as
-# "ra8_core_hal MINUS ra8_sim_mmap.c" by reading the real target's SOURCES,
+# "ra8_core_hal MINUS ra8_fake_mmap.c" by reading the real target's SOURCES,
 # so the two cannot drift apart.
 #
 # Included from tests/CMakeLists.txt. CMake include() is textual within the
@@ -66,14 +66,14 @@ add_library(
   ${RA8_DEVCFG_SOURCES}
   # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
   # libs/), so it is not caught by the libs/ globs above -- add it by
-  # hand. Its SYST_RVR/CVR writes compile out under RA8_SIMULATOR_MODE,
+  # hand. Its SYST_RVR/CVR writes compile out under RA8_OFF_TARGET,
   # so the host build exercises only the clock-query + reload arithmetic.
   ${FW_ROOT}/port/threadx/src/cortex_m85/tx_systick_retune.c
   # esp-hosted RA8 + ThreadX port (piece 1b). Lives under port/esp-hosted
   # (not libs/), so the libs/ globs above do not catch it -- list it by
   # hand. Every TU here is host-testable: the ThreadX calls go through the
   # recording shim in ra8_esp_hosted_tx_shim_internal.h under
-  # RA8_SIMULATOR_MODE, and the SPI and GPIO slices take their bus and pin
+  # RA8_OFF_TARGET, and the SPI and GPIO slices take their bus and pin
   # interfaces through injectable seams.
   ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_fmt.c
   ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_gpio.c
@@ -87,13 +87,13 @@ add_library(
   ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
   ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_rtos_sync.c
   ${FW_ROOT}/port/esp-hosted/src/ra8_esp_hosted_spi.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_mmap.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_irq.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_dma.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_time.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_world.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_mmio.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_xspi_flash.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_fake_mmap.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_fake_irq.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_fake_dma.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_fake_time.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_fake_world.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_fake_mmio.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_fake_xspi_flash.c
   ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_host_asm_stub.c
 )
 # STACK_USAGE_BYTES 0 disables the per-function stack gate for the host
@@ -301,16 +301,16 @@ enable_language(CXX)
 # ra8_core_hal_fuzz: slim mirror of ra8_core_hal for the libFuzzer harnesses
 # (RA8_FUZZ=ON only; see tests/fuzz/CMakeLists.txt).
 #
-# ra8_core_hal bundles tests/mocks/ra8_sim_mmap.c, whose load-time MAP_FIXED
+# ra8_core_hal bundles tests/mocks/ra8_fake_mmap.c, whose load-time MAP_FIXED
 # constructor maps a peripheral backing window at 0xE0000000. Under
 # AddressSanitizer (the Linux fuzz config) that address is inside ASan's
 # reserved shadow gap, so the constructor aborts every harness before
 # main() (issue #193). This object library is exactly ra8_core_hal MINUS
-# ra8_sim_mmap.c: the pure-computation harnesses link it and never run that
+# ra8_fake_mmap.c: the pure-computation harnesses link it and never run that
 # constructor. The two harnesses that genuinely poke peripheral registers
-# (fuzz_ra8_canfd, fuzz_ra8_usb_pal) add ra8_sim_mmap.c back on their own link
+# (fuzz_ra8_canfd, fuzz_ra8_usb_pal) add ra8_fake_mmap.c back on their own link
 # line, where it is compiled under ASan and skips the shadow-gap region
-# (see ra8_sim_region_mappable() in tests/mocks/ra8_sim_mmap.c). ra8_core_hal
+# (see ra8_fake_region_mappable() in tests/mocks/ra8_fake_mmap.c). ra8_core_hal
 # itself is untouched, so the host unit-test build keeps the full mapping.
 #
 # Sources and per-source properties (LANGUAGE, -w, MC/DC opt-out, the
@@ -322,7 +322,7 @@ enable_language(CXX)
 option(RA8_FUZZ "Build libFuzzer harnesses for parsers (clang only)" OFF)
 if(RA8_FUZZ)
   get_target_property(_ra8_core_hal_srcs ra8_core_hal SOURCES)
-  list(REMOVE_ITEM _ra8_core_hal_srcs ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_mmap.c)
+  list(REMOVE_ITEM _ra8_core_hal_srcs ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_fake_mmap.c)
   add_library(ra8_core_hal_fuzz OBJECT ${_ra8_core_hal_srcs})
   ra8_target_enable_project_warnings(ra8_core_hal_fuzz STACK_USAGE_BYTES 0)
   target_compile_options(

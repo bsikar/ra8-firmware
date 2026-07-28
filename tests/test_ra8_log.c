@@ -3,7 +3,7 @@
  * @brief Unit tests for ra8_log.c (log backend + ra8_err_to_str table)
  *
  * @details
- * On the host `RA8_SIMULATOR_MODE` hard-codes `internal_itm_ready()`
+ * On the host `RA8_OFF_TARGET` hard-codes `internal_itm_ready()`
  * to return `false`, so every log call short-circuits before touching
  * the ITM stimulus port. The log entry points themselves are still
  * exercised so their `!internal_itm_ready()` early-return paths are
@@ -25,8 +25,8 @@
 #define RA8_LOG_LEVEL k_ra8_log_level_debug
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_log.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -109,7 +109,7 @@ static void test_itm_arm(void)
 static void test_log_init_runs(void)
 {
   TEST_BEGIN("ra8_log_init runs");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_log_init();
   TEST_END("ra8_log_init runs");
 }
@@ -123,7 +123,7 @@ static void test_log_init_runs(void)
 static void test_log_levels_plain(void)
 {
   TEST_BEGIN("ra8_log plain tag/message at every level");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_log_init();
 
   internal_ra8_log_error("TAG", "error line");
@@ -143,7 +143,7 @@ static void test_log_levels_plain(void)
 static void test_log_levels_val(void)
 {
   TEST_BEGIN("ra8_log with companion value at every level");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_log_init();
 
   internal_ra8_log_error_val("TAG", "value", k_log_val_hex_small);
@@ -163,7 +163,7 @@ static void test_log_levels_val(void)
 static void test_log_val_edge_cases(void)
 {
   TEST_BEGIN("ra8_log value edge cases");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_log_init();
 
   internal_ra8_log_info_val("ZERO", "v", 0U);
@@ -184,7 +184,7 @@ static void test_log_val_edge_cases(void)
 static void test_log_macros(void)
 {
   TEST_BEGIN("ra8_log_*_val macros through public header");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_log_init();
 
   ra8_log_error("MAC", "err");
@@ -208,7 +208,7 @@ static void test_log_macros(void)
 static void test_log_many_calls(void)
 {
   TEST_BEGIN("ra8_log many calls do not crash");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_log_init();
   for (uint32_t i = 0U; i < 32U; ++i) {
     internal_ra8_log_info_val("LOOP", "i", i);
@@ -225,7 +225,7 @@ static void test_log_many_calls(void)
 static void test_log_ready_plain(void)
 {
   TEST_BEGIN("ra8_log plain writes walk the ITM path when armed");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_itm_arm();
   internal_ra8_log_error("RDY", "error msg");
   internal_ra8_log_warn("RDY", "warn msg");
@@ -243,7 +243,7 @@ static void test_log_ready_plain(void)
 static void test_log_ready_val_unsigned(void)
 {
   TEST_BEGIN("ra8_log unsigned-value writes walk the ITM path when armed");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_itm_arm();
   /* Zero triggers the fast-path inside internal_itm_put_u32. */
   internal_ra8_log_info_val("RDY", "zero", 0U);
@@ -263,7 +263,7 @@ static void test_log_ready_val_unsigned(void)
 static void test_log_ready_val_signed(void)
 {
   TEST_BEGIN("ra8_log signed-value writes walk the ITM path when armed");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_itm_arm();
   internal_ra8_log_debug_val("RDY", "neg", (int32_t)-k_log_val_small_signed);
   internal_ra8_log_debug_val("RDY", "pos", (int32_t)k_log_val_small_signed);
@@ -282,7 +282,7 @@ static void test_log_ready_val_signed(void)
 static void test_log_ready_tcr_disabled(void)
 {
   TEST_BEGIN("ra8_log bails out when TCR.ITMENA is clear");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* TCR=0 makes internal_itm_ready return false on the first check. */
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000000UL;
   *(volatile uint32_t*)k_test_itm_tenr  = 0x00000001UL;
@@ -300,7 +300,7 @@ static void test_log_ready_tcr_disabled(void)
 static void test_log_ready_tenr_disabled(void)
 {
   TEST_BEGIN("ra8_log bails out when TENR port 0 is clear");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000001UL;
   *(volatile uint32_t*)k_test_itm_tenr  = 0x00000000UL;
   *(volatile uint32_t*)k_test_itm_stim0 = k_log_all_ones;
@@ -317,7 +317,7 @@ static void test_log_ready_tenr_disabled(void)
 static void test_log_ready_fifo_full(void)
 {
   TEST_BEGIN("ra8_log drops byte when STIM0 is zero for the full poll");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   /* TCR + TENR are on, but STIM0 starts at 0 so internal_itm_ready
    * returns false and the emit path short-circuits. */
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000001UL;
@@ -400,7 +400,7 @@ static const test_err_entry_t s_all_err_codes[] = {
 static void test_err_to_str_every_code(void)
 {
   TEST_BEGIN("ra8_err_to_str covers every enum value");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const size_t count = sizeof(s_all_err_codes) / sizeof(s_all_err_codes[0]);
   for (size_t i = 0U; i < count; ++i) {
@@ -421,7 +421,7 @@ static void test_err_to_str_every_code(void)
 static void test_err_to_str_unknown_default(void)
 {
   TEST_BEGIN("ra8_err_to_str returns 'unknown' for out-of-enum value");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const char* s = ra8_err_to_str((ra8_err_t)k_log_err_code_unknown);
   TEST_ASSERT_NOT_NULL(s);
   TEST_ASSERT(strcmp(s, "unknown") == 0);
@@ -462,7 +462,7 @@ static void test_err_to_str_unknown_default(void)
 static void test_mcdc_itm_put_u32_loop(void)
 {
   TEST_BEGIN("ra8_log put_u32 MC/DC: value!=0 && i<max_digits");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_itm_arm();
   ra8_log_init();
 

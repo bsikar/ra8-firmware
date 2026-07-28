@@ -10,13 +10,13 @@
 
 #include "ra8_err.h"
 #include "ra8_eth.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_fake_xspi_flash.h"
 #include "ra8_mstp.h"
 #include "ra8_net_pal.h"
 #include "ra8_nsc.h"
 #include "ra8_ospi_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
-#include "ra8_sim_xspi_flash.h"
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
@@ -32,11 +32,11 @@ typedef enum : uint16_t {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   /* The xspi veneers forward to ra8_xspi_flash_*, whose real register
    * sequence needs the tests/mocks NOR model to service TRREQ kicks. */
-  ra8_sim_xspi_flash_install();
+  ra8_fake_xspi_flash_install();
   (void)ra8_mstp_init();
   (void)ra8_net_pal_deinit();
 }

@@ -258,11 +258,11 @@ static uint32_t internal_spcr_controller(void)
  * them.
  *
  * Delegates to ``ra8_hw_wait_flag_set32``, whose loop is consulted by the
- * host-test MMIO fault seam (``ra8_sim_mmio_*``): a test pre-staging SPSR =
+ * host-test MMIO fault seam (``ra8_fake_mmio_*``): a test pre-staging SPSR =
  * SPTEF|SPRF succeeds on the first poll (seam transparent), ``fail_wait``
  * drives the timeout leg, and ``satisfy_after(n)`` steps the loop's
  * continuation branch for MC/DC. Both the success and timeout legs therefore
- * run on host, unlike the deleted ``RA8_SIMULATOR_MODE`` single-shot
+ * run on host, unlike the deleted ``RA8_OFF_TARGET`` single-shot
  * short-circuit (T1-01).
  *
  * @param[in] reg See implementation.
@@ -279,9 +279,9 @@ static uint32_t internal_spcr_controller(void)
 static ra8_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mask)
 {
   /* Bounded busy-poll of SPSR. On the host test build the ra8_hw_err MMIO fault
-   * seam (ra8_sim_mmio_*) drives this real loop to succeed-after-N or to time out,
+   * seam (ra8_fake_mmio_*) drives this real loop to succeed-after-N or to time out,
    * so both the success and timeout legs are exercised on host (T1-01) rather
-   * than compiled out behind an RA8_SIMULATOR_MODE short-circuit. On target it is
+   * than compiled out behind an RA8_OFF_TARGET short-circuit. On target it is
    * a plain register spin with a fixed iteration bound. */
   return ra8_hw_wait_flag_set32(&reg->SPSR, flag_mask, (uint32_t)k_ra8_spi_b_poll_limit);
 }

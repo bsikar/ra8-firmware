@@ -248,7 +248,7 @@ void ra8_esp_hosted_log_fatal(const char* tag, const char* expr, int code)
   /* GCOVR_EXCL_START -- a park loop no host input can leave; entering it in
      a unit test would hang the suite rather than report anything. */
   while (true) {
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
     __asm__ volatile("wfi");
 #endif
   }

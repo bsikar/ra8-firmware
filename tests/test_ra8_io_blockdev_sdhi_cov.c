@@ -29,12 +29,12 @@
  * Bringing the card up on the host is the interesting part. ``ra8_sdcard``
  * runs the SD Physical-Layer init as a blocking sequence of
  * ``ra8_sdhi_send_command`` calls, each spinning on SD_INFO1.RSPEND. In
- * RA8_SIMULATOR_MODE the SDHI register window is plain host RAM (see
- * tests/mocks/ra8_sim_mmap.c), so nothing sets RSPEND on its own and the
+ * RA8_OFF_TARGET the SDHI register window is plain host RAM (see
+ * tests/mocks/ra8_fake_mmap.c), so nothing sets RSPEND on its own and the
  * driver clears the bit after every command. The register handshake must
  * therefore be re-serviced between commands while init blocks.
  *
- * The ra8_sim_mmio poll-hook does exactly that -- no SIGALRM / setitimer
+ * The ra8_fake_mmio poll-hook does exactly that -- no SIGALRM / setitimer
  * timer signal and no concurrent servicer thread. The response registers
  * SD_RSP10..76 are pre-loaded once with a single universal value set that
  * satisfies every command the init sequence issues (CMD8 echo, ACMD41 OCR
@@ -61,13 +61,13 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_io_blockdev.h"
 #include "ra8_io_blockdev_sdhi.h"
 #include "ra8_mstp.h"
 #include "ra8_sdcard.h"
 #include "ra8_sdhi_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /** @brief Distinguishable payload fills for the read-back assertions. */
@@ -139,13 +139,13 @@ static uint8_t s_cov_inst;
  * the next ``ra8_sdhi_send_command`` poll iteration observes it. The
  * response registers were pre-loaded by cov_hook_arm() and are never
  * written by the driver, so no other register work is needed. Installed
- * via ::ra8_sim_mmio_set_poll_hook, it runs inline at the top of every
- * ::ra8_sim_mmio_poll -- on the driver's OWN polling thread -- so the
+ * via ::ra8_fake_mmio_set_poll_hook, it runs inline at the top of every
+ * ::ra8_fake_mmio_poll -- on the driver's OWN polling thread -- so the
  * injection is keyed to the driver's register reads, never to elapsed
  * time, and cannot race the bounded spin budget under host load.
  *
  * @pre s_cov_inst is a valid SDHI instance index.
- * @pre The SDHI register window is mapped (RA8_SIMULATOR_MODE).
+ * @pre The SDHI register window is mapped (RA8_OFF_TARGET).
  * @post SD_INFO1.RSPEND is asserted for the serviced instance.
  *
  * @note Runs single-threaded, inline with the driver's poll.
@@ -167,9 +167,9 @@ static void cov_rspend_hook(void)
  * @param[in] inst SDHI instance index to service.
  *
  * @pre No poll-hook is currently installed.
- * @pre ra8_sim_mmap_reset() has already scrubbed the register window.
+ * @pre ra8_fake_mmap_reset() has already scrubbed the register window.
  * @post SD_RSP10..76 hold the universal init responses and ::cov_rspend_hook
- *       runs on every ra8_sim_mmio_poll with RSPEND asserted.
+ *       runs on every ra8_fake_mmio_poll with RSPEND asserted.
  *
  * @note Not reentrant; tests are single-threaded.
  *
@@ -186,7 +186,7 @@ static void cov_hook_arm(uint8_t inst)
   reg->SD_RSP76 = (uint32_t)k_cov_sdhi_rsp76;
   reg->SD_INFO1 = reg->SD_INFO1 | (uint32_t)k_cov_sdhi_rspend_bit;
 
-  ra8_sim_mmio_set_poll_hook(cov_rspend_hook);
+  ra8_fake_mmio_set_poll_hook(cov_rspend_hook);
 }
 
 /**
@@ -199,7 +199,7 @@ static void cov_hook_arm(uint8_t inst)
  */
 static void cov_hook_disarm(void)
 {
-  ra8_sim_mmio_set_poll_hook(nullptr);
+  ra8_fake_mmio_set_poll_hook(nullptr);
 }
 
 /* ===========================================================================
@@ -217,8 +217,8 @@ static void cov_hook_disarm(void)
  */
 static void cov_prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   (void)ra8_sdcard_deinit();
 }

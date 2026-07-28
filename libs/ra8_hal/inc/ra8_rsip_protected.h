@@ -73,7 +73,7 @@ extern "C" {
  *
  * @pre Wrapper was produced by ``ra8_rsip_key_inject_aes``.
  * @pre ``ra8_rsip_init`` returned ``k_ra8_ok`` on the live engine
- *      (or ``ra8_sim_mmap`` is wired up under test).
+ *      (or ``ra8_fake_mmap`` is wired up under test).
  * @post On success, AES context is latched.
  *
  * @note Thread safety: not thread-safe.

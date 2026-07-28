@@ -315,7 +315,7 @@ static void test_first_error_keeps_the_earliest_failure(void)
  * @return Process exit status.
  * @retval 0 Every test passed; a failure aborts inside the assertion.
  *
- * @pre The test binary was built with RA8_SIMULATOR_MODE.
+ * @pre The test binary was built with RA8_OFF_TARGET.
  * @pre No other test has brought the port up in this process.
  * @post Every test in this file has run exactly once.
  * @post The port reports not ready.

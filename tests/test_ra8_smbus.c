@@ -6,7 +6,7 @@
  * The SMBus layer is pure protocol framing -- it composes wire frames
  * (cmd / count / PEC / etc.) and delegates raw byte movement to
  * ``ra8_i3c_i2c``. These tests run against the host-side
- * ``ra8_sim_mmap`` substrate exactly the way the IIC_B tests do: they
+ * ``ra8_fake_mmap`` substrate exactly the way the IIC_B tests do: they
  * pre-arm NTST.TDBEF0 / NTST.RDBFF0 and BCST.BFREF before every
  * transfer so the polling loops fall through immediately, then
  * inspect the last bytes written into NTDTBP0 to verify framing.
@@ -22,6 +22,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_i2c_bus_ops.h"
 #include "ra8_i3c.h"
 #include "ra8_i3c_i2c.h"
@@ -29,7 +30,6 @@
 #include "ra8_io_i2c_bus.h"
 #include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_smbus.h"
 #include "unity_minimal.h"
 
@@ -62,12 +62,12 @@ static ra8_io_i2c_bus_t s_bus;
  * @brief Play the app's role: initialise IIC_B channel 0 in I2C-compat
  *        mode and bind it through the ra8_io facade into a fresh seam.
  *
- * @details Must re-run after every ``ra8_sim_mmap_reset`` because the
+ * @details Must re-run after every ``ra8_fake_mmap_reset`` because the
  * reset wipes the registers ``ra8_i3c_init`` programmed.
  *
  * @param[out] out Seam to fill for the SMBus cfg.
  *
- * @pre The simulator window is mapped and MSTP is initialised.
+ * @pre The fake window is mapped and MSTP is initialised.
  * @pre ``out`` is writable.
  * @post ``*out`` forwards into IIC_B channel 0 via the bound facade.
  * @post ::s_bus is bound to the I3C I2C-compat backend.
@@ -90,13 +90,13 @@ static void bind_bus(ra8_i2c_bus_ops_t* out)
  * @brief Build an SMBus cfg over a freshly-bound seam.
  *
  * @details Wraps ::bind_bus so each test gets a live seam after its
- * simulator reset.
+ * fake reset.
  *
  * @param[in] pec_enabled PEC policy for the returned cfg.
  *
  * @return Config carrying the bound seam and the PEC flag.
  *
- * @pre The simulator window is mapped and MSTP is initialised.
+ * @pre The fake window is mapped and MSTP is initialised.
  * @pre ::s_bus is safe to (re)bind.
  * @post The returned cfg's seam forwards into IIC_B channel 0.
  * @post ::s_bus is bound.
@@ -123,12 +123,12 @@ static void prime_iic_b(void)
 }
 
 /**
- * @brief Reset the simulator and ensure the SMBus layer is back to
+ * @brief Reset the fake and ensure the SMBus layer is back to
  *        pristine state between tests.
  */
 static void prep_pec(bool pec_enabled)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   /* Best-effort deinit -- ignore the error if init was never called. */
   (void)ra8_smbus_deinit();
@@ -196,7 +196,7 @@ static void test_pec_known_vectors(void)
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("ra8_smbus_init: NULL cfg rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_smbus_deinit();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_smbus_init(nullptr));
@@ -212,7 +212,7 @@ static void test_init_null_cfg(void)
 static void test_init_incomplete_bus(void)
 {
   TEST_BEGIN("ra8_smbus_init: incomplete bus seam rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_smbus_deinit();
   /* Each missing seam row is rejected by its own single-condition guard. */
@@ -237,7 +237,7 @@ static void test_init_incomplete_bus(void)
 static void test_deinit_without_init(void)
 {
   TEST_BEGIN("ra8_smbus_deinit: not_initialized when never inited");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   /* Ensure clean state. */
   (void)ra8_smbus_deinit();
@@ -254,7 +254,7 @@ static void test_deinit_without_init(void)
 static void test_init_deinit_cycle(void)
 {
   TEST_BEGIN("ra8_smbus_init -> deinit cycle");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_smbus_deinit();
   const ra8_smbus_cfg_t cfg = make_cfg(false);
@@ -316,7 +316,7 @@ static void test_send_byte_with_pec(void)
 static void test_send_byte_not_initialized(void)
 {
   TEST_BEGIN("ra8_smbus_send_byte: not_initialized when init missing");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_smbus_deinit();
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
@@ -337,7 +337,7 @@ static void test_receive_byte_no_pec_happy(void)
   prime_iic_b();
   uint8_t out = k_t_byte_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_smbus_receive_byte((uint8_t)k_smbus_test_target, &out));
-  /* Simulator returns 0 from NTDTBP0; that's fine -- we just confirm
+  /* Fake returns 0 from NTDTBP0; that's fine -- we just confirm
    * the call succeeded and out_data was written. */
   (void)out;
   TEST_END("ra8_smbus_receive_byte: no PEC, 1 byte returned");
@@ -368,7 +368,7 @@ static void test_receive_byte_pec_mismatch(void)
   TEST_BEGIN("ra8_smbus_receive_byte: PEC mismatch detected");
   prep_pec(true);
   prime_iic_b();
-  /* Simulator returns 0 for both data and PEC bytes. The expected
+  /* Fake returns 0 for both data and PEC bytes. The expected
    * PEC = CRC8(addr_r, 0x00) is non-zero (= 0xC3 for addr_r = 0x81),
    * so the verification must fail. */
   uint8_t out = 0U;
@@ -539,7 +539,7 @@ static void test_block_read_no_pec_happy(void)
   TEST_BEGIN("ra8_smbus_block_read: happy path");
   prep_pec(false);
   prime_iic_b();
-  /* The simulator's NTDTBP0 holds whatever byte was last written to it
+  /* The fake's NTDTBP0 holds whatever byte was last written to it
    * (here, the read-address byte emitted by internal_i3c_i2c_transfer), so the
    * in-band "count" byte is non-deterministic. Use the maximum cap
    * (255) so any 8-bit count value fits, then just verify the call
@@ -624,7 +624,7 @@ static void test_alert_register_and_dispatch(void)
   TEST_ASSERT_EQ(1, s_alert_count);
   TEST_ASSERT(s_alert_ctx == &marker);
   /* The ARA byte the dispatch reads is whatever residue NTDTBP0 holds
-   * in the simulator (the read-address byte emitted by internal_i3c_i2c_read
+   * in the fake (the read-address byte emitted by internal_i3c_i2c_read
    * is left latched there), so addr_7b / status are non-deterministic.
    * We just confirm the callback fired with the recorded context. */
   (void)s_alert_addr;
@@ -658,7 +658,7 @@ static void test_alert_dispatch_without_callback(void)
 static void test_alert_not_initialized(void)
 {
   TEST_BEGIN("ra8_smbus_alert: not_initialized when init missing");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_smbus_deinit();
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_smbus_alert_register_callback(stub_alert, nullptr));

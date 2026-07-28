@@ -21,11 +21,11 @@
  *     ref-count so ``ra8_mstp_enable`` inside ``ra8_usb_device_init``
  *     returns an error.
  *
- * Every leg is driven deterministically by pre-seeding the simulator's
+ * Every leg is driven deterministically by pre-seeding the fake's
  * register RAM (BRDYSTS / CFIFOCTR for the OUT-pipe drain) or the
  * module-stop ref-count; no timing injection (SIGALRM) is used.
  * ``internal_wait_frdy`` converges on its first poll via the unarmed
- * ra8_sim_mmio seam, so the FIFO drain converges without a real
+ * ra8_fake_mmio seam, so the FIFO drain converges without a real
  * controller.
  *
  * The one leg NOT reachable from the host -- the
@@ -42,8 +42,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pvnd.h"
 #include "ra8_usb_regs.h"
@@ -108,7 +108,7 @@ static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
 }
 
 /**
- * @brief Reset the simulator MMIO, module-stop ref-counts, and class
+ * @brief Reset the fake MMIO, module-stop ref-counts, and class
  *        state before each case.
  *
  * @details ``ra8_mstp_init`` clears every module-stop ref-count to zero,
@@ -117,7 +117,7 @@ static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_pvnd_close();
   s_setup_cb_calls       = 0;
@@ -219,7 +219,7 @@ static void test_recv_drains_bank(void)
  * @details Registers a vendor setup handler that returns an error, then
  * dispatches a vendor-recipient SETUP. The class layer takes the
  * callback-error branch and stalls EP0 via ``ra8_usb_control_response``
- * (line 293). Under simulation that stall request itself succeeds, so
+ * (line 293). Off-target that stall request itself succeeds, so
  * ``ra8_usb_pvnd_handle_setup`` returns ``k_ra8_ok`` even though the
  * application rejected the request; the callback-was-invoked count
  * confirms the error branch was taken.
@@ -239,7 +239,7 @@ static void test_handle_setup_cb_error_stalls(void)
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  /* The stall response itself returns k_ra8_ok under simulation. */
+  /* The stall response itself returns k_ra8_ok off-target. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_handle_setup(&setup));
   /* The callback must have run exactly once to reach the error branch. */
   TEST_ASSERT_EQ(1, s_setup_cb_calls);

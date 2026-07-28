@@ -33,7 +33,7 @@
  *
  * Bare EK-RA8D2 only -- no extra pins required. The profiler hooks
  * into ``ra8_time_ms`` for the timestamp source so accumulation works
- * on the host test build under RA8_SIMULATOR_MODE as well.
+ * on the host test build under RA8_OFF_TARGET as well.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

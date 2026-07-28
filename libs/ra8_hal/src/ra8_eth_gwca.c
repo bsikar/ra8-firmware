@@ -243,11 +243,11 @@ ra8_err_t ra8_eth_gwca_set_operation_mode(ra8_gwmc_opc_t mode)
     (volatile uint32_t*)(k_ra8_gwca0_base_addr + (uintptr_t)k_ra8_gwca_off_gwms);
   /* GWMS.OPS converges to a specific 2-bit value (opc), not a single-mask
    * set/clear, so the ra8_hw_wait_flag_* helpers do not fit -- run the real
-   * poll inline and route the host unit-test build through the ra8_sim_mmio
+   * poll inline and route the host unit-test build through the ra8_fake_mmio
    * seam so the poll/timeout legs execute rather than short-circuit (T1-01). */
   for (uint32_t i = 0U; i < k_ra8_eth_gwca_mode_spin; ++i) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(gwms, i, ((*gwms & (uint32_t)k_ra8_gwmc_opc_mask) == opc))) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(gwms, i, ((*gwms & (uint32_t)k_ra8_gwmc_opc_mask) == opc))) {
       return k_ra8_ok;
     }
 #else
@@ -295,8 +295,8 @@ ra8_err_t ra8_eth_gwca_axi_init(void)
 
   /* Wait for GWARIRM.ARR to set. The ra8_hw_wait_flag_set32 loop runs on every
    * build -- including the host unit test, where it is consulted by the
-   * ra8_sim_mmio seam -- so the poll/timeout legs execute rather than compile
-   * out behind an RA8_SIMULATOR_MODE short-circuit (T1-01). */
+   * ra8_fake_mmio seam -- so the poll/timeout legs execute rather than compile
+   * out behind an RA8_OFF_TARGET short-circuit (T1-01). */
   const ra8_err_t err = ra8_hw_wait_flag_set32(gwarirm,
                                                (uint32_t)k_ra8_gwarirm_arr,
                                                (uint32_t)k_ra8_eth_gwca_mode_spin);

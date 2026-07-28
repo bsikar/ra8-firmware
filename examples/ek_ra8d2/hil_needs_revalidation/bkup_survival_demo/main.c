@@ -41,9 +41,9 @@
  * window as a reset-retained domain (``board_periph_bkup.c``) whose writes are
  * gated on ``VBTBER.VBAE`` (HUM Ch 12.2.6 p 504), so the read/write half passes
  * (``rw=ok``) only because this demo first arms VBAE via ``ra8_bkup_init`` -- a
- * firmware that forgot the VBAE step now reports ``rw=BAD`` on the sim too. The
+ * firmware that forgot the VBAE step now reports ``rw=BAD`` on the fake too. The
  * emulator cannot model the ``OFS1``/LVD0 option-byte prerequisite (there is no
- * option memory in the sim), which is precisely why the sim reports ``rw=ok``
+ * option memory in the fake), which is precisely why the emulator reports ``rw=ok``
  * while the bench reports ``rw=BAD``. ``--reboot 1`` re-runs from the reset
  * vector with the retained domain, so the second boot finds the sentinel and
  * reports ``survived=Y`` (the ``ra8_emulator_smoke.sh`` gate exercises this).

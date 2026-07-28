@@ -20,10 +20,10 @@
  *     (lines 346, 423, 424)
  *
  * The ra8_sdhi_deinit failure leg inside ra8_sdcard_deinit is reached by
- * arming the ra8_sim_mmio fault seam on the SDHI module's MSTPCR register so
+ * arming the ra8_fake_mmio fault seam on the SDHI module's MSTPCR register so
  * the ra8_mstp_disable readback never settles.
  *
- * Each multi-command test uses a mode-driven ra8_sim_mmio poll-hook
+ * Each multi-command test uses a mode-driven ra8_fake_mmio poll-hook
  * identical in spirit to test_ra8_sdcard.c (no wall-clock timer, no
  * servicer thread).  After asserting RSPEND for a command, the hook
  * overwrites SD_CMD with a sentinel value (> 63, outside the valid SD
@@ -40,12 +40,12 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_sdcard.h"
 #include "ra8_sdhi.h"
 #include "ra8_sdhi_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -394,7 +394,7 @@ static bool cov_dispatch_cmd(volatile r_sdhi_regs_t* reg, uint32_t cmd)
  * @brief Servicer step -- injects SDHI command responses per mode.
  *
  * @details
- * Runs inline on every ra8_sim_mmio_poll, on the driver's own poll
+ * Runs inline on every ra8_fake_mmio_poll, on the driver's own poll
  * thread.  Reads SD_CMD from the register
  * window.  If the value exceeds the maximum valid SD command index (63), it is
  * the sentinel written by a prior step and the function returns immediately.
@@ -450,7 +450,7 @@ static void cov_sdcard_step(void)
  * @brief Install the coverage poll-hook in @p mode.
  *
  * @details
- * ::cov_sdcard_step then runs on every ra8_sim_mmio_poll, i.e. inline on the
+ * ::cov_sdcard_step then runs on every ra8_fake_mmio_poll, i.e. inline on the
  * driver's own SDHI RSPEND / FIFO poll thread -- so it stuffs the per-command
  * response and asserts (or withholds) RSPEND deterministically, with no
  * concurrent servicer thread and no wall-clock timer.
@@ -460,7 +460,7 @@ static void cov_sdcard_step(void)
  *
  * @pre inst < k_ra8_sdhi_instance_count.
  * @pre No poll-hook is currently installed.
- * @post ::cov_sdcard_step runs on every ra8_sim_mmio_poll for @p inst.
+ * @post ::cov_sdcard_step runs on every ra8_fake_mmio_poll for @p inst.
  * @note Not reentrant; tests are single-threaded.
  *
  * @since 0.1.0
@@ -469,7 +469,7 @@ static void cov_hook_arm(uint8_t inst, cov_hook_mode_t mode)
 {
   s_cov_cfg.inst = inst;
   s_cov_cfg.mode = mode;
-  ra8_sim_mmio_set_poll_hook(cov_sdcard_step);
+  ra8_fake_mmio_set_poll_hook(cov_sdcard_step);
 }
 
 /**
@@ -482,7 +482,7 @@ static void cov_hook_arm(uint8_t inst, cov_hook_mode_t mode)
  */
 static void cov_hook_disarm(void)
 {
-  ra8_sim_mmio_set_poll_hook(nullptr);
+  ra8_fake_mmio_set_poll_hook(nullptr);
 }
 
 /* ---------------------------------------------------------------------------
@@ -505,8 +505,8 @@ static void cov_hook_disarm(void)
  */
 static void cov_prep(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   (void)ra8_sdcard_deinit();
 }
@@ -728,7 +728,7 @@ static void test_cov_csd_v2_sdxc_card(void)
  *
  * @details
  * Initialises a CSD v2 card exactly like the SDXC case, then arms the
- * ra8_sim_mmio fault seam on MSTPCRC (SDHI0 gates on MSTPC12) so the
+ * ra8_fake_mmio fault seam on MSTPCRC (SDHI0 gates on MSTPC12) so the
  * ra8_mstp_disable readback inside ra8_sdhi_deinit never settles.
  * ra8_sdcard_deinit must translate that hw_timeout into
  * k_ra8_err_invalid_state -- the leg that was host-dead while the MSTP
@@ -747,7 +747,7 @@ static void test_cov_deinit_mstp_timeout(void)
 {
   TEST_BEGIN("sdcard cov: deinit surfaces the SDHI MSTP release failure");
   cov_prep();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
   cov_hook_arm((uint8_t)k_cov_test_inst, k_cov_mode_sdxc_v2);
   const ra8_sdcard_cfg_t cfg      = {.instance = (uint8_t)k_cov_test_inst};
   const ra8_err_t        init_err = ra8_sdcard_init(&cfg);
@@ -756,9 +756,9 @@ static void test_cov_deinit_mstp_timeout(void)
 
   /* SDHI0 is gated by MSTPCRC bit 12: fail that register's readback so
    * the disable inside ra8_sdhi_deinit times out. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(&ra8_mstp()->MSTPCRC));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(&ra8_mstp()->MSTPCRC));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_sdcard_deinit());
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   /* The card-facing state was torn down before the release failed. */
   uint32_t cap = 0U;

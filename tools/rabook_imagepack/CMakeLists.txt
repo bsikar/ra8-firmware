@@ -75,7 +75,7 @@ add_executable(
 # recipe and the host test build.
 include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
 ra8_webp_attach(rabook_imagepack ${FW_ROOT})
-target_compile_definitions(rabook_imagepack PRIVATE RA8_SIMULATOR_MODE)
+target_compile_definitions(rabook_imagepack PRIVATE RA8_OFF_TARGET)
 target_include_directories(
   rabook_imagepack
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc

@@ -12,7 +12,7 @@
  *     ra8_mipi_phy_init spin-loops find the ready bit on the first
  *     iteration.  ra8_mipi_dsi_init then runs (no spin-loop), and
  *     ra8_mipi_dsi_hs_clock_start times out because PLSR stays zero in
- *     the simulator.  Covers the dsi_init call (line 154), the
+ *     the fake.  Covers the dsi_init call (line 154), the
  *     not-taken branch check (line 155), and the hs_clock_start return
  *     (line 167).
  *
@@ -44,11 +44,11 @@
  * Source lines marked GCOVR_EXCL_LINE in ra8_board_ek_ra8d2_comms.c
  * (original numbering before edits):
  *   156: return after ra8_mipi_dsi_init -- dsi_init with valid static cfg
- *        always returns k_ra8_ok in RA8_SIMULATOR_MODE.
+ *        always returns k_ra8_ok in RA8_OFF_TARGET.
  *   221: return after ra8_cgc_get_clock_hz -- call with valid clock-id and
  *        non-null pointer always returns k_ra8_ok.
  *   254: return after ra8_sci_init -- sci_init(8, valid_cfg) always returns
- *        k_ra8_ok in RA8_SIMULATOR_MODE (MSTP timeout excluded on host).
+ *        k_ra8_ok in RA8_OFF_TARGET (MSTP timeout excluded on host).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -60,12 +60,12 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mipi_phy_regs.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_sci_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
@@ -86,17 +86,17 @@ typedef enum : uint8_t {
  */
 
 /**
- * @brief Reset all simulated peripheral state and pin ownership.
+ * @brief Reset all fake peripheral state and pin ownership.
  *
  * @details
- * Calls ra8_sim_mmap_reset() to zero every hardware register window,
- * ra8_sim_mmio_reset() to disarm any armed MMIO wait faults, and
+ * Calls ra8_fake_mmap_reset() to zero every hardware register window,
+ * ra8_fake_mmio_reset() to disarm any armed MMIO wait faults, and
  * ra8_pin_validator_reset() to free all claimed pins.  Must be called at
  * the start of every test that issues HAL pin claims so test ordering
  * does not create false conflicts.
  *
  * @pre None.
- * @post ra8_sim_mmap register window cleared; MMIO fault table empty; pin
+ * @post ra8_fake_mmap register window cleared; MMIO fault table empty; pin
  *       validator bitmap zeroed.
  *
  * @note Not thread-safe; single-threaded test context only.
@@ -104,8 +104,8 @@ typedef enum : uint8_t {
  */
 static void reset_state(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   ra8_pin_validator_reset();
 }
 
@@ -113,13 +113,13 @@ static void reset_state(void)
  * @brief Pre-seed the OSCSF register and run ra8_cgc_init.
  *
  * @details
- * Under RA8_SIMULATOR_MODE the CGC oscillator spin-loops check the OSCSF
+ * Under RA8_OFF_TARGET the CGC oscillator spin-loops check the OSCSF
  * register rather than real hardware.  Writing 0xFF satisfies every
  * oscillator-stable check on the first iteration.  After this helper
  * returns, s_clock_hz[PCLKA] is set to k_ra8_pclka_hz (125 MHz), which
  * exceeds the console uart minimum.
  *
- * @pre ra8_sim_mmap_reset() has been called (OSCSF is writable memory).
+ * @pre ra8_fake_mmap_reset() has been called (OSCSF is writable memory).
  * @post PCLKA is published to k_ra8_pclka_hz in the CGC state table.
  *
  * @note Not thread-safe; single-threaded test context only.
@@ -142,7 +142,7 @@ static void cgc_init_with_oscsf_preseed(void)
  *
  * @details
  * The existing test_stubs_return_not_supported exercises only the
- * ra8_mipi_phy_init failure path (DPHY SFR never set in sim -> timeout ->
+ * ra8_mipi_phy_init failure path (DPHY SFR never set off-target -> timeout ->
  * early return at source line 145).  To cover source lines 154, 155,
  * and 167, ra8_mipi_phy_init must succeed.
  *
@@ -152,7 +152,7 @@ static void cgc_init_with_oscsf_preseed(void)
  * first spin-loop iteration.  ra8_mipi_dsi_init then runs without a
  * spin-loop (uses MSTP refcount write + register writes only) and returns
  * k_ra8_ok.  ra8_mipi_dsi_hs_clock_start then waits for PLSR which stays
- * zero in the simulator and times out, so the function returns a non-ok
+ * zero in the fake and times out, so the function returns a non-ok
  * code.
  *
  * @par MC/DC:
@@ -160,11 +160,11 @@ static void cgc_init_with_oscsf_preseed(void)
  * - Vector A: err=k_ra8_ok (this test -- dsi_init succeeds, branch not taken)
  * - Vector B: err!=k_ra8_ok (would be taken if dsi_init failed; excluded
  *             by GCOVR_EXCL_LINE because dsi_init with valid static cfg
- *             always returns k_ra8_ok in RA8_SIMULATOR_MODE)
+ *             always returns k_ra8_ok in RA8_OFF_TARGET)
  * Providing Vector A is sufficient to show the condition was evaluated;
- * Vector B is confirmed unreachable in simulation, as documented above.
+ * Vector B is confirmed unreachable off-target, as documented above.
  *
- * @pre None (MIPI PHY and DSI module states are in reset from sim start).
+ * @pre None (MIPI PHY and DSI module states are in reset from fake start).
  * @post MIPI PHY and DSI module refcounts incremented; s_last_sfr cached.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -175,7 +175,7 @@ static void test_mipi_dsi_phy_succeeds_hs_clock_fails(void)
   TEST_BEGIN("mipi_dsi_init: phy ok -> dsi ok -> hs_clock times out (lines 154,155,167)");
   reset_state();
   /* Pre-seed both SFR ready bits so ra8_mipi_phy_init spin-loops resolve
-   * on the first iteration in RA8_SIMULATOR_MODE. */
+   * on the first iteration in RA8_OFF_TARGET. */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_sfr) = (uint32_t)k_ra8_mipi_phy_sfr_ready_mask;
   /* ra8_mipi_dsi_hs_clock_start waits for PLSR which stays zero -> timeout. */
   const ra8_err_t err = ra8_board_mipi_dsi_init();
@@ -437,13 +437,13 @@ static void test_uart_console_read_no_byte_available(void)
 
   /* Arm the console SCI CSR so ra8_sci_getc_polling's RDRF wait
    * (ra8_hw_wait_flag_set32(&reg->CSR, ...)) runs to its full budget and
-   * returns k_ra8_err_hw_timeout.  Without arming, the sim MMIO seam
+   * returns k_ra8_err_hw_timeout.  Without arming, the fake MMIO seam
    * succeeds an unarmed wait on the first poll, so getc would spuriously
    * report a byte.  The read then treats the timeout as "no data yet"
    * and returns k_ra8_ok with out_len unchanged. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait(
+    ra8_fake_mmio_fail_wait(
       (const volatile void*)&ra8_sci((uint8_t)k_ra8_board_uart_console_sci_channel)->CSR));
 
   uint8_t         buf[4]  = {};
@@ -492,7 +492,7 @@ static void test_uart_console_read_byte_available(void)
   /* Disarm the CSR wait fault that the no-byte test armed on this channel so
    * ra8_sci_getc_polling's RDRF wait can succeed here.  Only the MMIO fault
    * table is cleared; s_uart_console_initialized and the mmap window persist. */
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
 
   /* Pre-seed RDRF (bit 31) in CSR so ra8_sci_getc_polling resolves immediately. */
   volatile r_sci_regs_t* sci_reg = ra8_sci((uint8_t)k_ra8_board_uart_console_sci_channel);
@@ -530,7 +530,7 @@ static void test_uart_console_read_byte_available(void)
  *
  * @return 0 on success.
  *
- * @pre ra8_sim_mmap register window allocated by the test framework.
+ * @pre ra8_fake_mmap register window allocated by the test framework.
  * @post All targeted source lines are instrumented with gcov data.
  *
  * @note Not thread-safe; single-threaded test runner.

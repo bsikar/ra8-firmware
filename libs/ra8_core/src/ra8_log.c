@@ -146,15 +146,15 @@ RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_itm_tenr(void)
  * @details
  * Reads TCR, TENR, and the STIM0 FIFO register directly. On the
  * target these are the real Cortex-M85 ITM registers. On the
- * `RA8_SIMULATOR_MODE` host test build the same virtual addresses are
- * backed by anonymous RAM via `ra8_sim_mmap.c`.
+ * `RA8_OFF_TARGET` host test build the same virtual addresses are
+ * backed by anonymous RAM via `ra8_fake_mmap.c`.
  *
  * @return `true` if enabled and not full, `false` otherwise.
  * @retval true   ITMENA, port-0 enable, and FIFO-ready bits all set.
  * @retval false  Any of the above is clear.
  *
  * @pre None -- pure read of architectural registers.
- * @pre On the simulator, `ra8_sim_mmap.c` has mapped the SCS region.
+ * @pre On the fake, `ra8_fake_mmap.c` has mapped the SCS region.
  * @post No state is modified.
  * @post Result reflects the registers at the moment of the call.
  *
@@ -168,7 +168,7 @@ RA8_INTERNAL static inline bool internal_itm_ready(void)
   if (s_byte_sink != nullptr) {
     return true;
   }
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   /* Hardening: if DEMCR.TRCENA is clear the ITM block is powered down
    * and any read of its registers (TCR, TENR, STIM) will bus-fault.
    * Pre-check TRCENA in DEMCR (always accessible) before touching ITM.
@@ -354,7 +354,7 @@ RA8_INTERNAL static inline void internal_itm_put_i32(int32_t value)
  *          firmware does not need to programme any control registers.
  *
  * @pre Called exactly once during early boot.
- * @pre Build either has a debugger attached or is the simulator host.
+ * @pre Build either has a debugger attached or is the off-target host.
  * @post Subsequent log calls follow the ITM emit path.
  * @post No state modified -- the function is intentionally empty.
  *

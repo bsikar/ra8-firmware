@@ -213,7 +213,7 @@ static void mpu_simple_setup_or_halt(void)
  *
  * @par MC/DC:
  * Compound decision: ``probe_byte != 0x42``. One atomic condition x
- * 2 vectors -- match (host simulator: write succeeded, MPU not
+ * 2 vectors -- match (host fake: write succeeded, MPU not
  * actually trapping) vs mismatch (impossible because the write
  * either lands or faults). Test driver covers both branches by
  * pre-seeding the buffer.
@@ -240,7 +240,7 @@ static void mpu_simple_setup_or_halt(void)
   return k_ra8_err_hw_error;
 }
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Recovering MemManage handler.
  *
@@ -329,7 +329,7 @@ void                MemManage_Handler(void)
                    "pop   {lr}                            \n"
                    "bx    lr                              \n");
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /**
  * @brief Greeting line for the "fault handled" banner.
@@ -371,10 +371,10 @@ int32_t main(void)
    * handler advances the stacked PC past the offending store and
    * resumes here; the readback then sees the original 0x00 (handler
    * skipped the write that would have written 0x42), so the probe
-   * returns k_ra8_err_hw_error. On the host simulator the store just
+   * returns k_ra8_err_hw_error. On the host fake the store just
    * succeeds and the probe returns k_ra8_ok. */
   if (mpu_simple_probe() == k_ra8_ok) {
-    /* Host path: MPU did not arm (or simulator). Latch LED3 as a
+    /* Host path: MPU did not arm (or fake). Latch LED3 as a
      * diagnostic but keep the main loop spinning so the HIL probe
      * sees forward progress. */
     (void)ra8_board_led_on(k_ra8_board_led3);

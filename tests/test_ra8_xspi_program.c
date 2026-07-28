@@ -18,11 +18,11 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_fake_xspi_flash.h"
 #include "ra8_mstp.h"
 #include "ra8_ospi_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
-#include "ra8_sim_xspi_flash.h"
 #include "ra8_system_regs.h"
 #include "ra8_xspi.h"
 #include "ra8_xspi_internal.h"
@@ -299,8 +299,8 @@ static void test_flash_program_wip_clear_timeout(void)
    * whole RDSR poll budget: the post-program WIP wait exhausts its
    * budget and the program call returns the real timeout. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_xspi_flash_set_busy_polls((uint8_t)k_test_xspi_valid_inst0,
-                                                   (uint32_t)k_ra8_sim_xspi_flash_busy_forever));
+                 ra8_fake_xspi_flash_set_busy_polls((uint8_t)k_test_xspi_valid_inst0,
+                                                    (uint32_t)k_ra8_fake_xspi_flash_busy_forever));
 
   uint8_t src[16];
   for (uint8_t i = 0U; i < 16U; i++) {
@@ -329,8 +329,8 @@ static void test_flash_program_wip_clear_retry(void)
    * branch runs before the program completes, and the data must still
    * round-trip. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_xspi_flash_set_busy_polls((uint8_t)k_test_xspi_valid_inst0,
-                                                   (uint32_t)k_test_xspi_wip_busy_polls));
+                 ra8_fake_xspi_flash_set_busy_polls((uint8_t)k_test_xspi_valid_inst0,
+                                                    (uint32_t)k_test_xspi_wip_busy_polls));
 
   uint8_t src[16];
   for (uint8_t i = 0U; i < 16U; i++) {
@@ -412,7 +412,7 @@ static void test_flash_program_command_timeout_legs(void)
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_test_xspi_valid_inst0);
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_test_xspi_nth_wren));
+    ra8_fake_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_test_xspi_nth_wren));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
                                         (uint32_t)k_test_xspi_flash_addr_middle,
@@ -423,8 +423,8 @@ static void test_flash_program_command_timeout_legs(void)
    * internal_flash_program_chunk propagates the kick timeout. */
   prep_flash();
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)&reg->INTS,
-                                            (uint32_t)k_test_xspi_nth_pp_or_se));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)&reg->INTS,
+                                             (uint32_t)k_test_xspi_nth_pp_or_se));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
                                         (uint32_t)k_test_xspi_flash_addr_middle,
@@ -436,7 +436,7 @@ static void test_flash_program_command_timeout_legs(void)
   prep_flash();
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_test_xspi_nth_rdsr));
+    ra8_fake_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_test_xspi_nth_rdsr));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
                                         (uint32_t)k_test_xspi_flash_addr_middle,
@@ -460,7 +460,7 @@ static void test_flash_erase_command_timeout_legs(void)
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_test_xspi_valid_inst0);
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_test_xspi_nth_wren));
+    ra8_fake_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_test_xspi_nth_wren));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_xspi_flash_erase_sector((uint8_t)k_test_xspi_valid_inst0,
                                              (uint32_t)k_test_xspi_flash_addr_start));
@@ -468,8 +468,8 @@ static void test_flash_erase_command_timeout_legs(void)
   /* Leg 2: WREN retires but the SE kick never does. */
   prep_flash();
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sim_mmio_fail_nth_wait((const volatile void*)&reg->INTS,
-                                            (uint32_t)k_test_xspi_nth_pp_or_se));
+                 ra8_fake_mmio_fail_nth_wait((const volatile void*)&reg->INTS,
+                                             (uint32_t)k_test_xspi_nth_pp_or_se));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_xspi_flash_erase_sector((uint8_t)k_test_xspi_valid_inst0,
                                              (uint32_t)k_test_xspi_flash_addr_start));
@@ -491,7 +491,7 @@ static void test_flash_cmdcmp_timeout(void)
    * still services at register level, but the driver's bounded poll
    * exhausts and each public operation surfaces the hardware timeout. */
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_test_xspi_valid_inst0);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->INTS));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->INTS));
 
   uint8_t buf[8] = {};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,

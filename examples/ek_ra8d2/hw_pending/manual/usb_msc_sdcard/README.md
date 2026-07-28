@@ -97,7 +97,7 @@ against the live modelled card. The gate asserts:
   `ra8_sdmmc_spi` -> LUN geometry -> `READ CAPACITY`), and sector 0
   travelled card -> CMD17/CMD18 -> media-read -> BOT data phase intact.
 
-The real-PC copy (step 4-7 above) stays a manual bench step: the sim's
+The real-PC copy (step 4-7 above) stays a manual bench step: the fake's
 scripted host does not issue `WRITE(10)`.
 
 ## Diagnostics (J-Link, re-resolve with `arm-none-eabi-nm`)

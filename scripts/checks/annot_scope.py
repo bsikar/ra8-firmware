@@ -38,7 +38,7 @@ _REAL_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 _repo_root = _REAL_REPO_ROOT
 
 #: Every first-party source root. CLAUDE.md ("Scope") holds `tools/` to the
-#: same bar as the firmware -- "a file being a host tool or just a simulator
+#: same bar as the firmware -- "a file being a host tool or just an emulator
 #: is NOT a reason to relax the rules" -- but `tools/` was absent here, so
 #: ra8_emulator, media_dl, ra8_viewer and the rest were never annotation-checked
 #: at all. `scripts/` holds no C. Vendored SOUP under `libs/third_party/` is

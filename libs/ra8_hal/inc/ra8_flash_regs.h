@@ -727,7 +727,7 @@ typedef enum : uint32_t {
  *      casts the enum to ``uint16_t`` at the call site).
  * @pre Caller has powered the MRMS controller through CGC.
  * @post No side effect; returns a valid pointer for the host
- *       simulator (mmap-backed) or hardware bus address on target.
+ *       fake (mmap-backed) or hardware bus address on target.
  *
  * @note Accessor is ``static inline`` so each driver TU embeds the
  *       address arithmetic without function-call overhead.

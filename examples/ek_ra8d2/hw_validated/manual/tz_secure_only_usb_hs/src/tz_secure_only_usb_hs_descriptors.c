@@ -33,7 +33,7 @@
 
 #include "tz_secure_only_usb_hs_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "ux_api.h"
 
 /* -------------------------------------------------------------------------- */
@@ -387,4 +387,4 @@ UCHAR s_tz_secure_only_usb_hs_language_id_framework[] = {k_usb_langid_en_us_lo,
 static_assert(sizeof(s_tz_secure_only_usb_hs_language_id_framework) ==
                 k_tz_secure_only_usb_hs_language_id_framework_len,
               "Language-id framework length must match the header declaration");
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */

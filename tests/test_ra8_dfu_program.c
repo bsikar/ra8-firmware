@@ -4,7 +4,7 @@
  *
  * @details
  * Drives the full program -> read-back -> verify round-trip against the
- * simulator-backed code-MRAM window (the `RA8_SIMULATOR_MODE` mock maps
+ * fake-backed code-MRAM window (the `RA8_OFF_TARGET` mock maps
  * `0x02000000`..`0x02100000` to host memory, and `ra8_flash` writes/erases land
  * there). Covers slot addressing, header construction, CRC read-back, and the
  * argument guards. Every compound boolean decision carries its `@par MC/DC:`
@@ -51,16 +51,16 @@ static void fill_pattern(uint8_t* buf, uint32_t len)
 }
 
 /**
- * @brief Mark the simulated MRAM controller "program-ready" (MRCPS.ABUFEMP).
+ * @brief Mark the fake MRAM controller "program-ready" (MRCPS.ABUFEMP).
  *
- * @details The host simulator backs MRCPS with plain memory and has no real
+ * @details The host fake backs MRCPS with plain memory and has no real
  * controller to drive the program handshake, so ra8_flash's commit-wait would
  * spin to a timeout. Priming ABUFEMP (and leaving PRGBSYC/ABUFFULL clear) lets
  * the program path complete -- the same accommodation test_ra8_flash.c uses.
  * `ra8_flash_open` clears MRCPS as part of bring-up, so this must run AFTER
  * ::ra8_dfu_program_prepare and before any program/commit.
  */
-static void sim_mark_program_ready(void)
+static void fake_mark_program_ready(void)
 {
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = (uint8_t)k_ra8_mrcps_mask_abufemp;
 }
@@ -88,7 +88,7 @@ static void test_slot_addressing(void)
  *
  * @par MC/DC: not applicable here -- this case is the happy-path data round
  *      trip; the decision guards are exercised in test_program_guards_mcdc.
- * @pre RA8_SIMULATOR_MODE backs the MRAM window. @pre None.
+ * @pre RA8_OFF_TARGET backs the MRAM window. @pre None.
  * @post Slot B holds a valid image. @post No other slot touched.
  * @note Test-only. @since 0.1.0
  */
@@ -100,7 +100,7 @@ static void test_program_roundtrip(void)
   fill_pattern(img, (uint32_t)k_test_img_len);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_prepare(k_ra8_dfu_slot_b));
-  sim_mark_program_ready();
+  fake_mark_program_ready();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_dfu_program_image(k_ra8_dfu_slot_b, 0U, img, (uint32_t)k_test_img_len));
   TEST_ASSERT_EQ(
@@ -150,7 +150,7 @@ static void test_program_roundtrip(void)
  * mirrored vectors (0, max+page, 33 reject; a 32-multiple in range ok).
  * Plus NULL data -> null_ptr and a none-slot -> invalid_arg.
  *
- * @pre RA8_SIMULATOR_MODE backs the MRAM window. @pre None.
+ * @pre RA8_OFF_TARGET backs the MRAM window. @pre None.
  * @post No global state changes beyond Slot A scratch. @post No other slot touched.
  * @note Test-only. @since 0.1.0
  */
@@ -161,7 +161,7 @@ static void test_program_guards_mcdc(void)
   uint8_t buf[k_dfu_image_bytes];
   fill_pattern(buf, (uint32_t)sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_prepare(k_ra8_dfu_slot_a));
-  sim_mark_program_ready();
+  fake_mark_program_ready();
 
   /* program_image OR-guard MC/DC. */
   TEST_ASSERT_EQ(
@@ -226,7 +226,7 @@ static void test_program_guards_mcdc(void)
  * - V3: src!=NULL, len==0 -> F,T -> true  (returns invalid_arg; varies right).
  * N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
  *
- * @pre RA8_SIMULATOR_MODE backs the MRAM window. @pre None.
+ * @pre RA8_OFF_TARGET backs the MRAM window. @pre None.
  * @post No slot is programmed on either guard-true vector. @post No other slot touched.
  * @note Test-only. @since 0.1.0
  */
@@ -253,7 +253,7 @@ static void test_write_secure_guard_mcdc(void)
  * Decision: `(img_len != 0) && (img_len <= k_ra8_dfu_img_max) &&
  * ((img_len % k_ra8_dfu_page_size) == 0)` (3 conditions, AND) -- gates the CRC
  * fold so a corrupt header cannot drive an out-of-slot MRAM over-read. The
- * header is crafted directly in the sim-backed slot page (the same technique
+ * header is crafted directly in the fake-backed slot page (the same technique
  * the round-trip uses to corrupt a body byte).
  * - V1: img_len valid+aligned -> T,T,T -> true  (control; the round-trip's
  *   valid image folds the CRC and slot_valid == true).
@@ -263,7 +263,7 @@ static void test_write_secure_guard_mcdc(void)
  * N+1 = 4 vectors for N=3 conditions: minimal MC/DC. Each false-arm header
  * also fails `ra8_dfu_hdr_valid`, so slot_valid returns false.
  *
- * @pre RA8_SIMULATOR_MODE backs the MRAM window. @pre None.
+ * @pre RA8_OFF_TARGET backs the MRAM window. @pre None.
  * @post Slot A holds a crafted (invalid) header on exit. @post No other slot touched.
  * @note Test-only. @since 0.1.0
  */
@@ -277,7 +277,7 @@ static void test_slot_valid_len_bound_mcdc(void)
   uint8_t img[k_test_img_len];
   fill_pattern(img, (uint32_t)k_test_img_len);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_prepare(k_ra8_dfu_slot_a));
-  sim_mark_program_ready();
+  fake_mark_program_ready();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_dfu_program_image(k_ra8_dfu_slot_a, 0U, img, (uint32_t)k_test_img_len));
   TEST_ASSERT_EQ(

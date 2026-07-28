@@ -8,7 +8,7 @@
  * examples/ek_ra8d2/threadx_levelx_demo/main.c stands up CGC + SysTick +
  * the J-Link OB VCOM console, then hands control to ThreadX which
  * brings up xSPI + LevelX. Neither ThreadX nor LevelX is linked into
- * the host test build (RA8_SIMULATOR_MODE), so this test exercises the
+ * the host test build (RA8_OFF_TARGET), so this test exercises the
  * pre-kernel boot path the production app drives plus the BSP console
  * surface the worker thread calls when it logs heartbeat lines.
  *
@@ -28,10 +28,10 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_pin_validator.h"
 #include "ra8_sci_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "ra8_system_regs.h"
 #include "ra8_time.h"
 #include "unity_minimal.h"
@@ -53,11 +53,11 @@ typedef enum : uint32_t {
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   ra8_pin_validator_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
-   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+   * complete on the first iteration in RA8_OFF_TARGET. */
   *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
 }
 
@@ -117,7 +117,7 @@ static void test_lx_console_heartbeat_loop_writes(void)
   static const char heartbeat[] = "[lx] cycle\r\n";
   /* ra8_board_uart_console_init wraps ra8_sci_init which clears CSR via
    * CFCLR; re-seed TDRE so each putc spin completes immediately under
-   * RA8_SIMULATOR_MODE. */
+   * RA8_OFF_TARGET. */
   volatile r_sci_regs_t* sci_reg = ra8_sci((uint8_t)k_ra8_board_uart_console_sci_channel);
   for (uint8_t i = 0U; i < (uint8_t)k_test_lx_burnin_iters; i++) {
     sci_reg->CSR = (uint32_t)(1U << (uint8_t)k_ra8_sci_csr_bit_tdre);
@@ -161,13 +161,13 @@ static void test_lx_console_write_before_init_rejected(void)
   static const uint8_t s[] = "panic\r\n";
   /* The persistent init flag may already be set by a prior case, so the
    * rejection is enforced by the console SCI TX wait timing out on an
-   * un-staged CSR.TDRE.  The sim MMIO seam succeeds unarmed waits on the
+   * un-staged CSR.TDRE.  The fake MMIO seam succeeds unarmed waits on the
    * first poll, so arm the exact CSR the putc wait polls
    * (ra8_sci_putc_polling -> ra8_hw_wait_flag_set32(&reg->CSR, ...)) to
    * force k_ra8_err_hw_timeout. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_sim_mmio_fail_wait(
+    ra8_fake_mmio_fail_wait(
       (const volatile void*)&ra8_sci((uint8_t)k_ra8_board_uart_console_sci_channel)->CSR));
   TEST_ASSERT(ra8_board_uart_console_write(s, sizeof(s) - 1U) != k_ra8_ok);
   TEST_END("threadx_levelx_demo: console write before init rejected");
@@ -184,7 +184,7 @@ static void test_lx_console_flush_before_init_rejected(void)
 {
   reset_world();
   TEST_BEGIN("threadx_levelx_demo: console flush before init returns cleanly");
-  /* RA8_SIMULATOR_MODE short-circuits the SCI TEND wait so flush returns
+  /* RA8_OFF_TARGET short-circuits the SCI TEND wait so flush returns
    * ok even when the channel was never opened. demo_panic_halt() casts
    * the return to (void); we just assert no crash here. */
   (void)ra8_board_uart_console_flush();

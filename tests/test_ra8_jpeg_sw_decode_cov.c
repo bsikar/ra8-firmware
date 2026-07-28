@@ -41,8 +41,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -910,8 +910,8 @@ static void test_decode_grayscale_edge_success(void)
  * @brief Test entry point.
  *
  * @details
- * Runs every ra8_jpeg_sw_decode.c coverage fixture.  ra8_sim_mmap_reset()
- * clears the simulated MMIO backing store per project convention; none
+ * Runs every ra8_jpeg_sw_decode.c coverage fixture.  ra8_fake_mmap_reset()
+ * clears the fake MMIO backing store per project convention; none
  * of these tests touch MMIO (the software codec is pure computation).
  *
  * @return 0 on success; the harness exits non-zero on any assertion
@@ -920,7 +920,7 @@ static void test_decode_grayscale_edge_success(void)
  */
 int32_t main(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   test_decode_top_level_guards();
   test_decode_dqt_guards();
   test_decode_dht_guards();

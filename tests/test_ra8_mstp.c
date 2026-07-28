@@ -9,11 +9,11 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "ra8_mstp_internal.h"
 #include "ra8_mstp_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -27,7 +27,7 @@ typedef enum : uint16_t {
                                  must leave it rather than report zero.          */
 } t_mstp_t;
 
-/* Helper -- read the raw bit value for an id from the simulator
+/* Helper -- read the raw bit value for an id from the fake
  * MMIO so the test can independently confirm what ra8_mstp wrote. */
 static bool peek_bit(ra8_mstp_t id)
 {
@@ -46,7 +46,7 @@ static bool peek_bit(ra8_mstp_t id)
 static void test_init_zeroes_refcounts_and_sets_all_stopped(void)
 {
   TEST_BEGIN("ra8_mstp_init -> all stopped, zero refcounts");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
@@ -76,7 +76,7 @@ static void test_init_zeroes_refcounts_and_sets_all_stopped(void)
 static void test_enable_clears_bit_first_request(void)
 {
   TEST_BEGIN("ra8_mstp_enable: first request clears bit");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT(peek_bit(k_ra8_mstp_sci0)); /* stopped */
@@ -100,7 +100,7 @@ static void test_enable_clears_bit_first_request(void)
 static void test_enable_idempotent_increments_refcount(void)
 {
   TEST_BEGIN("ra8_mstp_enable: second request increments refcount only");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_dmac0_dtc0));
@@ -125,7 +125,7 @@ static void test_enable_idempotent_increments_refcount(void)
 static void test_disable_keeps_bit_clear_until_last_release(void)
 {
   TEST_BEGIN("ra8_mstp_disable: bit stays clear until refcount hits 0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_dmac0_dtc0));
@@ -155,7 +155,7 @@ static void test_disable_keeps_bit_clear_until_last_release(void)
 static void test_disable_underflow_returns_invalid_state(void)
 {
   TEST_BEGIN("ra8_mstp_disable: underflow rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_mstp_disable(k_ra8_mstp_sci0));
@@ -172,7 +172,7 @@ static void test_disable_underflow_returns_invalid_state(void)
 static void test_invalid_id_rejected(void)
 {
   TEST_BEGIN("ra8_mstp_enable / disable / get_refcount: invalid id");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   /* reg=7, bit=0 -> out of range. */
@@ -200,7 +200,7 @@ static void test_invalid_id_rejected(void)
 static void test_get_refcount_null_out(void)
 {
   TEST_BEGIN("ra8_mstp_get_refcount: NULL out_ref");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mstp_get_refcount(k_ra8_mstp_sci0, nullptr));
   TEST_END("ra8_mstp_get_refcount: NULL out_ref");
 }
@@ -214,7 +214,7 @@ static void test_get_refcount_null_out(void)
 static void test_is_stopped_reads_bit(void)
 {
   TEST_BEGIN("ra8_mstp_is_stopped: tracks live bit");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   bool stopped = false;
@@ -239,7 +239,7 @@ static void test_is_stopped_reads_bit(void)
 static void test_neighbor_bits_undisturbed(void)
 {
   TEST_BEGIN("ra8_mstp_enable: neighbor bits unchanged");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   /* Pre-state: every bit set in MSTPCRB. */
@@ -264,7 +264,7 @@ static void test_neighbor_bits_undisturbed(void)
 static void test_all_five_registers_addressable(void)
 {
   TEST_BEGIN("ra8_mstp_enable: covers MSTPCRA..MSTPCRE");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_sram0));  /* A */
@@ -291,7 +291,7 @@ static void test_all_five_registers_addressable(void)
 static void test_refcount_saturation(void)
 {
   TEST_BEGIN("ra8_mstp_enable: refcount saturation rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   /* Push the refcount up to UINT8_MAX (255). */
@@ -319,7 +319,7 @@ static void test_refcount_saturation(void)
 static void test_is_stopped_invalid_id(void)
 {
   TEST_BEGIN("ra8_mstp_is_stopped: invalid id rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   bool stopped = false;
@@ -342,14 +342,14 @@ static void test_is_stopped_invalid_id(void)
 static void test_enable_readback_timeout_rolls_back(void)
 {
   TEST_BEGIN("ra8_mstp_enable: readback timeout rolls the refcount back");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   /* Arm the seam on MSTPCRB (SCI0's register) so the ungate readback
    * never settles: enable must report hw_timeout and roll the count
    * back so a caller retry starts fresh. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(&ra8_mstp()->MSTPCRB));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(&ra8_mstp()->MSTPCRB));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_mstp_enable(k_ra8_mstp_sci0));
   uint8_t ref = k_t_ref_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_get_refcount(k_ra8_mstp_sci0, &ref));
@@ -357,13 +357,13 @@ static void test_enable_readback_timeout_rolls_back(void)
 
   /* Retry leg: the readback settles on its third poll and the enable
    * completes, proving the loop-continuation branch. */
-  ra8_sim_mmio_reset();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after(&ra8_mstp()->MSTPCRB, 2U));
+  ra8_fake_mmio_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_satisfy_after(&ra8_mstp()->MSTPCRB, 2U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_sci0));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_get_refcount(k_ra8_mstp_sci0, &ref));
   TEST_ASSERT_EQ(1U, ref);
 
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
   TEST_END("ra8_mstp_enable: readback timeout rolls the refcount back");
 }
 
@@ -378,20 +378,20 @@ static void test_enable_readback_timeout_rolls_back(void)
 static void test_disable_readback_timeout_rolls_back(void)
 {
   TEST_BEGIN("ra8_mstp_disable: readback timeout keeps the module owned");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_sci0));
 
   /* The gate readback never settles: disable must report hw_timeout
    * and keep the refcount at 1 so ownership is not lost. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(&ra8_mstp()->MSTPCRB));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(&ra8_mstp()->MSTPCRB));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_mstp_disable(k_ra8_mstp_sci0));
   uint8_t ref = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_get_refcount(k_ra8_mstp_sci0, &ref));
   TEST_ASSERT_EQ(1U, ref);
 
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
   TEST_END("ra8_mstp_disable: readback timeout keeps the module owned");
 }
 
@@ -407,15 +407,15 @@ static void test_disable_readback_timeout_rolls_back(void)
 static void test_init_readback_timeout(void)
 {
   TEST_BEGIN("ra8_mstp_init: readback timeout on the last register surfaces");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   /* Fail the LAST register's readback so MSTPCRA..MSTPCRD settle first:
    * the init loop must iterate through all five before reporting. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(&ra8_mstp()->MSTPCRE));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(&ra8_mstp()->MSTPCRE));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_mstp_init());
 
-  ra8_sim_mmio_reset();
+  ra8_fake_mmio_reset();
   TEST_END("ra8_mstp_init: readback timeout on the last register surfaces");
 }
 
@@ -447,7 +447,7 @@ typedef enum : uint32_t {
 static void test_mstp_ns_mask_reads_psar(void)
 {
   TEST_BEGIN("ra8_mstp_ns_mask_internal: reads PSAR, 0 for MSTPCRA");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* MSTPCRA has no attribution register -> always 0 (fully Secure-owned). */
   TEST_ASSERT_EQ(0U, ra8_mstp_ns_mask_internal((uint8_t)k_ra8_mstp_reg_a));
@@ -475,8 +475,8 @@ static void test_mstp_ns_mask_reads_psar(void)
 static void test_mstp_init_passes_with_ns_usb(void)
 {
   TEST_BEGIN("ra8_mstp_init: succeeds with USB delegated Non-secure");
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
 
   /* Mark both USB controllers Non-secure before the substrate init runs. */
   *(volatile uint32_t*)k_t_psarb_addr = (uint32_t)k_t_psarb_usb_ns;

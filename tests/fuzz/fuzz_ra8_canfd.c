@@ -21,7 +21,7 @@
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
-#include "ra8_sim_mmap.h"
+#include "ra8_fake_mmap.h"
 
 enum : uint32_t {
   k_fuzz_canfd_max_input = 1024U, /**< Fuzz CANFD maximum input.      */
@@ -34,7 +34,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   if (size < (size_t)k_fuzz_canfd_header || size > (size_t)k_fuzz_canfd_max_input) {
     return 0;
   }
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   if (ra8_canfd_init((uint8_t)k_fuzz_canfd_channel) != k_ra8_ok) {
     return 0;
   }

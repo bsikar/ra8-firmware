@@ -1,11 +1,11 @@
 # usb_host_keyboard (USB host HID boot-keyboard over the self-loop)
 
 Validates the first-party USB **host** HID keyboard path with no real keyboard:
-the board hosts on one jack and **simulates a boot-keyboard peripheral** on the
+the board hosts on one jack and **emulates a boot-keyboard peripheral** on the
 other over the loop cable (J7 HS host <-> J11 FS device). One image runs both
 USB stacks.
 
-- **USBFS (J11) = device (simulated keyboard):** a ThreadX + USBX HID class
+- **USBFS (J11) = device (emulated keyboard):** a ThreadX + USBX HID class
   advertising the standard boot-keyboard report descriptor (interface subclass 1
   / protocol 1). A worker queues the 8-byte boot report
   `[modifier][reserved][keycode x6]` with the keycodes for "RA8D2".

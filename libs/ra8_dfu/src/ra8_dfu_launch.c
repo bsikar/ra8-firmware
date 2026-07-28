@@ -88,7 +88,7 @@ void ra8_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry)
   }
 #endif /* RA8_ENABLE_ROOT_OF_TRUST */
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   const volatile uint32_t* s     = (const volatile uint32_t*)src;
   volatile uint32_t*       d     = (volatile uint32_t*)(uintptr_t)k_ra8_dfu_run_base;
   const uint32_t           words = img_len / (uint32_t)sizeof(uint32_t);
@@ -112,5 +112,5 @@ void ra8_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry)
                    : "r"(initial_sp), "r"(reset_entry)
                    : "memory");
   __builtin_unreachable();
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 }

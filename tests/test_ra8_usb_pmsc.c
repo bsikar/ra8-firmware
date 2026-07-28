@@ -10,8 +10,8 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pmsc.h"
 #include "ra8_usb_pmsc_internal.h"
@@ -190,7 +190,7 @@ static const ra8_usb_pmsc_storage_t s_test_storage = {
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   (void)ra8_usb_pmsc_close();
   s_storage_state                = (test_storage_state_t){};

@@ -8,7 +8,7 @@
  * sequencing is owned + covered by `ra8_sdcard` / `ra8_sdhi` unit tests; this
  * test pins down the deterministic LCG payload pattern and the "read-back
  * matches" round-trip verdict -- both of which are pure C with no MMIO, so
- * they run in-process without any ra8_sim_mmap.
+ * they run in-process without any ra8_fake_mmap.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

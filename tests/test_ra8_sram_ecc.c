@@ -4,8 +4,8 @@
  *
  * @details
  * Split out of test_ra8_sram.c to keep each test translation unit under the
- * repository file-size cap. Drives the same host-side simulated SRAM control
- * window (``tests/mocks/ra8_sim_mmap.c``). This sibling owns the set_mode /
+ * repository file-size cap. Drives the same host-side fake SRAM control
+ * window (``tests/mocks/ra8_fake_mmap.c``). This sibling owns the set_mode /
  * set_eccrgn / wait-state setters, status decode / clear, zero-init, ECC
  * self-test, bank info, security, boundary, dispatch, and MC/DC vector
  * tests; the init / deinit / stop contract tests stay in test_ra8_sram.c.
@@ -15,8 +15,8 @@
  */
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
-#include "ra8_sim_mmap.h"
 #include "ra8_sram.h"
 #include "ra8_sram_regs.h"
 #include "unity_minimal.h"
@@ -115,7 +115,7 @@ static void stub_bank_error_cb(void* ctx, uint8_t bank, bool is_2bit, uintptr_t 
 
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   s_cb_count          = 0U;
   s_cb_last_bank      = 0U;
@@ -333,7 +333,7 @@ static void test_status_decode(void)
   const ra8_sram_config_t cfg = make_default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
 
-  /* Inject error flags directly into the simulated SRAMESR. */
+  /* Inject error flags directly into the fake SRAMESR. */
   volatile r_sram_regs_t* regs = ra8_sram_regs();
   regs->SRAMESR =
     (uint16_t)((uint16_t)k_ra8_sram_err_bank0_1bit | (uint16_t)k_ra8_sram_err_bank3_2bit);

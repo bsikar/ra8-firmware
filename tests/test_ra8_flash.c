@@ -4,7 +4,7 @@
  *
  * @details
  * The code-MRAM data window (``0x02000000`` .. ``0x02100000``) is
- * NOT backed by ``ra8_sim_mmap`` -- attempting a real STR into that
+ * NOT backed by ``ra8_fake_mmap`` -- attempting a real STR into that
  * range from the host test would segfault. Tests therefore exercise:
  *
  *   - the controller-register paths (init / deinit / status / rww);
@@ -16,7 +16,7 @@
  * The end-to-end write loop and the actual ARC counters that live in
  * unmapped extra-MRAM (``0x02C9F000`` and above) are exercised on the
  * embedded target only -- on the host they segfault because
- * ``ra8_sim_mmap.c`` only backs ``0x02C00000 .. 0x02D00000`` and the
+ * ``ra8_fake_mmap.c`` only backs ``0x02C00000 .. 0x02D00000`` and the
  * NSEC/SEC counter pages live past that window.
  *
  * This binary owns init/status/programming-validation/protection/
@@ -34,11 +34,11 @@
 #include <stdio.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_flash.h"
 #include "ra8_flash_internal.h"
 #include "ra8_flash_regs.h"
-#include "ra8_sim_mmap.h"
-#include "ra8_sim_mmio.h"
 #include "support/flash_test_util.h"
 #include "unity_minimal.h"
 
@@ -65,7 +65,7 @@ typedef enum : uint32_t {
 static void test_init_happy(void)
 {
   TEST_BEGIN("flash init happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
@@ -92,7 +92,7 @@ static void test_init_happy(void)
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("flash init null cfg");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_flash_init(nullptr));
   TEST_END("flash init null cfg");
 }
@@ -106,7 +106,7 @@ static void test_init_null_cfg(void)
 static void test_init_bad_mrcfreq(void)
 {
   TEST_BEGIN("flash init bad mrcfreq");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_flash_cfg_t cfg = make_cfg();
   cfg.mrcfreq_mhz     = (uint16_t)k_test_bad_freq;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_flash_init(&cfg));
@@ -122,7 +122,7 @@ static void test_init_bad_mrcfreq(void)
 static void test_init_bad_mrefreq(void)
 {
   TEST_BEGIN("flash init bad mrefreq");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_flash_cfg_t cfg = make_cfg();
   cfg.mrefreq_mhz     = (uint8_t)k_test_bad_efreq; /* truncates to 0 only if uint8_t */
   /* Use a value > 0x7D to actually trigger validation. */
@@ -140,7 +140,7 @@ static void test_init_bad_mrefreq(void)
 static void test_init_all_optional_features_disabled(void)
 {
   TEST_BEGIN("flash init optional features disabled");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_flash_cfg_t cfg    = make_cfg();
   cfg.prefetch_en        = false;
   cfg.ecc_encoder_enable = false;
@@ -165,7 +165,7 @@ static void test_init_all_optional_features_disabled(void)
 static void test_deinit_locks_everything(void)
 {
   TEST_BEGIN("flash deinit locks");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
   /* Pretend a sticky error bit is set. */
@@ -192,7 +192,7 @@ static void test_deinit_locks_everything(void)
 static void test_get_status_paths(void)
 {
   TEST_BEGIN("flash get_status paths");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* NULL out -> rejected. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_flash_get_status(nullptr));
@@ -216,7 +216,7 @@ static void test_get_status_paths(void)
 static void test_get_extended_status(void)
 {
   TEST_BEGIN("flash get_extended_status");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_flash_get_extended_status(nullptr));
 
@@ -245,7 +245,7 @@ static void test_get_extended_status(void)
 static void test_clear_status_paths(void)
 {
   TEST_BEGIN("flash clear_status paths");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Reject a mask that includes non-clearable bits. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_flash_clear_status((uint8_t)k_ra8_mrcps_mask_prgbsyc));
@@ -253,7 +253,7 @@ static void test_clear_status_paths(void)
   /* Valid mask: PRGERRC + ECCERRC. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = k_flash_stamp_mrcps2;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_clear_status((uint8_t)k_ra8_mrcps_mask_errors));
-  /* The driver writes the W1C mask; the sim mmap stores whatever we wrote. */
+  /* The driver writes the W1C mask; the fake mmap stores whatever we wrote. */
   TEST_ASSERT_EQ(k_ra8_mrcps_mask_errors, (*ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps)));
   TEST_END("flash clear_status paths");
 }
@@ -267,7 +267,7 @@ static void test_clear_status_paths(void)
 static void test_set_rww_disable(void)
 {
   TEST_BEGIN("flash set_rww_disable");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_set_rww_disable(true));
   TEST_ASSERT_EQ(0, (*ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcpfb)));
@@ -289,7 +289,7 @@ static void test_set_rww_disable(void)
 static void test_write_block_validation(void)
 {
   TEST_BEGIN("flash write_block validation");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   const uint8_t buf[k_ra8_mram_write_size_bytes] = {};
 
@@ -334,7 +334,7 @@ static void test_write_block_validation(void)
 static void test_erase_block_alignment(void)
 {
   TEST_BEGIN("flash erase_block alignment");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_flash_erase_block((uint32_t)k_test_addr_misaligned, k_ra8_flash_world_ns));
@@ -347,10 +347,10 @@ static void test_erase_block_alignment(void)
  * code under test that this case touches)
  */
 
-static void test_write_block_simulator_reachable_paths(void)
+static void test_write_block_off_target_reachable_paths(void)
 {
-  TEST_BEGIN("flash write_block simulator reachable paths");
-  ra8_sim_mmap_reset();
+  TEST_BEGIN("flash write_block fake reachable paths");
+  ra8_fake_mmap_reset();
   const uint8_t buf[4] = {0x11U, 0x22U, 0x33U, 0x44U};
 
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = (uint8_t)k_ra8_mrcps_mask_abufemp;
@@ -370,7 +370,7 @@ static void test_write_block_simulator_reachable_paths(void)
                                        sizeof(buf),
                                        k_ra8_flash_world_ns));
   TEST_ASSERT_EQ(k_ra8_mrcpc0_key_disable, (*ra8_mram_reg16((uint16_t)k_ra8_mram_off_mrcpc0)));
-  TEST_END("flash write_block simulator reachable paths");
+  TEST_END("flash write_block fake reachable paths");
 }
 
 /* ---------------------------------------------------------------------------
@@ -385,7 +385,7 @@ static void test_write_block_simulator_reachable_paths(void)
 static void test_block_protect_set(void)
 {
   TEST_BEGIN("flash block_protect_set");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Permanent + unlock is rejected. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -416,7 +416,7 @@ static void test_block_protect_set(void)
 static void test_pe_mode_round_trip(void)
 {
   TEST_BEGIN("flash pe_mode round trip");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pre-stage MENTRYR so enter sees PE bit immediately. */
   *ra8_mram_reg16((uint16_t)k_ra8_mram_off_mentryr) = (uint16_t)k_ra8_mentryr_mask_pe_mode;
@@ -440,7 +440,7 @@ static void test_pe_mode_round_trip(void)
 static void test_force_stop_happy(void)
 {
   TEST_BEGIN("flash force_stop happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* Pre-stage MSTATR.MRDY so the wait loop returns immediately. */
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = (uint32_t)k_ra8_mstatr_mask_mrdy;
@@ -457,7 +457,7 @@ static void test_force_stop_happy(void)
 static void test_force_stop_cmdlk(void)
 {
   TEST_BEGIN("flash force_stop cmdlk");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = (uint32_t)k_ra8_mstatr_mask_mrdy;
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mastat)  = (uint8_t)k_ra8_mastat_mask_cmdlk;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_flash_force_stop());
@@ -473,7 +473,7 @@ static void test_force_stop_cmdlk(void)
 static void test_force_stop_timeout(void)
 {
   TEST_BEGIN("flash force_stop timeout");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = 0U;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_flash_force_stop());
   TEST_END("flash force_stop timeout");
@@ -488,7 +488,7 @@ static void test_force_stop_timeout(void)
 static void test_reset_happy(void)
 {
   TEST_BEGIN("flash reset happy");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
@@ -510,7 +510,7 @@ static void test_reset_happy(void)
 static void test_reset_not_initialized_and_stop_error(void)
 {
   TEST_BEGIN("flash reset not initialized and stop error");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_flash_deinit();
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_flash_reset());
 
@@ -534,7 +534,7 @@ static void test_reset_not_initialized_and_stop_error(void)
 static void test_set_startup_area_temporary(void)
 {
   TEST_BEGIN("flash set_startup_area temporary");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   /* MENTRYR is read back as PE; MSTATR mrdy stays high. */
   *ra8_mram_reg16((uint16_t)k_ra8_mram_off_mentryr) = (uint16_t)k_ra8_mentryr_mask_pe_mode;
@@ -559,7 +559,7 @@ static void test_set_startup_area_temporary(void)
 static void test_set_startup_area_default_and_permanent(void)
 {
   TEST_BEGIN("flash set_startup_area default and permanent");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = (uint32_t)k_ra8_mstatr_mask_mrdy;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_set_startup_area(k_ra8_flash_startup_default, true));
@@ -582,7 +582,7 @@ static void test_set_startup_area_default_and_permanent(void)
 static void test_get_startup_area(void)
 {
   TEST_BEGIN("flash get_startup_area");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_flash_get_startup_area(nullptr, nullptr));
 
@@ -620,7 +620,7 @@ static void (*const s_test_roster[])(void) = {
   test_set_rww_disable,
   test_write_block_validation,
   test_erase_block_alignment,
-  test_write_block_simulator_reachable_paths,
+  test_write_block_off_target_reachable_paths,
   test_block_protect_set,
   test_pe_mode_round_trip,
   test_force_stop_happy,

@@ -10,9 +10,9 @@
 
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_icu_regs.h"
 #include "ra8_isr.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -62,7 +62,7 @@ static void stub_handler_b(void* ctx)
 static void test_init_clears_state(void)
 {
   TEST_BEGIN("ra8_isr_init clears slots");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
 
   uint16_t slot = 0U;
@@ -81,7 +81,7 @@ static void test_init_clears_state(void)
 static void test_register_allocates_first_slot(void)
 {
   TEST_BEGIN("ra8_isr_register: first registration gets slot 0");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
 
   uint16_t slot = k_isr_slot_poison;
@@ -110,7 +110,7 @@ static void test_register_allocates_first_slot(void)
 static void test_register_rejects_null_handler(void)
 {
   TEST_BEGIN("ra8_isr_register: NULL handler rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -127,7 +127,7 @@ static void test_register_rejects_null_handler(void)
 static void test_register_rejects_bad_priority(void)
 {
   TEST_BEGIN("ra8_isr_register: priority out of range");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_isr_register((ra8_elc_event_t)1U, stub_handler_a, nullptr, 99U, nullptr));
@@ -143,7 +143,7 @@ static void test_register_rejects_bad_priority(void)
 static void test_register_duplicate_rejected(void)
 {
   TEST_BEGIN("ra8_isr_register: duplicate event rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_isr_register((ra8_elc_event_t)7U, stub_handler_a, nullptr, 0U, nullptr));
@@ -161,7 +161,7 @@ static void test_register_duplicate_rejected(void)
 static void test_unregister_frees_slot(void)
 {
   TEST_BEGIN("ra8_isr_unregister frees the slot");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_isr_register((ra8_elc_event_t)9U, stub_handler_a, nullptr, 0U, nullptr));
@@ -179,7 +179,7 @@ static void test_unregister_frees_slot(void)
 static void test_dispatch_invokes_handler_with_ctx(void)
 {
   TEST_BEGIN("ra8_isr_dispatch invokes the registered handler");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
   reset_counts();
 
@@ -202,7 +202,7 @@ static void test_dispatch_invokes_handler_with_ctx(void)
 static void test_dispatch_out_of_range_is_noop(void)
 {
   TEST_BEGIN("ra8_isr_dispatch out-of-range is a no-op");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
   reset_counts();
 
@@ -220,7 +220,7 @@ static void test_dispatch_out_of_range_is_noop(void)
 static void test_multiple_events_get_distinct_slots(void)
 {
   TEST_BEGIN("ra8_isr_register: distinct events -> distinct slots");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
 
   uint16_t slot_a = 0U;
@@ -243,7 +243,7 @@ static void test_multiple_events_get_distinct_slots(void)
 static void test_set_priority_roundtrip(void)
 {
   TEST_BEGIN("ra8_isr_set_priority: updates stored priority");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_isr_register((ra8_elc_event_t)0x20U, stub_handler_a, nullptr, 0U, nullptr));
@@ -263,7 +263,7 @@ static void test_set_priority_roundtrip(void)
 static void test_lookup_slot_null_out(void)
 {
   TEST_BEGIN("ra8_isr_lookup_slot: NULL out rejected");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_isr_lookup_slot((ra8_elc_event_t)1U, nullptr));
   TEST_END("ra8_isr_lookup_slot: NULL out rejected");
@@ -296,7 +296,7 @@ static void test_lookup_slot_null_out(void)
 static void test_find_event_mcdc_compound_guard(void)
 {
   TEST_BEGIN("internal_find_event MC/DC: in_use && event==query");
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
 
   /* Vector 1: in_use=F (table empty). Decision must be false for every

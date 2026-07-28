@@ -9,7 +9,7 @@
  *  - **Drop-in block-device swap.** A local backend-agnostic engine (::run_backend,
  *    the host mirror of `swap_run_one`) runs the IDENTICAL FAT/VFS round-trip over
  *    two capability-different backends: an in-SRAM RAM block device and the
- *    register-level xSPI NOR model in `tests/mocks/ra8_sim_xspi_flash.c` (an
+ *    register-level xSPI NOR model in `tests/mocks/ra8_fake_xspi_flash.c` (an
  *    erase-before-write medium). Both round-trip byte-for-byte behind the one
  *    ::ra8_io_blockdev_t vtable, so the media are proven interchangeable.
  *  - **VFS open/read/write/close.** Each backend is reached by name
@@ -31,6 +31,8 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmio.h"
+#include "ra8_fake_xspi_flash.h"
 #include "ra8_fs.h"
 #include "ra8_io_blockdev.h"
 #include "ra8_io_blockdev_ram.h"
@@ -38,8 +40,6 @@
 #include "ra8_io_stream.h"
 #include "ra8_io_stream_ram.h"
 #include "ra8_io_vfs.h"
-#include "ra8_sim_mmio.h"
-#include "ra8_sim_xspi_flash.h"
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
@@ -445,8 +445,8 @@ static void test_swap_integration(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_init());
 
   /* xSPI NOR model: reset the MMIO seam, install the flash, bring the driver up. */
-  ra8_sim_mmio_reset();
-  ra8_sim_xspi_flash_install();
+  ra8_fake_mmio_reset();
+  ra8_fake_xspi_flash_install();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init(0, k_ra8_xspi_lio_1s1s1s));
 
   ra8_io_blockdev_t           ram_bd    = {};

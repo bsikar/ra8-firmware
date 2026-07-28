@@ -70,7 +70,7 @@ MIN_CALL_RESOLUTION = 0.98
 GENERATED_HEADERS = frozenset(
     {
         "literata_latin1.h",  # libs/ra8_fonts generator output
-        "ra8_npu_model_addk_sim.h",  # Vela model-compiler output
+        "ra8_npu_model_addk_fake.h",  # Vela model-compiler output
     }
 )
 
@@ -78,7 +78,7 @@ GENERATED_HEADERS = frozenset(
 #: from GENERATED_HEADERS (never produced without a build step, on any host):
 #: these exist only on the OS that ships them. ``sys/personality.h`` is
 #: glibc/Linux-only (the ``personality()`` syscall this checker's own probe
-#: (tests/mocks/ra8_sim_mmap.c) calls has no Darwin/BSD equivalent), so the
+#: (tests/mocks/ra8_fake_mmap.c) calls has no Darwin/BSD equivalent), so the
 #: include can never resolve on macOS. That is expected, not a parse defect:
 #: CLAUDE.md already documents that the host test suite does not run natively
 #: on macOS at all (mmap of peripheral RAM below 4 GiB is refused there), so
@@ -434,8 +434,8 @@ def tu_args(path: pathlib.Path) -> list[str]:
 
     Host tests carry the two macros ``tests/CMakeLists.txt`` compiles them
     with. Without them the mock TUs parse under a configuration nothing
-    ever builds: the ``ra8_sim_mmio_*`` fault-seam prototypes in
-    ``ra8_hw_err.h`` sit behind ``RA8_SIMULATOR_MODE && UNIT_TEST``, so
+    ever builds: the ``ra8_fake_mmio_*`` fault-seam prototypes in
+    ``ra8_hw_err.h`` sit behind ``RA8_OFF_TARGET && UNIT_TEST``, so
     the definitions in ``tests/mocks/`` looked like undeclared external
     symbols and every call through the seam went unresolved.
     """
@@ -453,7 +453,7 @@ def tu_args(path: pathlib.Path) -> list[str]:
     )
     config = ["-DRA8_HOST_BUILD=1", *_crypto_config_args()]
     if is_test_path(str(path)):
-        config += ["-DRA8_SIMULATOR_MODE", "-DUNIT_TEST"]
+        config += ["-DRA8_OFF_TARGET", "-DUNIT_TEST"]
     return [*lang, *config, *_INCLUDE_ARGS]
 
 

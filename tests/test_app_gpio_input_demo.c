@@ -17,13 +17,13 @@
 
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_pin_validator.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
 }
 

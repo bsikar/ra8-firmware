@@ -27,7 +27,7 @@
  * RXI event) is handled downstream once the NSC layer
  * can annotate the trigger table safely; uses the
  * ``k_ra8_elc_event_none`` software-start path which is what the
- * host-side ra8_sim_dma loop simulates.
+ * host-side ra8_fake_dma loop simulates.
  *
  * ## Register layout
  *
@@ -278,13 +278,13 @@ typedef enum : uint8_t {
  * The wait is bounded by ``ra8_hw_wait_flag_set32`` (medium budget --
  * roughly 65k tight-loop iterations), so the call is guaranteed to
  * return in finite time even if TXD is wedged. On the host
- * (`RA8_SIMULATOR_MODE`) the simulator does not model the shift-register
+ * (`RA8_OFF_TARGET`) the fake does not model the shift-register
  * drain, so this routine returns ``k_ra8_ok`` without polling.
  *
  * @param[in] channel SCI channel (0..9).
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok TEND observed high (or simulator stub).
+ * @retval k_ra8_ok TEND observed high (or fake stub).
  * @retval k_ra8_err_invalid_arg ``channel`` > 9.
  * @retval k_ra8_err_hw_timeout Spin budget elapsed without TEND.
  *

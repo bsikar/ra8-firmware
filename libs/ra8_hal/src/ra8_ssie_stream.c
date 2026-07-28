@@ -297,7 +297,7 @@ ra8_err_t ra8_ssie_send_iso(uint8_t channel, const uint32_t* buffer, uint16_t sa
       reg->SSIFTDR = buffer[sent];
       ++sent;
     }
-    /* In simulator/host builds the TDC count never advances because
+    /* In fake/host builds the TDC count never advances because
      * no clock is consuming TX samples; treat the slot as drained
      * immediately on every loop pass to remain bounded. */
   }

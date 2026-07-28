@@ -18,9 +18,9 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mpu.h"
 #include "ra8_mpu_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -37,8 +37,8 @@ typedef enum : uint32_t {
  * @brief Reset host-side mock MMIO and seed MPU_TYPE.DREGION.
  *
  * @details
- * The host simulator zero-fills the SCB/MPU window on each
- * ``ra8_sim_mmap_reset``. The production silicon ships ``MPU_TYPE.DREGION``
+ * The host fake zero-fills the SCB/MPU window on each
+ * ``ra8_fake_mmap_reset``. The production silicon ships ``MPU_TYPE.DREGION``
  * = 16 (Cortex-M85 TRM, "MPU_TYPE"); without seeding that field the
  * acceptance path in ``ra8_mpu_validate_cfg`` would reject every region
  * configuration as ``region_count > implemented``. We mirror the
@@ -47,7 +47,7 @@ typedef enum : uint32_t {
  */
 static void reset_world(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   ra8_mpu_regs()->TYPE = (uint32_t)k_test_mpu_simple_dregion16;
 }
 

@@ -10,7 +10,7 @@
  * hosts on one jack and simulates a boot-keyboard peripheral on the other over
  * the loop cable. One image runs both USB stacks:
  *
- *  - USBFS (J11) = DEVICE (the simulated keyboard): a ThreadX + USBX HID class
+ *  - USBFS (J11) = DEVICE (the fake keyboard): a ThreadX + USBX HID class
  *    advertising the standard boot-keyboard report descriptor (interface
  *    subclass 1 / protocol 1). A worker continuously queues the 8-byte boot
  *    report [modifier][reserved][keycode x6] with the keycodes for "RA8D2".
@@ -52,7 +52,7 @@
 #include "ra8_usb.h"
 #include "usb_host_keyboard_steps.h"
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -128,7 +128,7 @@ typedef enum : uint32_t {
   k_hid_phase_pass   = 4U, /**< All reports verified.       */
 } hid_phase_t;
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX host worker + shared activation semaphore */
@@ -717,7 +717,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA8_SIMULATOR_MODE */
+#endif /* !RA8_OFF_TARGET */
 
 /* -------------------------------------------------------------------------- */
 /* Startup */
@@ -852,7 +852,7 @@ int32_t main(void)
 
   ra8_isr_globals_enable();
 
-#ifndef RA8_SIMULATOR_MODE
+#ifndef RA8_OFF_TARGET
   tx_kernel_enter();
 #endif
 

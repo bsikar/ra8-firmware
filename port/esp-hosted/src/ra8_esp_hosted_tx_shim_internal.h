@@ -7,7 +7,7 @@
  *
  * @details
  * On the cross-compiled target the port includes the real ``tx_api.h``. The
- * host unit-test build (``RA8_SIMULATOR_MODE``) links no ThreadX at all, so
+ * host unit-test build (``RA8_OFF_TARGET``) links no ThreadX at all, so
  * this header stands in for it. Unlike the always-succeeding stub used by
  * ``libs/ra8_wdt_supervisor``, this one is a **model**: it keeps real queue
  * rings, real semaphore counts and a real bump-allocating byte pool, and it
@@ -30,7 +30,7 @@
  * ``RA8_ESP_HOSTED_TX_SHIM_IMPL`` before the include and owns the definition;
  * the rest see an ``extern`` declaration. Every function is ``static inline``
  * and works on that single object, so the port sources and the tests observe
- * the same simulated kernel.
+ * the same fake kernel.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -141,7 +141,7 @@ typedef unsigned char UCHAR; /* NOLINT(readability-identifier-naming) -- ThreadX
 
 /**
  * @enum ra8_esp_hosted_tx_shim_limits_t
- * @brief Fixed bounds of the simulated kernel.
+ * @brief Fixed bounds of the fake kernel.
  * @details The model exists to drive the port's decision branches, not to be
  * a second ThreadX, so every bound below is the worst case the port reaches.
  * @invariant ::k_ra8_esp_hosted_tx_shim_queue_cap_max bounds every ring the
@@ -333,7 +333,7 @@ typedef struct {
 
 /**
  * @struct ra8_esp_hosted_tx_shim_t
- * @brief The whole simulated kernel state, shared by every including TU.
+ * @brief The whole fake kernel state, shared by every including TU.
  * @details Tests read these fields directly rather than through accessors: an
  * accessor per counter would be more code than the model itself.
  * @invariant ``armed[f]`` true means the next call in family ``f`` returns
@@ -349,10 +349,10 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ULONG    ticks; /**< Simulated 32-bit kernel tick counter. */
-  UINT     status[k_ra8_esp_hosted_tx_shim_family_count]; /**< Injected codes.   */
-  bool     armed[k_ra8_esp_hosted_tx_shim_family_count];  /**< Injection armed.  */
-  uint32_t calls[k_ra8_esp_hosted_tx_shim_family_count];  /**< Per-family calls. */
+  ULONG    ticks;                                         /**< Fake 32-bit kernel tick counter. */
+  UINT     status[k_ra8_esp_hosted_tx_shim_family_count]; /**< Injected codes.                  */
+  bool     armed[k_ra8_esp_hosted_tx_shim_family_count];  /**< Injection armed.                 */
+  uint32_t calls[k_ra8_esp_hosted_tx_shim_family_count];  /**< Per-family calls.                */
   uint32_t sleeps;       /**< Number of ``tx_thread_sleep`` calls.      */
   ULONG    last_sleep;   /**< Ticks requested by the most recent sleep. */
   uint32_t relinquishes; /**< Number of ``tx_thread_relinquish`` calls. */
@@ -360,7 +360,7 @@ typedef struct {
 
 /**
  * @var g_ra8_esp_hosted_tx_shim
- * @brief The one simulated-kernel state object.
+ * @brief The one fake-kernel state object.
  * @details Defined by the TU that sets ``RA8_ESP_HOSTED_TX_SHIM_IMPL``,
  * declared ``extern`` everywhere else.
  * @note Host build only; nothing in the target build references it.
@@ -370,7 +370,7 @@ typedef struct {
 RA8_ESP_HOSTED_TX_SHIM_STORAGE ra8_esp_hosted_tx_shim_t g_ra8_esp_hosted_tx_shim;
 
 /**
- * @brief Clear the whole simulated kernel back to power-on state.
+ * @brief Clear the whole fake kernel back to power-on state.
  * @details Zeroes tick count, call counters and every armed injection. It
  * does not touch caller-owned control blocks: those are the port's statics.
  * @pre The host build is active.
@@ -407,7 +407,7 @@ static inline void ra8_esp_hosted_tx_shim_arm(ra8_esp_hosted_tx_shim_family_t fa
 }
 
 /**
- * @brief Set the simulated kernel tick counter to an exact value.
+ * @brief Set the fake kernel tick counter to an exact value.
  * @details Used to place the counter just below its 32-bit rollover so the
  * port's 64-bit time extension can be driven across the wrap.
  * @param[in] ticks New tick value.

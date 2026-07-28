@@ -290,8 +290,8 @@ uint32_t ra8_flash_dispatch_isr(void)
     internal_deliver(k_ra8_flash_irq_program_err, fa, (uint32_t)mrcps);
     /* W1C the program error bits. */
     *ra8_mram_reg8(k_ra8_mram_off_mrcps) = k_ra8_mrcps_mask_errors;
-#ifdef RA8_SIMULATOR_MODE
-    /* The host-test sim is dumb memory: emulate the W1C clear so the
+#ifdef RA8_OFF_TARGET
+    /* The host-test fake is dumb memory: emulate the W1C clear so the
      * post-dispatch state matches real HW. */
     *ra8_mram_reg8(k_ra8_mram_off_mrcps) &= (uint8_t)~k_ra8_mrcps_mask_errors;
 #endif

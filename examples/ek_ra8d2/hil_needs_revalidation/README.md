@@ -25,8 +25,8 @@ a pass.
 ## EIL == HIL note (coverage this move gives up)
 
 Every app here was passing the `eil-integration` gate (ra8_emulator, headless)
-at the time of the move: they PASS in the simulator but FAIL on the current
-bench. Under the owner's EIL == HIL rule a SIM-pass / HIL-fail is a
+at the time of the move: they PASS in the emulator but FAIL on the current
+bench. Under the owner's EIL == HIL rule a EIL-pass / HIL-fail is a
 divergence worth keeping visible. Because `eil_all.sh` and the
 `hil-eil-parity` gate discover apps only under `hw_validated/hil/`, moving
 these apps out **drops them from the enforcing EIL run set** -- ra8_emulator no

@@ -13,7 +13,7 @@
  * - validate refuses the wrong type tag;
  * - NULL-argument rejection on every entry point.
  *
- * Each test resets ``ra8_sim_mmap`` first so cases stay independent.
+ * Each test resets ``ra8_fake_mmap`` first so cases stay independent.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -22,11 +22,11 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_rsip.h"
 #include "ra8_rsip_key_injection.h"
 #include "ra8_rsip_regs.h"
-#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -57,14 +57,14 @@ typedef enum : uint32_t {
 } ra8_rsip_ki_test_const_t;
 
 /**
- * @brief Reset ra8_sim_mmap before every test so cases stay
+ * @brief Reset ra8_fake_mmap before every test so cases stay
  *        independent of each other.
  *
  * @since 0.1.0
  */
 static void prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 

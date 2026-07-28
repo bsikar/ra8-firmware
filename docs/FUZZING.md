@@ -92,7 +92,7 @@ is an input; default 600 s). The job fails on any crash and uploads
 
 ### macOS note
 
-The host test simulator (`tests/mocks/ra8_sim_mmap.c`) installs RAM at
+The host test fake (`tests/mocks/ra8_fake_mmap.c`) installs RAM at
 the same MCU peripheral addresses via `mmap(MAP_FIXED, 0x40000000)`.
 macOS arm64 refuses MAP_FIXED below 4 GiB, so all host tests --
 including these fuzz harnesses -- run inside the project's existing

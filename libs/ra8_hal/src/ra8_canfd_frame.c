@@ -201,7 +201,7 @@ static uint32_t internal_tx_fdctr(const ra8_canfd_frame_t* frame)
  * k_ra8_canfd_tx_spin (~500 us at 1 GHz / 5 cycles per iter) covers it
  * with margin. The wait is best-effort by design (no error on
  * exhaustion); on host tests the loop-exit decision comes from the
- * ra8_sim_mmio seam so the retry and full-budget legs run there too.
+ * ra8_fake_mmio seam so the retry and full-budget legs run there too.
  *
  * @param[in] reg CANFD register block for the transmitting channel.
  *
@@ -218,8 +218,8 @@ static void internal_wait_tx_complete(volatile r_canfd_t* reg)
 {
   enum : uint8_t { k_ra8_tmsts_tmtrf_done = 0x04U /**< RA8 tmsts tmtrf done. */ };
   for (uint32_t i = 0U; i < k_ra8_canfd_tx_spin; i++) {
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    if (ra8_fake_mmio_wait_eval(
           &reg->CFDTMSTS[k_ra8_canfd_tx_mb_default],
           i,
           ((reg->CFDTMSTS[k_ra8_canfd_tx_mb_default] & k_ra8_tmsts_tmtrf_done) != 0U))) {

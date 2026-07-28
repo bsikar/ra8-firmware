@@ -35,13 +35,13 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
 #include "ra8_fs.h"
 #include "ra8_mstp.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_sci_regs.h"
 #include "ra8_sdmmc_spi.h"
-#include "ra8_sim_mmap.h"
 #include "support/sdmmc_spi_test_util.h"
 #include "unity_minimal.h"
 
@@ -387,16 +387,16 @@ static void test_mcdc_fs_get_capacity_null_or(void)
  */
 
 /**
- * @brief Reset the simulated MMIO window, MSTP model, and pin validator.
+ * @brief Reset the fake MMIO window, MSTP model, and pin validator.
  *
  * @details The factory routes pins and brings up an SCI channel through the
- * real GPIO / SCI HAL, all of which operate on the ``ra8_sim_mmap``-backed
- * register window under ``RA8_SIMULATOR_MODE``. Clearing the pin validator
+ * real GPIO / SCI HAL, all of which operate on the ``ra8_fake_mmap``-backed
+ * register window under ``RA8_OFF_TARGET``. Clearing the pin validator
  * lets each case re-claim the same pins without a "pin already owned" error.
  */
 static void sci_factory_prep(void)
 {
-  ra8_sim_mmap_reset();
+  ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
   ra8_pin_validator_reset();
   (void)ra8_sdmmc_spi_deinit();
