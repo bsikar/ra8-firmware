@@ -27,9 +27,19 @@
 # which is exactly the shape of duplication the roles were written to abolish,
 # one level up.
 #
+# NO HOST NAME IS SPELLED HERE EITHER
+# ----------------------------------
+# Not even in a probe. Every ssh command this script runs is asked for with
+# `fleet.py ssh-target <host>`, which builds it from the declaration's address,
+# user and jump. Spelling `ssh truenas` would have quietly re-introduced #526:
+# those aliases lived in one laptop's ~/.ssh/config, so `make infra-status` from
+# the dev box reported the entire estate unreachable when in fact every machine
+# answered on its address.
+#
 # Commands:
 #   list                 what machines are declared, and how they are sized
 #   doctor               can THIS machine drive infra at all?
+#   ssh-config           name every declared machine in your ~/.ssh/config
 #   check <host>         dry run: what would change, changing nothing
 #   apply <host>         converge that host to the declaration
 #   remove <host>        tear down (classes whose roles implement it)
@@ -43,6 +53,11 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FLEET="${ROOT}/scripts/dev/fleet.py"
+
+# Filled in by ssh_argv(); an array because an ssh command with a ProxyJump is
+# several words and `eval`-ing a string here would be a shell injection seam
+# for no gain.
+RA8_SSH_ARGV=()
 
 die() {
   echo "error: $*" >&2
@@ -61,16 +76,38 @@ cmd_list() {
   fleet list
 }
 
+cmd_ssh_config() {
+  fleet ssh-config --install
+}
+
+# ssh_argv <host>
+#
+# The ssh command that reaches a DECLARED host from this machine, as words.
+# Splitting on whitespace is safe by construction: the fleet-declaration gate
+# rejects an address, user or jump containing any.
+ssh_argv() {
+  local out
+  out="$(fleet ssh-target "$1" 2>/dev/null)" || return 1
+  # Deliberate word splitting; see the note above for why it is safe here.
+  # shellcheck disable=SC2206
+  RA8_SSH_ARGV=(${out})
+}
+
 # --- doctor -----------------------------------------------------------------
 
 # probe_ssh <host> <label> [required]
 #
 # `required` defaults to yes. An OPTIONAL host that is unreachable is reported
 # and returns 0, because not every control node needs to reach every machine --
-# the Proxmox host and the NAS are not needed to provision the dev box. That
-# distinction is a parameter rather than a `|| true` at the call site on
-# purpose: masking the exit status swallows a genuine failure inside the
-# function body along with the one case we meant to tolerate.
+# the Proxmox host is not needed to provision the dev box. That distinction is
+# a parameter rather than a `|| true` at the call site on purpose: masking the
+# exit status swallows a genuine failure inside the function body along with
+# the one case we meant to tolerate.
+#
+# This one takes a raw ssh destination rather than a fleet host, and the only
+# caller left is the Proxmox hypervisor -- deliberately not in the declaration,
+# because it is not a machine CI runs on (docs/CI_FLEET.md section 8). Every
+# DECLARED host is probed by `fleet reach`, over its declared transport.
 probe_ssh() {
   local host="$1" label="$2" required="${3:-yes}"
   # -n is not optional: without it ssh reads its own stdin, and when this script
@@ -128,11 +165,17 @@ cmd_doctor() {
     cat <<'EOF'
 NOT ready to drive infra from this machine.
 
-The estate is split in a way that bites: the Mac reaches every host over ssh
-but has no ansible, and the dev box has ansible but cannot resolve the cluster
-hosts. Whichever machine you drive from needs BOTH -- install ansible where the
-ssh access already is (`pipx install ansible-core`, or `brew install ansible`),
-then `make infra-setup` to write the git-ignored inventory.
+A control node needs two things, and neither is a hand-copied ~/.ssh/config any
+more -- every address is declared in infra/fleet.yml and every command here is
+built from it (#526):
+
+  1. ansible        pipx install ansible-core   (macOS: brew install ansible)
+  2. a key each declared host accepts for its declared login user
+
+Then `make infra-setup` writes the git-ignored inventory, and
+`make infra-ssh-config` names the machines in your ~/.ssh/config so `ssh
+truenas` works too. A host still reported MISS above is one your key is not
+authorised on, or one that is genuinely down -- not one you cannot resolve.
 EOF
   else
     echo "ready: ansible present, inventory written, hosts reachable."
@@ -185,9 +228,13 @@ cmd_scale() {
 
 status_host() {
   local host="$1" label="$2" probe="$3" out
-  # -n for the same reason as probe_ssh: never let a probe eat this script's
-  # own stdin.
-  if ! out="$(ssh -n -o ConnectTimeout=8 -o BatchMode=yes "${host}" "${probe}" 2>&1)"; then
+  if ! ssh_argv "${host}"; then
+    printf '  %-12s UNDECLARED   (no such host in infra/fleet.yml)\n' "${label}"
+    return 1
+  fi
+  # </dev/null for the same reason probe_ssh passes -n: never let a probe eat
+  # this script's own stdin, which is how a remote `bash -s < infra.sh` feeds it.
+  if ! out="$("${RA8_SSH_ARGV[@]}" "${probe}" </dev/null 2>&1)"; then
     printf '  %-12s UNREACHABLE  (%s)\n' "${label}" "${out%%$'\n'*}"
     return 1
   fi
@@ -250,6 +297,7 @@ usage: infra.sh <command> [args]
 
   list                what machines are declared, and how they are sized
   doctor              can THIS machine drive infra at all?
+  ssh-config          name every declared machine in your ~/.ssh/config
   check <host>        dry run -- report what would change, change nothing
   apply <host>        converge that machine to infra/fleet.yml
   remove <host>       tear down (classes whose roles implement it)
@@ -266,6 +314,7 @@ main() {
   case "${cmd}" in
     list) cmd_list ;;
     doctor) cmd_doctor ;;
+    ssh-config) cmd_ssh_config ;;
     status) cmd_status ;;
     check)
       [ $# -ge 1 ] || die "check needs a host: $(host_names | tr '\n' ' ')"

@@ -174,6 +174,7 @@ help:
 	@echo "  make infra-doctor      can THIS machine drive infra at all?"
 	@echo "  make infra-status      what is deployed across the estate, right now (read-only)"
 	@echo "  make infra-check HOST=x  DRY RUN a provision; infra-apply does it for real"
+	@echo "  make infra-ssh-config  make THIS machine a control node (~/.ssh aliases)"
 	@echo "  make infra-setup       first-run onboarding (inventory + credentials)"
 	@echo "                         the whole estate: docs/INFRASTRUCTURE.md"
 	@echo ""

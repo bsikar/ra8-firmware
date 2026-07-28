@@ -220,12 +220,22 @@ inventory to change capacity -- `scripts/checks/check_fleet_declaration.py`
 fails a `host_vars` file that re-declares anything the declaration owns.
 
 ```sh
+make infra-ssh-config              make THIS machine a control node
 make infra-list                    what is declared, and how it is sized
 make infra-status                  what every host is running, right now
 make infra-check HOST=truenas      DRY RUN -- report, change nothing
 make infra-apply HOST=truenas      converge that machine to the declaration
 make infra-scale HOST=win-ci N=1   live capacity change; shrinking DRAINS
 ```
+
+**Reachability is declared too, and never assumed.** Each host carries a real
+`connect.address` (an IP or a resolvable name) plus an optional `jump:` naming
+another fleet host, and every ssh and Ansible invocation is built from those --
+so any machine with ansible and an accepted key can drive the fleet. Addressing
+a host by an `~/.ssh/config` alias is a gate failure: those existed on one
+laptop, which had no ansible, so nothing was a working control node and a
+half-drained NAS sat unconvergeable (#526). `make infra-ssh-config` GENERATES
+the friendly aliases from the declaration; never hand-write them.
 
 **Read `docs/CI_FLEET.md` before touching any of it.** It is the runbook for
 adding a host (with a worked example), retuning one, quiet hours, removal, and

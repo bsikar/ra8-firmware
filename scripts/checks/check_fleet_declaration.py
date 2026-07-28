@@ -8,10 +8,12 @@ and how much of each one CI may use, so an error in it is an error in the
 estate. This checks three things a green Ansible run would not:
 
 1. **The declaration is internally sound.** Every rule in
-   :func:`fleet_model.validate` -- classes and plays that exist, capacity that
-   fits the declared budget, per-instance floors, a parseable quiet-hours
-   window, and an instance count that is either the sizing formula's or comes
-   with a written reason. A number nobody can re-derive is folklore.
+   :func:`fleet_model.validate` -- classes and plays that exist, an address any
+   machine could reach the host at, capacity that fits the declared budget,
+   per-instance floors, a parseable quiet-hours window, and an instance count
+   that is either the sizing formula's or comes with a written reason. A number
+   nobody can re-derive is folklore, and a host addressed by an ssh alias is
+   reachable only from whichever laptop defines it (#526).
 
 2. **Nothing tunes a host twice.** A committed ``host_vars`` file may not
    re-declare a variable the declaration owns. Extra-vars beat ``host_vars``,
@@ -29,6 +31,13 @@ estate. This checks three things a green Ansible run would not:
    slice's unit name (``fleet.py`` passes it to the capacity script) and the
    role creates it. Two spellings would give the host a quiet-hours window that
    freezes a slice nothing ever made -- a schedule that stands nothing down.
+
+5. **No command the tooling builds needs an ssh alias.** Rule 1 checks the
+   INPUT; this checks the derivation, by walking the real ssh argv and the real
+   inventory line for every host and failing on any destination or ProxyJump
+   hop that is a bare label. A future ``-J <fleet name>`` would pass every
+   input rule and still only work on a machine that happened to define that
+   name -- which is the whole of #526, one layer down.
 
 ``--selftest`` runs first in the gate and asserts each rule fires on a
 deliberately broken declaration and stays quiet on a legal one. Without it,
@@ -50,6 +59,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "dev"))
 
 import fleet_model as fm  # noqa: E402 -- sibling tool, path set immediately above
+import fleet_reach as fr  # noqa: E402 -- ditto; the reachability half of the model
 
 # Roles whose variables the mapping derives, keyed by the prefix it emits them
 # under. Every emitted name must exist in the role's defaults, or the role
@@ -113,6 +123,73 @@ def _check_shared_constants() -> list[str]:
     ]
 
 
+def _is_literal(destination: str) -> bool:
+    """Whether an ssh destination is an address rather than a config alias.
+
+    Args:
+        destination: ``[user@]address`` as it would appear on an ssh command
+            line.
+
+    Returns:
+        True when it carries a dot or a colon, i.e. an IPv4/IPv6 literal or a
+        qualified name; False for a bare label, which only resolves through
+        somebody's ``~/.ssh/config``.
+    """
+    address = destination.rpartition("@")[2]
+    return "." in address or ":" in address
+
+
+def _inventory_destinations(entry: str) -> list[str]:
+    """Every host address one generated inventory line hands to Ansible.
+
+    Args:
+        entry: One line of the generated inventory.
+
+    Returns:
+        The ``ansible_host`` value plus every ``ProxyJump`` hop, empty for a
+        ``connection=local`` host, which Ansible never dials.
+    """
+    out = []
+    for field in ("ansible_host=", "-o ProxyJump="):
+        _, found, tail = entry.partition(field)
+        if not found:
+            continue
+        value = tail.split("'")[0].split()[0]
+        out += value.split(",")
+    return out
+
+
+def _check_derived_reach(data: dict[str, Any]) -> list[str]:
+    """No ssh command or inventory line the model builds names an alias.
+
+    Args:
+        data: The parsed declaration. The selftest hands it one whose
+            derivation is broken, so a detector that stopped matching cannot
+            report the real fleet clean forever.
+
+    Returns:
+        One message per derived destination that is a bare label.
+    """
+    problems = []
+    for name in data["hosts"]:
+        argv = fr.ssh_target(data, name)
+        derived = {
+            "the ssh command this tooling builds": [argv[-1], *fr.jump_chain(data, name)],
+            "the generated Ansible inventory": _inventory_destinations(
+                fm.inventory_entry(data, name)
+            ),
+        }
+        problems += [
+            f"{name}: {what} dials '{token}', a bare label rather than an address. It "
+            "would resolve only on a machine whose ~/.ssh/config happened to define it, "
+            "which is exactly the fault #526 removed -- one layer further down."
+            for what, tokens in derived.items()
+            for token in tokens
+            if not _is_literal(token)
+        ]
+    return problems
+
+
 def _good_declaration() -> dict[str, Any]:
     """A minimal legal declaration for the selftest to mutate.
 
@@ -124,7 +201,7 @@ def _good_declaration() -> dict[str, Any]:
         "hosts": {
             "nas": {
                 "class": "docker_linux",
-                "connect": {"ssh": "nas"},
+                "connect": {"address": "10.0.0.2", "user": "deploy"},
                 "provisions": ["ci-runner-docker"],
                 "runners": {
                     "instances": 2,
@@ -140,17 +217,52 @@ def _good_declaration() -> dict[str, Any]:
 
 # name -> a mutation that must produce at least one problem. Each is a rule
 # this gate claims to enforce; a rule with no row here is a rule nothing proves
-# still fires.
+# still fires. Grouped into the three families the validator has, so a family
+# that stopped firing is attributable at a glance.
 def _mutations() -> dict[str, Any]:
     """The broken declarations the selftest asserts are rejected.
 
     Returns:
         Rule name to a function that damages a good declaration.
     """
+    return {**_reach_mutations(), **_capacity_mutations(), **_dev_slice_mutations()}
+
+
+def _reach_mutations() -> dict[str, Any]:
+    """Breakages in how a machine is declared and reached (#526).
+
+    Returns:
+        Rule name to a function that damages a good declaration.
+    """
     return {
         "unknown class": lambda d: d["hosts"]["nas"].update(class_="x") or _set(d, "class", "nope"),
-        "no connect.ssh": lambda d: d["hosts"]["nas"]["connect"].clear(),
         "unknown play": lambda d: d["hosts"]["nas"].update(provisions=["not-a-play"]),
+        "no connect.address": lambda d: d["hosts"]["nas"]["connect"].clear(),
+        # THE regression guard. A bare label is an ~/.ssh/config alias, and a
+        # fleet addressed by aliases is drivable only from whichever machine
+        # defines them -- which is how truenas sat at half capacity with nothing
+        # able to converge it back.
+        "address is an ssh alias": lambda d: d["hosts"]["nas"]["connect"].update(address="nas"),
+        "address carries the login user": lambda d: d["hosts"]["nas"]["connect"].update(
+            address="deploy@10.0.0.2"
+        ),
+        "address with whitespace in it": lambda d: d["hosts"]["nas"]["connect"].update(
+            address="10.0.0.2 "
+        ),
+        "jump is not a declared host": lambda d: d["hosts"]["nas"]["connect"].update(
+            jump="bastion"
+        ),
+        "jump chain revisits a host": lambda d: d["hosts"]["nas"]["connect"].update(jump="nas"),
+    }
+
+
+def _capacity_mutations() -> dict[str, Any]:
+    """Breakages in what a host promises its runners, and when.
+
+    Returns:
+        Rule name to a function that damages a good declaration.
+    """
+    return {
         "wrong budget mode": lambda d: d["hosts"]["nas"]["budget"].update(mode="burst"),
         "capacity over budget": lambda d: d["hosts"]["nas"]["runners"].update(instances=4),
         "instance under the CPU floor": lambda d: d["hosts"]["nas"]["runners"].update(cpus=2),
@@ -172,14 +284,23 @@ def _mutations() -> dict[str, Any]:
             {
                 "box": {
                     "class": "dev_box",
-                    "connect": {"ssh": "box"},
+                    "connect": {"address": "10.0.0.3"},
                     "provisions": ["dev-box"],
                     "runners": {"instances": 1},
                 }
             }
         ),
         "bad sizing constant": lambda d: d["sizing"].update(build_parallelism=0),
-        # --- the lent dev slice ---------------------------------------------
+    }
+
+
+def _dev_slice_mutations() -> dict[str, Any]:
+    """Breakages in the slice a runner host lends back to agents.
+
+    Returns:
+        Rule name to a function that damages a good declaration.
+    """
+    return {
         "dev slice not weighted below CI": lambda d: _lend(d, cpu_weight=100),
         "dev slice weight out of range": lambda d: _lend(d, cpu_weight=0),
         "dev slice memory over what the runners leave": lambda d: _lend(d, memory_gb=8),
@@ -192,7 +313,7 @@ def _mutations() -> dict[str, Any]:
             {
                 "box": {
                     "class": "dev_box",
-                    "connect": {"ssh": "box"},
+                    "connect": {"address": "10.0.0.3"},
                     "provisions": ["dev-box"],
                     "dev_slice": {"cpu_weight": 10, "memory_gb": 4, "max_jobs": 4},
                 }
@@ -233,6 +354,51 @@ def _set(data: dict[str, Any], key: str, value: object) -> None:
     data["hosts"]["nas"][key] = value
 
 
+def _jumped_declaration() -> dict[str, Any]:
+    """A legal two-host fleet where one machine is reached through the other.
+
+    Returns:
+        The good declaration plus a bench the NAS is reached through.
+    """
+    data = _good_declaration()
+    data["hosts"]["bench"] = {
+        "class": "hil_bench",
+        "connect": {"address": "10.0.0.9", "user": "pi"},
+        "provisions": ["hil-bench"],
+    }
+    data["hosts"]["nas"]["connect"]["jump"] = "bench"
+    return data
+
+
+def _check_jump_resolves(host_vars_dir: Path) -> list[str]:
+    """A declared hop must reach the ssh command line as an ADDRESS.
+
+    The mutation table proves a bad hop is rejected; this proves a good one is
+    honoured, and honoured as a literal. ``-J bench`` would satisfy every input
+    rule and still only work on a machine that defined that alias -- the same
+    defect the addresses themselves had.
+
+    Args:
+        host_vars_dir: Empty fixture directory for the validator.
+
+    Returns:
+        One message per way the hop failed to reach the command line.
+    """
+    data = _jumped_declaration()
+    problems = [f"  a legal ProxyJump was rejected: {p}" for p in fm.validate(data, host_vars_dir)]
+    argv = fr.ssh_target(data, "nas")
+    if "-J" not in argv:
+        problems.append("  a declared connect.jump produced no -J on the ssh command line")
+    elif argv[argv.index("-J") + 1] != "pi@10.0.0.9":
+        hop = argv[argv.index("-J") + 1]
+        problems.append(f"  the ProxyJump hop is '{hop}', not the hop host's address")
+    if "ProxyJump=pi@10.0.0.9" not in fm.inventory_entry(data, "nas"):
+        problems.append("  the generated inventory does not hand Ansible the ProxyJump hop")
+    if "ProxyJump bench" not in fr.render_ssh_config(data):
+        problems.append("  the generated ssh config does not carry the hop")
+    return problems
+
+
 def _selftest() -> int:
     """Assert every rule fires on a broken fleet and none fires on a legal one.
 
@@ -251,6 +417,16 @@ def _selftest() -> int:
         _lend(legal_lend)
         if fm.validate(legal_lend, host_vars_dir=empty):
             failures.append("  a legal dev_slice was rejected")
+        failures += _check_jump_resolves(empty)
+        if _check_derived_reach(_jumped_declaration()):
+            failures.append("  a fleet reachable only by address was reported unreachable")
+        # Both directions for the derivation check itself: an alias in the
+        # declaration must come out the far end as an alias on a command line,
+        # or the check is decoration.
+        aliased = _jumped_declaration()
+        aliased["hosts"]["bench"]["connect"]["address"] = "bench"
+        if not _check_derived_reach(aliased):
+            failures.append("  an ssh alias survived into a derived ssh command unreported")
         for rule, damage in _mutations().items():
             broken = deepcopy(_good_declaration())
             damage(broken)
@@ -287,7 +463,12 @@ def main(argv: list[str] | None = None) -> int:
     except fm.FleetError as exc:
         print(f"check_fleet_declaration: {exc}", file=sys.stderr)
         return 1
-    problems = fm.validate(data) + _check_derived_vars() + _check_shared_constants()
+    problems = (
+        fm.validate(data)
+        + _check_derived_vars()
+        + _check_shared_constants()
+        + _check_derived_reach(data)
+    )
     if problems:
         print(f"infra/fleet.yml: {len(problems)} problem(s):", file=sys.stderr)
         for problem in problems:
