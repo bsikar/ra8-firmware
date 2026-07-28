@@ -165,7 +165,11 @@ vela-compile:
 # `make ci-native` asks for that path explicitly -- use it on a box with no
 # docker/podman. Both run against a clean `git archive HEAD` snapshot, so
 # in-source build junk and stale .gcda cannot skew a gate.
-# REBUILD=1 forces a fresh image.
+# The container image refreshes ITSELF: it carries a sha256 of the
+# .devcontainer/ build context as a label, and a cached image whose label
+# disagrees with the working tree is rebuilt rather than booted (#521). REBUILD=1
+# forces a build even when it agrees -- it is no longer how you avoid running the
+# gates against a stale toolchain.
 ci:
 	bash scripts/ci.sh $(if $(filter-out 0,$(REBUILD)),--rebuild,)
 

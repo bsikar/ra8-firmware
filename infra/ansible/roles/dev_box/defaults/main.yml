@@ -76,7 +76,11 @@ dev_box_apt_base:
 
 # Gate-specific dependencies. Each one is a gate that FAILS (never skips)
 # without it, so an absent package is an unrunnable gate, not a degraded one.
-#   doxygen + graphviz -- the `docs` gate, and @dot state diagrams
+#   doxygen + graphviz -- the `docs` gate, and @dot state diagrams. apt's
+#                      doxygen is the floor, not the pin: provision_runner.sh
+#                      installs the pinned release over it in /usr/local/bin,
+#                      the way .devcontainer/Dockerfile does, and
+#                      toolchain-parity compares that version (#522).
 #   libcapstone-dev    -- the header tools/ra8_emulator includes
 #   libcurl4-openssl-dev -- the header tools/media_dl includes
 #   gdb-multiarch, openocd -- the on-desk flash/debug inner loop
@@ -115,6 +119,55 @@ dev_box_apt_source_build:
 dev_box_apt_runtime:
   - podman
   - uidmap
+
+# --- The image `make ci` boots ----------------------------------------------
+#
+# Until #521 nothing in this tree owned it. scripts/ci.sh built it the first
+# time a machine had none and reused it forever after, so this box booted a
+# 2026-07-20 image under a 2026-07-28 tree: cmake-format, cmake-lint, yamllint,
+# actionlint, hadolint, gcc-14 and g++-14 were all absent from it, and
+# toolchain-parity, lint-cmake, lint-yaml and lint-devcontainer therefore FAILED
+# inside the container while PASSING natively on the same box, on the same
+# commit. `make ci` is what every agent runs before a push, so that is four
+# reds per run that are indistinguishable from real ones until each is re-run by
+# hand.
+#
+# Two things now own it, and they share one definition of "current" --
+# scripts/ci/devcontainer_image.sh, which stamps the build context's sha256 onto
+# the image as a label and compares it back:
+#
+#   * every `make ci`, on any machine, rebuilds when the label disagrees with
+#     the tree it is about to test. That is the load-bearing half: it needs no
+#     converge, and it covers the Mac, which no Ansible run reaches.
+#   * this role, so `make infra-apply HOST=dev` leaves the box warm and asserts
+#     what the image carries, instead of the first agent after a Dockerfile
+#     change paying for the rebuild inside their gate run.
+dev_box_ci_image: "ra8-ci:latest"
+
+# --- Where this role's recipes come from ------------------------------------
+#
+# EVERY script and pin this role consumes is staged here, out of the checkout
+# the operator ran `make infra-apply` in, and read from here -- the Dockerfile
+# ARGs, install_unicorn.sh, provision_runner.sh, devcontainer_image.sh,
+# check_tool_versions.py, check_runner_image_deps.py, and the .devcontainer
+# build context itself.
+#
+# Not from dev_box_base_checkout. That tree is `update: false` on purpose --
+# agents' linked worktrees hang off it and a force checkout would discard
+# commits that live only in one of them -- so nothing keeps it current, and it
+# was measured sitting at 116e45f07 while the control node's tree carried a new
+# pin. The role therefore ran the OLD provision_runner.sh, installed nothing new,
+# and reported a converged box (#521, #522). That is ci_runner_repo_dir's bug
+# with a different name (#513): a build input the tooling does not control is
+# not a build input, it is a rumour.
+#
+# It is emptied and re-copied on every converge, so a file deleted upstream
+# cannot survive here -- which is also why nothing durable may point INTO it.
+# The two systemd installers run from here but write their units against a copy
+# in ~/.local/bin, so they are safe; anything new that leaves a lasting
+# reference behind must not be.
+dev_box_context_src: "{{ playbook_dir }}/../../.."
+dev_box_context_dir: /var/lib/ra8-ci/build-context
 
 # --- cppcheck: built from source, and the version is load-bearing -----------
 #
@@ -213,6 +266,10 @@ dev_box_container_runtime: "sudo podman"
 
 # The base checkout `make ws-new` links its worktrees off, and the workspace
 # root itself.
+#
+# This is an OBJECT STORE for agent worktrees and nothing else. Nothing in this
+# role reads a recipe out of it -- see dev_box_context_src for why, and for what
+# it cost when the role did.
 dev_box_repo_url: "git@github.com:bsikar/ra8-firmware.git"
 dev_box_base_checkout: "{{ dev_box_home }}/ra8-firmware"
 dev_box_workspace_root: "{{ dev_box_home }}/ra8-ws"

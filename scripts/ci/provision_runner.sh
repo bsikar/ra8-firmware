@@ -100,6 +100,29 @@ install_hadolint() {
   as_root chmod 0755 "${BIN_DIR}/hadolint"
 }
 
+# The pinned doxygen release, installed exactly the way .devcontainer/Dockerfile
+# installs it: same URL shape, same sha256 check, same /usr/local/bin
+# destination shadowing apt's package (#522).
+#
+# The sha256 is read here rather than threaded through ensure_release_tool: it
+# belongs to the release, not to the caller, and reading it at the point of use
+# keeps the one-argument installer contract every other tool here follows.
+install_doxygen() {
+  local version="$1" sha tmp
+  sha="$(dockerfile_arg DOXYGEN_SHA256_LINUX_X64)"
+  [ -n "${sha}" ] || {
+    echo "error: DOXYGEN_SHA256_LINUX_X64 is not pinned in the Dockerfile" >&2
+    return 1
+  }
+  tmp="$(mktemp -d)"
+  curl -fsSL -o "${tmp}/doxygen.tar.gz" \
+    "https://github.com/doxygen/doxygen/releases/download/Release_${version//./_}/doxygen-${version}.linux.bin.tar.gz"
+  echo "${sha}  ${tmp}/doxygen.tar.gz" | sha256sum -c - >/dev/null
+  tar -xzf "${tmp}/doxygen.tar.gz" -C "${tmp}"
+  as_root install -m 0755 "${tmp}/doxygen-${version}/bin/doxygen" "${BIN_DIR}/doxygen"
+  rm -rf "${tmp}"
+}
+
 # Install a GitHub-release binary tool only when the wanted version is not
 # already the one on PATH. $3 is a shell snippet that echoes the installed
 # version (empty if absent), so the compare stays tool-specific.
@@ -141,7 +164,7 @@ install_apt_pins() {
 # 60-line NASA P10 Rule 4 cap the repo enforces on shell as well as C.
 install_pinned_tools() {
   local shellcheck_v="$1" shfmt_v="$2" actionlint_v="$3" hadolint_v="$4"
-  local ruff_v="$5" yamllint_v="$6" cmakelang_v="$7"
+  local ruff_v="$5" yamllint_v="$6" cmakelang_v="$7" doxygen_v="$8"
 
   ensure_release_tool shellcheck "${shellcheck_v}" \
     "$(shellcheck --version 2>/dev/null | sed -n 's/^version: //p')" install_shellcheck
@@ -151,6 +174,8 @@ install_pinned_tools() {
     "$(actionlint --version 2>/dev/null | head -1)" install_actionlint
   ensure_release_tool hadolint "${hadolint_v}" \
     "$(hadolint --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')" install_hadolint
+  ensure_release_tool doxygen "${doxygen_v}" \
+    "$(doxygen --version 2>/dev/null | awk '{print $1}')" install_doxygen
 
   # pip-managed pins. --break-system-packages matches the Dockerfile on a
   # PEP-668 base image; the pins keep these exact.
@@ -167,7 +192,7 @@ main() {
     exit 1
   }
 
-  local shellcheck_v shfmt_v actionlint_v hadolint_v ruff_v yamllint_v cmakelang_v
+  local shellcheck_v shfmt_v actionlint_v hadolint_v ruff_v yamllint_v cmakelang_v doxygen_v
   shellcheck_v="$(dockerfile_arg SHELLCHECK_VERSION)"
   shfmt_v="$(dockerfile_arg SHFMT_VERSION)"
   actionlint_v="$(dockerfile_arg ACTIONLINT_VERSION)"
@@ -175,11 +200,12 @@ main() {
   ruff_v="$(dockerfile_arg RUFF_VERSION)"
   yamllint_v="$(dockerfile_arg YAMLLINT_VERSION)"
   cmakelang_v="$(dockerfile_arg CMAKELANG_VERSION)"
+  doxygen_v="$(dockerfile_arg DOXYGEN_VERSION)"
 
   for pair in "SHELLCHECK_VERSION=${shellcheck_v}" "SHFMT_VERSION=${shfmt_v}" \
     "ACTIONLINT_VERSION=${actionlint_v}" "HADOLINT_VERSION=${hadolint_v}" \
     "RUFF_VERSION=${ruff_v}" "YAMLLINT_VERSION=${yamllint_v}" \
-    "CMAKELANG_VERSION=${cmakelang_v}"; do
+    "CMAKELANG_VERSION=${cmakelang_v}" "DOXYGEN_VERSION=${doxygen_v}"; do
     [ -n "${pair#*=}" ] || {
       echo "error: could not read ${pair%%=*} from the Dockerfile" >&2
       exit 1
@@ -190,7 +216,7 @@ main() {
     echo "provisioning runner toolchain from ${DOCKERFILE#"${ROOT}"/} pins:"
     install_apt_pins
     install_pinned_tools "${shellcheck_v}" "${shfmt_v}" "${actionlint_v}" \
-      "${hadolint_v}" "${ruff_v}" "${yamllint_v}" "${cmakelang_v}"
+      "${hadolint_v}" "${ruff_v}" "${yamllint_v}" "${cmakelang_v}" "${doxygen_v}"
   fi
 
   echo "verifying parity (the check the toolchain-parity gate runs):"

@@ -26,8 +26,9 @@ disagree about what a pin is.
 Comparison modes
 ----------------
 * ``exact``     -- version string must equal the pin (ruff, shellcheck, shfmt,
-                   cppcheck, cmakelang, yamllint, actionlint, hadolint). These
-                   are the tools whose findings drift with the exact version.
+                   cppcheck, cmakelang, yamllint, actionlint, hadolint,
+                   doxygen). These are the tools whose findings drift with the
+                   exact version.
 * ``major``     -- major must equal the pin (clang-format-22, clang-tidy-18,
                    gcc-14). The clang family and the gcc-14 host-tool arm
                    (#356) are pinned by major on purpose; the tree is
@@ -45,6 +46,13 @@ comparator returns the right verdict for a match AND a mismatch in every mode,
 plus a missing tool. Sabotaging the comparator (making it always pass) turns
 the selftest red instead of letting a broken check report success forever.
 
+It also asserts the one spec that is not unconditional. doxygen is pinned only
+where the Dockerfile installs the pinned release, so a mistake in that condition
+could silently drop the tool from the registry -- and a pin nobody compares is
+exactly how the deployed image sat on doxygen 1.9.8 against a 1.16.1 pin
+(#522). The selftest therefore checks the spec is present on the pinned
+architecture and absent on the other, in both directions.
+
 Run::
 
     check_tool_versions.py                 # verify every pinned tool
@@ -60,6 +68,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -71,6 +80,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCKERFILE = REPO_ROOT / ".devcontainer" / "Dockerfile"
+
+# The second place the doxygen release is written down: the provisioner that
+# resolves it for the `docs` gate on a host with no devcontainer image. The
+# Dockerfile's own comment says to bump the two together; _assert_doxygen_pin_
+# stated_once is what makes that true rather than hoped for.
+DOXYGEN_PROVISIONER = REPO_ROOT / "scripts" / "builders" / "provision_doxygen.sh"
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -87,6 +102,20 @@ MODE_MIN_MAJOR = "min-major"
 # copyright range in a --version banner is never mistaken for the version).
 _VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
 _ARG_RE = re.compile(r"^\s*ARG\s+([A-Z0-9_]+)=(\S+)", re.MULTILINE)
+
+# The machine the Dockerfile installs the pinned doxygen release on, and the
+# shell test it uses to decide. doxygen publishes no official linux-arm64
+# binary, so the Dockerfile keeps apt's unpinned doxygen on every other
+# architecture -- including the arm64 container a `make ci` on Apple Silicon
+# builds from this same file. Asserting the pin unconditionally would therefore
+# turn the container path red on every Mac.
+#
+# The guard string is checked against the Dockerfile rather than assumed: if
+# the install stops being architecture-conditional, this spec must stop being
+# conditional too, and a silent disagreement between the two is the shape of
+# bug that left the doxygen pin unchecked in the first place (#522).
+K_DOXYGEN_PINNED_MACHINE = "x86_64"
+_DOXYGEN_ARCH_GUARD = f'"$(uname -m)" = "{K_DOXYGEN_PINNED_MACHINE}"'
 
 
 @dataclass(frozen=True)
@@ -226,6 +255,87 @@ def _spec(
     return ToolSpec(binary, value, mode, f"ARG {key}")
 
 
+def _assert_doxygen_pin_stated_once(args: dict[str, str]) -> None:
+    """Assert the Dockerfile and provision_doxygen.sh name the same release.
+
+    The doxygen pin is written down twice on purpose -- the Dockerfile bakes the
+    release into the image, and provision_doxygen.sh resolves it for the ``docs``
+    gate on hosts that have no such image -- and the Dockerfile's own comment
+    says to bump them together. Nothing enforced that, so "one release, cited
+    twice" was one release and a hope. A silent split would give the docs gate a
+    different doxygen from the one every other tool sees, which is the same
+    class of divergence this whole file exists to prevent.
+
+    Args:
+        args: Parsed Dockerfile ARG map.
+
+    Raises:
+        ValueError: When either the version or the x86_64 sha256 disagrees, or
+            when the provisioner no longer states them in a readable form.
+    """
+    if not DOXYGEN_PROVISIONER.is_file():
+        message = f"{DOXYGEN_PROVISIONER} is missing; the doxygen pin cannot be cross-checked"
+        raise ValueError(message)
+    script = DOXYGEN_PROVISIONER.read_text(encoding="utf-8")
+    pairs = (
+        ("PINNED_VERSION", "DOXYGEN_VERSION"),
+        ("SHA256_LINUX_X64", "DOXYGEN_SHA256_LINUX_X64"),
+    )
+    for var, arg in pairs:
+        match = re.search(rf'^{var}="([^"]+)"', script, re.MULTILINE)
+        if match is None:
+            message = f"{DOXYGEN_PROVISIONER} no longer states {var}; update {Path(__file__).name}"
+            raise ValueError(message)
+        if match.group(1) != _arg(args, arg):
+            message = (
+                f"doxygen pin split: {DOCKERFILE.name} ARG {arg}={_arg(args, arg)} but "
+                f"{DOXYGEN_PROVISIONER.name} {var}={match.group(1)}. They are one release "
+                f"cited twice and must be bumped together."
+            )
+            raise ValueError(message)
+
+
+def _doxygen_spec(text: str, args: dict[str, str]) -> ToolSpec | None:
+    """Return the pinned-doxygen spec, or None where the Dockerfile pins none.
+
+    The ``docs`` gate itself was never exposed by this gap -- provision_doxygen.sh
+    resolves the pinned release into RA8_TOOLS_CACHE and prepends it to PATH, so
+    the gate gets the pin wherever it runs. The hole was in what
+    ``toolchain-parity`` asserted about the ENVIRONMENT: the deployed runner
+    image sat on apt's doxygen 1.9.8 against a 1.16.1 pin for as long as it did
+    because the one gate whose job is "pinned host tools match the Dockerfile"
+    was not looking at that tool (#522).
+
+    Args:
+        text: The Dockerfile contents.
+        args: Parsed Dockerfile ARG map.
+
+    Returns:
+        The doxygen ToolSpec on an architecture the Dockerfile pins it for,
+        None otherwise.
+
+    Raises:
+        ValueError: When the Dockerfile no longer guards the install on the
+            architecture this function knows about, or no longer pins the
+            version at all.
+    """
+    # Read the pin first, so a renamed ARG fails here rather than being skipped
+    # on an unpinned architecture and never noticed. Same for the cross-check:
+    # a split pin is wrong on every architecture, not only the pinned one.
+    spec = _spec(args, "doxygen", "DOXYGEN_VERSION", MODE_EXACT)
+    _assert_doxygen_pin_stated_once(args)
+    if _DOXYGEN_ARCH_GUARD not in text:
+        message = (
+            f"{DOCKERFILE} no longer installs the pinned doxygen under "
+            f"[ {_DOXYGEN_ARCH_GUARD} ]; update {Path(__file__).name} to match "
+            f"whichever architectures it now pins"
+        )
+        raise ValueError(message)
+    if platform.machine() != K_DOXYGEN_PINNED_MACHINE:
+        return None
+    return spec
+
+
 def build_specs() -> list[ToolSpec]:
     """Assemble the pinned-tool registry from the Dockerfile source of truth.
 
@@ -241,6 +351,7 @@ def build_specs() -> list[ToolSpec]:
     cf = _pkg_major(text, "clang-format", "clang-format")
     ct = _pkg_major(text, "clang-tools", "clang-tidy")
     gc = _pkg_major(text, "gcc", "gcc")
+    doxygen = _doxygen_spec(text, args)
     return [
         _spec(args, "ruff", "RUFF_VERSION", MODE_EXACT),
         _spec(args, "shellcheck", "SHELLCHECK_VERSION", MODE_EXACT),
@@ -264,6 +375,8 @@ def build_specs() -> list[ToolSpec]:
         # so every environment (devcontainer, runner pod, bare-metal) has both.
         ToolSpec(f"g++-{gc}", gc, MODE_MAJOR, f"g++-{gc}"),
         _spec(args, "gcovr", "GCOVR_VERSION", MODE_MIN_MAJOR, _gcovr_floor),
+        # Pinned only where the Dockerfile pins it; see _doxygen_spec.
+        *([doxygen] if doxygen is not None else []),
     ]
 
 
@@ -487,20 +600,60 @@ def _run_selftest_cases() -> list[str]:
     return failures
 
 
+def _arch_conditional_failures() -> list[str]:
+    """Verify the doxygen spec appears exactly where the Dockerfile pins it.
+
+    The registry is otherwise unconditional, so this one spec is the only place
+    a mistake could silently drop a pin from the gate -- which is the state that
+    let a 1.9.8-against-1.16.1 drift survive in the deployed image (#522). Assert
+    both directions rather than trusting the condition.
+
+    Returns:
+        A list of failure descriptions; empty when the spec is conditional as
+        documented.
+    """
+    failures: list[str] = []
+    text = _read_dockerfile()
+    args = _dockerfile_args(text)
+    saved = platform.machine
+    try:
+        platform.machine = lambda: K_DOXYGEN_PINNED_MACHINE  # type: ignore[assignment]
+        spec = _doxygen_spec(text, args)
+        if spec is None or spec.binary != "doxygen":
+            failures.append(
+                f"  no doxygen spec on {K_DOXYGEN_PINNED_MACHINE}, "
+                f"where the Dockerfile installs the pinned release"
+            )
+        platform.machine = lambda: "aarch64"  # type: ignore[assignment]
+        if _doxygen_spec(text, args) is not None:
+            failures.append(
+                "  a doxygen spec on aarch64, where the Dockerfile deliberately "
+                "leaves apt's unpinned doxygen in place (no official arm64 build)"
+            )
+    finally:
+        platform.machine = saved  # type: ignore[assignment]
+    return failures
+
+
 def selftest() -> int:
     """Prove the version comparator fires in both directions for every mode.
 
     Returns:
         EXIT_OK when every crafted case (match and mismatch in each mode, plus a
-        missing tool) yields the expected verdict; EXIT_FAIL otherwise.
+        missing tool) yields the expected verdict, and the one
+        architecture-conditional spec is present exactly where it belongs;
+        EXIT_FAIL otherwise.
     """
-    failures = _run_selftest_cases()
+    failures = _run_selftest_cases() + _arch_conditional_failures()
     if failures:
         sys.stderr.write("check_tool_versions.py --selftest: FAILED\n")
         sys.stderr.write("\n".join(failures) + "\n")
         sys.stderr.write("The comparator does not judge versions as claimed.\n")
         return EXIT_FAIL
-    print("check_tool_versions.py --selftest: OK (all modes both ways, plus missing-tool).")
+    print(
+        "check_tool_versions.py --selftest: OK (all modes both ways, "
+        "plus missing-tool and the arch-conditional doxygen pin)."
+    )
     return EXIT_OK
 
 

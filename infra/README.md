@@ -528,7 +528,24 @@ pinned toolchain", so the `dev_box` role calls it rather than carrying a second
 copy of the same installs. It requests the `gcc-14`/`g++-14` pair from apt only
 where apt has a candidate for it -- Debian has none -- and leaves the verdict to
 the parity check either way, which still fails loudly when neither path produced
-a pinned compiler.
+a pinned compiler. It installs the pinned **doxygen** release the same way the
+Dockerfile does (download, sha256, `/usr/local/bin`), because
+`toolchain-parity` now compares that version too: it did not, which is why a
+1.9.8-against-1.16.1 drift stayed invisible to the one gate whose job is
+catching exactly that (#522). The pin is asserted only on the architectures the
+Dockerfile pins it for -- doxygen publishes no official linux-arm64 binary, so
+an arm64 `make ci` container keeps apt's.
+
+The **image `make ci` boots** is pinned by the same file and now derived from
+it: `scripts/ci/devcontainer_image.sh` stamps a sha256 of the whole
+`.devcontainer/` build context onto the image as a label and compares it back,
+so a cached image built from a different Dockerfile is rebuilt rather than
+reused. `make ci` calls it on every run -- which is what covers the Mac, where
+no Ansible play ever lands -- and the `dev_box` role calls the same script so
+`make infra-apply HOST=dev` leaves the box warm and asserts, with
+`check_runner_image_deps.py`, that every tool the gates declare resolves inside
+it. Before that, the box booted a 2026-07-20 image under a 2026-07-28 tree and
+reported four gates red that passed natively on the same commit (#521).
 
 ## Secrets
 

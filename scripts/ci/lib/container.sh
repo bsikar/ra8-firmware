@@ -110,21 +110,29 @@ ci_require_runtime() {
   exit 1
 }
 
-# Build the devcontainer image unless it is already there.
+# Bring the devcontainer image up to date with this checkout's build context.
 #
-# The Dockerfile has no COPY/ADD, so the tiny .devcontainer/ directory is a
-# sufficient build context -- do NOT ship the multi-GB repo (datasheets, build
-# trees) to the daemon as context.
+# The tiny .devcontainer/ directory is what is shipped to the daemon -- never
+# the multi-GB repo, with its datasheets and build trees.
+#
+# The decision is NOT "is an image present". It was, and that is why the shared
+# verification box booted a 2026-07-20 image under a 2026-07-28 tree and
+# reported four gates red that pass natively on the same box, on the same
+# commit (#521). devcontainer_image.sh compares the build-context digest
+# recorded on the image against the working tree's, so an image built from a
+# different Dockerfile is rebuilt rather than reused. That is one definition,
+# shared with the dev_box Ansible role, so a converge and a `make ci` cannot
+# disagree about what "current" means.
 ci_ensure_image() {
-  local rebuild="$1" image="$2" dockerfile="$3" context="$4"
-  shift 4
+  local rebuild="$1" image="$2" repo="$3"
+  shift 3
   local runtime=("$@")
-  if [[ "$rebuild" == "1" ]] || ! "${runtime[@]}" image inspect "$image" >/dev/null 2>&1; then
-    echo "==> building $image from .devcontainer/Dockerfile (runtime: ${runtime[*]})"
-    "${runtime[@]}" build -t "$image" -f "$dockerfile" "$context"
-  else
-    echo "==> reusing cached image $image (--rebuild / REBUILD=1 to refresh)"
-  fi
+  local args=(ensure)
+  [[ "$rebuild" == "1" ]] && args+=(--rebuild)
+  RA8_CONTAINER_RUNTIME="${runtime[*]}" \
+    RA8_CI_IMAGE="$image" \
+    RA8_TOOLS_CACHE_DIR="$(ra8_tools_cache_host_dir)" \
+    bash "$repo/scripts/ci/devcontainer_image.sh" "${args[@]}"
 }
 
 # Linked git worktrees: mount the main repo's git dir too (#334).
@@ -238,12 +246,12 @@ ci_extra_run_args() {
 # parallel width (#328) below the CMAKE_BUILD_PARALLEL_LEVEL budget; unset on
 # the host, `-e RA8_MAX_JOBS` passes nothing and ra8_max_jobs falls through.
 ci_host_mode_exec() {
-  local fast="$1" gate="$2" rebuild="$3" image="$4" dockerfile="$5" repo="$6"
+  local fast="$1" gate="$2" rebuild="$3" image="$4" repo="$5"
   local runtime=() extra=() worktree=() ccache=() toolcache=()
   mapfile -t runtime < <(ci_runtime_argv)
   [[ "${#runtime[@]}" -eq 0 ]] && ci_no_runtime "$fast"
   ci_require_runtime "${runtime[@]}"
-  ci_ensure_image "$rebuild" "$image" "$dockerfile" "$repo/.devcontainer" "${runtime[@]}"
+  ci_ensure_image "$rebuild" "$image" "$repo" "${runtime[@]}"
 
   mapfile -t worktree < <(ci_worktree_run_args "$repo")
   mapfile -t ccache < <(ci_ccache_run_args)
