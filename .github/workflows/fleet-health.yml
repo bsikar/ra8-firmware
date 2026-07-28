@@ -1,0 +1,47 @@
+# SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate: runner-clock).
+# See .github/workflows/firmware.yml for the design note.
+---
+name: fleet-health
+
+on:
+  schedule:
+    # 08:11 UTC daily -- after the nightly fuzz sweep and the coverage runs
+    # have finished, so the scan reads a full night of jobs rather than a
+    # half-populated window.
+    - cron: "11 8 * * *"
+  workflow_dispatch:
+
+# A statement about the fleet, not about a commit, so one at a time is plenty
+# and a manual dispatch supersedes a scheduled run still in flight.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  # actions:read is what lets the gate list workflow runs and their job steps.
+  # Nothing here writes anything.
+  contents: read
+  actions: read
+
+jobs:
+  runner-clock:
+    name: No runner moved its clock under a job
+    runs-on: ra8-ci
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      # GitHub records every step's started_at and completed_at from the
+      # RUNNER's own clock, so a runner that steps its clock writes the
+      # evidence into the API. The gate looks for the two orderings that are
+      # physically impossible -- a step that finished before it started, and a
+      # step that started before the previous one finished -- and fails while
+      # any runner is still doing it.
+      #
+      # This is worth having permanently rather than as the one-off scan that
+      # found the fault: it caught the same host on `checkout`, `Set up job`
+      # and three different gate steps while knowing nothing about clocks, and
+      # it turns "the fleet's clocks are fine" from an assumption into an
+      # observation (#509).
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci.sh --gate runner-clock

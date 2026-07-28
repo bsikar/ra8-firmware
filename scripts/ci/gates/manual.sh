@@ -12,7 +12,8 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: mcdc-delta-base, osv-scan, fuzz-sweep, hil-all, docs-publish
+# Gates in this file: mcdc-delta-base, osv-scan, fuzz-sweep, runner-clock,
+#                     hil-all, docs-publish
 
 # --- mcdc-delta-base (manual) ---------------------------------------------
 # Builds the BASE branch's MC/DC summary in a throwaway worktree so the PR
@@ -120,6 +121,26 @@ gate_fuzz_sweep() (
   fi
   echo "libFuzzer-capable compiler: $found"
   bash scripts/checks/run_fuzz.sh --all "$budget" 2>&1 | tee fuzz-nightly.log
+)
+
+# --- runner-clock (manual) ------------------------------------------------
+# Reads step timestamps back out of the Actions API and fails if any runner
+# recorded a step that finished before it started, or started before the
+# previous one finished. Neither is possible on a clock that does not step,
+# and a runner that steps its clock corrupts every gate whose contract is a
+# duration -- the fuzz budget, timeout-minutes, any benchmark (#509).
+#
+# Scheduled rather than per-push: it is a statement about the FLEET, not about
+# the commit, and it costs one API call per run scanned. In CI that spends the
+# workflow's own GITHUB_TOKEN budget, which is per-repository and separate from
+# the shared user quota `make ci-status` exists to protect.
+gate_runner_clock() (
+  set -e
+  require_cmd gh "the runner-clock gate reads step timestamps from the Actions API"
+  # Prove the detector before trusting its verdict: a clean scan from a
+  # detector that stopped detecting is indistinguishable from a healthy fleet.
+  python3 scripts/checks/check_runner_clock.py --selftest
+  python3 scripts/checks/check_runner_clock.py --runs "${RA8_CLOCK_SCAN_RUNS:-60}"
 )
 
 # --- hil-all (manual) -----------------------------------------------------
