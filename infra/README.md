@@ -296,15 +296,37 @@ task fixes it. The keep-alive matters: a task running `wsl -e true` starts the
 VM and exits, and the VM is reaped moments later, which is an autostart that
 reliably leaves the runner offline while looking configured.
 
-**The clock must be right before the runners start.** A WSL2 VM does not boot
-with a trustworthy clock. Observed here: the VM came up ~4 minutes fast, the
-runner checked the tree out with those timestamps, `timesyncd` then stepped the
-clock back, and make spent the rest of the job reporting `Clock skew detected.
-Your build may be incomplete`. That is not cosmetic -- make's up-to-date
-decisions are timestamp comparisons. Docker is therefore ordered after
-`systemd-time-wait-sync`, and since the containers are `restart:
+**The clock may be wrong; it may not be non-monotonic.** A WSL2 VM does not
+boot with a trustworthy clock. Observed here: the VM came up ~4 minutes fast,
+the runner checked the tree out with those timestamps, `timesyncd` then stepped
+the clock back, and make spent the rest of the job reporting `Clock skew
+detected. Your build may be incomplete`. That is not cosmetic -- make's
+up-to-date decisions are timestamp comparisons. Docker is therefore ordered
+after the clock has synchronised, and since the containers are `restart:
 unless-stopped`, the daemon's start time is exactly when this host begins
 accepting jobs.
+
+Ordering was necessary and **not sufficient** (#509). It fixes the step that
+happens at boot and says nothing about one at 07:13 on a host that booted hours
+earlier -- which is what this host was measured doing. Scanning the 100 most
+recent completed workflow runs for a step whose recorded `completed_at`
+precedes its own `started_at` found 16, every one of them on this machine's
+three runners and none anywhere else in the fleet (`truenas-ci-1`: 0, every
+`ra8-ci` pod: 0). Every full-size event is a backward step of 242-248 s, and
+the size does *not* grow with the gap between events -- so it is not drift, it
+is two time sources disagreeing by a fixed ~4 minutes and taking turns: the
+Windows host, whose clock a WSL2 guest takes and which WSL re-asserts
+periodically, against NTP inside the distro.
+
+So the role does two things. `chrony` replaces `timesyncd`, configured to step
+only while starting up and to **slew** every correction after that -- a build
+farm wants a clock that is briefly wrong but monotonic, because every gate
+whose contract is a duration (libFuzzer's `-max_total_time`, `timeout-minutes`,
+any benchmark) is measured on it. And the Windows clock is **asserted** rather
+than assumed: correcting it needs an elevated Windows action that WSL interop
+cannot perform, so the play fails with the exact `w32tm` commands instead of
+converging on a host that will resume stepping. `make ci-gate GATE=runner-clock`
+re-reads the fleet from the Actions API and is what proves it converged.
 
 **What survives a reboot, stated precisely.** WSL does not start distros on
 boot, so a Windows Scheduled Task (`ra8-wsl-ci-runner-autostart`) starts it;
