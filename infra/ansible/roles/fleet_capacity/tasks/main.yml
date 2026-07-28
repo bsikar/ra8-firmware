@@ -85,6 +85,7 @@
       RA8_FLEET_KIND={{ fleet_capacity_kind }}
       RA8_FLEET_DOCKER={{ fleet_capacity_docker }}
       RA8_FLEET_CONTAINERS={{ fleet_capacity_containers }}
+      RA8_FLEET_DEV_SLICE={{ fleet_capacity_dev_slice }}
       RA8_FLEET_KUBECTL={{ fleet_capacity_kubectl }}
       RA8_FLEET_NAMESPACE={{ fleet_capacity_namespace }}
       RA8_FLEET_SCALESET={{ fleet_capacity_scale_set }}

@@ -117,6 +117,11 @@ RA8_FLEET_QUIET_START="${RA8_FLEET_QUIET_START:-}"
 RA8_FLEET_QUIET_END="${RA8_FLEET_QUIET_END:-}"
 RA8_FLEET_QUIET_DAYS="${RA8_FLEET_QUIET_DAYS:-}"
 
+# The low-priority dev slice this host lends its idle capacity to, if any.
+# Empty on a host that lends none, and every dev-slice path below is then a
+# no-op rather than a failure.
+RA8_FLEET_DEV_SLICE="${RA8_FLEET_DEV_SLICE:-}"
+
 log() { printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"; }
 
 die() {
@@ -159,7 +164,98 @@ options:
   --quiet-start HH:MM    window start                   (RA8_FLEET_QUIET_START)
   --quiet-end HH:MM      window end                     (RA8_FLEET_QUIET_END)
   --quiet-days Mon,Tue   days the window applies to     (RA8_FLEET_QUIET_DAYS)
+  --dev-slice UNIT       low-priority dev slice to freeze while this host's
+                         runner target is 0             (RA8_FLEET_DEV_SLICE)
 EOF
+}
+
+# --- the dev slice ----------------------------------------------------------
+#
+# A host may lend its idle capacity to agent verification work in a
+# low-priority cgroup (the dev_slice role). Standing the runners down has to
+# reach that work too, or it buys the owner nothing: quiet hours would park
+# three idle containers while a gate suite in the slice went on using the
+# machine, which is the entire thing the window exists to prevent.
+#
+# THE RULE, in one line: the slice is frozen exactly while this host's runner
+# target is ZERO -- by the quiet-hours timer, or by a deliberate
+# `make infra-scale HOST=x N=0` ("I want to play a game for an hour"). Any
+# non-zero target means the machine is working and dev work may share it at its
+# weight. One rule covers both paths, in one place.
+#
+# FREEZE, NOT STOP, and for the same reason the runner drain never signals a
+# busy instance: work in flight must not be destroyed. cgroup v2's freezer
+# suspends every process in the slice where it stands -- including the
+# containerised gate run, whose scope is a child of the slice -- and thawing
+# resumes them exactly there. An agent's suite pauses for the evening instead
+# of dying at 18:00.
+#
+# The cost, stated rather than hidden: a run that is frozen for hours resumes
+# with its wall-clock budgets already spent, so a gate with a time budget can
+# fail on the way out. That is why `ra8-dev` REFUSES to start new work while
+# the slice is frozen -- a paused run is the caller's informed choice, a run
+# that silently began five minutes before a window is not.
+
+dev_slice_freezer_state() {
+  systemctl show -p FreezerState --value "${RA8_FLEET_DEV_SLICE}" 2>/dev/null || true
+}
+
+dev_slice_active() {
+  [ "$(systemctl is-active "${RA8_FLEET_DEV_SLICE}" 2>/dev/null || true)" = active ]
+}
+
+# Freeze or thaw the dev slice to match a runner target. Never fatal: a host
+# whose slice is absent or already gone is a host with nothing to suspend, and
+# failing the window over that would leave the RUNNERS at the wrong capacity
+# over a dev-work detail.
+dev_slice_follow() {
+  local target="$1" state
+  [ -n "${RA8_FLEET_DEV_SLICE}" ] || return 0
+  if ! command -v systemctl >/dev/null 2>&1; then
+    log "dev-slice ${RA8_FLEET_DEV_SLICE}: no systemctl on this host; cannot follow"
+    return 0
+  fi
+  if ! dev_slice_active; then
+    log "dev-slice ${RA8_FLEET_DEV_SLICE}: not active; nothing to suspend"
+    return 0
+  fi
+  state="$(dev_slice_freezer_state)"
+  if [ "${target}" -eq 0 ]; then
+    case "${state}" in
+      frozen | freezing) log "dev-slice ${RA8_FLEET_DEV_SLICE}: already frozen" ;;
+      *)
+        log "dev-slice ${RA8_FLEET_DEV_SLICE}: freezing -- runner target is 0"
+        systemctl freeze "${RA8_FLEET_DEV_SLICE}" ||
+          log "dev-slice ${RA8_FLEET_DEV_SLICE}: freeze FAILED; dev work is still running"
+        ;;
+    esac
+    return 0
+  fi
+  case "${state}" in
+    running | "") log "dev-slice ${RA8_FLEET_DEV_SLICE}: running" ;;
+    *)
+      log "dev-slice ${RA8_FLEET_DEV_SLICE}: thawing -- runner target is ${target}"
+      systemctl thaw "${RA8_FLEET_DEV_SLICE}" ||
+        log "dev-slice ${RA8_FLEET_DEV_SLICE}: thaw FAILED; dev work is still suspended"
+      ;;
+  esac
+}
+
+dev_slice_status() {
+  [ -n "${RA8_FLEET_DEV_SLICE}" ] || return 0
+  local state detail
+  if ! dev_slice_active; then
+    printf '  %-20s %-9s %-7s %s\n' "${RA8_FLEET_DEV_SLICE}" "inactive" "-" \
+      "dev slice not started on this host"
+    return 0
+  fi
+  state="$(dev_slice_freezer_state)"
+  case "${state}" in
+    frozen | freezing) detail="dev work SUSPENDED (runner target 0)" ;;
+    *) detail="dev work runs at its weight, below CI" ;;
+  esac
+  printf '  %-20s %-9s %-7s %s\n' "${RA8_FLEET_DEV_SLICE}" "active" \
+    "${state:-running}" "${detail}"
 }
 
 # --- docker kind ------------------------------------------------------------
@@ -283,7 +379,7 @@ docker_status() {
       elapsed="ready to park"
     fi
     [ "${state}" = running ] || elapsed="parked"
-    printf '  %-20s %-9s %-5s %s\n' "${name}" "${state}" "${busy}" "${elapsed}"
+    printf '  %-20s %-9s %-7s %s\n' "${name}" "${state}" "${busy}" "${elapsed}"
   done
 }
 
@@ -341,6 +437,10 @@ discover_containers() {
 
 docker_drain_all() {
   local found=()
+  # First, and deliberately before the drain: a converge is about to recreate
+  # every container, and dev work has no business competing with the jobs the
+  # drain is waiting to finish. Freezing here also makes them finish sooner.
+  dev_slice_follow 0
   mapfile -t found < <(discover_containers)
   if [ "${#found[@]}" -eq 0 ]; then
     log "nothing    no ${RA8_FLEET_PREFIX}* container on this host"
@@ -356,6 +456,11 @@ docker_scale() {
   [ "${want}" -ge 0 ] 2>/dev/null || die "scale needs a non-negative integer, got '${want}'"
   [ "${want}" -le "${#CONTAINERS[@]}" ] ||
     die "this host declares ${#CONTAINERS[@]} instance(s); cannot scale to ${want} without re-deploying it (make infra-apply)"
+  # Before the runners move, either way. Standing down: the owner asked for the
+  # machine, so give it to them now rather than after a drain that may take
+  # several job cycles -- and a frozen dev slice makes those cycles shorter.
+  # Coming back: thawing is instant and costs a suspended run nothing.
+  dev_slice_follow "${want}"
   for ((i = 0; i < want; i++)); do
     unpark_instance "${CONTAINERS[i]}"
   done
@@ -511,6 +616,7 @@ parse_args() {
       --quiet-start) RA8_FLEET_QUIET_START="$2" && shift 2 ;;
       --quiet-end) RA8_FLEET_QUIET_END="$2" && shift 2 ;;
       --quiet-days) RA8_FLEET_QUIET_DAYS="$2" && shift 2 ;;
+      --dev-slice) RA8_FLEET_DEV_SLICE="$2" && shift 2 ;;
       -h | --help)
         usage
         exit 0
@@ -534,8 +640,9 @@ cmd_status() {
   case "${RA8_FLEET_KIND}" in
     docker)
       require_docker_config
-      printf '  %-20s %-9s %-5s %s\n' INSTANCE STATE BUSY DETAIL
+      printf '  %-20s %-9s %-7s %s\n' INSTANCE STATE BUSY DETAIL
       docker_status
+      dev_slice_status
       ;;
     k8s) k8s_status ;;
     *) die "unknown --kind '${RA8_FLEET_KIND}' (docker|k8s)" ;;

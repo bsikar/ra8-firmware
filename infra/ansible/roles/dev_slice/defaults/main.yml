@@ -1,0 +1,190 @@
+---
+# dev_slice role defaults. Override per deployment in group_vars / host_vars.
+#
+# Make a CI runner host usable as a SECOND VERIFICATION HOST -- one an agent
+# can get a workspace on and run gates on, exactly the way they do on the dev
+# box -- without CI ever losing a scheduling contest to that work.
+#
+# WHY THIS IS A CGROUP AND NOT A POLICY
+# -------------------------------------
+# The fleet's fastest machine sits idle between CI bursts (measured: load ~2.8
+# of 22 threads in the troughs). Handing that trough to agents is free
+# throughput; handing a CI burst to agents is the CONTENTION that has already
+# produced false gate failures on the shared dev box -- gates that fail
+# intermittently and look exactly like real ones. So the split is enforced by
+# the kernel rather than by anyone remembering to be polite:
+#
+#   CPU     a WEIGHT, not a quota and not a cpuset. Every runner container is a
+#           scope under `system.slice`, which carries systemd's default
+#           CPUWeight of 100; this slice sits beside it at
+#           dev_slice_cpu_weight. On a thread a runner wants, dev work gets
+#           weight/(weight+100) of it; on a thread no runner wants, it gets all
+#           of it. It yields within one scheduling period of a job arriving,
+#           with nothing to schedule and nothing to remember. A cpuset would
+#           idle when CI is busy and cap the slice when CI is idle -- exactly
+#           backwards.
+#
+#   MEMORY  a HARD cap, because memory does not yield: a page a dev build holds
+#           is a page a clang-tidy job cannot have. dev_slice_memory is
+#           MemoryMax on the slice, so every process in it -- the agent's
+#           shell, its `make`, AND the container `make ci` launches -- shares
+#           one kernel-enforced ceiling that is carved out of the host's budget
+#           before CI is sized. The fleet-declaration gate fails a declaration
+#           where the runners' reservation plus this does not fit.
+#
+#   SWAP    allowed here and nowhere else in the fleet. A runner that swaps is
+#           a job that has silently become an order of magnitude slower and
+#           presents as a timeout; a dev gate run that swaps is just slow, and
+#           slow beats an OOM kill.
+#
+#   I/O     NOT declared. This kernel exposes no `io.weight` (the WSL2 kernel
+#           builds neither BFQ nor blk-iocost), so an IOWeight= here would be
+#           configuration that does nothing -- the exact silent-no-op this tree
+#           keeps finding in its own tooling. Stated rather than omitted so the
+#           next person does not re-derive it.
+#
+# Every number above is DERIVED from infra/fleet.yml by scripts/dev/fleet.py
+# and passed in as extra-vars. The defaults here exist so the role still runs
+# standalone; they are not a second place to tune a host, and the
+# fleet-declaration gate fails a host_vars file that re-declares one.
+
+# --- Lifecycle --------------------------------------------------------------
+#
+# False when the host declares no `dev_slice:` block. The role then REMOVES a
+# slice a previous declaration installed: deleting a block must undo it, not
+# leave a cgroup and a /etc/profile.d file behind that nothing in the tree
+# explains.
+dev_slice_enabled: false
+
+# `absent` is the teardown half of the host's lifecycle (fleet.py remove).
+dev_slice_state: "present"
+
+# Whether removal also deletes the base checkout, the workspaces and the
+# caches. Off by default: those hold an agent's work, and the fleet's own
+# reaper already bounds them. `-e dev_slice_destroy_data=true` to reclaim.
+dev_slice_destroy_data: false
+
+# --- The slice --------------------------------------------------------------
+
+# THE UNIT NAME. No dash, and that is load-bearing.
+#
+# systemd reads `-` in a slice name as HIERARCHY: `ra8-dev.slice` is created as
+# a CHILD of an auto-generated `ra8.slice`, and it is `ra8.slice` -- carrying
+# the DEFAULT weight of 100 -- that would then compete with `system.slice`.
+# The careful CPUWeight below would be arbitrating between the dev slice and
+# its zero siblings while CI and dev split the machine 50/50 one level up.
+# Verified on the host: `systemd-run --slice=ra8-dev.slice` lands in
+# `/ra8.slice/ra8-dev.slice/...`. A single-token name is a root-level slice and
+# a direct sibling of `system.slice`, which is the comparison that matters.
+#
+# scripts/dev/fleet_model.py names the same unit (it has to pass it to the
+# capacity script); the fleet-declaration gate asserts the two agree.
+dev_slice_unit: "ra8dev.slice"
+
+# CPU weight of the slice, against dev_slice_ci_cpu_weight for CI.
+dev_slice_cpu_weight: 10
+
+# The weight CI's containers run at. Passed in rather than assumed so the role
+# can read the host's REAL system.slice weight back and assert against the same
+# number the declaration was validated with.
+dev_slice_ci_cpu_weight: 100
+
+# MemoryMax / MemorySwapMax on the slice, as systemd size strings.
+dev_slice_memory: "5G"
+dev_slice_swap: "3G"
+
+# Fraction of MemoryMax at which the kernel starts reclaiming rather than
+# waiting for the wall. A dev run throttled into reclaim finishes slowly; one
+# that hits MemoryMax with nothing below it is OOM-killed, which costs an agent
+# the whole run. Measured here: a full `make ci` in the slice reaches MemoryMax
+# and stays there (98405 max events in one 20-minute run), so this is the knob
+# that decides whether that is a graceful slowdown or a kill.
+#
+# WRITTEN AS AN ABSOLUTE VALUE, computed in tasks/main.yml, and that is not
+# cosmetic. systemd resolves a PERCENTAGE in MemoryHigh= against the machine's
+# PHYSICAL memory, not against this slice's MemoryMax -- so a literal
+# `MemoryHigh=85%` on this host resolved to 21.6 GiB, four times the 5 GiB cap
+# it was meant to sit under, and did precisely nothing. Caught by reading
+# memory.high back out of the cgroup; the role now asserts it lands BELOW
+# memory.max, because a reclaim threshold above the wall it protects is a
+# setting that looks present and enforces nothing.
+dev_slice_memory_high_pct: 85
+
+# --- Bounded parallelism ----------------------------------------------------
+#
+# RA8_MAX_JOBS + CMAKE_BUILD_PARALLEL_LEVEL, exported for every dev shell. This
+# is a MEMORY bound wearing a CPU hat: nothing here needs to cap CPU, that is
+# what the weight is for, but a 22-wide compile does not fit under MemoryMax.
+dev_slice_max_jobs: 6
+
+# --- Paths ------------------------------------------------------------------
+#
+# STRUCTURAL, not tunable: where this role puts things on a host. Under the
+# distro's own ext4 root and never /mnt/c, for the same reason the runner tree
+# is -- /mnt/c is drvfs, a 9P translation to NTFS, roughly an order of
+# magnitude slower for the many-small-files work a checkout and a build are.
+dev_slice_root: "/opt/ra8-dev"
+dev_slice_base_checkout: "{{ dev_slice_root }}/ra8-firmware"
+dev_slice_workspace_root: "{{ dev_slice_root }}/ws"
+dev_slice_ccache_dir: "{{ dev_slice_root }}/ccache"
+dev_slice_tools_cache_dir: "{{ dev_slice_root }}/toolcache"
+dev_slice_repo_url: "https://github.com/bsikar/ra8-firmware.git"
+
+# Bound by ccache's own LRU eviction, so this directory never needs a human or
+# a cron job to trim it.
+dev_slice_ccache_max_size: "20G"
+
+dev_slice_bin: "/usr/local/bin/ra8-dev"
+dev_slice_profile: "/etc/profile.d/ra8-dev-slice.sh"
+dev_slice_units_dir: "/etc/systemd/system"
+
+# --- Toolchain --------------------------------------------------------------
+#
+# The gates run in a CONTAINER here, from the image the runners on this same
+# host boot -- not natively in the distro. That is a deliberate choice with one
+# reason and one measurement behind it:
+#
+#   - The image is `.devcontainer/Dockerfile` plus the actions-runner layer
+#     (see infra/images/runner/Dockerfile), and .devcontainer/Dockerfile is the
+#     single source of truth for every pinned tool. Confirmed on this host:
+#     clang-format 22.1.8, cppcheck 2.13.0, arm-none-eabi-gcc 13.3.1 -- the
+#     exact versions the `toolchain-parity` gate demands.
+#   - Provisioning the distro NATIVELY instead would mean a second, separately
+#     installed toolchain on the one machine that already holds the first, and
+#     the two would drift. The ci_runner_docker role refuses to build a second
+#     image for precisely that reason; building a second toolchain by apt would
+#     be the same defect in a worse shape. It would also be wrong on its own
+#     terms: the distro is Ubuntu 24.04 and the gate's answer must come from
+#     the image CI uses, not from whatever apt has today.
+#
+# scripts/ci.sh boots `ra8-ci:latest`, so the on-host runner image is TAGGED
+# with that name rather than a devcontainer image being built beside it. The
+# role asserts both names resolve to one image id, so "the dev slice runs what
+# CI runs" is a checked fact rather than a claim.
+dev_slice_ci_image_alias: "ra8-ci:latest"
+dev_slice_source_image: "{{ ci_runner_docker_image | default('localhost/ra8-ci-runner:v2') }}"
+
+# What a dev shell needs on the HOST side. Everything else is in the toolchain
+# image, because that is where the gates run.
+#
+#   make      drives the containerised suite (`make ci`, `make ws-new`)
+#   git       owns the worktrees `make ws-new` creates
+#   git-lfs   NOT optional, and not about LFS content: this repository's
+#             .git/hooks/post-checkout is an LFS hook, and without the binary
+#             it exits non-zero -- which makes `git worktree add` FAIL, so
+#             `make ws-new` cannot create a workspace at all. Measured here,
+#             on the first attempt.
+#   ccache    the cache DIRECTORY is what matters (it is bind-mounted into the
+#             container), but `ws-doctor` probes for the binary, and a doctor
+#             that reports a missing tool teaches people to ignore it.
+dev_slice_apt: [make, git, git-lfs, ccache]
+
+# The Docker Desktop credential helper, if the distro's root has one.
+#
+# WSL installs `{"credsStore": "desktop.exe"}` into the profile, and it fails
+# on a headless distro: `docker pull` dies with "A specified logon session does
+# not exist" -- measured on this host. The runners never notice (their images
+# are side-loaded and their compose files are pull_policy: never), but a dev
+# `make ci --rebuild` would, with an error that names Windows logon sessions
+# and not the toolchain. Neutralised here, with the original kept beside it.
+dev_slice_fix_docker_creds: true

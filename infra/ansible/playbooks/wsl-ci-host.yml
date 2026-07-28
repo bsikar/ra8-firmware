@@ -54,6 +54,13 @@
   roles:
     - wsl_ci_host
     - ci_runner_docker
+    # After the runners, because the dev slice is sized around what they
+    # reserve and boots its gates from the image they loaded. Tagged so
+    # `--tags dev-slice` can retune it on its own: that path stops, starts and
+    # recreates no container, so it needs no drain and costs this host no
+    # runner time.
+    - role: dev_slice
+      tags: [dev-slice]
     # Last: the capacity script has to name the instance containers the role
     # above has just created, and its timer is what stands this host down
     # during the owner's declared quiet hours.

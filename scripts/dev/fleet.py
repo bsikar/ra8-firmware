@@ -185,6 +185,12 @@ def _capacity(data: dict[str, Any], name: str, args: list[str]) -> int:
             flags.append("--sudo")
         for container in fm.container_names(host):
             flags += ["--container", container]
+        # An operator scale-down must reach the dev slice for the same reason
+        # the timer's does: `make infra-scale HOST=win-ci N=0` is the "I want
+        # to play a game for an hour" command, and it buys the owner nothing
+        # while a gate suite in the slice still has the machine.
+        if host.get("dev_slice"):
+            flags += ["--dev-slice", fm.DEV_SLICE_UNIT]
     else:
         flags += ["--scale-set", host["runners"]["labels"][0]]
     # Never a quoted argument: for the WSL host this line is parsed by Windows'
@@ -249,6 +255,14 @@ def cmd_show(data: dict[str, Any], args: argparse.Namespace) -> int:
         if fm.container_names(host):
             print(f"  registrations  {', '.join(fm.instance_names(args.host, host))}")
             print(f"  containers     {', '.join(fm.container_names(host))}")
+    lent = host.get("dev_slice")
+    if lent:
+        print(
+            f"  dev slice      {fm.DEV_SLICE_UNIT}: CPUWeight {lent['cpu_weight']} "
+            f"(vs {fm.SYSTEMD_DEFAULT_CPU_WEIGHT} for CI), MemoryMax "
+            f"{lent['memory_gb']}G, swap {lent.get('swap_gb', 0)}G, "
+            f"-j{lent['max_jobs']}"
+        )
     print("  derived ansible variables:")
     for key, value in sorted(fm.role_vars(args.host, host).items()):
         print(f"    {key}: {value}")
@@ -420,15 +434,17 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     rc = cmd_inventory(data, argparse.Namespace(stdout=False))
     if rc:
         return rc
-    # `--tags capacity` refreshes only the drain script and the quiet-hours
-    # timer. Nothing in that path stops, starts or recreates a container, so
-    # draining the host first would cost it every running job's worth of runner
-    # time to protect against a change that cannot touch them.
-    capacity_only = args.tags == "capacity"
+    # Some tag sets cannot stop, start or recreate a container -- `capacity`
+    # refreshes the drain script and the quiet-hours timer, `dev-slice` tunes a
+    # cgroup beside them. Draining the host for either would cost it every
+    # running job's worth of runner time to protect against a change that
+    # cannot touch them. The whitelist lives in fleet_model.NO_DRAIN_TAGS so
+    # adding a tag is a deliberate act with the rule in front of you.
+    no_drain_tags = args.tags in fm.NO_DRAIN_TAGS
     drain = (
         args.mode == "apply"
         and not args.no_drain
-        and not capacity_only
+        and not no_drain_tags
         and fm.container_names(host)
     )
     if drain:
@@ -620,8 +636,9 @@ def _parser() -> argparse.ArgumentParser:
         sub.add_argument(
             "--tags",
             default="",
-            help="ansible tags; 'capacity' refreshes only the drain script and "
-            "the quiet-hours timer, and needs no drain",
+            help="ansible tags; "
+            + "/".join(sorted(fm.NO_DRAIN_TAGS))
+            + " touch no container and so need no drain",
         )
     status = subs.add_parser("status", help="what each host is running, right now")
     status.add_argument("host", nargs="?")

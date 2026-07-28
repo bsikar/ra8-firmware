@@ -51,6 +51,7 @@
 # RUNNING IT
 # ---------------------------------------------------------------------------
 #   bash scripts/ci.sh --gate <name>   # one gate, in place, natively (CI path)
+#   bash scripts/ci.sh --gate <name> --container   # ...in the toolchain image
 #   bash scripts/ci.sh --native        # every gate natively, on a HEAD snapshot
 #   bash scripts/ci.sh --fast          # skip the slow gates
 #   bash scripts/ci.sh --list-gates    # machine-readable registry dump
@@ -625,7 +626,7 @@ run_suite() {
 # a moment ago. Do NOT replace this with a fixed path -- a fixed path is a
 # cache, and a cache is exactly the bug.
 run_suite_on_snapshot() {
-  local fast="$1" work rc=0
+  local fast="$1" only="${2:-}" work rc=0
   if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
     echo "NOTE: working tree is dirty -- ci.sh gates committed HEAD only (like" >&2
     echo "      CI). Commit your changes to have them gated." >&2
@@ -664,7 +665,15 @@ run_suite_on_snapshot() {
   # This is the same discipline run_gate_capture documents, and
   # suite_errexit_selftest is the regression test for it.
   set +e
-  run_suite "$fast"
+  # ONE gate, or the suite -- same snapshot, and deliberately inside the same
+  # errexit discipline rather than in a second function: a `||` or an `if`
+  # around either CALL re-creates the "failed part-way, reported PASS" defect
+  # the block above exists to prevent. A branch here cannot.
+  if [[ -n "$only" ]]; then
+    run_one_gate "$only"
+  else
+    run_suite "$fast"
+  fi
   rc=$?
   set -e
   cd "$REPO_ROOT"
@@ -677,11 +686,14 @@ run_suite_on_snapshot() {
 usage() {
   cat <<'EOF'
 usage: bash scripts/ci.sh [--fast] [--native] [--rebuild]
-       bash scripts/ci.sh --gate <name>
+       bash scripts/ci.sh --gate <name> [--container]
        bash scripts/ci.sh --list-gates
 
   --gate <name>  run exactly ONE registered gate, in place, natively.
                  This is what every CI workflow step invokes.
+  --container    with --gate: run that gate INSIDE the toolchain container on
+                 a clean HEAD snapshot, for a host that is not natively a
+                 CI-equivalent one (macOS; a runner host with no host toolchain).
   --list-gates   dump the registry as "name<TAB>speed<TAB>description".
   --native       run the whole suite natively on a clean HEAD snapshot
                  (no container). The supported path on Linux.
@@ -696,12 +708,14 @@ EOF
 fast=0
 rebuild=0
 native=0
+container=0
 gate=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --fast) fast=1 ;;
     --native) native=1 ;;
+    --container) container=1 ;;
     --rebuild) rebuild=1 ;;
     --list-gates)
       list_gates
@@ -734,11 +748,22 @@ done
 # Runs in place (CI already provided a clean checkout) and natively (the
 # runner IS the target environment). No container, so this path has no
 # container-runtime dependency at all.
-if [[ -n "$gate" ]]; then
+#
+# `--container` opts out of this short-circuit and falls through to host mode,
+# which re-enters with RA8_CI_GATE set. Some hosts are deliberately NOT
+# CI-equivalent natively: macOS cannot be, and a runner host whose only
+# toolchain is the image its runners boot is not either.
+if [[ -n "$gate" && "$container" != "1" ]]; then
   cd "$REPO_ROOT"
   export_tools_cache
   run_one_gate "$gate"
   exit $?
+fi
+
+if [[ "$container" == "1" && -z "$gate" ]]; then
+  echo "ci.sh: --container selects how --gate runs; it needs a gate name." >&2
+  echo "       The whole suite is already containerised by default." >&2
+  exit 2
 fi
 
 # --- in-container re-entry ------------------------------------------------
@@ -753,7 +778,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   if [[ -n "${RA8_CI_GIT_COMMON_DIR:-}" ]]; then
     git config --global --add safe.directory "$RA8_CI_GIT_COMMON_DIR" >/dev/null 2>&1 || true
   fi
-  run_suite_on_snapshot "${RA8_CI_FAST:-$fast}"
+  run_suite_on_snapshot "${RA8_CI_FAST:-$fast}" "${RA8_CI_GATE:-}"
   exit $?
 fi
 
@@ -767,195 +792,9 @@ fi
 # ===========================================================================
 # HOST MODE. Build the devcontainer image, then re-enter inside the container.
 # ===========================================================================
-
-# podman is preferred (daemonless, and rootless where the kernel allows it, so
-# a gate run cannot outlive the user's session); docker via colima is the
-# macOS path.
-#
-# RA8_CONTAINER_RUNTIME may carry arguments, e.g. "sudo podman". That is not
-# hypothetical: on a verification box that is itself an unprivileged LXC
-# container, rootless podman runs containers fine but cannot BUILD the
-# devcontainer -- apt drops privileges to the _apt user and its setgroups(2)
-# call is denied inside the nested user namespace. Running podman as root
-# inside that LXC sidesteps the nested namespace, and root there is still
-# unprivileged on the Proxmox host, so the security boundary is unchanged.
-read -r -a RUNTIME_CMD <<<"${RA8_CONTAINER_RUNTIME:-}"
-if [[ "${#RUNTIME_CMD[@]}" -eq 0 ]]; then
-  for candidate in podman docker nerdctl; do
-    if command -v "$candidate" >/dev/null 2>&1; then
-      RUNTIME_CMD=("$candidate")
-      break
-    fi
-  done
-fi
-
-if [[ "${#RUNTIME_CMD[@]}" -eq 0 ]]; then
-  # On Linux the native path is faithful -- the runner is Linux too -- so fall
-  # back rather than refusing to run. On macOS it is not: the format gate
-  # needs clang-format-22 and the host tests cannot mmap MAP_FIXED below
-  # 4 GiB, so a macOS "pass" would be a lie. Refuse there.
-  if [[ "$(uname -s)" == "Linux" ]]; then
-    echo "==> no container runtime found; running gates NATIVELY on this Linux host."
-    echo "    (Linux native == the CI environment. Install podman for isolation:"
-    echo "     sudo apt-get install -y podman uidmap)"
-    export_tools_cache
-    run_suite_on_snapshot "$fast"
-    exit $?
-  fi
-  echo "error: no container runtime on PATH (looked for podman, docker, nerdctl)." >&2
-  echo "  macOS cannot run these gates natively: the format gate pins" >&2
-  echo "  clang-format-22, and the host tests need MAP_FIXED below 4 GiB," >&2
-  echo "  which macOS arm64 refuses. Install a runtime:" >&2
-  echo "    brew install colima docker && colima start" >&2
-  exit 1
-fi
-
-RUNTIME_NAME="$(basename "${RUNTIME_CMD[${#RUNTIME_CMD[@]} - 1]}")"
-if ! command -v "${RUNTIME_CMD[0]}" >/dev/null 2>&1; then
-  echo "error: container runtime '${RUNTIME_CMD[0]}' is not on PATH." >&2
-  exit 1
-fi
-
-# On macOS the project uses colima (no Docker Desktop license). Auto-start it,
-# matching scripts/ci/test-docker.sh. podman on macOS uses its own VM instead.
-if [[ "$(uname -s)" == "Darwin" && "$RUNTIME_NAME" == "docker" ]]; then
-  if ! command -v colima >/dev/null 2>&1; then
-    echo "error: colima not on PATH. Install: brew install colima" >&2
-    exit 1
-  fi
-  if ! colima status >/dev/null 2>&1; then
-    echo "==> starting colima VM (4 CPU, 6 GiB)"
-    colima start --cpu 4 --memory 6
-  fi
-fi
-
-if ! "${RUNTIME_CMD[@]}" info >/dev/null 2>&1; then
-  echo "error: '${RUNTIME_CMD[*]}' is installed but not usable." >&2
-  if [[ "$RUNTIME_NAME" == "docker" ]]; then
-    echo "  docker daemon not reachable (try: colima start)" >&2
-  else
-    echo "  check '${RUNTIME_CMD[*]} info' output for the underlying failure." >&2
-  fi
-  exit 1
-fi
-
-# Build the devcontainer image. The Dockerfile has no COPY/ADD, so the tiny
-# .devcontainer/ directory is a sufficient build context -- do NOT ship the
-# multi-GB repo (datasheets, build trees) to the daemon as context.
-if [[ "$rebuild" == "1" ]] || ! "${RUNTIME_CMD[@]}" image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
-  echo "==> building $IMAGE_TAG from .devcontainer/Dockerfile (runtime: ${RUNTIME_CMD[*]})"
-  "${RUNTIME_CMD[@]}" build -t "$IMAGE_TAG" -f "$DOCKERFILE" "$REPO_ROOT/.devcontainer"
-else
-  echo "==> reusing cached image $IMAGE_TAG (--rebuild / REBUILD=1 to refresh)"
-fi
-
-# Linked git worktrees: mount the main repo's git dir too (#334).
-#
-# In a linked worktree -- an agent workspace from `make ws-new`, or a
-# .claude/worktrees/* tree -- `.git` is a FILE holding "gitdir: <path>" that
-# points into the MAIN repo's git directory. That directory is outside this
-# bind mount, so the in-container `git archive HEAD` saw no repository at all
-# and the suite died before its first gate with "fatal: not a git repository"
-# followed by "tar: This does not look like a tar archive".
-#
-# That made the isolation pattern agents are told to use (one workspace each,
-# so concurrent runs stop clobbering one another) incompatible with the only
-# toolchain-correct way to run the gates, and pushed agents onto native runs
-# where clang-tidy / gcovr / shellcheck / shfmt all differ from CI (#333).
-#
-# Mounting the common git dir at the SAME absolute path it has on the host is
-# what makes the pointer resolve identically inside and outside. It stays
-# read-only like the worktree itself: `git archive` only reads.
-WORKTREE_RUN_ARGS=()
-_git_common="$(cd "$REPO_ROOT" && cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .git)" 2>/dev/null && pwd || true)"
-case "${_git_common:-}" in
-  "" | "$REPO_ROOT"/*) ;; # ordinary checkout: the git dir is already inside the mount
-  *)
-    echo "==> linked worktree detected; also mounting $_git_common (read-only)"
-    WORKTREE_RUN_ARGS=(
-      -v "$_git_common":"$_git_common":ro
-      -e RA8_CI_GIT_COMMON_DIR="$_git_common"
-    )
-    ;;
-esac
-
-# Persistent compiler cache for the containerised path.
-#
-# Without this the cache is pointless here: HOME is /tmp inside the container
-# and --rm takes it away, so every run would start cold and cmake/ccache.cmake
-# would be wiring in a launcher whose cache never survives. A host directory
-# mounted read-write is what lets a second `make ci` -- by any agent, from any
-# workspace -- hit objects the first one compiled. It cannot carry stale state
-# forward: a changed input is simply a different cache key.
-#
-# CCACHE_BASEDIR + CCACHE_NOHASHDIR are load-bearing, not tuning. Each run
-# builds in a fresh mktemp snapshot, so without path normalisation every
-# compilation hashes differently and the hit rate is flat zero.
-#
-# Absent or unwritable cache dir: run without it rather than fail. A cache is
-# an optimisation, and a missing one must never turn a gate red.
-CCACHE_RUN_ARGS=()
-CCACHE_HOST_DIR="${RA8_CCACHE_DIR:-/var/cache/ccache-ra8}"
-if [[ -d "$CCACHE_HOST_DIR" && -w "$CCACHE_HOST_DIR" ]]; then
-  CCACHE_RUN_ARGS=(
-    -v "$CCACHE_HOST_DIR":/ccache
-    -e CCACHE_DIR=/ccache
-    -e CCACHE_BASEDIR=/
-    -e CCACHE_NOHASHDIR=1
-    -e "CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime,locale,time_macros"
-    -e CCACHE_MAXSIZE="${RA8_CCACHE_MAXSIZE:-20G}"
-  )
-  echo "==> compiler cache: $CCACHE_HOST_DIR -> /ccache"
-fi
-
-# Persistent PINNED-TOOL cache for the containerised path (#326).
-#
-# The docs gate builds with a version-pinned doxygen that
-# scripts/builders/provision_doxygen.sh downloads + sha256-verifies on first
-# use. Every gate run builds in a fresh mktemp snapshot whose build/tools/ is
-# destroyed on exit (trap rm -rf), so without a persistent mount that download
-# repeats every run and FAILS outright with no network. This mount is to pinned
-# tools what the ccache mount above is to compiled objects: one host directory,
-# reused across runs and shared across agents. RA8_TOOLS_CACHE tells
-# provision_doxygen.sh to cache under it instead of the ephemeral build/tools/.
-# Best-effort create; absent or unwritable, run without it rather than fail.
-TOOLCACHE_RUN_ARGS=()
-TOOLCACHE_HOST_DIR="$(ra8_tools_cache_host_dir)"
-mkdir -p "$TOOLCACHE_HOST_DIR" 2>/dev/null || true
-if [[ -d "$TOOLCACHE_HOST_DIR" && -w "$TOOLCACHE_HOST_DIR" ]]; then
-  TOOLCACHE_RUN_ARGS=(
-    -v "$TOOLCACHE_HOST_DIR":/toolcache
-    -e RA8_TOOLS_CACHE=/toolcache
-  )
-  echo "==> pinned-tool cache: $TOOLCACHE_HOST_DIR -> /toolcache"
-fi
-
-echo "==> running CI gates in container (runtime=${RUNTIME_CMD[*]} fast=$fast)"
-# The host repo is bind-mounted READ-ONLY: the in-container step extracts a
-# clean `git archive HEAD` into a throwaway dir and builds there, so the host
-# source tree and its macOS CMake caches are never touched. Run as root so
-# that throwaway tree (and its fresh build dirs) is writable.
-#
-# --rm is load-bearing, not hygiene: the snapshot tree and every build dir the
-# gates create live INSIDE the container, so the container exiting is what
-# reclaims them. Nothing a gate writes can survive to poison the next run.
-#
-# CMAKE_BUILD_PARALLEL_LEVEL defaults to 4 (the CI runner's value, so this
-# reproduces its timing) but is overridable for a beefier verification box.
-# RA8_MAX_JOBS is forwarded when set so an operator can cap every in-container
-# parallel width (#328) below the CMAKE_BUILD_PARALLEL_LEVEL budget; unset on
-# the host, `-e RA8_MAX_JOBS` passes nothing and ra8_max_jobs falls through.
-exec "${RUNTIME_CMD[@]}" run --rm \
-  -u 0:0 \
-  -e RA8_CI_INNER=1 \
-  -e RA8_CI_FAST="$fast" \
-  -e HOME=/tmp \
-  -e RA8_MAX_JOBS \
-  -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}" \
-  -v "$REPO_ROOT":/workspace:ro \
-  ${WORKTREE_RUN_ARGS[@]+"${WORKTREE_RUN_ARGS[@]}"} \
-  ${CCACHE_RUN_ARGS[@]+"${CCACHE_RUN_ARGS[@]}"} \
-  ${TOOLCACHE_RUN_ARGS[@]+"${TOOLCACHE_RUN_ARGS[@]}"} \
-  -w /workspace \
-  "$IMAGE_TAG" \
-  bash scripts/ci.sh
+# The body lives in scripts/ci/lib/container.sh -- runtime selection and the
+# `run` command line are transport, not a gate definition, and this file is
+# the gate registry. It ends in `exec`, so control does not come back.
+# shellcheck source=scripts/ci/lib/container.sh
+. "${SCRIPT_DIR}/ci/lib/container.sh"
+ci_host_mode_exec "$fast" "$gate" "$rebuild" "$IMAGE_TAG" "$DOCKERFILE" "$REPO_ROOT"

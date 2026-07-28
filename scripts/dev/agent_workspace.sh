@@ -436,34 +436,47 @@ cmd_doctor() {
     printf '  %-22s %s\n' "ccache" "MISSING -- builds will not share objects between workspaces"
   fi
   printf '  %-22s %s\n' "disk free" "$(df -h "$RA8_WS_ROOT" 2>/dev/null | tail -1 | awk '{print $4" of "$2}')"
-  printf '  %-22s %s\n' "reap timer" "$(systemctl --user is-enabled ra8-workspace-reap.timer 2>/dev/null || echo 'not installed')"
+  # Ask BOTH managers. install-timer picks the system one as root and the user
+  # one otherwise, so a doctor that only knew about user units would report
+  # "not installed" on every host where the timer is in fact running.
+  local timer="not installed"
+  if systemctl is-enabled ra8-workspace-reap.timer >/dev/null 2>&1; then
+    timer="$(systemctl is-enabled ra8-workspace-reap.timer 2>/dev/null) (system)"
+  elif systemctl --user is-enabled ra8-workspace-reap.timer >/dev/null 2>&1; then
+    timer="$(systemctl --user is-enabled ra8-workspace-reap.timer 2>/dev/null) (user)"
+  fi
+  printf '  %-22s %s\n' "reap timer" "$timer"
+  # The dev slice, where this host has one: a workspace on a CI runner host is
+  # only safe because gate runs in it are weighted below the runners, so a
+  # doctor there must say whether that is actually in force.
+  if [[ -n "${RA8_DEV_SLICE:-}" ]]; then
+    printf '  %-22s %s\n' "dev slice" \
+      "$RA8_DEV_SLICE $(systemctl is-active "$RA8_DEV_SLICE" 2>/dev/null || echo inactive), freezer=$(systemctl show -p FreezerState --value "$RA8_DEV_SLICE" 2>/dev/null || echo '?')"
+    printf '  %-22s %s\n' "gate container args" "${RA8_CI_CONTAINER_ARGS:-NONE -- make ci would run OUTSIDE the slice}"
+    printf '  %-22s %s\n' "bounded parallelism" "RA8_MAX_JOBS=${RA8_MAX_JOBS:-unset} CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-unset}"
+  fi
 }
 
-# Install the systemd user timer that makes reaping automatic. Idempotent, so
-# re-running it after a script change is safe. A user timer (not system) keeps
-# the whole mechanism inside the agent account with no root involvement; it
-# needs lingering enabled so it still fires when nobody is logged in.
-cmd_install_timer() {
-  require_linux
-  local unitdir="$HOME/.config/systemd/user"
-  local self
-  self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
-
-  # Run the timer from a STABLE copy, never from the checkout it was invoked
-  # from. install-timer is naturally run out of whichever tree the agent had
-  # open -- frequently a workspace under $RA8_WS_ROOT -- and pointing ExecStart
-  # there makes the reaper delete its own executable the moment that workspace
-  # goes stale. The failure is silent (a systemd oneshot that cannot exec just
-  # logs and exits non-zero) and it disables exactly the mechanism that is
-  # supposed to keep the disk clear, so the box would fill up again with no
-  # visible cause. A copy outside $RA8_WS_ROOT cannot be reaped by definition.
-  local stable_dir="$HOME/.local/bin"
-  local stable="$stable_dir/ra8-agent-workspace"
-  mkdir -p "$stable_dir"
-  if [[ "$self" != "$stable" ]]; then
-    install -m 0755 "$self" "$stable"
-  fi
-
+# WHICH systemd the reaper is installed into, and why it is decided rather than
+# fixed. As an ordinary user
+# this installs a USER timer: the whole mechanism then lives inside the agent
+# account with no root involvement, which is right on the shared verification
+# box where several agents each own their workspaces.
+#
+# As ROOT it installs a SYSTEM timer instead, and that is not a preference. A
+# user timer belongs to a user MANAGER that exits when the account's last
+# session ends unless lingering is enabled -- and the hosts where this runs as
+# root are headless distros nobody logs into (the WSL2 CI box's only account is
+# root, with `loginctl show-user root -p Linger` reporting `no`). A user timer
+# there is installed, reported enabled, and then silently never fires again
+# after the installing session closes: the disk fills up with no visible cause,
+# which is precisely the class of tooling-that-enforces-nothing this tree keeps
+# finding. `systemctl --user` for root is also the odd path in every other
+# respect; a system unit is what a root-owned, machine-wide sweep should be.
+#
+# Writes the two unit files into $1 for the reaper copy at $2.
+write_reap_units() {
+  local unitdir="$1" stable="$2"
   mkdir -p "$unitdir"
   cat >"$unitdir/ra8-workspace-reap.service" <<EOF
 [Unit]
@@ -493,14 +506,54 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 EOF
-  systemctl --user daemon-reload
-  systemctl --user enable --now ra8-workspace-reap.timer
-  if ! loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null | grep -q yes; then
+}
+
+# Install the systemd timer that makes reaping automatic. Idempotent, so
+# re-running it after a script change is safe.
+cmd_install_timer() {
+  require_linux
+  local system=0 manager=user unitdir="$HOME/.config/systemd/user"
+  local sc=(systemctl --user)
+  if [[ "$(id -u)" -eq 0 ]]; then
+    system=1
+    manager=system
+    unitdir="/etc/systemd/system"
+    sc=(systemctl)
+  fi
+  local self
+  self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+  # Run the timer from a STABLE copy, never from the checkout it was invoked
+  # from. install-timer is naturally run out of whichever tree the agent had
+  # open -- frequently a workspace under $RA8_WS_ROOT -- and pointing ExecStart
+  # there makes the reaper delete its own executable the moment that workspace
+  # goes stale. The failure is silent (a systemd oneshot that cannot exec just
+  # logs and exits non-zero) and it disables exactly the mechanism that is
+  # supposed to keep the disk clear, so the box would fill up again with no
+  # visible cause. A copy outside $RA8_WS_ROOT cannot be reaped by definition.
+  local stable_dir="$HOME/.local/bin"
+  local stable="$stable_dir/ra8-agent-workspace"
+  mkdir -p "$stable_dir"
+  if [[ "$self" != "$stable" ]]; then
+    install -m 0755 "$self" "$stable"
+  fi
+
+  write_reap_units "$unitdir" "$stable"
+  "${sc[@]}" daemon-reload
+  "${sc[@]}" enable --now ra8-workspace-reap.timer
+  if [[ "$system" == "0" ]] &&
+    ! loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null | grep -q yes; then
     log "note: lingering is off; enable it so the timer runs without a login:"
     log "      sudo loginctl enable-linger $(id -un)"
   fi
-  echo "installed ra8-workspace-reap.timer"
-  systemctl --user list-timers ra8-workspace-reap.timer --no-pager 2>/dev/null | head -3
+  # Read back rather than trust: a unit that was written and not armed is the
+  # silent nothing the comment above exists to prevent.
+  if [[ "$("${sc[@]}" is-active ra8-workspace-reap.timer 2>/dev/null)" != active ]]; then
+    die "ra8-workspace-reap.timer is not active after installing it ($manager" \
+      "manager); stale workspaces would never be swept"
+  fi
+  echo "installed ra8-workspace-reap.timer ($manager)"
+  "${sc[@]}" list-timers ra8-workspace-reap.timer --no-pager 2>/dev/null | head -3
 }
 
 case "${1:-}" in
