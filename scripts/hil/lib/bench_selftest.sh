@@ -148,6 +148,7 @@ cmd_selftest() {
   # running a trap. A guard that quietly released early, or quietly held
   # forever, would pass every case above.
   bench_selftest_guard || failures=$((failures + 1))
+  bench_selftest_fence || failures=$((failures + 1))
   _bench_st_confirm_phrase || failures=$((failures + 1))
 
   if [ "$want_ssh_death" -eq 1 ]; then
@@ -244,6 +245,133 @@ bench_selftest_guard() {
   printf '  FAIL: the bench stayed held %ss after a guarded script was SIGKILLed.\n' "$waited"
   printf '        The fd-close release is not working; only the EXIT trap is.\n'
   return 1
+}
+
+# THE FENCE. The case above kills the whole guarded script, so the hold and the
+# work die together and nothing has to notice anything. This kills ONLY the
+# hold's ssh client and leaves the script running -- which is what a network
+# blip, an sshd restart or ServerAlive giving up looks like, and what
+# scripts/hil/bench_contention.sh staged deliberately.
+#
+# Before the fence existed the script carried on driving the board with no lock
+# at all: measured on the bench, a J-Link session ran 75 s past its own release
+# while three other machines took the lock in turn and programmed MRAM
+# underneath it. So the assertion is not "the flock dropped" -- it did, that was
+# never the problem -- but that the CALLER STOPS.
+_bench_st_write_fence_script() {
+  local script="$1" lib
+  lib="$(dirname "$RA8_BENCH_HOST_SRC")"
+  cat >"$script" <<FENCETEST
+#!/usr/bin/env bash
+set -uo pipefail
+source "$lib/bench_lock.sh"
+ra8_bench_require "selftest: fence" 300s || exit \$?
+printf 'FENCE-HELD %s\n' "\$RA8_BENCH_LOCK_ID"
+# Stand in for a script that is still driving the board. If the fence does not
+# fire, this runs to completion and prints the line that must never appear.
+i=0
+while [ \$i -lt 120 ]; do
+  sleep 1
+  i=\$((i + 1))
+done
+printf 'STILL-RUNNING-UNPROTECTED\n'
+FENCETEST
+}
+
+# Start the fence test script and wait for it to report a hold. Prints its pid,
+# or nothing when it never acquired.
+_bench_st_fence_start() {
+  local script="$1" pid waited=0
+  RA8_BENCH_DIR="$RA8_BENCH_DIR" bash "$script" >"$script.out" 2>"$script.err" &
+  pid=$!
+  while [ "$waited" -lt 60 ]; do
+    grep -q '^FENCE-HELD ' "$script.out" 2>/dev/null && break
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 1
+    waited=$((waited + 1))
+  done
+  if ! grep -q '^FENCE-HELD ' "$script.out" 2>/dev/null; then
+    kill -9 "$pid" 2>/dev/null
+    return 1
+  fi
+  printf '%s' "$pid"
+}
+
+# Judge the aftermath: the caller must have stopped, must NOT have reached the
+# line it prints when it runs to completion, and must have said why.
+_bench_st_fence_verdict() {
+  local script="$1" pid="$2" waited="$3"
+  if grep -q '^STILL-RUNNING-UNPROTECTED' "$script.out" 2>/dev/null; then
+    printf '  FAIL: the caller kept running after its hold died -- the fence did not fire.\n'
+    return 1
+  fi
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -9 "$pid" 2>/dev/null
+    printf '  FAIL: the caller was still alive %ss after its hold was SIGKILLed.\n' "$waited"
+    return 1
+  fi
+  if ! grep -q 'THE BENCH HOLD DIED' "$script.err" 2>/dev/null; then
+    printf '  FAIL: the caller stopped, but the fence never said why.\n'
+    printf '        A silent abort is indistinguishable from an unrelated crash.\n'
+    return 1
+  fi
+  printf '  ok: killing ONLY the hold stopped the caller in <=%ss, loudly\n' "$((waited + 1))"
+  return 0
+}
+
+bench_selftest_fence() {
+  local script pid hold waited=0 rc
+  script="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-fencetest.XXXXXX")"
+  _bench_st_write_fence_script "$script"
+  pid="$(_bench_st_fence_start "$script")"
+  if [ -z "$pid" ]; then
+    printf '  FAIL: the fence test script never acquired\n'
+    sed 's/^/        /' "$script.err" 2>/dev/null | head -8
+    rm -f "$script" "$script.out" "$script.err"
+    return 1
+  fi
+
+  # The hold's own ssh client, and ONLY it: a descendant of the test script
+  # whose command line carries the shipped host half. Killing by pattern alone
+  # would catch every other actor's hold on this machine. A local bench
+  # (rig_is_local_pi) has no ssh client at all; there the hold is a plain child
+  # process, and killing that is the same experiment.
+  hold="$(_bench_st_hold_client "$pid")"
+  [ -n "$hold" ] || hold="$(pgrep -P "$pid" 2>/dev/null | head -1)"
+  if [ -z "$hold" ]; then
+    printf '  FAIL: could not find the hold process to kill\n'
+    kill -9 "$pid" 2>/dev/null
+    rm -f "$script" "$script.out" "$script.err"
+    return 1
+  fi
+
+  kill -9 "$hold" 2>/dev/null
+  while [ "$waited" -lt 30 ]; do
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 1
+    waited=$((waited + 1))
+  done
+  wait "$pid" 2>/dev/null
+  _bench_st_fence_verdict "$script" "$pid" "$waited"
+  rc=$?
+  rm -f "$script" "$script.out" "$script.err"
+  return "$rc"
+}
+
+# The hold's ssh client: a descendant of <root> running the shipped host half.
+_bench_st_hold_client() {
+  local root="$1" p cur
+  for p in $(pgrep -f ra8-bench-host 2>/dev/null); do
+    cur="$p"
+    while [ -n "$cur" ] && [ "$cur" != "1" ]; do
+      if [ "$cur" = "$root" ]; then
+        printf '%s' "$p"
+        return 0
+      fi
+      cur="$(ps -o ppid= -p "$cur" 2>/dev/null | tr -d ' ')"
+    done
+  done
+  return 0
 }
 
 # THE experiment the design stands on.

@@ -282,6 +282,7 @@ bh_decode_fields() {
   BH_INTENT=""
   BH_GIT_REF=""
   BH_MAX_HOLD_S="900"
+  BH_QUIESCE_S="120"
   BH_KIND="wrapped"
   BH_BREAK_GLASS="false"
   BH_CONFIRM=""
@@ -298,6 +299,7 @@ bh_decode_fields() {
       intent) BH_INTENT="$v" ;;
       git_ref) BH_GIT_REF="$v" ;;
       max_hold_s) BH_MAX_HOLD_S="$v" ;;
+      quiesce_s) BH_QUIESCE_S="$v" ;;
       hold_kind) BH_KIND="$v" ;;
       break_glass) BH_BREAK_GLASS="$v" ;;
       confirm) BH_CONFIRM="$v" ;;
@@ -405,6 +407,17 @@ bh_hold() {
     # without errexit precisely so a non-zero verdict is a verdict, not an abort.
     bh_probe
     return "$BH_EXIT_HELD"
+  }
+
+  # Entitled to the board, but not yet the only one driving it. A leftover tool
+  # from a holder whose hold died is still programming; wait it out before
+  # acknowledging, so no acquirer is ever told the board is theirs while
+  # somebody else's JLinkExe has the core halted.
+  bh_await_quiescent || {
+    # Drop the flock as we go: exiting closes fd 9, but say so explicitly since
+    # this is the one path that takes the lock and then declines to use it.
+    exec 9>&-
+    return "$BH_EXIT_UNKNOWN"
   }
 
   BH_BOOT="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)"
@@ -728,6 +741,77 @@ $proc"
 $dev: $proc"
   done
   printf '%s' "$hits" | tr '\n' ';' | sed 's/^;*//'
+}
+
+# ---------------------------------------------------------------------------
+# Handover interlock: do not grant a board somebody is still driving
+# ---------------------------------------------------------------------------
+#
+# The flock says who is ENTITLED to the board. It does not say the board is
+# idle, and those came apart on the bench in a way that mattered.
+#
+# A guarded script's hold travels over its own ssh connection, separate from
+# the connections it uses to drive the hardware. Kill the hold and the flock
+# drops instantly -- correctly, that is the whole design -- while a JLinkExe
+# the script started is still running here, halted on the target, because ssh
+# does not reap a remote payload that is not reading its stdin. Measured on
+# this bench: a J-Link session outlived its own release by 75 s, and three
+# other machines took the lock in turn and programmed MRAM underneath it.
+#
+# lib/bench_lock.sh's fence stops the dead holder's SCRIPT within about a
+# second, but it cannot reach across ssh and stop a tool already running here.
+# This side can: the acquirer has the flock and nobody else can be entitled to
+# the board, so anything still driving it is a leftover, and the honest thing
+# is to wait for it rather than hand over a board that is in use.
+#
+# Only PROGRAMMING and debug tools count. A console reader is a nuisance rather
+# than a hazard, and blocking every acquire behind somebody's forgotten `cat`
+# would be a cure worse than the disease -- `bh_health` already reports those.
+BH_QUIESCE_TOOLS="JLinkExe JLinkGDBServer rfp-cli openocd esptool esptool.py"
+
+# Live programming/debug tools, one per line, or empty when the board is idle.
+bh_busy_tools() {
+  local pat proc hits=""
+  for pat in $BH_QUIESCE_TOOLS; do
+    proc="$(pgrep -a -f "(^|/)$pat" 2>/dev/null | head -3)"
+    [ -n "$proc" ] && hits="$hits
+$proc"
+  done
+  printf '%s' "$hits" | sed '/^$/d'
+}
+
+# Wait for the board to go idle, having already taken the flock.
+#   0 -- idle (immediately, or after waiting)
+#   3 -- still busy at the deadline. FAIL CLOSED: the caller drops the flock.
+bh_await_quiescent() {
+  local limit="$BH_QUIESCE_S" waited=0 busy
+  case "$limit" in '' | *[!0-9]*) limit=120 ;; *) ;; esac
+  [ "$BH_DIR" = "/var/lib/ra8-bench" ] || return "$BH_EXIT_OK"
+  busy="$(bh_busy_tools)"
+  [ -n "$busy" ] || return "$BH_EXIT_OK"
+  bh_log "the flock is ours, but the board is still being driven by a leftover:"
+  printf '%s\n' "$busy" | sed 's/^/bench-host:   /' >&2
+  bh_log "waiting up to ${limit}s for it to finish before taking the board."
+  bh_journal_add quiesce-wait "$BH_LOCK_ID" "$BH_CLASS" "$BH_NAME" \
+    "acquired the flock but the board was still busy: $(printf '%s' "$busy" | tr '\n' ';')"
+  while [ "$waited" -lt "$limit" ]; do
+    sleep 2
+    waited=$((waited + 2))
+    busy="$(bh_busy_tools)"
+    if [ -z "$busy" ]; then
+      bh_log "board went idle after ${waited}s -- proceeding."
+      bh_journal_add quiesce-ok "$BH_LOCK_ID" "$BH_CLASS" "$BH_NAME" \
+        "board idle after ${waited}s"
+      return "$BH_EXIT_OK"
+    fi
+  done
+  bh_log "STILL BUSY after ${limit}s. NOT handing over a board somebody is driving."
+  printf '%s\n' "$busy" | sed 's/^/bench-host:   /' >&2
+  bh_log "if that process is wedged, kill it on the bench host, or force with"
+  bh_log "RA8_BENCH_BREAK_GLASS=... after checking nobody is at the bench."
+  bh_journal_add quiesce-timeout "$BH_LOCK_ID" "$BH_CLASS" "$BH_NAME" \
+    "board still busy after ${limit}s -- refused the handover"
+  return "$BH_EXIT_UNKNOWN"
 }
 
 bh_health() {

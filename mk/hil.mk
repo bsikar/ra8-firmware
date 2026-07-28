@@ -7,7 +7,24 @@
         hil hil-help hil-flash hil-recover hil-flash-retry hil-erase hil-dlm-reset \
         hil-reflash hil-probe hil-find-jlink hil-all hil-c6 hil-tapo hil-ppps \
         flash-ocd debug-ocd bench-status bench-selftest bench-hold bench-free \
-        bench-extend bench-take bench-log bench-doctor
+        bench-extend bench-take bench-log bench-doctor bench-contention
+
+# WAIT= queues for a bench somebody else holds instead of failing on the spot.
+# Every guarded HIL target below inherits it, because ra8_bench_require reads it
+# out of the environment. Unset means 0, i.e. fail fast: the right default for a
+# human, the wrong one for CI and for an unattended agent, which is why saying
+# `WAIT=10m` has to be this cheap.
+#
+# Passed through VERBATIM -- "10m", "2h", "900s" -- and parsed on the shell side
+# by bench_duration(), which already exists and is already exercised by every
+# other duration flag. Converting it here with $(shell ... case ... esac) is what
+# this line used to do, and it does not work: make ends a $(shell) at the first
+# unmatched `)`, so the `*h|*H)` arm terminated the expansion and
+# RA8_BENCH_WAIT_S was set to the REST OF THE CASE STATEMENT. The guard then read
+# a non-numeric wait, fell back to flock -n, and WAIT= silently did nothing.
+ifneq ($(WAIT),)
+export RA8_BENCH_WAIT := $(WAIT)
+endif
 
 # Local J-Link shorthands (board on THIS machine): build the app, then forward
 # to the per-app Makefile (scripts/{flash,debug,ozone}.sh).
@@ -89,6 +106,15 @@ bench-log:
 bench-doctor:
 	@bash scripts/hil/bench.sh doctor
 
+# The lock, proven under REAL contention from several independent machines
+# rather than against itself. Needs RA8_BENCH_ACTORS in .env (see .env.example)
+# and hardware; the verdict is decided from the bench host's own view of what
+# touched the board, not from what the actors claim they did.
+bench-contention:
+	bash scripts/hil/bench_contention.sh $(if $(PHASE),--phase $(PHASE),) \
+	  $(if $(ROUNDS),--rounds $(ROUNDS),) $(if $(VICTIM),--victim $(VICTIM),) \
+	  $(if $(WAIT),--wait $(WAIT),)
+
 # Remote HIL (board on the Pi rig, driven over SSH). See scripts/hil/.
 hil:
 	bash scripts/hil/dev.sh
@@ -105,6 +131,8 @@ hil-help:
 	@echo "  make bench-log [N=25]           tail the audit journal"
 	@echo "  make bench-doctor               state dir, perms, inode, clock, sshd bound"
 	@echo "  make bench-selftest             prove the lock, including the ssh-death case"
+	@echo "  make bench-contention           prove it under real contention from several machines"
+	@echo "  ... WAIT=10m                    queue for a busy bench instead of failing at once"
 	@echo ""
 	@echo "  make hil                        full HIL suite from this machine (build+flash+verify)"
 	@echo "  make hil-flash APP=<app>        build + flash to the Pi-attached board"

@@ -252,7 +252,11 @@ cmd_run() {
   # on, this shell dying closes the pipe, which is the release.
   exec 8>"$tmp/hold.in"
 
-  bench_await_ack "$lock_id" "$tmp/hold.out" "$holder" $((BENCH_OPT_WAIT_S + 30))
+  # The deadline has to cover BOTH waits the bench host may sit through: the
+  # flock queue (--wait) and the quiesce interlock that follows it. Counting
+  # only the first makes the client abandon a hold the host was about to grant.
+  bench_await_ack "$lock_id" "$tmp/hold.out" "$holder" \
+    $((BENCH_OPT_WAIT_S + RA8_BENCH_QUIESCE_S + 30))
   rc=$?
   if [ "$rc" -ne 0 ]; then
     _cmd_run_report_failure "$rc" "$tmp/hold.out"
