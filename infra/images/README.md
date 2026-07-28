@@ -11,6 +11,14 @@ it step for step so it can be run by hand; if the two ever disagree, the role
 is right and this file is stale. Deploy with the role rather than by hand
 whenever you have the choice -- it carries the asserts.
 
+The role **stages the build context onto the node from the control node's
+checkout** (`/var/lib/ra8-ci/build-context`) and builds from there, so the image
+comes from the same tree whose gates then assert what it contains. It used to
+build from a path on the node that nothing created or synced, which is how the
+deployed image came to be two pinned-tool changes behind this Dockerfile
+(#513). Running the steps below by hand does the same thing by being run inside
+a checkout.
+
 ## Where the image lives on the node
 
 There is no registry on a single-node k3s, so the pods pull nothing

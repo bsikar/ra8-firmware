@@ -142,8 +142,26 @@ ci_runner_gid: 1001
 # is never written to this repo.
 ci_runner_github_secret_name: "ra8-arc-github"
 
-# Path to the repo checkout on the target host (build context for the images).
-ci_runner_repo_dir: "/home/{{ ansible_user | default('ubuntu') }}/ra8-firmware"
+# Where the image build context is STAGED on the target, and where it comes
+# from on the control node.
+#
+# It used to be a path to "the repo checkout on the target host", defaulted to
+# ~/ra8-firmware -- a directory nothing in this tree ever creates, syncs or
+# checks, and which did not exist on the k3s node. So the role's own build step
+# could not run, every image the fleet has ever booted was built by hand from
+# whatever tree happened to be lying around, and that is precisely how the
+# deployed image came to predate .devcontainer/Dockerfile by two pinned-tool
+# changes (#513). A build input the tooling does not control is not a build
+# input, it is a rumour.
+#
+# The context now comes from the checkout the operator ran the command in --
+# the same tree whose gates then assert what the image contains -- and is
+# staged onto the node under the runner's own state directory. It is small
+# (the devcontainer context plus one Dockerfile), so it is copied on every
+# converge and the directory is emptied first: a file deleted from the tree
+# must disappear from the context too.
+ci_runner_context_src: "{{ playbook_dir }}/../../.."
+ci_runner_context_dir: "/var/lib/ra8-ci/build-context"
 
 # kubeconfig on the target (k3s default is root-owned).
 ci_runner_kubeconfig: "/etc/rancher/k3s/k3s.yaml"
