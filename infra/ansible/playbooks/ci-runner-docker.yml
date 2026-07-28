@@ -1,0 +1,22 @@
+---
+# Deploy (or remove) a plain self-hosted runner in Docker on a host that is not
+# the k3s node -- a second build host, so CI and the dev container stop
+# contending for one CPU.
+#
+#   Deploy:  ansible-playbook -i inventory/hosts.ini playbooks/ci-runner-docker.yml
+#   Remove:  ansible-playbook -i inventory/hosts.ini playbooks/ci-runner-docker.yml \
+#              -e ci_runner_docker_state=absent
+#
+# The ARC-on-k3s pool is playbooks/ci-runner.yml; the two are independent and
+# both register against the same repository. See infra/README.md.
+- name: Deploy a Docker-hosted CI runner
+  hosts: ci_runners_docker
+  gather_facts: true
+  pre_tasks:
+    - name: Load local secrets if present (bootstrap writes private/secrets.yml)
+      ansible.builtin.include_vars: "{{ item }}"
+      vars:
+        item: "{{ playbook_dir }}/../private/secrets.yml"
+      when: item is exists
+  roles:
+    - ci_runner_docker
