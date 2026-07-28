@@ -1,0 +1,186 @@
+---
+# wsl_ci_host role defaults. Override per deployment in group_vars / host_vars.
+#
+# Prepares a WSL2 Ubuntu distro on a Windows machine to host a CI runner, so
+# that `ci_runner_docker` can then deploy the runner into it unchanged. The two
+# roles are deliberately separate: everything Windows- and WSL-specific lives
+# here, and `ci_runner_docker` stays a plain "any Docker host" role that does
+# not grow a second personality per platform.
+#
+# Why a Windows box is in the build farm at all: it is the fastest machine in
+# the fleet by a wide margin (Zen 4, 12 physical cores) and it was otherwise
+# contributing nothing to CI. It is also the owner's daily driver and gaming
+# PC, which is why every setting below is a CEILING chosen to leave the desktop
+# usable rather than a share chosen to maximise build throughput.
+#
+# This role runs INSIDE the distro (connection: local is the supported path --
+# see playbooks/wsl-ci-host.yml) and reaches the Windows side through the
+# /mnt/c drvfs mount and WSL interop (schtasks.exe). That avoids opening an
+# inbound SSH port on a personal machine just so a config management tool can
+# reach it.
+
+# --- Identity ---------------------------------------------------------------
+
+# The Windows account whose profile holds .wslconfig, and whose logon starts
+# the distro. .wslconfig is per-USER, not per-machine: written under the wrong
+# profile it is silently ignored and every cap in it does nothing.
+wsl_ci_host_windows_user: "sikar"
+
+# The distro name as `wsl -l -v` reports it. Also what the autostart task boots.
+wsl_ci_host_distro: "Ubuntu"
+
+# --- Resource caps ----------------------------------------------------------
+#
+# These bound the whole WSL2 VM, so they bound the runner container inside it
+# no matter what the container asks for. The container's own cgroup caps
+# (ci_runner_docker_cpus / _memory) sit UNDER these; this is the outer limit
+# that protects Windows itself.
+#
+# Host: AMD Ryzen 9 7900X -- 12 physical cores / 24 threads -- and 31 GiB RAM.
+
+# 22 of 24 threads, and 26 of 31 GiB, leave ~2 threads and ~5 GiB for an idle
+# Windows desktop.
+#
+# These were deliberately revised UP. The first cut reserved half the machine
+# on the assumption it was a gaming PC that CI was borrowing; the owner's
+# instruction is the reverse -- it is barely gamed on, it is the fastest host
+# in the fleet, and work should be pushed onto it in preference to the slower
+# machines. So it is treated as a dedicated build host that happens to run
+# Windows, and the reservation is only what an idle desktop plus the WSL
+# service processes actually need.
+#
+# They stay variables precisely so that judgement is reversible in one place:
+# drop these two numbers and every instance below re-sizes with them.
+wsl_ci_host_processors: 22
+
+# A ceiling, not a reservation -- see wsl_ci_host_auto_memory_reclaim.
+wsl_ci_host_memory: "26GB"
+
+# Swap inside the VM so a peak in a link or LTO step is paged rather than
+# OOM-killed mid-job. An OOM kill surfaces as a flaky CI failure, which costs
+# more to diagnose than the page-out costs to run.
+wsl_ci_host_swap: "8GB"
+
+# Return freed pages to Windows instead of holding the high-water mark for the
+# life of the VM. This is what makes a 20 GiB cap safe on a gaming machine: an
+# idle runner does not sit on 20 GiB while a game is loading.
+#
+# NOTE: on WSL 2.6.3 this key belongs under [experimental]. Under [wsl2] the
+# parser reports `Unknown key 'wsl2.autoMemoryReclaim'` -- placement is
+# load-bearing, and the template puts it in the right section.
+wsl_ci_host_auto_memory_reclaim: "gradual"
+
+# Milliseconds WSL waits before tearing the VM down once no session is
+# attached; -1 disables it entirely.
+#
+# THE setting that decides whether this host is a real runner or an
+# intermittent one. WSL reaps an unattended VM regardless of what is running
+# inside it: the runner here was seen going offline with busy=true, meaning
+# GitHub still had a job assigned to a VM that had been shut down underneath
+# it. A headless CI host has no interactive session by definition, so the
+# default behaviour is permanently hostile to it.
+wsl_ci_host_vm_idle_timeout: -1
+
+# How long to wait for timesyncd to report a synchronised clock before failing
+# the play. NTPSynchronized flips to "no" whenever the unit restarts and only
+# returns to "yes" after it has contacted a server, so this is a genuine wait
+# rather than a retry-until-lucky: 30 x 4s covers a cold boot on a link that
+# has to resolve and reach an NTP pool.
+wsl_ci_host_clock_retries: 30
+wsl_ci_host_clock_delay: 4
+
+# --- Networking -------------------------------------------------------------
+#
+# THE fault that makes this host non-obvious. It is multi-homed: an isolated
+# bench LAN (10.0.40.0/24, NO uplink) and the owner's Wi-Fi. Under mirrored
+# networking WSL copies the Windows routing table into the distro, and the
+# bench LAN's DHCP-supplied default gateway arrives with the LOWER metric --
+# so every packet the runner sends goes into a black hole. Windows itself is
+# unaffected because it fails over; this is a WSL-only fault, which is why the
+# fix belongs in the distro and NOT in the owner's network configuration.
+
+# WSL networking mode. Mirrored gives the distro the host's own interfaces and
+# addresses. It was already the setting on this machine when the runner was
+# added, and it is kept: switching a personal machine's networking mode is a
+# change to how everything else on it behaves, not a CI decision. The route-pin
+# helper below exists precisely so mirrored mode is survivable here.
+wsl_ci_host_networking_mode: "mirrored"
+
+# Left as found on the host. Note that DNS tunnelling being ON is not the same
+# as it WORKING -- see wsl_ci_host_nameservers, which is the reason this role
+# stops WSL generating resolv.conf.
+wsl_ci_host_dns_tunneling: true
+wsl_ci_host_firewall: true
+
+# Nameservers written into /etc/resolv.conf, which this role takes ownership of.
+#
+# WSL's own DNS-tunnelling endpoint (10.255.255.254) does not answer on this
+# host: a raw UDP/53 query to it times out, while 1.1.1.1 and 8.8.8.8 answer in
+# milliseconds over the same interface. Left generated, resolv.conf points at
+# the endpoint that does not answer and every name lookup in a CI job stalls
+# for the full resolver timeout.
+#
+# Public resolvers on purpose: the LAN gateway answers too, but pinning it
+# would couple CI to the owner's home router keeping one address.
+wsl_ci_host_nameservers:
+  - "1.1.1.1"
+  - "8.8.8.8"
+
+# Address the route-pin helper probes to decide which default gateway actually
+# carries internet traffic. Must be reachable by IP with no DNS, since it runs
+# before DNS can be trusted. Cloudflare answers on port 80.
+wsl_ci_host_route_probe_ip: "1.1.1.1"
+
+# How often the pinned route is re-asserted. Mirrored networking re-syncs the
+# Windows routing table into the distro on every host network change (Wi-Fi
+# roam, bench LAN up/down), which re-adds the black-hole route underneath a
+# job that is already running.
+wsl_ci_host_route_pin_interval: "60s"
+
+# --- Docker -----------------------------------------------------------------
+
+# Install Docker Engine natively inside the distro.
+#
+# The alternative on this machine is the existing Docker Desktop WSL
+# integration, and it is the wrong tool here: Docker Desktop's daemon runs
+# behind a Windows application that requires a logged-in interactive session,
+# so the runner would stop being able to start containers whenever the owner
+# logged out -- an unattended runner that is not unattended. It is also the
+# owner's application, with the owner's settings, and a CI runner has no
+# business depending on them. Native docker-ce runs under the distro's own
+# systemd, starts with the distro, and is ours to configure.
+#
+# Docker Desktop is left installed and untouched; the two coexist. The role
+# asserts that the native binary is the one on PATH, because the Desktop
+# integration puts its own shim on PATH from /mnt/c and a silent switch to it
+# would reintroduce the GUI dependency without any other symptom.
+wsl_ci_host_install_docker: true
+
+# --- Autostart --------------------------------------------------------------
+#
+# WSL does not start distros on boot; something on the Windows side has to.
+# Without this the runner is offline after every reboot until somebody opens a
+# terminal, which is exactly the kind of "works until it doesn't" that makes a
+# runner untrustworthy.
+
+# Name of the Windows Scheduled Task that boots the distro.
+wsl_ci_host_task_name: "ra8-wsl-ci-runner-autostart"
+
+# Trigger. ONLOGON is used rather than ONSTART deliberately: a task that runs
+# at system start has to run as SYSTEM, and a distro booted in SYSTEM's context
+# is a DIFFERENT WSL instance from the owner's -- two VMs, two docker daemons,
+# and the runner in whichever one nobody is looking at. Running it at the
+# owner's logon keeps exactly one instance.
+#
+# The cost is stated rather than hidden: between a reboot and the owner logging
+# in, this runner is offline and jobs land on the other hosts in the pool.
+wsl_ci_host_task_trigger: "ONLOGON"
+
+# --- Lifecycle --------------------------------------------------------------
+#
+# `absent` undoes precisely what `present` did -- the autostart task, the
+# route-pin units, and the resolv.conf/wsl.conf ownership -- and restores the
+# .wslconfig backup taken on first run. It deliberately does NOT uninstall
+# Docker or touch Docker Desktop: removing a package from somebody's personal
+# machine is not this role's call to make.
+wsl_ci_host_state: "present"

@@ -1,0 +1,568 @@
+---
+# Prepare a WSL2 Ubuntu distro on a Windows machine to host a CI runner.
+#
+# Runs INSIDE the distro (connection: local) and reaches the Windows side
+# through /mnt/c and WSL interop. See defaults/main.yml for why each setting is
+# what it is; this file is AUTHORITATIVE for how the host is configured, and
+# infra/README.md is a description of it that can go stale.
+#
+# Idempotent, and `-e wsl_ci_host_state=absent` undoes it.
+
+- name: Assert a lifecycle state this role implements
+  ansible.builtin.assert:
+    that:
+      - wsl_ci_host_state in ['present', 'absent']
+    fail_msg: >-
+      wsl_ci_host_state is '{{ wsl_ci_host_state }}'; this role implements
+      'present' (configure) and 'absent' (undo) only.
+    success_msg: "state={{ wsl_ci_host_state }}"
+
+# --- Preflight --------------------------------------------------------------
+
+- name: Read the kernel identity
+  ansible.builtin.slurp:
+    src: /proc/version
+  register: wsl_ci_host_proc_version
+
+- name: Assert this is actually a WSL distro
+  # Every path below writes to /mnt/c or shells out to a .exe. On a normal
+  # Linux host those either fail confusingly or, worse, create a directory
+  # called /mnt/c and report success.
+  ansible.builtin.assert:
+    that:
+      - "'microsoft' in (wsl_ci_host_proc_version.content | b64decode | lower)"
+    fail_msg: >-
+      /proc/version does not mention Microsoft, so this is not a WSL distro.
+      This role configures WSL-specific things (the .wslconfig VM caps, the
+      mirrored-networking route fix, the Windows autostart task) and has
+      nothing to do on a plain Linux host -- deploy ci_runner_docker there
+      directly.
+    success_msg: "running inside WSL"
+
+- name: Resolve the Windows profile directory
+  ansible.builtin.set_fact:
+    wsl_ci_host_profile: "/mnt/c/Users/{{ wsl_ci_host_windows_user }}"
+
+- name: Assert the Windows profile is visible over drvfs
+  # .wslconfig is per-user. Written to a profile that is not there, every cap
+  # in it is silently ignored and the VM comes up uncapped -- which on a gaming
+  # machine is the whole failure this role exists to prevent.
+  ansible.builtin.stat:
+    path: "{{ wsl_ci_host_profile }}"
+  register: wsl_ci_host_profile_stat
+  failed_when: not wsl_ci_host_profile_stat.stat.exists
+
+# --- Removal ----------------------------------------------------------------
+
+- name: Undo the WSL host configuration
+  when: wsl_ci_host_state == 'absent'
+  block:
+    - name: Delete the Windows autostart task
+      ansible.builtin.command:
+        argv:
+          - schtasks.exe
+          - /Delete
+          - /TN
+          - "{{ wsl_ci_host_task_name }}"
+          - /F
+      register: wsl_ci_host_task_del
+      changed_when: wsl_ci_host_task_del.rc == 0
+      failed_when: false
+
+    - name: Stop and disable the route-pin units
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      loop:
+        - ra8-wsl-route-pin.timer
+        - ra8-wsl-route-pin.service
+      failed_when: false
+
+    - name: Remove the route-pin helper and its units
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/ra8-wsl-route-pin.timer
+        - /etc/systemd/system/ra8-wsl-route-pin.service
+        - /usr/local/sbin/ra8-wsl-route-pin
+
+    - name: Check for the .wslconfig backup taken on first run
+      ansible.builtin.stat:
+        path: "{{ wsl_ci_host_profile }}/.wslconfig.ra8-backup"
+      register: wsl_ci_host_backup
+
+    - name: Restore the owner's original .wslconfig
+      # Restored, not deleted. The file predates this role on this machine and
+      # carries the owner's own networking settings; removing it would be us
+      # reconfiguring their machine on the way out.
+      when: wsl_ci_host_backup.stat.exists
+      ansible.builtin.copy:
+        src: "{{ wsl_ci_host_profile }}/.wslconfig.ra8-backup"
+        dest: "{{ wsl_ci_host_profile }}/.wslconfig"
+        remote_src: true
+        mode: "0644"
+
+    - name: Report what removal left behind
+      ansible.builtin.debug:
+        msg: >-
+          WSL host configuration removed: autostart task
+          {{ wsl_ci_host_task_name }} deleted, route-pin units removed,
+          .wslconfig
+          {{ 'restored from backup' if wsl_ci_host_backup.stat.exists
+             else 'left as-is (no backup found)' }}. Docker Engine and Docker
+          Desktop were deliberately NOT touched. Run `wsl --shutdown` from
+          Windows to drop the VM caps.
+
+# --- Configuration ----------------------------------------------------------
+
+- name: Configure the WSL host
+  when: wsl_ci_host_state == 'present'
+  block:
+    - name: Enable systemd and take ownership of resolv.conf
+      # generateResolvConf=false is the load-bearing half. WSL's generated
+      # resolv.conf points at its DNS-tunnelling endpoint, which does not
+      # answer on this host, so every lookup in a CI job stalls for the full
+      # resolver timeout before failing.
+      ansible.builtin.copy:
+        dest: /etc/wsl.conf
+        mode: "0644"
+        content: |
+          # Managed by the ra8-firmware wsl_ci_host Ansible role.
+          [boot]
+          systemd=true
+
+          [network]
+          generateResolvConf=false
+
+    - name: Remove any resolv.conf symlink WSL or systemd-resolved left behind
+      # `copy` follows an existing symlink and writes through it, which would
+      # put our nameservers in /run/systemd/resolve/stub-resolv.conf instead of
+      # where the resolver reads them.
+      ansible.builtin.file:
+        path: /etc/resolv.conf
+        state: absent
+
+    - name: Write a resolv.conf that answers
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        mode: "0644"
+        content: |
+          # Managed by the ra8-firmware wsl_ci_host Ansible role.
+          # WSL's own DNS-tunnelling endpoint does not answer on this
+          # multi-homed mirrored-networking host; these do.
+          {% for ns in wsl_ci_host_nameservers %}
+          nameserver {{ ns }}
+          {% endfor %}
+          options timeout:2 attempts:2
+
+    - name: Install the default-route pin helper
+      # Inlined rather than kept as templates/*.j2 for the same reason the
+      # ci_runner_docker compose body is: Jinja templates are a file type
+      # nothing in this tree lints or formats, and check_lint_coverage.py
+      # rejects unclassified types rather than admitting a blind spot.
+      ansible.builtin.copy:
+        dest: /usr/local/sbin/ra8-wsl-route-pin
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          # Managed by the ra8-firmware wsl_ci_host Ansible role.
+          #
+          # Pick the default gateway that actually carries internet traffic and
+          # pin it below every mirrored route.
+          #
+          # Mirrored networking copies the Windows routing table into the
+          # distro. This host is multi-homed: an isolated bench LAN with NO
+          # uplink, and the owner's Wi-Fi. The bench LAN's DHCP-supplied
+          # gateway arrives with the LOWER metric, so unmodified WSL sends
+          # every packet into a black hole. Windows itself fails over and is
+          # unaffected, so the fix belongs here and not in the owner's network.
+          set -u
+          readonly PROBE={{ wsl_ci_host_route_probe_ip }}
+
+          # Already pinned: nothing to do, and no probe traffic on a timer.
+          if ip -4 route show default | head -1 | grep -q 'metric 5'; then
+            exit 0
+          fi
+
+          while read -r gw dev; do
+            [ -n "$gw" ] && [ -n "$dev" ] || continue
+            if curl -s --max-time 4 --interface "$dev" -o /dev/null \
+                 "http://${PROBE}"; then
+              ip route replace default via "$gw" dev "$dev" metric 5
+              echo "ra8-wsl-route-pin: pinned via $gw dev $dev metric 5"
+              exit 0
+            fi
+          done < <(ip -4 route show default |
+                   awk '{g="";d="";
+                         for(i=1;i<=NF;i++){if($i=="via")g=$(i+1);
+                                            if($i=="dev")d=$(i+1)}
+                         if(g!=""&&d!="")print g, d}' | sort -u)
+
+          echo "ra8-wsl-route-pin: no default gateway reached ${PROBE}" >&2
+          exit 1
+
+    - name: Install the route-pin service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/ra8-wsl-route-pin.service
+        mode: "0644"
+        content: |
+          # Managed by the ra8-firmware wsl_ci_host Ansible role.
+          [Unit]
+          Description=Pin the WSL default route to the internet-bearing gateway
+          After=network.target
+          Wants=network.target
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/ra8-wsl-route-pin
+          RemainAfterExit=no
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Install the route-pin timer
+      # A timer as well as a boot unit. Mirrored networking re-syncs the
+      # Windows routing table on every host network change, which re-adds the
+      # black-hole route underneath a job that is already running -- a boot-only
+      # fix would leave that job failing with no obvious cause.
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/ra8-wsl-route-pin.timer
+        mode: "0644"
+        content: |
+          # Managed by the ra8-firmware wsl_ci_host Ansible role.
+          [Unit]
+          Description=Re-assert the pinned WSL default route
+
+          [Timer]
+          OnBootSec=10s
+          OnUnitActiveSec={{ wsl_ci_host_route_pin_interval }}
+          AccuracySec=5s
+
+          [Install]
+          WantedBy=timers.target
+
+    - name: Enable and start the route-pin units
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+        daemon_reload: true
+      loop:
+        - ra8-wsl-route-pin.service
+        - ra8-wsl-route-pin.timer
+
+    # --- Clock ------------------------------------------------------------
+    #
+    # A WSL2 VM does not boot with a trustworthy clock, and that lands squarely
+    # on the build. Observed on this host: the VM came up ~4 minutes fast, the
+    # runner checked out the tree with those timestamps, timesyncd then stepped
+    # the clock back, and make spent the rest of the job reporting
+    #
+    #   Warning: File '...o' has modification time 236 s in the future
+    #   warning: Clock skew detected. Your build may be incomplete.
+    #
+    # That is not cosmetic: make's up-to-date decisions are timestamp
+    # comparisons, so a build under a stepping clock can silently skip work or
+    # relink forever. It recurs on EVERY boot, which on this host means after
+    # every reboot -- exactly when the autostart chain is supposed to be
+    # bringing the runner back.
+    #
+    # The fix is ordering, not tuning: do not let the runner start until the
+    # clock has been synchronised.
+
+    - name: Ensure NTP synchronisation is enabled
+      ansible.builtin.systemd_service:
+        name: systemd-timesyncd
+        state: started
+        enabled: true
+
+    - name: Enable the unit that blocks until the clock is synchronised
+      # Ships with systemd and is disabled by default. It is the supported way
+      # to say "later units may assume the clock is right".
+      ansible.builtin.systemd_service:
+        name: systemd-time-wait-sync
+        state: started
+        enabled: true
+
+    - name: Install Docker Engine inside the distro
+      when: wsl_ci_host_install_docker | bool
+      block:
+        - name: Ensure the apt keyring directory exists
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: "0755"
+
+        - name: Fetch the Docker apt signing key
+          ansible.builtin.get_url:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            dest: /etc/apt/keyrings/docker.asc
+            mode: "0644"
+
+        - name: Install the deb822 apt-source dependency
+          # ansible.builtin.deb822_repository is implemented on top of
+          # python3-debian and fails hard without it. Installed here rather
+          # than assumed present: a stock Ubuntu 24.04 WSL image does not
+          # carry it.
+          ansible.builtin.apt:
+            name: python3-debian
+            state: present
+            update_cache: true
+
+        - name: Drop any one-line Docker apt source
+          # The deb822 source below replaces it. Left in place both would be
+          # configured, and apt reports the same target twice on every update.
+          ansible.builtin.file:
+            path: /etc/apt/sources.list.d/docker.list
+            state: absent
+
+        - name: Add the Docker apt repository
+          ansible.builtin.deb822_repository:
+            name: docker
+            types: [deb]
+            uris: "https://download.docker.com/linux/ubuntu"
+            suites: "{{ ansible_distribution_release }}"
+            components: [stable]
+            architectures:
+              - "{{ ansible_architecture | replace('x86_64', 'amd64') }}"
+            signed_by: /etc/apt/keyrings/docker.asc
+            enabled: true
+            state: present
+
+        - name: Install Docker Engine and the Compose plugin
+          ansible.builtin.apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-buildx-plugin
+              - docker-compose-plugin
+            state: present
+            update_cache: true
+
+        - name: Ensure the Docker unit drop-in directory exists
+          ansible.builtin.file:
+            path: /etc/systemd/system/docker.service.d
+            state: directory
+            mode: "0755"
+
+        - name: Hold the Docker daemon back until the clock is synchronised
+          # Docker starting late is the point. The runner containers are
+          # `restart: unless-stopped`, so they come up with the daemon -- which
+          # means the daemon's start time IS the moment this host begins
+          # accepting jobs. Ordering it after the clock settles is what stops
+          # the first build after every boot running under a stepping clock.
+          ansible.builtin.copy:
+            dest: /etc/systemd/system/docker.service.d/10-wait-for-clock.conf
+            mode: "0644"
+            content: |
+              # Managed by the ra8-firmware wsl_ci_host Ansible role.
+              [Unit]
+              After=systemd-time-wait-sync.service
+              Wants=systemd-time-wait-sync.service
+
+        - name: Enable and start the Docker daemon
+          ansible.builtin.systemd_service:
+            name: docker
+            state: started
+            enabled: true
+            daemon_reload: true
+
+    - name: Find which docker binary is first on PATH
+      ansible.builtin.command:
+        cmd: which docker
+      register: wsl_ci_host_which_docker
+      changed_when: false
+
+    - name: Assert the native docker, not the Docker Desktop shim, is in use
+      # Docker Desktop's WSL integration puts a shim on PATH from /mnt/c. It
+      # works only while the Desktop application is running in a logged-in
+      # interactive session, so a silent switch to it turns an unattended
+      # runner into one that stops taking jobs whenever the owner logs out --
+      # with no other symptom to notice.
+      ansible.builtin.assert:
+        that:
+          - not (wsl_ci_host_which_docker.stdout | trim).startswith('/mnt/')
+        fail_msg: >-
+          `which docker` resolves to
+          '{{ wsl_ci_host_which_docker.stdout | trim }}', which is the Docker
+          Desktop shim on the Windows drive, not the Engine installed in this
+          distro. Docker Desktop needs a logged-in GUI session, so a runner
+          built on it is not unattended. Fix PATH so the distro's own
+          /usr/bin/docker wins.
+        success_msg: >-
+          docker is {{ wsl_ci_host_which_docker.stdout | trim }} (native)
+
+    - name: Back up the owner's .wslconfig before taking it over
+      # Once only: `creates`-style guard via a stat, so a re-run does not
+      # overwrite the pristine backup with our own managed copy.
+      ansible.builtin.copy:
+        src: "{{ wsl_ci_host_profile }}/.wslconfig"
+        dest: "{{ wsl_ci_host_profile }}/.wslconfig.ra8-backup"
+        remote_src: true
+        force: false
+        mode: "0644"
+      failed_when: false
+
+    - name: Write the .wslconfig VM caps
+      ansible.builtin.copy:
+        dest: "{{ wsl_ci_host_profile }}/.wslconfig"
+        mode: "0644"
+        content: |
+          # Managed by the ra8-firmware wsl_ci_host Ansible role.
+          # The owner's original is kept beside this file as
+          # .wslconfig.ra8-backup and is restored by the role's removal path.
+          [wsl2]
+          networkingMode={{ wsl_ci_host_networking_mode }}
+          dnsTunneling={{ wsl_ci_host_dns_tunneling | lower }}
+          firewall={{ wsl_ci_host_firewall | lower }}
+
+          # This machine is a daily driver and a gaming PC first; the CI runner
+          # is a guest on it. These cap the whole WSL2 VM, so nothing the
+          # runner does inside it can take the host below the headroom left
+          # here. Rationale for each number is in the role defaults.
+          processors={{ wsl_ci_host_processors }}
+          memory={{ wsl_ci_host_memory }}
+          swap={{ wsl_ci_host_swap }}
+
+          # Do not shut the VM down when no interactive session is attached.
+          #
+          # This is the single most important line here for an unattended
+          # runner, and it was found the hard way: WSL tears the VM down a
+          # short time after the last session exits, and it does NOT care that
+          # a container inside it is midway through a CI job. The runner was
+          # observed going offline with busy=true -- GitHub still had a job
+          # assigned to a machine that no longer existed. A headless host has
+          # no interactive session by definition, so without this the VM is
+          # always seconds away from being reaped.
+          vmIdleTimeout={{ wsl_ci_host_vm_idle_timeout }}
+
+          [experimental]
+          # WSL 2.6.3 rejects this key under [wsl2] ('Unknown key
+          # wsl2.autoMemoryReclaim') -- placement is load-bearing, not
+          # cosmetic. It is what makes the memory cap a ceiling rather than a
+          # reservation.
+          autoMemoryReclaim={{ wsl_ci_host_auto_memory_reclaim }}
+
+    - name: Register the Windows autostart task
+      # WSL does not start distros on boot. Booting the distro starts its
+      # systemd, which starts docker, which starts the runner containers -- so
+      # this one task is the whole reboot-survival chain on the Windows side.
+      #
+      # The command is a BLOCKING keep-alive, not `-e true`. A task that runs
+      # `wsl -e true` starts the VM and exits, and WSL then reaps the VM again
+      # moments later because nothing holds it open -- an autostart that
+      # reliably leaves the runner offline, which is worse than none because it
+      # looks configured. `sleep infinity` is one blocked process that holds
+      # the distro for as long as the session lasts, and it belts-and-braces
+      # the vmIdleTimeout setting rather than relying on it alone.
+      ansible.builtin.command:
+        argv:
+          - schtasks.exe
+          - /Create
+          - /TN
+          - "{{ wsl_ci_host_task_name }}"
+          - /TR
+          - "wsl.exe -d {{ wsl_ci_host_distro }} -e sleep infinity"
+          - /SC
+          - "{{ wsl_ci_host_task_trigger }}"
+          - /RL
+          - LIMITED
+          - /F
+      register: wsl_ci_host_task_create
+      changed_when: wsl_ci_host_task_create.rc == 0
+
+    - name: Read back the task Windows actually stored
+      ansible.builtin.command:
+        argv: [schtasks.exe, /Query, /TN, "{{ wsl_ci_host_task_name }}"]
+      register: wsl_ci_host_task_query
+      changed_when: false
+
+    - name: Assert the autostart task exists
+      ansible.builtin.assert:
+        that:
+          - wsl_ci_host_task_name in wsl_ci_host_task_query.stdout
+        fail_msg: >-
+          schtasks.exe did not report a task named
+          {{ wsl_ci_host_task_name }} after creating it, so nothing will start
+          this distro after a reboot and the runner would silently stay offline.
+        success_msg: "autostart task {{ wsl_ci_host_task_name }} registered"
+
+    # --- Verify the configuration actually took ---------------------------
+    #
+    # Every check below reads back state rather than trusting the task that set
+    # it. A cap that was silently ignored, or a route fix that did not stick,
+    # is worse than one never applied: the play reports a protected host and a
+    # working runner, and the first symptom is a job that hangs.
+
+    - name: Read back the caps the VM is running under
+      ansible.builtin.command:
+        cmd: nproc
+      register: wsl_ci_host_nproc
+      changed_when: false
+
+    - name: Assert the CPU cap took effect
+      # Only meaningful after `wsl --shutdown`: .wslconfig is read when the VM
+      # boots, so a converge on a running VM legitimately reports the old
+      # value. That is why this compares and explains rather than just failing.
+      ansible.builtin.assert:
+        that:
+          - (wsl_ci_host_nproc.stdout | trim | int) <= (wsl_ci_host_processors | int)
+        fail_msg: >-
+          The distro sees {{ wsl_ci_host_nproc.stdout | trim }} processors,
+          more than the {{ wsl_ci_host_processors }} this role caps it at. The
+          VM is running with the pre-existing configuration: .wslconfig is read
+          only at VM boot. Run `wsl --shutdown` from Windows and re-run this
+          play to apply it.
+        success_msg: >-
+          VM sees {{ wsl_ci_host_nproc.stdout | trim }} processors
+          (cap {{ wsl_ci_host_processors }})
+
+    - name: Wait for the clock to be synchronised
+      # WAITED for, not sampled once. NTPSynchronized is reset to "no" whenever
+      # timesyncd (re)starts and only becomes "yes" after it has actually
+      # contacted a server, so a single reading taken moments after this play
+      # touched the unit races it and reports a false failure on a host whose
+      # clock is fine.
+      #
+      # The underlying fault this guards is real and was measured here: the
+      # VM's RTC runs ~4 minutes ahead of true time, so timesyncd steps the
+      # system clock BACKWARD shortly after boot. A build straddling that step
+      # sees file modification times hundreds of seconds in the future, make
+      # reports "Clock skew detected. Your build may be incomplete", and its
+      # up-to-date decisions -- which are timestamp comparisons -- stop being
+      # sound. That presents as a flaky gate, not as a host fault, which is
+      # why it is worth blocking the deploy over.
+      ansible.builtin.command:
+        cmd: timedatectl show --property=NTPSynchronized --value
+      register: wsl_ci_host_ntp
+      changed_when: false
+      until: (wsl_ci_host_ntp.stdout | trim) == 'yes'
+      retries: "{{ wsl_ci_host_clock_retries | int }}"
+      delay: "{{ wsl_ci_host_clock_delay | int }}"
+
+    - name: Prove the runner can actually reach GitHub
+      # The point of the whole networking section. A runner that cannot resolve
+      # and reach api.github.com registers, reports online and then fails every
+      # job it is given, which looks like a repository problem rather than a
+      # host problem.
+      ansible.builtin.uri:
+        url: https://api.github.com
+        method: GET
+        status_code: [200]
+        timeout: 20
+      register: wsl_ci_host_github
+
+    - name: Report the configured host
+      ansible.builtin.debug:
+        msg: >-
+          WSL host ready: {{ wsl_ci_host_nproc.stdout | trim }} processors,
+          memory cap {{ wsl_ci_host_memory }}, swap {{ wsl_ci_host_swap }};
+          default route pinned by ra8-wsl-route-pin.timer every
+          {{ wsl_ci_host_route_pin_interval }}; api.github.com reachable;
+          docker is {{ wsl_ci_host_which_docker.stdout | trim }}; the distro is
+          started at {{ wsl_ci_host_task_trigger }} by the Windows task
+          {{ wsl_ci_host_task_name }}. Deploy the runner itself with the
+          ci_runner_docker role.

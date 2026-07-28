@@ -124,6 +124,38 @@ ci_runner_docker_image_archive: "{{ ci_runner_docker_root }}/images/ra8-ci-runne
 
 ci_runner_docker_container: "ra8-ci-runner"
 
+# How many independent runners to run on this host.
+#
+# Concurrency, not per-job speed, is the thing worth buying. A `firmware` run
+# submits ~21 jobs and they queue behind whatever runners exist; when every
+# runner in the pool is busy, a second job STARTING now is worth more than the
+# first job finishing 20% sooner. So a host with cores to spare runs several
+# independent runners rather than one runner building with a very wide `-j`.
+#
+# At 1 (the default, and what the NAS uses) every derived name is the
+# unsuffixed original and this feature is invisible. Above 1, instances are
+# named <name>-1..<name>-N, each with its own home, its own registration and
+# its own _work tree.
+#
+# Sizing is bounded by MEMORY, not cores: clang-tidy is the memory hog in this
+# tree and has been OOM-killed on an 8 GiB machine, so each instance wants
+# ~6 GiB to itself. Divide the host's RAM by that before dividing its cores.
+ci_runner_docker_instances: 1
+
+# Give each instance its own cpuset rather than only a CFS quota.
+#
+# `cpus:` is a quota, and nproc does NOT see it -- every instance would report
+# the host's full thread count, every build would fan out `-j<all of them>`,
+# and N instances would oversubscribe the machine N-fold. That is precisely
+# what makes a fast machine feel slow. A cpuset changes the affinity mask, so
+# nproc returns the instance's real share and `make -j$(nproc)` is correct by
+# construction; it also stops instances migrating across each other's L3.
+#
+# Instance i gets cpus [(i-1)*cpus, i*cpus-1], so the host must have at least
+# instances * cpus threads. Off by default: on a single-runner host there is
+# nothing to partition and pinning would only stop the scheduler helping.
+ci_runner_docker_pin_cpus: false
+
 # CPU cap, in whole CPUs, enforced by the kernel via cgroup v2 cpu.max.
 #
 # The host is a 6-core / 12-thread i5-10400 whose day job is serving files. 8
@@ -178,6 +210,29 @@ ci_runner_docker_destroy_dataset: true
 # credential to rotate, one place it lives (OpenBao; see
 # group_vars/all.example.yml).
 ci_runner_docker_github_pat: "{{ ci_runner_github_pat }}"
+
+# The PAT-free alternative, for a host the PAT must never be copied to.
+#
+# Both are short-lived GitHub tokens (one hour, one use) that stand in for the
+# PAT for exactly one operation each, so a host can be joined to or removed
+# from the pool without ever holding a credential that outlives the play:
+#
+#   registration: gh api -X POST \
+#     repos/<owner>/<repo>/actions/runners/registration-token
+#   removal:      gh api -X POST \
+#     repos/<owner>/<repo>/actions/runners/remove-token
+#
+# This is how the Windows/WSL build host is deployed. That play runs ON the
+# target (connection: local, because reaching into WSL from outside would mean
+# opening an inbound SSH port on somebody's personal machine), so "the control
+# node" and "the runner host" are the same box and the usual
+# delegate_to: localhost separation buys nothing. A repo-scoped PAT sitting on
+# a daily-driver gaming PC is a real exposure; a one-hour token is not.
+#
+# Empty by default: hosts that can safely hold the PAT keep using it, and the
+# role mints its own tokens as needed.
+ci_runner_docker_registration_token: ""
+ci_runner_docker_removal_token: ""
 
 # How long to wait for the runner to report `online` to GitHub before failing
 # the play. A cold start pulls nothing and only has to reach github.com, so
