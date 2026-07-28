@@ -25,22 +25,30 @@
  *
  *   1. ``ra8_etha_init`` on port 0 in CONFIG mode (shaper registers are only
  *      writable in CONFIG).
- *   2. ``ra8_etha_set_tas_schedule`` with a 2-entry gate-control list: window 0
- *      opens only the class-7 (PTP / control) gate, window 1 opens the
- *      best-effort classes 0-6. ``ra8_etha_enable_tas`` arms the scheduler.
+ *   2. ``ra8_etha_tas_ram_reset``, then ``ra8_etha_set_tas_schedule`` with a
+ *      2-entry gate list on descriptor queue 7 (PTP / control): one window
+ *      open, one shut. Every entry is read back out of the TAS RAM with
+ *      ``ra8_etha_read_tas_entry`` and compared. ``ra8_etha_enable_tas``
+ *      arms the scheduler.
  *   3. ``ra8_etha_configure_cbs`` on traffic class 2 (AVB class A) with an
  *      illustrative credit increment + upper limit, then
  *      ``ra8_etha_get_cbs_state`` reads the oper-side mirror back.
  *   4. ``ra8_etha_get_status`` reads the TAS cycle-time monitor.
  *
  * @warning **What the verdict does and does not prove.** ``"tsn: schedule
- * PASS"`` requires two things: that the gPTP time base advanced by the
- * measured wall-clock interval (a real hardware assertion -- the counter is
- * read twice around a SysTick-timed window), and that every shaper call
- * returned ``k_ra8_ok``. The second half only proves the arguments were
- * accepted and the writes were issued: ETHA stays in CONFIG mode here, so no
- * frame is ever transmitted and nothing about *shaped egress* is measured.
- * That needs a multi-node measurement rig (bench wiring #89).
+ * PASS"`` requires three things: that the gPTP time base advanced by the
+ * measured wall-clock interval (the counter is read twice around a
+ * SysTick-timed window), that every TAS entry read back out of the TAS RAM
+ * matches what was written to it, and that every shaper call returned
+ * ``k_ra8_ok``. The first two are hardware assertions. The third only proves
+ * the arguments were accepted: ETHA stays in CONFIG mode here, so no frame is
+ * ever transmitted and nothing about *shaped egress* is measured. That needs
+ * a multi-node measurement rig (bench wiring #89).
+ *
+ * The read-back was added with #539, when the driver was found to be writing
+ * gate states into ``EATASGL0``, whose field is the TAS RAM entry ADDRESS.
+ * Every call returned ``k_ra8_ok`` throughout, which is precisely why a
+ * verdict built only out of return codes was worth nothing.
  *
  * hw_pending: ``tools/ra8_emulator`` has no ETHA shaper or GPTP timer model
  * (both windows fall to the sparse config-reflect fallback, where a counter
@@ -68,8 +76,8 @@
 typedef enum : uint32_t {
   k_tsn_baud          = 115200U, /**< SCI8 console baud.                     */
   k_tsn_period_ms     = 1000U,   /**< Delay between cycles.                  */
-  k_tsn_win_units     = 125000U, /**< Per-window bus time (TAS clock units). */
-  k_tsn_cycle_units   = 250000U, /**< Full GCL cycle = 2 windows.            */
+  k_tsn_win_units     = 125000U, /**< Per-window gate time, nanoseconds.     */
+  k_tsn_cycle_units   = 250000U, /**< Full GCL cycle = 2 windows, ns.        */
   k_tsn_cbs_increment = 1500U,   /**< CBS credit increment (20-bit field).   */
   k_tsn_cbs_upper_lim = 65536U,  /**< CBS upper credit limit (31-bit field). */
 } tsn_const_t;
@@ -106,11 +114,10 @@ typedef enum : uint8_t {
 } tsn_band_t;
 
 /**
- * @brief TAS gate vectors: bit q opens the class-q gate (bit 7 = PTP/control).
+ * @brief EATASIGSC initial gate-state bitmap: bit q is queue q's gate.
  */
 typedef enum : uint8_t {
-  k_tsn_gate_ptp_only   = 0x80U, /**< Only class 7 (PTP / control) open. */
-  k_tsn_gate_besteffort = 0x7FU, /**< Classes 0-6 (best-effort) open.    */
+  k_tsn_gate_ptp_only = 0x80U, /**< Only queue 7 (PTP / control) starts open. */
 } tsn_gate_t;
 
 /* Console line fragments (kept short so each write is one shift-register
@@ -340,15 +347,54 @@ static bool tsn_check_time_base(void)
 }
 
 /**
+ * @brief Read one TAS RAM entry back and compare it with what was programmed.
+ *
+ * @details
+ * The read-back half of the TAS verdict. Split into its own predicate so the
+ * caller has a single failure branch: a read error and a value mismatch are
+ * the same outcome to the demo, and expressing them as two branches with
+ * identical bodies is what clang-tidy's bugprone-branch-clone objects to.
+ *
+ * @param[in] index TAS RAM entry address to read.
+ * @param[in] want  The entry that was programmed at that address.
+ *
+ * @return True iff the read succeeded and both fields match.
+ *
+ * @pre ``ra8_etha_set_tas_schedule`` has programmed ``index``.
+ * @pre ``want`` points at the entry originally written there.
+ * @post No hardware state is changed beyond EATASGR.
+ * @since 0.1.0
+ */
+static bool tsn_tas_entry_matches(uint8_t index, const ra8_etha_tas_entry_t* want)
+{
+  ra8_etha_tas_entry_t got = {};
+  if (ra8_etha_read_tas_entry(k_ra8_etha_port_0, index, &got) != k_ra8_ok) {
+    return false;
+  }
+  if (got.gate_time_ns != want->gate_time_ns) {
+    return false;
+  }
+  return got.gate_open == want->gate_open;
+}
+
+/**
  * @brief Program + arm the 802.1Qbv time-aware shaper on port 0.
  *
  * @details
- * Builds a 2-entry gate-control list (window 0: class-7 gate only; window 1:
- * best-effort classes 0-6), commits it via ``ra8_etha_set_tas_schedule``, and
- * arms the scheduler with ``ra8_etha_enable_tas``. The programmed entry count
- * is logged.
+ * Resets the TAS RAM, then gives descriptor queue 7 (PTP / control) a
+ * two-entry gate list -- one window open, one shut -- and commits it via
+ * ``ra8_etha_set_tas_schedule``. The gate list belongs to a QUEUE rather
+ * than being an interleaved per-class vector, because a TAS entry on this
+ * silicon carries a single gate-state bit for the queue whose TAS RAM block
+ * holds it (HUM Table 32.6 p 1691).
  *
- * @return True iff both TAS calls returned ``k_ra8_ok``.
+ * Every entry is then read back out of the TAS RAM with
+ * ``ra8_etha_read_tas_entry`` and compared against what was programmed.
+ * That read-back is the only part of this function that is evidence: the
+ * programming calls returned ``k_ra8_ok`` even when the driver was writing
+ * gate states into the entry-address register (#539).
+ *
+ * @return True iff the schedule was committed AND read back byte-identical.
  *
  * @pre ``ra8_etha_init`` left port 0 in CONFIG mode.
  * @pre The gPTP time base is running (``ra8_eth_gptp_init``).
@@ -358,22 +404,31 @@ static bool tsn_check_time_base(void)
  */
 static bool tsn_program_tas(void)
 {
-  bool                      ok                        = true;
-  const ra8_etha_tas_gate_t gates[k_tsn_gate_entries] = {
-    {.gate_state  = (uint8_t)k_tsn_gate_ptp_only,
-     .time_units  = (uint32_t)k_tsn_win_units,
-     .cut_through = 0U},
-    {.gate_state  = (uint8_t)k_tsn_gate_besteffort,
-     .time_units  = (uint32_t)k_tsn_win_units,
-     .cut_through = 0U},
+  bool                              ok                          = true;
+  static const ra8_etha_tas_entry_t entries[k_tsn_gate_entries] = {
+    {.gate_time_ns = (uint32_t)k_tsn_win_units, .gate_open = true},
+    {.gate_time_ns = (uint32_t)k_tsn_win_units, .gate_open = false},
   };
+  ra8_etha_tas_queue_t queues[k_ra8_etha_tc_count] = {};
+  queues[k_ra8_etha_tc_7].entries                  = entries;
+  queues[k_ra8_etha_tc_7].count                    = (uint16_t)k_tsn_gate_entries;
+
+  if (ra8_etha_tas_ram_reset(k_ra8_etha_port_0) != k_ra8_ok) {
+    ok = false;
+  }
   const ra8_err_t sched_err = ra8_etha_set_tas_schedule(k_ra8_etha_port_0,
-                                                        gates,
-                                                        (uint16_t)k_tsn_gate_entries,
+                                                        queues,
+                                                        (uint8_t)k_tsn_gate_ptp_only,
                                                         (uint32_t)k_tsn_cycle_units,
                                                         0U);
   if (sched_err != k_ra8_ok) {
     ok = false;
+  }
+  /* Read every entry back: this is what makes the verdict mean something. */
+  for (uint8_t index = 0U; index < (uint8_t)k_tsn_gate_entries; ++index) {
+    if (!tsn_tas_entry_matches(index, &entries[index])) {
+      ok = false;
+    }
   }
   if (ra8_etha_enable_tas(k_ra8_etha_port_0, 1U) != k_ra8_ok) {
     ok = false;

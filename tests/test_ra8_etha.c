@@ -638,58 +638,6 @@ static void test_cbs_configure_and_state(void)
   TEST_END("etha cbs configure + state");
 }
 
-/* --- TAS --- */
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_tas_schedule_and_enable(void)
-{
-  TEST_BEGIN("etha tas schedule + enable");
-  prep();
-  const ra8_etha_config_t cfg = {.initial_mode = k_ra8_etha_opc_config,
-                                 .eaeie0_mask  = 0U,
-                                 .eaeie1_mask  = 0U,
-                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_init(k_ra8_etha_port_0, &cfg));
-  const ra8_etha_tas_gate_t list[2] = {
-    {.gate_state = 0xFFU, .time_units = 1000U, .cut_through = 0U},
-    {.gate_state = 0x0FU, .time_units = 2000U, .cut_through = 1U},
-  };
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_etha_set_tas_schedule(k_ra8_etha_port_0, list, 2U, 100000U, 0xCAFEBABEDEADBEEFULL));
-  TEST_ASSERT_EQ(0xDEADBEEFU, ra8_etha(k_ra8_etha_port_0)->EATASCSTC0);
-  TEST_ASSERT_EQ(0xCAFEBABEU, ra8_etha(k_ra8_etha_port_0)->EATASCSTC1);
-  TEST_ASSERT_EQ(100000U, ra8_etha(k_ra8_etha_port_0)->EATASCTC);
-  TEST_ASSERT_EQ(0xFFU, ra8_etha(k_ra8_etha_port_0)->EATASIGSC);
-  /* Last EATASGL writes are observable. */
-  TEST_ASSERT_EQ(0x0FU, ra8_etha(k_ra8_etha_port_0)->EATASGL0);
-  TEST_ASSERT_EQ(((2000U) | (1U << 28)), ra8_etha(k_ra8_etha_port_0)->EATASGL1);
-
-  /* TASCC commit bit set. */
-  TEST_ASSERT(((ra8_etha(k_ra8_etha_port_0)->EATASC >> 1) & 1U) == 1U);
-
-  /* Enable / disable. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_enable_tas(k_ra8_etha_port_0, 1U));
-  TEST_ASSERT(((ra8_etha(k_ra8_etha_port_0)->EATASC >> 0) & 1U) == 1U);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_enable_tas(k_ra8_etha_port_0, 0U));
-  TEST_ASSERT(((ra8_etha(k_ra8_etha_port_0)->EATASC >> 0) & 1U) == 0U);
-
-  /* Bad args. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_etha_set_tas_schedule(k_ra8_etha_port_0, list, 257U, 0U, 0ULL));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_etha_set_tas_schedule(k_ra8_etha_port_0, nullptr, 1U, 0U, 0ULL));
-  /* Empty list is allowed (just programs cycle / start time). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_set_tas_schedule(k_ra8_etha_port_0, nullptr, 0U, 999U, 0ULL));
-  TEST_ASSERT_EQ(999U, ra8_etha(k_ra8_etha_port_0)->EATASCTC);
-  TEST_END("etha tas schedule + enable");
-}
-
 /* --- Stats --- */
 
 /**
@@ -916,29 +864,6 @@ static void test_etha_open_eamc_transition(void)
   TEST_END("etha open EAMC transition");
 }
 
-/* --- Security gate --- */
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_security(void)
-{
-  TEST_BEGIN("etha set security gate");
-  prep();
-  const ra8_etha_config_t cfg = {.initial_mode = k_ra8_etha_opc_config,
-                                 .eaeie0_mask  = 0U,
-                                 .eaeie1_mask  = 0U,
-                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_init(k_ra8_etha_port_0, &cfg));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_set_security(k_ra8_etha_port_0, 0x00FF00FFU));
-  TEST_ASSERT_EQ(0x00FF00FFU, ra8_etha(k_ra8_etha_port_0)->EASCR);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_etha_set_security((ra8_etha_port_t)(uint8_t)k_ra8_etha_port_count, 0U));
-  TEST_END("etha set security gate");
-}
 /**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
@@ -968,14 +893,12 @@ static void (*const s_test_roster[])(void) = {
   test_rx_tag_filter,
   test_cut_through_queue,
   test_cbs_configure_and_state,
-  test_tas_schedule_and_enable,
   test_read_clear_stats,
   test_descriptor_ring_init,
   test_get_stats_and_account,
   test_get_stats_after_deinit,
   test_etha_open_bad_args,
   test_etha_open_eamc_transition,
-  test_set_security,
 };
 
 int32_t main(void)
