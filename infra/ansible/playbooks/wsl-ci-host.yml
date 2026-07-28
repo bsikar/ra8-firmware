@@ -1,0 +1,56 @@
+---
+# Turn a Windows machine's WSL2 Ubuntu distro into a CI runner host, and deploy
+# the runner into it.
+#
+# Two roles, in order: `wsl_ci_host` does everything Windows- and WSL-specific
+# (VM caps, the mirrored-networking route fix, systemd, Docker Engine, the
+# Windows autostart task), then `ci_runner_docker` -- the same role the NAS
+# uses, unmodified -- deploys the runner container. See infra/README.md.
+#
+# WHERE THIS RUNS: on the target, inside the distro. WSL has no SSH daemon of
+# its own, and giving it one would mean opening an inbound port on somebody's
+# personal daily-driver machine and punching a hole in their firewall so a
+# config management tool could reach it. Copying the play in and running it
+# with `--connection=local` costs nothing and asks nothing of their network:
+#
+#   # from the control machine, over the existing SSH path to Windows:
+#   tar -cz infra/ansible | ssh <windows-host> \
+#     "wsl -d Ubuntu -u root -e bash -lc 'mkdir -p /opt/ra8-infra &&
+#      tar -xz -C /opt/ra8-infra'"
+#
+#   # then, inside the distro:
+#   ansible-playbook --connection=local -i localhost, \
+#     /opt/ra8-infra/ansible/playbooks/wsl-ci-host.yml \
+#     -e ci_runner_docker_registration_token=<token>
+#
+# The token is minted on the control machine with
+# `gh api -X POST repos/bsikar/ra8-firmware/actions/runners/registration-token`
+# and is good for one hour and one registration, so no long-lived credential
+# ever lands on the machine. See the ci_runner_docker credentials defaults.
+#
+# Remove with:
+#   ansible-playbook --connection=local -i localhost, \
+#     /opt/ra8-infra/ansible/playbooks/wsl-ci-host.yml \
+#     -e ci_runner_docker_state=absent -e wsl_ci_host_state=absent \
+#     -e ci_runner_docker_removal_token=<token>
+- name: Configure a WSL2 host and deploy a CI runner into it
+  hosts: all
+  connection: local
+  gather_facts: true
+  # Loaded explicitly rather than by inventory host name: this play runs with
+  # `-i localhost,` (see above), so the host is called "localhost" and Ansible
+  # would never pick up host_vars/win-ci-1.yml on its own. Select a different
+  # host with -e wsl_ci_host_id=<name>.
+  vars:
+    wsl_ci_host_id: "win-ci"
+  vars_files:
+    - "{{ playbook_dir }}/../host_vars/{{ wsl_ci_host_id }}.yml"
+  pre_tasks:
+    - name: Load local secrets if present (bootstrap writes private/secrets.yml)
+      ansible.builtin.include_vars: "{{ item }}"
+      vars:
+        item: "{{ playbook_dir }}/../private/secrets.yml"
+      when: item is exists
+  roles:
+    - wsl_ci_host
+    - ci_runner_docker

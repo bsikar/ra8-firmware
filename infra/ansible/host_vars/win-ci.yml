@@ -1,0 +1,112 @@
+---
+# win-ci -- the Windows/WSL2 build host.
+#
+# Non-secret host facts only; the registration token is passed on the command
+# line and never lives here. This file is what makes "one role, many hosts"
+# true: the roles carry no knowledge of this machine, and a second WSL host is
+# a second file like this one, selected with -e wsl_ci_host_id=<name>.
+#
+# The machine: AMD Ryzen 9 7900X (12 physical cores / 24 threads, Zen 4),
+# 31 GiB RAM, Windows 11 build 26200, WSL 2.6.3 running Ubuntu 24.04. It is by
+# a wide margin the fastest host in the fleet -- and it is also the owner's
+# daily driver and gaming PC, which is why every cap below is chosen to leave
+# the desktop usable rather than to maximise build throughput.
+
+# --- wsl_ci_host ------------------------------------------------------------
+
+wsl_ci_host_windows_user: "sikar"
+wsl_ci_host_distro: "Ubuntu"
+
+# 22 of 24 threads and 26 of 31 GiB to the VM, leaving ~2 threads and ~5 GiB
+# for an idle Windows desktop. This box is treated as a dedicated build host
+# that happens to run Windows: it is the fastest machine in the fleet and is
+# barely used interactively, so work is pushed here in preference to the
+# slower hosts.
+wsl_ci_host_processors: 22
+wsl_ci_host_memory: "26GB"
+wsl_ci_host_swap: "8GB"
+
+# --- ci_runner_docker -------------------------------------------------------
+
+# Base name. With ci_runner_docker_instances=3 below, the runners register
+# as win-ci-1, win-ci-2 and win-ci-3.
+ci_runner_docker_name: "win-ci"
+
+# No PAT on this host, ever -- set empty EXPLICITLY rather than left to the
+# role default, which templates `{{ ci_runner_github_pat }}` and would resolve
+# to an undefined variable here. Registration and removal use short-lived
+# tokens passed on the command line instead; see the ci_runner_docker
+# credentials defaults for why this machine is treated differently.
+ci_runner_docker_github_pat: ""
+
+# `ra8-ci` is what puts this host in the existing pool with no workflow edit;
+# it was verified rather than assumed when the NAS runner was deployed (see
+# infra/README.md). `ra8-win` is the escape hatch: if GitHub ever stops
+# resolving a plain label that collides with the ARC scale-set name, the heavy
+# jobs can be pinned here explicitly without touching the other hosts.
+ci_runner_docker_labels: "ra8-ci,ra8-win"
+
+# Plain directories on the distro's own ext4 root, NOT under /mnt/c.
+#
+# This is a throughput decision, not a tidiness one: /mnt/c is drvfs, a
+# 9P/virtio translation layer to NTFS, and it is roughly an order of magnitude
+# slower for the many-small-files work a checkout and a build are. Putting the
+# runner's _work tree there would hand back most of the CPU advantage this host
+# was added for.
+ci_runner_docker_root: "/opt/ra8-ci-runner"
+
+# There is no ZFS here, so nothing to create through a middleware and no pool
+# to keep CI off. The role's storage asserts stay armed -- they resolve
+# whatever actually backs these paths -- but with nothing forbidden they pass.
+ci_runner_docker_dataset: ""
+ci_runner_docker_forbidden_pools: []
+ci_runner_docker_forbidden_mounts: []
+
+# THREE independent runners on this host, not one -- and three is a MEMORY
+# result, not core arithmetic.
+#
+# The pool's bottleneck is queue depth, not per-job latency: a `firmware` run
+# submits ~21 jobs, and with every existing runner busy the third job on this
+# machine starting now is worth more than the first finishing sooner. Three
+# separate registrations, three homes, three _work trees.
+#
+# Why exactly three, from measurement rather than division:
+#   - clang-tidy is the memory hog in this tree and has been OOM-killed on an
+#     8 GiB machine, so ~8 GiB per instance is the floor that must be cleared.
+#   - 26 GiB / 3 = 8.7 GiB per instance, which clears it with margin.
+#     26 GiB / 4 = 6.5 GiB, which lands back UNDER the threshold.
+#   - measured peaks on this host back that up: a full cross-build peaked at
+#     4.06 GiB of RSS, and an idle runner listener holds ~95 MiB.
+#
+# So the fourth instance is not blocked by cores -- 22 threads would divide
+# fine -- it is blocked by clang-tidy's working set. An instance that OOMs
+# mid-job is worse than one that never existed: it presents as a flaky gate.
+#
+# TRIGGER TO REVISIT: clang-tidy is currently NOT sharded (deliberately -- on
+# healthy hardware it is ~330s, and the ~981s figure elsewhere is pod
+# contention, not the job's real cost). If it is ever sharded, per-shard peak
+# memory drops and a fourth instance becomes viable. Raise this number then,
+# not before, and re-measure rather than assuming.
+ci_runner_docker_instances: 3
+
+# 7 CPUs each, PINNED (see ci_runner_docker_pin_cpus in the role defaults).
+# Instance 1 gets threads 0-6, instance 2 gets 7-13, instance 3 gets 14-20,
+# leaving thread 21 to the distro's own systemd and dockerd. The pinning is
+# what makes `nproc` inside each container return 7 instead of 22 -- without
+# it all three would build with `-j22` on 22 shared threads and thrash.
+ci_runner_docker_cpus: "7"
+ci_runner_docker_pin_cpus: true
+
+# 7 GiB each: 21 GiB of the VM's 26 GiB committed.
+#
+# Below the 8.7 GiB the division allows, on purpose. This machine has an
+# RTX 5070 and will later host the GPU side of the Ethos-U55 / NPU workstream
+# (issue #228) in this same distro. GPU work and CI do not contend for an
+# execution resource -- the GPU is idle during builds -- but they DO contend
+# for system RAM, so ~5 GiB of the VM is deliberately left uncommitted for a
+# future CUDA process. 7 GiB still clears the 8 GiB OOM threshold's intent
+# with the measured 4.06 GiB cross-build peak well inside it; if clang-tidy is
+# ever measured above 7 GiB here, drop to 2 instances or raise the VM cap
+# rather than letting a job OOM.
+ci_runner_docker_memory: "7g"
+ci_runner_docker_memswap: "7g"
