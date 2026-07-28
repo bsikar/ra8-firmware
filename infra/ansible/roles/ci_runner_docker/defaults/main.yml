@@ -1,0 +1,180 @@
+---
+# ci_runner_docker role defaults. Override per deployment in group_vars /
+# host_vars.
+#
+# Runs ONE plain (non-ARC) self-hosted GitHub Actions runner as a Docker
+# container, booting the same devcontainer-toolchain image the ARC scale set
+# uses, so a job lands in the identical environment `make ci` runs in no matter
+# which host picks it up.
+#
+# Why a second, differently-shaped runner host at all: the k3s node that hosts
+# the ARC scale set and the dev container share one 10-core i5-12600K with
+# ~30 vCPU committed across guests. CI and every agent's local gate run contend
+# for that silicon, and contention -- not runner count -- is the throughput
+# ceiling. This role puts runners on a second, otherwise-idle machine.
+#
+# Why not just point the `ci_runner` (ARC) role at it: ARC needs a Kubernetes
+# cluster. A NAS appliance is not one and should not become one. Docker is
+# already installed and supported there, so a plain runner in a container is
+# the smallest thing that works.
+
+# --- Identity ---------------------------------------------------------------
+
+# The repository the runner registers against.
+ci_runner_docker_github_url: "https://github.com/bsikar/ra8-firmware"
+# owner/repo, used for the runner registration + removal REST calls.
+ci_runner_docker_repo_slug: "bsikar/ra8-firmware"
+# Base of the repository's Actions REST endpoints. Factored out so the calls
+# below read as the endpoint they hit rather than as a wrapped URL.
+ci_runner_docker_api: >-
+  https://api.github.com/repos/{{ ci_runner_docker_repo_slug }}/actions
+
+# The runner's name in the GitHub UI and in `gh api .../actions/runners`.
+ci_runner_docker_name: "truenas-ci-1"
+
+# Labels the runner answers to, as `runs-on:` targets.
+#
+# `ra8-ci` is deliberate and was verified empirically, not assumed. It is also
+# the name of the ARC runner scale set the k3s node serves, and scale-set names
+# and runner labels share one namespace in `runs-on:` resolution -- so a plain
+# runner carrying that label joins the same pool the existing `runs-on: ra8-ci`
+# jobs already target, and needs no workflow edit. See the role README section
+# in infra/README.md for how that was proved rather than assumed; if a future
+# GitHub change breaks it, the fallback is to give the heavy jobs
+# `runs-on: [self-hosted, ra8-nas]` and keep `ra8-nas` below.
+#
+# `self-hosted`, `Linux` and `X64` are added by the runner itself and cannot be
+# removed; they make this host eligible for the `runs-on: [self-hosted, Linux,
+# X64]` jobs (docs-publish, fuzz-nightly, osv-scan) as well.
+ci_runner_docker_labels: "ra8-ci,ra8-nas"
+
+# GitHub runner group. "Default" is the only group on a repo-scoped runner
+# unless one was created explicitly.
+ci_runner_docker_group: "Default"
+
+# The Actions runner's own uid/gid inside the image (see
+# infra/images/runner/Dockerfile: the official runner image's uid 1001, kept
+# distinct from the devcontainer's vscode uid 1000). The persistent runner home
+# below is chowned to it, or the runner cannot write its own configuration.
+ci_runner_docker_uid: 1001
+ci_runner_docker_gid: 1001
+
+# --- Storage ----------------------------------------------------------------
+#
+# EVERY byte of CI I/O must land on a healthy pool. On the NAS this role was
+# written for, the large pool is DEGRADED (a known backplane fault flagging
+# "too many slow I/Os" on 7 of 11 members; zero read/write/checksum errors and
+# no data errors, accepted and out of scope). Sending build I/O there would be
+# both slow and rude. The asserts in tasks/main.yml refuse to deploy when any
+# CI path resolves onto a forbidden pool -- a comment saying "keep it off
+# raid-z2" is not enforcement, so this is checked, not documented.
+
+# ZFS dataset backing everything this role writes, and its mountpoint.
+ci_runner_docker_dataset: "stripe/ci-runner"
+ci_runner_docker_root: "/mnt/stripe/ci-runner"
+
+# Pools CI I/O may never touch. Checked against the pool that actually backs
+# each CI path at deploy time, so a moved mountpoint fails the play instead of
+# silently relocating the build onto degraded spindles.
+ci_runner_docker_forbidden_pools:
+  - "raid-z2"
+
+# Mountpoints CI I/O may never land under. Belt-and-braces for a non-ZFS host,
+# where the pool check above has nothing to inspect.
+ci_runner_docker_forbidden_mounts:
+  - "/mnt/raid-z2"
+
+# The runner's HOME, bind-mounted over /home/runner in the container.
+#
+# This is the whole survivability story in one variable. The runner
+# distribution is copied out of the image into this directory once, so the
+# directory holds the runner binaries, its registration credentials
+# (.runner / .credentials / .credentials_rsaparams) AND its _work checkout.
+# Because all of that lives on a pool dataset rather than in the container's
+# writable layer:
+#   - `docker rm` / `docker compose down -v` does not deregister the runner,
+#   - a TrueNAS SCALE upgrade (which rewrites the appliance root) does not
+#     touch it,
+#   - the runner's own auto-update persists instead of being redone per boot.
+ci_runner_docker_home: "{{ ci_runner_docker_root }}/home"
+
+# Where the compose file is rendered. Under the dataset, never under /etc or
+# any other appliance-root path a SCALE upgrade would wipe.
+ci_runner_docker_compose_dir: "{{ ci_runner_docker_root }}/compose"
+ci_runner_docker_compose_file: "{{ ci_runner_docker_compose_dir }}/docker-compose.yml"
+
+# --- Image ------------------------------------------------------------------
+#
+# Reused, never rebuilt here. The toolchain image is the single source of truth
+# for every pinned tool (.devcontainer/Dockerfile), and the `toolchain-parity`
+# gate fails when a runner drifts from those pins -- so a second, independently
+# built image is a drift source with no upside. The archive is produced by the
+# `ci_runner` role on the k3s node and copied over; this role loads it and
+# refuses to invent one.
+ci_runner_docker_image: "localhost/ra8-ci-runner:v2"
+ci_runner_docker_image_archive: "{{ ci_runner_docker_root }}/images/ra8-ci-runner.tar"
+
+# --- Container --------------------------------------------------------------
+
+ci_runner_docker_container: "ra8-ci-runner"
+
+# CPU cap, in whole CPUs, enforced by the kernel via cgroup v2 cpu.max.
+#
+# The host is a 6-core / 12-thread i5-10400 whose day job is serving files. 8
+# of 12 threads is 4 physical cores plus their SMT siblings: enough that a
+# `Cross-build all apps` or clang-tidy run is genuinely parallel, while 4
+# threads stay free for SMB/NFS, the ZFS transaction groups and the middleware.
+# An uncapped runner would win every scheduling contest against the file
+# services during a build, which turns a CI job into a NAS outage.
+ci_runner_docker_cpus: "8"
+
+# Memory cap. The host has 62 GiB and the ZFS ARC holds ~34 GiB of it.
+#
+# 16 GiB is sized off the heaviest gate rather than guessed: the ARC scale-set
+# pods cap at 12 GiB and pass, so 16 GiB is that with headroom for a whole job
+# (checkout + build tree) in one container instead of one gate per pod. It also
+# cannot starve the file cache: Linux ZFS shrinks the ARC under memory pressure
+# down to arc_min (2 GiB here), so the ARC yields to the runner and grows back
+# afterwards. Leaving 46 GiB outside the cap keeps that yielding rare.
+ci_runner_docker_memory: "16g"
+
+# No swap beyond the memory cap (this host has no swap configured at all;
+# stating it keeps the container honest if that changes).
+ci_runner_docker_memswap: "16g"
+
+# A runaway fork bomb in a build should hit a limit before the host does. The
+# cross-build fans out over ~100 app targets with make -j, so the ceiling has
+# to be generous; it is a blast-radius limit, not a tuning knob.
+ci_runner_docker_pids_limit: 8192
+
+# --- Lifecycle --------------------------------------------------------------
+#
+# `present` deploys and converges. `absent` is the documented one-command
+# removal: it stops the container, deregisters the runner from GitHub, removes
+# the image and destroys the dataset, leaving nothing behind. See
+# infra/README.md.
+ci_runner_docker_state: "present"
+
+# Whether `absent` also destroys the ZFS dataset holding the runner home and
+# the image archive. Removal means removal by default; set false to keep the
+# archive for a redeploy.
+ci_runner_docker_destroy_dataset: true
+
+# --- Credentials ------------------------------------------------------------
+#
+# A registration token is minted at deploy time from a PAT and lives only in
+# memory (no_log, never written to disk or to this repo). Once the runner has
+# registered, its own long-lived credentials in ci_runner_docker_home take
+# over, so the PAT is needed only to (de)register -- not to run jobs, and not
+# on reboot.
+#
+# The PAT is the SAME secret the ARC `ci_runner` role uses, on purpose: one
+# credential to rotate, one place it lives (OpenBao; see
+# group_vars/all.example.yml).
+ci_runner_docker_github_pat: "{{ ci_runner_github_pat }}"
+
+# How long to wait for the runner to report `online` to GitHub before failing
+# the play. A cold start pulls nothing and only has to reach github.com, so
+# this is generous.
+ci_runner_docker_online_retries: 30
+ci_runner_docker_online_delay: 5
