@@ -34,10 +34,25 @@ gate_unit_tests() (
 # failure. Pin the compiler like the coverage gate does: the ambient `gcc`
 # changes with the runner image, and -Wconversion findings are
 # compiler-version-specific.
+#
+# gcc-14, not gcc-13 (#489): gcc-13 was never a provisioned pin anywhere, only
+# an assumption that Ubuntu 24.04's apt `gcc` metapackage happens to default
+# to it -- true on the ra8-ci runner image, but the shared dev box runs Debian
+# 12 (bookworm), which defaults to gcc-12 and has no gcc-13 package at all
+# (backports included). gcc-14 is what this tree actually provisions
+# everywhere that runs this gate: the runner image installs it by an explicit
+# Dockerfile ARG pin (.devcontainer/Dockerfile), the dev box has it built from
+# source at /usr/local/bin/gcc-14 (docs/TOOLCHAIN.md, "CONVERGED"), and every
+# other host-compiler probe in this tree already prefers it first
+# (scripts/checks/coverage.sh, scripts/sim/sil_all.sh, scripts/sim/smoke.sh,
+# scripts/sim/matrix.sh all run `ra8_select_host_compiler gcc-14 gcc-13 ...`).
+# Pinning ubsan to the one compiler every environment actually guarantees
+# turns "gate fails loudly on a missing tool" into "gate does not need the
+# missing tool", which is the stronger fix per CLAUDE.md's gate-honesty rule.
 gate_ubsan() (
   set -e
-  require_cmd gcc-13 "the UBSan gate pins gcc-13 to match CI"
-  CC=gcc-13 CXX=g++-13 make ubsan
+  require_cmd gcc-14 "the UBSan gate pins gcc-14 to match the provisioned toolchain"
+  CC=gcc-14 CXX=g++-14 make ubsan
 )
 
 # --- coverage -------------------------------------------------------------
