@@ -68,6 +68,7 @@ set(RA8_XZ_THIRD_PARTY
 )
 file(GLOB_RECURSE RA8_JOF_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_jof/src/*.c)
 file(GLOB_RECURSE RA8_LONGSTRIP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_longstrip/src/*.c)
+file(GLOB_RECURSE RA8_ZOOM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_zoom/src/*.c)
 # ra8_reflow has two implementations: v1 (hand-rolled, default) and v2
 # (LiteHTML-backed, RA8_REFLOW_USE_LITEHTML=ON). Only one set is compiled.
 option(RA8_REFLOW_USE_LITEHTML "Use the LiteHTML v2 ra8_reflow engine" OFF)

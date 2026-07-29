@@ -141,6 +141,7 @@ higher-level consumer does not need to know the RA8D2-specific details.
 | [`ra8_rabook_import/`](ra8_rabook_import/) | Production adapter binding the on-device import seam to the RABOOK compiler. |
 | [`ra8_comic/`](ra8_comic/) | Demand-paged reader for comic-book archives -- CBZ (ZIP) and CBR (RAR). |
 | [`ra8_longstrip/`](ra8_longstrip/) | Continuous vertical-scroll (longstrip/manhwa) reading mode. |
+| [`ra8_zoom/`](ra8_zoom/) | Tap-to-zoom image viewer: viewport state machine + strip composite for full-screen zoom and the panel loupe. |
 | [`ra8_jof/`](ra8_jof/) | JOF band-tile atlas: the display-native normalized image format used by the reader pipeline. |
 | [`ra8_webp/`](ra8_webp/) | Heap-free scratch-allocator wrapper around the vendored libwebp decoder. |
 | [`ra8_unarch/`](ra8_unarch/) | Bounded, fail-closed archive decoding: XZ/LZMA2, gzip, tar. |

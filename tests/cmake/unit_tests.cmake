@@ -76,6 +76,7 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_unarch/inc
             ${FW_ROOT}/libs/ra8_jof/inc
             ${FW_ROOT}/libs/ra8_longstrip/inc
+            ${FW_ROOT}/libs/ra8_zoom/inc
             ${FW_ROOT}/libs/ra8_reflow/inc
             ${FW_ROOT}/libs/ra8_webp/inc
             ${FW_ROOT}/libs/ra8_touch_cal/inc
@@ -134,6 +135,7 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_unarch/src
             ${FW_ROOT}/libs/ra8_jof/src
             ${FW_ROOT}/libs/ra8_longstrip/src
+            ${FW_ROOT}/libs/ra8_zoom/src
             ${FW_ROOT}/libs/ra8_reflow/src
             ${FW_ROOT}/libs/ra8_tz_secure_boot/src
             ${CMAKE_CURRENT_SOURCE_DIR}/mocks
@@ -256,5 +258,22 @@ if(TARGET test_app_ereader_manga)
   )
   target_include_directories(
     test_app_ereader_manga PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_manga/inc
+  )
+endif()
+
+# ---------------------------------------------------------------------------
+# test_app_ereader_zoom: the ereader_zoom host twin drives the app's own
+# ez_scene.c, so the four framebuffer hashes it asserts come out of the
+# PRODUCTION render rather than a re-implementation -- which is the only thing
+# that makes them a golden for hil.conf's banner. ra8_zoom / ra8_gfx /
+# ra8_mem already come from the ra8_core_hal object library the auto-glob linked.
+# ---------------------------------------------------------------------------
+if(TARGET test_app_ereader_zoom)
+  target_sources(
+    test_app_ereader_zoom
+    PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c
+  )
+  target_include_directories(
+    test_app_ereader_zoom PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_zoom/inc
   )
 endif()

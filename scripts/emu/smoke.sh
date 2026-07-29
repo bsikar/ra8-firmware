@@ -328,6 +328,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo
     lpm_idle_demo lpm_deep_sleep_demo lpm_periodic_idle
     ereader_cover ereader_svg ereader_imgfmt ereader_jpeg ereader_longstrip
+    ereader_zoom
     epub_parse epub_stress widget_app widget_app_demo glcdc_render
     acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform
     gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo

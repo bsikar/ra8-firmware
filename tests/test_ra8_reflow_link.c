@@ -48,6 +48,15 @@ typedef enum : uint8_t {
                           lookup reads past the stored string.                  */
 } t_link_pool_t;
 
+/**
+ * @enum t_image_probe_t
+ * @brief Poison written into the image-index out-parameter before a call, so a
+ *        call that fails without assigning it is detectable.
+ */
+typedef enum : uint32_t {
+  k_t_image_idx_poison = 0xFFFFFFFFU, /**< Not a valid image-box index. */
+} t_image_probe_t;
+
 /** @brief Shared engine handle (large -- keep off the stack). */
 static ra8_reflow_t s_eng;
 
@@ -274,6 +283,63 @@ static void test_find_anchor(void)
 }
 
 /**
+ * @test test_hit_test_image_mcdc
+ *
+ * @par MC/DC:
+ * Decision (libs/ra8_reflow/src/ra8_reflow_link.c@ra8_reflow_hit_test_image):
+ * `if ((x >= box->x) && (x < (box->x + box->w)) &&
+ *      (y >= box->y) && (y < (box->y + box->h)))` (4 conditions, all AND).
+ * Driven through the public API: a hit returns k_ra8_ok with the box index, a
+ * miss returns k_ra8_err_not_found -- production-source MC/DC.
+ *
+ * The single box is x=20,y=100,w=80,h=24 -> the half-open box
+ * [20,100)..(99,123]. Vectors (Chilenski masking-MC/DC, N+1 = 5 for N=4); each
+ * flips exactly one condition while the other three stay at their control value:
+ *  - V1: x=40, y=110 -> C1 T, C2 T, C3 T, C4 T -> decision T (found).
+ *  - V2: x=19, y=110 -> C1 F (x < box->x)                -> decision F.
+ *  - V3: x=100,y=110 -> C2 F (x >= box->x + box->w)      -> decision F.
+ *  - V4: x=40, y=99  -> C3 F (y < box->y)                -> decision F.
+ *  - V5: x=40, y=124 -> C4 F (y >= box->y + box->h)      -> decision F.
+ *
+ * Independence: V1 vs V2/V3/V4/V5 each flip exactly one condition and flip the
+ * outcome, proving each condition independently affects the result. The
+ * preceding single-condition page filter `box->page_index != page_idx` is
+ * exercised both ways (page 1 matches; page 0 skips -> k_ra8_err_not_found).
+ *
+ * @details This is the entry point of the reader's tap-to-zoom gesture (#478):
+ *          a tap that lands on a laid-out figure resolves to the image whose
+ *          retained full-resolution pixels the zoom viewer then magnifies.
+ */
+static void test_hit_test_image_mcdc(void)
+{
+  TEST_BEGIN("ra8_reflow_hit_test_image rect-bounds MC/DC");
+  memset(&s_eng, 0, sizeof s_eng);
+  s_eng.in_use                    = 1U;
+  s_eng.image_boxes[0].x          = k_t_link_x;
+  s_eng.image_boxes[0].y          = k_t_link_y;
+  s_eng.image_boxes[0].w          = k_t_link_w;
+  s_eng.image_boxes[0].h          = k_t_link_h;
+  s_eng.image_boxes[0].page_index = 1U;
+  s_eng.image_box_count           = 1U;
+
+  uint32_t idx = (uint32_t)k_t_image_idx_poison;
+  /* V1 */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_hit_test_image(&s_eng, 1U, 40, 110, &idx));
+  TEST_ASSERT_EQ(0U, idx);
+  /* V2 .. V5 */
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_reflow_hit_test_image(&s_eng, 1U, 19, 110, &idx));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_reflow_hit_test_image(&s_eng, 1U, 100, 110, &idx));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_reflow_hit_test_image(&s_eng, 1U, 40, 99, &idx));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_reflow_hit_test_image(&s_eng, 1U, 40, 124, &idx));
+  /* Right point, wrong page -> not found (the page filter's other arm). */
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_reflow_hit_test_image(&s_eng, 0U, 40, 110, &idx));
+  /* Null guards. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_reflow_hit_test_image(nullptr, 1U, 40, 110, &idx));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_reflow_hit_test_image(&s_eng, 1U, 40, 110, nullptr));
+  TEST_END("ra8_reflow_hit_test_image rect-bounds MC/DC");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
@@ -283,6 +349,7 @@ int32_t main(void)
   test_href_split_spans();
   test_hit_test_link();
   test_hit_test_rect_bounds_mcdc();
+  test_hit_test_image_mcdc();
   test_find_anchor();
   (void)fprintf(stderr, "[OK ] test_ra8_reflow_link.c\n");
   return 0;

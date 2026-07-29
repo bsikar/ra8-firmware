@@ -76,6 +76,58 @@ priv_tile_decode(void* ctx, const void* key, uint8_t* cell, uint32_t cell_bytes,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Clamp a tile index to the last valid index of a grid dimension.
+ * @details A rectangle that runs past the image edge names the last tile rather
+ *          than an out-of-grid index the prefetch would have to re-clamp, so
+ *          the clamp lives here, once, at the point the index is formed.
+ * @param[in] index Candidate tile index.
+ * @param[in] count Tile count on that axis (`> 0`).
+ * @return The index, or `count - 1` when it ran past the grid.
+ * @retval "index"     The index was already inside the grid.
+ * @retval "count - 1" The index addressed past the last tile.
+ * @pre  @p count is non-zero (validated by the caller).
+ * @pre  @p index is a tile index, not a pixel coordinate.
+ * @post The result is strictly less than @p count.
+ * @post No state is modified (pure).
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint16_t priv_clamp_tile(uint32_t index, uint16_t count)
+{
+  const uint32_t last = (uint32_t)count - 1U;
+  return (uint16_t)((index > last) ? last : index);
+}
+
+ra8_err_t ra8_tile_rect_of_pixels(uint32_t         px,
+                                  uint32_t         py,
+                                  uint32_t         pw,
+                                  uint32_t         ph,
+                                  uint16_t         tile_w,
+                                  uint16_t         tile_h,
+                                  uint16_t         tile_cols,
+                                  uint16_t         tile_rows,
+                                  ra8_tile_rect_t* out)
+{
+  RA8_CHECK_NULL_PTR(out, s_tag, "out rect must not be nullptr");
+  /* Decision: an empty pixel rectangle names no tiles (2 conditions). */
+  if ((pw == 0U) || (ph == 0U)) {
+    ra8_log_error(s_tag, "pixel rect must have a positive extent");
+    return k_ra8_err_invalid_arg;
+  }
+  /* Decision: the tile geometry must describe a real grid (4 conditions). */
+  if ((tile_w == 0U) || (tile_h == 0U) || (tile_cols == 0U) || (tile_rows == 0U)) {
+    ra8_log_error(s_tag, "tile geometry must be non-zero on every axis");
+    return k_ra8_err_invalid_arg;
+  }
+  out->tx0 = priv_clamp_tile(px / (uint32_t)tile_w, tile_cols);
+  out->ty0 = priv_clamp_tile(py / (uint32_t)tile_h, tile_rows);
+  out->tx1 = priv_clamp_tile(((px + pw) - 1U) / (uint32_t)tile_w, tile_cols);
+  out->ty1 = priv_clamp_tile(((py + ph) - 1U) / (uint32_t)tile_h, tile_rows);
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_tile_cache_init(ra8_tile_cache_t* tc, const ra8_tile_cache_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(tc, s_tag, "tc must not be nullptr");

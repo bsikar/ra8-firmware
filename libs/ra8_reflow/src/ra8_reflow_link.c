@@ -1,12 +1,15 @@
 /**
  * @file ra8_reflow_link.c
- * @brief In-content hyperlink hit-test, anchor lookup, and href split (#110).
+ * @brief Page tap-target queries: link + image hit-test, anchor lookup, href split.
  *
  * @details
- * Implements the public link/anchor query surface declared in ra8_reflow.h. The
- * layout pass (ra8_reflow_layout.c) populates `engine->link_rects[]`,
- * `engine->link_targets[]`, and `engine->anchors[]`; this TU reads them:
+ * Implements the public "what did the user tap on this page" query surface
+ * declared in ra8_reflow.h (#110, extended for tap-to-zoom in #478). The layout
+ * pass (ra8_reflow_layout.c) populates `engine->link_rects[]`,
+ * `engine->link_targets[]`, `engine->anchors[]` and `engine->image_boxes[]`;
+ * this TU reads them:
  *  - ra8_reflow_hit_test_link(): point -> href (for a tap).
+ *  - ra8_reflow_hit_test_image(): point -> laid-out `<img>` box index.
  *  - ra8_reflow_find_anchor(): `#fragment` id -> page.
  *  - ra8_reflow_href_split(): pure classification of an href string.
  *
@@ -51,6 +54,30 @@ ra8_err_t ra8_reflow_hit_test_link(const ra8_reflow_t* engine,
       const ra8_reflow_link_target_t* target = &engine->link_targets[rect->target];
       *out_href_off                          = target->href_off;
       *out_href_len                          = target->href_len;
+      return k_ra8_ok;
+    }
+  }
+  return k_ra8_err_not_found;
+}
+
+ra8_err_t ra8_reflow_hit_test_image(const ra8_reflow_t* engine,
+                                    uint32_t            page_idx,
+                                    int32_t             x,
+                                    int32_t             y,
+                                    uint32_t*           out_index)
+{
+  RA8_CHECK_NULL_PTR(engine, s_tag_link, "img hit: null engine");
+  RA8_CHECK_NULL_PTR(out_index, s_tag_link, "img hit: null out_index");
+
+  for (uint32_t i = 0U; i < engine->image_box_count; ++i) {
+    const ra8_reflow_image_box_t* box = &engine->image_boxes[i];
+    if (box->page_index != page_idx) {
+      continue;
+    }
+    /* Decision: the point is inside the box (4 conditions, half-open on the
+     * right/bottom edges so abutting figures never both claim a tap). */
+    if ((x >= box->x) && (x < (box->x + box->w)) && (y >= box->y) && (y < (box->y + box->h))) {
+      *out_index = i;
       return k_ra8_ok;
     }
   }
