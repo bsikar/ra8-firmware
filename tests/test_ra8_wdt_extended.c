@@ -2,6 +2,11 @@
  * @file test_ra8_wdt_extended.c
  * @brief Extended unit tests for ra8_wdt.c covering previously uncovered paths
  *
+ * @details
+ * The OFSm option-setting decode (``ra8_wdt_ofs_get`` and its reader hook)
+ * lives in test_ra8_wdt_ofs.c -- a separate responsibility, and splitting it
+ * keeps both files under the 1000-line cap.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -805,142 +810,6 @@ static void test_wdt_install_uninstall_nmi(void)
   TEST_END("ra8_wdt_install_nmi / ra8_wdt_uninstall_nmi");
 }
 
-/* ---------------------------------------------------------------------------
- * ra8_wdt_ofs_reader_set / ra8_wdt_ofs_get
- * ---------------------------------------------------------------------------
- */
-
-static ra8_err_t stub_ofs_reader_ok(uintptr_t addr, uint32_t* out)
-{
-  (void)addr;
-  /* Fabricate an OFSm word: auto-start mode, default values. */
-  *out = 0x00000000UL;
-  return k_ra8_ok;
-}
-
-/* The pointer parameters below cannot be const: this mock implements a
- * function-pointer interface (the DI seam under test), so its signature is
- * fixed by the typedef it is assigned to -- adding const changes the
- * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
-static ra8_err_t stub_ofs_reader_err(uintptr_t addr, uint32_t* out)
-{
-  (void)addr;
-  (void)out;
-  return k_ra8_err_hw_error;
-}
-
-/**
- * @brief Verify ofs_get null out pointer is rejected.
- *
- * @pre None.
- * @post Returns k_ra8_err_null_ptr.
- *
- * @par MC/DC:
- * (null-ptr guard)
- *
- * @since 0.1.0
- */
-static void test_wdt_ofs_get_null(void)
-{
-  TEST_BEGIN("ra8_wdt_ofs_get null out rejected");
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wdt_ofs_get((ra8_wdt_instance_t)0U, nullptr));
-  TEST_END("ra8_wdt_ofs_get null out rejected");
-}
-
-/**
- * @brief Verify ofs_get out-of-range instance is rejected.
- *
- * @pre None.
- * @post Returns k_ra8_err_invalid_arg.
- *
- * @par MC/DC:
- * Decision: ``(uint8_t)which >= k_ra8_wdt_instance_count``
- * - V1: which=0 (valid) -> false -> proceed.
- * - V2: which=count     -> true  -> error.
- *
- * @since 0.1.0
- */
-static void test_wdt_ofs_get_oob(void)
-{
-  TEST_BEGIN("ra8_wdt_ofs_get oob instance rejected");
-  ra8_wdt_ofs_decoded_t out = {};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_wdt_ofs_get((ra8_wdt_instance_t)k_ra8_wdt_instance_count, &out));
-  TEST_END("ra8_wdt_ofs_get oob instance rejected");
-}
-
-/**
- * @brief Verify ofs_reader_set + ofs_get succeeds with stub reader.
- *
- * @pre None.
- * @post ofs_get returns k_ra8_ok and populates out struct.
- *
- * @par MC/DC:
- * Decision: ``e != k_ra8_ok`` (reader return check)
- * - V1: reader returns ok  -> e=ok  -> decode and return ok.
- * - V2: reader returns err -> e=err -> propagate error.
- *
- * @since 0.1.0
- */
-static void test_wdt_ofs_reader_set_ok(void)
-{
-  TEST_BEGIN("ra8_wdt_ofs_reader_set + ofs_get ok");
-  (void)ra8_wdt_ofs_reader_set(stub_ofs_reader_ok);
-  ra8_wdt_ofs_decoded_t out = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_ofs_get((ra8_wdt_instance_t)0U, &out));
-  /* Reset to default reader. */
-  (void)ra8_wdt_ofs_reader_set(nullptr);
-  TEST_END("ra8_wdt_ofs_reader_set + ofs_get ok");
-}
-
-/**
- * @brief Verify ofs_get propagates reader error.
- *
- * @pre Stub reader installed that returns an error.
- * @post ofs_get returns the reader's error code.
- *
- * @par MC/DC:
- * Decision: ``e != k_ra8_ok`` -- V2 (error path).
- *
- * @since 0.1.0
- */
-static void test_wdt_ofs_reader_set_err(void)
-{
-  TEST_BEGIN("ra8_wdt_ofs_get propagates reader error");
-  (void)ra8_wdt_ofs_reader_set(stub_ofs_reader_err);
-  ra8_wdt_ofs_decoded_t out = {};
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_wdt_ofs_get((ra8_wdt_instance_t)0U, &out));
-  (void)ra8_wdt_ofs_reader_set(nullptr);
-  TEST_END("ra8_wdt_ofs_get propagates reader error");
-}
-
-/**
- * @brief Verify ofs_get with auto-start bit set decodes correctly.
- *
- * @pre Stub reader returns OFSm with auto-start bit = 0 (auto-start).
- * @post out.auto_start == true.
- *
- * @par MC/DC:
- * Decision: ``out->start_mode == k_ra8_wdt_ofs_strt_auto``
- * - V1: strt=0 (auto)     -> auto_start=true.
- * - V2: strt=1 (register) -> auto_start=false (tested below).
- *
- * @since 0.1.0
- */
-static void test_wdt_ofs_get_auto_start(void)
-{
-  TEST_BEGIN("ra8_wdt_ofs_get decodes auto-start correctly");
-  (void)ra8_wdt_ofs_reader_set(stub_ofs_reader_ok);
-  ra8_wdt_ofs_decoded_t out = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_ofs_get((ra8_wdt_instance_t)0U, &out));
-  /* stub returns 0 -> strt field = 0 = auto-start */
-  TEST_ASSERT_EQ(k_ra8_wdt_ofs_strt_auto, out.start_mode);
-  TEST_ASSERT_EQ(1, out.auto_start);
-  (void)ra8_wdt_ofs_reader_set(nullptr);
-  TEST_END("ra8_wdt_ofs_get decodes auto-start correctly");
-}
-
 /**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
@@ -983,11 +852,6 @@ static void (*const s_test_roster[])(void) = {
   test_wdt_subscribe_table_full,
   test_wdt_enter_exit_stop,
   test_wdt_install_uninstall_nmi,
-  test_wdt_ofs_get_null,
-  test_wdt_ofs_get_oob,
-  test_wdt_ofs_reader_set_ok,
-  test_wdt_ofs_reader_set_err,
-  test_wdt_ofs_get_auto_start,
 };
 
 int32_t main(void)

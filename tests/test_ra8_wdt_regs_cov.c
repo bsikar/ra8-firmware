@@ -4,26 +4,26 @@
  *
  * @details
  * The existing test_ra8_wdt.c and test_ra8_wdt_extended.c suites exercise
- * ra8_wdt.c (the high-level driver) but leave six lines in the header's
- * two switch-dispatch inlines uncovered:
+ * ra8_wdt.c (the high-level driver) but leave the non-default arms of the
+ * header's switch-dispatch inline ra8_wdt_for() uncovered -- both the
+ * k_ra8_wdt1 arm and the k_ra8_wdt_instance_count/default arm.
  *
- *   ra8_wdt_for()     -- k_ra8_wdt1 arm (line 321) and the
- *                       k_ra8_wdt_instance_count/default arm (lines 322,324)
- *   ra8_wdt_ofs_addr() -- k_ra8_wdt1 arm (line 354) and the
- *                       k_ra8_wdt_instance_count/default arm (lines 355,357)
- *
- * This file calls those inline functions directly with the missing
- * selector values, asserts the documented return values, and also
- * exercises ra8_wdt_refresh_instance() end-to-end against WDT1.
+ * This file calls that inline directly with the missing selector values,
+ * asserts the documented return values, and also exercises
+ * ra8_wdt_refresh_instance() end-to-end against WDT1.
  *
  * All addresses lie in the peri bus window (0x40000000, 8 MiB) that
  * ra8_fake_mmap installs at start-up, so every pointer dereference is safe
  * on the host.
  *
+ * The option-setting addresses these instances latch from are asserted
+ * against their HUM literals in test_ra8_ofs.c, not here: they are no longer
+ * reachable through a WDT-header accessor (#545).
+ *
  * @par MC/DC:
- * Neither ra8_wdt_for() nor ra8_wdt_ofs_addr() contain compound boolean
- * decisions (they are plain switch/case dispatchers). No MC/DC vectors
- * are required beyond exhausting each case arm, which the tests below do.
+ * ra8_wdt_for() contains no compound boolean decision (it is a plain
+ * switch/case dispatcher). No MC/DC vectors are required beyond exhausting
+ * each case arm, which the tests below do.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -93,65 +93,6 @@ static void test_wdt_for_oob_falls_back_to_wdt0(void)
   volatile r_wdt_regs_t* p = ra8_wdt_for(k_ra8_wdt_instance_count);
   TEST_ASSERT_EQ((uintptr_t)k_ra8_wdt0_base_addr, (uintptr_t)p);
   TEST_END("ra8_wdt_for(k_ra8_wdt_instance_count) falls back to WDT0 base");
-}
-
-/* ---------------------------------------------------------------------------
- * ra8_wdt_ofs_addr -- WDT1 arm (line 354)
- * ---------------------------------------------------------------------------
- */
-
-/**
- * @brief Verify ra8_wdt_ofs_addr() returns the OFS3 address for k_ra8_wdt1.
- *
- * @details
- * HUM Ch 7 p 278 defines OFS3 (0x03001E20) as the option-setting word
- * consumed by WDT1. ra8_wdt_ofs_addr() must return that constant when called
- * with k_ra8_wdt1. The function only returns a uintptr_t -- it does not
- * dereference the address -- so no mmap window is required for this test.
- *
- * @pre None beyond the compiled constants.
- * @post ra8_wdt_ofs_addr returns k_ra8_wdt_ofs3_addr for k_ra8_wdt1.
- *
- * @par MC/DC:
- * (switch arm -- no compound boolean decision)
- *
- * @since 0.1.0
- */
-static void test_wdt_ofs_addr_wdt1_returns_ofs3(void)
-{
-  TEST_BEGIN("ra8_wdt_ofs_addr(k_ra8_wdt1) returns OFS3 address");
-  const uintptr_t addr = ra8_wdt_ofs_addr(k_ra8_wdt1);
-  TEST_ASSERT_EQ((uintptr_t)k_ra8_wdt_ofs3_addr, addr);
-  TEST_END("ra8_wdt_ofs_addr(k_ra8_wdt1) returns OFS3 address");
-}
-
-/* ---------------------------------------------------------------------------
- * ra8_wdt_ofs_addr -- k_ra8_wdt_instance_count/default arm (lines 355, 357)
- * ---------------------------------------------------------------------------
- */
-
-/**
- * @brief Verify ra8_wdt_ofs_addr() falls back to OFS0 for an out-of-range selector.
- *
- * @details
- * k_ra8_wdt_instance_count (2) falls through to the default arm of
- * ra8_wdt_ofs_addr()'s switch. The documented defensive fallback is the
- * WDT0 option-setting address, OFS0 (0x03001E04).
- *
- * @pre None.
- * @post ra8_wdt_ofs_addr returns k_ra8_wdt_ofs0_addr for k_ra8_wdt_instance_count.
- *
- * @par MC/DC:
- * (switch arm -- no compound boolean decision)
- *
- * @since 0.1.0
- */
-static void test_wdt_ofs_addr_oob_falls_back_to_ofs0(void)
-{
-  TEST_BEGIN("ra8_wdt_ofs_addr(k_ra8_wdt_instance_count) falls back to OFS0 address");
-  const uintptr_t addr = ra8_wdt_ofs_addr(k_ra8_wdt_instance_count);
-  TEST_ASSERT_EQ((uintptr_t)k_ra8_wdt_ofs0_addr, addr);
-  TEST_END("ra8_wdt_ofs_addr(k_ra8_wdt_instance_count) falls back to OFS0 address");
 }
 
 /* ---------------------------------------------------------------------------
@@ -225,8 +166,6 @@ int32_t main(void)
 {
   test_wdt_for_wdt1_returns_wdt1_base();
   test_wdt_for_oob_falls_back_to_wdt0();
-  test_wdt_ofs_addr_wdt1_returns_ofs3();
-  test_wdt_ofs_addr_oob_falls_back_to_ofs0();
   test_wdt_refresh_instance_wdt1_writes_sequence();
   test_wdt_refresh_instance_oob_writes_to_wdt0();
   (void)fprintf(stderr, "[OK ] test_ra8_wdt_regs_cov.c\n");

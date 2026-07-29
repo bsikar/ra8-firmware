@@ -112,11 +112,59 @@ static void test_ra8_ofs_inventory(void)
   TEST_END("ra8_ofs inventory reports the OFS0..OFS3 quartet");
 }
 
+/**
+ * @brief Pin the runtime-read option-setting addresses to their HUM literals.
+ *
+ * @details
+ * Every value is spelled out as the literal the manual prints, so this test
+ * fails if any constant drifts. That is the whole point: `ra8_wdt_regs.h`
+ * previously carried `0x03001E04` / `0x03001E20` for OFS0 / OFS3 -- addresses
+ * that appear nowhere in either manual and land in the `0x0300_0000 ..
+ * 0x07FF_FFFF` Reserved window -- and survived because the only tests that
+ * touched them compared each constant against itself (#545).
+ *
+ * Sources, identical on both supported parts:
+ * - `OFS0` `0x02C9_F040` -- RA8D2 HUM R01UH1065EJ0130 Ch 7.2.1 p 280.
+ * - `OFS3` `0x12C9_F4C4` -- Ch 7.2.6 p 287, non-secure alias.
+ * - `OFS3_SEC` `0x02C9_F0C4` -- Ch 7.2.6 p 287.
+ * - `OFS3_SEL` `0x02C9_F124` -- Ch 7.2.7 p 289.
+ *
+ * @test test_ra8_ofs_addresses
+ *
+ * @par MC/DC:
+ * (no compound decisions -- each assertion is a single equality comparison.)
+ */
+static void test_ra8_ofs_addresses(void)
+{
+  TEST_BEGIN("ra8_ofs addresses match the HUM Figure 7.1 literals");
+
+  TEST_ASSERT((uintptr_t)k_ra8_ofs0_addr == (uintptr_t)0x02C9F040UL);
+  TEST_ASSERT((uintptr_t)k_ra8_ofs3_addr == (uintptr_t)0x12C9F4C4UL);
+  TEST_ASSERT((uintptr_t)k_ra8_ofs3_sec_addr == (uintptr_t)0x02C9F0C4UL);
+  TEST_ASSERT((uintptr_t)k_ra8_ofs3_sel_addr == (uintptr_t)0x02C9F124UL);
+
+  /* None of them may sit in the Reserved window the old constants occupied.
+   * HUM Ch 3 memory map: 0x0300_0000 .. 0x07FF_FFFF is Reserved area. */
+  const uintptr_t reserved_lo = (uintptr_t)0x03000000UL;
+  const uintptr_t reserved_hi = (uintptr_t)0x07FFFFFFUL;
+  TEST_ASSERT(((uintptr_t)k_ra8_ofs0_addr < reserved_lo) ||
+              ((uintptr_t)k_ra8_ofs0_addr > reserved_hi));
+  TEST_ASSERT(((uintptr_t)k_ra8_ofs3_addr < reserved_lo) ||
+              ((uintptr_t)k_ra8_ofs3_addr > reserved_hi));
+  TEST_ASSERT(((uintptr_t)k_ra8_ofs3_sec_addr < reserved_lo) ||
+              ((uintptr_t)k_ra8_ofs3_sec_addr > reserved_hi));
+  TEST_ASSERT(((uintptr_t)k_ra8_ofs3_sel_addr < reserved_lo) ||
+              ((uintptr_t)k_ra8_ofs3_sel_addr > reserved_hi));
+
+  TEST_END("ra8_ofs addresses match the HUM Figure 7.1 literals");
+}
+
 int32_t main(void)
 {
   test_ra8_ofs_compiled();
   test_mcdc_ra8_ofs();
   test_ra8_ofs_inventory();
+  test_ra8_ofs_addresses();
   (void)fprintf(stderr, "[OK  ] test_ra8_ofs.c\n");
   return 0;
 }

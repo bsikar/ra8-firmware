@@ -888,7 +888,7 @@ void ra8_wdt_dispatch(void);
 [[nodiscard]] ra8_err_t ra8_wdt_exit_stop(void);
 
 /* =============================================================================
- * OFS0 / OFS3 read-only decode (HUM Ch 27.2.6 p 1262, Table 27.5 p 1269)
+ * OFS0 / OFS3 read-only decode (HUM Ch 27.2.6 p 1263, Table 27.5 p 1269)
  * =============================================================================
  */
 
@@ -904,8 +904,13 @@ void ra8_wdt_dispatch(void);
  * mapped at the host. Per CLAUDE.md NASA Rule 9 deviation, function
  * pointers are allowed for Dependency Inversion.
  *
- * @param[in] ofs_addr One of ``k_ra8_wdt_ofs0_addr`` /
- * ``k_ra8_wdt_ofs3_addr`` (HUM Ch 7).
+ * It is also the seam a non-secure caller needs: ``OFS0``, ``OFS3_SEC``
+ * and ``OFS3_SEL`` are all secure-region words, so a non-secure image
+ * must route this through a veneer rather than loading from them.
+ *
+ * @param[in] ofs_addr One of the ``ra8_ofs_addr_t`` constants --
+ * ``k_ra8_ofs0_addr``, ``k_ra8_ofs3_addr``, ``k_ra8_ofs3_sec_addr`` or
+ * ``k_ra8_ofs3_sel_addr`` (HUM Ch 7 Figure 7.1 p 279).
  * @param[out] out_word Receives the 32-bit option-setting word.
  *
  * @return ``k_ra8_ok`` on success; ``k_ra8_err_*`` on hook-defined failure.
@@ -936,15 +941,22 @@ typedef ra8_err_t (*ra8_wdt_ofs_reader_fn_t)(uintptr_t ofs_addr, uint32_t* out_w
  * @brief Decode an OFSm option-setting word into ``ra8_wdt_cfg_t``.
  *
  * @details
- * Reads the 32-bit OFS0 (for ``k_ra8_wdt0``) or OFS3 (for ``k_ra8_wdt1``)
- * word -- which the boot ROM has already latched into the WDT
- * peripheral when ``OFSm.WDTnSTRT == 0`` -- and decodes the seven
- * fields back out per HUM Ch 27.3.8 Table 27.5 p 1269.
+ * Recovers the seven WDT fields the boot ROM latched when
+ * ``OFSm.WDTnSTRT == 0``, per HUM Ch 27.3.8 Table 27.5 p 1269. The two
+ * instances read different numbers of words, because the hardware does:
+ *
+ * - ``k_ra8_wdt0`` -- **one** read of ``OFS0`` (HUM Ch 7.2.1 p 280). OFS0 is a
+ *   single secure-region word with no ``_SEC`` / ``_SEL`` companions.
+ * - ``k_ra8_wdt1`` -- **three** reads. ``OFS3_SEL`` (HUM Ch 7.2.7 p 289)
+ *   selects, *per field*, whether WDT1 latched that field from ``OFS3_SEC``
+ *   (selector 0) or ``OFS3`` (selector 1), so the effective word is a mux of
+ *   the two copies. Reading either copy alone reports a configuration the
+ *   hardware may not be using.
  *
  * The WDT driver is *read-only* with respect to OFSm; only ``ra8_ofs.c``
- * may write the option-setting sections. The actual fetch goes through
- * the ``ra8_wdt_ofs_reader_set`` hook so unit tests / bring-up code
- * can supply a canned word without touching MRAM.
+ * may write the option-setting sections. Every fetch goes through the
+ * ``ra8_wdt_ofs_reader_set`` hook so unit tests / bring-up code
+ * can supply canned words without touching MRAM.
  *
  * @param[in] which Instance whose OFSm word should be decoded.
  * @param[out] out Receives the decoded view.
@@ -953,6 +965,8 @@ typedef ra8_err_t (*ra8_wdt_ofs_reader_fn_t)(uintptr_t ofs_addr, uint32_t* out_w
  * @retval k_ra8_ok Decoded.
  * @retval k_ra8_err_null_ptr ``out`` was null.
  * @retval k_ra8_err_invalid_arg ``which`` is not a known instance.
+ * @retval k_ra8_err_invalid_state ``which`` was ``k_ra8_wdt1`` and ``OFS3_SEL``
+ *         holds an encoding HUM Ch 7.2.7 p 289 marks "Setting prohibit".
  * @retval k_ra8_err_* Whatever the reader hook returned.
  *
  * @pre ``out`` is non-null.
@@ -962,7 +976,10 @@ typedef ra8_err_t (*ra8_wdt_ofs_reader_fn_t)(uintptr_t ofs_addr, uint32_t* out_w
  * @post ``out->auto_start`` matches ``out->start_mode == k_ra8_wdt_ofs_strt_auto``.
  *
  * @note Read-only; callable from any context.
+ * @warning Secure-world only under the default reader -- see
+ *          ``ra8_wdt_ofs_reader_fn_t``.
  *
+ * @see ra8_ofs_addr_t  The addresses this reads.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_wdt_ofs_get(ra8_wdt_instance_t which, ra8_wdt_ofs_decoded_t* out);

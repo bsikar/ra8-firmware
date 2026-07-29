@@ -367,3 +367,27 @@ constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_rtos.c
 constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
 constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_spi.c
 constParameterPointer:port/esp-hosted/src/ra8_esp_hosted_spi.c
+
+# ---------------------------------------------------------------------------
+# misra-c2012-8.9 ("define at block scope if used in only one function") on
+# ra8_wdt.c's `s_tag` and `s_ofs_reader`. Both are file-scope statics used by
+# several functions -- `s_tag` has 15 references and `s_ofs_reader` is read or
+# written by three (ra8_wdt_ofs_reader_set, internal_read_wdt1_word,
+# ra8_wdt_ofs_get) -- so the rule does not apply to either.
+
+# Justification: this is a parse artefact, not a finding. misra.py's 8.9 counts
+# how many *Function scopes* cppcheck resolved that reference each static and
+# reports when the count is exactly 1. cppcheck 2.13 (the CI-pinned version)
+# cannot parse a `[[nodiscard]]`-prefixed definition, so it never builds a
+# Function scope for ra8_wdt_ofs_reader_set or ra8_wdt_ofs_get -- the same
+# C23-attribute limitation misra_check_inner.sh documents at length for rules
+# 14.2, 16.2, 17.3, 15.5 and 8.4. Before #545 every reference to these two
+# statics sat inside those two unparseable functions, so the count was 0 and
+# nothing was reported. #545 split the OFS3 read into a plain static helper,
+# which took the count from 0 to 1 -- and 1 is precisely what 8.9 reports.
+
+# Verified by direct experiment on the pinned cppcheck 2.13: the dev-branch
+# file reports 0, the changed file reports 2, and adding one more plain static
+# that touches both symbols drops it back to 0. The rule fires on the count
+# being 1, never on the code being wrong.
+misra-c2012-8.9:libs/ra8_hal/src/ra8_wdt.c
