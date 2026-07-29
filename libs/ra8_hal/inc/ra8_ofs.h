@@ -10,8 +10,9 @@
  * The RA8 boot ROM latches a fixed set of "option-setting" words out of a
  * dedicated config-flash region before the Cortex-M85 reset vector runs. The
  * writable side of those words is emitted by `ra8_ofs.c` into the
- * `.option_setting_*` linker sections; the runtime-readable mirror of the
- * WDT-relevant words lives in `ra8_wdt_regs.h`.
+ * `.option_setting_*` linker sections; `ra8_ofs_addr_t` below names the same
+ * cells for the read-back direction, so this header is the single C-side home
+ * for both.
  *
  * This header is the single C-side source of truth for *which* OFS words the
  * RA8 parts carry. Both supported parts carry the **identical** OFS0 / OFS1 /
@@ -63,8 +64,8 @@ extern "C" {
  * The values are contiguous ordinals (0, 1, 2, ...), NOT flash addresses --
  * they name the OFS words the active device exposes so runtime code can iterate
  * or select without a magic-number literal. The programming addresses live in
- * each app's `linker_script.ld`; the runtime-read addresses of the WDT words
- * live in `ra8_wdt_regs.h`.
+ * each app's `linker_script.ld`; the runtime-read addresses live in
+ * `ra8_ofs_addr_t` below.
  *
  * The quartet is the same on every part this tree supports, so no member is
  * device-conditional.
@@ -82,6 +83,66 @@ typedef enum : uint8_t {
   k_ra8_ofs_word_ofs3  = 3U, /**< OFS3: M33-side (CPU1) WDT1 fields (both parts).      */
   k_ra8_ofs_word_count = 4U, /**< OFS word count: 4 on both parts.                     */
 } ra8_ofs_word_t;
+
+/**
+ * @enum ra8_ofs_addr_t
+ * @brief Runtime-readable addresses of the option-setting words.
+ *
+ * @details
+ * These are the addresses a running image loads from to recover what the boot
+ * ROM latched. The option-setting words live in the extra-MRAM
+ * "Configuration setting area", which is ordinary addressable memory -- HUM
+ * Ch 7.1 Figure 7.1 "Option-setting memory area" p 279 maps the whole region,
+ * and #315 proved on the bench that extra-MRAM cells read back with valid ECC.
+ *
+ * Each constant is the address the HUM prints in that register's own section:
+ *
+ * | Word       | Address       | Region     | Section | RA8D2 p | RA8P1 p |
+ * |------------|---------------|------------|---------|--------:|--------:|
+ * | `OFS0`     | `0x02C9_F040` | Secure     | 7.2.1   | 280     | 280     |
+ * | `OFS3`     | `0x12C9_F4C4` | Non-secure | 7.2.6   | 287     | 288     |
+ * | `OFS3_SEC` | `0x02C9_F0C4` | Secure     | 7.2.6   | 287     | 288     |
+ * | `OFS3_SEL` | `0x02C9_F124` | Secure     | 7.2.7   | 289     | 290     |
+ *
+ * Both supported parts place them identically; only the page numbers shift.
+ *
+ * @note **Alias, not drift.** `BASE_MC` is `0x0200_0000` (Secure) or
+ *       `0x1200_0000` (Non-secure) -- HUM Ch 59 Table 59.16 -- so `0x02..` and
+ *       `0x12..` address the *same* cell through the two TrustZone aliases.
+ *       `OPTION_SETTING_ADDR` in `scripts/checks/check_linker_scripts.py`
+ *       normalises every word to the secure alias because it governs
+ *       *programming*; `OFS3` therefore reads `0x02C9F4C4` there and
+ *       `0x12C9_F4C4` here. Both are correct for their direction. See #543,
+ *       which tracks whether the programming side should move to the
+ *       non-secure alias the HUM prints.
+ *
+ * @warning `OFS0`, `OFS3_SEC` and `OFS3_SEL` are all in the **Secure region**
+ *          (Figure 7.1 p 279), so a non-secure load from them does not return
+ *          garbage -- it faults. Non-secure callers must reach them through a
+ *          veneer; `ra8_wdt_ofs_reader_set()` is the injection seam for that.
+ *
+ * @invariant Every value lies inside the extra-MRAM option-setting region and
+ *            never in the `0x0300_0000..0x07FF_FFFF` Reserved window.
+ *
+ * @par Example:
+ * @code
+ * uint32_t ofs0 = *(const volatile uint32_t*)k_ra8_ofs0_addr;
+ * @endcode
+ *
+ * @see ra8_ofs_word_t   Ordinal identity of the same words.
+ * @see ra8_wdt_ofs_get() Decodes the WDT view of OFS0 / OFS3.
+ * @since 0.1.0
+ */
+typedef enum : uintptr_t {
+  /* HUM Ch 7.2.1 "OFS0 : Option Function Select Register 0" p 280 */
+  k_ra8_ofs0_addr = 0x02C9F040UL, /**< OFS0 -- IWDT + WDT0 fields (Secure). */
+  /* HUM Ch 7.2.6 "OFS3, OFS3_SEC : Option Function Select Register 3" p 287 */
+  k_ra8_ofs3_addr = 0x12C9F4C4UL, /**< OFS3 -- WDT1 fields (Non-secure alias). */
+  /* HUM Ch 7.2.6 "OFS3, OFS3_SEC : Option Function Select Register 3" p 287 */
+  k_ra8_ofs3_sec_addr = 0x02C9F0C4UL, /**< OFS3_SEC -- WDT1 fields (Secure). */
+  /* HUM Ch 7.2.7 "OFS3_SEL : Option Function Select Register 3 for Security" p 289 */
+  k_ra8_ofs3_sel_addr = 0x02C9F124UL, /**< OFS3_SEL -- per-field S/NS selector. */
+} ra8_ofs_addr_t;
 
 /**
  * @brief Return the number of option-setting words present on the device.

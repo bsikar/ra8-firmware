@@ -463,6 +463,7 @@ jobs:
       - run: bash scripts/ci.sh --gate lint-make
       - run: bash scripts/ci.sh --gate lint-ld
       - run: bash scripts/ci.sh --gate lint-asm
+      - run: bash scripts/ci.sh --gate reserved-addrs
       - name: Install hadolint and zsh
         run: |
           # ci-parity: infra -- provisions the pinned hadolint binary and zsh

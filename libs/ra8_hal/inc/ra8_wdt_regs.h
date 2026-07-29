@@ -64,24 +64,6 @@ typedef enum : uintptr_t {
 } ra8_wdt_addr_t;
 
 /**
- * @enum ra8_wdt_ofs_addr_t
- * @brief Addresses of the option-setting words consumed by each WDT.
- *
- * @details
- * In auto-start mode the WDT period / divider / window / reset-vs-NMI
- * / Sleep-stop bits are latched out of these option-setting MRAM
- * words at boot. Software cannot rewrite them through the WDT block;
- * ``ra8_ofs.c`` owns the writable side. ``ra8_wdt_ofs_get`` reads them
- * back through the configurable reader hook.
- *
- * @see HUM Ch 7 "Option-Setting Memory" p 278-299.
- */
-typedef enum : uintptr_t {
-  k_ra8_wdt_ofs0_addr = 0x03001E04UL, /**< OFS0 word -- WDT0 fields. */
-  k_ra8_wdt_ofs3_addr = 0x03001E20UL, /**< OFS3 word -- WDT1 fields. */
-} ra8_wdt_ofs_addr_t;
-
-/**
  * @enum ra8_wdt_refresh_t
  * @brief Two-byte unlock pattern written to ``WDTRR`` to refresh.
  *
@@ -242,6 +224,13 @@ typedef enum : uint32_t {
  *
  * Masks are *post-shift* (i.e. the field width); shifts are bit
  * positions inside the 32-bit OFSm word.
+ *
+ * ``k_ra8_wdt_ofs_field_mask`` is the union of all seven fields in
+ * place. It matters because ``OFS3_SEL`` (HUM Ch 7.2.7 p 289) is a
+ * *per-field* selector whose bits sit at exactly these positions:
+ * for each field, 0 selects ``OFS3_SEC`` and 1 selects ``OFS3``. That
+ * co-location is what lets ``ra8_wdt_ofs_get`` resolve WDT1 with a
+ * single bitwise mux instead of seven field extractions.
  */
 typedef enum : uint32_t {
   k_ra8_wdt_ofs_shift_strt    = 17U,  /**< OFSm.WDTSTRT shift.    */
@@ -258,7 +247,19 @@ typedef enum : uint32_t {
   k_ra8_wdt_ofs_mask_rpss     = 0x3U, /**< 2-bit field.           */
   k_ra8_wdt_ofs_mask_rstirqs  = 0x1U, /**< 1-bit field.           */
   k_ra8_wdt_ofs_mask_stpctl   = 0x1U, /**< 1-bit field.           */
+  /* bit 17 | 19:18 | 23:20 | 25:24 | 27:26 | 28 | 30 */
+  k_ra8_wdt_ofs_field_mask = 0x5FFE0000UL, /**< Union of all seven fields. */
 } ra8_wdt_ofs_layout_t;
+
+static_assert(k_ra8_wdt_ofs_field_mask ==
+                (((uint32_t)k_ra8_wdt_ofs_mask_strt << k_ra8_wdt_ofs_shift_strt) |
+                 ((uint32_t)k_ra8_wdt_ofs_mask_tops << k_ra8_wdt_ofs_shift_tops) |
+                 ((uint32_t)k_ra8_wdt_ofs_mask_cks << k_ra8_wdt_ofs_shift_cks) |
+                 ((uint32_t)k_ra8_wdt_ofs_mask_rpes << k_ra8_wdt_ofs_shift_rpes) |
+                 ((uint32_t)k_ra8_wdt_ofs_mask_rpss << k_ra8_wdt_ofs_shift_rpss) |
+                 ((uint32_t)k_ra8_wdt_ofs_mask_rstirqs << k_ra8_wdt_ofs_shift_rstirqs) |
+                 ((uint32_t)k_ra8_wdt_ofs_mask_stpctl << k_ra8_wdt_ofs_shift_stpctl)),
+              "k_ra8_wdt_ofs_field_mask must equal the union of the seven WDT fields");
 
 /**
  * @struct r_wdt_regs_t
@@ -327,39 +328,6 @@ static inline volatile r_wdt_regs_t* ra8_wdt_for(ra8_wdt_instance_t which)
     case k_ra8_wdt_instance_count:
     default:
       return (volatile r_wdt_regs_t*)k_ra8_wdt0_base_addr;
-  }
-}
-
-/**
- * @brief Resolve the OFSm word address for a given WDT instance.
- *
- * @param[in] which Instance selector.
- * @return ``k_ra8_wdt_ofs0_addr`` for WDT0, ``k_ra8_wdt_ofs3_addr`` for
- *         WDT1, or the WDT0 address as a defensive fallback.
- *
- * @pre ``which`` < ``k_ra8_wdt_instance_count``.
- * @post No hardware state is touched.
- *
- * @see HUM Ch 7 "Option-Setting Memory" p 278.
- *
- * @details See implementation.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static inline uintptr_t ra8_wdt_ofs_addr(ra8_wdt_instance_t which)
-{
-  /* HUM Ch 7 "Option-Setting Memory" p 278 */
-  switch (which) {
-    case k_ra8_wdt0:
-      return k_ra8_wdt_ofs0_addr;
-    case k_ra8_wdt1:
-      return k_ra8_wdt_ofs3_addr;
-    case k_ra8_wdt_instance_count:
-    default:
-      return k_ra8_wdt_ofs0_addr;
   }
 }
 

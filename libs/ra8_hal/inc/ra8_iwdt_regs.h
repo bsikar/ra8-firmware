@@ -65,21 +65,6 @@ typedef enum : uintptr_t {
 } ra8_iwdt_addr_t;
 
 /**
- * @enum ra8_iwdt_ofs_addr_t
- * @brief Address of the OFS0 word that controls IWDT auto-start.
- *
- * @details
- * The IWDT-relevant fields share OFS0 with WDT0; the addresses match
- * ``ra8_wdt_ofs0_addr`` and the FSP ``BSP_CFG_OPTION_SETTING_OFS0``
- * macro. We mirror the address here for HAL self-containment.
- *
- * @see HUM Ch 7 "Option-Setting Memory" p 278.
- */
-typedef enum : uintptr_t {
-  k_ra8_iwdt_ofs0_addr = 0x03001E04UL, /**< OFS0 word -- IWDT fields. */
-} ra8_iwdt_ofs_addr_t;
-
-/**
  * @enum ra8_iwdt_refresh_t
  * @brief Two-byte unlock pattern written to ``IWDTRR`` to refresh.
  *

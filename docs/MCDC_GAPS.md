@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **225**
-- Total compound decisions in scope: **1231**
-- Decisions at 100% MC/DC (`yes`): **1054**
+- Source files with at least one decision: **226**
+- Total compound decisions in scope: **1233**
+- Decisions at 100% MC/DC (`yes`): **1056**
 - Decisions partially covered (`partial`): **71**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **85.62%**
+- Coverage rate (yes / total): **85.64%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **1141**
-- **Reachable MC/DC rate**: **92.38%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1143**
+- **Reachable MC/DC rate**: **92.39%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -364,6 +364,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_host_ctrl | 2 | 2 | 0 | 0 |
 | ra8_usb_irq | 2 | 2 | 0 | 0 |
 | ra8_vreg | 2 | 2 | 0 | 0 |
+| ra8_wdt | 2 | 2 | 0 | 0 |
 | ra8_webp | 2 | 2 | 0 | 0 |
 | ra8_webp_arena | 2 | 2 | 0 | 0 |
 | ra8_widget_book | 2 | 2 | 0 | 0 |

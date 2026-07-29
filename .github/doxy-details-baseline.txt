@@ -116,7 +116,6 @@ tests/test_ra8_usb_pmsc.c
 tests/test_ra8_usb_pprn.c
 tests/test_ra8_usb_pvnd.c
 tests/test_ra8_wdt.c
-tests/test_ra8_wdt_extended.c
 tests/test_ra8_wdt_supervisor.c
 tests/test_ra8_wdt_supervisor_extended.c
 tools/media_dl/src/mdl_cli.c

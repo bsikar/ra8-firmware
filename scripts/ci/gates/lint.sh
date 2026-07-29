@@ -142,6 +142,19 @@ gate_lint_ld() (
   python3 scripts/checks/check_linker_scripts.py
 )
 
+# --- reserved-addrs -------------------------------------------------------
+# Three drivers have now named an address describing hardware that is not
+# there (ra8_rsip, ra8_ptp #498, ra8_wdt_regs #545) -- each compiled clean and
+# failed only on silicon. check_hum_register_map.py (#540) checks register
+# symbols and struct/window offsets against the manual's tables, but an
+# absolute-address enumerator is neither, so that gate does not cover this.
+# This one answers the cheaper question: is the address inside a hole?
+gate_reserved_addrs() (
+  set -e
+  python3 scripts/checks/check_reserved_addresses.py --selftest
+  python3 scripts/checks/check_reserved_addresses.py
+)
+
 # --- lint-asm -------------------------------------------------------------
 # No linter exists for GNU `as` -- searched for, not assumed; see the module
 # docstring for what was evaluated and rejected. Assembling would cover one of

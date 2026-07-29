@@ -62,6 +62,7 @@
 #include "ra8_err.h"
 #include "ra8_icu.h"
 #include "ra8_log.h"
+#include "ra8_ofs.h"
 #include "ra8_wdt_regs.h"
 
 /**
@@ -142,8 +143,9 @@ static ra8_err_t internal_default_ofs_reader(uintptr_t ofs_addr, uint32_t* out_w
   if (out_word == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  /* HUM Ch 7 "Option-Setting Memory" -- OFSm lives in MRAM and is
-   * mapped read-only into the application address space. */
+  /* HUM Ch 7.1 "Overview" Figure 7.1 "Option-setting memory area" p 279 --
+   * the option-setting words live in the extra-MRAM configuration setting
+   * area and are ordinary readable memory. */
   const volatile uint32_t* src = (const volatile uint32_t*)ofs_addr;
   *out_word                    = *src;
   return k_ra8_ok;
@@ -644,27 +646,153 @@ void ra8_wdt_dispatch(void)
   return k_ra8_ok;
 }
 
-[[nodiscard]] ra8_err_t ra8_wdt_ofs_get(ra8_wdt_instance_t which, ra8_wdt_ofs_decoded_t* out)
+/**
+ * @brief Report whether one multi-bit OFS3_SEL field holds a legal encoding.
+ *
+ * @details
+ * HUM Ch 7.2.7 p 289 permits only all-zeroes (select ``OFS3_SEC``) or all-ones
+ * (select ``OFS3``) in each multi-bit selector field; every mixed encoding is
+ * marked "Setting prohibit". A prohibited value leaves the hardware's choice
+ * undefined, so it must be rejected rather than decoded.
+ *
+ * @param[in] sel   Raw ``OFS3_SEL`` word.
+ * @param[in] shift Bit position of the field's low bit.
+ * @param[in] mask  Field width mask, pre-shift (e.g. 0x3 for a 2-bit field).
+ *
+ * @return Whether the field is uniformly set or uniformly clear.
+ * @retval true  The field is all-zeroes or all-ones.
+ * @retval false The field is a prohibited mixed encoding.
+ *
+ * @pre ``mask`` is a contiguous low-aligned bit mask (0x3 for a 2-bit field).
+ * @pre ``shift`` places the field inside the 32-bit word: shift + width <= 32.
+ * @post No state is modified.
+ * @post The result depends only on the bits ``mask`` selects at ``shift``.
+ *
+ * @note Thread-safe: pure function of its arguments.
+ * @since 0.1.0
+ */
+static bool internal_sel_field_uniform(uint32_t sel, uint32_t shift, uint32_t mask)
 {
-  RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  if ((uint8_t)which >= k_ra8_wdt_instance_count) {
-    return k_ra8_err_invalid_arg;
-  }
+  const uint32_t field = (sel >> shift) & mask;
+  return (field == 0U) || (field == mask);
+}
 
-  /* HUM Ch 27.2.6 "Option Function Select Register" p 1262 + Table
-   * 27.5 p 1269 -- read the appropriate OFSm word from option-
-   * setting memory and decode the seven WDT fields back out.
-   *
-   * The WDT driver does NOT write OFSm; only ``ra8_ofs.c`` may emit
-   * the option-setting sections. We go through the reader hook so
-   * unit tests can inject canned OFSm contents. */
-  const uintptr_t addr = ra8_wdt_ofs_addr(which);
-  uint32_t        ofsm = 0U;
-  const ra8_err_t e    = s_ofs_reader(addr, &ofsm);
-  if (e != k_ra8_ok) {
-    return e;
-  }
+/**
+ * @brief Report whether an OFS3_SEL word is legal in every multi-bit field.
+ *
+ * @details
+ * Checks the four multi-bit selector fields (TOPS, CKS, RPES, RPSS). The three
+ * single-bit selectors (STRT, RSTIRQS, STPCTL) cannot be mixed and so are
+ * always legal.
+ *
+ * @param[in] sel Raw ``OFS3_SEL`` word.
+ *
+ * @return Whether every multi-bit selector field is uniform.
+ * @retval true  All four fields are uniform; the word can be used as a mux.
+ * @retval false At least one field holds a prohibited mixed encoding.
+ *
+ * @pre ``sel`` was read from ``k_ra8_ofs3_sel_addr``.
+ * @pre The shift/mask pairs used below describe OFS3_SEL's field layout, which
+ *      is identical to OFS3's by construction (HUM Ch 7.2.6 / 7.2.7).
+ * @post No state is modified.
+ * @post A ``true`` result means ``sel`` is safe to use as a bitwise mux.
+ *
+ * @note Thread-safe: pure function of its argument.
+ *
+ * @par MC/DC:
+ * Decision: four ANDed calls to ``internal_sel_field_uniform`` -- N+1 = 5
+ * vectors, exercised by ``test_ra8_wdt_ofs.c``.
+ *
+ * @since 0.1.0
+ */
+static bool internal_ofs3_sel_is_legal(uint32_t sel)
+{
+  return internal_sel_field_uniform(sel, k_ra8_wdt_ofs_shift_tops, k_ra8_wdt_ofs_mask_tops) &&
+         internal_sel_field_uniform(sel, k_ra8_wdt_ofs_shift_cks, k_ra8_wdt_ofs_mask_cks) &&
+         internal_sel_field_uniform(sel, k_ra8_wdt_ofs_shift_rpes, k_ra8_wdt_ofs_mask_rpes) &&
+         internal_sel_field_uniform(sel, k_ra8_wdt_ofs_shift_rpss, k_ra8_wdt_ofs_mask_rpss);
+}
 
+/**
+ * @brief Resolve WDT1's effective option word from the OFS3 family.
+ *
+ * @details
+ * WDT1's boot configuration is not a single word. HUM Ch 7.2.7 p 289 makes
+ * ``OFS3_SEL`` a per-field selector between the secure copy ``OFS3_SEC`` and
+ * the non-secure copy ``OFS3``: a selector bit of 0 takes the field from
+ * ``OFS3_SEC``, 1 takes it from ``OFS3``. Because each selector bit occupies
+ * the same position as the field it governs, the resolution is a bitwise mux
+ * over ``k_ra8_wdt_ofs_field_mask``.
+ *
+ * @param[out] out_word Receives the resolved 32-bit option word.
+ *
+ * @return Result code.
+ * @retval k_ra8_ok Resolved.
+ * @retval k_ra8_err_null_ptr ``out_word`` was null.
+ * @retval k_ra8_err_invalid_state ``OFS3_SEL`` holds a prohibited encoding.
+ * @retval k_ra8_err_* Whatever the reader hook returned.
+ *
+ * @pre ``out_word`` is non-null.
+ * @pre The active reader can reach the secure option-setting region.
+ * @post On success ``*out_word`` holds the field-wise resolved word.
+ * @post On failure ``*out_word`` is untouched.
+ *
+ * @note Not thread-safe: reads the module-scope reader hook.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_read_wdt1_word(uint32_t* out_word)
+{
+  /* Single-exit (MISRA C 2012 Rule 15.5): the three reads chain on ``e``
+   * rather than returning early, so a failure at any word falls straight
+   * through to the one return without touching ``*out_word``. */
+  ra8_err_t e = k_ra8_err_null_ptr;
+  if (out_word != nullptr) {
+    uint32_t sel    = 0U;
+    uint32_t sec    = 0U;
+    uint32_t nonsec = 0U;
+
+    e = s_ofs_reader(k_ra8_ofs3_sel_addr, &sel);
+    if (e == k_ra8_ok) {
+      e = s_ofs_reader(k_ra8_ofs3_sec_addr, &sec);
+    }
+    if (e == k_ra8_ok) {
+      e = s_ofs_reader(k_ra8_ofs3_addr, &nonsec);
+    }
+    if (e == k_ra8_ok) {
+      if (internal_ofs3_sel_is_legal(sel)) {
+        const uint32_t mux = sel & (uint32_t)k_ra8_wdt_ofs_field_mask;
+        *out_word          = (nonsec & mux) | (sec & ~mux);
+      } else {
+        ra8_log_error(s_tag, "OFS3_SEL holds a prohibited mixed encoding");
+        e = k_ra8_err_invalid_state;
+      }
+    }
+  }
+  return e;
+}
+
+/**
+ * @brief Decode the seven WDT fields out of a resolved OFSm word.
+ *
+ * @details
+ * Field positions are identical for OFS0's ``WDT0*`` fields (HUM Ch 7.2.1
+ * p 280) and OFS3's ``WDT1*`` fields (HUM Ch 7.2.6 p 287), so one decoder
+ * serves both instances.
+ *
+ * @param[in]  ofsm Resolved 32-bit option word.
+ * @param[out] out  Receives the decoded view.
+ *
+ * @pre ``out`` is non-null (callers validate).
+ * @pre ``ofsm`` is a fully resolved option word -- for WDT1 that means the
+ *      OFS3_SEL mux has already been applied.
+ * @post Every field of ``*out`` is assigned.
+ * @post ``out->auto_start`` agrees with ``out->start_mode``.
+ *
+ * @note Thread-safe: touches only its arguments.
+ * @since 0.1.0
+ */
+static void internal_decode_ofs_word(uint32_t ofsm, ra8_wdt_ofs_decoded_t* out)
+{
   const uint8_t strt = (uint8_t)((ofsm >> k_ra8_wdt_ofs_shift_strt) & k_ra8_wdt_ofs_mask_strt);
   const uint8_t tops = (uint8_t)((ofsm >> k_ra8_wdt_ofs_shift_tops) & k_ra8_wdt_ofs_mask_tops);
   const uint8_t cks  = (uint8_t)((ofsm >> k_ra8_wdt_ofs_shift_cks) & k_ra8_wdt_ofs_mask_cks);
@@ -683,5 +811,33 @@ void ra8_wdt_dispatch(void)
   out->cfg.stop_in_sleep = (ra8_wdt_stop_ctrl_t)stpctl;
   out->start_mode        = (ra8_wdt_ofs_strt_t)strt;
   out->auto_start        = (out->start_mode == k_ra8_wdt_ofs_strt_auto);
+}
+
+[[nodiscard]] ra8_err_t ra8_wdt_ofs_get(ra8_wdt_instance_t which, ra8_wdt_ofs_decoded_t* out)
+{
+  RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  if ((uint8_t)which >= k_ra8_wdt_instance_count) {
+    return k_ra8_err_invalid_arg;
+  }
+
+  /* HUM Ch 27.3.8 Table 27.5 "Association between Option Function Select
+   * Register m (OFSm) and the WDT registers" p 1269 -- in auto-start mode the
+   * seven WDT fields come from OFSm rather than from WDTCR/WDTRCR/WDTCSTPR.
+   *
+   * WDT0 takes them from OFS0 (HUM Ch 7.2.1 p 280), a single secure-region
+   * word. WDT1 takes them from OFS3/OFS3_SEC selected field-by-field by
+   * OFS3_SEL (HUM Ch 7.2.6 p 287, Ch 7.2.7 p 289), so it needs three reads.
+   *
+   * The WDT driver never writes OFSm; only ``ra8_ofs.c`` emits the
+   * option-setting sections. Reads go through the hook so tests and
+   * non-secure callers can supply their own transport. */
+  uint32_t        ofsm = 0U;
+  const ra8_err_t e =
+    (which == k_ra8_wdt0) ? s_ofs_reader(k_ra8_ofs0_addr, &ofsm) : internal_read_wdt1_word(&ofsm);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+
+  internal_decode_ofs_word(ofsm, out);
   return k_ra8_ok;
 }
