@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 13127
+# total findings: 13302
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -77,6 +77,35 @@ libs/ra8_book/src/ra8_book_xhtml.c	misra-c2012-18.4	1
 libs/ra8_box/src/ra8_box.c	misra-c2012-10.8	1
 libs/ra8_box/src/ra8_box.c	misra-c2012-15.5	9
 libs/ra8_box/src/ra8_box.c	misra-c2012-8.4	3
+libs/ra8_c6link/src/ra8_c6link.c	misra-c2012-11.5	2
+libs/ra8_c6link/src/ra8_c6link.c	misra-c2012-15.5	34
+libs/ra8_c6link/src/ra8_c6link.c	misra-c2012-8.4	10
+libs/ra8_c6link/src/ra8_c6link.c	misra-c2012-9.2	3
+libs/ra8_c6link/src/ra8_c6link_arena.c	misra-c2012-11.5	2
+libs/ra8_c6link/src/ra8_c6link_arena.c	misra-c2012-15.5	6
+libs/ra8_c6link/src/ra8_c6link_frame.c	misra-c2012-15.5	7
+libs/ra8_c6link/src/ra8_c6link_frame.c	misra-c2012-21.15	4
+libs/ra8_c6link/src/ra8_c6link_frame.c	misra-c2012-8.4	2
+libs/ra8_c6link/src/ra8_c6link_frame.c	misra-c2012-9.2	3
+libs/ra8_c6link/src/ra8_c6link_pump.c	misra-c2012-15.4	1
+libs/ra8_c6link/src/ra8_c6link_pump.c	misra-c2012-15.5	6
+libs/ra8_c6link/src/ra8_c6link_pump.c	misra-c2012-8.4	1
+libs/ra8_c6link/src/ra8_c6link_pump.c	misra-c2012-9.2	1
+libs/ra8_c6link/src/ra8_c6link_rpc.c	misra-c2012-15.5	18
+libs/ra8_c6link/src/ra8_c6link_rpc.c	misra-c2012-17.3	1
+libs/ra8_c6link/src/ra8_c6link_rpc.c	misra-c2012-8.4	3
+libs/ra8_c6link/src/ra8_c6link_rpc.c	misra-c2012-9.2	2
+libs/ra8_c6link/src/ra8_c6link_tlv.c	misra-c2012-15.5	7
+libs/ra8_c6link/src/ra8_c6link_tlv.c	misra-c2012-8.4	2
+libs/ra8_c6link/src/ra8_c6link_wifi.c	misra-c2012-11.5	1
+libs/ra8_c6link/src/ra8_c6link_wifi.c	misra-c2012-15.5	11
+libs/ra8_c6link/src/ra8_c6link_wifi.c	misra-c2012-17.3	3
+libs/ra8_c6link/src/ra8_c6link_wifi.c	misra-c2012-8.4	5
+libs/ra8_c6link/src/ra8_c6link_wifi_sta.c	misra-c2012-11.5	4
+libs/ra8_c6link/src/ra8_c6link_wifi_sta.c	misra-c2012-15.5	16
+libs/ra8_c6link/src/ra8_c6link_wifi_sta.c	misra-c2012-17.3	3
+libs/ra8_c6link/src/ra8_c6link_wifi_sta.c	misra-c2012-8.4	4
+libs/ra8_c6link/src/ra8_c6link_wifi_sta.c	misra-c2012-9.2	1
 libs/ra8_cache_store/src/ra8_cache_store.c	misra-c2012-11.5	1
 libs/ra8_cache_store/src/ra8_cache_store.c	misra-c2012-11.8	1
 libs/ra8_cache_store/src/ra8_cache_store.c	misra-c2012-15.5	65
@@ -1429,6 +1458,10 @@ libs/ra8_zoom/src/ra8_zoom_render.c	misra-c2012-15.5	12
 libs/ra8_zoom/src/ra8_zoom_render.c	misra-c2012-8.4	1
 libs/ra8_zoom/src/ra8_zoom_render.c	misra-c2012-9.2	1
 port/esp-hosted/inc/port_esp_hosted_host_log.h	misra-c2012-20.10	1
+port/esp-hosted/src/ra8_esp_hosted_c6link.c	misra-c2012-15.5	6
+port/esp-hosted/src/ra8_esp_hosted_c6link.c	misra-c2012-17.3	4
+port/esp-hosted/src/ra8_esp_hosted_c6link.c	misra-c2012-8.4	1
+port/esp-hosted/src/ra8_esp_hosted_c6link.c	misra-c2012-9.2	1
 port/esp-hosted/src/ra8_esp_hosted_fmt.c	misra-c2012-10.8	2
 port/esp-hosted/src/ra8_esp_hosted_fmt.c	misra-c2012-12.1	1
 port/esp-hosted/src/ra8_esp_hosted_fmt.c	misra-c2012-15.5	20

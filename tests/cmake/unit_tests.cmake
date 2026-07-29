@@ -239,6 +239,14 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_npu_loade
 # (which would build it against ra8_core_hal without the model source).
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_emulator_mstp_gate.c)
 
+# test_ra8_c6link.c / test_ra8_c6link_wire.c (#490) drive libs/ra8_c6link, which
+# speaks the vendored esp-hosted protobuf wire format. They therefore need the
+# generated codec + the protobuf-c runtime compiled alongside them and the
+# esp-hosted include path, neither of which ra8_core_hal carries, so both are
+# registered by hand in tests_c6link.cmake rather than through the auto-glob.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c)
+
 foreach(src ${RA8_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   ra8_add_test(${name})

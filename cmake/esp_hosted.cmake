@@ -30,13 +30,25 @@
 # Everything above that line stops at one dependency: `esp_wifi.h`.
 # `transport_drv.c`, the whole `drivers/rpc/` layer and the public
 # `esp_hosted_api.c` are written against ESP-IDF's Wi-Fi API and name 43
-# distinct `wifi_*_t` / `esp_netif_*` types in their declarations. Those
-# types are ESP-IDF's, they are large, and their layouts are what the
-# co-processor decodes on the far side of the link -- so they must be
-# reproduced from ESP-IDF rather than approximated. That is a piece of
-# work in its own right and it is deliberately NOT done here; a
-# hand-guessed `esp_wifi_types.h` would compile and then mis-encode every
-# RPC request.
+# distinct `wifi_*_t` / `esp_netif_*` types in their declarations, which
+# this tree does not have.
+#
+# An earlier version of this comment said those layouts "are what the
+# co-processor decodes on the far side of the link". That is NOT true, and
+# #490 disproved it on the bench before `libs/ra8_c6link` was written. The
+# C6 decodes PROTOBUF: `grep -c 'wifi_config_t\|esp_netif'` over
+# `common/proto/esp_hosted_rpc.pb-c.{h,c}` returns 0, `WifiStaConfig` is a
+# message with named fields, and upstream's own `rpc_req.c` converts into
+# it field by field. Padding, field order and struct size on this side
+# never reach the co-processor at all.
+#
+# So reproducing those 43 types would buy ESP-IDF *source* compatibility
+# and nothing else. `libs/ra8_c6link` speaks the same wire through the
+# generated codec compiled below, in about 1500 lines, with no ESP-IDF
+# type surface -- and `examples/ek_ra8d2/hw_validated/c6/c6_wifi_link`
+# takes the co-processor's Wi-Fi station up through it on silicon. These
+# files stay excluded because they are upstream's API, not because the
+# capability is missing.
 #
 # Three further exclusions are structural rather than staged:
 #

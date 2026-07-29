@@ -8,7 +8,7 @@ their maturity.
 Run the whole tier with:
 
 ```sh
-make hil-c6              # all three, in order
+make hil-c6              # all four, in order
 make hil-c6 APP=c6_spi_probe
 ```
 
@@ -47,11 +47,16 @@ grows a co-processor model.
 |---|---|---|
 | `c6_spi_probe` | The physical link. Drives SCI2 Simple-SPI directly -- no port, no vendored driver -- characterising every J26 hole, hunting for the pin the co-processor answers chip-select on, then clocking esp-hosted transactions at a deliberately slow 1 MHz. | `c6_probe: PASS esp-hosted link up` |
 | `c6_hosted_init` | `port/esp-hosted/` on silicon. Brings the RA8D2 + ThreadX port up, prints the pin map and interrupt routing it resolved, and clocks one full-duplex transaction at 5 MHz. | `c6_hosted_init: PASS link up` |
-| `c6_fw_version` | The **protocol**. A real RPC request goes up, the co-processor parses it, and a populated response comes back whose fields are checked. | `c6_fwver: PASS esp-hosted RPC round-trip` |
+| `c6_fw_version` | The **protocol**. A real RPC request goes up, the co-processor parses it, and a populated response comes back whose fields are checked. Built by hand inside the app. | `c6_fwver: PASS esp-hosted RPC round-trip` |
+| `c6_wifi_link` | The **facade** (`libs/ra8_c6link`), and the co-processor's acceptance of a real `Req_WifiInit` configuration -- the one part of the control plane no host test can settle. Takes the station up, reads its MAC, tears it down. | `c6_wifi: PASS ra8_c6link drove the coprocessor station up` |
 
 They form a ladder: when the top one fails, the one below separates "the wire
 is wrong" from "the firmware is wrong". `c6_spi_probe` is the bench's negative
 control and is the first thing to run, always.
+
+`c6_fw_version` and `c6_wifi_link` overlap deliberately: the former builds the
+protocol by hand and the latter goes through `libs/ra8_c6link`, so if one passes
+and the other fails, the difference is the facade rather than the link.
 
 ## Bench setup
 

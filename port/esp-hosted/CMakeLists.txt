@@ -37,6 +37,11 @@
 #   * ra8_esp_hosted_log.c    -- the bridge onto ra8_log.
 #   * ra8_esp_hosted_pins.c   -- the pin-to-ICU-channel routing table.
 #   * ra8_esp_hosted_port.c   -- bring-up and teardown.
+#   * ra8_esp_hosted_c6link.c -- binds the three-row `ra8_c6link` transport
+#                               seam onto the vtable, so the facade in
+#                               libs/ra8_c6link stays hardware-free and
+#                               host-testable while still clocking its
+#                               transactions through this port's own code.
 #
 # Pulled in by cmake/esp_hosted.cmake when RA8_USE_ESP_HOSTED=ON. Apps
 # link `esp_hosted_port_ra8_spi`; it brings its own globbed ra8_hal
@@ -44,13 +49,14 @@
 # a GLOBAL property the per-app CMakeLists splices into its own
 # add_executable() call -- the same pattern port/nimble uses.
 #
-# RUNTIME STATUS: the port compiles, links and is host-tested, but no
-# code in it has ever run on silicon. The wire it drives is proven --
-# the landed probe examples/ek_ra8d2/hw_validated/c6/c6_spi_probe qualified
-# every J26 hole on 2026-07-27 and brought the raw link up at SPI mode 3
-# / 1 MHz -- but that probe drives the SCI directly and reaches none of
-# this code. Every app that links this port therefore stays under
-# examples/*/hw_pending/ until a run on real hardware promotes it.
+# RUNTIME STATUS: proven on silicon. c6_hosted_init established the
+# transaction through this port's vtable and c6_fw_version completed a
+# full esp-hosted RPC round-trip through it at 5 MHz with zero bad
+# checksums; both live under examples/ek_ra8d2/hw_validated/c6/ and
+# `make hil-c6` re-runs them. The physical map came from c6_spi_probe,
+# which scope-qualified every J26 hole on 2026-07-27 but drives the SCI
+# directly and reaches none of this code -- which is why the port needed
+# its own proof.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -69,8 +75,14 @@ get_filename_component(_RA8_ESP_HOSTED_PORT_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DI
 
 target_include_directories(
   esp_hosted_port_ra8_spi
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/inc/idf_compat
-            ${CMAKE_CURRENT_SOURCE_DIR}/src ${_RA8_ESP_HOSTED_PORT_REPO_ROOT}/libs/ra8_io/inc
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+            ${CMAKE_CURRENT_SOURCE_DIR}/inc/idf_compat
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${_RA8_ESP_HOSTED_PORT_REPO_ROOT}/libs/ra8_io/inc
+            # ra8_esp_hosted_c6link.c binds the ra8_c6link transport seam, so
+            # the facade's public headers travel with the port rather than
+            # depending on every consuming app remembering `LIBS ra8_c6link`.
+            ${_RA8_ESP_HOSTED_PORT_REPO_ROOT}/libs/ra8_c6link/inc
 )
 
 target_link_libraries(esp_hosted_port_ra8_spi INTERFACE esp_hosted threadx)
@@ -80,6 +92,7 @@ target_link_libraries(esp_hosted_port_ra8_spi INTERFACE esp_hosted threadx)
 set_property(
   GLOBAL
   PROPERTY RA8_ESP_HOSTED_PORT_SOURCES
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_esp_hosted_c6link.c
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_esp_hosted_fmt.c
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_esp_hosted_gpio.c
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_esp_hosted_gpio_edge.c
