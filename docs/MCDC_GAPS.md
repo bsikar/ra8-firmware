@@ -14,14 +14,14 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 ## Top-line Numbers
 
 - Source files with at least one decision: **219**
-- Total compound decisions in scope: **1203**
-- Decisions at 100% MC/DC (`yes`): **1030**
+- Total compound decisions in scope: **1204**
+- Decisions at 100% MC/DC (`yes`): **1031**
 - Decisions partially covered (`partial`): **67**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **85.62%**
+- Coverage rate (yes / total): **85.63%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **1113**
-- **Reachable MC/DC rate**: **92.54%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1114**
+- **Reachable MC/DC rate**: **92.55%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -251,10 +251,10 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_psa_crypto | 15 | 15 | 0 | 0 |
 | ra8_etha | 13 | 13 | 0 | 0 |
 | ra8_book_xhtml | 12 | 12 | 0 | 0 |
+| ra8_esp_hosted_rtos_pool | 12 | 12 | 0 | 0 |
 | ra8_gfx_text | 12 | 12 | 0 | 0 |
 | ra8_modem_at | 12 | 12 | 0 | 0 |
 | ra8_reflow_layout_driver | 12 | 12 | 0 | 0 |
-| ra8_esp_hosted_rtos_pool | 11 | 11 | 0 | 0 |
 | ra8_reflow_svg_xform | 11 | 11 | 0 | 0 |
 | ra8_reflow_tokenize_attr | 11 | 11 | 0 | 0 |
 | ra8_book_paged | 10 | 10 | 0 | 0 |
