@@ -206,6 +206,15 @@ constParameterCallback:libs/ra8_comic/src/ra8_comic_cbz.c
 # cast. Suppressed via the list (not inline) so the Doxygen block stays adjacent
 # to the function for the doc-coverage audit (same pattern as ra8_comic above).
 constParameterCallback:libs/ra8_epub/src/ra8_epub_open.c
+# constParameterCallback on the ra8_c6link decode-arena allocator
+# (ra8_c6link_priv_arena_free): its signature is dictated by protobuf-c's
+# ProtobufCAllocator, whose free member is `void (*)(void*, void*)`. The pointer
+# is genuinely written through -- the arena rolls its offset back when the block
+# released is the newest one -- so const would be wrong as well as uncompilable
+# without a function-pointer cast. Suppressed via the list (not inline) so the
+# Doxygen block stays adjacent to the function for the doc-coverage audit (same
+# pattern as ra8_epub above).
+constParameterCallback:libs/ra8_c6link/src/ra8_c6link_arena.c
 # constParameterCallback on the ereader_comic reader read callback (cm_read):
 # its signature is dictated by the ra8_comic read-callback pointer type, so ctx
 # cannot be const without a function-pointer cast. Listed (not inline) to keep

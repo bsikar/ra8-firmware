@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **226**
-- Total compound decisions in scope: **1233**
-- Decisions at 100% MC/DC (`yes`): **1056**
+- Source files with at least one decision: **233**
+- Total compound decisions in scope: **1271**
+- Decisions at 100% MC/DC (`yes`): **1094**
 - Decisions partially covered (`partial`): **71**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **85.64%**
+- Coverage rate (yes / total): **86.07%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **1143**
-- **Reachable MC/DC rate**: **92.39%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1181**
+- **Reachable MC/DC rate**: **92.63%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -250,6 +250,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_reflow_svg | 20 | 20 | 0 | 0 |
 | ra8_mipi_phy | 19 | 19 | 0 | 0 |
 | ra8_psa_crypto | 15 | 15 | 0 | 0 |
+| ra8_c6link | 14 | 14 | 0 | 0 |
 | ra8_etha | 13 | 13 | 0 | 0 |
 | ra8_book_xhtml | 12 | 12 | 0 | 0 |
 | ra8_esp_hosted_rtos_pool | 12 | 12 | 0 | 0 |
@@ -269,6 +270,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_rsip_asym | 8 | 8 | 0 | 0 |
 | ra8_usb_xfer | 8 | 8 | 0 | 0 |
 | ra8_widget | 8 | 8 | 0 | 0 |
+| ra8_c6link_wifi_sta | 7 | 7 | 0 | 0 |
 | ra8_flash | 7 | 7 | 0 | 0 |
 | ra8_fs_fat_fileio | 7 | 7 | 0 | 0 |
 | ra8_i3c | 7 | 7 | 0 | 0 |
@@ -285,6 +287,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_pal | 6 | 6 | 0 | 0 |
 | ra8_usb_paud | 6 | 6 | 0 | 0 |
 | ra8_usb_phid | 6 | 6 | 0 | 0 |
+| ra8_c6link_tlv | 5 | 5 | 0 | 0 |
 | ra8_drw_draw | 5 | 5 | 0 | 0 |
 | ra8_fs_fat_fmt | 5 | 5 | 0 | 0 |
 | ra8_gpt | 5 | 5 | 0 | 0 |
@@ -298,6 +301,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_zoom_tiles | 5 | 5 | 0 | 0 |
 | sec_cmac | 5 | 5 | 0 | 0 |
 | ra8_batt | 4 | 4 | 0 | 0 |
+| ra8_c6link_frame | 4 | 4 | 0 | 0 |
+| ra8_c6link_rpc | 4 | 4 | 0 | 0 |
 | ra8_dfu_program | 4 | 4 | 0 | 0 |
 | ra8_drw | 4 | 4 | 0 | 0 |
 | ra8_epaper | 4 | 4 | 0 | 0 |
@@ -315,6 +320,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_pvnd | 4 | 4 | 0 | 0 |
 | adc_selfdiag | 3 | 3 | 0 | 0 |
 | ra8_book | 3 | 3 | 0 | 0 |
+| ra8_c6link_arena | 3 | 3 | 0 | 0 |
 | ra8_dmac | 3 | 3 | 0 | 0 |
 | ra8_esp_hosted_log | 3 | 3 | 0 | 0 |
 | ra8_esp_hosted_port | 3 | 3 | 0 | 0 |
@@ -377,6 +383,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | key_import | 1 | 1 | 0 | 0 |
 | key_vault | 1 | 1 | 0 | 0 |
 | ota_commit | 1 | 1 | 0 | 0 |
+| ra8_c6link_pump | 1 | 1 | 0 | 0 |
 | ra8_cache | 1 | 1 | 0 | 0 |
 | ra8_canfd_frame | 1 | 1 | 0 | 0 |
 | ra8_cgc_eswclk | 1 | 1 | 0 | 0 |

@@ -119,6 +119,7 @@ higher-level consumer does not need to know the RA8D2-specific details.
 | [`ra8_fs/`](ra8_fs/) | Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write). |
 | [`ra8_ftl/`](ra8_ftl/) | Flash Translation Layer -- free overwrite over erase-before-write media. |
 | [`ra8_modem_at/`](ra8_modem_at/) | Cellular modem AT command/response driver layered on UART. |
+| [`ra8_c6link/`](ra8_c6link/) | The one boundary to the ESP32-C6 companion radio: esp-hosted framing, envelope, protobuf RPC and Wi-Fi station control behind a three-row transport seam. See [`ra8_c6link/README.md`](ra8_c6link/README.md). |
 | [`ra8_tls/`](ra8_tls/) | Facade over the vendored Mbed TLS stack. |
 | [`ra8_psa_crypto/`](ra8_psa_crypto/) | Application-level PSA Crypto facade over tf-psa-crypto. |
 

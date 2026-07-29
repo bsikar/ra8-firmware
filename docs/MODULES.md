@@ -147,6 +147,30 @@ example paths.
 * Main entry points: `ra8_modem_at_init()`, `ra8_modem_at_send_cmd()`,
   `ra8_modem_at_poll()`.
 
+## ra8_c6link
+
+The single integration boundary between this firmware and the ESP32-C6
+companion radio. Owns the esp-hosted payload header and its checksum,
+the serial endpoint's TLV envelope, the protobuf `Rpc` control plane
+(encode, decode, UID correlation, event decode), the polled transaction
+pump, the 802.3 data plane, and Wi-Fi station control. Everything
+hardware-shaped sits behind a three-function transport seam, which
+`port/esp-hosted/` binds to the OS-abstraction vtable on the board and
+`tests/mocks/ra8_c6_model.c` binds to a co-processor model on the host.
+
+The generated protobuf codec allocates, and this firmware has no heap,
+so the codec is handed a bump allocator over a caller-supplied array
+that is emptied after every message -- which keeps the whole control
+plane inside NASA Power of 10 Rule 3.
+
+* Headers: `libs/ra8_c6link/inc/ra8_c6link.h`,
+  `libs/ra8_c6link/inc/ra8_c6link_wifi.h`,
+  `libs/ra8_c6link/inc/ra8_c6link_transport.h`
+* Main entry points: `ra8_c6link_open()`, `ra8_c6link_poll()`,
+  `ra8_c6link_fw_version()`, `ra8_c6link_eth_send()`,
+  `ra8_c6link_wifi_start()`, `ra8_c6link_wifi_join()`,
+  `ra8_c6link_wifi_mac()`.
+
 ## ra8_fs
 
 Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write) backed
