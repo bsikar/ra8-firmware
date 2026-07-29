@@ -47,6 +47,7 @@ add_library(
   ${RA8_UNARCH_SOURCES}
   ${RA8_JOF_SOURCES}
   ${RA8_LONGSTRIP_SOURCES}
+  ${RA8_ZOOM_SOURCES}
   ${RA8_REFLOW_C_SOURCES}
   ${RA8_REFLOW_CPP_SOURCES}
   ${RA8_EPUB_THIRD_PARTY}
@@ -140,6 +141,7 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_unarch/inc
          ${FW_ROOT}/libs/ra8_jof/inc
          ${FW_ROOT}/libs/ra8_longstrip/inc
+         ${FW_ROOT}/libs/ra8_zoom/inc
          ${FW_ROOT}/libs/ra8_reflow/inc
          ${FW_ROOT}/libs/ra8_webp/inc
          ${FW_ROOT}/libs/ra8_touch_cal/inc
@@ -207,6 +209,7 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_unarch/src
          ${FW_ROOT}/libs/ra8_jof/src
          ${FW_ROOT}/libs/ra8_longstrip/src
+         ${FW_ROOT}/libs/ra8_zoom/src
          ${FW_ROOT}/libs/ra8_reflow/src
          ${FW_ROOT}/libs/ra8_tz_secure_boot/src
          ${CMAKE_CURRENT_SOURCE_DIR}/mocks

@@ -379,7 +379,7 @@ uart_banner_apps="
   epaper_refresh modem_at_demo battery_monitor_demo
   ereader_chrome ereader_image ereader_link ereader_align ereader_table
   reflow_content ereader_input ereader_cover ereader_svg ereader_imgfmt
-  ereader_jpeg ereader_longstrip epub_parse epub_stress
+  ereader_jpeg ereader_longstrip ereader_zoom epub_parse epub_stress
   widget_app widget_app_demo glcdc_render bscan_selftest keyboard
   smbus_demo crc_demo adc_b_demo agt_periodic i2c_loopback eth_loopback
   crypto_aes_demo dma_memcopy_demo rtc_alarm elc_event_demo timer_capture_demo

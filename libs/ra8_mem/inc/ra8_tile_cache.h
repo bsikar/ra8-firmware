@@ -229,6 +229,67 @@ typedef struct {
 } ra8_tile_prefetch_req_t;
 
 /**
+ * @brief Convert a pixel rectangle into the inclusive tile rectangle covering it.
+ *
+ * @details
+ * The producer ::ra8_tile_rect_t never had. Every consumer that needed "which
+ * tiles does this viewport touch?" open-coded the same four divisions in its own
+ * app, so the residency question was answered in a slightly different place from
+ * the prefetch that acts on it. Answering it once, here, is what lets a zoom
+ * viewer state its resident set and warm its lead edge from the same number.
+ *
+ * The result is clamped to the tile grid, so a rectangle that runs past the image
+ * edge yields the last tile rather than an out-of-grid index the prefetch would
+ * then have to re-clamp. An empty rectangle (`pw == 0` or `ph == 0`) is rejected
+ * rather than collapsed: a viewport showing no pixels is a caller defect, and
+ * silently returning tile (0,0) would understate residency.
+ *
+ * @param[in]  px        Rectangle left edge, source pixels.
+ * @param[in]  py        Rectangle top edge, source pixels.
+ * @param[in]  pw        Rectangle width, source pixels (`> 0`).
+ * @param[in]  ph        Rectangle height, source pixels (`> 0`).
+ * @param[in]  tile_w    Tile width, pixels (`> 0`).
+ * @param[in]  tile_h    Tile height, pixels (`> 0`).
+ * @param[in]  tile_cols Tile columns in the image (`> 0`; the clamp bound).
+ * @param[in]  tile_rows Tile rows in the image (`> 0`; the clamp bound).
+ * @param[out] out       Receives the inclusive tile rectangle.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               @p out spans exactly the covering tiles.
+ * @retval k_ra8_err_null_ptr     @p out is NULL.
+ * @retval k_ra8_err_invalid_arg  An extent or a grid dimension is zero.
+ *
+ * @pre  @p out addresses writable storage for one ::ra8_tile_rect_t.
+ * @pre  The tile geometry describes the same image the pixel rectangle indexes.
+ * @post `out->tx0 <= out->tx1 < tile_cols` and `out->ty0 <= out->ty1 < tile_rows`.
+ * @post Every pixel of the rectangle inside the image lies in a tile of @p out.
+ *
+ * @note Pure integer arithmetic; thread-safe.
+ *
+ * @par Example:
+ * @code
+ * ra8_ui_rect_t win = {};
+ * (void)ra8_zoom_view_window(&view, &win);
+ * ra8_tile_rect_t tiles = {};
+ * (void)ra8_tile_rect_of_pixels((uint32_t)win.x, (uint32_t)win.y,
+ *                               (uint32_t)win.w, (uint32_t)win.h,
+ *                               tile_w, tile_h, tile_cols, tile_rows, &tiles);
+ * @endcode
+ *
+ * @see ra8_tile_cache_prefetch_pan()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_tile_rect_of_pixels(uint32_t         px,
+                                                uint32_t         py,
+                                                uint32_t         pw,
+                                                uint32_t         ph,
+                                                uint16_t         tile_w,
+                                                uint16_t         tile_h,
+                                                uint16_t         tile_cols,
+                                                uint16_t         tile_rows,
+                                                ra8_tile_rect_t* out);
+
+/**
  * @brief Initialise a tile cache over caller-supplied storage.
  *
  * @param[out] tc  Cache state to populate (zero-initialised by the caller).

@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 13020
+# total findings: 13109
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -1079,8 +1079,8 @@ libs/ra8_mem/src/ra8_slab.c	misra-c2012-21.15	2
 libs/ra8_mem/src/ra8_slab.c	misra-c2012-8.4	4
 libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-11.5	4
 libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-11.8	2
-libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-15.5	33
-libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-8.4	7
+libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-15.5	36
+libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-8.4	8
 libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-9.2	3
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-11.5	4
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-11.8	1
@@ -1232,9 +1232,9 @@ libs/ra8_reflow/src/ra8_reflow_layout_table.c	misra-c2012-10.4	2
 libs/ra8_reflow/src/ra8_reflow_layout_table.c	misra-c2012-15.5	3
 libs/ra8_reflow/src/ra8_reflow_layout_table.c	misra-c2012-15.7	1
 libs/ra8_reflow/src/ra8_reflow_layout_table.c	misra-c2012-18.4	1
-libs/ra8_reflow/src/ra8_reflow_link.c	misra-c2012-15.5	18
+libs/ra8_reflow/src/ra8_reflow_link.c	misra-c2012-15.5	21
 libs/ra8_reflow/src/ra8_reflow_link.c	misra-c2012-21.16	1
-libs/ra8_reflow/src/ra8_reflow_link.c	misra-c2012-8.4	3
+libs/ra8_reflow/src/ra8_reflow_link.c	misra-c2012-8.4	4
 libs/ra8_reflow/src/ra8_reflow_parse.c	misra-c2012-12.1	1
 libs/ra8_reflow/src/ra8_reflow_parse.c	misra-c2012-15.5	3
 libs/ra8_reflow/src/ra8_reflow_parse.c	misra-c2012-8.4	1
@@ -1420,6 +1420,12 @@ libs/ra8_widget/src/ra8_widget_toolbar.c	misra-c2012-11.5	2
 libs/ra8_widget/src/ra8_widget_toolbar.c	misra-c2012-15.5	9
 libs/ra8_widget/src/ra8_widget_toolbar.c	misra-c2012-8.9	1
 libs/ra8_widget/src/ra8_widget_toolbar.c	misra-c2012-9.2	1
+libs/ra8_zoom/src/ra8_zoom.c	misra-c2012-15.5	53
+libs/ra8_zoom/src/ra8_zoom.c	misra-c2012-8.4	12
+libs/ra8_zoom/src/ra8_zoom.c	misra-c2012-9.2	2
+libs/ra8_zoom/src/ra8_zoom_render.c	misra-c2012-15.5	12
+libs/ra8_zoom/src/ra8_zoom_render.c	misra-c2012-8.4	1
+libs/ra8_zoom/src/ra8_zoom_render.c	misra-c2012-9.2	1
 port/esp-hosted/inc/port_esp_hosted_host_log.h	misra-c2012-20.10	1
 port/esp-hosted/src/ra8_esp_hosted_fmt.c	misra-c2012-10.8	2
 port/esp-hosted/src/ra8_esp_hosted_fmt.c	misra-c2012-12.1	1

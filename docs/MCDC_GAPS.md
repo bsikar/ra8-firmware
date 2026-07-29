@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **219**
-- Total compound decisions in scope: **1204**
-- Decisions at 100% MC/DC (`yes`): **1031**
-- Decisions partially covered (`partial`): **67**
+- Source files with at least one decision: **225**
+- Total compound decisions in scope: **1231**
+- Decisions at 100% MC/DC (`yes`): **1054**
+- Decisions partially covered (`partial`): **71**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **85.63%**
+- Coverage rate (yes / total): **85.62%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **1114**
-- **Reachable MC/DC rate**: **92.55%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1141**
+- **Reachable MC/DC rate**: **92.38%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -39,6 +39,10 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 3 | mg_append_str | `for (uint32_t i = 0U; (i < (uint32_t)k_mg_str_max) && (s[i] != '\0') && (pos ...` | partial |
 | examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 2 | mg_reader_check_geometry | `if ((cfg->fb_w <= 0) \|\| (cfg->fb_h <= (int32_t)k_mg_statusbar_h)) {` | no |
 | examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c | 4 | mg_reader_check_geometry | `if ((cfg->info->width == 0U) \|\| (cfg->info->height == 0U) \|\| (cfg->info->...` | no |
+| examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 2 | ez_fill_tile | `if ((org_x >= (uint32_t)k_ez_page_w) \|\| (org_y >= (uint32_t)k_ez_page_h)) {` | partial |
+| examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 2 | ez_scene_init | `if ((cfg->fb_w <= (int32_t)k_ez_lens_edge) \|\|` | partial |
+| examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 2 | ez_scene_render | `if (lens_plan->present && s->lens_on) {` | partial |
+| examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 3 | ez_scene_tick | `return page_due \|\| (lens_due && s->lens_on);` | partial |
 | port/esp-hosted/src/ra8_esp_hosted_fmt.c | 2 | internal_put | `if ((cur == nullptr) \|\| (cur->out == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_gpio.c | 2 | internal_isr_trampoline | `if ((row == nullptr) \|\| (row->handler == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_copy_name | `if ((dst == nullptr) \|\| (cap == 0U)) {` | no |
@@ -85,11 +89,7 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_receive | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_receive | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_delete | `if ((semaphore_ptr == nullptr) \|\|` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_delete | `if ((semaphore_ptr == nullptr) \|\|` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_get | `if ((semaphore_ptr == nullptr) \|\|` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_get | `if ((semaphore_ptr == nullptr) \|\|` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_put | `if ((semaphore_ptr == nullptr) \|\|` | no |
-| ... | | | | *(23 more rows in CSV)* | |
+| ... | | | | *(27 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -202,6 +202,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_psa_crypto_fake | 6 | 1 | 5 | 0 |
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
+| ez_scene | 7 | 3 | 4 | 0 |
 | ra8_reflow_svg_shape | 15 | 12 | 3 | 0 |
 | ra8_epub_open | 7 | 4 | 0 | 3 |
 | ra8_jof_png | 7 | 4 | 1 | 2 |
@@ -259,6 +260,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_reflow_tokenize_attr | 11 | 11 | 0 | 0 |
 | ra8_book_paged | 10 | 10 | 0 | 0 |
 | ra8_mipi_dsi_cmd | 10 | 10 | 0 | 0 |
+| ra8_zoom | 10 | 10 | 0 | 0 |
 | ra8_esp_hosted_osi_absent | 9 | 9 | 0 | 0 |
 | ra8_epaper_geom | 8 | 8 | 0 | 0 |
 | ra8_fs_fat_mount | 8 | 8 | 0 | 0 |
@@ -293,6 +295,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_haud | 5 | 5 | 0 | 0 |
 | ra8_usb_hcdc_ecm | 5 | 5 | 0 | 0 |
 | ra8_usb_pprn | 5 | 5 | 0 | 0 |
+| ra8_zoom_tiles | 5 | 5 | 0 | 0 |
 | sec_cmac | 5 | 5 | 0 | 0 |
 | ra8_batt | 4 | 4 | 0 | 0 |
 | ra8_dfu_program | 4 | 4 | 0 | 0 |
@@ -319,6 +322,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_eth_gwca_queue | 3 | 3 | 0 | 0 |
 | ra8_jof | 3 | 3 | 0 | 0 |
 | ra8_jpeg_sw_stream | 3 | 3 | 0 | 0 |
+| ra8_reflow_link | 3 | 3 | 0 | 0 |
 | ra8_sdmmc_spi | 3 | 3 | 0 | 0 |
 | ra8_touch | 3 | 3 | 0 | 0 |
 | ra8_ui | 3 | 3 | 0 | 0 |
@@ -345,7 +349,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_jpeg_sw_encode | 2 | 2 | 0 | 0 |
 | ra8_keyboard | 2 | 2 | 0 | 0 |
 | ra8_rabook_pipeline | 2 | 2 | 0 | 0 |
-| ra8_reflow_link | 2 | 2 | 0 | 0 |
 | ra8_rmac_phy | 2 | 2 | 0 | 0 |
 | ra8_rsip | 2 | 2 | 0 | 0 |
 | ra8_rsip_ecc | 2 | 2 | 0 | 0 |
@@ -353,6 +356,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_sci_dma_isr | 2 | 2 | 0 | 0 |
 | ra8_sdhi | 2 | 2 | 0 | 0 |
 | ra8_spi_b_dma | 2 | 2 | 0 | 0 |
+| ra8_tile_cache | 2 | 2 | 0 | 0 |
 | ra8_tsn | 2 | 2 | 0 | 0 |
 | ra8_usb_composite | 2 | 2 | 0 | 0 |
 | ra8_usb_hcdc | 2 | 2 | 0 | 0 |
@@ -412,6 +416,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_tz_secure_boot | 1 | 1 | 0 | 0 |
 | ra8_unarch_tar | 1 | 1 | 0 | 0 |
 | ra8_usb_pmsc | 1 | 1 | 0 | 0 |
+| ra8_zoom_book | 1 | 1 | 0 | 0 |
+| ra8_zoom_render | 1 | 1 | 0 | 0 |
 | tx_systick_retune | 1 | 1 | 0 | 0 |
 
 ## Top 30 modules with at least one uncovered decision

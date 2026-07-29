@@ -282,6 +282,59 @@ typedef struct {
                                                  uint32_t*           out_href_len);
 
 /**
+ * @brief Hit-test a point on a page against the laid-out `<img>` boxes (#478).
+ *
+ * @details
+ * The sibling of ::ra8_reflow_hit_test_link, and the entry point of the reader's
+ * tap-to-zoom gesture: a tap that lands on a figure opens that figure full
+ * screen, at retained full resolution, rather than the column-scaled thumbnail
+ * the page shows. Walks `engine->image_boxes[]` for @p page_idx and returns the
+ * index of the first box containing @p (x, y). Coordinates are page-local -- the
+ * same space ra8_reflow_render_page() uses -- so subtract the render origin
+ * first if the page was drawn at an offset.
+ *
+ * The index (rather than a copy of the box) is what a caller needs: it addresses
+ * `engine->image_boxes[i]` for the laid-out rectangle *and* its `src_off` /
+ * `src_len` href slice, which is how the tapped figure is resolved to the image
+ * a zoom source binds to.
+ *
+ * @param[in]  engine    Initialized engine handle.
+ * @param[in]  page_idx  Page to test.
+ * @param[in]  x         Page-local x, pixels.
+ * @param[in]  y         Page-local y, pixels.
+ * @param[out] out_index Receives the index into `engine->image_boxes[]`.
+ *
+ * @return ra8_err_t
+ * @retval k_ra8_ok            An image box contains the point; @p *out_index set.
+ * @retval k_ra8_err_null_ptr  @p engine or @p out_index is NULL.
+ * @retval k_ra8_err_not_found No image box on @p page_idx contains the point.
+ *
+ * @pre  @p engine is initialized and laid out.
+ * @pre  @p out_index is writable.
+ * @post On success `*out_index < engine->image_box_count`.
+ * @post On failure @p *out_index is unchanged.
+ *
+ * @note Read-only; safe to call between render passes. Earlier boxes win on
+ *       overlap, matching ::ra8_reflow_hit_test_link and ::ra8_ui_hit_test.
+ *
+ * @par Example:
+ * @code
+ * uint32_t idx = 0U;
+ * if (ra8_reflow_hit_test_image(engine, page, tx, ty, &idx) == k_ra8_ok) {
+ *   er_open_zoom(&engine->image_boxes[idx]);
+ * }
+ * @endcode
+ *
+ * @see ra8_reflow_hit_test_link
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_reflow_hit_test_image(const ra8_reflow_t* engine,
+                                                  uint32_t            page_idx,
+                                                  int32_t             x,
+                                                  int32_t             y,
+                                                  uint32_t*           out_index);
+
+/**
  * @brief Find the page of a same-chapter `id` anchor (for `#fragment` jumps).
  *
  * @details Linear-scans `engine->anchors[]` for an element whose captured `id`
