@@ -75,7 +75,7 @@ g_ra8_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
 PROVIDE(g_ra8_threadx_unused_memory_start = ORIGIN(SDRAM));
 
 /*
- * Option-setting region fixed addresses (HUM section 4).
+ * Option-setting region fixed addresses (HUM Ch 7 "Option-Setting Memory" Figure 7.1 p 279).
  *
  * Every entry is PROVIDE()-d so it can be overridden with
  * `--defsym=OFS0_ADDR=0x...` from the cmake toolchain file or the
