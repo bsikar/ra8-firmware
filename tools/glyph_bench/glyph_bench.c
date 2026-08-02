@@ -104,7 +104,29 @@ void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t v
   (void)fprintf(stderr, "[ra8_log] %s: %s =%u\n", tag, message, value);
 }
 
-/** @brief Fixed-seed xorshift64. */
+/**
+ * @brief Advance a fixed-seed xorshift64 generator and return the new state.
+ *
+ * @details
+ * The standard xorshift64 recurrence (shifts 13/7/17) over @p s, updated in
+ * place. Deterministic across runs and platforms, so a given seed always
+ * produces the same glyph stream -- which is what makes the benched hit rate
+ * exactly reproducible.
+ *
+ * @param[in,out] s The 64-bit generator state; replaced with the next state.
+ *
+ * @return The next 64-bit state value.
+ * @retval 0 Never, for a non-zero seed: xorshift64 cannot reach 0 from a
+ *           non-zero state, and ::k_gb_seed is non-zero.
+ *
+ * @pre @p s is non-NULL.
+ * @pre @p s was seeded non-zero (::k_gb_seed).
+ * @post @p s holds the advanced state.
+ * @post The return value equals the new @p s.
+ *
+ * @note Not thread-safe; each caller owns its own state word.
+ * @since 0.1.0
+ */
 static uint64_t gb_rng(uint64_t* s)
 {
   uint64_t x = *s;
@@ -115,13 +137,56 @@ static uint64_t gb_rng(uint64_t* s)
   return x;
 }
 
-/** @brief Uniform integer in [0, span). */
+/**
+ * @brief Draw a uniform pseudo-random integer in [0, @p span).
+ *
+ * @details
+ * Advances ::gb_rng once and reduces modulo @p span. The modulo bias is
+ * negligible for the small spans this workload uses and does not affect the
+ * cache hit/miss decision being measured.
+ *
+ * @param[in,out] s    Generator state, advanced by one step when @p span > 0.
+ * @param[in]     span Exclusive upper bound of the range.
+ *
+ * @return A value in [0, @p span).
+ * @retval 0 @p span was 0 (an empty range is reported as 0).
+ *
+ * @pre @p s is non-NULL and seeded.
+ * @pre @p span fits the intended selection range.
+ * @post @p s is advanced by exactly one step when @p span is non-zero.
+ * @post The result is strictly less than @p span (or 0 when @p span is 0).
+ *
+ * @note Not thread-safe; shares @p s with the caller.
+ * @since 0.1.0
+ */
 static uint32_t gb_below(uint64_t* s, uint32_t span)
 {
   return (span == 0U) ? 0U : (uint32_t)(gb_rng(s) % (uint64_t)span);
 }
 
-/** @brief Pick a frequency-weighted lowercase letter codepoint. */
+/**
+ * @brief Pick a lowercase letter codepoint weighted by English frequency.
+ *
+ * @details
+ * Draws a value in [0, ::k_gb_freq_total) and walks the cumulative
+ * ::k_gb_letter_freq table, so 'e'/'t'/'a' appear far more often than 'q'/'z'
+ * -- the distribution that makes the glyph cache behave like real text. The
+ * final fallthrough returns 'a' only if a rounding gap leaves the draw
+ * unmatched.
+ *
+ * @param[in,out] s Generator state, advanced during selection.
+ *
+ * @return An ASCII lowercase codepoint in 'a'..'z'.
+ * @retval 97 ('a') the frequency walk fell through (draw exceeded the table sum).
+ *
+ * @pre @p s is non-NULL and seeded.
+ * @pre ::k_gb_letter_freq sums to ::k_gb_freq_total.
+ * @post @p s is advanced.
+ * @post The result is a valid lowercase-letter codepoint.
+ *
+ * @note Not thread-safe; shares @p s with the caller.
+ * @since 0.1.0
+ */
 static uint32_t gb_pick_letter(uint64_t* s)
 {
   uint32_t r = gb_below(s, (uint32_t)k_gb_freq_total);
@@ -137,7 +202,30 @@ static uint32_t gb_pick_letter(uint64_t* s)
 /** @brief A small punctuation/space repertoire (codepoints). */
 static const uint32_t k_gb_punct[] = {' ', '.', ',', ';', ':', '\'', '"', '-', '!', '?'};
 
-/** @brief Choose one glyph codepoint for the stream (weighted mix). */
+/**
+ * @brief Choose one codepoint for the glyph stream from the weighted mix.
+ *
+ * @details
+ * Rolls once to split the repertoire into punctuation/space
+ * (::k_gb_punct_pct), digits (::k_gb_digit_pct) and letters (the remainder);
+ * for a letter it draws a frequency-weighted lowercase codepoint
+ * (::gb_pick_letter) and upper-cases it with probability ::k_gb_cap_pct. The
+ * distribution mirrors body text so the atlas working set matches a real page.
+ *
+ * @param[in,out] s Generator state, advanced during selection.
+ *
+ * @return The chosen glyph codepoint (letter, digit, or punctuation/space).
+ * @retval 32 (space) when the punctuation roll selected the first repertoire
+ *            entry, ::k_gb_punct[0].
+ *
+ * @pre @p s is non-NULL and seeded.
+ * @pre The percentage constants sum to at most ::k_gb_pct_base.
+ * @post @p s is advanced by one or more steps.
+ * @post The result is a printable ASCII codepoint.
+ *
+ * @note Not thread-safe; shares @p s with the caller.
+ * @since 0.1.0
+ */
 static uint32_t gb_pick_codepoint(uint64_t* s)
 {
   const uint32_t roll = gb_below(s, (uint32_t)k_gb_pct_base);
@@ -155,7 +243,34 @@ static uint32_t gb_pick_codepoint(uint64_t* s)
   return cp;
 }
 
-/** @brief Stub renderer: a render-on-miss == one avoided rasterisation. */
+/**
+ * @brief Atlas render-on-miss callback: stand in for one rasterisation.
+ *
+ * @details
+ * The atlas invokes this on a cache miss to fill the freed cell. Hit / miss /
+ * eviction depends only on the key stream and the budget, not on the bitmap
+ * content, so this stub just zeroes the cell and reports a 1x1 glyph -- each
+ * call therefore counts as exactly one rasterisation the renderer would have
+ * performed, keeping the measured hit rate exact while the bench stays cheap.
+ *
+ * @param[in]  ctx        Unused render context (the bench carries no state).
+ * @param[in]  key        Unused glyph key (content is irrelevant to hit rate).
+ * @param[out] cell       Cell memory to fill; zeroed here.
+ * @param[in]  cell_bytes Size of @p cell in bytes.
+ * @param[out] out_w      Receives the glyph width (1).
+ * @param[out] out_h      Receives the glyph height (1).
+ *
+ * @return Render status.
+ * @retval k_ra8_ok Always; the stub cannot fail.
+ *
+ * @pre @p cell is non-NULL with at least @p cell_bytes bytes.
+ * @pre @p out_w and @p out_h are non-NULL.
+ * @post @p cell is zeroed and @p out_w / @p out_h are set to 1.
+ * @post No global state is touched.
+ *
+ * @note Not thread-safe; matches the single-threaded bench driver.
+ * @since 0.1.0
+ */
 static ra8_err_t gb_render(void*                  ctx,
                            const ra8_glyph_key_t* key,
                            uint8_t*               cell,
@@ -208,7 +323,34 @@ static gb_access_t* gb_build_stream(uint64_t* rng, uint64_t* out_n)
   return seq;
 }
 
-/** @brief Replay the stream through an atlas of @p budget cells; return hit %. */
+/**
+ * @brief Replay the glyph stream through an atlas of @p budget cells.
+ *
+ * @details
+ * Allocates the atlas backing (cell memory, key/dim/meta arrays and the bucket
+ * table), initialises the REAL ra8_glyph_atlas at @p budget cells, then issues
+ * one get/put per access in @p seq. Misses drive ::gb_render, so the atlas's own
+ * miss counter is the number of rasterisations the renderer would perform. The
+ * hit rate is returned and the miss count reported via @p out_rasters; every
+ * buffer is freed before returning. A backing-allocation failure yields a 0.0
+ * hit rate and 0 rasterisations.
+ *
+ * @param[in]  seq         The generated glyph access stream.
+ * @param[in]  n           Number of accesses in @p seq.
+ * @param[in]  budget      Atlas capacity in cells for this run.
+ * @param[out] out_rasters Receives the render-on-miss count.
+ *
+ * @return The cache hit rate as a percentage in [0, 100].
+ * @retval 0.0 @p n was 0, or a backing allocation failed.
+ *
+ * @pre @p seq holds @p n valid accesses (or @p n is 0).
+ * @pre @p out_rasters is non-NULL.
+ * @post @p out_rasters holds the miss count (0 on allocation failure).
+ * @post Every buffer allocated for the run is freed before returning.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
+ */
 static double gb_run(const gb_access_t* seq, uint64_t n, uint32_t budget, uint32_t* out_rasters)
 {
   uint8_t*             cell_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_gb_cell_bytes);
