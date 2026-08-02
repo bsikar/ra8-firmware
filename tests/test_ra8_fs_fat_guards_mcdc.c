@@ -42,11 +42,11 @@
  * @brief Synthetic-disk sizing and the data-file payload for the guard vectors.
  */
 typedef enum : uint32_t {
-  k_disk_block_size   = 512U,       /**< Bytes per logical block.               */
-  k_disk_blocks_fat16 = 8U * 1024U, /**< 4 MiB FAT16 card (matches siblings).   */
-  k_data_len          = 64U,        /**< Bytes written into the probe data file.*/
-  k_pattern_stride    = 17U,        /**< Payload generator stride, `i*17 + 3`.  */
-  k_poison            = 123U,       /**< Sentinel proving an out-param is written.*/
+  k_disk_block_size   = 512U,       /**< Bytes per logical block.                  */
+  k_disk_blocks_fat16 = 8U * 1024U, /**< 4 MiB FAT16 card (matches siblings).      */
+  k_data_len          = 64U,        /**< Bytes written into the probe data file.   */
+  k_pattern_stride    = 17U,        /**< Payload generator stride, `i*17 + 3`.     */
+  k_poison            = 123U,       /**< Sentinel proving an out-param is written. */
 } ra8_fs_guard_disk_t;
 
 /**
@@ -54,19 +54,19 @@ typedef enum : uint32_t {
  * @brief BPB byte offsets and FAT16 geometry for `build_fat16_volume`.
  */
 typedef enum : uint32_t {
-  k_bpb_off_bytes_per_sec = 11U,  /**< BPB_BytsPerSec.  */
-  k_bpb_off_sec_per_clus  = 13U,  /**< BPB_SecPerClus.  */
-  k_bpb_off_rsvd          = 14U,  /**< BPB_RsvdSecCnt.  */
-  k_bpb_off_num_fats      = 16U,  /**< BPB_NumFATs.     */
-  k_bpb_off_root_ents     = 17U,  /**< BPB_RootEntCnt.  */
-  k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16.    */
-  k_bpb_off_fatsz16       = 22U,  /**< BPB_FATSz16.     */
-  k_bpb_off_sig_lo        = 510U, /**< 0x55 signature.  */
-  k_bpb_off_sig_hi        = 511U, /**< 0xAA signature.  */
-  k_fat16_rsvd            = 1U,   /**< Reserved sectors.*/
-  k_fat16_num_fats        = 2U,   /**< FAT copies.      */
-  k_fat16_fatsz           = 16U,  /**< Sectors per FAT. */
-  k_fat16_root_ents       = 16U,  /**< Root entries.    */
+  k_bpb_off_bytes_per_sec = 11U,  /**< BPB_BytsPerSec.   */
+  k_bpb_off_sec_per_clus  = 13U,  /**< BPB_SecPerClus.   */
+  k_bpb_off_rsvd          = 14U,  /**< BPB_RsvdSecCnt.   */
+  k_bpb_off_num_fats      = 16U,  /**< BPB_NumFATs.      */
+  k_bpb_off_root_ents     = 17U,  /**< BPB_RootEntCnt.   */
+  k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16.     */
+  k_bpb_off_fatsz16       = 22U,  /**< BPB_FATSz16.      */
+  k_bpb_off_sig_lo        = 510U, /**< 0x55 signature.   */
+  k_bpb_off_sig_hi        = 511U, /**< 0xAA signature.   */
+  k_fat16_rsvd            = 1U,   /**< Reserved sectors. */
+  k_fat16_num_fats        = 2U,   /**< FAT copies.       */
+  k_fat16_fatsz           = 16U,  /**< Sectors per FAT.  */
+  k_fat16_root_ents       = 16U,  /**< Root entries.     */
 } ra8_fs_guard_bpb_t;
 
 /**
@@ -479,8 +479,8 @@ static void test_mcdc_format_null_and_ops(void)
   opts.type                 = k_ra8_fs_type_fat16;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));             /* V1/V4 */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_format(nullptr, &opts));      /* V2 */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_format(&s_backend, nullptr)); /* V3 */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_format(nullptr, &opts));      /* V2    */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_format(&s_backend, nullptr)); /* V3    */
 
   ra8_fs_backend_t no_write = s_backend;
   no_write.write_block      = nullptr;

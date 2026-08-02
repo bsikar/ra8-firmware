@@ -59,15 +59,15 @@ typedef enum : uint32_t {
  * @brief BPB byte offsets, geometry and boot signature for the FAT16 builder.
  */
 typedef enum : uint16_t {
-  k_lt_bpb_bytes_per_sec = 11U,     /**< BPB_BytsPerSec.  */
-  k_lt_bpb_sec_per_clus  = 13U,     /**< BPB_SecPerClus.  */
-  k_lt_bpb_rsvd          = 14U,     /**< BPB_RsvdSecCnt.  */
-  k_lt_bpb_num_fats      = 16U,     /**< BPB_NumFATs.     */
-  k_lt_bpb_root_ents     = 17U,     /**< BPB_RootEntCnt.  */
-  k_lt_bpb_tot_sec16     = 19U,     /**< BPB_TotSec16.    */
-  k_lt_bpb_fatsz16       = 22U,     /**< BPB_FATSz16.     */
-  k_lt_bpb_sig_lo        = 510U,    /**< 0x55 signature.               */
-  k_lt_bpb_sig_hi        = 511U,    /**< 0xAA signature.               */
+  k_lt_bpb_bytes_per_sec = 11U,     /**< BPB_BytsPerSec.                */
+  k_lt_bpb_sec_per_clus  = 13U,     /**< BPB_SecPerClus.                */
+  k_lt_bpb_rsvd          = 14U,     /**< BPB_RsvdSecCnt.                */
+  k_lt_bpb_num_fats      = 16U,     /**< BPB_NumFATs.                   */
+  k_lt_bpb_root_ents     = 17U,     /**< BPB_RootEntCnt.                */
+  k_lt_bpb_tot_sec16     = 19U,     /**< BPB_TotSec16.                  */
+  k_lt_bpb_fatsz16       = 22U,     /**< BPB_FATSz16.                   */
+  k_lt_bpb_sig_lo        = 510U,    /**< 0x55 signature.                */
+  k_lt_bpb_sig_hi        = 511U,    /**< 0xAA signature.                */
   k_lt_pad16             = 0xFFFFU, /**< UTF-16 pad after a group name. */
 } ra8_fs_lfn_mcdc_sig_t;
 
@@ -76,14 +76,14 @@ typedef enum : uint16_t {
  * @brief Small byte-valued geometry and sentinels.
  */
 typedef enum : uint8_t {
-  k_lt_sig_lo        = 0x55U, /**< Boot signature low byte.        */
-  k_lt_sig_hi        = 0xAAU, /**< Boot signature high byte.       */
-  k_lt_rsvd          = 1U,    /**< Reserved sectors.               */
-  k_lt_num_fats      = 2U,    /**< FAT copies.                     */
-  k_lt_fatsz         = 16U,   /**< Sectors per FAT.                */
-  k_lt_root_ents     = 16U,   /**< Root entries.                   */
-  k_lt_occupied_mark = 'A',   /**< A live 8.3 entry's first byte.  */
-  k_lt_term16_lo     = 0x00U, /**< UTF-16 terminator low byte.     */
+  k_lt_sig_lo        = 0x55U, /**< Boot signature low byte.       */
+  k_lt_sig_hi        = 0xAAU, /**< Boot signature high byte.      */
+  k_lt_rsvd          = 1U,    /**< Reserved sectors.              */
+  k_lt_num_fats      = 2U,    /**< FAT copies.                    */
+  k_lt_fatsz         = 16U,   /**< Sectors per FAT.               */
+  k_lt_root_ents     = 16U,   /**< Root entries.                  */
+  k_lt_occupied_mark = 'A',   /**< A live 8.3 entry's first byte. */
+  k_lt_term16_lo     = 0x00U, /**< UTF-16 terminator low byte.    */
 } ra8_fs_lfn_mcdc_b_t;
 
 /** @brief Byte offsets of the 13 UTF-16 chars within a 32-byte LFN entry. */
