@@ -91,7 +91,7 @@ ra8_flash_runtime_t s_flash_rt = {};
 static ra8_err_t internal_wait_buffer_ready(uint32_t limit)
 {
   for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+    /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
     const uint8_t s = *ra8_mram_reg8(k_ra8_mram_off_mrcps);
     if (((s & k_ra8_mrcps_mask_prgbsyc) == 0U) &&
         ((s & k_ra8_mrcps_mask_abuffull) == 0U)) { /* GCOVR_EXCL_BR_LINE */
@@ -147,7 +147,7 @@ ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit)
 static ra8_err_t internal_wait_commit_done(uint32_t limit)
 {
   for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+    /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
     const uint8_t s = *ra8_mram_reg8(k_ra8_mram_off_mrcps);
     if (((s & k_ra8_mrcps_mask_abufemp) != 0U) &&
         ((s & k_ra8_mrcps_mask_prgbsyc) == 0U)) { /* GCOVR_EXCL_BR_LINE */
@@ -203,7 +203,7 @@ ra8_err_t ra8_flash_internal_wait_commit_done_call(uint32_t limit)
 ra8_err_t ra8_flash_internal_wait_mrdy(uint32_t limit)
 {
   for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
+    /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3568 */
     const uint32_t s = *ra8_mram_reg32(k_ra8_mram_off_mstatr);
     if ((s & k_ra8_mstatr_mask_mrdy) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra8_ok;
@@ -269,7 +269,7 @@ static void internal_set_program_gate(ra8_flash_world_t world, bool enable)
  */
 static void internal_set_hsp_mode(bool enable)
 {
-  /* HUM Ch 59 "MRPSC : MRAM Program Speed Control Register" p 3600 */
+  /* HUM Ch 59 "MRPSC : MRAM Program Speed Control Register" p 3575 */
   uint8_t mrpsc = 0U;
   if (enable) {
     mrpsc = k_ra8_mrpsc_mask_mhspen;
@@ -406,7 +406,7 @@ ra8_err_t ra8_flash_init(const ra8_flash_cfg_t* cfg)
     (k_ra8_flash_mrefreq_key << k_ra8_flash_freq_key_shift) | (uint32_t)cfg->mrefreq_mhz;
   *ra8_mram_reg32(k_ra8_mram_off_mrefreq) = mrefreq_word;
 
-  /* HUM Ch 59 "MRCEECC : Code MRAM ECC Encoder Control" p 3624 */
+  /* HUM Ch 59 "MRCEECC : Code MRAM ECC Encoder Control" p 3580 */
   uint16_t mrceecc_bits = 0U;
   if (cfg->ecc_encoder_enable) {
     mrceecc_bits = k_ra8_mrceecc_mask_eccen;
@@ -428,7 +428,7 @@ ra8_err_t ra8_flash_init(const ra8_flash_cfg_t* cfg)
   internal_set_hsp_mode(false);
 
   /* Clear sticky errors so the new run starts from a clean state. */
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *ra8_mram_reg8(k_ra8_mram_off_mrcps) = k_ra8_mrcps_mask_errors;
   /* HUM Ch 59 "MRCRAES : Code MRAM Read Access Error Status" p 3554 */
   *ra8_mram_reg8(k_ra8_mram_off_mrcraes) = 0U;
@@ -450,9 +450,9 @@ ra8_err_t ra8_flash_deinit(void)
   internal_set_program_gate(k_ra8_flash_world_s, false);
   internal_set_hsp_mode(false);
   /* If we accidentally left P/E mode on, drop back to read mode. */
-  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
   *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_read_mode;
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *ra8_mram_reg8(k_ra8_mram_off_mrcps) = k_ra8_mrcps_mask_errors;
   ra8_flash_internal_set_prefetch(true);
 
@@ -470,7 +470,7 @@ ra8_err_t ra8_flash_deinit(void)
 ra8_err_t ra8_flash_get_status(uint8_t* out_status)
 {
   RA8_CHECK_NULL_PTR(out_status, s_flash_tag, "out_status must not be nullptr");
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *out_status = *ra8_mram_reg8(k_ra8_mram_off_mrcps);
   return k_ra8_ok;
 }
@@ -478,15 +478,15 @@ ra8_err_t ra8_flash_get_status(uint8_t* out_status)
 ra8_err_t ra8_flash_get_extended_status(ra8_flash_status_ext_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_flash_tag, "out must not be nullptr");
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   out->mrcps = *ra8_mram_reg8(k_ra8_mram_off_mrcps);
-  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3562 */
   out->mastat = *ra8_mram_reg8(k_ra8_mram_off_mastat);
-  /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status Register" p 3565 */
+  /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status Register" p 3561 */
   out->mrezs = *ra8_mram_reg8(k_ra8_mram_off_mrezs);
-  /* HUM Ch 59 "MCMDR : MACI Command Register" p 3589 */
+  /* HUM Ch 59 "MCMDR : MACI Command Register" p 3572 */
   out->mcmdr = *ra8_mram_reg16(k_ra8_mram_off_mcmdr);
-  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
+  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3568 */
   out->mstatr = *ra8_mram_reg32(k_ra8_mram_off_mstatr);
   return k_ra8_ok;
 }
@@ -496,7 +496,7 @@ ra8_err_t ra8_flash_clear_status(uint8_t mask)
   if ((mask & (uint8_t)~k_ra8_mrcps_mask_errors) != 0U) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 -- W1C
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 -- W1C
    * for PRGERRC and ECCERRC; other bits are read-only. */
   *ra8_mram_reg8(k_ra8_mram_off_mrcps) = mask;
   return k_ra8_ok;
@@ -689,7 +689,7 @@ static ra8_err_t internal_flash_program_window(uint32_t          mram_addr,
   }
 
   __asm__ volatile("" ::: "memory");
-  /* HUM Ch 59 "MRCFLR : Code MRAM Flush Register" p 3601 */
+  /* HUM Ch 59 "MRCFLR : Code MRAM Flush Register" p 3580 */
   *ra8_mram_reg16(k_ra8_mram_off_mrcflr) = k_ra8_mrcflr_key_flush;
 
   const ra8_err_t err = internal_wait_commit_done(k_ra8_flash_busy_spin_limit);
@@ -760,7 +760,7 @@ ra8_err_t ra8_flash_block_protect_set(ra8_flash_world_t world, bool lock, bool p
     } else {
       value = k_ra8_mrcbprot1_key_unlock;
     }
-    /* HUM Ch 59 "MRCBPROT1 : Code MRAM Block Protection (S)" p 3605 */
+    /* HUM Ch 59 "MRCBPROT1 : Code MRAM Block Protection (S)" p 3577 */
     *ra8_mram_reg16(k_ra8_mram_off_mrcbprot1) = value;
   } else {
     if (lock) {
@@ -768,7 +768,7 @@ ra8_err_t ra8_flash_block_protect_set(ra8_flash_world_t world, bool lock, bool p
     } else {
       value = k_ra8_mrcbprot0_key_unlock;
     }
-    /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3604 */
+    /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3576 */
     *ra8_mram_reg16(k_ra8_mram_off_mrcbprot0) = value;
   }
   /* The "permanent" flag is conveyed via a configuration-set update of
@@ -790,11 +790,11 @@ ra8_err_t ra8_flash_block_protect_set(ra8_flash_world_t world, bool lock, bool p
 ra8_err_t ra8_flash_enter_pe_mode(void)
 {
   ra8_flash_internal_set_prefetch(false);
-  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
   *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_pe_enter;
 
   for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+    /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
     const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mentryr);
     if ((v & k_ra8_mentryr_mask_pe_mode) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra8_ok;
@@ -805,11 +805,11 @@ ra8_err_t ra8_flash_enter_pe_mode(void)
 
 ra8_err_t ra8_flash_exit_pe_mode(void)
 {
-  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
   *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_read_mode;
 
   for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+    /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
     const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mentryr);
     if ((v & k_ra8_mentryr_mask_pe_mode) == 0U) { /* GCOVR_EXCL_BR_LINE */
       ra8_flash_internal_set_prefetch(s_flash_rt.prefetch_on);
@@ -828,7 +828,7 @@ ra8_err_t ra8_flash_suspend(void)
   *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_pe_pause;
 
   for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MENTRYR" p 3582 */                          /* +                  */
+    /* HUM Ch 59 "MENTRYR" p 3571 */                          /* +                  */
     const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mentryr);
     if ((v & k_ra8_mentryr_mask_pcka) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra8_ok;
@@ -845,7 +845,7 @@ ra8_err_t ra8_flash_resume(void)
   *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_pe_resume;
 
   for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MENTRYR" p 3582 */                          /* +                  */
+    /* HUM Ch 59 "MENTRYR" p 3571 */                          /* +                  */
     const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mentryr);
     if ((v & k_ra8_mentryr_mask_pcka) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra8_ok;
@@ -881,10 +881,10 @@ ra8_err_t ra8_flash_lock_set(uintptr_t addr, uint16_t lock_bits)
 
   const bool is_secure = ((addr & (uintptr_t)k_ra8_mrcbprot_secure_bit) != 0U);
   if (is_secure) {
-    /* HUM Ch 59 "MRCBPROT1 : Code MRAM Block Protection (S)" p 3605 */
+    /* HUM Ch 59 "MRCBPROT1 : Code MRAM Block Protection (S)" p 3577 */
     *ra8_mram_reg16(k_ra8_mram_off_mrcbprot1) = lock_bits;
   } else {
-    /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3604 */
+    /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3576 */
     *ra8_mram_reg16(k_ra8_mram_off_mrcbprot0) = lock_bits;
   }
   return k_ra8_ok;
@@ -904,7 +904,7 @@ ra8_err_t ra8_flash_force_stop(void)
     return err;
   }
 
-  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3562 */
   const uint8_t mastat = *ra8_mram_reg8(k_ra8_mram_off_mastat);
   if ((mastat & k_ra8_mastat_mask_cmdlk) != 0U) {
     return k_ra8_err_hw_error;

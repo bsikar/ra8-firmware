@@ -25,7 +25,6 @@ libs/ra8_hal/inc/ra8_dual_core.h	unknown-window-symbol	3
 libs/ra8_hal/inc/ra8_ether_regs.h	unknown-window-symbol	28
 libs/ra8_hal/inc/ra8_flash_regs.h	unknown-cite-symbol	3
 libs/ra8_hal/inc/ra8_flash_regs.h	unknown-window-symbol	1
-libs/ra8_hal/inc/ra8_flash_regs.h	wrong-cite-page	52
 libs/ra8_hal/inc/ra8_glcdc_regs.h	unknown-window-symbol	63
 libs/ra8_hal/inc/ra8_gpt_regs.h	unknown-window-symbol	10
 libs/ra8_hal/inc/ra8_i3c_regs.h	unknown-window-symbol	2
@@ -62,10 +61,7 @@ libs/ra8_hal/src/ra8_ceu_init_regs.c	wrong-cite-page	6
 libs/ra8_hal/src/ra8_cgc_usb.c	wrong-cite-page	1
 libs/ra8_hal/src/ra8_dual_core.c	unknown-cite-symbol	3
 libs/ra8_hal/src/ra8_eth_gwca.c	wrong-cite-page	2
-libs/ra8_hal/src/ra8_flash.c	wrong-cite-page	27
 libs/ra8_hal/src/ra8_flash_config.c	unknown-cite-symbol	2
-libs/ra8_hal/src/ra8_flash_config.c	wrong-cite-page	17
-libs/ra8_hal/src/ra8_flash_irq.c	wrong-cite-page	12
 libs/ra8_hal/src/ra8_glcdc.c	unknown-cite-symbol	1
 libs/ra8_hal/src/ra8_glcdc_layer.c	wrong-cite-page	1
 libs/ra8_hal/src/ra8_gpt.c	wrong-cite-page	1
@@ -101,7 +97,6 @@ libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c	unknown-cite-symbol	3
 port/usbx/src/ux_dcd_ra8_usb_isr.c	wrong-cite-page	2
 src/app/trustzone_init.c	unknown-cite-symbol	2
 tests/test_ra8_bkup_tamper.c	wrong-cite-page	2
-tests/test_ra8_flash_irq_cov.c	wrong-cite-page	6
 tools/ra8_emulator/src/engine/emu_cpu1.c	unknown-cite-symbol	1
 tools/ra8_emulator/src/periph/board_periph_eth.c	wrong-cite-page	1
 tools/ra8_emulator/src/periph/board_periph_ulpt.c	unknown-cite-symbol	2
