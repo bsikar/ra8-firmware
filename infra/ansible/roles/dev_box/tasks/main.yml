@@ -207,12 +207,24 @@
 
 # --- cppcheck 2.13.0 from source --------------------------------------------
 
+# The version probes and post-install assertions from here down all carry
+# `check_mode: false`. Every one is READ-ONLY -- a `--version`, a parity check,
+# an image inspect -- so running it under `--check` changes nothing, and it is
+# what makes a dry run honest. A command SKIPPED in check mode registers no
+# stdout; the source-build `when:` guards then read '' and fire even on a
+# converged box, and the block dies interpolating the `.path` of a tempfile
+# check mode also skipped -- so `make infra-check HOST=dev` could not run to
+# completion at all. Probing for real keeps the guards accurate, the build
+# blocks are correctly not entered, and the read-backs the final asserts
+# consume have real output instead of a skip dict (#527).
+
 - name: Check the installed cppcheck version
   ansible.builtin.command:
     cmd: "{{ dev_box_cppcheck_prefix }}/bin/cppcheck --version"
   register: dev_box_cppcheck_probe
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Build and install the pinned cppcheck
   when: >-
@@ -278,6 +290,7 @@
     cmd: "{{ dev_box_cppcheck_prefix }}/bin/cppcheck --version"
   register: dev_box_cppcheck_installed
   changed_when: false
+  check_mode: false
 
 - name: Check that cppcheck's library configuration landed with it
   ansible.builtin.stat:
@@ -311,6 +324,7 @@
   register: dev_box_gcc_probe
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Build and install the pinned gcc (tens of minutes -- skipped when present)
   when: (dev_box_gcc_probe.stdout | default('') | trim) != dev_box_gcc_version
@@ -392,6 +406,7 @@
   register: dev_box_gcc_pair
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Assert BOTH gcc-14 and g++-14 are the pinned release
   # The pair, not just the C half. The coverage build does
@@ -418,6 +433,7 @@
   register: dev_box_arm_probe
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Install the pinned Arm GNU Toolchain
   when: dev_box_arm_probe.rc != 0
@@ -454,6 +470,7 @@
     cmd: "{{ dev_box_arm_gcc_prefix }}/bin/arm-none-eabi-gcc --version"
   register: dev_box_arm_installed
   changed_when: false
+  check_mode: false
 
 - name: Assert the cross-compiler is the release the goldens were cut with
   ansible.builtin.assert:
@@ -489,6 +506,7 @@
     chdir: "{{ dev_box_context_dir }}"
   register: dev_box_unicorn_check
   changed_when: false
+  check_mode: false
 
 # --- Python-managed tools ---------------------------------------------------
 
@@ -513,6 +531,7 @@
   ansible.builtin.command:
     cmd: python3 -c "import clang.cindex"
   changed_when: false
+  check_mode: false
 
 # --- The pinned lint set, via the ONE provisioner ---------------------------
 
@@ -643,6 +662,10 @@
     cmd: bash scripts/ci/devcontainer_image.sh --selftest
     chdir: "{{ dev_box_context_dir }}"
   changed_when: false
+  # No check_mode:false here on purpose: the selftest BUILDS throwaway labelled
+  # images to exercise the staleness round-trip, and a dry run neither builds
+  # the real image nor consumes this task's result -- so it is left to skip
+  # under --check rather than doing container builds no dry run asked for.
 
 - name: Build the gate image unless the cached one matches this context
   # Idempotent by construction: `ensure` compares the context digest recorded on
@@ -672,6 +695,7 @@
     chdir: "{{ dev_box_context_dir }}"
   register: dev_box_image_deps
   changed_when: false
+  check_mode: false
 
 # --- Fleet services ---------------------------------------------------------
 
@@ -711,6 +735,7 @@
     chdir: "{{ dev_box_context_dir }}"
   register: dev_box_parity
   changed_when: false
+  check_mode: false
 
 - name: Report dev box state
   ansible.builtin.debug:

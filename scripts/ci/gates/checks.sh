@@ -137,6 +137,16 @@ _pcc_tree_structure() (
   # firing cannot pass as clean.
   python3 scripts/checks/check_fleet_declaration.py --selftest
   python3 scripts/checks/check_fleet_declaration.py
+  # ra8-ci:latest, the image `make ci` boots, is a pure function of
+  # .devcontainer/ only while scripts/ci/devcontainer_image.sh is its SOLE
+  # builder (#521): a second `docker build -t ra8-ci` with the old
+  # reuse-forever logic silently defeats the context-digest staleness guard,
+  # exactly as the deleted inner-local.sh did (#528). This is the image's
+  # equivalent of ci-parity's ban on a second `run:` check body. --selftest
+  # FIRST, both directions plus a non-vacuity floor, so a reconstruction that
+  # stopped matching fails instead of reporting a clean, empty scan.
+  python3 scripts/checks/check_ci_image_single_builder.py --selftest
+  python3 scripts/checks/check_ci_image_single_builder.py
 )
 
 # How source is written: trailing newline, named constants, C23 attribute
