@@ -8,9 +8,9 @@ This tooling drives three independently switched plugs:
   board -- powers the EK-RA8D2 target board.
   pi    -- powers the Raspberry Pi HIL host itself.  Driven directly from the
            developer workstation so the Pi can be power-cycled when wedged.
-  relay -- powers the cam-relay homelab node (a Raspberry Pi 4B), which is NOT
-           RA8 bench hardware.  Driven directly from the workstation, like pi;
-           reads TAPO_RELAY_IP / TAPO_RELAY_MAC.
+  relay -- a third auxiliary bench plug, NOT board or host power.  Driven
+           directly from the workstation, like pi; reads TAPO_RELAY_IP /
+           TAPO_RELAY_MAC (address from .env only; see hil_secrets.py).
 
 Recent TP15 firmware (>= 1.4) speaks TP-Link's TPAP protocol, which is not
 UDP-discoverable; the connection parameters are therefore pinned explicitly
@@ -27,7 +27,7 @@ cluster is down.  The resolved values land in the environment as:
   TAPO_USER, TAPO_PASS          -- shared Tapo account
   TAPO_BOARD_IP, TAPO_BOARD_MAC -- board plug
   TAPO_PI_IP,    TAPO_PI_MAC    -- Pi plug
-  TAPO_RELAY_IP, TAPO_RELAY_MAC -- cam-relay plug (.env only; see hil_secrets.py)
+  TAPO_RELAY_IP, TAPO_RELAY_MAC -- relay plug (.env only; see hil_secrets.py)
 
 OpenBao consumer credentials (BAO_ADDR, ROLE_ID, SECRET_ID) live outside the
 repo in ~/.config/hil/openbao.env; see scripts/hil/hil_secrets.py for details.
@@ -134,7 +134,7 @@ async def main() -> None:
     Both the target and the command are validated against fixed sets before
     any network call, so a typo prints usage instead of reaching a plug --
     which matters when the targets include "the machine running the HIL suite"
-    and "a live homelab node", where the wrong one cuts power to something you
+    and "an auxiliary bench plug", where the wrong one cuts power to something you
     did not mean to touch.
 
     Every required credential is resolved through ``_require``, so a missing
