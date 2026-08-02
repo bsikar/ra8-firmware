@@ -188,62 +188,19 @@ need_jq() {
 # does not apply is normal, and failing on it would cry wolf; the skipped names
 # are printed as evidence by `skipped-count` and `lines-sha` instead.
 #
-# One reader, one place: every field and every rendered view comes from here.
+# CANCELLED IS NOT FAILURE -- the verdict depends on it too. A run is `cancelled`
+# when superseded (a newer push cancels the in-flight one) or stopped, NOT when a
+# gate failed. Scoring it FAIL read 91eef75dd -- 6/6 success on main, its dev
+# firmware/emulator-smoke superseded -- as red (#561). So a sha is judged per
+# workflow by that workflow's LATEST decisive (success/failure) run; a cancelled
+# or skipped sibling never overrides it, and a cancelled/skipped-only workflow is
+# a NON-result (unlike `in_progress`, which keeps the sha UNDECIDED).
+#
+# One reader, one place: every field and rendered view comes from here. The
+# reader lives in scripts/ci/ci_status.py (a lintable, testable module) beside
+# monitor.sh; the daemon never calls this path, so its stand-alone copy omits it.
 _status_read() {
-  python3 - "$RA8_CI_STATE" "$@" <<'PY'
-import json
-import sys
-
-path, mode = sys.argv[1], sys.argv[2]
-arg = sys.argv[3] if len(sys.argv) > 3 else ""
-with open(path) as fh:
-    doc = json.load(fh)
-runs = doc.get("runs") or []
-
-
-def matching(sha):
-    return [r for r in runs if str(r.get("sha") or "").startswith(sha)]
-
-
-def line(run, with_sha=False):
-    tail = "  " + str(run.get("sha") or "")[:9] if with_sha else ""
-    return "  %s: %s/%s%s" % (
-        run.get("name"),
-        run.get("status"),
-        run.get("conclusion") or "-",
-        tail,
-    )
-
-
-if mode == "field":
-    print(doc.get(arg) or "")
-elif mode == "count":
-    print(len(matching(arg)))
-elif mode == "verdict":
-    # A sha's verdict comes from that sha's runs and nothing else, and an
-    # all-skipped set is UNKNOWN. See the SKIPPED IS NOT SUCCESS note above
-    # this function.
-    got = matching(arg)
-    unfinished = {"failure", "timed_out", "cancelled"}
-    if any(r.get("conclusion") in unfinished for r in got):
-        print("FAIL")
-    elif any(r.get("status") != "completed" for r in got):
-        print("UNKNOWN")
-    elif got and all(r.get("conclusion") == "skipped" for r in got):
-        print("UNKNOWN")
-    else:
-        print("PASS")
-elif mode == "skipped-count":
-    print(sum(1 for r in matching(arg) if r.get("conclusion") == "skipped"))
-elif mode == "lines-sha":
-    for r in matching(arg):
-        print(line(r))
-elif mode == "lines-head":
-    for r in runs[:6]:
-        print(line(r, with_sha=True))
-else:
-    sys.exit("unknown mode: " + mode)
-PY
+  python3 "$(dirname "${BASH_SOURCE[0]}")/ci_status.py" "$RA8_CI_STATE" "$@"
 }
 
 # Every network-bound gh call goes through here so none can hang the daemon.
@@ -319,12 +276,11 @@ _ci_selftest_says() {
   return 0
 }
 
-cmd_selftest() {
-  local d fails=0
-  d="$(mktemp -d)"
-  export RA8_CI_STATE_DIR="$d"
-  export RA8_CI_SELF="$0"
-  cat >"$d/status.json" <<JSON
+# The synthetic status document the selftest asserts against. Split out of
+# cmd_selftest to keep it within the per-function line budget; `date` is
+# evaluated per call so the file reads as freshly polled.
+_selftest_fixture() {
+  cat <<JSON
 {"overall":"PASS","reason":"","polled_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","runs":[
  {"name":"firmware","status":"completed","conclusion":"success","sha":"aaaaaaaaa1"},
  {"name":"firmware","status":"completed","conclusion":"failure","sha":"bbbbbbbbb2"},
@@ -332,9 +288,27 @@ cmd_selftest() {
  {"name":"firmware","status":"completed","conclusion":"skipped","sha":"ddddddddd4"},
  {"name":"docs","status":"completed","conclusion":"skipped","sha":"ddddddddd4"},
  {"name":"firmware","status":"completed","conclusion":"success","sha":"eeeeeeeee5"},
- {"name":"hil","status":"completed","conclusion":"skipped","sha":"eeeeeeeee5"}]}
+ {"name":"hil","status":"completed","conclusion":"skipped","sha":"eeeeeeeee5"},
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"fff1111a1"},
+ {"name":"coverage","status":"completed","conclusion":"success","sha":"fff1111a1"},
+ {"name":"emulator-smoke","status":"completed","conclusion":"cancelled","sha":"fff1111a1"},
+ {"name":"hil","status":"completed","conclusion":"cancelled","sha":"fff1111a1"},
+ {"name":"firmware","status":"completed","conclusion":"cancelled","sha":"ggg2222b2"},
+ {"name":"docs","status":"completed","conclusion":"cancelled","sha":"ggg2222b2"},
+ {"name":"firmware","status":"completed","conclusion":"failure","sha":"hhh3333c3"},
+ {"name":"docs","status":"completed","conclusion":"cancelled","sha":"hhh3333c3"},
+ {"name":"firmware","status":"completed","conclusion":"failure","sha":"iii4444d4","created":"2026-08-01T00:00:00Z"},
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"iii4444d4","created":"2026-08-02T00:00:00Z"},
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"jjj5555e5","created":"2026-08-01T00:00:00Z"},
+ {"name":"firmware","status":"completed","conclusion":"failure","sha":"jjj5555e5","created":"2026-08-02T00:00:00Z"},
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"kkk6666f6"},
+ {"name":"firmware","status":"completed","conclusion":"cancelled","sha":"kkk6666f6"}]}
 JSON
+}
 
+# Every per-sha verdict rule, asserted in both directions. Uses the
+# dynamically-scoped `fails` counter of its cmd_selftest caller.
+_selftest_verdict_cases() {
   _ci_selftest_case 0 "healthy branch head is PASS" status || fails=$((fails + 1))
   _ci_selftest_case 1 "failing sha is FAIL even when the branch head passed" \
     status --sha bbbbbbbbb2 || fails=$((fails + 1))
@@ -354,9 +328,36 @@ JSON
   _ci_selftest_says eeeeeeeee5 '^note:.*skipped' \
     "a partially skipped sha names the jobs that did not execute" || fails=$((fails + 1))
 
+  # #561: cancelled is not failure. A superseded run must not read as red, must
+  # not mask a real failure, and a cancelled-only sha is a non-result (UNKNOWN).
+  # Each direction is asserted so the fix can neither cry wolf nor go quiet.
+  _ci_selftest_case 0 "success workflows + cancelled-only workflows is PASS (the 91eef75dd case)" \
+    status --sha fff1111a1 || fails=$((fails + 1))
+  _ci_selftest_case 3 "an ALL-CANCELLED sha is UNKNOWN, not FAIL (superseded, nothing concluded)" \
+    status --sha ggg2222b2 || fails=$((fails + 1))
+  _ci_selftest_case 1 "a real failure still FAILs next to a cancelled sibling" \
+    status --sha hhh3333c3 || fails=$((fails + 1))
+  _ci_selftest_case 0 "FAILED then a re-run SUCCEEDED is PASS (latest decisive wins)" \
+    status --sha iii4444d4 || fails=$((fails + 1))
+  _ci_selftest_case 1 "SUCCEEDED then a re-run FAILED is FAIL (latest decisive wins)" \
+    status --sha jjj5555e5 || fails=$((fails + 1))
+  _ci_selftest_case 0 "a success run is not overridden by a cancelled sibling in the same workflow" \
+    status --sha kkk6666f6 || fails=$((fails + 1))
+  _ci_selftest_says fff1111a1 '^note:.*cancelled/superseded, not counted' \
+    "a PASS-with-cancelled sha names the superseded runs" || fails=$((fails + 1))
+}
+
+cmd_selftest() {
+  local d fails=0 hits
+  d="$(mktemp -d)"
+  export RA8_CI_STATE_DIR="$d"
+  export RA8_CI_SELF="$0"
+  _selftest_fixture >"$d/status.json"
+
+  _selftest_verdict_cases
+
   # The precise trap that burned two agents: an `until` loop grepping for a
   # settled verdict must not match anything while the sha has no runs.
-  local hits
   hits="$(bash "$0" status --sha deadbeef9 2>&1 | grep -cE '^overall: (PASS|FAIL)' || true)"
   if [[ "$hits" != "0" ]]; then
     echo "FAIL  unrecorded sha still emits a settled-looking 'overall:' line ($hits)"
@@ -445,6 +446,34 @@ stall_hint() {
   printf '%s' "$hint"
 }
 
+# The head-sha verdict, as a module-level constant so poll_once stays within the
+# per-function line budget. Same semantics as the python `verdict` mode (the
+# CANCELLED / SKIPPED notes): group by workflow, honour each workflow's latest
+# decisive (success/failure) run, treat cancelled/skipped as non-results so a
+# superseded run is not read as FAIL, and keep the head RUNNING while any run is
+# still in flight. $s is bound with `--arg s` to the head sha.
+RA8_OVERALL_JQ="$(
+  cat <<'JQ'
+[ .[] | select(.sha==$s) ] as $cur
+| if ($cur|length)==0 then "UNKNOWN"
+  else
+    ( $cur | group_by(.name) | map(
+        ( [ .[] | select(.conclusion=="success" or .conclusion=="failure"
+                         or .conclusion=="timed_out") ] | sort_by(.created) ) as $dec
+        | if ($dec|length) > 0 then
+            (if $dec[-1].conclusion=="success" then "PASS" else "FAIL" end)
+          elif any(.[]; .status != "completed") then "RUNNING"
+          else "NORESULT" end
+      ) ) as $wf
+    | if   any($wf[]; . == "FAIL")    then "FAIL"
+      elif any($wf[]; . == "RUNNING") then "RUNNING"
+      elif any($wf[]; . == "PASS")    then "PASS"
+      else "UNKNOWN" end
+  end
+JQ
+)"
+readonly RA8_OVERALL_JQ
+
 poll_once() {
   local remaining
   remaining="$(quota_remaining)"
@@ -483,15 +512,13 @@ poll_once() {
   # as PASS. Nothing ran, so there is no verdict: that is UNKNOWN. A partially
   # skipped run still passes; a conditional job that does not apply is normal
   # and failing on it would cry wolf.
+  # Same semantics as the python `verdict` mode (see the CANCELLED / SKIPPED
+  # notes): group by workflow, honour each workflow's latest decisive run, and
+  # treat cancelled/skipped as non-results so a superseded run is not read as
+  # FAIL. `in_progress` is not terminal and keeps the head RUNNING.
   local head_sha overall
   head_sha="$(printf '%s' "$runs" | jq -r 'if length>0 then .[0].sha else "" end')"
-  overall="$(printf '%s' "$runs" | jq -r --arg s "$head_sha" '
-      [ .[] | select(.sha==$s) ] as $cur
-      | if ($cur|length)==0 then "UNKNOWN"
-        elif any($cur[]; .conclusion=="failure" or .conclusion=="timed_out" or .conclusion=="cancelled") then "FAIL"
-        elif all($cur[]; .status=="completed") and all($cur[]; .conclusion=="skipped") then "UNKNOWN"
-        elif all($cur[]; .status=="completed") and all($cur[]; .conclusion=="success" or .conclusion=="skipped") then "PASS"
-        else "RUNNING" end')"
+  overall="$(printf '%s' "$runs" | jq -r --arg s "$head_sha" "$RA8_OVERALL_JQ")"
 
   # Evidence, not verdict: `overall` above is untouched by the hint.
   local warning
@@ -611,6 +638,11 @@ _status_for_sha() {
       echo "note:    $skipped of $seen run(s) skipped and did not execute (listed below)"
     fi
   fi
+  local cancelled
+  cancelled="$(_status_read cancelled-count "$want_sha")"
+  if [[ "$cancelled" != "0" ]]; then
+    echo "note:    $cancelled of $seen run(s) cancelled/superseded, not counted (listed below)"
+  fi
   _status_read lines-sha "$want_sha"
   [[ -n "$warning" ]] && echo "$warning"
   case "$sha_verdict" in
@@ -712,28 +744,13 @@ cmd_wait() {
   exit "$RA8_CI_EXIT_UNKNOWN"
 }
 
-cmd_install_service() {
-  local unitdir="$HOME/.config/systemd/user"
-  local self
-  self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
-
-  # Run the daemon from a STABLE copy for the same reason the reaper does (see
-  # agent_workspace.sh cmd_install_timer): install-service is naturally invoked
-  # from whichever tree the agent had open, often a workspace that the reaper
-  # is entitled to delete. Pointing ExecStart into a reapable directory means
-  # the monitor dies the moment its workspace ages out -- and a dead monitor
-  # writes no status file, which every reader correctly reports as UNKNOWN.
-  # The fleet would then silently lose CI visibility with no obvious cause.
-  local stable_dir="$HOME/.local/bin"
-  local stable="$stable_dir/ra8-ci-monitor"
-  mkdir -p "$stable_dir"
-  if [[ "$self" != "$stable" ]]; then
-    install -m 0755 "$self" "$stable"
-  fi
-  self="$stable"
-
-  mkdir -p "$unitdir"
-  cat >"$unitdir/ra8-ci-monitor.service" <<EOF
+# Write the systemd user unit that runs the daemon. Extracted from
+# cmd_install_service to keep that function within the NASA Rule 4 line budget.
+# The WatchdogSec / NotifyAccess / Restart trio here is the contract that makes
+# a stall self-correcting (#560) -- keep them together.
+write_service_unit() {
+  local unitfile="$1" self="$2"
+  cat >"$unitfile" <<EOF
 [Unit]
 Description=Shared GitHub Actions status poller for the RA8 agent fleet
 After=network-online.target
@@ -763,6 +780,30 @@ NotifyAccess=all
 [Install]
 WantedBy=default.target
 EOF
+}
+
+cmd_install_service() {
+  local unitdir="$HOME/.config/systemd/user"
+  local self
+  self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+  # Run the daemon from a STABLE copy for the same reason the reaper does (see
+  # agent_workspace.sh cmd_install_timer): install-service is naturally invoked
+  # from whichever tree the agent had open, often a workspace that the reaper
+  # is entitled to delete. Pointing ExecStart into a reapable directory means
+  # the monitor dies the moment its workspace ages out -- and a dead monitor
+  # writes no status file, which every reader correctly reports as UNKNOWN.
+  # The fleet would then silently lose CI visibility with no obvious cause.
+  local stable_dir="$HOME/.local/bin"
+  local stable="$stable_dir/ra8-ci-monitor"
+  mkdir -p "$stable_dir"
+  if [[ "$self" != "$stable" ]]; then
+    install -m 0755 "$self" "$stable"
+  fi
+  self="$stable"
+
+  mkdir -p "$unitdir"
+  write_service_unit "$unitdir/ra8-ci-monitor.service" "$self"
   systemctl --user daemon-reload
   systemctl --user enable ra8-ci-monitor.service
   # RESTART, not `enable --now`. `--now` starts a stopped unit and does nothing
