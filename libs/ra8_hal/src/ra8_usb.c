@@ -345,7 +345,7 @@ void internal_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_pid
  * @pre ``pipe_num`` is in the 1..9 range (caller-checked).
  * @pre ``max_packet`` is the pipe's MPS (caller validated <= 1024).
  * @post No global state is touched; the helper is pure.
- * @post Returned word satisfies HUM Ch 36.2.25 PIPEBUF layout.
+ * @post Returned word satisfies HUM Ch 37.2.35 PIPEBUF layout.
  *
  * @note Pure / thread-safe.
  * @since 0.1.0

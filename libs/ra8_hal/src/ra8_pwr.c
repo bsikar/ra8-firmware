@@ -146,9 +146,9 @@ ra8_err_t ra8_pwr_init(void)
     return mst_err;
   }
 
-  /* HUM Ch 11.2.18 "WUPEN0 : Wake Up Interrupt Enable Register 0", p 460 */
+  /* HUM Ch 14.2.19 "WUPEN0 : Wake Up Interrupt Enable Register 0", p 550 */
   *internal_wupen_ptr(0U) = 0U;
-  /* HUM Ch 11.2.19 "WUPEN1 : Wake Up Interrupt Enable Register 1", p 461 */
+  /* HUM Ch 14.2.20 "WUPEN1 : Wake Up Interrupt Enable Register 1", p 552 */
   *internal_wupen_ptr(1U) = 0U;
   return k_ra8_ok;
 }
@@ -171,7 +171,7 @@ ra8_err_t ra8_pwr_set_wake_source(ra8_pwr_wake_t source)
     ra8_log_error_val(s_tag, "set_wake: invalid source", (uint32_t)source);
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 11.2.18 "WUPEN0 : Wake Up Interrupt Enable Register 0", p 460 */
+  /* HUM Ch 14.2.19 "WUPEN0 : Wake Up Interrupt Enable Register 0", p 550 */
   volatile uint32_t* p    = internal_wupen_ptr(reg);
   const uint32_t     mask = (uint32_t)1U << bit;
   *p                      = *p | mask;
@@ -186,7 +186,7 @@ ra8_err_t ra8_pwr_clear_wake_source(ra8_pwr_wake_t source)
     ra8_log_error_val(s_tag, "clear_wake: invalid source", (uint32_t)source);
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 11.2.18 "WUPEN0 : Wake Up Interrupt Enable Register 0", p 460 */
+  /* HUM Ch 14.2.19 "WUPEN0 : Wake Up Interrupt Enable Register 0", p 550 */
   volatile uint32_t* p    = internal_wupen_ptr(reg);
   const uint32_t     mask = (uint32_t)1U << bit;
   *p                      = *p & ~mask;
@@ -216,9 +216,9 @@ ra8_err_t ra8_pwr_enter_software_standby(void)
 {
   /* Validate at least one wake source is armed -- entering Software
    * Standby with WUPEN0 == WUPEN1 == 0 wedges the chip. */
-  /* HUM Ch 11.2.18 "WUPEN0", p 460 */
+  /* HUM Ch 14.2.19 "WUPEN0", p 550 */
   const uint32_t wupen0 = *internal_wupen_ptr(0U);
-  /* HUM Ch 11.2.19 "WUPEN1", p 461 */
+  /* HUM Ch 14.2.20 "WUPEN1", p 552 */
   const uint32_t wupen1 = *internal_wupen_ptr(1U);
   if ((wupen0 == 0U) && (wupen1 == 0U)) {
     ra8_log_error(s_tag, "software_standby with no wake source armed");
