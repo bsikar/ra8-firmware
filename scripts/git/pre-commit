@@ -114,11 +114,27 @@ if [[ -n "$c_files" ]]; then
 
   # ---- clang-tidy --------------------------------------------------------
   if command -v clang-tidy &>/dev/null || command -v clang-tidy-18 &>/dev/null; then
-    if ! bash scripts/checks/clang_tidy.sh --check; then
-      echo "[FAIL] clang-tidy violations found."
-      echo "   Fix violations above, then re-stage and commit."
+    # Mirror the CI tidy gate (gate_tidy in scripts/ci/gates/analysis.sh): run
+    # clang-tidy, then RATCHET the log against .github/tidy-baseline.txt so a
+    # commit fails only on NEW findings, not the pre-existing baselined debt.
+    # Keying the hook on clang_tidy.sh's raw exit made it stricter than CI --
+    # it returns non-zero on ANY finding, so the hook failed on baselined debt
+    # and forced --no-verify on every C commit. A tidy-log exit >=2 means
+    # clang_tidy.sh could not run (e.g. the compile database would not build),
+    # which is not a ratchetable result and must fail loudly.
+    tidy_log="$(mktemp)"
+    tidy_rc=0
+    bash scripts/checks/clang_tidy.sh --check --verbose >"$tidy_log" 2>&1 || tidy_rc=$?
+    cat "$tidy_log"
+    if [ "$tidy_rc" -ge 2 ]; then
+      echo "[FAIL] clang-tidy could not run (exit $tidy_rc); not ratcheting."
+      error_found=1
+    elif ! python3 scripts/checks/tidy_ratchet.py --check "$tidy_log"; then
+      echo "[FAIL] clang-tidy ratchet: new findings above the committed baseline."
+      echo "   Fix the new findings above, then re-stage and commit."
       error_found=1
     fi
+    rm -f "$tidy_log"
   else
     echo ""
     echo "WARNING: clang-tidy not found -- static analysis SKIPPED."
