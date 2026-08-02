@@ -60,9 +60,7 @@ libs/ra8_hal/src/ra8_canfd_afl.c	wrong-cite-page	1
 libs/ra8_hal/src/ra8_ceu.c	wrong-cite-page	14
 libs/ra8_hal/src/ra8_ceu_init_regs.c	wrong-cite-page	6
 libs/ra8_hal/src/ra8_cgc_usb.c	wrong-cite-page	1
-libs/ra8_hal/src/ra8_crc.c	wrong-cite-page	5
 libs/ra8_hal/src/ra8_dual_core.c	unknown-cite-symbol	3
-libs/ra8_hal/src/ra8_elc.c	wrong-cite-page	6
 libs/ra8_hal/src/ra8_eth_gwca.c	wrong-cite-page	2
 libs/ra8_hal/src/ra8_flash.c	wrong-cite-page	27
 libs/ra8_hal/src/ra8_flash_config.c	unknown-cite-symbol	2
@@ -86,7 +84,6 @@ libs/ra8_hal/src/ra8_pwr.c	unknown-cite-symbol	6
 libs/ra8_hal/src/ra8_reset.c	wrong-cite-page	1
 libs/ra8_hal/src/ra8_rmac.c	wrong-cite-page	24
 libs/ra8_hal/src/ra8_rmac_mgmt.c	wrong-cite-page	15
-libs/ra8_hal/src/ra8_rtc.c	wrong-cite-page	16
 libs/ra8_hal/src/ra8_sdcard.c	unknown-cite-symbol	1
 libs/ra8_hal/src/ra8_sdcard.c	wrong-cite-page	4
 libs/ra8_hal/src/ra8_sdhi.c	wrong-cite-page	31
