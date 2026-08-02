@@ -59,9 +59,11 @@
  * @brief Absolute window the block owns (the contiguous R-Switch cluster).
  *
  * @details Spans MFWD (the lowest base) through the end of the GWCA register
- * bank. The ESWM media-mux sub-block (MIIRR / MIICR at @c 0x403E1400) and
- * GPTP (@c 0x403E0000) sit outside this window and fall to the sparse
- * fallback -- they are config-reflect only, so that is faithful.
+ * bank. The ESWM media-mux sub-block (MIIRR / MIICR at @c 0x403E1400) sits
+ * outside this window and falls to the sparse fallback -- it is config-reflect
+ * only, so that is faithful. GPTP (@c 0x403E0000) sits outside this window too
+ * but is modelled by its own block (board_periph_gptp.c), whose free-running
+ * counter really advances.
  */
 typedef enum : uint64_t {
   k_eth_win_base = (uint64_t)k_ra8_mfwd_base_addr, /**< MFWD base = window base. */
