@@ -30,7 +30,28 @@
 #include "sweep_block.h"
 #include "trace.h"
 
-/** @brief Round @p v up to a power of two (>= 1). */
+/**
+ * @brief Round @p v up to a power of two (>= 1).
+ *
+ * @details Starts at 1 and left-shifts until the running value reaches or
+ *          exceeds @p v, yielding the smallest power of two not less than
+ *          @p v. Used to size the resident-set hash table at four buckets per
+ *          frame so bucket masking is a single AND.
+ *
+ * @param[in] v Target to round up; both 0 and 1 map to 1.
+ *
+ * @return uint32_t The smallest power of two that is >= @p v (never 0).
+ * @retval 1     @p v was 0 or 1.
+ * @retval other The next power of two at or above @p v.
+ *
+ * @pre @p v <= 2^31 so the next power of two is representable in 32 bits.
+ * @pre Called on the single benchmark thread.
+ * @post The result is an exact power of two.
+ * @post The result is >= @p v and >= 1; no shared state is touched.
+ *
+ * @note Thread-safe: a pure function of @p v with no shared state.
+ * @since 0.1.0
+ */
 static uint32_t cb_pow2_ceil(uint32_t v)
 {
   uint32_t p = 1U;
@@ -66,7 +87,28 @@ typedef enum : uint8_t {
   k_hash_shift = 33U, /**< MAGIC-OK: Murmur3 64-bit finalizer shift amount */
 } cb_hash_shift_t;
 
-/** @brief Mix an (object,page) key into a hash bucket. */
+/**
+ * @brief Mix an (object,page) key into a 32-bit hash for bucket selection.
+ *
+ * @details Packs @p k as `(object_id << 32) | page` and runs the canonical
+ *          Murmur3 64-bit finalizer (::k_hash_mix_mul, ::k_hash_shift) for
+ *          avalanche, returning the low 32 bits. The caller masks the result
+ *          with the (power-of-two) bucket count.
+ *
+ * @param[in] k The (object_id, page) key to hash (taken by value).
+ *
+ * @return uint32_t The low 32 bits of the finalized hash.
+ * @retval 0     Possible for some keys (0 is a valid bucket seed).
+ * @retval other The mixed hash for @p k.
+ *
+ * @pre ::k_hash_shift equals 33 (the Murmur3 finalizer shift).
+ * @pre Called on the single benchmark thread.
+ * @post The same @p k always maps to the same value within a run.
+ * @post No global or heap state is modified.
+ *
+ * @note Thread-safe: a pure function of @p k.
+ * @since 0.1.0
+ */
 static uint32_t cb_hash(cb_key_t k)
 {
   uint64_t h = ((uint64_t)k.object_id << 32U) | (uint64_t)k.page;
@@ -76,7 +118,28 @@ static uint32_t cb_hash(cb_key_t k)
   return (uint32_t)h;
 }
 
-/** @brief true iff two keys are equal. */
+/**
+ * @brief Report whether two cache keys name the same (object, page).
+ *
+ * @details Compares both fields; equal hashes are necessary but not sufficient,
+ *          so the chained-hash lookup calls this to confirm a bucket match is a
+ *          true key match (no tombstones, so hit accounting stays exact).
+ *
+ * @param[in] a First key (by value).
+ * @param[in] b Second key (by value).
+ *
+ * @return bool true when both fields are equal, false otherwise.
+ * @retval true  @p a and @p b have equal `object_id` and `page`.
+ * @retval false The keys differ in at least one field.
+ *
+ * @pre @p a and @p b are fully initialized keys.
+ * @pre Called on the single benchmark thread.
+ * @post Neither argument is modified.
+ * @post The comparison is symmetric: eq(a,b) == eq(b,a).
+ *
+ * @note Thread-safe: a pure comparison of its arguments.
+ * @since 0.1.0
+ */
 static bool cb_key_eq(cb_key_t a, cb_key_t b)
 {
   return (a.object_id == b.object_id) && (a.page == b.page);
@@ -96,7 +159,29 @@ typedef struct {
   uint32_t mask;   /**< Bucket-count-minus-one bit mask.    */
 } cb_index_t;
 
-/** @brief Find the resident frame holding @p key, or -1. */
+/**
+ * @brief Find the resident frame currently holding @p key, or -1.
+ *
+ * @details Walks the bucket chain at `hash(key) & mask`, confirming each
+ *          candidate with ::cb_key_eq, and returns the matching frame index.
+ *          A -1 result is a cache miss; the harness then loads @p key.
+ *
+ * @param[in] idx    Resident-set index (buckets + per-frame chain links).
+ * @param[in] frames Frame array the chain indexes into.
+ * @param[in] key    The (object, page) key to look up.
+ *
+ * @return int32_t The resident frame index, or -1 when @p key is absent.
+ * @retval -1    @p key is not resident (a miss).
+ * @retval other The index of the frame holding @p key (a hit).
+ *
+ * @pre @p idx was populated by ::cb_replay_open and the insert path.
+ * @pre @p frames has at least `capacity` initialized entries.
+ * @post Neither @p idx nor @p frames is modified (pure read).
+ * @post A non-negative result indexes a live frame whose key equals @p key.
+ *
+ * @note Not thread-safe: concurrent inserts would race the chain walk.
+ * @since 0.1.0
+ */
 static int32_t cb_index_find(const cb_index_t* idx, const cb_frame_t* frames, cb_key_t key)
 {
   for (int32_t j = idx->bucket[cb_hash(key) & idx->mask]; j != -1; j = idx->next[j]) {
@@ -107,7 +192,26 @@ static int32_t cb_index_find(const cb_index_t* idx, const cb_frame_t* frames, cb
   return -1;
 }
 
-/** @brief Unlink @p frame's current key from its bucket chain (pre-evict). */
+/**
+ * @brief Unlink @p frame's current key from its bucket chain before eviction.
+ *
+ * @details Recomputes the bucket from the frame's resident key and splices the
+ *          frame out of that singly-linked chain (updating the bucket head or
+ *          the predecessor's link). Must run before the frame is repopulated so
+ *          the stale key stops being findable.
+ *
+ * @param[in,out] idx    Resident-set index whose chain is edited.
+ * @param[in]     frames Frame array (read for the victim's current key).
+ * @param[in]     frame  Index of the frame being evicted.
+ *
+ * @pre @p frame is currently linked under `hash(frames[frame].key)`.
+ * @pre @p frame is a valid index < capacity.
+ * @post @p frame no longer appears in any bucket chain.
+ * @post Only the affected bucket chain is altered; @p frames is unchanged.
+ *
+ * @note Not thread-safe: mutates the shared chain. Call on the benchmark thread.
+ * @since 0.1.0
+ */
 static void cb_index_remove(cb_index_t* idx, const cb_frame_t* frames, uint32_t frame)
 {
   const uint32_t ob   = cb_hash(frames[frame].key) & idx->mask;
@@ -124,7 +228,25 @@ static void cb_index_remove(cb_index_t* idx, const cb_frame_t* frames, uint32_t 
   }
 }
 
-/** @brief Link @p frame into the bucket chain for @p key (post-insert). */
+/**
+ * @brief Link @p frame into the bucket chain for @p key after a fresh insert.
+ *
+ * @details Prepends the frame to the chain at `hash(key) & mask` (an O(1) head
+ *          insert), making @p key findable by ::cb_index_find. Pairs with
+ *          ::cb_index_remove on the eviction path.
+ *
+ * @param[in,out] idx   Resident-set index whose chain is extended.
+ * @param[in]     frame Index of the frame now holding @p key.
+ * @param[in]     key   The key just written into that frame.
+ *
+ * @pre @p frame is not currently linked in any chain.
+ * @pre @p frame is a valid index < capacity.
+ * @post @p key is findable and resolves to @p frame.
+ * @post Only the target bucket chain grows by one node.
+ *
+ * @note Not thread-safe: mutates the shared chain. Call on the benchmark thread.
+ * @since 0.1.0
+ */
 static void cb_index_push(cb_index_t* idx, uint32_t frame, cb_key_t key)
 {
   const uint32_t b = cb_hash(key) & idx->mask;
@@ -147,6 +269,7 @@ static void cb_index_push(cb_index_t* idx, uint32_t frame, cb_key_t key)
  * @param[in,out] out    Metrics row receiving eviction accounting.
  *
  * @return uint32_t Frame index to (re)populate (always < capacity).
+ * @retval <capacity Always: a still-free frame while cold, else the victim.
  *
  * @pre The cache is missing the current key (lookup already failed).
  * @pre `pol->pick_victim` is bound (every registered policy binds it).
@@ -195,7 +318,9 @@ static uint32_t cb_replay_take_frame(const cache_policy_t* pol,
  * @retval false At least one buffer is NULL; free via ::cb_replay_close.
  *
  * @pre @p idx and @p frames are non-NULL.
+ * @pre @p capacity is greater than zero.
  * @post On true, every bucket head is -1 (empty resident set).
+ * @post On false, any acquired buffer stays bound for ::cb_replay_close to free.
  *
  * @note Not thread-safe.
  * @since 0.1.0
@@ -216,7 +341,25 @@ static bool cb_replay_open(cb_index_t* idx, cb_frame_t** frames, uint32_t capaci
   return true;
 }
 
-/** @brief Free everything ::cb_replay_open acquired (idempotent). */
+/**
+ * @brief Free everything ::cb_replay_open acquired (idempotent).
+ *
+ * @details Releases the frame array and both index buffers, then zeroes @p idx
+ *          so a subsequent call is a safe no-op. Called on every replay exit
+ *          path, including a partial-allocation failure where some buffers may
+ *          be NULL.
+ *
+ * @param[in,out] idx    Index whose `bucket`/`next` buffers are freed+zeroed.
+ * @param[in]     frames Frame array to free (NULL tolerated by `free`).
+ *
+ * @pre @p idx is non-NULL (its buffers may individually be NULL).
+ * @pre Any non-NULL pointers came from ::cb_replay_open (not yet freed).
+ * @post @p idx is all-zero and its buffers are released.
+ * @post @p frames has been freed; the caller must not reuse it.
+ *
+ * @note Not thread-safe: frees shared buffers. Call on the benchmark thread.
+ * @since 0.1.0
+ */
 static void cb_replay_close(cb_index_t* idx, cb_frame_t* frames)
 {
   free(frames);
@@ -314,7 +457,24 @@ static const uint32_t k_cb_sizes[] = {
   (uint32_t)k_cb_size_2048,
 };
 
-/** @brief Print the per-trace hit-rate matrix (policies x cache sizes). */
+/**
+ * @brief Print the per-trace hit-rate matrix (policies x cache sizes).
+ *
+ * @details Emits a markdown section for @p tr: a header naming the workload,
+ *          then one row per registered policy giving its hit-rate percentage at
+ *          each swept capacity in ::k_cb_sizes. Each cell is produced by a full
+ *          ::cb_replay of the trace at that size (0.0 when no accesses ran).
+ *
+ * @param[in] tr Trace to report (name, key stream, footprint).
+ *
+ * @pre @p tr is non-NULL with `keys` valid for `n` accesses.
+ * @pre ::g_cb_policies / ::g_cb_policy_count are initialized.
+ * @post One markdown table for @p tr is written to stdout.
+ * @post @p tr and every policy are left unmodified (replays are self-contained).
+ *
+ * @note Not thread-safe: writes stdout and runs replays. Benchmark thread only.
+ * @since 0.1.0
+ */
 static void cb_report_trace(const cb_trace_t* tr)
 {
   const uint32_t nsz = (uint32_t)(sizeof(k_cb_sizes) / sizeof(k_cb_sizes[0]));
@@ -344,7 +504,25 @@ static void cb_report_trace(const cb_trace_t* tr)
   }
 }
 
-/** @brief Print the cross-workload summary (WCET + metadata + mean hit rate). */
+/**
+ * @brief Print the cross-workload summary (WCET + metadata + mean hit rate).
+ *
+ * @details For each policy, replays every trace at the fixed mid-budget
+ *          capacity ::k_cb_mid_cap, then prints the mean hit rate across
+ *          workloads, the worst per-eviction scan depth seen (a WCET proxy),
+ *          and the policy's per-frame metadata cost.
+ *
+ * @param[in] traces Array of @p ntr workloads to average over.
+ * @param[in] ntr    Number of traces in @p traces (> 0).
+ *
+ * @pre @p traces is non-NULL with @p ntr valid entries.
+ * @pre ::g_cb_policies / ::g_cb_policy_count are initialized.
+ * @post One markdown summary table is written to stdout.
+ * @post No trace or policy state is mutated by the reporting.
+ *
+ * @note Not thread-safe: writes stdout and runs replays. Benchmark thread only.
+ * @since 0.1.0
+ */
 static void cb_report_summary(cb_trace_t* traces, uint32_t ntr)
 {
   const uint32_t mid_cap = (uint32_t)k_cb_mid_cap;
@@ -388,11 +566,14 @@ typedef enum : uint8_t {
  * @param[in]  argv   Argument vector from main (mutated at the `=` split).
  * @param[out] loaded Receives up to ::k_cb_max_loaded loaded traces.
  *
- * @return uint32_t Number of traces actually loaded.
+ * @return uint32_t Number of traces actually loaded (0 .. ::k_cb_max_loaded).
+ * @retval 0     No argv held a loadable `<name>=<path>` pair.
+ * @retval other The count of successfully loaded traces.
  *
  * @pre @p loaded has capacity ::k_cb_max_loaded.
  * @pre @p argv is writable (the `=` is overwritten with a NUL).
  * @post Entries `loaded[0..return)` all have `n > 0`.
+ * @post Every processed `<name>=<path>` argv has its `=` replaced by a NUL.
  *
  * @note Not thread-safe (mutates argv in place).
  * @since 0.1.0

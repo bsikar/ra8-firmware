@@ -14,14 +14,14 @@ the rest of tools/, which CLAUDE.md ("these standards apply to EVERY first-party
 file") says it should. ``--members`` already covers them (MEMBER_SCAN_DIRS); the
 function mode is being widened one fully-documented tool at a time (#332), so
 the gate never sits green over code it has not read. Covered by this gate now:
-tools/{glyph_bench,mkbookimg,mkfontimg,rabook_imagepack,rabook_viewer,reader_vmem}
--- 83 gaps closed with real prose, 0 remaining. Machine-emitted tool code
+tools/{cache_bench,glyph_bench,mkbookimg,mkfontimg,rabook_imagepack,rabook_viewer,reader_vmem}
+-- 161 gaps closed with real prose, 0 remaining. Machine-emitted tool code
 (tools/vela/generated/) is exempt like vendored SOUP -- not hand-authored, so
 the hand-documentation bar does not apply.
 
 Measured 2026-08-02, the remaining backlog under the un-widened roots is
-10121 gaps -- tests/ 7218, examples/ 1582, tools/ 1321 -- and the tools/ half
-breaks down as ra8_emulator 882, media_dl 361, cache_bench 78. Only a handful
+10046 gaps -- tests/ 7221, examples/ 1582, tools/ 1243 -- and the tools/ half
+breaks down as ra8_emulator 882, media_dl 361. Only a handful
 of those are functions with no block at all; the rest carry a block that is
 missing required tags, so closing them means writing real ``@pre`` / ``@post`` /
 ``@retval`` / ``@note`` prose per function. That is a documentation campaign,
