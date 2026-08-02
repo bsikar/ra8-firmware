@@ -19,7 +19,7 @@
  *  - To write any count register the START bit must be cleared first;
  *    the driver waits with a bounded loop for the bit to actually
  *    fall and then re-asserts it after the writes.
- *  - HUM Ch 26.2.4: writes to RCR2.HR24 / CNTMD only take effect
+ *  - HUM Ch 26.2.21: writes to RCR2.HR24 / CNTMD only take effect
  *    after the bit reads back the new value, so init polls those.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -289,27 +289,27 @@ ra8_err_t ra8_rtc_init(void)
 {
   volatile r_rtc_regs_t* rtc = ra8_rtc();
 
-  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 -- stop the
+  /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- stop the
    * counter (START=0) and clear CNTMD so we are in calendar mode.
    * FSP r_rtc.c r_rtc_software_reset writes RCR2 = 0 and waits for
    * CNTMD == 0 to confirm the mode change. */
   rtc->RCR2 = 0U;
   internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_cntmd), 0U);
 
-  /* HUM Ch 26.2.3 "RCR1 : RTC Control Register 1" p 1229 -- mask
+  /* HUM Ch 26.2.20 "RCR1 : RTC Control Register 1" p 1231 -- mask
    * every IRQ source (AIE/CIE/PIE) and clear PES. FSP waits for the
    * write to land. */
   rtc->RCR1 = 0U;
   internal_wait_bit(&rtc->RCR1, k_ra8_rtc_byte_mask_all, 0U);
 
-  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 -- HR24=1
+  /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- HR24=1
    * selects 24-hour mode. FSP also polls until HR24 reads back 1. */
   rtc->RCR2 = (uint8_t)(1U << k_ra8_rcr2_bit_hr24);
   internal_wait_bit(&rtc->RCR2,
                     (uint8_t)(1U << k_ra8_rcr2_bit_hr24),
                     (uint8_t)(1U << k_ra8_rcr2_bit_hr24));
 
-  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 -- START=1
+  /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- START=1
    * starts the counter. */
   rtc->RCR2 = (uint8_t)((1U << k_ra8_rcr2_bit_hr24) | (1U << k_ra8_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2,
@@ -329,29 +329,29 @@ ra8_err_t ra8_rtc_set(const ra8_rtc_datetime_t* dt)
 
   volatile r_rtc_regs_t* rtc = ra8_rtc();
 
-  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 -- count
+  /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- count
    * registers must only be written while START=0. Clear the bit and
    * wait for the hardware to honour it (FSP's r_rtc_start_bit_update). */
   const uint8_t saved = rtc->RCR2;
   rtc->RCR2           = (uint8_t)(saved & (uint8_t)~(1U << k_ra8_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
 
-  /* HUM Ch 26.2.5 "RSECCNT : Second Counter" p 1232 */
+  /* HUM Ch 26.2.2 "RSECCNT : Second Counter" p 1221 */
   rtc->RSECCNT = internal_bin_to_bcd(dt->second);
-  /* HUM Ch 26.2.6 "RMINCNT : Minute Counter" p 1232 */
+  /* HUM Ch 26.2.3 "RMINCNT : Minute Counter" p 1222 */
   rtc->RMINCNT = internal_bin_to_bcd(dt->minute);
-  /* HUM Ch 26.2.7 "RHRCNT : Hour Counter" p 1233 */
+  /* HUM Ch 26.2.4 "RHRCNT : Hour Counter" p 1222 */
   rtc->RHRCNT = internal_bin_to_bcd(dt->hour);
-  /* HUM Ch 26.2.8 "RWKCNT : Day-of-Week Counter" p 1234 */
+  /* HUM Ch 26.2.5 "RWKCNT : Day-of-Week Counter" p 1223 */
   rtc->RWKCNT = dt->weekday;
-  /* HUM Ch 26.2.9 "RDAYCNT : Day Counter" p 1234 */
+  /* HUM Ch 26.2.7 "RDAYCNT : Day Counter" p 1224 */
   rtc->RDAYCNT = internal_bin_to_bcd(dt->day);
-  /* HUM Ch 26.2.10 "RMONCNT : Month Counter" p 1235 */
+  /* HUM Ch 26.2.8 "RMONCNT : Month Counter" p 1224 */
   rtc->RMONCNT = internal_bin_to_bcd(dt->month);
-  /* HUM Ch 26.2.11 "RYRCNT : Year Counter" p 1235 */
+  /* HUM Ch 26.2.9 "RYRCNT : Year Counter" p 1225 */
   rtc->RYRCNT = (uint16_t)internal_bin_to_bcd((uint8_t)(dt->year - k_ra8_rtc_year_base));
 
-  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 -- restore
+  /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- restore
    * START to its prior value (always 1 if init has run) and wait. */
   rtc->RCR2 = (uint8_t)(saved | (1U << k_ra8_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2,
@@ -384,7 +384,7 @@ ra8_err_t ra8_rtc_get(ra8_rtc_datetime_t* out)
  * @brief Bit positions / limits for the RxxAR alarm registers.
  *
  * @details
- * HUM Ch 26.2.13..26.2.16 -- each alarm register's bit 7 is the ENB
+ * HUM Ch 26.2.10..26.2.16 -- each alarm register's bit 7 is the ENB
  * (alarm enable) flag; the lower 7 bits hold the BCD value to match.
  */
 typedef enum : uint8_t {
@@ -425,7 +425,7 @@ ra8_err_t ra8_rtc_set_alarm(const ra8_rtc_datetime_t* alarm)
   volatile r_rtc_regs_t* rtc = ra8_rtc();
   const uint8_t          enb = (uint8_t)(1U << k_ra8_rtc_alarm_enb_bit);
 
-  /* HUM Ch 26.2.13 "RSECAR" / 26.2.14 "RMINAR" / 26.2.15 "RHRAR" --
+  /* HUM Ch 26.2.10 "RSECAR" / 26.2.11 "RMINAR" / 26.2.12 "RHRAR" --
    * encode the BCD match value, OR in the ENB bit to enable the field. */
   rtc->RSECAR = (uint8_t)(internal_bin_to_bcd(alarm->second) | enb);
   rtc->RMINAR = (uint8_t)(internal_bin_to_bcd(alarm->minute) | enb);
@@ -466,9 +466,9 @@ static ra8_rtc_state_t s_rtc_state;
 ra8_err_t ra8_rtc_deinit(void)
 {
   volatile r_rtc_regs_t* rtc = ra8_rtc();
-  /* HUM Ch 26.2.3 "RCR1" p 1229 */ /* mask all IRQs. */
+  /* HUM Ch 26.2.20 "RCR1" p 1231 */ /* mask all IRQs. */
   rtc->RCR1 = 0U;
-  /* HUM Ch 26.2.4 "RCR2" p 1230 */ /* stop the counter. */
+  /* HUM Ch 26.2.21 "RCR2" p 1232 */ /* stop the counter. */
   rtc->RCR2       = 0U;
   s_rtc_state.fn  = nullptr;
   s_rtc_state.ctx = nullptr;
@@ -478,7 +478,7 @@ ra8_err_t ra8_rtc_deinit(void)
 ra8_err_t ra8_rtc_set_irq_enable(uint8_t mask)
 {
   volatile r_rtc_regs_t* rtc = ra8_rtc();
-  /* HUM Ch 26.2.3 "RCR1" p 1229 */ /* AIE/CIE/PIE enable bits 0..2. */
+  /* HUM Ch 26.2.20 "RCR1" p 1231 */ /* AIE/CIE/PIE enable bits 0..2. */
   rtc->RCR1 = (uint8_t)(rtc->RCR1 | (mask & k_ra8_rtc_irq_all));
   return k_ra8_ok;
 }
@@ -517,7 +517,7 @@ void ra8_rtc_dispatch(void)
 ra8_err_t ra8_rtc_enter_stop(void)
 {
   volatile r_rtc_regs_t* rtc = ra8_rtc();
-  /* HUM Ch 26.2.4 "RCR2.START" p 1230 */ /* clear START to halt counter. */
+  /* HUM Ch 26.2.21 "RCR2.START" p 1232 */ /* clear START to halt counter. */
   rtc->RCR2 = (uint8_t)(rtc->RCR2 & (uint8_t)~(1U << k_ra8_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
   return k_ra8_ok;
@@ -526,7 +526,7 @@ ra8_err_t ra8_rtc_enter_stop(void)
 ra8_err_t ra8_rtc_exit_stop(void)
 {
   volatile r_rtc_regs_t* rtc = ra8_rtc();
-  /* HUM Ch 26.2.4 "RCR2.START" p 1230 */ /* set START to resume. */
+  /* HUM Ch 26.2.21 "RCR2.START" p 1232 */ /* set START to resume. */
   rtc->RCR2 = (uint8_t)(rtc->RCR2 | (1U << k_ra8_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2,
                     (uint8_t)(1U << k_ra8_rcr2_bit_start),

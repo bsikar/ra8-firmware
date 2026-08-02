@@ -97,7 +97,7 @@ typedef enum : uint32_t {
  * @brief Feed `len` bytes through the calculator as packed 32-bit words.
  *
  * @details
- * HUM Ch 48.2.3 p 3183 -- for CRC-32 / CRC-32C the engine consumes
+ * HUM Ch 48.2.3 p 3182 -- for CRC-32 / CRC-32C the engine consumes
  * 32-bit words. FSP's `R_CRC_Calculate` and the project's mirror loop
  * pack four bytes little-endian into each CRCDIR write. Trailing bytes
  * that don't form a full word are ignored (FSP behaviour and HUM
@@ -123,7 +123,7 @@ static inline void internal_crc_feed_words(const uint8_t* data, uint32_t len)
     const uint32_t packed = (uint32_t)data[base + 0U] | ((uint32_t)data[base + 1U] << 8U) |
                             ((uint32_t)data[base + 2U] << 16U) |
                             ((uint32_t)data[base + 3U] << k_crc_shift_byte3);
-    /* HUM Ch 48.2.3 "CRCDIR : CRC Data Input Register" p 3183 */
+    /* HUM Ch 48.2.3 "CRCDIR : CRC Data Input Register" p 3182 */
     reg->CRCDIR = packed;
   }
 }
@@ -132,7 +132,7 @@ static inline void internal_crc_feed_words(const uint8_t* data, uint32_t len)
  * @brief Feed `len` bytes through the calculator via the 8-bit alias.
  *
  * @details
- * HUM Ch 48.2.3 p 3183 -- CRC-8 / CRC-16 / CRC-CCITT consume one byte
+ * HUM Ch 48.2.3 p 3182 -- CRC-8 / CRC-16 / CRC-CCITT consume one byte
  * per write through ``CRCDIR_BY`` at offset +0x04.
  *
  * @param[in] data Pointer to ``len`` bytes (non-NULL).
@@ -149,7 +149,7 @@ static inline void internal_crc_feed_bytes(const uint8_t* data, uint32_t len)
 {
   volatile r_crc_regs_t* reg = ra8_crc();
   for (uint32_t i = 0U; i < len; i++) {
-    /* HUM Ch 48.2.3 "CRCDIR_BY : CRC Data Input Register" p 3183 */
+    /* HUM Ch 48.2.3 "CRCDIR_BY : CRC Data Input Register" p 3182 */
     reg->CRCDIR_BY = data[i];
   }
 }
@@ -195,7 +195,7 @@ ra8_err_t ra8_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
   const ra8_crc_poly_t poly      = (ra8_crc_poly_t)(reg->CRCCR0 & k_ra8_crccr0_gps_mask);
   const bool           is_32_bit = ra8_crc_is_32bit_poly(poly);
 
-  /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3184 documents
+  /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3182 documents
    * CRCDOR as a 32-bit read/write register; "Because its initial value
    * is 0x00000000, rewrite the CRCDOR ... register to perform the
    * calculations using a value other than the initial value." Standard
@@ -205,19 +205,19 @@ ra8_err_t ra8_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
    * / CCITT keep the chip's natural init = 0 (HUM example p 3185 shows
    * the same flow). */
   if (is_32_bit) {
-    /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3184 -- pre-seed
+    /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3182 -- pre-seed
      * CRCDOR with the CRC-32 init value before clocking data through (see
      * the decision comment above for the init / xor-out rationale). */
     reg->CRCDOR = (uint32_t)k_ra8_crc_32bit_seed;
     internal_crc_feed_words(data, len);
-    /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3184 -- read the
+    /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3182 -- read the
      * running result back and apply the CRC-32 xor-out. */
     *out_crc = reg->CRCDOR ^ (uint32_t)k_ra8_crc_32bit_seed;
     return k_ra8_ok;
   }
 
   internal_crc_feed_bytes(data, len);
-  /* HUM Ch 48.2.4 p 3184 -- the full 32-bit register holds the running
+  /* HUM Ch 48.2.4 p 3182 -- the full 32-bit register holds the running
    * result; lower bits mirror `CRCDOR_HA` / `CRCDOR_BY` aliases.
    * Reading the wide register matches FSP `crc_calculated_value_get`
    * and is a superset of the narrower aliases. */
