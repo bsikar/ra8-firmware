@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # shellcheck shell=bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
@@ -191,14 +192,6 @@ _pcc_source_form() (
   # detector fires and stays silent for both rules before the tree is swept.
   python3 scripts/checks/check_c23_headers.py --selftest
   python3 scripts/checks/check_c23_headers.py --all
-  # Every shebang uses `#!/usr/bin/env <interp>`. A hardcoded interpreter path
-  # is a portability claim this tree cannot keep (NixOS, a Homebrew bash 5 on a
-  # Mac whose /bin/bash is the 3.2 without mapfile, busybox images), and the
-  # near-miss `# !/bin/bash` is not a shebang at all -- it reads as one and the
-  # kernel never sees it. Scope comes from git ls-files including untracked
-  # files, so a brand-new script is judged the moment it is written.
-  python3 scripts/checks/check_shebangs.py --selftest
-  python3 scripts/checks/check_shebangs.py
 )
 
 # Security invariants that a compiler cannot express: the NS->S entry surface,
@@ -373,6 +366,23 @@ gate_pre_commit_checks() (
   _pcc_security_invariants
   _pcc_mcdc_discipline
   _pcc_docs_and_tests
+)
+
+# --- shebangs -------------------------------------------------------------
+# Every first-party shell script starts with `#!/usr/bin/env <interp>`, and
+# every shebang the tree carries uses that form. A hardcoded interpreter path
+# is a portability claim this tree cannot keep (NixOS, a Homebrew bash 5 on a
+# Mac whose /bin/bash is the 3.2 without mapfile, busybox images); a MISSING
+# shebang on a script -- the gate bodies and libs this file sits among used to
+# be exactly that -- leaves the interpreter to whoever execs it; and the
+# near-miss `# !/bin/bash` is not a shebang at all, it reads as one and the
+# kernel never sees it. Scope comes from git ls-files including untracked
+# files, so a brand-new script is judged the moment it is written. --selftest
+# FIRST, both directions, so a rule that stopped matching cannot pass as clean.
+gate_shebangs() (
+  set -e
+  python3 scripts/checks/check_shebangs.py --selftest
+  python3 scripts/checks/check_shebangs.py
 )
 
 # --- init-order-freshness -------------------------------------------------

@@ -405,6 +405,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: bash scripts/ci.sh --gate pre-commit-checks
+      - run: bash scripts/ci.sh --gate shebangs
       - run: bash scripts/ci.sh --gate init-order-freshness
       - run: bash scripts/ci.sh --gate roadmap-dashboard-freshness
       - run: bash scripts/ci.sh --gate bench-lock
