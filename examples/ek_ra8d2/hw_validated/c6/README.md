@@ -8,7 +8,7 @@ their maturity.
 Run the whole tier with:
 
 ```sh
-make hil-c6              # all four, in order
+make hil-c6              # all five, in order
 make hil-c6 APP=c6_spi_probe
 ```
 
