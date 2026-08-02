@@ -382,6 +382,7 @@ uart_banner_apps="
   ereader_jpeg ereader_longstrip ereader_zoom epub_parse epub_stress
   widget_app widget_app_demo glcdc_render bscan_selftest keyboard
   smbus_demo crc_demo adc_b_demo agt_periodic i2c_loopback eth_loopback
+  eth_gptp_timestamp_demo
   crypto_aes_demo dma_memcopy_demo rtc_alarm elc_event_demo timer_capture_demo
   drw_fill_demo drw_blend_demo dtc_transfer_demo cac_accuracy_demo
   lvd_monitor_demo pdg_delay_demo dotf_selftest_demo ecc_monitor_demo

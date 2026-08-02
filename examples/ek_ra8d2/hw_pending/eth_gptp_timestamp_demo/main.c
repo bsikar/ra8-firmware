@@ -33,9 +33,14 @@
  * second per second against an independent time base -- not merely that a
  * driver call returned ``k_ra8_ok``.
  *
- * hw_pending: ``tools/ra8_emulator`` has no GPTP timer model (the window
- * falls to the sparse config-reflect fallback, where the counter cannot
- * advance), so this app is compile-gated in CI and asserted on the bench.
+ * hw_pending: this stays under hw_pending because the full IEEE-1588 / 802.1AS
+ * claim (a bounded sync offset against the bench's gPTP peer) can only be made
+ * on the bench. Its counter-advance verdict, however, is now gated in the
+ * emulator: ``tools/ra8_emulator`` models the HUM Ch 35 GPTP timer
+ * (``board_periph_gptp.c``), whose free-running counter really advances one
+ * second per second against the emulator's SysTick, so ``gptp: clock PASS`` is
+ * asserted on every CI run through the ``emulator-smoke`` gate as well as on the
+ * bench.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
