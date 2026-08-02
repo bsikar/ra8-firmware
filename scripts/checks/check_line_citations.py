@@ -54,6 +54,7 @@ from line_citation_lex import (
     THIRD_PARTY_RE,
     all_tracked_files,
     find_comment_spans,
+    find_mcdc_reason_spans,
     is_exempt,
     line_of_offset,
 )
@@ -221,19 +222,30 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
     except OSError:
         return []
     violations: list[tuple[int, str, str]] = []
-    spans = find_comment_spans(text)
+    seen: set[tuple[int, str]] = set()
+    # Two citation-bearing regions: C/C++ comments, and the string reason of an
+    # RA8_MCDC_DEACTIVATED(...) annotation. The reason is a string literal that
+    # find_comment_spans skips, but docs/ANNOTATIONS.md promises this gate scans
+    # it -- a deactivation reason anchored to a line number is DO-178C evidence
+    # that rots silently (#547). Both regions share one exemption cascade, so a
+    # CITES-OK on the line excuses either; dedup keeps a reason that happens to
+    # sit inside a doc comment from being reported twice.
+    spans = find_comment_spans(text) + find_mcdc_reason_spans(text)
     for start, end in spans:
-        comment = text[start:end]
+        region = text[start:end]
         # Per-line check: walk each match, validate against the
         # specific physical line it sits on (so CITES-OK: on the same
         # line excuses it).
-        for m in CITATION_RE.finditer(comment):
+        for m in CITATION_RE.finditer(region):
             abs_off = start + m.start()
             line_no = line_of_offset(text, abs_off)
             matched = m.group(0)
             line = line_text(text, line_no)
             if is_exempt(matched, line):
                 continue
+            if (line_no, matched) in seen:
+                continue
+            seen.add((line_no, matched))
             snippet = line.strip()
             if len(snippet) > MAX_SNIPPET_LEN:
                 snippet = snippet[:SNIPPET_TRUNCATE_LEN] + "..."
@@ -303,6 +315,28 @@ def selftest() -> int:
         expect(
             not scan_file(good_src),
             "symbol ref / moved-from / CITES-OK stays quiet (source)",
+            failures,
+        )
+        bad_mcdc = Path(tmp) / "bad_mcdc.c"
+        bad_mcdc.write_text(
+            'RA8_MCDC_DEACTIVATED("guard justified in libs/foo.c:123")\n'
+            "static inline bool internal_guard(const void* p);\n",
+            encoding="utf-8",
+        )
+        expect(
+            bool(scan_file(bad_mcdc)),
+            "a file:line inside an RA8_MCDC_DEACTIVATED reason fires (#547)",
+            failures,
+        )
+        good_mcdc = Path(tmp) / "good_mcdc.c"
+        good_mcdc.write_text(
+            'RA8_MCDC_DEACTIVATED("guard: ra8_pin_validator_check asserts non-null")\n'
+            'RA8_MCDC_DEACTIVATED("legacy libs/foo.c:1 CITES-OK: historical note")\n',
+            encoding="utf-8",
+        )
+        expect(
+            not scan_file(good_mcdc),
+            "a symbol-only reason and a CITES-OK reason stay quiet (source)",
             failures,
         )
         bad_doc = Path(tmp) / "bad.md"

@@ -15,9 +15,10 @@ the overall line-rate / branch-rate against the two numbers stored
 in `.github/coverage-baseline.txt`. It fails (exit 1) if either
 metric drops below baseline by more than the slack tolerance.
 
-Modeled on scripts/checks/check_mcdc_block.py. starts in
-warn-only mode -- flip WARN_ONLY_MODE = False once the baseline
-is stable across a few CI runs.
+Modeled on scripts/checks/check_mcdc_block.py. Enforcing: a
+regression below baseline (minus the slack band) FAILS the gate.
+The baseline has been stable across CI runs, so there is no
+warn-only mode -- a coverage regression blocks the run.
 
 Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
@@ -28,15 +29,6 @@ from __future__ import annotations
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-
-WARN_ONLY_MODE = False
-"""Enforcing. The statement+branch baseline (.github/coverage-baseline.txt,
-89.9 / 81.1 over libs/ra8_* + src/) has been stable across CI runs and the
-measured tree clears it with margin (90.3 / 81.6), so this gate now FAILS CI
-on a regression below baseline (minus the SLACK_PCT band) rather than only
-warning. This is the enforcing counterpart that finally puts src/ -- including
-the src/secure_app key vault -- under a blocking coverage gate; the firmware.yml
-`coverage` job (scripts/checks/coverage.sh) remains the libs+src 90/80 hard floor."""
 
 SLACK_PCT = 0.5
 BASELINE_COLUMN_COUNT = 2  # baseline file has two numeric columns: statement% branch%
@@ -122,15 +114,12 @@ def main() -> int:
         )
 
     if failures:
-        verb = "WARN" if WARN_ONLY_MODE else "FAIL"
-        print(f"[{verb}] coverage regressed below baseline:")
+        print("[FAIL] coverage regressed below baseline:")
         for f in failures:
             print(f)
         print("       Either add tests to restore coverage, or, if the")
         print("       regression is intentional, update")
         print("       .github/coverage-baseline.txt.")
-        if WARN_ONLY_MODE:
-            return 0
         return 1
 
     # If we beat the baseline by more than 1pp on both metrics, suggest
