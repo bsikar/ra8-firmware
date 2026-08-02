@@ -16,7 +16,7 @@
  *   1. Programme the SAU with the canonical RA8D2 partition (see
  *      ``ra8_tz_sau_region_t`` for the layout).
  *   2. Enable the SAU with ALLNS = 0 (default-deny).
- *   3. Unlock CPSCU writes via ``PRCR_S.PRC4`` (HUM Ch 9.2.4 -- write
+ *   3. Unlock CPSCU writes via ``PRCR_S.PRC4`` (HUM Ch 13.2.1 -- write
  *      key 0xA510 to address 0x4001E3FA).
  *   4. Write IPCSAR so the channels CPU1 (always-NS on this chip) must
  *      reach are tagged NS in the per-channel SAIPCIRn bits.
@@ -238,7 +238,7 @@ typedef struct {
  * @details
  * Writes ``ipcsar_value`` to CPSCU.IPCSAR and ``ipcpar_value`` to
  * CPSCU.IPCPAR after first opening the PRCR_S.PRC4 write-protect gate
- * (HUM Ch 9.2.4 "PRCR_S" -- key 0xA510 at address 0x4001E3FA). The
+ * (HUM Ch 13.2.1 "PRCR_S" -- key 0xA510 at address 0x4001E3FA). The
  * gate is closed again before the function returns.
  *
  * For the cpu1_pingpong_ipc app the canonical value is

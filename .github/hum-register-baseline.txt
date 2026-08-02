@@ -5,11 +5,8 @@
 # to re-baseline, which locks the progress in. Closing the debt means this
 # file reaching zero rows and being deleted -- --update refuses to grow a
 # bucket, so a genuine increase has to be a reviewable hand edit.
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/trustzone_init.c	unknown-cite-symbol	4
 examples/ek_ra8d2/hw_pending/compile_on_m33/compile_on_m33.h	unknown-cite-symbol	1
 examples/ek_ra8d2/hw_pending/ereader_m33/ereader_m33.h	unknown-cite-symbol	1
-examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/trustzone_init.c	unknown-cite-symbol	2
-examples/ek_ra8d2/hw_pending/tz_threadx_demo/trustzone_init.c	unknown-cite-symbol	4
 libs/ra8_hal/inc/ra8_agt_regs.h	unknown-window-symbol	1
 libs/ra8_hal/inc/ra8_canfd_regs.h	unknown-window-symbol	37
 libs/ra8_hal/inc/ra8_dotf_regs.h	unknown-window-symbol	2
@@ -51,12 +48,8 @@ libs/ra8_hal/src/ra8_flash_config.c	unknown-cite-symbol	2
 libs/ra8_hal/src/ra8_glcdc.c	unknown-cite-symbol	1
 libs/ra8_hal/src/ra8_i3c.c	unknown-cite-symbol	1
 libs/ra8_hal/src/ra8_mipi_dsi_cmd.c	unknown-cite-symbol	1
-libs/ra8_hal/src/ra8_pwr.c	unknown-cite-symbol	6
 libs/ra8_hal/src/ra8_sdcard.c	unknown-cite-symbol	1
 libs/ra8_hal/src/ra8_ssie.c	unknown-cite-symbol	1
 libs/ra8_hal/src/ra8_ulpt.c	unknown-cite-symbol	2
-libs/ra8_hal/src/ra8_usb_device.c	unknown-cite-symbol	1
-libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c	unknown-cite-symbol	3
-src/app/trustzone_init.c	unknown-cite-symbol	2
 tools/ra8_emulator/src/engine/emu_cpu1.c	unknown-cite-symbol	1
 tools/ra8_emulator/src/periph/board_periph_ulpt.c	unknown-cite-symbol	2

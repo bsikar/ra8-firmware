@@ -77,8 +77,8 @@ typedef enum : uint8_t {
  * handful of well-known sources are listed here; full coverage of
  * all 64 sources is added as the relevant drivers come online.
  *
- * Source list comes from HUM Ch 11 "Low Power Mode" (the WUPEN0
- * and WUPEN1 register description tables).
+ * Source list comes from HUM Ch 14 "Interrupt Controller Unit (ICU)"
+ * (the WUPEN0 and WUPEN1 register description tables).
  */
 typedef enum : uint16_t {
   k_ra8_pwr_wake_irq0 = (uint16_t)(k_ra8_pwr_wupen_reg_0 << 8),        /**< RA8 pwr wake irq0. */

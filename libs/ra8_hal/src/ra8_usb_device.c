@@ -678,7 +678,8 @@ ra8_err_t ra8_usb_configure_endpoint(ra8_usb_speed_t   speed,
   reg->PIPESEL = pipe_num;
   /* HUM Ch 36.2.24 "PIPECFG : Pipe Configuration Register", p 2003 */
   reg->PIPECFG = internal_pipecfg_word(ep_addr, dir, type, false);
-  /* HUM Ch 36.2.25 "PIPEBUF : Pipe Buffer Setting Register", p 2002.
+  /* HUM Ch 37.2.35 "PIPEBUF : Pipe Buffer Register", p 2100. PIPEBUF is a
+   * USBHS-only register; the USBFS instance (Ch 36) has no equivalent.
    * Bulk pipes get a single MPS-sized bank (DBLB clear). Interrupt/iso
    * pipes keep the reset default. */
   if (type == k_ra8_usb_ep_type_bulk) {
