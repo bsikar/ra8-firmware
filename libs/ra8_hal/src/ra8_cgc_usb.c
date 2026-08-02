@@ -204,7 +204,7 @@ static ra8_err_t internal_pll2_program_protected(uint32_t pll2ccr, uint16_t pll2
     }
     /* HUM Ch 9.2.10 "PLL2CCR : PLL2 Clock Control Register" p 335 */
     *ra8_sys_pll2ccr() = pll2ccr;
-    /* HUM Ch 9.2.12 "PLL2CCR2 : PLL2 Clock Control Register 2" p 337 */
+    /* HUM Ch 9.2.12 "PLL2CCR2 : PLL2 Clock Control Register 2" p 335 */
     *ra8_sys_pll2ccr2() = pll2ccr2;
     *ra8_sys_pll2cr()   = (uint8_t)k_ra8_pll2cr_run;
     err                 = ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_pll2sf);

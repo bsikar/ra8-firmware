@@ -128,7 +128,7 @@ void ra8_usb_dispatch(ra8_usb_speed_t speed)
   if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- speeds always valid */
     return;             /* GCOVR_EXCL_LINE                           */
   }
-  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985.
+  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986.
    *
    * INTSTS0 is W0C: writing 0 to a bit clears it, writing 1 has no
    * effect. The previous mask-and-back pattern
@@ -314,12 +314,12 @@ static void internal_host_init_defaults(volatile r_usb_regs_t* reg)
   reg->D0FIFOSEL = k_ra8_fifosel_mbw_16;
   reg->D1FIFOSEL = k_ra8_fifosel_mbw_16;
 
-  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990 */
+  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1999 */
   reg->DCPCFG  = 0U;
   reg->DCPMAXP = k_ra8_usb_dcp_max_packet;
   reg->DCPCTR  = 0U;
 
-  /* HUM Ch 36.2.16 "USBADDR : USB Address Register", p 1988 -- target
+  /* HUM Ch 36.2.16 "USBADDR : USB Address Register", p 1994 -- target
    * device address for the host's outgoing tokens. Default to 0
    * (newly-attached devices respond at address 0). */
   reg->USBADDR = 0U;
@@ -401,7 +401,7 @@ ra8_err_t ra8_usb_host_init(ra8_usb_speed_t speed)
     const ra8_err_t hs_err = internal_host_hs_bringup(reg);
     RA8_RETURN_ON_ERROR(hs_err, s_tag, "host_init: HS bring-up"); /* GCOVR_EXCL_BR_LINE */
   } else {
-    /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
+    /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1967 */
     reg->SYSCFG = internal_host_syscfg_word(speed);
   }
 
@@ -533,14 +533,14 @@ ra8_err_t ra8_usb_host_setup_request(ra8_usb_speed_t speed, const ra8_usb_setup_
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 -- guard
+  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 -- guard
    * against a still-pending request. */
   const uint16_t sureq_bit = (uint16_t)(1U << k_ra8_dcpctr_bit_sureq);
   if ((reg->DCPCTR & sureq_bit) != 0U) {
     return k_ra8_err_busy;
   }
 
-  /* HUM Ch 36.2.17 "USBREQ : USB Request Type Register", p 1989 */
+  /* HUM Ch 36.2.17 "USBREQ : USB Request Type Register", p 1995 */
   const uint16_t req = (uint16_t)((uint16_t)setup->bm_request_type |
                                   (uint16_t)((uint16_t)setup->b_request << k_ra8_usb_byte_bits));
   reg->USBREQ        = req;

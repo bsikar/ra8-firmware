@@ -207,7 +207,7 @@ ra8_err_t ra8_glcdc_set_background_color(uint32_t argb)
     }
   }
   /* Write BG_BGC during the vblank window we just polled into. */
-  /* HUM Ch 63 "BG_BGC" p 3744 */
+  /* HUM Ch 63 "BG_BGC" p 3763 */
   *ra8_glcdc_reg32(k_ra8_glcdc_off_bg_bgc) = argb;
   return k_ra8_ok;
 }

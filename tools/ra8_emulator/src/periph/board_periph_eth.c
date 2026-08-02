@@ -605,7 +605,7 @@ static uint64_t eth_read(uc_engine* uc, uint64_t addr, unsigned size)
   }
   if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwms) {
     /* GWMS.OPS mirrors the commanded GWMC.OPC. */
-    /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1798 */
+    /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1792 */
     const uint64_t gwmc = off - ((uint64_t)k_ra8_gwca_off_gwms - (uint64_t)k_ra8_gwca_off_gwmc);
     return eth_shadow_u32(gwmc) & (uint32_t)k_ra8_gwmc_opc_mask;
   }
