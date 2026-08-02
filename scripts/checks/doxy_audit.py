@@ -3,23 +3,31 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Doxygen documentation gap auditor for ra8-firmware.
 
-Walks every .c/.h under libs/, src/, port/ (excluding libs/third_party/),
+Walks every .c/.h under libs/, src/, port/ (excluding libs/third_party/) plus
+the fully-documented tools/ subtrees in doxy_scope.FUNCTION_TOOL_SUBTREES,
 locates every function definition/prototype, and checks the immediately
 preceding Doxygen block for the required tags listed in CLAUDE.md
 ("Doxygen Documentation Requirements").
 
-KNOWN SCOPE GAP -- this function gate does NOT cover examples/, tools/ or
-tests/, which CLAUDE.md ("these standards apply to EVERY first-party file")
-says it should. ``--members`` already covers them (MEMBER_SCAN_DIRS); the
-function mode does not. Measured on the current tree, adding all three to
-SCAN_DIRS reports 9635 gaps -- tests/ 7052, examples/ 1500, tools/ 1083 --
-across roughly a thousand functions in tools/ alone. Only 52 of the tools/
-gaps are functions with no block at all; the rest carry a block that is
-missing required tags, so closing them means writing real ``@pre`` / ``@post``
-/ ``@retval`` / ``@note`` prose per function. That is a documentation
-campaign, tracked in its own issue, and it must be closed by writing real
-documentation, never by generating tag-shaped filler -- which is exactly what
-the required-tag list rewards if applied mechanically.
+KNOWN SCOPE GAP -- this function gate does NOT yet cover examples/, tests/ or
+the rest of tools/, which CLAUDE.md ("these standards apply to EVERY first-party
+file") says it should. ``--members`` already covers them (MEMBER_SCAN_DIRS); the
+function mode is being widened one fully-documented tool at a time (#332), so
+the gate never sits green over code it has not read. Covered by this gate now:
+tools/{glyph_bench,mkbookimg,mkfontimg,reader_vmem} -- 35 gaps closed with real
+prose, 0 remaining. Machine-emitted tool code (tools/vela/generated/) is exempt
+like vendored SOUP -- not hand-authored, so the hand-documentation bar does not
+apply.
+
+Measured 2026-08-02, the remaining backlog under the un-widened roots is
+10082 gaps -- tests/ 7160, examples/ 1566, tools/ 1356 -- and the tools/ half
+breaks down as ra8_emulator 869, media_dl 361, cache_bench 78, rabook_viewer 39,
+rabook_imagepack 9. Only a handful of those are functions with no block at all;
+the rest carry a block that is missing required tags, so closing them means
+writing real ``@pre`` / ``@post`` / ``@retval`` / ``@note`` prose per function.
+That is a documentation campaign, tracked in #332, and it must be closed by
+writing real documentation, never by generating tag-shaped filler -- which is
+exactly what the required-tag list rewards if applied mechanically.
 
 Modes
 -----
