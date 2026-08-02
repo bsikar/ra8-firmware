@@ -635,6 +635,10 @@ gate_no_ai_attribution_commits() (
 # --- inclusive-terminology ------------------------------------------------
 gate_inclusive_terminology() (
   set -e
+  # --selftest FIRST (#549): proves the detector fires on a legacy symbol,
+  # spares vendored/hardware names, and that the derived scope reaches the
+  # roots (infra/, mk/) a hardcoded list had dropped.
+  python3 scripts/checks/check_inclusive_terminology.py --selftest
   python3 scripts/checks/check_inclusive_terminology.py
 )
 

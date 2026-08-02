@@ -10,15 +10,21 @@ it, and ``.clang-format``'s ``InsertNewlineAtEOF`` only covers C/C++ that
 reaches the formatter.  Neither is a gate, and neither touches Python, shell,
 CMake, or YAML.
 
-This repo-wide backstop walks every first-party source file (C/C++, Python,
-shell, CMake, YAML, linker scripts) under the scanned roots and fails if any
-is non-empty and does not end in a newline byte.  Vendor trees and generated
-font tables are excluded.  There is no grandfathering.
+This repo-wide backstop covers every first-party source file (C/C++, Python,
+shell, CMake, Make, YAML, linker scripts) and fails if any is non-empty and
+does not end in a newline byte.  The whole-tree set is DERIVED from
+``git ls-files`` via ``lint_targets.first_party_paths`` rather than a hardcoded
+root list, so a new top-level directory is covered the day it lands; a hardcoded
+list -- which this used to carry, omitting ``docs/``, ``mk/``, ``infra/`` and
+``coprocessor/`` (#549) -- does not fail when it goes stale, it just reports
+success over a shrinking slice.  Vendor trees and generated font tables are
+excluded.  There is no grandfathering.
 
 Run::
 
     check_final_newline.py                      # scan the whole tree
     check_final_newline.py path/to/file ...     # scan listed files
+    check_final_newline.py --selftest           # prove both directions
 
 Exit 0 if every file ends in a newline, exit 1 (with a list) otherwise, exit 2
 when the whole-tree sweep collapses below FILE_FLOOR.
@@ -27,12 +33,14 @@ when the whole-tree sweep collapses below FILE_FLOOR.
 from __future__ import annotations
 
 import sys
+import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lint_targets import is_build_output_path
+from lint_targets import first_party_paths, is_build_output_path
+from selftest_assert import expect, report
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -51,12 +59,12 @@ SOURCE_SUFFIXES = (
     ".py",
     ".sh",
     ".cmake",
+    ".mk",
     ".yml",
     ".yaml",
     ".ld",
 )
-SOURCE_NAMES = ("CMakeLists.txt",)
-SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "tests", "scripts", "cmake", ".github")
+SOURCE_NAMES = ("CMakeLists.txt", "Makefile", "GNUmakefile")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/ra8_fonts/",
@@ -66,9 +74,10 @@ EXCLUDE_FRAGMENTS = (
 
 # A tree this size cannot legitimately collapse to a handful of files. If the
 # whole-tree sweep returns less than this, something broke (an unreachable repo
-# root, a renamed SCAN_ROOTS entry, a runaway EXCLUDE_FRAGMENTS) and reporting
-# "all end in a newline" would be a lie. Measured 2026-07-28: 2773 first-party
-# source files. Same trip-wire as check_ruff.py.
+# root, a collapsed git enumeration, a runaway EXCLUDE_FRAGMENTS) and reporting
+# "all end in a newline" would be a lie. Measured 2026-08-02: 3116 first-party
+# source files (the derived scope, up from 2843 when it was a hardcoded root
+# list). Same trip-wire as check_ruff.py.
 FILE_FLOOR = 2200
 
 
@@ -95,6 +104,22 @@ def _rel(path: Path) -> str:
     return str(path)
 
 
+def _derived_sources() -> list[Path]:
+    """Every first-party source file, derived from git rather than a root list.
+
+    Enumeration goes through ``lint_targets.first_party_paths`` -- the shared
+    derived-scope primitive -- so a newly added top-level directory (``docs/``,
+    ``mk/``, ``infra/`` and ``coprocessor/`` were the ones a hardcoded root
+    list had silently omitted, #549) is in scope the day it lands. The suffix
+    set is the sole language filter; ``SOURCE_NAMES`` catches the
+    extensionless-by-convention listfiles (``Makefile``, ``CMakeLists.txt``).
+    """
+    rels = set(first_party_paths(SOURCE_SUFFIXES))
+    for name in SOURCE_NAMES:
+        rels |= {rel for rel in first_party_paths((name,)) if Path(rel).name == name}
+    return [REPO_ROOT / rel for rel in sorted(rels)]
+
+
 def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
     args = list(arg_paths)
     if args:
@@ -109,12 +134,48 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
                 out.append(path)
         return [p for p in out if not _is_excluded(p)]
 
-    out = []
-    for root in SCAN_ROOTS:
-        base = REPO_ROOT / root
-        if base.is_dir():
-            out.extend(c for c in base.rglob("*") if c.is_file() and _is_source(c))
-    return [p for p in out if not _is_excluded(p)]
+    return [p for p in _derived_sources() if not _is_excluded(p)]
+
+
+def selftest() -> int:
+    """Prove the detector fires on a missing newline and that the scope is real.
+
+    Both directions plus a scope probe: a non-empty file with no trailing
+    newline must FIRE, a newline-terminated file and an empty file must stay
+    QUIET, the derived whole-tree scope must clear ``FILE_FLOOR``, and it must
+    actually reach the roots a hardcoded list had dropped (``mk/``, ``infra/``)
+    -- a clean run over a scope that never sees those roots proves nothing.
+
+    Returns:
+        0 when every assertion held in both directions, 1 otherwise.
+    """
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        good = root / "good.py"
+        good.write_text("x = 1\n", encoding="utf-8")
+        bad = root / "bad.py"
+        bad.write_bytes(b"x = 1")
+        empty = root / "empty.py"
+        empty.write_bytes(b"")
+        expect(_ends_in_newline(good), "MUST NOT FIRE: a newline-terminated file", failures)
+        expect(_ends_in_newline(empty), "MUST NOT FIRE: an empty file", failures)
+        expect(not _ends_in_newline(bad), "MUST FIRE: a file with no trailing newline", failures)
+
+    scope = _enumerate_targets([])
+    rels = {str(p.relative_to(REPO_ROOT)) for p in scope if p.is_relative_to(REPO_ROOT)}
+    expect(
+        len(scope) >= FILE_FLOOR,
+        f"derived scope sees {len(scope)} file(s) (floor {FILE_FLOOR})",
+        failures,
+    )
+    for root_name in ("mk", "infra"):
+        expect(
+            any(rel.startswith(root_name + "/") for rel in rels),
+            f"the derived scope reaches {root_name}/ (previously omitted)",
+            failures,
+        )
+    return report(failures)
 
 
 def main(argv: list[str]) -> int:
@@ -137,6 +198,8 @@ def main(argv: list[str]) -> int:
     list filtered to nothing, 2 when the whole-tree sweep enumerated too few
     files to trust.
     """
+    if "--selftest" in argv[1:]:
+        return selftest()
     paths = argv[1:]
     targets = _enumerate_targets(paths)
     if not paths and len(targets) < FILE_FLOOR:

@@ -105,6 +105,9 @@ _pcc_tree_structure() (
   # The EK-RA8D2 pinout is a board fact owned by libs/ra8_board_ek_ra8d2.
   # Forbid the (port << 8 | pin) idiom in examples so the USB-pin duplication
   # #251 fixed (identical pins copy-pasted across 29 apps) cannot come back.
+  # --selftest proves the detector fires AND that an in-source build under
+  # examples/<app>/build/ is excluded from the scope (#549) before a clean run.
+  python3 scripts/checks/check_example_board_pins.py --selftest
   python3 scripts/checks/check_example_board_pins.py
   # ra8_core is the foundation lib: it must depend on nothing above itself.
   python3 scripts/checks/check_core_layering.py
@@ -142,7 +145,9 @@ _pcc_source_form() (
   set -e
   # Every first-party source file ends in a trailing newline. Complements
   # .clang-format InsertNewlineAtEOF (C/C++ only) by covering scripts and
-  # config-as-code.
+  # config-as-code. --selftest proves the detector fires and that the derived
+  # scope reaches the roots a hardcoded list had dropped (#549).
+  python3 scripts/checks/check_final_newline.py --selftest
   python3 scripts/checks/check_final_newline.py
   # No magic numbers. clang-tidy's readability-magic-numbers only sees files
   # in the host compile-db (no example main.c, no ARM-only #ifdef paths),
@@ -166,6 +171,9 @@ _pcc_source_form() (
   # a discarded ra8_cgc_init() right before a BLXNS (#191).
   python3 scripts/checks/check_tz_boundary_discard.py
   # Ban the numbered session-bookkeeping tags from comments and docs.
+  # --selftest proves the detector fires and that the derived scope reaches the
+  # roots a hardcoded list had dropped (#549).
+  python3 scripts/checks/check_no_wave_references.py --selftest
   python3 scripts/checks/check_no_wave_references.py
   # C23 typed enums (every enum names an explicit underlying type) and
   # pragma-once headers (no classic #ifndef include guards). Both were
@@ -307,7 +315,10 @@ _pcc_docs_and_tests() (
   # reporting the cleanest tree it has ever seen.
   python3 scripts/checks/audit_init_order.py --selftest
   python3 scripts/checks/audit_init_order.py
-  # OSHWA inclusive-terminology gate over first-party sources.
+  # OSHWA inclusive-terminology gate over first-party sources. --selftest
+  # proves the detector fires on a legacy symbol, spares vendored/HW names, and
+  # that the derived scope reaches the roots a hardcoded list had dropped (#549).
+  python3 scripts/checks/check_inclusive_terminology.py --selftest
   python3 scripts/checks/check_inclusive_terminology.py
   # MAXIMUM-documentation gate: every function -- including statics -- carries
   # the full Doxygen tag set.

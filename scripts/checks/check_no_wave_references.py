@@ -21,9 +21,16 @@ Per-line opt-out: append "WAVE-OK: <reason>" on the offending line. Reserve
 for unavoidable upstream-symbol citations (e.g. a Renesas register name
 that literally encodes the wording).
 
+Scope is DERIVED from ``git ls-files`` via ``lint_targets.first_party_paths``
+rather than a hardcoded root list, so a new top-level directory (``tools/``,
+``coprocessor/``, ``infra/`` and ``mk/`` were the ones the old list silently
+omitted, #549) is covered the day it lands. ``--selftest`` proves the detector
+fires and stays quiet, and that the derived scope clears its floor.
+
 Exit code:
   0 -- gate clean
   1 -- violations exist
+  2 -- the scope collapsed below FILE_FLOOR (a scan of almost nothing)
 
 @copyright Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
@@ -31,44 +38,51 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from pathlib import Path
 
-SCAN_ROOTS: tuple[str, ...] = (
-    "libs",
-    "src",
-    "examples",
-    "tests",
-    "port",
-    "scripts",
-    "docs",
-    "cmake",
-    ".github",
-)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-SKIP_DIR_NAMES: frozenset[str] = frozenset(
+from lint_targets import first_party_paths
+from selftest_assert import expect, report
+
+SCAN_EXTS: frozenset[str] = frozenset(
     {
-        "build",
-        "build-cov",
-        "build-scan",
-        "build-tidy",
-        ".git",
-        "_deps",
-        "third_party",
-        "__pycache__",
-        ".cache",
-        "node_modules",
-        "reference",
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".cc",
+        ".cmake",
+        ".md",
+        ".yml",
+        ".yaml",
+        ".sh",
+        ".py",
+        ".txt",
+        ".mk",
     }
 )
 
-SCAN_EXTS: frozenset[str] = frozenset(
-    {".c", ".h", ".cpp", ".hpp", ".cc", ".cmake", ".md", ".yml", ".yaml", ".sh", ".py", ".txt"}
+SCAN_BASENAMES: frozenset[str] = frozenset(
+    {"Makefile", "Dockerfile", "CMakeLists.txt", "GNUmakefile"}
 )
 
-SCAN_BASENAMES: frozenset[str] = frozenset({"Makefile", "Dockerfile", "CMakeLists.txt"})
+# Vendored / generated docs content that is not ours to police: committed
+# datasheets and register maps under docs/reference/, and any generated Doxygen
+# output (docs/**/doxygen, docs/**/html) that is tracked. first_party_paths
+# already drops third_party/ and build output; these three are the docs-side
+# equivalents the old SKIP_DIR_NAMES carried. Matched by path component, the
+# same way the previous walk skipped them.
+DOCS_VENDOR_DIRS: frozenset[str] = frozenset({"reference", "doxygen", "html"})
+
+# A tree this size cannot legitimately collapse to a handful of files. A scan
+# that enumerates almost nothing reports a clean tree because it read almost
+# nothing -- the exact failure the gate-honesty epic (#190) exists to prevent.
+# Measured 2026-08-02: 3416 first-party files in the derived scope. Same
+# trip-wire as check_ruff.py.
+FILE_FLOOR = 2500
 
 # Maximum number of violations to print before truncating output.
 MAX_FINDINGS_SHOWN = 50
@@ -93,41 +107,23 @@ SELF_EXEMPT_FILES: frozenset[str] = frozenset(
 )
 
 
-def _is_skip_dir(name: str) -> bool:
-    """Whether a directory is build output and therefore skipped.
-
-    Matches the ``build-*`` family by prefix so CMake variant directories are
-    excluded without being enumerated.
-    """
-    if name in SKIP_DIR_NAMES:
-        return True
-    return bool(name.startswith("build-") or name == "build")
-
-
-def should_scan(path: Path) -> bool:
-    """Whether a file's basename or suffix puts it in scope."""
-    if path.name in SCAN_BASENAMES:
-        return True
-    return path.suffix in SCAN_EXTS
-
-
 def iter_source_files(root: Path) -> list[Path]:
-    """Every in-scope file beneath the configured scan roots."""
+    """Every in-scope first-party file, derived from git rather than a root list.
+
+    Enumeration goes through ``lint_targets.first_party_paths`` -- the shared
+    derived-scope primitive -- so ``tools/``, ``coprocessor/``, ``infra/`` and
+    ``mk/`` (the roots a hardcoded list silently dropped, #549) are covered. The
+    only subtractions on top of what that primitive already exempts are the
+    docs-side vendored/generated directories in ``DOCS_VENDOR_DIRS``.
+    """
+    rels = set(first_party_paths(tuple(SCAN_EXTS)))
+    for name in SCAN_BASENAMES:
+        rels |= {rel for rel in first_party_paths((name,)) if Path(rel).name == name}
     out: list[Path] = []
-    for scan_root in SCAN_ROOTS:
-        base = root / scan_root
-        if not base.exists():
+    for rel in sorted(rels):
+        if set(Path(rel).parts) & DOCS_VENDOR_DIRS:
             continue
-        for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [d for d in dirnames if not _is_skip_dir(d)]
-            for fn in filenames:
-                p = Path(dirpath) / fn
-                if should_scan(p):
-                    out.append(p)
-    for top in ("Makefile", "CMakeLists.txt", "README.md"):
-        p = root / top
-        if p.exists():
-            out.append(p)
+        out.append(root / rel)
     return out
 
 
@@ -154,6 +150,46 @@ def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str]]:
     return out
 
 
+def selftest() -> int:
+    """Prove the detector fires on a "Wave N" tag, stays quiet otherwise, and scans real files.
+
+    Both directions plus a scope probe: the numbered-session pattern must FIRE,
+    the legitimate domain uses (``waveform``, ``sine wave``, ``wave_table``)
+    must stay QUIET, the derived scope must clear ``FILE_FLOOR``, and it must
+    reach the roots a hardcoded list had dropped (``infra/``, ``mk/``) -- a
+    clean run over a scope that never sees those roots proves nothing.
+
+    Returns:
+        0 when every assertion held in both directions, 1 otherwise.
+    """
+    failures: list[str] = []
+    for text, must_fire, label in (
+        ("fixed in Wave 70", True, 'MUST FIRE: "Wave 70"'),
+        ("see wave-43b for context", True, 'MUST FIRE: "wave-43b"'),
+        ("the sine wave is smooth", False, 'MUST NOT FIRE: "sine wave"'),
+        ("k_ra8_pdg_wave_saw selects the waveform", False, "MUST NOT FIRE: wave_saw / waveform"),
+        ("wave_table[0] holds the sample", False, "MUST NOT FIRE: wave_table identifier"),
+    ):
+        fired = bool(WAVE_RE.search(text))
+        expect(fired == must_fire, label, failures)
+
+    root = Path(__file__).resolve().parents[2]
+    files = iter_source_files(root)
+    rels = {str(p.relative_to(root)) for p in files if p.is_relative_to(root)}
+    expect(
+        len(files) >= FILE_FLOOR,
+        f"derived scope sees {len(files)} file(s) (floor {FILE_FLOOR})",
+        failures,
+    )
+    for root_name in ("infra", "mk"):
+        expect(
+            any(rel.startswith(root_name + "/") for rel in rels),
+            f"the derived scope reaches {root_name}/ (previously omitted)",
+            failures,
+        )
+    return report(failures)
+
+
 def main() -> int:
     """Ban session-bookkeeping "Wave N" references from the tree.
 
@@ -161,10 +197,20 @@ def main() -> int:
     future reader cannot resolve "see Wave 43b" to anything, whereas the
     function, symbol or HUM section the fix touched stays findable.
 
-    Returns 1 listing each reference, 0 when the tree is clean.
+    Returns 1 listing each reference, 0 when the tree is clean, 2 when the
+    derived scope collapsed below FILE_FLOOR.
     """
+    if "--selftest" in sys.argv[1:]:
+        return selftest()
     root = Path(__file__).resolve().parents[2]
     files = iter_source_files(root)
+    if len(files) < FILE_FLOOR:
+        sys.stderr.write(
+            f"check_no_wave_references.py: FATAL -- only {len(files)} file(s) in scope, "
+            f"floor is {FILE_FLOOR}. A collapsed scope reports a clean tree because it "
+            "scanned nothing.\n"
+        )
+        return 2
     findings: list[tuple[Path, int, str]] = []
     for f in files:
         findings.extend(scan_file(f, root))
