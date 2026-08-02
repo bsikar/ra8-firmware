@@ -231,14 +231,30 @@ def capture(ser: serial.Serial) -> str:
     return out
 
 
+def primary_lan_name(interface_text: str) -> str:
+    """Return the PRIMARY LAN hard-switch name from a `show system interface` dump.
+
+    The bench splits the one physical switch (sw0) into two hard switches: the
+    primary (factory-named "lan" or "internal", depending on the model) carries
+    the odd ports, and a SECOND switch named "lan-even" carries the even ports.
+    Only the primary name is model-dependent, so only the primary is what gets
+    resolved here and what configure_after_wipe() rewrites the "internal" token
+    in fortigate-bench.conf to. "lan-even" is a literal we choose, and it is
+    deliberately NOT confused with the primary: the needle `edit "lan"` cannot
+    match inside `edit "lan-even"` (the closing quote differs), so the presence
+    of the second switch cannot make this misreport the primary. See --selftest.
+    """
+    for name in ("lan", "internal"):
+        if f'edit "{name}"' in interface_text:
+            return name
+    return "internal"
+
+
 def detect_lan(ser: serial.Serial) -> str:
     """Return the LAN interface name ('lan' or 'internal') from the live config."""
     send(ser, "show system interface")
     _, buf = read_until(ser, ["#", "$"], 60)
-    for name in ("lan", "internal"):
-        if f'edit "{name}"' in buf:
-            return name
-    return "internal"
+    return primary_lan_name(buf)
 
 
 def do_login_mode(ser: serial.Serial, c: dict[str, str]) -> int:
@@ -551,9 +567,69 @@ def do_bootstrap_mode(ser: serial.Serial, c: dict[str, str]) -> int:
     return configure_after_wipe(ser, c)
 
 
+def run_selftest() -> int:
+    """Offline regression check for the LAN-name detection + token rewrite.
+
+    Touches no hardware and reads no secret. It pins the behaviour that the
+    odd/even split depends on: with the second switch 'lan-even' present, the
+    primary is still read correctly, and rewriting the 'internal' token to the
+    resolved primary name leaves every 'lan-even' reference intact. Both
+    directions are asserted (a must-detect-'lan' case and a must-detect-
+    'internal' case) so a scope collapse cannot pass quietly.
+    """
+    two_switch = (
+        "config system interface\n"
+        '    edit "wan1"\n        set mode dhcp\n    next\n'
+        '    edit "lan"\n        set ip 10.0.40.1 255.255.255.0\n'
+        "        set type hard-switch\n    next\n"
+        '    edit "lan-even"\n        set ip 10.0.41.1 255.255.255.0\n'
+        "        set type hard-switch\n    next\n"
+        "end\n"
+    )
+    internal_box = (
+        "config system interface\n"
+        '    edit "internal"\n        set ip 10.0.40.1 255.255.255.0\n    next\n'
+        '    edit "lan-even"\n        set ip 10.0.41.1 255.255.255.0\n    next\n'
+        "end\n"
+    )
+    cases = [
+        ("primary read past lan-even", primary_lan_name(two_switch), "lan"),
+        ("no false-'internal' when primary is lan", primary_lan_name(internal_box), "internal"),
+        ("empty dump defaults to internal", primary_lan_name(""), "internal"),
+        ("lan-even alone never reads as lan", primary_lan_name('edit "lan-even"\n'), "internal"),
+    ]
+    ok = True
+    for label, got, want in cases:
+        good = got == want
+        ok = ok and good
+        print(f"  [{'PASS' if good else 'FAIL'}] {label}: got {got!r}, want {want!r}")
+
+    # The rewrite configure_after_wipe() applies must resolve the primary token
+    # and leave the literal second switch untouched.
+    decl = (
+        'edit "internal"\n set srcintf "internal"\n'
+        ' set dstintf "lan-even"\n set srcintf "lan-even"\n'
+    )
+    rewritten = decl.replace('"internal"', '"lan"')
+    primary_resolved = '"internal"' not in rewritten and 'edit "lan"' in rewritten
+    lan_even_kept = rewritten.count('"lan-even"') == decl.count('"lan-even"')
+    checks = [
+        ("token rewrite resolves primary", primary_resolved),
+        ("token rewrite keeps lan-even", lan_even_kept),
+    ]
+    for label, good in checks:
+        ok = ok and good
+        print(f"  [{'PASS' if good else 'FAIL'}] {label}")
+
+    print("SELFTEST:", "PASS" if ok else "FAIL")
+    return 0 if ok else 1
+
+
 def main() -> int:
     """Parse the mode argument, open the console, and dispatch to the handler."""
     mode = sys.argv[1] if len(sys.argv) > 1 else "login"
+    if mode == "--selftest":  # offline: no console, no OpenBao, no hardware
+        return run_selftest()
     BENCH.mkdir(parents=True, exist_ok=True)
     tty = resolve_tty()
     log(f"=== fg_bringup {mode} open {tty} @{BAUD} ===")

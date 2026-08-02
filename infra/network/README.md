@@ -1,10 +1,20 @@
-# infra/network/ -- isolated ESP32-C6 wireless bench LAN
+# infra/network/ -- ESP32-C6 wireless bench LAN (odd-islanded + even-uplinked)
 
-A self-contained, air-gapped WiFi network for exercising the ESP32-C6
-co-processor and future wireless test clients. It has **no uplink** to the home
-router by design: a FortiGate 81E-POE is the router/DHCP/switch, a Meraki MR18
-(running OpenWrt) is the access point, and the ESP32-C6 (2.4 GHz-only) joins a
-dedicated bench SSID.
+A bench WiFi network for exercising the ESP32-C6 co-processor and future
+wireless test clients. A FortiGate 81E-POE is the router/DHCP/switch, a Meraki
+MR18 (running OpenWrt) is the access point, and the ESP32-C6 (2.4 GHz-only)
+joins a dedicated bench SSID.
+
+The FortiGate's single physical switch is split into **two hard-switch
+segments** on the same silicon (sw0):
+
+- an **odd** segment (`lan`, ports 1,3,5,7,9,11 -- 10.0.40.0/24) that is
+  deliberately **islanded**: no default route, and an explicit firewall policy
+  denying it to the WAN. All the bench kit lives here.
+- an **even** segment (`lan-even`, ports 2,4,6,8,10,12 -- 10.0.41.0/24) that
+  **NATs out `wan1`** (a DHCP uplink to the house AT&T gateway). It exists to
+  provision an internet-dependent camera (a Reolink doorbell); nothing on the
+  islanded bench uses it.
 
 Everything here is reproducible from code plus OpenBao. No credential lives in
 this directory, any commit, or any kept log -- and that includes the chassis
@@ -14,42 +24,58 @@ serial, which FortiOS turns into the `maintainer` recovery password (see
 ## Topology
 
 ```
-                 (NO uplink -- deliberately islanded; no WAN, no default route)
-
-   +-------------------------+           PoE + data (802.3af, Cat5)
-   |  FortiGate 81E-POE       |  port on ===============================+
-   |  ra8-bench-fw            |  the LAN                                |
-   |  FortiOS v6.4.6          |  hard-switch                            |
-   |  serial: see OpenBao     |                                    +----------------+
-   |  lan (hard-switch):      |                                    | Meraki MR18    |
-   |    10.0.40.1/24          |                                    | OpenWrt (ath9k)|
-   |  DHCP .100-.199          |                                    | static .10     |
-   |  reserves .10 -> AP MAC  |                                    | br-trusted     |
-   |  admin: ssh + https      |                                    | radio1 2.4GHz  |
-   +------------+------------+                                     | radio0 5GHz    |
-                | console (DB9, 9600 8N1)                          +--------+-------+
-                |                                                           | SSID: ra8-bench
-      /dev/serial/by-id/usb-FTDI_FT232R_*                                   | WPA2-PSK (radio1)
-                |                                                           |
-        +-------+--------+                                    +------------+-----------+
-        | bench Pi (star)|                                    |  ESP32-C6 test client  |
-        | ssh star       |                                    |  (2.4 GHz, joins       |
-        +----------------+                                    |   ra8-bench)           |
-                                                              +------------------------+
+   ODD segment "lan" 10.0.40.1/24            EVEN segment "lan-even" 10.0.41.1/24
+   ISLANDED: no default route,               NAT out wan1 (policy 1); DHCP
+   policy 2 DENIES odd -> wan1               .41.100-.199; camera only
+        (all bench kit lives here)                        |
+   +-------------------------+                            |   wan1 (DHCP lease
+   |  FortiGate 81E-POE       | odd ports (1,3,5,7,9,11)  |   from AT&T gw)
+   |  ra8-bench-fw            |=========+                 |        |
+   |  FortiOS v6.4.6          | even ports (2,4,6,8,10,12)|        v
+   |  serial: see OpenBao     |=========|=======+         |   +---------------+
+   |  lan       10.0.40.1/24  |         |       |         +-->| Reolink /     |
+   |  lan-even  10.0.41.1/24  |         |       |             | cloud camera  |
+   |  DHCP .40.100-.199       |         |       |             +---------------+
+   |  DHCP .41.100-.199       |         |  +----------------+
+   |  reserves .40.10 -> AP   |         |  | Meraki MR18    |
+   |  admin: ssh + https      |         |  | OpenWrt (ath9k)|
+   +------------+------------+          |  | static .40.10  |
+                | console (DB9,9600 8N1)|  | br-trusted     |
+                |                       |  | radio1 2.4GHz  |
+      /dev/serial/by-id/usb-FTDI_*      |  +--------+-------+
+                |                       |           | SSID: ra8-bench (WPA2-PSK)
+        +-------+--------+     +--------+-------+    |
+        | bench Pi (star)|     | wired bench kit|  +-+----------------------+
+        | ssh star       |     | (ODD ports)    |  |  ESP32-C6 test client  |
+        | .40.101 wired  |     +----------------+  |  (2.4 GHz, ra8-bench)   |
+        +----------------+                         +------------------------+
 ```
 
-- Flat L2: the AP bridges every SSID + its uplink into one bridge (`br-trusted`),
-  untagged, into the FortiGate `lan` hardware switch. **No VLAN tags.**
+- Flat L2 per segment: the AP bridges every SSID + its uplink into one bridge
+  (`br-trusted`), untagged, into the FortiGate `lan` (odd) hard switch. **No
+  VLAN tags.** The even segment is a separate hard switch, not a VLAN.
 - The AP is a **dumb AP**: its own dnsmasq/odhcpd DHCP is disabled, so the
-  FortiGate (10.0.40.1) is the single DHCP server.
-- The AP is powered by FortiGate PoE. A FortiGate reboot cycles the AP --
-  expected and harmless.
+  FortiGate is the single DHCP server on each segment.
+- The AP is powered by FortiGate PoE (an odd port). A FortiGate reboot cycles
+  the AP -- expected and harmless.
 
-## Subnet plan (10.0.40.0/24)
+### Load-bearing port occupancy -- ODD ports only
+
+Isolation is enforced by **which physical port a cable is in**, not by any
+per-device setting. Odd ports belong to the islanded `lan` switch; even ports
+belong to the internet-facing `lan-even` switch. **All bench kit (AP, bench Pi,
+any wired test host) must stay on ODD ports.** Moving a cable onto an even port
+silently drops that device onto the NAT'd, internet-reachable segment -- no
+warning, no config change, isolation gone. The camera is the *only* thing that
+belongs on an even port. Treat the even ports as "outside".
+
+## Subnet plan
+
+### Odd / islanded -- 10.0.40.0/24 (`lan`)
 
 | Range              | Use                                             |
 |--------------------|-------------------------------------------------|
-| `10.0.40.1`        | FortiGate LAN interface (gateway, DNS)          |
+| `10.0.40.1`        | FortiGate `lan` interface (gateway, DNS)        |
 | `10.0.40.2 - .9`   | Reserved (spare infrastructure statics)         |
 | `10.0.40.10`       | Meraki MR18 AP (static; also DHCP-reserved to its MAC) |
 | `10.0.40.11 - .99` | Reserved statics (future bench gear)            |
@@ -58,6 +84,59 @@ serial, which FortiOS turns into the `maintainer` recovery password (see
 
 The AP's MAC `00:18:0a:7b:dd:eb` is reserved to `10.0.40.10` in the FortiGate
 DHCP server, so the AP holds `.10` whether it is static or DHCP.
+
+### Even / uplinked -- 10.0.41.0/24 (`lan-even`)
+
+| Range              | Use                                             |
+|--------------------|-------------------------------------------------|
+| `10.0.41.1`        | FortiGate `lan-even` interface (gateway, DNS)   |
+| `10.0.41.2 - .99`  | Reserved statics                                |
+| `10.0.41.100-.199` | FortiGate DHCP pool (Reolink doorbell / camera) |
+| `10.0.41.200-.254` | Free                                            |
+
+`wan1` itself takes a DHCP lease from the house AT&T gateway (observed
+`192.168.1.84`, default route via `192.168.1.254`, admin distance 5). That
+house subnet is upstream of the even segment and off-limits to the bench.
+
+## Isolation model (odd vs even)
+
+Three firewall policies, in `fortigate-bench.conf`, do all the work:
+
+| # | Name             | From        | To         | Action        |
+|---|------------------|-------------|------------|---------------|
+| 1 | `even-to-wan`    | `lan-even`  | `wan1`     | accept + NAT  |
+| 2 | `deny-odd-to-wan`| `lan` (odd) | `wan1`     | **deny**      |
+| 3 | `odd-to-even-mgmt`| `lan` (odd)| `lan-even` | accept        |
+
+- **Policy 1** is the camera's only path out. Its `srcintf` is `lan-even`, and
+  it **must never** be `lan`: it pre-existed as `lan -> wan1 all/all accept
+  NAT`, harmless only while `wan1` had no address. `wan1` now has a lease, so
+  reverting `srcintf` to `lan` would silently give the whole islanded bench
+  full internet. The tracked `fortigate-bench.conf` encodes `lan-even` and
+  says so in a comment; keep it.
+- **Policy 2** is why the odd segment is islanded even though a routable `wan1`
+  now exists on the box: it explicitly denies odd -> wan1. (It carries no `set
+  action`, and deny is the FortiOS default.)
+- **Policy 3** lets the odd bench reach the camera net for management; there is
+  no reverse (even -> odd) policy, so the camera cannot reach the bench.
+
+## Reaching the even segment from `star` -- NON-PERSISTENT route
+
+`star` is wired onto an **odd** port (`10.0.40.101`) and reaches the FortiGate
+and the whole odd segment directly. To reach the even segment (e.g. to inspect
+the camera's lease) it needs a route via the FortiGate:
+
+```
+sudo ip route add 10.0.41.0/24 via 10.0.40.1
+```
+
+**This route is currently runtime-only** -- it is not in `/etc/netplan`,
+systemd-networkd, ifupdown, rc.local, or cron, so it is **gone on the next
+reboot of `star`**. That is acceptable today because nothing the bench *needs*
+lives on the even segment (only the camera, which talks to the internet, not to
+`star`). If durable management of the camera net from `star` ever matters, make
+it persistent by adding a `routes:` stanza to `star`'s netplan for
+`enx00051bdb75d3` rather than re-adding it by hand each boot.
 
 ## Credentials -- all in OpenBao, none here
 
@@ -107,8 +186,10 @@ Two facts bound the blast radius, and neither is a reason to relax the rule:
 - `maintainer` is usable **only over the physical console cable**, and only
   within roughly 60 seconds of a power cycle. It is not reachable over ssh,
   https, or the network at all.
-- The unit is deliberately islanded (no WAN, no default route), so console
-  access implies physical access to the bench.
+- The odd segment is deliberately islanded (no WAN, no default route). The even
+  segment reaches the internet, but the admin planes (`ssh`/`https`) are only
+  bound to the two LAN interfaces, not to `wan1`, so console access still
+  implies physical access to the bench.
 
 A serial also cannot be rotated the way a password can -- it is stamped in the
 chassis. The durable mitigations are the two above, not re-keying.
@@ -141,7 +222,12 @@ python3 infra/network/fg_bringup.py login        # login + capture config (read-
 python3 infra/network/fg_bringup.py verify        # status, DHCP, routing, ping the AP
 python3 infra/network/fg_bringup.py ap-inspect    # jump to the AP, dump wireless/network
 python3 infra/network/fg_bringup.py ap-status     # confirm ra8-bench hostapd is beaconing
+python3 infra/network/fg_bringup.py --selftest    # offline: check LAN-name detection logic
 ```
+
+Admin `ssh`/`https` is also bound to both LAN interfaces (`10.0.40.1`,
+`10.0.41.1`), so read-only `show`/`get` captures can be taken over the network
+from a host on either segment instead of the console.
 
 ## Re-provision from scratch
 
@@ -153,7 +239,9 @@ python3 infra/network/fg_bringup.py ap-status     # confirm ra8-bench hostapd is
    ```
    `bootstrap` logs in, issues `execute factoryreset`, then after the wiped boot
    completes the forced password change from OpenBao and replays
-   `fortigate-bench.conf` on the detected LAN interface (`lan`).
+   `fortigate-bench.conf` on the detected LAN interface (`lan`). detect_lan()
+   rewrites the `internal` token to that real name; the second switch is the
+   literal `lan-even`, which the rewrite leaves alone.
    (`configure` alone re-runs just the post-wipe configuration.)
 3. **Configure the AP** over the FortiGate console jump (no direct IP path):
    ```
@@ -176,30 +264,39 @@ python3 infra/network/fg_bringup.py ap-status     # confirm ra8-bench hostapd is
 | Band / radio  | 2.4 GHz -- MR18 **radio1** (phy2); channel 6, HT20  |
 | Security      | WPA2-PSK (`psk2`, CCMP; PMF off for compatibility)  |
 | Passphrase    | OpenBao `secret/ra8d2/bench-network` key `bench_psk` |
-| Gateway / DNS | `10.0.40.1` (FortiGate)                             |
+| Gateway / DNS | `10.0.40.1` (FortiGate, odd segment)               |
 | Addressing    | DHCP from the FortiGate, pool `10.0.40.100-.199`    |
 
-## Current status (2026-07-27) -- NETWORK UP
+The C6 joins the AP, which bridges into the **odd** (islanded) segment -- it
+does not touch the even/uplinked segment at all.
 
-The bench LAN is wiped, reconfigured, and live:
+## Current status (2026-08-02) -- NETWORK UP, odd/even split live
 
-- **FortiGate** (`ra8-bench-fw`, FortiOS v6.4.6): factory
-  reset from the junk multi-VLAN config, then `lan` = 10.0.40.1/24, DHCP
-  .100-.199 with `.10` reserved to the AP MAC, admin over ssh+https,
-  fortiguard/central-management/autoupdate disabled. The routing table shows
-  **only** `C 10.0.40.0/24 connected, lan` -- no default route, wan1/wan2 dark:
-  isolation confirmed.
-- **AP** (Meraki MR18, OpenWrt): reachable at 10.0.40.10 (FortiGate ping 3/3,
-  ARP present on `lan`). `ra8-bench` is beaconing -- `iw dev` reports
-  `phy2-ap1 ssid ra8-bench type AP txpower 11 dBm`, WPA-PSK (CCMP), channel 6,
-  bridged into `br-trusted` (forwarding). Dumb AP (own DHCP disabled); the
-  orphaned iot/guest SSIDs are disabled; home-network is kept.
+The bench LAN is live and now carries the odd/even split, captured read-only
+from the running unit and folded verbatim into `fortigate-bench.conf`:
 
-**One verification caveat:** the end-to-end wlan0 join test from the bench Pi
-could not be run because the Pi's onboard wlan0 is **out of RF range** of the
-ceiling-mounted MR18 (its scan sees neither `ra8-bench` nor even the AP's
-`home-network`, only the Pi's own home AP). This is placement, not config --
-the SSID is proven beaconing on the AP itself and bridged to the DHCP path. The
-ESP32-C6, co-located with the AP, is the live join test; everything it needs is
-in place. A wired alternative (star's RTL8153 cabled onto a FortiGate LAN port)
-would also give a direct end-to-end lease/ping proof if desired.
+- **FortiGate** (`ra8-bench-fw`, FortiOS v6.4.6 build1879): one physical switch
+  (sw0) split into `lan` (odd ports, 10.0.40.1/24) and `lan-even` (even ports,
+  10.0.41.1/24). DHCP server 1 serves `.40.100-.199` (`.10` reserved to the AP
+  MAC); DHCP server 3 serves `.41.100-.199`. `wan1` holds a DHCP lease
+  (default route, distance 5). Firewall: even NATs out `wan1`, odd is denied
+  out (islanded), odd may manage even. fortiguard / central-management /
+  autoupdate disabled.
+- **AP** (Meraki MR18, OpenWrt): reachable at 10.0.40.10 on the odd segment,
+  `ra8-bench` beaconing on radio1 (2.4 GHz, WPA-PSK/CCMP, channel 6), bridged
+  into `br-trusted`. Dumb AP (own DHCP disabled); orphaned iot/guest SSIDs
+  disabled; home-network kept.
+
+**Bootstrap is deferred (#561):** the camera provisioning depends on the
+current running config, so do not run `fg_bringup.py bootstrap` against the live
+unit until this declaration has landed and been reviewed. The declaration IS
+the running config; the earlier "islanded, no uplink" wording it replaced would
+have reverted the camera network.
+
+**One verification caveat carried over:** the end-to-end wlan0 join test from
+the bench Pi could not be run because the Pi's onboard wlan0 is out of RF range
+of the ceiling-mounted MR18. This is placement, not config -- the SSID is
+proven beaconing on the AP and bridged to the DHCP path. The ESP32-C6,
+co-located with the AP, is the live join test; a wired host on an **odd** port
+(as `star`'s RTL8153 already is at `10.0.40.101`) gives a direct end-to-end
+lease/ping proof on the islanded segment.
