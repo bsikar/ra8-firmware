@@ -107,7 +107,26 @@ typedef enum : uint64_t {
     0xABCDEF1234567890ULL, /**< MAGIC-OK: fixed arbitrary seed XOR'd into mixed trace base */
 } cb_rng_seed_t;
 
-/** @brief Fixed-seed xorshift64; deterministic across runs and platforms. */
+/**
+ * @brief Fixed-seed xorshift64; deterministic across runs and platforms.
+ *
+ * @details Applies the Marsaglia (13, 7, 17) xorshift64 triple to @p s in place
+ *          and returns the new state word, so every synthetic generator draws a
+ *          reproducible pseudo-random stream.
+ *
+ * @param[in,out] s PRNG state; advanced one step in place.
+ *
+ * @return uint64_t The updated 64-bit state (the next pseudo-random word).
+ * @retval other The post-step state; never 0 given a non-zero seed.
+ *
+ * @pre @p s is non-NULL and was seeded non-zero.
+ * @pre Called on the single benchmark thread.
+ * @post `*s` holds the advanced state.
+ * @post The sequence is reproducible for a given initial seed.
+ *
+ * @note Not thread-safe: mutates the caller's state word.
+ * @since 0.1.0
+ */
 static uint64_t cb_rng(uint64_t* s)
 {
   uint64_t x = *s;
@@ -118,13 +137,56 @@ static uint64_t cb_rng(uint64_t* s)
   return x;
 }
 
-/** @brief Uniform integer in [0, span). */
+/**
+ * @brief Uniform integer in [0, span).
+ *
+ * @details Advances the PRNG one step and reduces modulo @p span (a slight
+ *          low-bias for non-power-of-two spans, acceptable for workload
+ *          shaping). A zero @p span returns 0 so callers need no guard.
+ *
+ * @param[in,out] s    PRNG state; advanced one step in place.
+ * @param[in]     span Exclusive upper bound.
+ *
+ * @return uint32_t A value in [0, @p span), or 0 when @p span is 0.
+ * @retval 0     @p span is 0, or the draw landed on 0.
+ * @retval other A pseudo-random value below @p span.
+ *
+ * @pre @p s is non-NULL and seeded non-zero.
+ * @pre Called on the single benchmark thread.
+ * @post The PRNG state has advanced one step.
+ * @post The result is strictly less than @p span when @p span > 0.
+ *
+ * @note Not thread-safe: mutates the caller's PRNG state.
+ * @since 0.1.0
+ */
 static uint32_t cb_rand_below(uint64_t* s, uint32_t span)
 {
   return (span == 0U) ? 0U : (uint32_t)(cb_rng(s) % (uint64_t)span);
 }
 
-/** @brief Allocate a trace's key array; returns false on OOM. */
+/**
+ * @brief Allocate a trace's key array; returns false on OOM.
+ *
+ * @details Sets the trace's name and access count, zeroes the footprint, and
+ *          calloc's @p n key slots. The shared prologue for every synthetic
+ *          generator, so each one is just a fill loop over `t->keys`.
+ *
+ * @param[out] t    Trace to initialize (name, n, footprint, keys set).
+ * @param[in]  name Static workload name stored in the trace.
+ * @param[in]  n    Number of key slots to allocate.
+ *
+ * @return bool true when the key array was allocated, false on OOM.
+ * @retval true  `t->keys` holds @p n zeroed slots.
+ * @retval false Allocation failed; `t->keys` is NULL (with `t->n == n`).
+ *
+ * @pre @p t is non-NULL and @p name has static lifetime.
+ * @pre Called on the single benchmark thread.
+ * @post `t->name == name` and `t->n == n` regardless of outcome.
+ * @post On true, `t->keys` is a zeroed array of @p n keys.
+ *
+ * @note Not thread-safe: allocates and writes @p t.
+ * @since 0.1.0
+ */
 static bool cb_alloc(cb_trace_t* t, const char* name, uint64_t n)
 {
   t->name      = name;
@@ -134,7 +196,24 @@ static bool cb_alloc(cb_trace_t* t, const char* name, uint64_t n)
   return t->keys != nullptr;
 }
 
-/** @brief Sequential page-turn flooding: linear passes through a huge book. */
+/**
+ * @brief Sequential page-turn flooding: linear passes through a huge book.
+ *
+ * @details Emits `k_cb_accesses` book pages as `i % k_cb_footprint`, i.e.
+ *          repeated forward linear passes -- the pathological case for LRU,
+ *          which evicts a page just before it is needed again next pass.
+ *
+ * @return cb_trace_t The "seq-pageturn" trace (heap-owned key array).
+ * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ *
+ * @pre Called on the single benchmark thread.
+ * @pre The process can allocate `k_cb_accesses` keys.
+ * @post On success `footprint == k_cb_footprint` and all keys are book pages.
+ * @post The caller owns `keys` and frees it via ::cb_trace_free.
+ *
+ * @note Not thread-safe: allocates a new trace (no shared state).
+ * @since 0.1.0
+ */
 static cb_trace_t cb_gen_sequential(void)
 {
   cb_trace_t t = {};
@@ -149,7 +228,24 @@ static cb_trace_t cb_gen_sequential(void)
   return t;
 }
 
-/** @brief Uniform random access over the whole book (TOC/bookmark chaos). */
+/**
+ * @brief Uniform random access over the whole book (TOC/bookmark chaos).
+ *
+ * @details Draws each of `k_cb_accesses` pages uniformly across the whole book
+ *          footprint with a fixed seed, so there is no locality -- the case
+ *          where recency buys almost nothing and hit rate tracks cache size.
+ *
+ * @return cb_trace_t The "random" trace (heap-owned key array).
+ * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ *
+ * @pre Called on the single benchmark thread.
+ * @pre The process can allocate `k_cb_accesses` keys.
+ * @post On success `footprint == k_cb_footprint` and pages are uniformly spread.
+ * @post The caller owns `keys` and frees it via ::cb_trace_free.
+ *
+ * @note Not thread-safe: allocates a new trace (no shared state).
+ * @since 0.1.0
+ */
 static cb_trace_t cb_gen_random(void)
 {
   cb_trace_t t = {};
@@ -164,7 +260,25 @@ static cb_trace_t cb_gen_random(void)
   return t;
 }
 
-/** @brief Back-and-forth re-reading: a hot working set with occasional spread. */
+/**
+ * @brief Back-and-forth re-reading: a hot working set with occasional spread.
+ *
+ * @details About `k_cb_reread_pct` percent of accesses fall inside a
+ *          `k_cb_hot_pages`-wide window that drifts on the occasional random
+ *          jump, modelling a reader lingering over a few pages -- strong
+ *          temporal locality that recency policies exploit well.
+ *
+ * @return cb_trace_t The "reread-locality" trace (heap-owned key array).
+ * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ *
+ * @pre Called on the single benchmark thread.
+ * @pre The process can allocate `k_cb_accesses` keys.
+ * @post On success `footprint == k_cb_footprint` and pages cluster in the window.
+ * @post The caller owns `keys` and frees it via ::cb_trace_free.
+ *
+ * @note Not thread-safe: allocates a new trace (no shared state).
+ * @since 0.1.0
+ */
 static cb_trace_t cb_gen_reread(void)
 {
   cb_trace_t t = {};
@@ -187,7 +301,24 @@ static cb_trace_t cb_gen_reread(void)
   return t;
 }
 
-/** @brief Mostly-linear reading with occasional TOC/bookmark teleports. */
+/**
+ * @brief Mostly-linear reading with occasional TOC/bookmark teleports.
+ *
+ * @details Advances one page at a time except for a `k_cb_jump_pct` percent
+ *          chance of teleporting to a random page (a TOC or bookmark tap),
+ *          modelling ordinary reading punctuated by navigation.
+ *
+ * @return cb_trace_t The "linear+jumps" trace (heap-owned key array).
+ * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ *
+ * @pre Called on the single benchmark thread.
+ * @pre The process can allocate `k_cb_accesses` keys.
+ * @post On success `footprint == k_cb_footprint` and most steps are +1 page.
+ * @post The caller owns `keys` and frees it via ::cb_trace_free.
+ *
+ * @note Not thread-safe: allocates a new trace (no shared state).
+ * @since 0.1.0
+ */
 static cb_trace_t cb_gen_toc_jumps(void)
 {
   cb_trace_t t = {};
@@ -208,7 +339,24 @@ static cb_trace_t cb_gen_toc_jumps(void)
   return t;
 }
 
-/** @brief CBZ image-tile scroll: long sequential runs over a second object. */
+/**
+ * @brief CBZ image-tile scroll: long sequential runs over a second object.
+ *
+ * @details Emits pages `i % k_cb_tile_span` against the comic object, modelling
+ *          a continuous scroll through image tiles -- a second-object streaming
+ *          workload with a footprint smaller than the book.
+ *
+ * @return cb_trace_t The "cbz-scroll" trace (heap-owned key array).
+ * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ *
+ * @pre Called on the single benchmark thread.
+ * @pre The process can allocate `k_cb_accesses` keys.
+ * @post On success `footprint == k_cb_tile_span` over the comic object.
+ * @post The caller owns `keys` and frees it via ::cb_trace_free.
+ *
+ * @note Not thread-safe: allocates a new trace (no shared state).
+ * @since 0.1.0
+ */
 static cb_trace_t cb_gen_scroll(void)
 {
   cb_trace_t t = {};
@@ -223,7 +371,25 @@ static cb_trace_t cb_gen_scroll(void)
   return t;
 }
 
-/** @brief A realistic mixed session: read -> jump -> reread -> scroll, repeated. */
+/**
+ * @brief A realistic mixed session: read -> jump -> reread -> scroll, repeated.
+ *
+ * @details Cycles through four phases every `k_cb_mixed_phase` accesses --
+ *          linear reading, hot-set re-reading, random jumps, and comic scroll
+ *          -- to approximate a real session that exercises every policy trait
+ *          in one trace.
+ *
+ * @return cb_trace_t The "mixed-session" trace (heap-owned key array).
+ * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ *
+ * @pre Called on the single benchmark thread.
+ * @pre The process can allocate `k_cb_accesses` keys.
+ * @post On success `footprint == k_cb_footprint`; both objects appear.
+ * @post The caller owns `keys` and frees it via ::cb_trace_free.
+ *
+ * @note Not thread-safe: allocates a new trace (no shared state).
+ * @since 0.1.0
+ */
 static cb_trace_t cb_gen_mixed(void)
 {
   cb_trace_t t = {};
@@ -257,6 +423,22 @@ static cb_trace_t cb_gen_mixed(void)
  * @brief The scan-resistance case: a fixed hot set re-read between one-time
  *        linear scans that flood the cache. LRU/CLOCK evict the hot set under
  *        the scan and thrash; SLRU/SRRIP keep the re-referenced hot set.
+ *
+ * @details Interleaves `k_cb_sr_hot_pass` passes over a `k_cb_sr_hot`-page hot
+ *          set with a `k_cb_sr_scan`-page one-time linear flood that advances
+ *          each round, so the scan can never fit -- the workload that separates
+ *          scan-resistant policies from plain recency.
+ *
+ * @return cb_trace_t The "hotset+scan" trace (heap-owned key array).
+ * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ *
+ * @pre Called on the single benchmark thread.
+ * @pre The process can allocate `k_cb_accesses` keys.
+ * @post On success `footprint == k_cb_footprint`; hot pages recur, scans do not.
+ * @post The caller owns `keys` and frees it via ::cb_trace_free.
+ *
+ * @note Not thread-safe: allocates a new trace (no shared state).
+ * @since 0.1.0
  */
 static cb_trace_t cb_gen_scan_resist(void)
 {
@@ -289,6 +471,22 @@ static cb_trace_t cb_gen_scan_resist(void)
  *        ::cb_gen_scan_resist but with a footprint that dwarfs every swept cache
  *        (>> 2048 frames), so the SLRU-vs-LRU gap persists at all budgets and the
  *        resident set stays bounded independent of the (huge) file size.
+ *
+ * @details Interleaves `k_cb_huge_hot_pass` passes over a `k_cb_huge_hot`-page
+ *          front-matter set with `k_cb_huge_scan`-page linear floods across the
+ *          `k_cb_huge_footprint`-page (~7 GiB) object, so residency stays
+ *          bounded no matter how large the file grows.
+ *
+ * @return cb_trace_t The "hugebook-7GiB" trace (heap-owned key array).
+ * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ *
+ * @pre Called on the single benchmark thread.
+ * @pre The process can allocate `k_cb_accesses` keys.
+ * @post On success `footprint == k_cb_huge_footprint` (>> any swept cache).
+ * @post The caller owns `keys` and frees it via ::cb_trace_free.
+ *
+ * @note Not thread-safe: allocates a new trace (no shared state).
+ * @since 0.1.0
  */
 static cb_trace_t cb_gen_hugebook(void)
 {
@@ -368,6 +566,8 @@ typedef enum : uint8_t {
  * @retval false The line is malformed or a value is out of range.
  *
  * @pre @p line, @p obj, and @p pg are non-NULL.
+ * @pre @p line is NUL-terminated (from `fgets`).
+ * @post On true, @p obj and @p pg hold the two parsed fields.
  * @post On false, @p obj / @p pg are unspecified (caller stops the load).
  *
  * @note Not thread-safe (reads and writes `errno`).

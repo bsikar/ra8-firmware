@@ -61,7 +61,25 @@ void cbs_priv_print_row(const cbs_row_t* r)
                (double)wall / (double)r->reads);
 }
 
-/** @brief Format a block size as a short label ("512B", "64K") into @p out. */
+/**
+ * @brief Format a block size as a short label ("512B", "64K") into @p out.
+ *
+ * @details Writes a KiB label with `snprintf` for sizes at or above one KiB and
+ *          a byte label below that, truncating safely to @p cap, so table rows
+ *          stay narrow and aligned.
+ *
+ * @param[in]  block Block size in bytes to label.
+ * @param[out] out   Destination buffer (NUL-terminated by `snprintf`).
+ * @param[in]  cap   Capacity of @p out in bytes.
+ *
+ * @pre @p out has @p cap writable bytes when @p cap > 0.
+ * @pre Called on the single benchmark thread.
+ * @post On @p cap > 0, @p out holds a NUL-terminated label.
+ * @post No state other than @p out is modified.
+ *
+ * @note Not thread-safe: writes the caller's buffer (no shared state).
+ * @since 0.1.0
+ */
 static void cbs_block_label(uint32_t block, char* out, size_t cap)
 {
   if ((out == nullptr) || (cap == 0U)) {
@@ -90,7 +108,27 @@ cbs_find_row(const cbs_row_t* rows, uint32_t n, const char* be, const char* leg,
   return nullptr;
 }
 
-/** @brief Delivered-payload throughput of a row in MiB/s. */
+/**
+ * @brief Delivered-payload throughput of a row in MiB/s.
+ *
+ * @details Computes `reads * k_cbs_req_bytes` delivered bytes over the row's
+ *          wall time, clamping a zero wall time to 1 ns so the division is
+ *          always defined. Used by the summary tables and the knee search.
+ *
+ * @param[in] r Finished row (NULL or zero-reads yields 0.0).
+ *
+ * @return double Throughput in MiB/s, or 0.0 when @p r is empty.
+ * @retval 0.0   @p r is NULL or recorded no reads.
+ * @retval other The delivered-payload throughput in MiB/s.
+ *
+ * @pre @p r is NULL, or a finished row with final counters.
+ * @pre Called on the single benchmark thread.
+ * @post @p r is not modified (pure read).
+ * @post No global state is touched.
+ *
+ * @note Thread-safe over a quiescent row (pure read).
+ * @since 0.1.0
+ */
 static double cbs_row_mibs(const cbs_row_t* r)
 {
   if ((r == nullptr) || (r->reads == 0U)) {
@@ -181,6 +219,11 @@ typedef struct {
 
 /**
  * @brief Locate the rbkc-z9 sequential throughput peak and knee.
+ *
+ * @details Scans the chunked backend's sequential rows for the peak MiB/s, then
+ *          walks the sizes ascending and takes the first whose throughput
+ *          reaches ::k_cbs_knee_pct percent of that peak -- the smallest block
+ *          where per-request overhead has stopped dominating.
  *
  * @param[in]  rows    All finished rows.
  * @param[in]  nrows   Number of rows.

@@ -71,6 +71,7 @@ SCAN_DIRS = ["libs", "src", "port"]
 # never scanned-and-excused. When the final tools/ subtree is documented these
 # collapse into a single ``"tools"`` entry in SCAN_DIRS and this list is deleted.
 FUNCTION_TOOL_SUBTREES = [
+    "tools/cache_bench",
     "tools/glyph_bench",
     "tools/mkbookimg",
     "tools/mkfontimg",
