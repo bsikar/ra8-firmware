@@ -36,12 +36,12 @@
  * @brief Disk sizing and the small out-of-band geometry for the format vectors.
  */
 typedef enum : uint32_t {
-  k_disk_block_size    = 512U,       /**< Bytes per logical block.               */
-  k_disk_blocks_fat16  = 8U * 1024U, /**< 4 MiB FAT16 card (lands the band).     */
-  k_tiny_total_sectors = 100U,       /**< Too small for any FAT band.            */
-  k_tiny_overhead_secs = 1U,         /**< Reserved / root span for the tiny geom.*/
-  k_clear_lba          = 0U,         /**< Region base for the clear-region calls.*/
-  k_clear_count        = 1U,         /**< One sector cleared per call.           */
+  k_disk_block_size    = 512U,       /**< Bytes per logical block.                */
+  k_disk_blocks_fat16  = 8U * 1024U, /**< 4 MiB FAT16 card (lands the band).      */
+  k_tiny_total_sectors = 100U,       /**< Too small for any FAT band.             */
+  k_tiny_overhead_secs = 1U,         /**< Reserved / root span for the tiny geom. */
+  k_clear_lba          = 0U,         /**< Region base for the clear-region calls. */
+  k_clear_count        = 1U,         /**< One sector cleared per call.            */
 } ra8_fs_fmt_mcdc_t;
 
 /**
