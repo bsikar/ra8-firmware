@@ -12,7 +12,7 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: pre-commit-checks, annotations, doc-attachment, cite-check, hil-eil-parity
+# Gates in this file: pre-commit-checks, annotations, doc-attachment, init-order-freshness, cite-check, hil-eil-parity
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
@@ -352,6 +352,25 @@ gate_pre_commit_checks() (
   _pcc_security_invariants
   _pcc_mcdc_discipline
   _pcc_docs_and_tests
+)
+
+# --- init-order-freshness -------------------------------------------------
+# docs/INIT_ORDER_AUDIT.md is COMMITTED yet GENERATED (mk/docs.mk writes it via
+# audit_init_order.py --report). Nothing regenerated it and byte-compared the
+# committed copy, so it silently drifted -- it claimed 11 apps while the tree
+# held 217, for as long as the discovery glob was depth-capped (#190/#537). It
+# is cited from docs/qualification/, so a stale copy misrepresents the boot
+# order to the qualification set. This gate regenerates it from the current
+# tree and FAILS if the committed copy differs. The generator is hardware-free
+# and reads a sorted glob (byte-stable across runs), so unlike the slow
+# artefact-freshness gate this one needs no build output. --selftest FIRST,
+# both directions, so a comparator that stopped detecting drift cannot pass as
+# a clean tree.
+gate_init_order_freshness() (
+  set -e
+  require_cmd python3 "the init-order-freshness gate regenerates docs/INIT_ORDER_AUDIT.md"
+  python3 scripts/checks/check_init_order_freshness.py --selftest
+  python3 scripts/checks/check_init_order_freshness.py
 )
 
 # --- bench-lock -----------------------------------------------------------

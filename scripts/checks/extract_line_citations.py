@@ -36,6 +36,7 @@ from line_citation_lex import (
     CITATION_RE,
     all_tracked_files,
     find_comment_spans,
+    find_mcdc_reason_spans,
     is_exempt,
     line_of_offset,
 )
@@ -147,13 +148,20 @@ def _rows_for_file(repo_root: Path, rel: str) -> Iterator[list[object]]:
     except OSError:
         return
     lines = text.splitlines()
-    for start, end in find_comment_spans(text):
+    seen: set[tuple[int, str]] = set()
+    # Comments AND RA8_MCDC_DEACTIVATED(...) reason strings, so this aid lists
+    # exactly the set check_line_citations flags -- the gate scans both, and the
+    # two tools must not describe different trees (#547).
+    for start, end in find_comment_spans(text) + find_mcdc_reason_spans(text):
         for m in CITATION_RE.finditer(text[start:end]):
             line_no = line_of_offset(text, start + m.start())
             matched = m.group(0)
             line = lines[line_no - 1] if 1 <= line_no <= len(lines) else ""
             if is_exempt(matched, line):
                 continue
+            if (line_no, matched) in seen:
+                continue
+            seen.add((line_no, matched))
             yield [
                 rel,
                 line_no,

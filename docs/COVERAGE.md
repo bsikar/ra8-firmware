@@ -112,10 +112,12 @@ gate prints a `HINT` suggesting the new numbers. Updating the
 baseline downward is forbidden; the only acceptable direction is
 upward.
 
-`WARN_ONLY_MODE = True` in `check_coverage.py` keeps the gate
-in advisory mode for the first few CI runs while we verify the
-baseline is reproducible on GitHub Actions. Once stable, flip to
-`False` to make the gate blocking.
+The gate is **blocking**: `check_coverage.py` exits non-zero when
+either metric regresses below baseline by more than the 0.5pp
+slack band, and the `coverage-report` CI gate fails the run. It
+ran advisory only during initial baseline bring-up on GitHub
+Actions; that period is over and the baseline has been stable
+across CI runs.
 
 ## CI
 
