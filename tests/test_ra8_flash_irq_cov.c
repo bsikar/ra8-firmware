@@ -168,7 +168,7 @@ static void test_dispatch_mastat_mreae(void)
   s_cov_cb_last  = (ra8_flash_irq_src_t)0U;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_callback_set(cov_callback, nullptr));
-  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3562 */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mastat) = (uint8_t)k_ra8_mastat_mask_mreae;
   const uint32_t n                                = ra8_flash_dispatch_isr();
   TEST_ASSERT_EQ(1, n);
@@ -207,7 +207,7 @@ static void test_dispatch_mastat_cmdlk(void)
   s_cov_cb_last  = (ra8_flash_irq_src_t)0U;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_callback_set(cov_callback, nullptr));
-  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3562 */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mastat) = (uint8_t)k_ra8_mastat_mask_cmdlk;
   const uint32_t n                                = ra8_flash_dispatch_isr();
   TEST_ASSERT_EQ(1, n);
@@ -292,7 +292,7 @@ static void test_erase_happy_path(void)
    * immediately.  ABUFEMP=1 satisfies internal_wait_commit_done; PRGBSYC=0
    * and ABUFFULL=0 (both clear in 0x20) satisfy internal_wait_buffer_ready;
    * no error bits are set so the post-write status check also passes. */
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = (uint8_t)k_ra8_mrcps_mask_abufemp;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_erase((uintptr_t)k_ra8_flash_code_start, 1U));
@@ -333,7 +333,7 @@ static void test_erase_loop_hw_error(void)
 
   /* ABUFEMP satisfies both spin-loops; PRGERRC is detected by the post-write
    * error check in ra8_flash_write_block -> k_ra8_err_hw_error propagates up. */
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) =
     (uint8_t)(k_ra8_mrcps_mask_abufemp | k_ra8_mrcps_mask_prgerrc);
 
@@ -374,7 +374,7 @@ static void test_write_happy_path(void)
   const ra8_flash_cfg_t cfg = cfg_make();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = (uint8_t)k_ra8_mrcps_mask_abufemp;
 
   const uint8_t buf[k_ra8_mram_write_size_bytes] = {};
@@ -415,7 +415,7 @@ static void test_write_loop_hw_error(void)
   const ra8_flash_cfg_t cfg = cfg_make();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) =
     (uint8_t)(k_ra8_mrcps_mask_abufemp | k_ra8_mrcps_mask_prgerrc);
 
