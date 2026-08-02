@@ -130,6 +130,7 @@ RA8_GATE_REGISTRY=(
   "annotations|fast|RA8_* annotation attributes (libclang)"
   "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
   "init-order-freshness|fast|committed docs/INIT_ORDER_AUDIT.md matches a fresh regenerate"
+  "roadmap-dashboard-freshness|fast|committed docs/ROADMAP_DASHBOARD.md matches a fresh regenerate"
   "lint-py-shell|fast|ruff + shellcheck + shfmt"
   "lint-cmake|fast|cmake-format + cmake-lint over every listfile"
   "lint-yaml|fast|yamllint + actionlint over the workflows"
