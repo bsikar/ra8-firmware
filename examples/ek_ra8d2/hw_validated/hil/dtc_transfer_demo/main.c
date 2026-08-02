@@ -385,7 +385,7 @@ static void dtc_demo_program_ti(void)
   if (slot_reg == nullptr) {
     return k_ra8_err_hw_error;
   }
-  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n" p 524:
+  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n" p 547:
    * DTCE[24] enables DTC activation; IR[16] is the RW1C status flag. */
   const uint32_t cur = *slot_reg;
   *slot_reg          = cur | (uint32_t)k_ra8_ielsr_dtce_mask;

@@ -261,16 +261,16 @@ static void internal_install_default_afl(volatile r_canfd_t* reg)
   /* HUM Ch 41 "CFDGAFLCFG0" p 2730 */ /* RNC0 = 1 -> one rule on page 0. */
   reg->CFDGAFLCFG0 = 1UL << 16U;
 
-  /* HUM Ch 41 "CFDGAFLECTR" p 2729 */ /* page 0, AFLDAE = 1 unlocks edit. */
+  /* HUM Ch 41 "CFDGAFLECTR" p 2734 */ /* page 0, AFLDAE = 1 unlocks edit. */
   reg->CFDGAFLECTR = k_ra8_gaflectr_bit_afldae;
 
-  /* HUM Ch 41 "CFDGAFLID" p 2731 */ /* accept-id ignored: mask = 0. */
+  /* HUM Ch 41 "CFDGAFLID" p 2735 */ /* accept-id ignored: mask = 0. */
   reg->CFDGAFL[0].ID = 0U;
-  /* HUM Ch 41 "CFDGAFLM" p 2732 */ /* mask = 0 -> accept every ID. */
+  /* HUM Ch 41 "CFDGAFLM" p 2736 */ /* mask = 0 -> accept every ID. */
   reg->CFDGAFL[0].M = 0U;
-  /* HUM Ch 41 "CFDGAFLP0" p 2733 */ /* no RX-MB routing requested. */
+  /* HUM Ch 41 "CFDGAFLP0" p 2738 */ /* no RX-MB routing requested. */
   reg->CFDGAFL[0].P0 = 0U;
-  /* HUM Ch 41 "CFDGAFLP1" p 2734 */ /* GAFLFDP0 = bit 0 -> RX FIFO 0. */
+  /* HUM Ch 41 "CFDGAFLP1" p 2740 */ /* GAFLFDP0 = bit 0 -> RX FIFO 0. */
   reg->CFDGAFL[0].P1 = 1UL << 0U;
 
   /* Re-lock the AFL data window. */
@@ -432,7 +432,7 @@ static ra8_err_t internal_canfd_clock_block_init(void)
   ra8_err_t err = k_ra8_ok;
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
   {
-    /* HUM Ch 9.2.41 "CANFDCKDIVCR" p 363 -- /1 divider keeps MOCO at
+    /* HUM Ch 9.2.41 "CANFDCKDIVCR" p 357 -- /1 divider keeps MOCO at
      * its native rate (~8 MHz nominal; PCLKA on this project is
      * 100 MHz so MOCO < PCLKA satisfies HUM Ch 41.1.2 clock
      * restriction CANFDCLK <= PCLKA). */
@@ -526,7 +526,7 @@ ra8_err_t ra8_canfd_init(uint8_t channel)
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "canfd_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* Wait for RAM init done (CFDGSTS.GRAMINIT clears). */
-  /* HUM Ch 41.2 "CFDGSTS : Global Status Register" p 2746 */
+  /* HUM Ch 41.2 "CFDGSTS : Global Status Register" p 2730 */
   for (uint32_t i = 0U; i < k_ra8_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
     if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra8_gsts_bit_graminit)) ==
         0U) { /* GCOVR_EXCL_BR_LINE */

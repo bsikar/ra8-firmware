@@ -126,7 +126,7 @@ typedef enum : uint32_t {
     }
     mb->m33_heartbeat = mb->m33_heartbeat + 1U;
 
-    /* HUM Ch 20.2 "PCNTR2 : Port Control Register 2" p 840 -- read PIDR; bit 9
+    /* HUM Ch 20.2 "PCNTR2 : Port Control Register 2" p 841 -- read PIDR; bit 9
      * is SW1 (P009), active-low (pressed = 0). */
     const uint32_t pidr    = *pcntr2;
     const uint32_t sw1_now = (pidr >> (uint32_t)k_sw1_pidr_bit) & 1U;
@@ -147,7 +147,7 @@ typedef enum : uint32_t {
     if (led != 0U) {
       value |= (uint32_t)k_led1_podr_on;
     }
-    /* HUM Ch 20.2 "PCNTR1 : Port Control Register 1" p 838 -- write {PODR, PDR}:
+    /* HUM Ch 20.2 "PCNTR1 : Port Control Register 1" p 840 -- write {PODR, PDR}:
      * hold PORT6 pin 0 an output and drive LED1 (BLUE, P600) to the new level. */
     *pcntr1 = value;
   }

@@ -288,7 +288,7 @@ static void internal_usbfs_isr(void* ctx)
   (void)ctx;
   s_isr_invocations++;
 
-  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985.
+  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986.
    * event_msk is the real-event set: INTENB0 (BRDY/NRDY/BEMP/CTRT/
    * DVST/VBSE) plus VALID. RSME / SOFR / status bits are excluded --
    * they re-assert the NVIC line on their own and are what storms. */
@@ -389,7 +389,7 @@ static void internal_usbhs_isr(void* ctx)
   (void)ctx;
   s_isr_invocations++;
 
-  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985.
+  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986.
    *
    * Snapshot INTSTS0 first and gate on event bits (8..15 + VALID in
    * bit 3). DVSQ[6:4] and VBSTS[7] are status-only and must NEVER be

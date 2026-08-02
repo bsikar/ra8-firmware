@@ -105,7 +105,7 @@ typedef enum : uint32_t {
     if (level != 0U) {
       value |= (uint32_t)k_led1_podr_on;
     }
-    /* HUM Ch 20.2 "PCNTR1 : Port Control Register 1" p 838 -- write {PODR, PDR}:
+    /* HUM Ch 20.2 "PCNTR1 : Port Control Register 1" p 840 -- write {PODR, PDR}:
      * hold PORT6 pin 0 an output and drive LED1 (BLUE, P600) to the new level. */
     *pcntr1 = value;
   }

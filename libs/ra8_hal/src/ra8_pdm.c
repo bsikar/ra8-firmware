@@ -113,7 +113,7 @@ static void pdm_write_coeffs(volatile r_pdm_ch_regs_t* reg, const ra8_pdm_channe
     /* HUM Ch 49.2 "PDCFCHnnRCHn : Compensation filter Coefficient" p 3213 */
     reg->PDCFCHR[i] = (uint32_t)cfg->comp_h[i];
   }
-  /* HUM Ch 49.2 "PDLFCH010RCHn : Low-pass filter Coefficient h0(10)" p 3218 */
+  /* HUM Ch 49.2 "PDLFCH010RCHn : Low-pass filter Coefficient h0(10)" p 3216 */
   reg->PDLFCH010R = (uint32_t)cfg->lpf_h0;
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_pdm_lpf_h1_count; ++i) {
     /* HUM Ch 49.2 "PDLFCH1nnRCHn : Low-pass filter Coefficient h1" p 3218 */
@@ -158,9 +158,9 @@ ra8_err_t ra8_pdm_init(void)
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "pdm_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   volatile r_pdm_regs_t* reg = ra8_pdm();
-  /* HUM Ch 49.2.4 "PDCICR : Channel Interrupt Control Register" p 3197 */
+  /* HUM Ch 49.2.4 "PDCICR : Channel Interrupt Control Register" p 3198 */
   reg->PDCICR = 0U;
-  /* HUM Ch 49.2.9 "PDCDRCR : Channel Data Read Control Register" p 3201 */
+  /* HUM Ch 49.2.9 "PDCDRCR : Channel Data Read Control Register" p 3202 */
   reg->PDCDRCR = 0U;
   ra8_log_info(s_tag, "pdm_init");
   return k_ra8_ok;
@@ -169,7 +169,7 @@ ra8_err_t ra8_pdm_init(void)
 ra8_err_t ra8_pdm_deinit(void)
 {
   volatile r_pdm_regs_t* reg = ra8_pdm();
-  /* HUM Ch 49.2.9 "PDCDRCR : Channel Data Read Control Register" p 3201 */
+  /* HUM Ch 49.2.9 "PDCDRCR : Channel Data Read Control Register" p 3202 */
   reg->PDCDRCR = 0U;
   return ra8_mstp_disable(k_ra8_mstp_pdmif);
 }
