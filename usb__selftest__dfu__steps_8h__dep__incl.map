@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/inc/usb_selftest_dfu_steps.h" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/inc/usb_selftest_dfu_steps.h">
+<area shape="rect" id="Node000001" title="Shared constants + host&#45;side DFU ladder interface for usb_selftest_dfu." alt="" coords="113,5,305,75"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__dfu_2main_8c.html" title="USB self&#45;loop: HS host DFU&#45;downloads firmware to an FS DFU device, uploads + verifies." alt="" coords="5,130,197,185"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="170,87,128,132,124,128,166,83"/>
+<area shape="rect" id="Node000003" href="$usb__selftest__dfu__steps_8c.html" title="Host&#45;side DFU ladder + console helpers for usb_selftest_dfu." alt="" coords="221,123,413,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="252,83,288,121,284,124,248,87"/>
+</map>

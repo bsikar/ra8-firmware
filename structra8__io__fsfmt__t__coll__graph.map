@@ -1,0 +1,7 @@
+<map id="ra8_io_fsfmt_t" name="ra8_io_fsfmt_t">
+<area shape="rect" id="Node000001" title="One registered filesystem format." alt="" coords="108,101,224,127"/>
+<area shape="rect" id="Node000002" href="$structra8__io__fsfmt__caps__t.html" title="What a filesystem format supports." alt="" coords="5,5,159,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,39,158,99,154,103,99,43"/>
+<area shape="rect" id="Node000003" href="$structra8__fs__backend__t.html" title="Block&#45;device interface that ra8_fs runs on top of." alt="" coords="183,5,317,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="233,43,178,103,174,99,229,39"/>
+</map>

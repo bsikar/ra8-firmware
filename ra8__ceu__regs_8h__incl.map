@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_ceu_regs.h" name="libs/ra8_hal/inc/ra8_ceu_regs.h">
+<area shape="rect" id="Node000001" title="Capture Engine Unit (CEU) register layout for the RA8D2." alt="" coords="29,5,175,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="71,47,46,68,27,94,23,109,23,124,31,153,26,155,18,125,18,108,22,92,42,64,68,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="121,167,246,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="136,43,161,64,182,92,190,123,190,153,185,153,185,124,177,94,158,68,133,48"/>
+<area shape="rect" id="Node000004" href="$ra8__glcdc__regs_8h.html" title="Graphics LCD Controller (GLCDC) register layout for the RA8D2." alt="" coords="37,93,167,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="105,46,105,79,99,79,99,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="94,121,62,158,58,154,90,117"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="117,117,162,156,158,160,113,121"/>
+</map>

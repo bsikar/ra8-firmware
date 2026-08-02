@@ -1,0 +1,29 @@
+<map id="libs/ra8_fs/src/ra8_fs_fat_protos_a_internal.h" name="libs/ra8_fs/src/ra8_fs_fat_protos_a_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU helper prototypes for the FAT/exFAT adapter (part A of 2)." alt="" coords="941,5,1140,45"/>
+<area shape="rect" id="Node000002" href="$ra8__fs__fat__internal_8h.html" title="Cross&#45;TU shared declarations for the FAT/exFAT ra8_fs adapter." alt="" coords="972,93,1109,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1043,59,1043,93,1038,93,1038,59"/>
+<area shape="rect" id="Node000003" href="$ra8__fs__fat_8c.html" title="FAT12/FAT16/FAT32 low&#45;level primitives for the ra8_fs adapter." alt="" coords="5,181,143,221"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="958,119,808,125,607,137,382,156,154,184,143,186,142,181,154,179,381,150,607,131,807,120,958,114"/>
+<area shape="rect" id="Node000004" href="$ra8__fs__fat__dir_8c.html" title="FAT listdir / mkdir / unlink / rename directory operations." alt="" coords="167,181,304,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="959,121,673,141,495,159,316,184,305,186,304,181,315,179,494,154,673,136,958,116"/>
+<area shape="rect" id="Node000005" href="$ra8__fs__fat__exfat__fmt_8c.html" title="exFAT formatter (mkfs) for the ra8_fs adapter." alt="" coords="328,181,476,221"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="959,125,745,148,488,184,477,186,476,181,487,179,744,142,958,119"/>
+<area shape="rect" id="Node000006" href="$ra8__fs__fat__exfat__mutate_8c.html" title="exFAT unlink / rename / listdir mutation helpers." alt="" coords="500,181,672,221"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="959,133,685,184,673,186,672,181,684,179,958,127"/>
+<area shape="rect" id="Node000007" href="$ra8__fs__fat__exfat__read_8c.html" title="exFAT directory scan and read&#45;path open." alt="" coords="697,181,851,221"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="970,140,833,184,832,179,968,135"/>
+<area shape="rect" id="Node000008" href="$ra8__fs__fat__exfat__write_8c.html" title="exFAT allocation&#45;bitmap and whole&#45;file write path." alt="" coords="876,181,1035,221"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="1014,145,976,183,972,179,1010,141"/>
+<area shape="rect" id="Node000009" href="$ra8__fs__fat__file_8c.html" title="FAT open / close path and directory resolution." alt="" coords="1059,181,1196,221"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="1071,141,1110,179,1106,183,1068,145"/>
+<area shape="rect" id="Node000010" href="$ra8__fs__fat__fileio_8c.html" title="FAT read / write / seek / tell / size I/O." alt="" coords="1220,181,1357,221"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="1109,135,1235,179,1234,184,1107,140"/>
+<area shape="rect" id="Node000011" href="$ra8__fs__fat__fmt_8c.html" title="FAT12/16/32 formatter (mkfs) for the ra8_fs adapter." alt="" coords="1381,181,1519,221"/>
+<area shape="poly" id="edge10_Node000002_Node000011" title=" " alt="" coords="1123,128,1371,179,1382,181,1381,186,1369,184,1122,133"/>
+<area shape="rect" id="Node000012" href="$ra8__fs__fat__lfn_8c.html" title="VFAT long&#45;filename (LFN) read support for the FAT adapter." alt="" coords="1543,181,1680,221"/>
+<area shape="poly" id="edge11_Node000002_Node000012" title=" " alt="" coords="1123,121,1311,144,1532,179,1543,181,1542,186,1531,184,1310,149,1123,126"/>
+<area shape="rect" id="Node000013" href="$ra8__fs__fat__mount_8c.html" title="FAT/exFAT volume detection, geometry, and mount/unmount." alt="" coords="1704,181,1841,221"/>
+<area shape="poly" id="edge12_Node000002_Node000013" title=" " alt="" coords="1123,117,1378,138,1536,156,1693,179,1704,181,1703,186,1692,184,1535,161,1378,144,1123,122"/>
+<area shape="rect" id="Node000014" href="$ra8__fs__fat__name_8c.html" title="FAT 8.3 short&#45;name pack/unpack and directory walking." alt="" coords="1865,181,2003,221"/>
+<area shape="poly" id="edge13_Node000002_Node000014" title=" " alt="" coords="1124,115,1445,133,1649,152,1854,179,1866,181,1865,186,1854,184,1648,157,1444,139,1123,120"/>
+</map>

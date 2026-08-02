@@ -1,0 +1,15 @@
+<map id="libs/ra8_hal/inc/ra8_ulpt_regs.h" name="libs/ra8_hal/inc/ra8_ulpt_regs.h">
+<area shape="rect" id="Node000001" title="Ultra&#45;Low&#45;Power Timer (ULPT) register layout for the Renesas RA8D2." alt="" coords="301,5,447,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__periodic__idle_2main_8c.html" title="Periodic&#45;app deep&#45;idle loop: wake&#45;do&#45;work&#45;standby on ULPT0 self&#45;wake." alt="" coords="5,181,188,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="335,55,138,183,136,179,332,51"/>
+<area shape="rect" id="Node000003" href="$ra8__ulpt_8h.html" title="Ultra&#45;Low&#45;Power Timer (ULPT) driver header." alt="" coords="301,93,447,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="377,59,377,93,371,93,371,59"/>
+<area shape="rect" id="Node000006" href="$ra8__ulpt_8c.html" title="Ultra&#45;Low&#45;Power Timer driver implementation." alt="" coords="625,189,771,229"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="421,50,666,186,663,191,418,54"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="306,140,176,184,174,179,304,135"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__ulpt__standby_2main_8c.html" title="ULPT0&#45;underflow wake from Software Standby (LPSCR.LPMD = 0x5)." alt="" coords="212,181,395,236"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="354,146,325,183,321,180,349,143"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ulpt__demo_2main_8c.html" title="ULPT 1 Hz wake&#45;from&#45;software&#45;standby demo for EK&#45;RA8D2." alt="" coords="419,181,601,236"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="415,139,473,179,470,183,412,143"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="458,134,615,179,639,186,638,191,613,184,456,140"/>
+</map>

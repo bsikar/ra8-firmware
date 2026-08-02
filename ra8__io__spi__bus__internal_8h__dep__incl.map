@@ -1,0 +1,9 @@
+<map id="libs/ra8_io/src/ra8_io_spi_bus_internal.h" name="libs/ra8_io/src/ra8_io_spi_bus_internal.h">
+<area shape="rect" id="Node000001" title="Internal vtable type for the ra8_io SPI&#45;bus facade." alt="" coords="163,5,329,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__spi__bus_8c.html" title="SPI&#45;bus dispatcher – forwards each public call into the bound backend vtable, and bridges any backend..." alt="" coords="5,93,143,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="197,54,113,96,110,91,195,49"/>
+<area shape="rect" id="Node000003" href="$ra8__io__spi__bus__sci__spi_8c.html" title="SCI Simple&#45;SPI backend for the ra8_io SPI&#45;bus facade – thin shim over ra8_sci_spi." alt="" coords="167,93,325,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="249,59,249,93,243,93,243,59"/>
+<area shape="rect" id="Node000004" href="$ra8__io__spi__bus__spi__b_8c.html" title="SPI_B backend for the ra8_io SPI&#45;bus facade – thin shim over ra8_spi." alt="" coords="350,93,499,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="299,49,387,91,384,96,296,54"/>
+</map>

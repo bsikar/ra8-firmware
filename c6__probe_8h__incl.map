@@ -1,0 +1,26 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/c6_probe.h" name="examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/c6_probe.h">
+<area shape="rect" id="Node000001" title="Shared contract for the EK&#45;RA8D2 &lt;&#45;&gt; ESP32&#45;C6 esp&#45;hosted SPI probe." alt="" coords="59,5,232,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="321,401,391,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,62,70,86,39,116,17,152,10,172,8,193,8,269,10,291,17,311,27,328,41,344,77,369,121,387,170,399,219,407,307,411,307,417,219,412,169,404,119,392,74,374,37,348,23,331,12,313,5,292,3,269,3,193,5,171,12,150,35,113,66,82,98,58"/>
+<area shape="rect" id="Node000003" href="$c6__proto_8h.html" title="The esp&#45;hosted SPI full&#45;duplex wire format, hand&#45;decoded." alt="" coords="43,181,133,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="138,61,99,169,94,168,133,59"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="233,328,311,353"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="159,59,264,314,259,316,154,61"/>
+<area shape="rect" id="Node000005" href="$ra8__spi_8h.html" title="SPI_B controller driver (RA8D2 Type&#45;B SPI peripheral)." alt="" coords="263,108,345,133"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="195,58,272,99,269,104,193,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="97,206,144,274,180,315,222,351,265,376,309,395,307,400,262,381,218,356,176,319,139,277,93,209"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="287,351,333,390,330,394,284,355"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="335,131,392,157,460,198,494,225,526,255,553,289,575,327,579,351,571,371,553,386,528,397,467,410,406,415,405,410,466,405,526,392,550,382,566,368,574,351,569,329,549,292,522,258,491,229,457,203,389,162,333,136"/>
+<area shape="poly" id="edge16_Node000005_Node000004" title=" " alt="" coords="304,134,284,255,277,315,272,314,279,254,299,133"/>
+<area shape="rect" id="Node000006" href="$ra8__dma_8h.html" title="Generic DMA transfer substrate (DMAC engine)." alt="" coords="313,181,404,207"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="315,132,344,169,339,172,311,135"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="379,205,403,225,422,254,425,267,423,281,400,342,373,391,369,389,395,340,417,279,420,267,418,256,399,229,375,209"/>
+<area shape="poly" id="edge15_Node000006_Node000004" title=" " alt="" coords="345,209,321,229,300,256,286,286,279,315,273,314,281,284,295,253,317,226,341,205"/>
+<area shape="rect" id="Node000007" href="$ra8__dmac_8h.html" title="8&#45;channel DMA controller (DMAC0) driver" alt="" coords="309,255,408,280"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="361,207,361,241,356,241,356,207"/>
+<area shape="rect" id="Node000008" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="445,328,561,353"/>
+<area shape="poly" id="edge13_Node000006_Node000008" title=" " alt="" coords="391,204,429,224,466,253,486,283,498,314,493,316,481,285,462,256,426,228,389,209"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="361,281,359,388,354,388,356,280"/>
+<area shape="poly" id="edge12_Node000007_Node000004" title=" " alt="" coords="346,282,298,321,295,317,343,278"/>
+<area shape="poly" id="edge14_Node000008_Node000002" title=" " alt="" coords="480,356,393,398,391,393,478,351"/>
+</map>

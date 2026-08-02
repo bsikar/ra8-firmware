@@ -1,0 +1,11 @@
+<map id="libs/ra8_webp/inc/ra8_webp.h" name="libs/ra8_webp/inc/ra8_webp.h">
+<area shape="rect" id="Node000001" title="Zero&#45;heap WebP (VP8 / VP8L) decode facade over the vendored libwebp." alt="" coords="282,5,442,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2webp__decode__demo_2main_8c.html" title="On&#45;target WebP decode smoke test (ra8_webp over vendored libwebp)." alt="" coords="5,93,180,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="296,52,169,96,168,91,294,47"/>
+<area shape="rect" id="Node000003" href="$ra8__jof__produce_8c.html" title="Transcode producer: sniff, decode, tile, encode, emit (#231, #290)." alt="" coords="204,101,347,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="337,57,295,102,291,99,333,54"/>
+<area shape="rect" id="Node000004" href="$ra8__jof__produce__webp_8c.html" title="Transcode producer: whole&#45;frame WebP arm (#290 normalize&#45;on&#45;import)." alt="" coords="371,101,529,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="391,53,434,99,430,102,387,57"/>
+<area shape="rect" id="Node000005" href="$ra8__webp_8c.html" title="Zero&#45;heap WebP decode facade over the vendored libwebp (impl)." alt="" coords="554,101,714,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="431,47,580,98,578,103,429,52"/>
+</map>

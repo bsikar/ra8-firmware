@@ -1,0 +1,7 @@
+<map id="libs/ra8_unarch/src/ra8_unarch_tar_internal.h" name="libs/ra8_unarch/src/ra8_unarch_tar_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private tar field/record parsers shared across the tar TUs." alt="" coords="73,5,265,45"/>
+<area shape="rect" id="Node000002" href="$ra8__unarch__tar_8c.html" title="Streaming tar walker: open / next / read over the shared read seam." alt="" coords="5,93,149,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="141,57,100,95,96,91,137,53"/>
+<area shape="rect" id="Node000003" href="$ra8__unarch__tar__fields_8c.html" title="Untrusted&#45;byte parsers for the tar walker: numerics, checksum, pax." alt="" coords="173,93,349,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="201,53,243,91,239,95,198,57"/>
+</map>

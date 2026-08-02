@@ -1,0 +1,89 @@
+<map id="libs/ra8_hal/inc/ra8_i2c_bus_ops.h" name="libs/ra8_hal/inc/ra8_i2c_bus_ops.h">
+<area shape="rect" id="Node000001" title="Injected I2C&#45;bus seam consumed by Ring&#45;3 I2C device drivers." alt="" coords="1524,5,1669,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="464,269,671,324"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1511,36,1327,56,1220,73,1115,96,975,137,839,185,626,272,624,267,837,180,973,132,1113,91,1219,68,1326,51,1510,30"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__cal_2main_8c.html" title="N&#45;point affine touch&#45;calibration demo + HIL gate (#262)." alt="" coords="695,269,888,324"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1511,38,1375,59,1298,75,1224,96,1113,137,1005,185,838,271,836,267,1003,180,1111,132,1223,91,1297,70,1374,54,1510,33"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__demo_2main_8c.html" title="Standalone GoodIX GT911 capacitive&#45;touch bring&#45;up demo + HIL (#122)." alt="" coords="912,269,1105,324"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1511,40,1409,61,1355,76,1303,96,1224,137,1151,185,1087,232,1040,271,1036,267,1084,228,1148,180,1222,132,1301,91,1353,71,1408,55,1510,35"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2battery__monitor__demo_2main_8c.html" title="Battery state&#45;of&#45;charge monitor over a MAX17048&#45;class fuel gauge." alt="" coords="5,269,196,324"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1510,31,1223,37,848,49,503,68,379,81,307,96,275,111,245,131,191,179,149,229,119,271,114,268,144,225,187,175,242,127,272,106,305,91,378,76,503,63,848,44,1223,31,1510,25"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__pending_2ereader__comic_2main_8c.html" title="Viewable page&#45;turn comic reader – baked CBZ decoded to the 1024x600 GLCDC panel, tap&#45;zone navigation ..." alt="" coords="1130,269,1311,324"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1511,46,1448,65,1379,93,1312,132,1281,156,1255,183,1242,203,1233,226,1224,270,1219,269,1228,224,1237,201,1251,180,1278,152,1309,128,1376,88,1446,60,1510,41"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__pending_2ereader__longstrip_2main_8c.html" title="Viewable continuous vertical&#45;scroll (longstrip / manhwa) reader (#289)." alt="" coords="1548,269,1747,324"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1621,55,1655,111,1671,145,1683,181,1686,205,1682,229,1666,270,1661,268,1677,227,1680,205,1678,182,1666,147,1651,114,1617,58"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__pending_2ereader__manga_2main_8c.html" title="Viewable manga reader: pan/zoom a page larger than the panel (Demo B)." alt="" coords="1771,269,1958,324"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1631,52,1675,91,1769,187,1843,267,1839,271,1765,191,1671,95,1628,56"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="1982,269,2161,324"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1683,33,1832,55,1900,71,1946,91,1969,110,1990,131,2024,180,2049,228,2065,268,2060,270,2044,230,2020,183,1986,135,1966,114,1943,96,1898,76,1831,60,1683,38"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__pending_2smbus__demo_2main_8c.html" title="SMBus 3.2 protocol&#45;layer demo + HIL over IIC_B (#128)." alt="" coords="220,277,440,317"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1510,33,1269,53,1124,71,979,96,803,139,633,190,486,240,380,279,378,274,484,235,632,185,802,134,977,91,1123,65,1269,47,1510,28"/>
+<area shape="rect" id="Node000011" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="2185,269,2358,324"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1683,28,1751,35,1828,46,1908,65,1986,91,2064,131,2137,179,2199,227,2245,267,2242,271,2196,231,2134,183,2061,135,1984,96,1907,70,1827,52,1750,40,1683,33"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hw__validated_2hil_2iic__b__facade__demo_2main_8c.html" title="IIC_B (I3C block in I2C&#45;compat mode) facade controller + peripheral demo." alt="" coords="2382,269,2555,324"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1683,30,1851,49,1947,67,2041,91,2153,131,2261,179,2355,227,2426,267,2423,272,2352,232,2258,184,2151,136,2040,96,1946,72,1850,54,1683,35"/>
+<area shape="rect" id="Node000013" href="$ra8__smbus_8h.html" title="SMBus 3.2 protocol layer over an injected I2C bus seam." alt="" coords="359,93,504,133"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="1510,35,677,96,505,109,504,104,676,91,1510,30"/>
+<area shape="rect" id="Node000014" href="$ra8__smbus_8c.html" title="SMBus 3.2 protocol layer over an injected I2C bus seam – implementation." alt="" coords="211,181,356,221"/>
+<area shape="poly" id="edge27_Node000001_Node000014" title=" " alt="" coords="1510,29,1230,31,865,40,688,49,532,60,414,76,373,85,347,96,326,114,310,136,291,182,286,180,306,134,322,110,345,91,372,80,413,71,532,55,687,43,865,35,1230,26,1510,24"/>
+<area shape="rect" id="Node000015" href="$ra8__touch_8h.html" title="Multi&#45;touch input driver – GoodIX GT911 backend." alt="" coords="1524,181,1669,221"/>
+<area shape="poly" id="edge16_Node000001_Node000015" title=" " alt="" coords="1599,59,1599,181,1594,181,1594,59"/>
+<area shape="rect" id="Node000017" href="$ra8__touch_8c.html" title="Multi&#45;touch input driver – GoodIX GT911 backend (implementation)." alt="" coords="2956,277,3101,317"/>
+<area shape="poly" id="edge28_Node000001_Node000017" title=" " alt="" coords="1684,26,1884,36,2161,60,2316,80,2476,106,2636,138,2791,179,2850,200,2908,225,2999,274,2996,279,2905,230,2848,205,2789,184,2635,144,2475,111,2315,85,2160,65,1884,41,1683,31"/>
+<area shape="rect" id="Node000018" href="$ra8__io__i2c__bus_8h.html" title="ra8_io I2C&#45;bus facade – one controller&#45;transfer vtable over thechip&#39;s two I2C implementations." alt="" coords="1796,93,1933,133"/>
+<area shape="poly" id="edge29_Node000001_Node000018" title=" " alt="" coords="1669,47,1807,91,1805,96,1668,52"/>
+<area shape="rect" id="Node000023" href="$ra8__io__i2c__bus_8c.html" title="I2C&#45;bus dispatcher – forwards each public call into the bound backend vtable, and bridges any backend..." alt="" coords="3125,277,3263,317"/>
+<area shape="poly" id="edge63_Node000001_Node000023" title=" " alt="" coords="1683,25,1839,30,2045,41,2277,60,2510,91,2610,109,2686,127,2859,179,3015,229,3143,274,3142,279,3013,234,2857,184,2685,132,2609,114,2510,96,2276,66,2044,46,1839,35,1683,31"/>
+<area shape="poly" id="edge13_Node000013_Node000005" title=" " alt="" coords="422,147,401,187,387,207,369,224,307,243,197,273,196,268,306,238,366,219,383,203,397,184,418,145"/>
+<area shape="poly" id="edge14_Node000013_Node000010" title=" " alt="" coords="434,147,429,185,415,223,390,254,361,279,358,275,386,251,410,220,424,183,428,147"/>
+<area shape="poly" id="edge15_Node000013_Node000014" title=" " alt="" coords="388,143,317,184,314,179,385,138"/>
+<area shape="poly" id="edge17_Node000015_Node000002" title=" " alt="" coords="1510,224,1384,238,1277,245,1094,247,912,250,806,257,682,272,671,274,671,268,682,267,806,252,912,245,1094,242,1277,240,1384,233,1510,219"/>
+<area shape="poly" id="edge18_Node000015_Node000003" title=" " alt="" coords="1510,224,1338,242,1203,247,1069,252,991,259,900,272,889,274,888,269,899,267,990,254,1068,247,1202,241,1337,237,1510,219"/>
+<area shape="poly" id="edge19_Node000015_Node000004" title=" " alt="" coords="1511,224,1399,239,1312,247,1226,256,1118,272,1106,274,1105,269,1118,267,1226,250,1312,242,1399,234,1510,219"/>
+<area shape="poly" id="edge20_Node000015_Node000006" title=" " alt="" coords="1511,226,1324,272,1312,275,1311,270,1323,267,1510,221"/>
+<area shape="poly" id="edge21_Node000015_Node000007" title=" " alt="" coords="1616,232,1635,268,1631,271,1611,235"/>
+<area shape="poly" id="edge22_Node000015_Node000008" title=" " alt="" coords="1665,223,1790,267,1788,272,1663,228"/>
+<area shape="poly" id="edge23_Node000015_Node000009" title=" " alt="" coords="1683,214,1819,237,1971,267,1982,269,1981,275,1969,272,1818,242,1682,219"/>
+<area shape="poly" id="edge24_Node000015_Node000011" title=" " alt="" coords="1683,206,1906,228,2040,245,2173,267,2185,269,2184,274,2172,272,2039,250,1905,233,1683,211"/>
+<area shape="rect" id="Node000016" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="1336,269,1524,324"/>
+<area shape="poly" id="edge25_Node000015_Node000016" title=" " alt="" coords="1552,231,1478,272,1476,267,1549,226"/>
+<area shape="poly" id="edge26_Node000015_Node000017" title=" " alt="" coords="1683,201,1955,208,2319,220,2681,239,2831,252,2945,267,2976,274,2975,279,2944,272,2831,257,2681,244,2319,225,1955,213,1683,207"/>
+<area shape="poly" id="edge30_Node000018_Node000002" title=" " alt="" coords="1782,117,1640,119,1453,128,1244,148,1139,164,1036,184,1005,193,982,203,928,224,860,241,806,251,683,272,672,274,671,269,681,267,805,245,859,236,927,219,980,198,1003,188,1035,179,1138,159,1244,143,1453,123,1639,113,1782,111"/>
+<area shape="poly" id="edge31_Node000018_Node000003" title=" " alt="" coords="1782,118,1658,122,1498,133,1322,152,1145,184,1090,202,1036,224,882,272,881,267,1034,219,1089,197,1144,179,1321,147,1498,128,1658,117,1782,113"/>
+<area shape="poly" id="edge32_Node000018_Node000004" title=" " alt="" coords="1782,118,1675,122,1542,133,1397,152,1253,184,1198,202,1144,225,1054,272,1052,267,1142,221,1196,197,1252,179,1396,147,1542,127,1675,117,1782,112"/>
+<area shape="poly" id="edge33_Node000018_Node000005" title=" " alt="" coords="1783,120,1361,140,1082,159,800,184,502,219,208,272,197,274,196,269,207,267,502,214,799,179,1082,153,1361,135,1782,115"/>
+<area shape="poly" id="edge34_Node000018_Node000006" title=" " alt="" coords="1782,119,1660,123,1518,134,1387,154,1336,167,1298,184,1276,202,1258,224,1233,270,1228,268,1253,221,1272,198,1295,179,1334,162,1386,148,1517,129,1659,118,1782,113"/>
+<area shape="poly" id="edge35_Node000018_Node000007" title=" " alt="" coords="1833,144,1681,271,1677,267,1830,140"/>
+<area shape="poly" id="edge36_Node000018_Node000008" title=" " alt="" coords="1867,147,1867,269,1862,269,1862,147"/>
+<area shape="poly" id="edge37_Node000018_Node000009" title=" " alt="" coords="1892,142,1970,219,2033,267,2030,271,1967,223,1888,145"/>
+<area shape="poly" id="edge38_Node000018_Node000010" title=" " alt="" coords="1782,117,1623,119,1410,128,1169,149,1047,164,928,184,892,193,864,203,836,214,800,224,703,242,626,251,549,258,452,272,414,279,413,274,451,267,549,253,626,245,702,237,799,219,835,209,862,198,890,188,927,179,1046,159,1169,143,1410,123,1623,114,1782,111"/>
+<area shape="poly" id="edge39_Node000018_Node000011" title=" " alt="" coords="1919,137,2099,219,2210,267,2208,272,2097,224,1917,142"/>
+<area shape="poly" id="edge40_Node000018_Node000012" title=" " alt="" coords="1941,135,2382,267,2381,272,1940,140"/>
+<area shape="rect" id="Node000019" href="$ra8__io__i2c__bus__i3c__compat_8h.html" title="I3C I2C&#45;compatibility backend binder for the ra8_io I2C&#45;bus facade." alt="" coords="1309,181,1500,221"/>
+<area shape="poly" id="edge41_Node000018_Node000019" title=" " alt="" coords="1783,133,1501,185,1500,180,1782,127"/>
+<area shape="rect" id="Node000020" href="$ra8__io__i2c__bus__i3c__compat_8c.html" title="I3C I2C&#45;compatibility backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i3c." alt="" coords="2580,277,2771,317"/>
+<area shape="poly" id="edge57_Node000018_Node000020" title=" " alt="" coords="1948,130,2176,179,2568,267,2599,274,2597,279,2567,272,2175,184,1947,135"/>
+<area shape="rect" id="Node000021" href="$ra8__io__i2c__bus__riic_8h.html" title="RIIC backend binder for the ra8_io I2C&#45;bus facade." alt="" coords="2448,181,2585,221"/>
+<area shape="poly" id="edge54_Node000018_Node000021" title=" " alt="" coords="1947,120,2165,143,2426,179,2448,183,2448,188,2426,184,2164,148,1947,125"/>
+<area shape="rect" id="Node000022" href="$ra8__io__i2c__bus__riic_8c.html" title="RIIC backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i2c." alt="" coords="2795,277,2932,317"/>
+<area shape="poly" id="edge62_Node000018_Node000022" title=" " alt="" coords="1947,123,2103,146,2283,179,2360,199,2437,219,2534,234,2611,241,2687,249,2784,267,2811,274,2810,279,2783,272,2686,254,2610,246,2534,239,2436,224,2359,204,2281,184,2102,151,1947,128"/>
+<area shape="poly" id="edge56_Node000018_Node000023" title=" " alt="" coords="1947,113,2104,117,2314,127,2552,147,2672,161,2790,179,2889,199,2986,225,3142,274,3140,279,2984,230,2888,204,2790,184,2672,166,2551,152,2314,132,2104,122,1947,118"/>
+<area shape="rect" id="Node000024" href="$ra8__io__i2c__bus__internal_8h.html" title="Internal vtable type for the ra8_io I2C&#45;bus facade." alt="" coords="2611,181,2777,221"/>
+<area shape="poly" id="edge58_Node000018_Node000024" title=" " alt="" coords="1947,117,2236,138,2417,156,2598,179,2611,181,2610,186,2598,184,2416,161,2235,144,1947,122"/>
+<area shape="poly" id="edge42_Node000019_Node000002" title=" " alt="" coords="1296,211,1017,232,849,249,682,272,671,274,671,269,682,267,849,244,1016,226,1295,206"/>
+<area shape="poly" id="edge43_Node000019_Node000003" title=" " alt="" coords="1296,216,1110,239,900,272,889,274,888,269,899,267,1110,234,1295,211"/>
+<area shape="poly" id="edge44_Node000019_Node000004" title=" " alt="" coords="1311,227,1119,272,1106,275,1105,270,1117,267,1310,222"/>
+<area shape="poly" id="edge45_Node000019_Node000005" title=" " alt="" coords="1296,209,734,232,430,250,208,272,197,274,196,268,207,267,429,245,734,227,1296,204"/>
+<area shape="poly" id="edge46_Node000019_Node000006" title=" " alt="" coords="1357,230,1274,272,1271,267,1354,225"/>
+<area shape="poly" id="edge47_Node000019_Node000007" title=" " alt="" coords="1467,224,1580,267,1578,272,1466,229"/>
+<area shape="poly" id="edge48_Node000019_Node000008" title=" " alt="" coords="1514,220,1759,267,1772,270,1771,275,1757,272,1513,225"/>
+<area shape="poly" id="edge49_Node000019_Node000009" title=" " alt="" coords="1514,219,1643,233,1744,240,1844,248,1970,267,1982,269,1981,274,1970,272,1844,253,1744,245,1643,238,1514,224"/>
+<area shape="poly" id="edge50_Node000019_Node000010" title=" " alt="" coords="1296,208,1132,214,921,226,687,245,452,272,410,279,409,274,451,267,686,239,921,221,1131,209,1296,203"/>
+<area shape="poly" id="edge51_Node000019_Node000011" title=" " alt="" coords="1514,219,1700,234,1846,238,1990,244,2074,252,2173,267,2185,269,2184,274,2172,272,2074,258,1990,249,1845,243,1700,240,1514,224"/>
+<area shape="poly" id="edge52_Node000019_Node000012" title=" " alt="" coords="1514,219,1645,231,1755,236,1944,236,2132,240,2242,249,2370,267,2382,269,2381,274,2370,272,2241,255,2132,246,1944,242,1755,241,1644,236,1514,224"/>
+<area shape="poly" id="edge53_Node000019_Node000020" title=" " alt="" coords="1514,219,1675,233,1811,238,2043,237,2155,236,2274,239,2409,248,2568,267,2606,274,2606,279,2567,272,2409,253,2274,244,2155,241,2043,242,1811,243,1674,238,1514,224"/>
+<area shape="poly" id="edge55_Node000021_Node000022" title=" " alt="" coords="2599,219,2784,267,2808,274,2807,279,2783,272,2598,224"/>
+<area shape="poly" id="edge60_Node000024_Node000020" title=" " alt="" coords="2690,235,2682,277,2676,276,2685,234"/>
+<area shape="poly" id="edge61_Node000024_Node000022" title=" " alt="" coords="2741,226,2830,274,2828,279,2739,230"/>
+<area shape="poly" id="edge59_Node000024_Node000023" title=" " alt="" coords="2791,211,2944,233,3115,267,3141,274,3139,279,3113,272,2943,238,2791,216"/>
+</map>

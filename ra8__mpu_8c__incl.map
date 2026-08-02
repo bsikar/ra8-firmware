@@ -1,0 +1,31 @@
+<map id="libs/ra8_mpu/src/ra8_mpu.c" name="libs/ra8_mpu/src/ra8_mpu.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 Memory Protection Unit configuration helper." alt="" coords="155,5,309,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mpu_8h.html" title="Cortex&#45;M85 Memory Protection Unit (MPU) configuration helper." alt="" coords="228,93,319,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="245,44,263,80,259,82,240,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="157,167,232,192"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="230,46,204,154,198,152,225,45"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="311,240,382,265"/>
+<area shape="poly" id="edge7_Node000001_Node000004" title=" " alt="" coords="155,31,117,37,79,49,44,68,16,95,9,117,12,144,23,170,38,190,56,202,83,212,153,228,230,239,298,245,297,251,229,244,152,233,81,217,54,206,34,194,18,173,7,145,3,116,11,92,41,63,77,44,116,32,154,26"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="307,167,386,192"/>
+<area shape="poly" id="edge15_Node000001_Node000005" title=" " alt="" coords="276,43,307,64,333,92,346,123,350,153,344,154,340,124,329,95,303,68,273,48"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="434,93,534,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="293,43,435,87,433,92,292,48"/>
+<area shape="rect" id="Node000009" href="$ra8__mpu__regs_8h.html" title="Memory Protection Unit register layout for the Renesas RA8D2." alt="" coords="26,93,153,119"/>
+<area shape="poly" id="edge16_Node000001_Node000009" title=" " alt="" coords="199,48,124,89,121,84,197,43"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="263,121,219,159,216,156,259,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="277,118,283,152,297,191,310,211,326,229,322,232,306,214,292,193,278,153,272,119"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="287,117,327,155,323,159,284,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="349,192,349,226,344,226,344,192"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="512,116,539,130,563,148,577,170,577,182,572,194,560,204,543,213,498,228,397,248,396,243,496,223,541,208,557,200,567,190,572,181,572,171,559,152,536,135,510,121"/>
+<area shape="poly" id="edge10_Node000006_Node000005" title=" " alt="" coords="463,121,383,163,380,158,461,116"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="633,167,716,192"/>
+<area shape="poly" id="edge11_Node000006_Node000007" title=" " alt="" coords="516,116,632,159,630,164,514,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="410,167,558,192"/>
+<area shape="poly" id="edge13_Node000006_Node000008" title=" " alt="" coords="487,119,487,153,481,153,481,119"/>
+<area shape="poly" id="edge12_Node000007_Node000004" title=" " alt="" coords="634,192,396,243,395,238,633,187"/>
+<area shape="poly" id="edge14_Node000008_Node000004" title=" " alt="" coords="463,194,383,236,380,231,461,190"/>
+<area shape="poly" id="edge18_Node000009_Node000003" title=" " alt="" coords="108,116,168,157,165,161,105,121"/>
+<area shape="poly" id="edge19_Node000009_Node000004" title=" " alt="" coords="77,121,62,136,49,155,43,174,44,182,49,190,65,203,89,214,156,230,231,241,298,246,297,252,230,246,155,235,87,219,62,207,45,194,39,184,38,173,45,152,58,133,74,117"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="59,167,133,192"/>
+<area shape="poly" id="edge17_Node000009_Node000010" title=" " alt="" coords="93,119,96,153,91,153,88,119"/>
+</map>

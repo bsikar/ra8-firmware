@@ -1,0 +1,10 @@
+<map id="tools/cache_bench/trace.h" name="tools/cache_bench/trace.h">
+<area shape="rect" id="Node000001" title="Reader access&#45;trace generation + loading for the #147 cache benchmark." alt="" coords="5,5,196,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="17,152,88,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,32,82,80,63,139,58,138,77,78,94,30"/>
+<area shape="rect" id="Node000003" href="$cache__bench_8h.html" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="91,79,209,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="111,29,136,66,132,69,107,33"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="136,106,81,146,78,141,133,102"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="113,152,187,177"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="153,104,153,138,147,138,147,104"/>
+</map>

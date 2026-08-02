@@ -1,0 +1,39 @@
+<map id="tools/media_dl/inc/mdl_discover.h" name="tools/media_dl/inc/mdl_discover.h">
+<area shape="rect" id="Node000001" title="Search / browse discovery: governed fetch of a results page, parse, honest presentation,..." alt="" coords="368,5,509,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="477,240,552,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="447,45,509,226,504,228,442,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="493,313,563,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="510,26,587,36,630,45,673,59,716,77,755,100,789,129,817,165,825,183,828,200,825,216,817,230,792,255,754,275,710,292,663,305,577,321,576,316,662,300,709,287,752,271,788,251,813,227,820,214,822,200,820,185,812,168,785,133,752,104,713,81,672,64,629,50,586,41,509,31"/>
+<area shape="rect" id="Node000004" href="$mdl__config_8h.html" title="Per&#45;site descriptor loaded from a flat key=value config file." alt="" coords="185,93,290,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="391,48,281,91,279,86,389,43"/>
+<area shape="rect" id="Node000005" href="$mdl__politeness_8h.html" title="Jittered inter&#45;request delay plus the per&#45;host politeness governor." alt="" coords="16,167,149,192"/>
+<area shape="poly" id="edge16_Node000001_Node000005" title=" " alt="" coords="368,37,272,57,221,74,173,96,133,125,102,158,98,154,130,121,171,91,220,69,271,52,367,32"/>
+<area shape="rect" id="Node000008" href="$mdl__extract_8h.html" title="Extract image URLs and anchor links from an HTML page (v1 scanner)." alt="" coords="275,167,387,192"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="427,47,349,157,345,154,423,44"/>
+<area shape="rect" id="Node000009" href="$mdl__session_8h.html" title="Session identity (honest User&#45;Agent) and robots.txt gating." alt="" coords="549,93,664,119"/>
+<area shape="poly" id="edge17_Node000001_Node000009" title=" " alt="" coords="480,43,571,85,568,90,478,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="279,116,337,136,400,164,451,197,493,229,489,233,448,201,397,169,335,141,277,121"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="239,119,238,149,243,189,255,230,266,248,280,263,303,279,327,292,380,310,433,319,479,323,478,328,432,325,379,315,325,297,300,284,277,267,262,251,250,232,237,190,233,149,234,119"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="214,121,121,163,119,158,211,116"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="291,240,370,265"/>
+<area shape="poly" id="edge11_Node000004_Node000007" title=" " alt="" coords="241,119,249,153,265,191,283,212,303,230,300,234,279,216,260,193,243,154,236,120"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="63,194,40,209,19,227,9,246,9,255,14,263,37,275,81,285,211,302,359,314,479,320,479,325,358,319,211,308,80,291,35,280,10,267,4,256,3,245,15,224,37,205,60,190"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="24,240,149,265"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="86,192,88,226,83,227,81,192"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="123,189,279,234,277,239,122,195"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="363,263,484,306,482,311,361,268"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="361,190,473,232,471,237,359,195"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="348,190,502,303,499,307,345,194"/>
+<area shape="poly" id="edge15_Node000008_Node000007" title=" " alt="" coords="333,192,333,226,328,226,328,192"/>
+<area shape="poly" id="edge18_Node000009_Node000002" title=" " alt="" coords="595,121,574,142,553,168,537,198,525,228,520,226,532,196,548,165,570,138,591,117"/>
+<area shape="poly" id="edge19_Node000009_Node000003" title=" " alt="" coords="665,109,717,118,767,133,786,144,798,157,802,174,796,193,775,221,750,244,722,264,692,280,631,304,577,319,576,314,630,299,690,275,719,259,747,240,771,217,791,191,797,174,794,160,782,148,764,138,716,123,664,115"/>
+<area shape="rect" id="Node000010" href="$mdl__net_8h.html" title="Streaming HTTP(S) GET seam (a real function&#45;pointer vtable) for the host manga downloader (v0)." alt="" coords="563,167,650,192"/>
+<area shape="poly" id="edge20_Node000009_Node000010" title=" " alt="" coords="609,119,609,153,604,153,604,119"/>
+<area shape="rect" id="Node000011" href="$mdl__robots_8h.html" title="robots.txt parser, path matcher, and per&#45;host cache." alt="" coords="675,167,781,192"/>
+<area shape="poly" id="edge24_Node000009_Node000011" title=" " alt="" coords="627,116,698,157,695,162,625,121"/>
+<area shape="poly" id="edge21_Node000010_Node000002" title=" " alt="" coords="593,194,542,234,539,229,590,190"/>
+<area shape="poly" id="edge22_Node000010_Node000003" title=" " alt="" coords="603,194,566,267,545,303,540,300,562,264,599,191"/>
+<area shape="poly" id="edge23_Node000010_Node000007" title=" " alt="" coords="564,194,384,240,383,235,562,189"/>
+<area shape="poly" id="edge25_Node000011_Node000002" title=" " alt="" coords="694,195,563,238,561,233,693,189"/>
+<area shape="poly" id="edge26_Node000011_Node000003" title=" " alt="" coords="713,194,556,307,553,303,710,190"/>
+</map>

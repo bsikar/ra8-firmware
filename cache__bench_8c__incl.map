@@ -1,0 +1,21 @@
+<map id="tools/cache_bench/cache_bench.c" name="tools/cache_bench/cache_bench.c">
+<area shape="rect" id="Node000001" title="#147 eviction&#45;policy benchmark harness: replay + sweep + report." alt="" coords="108,5,292,45"/>
+<area shape="rect" id="Node000002" href="$cache__bench_8h.html" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="328,167,446,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,44,64,56,27,72,15,82,9,92,9,104,17,117,36,131,65,143,142,161,232,170,314,174,314,180,231,176,142,166,63,149,33,136,13,120,4,105,4,91,11,78,24,68,62,51,108,38"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="27,93,94,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="168,48,94,89,92,84,166,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="118,93,189,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="191,47,170,83,165,80,187,44"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="213,93,284,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="214,44,236,80,232,83,210,47"/>
+<area shape="rect" id="Node000008" href="$sweep__block_8h.html" title="#208 block/frame&#45;size sweep: the byte&#45;size axis the capacity sweep never touches, so the chunked ...." alt="" coords="308,93,426,119"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="241,43,331,85,329,90,239,48"/>
+<area shape="rect" id="Node000009" href="$trace_8h.html" title="Reader access&#45;trace generation + loading for the #147 cache benchmark." alt="" coords="451,93,518,119"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="269,43,439,89,437,94,268,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="350,240,424,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="390,192,390,226,384,226,384,192"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="449,240,520,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="404,190,459,229,456,234,401,194"/>
+<area shape="poly" id="edge10_Node000009_Node000002" title=" " alt="" coords="470,121,416,160,413,156,467,117"/>
+<area shape="poly" id="edge9_Node000009_Node000004" title=" " alt="" coords="487,119,487,226,482,226,482,119"/>
+</map>

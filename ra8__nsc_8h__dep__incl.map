@@ -1,0 +1,21 @@
+<map id="libs/ra8_nsc/inc/ra8_nsc.h" name="libs/ra8_nsc/inc/ra8_nsc.h">
+<area shape="rect" id="Node000001" title="Non&#45;Secure Callable veneer scaffold." alt="" coords="741,5,887,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2tz__threadx__demo_2ns__main_8c.html" title="Non&#45;Secure main entry point: launches ThreadX and demo worker threads." alt="" coords="5,93,204,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="727,36,496,58,356,75,217,96,205,98,204,93,216,91,356,70,495,53,727,31"/>
+<area shape="rect" id="Node000003" href="$ra8__nsc__eth_8c.html" title="NSC veneer: ethernet frame TX / RX." alt="" coords="229,101,375,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="727,39,569,62,388,96,360,103,359,98,387,91,568,56,727,34"/>
+<area shape="rect" id="Node000004" href="$ra8__nsc__key__vault_8c.html" title="NSC veneer: secure key vault challenge&#45;response." alt="" coords="399,101,546,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="728,51,559,96,534,103,532,98,557,91,727,46"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc__log_8c.html" title="NSC veneer: secure&#45;side logging." alt="" coords="570,101,717,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="769,54,679,103,677,98,766,50"/>
+<area shape="rect" id="Node000006" href="$ra8__nsc__ota_8c.html" title="NSC veneers: OTA bank&#45;commit + flash&#45;bank&#45;config write." alt="" coords="741,101,887,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="817,59,817,101,811,101,811,59"/>
+<area shape="rect" id="Node000007" href="$ra8__nsc__periph__init_8c.html" title="NSC veneer: secure peripheral substrate bring&#45;up." alt="" coords="911,101,1058,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="862,50,951,98,949,103,859,54"/>
+<area shape="rect" id="Node000008" href="$ra8__nsc__wdt_8c.html" title="NSC veneers: secure&#45;side watchdog arm + refresh." alt="" coords="1082,101,1229,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="901,46,1071,91,1096,98,1094,103,1069,96,900,51"/>
+<area shape="rect" id="Node000009" href="$ra8__nsc__xspi_8c.html" title="NSC veneer: external XSPI flash read + status." alt="" coords="1253,101,1399,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="901,34,1060,56,1241,91,1269,98,1268,103,1240,96,1059,62,901,39"/>
+<area shape="rect" id="Node000010" href="$src_2app_2ns__main_8c.html" title="Non&#45;Secure main entry point: launches ThreadX and the e&#45;reader UI." alt="" coords="1423,108,1562,133"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="901,28,1133,48,1273,66,1412,91,1463,105,1461,111,1411,96,1272,71,1132,53,901,34"/>
+</map>

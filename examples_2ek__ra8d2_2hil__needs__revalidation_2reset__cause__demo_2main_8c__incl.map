@@ -1,0 +1,32 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/reset_cause_demo/main.c" name="examples/ek_ra8d2/hil_needs_revalidation/reset_cause_demo/main.c">
+<area shape="rect" id="Node000001" title="HIL gate for the ra8_reset driver – software&#45;reset round&#45;trip." alt="" coords="222,5,413,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="359,255,430,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="222,55,136,79,94,94,57,112,28,132,12,154,8,166,9,178,14,191,23,205,45,221,77,233,165,251,262,260,345,263,345,268,261,265,164,256,76,239,42,225,20,209,9,194,4,179,3,165,7,152,25,128,54,107,92,89,134,74,221,50"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="226,181,305,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="311,61,276,169,271,167,306,59"/>
+<area shape="rect" id="Node000004" href="$ra8__isr_8h.html" title="NVIC + ICU IELSR allocator." alt="" coords="155,108,232,133"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="281,62,223,102,220,98,278,58"/>
+<area shape="rect" id="Node000006" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="484,108,567,133"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="382,58,486,100,484,105,380,63"/>
+<area shape="rect" id="Node000007" href="$ra8__reset_8h.html" title="Reset cause introspection + software reset trigger." alt="" coords="334,108,429,133"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="339,58,367,95,363,99,335,62"/>
+<area shape="rect" id="Node000009" href="$ra8__time_8h.html" title="SysTick&#45;based tick counter, delay and timestamp helpers." alt="" coords="609,108,701,133"/>
+<area shape="poly" id="edge16_Node000001_Node000009" title=" " alt="" coords="414,56,597,102,596,107,413,61"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="288,204,363,245,360,250,285,209"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="196,133,199,169,206,188,217,205,245,228,279,244,313,254,346,260,345,265,312,259,277,249,242,232,213,208,201,190,194,170,190,134"/>
+<area shape="poly" id="edge8_Node000004_Node000003" title=" " alt="" coords="207,132,246,170,242,174,203,136"/>
+<area shape="rect" id="Node000005" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="34,181,150,207"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="179,136,121,175,118,171,176,131"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="141,204,346,252,345,257,140,209"/>
+<area shape="poly" id="edge10_Node000006_Node000002" title=" " alt="" coords="526,134,516,169,507,190,494,208,467,233,437,251,434,246,464,229,490,205,502,187,511,168,521,133"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="414,131,447,150,463,164,475,180,478,201,469,220,452,237,432,250,429,246,449,233,465,217,473,200,470,182,459,167,444,154,412,136"/>
+<area shape="poly" id="edge13_Node000007_Node000003" title=" " alt="" coords="364,136,297,176,295,172,361,131"/>
+<area shape="rect" id="Node000008" href="$ra8__reset__regs_8h.html" title="Reset block register layout (offsets, bit masks, accessors)for the Renesas RA8D2." alt="" coords="329,181,460,207"/>
+<area shape="poly" id="edge14_Node000007_Node000008" title=" " alt="" coords="386,133,393,167,387,168,381,134"/>
+<area shape="poly" id="edge15_Node000008_Node000002" title=" " alt="" coords="397,207,397,241,392,241,392,207"/>
+<area shape="poly" id="edge17_Node000009_Node000002" title=" " alt="" coords="689,131,719,145,747,163,763,184,763,196,757,208,735,225,703,238,618,255,525,264,444,268,444,263,524,259,618,250,701,233,732,220,753,205,758,195,758,186,743,166,716,149,686,136"/>
+<area shape="poly" id="edge18_Node000009_Node000003" title=" " alt="" coords="609,132,319,184,318,179,608,127"/>
+<area shape="rect" id="Node000010" href="$ra8__time__interface_8h.html" title="Abstract time&#45;source interface for DI and unit testing." alt="" coords="585,181,743,207"/>
+<area shape="poly" id="edge19_Node000009_Node000010" title=" " alt="" coords="659,133,663,167,658,168,654,134"/>
+<area shape="poly" id="edge20_Node000010_Node000002" title=" " alt="" coords="622,209,444,256,443,251,620,204"/>
+</map>

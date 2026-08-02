@@ -1,0 +1,12 @@
+<map id="libs/ra8_zoom/inc/ra8_zoom.h" name="libs/ra8_zoom/inc/ra8_zoom.h">
+<area shape="rect" id="Node000001" title="Tap&#45;to&#45;zoom image viewer: viewport state machine + tiled magnifying render (#478)." alt="" coords="5,5,167,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="64,240,135,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="77,47,63,75,50,112,44,152,45,172,50,191,61,211,77,229,73,232,57,215,45,193,40,173,38,152,45,111,58,73,72,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="60,167,139,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="90,46,100,153,94,153,85,46"/>
+<area shape="rect" id="Node000004" href="$ra8__ui_8h.html" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="123,93,198,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="106,44,142,81,138,85,102,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="102,192,102,226,97,226,97,192"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="164,119,162,153,152,193,140,214,125,232,121,229,136,211,148,191,157,152,159,119"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="153,121,120,158,116,154,149,117"/>
+</map>

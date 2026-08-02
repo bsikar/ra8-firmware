@@ -1,0 +1,16 @@
+<map id="tools/ra8_emulator/src/engine/emu_console.c" name="tools/ra8_emulator/src/engine/emu_console.c">
+<area shape="rect" id="Node000001" title="Emulator console surfaces implementation (see emu_console.h)." alt="" coords="218,5,413,45"/>
+<area shape="rect" id="Node000002" href="$emu__console_8h.html" title="Emulator text&#45;console surfaces: UART echo, ITM/SWO echo, escapes." alt="" coords="138,93,258,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="288,48,228,88,225,84,285,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="282,93,349,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="318,46,318,79,313,79,313,46"/>
+<area shape="rect" id="Node000007" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="373,93,501,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="346,43,409,84,406,88,343,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="372,167,443,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="232,116,361,160,359,165,231,121"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="5,167,140,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="179,121,106,162,104,157,177,116"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="165,167,290,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="205,118,220,153,215,155,200,120"/>
+<area shape="poly" id="edge7_Node000007_Node000003" title=" " alt="" coords="434,120,420,155,415,153,429,118"/>
+</map>

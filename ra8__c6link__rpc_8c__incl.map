@@ -1,0 +1,36 @@
+<map id="libs/ra8_c6link/src/ra8_c6link_rpc.c" name="libs/ra8_c6link/src/ra8_c6link_rpc.c">
+<area shape="rect" id="Node000001" title="The control plane: one protobuf message type, correlated by UID." alt="" coords="123,5,261,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="43,167,117,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="180,47,99,157,95,154,176,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="217,387,287,412"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="137,48,93,68,51,97,34,114,20,133,11,154,8,178,8,254,13,285,28,310,51,332,78,350,143,375,204,389,202,394,141,380,76,355,47,336,24,314,8,286,3,254,3,178,6,153,16,130,30,110,48,92,91,64,134,43"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="267,167,392,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="211,44,312,154,308,158,207,48"/>
+<area shape="rect" id="Node000005" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="141,167,243,192"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="195,46,195,153,189,153,189,46"/>
+<area shape="rect" id="Node000008" href="$ra8__c6link__internal_8h.html" title="Cross&#45;translation&#45;unit contract inside libs/ra8_c6link." alt="" coords="622,93,781,119"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="262,35,614,89,613,94,261,40"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="184,194,164,226,158,245,160,265,174,297,193,327,232,375,228,378,188,330,169,299,155,266,153,245,159,224,179,191"/>
+<area shape="rect" id="Node000006" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="169,240,335,265"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="204,191,236,228,231,231,200,194"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="313,313,391,339"/>
+<area shape="poly" id="edge10_Node000005_Node000007" title=" " alt="" coords="238,190,304,211,332,224,350,238,358,253,361,269,360,299,355,299,356,269,353,255,346,242,329,229,302,216,237,195"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="255,266,255,373,249,373,249,266"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="270,263,326,303,323,307,267,268"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="337,341,281,381,278,376,334,337"/>
+<area shape="poly" id="edge12_Node000008_Node000002" title=" " alt="" coords="622,115,405,134,270,149,132,169,131,164,269,144,404,129,622,110"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="747,116,779,128,807,145,825,166,827,179,822,193,801,227,775,256,746,283,713,305,643,342,567,368,490,385,418,396,301,402,301,396,417,390,489,380,565,363,641,337,711,301,742,278,771,253,796,224,818,191,822,179,820,168,804,149,776,133,745,121"/>
+<area shape="poly" id="edge14_Node000008_Node000004" title=" " alt="" coords="642,121,404,167,403,161,641,116"/>
+<area shape="poly" id="edge15_Node000008_Node000005" title=" " alt="" coords="622,119,257,169,256,164,621,114"/>
+<area shape="poly" id="edge16_Node000008_Node000007" title=" " alt="" coords="734,116,763,130,790,147,806,169,807,181,801,194,774,217,733,238,683,258,625,275,506,302,406,319,405,314,505,297,624,269,681,253,731,234,771,213,797,190,801,180,801,171,786,151,761,134,732,121"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="913,167,1071,192"/>
+<area shape="poly" id="edge17_Node000008_Node000009" title=" " alt="" coords="749,116,933,161,931,166,747,121"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="1096,167,1269,192"/>
+<area shape="poly" id="edge18_Node000008_Node000010" title=" " alt="" coords="779,116,1092,162,1091,167,778,121"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="1294,167,1461,192"/>
+<area shape="poly" id="edge19_Node000008_Node000011" title=" " alt="" coords="781,112,1280,164,1280,169,781,118"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="417,167,591,192"/>
+<area shape="poly" id="edge20_Node000008_Node000012" title=" " alt="" coords="671,121,550,164,548,159,669,116"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="616,167,787,192"/>
+<area shape="poly" id="edge21_Node000008_Node000013" title=" " alt="" coords="704,119,704,153,699,153,699,119"/>
+</map>

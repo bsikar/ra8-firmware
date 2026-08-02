@@ -1,0 +1,8 @@
+<map id="tools/ra8_emulator/src/display/board_view_stub.c" name="tools/ra8_emulator/src/display/board_view_stub.c">
+<area shape="rect" id="Node000001" title="Headless no&#45;op board view for non&#45;Apple builds (Linux CI)." alt="" coords="5,5,180,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="57,181,128,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,61,76,95,75,133,85,168,80,169,70,134,71,94,80,59"/>
+<area shape="rect" id="Node000003" href="$board__view_8h.html" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="85,108,193,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="109,59,129,95,124,97,105,61"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="134,135,110,171,106,168,129,132"/>
+</map>

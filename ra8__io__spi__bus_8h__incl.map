@@ -1,0 +1,27 @@
+<map id="libs/ra8_io/inc/ra8_io_spi_bus.h" name="libs/ra8_io/inc/ra8_io_spi_bus.h">
+<area shape="rect" id="Node000001" title="ra8_io SPI&#45;bus facade – one controller&#45;transfer vtable over thechip&#39;s two SPI implementations." alt="" coords="315,5,453,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="167,387,238,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="316,42,221,64,120,95,76,114,40,134,16,156,10,167,8,178,8,254,12,279,23,302,39,321,59,338,107,365,155,383,153,388,105,370,56,343,35,325,18,304,7,281,3,254,3,178,5,165,12,152,37,130,73,109,118,90,220,59,314,37"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="339,313,418,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="386,46,382,300,376,300,381,46"/>
+<area shape="rect" id="Node000004" href="$ra8__spi_8h.html" title="SPI_B controller driver (RA8D2 Type&#45;B SPI peripheral)." alt="" coords="250,93,331,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="363,48,317,86,314,82,360,44"/>
+<area shape="rect" id="Node000008" href="$ra8__spi__bus__ops_8h.html" title="Injected SPI&#45;bus seam consumed by Ring&#45;3 SPI device drivers." alt="" coords="469,240,611,265"/>
+<area shape="poly" id="edge15_Node000001_Node000008" title=" " alt="" coords="408,44,453,92,499,164,531,226,527,229,494,166,449,95,404,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="351,341,245,384,243,379,349,336"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="262,121,224,141,189,169,160,203,144,234,134,269,127,314,124,326,126,338,144,360,167,378,164,382,140,364,122,340,119,326,121,313,129,268,139,232,156,200,185,165,222,136,259,116"/>
+<area shape="poly" id="edge14_Node000004_Node000003" title=" " alt="" coords="298,118,371,299,366,301,293,120"/>
+<area shape="rect" id="Node000005" href="$ra8__dma_8h.html" title="Generic DMA transfer substrate (DMAC engine)." alt="" coords="199,167,289,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="285,120,261,157,257,154,281,118"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="229,194,203,215,177,242,150,275,135,314,132,326,134,338,150,360,171,377,167,381,146,363,130,340,126,326,129,313,146,273,173,238,200,211,226,190"/>
+<area shape="poly" id="edge13_Node000005_Node000003" title=" " alt="" coords="258,190,307,238,362,300,358,304,303,242,255,194"/>
+<area shape="rect" id="Node000006" href="$ra8__dmac_8h.html" title="8&#45;channel DMA controller (DMAC0) driver" alt="" coords="195,240,293,265"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="247,192,247,226,241,226,241,192"/>
+<area shape="rect" id="Node000007" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="145,313,261,339"/>
+<area shape="poly" id="edge11_Node000005_Node000007" title=" " alt="" coords="227,194,204,214,185,241,182,256,182,271,192,300,187,302,177,272,176,255,180,239,200,211,224,190"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="256,265,274,298,278,319,274,340,258,363,237,381,234,377,254,360,270,338,273,319,269,300,251,267"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="267,263,346,304,343,309,264,268"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="205,339,205,373,200,373,200,339"/>
+<area shape="poly" id="edge16_Node000008_Node000002" title=" " alt="" coords="530,268,488,304,431,341,385,360,337,375,252,394,251,388,336,370,383,355,428,336,485,300,526,264"/>
+<area shape="poly" id="edge17_Node000008_Node000003" title=" " alt="" coords="515,268,419,310,416,305,513,263"/>
+</map>

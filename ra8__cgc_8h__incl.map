@@ -1,0 +1,10 @@
+<map id="libs/ra8_hal/inc/ra8_cgc.h" name="libs/ra8_hal/inc/ra8_cgc.h">
+<area shape="rect" id="Node000001" title="High&#45;level Clock Generation Circuit driver." alt="" coords="53,5,199,45"/>
+<area shape="rect" id="Node000002" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="5,93,124,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="113,47,84,84,80,81,109,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="148,93,227,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="143,44,172,81,168,84,139,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="91,167,161,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="77,117,109,154,105,158,73,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="179,121,147,158,143,154,175,117"/>
+</map>

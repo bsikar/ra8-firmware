@@ -1,0 +1,5 @@
+<map id="libs/ra8_hal/inc/ra8_usb_hcdc_ecm.h" name="libs/ra8_hal/inc/ra8_usb_hcdc_ecm.h">
+<area shape="rect" id="Node000001" title="Native USB host&#45;side CDC ECM (Communications Device Class &#45;Ethernet Networking Control Model) class l..." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" href="$ra8__usb__hcdc__ecm_8c.html" title="Native USB host&#45;side CDC&#45;ECM (Ethernet over USB) class layer implementation." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,59,81,93,75,93,75,59"/>
+</map>

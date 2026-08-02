@@ -1,0 +1,26 @@
+var structboard__sd__state__t =
+[
+    [ "app_cmd", "structboard__sd__state__t.html#a2ab26fa759617d82eeb1514dfef04bb1", null ],
+    [ "attached", "structboard__sd__state__t.html#a834177981b610aade17a615e8f1292c0", null ],
+    [ "cmd", "structboard__sd__state__t.html#a048551a9e1fad2e61f84773828f396d7", null ],
+    [ "cmd_idx", "structboard__sd__state__t.html#ae19f434da224967a1d12ef1e1f01d1c1", null ],
+    [ "collecting", "structboard__sd__state__t.html#aef6383ed3ddf530bc97fb9652dd05569", null ],
+    [ "erase_end", "structboard__sd__state__t.html#af03b199ef72e9770ab098140a7616470", null ],
+    [ "erase_start", "structboard__sd__state__t.html#a17763dc3fbac075546e2bbaf153a70b2", null ],
+    [ "fat_bits", "structboard__sd__state__t.html#ab9084b357fc8385d895fdf77611ff447", null ],
+    [ "image", "structboard__sd__state__t.html#abae5bdd95e1462261423955f253dc4a0", null ],
+    [ "image_len", "structboard__sd__state__t.html#ace69c1e736312b550693e7747b987565", null ],
+    [ "label", "structboard__sd__state__t.html#a06d1aa05e1f56d419570912a25c7e19e", null ],
+    [ "map_fd", "structboard__sd__state__t.html#aa9e21539c60c2c9ea7edac78701af381", null ],
+    [ "mmapped", "structboard__sd__state__t.html#aadf5368f986425e117c929477ad93ea0", null ],
+    [ "rd_multi", "structboard__sd__state__t.html#ab9b4388b0e82c92567f58f38e15f38e8", null ],
+    [ "rd_off", "structboard__sd__state__t.html#a51539fb7db6cab5ddb6e7f72c91ef4f9", null ],
+    [ "ready", "structboard__sd__state__t.html#a08c2f73e45d94e90e2f6a35416c98388", null ],
+    [ "resp", "structboard__sd__state__t.html#ae6eff2bf3d0c55dba6b200707e580948", null ],
+    [ "resp_len", "structboard__sd__state__t.html#acf2d487f844c4a2ea0d2ff64f728de42", null ],
+    [ "resp_pos", "structboard__sd__state__t.html#a06aa31a0c912182275d873088f009e53", null ],
+    [ "wr_cnt", "structboard__sd__state__t.html#ae1fba1b8f5349672b7f8482fcd5933d5", null ],
+    [ "wr_multi", "structboard__sd__state__t.html#a8397ecb4b4434f02007b5710a31bb563", null ],
+    [ "wr_off", "structboard__sd__state__t.html#add465488a17432cbcb06c525008c1962", null ],
+    [ "wr_phase", "structboard__sd__state__t.html#a76e7a59b912d13183a8aeb25b5d99de0", null ]
+];

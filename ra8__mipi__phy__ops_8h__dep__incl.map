@@ -1,0 +1,15 @@
+<map id="libs/ra8_hal/inc/ra8_mipi_phy_ops.h" name="libs/ra8_hal/inc/ra8_mipi_phy_ops.h">
+<area shape="rect" id="Node000001" title="MIPI D&#45;PHY driver – runtime operations prototypes." alt="" coords="210,5,355,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mipi__phy_8h.html" title="MIPI D&#45;PHY driver – physical layer shared by DSI and CSI." alt="" coords="210,93,355,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="285,59,285,93,280,93,280,59"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__comms_8c.html" title="EK&#45;RA8D2 BSP – MIPI&#45;DSI panel + J&#45;Link VCOM serial bring&#45;up." alt="" coords="5,181,187,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="234,142,150,184,147,179,231,137"/>
+<area shape="rect" id="Node000004" href="$ra8__mipi__phy_8c.html" title="MIPI D&#45;PHY driver implementation." alt="" coords="182,284,327,324"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="266,146,252,182,248,209,248,237,253,284,248,284,243,237,243,209,247,181,261,145"/>
+<area shape="rect" id="Node000005" href="$ra8__mipi__phy__internal_8h.html" title="Module&#45;private link seam shared between the MIPI D&#45;PHY drivertranslation units." alt="" coords="262,189,421,229"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="304,143,332,187,327,190,300,146"/>
+<area shape="rect" id="Node000006" href="$ra8__mipi__phy__timing_8c.html" title="MIPI D&#45;PHY driver – HUM timing tables and table&#45;driven setup." alt="" coords="368,284,517,324"/>
+<area shape="poly" id="edge7_Node000002_Node000006" title=" " alt="" coords="369,132,406,151,436,180,448,206,452,234,449,284,444,284,447,235,443,207,431,183,403,156,367,137"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="316,241,274,286,270,282,312,237"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="374,236,424,282,420,286,370,240"/>
+</map>

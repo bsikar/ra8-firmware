@@ -1,0 +1,14 @@
+<map id="tools/media_dl/inc/mdl_cli.h" name="tools/media_dl/inc/mdl_cli.h">
+<area shape="rect" id="Node000001" title="Command&#45;line parsing for the media_dl CLI." alt="" coords="53,5,195,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="107,47,87,69,70,95,58,125,50,154,45,152,53,123,66,92,83,66,103,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="159,240,230,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="151,44,203,94,229,128,248,166,250,184,244,203,222,232,217,229,240,200,245,184,243,167,224,131,199,98,147,48"/>
+<area shape="rect" id="Node000004" href="$mdl__net_8h.html" title="Streaming HTTP(S) GET seam (a real function&#45;pointer vtable) for the host manga downloader (v0)." alt="" coords="81,93,167,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="127,46,127,79,121,79,121,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="113,121,68,160,64,156,109,117"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="127,119,132,152,145,191,158,211,174,229,170,232,154,214,140,193,127,153,122,119"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,167,234,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="138,117,176,155,172,159,134,121"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="197,192,197,226,192,226,192,192"/>
+</map>

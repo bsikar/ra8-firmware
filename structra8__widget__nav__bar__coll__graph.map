@@ -1,0 +1,5 @@
+<map id="ra8_widget_nav_bar" name="ra8_widget_nav_bar">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,101,159,127"/>
+<area shape="rect" id="Node000002" href="$structra8__widget__paint__t.html" title="Drawing backend the concrete leaf widgets paint through (a DI seam)." alt="" coords="9,5,155,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,45,85,101,79,101,79,45"/>
+</map>

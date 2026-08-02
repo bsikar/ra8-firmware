@@ -1,0 +1,7 @@
+<map id="tools/media_dl/inc/mdl_discover.h" name="tools/media_dl/inc/mdl_discover.h">
+<area shape="rect" id="Node000001" title="Search / browse discovery: governed fetch of a results page, parse, honest presentation,..." alt="" coords="88,5,229,45"/>
+<area shape="rect" id="Node000002" href="$tools_2media__dl_2src_2main_8c.html" title="media_dl – host CLI for the e&#45;reader media downloader." alt="" coords="5,93,147,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="133,57,96,95,92,91,129,54"/>
+<area shape="rect" id="Node000003" href="$mdl__discover_8c.html" title="Governed search/browse: build the query URL, fetch it politely, parse the hits, and present them hone..." alt="" coords="171,93,312,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="189,54,225,91,221,95,185,57"/>
+</map>

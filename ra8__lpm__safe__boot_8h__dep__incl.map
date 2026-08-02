@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/inc/ra8_lpm_safe_boot.h" name="libs/ra8_hal/inc/ra8_lpm_safe_boot.h">
+<area shape="rect" id="Node000001" title="Self&#45;healing LPM register reset for very early boot." alt="" coords="121,5,266,45"/>
+<area shape="rect" id="Node000002" href="$libs_2ra8__board__ek__ra8d2_2boot_2vector__table_8c.html" title="Cortex&#45;M85 vector table and default interrupt handlers for RA8D2." alt="" coords="5,93,187,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="163,56,119,95,116,91,160,52"/>
+<area shape="rect" id="Node000003" href="$libs_2ra8__board__ra8p1_2boot_2vector__table_8c.html" title="Cortex&#45;M85 vector table and default interrupt handlers for RA8D2/RA8P1." alt="" coords="211,93,370,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="227,52,271,91,267,95,223,56"/>
+</map>

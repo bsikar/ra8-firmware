@@ -1,0 +1,11 @@
+<map id="ra8_epub_entry_reader_t" name="ra8_epub_entry_reader_t">
+<area shape="rect" id="Node000001" title="Forward streaming cursor over one ZIP entry – inflate in bounded RAM (#231)." alt="" coords="231,197,415,223"/>
+<area shape="rect" id="Node000002" href="$structra8__epub__book__t.html" title="Opened EPUB book." alt="" coords="256,101,389,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="325,141,325,197,320,197,320,141"/>
+<area shape="rect" id="Node000003" href="$structra8__epub__stream__media__t.html" title="Seekable EPUB media descriptor – opens with no whole&#45;file residency (#151)." alt="" coords="5,5,200,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="136,35,216,75,283,99,282,104,214,80,133,40"/>
+<area shape="rect" id="Node000004" href="$structra8__epub__manifest__item__t.html" title="One &lt;manifest&gt; &lt;item&gt; entry, retained in OPF document order." alt="" coords="225,5,421,31"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="325,45,325,101,320,101,320,45"/>
+<area shape="rect" id="Node000005" href="$structra8__epub__toc__entry__t.html" title="One titled entry in the table of contents." alt="" coords="445,5,608,31"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="490,39,349,104,347,99,488,34"/>
+</map>

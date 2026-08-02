@@ -1,0 +1,11 @@
+<map id="libs/ra8_core/src/ra8_sbrk_trap.c" name="libs/ra8_core/src/ra8_sbrk_trap.c">
+<area shape="rect" id="Node000001" title="newlib _sbrk() trap stub – enforces NASA Power of 10 Rule 3" alt="" coords="89,5,242,45"/>
+<area shape="rect" id="Node000002" href="$ra8__sbrk__trap_8h.html" title="The newlib heap syscall, replaced by a halting trap." alt="" coords="5,93,128,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,48,94,87,91,82,140,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="130,167,201,192"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="168,46,168,153,163,153,163,46"/>
+<area shape="rect" id="Node000004" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="203,93,351,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="194,43,251,83,248,87,191,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="84,117,140,156,137,161,81,121"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="261,121,197,161,194,157,258,116"/>
+</map>

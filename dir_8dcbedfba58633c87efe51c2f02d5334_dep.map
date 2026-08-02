@@ -1,0 +1,12 @@
+<map id="src/secure_app" name="src/secure_app">
+<area shape="rect" id="node2" href="dir_138c7c3d093ff71fc0ed2c7f5fd88b51.html" title="inc" alt="" coords="51,136,93,161"/>
+<area shape="poly" id="edge1" href="dir_000334_000206.html" alt="" coords="86,89,79,123,74,122,81,88"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000334_000206.html" title="3" alt="" coords="81,112,90,127"/>
+<area shape="rect" id="node3" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="79,209,124,235"/>
+<area shape="poly" id="edge2" href="dir_000334_000218.html" alt="" coords="93,87,108,136,110,159,108,183,107,196,102,195,103,182,104,159,103,136,88,89"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000334_000218.html" title="24" alt="" coords="105,185,122,199"/>
+<area shape="poly" id="edge3" href="dir_000206_000218.html" alt="" coords="79,161,94,196,89,198,74,163"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000206_000218.html" title="2" alt="" coords="93,182,102,197"/>
+<area shape="rect" id="clust2" href="dir_8dcbedfba58633c87efe51c2f02d5334.html" alt="" coords="27,52,144,172"/>
+<area shape="rect" id="clust1" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html" title="Shared application internals used by the drivers – no boot code, no main()." alt="" coords="16,16,155,183"/>
+</map>

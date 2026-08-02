@@ -1,0 +1,39 @@
+<map id="libs/ra8_hal/src/ra8_xspi_flash.c" name="libs/ra8_hal/src/ra8_xspi_flash.c">
+<area shape="rect" id="Node000001" title="OSPI / xSPI manual&#45;command engine + JEDEC NOR&#45;flash operations." alt="" coords="407,5,552,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="331,240,402,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="407,39,300,58,180,86,123,103,74,123,36,144,13,168,8,180,13,190,32,205,63,218,146,235,238,244,317,248,317,253,237,250,145,240,62,223,30,210,8,194,3,180,8,165,33,140,72,118,122,98,178,81,299,53,407,34"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="709,240,834,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="553,31,616,39,681,51,737,69,758,79,772,92,782,107,789,125,793,161,790,197,783,227,777,226,784,196,788,162,784,126,778,110,768,95,755,84,735,74,680,57,615,44,552,36"/>
+<area shape="rect" id="Node000004" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="171,93,271,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="419,48,273,92,271,87,417,43"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="404,167,483,192"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="478,46,466,94,452,154,447,153,461,93,473,45"/>
+<area shape="rect" id="Node000008" href="$ra8__hw__err_8h.html" title="Bounded wait&#45;flag primitives for RA8D2 HAL drivers." alt="" coords="295,93,400,119"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="450,48,381,88,378,84,447,43"/>
+<area shape="rect" id="Node000009" href="$ra8__ospi__regs_8h.html" title="xSPI / Octo&#45;SPI controller register layout for the Renesas RA8D2" alt="" coords="610,167,734,192"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="553,32,611,41,669,54,719,70,738,80,751,92,756,102,757,112,748,131,731,148,709,162,706,158,727,144,744,128,752,111,751,103,747,95,735,85,717,75,668,59,610,46,553,37"/>
+<area shape="rect" id="Node000010" href="$ra8__xspi_8h.html" title="xSPI / Octo&#45;SPI driver (flash read/program/erase + ID/status)" alt="" coords="476,93,566,119"/>
+<area shape="poly" id="edge18_Node000001_Node000010" title=" " alt="" coords="492,44,511,80,506,82,487,47"/>
+<area shape="rect" id="Node000011" href="$ra8__xspi__internal_8h.html" title="Module&#45;private seam shared between the ra8_xspi translation units." alt="" coords="590,93,737,119"/>
+<area shape="poly" id="edge22_Node000001_Node000011" title=" " alt="" coords="525,43,625,85,623,90,523,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="222,119,223,154,228,173,237,190,254,208,274,221,319,239,317,244,272,226,250,212,232,194,223,175,218,154,217,119"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="258,116,396,160,394,165,256,121"/>
+<area shape="rect" id="Node000006" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="246,167,329,192"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="234,117,270,155,266,158,230,121"/>
+<area shape="rect" id="Node000007" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="23,167,171,192"/>
+<area shape="poly" id="edge9_Node000004_Node000007" title=" " alt="" coords="203,121,131,162,128,157,200,116"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="433,194,391,232,387,229,430,190"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="302,190,345,229,342,233,299,194"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="141,189,318,236,317,241,140,195"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="352,119,366,226,361,227,347,119"/>
+<area shape="poly" id="edge14_Node000008_Node000005" title=" " alt="" coords="365,117,419,156,415,160,362,121"/>
+<area shape="poly" id="edge16_Node000009_Node000002" title=" " alt="" coords="623,195,416,243,415,237,622,189"/>
+<area shape="poly" id="edge17_Node000009_Node000003" title=" " alt="" coords="689,190,746,230,743,234,686,194"/>
+<area shape="poly" id="edge19_Node000010_Node000002" title=" " alt="" coords="523,120,516,155,508,175,496,194,479,210,458,223,416,242,414,237,456,219,476,206,492,190,504,173,511,154,518,119"/>
+<area shape="poly" id="edge20_Node000010_Node000005" title=" " alt="" coords="510,121,468,159,465,155,507,117"/>
+<area shape="poly" id="edge21_Node000010_Node000009" title=" " alt="" coords="546,116,636,158,634,163,544,121"/>
+<area shape="poly" id="edge23_Node000011_Node000002" title=" " alt="" coords="648,121,593,156,522,194,415,238,413,233,520,190,590,151,645,116"/>
+<area shape="poly" id="edge24_Node000011_Node000003" title=" " alt="" coords="688,116,719,136,747,165,763,196,771,226,766,227,758,198,743,168,715,141,685,121"/>
+<area shape="poly" id="edge25_Node000011_Node000005" title=" " alt="" coords="629,121,493,165,491,160,628,116"/>
+<area shape="poly" id="edge26_Node000011_Node000009" title=" " alt="" coords="668,119,672,153,666,153,662,119"/>
+</map>

@@ -1,0 +1,29 @@
+<map id="libs/ra8_nsc/src/ra8_nsc_log.c" name="libs/ra8_nsc/src/ra8_nsc_log.c">
+<area shape="rect" id="Node000001" title="NSC veneer: secure&#45;side logging." alt="" coords="309,5,456,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="339,240,410,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="426,43,455,64,478,92,481,106,479,119,469,159,449,194,429,216,406,234,403,230,425,212,445,190,464,157,473,118,476,106,474,94,452,68,423,48"/>
+<area shape="rect" id="Node000003" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="187,93,287,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="349,48,272,89,269,84,347,43"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="335,167,414,192"/>
+<area shape="poly" id="edge10_Node000001_Node000004" title=" " alt="" coords="380,46,371,94,371,119,374,153,369,154,365,119,365,93,375,45"/>
+<area shape="rect" id="Node000005" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="5,167,88,192"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="310,47,244,68,176,96,120,128,73,160,70,156,117,123,173,91,242,63,308,42"/>
+<area shape="rect" id="Node000007" href="$ra8__nsc_8h.html" title="Non&#45;Secure Callable veneer scaffold." alt="" coords="381,93,465,119"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="395,44,413,80,408,82,390,47"/>
+<area shape="rect" id="Node000008" href="$ra8__nsc__veneer_8h.html" title="Macros for declaring Non&#45;Secure Callable veneer functions." alt="" coords="541,167,675,192"/>
+<area shape="poly" id="edge18_Node000001_Node000008" title=" " alt="" coords="433,43,478,64,523,91,561,123,591,154,587,158,557,127,520,96,475,69,431,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="211,121,185,135,161,152,148,171,148,181,153,190,163,200,180,208,225,223,326,243,325,248,223,228,178,213,160,204,149,194,143,182,143,170,157,149,182,130,208,117"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="261,116,341,158,339,163,258,121"/>
+<area shape="poly" id="edge6_Node000003_Node000005" title=" " alt="" coords="208,121,92,164,90,159,206,116"/>
+<area shape="rect" id="Node000006" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="163,167,311,192"/>
+<area shape="poly" id="edge8_Node000003_Node000006" title=" " alt="" coords="240,119,240,153,235,153,235,119"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="377,192,377,226,372,226,372,192"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="89,187,326,238,325,243,88,192"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="261,190,341,231,339,236,258,194"/>
+<area shape="poly" id="edge13_Node000007_Node000002" title=" " alt="" coords="428,118,433,152,432,173,428,193,416,214,401,232,397,229,412,211,423,191,427,172,428,152,423,119"/>
+<area shape="poly" id="edge14_Node000007_Node000004" title=" " alt="" coords="417,121,392,157,388,154,413,118"/>
+<area shape="poly" id="edge15_Node000007_Node000008" title=" " alt="" coords="453,116,566,159,564,164,451,121"/>
+<area shape="poly" id="edge16_Node000008_Node000002" title=" " alt="" coords="571,195,424,239,422,234,570,189"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="545,240,671,265"/>
+<area shape="poly" id="edge17_Node000008_Node000009" title=" " alt="" coords="611,192,611,226,605,226,605,192"/>
+</map>

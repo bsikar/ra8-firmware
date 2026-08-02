@@ -1,0 +1,28 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/inc/usb_host_file_ops_steps.h" name="examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/inc/usb_host_file_ops_steps.h">
+<area shape="rect" id="Node000001" title="examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/src/usb_host_file_ops_steps...." alt="" coords="68,5,241,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="233,489,303,515"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,77,67,102,37,132,16,168,10,187,8,207,8,356,14,389,30,416,55,438,85,456,119,470,154,481,220,493,219,498,153,486,117,475,83,461,51,442,26,419,9,391,3,357,3,207,5,186,11,165,33,129,63,98,95,73"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="178,416,257,441"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="157,75,157,207,157,283,162,317,173,350,203,403,198,406,168,352,157,319,152,284,152,207,152,75"/>
+<area shape="rect" id="Node000004" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="43,343,117,368"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="149,75,88,330,83,329,144,74"/>
+<area shape="rect" id="Node000005" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="291,196,376,221"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="243,58,293,82,316,99,334,121,341,136,344,152,342,183,337,182,339,152,336,138,330,124,312,103,291,86,240,62"/>
+<area shape="rect" id="Node000008" href="$ra8__usb__hmsc_8h.html" title="Native USB host&#45;side MSC (Mass Storage Class) class layer." alt="" coords="193,123,319,148"/>
+<area shape="poly" id="edge15_Node000001_Node000008" title=" " alt="" coords="193,73,235,111,231,115,189,77"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="228,440,254,477,250,480,224,443"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="92,366,124,401,167,439,234,481,231,485,164,443,120,404,88,370"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="103,366,184,407,182,412,101,370"/>
+<area shape="rect" id="Node000006" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="345,343,479,368"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="346,220,364,241,382,268,397,299,407,329,402,331,392,301,378,271,360,245,342,223"/>
+<area shape="rect" id="Node000007" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="248,269,368,295"/>
+<area shape="poly" id="edge11_Node000005_Node000007" title=" " alt="" coords="332,223,319,257,314,256,327,221"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="402,370,291,481,287,477,398,367"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="382,371,263,414,261,409,380,366"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="308,296,275,476,270,475,303,295"/>
+<area shape="poly" id="edge13_Node000007_Node000003" title=" " alt="" coords="303,297,234,406,230,403,298,294"/>
+<area shape="poly" id="edge14_Node000007_Node000006" title=" " alt="" coords="326,292,385,332,382,337,323,297"/>
+<area shape="poly" id="edge16_Node000008_Node000002" title=" " alt="" coords="320,141,384,155,449,181,477,199,499,221,515,249,520,280,520,357,514,389,498,417,475,439,446,458,380,483,318,497,316,492,378,478,443,453,471,435,494,414,509,387,515,356,515,281,509,250,495,225,473,203,446,186,382,160,319,146"/>
+<area shape="poly" id="edge17_Node000008_Node000003" title=" " alt="" coords="257,148,239,270,223,402,217,402,233,269,252,148"/>
+<area shape="poly" id="edge18_Node000008_Node000005" title=" " alt="" coords="270,146,312,185,309,188,267,150"/>
+</map>

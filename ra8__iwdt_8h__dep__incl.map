@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_iwdt.h" name="libs/ra8_hal/inc/ra8_iwdt.h">
+<area shape="rect" id="Node000001" title="Independent Watchdog driver header." alt="" coords="233,5,378,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2iwdt__demo_2main_8c.html" title="IWDT window&#45;mode refresh demo for EK&#45;RA8D2." alt="" coords="5,93,192,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="252,53,158,96,156,91,250,49"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2watchdog__demo_2main_8c.html" title="IWDT watchdog + reset&#45;cause demo for EK&#45;RA8D2." alt="" coords="217,93,394,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="308,59,308,93,303,93,303,59"/>
+<area shape="rect" id="Node000004" href="$ra8__iwdt_8c.html" title="Independent Watchdog Timer driver implementation." alt="" coords="418,101,563,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="356,49,454,98,452,103,354,54"/>
+</map>

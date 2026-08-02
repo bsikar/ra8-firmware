@@ -1,0 +1,13 @@
+<map id="libs/ra8_board_ra8p1/boot/nmi_exception.c" name="libs/ra8_board_ra8p1/boot/nmi_exception.c">
+<area shape="rect" id="Node000001" title="RA8D2/RA8P1 NMI handler – record the ICU cause instead of a bare trap." alt="" coords="79,5,246,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="203,167,274,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,48,49,61,21,77,13,86,9,96,9,106,15,117,26,126,42,135,88,150,190,169,189,175,86,155,40,140,23,131,11,120,4,107,3,95,9,83,18,73,46,56,81,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="25,93,150,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="146,47,110,85,106,81,142,44"/>
+<area shape="rect" id="Node000004" href="$ra8__exception_8h.html" title="Cortex&#45;M85 CPU exception diagnostic helpers." alt="" coords="175,93,302,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="183,44,219,81,215,85,179,47"/>
+<area shape="rect" id="Node000005" href="$ra8__icu__regs_8h.html" title="Interrupt Control Unit (ICU) register layout for the Renesas RA8D2." alt="" coords="326,93,442,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="216,43,339,86,337,91,214,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="241,119,241,153,236,153,236,119"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="362,121,275,163,273,158,359,116"/>
+</map>

@@ -1,0 +1,48 @@
+var board__periph_8h =
+[
+    [ "board_glcdc_fb_t", "structboard__glcdc__fb__t.html", "structboard__glcdc__fb__t" ],
+    [ "board_device_t", "board__periph_8h.html#afef82ab477bcfaaaed172155127d07de", [
+      [ "k_board_device_ra8d2", "board__periph_8h.html#afef82ab477bcfaaaed172155127d07dea4c58f670031dc7986669cd736ec99e97", null ],
+      [ "k_board_device_ra8p1", "board__periph_8h.html#afef82ab477bcfaaaed172155127d07dea2597764eb45df24011a6be50036a7199", null ]
+    ] ],
+    [ "board_led_id_t", "board__periph_8h.html#a8ee5e93a92512eb49224dfc8c3a28f4c", [
+      [ "k_board_led1", "board__periph_8h.html#a8ee5e93a92512eb49224dfc8c3a28f4cafa9ab5f3c5ca8afa565c2f574f19f2b8", null ],
+      [ "k_board_led2", "board__periph_8h.html#a8ee5e93a92512eb49224dfc8c3a28f4ca2b5a1afe760f72b00d385bb1daf09241", null ],
+      [ "k_board_led3", "board__periph_8h.html#a8ee5e93a92512eb49224dfc8c3a28f4ca11051cb4c373fcd010e3e7f009c6bafa", null ],
+      [ "k_board_led_count", "board__periph_8h.html#a8ee5e93a92512eb49224dfc8c3a28f4ca789e1feaad667f135e15ab71bd4b6aed", null ]
+    ] ],
+    [ "board_periph_battery_get", "board__periph_8h.html#a2527321896f0b806be03bc1de812c51f", null ],
+    [ "board_periph_battery_set", "board__periph_8h.html#ac469ce07618aedb9f83de8144f9ee62b", null ],
+    [ "board_periph_device", "board__periph_8h.html#a212b1ef9950cebb420d5d219048b4856", null ],
+    [ "board_periph_glcdc_get_framebuffer", "board__periph_8h.html#a7bee07acde2317ddc3e2ff6aed4e6286", null ],
+    [ "board_periph_gpio_get_input", "board__periph_8h.html#ad11b83734158bdfd3216f6878c9417d2", null ],
+    [ "board_periph_gpio_set_input", "board__periph_8h.html#ad780f601da4181c9fb4375f7f3dc6118", null ],
+    [ "board_periph_init", "board__periph_8h.html#a138e60924f737d2d79bd8f9c1d5c87cd", null ],
+    [ "board_periph_irq_count", "board__periph_8h.html#afb4d8e2656eded5761214986544961dc", null ],
+    [ "board_periph_irq_total", "board__periph_8h.html#ab0eb2c0b595c4a5971726e37884a39c2", null ],
+    [ "board_periph_led_color_rgb565", "board__periph_8h.html#ab8d935dd8fc87e52383ef75dfb834d76", null ],
+    [ "board_periph_led_level", "board__periph_8h.html#a0c5a52ace998dea3e803dabeed5687a4", null ],
+    [ "board_periph_next_irq", "board__periph_8h.html#aec83002ca071ceb20343497ae8debc65", null ],
+    [ "board_periph_note_irq_taken", "board__periph_8h.html#a5e48129b1d8296a26e60a730999db32b", null ],
+    [ "board_periph_nvic_set_enable", "board__periph_8h.html#a351f0ecb66b2b2c148b806db8478711d", null ],
+    [ "board_periph_read", "board__periph_8h.html#ab31bb7ef6f15271824212805755d2fd1", null ],
+    [ "board_periph_report", "board__periph_8h.html#ad31ecb4db7d06c8787b7c3d45b222eaa", null ],
+    [ "board_periph_reset_request_reboot", "board__periph_8h.html#af61b5e80eb5525630102313da26a20cc", null ],
+    [ "board_periph_reset_set_cause", "board__periph_8h.html#a64aa61a341dc568c967ec1145c963f59", null ],
+    [ "board_periph_reset_take_request", "board__periph_8h.html#ae153e0b11d8b3387afb0679ada41231c", null ],
+    [ "board_periph_sci_console_channel", "board__periph_8h.html#a8088644d8a7ad7ac1b2e8c64ba5a93c6", null ],
+    [ "board_periph_sci_feed_rx", "board__periph_8h.html#a24d80cef81262b58143a81ac73baee79", null ],
+    [ "board_periph_sci_set_tx_sink", "board__periph_8h.html#a8b9902372481c775046296a174bf717a", null ],
+    [ "board_periph_set_device", "board__periph_8h.html#aead5874535258b50f2f33aa2182d1a7d", null ],
+    [ "board_periph_set_usbhs_loop", "board__periph_8h.html#a8066d677c4b2f56ca754c8aaa406f626", null ],
+    [ "board_periph_tick", "board__periph_8h.html#a0392e6e972fbbdc56073605529597ad1", null ],
+    [ "board_periph_touch_inject", "board__periph_8h.html#aeffeec0086314a5b1182dbe441affe47", null ],
+    [ "board_periph_touch_last", "board__periph_8h.html#a41322247716f50a9bf0cf003accb3a91", null ],
+    [ "board_periph_touch_reported", "board__periph_8h.html#add2fa431727223aab0120ae824394047", null ],
+    [ "board_periph_touch_seq_push", "board__periph_8h.html#a65a3818e0993b23e868756bbb5729818", null ],
+    [ "board_periph_touch_seq_reset", "board__periph_8h.html#aa6e54791ef4d917c444a09c4b1521345", null ],
+    [ "board_periph_uart_last_line", "board__periph_8h.html#a6e13d20be1c2a12f30d7f655220df050", null ],
+    [ "board_periph_uart_tx_total", "board__periph_8h.html#a98ba56b6e6beaf9ee0f4378ae1d9f760", null ],
+    [ "board_periph_usbhs_loop", "board__periph_8h.html#a9f3dac647450095af6749bcb4ce02f09", null ],
+    [ "board_periph_write", "board__periph_8h.html#a964ef68c58f5a3b1d8856e58a2abe0ba", null ]
+];

@@ -1,0 +1,17 @@
+<map id="ra8_comic_tile_reader_t" name="ra8_comic_tile_reader_t">
+<area shape="rect" id="Node000001" title="One comic tile reader: owned tile cache, atlas store, bound page." alt="" coords="229,389,407,415"/>
+<area shape="rect" id="Node000002" href="$structra8__tile__cache__t.html" title="Tile&#45;cache state (caller&#45;owned; treat as private)." alt="" coords="89,293,217,319"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="186,323,299,387,296,391,183,328"/>
+<area shape="rect" id="Node000003" href="$structra8__keycache__t.html" title="Cache engine state (caller&#45;owned; treat as private)." alt="" coords="21,197,143,223"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="101,232,146,292,142,295,97,235"/>
+<area shape="rect" id="Node000004" href="$structra8__keycache__cfg__t.html" title="Caller&#45;supplied storage + policy + renderer for ra8_keycache_init." alt="" coords="7,101,157,127"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="85,141,85,197,79,197,79,141"/>
+<area shape="rect" id="Node000005" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,5,159,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="85,45,85,101,79,101,79,45"/>
+<area shape="rect" id="Node000006" href="$structra8__tile__key__t.html" title="Identifies one decoded image tile." alt="" coords="168,197,281,223"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="209,235,164,295,159,291,205,232"/>
+<area shape="rect" id="Node000007" href="$structra8__jof__memstore__t.html" title="Append&#45;only memory store: the simplest atlas backing (RAM/SDRAM)." alt="" coords="241,293,395,319"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="321,333,321,389,315,389,315,333"/>
+<area shape="rect" id="Node000008" href="$structra8__jof__info__t.html" title="Parsed + validated geometry of one JOF atlas." alt="" coords="419,293,529,319"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="445,328,339,391,336,387,442,323"/>
+</map>

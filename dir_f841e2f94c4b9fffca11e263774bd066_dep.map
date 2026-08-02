@@ -1,0 +1,20 @@
+<map id="examples/ra8p1_foundation" name="examples/ra8p1_foundation">
+<area shape="rect" id="node2" href="dir_6d4392cd85862f287e647363d7930e22.html" title="blink_ra8p1" alt="" coords="144,63,243,88"/>
+<area shape="rect" id="node7" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="232,136,277,161"/>
+<area shape="poly" id="edge1" href="dir_000017_000218.html" alt="" coords="205,87,238,124,234,127,201,90"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000017_000218.html" title="6" alt="" coords="235,109,244,124"/>
+<area shape="rect" id="node3" href="dir_3e52d7824ff19d7873c42f4943fcc8b5.html" title="npu_infer" alt="" coords="37,63,120,88"/>
+<area shape="poly" id="edge2" href="dir_000242_000218.html" alt="" coords="96,86,133,107,177,124,219,136,218,141,176,129,131,112,94,90"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000242_000218.html" title="11" alt="" coords="208,122,225,137"/>
+<area shape="rect" id="node4" href="dir_dd5b63215d477cbcb68400da3e0e00bc.html" title="npu_smoke" alt="" coords="267,63,363,88"/>
+<area shape="poly" id="edge3" href="dir_000243_000218.html" alt="" coords="307,90,275,127,271,124,303,87"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000243_000218.html" title="8" alt="" coords="278,120,287,135"/>
+<area shape="rect" id="node5" href="dir_1c4cbda60c5aa5506495c803c133dac0.html" title="npu_vela" alt="" coords="387,63,469,88"/>
+<area shape="rect" id="node6" href="dir_4eeb864c4eec08c7d6b9d3b0352cfdde.html" title="Host&#45;side tools: the ra8_emulator RA8D2 emulator, cache/glyph benchmarks, the EPUB/book image builder..." alt="" coords="401,136,455,161"/>
+<area shape="poly" id="edge4" href="dir_000244_000443.html" alt="" coords="431,88,431,122,425,122,425,88"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000244_000443.html" title="1" alt="" coords="432,110,441,125"/>
+<area shape="poly" id="edge5" href="dir_000244_000218.html" alt="" coords="413,90,376,112,332,129,291,141,290,136,330,124,374,107,410,86"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000244_000218.html" title="10" alt="" coords="288,138,306,153"/>
+<area shape="rect" id="clust2" href="dir_f841e2f94c4b9fffca11e263774bd066.html" title="Foundation apps for the RA8P1 variant (RA8D2 + Ethos&#45;U55 NPU)." alt="" coords="27,52,640,99"/>
+<area shape="rect" id="clust1" href="dir_d28a4824dc47e487b107a5db32ef43c4.html" title="Example applications – the primary showcase of the repository." alt="" coords="16,16,651,109"/>
+</map>

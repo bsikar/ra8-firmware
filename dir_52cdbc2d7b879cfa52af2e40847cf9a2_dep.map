@@ -1,0 +1,10 @@
+<map id="libs/ra8_board_ra8p1/boot" name="libs/ra8_board_ra8p1/boot">
+<area shape="rect" id="node1" href="dir_52cdbc2d7b879cfa52af2e40847cf9a2.html" title="boot" alt="" coords="69,52,119,77"/>
+<area shape="rect" id="node2" href="dir_9784371ce13fb6b4d69891743248b7e4.html" title="ra8_core" alt="" coords="5,125,84,151"/>
+<area shape="poly" id="edge1" href="dir_000019_000264.html" alt="" coords="88,79,63,116,58,113,84,76"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000019_000264.html" title="5" alt="" coords="65,108,75,123"/>
+<area shape="rect" id="node3" href="dir_e2029a1647bce4ee80acb4dac4b3c18b.html" title="ra8_hal" alt="" coords="108,125,179,151"/>
+<area shape="poly" id="edge2" href="dir_000019_000276.html" alt="" coords="104,76,130,113,125,116,100,79"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000019_000276.html" title="3" alt="" coords="127,98,137,113"/>
+<area shape="rect" id="clust1" href="dir_7c9a1dde1d0fb4633ec0f817590d5e33.html" title="ra8_board_ra8p1" alt="" coords="29,16,159,88"/>
+</map>

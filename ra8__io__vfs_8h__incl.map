@@ -1,0 +1,12 @@
+<map id="libs/ra8_io/inc/ra8_io_vfs.h" name="libs/ra8_io/inc/ra8_io_vfs.h">
+<area shape="rect" id="Node000001" title="ra8_io virtual filesystem – mount many volumes, address them by name." alt="" coords="5,5,143,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="52,240,123,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="65,47,51,75,38,112,32,152,33,172,38,191,49,211,65,229,61,232,45,215,33,193,28,173,26,152,33,111,46,73,60,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="48,167,127,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="78,46,88,153,82,153,73,46"/>
+<area shape="rect" id="Node000004" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="111,93,186,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="94,44,130,81,126,85,90,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="90,192,90,226,85,226,85,192"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="152,119,150,153,140,193,128,214,113,232,109,229,124,211,136,191,145,152,147,119"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="141,121,108,158,104,154,137,117"/>
+</map>

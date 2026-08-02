@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/inc/usb_msc_mram_hs_steps.h" name="examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/inc/usb_msc_mram_hs_steps.h">
+<area shape="rect" id="Node000001" title="Synthesized FAT16 volume helpers for the USB&#45;HS MRAM MSC demo." alt="" coords="95,5,303,75"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2manual_2usb__msc__mram__hs_2main_8c.html" title="ThreadX + USBX Mass&#45;Storage view of the onboard MRAM (USB&#45;HS)." alt="" coords="5,130,179,185"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,87,118,132,114,128,156,83"/>
+<area shape="rect" id="Node000003" href="$usb__msc__mram__hs__steps_8c.html" title="Synthesized FAT16 volume helpers for the USB&#45;HS MRAM MSC demo." alt="" coords="203,123,411,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="242,83,277,121,273,124,238,87"/>
+</map>

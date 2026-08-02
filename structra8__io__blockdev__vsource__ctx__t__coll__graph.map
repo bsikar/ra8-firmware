@@ -1,0 +1,7 @@
+<map id="ra8_io_blockdev_vsource_ctx_t" name="ra8_io_blockdev_vsource_ctx_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned adapter context binding a block device to a vsource read." alt="" coords="5,197,192,237"/>
+<area shape="rect" id="Node000002" href="$structra8__io__blockdev__t.html" title="Caller&#45;allocated block&#45;device handle binding a backend to its context." alt="" coords="29,101,169,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,141,101,197,96,197,96,141"/>
+<area shape="rect" id="Node000003" href="$structra8__io__blockdev__iface.html" title="Opaque to applications – backends implement this internally and export a binding helper through their..." alt="" coords="15,5,182,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="101,45,101,101,96,101,96,45"/>
+</map>

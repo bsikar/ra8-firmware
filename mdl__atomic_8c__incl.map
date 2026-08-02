@@ -1,0 +1,13 @@
+<map id="tools/media_dl/src/mdl_atomic.c" name="tools/media_dl/src/mdl_atomic.c">
+<area shape="rect" id="Node000001" title="Implementation of the write&#45;to&#45;temp&#45;then&#45;rename helpers." alt="" coords="150,5,291,45"/>
+<area shape="rect" id="Node000002" href="$mdl__atomic_8h.html" title="Write&#45;to&#45;temp&#45;then&#45;rename so a failed re&#45;fetch cannot destroy good data." alt="" coords="5,93,116,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="184,48,98,90,95,85,181,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="141,93,207,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="212,47,190,83,186,80,207,44"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="232,93,303,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="234,44,256,80,251,83,230,47"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="327,93,402,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="256,43,333,84,330,89,254,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="23,167,98,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="63,119,63,153,58,153,58,119"/>
+</map>

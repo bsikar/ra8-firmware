@@ -1,0 +1,25 @@
+<map id="tools/ra8_emulator/src/engine/emu_insn_seams.c" name="tools/ra8_emulator/src/engine/emu_insn_seams.c">
+<area shape="rect" id="Node000001" title="Invalid&#45;instruction dispatcher + trap&#45;path seams (see emu_seams.h)." alt="" coords="254,5,414,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,161,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="258,63,131,106,129,101,257,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="186,108,253,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="301,62,248,102,245,97,297,58"/>
+<area shape="rect" id="Node000004" href="$emu__engine_8h.html" title="Shared Unicorn engine access utilities for the board emulator." alt="" coords="277,108,391,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="337,60,337,94,331,94,331,60"/>
+<area shape="rect" id="Node000008" href="$emu__exc_8h.html" title="Cortex&#45;M exception model constants and interfaces for ra8_emulator." alt="" coords="415,108,509,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="375,58,435,98,432,103,372,62"/>
+<area shape="rect" id="Node000009" href="$emu__seams_8h.html" title="Armv8.1&#45;M instruction&#45;emulation seams (M85 ops on Unicorn&#39;s M33)." alt="" coords="533,108,647,133"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="413,58,544,101,542,106,411,63"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="299,181,369,207"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="337,134,337,168,331,168,331,134"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="393,181,528,207"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="356,131,429,172,427,177,353,136"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="553,181,678,207"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="380,131,557,175,556,180,379,136"/>
+<area shape="poly" id="edge8_Node000008_Node000005" title=" " alt="" coords="443,136,368,177,366,172,440,131"/>
+<area shape="poly" id="edge9_Node000008_Node000006" title=" " alt="" coords="464,134,464,168,458,168,459,134"/>
+<area shape="poly" id="edge10_Node000008_Node000007" title=" " alt="" coords="488,131,579,173,577,178,486,136"/>
+<area shape="poly" id="edge12_Node000009_Node000005" title=" " alt="" coords="550,136,383,182,382,177,548,131"/>
+<area shape="poly" id="edge13_Node000009_Node000006" title=" " alt="" coords="570,136,495,177,493,172,568,131"/>
+<area shape="poly" id="edge14_Node000009_Node000007" title=" " alt="" coords="597,133,609,168,604,169,592,135"/>
+</map>

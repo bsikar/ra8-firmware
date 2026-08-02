@@ -1,0 +1,18 @@
+<map id="libs/ra8_hal/inc/ra8_crc_regs.h" name="libs/ra8_hal/inc/ra8_crc_regs.h">
+<area shape="rect" id="Node000001" title="CRC calculator register layout for the Renesas RA8D2." alt="" coords="205,5,351,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2crc__demo_2main_8c.html" title="CRC&#45;32 hardware vs." alt="" coords="5,181,183,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="251,57,123,183,119,179,247,53"/>
+<area shape="rect" id="Node000003" href="$ra8__crc_8h.html" title="CRC hardware calculator driver header." alt="" coords="261,93,407,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="300,56,324,92,319,95,296,58"/>
+<area shape="rect" id="Node000004" href="$ra8__crc_8c.html" title="Cyclic Redundancy Check driver implementation." alt="" coords="207,189,352,229"/>
+<area shape="poly" id="edge9_Node000001_Node000004" title=" " alt="" coords="264,59,253,94,250,113,253,133,261,162,272,187,267,190,256,164,247,134,245,113,247,93,259,57"/>
+<area shape="rect" id="Node000007" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="431,93,576,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="341,48,455,91,453,96,339,53"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="274,141,163,184,161,179,272,136"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="318,147,293,190,288,187,314,144"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc__io_8h.html" title="NSC veneers for the I/O drivers." alt="" coords="427,189,574,229"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="381,138,468,186,466,191,378,142"/>
+<area shape="rect" id="Node000006" href="$ra8__nsc__io_8c.html" title="NSC veneers for the &#45;6 I/O drivers." alt="" coords="371,284,518,324"/>
+<area shape="poly" id="edge7_Node000003_Node000006" title=" " alt="" coords="354,144,436,282,431,285,350,146"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="484,242,458,285,454,283,480,239"/>
+</map>

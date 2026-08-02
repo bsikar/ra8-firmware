@@ -1,0 +1,5 @@
+<map id="ra8_flash_runtime_t" name="ra8_flash_runtime_t">
+<area shape="rect" id="Node000001" title="File&#45;scope runtime state shared across the ra8_flash TUs." alt="" coords="10,101,161,127"/>
+<area shape="rect" id="Node000002" href="$structra8__flash__isr__event__t.html" title="One IRQ event delivered to ra8_flash_callback_t." alt="" coords="5,5,165,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,45,88,101,83,101,83,45"/>
+</map>

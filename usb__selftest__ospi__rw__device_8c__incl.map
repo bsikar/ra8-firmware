@@ -1,0 +1,41 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/usb_selftest_ospi_rw_device.c" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/usb_selftest_ospi_rw_device.c">
+<area shape="rect" id="Node000001" title="OSPI&#45;flash bring&#45;up + write&#45;window pre&#45;erase for the writable&#45;OSPI self&#45;loop." alt="" coords="368,5,560,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="393,445,463,471"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="368,60,255,85,137,119,86,140,45,163,17,189,10,201,8,215,8,305,12,336,22,358,40,377,67,395,91,407,124,417,209,433,379,451,379,456,208,438,123,422,89,411,64,400,37,381,18,361,6,337,3,305,3,214,5,200,13,185,41,159,83,136,135,114,254,80,367,55"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2_8h.html" title="Board&#45;support layer for the Renesas EK&#45;RA8D2 v1 evaluation kit." alt="" coords="215,123,382,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="406,77,333,118,330,113,403,72"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="427,372,506,397"/>
+<area shape="poly" id="edge16_Node000001_Node000006" title=" " alt="" coords="467,75,469,358,464,358,462,75"/>
+<area shape="rect" id="Node000009" href="$ra8__xspi_8h.html" title="xSPI / Octo&#45;SPI driver (flash read/program/erase + ID/status)" alt="" coords="502,291,591,317"/>
+<area shape="poly" id="edge17_Node000001_Node000009" title=" " alt="" coords="477,74,541,277,536,279,472,76"/>
+<area shape="rect" id="Node000012" href="$usb__selftest__ospi__rw__steps_8h.html" title="Shared tunables + host&#45;side worker seam for the writable&#45;OSPI self&#45;loop." alt="" coords="641,284,799,324"/>
+<area shape="poly" id="edge23_Node000001_Node000012" title=" " alt="" coords="499,73,694,273,690,276,495,77"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2__connectors_8h.html" title="Board&#45;identity, LEDs, switches, display, audio, Arduino, Pmod, and MikroBUS portion of the EK&#45;RA8D2 v..." alt="" coords="221,284,376,324"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="301,148,301,270,296,270,296,148"/>
+<area shape="rect" id="Node000008" href="$ra8__board__ek__ra8d2__peripherals_8h.html" title="I/O&#45;expander, USB, camera, external&#45;memory, MIPI&#45;DSI, UART console, and Ethernet portion of the EK&#45;RA..." alt="" coords="107,196,261,236"/>
+<area shape="poly" id="edge10_Node000003_Node000008" title=" " alt="" coords="283,150,224,190,221,186,280,146"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="321,323,366,370,414,432,410,435,362,374,317,326"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="93,372,168,397"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="260,326,169,369,167,364,257,322"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="340,322,431,364,428,369,338,326"/>
+<area shape="rect" id="Node000007" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="193,372,351,397"/>
+<area shape="poly" id="edge8_Node000004_Node000007" title=" " alt="" coords="295,325,283,360,278,358,290,323"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="463,399,443,435,438,432,458,396"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="298,395,391,437,389,442,296,400"/>
+<area shape="poly" id="edge12_Node000008_Node000002" title=" " alt="" coords="161,238,124,270,90,311,78,333,71,355,73,376,83,396,103,410,132,422,212,440,301,449,379,453,379,458,301,454,211,445,131,427,100,415,79,399,68,377,66,355,73,331,85,308,121,267,157,234"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="211,234,264,274,261,278,208,238"/>
+<area shape="poly" id="edge11_Node000008_Node000005" title=" " alt="" coords="180,237,141,360,136,358,175,236"/>
+<area shape="poly" id="edge14_Node000008_Node000006" title=" " alt="" coords="262,229,327,249,359,264,390,282,410,299,429,319,456,358,451,361,424,323,407,303,386,286,357,269,325,254,261,234"/>
+<area shape="poly" id="edge15_Node000008_Node000007" title=" " alt="" coords="188,236,195,277,212,323,227,344,246,361,242,365,223,347,207,325,189,279,183,237"/>
+<area shape="poly" id="edge18_Node000009_Node000002" title=" " alt="" coords="548,318,541,356,533,378,521,399,496,423,469,441,466,437,493,419,517,396,528,376,536,354,543,317"/>
+<area shape="poly" id="edge19_Node000009_Node000006" title=" " alt="" coords="537,319,490,364,487,360,533,315"/>
+<area shape="rect" id="Node000010" href="$ra8__ospi__regs_8h.html" title="xSPI / Octo&#45;SPI controller register layout for the Renesas RA8D2" alt="" coords="582,372,706,397"/>
+<area shape="poly" id="edge20_Node000009_Node000010" title=" " alt="" coords="563,315,621,361,617,365,559,319"/>
+<area shape="poly" id="edge21_Node000010_Node000002" title=" " alt="" coords="610,400,477,443,475,438,608,395"/>
+<area shape="rect" id="Node000011" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="581,445,707,471"/>
+<area shape="poly" id="edge22_Node000010_Node000011" title=" " alt="" coords="647,398,647,432,641,432,641,398"/>
+<area shape="poly" id="edge24_Node000012_Node000002" title=" " alt="" coords="729,324,733,361,730,381,721,399,704,412,680,423,615,440,543,451,478,457,477,451,542,445,614,435,678,418,701,408,717,396,725,379,728,361,723,325"/>
+<area shape="poly" id="edge25_Node000012_Node000006" title=" " alt="" coords="660,327,518,370,516,365,659,321"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="781,372,856,397"/>
+<area shape="poly" id="edge26_Node000012_Node000013" title=" " alt="" coords="746,322,795,361,792,365,742,326"/>
+</map>

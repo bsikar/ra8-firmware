@@ -1,0 +1,16 @@
+<map id="libs/ra8_hal/inc/ra8_i2c_regs.h" name="libs/ra8_hal/inc/ra8_i2c_regs.h">
+<area shape="rect" id="Node000001" title="I2C Bus Interface (IIC) register layout for the Renesas RA8D2." alt="" coords="204,5,349,45"/>
+<area shape="rect" id="Node000002" href="$ra8__i2c_8c.html" title="I2C Bus Interface (IIC) controller driver implementation." alt="" coords="5,181,151,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="237,55,184,95,135,141,96,183,92,179,131,138,180,91,234,51"/>
+<area shape="rect" id="Node000003" href="$ra8__i2c__config_8c.html" title="I2C Bus Interface (IIC) bring&#45;up, clock and error&#45;status plane." alt="" coords="175,181,320,221"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="230,55,210,73,195,94,191,117,198,140,212,161,228,179,224,183,208,165,193,142,186,117,190,92,206,69,227,51"/>
+<area shape="rect" id="Node000004" href="$ra8__i2c__internal_8h.html" title="Test&#45;access surface for ra8_i2c internal helpers (MC/DC)." alt="" coords="204,93,349,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="279,59,279,93,274,93,274,59"/>
+<area shape="rect" id="Node000005" href="$ra8__i2c__peripheral_8c.html" title="I2C Bus Interface (IIC) target (peripheral) role – polling mode." alt="" coords="344,181,489,221"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="320,51,343,70,364,92,394,138,412,180,407,182,389,140,360,95,339,74,317,56"/>
+<area shape="rect" id="Node000006" href="$ra8__io__i2c__bus__riic_8c.html" title="RIIC backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i2c." alt="" coords="425,93,563,133"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="338,48,447,91,445,96,336,53"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="222,141,123,184,120,179,219,136"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="268,147,256,182,251,180,263,146"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="320,138,387,179,385,184,318,143"/>
+</map>

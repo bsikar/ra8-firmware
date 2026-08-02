@@ -1,0 +1,35 @@
+var ra8__log_8h =
+[
+    [ "ra8_log_debug", "ra8__log_8h.html#ab7baac8e3d8fd807d9364e562a8caa06", null ],
+    [ "ra8_log_debug_val", "ra8__log_8h.html#aab1b2e8eac8b0ba13f615060e919c1b8", null ],
+    [ "ra8_log_error", "ra8__log_8h.html#afe44f4a122614d32a0b5d2960e25d508", null ],
+    [ "ra8_log_error_val", "ra8__log_8h.html#a7f19a01208f4bbcdcc0e98fb21751fec", null ],
+    [ "ra8_log_info", "ra8__log_8h.html#aa1b3fe43aa59e551996bd3883e6f846e", null ],
+    [ "ra8_log_info_val", "ra8__log_8h.html#a75bde10224675eb30850674d529abbf5", null ],
+    [ "RA8_LOG_LEVEL", "ra8__log_8h.html#a940da0b732c4c1512a205b86cbba951f", null ],
+    [ "RA8_LOG_LEVEL_DEBUG", "ra8__log_8h.html#a6804738de869d9f3940890662130f062", null ],
+    [ "RA8_LOG_LEVEL_ERROR", "ra8__log_8h.html#a39cee991b93adafc41cdc89ffd75ceb1", null ],
+    [ "RA8_LOG_LEVEL_INFO", "ra8__log_8h.html#adccd254cf671064b9fc91f648ce76f14", null ],
+    [ "RA8_LOG_LEVEL_NONE", "ra8__log_8h.html#a703973833dafae0a2787a602b1c3624f", null ],
+    [ "RA8_LOG_LEVEL_WARN", "ra8__log_8h.html#a7f2e2e029d9c7f17ea27095ccb53d426", null ],
+    [ "ra8_log_warn", "ra8__log_8h.html#a0ea4d7af286d3c3d197f9fd03185c084", null ],
+    [ "ra8_log_warn_val", "ra8__log_8h.html#a3dc70ec6fab09b265af4ff70efc3aeb0", null ],
+    [ "ra8_log_byte_sink_fn_t", "ra8__log_8h.html#aba9bd20572722b013ae7a72945466c13", null ],
+    [ "ra8_log_level_t", "ra8__log_8h.html#a5e99eae5b48ae9e57f3c2097fd7807d6", [
+      [ "k_ra8_log_level_none", "ra8__log_8h.html#a5e99eae5b48ae9e57f3c2097fd7807d6a49d26dc2b540f47639880a8b81cb5ba9", null ],
+      [ "k_ra8_log_level_error", "ra8__log_8h.html#a5e99eae5b48ae9e57f3c2097fd7807d6a34e0fcda6e7ae9b565bf99331bbd8e5b", null ],
+      [ "k_ra8_log_level_warn", "ra8__log_8h.html#a5e99eae5b48ae9e57f3c2097fd7807d6a0141723ea63913b82dd66f47bfed7700", null ],
+      [ "k_ra8_log_level_info", "ra8__log_8h.html#a5e99eae5b48ae9e57f3c2097fd7807d6a19265f7d7c614da262a1d627a1f42dc8", null ],
+      [ "k_ra8_log_level_debug", "ra8__log_8h.html#a5e99eae5b48ae9e57f3c2097fd7807d6ac7dc58bf4b9832e491d49fd1c88ac782", null ]
+    ] ],
+    [ "internal_ra8_log_debug", "ra8__log_8h.html#a2685dcfac773e2b9562de7c931795c3c", null ],
+    [ "internal_ra8_log_debug_val", "ra8__log_8h.html#ae3c23829caa7af43ef336b97ea6e09da", null ],
+    [ "internal_ra8_log_error", "ra8__log_8h.html#a79aad32288e716fb9a0b524233c43686", null ],
+    [ "internal_ra8_log_error_val", "ra8__log_8h.html#a2989d1b0ab5908ccc0312991aba576f4", null ],
+    [ "internal_ra8_log_info", "ra8__log_8h.html#aa0eaeb230db5b9c950caf9b39b44fba4", null ],
+    [ "internal_ra8_log_info_val", "ra8__log_8h.html#a367743c7635860c2a42c1d96dc3a661d", null ],
+    [ "internal_ra8_log_warn", "ra8__log_8h.html#a8813c15f64472130a4c4b680b1cac9db", null ],
+    [ "internal_ra8_log_warn_val", "ra8__log_8h.html#a29503147738d14f4b673a06d4a1b73f7", null ],
+    [ "ra8_log_init", "ra8__log_8h.html#a53fd4ebf5e1b3e61fca1b19f810a22da", null ],
+    [ "ra8_log_set_byte_sink", "ra8__log_8h.html#a6df5f570d5bfe77405de4caa3a5d9d92", null ]
+];

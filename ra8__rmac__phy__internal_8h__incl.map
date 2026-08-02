@@ -1,0 +1,10 @@
+<map id="libs/ra8_hal/src/ra8_rmac_phy_internal.h" name="libs/ra8_hal/src/ra8_rmac_phy_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_rmac_phy internal helpers (MC/DC)." alt="" coords="5,5,168,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="65,167,135,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="55,48,36,62,20,80,11,98,14,118,34,141,59,158,56,162,30,145,10,120,6,98,15,77,32,58,52,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="24,93,149,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="89,46,89,79,84,79,84,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="174,93,253,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="119,43,185,84,182,88,116,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="197,121,131,162,128,157,194,116"/>
+</map>

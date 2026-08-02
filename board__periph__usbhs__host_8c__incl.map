@@ -1,0 +1,25 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_usbhs_host.c" name="tools/ra8_emulator/src/periph/board_periph_usbhs_host.c">
+<area shape="rect" id="Node000001" title="On&#45;chip USBHS host controller model (0x40351000) for the board emulator." alt="" coords="289,5,467,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="228,181,299,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="361,62,282,172,277,169,357,59"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="511,108,578,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="430,58,511,99,509,104,428,62"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="603,108,673,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="458,58,591,101,590,106,457,63"/>
+<area shape="rect" id="Node000005" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="5,108,167,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="290,63,138,107,137,102,288,58"/>
+<area shape="rect" id="Node000007" href="$board__usb_8h.html" title="USBFS controller model + a virtual USB host for the board emulator." alt="" coords="191,108,293,133"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="338,62,273,103,270,98,335,58"/>
+<area shape="rect" id="Node000008" href="$ra8__usb__regs_8h.html" title="USB Full&#45;Speed + High&#45;Speed controller layout for the Renesas RA8D2." alt="" coords="367,108,487,133"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="395,59,416,95,411,97,391,61"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="115,131,223,174,221,179,114,136"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="55,181,189,207"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="94,132,112,168,108,170,90,135"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="248,133,259,167,253,169,243,134"/>
+<area shape="poly" id="edge9_Node000007_Node000006" title=" " alt="" coords="224,136,155,176,152,172,221,131"/>
+<area shape="poly" id="edge12_Node000008_Node000002" title=" " alt="" coords="402,136,304,178,301,173,400,131"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="367,181,442,207"/>
+<area shape="poly" id="edge11_Node000008_Node000009" title=" " alt="" coords="426,134,415,169,410,167,421,133"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="466,181,591,207"/>
+<area shape="poly" id="edge13_Node000008_Node000010" title=" " alt="" coords="445,131,502,171,499,175,442,136"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="libs/ra8_ftl/inc/ra8_ftl.h" name="libs/ra8_ftl/inc/ra8_ftl.h">
+<area shape="rect" id="Node000001" title="Flash Translation Layer – free overwrite over erase&#45;before&#45;write media." alt="" coords="5,5,144,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="127,313,198,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="71,46,61,88,54,144,56,206,63,236,74,264,94,288,120,305,117,310,91,292,70,267,57,238,50,207,48,144,56,87,66,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="85,240,163,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="81,45,121,226,116,227,76,46"/>
+<area shape="rect" id="Node000004" href="$ra8__io__blockdev_8h.html" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="121,93,260,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="104,43,164,83,161,88,101,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="133,264,152,300,148,303,128,267"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="209,117,233,137,252,166,255,179,252,193,239,225,221,256,185,305,180,301,217,253,234,223,247,191,249,179,247,168,229,141,206,121"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="184,120,153,168,132,227,127,226,148,165,179,118"/>
+<area shape="rect" id="Node000005" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="163,167,237,192"/>
+<area shape="poly" id="edge7_Node000004_Node000005" title=" " alt="" coords="195,119,199,153,194,154,190,119"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="200,193,172,301,166,299,194,192"/>
+<area shape="poly" id="edge9_Node000005_Node000003" title=" " alt="" coords="190,194,148,232,145,229,186,190"/>
+</map>

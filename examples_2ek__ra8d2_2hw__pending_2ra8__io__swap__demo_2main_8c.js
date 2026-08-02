@@ -1,0 +1,46 @@
+var examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c =
+[
+    [ "swap_backend_t", "structswap__backend__t.html", "structswap__backend__t" ],
+    [ "swap_const_t", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347ad", [
+      [ "k_swap_uart_chan", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347ada457a5413724578127e4c4332ab0f69bc", null ],
+      [ "k_swap_uart_baud", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347adaa7085f1f81a7c6e93585f349db55b68f", null ],
+      [ "k_swap_pin_shift", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347adab69beda02a06d6888d426a74c542eed9", null ],
+      [ "k_swap_ram_blocks", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347adaeeecdeef4586aa8d8ffd8770b4fc87cc", null ],
+      [ "k_swap_xspi_inst", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347ada22487444cec882b46fd9b58235bf4acc", null ],
+      [ "k_swap_xspi_base", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347adaf0edd7a2d9b4477a3f10a752726280d9", null ],
+      [ "k_swap_xspi_blocks", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347ada656865c11df3f84d372b75c32c1ed730", null ],
+      [ "k_swap_payload", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347ada37a414d403658e860835cab5c11cddd9", null ],
+      [ "k_swap_log_cap", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347ada046ed5d3be88ca5fae1abfaee4a9c33f", null ],
+      [ "k_swap_backends", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8152c16168c2424af121fdf747e347ada08f3429270bef22cebab30a6f0ef9a42", null ]
+    ] ],
+    [ "swap_pattern_t", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a64e632fac2e9149f56731ffcd9281db1", [
+      [ "k_swap_pat_mul", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a64e632fac2e9149f56731ffcd9281db1ad800016d9827511c1d05f95af47027e2", null ],
+      [ "k_swap_pat_add", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a64e632fac2e9149f56731ffcd9281db1a7a2f969c0364a326592a81014246ee61", null ],
+      [ "k_swap_pat_xor", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a64e632fac2e9149f56731ffcd9281db1a5432ccb24048d13be79ce3cc1287809a", null ]
+    ] ],
+    [ "demo_setup_or_halt", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#acc99b240e11dee31476a812e937ccd67", null ],
+    [ "main", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a840291bc02cba5474a4cb46a9b9566fe", null ],
+    [ "swap_fill", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a5c9ad1739901f1379b2526e740190b36", null ],
+    [ "swap_replay_capture", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a1eb89a4fa4679da512b51e9fda9e7cf9", null ],
+    [ "swap_run_all", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a9c32fe747b993c96a28c76c2b3bfa8ae", null ],
+    [ "swap_run_one", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a710d6d9f737988f3e77d0a9e61efe28c", null ],
+    [ "swap_uart_print", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a5bf98278a1af2a6361b6d598fdbed265", null ],
+    [ "swap_vfs_read_verify", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a0e25006258a5a2dabe2e897af62a463a", null ],
+    [ "swap_vfs_write", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a2fab2560f70a5351f4adfda349be019f", null ],
+    [ "k_swap_rxd", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a029f604934dd578c0f0ffd8f84878c27", null ],
+    [ "k_swap_txd", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#ab7963455946104d3b58ff09a52b01d2a", null ],
+    [ "s_be", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#af1ec833354743a9f8308745bb7e4e0ed", null ],
+    [ "s_payload", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a34892fb34ed6c8088130286a91b78df8", null ],
+    [ "s_ram_bd", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#af76f93fd7035712a8a5d9ddd05ce2384", null ],
+    [ "s_ram_disk", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a498dc00ce6dbd5f0b529a6f7c59f4af8", null ],
+    [ "s_ram_log", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a3a7032d17d903324f576fa966f1660e3", null ],
+    [ "s_ram_log_buf", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a62dd61a6cb71dcc8ce04439e1910908c", null ],
+    [ "s_ram_log_state", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a0d1b98f2f952d4f2e31963de91d50258", null ],
+    [ "s_ram_state", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a0481a378324850e20fde17be32551c3d", null ],
+    [ "s_readback", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a8828a3cb7ebb24535579c8875a2e633b", null ],
+    [ "s_tag", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#aa7129027772dcdce950994a2fabfc92a", null ],
+    [ "s_uart", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a9315344ec1415164260a5ca82004a208", null ],
+    [ "s_uart_state", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#aa2f17d50188fb0e23aa8cd80fcead98d", null ],
+    [ "s_xspi_bd", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a58a9223ebeef15c65f6cef5b593eeff2", null ],
+    [ "s_xspi_state", "examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html#a70fe33b02598e44ecfdaac7a88e7b236", null ]
+];

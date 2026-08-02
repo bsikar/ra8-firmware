@@ -1,0 +1,9 @@
+<map id="libs/ra8_epub/inc/ra8_epub_fs.h" name="libs/ra8_epub/inc/ra8_epub_fs.h">
+<area shape="rect" id="Node000001" title="ra8_fs &#45;&gt; ra8_epub bridge: open a .epub straight off a filesystem." alt="" coords="235,5,392,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2epub__open_2main_8c.html" title="On&#45;silicon HIL: open + parse a real .epub from SD via ra8_fs (#114)." alt="" coords="5,93,195,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="259,53,161,96,159,91,257,48"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2epub__toc_2main_8c.html" title="On&#45;silicon HIL: EPUB TOC navigation (NCX + nav.xhtml) from SD (#116)." alt="" coords="219,93,408,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="316,59,316,93,311,93,311,59"/>
+<area shape="rect" id="Node000004" href="$sh__sd_8c.html" title="Optional SD&#45;card book source for the hybrid e&#45;reader." alt="" coords="433,93,639,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="372,48,474,91,472,96,370,53"/>
+</map>

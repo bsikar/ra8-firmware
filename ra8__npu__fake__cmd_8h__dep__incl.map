@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_npu_fake_cmd.h" name="libs/ra8_hal/inc/ra8_npu_fake_cmd.h">
+<area shape="rect" id="Node000001" title="ra8_emulator / host&#45;test command&#45;stream convention for the Ethos&#45;U55 model" alt="" coords="376,5,521,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ra8p1__foundation_2npu__infer_2main_8c.html" title="RA8P1 Ethos&#45;U55 inference runtime smoke – quantize + IRQ + TFLite&#45;micro." alt="" coords="5,93,209,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="363,51,183,96,182,91,362,46"/>
+<area shape="rect" id="Node000003" href="$examples_2ra8p1__foundation_2npu__smoke_2main_8c.html" title="RA8P1 Arm Ethos&#45;U55 NPU foundation smoke – runs a checkable stand&#45;in job." alt="" coords="233,93,437,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="414,56,362,95,359,91,411,52"/>
+<area shape="rect" id="Node000004" href="$examples_2ra8p1__foundation_2npu__vela_2main_8c.html" title="RA8P1 Ethos&#45;U55 .npub container loader end&#45;to&#45;end – load a .npub, run it." alt="" coords="461,93,665,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="487,52,540,91,536,95,483,56"/>
+<area shape="rect" id="Node000005" href="$board__periph__npu_8c.html" title="Arm Ethos&#45;U55 NPU command/queue execution model (RA8P1&#45;only) for ra8_emulator." alt="" coords="690,93,911,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="535,45,724,91,723,96,534,50"/>
+</map>

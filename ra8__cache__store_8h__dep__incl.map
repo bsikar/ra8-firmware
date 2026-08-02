@@ -1,0 +1,19 @@
+<map id="libs/ra8_cache_store/inc/ra8_cache_store.h" name="libs/ra8_cache_store/inc/ra8_cache_store.h">
+<area shape="rect" id="Node000001" title="Persistent key(CRC32)&#45;&gt;blob cache for compiled .rabook containers,built on the vendored,..." alt="" coords="384,5,551,45"/>
+<area shape="rect" id="Node000002" href="$cache__store__demo_8h.html" title="Hardware&#45;free driver for the ra8_cache_store on&#45;media cache demo (#257)." alt="" coords="189,93,405,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="425,55,355,95,352,91,422,50"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__cache__store__demo_2main_8c.html" title="ra8_cache_store on&#45;media render/glyph cache demo for the EK&#45;RA8D2 (#257)" alt="" coords="5,218,204,273"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="371,31,322,37,272,49,222,68,178,95,153,123,134,156,121,189,112,219,107,217,116,188,129,154,149,120,175,91,220,63,270,44,321,32,370,25"/>
+<area shape="rect" id="Node000004" href="$cache__store__demo_8c.html" title="Hardware&#45;free ra8_cache_store on&#45;media cache demo – implementation (#257)." alt="" coords="229,211,445,280"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="462,59,445,110,419,164,400,190,378,212,374,209,396,186,414,161,440,108,457,58"/>
+<area shape="rect" id="Node000005" href="$ra8__cache__store_8c.html" title="ra8_cache_store runtime path: put / get / read / evict / pin / checkpoint (#201)." alt="" coords="469,225,636,265"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="481,58,520,162,547,224,542,226,516,164,476,59"/>
+<area shape="rect" id="Node000006" href="$ra8__cache__store__internal_8h.html" title="Internal on&#45;media format + cross&#45;TU helpers for ra8_cache_store (#201)." alt="" coords="530,101,685,155"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="507,51,572,98,569,103,503,56"/>
+<area shape="rect" id="Node000007" href="$ra8__cache__store__mount_8c.html" title="ra8_cache_store mount/recovery path + shared on&#45;flash helpers (#201)." alt="" coords="661,218,815,273"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="565,31,600,38,636,51,669,68,699,92,719,121,732,155,738,189,741,218,736,218,733,189,727,156,715,124,695,95,666,72,633,56,599,44,563,36"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="230,172,150,220,147,216,228,167"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="315,175,327,210,322,211,310,177"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="592,169,564,226,559,224,587,166"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="649,163,710,216,706,220,646,167"/>
+</map>

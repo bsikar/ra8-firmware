@@ -1,0 +1,9 @@
+<map id="tools/media_dl/src/mdl_export_internal.h" name="tools/media_dl/src/mdl_export_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private page&#45;list limits and the JOF exporter entry point." alt="" coords="157,5,326,45"/>
+<area shape="rect" id="Node000002" href="$mdl__export_8c.html" title="Package a chapter folder into a reader&#45;openable container." alt="" coords="5,93,147,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="194,54,113,96,111,91,192,49"/>
+<area shape="rect" id="Node000003" href="$mdl__export__jof_8c.html" title="JOF tile&#45;atlas exporter: one .jof band atlas per chapter page." alt="" coords="171,93,312,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="244,59,244,93,239,93,239,59"/>
+<area shape="rect" id="Node000004" href="$test__media__dl_8c.html" title="Host unit tests for the media_dl pure&#45;logic units + export round&#45;trip." alt="" coords="336,93,491,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="293,49,377,91,374,96,290,54"/>
+</map>

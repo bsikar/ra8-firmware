@@ -1,0 +1,19 @@
+<map id="libs/ra8_hal/inc/ra8_pwr.h" name="libs/ra8_hal/inc/ra8_pwr.h">
+<area shape="rect" id="Node000001" title="Low Power Mode + clock&#45;domain wrapper." alt="" coords="78,5,223,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="107,240,178,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="119,48,88,69,58,95,29,128,12,168,8,180,12,191,28,209,48,223,94,241,92,246,46,228,24,213,7,193,3,180,7,166,24,125,54,91,84,65,116,43"/>
+<area shape="rect" id="Node000003" href="$ra8__cgc_8h.html" title="High&#45;level Clock Generation Circuit driver." alt="" coords="69,93,153,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="143,47,125,82,120,80,138,44"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="165,167,243,192"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="160,45,198,153,193,154,155,47"/>
+<area shape="rect" id="Node000006" href="$ra8__mstp__regs_8h.html" title="Module Stop Control (MSTP) register layout for the Renesas RA8D2." alt="" coords="228,93,359,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="186,43,262,84,259,89,183,48"/>
+<area shape="rect" id="Node000004" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="22,167,141,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="108,120,94,155,89,153,103,118"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="127,117,179,156,176,160,124,121"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="93,191,126,228,122,231,89,194"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="196,194,163,231,159,228,192,191"/>
+<area shape="poly" id="edge10_Node000006_Node000002" title=" " alt="" coords="293,120,281,155,270,175,256,194,225,219,191,237,188,232,222,215,253,190,266,173,276,153,288,118"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="319,167,393,192"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="306,117,339,154,335,158,302,121"/>
+</map>

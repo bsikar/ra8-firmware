@@ -1,0 +1,48 @@
+<map id="libs/ra8_hal/inc/ra8_lpm_regs.h" name="libs/ra8_hal/inc/ra8_lpm_regs.h">
+<area shape="rect" id="Node000001" title="Low Power Mode (LPM) register layout for the Renesas RA8D2." alt="" coords="1394,5,1539,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__deep__standby__1__demo_2main_8c.html" title="Deep Software Standby 1 (LPSCR.LPMD = 0x8) entry demo." alt="" coords="5,181,232,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1381,34,1078,55,888,73,698,96,570,116,470,135,245,184,233,186,232,181,243,179,469,130,569,111,697,91,888,68,1078,50,1380,29"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__deep__standby__2__demo_2main_8c.html" title="Deep Software Standby 2 (LPSCR.LPMD = 0x9) entry demo." alt="" coords="256,181,483,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1380,37,1167,60,912,96,681,140,480,184,479,179,680,135,912,91,1166,55,1380,32"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__deep__standby__3__demo_2main_8c.html" title="Deep Software Standby 3 (LPSCR.LPMD = 0xA) entry demo." alt="" coords="507,181,733,236"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1381,43,1241,66,1083,96,888,141,718,184,717,179,887,135,1082,91,1240,61,1380,37"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__idle__demo_2main_8c.html" title="Sleep&#45;mode wake&#45;count demo for the bare EK&#45;RA8D2." alt="" coords="758,181,941,236"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1382,51,1221,96,932,184,930,179,1219,91,1381,46"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__periodic__idle_2main_8c.html" title="Periodic&#45;app deep&#45;idle loop: wake&#45;do&#45;work&#45;standby on ULPT0 self&#45;wake." alt="" coords="965,181,1147,236"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1413,53,1116,184,1114,179,1411,48"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__software__standby__demo_2main_8c.html" title="Software Standby (LPSCR.LPMD = 0x5) + RTC periodic wake demo." alt="" coords="1171,181,1407,236"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1440,57,1317,183,1313,179,1436,54"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__ulpt__standby_2main_8c.html" title="ULPT0&#45;underflow wake from Software Standby (LPSCR.LPMD = 0x5)." alt="" coords="1431,181,1614,236"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1450,58,1437,95,1435,114,1440,132,1457,158,1481,179,1477,183,1453,162,1435,134,1430,114,1431,94,1445,56"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__wake__matrix__demo_2main_8c.html" title="Exercise the WUPEN0 / WUPEN1 wake&#45;source enable matrix." alt="" coords="2228,181,2433,236"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1524,49,1608,91,1637,113,1649,123,1666,131,1746,155,1815,168,1877,172,1936,171,2060,167,2132,169,2216,179,2228,181,2227,186,2216,184,2132,174,2060,172,1936,177,1877,177,1815,173,1745,160,1664,136,1646,127,1633,117,1605,96,1522,53"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__validated_2hil_2lpm__deep__sleep__demo_2main_8c.html" title="Deep&#45;Sleep mode (LPMD=0, SCR.SLEEPDEEP=1) one&#45;shot wake demo." alt="" coords="2457,181,2636,236"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1545,47,1600,67,1656,91,1686,113,1699,122,1717,131,1823,160,1915,174,1998,177,2076,174,2239,164,2335,166,2446,179,2457,181,2456,186,2445,184,2334,171,2239,169,2076,179,1998,183,1915,180,1822,165,1715,136,1696,127,1683,117,1653,96,1598,72,1543,52"/>
+<area shape="rect" id="Node000011" href="$ra8__lpm_8h.html" title="Low Power Mode (LPM) HAL driver – public API." alt="" coords="1450,93,1595,133"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1489,56,1513,92,1508,95,1484,58"/>
+<area shape="rect" id="Node000015" href="$ra8__lpm_8c.html" title="Low Power Mode (LPM) HAL driver implementation." alt="" coords="2661,189,2806,229"/>
+<area shape="poly" id="edge26_Node000001_Node000015" title=" " alt="" coords="1554,42,1629,62,1705,91,1724,102,1737,113,1749,122,1768,131,1851,149,1956,159,2077,163,2205,164,2455,165,2563,169,2648,179,2679,186,2678,191,2648,184,2562,175,2455,171,2205,170,2077,169,1956,164,1850,154,1766,136,1746,127,1733,117,1721,106,1703,96,1627,67,1552,47"/>
+<area shape="rect" id="Node000016" href="$ra8__lpm__graphics_8c.html" title="Graphics power&#45;domain bring&#45;up for the LPM HAL driver." alt="" coords="2830,189,2975,229"/>
+<area shape="poly" id="edge27_Node000001_Node000016" title=" " alt="" coords="1554,36,1652,56,1704,72,1754,91,1772,101,1784,112,1796,122,1813,131,1856,143,1908,152,2028,163,2166,167,2312,167,2598,165,2721,168,2819,179,2850,186,2849,191,2818,184,2721,174,2598,170,2312,172,2166,172,2028,168,1907,157,1855,148,1811,136,1793,127,1781,116,1769,106,1752,96,1702,77,1650,61,1552,41"/>
+<area shape="rect" id="Node000017" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="1823,93,1969,133"/>
+<area shape="poly" id="edge25_Node000001_Node000017" title=" " alt="" coords="1553,41,1805,91,1824,95,1823,100,1803,96,1552,46"/>
+<area shape="rect" id="Node000018" href="$ra8__pwr_8c.html" title="Low Power Mode + clock&#45;domain wrapper implementation." alt="" coords="1993,93,2138,133"/>
+<area shape="poly" id="edge28_Node000001_Node000018" title=" " alt="" coords="1553,33,1750,56,1982,91,1993,93,1992,98,1981,96,1749,61,1552,38"/>
+<area shape="poly" id="edge11_Node000011_Node000002" title=" " alt="" coords="1436,117,1225,120,930,129,589,149,415,165,244,184,233,186,232,180,244,179,414,159,589,144,930,124,1225,115,1436,112"/>
+<area shape="poly" id="edge12_Node000011_Node000003" title=" " alt="" coords="1436,119,1263,124,1029,135,763,155,495,184,483,186,483,180,494,179,763,149,1029,130,1263,119,1436,114"/>
+<area shape="poly" id="edge13_Node000011_Node000004" title=" " alt="" coords="1437,121,1131,142,939,160,746,184,734,186,733,181,745,179,938,155,1130,136,1436,116"/>
+<area shape="poly" id="edge14_Node000011_Node000005" title=" " alt="" coords="1436,124,1216,146,1084,163,952,184,942,186,940,181,952,179,1083,157,1215,140,1436,119"/>
+<area shape="poly" id="edge15_Node000011_Node000006" title=" " alt="" coords="1437,131,1306,155,1159,184,1148,186,1147,181,1158,179,1305,149,1436,126"/>
+<area shape="poly" id="edge16_Node000011_Node000007" title=" " alt="" coords="1464,141,1356,184,1354,179,1462,136"/>
+<area shape="poly" id="edge17_Node000011_Node000008" title=" " alt="" coords="1525,147,1525,181,1520,181,1520,147"/>
+<area shape="poly" id="edge18_Node000011_Node000009" title=" " alt="" coords="1609,130,1615,131,1784,148,1916,154,2048,159,2216,179,2228,181,2227,186,2216,184,2047,165,1915,159,1783,154,1614,136,1608,135"/>
+<area shape="poly" id="edge21_Node000011_Node000010" title=" " alt="" coords="1609,124,1666,131,1784,140,1885,145,2056,147,2228,153,2328,162,2446,179,2457,181,2456,186,2445,184,2327,168,2227,158,2056,152,1885,150,1784,145,1665,136,1609,130"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2power__profiler_2main_8c.html" title="Power&#45;mode profiler smoke app for the EK&#45;RA8D2." alt="" coords="1639,181,1836,236"/>
+<area shape="poly" id="edge19_Node000011_Node000012" title=" " alt="" coords="1580,136,1678,179,1676,184,1578,141"/>
+<area shape="rect" id="Node000013" href="$examples_2ek__ra8d2_2hw__pending_2ereader__m33_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the e&#45;reader&#45;on&#45;M33 demo." alt="" coords="1860,181,2033,236"/>
+<area shape="poly" id="edge20_Node000011_Node000013" title=" " alt="" coords="1610,130,1849,179,1860,182,1859,187,1847,184,1608,135"/>
+<area shape="rect" id="Node000014" href="$ra8__drw_8c.html" title="2D Drawing Engine (DRW / D/AVE 2D) HAL driver implementation" alt="" coords="2058,189,2203,229"/>
+<area shape="poly" id="edge22_Node000011_Node000014" title=" " alt="" coords="1609,130,1615,131,1736,145,1831,151,1926,159,2046,179,2075,186,2074,191,2045,184,1925,164,1830,157,1735,151,1614,136,1608,135"/>
+<area shape="poly" id="edge23_Node000011_Node000015" title=" " alt="" coords="1609,121,1716,131,1858,139,1979,141,2184,139,2283,140,2388,145,2508,157,2649,179,2679,186,2678,191,2647,184,2507,163,2388,151,2283,145,2184,145,1979,146,1858,144,1716,136,1609,126"/>
+<area shape="poly" id="edge24_Node000011_Node000016" title=" " alt="" coords="1609,119,1767,131,1927,138,2063,139,2295,135,2406,136,2526,141,2661,155,2819,179,2850,186,2849,191,2818,184,2660,160,2525,147,2406,141,2295,141,2063,144,1927,143,1767,136,1609,125"/>
+</map>

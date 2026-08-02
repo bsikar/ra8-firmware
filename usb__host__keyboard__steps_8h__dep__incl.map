@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/inc/usb_host_keyboard_steps.h" name="examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/inc/usb_host_keyboard_steps.h">
+<area shape="rect" id="Node000001" title="Shared seam between usb_host_keyboard main.c and its sibling TUs." alt="" coords="203,5,378,75"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__host__keyboard_2main_8c.html" title="USB host&#45;mode HID boot&#45;keyboard over the self&#45;loop (no real keyboard)." alt="" coords="5,130,179,185"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="222,84,138,132,136,128,220,79"/>
+<area shape="rect" id="Node000003" href="$usb__host__keyboard__console_8c.html" title="SCI8 &#45;&gt; J&#45;Link OB CDC console formatters for usb_host_keyboard." alt="" coords="203,123,378,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="293,89,293,122,288,122,288,89"/>
+<area shape="rect" id="Node000004" href="$usb__host__keyboard__device_8c.html" title="USBX HID boot&#45;keyboard device worker for usb_host_keyboard." alt="" coords="402,123,577,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="362,79,433,120,430,125,359,84"/>
+</map>

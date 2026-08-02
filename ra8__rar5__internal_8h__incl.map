@@ -1,0 +1,22 @@
+<map id="libs/ra8_comic/src/ra8_rar5_internal.h" name="libs/ra8_comic/src/ra8_rar5_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU seam between the RAR5 entropy front&#45;end and the LZ decoder." alt="" coords="236,5,385,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,240,80,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="238,48,190,66,141,91,95,125,76,145,60,168,49,197,45,226,40,225,44,196,55,165,72,142,92,121,138,87,188,61,236,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="198,313,269,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="312,46,299,142,286,204,268,266,251,302,246,300,263,264,281,203,294,141,306,45"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="399,93,524,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="348,43,428,84,425,89,346,48"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,240,234,265"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="304,47,268,120,210,229,205,227,263,117,299,44"/>
+<area shape="rect" id="Node000006" href="$ra8__rar5_8h.html" title="Clean&#45;room RAR 5.0 (&quot;method 50&quot;) decompressor – LZ + Huffman + filters." alt="" coords="165,93,253,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="288,48,237,87,234,82,285,43"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="203,264,223,300,218,303,199,267"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="166,121,122,140,101,153,82,168,63,197,51,227,46,225,58,194,78,165,98,148,120,135,164,116"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="217,118,240,180,249,222,249,266,243,301,238,300,244,265,243,223,235,182,212,120"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="211,119,200,227,195,226,205,119"/>
+<area shape="rect" id="Node000007" href="$ra8__rar_8h.html" title="Clean&#45;room, read&#45;only RAR archive walker (RAR4 + RAR5 headers, STORE data)." alt="" coords="93,167,171,192"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="199,121,157,159,153,155,195,117"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="119,194,70,233,66,229,116,190"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="133,192,133,226,137,246,145,264,166,288,193,305,190,310,163,292,140,267,132,247,128,227,128,192"/>
+<area shape="poly" id="edge13_Node000007_Node000005" title=" " alt="" coords="144,191,177,228,173,231,140,194"/>
+</map>

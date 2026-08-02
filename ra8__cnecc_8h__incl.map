@@ -1,0 +1,20 @@
+<map id="libs/ra8_hal/inc/ra8_cnecc.h" name="libs/ra8_hal/inc/ra8_cnecc.h">
+<area shape="rect" id="Node000001" title="CANFD ECC (CNECC) HAL driver public API." alt="" coords="87,5,233,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="199,240,270,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,48,58,67,30,95,16,120,9,143,11,166,25,190,50,208,91,222,186,242,185,247,90,227,47,212,21,194,6,168,3,143,11,118,26,92,55,63,91,43"/>
+<area shape="rect" id="Node000003" href="$ra8__cnecc__regs_8h.html" title="CANFD ECC (CNECC) register layout for the RA8D2." alt="" coords="41,93,175,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="150,47,125,83,121,80,145,44"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="195,167,274,192"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="172,45,225,153,220,155,167,47"/>
+<area shape="rect" id="Node000006" href="$ra8__isr_8h.html" title="NVIC + ICU IELSR allocator." alt="" coords="267,93,344,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="196,43,273,84,271,89,193,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="86,121,63,135,42,153,31,172,31,181,35,191,50,206,66,219,106,236,147,246,186,250,185,255,146,251,104,241,64,223,46,210,31,193,26,182,26,170,38,149,60,131,83,117"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="45,167,171,192"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="111,119,111,153,105,153,105,119"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="237,192,237,226,232,226,232,192"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="307,119,301,153,288,193,259,232,255,229,283,191,296,152,302,118"/>
+<area shape="poly" id="edge11_Node000006_Node000005" title=" " alt="" coords="295,121,257,159,254,155,292,117"/>
+<area shape="rect" id="Node000007" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="350,167,466,192"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="323,116,381,156,378,161,320,121"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="381,194,276,237,274,232,379,190"/>
+</map>

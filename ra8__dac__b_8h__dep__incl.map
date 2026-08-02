@@ -1,0 +1,14 @@
+<map id="libs/ra8_hal/inc/ra8_dac_b.h" name="libs/ra8_hal/inc/ra8_dac_b.h">
+<area shape="rect" id="Node000001" title="Full&#45;featured 12&#45;bit DAC_B driver." alt="" coords="438,5,583,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dac__b__demo_2main_8c.html" title="DAC_B 12&#45;bit DC sweep demo for EK&#45;RA8D2." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="425,46,191,96,180,99,178,94,190,91,424,41"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dac__waveform_2main_8c.html" title="12&#45;bit DAC_B triangle&#45;wave generator for EK&#45;RA8D2" alt="" coords="203,93,413,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="459,53,366,96,364,91,456,49"/>
+<area shape="rect" id="Node000004" href="$ra8__dac__b_8c.html" title="12&#45;Bit D/A Converter (DAC_B) driver implementation" alt="" coords="438,101,583,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="513,59,513,101,508,101,508,59"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc__io_8h.html" title="NSC veneers for the I/O drivers." alt="" coords="608,101,755,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="559,50,648,98,646,103,556,54"/>
+<area shape="rect" id="Node000006" href="$ra8__nsc__io_8c.html" title="NSC veneers for the &#45;6 I/O drivers." alt="" coords="663,196,809,236"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="597,35,699,57,742,72,769,92,776,104,779,118,776,147,765,174,752,197,747,194,760,172,771,146,774,119,771,106,765,95,739,77,698,62,596,40"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="702,151,727,195,723,197,697,154"/>
+</map>

@@ -1,0 +1,8 @@
+<map id="ra8_kbd_layout_t" name="ra8_kbd_layout_t">
+<area shape="rect" id="Node000001" title="The key grid for the active layer, plus SHIFT / layer / frame state." alt="" coords="13,197,147,223"/>
+<area shape="rect" id="Node000002" href="$structra8__kbd__key__t.html" title="One key: a hit rectangle, its unshifted + shifted chars, a kind, and (for layer keys) the target laye..." alt="" coords="110,101,226,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="150,139,93,199,89,195,146,135"/>
+<area shape="rect" id="Node000003" href="$structra8__ui__rect__t.html" title="Axis&#45;aligned rectangle in framebuffer pixel coordinates." alt="" coords="5,5,112,31"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="56,44,51,83,53,126,64,165,77,196,72,198,59,167,48,127,46,83,51,44"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="84,38,156,99,153,103,81,42"/>
+</map>

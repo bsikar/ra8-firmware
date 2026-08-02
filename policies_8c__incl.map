@@ -1,0 +1,11 @@
+<map id="tools/cache_bench/policies.c" name="tools/cache_bench/policies.c">
+<area shape="rect" id="Node000001" title="Reference eviction policies + the registry for the #147 benchmark." alt="" coords="5,5,212,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="15,79,85,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,33,70,70,66,67,97,29"/>
+<area shape="rect" id="Node000003" href="$cache__bench_8h.html" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="109,79,228,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="121,29,152,66,148,70,117,33"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="82,152,157,177"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="163,106,137,142,133,139,158,103"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="181,152,252,177"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="179,103,204,139,199,142,174,106"/>
+</map>

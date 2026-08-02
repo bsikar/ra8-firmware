@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/dualcore_mailbox.h" name="examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/dualcore_mailbox.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM mailbox layout for the M85 &lt;&#45;&gt; M33 dual&#45;core demo." alt="" coords="5,5,220,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="77,108,148,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="115,60,115,94,110,94,110,60"/>
+</map>

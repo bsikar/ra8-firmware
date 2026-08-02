@@ -1,0 +1,13 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/src/usb_msc_mram_steps.c" name="examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/src/usb_msc_mram_steps.c">
+<area shape="rect" id="Node000001" title="FAT16 read&#45;only volume image synthesizer for the MSC MRAM demo." alt="" coords="81,5,267,75"/>
+<area shape="rect" id="Node000002" href="$usb__msc__mram__steps_8h.html" title="Shared geometry constants + FAT16 sector&#45;synthesis prototype." alt="" coords="22,123,201,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="154,76,129,113,125,110,149,73"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="20,196,91,221"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="82,69,42,92,26,107,12,124,8,139,12,155,33,185,29,188,7,157,3,139,8,121,22,103,39,87,79,64"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="129,196,206,221"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="201,74,216,109,218,129,215,149,205,170,191,187,187,184,200,167,210,147,213,129,211,111,196,76"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="276,123,347,148"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="225,73,284,112,281,117,222,77"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="104,150,75,187,71,184,100,147"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="123,147,152,184,148,187,118,150"/>
+</map>

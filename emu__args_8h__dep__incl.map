@@ -1,0 +1,7 @@
+<map id="tools/ra8_emulator/inc/emu_args.h" name="tools/ra8_emulator/inc/emu_args.h">
+<area shape="rect" id="Node000001" title="ra8_emulator command&#45;line parsing (usage text + option decoding)" alt="" coords="109,5,255,45"/>
+<area shape="rect" id="Node000002" href="$emu__args_8c.html" title="CLI parsing implementation (see emu_args.h)." alt="" coords="5,93,177,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="154,57,113,95,110,91,150,53"/>
+<area shape="rect" id="Node000003" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="201,93,347,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="214,53,255,91,252,95,210,57"/>
+</map>

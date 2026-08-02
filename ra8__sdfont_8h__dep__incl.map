@@ -1,0 +1,9 @@
+<map id="libs/ra8_sdfont/inc/ra8_sdfont.h" name="libs/ra8_sdfont/inc/ra8_sdfont.h">
+<area shape="rect" id="Node000001" title="Load a TTF/OTF font off a Pmod SD card, self&#45;provisioning if absent." alt="" coords="219,5,360,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="238,54,149,96,146,91,236,49"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2sd__font__render_2main_8c.html" title="Load a TTF/OTF font off an SD card and render text with ra8_reflow." alt="" coords="203,93,376,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="292,59,292,93,287,93,287,59"/>
+<area shape="rect" id="Node000004" href="$ra8__sdfont_8c.html" title="SD&#45;card font store with self&#45;provisioning – implementation." alt="" coords="400,101,541,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="339,49,435,98,433,103,337,54"/>
+</map>

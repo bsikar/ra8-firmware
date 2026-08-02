@@ -1,0 +1,7 @@
+<map id="libs/ra8_rabook_compile/inc/ra8_rabook_gray4.h" name="libs/ra8_rabook_compile/inc/ra8_rabook_gray4.h">
+<area shape="rect" id="Node000001" title="Grayscale image transcode stage (4&#45;bpp / 8&#45;bpp) for the on&#45;device EPUB compiler (#149)." alt="" coords="111,5,292,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__gray4_8c.html" title="Grayscale image transcode – downscale + quantise + nibble&#45;pack (4&#45;bpp) or copy (8&#45;bpp)." alt="" coords="5,93,187,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="169,56,121,95,118,91,166,52"/>
+<area shape="rect" id="Node000003" href="$ra8__rabook__pipeline_8c.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="211,93,403,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="237,52,285,91,282,95,233,56"/>
+</map>

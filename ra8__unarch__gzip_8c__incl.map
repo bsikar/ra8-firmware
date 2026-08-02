@@ -1,0 +1,36 @@
+<map id="libs/ra8_unarch/src/ra8_unarch_gzip.c" name="libs/ra8_unarch/src/ra8_unarch_gzip.c">
+<area shape="rect" id="Node000001" title="RFC 1952 gzip member decoder over the vendored miniz tinfl core." alt="" coords="469,5,613,45"/>
+<area shape="rect" id="Node000002" href="$ra8__unarch__gzip_8h.html" title="Clean&#45;room gzip member decoder (RFC 1952) over the miniz DEFLATE core." alt="" coords="213,93,353,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="480,48,334,92,333,87,479,43"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="506,93,577,119"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="544,46,544,79,539,79,539,46"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="601,93,671,119"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="566,43,613,82,609,86,563,48"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="696,93,821,119"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="594,43,715,86,713,91,592,48"/>
+<area shape="rect" id="Node000011" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="497,167,597,192"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="524,47,500,80,495,99,497,118,509,138,524,156,520,159,504,141,492,119,490,98,496,78,519,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,240,80,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="213,119,116,138,76,152,51,168,44,181,40,196,40,227,35,227,35,196,39,179,47,165,74,147,115,133,212,114"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="355,313,426,339"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="274,120,254,153,249,172,252,191,273,227,301,258,332,284,360,304,357,308,328,288,297,262,269,230,247,193,244,172,249,151,270,118"/>
+<area shape="rect" id="Node000005" href="$ra8__decomp__limits_8h.html" title="Unified decompression&#45;limits policy: one bound set for every decoder." alt="" coords="262,167,421,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="294,117,325,155,321,158,290,121"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="351,240,430,265"/>
+<area shape="poly" id="edge8_Node000002_Node000006" title=" " alt="" coords="354,115,398,133,418,147,434,165,440,182,436,200,416,231,411,228,431,198,434,183,430,168,415,151,396,138,352,120"/>
+<area shape="rect" id="Node000007" href="$ra8__unarch__io_8h.html" title="Shared seek+read seam and flat&#45;memory backing for the unarchivers." alt="" coords="61,167,187,192"/>
+<area shape="poly" id="edge9_Node000002_Node000007" title=" " alt="" coords="258,121,163,163,161,159,256,116"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="341,192,336,226,337,245,341,264,353,285,368,302,364,306,348,288,336,266,331,246,331,226,336,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="352,191,377,227,373,230,347,194"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="393,266,393,300,388,300,388,266"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="113,194,68,233,64,229,109,190"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="134,191,164,226,184,246,207,263,240,281,276,295,343,313,341,319,274,300,238,286,204,268,181,250,160,230,130,194"/>
+<area shape="poly" id="edge16_Node000011_Node000004" title=" " alt="" coords="536,194,415,306,411,302,532,190"/>
+<area shape="poly" id="edge17_Node000011_Node000006" title=" " alt="" coords="523,194,430,237,428,232,521,190"/>
+<area shape="rect" id="Node000012" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="505,240,588,265"/>
+<area shape="poly" id="edge18_Node000011_Node000012" title=" " alt="" coords="549,192,549,226,544,226,544,192"/>
+<area shape="rect" id="Node000013" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="613,240,761,265"/>
+<area shape="poly" id="edge20_Node000011_Node000013" title=" " alt="" coords="570,190,653,231,651,236,568,194"/>
+<area shape="poly" id="edge19_Node000012_Node000004" title=" " alt="" coords="523,268,430,310,428,305,521,263"/>
+<area shape="poly" id="edge21_Node000013_Node000004" title=" " alt="" coords="640,268,440,316,439,310,638,263"/>
+</map>

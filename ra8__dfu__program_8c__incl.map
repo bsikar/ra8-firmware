@@ -1,0 +1,45 @@
+<map id="libs/ra8_dfu/src/ra8_dfu_program.c" name="libs/ra8_dfu/src/ra8_dfu_program.c">
+<area shape="rect" id="Node000001" title="MRAM slot program / verify for the USB&#45;DFU bootloader core." alt="" coords="482,5,629,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="99,93,170,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="483,41,184,96,183,91,482,36"/>
+<area shape="rect" id="Node000003" href="$ra8__dfu_8h.html" title="Controller&#45;agnostic USB&#45;DFU MRAM bootloader core for the RA8D2." alt="" coords="650,240,733,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="569,44,680,227,675,229,565,47"/>
+<area shape="rect" id="Node000006" href="$ra8__dfu__internal_8h.html" title="TU&#45;shared surface for the DFU MRAM program/verify implementation." alt="" coords="486,240,626,265"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="558,45,558,226,553,226,553,45"/>
+<area shape="rect" id="Node000008" href="$ra8__flash_8h.html" title="Code MRAM + Extra MRAM + Option&#45;Setting driver – DANGEROUS, brick&#45;capable." alt="" coords="194,93,288,119"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="483,47,301,93,300,87,482,42"/>
+<area shape="rect" id="Node000013" href="$ra8__register__guard_8h.html" title="IRQ&#45;masked read&#45;modify&#45;write helper for shared registers." alt="" coords="680,167,836,192"/>
+<area shape="poly" id="edge29_Node000001_Node000013" title=" " alt="" coords="584,43,651,91,735,156,731,160,648,95,581,48"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="306,387,376,412"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="691,266,675,303,662,324,644,341,598,361,530,376,391,396,390,391,529,371,596,356,641,336,658,320,671,301,686,264"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="379,313,458,339"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="651,267,472,314,470,308,650,262"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="408,341,366,379,362,375,404,337"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="577,263,598,278,617,297,628,318,628,330,622,340,606,353,583,364,522,380,453,391,391,397,390,392,453,386,521,375,581,359,603,349,618,337,622,328,623,319,613,300,594,282,574,268"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="535,268,454,309,452,305,533,263"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="482,313,608,339"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="557,266,552,300,546,299,551,265"/>
+<area shape="poly" id="edge11_Node000008_Node000004" title=" " alt="" coords="195,119,83,143,35,157,11,168,9,179,12,192,17,273,27,305,52,337,69,348,93,357,157,373,293,391,292,397,156,378,92,362,67,352,49,341,22,307,12,274,7,192,3,178,7,165,33,152,81,138,194,114"/>
+<area shape="poly" id="edge12_Node000008_Node000005" title=" " alt="" coords="287,116,330,135,351,148,370,165,392,197,406,234,419,299,414,300,401,235,387,200,366,168,348,153,328,140,285,121"/>
+<area shape="rect" id="Node000009" href="$ra8__flash__regs_8h.html" title="Flash / MRAM controller register layout for the Renesas RA8D2." alt="" coords="76,313,204,339"/>
+<area shape="poly" id="edge13_Node000008_Node000009" title=" " alt="" coords="195,119,89,144,45,157,23,169,18,178,17,190,24,216,38,242,54,264,78,286,105,304,102,309,75,291,50,267,34,245,19,218,12,190,13,177,19,165,43,152,88,139,194,114"/>
+<area shape="rect" id="Node000010" href="$ra8__flash__core_8h.html" title="Code MRAM + Extra MRAM + Option&#45;Setting driver – core API." alt="" coords="228,167,356,192"/>
+<area shape="poly" id="edge15_Node000008_Node000010" title=" " alt="" coords="252,117,278,154,273,157,247,121"/>
+<area shape="rect" id="Node000011" href="$ra8__flash__types_8h.html" title="Code MRAM driver – shared types (enums, structs, callback typedef)." alt="" coords="72,240,208,265"/>
+<area shape="poly" id="edge28_Node000008_Node000011" title=" " alt="" coords="235,121,158,230,153,227,231,118"/>
+<area shape="rect" id="Node000012" href="$ra8__flash__fsp_8h.html" title="Code MRAM driver – FSP r_mram parity surface." alt="" coords="33,167,153,192"/>
+<area shape="poly" id="edge23_Node000008_Node000012" title=" " alt="" coords="219,121,131,163,128,158,216,116"/>
+<area shape="poly" id="edge14_Node000009_Node000004" title=" " alt="" coords="173,336,296,379,295,385,171,341"/>
+<area shape="poly" id="edge16_Node000010_Node000004" title=" " alt="" coords="297,192,338,372,333,374,292,193"/>
+<area shape="poly" id="edge17_Node000010_Node000005" title=" " alt="" coords="310,190,338,211,367,238,390,269,409,299,404,302,386,272,363,242,335,215,307,194"/>
+<area shape="poly" id="edge18_Node000010_Node000009" title=" " alt="" coords="285,194,258,228,222,267,171,307,167,303,218,263,254,225,281,191"/>
+<area shape="poly" id="edge19_Node000010_Node000011" title=" " alt="" coords="269,194,178,237,176,232,266,190"/>
+<area shape="poly" id="edge20_Node000011_Node000004" title=" " alt="" coords="158,263,316,376,312,381,154,268"/>
+<area shape="poly" id="edge21_Node000011_Node000005" title=" " alt="" coords="185,263,366,309,365,314,184,268"/>
+<area shape="poly" id="edge22_Node000011_Node000009" title=" " alt="" coords="142,266,142,300,137,300,137,266"/>
+<area shape="poly" id="edge24_Node000012_Node000004" title=" " alt="" coords="84,194,68,215,54,241,52,266,55,296,66,337,81,348,103,357,163,373,231,384,292,391,292,397,230,390,162,379,102,363,78,352,62,340,49,297,46,266,49,239,63,212,80,191"/>
+<area shape="poly" id="edge25_Node000012_Node000005" title=" " alt="" coords="120,190,381,305,379,310,118,195"/>
+<area shape="poly" id="edge26_Node000012_Node000009" title=" " alt="" coords="84,194,63,227,59,246,62,264,80,287,103,304,100,309,76,291,57,266,53,246,59,225,80,191"/>
+<area shape="poly" id="edge27_Node000012_Node000011" title=" " alt="" coords="103,191,127,227,122,230,99,194"/>
+<area shape="poly" id="edge30_Node000013_Node000004" title=" " alt="" coords="762,192,759,227,748,266,733,292,719,311,700,326,674,341,601,371,523,389,450,398,391,401,390,396,450,393,522,383,599,366,672,336,697,322,715,307,729,290,743,264,754,226,756,192"/>
+</map>

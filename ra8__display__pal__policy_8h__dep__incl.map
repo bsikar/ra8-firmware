@@ -1,0 +1,14 @@
+<map id="libs/ra8_display_pal/inc/ra8_display_pal_policy.h" name="libs/ra8_display_pal/inc/ra8_display_pal_policy.h">
+<area shape="rect" id="Node000001" title="Pluggable page&#45;turn refresh&#45;cadence policy for bistable (e&#45;ink) panels." alt="" coords="203,5,354,60"/>
+<area shape="rect" id="Node000002" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="183,108,374,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="281,74,281,108,276,108,276,74"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="5,211,179,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="222,70,173,110,134,162,106,212,102,209,129,159,169,106,218,66"/>
+<area shape="rect" id="Node000006" href="$ra8__display__pal__policy_8c.html" title="Implementation of the e&#45;ink page&#45;turn refresh&#45;cadence policy." alt="" coords="398,108,549,163"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="343,64,424,106,421,110,340,69"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="219,171,142,213,140,208,217,167"/>
+<area shape="rect" id="Node000004" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="203,211,391,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="289,176,295,210,290,211,283,177"/>
+<area shape="rect" id="Node000005" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="416,211,621,265"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="354,165,457,208,455,213,352,170"/>
+</map>

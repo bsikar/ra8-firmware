@@ -1,0 +1,75 @@
+<map id="examples/ek_ra8d2/hw_pending/compile_on_m33/cpu1_main.c" name="examples/ek_ra8d2/hw_pending/compile_on_m33/cpu1_main.c">
+<area shape="rect" id="Node000001" title="CPU1 (Cortex&#45;M33 secondary core) image: full text/CSS/SVG EPUB&#45;&gt;RABOOK1 compile." alt="" coords="897,5,1093,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="859,401,930,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1093,40,1226,58,1299,71,1370,88,1433,108,1484,131,1519,159,1529,175,1532,192,1532,269,1532,296,1528,318,1519,337,1500,356,1469,368,1413,378,1256,395,1082,407,944,413,944,408,1082,402,1256,390,1412,373,1467,363,1497,351,1515,334,1523,316,1526,295,1527,269,1527,193,1524,177,1515,163,1481,136,1431,113,1368,93,1298,77,1226,63,1092,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="399,108,470,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="897,48,709,73,484,110,483,105,708,68,896,43"/>
+<area shape="rect" id="Node000004" href="$compile__on__m33_8h.html" title="Shared&#45;SRAM contract for the &quot;RABOOK1 emitter on the M33&quot; demo (#149b)." alt="" coords="1567,181,1713,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1093,37,1211,47,1343,61,1463,81,1512,92,1549,106,1572,119,1592,135,1625,169,1621,172,1589,139,1569,123,1547,110,1511,97,1462,86,1342,66,1210,52,1093,43"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="44,401,169,427"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="897,42,652,60,358,91,222,111,110,136,67,149,35,163,15,178,8,193,8,268,15,306,34,339,58,368,82,391,78,394,54,372,29,342,10,307,3,269,3,192,11,175,32,159,65,144,109,131,221,106,357,86,652,55,896,37"/>
+<area shape="rect" id="Node000006" href="$ra8__book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="1226,255,1321,280"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="1059,58,1101,79,1140,106,1177,140,1211,177,1260,242,1256,245,1207,180,1174,143,1137,110,1098,84,1057,62"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="735,328,814,353"/>
+<area shape="poly" id="edge16_Node000001_Node000008" title=" " alt="" coords="928,63,887,83,844,110,804,143,772,183,759,215,757,251,761,285,769,314,763,316,756,286,751,251,754,214,767,180,800,139,841,106,884,79,925,58"/>
+<area shape="rect" id="Node000009" href="$ra8__epub_8h.html" title="EPUB (.epub) reader and chapter iterator for ra8&#45;firmware." alt="" coords="1397,255,1491,280"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="1064,58,1173,106,1310,181,1416,245,1413,250,1308,185,1171,110,1062,63"/>
+<area shape="rect" id="Node000011" href="$ra8__ipc_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – public API." alt="" coords="494,108,575,133"/>
+<area shape="poly" id="edge17_Node000001_Node000011" title=" " alt="" coords="897,55,589,112,588,107,896,50"/>
+<area shape="rect" id="Node000016" href="$ra8__rabook__compile_8h.html" title="Zero&#45;heap builder that emits a RABOOK1 blob (the #149 compiler back&#45;end)." alt="" coords="801,181,967,207"/>
+<area shape="poly" id="edge38_Node000001_Node000016" title=" " alt="" coords="979,62,902,172,898,169,974,59"/>
+<area shape="rect" id="Node000017" href="$ra8__rabook__pipeline_8h.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="961,108,1127,133"/>
+<area shape="poly" id="edge42_Node000001_Node000017" title=" " alt="" coords="1012,59,1033,95,1028,97,1007,61"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="1640,208,1630,239,1613,280,1586,322,1569,340,1549,356,1514,367,1453,378,1281,395,944,413,943,408,1280,389,1452,372,1513,362,1547,351,1566,336,1582,318,1608,277,1625,237,1635,206"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="1248,283,1069,356,944,400,942,395,1067,351,1246,278"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="1240,328,1315,353"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="1277,280,1279,314,1273,315,1271,280"/>
+<area shape="poly" id="edge9_Node000006_Node000008" title=" " alt="" coords="1226,281,1214,283,1000,314,828,336,827,330,999,309,1213,277,1225,275"/>
+<area shape="poly" id="edge10_Node000008_Node000002" title=" " alt="" coords="795,351,864,392,862,396,793,356"/>
+<area shape="poly" id="edge14_Node000009_Node000002" title=" " alt="" coords="1434,282,1390,320,1360,340,1328,356,1277,374,1224,387,1117,406,1020,414,944,416,944,411,1020,409,1116,400,1222,382,1275,368,1326,351,1357,335,1387,315,1430,278"/>
+<area shape="poly" id="edge13_Node000009_Node000007" title=" " alt="" coords="1418,282,1318,325,1316,320,1416,278"/>
+<area shape="poly" id="edge15_Node000009_Node000008" title=" " alt="" coords="1397,276,828,336,827,331,1396,271"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="1401,328,1487,353"/>
+<area shape="poly" id="edge12_Node000009_Node000010" title=" " alt="" coords="1447,280,1447,314,1441,314,1441,280"/>
+<area shape="poly" id="edge18_Node000011_Node000002" title=" " alt="" coords="543,132,567,173,608,232,661,296,691,325,724,351,754,369,785,382,847,401,845,406,784,387,751,373,721,356,688,329,657,299,603,235,563,176,539,135"/>
+<area shape="poly" id="edge19_Node000011_Node000008" title=" " alt="" coords="560,131,595,151,631,179,652,205,664,229,676,252,695,278,720,300,745,318,742,323,716,304,691,282,671,255,659,231,648,208,627,183,592,156,558,136"/>
+<area shape="rect" id="Node000012" href="$ra8__ipc__regs_8h.html" title="Inter&#45;Processor Communication (IPC) register layout for the RA8D2." alt="" coords="145,328,261,353"/>
+<area shape="poly" id="edge20_Node000011_Node000012" title=" " alt="" coords="494,134,482,136,406,141,307,144,258,148,213,155,177,166,153,183,144,198,140,215,142,233,147,251,165,287,186,316,182,319,160,289,142,253,136,234,135,215,139,196,149,180,175,161,212,149,257,142,307,139,406,136,481,131,493,128"/>
+<area shape="rect" id="Node000013" href="$ra8__ipc__sync_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – sync API." alt="" coords="163,181,282,207"/>
+<area shape="poly" id="edge23_Node000011_Node000013" title=" " alt="" coords="494,134,286,181,285,176,493,129"/>
+<area shape="rect" id="Node000014" href="$ra8__ipc__types_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – public types." alt="" coords="246,255,370,280"/>
+<area shape="poly" id="edge32_Node000011_Node000014" title=" " alt="" coords="495,136,444,155,391,184,355,214,327,245,323,242,351,210,388,179,441,150,493,131"/>
+<area shape="rect" id="Node000015" href="$ra8__ipc__xfer_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – transfer API." alt="" coords="402,181,515,207"/>
+<area shape="poly" id="edge33_Node000011_Node000015" title=" " alt="" coords="524,135,483,174,479,170,521,131"/>
+<area shape="poly" id="edge21_Node000012_Node000002" title=" " alt="" coords="261,348,280,351,603,385,846,406,845,411,602,390,280,356,261,353"/>
+<area shape="poly" id="edge22_Node000012_Node000005" title=" " alt="" coords="189,356,135,395,132,391,186,351"/>
+<area shape="poly" id="edge24_Node000013_Node000002" title=" " alt="" coords="224,207,223,242,227,261,236,278,267,312,300,329,386,351,514,380,643,397,758,406,846,410,845,415,758,412,642,403,513,385,385,356,298,334,264,316,231,282,222,263,218,242,218,207"/>
+<area shape="poly" id="edge25_Node000013_Node000005" title=" " alt="" coords="215,209,176,259,134,329,114,389,109,387,130,327,172,256,211,205"/>
+<area shape="poly" id="edge26_Node000013_Node000008" title=" " alt="" coords="267,204,723,323,721,328,266,209"/>
+<area shape="poly" id="edge27_Node000013_Node000012" title=" " alt="" coords="216,208,203,229,192,255,190,286,196,314,191,316,185,286,187,254,198,227,212,205"/>
+<area shape="poly" id="edge28_Node000013_Node000014" title=" " alt="" coords="238,205,285,244,282,248,235,209"/>
+<area shape="poly" id="edge29_Node000014_Node000002" title=" " alt="" coords="323,278,373,315,406,335,441,351,495,368,551,382,664,400,766,408,845,411,845,416,766,413,663,405,550,387,494,373,439,356,403,340,370,320,320,282"/>
+<area shape="poly" id="edge30_Node000014_Node000008" title=" " alt="" coords="371,275,722,329,721,334,370,281"/>
+<area shape="poly" id="edge31_Node000014_Node000012" title=" " alt="" coords="293,282,232,323,230,318,290,278"/>
+<area shape="poly" id="edge34_Node000015_Node000002" title=" " alt="" coords="467,205,485,235,513,275,549,317,593,351,657,380,726,397,791,407,846,410,845,415,790,412,725,403,656,385,591,356,546,321,508,279,480,238,462,208"/>
+<area shape="poly" id="edge35_Node000015_Node000008" title=" " alt="" coords="485,204,644,278,737,320,735,325,642,282,483,209"/>
+<area shape="poly" id="edge36_Node000015_Node000012" title=" " alt="" coords="453,209,425,245,405,265,383,282,329,309,275,327,273,322,327,304,380,278,402,261,421,241,449,205"/>
+<area shape="poly" id="edge37_Node000015_Node000014" title=" " alt="" coords="436,209,346,251,344,246,433,204"/>
+<area shape="poly" id="edge39_Node000016_Node000002" title=" " alt="" coords="887,207,896,387,891,387,882,207"/>
+<area shape="poly" id="edge40_Node000016_Node000006" title=" " alt="" coords="949,204,1213,252,1212,257,948,209"/>
+<area shape="poly" id="edge41_Node000016_Node000008" title=" " alt="" coords="877,209,794,318,790,315,873,206"/>
+<area shape="poly" id="edge44_Node000017_Node000002" title=" " alt="" coords="1044,134,1024,198,990,281,952,343,915,392,911,389,948,340,986,279,1019,196,1039,133"/>
+<area shape="poly" id="edge43_Node000017_Node000007" title=" " alt="" coords="1119,131,1175,146,1235,170,1290,205,1314,227,1334,253,1339,272,1334,290,1322,307,1307,321,1303,317,1318,303,1329,288,1334,272,1330,256,1310,231,1287,209,1232,175,1173,151,1118,136"/>
+<area shape="poly" id="edge46_Node000017_Node000008" title=" " alt="" coords="961,133,858,152,816,166,790,183,773,214,766,249,767,284,771,314,766,315,762,285,761,249,768,212,786,180,814,161,857,147,960,128"/>
+<area shape="poly" id="edge45_Node000017_Node000009" title=" " alt="" coords="1128,130,1218,149,1312,179,1372,211,1421,244,1418,249,1369,215,1310,184,1216,154,1127,136"/>
+<area shape="poly" id="edge50_Node000017_Node000016" title=" " alt="" coords="1019,136,924,178,922,173,1017,131"/>
+<area shape="rect" id="Node000018" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="901,255,976,280"/>
+<area shape="poly" id="edge47_Node000017_Node000018" title=" " alt="" coords="1038,135,957,245,953,242,1033,132"/>
+<area shape="rect" id="Node000019" href="$ra8__reflow__image_8h.html" title="Zero&#45;heap raster image decode + scale + blit for ra8_reflow (#106)." alt="" coords="1051,255,1202,280"/>
+<area shape="poly" id="edge51_Node000017_Node000019" title=" " alt="" coords="1053,132,1116,241,1111,244,1048,135"/>
+<area shape="poly" id="edge48_Node000018_Node000002" title=" " alt="" coords="938,281,905,389,900,387,933,280"/>
+<area shape="poly" id="edge49_Node000018_Node000008" title=" " alt="" coords="913,282,815,325,813,320,911,278"/>
+<area shape="poly" id="edge53_Node000019_Node000002" title=" " alt="" coords="1118,282,1082,317,1033,356,988,380,943,399,941,394,986,375,1031,351,1079,313,1114,278"/>
+<area shape="poly" id="edge52_Node000019_Node000007" title=" " alt="" coords="1152,278,1241,320,1239,324,1150,282"/>
+<area shape="poly" id="edge54_Node000019_Node000008" title=" " alt="" coords="1071,283,828,331,827,326,1070,277"/>
+</map>

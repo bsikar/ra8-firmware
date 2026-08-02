@@ -1,0 +1,22 @@
+<map id="ra8_comic_t" name="ra8_comic_t">
+<area shape="rect" id="Node000001" title="One open comic archive: backing, kind, page index, and backend state." alt="" coords="322,373,423,399"/>
+<area shape="rect" id="Node000002" href="$structra8__comic__page__t.html" title="One entry in the resident, sorted page index." alt="" coords="5,277,145,303"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="115,306,224,347,322,372,321,377,223,352,113,311"/>
+<area shape="rect" id="Node000003" href="$structra8__comic__stream__t.html" title="Stable seek+read descriptor bound to the CBZ backend&#39;s miniz reader." alt="" coords="170,277,325,303"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="266,312,301,347,344,371,341,376,298,351,262,315"/>
+<area shape="rect" id="Node000004" href="$structra8__rar__t.html" title="One open RAR archive: the backing plus the detected generation." alt="" coords="315,101,395,127"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="360,140,375,373,369,373,354,140"/>
+<area shape="rect" id="Node000005" href="$structra8__rar5__state.html" title=" " alt="" coords="424,277,540,303"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="381,135,393,149,412,177,424,200,435,224,452,252,472,275,468,279,448,255,430,226,419,203,407,180,389,152,377,138"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="460,314,388,375,384,371,456,310"/>
+<area shape="rect" id="Node000006" href="$structra8__rar5__dtab__t.html" title="One canonical Huffman decode table (shared by all five RAR5 alphabets)." alt="" coords="420,101,544,127"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="485,140,485,277,479,277,479,140"/>
+<area shape="rect" id="Node000007" href="$structra8__rar5__filter__t.html" title="One pending RAR5 data filter recorded during decode, applied after." alt="" coords="569,101,694,127"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="616,139,519,255,496,279,492,275,515,252,612,136"/>
+<area shape="rect" id="Node000008" href="$structra8__unarch__tar__t.html" title="One open tar archive: the backing plus the walk&#39;s running budget." alt="" coords="627,277,758,303"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="649,310,521,352,424,376,423,371,520,347,647,305"/>
+<area shape="rect" id="Node000009" href="$structra8__decomp__budget__t.html" title="Running consumption tracker charged by a decoder against its policy." alt="" coords="719,101,885,127"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="790,140,702,278,698,276,785,137"/>
+<area shape="rect" id="Node000010" href="$structra8__decomp__limits__t.html" title="One decompression policy: the five resource bounds decoders enforce." alt="" coords="723,5,881,31"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="805,45,805,101,799,101,799,45"/>
+</map>

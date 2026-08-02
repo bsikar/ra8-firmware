@@ -1,0 +1,5 @@
+<map id="mdl_net_iface" name="mdl_net_iface">
+<area shape="rect" id="Node000001" title=" " alt="" coords="15,101,130,127"/>
+<area shape="rect" id="Node000002" href="$structmdl__net__vtable__t.html" title="Method table one network backend registers (Dependency Inversion)." alt="" coords="5,5,140,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="75,45,75,101,70,101,70,45"/>
+</map>

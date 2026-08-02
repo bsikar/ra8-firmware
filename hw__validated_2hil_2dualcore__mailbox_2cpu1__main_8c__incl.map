@@ -1,0 +1,11 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/cpu1_main.c" name="examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/cpu1_main.c">
+<area shape="rect" id="Node000001" title="CPU1 (Cortex&#45;M33 secondary core) responder image." alt="" coords="12,5,185,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="63,181,134,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="51,62,31,78,16,95,9,113,13,132,32,155,57,173,54,177,28,159,8,134,3,113,12,92,28,74,48,58"/>
+<area shape="rect" id="Node000003" href="$dualcore__mailbox_8h.html" title="Shared&#45;SRAM mailbox layout for the M85 &lt;&#45;&gt; M33 dual&#45;core demo." alt="" coords="23,108,174,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="101,60,101,94,96,94,96,60"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="198,108,276,133"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="142,58,208,98,205,103,139,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="101,134,101,168,96,168,96,134"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="216,136,134,177,132,173,213,131"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="ra8_eth_state_t" name="ra8_eth_state_t">
+<area shape="rect" id="Node000001" title="Driver&#45;private NIC state." alt="" coords="70,101,193,127"/>
+<area shape="rect" id="Node000002" href="$structra8__eth__cfg__t.html" title="Per&#45;channel NIC configuration." alt="" coords="5,5,116,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="80,40,125,100,120,103,76,43"/>
+<area shape="rect" id="Node000003" href="$structra8__eth__stats__t.html" title="NIC software counters." alt="" coords="141,5,263,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="187,43,142,103,138,100,183,40"/>
+</map>

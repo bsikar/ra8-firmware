@@ -1,0 +1,11 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/inc/usb_selftest_common.h" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/inc/usb_selftest_common.h">
+<area shape="rect" id="Node000001" title="Shared constants for the usb_selftest_soak translation units." alt="" coords="345,5,586,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__soak_2main_8c.html" title="USB self&#45;loop endurance soak + throughput benchmark (board&#45;only)." alt="" coords="5,108,197,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="358,66,197,111,195,105,356,61"/>
+<area shape="rect" id="Node000003" href="$usb__selftest__console_8c.html" title="SCI8 / J&#45;Link OB CDC console + text formatters (see header)." alt="" coords="222,108,455,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="423,71,373,110,370,106,420,67"/>
+<area shape="rect" id="Node000004" href="$usb__selftest__device_8c.html" title="Device side of the soak self&#45;test: USBX MSC over a FAT16 MRAM volume." alt="" coords="480,108,707,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="511,66,561,106,558,110,508,70"/>
+<area shape="rect" id="Node000005" href="$usb__selftest__host_8c.html" title="Host side of the soak self&#45;test: enumerate, mount, verify, soak." alt="" coords="731,108,941,163"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="576,61,740,105,739,111,574,66"/>
+</map>

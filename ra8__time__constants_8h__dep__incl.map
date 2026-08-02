@@ -1,0 +1,13 @@
+<map id="libs/ra8_core/inc/ra8_time_constants.h" name="libs/ra8_core/inc/ra8_time_constants.h">
+<area shape="rect" id="Node000001" title="Named Time Unit Constants for Delay / Timeout / Tick Math." alt="" coords="377,5,530,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2clock__check_2main_8c.html" title="Clock bring&#45;up HIL test for EK&#45;RA8D2 (CGC: HOCO + PLL)." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="366,51,191,96,180,99,178,94,190,91,365,46"/>
+<area shape="rect" id="Node000003" href="$ra8__time_8c.html" title="SysTick tick counter implementation." alt="" coords="203,101,357,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="408,54,316,103,314,98,405,49"/>
+<area shape="rect" id="Node000004" href="$ra8__cgc_8c.html" title="Clock Generation Circuit driver – RA8D2 PLL bring&#45;up." alt="" coords="381,101,526,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="456,59,456,101,451,101,451,59"/>
+<area shape="rect" id="Node000005" href="$ra8__cgc__eswclk_8c.html" title="Clock Generation Circuit driver – Ethernet&#45;switch (ESWCLK) path." alt="" coords="550,101,695,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="501,50,590,98,587,103,498,54"/>
+<area shape="rect" id="Node000006" href="$ra8__cgc__usb_8c.html" title="Clock Generation Circuit driver – PLL2 + USB&#45;FS / USB&#45;HS clocks." alt="" coords="719,101,865,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="542,46,709,91,733,98,732,103,707,96,541,51"/>
+</map>

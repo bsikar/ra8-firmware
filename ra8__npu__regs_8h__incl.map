@@ -1,0 +1,10 @@
+<map id="libs/ra8_hal/inc/ra8_npu_regs.h" name="libs/ra8_hal/inc/ra8_npu_regs.h">
+<area shape="rect" id="Node000001" title="Arm Ethos&#45;U55 NPU register window on the Renesas RA8P1 (RA8P1&#45;only)." alt="" coords="12,5,157,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="69,167,140,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="53,48,33,63,17,80,9,98,13,118,33,141,60,158,57,163,29,145,8,120,4,98,13,77,30,59,50,44"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="22,93,147,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="87,46,87,79,82,79,82,46"/>
+<area shape="rect" id="Node000004" href="$ra8__device_8h.html" title="Compile&#45;time device selection for the RA8 multi&#45;chip build (RA8D2 / RA8P1)." alt="" coords="172,93,277,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="120,43,193,84,191,89,117,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="207,121,138,162,135,157,204,116"/>
+</map>

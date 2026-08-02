@@ -1,0 +1,10 @@
+<map id="libs/ra8_book/inc/ra8_book.h" name="libs/ra8_book/inc/ra8_book.h">
+<area shape="rect" id="Node000001" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="39,5,196,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,47,65,85,61,81,97,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="121,167,191,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="125,45,152,153,147,154,120,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,93,234,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="138,44,176,82,172,85,134,47"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="191,120,171,156,166,153,186,118"/>
+</map>

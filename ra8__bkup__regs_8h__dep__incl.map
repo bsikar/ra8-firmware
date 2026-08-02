@@ -1,0 +1,16 @@
+<map id="libs/ra8_hal/inc/ra8_bkup_regs.h" name="libs/ra8_hal/inc/ra8_bkup_regs.h">
+<area shape="rect" id="Node000001" title="Battery Backup Function (VBATT / BAT*) register layout for the RA8D2." alt="" coords="331,5,476,45"/>
+<area shape="rect" id="Node000002" href="$ra8__bkup_8h.html" title="Battery Backup Function (VBATT) HAL driver – public API." alt="" coords="276,93,421,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="386,58,363,95,359,92,382,56"/>
+<area shape="rect" id="Node000004" href="$ra8__bkup_8c.html" title="Battery Backup Function (VBATT) driver – core lifecycle and storage." alt="" coords="5,189,151,229"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="350,53,265,96,178,146,108,191,105,186,175,142,262,91,348,49"/>
+<area shape="rect" id="Node000005" href="$ra8__bkup__security_8c.html" title="Battery Backup Function (VBATT) driver – TrustZone partitioning." alt="" coords="387,189,532,229"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="421,57,435,92,449,144,459,188,453,189,444,145,430,94,416,59"/>
+<area shape="rect" id="Node000006" href="$ra8__bkup__tamper_8c.html" title="Battery Backup Function (VBATT) driver – tamper detection." alt="" coords="556,189,701,229"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="439,52,607,187,604,191,436,56"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2bkup__survival__demo_2main_8c.html" title="VBATT backup&#45;register read/write + reset&#45;survival demo (EK&#45;RA8D2)." alt="" coords="175,181,363,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="326,146,293,183,289,179,321,142"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="282,140,134,191,132,186,280,135"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="383,140,439,187,435,191,380,144"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="419,135,573,186,571,191,417,140"/>
+</map>

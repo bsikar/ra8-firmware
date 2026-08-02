@@ -1,0 +1,13 @@
+<map id="tools/ra8_emulator/inc/emu_mpu.h" name="tools/ra8_emulator/inc/emu_mpu.h">
+<area shape="rect" id="Node000001" title="Armv8&#45;M MPU enforcement model for ra8_emulator." alt="" coords="397,5,542,45"/>
+<area shape="rect" id="Node000002" href="$emu__elf_8c.html" title="ELF32 image services implementation (see emu_elf.h)." alt="" coords="5,101,165,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="384,48,178,96,151,103,149,98,177,91,383,43"/>
+<area shape="rect" id="Node000003" href="$emu__mpu_8c.html" title="Armv8&#45;M MPU enforcement implementation (see emu_mpu.h)." alt="" coords="189,101,363,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="419,54,316,103,314,98,417,49"/>
+<area shape="rect" id="Node000004" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="387,101,552,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="472,59,472,101,467,101,467,59"/>
+<area shape="rect" id="Node000005" href="$emu__run__inner_8c.html" title="Inner per&#45;chunk exception&#45;resolve loop (see emu_run_internal.h)." alt="" coords="576,93,731,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="520,49,603,91,600,96,517,54"/>
+<area shape="rect" id="Node000006" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="755,101,901,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="556,44,743,91,769,98,767,103,742,96,554,49"/>
+</map>

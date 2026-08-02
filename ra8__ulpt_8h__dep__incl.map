@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_ulpt.h" name="libs/ra8_hal/inc/ra8_ulpt.h">
+<area shape="rect" id="Node000001" title="Ultra&#45;Low&#45;Power Timer (ULPT) driver header." alt="" coords="333,5,479,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__periodic__idle_2main_8c.html" title="Periodic&#45;app deep&#45;idle loop: wake&#45;do&#45;work&#45;standby on ULPT0 self&#45;wake." alt="" coords="5,93,188,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="331,52,185,96,183,91,329,47"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__ulpt__standby_2main_8c.html" title="ULPT0&#45;underflow wake from Software Standby (LPSCR.LPMD = 0x5)." alt="" coords="212,93,395,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="377,56,334,95,330,91,374,52"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ulpt__demo_2main_8c.html" title="ULPT 1 Hz wake&#45;from&#45;software&#45;standby demo for EK&#45;RA8D2." alt="" coords="419,93,601,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="439,52,482,91,479,95,435,56"/>
+<area shape="rect" id="Node000005" href="$ra8__ulpt_8c.html" title="Ultra&#45;Low&#45;Power Timer driver implementation." alt="" coords="625,101,771,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="479,47,640,98,638,103,477,52"/>
+</map>

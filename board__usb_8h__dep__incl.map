@@ -1,0 +1,28 @@
+<map id="tools/ra8_emulator/inc/board_usb.h" name="tools/ra8_emulator/inc/board_usb.h">
+<area shape="rect" id="Node000001" title="USBFS controller model + a virtual USB host for the board emulator." alt="" coords="690,5,835,45"/>
+<area shape="rect" id="Node000002" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="5,101,171,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="677,35,452,56,317,73,183,96,151,103,150,98,182,91,317,68,452,51,676,30"/>
+<area shape="rect" id="Node000003" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="195,101,370,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="677,42,538,65,382,96,352,103,350,98,381,91,537,60,676,37"/>
+<area shape="rect" id="Node000004" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="394,101,539,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="691,52,527,103,526,98,689,47"/>
+<area shape="rect" id="Node000005" href="$board__periph_8c.html" title="Peripheral&#45;block registry core + ICU/NVIC routing for ra8_emulator." alt="" coords="563,101,754,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="733,57,681,103,678,99,729,53"/>
+<area shape="rect" id="Node000006" href="$board__periph__usbhs__host_8c.html" title="On&#45;chip USBHS host controller model (0x40351000) for the board emulator." alt="" coords="779,93,957,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="796,52,840,91,837,95,792,56"/>
+<area shape="rect" id="Node000007" href="$board__usb_8c.html" title="USBFS controller model + virtual USB host (chapter&#45;9 enumeration)." alt="" coords="901,196,1056,236"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="850,30,883,38,916,50,946,67,971,92,985,117,989,146,986,196,980,196,984,146,979,119,967,95,943,72,913,55,881,43,848,35"/>
+<area shape="rect" id="Node000008" href="$board__usb__host_8c.html" title="USBHS HOST&#45;mode controller model (self&#45;loop peer of the USBFS device)." alt="" coords="1032,101,1221,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="849,46,1053,98,1052,103,848,51"/>
+<area shape="rect" id="Node000009" href="$board__usb__internal_8h.html" title="Module&#45;private state + interfaces shared by the board_usb TUs." alt="" coords="1277,101,1489,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="849,35,1234,91,1278,98,1277,103,1233,96,848,41"/>
+<area shape="poly" id="edge9_Node000009_Node000007" title=" " alt="" coords="1288,146,1057,199,1056,194,1287,141"/>
+<area shape="rect" id="Node000010" href="$board__usb__bridge_8c.html" title="USBHS&#45;host &lt;&#45;&gt; USBFS&#45;device bridge (see board_usb_internal.h)." alt="" coords="1080,196,1283,236"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="1331,149,1223,198,1221,194,1328,144"/>
+<area shape="rect" id="Node000011" href="$board__usb__dev_8c.html" title="USBFS register + CFIFO model (see board_usb_internal.h)." alt="" coords="1307,196,1491,236"/>
+<area shape="poly" id="edge11_Node000009_Node000011" title=" " alt="" coords="1391,153,1398,195,1393,196,1386,154"/>
+<area shape="rect" id="Node000012" href="$board__usb__loop_8c.html" title="Self&#45;loop (loop&#45;cable) transport (see board_usb_internal.h)." alt="" coords="1515,196,1704,236"/>
+<area shape="poly" id="edge12_Node000009_Node000012" title=" " alt="" coords="1442,143,1565,193,1563,198,1440,148"/>
+<area shape="rect" id="Node000013" href="$board__usb__vhost_8c.html" title="Built&#45;in virtual chapter&#45;9 USB host (see board_usb_internal.h)." alt="" coords="1728,196,1925,236"/>
+<area shape="poly" id="edge13_Node000009_Node000013" title=" " alt="" coords="1486,141,1737,193,1736,199,1485,146"/>
+</map>

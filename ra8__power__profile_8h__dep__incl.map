@@ -1,0 +1,7 @@
+<map id="libs/ra8_power_profile/inc/ra8_power_profile.h" name="libs/ra8_power_profile/inc/ra8_power_profile.h">
+<area shape="rect" id="Node000001" title="Power&#45;profiling helper – public API." alt="" coords="121,5,298,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2power__profiler_2main_8c.html" title="Power&#45;mode profiler smoke app for the EK&#45;RA8D2." alt="" coords="5,93,203,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="180,56,135,95,132,91,176,52"/>
+<area shape="rect" id="Node000003" href="$ra8__power__profile_8c.html" title="Power&#45;profiling helper – implementation." alt="" coords="227,101,403,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="242,52,295,99,292,103,239,56"/>
+</map>

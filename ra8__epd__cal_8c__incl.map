@@ -1,0 +1,28 @@
+<map id="libs/ra8_epd_cal/src/ra8_epd_cal.c" name="libs/ra8_epd_cal/src/ra8_epd_cal.c">
+<area shape="rect" id="Node000001" title="Per&#45;device e&#45;paper VCOM calibration – record codec and resolver." alt="" coords="180,5,331,45"/>
+<area shape="rect" id="Node000002" href="$ra8__epd__cal_8h.html" title="Per&#45;device e&#45;paper panel calibration (VCOM) – record, storage seam, resolution policy." alt="" coords="106,93,218,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="234,48,188,86,185,82,231,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="31,167,106,192"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="181,45,135,65,114,78,96,95,80,123,73,153,68,152,75,121,92,92,111,74,133,60,179,40"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="253,240,324,265"/>
+<area shape="poly" id="edge7_Node000001_Node000004" title=" " alt="" coords="184,48,113,72,79,88,49,105,26,124,12,145,9,167,21,190,35,202,56,212,114,228,179,238,239,245,239,250,179,244,112,233,54,217,32,206,17,194,4,168,7,143,22,121,46,101,77,83,111,67,182,43"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="181,167,260,192"/>
+<area shape="poly" id="edge16_Node000001_Node000005" title=" " alt="" coords="253,46,229,154,224,152,248,45"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="475,93,601,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="324,43,484,87,483,92,322,48"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="300,93,400,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="280,43,327,82,323,86,276,48"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="507,167,590,192"/>
+<area shape="poly" id="edge17_Node000001_Node000008" title=" " alt="" coords="305,43,412,91,472,125,522,157,519,161,469,129,410,96,303,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="148,121,96,160,93,156,145,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="162,119,160,154,163,173,171,191,185,207,202,219,241,237,239,242,199,224,181,210,166,193,158,174,155,154,157,119"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="174,117,204,155,200,158,169,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="234,190,270,228,266,232,230,194"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="381,116,409,130,435,147,450,169,451,181,445,193,423,216,396,232,367,243,338,249,337,244,365,238,394,228,420,212,441,191,445,180,445,170,431,151,406,134,379,121"/>
+<area shape="poly" id="edge11_Node000007_Node000005" title=" " alt="" coords="330,121,255,162,253,157,328,116"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="383,116,504,159,502,164,381,121"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="284,167,432,192"/>
+<area shape="poly" id="edge14_Node000007_Node000009" title=" " alt="" coords="354,119,358,153,352,153,349,119"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="507,195,338,241,336,236,506,189"/>
+<area shape="poly" id="edge15_Node000009_Node000004" title=" " alt="" coords="348,194,311,232,307,228,344,190"/>
+</map>

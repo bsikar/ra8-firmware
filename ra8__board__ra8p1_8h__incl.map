@@ -1,0 +1,13 @@
+<map id="libs/ra8_board_ra8p1/inc/ra8_board_ra8p1.h" name="libs/ra8_board_ra8p1/inc/ra8_board_ra8p1.h">
+<area shape="rect" id="Node000001" title="Board&#45;support layer for the Renesas RA8P1 (R7KA8P1KFLCAC) target board." alt="" coords="71,5,241,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="130,48,72,87,69,83,127,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="159,167,230,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="151,46,143,81,143,99,147,118,158,138,173,156,168,159,153,141,141,120,137,100,138,80,146,45"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,93,234,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="168,44,185,80,180,82,163,47"/>
+<area shape="rect" id="Node000005" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="258,93,417,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="200,43,299,85,297,90,198,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="197,119,197,153,192,153,192,119"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="316,121,231,163,229,158,313,116"/>
+</map>

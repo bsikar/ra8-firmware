@@ -1,0 +1,23 @@
+<map id="libs/ra8_hal/inc/ra8_dual_core.h" name="libs/ra8_hal/inc/ra8_dual_core.h">
+<area shape="rect" id="Node000001" title="Dual&#45;core (CPU0 / CPU1) lifecycle helper – public API." alt="" coords="1019,5,1165,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2cpu1__pingpong__ipc_2trustzone__init_8c.html" title="Per&#45;app secure&#45;boot wiring for cpu1_pingpong_ipc." alt="" coords="5,93,224,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1006,32,668,51,453,70,236,96,225,98,224,93,236,91,452,64,667,46,1005,27"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2compile__on__m33_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver: stage an EPUB, offload its compile to the M33." alt="" coords="249,93,445,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1006,35,759,56,608,74,458,96,445,98,444,93,457,91,608,68,758,51,1006,30"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2ereader__m33_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the e&#45;reader&#45;on&#45;M33 demo." alt="" coords="469,93,643,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1006,40,843,63,655,96,644,98,642,93,654,91,842,57,1005,34"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2lowpower__holdpage_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the low&#45;power hold&#45;page demo." alt="" coords="667,93,882,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1015,52,865,96,863,91,1014,47"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2hil_2blink__m33_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) launcher for the M33 blink template." alt="" coords="907,93,1080,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1064,57,1023,95,1019,91,1060,53"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__validated_2hil_2cache__coherency__hil_2main_8c.html" title="CPU0 (Cortex&#45;M85) cache&#45;coherency validator against CPU1 (Cortex&#45;M33)." alt="" coords="1104,93,1277,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1124,53,1165,91,1161,95,1120,57"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__validated_2hil_2cpu1__pingpong_2main_8c.html" title="CPU0 (Cortex&#45;M85) ping&#45;pong demo against CPU1 (Cortex&#45;M33)." alt="" coords="1302,93,1514,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1170,47,1320,91,1318,96,1168,52"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dualcore__background__m33_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the autonomous M33 demo." alt="" coords="1539,93,1728,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1179,35,1341,58,1527,91,1539,93,1538,98,1526,96,1340,64,1178,40"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dualcore__mailbox_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the dual&#45;core demo." alt="" coords="1752,93,1925,148"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1179,29,1432,49,1586,67,1740,91,1752,93,1751,98,1740,96,1585,72,1431,54,1178,34"/>
+<area shape="rect" id="Node000011" href="$ra8__dual__core_8c.html" title="CPU1 (Cortex&#45;M33) lifecycle helper – implementation." alt="" coords="1950,101,2095,141"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1179,25,1324,29,1513,39,1725,59,1833,73,1938,91,1968,98,1967,103,1937,96,1832,78,1725,64,1513,44,1323,34,1178,30"/>
+</map>

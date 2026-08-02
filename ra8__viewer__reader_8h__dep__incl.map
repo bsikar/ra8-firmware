@@ -1,0 +1,19 @@
+<map id="tools/rabook_viewer/inc/ra8_viewer_reader.h" name="tools/rabook_viewer/inc/ra8_viewer_reader.h">
+<area shape="rect" id="Node000001" title="Host&#45;side direct&#45;call reader: open an e&#45;book/comic and rasterise pages." alt="" coords="227,5,408,45"/>
+<area shape="rect" id="Node000002" href="$tools_2rabook__viewer_2src_2main_8c.html" title="Entry point for the RA8 desktop reader viewer (direct&#45;call, no emulation)." alt="" coords="13,101,168,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="260,53,137,103,135,98,258,48"/>
+<area shape="rect" id="Node000003" href="$ra8__viewer__comic_8c.html" title="Comic&#45;archive reader engine: CBZ / CBR / CBT and wrapped variants." alt="" coords="5,196,184,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="288,57,182,150,121,198,118,194,178,146,285,53"/>
+<area shape="rect" id="Node000004" href="$ra8__viewer__jof_8c.html" title="JOF long&#45;strip reader engine: vertical&#45;scroll tile atlas rendering." alt="" coords="208,196,363,236"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="299,58,284,94,280,121,279,149,284,196,279,196,274,149,274,121,279,93,294,56"/>
+<area shape="rect" id="Node000005" href="$ra8__viewer__ppm_8c.html" title="RGB565 &lt;&#45;&gt; 8&#45;bit RGB conversion and the shared binary&#45;PPM (P6) writer." alt="" coords="387,196,555,236"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="422,48,453,66,478,92,489,118,490,147,481,196,475,195,485,146,484,119,474,95,450,70,420,52"/>
+<area shape="rect" id="Node000006" href="$ra8__viewer__reader_8c.html" title="Host&#45;side reader core: format dispatch, buffer ownership, public API." alt="" coords="579,196,759,236"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="396,47,448,67,501,91,585,144,649,194,645,198,582,148,499,96,446,72,394,52"/>
+<area shape="rect" id="Node000007" href="$ra8__viewer__reader__internal_8h.html" title="Module&#45;private reader state + per&#45;engine entry points for the viewer." alt="" coords="293,93,464,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="339,55,364,92,359,95,335,58"/>
+<area shape="poly" id="edge7_Node000007_Node000003" title=" " alt="" coords="287,155,153,199,151,193,285,150"/>
+<area shape="poly" id="edge8_Node000007_Node000004" title=" " alt="" coords="344,160,306,198,302,194,341,156"/>
+<area shape="poly" id="edge9_Node000007_Node000005" title=" " alt="" coords="416,156,454,194,450,198,412,160"/>
+<area shape="poly" id="edge10_Node000007_Node000006" title=" " alt="" coords="474,150,612,193,610,199,473,155"/>
+</map>

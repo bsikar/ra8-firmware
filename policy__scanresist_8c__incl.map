@@ -1,0 +1,11 @@
+<map id="tools/cache_bench/policy_scanresist.c" name="tools/cache_bench/policy_scanresist.c">
+<area shape="rect" id="Node000001" title="Scan&#45;resistant eviction policies for the #147 benchmark: Segmented&#45;LRU and SRRIP – the deterministic,..." alt="" coords="7,5,192,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,76,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="87,47,60,84,56,80,83,44"/>
+<area shape="rect" id="Node000003" href="$cache__bench_8h.html" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="100,93,219,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="116,44,144,81,140,84,112,47"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="73,167,147,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="153,121,128,157,124,154,149,117"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="172,167,243,192"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="169,118,194,154,190,157,165,121"/>
+</map>

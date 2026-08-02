@@ -1,0 +1,38 @@
+<map id="src/secure_app/key_import.c" name="src/secure_app/key_import.c">
+<area shape="rect" id="Node000001" title="Secure&#45;side sealed&#45;key import implementation." alt="" coords="259,5,406,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="389,240,460,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="259,34,189,41,115,53,51,71,28,82,12,95,8,105,13,118,29,145,48,163,102,190,174,216,248,233,318,242,376,247,375,252,317,248,247,238,172,221,100,194,45,167,25,148,8,120,3,105,8,92,25,78,49,66,114,48,188,36,259,29"/>
+<area shape="rect" id="Node000003" href="$key__import__internal_8h.html" title="Secure&#45;side sealed key import + opaque handle vending." alt="" coords="23,93,187,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="279,48,152,91,150,86,277,43"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="133,167,258,192"/>
+<area shape="poly" id="edge10_Node000001_Node000004" title=" " alt="" coords="317,48,217,158,213,154,313,44"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="283,167,361,192"/>
+<area shape="poly" id="edge18_Node000001_Node000005" title=" " alt="" coords="323,47,312,69,303,94,304,125,312,153,307,155,298,125,298,93,307,67,318,44"/>
+<area shape="rect" id="Node000006" href="$key__vault_8h.html" title="Secure&#45;only symmetric key store." alt="" coords="492,93,589,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="384,43,498,86,497,91,382,48"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="613,93,713,119"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="407,41,603,88,602,93,406,47"/>
+<area shape="rect" id="Node000010" href="$ra8__secure_8h.html" title="Secure&#45;comparison primitives for the crypto / secure&#45;boot paths." alt="" coords="765,93,871,119"/>
+<area shape="poly" id="edge19_Node000001_Node000010" title=" " alt="" coords="407,36,753,91,752,97,406,41"/>
+<area shape="rect" id="Node000012" href="$sec__cmac__internal_8h.html" title="Secure&#45;side AES&#45;CMAC seam (real PSA backend / in&#45;tree reference)." alt="" coords="313,93,467,119"/>
+<area shape="poly" id="edge21_Node000001_Node000012" title=" " alt="" coords="349,44,376,80,371,84,344,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="106,119,107,155,112,174,123,190,140,202,165,212,233,229,309,239,376,246,375,251,308,245,232,234,164,217,137,207,119,194,107,176,101,155,101,119"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="121,117,171,156,168,160,118,121"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="141,116,275,160,273,165,139,121"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="340,190,398,230,395,234,337,194"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="528,121,504,142,479,168,457,199,439,229,435,226,452,196,475,165,500,138,524,117"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="506,121,372,165,370,160,505,116"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="668,119,667,155,662,176,651,194,621,212,575,227,474,247,473,242,574,222,619,207,647,190,657,174,662,154,662,119"/>
+<area shape="poly" id="edge13_Node000007_Node000005" title=" " alt="" coords="614,120,375,170,374,165,613,115"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="711,167,794,192"/>
+<area shape="poly" id="edge14_Node000007_Node000008" title=" " alt="" coords="679,117,729,156,726,160,676,121"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="488,167,636,192"/>
+<area shape="poly" id="edge16_Node000007_Node000009" title=" " alt="" coords="649,121,591,161,588,156,646,116"/>
+<area shape="poly" id="edge15_Node000008_Node000002" title=" " alt="" coords="712,192,474,243,473,238,711,187"/>
+<area shape="poly" id="edge17_Node000009_Node000002" title=" " alt="" coords="541,194,460,236,458,231,539,190"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="818,167,893,192"/>
+<area shape="poly" id="edge20_Node000010_Node000011" title=" " alt="" coords="827,118,845,153,841,156,822,120"/>
+<area shape="poly" id="edge22_Node000012_Node000002" title=" " alt="" coords="396,118,421,226,416,227,390,120"/>
+<area shape="poly" id="edge23_Node000012_Node000004" title=" " alt="" coords="360,121,241,164,239,159,358,116"/>
+<area shape="poly" id="edge24_Node000012_Node000005" title=" " alt="" coords="381,121,345,158,341,155,377,117"/>
+</map>

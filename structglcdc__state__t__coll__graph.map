@@ -1,0 +1,5 @@
+<map id="glcdc_state_t" name="glcdc_state_t">
+<area shape="rect" id="Node000001" title="The modelled GLCDC: snooped graphics&#45;layer + background state." alt="" coords="5,121,113,147"/>
+<area shape="rect" id="Node000002" href="$structglcdc__layer__t.html" title="One graphics layer&#39;s snooped descriptor registers." alt="" coords="5,5,113,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="62,45,62,121,57,121,57,45"/>
+</map>

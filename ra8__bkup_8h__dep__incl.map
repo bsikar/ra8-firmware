@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_bkup.h" name="libs/ra8_hal/inc/ra8_bkup.h">
+<area shape="rect" id="Node000001" title="Battery Backup Function (VBATT) HAL driver – public API." alt="" coords="301,5,447,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2bkup__survival__demo_2main_8c.html" title="VBATT backup&#45;register read/write + reset&#45;survival demo (EK&#45;RA8D2)." alt="" coords="5,93,193,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="306,52,178,96,176,91,305,47"/>
+<area shape="rect" id="Node000003" href="$ra8__bkup_8c.html" title="Battery Backup Function (VBATT) driver – core lifecycle and storage." alt="" coords="217,101,363,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="350,57,309,102,305,99,346,54"/>
+<area shape="rect" id="Node000004" href="$ra8__bkup__security_8c.html" title="Battery Backup Function (VBATT) driver – TrustZone partitioning." alt="" coords="387,101,532,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="403,54,444,99,440,102,399,57"/>
+<area shape="rect" id="Node000005" href="$ra8__bkup__tamper_8c.html" title="Battery Backup Function (VBATT) driver – tamper detection." alt="" coords="556,101,701,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="439,48,578,98,576,103,438,53"/>
+</map>

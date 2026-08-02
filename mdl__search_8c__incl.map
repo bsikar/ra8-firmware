@@ -1,0 +1,20 @@
+<map id="tools/media_dl/src/mdl_search.c" name="tools/media_dl/src/mdl_search.c">
+<area shape="rect" id="Node000001" title="Pure search/discovery policy: percent&#45;encoding, URL templating, and the zero&#45;vs&#45;broken result classif..." alt="" coords="180,5,321,45"/>
+<area shape="rect" id="Node000002" href="$mdl__search_8h.html" title="Pure search/discovery policy: query encoding, URL templating, and the honest zero&#45;vs&#45;broken result cl..." alt="" coords="81,93,191,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="224,48,166,88,163,83,221,43"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="215,93,286,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="253,46,253,79,248,79,248,46"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="311,93,436,119"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="282,43,345,84,342,88,279,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,240,80,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="119,121,94,141,70,168,57,198,49,227,44,226,52,196,66,165,90,137,116,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="159,313,230,339"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="154,117,180,138,206,165,232,199,248,239,251,253,248,266,236,288,221,306,217,302,232,285,243,264,245,253,243,241,228,202,202,168,176,142,150,121"/>
+<area shape="rect" id="Node000005" href="$mdl__extract_8h.html" title="Extract image URLs and anchor links from an HTML page (v1 scanner)." alt="" coords="80,167,192,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="139,119,139,153,133,153,133,119"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="123,194,70,234,67,229,119,190"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="137,192,137,226,145,264,157,285,172,302,168,306,153,288,140,266,132,226,132,192"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,240,234,265"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="148,191,179,228,175,231,144,194"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="197,266,197,300,192,300,192,266"/>
+</map>

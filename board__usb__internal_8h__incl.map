@@ -1,0 +1,13 @@
+<map id="tools/ra8_emulator/src/usb/board_usb_internal.h" name="tools/ra8_emulator/src/usb/board_usb_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private state + interfaces shared by the board_usb TUs." alt="" coords="55,5,267,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="114,48,82,68,56,95,45,124,42,153,37,153,40,122,52,92,79,63,112,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="124,167,259,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="169,45,182,93,191,152,186,153,177,94,164,46"/>
+<area shape="rect" id="Node000004" href="$board__usb_8h.html" title="USBFS controller model + a virtual USB host for the board emulator." alt="" coords="66,93,167,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="152,47,132,83,128,80,148,44"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="242,93,367,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="196,43,273,84,270,89,194,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="106,121,65,159,61,155,103,117"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="130,117,171,155,167,159,127,121"/>
+</map>

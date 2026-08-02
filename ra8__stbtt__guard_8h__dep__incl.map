@@ -1,0 +1,9 @@
+<map id="libs/ra8_reflow/inc/ra8_stbtt_guard.h" name="libs/ra8_reflow/inc/ra8_stbtt_guard.h">
+<area shape="rect" id="Node000001" title="sfnt (TrueType/OpenType) table&#45;directory bounds guard for stb_truetype." alt="" coords="215,5,355,45"/>
+<area shape="rect" id="Node000002" href="$ra8__epub__chapter_8c.html" title="Chapter / metadata / cover / glyph accessors for the EPUB reader." alt="" coords="5,93,163,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="229,53,129,96,127,91,227,48"/>
+<area shape="rect" id="Node000003" href="$ra8__reflow__layout__driver_8c.html" title="Token&#45;stream driver + public lifecycle API for the ra8_reflow engine." alt="" coords="187,93,384,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="288,59,288,93,283,93,283,59"/>
+<area shape="rect" id="Node000004" href="$ra8__stbtt__guard_8c.html" title="sfnt table&#45;directory bounds validator run before stbtt_InitFont()." alt="" coords="409,93,549,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="341,49,437,91,435,96,339,53"/>
+</map>

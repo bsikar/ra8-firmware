@@ -1,0 +1,5 @@
+<map id="libs/ra8_comic/inc/ra8_comic_tiles.h" name="libs/ra8_comic/inc/ra8_comic_tiles.h">
+<area shape="rect" id="Node000001" title="Tile an oversized comic page through the JOF atlas + ra8_tile_cache so a CBZ/CBR page larger than the..." alt="" coords="26,5,166,45"/>
+<area shape="rect" id="Node000002" href="$cm__tiled__check_8c.html" title="Oversized&#45;page tile self&#45;check for ereader_comic (#344)." alt="" coords="5,93,187,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,59,99,93,93,93,93,59"/>
+</map>

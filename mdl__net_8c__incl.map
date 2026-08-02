@@ -1,0 +1,19 @@
+<map id="tools/media_dl/src/mdl_net.c" name="tools/media_dl/src/mdl_net.c">
+<area shape="rect" id="Node000001" title="Backend&#45;agnostic dispatchers for the mdl_net_iface_t vtable seam." alt="" coords="153,5,295,45"/>
+<area shape="rect" id="Node000002" href="$mdl__net_8h.html" title="Streaming HTTP(S) GET seam (a real function&#45;pointer vtable) for the host manga downloader (v0)." alt="" coords="78,93,165,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="201,48,149,87,146,83,198,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="154,44,107,64,86,78,67,95,52,123,46,153,41,152,47,121,63,92,83,74,105,59,152,39"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="189,93,259,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="227,46,227,79,221,79,221,46"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="283,93,354,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="249,43,295,82,292,86,245,48"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="379,93,504,119"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="277,43,397,86,396,91,275,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="110,121,67,159,64,156,107,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="122,240,193,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="127,118,154,226,149,227,122,120"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="157,167,235,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="135,117,176,155,172,159,131,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="192,194,172,229,168,227,187,191"/>
+</map>

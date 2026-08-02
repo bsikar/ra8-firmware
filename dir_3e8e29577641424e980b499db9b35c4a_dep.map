@@ -1,0 +1,10 @@
+<map id="libs/ra8_box/inc" name="libs/ra8_box/inc">
+<area shape="rect" id="node1" href="dir_3e8e29577641424e980b499db9b35c4a.html" title="inc" alt="" coords="63,52,104,77"/>
+<area shape="rect" id="node2" href="dir_1a40671a0866f3ac1f6d12655ed3b8f5.html" title="ra8_ui" alt="" coords="5,125,68,151"/>
+<area shape="poly" id="edge1" href="dir_000164_000309.html" alt="" coords="78,79,54,115,50,112,73,76"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000164_000309.html" title="1" alt="" coords="57,107,66,122"/>
+<area shape="rect" id="node3" href="dir_9784371ce13fb6b4d69891743248b7e4.html" title="ra8_core" alt="" coords="92,125,171,151"/>
+<area shape="poly" id="edge2" href="dir_000164_000264.html" alt="" coords="93,76,118,113,114,116,89,79"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000164_000264.html" title="1" alt="" coords="116,98,125,113"/>
+<area shape="rect" id="clust1" href="dir_4f787426a6a1fbb6616147db702981ba.html" title="ra8_box" alt="" coords="46,16,121,88"/>
+</map>

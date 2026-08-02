@@ -1,0 +1,7 @@
+<map id="libs/ra8_ftl/inc/ra8_ftl.h" name="libs/ra8_ftl/inc/ra8_ftl.h">
+<area shape="rect" id="Node000001" title="Flash Translation Layer – free overwrite over erase&#45;before&#45;write media." alt="" coords="112,5,251,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2ra8__ftl__demo_2main_8c.html" title="Wear&#45;levelled block I/O + power&#45;cycle survival over the FTL (#258)." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,57,119,95,115,91,152,53"/>
+<area shape="rect" id="Node000003" href="$ra8__ftl_8c.html" title="Flash Translation Layer implementation – copy&#45;on&#45;write + wear&#45;levelling." alt="" coords="203,101,341,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="211,53,256,99,252,102,207,57"/>
+</map>

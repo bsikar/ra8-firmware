@@ -1,0 +1,8 @@
+<map id="tools/rabook_viewer/src/ra8_viewer_view_stub.c" name="tools/rabook_viewer/src/ra8_viewer_view_stub.c">
+<area shape="rect" id="Node000001" title="Headless stand&#45;in for the Cocoa reader window on non&#45;Apple hosts." alt="" coords="5,5,164,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="49,181,120,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="72,61,60,96,58,114,59,133,73,168,68,170,54,134,52,114,55,94,67,59"/>
+<area shape="rect" id="Node000003" href="$ra8__viewer__view_8h.html" title="Plain&#45;C ABI for the viewer&#39;s desktop reader window (Cocoa on macOS)." alt="" coords="68,108,211,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="104,59,127,95,122,98,99,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="132,135,104,172,100,169,128,132"/>
+</map>

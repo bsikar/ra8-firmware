@@ -1,0 +1,11 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/src/psa_verify_rng.c" name="examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/src/psa_verify_rng.c">
+<area shape="rect" id="Node000001" title="Fail&#45;closed PSA external&#45;RNG hook for the verify&#45;only bootloader." alt="" coords="107,5,319,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,80,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="162,62,79,104,77,99,160,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="105,108,175,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="193,62,161,99,157,96,189,58"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="199,108,374,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="238,58,270,96,266,99,234,62"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="398,108,501,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="286,58,406,101,404,106,285,63"/>
+</map>

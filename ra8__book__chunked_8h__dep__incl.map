@@ -1,0 +1,9 @@
+<map id="libs/ra8_book/inc/ra8_book_chunked.h" name="libs/ra8_book/inc/ra8_book_chunked.h">
+<area shape="rect" id="Node000001" title="Demand&#45;paged chunk reader for the &quot;RBKC&quot; .rabook container." alt="" coords="237,5,394,45"/>
+<area shape="rect" id="Node000002" href="$sh__paged_8c.html" title="Demand&#45;paged .rabook backing: chunk reader + page cache + source bind." alt="" coords="5,93,212,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="262,53,168,96,166,91,260,49"/>
+<area shape="rect" id="Node000003" href="$ra8__book__chunked_8c.html" title="Implementation of the demand&#45;paged &quot;RBKC&quot; chunk reader." alt="" coords="237,101,394,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="318,59,318,101,313,101,313,59"/>
+<area shape="rect" id="Node000004" href="$sweep__block__backends_8c.html" title="The two in&#45;tree #208 sweep backends (mem, rbkc&#45;z9) + shared helpers (meter shim, wall clock,..." alt="" coords="419,101,607,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="369,49,474,98,472,103,366,54"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="ra8_epaper_panel_t" name="ra8_epaper_panel_t">
+<area shape="rect" id="Node000001" title="File&#45;scope panel context." alt="" coords="178,212,329,237"/>
+<area shape="rect" id="Node000002" href="$structra8__epaper__cfg__t.html" title="Configuration descriptor for ra8_epaper_init." alt="" coords="98,116,233,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="187,150,244,210,241,214,184,153"/>
+<area shape="rect" id="Node000003" href="$structra8__spi__bus__ops__t.html" title="Caller&#45;filled SPI transfer seam: one full&#45;duplex byte exchange." alt="" coords="5,13,147,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="97,47,157,114,153,118,93,50"/>
+<area shape="rect" id="Node000004" href="$structra8__epaper__waveform__cfg__t.html" title="Per&#45;panel map from ra8_epaper_waveform_t onto LUT mode numbers." alt="" coords="171,5,339,45"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="231,58,177,118,173,114,227,54"/>
+<area shape="rect" id="Node000005" href="$structra8__epaper__dev__info__t.html" title="Decoded GET_DEV_INFO (0x0302) response." alt="" coords="257,116,428,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="324,153,266,214,262,210,320,150"/>
+</map>

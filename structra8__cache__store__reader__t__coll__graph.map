@@ -1,0 +1,7 @@
+<map id="ra8_cache_store_reader_t" name="ra8_cache_store_reader_t">
+<area shape="rect" id="Node000001" title="Handle to an open entry that streams through ra8_cache_store_read." alt="" coords="5,197,195,223"/>
+<area shape="rect" id="Node000002" href="$structra8__cache__store__t.html" title="Caller&#45;owned store handle." alt="" coords="30,101,170,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,141,103,197,97,197,97,141"/>
+<area shape="rect" id="Node000003" href="$structra8__cache__store__entry__t.html" title="One RAM index slot: key &#45;&gt; {header sector, run length, payload len}." alt="" coords="9,5,191,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="103,45,103,101,97,101,97,45"/>
+</map>

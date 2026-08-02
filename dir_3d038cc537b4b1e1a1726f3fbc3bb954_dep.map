@@ -1,0 +1,10 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/ereader_ui/src" name="examples/ek_ra8d2/hw_validated/hil/ereader_ui/src">
+<area shape="rect" id="node1" href="dir_ba4b67e64776b5cfdfdcf6f2a95baa92.html" title="inc" alt="" coords="53,125,94,151"/>
+<area shape="rect" id="node2" href="dir_3d038cc537b4b1e1a1726f3fbc3bb954.html" title="src" alt="" coords="53,52,94,77"/>
+<area shape="poly" id="edge2" href="dir_000355_000142.html" alt="" coords="76,78,76,112,71,112,71,78"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000355_000142.html" title="2" alt="" coords="77,100,86,114"/>
+<area shape="rect" id="node3" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="119,125,164,151"/>
+<area shape="poly" id="edge1" href="dir_000355_000218.html" alt="" coords="86,76,123,113,119,117,83,80"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000355_000218.html" title="21" alt="" coords="115,99,133,114"/>
+<area shape="rect" id="clust1" href="dir_85d9d63bb64ec07f374e926cf1048c23.html" title="ereader_ui" alt="" coords="16,16,107,161"/>
+</map>

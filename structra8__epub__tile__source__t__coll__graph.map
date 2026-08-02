@@ -1,0 +1,13 @@
+<map id="ra8_epub_tile_source_t" name="ra8_epub_tile_source_t">
+<area shape="rect" id="Node000001" title="One registered atlas image (private to the binder; treat as opaque)." alt="" coords="310,197,482,223"/>
+<area shape="rect" id="Node000002" href="$structra8__epub__book__t.html" title="Opened EPUB book." alt="" coords="256,101,389,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="342,136,389,195,385,199,338,139"/>
+<area shape="rect" id="Node000003" href="$structra8__epub__stream__media__t.html" title="Seekable EPUB media descriptor – opens with no whole&#45;file residency (#151)." alt="" coords="5,5,200,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="136,35,216,75,283,99,282,104,214,80,133,40"/>
+<area shape="rect" id="Node000004" href="$structra8__epub__manifest__item__t.html" title="One &lt;manifest&gt; &lt;item&gt; entry, retained in OPF document order." alt="" coords="225,5,421,31"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="325,45,325,101,320,101,320,45"/>
+<area shape="rect" id="Node000005" href="$structra8__epub__toc__entry__t.html" title="One titled entry in the table of contents." alt="" coords="445,5,608,31"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="490,39,349,104,347,99,488,34"/>
+<area shape="rect" id="Node000006" href="$structra8__jof__info__t.html" title="Parsed + validated geometry of one JOF atlas." alt="" coords="414,101,525,127"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="454,139,407,199,403,195,450,136"/>
+</map>

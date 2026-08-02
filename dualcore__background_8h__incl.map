@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/dualcore_background.h" name="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/dualcore_background.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM control block for the M33 autonomous counter demo." alt="" coords="5,5,207,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="71,123,141,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,75,109,109,103,109,103,75"/>
+</map>

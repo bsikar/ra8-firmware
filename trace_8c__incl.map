@@ -1,0 +1,21 @@
+<map id="tools/cache_bench/trace.c" name="tools/cache_bench/trace.c">
+<area shape="rect" id="Node000001" title="Implementation of the #147 reader access&#45;trace corpus + loader." alt="" coords="235,5,425,31"/>
+<area shape="rect" id="Node000002" href="$trace_8h.html" title="Reader access&#45;trace generation + loading for the #147 cache benchmark." alt="" coords="109,79,175,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="301,33,186,76,185,71,299,28"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="127,225,197,251"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="307,33,273,53,241,80,217,113,197,149,172,213,167,211,193,147,213,111,237,77,270,49,304,28"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="251,79,319,104"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="325,32,302,69,297,66,320,30"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="343,79,410,104"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="340,30,364,66,359,69,335,32"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="435,79,505,104"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="354,28,436,70,434,75,351,33"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="529,79,600,104"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="368,28,517,73,515,78,367,33"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="146,104,161,211,156,212,141,105"/>
+<area shape="rect" id="Node000004" href="$cache__bench_8h.html" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="5,152,124,177"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="131,106,89,144,86,141,128,102"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="82,175,136,215,133,219,79,180"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="27,225,102,251"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="67,178,67,212,62,212,62,178"/>
+</map>

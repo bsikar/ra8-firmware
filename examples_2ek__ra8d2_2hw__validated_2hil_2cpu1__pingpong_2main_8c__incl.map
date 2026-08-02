@@ -1,0 +1,15 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/main.c" name="examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/main.c">
+<area shape="rect" id="Node000001" title="CPU0 (Cortex&#45;M85) ping&#45;pong demo against CPU1 (Cortex&#45;M33)." alt="" coords="32,5,244,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="43,255,113,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="68,62,39,82,16,109,10,126,8,144,18,181,37,215,59,243,55,246,33,218,13,183,3,145,4,125,12,107,35,78,65,58"/>
+<area shape="rect" id="Node000003" href="$ra8__dual__core_8h.html" title="Dual&#45;core (CPU0 / CPU1) lifecycle helper – public API." alt="" coords="26,108,151,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="125,61,104,97,100,95,120,59"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="77,181,156,207"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="155,59,167,95,169,115,166,134,155,155,141,173,137,170,151,152,161,132,164,114,162,96,150,61"/>
+<area shape="rect" id="Node000005" href="$shared__pingpong_8h.html" title="Shared&#45;SRAM message layout for the CPU0 &lt;&#45;&gt; CPU1 ping&#45;pong demo." alt="" coords="180,181,325,207"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="159,59,238,169,234,172,155,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="85,135,76,156,68,182,68,212,73,241,68,242,62,213,63,181,71,154,80,132"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="96,133,109,168,104,170,91,135"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="112,208,93,244,88,241,108,206"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="225,209,120,252,118,247,223,204"/>
+</map>

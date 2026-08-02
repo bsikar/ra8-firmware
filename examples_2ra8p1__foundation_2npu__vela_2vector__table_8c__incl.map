@@ -1,0 +1,7 @@
+<map id="examples/ra8p1_foundation/npu_vela/vector_table.c" name="examples/ra8p1_foundation/npu_vela/vector_table.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 vector table and default interrupt handlers for RA8D2." alt="" coords="5,5,209,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="9,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,47,65,84,61,81,90,44"/>
+<area shape="rect" id="Node000003" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="105,93,235,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="125,44,154,81,150,84,120,47"/>
+</map>

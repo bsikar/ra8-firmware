@@ -1,0 +1,21 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_pdctr.c" name="tools/ra8_emulator/src/periph/board_periph_pdctr.c">
+<area shape="rect" id="Node000001" title="Graphics power&#45;domain gating (PDCTRGD) model." alt="" coords="277,5,455,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="260,196,331,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="350,61,323,109,310,147,302,183,297,182,305,146,318,107,345,59"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="191,115,258,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="328,62,255,110,252,106,325,58"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="5,115,167,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="288,63,134,114,132,109,286,58"/>
+<area shape="rect" id="Node000006" href="$board__periph__pdctr__internal_8h.html" title="Module&#45;private graphics power&#45;domain state for the gated blocks." alt="" coords="565,108,711,148"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="443,58,571,101,570,106,442,63"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="575,196,701,221"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="456,37,533,46,613,59,682,79,708,91,725,106,732,117,733,128,726,149,706,174,681,192,678,187,702,170,721,147,728,127,727,119,721,110,705,96,680,84,612,64,532,51,455,43"/>
+<area shape="rect" id="Node000008" href="$board__periph__prcr__internal_8h.html" title="Module&#45;private PRCR unlock state shared with the protected blocks." alt="" coords="333,115,541,141"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="388,59,421,102,417,106,384,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="117,138,253,189,251,194,116,143"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="19,196,153,221"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="89,141,89,182,83,182,83,141"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="641,148,641,182,635,182,635,148"/>
+<area shape="poly" id="edge9_Node000008_Node000002" title=" " alt="" coords="417,143,330,192,327,187,415,139"/>
+<area shape="poly" id="edge10_Node000008_Node000007" title=" " alt="" coords="467,138,597,189,595,194,465,143"/>
+</map>

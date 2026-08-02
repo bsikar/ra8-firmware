@@ -1,0 +1,13 @@
+<map id="libs/ra8_reflow/src/ra8_reflow_tokenize_internal.h" name="libs/ra8_reflow/src/ra8_reflow_tokenize_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_reflow_tokenize.c internal helpers." alt="" coords="379,5,535,60"/>
+<area shape="rect" id="Node000002" href="$ra8__reflow__css__rules_8c.html" title="Content&#45;CSS selector + @font&#45;face rule parsing (#111)." alt="" coords="5,115,177,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="366,62,160,118,159,113,365,56"/>
+<area shape="rect" id="Node000003" href="$ra8__reflow__parse_8c.html" title="HTML&#45;subset parser entry point for ra8_reflow." alt="" coords="201,115,349,155"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="399,69,311,117,308,113,396,64"/>
+<area shape="rect" id="Node000004" href="$ra8__reflow__tokenize_8c.html" title="No&#45;heap streaming XHTML tokenizer for ra8_reflow (replaces the tinyxml2 DOM shim)." alt="" coords="373,115,540,155"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="459,74,459,115,454,115,454,74"/>
+<area shape="rect" id="Node000005" href="$ra8__reflow__tokenize__attr_8c.html" title="Attribute and CSS&#45;identity helpers for the no&#45;heap XHTML tokenizer: quoted&#45;attribute scanning,..." alt="" coords="564,108,720,163"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="518,64,595,105,592,110,515,69"/>
+<area shape="rect" id="Node000006" href="$ra8__reflow__tokenize__lex_8c.html" title="Lexical primitives for the no&#45;heap streaming XHTML tokenizer: whitespace/entity/UTF&#45;8 scanning,..." alt="" coords="745,115,939,155"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="549,55,770,113,769,118,548,60"/>
+</map>

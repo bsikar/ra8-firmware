@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/inc/ra8_usb_paud.h" name="libs/ra8_hal/inc/ra8_usb_paud.h">
+<area shape="rect" id="Node000001" title="Native USB device&#45;side Audio (UAC) class layer." alt="" coords="124,5,269,45"/>
+<area shape="rect" id="Node000002" href="$examples_2__unsupported_2usb__audio__device_2main_8c.html" title="USB Audio Class 1.0 device&#45;mode smoke test for EK&#45;RA8D2 (USB&#45;FS, 48 kHz / 16&#45;bit / stereo iso&#45;IN sine..." alt="" coords="5,93,196,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,57,124,95,120,91,163,53"/>
+<area shape="rect" id="Node000003" href="$ra8__usb__paud_8c.html" title="Native USB device&#45;side Audio (UAC1) class layer implementation." alt="" coords="220,93,365,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="230,53,273,91,270,95,227,57"/>
+</map>

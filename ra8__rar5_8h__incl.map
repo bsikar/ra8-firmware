@@ -1,0 +1,15 @@
+<map id="libs/ra8_comic/inc/ra8_rar5.h" name="libs/ra8_comic/inc/ra8_rar5.h">
+<area shape="rect" id="Node000001" title="Clean&#45;room RAR 5.0 (&quot;method 50&quot;) decompressor – LZ + Huffman + filters." alt="" coords="91,5,230,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="159,167,234,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="168,45,193,152,188,154,163,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="87,240,157,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="185,44,215,73,242,110,252,131,257,152,257,173,248,193,233,212,214,226,172,244,170,239,211,221,229,208,244,191,251,172,252,152,247,133,238,113,211,76,182,47"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,167,84,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="126,48,97,68,72,95,58,124,50,154,45,153,53,122,68,92,94,64,123,43"/>
+<area shape="rect" id="Node000005" href="$ra8__rar_8h.html" title="Clean&#45;room, read&#45;only RAR archive walker (RAR4 + RAR5 headers, STORE data)." alt="" coords="83,93,161,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="154,47,136,82,131,80,149,44"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="59,190,101,229,97,232,55,194"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="136,117,176,155,173,159,132,121"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="125,119,125,226,119,226,119,119"/>
+<area shape="poly" id="edge8_Node000005_Node000004" title=" " alt="" coords="111,121,69,159,66,155,108,117"/>
+</map>

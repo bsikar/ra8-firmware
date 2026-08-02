@@ -1,0 +1,43 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/src/usb_selftest_hs_host_msc.c" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/src/usb_selftest_hs_host_msc.c">
+<area shape="rect" id="Node000001" title="Device&#45;side FAT16 synthesis + USBX storage media callbacks." alt="" coords="490,5,682,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="350,445,420,471"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="660,73,699,98,735,130,761,169,769,191,772,215,772,305,769,336,760,360,743,380,718,400,696,411,666,421,590,437,435,456,434,450,589,432,665,416,694,406,715,395,739,376,755,357,764,335,766,305,766,215,764,192,757,171,731,133,696,102,658,77"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="807,123,878,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="680,72,799,115,797,120,678,77"/>
+<area shape="rect" id="Node000004" href="$usb__selftest__hs__host__steps_8h.html" title="Shared constants + step prototypes for the USB self&#45;loop config A app." alt="" coords="96,196,253,236"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="491,64,401,89,309,125,255,156,209,190,206,185,252,152,306,120,399,84,489,59"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="174,291,249,317"/>
+<area shape="poly" id="edge25_Node000001_Node000007" title=" " alt="" coords="535,77,462,125,240,285,236,281,459,120,532,73"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="273,291,350,317"/>
+<area shape="poly" id="edge26_Node000001_Node000008" title=" " alt="" coords="548,77,493,125,404,212,334,283,330,279,400,208,490,121,544,73"/>
+<area shape="rect" id="Node000009" href="$ra8__board__ek__ra8d2_8h.html" title="Board&#45;support layer for the Renesas EK&#45;RA8D2 v1 evaluation kit." alt="" coords="503,123,670,148"/>
+<area shape="poly" id="edge12_Node000001_Node000009" title=" " alt="" coords="589,75,589,109,584,109,584,75"/>
+<area shape="rect" id="Node000014" title=" " alt="" coords="902,123,1098,148"/>
+<area shape="poly" id="edge27_Node000001_Node000014" title=" " alt="" coords="683,60,936,117,935,122,682,66"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="99,239,59,254,26,273,15,284,9,296,9,309,15,323,46,358,84,387,126,409,171,426,261,446,336,453,335,459,260,451,169,431,124,414,81,391,42,362,11,325,4,310,4,295,11,281,23,269,57,249,97,234"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="268,372,347,397"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="168,237,156,279,157,302,165,323,183,342,205,357,256,374,254,379,203,361,179,346,160,325,151,303,151,278,163,235"/>
+<area shape="rect" id="Node000006" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="25,291,100,317"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="151,238,90,285,87,280,148,234"/>
+<area shape="poly" id="edge10_Node000004_Node000007" title=" " alt="" coords="185,235,203,277,198,279,180,237"/>
+<area shape="poly" id="edge11_Node000004_Node000008" title=" " alt="" coords="206,234,283,282,280,286,203,238"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="322,395,364,434,360,438,318,399"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="87,314,257,395,348,437,346,442,254,400,85,319"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="97,314,119,321,259,365,257,371,117,327,95,319"/>
+<area shape="rect" id="Node000010" href="$ra8__board__ek__ra8d2__connectors_8h.html" title="Board&#45;identity, LEDs, switches, display, audio, Arduino, Pmod, and MikroBUS portion of the EK&#45;RA8D2 v..." alt="" coords="425,284,580,324"/>
+<area shape="poly" id="edge13_Node000009_Node000010" title=" " alt="" coords="573,150,550,171,530,197,515,234,508,271,503,270,510,233,525,195,546,167,569,146"/>
+<area shape="rect" id="Node000013" href="$ra8__board__ek__ra8d2__peripherals_8h.html" title="I/O&#45;expander, USB, camera, external&#45;memory, MIPI&#45;DSI, UART console, and Ethernet portion of the EK&#45;RA..." alt="" coords="540,196,694,236"/>
+<area shape="poly" id="edge19_Node000009_Node000013" title=" " alt="" coords="593,147,607,182,602,184,588,149"/>
+<area shape="poly" id="edge15_Node000010_Node000002" title=" " alt="" coords="468,326,439,347,414,374,399,403,391,433,386,431,394,401,409,370,436,343,465,322"/>
+<area shape="poly" id="edge16_Node000010_Node000005" title=" " alt="" coords="457,326,350,369,348,364,455,322"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="606,372,681,397"/>
+<area shape="poly" id="edge14_Node000010_Node000011" title=" " alt="" coords="537,322,612,363,609,367,535,326"/>
+<area shape="rect" id="Node000012" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="423,372,582,397"/>
+<area shape="poly" id="edge17_Node000010_Node000012" title=" " alt="" coords="505,324,505,358,500,358,500,324"/>
+<area shape="poly" id="edge18_Node000012_Node000002" title=" " alt="" coords="485,400,417,440,415,436,482,395"/>
+<area shape="poly" id="edge21_Node000013_Node000002" title=" " alt="" coords="639,234,668,267,696,310,705,333,709,356,706,378,695,399,677,413,651,425,581,442,503,452,434,457,434,452,503,447,580,436,649,420,674,409,691,396,701,377,704,356,700,334,691,312,664,271,635,238"/>
+<area shape="poly" id="edge23_Node000013_Node000005" title=" " alt="" coords="540,237,477,257,414,286,374,320,330,364,326,360,371,316,411,282,475,252,539,232"/>
+<area shape="poly" id="edge22_Node000013_Node000010" title=" " alt="" coords="593,238,540,278,537,274,590,234"/>
+<area shape="poly" id="edge20_Node000013_Node000011" title=" " alt="" coords="626,236,638,284,646,358,640,358,633,284,621,237"/>
+<area shape="poly" id="edge24_Node000013_Node000012" title=" " alt="" coords="619,237,613,279,606,303,594,326,570,350,543,368,540,363,567,346,589,322,601,301,608,278,614,236"/>
+</map>

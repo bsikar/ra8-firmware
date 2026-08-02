@@ -1,0 +1,20 @@
+<map id="libs/ra8_io/inc/ra8_io_stream_blockdev.h" name="libs/ra8_io/inc/ra8_io_stream_blockdev.h">
+<area shape="rect" id="Node000001" title="ra8_io byte&#45;stream sink that buffers into a raw block device." alt="" coords="5,5,176,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="141,313,211,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,47,60,89,40,146,34,176,33,207,38,237,50,264,66,282,85,295,128,313,126,318,82,300,62,286,46,267,33,238,28,207,29,176,35,144,55,87,77,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="59,240,138,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="86,46,75,94,73,130,77,166,93,226,87,228,72,167,68,130,69,93,81,45"/>
+<area shape="rect" id="Node000004" href="$ra8__io__blockdev_8h.html" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="84,93,223,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="108,44,137,81,133,84,104,47"/>
+<area shape="rect" id="Node000006" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="275,167,402,192"/>
+<area shape="poly" id="edge10_Node000001_Node000006" title=" " alt="" coords="140,43,187,64,236,91,281,123,318,155,315,159,278,128,233,96,185,69,138,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="113,263,155,302,151,306,109,267"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="172,117,195,137,214,166,222,203,217,240,206,274,192,303,187,300,201,272,212,239,216,203,210,168,191,141,169,121"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="146,120,130,142,116,168,107,198,103,227,98,226,102,197,111,166,125,139,141,117"/>
+<area shape="rect" id="Node000005" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="125,167,200,192"/>
+<area shape="poly" id="edge7_Node000004_Node000005" title=" " alt="" coords="158,119,162,153,157,154,152,119"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="166,192,176,299,171,300,161,193"/>
+<area shape="poly" id="edge9_Node000005_Node000003" title=" " alt="" coords="154,194,120,232,116,228,150,191"/>
+<area shape="poly" id="edge11_Node000006_Node000002" title=" " alt="" coords="330,194,258,267,206,307,203,303,254,263,327,190"/>
+<area shape="poly" id="edge12_Node000006_Node000003" title=" " alt="" coords="301,195,152,239,150,233,299,189"/>
+</map>

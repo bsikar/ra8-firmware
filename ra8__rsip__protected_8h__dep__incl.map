@@ -1,0 +1,5 @@
+<map id="libs/ra8_hal/inc/ra8_rsip_protected.h" name="libs/ra8_hal/inc/ra8_rsip_protected.h">
+<area shape="rect" id="Node000001" title="RSIP protected&#45;key HAL – crypto operations driven by wrappedkey blobs (the RSIP engine never sees the..." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rsip__protected_8c.html" title="RSIP protected&#45;key HAL implementation." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,59,81,93,75,93,75,59"/>
+</map>

@@ -1,0 +1,24 @@
+<map id="tools/ra8_emulator/src/engine/emu_prof.c" name="tools/ra8_emulator/src/engine/emu_prof.c">
+<area shape="rect" id="Node000001" title="Firmware profiler implementation (see emu_prof.h)." alt="" coords="288,5,457,45"/>
+<area shape="rect" id="Node000002" href="$emu__prof_8h.html" title="Firmware profiler (RA8_EMU_PROFILE): sampling, hooks, reports." alt="" coords="63,93,157,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="311,48,162,92,161,87,309,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="293,93,359,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="364,47,342,83,338,80,359,44"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="384,93,455,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="386,44,408,80,403,83,382,47"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="479,93,549,119"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="408,43,482,84,480,89,405,48"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="574,93,638,119"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="429,43,561,87,560,92,428,48"/>
+<area shape="rect" id="Node000010" href="$emu__elf_8h.html" title="ELF32 image services for the board emulator (load / symbols / vectors)." alt="" coords="181,93,268,119"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="338,48,260,89,257,84,336,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="100,121,63,159,59,155,97,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="100,167,235,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="122,117,151,154,147,158,117,121"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="259,167,385,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="145,116,276,160,274,165,143,121"/>
+<area shape="poly" id="edge10_Node000010_Node000003" title=" " alt="" coords="196,121,85,164,83,159,194,116"/>
+<area shape="poly" id="edge11_Node000010_Node000004" title=" " alt="" coords="217,121,187,158,183,154,213,117"/>
+<area shape="poly" id="edge12_Node000010_Node000005" title=" " alt="" coords="242,117,296,156,293,160,239,121"/>
+</map>

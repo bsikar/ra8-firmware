@@ -1,0 +1,14 @@
+<map id="libs/ra8_hal/inc/ra8_icu.h" name="libs/ra8_hal/inc/ra8_icu.h">
+<area shape="rect" id="Node000001" title="Interrupt Control Unit driver (IRQ pins, NMI)." alt="" coords="69,5,215,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="107,167,177,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="76,48,45,61,21,77,9,96,9,106,14,117,29,135,49,149,94,167,92,172,47,154,26,139,9,120,4,107,4,95,17,74,43,56,74,43"/>
+<area shape="rect" id="Node000003" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="24,93,140,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="130,47,101,84,97,81,125,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="164,93,243,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="159,44,188,81,184,84,155,47"/>
+<area shape="rect" id="Node000005" href="$ra8__icu__regs_8h.html" title="Interrupt Control Unit (ICU) register layout for the Renesas RA8D2." alt="" coords="267,93,383,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="187,43,286,85,284,90,185,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="94,117,125,154,121,158,90,121"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="195,121,163,158,159,154,191,117"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="296,121,186,164,184,159,294,116"/>
+</map>

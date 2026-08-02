@@ -1,0 +1,9 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link_wifi.h" name="libs/ra8_c6link/inc/ra8_c6link_wifi.h">
+<area shape="rect" id="Node000001" title="Wi&#45;Fi station bring&#45;up and association over the C6 link." alt="" coords="203,5,341,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__link_2main_8c.html" title="Bring the ESP32&#45;C6&#39;s Wi&#45;Fi station up through the ra8_c6link facade." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="225,54,144,96,141,91,222,49"/>
+<area shape="rect" id="Node000003" href="$ra8__c6link__wifi_8c.html" title="Radio lifecycle: initialise, choose station mode, start, tear down." alt="" coords="203,101,341,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="275,59,275,101,269,101,269,59"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link__wifi__sta_8c.html" title="Station credentials, association, and what the radio reports back." alt="" coords="366,101,527,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="321,49,413,98,410,103,318,54"/>
+</map>

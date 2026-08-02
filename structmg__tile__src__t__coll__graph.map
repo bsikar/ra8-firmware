@@ -1,0 +1,5 @@
+<map id="mg_tile_src_t" name="mg_tile_src_t">
+<area shape="rect" id="Node000001" title="Decode&#45;on&#45;miss context bound into the tile cache (DIP seam)." alt="" coords="6,101,115,127"/>
+<area shape="rect" id="Node000002" href="$structra8__jof__info__t.html" title="Parsed + validated geometry of one JOF atlas." alt="" coords="5,5,116,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="63,45,63,101,58,101,58,45"/>
+</map>

@@ -1,0 +1,50 @@
+<map id="libs/ra8_hal/src/ra8_etha_internal.h" name="libs/ra8_hal/src/ra8_etha_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU shared surface for the ra8_etha driver split." alt="" coords="239,5,385,45"/>
+<area shape="rect" id="Node000002" href="$ra8__etha_8h.html" title="Per&#45;port Ethernet Agent (ETHA) driver – HUM Ch 32 (p 1627&#45;1702)." alt="" coords="267,93,357,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="315,46,315,79,309,79,309,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="326,533,397,559"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="266,111,190,120,147,128,105,142,67,160,36,184,15,214,10,232,8,251,8,400,10,412,17,423,41,444,78,465,123,483,224,513,313,533,312,538,223,518,121,488,76,469,38,449,12,426,5,414,3,401,3,251,5,230,11,212,32,180,64,155,103,137,145,123,189,114,266,106"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="142,387,221,412"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="267,113,235,119,201,129,169,145,142,168,126,189,116,209,111,228,109,248,117,289,134,338,146,357,160,375,156,378,141,360,130,340,112,291,104,248,105,227,111,207,122,186,138,165,166,141,199,124,234,114,266,108"/>
+<area shape="rect" id="Node000005" href="$ra8__etha__ops_8h.html" title="Per&#45;port ETHA lifecycle / IRQ / mode / queue API – HUM Ch 32 (p 1627&#45;1702)." alt="" coords="153,167,274,192"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="298,121,242,161,239,156,295,117"/>
+<area shape="rect" id="Node000006" href="$ra8__etha__regs_8h.html" title="Ethernet Agent (ETHA) per&#45;port register layout for the RA8D2." alt="" coords="565,313,691,339"/>
+<area shape="poly" id="edge27_Node000002_Node000006" title=" " alt="" coords="358,108,397,114,441,124,487,141,528,165,561,196,588,232,621,299,617,302,583,235,557,199,525,169,484,145,440,129,396,119,357,113"/>
+<area shape="rect" id="Node000010" href="$ra8__etha__types_8h.html" title="Per&#45;port Ethernet Agent (ETHA) data types – HUM Ch 32 (p 1627&#45;1702)." alt="" coords="246,240,381,265"/>
+<area shape="poly" id="edge34_Node000002_Node000010" title=" " alt="" coords="315,119,316,226,310,226,309,119"/>
+<area shape="rect" id="Node000011" href="$ra8__rmac_8h.html" title="Per&#45;port Ethernet MAC (RMAC) driver – HUM Ch 33." alt="" coords="359,313,454,339"/>
+<area shape="poly" id="edge35_Node000002_Node000011" title=" " alt="" coords="358,105,395,109,436,119,474,137,505,165,514,184,515,204,509,224,498,244,468,279,436,307,432,303,464,275,494,241,504,222,510,204,509,186,501,168,471,141,434,124,394,114,357,110"/>
+<area shape="rect" id="Node000013" href="$ra8__etha__shaper_8h.html" title="Per&#45;port ETHA VLAN / shaper / stats / ring / PHY API – HUM Ch 32 (p 1627&#45;1702)." alt="" coords="349,167,491,192"/>
+<area shape="poly" id="edge28_Node000002_Node000013" title=" " alt="" coords="331,116,392,157,389,161,328,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="189,411,210,446,242,483,277,508,315,526,313,531,275,512,238,487,205,449,185,414"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="218,192,236,265,265,339,297,411,351,520,346,522,292,414,260,341,231,266,213,193"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="191,194,163,214,151,226,141,241,135,258,133,276,139,312,152,346,168,374,163,376,147,348,134,313,128,276,130,257,136,239,147,223,160,210,188,190"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="249,189,393,237,585,306,583,311,391,243,247,195"/>
+<area shape="poly" id="edge16_Node000005_Node000010" title=" " alt="" coords="231,190,287,230,284,234,228,194"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="583,341,535,360,511,373,490,389,470,412,460,435,450,459,433,487,390,527,386,523,429,484,446,457,455,433,465,409,486,385,508,368,533,355,581,336"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="783,533,857,559"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="654,337,689,357,726,385,755,418,780,454,813,520,808,522,775,457,751,421,722,389,686,361,651,341"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="604,533,729,559"/>
+<area shape="poly" id="edge11_Node000006_Node000008" title=" " alt="" coords="645,337,698,385,726,420,746,459,750,473,746,487,728,511,705,529,702,524,724,507,742,484,745,473,742,461,721,423,694,389,642,341"/>
+<area shape="rect" id="Node000009" href="$ra8__ether__regs_8h.html" title="Ethernet controller base addresses for the Renesas RA8D2." alt="" coords="601,460,732,485"/>
+<area shape="poly" id="edge12_Node000006_Node000009" title=" " alt="" coords="634,338,663,446,657,447,629,340"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="618,488,411,536,410,531,617,483"/>
+<area shape="poly" id="edge13_Node000009_Node000007" title=" " alt="" coords="692,483,784,525,782,530,690,488"/>
+<area shape="poly" id="edge15_Node000009_Node000008" title=" " alt="" coords="669,486,669,520,664,520,664,486"/>
+<area shape="poly" id="edge17_Node000010_Node000003" title=" " alt="" coords="318,265,360,519,355,520,313,266"/>
+<area shape="poly" id="edge18_Node000010_Node000006" title=" " alt="" coords="364,263,564,308,563,313,363,268"/>
+<area shape="poly" id="edge19_Node000010_Node000011" title=" " alt="" coords="330,263,382,303,379,307,327,267"/>
+<area shape="poly" id="edge20_Node000011_Node000003" title=" " alt="" coords="407,339,396,387,369,520,364,519,391,386,401,338"/>
+<area shape="poly" id="edge21_Node000011_Node000004" title=" " alt="" coords="371,341,232,385,230,380,370,336"/>
+<area shape="rect" id="Node000012" href="$ra8__rmac__regs_8h.html" title="Ethernet MAC (RMAC) per&#45;port register layout for the RA8D2." alt="" coords="500,387,631,412"/>
+<area shape="poly" id="edge22_Node000011_Node000012" title=" " alt="" coords="433,336,528,379,526,383,431,341"/>
+<area shape="poly" id="edge24_Node000012_Node000003" title=" " alt="" coords="558,414,527,449,483,487,444,512,405,530,402,525,441,507,480,483,523,445,554,410"/>
+<area shape="poly" id="edge23_Node000012_Node000007" title=" " alt="" coords="625,410,685,428,745,458,780,488,807,520,803,524,777,492,743,462,683,433,623,415"/>
+<area shape="poly" id="edge25_Node000012_Node000008" title=" " alt="" coords="569,412,575,446,592,484,611,506,635,524,631,528,608,510,587,487,570,447,564,413"/>
+<area shape="poly" id="edge26_Node000012_Node000009" title=" " alt="" coords="583,410,640,450,637,454,580,414"/>
+<area shape="poly" id="edge29_Node000013_Node000003" title=" " alt="" coords="430,191,444,217,460,253,470,296,468,339,451,393,427,444,380,523,375,520,422,442,446,391,463,338,464,296,455,255,439,219,425,193"/>
+<area shape="poly" id="edge30_Node000013_Node000004" title=" " alt="" coords="350,190,289,208,260,222,235,242,213,273,198,308,189,344,185,374,180,373,184,343,193,307,208,270,231,238,257,218,287,203,348,185"/>
+<area shape="poly" id="edge31_Node000013_Node000006" title=" " alt="" coords="450,190,493,210,540,238,579,270,610,301,607,305,575,273,537,242,491,215,448,195"/>
+<area shape="poly" id="edge32_Node000013_Node000010" title=" " alt="" coords="404,194,344,235,341,230,401,190"/>
+<area shape="poly" id="edge33_Node000013_Node000011" title=" " alt="" coords="422,193,412,300,406,299,416,192"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/cache_coherency_shared.h" name="examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/cache_coherency_shared.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM message layout for the M85&lt;&#45;&gt;M33 cache&#45;coherency HIL test." alt="" coords="5,5,240,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="87,123,158,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="125,75,125,109,120,109,120,75"/>
+</map>

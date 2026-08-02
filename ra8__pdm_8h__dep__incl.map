@@ -1,0 +1,12 @@
+<map id="libs/ra8_hal/inc/ra8_pdm.h" name="libs/ra8_hal/inc/ra8_pdm.h">
+<area shape="rect" id="Node000001" title="Pulse Density Modulation Interface (PDM&#45;IF) capture driver." alt="" coords="305,5,450,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2pdm__mic__demo_2main_8c.html" title="PDM MEMS microphone capture + plausibility demo (SPH0690 / ch 2)." alt="" coords="5,93,195,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="309,52,179,96,177,91,307,47"/>
+<area shape="rect" id="Node000003" href="$ra8__pdm_8c.html" title="Pulse Density Modulation Interface (PDM&#45;IF) capture driver." alt="" coords="219,101,365,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="353,57,311,102,307,99,349,54"/>
+<area shape="rect" id="Node000004" href="$ra8__nsc__io_8h.html" title="NSC veneers for the I/O drivers." alt="" coords="389,101,536,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="406,54,447,99,443,102,402,57"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc__io_8c.html" title="NSC veneers for the &#45;6 I/O drivers." alt="" coords="444,196,591,236"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="464,37,512,57,533,72,550,92,559,119,556,148,546,175,533,197,528,194,541,172,551,146,554,119,546,95,529,76,509,62,462,42"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="483,151,509,195,504,197,478,154"/>
+</map>

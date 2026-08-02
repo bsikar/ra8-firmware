@@ -1,0 +1,5 @@
+<map id="ipc_state_t" name="ipc_state_t">
+<area shape="rect" id="Node000001" title="Modelled IPC state: per&#45;channel IRQ bits + FIFOs plus run counters." alt="" coords="5,101,99,127"/>
+<area shape="rect" id="Node000002" href="$structipc__fifo__t.html" title="One channel&#39;s 4&#45;stage message FIFO plus its sticky error latches." alt="" coords="11,5,93,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="55,45,55,101,49,101,49,45"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="tools/ra8_emulator/inc/emu_view.h" name="tools/ra8_emulator/inc/emu_view.h">
+<area shape="rect" id="Node000001" title="Board&#45;view presentation: frames, composition, input routing, panels." alt="" coords="669,5,815,45"/>
+<area shape="rect" id="Node000002" href="$emu__args_8c.html" title="CLI parsing implementation (see emu_args.h)." alt="" coords="5,101,177,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="656,36,443,58,317,75,191,96,158,103,157,98,189,91,316,69,443,53,655,31"/>
+<area shape="rect" id="Node000003" href="$emu__elf_8c.html" title="ELF32 image services implementation (see emu_elf.h)." alt="" coords="202,101,362,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="656,43,523,65,375,96,346,103,344,98,373,91,522,60,655,37"/>
+<area shape="rect" id="Node000004" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="386,101,551,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="675,52,525,103,523,98,673,47"/>
+<area shape="rect" id="Node000005" href="$emu__run__guards_8c.html" title="Run&#45;guard environment knob reader (see emu_run.h)." alt="" coords="575,93,730,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="717,57,680,95,676,91,713,53"/>
+<area shape="rect" id="Node000006" href="$emu__run__inner_8c.html" title="Inner per&#45;chunk exception&#45;resolve loop (see emu_run_internal.h)." alt="" coords="754,93,909,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="771,53,808,91,804,95,767,57"/>
+<area shape="rect" id="Node000007" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="933,93,1087,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="810,47,935,91,934,96,808,52"/>
+<area shape="rect" id="Node000008" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="1112,101,1287,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="828,38,957,62,1100,91,1131,98,1129,103,1099,96,956,67,828,44"/>
+<area shape="rect" id="Node000009" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="1311,101,1456,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="828,29,1044,50,1172,67,1300,91,1328,98,1327,103,1299,96,1171,73,1043,55,828,35"/>
+</map>

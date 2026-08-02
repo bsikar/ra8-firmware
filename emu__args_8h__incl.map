@@ -1,0 +1,25 @@
+<map id="tools/ra8_emulator/inc/emu_args.h" name="tools/ra8_emulator/inc/emu_args.h">
+<area shape="rect" id="Node000001" title="ra8_emulator command&#45;line parsing (usage text + option decoding)" alt="" coords="308,5,453,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="476,240,547,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="454,27,490,34,527,46,561,65,588,92,597,110,599,129,595,149,587,168,563,204,536,233,532,229,559,201,582,166,590,147,594,129,592,112,584,95,557,69,525,51,489,39,453,32"/>
+<area shape="rect" id="Node000003" href="$board__periph_8h.html" title="Register&#45;accurate peripheral&#45;model framework for the board emulator." alt="" coords="456,93,575,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="414,43,485,84,482,89,412,48"/>
+<area shape="rect" id="Node000005" href="$emu__run_8h.html" title="The chunked emulation run loop, report and exit&#45;code mapping." alt="" coords="163,93,254,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="341,48,247,90,245,85,338,43"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="189,167,314,192"/>
+<area shape="poly" id="edge15_Node000001_Node000007" title=" " alt="" coords="364,47,319,95,270,157,266,154,315,92,360,44"/>
+<area shape="rect" id="Node000008" href="$emu__trace_8h.html" title="Function&#45;entry seam glue + the –trace&#45;sym instrument." alt="" coords="329,93,432,119"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="383,46,383,79,378,79,378,46"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="522,118,531,151,533,192,523,228,518,226,527,192,526,152,517,120"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="339,167,473,192"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="499,121,437,161,434,157,496,116"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="200,121,187,136,177,155,173,174,179,190,197,204,225,216,302,233,387,243,462,247,462,253,387,248,301,238,224,221,194,209,175,194,167,174,172,153,183,133,195,117"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="241,116,362,159,360,164,239,121"/>
+<area shape="rect" id="Node000006" href="$board__view_8h.html" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="5,167,113,192"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="186,121,97,163,95,158,184,116"/>
+<area shape="poly" id="edge10_Node000005_Node000007" title=" " alt="" coords="218,118,240,154,235,156,213,120"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="114,186,463,241,462,246,113,192"/>
+<area shape="poly" id="edge12_Node000008_Node000002" title=" " alt="" coords="415,116,452,135,471,149,487,165,503,195,511,225,506,227,498,197,483,168,467,153,449,140,412,121"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="387,118,400,153,395,155,382,120"/>
+<area shape="poly" id="edge14_Node000008_Node000007" title=" " alt="" coords="361,121,286,162,284,157,359,116"/>
+</map>

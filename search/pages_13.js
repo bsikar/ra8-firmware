@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['make_20hil_20c6_0',['ESP32-C6 companion radio (make hil-c6)',['../ra8_ex_ek_ra8d2_hw_validated_c6.html',1,'ra8_ex_ek_ra8d2_hw_validated']]],
+  ['management_20plan_20scmp_1',['Software Configuration Management Plan (SCMP)',['../md_docs_2qualification_2SCMP.html',1,'ra8_docsub_qualification']]],
+  ['manual_20jumper_20button_20steps_2',['Manual jumper button steps',['../ra8_ex_ek_ra8d2_hw_pending_manual.html',1,'Manual (jumper / button steps)'],['../ra8_ex_ek_ra8d2_hw_validated_manual.html',1,'Manual (jumper / button steps)']]],
+  ['manual_20ndash_20audit_20placeholder_3',['EK-RA8D2 board manual &amp;ndash; audit placeholder',['../md_docs_2reference_2EK-RA8D2-board-manual-PLACEHOLDER.html',1,'ra8_docsub_reference']]],
+  ['manual_20ndash_20chapter_20map_4',['RA8D2 Hardware User&apos;s Manual &amp;ndash; Chapter Map',['../md_docs_2reference_2CHAPTER__MAP.html',1,'ra8_docsub_reference']]],
+  ['map_5',['RA8D2 Hardware User&apos;s Manual &amp;ndash; Chapter Map',['../md_docs_2reference_2CHAPTER__MAP.html',1,'ra8_docsub_reference']]],
+  ['map_20ndash_20quick_20reference_6',['RA8D2 Memory Map &amp;ndash; Quick Reference',['../md_docs_2MEMORY__MAP.html',1,'ra8_docs']]],
+  ['matrix_7',['Driver Status Matrix',['../md_docs_2DRIVER__STATUS.html',1,'ra8_docs']]],
+  ['mbed_20tls_8',['SOUP Justification: Mbed TLS',['../md_docs_2SOUP_2mbedtls.html',1,'ra8_docsub_SOUP']]],
+  ['mc_20dc_20coverage_20do_20178c_20level_20b_9',['MC/DC Coverage (DO-178C Level B)',['../md_docs_2MCDC.html',1,'ra8_docs']]],
+  ['mc_20dc_20coverage_20gap_20audit_10',['MC/DC Coverage Gap Audit',['../md_docs_2MCDC__GAPS.html',1,'ra8_docs']]],
+  ['mc_20dc_20deactivated_20condition_20catalog_11',['MC/DC Deactivated-Condition Catalog',['../md_docs_2MCDC__DEACTIVATIONS.html',1,'ra8_docs']]],
+  ['mcu_20co_20processor_20firmware_12',['SOUP Justification: Espressif esp-hosted-mcu (co-processor firmware)',['../md_docs_2SOUP_2esp-hosted.html',1,'ra8_docsub_SOUP']]],
+  ['mcu_20host_20driver_13',['SOUP Justification: Espressif esp-hosted-mcu (host driver)',['../md_docs_2SOUP_2esp-hosted-host.html',1,'ra8_docsub_SOUP']]],
+  ['memory_20map_20ndash_20quick_20reference_14',['RA8D2 Memory Map &amp;ndash; Quick Reference',['../md_docs_2MEMORY__MAP.html',1,'ra8_docs']]],
+  ['microcontrollers_15',['SOUP Justification: TensorFlow Lite for Microcontrollers',['../md_docs_2SOUP_2tflite-micro.html',1,'ra8_docsub_SOUP']]],
+  ['miniz_16',['SOUP Justification: miniz',['../md_docs_2SOUP_2miniz.html',1,'ra8_docsub_SOUP']]],
+  ['misra_20c_202012_20compliance_17',['MISRA-C 2012 Compliance',['../md_docs_2MISRA.html',1,'ra8_docs']]],
+  ['misra_20c_202012_20deviation_20register_18',['MISRA-C 2012 Deviation Register',['../md_docs_2qualification_2MISRA__DEVIATIONS.html',1,'ra8_docsub_qualification']]],
+  ['misra_20enforcement_20under_20a_20foss_20only_20budget_19',['ADR-0002: cppcheck-only MISRA enforcement under a FOSS-only budget',['../md_docs_2adr_20002-cppcheck-only-misra-enforcement.html',1,'ra8_docsub_adr']]],
+  ['model_20container_20',['NPU1 &amp;ndash; The &lt;span class=&quot;tt&quot;&gt;.npub&lt;/span&gt; Ethos-U55 Model Container',['../md_docs_2formats_2NPU1.html',1,'ra8_docsub_formats']]],
+  ['module_20gt_20_5finternal_20h_21',['ADR-0003: Test-only access to internal symbols via &lt;span class=&quot;tt&quot;&gt;&amp;lt;module&amp;gt;_internal.h&lt;/span&gt;',['../md_docs_2adr_20003-test-only-internal-headers.html',1,'ra8_docsub_adr']]],
+  ['module_20tour_20libs_22',['Module tour (&lt;span class=&quot;tt&quot;&gt;libs/&lt;/span&gt;)',['../md_docs_2MODULES.html',1,'ra8_docs']]],
+  ['multi_20chip_20plan_23',['RA8D2 vs RA8P1 &amp;ndash; difference analysis + multi-chip plan',['../md_docs_2RA8D2__VS__RA8P1.html',1,'ra8_docs']]]
+];

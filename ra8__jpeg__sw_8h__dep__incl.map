@@ -1,0 +1,15 @@
+<map id="libs/ra8_hal/inc/ra8_jpeg_sw.h" name="libs/ra8_hal/inc/ra8_jpeg_sw.h">
+<area shape="rect" id="Node000001" title="Pure&#45;software baseline JPEG (ISO/IEC 10918&#45;1 / ITU&#45;T T.81) codec." alt="" coords="441,5,587,45"/>
+<area shape="rect" id="Node000002" href="$ra8__jpeg__sw_8c.html" title="Pure&#45;software baseline JPEG codec: shared entropy/DSP primitives plus the get&#45;dimensions public API." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="428,45,164,96,152,98,151,93,163,91,427,40"/>
+<area shape="rect" id="Node000003" href="$ra8__jpeg__sw__decode_8c.html" title="Pure&#45;software baseline JPEG decoder: marker parser and scan." alt="" coords="175,93,322,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="444,52,308,96,306,91,442,47"/>
+<area shape="rect" id="Node000004" href="$ra8__jpeg__sw__encode_8c.html" title="Pure&#45;software baseline JPEG encoder: pixel pipeline and public API." alt="" coords="346,93,493,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="485,57,442,95,438,91,481,53"/>
+<area shape="rect" id="Node000005" href="$ra8__jpeg__sw__encode__emit_8c.html" title="Software JPEG encoder: byte/bit emitters, Annex K.3.3 tables and JFIF header&#45;segment writers." alt="" coords="517,93,701,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="547,53,590,91,586,95,543,57"/>
+<area shape="rect" id="Node000006" href="$ra8__jpeg__sw__stream_8c.html" title="Streaming baseline JPEG decoder: bounded&#45;RAM MCU&#45;row stripes (#231)." alt="" coords="725,93,871,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="590,47,737,91,735,96,589,52"/>
+<area shape="rect" id="Node000007" href="$ra8__jof__produce_8c.html" title="Transcode producer: sniff, decode, tile, encode, emit (#231, #290)." alt="" coords="896,93,1039,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="601,39,884,91,896,93,895,99,883,96,600,44"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="tools/media_dl/inc/mdl_search.h" name="tools/media_dl/inc/mdl_search.h">
+<area shape="rect" id="Node000001" title="Pure search/discovery policy: query encoding, URL templating, and the honest zero&#45;vs&#45;broken result cl..." alt="" coords="171,5,312,45"/>
+<area shape="rect" id="Node000002" href="$mdl__discover_8c.html" title="Governed search/browse: build the query URL, fetch it politely, parse the hits, and present them hone..." alt="" coords="5,93,147,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="194,54,113,96,111,91,192,49"/>
+<area shape="rect" id="Node000003" href="$mdl__search_8c.html" title="Pure search/discovery policy: percent&#45;encoding, URL templating, and the zero&#45;vs&#45;broken result classif..." alt="" coords="171,93,312,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="244,59,244,93,239,93,239,59"/>
+<area shape="rect" id="Node000004" href="$test__media__dl__search_8c.html" title="Host unit tests for the #304 search/discovery parse + policy path." alt="" coords="336,93,515,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="295,49,386,91,384,96,293,54"/>
+</map>

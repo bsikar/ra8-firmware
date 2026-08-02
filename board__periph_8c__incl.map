@@ -1,0 +1,29 @@
+<map id="tools/ra8_emulator/src/periph/board_periph.c" name="tools/ra8_emulator/src/periph/board_periph.c">
+<area shape="rect" id="Node000001" title="Peripheral&#45;block registry core + ICU/NVIC routing for ra8_emulator." alt="" coords="450,5,641,45"/>
+<area shape="rect" id="Node000002" href="$board__periph_8h.html" title="Register&#45;accurate peripheral&#45;model framework for the board emulator." alt="" coords="166,93,285,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="469,48,286,93,285,87,468,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="426,167,497,192"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="575,44,593,59,608,78,616,99,610,120,590,142,565,157,537,168,511,175,509,170,536,163,562,153,587,138,606,117,610,99,604,81,589,63,572,48"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="911,93,977,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="641,41,898,91,897,96,640,46"/>
+<area shape="rect" id="Node000006" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="309,93,470,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="509,48,426,89,423,85,507,43"/>
+<area shape="rect" id="Node000007" href="$board__periph__mstp__internal_8h.html" title="Module&#45;private module&#45;stop (MSTP) gate state shared with the core." alt="" coords="671,93,887,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="602,43,732,86,731,91,600,48"/>
+<area shape="rect" id="Node000009" href="$board__usb_8h.html" title="USBFS controller model + a virtual USB host for the board emulator." alt="" coords="495,93,596,119"/>
+<area shape="poly" id="edge12_Node000001_Node000009" title=" " alt="" coords="548,46,548,79,543,79,543,46"/>
+<area shape="rect" id="Node000010" href="$board__usb__host_8h.html" title="USBHS HOST&#45;mode controller model (self&#45;loop peer of the USBFS device)." alt="" coords="5,93,141,119"/>
+<area shape="poly" id="edge15_Node000001_Node000010" title=" " alt="" coords="450,45,155,94,154,89,449,40"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="264,116,414,161,412,166,262,121"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="249,167,383,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="242,117,292,156,289,160,238,121"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="403,117,442,155,438,159,399,121"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="379,121,340,159,336,155,375,117"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="728,121,511,170,510,164,727,116"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="716,167,841,192"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="781,119,781,153,776,153,776,119"/>
+<area shape="poly" id="edge13_Node000009_Node000003" title=" " alt="" coords="534,121,487,160,484,155,530,117"/>
+<area shape="poly" id="edge14_Node000009_Node000004" title=" " alt="" coords="509,121,367,165,366,160,508,116"/>
+<area shape="poly" id="edge16_Node000010_Node000003" title=" " alt="" coords="136,116,413,167,412,172,135,121"/>
+<area shape="poly" id="edge17_Node000010_Node000004" title=" " alt="" coords="113,116,265,160,263,165,112,121"/>
+</map>

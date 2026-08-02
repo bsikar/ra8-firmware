@@ -1,0 +1,11 @@
+<map id="libs/ra8_core/inc/ra8_pin_validator.h" name="libs/ra8_core/inc/ra8_pin_validator.h">
+<area shape="rect" id="Node000001" title="Runtime Pin&#45;Ownership Validator." alt="" coords="5,5,159,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="47,167,117,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="64,47,46,69,33,94,30,106,32,118,44,138,59,156,55,159,40,141,28,120,24,106,27,92,42,66,60,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="43,93,121,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="85,46,85,79,79,79,79,46"/>
+<area shape="rect" id="Node000004" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="145,93,304,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="117,43,193,84,191,89,115,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="85,119,85,153,79,153,79,119"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="203,121,119,163,116,158,201,116"/>
+</map>

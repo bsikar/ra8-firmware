@@ -1,0 +1,26 @@
+<map id="tools/media_dl/inc/mdl_state.h" name="tools/media_dl/inc/mdl_state.h">
+<area shape="rect" id="Node000001" title="Persistent per&#45;series library state for the media downloader." alt="" coords="278,5,420,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="229,167,304,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="325,47,302,68,284,95,273,124,269,153,264,152,268,123,279,92,298,65,321,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="279,313,350,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="390,43,418,64,440,92,442,106,440,119,426,197,413,229,390,267,370,289,347,308,344,303,366,286,386,264,408,227,420,196,435,118,437,106,435,94,414,68,387,48"/>
+<area shape="rect" id="Node000004" href="$mdl__config_8h.html" title="Per&#45;site descriptor loaded from a flat key=value config file." alt="" coords="112,93,218,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="306,48,206,90,204,85,304,43"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="275,240,354,265"/>
+<area shape="poly" id="edge16_Node000001_Node000007" title=" " alt="" coords="380,43,397,58,412,76,421,97,420,119,404,153,383,185,340,233,336,229,379,181,399,151,415,118,416,98,408,79,393,62,376,47"/>
+<area shape="rect" id="Node000008" href="$mdl__extract_8h.html" title="Extract image URLs and anchor links from an HTML page (v1 scanner)." alt="" coords="293,93,405,119"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="352,46,352,79,346,79,346,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="183,116,240,156,237,161,180,121"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="113,117,71,127,34,142,20,152,11,163,8,176,12,191,32,223,59,250,91,271,126,288,200,310,265,319,265,325,199,315,125,293,88,276,55,254,28,227,7,193,3,176,7,161,17,148,32,137,70,121,111,112"/>
+<area shape="rect" id="Node000005" href="$mdl__politeness_8h.html" title="Jittered inter&#45;request delay plus the per&#45;host politeness governor." alt="" coords="21,167,154,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="155,121,112,159,109,155,151,117"/>
+<area shape="poly" id="edge11_Node000004_Node000007" title=" " alt="" coords="172,118,191,152,219,190,248,213,278,231,275,236,245,218,215,194,186,155,168,120"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="91,192,96,227,103,247,115,263,149,288,188,305,229,315,266,320,265,326,228,321,187,310,146,293,111,267,99,249,91,229,85,193"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="125,240,250,265"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="105,190,162,230,159,234,102,194"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="125,189,265,233,264,238,123,195"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="317,266,317,300,312,300,312,266"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="338,121,292,160,289,155,334,117"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="356,118,365,145,373,182,376,224,368,266,356,288,341,306,337,302,352,285,363,264,370,224,368,183,360,146,351,120"/>
+<area shape="poly" id="edge15_Node000008_Node000007" title=" " alt="" coords="349,120,323,227,318,226,344,118"/>
+</map>

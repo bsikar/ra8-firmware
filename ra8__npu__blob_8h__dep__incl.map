@@ -1,0 +1,5 @@
+<map id="libs/ra8_hal/inc/ra8_npu_blob.h" name="libs/ra8_hal/inc/ra8_npu_blob.h">
+<area shape="rect" id="Node000001" title=".npub linkable&#45;blob container for a Vela&#45;compiled Ethos&#45;U55 model" alt="" coords="35,5,180,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ra8p1__foundation_2npu__vela_2main_8c.html" title="RA8P1 Ethos&#45;U55 .npub container loader end&#45;to&#45;end – load a .npub, run it." alt="" coords="5,93,209,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,59,110,93,105,93,105,59"/>
+</map>

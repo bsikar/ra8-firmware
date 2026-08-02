@@ -1,0 +1,21 @@
+<map id="libs/ra8_board_ra8p1" name="libs/ra8_board_ra8p1">
+<area shape="rect" id="node1" href="dir_9784371ce13fb6b4d69891743248b7e4.html" title="ra8_core" alt="" coords="141,209,219,235"/>
+<area shape="rect" id="node2" href="dir_e2029a1647bce4ee80acb4dac4b3c18b.html" title="ra8_hal" alt="" coords="331,136,402,161"/>
+<area shape="rect" id="node4" href="dir_52cdbc2d7b879cfa52af2e40847cf9a2.html" title="boot" alt="" coords="37,63,88,88"/>
+<area shape="poly" id="edge1" href="dir_000019_000264.html" alt="" coords="89,82,131,101,152,116,169,135,181,165,184,195,179,196,176,166,164,137,148,120,128,105,87,86"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000019_000264.html" title="5" alt="" coords="185,184,195,199"/>
+<area shape="poly" id="edge2" href="dir_000019_000276.html" alt="" coords="89,82,102,85,210,109,319,132,317,137,209,114,101,91,88,87"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000019_000276.html" title="3" alt="" coords="311,118,320,132"/>
+<area shape="rect" id="node5" href="dir_b6f7f773c1994d789447374a784e7398.html" title="inc" alt="" coords="113,136,154,161"/>
+<area shape="poly" id="edge3" href="dir_000162_000264.html" alt="" coords="143,160,167,196,163,199,139,163"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000162_000264.html" title="2" alt="" coords="165,182,174,197"/>
+<area shape="rect" id="node6" href="dir_e0dbebb92edc5c4b7b07af2c0199aebd.html" title="src" alt="" coords="113,63,154,88"/>
+<area shape="poly" id="edge4" href="dir_000376_000264.html" alt="" coords="155,82,167,85,206,92,241,93,304,88,334,88,362,94,390,108,417,134,428,157,422,176,403,191,375,202,305,216,233,222,233,216,304,211,374,197,401,186,418,173,422,158,413,138,386,112,360,99,333,93,305,93,241,98,205,97,166,91,153,87"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000376_000264.html" title="3" alt="" coords="234,220,243,235"/>
+<area shape="poly" id="edge6" href="dir_000376_000276.html" alt="" coords="155,81,167,85,319,131,317,136,166,91,153,86"/>
+<area shape="rect" id="edge6-headlabel" href="dir_000376_000276.html" title="7" alt="" coords="311,117,321,131"/>
+<area shape="poly" id="edge5" href="dir_000376_000162.html" alt="" coords="136,88,136,122,131,122,131,88"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000376_000162.html" title="1" alt="" coords="137,110,146,125"/>
+<area shape="rect" id="clust2" href="dir_7c9a1dde1d0fb4633ec0f817590d5e33.html" alt="" coords="27,52,320,172"/>
+<area shape="rect" id="clust1" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="16,16,440,245"/>
+</map>

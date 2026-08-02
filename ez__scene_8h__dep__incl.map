@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_pending/ereader_zoom/inc/ez_scene.h" name="examples/ek_ra8d2/hw_pending/ereader_zoom/inc/ez_scene.h">
+<area shape="rect" id="Node000001" title="Tap&#45;to&#45;zoom demo scene: tiled 12 MP page, zoom viewport, loupe (#478)." alt="" coords="107,5,285,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="5,108,184,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="161,72,123,110,119,106,158,68"/>
+<area shape="rect" id="Node000003" href="$ez__scene_8c.html" title="Tap&#45;to&#45;zoom demo scene: page sampler, viewports, chrome, self&#45;check." alt="" coords="208,108,387,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="234,68,273,106,269,110,231,72"/>
+</map>

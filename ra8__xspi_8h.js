@@ -1,0 +1,26 @@
+var ra8__xspi_8h =
+[
+    [ "ra8_xspi_event_fn_t", "ra8__xspi_8h.html#ad66cc16addffe79b8b24ede7db3fe35a", null ],
+    [ "ra8_xspi_attach_handler", "ra8__xspi_8h.html#a2a736e975d5db50183448417a5e167d3", null ],
+    [ "ra8_xspi_calibrate_dqs", "ra8__xspi_8h.html#a3869f889949dd317d02810aa26c24e2a", null ],
+    [ "ra8_xspi_clear_status", "ra8__xspi_8h.html#adff4b83f498d1b8d162d8bc6d08f4412", null ],
+    [ "ra8_xspi_deinit", "ra8__xspi_8h.html#a4426ee2acb19f5b5fb9c8303c4692b4c", null ],
+    [ "ra8_xspi_direct_command", "ra8__xspi_8h.html#aa1394831f417c029ab56e7e24fcb70ed", null ],
+    [ "ra8_xspi_dispatch", "ra8__xspi_8h.html#af4d2f9c0cbd76f5f37e90340f75283c8", null ],
+    [ "ra8_xspi_enter_stop", "ra8__xspi_8h.html#a3baef2210cfeb698775bb1055f98e1ee", null ],
+    [ "ra8_xspi_exit_stop", "ra8__xspi_8h.html#a802ad9757b23bb7dcdaa4eef28771a28", null ],
+    [ "ra8_xspi_flash_erase_sector", "ra8__xspi_8h.html#ae2fb6fda984dfbba80db4597944bba28", null ],
+    [ "ra8_xspi_flash_program", "ra8__xspi_8h.html#a6018b87525811ed1150e2e813a891e4e", null ],
+    [ "ra8_xspi_flash_read", "ra8__xspi_8h.html#ab36fca1e5f4286f07d24c69f65f9f6b0", null ],
+    [ "ra8_xspi_flash_read_id", "ra8__xspi_8h.html#afc8118d4fa8030eff705257869e5724c", null ],
+    [ "ra8_xspi_flash_read_status", "ra8__xspi_8h.html#acb0f4b77511273acb25451be31cf0ff6", null ],
+    [ "ra8_xspi_get_status", "ra8__xspi_8h.html#acb076fdf110377c1b232cec9837a9f8a", null ],
+    [ "ra8_xspi_init", "ra8__xspi_8h.html#aa72afd7b6ec3a80e2de50b52de216f68", null ],
+    [ "ra8_xspi_resume", "ra8__xspi_8h.html#ae2a9449600b338a9d4d5a659386533fe", null ],
+    [ "ra8_xspi_set_dtr_mode", "ra8__xspi_8h.html#a62b1c4813dae75a43cfc498cbee8a30a", null ],
+    [ "ra8_xspi_set_xip_mode", "ra8__xspi_8h.html#a4eb5d2af7a759e12fd388f8044a4c10c", null ],
+    [ "ra8_xspi_software_reset", "ra8__xspi_8h.html#aa1ffabedea993eabd7ae22101ed3ff3a", null ],
+    [ "ra8_xspi_suspend", "ra8__xspi_8h.html#adcda81da78e8021250d3d7a78b33deeb", null ],
+    [ "ra8_xspi_xip_enter", "ra8__xspi_8h.html#a4286adcdfcd76ac7460f141a3abf392f", null ],
+    [ "ra8_xspi_xip_exit", "ra8__xspi_8h.html#ae2dd0e023eeca8d9187af4d50ed241c7", null ]
+];

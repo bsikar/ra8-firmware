@@ -1,0 +1,19 @@
+<map id="tools/ra8_emulator/src/engine/emu_idle.c" name="tools/ra8_emulator/src/engine/emu_idle.c">
+<area shape="rect" id="Node000001" title="Wait&#45;for&#45;interrupt idle&#45;spin detector (see emu_exc.h)." alt="" coords="225,5,393,45"/>
+<area shape="rect" id="Node000002" href="$emu__exc_8h.html" title="Cortex&#45;M exception model constants and interfaces for ra8_emulator." alt="" coords="339,93,433,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="329,44,367,82,363,85,325,47"/>
+<area shape="rect" id="Node000006" href="$emu__run_8h.html" title="The chunked emulation run loop, report and exit&#45;code mapping." alt="" coords="206,93,297,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="297,47,270,84,266,80,293,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="116,240,187,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="420,116,450,130,478,148,494,169,495,181,488,194,468,209,439,221,362,238,276,248,201,253,201,247,275,243,361,233,437,216,466,204,484,190,489,180,489,171,474,152,448,135,418,121"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="339,167,473,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="392,118,402,153,397,154,387,120"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="189,167,314,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="366,121,287,162,284,158,363,116"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="232,121,204,141,179,168,165,198,157,227,152,226,160,196,174,165,201,137,229,117"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="277,116,369,158,367,163,275,121"/>
+<area shape="poly" id="edge10_Node000006_Node000005" title=" " alt="" coords="254,119,254,153,249,153,249,119"/>
+<area shape="rect" id="Node000007" href="$board__view_8h.html" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="5,167,113,192"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="221,121,105,164,103,159,220,116"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="76,190,127,229,124,234,72,194"/>
+</map>

@@ -1,0 +1,24 @@
+<map id="libs/ra8_zoom/inc/ra8_zoom_tiles.h" name="libs/ra8_zoom/inc/ra8_zoom_tiles.h">
+<area shape="rect" id="Node000001" title="Bind a tiled gray8 atlas behind an ra8_tile_cache as a ra8_zoom source (#478)." alt="" coords="108,5,269,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="126,313,197,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="118,48,76,67,40,95,26,112,19,127,11,167,8,197,14,220,27,241,48,263,80,288,115,306,112,310,77,292,44,267,23,244,9,222,3,197,6,166,14,126,22,109,36,91,74,63,116,43"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="173,240,252,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="193,45,212,226,207,227,188,46"/>
+<area shape="rect" id="Node000004" href="$ra8__tile__cache_8h.html" title="Fixed&#45;RAM&#45;budget image&#45;tile cache with LRU eviction (Layer 3b, #147)." alt="" coords="50,93,178,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="172,47,136,85,132,81,168,44"/>
+<area shape="rect" id="Node000006" href="$ra8__zoom_8h.html" title="Tap&#45;to&#45;zoom image viewer: viewport state machine + tiled magnifying render (#478)." alt="" coords="295,93,394,119"/>
+<area shape="poly" id="edge10_Node000001_Node000006" title=" " alt="" coords="227,43,310,85,308,89,225,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="206,267,180,304,176,301,202,264"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="82,121,55,134,32,150,18,169,16,180,19,191,41,227,70,258,101,284,130,304,127,308,98,288,66,262,36,230,14,193,11,180,13,167,28,146,53,129,79,116"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="126,117,165,165,202,226,198,229,161,168,122,120"/>
+<area shape="rect" id="Node000005" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="28,167,151,192"/>
+<area shape="poly" id="edge7_Node000004_Node000005" title=" " alt="" coords="112,120,101,154,96,153,107,118"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="98,191,152,300,147,302,93,194"/>
+<area shape="poly" id="edge9_Node000005_Node000003" title=" " alt="" coords="111,190,182,231,179,235,108,194"/>
+<area shape="poly" id="edge11_Node000006_Node000002" title=" " alt="" coords="368,117,388,131,408,149,419,170,420,182,416,193,398,220,375,243,349,263,321,279,263,303,211,318,210,313,261,298,318,274,346,258,371,239,394,217,411,191,415,181,414,171,403,152,385,135,365,121"/>
+<area shape="poly" id="edge12_Node000006_Node000003" title=" " alt="" coords="336,121,234,231,230,228,332,117"/>
+<area shape="rect" id="Node000007" href="$ra8__ui_8h.html" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="327,167,402,192"/>
+<area shape="poly" id="edge13_Node000006_Node000007" title=" " alt="" coords="350,118,360,153,355,154,345,120"/>
+<area shape="poly" id="edge14_Node000007_Node000002" title=" " alt="" coords="354,194,315,228,265,268,197,309,194,305,262,263,311,224,350,190"/>
+<area shape="poly" id="edge15_Node000007_Node000003" title=" " alt="" coords="341,194,251,237,248,232,339,190"/>
+</map>

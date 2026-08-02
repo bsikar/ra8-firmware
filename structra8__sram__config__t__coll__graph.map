@@ -1,0 +1,7 @@
+<map id="ra8_sram_config_t" name="ra8_sram_config_t">
+<area shape="rect" id="Node000001" title="Top&#45;level driver configuration." alt="" coords="113,101,254,127"/>
+<area shape="rect" id="Node000002" href="$structra8__sram__bank__cfg__t.html" title="Per&#45;bank ECC configuration descriptor." alt="" coords="5,5,167,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,38,173,99,169,103,106,42"/>
+<area shape="rect" id="Node000003" href="$structra8__sram__security__cfg__t.html" title="TrustZone security attribution configured at init time." alt="" coords="191,5,373,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="262,42,197,103,194,99,258,38"/>
+</map>

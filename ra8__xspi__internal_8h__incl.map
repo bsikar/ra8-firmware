@@ -1,0 +1,14 @@
+<map id="libs/ra8_hal/src/ra8_xspi_internal.h" name="libs/ra8_hal/src/ra8_xspi_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seam shared between the ra8_xspi translation units." alt="" coords="52,5,197,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="26,167,97,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="69,48,37,67,12,95,8,110,13,126,24,142,37,156,33,159,20,145,8,129,3,110,7,92,33,63,66,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="174,167,299,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="198,43,234,62,250,76,263,92,268,108,267,125,255,156,250,154,262,124,263,109,258,95,246,79,231,67,196,48"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="22,93,101,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="111,47,82,84,78,81,107,44"/>
+<area shape="rect" id="Node000005" href="$ra8__ospi__regs_8h.html" title="xSPI / Octo&#45;SPI controller register layout for the Renesas RA8D2" alt="" coords="125,93,249,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="142,44,171,81,167,84,137,47"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="64,119,64,153,59,153,59,119"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="168,121,95,162,93,157,166,116"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="197,117,223,154,218,157,193,121"/>
+</map>

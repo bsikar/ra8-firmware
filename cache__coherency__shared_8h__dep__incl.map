@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/cache_coherency_shared.h" name="examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/cache_coherency_shared.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM message layout for the M85&lt;&#45;&gt;M33 cache&#45;coherency HIL test." alt="" coords="97,5,332,75"/>
+<area shape="rect" id="Node000002" href="$hw__validated_2hil_2cache__coherency__hil_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33) cache&#45;coherency responder." alt="" coords="5,123,211,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="174,86,136,124,132,121,170,82"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2cache__coherency__hil_2main_8c.html" title="CPU0 (Cortex&#45;M85) cache&#45;coherency validator against CPU1 (Cortex&#45;M33)." alt="" coords="235,123,408,177"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="259,82,297,121,293,124,256,86"/>
+</map>

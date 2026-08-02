@@ -1,0 +1,28 @@
+<map id="libs/ra8_display_pal/src/ra8_display_pal_policy.c" name="libs/ra8_display_pal/src/ra8_display_pal_policy.c">
+<area shape="rect" id="Node000001" title="Implementation of the e&#45;ink page&#45;turn refresh&#45;cadence policy." alt="" coords="199,5,350,60"/>
+<area shape="rect" id="Node000002" href="$ra8__display__pal__policy_8h.html" title="Pluggable page&#45;turn refresh&#45;cadence policy for bistable (e&#45;ink) panels." alt="" coords="42,108,222,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="232,62,164,103,161,99,230,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="160,328,231,353"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="199,37,154,43,108,56,65,77,47,92,31,110,17,132,10,154,8,176,12,196,20,217,33,237,68,278,107,305,148,323,146,328,104,310,65,282,28,241,15,219,7,198,3,176,5,153,13,130,27,106,43,88,63,73,106,51,153,38,199,32"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="156,255,235,280"/>
+<area shape="poly" id="edge17_Node000001_Node000005" title=" " alt="" coords="269,61,222,208,209,243,204,241,217,206,264,60"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="312,108,437,133"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="307,58,352,97,349,101,303,62"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="391,181,491,207"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="351,44,379,53,406,66,431,84,451,107,458,122,459,138,454,169,449,168,454,138,453,123,447,109,428,88,404,71,377,58,349,49"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="101,136,76,149,53,165,39,184,38,194,41,206,65,243,96,274,130,300,161,319,159,324,127,304,92,278,61,246,36,208,33,195,35,182,49,161,73,144,99,131"/>
+<area shape="rect" id="Node000004" href="$ra8__display__pal_8h.html" title="Display Platform Abstraction Layer for the RA8D2." alt="" coords="50,181,186,207"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="132,134,126,168,121,167,127,133"/>
+<area shape="poly" id="edge7_Node000002_Node000005" title=" " alt="" coords="154,131,180,152,201,180,207,212,205,242,199,241,202,212,196,182,176,155,151,136"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="123,206,132,240,147,279,176,317,172,320,143,281,127,241,118,208"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="133,205,175,243,171,247,129,209"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="198,280,198,314,193,314,193,280"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="470,205,497,219,522,237,536,258,536,270,530,282,510,297,481,309,405,326,320,336,246,341,245,335,320,331,404,321,480,304,508,292,526,278,531,269,531,260,518,241,494,223,468,209"/>
+<area shape="poly" id="edge12_Node000007_Node000005" title=" " alt="" coords="402,209,249,253,248,248,401,204"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="260,255,342,280"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="420,209,337,251,335,246,417,204"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="367,255,515,280"/>
+<area shape="poly" id="edge15_Node000007_Node000009" title=" " alt="" coords="444,207,444,241,438,241,438,207"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="286,282,226,323,223,318,283,278"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="402,283,245,328,243,323,401,277"/>
+</map>

@@ -1,0 +1,22 @@
+<map id="libs/ra8_widget/inc/ra8_widget_keyboard.h" name="libs/ra8_widget/inc/ra8_widget_keyboard.h">
+<area shape="rect" id="Node000001" title="On&#45;screen&#45;keyboard leaf widget for the ra8_widget tree (#145 Phase 2)." alt="" coords="18,5,195,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="125,387,195,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,47,60,71,35,102,16,139,10,158,8,178,8,254,11,276,19,296,47,331,83,358,120,379,117,383,80,363,43,334,14,298,6,277,3,254,3,178,5,157,11,136,31,99,56,68,81,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="273,313,351,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="157,43,198,63,243,90,285,124,321,165,336,191,343,213,344,237,340,266,327,302,322,300,335,265,339,237,338,214,331,193,316,168,282,128,240,94,195,68,155,48"/>
+<area shape="rect" id="Node000004" href="$ra8__ui_8h.html" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="123,240,197,265"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="102,46,94,80,92,99,95,118,104,149,118,178,146,227,142,230,113,181,99,151,89,119,87,99,88,79,97,45"/>
+<area shape="rect" id="Node000005" href="$ra8__widget_8h.html" title="Zero&#45;heap composable widget layer (dwm&#45;style) over ra8_box + ra8_ui." alt="" coords="104,93,211,119"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="121,44,145,80,140,83,117,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="289,341,198,383,196,378,286,336"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="163,266,163,373,157,373,157,266"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="186,263,276,305,274,310,183,268"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="152,120,138,146,123,182,113,223,113,265,130,324,151,373,146,375,125,326,108,266,108,222,118,180,133,144,148,118"/>
+<area shape="poly" id="edge13_Node000005_Node000003" title=" " alt="" coords="212,114,258,132,279,147,297,165,313,198,321,235,322,270,319,300,314,299,316,270,315,235,308,200,292,168,276,151,255,137,210,119"/>
+<area shape="poly" id="edge14_Node000005_Node000004" title=" " alt="" coords="160,119,162,226,157,226,155,119"/>
+<area shape="rect" id="Node000006" href="$ra8__box_8h.html" title="Bounded, allocation&#45;free box&#45;model layout for e&#45;reader chrome." alt="" coords="195,167,282,192"/>
+<area shape="poly" id="edge9_Node000005_Node000006" title=" " alt="" coords="172,117,217,156,213,160,169,121"/>
+<area shape="poly" id="edge10_Node000006_Node000002" title=" " alt="" coords="237,193,212,266,172,375,167,373,207,264,232,191"/>
+<area shape="poly" id="edge11_Node000006_Node000003" title=" " alt="" coords="247,191,302,300,298,302,242,194"/>
+<area shape="poly" id="edge12_Node000006_Node000004" title=" " alt="" coords="228,194,185,233,181,229,224,190"/>
+</map>

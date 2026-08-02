@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/inc/usb_selftest_hid_steps.h" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/inc/usb_selftest_hid_steps.h">
+<area shape="rect" id="Node000001" title="Shared contract for the USB HID self&#45;loop console + host clusters." alt="" coords="221,5,413,75"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__hid_2main_8c.html" title="USB self&#45;loop: HS host reads + verifies a HID device&#39;s interrupt reports." alt="" coords="5,130,197,185"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="244,83,152,132,149,128,241,79"/>
+<area shape="rect" id="Node000003" href="$usb__selftest__hid__console_8c.html" title="USB HID self&#45;loop console formatters (SCI8 &#45;&gt; J&#45;Link OB CDC)." alt="" coords="221,123,413,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="320,89,320,122,315,122,315,89"/>
+<area shape="rect" id="Node000004" href="$usb__selftest__hid__host_8c.html" title="USB HID self&#45;loop host side: polled enumerate + interrupt&#45;IN read." alt="" coords="437,130,664,185"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="399,78,499,128,497,132,396,83"/>
+</map>

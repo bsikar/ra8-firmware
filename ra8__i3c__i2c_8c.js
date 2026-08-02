@@ -1,0 +1,38 @@
+var ra8__i3c__i2c_8c =
+[
+    [ "internal_i3c_i2c_t", "ra8__i3c__i2c_8c.html#ae8b7e2d2cb74df0173c10458701b95f4", [
+      [ "k_ra8_i3c_i2c_poll_limit", "ra8__i3c__i2c_8c.html#ae8b7e2d2cb74df0173c10458701b95f4a5de5762192d92923c66dcb83acbe6560", null ],
+      [ "k_ra8_i3c_i2c_addr_shift", "ra8__i3c__i2c_8c.html#ae8b7e2d2cb74df0173c10458701b95f4ac2d717fbd1008b922a2c544971375ef7", null ],
+      [ "k_ra8_i3c_i2c_addr_rw_write", "ra8__i3c__i2c_8c.html#ae8b7e2d2cb74df0173c10458701b95f4a2733429c38add9cfc9eb46d38aa03d3b", null ],
+      [ "k_ra8_i3c_i2c_addr_rw_read", "ra8__i3c__i2c_8c.html#ae8b7e2d2cb74df0173c10458701b95f4a442ed939cadcb7d8ca7cec8c3d0855da", null ],
+      [ "k_ra8_i3c_i2c_byte_mask", "ra8__i3c__i2c_8c.html#ae8b7e2d2cb74df0173c10458701b95f4ab7cd3beafba6f6d1263417f51d47074e", null ]
+    ] ],
+    [ "internal_i3c_i2c_apply_init_regs", "ra8__i3c__i2c_8c.html#a8afe2593ee706459fcf82db39a293d74", null ],
+    [ "internal_i3c_i2c_block_bringup", "ra8__i3c__i2c_8c.html#af21c0c66e9ed476086840d9f6f44900a", null ],
+    [ "internal_i3c_i2c_bus_free", "ra8__i3c__i2c_8c.html#aadf74849d54d1fe649ddd4029d86819b", null ],
+    [ "internal_i3c_i2c_busy_gate", "ra8__i3c__i2c_8c.html#a6496db3ebfe64d7d79d0c9222c64a463", null ],
+    [ "internal_i3c_i2c_clear_bst", "ra8__i3c__i2c_8c.html#a99c04b61edd3a7ffd7d7f62253604337", null ],
+    [ "internal_i3c_i2c_deinit", "ra8__i3c__i2c_8c.html#abb118c0c0e51cb9b7b9e60457af346ae", null ],
+    [ "internal_i3c_i2c_drain_rx", "ra8__i3c__i2c_8c.html#a720c55109e4e8fb04854c975ab88ffa6", null ],
+    [ "internal_i3c_i2c_drain_tx", "ra8__i3c__i2c_8c.html#a342cbdaf29d96b8f41f846d8b78b57bd", null ],
+    [ "internal_i3c_i2c_finalize", "ra8__i3c__i2c_8c.html#abfac8d460875d1150098233c3e1a185d", null ],
+    [ "internal_i3c_i2c_half_period", "ra8__i3c__i2c_8c.html#adc6f03f57ba5e5cabe4f2666df2c8ecc", null ],
+    [ "internal_i3c_i2c_init", "ra8__i3c__i2c_8c.html#a4b11fd7906f30f4d97cf359220d71ef5", null ],
+    [ "internal_i3c_i2c_len_buf_invalid", "ra8__i3c__i2c_8c.html#ac45b4b13e6fc4bfc5289793d500eb1bf", null ],
+    [ "internal_i3c_i2c_open_phase", "ra8__i3c__i2c_8c.html#a2d43fceb496f4d5bf67ab3a066880797", null ],
+    [ "internal_i3c_i2c_read", "ra8__i3c__i2c_8c.html#ae29aa9235752c6c0a33f15a4ee5cb3ef", null ],
+    [ "internal_i3c_i2c_reset", "ra8__i3c__i2c_8c.html#a55ad03abece3e3a3872c36ff0f5cab5b", null ],
+    [ "internal_i3c_i2c_restart", "ra8__i3c__i2c_8c.html#ad89abb1860ec2a491cee8b0f82fefe55", null ],
+    [ "internal_i3c_i2c_rx_phase", "ra8__i3c__i2c_8c.html#acd097972a2e7cd2e778a910a5b9663c0", null ],
+    [ "internal_i3c_i2c_send_address", "ra8__i3c__i2c_8c.html#af561885db6be78d3aed45873f54170dd", null ],
+    [ "internal_i3c_i2c_set_clock", "ra8__i3c__i2c_8c.html#af75723f09bb3b31c68b674eac4e56d45", null ],
+    [ "internal_i3c_i2c_should_dispatch", "ra8__i3c__i2c_8c.html#a55b3ab4f440ed9aea54df4dfddc6c25f", null ],
+    [ "internal_i3c_i2c_start", "ra8__i3c__i2c_8c.html#a8fe15b1bee9dc6a44208e73968c2395f", null ],
+    [ "internal_i3c_i2c_status_from_bst", "ra8__i3c__i2c_8c.html#a624f4aebc54536b35bf60509d0fb9452", null ],
+    [ "internal_i3c_i2c_stop", "ra8__i3c__i2c_8c.html#ad23f3e928a789cc5a92a8f3d7702e941", null ],
+    [ "internal_i3c_i2c_transfer", "ra8__i3c__i2c_8c.html#a05ed151795e5693cd3a3119c0c073c4d", null ],
+    [ "internal_i3c_i2c_wait_ntst", "ra8__i3c__i2c_8c.html#a4326eda3ad292795173dd62e31eb5a21", null ],
+    [ "internal_i3c_i2c_write", "ra8__i3c__i2c_8c.html#a0818bb9ad34e7a4ea64f18e2110cb5b5", null ],
+    [ "s_iic_b_state", "ra8__i3c__i2c_8c.html#a4b33ddbb5e05d5fbc20bf79557de60a4", null ],
+    [ "s_tag", "ra8__i3c__i2c_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

@@ -1,0 +1,32 @@
+<map id="tools/ra8_emulator/src/usb/board_usb.c" name="tools/ra8_emulator/src/usb/board_usb.c">
+<area shape="rect" id="Node000001" title="USBFS controller model + virtual USB host (chapter&#45;9 enumeration)." alt="" coords="365,5,520,45"/>
+<area shape="rect" id="Node000002" href="$board__usb_8h.html" title="USBFS controller model + a virtual USB host for the board emulator." alt="" coords="5,167,107,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="365,37,217,59,150,75,104,96,91,108,80,123,66,155,61,152,76,120,87,104,101,91,148,70,216,54,365,32"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="648,93,715,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="501,43,636,87,634,92,499,48"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="739,93,810,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="521,42,726,90,725,96,520,47"/>
+<area shape="rect" id="Node000007" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="232,167,360,192"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="426,48,319,158,315,155,422,44"/>
+<area shape="rect" id="Node000008" href="$board__usb__internal_8h.html" title="Module&#45;private state + interfaces shared by the board_usb TUs." alt="" coords="115,93,274,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="384,48,245,92,243,87,382,43"/>
+<area shape="rect" id="Node000010" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="385,167,501,192"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="445,46,445,153,440,153,440,46"/>
+<area shape="rect" id="Node000011" href="$ra8__usb__regs_8h.html" title="USB Full&#45;Speed + High&#45;Speed controller layout for the Renesas RA8D2." alt="" coords="504,93,624,119"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="473,43,536,84,533,88,471,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="261,240,331,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,189,248,234,247,240,94,195"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="33,240,167,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="66,191,88,227,83,230,61,194"/>
+<area shape="poly" id="edge7_Node000007_Node000003" title=" " alt="" coords="299,192,299,226,293,226,293,192"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="174,121,92,163,90,158,171,116"/>
+<area shape="poly" id="edge9_Node000008_Node000003" title=" " alt="" coords="198,118,205,152,222,191,242,213,265,230,262,235,238,217,218,193,200,154,193,119"/>
+<area shape="poly" id="edge10_Node000008_Node000004" title=" " alt="" coords="189,121,117,230,113,227,185,118"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="525,167,651,192"/>
+<area shape="poly" id="edge12_Node000008_Node000009" title=" " alt="" coords="258,116,512,162,511,167,257,121"/>
+<area shape="poly" id="edge14_Node000010_Node000003" title=" " alt="" coords="420,194,333,236,331,232,418,190"/>
+<area shape="poly" id="edge17_Node000011_Node000003" title=" " alt="" coords="597,116,627,130,655,148,671,169,671,182,665,194,643,210,610,223,523,241,428,250,346,254,345,248,427,245,523,236,608,218,640,206,661,190,666,180,666,171,651,152,625,135,595,121"/>
+<area shape="poly" id="edge18_Node000011_Node000009" title=" " alt="" coords="570,118,582,153,577,154,565,120"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="725,167,800,192"/>
+<area shape="poly" id="edge16_Node000011_Node000012" title=" " alt="" coords="597,116,718,159,716,164,595,121"/>
+</map>

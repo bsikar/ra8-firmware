@@ -1,0 +1,32 @@
+<map id="libs/ra8_jof/inc/ra8_jof_produce.h" name="libs/ra8_jof/inc/ra8_jof_produce.h">
+<area shape="rect" id="Node000001" title="Import&#45;time transcode producer: JPEG/PNG/WebP &#45;&gt; JOF band&#45;tile atlas in bounded RAM (#231,..." alt="" coords="613,5,756,45"/>
+<area shape="rect" id="Node000002" href="$cm__tiled__check_8c.html" title="Oversized&#45;page tile self&#45;check for ereader_comic (#344)." alt="" coords="39,196,221,251"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="600,33,498,39,384,51,280,70,240,82,210,96,186,117,166,144,141,197,136,195,161,141,182,114,207,91,238,77,279,64,383,46,497,34,600,27"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2ereader__manga_2main_8c.html" title="Viewable manga reader: pan/zoom a page larger than the panel (Demo B)." alt="" coords="221,93,407,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="601,50,408,99,407,93,599,45"/>
+<area shape="rect" id="Node000004" href="$ra8__comic__tiles_8h.html" title="Tile an oversized comic page through the JOF atlas + ra8_tile_cache so a CBZ/CBR page larger than the..." alt="" coords="5,101,145,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="600,36,400,58,282,75,165,96,136,103,134,98,164,91,282,69,400,52,599,31"/>
+<area shape="rect" id="Node000005" href="$ra8__epub__img__tiles_8h.html" title="Page a large in&#45;EPUB image through ra8_tile_cache + a real reflow &lt;img&gt; loader off the streaming read..." alt="" coords="431,101,589,141"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="639,54,547,103,544,98,636,49"/>
+<area shape="rect" id="Node000006" href="$ra8__jof__internal_8h.html" title="Module&#45;private seams shared by the producer translation units." alt="" coords="613,101,756,141"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="687,59,687,101,682,101,682,59"/>
+<area shape="rect" id="Node000010" href="$ra8__jof__produce_8c.html" title="Transcode producer: sniff, decode, tile, encode, emit (#231, #290)." alt="" coords="723,203,865,243"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="731,51,753,69,771,92,784,120,792,151,797,203,792,203,787,152,779,122,766,95,749,73,728,55"/>
+<area shape="rect" id="Node000011" href="$ra8__jof__produce__webp_8c.html" title="Transcode producer: whole&#45;frame WebP arm (#290 normalize&#45;on&#45;import)." alt="" coords="889,203,1048,243"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="732,50,798,91,945,201,942,205,795,96,729,55"/>
+<area shape="rect" id="Node000012" href="$mdl__export__jof_8c.html" title="JOF tile&#45;atlas exporter: one .jof band atlas per chapter page." alt="" coords="882,101,1023,141"/>
+<area shape="poly" id="edge16_Node000001_Node000012" title=" " alt="" coords="753,47,899,98,898,103,751,52"/>
+<area shape="rect" id="Node000013" href="$ra8__fmt__jof_8c.html" title="JOF band&#45;tile atlas verbs for ra8_fmt: convert, inspect, verify." alt="" coords="1048,101,1231,141"/>
+<area shape="poly" id="edge17_Node000001_Node000013" title=" " alt="" coords="770,39,1036,91,1067,98,1066,103,1035,96,769,44"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="94,151,118,194,113,197,90,154"/>
+<area shape="rect" id="Node000007" href="$ra8__jof__png_8c.html" title="Streaming PNG scanline decoder for the transcode producer (#231)." alt="" coords="419,299,561,339"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="613,147,535,175,505,188,491,198,480,222,478,249,486,298,481,299,473,249,475,221,487,194,503,183,533,170,611,142"/>
+<area shape="rect" id="Node000008" href="$ra8__jof__png__chunk_8c.html" title="PNG chunk layer for the streaming decoder: prologue, palette tables, ancillary skipping and the post&#45;..." alt="" coords="599,299,741,339"/>
+<area shape="poly" id="edge8_Node000006_Node000008" title=" " alt="" coords="685,155,674,299,669,298,680,154"/>
+<area shape="rect" id="Node000009" href="$ra8__jof__png__internal_8h.html" title="Module&#45;private declarations shared by the two PNG decoder units." alt="" coords="501,203,647,243"/>
+<area shape="poly" id="edge9_Node000006_Node000009" title=" " alt="" coords="656,152,597,205,593,201,652,148"/>
+<area shape="poly" id="edge12_Node000006_Node000010" title=" " alt="" coords="717,148,775,201,772,205,714,152"/>
+<area shape="poly" id="edge13_Node000006_Node000011" title=" " alt="" coords="752,143,916,201,915,206,750,148"/>
+<area shape="poly" id="edge10_Node000009_Node000007" title=" " alt="" coords="550,255,509,300,505,297,546,252"/>
+<area shape="poly" id="edge11_Node000009_Node000008" title=" " alt="" coords="605,251,652,297,649,301,601,255"/>
+</map>

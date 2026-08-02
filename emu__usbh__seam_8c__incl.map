@@ -1,0 +1,30 @@
+<map id="tools/ra8_emulator/src/engine/emu_usbh_seam.c" name="tools/ra8_emulator/src/engine/emu_usbh_seam.c">
+<area shape="rect" id="Node000001" title="Virtual USB host&#45;mode device seams (see emu_usbh_seam.h)." alt="" coords="311,5,475,60"/>
+<area shape="rect" id="Node000002" href="$emu__usbh__seam_8h.html" title="Virtual USB host&#45;mode devices behind the ra8_usb_host_* / hmsc seams." alt="" coords="5,108,149,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="312,59,133,107,132,102,310,54"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="531,108,597,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="447,58,530,99,527,104,444,62"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="622,108,693,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="475,58,610,101,608,106,473,63"/>
+<area shape="rect" id="Node000008" href="$emu__elf_8h.html" title="ELF32 image services for the board emulator (load / symbols / vectors)." alt="" coords="174,108,261,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="341,62,254,104,252,100,338,58"/>
+<area shape="rect" id="Node000009" href="$emu__exc_8h.html" title="Cortex&#45;M exception model constants and interfaces for ra8_emulator." alt="" coords="285,108,379,133"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="377,62,351,98,346,95,372,59"/>
+<area shape="rect" id="Node000010" href="$emu__trace_8h.html" title="Function&#45;entry seam glue + the –trace&#45;sym instrument." alt="" coords="403,108,506,133"/>
+<area shape="poly" id="edge15_Node000001_Node000010" title=" " alt="" coords="414,59,440,95,436,98,410,62"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="97,181,167,207"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="88,132,117,169,113,172,84,135"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="191,181,326,207"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="107,131,217,174,215,179,105,136"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="351,181,476,207"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="132,131,346,176,345,181,131,136"/>
+<area shape="poly" id="edge8_Node000008_Node000003" title=" " alt="" coords="205,135,158,175,155,170,202,131"/>
+<area shape="poly" id="edge9_Node000008_Node000004" title=" " alt="" coords="226,132,247,168,243,171,222,135"/>
+<area shape="poly" id="edge10_Node000008_Node000005" title=" " alt="" coords="250,131,369,174,368,179,248,136"/>
+<area shape="poly" id="edge12_Node000009_Node000003" title=" " alt="" coords="301,136,179,179,177,174,299,131"/>
+<area shape="poly" id="edge13_Node000009_Node000004" title=" " alt="" coords="322,136,282,174,279,170,318,132"/>
+<area shape="poly" id="edge14_Node000009_Node000005" title=" " alt="" coords="347,131,392,170,388,174,343,135"/>
+<area shape="poly" id="edge16_Node000010_Node000003" title=" " alt="" coords="404,135,181,184,180,178,403,130"/>
+<area shape="poly" id="edge17_Node000010_Node000004" title=" " alt="" coords="424,136,304,179,303,174,422,131"/>
+<area shape="poly" id="edge18_Node000010_Node000005" title=" " alt="" coords="450,135,429,171,425,168,446,132"/>
+</map>

@@ -1,0 +1,20 @@
+<map id="libs/ra8_io/inc/ra8_io_blockdev_vsource.h" name="libs/ra8_io/inc/ra8_io_blockdev_vsource.h">
+<area shape="rect" id="Node000001" title="Thin adapter exposing an ra8_io block device as an ra8_vsource reader." alt="" coords="5,5,183,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="144,313,215,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,47,63,89,43,146,37,176,36,207,41,237,54,264,69,282,88,295,132,313,130,318,86,300,65,286,49,267,36,238,31,207,32,176,38,144,58,87,80,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="63,240,141,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="90,46,78,94,77,130,81,166,96,226,91,228,75,167,71,130,73,93,85,45"/>
+<area shape="rect" id="Node000004" href="$ra8__io__blockdev_8h.html" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="87,93,226,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="111,44,141,81,137,84,107,47"/>
+<area shape="rect" id="Node000006" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="279,167,392,192"/>
+<area shape="poly" id="edge10_Node000001_Node000006" title=" " alt="" coords="144,43,191,64,239,91,282,123,316,155,313,159,278,127,237,96,189,69,142,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="116,263,158,302,155,306,113,267"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="175,117,199,137,218,166,225,203,220,240,209,274,196,303,191,300,204,272,215,239,220,203,213,168,195,141,172,121"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="149,120,133,142,119,168,110,198,106,227,101,226,105,197,114,166,129,139,145,117"/>
+<area shape="rect" id="Node000005" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="129,167,203,192"/>
+<area shape="poly" id="edge7_Node000004_Node000005" title=" " alt="" coords="161,119,165,153,160,154,156,119"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="170,192,180,299,174,300,164,193"/>
+<area shape="poly" id="edge9_Node000005_Node000003" title=" " alt="" coords="157,194,123,232,119,228,153,191"/>
+<area shape="poly" id="edge11_Node000006_Node000002" title=" " alt="" coords="328,194,299,228,261,267,209,308,206,304,258,263,296,224,324,191"/>
+<area shape="poly" id="edge12_Node000006_Node000003" title=" " alt="" coords="299,195,153,239,152,233,297,189"/>
+</map>

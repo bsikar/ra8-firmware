@@ -1,0 +1,26 @@
+<map id="tools/media_dl/src/mdl_library.c" name="tools/media_dl/src/mdl_library.c">
+<area shape="rect" id="Node000001" title="Enumerate tracked series and delete a series tree (host dirent/nftw)." alt="" coords="397,5,539,45"/>
+<area shape="rect" id="Node000002" href="$mdl__library_8h.html" title="Library&#45;wide operations over a directory of tracked series." alt="" coords="77,93,184,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="398,46,194,93,193,88,397,40"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="147,240,218,265"/>
+<area shape="poly" id="edge8_Node000001_Node000005" title=" " alt="" coords="397,35,360,42,320,54,282,71,249,95,233,118,218,153,192,228,187,226,213,151,229,115,245,91,279,67,318,49,358,37,396,30"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="259,93,331,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="428,48,334,90,332,85,425,43"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="355,93,408,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="449,48,406,86,403,82,445,44"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="433,93,503,119"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="471,46,471,79,465,79,465,46"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="528,93,595,119"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="492,44,538,82,535,86,489,48"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="619,93,690,119"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="514,43,616,85,614,90,512,48"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="715,93,800,119"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="538,43,702,87,701,92,537,48"/>
+<area shape="rect" id="Node000012" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="824,93,949,119"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="540,37,813,88,812,93,539,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="118,121,69,160,66,156,115,117"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="105,167,183,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="135,119,142,153,137,154,130,119"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="153,191,172,227,168,229,148,194"/>
+</map>

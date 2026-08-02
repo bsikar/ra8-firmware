@@ -1,0 +1,8 @@
+<map id="libs/ra8_rabook_compile/inc/ra8_rabook_gray4.h" name="libs/ra8_rabook_compile/inc/ra8_rabook_gray4.h">
+<area shape="rect" id="Node000001" title="Grayscale image transcode stage (4&#45;bpp / 8&#45;bpp) for the on&#45;device EPUB compiler (#149)." alt="" coords="5,5,187,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="61,167,131,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,46,86,80,85,118,92,153,87,154,80,119,81,79,88,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="95,93,174,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="108,44,125,80,120,82,103,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="131,120,111,156,106,153,126,118"/>
+</map>

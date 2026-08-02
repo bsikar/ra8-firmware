@@ -1,0 +1,22 @@
+<map id="libs/ra8_hal/inc/ra8_wdt_regs.h" name="libs/ra8_hal/inc/ra8_wdt_regs.h">
+<area shape="rect" id="Node000001" title="Watchdog Timer (WDT) register layout for the RA8D2." alt="" coords="799,5,944,45"/>
+<area shape="rect" id="Node000002" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="629,93,775,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="823,54,740,96,738,91,821,49"/>
+<area shape="rect" id="Node000003" href="$ra8__wdt_8h.html" title="Software Watchdog Timer (WDT) driver header." alt="" coords="799,93,944,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="874,59,874,93,869,93,869,59"/>
+<area shape="rect" id="Node000008" href="$ra8__wdt_8c.html" title="Software Watchdog Timer (WDT) driver implementation." alt="" coords="1277,189,1423,229"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="935,48,1301,186,1299,191,933,53"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="5,181,212,236"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="785,136,627,154,503,160,380,166,225,184,213,186,212,181,224,179,380,161,502,154,626,148,785,131"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2wdt__reset__recovery__demo_2main_8c.html" title="WWDT reset + recovery HIL demo for EK&#45;RA8D2." alt="" coords="237,181,415,236"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="785,136,684,151,604,159,526,168,428,184,416,186,415,181,427,179,525,162,604,154,683,146,785,131"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2hil_2wdt__supervisor__demo_2main_8c.html" title="WDT supervisor abstraction HIL demo for EK&#45;RA8D2." alt="" coords="439,181,653,236"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="793,140,638,184,637,179,791,135"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__validated_2hil_2wdt__window__demo_2main_8c.html" title="WWDT (window watchdog) windowed&#45;refresh demo for EK&#45;RA8D2." alt="" coords="677,181,871,236"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="844,145,803,183,800,179,840,141"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="958,123,1102,146,1265,179,1293,186,1291,191,1264,184,1101,151,957,129"/>
+<area shape="rect" id="Node000009" href="$ra8__nsc__wdt_8c.html" title="NSC veneers: secure&#45;side watchdog arm + refresh." alt="" coords="895,189,1042,229"/>
+<area shape="poly" id="edge8_Node000003_Node000009" title=" " alt="" coords="903,141,951,187,947,191,899,145"/>
+<area shape="rect" id="Node000010" href="$ra8__wdt__supervisor_8c.html" title="ThreadX&#45;aware watchdog supervisor implementation." alt="" coords="1066,189,1253,229"/>
+<area shape="poly" id="edge9_Node000003_Node000010" title=" " alt="" coords="943,135,1102,186,1100,191,942,140"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_sdramc_regs.h" name="libs/ra8_hal/inc/ra8_sdramc_regs.h">
+<area shape="rect" id="Node000001" title="External SDRAM controller register layout for the Renesas RA8D2." alt="" coords="203,5,349,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2sdram__benchmark_2main_8c.html" title="External SDRAM bring&#45;up + 64 KB write/read benchmark on EK&#45;RA8D2." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="228,54,145,96,143,91,225,49"/>
+<area shape="rect" id="Node000003" href="$ra8__sdramc_8c.html" title="SDRAM controller driver implementation." alt="" coords="203,101,349,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="279,59,279,101,273,101,273,59"/>
+<area shape="rect" id="Node000004" href="$ra8__io__blockdev__sdram_8c.html" title="SDRAM block&#45;device backend – the 64 MiB SDRAM window as a ramdisk." alt="" coords="373,101,539,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="326,49,421,98,418,103,323,54"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_adc_b_regs.h" name="libs/ra8_hal/inc/ra8_adc_b_regs.h">
+<area shape="rect" id="Node000001" title="ADC16H (16&#45;bit SAR) register layout for the Renesas RA8D2 / RA8P1." alt="" coords="181,5,327,45"/>
+<area shape="rect" id="Node000002" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,54,118,96,115,91,202,49"/>
+<area shape="rect" id="Node000003" href="$adc_8c.html" title="ADC16H (16&#45;bit SAR) converter driver implementation." alt="" coords="175,101,333,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="257,59,257,100,251,100,251,59"/>
+<area shape="rect" id="Node000004" href="$adc__selfdiag_8c.html" title="ADC_B self&#45;diagnosis + internal extended&#45;analog channel reads." alt="" coords="358,93,505,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="306,49,394,91,391,96,304,54"/>
+</map>

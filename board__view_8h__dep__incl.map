@@ -1,0 +1,30 @@
+<map id="tools/ra8_emulator/inc/board_view.h" name="tools/ra8_emulator/inc/board_view.h">
+<area shape="rect" id="Node000001" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="680,5,825,45"/>
+<area shape="rect" id="Node000002" href="$emu__run_8h.html" title="The chunked emulation run loop, report and exit&#45;code mapping." alt="" coords="415,101,560,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="687,52,542,103,540,98,685,47"/>
+<area shape="rect" id="Node000005" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="5,306,151,346"/>
+<area shape="poly" id="edge16_Node000001_Node000005" title=" " alt="" coords="667,39,518,59,345,92,262,114,188,138,130,166,108,182,92,198,79,223,73,253,77,306,71,306,68,252,74,222,88,194,105,178,127,162,186,133,260,108,343,87,517,54,666,33"/>
+<area shape="rect" id="Node000008" href="$emu__run__internal_8h.html" title="Shared run&#45;loop state + cross&#45;TU run helpers (ra8_emulator internal)." alt="" coords="733,196,887,251"/>
+<area shape="poly" id="edge14_Node000001_Node000008" title=" " alt="" coords="764,57,805,195,800,196,759,59"/>
+<area shape="rect" id="Node000009" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="543,306,709,346"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="745,60,716,147,672,252,641,307,636,304,668,249,711,145,740,58"/>
+<area shape="rect" id="Node000011" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="911,299,1066,353"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="781,54,838,117,901,194,974,297,969,300,897,198,834,121,777,57"/>
+<area shape="rect" id="Node000012" href="$board__view__stub_8c.html" title="Headless no&#45;op board view for non&#45;Apple builds (Linux CI)." alt="" coords="963,93,1137,148"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="826,47,967,91,965,96,825,52"/>
+<area shape="rect" id="Node000003" href="$emu__args_8h.html" title="ra8_emulator command&#45;line parsing (usage text + option decoding)" alt="" coords="141,203,287,243"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="424,148,266,206,264,201,422,143"/>
+<area shape="poly" id="edge11_Node000002_Node000005" title=" " alt="" coords="401,133,325,143,246,157,176,175,149,186,130,198,110,222,96,252,82,306,77,305,91,250,105,220,127,194,147,181,174,170,245,152,325,138,401,128"/>
+<area shape="rect" id="Node000006" href="$emu__idle_8c.html" title="Wait&#45;for&#45;interrupt idle&#45;spin detector (see emu_exc.h)." alt="" coords="311,203,479,243"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="463,153,415,205,411,201,459,149"/>
+<area shape="rect" id="Node000007" href="$emu__run__guards_8c.html" title="Run&#45;guard environment knob reader (see emu_run.h)." alt="" coords="503,196,658,251"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="516,149,558,194,554,198,512,152"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="562,142,733,195,731,200,560,147"/>
+<area shape="rect" id="Node000004" href="$emu__args_8c.html" title="CLI parsing implementation (see emu_args.h)." alt="" coords="175,306,347,346"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="231,255,254,305,250,307,226,257"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="179,254,105,308,102,304,176,249"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="752,259,662,308,660,303,749,255"/>
+<area shape="rect" id="Node000010" href="$emu__run__inner_8c.html" title="Inner per&#45;chunk exception&#45;resolve loop (see emu_run_internal.h)." alt="" coords="733,299,887,353"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="813,264,813,299,807,299,807,264"/>
+<area shape="poly" id="edge10_Node000008_Node000011" title=" " alt="" coords="870,255,943,296,941,301,867,260"/>
+</map>

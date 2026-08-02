@@ -1,0 +1,19 @@
+<map id="libs/ra8_c6link/src/ra8_c6link_internal.h" name="libs/ra8_c6link/src/ra8_c6link_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;translation&#45;unit contract inside libs/ra8_c6link." alt="" coords="592,5,755,45"/>
+<area shape="rect" id="Node000002" href="$ra8__c6link_8c.html" title="Link lifecycle, frame routing and the identity round&#45;trip." alt="" coords="5,93,144,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="579,39,383,62,156,96,145,98,144,93,156,91,383,56,578,33"/>
+<area shape="rect" id="Node000003" href="$ra8__c6link__arena_8c.html" title="The fixed decode arena that lets a protobuf codec run with no heap." alt="" coords="169,93,317,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="579,47,329,96,318,98,317,93,327,91,578,42"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link__frame_8c.html" title="The twelve&#45;byte esp&#45;hosted payload header: build it, believe it or not." alt="" coords="341,93,491,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="605,52,473,96,472,91,603,47"/>
+<area shape="rect" id="Node000005" href="$ra8__c6link__pump_8c.html" title="The transaction loop: handshake, clock, classify, route." alt="" coords="515,93,663,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="647,57,610,95,606,91,643,53"/>
+<area shape="rect" id="Node000006" href="$ra8__c6link__rpc_8c.html" title="The control plane: one protobuf message type, correlated by UID." alt="" coords="688,93,827,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="703,53,741,91,737,95,699,57"/>
+<area shape="rect" id="Node000007" href="$ra8__c6link__tlv_8c.html" title="The two&#45;tag envelope the co&#45;processor&#39;s serial endpoint speaks." alt="" coords="851,93,989,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="741,47,867,91,865,96,740,52"/>
+<area shape="rect" id="Node000008" href="$ra8__c6link__wifi_8c.html" title="Radio lifecycle: initialise, choose station mode, start, tear down." alt="" coords="1013,93,1152,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="769,43,1002,91,1014,93,1012,99,1001,96,768,48"/>
+<area shape="rect" id="Node000009" href="$ra8__c6link__wifi__sta_8c.html" title="Station credentials, association, and what the radio reports back." alt="" coords="1177,93,1338,133"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="769,35,952,59,1164,91,1177,93,1176,98,1164,96,952,64,768,40"/>
+</map>

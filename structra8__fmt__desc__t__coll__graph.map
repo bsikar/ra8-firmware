@@ -1,0 +1,5 @@
+<map id="ra8_fmt_desc_t" name="ra8_fmt_desc_t">
+<area shape="rect" id="Node000001" title="One format&#39;s capabilities – the Dependency&#45;Inversion seam of the tool." alt="" coords="5,161,128,187"/>
+<area shape="rect" id="Node000002" href="$structra8__fmt__blob__t.html" title="An owned byte buffer read from disk (the tool&#39;s input currency)." alt="" coords="7,5,127,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="69,44,69,161,64,161,64,44"/>
+</map>

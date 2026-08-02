@@ -1,0 +1,16 @@
+<map id="libs/ra8_io/inc/ra8_io_blockdev_cache.h" name="libs/ra8_io/inc/ra8_io_blockdev_cache.h">
+<area shape="rect" id="Node000001" title="ra8_io caching block device – an LRU sector cache over any backend." alt="" coords="5,5,169,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="140,313,211,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="84,46,74,88,66,144,68,206,75,236,87,264,107,288,133,305,130,310,103,292,82,267,70,238,63,207,61,144,69,87,79,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="97,240,176,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="94,45,134,226,129,227,89,46"/>
+<area shape="rect" id="Node000004" href="$ra8__io__blockdev_8h.html" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="134,93,273,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="117,43,176,83,173,88,114,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="145,264,165,300,160,303,141,267"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="222,117,245,137,264,166,267,179,265,193,251,225,234,256,197,305,193,301,230,253,247,223,259,191,262,179,260,168,241,141,219,121"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="196,120,166,168,145,227,140,226,161,165,192,118"/>
+<area shape="rect" id="Node000005" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="175,167,250,192"/>
+<area shape="poly" id="edge7_Node000004_Node000005" title=" " alt="" coords="208,119,212,153,207,154,202,119"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="212,193,184,301,179,299,207,192"/>
+<area shape="poly" id="edge9_Node000005_Node000003" title=" " alt="" coords="202,194,161,232,157,229,199,190"/>
+</map>

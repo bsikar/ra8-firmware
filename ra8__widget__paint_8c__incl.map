@@ -1,0 +1,24 @@
+<map id="libs/ra8_widget/src/ra8_widget_paint.c" name="libs/ra8_widget/src/ra8_widget_paint.c">
+<area shape="rect" id="Node000001" title="Shared geometry helpers for the concrete leaf widgets (#145 Phase 2)." alt="" coords="93,5,243,45"/>
+<area shape="rect" id="Node000002" href="$ra8__widget__internal_8h.html" title="Module&#45;private paint helpers shared by the concrete leaf&#45;widget TUs." alt="" coords="87,93,249,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="171,46,171,79,165,79,165,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="125,460,195,485"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="137,121,97,140,55,168,36,186,21,206,12,227,8,252,8,327,11,349,19,369,47,404,83,432,120,452,117,457,80,436,43,408,14,372,6,350,3,328,3,251,6,226,17,203,32,182,51,164,95,136,135,116"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="245,167,371,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="192,116,274,158,272,163,189,121"/>
+<area shape="rect" id="Node000005" href="$ra8__widget_8h.html" title="Zero&#45;heap composable widget layer (dwm&#45;style) over ra8_box + ra8_ui." alt="" coords="115,167,221,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="171,119,171,153,165,153,165,119"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="189,190,224,214,261,248,277,269,288,291,292,315,289,339,272,376,247,407,219,434,192,454,189,450,215,430,243,404,267,373,284,338,287,315,283,293,272,272,257,252,221,218,186,194"/>
+<area shape="rect" id="Node000006" href="$ra8__box_8h.html" title="Bounded, allocation&#45;free box&#45;model layout for e&#45;reader chrome." alt="" coords="43,240,130,265"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="157,194,112,233,108,229,153,190"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="121,387,199,412"/>
+<area shape="poly" id="edge13_Node000005_Node000007" title=" " alt="" coords="170,192,164,373,158,372,165,192"/>
+<area shape="rect" id="Node000008" href="$ra8__ui_8h.html" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="200,313,275,339"/>
+<area shape="poly" id="edge14_Node000005_Node000008" title=" " alt="" coords="176,191,228,300,223,302,171,194"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="89,266,92,330,99,371,112,411,124,431,139,448,135,452,120,434,107,413,93,372,86,330,84,266"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="95,265,150,373,146,375,90,267"/>
+<area shape="poly" id="edge10_Node000006_Node000008" title=" " alt="" coords="112,263,201,305,199,310,110,268"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="163,412,163,446,157,446,157,412"/>
+<area shape="poly" id="edge11_Node000008_Node000003" title=" " alt="" coords="238,340,230,374,214,413,185,452,180,449,210,411,225,372,233,338"/>
+<area shape="poly" id="edge12_Node000008_Node000007" title=" " alt="" coords="227,341,185,379,181,375,223,337"/>
+</map>

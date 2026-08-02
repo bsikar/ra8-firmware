@@ -1,0 +1,9 @@
+<map id="ra8_modem_at_module_t" name="ra8_modem_at_module_t">
+<area shape="rect" id="Node000001" title="Aggregated module state." alt="" coords="139,197,327,223"/>
+<area shape="rect" id="Node000002" href="$structra8__modem__at__cfg__t.html" title="Configuration handed to ra8_modem_at_init." alt="" coords="5,101,164,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="116,132,216,195,213,199,113,136"/>
+<area shape="rect" id="Node000003" href="$structra8__modem__at__io__t.html" title="Byte&#45;level transport injected into the AT driver (DIP)." alt="" coords="9,5,160,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="87,45,87,101,82,101,82,45"/>
+<area shape="rect" id="Node000004" href="$structra8__modem__at__urc__slot__t.html" title="One URC table entry." alt="" coords="188,101,379,127"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="273,140,241,198,237,196,268,138"/>
+</map>

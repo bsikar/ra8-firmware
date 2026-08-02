@@ -1,0 +1,30 @@
+<map id="libs/ra8_c6link/src/ra8_c6link_internal.h" name="libs/ra8_c6link/src/ra8_c6link_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;translation&#45;unit contract inside libs/ra8_c6link." alt="" coords="439,5,601,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="439,41,99,96,95,97,94,92,98,91,438,36"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="175,313,246,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="438,33,360,39,278,51,207,69,181,81,163,95,149,119,144,146,144,174,150,203,172,258,197,300,192,303,168,260,145,204,139,175,138,145,144,117,159,92,178,77,205,64,277,46,360,34,438,27"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="173,93,299,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="453,48,291,92,290,87,451,43"/>
+<area shape="rect" id="Node000005" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="323,93,424,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="486,48,408,89,406,84,484,43"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="331,240,410,265"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="510,47,388,230,384,227,505,44"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="499,93,658,119"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="536,44,564,80,559,84,532,47"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="683,93,856,119"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="581,43,721,87,719,92,579,48"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="881,93,1047,119"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="602,38,886,88,885,94,601,44"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="1071,93,1246,119"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="602,34,1058,90,1057,95,601,39"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="1271,93,1441,119"/>
+<area shape="poly" id="edge16_Node000001_Node000012" title=" " alt="" coords="602,31,887,55,1257,91,1257,96,887,61,601,36"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="323,120,247,140,215,154,195,168,187,183,183,200,182,236,190,270,201,300,196,301,185,272,177,236,177,199,182,181,191,165,212,149,245,135,322,115"/>
+<area shape="rect" id="Node000006" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="206,167,373,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="362,121,315,160,312,155,358,117"/>
+<area shape="poly" id="edge10_Node000005_Node000007" title=" " alt="" coords="379,118,386,151,387,192,380,227,375,226,381,192,380,152,374,119"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="285,194,226,303,221,300,281,191"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="304,190,349,229,345,233,301,194"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="346,268,250,310,248,305,344,263"/>
+</map>

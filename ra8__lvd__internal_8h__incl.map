@@ -1,0 +1,24 @@
+<map id="libs/ra8_hal/src/ra8_lvd_internal.h" name="libs/ra8_hal/src/ra8_lvd_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_lvd internal helpers (MC/DC)." alt="" coords="22,5,167,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="135,387,206,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="76,47,55,72,32,103,15,139,8,178,8,254,11,276,20,297,32,315,49,332,87,359,127,379,124,384,85,364,45,336,28,318,15,299,6,278,3,254,3,178,10,137,28,100,50,68,72,44"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="207,93,332,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="138,43,232,85,230,90,135,48"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="131,313,210,339"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="92,46,82,111,81,152,88,191,100,223,117,253,153,301,149,304,113,256,96,225,83,193,76,152,76,111,87,45"/>
+<area shape="rect" id="Node000005" href="$ra8__lvd_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL driver." alt="" coords="100,93,183,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="108,44,130,80,125,83,104,47"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="173,339,173,373,168,373,168,339"/>
+<area shape="rect" id="Node000006" href="$ra8__lvd__api_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL function prototypes." alt="" coords="97,167,207,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="146,119,151,153,146,154,140,119"/>
+<area shape="rect" id="Node000007" href="$ra8__lvd__types_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL types." alt="" coords="195,240,320,265"/>
+<area shape="poly" id="edge14_Node000005_Node000007" title=" " alt="" coords="163,117,192,137,221,165,240,196,252,226,247,228,235,198,217,168,189,141,160,121"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="148,193,135,220,122,256,115,297,116,318,121,338,133,358,148,376,144,379,128,361,116,340,111,319,110,297,116,255,130,218,143,191"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="156,192,170,299,165,300,151,193"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="170,190,230,230,228,235,167,194"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="295,263,326,276,354,293,371,315,372,327,366,340,335,369,298,387,257,397,220,401,219,396,256,391,296,382,333,364,362,337,367,326,366,317,351,297,324,281,293,268"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="245,267,197,307,194,302,242,263"/>
+<area shape="rect" id="Node000008" href="$ra8__lvd__regs_8h.html" title="Programmable Voltage Detection (PVD / LVD) register layout for the RA8D2." alt="" coords="235,313,352,339"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="266,264,284,300,279,302,261,267"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="275,341,204,382,201,377,272,336"/>
+</map>

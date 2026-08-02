@@ -1,0 +1,7 @@
+<map id="libs/ra8_epd_cal/inc/ra8_epd_cal.h" name="libs/ra8_epd_cal/inc/ra8_epd_cal.h">
+<area shape="rect" id="Node000001" title="Per&#45;device e&#45;paper panel calibration (VCOM) – record, storage seam, resolution policy." alt="" coords="116,5,267,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2epaper__refresh_2main_8c.html" title="IT8951 e&#45;paper full + partial refresh demo through the display PAL." alt="" coords="5,93,188,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,57,125,95,121,91,160,53"/>
+<area shape="rect" id="Node000003" href="$ra8__epd__cal_8c.html" title="Per&#45;device e&#45;paper VCOM calibration – record codec and resolver." alt="" coords="212,101,363,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="222,53,270,99,266,103,219,57"/>
+</map>

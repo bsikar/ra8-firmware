@@ -1,0 +1,5 @@
+<map id="ra8_c6link_ap_info" name="ra8_c6link_ap_info">
+<area shape="rect" id="Node000001" title="What the co&#45;processor knows about the AP the station is on." alt="" coords="5,101,149,127"/>
+<area shape="rect" id="Node000002" href="$structra8__c6link__mac.html" title="One IEEE 802 address, by value." alt="" coords="15,5,139,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="80,45,80,101,75,101,75,45"/>
+</map>

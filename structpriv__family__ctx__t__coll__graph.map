@@ -1,0 +1,14 @@
+<map id="priv_family_ctx_t" name="priv_family_ctx_t">
+<area shape="rect" id="Node000001" title="Context threading a sheet + the rule declaration through the loop." alt="" coords="5,293,140,319"/>
+<area shape="rect" id="Node000002" href="$structra8__css__sheet__t.html" title="A parsed stylesheet: rule + @font&#45;face arrays and a name byte pool." alt="" coords="81,197,208,223"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="129,235,84,295,79,291,125,232"/>
+<area shape="rect" id="Node000003" href="$structra8__css__rule__t.html" title="One selector { ... } rule: a (possibly descendant) selector plus its declarations." alt="" coords="241,101,355,127"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="269,136,165,199,162,195,266,132"/>
+<area shape="rect" id="Node000004" href="$structra8__css__anc__t.html" title="One ancestor part of a descendant selector (e.g." alt="" coords="241,5,355,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="301,45,301,101,295,101,295,45"/>
+<area shape="rect" id="Node000005" href="$structra8__css__style__t.html" title="A declared or computed style: a presence mask plus property values." alt="" coords="34,5,157,31"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="85,44,73,71,63,102,58,157,60,212,73,293,67,293,55,213,52,157,58,101,68,69,80,42"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="134,34,274,99,272,104,131,39"/>
+<area shape="rect" id="Node000006" href="$structra8__css__fontface__t.html" title="One parsed @font&#45;face rule: family + weight/style + src href." alt="" coords="73,101,217,127"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="147,141,147,197,142,197,142,141"/>
+</map>

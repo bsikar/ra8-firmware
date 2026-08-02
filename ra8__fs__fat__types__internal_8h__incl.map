@@ -1,0 +1,13 @@
+<map id="libs/ra8_fs/src/ra8_fs_fat_types_internal.h" name="libs/ra8_fs/src/ra8_fs_fat_types_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU on&#45;disk&#45;layout enums and typedefs for the FAT/exFAT adapter." alt="" coords="28,5,207,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,47,65,85,61,81,97,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="133,240,203,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="124,45,165,226,160,227,119,46"/>
+<area shape="rect" id="Node000004" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="155,93,229,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="137,44,173,81,169,85,133,47"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="193,120,175,227,170,226,187,119"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="206,167,285,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="203,117,231,154,226,157,199,121"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="235,194,193,232,189,229,231,190"/>
+</map>

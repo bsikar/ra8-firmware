@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_pending/compile_on_m33/compile_on_m33.h" name="examples/ek_ra8d2/hw_pending/compile_on_m33/compile_on_m33.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM contract for the &quot;RABOOK1 emitter on the M33&quot; demo (#149b)." alt="" coords="115,5,311,60"/>
+<area shape="rect" id="Node000002" href="$hw__pending_2compile__on__m33_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: full text/CSS/SVG EPUB&#45;&gt;RABOOK1 compile." alt="" coords="5,108,201,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,72,134,110,130,106,172,68"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2compile__on__m33_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver: stage an EPUB, offload its compile to the M33." alt="" coords="225,108,421,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="253,67,296,106,293,110,250,71"/>
+</map>

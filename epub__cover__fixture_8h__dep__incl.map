@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_pending/ereader_cover/epub_cover_fixture.h" name="examples/ek_ra8d2/hw_pending/ereader_cover/epub_cover_fixture.h">
+<area shape="rect" id="Node000001" title="Baked minimal EPUB3 with a real PNG cover (cover&#45;image manifest item)." alt="" coords="5,5,184,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html" title="On&#45;silicon HIL: EPUB cover&#45;art extraction + decode + render (#143)." alt="" coords="5,108,184,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,74,97,108,92,108,92,74"/>
+</map>

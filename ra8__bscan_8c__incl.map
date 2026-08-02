@@ -1,0 +1,27 @@
+<map id="libs/ra8_hal/src/ra8_bscan.c" name="libs/ra8_hal/src/ra8_bscan.c">
+<area shape="rect" id="Node000001" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP HAL implementation." alt="" coords="170,5,315,45"/>
+<area shape="rect" id="Node000002" href="$ra8__bscan_8h.html" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP HAL surface." alt="" coords="149,93,249,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="234,47,214,83,210,80,230,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="246,240,317,265"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="177,48,109,73,47,106,25,125,12,146,9,167,21,190,34,201,55,211,110,227,174,238,233,245,232,250,173,243,109,232,53,216,31,206,17,194,4,168,7,144,21,122,44,102,107,68,175,43"/>
+<area shape="rect" id="Node000004" href="$ra8__bscan__regs_8h.html" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP constants for the RA8D2." alt="" coords="31,167,166,192"/>
+<area shape="poly" id="edge8_Node000001_Node000004" title=" " alt="" coords="202,48,168,68,138,95,120,124,108,154,103,152,115,122,134,92,165,64,199,43"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="242,167,321,192"/>
+<area shape="poly" id="edge16_Node000001_Node000005" title=" " alt="" coords="250,45,263,93,278,153,273,154,258,94,245,46"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="369,93,469,119"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="286,43,381,85,379,90,284,48"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="568,167,651,192"/>
+<area shape="poly" id="edge17_Node000001_Node000007" title=" " alt="" coords="317,39,397,60,481,91,539,123,586,156,583,160,536,128,479,96,395,65,315,44"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="204,118,214,152,232,191,261,228,257,232,227,193,209,154,199,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="184,121,128,161,125,156,181,117"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="214,117,259,155,256,160,210,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="129,190,240,232,238,237,127,195"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="284,192,284,226,279,226,279,192"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="447,116,473,130,497,148,511,170,512,182,506,194,495,204,478,213,432,228,331,248,330,243,431,223,475,208,492,200,502,190,507,181,506,171,494,152,470,135,444,121"/>
+<area shape="poly" id="edge11_Node000006_Node000005" title=" " alt="" coords="398,121,317,163,315,158,395,116"/>
+<area shape="poly" id="edge12_Node000006_Node000007" title=" " alt="" coords="450,116,566,159,564,164,448,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="345,167,493,192"/>
+<area shape="poly" id="edge14_Node000006_Node000008" title=" " alt="" coords="421,119,421,153,416,153,416,119"/>
+<area shape="poly" id="edge13_Node000007_Node000003" title=" " alt="" coords="568,192,331,243,330,238,567,187"/>
+<area shape="poly" id="edge15_Node000008_Node000003" title=" " alt="" coords="398,194,317,236,315,231,395,190"/>
+</map>

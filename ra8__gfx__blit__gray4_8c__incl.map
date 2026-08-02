@@ -1,0 +1,23 @@
+<map id="libs/ra8_gfx/src/ra8_gfx_blit_gray4.c" name="libs/ra8_gfx/src/ra8_gfx_blit_gray4.c">
+<area shape="rect" id="Node000001" title="Sub&#45;rectangle nearest&#45;neighbour integer&#45;zoom blit for packed gray4 images." alt="" coords="13,5,160,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="24,167,99,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="86,46,68,153,63,153,81,45"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="129,313,199,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="69,47,45,75,22,112,9,151,9,171,14,191,37,228,68,259,101,285,131,304,128,309,98,289,64,263,33,231,10,193,4,172,4,151,17,109,40,72,65,44"/>
+<area shape="rect" id="Node000004" href="$ra8__gfx_8h.html" title="Software 2D graphics primitives layered on top of a caller&#45;ownedframebuffer (DRW / D/AVE 2D / GLCDC r..." alt="" coords="123,167,205,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="99,45,154,153,149,155,94,47"/>
+<area shape="rect" id="Node000007" href="$ra8__gfx__internal_8h.html" title="Module&#45;private declarations shared across the ra8_gfx software rasteriser TUs." alt="" coords="150,93,290,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="120,43,190,84,187,89,117,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="152,194,132,214,116,241,114,257,119,273,141,303,137,306,114,276,109,258,111,239,127,211,148,190"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="125,240,203,265"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="167,192,167,226,161,226,161,192"/>
+<area shape="rect" id="Node000006" href="$ra8__gfx__font_8h.html" title="Bitmap font descriptor + bundled font handles for ra8_gfx." alt="" coords="227,240,343,265"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="185,190,255,231,253,235,182,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="167,266,167,300,161,300,161,266"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="267,268,197,309,194,304,264,263"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="196,121,101,163,98,159,193,116"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="291,116,334,134,353,147,369,165,377,186,378,213,372,242,358,267,326,294,289,311,250,321,213,326,213,321,249,316,287,306,324,289,354,264,367,240,373,213,371,187,364,168,350,151,331,138,289,121"/>
+<area shape="poly" id="edge13_Node000007_Node000004" title=" " alt="" coords="213,121,184,157,179,154,209,117"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="229,167,355,192"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="234,117,272,155,269,159,230,121"/>
+</map>

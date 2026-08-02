@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/ereader_svg/svg_fixture.h" name="examples/ek_ra8d2/hw_validated/hil/ereader_svg/svg_fixture.h">
+<area shape="rect" id="Node000001" title="Baked deterministic SVG vector&#45;art fixture for ereader_svg." alt="" coords="5,5,179,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__svg_2main_8c.html" title="On&#45;silicon HIL: SVG vector&#45;art render&#45;at&#45;size + CRC gate (#143)." alt="" coords="5,108,179,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,74,95,108,89,108,89,74"/>
+</map>

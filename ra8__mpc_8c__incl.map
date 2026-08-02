@@ -1,0 +1,35 @@
+<map id="libs/ra8_hal/src/ra8_mpc.c" name="libs/ra8_hal/src/ra8_mpc.c">
+<area shape="rect" id="Node000001" title="Multi&#45;function Pin Controller facade implementation." alt="" coords="345,5,490,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mpc_8h.html" title="Multi&#45;function Pin Controller (MPC) facade." alt="" coords="413,93,504,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="430,44,448,80,444,82,425,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="418,240,489,265"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="490,29,629,43,795,69,874,87,945,109,1001,134,1022,149,1038,165,1044,180,1038,194,1009,208,957,220,806,237,638,247,503,253,502,247,637,242,806,232,956,214,1007,203,1034,190,1039,180,1034,168,1019,153,998,139,943,114,873,92,794,74,629,49,490,35"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="337,167,415,192"/>
+<area shape="poly" id="edge15_Node000001_Node000004" title=" " alt="" coords="415,47,385,154,380,153,410,45"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="238,93,338,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="387,48,320,88,317,84,385,43"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="5,167,88,192"/>
+<area shape="poly" id="edge16_Node000001_Node000007" title=" " alt="" coords="359,48,226,96,82,163,80,158,224,91,357,43"/>
+<area shape="rect" id="Node000009" href="$ra8__pfs__regs_8h.html" title="Pin Function Select (PFS) register layout for the Renesas RA8D2." alt="" coords="629,93,747,119"/>
+<area shape="poly" id="edge17_Node000001_Node000009" title=" " alt="" coords="483,43,636,87,635,92,481,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="461,119,457,226,452,226,456,119"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="447,121,402,160,398,155,444,117"/>
+<area shape="rect" id="Node000005" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="491,167,650,192"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="478,116,542,157,539,161,475,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="390,190,432,229,429,232,387,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="553,194,486,235,483,230,550,190"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="293,118,303,154,313,173,326,190,364,218,406,236,404,241,361,223,322,194,308,176,298,156,288,120"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="304,117,353,156,349,160,300,121"/>
+<area shape="poly" id="edge11_Node000006_Node000007" title=" " alt="" coords="250,121,100,165,98,160,248,116"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="113,167,261,192"/>
+<area shape="poly" id="edge13_Node000006_Node000008" title=" " alt="" coords="273,121,216,161,213,156,270,116"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="89,187,100,189,405,241,404,246,100,195,88,192"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="230,189,405,236,404,241,229,195"/>
+<area shape="poly" id="edge18_Node000009_Node000003" title=" " alt="" coords="690,119,684,156,676,176,663,194,626,220,584,238,542,248,503,253,502,247,541,243,583,233,624,216,659,190,672,174,679,154,685,119"/>
+<area shape="poly" id="edge22_Node000009_Node000005" title=" " alt="" coords="671,121,603,162,600,157,668,116"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="899,167,1024,192"/>
+<area shape="poly" id="edge19_Node000009_Node000010" title=" " alt="" coords="733,116,905,161,903,166,731,121"/>
+<area shape="rect" id="Node000011" href="$ra8__bit__constants_8h.html" title="Named Bit Positions and Masks for Register Manipulation." alt="" coords="725,167,875,192"/>
+<area shape="poly" id="edge20_Node000009_Node000011" title=" " alt="" coords="707,116,771,157,768,161,705,121"/>
+<area shape="poly" id="edge21_Node000011_Node000003" title=" " alt="" coords="745,195,503,244,501,239,744,189"/>
+</map>

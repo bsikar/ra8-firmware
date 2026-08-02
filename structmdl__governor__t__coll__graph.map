@@ -1,0 +1,7 @@
+<map id="mdl_governor_t" name="mdl_governor_t">
+<area shape="rect" id="Node000001" title="Closed&#45;loop per&#45;host politeness governor (rate + backoff + concurrency)." alt="" coords="74,101,198,127"/>
+<area shape="rect" id="Node000002" href="$structmdl__gov__cfg__t.html" title="Per&#45;site politeness tunables the governor is initialised with." alt="" coords="5,5,123,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,40,129,99,125,103,79,43"/>
+<area shape="rect" id="Node000003" href="$structmdl__host__rec__t.html" title="One host&#39;s live governor state (a slot in the fixed per&#45;host table)." alt="" coords="147,5,269,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="193,43,147,103,143,99,189,40"/>
+</map>

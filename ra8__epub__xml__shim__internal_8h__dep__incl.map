@@ -1,0 +1,7 @@
+<map id="libs/ra8_epub/src/ra8_epub_xml_shim_internal.h" name="libs/ra8_epub/src/ra8_epub_xml_shim_internal.h">
+<area shape="rect" id="Node000001" title="Library&#45;private contract for the tinyxml2 EPUB parse shim." alt="" coords="74,5,275,45"/>
+<area shape="rect" id="Node000002" href="$ra8__epub__open_8c.html" title="ra8_epub_open() / ra8_epub_close() lifecycle plumbing." alt="" coords="5,93,163,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="147,57,106,95,102,91,143,53"/>
+<area shape="rect" id="Node000003" href="$ra8__epub__xml__shim_8cpp.html" title="C++ &#45;&gt; C shim that wraps tinyxml2 for the ra8_epub parser." alt="" coords="187,93,346,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="207,53,248,91,244,95,203,57"/>
+</map>

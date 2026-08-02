@@ -1,0 +1,7 @@
+<map id="libs/ra8_core/inc/ra8_crashlog.h" name="libs/ra8_core/inc/ra8_crashlog.h">
+<area shape="rect" id="Node000001" title="Cross&#45;reset crash&#45;log: persist the last fault + a reset&#45;loop guard." alt="" coords="109,5,262,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2fault__crashlog__hil_2main_8c.html" title="Prove the cross&#45;reset crash&#45;log + reset&#45;loop guard (T2&#45;03, #191)." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="159,57,120,95,116,91,155,53"/>
+<area shape="rect" id="Node000003" href="$ra8__crashlog_8c.html" title="Cross&#45;reset crash&#45;log implementation (.noinit record + loop guard)." alt="" coords="203,101,357,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="216,53,263,99,259,103,213,57"/>
+</map>

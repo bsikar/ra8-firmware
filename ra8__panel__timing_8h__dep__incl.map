@@ -1,0 +1,42 @@
+<map id="libs/ra8_board_ek_ra8d2/inc/ra8_panel_timing.h" name="libs/ra8_board_ek_ra8d2/inc/ra8_panel_timing.h">
+<area shape="rect" id="Node000001" title="EK&#45;RA8D2 panel timing as the HAL&#39;s ra8_glcdc_timing_t (ER&#45;TFT070&#45;6)." alt="" coords="1559,5,1741,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="5,93,212,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1546,32,874,54,498,72,342,84,224,96,213,98,212,92,223,91,342,78,498,67,874,48,1546,26"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__cal_2main_8c.html" title="N&#45;point affine touch&#45;calibration demo + HIL gate (#262)." alt="" coords="236,93,429,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1546,29,1342,31,1067,40,756,61,597,76,442,96,430,98,429,93,442,91,597,71,756,55,1067,35,1342,26,1546,24"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2ereader__comic_2main_8c.html" title="Viewable page&#45;turn comic reader – baked CBZ decoded to the 1024x600 GLCDC panel, tap&#45;zone navigation ..." alt="" coords="454,93,635,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1546,30,1374,34,1150,45,899,64,648,96,636,98,635,93,647,91,899,59,1150,39,1374,29,1546,25"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2ereader__longstrip_2main_8c.html" title="Viewable continuous vertical&#45;scroll (longstrip / manhwa) reader (#289)." alt="" coords="660,93,859,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1545,34,1242,53,1057,71,872,96,859,98,858,93,871,91,1056,66,1242,48,1545,28"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__pending_2ereader__manga_2main_8c.html" title="Viewable manga reader: pan/zoom a page larger than the panel (Demo B)." alt="" coords="883,93,1070,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1546,38,1331,60,1206,76,1082,96,1071,98,1070,93,1082,91,1206,71,1331,54,1545,32"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="1094,93,1273,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1546,47,1292,96,1273,100,1272,95,1291,91,1545,42"/>
+<area shape="rect" id="Node000008" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="1348,93,1539,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1597,53,1503,96,1500,91,1595,49"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="1187,196,1361,251"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="1546,41,1424,63,1372,78,1337,95,1316,118,1300,144,1282,197,1277,195,1295,142,1312,114,1334,91,1370,73,1423,58,1545,36"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hw__validated_2hil_2glcdc__render_2main_8c.html" title="Headless on&#45;silicon HIL gate for the GLCDC layer&#45;1 render path." alt="" coords="1563,93,1737,148"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="1653,59,1653,93,1647,93,1647,59"/>
+<area shape="rect" id="Node000013" href="$examples_2ek__ra8d2_2hw__validated_2hil_2sd__font__render_2main_8c.html" title="Load a TTF/OTF font off an SD card and render text with ra8_reflow." alt="" coords="1761,93,1934,148"/>
+<area shape="poly" id="edge13_Node000001_Node000013" title=" " alt="" coords="1703,49,1793,91,1791,96,1701,54"/>
+<area shape="rect" id="Node000014" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__app__demo_2main_8c.html" title="Interactive ra8_widget + ra8_app launcher on the live GLCDC panel." alt="" coords="1958,93,2131,148"/>
+<area shape="poly" id="edge14_Node000001_Node000014" title=" " alt="" coords="1751,46,1947,91,1958,94,1957,99,1945,96,1749,51"/>
+<area shape="rect" id="Node000015" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__chrome__demo_2main_8c.html" title="Concrete ereader chrome widgets composited on the live GLCDC panel (#145 Phase 2)." alt="" coords="2155,93,2329,148"/>
+<area shape="poly" id="edge15_Node000001_Node000015" title=" " alt="" coords="1755,34,1937,57,2144,91,2156,93,2154,98,2143,96,1936,62,1754,40"/>
+<area shape="rect" id="Node000016" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__compose__demo_2main_8c.html" title="Nested ra8_widget tree composited on the live GLCDC panel (#145)." alt="" coords="2353,93,2533,148"/>
+<area shape="poly" id="edge16_Node000001_Node000016" title=" " alt="" coords="1755,29,2022,49,2182,67,2341,91,2353,93,2352,98,2340,96,2181,72,2021,55,1755,34"/>
+<area shape="rect" id="Node000017" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__kit__demo_2main_8c.html" title="Concrete ra8_widget leaf widgets composited on the GLCDC panel (#145)." alt="" coords="2558,93,2731,148"/>
+<area shape="poly" id="edge17_Node000001_Node000017" title=" " alt="" coords="1755,26,1909,31,2107,42,2327,61,2546,91,2558,93,2557,98,2546,96,2326,66,2107,47,1909,36,1755,31"/>
+<area shape="rect" id="Node000018" href="$examples_2ek__ra8d2_2hw__validated_2manual_2display__pal__animation_2main_8c.html" title="Canonical display PAL example – animated scrolling colour bars." alt="" coords="2755,93,2950,148"/>
+<area shape="poly" id="edge18_Node000001_Node000018" title=" " alt="" coords="1755,24,1941,28,2187,38,2465,58,2606,73,2744,91,2756,93,2755,98,2743,96,2605,78,2464,63,2187,44,1941,33,1754,30"/>
+<area shape="rect" id="Node000019" href="$examples_2ek__ra8d2_2hw__validated_2manual_2lcd__color__cycle_2main_8c.html" title="GLCDC parallel&#45;RGB BG&#45;plane color cycle on the EK&#45;RA8D2 panel." alt="" coords="2974,93,3147,148"/>
+<area shape="poly" id="edge19_Node000001_Node000019" title=" " alt="" coords="1754,27,2372,48,2713,66,2855,78,2962,91,2974,93,2973,98,2962,96,2854,83,2713,72,2372,53,1754,32"/>
+<area shape="rect" id="Node000020" href="$examples_2ek__ra8d2_2hw__validated_2manual_2lcd__draw__x_2main_8c.html" title="Draw a coloured X to a SRAM&#45;backed GR1 layer on the EK&#45;RA8D2 panel." alt="" coords="3171,93,3345,148"/>
+<area shape="poly" id="edge20_Node000001_Node000020" title=" " alt="" coords="1755,26,2061,32,2466,45,2867,64,3033,76,3160,91,3172,93,3171,98,3159,96,3033,82,2867,69,2466,50,2061,38,1755,31"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="1389,157,1320,198,1317,193,1386,153"/>
+<area shape="rect" id="Node000010" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="1385,196,1573,251"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="1460,160,1472,195,1467,197,1455,162"/>
+<area shape="rect" id="Node000011" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="1598,196,1803,251"/>
+<area shape="poly" id="edge10_Node000008_Node000011" title=" " alt="" coords="1524,150,1635,193,1633,198,1522,155"/>
+</map>

@@ -1,0 +1,21 @@
+<map id="libs/ra8_hal/inc/ra8_hw_intrinsics.h" name="libs/ra8_hal/inc/ra8_hw_intrinsics.h">
+<area shape="rect" id="Node000001" title="Shared CPU&#45;intrinsic seam for the HAL drivers (host/target split)." alt="" coords="693,5,839,45"/>
+<area shape="rect" id="Node000002" href="$ra8__cache_8c.html" title="Cortex&#45;M85 L1 D&#45;cache maintenance implementation." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="680,36,446,58,305,75,164,96,151,98,151,93,163,91,304,70,446,53,680,31"/>
+<area shape="rect" id="Node000003" href="$ra8__eth__gwca__default_8c.html" title="Ethernet CPU Agent driver – one&#45;call default&#45;state API." alt="" coords="175,93,330,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="680,42,342,96,331,98,330,93,342,91,679,36"/>
+<area shape="rect" id="Node000004" href="$ra8__isr_8c.html" title="NVIC + ICU IELSR allocator implementation." alt="" coords="355,93,500,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="681,51,501,96,500,91,679,46"/>
+<area shape="rect" id="Node000005" href="$ra8__lpm_8c.html" title="Low Power Mode (LPM) HAL driver implementation." alt="" coords="524,93,669,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="718,54,635,96,633,91,716,49"/>
+<area shape="rect" id="Node000006" href="$ra8__pdg_8c.html" title="PWM Delay Generation Circuit (PDG) driver implementation." alt="" coords="693,93,839,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="769,59,769,93,763,93,763,59"/>
+<area shape="rect" id="Node000007" href="$ra8__pwr_8c.html" title="Low Power Mode + clock&#45;domain wrapper implementation." alt="" coords="863,93,1008,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="816,49,899,91,897,96,814,54"/>
+<area shape="rect" id="Node000008" href="$ra8__reset_8c.html" title="Reset cause introspection + software&#45;reset trigger." alt="" coords="1032,93,1177,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="853,46,1032,91,1031,96,851,51"/>
+<area shape="rect" id="Node000009" href="$ra8__rmac_8c.html" title="Per&#45;port Ethernet MAC (RMAC) driver implementation – HUM Ch 33." alt="" coords="1201,93,1347,133"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="853,36,1010,60,1190,91,1202,93,1201,98,1190,96,1009,65,852,41"/>
+<area shape="rect" id="Node000010" href="$ra8__tsn_8c.html" title="On&#45;chip Temperature Sensor (TSN) driver implementation." alt="" coords="1371,93,1516,133"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="853,31,1082,53,1221,70,1360,91,1371,93,1370,98,1359,96,1220,75,1082,58,852,36"/>
+</map>

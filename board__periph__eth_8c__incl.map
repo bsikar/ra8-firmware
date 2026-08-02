@@ -1,0 +1,37 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_eth.c" name="tools/ra8_emulator/src/periph/board_periph_eth.c">
+<area shape="rect" id="Node000001" title="R&#45;Switch (ESWM / MFWD / COMA / ETHA / RMAC / GWCA) model for ra8_emulator." alt="" coords="335,5,553,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="469,240,539,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="458,45,481,92,498,165,505,226,500,227,493,166,476,94,454,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="163,93,229,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="385,48,243,93,241,88,384,43"/>
+<area shape="rect" id="Node000004" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="5,167,133,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="335,39,243,59,196,75,152,96,115,125,87,157,83,154,111,121,149,91,194,70,241,54,334,34"/>
+<area shape="rect" id="Node000005" href="$board__net_8h.html" title="Virtual network peer for ra8_emulator – talks TCP/IP to the firmware." alt="" coords="157,167,256,192"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="390,48,342,69,295,96,257,126,227,158,223,154,254,122,292,91,340,64,388,43"/>
+<area shape="rect" id="Node000006" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="305,93,466,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="432,47,405,84,400,80,428,44"/>
+<area shape="rect" id="Node000008" href="$ra8__etha__regs_8h.html" title="Ethernet Agent (ETHA) per&#45;port register layout for the RA8D2." alt="" coords="747,93,874,119"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="532,43,744,88,743,93,531,48"/>
+<area shape="rect" id="Node000011" href="$ra8__ether__regs_8h.html" title="Ethernet controller base addresses for the Renesas RA8D2." alt="" coords="744,167,875,192"/>
+<area shape="poly" id="edge18_Node000001_Node000011" title=" " alt="" coords="539,43,612,63,685,91,741,123,786,156,783,160,738,127,683,96,610,68,538,48"/>
+<area shape="rect" id="Node000012" href="$ra8__rmac__regs_8h.html" title="Ethernet MAC (RMAC) per&#45;port register layout for the RA8D2." alt="" coords="541,93,672,119"/>
+<area shape="poly" id="edge19_Node000001_Node000012" title=" " alt="" coords="484,43,571,85,569,90,482,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="134,188,455,241,455,246,133,194"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="255,189,456,237,455,242,254,195"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="366,121,345,135,327,153,317,172,317,181,321,190,348,216,383,233,420,243,455,248,454,253,419,249,381,238,345,221,317,194,311,182,311,171,322,150,342,131,363,117"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="331,167,466,192"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="390,119,397,153,391,154,385,119"/>
+<area shape="poly" id="edge12_Node000008_Node000002" title=" " alt="" coords="787,121,541,237,539,232,785,116"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="833,240,908,265"/>
+<area shape="poly" id="edge11_Node000008_Node000009" title=" " alt="" coords="862,116,901,135,919,148,933,165,938,184,931,203,918,220,902,234,898,230,914,216,926,200,932,184,928,168,915,152,898,139,860,121"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="684,240,809,265"/>
+<area shape="poly" id="edge13_Node000008_Node000010" title=" " alt="" coords="836,116,859,130,881,149,893,170,894,182,889,193,876,209,860,222,824,239,821,234,857,217,872,205,884,191,888,181,888,171,876,152,856,135,833,121"/>
+<area shape="poly" id="edge14_Node000008_Node000011" title=" " alt="" coords="813,119,812,153,807,153,808,119"/>
+<area shape="poly" id="edge16_Node000011_Node000002" title=" " alt="" coords="761,195,553,243,552,237,760,189"/>
+<area shape="poly" id="edge15_Node000011_Node000009" title=" " alt="" coords="821,191,854,228,850,231,817,194"/>
+<area shape="poly" id="edge17_Node000011_Node000010" title=" " alt="" coords="801,194,768,231,764,228,797,191"/>
+<area shape="poly" id="edge21_Node000012_Node000002" title=" " alt="" coords="600,121,522,230,518,227,596,118"/>
+<area shape="poly" id="edge20_Node000012_Node000009" title=" " alt="" coords="623,117,671,151,733,190,828,233,826,238,731,194,668,155,620,121"/>
+<area shape="poly" id="edge22_Node000012_Node000010" title=" " alt="" coords="611,118,619,153,628,173,639,190,668,215,700,232,698,237,665,219,635,194,623,175,614,155,606,120"/>
+<area shape="poly" id="edge23_Node000012_Node000011" title=" " alt="" coords="640,116,765,160,763,165,638,121"/>
+</map>

@@ -1,0 +1,14 @@
+<map id="libs/ra8_hal/inc/ra8_reset_regs.h" name="libs/ra8_hal/inc/ra8_reset_regs.h">
+<area shape="rect" id="Node000001" title="Reset block register layout (offsets, bit masks, accessors)for the Renesas RA8D2." alt="" coords="493,5,639,45"/>
+<area shape="rect" id="Node000002" href="$ra8__reset_8h.html" title="Reset cause introspection + software reset trigger." alt="" coords="439,93,584,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="549,58,526,95,521,92,544,56"/>
+<area shape="rect" id="Node000006" href="$ra8__reset_8c.html" title="Reset cause introspection + software&#45;reset trigger." alt="" coords="625,189,771,229"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="590,55,686,187,682,190,586,58"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2reset__cause__demo_2main_8c.html" title="HIL gate for the ra8_reset driver – software&#45;reset round&#45;trip." alt="" coords="5,181,196,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="425,136,208,184,197,187,195,181,207,179,424,130"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2watchdog__demo_2main_8c.html" title="IWDT watchdog + reset&#45;cause demo for EK&#45;RA8D2." alt="" coords="220,181,397,236"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="459,141,367,184,365,179,457,137"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2wdt__reset__recovery__demo_2main_8c.html" title="WWDT reset + recovery HIL demo for EK&#45;RA8D2." alt="" coords="422,181,601,236"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="514,147,514,181,509,181,509,147"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="563,137,661,186,659,191,560,142"/>
+</map>

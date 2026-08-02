@@ -1,0 +1,5 @@
+<map id="ra8_io_stream_t" name="ra8_io_stream_t">
+<area shape="rect" id="Node000001" title="Caller&#45;allocated byte&#45;stream handle binding a sink to its context." alt="" coords="19,101,146,127"/>
+<area shape="rect" id="Node000002" href="$structra8__io__stream__iface.html" title="Opaque to applications – backends implement this internally and export a binding helper through their..." alt="" coords="5,5,160,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,45,85,101,80,101,80,45"/>
+</map>

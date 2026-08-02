@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/c6_wifi.h" name="examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/c6_wifi.h">
+<area shape="rect" id="Node000001" title="Shared contract for the ra8_c6link facade bring&#45;up application." alt="" coords="109,5,283,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__link_2main_8c.html" title="Bring the ESP32&#45;C6&#39;s Wi&#45;Fi station up through the ra8_c6link facade." alt="" coords="5,108,179,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="161,72,121,110,117,106,157,68"/>
+<area shape="rect" id="Node000003" href="$c6__wifi__console_8c.html" title="Bounded console formatters for the ra8_c6link bring&#45;up application." alt="" coords="203,108,397,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="235,68,275,106,271,110,231,72"/>
+</map>

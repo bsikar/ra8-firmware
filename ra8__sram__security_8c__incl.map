@@ -1,0 +1,33 @@
+<map id="libs/ra8_hal/src/ra8_sram_security.c" name="libs/ra8_hal/src/ra8_sram_security.c">
+<area shape="rect" id="Node000001" title="SRAM HAL: TrustZone security attribution + ECC error callbacks." alt="" coords="357,5,502,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="339,313,410,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="436,45,443,86,447,142,444,205,438,236,429,266,417,288,401,306,397,302,413,285,424,264,433,235,439,204,441,142,437,87,431,46"/>
+<area shape="rect" id="Node000003" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="187,167,287,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="407,48,265,160,261,156,404,43"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="335,240,414,265"/>
+<area shape="poly" id="edge10_Node000001_Node000004" title=" " alt="" coords="426,47,413,94,383,227,377,226,408,93,421,45"/>
+<area shape="rect" id="Node000005" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="5,240,88,265"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="394,48,296,101,177,169,76,235,73,230,175,164,293,96,392,43"/>
+<area shape="rect" id="Node000007" href="$ra8__sram_8h.html" title="SRAM (with ECC) HAL driver public API." alt="" coords="467,167,562,192"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="442,45,504,153,499,156,438,47"/>
+<area shape="rect" id="Node000008" href="$ra8__sram__regs_8h.html" title="SRAM (with ECC) control / status / security register layout." alt="" coords="540,240,671,265"/>
+<area shape="poly" id="edge21_Node000001_Node000008" title=" " alt="" coords="503,33,609,55,655,71,672,81,683,92,693,110,695,129,691,148,683,168,658,204,631,232,627,229,654,200,678,165,686,147,689,129,688,111,679,95,669,85,652,76,608,60,502,39"/>
+<area shape="rect" id="Node000010" href="$ra8__sram__internal_8h.html" title="src/&#45;local shared surface for the SRAM HAL driver split." alt="" coords="517,93,669,119"/>
+<area shape="poly" id="edge18_Node000001_Node000010" title=" " alt="" coords="470,43,558,85,556,90,467,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="212,194,186,208,163,225,150,245,149,254,154,264,165,273,181,282,225,296,326,316,325,321,224,302,179,286,162,277,150,267,144,255,145,243,159,222,183,204,209,190"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="261,190,341,231,339,236,258,194"/>
+<area shape="poly" id="edge6_Node000003_Node000005" title=" " alt="" coords="208,195,92,237,90,232,206,190"/>
+<area shape="rect" id="Node000006" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="163,240,311,265"/>
+<area shape="poly" id="edge8_Node000003_Node000006" title=" " alt="" coords="240,192,240,226,235,226,235,192"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="377,266,377,300,372,300,372,266"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="89,260,326,311,325,317,88,266"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="261,263,341,305,339,309,258,268"/>
+<area shape="poly" id="edge13_Node000007_Node000002" title=" " alt="" coords="513,193,499,228,473,267,444,291,414,309,412,305,441,287,469,264,494,226,508,191"/>
+<area shape="poly" id="edge14_Node000007_Node000004" title=" " alt="" coords="493,194,411,236,408,231,491,190"/>
+<area shape="poly" id="edge15_Node000007_Node000008" title=" " alt="" coords="531,190,581,229,578,233,528,194"/>
+<area shape="poly" id="edge17_Node000008_Node000002" title=" " alt="" coords="569,268,424,312,422,307,567,263"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="568,313,643,339"/>
+<area shape="poly" id="edge16_Node000008_Node000009" title=" " alt="" coords="608,266,608,300,603,300,603,266"/>
+<area shape="poly" id="edge19_Node000010_Node000007" title=" " alt="" coords="582,121,539,159,536,156,579,117"/>
+<area shape="poly" id="edge20_Node000010_Node000008" title=" " alt="" coords="597,119,606,226,601,227,592,119"/>
+</map>

@@ -1,0 +1,12 @@
+<map id="libs/ra8_io/src/ra8_io_stream_internal.h" name="libs/ra8_io/src/ra8_io_stream_internal.h">
+<area shape="rect" id="Node000001" title="Internal vtable type for the ra8_io byte&#45;stream facade." alt="" coords="5,5,168,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="77,240,147,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="80,47,69,75,59,112,55,152,63,191,74,211,89,229,85,232,70,215,57,193,50,152,54,111,64,74,75,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="73,167,151,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="93,45,110,153,105,153,87,46"/>
+<area shape="rect" id="Node000004" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="125,93,251,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="113,43,163,82,160,87,110,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="115,192,115,226,109,226,109,192"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="189,119,181,153,165,193,136,232,132,229,160,191,176,152,184,118"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="178,121,136,159,133,155,174,117"/>
+</map>

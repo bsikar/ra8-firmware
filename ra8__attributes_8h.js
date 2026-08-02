@@ -1,0 +1,26 @@
+var ra8__attributes_8h =
+[
+    [ "RA8_BOUNDED_LOOP", "ra8__attributes_8h.html#a43370252d46aab5e8a0d09ce84380bea", null ],
+    [ "RA8_DI_SLOT", "ra8__attributes_8h.html#ac871a325787414e5e86adbd63ee272ab", null ],
+    [ "RA8_EXPECTS_LOCK", "ra8__attributes_8h.html#a906c69c50f725ffe47655369dbd438c0", null ],
+    [ "RA8_HOST_FRIENDLY", "ra8__attributes_8h.html#a1610d98cb320bf9d76ccfc5ac01e9857", null ],
+    [ "RA8_HW_REGISTER_ACCESS", "ra8__attributes_8h.html#a4373055e30361444722be902a7abe034", null ],
+    [ "RA8_INTERNAL", "ra8__attributes_8h.html#abfa11cfbd8c5e700650ed17f49a0e3d6", null ],
+    [ "RA8_INTERNAL_ANNOTATE", "ra8__attributes_8h.html#a23ab79060c860fc2038bee3af4f054d2", null ],
+    [ "RA8_ISR_SAFE", "ra8__attributes_8h.html#ab9d479764d2857f9b3c2fa243b648742", null ],
+    [ "RA8_LATENCY_BUDGET_NS", "ra8__attributes_8h.html#a4dd57368d6206c7c03a1c6bed5563da6", null ],
+    [ "RA8_LOOP_BOUND", "ra8__attributes_8h.html#abb163164b798536a3ce5f8f21ac9e761", null ],
+    [ "RA8_LOOP_BOUND_RUNTIME", "ra8__attributes_8h.html#a77dd9948eb75c5715ecace475b3b4bdd", null ],
+    [ "RA8_MAX_STACK", "ra8__attributes_8h.html#acb4490a84e3e0424fa55a42383ff8873", null ],
+    [ "RA8_MCDC_DEACTIVATED", "ra8__attributes_8h.html#aa22e7c11c430348435c0589afc058b9a", null ],
+    [ "RA8_NASA_RULE_3_OK", "ra8__attributes_8h.html#a9ccb5533ffa6a3e1416503edfa4e6f01", null ],
+    [ "RA8_NO_RECURSION", "ra8__attributes_8h.html#a23f1f7bd325b13eb73b5bc8c93262cdd", null ],
+    [ "RA8_NSC_VENEER", "ra8__attributes_8h.html#a86751b11ef4f9225ca7a4b26651f44c1", null ],
+    [ "RA8_OWNS_RESOURCE", "ra8__attributes_8h.html#a63cd9a9c80e4406d596d594253e1153f", null ],
+    [ "RA8_PRIV", "ra8__attributes_8h.html#a649495c1b0313395b91e0bae3dd855a8", null ],
+    [ "RA8_REGISTER_BANK", "ra8__attributes_8h.html#adcf3c12220cbdf124fb81bc7e9c2efac", null ],
+    [ "RA8_RELEASES_RESOURCE", "ra8__attributes_8h.html#a23c33b68d757580c3d770e213ebc3ff9", null ],
+    [ "RA8_REVIEWED_BY", "ra8__attributes_8h.html#a84913b4786e936421f315724bb55ea00", null ],
+    [ "RA8_TEST_HELPER", "ra8__attributes_8h.html#a69da12e87b25683fd2c63982c45f8404", null ],
+    [ "RA8_VALIDATES", "ra8__attributes_8h.html#ad4a5b8689ca95f4e1b68aeb235bea0bf", null ]
+];

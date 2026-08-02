@@ -1,0 +1,9 @@
+<map id="libs/ra8_board_ra8p1/inc/ra8_board_ra8p1.h" name="libs/ra8_board_ra8p1/inc/ra8_board_ra8p1.h">
+<area shape="rect" id="Node000001" title="Board&#45;support layer for the Renesas RA8P1 (R7KA8P1KFLCAC) target board." alt="" coords="250,5,421,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ra8p1__foundation_2blink__ra8p1_2main_8c.html" title="RA8P1 build&#45;foundation blink – proves ra8_core + ra8_hal compile and link for the R7KA8P1KFLCAC." alt="" coords="5,93,209,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="273,53,158,96,156,91,271,48"/>
+<area shape="rect" id="Node000003" href="$examples_2ra8p1__foundation_2npu__smoke_2main_8c.html" title="RA8P1 Arm Ethos&#45;U55 NPU foundation smoke – runs a checkable stand&#45;in job." alt="" coords="233,93,437,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="338,59,338,93,333,93,333,59"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ra8p1_8c.html" title="Board&#45;support implementation for the RA8P1 foundation board." alt="" coords="461,93,631,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="395,48,501,91,499,96,393,53"/>
+</map>

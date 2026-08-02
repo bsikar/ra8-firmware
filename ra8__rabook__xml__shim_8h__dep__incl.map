@@ -1,0 +1,7 @@
+<map id="libs/ra8_rabook_compile/inc/ra8_rabook_xml_shim.h" name="libs/ra8_rabook_compile/inc/ra8_rabook_xml_shim.h">
+<area shape="rect" id="Node000001" title="C&#45;callable interface to the XHTML &#45;&gt; ra8_rabook DOM parser (#149)." alt="" coords="113,5,319,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__pipeline_8c.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="5,93,197,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="181,56,128,95,125,91,178,52"/>
+<area shape="rect" id="Node000003" href="$ra8__rabook__xml__shim_8cpp.html" title="C++ &#45;&gt; C shim: tinyxml2 XHTML parser &#45;&gt; ra8_rabook DOM builder (#149)." alt="" coords="222,93,442,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="254,52,308,91,305,95,251,56"/>
+</map>

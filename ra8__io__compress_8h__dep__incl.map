@@ -1,0 +1,16 @@
+<map id="libs/ra8_io/inc/ra8_io_compress.h" name="libs/ra8_io/inc/ra8_io_compress.h">
+<area shape="rect" id="Node000001" title="ra8_io DEFLATE compress / decompress (zero&#45;heap, firmware&#45;safe)." alt="" coords="345,5,482,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__vfs__compress_8h.html" title="Transparent VFS&#45;level whole&#45;file compression (compress&#45;on&#45;write,decompress&#45;on&#45;read) over the ra8_io f..." alt="" coords="118,93,269,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="354,53,242,96,241,91,352,48"/>
+<area shape="rect" id="Node000004" href="$ra8__io__vfs__compress_8c.html" title="Transparent whole&#45;file compress&#45;on&#45;write / decompress&#45;on&#45;read over the ra8_io VFS." alt="" coords="232,189,381,229"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="373,56,352,74,336,95,324,118,317,144,310,189,305,188,312,143,319,117,331,92,349,70,369,52"/>
+<area shape="rect" id="Node000005" href="$ra8__io__compress_8c.html" title="Raw&#45;DEFLATE compress / decompress over miniz, heap&#45;free." alt="" coords="345,93,482,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="416,59,416,93,411,93,411,59"/>
+<area shape="rect" id="Node000006" href="$ra8__jof_8c.html" title="JOF atlas reader: parse/validate + bounded per&#45;tile decode (#231)." alt="" coords="506,93,649,133"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="463,49,543,91,540,96,460,54"/>
+<area shape="rect" id="Node000007" href="$ra8__jof__produce_8c.html" title="Transcode producer: sniff, decode, tile, encode, emit (#231, #290)." alt="" coords="673,93,815,133"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="496,45,673,91,672,96,495,50"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html" title="Transparent compress&#45;on&#45;write / decompress&#45;on&#45;read over the VFS (#161)." alt="" coords="5,181,208,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="168,145,133,183,129,179,164,142"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="229,140,285,187,282,191,225,144"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="libs/ra8_hal/src/ra8_sram_internal.h" name="libs/ra8_hal/src/ra8_sram_internal.h">
+<area shape="rect" id="Node000001" title="src/&#45;local shared surface for the SRAM HAL driver split." alt="" coords="52,5,198,45"/>
+<area shape="rect" id="Node000002" href="$ra8__sram_8h.html" title="SRAM (with ECC) HAL driver public API." alt="" coords="35,93,130,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="117,47,97,83,93,80,112,44"/>
+<area shape="rect" id="Node000005" href="$ra8__sram__regs_8h.html" title="SRAM (with ECC) control / status / security register layout." alt="" coords="125,167,256,192"/>
+<area shape="poly" id="edge8_Node000001_Node000005" title=" " alt="" coords="136,45,182,153,177,155,131,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="26,240,96,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="61,121,33,140,11,168,9,184,13,200,37,229,33,233,9,202,3,184,7,166,29,136,57,117"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="22,167,100,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="81,120,71,154,66,153,76,118"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="101,116,163,157,160,161,98,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="64,192,64,226,58,226,58,192"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="171,194,96,235,93,231,168,190"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="153,240,228,265"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="193,192,193,226,188,226,188,192"/>
+</map>

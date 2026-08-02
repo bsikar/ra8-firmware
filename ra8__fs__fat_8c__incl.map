@@ -1,0 +1,30 @@
+<map id="libs/ra8_fs/src/ra8_fs_fat.c" name="libs/ra8_fs/src/ra8_fs_fat.c">
+<area shape="rect" id="Node000001" title="FAT12/FAT16/FAT32 low&#45;level primitives for the ra8_fs adapter." alt="" coords="345,5,483,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="15,328,90,353"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="345,30,265,38,220,47,175,60,131,77,91,101,56,131,28,168,14,197,9,222,10,248,18,279,26,298,37,316,32,318,21,301,13,281,5,248,3,221,9,195,24,165,52,127,88,97,129,73,173,54,219,41,264,32,345,24"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="317,475,388,500"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="438,44,463,69,489,103,510,142,516,163,518,185,518,342,515,366,506,387,493,406,476,423,437,452,398,472,395,467,434,447,472,419,488,403,501,384,510,364,513,342,513,185,510,164,505,144,485,105,459,73,435,48"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="250,255,375,280"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="418,45,419,78,417,120,408,165,391,208,372,231,349,249,346,245,368,228,386,205,403,164,412,119,414,78,413,46"/>
+<area shape="rect" id="Node000005" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="315,328,390,353"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="424,45,437,93,437,119,431,166,422,203,390,281,370,318,365,315,385,279,417,201,425,165,431,118,431,94,419,46"/>
+<area shape="rect" id="Node000007" href="$ra8__fs__fat__internal_8h.html" title="Cross&#45;TU shared declarations for the FAT/exFAT ra8_fs adapter." alt="" coords="133,93,289,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="366,48,255,91,253,86,364,43"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="352,354,343,402,344,432,349,461,343,462,338,433,338,401,347,353"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="352,401,431,427"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="361,352,381,388,376,391,357,355"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="387,428,368,464,363,461,383,426"/>
+<area shape="rect" id="Node000008" href="$ra8__fs__fat__protos__a__internal_8h.html" title="Cross&#45;TU helper prototypes for the FAT/exFAT adapter (part A of 2)." alt="" coords="225,167,376,207"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="226,117,271,156,267,160,223,121"/>
+<area shape="rect" id="Node000009" href="$ra8__fs__fat__types__internal_8h.html" title="Cross&#45;TU on&#45;disk&#45;layout enums and typedefs for the FAT/exFAT adapter." alt="" coords="27,255,225,280"/>
+<area shape="poly" id="edge18_Node000007_Node000009" title=" " alt="" coords="134,117,107,124,82,134,59,149,40,168,34,186,40,205,60,229,85,246,82,250,56,233,36,208,28,186,36,165,55,145,79,129,106,118,132,111"/>
+<area shape="rect" id="Node000010" href="$ra8__fs__fat__protos__b__internal_8h.html" title="Cross&#45;TU helper prototypes for the FAT/exFAT adapter (part B of 2)." alt="" coords="51,167,201,207"/>
+<area shape="poly" id="edge15_Node000007_Node000010" title=" " alt="" coords="200,121,158,159,155,155,197,117"/>
+<area shape="poly" id="edge10_Node000008_Node000004" title=" " alt="" coords="306,206,311,241,306,242,301,207"/>
+<area shape="poly" id="edge11_Node000008_Node000009" title=" " alt="" coords="260,209,165,251,163,246,258,204"/>
+<area shape="poly" id="edge12_Node000009_Node000002" title=" " alt="" coords="116,282,76,320,73,316,112,278"/>
+<area shape="poly" id="edge13_Node000009_Node000003" title=" " alt="" coords="140,278,332,463,328,466,136,282"/>
+<area shape="poly" id="edge14_Node000009_Node000005" title=" " alt="" coords="163,277,304,321,302,326,162,283"/>
+<area shape="poly" id="edge16_Node000010_Node000004" title=" " alt="" coords="172,204,274,247,272,252,170,209"/>
+<area shape="poly" id="edge17_Node000010_Node000009" title=" " alt="" coords="129,207,129,241,123,241,123,207"/>
+</map>

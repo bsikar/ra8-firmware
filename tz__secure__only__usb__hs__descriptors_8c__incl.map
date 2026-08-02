@@ -1,0 +1,13 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_descriptors.c" name="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_descriptors.c">
+<area shape="rect" id="Node000001" title="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_descriptors...." alt="" coords="12,5,277,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,211,76,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,77,78,99,60,124,48,161,43,197,38,196,42,160,56,121,74,95,96,73"/>
+<area shape="rect" id="Node000003" href="$tz__secure__only__usb__hs__steps_8h.html" title="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_steps...." alt="" coords="70,123,219,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="147,75,147,108,142,108,142,75"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="211,211,289,236"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="193,73,215,95,234,121,247,160,252,196,247,197,242,161,229,124,211,99,189,77"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="121,165,69,204,65,200,118,161"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="107,211,182,236"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="147,163,147,197,142,197,142,163"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="172,161,225,200,222,204,169,165"/>
+</map>

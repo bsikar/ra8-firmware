@@ -1,0 +1,9 @@
+<map id="tools/ra8_emulator/inc/board_input.h" name="tools/ra8_emulator/inc/board_input.h">
+<area shape="rect" id="Node000001" title="Host&#45;side keystroke FIFO: window / CLI key source &#45;&gt; UART RX sink." alt="" coords="199,5,345,45"/>
+<area shape="rect" id="Node000002" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="5,93,171,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="220,54,129,96,127,91,218,49"/>
+<area shape="rect" id="Node000003" href="$board__input_8c.html" title="Host&#45;side keystroke FIFO implementation (see board_input.h)." alt="" coords="195,93,349,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="275,59,275,93,269,93,269,59"/>
+<area shape="rect" id="Node000004" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="373,93,518,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="323,49,409,91,406,96,321,54"/>
+</map>

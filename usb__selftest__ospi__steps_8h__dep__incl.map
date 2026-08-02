@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/inc/usb_selftest_ospi_steps.h" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/inc/usb_selftest_ospi_steps.h">
+<area shape="rect" id="Node000001" title="Shared constants + step prototypes for the OSPI USB self&#45;loop app." alt="" coords="221,5,416,75"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__ospi_2main_8c.html" title="USB self&#45;loop: the onboard OSPI flash exposed as a USB drive." alt="" coords="5,130,197,185"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="244,83,152,132,149,128,242,79"/>
+<area shape="rect" id="Node000003" href="$usb__selftest__ospi__format_8c.html" title="FAT16 synthesis, OSPI pattern, MSC media callbacks + console helpers." alt="" coords="221,123,416,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="321,89,321,122,316,122,316,89"/>
+<area shape="rect" id="Node000004" href="$usb__selftest__ospi__host_8c.html" title="Host&#45;side pass ladder for the OSPI USB self&#45;loop app." alt="" coords="441,130,682,185"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="403,78,507,128,505,132,401,83"/>
+</map>

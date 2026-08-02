@@ -1,0 +1,25 @@
+var board__overlay_8c =
+[
+    [ "battery_clamp", "board__overlay_8c.html#afbb458b2e22d0ea29ac00dc3bf37264a", null ],
+    [ "battery_fill_color", "board__overlay_8c.html#a54315fc9ec30feb8c7ca9a1bdb691a16", null ],
+    [ "board_overlay_battery_pct_at", "board__overlay_8c.html#afb4c09a7fa35ed7d382ca406f7991385", null ],
+    [ "board_overlay_compose", "board__overlay_8c.html#aae452d362a4cfe6306cfc427ca1c42de", null ],
+    [ "board_overlay_hit_button", "board__overlay_8c.html#a7ae5ecbe7ff89ce3d61b23e46f8f7581", null ],
+    [ "board_overlay_hit_console_tab", "board__overlay_8c.html#aa68c596f08f26b4a3c026b3e79535d6e", null ],
+    [ "console_tab_rect", "board__overlay_8c.html#a73e60535186c48c3739f0db9d58fcf48", null ],
+    [ "console_tab_row_count", "board__overlay_8c.html#ac191b52bc5d7f581042ddf87571ced71", null ],
+    [ "console_tabs_per_row", "board__overlay_8c.html#aa9134e1b3036d5cbbf7cd92a616c96df", null ],
+    [ "draw_button", "board__overlay_8c.html#a0343f1a3c2519a31eb79f07d70a0045d", null ],
+    [ "draw_buttons", "board__overlay_8c.html#a84038a31e57b392b8770f19aa5776b30", null ],
+    [ "draw_console", "board__overlay_8c.html#a9198e60db8f17e753c735773b705d7f6", null ],
+    [ "draw_console_body", "board__overlay_8c.html#ad05d63efb9d59948a02ea1295c5772c7", null ],
+    [ "draw_console_heading", "board__overlay_8c.html#ae8d44c93cebce48b4e4fe990605bee23", null ],
+    [ "draw_console_tabs", "board__overlay_8c.html#a546548429bcc9f5e083dfe5b1d0a7c48", null ],
+    [ "draw_core", "board__overlay_8c.html#af1c1712ddd635c26c744f56b1db5acb5", null ],
+    [ "draw_io_block", "board__overlay_8c.html#afb51fa370d8613d083dc706f28a8dd42", null ],
+    [ "draw_led", "board__overlay_8c.html#a4a92ad3ca637fe463c4b2c5e5cc578dc", null ],
+    [ "draw_leds", "board__overlay_8c.html#aa617502caf2537dcf1c366bd7641e7b5", null ],
+    [ "draw_power", "board__overlay_8c.html#a0867ffdc12bb4396722014e2986efb3d", null ],
+    [ "draw_run_stats", "board__overlay_8c.html#ad92dd5e67779fcea1e384e5185c06219", null ],
+    [ "draw_sidebar", "board__overlay_8c.html#a8e4546d24a7097f6e76cbaa8c7c33c02", null ]
+];

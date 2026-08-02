@@ -1,0 +1,27 @@
+var ra8__lvd_8c =
+[
+    [ "internal_cmpcr_rmw", "ra8__lvd_8c.html#a1ca93b9142c2163bca772ea32c46a9ec", null ],
+    [ "internal_compose_cr0", "ra8__lvd_8c.html#a9d5516342ea703d31f4f6d5c22b416fb", null ],
+    [ "internal_cr0_apply_reserved", "ra8__lvd_8c.html#a969172b1e357d27cb3b3ab2bb0658ae9", null ],
+    [ "internal_lvd_program_cmpcr", "ra8__lvd_8c.html#ae4c960ab7a62f674996a85a92249996e", null ],
+    [ "internal_lvd_program_cr0_chain", "ra8__lvd_8c.html#af259db5d8d0e4af5e602e42685cb2b88", null ],
+    [ "internal_m_cr0_with_reserved", "ra8__lvd_8c.html#a61632e3f17b2adc5c77360f4977e8535", null ],
+    [ "internal_n_cr0_with_reserved", "ra8__lvd_8c.html#a77768a2141831e255c5981fc693f038b", null ],
+    [ "internal_program_cr1", "ra8__lvd_8c.html#ac7a7c5f3498add0df04274daf2447f0f", null ],
+    [ "internal_validate_cfg", "ra8__lvd_8c.html#a0cd174c5e308bbaed0f565c08261a8b3", null ],
+    [ "internal_validate_edge", "ra8__lvd_8c.html#a5adf22f5b71cb744e0731dd818996114", null ],
+    [ "internal_validate_threshold", "ra8__lvd_8c.html#aeca21cb3b8ed88fc3afbb25203ea10ba", null ],
+    [ "ra8_lvd_channel_deinit", "ra8__lvd_8c.html#a1a9a49eed2bb6ba0858aa15e8d0b36e4", null ],
+    [ "ra8_lvd_channel_init", "ra8__lvd_8c.html#ad18528b22f414b1290791cc56fb43781", null ],
+    [ "ra8_lvd_internal_channel_to_idx", "ra8__lvd_8c.html#ade0fa1640f7f152183bcf5fd6e109702", null ],
+    [ "ra8_lvd_internal_cr0_rmw", "ra8__lvd_8c.html#a5dc70b624797b1e1133724da4bd2a0ea", null ],
+    [ "ra8_lvd_internal_read_ri", "ra8__lvd_8c.html#ae72fab11613e842130ffaf434c8b2b9f", null ],
+    [ "ra8_lvd_internal_reject_hvd_after", "ra8__lvd_8c.html#a41dd69283c4109fb9ff8ae5a294d169a", null ],
+    [ "ra8_lvd_internal_set_ri_bit", "ra8__lvd_8c.html#a1f5c611a474f0385fd409389a4eac8ec", null ],
+    [ "ra8_lvd_internal_validate_div", "ra8__lvd_8c.html#a4677922934c0b9eec5bc34619d14d297", null ],
+    [ "ra8_lvd_set_irq_edge", "ra8__lvd_8c.html#a41e2c0ae28512f3591220ae976ba8aff", null ],
+    [ "ra8_lvd_set_irq_kind", "ra8__lvd_8c.html#a90b6dcbcbc36f3a663377b93c70d1f94", null ],
+    [ "ra8_lvd_set_threshold", "ra8__lvd_8c.html#a6af3fb68be5f0d65ffd21ed963c01f8a", null ],
+    [ "s_lvd_map", "ra8__lvd_8c.html#a171e82158e103ede3ac0a9be276bdd41", null ],
+    [ "s_tag", "ra8__lvd_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

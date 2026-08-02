@@ -1,0 +1,16 @@
+<map id="libs/ra8_hal/inc/ra8_dtc_regs.h" name="libs/ra8_hal/inc/ra8_dtc_regs.h">
+<area shape="rect" id="Node000001" title="DTC (Data Transfer Controller) register layout for the RA8D2." alt="" coords="302,5,447,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dtc__coherency__hil_2main_8c.html" title="DTC vector&#45;table / TI coherency HIL proof with the M85 D&#45;cache ENABLED." alt="" coords="5,181,213,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="337,56,149,183,146,179,334,51"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dtc__transfer__demo_2main_8c.html" title="1 KB DTC SRAM&#45;to&#45;SRAM block&#45;copy + verify demo for the EK&#45;RA8D2" alt="" coords="237,181,429,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="328,55,308,73,293,94,288,116,292,139,301,160,314,180,309,182,297,163,287,140,283,116,288,92,304,69,325,51"/>
+<area shape="rect" id="Node000004" href="$ra8__dtc_8h.html" title="Data Transfer Controller (DTC) driver." alt="" coords="302,93,447,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="377,59,377,93,372,93,372,59"/>
+<area shape="rect" id="Node000005" href="$ra8__dtc_8c.html" title="Data Transfer Controller driver implementation." alt="" coords="454,189,599,229"/>
+<area shape="poly" id="edge8_Node000001_Node000005" title=" " alt="" coords="417,52,462,92,497,142,521,187,516,190,493,145,458,95,414,56"/>
+<area shape="rect" id="Node000006" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="523,93,669,133"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="437,48,549,91,547,96,435,53"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="309,140,185,184,183,179,307,135"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="363,147,347,182,343,180,358,145"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="418,138,497,186,495,191,415,143"/>
+</map>

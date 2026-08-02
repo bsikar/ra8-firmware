@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/epub_open/epub_fixture.h" name="examples/ek_ra8d2/hil_needs_revalidation/epub_open/epub_fixture.h">
+<area shape="rect" id="Node000001" title="Baked known&#45;good EPUB3 fixture (tests/fuzz/corpus/fuzz_ra8_epub/seed_two_chapters...." alt="" coords="5,5,195,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2epub__open_2main_8c.html" title="On&#45;silicon HIL: open + parse a real .epub from SD via ra8_fs (#114)." alt="" coords="5,108,195,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,74,103,108,97,108,97,74"/>
+</map>

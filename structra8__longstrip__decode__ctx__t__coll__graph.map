@@ -1,0 +1,5 @@
+<map id="ra8_longstrip_decode_ctx_t" name="ra8_longstrip_decode_ctx_t">
+<area shape="rect" id="Node000001" title="Context binding a JOF atlas to a ra8_tile_cache decode&#45;on&#45;miss." alt="" coords="5,101,167,141"/>
+<area shape="rect" id="Node000002" href="$structra8__jof__info__t.html" title="Parsed + validated geometry of one JOF atlas." alt="" coords="31,5,141,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,45,89,101,83,101,83,45"/>
+</map>

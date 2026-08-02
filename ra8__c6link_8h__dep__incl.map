@@ -1,0 +1,42 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link.h" name="libs/ra8_c6link/inc/ra8_c6link.h">
+<area shape="rect" id="Node000001" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="769,5,908,45"/>
+<area shape="rect" id="Node000002" href="$c6__wifi_8h.html" title="Shared contract for the ra8_c6link facade bring&#45;up application." alt="" coords="213,93,387,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="756,42,431,96,387,104,386,99,430,91,755,37"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__link_2main_8c.html" title="Bring the ESP32&#45;C6&#39;s Wi&#45;Fi station up through the ra8_c6link facade." alt="" coords="5,196,179,251"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="756,30,619,35,458,46,307,65,247,79,203,96,172,117,146,143,108,197,104,194,142,140,169,113,200,91,245,74,306,60,457,40,619,30,756,25"/>
+<area shape="rect" id="Node000004" href="$c6__wifi__console_8c.html" title="Bounded console formatters for the ra8_c6link bring&#45;up application." alt="" coords="203,196,397,251"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="756,38,637,58,572,75,509,96,460,119,412,146,335,198,332,194,409,141,457,114,507,91,570,69,636,53,755,33"/>
+<area shape="rect" id="Node000005" href="$ra8__c6link__wifi_8h.html" title="Wi&#45;Fi station bring&#45;up and association over the C6 link." alt="" coords="563,101,701,141"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="786,53,675,103,673,98,783,48"/>
+<area shape="rect" id="Node000006" href="$ra8__c6link__wifi_8c.html" title="Radio lifecycle: initialise, choose station mode, start, tear down." alt="" coords="421,203,560,243"/>
+<area shape="poly" id="edge25_Node000001_Node000006" title=" " alt="" coords="756,30,706,35,652,47,599,66,552,95,530,120,514,149,497,204,492,202,509,147,526,117,549,91,597,61,651,42,705,30,755,24"/>
+<area shape="rect" id="Node000007" href="$ra8__c6link__wifi__sta_8c.html" title="Station credentials, association, and what the radio reports back." alt="" coords="585,203,746,243"/>
+<area shape="poly" id="edge26_Node000001_Node000007" title=" " alt="" coords="815,57,684,205,680,201,811,54"/>
+<area shape="rect" id="Node000008" href="$ra8__c6link_8c.html" title="Link lifecycle, frame routing and the identity round&#45;trip." alt="" coords="771,203,909,243"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="842,59,843,203,837,203,836,59"/>
+<area shape="rect" id="Node000009" href="$ra8__c6link__arena_8c.html" title="The fixed decode arena that lets a protobuf codec run with no heap." alt="" coords="934,203,1082,243"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="857,56,883,101,917,146,949,176,981,201,978,205,945,180,913,150,878,104,852,59"/>
+<area shape="rect" id="Node000010" href="$ra8__c6link__frame_8c.html" title="The twelve&#45;byte esp&#45;hosted payload header: build it, believe it or not." alt="" coords="1106,203,1257,243"/>
+<area shape="poly" id="edge12_Node000001_Node000010" title=" " alt="" coords="922,29,966,36,1013,48,1060,66,1103,91,1130,117,1151,147,1177,202,1172,204,1146,150,1126,120,1100,95,1058,71,1012,53,965,42,921,34"/>
+<area shape="rect" id="Node000011" href="$ra8__c6link__internal_8h.html" title="Cross&#45;translation&#45;unit contract inside libs/ra8_c6link." alt="" coords="927,101,1089,141"/>
+<area shape="poly" id="edge13_Node000001_Node000011" title=" " alt="" coords="886,50,975,98,973,103,884,54"/>
+<area shape="rect" id="Node000012" href="$ra8__c6link__pump_8c.html" title="The transaction loop: handshake, clock, classify, route." alt="" coords="1281,203,1429,243"/>
+<area shape="poly" id="edge22_Node000001_Node000012" title=" " alt="" coords="922,35,1029,56,1087,71,1144,91,1198,116,1251,146,1331,201,1329,205,1248,151,1196,121,1142,96,1086,76,1028,61,921,40"/>
+<area shape="rect" id="Node000013" href="$ra8__c6link__rpc_8c.html" title="The control plane: one protobuf message type, correlated by UID." alt="" coords="1453,203,1592,243"/>
+<area shape="poly" id="edge23_Node000001_Node000013" title=" " alt="" coords="922,34,1059,55,1137,71,1213,91,1290,117,1366,147,1486,201,1484,206,1364,151,1289,122,1211,96,1135,76,1058,60,921,39"/>
+<area shape="rect" id="Node000014" href="$ra8__c6link__tlv_8c.html" title="The two&#45;tag envelope the co&#45;processor&#39;s serial endpoint speaks." alt="" coords="1616,203,1755,243"/>
+<area shape="poly" id="edge24_Node000001_Node000014" title=" " alt="" coords="922,31,1099,53,1202,69,1305,91,1399,116,1492,146,1640,201,1638,206,1490,151,1398,122,1303,96,1201,75,1098,58,921,37"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="235,156,147,198,145,194,233,151"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="303,162,303,196,297,196,297,162"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="550,136,384,162,191,199,180,201,178,196,190,193,383,157,549,131"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="596,151,519,205,516,201,593,147"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="645,153,662,202,657,204,640,154"/>
+<area shape="poly" id="edge20_Node000011_Node000006" title=" " alt="" coords="914,137,753,162,573,199,546,206,545,201,571,193,752,156,913,132"/>
+<area shape="poly" id="edge21_Node000011_Node000007" title=" " alt="" coords="932,147,730,206,729,201,930,142"/>
+<area shape="poly" id="edge14_Node000011_Node000008" title=" " alt="" coords="966,150,873,206,870,201,964,145"/>
+<area shape="poly" id="edge15_Node000011_Node000009" title=" " alt="" coords="1011,155,1011,203,1005,203,1005,155"/>
+<area shape="poly" id="edge16_Node000011_Node000010" title=" " alt="" coords="1054,145,1150,201,1148,206,1051,150"/>
+<area shape="poly" id="edge17_Node000011_Node000012" title=" " alt="" coords="1090,142,1270,193,1294,201,1293,206,1269,199,1088,147"/>
+<area shape="poly" id="edge18_Node000011_Node000013" title=" " alt="" coords="1103,132,1262,157,1442,193,1469,201,1467,206,1441,199,1261,162,1102,137"/>
+<area shape="poly" id="edge19_Node000011_Node000014" title=" " alt="" coords="1104,126,1333,149,1469,168,1605,193,1632,201,1631,206,1603,199,1468,173,1332,154,1103,131"/>
+</map>

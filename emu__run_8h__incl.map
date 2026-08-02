@@ -1,0 +1,12 @@
+<map id="tools/ra8_emulator/inc/emu_run.h" name="tools/ra8_emulator/inc/emu_run.h">
+<area shape="rect" id="Node000001" title="The chunked emulation run loop, report and exit&#45;code mapping." alt="" coords="90,5,235,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="75,167,146,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,43,47,63,28,77,13,95,9,104,9,113,19,131,40,146,65,159,63,164,37,151,15,134,4,115,3,103,8,92,24,73,44,58,88,38"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="23,93,158,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="147,47,112,85,108,81,143,44"/>
+<area shape="rect" id="Node000004" href="$board__view_8h.html" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="182,93,290,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="182,44,217,81,214,85,178,47"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="315,93,440,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="215,43,334,86,332,91,213,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="217,121,144,162,142,157,214,116"/>
+</map>

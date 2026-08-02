@@ -1,0 +1,7 @@
+<map id="libs/ra8_touch_cal/inc/ra8_touch_cal.h" name="libs/ra8_touch_cal/inc/ra8_touch_cal.h">
+<area shape="rect" id="Node000001" title="Resistive/capacitive touch&#45;screen calibration utility." alt="" coords="124,5,275,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__cal_2main_8c.html" title="N&#45;point affine touch&#45;calibration demo + HIL gate (#262)." alt="" coords="5,93,199,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,57,131,95,128,91,168,53"/>
+<area shape="rect" id="Node000003" href="$ra8__touch__cal_8c.html" title="Implementation of the touch&#45;screen calibration utility." alt="" coords="223,101,373,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="231,53,280,99,276,103,227,57"/>
+</map>

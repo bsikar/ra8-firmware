@@ -1,0 +1,21 @@
+<map id="libs/ra8_hal/inc/ra8_drw.h" name="libs/ra8_hal/inc/ra8_drw.h">
+<area shape="rect" id="Node000001" title="2D Drawing Engine (DRW / D/AVE 2D) HAL driver – public API" alt="" coords="459,5,605,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2drw__blend__demo_2main_8c.html" title="DRW 2D&#45;engine blit + per&#45;pixel alpha&#45;blend headless CRC demo (EK&#45;RA8D2)." alt="" coords="5,93,187,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="447,46,206,96,188,100,187,95,205,91,445,41"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2drw__dlist__demo_2main_8c.html" title="DRW display&#45;list (DLR) clear+fill demo – loop&#45;stable (EK&#45;RA8D2, #247)." alt="" coords="255,196,428,251"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="446,38,388,47,329,59,281,75,263,85,251,95,244,108,242,119,252,147,270,173,295,194,292,198,266,176,247,149,237,120,239,106,247,92,260,80,279,70,328,54,387,41,445,33"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2drw__fill__demo_2main_8c.html" title="DRW 2D&#45;engine framebuffer fill&#45;rect + verify demo (EK&#45;RA8D2)." alt="" coords="261,93,435,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="484,54,401,96,399,91,481,49"/>
+<area shape="rect" id="Node000005" href="$ra8__drw__dlist_8h.html" title="2D Drawing Engine (DRW / D/AVE 2D) display&#45;list builder – public API" alt="" coords="459,101,605,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="535,59,535,101,529,101,529,59"/>
+<area shape="rect" id="Node000006" href="$ra8__drw__draw_8c.html" title="2D Drawing Engine (DRW / D/AVE 2D) geometry primitives" alt="" coords="570,203,715,243"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="579,51,600,70,618,92,632,120,640,151,645,203,640,203,634,152,627,122,614,95,596,73,575,55"/>
+<area shape="rect" id="Node000007" href="$ra8__drw_8c.html" title="2D Drawing Engine (DRW / D/AVE 2D) HAL driver implementation" alt="" coords="765,203,910,243"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="619,31,684,39,749,51,805,68,826,79,841,92,854,119,857,150,853,179,847,204,842,202,848,178,852,150,849,121,837,95,823,84,803,73,748,57,683,44,618,36"/>
+<area shape="rect" id="Node000008" href="$ra8__drw__internal_8h.html" title="Test&#45;access surface for ra8_drw internal helpers (MC/DC)." alt="" coords="681,101,826,141"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="590,48,710,98,708,103,588,53"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="485,149,392,198,390,194,483,145"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="565,148,624,201,620,205,561,152"/>
+<area shape="poly" id="edge11_Node000008_Node000006" title=" " alt="" coords="724,152,665,205,662,201,721,148"/>
+<area shape="poly" id="edge10_Node000008_Node000007" title=" " alt="" coords="780,149,824,202,820,205,776,153"/>
+</map>

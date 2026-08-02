@@ -1,0 +1,7 @@
+<map id="run_loop_t" name="run_loop_t">
+<area shape="rect" id="Node000001" title="The whole run&#39;s mutable state, threaded through the phase helpers." alt="" coords="87,101,178,127"/>
+<area shape="rect" id="Node000002" href="$structemu__run__cfg__t.html" title="Everything setup hands the run loop: engine, image, CLI products." alt="" coords="5,5,124,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,40,126,100,122,103,79,43"/>
+<area shape="rect" id="Node000003" href="$structrun__guards__t.html" title="The run&#45;guard knobs (env&#45;tunable budgets + stop conditions)." alt="" coords="149,5,255,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="187,43,143,103,139,100,183,40"/>
+</map>

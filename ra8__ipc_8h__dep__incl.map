@@ -1,0 +1,17 @@
+<map id="libs/ra8_hal/inc/ra8_ipc.h" name="libs/ra8_hal/inc/ra8_ipc.h">
+<area shape="rect" id="Node000001" title="Inter&#45;Processor Communication (IPC) HAL driver – public API." alt="" coords="685,5,831,45"/>
+<area shape="rect" id="Node000002" href="$hil__needs__revalidation_2cpu1__pingpong__ipc_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33) ping&#45;pong responder." alt="" coords="5,93,207,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="672,37,464,60,218,96,208,98,207,93,218,91,464,55,671,32"/>
+<area shape="rect" id="Node000003" href="$hw__pending_2compile__on__m33_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: full text/CSS/SVG EPUB&#45;&gt;RABOOK1 compile." alt="" coords="231,93,427,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="672,47,439,96,428,98,426,93,437,91,671,41"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2compile__on__m33_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver: stage an EPUB, offload its compile to the M33." alt="" coords="451,93,647,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="704,53,609,96,607,91,702,49"/>
+<area shape="rect" id="Node000005" href="$hw__pending_2ereader__m33_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: render a held e&#45;reader page." alt="" coords="671,93,845,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="761,59,761,93,755,93,755,59"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__pending_2ereader__m33_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the e&#45;reader&#45;on&#45;M33 demo." alt="" coords="869,93,1042,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="811,49,901,91,899,96,809,54"/>
+<area shape="rect" id="Node000007" href="$ra8__ipc_8c.html" title="Inter&#45;Processor Communication (IPC) HAL driver implementation." alt="" coords="1067,101,1212,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="844,42,1055,91,1081,98,1079,103,1053,96,843,47"/>
+<area shape="rect" id="Node000008" href="$ra8__ipc__sem__ring_8c.html" title="IPC HAL – hardware semaphores, NMI surface, and ring buffers." alt="" coords="1236,101,1381,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="845,32,1021,54,1124,71,1225,91,1253,98,1252,103,1224,96,1123,76,1020,59,844,38"/>
+</map>

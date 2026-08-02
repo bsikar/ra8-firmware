@@ -1,0 +1,5 @@
+<map id="tools/ra8_emulator/inc/board_overlay.h" name="tools/ra8_emulator/inc/board_overlay.h">
+<area shape="rect" id="Node000001" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="5,5,157,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="46,93,117,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="84,46,84,79,79,79,79,46"/>
+</map>

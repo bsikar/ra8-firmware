@@ -1,0 +1,18 @@
+<map id="libs/ra8_hal/inc/ra8_ceu_types.h" name="libs/ra8_hal/inc/ra8_ceu_types.h">
+<area shape="rect" id="Node000001" title="Capture Engine Unit (CEU) configuration descriptors and types." alt="" coords="216,5,361,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ceu_8h.html" title="Capture Engine Unit (CEU) camera&#45;capture driver." alt="" coords="216,181,361,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="274,59,262,94,259,113,262,133,270,158,280,180,275,182,265,160,257,134,254,113,257,93,269,57"/>
+<area shape="rect" id="Node000007" href="$ra8__ceu__api_8h.html" title="Capture Engine Unit (CEU) driver function prototypes." alt="" coords="272,93,417,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="311,56,335,92,330,95,306,58"/>
+<area shape="rect" id="Node000003" href="$cam__ceu_8c.html" title="CEU parallel (DVP) capture: DVP pin routing, open, arm/poll, buffer." alt="" coords="5,269,196,324"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="240,230,155,272,152,267,237,225"/>
+<area shape="rect" id="Node000004" href="$ra8__ceu_8c.html" title="Capture Engine Unit (CEU) driver implementation." alt="" coords="187,372,332,412"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="274,235,262,270,257,325,260,372,254,372,252,325,257,269,269,233"/>
+<area shape="rect" id="Node000005" href="$ra8__ceu__init__regs_8c.html" title="Capture Engine Unit (CEU) init&#45;time register programming." alt="" coords="369,372,515,412"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="375,224,406,242,431,268,443,294,449,322,448,372,443,372,444,323,438,295,426,271,402,247,372,229"/>
+<area shape="rect" id="Node000006" href="$ra8__ceu__internal_8h.html" title="Cross&#45;TU surface for the ra8_ceu driver split." alt="" coords="272,277,417,317"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="309,232,336,275,331,278,305,235"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="320,329,279,374,275,370,316,325"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="376,324,424,370,420,374,372,328"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="327,146,303,183,299,180,323,144"/>
+</map>

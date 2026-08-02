@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/inc/usb_selftest_ospi_rw_steps.h" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/inc/usb_selftest_ospi_rw_steps.h">
+<area shape="rect" id="Node000001" title="Shared tunables + host&#45;side worker seam for the writable&#45;OSPI self&#45;loop." alt="" coords="221,5,413,75"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__ospi__rw_2main_8c.html" title="USB self&#45;loop: HS host WRITE(10)s + reads back the onboard OSPI flash." alt="" coords="5,130,197,185"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="244,83,152,132,149,128,241,79"/>
+<area shape="rect" id="Node000003" href="$usb__selftest__ospi__rw__device_8c.html" title="OSPI&#45;flash bring&#45;up + write&#45;window pre&#45;erase for the writable&#45;OSPI self&#45;loop." alt="" coords="221,123,413,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="320,89,320,122,315,122,315,89"/>
+<area shape="rect" id="Node000004" href="$usb__selftest__ospi__rw__steps_8c.html" title="Host&#45;side step routines + console formatters for the writable&#45;OSPI self&#45;loop." alt="" coords="437,123,629,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="393,79,471,120,469,125,391,83"/>
+</map>

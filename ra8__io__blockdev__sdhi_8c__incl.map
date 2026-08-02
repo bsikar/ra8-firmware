@@ -1,0 +1,45 @@
+<map id="libs/ra8_io/src/ra8_io_blockdev_sdhi.c" name="libs/ra8_io/src/ra8_io_blockdev_sdhi.c">
+<area shape="rect" id="Node000001" title="Native&#45;SDHI block&#45;device backend – an SD card as 512&#45;byte blocks." alt="" coords="299,5,451,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__blockdev__sdhi_8h.html" title="ra8_io block&#45;device backend over the native SDHI SD&#45;card controller." alt="" coords="94,93,269,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="329,48,223,91,221,86,327,43"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="318,313,397,339"/>
+<area shape="poly" id="edge19_Node000001_Node000003" title=" " alt="" coords="361,47,346,69,335,94,326,151,330,208,340,260,351,300,346,301,334,261,324,209,321,150,329,93,341,66,356,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="449,387,519,412"/>
+<area shape="poly" id="edge10_Node000001_Node000004" title=" " alt="" coords="299,32,246,38,187,49,127,68,72,96,45,113,25,129,12,149,8,178,8,254,11,269,21,283,57,309,110,332,175,350,317,377,435,391,434,396,316,382,174,355,108,337,54,314,17,287,6,271,3,254,3,178,7,147,21,126,42,108,69,91,125,63,186,44,245,32,298,26"/>
+<area shape="rect" id="Node000005" href="$ra8__io__blockdev_8h.html" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="71,167,209,192"/>
+<area shape="poly" id="edge20_Node000001_Node000005" title=" " alt="" coords="299,36,236,44,171,57,117,74,97,84,84,95,78,110,84,126,96,142,112,156,109,160,92,145,79,128,73,110,79,92,94,79,115,69,170,51,235,39,298,31"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="677,93,803,119"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="451,40,674,88,673,93,450,46"/>
+<area shape="rect" id="Node000008" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="662,240,762,265"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="452,39,515,59,547,74,578,91,617,123,651,160,700,227,696,230,647,163,613,127,574,96,545,78,513,64,450,44"/>
+<area shape="rect" id="Node000011" href="$ra8__io__blockdev__internal_8h.html" title="Internal vtable type for the ra8_io block&#45;device fabric." alt="" coords="344,93,541,119"/>
+<area shape="poly" id="edge21_Node000001_Node000011" title=" " alt="" coords="393,44,426,81,422,84,389,47"/>
+<area shape="rect" id="Node000012" href="$ra8__sdcard_8h.html" title="SD card driver layered on top of the RA8D2 SDHI peripheral." alt="" coords="497,167,602,192"/>
+<area shape="poly" id="edge25_Node000001_Node000012" title=" " alt="" coords="452,32,480,40,509,52,535,69,556,92,562,107,565,123,561,154,555,153,559,123,557,108,551,95,531,73,506,57,479,45,450,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="191,118,290,264,333,303,329,307,286,267,187,121"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="177,120,156,156,151,153,172,118"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="379,336,453,377,450,382,376,341"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="153,190,190,225,239,263,279,286,318,305,315,310,276,291,236,268,186,229,149,194"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="124,194,105,209,89,226,80,245,80,255,84,264,105,285,141,305,186,324,237,341,344,368,436,387,434,392,343,374,235,346,184,329,138,310,102,289,79,267,75,256,75,244,84,223,102,205,120,190"/>
+<area shape="rect" id="Node000006" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="93,240,168,265"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="141,193,137,227,131,226,136,192"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="168,263,308,307,307,312,166,268"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="154,263,222,298,308,336,436,381,435,386,306,341,219,302,151,268"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="662,267,411,317,410,312,661,261"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="763,260,808,271,849,288,864,298,874,311,876,325,867,340,844,358,810,371,719,389,619,398,534,401,533,395,619,392,718,384,808,366,842,353,863,337,870,324,869,313,861,302,846,293,806,276,762,265"/>
+<area shape="rect" id="Node000009" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="597,313,680,339"/>
+<area shape="poly" id="edge15_Node000008_Node000009" title=" " alt="" coords="702,268,662,306,659,302,698,264"/>
+<area shape="rect" id="Node000010" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="705,313,853,339"/>
+<area shape="poly" id="edge17_Node000008_Node000010" title=" " alt="" coords="725,264,760,301,757,305,721,267"/>
+<area shape="poly" id="edge16_Node000009_Node000004" title=" " alt="" coords="615,341,523,383,521,378,613,336"/>
+<area shape="poly" id="edge18_Node000010_Node000004" title=" " alt="" coords="732,341,533,389,532,384,731,336"/>
+<area shape="poly" id="edge23_Node000011_Node000003" title=" " alt="" coords="441,120,369,301,364,299,436,118"/>
+<area shape="poly" id="edge22_Node000011_Node000004" title=" " alt="" coords="447,118,483,372,478,373,442,119"/>
+<area shape="poly" id="edge24_Node000011_Node000005" title=" " alt="" coords="395,121,203,166,202,161,393,116"/>
+<area shape="poly" id="edge27_Node000012_Node000003" title=" " alt="" coords="535,195,385,307,382,303,532,190"/>
+<area shape="poly" id="edge26_Node000012_Node000004" title=" " alt="" coords="566,190,594,223,603,244,601,266,584,301,560,332,512,380,508,376,556,329,579,298,596,265,598,245,590,225,562,194"/>
+<area shape="rect" id="Node000013" href="$ra8__sdhi_8h.html" title="SD/MMC Host Interface (SDHI) driver scaffold." alt="" coords="497,240,586,265"/>
+<area shape="poly" id="edge28_Node000012_Node000013" title=" " alt="" coords="551,193,547,227,541,226,545,192"/>
+<area shape="poly" id="edge30_Node000013_Node000003" title=" " alt="" coords="513,268,401,311,399,306,511,263"/>
+<area shape="poly" id="edge29_Node000013_Node000004" title=" " alt="" coords="539,267,496,375,491,373,534,265"/>
+</map>

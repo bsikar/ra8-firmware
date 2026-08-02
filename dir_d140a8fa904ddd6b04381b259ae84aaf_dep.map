@@ -1,0 +1,10 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src" name="examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src">
+<area shape="rect" id="node1" href="dir_c2658353bf27f12fe072da12aa9e788e.html" title="inc" alt="" coords="109,125,150,151"/>
+<area shape="rect" id="node2" href="dir_d140a8fa904ddd6b04381b259ae84aaf.html" title="src" alt="" coords="109,52,150,77"/>
+<area shape="poly" id="edge2" href="dir_000357_000143.html" alt="" coords="132,78,132,112,127,112,127,78"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000357_000143.html" title="2" alt="" coords="133,100,142,114"/>
+<area shape="rect" id="node3" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="175,125,220,151"/>
+<area shape="poly" id="edge1" href="dir_000357_000218.html" alt="" coords="142,76,179,113,175,117,139,80"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000357_000218.html" title="5" alt="" coords="175,99,185,114"/>
+<area shape="rect" id="clust1" href="dir_d85788f8f352015d50b3938d176bace8.html" title="usb_host_keyboard" alt="" coords="16,16,163,161"/>
+</map>

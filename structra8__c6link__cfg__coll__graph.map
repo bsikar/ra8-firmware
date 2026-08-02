@@ -1,0 +1,9 @@
+<map id="ra8_c6link_cfg" name="ra8_c6link_cfg">
+<area shape="rect" id="Node000001" title="Everything ra8_c6link_open needs that the link cannot discover." alt="" coords="91,197,207,223"/>
+<area shape="rect" id="Node000002" href="$structra8__c6link__transport.html" title="Function&#45;pointer seam a backend fills so the facade can reach the C6." alt="" coords="5,101,160,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,137,121,172,141,196,137,199,117,175,94,140"/>
+<area shape="rect" id="Node000003" href="$structra8__c6link__event.html" title="One decoded co&#45;processor announcement." alt="" coords="184,101,317,127"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="230,138,164,199,160,195,226,134"/>
+<area shape="rect" id="Node000004" href="$structra8__c6link__mac.html" title="One IEEE 802 address, by value." alt="" coords="189,5,313,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="253,45,253,101,248,101,248,45"/>
+</map>

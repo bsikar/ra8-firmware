@@ -1,0 +1,29 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_priv.c" name="examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_priv.c">
+<area shape="rect" id="Node000001" title="The ESP_PRIV_IF control channel: host capabilities out, INIT in." alt="" coords="517,5,722,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,284,76,309"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="517,44,413,54,301,69,200,87,160,98,130,110,99,127,78,144,61,166,46,197,38,235,39,270,34,271,33,234,41,195,57,163,74,141,96,123,128,106,158,93,199,82,300,64,413,49,516,39"/>
+<area shape="rect" id="Node000003" href="$c6__fwver_8h.html" title="Shared contract for the esp&#45;hosted RPC round&#45;trip application." alt="" coords="141,115,231,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="517,54,387,78,245,111,234,114,232,109,244,105,386,73,516,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="256,108,409,148"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="540,63,404,106,403,101,538,58"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="434,115,607,141"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="593,62,545,107,541,104,589,58"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="632,115,807,141"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="650,58,698,104,695,108,646,62"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="831,108,994,148"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="703,58,841,101,840,106,701,63"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="1019,108,1183,148"/>
+<area shape="poly" id="edge13_Node000001_Node000012" title=" " alt="" coords="723,51,1006,105,1005,110,722,56"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="1207,115,1327,141"/>
+<area shape="poly" id="edge14_Node000001_Node000013" title=" " alt="" coords="723,41,941,65,1069,83,1196,105,1214,109,1213,115,1195,111,1068,89,940,71,722,46"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="150,143,107,164,86,179,68,198,58,215,51,233,44,270,39,269,46,232,53,212,64,194,82,175,104,160,148,138"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="78,203,153,229"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="179,143,136,194,132,191,174,139"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="177,203,336,229"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="198,139,240,191,236,194,193,143"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="360,196,524,236"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="221,138,374,189,372,194,220,143"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="548,203,627,229"/>
+<area shape="poly" id="edge7_Node000003_Node000007" title=" " alt="" coords="220,138,245,145,327,161,391,168,456,176,537,193,547,196,546,201,536,199,455,181,391,174,326,166,244,151,219,143"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="561,231,537,239,412,263,287,280,90,296,89,291,286,275,411,258,536,233,559,226"/>
+</map>

@@ -1,0 +1,24 @@
+<map id="src/secure_app/secure_trng.c" name="src/secure_app/secure_trng.c">
+<area shape="rect" id="Node000001" title="Secure&#45;side TRNG read implementation (host PRNG stub)." alt="" coords="252,5,418,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="216,240,286,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="252,40,190,55,125,80,93,97,64,117,38,141,16,168,8,190,15,207,33,221,61,232,132,244,202,249,202,254,131,250,59,237,30,226,10,210,3,190,11,165,34,137,61,113,90,92,122,75,189,50,251,35"/>
+<area shape="rect" id="Node000003" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="241,93,341,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="327,47,307,83,302,80,322,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="357,167,436,192"/>
+<area shape="poly" id="edge10_Node000001_Node000004" title=" " alt="" coords="345,45,389,153,384,155,340,47"/>
+<area shape="rect" id="Node000007" href="$secure__trng__internal_8h.html" title="Secure&#45;side TRNG read API (RSIP&#45;backed entropy)." alt="" coords="432,93,598,119"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="379,43,477,85,475,90,377,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="277,121,257,141,240,168,237,198,243,227,238,228,232,198,235,166,252,138,274,117"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="309,116,369,157,367,161,306,121"/>
+<area shape="rect" id="Node000005" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="250,167,332,192"/>
+<area shape="poly" id="edge6_Node000003_Node000005" title=" " alt="" coords="294,119,294,153,288,153,288,119"/>
+<area shape="rect" id="Node000006" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="26,167,174,192"/>
+<area shape="poly" id="edge8_Node000003_Node000006" title=" " alt="" coords="261,121,145,164,143,159,259,116"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="374,194,288,236,286,232,372,190"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="287,194,267,229,262,227,282,191"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="126,190,215,232,213,236,123,194"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="542,117,568,131,592,149,606,170,606,182,600,194,579,209,548,222,468,239,378,249,300,253,300,248,378,244,467,234,547,217,576,205,596,190,601,181,601,172,588,153,565,135,540,121"/>
+<area shape="poly" id="edge14_Node000007_Node000004" title=" " alt="" coords="497,121,429,162,426,157,495,116"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="460,167,586,192"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="519,119,523,153,518,153,514,119"/>
+</map>

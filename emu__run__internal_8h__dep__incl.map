@@ -1,0 +1,9 @@
+<map id="tools/ra8_emulator/src/engine/emu_run_internal.h" name="tools/ra8_emulator/src/engine/emu_run_internal.h">
+<area shape="rect" id="Node000001" title="Shared run&#45;loop state + cross&#45;TU run helpers (ra8_emulator internal)." alt="" coords="195,5,349,60"/>
+<area shape="rect" id="Node000002" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="5,115,171,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="214,69,124,117,122,113,211,64"/>
+<area shape="rect" id="Node000003" href="$emu__run__inner_8c.html" title="Inner per&#45;chunk exception&#45;resolve loop (see emu_run_internal.h)." alt="" coords="195,108,349,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="275,74,275,108,269,108,269,74"/>
+<area shape="rect" id="Node000004" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="373,108,528,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="332,64,405,105,403,110,329,69"/>
+</map>

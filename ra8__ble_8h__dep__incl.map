@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/inc/ra8_ble.h" name="libs/ra8_hal/inc/ra8_ble.h">
+<area shape="rect" id="Node000001" title="BLE HCI transport seam (host&#45;side)." alt="" coords="132,5,277,45"/>
+<area shape="rect" id="Node000002" href="$examples_2__unsupported_2threadx__nimble__peripheral_2main_8c.html" title="NimBLE&#45;based Battery Service peripheral on top of ThreadX (RA8D2)." alt="" coords="5,93,207,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="177,57,136,95,132,91,173,53"/>
+<area shape="rect" id="Node000003" href="$ra8__ble_8c.html" title="HCI transport seam (host&#45;side) – in&#45;memory loopback backend." alt="" coords="231,101,376,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="236,53,285,99,282,103,233,57"/>
+</map>

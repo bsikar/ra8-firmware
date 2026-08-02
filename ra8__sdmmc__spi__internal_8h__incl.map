@@ -1,0 +1,21 @@
+<map id="libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_internal.h" name="libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private cross&#45;TU surface for the SPI&#45;mode SD card driver." alt="" coords="22,5,242,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="230,313,301,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="70,48,43,60,22,76,9,96,8,106,11,118,33,167,59,201,93,230,138,263,178,288,219,306,216,311,175,292,135,268,89,234,56,205,29,170,6,120,3,106,4,94,18,73,41,56,68,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="20,93,145,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="122,47,100,83,95,80,118,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="149,240,227,265"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="143,45,160,93,177,165,187,226,182,227,172,166,155,94,138,47"/>
+<area shape="rect" id="Node000005" href="$ra8__sdmmc__spi_8h.html" title="SD card driver in SPI&#45;mode (PMOD&#45;attached cards)." alt="" coords="240,93,376,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="175,43,271,85,268,90,173,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="202,263,244,302,241,306,199,267"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="339,116,392,141,447,176,469,196,483,219,486,242,476,267,450,285,408,300,315,320,314,315,407,295,447,281,471,264,481,242,478,220,465,200,444,180,389,145,337,121"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="300,121,209,231,204,228,296,117"/>
+<area shape="rect" id="Node000006" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="271,167,345,192"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="311,119,311,153,305,153,305,119"/>
+<area shape="rect" id="Node000007" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="303,240,462,265"/>
+<area shape="poly" id="edge11_Node000005_Node000007" title=" " alt="" coords="322,117,341,138,360,165,373,196,381,226,376,227,368,198,355,168,337,142,318,121"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="307,193,275,301,270,299,302,192"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="290,194,221,235,218,230,287,190"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="365,268,298,308,295,304,363,263"/>
+</map>

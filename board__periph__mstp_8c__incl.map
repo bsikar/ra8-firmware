@@ -1,0 +1,18 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_mstp.c" name="tools/ra8_emulator/src/periph/board_periph_mstp.c">
+<area shape="rect" id="Node000001" title="Module Stop Control (MSTPCRA..E) register block for ra8_emulator." alt="" coords="206,5,385,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="260,181,331,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="298,60,298,168,293,168,293,60"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="191,108,258,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="276,62,245,99,241,96,272,58"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="5,108,167,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="232,63,128,105,126,100,230,58"/>
+<area shape="rect" id="Node000006" href="$board__periph__mstp__internal_8h.html" title="Module&#45;private module&#45;stop (MSTP) gate state shared with the core." alt="" coords="333,108,549,133"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="341,58,411,99,408,103,338,62"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="450,181,575,207"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="385,45,491,69,535,86,563,106,569,124,564,142,553,159,540,174,536,170,549,156,560,140,564,124,559,110,532,91,489,74,384,50"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="120,131,249,174,247,179,119,136"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="19,181,153,207"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="89,134,89,168,83,168,83,134"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="418,136,332,178,330,173,416,131"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="454,132,493,170,489,174,451,136"/>
+</map>

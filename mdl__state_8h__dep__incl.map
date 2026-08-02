@@ -1,0 +1,38 @@
+<map id="tools/media_dl/inc/mdl_state.h" name="tools/media_dl/inc/mdl_state.h">
+<area shape="rect" id="Node000001" title="Persistent per&#45;series library state for the media downloader." alt="" coords="768,5,909,45"/>
+<area shape="rect" id="Node000002" href="$mdl__fetch_8h.html" title="State&#45;aware chapter/page download orchestrator for the media downloader." alt="" coords="432,93,573,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="755,51,574,97,573,91,754,45"/>
+<area shape="rect" id="Node000004" href="$tools_2media__dl_2src_2main_8c.html" title="media_dl – host CLI for the e&#45;reader media downloader." alt="" coords="5,269,147,309"/>
+<area shape="poly" id="edge20_Node000001_Node000004" title=" " alt="" coords="754,33,583,46,481,57,377,72,277,92,189,117,119,147,93,164,74,183,65,203,63,226,71,269,66,270,57,226,60,202,70,180,90,160,116,142,187,112,276,87,376,67,480,52,582,41,754,28"/>
+<area shape="rect" id="Node000011" href="$test__media__dl__fetch_8c.html" title="Host unit tests for the #305 resumable/incremental/deduping download loop, driven end&#45;to&#45;end through ..." alt="" coords="833,269,1002,309"/>
+<area shape="poly" id="edge22_Node000001_Node000011" title=" " alt="" coords="848,59,867,133,913,268,908,270,861,134,843,60"/>
+<area shape="rect" id="Node000012" href="$mdl__state_8c.html" title="Persistent per&#45;series library state: parse, serialise (atomic), query." alt="" coords="876,93,1017,133"/>
+<area shape="poly" id="edge21_Node000001_Node000012" title=" " alt="" coords="875,52,924,91,921,95,872,56"/>
+<area shape="rect" id="Node000013" href="$test__media__dl__state_8c.html" title="Host unit tests for the #305 library&#45;state store, its content&#45;identity hashing, and the URL&#45;to&#45;name h..." alt="" coords="1042,93,1211,133"/>
+<area shape="poly" id="edge23_Node000001_Node000013" title=" " alt="" coords="916,47,1064,91,1063,96,914,52"/>
+<area shape="rect" id="Node000003" href="$mdl__pack_8h.html" title="Archive packaging of downloaded page folders for the media_dl CLI." alt="" coords="324,181,465,221"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="470,144,420,183,417,179,466,140"/>
+<area shape="poly" id="edge8_Node000002_Node000004" title=" " alt="" coords="418,120,330,126,234,138,151,156,120,169,98,183,85,203,78,225,76,269,71,269,73,224,80,200,94,179,117,164,149,151,234,132,329,121,418,115"/>
+<area shape="rect" id="Node000005" href="$mdl__pack_8c.html" title="Implementation of the downloaded&#45;folder archive packaging." alt="" coords="336,269,477,309"/>
+<area shape="poly" id="edge17_Node000002_Node000005" title=" " alt="" coords="503,147,495,185,480,223,459,250,435,271,431,267,455,246,475,220,490,183,497,146"/>
+<area shape="rect" id="Node000006" href="$mdl__report_8h.html" title="Human&#45;facing progress and failure reporting for the media_dl CLI." alt="" coords="108,181,249,221"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="420,139,250,184,249,179,418,134"/>
+<area shape="rect" id="Node000007" href="$mdl__report_8c.html" title="Implementation of the media_dl progress + failure presenter." alt="" coords="171,269,312,309"/>
+<area shape="poly" id="edge18_Node000002_Node000007" title=" " alt="" coords="419,134,365,154,314,183,293,203,276,227,252,270,247,268,271,224,289,200,310,179,362,149,417,129"/>
+<area shape="rect" id="Node000008" href="$mdl__fetch_8c.html" title="State&#45;aware, resumable, deduping chapter/page download loop." alt="" coords="667,269,808,309"/>
+<area shape="poly" id="edge9_Node000002_Node000008" title=" " alt="" coords="588,119,621,127,655,139,687,156,714,180,728,201,736,225,741,269,735,270,731,226,723,203,710,183,684,161,653,144,620,132,587,125"/>
+<area shape="rect" id="Node000009" href="$mdl__fetch__internal_8h.html" title="Module&#45;private fetch&#45;loop decisions promoted for host unit tests and the CLI&#39;s end&#45;of&#45;run reporting." alt="" coords="540,181,700,221"/>
+<area shape="poly" id="edge10_Node000002_Node000009" title=" " alt="" coords="541,140,596,179,592,183,538,144"/>
+<area shape="poly" id="edge19_Node000002_Node000011" title=" " alt="" coords="587,130,663,151,741,179,825,223,892,267,889,271,823,228,739,184,661,156,586,135"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="312,228,146,272,145,267,311,222"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="402,235,407,269,401,269,397,235"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="147,232,100,271,97,267,144,228"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="203,231,230,268,225,271,199,234"/>
+<area shape="poly" id="edge11_Node000009_Node000004" title=" " alt="" coords="527,218,159,272,147,274,146,269,158,267,526,213"/>
+<area shape="poly" id="edge14_Node000009_Node000005" title=" " alt="" coords="562,229,454,272,452,267,560,224"/>
+<area shape="poly" id="edge15_Node000009_Node000007" title=" " alt="" coords="527,226,325,272,313,275,312,269,323,267,526,221"/>
+<area shape="poly" id="edge13_Node000009_Node000008" title=" " alt="" coords="659,228,713,267,710,271,656,232"/>
+<area shape="rect" id="Node000010" href="$mdl__discover_8c.html" title="Governed search/browse: build the query URL, fetch it politely, parse the hits, and present them hone..." alt="" coords="501,269,643,309"/>
+<area shape="poly" id="edge12_Node000009_Node000010" title=" " alt="" coords="605,235,585,270,580,268,600,232"/>
+<area shape="poly" id="edge16_Node000009_Node000011" title=" " alt="" coords="699,223,853,267,851,272,698,228"/>
+</map>

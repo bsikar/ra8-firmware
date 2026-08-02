@@ -1,0 +1,16 @@
+<map id="libs/ra8_hal/inc/ra8_lvd.h" name="libs/ra8_hal/inc/ra8_lvd.h">
+<area shape="rect" id="Node000001" title="Programmable Voltage Detection (PVD / LVD) HAL driver." alt="" coords="199,5,344,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lvd__monitor__demo_2main_8c.html" title="Safe LVD / PVD VCC&#45;monitor demo for the EK&#45;RA8D2." alt="" coords="5,93,183,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="225,54,145,96,143,91,222,49"/>
+<area shape="rect" id="Node000003" href="$ra8__lvd_8c.html" title="Programmable Voltage Detection (PVD / LVD) driver implementation." alt="" coords="125,196,271,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="262,59,208,196,203,195,257,57"/>
+<area shape="rect" id="Node000004" href="$ra8__lvd__events_8c.html" title="PVD / LVD security attribution, n&#45;channel lock, ELC / standby helpers, filter&#45;timing math,..." alt="" coords="295,196,440,236"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="275,59,282,102,299,147,319,173,342,194,338,198,315,176,294,149,277,103,270,59"/>
+<area shape="rect" id="Node000005" href="$ra8__lvd__internal_8h.html" title="Test&#45;access surface for ra8_lvd internal helpers (MC/DC)." alt="" coords="309,101,455,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="306,52,361,99,358,103,303,56"/>
+<area shape="rect" id="Node000006" href="$ra8__lvd__runtime_8c.html" title="PVD / LVD runtime control: IRQ / reset / CMPE toggles, filter, hysteresis, negate,..." alt="" coords="464,196,609,236"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="358,39,416,59,444,73,469,91,492,116,510,144,533,195,528,197,506,146,488,119,466,95,441,78,413,64,357,44"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="334,149,236,198,234,194,331,144"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="380,155,373,196,368,196,374,154"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="426,145,507,194,504,198,424,150"/>
+</map>

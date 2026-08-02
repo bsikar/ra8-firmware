@@ -1,0 +1,7 @@
+<map id="lcd_ctx_t" name="lcd_ctx_t">
+<area shape="rect" id="Node000001" title="LCD backend private context attached to the PAL handle." alt="" coords="91,101,171,127"/>
+<area shape="rect" id="Node000002" href="$structdisplay__caps__t.html" title="Capabilities a backend reports after display_init." alt="" coords="5,5,124,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,40,125,100,121,103,79,43"/>
+<area shape="rect" id="Node000003" href="$structdisplay__fb__t.html" title="Framebuffer descriptor returned by display_get_framebuffer." alt="" coords="149,5,250,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="185,43,142,103,138,100,181,40"/>
+</map>

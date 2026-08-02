@@ -1,0 +1,12 @@
+<map id="libs/ra8_book/src/ra8_book_internal.h" name="libs/ra8_book/src/ra8_book_internal.h">
+<area shape="rect" id="Node000001" title="ra8_book DOM&#45;walk helpers shared across the library&#39;s translation units." alt="" coords="88,5,245,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="138,48,74,88,71,84,135,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="195,167,266,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="157,47,142,81,140,100,145,117,164,141,189,158,186,162,161,145,140,120,135,100,137,80,152,45"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="155,93,280,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="181,44,205,80,200,83,177,47"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="305,93,383,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="210,43,307,85,304,90,208,48"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="327,121,262,162,259,157,324,116"/>
+</map>

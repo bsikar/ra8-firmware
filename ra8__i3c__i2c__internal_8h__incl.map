@@ -1,0 +1,18 @@
+<map id="libs/ra8_hal/src/ra8_i3c_i2c_internal.h" name="libs/ra8_hal/src/ra8_i3c_i2c_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_i3c_i2c internal helpers (MC/DC)." alt="" coords="140,5,285,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="187,240,257,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="286,29,319,36,353,48,383,66,408,92,418,116,416,139,403,161,382,180,327,213,271,238,269,233,325,209,379,176,398,157,411,137,413,117,404,95,380,71,350,53,318,41,285,34"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="159,167,285,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="217,46,223,153,218,153,211,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,167,84,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="141,44,96,63,76,77,59,95,47,123,45,153,39,152,42,122,54,92,72,73,93,59,139,39"/>
+<area shape="rect" id="Node000005" href="$ra8__i3c__i2c_8h.html" title="IIC_B (I3C unified IP, I2C&#45;only mode) controller driver." alt="" coords="69,93,175,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="192,48,148,86,144,82,189,44"/>
+<area shape="rect" id="Node000006" href="$ra8__i3c__i2c__regs_8h.html" title="IIC_B (I3C&#45;based I2C) register layout for the Renesas RA8D2." alt="" coords="251,93,393,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="241,43,296,83,293,87,238,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="74,190,182,232,180,237,72,194"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="126,118,133,152,150,191,169,212,192,230,188,234,165,216,145,193,128,154,121,119"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="111,121,69,159,66,155,108,117"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="323,119,316,154,299,193,279,216,256,234,252,230,275,212,294,191,311,152,318,118"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="307,121,251,161,248,156,304,117"/>
+</map>

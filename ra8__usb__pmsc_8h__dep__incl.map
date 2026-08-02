@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_usb_pmsc.h" name="libs/ra8_hal/inc/ra8_usb_pmsc.h">
+<area shape="rect" id="Node000001" title="Native USB device&#45;side MSC (Mass Storage Class) class layer." alt="" coords="107,5,252,45"/>
+<area shape="rect" id="Node000002" href="$ra8__usb__pmsc_8c.html" title="Native USB device&#45;side MSC (Mass Storage Class) class layer implementation." alt="" coords="5,181,151,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="128,55,106,72,88,95,80,116,76,139,78,181,72,181,71,139,75,115,84,92,102,69,125,50"/>
+<area shape="rect" id="Node000003" href="$ra8__usb__pmsc__internal_8h.html" title="Cross&#45;TU surface shared between the device&#45;MSC BOT statemachine (ra8_usb_pmsc.c) and the SCSI command..." alt="" coords="98,93,261,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="182,59,182,93,177,93,177,59"/>
+<area shape="rect" id="Node000004" href="$ra8__usb__pmsc__scsi_8c.html" title="Native USB device&#45;side MSC (Mass Storage Class) SCSI command handlers." alt="" coords="208,181,353,221"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="234,50,257,69,275,92,284,115,288,139,286,181,281,181,282,139,279,116,270,95,253,72,230,55"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="148,144,102,183,99,179,145,140"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="214,140,260,179,257,183,211,144"/>
+</map>

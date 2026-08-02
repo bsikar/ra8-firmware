@@ -1,0 +1,15 @@
+<map id="libs/ra8_io/inc/ra8_io_blockdev_sdspi.h" name="libs/ra8_io/inc/ra8_io_blockdev_sdspi.h">
+<area shape="rect" id="Node000001" title="ra8_io block&#45;device backend over the micro&#45;SD&#45;in&#45;SPI&#45;mode driver." alt="" coords="48,5,208,45"/>
+<area shape="rect" id="Node000002" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="101,240,179,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="141,45,159,93,162,129,161,166,150,227,144,226,155,166,157,130,153,94,136,47"/>
+<area shape="rect" id="Node000004" href="$ra8__io__blockdev_8h.html" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="5,93,144,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="117,47,93,83,88,80,113,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="27,313,98,339"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="129,267,87,306,84,302,126,263"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="86,118,117,166,137,226,132,227,112,168,82,120"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="59,121,37,141,18,168,14,185,12,203,19,239,33,273,49,301,44,303,28,275,14,241,7,203,8,184,14,166,33,137,56,117"/>
+<area shape="rect" id="Node000005" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="28,167,103,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="76,119,71,154,66,153,70,119"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="79,190,120,229,116,232,75,194"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="68,193,66,300,60,300,62,192"/>
+</map>

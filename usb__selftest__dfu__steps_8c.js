@@ -1,0 +1,27 @@
+var usb__selftest__dfu__steps_8c =
+[
+    [ "dfu_ctrl_get_dev_desc", "usb__selftest__dfu__steps_8c.html#a8d4cb1284127e0955e61879b0b677ae1", null ],
+    [ "dfu_dnload_block", "usb__selftest__dfu__steps_8c.html#a83a2e00c31035f26f4f8dedb96e8d528", null ],
+    [ "dfu_download_all", "usb__selftest__dfu__steps_8c.html#a4c201b6fc410618d638e2b3dcb37faa7", null ],
+    [ "dfu_enum_hunt", "usb__selftest__dfu__steps_8c.html#abf9b24dd1a5a0afe93557a8859844282", null ],
+    [ "dfu_enum_set_address", "usb__selftest__dfu__steps_8c.html#aa168cb65365d6e3ecf76621d4faefd13", null ],
+    [ "dfu_enum_set_config", "usb__selftest__dfu__steps_8c.html#a8c8014f4c0d331ffe1d21d04b9f3c1a8", null ],
+    [ "dfu_getstatus", "usb__selftest__dfu__steps_8c.html#a588a4a04233d9ab2a29f2e8b07df47d5", null ],
+    [ "dfu_host_enumerate", "usb__selftest__dfu__steps_8c.html#a368f69381bd0c982ac3dd24a37903f1a", null ],
+    [ "dfu_host_pass", "usb__selftest__dfu__steps_8c.html#a94ab5f29f845213cc3b42ceb5451748a", null ],
+    [ "dfu_nibble_to_hex", "usb__selftest__dfu__steps_8c.html#ab49eae0c04e1d0f7a08c800244641e59", null ],
+    [ "dfu_pattern_fill", "usb__selftest__dfu__steps_8c.html#a185347b0b85ddbd1269c6756c86f7c58", null ],
+    [ "dfu_print", "usb__selftest__dfu__steps_8c.html#aed54fe4d9a3e4b85cbe3329db3d7702b", null ],
+    [ "dfu_print_dec", "usb__selftest__dfu__steps_8c.html#ae98f74ed405378824de67b244d7b5dc2", null ],
+    [ "dfu_print_fail", "usb__selftest__dfu__steps_8c.html#a24d74d26066f13e12de9107e07360e83", null ],
+    [ "dfu_print_hex", "usb__selftest__dfu__steps_8c.html#ad22dd0284da7b198e94d546f84b4f522", null ],
+    [ "dfu_sci_write", "usb__selftest__dfu__steps_8c.html#a4e03c88386a59f8508136e9667babcd7", null ],
+    [ "dfu_str_len", "usb__selftest__dfu__steps_8c.html#ad651eb43d32168bbf035e9bac78bd840", null ],
+    [ "dfu_upload_verify", "usb__selftest__dfu__steps_8c.html#afd8ce63b6fa457f22742d8b4518a4a4b", null ],
+    [ "dfu_wait_state", "usb__selftest__dfu__steps_8c.html#a2df46e6c69d6ef88f20a7e7026395a72", null ],
+    [ "s_dbg_blocks_ok", "usb__selftest__dfu__steps_8c.html#a2eeaa8beff2b2543e61a2e658f97483e", null ],
+    [ "s_dbg_mismatch", "usb__selftest__dfu__steps_8c.html#a8fcb81bd815562a429103924e7c7e9f1", null ],
+    [ "s_dbg_pass_count", "usb__selftest__dfu__steps_8c.html#a5dd48bd5144acfcc5212a827b1b6b7e7", null ],
+    [ "s_dbg_phase", "usb__selftest__dfu__steps_8c.html#a0518c9d440ea87f2ee011b86b6ac4280", null ],
+    [ "s_dbg_pid", "usb__selftest__dfu__steps_8c.html#a9fa60fdf17c8347fce154032473de990", null ]
+];

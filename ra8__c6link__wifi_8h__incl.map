@@ -1,0 +1,16 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link_wifi.h" name="libs/ra8_c6link/inc/ra8_c6link_wifi.h">
+<area shape="rect" id="Node000001" title="Wi&#45;Fi station bring&#45;up and association over the C6 link." alt="" coords="55,5,194,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="10,313,81,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,47,56,98,33,131,17,167,8,216,16,265,32,301,27,303,11,266,3,216,12,166,29,128,52,95,100,44"/>
+<area shape="rect" id="Node000003" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="74,93,175,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="127,46,127,79,122,79,122,46"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="166,240,245,265"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="150,44,201,94,225,128,243,166,245,183,242,200,227,230,222,227,237,198,240,183,238,167,221,131,197,98,147,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="91,121,57,140,42,152,31,168,20,201,20,237,27,271,37,300,32,301,22,272,15,238,15,200,26,165,38,149,54,135,88,116"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="41,167,208,192"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="127,119,127,153,122,153,122,119"/>
+<area shape="poly" id="edge8_Node000003_Node000005" title=" " alt="" coords="159,116,193,135,209,149,221,165,226,181,227,197,220,228,215,226,222,197,221,182,217,168,205,152,190,140,157,121"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="120,194,61,303,56,300,115,191"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="139,190,184,229,180,233,136,194"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="181,268,85,310,83,305,179,263"/>
+</map>

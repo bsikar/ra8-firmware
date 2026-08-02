@@ -1,0 +1,35 @@
+<map id="libs/ra8_hal/src/ra8_mipi_phy_internal.h" name="libs/ra8_hal/src/ra8_mipi_phy_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private link seam shared between the MIPI D&#45;PHY drivertranslation units." alt="" coords="154,5,313,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="157,460,227,485"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="155,47,104,66,56,94,37,111,22,131,12,153,8,178,8,327,12,351,21,373,36,392,55,409,100,436,145,455,143,460,98,441,52,413,33,396,17,376,6,353,3,328,3,178,6,151,17,128,33,107,53,89,102,61,153,42"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="385,460,511,485"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="314,28,390,41,430,52,467,67,501,86,528,111,546,141,552,178,552,328,544,366,525,401,501,430,476,453,473,449,497,427,521,398,539,364,547,327,547,178,541,143,524,114,498,90,465,71,428,57,389,46,313,34"/>
+<area shape="rect" id="Node000004" href="$ra8__mipi__phy_8h.html" title="MIPI D&#45;PHY driver – physical layer shared by DSI and CSI." alt="" coords="173,93,293,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="236,46,236,79,231,79,231,46"/>
+<area shape="rect" id="Node000005" href="$ra8__mipi__phy__api_8h.html" title="MIPI D&#45;PHY driver – public function prototypes." alt="" coords="272,167,421,192"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="253,116,318,157,315,162,250,121"/>
+<area shape="rect" id="Node000009" href="$ra8__mipi__phy__types_8h.html" title="MIPI D&#45;PHY driver – shared enums, structs, and callback typedef." alt="" coords="144,240,309,265"/>
+<area shape="poly" id="edge23_Node000004_Node000009" title=" " alt="" coords="235,119,230,226,225,226,230,119"/>
+<area shape="rect" id="Node000010" href="$ra8__mipi__phy__ops_8h.html" title="MIPI D&#45;PHY driver – runtime operations prototypes." alt="" coords="44,167,196,192"/>
+<area shape="poly" id="edge18_Node000004_Node000010" title=" " alt="" coords="217,121,151,162,148,157,214,116"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="373,190,406,210,438,238,457,263,468,285,473,310,468,339,454,382,443,398,424,414,380,440,331,457,284,467,241,472,241,467,283,462,330,452,378,435,421,410,439,394,449,379,463,338,467,310,463,287,452,266,434,242,403,214,370,194"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="183,313,262,339"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="348,193,342,228,335,248,323,267,297,292,267,310,265,305,294,287,319,264,330,246,337,226,343,192"/>
+<area shape="rect" id="Node000007" href="$ra8__mipi__phy__regs_8h.html" title="MIPI D&#45;PHY register layout for the RA8D2." alt="" coords="296,313,453,339"/>
+<area shape="poly" id="edge8_Node000005_Node000007" title=" " alt="" coords="370,190,396,210,418,239,422,257,418,274,399,305,394,302,413,272,417,257,414,241,393,214,366,194"/>
+<area shape="poly" id="edge14_Node000005_Node000009" title=" " alt="" coords="329,194,260,235,257,230,326,190"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="223,340,200,447,195,446,218,339"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="350,341,311,361,270,389,237,420,211,451,207,447,233,416,266,385,308,357,347,336"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="389,337,407,359,425,385,438,416,446,446,441,447,433,418,420,388,403,362,384,341"/>
+<area shape="rect" id="Node000008" href="$ra8__glcdc__regs_8h.html" title="Graphics LCD Controller (GLCDC) register layout for the RA8D2." alt="" coords="280,387,411,412"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="372,340,358,375,353,373,367,338"/>
+<area shape="poly" id="edge12_Node000008_Node000002" title=" " alt="" coords="322,414,230,457,228,452,320,410"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="363,410,421,450,418,454,360,414"/>
+<area shape="poly" id="edge15_Node000009_Node000002" title=" " alt="" coords="213,268,191,288,174,314,167,349,169,385,175,418,184,446,179,448,170,420,163,385,162,348,170,312,187,284,209,264"/>
+<area shape="poly" id="edge16_Node000009_Node000006" title=" " alt="" coords="229,266,227,300,221,300,223,266"/>
+<area shape="poly" id="edge17_Node000009_Node000007" title=" " alt="" coords="252,263,339,305,337,310,249,268"/>
+<area shape="poly" id="edge19_Node000010_Node000002" title=" " alt="" coords="121,193,117,225,119,265,134,340,162,411,180,447,176,449,158,413,129,341,113,266,112,225,115,192"/>
+<area shape="poly" id="edge20_Node000010_Node000006" title=" " alt="" coords="121,192,122,226,126,246,134,264,156,287,183,305,180,309,152,292,130,267,121,248,117,227,116,192"/>
+<area shape="poly" id="edge21_Node000010_Node000007" title=" " alt="" coords="197,187,261,205,293,219,323,238,350,267,367,299,363,302,346,270,320,242,291,224,259,210,195,192"/>
+<area shape="poly" id="edge22_Node000010_Node000009" title=" " alt="" coords="139,190,199,230,196,235,136,194"/>
+</map>

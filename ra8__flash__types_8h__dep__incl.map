@@ -1,0 +1,34 @@
+<map id="libs/ra8_hal/inc/ra8_flash_types.h" name="libs/ra8_hal/inc/ra8_flash_types.h">
+<area shape="rect" id="Node000001" title="Code MRAM driver – shared types (enums, structs, callback typedef)." alt="" coords="797,5,943,45"/>
+<area shape="rect" id="Node000002" href="$ra8__flash_8h.html" title="Code MRAM + Extra MRAM + Option&#45;Setting driver – DANGEROUS, brick&#45;capable." alt="" coords="759,189,904,229"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="866,59,838,189,833,188,861,58"/>
+<area shape="rect" id="Node000012" href="$ra8__flash__core_8h.html" title="Code MRAM + Extra MRAM + Option&#45;Setting driver – core API." alt="" coords="908,93,1053,133"/>
+<area shape="poly" id="edge14_Node000001_Node000012" title=" " alt="" coords="907,52,958,91,955,95,904,56"/>
+<area shape="rect" id="Node000014" href="$ra8__flash__fsp_8h.html" title="Code MRAM driver – FSP r_mram parity surface." alt="" coords="687,93,832,133"/>
+<area shape="poly" id="edge17_Node000001_Node000014" title=" " alt="" coords="836,56,785,95,782,91,833,52"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2ota__ab__orchestration_2main_8c.html" title="A/B OTA orchestration demo: stage &#45;&gt; verify &#45;&gt; commit / rollback over MRAM." alt="" coords="5,284,228,339"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="745,221,517,247,241,287,229,289,228,284,240,281,516,242,744,216"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2ra8__ftl__demo_2main_8c.html" title="Wear&#45;levelled block I/O + power&#45;cycle survival over the FTL (#258)." alt="" coords="253,284,426,339"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="746,227,601,253,439,287,427,289,426,284,437,281,600,248,745,222"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__mram__demo_2main_8c.html" title="ra8_io fabric over on&#45;chip extra&#45;MRAM (data flash) backend (#155/#156)." alt="" coords="450,284,623,339"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="764,236,615,286,613,281,763,231"/>
+<area shape="rect" id="Node000006" href="$ra8__dfu__program_8c.html" title="MRAM slot program / verify for the USB&#45;DFU bootloader core." alt="" coords="647,291,794,331"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="802,240,743,293,740,289,799,236"/>
+<area shape="rect" id="Node000007" href="$ra8__flash_8c.html" title="Code&#45;MRAM + Extra&#45;MRAM + Option&#45;Setting driver implementation – DANGEROUS." alt="" coords="721,387,867,427"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="828,242,800,387,795,386,823,241"/>
+<area shape="rect" id="Node000008" href="$ra8__flash__config_8c.html" title="MRAM configuration&#45;set, ARC counters + extra&#45;MRAM programming – DANGEROUS." alt="" coords="891,387,1036,427"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="850,240,877,286,909,337,948,385,944,388,905,340,872,289,845,242"/>
+<area shape="rect" id="Node000009" href="$ra8__flash__internal_8h.html" title="Test&#45;access surface for ra8_flash internal helpers (MC/DC)." alt="" coords="920,291,1065,331"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="875,234,964,289,961,294,872,238"/>
+<area shape="rect" id="Node000010" href="$ra8__flash__irq_8c.html" title="MRAM IRQ enables + dispatcher and FSP r_mram parity surface – DANGEROUS." alt="" coords="1060,387,1205,427"/>
+<area shape="poly" id="edge12_Node000002_Node000010" title=" " alt="" coords="906,230,917,233,965,243,1004,247,1040,256,1080,282,1101,306,1116,334,1132,386,1127,387,1111,336,1096,309,1076,286,1038,261,1003,252,964,248,916,239,905,235"/>
+<area shape="rect" id="Node000011" href="$ra8__io__blockdev__mram_8c.html" title="MRAM block&#45;device backend – a hard&#45;fenced data&#45;MRAM window as blocks." alt="" coords="1141,291,1305,331"/>
+<area shape="poly" id="edge13_Node000002_Node000011" title=" " alt="" coords="905,230,917,233,1020,258,1123,281,1152,289,1150,294,1121,287,1019,263,916,239,903,235"/>
+<area shape="poly" id="edge9_Node000009_Node000007" title=" " alt="" coords="941,340,835,389,833,384,939,335"/>
+<area shape="poly" id="edge10_Node000009_Node000008" title=" " alt="" coords="985,345,972,387,967,386,980,344"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="1034,337,1106,384,1103,389,1031,341"/>
+<area shape="poly" id="edge16_Node000012_Node000002" title=" " alt="" coords="940,143,863,191,860,186,938,138"/>
+<area shape="rect" id="Node000013" href="$ra8__devcfg__store__extra__mram_8c.html" title="Production ra8_devcfg_store_t binding over the extra&#45;MRAM window." alt="" coords="929,181,1107,236"/>
+<area shape="poly" id="edge15_Node000012_Node000013" title=" " alt="" coords="996,145,1010,180,1005,182,991,147"/>
+<area shape="poly" id="edge18_Node000014_Node000002" title=" " alt="" coords="784,142,819,187,815,190,780,146"/>
+</map>

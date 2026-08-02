@@ -1,0 +1,27 @@
+var structemu__run__cfg__t =
+[
+    [ "click_x", "structemu__run__cfg__t.html#a1e72e11a4df779120961d4ae84a4346c", null ],
+    [ "click_y", "structemu__run__cfg__t.html#a163ffcff5ccec532ab35756b5539a895", null ],
+    [ "dump_sym_addrs", "structemu__run__cfg__t.html#a6583d6de0207a59dba9843eda3c39ff8", null ],
+    [ "dump_sym_n", "structemu__run__cfg__t.html#aef75bed109fe7721595b5f2092ab689d", null ],
+    [ "dump_sym_names", "structemu__run__cfg__t.html#ae8e2e0f832eb2a938af6dd4189b78c4e", null ],
+    [ "elf", "structemu__run__cfg__t.html#a52e0d04059eaa516dbb3fd45afa970bf", null ],
+    [ "elf_len", "structemu__run__cfg__t.html#aa260b6a89e8439d61c89d82f53fbe129", null ],
+    [ "initial_pc", "structemu__run__cfg__t.html#a412af86e3ec0d258d49e3c8b93021039", null ],
+    [ "ppm_path", "structemu__run__cfg__t.html#a44e5b52a542d662c59ccd9fff45d25a6", null ],
+    [ "reboot_count", "structemu__run__cfg__t.html#aa57b9aefbf6eb80e61c3966d73bbfb07", null ],
+    [ "record_dir", "structemu__run__cfg__t.html#a276eca00b7b4d5696918427504b6c377", null ],
+    [ "record_secs", "structemu__run__cfg__t.html#adde38820a50a0190a711eeee65c5eff5", null ],
+    [ "rotate_deg", "structemu__run__cfg__t.html#a9650ddfdc5763354fef3247c94dfbfcf", null ],
+    [ "save_sd_path", "structemu__run__cfg__t.html#a885a78b282df7e557c1afd7667bea5b7", null ],
+    [ "stop_sym_addr", "structemu__run__cfg__t.html#aa05bdea31724b160a8e257e30b5b200c", null ],
+    [ "stop_sym_thresh", "structemu__run__cfg__t.html#a507b15242003bbd9a109e4590ebdea23", null ],
+    [ "uc", "structemu__run__cfg__t.html#a62464b7043fbdc863ca9d9be6875ae24", null ],
+    [ "view_h", "structemu__run__cfg__t.html#acd606713c1ca2e7a4b593988a5ab747a", null ],
+    [ "view_w", "structemu__run__cfg__t.html#af18e6138b969dfa0c027e8f50f69d13e", null ],
+    [ "vtor_base", "structemu__run__cfg__t.html#ad76aef861d9fbc89707c7a36169d1775", null ],
+    [ "want_click", "structemu__run__cfg__t.html#a2c754844ac6d9e8f357021591ba3b7cc", null ],
+    [ "want_trace", "structemu__run__cfg__t.html#a43998476fdc8beb8b738e32cb24ed4a0", null ],
+    [ "want_view", "structemu__run__cfg__t.html#a32e51e09a150d6158112f1bef15652f5", null ],
+    [ "win_title", "structemu__run__cfg__t.html#a306ebf7eae0ced5ac74f06b91e500ee6", null ]
+];

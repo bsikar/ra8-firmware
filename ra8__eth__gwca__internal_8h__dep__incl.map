@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/src/ra8_eth_gwca_internal.h" name="libs/ra8_hal/src/ra8_eth_gwca_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU shared surface for the ra8_eth_gwca driver split." alt="" coords="173,5,333,45"/>
+<area shape="rect" id="Node000002" href="$ra8__eth__gwca_8c.html" title="Ethernet CPU Agent driver implementation." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="203,54,117,96,115,91,201,49"/>
+<area shape="rect" id="Node000003" href="$ra8__eth__gwca__default_8c.html" title="Ethernet CPU Agent driver – one&#45;call default&#45;state API." alt="" coords="175,93,330,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="255,59,255,93,250,93,250,59"/>
+<area shape="rect" id="Node000004" href="$ra8__eth__gwca__queue_8c.html" title="Ethernet CPU Agent driver – per&#45;queue descriptor + ring primitives." alt="" coords="354,93,503,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="305,49,391,91,389,96,302,54"/>
+</map>

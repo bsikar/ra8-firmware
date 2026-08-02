@@ -1,0 +1,5 @@
+<map id="fmt_reassemble_ws_t" name="fmt_reassemble_ws_t">
+<area shape="rect" id="Node000001" title="Everything one reassembly pass needs: the reader, the sizes, the buffers." alt="" coords="5,101,171,127"/>
+<area shape="rect" id="Node000002" href="$structra8__jof__memstore__t.html" title="Append&#45;only memory store: the simplest atlas backing (RAM/SDRAM)." alt="" coords="11,5,165,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,45,91,101,85,101,85,45"/>
+</map>

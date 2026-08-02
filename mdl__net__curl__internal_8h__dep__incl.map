@@ -1,0 +1,7 @@
+<map id="tools/media_dl/src/mdl_net_curl_internal.h" name="tools/media_dl/src/mdl_net_curl_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private libcurl&#45;backend helpers promoted for host unit tests." alt="" coords="73,5,252,45"/>
+<area shape="rect" id="Node000002" href="$mdl__net__curl_8c.html" title="libcurl host backend registered through the mdl_net vtable seam." alt="" coords="5,93,147,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,57,97,95,93,91,132,53"/>
+<area shape="rect" id="Node000003" href="$test__media__dl__net_8c.html" title="Host unit tests for the mdl_net vtable seam and the politeness clock." alt="" coords="171,93,328,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="193,53,232,91,228,95,190,57"/>
+</map>

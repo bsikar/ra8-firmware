@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/vector_table.c" name="examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/vector_table.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 vector table and default interrupt handlers for RA8D2." alt="" coords="5,5,217,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="76,108,147,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="114,60,114,94,109,94,109,60"/>
+</map>

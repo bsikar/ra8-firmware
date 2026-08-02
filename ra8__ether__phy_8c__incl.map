@@ -1,0 +1,25 @@
+<map id="libs/ra8_hal/src/ra8_ether_phy.c" name="libs/ra8_hal/src/ra8_ether_phy.c">
+<area shape="rect" id="Node000001" title="Generic Ethernet PHY abstraction (MDIO Clause&#45;22)." alt="" coords="162,5,307,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ether__phy_8h.html" title="Generic Ethernet PHY abstraction (MDIO Clause&#45;22 + auto&#45;neg)." alt="" coords="28,93,153,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="201,48,125,89,122,84,199,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="122,240,193,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="162,30,123,36,83,48,47,67,18,95,9,114,10,134,19,153,35,172,77,205,122,232,119,236,74,210,31,175,15,156,5,135,4,113,14,92,44,63,81,43,122,31,161,25"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="79,167,158,192"/>
+<area shape="poly" id="edge14_Node000001_Node000004" title=" " alt="" coords="223,47,167,120,138,157,134,154,163,117,218,44"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="404,93,529,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="291,43,420,86,419,91,289,48"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="229,93,329,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="248,44,268,80,263,83,243,47"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="407,167,489,192"/>
+<area shape="poly" id="edge15_Node000001_Node000007" title=" " alt="" coords="267,43,341,91,425,156,422,160,338,96,265,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="84,120,68,154,65,173,69,191,89,214,115,232,112,236,85,218,64,193,59,173,63,152,80,118"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="98,118,112,153,107,155,93,120"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="127,191,147,227,142,229,123,194"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="269,121,223,168,176,230,171,227,219,165,265,117"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="254,121,158,163,156,159,252,116"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="307,116,409,159,406,164,305,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="234,167,382,192"/>
+<area shape="poly" id="edge12_Node000006_Node000008" title=" " alt="" coords="286,118,300,153,295,155,281,120"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="407,193,207,242,205,237,406,188"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="285,194,195,236,193,232,283,190"/>
+</map>

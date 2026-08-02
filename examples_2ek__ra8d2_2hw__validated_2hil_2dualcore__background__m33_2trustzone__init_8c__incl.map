@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/trustzone_init.c" name="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/trustzone_init.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 TrustZone&#45;M Security Attribution Unit (SAU) bring&#45;up." alt="" coords="5,5,251,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="7,108,129,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="112,62,86,98,82,95,107,59"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="154,108,225,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="149,59,175,95,171,98,145,62"/>
+</map>

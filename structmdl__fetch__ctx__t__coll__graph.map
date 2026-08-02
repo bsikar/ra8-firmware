@@ -1,0 +1,37 @@
+<map id="mdl_fetch_ctx_t" name="mdl_fetch_ctx_t">
+<area shape="rect" id="Node000001" title="Everything mdl_fetch_run needs, injected for testability." alt="" coords="1276,219,1403,244"/>
+<area shape="rect" id="Node000002" href="$structmdl__session__t.html" title="One download session&#39;s identity and robots.txt state." alt="" coords="1004,59,1119,84"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1133,71,1194,83,1225,94,1254,109,1283,134,1306,164,1335,217,1330,220,1302,167,1279,138,1250,114,1223,99,1193,88,1132,77"/>
+<area shape="rect" id="Node000003" href="$structmdl__net__iface__t.html" title="A network backend handle: an immutable method table plus its state." alt="" coords="727,5,854,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="868,28,957,45,1008,56,1007,61,955,50,867,33"/>
+<area shape="rect" id="Node000004" href="$structmdl__robots__cache__t.html" title="Fixed&#45;size per&#45;host robots.txt cache for one run." alt="" coords="715,59,867,84"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="881,69,1004,69,1004,74,881,74"/>
+<area shape="rect" id="Node000005" href="$structmdl__robots__cache__entry__t.html" title="One host&#39;s cached robots.txt outcome." alt="" coords="429,59,623,84"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="637,69,714,69,714,74,637,74"/>
+<area shape="rect" id="Node000006" href="$structmdl__robots__t.html" title="Rules and crawl&#45;delay for the group matching our user&#45;agent." alt="" coords="233,59,340,84"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="354,69,429,69,429,74,354,74"/>
+<area shape="rect" id="Node000007" href="$structmdl__robots__rule__t.html" title="One Allow/Disallow rule from the selected group." alt="" coords="5,59,144,84"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="158,69,233,69,233,74,158,74"/>
+<area shape="rect" id="Node000008" href="$structmdl__state__t.html" title="One series&#39; complete persistent state (declare at file scope)." alt="" coords="1012,112,1111,137"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1125,128,1188,140,1253,162,1295,189,1327,216,1324,220,1292,193,1251,167,1187,145,1124,133"/>
+<area shape="rect" id="Node000009" href="$structmdl__chapter__rec__t.html" title="One chapter&#39;s coverage in library state." alt="" coords="719,112,862,137"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="876,122,1012,122,1012,127,876,127"/>
+<area shape="rect" id="Node000010" href="$structmdl__page__rec__t.html" title="One page&#39;s dedup/verify record in the series&#45;wide pool." alt="" coords="728,165,853,191"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="866,166,955,150,1016,135,1017,140,957,155,867,171"/>
+<area shape="rect" id="Node000011" href="$structmdl__site__t.html" title="One site&#39;s scraping rules (all data, no logic)." alt="" coords="1016,165,1107,191"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1121,182,1253,205,1297,216,1296,221,1251,210,1120,188"/>
+<area shape="rect" id="Node000012" href="$structmdl__governor__t.html" title="Closed&#45;loop per&#45;host politeness governor (rate + backoff + concurrency)." alt="" coords="999,219,1123,244"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1137,229,1276,229,1276,234,1137,234"/>
+<area shape="rect" id="Node000013" href="$structmdl__gov__cfg__t.html" title="Per&#45;site politeness tunables the governor is initialised with." alt="" coords="732,219,849,244"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="863,229,999,229,999,234,863,234"/>
+<area shape="rect" id="Node000014" href="$structmdl__host__rec__t.html" title="One host&#39;s live governor state (a slot in the fixed per&#45;host table)." alt="" coords="730,272,851,297"/>
+<area shape="poly" id="edge13_Node000012_Node000014" title=" " alt="" coords="864,273,955,257,1016,242,1017,247,957,262,865,278"/>
+<area shape="rect" id="Node000015" href="$structmdl__url__list__t.html" title="Bounded list of absolute URLs found on a page." alt="" coords="1006,272,1117,297"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="1130,276,1189,268,1251,257,1303,242,1304,247,1253,262,1190,274,1131,281"/>
+<area shape="rect" id="Node000016" href="$structmdl__fetch__faillog__t.html" title="Bounded record of every failure in a run (declare at file scope)." alt="" coords="988,325,1135,351"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="1148,328,1200,318,1251,300,1293,272,1325,242,1328,246,1297,276,1253,304,1201,323,1149,333"/>
+<area shape="rect" id="Node000017" href="$structmdl__fetch__fail__t.html" title="One recorded page/chapter failure: what failed, and with what status." alt="" coords="727,325,854,351"/>
+<area shape="poly" id="edge16_Node000016_Node000017" title=" " alt="" coords="868,335,988,335,988,341,868,341"/>
+<area shape="rect" id="Node000018" href="$structmdl__fetch__progress__t.html" title="One per&#45;page progress event the run emits through mdl_progress_fn." alt="" coords="980,379,1143,404"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="1156,386,1205,375,1251,354,1280,329,1303,298,1331,243,1336,245,1307,301,1283,333,1253,359,1207,380,1157,391"/>
+</map>

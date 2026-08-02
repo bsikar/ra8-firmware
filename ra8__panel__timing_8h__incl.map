@@ -1,0 +1,18 @@
+<map id="libs/ra8_board_ek_ra8d2/inc/ra8_panel_timing.h" name="libs/ra8_board_ek_ra8d2/inc/ra8_panel_timing.h">
+<area shape="rect" id="Node000001" title="EK&#45;RA8D2 panel timing as the HAL&#39;s ra8_glcdc_timing_t (ER&#45;TFT070&#45;6)." alt="" coords="172,5,353,45"/>
+<area shape="rect" id="Node000002" href="$ra8__glcdc_8h.html" title="Graphics LCD Controller driver (two&#45;layer with alpha blending)." alt="" coords="155,93,251,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="250,47,222,84,218,81,246,44"/>
+<area shape="rect" id="Node000007" href="$ra8__panel_8h.html" title="Active display&#45;panel descriptor for the EK&#45;RA8D2 (ER&#45;TFT070&#45;6)." alt="" coords="276,93,375,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="280,44,309,81,305,84,276,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="203,240,274,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="218,117,237,138,253,166,257,198,251,227,246,226,251,197,248,167,233,141,214,121"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="161,167,239,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="205,119,204,153,198,153,200,119"/>
+<area shape="rect" id="Node000005" href="$ra8__glcdc__regs_8h.html" title="Graphics LCD Controller (GLCDC) register layout for the RA8D2." alt="" coords="5,167,136,192"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="183,121,105,162,103,158,180,116"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="209,191,228,227,224,229,204,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="99,190,200,232,198,237,97,194"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="8,240,133,265"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="73,192,73,226,68,226,68,192"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="321,120,255,229,250,227,316,118"/>
+</map>

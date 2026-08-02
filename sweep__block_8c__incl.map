@@ -1,0 +1,35 @@
+<map id="tools/cache_bench/sweep_block.c" name="tools/cache_bench/sweep_block.c">
+<area shape="rect" id="Node000001" title="Core of the #208 block/frame&#45;size sweep (&#45;&#45;sweep&#45;block)." alt="" coords="371,5,559,45"/>
+<area shape="rect" id="Node000002" href="$sweep__block_8h.html" title="#208 block/frame&#45;size sweep: the byte&#45;size axis the capacity sweep never touches, so the chunked ...." alt="" coords="5,93,124,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="371,48,137,93,136,88,370,42"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="149,93,215,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="398,48,229,94,228,89,396,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="240,93,311,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="420,48,317,90,315,85,418,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="335,93,405,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="443,48,397,86,393,82,440,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="429,93,500,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="467,46,467,79,462,79,462,46"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="593,240,672,265"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="560,38,606,58,626,73,643,92,657,126,659,163,653,198,645,228,640,226,648,197,654,162,652,127,638,95,623,77,603,63,558,43"/>
+<area shape="rect" id="Node000009" href="$ra8__vmem_8h.html" title="Byte&#45;range page cache with SLRU eviction (Layer 2, #147)." alt="" coords="525,93,629,119"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="493,43,550,83,547,87,490,48"/>
+<area shape="rect" id="Node000011" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="704,167,817,192"/>
+<area shape="poly" id="edge14_Node000001_Node000011" title=" " alt="" coords="560,41,624,61,686,91,721,121,748,153,743,157,717,125,683,96,622,66,558,46"/>
+<area shape="rect" id="Node000012" href="$sweep__block__internal_8h.html" title="Module&#45;private seams shared by the #208 sweep translation units." alt="" coords="796,93,971,119"/>
+<area shape="poly" id="edge17_Node000001_Node000012" title=" " alt="" coords="560,42,809,88,808,93,559,47"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="597,313,668,339"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="635,266,635,300,630,300,630,266"/>
+<area shape="poly" id="edge10_Node000009_Node000007" title=" " alt="" coords="584,118,626,226,621,228,579,120"/>
+<area shape="poly" id="edge9_Node000009_Node000008" title=" " alt="" coords="525,121,491,132,461,147,450,157,444,167,442,178,446,191,474,230,511,262,552,287,589,306,587,310,549,292,508,267,470,234,441,193,437,178,439,165,446,153,458,143,489,127,524,116"/>
+<area shape="rect" id="Node000010" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="455,167,578,192"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="569,121,537,158,533,154,565,117"/>
+<area shape="poly" id="edge13_Node000010_Node000007" title=" " alt="" coords="537,190,603,230,601,235,534,194"/>
+<area shape="poly" id="edge12_Node000010_Node000008" title=" " alt="" coords="527,191,583,264,615,301,611,305,579,267,523,194"/>
+<area shape="poly" id="edge16_Node000011_Node000007" title=" " alt="" coords="741,194,667,235,665,231,739,190"/>
+<area shape="poly" id="edge15_Node000011_Node000008" title=" " alt="" coords="752,194,654,305,650,301,748,191"/>
+<area shape="poly" id="edge18_Node000012_Node000008" title=" " alt="" coords="916,116,945,130,971,147,986,168,987,181,982,193,952,228,917,255,877,277,835,294,752,316,682,325,681,320,751,310,834,289,875,272,914,251,948,224,977,191,982,180,981,170,967,151,942,134,914,121"/>
+<area shape="poly" id="edge20_Node000012_Node000011" title=" " alt="" coords="865,121,794,162,791,157,862,116"/>
+<area shape="rect" id="Node000013" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="842,167,967,192"/>
+<area shape="poly" id="edge19_Node000012_Node000013" title=" " alt="" coords="889,118,900,153,895,154,884,120"/>
+</map>

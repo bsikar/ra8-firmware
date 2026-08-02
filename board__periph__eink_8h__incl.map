@@ -1,0 +1,5 @@
+<map id="tools/ra8_emulator/inc/board_periph_eink.h" name="tools/ra8_emulator/inc/board_periph_eink.h">
+<area shape="rect" id="Node000001" title="IT8951 e&#45;paper SPI&#45;device model for ra8_emulator (attached to SPI_B)." alt="" coords="5,5,187,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="61,93,131,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,46,99,79,93,79,93,46"/>
+</map>

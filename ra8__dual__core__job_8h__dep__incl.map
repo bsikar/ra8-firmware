@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_dual_core_job.h" name="libs/ra8_hal/inc/ra8_dual_core_job.h">
+<area shape="rect" id="Node000001" title="Cross&#45;core compile&#45;job dispatch seam + status contract (#149)." alt="" coords="120,5,265,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__import__compiler_8h.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="107,93,279,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="195,59,195,93,190,93,190,59"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2import__reader_2main_8c.html" title="End&#45;to&#45;end on&#45;import EPUB &#45;&gt; .rabook compile + cache + read (#151)." alt="" coords="5,196,183,251"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="159,160,122,198,118,194,155,156"/>
+<area shape="rect" id="Node000004" href="$ra8__rabook__import__compiler_8c.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="207,196,379,251"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="231,156,268,194,265,198,227,160"/>
+</map>

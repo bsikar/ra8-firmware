@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_dtc.h" name="libs/ra8_hal/inc/ra8_dtc.h">
+<area shape="rect" id="Node000001" title="Data Transfer Controller (DTC) driver." alt="" coords="261,5,406,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dtc__coherency__hil_2main_8c.html" title="DTC vector&#45;table / TI coherency HIL proof with the M85 D&#45;cache ENABLED." alt="" coords="5,93,213,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="276,53,173,96,171,91,274,48"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dtc__transfer__demo_2main_8c.html" title="1 KB DTC SRAM&#45;to&#45;SRAM block&#45;copy + verify demo for the EK&#45;RA8D2" alt="" coords="237,93,429,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="336,59,336,93,331,93,331,59"/>
+<area shape="rect" id="Node000004" href="$ra8__dtc_8c.html" title="Data Transfer Controller driver implementation." alt="" coords="454,101,599,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="386,49,489,98,486,103,384,54"/>
+</map>

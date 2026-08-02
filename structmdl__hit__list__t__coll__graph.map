@@ -1,0 +1,5 @@
+<map id="mdl_hit_list_t" name="mdl_hit_list_t">
+<area shape="rect" id="Node000001" title="Bounded list of titled hits plus the raw anchor tally." alt="" coords="5,101,116,127"/>
+<area shape="rect" id="Node000002" href="$structmdl__hit__t.html" title="One discovery hit: a human&#45;facing title paired with a series URL." alt="" coords="19,5,102,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="63,45,63,101,58,101,58,45"/>
+</map>

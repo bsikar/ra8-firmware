@@ -1,0 +1,25 @@
+<map id="libs/ra8_nsc/src/ra8_nsc_wdt.c" name="libs/ra8_nsc/src/ra8_nsc_wdt.c">
+<area shape="rect" id="Node000001" title="NSC veneers: secure&#45;side watchdog arm + refresh." alt="" coords="94,5,241,45"/>
+<area shape="rect" id="Node000002" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="47,167,125,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="159,47,101,155,96,153,155,45"/>
+<area shape="rect" id="Node000004" href="$ra8__nsc_8h.html" title="Non&#45;Secure Callable veneer scaffold." alt="" coords="5,93,89,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="140,48,78,88,75,84,137,43"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc__veneer_8h.html" title="Macros for declaring Non&#45;Secure Callable veneer functions." alt="" coords="347,167,481,192"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="199,43,385,157,382,161,197,48"/>
+<area shape="rect" id="Node000007" href="$ra8__wdt_8h.html" title="Software Watchdog Timer (WDT) driver header." alt="" coords="165,93,252,119"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="180,44,198,80,194,82,175,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="128,240,199,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="100,190,142,229,139,232,97,194"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="56,118,76,153,71,156,51,120"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="43,120,31,154,30,173,36,191,52,208,71,222,116,240,114,245,69,227,48,212,32,193,25,174,26,153,38,118"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="90,113,342,161,341,167,89,118"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="374,195,213,240,212,235,373,189"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="287,240,413,265"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="405,194,371,232,367,228,401,191"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="190,121,119,162,116,157,188,116"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="208,120,174,228,169,226,202,118"/>
+<area shape="rect" id="Node000008" href="$ra8__wdt__regs_8h.html" title="Watchdog Timer (WDT) register layout for the RA8D2." alt="" coords="201,167,323,192"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="220,117,247,154,243,157,215,121"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="248,194,192,234,189,230,245,190"/>
+<area shape="poly" id="edge15_Node000008_Node000006" title=" " alt="" coords="278,190,327,229,323,233,274,194"/>
+</map>

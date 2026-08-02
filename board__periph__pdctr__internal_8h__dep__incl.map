@@ -1,0 +1,7 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_pdctr_internal.h" name="tools/ra8_emulator/src/periph/board_periph_pdctr_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private graphics power&#45;domain state for the gated blocks." alt="" coords="138,5,317,60"/>
+<area shape="rect" id="Node000002" href="$board__periph__drw_8c.html" title="Bench&#45;validated DRW (&quot;D/AVE 2D&quot;) rasterizer model for ra8_emulator." alt="" coords="5,115,225,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="189,72,138,117,135,113,186,68"/>
+<area shape="rect" id="Node000003" href="$board__periph__pdctr_8c.html" title="Graphics power&#45;domain gating (PDCTRGD) model." alt="" coords="250,108,429,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="269,67,312,106,308,110,265,71"/>
+</map>

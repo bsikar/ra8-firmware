@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/src/ra8_etha_internal.h" name="libs/ra8_hal/src/ra8_etha_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU shared surface for the ra8_etha driver split." alt="" coords="175,5,320,45"/>
+<area shape="rect" id="Node000002" href="$ra8__etha_8c.html" title="Per&#45;port Ethernet Agent (ETHA) driver implementation – HUM Ch 32." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="199,54,116,96,114,91,197,49"/>
+<area shape="rect" id="Node000003" href="$ra8__etha__stats_8c.html" title="ETHA per&#45;port statistics, descriptor&#45;ring sizing, and PHY open – HUM Ch 32." alt="" coords="175,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="250,59,250,93,245,93,245,59"/>
+<area shape="rect" id="Node000004" href="$ra8__etha__tas_8c.html" title="ETHA time&#45;aware shaper (TAS / 802.1Qbv) flows – HUM Ch 32.4.2." alt="" coords="344,93,489,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="298,49,381,91,378,96,295,54"/>
+</map>

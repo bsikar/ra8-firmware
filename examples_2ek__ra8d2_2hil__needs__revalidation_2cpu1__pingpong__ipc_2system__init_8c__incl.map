@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/system_init.c" name="examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/system_init.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 / RA8D2 core bring&#45;up for cpu1_pingpong_ipc." alt="" coords="63,5,269,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,76,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="129,62,70,102,67,98,126,58"/>
+<area shape="rect" id="Node000003" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="101,108,231,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="169,60,169,94,163,94,163,60"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="255,108,378,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="213,58,286,99,283,103,211,62"/>
+</map>

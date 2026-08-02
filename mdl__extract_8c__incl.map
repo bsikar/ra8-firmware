@@ -1,0 +1,18 @@
+<map id="tools/media_dl/src/mdl_extract.c" name="tools/media_dl/src/mdl_extract.c">
+<area shape="rect" id="Node000001" title="v1 &lt;img&gt;/&lt;a&gt; tag scanner + relative&#45;URL resolver." alt="" coords="207,5,348,45"/>
+<area shape="rect" id="Node000002" href="$mdl__extract_8h.html" title="Extract image URLs and anchor links from an HTML page (v1 scanner)." alt="" coords="61,93,173,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="240,48,154,90,152,85,238,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="197,93,264,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="268,47,247,83,242,80,264,44"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="289,93,359,119"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="291,44,312,80,308,83,286,47"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="384,93,509,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="319,43,410,85,408,90,317,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="107,121,67,159,63,155,104,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="121,240,191,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="123,118,152,226,147,227,118,120"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,167,234,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="132,117,174,155,170,159,128,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="191,194,171,229,166,227,186,191"/>
+</map>

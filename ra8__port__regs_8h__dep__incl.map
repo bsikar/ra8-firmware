@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_port_regs.h" name="libs/ra8_hal/inc/ra8_port_regs.h">
+<area shape="rect" id="Node000001" title="IOPORT (GPIO) register layout for the Renesas RA8D2." alt="" coords="184,5,329,45"/>
+<area shape="rect" id="Node000002" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="206,54,118,96,116,91,204,49"/>
+<area shape="rect" id="Node000003" href="$gpio_8c.html" title="High&#45;level GPIO driver on top of PORT + PFS." alt="" coords="175,101,338,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="259,59,259,100,254,100,254,59"/>
+<area shape="rect" id="Node000004" href="$ra8__epaper_8c.html" title="IT8951 e&#45;paper SPI driver implementation." alt="" coords="363,93,508,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="309,49,397,91,395,96,307,54"/>
+</map>

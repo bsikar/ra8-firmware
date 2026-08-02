@@ -1,0 +1,13 @@
+<map id="libs/ra8_box/src" name="libs/ra8_box/src">
+<area shape="rect" id="node1" href="dir_3e8e29577641424e980b499db9b35c4a.html" title="inc" alt="" coords="37,125,78,151"/>
+<area shape="rect" id="node2" href="dir_c152d4e54ebdb10fcf36781a47206ac0.html" title="src" alt="" coords="38,52,79,77"/>
+<area shape="poly" id="edge2" href="dir_000378_000164.html" alt="" coords="61,78,60,112,55,112,56,78"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000378_000164.html" title="1" alt="" coords="62,100,71,115"/>
+<area shape="rect" id="node3" href="dir_1a40671a0866f3ac1f6d12655ed3b8f5.html" title="ra8_ui" alt="" coords="102,125,165,151"/>
+<area shape="poly" id="edge1" href="dir_000378_000309.html" alt="" coords="72,75,113,114,109,118,69,79"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000378_000309.html" title="1" alt="" coords="109,99,118,114"/>
+<area shape="rect" id="node4" href="dir_9784371ce13fb6b4d69891743248b7e4.html" title="ra8_core" alt="" coords="189,125,267,151"/>
+<area shape="poly" id="edge3" href="dir_000378_000264.html" alt="" coords="80,72,189,118,187,122,78,77"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000378_000264.html" title="2" alt="" coords="182,103,192,118"/>
+<area shape="rect" id="clust1" href="dir_4f787426a6a1fbb6616147db702981ba.html" title="ra8_box" alt="" coords="16,16,91,161"/>
+</map>

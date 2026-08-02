@@ -1,0 +1,17 @@
+<map id="libs/ra8_unarch/inc/xz_config.h" name="libs/ra8_unarch/inc/xz_config.h">
+<area shape="rect" id="Node000001" title="First&#45;party porting header for the vendored xz&#45;embedded decoder." alt="" coords="119,5,263,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,48,78,89,75,84,154,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="219,240,290,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="172,47,149,80,143,99,145,118,162,151,184,182,231,229,227,233,180,185,157,154,140,119,138,98,144,78,168,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="155,93,226,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="193,46,193,79,188,79,188,46"/>
+<area shape="rect" id="Node000005" href="$ra8__unarch__xz__pool_8h.html" title="Caller&#45;owned bump arena backing xz&#45;embedded&#39;s allocator seam." alt="" coords="251,93,413,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="226,43,300,84,298,89,223,48"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="438,93,487,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="259,43,426,91,424,96,257,48"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="321,121,301,142,282,168,270,198,262,227,257,226,265,196,278,165,297,138,317,117"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="293,167,371,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="335,119,335,153,329,153,329,119"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="321,194,279,232,276,229,318,190"/>
+</map>

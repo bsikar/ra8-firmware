@@ -1,0 +1,8 @@
+<map id="libs/ra8_hal/src/ra8_ofs.c" name="libs/ra8_hal/src/ra8_ofs.c">
+<area shape="rect" id="Node000001" title="RA boot&#45;ROM Option Function Select register defaults." alt="" coords="13,5,158,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ofs_8h.html" title="Option Function Select (OFS) boot&#45;map inventory for the active RA8 device." alt="" coords="5,93,88,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="78,47,61,82,56,80,74,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="50,167,121,192"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="94,45,102,79,103,119,95,154,90,153,97,118,96,80,89,46"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="55,118,75,153,70,156,51,120"/>
+</map>

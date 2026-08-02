@@ -1,0 +1,16 @@
+<map id="libs/ra8_ota/inc/ra8_ota.h" name="libs/ra8_ota/inc/ra8_ota.h">
+<area shape="rect" id="Node000001" title="Phase&#45;5 OTA firmware&#45;update orchestration for the RA8D2." alt="" coords="242,5,389,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2ota__ab__orchestration_2main_8c.html" title="A/B OTA orchestration demo: stage &#45;&gt; verify &#45;&gt; commit / rollback over MRAM." alt="" coords="5,93,228,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="264,54,174,96,171,91,262,49"/>
+<area shape="rect" id="Node000003" href="$ra8__ota_8c.html" title="Phase&#45;5 OTA firmware&#45;update orchestration – implementation." alt="" coords="166,196,313,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="305,59,250,196,245,194,300,57"/>
+<area shape="rect" id="Node000004" href="$ra8__ota__internal_8h.html" title="Test&#45;access surface for ra8_ota internal helpers (MC/DC)." alt="" coords="353,101,499,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="350,52,405,99,402,103,347,56"/>
+<area shape="rect" id="Node000005" href="$ra8__ota__parse_8c.html" title="Phase&#45;5 OTA configuration + manifest parsing helpers." alt="" coords="337,196,483,236"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="320,58,327,102,343,147,363,173,386,194,382,198,359,176,338,149,321,103,314,59"/>
+<area shape="rect" id="Node000006" href="$ra8__ota__verify_8c.html" title="Phase&#45;5 OTA signature&#45;verification cluster – implementation." alt="" coords="507,196,654,236"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="403,39,460,59,488,74,513,91,536,116,554,144,577,195,572,197,550,146,532,119,510,95,485,78,458,64,401,44"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="377,149,278,198,276,194,375,144"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="423,154,416,196,411,195,418,153"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="470,145,551,194,548,198,468,150"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/inc/usb_msc_mram_steps.h" name="examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/inc/usb_msc_mram_steps.h">
+<area shape="rect" id="Node000001" title="Shared geometry constants + FAT16 sector&#45;synthesis prototype." alt="" coords="5,5,192,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="14,123,85,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,76,64,112,60,109,79,74"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="109,123,187,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="119,74,138,109,133,112,114,76"/>
+</map>

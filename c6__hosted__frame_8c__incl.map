@@ -1,0 +1,28 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_frame.c" name="examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_frame.c">
+<area shape="rect" id="Node000001" title="The single esp&#45;hosted transaction, its decode and its verdict." alt="" coords="535,5,735,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,189,76,214"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="536,53,415,78,284,111,186,144,90,184,84,186,82,181,88,179,184,139,283,105,414,72,535,48"/>
+<area shape="rect" id="Node000003" href="$c6__hosted_8h.html" title="Shared contract for the esp&#45;hosted port bring&#45;up application." alt="" coords="296,108,396,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="548,63,399,107,397,102,546,58"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="395,189,553,214"/>
+<area shape="poly" id="edge8_Node000001_Node000005" title=" " alt="" coords="588,63,557,84,528,110,504,143,486,177,482,174,499,140,524,106,553,80,585,58"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="577,181,741,221"/>
+<area shape="poly" id="edge13_Node000001_Node000006" title=" " alt="" coords="581,62,559,77,542,94,535,113,539,132,559,155,586,173,583,177,556,159,534,135,529,112,538,91,556,73,578,58"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="549,108,722,133"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="638,60,638,94,633,94,633,60"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="746,108,957,133"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="702,58,811,100,809,105,700,63"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="981,108,1156,133"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="736,51,998,103,997,108,735,56"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="1180,108,1379,133"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="736,45,1180,104,1180,109,735,50"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="1403,108,1523,133"/>
+<area shape="poly" id="edge14_Node000001_Node000012" title=" " alt="" coords="736,39,1026,65,1390,105,1390,111,1025,70,736,45"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="296,134,200,155,89,184,82,186,80,181,88,179,198,149,295,129"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="295,189,370,214"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="347,134,340,176,334,175,341,133"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="366,131,445,179,442,184,363,136"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="392,131,572,175,570,181,391,136"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="101,189,271,214"/>
+<area shape="poly" id="edge7_Node000003_Node000007" title=" " alt="" coords="324,136,223,185,220,180,322,131"/>
+</map>

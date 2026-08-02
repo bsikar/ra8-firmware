@@ -1,0 +1,18 @@
+<map id="examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/system_init.c" name="examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/system_init.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 / RA8D2 core bring&#45;up (called from Reset_Handler)." alt="" coords="70,5,243,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="119,255,189,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="72,62,41,82,16,109,10,128,8,153,13,181,24,205,41,223,61,236,106,254,104,259,59,241,38,227,20,208,8,182,3,153,5,127,12,107,37,78,69,58"/>
+<area shape="rect" id="Node000003" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="26,108,157,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="139,62,111,99,106,95,135,58"/>
+<area shape="rect" id="Node000004" href="$ra8__cgc_8h.html" title="High&#45;level Clock Generation Circuit driver." alt="" coords="181,108,265,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="179,58,208,95,204,99,175,62"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__pending_2secure__boot__ns__hil_2trustzone__init_8h.html" title="Secure TrustZone bring&#45;up contract for the BLXNS RoT proof (#172)." alt="" coords="279,181,402,207"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="211,58,246,80,280,106,308,137,329,168,325,171,304,140,276,110,243,84,208,62"/>
+<area shape="rect" id="Node000005" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="33,181,152,207"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="204,136,127,177,125,172,201,131"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="176,181,255,207"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="225,134,221,168,216,168,219,133"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="105,205,137,242,133,246,101,209"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="207,209,175,246,171,242,203,205"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="312,209,198,252,196,247,310,204"/>
+</map>

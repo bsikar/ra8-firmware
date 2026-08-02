@@ -1,0 +1,38 @@
+<map id="tools/media_dl/src/mdl_state.c" name="tools/media_dl/src/mdl_state.c">
+<area shape="rect" id="Node000001" title="Persistent per&#45;series library state: parse, serialise (atomic), query." alt="" coords="517,5,658,45"/>
+<area shape="rect" id="Node000002" href="$mdl__state_8h.html" title="Persistent per&#45;series library state for the media downloader." alt="" coords="84,93,182,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="517,41,196,96,196,91,516,36"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="183,387,254,412"/>
+<area shape="poly" id="edge19_Node000001_Node000004" title=" " alt="" coords="574,47,557,72,538,104,524,140,518,178,518,254,516,302,508,321,491,341,474,351,451,361,393,377,268,396,267,391,391,371,450,356,472,347,487,337,503,318,511,301,513,254,513,178,519,138,534,101,552,69,570,44"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="352,313,477,339"/>
+<area shape="poly" id="edge23_Node000001_Node000007" title=" " alt="" coords="554,48,525,68,499,95,475,138,464,176,457,216,442,266,428,302,423,300,437,264,451,215,459,175,470,136,495,92,521,64,551,43"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="554,93,622,119"/>
+<area shape="poly" id="edge18_Node000001_Node000010" title=" " alt="" coords="590,46,590,79,585,79,585,46"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="646,93,713,119"/>
+<area shape="poly" id="edge20_Node000001_Node000011" title=" " alt="" coords="612,44,657,82,654,86,608,48"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="738,93,808,119"/>
+<area shape="poly" id="edge21_Node000001_Node000012" title=" " alt="" coords="633,43,734,85,732,90,631,48"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="832,93,903,119"/>
+<area shape="poly" id="edge22_Node000001_Node000013" title=" " alt="" coords="656,43,820,89,818,94,654,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="94,240,169,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="142,118,154,151,158,171,157,192,146,228,141,227,152,192,153,172,149,152,137,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="84,120,44,138,26,151,11,168,8,179,12,191,25,237,40,272,61,303,95,337,132,362,171,381,169,385,129,367,91,341,57,306,35,275,20,239,6,193,3,179,7,165,22,147,41,133,82,115"/>
+<area shape="rect" id="Node000005" href="$mdl__config_8h.html" title="Per&#45;site descriptor loaded from a flat key=value config file." alt="" coords="218,167,323,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="156,116,237,158,235,163,154,121"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="140,313,219,339"/>
+<area shape="poly" id="edge17_Node000002_Node000008" title=" " alt="" coords="87,121,50,139,34,152,21,168,18,179,21,191,39,231,71,263,104,287,139,305,136,310,101,292,67,267,35,234,16,193,12,179,16,165,30,148,47,135,85,116"/>
+<area shape="rect" id="Node000009" href="$mdl__extract_8h.html" title="Extract image URLs and anchor links from an HTML page (v1 scanner)." alt="" coords="30,167,142,192"/>
+<area shape="poly" id="edge13_Node000002_Node000009" title=" " alt="" coords="128,120,104,157,99,154,123,118"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="249,194,168,236,165,231,247,190"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="270,193,227,374,222,372,265,192"/>
+<area shape="rect" id="Node000006" href="$mdl__politeness_8h.html" title="Jittered inter&#45;request delay plus the per&#45;host politeness governor." alt="" coords="294,240,428,265"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="287,190,337,229,334,233,283,194"/>
+<area shape="poly" id="edge12_Node000005_Node000008" title=" " alt="" coords="265,194,196,303,192,300,261,191"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="351,268,241,379,238,375,347,264"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="372,264,400,301,396,304,368,267"/>
+<area shape="poly" id="edge10_Node000006_Node000008" title=" " alt="" coords="333,268,223,311,221,306,331,263"/>
+<area shape="poly" id="edge11_Node000008_Node000004" title=" " alt="" coords="188,338,208,373,203,376,184,340"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="96,191,119,227,115,230,92,194"/>
+<area shape="poly" id="edge15_Node000009_Node000004" title=" " alt="" coords="83,193,71,226,69,246,72,264,92,301,120,333,153,358,184,378,181,382,150,363,117,337,87,304,67,266,63,246,66,225,78,192"/>
+<area shape="poly" id="edge16_Node000009_Node000008" title=" " alt="" coords="85,193,78,227,79,246,85,264,106,288,133,305,131,310,102,292,80,267,73,247,73,227,79,192"/>
+</map>

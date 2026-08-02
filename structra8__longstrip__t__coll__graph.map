@@ -1,0 +1,15 @@
+<map id="ra8_longstrip_t" name="ra8_longstrip_t">
+<area shape="rect" id="Node000001" title="Opened longstrip&#45;strip scroll state (caller&#45;owned; treat as private)." alt="" coords="33,389,152,415"/>
+<area shape="rect" id="Node000002" href="$structra8__jof__info__t.html" title="Parsed + validated geometry of one JOF atlas." alt="" coords="5,293,116,319"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="71,331,91,388,86,390,66,332"/>
+<area shape="rect" id="Node000003" href="$structra8__tile__cache__t.html" title="Tile&#45;cache state (caller&#45;owned; treat as private)." alt="" coords="141,293,269,319"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="182,330,108,391,105,387,178,326"/>
+<area shape="rect" id="Node000004" href="$structra8__keycache__t.html" title="Cache engine state (caller&#45;owned; treat as private)." alt="" coords="50,197,173,223"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="134,230,195,291,191,295,130,234"/>
+<area shape="rect" id="Node000005" href="$structra8__keycache__cfg__t.html" title="Caller&#45;supplied storage + policy + renderer for ra8_keycache_init." alt="" coords="36,101,187,127"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="114,141,114,197,109,197,109,141"/>
+<area shape="rect" id="Node000006" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="35,5,188,31"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="114,45,114,101,109,101,109,45"/>
+<area shape="rect" id="Node000007" href="$structra8__tile__key__t.html" title="Identifies one decoded image tile." alt="" coords="197,197,311,223"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="244,236,213,294,208,292,239,234"/>
+</map>

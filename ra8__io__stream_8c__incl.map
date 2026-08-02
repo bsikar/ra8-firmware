@@ -1,0 +1,31 @@
+<map id="libs/ra8_io/src/ra8_io_stream.c" name="libs/ra8_io/src/ra8_io_stream.c">
+<area shape="rect" id="Node000001" title="Byte&#45;stream dispatcher + no&#45;varargs formatted&#45;output primitives." alt="" coords="225,5,362,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="27,167,154,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="233,48,188,68,147,95,122,125,103,156,99,153,117,122,144,91,186,63,231,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="258,313,329,339"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="225,40,144,60,103,74,66,91,35,111,15,134,8,161,10,175,17,191,37,219,62,243,91,263,123,280,187,303,245,316,244,321,186,308,121,285,89,268,59,247,33,223,12,193,5,176,3,160,10,132,32,107,63,86,101,69,143,55,224,35"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="177,240,255,265"/>
+<area shape="poly" id="edge15_Node000001_Node000004" title=" " alt="" coords="246,48,215,67,192,95,185,111,182,128,184,164,194,198,206,227,201,229,189,200,179,165,177,128,180,109,187,92,212,63,243,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="460,93,535,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="343,43,455,86,454,91,341,48"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="559,93,684,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="363,40,561,88,560,93,362,46"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="373,167,473,192"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="338,43,371,64,400,92,415,122,423,152,417,154,410,124,395,95,367,68,335,48"/>
+<area shape="rect" id="Node000010" href="$ra8__io__stream__internal_8h.html" title="Internal vtable type for the ra8_io byte&#45;stream facade." alt="" coords="201,93,385,119"/>
+<area shape="poly" id="edge16_Node000001_Node000010" title=" " alt="" coords="296,46,296,79,291,79,291,46"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="101,191,127,226,166,263,206,288,247,306,244,311,203,292,162,267,123,229,96,194"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="112,190,185,231,182,235,110,194"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="230,263,272,302,269,306,227,267"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="414,194,371,242,315,305,311,301,367,238,410,190"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="390,195,263,238,262,233,389,189"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="381,240,464,265"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="425,192,425,226,420,226,420,192"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="489,240,637,265"/>
+<area shape="poly" id="edge13_Node000007_Node000009" title=" " alt="" coords="446,190,529,231,527,236,444,194"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="403,268,328,309,326,304,401,263"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="520,268,343,314,342,309,519,263"/>
+<area shape="poly" id="edge19_Node000010_Node000002" title=" " alt="" coords="262,121,137,165,135,160,260,116"/>
+<area shape="poly" id="edge17_Node000010_Node000003" title=" " alt="" coords="296,119,296,299,291,299,291,119"/>
+<area shape="poly" id="edge18_Node000010_Node000004" title=" " alt="" coords="289,120,231,229,226,227,285,118"/>
+</map>

@@ -1,0 +1,24 @@
+<map id="libs/ra8_fs/src/ra8_fs_fat_internal.h" name="libs/ra8_fs/src/ra8_fs_fat_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU shared declarations for the FAT/exFAT ra8_fs adapter." alt="" coords="187,5,324,45"/>
+<area shape="rect" id="Node000002" href="$ra8__fs__fat__protos__a__internal_8h.html" title="Cross&#45;TU helper prototypes for the FAT/exFAT adapter (part A of 2)." alt="" coords="180,93,331,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="258,46,258,79,253,79,253,46"/>
+<area shape="rect" id="Node000004" href="$ra8__fs__fat__types__internal_8h.html" title="Cross&#45;TU on&#45;disk&#45;layout enums and typedefs for the FAT/exFAT adapter." alt="" coords="168,181,367,207"/>
+<area shape="poly" id="edge13_Node000001_Node000004" title=" " alt="" coords="296,43,324,64,346,92,352,113,346,135,328,158,305,176,302,172,324,155,341,132,347,113,341,95,320,68,293,48"/>
+<area shape="rect" id="Node000009" href="$ra8__fs__fat__protos__b__internal_8h.html" title="Cross&#45;TU helper prototypes for the FAT/exFAT adapter (part B of 2)." alt="" coords="5,93,156,133"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="218,48,132,90,130,85,216,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="18,181,143,207"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="215,136,120,178,118,173,212,131"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="261,133,266,167,261,168,256,134"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="155,255,230,280"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="257,209,217,247,213,243,254,205"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="309,401,380,427"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="270,207,274,271,282,312,296,352,309,372,324,390,320,393,304,375,292,354,277,314,269,272,265,207"/>
+<area shape="rect" id="Node000007" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="307,255,382,280"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="282,205,324,243,320,247,278,209"/>
+<area shape="poly" id="edge7_Node000007_Node000006" title=" " alt="" coords="362,279,378,293,392,311,401,332,399,354,387,376,371,394,367,390,383,373,394,353,396,333,387,314,374,296,359,282"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="305,328,384,353"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="347,280,347,314,342,314,342,280"/>
+<area shape="poly" id="edge9_Node000008_Node000006" title=" " alt="" coords="347,354,347,388,342,388,342,354"/>
+<area shape="poly" id="edge11_Node000009_Node000003" title=" " alt="" coords="83,134,83,167,78,167,78,134"/>
+<area shape="poly" id="edge12_Node000009_Node000004" title=" " alt="" coords="126,131,228,173,226,178,124,136"/>
+</map>

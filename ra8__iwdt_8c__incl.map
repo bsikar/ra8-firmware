@@ -1,0 +1,29 @@
+<map id="libs/ra8_hal/src/ra8_iwdt.c" name="libs/ra8_hal/src/ra8_iwdt.c">
+<area shape="rect" id="Node000001" title="Independent Watchdog Timer driver implementation." alt="" coords="192,5,337,45"/>
+<area shape="rect" id="Node000002" href="$ra8__iwdt_8h.html" title="Independent Watchdog driver header." alt="" coords="39,93,130,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="222,48,124,90,122,85,220,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="126,240,197,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="192,40,94,63,54,78,29,95,14,119,8,142,12,165,25,190,43,210,65,224,114,242,112,247,62,229,39,214,21,194,7,167,3,142,9,117,25,91,51,73,93,57,191,35"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="45,167,124,192"/>
+<area shape="poly" id="edge14_Node000001_Node000004" title=" " alt="" coords="244,48,110,160,107,156,240,43"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="530,167,655,192"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="337,32,470,53,529,70,552,80,569,91,580,105,587,121,594,152,589,153,582,122,575,108,565,95,550,85,527,75,469,59,337,37"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="214,93,314,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="267,46,267,79,262,79,262,46"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="372,167,455,192"/>
+<area shape="poly" id="edge18_Node000001_Node000007" title=" " alt="" coords="285,44,394,155,391,158,281,48"/>
+<area shape="rect" id="Node000009" href="$ra8__iwdt__regs_8h.html" title="Independent Watchdog Timer (IWDT) register layout for the RA8D2." alt="" coords="430,93,555,119"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="320,43,447,86,445,91,318,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="70,121,53,135,39,153,31,172,31,182,35,191,50,208,70,222,114,240,112,245,67,227,47,212,30,193,26,183,25,172,34,151,50,132,66,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="87,119,87,153,82,153,82,119"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="99,190,141,229,137,232,95,194"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="244,121,216,141,189,168,175,198,167,227,162,226,170,196,185,165,212,137,241,116"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="236,121,127,164,125,159,234,116"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="289,116,378,158,376,163,287,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="200,167,348,192"/>
+<area shape="poly" id="edge12_Node000006_Node000008" title=" " alt="" coords="269,119,273,153,268,154,263,119"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="374,195,211,240,210,235,372,189"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="257,194,193,235,190,230,254,190"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="495,120,490,156,482,177,469,194,450,206,423,217,354,233,278,244,211,251,210,245,277,239,353,228,421,211,447,201,465,190,477,174,485,155,490,119"/>
+<area shape="poly" id="edge17_Node000009_Node000005" title=" " alt="" coords="510,117,566,156,563,161,507,121"/>
+</map>

@@ -1,0 +1,30 @@
+<map id="tools/media_dl/inc/mdl_fetch.h" name="tools/media_dl/inc/mdl_fetch.h">
+<area shape="rect" id="Node000001" title="State&#45;aware chapter/page download orchestrator for the media downloader." alt="" coords="359,5,500,45"/>
+<area shape="rect" id="Node000002" href="$mdl__pack_8h.html" title="Archive packaging of downloaded page folders for the media_dl CLI." alt="" coords="225,93,367,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="390,55,327,95,324,91,387,51"/>
+<area shape="rect" id="Node000003" href="$tools_2media__dl_2src_2main_8c.html" title="media_dl – host CLI for the e&#45;reader media downloader." alt="" coords="5,181,147,221"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="345,32,261,38,173,49,97,68,69,80,50,95,42,115,44,137,53,160,64,180,60,183,48,162,39,139,36,114,46,92,66,76,95,63,172,44,261,33,344,27"/>
+<area shape="rect" id="Node000004" href="$mdl__pack_8c.html" title="Implementation of the downloaded&#45;folder archive packaging." alt="" coords="336,181,477,221"/>
+<area shape="poly" id="edge16_Node000001_Node000004" title=" " alt="" coords="431,59,425,134,415,181,410,180,420,133,426,59"/>
+<area shape="rect" id="Node000005" href="$mdl__report_8h.html" title="Human&#45;facing progress and failure reporting for the media_dl CLI." alt="" coords="60,93,201,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="351,52,197,96,195,91,350,47"/>
+<area shape="rect" id="Node000006" href="$mdl__report_8c.html" title="Implementation of the media_dl progress + failure presenter." alt="" coords="171,181,312,221"/>
+<area shape="poly" id="edge17_Node000001_Node000006" title=" " alt="" coords="423,60,407,98,381,135,343,164,302,184,300,179,340,159,377,131,402,96,418,58"/>
+<area shape="rect" id="Node000007" href="$mdl__fetch_8c.html" title="State&#45;aware, resumable, deduping chapter/page download loop." alt="" coords="667,181,808,221"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="514,34,591,54,630,70,666,91,688,111,707,135,732,180,727,183,702,138,684,115,662,95,627,75,589,59,512,39"/>
+<area shape="rect" id="Node000008" href="$mdl__fetch__internal_8h.html" title="Module&#45;private fetch&#45;loop decisions promoted for host unit tests and the CLI&#39;s end&#45;of&#45;run reporting." alt="" coords="492,93,652,133"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="474,50,542,91,539,96,471,55"/>
+<area shape="rect" id="Node000010" href="$test__media__dl__fetch_8c.html" title="Host unit tests for the #305 resumable/incremental/deduping download loop, driven end&#45;to&#45;end through ..." alt="" coords="833,181,1002,221"/>
+<area shape="poly" id="edge18_Node000001_Node000010" title=" " alt="" coords="514,40,606,61,702,91,804,135,886,179,884,184,802,140,700,96,604,66,513,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="236,141,125,184,123,179,234,136"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="333,140,384,179,381,183,330,144"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="113,146,90,183,86,180,109,144"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="168,140,218,179,215,183,165,144"/>
+<area shape="poly" id="edge10_Node000008_Node000003" title=" " alt="" coords="479,131,328,154,159,184,147,186,146,181,158,179,327,149,478,125"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="525,142,444,184,442,179,522,137"/>
+<area shape="poly" id="edge14_Node000008_Node000006" title=" " alt="" coords="487,139,313,184,311,179,486,134"/>
+<area shape="poly" id="edge12_Node000008_Node000007" title=" " alt="" coords="622,137,702,179,700,184,619,142"/>
+<area shape="rect" id="Node000009" href="$mdl__discover_8c.html" title="Governed search/browse: build the query URL, fetch it politely, parse the hits, and present them hone..." alt="" coords="501,181,643,221"/>
+<area shape="poly" id="edge11_Node000008_Node000009" title=" " alt="" coords="575,147,575,181,569,181,569,147"/>
+<area shape="poly" id="edge15_Node000008_Node000010" title=" " alt="" coords="662,134,842,179,841,184,660,139"/>
+</map>

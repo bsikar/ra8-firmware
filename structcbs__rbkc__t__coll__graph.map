@@ -1,0 +1,9 @@
+<map id="cbs_rbkc_t" name="cbs_rbkc_t">
+<area shape="rect" id="Node000001" title="One packed in&#45;memory RBKC container + its bound chunk reader." alt="" coords="164,101,255,127"/>
+<area shape="rect" id="Node000002" href="$structcbs__memspan__t.html" title="A bounded in&#45;memory byte span served through the read seam." alt="" coords="5,5,133,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,36,194,99,191,103,96,40"/>
+<area shape="rect" id="Node000003" href="$structcbs__meter__t.html" title="Counting shim around an ra8_vsource_read_fn." alt="" coords="158,5,261,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="212,45,212,101,207,101,207,45"/>
+<area shape="rect" id="Node000004" href="$structra8__book__chunked__t.html" title="One open chunked .rabook file: parsed geometry + caller storage." alt="" coords="285,5,440,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="341,42,291,80,241,104,239,99,288,75,338,38"/>
+</map>

@@ -1,0 +1,17 @@
+<map id="libs/ra8_hal/inc/ra8_ceu_types.h" name="libs/ra8_hal/inc/ra8_ceu_types.h">
+<area shape="rect" id="Node000001" title="Capture Engine Unit (CEU) configuration descriptors and types." alt="" coords="206,5,351,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="197,240,267,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="296,44,316,74,334,111,343,153,341,174,333,193,310,219,281,237,278,232,307,215,328,191,335,172,337,153,329,113,311,76,292,47"/>
+<area shape="rect" id="Node000003" href="$ra8__ceu__regs_8h.html" title="Capture Engine Unit (CEU) register layout for the RA8D2." alt="" coords="80,93,200,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="247,48,174,89,171,84,244,43"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="239,167,318,192"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="281,46,281,153,276,153,276,46"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="150,118,220,227,215,230,145,121"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="5,240,131,265"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="92,121,53,139,37,152,24,168,19,183,23,199,46,229,41,232,19,201,14,183,19,165,33,148,51,135,89,116"/>
+<area shape="rect" id="Node000005" href="$ra8__glcdc__regs_8h.html" title="Graphics LCD Controller (GLCDC) register layout for the RA8D2." alt="" coords="33,167,164,192"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="135,120,115,156,110,153,131,118"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="121,190,199,231,197,236,119,194"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="96,193,81,229,76,227,91,191"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="273,194,249,230,245,227,269,191"/>
+</map>

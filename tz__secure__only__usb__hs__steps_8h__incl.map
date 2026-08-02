@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/inc/tz_secure_only_usb_hs_steps.h" name="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/inc/tz_secure_only_usb_hs_steps.h">
+<area shape="rect" id="Node000001" title="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_steps...." alt="" coords="23,5,253,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,123,76,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,77,65,115,61,111,101,73"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="101,123,175,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="141,75,141,109,135,109,135,75"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="199,123,277,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="176,73,217,111,214,115,172,77"/>
+</map>

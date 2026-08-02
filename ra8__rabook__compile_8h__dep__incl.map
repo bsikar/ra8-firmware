@@ -1,0 +1,28 @@
+<map id="libs/ra8_rabook_compile/inc/ra8_rabook_compile.h" name="libs/ra8_rabook_compile/inc/ra8_rabook_compile.h">
+<area shape="rect" id="Node000001" title="Zero&#45;heap builder that emits a RABOOK1 blob (the #149 compiler back&#45;end)." alt="" coords="424,5,618,45"/>
+<area shape="rect" id="Node000002" href="$hw__pending_2compile__on__m33_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: full text/CSS/SVG EPUB&#45;&gt;RABOOK1 compile." alt="" coords="28,181,224,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="412,50,344,69,278,96,244,115,210,138,156,183,153,179,207,134,241,111,276,91,343,64,410,45"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2import__reader_2main_8c.html" title="End&#45;to&#45;end on&#45;import EPUB &#45;&gt; .rabook compile + cache + read (#151)." alt="" coords="174,284,351,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="411,46,299,68,180,99,125,117,78,137,41,159,18,183,11,197,8,209,10,221,18,234,41,252,79,268,174,292,173,297,77,273,38,257,14,238,5,223,3,209,6,195,14,180,38,155,76,133,123,112,178,94,298,63,410,41"/>
+<area shape="rect" id="Node000004" href="$ra8__rabook__pipeline_8h.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="290,93,483,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="481,55,418,95,415,91,478,51"/>
+<area shape="rect" id="Node000005" href="$ra8__rabook__pipeline_8c.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="548,189,740,229"/>
+<area shape="poly" id="edge15_Node000001_Node000005" title=" " alt="" coords="526,59,533,95,549,132,577,163,610,186,607,191,573,167,544,135,528,97,520,60"/>
+<area shape="rect" id="Node000008" href="$ra8__rabook__xml__shim_8h.html" title="C&#45;callable interface to the XHTML &#45;&gt; ra8_rabook DOM parser (#149)." alt="" coords="558,93,764,133"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="565,50,632,91,629,96,562,55"/>
+<area shape="rect" id="Node000009" href="$ra8__rabook__xml__shim_8cpp.html" title="C++ &#45;&gt; C shim: tinyxml2 XHTML parser &#45;&gt; ra8_rabook DOM builder (#149)." alt="" coords="764,189,984,229"/>
+<area shape="poly" id="edge16_Node000001_Node000009" title=" " alt="" coords="632,38,706,58,743,73,777,91,806,113,830,139,865,187,861,190,826,142,802,117,774,96,740,77,704,63,630,43"/>
+<area shape="rect" id="Node000010" href="$ra8__rabook__compile_8c.html" title="RABOOK1 emitter implementation (see ra8_rabook_compile.h)." alt="" coords="838,93,1030,133"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="626,46,845,91,843,96,625,51"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="322,140,201,184,199,179,320,135"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="335,142,310,160,290,183,278,207,270,234,265,284,259,283,265,233,273,206,286,180,307,156,331,138"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="452,136,593,186,591,191,451,141"/>
+<area shape="rect" id="Node000006" href="$ra8__rabook__import__compiler_8h.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="300,181,472,236"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="389,147,389,181,384,181,384,147"/>
+<area shape="rect" id="Node000007" href="$ra8__rabook__import__compiler_8c.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="399,284,571,339"/>
+<area shape="poly" id="edge10_Node000004_Node000007" title=" " alt="" coords="445,138,468,157,486,180,496,206,499,234,494,284,489,283,493,234,490,208,481,183,464,160,441,143"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="345,247,296,286,293,282,342,243"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="424,244,461,282,457,286,420,248"/>
+<area shape="poly" id="edge12_Node000008_Node000005" title=" " alt="" coords="658,147,650,189,645,188,653,146"/>
+<area shape="poly" id="edge13_Node000008_Node000009" title=" " alt="" coords="718,136,832,186,830,191,716,141"/>
+</map>

@@ -1,0 +1,25 @@
+<map id="libs/ra8_rabook_import/src" name="libs/ra8_rabook_import/src">
+<area shape="rect" id="node1" href="dir_221772bd2cc248d42192b6fea25e1cb6.html" title="inc" alt="" coords="106,125,147,151"/>
+<area shape="rect" id="node2" href="dir_a71cfcb288aaf609d74966f1b04e4dc7.html" title="src" alt="" coords="109,52,150,77"/>
+<area shape="poly" id="edge1" href="dir_000406_000192.html" alt="" coords="132,78,130,112,125,112,126,78"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000406_000192.html" title="2" alt="" coords="132,100,141,115"/>
+<area shape="rect" id="node3" href="dir_4dcee69ef07e7e52c02f454563ecb9d9.html" title="ra8_epub" alt="" coords="172,125,255,151"/>
+<area shape="poly" id="edge2" href="dir_000406_000270.html" alt="" coords="145,75,191,114,187,118,141,79"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000406_000270.html" title="1" alt="" coords="186,100,196,114"/>
+<area shape="rect" id="node4" href="dir_926da5b3621910701f70413e7f4f093a.html" title="ra8_fs" alt="" coords="279,125,342,151"/>
+<area shape="poly" id="edge3" href="dir_000406_000272.html" alt="" coords="151,72,270,118,268,123,149,77"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000406_000272.html" title="2" alt="" coords="263,103,272,118"/>
+<area shape="rect" id="node5" href="dir_9784371ce13fb6b4d69891743248b7e4.html" title="ra8_core" alt="" coords="366,125,445,151"/>
+<area shape="poly" id="edge4" href="dir_000406_000264.html" alt="" coords="151,69,353,121,352,126,149,74"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000406_000264.html" title="6" alt="" coords="345,106,355,121"/>
+<area shape="rect" id="node6" href="dir_9a108e527c72e57dfb7bcfb5eccf086c.html" title="ra8_mem" alt="" coords="469,125,553,151"/>
+<area shape="poly" id="edge5" href="dir_000406_000292.html" alt="" coords="151,67,455,122,454,128,150,72"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000406_000292.html" title="3" alt="" coords="447,108,457,123"/>
+<area shape="rect" id="node7" href="dir_b92b34a865b1ecbc6086eb6416f47f11.html" title="ra8_book" alt="" coords="577,125,660,151"/>
+<area shape="poly" id="edge6" href="dir_000406_000258.html" alt="" coords="151,66,318,86,564,122,563,128,317,91,150,71"/>
+<area shape="rect" id="edge6-headlabel" href="dir_000406_000258.html" title="1" alt="" coords="556,109,565,123"/>
+<area shape="rect" id="node8" href="dir_fe552adeaa09d31bcfd3e85963b470b0.html" title="ra8_rabook_compile" alt="" coords="684,125,839,151"/>
+<area shape="poly" id="edge7" href="dir_000406_000300.html" alt="" coords="150,65,671,123,670,128,150,71"/>
+<area shape="rect" id="edge7-headlabel" href="dir_000406_000300.html" title="1" alt="" coords="662,109,672,124"/>
+<area shape="rect" id="clust1" href="dir_67a65a1a3b5e0daf99df6b02a5c08ec6.html" title="ra8_rabook_import" alt="" coords="16,16,161,161"/>
+</map>

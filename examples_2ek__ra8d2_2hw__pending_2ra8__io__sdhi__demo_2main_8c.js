@@ -1,0 +1,37 @@
+var examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c =
+[
+    [ "SDHI_DEMO_PUTS", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a3af38ee84e512acb05ae3b54329de491", null ],
+    [ "sdhi_demo_config_t", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1fe8ac3f6a2e1ca957a60d381517e979", [
+      [ "k_sdhi_demo_uart_baud", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1fe8ac3f6a2e1ca957a60d381517e979af8bd033200453bce7ff4b56bad3a3464", null ],
+      [ "k_sdhi_demo_instance", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1fe8ac3f6a2e1ca957a60d381517e979a4fa0ce5661a220f43e4e585820213ad8", null ],
+      [ "k_sdhi_demo_payload_bytes", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1fe8ac3f6a2e1ca957a60d381517e979a7c242ded23be48688284c942e35f7d29", null ],
+      [ "k_sdhi_demo_prng_seed", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1fe8ac3f6a2e1ca957a60d381517e979a78b148f2e55e15690c7e285fb4366502", null ],
+      [ "k_sdhi_demo_prng_mul", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1fe8ac3f6a2e1ca957a60d381517e979ad90f0afb8df18ca498d763e23f61dc8b", null ],
+      [ "k_sdhi_demo_prng_add", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1fe8ac3f6a2e1ca957a60d381517e979a2725cffce86668377aa6296d3ef9ecae", null ],
+      [ "k_sdhi_demo_prng_byte_shift", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1fe8ac3f6a2e1ca957a60d381517e979adf392f1ad8109dc0b0e665fabc6c5471", null ],
+      [ "k_sdhi_demo_byte_mask", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1fe8ac3f6a2e1ca957a60d381517e979ace066ad1fe8140db0721dd55c5be4761", null ]
+    ] ],
+    [ "main", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a840291bc02cba5474a4cb46a9b9566fe", null ],
+    [ "sdhi_demo_fill_payload", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#aeb65d19842f179241c8686f6fe3e15d2", null ],
+    [ "sdhi_demo_init_card_or_halt", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#ad7a76f519d1889a95e620a50e4713c7d", null ],
+    [ "sdhi_demo_mount_via_io", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a14fa059de7340c2462fb54bebf98ba89", null ],
+    [ "sdhi_demo_panic_halt", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a8716becc8bc3793d78f05baf65f169f7", null ],
+    [ "sdhi_demo_print", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#ab866c851e0d0630505cf36e6134249ca", null ],
+    [ "sdhi_demo_read_and_verify", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a962e6988ea277d82d8f2a198f3191ee0", null ],
+    [ "sdhi_demo_roundtrip", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#ad08ac03d211238eddcfb14e7d2011b54", null ],
+    [ "sdhi_demo_setup_or_halt", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a78170632c850da584483c1354351d3fb", null ],
+    [ "sdhi_demo_write_payload", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a734389d5b4d16c935c1deaf8df582118", null ],
+    [ "k_dir_path", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a96a2e8b55284d1fe3d48b7f1ce1bcae9", null ],
+    [ "k_file_path", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a1982960779cc88eb9ed74acf343094fc", null ],
+    [ "k_mount_name", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a45b438c60ef80f6c9c8a0739e57c6627", null ],
+    [ "k_msg_boot", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#aba1d408a93fdcaa9ae549cc1f0e5464b", null ],
+    [ "k_msg_card_ok", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a84044b106946b86bbdb16b48d6ec5254", null ],
+    [ "k_msg_fail", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#af8107ac7c7d62d60d3a4770dba66dc41", null ],
+    [ "k_msg_init_fail", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a7e48a2b1a297b136324dfbc6fa097372", null ],
+    [ "k_msg_pass", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a7cf618b6fae6de27bb1e2099c42287cc", null ],
+    [ "s_bd", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#a9fb6ea6b35e21a74b2c1a88aac909823", null ],
+    [ "s_be", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#af1ec833354743a9f8308745bb7e4e0ed", null ],
+    [ "s_payload", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#aad9b91192f6de4901a9cbb1f1f767a23", null ],
+    [ "s_readback", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#afd15556f20f7f155962b31996c2236ae", null ],
+    [ "s_tag", "examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html#aa7129027772dcdce950994a2fabfc92a", null ]
+];

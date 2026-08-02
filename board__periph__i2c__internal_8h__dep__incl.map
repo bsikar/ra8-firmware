@@ -1,0 +1,7 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_i2c_internal.h" name="tools/ra8_emulator/src/periph/board_periph_i2c_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private interfaces shared by the board_periph_i2c TUs." alt="" coords="135,5,313,60"/>
+<area shape="rect" id="Node000002" href="$board__periph__i2c_8c.html" title="I3C&#45;in&#45;I2C&#45;mode (IIC_B) controller + GT911 touch + LSM6DSO IMU models plus an external&#45;controller sti..." alt="" coords="5,115,221,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="186,72,136,117,132,113,183,68"/>
+<area shape="rect" id="Node000003" href="$board__periph__i2c__devices_8c.html" title="LSM6DSO IMU + MAX17048 fuel&#45;gauge device models on the I2C bus." alt="" coords="245,108,424,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="265,67,308,106,304,110,261,71"/>
+</map>

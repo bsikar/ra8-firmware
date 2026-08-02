@@ -1,0 +1,12 @@
+<map id="libs/ra8_hal/inc/ra8_crc.h" name="libs/ra8_hal/inc/ra8_crc.h">
+<area shape="rect" id="Node000001" title="CRC hardware calculator driver header." alt="" coords="292,5,437,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2crc__demo_2main_8c.html" title="CRC&#45;32 hardware vs." alt="" coords="5,93,183,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="298,52,171,96,169,91,296,47"/>
+<area shape="rect" id="Node000003" href="$ra8__crc_8c.html" title="Cyclic Redundancy Check driver implementation." alt="" coords="207,101,352,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="340,57,299,102,295,99,336,54"/>
+<area shape="rect" id="Node000004" href="$ra8__nsc__io_8h.html" title="NSC veneers for the I/O drivers." alt="" coords="377,101,523,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="393,54,435,99,431,102,389,57"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc__io_8c.html" title="NSC veneers for the &#45;6 I/O drivers." alt="" coords="431,196,578,236"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="452,37,499,57,520,72,538,92,547,119,543,148,533,175,520,197,516,194,528,172,538,146,541,119,533,95,517,76,496,62,450,42"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="470,151,496,195,491,197,466,154"/>
+</map>

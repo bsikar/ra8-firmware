@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/inc/ra8_drw_dlist.h" name="libs/ra8_hal/inc/ra8_drw_dlist.h">
+<area shape="rect" id="Node000001" title="2D Drawing Engine (DRW / D/AVE 2D) display&#45;list builder – public API" alt="" coords="111,5,257,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2drw__dlist__demo_2main_8c.html" title="DRW display&#45;list (DLR) clear+fill demo – loop&#45;stable (EK&#45;RA8D2, #247)." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,57,120,95,116,91,154,53"/>
+<area shape="rect" id="Node000003" href="$ra8__drw__draw_8c.html" title="2D Drawing Engine (DRW / D/AVE 2D) geometry primitives" alt="" coords="203,101,349,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="214,53,259,99,256,102,210,57"/>
+</map>

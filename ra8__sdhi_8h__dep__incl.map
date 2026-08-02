@@ -1,0 +1,20 @@
+<map id="libs/ra8_hal/inc/ra8_sdhi.h" name="libs/ra8_hal/inc/ra8_sdhi.h">
+<area shape="rect" id="Node000001" title="SD/MMC Host Interface (SDHI) driver scaffold." alt="" coords="386,5,531,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2main_8c.html" title="Prove the ra8_io fabric&#39;s swappable backend (#155/#156) over native SDHI." alt="" coords="5,181,179,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="409,54,146,184,144,179,407,49"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2ra8__sdhi__card__demo_2main_8c.html" title="Native 4&#45;bit SDHI raw&#45;block round&#45;trip on the EK&#45;RA8D2 microSD (#123)." alt="" coords="203,181,378,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="422,56,377,95,339,140,309,182,305,179,335,137,373,91,419,52"/>
+<area shape="rect" id="Node000004" href="$ra8__sdcard_8h.html" title="SD card driver layered on top of the RA8D2 SDHI peripheral." alt="" coords="386,93,531,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="461,59,461,93,456,93,456,59"/>
+<area shape="rect" id="Node000006" href="$ra8__sdcard_8c.html" title="SD card driver implementation – SD Physical Layer state machine." alt="" coords="782,189,927,229"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="495,52,597,131,643,150,681,160,720,167,770,179,794,186,793,191,769,184,719,172,680,165,642,155,595,136,492,56"/>
+<area shape="rect" id="Node000008" href="$ra8__sdhi_8c.html" title="SD/MMC Host Interface driver implementation." alt="" coords="607,93,753,133"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="521,48,633,91,631,96,519,53"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="373,138,191,184,180,187,178,182,190,179,372,133"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="414,143,339,184,337,179,411,138"/>
+<area shape="rect" id="Node000005" href="$examples_2__unsupported_2threadx__sdcard__demo_2main_8c.html" title="Eclipse ThreadX SD&#45;card boot&#45;sector dump on the EK&#45;RA8D2." alt="" coords="579,181,757,236"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="515,137,610,179,608,184,512,141"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="546,130,770,179,796,186,795,191,769,184,544,135"/>
+<area shape="rect" id="Node000007" href="$ra8__io__blockdev__sdhi_8c.html" title="Native&#45;SDHI block&#45;device backend – an SD card as 512&#45;byte blocks." alt="" coords="403,189,555,229"/>
+<area shape="poly" id="edge8_Node000004_Node000007" title=" " alt="" coords="468,146,477,188,472,189,463,147"/>
+</map>

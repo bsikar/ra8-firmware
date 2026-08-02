@@ -1,0 +1,42 @@
+<map id="libs/ra8_ftl/src/ra8_ftl.c" name="libs/ra8_ftl/src/ra8_ftl.c">
+<area shape="rect" id="Node000001" title="Flash Translation Layer implementation – copy&#45;on&#45;write + wear&#45;levelling." alt="" coords="391,5,530,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ftl_8h.html" title="Flash Translation Layer – free overwrite over erase&#45;before&#45;write media." alt="" coords="53,93,127,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="392,43,142,96,140,90,390,38"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="300,387,371,412"/>
+<area shape="poly" id="edge12_Node000001_Node000003" title=" " alt="" coords="530,30,595,38,662,50,720,68,742,79,758,92,763,106,758,120,732,153,692,189,640,226,583,264,465,333,371,383,369,378,462,328,580,259,637,222,688,185,728,149,753,117,757,106,753,95,739,83,718,73,661,56,594,43,530,35"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="219,313,297,339"/>
+<area shape="poly" id="edge22_Node000001_Node000004" title=" " alt="" coords="448,47,414,95,275,303,271,300,409,92,444,44"/>
+<area shape="rect" id="Node000005" href="$ra8__io__blockdev_8h.html" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="30,167,169,192"/>
+<area shape="poly" id="edge23_Node000001_Node000005" title=" " alt="" coords="391,30,297,34,192,44,143,53,100,64,65,78,43,95,37,110,43,126,56,142,72,157,69,161,52,146,38,128,32,110,39,92,63,73,98,59,142,48,192,39,297,29,391,25"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="423,93,498,119"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="463,46,463,79,458,79,458,46"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="523,93,593,119"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="486,43,535,82,531,87,483,48"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="618,93,743,119"/>
+<area shape="poly" id="edge14_Node000001_Node000009" title=" " alt="" coords="514,43,636,86,634,91,512,48"/>
+<area shape="rect" id="Node000010" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="648,240,748,265"/>
+<area shape="poly" id="edge15_Node000001_Node000010" title=" " alt="" coords="530,28,605,34,686,46,757,65,783,77,801,92,811,111,813,131,806,151,795,170,762,206,728,234,724,230,759,202,791,167,802,149,807,130,806,112,797,95,780,81,755,70,685,52,605,40,530,33"/>
+<area shape="rect" id="Node000013" href="$ra8__io__blockdev__internal_8h.html" title="Internal vtable type for the ra8_io block&#45;device fabric." alt="" coords="151,93,349,119"/>
+<area shape="poly" id="edge24_Node000001_Node000013" title=" " alt="" coords="411,48,295,91,293,86,409,43"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="69,121,42,140,20,168,11,194,8,218,11,240,20,261,51,299,96,336,142,363,192,380,242,390,286,394,286,400,242,395,191,385,139,368,93,341,47,303,15,264,6,242,3,218,6,193,16,165,38,136,66,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="116,116,150,137,183,165,207,199,227,235,253,299,248,301,223,237,203,201,179,168,147,141,113,121"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="94,119,99,153,93,154,89,119"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="272,337,314,375,311,379,269,341"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="89,194,64,227,58,246,62,264,81,293,106,317,134,337,165,353,230,376,287,389,286,394,228,382,163,358,132,341,102,321,77,296,57,266,53,245,59,224,85,191"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="114,190,237,302,233,306,111,194"/>
+<area shape="rect" id="Node000006" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="71,240,146,265"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="104,192,108,226,103,227,98,193"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="122,264,158,298,207,336,251,360,293,379,291,384,248,365,205,341,155,302,118,268"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="134,263,222,305,220,310,132,268"/>
+<area shape="poly" id="edge16_Node000010_Node000003" title=" " alt="" coords="688,268,646,304,619,324,589,341,536,362,481,377,385,395,384,390,480,372,534,357,586,336,616,320,643,300,684,264"/>
+<area shape="poly" id="edge17_Node000010_Node000004" title=" " alt="" coords="648,265,312,319,311,313,648,259"/>
+<area shape="rect" id="Node000011" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="657,313,739,339"/>
+<area shape="poly" id="edge18_Node000010_Node000011" title=" " alt="" coords="701,266,701,300,695,300,695,266"/>
+<area shape="rect" id="Node000012" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="764,313,912,339"/>
+<area shape="poly" id="edge20_Node000010_Node000012" title=" " alt="" coords="722,263,804,305,802,309,719,268"/>
+<area shape="poly" id="edge19_Node000011_Node000003" title=" " alt="" coords="657,338,385,391,384,386,656,333"/>
+<area shape="poly" id="edge21_Node000012_Node000003" title=" " alt="" coords="764,340,385,394,384,388,763,335"/>
+<area shape="poly" id="edge25_Node000013_Node000003" title=" " alt="" coords="257,118,275,166,309,281,332,373,327,374,304,283,270,168,252,120"/>
+<area shape="poly" id="edge26_Node000013_Node000004" title=" " alt="" coords="253,119,255,167,260,299,255,300,250,167,248,119"/>
+<area shape="poly" id="edge27_Node000013_Node000005" title=" " alt="" coords="227,121,138,163,135,158,225,116"/>
+</map>

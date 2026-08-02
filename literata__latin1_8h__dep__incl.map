@@ -1,0 +1,9 @@
+<map id="libs/ra8_fonts/literata_latin1.h" name="libs/ra8_fonts/literata_latin1.h">
+<area shape="rect" id="Node000001" title="Declaration of the Latin&#45;1 Literata font baked into internal flash." alt="" coords="262,5,423,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2pagecache_2main_8c.html" title="On&#45;silicon HIL: ra8_reflow pagination&#45;cache round&#45;trip on SD (#117)." alt="" coords="5,93,232,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="286,53,183,96,181,91,284,48"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="256,93,429,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="345,59,345,93,340,93,340,59"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2sd__font__render_2main_8c.html" title="Load a TTF/OTF font off an SD card and render text with ra8_reflow." alt="" coords="453,93,627,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="396,49,486,91,483,96,394,54"/>
+</map>

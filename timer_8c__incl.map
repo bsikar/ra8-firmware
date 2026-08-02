@@ -1,0 +1,14 @@
+<map id="libs/ra8_hal/src/timer.c" name="libs/ra8_hal/src/timer.c">
+<area shape="rect" id="Node000001" title="Thin SysTick&#45;based timer wrapper." alt="" coords="5,5,175,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="103,225,173,251"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,31,93,64,98,104,108,140,121,176,132,212,127,213,115,178,102,142,93,104,88,64,87,31"/>
+<area shape="rect" id="Node000003" href="$ra8__time_8h.html" title="SysTick&#45;based tick counter, delay and timestamp helpers." alt="" coords="108,79,200,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="103,29,137,67,133,70,99,33"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="149,106,137,127,127,153,126,183,132,211,126,212,121,183,122,151,132,125,144,103"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="137,152,216,177"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="160,104,171,138,166,140,155,105"/>
+<area shape="rect" id="Node000005" href="$ra8__time__interface_8h.html" title="Abstract time&#45;source interface for DI and unit testing." alt="" coords="241,152,398,177"/>
+<area shape="poly" id="edge6_Node000003_Node000005" title=" " alt="" coords="182,102,281,144,279,149,180,106"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="173,179,153,215,148,212,168,176"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="291,180,181,223,179,218,289,175"/>
+</map>

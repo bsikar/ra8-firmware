@@ -1,0 +1,12 @@
+<map id="libs/ra8_hal/inc/ra8_npu.h" name="libs/ra8_hal/inc/ra8_npu.h">
+<area shape="rect" id="Node000001" title="Arm Ethos&#45;U55 NPU command/queue driver foundation (RA8P1&#45;only)." alt="" coords="332,5,477,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ra8p1__foundation_2npu__infer_2main_8c.html" title="RA8P1 Ethos&#45;U55 inference runtime smoke – quantize + IRQ + TFLite&#45;micro." alt="" coords="5,93,209,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="327,52,173,96,172,91,326,47"/>
+<area shape="rect" id="Node000003" href="$examples_2ra8p1__foundation_2npu__smoke_2main_8c.html" title="RA8P1 Arm Ethos&#45;U55 NPU foundation smoke – runs a checkable stand&#45;in job." alt="" coords="233,93,437,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="383,58,353,95,349,91,379,55"/>
+<area shape="rect" id="Node000004" href="$examples_2ra8p1__foundation_2npu__vela_2main_8c.html" title="RA8P1 Ethos&#45;U55 .npub container loader end&#45;to&#45;end – load a .npub, run it." alt="" coords="428,181,632,221"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="429,55,519,180,514,183,424,58"/>
+<area shape="rect" id="Node000005" href="$ra8__npu__loader_8h.html" title="On&#45;target loader: .npub Vela blob &#45;&gt; ra8_npu_job_t (RA8P1&#45;only)." alt="" coords="513,93,659,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="458,49,547,91,545,96,456,54"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="568,146,545,183,540,180,564,144"/>
+</map>

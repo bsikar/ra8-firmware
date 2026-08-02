@@ -1,0 +1,10 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/cpu1_main.c" name="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/cpu1_main.c">
+<area shape="rect" id="Node000001" title="CPU1 (Cortex&#45;M33 secondary core) autonomous counter image." alt="" coords="5,5,232,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="21,181,91,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="68,62,42,83,22,109,19,124,22,140,38,169,33,172,17,141,14,124,18,107,38,79,64,58"/>
+<area shape="rect" id="Node000003" href="$dualcore__background_8h.html" title="Shared&#45;SRAM control block for the M33 autonomous counter demo." alt="" coords="32,108,205,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="121,60,121,94,116,94,116,60"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="229,108,355,133"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="173,58,258,99,255,104,170,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="110,135,77,173,73,169,106,132"/>
+</map>

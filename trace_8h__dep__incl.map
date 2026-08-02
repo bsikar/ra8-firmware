@@ -1,0 +1,7 @@
+<map id="tools/cache_bench/trace.h" name="tools/cache_bench/trace.h">
+<area shape="rect" id="Node000001" title="Reader access&#45;trace generation + loading for the #147 cache benchmark." alt="" coords="107,5,298,31"/>
+<area shape="rect" id="Node000002" href="$cache__bench_8c.html" title="#147 eviction&#45;policy benchmark harness: replay + sweep + report." alt="" coords="5,79,189,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="178,41,124,81,121,76,175,37"/>
+<area shape="rect" id="Node000003" href="$trace_8c.html" title="Implementation of the #147 reader access&#45;trace corpus + loader." alt="" coords="214,86,405,111"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="231,37,295,84,292,88,228,41"/>
+</map>

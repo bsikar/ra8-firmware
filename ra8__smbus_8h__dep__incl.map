@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_smbus.h" name="libs/ra8_hal/inc/ra8_smbus.h">
+<area shape="rect" id="Node000001" title="SMBus 3.2 protocol layer over an injected I2C bus seam." alt="" coords="257,5,403,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2battery__monitor__demo_2main_8c.html" title="Battery state&#45;of&#45;charge monitor over a MAX17048&#45;class fuel gauge." alt="" coords="5,93,196,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="272,53,166,96,164,91,270,48"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2smbus__demo_2main_8c.html" title="SMBus 3.2 protocol&#45;layer demo + HIL over IIC_B (#128)." alt="" coords="220,101,440,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="333,59,333,101,327,101,327,59"/>
+<area shape="rect" id="Node000004" href="$ra8__smbus_8c.html" title="SMBus 3.2 protocol layer over an injected I2C bus seam – implementation." alt="" coords="464,101,609,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="385,48,496,98,494,103,383,53"/>
+</map>

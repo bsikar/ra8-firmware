@@ -1,0 +1,44 @@
+<map id="libs/ra8_reflow/src/ra8_reflow_tokenize_internal.h" name="libs/ra8_reflow/src/ra8_reflow_tokenize_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_reflow_tokenize.c internal helpers." alt="" coords="682,5,838,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="35,401,110,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="683,53,575,81,443,123,372,151,301,182,232,217,167,257,121,288,104,304,88,329,78,358,75,388,69,387,73,357,83,327,100,301,118,283,164,252,230,213,299,177,370,146,441,118,574,76,682,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="392,548,462,573"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="793,59,817,84,840,116,857,153,864,192,864,416,861,431,852,446,819,471,771,493,712,512,585,540,476,556,476,551,584,535,711,507,769,488,816,467,848,442,856,429,859,415,859,193,852,154,835,119,812,88,789,62"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="899,108,1024,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="823,58,923,100,921,105,821,63"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="440,475,518,500"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="763,60,763,193,763,342,761,390,753,409,737,429,701,448,648,463,532,483,532,477,647,458,699,443,733,425,749,406,756,388,758,342,758,193,758,60"/>
+<area shape="rect" id="Node000006" href="$ra8__reflow_8h.html" title="HTML / CSS reflow + paginate engine for the ra8d2 ereader." alt="" coords="536,108,638,133"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="709,62,624,104,621,99,706,58"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="473,502,446,538,442,535,468,499"/>
+<area shape="rect" id="Node000007" href="$ra8__reflow__api_8h.html" title="Reflow&#45;engine public + internal function prototypes." alt="" coords="333,181,462,207"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="558,136,442,179,441,174,556,131"/>
+<area shape="rect" id="Node000011" href="$ra8__reflow__types_8h.html" title="Reflow&#45;engine data model: enums, structs, typedefs, and the handle." alt="" coords="514,255,660,280"/>
+<area shape="poly" id="edge30_Node000006_Node000011" title=" " alt="" coords="590,134,590,241,584,241,584,134"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="346,209,291,225,228,250,164,285,135,306,109,330,91,358,80,388,75,387,86,356,105,326,132,302,162,280,226,245,289,220,344,204"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="336,209,221,237,158,258,99,283,51,312,32,328,19,346,10,364,8,383,13,403,25,425,60,463,102,493,149,516,199,533,249,545,297,552,377,557,377,563,296,557,248,550,197,538,147,521,99,498,57,467,21,428,8,405,3,383,5,362,14,343,28,325,47,308,97,278,156,253,219,232,334,204"/>
+<area shape="poly" id="edge10_Node000007_Node000005" title=" " alt="" coords="410,205,446,255,466,290,480,327,487,363,489,400,485,461,480,461,484,400,482,364,475,329,461,292,442,258,405,208"/>
+<area shape="rect" id="Node000008" href="$ra8__glyph__atlas_8h.html" title="Fixed&#45;RAM&#45;budget glyph cache with LRU eviction (Layer 3, #147)." alt="" coords="329,328,466,353"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="400,207,400,314,395,314,395,207"/>
+<area shape="rect" id="Node000010" href="$ra8__reflow__image_8h.html" title="Zero&#45;heap raster image decode + scale + blit for ra8_reflow (#106)." alt="" coords="154,328,305,353"/>
+<area shape="poly" id="edge17_Node000007_Node000010" title=" " alt="" coords="386,209,255,321,252,317,382,205"/>
+<area shape="poly" id="edge21_Node000007_Node000011" title=" " alt="" coords="429,204,544,247,542,252,427,209"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="355,356,325,368,299,383,283,403,281,413,284,426,306,462,335,493,366,519,395,538,392,543,363,523,331,497,302,465,279,428,276,414,278,401,295,379,323,363,353,351"/>
+<area shape="poly" id="edge13_Node000008_Node000005" title=" " alt="" coords="407,352,468,461,464,464,402,355"/>
+<area shape="rect" id="Node000009" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="294,401,416,427"/>
+<area shape="poly" id="edge14_Node000008_Node000009" title=" " alt="" coords="393,355,371,391,367,388,388,352"/>
+<area shape="poly" id="edge15_Node000009_Node000003" title=" " alt="" coords="363,426,418,534,413,537,359,428"/>
+<area shape="poly" id="edge16_Node000009_Node000005" title=" " alt="" coords="376,424,448,465,446,470,374,429"/>
+<area shape="poly" id="edge18_Node000010_Node000002" title=" " alt="" coords="206,356,111,398,109,393,203,351"/>
+<area shape="poly" id="edge19_Node000010_Node000003" title=" " alt="" coords="234,353,243,386,257,426,280,466,313,498,348,522,384,540,382,545,345,526,309,502,276,469,253,428,237,388,229,354"/>
+<area shape="poly" id="edge20_Node000010_Node000005" title=" " alt="" coords="236,353,253,388,267,408,283,425,317,445,355,461,427,478,426,483,353,466,315,450,280,429,263,411,249,391,231,355"/>
+<area shape="poly" id="edge22_Node000011_Node000002" title=" " alt="" coords="514,275,419,281,311,292,211,308,172,318,143,330,126,343,110,358,87,391,83,388,106,355,122,339,140,326,170,313,210,303,310,287,418,276,514,269"/>
+<area shape="poly" id="edge23_Node000011_Node000003" title=" " alt="" coords="615,278,662,302,711,337,730,358,743,380,746,404,737,428,712,459,682,485,648,506,612,522,539,545,477,557,476,552,538,540,610,518,645,501,679,480,708,455,733,425,741,403,738,382,726,361,707,341,659,307,612,282"/>
+<area shape="poly" id="edge24_Node000011_Node000005" title=" " alt="" coords="586,281,563,345,525,428,500,465,495,462,521,425,559,343,581,279"/>
+<area shape="poly" id="edge25_Node000011_Node000008" title=" " alt="" coords="558,283,442,325,441,320,556,278"/>
+<area shape="poly" id="edge29_Node000011_Node000010" title=" " alt="" coords="530,283,302,328,300,323,529,277"/>
+<area shape="rect" id="Node000012" href="$ra8__reflow__css_8h.html" title="Minimal content&#45;CSS cascade for the ra8_reflow ereader engine (#111)." alt="" coords="592,401,723,427"/>
+<area shape="poly" id="edge26_Node000011_Node000012" title=" " alt="" coords="595,279,648,388,644,390,590,282"/>
+<area shape="poly" id="edge27_Node000012_Node000003" title=" " alt="" coords="642,429,531,502,461,544,458,539,528,498,639,425"/>
+<area shape="poly" id="edge28_Node000012_Node000005" title=" " alt="" coords="630,429,522,472,520,467,628,424"/>
+</map>
