@@ -10,9 +10,9 @@
 #   pi    -- powers the Raspberry Pi HIL host itself.  Driven DIRECTLY from this
 #            machine so the Pi can be power-cycled even when it is offline (the
 #            plug must therefore be reachable from this workstation).
-#   relay -- powers the cam-relay homelab node (a Raspberry Pi 4B); NOT RA8 bench
-#            hardware.  Driven DIRECTLY from this workstation, like pi: the plug
-#            is on house wifi, reachable from here but not from cam-relay itself.
+#   relay -- a third auxiliary bench plug, NOT board or host power.  Driven
+#            DIRECTLY from this workstation, like pi: the plug is reachable from
+#            here directly, so it takes the same direct path.
 #
 # Usage (run from repo root):
 #   bash scripts/hil/tapo.sh <board|pi|relay> [status|on|off|cycle]
@@ -69,10 +69,9 @@ fi
 #            rather than through the Pi, which is what makes it possible at all.
 #            It also invalidates every lease, which boot_id then handles on
 #            sight.
-#   relay -- is NOT RA8 bench hardware at all: it powers the cam-relay homelab
-#            node, on a network the bench never touches. Cutting its power
-#            cannot collide with a flash, so there is nothing for the bench lock
-#            to serialize it against.
+#   relay -- is an auxiliary bench plug, not board or host power. Cutting its
+#            power cannot collide with a flash, so there is nothing for the
+#            bench lock to serialize it against.
 #
 # Only `board` takes the lock.
 if [[ "$TARGET" == "board" ]]; then
@@ -114,10 +113,9 @@ on_pi() {
 
 if [[ "$TARGET" == "pi" || "$TARGET" == "relay" ]]; then
   # The Pi plug must be driven directly from this machine -- never via the Pi,
-  # which may be the very thing we are rebooting. The relay plug is on house
-  # wifi and reachable from this workstation directly (the cam-relay node it
-  # powers cannot), so it takes the same direct path rather than the board's
-  # upload-and-run-on-the-Pi route.
+  # which may be the very thing we are rebooting. The relay plug is likewise
+  # reachable from this workstation directly, so it takes the same direct path
+  # rather than the board's upload-and-run-on-the-Pi route.
   run_local
 elif on_pi; then
   # board plug, and we are already on the Pi: drive it locally.
