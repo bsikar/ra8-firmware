@@ -15,13 +15,13 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 - Source files with at least one decision: **233**
 - Total compound decisions in scope: **1271**
-- Decisions at 100% MC/DC (`yes`): **1094**
+- Decisions at 100% MC/DC (`yes`): **1095**
 - Decisions partially covered (`partial`): **71**
-- Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **86.07%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **1181**
-- **Reachable MC/DC rate**: **92.63%** -- this is the gate threshold (100% required).
+- Decisions fully uncovered (`no`): **105**
+- Coverage rate (yes / total): **86.15%**
+- Deactivated gap conditions (DO-178C 6.4.4.3): **89**
+- Reachable-condition denominator (total - deactivated): **1182**
+- **Reachable MC/DC rate**: **92.64%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -127,7 +127,6 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 3 | (file scope) | `if (meta_name != nullptr && meta_content != nullptr && st...` | Annotated deactivation: TU-local helper find_cover_by_met... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (elem == nullptr \|\| local == nullptr) {` | TU-local static helper `elem_local_is` -- defensive NULL ... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (elem == nullptr \|\| local == nullptr) {` | TU-local static helper `elem_local_is` -- defensive NULL ... |
-| libs/ra8_fs/src/ra8_fs_fat_lfn.c | 2 | priv_free_chain | `while (cur >= k_cluster_first_data && (cur - k_cluster_fi...` | Annotated deactivation: loop bound; `cur < k_cluster_firs...` |
 | libs/ra8_fs/src/ra8_fs_fat_name.c | 3 | priv_83_to_str | `if (j > 0 && (uint8_t)out12[0] == k_dir_marker_kanji_e5 &...` | Annotated deactivation: 3-condition AND on Shift-JIS kanj... |
 | libs/ra8_hal/src/ra8_ble.c | 2 | internal_dispatch_event | `if ((internal_rx_byte(&code) == 0U) \|\| (internal_rx_byt...` | Annotated deactivation: TU-local helper internal_dispatch... |
 | libs/ra8_hal/src/ra8_ble.c | 4 | internal_dispatch_acl | `if ((internal_rx_byte(&hdl_lo) == 0U) \|\| (internal_rx_b...` | Annotated deactivation: TU-local helper internal_dispatch... |
@@ -222,7 +221,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_flash_irq | 9 | 8 | 1 | 0 |
 | ra8_reflow_svg_path | 9 | 8 | 1 | 0 |
 | ra8_esp_hosted_fmt | 8 | 7 | 0 | 1 |
-| ra8_fs_fat_lfn | 8 | 7 | 0 | 1 |
 | ra8_i3c_i2c | 7 | 6 | 0 | 1 |
 | ra8_spi_b | 7 | 6 | 0 | 1 |
 | ra8_app | 6 | 5 | 1 | 0 |
@@ -264,6 +262,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_zoom | 10 | 10 | 0 | 0 |
 | ra8_esp_hosted_osi_absent | 9 | 9 | 0 | 0 |
 | ra8_epaper_geom | 8 | 8 | 0 | 0 |
+| ra8_fs_fat_lfn | 8 | 8 | 0 | 0 |
 | ra8_fs_fat_mount | 8 | 8 | 0 | 0 |
 | ra8_pdg | 8 | 8 | 0 | 0 |
 | ra8_reflow_layout | 8 | 8 | 0 | 0 |
@@ -447,7 +446,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_fs | 1 | 0 | 2 | 3 |
 | ra8_esp_hosted_fmt | 1 | 0 | 7 | 8 |
 | ra8_esp_hosted_gpio | 1 | 0 | 2 | 3 |
-| ra8_fs_fat_lfn | 1 | 0 | 7 | 8 |
 | ra8_i3c_i2c | 1 | 0 | 6 | 7 |
 | ra8_net_pal | 1 | 0 | 1 | 2 |
 | ra8_rmac_mgmt | 1 | 0 | 1 | 2 |
