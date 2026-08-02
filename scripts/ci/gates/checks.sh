@@ -394,6 +394,24 @@ gate_init_order_freshness() (
   python3 scripts/checks/check_init_order_freshness.py
 )
 
+# --- roadmap-dashboard-freshness ------------------------------------------
+# docs/ROADMAP_DASHBOARD.md is COMMITTED yet GENERATED (mk/docs.mk writes it via
+# scripts/report/roadmap_dashboard.py), rendered purely from docs/ROADMAP.md.
+# Nothing regenerated it and byte-compared the committed copy, so it could
+# silently drift out of step with ROADMAP.md the same way INIT_ORDER_AUDIT.md
+# did (#537). This gate regenerates it from the current tree and FAILS if the
+# committed copy differs. The generator reads one committed markdown file and is
+# hardware-free (byte-stable across runs), so unlike the slow artefact-freshness
+# gate this one needs no build output and sits in the fast group beside
+# init-order-freshness. --selftest FIRST, both directions, so a comparator that
+# stopped detecting drift cannot pass as a clean tree.
+gate_roadmap_dashboard_freshness() (
+  set -e
+  require_cmd python3 "the roadmap-dashboard-freshness gate regenerates docs/ROADMAP_DASHBOARD.md"
+  python3 scripts/checks/check_roadmap_dashboard_freshness.py --selftest
+  python3 scripts/checks/check_roadmap_dashboard_freshness.py
+)
+
 # --- bench-lock -----------------------------------------------------------
 # One EK-RA8D2, ~20 concurrent agents, a nightly CI job and two humans. Every
 # script that drives it must take the bench lock first (#497); this proves the
