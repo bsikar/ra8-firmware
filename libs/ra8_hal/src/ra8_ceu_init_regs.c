@@ -225,12 +225,12 @@ void ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg)
     (((uint32_t)cfg->height_px) << k_ra8_ceu_cmcyr_shift_vcyl) | (uint32_t)cfg->width_px;
   *ra8_ceu_reg32(k_ra8_ceu_off_cmcyr) = cmcyr;
 
-  /* HUM Ch 60.2.5 "CAMOR : Camera Interface Offset Register" p 3645 */
+  /* HUM Ch 60.2.5 "CAMOR : Camera Interface Offset Register" p 3641 */
   const uint32_t camor =
     (((uint32_t)cfg->y_start_px) << k_ra8_ceu_camor_shift_vofst) | (uint32_t)cfg->x_start_px;
   *ra8_ceu_reg32(k_ra8_ceu_off_camor) = camor;
 
-  /* HUM Ch 60.2.6 "CAPWR : Camera Interface Width Register" p 3646 */
+  /* HUM Ch 60.2.6 "CAPWR : Camera Interface Width Register" p 3643 */
   uint16_t hwdth = cfg->width_px;
   if (cfg->x_capture_px != 0U) {
     hwdth = cfg->x_capture_px;
@@ -253,16 +253,16 @@ void ra8_ceu_program_format(const ra8_ceu_config_t* cfg)
 
 void ra8_ceu_program_destination(const ra8_ceu_config_t* cfg)
 {
-  /* HUM Ch 60.2.11 "CFSZR : Capture Filter Size Clip Register" p 3651 */
+  /* HUM Ch 60.2.11 "CFSZR : Capture Filter Size Clip Register" p 3653 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cfszr) = internal_pack_cfszr(cfg);
 
   /* HUM Ch 60.2.12 "CDWDR : Capture Destination Width Register" p 3654 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr) = (uint32_t)cfg->dst_stride;
 
-  /* HUM Ch 60.2.18 "CFWCR : Firewall Operation Control Register" p 3660 */
+  /* HUM Ch 60.2.18 "CFWCR : Firewall Operation Control Register" p 3661 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = 0U;
 
-  /* HUM Ch 60.2.19 "CLFCR : Capture Low-Pass Filter Control" p 3661 */
+  /* HUM Ch 60.2.19 "CLFCR : Capture Low-Pass Filter Control" p 3662 */
   uint32_t clfcr = 0U;
   if (cfg->low_pass_filter) {
     clfcr = 1U;
@@ -272,6 +272,6 @@ void ra8_ceu_program_destination(const ra8_ceu_config_t* cfg)
   /* HUM Ch 60.2.20 "CDOCR : Capture Data Output Control Register" p 3662 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cdocr) = internal_pack_cdocr(cfg);
 
-  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664 */
+  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3669 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cetcr) = 0U;
 }

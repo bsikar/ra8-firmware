@@ -531,7 +531,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
 {
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- OR-combined MRAFC flags and the board RMAC port are valid values outside the enumerator lists. */
   /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration
-   * Register" p 1707: each frame class has an ENABLE bit (UCENE/BCENE
+   * Register" p 1717: each frame class has an ENABLE bit (UCENE/BCENE
    * /MCENE in the [10:0] half + matching UCENP/BCENP/MCENP in the
    * [26:16] half) AND a separate ACCEPT bit (BCACE bit 6, MCACE bit 5)
    * that controls whether the MAC actually forwards the matched frame

@@ -673,7 +673,7 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs)
    * read-modify-write rather than trusting an undocumented caller contract. */
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
   {
-    /* HUM Ch 9.2.18 "MOCOCR : MOCO Control Register", p 346 -- representative of
+    /* HUM Ch 9.2.18 "MOCOCR : MOCO Control Register", p 341 -- representative of
      * the OCR family; internal_clock_offset() selects the register this clock
      * owns and each OCR places its STOP bit at bit 0. */
     if (stop) {

@@ -287,7 +287,7 @@ ra8_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
  */
 void internal_dcp_pid(volatile r_usb_regs_t* reg, ra8_usb_pid_t pid)
 {
-  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 */
+  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
   internal_rmw16(&reg->DCPCTR, pid, k_ra8_pid_mask);
 }
 

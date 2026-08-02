@@ -176,13 +176,13 @@ RA8_INTERNAL static void internal_ra8_mipi_dsi_stage_payload(const uint8_t* data
     const uint16_t byte_idx = (uint16_t)(i % 4U);
     words[word_idx] |= ((uint32_t)data[i]) << (byte_idx * (uint32_t)k_shift_8);
   }
-  /* HUM Ch 65.2 "TXPPD0R : Transmit Packet Payload Data 0", p 3858 */
+  /* HUM Ch 65.2 "TXPPD0R : Transmit Packet Payload Data 0", p 3849 */
   reg->TXPPD0R = words[0];
-  /* HUM Ch 65.2 "TXPPD1R : Transmit Packet Payload Data 1", p 3858 */
+  /* HUM Ch 65.2 "TXPPD1R : Transmit Packet Payload Data 1", p 3850 */
   reg->TXPPD1R = words[1];
-  /* HUM Ch 65.2 "TXPPD2R : Transmit Packet Payload Data 2", p 3858 */
+  /* HUM Ch 65.2 "TXPPD2R : Transmit Packet Payload Data 2", p 3850 */
   reg->TXPPD2R = words[2];
-  /* HUM Ch 65.2 "TXPPD3R : Transmit Packet Payload Data 3", p 3858 */
+  /* HUM Ch 65.2 "TXPPD3R : Transmit Packet Payload Data 3", p 3851 */
   reg->TXPPD3R = words[3];
 }
 
@@ -210,9 +210,9 @@ RA8_INTERNAL static void internal_ra8_mipi_dsi_pulse_start(uint8_t channel)
     k_ra8_mipi_dsi_sqch_chsel | ((channel == 0U) ? k_ra8_mipi_dsi_sqch_start : 0U);
   const uint32_t ch1_word =
     k_ra8_mipi_dsi_sqch_chsel | ((channel == 1U) ? k_ra8_mipi_dsi_sqch_start : 0U);
-  /* HUM Ch 65.2 "SQCH0SET0R : Sequence Channel 0 Setting 0", p 3920 */
+  /* HUM Ch 65.2 "SQCH0SET0R : Sequence Channel 0 Setting 0", p 3899 */
   reg->SQCH0SET0R = ch0_word;
-  /* HUM Ch 65.2 "SQCH1SET0R : Sequence Channel 1 Setting 0", p 3922 */
+  /* HUM Ch 65.2 "SQCH1SET0R : Sequence Channel 1 Setting 0", p 3905 */
   reg->SQCH1SET0R = ch1_word;
 }
 

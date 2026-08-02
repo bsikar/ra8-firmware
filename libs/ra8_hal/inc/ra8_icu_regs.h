@@ -267,7 +267,7 @@ typedef enum : uint8_t {
 } ra8_ielsr_bit_t;
 
 typedef enum : uint32_t {
-  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n", p 524:
+  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n", p 547:
    * IELS occupies bits [9:0] -- 10-bit field, mask 0x3FF.  RA8 has
    * hundreds of ELC event sources so the FSP layout uses 10 bits. */
   k_ra8_ielsr_iels_mask = 0x000003FFUL, /**< IELS field mask (10 bits). */

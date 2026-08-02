@@ -287,7 +287,7 @@ void internal_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t)
     (((uint32_t)t->thszero & k_ra8_mipi_phy_tim_byte_mask)
      << (uint32_t)k_ra8_mipi_phy_tim_shift_b0);
 
-  /* HUM Ch 64.2.13 "DPHYTIM6 : D-PHY Timing Control Register 6", p 3830 */
+  /* HUM Ch 64.2.13 "DPHYTIM6 : D-PHY Timing Control Register 6", p 3831 */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_tim6) = (uint32_t)t->tlpx & k_ra8_mipi_phy_tim6_tlpx_mask;
 }
 
@@ -505,7 +505,7 @@ ra8_err_t ra8_mipi_phy_reset(void)
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_tim4) = 0U;
   /* HUM Ch 64.2.12 "DPHYTIM5 : D-PHY Timing Control Register 5", p 3830 */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_tim5) = 0U;
-  /* HUM Ch 64.2.13 "DPHYTIM6 : D-PHY Timing Control Register 6", p 3830 */
+  /* HUM Ch 64.2.13 "DPHYTIM6 : D-PHY Timing Control Register 6", p 3831 */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_tim6) = 0U;
   s_last_sfr                                   = 0U;
   return k_ra8_ok;

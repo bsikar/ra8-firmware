@@ -112,28 +112,28 @@ ra8_err_t ra8_sdhi_init(uint8_t instance)
   const ra8_err_t mst_err = ra8_mstp_enable(s_sdhi_mstp_table[instance]);
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "sdhi_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
+  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
   /* Drop any stale flags before reset so the card-detection latch is
    * not interpreted as an event by the consumer. */
   reg->SD_INFO1 = 0U;
 
-  /* HUM Ch 47.2.31 "SOFT_RST : Software Reset Register" p 3173 */
+  /* HUM Ch 47.2.31 "SOFT_RST : Software Reset Register" p 3148 */
   /* Mirror FSP r_sdhi_hw_cfg(): assert reset (SDRST=0), release
    * reset (SDRST=1). This brings every status flag and bus-state
    * machine to a known idle state. */
   reg->SOFT_RST = k_ra8_sdhi_soft_rst_assert;
   reg->SOFT_RST = k_ra8_sdhi_soft_rst_release;
 
-  /* HUM Ch 47.2.18 "SD_CLK_CTRL : SD Clock Control Register" p 3145 */
+  /* HUM Ch 47.2.18 "SD_CLK_CTRL : SD Clock Control Register" p 3138 */
   /* Slowest CLKSEL (PCLKB/64) with CLKEN/CLKCTRLEN cleared; the
    * card-stack consumer will retune for 25 MHz / 50 MHz once
    * identification completes. */
   reg->SD_CLK_CTRL = k_ra8_sdhi_clk_ctrl_default;
 
-  /* HUM Ch 47.2.27 "SDIO_MODE : SDIO Mode Control Register" p 3169 */
-  /* HUM Ch 47.2.30 "SD_DMAEN : DMA Mode Enable Register" p 3172 */
-  /* HUM Ch 47.2.32 "SDIF_MODE : SD Interface Mode Setting" p 3174 */
-  /* HUM Ch 47.2.33 "EXT_SWAP : Swap Control Register" p 3175 */
+  /* HUM Ch 47.2.27 "SDIO_MODE : SDIO Mode Control Register" p 3144 */
+  /* HUM Ch 47.2.30 "SD_DMAEN : DMA Mode Enable Register" p 3147 */
+  /* HUM Ch 47.2.32 "SDIF_MODE : SD Interface Mode Setting" p 3148 */
+  /* HUM Ch 47.2.33 "EXT_SWAP : Swap Control Register" p 3149 */
   /* Disable SDIO mode, DMA, MMC test-CRC mask, and endian-swap so
    * the FIFO interface starts in the canonical big-endian-aware
    * configuration. */
@@ -148,8 +148,8 @@ ra8_err_t ra8_sdhi_init(uint8_t instance)
    * the card acknowledges ACMD6. */
   reg->SD_OPTION = (uint32_t)k_ra8_sdhi_option_bus_1bit;
 
-  /* HUM Ch 47.2.17 "SD_INFO2_MASK : SD Card Interrupt Mask 2" p 3144 */
-  /* HUM Ch 47.2.16 "SD_INFO1_MASK : SD Card Interrupt Mask 1" p 3142 */
+  /* HUM Ch 47.2.17 "SD_INFO2_MASK : SD Card Interrupt Mask 2" p 3137 */
+  /* HUM Ch 47.2.16 "SD_INFO1_MASK : SD Card Interrupt Mask 1" p 3136 */
   /* All interrupts masked off until ::ra8_sdhi_attach_handler installs
    * a callback. */
   reg->SD_INFO1_MASK = 0U;
@@ -165,7 +165,7 @@ ra8_err_t ra8_sdhi_deinit(uint8_t instance)
   volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
-  /* HUM Ch 47.2.31 "SOFT_RST : Software Reset Register" p 3173 */
+  /* HUM Ch 47.2.31 "SOFT_RST : Software Reset Register" p 3148 */
   /* Hold the IP in reset before clearing per-register state and
    * gating the module clock. */
   reg->SOFT_RST = k_ra8_sdhi_soft_rst_assert;
@@ -185,7 +185,7 @@ ra8_err_t ra8_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, ui
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
   /* HUM Ch 47.2.2 "SD_ARG / SD_ARG1 : SD Command Argument" p 3128 */
-  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
+  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3123 */
   /* Load SD_ARG, then SD_CMD kicks the command out on the bus.
    * FSP r_sdhi.c r_sdhi_command_send_no_wait() splits the argument
    * into the legacy SD_ARG1 (upper 16 bits) plus SD_ARG (lower 16
@@ -194,7 +194,7 @@ ra8_err_t ra8_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, ui
   reg->SD_ARG = arg;
   reg->SD_CMD = cmd;
 
-  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
+  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
   /* Poll SD_INFO1.RSPEND (bit 0) with bounded spin budget. */
   for (uint32_t i = 0U; i < k_ra8_sdhi_cmd_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
@@ -223,7 +223,7 @@ ra8_err_t ra8_sdhi_set_clock(uint8_t instance, uint32_t divider)
 {
   volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  /* HUM Ch 47.2.18 "SD_CLK_CTRL : SD Clock Control Register" p 3145 */
+  /* HUM Ch 47.2.18 "SD_CLK_CTRL : SD Clock Control Register" p 3138 */
   /* Preserve CLKEN (bit 8) and CLKCTRLEN (bit 9) -- caller controls
    * only the CLKSEL[7:0] divider. FSP r_sdhi_set_clock() snapshots
    * CLKCTRLEN, OR's CLKEN back in, and writes the merged value;
@@ -273,14 +273,14 @@ ra8_err_t ra8_sdhi_set_bus_width_4bit(uint8_t instance, uint16_t rca)
   uint32_t       rsp[4]    = {0U, 0U, 0U, 0U};
   const uint32_t cmd55_arg = (uint32_t)rca << (uint32_t)k_ra8_sdhi_rca_arg_shift;
 
-  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
+  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3123 */
   /* CMD55 APP_CMD prefix (arg = RCA<<16) -- required before any ACMDxx. */
   const ra8_err_t e55 =
     ra8_sdhi_send_command(instance, (uint32_t)k_ra8_sdhi_cmd_app_cmd, cmd55_arg, rsp);
   RA8_RETURN_ON_ERROR(e55, s_tag, "acmd6: CMD55 timeout"); /* GCOVR_EXCL_BR_LINE */
   const uint32_t cmd55_rsp = rsp[0];
 
-  /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3128 */
+  /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3124 */
   /* ACMD6 SET_BUS_WIDTH -- arg bits[1:0] = 0b10 selects the 4-bit bus. */
   const ra8_err_t e6 = ra8_sdhi_send_command(instance,
                                              (uint32_t)k_ra8_sdhi_cmd_set_bus_width,
@@ -310,8 +310,8 @@ ra8_err_t ra8_sdhi_set_bus_width_8bit(uint8_t instance)
 
   uint32_t rsp[4] = {0U, 0U, 0U, 0U};
 
-  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
-  /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument"  p 3128 */
+  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3123 */
+  /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument"  p 3124 */
   /* eMMC CMD6 SWITCH -- write EXT_CSD[183] BUS_WIDTH = 2 (8-bit). This
    * is a native command with no CMD55 app prefix (unlike SD ACMD6). */
   const ra8_err_t e6 = ra8_sdhi_send_command(instance,
@@ -336,7 +336,7 @@ ra8_err_t ra8_sdhi_get_status(uint8_t instance, uint32_t* out_mask)
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
   volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
+  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
   *out_mask = reg->SD_INFO1;
   return k_ra8_ok;
 }
@@ -345,7 +345,7 @@ ra8_err_t ra8_sdhi_clear_status(uint8_t instance, uint32_t mask)
 {
   volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
+  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
   /* SD_INFO1 bits are write-0-to-clear. Read-modify-write so unset
    * bits in `mask` continue to read 1 (canonical pattern from FSP
    * r_sdhi_access_irq_process()). */
@@ -367,7 +367,7 @@ void ra8_sdhi_dispatch(uint8_t instance)
   if (reg == nullptr) {
     return;
   }
-  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
+  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
   const uint32_t            mask = reg->SD_INFO1;
   const ra8_sdhi_event_fn_t fn   = s_sdhi_fn;
   void* const               ctx  = s_sdhi_ctx;
@@ -458,12 +458,12 @@ typedef enum : uint32_t {
 RA8_INTERNAL
 static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, uint32_t arg)
 {
-  /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3128 */
-  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register"  p 3125 */
+  /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3124 */
+  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register"  p 3123 */
   reg->SD_ARG = arg;
   reg->SD_CMD = cmd;
 
-  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
+  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
   for (uint32_t i = 0U; i < k_ra8_sdhi_cmd_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     if (ra8_fake_mmio_poll(&reg->SD_INFO1,
@@ -506,8 +506,8 @@ static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, u
 RA8_INTERNAL
 static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)
 {
-  /* HUM Ch 47.2.4 "SD_STOP : Data Stop Register"     p 3130 */
-  /* HUM Ch 47.2.6 "SD_SECCNT : Block Count Register" p 3133 */
+  /* HUM Ch 47.2.4 "SD_STOP : Data Stop Register"     p 3125 */
+  /* HUM Ch 47.2.6 "SD_SECCNT : Block Count Register" p 3126 */
   if (block_count > 1U) {
     reg->SD_STOP   = k_ra8_sdhi_stop_seccnt_en;
     reg->SD_SECCNT = block_count;
@@ -515,7 +515,7 @@ static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block
     reg->SD_STOP = 0U;
   }
 
-  /* HUM Ch 47.2.19 "SD_SIZE : Transfer Data Length Register" p 3147 */
+  /* HUM Ch 47.2.19 "SD_SIZE : Transfer Data Length Register" p 3139 */
   reg->SD_SIZE = k_ra8_sdhi_block_bytes;
 }
 
@@ -666,7 +666,7 @@ RA8_INTERNAL
 static ra8_err_t internal_sdhi_finish_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)
 {
   if (block_count > 1U) {
-    /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
+    /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3123 */
     const ra8_err_t stop_err =
       internal_sdhi_send(reg, (uint32_t)k_ra8_sdhi_cmd_stop_transmission, 0U);
     RA8_RETURN_ON_ERROR(stop_err, s_tag, "block_xfer: CMD12 timeout"); /* GCOVR_EXCL_BR_LINE */
@@ -692,7 +692,7 @@ ra8_err_t ra8_sdhi_read_block(uint8_t instance, uint32_t lba, uint8_t* buf, uint
   const ra8_err_t cmd_err = internal_sdhi_send(reg, cmd, lba);
   RA8_RETURN_ON_ERROR(cmd_err, s_tag, "read_block: RSPEND timeout"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 47.2.21 "SD_BUF0 : SD Buffer Register" p 3150 */
+  /* HUM Ch 47.2.21 "SD_BUF0 : SD Buffer Register" p 3143 */
   const uint32_t  total_words = block_count * k_ra8_sdhi_words_per_block;
   const ra8_err_t drain_err   = internal_sdhi_drain(reg, buf, total_words);
   RA8_RETURN_ON_ERROR(drain_err, s_tag, "read_block: BRE timeout"); /* GCOVR_EXCL_BR_LINE */
@@ -717,7 +717,7 @@ ra8_sdhi_write_block(uint8_t instance, uint32_t lba, const uint8_t* buf, uint32_
   const ra8_err_t cmd_err = internal_sdhi_send(reg, cmd, lba);
   RA8_RETURN_ON_ERROR(cmd_err, s_tag, "write_block: RSPEND timeout"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 47.2.21 "SD_BUF0 : SD Buffer Register" p 3150 */
+  /* HUM Ch 47.2.21 "SD_BUF0 : SD Buffer Register" p 3143 */
   const uint32_t  total_words = block_count * k_ra8_sdhi_words_per_block;
   const ra8_err_t fill_err    = internal_sdhi_fill(reg, buf, total_words);
   RA8_RETURN_ON_ERROR(fill_err, s_tag, "write_block: BWE timeout"); /* GCOVR_EXCL_BR_LINE */
@@ -730,8 +730,8 @@ ra8_err_t ra8_sdhi_attach_dma(uint8_t instance, uint8_t enable)
   volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "attach_dma: instance out of range");
 
-  /* HUM Ch 47.2.30 "SD_DMAEN : DMA Mode Enable Register"  p 3172 */
-  /* HUM Ch 47.2.17 "SD_INFO2_MASK : SD Card Interrupt Mask 2" p 3144 */
+  /* HUM Ch 47.2.30 "SD_DMAEN : DMA Mode Enable Register"  p 3147 */
+  /* HUM Ch 47.2.17 "SD_INFO2_MASK : SD Card Interrupt Mask 2" p 3137 */
   /* FSP r_sdhi_transfer_read / r_sdhi_transfer_write set the BREM
    * and BWEM mask bits whenever DMAEN is asserted, so that the
    * DMA-driven path does not race with the polled BRE / BWE wait

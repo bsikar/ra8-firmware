@@ -75,11 +75,11 @@ static const ra8_mstp_t s_ulpt_mstp_table[] = {
     reg->ULPTCR = 0U;
     /* HUM Ch 25.2.2 "ULPTMR1 : ULPT Mode Register 1" p 1192 */
     reg->ULPTMR1 = 0U;
-    /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1194 */
+    /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1192 */
     reg->ULPTMR2 = 0U;
     /* HUM Ch 25.2.4 "ULPTMR3 : ULPT Mode Register 3" p 1195 */
     reg->ULPTMR3 = 0U;
-    /* HUM Ch 25.2.5 "ULPTIOC : ULPT I/O Control Register" p 1196 */
+    /* HUM Ch 25.2.5 "ULPTIOC : ULPT I/O Control Register" p 1195 */
     reg->ULPTIOC = 0U;
     /* HUM Ch 25.2.6 "ULPT : ULPT Counter Register" p 1198 */
     reg->ULPTCNT = 0U;
@@ -102,7 +102,7 @@ static const ra8_mstp_t s_ulpt_mstp_table[] = {
    * TCK1 = 0 selects ULPTLCLK (LOCO-derived 32.768 kHz, HUM Table 9.2
    * p 320), which survives Software Standby. */
   reg->ULPTMR1 = 0U;
-  /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1194 */
+  /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1192 */
   reg->ULPTMR2 = 0U;
   /* HUM Ch 25.2.4 "ULPTMR3 : ULPT Mode Register 3" p 1195 */
   reg->ULPTMR3 = 0U;

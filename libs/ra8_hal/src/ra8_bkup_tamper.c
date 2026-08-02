@@ -350,7 +350,7 @@ static uint8_t internal_compose_vbtadcr3(const ra8_bkup_tamper_config_t* cfg)
     *ra8_bkup_vbtictlr() = internal_compose_vbtictlr(cfg);
 
     /* Tamper-init step 3 (12.3.7.4 p 518): VINCW. */
-    /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 511 */
+    /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 512 */
     *ra8_bkup_vbtncwcr() = (uint8_t)((uint8_t)cfg->nc_width & k_ra8_bkup_vbtncwcr_mask_vincw);
 
     /* Tamper-init step 4 (12.3.7.4 p 518): VCHnNCE + VCHnEG. */

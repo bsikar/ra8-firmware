@@ -540,7 +540,7 @@ static void dtc_coh_program_ti(void)
   if (slot_reg == nullptr) {
     return k_ra8_err_hw_error;
   }
-  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n" p 524:
+  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n" p 547:
    * DTCE[24] enables DTC activation; the IELS event field is preserved. */
   *slot_reg = *slot_reg | (uint32_t)k_ra8_ielsr_dtce_mask;
   return k_ra8_ok;

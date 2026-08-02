@@ -195,7 +195,7 @@ static void internal_ielsr_write(uint16_t slot, ra8_elc_event_t event)
 {
   volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
   if (ielsr != nullptr) { /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
-    /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 524 */
+    /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 547 */
     *ielsr = (uint32_t)event & k_ra8_ielsr_iels_mask;
   }
 }

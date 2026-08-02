@@ -681,7 +681,7 @@ static uint64_t usbhs_block_read(uc_engine* uc, uint64_t addr, unsigned size)
   const uint64_t off = addr - (uint64_t)k_usbhs_base;
   if ((uint16_t)off == (uint16_t)k_ra8_usbhs_off_pllsta) {
     return (uint64_t)
-      k_usbhs_plllock; /* HUM Ch 37.2.4 "PLLSTA : PLL Status Register" p 2064 -- role-agnostic. */
+      k_usbhs_plllock; /* HUM Ch 37.2.4 "PLLSTA : PLL Status Register" p 2065 -- role-agnostic. */
   }
   if (board_usb_roles_swapped()) {
     if (off >= (uint64_t)k_usbhs_dev_span) {

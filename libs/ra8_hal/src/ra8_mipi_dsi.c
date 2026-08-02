@@ -271,17 +271,17 @@ RA8_INTERNAL static ra8_err_t internal_ra8_mipi_dsi_validate_cfg(const ra8_mipi_
 RA8_INTERNAL static void internal_ra8_mipi_dsi_clear_all_status(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3934 */
+  /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3902 */
   reg->SQCH0SCR = k_ra8_mipi_dsi_sqch_clear_all;
-  /* HUM Ch 65.2 "SQCH1SCR : Sequence Channel 1 Status Clear", p 3934 */
+  /* HUM Ch 65.2 "SQCH1SCR : Sequence Channel 1 Status Clear", p 3907 */
   reg->SQCH1SCR = k_ra8_mipi_dsi_sqch_clear_all;
-  /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3893 */
+  /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3894 */
   reg->VMSCR = k_ra8_mipi_dsi_vmsr_clear_all;
-  /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3870 */
+  /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3855 */
   reg->RXSCR = k_ra8_mipi_dsi_rxsr_clear_all;
-  /* HUM Ch 65.2 "FERRSCR : Fatal Error Status Clear", p 3884 */
+  /* HUM Ch 65.2 "FERRSCR : Fatal Error Status Clear", p 3878 */
   reg->FERRSCR = k_ra8_mipi_dsi_ferrsr_clear_all;
-  /* HUM Ch 65.2 "PLSCR : PHY Lane Status Clear", p 3889 */
+  /* HUM Ch 65.2 "PLSCR : PHY Lane Status Clear", p 3887 */
   reg->PLSCR = k_ra8_mipi_dsi_plsr_clear_all;
 }
 
@@ -385,16 +385,16 @@ RA8_INTERNAL static void internal_program_link(const ra8_mipi_dsi_config_t* cfg)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
 
-  /* HUM Ch 65.2 "RSTCR" p 3853 */ /* pulse SWRST. */
+  /* HUM Ch 65.2 "RSTCR" p 3845 */ /* pulse SWRST. */
   reg->RSTCR = k_ra8_mipi_dsi_rstcr_swrst;
   reg->RSTCR = 0U;
 
-  /* HUM Ch 65.2 "TXSETR" p 3845 */ /* / "ULPSSETR" p 3849 / "DSISETR" p 3855 */
+  /* HUM Ch 65.2 "TXSETR" p 3842 */ /* / "ULPSSETR" p 3849 / "DSISETR" p 3855 */
   reg->TXSETR   = internal_ra8_mipi_dsi_make_txsetr(cfg);
   reg->ULPSSETR = (uint32_t)cfg->ulps_wakeup_period << (uint32_t)k_ulpssetr_wkup_shift;
   reg->DSISETR  = internal_ra8_mipi_dsi_make_dsisetr(cfg);
 
-  /* HUM Ch 65.2 "CLSTPTSETR" p 3886 */
+  /* HUM Ch 65.2 "CLSTPTSETR" p 3881 */
   reg->CLSTPTSETR =
     ((((uint32_t)cfg->timing.clock_stop_time) << k_ra8_mipi_dsi_clstpt_clkstpt_shift) &
      k_ra8_mipi_dsi_clstpt_clkstpt_mask) |
@@ -403,7 +403,7 @@ RA8_INTERNAL static void internal_program_link(const ra8_mipi_dsi_config_t* cfg)
     ((((uint32_t)cfg->timing.clock_keep_time) << k_ra8_mipi_dsi_clstpt_clkkpt_shift) &
      k_ra8_mipi_dsi_clstpt_clkkpt_mask);
 
-  /* HUM Ch 65.2 "LPTRNSTSETR" p 3887 */
+  /* HUM Ch 65.2 "LPTRNSTSETR" p 3883 */
   reg->LPTRNSTSETR = ((uint32_t)cfg->timing.go_lp_and_back) & k_ra8_mipi_dsi_lptrnst_golpbkt_mask;
 }
 
@@ -473,7 +473,7 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
   }
 
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
+  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3845 */
   reg->RSTCR = k_ra8_mipi_dsi_rstcr_swrst;
 
   s_mipi_dsi_event_fn          = nullptr;
@@ -524,9 +524,9 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
 [[nodiscard]] ra8_err_t ra8_mipi_dsi_soft_reset(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
+  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3845 */
   reg->RSTCR = k_ra8_mipi_dsi_rstcr_swrst;
-  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
+  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3845 */
   reg->RSTCR = 0U;
   return k_ra8_ok;
 }
@@ -543,9 +543,9 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
   if (s_continuous_clock) {
     hsclk |= k_ra8_mipi_dsi_hsclk_continuous;
   }
-  /* HUM Ch 65.2 "HSCLKSETR : HS Clock Setting Register", p 3848 */
+  /* HUM Ch 65.2 "HSCLKSETR : HS Clock Setting Register", p 3843 */
   reg->HSCLKSETR = hsclk;
-  /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3888 */
+  /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3884 */
   return ra8_mipi_dsi_internal_wait_eq(&reg->PLSR,
                                        k_ra8_mipi_dsi_plsr_cllp2hs,
                                        k_ra8_mipi_dsi_plsr_cllp2hs);
@@ -554,9 +554,9 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
 [[nodiscard]] ra8_err_t ra8_mipi_dsi_hs_clock_stop(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "HSCLKSETR : HS Clock Setting Register", p 3848 */
+  /* HUM Ch 65.2 "HSCLKSETR : HS Clock Setting Register", p 3843 */
   reg->HSCLKSETR = 0U;
-  /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3888 */
+  /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3884 */
   return ra8_mipi_dsi_internal_wait_eq(&reg->PLSR,
                                        k_ra8_mipi_dsi_plsr_clhs2lp,
                                        k_ra8_mipi_dsi_plsr_clhs2lp);
@@ -587,7 +587,7 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
     ulpscr |= k_ra8_mipi_dsi_ulpscr_clent;
     s_clock_lanes_in_ulps = true;
   }
-  /* HUM Ch 65.2 "ULPSCR : ULPS Control Register", p 3851 */
+  /* HUM Ch 65.2 "ULPSCR : ULPS Control Register", p 3844 */
   ra8_mipi_dsi()->ULPSCR = ulpscr;
   return k_ra8_ok;
 }
@@ -606,7 +606,7 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
     ulpscr |= k_ra8_mipi_dsi_ulpscr_clexit;
     s_clock_lanes_in_ulps = false;
   }
-  /* HUM Ch 65.2 "ULPSCR : ULPS Control Register", p 3851 */
+  /* HUM Ch 65.2 "ULPSCR : ULPS Control Register", p 3844 */
   ra8_mipi_dsi()->ULPSCR = ulpscr;
   return k_ra8_ok;
 }
