@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # shellcheck shell=bash
 # shellcheck disable=SC2154  # FIRMWARE_DIR / BUILD_DIR / RC_INFRA and the print_* helpers come from scripts/checks/clang_tidy.sh, the only thing that sources this file
 # shellcheck disable=SC2034  # TIDY_ARG_LEAD/TRAIL/SEEN_SEP are filled by split_tidy_args and READ by run_tidy_chunks below and by callers in passes.sh

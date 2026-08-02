@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # shellcheck shell=bash
 # shellcheck disable=SC2034  # sourced config fragment: every RA8_UNICORN_* is consumed by the sourcing script, not here.
 # SPDX-License-Identifier: MIT
