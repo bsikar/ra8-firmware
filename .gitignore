@@ -220,6 +220,10 @@ tools/cache_bench/*.dSYM/
 # generated sdkconfig). None of it is first-party source. Anchored to the
 # repo root so it cannot match a directory of that name elsewhere (#377).
 /coprocessor/esp32c6/esp-hosted-mcu/
+# Bench Wi-Fi credentials the c6_wifi_join firmware compiles in at build time
+# (SSID + WPA passphrase). The .example template is committed; the real values
+# are a secret (the PSK lives in OpenBao) and must never be committed.
+/coprocessor/esp32c6/wifi.env
 # libFuzzer seed corpus: regenerated deterministically by
 # scripts/checks/init_fuzz_corpora.sh (invoked from `make fuzz`), so the seeds
 # are a build product, not source. Committing them only lets them drift from
