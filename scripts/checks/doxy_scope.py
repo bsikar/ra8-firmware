@@ -74,6 +74,8 @@ FUNCTION_TOOL_SUBTREES = [
     "tools/glyph_bench",
     "tools/mkbookimg",
     "tools/mkfontimg",
+    "tools/rabook_imagepack",
+    "tools/rabook_viewer",
     "tools/reader_vmem",
 ]
 

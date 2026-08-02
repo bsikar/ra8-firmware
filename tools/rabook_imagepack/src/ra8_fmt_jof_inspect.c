@@ -119,6 +119,10 @@ static uint32_t priv_fnv1a(const uint8_t* buf, size_t len)
 
 /**
  * @brief Print the parsed header and footer geometry of an atlas.
+ * @details Writes the decoded JOF geometry -- image and tile dimensions, grid,
+ *          bpp, codec, tile count, index offset and total size -- as a labelled
+ *          block, and flags the long-strip case where a tile spans the full
+ *          image width. This is the header portion of an `inspect` dump.
  * @param[in] out  Report sink (non-NULL).
  * @param[in] info Parsed atlas geometry (non-NULL).
  * @param[in] len  Backing size in bytes.
@@ -211,6 +215,11 @@ static ra8_err_t priv_tile_content(const ra8_fmt_blob_t*   atlas,
 
 /**
  * @brief Fill one tile record from the index entry and the atlas geometry.
+ * @details Reads the tile's stored offset and length from its index-table entry,
+ *          derives its pixel dimensions and decoded-payload size from the grid
+ *          geometry, and bounds-checks that the stored window lies inside the
+ *          index region -- rejecting a container whose table points past its own
+ *          payload.
  * @param[in]  atlas Container bytes (non-NULL).
  * @param[in]  info  Parsed geometry (non-NULL).
  * @param[in]  idx   Tile index in row-major order.
@@ -324,6 +333,10 @@ priv_check_table(const fmt_tile_rec_t* recs, uint32_t count, uint32_t first, FIL
 
 /**
  * @brief Print the per-tile table, eliding beyond ::k_ra8_fmt_max_dump_rows.
+ * @details Writes one row per tile -- index, stored offset and length, decoded
+ *          payload size, tile pixel dimensions and content hash -- capping the
+ *          output at ::k_ra8_fmt_max_dump_rows and printing an elision note so a
+ *          large atlas does not flood the report.
  * @param[in] out   Report sink (non-NULL).
  * @param[in] recs  Tile records (non-NULL).
  * @param[in] count Tile count.
