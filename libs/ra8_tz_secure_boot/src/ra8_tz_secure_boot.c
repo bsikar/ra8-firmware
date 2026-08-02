@@ -58,7 +58,7 @@ static const char* s_tag = "TZBOOT";
 static volatile ra8_tz_secure_boot_step_t s_step = k_ra8_tz_secure_boot_step_idle;
 
 /* =============================================================================
- * Address constants (verified against HUM Ch 9 + Ch 3)
+ * Address constants (verified against HUM Ch 13 + Ch 3)
  * =============================================================================
  */
 
@@ -72,7 +72,7 @@ static volatile ra8_tz_secure_boot_step_t s_step = k_ra8_tz_secure_boot_step_idl
  * at 0xE000ED08 (the regular VTOR; writes to it from Secure state set
  * VTOR_NS when SAU is enabled per ARMv8-M ARM section B3.2.4).
  * CPSCU.IPCSAR / IPCPAR follow the layout in HUM Ch 3.2.1 / 3.2.2.
- * PRCR_S lives in the SYSC block at base 0x4001E000 (HUM Ch 9.2.4).
+ * PRCR_S lives in the SYSC block at base 0x4001E000 (HUM Ch 13.2.1).
  */
 typedef enum : uintptr_t {
   k_ra8_tz_sau_ctrl_addr    = 0xE000EDD0UL, /**< SAU Control.           */
@@ -105,7 +105,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra8_tz_secure_boot_prcr_t
- * @brief PRCR_S unlock key + per-group enable bits (HUM Ch 9.2.4).
+ * @brief PRCR_S unlock key + per-group enable bits (HUM Ch 13.2.1).
  *
  * @details
  * PRCR_S is a 16-bit register. The upper byte must equal the write
@@ -274,7 +274,7 @@ RA8_INTERNAL static void internal_write32(uintptr_t addr, uint32_t value)
   }
   /* SAU RBAR / RLAR writes are routed through internal_sau_set_region. */
 #else
-  /* HUM Ch 3.2.1 "IPCSAR" p 205 and HUM Ch 9.2.4 "PRCR_S" p 397 for
+  /* HUM Ch 3.2.1 "IPCSAR" p 205 and HUM Ch 13.2.1 "PRCR_S" p 521 for
    * the secure-only writes routed through this helper. Generic 32-bit
    * MMIO store; the called sites cite their own register page. */
   *(volatile uint32_t*)addr = value;
@@ -348,7 +348,7 @@ RA8_INTERNAL static void internal_write16(uintptr_t addr, uint16_t value)
   }
   (void)addr;
 #else
-  /* HUM Ch 9.2.4 "PRCR_S" p 397 */
+  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
   *(volatile uint16_t*)addr = value;
 #endif
 }
@@ -486,7 +486,7 @@ ra8_err_t ra8_tz_secure_boot_security_init(uint32_t ipcsar_value, uint32_t ipcpa
    * pattern, otherwise the chip silently drops the write. */
 
   /* Open the PRC4 gate so the next IPCSAR / IPCPAR writes land. */
-  /* HUM Ch 9.2.4 "PRCR_S" p 397 */
+  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
   internal_write16(k_ra8_tz_prcr_s_addr, (uint16_t)k_ra8_tz_prcr_s_open);
   s_step = k_ra8_tz_secure_boot_step_prcr_unlocked;
 
@@ -497,7 +497,7 @@ ra8_err_t ra8_tz_secure_boot_security_init(uint32_t ipcsar_value, uint32_t ipcpa
   s_step = k_ra8_tz_secure_boot_step_ipcsar_written;
 
   /* Close the PRC4 gate to restore write-protect on CPSCU. */
-  /* HUM Ch 9.2.4 "PRCR_S" p 397 */
+  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
   internal_write16(k_ra8_tz_prcr_s_addr, (uint16_t)k_ra8_tz_prcr_s_close);
   s_step = k_ra8_tz_secure_boot_step_prcr_relocked;
 

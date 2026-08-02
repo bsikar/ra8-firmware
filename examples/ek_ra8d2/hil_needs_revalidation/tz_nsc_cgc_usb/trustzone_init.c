@@ -330,7 +330,7 @@ static void tz_sau_set_region(uint8_t region, uint32_t base, uint32_t limit, boo
 static void tz_sram_ns_boundary(void)
 {
   /* Open PRC4 so the CPSCU SRAMSABAR writes below land. */
-  /* HUM Ch 9.2.4 "PRCR_S" p 397 */
+  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
   *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_open;
 
   /* HUM Ch 58.2 "SRAMSABARn : SRAM Security Attribute Boundary Address
@@ -342,7 +342,7 @@ static void tz_sram_ns_boundary(void)
   tz_write32(k_tz_sramsabar0_addr + (3U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar3_val);
 
   /* Re-lock PRC4 (restore CPSCU write-protect). */
-  /* HUM Ch 9.2.4 "PRCR_S" p 397 */
+  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
   *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_close;
 }
 
@@ -524,7 +524,7 @@ static void tz_usb_mark_ns(void)
    * registers" p 521), so the gate must be open across the write; HUM "Security
    * or Privilege Bit Write Timing" p 3301 then requires reading back until the
    * value matches. */
-  /* HUM Ch 9.2.4 "PRCR_S" p 397 -- open PRC4. */
+  /* HUM Ch 13.2.1 "PRCR_S" p 521 -- open PRC4. */
   *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_open;
   const uint32_t want                   = tz_read32(k_tz_psarb_addr) | (uint32_t)k_tz_psarb_usb_ns;
   tz_write32(k_tz_psarb_addr, want);
@@ -535,7 +535,7 @@ static void tz_usb_mark_ns(void)
       break;
     }
   }
-  /* HUM Ch 9.2.4 "PRCR_S" p 397 -- re-lock PRC4. */
+  /* HUM Ch 13.2.1 "PRCR_S" p 521 -- re-lock PRC4. */
   *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_close;
   g_tz_usb_psarb_readback               = seen;
 }
