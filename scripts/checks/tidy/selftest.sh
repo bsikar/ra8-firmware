@@ -114,8 +114,9 @@ selftest_scope() {
 #
 # The positive half is skipped (not failed) when no cortex-m85-capable compiler
 # is on PATH, so a developer running --selftest without the pinned toolchain
-# still exercises the load-bearing negative half. The gate always has it: it
-# runs use_pinned_arm_toolchain before invoking --selftest.
+# still exercises the load-bearing negative half. clang_tidy.sh main() runs
+# use_pinned_arm_toolchain before every mode, so the positive half fires
+# whenever the pinned toolchain is installed, --selftest included.
 #
 # Prints the number of failures.
 # ---------------------------------------------------------------------------

@@ -66,6 +66,14 @@ FIRMWARE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=scripts/ci/lib/parallelism.sh
 . "$SCRIPT_DIR/../ci/lib/parallelism.sh"
 
+# use_pinned_arm_toolchain -- the firmware pass REQUIRES a cortex-m85-aware
+# arm-none-eabi-gcc (12.3+) and fails loudly (RC_INFRA) without one. Set the
+# pinned 13.3 up HERE so every caller -- the pre-commit hook, gate_tidy, a
+# manual run -- resolves it, instead of aborting on the distro-default 12.2
+# whenever the caller forgot to (#570). A no-op when the pin is absent.
+# shellcheck source=scripts/ci/lib/arm_toolchain.sh
+. "$SCRIPT_DIR/../ci/lib/arm_toolchain.sh"
+
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
@@ -257,6 +265,13 @@ run_clang_tidy() {
 
 main() {
   parse_args "$@"
+
+  # Put the pinned Arm GNU Toolchain on PATH before anything else, so the
+  # firmware pass (and the --selftest arm-includes check) resolve a
+  # cortex-m85-aware compiler no matter how this script was entered. A no-op
+  # when the pin is not installed; require_arm_system_includes then fails
+  # loudly with remediation rather than silently linting nothing (#570).
+  use_pinned_arm_toolchain
 
   if [[ "$SELFTEST" == "true" ]]; then
     run_selftest
