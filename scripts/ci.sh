@@ -244,6 +244,13 @@ pick_clang_format() {
 # shellcheck source=scripts/ci/lib/abort.sh
 . "${SCRIPT_DIR}/ci/lib/abort.sh"
 
+# use_pinned_arm_toolchain() -- put the pinned Arm GNU Toolchain (cortex-m85
+# aware) on PATH. One home for the policy so ci.sh's cross-build gates and
+# scripts/checks/clang_tidy.sh (its firmware pass, and the pre-commit hook that
+# runs it) resolve the SAME arm-none-eabi-gcc. Sourced like parallelism.sh.
+# shellcheck source=scripts/ci/lib/arm_toolchain.sh
+. "${SCRIPT_DIR}/ci/lib/arm_toolchain.sh"
+
 # Persistent PINNED-TOOL cache (#326). The docs gate builds with a
 # version-pinned doxygen that scripts/builders/provision_doxygen.sh downloads +
 # sha256-verifies on first use. Every suite run builds in a fresh mktemp
@@ -271,25 +278,6 @@ export_tools_cache() {
     export RA8_TOOLS_CACHE="$dir"
     echo "==> pinned-tool cache: $dir (survives the snapshot; docs gate doxygen)" >&2
   fi
-}
-
-# Prepend the pinned Arm GNU Toolchain when the runner provisions it under
-# /opt, replacing what the workflows used to do with GITHUB_PATH. The apt
-# gcc-arm-none-eabi package ships no C++ standard library, so C++ apps
-# (ereader_shelf -> ra8_epub + tinyxml2) fail with "fatal error: cstddef";
-# the official ARM toolchain under /opt bundles libstdc++.
-use_pinned_arm_toolchain() {
-  local candidate
-  for candidate in \
-    "${RA8_ARM_TOOLCHAIN_BIN:-}" \
-    /opt/arm-gnu-toolchain-13.3/bin \
-    "$HOME/opt/arm-gnu-toolchain-13.3/bin"; do
-    if [[ -n "$candidate" && -x "$candidate/arm-none-eabi-gcc" ]]; then
-      PATH="$candidate:$PATH"
-      export PATH
-      return 0
-    fi
-  done
 }
 
 # Refuse to run a ra8_emulator gate on an unpinned Unicorn.
