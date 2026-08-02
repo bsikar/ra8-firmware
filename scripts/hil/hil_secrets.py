@@ -41,6 +41,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "secrets"))
 from openbao_client import OpenBaoClient, OpenBaoError, load_config
 
 # Map OpenBao KV keys -> the TAPO_* environment variables the consumer reads.
+#
+# TAPO_RELAY_* is intentionally NOT in this map: the cam-relay plug's IP/MAC are
+# non-secret and resolved from .env only. Adding it here would enlarge the
+# all-keys-or-miss set checked in populate_env(), so an existing vault holding
+# only the board/pi keys would read as an incomplete miss and break board/pi
+# OpenBao resolution. Keep relay out of OpenBao resolution.
 _KEY_TO_ENV = {
     "user": "TAPO_USER",
     "pass": "TAPO_PASS",

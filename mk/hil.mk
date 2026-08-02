@@ -145,7 +145,7 @@ hil-help:
 	@echo "  make hil-all                    run the full HIL suite"
 	@echo "  make hil-c6 [APP=<app>]         run the ESP32-C6 lane (needs SW4 1=OFF 2=OFF 3=ON 4=OFF"
 	@echo "                                  and the C6 harness on J26 -- see the tier README)"
-	@echo "  make hil-tapo TARGET=<board|pi> CMD=<status|on|off|cycle>   board/Pi power via Tapo plug"
+	@echo "  make hil-tapo TARGET=<board|pi|relay> CMD=<status|on|off|cycle>   board/Pi/relay power via Tapo plug"
 	@echo "  make hil-ppps CMD=<off|on|cycle [port]>   per-port USB power"
 
 hil-flash:
