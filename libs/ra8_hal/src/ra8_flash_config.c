@@ -197,7 +197,7 @@ ra8_err_t ra8_flash_set_startup_area(ra8_flash_startup_t target, bool temporary)
   }
 
   if (temporary) {
-    /* HUM Ch 59 "MSUACR : Start-Up Area Control Register" p 3593 */
+    /* HUM Ch 59 "MSUACR : Start-Up Area Control Register" p 3574 */
     const uint16_t swap_bit                = (target == k_ra8_flash_startup_alternate)
                                                ? k_ra8_msuacr_swap_alternate
                                                : k_ra8_msuacr_swap_default;
@@ -231,7 +231,7 @@ ra8_err_t ra8_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr)
 {
   RA8_CHECK_NULL_PTR(out_btflg, s_flash_tag, "out_btflg must not be nullptr");
   RA8_CHECK_NULL_PTR(out_fspr, s_flash_tag, "out_fspr must not be nullptr");
-  /* HUM Ch 59 "MSUASMON : Start-Up Area Monitor" p 3593 */
+  /* HUM Ch 59 "MSUASMON : Start-Up Area Monitor" p 3573 */
   const uint32_t v = *ra8_mram_reg32(k_ra8_mram_off_msuasmon);
   *out_btflg       = (uint8_t)((v & k_ra8_msuasmon_mask_btflg) != 0U);
   *out_fspr        = (uint8_t)((v & k_ra8_msuasmon_mask_fspr) != 0U);
@@ -267,7 +267,7 @@ ra8_err_t ra8_flash_config_set_write(uint32_t target_addr, const uint16_t* words
     return k_ra8_err_invalid_arg;
   }
 
-  /* HUM Ch 59.5.19 "MSADDR : MACI Command Start Address Register" p 3573 */
+  /* HUM Ch 59.5.19 "MSADDR : MACI Command Start Address Register" p 3564 */
   *ra8_mram_reg32(k_ra8_mram_off_msaddr) = target_addr;
   /* Opener: Program (0xE8) for the extra-MRAM data area, else Configuration
    * Set (0x40) for the OFS config area. HUM Ch 59.7.4.5 Fig 59.13 p 3591 /
@@ -290,7 +290,7 @@ ra8_err_t ra8_flash_config_set_write(uint32_t target_addr, const uint16_t* words
     return err;
   }
 
-  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
+  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3568 */
   const uint32_t s = *ra8_mram_reg32(k_ra8_mram_off_mstatr);
   if ((s & k_ra8_mstatr_mask_any_err) != 0U) {
     return k_ra8_err_hw_error;
@@ -325,7 +325,7 @@ ra8_err_t ra8_flash_config_set_write(uint32_t target_addr, const uint16_t* words
  */
 static ra8_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
 {
-  /* HUM Ch 59 "MCNTSELR : MRAM Counter Select Register" p 3576 */
+  /* HUM Ch 59 "MCNTSELR : MRAM Counter Select Register" p 3565 */
   *ra8_mram_reg8(k_ra8_mram_off_mcntselr) = (uint8_t)(mcntselr & k_ra8_mcntselr_mask);
   ra8_flash_internal_maci_cmd8(cmd);
   ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_final);
@@ -333,7 +333,7 @@ static ra8_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
   if (err != k_ra8_ok) {
     return err;
   }
-  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3562 */
   const uint8_t mastat = *ra8_mram_reg8(k_ra8_mram_off_mastat);
   if ((mastat & k_ra8_mastat_mask_cmdlk) != 0U) {
     return k_ra8_err_hw_error;
@@ -494,11 +494,11 @@ ra8_err_t ra8_flash_arc_read(ra8_flash_arc_id_t counter, uint32_t* out_count)
 ra8_err_t ra8_flash_zeroize_huk(void)
 {
   RA8_VALIDATE_INIT(s_flash_rt.initialized, s_flash_tag, "zeroize before init");
-  /* HUM Ch 59 "MREZC : Extra MRAM Zeroization Control" p 3565 */
+  /* HUM Ch 59 "MREZC : Extra MRAM Zeroization Control" p 3561 */
   *ra8_mram_reg16(k_ra8_mram_off_mrezc) = k_ra8_mrezc_full_zero;
 
   for (uint32_t i = 0U; i < k_ra8_flash_zeroize_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status" p 3565 */
+    /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status" p 3561 */
     const uint8_t s = *ra8_mram_reg8(k_ra8_mram_off_mrezs);
     if ((s & k_ra8_mrezs_mask_whukexe) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra8_ok;
@@ -516,11 +516,11 @@ ra8_err_t ra8_flash_set_security_attribution(uint16_t new_msar)
 
 ra8_err_t ra8_flash_msuinitr_kick(void)
 {
-  /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
+  /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3572 */
   *ra8_mram_reg16(k_ra8_mram_off_msuinitr) = k_ra8_msuinitr_full_init;
 
   for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) {
-    /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
+    /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3572 */
     const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_msuinitr);
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam: on real HW the sequencer auto-clears
@@ -543,7 +543,7 @@ ra8_err_t ra8_flash_msuinitr_kick(void)
 
 ra8_err_t ra8_flash_set_ecc_encoder_enable(bool enable)
 {
-  /* HUM Ch 59 "MRCEECC : Code MRAM ECC Encoder Control" p 3624 */
+  /* HUM Ch 59 "MRCEECC : Code MRAM ECC Encoder Control" p 3580 */
   uint16_t enc_bit = 0U;
   if (enable) {
     enc_bit = k_ra8_mrceecc_mask_eccen;
@@ -575,11 +575,11 @@ ra8_err_t ra8_flash_get_ecc_error_addr(uint32_t* out_code_ted,
 
   /* HUM Ch 59 "MRCRTEA : Code MRAM TED Error Address" p 3555 */
   *out_code_ted = *ra8_mram_reg32(k_ra8_mram_off_mrcrtea);
-  /* HUM Ch 59 "MRCRDEA : Code MRAM DEC Error Address" p 3555 */
+  /* HUM Ch 59 "MRCRDEA : Code MRAM DEC Error Address" p 3556 */
   *out_code_dec = *ra8_mram_reg32(k_ra8_mram_off_mrcrdea);
   /* HUM Ch 59 "MRERTEA : Extra MRAM TED Error Address" p 3558 */
   *out_extra_ted = *ra8_mram_reg32(k_ra8_mram_off_mrertea);
-  /* HUM Ch 59 "MRERDEA : Extra MRAM DEC Error Address" p 3558 */
+  /* HUM Ch 59 "MRERDEA : Extra MRAM DEC Error Address" p 3559 */
   *out_extra_dec = *ra8_mram_reg32(k_ra8_mram_off_mrerdea);
   return k_ra8_ok;
 }
@@ -587,7 +587,7 @@ ra8_err_t ra8_flash_get_ecc_error_addr(uint32_t* out_code_ted,
 ra8_err_t ra8_flash_get_program_error_addr(uint32_t* out_addr)
 {
   RA8_CHECK_NULL_PTR(out_addr, s_flash_tag, "out_addr must not be nullptr");
-  /* HUM Ch 59 "MRCPEA : Code MRAM Program Error Address" p 3601 */
+  /* HUM Ch 59 "MRCPEA : Code MRAM Program Error Address" p 3579 */
   *out_addr = *ra8_mram_reg32(k_ra8_mram_off_mrcpea);
   return k_ra8_ok;
 }
@@ -624,9 +624,9 @@ ra8_err_t ra8_flash_set_update_transfer(uint8_t list_select)
   if (list_select > (uint8_t)k_ra8_flash_max_list_select) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 59 "MCTRLSR : MRAM Update Transfer List Select" p 3580 */
+  /* HUM Ch 59 "MCTRLSR : MRAM Update Transfer List Select" p 3567 */
   *ra8_mram_reg8(k_ra8_mram_off_mctrlsr) = (uint8_t)(list_select & k_ra8_mctrlsr_mask_list_sel);
-  /* HUM Ch 59 "MCTRCNTR : MRAM Update Transfer Control" p 3580 */
+  /* HUM Ch 59 "MCTRCNTR : MRAM Update Transfer Control" p 3566 */
   *ra8_mram_reg16(k_ra8_mram_off_mctrcntr) =
     (uint16_t)(k_ra8_mctrcntr_key | k_ra8_mctrcntr_mask_start);
   return k_ra8_ok;
@@ -637,7 +637,7 @@ ra8_err_t ra8_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint
   RA8_CHECK_NULL_PTR(out_busy, s_flash_tag, "out_busy null");
   RA8_CHECK_NULL_PTR(out_done, s_flash_tag, "out_done null");
   RA8_CHECK_NULL_PTR(out_err, s_flash_tag, "out_err null");
-  /* HUM Ch 59 "MCTRSTATR : MRAM Update Transfer Status" p 3580 */
+  /* HUM Ch 59 "MCTRSTATR : MRAM Update Transfer Status" p 3568 */
   const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mctrstatr);
   *out_busy        = (uint8_t)((v & k_ra8_mctrstatr_mask_busy) != 0U);
   *out_done        = (uint8_t)((v & k_ra8_mctrstatr_mask_done) != 0U);

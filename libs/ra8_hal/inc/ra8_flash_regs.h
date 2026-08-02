@@ -149,7 +149,7 @@ typedef enum : uint16_t {
   k_ra8_mram_off_mrcraes = 0x0018U, /**< RA8 MRAM off mrcraes. */
   /* HUM Ch 59.5.7 "MRCRTEA : Code MRAM TED Error Address Register" p 3555 */
   k_ra8_mram_off_mrcrtea = 0x001CU, /**< RA8 MRAM off mrcrtea. */
-  /* HUM Ch 59.5.8 "MRCRDEA : Code MRAM DEC Error Address Register" p 3555 */
+  /* HUM Ch 59.5.8 "MRCRDEA : Code MRAM DEC Error Address Register" p 3556 */
   k_ra8_mram_off_mrcrdea = 0x0020U, /**< RA8 MRAM off mrcrdea. */
   /* HUM Ch 59.5.9 "MRERAINT : Extra MRAM Read Access Error Interrupt Enable" p 3557 */
   k_ra8_mram_off_mreraint = 0x0034U, /**< RA8 MRAM off mreraint. */
@@ -157,65 +157,65 @@ typedef enum : uint16_t {
   k_ra8_mram_off_mreraes = 0x0038U, /**< RA8 MRAM off mreraes. */
   /* HUM Ch 59.5.11 "MRERTEA : Extra MRAM TED Error Address Register" p 3558 */
   k_ra8_mram_off_mrertea = 0x003CU, /**< RA8 MRAM off mrertea. */
-  /* HUM Ch 59.5.12 "MRERDEA : Extra MRAM DEC Error Address Register" p 3558 */
+  /* HUM Ch 59.5.12 "MRERDEA : Extra MRAM DEC Error Address Register" p 3559 */
   k_ra8_mram_off_mrerdea = 0x0040U, /**< RA8 MRAM off mrerdea. */
   /* HUM Ch 59.5.13 "MSAR : MRAM Security Attribution Register" p 3559 */
   k_ra8_mram_off_msar = 0x0100U, /**< RA8 MRAM off msar. */
-  /* HUM Ch 59.5.14 "MREZS : Extra MRAM Zeroization Status Register" p 3565 */
+  /* HUM Ch 59.5.14 "MREZS : Extra MRAM Zeroization Status Register" p 3561 */
   k_ra8_mram_off_mrezs = 0x0400U, /**< RA8 MRAM off mrezs. */
-  /* HUM Ch 59.5.15 "MREZC : Extra MRAM Zeroization Control Register" p 3565 */
+  /* HUM Ch 59.5.15 "MREZC : Extra MRAM Zeroization Control Register" p 3561 */
   k_ra8_mram_off_mrezc = 0x0404U, /**< RA8 MRAM off mrezc. */
-  /* HUM Ch 59.5.16 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  /* HUM Ch 59.5.16 "MASTAT : Extra MRAM Access Status Register" p 3562 */
   k_ra8_mram_off_mastat = 0x2010U, /**< RA8 MRAM off mastat. */
-  /* HUM Ch 59.5.17 "MPAEINT : Extra MRAM Access Error Interrupt Enable" p 3577 */
+  /* HUM Ch 59.5.17 "MPAEINT : Extra MRAM Access Error Interrupt Enable" p 3563 */
   k_ra8_mram_off_mpaeint = 0x2014U, /**< RA8 MRAM off mpaeint. */
-  /* HUM Ch 59.5.18 "MRDYIE : Extra MRAM Ready Interrupt Enable Register" p 3577 */
+  /* HUM Ch 59.5.18 "MRDYIE : Extra MRAM Ready Interrupt Enable Register" p 3564 */
   k_ra8_mram_off_mrdyie = 0x2018U, /**< RA8 MRAM off mrdyie. */
-  /* HUM Ch 59.5.19 "MSADDR : MACI Command Start Address Register" p 3573 */
+  /* HUM Ch 59.5.19 "MSADDR : MACI Command Start Address Register" p 3564 */
   k_ra8_mram_off_msaddr = 0x2030U, /**< RA8 MRAM off msaddr. */
-  /* HUM Ch 59.5.20 "MCNTSELR : MRAM Counter Select Register" p 3576 */
+  /* HUM Ch 59.5.20 "MCNTSELR : MRAM Counter Select Register" p 3565 */
   k_ra8_mram_off_mcntselr = 0x2048U, /**< RA8 MRAM off mcntselr. */
   /* HUM Ch 59.5.21 "MCNTDTR0 : MRAM Counter Data Register 0" p 3576 */
   k_ra8_mram_off_mcntdtr0 = 0x204CU, /**< RA8 MRAM off mcntdtr0. */
   /* HUM Ch 59.5.22 "MCNTDTR1 : MRAM Counter Data Register 1" p 3577 */
   k_ra8_mram_off_mcntdtr1 = 0x2050U, /**< RA8 MRAM off mcntdtr1. */
-  /* HUM Ch 59.5.23 "MCTRCNTR : MRAM Configuration Update Transfer Control" p 3580 */
+  /* HUM Ch 59.5.23 "MCTRCNTR : MRAM Configuration Update Transfer Control" p 3566 */
   k_ra8_mram_off_mctrcntr = 0x2060U, /**< RA8 MRAM off mctrcntr. */
-  /* HUM Ch 59.5.24 "MCTRLSR : MRAM Configuration Update Transfer List Select" p 3580 */
+  /* HUM Ch 59.5.24 "MCTRLSR : MRAM Configuration Update Transfer List Select" p 3567 */
   k_ra8_mram_off_mctrlsr = 0x2064U, /**< RA8 MRAM off mctrlsr. */
-  /* HUM Ch 59.5.25 "MCTRSTATR : MRAM Configuration Update Transfer Status" p 3580 */
+  /* HUM Ch 59.5.25 "MCTRSTATR : MRAM Configuration Update Transfer Status" p 3568 */
   k_ra8_mram_off_mctrstatr = 0x206CU, /**< RA8 MRAM off mctrstatr. */
-  /* HUM Ch 59.5.26 "MSTATR : Extra MRAM Status Register" p 3578 */
+  /* HUM Ch 59.5.26 "MSTATR : Extra MRAM Status Register" p 3568 */
   k_ra8_mram_off_mstatr = 0x2080U, /**< RA8 MRAM off mstatr. */
-  /* HUM Ch 59.5.27 "MENTRYR : Extra MRAM Program Mode Entry Register" p 3582 */
+  /* HUM Ch 59.5.27 "MENTRYR : Extra MRAM Program Mode Entry Register" p 3571 */
   k_ra8_mram_off_mentryr = 0x2084U, /**< RA8 MRAM off mentryr. */
-  /* HUM Ch 59.5.28 "MSUINITR : Extra MRAM Sequencer Set-Up Initialization" p 3585 */
+  /* HUM Ch 59.5.28 "MSUINITR : Extra MRAM Sequencer Set-Up Initialization" p 3572 */
   k_ra8_mram_off_msuinitr = 0x208CU, /**< RA8 MRAM off msuinitr. */
-  /* HUM Ch 59.5.29 "MCMDR : MACI Command Register" p 3589 */
+  /* HUM Ch 59.5.29 "MCMDR : MACI Command Register" p 3572 */
   k_ra8_mram_off_mcmdr = 0x20A0U, /**< RA8 MRAM off mcmdr. */
-  /* HUM Ch 59.5.30 "MSUASMON : MRAM Start-Up Area Select Monitor Register" p 3593 */
+  /* HUM Ch 59.5.30 "MSUASMON : MRAM Start-Up Area Select Monitor Register" p 3573 */
   k_ra8_mram_off_msuasmon = 0x20DCU, /**< RA8 MRAM off msuasmon. */
-  /* HUM Ch 59.5.31 "MSUACR : MRAM Start-Up Area Control Register" p 3593 */
+  /* HUM Ch 59.5.31 "MSUACR : MRAM Start-Up Area Control Register" p 3574 */
   k_ra8_mram_off_msuacr = 0x20E8U, /**< RA8 MRAM off msuacr. */
-  /* HUM Ch 59.5.32 "MRPSC : MRAM Program Speed Control Register" p 3600 */
+  /* HUM Ch 59.5.32 "MRPSC : MRAM Program Speed Control Register" p 3575 */
   k_ra8_mram_off_mrpsc = 0x2800U, /**< RA8 MRAM off mrpsc. */
-  /* HUM Ch 59.5.33 "MRCPC0 : Code MRAM Program Control Register" p 3601 */
+  /* HUM Ch 59.5.33 "MRCPC0 : Code MRAM Program Control Register" p 3575 */
   k_ra8_mram_off_mrcpc0 = 0x3000U, /**< RA8 MRAM off mrcpc0. */
-  /* HUM Ch 59.5.34 "MRCPC1 : Code MRAM Program Control for Secure Register" p 3601 */
+  /* HUM Ch 59.5.34 "MRCPC1 : Code MRAM Program Control for Secure Register" p 3576 */
   k_ra8_mram_off_mrcpc1 = 0x3004U, /**< RA8 MRAM off mrcpc1. */
-  /* HUM Ch 59.5.35 "MRCBPROT0 : Code MRAM Block Protection Register" p 3604 */
+  /* HUM Ch 59.5.35 "MRCBPROT0 : Code MRAM Block Protection Register" p 3576 */
   k_ra8_mram_off_mrcbprot0 = 0x3008U, /**< RA8 MRAM off mrcbprot0. */
-  /* HUM Ch 59.5.36 "MRCBPROT1 : Code MRAM Block Protection for Secure Register" p 3605 */
+  /* HUM Ch 59.5.36 "MRCBPROT1 : Code MRAM Block Protection for Secure Register" p 3577 */
   k_ra8_mram_off_mrcbprot1 = 0x300CU, /**< RA8 MRAM off mrcbprot1. */
-  /* HUM Ch 59.5.37 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59.5.37 "MRCPS : Code MRAM Program Status Register" p 3577 */
   k_ra8_mram_off_mrcps = 0x3010U, /**< RA8 MRAM off mrcps. */
-  /* HUM Ch 59.5.38 "MRCPAEINT : Code MRAM Program Access Error Interrupt Enable" p 3601 */
+  /* HUM Ch 59.5.38 "MRCPAEINT : Code MRAM Program Access Error Interrupt Enable" p 3579 */
   k_ra8_mram_off_mrcpaeint = 0x3014U, /**< RA8 MRAM off mrcpaeint. */
-  /* HUM Ch 59.5.39 "MRCPEA : Code MRAM Program Error Address Register" p 3601 */
+  /* HUM Ch 59.5.39 "MRCPEA : Code MRAM Program Error Address Register" p 3579 */
   k_ra8_mram_off_mrcpea = 0x3018U, /**< RA8 MRAM off mrcpea. */
-  /* HUM Ch 59.5.40 "MRCFLR : Code MRAM Flush Register" p 3601 */
+  /* HUM Ch 59.5.40 "MRCFLR : Code MRAM Flush Register" p 3580 */
   k_ra8_mram_off_mrcflr = 0x3030U, /**< RA8 MRAM off mrcflr. */
-  /* HUM Ch 59.5.41 "MRCEECC : Code MRAM ECC Encoder Control Register" p 3624 */
+  /* HUM Ch 59.5.41 "MRCEECC : Code MRAM ECC Encoder Control Register" p 3580 */
   k_ra8_mram_off_mrceecc = 0x3804U, /**< RA8 MRAM off mrceecc. */
 } ra8_mram_off_t;
 
@@ -233,7 +233,7 @@ typedef enum : uint16_t {
  * (ABUFEMP, ABUFFULL, PRGBSYC) are read-only status.
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   k_ra8_mrcps_mask_prgerrc  = 0x01U, /**< Programming error.      */
   k_ra8_mrcps_mask_eccerrc  = 0x02U, /**< ECC error.              */
   k_ra8_mrcps_mask_abufemp  = 0x20U, /**< Address buffer empty.   */
@@ -257,7 +257,7 @@ typedef enum : uint8_t {
  * code intent-readable.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MRCEECC : Code MRAM ECC Encoder Control" p 3624 */
+  /* HUM Ch 59 "MRCEECC : Code MRAM ECC Encoder Control" p 3580 */
   k_ra8_mrceecc_mask_eccen = 0x0001U, /**< Encoder enable bit.         */
   k_ra8_mrceecc_key_shift  = 0xC000U, /**< Pre-shifted KEY[15:8]=0xC0. */
 } ra8_mrceecc_mask_t;
@@ -311,7 +311,7 @@ typedef enum : uint8_t {
  * @brief MRCPAEINT field mask.
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MRCPAEINT : Code MRAM Program Access Error IRQ Enable" p 3601 */
+  /* HUM Ch 59 "MRCPAEINT : Code MRAM Program Access Error IRQ Enable" p 3579 */
   k_ra8_mrcpaeint_mask_mrcaeie = 0x80U, /**< Code program-error IRQ enable. */
 } ra8_mrcpaeint_mask_t;
 
@@ -320,7 +320,7 @@ typedef enum : uint8_t {
  * @brief MPAEINT field masks (extra MRAM access-error IRQ enable).
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MPAEINT : Extra MRAM Access Error IRQ Enable" p 3577 */
+  /* HUM Ch 59 "MPAEINT : Extra MRAM Access Error IRQ Enable" p 3563 */
   k_ra8_mpaeint_mask_mreaeie = 0x08U, /**< Access-error IRQ enable. */
   k_ra8_mpaeint_mask_cmdlkie = 0x10U, /**< Command-lock IRQ enable. */
 } ra8_mpaeint_mask_t;
@@ -330,7 +330,7 @@ typedef enum : uint8_t {
  * @brief MRDYIE field mask.
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MRDYIE : Extra MRAM Ready Interrupt Enable" p 3577 */
+  /* HUM Ch 59 "MRDYIE : Extra MRAM Ready Interrupt Enable" p 3564 */
   k_ra8_mrdyie_mask_mrdyie = 0x01U, /**< MRDY IRQ enable. */
 } ra8_mrdyie_mask_t;
 
@@ -339,7 +339,7 @@ typedef enum : uint8_t {
  * @brief MASTAT field masks.
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3562 */
   k_ra8_mastat_mask_mreae = 0x08U, /**< Extra MRAM access error. */
   k_ra8_mastat_mask_cmdlk = 0x10U, /**< Command lock latched.    */
 } ra8_mastat_mask_t;
@@ -349,7 +349,7 @@ typedef enum : uint8_t {
  * @brief MREZS field masks (zeroization status).
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status Register" p 3565 */
+  /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status Register" p 3561 */
   k_ra8_mrezs_mask_whukzf  = 0x01U, /**< W-HUK Zero Flag.             */
   k_ra8_mrezs_mask_whukexe = 0x02U, /**< W-HUK Zeroization Executing. */
 } ra8_mrezs_mask_t;
@@ -363,7 +363,7 @@ typedef enum : uint8_t {
  * a full W-HUK zeroize.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MREZC : Extra MRAM Zeroization Control" p 3565 */
+  /* HUM Ch 59 "MREZC : Extra MRAM Zeroization Control" p 3561 */
   k_ra8_mrezc_full_zero = 0xA505U, /**< RA8 mrezc full zero. */
 } ra8_mrezc_t;
 
@@ -377,7 +377,7 @@ typedef enum : uint16_t {
  * @brief Keyed values and field masks for the MENTRYR P/E entry register.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
   k_ra8_mentryr_pe_enter     = 0xAA80U, /**< KEY=0xAA, MENTRY=1. */
   k_ra8_mentryr_read_mode    = 0xAA00U, /**< KEY=0xAA, MENTRY=0. */
   k_ra8_mentryr_mask_pe_mode = 0x0080U, /**< MENTRY status bit.  */
@@ -399,7 +399,7 @@ typedef enum : uint16_t {
  * must be 0x66 for the write to take effect.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MSUACR : Start-Up Area Control Register" p 3593 */
+  /* HUM Ch 59 "MSUACR : Start-Up Area Control Register" p 3574 */
   k_ra8_msuacr_key            = 0x6600U, /**< RA8 msuacr key.            */
   k_ra8_msuacr_swap_default   = 0x0000U, /**< RA8 msuacr swap default.   */
   k_ra8_msuacr_swap_alternate = 0x0001U, /**< RA8 msuacr swap alternate. */
@@ -410,7 +410,7 @@ typedef enum : uint16_t {
  * @brief MSUASMON read-only field masks.
  */
 typedef enum : uint32_t {
-  /* HUM Ch 59 "MSUASMON : Start-Up Area Monitor" p 3593 */
+  /* HUM Ch 59 "MSUASMON : Start-Up Area Monitor" p 3573 */
   k_ra8_msuasmon_mask_fspr  = 0x00008000UL, /**< Protection flag. */
   k_ra8_msuasmon_mask_btflg = 0x80000000UL, /**< Boot-swap flag.  */
 } ra8_msuasmon_mask_t;
@@ -420,7 +420,7 @@ typedef enum : uint32_t {
  * @brief Keyed value + field mask for MSUINITR.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
+  /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3572 */
   k_ra8_msuinitr_full_init   = 0xAA01U, /**< KEY=0xAA, SUINIT=1. */
   k_ra8_msuinitr_mask_suinit = 0x0001U, /**< SUINIT status bit.  */
 } ra8_msuinitr_t;
@@ -435,7 +435,7 @@ typedef enum : uint16_t {
  * @brief MCMDR field masks (MACI command status snapshot).
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MCMDR : MACI Command Register" p 3589 */
+  /* HUM Ch 59 "MCMDR : MACI Command Register" p 3572 */
   k_ra8_mcmdr_mask_pcmdr        = 0x00FFU, /**< Pre-command flag.      */
   k_ra8_mcmdr_mask_cmdr         = 0xFF00U, /**< Command flag.          */
   k_ra8_mcmdr_mask_cmd_progress = 0xFFFFU, /**< Any command in flight. */
@@ -446,7 +446,7 @@ typedef enum : uint16_t {
  * @brief MSTATR field masks (extra-MRAM status flags).
  */
 typedef enum : uint32_t {
-  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
+  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3568 */
   k_ra8_mstatr_mask_cfgseterr = 0x00000020UL, /**< Configuration set error. */
   k_ra8_mstatr_mask_prgerr    = 0x00001000UL, /**< Program error.           */
   k_ra8_mstatr_mask_ilglerr   = 0x00004000UL, /**< Illegal error.           */
@@ -473,7 +473,7 @@ typedef enum : uint32_t {
  * @brief MRPSC field masks (high-speed program enable).
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MRPSC : MRAM Program Speed Control Register" p 3600 */
+  /* HUM Ch 59 "MRPSC : MRAM Program Speed Control Register" p 3575 */
   k_ra8_mrpsc_mask_mhspen = 0x01U, /**< High-speed program enable. */
 } ra8_mrpsc_mask_t;
 
@@ -485,7 +485,7 @@ typedef enum : uint8_t {
  * KEY[15:8] = 0x86. Bit 0 enables programming when set.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MRCPC0 : Code MRAM Program Control Register" p 3601 */
+  /* HUM Ch 59 "MRCPC0 : Code MRAM Program Control Register" p 3575 */
   k_ra8_mrcpc0_key_enable  = 0x8601U, /**< RA8 mrcpc0 key enable.  */
   k_ra8_mrcpc0_key_disable = 0x8600U, /**< RA8 mrcpc0 key disable. */
 } ra8_mrcpc0_t;
@@ -498,7 +498,7 @@ typedef enum : uint16_t {
  * KEY[15:8] = 0x68.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MRCPC1 : Code MRAM Program Control for Secure Register" p 3601 */
+  /* HUM Ch 59 "MRCPC1 : Code MRAM Program Control for Secure Register" p 3576 */
   k_ra8_mrcpc1_key_enable  = 0x6801U, /**< RA8 mrcpc1 key enable.  */
   k_ra8_mrcpc1_key_disable = 0x6800U, /**< RA8 mrcpc1 key disable. */
 } ra8_mrcpc1_t;
@@ -512,7 +512,7 @@ typedef enum : uint16_t {
  * KEY[15:8] = 0x88.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3604 */
+  /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3576 */
   k_ra8_mrcbprot0_key_lock   = 0x8800U, /**< Keep block protect on. */
   k_ra8_mrcbprot0_key_unlock = 0x8801U, /**< Cancel block protect.  */
 } ra8_mrcbprot0_t;
@@ -525,7 +525,7 @@ typedef enum : uint16_t {
  * KEY[15:8] = 0x44.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MRCBPROT1 : Code MRAM Block Protection (S)" p 3605 */
+  /* HUM Ch 59 "MRCBPROT1 : Code MRAM Block Protection (S)" p 3577 */
   k_ra8_mrcbprot1_key_lock   = 0x4400U, /**< RA8 mrcbprot1 key lock.   */
   k_ra8_mrcbprot1_key_unlock = 0x4401U, /**< RA8 mrcbprot1 key unlock. */
 } ra8_mrcbprot1_t;
@@ -538,7 +538,7 @@ typedef enum : uint16_t {
  * 0xC301 sets MRCFL=1 with KEY[15:8]=0xC3 (HUM Ch 59 p 3601).
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MRCFLR : Code MRAM Flush Register" p 3601 */
+  /* HUM Ch 59 "MRCFLR : Code MRAM Flush Register" p 3580 */
   k_ra8_mrcflr_key_flush = 0xC301U, /**< RA8 mrcflr key flush. */
 } ra8_mrcflr_t;
 
@@ -556,7 +556,7 @@ typedef enum : uint16_t {
  * convention. Bit 0 (TRTRG) starts the transfer.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MCTRCNTR : MRAM Update Transfer Control" p 3580 */
+  /* HUM Ch 59 "MCTRCNTR : MRAM Update Transfer Control" p 3566 */
   k_ra8_mctrcntr_key        = 0xA500U, /**< RA8 mctrcntr key.        */
   k_ra8_mctrcntr_mask_start = 0x0001U, /**< RA8 mctrcntr mask start. */
 } ra8_mctrcntr_t;
@@ -566,7 +566,7 @@ typedef enum : uint16_t {
  * @brief MCTRLSR field mask (transfer-list select).
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MCTRLSR : MRAM Update Transfer List Select" p 3580 */
+  /* HUM Ch 59 "MCTRLSR : MRAM Update Transfer List Select" p 3567 */
   k_ra8_mctrlsr_mask_list_sel = 0x07U, /**< RA8 mctrlsr mask list sel. */
 } ra8_mctrlsr_mask_t;
 
@@ -580,7 +580,7 @@ typedef enum : uint8_t {
  * and an "err" view masking the upper bits for forward-compat.
  */
 typedef enum : uint16_t {
-  /* HUM Ch 59 "MCTRSTATR : MRAM Update Transfer Status" p 3580 */
+  /* HUM Ch 59 "MCTRSTATR : MRAM Update Transfer Status" p 3568 */
   k_ra8_mctrstatr_mask_busy = 0x0001U, /**< TRBUSY.                */
   k_ra8_mctrstatr_mask_done = 0x0004U, /**< TRMD.                  */
   k_ra8_mctrstatr_mask_err  = 0x00F8U, /**< Reserved-future error. */
@@ -596,7 +596,7 @@ typedef enum : uint16_t {
  * @brief MCNTSELR field-value codes for the four counter families.
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MCNTSELR : MRAM Counter Select Register" p 3576 */
+  /* HUM Ch 59 "MCNTSELR : MRAM Counter Select Register" p 3565 */
   k_ra8_mcntselr_sec    = 1U,    /**< ARC_SEC.                           */
   k_ra8_mcntselr_oembl  = 2U,    /**< ARC_OEMBL (OEM bootloader).        */
   k_ra8_mcntselr_nsec_0 = 4U,    /**< ARC_NSEC index 0; +1/+2/+3 follow. */
