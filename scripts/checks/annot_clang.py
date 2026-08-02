@@ -161,7 +161,17 @@ def _vendored_include_roots() -> list[pathlib.Path]:
     # `cstdint`. Include shadowing is exactly what a wider path buys, so the
     # extra roots are named per tree instead. Add a row here when a vendored
     # tree lands whose public headers are not under inc/ or include/.
-    for extra in ("esp-hosted/host", "esp-hosted/host/api/priv", "esp-hosted/common"):
+    # NetX Duo's optional protocols live under addons/<proto>/ with the public
+    # header sitting next to its .c (nxd_dhcp_client.h, nxd_dns.h, ...), not in
+    # an inc/ or include/ subdir, so the two conventions above miss them. A
+    # first-party app that pulls one in (c6_wifi_join uses the DHCP client)
+    # would otherwise fail parse-integrity on the unresolved include.
+    for extra in (
+        "esp-hosted/host",
+        "esp-hosted/host/api/priv",
+        "esp-hosted/common",
+        "netxduo/addons/dhcp",
+    ):
         vendored.append(third_party / extra)
     vendored += sorted((third_party / "esp-hosted" / "common").glob("*"))
     vendored += sorted((third_party / "esp-hosted" / "host" / "drivers").rglob("*"))
