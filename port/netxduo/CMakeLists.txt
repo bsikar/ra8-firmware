@@ -40,3 +40,18 @@ set_property(
   GLOBAL PROPERTY RA8_NETXDUO_PORT_SOURCES
                   ${CMAKE_CURRENT_SOURCE_DIR}/src/nx_ether_driver_ra8_eth.c
 )
+
+# The wireless twin: `netxduo_port_c6` exposes `nx_ether_driver_c6.c`, the
+# NetX Duo network driver that bridges onto the ESP32-C6 over the
+# `ra8_c6link` facade (`ra8_c6link_eth_send` for transmit, the facade's 802.3
+# receive callback for receive) instead of the on-chip `ra8_eth` MAC. A c6
+# Wi-Fi app links this rather than `netxduo_port_ra8_eth`; it shares the same
+# NetX core, so `netxduo` still supplies the stack itself.
+add_library(netxduo_port_c6 INTERFACE)
+
+target_include_directories(netxduo_port_c6 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+
+set_property(
+  GLOBAL PROPERTY RA8_NETXDUO_C6_PORT_SOURCES
+                  ${CMAKE_CURRENT_SOURCE_DIR}/src/nx_ether_driver_c6.c
+)
