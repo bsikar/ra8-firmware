@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# hil_tapo.sh -- Hard power control for the HIL rig's two Tapo smart plugs.
+# hil_tapo.sh -- Hard power control for the HIL rig's Tapo smart plugs.
 #
 #   board -- powers the EK-RA8D2 target board.  The board plug sits on the Pi's
 #            local network segment, so this target is driven ON the Pi: locally
@@ -10,9 +10,12 @@
 #   pi    -- powers the Raspberry Pi HIL host itself.  Driven DIRECTLY from this
 #            machine so the Pi can be power-cycled even when it is offline (the
 #            plug must therefore be reachable from this workstation).
+#   relay -- powers the cam-relay homelab node (a Raspberry Pi 4B); NOT RA8 bench
+#            hardware.  Driven DIRECTLY from this workstation, like pi: the plug
+#            is on house wifi, reachable from here but not from cam-relay itself.
 #
 # Usage (run from repo root):
-#   bash scripts/hil/tapo.sh <board|pi> [status|on|off|cycle]
+#   bash scripts/hil/tapo.sh <board|pi|relay> [status|on|off|cycle]
 #
 # Exit codes:
 #   0  -- command succeeded
@@ -26,7 +29,6 @@ _hil_dir="$(dirname "${BASH_SOURCE[0]}")"
 _hil_dir="$(cd "$_hil_dir" && pwd)"
 # shellcheck source=scripts/hil/lib/rig_env.sh
 source "$_hil_dir/lib/rig_env.sh"
-rig_require PI_HOST
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -34,7 +36,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 usage() {
-  echo -e "${RED}[ERROR]${NC} usage: $0 <board|pi> [status|on|off|cycle]"
+  echo -e "${RED}[ERROR]${NC} usage: $0 <board|pi|relay> [status|on|off|cycle]"
   exit 2
 }
 
@@ -42,9 +44,15 @@ TARGET="${1:-}"
 CMD="${2:-status}"
 
 case "$TARGET" in
-  board | pi) ;;
+  board | pi | relay) ;;
   *) usage ;;
 esac
+
+# PI_HOST is only needed for `board`, which uploads to and runs on the Pi. `pi`
+# and `relay` are driven directly from this workstation and never touch it.
+if [[ "$TARGET" == "board" ]]; then
+  rig_require PI_HOST
+fi
 
 # ---- bench mutual exclusion --------------------------------------------------
 # The BOARD plug is board power, and therefore also C6 power: cutting it in the
@@ -52,12 +60,21 @@ esac
 # `tapo.sh board` acquires like everything else, with the recovery break-glass
 # path for a wedged board.
 #
-# `tapo.sh pi` is the ONE genuine exemption in the whole design, and the reason
-# is structural rather than a judgement call: it power-cycles the HOST, so the
-# lock is unreachable by definition -- taking it would mean asking the machine
-# you are about to reboot for permission to reboot it. It already runs from the
-# workstation rather than through the Pi, which is what makes it possible at
-# all. It also invalidates every lease, which boot_id then handles on sight.
+# Two targets are exempt from the lock, for two DIFFERENT structural reasons --
+# neither is a judgement call:
+#
+#   pi    -- power-cycles the HOST, so the lock is unreachable by definition:
+#            taking it would mean asking the machine you are about to reboot for
+#            permission to reboot it. It already runs from the workstation
+#            rather than through the Pi, which is what makes it possible at all.
+#            It also invalidates every lease, which boot_id then handles on
+#            sight.
+#   relay -- is NOT RA8 bench hardware at all: it powers the cam-relay homelab
+#            node, on a network the bench never touches. Cutting its power
+#            cannot collide with a flash, so there is nothing for the bench lock
+#            to serialize it against.
+#
+# Only `board` takes the lock.
 if [[ "$TARGET" == "board" ]]; then
   # shellcheck source=scripts/hil/lib/bench_lock.sh
   source "$_hil_dir/lib/bench_lock.sh"
@@ -95,9 +112,12 @@ on_pi() {
   rig_is_local_pi
 }
 
-if [[ "$TARGET" == "pi" ]]; then
+if [[ "$TARGET" == "pi" || "$TARGET" == "relay" ]]; then
   # The Pi plug must be driven directly from this machine -- never via the Pi,
-  # which may be the very thing we are rebooting.
+  # which may be the very thing we are rebooting. The relay plug is on house
+  # wifi and reachable from this workstation directly (the cam-relay node it
+  # powers cannot), so it takes the same direct path rather than the board's
+  # upload-and-run-on-the-Pi route.
   run_local
 elif on_pi; then
   # board plug, and we are already on the Pi: drive it locally.

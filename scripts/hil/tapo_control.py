@@ -3,11 +3,14 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Control a Tapo smart plug on the HIL rig.
 
-The rig has two independently switched plugs:
+This tooling drives three independently switched plugs:
 
   board -- powers the EK-RA8D2 target board.
   pi    -- powers the Raspberry Pi HIL host itself.  Driven directly from the
            developer workstation so the Pi can be power-cycled when wedged.
+  relay -- powers the cam-relay homelab node (a Raspberry Pi 4B), which is NOT
+           RA8 bench hardware.  Driven directly from the workstation, like pi;
+           reads TAPO_RELAY_IP / TAPO_RELAY_MAC.
 
 Recent TP15 firmware (>= 1.4) speaks TP-Link's TPAP protocol, which is not
 UDP-discoverable; the connection parameters are therefore pinned explicitly
@@ -24,12 +27,13 @@ cluster is down.  The resolved values land in the environment as:
   TAPO_USER, TAPO_PASS          -- shared Tapo account
   TAPO_BOARD_IP, TAPO_BOARD_MAC -- board plug
   TAPO_PI_IP,    TAPO_PI_MAC    -- Pi plug
+  TAPO_RELAY_IP, TAPO_RELAY_MAC -- cam-relay plug (.env only; see hil_secrets.py)
 
 OpenBao consumer credentials (BAO_ADDR, ROLE_ID, SECRET_ID) live outside the
 repo in ~/.config/hil/openbao.env; see scripts/hil/hil_secrets.py for details.
 
 Usage:
-  python3 scripts/hil/tapo_control.py <board|pi> [status|on|off|cycle]
+  python3 scripts/hil/tapo_control.py <board|pi|relay> [status|on|off|cycle]
 
 cycle powers the outlet off, waits 5 seconds, then powers it back on.
 """
@@ -64,7 +68,7 @@ _FALLBACK_ENV = Path.home() / ".tapo.env"
 _SECRET_SOURCE = hil_secrets.populate_env(_ENV_FILE, _FALLBACK_ENV)
 print(f"tapo_control: secrets source = {_SECRET_SOURCE}", file=sys.stderr)
 
-_TARGETS = ("board", "pi")
+_TARGETS = ("board", "pi", "relay")
 _COMMANDS = ("status", "on", "off", "cycle")
 _OFF_SECONDS = 5
 _HTTP_PORT = 80
@@ -74,7 +78,7 @@ _ARGV_CMD = 2
 
 def _usage() -> None:
     print(
-        "usage: tapo_control.py <board|pi> [status|on|off|cycle]",
+        "usage: tapo_control.py <board|pi|relay> [status|on|off|cycle]",
         file=sys.stderr,
     )
     raise SystemExit(2)
@@ -129,8 +133,9 @@ async def main() -> None:
 
     Both the target and the command are validated against fixed sets before
     any network call, so a typo prints usage instead of reaching a plug --
-    which matters when the two targets are "the board" and "the machine
-    running the HIL suite", and the wrong one cuts power to the host.
+    which matters when the targets include "the machine running the HIL suite"
+    and "a live homelab node", where the wrong one cuts power to something you
+    did not mean to touch.
 
     Every required credential is resolved through ``_require``, so a missing
     environment variable fails immediately and by name rather than surfacing
