@@ -81,8 +81,17 @@ ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need)
 
 /**
  * @brief Free every owned buffer of @p r and the handle itself.
+ * @details Closes the comic engine and the file, frees the JOF and comic backing
+ *          buffers (all NULL unless that engine is active, and free(NULL) is a
+ *          no-op), then the framebuffer, index arrays and the handle. Safe on a
+ *          partially-constructed reader, which is why open() uses it as its single
+ *          cleanup path.
  * @param[in,out] r Reader to release (NULL is ignored).
+ * @pre @p r came from a viewer_alloc_* path, or is NULL.
+ * @pre @p r is not used again after this call.
  * @post Every buffer the reader owns is released exactly once.
+ * @post The handle @p r is freed and must not be dereferenced.
+ * @note Not thread-safe (frees shared state).
  * @since 0.1.0
  */
 RA8_INTERNAL static void viewer_free(ra8_viewer_reader_t* r)
@@ -119,9 +128,18 @@ RA8_INTERNAL static void viewer_free(ra8_viewer_reader_t* r)
 
 /**
  * @brief Test whether @p path ends (case-insensitively) with @p ext.
+ * @details Compares the tail of @p path against @p ext, folding ASCII uppercase
+ *          to lowercase so `.CBZ` matches `.cbz`. A path shorter than @p ext can
+ *          never match.
  * @param[in] path Path to test (non-NULL).
  * @param[in] ext  Lowercase extension including the dot (e.g. ".cbz").
  * @return true when @p path ends with @p ext.
+ * @retval false @p path is shorter than @p ext, or the tails differ.
+ * @pre @p path and @p ext are NUL-terminated.
+ * @pre @p ext is already lowercase.
+ * @post No state is mutated.
+ * @post The result depends only on the arguments.
+ * @note Pure; thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static bool viewer_ends_with(const char* path, const char* ext)
@@ -150,6 +168,12 @@ RA8_INTERNAL static bool viewer_ends_with(const char* path, const char* ext)
  *          a wrapped comic rather than an opaque `.gz`.
  * @param[in] path Path to classify (non-NULL).
  * @return The ::viewer_fmt_t for @p path (::k_vfmt_unsupported if unknown).
+ * @retval k_vfmt_unsupported No known extension matched @p path.
+ * @pre @p path is a NUL-terminated string.
+ * @pre @p path carries the document's real extension.
+ * @post No state is mutated.
+ * @post A compression suffix is classified before the base extension.
+ * @note Pure; thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static viewer_fmt_t viewer_classify(const char* path)
@@ -175,9 +199,19 @@ RA8_INTERNAL static viewer_fmt_t viewer_classify(const char* path)
 
 /**
  * @brief Allocate the reader handle and the always-needed framebuffer.
+ * @details Zero-allocates the reader, allocates the fixed RGB565 framebuffer,
+ *          points the JOF blit target at it (the headless default), and installs
+ *          the owner's decompression policy. On any failure it releases the
+ *          partial reader via viewer_free() so nothing leaks.
  * @param[out] out Receives the allocated reader on success (non-NULL).
  * @return ra8_err_t; ::k_ra8_err_no_mem on any allocation failure.
+ * @retval k_ra8_ok         The reader and framebuffer are allocated.
+ * @retval k_ra8_err_no_mem The reader or framebuffer could not be allocated.
+ * @pre @p out is writable.
+ * @pre The process may allocate the framebuffer.
+ * @post On ::k_ra8_ok `*out` owns a zeroed reader with a framebuffer.
  * @post On failure nothing is leaked and `*out` is untouched.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_alloc_core(ra8_viewer_reader_t** out)
@@ -209,9 +243,19 @@ RA8_INTERNAL static ra8_err_t viewer_alloc_core(ra8_viewer_reader_t** out)
 
 /**
  * @brief Allocate the comic engine's large scratch buffers (comic formats only).
+ * @details Allocates the page index, the page-name arena, the image-decode arena,
+ *          and the gzip/xz unwrap and xz-scratch buffers. Partial allocations are
+ *          left in place for viewer_free() to release, so the error path needs no
+ *          cleanup.
  * @param[in,out] r Reader to populate (non-NULL).
  * @return ra8_err_t; ::k_ra8_err_no_mem on any allocation failure.
+ * @retval k_ra8_ok         Every comic scratch buffer was allocated.
+ * @retval k_ra8_err_no_mem At least one allocation failed.
+ * @pre @p r is an allocated reader (viewer_alloc_core()).
+ * @pre The document classified as a comic format.
+ * @post On ::k_ra8_ok every comic scratch buffer is allocated.
  * @post Partial allocations are retained for viewer_free() to release.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_alloc_comic(ra8_viewer_reader_t* r)
@@ -230,10 +274,19 @@ RA8_INTERNAL static ra8_err_t viewer_alloc_comic(ra8_viewer_reader_t* r)
 
 /**
  * @brief Open @p path, record its size, and reject an empty file.
+ * @details Opens the file for binary reading and measures its length by seeking
+ *          to the end; a missing file, an unseekable stream, or a zero-length
+ *          file is rejected so later engines can assume a non-empty document.
  * @param[in,out] r    Reader whose file backing to populate (non-NULL).
  * @param[in]     path Filesystem path (non-NULL).
  * @return ra8_err_t; ::k_ra8_err_not_found on open failure or an empty file.
+ * @retval k_ra8_ok            The file is open and its size recorded.
+ * @retval k_ra8_err_not_found The file could not be opened, sized, or is empty.
+ * @pre @p r is an allocated reader and @p path is NUL-terminated.
+ * @pre @p r->file.fp is not already open.
  * @post On ::k_ra8_ok `r->file.fp` is open and `r->file.size` is non-zero.
+ * @post On failure the reader owns no open file for @p path.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_open_file(ra8_viewer_reader_t* r, const char* path)
@@ -258,7 +311,17 @@ RA8_INTERNAL static ra8_err_t viewer_open_file(ra8_viewer_reader_t* r, const cha
  * @param[in] fmt  The classified format (::k_vfmt_epub / ::k_vfmt_rabook /
  *                 ::k_vfmt_unsupported).
  * @param[in] path The offending path (for the message, non-NULL).
+ * @details EPUB and RABOOK are recognised extensions whose reflow render engine
+ *          is not yet wired into the viewer; those get a specific "not wired yet"
+ *          message, and anything else gets an "unsupported file type" message.
+ *          Either way the caller receives ::k_ra8_err_not_supported.
  * @return Always ::k_ra8_err_not_supported.
+ * @retval k_ra8_err_not_supported Always; the message distinguishes the cases.
+ * @pre @p path is NUL-terminated.
+ * @pre @p fmt is a format with no wired engine.
+ * @post A diagnostic naming @p path has been written to stderr.
+ * @post No reader state is mutated.
+ * @note Not thread-safe (writes stderr).
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_reject_fmt(viewer_fmt_t fmt, const char* path)
@@ -280,10 +343,18 @@ RA8_INTERNAL static ra8_err_t viewer_reject_fmt(viewer_fmt_t fmt, const char* pa
 
 /**
  * @brief Route an opened reader to its format's engine opener.
+ * @details Maps the classified format to its opener -- bare or wrapped comic, or
+ *          JOF -- and returns ::k_ra8_err_not_supported for any format with no
+ *          wired engine, so the single call site needs no per-format branching.
  * @param[in,out] r   Reader with file backing populated (non-NULL).
  * @param[in]     fmt The document's format.
  * @return ra8_err_t from the selected engine opener.
  * @retval k_ra8_err_not_supported @p fmt has no wired engine.
+ * @pre @p r has its file backing populated (viewer_open_file()).
+ * @pre @p fmt came from viewer_classify().
+ * @post On success the selected engine holds an open document.
+ * @post An unwired @p fmt opens nothing.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_dispatch_open(ra8_viewer_reader_t* r, viewer_fmt_t fmt)
@@ -306,7 +377,13 @@ RA8_INTERNAL static ra8_err_t viewer_dispatch_open(ra8_viewer_reader_t* r, viewe
  *          comic pages must each be probed through the image decoder.
  * @param[in,out] r Reader with an open engine (non-NULL).
  * @return ra8_err_t; ::k_ra8_err_no_mem if the size arrays cannot be allocated.
+ * @retval k_ra8_ok         Tile dimensions are cached (or the document is empty).
+ * @retval k_ra8_err_no_mem The per-tile size arrays could not be allocated.
+ * @pre @p r has an open engine (comic or JOF).
+ * @pre @p r->tile_wpx / tile_hpx are not already allocated.
  * @post On ::k_ra8_ok `r->tile_n` tiles have cached dimensions.
+ * @post A zero-page document leaves the size arrays unallocated.
+ * @note Not thread-safe (writes the shared size cache).
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_compute_tiles(ra8_viewer_reader_t* r)

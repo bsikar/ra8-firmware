@@ -55,9 +55,18 @@ typedef enum : uint8_t {
 
 /**
  * @brief Convert one source pixel of @p bpp bytes into a packed RGB565 word.
+ * @details Handles the four source formats the strip decoder emits: 1-byte gray
+ *          (replicated to R=G=B), 2-byte little-endian RGB565 (repacked), and
+ *          3-byte RGB or 4-byte RGBA (the alpha byte dropped).
  * @param[in] sp  Source pixel (non-NULL, at least @p bpp bytes readable).
  * @param[in] bpp Bytes per source pixel (1, 2, 3, or 4).
  * @return The packed RGB565 value; an RGBA alpha byte is dropped.
+ * @retval 0 The source pixel is black.
+ * @pre @p sp points at @p bpp readable bytes.
+ * @pre @p bpp is one of 1, 2, 3 or 4.
+ * @post No state is mutated.
+ * @post The result is a native-endian RGB565 word.
+ * @note Pure; thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static uint16_t viewer_band_pixel(const uint8_t* sp, uint8_t bpp)
@@ -85,6 +94,12 @@ RA8_INTERNAL static uint16_t viewer_band_pixel(const uint8_t* sp, uint8_t bpp)
  * @param[in] dst_x Viewport-relative destination x of the sub-window.
  * @param[in] dst_y Viewport-relative destination y of the sub-window.
  * @return Always ::k_ra8_ok -- out-of-bounds pixels are dropped, not an error.
+ * @retval k_ra8_ok Always; clipping is not treated as failure.
+ * @pre @p ctx is the ::ra8_viewer_reader_t whose blit target is set.
+ * @pre @p px points at @p sw * @p sh * @p bpp readable bytes.
+ * @post In-bounds pixels of the sub-window are written to the blit target.
+ * @post Pixels outside the target rectangle are dropped, not clamped.
+ * @note Not thread-safe (writes the shared blit target).
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_jof_blit(void*          ctx,
@@ -118,13 +133,21 @@ RA8_INTERNAL static ra8_err_t viewer_jof_blit(void*          ctx,
 
 /**
  * @brief Slurp the open JOF file into @p r->jof.atlas and set up the memstore.
+ * @details Refuses a file larger than the per-unit output cap before allocating
+ *          (the atlas is held wholly resident), then reads the whole file into an
+ *          owned buffer and points the memstore pread at it, so tile decodes read
+ *          straight from RAM.
  * @param[in,out] r Reader whose file is already open (non-NULL).
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                    The atlas is resident and memstore wired.
  * @retval k_ra8_err_decomp_output_cap The file exceeds the per-unit output cap.
  * @retval k_ra8_err_no_mem            The atlas buffer could not be allocated.
  * @retval k_ra8_err_not_found         The file could not be rewound or read.
+ * @pre @p r->file wraps the open `.jof` stream.
+ * @pre @p r->jof.atlas is not already allocated.
+ * @post On ::k_ra8_ok `r->jof.atlas` owns the file and the memstore spans it.
  * @post On any error the partial buffer is freed.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
@@ -156,11 +179,21 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
 
 /**
  * @brief Allocate the JOF tile-cache backing arrays for @p cell_count bands.
+ * @details Allocates the six backing buffers the band LRU needs -- the decode
+ *          scratch (one band plus slack), the cell pool, and the metadata, key,
+ *          dims and bucket arrays. Partial allocations are left in place for
+ *          viewer_free() to release, so there is no cleanup on the error path.
  * @param[in,out] w          JOF state to populate (non-NULL).
  * @param[in]     cell_count Resident-band count (>= 1).
  * @param[in]     band_bytes Bytes per decoded band (> 0).
  * @return ra8_err_t; ::k_ra8_err_no_mem on any allocation failure.
+ * @retval k_ra8_ok         Every backing buffer was allocated.
+ * @retval k_ra8_err_no_mem At least one allocation failed.
+ * @pre @p w is a JOF state with NULL backing pointers.
+ * @pre @p cell_count >= 1 and @p band_bytes > 0.
+ * @post On ::k_ra8_ok every cache backing buffer is allocated.
  * @post Partial allocations are retained for viewer_free() to release.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
@@ -189,7 +222,12 @@ viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes)
  * @param[in]     band_bytes Bytes per decoded band.
  * @param[in]     cell_count Resident-band count for the LRU cache.
  * @return ra8_err_t from the tile-cache init / long-strip-open steps.
+ * @retval k_ra8_ok The cache and strip engine are initialised and ready.
+ * @pre @p r's JOF backing arrays are allocated (viewer_jof_alloc_cache()).
+ * @pre @p info is the parsed geometry of the resident atlas.
  * @post On ::k_ra8_ok `r->jof.strip` is ready to scroll and render.
+ * @post On any error the strip is left unopened.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_jof_wire(ra8_viewer_reader_t*  r,
@@ -245,6 +283,13 @@ RA8_INTERNAL static ra8_err_t viewer_jof_wire(ra8_viewer_reader_t*  r,
  * @param[in,out] w    JOF state of an open strip (non-NULL).
  * @param[in]     page Vertical page index.
  * @return ra8_err_t from `ra8_longstrip_set_viewport` / `ra8_longstrip_scroll_by`.
+ * @retval k_ra8_ok               The strip is positioned at page @p page.
+ * @retval k_ra8_err_out_of_range @p page lies past the end of the strip.
+ * @pre @p w is an open JOF strip.
+ * @pre @p page is a candidate page index down the strip.
+ * @post On ::k_ra8_ok the viewport top sits at page @p page's content.
+ * @post The viewport height is set to the page's real (possibly short) height.
+ * @note Not thread-safe (mutates the strip's scroll state).
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_jof_seek(viewer_jof_t* w, uint32_t page)

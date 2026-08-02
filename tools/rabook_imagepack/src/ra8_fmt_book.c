@@ -210,6 +210,12 @@ static bool priv_hdr_sanity(FILE*       out,
 /**
  * @brief Print the RBKC header block.
  *
+ * @details
+ * Writes the five decoded RBKC container-header fields -- container length,
+ * per-chunk inflated size, total inflated size, chunk count and the reserved
+ * word -- as a labelled block. This is the first part of an `inspect` dump,
+ * emitted before the chunk offset table is walked and sanity-checked.
+ *
  * @param[in] out         Report stream.
  * @param[in] len         Container length in bytes.
  * @param[in] chunk_bytes Declared per-chunk inflated size.

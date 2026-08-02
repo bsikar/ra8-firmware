@@ -246,6 +246,11 @@ typedef struct {
 /**
  * @brief Release a blob's buffer and zero it.
  *
+ * @details
+ * Frees the buffer ::ra8_fmt_slurp allocated and resets the blob to the empty
+ * state, so a released blob reads as owning nothing and a second call is a safe
+ * no-op. A NULL blob is also a no-op.
+ *
  * @param[in,out] blob Blob to release (NULL is a no-op).
  *
  * @pre @p blob is NULL or was filled by ::ra8_fmt_slurp.

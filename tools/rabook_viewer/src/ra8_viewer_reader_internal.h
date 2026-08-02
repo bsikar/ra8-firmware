@@ -196,6 +196,11 @@ struct ra8_viewer_reader {
  * @param[out] buf    Destination buffer (non-NULL).
  * @param[in]  len    Bytes requested.
  * @return Bytes read; 0 at EOF, on a seek failure, or for a NULL argument.
+ * @retval 0 EOF, a seek failure, or a NULL @p ctx / @p buf.
+ * @pre @p ctx wraps an open document stream.
+ * @pre @p buf has room for @p len bytes.
+ * @post At most @p len bytes were copied into @p buf.
+ * @post The stream position is left at @p offset + the returned count.
  * @note Not thread-safe: it seeks the shared stream.
  * @since 0.1.0
  */
@@ -214,6 +219,8 @@ RA8_PRIV size_t viewer_read(void* ctx, uint64_t offset, void* buf, size_t len);
  * @retval k_ra8_ok                    The buffer holds at least @p need bytes.
  * @retval k_ra8_err_decomp_output_cap @p need exceeds the per-unit output cap.
  * @retval k_ra8_err_no_mem            The buffer could not be grown.
+ * @pre @p r is an open reader.
+ * @pre @p need is the archive-declared uncompressed length for the page.
  * @post On ::k_ra8_ok `r->page_cap >= need`.
  * @post On ::k_ra8_err_decomp_output_cap no allocation was attempted.
  * @note Not thread-safe.
@@ -223,28 +230,46 @@ RA8_PRIV ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need);
 
 /**
  * @brief Open a bare or gzip/xz-wrapped comic archive via ra8_comic.
+ * @details Routes to `ra8_comic_open` or, when @p wrapped, `ra8_comic_open_wrapped`
+ *          (which unwraps the outer gzip/xz stream into `r->unwrap` first), then
+ *          parses the archive into the reader's page index.
  * @param[in,out] r       Reader with file backing populated (non-NULL).
  * @param[in]     wrapped true to route through `ra8_comic_open_wrapped`.
  * @return ra8_err_t from ra8_comic's open.
+ * @retval k_ra8_ok The archive parsed and `r->comic` holds a page index.
  * @pre `r->pages` / `r->names` are allocated (see viewer_alloc_comic()).
+ * @pre @p r->file wraps the open document stream.
  * @post On ::k_ra8_ok `r->comic` holds a parsed page index.
+ * @post On any error the reader owns no comic state.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped);
 
 /**
  * @brief Render one comic page (extract -> decode -> fit-blit) into the fb.
+ * @details Extracts the page's encoded image from the archive, decodes it in the
+ *          bound arena, then scales it to fit the framebuffer width and centres
+ *          it over a white margin. The heavy buffers are borrowed from the
+ *          reader, so no large allocation happens per page.
  * @param[in,out] r    Reader of a comic format (non-NULL).
  * @param[in]     page Page index (`< ra8_viewer_page_count(r)`).
  * @return ra8_err_t from the extract / probe / decode pipeline.
+ * @retval k_ra8_ok The page was decoded and blitted into `r->fb`.
  * @pre The document was opened as ::k_vfmt_comic or ::k_vfmt_comic_wrap.
+ * @pre @p page is below the document's page count.
  * @post On ::k_ra8_ok `r->fb` holds the page scaled to fit and centred.
+ * @post On any error `r->fb` is left as it was.
+ * @note Not thread-safe (drives the shared framebuffer and arena).
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page);
 
 /**
  * @brief Render comic page @p i into a fresh RGB565 buffer (gfx-max capped).
+ * @details The window's scroll path renders each page at native resolution into
+ *          its own buffer (dimensions capped at the graphics maximum) rather than
+ *          the fixed framebuffer, so tiles compose independently as they scroll.
  * @param[in,out] r   Reader of a comic format (non-NULL).
  * @param[in]     i   Tile (page) index.
  * @param[out]    w   Receives the rendered width in pixels.
@@ -254,7 +279,11 @@ RA8_PRIV ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page);
  * @retval k_ra8_ok                Tile rendered; `*out` owns `w*h` pixels.
  * @retval k_ra8_err_no_mem        The output buffer could not be allocated.
  * @retval k_ra8_err_not_supported Page @p i failed to probe at open time.
+ * @pre The document was opened as a comic format and @p i is a valid page.
+ * @pre @p w, @p h and @p out are writable.
+ * @post On ::k_ra8_ok `*out` owns a `w*h` RGB565 buffer the caller frees.
  * @post On any error `*out` is left untouched and nothing is leaked.
+ * @note Not thread-safe (drives the shared reader and arena).
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t
@@ -267,34 +296,57 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
  * @param[in,out] r     Reader of a comic format (non-NULL).
  * @param[in]     i     Page index.
  * @param[in]     arena Bindable decode arena for the JPEG header probe.
+ * @pre @p r was opened as a comic format and @p i is a valid page.
+ * @pre @p arena is a decode arena the probe may bind.
  * @post `r->tile_wpx[i]` / `r->tile_hpx[i]` are set, or left 0 on failure.
+ * @post No page image is fully decoded (header probe only).
+ * @note Not thread-safe (writes the shared size cache).
  * @since 0.1.0
  */
 RA8_PRIV void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_img_arena_t* arena);
 
 /**
  * @brief Open a JOF strip: slurp, parse, size the cache, then wire the engine.
+ * @details Reads the whole `.jof` into an owned buffer, parses its atlas header,
+ *          sizes and initialises the band tile-cache, and opens the long-strip
+ *          document over the memstore -- so later renders only decode bands on
+ *          demand.
  * @param[in,out] r Reader with file backing populated (non-NULL).
  * @return ra8_err_t from the parse / cache-init / long-strip-open pipeline.
+ * @retval k_ra8_ok The strip opened and `r->jof.strip` is ready.
  * @pre The document classified as ::k_vfmt_jof.
+ * @pre @p r->file wraps the open document stream.
  * @post On ::k_ra8_ok `r->jof.strip` is an open long-strip document.
+ * @post On any error the reader owns no JOF state.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r);
 
 /**
  * @brief Render one JOF "page": scroll the strip by one viewport and composite.
+ * @details Scrolls the long-strip canvas down by @p page viewports, renders the
+ *          visible band (decoding DEFLATE bands on cache miss), and composites it
+ *          centred over a white margin into the fixed framebuffer.
  * @param[in,out] r    Reader of a JOF document (non-NULL).
  * @param[in]     page Vertical page index (window number down the strip).
  * @return ra8_err_t from the scroll / long-strip-render pipeline.
+ * @retval k_ra8_ok The band was rendered into `r->fb`.
  * @pre The document was opened as ::k_vfmt_jof.
+ * @pre @p page is below the document's page count.
  * @post On ::k_ra8_ok `r->fb` holds the band, centred, over a white margin.
+ * @post On any error `r->fb` is left as it was.
+ * @note Not thread-safe (drives the shared framebuffer and band cache).
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page);
 
 /**
  * @brief Render JOF band @p i at native strip width into a fresh RGB565 buffer.
+ * @details Points the strip's blit target at a freshly allocated native-width
+ *          buffer, renders band @p i into it, and restores the fixed framebuffer
+ *          as the target on every exit -- so the window's scroll tiles never
+ *          disturb the headless framebuffer path.
  * @param[in,out] r   Reader of a JOF document (non-NULL).
  * @param[in]     i   Band (tile) index.
  * @param[out]    w   Receives the rendered width in pixels.
@@ -304,7 +356,11 @@ RA8_PRIV ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page);
  * @retval k_ra8_ok               Band rendered; `*out` owns `w*h` pixels.
  * @retval k_ra8_err_no_mem       The output buffer could not be allocated.
  * @retval k_ra8_err_invalid_size Band @p i has a zero dimension.
+ * @pre The document was opened as ::k_vfmt_jof and @p i is a valid band.
+ * @pre @p w, @p h and @p out are writable.
  * @post The blit target is restored to the fixed framebuffer on every path.
+ * @post On any error `*out` is left untouched and nothing is leaked.
+ * @note Not thread-safe (drives the shared reader and band cache).
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t
@@ -316,7 +372,11 @@ viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, ui
  *          remaining rows so the document has no trailing white gap.
  * @param[in,out] r Reader of a JOF document (non-NULL).
  * @param[in]     n Tile count (`ra8_viewer_page_count(r)`).
+ * @pre The document was opened as ::k_vfmt_jof and its strip is open.
+ * @pre @p n equals `ra8_viewer_page_count(r)`.
  * @post `r->tile_wpx` / `r->tile_hpx` are filled for all @p n tiles.
+ * @post The last band's height is clipped to the strip's remaining rows.
+ * @note Not thread-safe (writes the shared size cache).
  * @since 0.1.0
  */
 RA8_PRIV void viewer_size_jof_tiles(ra8_viewer_reader_t* r, uint32_t n);
