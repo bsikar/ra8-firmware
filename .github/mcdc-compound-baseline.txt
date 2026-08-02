@@ -8,8 +8,8 @@
 # on any INCREASE, so the debt is frozen and can only be burned down; a
 # newly-added uncovered decision raises a count and fails.
 #
-# Total at this baseline: 967 uncovered compound decision(s)
-# across 193 file(s).
+# Total at this baseline: 951 uncovered compound decision(s)
+# across 191 file(s).
 #
 # Burn one down: add a `test_mcdc_<decision>` function with N+1 vectors
 # to the matching tests/test_<module>.c whose `@par MC/DC:` block cites
@@ -624,11 +624,6 @@ libs/ra8_tls/src/ra8_tls.c	ra8_tls_handshake	1
 libs/ra8_tls/src/ra8_tls.c	ra8_tls_mss_clamp	1
 libs/ra8_tls/src/ra8_tls.c	ra8_tls_recv	2
 libs/ra8_tls/src/ra8_tls.c	ra8_tls_send	2
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_apply	2
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_compute	3
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_load	6
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_run	4
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_save	1
 libs/ra8_unarch/src/ra8_unarch_tar_fields.c	ra8_unarch_tar_checksum_ok	1
 libs/ra8_unarch/src/ra8_unarch_tar_fields.c	ra8_unarch_tar_magic_ok	1
 libs/ra8_unarch/src/ra8_unarch_tar_fields.c	s_pax_apply	2
