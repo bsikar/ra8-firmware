@@ -13,7 +13,7 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: pre-commit-checks, annotations, doc-attachment, init-order-freshness, cite-check, hil-eil-parity
+# Gates in this file: pre-commit-checks, annotations, doc-attachment, tests-readme, init-order-freshness, cite-check, hil-eil-parity
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
@@ -472,6 +472,24 @@ gate_doc_attachment() (
   # declarations, documented //#define options) must not.
   python3 scripts/checks/check_doc_attachment.py --selftest
   python3 scripts/checks/check_doc_attachment.py --check
+)
+
+# --- tests-readme ---------------------------------------------------------
+# tests/README.md says what each subdirectory of tests/ is for. Prose like that
+# rots the instant someone adds tests/newthing/ and does not describe it, or
+# removes a subdirectory and leaves the paragraph behind -- and nothing notices.
+# This gate makes both impossible: an undocumented subdirectory fails it, and so
+# does a README row naming a subdirectory that no longer exists.
+#
+# --selftest FIRST, both directions plus the floor: it builds throwaway tests/
+# trees and asserts an undocumented subdir fires, a stale entry fires, an
+# in-sync tree stays quiet, and a collapsed scan is caught -- so a comparator
+# that stopped detecting drift cannot pass as a clean tree.
+gate_tests_readme() (
+  set -e
+  require_cmd python3 "the tests-readme gate reads tests/README.md against the tree"
+  python3 scripts/checks/check_tests_readme.py --selftest
+  python3 scripts/checks/check_tests_readme.py
 )
 
 # --- cite-check -----------------------------------------------------------

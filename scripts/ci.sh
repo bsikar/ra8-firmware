@@ -130,6 +130,7 @@ RA8_GATE_REGISTRY=(
   "bench-lock|fast|every bench-touching script takes the bench lock"
   "annotations|fast|RA8_* annotation attributes (libclang)"
   "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
+  "tests-readme|fast|tests/README.md documents every tests/ subdir, none stale"
   "init-order-freshness|fast|committed docs/INIT_ORDER_AUDIT.md matches a fresh regenerate"
   "roadmap-dashboard-freshness|fast|committed docs/ROADMAP_DASHBOARD.md matches a fresh regenerate"
   "lint-py-shell|fast|ruff + shellcheck + shfmt"
