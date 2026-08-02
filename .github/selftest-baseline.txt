@@ -13,24 +13,20 @@
 #
 # Closing this out means this file reaching zero rows and being
 # DELETED -- never regenerated larger.
-# Rows at this baseline: 28
+# Rows at this baseline: 24
 
 scripts/checks/check-copyright.py
 scripts/checks/check_assert_casts.py
 scripts/checks/check_core_layering.py
 scripts/checks/check_coverage.py
-scripts/checks/check_example_board_pins.py
-scripts/checks/check_final_newline.py
 scripts/checks/check_header_file_placement.py
 scripts/checks/check_hil_alive_policy.py
 scripts/checks/check_hil_eil_parity.py
-scripts/checks/check_inclusive_terminology.py
 scripts/checks/check_inclusive_terminology_commits.py
 scripts/checks/check_magic_numbers.py
 scripts/checks/check_no_driver_asm_guard.py
 scripts/checks/check_no_dynamic_alloc.py
 scripts/checks/check_no_gnu_attribute.py
-scripts/checks/check_no_wave_references.py
 scripts/checks/check_nsc_cmse.sh
 scripts/checks/check_nsc_veneer_defs.py
 scripts/checks/check_sg_offsets.py

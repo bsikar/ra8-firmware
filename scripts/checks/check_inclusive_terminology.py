@@ -24,10 +24,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import first_party_paths
+from selftest_assert import expect, report
 
 # --------------------------------------------------------------------------
 # Configuration
@@ -42,39 +46,13 @@ from pathlib import Path
 # whole-file escape hatch -- every line stands on its own.
 WARN_ONLY_MODE: bool = False
 
-# Roots scanned for violations.
-SCAN_ROOTS: tuple[str, ...] = (
-    "libs",
-    "src",
-    "examples",
-    "tests",
-    "port",
-    "scripts",
-    "docs",
-    "cmake",
-    ".github",
-    "tools",  # first-party host tools incl. tools/ra8_emulator (same bar per CLAUDE.md)
-    "coprocessor",  # ESP32-C6 esp-hosted-mcu firmware recipe; upstream terms carry LEGACY-OK
-)
-
-# Directories anywhere in the path that suppress the scan.
-SKIP_DIR_NAMES: frozenset[str] = frozenset(
-    {
-        "build",
-        "build-cov",
-        "build-scan",
-        "build-tidy",
-        ".git",
-        "_deps",
-        "third_party",
-        "__pycache__",
-        ".cache",
-        "node_modules",
-        "reference",  # docs/reference/ holds vendor PDFs and chapter maps
-        "doxygen",  # docs/doxygen/ is generated Doxygen output, not authored
-        "html",  # generated HTML (e.g. docs/**/html) is not first-party source
-    }
-)
+# Directories whose CONTENT is vendored or generated and not ours to police:
+# docs/reference/ holds committed vendor PDFs and register maps (HUM register
+# names literally spell MASTEREN and the like), and docs/**/doxygen,
+# docs/**/html are generated Doxygen output. first_party_paths already drops
+# third_party/ and build output; these three are the docs-side equivalents the
+# old SKIP_DIR_NAMES carried. Matched by path component, as the walk did.
+DOCS_VENDOR_DIRS: frozenset[str] = frozenset({"reference", "doxygen", "html"})
 
 # File extensions we scan. Anything else is binary / not-our-source.
 SCAN_EXTS: frozenset[str] = frozenset(
@@ -85,6 +63,7 @@ SCAN_EXTS: frozenset[str] = frozenset(
         ".hpp",
         ".cc",
         ".cmake",
+        ".mk",
         ".md",
         ".yml",
         ".yaml",
@@ -96,7 +75,16 @@ SCAN_EXTS: frozenset[str] = frozenset(
 )
 
 # Filenames (no extension) we still want to scan.
-SCAN_BASENAMES: frozenset[str] = frozenset({"Makefile", "Dockerfile", "CMakeLists.txt"})
+SCAN_BASENAMES: frozenset[str] = frozenset(
+    {"Makefile", "GNUmakefile", "Dockerfile", "CMakeLists.txt"}
+)
+
+# A tree this size cannot legitimately collapse to a handful of files. A scan
+# that enumerates almost nothing reports a clean tree because it read almost
+# nothing -- the exact failure the gate-honesty epic (#190) exists to prevent.
+# Measured 2026-08-02: 3415 first-party files in the derived scope. Same
+# trip-wire as check_ruff.py.
+FILE_FLOOR = 2500
 
 # Prose patterns: word-boundary matches that catch the legacy vocabulary
 # wherever it appears as a standalone word -- prose comments ("master
@@ -181,7 +169,9 @@ MAX_FINDINGS_SHOWN = 50
 # Only two kinds of file qualify:
 #   1. The detection scripts, which hold the banned terms as regex literals.
 #   2. The policy documents that DEFINE the terminology standard by quoting
-#      the words they ban (CLAUDE.md, docs/STYLE_GUIDE.md).
+#      the words they ban (CLAUDE.md, docs/STYLE_GUIDE.md, and the
+#      style-reviewer subagent whose Terminology Standard section instructs
+#      "Use Controller/Peripheral instead of master/slave").
 SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     {
         "scripts/checks/check_inclusive_terminology.py",
@@ -189,6 +179,7 @@ SELF_EXEMPT_FILES: frozenset[str] = frozenset(
         "scripts/fix/fix_inclusive_terminology.py",
         "docs/STYLE_GUIDE.md",
         "CLAUDE.md",
+        ".claude/agents/style-reviewer.md",
     }
 )
 
@@ -198,45 +189,24 @@ SELF_EXEMPT_FILES: frozenset[str] = frozenset(
 # --------------------------------------------------------------------------
 
 
-def should_scan(path: Path) -> bool:
-    """Whether a file is in scope, by directory, basename and suffix."""
-    parts = set(path.parts)
-    if parts & SKIP_DIR_NAMES:
-        return False
-    if path.name in SCAN_BASENAMES:
-        return True
-    return path.suffix in SCAN_EXTS
-
-
-def _is_skip_dir(name: str) -> bool:
-    """Whether a directory is build output and therefore skipped.
-
-    Matches the ``build-*`` family by prefix so CMake variant directories are
-    excluded without being enumerated.
-    """
-    if name in SKIP_DIR_NAMES:
-        return True
-    # Glob-style: any CMake/build artefact dir like build-fuzz, build-bench.
-    return bool(name.startswith("build-") or name == "build")
-
-
 def iter_source_files(root: Path) -> list[Path]:
-    """Every in-scope file beneath the configured scan roots."""
+    """Every in-scope first-party file, derived from git rather than a root list.
+
+    Enumeration goes through ``lint_targets.first_party_paths`` -- the shared
+    derived-scope primitive -- so ``infra/`` and ``mk/`` (the roots a hardcoded
+    list silently dropped, #549) are covered, and any future top-level
+    directory is in scope the day it lands. The only subtractions on top of what
+    that primitive already exempts (third_party/, generated fonts, build output)
+    are the docs-side vendored/generated directories in ``DOCS_VENDOR_DIRS``.
+    """
+    rels = set(first_party_paths(tuple(SCAN_EXTS)))
+    for name in SCAN_BASENAMES:
+        rels |= {rel for rel in first_party_paths((name,)) if Path(rel).name == name}
     out: list[Path] = []
-    for scan_root in SCAN_ROOTS:
-        base = root / scan_root
-        if not base.exists():
+    for rel in sorted(rels):
+        if set(Path(rel).parts) & DOCS_VENDOR_DIRS:
             continue
-        for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [d for d in dirnames if not _is_skip_dir(d)]
-            for fn in filenames:
-                p = Path(dirpath) / fn
-                if should_scan(p):
-                    out.append(p)
-    for top in ("Makefile", "CMakeLists.txt", "README.md"):
-        p = root / top
-        if p.exists():
-            out.append(p)
+        out.append(root / rel)
     return out
 
 
@@ -273,6 +243,58 @@ def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str, str]]:
     return out
 
 
+def selftest() -> int:
+    """Prove the detector fires on legacy terms, spares the legitimate ones, and scans real files.
+
+    Both directions plus a scope probe: a legacy identifier and the bare prose
+    tokens must FIRE, while an inclusive rewrite, a vendored-namespace symbol
+    and a hardware register-bit name must stay QUIET; the derived scope must
+    clear ``FILE_FLOOR`` and reach the roots a hardcoded list had dropped
+    (``infra/``, ``mk/``). A clean run over a scope that never sees those roots,
+    or one whose detector had stopped matching, proves nothing.
+
+    Returns:
+        0 when every assertion held in both directions, 1 otherwise.
+    """
+    failures: list[str] = []
+    # Prose / identifier detection, driven through scan_line-equivalent logic.
+    fire_lines = (
+        ("a legacy identifier", "ra8_err_t ra8_spi_master_init(void);"),
+        ("the bare MOSI token", "// route MOSI to the header"),
+        ('the "Slave Select" phrase', "assert the Slave Select line"),
+    )
+    for label, line in fire_lines:
+        prose = any(regex.search(line) for _, regex in PATTERNS)
+        ident = identifier_violation(line) is not None
+        expect(prose or ident, f"MUST FIRE: {label}", failures)
+
+    quiet_lines = (
+        ("an inclusive rewrite", "ra8_err_t ra8_spi_controller_init(void);"),
+        ("a vendored ux_ symbol", "ux_device_class_storage_master_read();"),
+        ("the MASTEREN register bit", "DPHYMDC.MASTEREN = 1U;  // silicon name"),
+    )
+    for label, line in quiet_lines:
+        prose = any(regex.search(line) for _, regex in PATTERNS)
+        ident = identifier_violation(line) is not None
+        expect(not (prose or ident), f"MUST NOT FIRE: {label}", failures)
+
+    root = Path(__file__).resolve().parents[2]
+    files = iter_source_files(root)
+    rels = {str(p.relative_to(root)) for p in files if p.is_relative_to(root)}
+    expect(
+        len(files) >= FILE_FLOOR,
+        f"derived scope sees {len(files)} file(s) (floor {FILE_FLOOR})",
+        failures,
+    )
+    for root_name in ("infra", "mk"):
+        expect(
+            any(rel.startswith(root_name + "/") for rel in rels),
+            f"the derived scope reaches {root_name}/ (previously omitted)",
+            failures,
+        )
+    return report(failures)
+
+
 def main() -> int:
     """Enforce OSHWA-inclusive terminology on first-party identifiers.
 
@@ -281,10 +303,20 @@ def main() -> int:
     onto theirs are required elsewhere in this tree. The rule governs what
     this codebase NAMES, not what it may mention.
 
-    Returns 1 listing each offending symbol, 0 when the tree is clean.
+    Returns 1 listing each offending symbol, 0 when the tree is clean, 2 when
+    the derived scope collapsed below FILE_FLOOR.
     """
+    if "--selftest" in sys.argv[1:]:
+        return selftest()
     root = Path(__file__).resolve().parents[2]
     files = iter_source_files(root)
+    if len(files) < FILE_FLOOR:
+        sys.stderr.write(
+            f"inclusive-terminology: FATAL -- only {len(files)} file(s) in scope, floor "
+            f"is {FILE_FLOOR}. A collapsed scope reports a clean tree because it scanned "
+            "nothing.\n"
+        )
+        return 2
     findings: list[tuple[Path, int, str, str]] = []
     for f in files:
         findings.extend(scan_file(f, root))

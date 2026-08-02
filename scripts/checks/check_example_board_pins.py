@@ -26,6 +26,7 @@ Run::
 
     check_example_board_pins.py                     # scan examples/
     check_example_board_pins.py path/to/main.c ...  # scan listed files
+    check_example_board_pins.py --selftest          # prove both directions
 
 Exit 0 if no example hand-encodes a board pin, exit 1 (with the offenders)
 otherwise, exit 2 when the whole-tree sweep collapses below FILE_FLOOR.
@@ -37,6 +38,11 @@ import re
 import sys
 from collections.abc import Iterable
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path  # needs the sys.path line above
+from selftest_assert import expect, report  # needs the sys.path line above
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -51,6 +57,11 @@ ENCODING_RE = re.compile(r"k_ra8_port_\d+\s*<<\s*8\s*\)\s*\|\s*\(\s*uint16_t\s*\
 # unreachable repo root, a renamed SCAN_ROOT) and reporting "none hand-encode a
 # board pin" would be a lie: the idiom cannot be found in a file nobody read.
 # Measured 2026-07-28: 408 example sources. Same trip-wire as check_ruff.py.
+#
+# The count is not reproducible unless build output is excluded: a configured
+# in-source build under examples/<app>/build/ inflated the sweep 408 -> 409
+# (#549). `is_build_output_path` filters those, matching every peer checker, so
+# what the gate scans is the committed source and nothing generated on top.
 FILE_FLOOR = 320
 
 
@@ -77,12 +88,64 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
                     out.extend(path.rglob("*" + suffix))
             elif _is_source(path):
                 out.append(path)
-        return out
+        return [p for p in out if not is_build_output_path(p)]
 
     out = []
     for suffix in SOURCE_SUFFIXES:
         out.extend((REPO_ROOT / SCAN_ROOT).rglob("*" + suffix))
-    return out
+    return [p for p in out if not is_build_output_path(p)]
+
+
+def selftest() -> int:
+    """Prove the detector fires on the idiom and that build output is excluded.
+
+    Three things have to hold at once for a clean run to mean anything: the
+    encoding regex must FIRE on the ``(port << 8) | pin`` shape and stay QUIET
+    on a board-symbol reference, the enumeration must DROP an in-source build
+    file (the scope defect #549 fixed) while KEEPING a real example source, and
+    the live sweep must clear ``FILE_FLOOR`` so a collapsed scope cannot pass as
+    a clean tree.
+
+    Returns:
+        0 when every assertion held in both directions, 1 otherwise.
+    """
+    failures: list[str] = []
+
+    idiom = "  cfg.pin = ((uint16_t)k_ra8_port_6 << 8) | (uint16_t)k_ra8_pin_11;"
+    board_ref = "  cfg.pin = ra8_board_sw_pin(k_ra8_board_sw_user);"
+    expect(bool(ENCODING_RE.search(idiom)), "MUST FIRE: hand-encoded (port << 8) | pin", failures)
+    expect(
+        not ENCODING_RE.search(board_ref),
+        "MUST NOT FIRE: a board-symbol reference",
+        failures,
+    )
+
+    enumerated = {
+        str(p) for p in _enumerate_targets(["examples/x/build/gen.c", "examples/x/main.c"])
+    }
+    expect(
+        any(p.endswith("examples/x/main.c") for p in enumerated),
+        "MUST FIRE: a real example source is enumerated",
+        failures,
+    )
+    expect(
+        not any(p.endswith("examples/x/build/gen.c") for p in enumerated),
+        "MUST NOT FIRE: an in-source build file is excluded from the scope",
+        failures,
+    )
+
+    live = _enumerate_targets([])
+    expect(
+        len(live) >= FILE_FLOOR,
+        f"live sweep sees {len(live)} example file(s) (floor {FILE_FLOOR})",
+        failures,
+    )
+    expect(
+        all(not is_build_output_path(p) for p in live),
+        "no enumerated file lives in a build tree",
+        failures,
+    )
+    return report(failures)
 
 
 def main(argv: list[str]) -> int:
@@ -106,6 +169,8 @@ def main(argv: list[str]) -> int:
     Returns 1 listing each site, 0 when clean or when argv filtered to nothing,
     2 when the whole-tree sweep enumerated too few files to trust.
     """
+    if "--selftest" in argv[1:]:
+        return selftest()
     paths = argv[1:]
     targets = _enumerate_targets(paths)
     if not paths and len(targets) < FILE_FLOOR:
