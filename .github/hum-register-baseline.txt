@@ -53,7 +53,6 @@ libs/ra8_hal/inc/ra8_system_regs.h	unknown-window-symbol	5
 libs/ra8_hal/inc/ra8_usb_regs.h	unknown-window-symbol	12
 libs/ra8_hal/inc/ra8_vreg_regs.h	unknown-window-symbol	3
 libs/ra8_hal/src/ra8_bkup_tamper.c	wrong-cite-page	1
-libs/ra8_hal/src/ra8_cac.c	wrong-cite-page	9
 libs/ra8_hal/src/ra8_canfd.c	unknown-cite-symbol	1
 libs/ra8_hal/src/ra8_canfd.c	wrong-cite-page	7
 libs/ra8_hal/src/ra8_canfd_afl.c	unknown-cite-symbol	2
