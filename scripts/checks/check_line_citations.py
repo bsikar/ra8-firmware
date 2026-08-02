@@ -313,6 +313,43 @@ def _selftest_scope(failures: list[str]) -> None:
 # Selftest -- both directions, for source AND docs, plus scope assertions under
 # tools/ (source and docs), silently omitted until #358.
 # ---------------------------------------------------------------------------
+def _selftest_mcdc_reason_cases(tmp: Path, failures: list[str]) -> None:
+    """Assert both directions of the RA8_MCDC_DEACTIVATED reason scan (#547).
+
+    Extracted from :func:`selftest` so that function stays under the NASA Rule 4
+    line cap; the assertions are unchanged. The macro's reason is a string
+    literal, outside comment spans, so this proves a file:line inside one fires
+    and that a symbol-only or CITES-OK reason stays quiet -- the enforcement
+    docs/ANNOTATIONS.md promises.
+
+    Args:
+        tmp: A writable temporary directory for the fixture files.
+        failures: The accumulator each assertion records into.
+    """
+    bad_mcdc = tmp / "bad_mcdc.c"
+    bad_mcdc.write_text(
+        'RA8_MCDC_DEACTIVATED("guard justified in libs/foo.c:123")\n'
+        "static inline bool internal_guard(const void* p);\n",
+        encoding="utf-8",
+    )
+    expect(
+        bool(scan_file(bad_mcdc)),
+        "a file:line inside an RA8_MCDC_DEACTIVATED reason fires (#547)",
+        failures,
+    )
+    good_mcdc = tmp / "good_mcdc.c"
+    good_mcdc.write_text(
+        'RA8_MCDC_DEACTIVATED("guard: ra8_pin_validator_check asserts non-null")\n'
+        'RA8_MCDC_DEACTIVATED("legacy libs/foo.c:1 CITES-OK: historical note")\n',
+        encoding="utf-8",
+    )
+    expect(
+        not scan_file(good_mcdc),
+        "a symbol-only reason and a CITES-OK reason stay quiet (source)",
+        failures,
+    )
+
+
 def selftest() -> int:
     """Prove a file:line citation fires, legal forms stay quiet, and scope holds."""
     print("check_line_citations.py --selftest")
@@ -332,28 +369,7 @@ def selftest() -> int:
             "symbol ref / moved-from / CITES-OK stays quiet (source)",
             failures,
         )
-        bad_mcdc = Path(tmp) / "bad_mcdc.c"
-        bad_mcdc.write_text(
-            'RA8_MCDC_DEACTIVATED("guard justified in libs/foo.c:123")\n'
-            "static inline bool internal_guard(const void* p);\n",
-            encoding="utf-8",
-        )
-        expect(
-            bool(scan_file(bad_mcdc)),
-            "a file:line inside an RA8_MCDC_DEACTIVATED reason fires (#547)",
-            failures,
-        )
-        good_mcdc = Path(tmp) / "good_mcdc.c"
-        good_mcdc.write_text(
-            'RA8_MCDC_DEACTIVATED("guard: ra8_pin_validator_check asserts non-null")\n'
-            'RA8_MCDC_DEACTIVATED("legacy libs/foo.c:1 CITES-OK: historical note")\n',
-            encoding="utf-8",
-        )
-        expect(
-            not scan_file(good_mcdc),
-            "a symbol-only reason and a CITES-OK reason stay quiet (source)",
-            failures,
-        )
+        _selftest_mcdc_reason_cases(Path(tmp), failures)
         bad_doc = Path(tmp) / "bad.md"
         bad_doc.write_text("See `ra8_ipc_regs.h:267` for the bit.\n", encoding="utf-8")
         expect(bool(scan_doc_file(bad_doc)), "a file:line citation in a doc fires", failures)
