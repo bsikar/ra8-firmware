@@ -36,6 +36,18 @@
 #      workflows locally, so GitHub is confirmation, not discovery. `wait`
 #      exists for the rare case that genuinely needs it and is bounded.
 #
+# The daemon corrects its OWN stalls rather than waiting to be noticed (#560).
+# Three layers, because a poller that silently stops is the "does nothing" bug
+# (#190) one level up:
+#   - every gh call is capped by `timeout` (RA8_CI_GH_TIMEOUT), so a hung
+#     request can never freeze the poll loop -- the wedge that went dark in #560;
+#   - the loop pings a systemd watchdog (WatchdogSec in the unit) every cycle, so
+#     a daemon wedged for ANY reason is SIGABRTed and Restart=always brings it
+#     back -- Restart alone cannot, since a hung process never exits;
+#   - a freshness self-check exits the daemon after a few cycles that produced no
+#     state file (a reaped state dir, a full disk), so a live-but-useless daemon
+#     restarts instead of persisting.
+#
 # Exit codes are the contract, and there are exactly three:
 #   0  PASS      every run for the sha completed successfully
 #   1  FAIL      at least one run for the sha failed / timed out / was cancelled
@@ -101,6 +113,32 @@ if [[ ! "$RA8_CI_STALL_MIN" =~ ^[0-9]+$ ]]; then
   log "warning: RA8_CI_STALL_MIN='$RA8_CI_STALL_MIN' is not an integer -- using 15"
   RA8_CI_STALL_MIN=15
 fi
+
+# Hard cap on every network-bound `gh` call. A gh api request with NO timeout is
+# exactly how the daemon went dark (#560): the request hung, poll_once never
+# returned, the loop never wrote another state file, and Restart=always could do
+# nothing because a hung process never exits. A bounded call guarantees the loop
+# always makes progress; a killed call surfaces as a failed command, which every
+# caller here already scores as UNKNOWN.
+RA8_CI_GH_TIMEOUT="${RA8_CI_GH_TIMEOUT:-60}"
+if [[ ! "$RA8_CI_GH_TIMEOUT" =~ ^[0-9]+$ ]]; then
+  log "warning: RA8_CI_GH_TIMEOUT='$RA8_CI_GH_TIMEOUT' is not an integer -- using 60"
+  RA8_CI_GH_TIMEOUT=60
+fi
+# systemd watchdog deadline. It must comfortably exceed the worst case a HEALTHY
+# poll_once can take -- two gh calls, each capped at RA8_CI_GH_TIMEOUT -- so a
+# merely slow poll never trips it and only a genuine wedge does. The default
+# derives from the gh timeout so the two stay consistent if either is retuned.
+RA8_CI_WATCHDOG_SEC="${RA8_CI_WATCHDOG_SEC:-$((RA8_CI_GH_TIMEOUT * 4 + 60))}"
+if [[ ! "$RA8_CI_WATCHDOG_SEC" =~ ^[0-9]+$ ]]; then
+  log "warning: RA8_CI_WATCHDOG_SEC='$RA8_CI_WATCHDOG_SEC' is not an integer -- using 300"
+  RA8_CI_WATCHDOG_SEC=300
+fi
+# Resolved once: GNU coreutils `timeout` (Linux daemon box) or `gtimeout`
+# (Homebrew, for interactive `quota` on a Mac). Absent on neither path in
+# practice, but if it were, gh_api falls back to an unbounded call rather than
+# refusing to run.
+RA8_CI_TIMEOUT_BIN="$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || true)"
 
 need_gh() {
   command -v gh >/dev/null 2>&1 || {
@@ -208,10 +246,42 @@ else:
 PY
 }
 
+# Every network-bound gh call goes through here so none can hang the daemon.
+# See the RA8_CI_GH_TIMEOUT note above for why an unbounded call is dangerous.
+# `-k 5` force-kills a call that ignores the initial SIGTERM; the exit status is
+# passed straight back so callers keep treating a failed/killed call as UNKNOWN.
+gh_api() {
+  if [[ -n "$RA8_CI_TIMEOUT_BIN" ]]; then
+    "$RA8_CI_TIMEOUT_BIN" -k 5 "$RA8_CI_GH_TIMEOUT" gh api "$@"
+  else
+    gh api "$@"
+  fi
+}
+
+# systemd watchdog integration. Both are no-ops when the daemon is started by
+# hand (no NOTIFY_SOCKET / WATCHDOG_USEC in the environment), so
+# `monitor.sh daemon` still runs standalone. Under the unit written by
+# install-service they are what makes a STALL self-correcting: the unit declares
+# WatchdogSec, and if the daemon wedges it stops pinging, so systemd -- promised
+# a ping every WatchdogSec -- kills and restarts it. Restart=always alone cannot
+# do this, because a hung process never exits and so never triggers a restart.
+# That is precisely how the daemon went dark in #560.
+sd_notify() {
+  [[ -n "${NOTIFY_SOCKET:-}" ]] || return 0
+  command -v systemd-notify >/dev/null 2>&1 || return 0
+  systemd-notify "$@" 2>/dev/null || true
+}
+sd_watchdog_ping() {
+  # WATCHDOG_USEC is set by systemd only when WatchdogSec is configured, so this
+  # stays silent unless a watchdog is actually watching.
+  [[ -n "${WATCHDOG_USEC:-}" ]] || return 0
+  sd_notify WATCHDOG=1
+}
+
 # rate_limit does not itself count against the REST quota, so this is safe to
 # call every cycle.
 quota_remaining() {
-  gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown"
+  gh_api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown"
 }
 
 # Assert the exit-code contract, in both directions, against a synthetic state
@@ -311,7 +381,7 @@ cmd_quota() {
   need_gh
   local r reset
   r="$(quota_remaining)"
-  reset="$(gh api rate_limit --jq '.resources.core.reset' 2>/dev/null || echo 0)"
+  reset="$(gh_api rate_limit --jq '.resources.core.reset' 2>/dev/null || echo 0)"
   echo "core quota remaining: $r"
   if [[ "$reset" != "0" && "$reset" != "" ]]; then
     echo "resets at: $(date -d "@$reset" 2>/dev/null || date -r "$reset" 2>/dev/null || echo "$reset")"
@@ -319,13 +389,25 @@ cmd_quota() {
   echo "reserve threshold: $RA8_CI_QUOTA_RESERVE (poller backs off below this)"
 }
 
+# Returns non-zero when the file could not be written, so the daemon's
+# freshness self-check can tell "we produced a verdict" from "we ran but wrote
+# nothing". mkdir every call so a state dir reaped out from under a long-lived
+# daemon (systemd-tmpfiles sweeps /var/tmp) is recreated rather than leaving the
+# daemon writing into the void -- a live process producing no file, which every
+# reader correctly reports as UNKNOWN but nothing was correcting.
 write_state() {
   local payload="$1"
+  mkdir -p "$RA8_CI_STATE_DIR" 2>/dev/null || true
   local tmp="$RA8_CI_STATE.tmp.$$"
-  printf '%s\n' "$payload" >"$tmp" 2>/dev/null && mv -f "$tmp" "$RA8_CI_STATE" 2>/dev/null
-  # World-writable on purpose: several agents run as different accounts on the
-  # shared box and any of them may be the one that restarts the daemon.
-  chmod 666 "$RA8_CI_STATE" 2>/dev/null || true
+  if printf '%s\n' "$payload" >"$tmp" 2>/dev/null && mv -f "$tmp" "$RA8_CI_STATE" 2>/dev/null; then
+    # World-writable on purpose: several agents run as different accounts on the
+    # shared box and any of them may be the one that restarts the daemon.
+    chmod 666 "$RA8_CI_STATE" 2>/dev/null || true
+    return 0
+  fi
+  rm -f "$tmp" 2>/dev/null || true
+  log "error: could not write state file $RA8_CI_STATE (state dir gone or disk full?)"
+  return 1
 }
 
 # Stall hint for the newest sha, emitted as a JSON string so poll_once can
@@ -383,7 +465,7 @@ poll_once() {
   # enqueue time -- `updated` moves for reasons unrelated to being picked up,
   # so it cannot measure how long a job has been waiting for a runner.
   local runs
-  runs="$(gh api "/repos/$RA8_CI_REPO/actions/runs?branch=$RA8_CI_BRANCH&per_page=30" \
+  runs="$(gh_api "/repos/$RA8_CI_REPO/actions/runs?branch=$RA8_CI_BRANCH&per_page=30" \
     --jq '[.workflow_runs[] | {name:.name, sha:.head_sha, status:.status, conclusion:.conclusion, url:.html_url, created:.created_at, updated:.updated_at}]' \
     2>/dev/null)"
   if [[ -z "$runs" ]]; then
@@ -424,12 +506,48 @@ poll_once() {
   return 0
 }
 
+# Age in seconds of the state file, or a large sentinel if it is missing. Used
+# by the daemon's freshness self-check and by cmd_status's staleness gate.
+state_age_seconds() {
+  local m now
+  m="$(stat -c %Y "$RA8_CI_STATE" 2>/dev/null || stat -f %m "$RA8_CI_STATE" 2>/dev/null)"
+  [[ -z "$m" ]] && {
+    echo 999999
+    return
+  }
+  now="$(date +%s)"
+  echo $((now - m))
+}
+
+# sleep for $1 seconds, but in bounded chunks with a watchdog ping between each,
+# so a long (backoff) sleep never trips the watchdog -- the watchdog must fire
+# on a real wedge, not on a deliberate wait.
+watchdog_sleep() {
+  local remaining="$1" step
+  while [[ "$remaining" -gt 0 ]]; do
+    step=30
+    [[ "$remaining" -lt 30 ]] && step="$remaining"
+    sleep "$step"
+    remaining=$((remaining - step))
+    sd_watchdog_ping
+  done
+}
+
 cmd_daemon() {
   need_gh
   need_jq
   log "starting shared poller: repo=$RA8_CI_REPO branch=$RA8_CI_BRANCH interval=${RA8_CI_INTERVAL}s"
-  log "state file: $RA8_CI_STATE"
+  log "state file: $RA8_CI_STATE (gh timeout ${RA8_CI_GH_TIMEOUT}s, watchdog ${RA8_CI_WATCHDOG_SEC}s)"
+  sd_notify --ready
+  sd_watchdog_ping
   local backoff="$RA8_CI_INTERVAL"
+  # poll_once ALWAYS writes state (a verdict on success, an UNKNOWN document on
+  # failure), so right after it returns the file must be seconds old. If it is
+  # not, write_state failed -- a vanished state dir, a full disk -- and the
+  # daemon is running while producing nothing. Count those dead cycles and exit
+  # so systemd restarts a clean daemon (issue #190: never silently do nothing).
+  local stale_cycles=0
+  local fresh_limit=$((RA8_CI_GH_TIMEOUT * 2 + 30))
   while true; do
     if poll_once; then
       backoff="$RA8_CI_INTERVAL"
@@ -439,7 +557,22 @@ cmd_daemon() {
       [[ "$backoff" -gt 900 ]] && backoff=900
       log "backing off to ${backoff}s"
     fi
-    sleep "$backoff"
+    # A completed poll cycle is proof of life -- feed the watchdog before the
+    # long sleep, then again from inside watchdog_sleep.
+    sd_watchdog_ping
+    local age
+    age="$(state_age_seconds)"
+    if [[ "$age" -le "$fresh_limit" ]]; then
+      stale_cycles=0
+    else
+      stale_cycles=$((stale_cycles + 1))
+      log "warning: state file not refreshed this cycle (age ${age}s > ${fresh_limit}s), stale_cycles=$stale_cycles"
+      if [[ "$stale_cycles" -ge 3 ]]; then
+        log "error: state file stale for $stale_cycles cycles -- exiting so systemd restarts a clean daemon"
+        exit "$RA8_CI_EXIT_FAIL"
+      fi
+    fi
+    watchdog_sleep "$backoff"
   done
 }
 
@@ -613,9 +746,19 @@ Environment=RA8_CI_INTERVAL=$RA8_CI_INTERVAL
 Environment=RA8_CI_QUOTA_RESERVE=$RA8_CI_QUOTA_RESERVE
 Environment=RA8_CI_STALL_MIN=$RA8_CI_STALL_MIN
 Environment=RA8_CI_STATE_DIR=$RA8_CI_STATE_DIR
+Environment=RA8_CI_GH_TIMEOUT=$RA8_CI_GH_TIMEOUT
+Environment=RA8_CI_WATCHDOG_SEC=$RA8_CI_WATCHDOG_SEC
 ExecStart=/usr/bin/env bash $self daemon
 Restart=always
 RestartSec=30
+# A hung daemon never exits, so Restart=always alone cannot recover it -- that
+# is how #560 stayed dark. The watchdog closes that gap: the daemon pings
+# WATCHDOG=1 every cycle (sd_watchdog_ping), and if the pings stop -- wedged in a
+# call, deadlocked -- systemd SIGABRTs it once WatchdogSec elapses and
+# Restart=always brings it straight back. NotifyAccess=all is required because
+# the ping is sent by a systemd-notify CHILD of the daemon, not its main PID.
+WatchdogSec=$RA8_CI_WATCHDOG_SEC
+NotifyAccess=all
 
 [Install]
 WantedBy=default.target
