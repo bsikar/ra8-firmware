@@ -294,6 +294,21 @@ def _report_violations(
     return total
 
 
+def _selftest_scope(failures: list[str]) -> None:
+    """Assert SCAN_ROOTS scope: tools/ (source + docs) in, vendored SOUP out (#358)."""
+    expect(
+        is_in_scope("tools/ra8_emulator/src/main.c"),
+        "tools/ C is in scope (SCAN_ROOTS omitted it before #358)",
+        failures,
+    )
+    expect(is_doc_in_scope("tools/mcp/README.md"), "tools/ docs are in scope", failures)
+    expect(
+        not is_in_scope("libs/third_party/miniz/miniz.c"),
+        "vendored SOUP stays out of scope",
+        failures,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Selftest -- both directions, for source AND docs, plus scope assertions under
 # tools/ (source and docs), silently omitted until #358.
@@ -349,17 +364,7 @@ def selftest() -> int:
         )
         expect(not scan_doc_file(good_doc), "doc CITES-OK stays quiet", failures)
 
-    expect(
-        is_in_scope("tools/ra8_emulator/src/main.c"),
-        "tools/ C is in scope (SCAN_ROOTS omitted it before #358)",
-        failures,
-    )
-    expect(is_doc_in_scope("tools/mcp/README.md"), "tools/ docs are in scope", failures)
-    expect(
-        not is_in_scope("libs/third_party/miniz/miniz.c"),
-        "vendored SOUP stays out of scope",
-        failures,
-    )
+    _selftest_scope(failures)
     return report(failures)
 
 
