@@ -1,6 +1,6 @@
 /**
  * @file ra8_cache.c
- * @brief Cortex-M85 L1 D-cache maintenance implementation.
+ * @brief Cortex-M85 L1 cache maintenance, enable/disable, and I-cache invalidate.
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
@@ -10,9 +10,13 @@
  * registers (PPB window 0xE000Exxx). The by-address operations walk the cache
  * lines spanning a byte range, writing each line's address to the relevant
  * maintenance register (DCCMVAC / DCIMVAC / DCCIMVAC) with the line size read at
- * run time from CTR. ::ra8_cache_dcache_invalidate_all walks the geometry from
- * CCSIDR and invalidates every set/way via DCISW, mirroring the CMSIS
- * `SCB_InvalidateDCache` idiom.
+ * run time from CTR. ::ra8_cache_setway_all walks the geometry from CCSIDR and
+ * applies a set/way op to every {set,way} -- DCISW for the cold invalidate
+ * (::ra8_cache_dcache_invalidate_all / _enable) and DCCISW for the clean+invalidate
+ * used by ::ra8_cache_dcache_disable -- mirroring the CMSIS `SCB_*DCache` idioms.
+ * The enable/disable primitives read-modify-write SCB.CCR (bits IC / DC) and the
+ * I-cache path writes ICIALLU, encoding the exact sequences the boot
+ * `system_init.c` copies previously hand-rolled (issue #577).
  *
  * These are Arm-architecture registers, so the inline comments reference the
  * Arm v8-M Architecture Reference Manual (the "Arm v8-M ARM") rather than the
@@ -42,13 +46,16 @@ static const char* const s_tag = "ra8_cache";
  *          core window (0xE0000000) on a host build, real PPB on silicon.
  */
 typedef enum : uintptr_t {
-  k_ra8_cache_ctr      = 0xE000ED7CUL, /**< Cache Type Register (CTR).       */
-  k_ra8_cache_ccsidr   = 0xE000ED80UL, /**< Cache Size ID Register (CCSIDR). */
-  k_ra8_cache_csselr   = 0xE000ED84UL, /**< Cache Size Selection (CSSELR).   */
-  k_ra8_cache_dcimvac  = 0xE000EF5CUL, /**< D-cache invalidate by MVA (PoC). */
-  k_ra8_cache_dcisw    = 0xE000EF60UL, /**< D-cache invalidate by set/way.   */
-  k_ra8_cache_dccmvac  = 0xE000EF68UL, /**< D-cache clean by MVA (PoC).      */
-  k_ra8_cache_dccimvac = 0xE000EF70UL, /**< D-cache clean+invalidate by MVA. */
+  k_ra8_cache_ccr      = 0xE000ED14UL, /**< Configuration and Control (CCR).     */
+  k_ra8_cache_ctr      = 0xE000ED7CUL, /**< Cache Type Register (CTR).           */
+  k_ra8_cache_ccsidr   = 0xE000ED80UL, /**< Cache Size ID Register (CCSIDR).     */
+  k_ra8_cache_csselr   = 0xE000ED84UL, /**< Cache Size Selection (CSSELR).       */
+  k_ra8_cache_iciallu  = 0xE000EF50UL, /**< I-cache invalidate all to PoU.       */
+  k_ra8_cache_dcimvac  = 0xE000EF5CUL, /**< D-cache invalidate by MVA (PoC).     */
+  k_ra8_cache_dcisw    = 0xE000EF60UL, /**< D-cache invalidate by set/way.       */
+  k_ra8_cache_dccmvac  = 0xE000EF68UL, /**< D-cache clean by MVA (PoC).          */
+  k_ra8_cache_dccimvac = 0xE000EF70UL, /**< D-cache clean+invalidate by MVA.     */
+  k_ra8_cache_dccisw   = 0xE000EF74UL, /**< D-cache clean+invalidate by set/way. */
 } ra8_cache_reg_addr_t;
 
 /**
@@ -57,15 +64,17 @@ typedef enum : uintptr_t {
  * @details Arm v8-M ARM register descriptions for CTR, CCSIDR, and DCISW.
  */
 typedef enum : uint32_t {
-  k_ra8_cache_word_bytes      = 4U,      /**< Bytes per 32-bit cache word.        */
-  k_ra8_cache_ctr_dmin_shift  = 16U,     /**< CTR.DminLine bit position.          */
-  k_ra8_cache_ctr_dmin_mask   = 0xFU,    /**< CTR.DminLine field mask (4 bits).   */
-  k_ra8_cache_ccsidr_sets_sh  = 13U,     /**< CCSIDR.NumSets bit position.        */
-  k_ra8_cache_ccsidr_sets_msk = 0x7FFFU, /**< CCSIDR.NumSets field mask (15 bit). */
-  k_ra8_cache_ccsidr_assoc_sh = 3U,      /**< CCSIDR.Associativity bit position.  */
-  k_ra8_cache_ccsidr_assoc_mk = 0x3FFU,  /**< CCSIDR.Associativity mask (10 bit). */
-  k_ra8_cache_dcisw_set_shift = 5U,      /**< DCISW.SET position (32-byte line).  */
-  k_ra8_cache_dcisw_way_shift = 30U,     /**< DCISW.WAY position (assoc <= 4).    */
+  k_ra8_cache_word_bytes      = 4U,        /**< Bytes per 32-bit cache word.        */
+  k_ra8_cache_ctr_dmin_shift  = 16U,       /**< CTR.DminLine bit position.          */
+  k_ra8_cache_ctr_dmin_mask   = 0xFU,      /**< CTR.DminLine field mask (4 bits).   */
+  k_ra8_cache_ccsidr_sets_sh  = 13U,       /**< CCSIDR.NumSets bit position.        */
+  k_ra8_cache_ccsidr_sets_msk = 0x7FFFU,   /**< CCSIDR.NumSets field mask (15 bit). */
+  k_ra8_cache_ccsidr_assoc_sh = 3U,        /**< CCSIDR.Associativity bit position.  */
+  k_ra8_cache_ccsidr_assoc_mk = 0x3FFU,    /**< CCSIDR.Associativity mask (10 bit). */
+  k_ra8_cache_dcisw_set_shift = 5U,        /**< DCISW.SET position (32-byte line).  */
+  k_ra8_cache_dcisw_way_shift = 30U,       /**< DCISW.WAY position (assoc <= 4).    */
+  k_ra8_cache_ccr_ic_bit      = 1UL << 17, /**< CCR.IC -- L1 instruction-cache en.  */
+  k_ra8_cache_ccr_dc_bit      = 1UL << 16, /**< CCR.DC -- L1 data-cache enable.     */
 } ra8_cache_field_t;
 
 /**
@@ -181,15 +190,39 @@ ra8_err_t ra8_cache_dcache_clean_invalidate_by_addr(const void* addr, uint32_t s
   return ra8_cache_maintain_range(addr, size, k_ra8_cache_dccimvac);
 }
 
-void ra8_cache_dcache_invalidate_all(void)
+/**
+ * @brief Apply a set/way maintenance op to every line of the L1 D-cache.
+ *
+ * @details Shared body of the whole-cache set/way operations: select level-0
+ *          data (CSSELR=0), read the geometry from CCSIDR, and write each
+ *          {set,way} pair to @p op_reg, bracketed by data barriers. @p op_reg is
+ *          DCISW for a bare invalidate (cold-cache enable) or DCCISW for
+ *          clean+invalidate (cache disable, so dirty lines are written back). A
+ *          degenerate CCSIDR (all-zero or all-ones) means the geometry is
+ *          unavailable, so nothing is written.
+ *
+ * @param[in] op_reg Set/way maintenance register: ::k_ra8_cache_dcisw or
+ *                   ::k_ra8_cache_dccisw.
+ *
+ * @return None.
+ *
+ * @pre @p op_reg is a set/way maintenance register address.
+ * @pre Runs single-threaded with interrupts masked (boot / disable context).
+ * @post Every set/way of the L1 D-cache has been written to @p op_reg (unless the
+ *       geometry was unavailable, in which case none was).
+ * @post Barriers bracket the maintenance writes.
+ * @note Not thread-safe; boot / single-threaded use only.
+ * @since 0.1.0
+ */
+static void ra8_cache_setway_all(ra8_cache_reg_addr_t op_reg)
 {
-  /* Arm v8-M ARM: select L1 data cache, read its geometry, then invalidate
-   * every set/way. CSSELR=0 selects level 0, data. */
+  /* Arm v8-M ARM: select L1 data cache, read its geometry, then apply the
+   * set/way op to every set/way. CSSELR=0 selects level 0, data. */
   *ra8_cache_reg(k_ra8_cache_csselr) = 0U;
   ra8_hw_dsb();
   const uint32_t ccsidr = *ra8_cache_reg(k_ra8_cache_ccsidr);
   if ((ccsidr == 0U) || (ccsidr == UINT32_MAX)) {
-    return; /* geometry unavailable -- nothing safe to invalidate */
+    return; /* geometry unavailable -- nothing safe to touch */
   }
   uint32_t sets =
     (ccsidr >> (uint32_t)k_ra8_cache_ccsidr_sets_sh) & (uint32_t)k_ra8_cache_ccsidr_sets_msk;
@@ -197,10 +230,87 @@ void ra8_cache_dcache_invalidate_all(void)
     uint32_t ways =
       (ccsidr >> (uint32_t)k_ra8_cache_ccsidr_assoc_sh) & (uint32_t)k_ra8_cache_ccsidr_assoc_mk;
     do {
-      *ra8_cache_reg(k_ra8_cache_dcisw) = (sets << (uint32_t)k_ra8_cache_dcisw_set_shift) |
-                                          (ways << (uint32_t)k_ra8_cache_dcisw_way_shift);
+      *ra8_cache_reg(op_reg) = (sets << (uint32_t)k_ra8_cache_dcisw_set_shift) |
+                               (ways << (uint32_t)k_ra8_cache_dcisw_way_shift);
     } while (ways-- != 0U);
   } while (sets-- != 0U);
   ra8_hw_dsb();
   ra8_hw_isb();
+}
+
+void ra8_cache_dcache_invalidate_all(void)
+{
+  ra8_cache_setway_all(k_ra8_cache_dcisw);
+}
+
+void ra8_cache_icache_invalidate_all(void)
+{
+  /* Arm v8-M ARM: ICIALLU invalidates the whole L1 instruction cache to the
+   * point of unification. Barriers bracket it so prior accesses retire and the
+   * pipeline refetches before execution continues. */
+  ra8_hw_dsb();
+  ra8_hw_isb();
+  *ra8_cache_reg(k_ra8_cache_iciallu) = 0U;
+  ra8_hw_dsb();
+  ra8_hw_isb();
+}
+
+void ra8_cache_icache_enable(void)
+{
+  ra8_cache_icache_invalidate_all();
+  /* Arm v8-M ARM: set SCB.CCR.IC (bit 17) to enable the L1 instruction cache.
+   * Read-modify-write preserves the other CCR controls (DIV_0_TRP, BP, ...). */
+  uint32_t ccr = *ra8_cache_reg(k_ra8_cache_ccr);
+  ccr |= (uint32_t)k_ra8_cache_ccr_ic_bit;
+  *ra8_cache_reg(k_ra8_cache_ccr) = ccr;
+  ra8_hw_dsb();
+  ra8_hw_isb();
+}
+
+void ra8_cache_icache_disable(void)
+{
+  /* Arm v8-M ARM: clear SCB.CCR.IC (bit 17), then invalidate so no stale line
+   * survives a later re-enable. The I-cache holds no dirty state. */
+  ra8_hw_dsb();
+  ra8_hw_isb();
+  uint32_t ccr = *ra8_cache_reg(k_ra8_cache_ccr);
+  ccr &= ~(uint32_t)k_ra8_cache_ccr_ic_bit;
+  *ra8_cache_reg(k_ra8_cache_ccr)     = ccr;
+  *ra8_cache_reg(k_ra8_cache_iciallu) = 0U;
+  ra8_hw_dsb();
+  ra8_hw_isb();
+}
+
+void ra8_cache_dcache_enable(void)
+{
+  /* Invalidate every set/way first (existing primitive) so no random power-on
+   * line is treated as valid once the cache is on, THEN set CCR.DC. */
+  ra8_cache_dcache_invalidate_all();
+  /* Arm v8-M ARM: set SCB.CCR.DC (bit 16) to enable the L1 data cache. */
+  uint32_t ccr = *ra8_cache_reg(k_ra8_cache_ccr);
+  ccr |= (uint32_t)k_ra8_cache_ccr_dc_bit;
+  *ra8_cache_reg(k_ra8_cache_ccr) = ccr;
+  ra8_hw_dsb();
+  ra8_hw_isb();
+}
+
+void ra8_cache_dcache_disable(void)
+{
+  /* Arm v8-M ARM: clear SCB.CCR.DC (bit 16) to stop new allocations, then clean
+   * AND invalidate every set/way via DCCISW so any dirty line is written back to
+   * memory as the cache goes cold -- disable must not discard dirty data. */
+  uint32_t ccr = *ra8_cache_reg(k_ra8_cache_ccr);
+  ccr &= ~(uint32_t)k_ra8_cache_ccr_dc_bit;
+  *ra8_cache_reg(k_ra8_cache_ccr) = ccr;
+  ra8_cache_setway_all(k_ra8_cache_dccisw);
+}
+
+void ra8_cache_enable(void)
+{
+  /* Unified L1 bring-up: I-cache then D-cache, matching the order every
+   * system_init.c boot copy uses. Each half runs its own architectural
+   * invalidate before setting its CCR enable bit, so this is safe to call once
+   * from a cold cache at boot. */
+  ra8_cache_icache_enable();
+  ra8_cache_dcache_enable();
 }
