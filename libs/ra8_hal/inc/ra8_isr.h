@@ -300,6 +300,51 @@ void ra8_isr_dispatch(uint16_t slot);
 [[nodiscard]] ra8_err_t ra8_isr_lookup_slot(ra8_elc_event_t event, uint16_t* out_slot);
 
 /**
+ * @brief Enable or disable DTC activation on a registered IELSR slot.
+ *
+ * @details
+ * The Data Transfer Controller has no software-start register (HUM Ch 18.3
+ * p 796: "The DTC is activated by an interrupt request"); a peripheral or
+ * ELC event activates it only when that event's ICU.IELSRn slot has its
+ * ``DTCE`` bit (bit 24) set. With ``DTCE`` clear the same event is taken by
+ * the CPU as an ordinary interrupt instead. Because ``ra8_isr`` owns every
+ * IELSR slot (``ra8_isr_register`` writes the ``IELS`` event field, the
+ * dispatcher clears ``IR``), arming or disarming DTC on an allocated slot
+ * belongs here rather than open-coded in every DTC application.
+ *
+ * The write is a read-modify-write that touches only ``DTCE``: the ``IELS``
+ * event-select field written by ::ra8_isr_register is preserved, and the
+ * write-0-to-clear ``IR`` status flag is left untouched -- its own read
+ * value is written back, which retains it (see ::ra8_isr_dispatch and issue
+ * #170). The DTC clears ``DTCE`` itself when a block completes (HUM Figure
+ * 18.5 p 801), so a repeating transfer re-arms with ``enable = true``
+ * before each activation.
+ *
+ * @param[in] slot   IELSR slot 0..k_ra8_isr_slot_count - 1, as returned by
+ *                   ::ra8_isr_register through its ``out_slot`` parameter.
+ * @param[in] enable ``true`` sets ``DTCE`` (route the event to the DTC);
+ *                   ``false`` clears it (route the event to the CPU).
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok              ``IELSRn.DTCE`` for the slot now equals
+ *                               @p enable.
+ * @retval k_ra8_err_invalid_arg ``slot`` is out of range.
+ * @retval k_ra8_err_not_found   ``slot`` is not currently registered.
+ * @retval k_ra8_err_hw_error    The IELSR accessor returned NULL.
+ *
+ * @pre ``slot`` was assigned by a prior ::ra8_isr_register call.
+ * @pre IRQs masked or single-threaded init context.
+ * @post On ``k_ra8_ok``, ``IELSRn.DTCE`` for the slot reflects @p enable.
+ * @post No other IELSR field (``IELS`` / ``IR``) is modified.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra8_isr_register
+ * @see ra8_isr_dispatch
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_isr_set_dtc(uint16_t slot, bool enable);
+
+/**
  * @brief Globally enable maskable interrupts (PRIMASK = 0).
  *
  * @details
