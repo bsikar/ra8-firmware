@@ -108,6 +108,10 @@ static void test_start_happy_both_inc(void)
 
   volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
+  /* HUM Ch 17.2.4 "DMSAR : DMA Source Address Register" p 734,
+   * 17.2.6 "DMDAR : DMA Destination Address Register" p 735,
+   * 17.2.8 "DMCRA : DMA Transfer Count Register" p 736 and
+   * 17.2.14 "DMCNT : DMA Transfer Enable Register" p 743. */
   TEST_ASSERT_EQ(k_ra8_dmac_test_src, reg->DMSAR);
   TEST_ASSERT_EQ(k_ra8_dmac_test_dst, reg->DMDAR);
   TEST_ASSERT_EQ(k_ra8_dmac_test_count, reg->DMCRA);
@@ -198,6 +202,7 @@ static void test_stop_happy(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_stop((uint8_t)k_ra8_dmac_test_channel_valid));
 
   volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  /* HUM Ch 17.2.14 "DMCNT : DMA Transfer Enable Register" p 743 */
   TEST_ASSERT_EQ(0, reg->DMCNT);
   TEST_END("dmac stop happy");
 }
@@ -275,6 +280,7 @@ static void test_start_repeat_mode(void)
 
   volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
+  /* HUM Ch 17.2.10 "DMTMD : DMA Transfer Mode Register" p 738 */
   const uint16_t md = (uint16_t)((reg->DMTMD & k_ra8_dmtmd_md_mask) >> k_ra8_dmtmd_md_pos);
   TEST_ASSERT_EQ(k_ra8_dmtmd_md_repeat, md);
   TEST_END("dmac start_repeat sets MD=01b");
@@ -320,6 +326,7 @@ static void test_start_block_mode(void)
 
   volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
+  /* HUM Ch 17.2.10 "DMTMD : DMA Transfer Mode Register" p 738 */
   const uint16_t md = (uint16_t)((reg->DMTMD & k_ra8_dmtmd_md_mask) >> k_ra8_dmtmd_md_pos);
   TEST_ASSERT_EQ(k_ra8_dmtmd_md_block, md);
   /* HUM Ch 17.2.9 p 737 -- block mode mirrors block_count into both
@@ -375,6 +382,7 @@ static void test_set_address_mode_happy(void)
                                            k_ra8_dmac_addr_offset));
 
   volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  /* HUM Ch 17.2.12 "DMAMD : DMA Address Mode Register" p 740 */
   const uint16_t sm = (uint16_t)((reg->DMAMD & k_ra8_dmamd_sm_mask) >> k_ra8_dmamd_sm_pos);
   const uint16_t dm = (uint16_t)((reg->DMAMD & k_ra8_dmamd_dm_mask) >> k_ra8_dmamd_dm_pos);
   TEST_ASSERT_EQ(k_ra8_dmac_addr_decrement, sm);
@@ -585,6 +593,7 @@ static void test_software_trigger(void)
 
   volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
+  /* HUM Ch 17.2.15 "DMREQ : DMA Software Start Register" p 744 */
   TEST_ASSERT((reg->DMREQ & (uint8_t)k_ra8_dmreq_swreq_mask) != 0U);
 
   /* Out-of-range channel is rejected without touching hardware. */
@@ -618,12 +627,14 @@ static void test_is_active(void)
   volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
 
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
   /* ACT clear -> reports idle. */
   reg->DMSTS = 0U;
   active     = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_is_active((uint8_t)k_ra8_dmac_test_channel_valid, &active));
   TEST_ASSERT(!active);
 
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
   /* ACT set -> reports busy. */
   reg->DMSTS = (uint8_t)k_ra8_dmsts_act_mask;
   active     = false;
@@ -647,18 +658,21 @@ static void test_wait_idle(void)
   volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
 
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
   /* ACT already clear -> ok on the first read. */
   reg->DMSTS = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_valid,
                                     (uint32_t)k_ra8_dmac_test_poll_limit));
 
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
   /* ACT stuck set -> the bounded loop exhausts and reports timeout. */
   reg->DMSTS = (uint8_t)k_ra8_dmsts_act_mask;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_valid,
                                     (uint32_t)k_ra8_dmac_test_poll_limit));
 
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
   /* Zero poll bound performs no read and times out even when idle. */
   reg->DMSTS = 0U;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
