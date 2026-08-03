@@ -11,6 +11,11 @@
  * RO/RW/None pairs, and bounds checking against the implemented
  * region count reported by `MPU_TYPE.DREGION`.
  *
+ * It also owns the canonical 5-region boot memory-attribute map
+ * (`ra8_mpu_apply_boot_map()`), the single source of truth the reset path
+ * routes through instead of hand-rolling MAIR/RBAR/RLAR/CTRL pokes in each
+ * app's `system_init.c` (issue #576).
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -22,6 +27,7 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_intrinsics.h"
 #include "ra8_mpu_regs.h"
 
 static const char* s_tag = "MPU";
@@ -148,6 +154,22 @@ static void ra8_mpu_clear_region(uint8_t region)
   mpu->RLAR                  = 0U;
 }
 
+/* Sole writer of MPU_CTRL for wholesale (re)configuration -- see implementation for details. */
+static void ra8_mpu_write_ctrl(uint32_t ctrl)
+{
+  /* Arm Cortex-M85 TRM "MPU_CTRL": ENABLE[0] | HFNMIENA[1] | PRIVDEFENA[2]. */
+  ra8_mpu_regs()->CTRL = ctrl;
+}
+
+/* Write the MAIR0/MAIR1 attribute-indirection pair -- see implementation for details. */
+static void ra8_mpu_write_mair(uint32_t mair0, uint32_t mair1)
+{
+  volatile r_mpu_regs_t* mpu = ra8_mpu_regs();
+  /* Arm Cortex-M85 TRM "MPU_MAIR0 / MPU_MAIR1": attribute-indirection bytes. */
+  mpu->MAIR0 = mair0;
+  mpu->MAIR1 = mair1;
+}
+
 /* Build the MPU_CTRL value from the static config -- see implementation for details. */
 static uint32_t ra8_mpu_build_ctrl(const ra8_mpu_cfg_t* cfg)
 {
@@ -188,11 +210,9 @@ ra8_err_t ra8_mpu_configure(const ra8_mpu_cfg_t* cfg)
     return verr;
   }
 
-  volatile r_mpu_regs_t* mpu = ra8_mpu_regs();
   /* Arm Cortex-M85 TRM "MPU_CTRL": disable before reprogramming. */
-  mpu->CTRL  = 0U;
-  mpu->MAIR0 = cfg->mair0;
-  mpu->MAIR1 = cfg->mair1;
+  ra8_mpu_write_ctrl(0U);
+  ra8_mpu_write_mair(cfg->mair0, cfg->mair1);
 
   for (uint8_t i = 0U; i < cfg->region_count; ++i) {
     ra8_mpu_program_region(i, &cfg->regions[i]);
@@ -201,7 +221,7 @@ ra8_err_t ra8_mpu_configure(const ra8_mpu_cfg_t* cfg)
   for (uint8_t i = cfg->region_count; i < implemented; ++i) {
     ra8_mpu_clear_region(i);
   }
-  mpu->CTRL = ra8_mpu_build_ctrl(cfg);
+  ra8_mpu_write_ctrl(ra8_mpu_build_ctrl(cfg));
 
   /* Enable MemManage fault dispatch via SHCSR.MEMFAULTENA (bit 16).
    * Without this bit, every MPU permission violation silently escalates
@@ -247,4 +267,187 @@ ra8_err_t ra8_mpu_set_region(uint8_t region, const ra8_mpu_region_t* region_cfg)
   }
   ra8_mpu_program_region(region, region_cfg);
   return k_ra8_ok;
+}
+
+/* =============================================================================
+ * Canonical boot memory-attribute map (issue #576)
+ * =============================================================================
+ * The fixed 5-region map every RA8D2 image needs out of reset. This is the one
+ * source of truth the reset path routes through instead of the raw
+ * MAIR/RBAR/RLAR/CTRL pokes each app's system_init.c used to duplicate.
+ */
+
+/**
+ * @enum ra8_mpu_boot_base_t
+ * @brief Region base addresses for the canonical boot map.
+ * @details Each base is 32-byte aligned (the Armv8-M region quantum), asserted
+ *          below. Addresses are 32-bit on the target; `uintptr_t` keeps the
+ *          host build (64-bit) casts honest.
+ */
+typedef enum : uintptr_t {
+  k_ra8_mpu_boot_base_mram  = 0x02000000UL, /**< MRAM code base.             */
+  k_ra8_mpu_boot_base_sram  = 0x22000000UL, /**< M85-private SRAM0+1 base.   */
+  k_ra8_mpu_boot_base_sdram = 0x68000000UL, /**< External SDRAM base.        */
+  k_ra8_mpu_boot_base_peri  = 0x40000000UL, /**< Peripheral window base.     */
+  k_ra8_mpu_boot_base_shram = 0x22100000UL, /**< Shared M85<->M33 SRAM base. */
+} ra8_mpu_boot_base_t;
+
+/**
+ * @enum ra8_mpu_boot_size_t
+ * @brief Region byte sizes for the canonical boot map (base+size form).
+ * @details Region 4 (the shared M85<->M33 bank) is 640 KiB -- deliberately NOT
+ *          a power of two, so the size-checked `ra8_mpu_set_region()` rejects
+ *          it, but the Armv8-M base+limit RBAR/RLAR pair encodes it exactly.
+ *          Every size is a 32-byte multiple (asserted below).
+ */
+typedef enum : uint32_t {
+  k_ra8_mpu_boot_size_mram  = 0x00100000UL, /**< 1 MiB MRAM code.             */
+  k_ra8_mpu_boot_size_sram  = 0x00100000UL, /**< 1 MiB M85-private SRAM.      */
+  k_ra8_mpu_boot_size_sdram = 0x04000000UL, /**< 64 MiB SDRAM.                */
+  k_ra8_mpu_boot_size_peri  = 0x08000000UL, /**< 128 MiB peripheral window.   */
+  k_ra8_mpu_boot_size_shram = 0x000A0000UL, /**< 640 KiB shared SRAM (!pow2). */
+} ra8_mpu_boot_size_t;
+
+/**
+ * @var s_ra8_mpu_boot_regions
+ * @brief The canonical 5-region boot memory-attribute map.
+ * @details Region 0 maps MRAM code RO+executable cacheable; regions 1-2 map
+ *          the M85-private SRAM and SDRAM RW/XN cacheable; region 3 maps the
+ *          peripheral window RW/XN Device-nGnRE; region 4 maps the shared
+ *          M85<->M33 SRAM RW/XN Normal non-cacheable so cross-core hand-offs
+ *          stay coherent with the M85 D-cache on. Lives in `.rodata`, so it is
+ *          readable from `SystemInit()` before the `.data` copy.
+ * @note Const; installed verbatim by `ra8_mpu_apply_boot_map()`.
+ * @warning Never modify at run time; exposed read-only via `ra8_mpu_boot_map()`.
+ * @since 0.1.0
+ */
+static const ra8_mpu_region_t s_ra8_mpu_boot_regions[k_ra8_mpu_boot_region_count] = {
+  /* 0: MRAM code -- RO + executable, Normal inner/outer WB/WA cacheable. */
+  {
+    .base       = (uintptr_t)k_ra8_mpu_boot_base_mram,
+    .size       = (uint32_t)k_ra8_mpu_boot_size_mram,
+    .priv       = k_ra8_mpu_perm_ro,
+    .unpriv     = k_ra8_mpu_perm_ro,
+    .executable = true,
+    .shareable  = k_ra8_mpu_share_non,
+    .attr_idx   = k_ra8_mpu_attr_idx_0,
+  },
+  /* 1: M85-private SRAM0+1 -- RW/XN, Normal WB/WA cacheable. */
+  {
+    .base       = (uintptr_t)k_ra8_mpu_boot_base_sram,
+    .size       = (uint32_t)k_ra8_mpu_boot_size_sram,
+    .priv       = k_ra8_mpu_perm_rw,
+    .unpriv     = k_ra8_mpu_perm_rw,
+    .executable = false,
+    .shareable  = k_ra8_mpu_share_non,
+    .attr_idx   = k_ra8_mpu_attr_idx_0,
+  },
+  /* 2: External SDRAM -- RW/XN, Normal WB/WA cacheable. */
+  {
+    .base       = (uintptr_t)k_ra8_mpu_boot_base_sdram,
+    .size       = (uint32_t)k_ra8_mpu_boot_size_sdram,
+    .priv       = k_ra8_mpu_perm_rw,
+    .unpriv     = k_ra8_mpu_perm_rw,
+    .executable = false,
+    .shareable  = k_ra8_mpu_share_non,
+    .attr_idx   = k_ra8_mpu_attr_idx_0,
+  },
+  /* 3: Peripheral window -- RW/XN, Device-nGnRE (AttrIdx 2). */
+  {
+    .base       = (uintptr_t)k_ra8_mpu_boot_base_peri,
+    .size       = (uint32_t)k_ra8_mpu_boot_size_peri,
+    .priv       = k_ra8_mpu_perm_rw,
+    .unpriv     = k_ra8_mpu_perm_rw,
+    .executable = false,
+    .shareable  = k_ra8_mpu_share_non,
+    .attr_idx   = k_ra8_mpu_attr_idx_2,
+  },
+  /* 4: Shared M85<->M33 SRAM2+3 (640 KiB) -- RW/XN, Normal non-cacheable
+     (AttrIdx 1) so the mailbox + CPU1 RAM stay coherent across cores. */
+  {
+    .base       = (uintptr_t)k_ra8_mpu_boot_base_shram,
+    .size       = (uint32_t)k_ra8_mpu_boot_size_shram,
+    .priv       = k_ra8_mpu_perm_rw,
+    .unpriv     = k_ra8_mpu_perm_rw,
+    .executable = false,
+    .shareable  = k_ra8_mpu_share_non,
+    .attr_idx   = k_ra8_mpu_attr_idx_1,
+  },
+};
+
+/* The boot map must be 5 regions, every base 32-byte aligned and every size a
+   non-zero 32-byte multiple -- the Armv8-M RBAR/RLAR granularity. Region 4 is
+   intentionally 640 KiB (not a power of two). */
+static_assert((sizeof(s_ra8_mpu_boot_regions) / sizeof(s_ra8_mpu_boot_regions[0])) ==
+                (size_t)k_ra8_mpu_boot_region_count,
+              "boot map must hold exactly k_ra8_mpu_boot_region_count regions");
+static_assert(((uint32_t)k_ra8_mpu_boot_base_mram & ((uint32_t)k_ra8_mpu_min_region_size - 1U)) ==
+                0U,
+              "boot MRAM base must be 32-byte aligned");
+static_assert(((uint32_t)k_ra8_mpu_boot_base_sram & ((uint32_t)k_ra8_mpu_min_region_size - 1U)) ==
+                0U,
+              "boot SRAM base must be 32-byte aligned");
+static_assert(((uint32_t)k_ra8_mpu_boot_base_sdram & ((uint32_t)k_ra8_mpu_min_region_size - 1U)) ==
+                0U,
+              "boot SDRAM base must be 32-byte aligned");
+static_assert(((uint32_t)k_ra8_mpu_boot_base_peri & ((uint32_t)k_ra8_mpu_min_region_size - 1U)) ==
+                0U,
+              "boot peripheral base must be 32-byte aligned");
+static_assert(((uint32_t)k_ra8_mpu_boot_base_shram & ((uint32_t)k_ra8_mpu_min_region_size - 1U)) ==
+                0U,
+              "boot shared-SRAM base must be 32-byte aligned");
+static_assert((((uint32_t)k_ra8_mpu_boot_size_mram | (uint32_t)k_ra8_mpu_boot_size_sram |
+                (uint32_t)k_ra8_mpu_boot_size_sdram | (uint32_t)k_ra8_mpu_boot_size_peri |
+                (uint32_t)k_ra8_mpu_boot_size_shram) &
+               ((uint32_t)k_ra8_mpu_min_region_size - 1U)) == 0U,
+              "every boot region size must be a 32-byte multiple");
+static_assert((uint32_t)k_ra8_mpu_boot_size_shram >= (uint32_t)k_ra8_mpu_min_region_size,
+              "boot shared-SRAM size must be at least the 32-byte region quantum");
+
+const ra8_mpu_region_t* ra8_mpu_boot_map(uint8_t* out_count)
+{
+  if (out_count == nullptr) {
+    return nullptr;
+  }
+  *out_count = (uint8_t)k_ra8_mpu_boot_region_count;
+  return s_ra8_mpu_boot_regions;
+}
+
+ra8_err_t ra8_mpu_apply_boot_map(void)
+{
+  /* Precondition: the silicon must implement at least the map's region count.
+     On the RA8D2 M85 (16 regions) this always holds; the guard keeps the boot
+     path from installing a truncated, half-covered map on an unexpected part. */
+  const uint8_t implemented = ra8_mpu_dregion_count();
+  if (implemented < (uint8_t)k_ra8_mpu_boot_region_count) {
+    return k_ra8_err_invalid_arg;
+  }
+
+  /* Arm Cortex-M85 TRM "MPU_CTRL": disable before reprogramming. */
+  ra8_mpu_write_ctrl(0U);
+  ra8_mpu_write_mair((uint32_t)k_ra8_mpu_boot_mair0, (uint32_t)k_ra8_mpu_boot_mair1);
+
+  /* Clear any stale high-index regions FIRST, then install the map, so an
+     aborted reprogram never leaves a stale enabled region beside the new map,
+     and the last register write reflects the highest map region. */
+  for (uint8_t i = (uint8_t)k_ra8_mpu_boot_region_count; i < implemented; ++i) {
+    ra8_mpu_clear_region(i);
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_mpu_boot_region_count; ++i) {
+    ra8_mpu_program_region(i, &s_ra8_mpu_boot_regions[i]);
+  }
+
+  /* Retire the region writes, enable the MPU with PRIVDEFENA, then flush the
+     pipeline so the very next access sees the new attribute map. */
+  ra8_hw_dsb();
+  ra8_mpu_write_ctrl((uint32_t)k_ra8_mpu_ctrl_enable | (uint32_t)k_ra8_mpu_ctrl_privdefena);
+  ra8_hw_dsb();
+  ra8_hw_isb();
+  return k_ra8_ok;
+}
+
+bool ra8_mpu_is_enabled(void)
+{
+  /* Arm Cortex-M85 TRM "MPU_CTRL.ENABLE" -- bit 0. */
+  return (ra8_mpu_regs()->CTRL & (uint32_t)k_ra8_mpu_ctrl_enable) != 0U;
 }

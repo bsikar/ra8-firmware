@@ -84,6 +84,38 @@ typedef enum : uint32_t {
 } ra8_mpu_size_limits_t;
 
 /**
+ * @enum ra8_mpu_boot_layout_t
+ * @brief Fixed geometry of the canonical boot memory-attribute map.
+ *
+ * @details
+ * `ra8_mpu_apply_boot_map()` installs exactly this many regions. The count is
+ * a contract shared by the boot caller (`SystemInit()`) and the host tests, so
+ * it lives in the header rather than being buried in the implementation.
+ */
+typedef enum : uint8_t {
+  k_ra8_mpu_boot_region_count = 5U, /**< Regions in the canonical boot map. */
+} ra8_mpu_boot_layout_t;
+
+/**
+ * @enum ra8_mpu_boot_mair_t
+ * @brief MAIR0/MAIR1 attribute-indirection words for the canonical boot map.
+ *
+ * @details
+ * Three memory-attribute sets are used by the boot map, packed into MAIR0:
+ * - byte 0 (AttrIdx 0) = 0xFF: Normal, inner+outer write-back / write-allocate.
+ * - byte 1 (AttrIdx 1) = 0x44: Normal, inner+outer non-cacheable.
+ * - byte 2 (AttrIdx 2) = 0x04: Device-nGnRE.
+ * MAIR1 is unused because the boot map has no region with AttrIdx >= 4. See the
+ * Armv8-M ARM "MAIR0/MAIR1, MPU Memory Attribute Indirection Registers".
+ *
+ * @see ra8_mpu_apply_boot_map()
+ */
+typedef enum : uint32_t {
+  k_ra8_mpu_boot_mair0 = 0x000444FFUL, /**< Boot MAIR0: WB/WA, non-cacheable, Device. */
+  k_ra8_mpu_boot_mair1 = 0x00000000UL, /**< Boot MAIR1: unused (no AttrIdx >= 4).     */
+} ra8_mpu_boot_mair_t;
+
+/**
  * @struct ra8_mpu_region_t
  * @brief Static descriptor for one Armv8-M MPU region.
  *
@@ -202,6 +234,97 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_mpu_set_region(uint8_t region, const ra8_mpu_region_t* region_cfg);
+
+/**
+ * @brief Install the canonical 5-region boot memory-attribute map and enable the MPU.
+ *
+ * @details
+ * Programs the fixed attribute map every RA8D2 image needs out of reset --
+ * RO+executable cacheable MRAM code, RW/XN cacheable M85-private SRAM and
+ * SDRAM, RW/XN Device-nGnRE peripherals, and RW/XN Normal-non-cacheable shared
+ * M85<->M33 SRAM -- then enables the MPU with PRIVDEFENA so anything the map
+ * does not cover keeps the privileged default memory map. This is the
+ * boot-usable entry point that replaces the hand-rolled MAIR/RBAR/RLAR/CTRL
+ * pokes each app's `system_init.c` used to duplicate: the boot path routes its
+ * attribute map through this one driver exactly as it already calls
+ * `ra8_cache_dcache_invalidate_all()`.
+ *
+ * Callable from `SystemInit()` before `.data`/`.bss` are initialised: it reads
+ * only the driver-owned `const` region table (in `.rodata`) and MMIO, writes no
+ * `.data`/`.bss`, and never logs. The shared M85<->M33 bank is 640 KiB, which
+ * is not a power of two and so cannot be expressed through the size-checked
+ * `ra8_mpu_set_region()`; this entry point encodes it by base+limit directly,
+ * which the Armv8-M PMSAv8 RBAR/RLAR pair supports natively.
+ *
+ * @return ra8_err_t error code.
+ * @retval k_ra8_ok              Map installed; MPU enabled with PRIVDEFENA.
+ * @retval k_ra8_err_invalid_arg MPU_TYPE.DREGION reports fewer than
+ *                              `k_ra8_mpu_boot_region_count` implemented
+ *                              regions; the MPU is left disabled.
+ *
+ * @pre Caller is privileged (true out of reset in the Secure state).
+ * @pre The core MPU is idle (freshly reset or previously disabled).
+ * @post On k_ra8_ok, MPU_CTRL.ENABLE == 1 and MPU_CTRL.PRIVDEFENA == 1.
+ * @post On failure the MPU is left disabled; no partial map is enabled.
+ *
+ * @note Not thread-safe; single-threaded boot / init context only.
+ * @note Does not touch SHCSR.MEMFAULTENA -- the boot path enables the
+ *       configurable-fault handlers separately; a runtime caller wanting
+ *       MemManage delivery uses `ra8_mpu_configure()` instead.
+ *
+ * @see ra8_mpu_boot_map()  Inspect the region table this installs.
+ * @see ra8_mpu_configure()  Full runtime configuration from a caller table.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_mpu_apply_boot_map(void);
+
+/**
+ * @brief Return the canonical boot memory-attribute map region table.
+ *
+ * @details
+ * Read-only view of the exact region descriptors `ra8_mpu_apply_boot_map()`
+ * installs, so callers (a boot self-test, the host unit tests) can inspect or
+ * cross-check the map without re-encoding it. The pointer targets a
+ * driver-owned `static const` table in `.rodata`; the entries are immutable.
+ *
+ * @param[out] out_count Receives the region count
+ *                       (`k_ra8_mpu_boot_region_count`). Must be non-NULL.
+ *
+ * @return Pointer to the first of `*out_count` region descriptors, or NULL when
+ *         @p out_count is NULL.
+ * @retval NULL @p out_count was NULL; `*out_count` is not written.
+ *
+ * @pre @p out_count != NULL.
+ * @post On non-NULL return, `*out_count == k_ra8_mpu_boot_region_count`.
+ * @post The referenced table is not modified.
+ *
+ * @note Thread-safe: returns a pointer to immutable data.
+ * @see ra8_mpu_apply_boot_map()
+ * @since 0.1.0
+ */
+const ra8_mpu_region_t* ra8_mpu_boot_map(uint8_t* out_count);
+
+/**
+ * @brief Report whether the core MPU is currently enabled.
+ *
+ * @details
+ * Reads MPU_CTRL.ENABLE (Armv8-M "MPU_CTRL"). Lets application code confirm the
+ * boot attribute map came up without poking the register block directly -- the
+ * whole point of routing MPU access through this driver.
+ *
+ * @return Whether MPU_CTRL.ENABLE is set.
+ * @retval true  The MPU is enabled.
+ * @retval false The MPU is disabled.
+ *
+ * @pre Caller is privileged (or RA8_OFF_TARGET, where the register is faked).
+ * @post No MPU state is modified (pure read).
+ *
+ * @note Not thread-safe with respect to a concurrent enable/disable.
+ * @see ra8_mpu_enable()
+ * @see ra8_mpu_apply_boot_map()
+ * @since 0.1.0
+ */
+[[nodiscard]] bool ra8_mpu_is_enabled(void);
 
 #ifdef __cplusplus
 }

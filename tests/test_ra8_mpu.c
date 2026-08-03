@@ -31,12 +31,17 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_test_mpu_dregion_count = 16U,          /**< Pretend we are an M85.   */
-  k_test_mpu_type_dregion  = 0x00001000UL, /**< DREGION = 16 << 8.       */
   k_test_mpu_region_size   = 0x00001000UL, /**< 4 KiB power-of-two size. */
   k_test_mpu_region_base   = 0x20000000UL, /**< Aligned base.            */
   k_test_mpu_mair0         = 0x44440000UL, /**< Arbitrary MAIR pattern.  */
   k_test_mpu_mair1         = 0x00000044UL, /**< Test MPU mair1.          */
 } test_mpu_layout_t;
+
+/** @brief Set MPU_TYPE.DREGION so `ra8_mpu_dregion_count()` reports `n`. */
+static void mpu_test_set_dregion(uint8_t n)
+{
+  ra8_mpu_regs()->TYPE = (uint32_t)((uint32_t)n << 8U);
+}
 
 /**
  * @brief Reset the fake MPU register block.
@@ -49,7 +54,7 @@ typedef enum : uint32_t {
 static void mpu_test_setup(void)
 {
   ra8_fake_mmap_reset();
-  ra8_mpu_regs()->TYPE = (uint32_t)k_test_mpu_type_dregion;
+  mpu_test_set_dregion((uint8_t)k_test_mpu_dregion_count);
 }
 
 /**
@@ -627,6 +632,162 @@ static void test_validate_cfg_mcdc_region_count_and_regions(void)
   TEST_END("ra8_mpu_validate_cfg MC/DC: region_count>0 && regions==NULL");
 }
 
+/* =============================================================================
+ * Canonical boot memory-attribute map (ra8_mpu_apply_boot_map, issue #576)
+ * =============================================================================
+ */
+
+/**
+ * @enum test_boot_map_t
+ * @brief Golden register/descriptor values for the canonical boot map.
+ * @details Region 4 (shared M85<->M33 SRAM) is 640 KiB -- not a power of two --
+ *          so it is the value that proves the boot path encodes a region the
+ *          size-checked public setter cannot. RBAR = base | AP(RW=01<<1) |
+ *          XN(1); RLAR = (limit & ~0x1F) | AttrIdx(1<<1) | EN.
+ */
+typedef enum : uint32_t {
+  k_test_boot_region_count = 5U,          /**< Regions in the boot map.                */
+  k_test_boot_mair0        = 0x000444FFU, /**< MAIR0: WB/WA | non-cacheable | Device.  */
+  k_test_boot_mram_base    = 0x02000000U, /**< Region 0 base (MRAM code).              */
+  k_test_boot_mram_size    = 0x00100000U, /**< Region 0 size (1 MiB).                  */
+  k_test_boot_shram_base   = 0x22100000U, /**< Region 4 base (shared SRAM).            */
+  k_test_boot_shram_size   = 0x000A0000U, /**< Region 4 size (640 KiB, not pow2).      */
+  k_test_boot_shram_rbar   = 0x22100003U, /**< Region 4 RBAR: base | RW | XN.          */
+  k_test_boot_shram_rlar   = 0x2219FFE3U, /**< Region 4 RLAR: limit | AttrIdx1 | EN.   */
+  k_test_boot_dregion_few  = 4U,          /**< DREGION region count below the map's 5. */
+} test_boot_map_t;
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- inspects the driver-owned boot map
+ * table and its non-power-of-two region; no `&&` or `||` in the code paths it
+ * touches)
+ */
+static void test_boot_map_table(void)
+{
+  TEST_BEGIN("ra8_mpu_boot_map exposes the canonical 5-region table");
+  mpu_test_setup();
+
+  uint8_t                 count = 0U;
+  const ra8_mpu_region_t* map   = ra8_mpu_boot_map(&count);
+  TEST_ASSERT_EQ(k_test_boot_region_count, count);
+  TEST_ASSERT_EQ(true, map != nullptr);
+
+  /* Region 0: MRAM code -- RO + executable, cacheable (AttrIdx 0). */
+  TEST_ASSERT_EQ(k_test_boot_mram_base, map[0].base);
+  TEST_ASSERT_EQ(k_test_boot_mram_size, map[0].size);
+  TEST_ASSERT_EQ(k_ra8_mpu_perm_ro, map[0].priv);
+  TEST_ASSERT_EQ(k_ra8_mpu_perm_ro, map[0].unpriv);
+  TEST_ASSERT_EQ(true, map[0].executable);
+  TEST_ASSERT_EQ(k_ra8_mpu_attr_idx_0, map[0].attr_idx);
+
+  /* Region 3: peripheral window -- RW/XN, Device-nGnRE (AttrIdx 2). */
+  TEST_ASSERT_EQ(k_ra8_mpu_perm_rw, map[3].priv);
+  TEST_ASSERT_EQ(false, map[3].executable);
+  TEST_ASSERT_EQ(k_ra8_mpu_attr_idx_2, map[3].attr_idx);
+
+  /* Region 4: shared SRAM -- 640 KiB (NOT a power of two), non-cacheable. */
+  TEST_ASSERT_EQ(k_test_boot_shram_base, map[4].base);
+  TEST_ASSERT_EQ(k_test_boot_shram_size, map[4].size);
+  TEST_ASSERT_EQ(k_ra8_mpu_attr_idx_1, map[4].attr_idx);
+  TEST_ASSERT_EQ(false, map[4].executable);
+
+  /* The size-checked public setter rejects region 4 precisely because 640 KiB
+     is not a power of two -- the gap ra8_mpu_apply_boot_map() exists to fill. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_set_region(0U, &map[4]));
+  TEST_END("ra8_mpu_boot_map exposes the canonical 5-region table");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the NULL-argument guard of a
+ * simple accessor; no `&&` or `||` in the code path it touches)
+ */
+static void test_boot_map_null(void)
+{
+  TEST_BEGIN("ra8_mpu_boot_map(NULL) returns NULL");
+  mpu_test_setup();
+  TEST_ASSERT_EQ(true, ra8_mpu_boot_map(nullptr) == nullptr);
+  TEST_END("ra8_mpu_boot_map(NULL) returns NULL");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the boot-map install happy path
+ * and reads back the programmed registers via a struct snapshot; no `&&` or
+ * `||` in the code path it touches)
+ */
+static void test_apply_boot_map_enables(void)
+{
+  TEST_BEGIN("ra8_mpu_apply_boot_map installs the map and enables the MPU");
+  mpu_test_setup(); /* DREGION = 16; ra8_fake_mmap_reset() zeroed CTRL. */
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_apply_boot_map());
+  TEST_ASSERT_EQ(true, ra8_mpu_is_enabled());
+
+  /* Snapshot the whole register block into a plain copy so the field reads
+     below are not direct MMIO accesses. MAIR + CTRL are single (non-banked)
+     registers and always observable. */
+  const r_mpu_regs_t s = *ra8_mpu_regs();
+  TEST_ASSERT_EQ(k_test_boot_mair0, s.MAIR0);
+  TEST_ASSERT_EQ(0, s.MAIR1);
+  const uint32_t expected_ctrl =
+    (uint32_t)k_ra8_mpu_ctrl_enable | (uint32_t)k_ra8_mpu_ctrl_privdefena;
+  TEST_ASSERT_EQ(expected_ctrl, s.CTRL);
+
+  /* The tail is cleared BEFORE the map is programmed, so region 4 (the 640 KiB
+     non-power-of-two bank) is the last descriptor written and its RBAR/RLAR
+     remain in the fake's single register pair -- proving the base+limit
+     encoding of a region the size-checked public setter would reject. */
+  TEST_ASSERT_EQ((k_test_boot_region_count - 1U), s.RNR);
+  TEST_ASSERT_EQ(k_test_boot_shram_rbar, s.RBAR);
+  TEST_ASSERT_EQ(k_test_boot_shram_rlar, s.RLAR);
+  /* Decode the RLAR limit: 0x22100000 + 640 KiB - 1, masked to 32 bytes. */
+  TEST_ASSERT_EQ(0x2219FFE0U, (s.RLAR & (uint32_t)k_ra8_mpu_rlar_limit_mask));
+  const uint32_t attr =
+    (s.RLAR & (uint32_t)k_ra8_mpu_rlar_attridx_mask) >> (uint32_t)k_ra8_mpu_rlar_attridx_shift;
+  TEST_ASSERT_EQ(k_ra8_mpu_attr_idx_1, attr); /* non-cacheable */
+  TEST_END("ra8_mpu_apply_boot_map installs the map and enables the MPU");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the DREGION precondition of
+ * ra8_mpu_apply_boot_map; the `implemented < count` guard is a single relational
+ * condition, not a compound decision)
+ */
+static void test_apply_boot_map_insufficient_regions(void)
+{
+  TEST_BEGIN("ra8_mpu_apply_boot_map rejects silicon with too few regions");
+  mpu_test_setup();
+  /* Pretend the part implements only 4 MPU regions; the 5-region map cannot be
+     installed, so apply must fail and leave the MPU disabled (CTRL was zeroed
+     by ra8_fake_mmap_reset() and apply must not touch it on the reject path). */
+  mpu_test_set_dregion((uint8_t)k_test_boot_dregion_few);
+
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_apply_boot_map());
+  TEST_ASSERT_EQ(false, ra8_mpu_is_enabled());
+  TEST_END("ra8_mpu_apply_boot_map rejects silicon with too few regions");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- checks ra8_mpu_is_enabled reflects
+ * CTRL.ENABLE both set and clear; `(CTRL & ENABLE) != 0` is a single relational
+ * condition, not a compound decision)
+ */
+static void test_is_enabled_tracks_ctrl(void)
+{
+  TEST_BEGIN("ra8_mpu_is_enabled reflects MPU_CTRL.ENABLE");
+  mpu_test_setup(); /* ra8_fake_mmap_reset() left CTRL == 0. */
+  TEST_ASSERT_EQ(false, ra8_mpu_is_enabled());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_enable());
+  TEST_ASSERT_EQ(true, ra8_mpu_is_enabled());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_disable());
+  TEST_ASSERT_EQ(false, ra8_mpu_is_enabled());
+  TEST_END("ra8_mpu_is_enabled reflects MPU_CTRL.ENABLE");
+}
+
 int32_t main(void)
 {
   test_register_layout();
@@ -646,6 +807,11 @@ int32_t main(void)
   test_encode_ap_mcdc_priv_rw_unpriv_rw();
   test_encode_ap_mcdc_priv_ro_unpriv_none();
   test_validate_cfg_mcdc_region_count_and_regions();
+  test_boot_map_table();
+  test_boot_map_null();
+  test_apply_boot_map_enables();
+  test_apply_boot_map_insufficient_regions();
+  test_is_enabled_tracks_ctrl();
   (void)fprintf(stderr, "[OK ] test_ra8_mpu.c\n");
   return 0;
 }
