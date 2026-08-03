@@ -424,7 +424,7 @@ ra8_err_t ra8_isr_set_dtc(uint16_t slot, bool enable)
   if (ielsr == nullptr) {      /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
     return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE                                     */
   }
-  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n", p 524: DTCE[24]
+  /* HUM Ch 14.2.17 "IELSRn : ICU Event Link Setting Register n", p 547: DTCE[24]
    * enables DTC activation. The read-modify-write touches only DTCE -- the IELS
    * event field ra8_isr_register wrote is preserved, and the write-0-to-clear IR
    * status flag is retained by writing back its own read value (ORing/ANDing the
