@@ -140,7 +140,7 @@ typedef enum : uint32_t {
  *
  * @invariant Every field is monotonic non-decreasing for the life of the link.
  *
- * @see g_nx_c6_diag
+ * @see s_nx_c6_diag
  * @since 0.1.0
  */
 typedef struct nx_c6_diag {
@@ -152,14 +152,15 @@ typedef struct nx_c6_diag {
 } nx_c6_diag_t;
 
 /**
- * @var g_nx_c6_diag
+ * @var s_nx_c6_diag
  * @brief Diagnostic counters for the C6 NetX bridge.
- * @details File-global so a debugger can watch it without a symbol lookup.
+ * @details File-scope and static; a debugger still watches it by symbol name,
+ * and nothing outside this translation unit reads it.
  * @note Read-mostly; only this translation unit writes it.
  * @warning Not synchronised; treat a torn read as advisory.
  * @since 0.1.0
  */
-nx_c6_diag_t g_nx_c6_diag;
+static nx_c6_diag_t s_nx_c6_diag;
 
 /** @brief Bound C6 link handle. @note Set by bind. @since 0.1.0 */
 static ra8_c6link_t* s_c6_link;
@@ -178,23 +179,10 @@ static uint8_t s_mac_user_set;
 /** @brief Linear transmit frame buffer. @since 0.1.0 */
 static uint8_t s_tx_staging[k_nx_c6_max_frame];
 
-/** @brief RX poll worker control block. @since 0.1.0 */
-static TX_THREAD s_rx_thread;
-/** @brief RX poll worker stack. @since 0.1.0 */
-alignas(8) static uint8_t s_rx_thread_stack[k_nx_c6_worker_stack_bytes];
 /** @brief IP the receive path pushes frames into. @since 0.1.0 */
 static NX_IP* s_rx_ip;
 /** @brief Interface the receive path tags frames with. @since 0.1.0 */
 static NX_INTERFACE* s_rx_iface;
-/** @brief Non-zero once the worker is running. @since 0.1.0 */
-static uint8_t s_rx_thread_made;
-
-/** @brief Mutable name for the wire mutex (NetX/ThreadX take CHAR*). @since 0.1.0 */
-static CHAR s_mtx_name[] = "c6_wire";
-/** @brief Mutable name for the RX poll worker thread. @since 0.1.0 */
-static CHAR s_rx_name[] = "c6_nx_rx";
-/** @brief Non-const copy of a received frame for NetX append. @since 0.1.0 */
-static uint8_t s_rx_staging[k_nx_c6_max_frame];
 
 void nx_ether_driver_c6_set_mac(const uint8_t mac[6])
 {
@@ -207,6 +195,12 @@ void nx_ether_driver_c6_set_mac(const uint8_t mac[6])
 
 void nx_ether_driver_c6_bind(ra8_c6link_t* link)
 {
+  /* ThreadX stores the name pointer, so the buffer must outlive the mutex:
+   * a block-scope static (MISRA 8.9) with static storage duration. It is a
+   * fully-braced, non-const char array -- braced so it is not a bare string
+   * literal assigned to CHAR* (MISRA 7.4), and fully initialised so no
+   * element is left unset (MISRA 9.2/9.3). */
+  static CHAR s_mtx_name[] = {'c', '6', '_', 'w', 'i', 'r', 'e', '\0'};
   if (link == NX_NULL) {
     return;
   }
@@ -278,7 +272,7 @@ static void priv_stamp_iface_mac(NX_INTERFACE* iface, const uint8_t* mac)
  * @pre ::s_rx_ip and ::s_rx_iface have been populated by INITIALIZE.
  * @pre @p pkt holds a frame whose length includes the Ethernet header.
  * @post A well-formed frame is owned by NetX; anything else is released.
- * @post ::g_nx_c6_diag rx counters reflect the outcome.
+ * @post ::s_nx_c6_diag rx counters reflect the outcome.
  * @note Not thread-safe; runs with the wire mutex held on the calling thread.
  * @since 0.1.0
  */
@@ -286,7 +280,7 @@ static void priv_dispatch_to_netx(NX_PACKET* pkt)
 {
   if (pkt->nx_packet_length < (ULONG)k_nx_c6_hdr_bytes) {
     (void)nx_packet_release(pkt);
-    g_nx_c6_diag.rx_drop += 1U;
+    s_nx_c6_diag.rx_drop += 1U;
     return;
   }
   const UCHAR*   p  = (const UCHAR*)pkt->nx_packet_prepend_ptr;
@@ -296,23 +290,23 @@ static void priv_dispatch_to_netx(NX_PACKET* pkt)
   pkt->nx_packet_length      = pkt->nx_packet_length - (ULONG)k_nx_c6_hdr_bytes;
   if (et == (uint16_t)k_nx_c6_ethertype_ipv4) {
     _nx_ip_packet_deferred_receive(s_rx_ip, pkt);
-    g_nx_c6_diag.rx_total += 1U;
+    s_nx_c6_diag.rx_total += 1U;
     return;
   }
 #ifndef NX_DISABLE_IPV4
   if (et == (uint16_t)k_nx_c6_ethertype_arp) {
     _nx_arp_packet_deferred_receive(s_rx_ip, pkt);
-    g_nx_c6_diag.rx_total += 1U;
+    s_nx_c6_diag.rx_total += 1U;
     return;
   }
   if (et == (uint16_t)k_nx_c6_ethertype_rarp) {
     _nx_rarp_packet_deferred_receive(s_rx_ip, pkt);
-    g_nx_c6_diag.rx_total += 1U;
+    s_nx_c6_diag.rx_total += 1U;
     return;
   }
 #endif
   (void)nx_packet_release(pkt);
-  g_nx_c6_diag.rx_drop += 1U;
+  s_nx_c6_diag.rx_drop += 1U;
 }
 
 /**
@@ -354,23 +348,28 @@ static bool priv_rx_acceptable(const uint8_t* frame, uint16_t len)
 
 void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
 {
+  /* Non-const copy of the received frame for NetX's non-const append; a
+   * block-scope static (MISRA 8.9) whose static storage duration keeps this
+   * 1514-octet buffer off the RX worker's bounded stack. */
+  /* cppcheck-suppress misra-c2012-18.8 -- a static array is never a VLA; its size is the C23 enum k_nx_c6_max_frame, which cppcheck 2.13 cannot parse and so misreads as a variable length. */
+  static uint8_t s_rx_staging[k_nx_c6_max_frame];
   (void)ctx;
   if (!priv_rx_acceptable(frame, len)) {
-    g_nx_c6_diag.rx_drop += 1U;
+    s_nx_c6_diag.rx_drop += 1U;
     return;
   }
   NX_PACKET_POOL* pool = s_rx_ip->nx_ip_default_packet_pool;
   if (pool == NX_NULL) {
-    g_nx_c6_diag.rx_drop += 1U;
+    s_nx_c6_diag.rx_drop += 1U;
     return;
   }
   NX_PACKET* pkt = NX_NULL;
   if (nx_packet_allocate(pool, &pkt, NX_RECEIVE_PACKET, NX_NO_WAIT) != NX_SUCCESS) {
-    g_nx_c6_diag.rx_drop += 1U;
+    s_nx_c6_diag.rx_drop += 1U;
     return;
   }
   if (pkt == NX_NULL) {
-    g_nx_c6_diag.rx_drop += 1U;
+    s_nx_c6_diag.rx_drop += 1U;
     return;
   }
   /* Copy into a non-const staging buffer so the const-correct callback frame is
@@ -383,7 +382,7 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
   pkt->nx_packet_append_ptr  = pkt->nx_packet_prepend_ptr;
   if (nx_packet_data_append(pkt, s_rx_staging, (ULONG)len, pool, (ULONG)NX_NO_WAIT) != NX_SUCCESS) {
     (void)nx_packet_release(pkt);
-    g_nx_c6_diag.rx_drop += 1U;
+    s_nx_c6_diag.rx_drop += 1U;
     return;
   }
   pkt->nx_packet_ip_interface = s_rx_iface;
@@ -401,7 +400,7 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
  * @pre The driver has been bound and the mutex created.
  * @pre INITIALIZE has populated ::s_rx_ip and set ::s_open.
  * @post Received frames are delivered to NetX whenever the link is open.
- * @post ::g_nx_c6_diag.poll_total counts every poll performed.
+ * @post ::s_nx_c6_diag.poll_total counts every poll performed.
  * @note Runs at ::k_nx_c6_worker_priority alongside the NetX IP thread.
  * @since 0.1.0
  */
@@ -422,11 +421,14 @@ static void priv_rx_worker_entry(ULONG arg)
       pumpable = false;
     }
     if (pumpable) {
-      ra8_c6link_stats_t stats = {};
       (void)tx_mutex_get(&s_c6_mtx, TX_WAIT_FOREVER);
-      (void)ra8_c6link_poll(s_c6_link, (uint16_t)k_nx_c6_poll_transactions, &stats);
+      /* Pass a null stats out-pointer: ra8_c6link_poll pumps the transport the
+       * same way and simply discards the per-call counters, which this worker
+       * never reads. That drops the throwaway C23 `= {}` aggregate cppcheck
+       * 2.13 misreads under Rule 9.2, with no change in behaviour. */
+      (void)ra8_c6link_poll(s_c6_link, (uint16_t)k_nx_c6_poll_transactions, nullptr);
       (void)tx_mutex_put(&s_c6_mtx);
-      g_nx_c6_diag.poll_total += 1U;
+      s_nx_c6_diag.poll_total += 1U;
     }
     tx_thread_sleep((ULONG)k_nx_c6_worker_period_ticks);
   }
@@ -441,13 +443,22 @@ static void priv_rx_worker_entry(ULONG arg)
  * @return Nothing.
  * @pre The ThreadX kernel is running.
  * @pre @p ip and @p iface are the objects INITIALIZE is bringing up.
- * @post On first call the worker is running and ::s_rx_thread_made is set.
+ * @post On first call the worker is running and its one-shot spawn guard is set.
  * @post On later calls no thread is created.
  * @note Not thread-safe; the NetX link dispatch serialises callers.
  * @since 0.1.0
  */
 static void priv_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
 {
+  /* Worker-private state kept at block scope (MISRA 8.9). Each retains static
+   * storage duration because ThreadX keeps a pointer to the control block, the
+   * stack and the name for the life of the thread; the spawn guard makes a
+   * second call a no-op. The name is a fully-braced, non-const char array
+   * (avoids the 7.4 string-literal-to-CHAR* assignment and any partial init). */
+  static TX_THREAD          s_rx_thread;
+  alignas(8) static uint8_t s_rx_thread_stack[k_nx_c6_worker_stack_bytes];
+  static uint8_t            s_rx_thread_made;
+  static CHAR               s_rx_name[] = {'c', '6', '_', 'n', 'x', '_', 'r', 'x', '\0'};
   if (s_rx_thread_made != 0U) {
     return;
   }
@@ -660,7 +671,7 @@ static bool priv_send_blocked(const NX_PACKET* pkt)
  * @pre ::s_open and ::s_link_up are set and the mutex exists.
  * @pre @p req->nx_ip_driver_packet is a valid packet chain.
  * @post The packet is released exactly once via nx_packet_transmit_release.
- * @post ::g_nx_c6_diag tx counters and the request status reflect the outcome.
+ * @post ::s_nx_c6_diag tx counters and the request status reflect the outcome.
  * @note Not thread-safe against itself; NetX serialises sends on the IP thread.
  * @since 0.1.0
  */
@@ -671,7 +682,7 @@ static void priv_handle_send(NX_IP_DRIVER* req)
     if (pkt != NX_NULL) {
       (void)nx_packet_transmit_release(pkt);
     }
-    g_nx_c6_diag.tx_err += 1U;
+    s_nx_c6_diag.tx_err += 1U;
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
   }
@@ -682,7 +693,7 @@ static void priv_handle_send(NX_IP_DRIVER* req)
                             (uint32_t)sizeof(s_tx_staging) - (uint32_t)k_nx_c6_hdr_bytes,
                             &body_len) == 0U) {
     (void)nx_packet_transmit_release(pkt);
-    g_nx_c6_diag.tx_err += 1U;
+    s_nx_c6_diag.tx_err += 1U;
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
   }
@@ -696,10 +707,10 @@ static void priv_handle_send(NX_IP_DRIVER* req)
   (void)tx_mutex_put(&s_c6_mtx);
   (void)nx_packet_transmit_release(pkt);
   if (err == k_ra8_ok) {
-    g_nx_c6_diag.tx_total += 1U;
+    s_nx_c6_diag.tx_total += 1U;
     req->nx_ip_driver_status = NX_SUCCESS;
   } else {
-    g_nx_c6_diag.tx_err += 1U;
+    s_nx_c6_diag.tx_err += 1U;
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
   }
 }
