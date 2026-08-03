@@ -24,13 +24,16 @@
  * @brief SCB cache-register addresses the tests seed and read back.
  */
 typedef enum : uintptr_t {
-  k_t_ctr      = 0xE000ED7CUL, /**< Cache Type Register.             */
-  k_t_ccsidr   = 0xE000ED80UL, /**< Cache Size ID Register.          */
-  k_t_csselr   = 0xE000ED84UL, /**< Cache Size Selection.            */
-  k_t_dcimvac  = 0xE000EF5CUL, /**< D-cache invalidate by MVA.       */
-  k_t_dcisw    = 0xE000EF60UL, /**< D-cache invalidate by set/way.   */
-  k_t_dccmvac  = 0xE000EF68UL, /**< D-cache clean by MVA.            */
-  k_t_dccimvac = 0xE000EF70UL, /**< D-cache clean+invalidate by MVA. */
+  k_t_ccr      = 0xE000ED14UL, /**< Configuration and Control (CCR).     */
+  k_t_ctr      = 0xE000ED7CUL, /**< Cache Type Register.                 */
+  k_t_ccsidr   = 0xE000ED80UL, /**< Cache Size ID Register.              */
+  k_t_csselr   = 0xE000ED84UL, /**< Cache Size Selection.                */
+  k_t_iciallu  = 0xE000EF50UL, /**< I-cache invalidate all to PoU.       */
+  k_t_dcimvac  = 0xE000EF5CUL, /**< D-cache invalidate by MVA.           */
+  k_t_dcisw    = 0xE000EF60UL, /**< D-cache invalidate by set/way.       */
+  k_t_dccmvac  = 0xE000EF68UL, /**< D-cache clean by MVA.                */
+  k_t_dccimvac = 0xE000EF70UL, /**< D-cache clean+invalidate by MVA.     */
+  k_t_dccisw   = 0xE000EF74UL, /**< D-cache clean+invalidate by set/way. */
 } ra8_cache_test_reg_t;
 
 /**
@@ -48,6 +51,9 @@ typedef enum : uint32_t {
   k_t_sentinel        = 0xDEADBEEFU, /**< Pre-set marker to detect "no write". */
   k_t_ccsidr_sets_sh  = 13U,         /**< CCSIDR.NumSets position.             */
   k_t_ccsidr_assoc_sh = 3U,          /**< CCSIDR.Associativity position.       */
+  k_t_ccr_ic          = 0x00020000U, /**< CCR.IC (bit 17): I-cache enable.     */
+  k_t_ccr_dc          = 0x00010000U, /**< CCR.DC (bit 16): D-cache enable.     */
+  k_t_ccr_other       = 0x00000010U, /**< Unrelated CCR bit (DIV_0_TRP): RMW.  */
 } ra8_cache_test_const_t;
 
 /** @brief Typed access to a seeded/observed SCB register in the fake map. */
@@ -220,6 +226,106 @@ static void test_invalidate_all_geometry_guard(void)
   TEST_END("ra8_cache: invalidate_all guards a degenerate CCSIDR (MC/DC)");
 }
 
+/**
+ * @par MC/DC: not applicable -- a single unconditional ICIALLU write, no
+ *      compound decision in the path under test.
+ */
+static void test_icache_invalidate_all_writes_iciallu(void)
+{
+  TEST_BEGIN("ra8_cache: icache_invalidate_all writes ICIALLU");
+  ra8_fake_mmap_reset();
+  *reg(k_t_iciallu) = (uint32_t)k_t_sentinel;
+  ra8_cache_icache_invalidate_all();
+  /* ICIALLU is a write-any-value trigger; the driver writes 0. */
+  TEST_ASSERT_EQ(0U, *reg(k_t_iciallu));
+  TEST_END("ra8_cache: icache_invalidate_all writes ICIALLU");
+}
+
+/**
+ * @par MC/DC: not applicable -- straight-line enable sequence, no decision.
+ */
+static void test_icache_enable_sets_ic_preserving_others(void)
+{
+  TEST_BEGIN("ra8_cache: icache_enable sets CCR.IC and invalidates, preserving CCR");
+  ra8_fake_mmap_reset();
+  *reg(k_t_ccr)     = (uint32_t)k_t_ccr_other; /* an unrelated CCR bit already set */
+  *reg(k_t_iciallu) = (uint32_t)k_t_sentinel;
+  ra8_cache_icache_enable();
+  /* IC set, the unrelated bit preserved (read-modify-write), invalidate ran. */
+  TEST_ASSERT_EQ(k_t_ccr_other | (uint32_t)k_t_ccr_ic, *reg(k_t_ccr));
+  TEST_ASSERT_EQ(0U, *reg(k_t_iciallu));
+  TEST_END("ra8_cache: icache_enable sets CCR.IC and invalidates, preserving CCR");
+}
+
+/**
+ * @par MC/DC: not applicable -- straight-line disable sequence, no decision.
+ */
+static void test_icache_disable_clears_ic(void)
+{
+  TEST_BEGIN("ra8_cache: icache_disable clears CCR.IC and invalidates");
+  ra8_fake_mmap_reset();
+  *reg(k_t_ccr)     = (uint32_t)k_t_ccr_other | (uint32_t)k_t_ccr_ic;
+  *reg(k_t_iciallu) = (uint32_t)k_t_sentinel;
+  ra8_cache_icache_disable();
+  /* IC cleared, the unrelated bit preserved, invalidate ran. */
+  TEST_ASSERT_EQ(k_t_ccr_other, *reg(k_t_ccr));
+  TEST_ASSERT_EQ(0U, *reg(k_t_iciallu));
+  TEST_END("ra8_cache: icache_disable clears CCR.IC and invalidates");
+}
+
+/**
+ * @par MC/DC: not applicable to _enable itself; the only compound decision is
+ *      the CCSIDR guard inside the shared set/way walk, covered by
+ *      test_invalidate_all_geometry_guard.
+ */
+static void test_dcache_enable_sets_dc_after_invalidate(void)
+{
+  TEST_BEGIN("ra8_cache: dcache_enable set/way-invalidates then sets CCR.DC");
+  ra8_fake_mmap_reset();
+  *reg(k_t_ccsidr) = ccsidr_one_set_one_way(); /* valid geometry -> loop runs */
+  *reg(k_t_ccr)    = (uint32_t)k_t_ccr_other;
+  *reg(k_t_dcisw)  = (uint32_t)k_t_sentinel;
+  ra8_cache_dcache_enable();
+  /* DC set, the unrelated bit preserved, the set/way invalidate ran (DCISW). */
+  TEST_ASSERT_EQ(k_t_ccr_other | (uint32_t)k_t_ccr_dc, *reg(k_t_ccr));
+  TEST_ASSERT(*reg(k_t_dcisw) != (uint32_t)k_t_sentinel);
+  TEST_END("ra8_cache: dcache_enable set/way-invalidates then sets CCR.DC");
+}
+
+/**
+ * @par MC/DC: not applicable -- straight-line disable; the CCSIDR guard in the
+ *      set/way walk is covered by test_invalidate_all_geometry_guard.
+ */
+static void test_dcache_disable_clears_dc_and_cleans(void)
+{
+  TEST_BEGIN("ra8_cache: dcache_disable clears CCR.DC and clean-invalidates (DCCISW)");
+  ra8_fake_mmap_reset();
+  *reg(k_t_ccsidr) = ccsidr_one_set_one_way();
+  *reg(k_t_ccr)    = (uint32_t)k_t_ccr_other | (uint32_t)k_t_ccr_dc;
+  *reg(k_t_dccisw) = (uint32_t)k_t_sentinel;
+  ra8_cache_dcache_disable();
+  /* DC cleared, the unrelated bit preserved, clean+invalidate ran (DCCISW). */
+  TEST_ASSERT_EQ(k_t_ccr_other, *reg(k_t_ccr));
+  TEST_ASSERT(*reg(k_t_dccisw) != (uint32_t)k_t_sentinel);
+  TEST_END("ra8_cache: dcache_disable clears CCR.DC and clean-invalidates (DCCISW)");
+}
+
+/**
+ * @par MC/DC: not applicable -- unified enable is two sequential calls, no
+ *      decision of its own.
+ */
+static void test_cache_enable_sets_both_ic_and_dc(void)
+{
+  TEST_BEGIN("ra8_cache: cache_enable sets both CCR.IC and CCR.DC");
+  ra8_fake_mmap_reset();
+  *reg(k_t_ccsidr) = ccsidr_one_set_one_way();
+  *reg(k_t_ccr)    = 0U;
+  ra8_cache_enable();
+  const uint32_t both = (uint32_t)k_t_ccr_ic | (uint32_t)k_t_ccr_dc;
+  TEST_ASSERT_EQ(both, *reg(k_t_ccr) & both);
+  TEST_END("ra8_cache: cache_enable sets both CCR.IC and CCR.DC");
+}
+
 int32_t main(void)
 {
   test_line_bytes_decodes_ctr();
@@ -230,5 +336,11 @@ int32_t main(void)
   test_null_addr_rejected();
   test_zero_size_is_noop();
   test_invalidate_all_geometry_guard();
+  test_icache_invalidate_all_writes_iciallu();
+  test_icache_enable_sets_ic_preserving_others();
+  test_icache_disable_clears_ic();
+  test_dcache_enable_sets_dc_after_invalidate();
+  test_dcache_disable_clears_dc_and_cleans();
+  test_cache_enable_sets_both_ic_and_dc();
   return 0;
 }
