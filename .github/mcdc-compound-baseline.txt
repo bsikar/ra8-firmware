@@ -8,8 +8,8 @@
 # on any INCREASE, so the debt is frozen and can only be burned down; a
 # newly-added uncovered decision raises a count and fails.
 #
-# Total at this baseline: 913 uncovered compound decision(s)
-# across 183 file(s).
+# Total at this baseline: 912 uncovered compound decision(s)
+# across 182 file(s).
 #
 # Burn one down: add a `test_mcdc_<decision>` function with N+1 vectors
 # to the matching tests/test_<module>.c whose `@par MC/DC:` block cites
@@ -134,7 +134,6 @@ libs/ra8_hal/src/ra8_ble.c	ra8_ble_hci_send_command	1
 libs/ra8_hal/src/ra8_ble.c	ra8_ble_scan_start	2
 libs/ra8_hal/src/ra8_ble.c	ra8_ble_set_advertising_data	1
 libs/ra8_hal/src/ra8_ble.c	ra8_ble_test_inject_rx	1
-libs/ra8_hal/src/ra8_cache.c	ra8_cache_dcache_invalidate_all	1
 libs/ra8_hal/src/ra8_canfd_frame.c	internal_validate_frame	1
 libs/ra8_hal/src/ra8_canfd_timing.c	internal_solve_timing	2
 libs/ra8_hal/src/ra8_canfd_timing.c	ra8_canfd_set_bitrate	1
