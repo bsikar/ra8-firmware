@@ -106,6 +106,7 @@ gap-closure plan in `docs/MISRA.md`:
 | D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 |
 | D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 |
 | D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 |
+| D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 |
 
 `MAR` = mandatory annual review date (or earlier review trigger when
 the underlying tooling assumption changes).
@@ -805,3 +806,88 @@ hardware, the diagnostics are the bring-up instrument.
 If the vendored driver is ever re-vendored with a non-variadic logging
 seam, or if the port stops carrying the driver's diagnostics, this
 deviation is withdrawn rather than renewed.
+
+---
+
+## D-009: Rule 9.5 -- array size explicit under designated initializers
+
+- **Rule ID**: misra-c2012-9.5.
+- **Rule text (paraphrased per MISRA licence)**: where designated
+  initializers are used to initialize an array object, the size of
+  the array shall be specified explicitly.
+- **Category**: Required.
+- **Disposition**: Tooling gap (false positive).
+- **Scope**: cppcheck 2.13.0 audit baseline only.
+- **Files affected**: 4 spurious violations, in
+  `libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2.c` (3),
+  `libs/ra8_hal/src/ra8_lvd.c` (1), `libs/ra8_hal/src/ra8_ssie.c` (1)
+  and `libs/ra8_mpu/src/ra8_mpu.c` (1).
+
+### Root cause
+
+Every affected array *does* specify its size explicitly -- but as a
+typed-enum constant rather than a numeric literal, e.g.
+
+```c
+static const ra8_mpu_region_t s_ra8_mpu_boot_regions[k_ra8_mpu_boot_region_count] = { ... };
+```
+
+cppcheck 2.13.0's MISRA addon resolves the size expression only when
+it is a literal token, so an enum-named extent reads to the addon as
+"no explicit size". The size is explicit, and the compiler resolves
+it at translation time; the auditor simply cannot see it.
+
+The construct is not incidental. `CLAUDE.md` makes typed enums
+**mandatory** for every integer constant and forbids `#define` for
+the purpose, so every fixed-size table in first-party code is
+declared exactly this way. The rule as implemented therefore fires
+on the house style rather than on a defect.
+
+### Negative control
+
+`libs/ra8_hal/src/ra8_ssie.c` proves the addon is not reacting to
+designated initializers at all:
+
+```c
+static const ra8_mstp_t s_ssie_mstp_table[k_ra8_ssie_channel_count] = {
+  k_ra8_mstp_ssie0,
+  k_ra8_mstp_ssie1,
+};
+```
+
+There is no designator anywhere in that initializer, so Rule 9.5
+cannot apply by its own wording -- yet the addon reports it. The
+common factor across all reported sites is the enum-named extent,
+not the initializer form.
+
+### Alternative verification
+
+- arm-none-eabi-gcc `-std=gnu23 -Wall -Wextra -Werror` (cross build)
+  and host gcc / clang in the unit-test build reject any array whose
+  initializer overruns its declared extent, which is the hazard Rule
+  9.5 exists to prevent.
+- `scripts/checks/check_magic_numbers.py` independently forbids a
+  numeric-literal extent, so the literal form the addon wants is not
+  reachable in this codebase.
+
+### Standards basis
+
+Same as D-002. Per IEC 61508-3:2010 section 7.4.4.4 the qualified
+compiler is the authoritative checker for declaration-form rules;
+the unqualified open-source audit tool is supplementary.
+
+### Risk assessment
+
+- **Likelihood of escape**: zero. An array whose declared extent
+  disagrees with its initializer is a cross-build error.
+- **Severity of escape**: not applicable (likelihood is zero).
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-08-03.
+- **Mandatory annual review**: 2026-11-02.
+- **Trigger for early review**: cppcheck's MISRA addon learns to
+  resolve enum-named array extents.
