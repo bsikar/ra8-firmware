@@ -218,7 +218,9 @@ ra8_viewer_read_path(
        ra8_pin_validator.c
        ra8_rand_stub.c
        ra8_sbrk_trap.c
+       ra8_scb.c
        ra8_secure.c
+       ra8_systick.c
        ra8_time.c
 )
 
