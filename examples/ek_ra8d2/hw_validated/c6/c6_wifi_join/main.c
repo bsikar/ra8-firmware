@@ -53,34 +53,34 @@
 #define RA8_C6_WIFI_PSK ""
 #endif
 
-/** @var s_ssid @brief Compiled-in target SSID. @note Never a committed value. @since 0.1.0 */
+/** @brief Compiled-in target SSID. @note Never a committed value. @since 0.1.0 */
 static const char s_ssid[] = RA8_C6_WIFI_SSID;
-/** @var s_psk @brief Compiled-in passphrase. @warning Ends up in the ELF; from env only. @since 0.1.0 */
+/** @brief Compiled-in passphrase. @warning Ends up in the ELF; from env only. @since 0.1.0 */
 static const char s_psk[] = RA8_C6_WIFI_PSK;
 
-/** @var s_cpuclk_hz @brief Cached CPUCLK0 rate. @since 0.1.0 */
+/** @brief Cached CPUCLK0 rate. @since 0.1.0 */
 static uint32_t s_cpuclk_hz;
-/** @var s_pclka_hz @brief Cached PCLKA rate. @since 0.1.0 */
+/** @brief Cached PCLKA rate. @since 0.1.0 */
 static uint32_t s_pclka_hz;
-/** @var s_init_err @brief Port-init result from tx_application_define. @since 0.1.0 */
+/** @brief Port-init result from tx_application_define. @since 0.1.0 */
 static ra8_err_t s_init_err = k_ra8_err_not_initialized;
-/** @var s_worker @brief Application worker thread. @since 0.1.0 */
+/** @brief Application worker thread. @since 0.1.0 */
 static TX_THREAD s_worker;
-/** @var s_worker_name @brief Worker thread name. @since 0.1.0 */
+/** @brief Worker thread name. @since 0.1.0 */
 static CHAR s_worker_name[] = "c6_wifi_join";
-/** @var s_worker_stack @brief Worker thread stack. @since 0.1.0 */
+/** @brief Worker thread stack. @since 0.1.0 */
 static UCHAR s_worker_stack[k_c6_join_worker_stack];
-/** @var s_arena @brief Decode arena handed to the facade. @since 0.1.0 */
+/** @brief Decode arena handed to the facade. @since 0.1.0 */
 static uint8_t s_arena[k_c6_join_arena_bytes];
-/** @var s_link @brief The one C6 link handle this app owns. @since 0.1.0 */
+/** @brief The one C6 link handle this app owns. @since 0.1.0 */
 static ra8_c6link_t s_link;
-/** @var s_events @brief Count of co-processor announcements seen. @since 0.1.0 */
+/** @brief Count of co-processor announcements seen. @since 0.1.0 */
 static volatile uint32_t s_events;
-/** @var s_connected @brief Non-zero once a station-connected event arrived. @since 0.1.0 */
+/** @brief Non-zero once a station-connected event arrived. @since 0.1.0 */
 static volatile uint8_t s_connected;
-/** @var s_disconnected @brief Non-zero once a station-disconnected event arrived. @since 0.1.0 */
+/** @brief Non-zero once a station-disconnected event arrived. @since 0.1.0 */
 static volatile uint8_t s_disconnected;
-/** @var s_reason @brief Last 802.11 disconnect reason code. @since 0.1.0 */
+/** @brief Last 802.11 disconnect reason code. @since 0.1.0 */
 static volatile uint16_t s_reason;
 
 /* Halt forever; reached only when the kernel refuses to start. */

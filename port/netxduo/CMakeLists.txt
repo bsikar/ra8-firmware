@@ -52,6 +52,5 @@ add_library(netxduo_port_c6 INTERFACE)
 target_include_directories(netxduo_port_c6 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 set_property(
-  GLOBAL PROPERTY RA8_NETXDUO_C6_PORT_SOURCES
-                  ${CMAKE_CURRENT_SOURCE_DIR}/src/nx_ether_driver_c6.c
+  GLOBAL PROPERTY RA8_NETXDUO_C6_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/nx_ether_driver_c6.c
 )

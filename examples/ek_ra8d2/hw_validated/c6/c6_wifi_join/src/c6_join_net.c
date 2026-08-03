@@ -57,25 +57,25 @@ typedef enum : uint32_t {
   k_c6_join_ping_len    = 12U,    /**< ICMP echo payload length, in octets.    */
 } c6_join_net_size_t;
 
-/** @var s_pool @brief NetX packet pool control block. @since 0.1.0 */
+/** @brief NetX packet pool control block. @since 0.1.0 */
 static NX_PACKET_POOL s_pool;
-/** @var s_pool_mem @brief Packet-pool backing store. @since 0.1.0 */
+/** @brief Packet-pool backing store. @since 0.1.0 */
 alignas(4) static uint8_t s_pool_mem[k_c6_join_pool_bytes];
-/** @var s_ip @brief NetX IP instance driven over the C6 link. @since 0.1.0 */
+/** @brief NetX IP instance driven over the C6 link. @since 0.1.0 */
 static NX_IP s_ip;
-/** @var s_ip_stack @brief NetX IP helper-thread stack. @since 0.1.0 */
+/** @brief NetX IP helper-thread stack. @since 0.1.0 */
 alignas(8) static uint8_t s_ip_stack[k_c6_join_ip_stack];
-/** @var s_arp_cache @brief ARP cache backing store. @since 0.1.0 */
+/** @brief ARP cache backing store. @since 0.1.0 */
 alignas(4) static uint8_t s_arp_cache[k_c6_join_arp_bytes];
-/** @var s_dhcp @brief NetX DHCP client control block. @since 0.1.0 */
+/** @brief NetX DHCP client control block. @since 0.1.0 */
 static NX_DHCP s_dhcp;
-/** @var s_ping_payload @brief Fixed ICMP echo payload. @since 0.1.0 */
+/** @brief Fixed ICMP echo payload. @since 0.1.0 */
 static char s_ping_payload[k_c6_join_ping_len] = "ra8-c6-ping";
-/** @var s_pool_name @brief Mutable pool name (NetX takes CHAR*). @since 0.1.0 */
+/** @brief Mutable pool name (NetX takes CHAR*). @since 0.1.0 */
 static CHAR s_pool_name[] = "c6_join_pool";
-/** @var s_ip_name @brief Mutable IP-instance name. @since 0.1.0 */
+/** @brief Mutable IP-instance name. @since 0.1.0 */
 static CHAR s_ip_name[] = "c6_join_ip";
-/** @var s_dhcp_name @brief Mutable DHCP-client name. @since 0.1.0 */
+/** @brief Mutable DHCP-client name. @since 0.1.0 */
 static CHAR s_dhcp_name[] = "c6_join_dhcp";
 
 /* Create the packet pool + IP instance and enable the protocols DHCP needs. */

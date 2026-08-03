@@ -42,13 +42,15 @@
  * These cross the link as plain integers and belong to ESP-IDF's enumerations
  * on the far side, so they are named here rather than written as literals.
  *
- * @invariant ::k_ra8_c6link_iface_sta is `WIFI_IF_STA`, the interface index
- *            `Req_WifiSetConfig` selects.
- * @invariant ::k_ra8_c6link_mac_mode_sta is what upstream's own
- *            `rpc_station_mode_get_mac()` transmits: the station's *mode*
- *            number, not its interface number, despite the field being typed
- *            as an interface. Matching upstream is what makes the answer
- *            arrive.
+ * @invariant ::k_ra8_c6link_iface_sta is `WIFI_IF_STA` (0): the interface index
+ *            both `Req_WifiSetConfig` and `Req_GetMACAddress` select. The
+ *            `Req_GetMACAddress.mode` field is named for `wifi_mode_t` but the
+ *            co-processor passes it straight to
+ *            `esp_wifi_get_mac(wifi_interface_t, ...)`, so it is really an
+ *            interface index: `WIFI_IF_STA` (0) returns the address the radio
+ *            associates with, while `WIFI_IF_AP` (1) returns the SoftAP address
+ *            (the station address plus one), which never associates -- stamping
+ *            frames with it is why an associated station could not finish DHCP.
  *
  * @par Example:
  * @code
@@ -59,13 +61,13 @@
  * @since 0.1.0
  */
 typedef enum : int32_t {
-  k_ra8_c6link_iface_sta    = 0, /**< `WIFI_IF_STA`.                      */
-  k_ra8_c6link_mac_mode_sta = 1, /**< `WIFI_MODE_STA`; see the invariant. */
-  k_ra8_c6link_scan_fast    = 0, /**< `WIFI_FAST_SCAN`: stop at the first
+  k_ra8_c6link_iface_sta   = 0, /**< `WIFI_IF_STA`: STA interface index (also
+                                      the `Req_GetMACAddress.mode` selector). */
+  k_ra8_c6link_scan_fast   = 0, /**< `WIFI_FAST_SCAN`: stop at the first
                                       acceptable AP, which is what a fixed
                                       bench network wants.                  */
-  k_ra8_c6link_sort_signal  = 0, /**< `WIFI_CONNECT_AP_BY_SIGNAL`. */
-  k_ra8_c6link_auth_open    = 0, /**< `WIFI_AUTH_OPEN` as a threshold means
+  k_ra8_c6link_sort_signal = 0, /**< `WIFI_CONNECT_AP_BY_SIGNAL`. */
+  k_ra8_c6link_auth_open   = 0, /**< `WIFI_AUTH_OPEN` as a threshold means
                                       "impose no minimum".                  */
 } ra8_c6link_sta_wire_t;
 
@@ -326,7 +328,12 @@ ra8_err_t ra8_c6link_wifi_mac(ra8_c6link_t* link, ra8_c6link_mac_t* out)
 
   RpcReqGetMacAddress body;
   rpc__req__get_mac_address__init(&body);
-  body.mode = (int32_t)k_ra8_c6link_mac_mode_sta;
+  /* `Req_GetMACAddress.mode` is a `wifi_interface_t`, not a `wifi_mode_t`: the
+     co-processor passes it straight to `esp_wifi_get_mac()`. Select the station
+     interface (0) so the address returned is the one the radio associates with.
+     `WIFI_IF_AP` (1) hands back the SoftAP address (station address plus one),
+     which no access point ever sees, so DHCP for the station never completes. */
+  body.mode = (int32_t)k_ra8_c6link_iface_sta;
 
   Rpc req;
   rpc__init(&req);

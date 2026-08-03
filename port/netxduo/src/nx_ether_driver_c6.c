@@ -161,39 +161,39 @@ typedef struct nx_c6_diag {
  */
 nx_c6_diag_t g_nx_c6_diag;
 
-/** @var s_c6_link @brief Bound C6 link handle. @note Set by bind. @since 0.1.0 */
+/** @brief Bound C6 link handle. @note Set by bind. @since 0.1.0 */
 static ra8_c6link_t* s_c6_link;
-/** @var s_c6_mtx @brief Wire-serialisation mutex. @note Created by bind. @since 0.1.0 */
+/** @brief Wire-serialisation mutex. @note Created by bind. @since 0.1.0 */
 static TX_MUTEX s_c6_mtx;
-/** @var s_c6_mtx_made @brief Non-zero once the mutex exists. @since 0.1.0 */
+/** @brief Non-zero once the mutex exists. @since 0.1.0 */
 static uint8_t s_c6_mtx_made;
-/** @var s_open @brief Non-zero after NX_LINK_INITIALIZE. @since 0.1.0 */
+/** @brief Non-zero after NX_LINK_INITIALIZE. @since 0.1.0 */
 static uint8_t s_open;
-/** @var s_link_up @brief NX_LINK_ENABLE mirror. @since 0.1.0 */
+/** @brief NX_LINK_ENABLE mirror. @since 0.1.0 */
 static uint8_t s_link_up;
-/** @var s_local_mac @brief Station MAC stamped on transmitted frames. @since 0.1.0 */
+/** @brief Station MAC stamped on transmitted frames. @since 0.1.0 */
 static uint8_t s_local_mac[k_nx_c6_mac_len];
-/** @var s_mac_user_set @brief Non-zero once _set_mac ran. @since 0.1.0 */
+/** @brief Non-zero once _set_mac ran. @since 0.1.0 */
 static uint8_t s_mac_user_set;
-/** @var s_tx_staging @brief Linear transmit frame buffer. @since 0.1.0 */
+/** @brief Linear transmit frame buffer. @since 0.1.0 */
 static uint8_t s_tx_staging[k_nx_c6_max_frame];
 
-/** @var s_rx_thread @brief RX poll worker control block. @since 0.1.0 */
+/** @brief RX poll worker control block. @since 0.1.0 */
 static TX_THREAD s_rx_thread;
-/** @var s_rx_thread_stack @brief RX poll worker stack. @since 0.1.0 */
+/** @brief RX poll worker stack. @since 0.1.0 */
 alignas(8) static uint8_t s_rx_thread_stack[k_nx_c6_worker_stack_bytes];
-/** @var s_rx_ip @brief IP the receive path pushes frames into. @since 0.1.0 */
+/** @brief IP the receive path pushes frames into. @since 0.1.0 */
 static NX_IP* s_rx_ip;
-/** @var s_rx_iface @brief Interface the receive path tags frames with. @since 0.1.0 */
+/** @brief Interface the receive path tags frames with. @since 0.1.0 */
 static NX_INTERFACE* s_rx_iface;
-/** @var s_rx_thread_made @brief Non-zero once the worker is running. @since 0.1.0 */
+/** @brief Non-zero once the worker is running. @since 0.1.0 */
 static uint8_t s_rx_thread_made;
 
-/** @var s_mtx_name @brief Mutable name for the wire mutex (NetX/ThreadX take CHAR*). @since 0.1.0 */
+/** @brief Mutable name for the wire mutex (NetX/ThreadX take CHAR*). @since 0.1.0 */
 static CHAR s_mtx_name[] = "c6_wire";
-/** @var s_rx_name @brief Mutable name for the RX poll worker thread. @since 0.1.0 */
+/** @brief Mutable name for the RX poll worker thread. @since 0.1.0 */
 static CHAR s_rx_name[] = "c6_nx_rx";
-/** @var s_rx_staging @brief Non-const copy of a received frame for NetX append. @since 0.1.0 */
+/** @brief Non-const copy of a received frame for NetX append. @since 0.1.0 */
 static uint8_t s_rx_staging[k_nx_c6_max_frame];
 
 void nx_ether_driver_c6_set_mac(const uint8_t mac[6])
