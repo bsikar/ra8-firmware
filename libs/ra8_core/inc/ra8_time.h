@@ -37,7 +37,10 @@ extern "C" {
  *                   SysTick reload value (`cpu_hz / 1000 - 1`).
  *
  * @return `k_ra8_ok` on success, `k_ra8_err_invalid_arg` if `cpu_hz`
- *         is zero or would yield a zero reload.
+ *         is zero or would yield a zero reload, or the error propagated
+ *         from `ra8_systick_configure()` when the reload does not fit the
+ *         24-bit SysTick field (target build only; unreachable at any RA8D2
+ *         clock rate).
  *
  * @note Must be called after `ra8_cgc_init()` so the CPU clock is
  *       stable.
