@@ -412,6 +412,30 @@ ra8_err_t ra8_isr_lookup_slot(ra8_elc_event_t event, uint16_t* out_slot)
   return k_ra8_ok;
 }
 
+ra8_err_t ra8_isr_set_dtc(uint16_t slot, bool enable)
+{
+  if (slot >= k_ra8_isr_slot_count) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (!s_slots[slot].in_use) {
+    return k_ra8_err_not_found;
+  }
+  volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
+  if (ielsr == nullptr) {      /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
+    return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE                                     */
+  }
+  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n", p 524: DTCE[24]
+   * enables DTC activation. The read-modify-write touches only DTCE -- the IELS
+   * event field ra8_isr_register wrote is preserved, and the write-0-to-clear IR
+   * status flag is retained by writing back its own read value (ORing/ANDing the
+   * DTCE mask leaves bit 16 unchanged; see ra8_isr_dispatch and issue #170). */
+  const uint32_t cur = *ielsr;
+  const uint32_t next =
+    enable ? (cur | (uint32_t)k_ra8_ielsr_dtce_mask) : (cur & ~(uint32_t)k_ra8_ielsr_dtce_mask);
+  *ielsr = next;
+  return k_ra8_ok;
+}
+
 void ra8_isr_globals_enable(void)
 {
   /* PRIMASK clear -- maskable IRQs may now dispatch (host no-op via seam). */

@@ -325,6 +325,95 @@ static void test_find_event_mcdc_compound_guard(void)
   TEST_END("internal_find_event MC/DC: in_use && event==query");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- ra8_isr_set_dtc guards
+ * are single-condition range / in-use / NULL checks and a single-condition
+ * ``enable`` select; this case covers the arm + disarm branches and the
+ * IELS-preservation postcondition)
+ */
+static void test_set_dtc_arm_disarm_roundtrip(void)
+{
+  TEST_BEGIN("ra8_isr_set_dtc: arm sets DTCE, disarm clears it, IELS kept");
+  ra8_fake_mmap_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
+
+  uint16_t slot = k_isr_slot_poison;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_isr_register((ra8_elc_event_t)0xCCU, stub_handler_a, nullptr, 4U, &slot));
+  TEST_ASSERT(slot != k_isr_slot_poison);
+
+  volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
+  TEST_ASSERT_NOT_NULL((void*)ielsr);
+  /* Fresh registration: IELS = event, DTCE = 0. */
+  TEST_ASSERT_EQ(0xCCU, (*ielsr & (uint32_t)k_ra8_ielsr_iels_mask));
+  TEST_ASSERT_EQ(0U, (*ielsr & (uint32_t)k_ra8_ielsr_dtce_mask));
+
+  /* Arm: DTCE set, IELS untouched. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_set_dtc(slot, true));
+  TEST_ASSERT((*ielsr & (uint32_t)k_ra8_ielsr_dtce_mask) != 0U);
+  TEST_ASSERT_EQ(0xCCU, (*ielsr & (uint32_t)k_ra8_ielsr_iels_mask));
+
+  /* Disarm: DTCE cleared, IELS untouched. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_set_dtc(slot, false));
+  TEST_ASSERT_EQ(0U, (*ielsr & (uint32_t)k_ra8_ielsr_dtce_mask));
+  TEST_ASSERT_EQ(0xCCU, (*ielsr & (uint32_t)k_ra8_ielsr_iels_mask));
+  TEST_END("ra8_isr_set_dtc: arm sets DTCE, disarm clears it, IELS kept");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- proves the RMW leaves the write-0-to-clear IR
+ * status flag untouched on both the arm and disarm paths, HUM Ch 14.2.10)
+ */
+static void test_set_dtc_preserves_ir(void)
+{
+  TEST_BEGIN("ra8_isr_set_dtc: IR status flag preserved across arm/disarm");
+  ra8_fake_mmap_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
+
+  uint16_t slot = k_isr_slot_poison;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_isr_register((ra8_elc_event_t)0x33U, stub_handler_a, nullptr, 0U, &slot));
+
+  volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
+  TEST_ASSERT_NOT_NULL((void*)ielsr);
+  /* Emulate a pending completion: DTC set IR (HUM Figure 18.5). */
+  *ielsr |= (uint32_t)k_ra8_ielsr_ir_mask;
+
+  /* Arm must set DTCE without disturbing IR or IELS. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_set_dtc(slot, true));
+  TEST_ASSERT((*ielsr & (uint32_t)k_ra8_ielsr_dtce_mask) != 0U);
+  TEST_ASSERT((*ielsr & (uint32_t)k_ra8_ielsr_ir_mask) != 0U);
+  TEST_ASSERT_EQ(0x33U, (*ielsr & (uint32_t)k_ra8_ielsr_iels_mask));
+
+  /* Disarm must clear DTCE without disturbing IR or IELS. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_set_dtc(slot, false));
+  TEST_ASSERT_EQ(0U, (*ielsr & (uint32_t)k_ra8_ielsr_dtce_mask));
+  TEST_ASSERT((*ielsr & (uint32_t)k_ra8_ielsr_ir_mask) != 0U);
+  TEST_ASSERT_EQ(0x33U, (*ielsr & (uint32_t)k_ra8_ielsr_iels_mask));
+  TEST_END("ra8_isr_set_dtc: IR status flag preserved across arm/disarm");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- exercises the two rejection guards of
+ * ra8_isr_set_dtc: an out-of-range slot and an unregistered slot)
+ */
+static void test_set_dtc_rejects_bad_inputs(void)
+{
+  TEST_BEGIN("ra8_isr_set_dtc: rejects out-of-range and unregistered slots");
+  ra8_fake_mmap_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
+
+  /* Out of range -> invalid_arg (guard 1). */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_isr_set_dtc(k_isr_slot_out_of_range, true));
+  /* In range but not registered -> not_found (guard 2). */
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_isr_set_dtc(0U, true));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_isr_set_dtc(0U, false));
+  TEST_END("ra8_isr_set_dtc: rejects out-of-range and unregistered slots");
+}
+
 int32_t main(void)
 {
   test_init_clears_state();
@@ -339,6 +428,9 @@ int32_t main(void)
   test_set_priority_roundtrip();
   test_lookup_slot_null_out();
   test_find_event_mcdc_compound_guard();
+  test_set_dtc_arm_disarm_roundtrip();
+  test_set_dtc_preserves_ir();
+  test_set_dtc_rejects_bad_inputs();
   (void)fprintf(stderr, "[OK  ] test_ra8_isr.c\n");
   return 0;
 }
