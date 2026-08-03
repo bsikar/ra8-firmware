@@ -10,6 +10,7 @@
 #include "ra8_eth_coma.h"
 #include "ra8_ether_regs.h"
 #include "ra8_fake_mmap.h"
+#include "ra8_fake_mmio.h"
 #include "ra8_mstp.h"
 #include "unity_minimal.h"
 
@@ -44,6 +45,7 @@ static void stub_coma_cb(void* ctx, uint32_t mask)
 static void prep(void)
 {
   ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
   s_coma_cb_count     = 0U;
   s_coma_cb_last_mask = 0U;
@@ -136,6 +138,50 @@ static void test_power_transition(void)
   TEST_END("coma power transition");
 }
 
+/**
+ * @brief COMA bring-up happy path: the register sequence completes and the
+ *        per-agent clocks are fanned out.
+ *
+ * @par MC/DC:
+ * Decision: `if (bpr_err != k_ra8_ok)` in ra8_eth_coma_bringup (1 condition).
+ * - Vector A: bpr_err = k_ra8_ok  -> false (this test -- BPR unarmed, the fake
+ *   MMIO seam satisfies the wait on its first poll).
+ * - Vector B: bpr_err = k_ra8_err_hw_timeout -> true (test_bringup_bpr_timeout).
+ * Vectors A+B prove the condition independently affects the outcome; N+1 = 2
+ * vectors for N = 1: minimal MC/DC.
+ */
+static void test_bringup_happy(void)
+{
+  TEST_BEGIN("coma bringup happy path");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_coma_bringup());
+  /* Step 4 leaves RCEC = RCE | ACE[6:0]; Step 3 kicks CABPIRM.BPIOG. */
+  TEST_ASSERT_EQ(k_ra8_coma_rcec_rce | (uint32_t)k_ra8_coma_rcec_ace_mask, *ra8_coma_rcec());
+  TEST_ASSERT_EQ(k_ra8_coma_cabpirm_bpiog,
+                 *ra8_coma_cabpirm() & (uint32_t)k_ra8_coma_cabpirm_bpiog);
+  TEST_END("coma bringup happy path");
+}
+
+/**
+ * @brief COMA bring-up reports the CABPIRM.BPR wait timing out.
+ *
+ * @par MC/DC:
+ * Decision: `if (bpr_err != k_ra8_ok)` in ra8_eth_coma_bringup (1 condition).
+ * See ::test_bringup_happy -- this case supplies Vector B (BPR never asserts,
+ * armed via ra8_fake_mmio_fail_wait, so the bounded wait exhausts its budget
+ * and bringup returns k_ra8_err_hw_timeout).
+ */
+static void test_bringup_bpr_timeout(void)
+{
+  TEST_BEGIN("coma bringup CABPIRM.BPR timeout");
+  prep();
+  /* Arm the buffer-pool-ready register so BPR never asserts. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_coma_cabpirm()));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_coma_bringup());
+  ra8_fake_mmio_reset();
+  TEST_END("coma bringup CABPIRM.BPR timeout");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -143,6 +189,8 @@ int32_t main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
+  test_bringup_happy();
+  test_bringup_bpr_timeout();
   (void)fprintf(stderr, "[OK  ] test_ra8_eth_coma.c\n");
   return 0;
 }

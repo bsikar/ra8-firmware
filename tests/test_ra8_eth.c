@@ -627,6 +627,72 @@ static void test_mcdc_eth_write_len_bounds(void)
 }
 
 /**
+ * @brief RGMII media-select on port 1 programs MIICR1 + MIIRR.RGRST1.
+ *
+ * @par MC/DC:
+ * Decision 1: the port range guard `RA8_CHECK_RANGE_TAG(port, .., 1, ..)` i.e.
+ * `if (port > k_ra8_eth_mii_port_1)` (1 condition).
+ * - Vector A: port = 1 -> false (valid, this test).
+ * - Vector B: port = 2 -> true  (invalid, ::test_rgmii_select_bad_port).
+ * Decision 2: the register-select ternary `port == k_ra8_eth_mii_port_0`
+ * (1 condition).
+ * - Vector C: port = 1 -> false (MIICR1 / RGRST1, this test).
+ * - Vector D: port = 0 -> true  (MIICR0 / RGRST0, ::test_rgmii_select_port0).
+ * N+1 = 2 vectors per single-condition decision: minimal MC/DC.
+ */
+static void test_rgmii_select_port1(void)
+{
+  TEST_BEGIN("rgmii_select port 1");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_rgmii_select(k_ra8_eth_mii_port_1));
+  TEST_ASSERT_EQ(k_ra8_eswm_miicr_txcide | (uint32_t)k_ra8_eswm_miicr_miisel_rgmii,
+                 *ra8_eswm_miicr1());
+  TEST_ASSERT_EQ(k_ra8_eswm_miirr_rgrst1, *ra8_eswm_miirr() & (uint32_t)k_ra8_eswm_miirr_rgrst1);
+  /* Port 1 must not disturb port 0's control register. */
+  TEST_ASSERT_EQ(0U, *ra8_eswm_miicr0());
+  TEST_END("rgmii_select port 1");
+}
+
+/**
+ * @brief RGMII media-select on port 0 programs MIICR0 + MIIRR.RGRST0.
+ *
+ * @par MC/DC:
+ * Supplies Vector D of the register-select ternary in ::test_rgmii_select_port1
+ * (port = 0 -> MIICR0 / RGRST0 leg).
+ */
+static void test_rgmii_select_port0(void)
+{
+  TEST_BEGIN("rgmii_select port 0");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_rgmii_select(k_ra8_eth_mii_port_0));
+  TEST_ASSERT_EQ(k_ra8_eswm_miicr_txcide | (uint32_t)k_ra8_eswm_miicr_miisel_rgmii,
+                 *ra8_eswm_miicr0());
+  TEST_ASSERT_EQ(k_ra8_eswm_miirr_rgrst0, *ra8_eswm_miirr() & (uint32_t)k_ra8_eswm_miirr_rgrst0);
+  TEST_ASSERT_EQ(0U, *ra8_eswm_miicr1());
+  TEST_END("rgmii_select port 0");
+}
+
+/**
+ * @brief RGMII media-select rejects an out-of-range port and writes nothing.
+ *
+ * @par MC/DC:
+ * Supplies Vector B of the port range guard in ::test_rgmii_select_port1
+ * (port = ::k_ra8_eth_mii_port_count = 2 -> guard true -> k_ra8_err_invalid_arg).
+ */
+static void test_rgmii_select_bad_port(void)
+{
+  TEST_BEGIN("rgmii_select bad port");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_eth_rgmii_select((ra8_eth_mii_port_t)k_ra8_eth_mii_port_count));
+  /* Rejected before any write. */
+  TEST_ASSERT_EQ(0U, *ra8_eswm_miicr0());
+  TEST_ASSERT_EQ(0U, *ra8_eswm_miicr1());
+  TEST_ASSERT_EQ(0U, *ra8_eswm_miirr());
+  TEST_END("rgmii_select bad port");
+}
+
+/**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
  *
@@ -659,6 +725,9 @@ static void (*const s_test_roster[])(void) = {
   test_apis_require_open,
   test_mcdc_resolve_sizes_buf_size,
   test_mcdc_eth_write_len_bounds,
+  test_rgmii_select_port1,
+  test_rgmii_select_port0,
+  test_rgmii_select_bad_port,
 };
 
 int32_t main(void)
