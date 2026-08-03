@@ -28,9 +28,6 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 
-/** @brief Module log tag. */
-static const char* const s_tag = "ra8_scb";
-
 /**
  * @enum ra8_scb_reg_addr_t
  * @brief Arm v8-M SCB register addresses (PPB window 0xE000EDxx).
@@ -86,6 +83,9 @@ RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* ra8_scb_reg(ra8_scb_reg_
 
 ra8_err_t ra8_scb_read_fault_status(ra8_scb_fault_status_t* out)
 {
+  /** @brief Module log tag -- block scope: this is the only function that logs. */
+  static const char* const s_tag = "ra8_scb";
+
   RA8_CHECK_NULL_PTR(out, s_tag, "read_fault_status: out");
   /* Arm v8-M ARM B3.2 "System Control Block": configurable / hard / debug
    * fault status, then the MemManage / BusFault / Auxiliary registers. Plain
