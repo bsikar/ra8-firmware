@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 cmake_minimum_required(VERSION 3.20)
 
 #
@@ -58,6 +60,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_npu.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_xml.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_storage.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_c6link.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_wifi.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_ra8_emulator.cmake)
 
 # ---------------------------------------------------------------------------
