@@ -538,9 +538,18 @@ function(ra8_add_cpu1_image)
     -T${_c1_ld}
     -Wl,--Map=${C1_NAME}.map
   )
+  # The CPU1 image links NO ra8_hal, but it may INCLUDE the freestanding-clean
+  # PORT headers so an M33 image drives a pin through a HAL primitive
+  # (ra8_pcntr.h -> ra8_port_regs.h) instead of hand-rolling raw MMIO (issue
+  # #580). Only header-only accessors reach the M33 this way; nothing is
+  # compiled or linked from ra8_hal/src. IMPORTANT: keep this an include path,
+  # not a link -- a future dev must add ONLY freestanding-clean headers here
+  # (ra8_pcntr.h / ra8_port_regs.h + the ra8_core/inc enums they pull). A HAL
+  # header that includes ra8_log.h / ra8_check.h / the pin-validator is NOT
+  # freestanding and must never be reached from a CPU1 TU.
   target_include_directories(
     ${C1_NAME}.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${RA8_REPO_ROOT}/libs/ra8_core/inc
-                           ${C1_INCLUDES}
+                           ${RA8_REPO_ROOT}/libs/ra8_hal/inc ${C1_INCLUDES}
   )
   set_target_properties(${C1_NAME}.elf PROPERTIES LINK_DEPENDS ${_c1_ld})
   add_custom_command(
