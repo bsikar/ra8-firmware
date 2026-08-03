@@ -259,6 +259,13 @@ static inline void count_cb(const char* name, uint8_t attr, uint32_t size, void*
 /**
  * @brief Byte offset in `s_disk.bytes` for root-dir entry @p idx.
  *
+ * @details Every LBA cached in `ra8_fs_mount_t` is PARTITION-relative -- the
+ *          driver adds `partition_base_lba` inside `priv_read_sector()`. The
+ *          formatter lays the volume down inside an MBR partition rather than
+ *          at LBA 0, so a test poking `s_disk.bytes` directly must add that
+ *          base itself or it lands in the pre-partition gap and corrupts
+ *          nothing.
+ *
  * @param[in] h   Mounted exFAT volume.
  * @param[in] idx Entry index within the root cluster (0-based).
  *
@@ -271,12 +278,15 @@ static inline void count_cb(const char* name, uint8_t attr, uint32_t size, void*
  */
 static inline uint32_t root_byte(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  const uint32_t root_lba = h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  const uint32_t root_lba =
+    h->partition_base_lba + h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
   return (root_lba * (uint32_t)k_mut_block_size) + (idx * (uint32_t)k_mut_entry_bytes);
 }
 
 /**
  * @brief Byte offset in `s_disk.bytes` for the FAT entry of cluster @p clus.
+ *
+ * @details Partition-adjusted for the same reason as root_byte().
  *
  * @param[in] h    Mounted exFAT volume.
  * @param[in] clus Cluster number.
@@ -290,7 +300,7 @@ static inline uint32_t root_byte(const ra8_fs_mount_t* h, uint32_t idx)
  */
 static inline uint32_t fat_byte(const ra8_fs_mount_t* h, uint32_t clus)
 {
-  return (h->first_fat_lba * (uint32_t)k_mut_block_size) + (clus * 4U);
+  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_mut_block_size) + (clus * 4U);
 }
 
 /**

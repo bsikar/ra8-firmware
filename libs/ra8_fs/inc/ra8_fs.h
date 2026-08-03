@@ -302,9 +302,10 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  * @brief Format a block device as a fresh, empty FAT12/FAT16/FAT32/exFAT volume.
  *
  * @details
- * Lays down a complete superfloppy (no MBR) volume at LBA 0 so the very next
- * `ra8_fs_mount()` on the same backend detects exactly `opts->type`. For the FAT
- * variants this is a classic BPB layout:
+ * Lays down a complete volume so the very next `ra8_fs_mount()` on the same
+ * backend detects exactly `opts->type`. The FAT variants are written as a
+ * superfloppy (no MBR) at LBA 0; exFAT is written into an MBR partition (see
+ * below). For the FAT variants this is a classic BPB layout:
  *   - a full BPB (jump prologue, OEM name, `BytsPerSec`, `SecPerClus`,
  *     `RsvdSecCnt`, `NumFATs`, `RootEntCnt` or `RootClus`, `TotSec`, media
  *     descriptor, `FATSz`, volume label, filesystem-type string, and the
@@ -322,15 +323,25 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  * large for FAT12/FAT16 even at the maximum cluster size -- the call fails
  * without writing anything.
  *
- * exFAT (`k_ra8_fs_type_exfat`) lays down its own on-disk structures instead of a
+ * exFAT (`k_ra8_fs_type_exfat`) is written the way a PC writes it, so a card
+ * formatted here mounts on a desktop: a DOS/MBR partition table at LBA 0 with
+ * one type-0x07 partition aligned at 1 MiB, and the volume itself inside that
+ * partition rather than at LBA 0. `ra8_fs_mount()` follows the partition table
+ * back (`ra8_fs_mount_t::partition_base_lba` records where it landed), and also
+ * mounts a card partitioned by a desktop. Because the partition cannot start at
+ * sector 0, the device must be big enough for the 1 MiB alignment gap ON TOP OF
+ * the 32 MiB minimum volume -- a 32 MiB card is no longer formattable.
+ *
+ * Inside the partition exFAT lays down its own on-disk structures instead of a
  * FAT BPB: the 12-sector boot region (Main + Backup) with the VBR checksum
- * sector, the single FAT, the allocation-bitmap cluster, an up-case-table
- * cluster, and a root-directory cluster carrying the volume-label, allocation-
- * bitmap, and up-case-table system directory entries. The image is
- * `fsck.exfat`-clean and round-trips through `ra8_fs_mount()` plus the exFAT
- * file API: whole-file creation via `ra8_fs_write_file()`, read-back via
- * `ra8_fs_open()` (read) + `ra8_fs_read()`, `ra8_fs_rename()`, and `ra8_fs_unlink()`
- * (exFAT has no streaming open-for-write; see `ra8_fs_open()`).
+ * sector, the single FAT, the allocation-bitmap cluster(s), the canonical
+ * compressed up-case table (which may span several clusters), and a
+ * root-directory cluster carrying the volume-label, allocation-bitmap, and
+ * up-case-table system directory entries. The image is `fsck.exfat`-clean and
+ * round-trips through `ra8_fs_mount()` plus the exFAT file API: whole-file
+ * creation via `ra8_fs_write_file()`, read-back via `ra8_fs_open()` (read) +
+ * `ra8_fs_read()`, `ra8_fs_rename()`, and `ra8_fs_unlink()` (exFAT has no
+ * streaming open-for-write; see `ra8_fs_open()`).
  *
  * @param[in] backend Block-device implementation (read/write/get_capacity all
  *                    non-NULL). Its `write_block` is driven during the format.
@@ -346,7 +357,9 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  *                                    `sectors_per_cluster` is non-zero and not
  *                                    a power of two in 1..128.
  * @retval k_ra8_err_not_supported     `opts->type` is unknown / not a writable
- *                                    filesystem.
+ *                                    filesystem, or the device is too small to
+ *                                    hold a partitioned exFAT volume (the 1 MiB
+ *                                    alignment gap plus the 32 MiB minimum).
  * @retval k_ra8_err_invalid_size      Capacity cannot satisfy `opts->type`.
  * @retval k_ra8_err_*                 Backend read/write failure (volume may be
  *                                    partially written on a mid-format I/O

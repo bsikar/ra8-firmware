@@ -74,12 +74,19 @@ typedef enum : uint8_t {
 /**
  * @enum dir_cov_geo_t
  * @brief Block-count constants for the synthetic block devices used here.
+ *
+ * @details `k_geo_exfat` must clear `k_exfat_fmt_part_lba` (2048, the 1 MiB
+ *          partition alignment gap) PLUS `k_exfat_fmt_min_sectors` (65536, the
+ *          32 MiB minimum volume), because the formatter now places the volume
+ *          inside an MBR partition instead of at LBA 0. A 32 MiB card can no
+ *          longer hold a 32 MiB partition; 64 MiB is the smallest workable
+ *          size, matching the exFAT mutate/read/write fixtures.
  */
 typedef enum : uint32_t {
   k_geo_blk_sz     = 512U,        /**< Bytes per logical block.             */
   k_geo_fat16_spc1 = 8U * 1024U,  /**< 4 MiB FAT16 volume, SPC=1.           */
   k_geo_fat16_spc2 = 16U * 1024U, /**< 8 MiB FAT16 volume, SPC=2.           */
-  k_geo_exfat      = 65536U,      /**< 32 MiB exFAT volume.                 */
+  k_geo_exfat      = 131072U,     /**< 64 MiB exFAT volume (see @details).  */
   k_geo_reads_inf  = 0xFFFFFFFFU, /**< Sentinel: unlimited reads in inject. */
 } dir_cov_geo_t;
 
