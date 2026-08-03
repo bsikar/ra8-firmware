@@ -36,22 +36,63 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_dfu.h"
+#include "ra8_scb.h"
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
 #include "ra8_dfu_antirollback.h"
 #include "ra8_rot.h"
 #endif
 
+#ifdef RA8_ENABLE_ROOT_OF_TRUST
 /**
- * @enum ra8_dfu_launch_scb_t
- * @brief Cortex-M85 System Control Block address used by the hand-off.
- * @details VTOR is the Secure alias; the bootloader and apps run Secure. The
- *          Renesas HUM defers the Cortex-M85 core (SCB) registers to the ARMv8-M
- *          ARM (B3.2.2 "VTOR, Vector Table Offset Register").
+ * @brief Decide whether a staged image is allowed to launch.
+ *
+ * @details
+ * The two default-deny gates that must both pass before a single byte is copied
+ * to the run base. They live together because they share the trailer they read.
+ *
+ * The root-of-trust gate authenticates the signed image (SHA-256 + ECDSA-P256)
+ * against the provisioned root public key. The signed image is
+ * ``[ body (img_len) ] [ ra8_rot_trailer_t ]``, so the trailer sits immediately
+ * after the body; a missing trailer, a malformed trailer, a tampered body or an
+ * invalid signature all deny.
+ *
+ * The anti-rollback gate then refuses a version older than the highest ever
+ * accepted. A store READ FAULT denies as well as a genuine downgrade. A fresh
+ * or unprovisioned device reads its erased monotonic counter as 0, so it
+ * ACCEPTS its first image -- which becomes the new floor -- and is NOT bricked.
+ *
+ * @param[in] src     Address of the staged image body.
+ * @param[in] img_len Length of the image body in bytes, excluding the trailer.
+ *
+ * @return Whether the image passed both gates.
+ * @retval true  The signature verified and the version is not a downgrade.
+ * @retval false A gate failed; the caller must not copy and must not branch.
+ *
+ * @pre ``src`` is non-zero and ::ra8_dfu_run_target_valid has already approved
+ *      the ``entry`` / ``img_len`` pair.
+ * @pre The root public key is provisioned, and the monotonic counter is either
+ *      provisioned or reads as erased on a fresh device.
+ * @post No image bytes have been copied and no vector table has been relocated.
+ * @post No durable counter has been advanced.
+ *
+ * @note Not thread-safe; boot-path only.
+ * @since 0.1.0
  */
-typedef enum : uintptr_t {
-  k_ra8_dfu_launch_vtor_addr = 0xE000ED08U, /**< SCB->VTOR (Secure). */
-} ra8_dfu_launch_scb_t;
+RA8_INTERNAL static bool internal_launch_authorized(uintptr_t src, uint32_t img_len)
+{
+  const ra8_rot_trailer_t* trailer = ra8_rot_trailer_after((const void*)src, img_len);
+  if (ra8_rot_verify_image((const uint8_t*)src, img_len, trailer) != k_ra8_ok) {
+    return false; /* DEFAULT-DENY: unauthenticated image */
+  }
+  if (ra8_rot_antirollback_verify(ra8_rot_antirollback_default_store(), trailer->img_version) !=
+      k_ra8_ok) {
+    return false; /* DEFAULT-DENY: downgrade, or an unreadable counter */
+  }
+  return true;
+}
+#endif /* RA8_ENABLE_ROOT_OF_TRUST */
 
 void ra8_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry)
 {
@@ -63,28 +104,10 @@ void ra8_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry)
   }
 
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
-  /* Root-of-trust gate (opt-in, see ra8_rot.h): authenticate the signed image
-   * (SHA-256 + ECDSA-P256) BEFORE copying it to the run base. Default-deny --
-   * any failure (missing trailer, malformed trailer, tampered body, or an
-   * invalid signature) returns to the caller's fallback path without copying or
-   * branching. The signed image is `[ body (img_len) ] [ ra8_rot_trailer_t ]`,
-   * so the trailer sits immediately after the body. With the flag OFF this gate
-   * is absent and the launch proceeds on the CRC32 integrity check alone. */
-  const ra8_rot_trailer_t* trailer = ra8_rot_trailer_after((const void*)src, img_len);
-  if (ra8_rot_verify_image((const uint8_t*)src, img_len, trailer) != k_ra8_ok) {
-    return; /* DEFAULT-DENY: unauthenticated image -> do not launch */
-  }
-
-  /* Anti-rollback gate (downgrade protection): the image is now authentic, so
-   * its trailer is readable. Refuse a version older than the highest ever
-   * accepted (see ra8_dfu_antirollback.h). DEFAULT-DENY on a downgrade OR a store
-   * READ FAULT -- either returns to the caller's fallback path without copying or
-   * branching. A fresh/unprovisioned device reads its erased monotonic counter as
-   * 0, so it ACCEPTS its first image (which becomes the new floor) and is NOT
-   * bricked; only a genuine downgrade or an unreadable counter denies launch. */
-  if (ra8_rot_antirollback_verify(ra8_rot_antirollback_default_store(), trailer->img_version) !=
-      k_ra8_ok) {
-    return; /* DEFAULT-DENY: downgrade / unprovisioned counter -> do not launch */
+  /* Opt-in (see ra8_rot.h). With the flag OFF both gates are absent and the
+   * launch proceeds on the CRC32 integrity check alone. */
+  if (!internal_launch_authorized(src, img_len)) {
+    return; /* DEFAULT-DENY -> caller's fallback path, nothing copied */
   }
 #endif /* RA8_ENABLE_ROOT_OF_TRUST */
 
@@ -104,7 +127,9 @@ void ra8_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry)
   const uint32_t initial_sp  = d[0];
   const uint32_t reset_entry = d[1];
 
-  *(volatile uint32_t*)(uintptr_t)k_ra8_dfu_launch_vtor_addr = (uint32_t)k_ra8_dfu_run_base;
+  /* Point the Secure VTOR at the run base via the shared ra8_scb primitive,
+   * then fence: the vector fetch on the coming branch must see the new base. */
+  ra8_scb_set_vtor((uintptr_t)k_ra8_dfu_run_base);
   __asm__ volatile("dsb 0xF\n isb 0xF\n" ::: "memory");
   __asm__ volatile("msr msp, %0\n"
                    "bx %1\n"

@@ -32,6 +32,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_scb.h"
 
 /* =============================================================================
  * Optional byte sink -- redirect log output off ITM at run time.
@@ -64,15 +65,10 @@ void ra8_log_set_byte_sink(ra8_log_byte_sink_fn_t fn, void* ctx)
  */
 
 typedef enum : uintptr_t {
-  k_ra8_itm_stim_base  = 0xE0000000UL, /**< ITM stimulus port 0 base.     */
-  k_ra8_itm_tcr_addr   = 0xE0000E80UL, /**< ITM Trace Control Register.   */
-  k_ra8_itm_tenr_addr  = 0xE0000E00UL, /**< ITM Trace Enable  Register.   */
-  k_ra8_scb_demcr_addr = 0xE000EDFCUL, /**< SCB DEMCR (TRCENA at bit 24). */
+  k_ra8_itm_stim_base = 0xE0000000UL, /**< ITM stimulus port 0 base.   */
+  k_ra8_itm_tcr_addr  = 0xE0000E80UL, /**< ITM Trace Control Register. */
+  k_ra8_itm_tenr_addr = 0xE0000E00UL, /**< ITM Trace Enable  Register. */
 } ra8_itm_addr_t;
-
-typedef enum : uint32_t {
-  k_ra8_demcr_trcena_mask = 0x01000000UL, /**< DEMCR.TRCENA -- bit 24. */
-} ra8_demcr_bits_t;
 
 /**
  * @brief Get the ITM stimulus-port-0 register.
@@ -171,14 +167,14 @@ RA8_INTERNAL static inline bool internal_itm_ready(void)
 #ifndef RA8_OFF_TARGET
   /* Hardening: if DEMCR.TRCENA is clear the ITM block is powered down
    * and any read of its registers (TCR, TENR, STIM) will bus-fault.
-   * Pre-check TRCENA in DEMCR (always accessible) before touching ITM.
+   * Pre-check TRCENA via the shared ra8_scb primitive (DEMCR is always
+   * accessible) before touching ITM.
    *
    * This was the root cause of escalation-to-LOCKUP observed during
    * USB bring-up: the original USB fault entered the fault handler,
    * which called this function, which read ITM_TCR with TRCENA=0 ->
    * second fault -> LOCKUP at PC=0xEFFFFFFE, hiding the real PC. */
-  const uint32_t demcr = *(volatile uint32_t*)k_ra8_scb_demcr_addr;
-  if ((demcr & (uint32_t)k_ra8_demcr_trcena_mask) == 0U) {
+  if (!ra8_scb_trace_enabled()) {
     return false;
   }
   /* Additional belt-and-braces: never poke ITM from a fault context.
