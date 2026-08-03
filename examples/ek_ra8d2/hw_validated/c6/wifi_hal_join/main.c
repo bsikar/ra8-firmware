@@ -53,30 +53,30 @@
 #define RA8_C6_WIFI_PSK ""
 #endif
 
-/** @var s_ssid @brief Compiled-in target SSID. @note Never a committed value. @since 0.1.0 */
+/** @brief Compiled-in target SSID. @note Never a committed value. @since 0.1.0 */
 static const char s_ssid[] = RA8_C6_WIFI_SSID;
-/** @var s_psk @brief Compiled-in passphrase. @warning Ends up in the ELF; from env only. @since 0.1.0 */
+/** @brief Compiled-in passphrase. @warning Ends up in the ELF; from env only. @since 0.1.0 */
 static const char s_psk[] = RA8_C6_WIFI_PSK;
 
-/** @var s_cpuclk_hz @brief Cached CPUCLK0 rate. @since 0.1.0 */
+/** @brief Cached CPUCLK0 rate. @since 0.1.0 */
 static uint32_t s_cpuclk_hz;
-/** @var s_pclka_hz @brief Cached PCLKA rate. @since 0.1.0 */
+/** @brief Cached PCLKA rate. @since 0.1.0 */
 static uint32_t s_pclka_hz;
-/** @var s_init_err @brief Port-init result from tx_application_define. @since 0.1.0 */
+/** @brief Port-init result from tx_application_define. @since 0.1.0 */
 static ra8_err_t s_init_err = k_ra8_err_not_initialized;
-/** @var s_worker @brief Application worker thread. @since 0.1.0 */
+/** @brief Application worker thread. @since 0.1.0 */
 static TX_THREAD s_worker;
-/** @var s_worker_name @brief Worker thread name. @since 0.1.0 */
+/** @brief Worker thread name. @since 0.1.0 */
 static CHAR s_worker_name[] = "wifi_hal_join";
-/** @var s_worker_stack @brief Worker thread stack. @since 0.1.0 */
+/** @brief Worker thread stack. @since 0.1.0 */
 static UCHAR s_worker_stack[k_wifi_hal_worker_stack];
-/** @var s_arena @brief Decode arena handed to the backend. @since 0.1.0 */
+/** @brief Decode arena handed to the backend. @since 0.1.0 */
 static uint8_t s_arena[k_wifi_hal_arena_bytes];
-/** @var s_link @brief The one C6 link handle this app owns. @since 0.1.0 */
+/** @brief The one C6 link handle this app owns. @since 0.1.0 */
 static ra8_c6link_t s_link;
-/** @var s_c6 @brief The ESP32-C6 ra8_wifi backend context. @since 0.1.0 */
+/** @brief The ESP32-C6 ra8_wifi backend context. @since 0.1.0 */
 static ra8_wifi_c6link_t s_c6;
-/** @var s_wifi @brief The Wi-Fi handle every operation goes through. @since 0.1.0 */
+/** @brief The Wi-Fi handle every operation goes through. @since 0.1.0 */
 static ra8_wifi_t s_wifi;
 
 /* Halt forever; reached only when the kernel refuses to start. */
