@@ -221,53 +221,87 @@ typedef enum : uint16_t {
  * @brief Magic values + geometry constants used by the exFAT formatter.
  */
 typedef enum : uint32_t {
-  k_exfat_entry_upcase    = 0x82U,       /**< Up-case Table directory entry.        */
-  k_exfat_entry_label     = 0x83U,       /**< Volume Label directory entry.         */
-  k_exfat_fmt_jump0       = 0xEBU,       /**< JumpBoot byte 0.                      */
-  k_exfat_fmt_jump1       = 0x76U,       /**< JumpBoot byte 1.                      */
-  k_exfat_fmt_jump2       = 0x90U,       /**< JumpBoot byte 2.                      */
-  k_exfat_fmt_fs_rev      = 0x0100U,     /**< FileSystemRevision = 1.00.            */
-  k_exfat_fmt_drive       = 0x80U,       /**< DriveSelect (first fixed disk).       */
-  k_exfat_fmt_percent     = 0xFFU,       /**< PercentInUse = "not available".       */
-  k_exfat_fmt_boot_sig    = 0xAA55U,     /**< BootSignature (sector 0).             */
-  k_exfat_fmt_ext_sig     = 0xAA550000U, /**< ExtendedBootSignature (sectors 1-8).  */
-  k_exfat_fmt_fat_media   = 0xFFFFFFF8U, /**< FatEntry[0] media descriptor.         */
-  k_exfat_fmt_fat_eoc     = 0xFFFFFFFFU, /**< FatEntry end-of-chain.                */
-  k_exfat_fmt_first_clus  = 2U,          /**< First cluster of the heap.            */
-  k_exfat_fmt_num_fats    = 1U,          /**< exFAT uses a single FAT.              */
-  k_exfat_fmt_boot_secs   = 24U,         /**< 12 main + 12 backup boot sectors.     */
-  k_exfat_fmt_backup_lba  = 12U,         /**< Backup boot region start.             */
-  k_exfat_fmt_ext_first   = 1U,          /**< First extended boot sector.           */
-  k_exfat_fmt_ext_count   = 8U,          /**< Extended boot sector count.           */
-  k_exfat_fmt_oem_lba     = 9U,          /**< OEM Parameters sector.                */
-  k_exfat_fmt_resv_lba    = 10U,         /**< Reserved sector.                      */
-  k_exfat_fmt_csum_lba    = 11U,         /**< Boot Checksum sector.                 */
-  k_exfat_fmt_csum_skip0  = 106U,        /**< Checksum-excluded byte: VolumeFlags.  */
-  k_exfat_fmt_csum_skip1  = 107U,        /**< Checksum-excluded byte: VolumeFlags.  */
-  k_exfat_fmt_csum_skip2  = 112U,        /**< Checksum-excluded byte: PercentInUse. */
-  k_exfat_fmt_csum_hibit  = 0x80000000U, /**< Rotate-right wrap bit (32-bit).       */
-  k_exfat_fmt_csum_copies = 128U,        /**< 512 / 4 checksum words per sector.    */
-  k_exfat_fmt_min_sectors = 65536U,      /**< Smallest exFAT volume: 32 MiB.        */
-  k_exfat_fmt_thr_256m    = 524288U,     /**< <= 256 MB -> 4 KB clusters.           */
-  k_exfat_fmt_thr_32g     = 67108864U,   /**< <= 32 GB -> 32 KB clusters.           */
-  k_exfat_fmt_thr_256g    = 536870912U,  /**< <= 256 GB -> 128 KB clusters.         */
-  k_exfat_fmt_spc_4k      = 3U,          /**< SectorsPerClusterShift for 4 KB.      */
-  k_exfat_fmt_spc_32k     = 6U,          /**< ... 32 KB.                            */
-  k_exfat_fmt_spc_128k    = 8U,          /**< ... 128 KB.                           */
-  k_exfat_fmt_spc_256k    = 9U,          /**< ... 256 KB (> 256 GB cards).          */
-  k_exfat_fmt_geom_iters  = 4U,          /**< Fixed-point geometry passes.          */
-  k_exfat_fmt_upc_marker  = 0xFFFFU,     /**< Up-case run-length compression tag.   */
-  k_exfat_fmt_upc_id0     = 0x0061U,     /**< Identity run length: 0x0000-0x0060.   */
-  k_exfat_fmt_upc_id1     = 0xFF85U,     /**< Identity run length: 0x007B-0xFFFF.   */
-  k_exfat_fmt_upc_a       = 0x0061U,     /**< 'a' (first compressed lower-case).    */
-  k_exfat_fmt_upc_z       = 0x007AU,     /**< 'z' (last compressed lower-case).     */
-  k_exfat_fmt_upc_au      = 0x0041U,     /**< 'A' (up-cased 'a').                   */
-  k_exfat_fmt_upc_bytes   = 60U,         /**< Compressed table size (30 u16).       */
-  k_exfat_fmt_serial      = 0x52A8E47AU, /**< Arbitrary volume-serial base.         */
-  k_exfat_fmt_label_max   = 11U,         /**< Volume-label cap (UTF-16 units).      */
-  k_exfat_fmt_byte_bits   = 8U,          /**< Bits per bitmap byte.                 */
-  k_exfat_fmt_byte_full   = 0xFFU,       /**< A fully-allocated bitmap byte.        */
+  k_exfat_entry_upcase      = 0x82U,       /**< Up-case Table directory entry.         */
+  k_exfat_entry_label       = 0x83U,       /**< Volume Label directory entry.          */
+  k_exfat_fmt_jump0         = 0xEBU,       /**< JumpBoot byte 0.                       */
+  k_exfat_fmt_jump1         = 0x76U,       /**< JumpBoot byte 1.                       */
+  k_exfat_fmt_jump2         = 0x90U,       /**< JumpBoot byte 2.                       */
+  k_exfat_fmt_fs_rev        = 0x0100U,     /**< FileSystemRevision = 1.00.             */
+  k_exfat_fmt_drive         = 0x80U,       /**< DriveSelect (first fixed disk).        */
+  k_exfat_fmt_percent       = 0U,          /**< PercentInUse = 0% (fresh volume).      */
+  k_exfat_fmt_boot_sig      = 0xAA55U,     /**< BootSignature (sector 0).              */
+  k_exfat_fmt_ext_sig       = 0xAA550000U, /**< ExtendedBootSignature (sectors 1-8).   */
+  k_exfat_fmt_fat_media     = 0xFFFFFFF8U, /**< FatEntry[0] media descriptor.          */
+  k_exfat_fmt_fat_eoc       = 0xFFFFFFFFU, /**< FatEntry end-of-chain.                 */
+  k_exfat_fmt_first_clus    = 2U,          /**< First cluster of the heap.             */
+  k_exfat_fmt_num_fats      = 1U,          /**< exFAT uses a single FAT.               */
+  k_exfat_fmt_boot_secs     = 24U,         /**< 12 main + 12 backup boot sectors.      */
+  k_exfat_fmt_backup_lba    = 12U,         /**< Backup boot region start.              */
+  k_exfat_fmt_ext_first     = 1U,          /**< First extended boot sector.            */
+  k_exfat_fmt_ext_count     = 8U,          /**< Extended boot sector count.            */
+  k_exfat_fmt_oem_lba       = 9U,          /**< OEM Parameters sector.                 */
+  k_exfat_fmt_resv_lba      = 10U,         /**< Reserved sector.                       */
+  k_exfat_fmt_csum_lba      = 11U,         /**< Boot Checksum sector.                  */
+  k_exfat_fmt_csum_skip0    = 106U,        /**< Checksum-excluded byte: VolumeFlags.   */
+  k_exfat_fmt_csum_skip1    = 107U,        /**< Checksum-excluded byte: VolumeFlags.   */
+  k_exfat_fmt_csum_skip2    = 112U,        /**< Checksum-excluded byte: PercentInUse.  */
+  k_exfat_fmt_csum_hibit    = 0x80000000U, /**< Rotate-right wrap bit (32-bit).        */
+  k_exfat_fmt_csum_copies   = 128U,        /**< 512 / 4 checksum words per sector.     */
+  k_exfat_fmt_min_sectors   = 65536U,      /**< Smallest exFAT volume: 32 MiB.         */
+  k_exfat_fmt_thr_256m      = 524288U,     /**< <= 256 MB -> 4 KB clusters.            */
+  k_exfat_fmt_thr_32g       = 67108864U,   /**< <= 32 GB -> 32 KB clusters.            */
+  k_exfat_fmt_thr_256g      = 536870912U,  /**< <= 256 GB -> 128 KB clusters.          */
+  k_exfat_fmt_spc_4k        = 3U,          /**< SectorsPerClusterShift for 4 KB.       */
+  k_exfat_fmt_spc_32k       = 6U,          /**< ... 32 KB.                             */
+  k_exfat_fmt_spc_128k      = 8U,          /**< ... 128 KB.                            */
+  k_exfat_fmt_spc_256k      = 9U,          /**< ... 256 KB (> 256 GB cards).           */
+  k_exfat_fmt_geom_iters    = 4U,          /**< Fixed-point geometry passes.           */
+  k_exfat_fmt_upc_std_bytes = 5836U,       /**< Canonical Microsoft up-case table len. */
+  k_exfat_fmt_upc_std_secs  = 12U,         /**< ceil(5836 / 512): table sector span.   */
+  k_exfat_fmt_part_lba      = 2048U,       /**< exFAT partition start (1 MiB aligned). */
+  k_exfat_fmt_serial        = 0x52A8E47AU, /**< Arbitrary volume-serial base.          */
+  k_exfat_fmt_label_max     = 11U,         /**< Volume-label cap (UTF-16 units).       */
+  k_exfat_fmt_byte_bits     = 8U,          /**< Bits per bitmap byte.                  */
+  k_exfat_fmt_byte_full     = 0xFFU,       /**< A fully-allocated bitmap byte.         */
 } ra8_fs_exfat_fmt_val_t;
+
+/**
+ * @enum ra8_fs_mbr_fmt_t
+ * @brief Byte offsets, field strides, and CHS constants for the MBR the exFAT
+ *        formatter writes at LBA 0.
+ *
+ * @details A PC expects removable media to carry a partition table, not a
+ *          "superfloppy" volume at sector 0. The exFAT formatter therefore lays
+ *          a classic DOS/MBR partition table (disk signature at 440, one
+ *          primary partition entry at 446, the 0x55AA boot signature) with a
+ *          single type-0x07 (exFAT/NTFS) partition aligned at
+ *          ::k_exfat_fmt_part_lba. The legacy CHS fields are filled from the
+ *          conventional 255-head / 63-sector geometry (or the 0xFE/0xFF/0xFF
+ *          "beyond CHS, use LBA" sentinel above ::k_mbr_fmt_chs_max) so
+ *          `fdisk`/`sfdisk` report the partition without a CHS-mismatch warning.
+ */
+typedef enum : uint32_t {
+  k_mbr_fmt_disk_sig_off     = 440U,        /**< MBR disk signature (4 bytes LE).       */
+  k_mbr_fmt_part0_off        = 446U,        /**< First partition-table entry.           */
+  k_mbr_fmt_pe_boot          = 0U,          /**< Entry: boot flag (relative).           */
+  k_mbr_fmt_pe_chs_start     = 1U,          /**< Entry: start CHS (3 bytes).            */
+  k_mbr_fmt_pe_type          = 4U,          /**< Entry: partition type byte.            */
+  k_mbr_fmt_pe_chs_end       = 5U,          /**< Entry: end CHS (3 bytes).              */
+  k_mbr_fmt_pe_lba           = 8U,          /**< Entry: first LBA (4 bytes LE).         */
+  k_mbr_fmt_pe_nsect         = 12U,         /**< Entry: sector count (4 bytes LE).      */
+  k_mbr_fmt_boot_none        = 0x00U,       /**< Non-bootable partition.                */
+  k_mbr_fmt_type_exfat       = 0x07U,       /**< Partition type: exFAT/NTFS/HPFS.       */
+  k_mbr_fmt_chs_heads        = 255U,        /**< Conventional heads-per-cylinder.       */
+  k_mbr_fmt_chs_spt          = 63U,         /**< Conventional sectors-per-track.        */
+  k_mbr_fmt_chs_max          = 16450560U,   /**< 1024*255*63: first LBA past CHS.       */
+  k_mbr_fmt_chs_ovf_h        = 0xFEU,       /**< Overflow CHS head byte.                */
+  k_mbr_fmt_chs_ovf_m        = 0xFFU,       /**< Overflow CHS sector/cyl-hi byte.       */
+  k_mbr_fmt_chs_ovf_l        = 0xFFU,       /**< Overflow CHS cylinder-low byte.        */
+  k_mbr_fmt_chs_sec_mask     = 0x3FU,       /**< Low 6 bits of the CHS sector byte.     */
+  k_mbr_fmt_chs_cyl_hi_mask  = 0x300U,      /**< Cylinder bits [9:8] before packing.    */
+  k_mbr_fmt_chs_cyl_hi_shift = 2U,          /**< Shift packing cyl[9:8] into bits[7:6]. */
+  k_mbr_fmt_disk_sig_base    = 0x1A2B3C4DU, /**< Arbitrary disk-signature base.         */
+} ra8_fs_mbr_fmt_t;
 
 /**
  * @enum ra8_fs_cluster_t

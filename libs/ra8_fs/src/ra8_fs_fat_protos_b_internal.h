@@ -52,6 +52,35 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
                                    uint32_t              bytes);
 
 /**
+ * @brief Write the canonical exFAT up-case table and return its checksum.
+ *
+ * @details Streams the 5836-byte Microsoft up-case table
+ * (::k_exfat_fmt_upc_std_bytes, embedded in `ra8_fs_fat_exfat_upcase.c`) to the
+ * device starting at absolute LBA @p abs_lba, one sector at a time across
+ * ::k_exfat_fmt_upc_std_secs sectors, zero-padding the final partial sector.
+ * The rotate-add checksum (::priv_exfat_csum32) is accumulated over exactly the
+ * table bytes -- not the pad -- so it equals the well-known 0xE619D30D and can
+ * be stamped into the root Up-case directory entry.
+ *
+ * @param[in]  backend  Block-device backend with a non-NULL `write_block`.
+ * @param[in]  abs_lba  Absolute (partition-adjusted) first LBA of the up-case
+ *                      table's cluster run.
+ * @param[out] out_csum Receives the table checksum on success.
+ * @return Error code from the backend.
+ * @retval k_ra8_ok    Table written; @p out_csum populated.
+ * @retval k_ra8_err_* Backend `write_block` failure; @p out_csum unspecified.
+ * @pre @p backend and @p backend->write_block are non-NULL.
+ * @pre @p out_csum is non-NULL; @p abs_lba's cluster run holds the table span.
+ * @post On k_ra8_ok the up-case cluster run holds the canonical table.
+ * @post On k_ra8_ok @p out_csum holds the checksum for the root Up-case entry.
+ * @note Not thread-safe; uses the module scratch buffer.
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t
+priv_exfat_write_upcase(const ra8_fs_backend_t* backend, uint32_t abs_lba, uint32_t* out_csum);
+
+/**
  * @brief Fetch the FAT entry for `cluster`, returning the next-cluster value.
  *
  * @details

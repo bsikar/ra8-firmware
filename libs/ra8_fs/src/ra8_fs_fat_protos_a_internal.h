@@ -495,6 +495,29 @@ RA8_PRIV
 ra8_err_t priv_exfat_create(ra8_fs_mount_t* m, const char* path, const uint8_t* data, uint32_t len);
 
 /**
+ * @brief exFAT 32-bit rotate-right-add checksum (boot region + up-case table).
+ *
+ * @details Folds @p len bytes of @p buf into the running checksum @p cs with
+ * `cs = ror1(cs) + byte` per the Microsoft exFAT spec (sections 3.4 and 8.2.2).
+ * Shared by the boot-region checksum (which folds surrounding byte ranges to
+ * skip the three volatile bytes) and the up-case-table checksum.
+ *
+ * @param[in] cs  Running checksum (0 to start).
+ * @param[in] buf Bytes to fold in.
+ * @param[in] len Number of bytes to fold.
+ * @return Updated checksum.
+ * @retval 0..UINT32_MAX The rotate-add fold of @p cs over @p buf[0..len-1].
+ * @pre @p buf holds at least @p len bytes.
+ * @pre @p len is the exact byte count of the span to fold.
+ * @post No state is modified; the function is pure.
+ * @post Return value depends only on @p cs, @p buf, and @p len.
+ * @note Pure function; trivially thread-safe.
+ * @since 0.1.0
+ */
+RA8_PRIV
+uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len);
+
+/**
  * @brief Find a flat root-directory file by name on an exFAT volume.
  *
  * @details Streams the root directory entries, matching each File entry set
@@ -546,27 +569,34 @@ RA8_PRIV
 ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, uint32_t* out_len);
 
 /**
- * @brief Format the backend as an exFAT volume (#102).
+ * @brief Format the backend as a PC-standard partitioned exFAT volume (#102).
  *
- * @details Lays the full exFAT layout: main + backup boot regions with boot
- *          checksums, the single FAT (bitmap/up-case/root chains), the
- *          allocation bitmap with the system clusters pre-marked, the compressed
- *          up-case table + its checksum, and the root directory entry set.
+ * @details Writes a DOS/MBR partition table at LBA 0 with a single type-0x07
+ *          (exFAT/NTFS) partition aligned at ::k_exfat_fmt_part_lba, then lays a
+ *          complete exFAT volume INSIDE that partition: main + backup boot
+ *          regions with boot checksums (VolumeLength = partition length,
+ *          PartitionOffset = @p k_exfat_fmt_part_lba), the single FAT
+ *          (bitmap/up-case/root chains), the allocation bitmap with the system
+ *          clusters pre-marked, the canonical Microsoft up-case table + its
+ *          checksum, and the root directory entry set. A PC therefore sees a
+ *          normal partitioned removable disk and the volume mounts with no
+ *          repair; ::ra8_fs_mount follows the MBR back to the partition.
  *
  * @param[in] backend       Block-device backend.
  * @param[in] total_sectors Device capacity in 512-byte blocks.
  * @param[in] label         Optional volume label (<= 11 chars), may be NULL.
  *
  * @return Error code.
- * @retval k_ra8_ok                A mountable exFAT volume was written.
- * @retval k_ra8_err_invalid_size  Device too small for an exFAT volume.
- * @retval k_ra8_err_not_supported Below the exFAT minimum (@ref k_exfat_fmt_min_sectors)
+ * @retval k_ra8_ok                A mountable partitioned exFAT volume was written.
+ * @retval k_ra8_err_invalid_size  Partition too small for an exFAT volume.
+ * @retval k_ra8_err_not_supported Below the exFAT minimum plus the partition offset
+ *                                (@ref k_exfat_fmt_part_lba + @ref k_exfat_fmt_min_sectors)
  *                                or system cluster chains exceed FAT sector 0.
  * @retval k_ra8_err_*             Backend write failure.
  *
  * @pre @p backend and @p backend->write_block are non-NULL.
  * @pre @p total_sectors is the actual device capacity reported by the backend.
- * @post On k_ra8_ok, sectors 0 through the root cluster hold a complete exFAT volume.
+ * @post On k_ra8_ok, LBA 0 holds an MBR and the partition holds a complete exFAT volume.
  * @post On failure, partial writes may have been made; the device should be reformatted.
  *
  * @note Not thread-safe; serialize with mounts on the same backend.
