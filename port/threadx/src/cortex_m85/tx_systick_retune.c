@@ -3,14 +3,17 @@
  * @brief Implementation of the ThreadX SysTick kernel-tick retune.
  *
  * @details
- * See `port/threadx/inc/ra8_threadx.h` for the public contract. The
- * SysTick registers touched here (SYST_RVR @ 0xE000E014, SYST_CVR @
- * 0xE000E018) live in the Cortex-M System Control Space and are
- * architectural (Arm), not Renesas peripherals -- so they carry no HUM
- * citation, matching the sibling accessors in
- * `libs/ra8_core/src/ra8_time.c`. On the host unit-test build the SCS is
- * unmapped, so the register writes compile out under `RA8_OFF_TARGET`
- * while the clock query + reload arithmetic still run and are testable.
+ * See `port/threadx/inc/ra8_threadx.h` for the public contract.
+ * ::ra8_threadx_systick_reload_for derives the SYST_RVR reload from the live
+ * core clock and the kernel tick rate; ::ra8_threadx_systick_retune then
+ * programs it through the shared `ra8_core` SysTick timebase primitive
+ * (::ra8_systick_set_reload), which owns the SYST_RVR / SYST_CVR access. That
+ * primitive replaced this file's private address-cast accessors, so the SysTick
+ * registers are now programmed from exactly one place in the tree. The SysTick
+ * registers are architectural (Arm), not Renesas peripherals, so they carry an
+ * Arm v8-M reference rather than a HUM citation. On the host unit-test build
+ * the primitive writes to the fake MMIO map, so the retune runs end-to-end and
+ * the clock query + reload arithmetic remain testable.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -23,62 +26,10 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
+#include "ra8_systick.h"
 #include "ra8_threadx.h"
 
 static const char* s_tag = "TX_SYST";
-
-/**
- * @enum ra8_syst_addr_t
- * @brief Cortex-M System Control Space SysTick register addresses.
- */
-typedef enum : uintptr_t {
-  k_ra8_syst_rvr_addr = 0xE000E014UL, /**< SYST_RVR reload value register.  */
-  k_ra8_syst_cvr_addr = 0xE000E018UL, /**< SYST_CVR current value register. */
-} ra8_syst_addr_t;
-
-#ifndef RA8_OFF_TARGET
-/**
- * @brief Get the SysTick Reload Value Register (SYST_RVR) pointer.
- *
- * @details Trivial address-cast helper; mirrors `ra8_time.c`.
- *
- * @return Volatile pointer to SYST_RVR.
- * @retval (volatile uint32_t*)k_ra8_syst_rvr_addr Always.
- *
- * @pre SCS region is mapped (always true on Cortex-M).
- * @pre None beyond the above.
- * @post No state modified.
- * @post Returned pointer is valid for the program lifetime.
- *
- * @note Trivially thread-safe.
- * @since 0.1.0
- */
-static inline volatile uint32_t* internal_syst_rvr(void)
-{
-  return (volatile uint32_t*)k_ra8_syst_rvr_addr;
-}
-
-/**
- * @brief Get the SysTick Current Value Register (SYST_CVR) pointer.
- *
- * @details Trivial address-cast helper; mirrors `ra8_time.c`.
- *
- * @return Volatile pointer to SYST_CVR.
- * @retval (volatile uint32_t*)k_ra8_syst_cvr_addr Always.
- *
- * @pre SCS region is mapped (always true on Cortex-M).
- * @pre None beyond the above.
- * @post No state modified.
- * @post Returned pointer is valid for the program lifetime.
- *
- * @note Trivially thread-safe.
- * @since 0.1.0
- */
-static inline volatile uint32_t* internal_syst_cvr(void)
-{
-  return (volatile uint32_t*)k_ra8_syst_cvr_addr;
-}
-#endif /* !RA8_OFF_TARGET */
 
 ra8_err_t ra8_threadx_systick_reload_for(uint32_t cpuclk_hz, uint32_t tick_hz, uint32_t* out_reload)
 {
@@ -123,14 +74,13 @@ ra8_err_t ra8_threadx_systick_retune(void)
     s_tag,
     "SysTick reload computation failed");
 
-#ifndef RA8_OFF_TARGET
-  /* Re-arm SysTick for the live clock. Only the reload + current-value
-   * words change; the enable / clock-source / tick-interrupt bits set by
-   * _tx_initialize_low_level.S are left as-is. Writing SYST_CVR (any
-   * value) clears it so the next count starts from the new reload. */
-  *internal_syst_rvr() = reload;
-  *internal_syst_cvr() = 0U;
-#endif
+  /* Re-arm SysTick for the live clock through the shared timebase primitive.
+   * Only the reload + current-value words change; the enable / clock-source /
+   * tick-interrupt bits set by _tx_initialize_low_level.S are left as-is
+   * (ra8_systick_set_reload writes SYST_RVR and clears SYST_CVR, never
+   * SYST_CSR). The reload already fit the 24-bit field in reload_for above, so
+   * this write cannot be rejected -- but the return is still checked. */
+  RA8_RETURN_ON_ERROR(ra8_systick_set_reload(reload), s_tag, "SysTick reload program failed");
 
   ra8_log_info_val(s_tag, "systick retuned reload", reload);
   return k_ra8_ok;
