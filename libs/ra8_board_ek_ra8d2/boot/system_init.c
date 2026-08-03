@@ -491,8 +491,21 @@ void SystemInit(void)
    * CCR. Region 4 (non-cacheable shared SRAM) keeps M85<->M33 hand-offs
    * coherent with no software maintenance. */
   internal_mpu_init();
+#ifdef RA8_BOOT_CACHE_VIA_HAL
+  /* Issue #577: bring the L1 caches up through the ra8_cache HAL instead of the
+   * hand-rolled internal_enable_icache / internal_enable_dcache pokes. The HAL
+   * primitives encode the identical ICIALLU + CCR.IC / CCR.DC sequence (each
+   * runs its architectural invalidate before setting the enable bit), so this is
+   * a drop-in with no behaviour change. The raw helpers stay compiled just above
+   * as the reference path; exactly the app that opts in takes the HAL route. */
+  ra8_cache_icache_enable();
+  ra8_cache_dcache_enable();
+  (void)internal_enable_icache;
+  (void)internal_enable_dcache;
+#else
   internal_enable_icache();
   internal_enable_dcache();
+#endif
   internal_enable_branch_predictor();
 #else
   /* Default OFF: caches + MPU stay disabled -- no behaviour change. */
