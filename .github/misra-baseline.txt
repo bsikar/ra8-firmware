@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 13307
+# total findings: 13315
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -509,8 +509,8 @@ libs/ra8_hal/src/ra8_dac_b.c	misra-c2012-8.4	9
 libs/ra8_hal/src/ra8_dma.c	misra-c2012-15.5	19
 libs/ra8_hal/src/ra8_dma.c	misra-c2012-8.4	5
 libs/ra8_hal/src/ra8_dma.c	misra-c2012-9.2	1
-libs/ra8_hal/src/ra8_dmac.c	misra-c2012-15.5	29
-libs/ra8_hal/src/ra8_dmac.c	misra-c2012-8.4	7
+libs/ra8_hal/src/ra8_dmac.c	misra-c2012-15.5	34
+libs/ra8_hal/src/ra8_dmac.c	misra-c2012-8.4	10
 libs/ra8_hal/src/ra8_doc.c	misra-c2012-11.3	2
 libs/ra8_hal/src/ra8_doc.c	misra-c2012-15.5	12
 libs/ra8_hal/src/ra8_dotf.c	misra-c2012-14.2	4

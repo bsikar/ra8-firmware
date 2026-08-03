@@ -405,6 +405,114 @@ void ra8_dmac_dispatch(uint8_t channel);
  */
 void ra8_dmac_dispatch_half(uint8_t channel);
 
+/**
+ * @brief Software-trigger one transfer request on a DMAC0 channel.
+ *
+ * @details
+ * Writes ``DMREQ.SWREQ = 1`` on ``channel`` to raise a software DMA
+ * transfer request (HUM Ch 17.2.15 "DMREQ : DMAC Software Start
+ * Register" p 744 -- "When 1 is written to the SWREQ bit, a DMA
+ * transfer request is generated. After the DMA transfer is started
+ * [...] this bit is automatically cleared to 0"). The channel must
+ * already have been programmed and armed by ``ra8_dmac_start`` (or a
+ * sibling) with a software request source (``DMTMD.DCTG = 00b``, the
+ * driver default).
+ *
+ * In block or repeat-block mode a single trigger moves a whole
+ * DMCRAH-sized block; in normal mode it moves one unit. Pair with
+ * ``ra8_dmac_wait_idle`` / ``ra8_dmac_is_active`` to observe
+ * completion. This is the HAL primitive that replaces reaching for
+ * ``ra8_dmac(channel)->DMREQ`` directly in application code.
+ *
+ * @param[in] channel DMAC0 channel index 0..7.
+ *
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok                Software request raised.
+ * @retval k_ra8_err_out_of_range  `channel` >= 8.
+ *
+ * @pre ``ra8_dmac_start()`` (or a sibling) armed ``channel``.
+ * @pre The channel's request source is software (``DMTMD.DCTG = 00b``).
+ * @post ``DMREQ.SWREQ`` was written 1 for ``channel``.
+ * @post No other channel register is modified.
+ *
+ * @note Not thread-safe; pair with IRQ masking on a shared channel.
+ * @see ra8_dmac_wait_idle
+ * @see ra8_dmac_is_active
+ * @see ra8_dmac_start_block
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dmac_software_trigger(uint8_t channel);
+
+/**
+ * @brief Query whether a DMAC0 channel is mid-transfer.
+ *
+ * @details
+ * Reads ``DMSTS.ACT`` on ``channel`` (HUM Ch 17.2.16 "DMSTS : DMAC
+ * Status Register" p 745 -- the ACT bit reads 1 while the controller
+ * is executing a transfer and clears to 0 once the request in flight
+ * has been satisfied). The status is returned through ``out_active``
+ * rather than the return value so that a bad channel or a NULL pointer
+ * is still reportable as an error code (NASA P10 Rule 7).
+ *
+ * @param[in]  channel    DMAC0 channel index 0..7.
+ * @param[out] out_active Set true when ``DMSTS.ACT`` is 1, else false.
+ *                        Untouched on any error return.
+ *
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok                ``*out_active`` written.
+ * @retval k_ra8_err_null_ptr      `out_active` is NULL.
+ * @retval k_ra8_err_out_of_range  `channel` >= 8.
+ *
+ * @pre ``ra8_dmac_start()`` (or a sibling) armed ``channel``.
+ * @pre ``out_active`` points to writable storage.
+ * @post On ``k_ra8_ok`` ``*out_active`` reflects ``DMSTS.ACT``.
+ * @post No channel register is modified.
+ *
+ * @note Reads a single volatile byte; safe with IRQs unmasked.
+ * @see ra8_dmac_wait_idle
+ * @see ra8_dmac_software_trigger
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dmac_is_active(uint8_t channel, bool* out_active);
+
+/**
+ * @brief Spin until a DMAC0 channel goes idle or a poll bound expires.
+ *
+ * @details
+ * Polls ``DMSTS.ACT`` (HUM Ch 17.2.16 "DMSTS : DMAC Status Register"
+ * p 745) up to ``poll_limit`` times, returning as soon as the bit
+ * reads 0 (transfer complete). This is the synchronous completion gate
+ * the fire-and-wait DMA demos use after ``ra8_dmac_software_trigger``:
+ * a block-mode copy holds ACT asserted for the duration of the block
+ * and clears it at completion.
+ *
+ * The poll loop is statically bounded by ``poll_limit`` (NASA P10
+ * Rule 2); a ``poll_limit`` of 0 performs no read and reports a
+ * timeout. Choose the bound for the expected transfer length at the
+ * current bus clock.
+ *
+ * @param[in] channel    DMAC0 channel index 0..7.
+ * @param[in] poll_limit Maximum number of ``DMSTS.ACT`` reads before
+ *                       giving up.
+ *
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok                Channel reached idle (ACT = 0).
+ * @retval k_ra8_err_hw_timeout    ``poll_limit`` exhausted, ACT still 1.
+ * @retval k_ra8_err_out_of_range  `channel` >= 8.
+ *
+ * @pre ``ra8_dmac_start()`` (or a sibling) armed ``channel``.
+ * @pre A transfer has been requested (``ra8_dmac_software_trigger`` or
+ *      an ELC event) or the channel is already idle.
+ * @post On ``k_ra8_ok`` the channel's ``DMSTS.ACT`` reads 0.
+ * @post No channel register is modified.
+ *
+ * @note Busy-wait; not thread-safe.
+ * @see ra8_dmac_software_trigger
+ * @see ra8_dmac_is_active
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dmac_wait_idle(uint8_t channel, uint32_t poll_limit);
+
 #ifdef __cplusplus
 }
 #endif
