@@ -3,13 +3,14 @@
  * @brief SysTick tick counter implementation
  *
  * @details
- * SysTick control registers are architectural (part of the Cortex-M
- * System Control Block). Addresses:
- *
- *   SYST_CSR   @ 0xE000E010  -- Control and status
- *   SYST_RVR   @ 0xE000E014  -- Reload value
- *   SYST_CVR   @ 0xE000E018  -- Current value
- *   SYST_CALIB @ 0xE000E01C  -- Calibration
+ * A 1 kHz millisecond tick counter layered on the Cortex-M85 SysTick + DWT
+ * timebase primitive (::ra8_systick.h): `ra8_time_init` arms SysTick through
+ * ::ra8_systick_configure and the DWT cycle counter through
+ * ::ra8_dwt_cyccnt_enable, and `ra8_delay_ms` reads the PRIMASK-immune cycle
+ * counter through ::ra8_dwt_cyccnt_read. This translation unit owns only the
+ * tick counter, the SysTick IRQ body, and the delay policy; every raw SysTick /
+ * DWT register access now lives in the primitive (which is in `ra8_core`, so
+ * this Ring-1 consumer includes it without an upward layering dependency).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -19,104 +20,17 @@
 
 #include <stdint.h>
 
-#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
+#include "ra8_systick.h"
 #include "ra8_time_constants.h"
 
 static const char* s_tag = "TIME";
 
 static volatile uint32_t s_tick_ms = 0U;
 
-typedef enum : uintptr_t {
-  k_ra8_systick_csr_addr = 0xE000E010UL, /**< RA8 systick csr address. */
-  k_ra8_systick_rvr_addr = 0xE000E014UL, /**< RA8 systick rvr address. */
-  k_ra8_systick_cvr_addr = 0xE000E018UL, /**< RA8 systick cvr address. */
-  /* DWT (Data Watchpoint and Trace) gives a free-running cycle counter
-   * that ticks every CPU cycle regardless of PRIMASK -- needed by
-   * ra8_delay_ms when SysTick IRQ can't dispatch (early boot, IRQ-off
-   * critical sections). Cortex-M85 documents these addresses. */
-  k_ra8_dwt_demcr_addr  = 0xE000EDFCUL, /**< DEMCR: bit 24 TRCENA.            */
-  k_ra8_dwt_ctrl_addr   = 0xE0001000UL, /**< DWT_CTRL: bit 0 CYCCNTENA.       */
-  k_ra8_dwt_cyccnt_addr = 0xE0001004UL, /**< DWT_CYCCNT free-running counter. */
-} ra8_systick_addr_t;
-
-typedef enum : uint32_t {
-  k_ra8_systick_csr_enable    = 0x00000001UL, /**< RA8 systick csr enable.     */
-  k_ra8_systick_csr_tickint   = 0x00000002UL, /**< RA8 systick csr tickint.    */
-  k_ra8_systick_csr_clksource = 0x00000004UL, /**< 1 = CPU clock, 0 = ext ref. */
-  k_ra8_dwt_demcr_trcena      = 0x01000000UL, /**< DEMCR.TRCENA (bit 24).      */
-  k_ra8_dwt_ctrl_cyccntena    = 0x00000001UL, /**< DWT_CTRL.CYCCNTENA (bit 0). */
-} ra8_systick_csr_bit_t;
-
 /** @brief CPU cycles per millisecond, stamped by ra8_time_init. */
 static volatile uint32_t s_cycles_per_ms = 0U;
-
-/**
- * @brief Get the SysTick Control & Status Register pointer.
- *
- * @details Trivial address-cast helper for SYST_CSR.
- *
- * @return Volatile pointer to SYST_CSR.
- * @retval (volatile uint32_t*)k_ra8_systick_csr_addr
- *
- * @pre None.
- * @pre SCS region is mapped (always true on Cortex-M).
- * @post No state modified.
- * @post Returned pointer remains valid for the program lifetime.
- *
- * @note Trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_csr(void)
-{
-  return (volatile uint32_t*)k_ra8_systick_csr_addr;
-}
-
-/**
- * @brief Get the SysTick Reload Value Register pointer.
- *
- * @details Trivial address-cast helper for SYST_RVR.
- *
- * @return Volatile pointer to SYST_RVR.
- * @retval (volatile uint32_t*)k_ra8_systick_rvr_addr
- *
- * @pre None.
- * @pre SCS region is mapped.
- * @post No state modified.
- * @post Returned pointer remains valid for the program lifetime.
- *
- * @note Trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_rvr(void)
-{
-  return (volatile uint32_t*)k_ra8_systick_rvr_addr;
-}
-
-/**
- * @brief Get the SysTick Current Value Register pointer.
- *
- * @details Trivial address-cast helper for SYST_CVR.
- *
- * @return Volatile pointer to SYST_CVR.
- * @retval (volatile uint32_t*)k_ra8_systick_cvr_addr
- *
- * @pre None.
- * @pre SCS region is mapped.
- * @post No state modified.
- * @post Returned pointer remains valid for the program lifetime.
- *
- * @note Trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_cvr(void)
-{
-  return (volatile uint32_t*)k_ra8_systick_cvr_addr;
-}
 
 /**
  * @brief Implementation of `ra8_time_init()` -- programme SysTick.
@@ -154,23 +68,16 @@ ra8_err_t ra8_time_init(uint32_t cpu_hz)
   }
 
 #ifndef RA8_OFF_TARGET
-  /* Disable, programme reload, clear current count, re-enable with
-   * IRQ and CPU clock source. The SysTick registers live in the
-   * Cortex-M System Control Space and are not mapped on the host
-   * test build. */
-  *internal_csr() = 0U;
-  *internal_rvr() = reload;
-  *internal_cvr() = 0U;
-  *internal_csr() =
-    k_ra8_systick_csr_clksource | k_ra8_systick_csr_tickint | k_ra8_systick_csr_enable;
-
-  /* Enable DWT cycle counter as a PRIMASK-immune fallback for
-   * ra8_delay_ms. DEMCR.TRCENA unlocks DWT; DWT_CTRL.CYCCNTENA starts
-   * the free-running counter. */
-  volatile uint32_t* demcr   = (volatile uint32_t*)k_ra8_dwt_demcr_addr;
-  volatile uint32_t* dwtctrl = (volatile uint32_t*)k_ra8_dwt_ctrl_addr;
-  *demcr |= (uint32_t)k_ra8_dwt_demcr_trcena;
-  *dwtctrl |= (uint32_t)k_ra8_dwt_ctrl_cyccntena;
+  /* Arm SysTick (CPU clock + tick IRQ) and enable the DWT cycle counter
+   * through the shared timebase primitive, which owns every raw SYST_CSR /
+   * SYST_RVR / SYST_CVR / DEMCR / DWT access. On the host build these calls
+   * are skipped, exactly as the raw pokes were. */
+  const ra8_err_t cfg_err = ra8_systick_configure(reload, k_ra8_systick_clk_cpu, true);
+  if (cfg_err != k_ra8_ok) {
+    ra8_log_error(s_tag, "systick configure failed");
+    return cfg_err;
+  }
+  ra8_dwt_cyccnt_enable();
 #endif
 
   s_cycles_per_ms = cpu_hz / k_ra8_ms_per_sec;
@@ -230,10 +137,9 @@ void ra8_delay_ms(uint32_t ms)
   uint32_t primask;
   __asm__ volatile("mrs %0, primask" : "=r"(primask));
   if ((primask & 1U) != 0U) {
-    volatile const uint32_t* cyccnt = (volatile const uint32_t*)k_ra8_dwt_cyccnt_addr;
-    const uint32_t           target = ms * s_cycles_per_ms;
-    const uint32_t           start  = *cyccnt;
-    while ((uint32_t)(*cyccnt - start) < target) {
+    const uint32_t target = ms * s_cycles_per_ms;
+    const uint32_t start  = ra8_dwt_cyccnt_read();
+    while ((uint32_t)(ra8_dwt_cyccnt_read() - start) < target) {
       __asm__ volatile("nop");
     }
   } else {
