@@ -60,8 +60,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
   add_executable(
     ${CPU1_NAME}.elf
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu1_main.c ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
-    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c
-    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_scb.c
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_scb.c
   )
   target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1)
   target_compile_options(
