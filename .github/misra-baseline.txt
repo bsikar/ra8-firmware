@@ -552,9 +552,9 @@ libs/ra8_hal/src/ra8_epaper_devinfo.c	misra-c2012-15.5	4
 libs/ra8_hal/src/ra8_epaper_geom.c	misra-c2012-14.2	1
 libs/ra8_hal/src/ra8_epaper_geom.c	misra-c2012-15.5	28
 libs/ra8_hal/src/ra8_epaper_geom.c	misra-c2012-16.2	4
-libs/ra8_hal/src/ra8_eth.c	misra-c2012-15.5	34
+libs/ra8_hal/src/ra8_eth.c	misra-c2012-15.5	33
 libs/ra8_hal/src/ra8_eth.c	misra-c2012-18.4	1
-libs/ra8_hal/src/ra8_eth.c	misra-c2012-8.4	15
+libs/ra8_hal/src/ra8_eth.c	misra-c2012-8.4	14
 libs/ra8_hal/src/ra8_eth_coma.c	misra-c2012-15.5	3
 libs/ra8_hal/src/ra8_eth_coma.c	misra-c2012-8.4	8
 libs/ra8_hal/src/ra8_eth_gptp.c	misra-c2012-15.5	35
@@ -577,6 +577,8 @@ libs/ra8_hal/src/ra8_eth_gwca_queue.c	misra-c2012-8.4	8
 libs/ra8_hal/src/ra8_eth_link.c	misra-c2012-15.5	17
 libs/ra8_hal/src/ra8_eth_link.c	misra-c2012-17.3	1
 libs/ra8_hal/src/ra8_eth_link.c	misra-c2012-8.4	5
+libs/ra8_hal/src/ra8_eth_media.c	misra-c2012-15.5	1
+libs/ra8_hal/src/ra8_eth_media.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_eth_mfwd.c	misra-c2012-11.4	1
 libs/ra8_hal/src/ra8_eth_mfwd.c	misra-c2012-15.5	4
 libs/ra8_hal/src/ra8_eth_mfwd.c	misra-c2012-8.4	9
