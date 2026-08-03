@@ -332,7 +332,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_get_mac(void* ctx, ra8_wifi_mac
   if (err != k_ra8_ok) {
     return err;
   }
-  memcpy(out->octet, mac.octet, (size_t)k_ra8_wifi_mac_bytes);
+  (void)memcpy(out->octet, mac.octet, (size_t)k_ra8_wifi_mac_bytes);
   return k_ra8_ok;
 }
 
@@ -366,8 +366,8 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_get_ap(void* ctx, ra8_wifi_ap_t
     return err;
   }
   *out = (ra8_wifi_ap_t){};
-  memcpy(out->bssid.octet, ap.bssid.octet, (size_t)k_ra8_wifi_mac_bytes);
-  memcpy(out->ssid, ap.ssid, sizeof(out->ssid));
+  (void)memcpy(out->bssid.octet, ap.bssid.octet, (size_t)k_ra8_wifi_mac_bytes);
+  (void)memcpy(out->ssid, ap.ssid, sizeof(out->ssid));
   out->ssid_len = ap.ssid_len;
   out->channel  = ap.channel;
   out->rssi     = ap.rssi;
