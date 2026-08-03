@@ -553,3 +553,46 @@ void ra8_dmac_dispatch_half(uint8_t channel)
     fn(ctx);
   }
 }
+
+/* =============================================================================
+ * Software trigger + completion query (DMREQ.SWREQ / DMSTS.ACT)
+ * =============================================================================
+ */
+
+ra8_err_t ra8_dmac_software_trigger(uint8_t channel)
+{
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac(channel);
+  if (reg == nullptr) {
+    return k_ra8_err_out_of_range;
+  }
+  /* HUM Ch 17.2.15 "DMREQ : DMAC Software Start Register" p 744 */
+  reg->DMREQ = (uint8_t)k_ra8_dmreq_swreq_mask;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_dmac_is_active(uint8_t channel, bool* out_active)
+{
+  RA8_CHECK_NULL_PTR(out_active, s_tag, "out_active must not be nullptr");
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac(channel);
+  if (reg == nullptr) {
+    return k_ra8_err_out_of_range;
+  }
+  /* HUM Ch 17.2.16 "DMSTS : DMAC Status Register" p 745 */
+  *out_active = ((reg->DMSTS & (uint8_t)k_ra8_dmsts_act_mask) != 0U);
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_dmac_wait_idle(uint8_t channel, uint32_t poll_limit)
+{
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac(channel);
+  if (reg == nullptr) {
+    return k_ra8_err_out_of_range;
+  }
+  for (uint32_t i = 0U; i < poll_limit; ++i) {
+    /* HUM Ch 17.2.16 "DMSTS : DMAC Status Register" p 745 */
+    if ((reg->DMSTS & (uint8_t)k_ra8_dmsts_act_mask) == 0U) {
+      return k_ra8_ok;
+    }
+  }
+  return k_ra8_err_hw_timeout;
+}

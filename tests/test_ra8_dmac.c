@@ -32,10 +32,11 @@ typedef enum : uint16_t {
 } dmac_token_wide_t;
 
 typedef enum : uint32_t {
-  k_ra8_dmac_test_src    = 0x22000100UL, /**< RA8 DMAC test src.    */
-  k_ra8_dmac_test_dst    = 0x22000200UL, /**< RA8 DMAC test dst.    */
-  k_ra8_dmac_test_count  = 0x0040U,      /**< RA8 DMAC test count.  */
-  k_ra8_dmac_test_enable = 0x01U,        /**< RA8 DMAC test enable. */
+  k_ra8_dmac_test_src        = 0x22000100UL, /**< RA8 DMAC test src.    */
+  k_ra8_dmac_test_dst        = 0x22000200UL, /**< RA8 DMAC test dst.    */
+  k_ra8_dmac_test_count      = 0x0040U,      /**< RA8 DMAC test count.  */
+  k_ra8_dmac_test_enable     = 0x01U,        /**< RA8 DMAC test enable. */
+  k_ra8_dmac_test_poll_limit = 64U,          /**< wait_idle poll bound. */
 } ra8_dmac_test_const_t;
 
 typedef enum : uint8_t {
@@ -564,6 +565,112 @@ static void test_mcdc_dmac_internal_dmint_extra_irq(void)
   TEST_END("dmac MC/DC: dmint_extra_irq AND");
 }
 
+/* =============================================================================
+ * Software trigger + completion query (DMREQ.SWREQ / DMSTS.ACT)
+ * =============================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- ``ra8_dmac_software_trigger``
+ * has only a single ``reg == nullptr`` range guard; exercises the
+ * happy path and the out-of-range rejection)
+ */
+static void test_software_trigger(void)
+{
+  TEST_BEGIN("dmac software_trigger sets DMREQ.SWREQ");
+  ra8_fake_mmap_reset();
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_software_trigger((uint8_t)k_ra8_dmac_test_channel_valid));
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  TEST_ASSERT((reg->DMREQ & (uint8_t)k_ra8_dmreq_swreq_mask) != 0U);
+
+  /* Out-of-range channel is rejected without touching hardware. */
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_dmac_software_trigger((uint8_t)k_ra8_dmac_test_channel_bad));
+  TEST_END("dmac software_trigger sets DMREQ.SWREQ");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- ``ra8_dmac_is_active`` has a
+ * NULL guard and a range guard as two independent single-condition
+ * checks; all four branches are exercised: NULL, bad channel,
+ * ACT=0 -> false, ACT=1 -> true)
+ */
+static void test_is_active(void)
+{
+  TEST_BEGIN("dmac is_active mirrors DMSTS.ACT");
+  ra8_fake_mmap_reset();
+
+  bool active = true;
+
+  /* NULL out pointer -> null_ptr. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_dmac_is_active((uint8_t)k_ra8_dmac_test_channel_valid, nullptr));
+
+  /* Bad channel -> out_of_range (out pointer untouched). */
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_dmac_is_active((uint8_t)k_ra8_dmac_test_channel_bad, &active));
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+
+  /* ACT clear -> reports idle. */
+  reg->DMSTS = 0U;
+  active     = true;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_is_active((uint8_t)k_ra8_dmac_test_channel_valid, &active));
+  TEST_ASSERT(!active);
+
+  /* ACT set -> reports busy. */
+  reg->DMSTS = (uint8_t)k_ra8_dmsts_act_mask;
+  active     = false;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_is_active((uint8_t)k_ra8_dmac_test_channel_valid, &active));
+  TEST_ASSERT(active);
+  TEST_END("dmac is_active mirrors DMSTS.ACT");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- ``ra8_dmac_wait_idle`` has a
+ * single range guard and a bounded poll loop whose body is one
+ * ``ACT == 0`` condition; exercises idle-immediately, timeout,
+ * zero-bound, and out-of-range)
+ */
+static void test_wait_idle(void)
+{
+  TEST_BEGIN("dmac wait_idle polls DMSTS.ACT");
+  ra8_fake_mmap_reset();
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+
+  /* ACT already clear -> ok on the first read. */
+  reg->DMSTS = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_valid,
+                                    (uint32_t)k_ra8_dmac_test_poll_limit));
+
+  /* ACT stuck set -> the bounded loop exhausts and reports timeout. */
+  reg->DMSTS = (uint8_t)k_ra8_dmsts_act_mask;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_valid,
+                                    (uint32_t)k_ra8_dmac_test_poll_limit));
+
+  /* Zero poll bound performs no read and times out even when idle. */
+  reg->DMSTS = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_valid, 0U));
+
+  /* Bad channel -> out_of_range. */
+  TEST_ASSERT_EQ(
+    k_ra8_err_out_of_range,
+    ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_bad, (uint32_t)k_ra8_dmac_test_poll_limit));
+  TEST_END("dmac wait_idle polls DMSTS.ACT");
+}
+
 int32_t main(void)
 {
   test_start_null_cfg();
@@ -585,6 +692,9 @@ int32_t main(void)
   test_mcdc_set_address_mode_bounds();
   test_mcdc_dmac_internal_mode_disables_dts();
   test_mcdc_dmac_internal_dmint_extra_irq();
+  test_software_trigger();
+  test_is_active();
+  test_wait_idle();
   (void)fprintf(stderr, "[OK  ] test_ra8_dmac.c\n");
   return 0;
 }
