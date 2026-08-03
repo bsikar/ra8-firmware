@@ -23,18 +23,11 @@
 #include "ra8_ether_regs.h"
 #include "ra8_log.h"
 
-/**
- * @var s_eth_media_tag
- * @brief Logger tag used by the media-mux calls.
- * @details Per-translation-unit tag; ra8_eth.c keeps its own "ETH" tag.
- * @note Read-only after initialisation.
- * @warning Do not modify at run time.
- * @since 0.1.0
- */
-static const char* s_eth_media_tag = "ETH";
-
 ra8_err_t ra8_eth_rgmii_select(ra8_eth_mii_port_t port)
 {
+  /** @brief Log tag -- block scope: this is the only function here that logs. */
+  static const char* const s_eth_media_tag = "ETH";
+
   RA8_CHECK_RANGE_TAG((uint32_t)port,
                       0U,
                       (uint32_t)k_ra8_eth_mii_port_1,
