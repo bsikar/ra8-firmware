@@ -285,3 +285,17 @@ if(TARGET test_app_ereader_zoom)
     test_app_ereader_zoom PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_zoom/inc
   )
 endif()
+
+# ---------------------------------------------------------------------------
+# test_app_blink_m33_hal: the blink_m33_hal host twin drives the example's own
+# blink_m33_hal.h step (the exact function the CPU1 firmware loop calls), so the
+# LED1 PCNTR1 effect it asserts comes out of the PRODUCTION step rather than a
+# re-implementation. ra8_pcntr.h / the PORT layer already come from the
+# ra8_core_hal object library the auto-glob linked; only the app's include dir
+# is added so blink_m33_hal.h resolves (issue #580).
+# ---------------------------------------------------------------------------
+if(TARGET test_app_blink_m33_hal)
+  target_include_directories(
+    test_app_blink_m33_hal PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/blink_m33_hal
+  )
+endif()
