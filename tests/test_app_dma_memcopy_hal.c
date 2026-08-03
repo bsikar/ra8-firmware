@@ -147,12 +147,16 @@ static void test_hal_app_start_trigger_wait(void)
   TEST_ASSERT_NOT_NULL((void*)reg);
   const uint32_t exp_src = (uint32_t)(uintptr_t)s_src;
   const uint32_t exp_dst = (uint32_t)(uintptr_t)s_dst;
+  /* HUM Ch 17.2.4 "DMSAR : DMA Source Address Register" p 734,
+   * 17.2.6 "DMDAR : DMA Destination Address Register" p 735 and
+   * 17.2.8 "DMCRA : DMA Transfer Count Register" p 736. */
   TEST_ASSERT_EQ(exp_src, reg->DMSAR);
   TEST_ASSERT_EQ(exp_dst, reg->DMDAR);
   TEST_ASSERT_EQ(k_t_hal_words, (reg->DMCRA & 0xFFFFU));
 
   /* Software-fire the block through the HAL primitive. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_software_trigger((uint8_t)k_t_hal_channel));
+  /* HUM Ch 17.2.15 "DMREQ : DMA Software Start Register" p 744 */
   TEST_ASSERT((reg->DMREQ & (uint8_t)k_ra8_dmreq_swreq_mask) != 0U);
 
   /* ACT is clear in the fake MMIO, so wait_idle returns immediately. */
@@ -175,6 +179,7 @@ static void test_hal_app_wait_idle_timeout(void)
   TEST_BEGIN("dma_memcopy_hal: wait_idle times out on stuck ACT");
   volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_t_hal_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
   reg->DMSTS = (uint8_t)k_ra8_dmsts_act_mask;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_dmac_wait_idle((uint8_t)k_t_hal_channel, (uint32_t)k_t_hal_poll_limit));
