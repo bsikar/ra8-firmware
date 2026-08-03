@@ -45,8 +45,7 @@ if(TARGET c6_wifi_join.elf)
   set(_dhcp_src "${_d}/libs/third_party/netxduo/addons/dhcp/nxd_dhcp_client.c")
   target_sources(c6_wifi_join.elf PRIVATE ${_c6_nx_src} "${_dhcp_src}")
   target_include_directories(
-    c6_wifi_join.elf PRIVATE "${_d}/port/netxduo/inc"
-                             "${_d}/libs/third_party/netxduo/addons/dhcp"
+    c6_wifi_join.elf PRIVATE "${_d}/port/netxduo/inc" "${_d}/libs/third_party/netxduo/addons/dhcp"
   )
   target_link_libraries(c6_wifi_join.elf PRIVATE netxduo_port_c6)
   # Vendored SOUP; silence its warnings the way cmake/netxduo.cmake does.

@@ -400,3 +400,33 @@ constParameterPointer:port/esp-hosted/src/ra8_esp_hosted_spi.c
 # that touches both symbols drops it back to 0. The rule fires on the count
 # being 1, never on the code being wrong.
 misra-c2012-8.9:libs/ra8_hal/src/ra8_wdt.c
+
+# ---------------------------------------------------------------------------
+# port/netxduo/src/nx_ether_driver_c6.c -- the NetX Duo <-> ESP32-C6 link
+# driver (#492). Justified deviations, mirroring the accepted deviations the
+# sibling on-chip driver nx_ether_driver_ra8_eth.c already carries in
+# .github/misra-baseline.txt (15.5 x21, 18.4 x3).
+
+# Justification (15.5, Advisory -- single point of exit): the driver uses
+# guard-clause early returns, which is this project's own validation idiom
+# (every RA8_CHECK_* returns early) and the pattern the sibling on-chip NetX
+# driver uses. A single-exit rewrite would nest the guards and reintroduce the
+# compound-boolean decisions the check_new_compound_has_mcdc gate requires this
+# not-host-testable driver to avoid -- trading one advisory rule for a harder
+# one. cppcheck 2.13 (the CI-pinned version) additionally over-reports 15.5 on
+# this construct, the same limitation misra_check_inner.sh documents for it.
+misra-c2012-15.5:port/netxduo/src/nx_ether_driver_c6.c
+
+# Justification (17.3, function implicitly declared): a parse artefact, not a
+# finding. cppcheck 2.13's MISRA dump does not resolve the ThreadX (tx_api.h)
+# and NetX Duo (nx_api.h) declarations this TU includes, so tx_mutex_create,
+# nx_packet_allocate and nx_packet_data_append are mis-reported as implicitly
+# declared even though the vendored headers that declare them are included.
+# This is the cppcheck-2.13 limitation misra_check_inner.sh documents for 17.3.
+misra-c2012-17.3:port/netxduo/src/nx_ether_driver_c6.c
+
+# Justification (18.4, Advisory -- +/- on a pointer): offset arithmetic on the
+# fixed staging buffer and on NetX packet prepend/append pointers is inherent
+# to assembling and stripping the 14-byte 802.3 header, and mirrors the sibling
+# nx_ether_driver_ra8_eth.c (18.4 baselined there). Rule 18.4 is Advisory.
+misra-c2012-18.4:port/netxduo/src/nx_ether_driver_c6.c
