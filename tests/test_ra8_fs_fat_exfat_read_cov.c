@@ -74,6 +74,8 @@ typedef enum : uint32_t {
   k_rc_root_strm_idx = 4U,      /**< Root dir: first user Stream entry index.   */
   k_rc_root_name_idx = 5U,      /**< Root dir: first user Name entry index.     */
   k_rc_max_files     = 4U,      /**< File table capacity (k_ra8_fs_max_files).  */
+  k_rc_mbr_part0_off = 446U,    /**< MBR: first partition-table entry offset.   */
+  k_rc_mbr_pe_lba    = 8U,      /**< Partition entry: first-LBA field offset.   */
 } rc_const_t;
 
 /**
@@ -275,7 +277,39 @@ static void build_exfat_volume(void)
 }
 
 /**
+ * @brief First absolute LBA of the exFAT partition in the formatted image.
+ *
+ * @details Read out of the MBR partition-table entry the formatter wrote at
+ *          LBA 0 rather than hard-coded, so the fixture follows the formatter
+ *          instead of duplicating its constant. Used by the tests that corrupt
+ *          the VBR BEFORE mounting, where no mount handle exists yet to supply
+ *          `partition_base_lba`.
+ *
+ * @return Absolute LBA of the volume's first sector.
+ * @retval 0..UINT32_MAX Partition-0 start LBA from the MBR.
+ *
+ * @pre s_disk.bytes holds an image `ra8_fs_format()` has written.
+ * @pre s_disk.bytes is non-NULL.
+ * @post No disk state is modified.
+ * @post Return value matches the mount's `partition_base_lba`.
+ *
+ * @since 0.1.0
+ */
+static uint32_t part_base_lba(void)
+{
+  const uint8_t* pe = &s_disk.bytes[(uint32_t)k_rc_mbr_part0_off + (uint32_t)k_rc_mbr_pe_lba];
+  return (uint32_t)pe[0] | ((uint32_t)pe[1] << (uint32_t)k_rc_shift8) |
+         ((uint32_t)pe[2] << (uint32_t)k_rc_shift16) | ((uint32_t)pe[3] << (uint32_t)k_rc_shift24);
+}
+
+/**
  * @brief Byte offset in s_disk.bytes for root-dir entry idx.
+ *
+ * @details Every LBA cached in `ra8_fs_mount_t` is PARTITION-relative -- the
+ *          driver adds `partition_base_lba` inside `priv_read_sector()`. The
+ *          formatter lays the volume down inside an MBR partition rather than
+ *          at LBA 0, so a test poking s_disk.bytes directly must add that base
+ *          itself or it lands in the pre-partition gap and corrupts nothing.
  *
  * @param[in] h   Mounted exFAT volume.
  * @param[in] idx Entry index (0-based) within the root cluster.
@@ -289,12 +323,15 @@ static void build_exfat_volume(void)
  */
 static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  const uint32_t root_lba = h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  const uint32_t root_lba =
+    h->partition_base_lba + h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
   return (root_lba * (uint32_t)k_rc_block_size) + (idx * (uint32_t)k_rc_entry_bytes);
 }
 
 /**
  * @brief Byte offset in s_disk.bytes for the FAT entry of cluster clus.
+ *
+ * @details Partition-adjusted for the same reason as root_entry_off().
  *
  * @param[in] h    Mounted exFAT volume.
  * @param[in] clus Cluster number.
@@ -308,7 +345,7 @@ static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
  */
 static uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
-  return (h->first_fat_lba * (uint32_t)k_rc_block_size) + (clus * 4U);
+  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_rc_block_size) + (clus * 4U);
 }
 
 /**
@@ -386,7 +423,9 @@ static void test_ascii_upper_a_to_z(void)
  *
  * @details Patches VBR byte 0x6C (BytesPerSectorShift) from 9 to 8; the
  *          exFAT signature "EXFAT   " remains intact so priv_exfat_is_volume
- *          returns 1, then priv_exfat_parse hits line 98.
+ *          returns 1, then priv_exfat_parse hits line 98. The VBR sits at the
+ *          partition's first sector, not LBA 0 -- LBA 0 is the MBR -- so the
+ *          patch offset is taken from the partition table via part_base_lba().
  *
  * @par MC/DC:
  * Decision: `if (buf[k_exfat_off_bps_shift] != k_exfat_bps_shift_512)` -- 1 cond.
@@ -402,9 +441,11 @@ static void test_parse_bad_bps_shift(void)
 {
   TEST_BEGIN("exfat read cov: bad BPS shift -> error (line 98)");
   build_exfat_volume();
-  s_disk.bytes[(uint32_t)k_rc_vbr_bps_off] = (uint8_t)k_rc_bps_shift_bad;
-  ra8_fs_mount_t* h                        = nullptr;
-  ra8_err_t       e                        = ra8_fs_mount(&s_ctrl_backend, &h);
+  const uint32_t vbr_bps =
+    (part_base_lba() * (uint32_t)k_rc_block_size) + (uint32_t)k_rc_vbr_bps_off;
+  s_disk.bytes[vbr_bps] = (uint8_t)k_rc_bps_shift_bad;
+  ra8_fs_mount_t* h     = nullptr;
+  ra8_err_t       e     = ra8_fs_mount(&s_ctrl_backend, &h);
   TEST_ASSERT(e != k_ra8_ok);
   free_volume();
   TEST_END("exfat read cov: bad BPS shift -> error (line 98)");

@@ -181,8 +181,10 @@ static void test_bitmap_scan_full_volume(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
-  /* Bitmap cluster is always at cluster 2 = first_data_lba for a fresh volume. */
-  const uint32_t bmp_lba = h->first_data_lba;
+  /* Bitmap cluster is always at cluster 2 = first_data_lba for a fresh volume.
+   * first_data_lba is partition-relative (the driver adds partition_base_lba
+   * on every access), so indexing s_disk.bytes needs the base added back. */
+  const uint32_t bmp_lba = h->partition_base_lba + h->first_data_lba;
   for (uint32_t s = 0U; s < h->sectors_per_cluster; s++) {
     memset(&s_disk.bytes[(size_t)(bmp_lba + s) * (uint32_t)k_wc_block_size],
            (int)k_wc_mask_byte,

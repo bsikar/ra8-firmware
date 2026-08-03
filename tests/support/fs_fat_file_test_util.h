@@ -78,7 +78,7 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_cov_block_size   = 512U,        /**< Bytes per logical block.             */
   k_cov_blocks_fat16 = 8U * 1024U,  /**< 4 MiB FAT16 card (matches sibling).  */
-  k_cov_blocks_exfat = 65536U,      /**< 32 MiB -- minimum valid exFAT size.  */
+  k_cov_blocks_exfat = 131072U,     /**< 64 MiB -- minimum valid exFAT size.  */
   k_cov_reads_inf    = 0xFFFFFFFFU, /**< Sentinel: unlimited reads in inject. */
 } ra8_fs_cov_disk_t;
 
@@ -264,8 +264,12 @@ static inline void build_fat16_volume(void)
 /**
  * @brief Allocate and format an exFAT volume stored in s_disk.
  *
- * @details Allocates 65536 sectors (32 MiB) and calls ra8_fs_format
- *          to produce a mountable exFAT image.
+ * @details Allocates 131072 sectors (64 MiB) and calls ra8_fs_format
+ *          to produce a mountable exFAT image. 64 MiB is the smallest size
+ *          that works now that the formatter places the volume inside an MBR
+ *          partition: the card must hold the 1 MiB alignment gap
+ *          (`k_exfat_fmt_part_lba`) on top of the 32 MiB minimum volume
+ *          (`k_exfat_fmt_min_sectors`).
  *
  * @pre s_disk.bytes is nullptr.
  * @post s_disk holds a formatted exFAT image.
