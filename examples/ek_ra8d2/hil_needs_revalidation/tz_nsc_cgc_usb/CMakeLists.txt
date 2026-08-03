@@ -157,6 +157,7 @@ set(_ns_usb_srcs
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_host_bulk.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_mstp.c
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_scb.c
 )
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
 # Vendored USBX + ra8_usb predate the first-party -Werror set.
