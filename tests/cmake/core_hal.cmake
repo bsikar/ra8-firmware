@@ -65,6 +65,7 @@ add_library(
   ${RA8_TZ_SECURE_BOOT_SOURCES}
   ${RA8_DFU_SOURCES}
   ${RA8_DEVCFG_SOURCES}
+  ${RA8_WIFI_SOURCES}
   # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
   # libs/), so it is not caught by the libs/ globs above -- add it by
   # hand. Its SYST_RVR/CVR writes compile out under RA8_OFF_TARGET,
@@ -134,6 +135,7 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_ota/inc
          ${FW_ROOT}/libs/ra8_dfu/inc
          ${FW_ROOT}/libs/ra8_devcfg/inc
+         ${FW_ROOT}/libs/ra8_wifi/inc
          ${FW_ROOT}/libs/ra8_display_pal/inc
          ${FW_ROOT}/libs/ra8_power_profile/inc
          ${FW_ROOT}/libs/ra8_epub/inc
