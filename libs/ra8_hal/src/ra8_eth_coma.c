@@ -21,11 +21,31 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_ether_regs.h"
+#include "ra8_hw_err.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 
 static const char* s_tag = "ETHCMA";
+
+/**
+ * @enum ra8_eth_coma_delay_t
+ * @brief Busy-wait iteration counts for the COMA bring-up sequence.
+ *
+ * @details
+ * Cortex-M85 at ~1 GHz, ~3 cycles per ``nop`` -> 3,000,000 iters lands
+ * around 9 ms. FSP ``r_layer3_switch_reset_coma`` uses
+ * ``R_BSP_SoftwareDelay(1, BSP_DELAY_UNITS_MILLISECONDS)`` for the same
+ * settle points (~1 ms is sufficient); ~3 ms is kept for margin.
+ * ``bpr_poll_max`` bounds the CABPIRM.BPR poll: HUM Ch 31.3.2.7 says BPR
+ * sets at clk_period x 512 from the start of buffer-pool init -- well
+ * under a microsecond -- so 1,000,000 register-read iterations is a
+ * multi-millisecond safety ceiling that satisfies NASA P10 Rule 2.
+ */
+typedef enum : uint32_t {
+  k_ra8_eth_coma_delay_iters  = 3000000UL, /**< ~1-3 ms busy wait between COMA writes. */
+  k_ra8_eth_coma_bpr_poll_max = 1000000UL, /**< CABPIRM.BPR poll upper bound.          */
+} ra8_eth_coma_delay_t;
 
 static ra8_eth_coma_event_fn_t s_coma_fn;
 static void*                   s_coma_ctx;
@@ -55,6 +75,50 @@ ra8_err_t ra8_eth_coma_deinit(void)
   s_coma_fn      = nullptr;
   s_coma_ctx     = nullptr;
   return ra8_mstp_disable(k_ra8_mstp_eswm);
+}
+
+ra8_err_t ra8_eth_coma_bringup(void)
+{
+  /* Step 1: pulse RRC.RR (1 then 0) to reset the ESWM IP, then settle. */
+  /* HUM Ch 31 "Ethernet Common Agent (COMA)" p 1590 */
+  *ra8_coma_rrc() = (uint32_t)k_ra8_coma_rrc_rr;
+  *ra8_coma_rrc() = 0U;
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_eth_coma_delay_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+
+  /* Step 2: enable the switch clock (RCE) alone, then settle. */
+  /* HUM Ch 31 "Ethernet Common Agent (COMA)" p 1590 */
+  *ra8_coma_rcec() = (uint32_t)k_ra8_coma_rcec_rce;
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_eth_coma_delay_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+
+  /* Step 3: kick the buffer-pool init and wait for BPR. Writing BPIOG = 1
+   * starts the pool reset; BPR self-sets clk_period x 512 later. On the host
+   * build CABPIRM is mmap'd RAM with no hardware to self-set BPR, so the
+   * shared bounded waiter consults the ra8_fake_mmio fault seam -- first-poll
+   * success unless a test arms a timeout on this register. */
+  /* HUM Ch 31.3.2.7 "CABPIRM" p 1599 */
+  *ra8_coma_cabpirm() = (uint32_t)k_ra8_coma_cabpirm_bpiog;
+  /* HUM Ch 31.3.2.7 "CABPIRM" p 1599 */
+  const ra8_err_t bpr_err = ra8_hw_wait_flag_set32(ra8_coma_cabpirm(),
+                                                   (uint32_t)k_ra8_coma_cabpirm_bpr,
+                                                   (uint32_t)k_ra8_eth_coma_bpr_poll_max);
+  if (bpr_err != k_ra8_ok) {
+    ra8_log_error(s_tag, "coma_bringup: CABPIRM.BPR timeout");
+    return bpr_err;
+  }
+
+  /* Step 4: fan out every per-agent clock (RCE | ACE[6:0] = ALL) so
+   * RMAC0/1 + ETHA0/1 + GWCA + MFWD + GPTP all become accessible. */
+  /* HUM Ch 31 "Ethernet Common Agent (COMA)" p 1590 */
+  *ra8_coma_rcec() = (uint32_t)k_ra8_coma_rcec_rce | (uint32_t)k_ra8_coma_rcec_ace_mask;
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_eth_coma_delay_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+  ra8_log_info(s_tag, "coma_bringup");
+  return k_ra8_ok;
 }
 
 ra8_err_t ra8_eth_coma_get_status(uint32_t* out_mask)
