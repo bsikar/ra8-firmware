@@ -40,6 +40,7 @@
 #include "ra8_attributes.h"
 #include "ra8_error_handler.h"
 #include "ra8_log.h"
+#include "ra8_scb.h"
 
 #ifdef RA8_OFF_TARGET
 /* Host-side test builds get the legacy halt-via-fatal-error path so
@@ -57,17 +58,6 @@
   } while (0)
 #endif
 
-typedef enum : uintptr_t {
-  k_ra8_scb_cfsr_addr  = 0xE000ED28UL, /**< RA8 scb cfsr address.                       */
-  k_ra8_scb_hfsr_addr  = 0xE000ED2CUL, /**< RA8 scb hfsr address.                       */
-  k_ra8_scb_dfsr_addr  = 0xE000ED30UL, /**< RA8 scb dfsr address.                       */
-  k_ra8_scb_mmfar_addr = 0xE000ED34UL, /**< RA8 scb mmfar address.                      */
-  k_ra8_scb_bfar_addr  = 0xE000ED38UL, /**< RA8 scb bfar address.                       */
-  k_ra8_scb_afsr_addr  = 0xE000ED3CUL, /**< RA8 scb afsr address.                       */
-  k_ra8_scb_sfsr_addr  = 0xE000EDE4UL, /**< ARMv8-M SFSR -- Secure-banked, RAZ from NS. */
-  k_ra8_scb_sfar_addr  = 0xE000EDE8UL, /**< ARMv8-M SFAR -- valid when SFSR.SFARVALID.  */
-} ra8_scb_addr_t;
-
 /**
  * @enum ra8_exc_num_t
  * @brief Architectural exception numbers this module special-cases.
@@ -77,36 +67,17 @@ typedef enum : uint32_t {
 } ra8_exc_num_t;
 
 /**
- * @brief Volatile 32-bit read at an absolute address.
+ * @brief Implementation of `ra8_exception_capture_diagnostics()` -- routes the
+ *        SCB fault-status read through the shared ra8_scb primitive.
  *
- * @details Used for SCB fault-status register reads. Wrapping the cast
- *          keeps the call sites readable.
- *
- * @param[in] addr Absolute MMIO address to read.
- *
- * @return The 32-bit value at `addr`.
- * @retval 0..UINT32_MAX  Whatever the MMIO register currently holds.
- *
- * @pre `addr` points to memory that is mapped and 4-byte aligned.
- * @pre Caller has confirmed the access is safe.
- * @post No state modified.
- * @post Behaves as a volatile load.
- *
- * @note Always inlined; trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL static inline uint32_t internal_read32(uintptr_t addr)
-{
-  return *(volatile uint32_t*)addr;
-}
-
-/**
- * @brief Implementation of `ra8_exception_capture_diagnostics()`.
- *
- * @details Loads CFSR, HFSR, DFSR, MMFAR, BFAR, AFSR, and the
- *          Secure-banked SFSR/SFAR pair via volatile reads. NULL
- *          argument is tolerated and returns silently.
+ * @details Delegates the CFSR / HFSR / DFSR / MMFAR / BFAR / AFSR + Secure
+ *          SFSR / SFAR reads to ::ra8_scb_read_fault_status, then copies the
+ *          snapshot into the exception-record layout. NULL argument is
+ *          tolerated and returns silently (the fault path must never log from
+ *          here), so the shared primitive is only ever handed a stack local
+ *          and its null-guard return cannot trip. Behaviourally identical to
+ *          the previous inline reads: the same eight registers in the same
+ *          order, no register written.
  *
  * @param[out] out Destination buffer. May be `nullptr`.
  *
@@ -125,18 +96,17 @@ void ra8_exception_capture_diagnostics(ra8_exception_diagnostics_t* out)
   if (out == nullptr) {
     return;
   }
-  out->cfsr  = internal_read32(k_ra8_scb_cfsr_addr);
-  out->hfsr  = internal_read32(k_ra8_scb_hfsr_addr);
-  out->dfsr  = internal_read32(k_ra8_scb_dfsr_addr);
-  out->mmfar = internal_read32(k_ra8_scb_mmfar_addr);
-  out->bfar  = internal_read32(k_ra8_scb_bfar_addr);
-  out->afsr  = internal_read32(k_ra8_scb_afsr_addr);
-  /* TrustZone SecureFault pair: banked to the Secure state. Reads from
-   * the Secure world (every boot here) return the real cause/address;
-   * reads from the Non-secure world are architecturally RAZ -- never a
-   * fault -- so no world guard is needed. */
-  out->sfsr = internal_read32(k_ra8_scb_sfsr_addr);
-  out->sfar = internal_read32(k_ra8_scb_sfar_addr);
+  ra8_scb_fault_status_t fs = {};
+  if (ra8_scb_read_fault_status(&fs) == k_ra8_ok) {
+    out->cfsr  = fs.cfsr;
+    out->hfsr  = fs.hfsr;
+    out->dfsr  = fs.dfsr;
+    out->mmfar = fs.mmfar;
+    out->bfar  = fs.bfar;
+    out->afsr  = fs.afsr;
+    out->sfsr  = fs.sfsr;
+    out->sfar  = fs.sfar;
+  }
 }
 
 /** @brief Definition of `g_ra8_exception_last` -- contract documented in ra8_exception.h. */
