@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **234**
-- Total compound decisions in scope: **1272**
+- Source files with at least one decision: **235**
+- Total compound decisions in scope: **1276**
 - Decisions at 100% MC/DC (`yes`): **1096**
-- Decisions partially covered (`partial`): **71**
-- Decisions fully uncovered (`no`): **105**
-- Coverage rate (yes / total): **86.16%**
+- Decisions partially covered (`partial`): **74**
+- Decisions fully uncovered (`no`): **106**
+- Coverage rate (yes / total): **85.89%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1183**
-- **Reachable MC/DC rate**: **92.65%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1187**
+- **Reachable MC/DC rate**: **92.33%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -43,6 +43,10 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 2 | ez_scene_init | `if ((cfg->fb_w <= (int32_t)k_ez_lens_edge) \|\|` | partial |
 | examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 2 | ez_scene_render | `if (lens_plan->present && s->lens_on) {` | partial |
 | examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 3 | ez_scene_tick | `return page_due \|\| (lens_due && s->lens_on);` | partial |
+| examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 2 | wifi_hal_settle | `if ((ra8_wifi_status(wifi, &st) == k_ra8_ok) && st.associated) {` | partial |
+| examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 2 | wifi_hal_settle | `return (ra8_wifi_status(wifi, &st) == k_ra8_ok) && st.associated;` | no |
+| examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 4 | wifi_hal_join_run | `if ((cfg == nullptr) \|\| (cfg->wifi == nullptr) \|\| (cfg->wifi_cfg == nullp...` | partial |
+| examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 2 | wifi_hal_join_run | `if ((ra8_wifi_wait_ip(cfg->wifi, &out->lease) != k_ra8_ok) \|\| !out->lease.b...` | partial |
 | port/esp-hosted/src/ra8_esp_hosted_fmt.c | 2 | internal_put | `if ((cur == nullptr) \|\| (cur->out == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_gpio.c | 2 | internal_isr_trampoline | `if ((row == nullptr) \|\| (row->handler == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_copy_name | `if ((dst == nullptr) \|\| (cap == 0U)) {` | no |
@@ -85,11 +89,7 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_flush | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_flush | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_send | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_send | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_receive | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_receive | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_delete | `if ((semaphore_ptr == nullptr) \|\|` | no |
-| ... | | | | *(27 more rows in CSV)* | |
+| ... | | | | *(31 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -202,6 +202,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
 | ez_scene | 7 | 3 | 4 | 0 |
+| wifi_hal_core | 4 | 0 | 3 | 1 |
 | ra8_reflow_svg_shape | 15 | 12 | 3 | 0 |
 | ra8_epub_open | 7 | 4 | 0 | 3 |
 | ra8_jof_png | 7 | 4 | 1 | 2 |
@@ -441,6 +442,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_open | 3 | 0 | 4 | 7 |
 | ra8_jof_png | 2 | 1 | 4 | 7 |
 | ra8_ble | 2 | 0 | 6 | 8 |
+| wifi_hal_core | 1 | 3 | 0 | 4 |
 | ra8_rabook_xml_shim | 1 | 1 | 3 | 5 |
 | ra8_reflow_css | 1 | 1 | 24 | 26 |
 | ra8_dotf | 1 | 0 | 5 | 6 |

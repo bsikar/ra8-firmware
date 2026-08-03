@@ -892,7 +892,7 @@ the unqualified open-source audit tool is supplementary.
 - **Mandatory annual review**: 2026-11-02.
 - **Trigger for early review**: cppcheck's MISRA addon learns to
   resolve enum-named array extents.
-\n
+
 ---
 
 ## D-010: Rule 11.5 -- conversion from pointer to void
