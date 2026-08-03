@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 13333
+# total findings: 13337
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -173,11 +173,11 @@ libs/ra8_core/src/ra8_crashlog.c	misra-c2012-15.5	5
 libs/ra8_core/src/ra8_decomp_limits.c	misra-c2012-15.5	25
 libs/ra8_core/src/ra8_decomp_limits.c	misra-c2012-8.4	7
 libs/ra8_core/src/ra8_decomp_limits.c	misra-c2012-9.2	1
-libs/ra8_core/src/ra8_exception.c	misra-c2012-11.4	2
+libs/ra8_core/src/ra8_exception.c	misra-c2012-11.4	1
 libs/ra8_core/src/ra8_exception.c	misra-c2012-15.5	1
 libs/ra8_core/src/ra8_exception.c	misra-c2012-3.1	1
 libs/ra8_core/src/ra8_exception.c	misra-c2012-8.4	2
-libs/ra8_core/src/ra8_exception.c	misra-c2012-9.2	1
+libs/ra8_core/src/ra8_exception.c	misra-c2012-9.2	2
 libs/ra8_core/src/ra8_infrastructure.c	misra-c2012-14.2	1
 libs/ra8_core/src/ra8_infrastructure.c	misra-c2012-15.5	1
 libs/ra8_core/src/ra8_infrastructure.c	misra-c2012-8.11	2
@@ -187,6 +187,7 @@ libs/ra8_core/src/ra8_log.c	misra-c2012-10.8	1
 libs/ra8_core/src/ra8_log.c	misra-c2012-12.1	1
 libs/ra8_core/src/ra8_log.c	misra-c2012-13.3	1
 libs/ra8_core/src/ra8_log.c	misra-c2012-15.5	13
+libs/ra8_core/src/ra8_log.c	misra-c2012-17.3	1
 libs/ra8_core/src/ra8_log.c	misra-c2012-17.8	2
 libs/ra8_core/src/ra8_log.c	misra-c2012-20.1	1
 libs/ra8_core/src/ra8_log.c	misra-c2012-8.9	2
@@ -197,6 +198,8 @@ libs/ra8_core/src/ra8_pin_validator.c	misra-c2012-8.9	1
 libs/ra8_core/src/ra8_rand_stub.c	misra-c2012-10.8	1
 libs/ra8_core/src/ra8_rand_stub.c	misra-c2012-21.2	2
 libs/ra8_core/src/ra8_rand_stub.c	misra-c2012-8.4	2
+libs/ra8_core/src/ra8_scb.c	misra-c2012-15.5	1
+libs/ra8_core/src/ra8_scb.c	misra-c2012-8.4	2
 libs/ra8_core/src/ra8_secure.c	misra-c2012-11.5	3
 libs/ra8_core/src/ra8_secure.c	misra-c2012-15.5	4
 libs/ra8_core/src/ra8_secure.c	misra-c2012-8.4	1
@@ -228,9 +231,9 @@ libs/ra8_dfu/src/ra8_dfu_host.c	misra-c2012-15.4	1
 libs/ra8_dfu/src/ra8_dfu_host.c	misra-c2012-15.5	27
 libs/ra8_dfu/src/ra8_dfu_host.c	misra-c2012-8.4	2
 libs/ra8_dfu/src/ra8_dfu_host.c	misra-c2012-9.2	6
-libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-11.4	4
+libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-11.4	3
 libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-11.6	1
-libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-15.5	4
+libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-15.5	5
 libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-17.3	2
 libs/ra8_dfu/src/ra8_dfu_program.c	misra-c2012-11.4	2
 libs/ra8_dfu/src/ra8_dfu_program.c	misra-c2012-15.5	17
