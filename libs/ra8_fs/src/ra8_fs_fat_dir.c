@@ -426,6 +426,12 @@ priv_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* 
     return err;
   }
   priv_byte_copy(&sec[off], new83, (uint32_t)k_max_8_3_name);
+  /* Access date only, deliberately. A rename changes the name, not the bytes,
+   * so advancing DIR_WrtDate would tell every rsync, backup and "newest image"
+   * OTA heuristic that the contents changed -- the same class of false signal
+   * #601 exists to remove, only inverted. FAT has no metadata-change field, so
+   * the access date is the honest record that the entry was touched. */
+  priv_fat_entry_stamp_access(&sec[off]);
   return priv_write_sector(handle, lba, sec);
 }
 

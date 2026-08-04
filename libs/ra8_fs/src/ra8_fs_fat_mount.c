@@ -600,6 +600,15 @@ static ra8_err_t priv_mount_locked(const ra8_fs_backend_t* backend, ra8_fs_mount
       return err;
     }
   }
+  /* Claim a fresh allocator slot BEFORE seeding it: the mount table is a fixed
+   * array, so this ra8_fs_mount_t address has very likely served another volume
+   * already, and its cached FAT sector and next-free hint describe that disk. */
+  priv_alloc_state_bind(m);
+  err = priv_fsinfo_seed(m);
+  if (err != k_ra8_ok) {
+    priv_alloc_state_release(m);
+    return err;
+  }
   m->in_use   = 1;
   *out_handle = m;
   return k_ra8_ok;
@@ -608,8 +617,10 @@ static ra8_err_t priv_mount_locked(const ra8_fs_backend_t* backend, ra8_fs_mount
 /**
  * @brief Release a mount slot -- the guarded body of ::ra8_fs_unmount().
  *
- * @details Marks the mount slot free; does not flush -- callers must
- *          close all files first.
+ * @details Writes the FAT32 FSInfo free count back if anything was allocated
+ *          or freed, drops the allocator state, and marks the mount slot free.
+ *          File data is not buffered, so there is nothing else to flush --
+ *          callers must still close all files first.
  *
  * @param[in] handle Mount handle from `ra8_fs_mount()`.
  *
@@ -617,11 +628,13 @@ static ra8_err_t priv_mount_locked(const ra8_fs_backend_t* backend, ra8_fs_mount
  * @retval k_ra8_ok                Volume unmounted.
  * @retval k_ra8_err_null_ptr      `handle` was NULL.
  * @retval k_ra8_err_invalid_state `handle` is not currently mounted.
+ * @retval k_ra8_err_*             The FSInfo writeback failed; the volume is
+ *                                 still unmounted.
  *
  * @pre The library lock is held (or none is installed).
  * @pre `handle` is non-NULL and currently in use.
  * @pre All files opened on this mount have been closed.
- * @post Mount slot is free for reuse.
+ * @post Mount slot is free for reuse, whatever the FSInfo writeback did.
  * @post `handle->type` is reset to `k_ra8_fs_type_unknown`.
  *
  * @note Not thread-safe; callers serialise.
@@ -638,9 +651,16 @@ static ra8_err_t priv_unmount_locked(ra8_fs_mount_t* handle)
   if (handle->in_use == 0U) {
     return k_ra8_err_invalid_state;
   }
+  /* Last chance to make the on-disk free count true (#607). Reported, not
+   * swallowed: a card whose FSInfo could not be updated is a card a desktop
+   * will report the wrong free space for, and the caller is the only one who
+   * can decide whether that matters. The slot is released either way, so a
+   * failed flush cannot strand the mount. */
+  const ra8_err_t ferr = priv_fsinfo_flush(handle);
+  priv_alloc_state_release(handle);
   handle->in_use = 0;
   handle->type   = k_ra8_fs_type_unknown;
-  return k_ra8_ok;
+  return ferr;
 }
 
 /* =============================================================================

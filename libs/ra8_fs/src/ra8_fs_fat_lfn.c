@@ -354,6 +354,12 @@ ra8_err_t priv_free_chain(const ra8_fs_mount_t* m, uint32_t start)
     if (err != k_ra8_ok) {
       return err;
     }
+    /* The volume just got a cluster back, so say so (#607): the free count
+     * feeds FSInfo, and pulling the hint back is what makes the freed space
+     * the next thing allocated rather than something only found after a full
+     * wrap of the scan. */
+    priv_free_count_gave(m, 1U);
+    priv_alloc_hint_lower(m, cur);
     if (priv_is_eoc(m, next) != 0U) {
       break;
     }

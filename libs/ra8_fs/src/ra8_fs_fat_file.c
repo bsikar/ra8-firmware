@@ -86,6 +86,11 @@ priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint32_t lba, u
     return err;
   }
   priv_entry_set_cluster_size(&buf[off], 0, 0);
+  /* Truncation IS a content change -- the file went from N bytes to zero -- so
+   * the modification time has to move even if the caller never writes a byte
+   * afterwards. Without this, `open(write)` + `close()` left a PC-authored
+   * mtime describing contents that no longer exist (#601). */
+  priv_fat_entry_stamp_write(&buf[off]);
   return priv_write_sector(handle, lba, buf);
 }
 
@@ -150,6 +155,7 @@ static ra8_err_t priv_open_existing(ra8_fs_mount_t* handle,
   f->dir_entry_idx      = off;
   f->mode               = mode;
   f->no_fat_chain       = 0U;
+  f->dirty              = 0U;
   f->in_use             = 1;
   if (mode == k_ra8_fs_mode_write) {
     ra8_err_t err = priv_truncate_existing(handle, f, lba, off);
@@ -186,6 +192,10 @@ ra8_err_t priv_write_new_dir_entry(ra8_fs_mount_t* handle,
   priv_byte_copy(&ent[k_dir_off_name], name83, k_dir_name_field_len);
   ent[k_dir_off_attr] = attr;
   priv_entry_set_cluster_size(ent, first_cluster, 0U);
+  /* The entry was zero-filled above, and a zero FAT date is not a date: month
+   * and day are both 1-based, so 0x0000 claims month 0 of day 0 and every host
+   * decodes it differently (#601). Stamp all three fields from one reading. */
+  priv_fat_entry_stamp_create(ent);
   return priv_write_sector(handle, free_lba, buf);
 }
 
@@ -231,6 +241,7 @@ static void priv_init_new_file(ra8_fs_file_t*  f,
   f->dir_entry_idx      = free_off;
   f->mode               = mode;
   f->no_fat_chain       = 0U;
+  f->dirty              = 0U;
   f->in_use             = 1;
 }
 
@@ -482,15 +493,67 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
   return priv_create_new(handle, &parent, name83, mode, out_file);
 }
 
+/**
+ * @brief Stamp the final modification time of a file that was written.
+ *
+ * @details The close half of #601. `ra8_fs_write()` already advances the
+ *          modification time on every call, which is what protects a file
+ *          whose writer never gets to close it; this is the stamp that says
+ *          when the file was FINISHED, which is the one a host displays and a
+ *          sync tool compares. Also flushes the volume's FSInfo free count,
+ *          because a file that has just stopped growing is exactly when the
+ *          count is worth committing (#607).
+ *
+ * @param[in] file Handle being closed, still marked in use.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    Stamped and flushed, or there was nothing to do.
+ * @retval k_ra8_err_* Backend read/write failure.
+ *
+ * @pre `file` is non-NULL and `file->dirty` is 1.
+ * @pre `file->dir_entry_lba` / `dir_entry_idx` locate its directory entry.
+ * @post On success the entry's `DIR_WrtTime` / `DIR_WrtDate` name the close.
+ * @post On success the volume's FSInfo matches the tracked free count.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_close_stamp(ra8_fs_file_t* file)
+{
+  ra8_fs_mount_t* m                              = file->mount;
+  uint8_t         sec[k_ra8_fs_bytes_per_sector] = {};
+  ra8_err_t       err                            = priv_read_sector(m, file->dir_entry_lba, sec);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  priv_fat_entry_stamp_write(&sec[file->dir_entry_idx]);
+  err = priv_write_sector(m, file->dir_entry_lba, sec);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return priv_fsinfo_flush(m);
+}
+
 /* `priv_close_locked()`: see header for the documented contract. */
 ra8_err_t priv_close_locked(ra8_fs_file_t* file)
 {
   if (file == nullptr) {
     return k_ra8_err_null_ptr;
   }
+  ra8_err_t err = k_ra8_ok;
+  /* Never touch the volume through a handle that is already closed or whose
+   * mount has gone: the dir-entry LBA would be read against a mount slot that
+   * now describes some other card. */
+  if ((file->dirty != 0U) && (file->in_use != 0U) && (file->mount != nullptr) &&
+      (file->mount->in_use != 0U)) {
+    err = priv_close_stamp(file);
+  }
+  file->dirty  = 0;
   file->in_use = 0;
   file->mount  = nullptr;
-  return k_ra8_ok;
+  return err;
 }
 
 /* =============================================================================

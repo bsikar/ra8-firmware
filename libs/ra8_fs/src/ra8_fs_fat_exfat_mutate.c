@@ -78,6 +78,9 @@ priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus
       return e; /* GCOVR_EXCL_LINE */
     }
     sec[byte] = (uint8_t)(sec[byte] & (uint8_t)~(uint8_t)(1U << bit));
+    /* Pull the scan hint back to the space just released, or the next create
+     * would step over it and only find it after a full rescan (#607). */
+    priv_alloc_hint_lower(m, idx + (uint32_t)k_cluster_first_data);
   }
   return priv_write_sector(m, loaded, sec);
 }
@@ -403,6 +406,12 @@ static ra8_err_t priv_exfat_apply_rename(const ra8_fs_mount_t* m,
       name[k_exfat_name_off + (c * 2U)] = (uint8_t)new_path[c];
     }
   }
+  /* Access stamp only, and before the checksum that covers it. Same reasoning
+   * as the FAT rename: the name moved, the bytes did not, so LastModified must
+   * not move or every backup tool concludes the file changed (#601). The
+   * create and modify stamps ride along untouched in `set`, which is the File
+   * entry read back off the volume. */
+  priv_exfat_file_stamp_access(set);
   priv_wr16(&set[k_exfat_off_file_csum],
             priv_exfat_set_checksum(set, (uint32_t)k_exfat_rename_bytes));
   for (uint32_t k = 0U; k < (uint32_t)k_exfat_rename_entries; k++) {
