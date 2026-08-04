@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# components-lock.txt -- the esp-idf component set the proven ESP32-C6 image
+# resolved, recorded so a later build cannot quietly resolve a different one.
+#
+# THIS IS A RECORD, NOT A DROP-IN LOCK. Do not copy it over, rename it to, or
+# otherwise feed it to the component manager as dependencies.lock: it is not
+# that file's format, and it deliberately omits the one field that file has
+# which cannot be shared between machines.
+#
+# Why it exists
+# -------------
+# build.sh deletes dependencies.lock before every build, so the component
+# manager re-resolves from the registry each time. That makes the build
+# RECIPE-reproducible -- same script, same pins, same sdkconfig -- but not
+# BIT-reproducible: the registry can hand back a different component version
+# tomorrow from an unchanged recipe, and without this file nothing would say so.
+#
+# Why not just commit dependencies.lock
+# -------------------------------------
+# Because it is not portable. The generated lock records an ABSOLUTE PATH for
+# the local cmd_system component, which comes out of the building host's own
+# IDF checkout ($IDF_PATH/examples/system/console/advanced/components/
+# cmd_system). Committing that would bake one machine's home directory into the
+# repository and be wrong everywhere else. What IS portable is the resolved
+# SET, which is what the rows below carry.
+#
+# How it is enforced
+# ------------------
+# build.sh normalises the freshly generated dependencies.lock to the same four
+# columns and diffs it against this file AFTER the build, failing loudly on any
+# difference. The local component is compared on kind and version only -- never
+# on its path, for the reason above. That turns "recipe-reproducible" into
+# "verified-reproducible", which is strictly stronger than pinning alone.
+#
+# Provenance
+# ----------
+# Taken from the bench build of esp-hosted-mcu at the pinned commit
+# 949bb30612747a3bd9e402eda8d01fbfa1f8503e under esp-idf v5.5.4 -- the build
+# whose network_adapter.bin is the image actually flashed on the C6 and proven
+# end to end (peripheral firmware 2.12.11, esp-hosted RPC round-trip green).
+# The upstream manifest these were resolved from is pinned by
+# ESP_HOSTED_MCU_COMMIT in pins.env, so it is not restated here.
+#
+# Changing a row means re-pinning the C6 image. Update it only together with a
+# reflash and a re-run of `make hil-c6`; an edit here on its own just teaches
+# the gate to accept whatever drifted.
+#
+# Columns: kind, name, version, component_hash
+#   kind    the generated lock's own source type: service (Espressif component
+#           registry), local (a path component from the host IDF checkout), or
+#           idf (the framework itself).
+#   hash    the registry's component_hash. "-" where the kind has none, which
+#           is every non-registry row -- a local path and the framework are
+#           identified by version, not by content hash.
+
+idf      idf                  5.5.4   -
+local    cmd_system           *       -
+service  esp-qa/ping-cmd      1.0.0   fe97de564088c2152234a27135e04b1db0b6a1f2075a684369f4a1f537502005
+service  esp-qa/wifi-cmd      0.2.12  ea5f761ae07395c593f66a4987262fbb6205b7a6d75d017da084efea0674f545
+service  espressif/iperf      0.1.4   f4c2beaae50478a626995130d2611c628b7a568cd0799022758c05658928410c
+service  espressif/iperf-cmd  0.1.4   1bb639fa395a34c72a1dacf53342c798c4c7d56731b370c5efc75063e831bf32
+service  espressif/mqtt       1.0.0   ffdad5659706b4dc14bc63f8eb73ef765efa015bf7e9adf71c813d52a2dc9342
