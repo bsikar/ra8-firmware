@@ -191,6 +191,34 @@ RA8_PRIV
 uint8_t priv_byte_equal(const uint8_t* a, const uint8_t* b, uint32_t n);
 
 /**
+ * @brief Close an open file -- the guarded body of ::ra8_fs_close().
+ *
+ * @details Carries the whole contract documented for ::ra8_fs_close() in
+ *          `ra8_fs.h`; the public symbol is the wrapper that brackets this call
+ *          with ::priv_lock_acquire / ::priv_lock_release. Exposed across
+ *          translation units because ::ra8_fs_write_file()'s guarded body has to
+ *          reach it without taking the lock a second time.
+ *
+ * @param[in,out] file Handle returned by ::priv_open_locked / ::ra8_fs_open().
+ *
+ * @return Error code.
+ * @retval k_ra8_ok           File closed.
+ * @retval k_ra8_err_null_ptr @p file was NULL.
+ *
+ * @pre The library lock is held (or none is installed).
+ * @pre All pending writes have already been issued.
+ * @post The file slot is marked free for reuse.
+ * @post `file->mount` is reset to NULL.
+ *
+ * @note Never call this from outside `ra8_fs`; it is the unlocked half.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+ra8_err_t priv_close_locked(ra8_fs_file_t* file);
+
+/**
  * @brief Convert a cluster number into its first data-region LBA.
  *
  * @details Cluster numbering starts at `k_cluster_first_data` (= 2).

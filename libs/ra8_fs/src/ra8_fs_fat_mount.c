@@ -423,7 +423,36 @@ static ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint32_t* out_base)
   return priv_gpt_scan_entries(m, entry_lba, count, out_base);
 }
 
-ra8_err_t ra8_fs_format(const ra8_fs_backend_t* backend, const ra8_fs_format_opts_t* opts)
+/**
+ * @brief Lay down a fresh volume -- the guarded body of ::ra8_fs_format().
+ *
+ * @details Validates the backend and the requested geometry, then dispatches to
+ *          the FAT or exFAT formatter. The public ::ra8_fs_format() is the
+ *          wrapper that brackets this call with the library lock; the full
+ *          contract is documented there.
+ *
+ * @param[in] backend Block-device backend to write.
+ * @param[in] opts    Format options (variant, label, cluster-size hint).
+ *
+ * @return Error code.
+ * @retval k_ra8_ok              Volume formatted.
+ * @retval k_ra8_err_null_ptr    @p backend or @p opts was NULL.
+ * @retval k_ra8_err_invalid_arg Backend callbacks or geometry are unusable.
+ * @retval k_ra8_err_*           As documented for ::ra8_fs_format().
+ *
+ * @pre The library lock is held (or none is installed).
+ * @pre No volume from this backend is currently mounted.
+ * @post On success the backend holds a mountable @p opts->type volume.
+ * @post On an argument error the backend is untouched.
+ *
+ * @note Never call this from outside `ra8_fs`; it is the unlocked half.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t priv_format_locked(const ra8_fs_backend_t*     backend,
+                                    const ra8_fs_format_opts_t* opts)
 {
   if (backend == nullptr || opts == nullptr) {
     return k_ra8_err_null_ptr;
@@ -516,7 +545,7 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m)
 }
 
 /**
- * @brief Mount a FAT volume on the supplied block backend.
+ * @brief Mount a volume -- the guarded body of ::ra8_fs_mount().
  *
  * @details Allocates a mount slot, reads the boot sector, parses the
  *          BPB, and computes the geometry.
@@ -532,6 +561,7 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m)
  * @retval k_ra8_err_validation_failed  Not a recognisable FAT volume.
  * @retval k_ra8_err_*                  Backend read failure.
  *
+ * @pre The library lock is held (or none is installed).
  * @pre `backend` and `out_handle` are non-NULL.
  * @pre Backend's read/write/get_capacity callbacks are non-NULL.
  * @post On success, `*out_handle` is a valid mount.
@@ -541,7 +571,9 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m)
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_fs_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_handle)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t priv_mount_locked(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_handle)
 {
   if (backend == nullptr || out_handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -574,7 +606,7 @@ ra8_err_t ra8_fs_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_han
 }
 
 /**
- * @brief Release a previously mounted FAT volume.
+ * @brief Release a mount slot -- the guarded body of ::ra8_fs_unmount().
  *
  * @details Marks the mount slot free; does not flush -- callers must
  *          close all files first.
@@ -586,6 +618,7 @@ ra8_err_t ra8_fs_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_han
  * @retval k_ra8_err_null_ptr      `handle` was NULL.
  * @retval k_ra8_err_invalid_state `handle` is not currently mounted.
  *
+ * @pre The library lock is held (or none is installed).
  * @pre `handle` is non-NULL and currently in use.
  * @pre All files opened on this mount have been closed.
  * @post Mount slot is free for reuse.
@@ -595,7 +628,9 @@ ra8_err_t ra8_fs_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_han
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_fs_unmount(ra8_fs_mount_t* handle)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t priv_unmount_locked(ra8_fs_mount_t* handle)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -606,4 +641,36 @@ ra8_err_t ra8_fs_unmount(ra8_fs_mount_t* handle)
   handle->in_use = 0;
   handle->type   = k_ra8_fs_type_unknown;
   return k_ra8_ok;
+}
+
+/* =============================================================================
+ * Public entry points -- the lock brackets
+ * =============================================================================
+ */
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_format(const ra8_fs_backend_t* backend, const ra8_fs_format_opts_t* opts)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_format_locked(backend, opts);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_handle)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_mount_locked(backend, out_handle);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_unmount(ra8_fs_mount_t* handle)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_unmount_locked(handle);
+  priv_lock_release();
+  return err;
 }

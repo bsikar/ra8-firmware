@@ -44,6 +44,28 @@ FIRMWARE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # ---------------------------------------------------------------------------
 BASELINE_TOTAL=${BASELINE_TOTAL:-CPPCHECK_BASELINE_PLACEHOLDER}
 
+# ---------------------------------------------------------------------------
+# The include scope, and the ONLY definition of it.
+#
+# cppcheck analyses translation units, and a TU whose includes do not resolve
+# is not the TU that ships: the annotation macros in ra8_attributes.h go
+# unresolved, and a function-like one at file scope --
+# `RA8_OWNS_RESOURCE("...")` before a definition -- stops looking like an
+# annotation and starts looking like a call, which cppcheck reports as
+# `unknownMacro`. The pre-commit hook re-derived its own (empty) include list
+# and hit exactly that on the first such annotation to land, while this gate
+# was green on the identical tree. So the list is published through
+# --print-include-dirs and the hook consumes it rather than keeping a second
+# copy that can drift again.
+# ---------------------------------------------------------------------------
+INCLUDE_DIRS=(
+  -Ilibs/ra8_core/inc
+  -Ilibs/ra8_hal/inc
+  -Ilibs/ra8_nsc/inc
+  -Isrc/inc
+  -Itools/ra8_emulator/inc
+)
+
 CHECK_MODE=false
 VERBOSE=false
 
@@ -55,6 +77,7 @@ usage() {
   echo "Options:"
   echo "  --check    Treat findings above the baseline as errors"
   echo "  --verbose  Verbose cppcheck output"
+  echo "  --print-include-dirs  Print the include scope, one -I per line, and exit"
   echo "  --help     Show this help"
   echo ""
   echo "Default: report findings, exit 0."
@@ -69,6 +92,10 @@ while [[ $# -gt 0 ]]; do
     --verbose)
       VERBOSE=true
       shift
+      ;;
+    --print-include-dirs)
+      printf '%s\n' "${INCLUDE_DIRS[@]}"
+      exit 0
       ;;
     --help | -h)
       usage
@@ -126,14 +153,6 @@ VERBOSE_ARGS=()
 if $VERBOSE; then
   VERBOSE_ARGS+=(--verbose)
 fi
-
-INCLUDE_DIRS=(
-  -Ilibs/ra8_core/inc
-  -Ilibs/ra8_hal/inc
-  -Ilibs/ra8_nsc/inc
-  -Isrc/inc
-  -Itools/ra8_emulator/inc
-)
 
 print_status "Running cppcheck on libs/, examples/, tools/ra8_emulator/ (excluding libs/third_party/) ..."
 set +e

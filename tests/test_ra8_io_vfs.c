@@ -125,18 +125,39 @@ static void test_open_read(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- stat reports presence/size, a missing
- * file yields exists==false with ok)
+ * file yields exists==false with ok, and a DIRECTORY reports as one: #609, where
+ * the open-based implementation returned every folder as a zero-byte file with a
+ * hardcoded `archive` attribute)
  */
 static void test_stat(void)
 {
   TEST_BEGIN("vfs stat");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_init());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", setup_volume()));
+  ra8_fs_mount_t* m = setup_volume();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", m));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(m, "/BOOKS"));
+
   ra8_io_vfs_stat_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_stat("sd:/HELLO.BIN", &st));
   TEST_ASSERT(st.exists);
   TEST_ASSERT_EQ(k_t_payload, st.size_bytes);
   TEST_ASSERT(!st.is_directory);
+  TEST_ASSERT_EQ(0U, (st.attr & (uint8_t)k_ra8_fs_attr_directory));
+
+  /* The regression this test exists for: a folder must not look like a file. */
+  ra8_io_vfs_stat_t dir = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_stat("sd:/BOOKS", &dir));
+  TEST_ASSERT(dir.exists);
+  TEST_ASSERT(dir.is_directory);
+  TEST_ASSERT_EQ(0U, dir.size_bytes);
+  TEST_ASSERT_EQ(k_ra8_fs_attr_directory, (dir.attr & (uint8_t)k_ra8_fs_attr_directory));
+
+  /* The mount root is a directory too. */
+  ra8_io_vfs_stat_t root = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_stat("sd:/", &root));
+  TEST_ASSERT(root.exists);
+  TEST_ASSERT(root.is_directory);
+
   ra8_io_vfs_stat_t miss = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_stat("sd:/GONE.BIN", &miss));
   TEST_ASSERT(!miss.exists);
