@@ -73,6 +73,7 @@ typedef struct {
   uint32_t              next_free;  /**< Cluster the next scan starts at.        */
   uint32_t              free_count; /**< Free clusters, or ::k_fs_free_unknown.  */
   uint32_t              fsinfo_lba; /**< FSInfo sector, or ::k_fs_fsinfo_absent. */
+  uint32_t              bitmap_lba; /**< exFAT bitmap LBA, or unknown.           */
   uint8_t               dirty;      /**< 1 = FSInfo needs a writeback.           */
 } fat_alloc_state_t;
 
@@ -175,7 +176,37 @@ void priv_alloc_state_bind(const ra8_fs_mount_t* m)
   st->next_free  = (uint32_t)k_cluster_first_data;
   st->free_count = (uint32_t)k_fs_free_unknown;
   st->fsinfo_lba = (uint32_t)k_fs_fsinfo_absent;
+  st->bitmap_lba = (uint32_t)k_fs_bitmap_unknown;
   st->dirty      = 0U;
+}
+
+/* `priv_exfat_bitmap_lba()`: see header for the documented contract. */
+ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint32_t* out_lba)
+{
+  /* Nested rather than joined: a mount with no bound slot is not a mount with
+   * a cold cache, and there is no input that can produce the first -- every
+   * accessor in this file is total by construction, because there is one slot
+   * per mount slot. Spelling the pair as one compound decision would add a
+   * condition nothing can vary, which is a permanent MC/DC hole. */
+  fat_alloc_state_t* st = priv_state_for(m);
+  if (st != nullptr) {
+    if (st->bitmap_lba != (uint32_t)k_fs_bitmap_unknown) {
+      *out_lba = st->bitmap_lba;
+      return k_ra8_ok;
+    }
+  }
+  uint32_t        clus = 0U;
+  uint32_t        len  = 0U;
+  const ra8_err_t e    = priv_exfat_find_bitmap(m, &clus, &len);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  const uint32_t lba = priv_cluster_to_lba(m, clus);
+  if (st != nullptr) {
+    st->bitmap_lba = lba;
+  }
+  *out_lba = lba;
+  return k_ra8_ok;
 }
 
 /* `priv_alloc_state_release()`: see header for the documented contract. */

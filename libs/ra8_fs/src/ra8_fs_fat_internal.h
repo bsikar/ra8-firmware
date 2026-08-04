@@ -25,8 +25,11 @@
  * - `ra8_fs_fat_lfn_write_internal.h` -- the VFAT long-name WRITE seam: name
  *                             classification, alias generation, and the
  *                             reserve / commit / erase directory verbs.
+ * - `ra8_fs_fat_exfat_stream_internal.h` -- the exFAT streaming-write mechanism:
+ *                             entry-set coordinates, the allocation-bitmap
+ *                             primitives, and the grow/flush engine.
  *
- * The last three are split by THEME rather than alphabetically, because each
+ * The last four are split by THEME rather than alphabetically, because each
  * owns a self-contained mechanism with its own on-disk vocabulary. Folding
  * them into the alphabetical `protos_a` / `protos_b` pair would scatter one
  * mechanism's constants across two files and push all of them past the
@@ -43,6 +46,7 @@
 #pragma once
 
 #include "ra8_fs_fat_alloc_internal.h"
+#include "ra8_fs_fat_exfat_stream_internal.h"
 #include "ra8_fs_fat_lfn_write_internal.h"
 #include "ra8_fs_fat_protos_a_internal.h"
 #include "ra8_fs_fat_protos_b_internal.h"

@@ -871,37 +871,46 @@ static void test_find_first_read_fail(void)
 }
 
 /**
- * @test test_open_write_mode_rejected
- * @brief priv_exfat_open rejects write mode (line 277).
+ * @test test_open_write_mode_dispatches
+ * @brief `priv_exfat_open` hands a writing mode to the streaming open path.
  *
- * @details ra8_fs_open with k_ra8_fs_mode_write on an exFAT mount dispatches to
- *          priv_exfat_open, which returns k_ra8_err_not_supported at line 277.
+ * @details This case used to assert `k_ra8_err_not_supported`: exFAT opened
+ *          read-only and the largest file the firmware could create on such a
+ *          card was bounded by RAM. Streaming write (#602) replaced that
+ *          refusal with a dispatch, so the same call now CREATES the name and
+ *          hands back a writable handle -- which is what this asserts, because
+ *          a test still pinning the old answer would be pinning the defect.
  *
  * @par MC/DC:
- * Decision: `if (mode != k_ra8_fs_mode_read)` -- 1 cond.
- * V1: mode = write -> true -> line 277, not_supported (this test).
- * V2: mode = read -> false -> priv_exfat_find (success-path tests).
+ * Decision: `if (mode != k_ra8_fs_mode_read)` in
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_read.c@priv_exfat_open` -- 1 condition.
+ * V1: mode = write -> true  -> ::priv_exfat_open_write (this test).
+ * V2: mode = read  -> false -> ::priv_exfat_find (the success-path cases).
  *
  * @pre Volume is formatted and mounted.
- * @post ra8_fs_open returns k_ra8_err_not_supported.
+ * @post `X.TXT` exists as a zero-length file and the handle is closed.
  *
  * @since 0.1.0
  */
-static void test_open_write_mode_rejected(void)
+static void test_open_write_mode_dispatches(void)
 {
-  TEST_BEGIN("exfat read cov: open write mode rejected (line 277)");
+  TEST_BEGIN("exfat read cov: write mode dispatches to the stream");
   build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   s_rd_remaining   = (int32_t)k_rc_rd_never;
   ra8_fs_file_t* f = nullptr;
-  ra8_err_t      e = ra8_fs_open(h, "X.TXT", k_ra8_fs_mode_write, &f);
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, e);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "X.TXT", k_ra8_fs_mode_write, &f));
+  TEST_ASSERT_NOT_NULL(f);
+  uint32_t size = 1U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
+  TEST_ASSERT_EQ(0U, size);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
-  TEST_END("exfat read cov: open write mode rejected (line 277)");
+  TEST_END("exfat read cov: write mode dispatches to the stream");
 }
 
 /**
@@ -983,7 +992,7 @@ int main(void)
   test_match_set_name_io_fail();
   test_match_set_wrong_name_type();
   test_find_first_read_fail();
-  test_open_write_mode_rejected();
+  test_open_write_mode_dispatches();
   test_open_file_table_full();
 
   printf("[OK  ] test_ra8_fs_fat_exfat_read_cov.c\n");

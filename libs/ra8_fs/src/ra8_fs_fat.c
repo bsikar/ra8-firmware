@@ -177,6 +177,12 @@ ra8_err_t priv_fat_get(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t* out_
     }
   } else if (m->type == k_ra8_fs_type_fat16) {
     v = priv_rd16(&buf[sec_off]);
+  } else if (m->type == k_ra8_fs_type_exfat) {
+    /* exFAT spec sec 4.1: a FAT entry is a full 32-bit value. FAT32's top four
+     * bits are reserved and masked off above; masking here would fold the
+     * end-of-chain marker 0xFFFFFFFF down to 0x0FFFFFFF and, on a volume with
+     * more than 2^28 clusters, truncate an ordinary cluster number. */
+    v = priv_rd32(&buf[sec_off]);
   } else {
     v = priv_rd32(&buf[sec_off]) & k_cluster_mask_fat32;
   }
@@ -386,6 +392,52 @@ priv_fat32_set_one(const ra8_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, 
   return k_ra8_ok;
 }
 
+/**
+ * @brief Write an exFAT FAT entry -- all 32 bits, nothing reserved.
+ *
+ * @details The exFAT counterpart of ::priv_fat32_set_one. exFAT has no
+ *          reserved high nibble (spec sec 4.1), so there is nothing to
+ *          preserve and the value goes down whole. Routing exFAT through the
+ *          FAT32 setter would mask the end-of-chain marker to 0x0FFFFFFF,
+ *          which a host `fsck` reads as a chain pointing at a cluster the
+ *          volume does not have.
+ *
+ * @param[in] m       Mount providing backend access.
+ * @param[in] sec_num Sector number containing the entry.
+ * @param[in] sec_off Byte offset within that sector.
+ * @param[in] value   The 32-bit entry value to store.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    Entry updated.
+ * @retval k_ra8_err_* Backend read or write failure.
+ *
+ * @pre `m` is non-NULL with a valid backend.
+ * @pre `sec_off <= k_ra8_fs_bytes_per_sector - 4`.
+ * @post The entry on disk equals @p value exactly.
+ * @post On failure, on-disk state is implementation-defined.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t
+priv_exfat_fat_set_one(const ra8_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, uint32_t value)
+{
+  uint8_t   buf[k_ra8_fs_bytes_per_sector] = {};
+  ra8_err_t err                            = priv_fat_sector_read(m, sec_num, buf);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  priv_wr32(&buf[sec_off], value);
+  err = priv_write_sector(m, sec_num, buf);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  priv_fat_sector_wrote(m, buf, sec_num);
+  return k_ra8_ok;
+}
+
 /* `priv_fat_set()`: see header for the documented contract. */
 ra8_err_t priv_fat_set(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t value)
 {
@@ -399,6 +451,8 @@ ra8_err_t priv_fat_set(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t value
       err = priv_fat12_set_one(m, sec_num, sec_off, cluster, value);
     } else if (m->type == k_ra8_fs_type_fat16) {
       err = priv_fat16_set_one(m, sec_num, sec_off, value);
+    } else if (m->type == k_ra8_fs_type_exfat) {
+      err = priv_exfat_fat_set_one(m, sec_num, sec_off, value);
     } else {
       err = priv_fat32_set_one(m, sec_num, sec_off, value);
     }
@@ -413,12 +467,15 @@ ra8_err_t priv_fat_set(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t value
 uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value)
 {
   if (m->type == k_ra8_fs_type_fat12) {
-    return (uint8_t)(value >= k_cluster_eoc_min_fat12 ? 1U : 0U);
+    return (uint8_t)((value >= k_cluster_eoc_min_fat12) ? 1U : 0U);
   }
   if (m->type == k_ra8_fs_type_fat16) {
-    return (uint8_t)(value >= k_cluster_eoc_min_fat16 ? 1U : 0U);
+    return (uint8_t)((value >= k_cluster_eoc_min_fat16) ? 1U : 0U);
   }
-  return (uint8_t)(value >= k_cluster_eoc_min_fat32 ? 1U : 0U);
+  if (m->type == k_ra8_fs_type_exfat) {
+    return (uint8_t)((value >= k_cluster_eoc_min_exfat) ? 1U : 0U);
+  }
+  return (uint8_t)((value >= k_cluster_eoc_min_fat32) ? 1U : 0U);
 }
 
 /* `priv_eoc_write()`: see header for the documented contract. */
@@ -429,6 +486,9 @@ uint32_t priv_eoc_write(const ra8_fs_mount_t* m)
   }
   if (m->type == k_ra8_fs_type_fat16) {
     return k_cluster_eoc_write_fat16;
+  }
+  if (m->type == k_ra8_fs_type_exfat) {
+    return k_cluster_eoc_write_exfat;
   }
   return k_cluster_eoc_write_fat32;
 }

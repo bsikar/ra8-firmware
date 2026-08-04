@@ -29,7 +29,7 @@ project's marketing.
 | Capability | `ra8_fs` | FileX 6.5.0 (vendored) |
 |---|---|---|
 | FAT12 / FAT16 / FAT32, read + write | Yes | Yes |
-| exFAT | Yes -- mount, streaming read, whole-file write (a repeated write REPLACES the name rather than duplicating its entry set), rename, unlink, format | **No.** The vendored snapshot ships no exFAT source at all; the only occurrences of the word are historical entries in `docs/revision_history.txt` |
+| exFAT | Yes -- mount, streaming read AND streaming write (open / append / truncate through the same seam as FAT; the entry set keeps `NoFatChain` while the run is contiguous and materialises a real FAT chain when it is not), rename, unlink, format | **No.** The vendored snapshot ships no exFAT source at all; the only occurrences of the word are historical entries in `docs/revision_history.txt` |
 | Long file names, read | Yes -- LFN chains are reassembled and matched (`src/ra8_fs_fat_lfn.c`) | Yes |
 | Long file names, write | Yes -- up to 247 characters (19 VFAT groups) behind a generated `LONGNA~1.TXT` alias, on create, `mkdir` and `rename`; `unlink` / `rmdir` take the chain away with the entry (`src/ra8_fs_fat_lfn_write.c`, #600). A name differing from 8.3 only in case travels in the `DIR_NTRes` flags instead | Yes, up to `FX_MAX_LONG_NAME_LEN` (256), written by `fx_directory_entry_write` |
 | `mkdir` | Yes on FAT12/16/32, including nested paths, with rollback on failure. Not on exFAT | Yes (`fx_directory_create`) |
@@ -39,7 +39,7 @@ project's marketing.
 | Formatter | Yes. FAT12/16/32 as a superfloppy at LBA 0 with auto cluster-size selection; exFAT into **MBR partition 1 aligned at 1 MiB**, with the spec's compressed up-case table, validated `fsck.exfat`-clean (#568) | Yes (`fx_media_format`), FAT only. Writes no partition table |
 | Mounts a card a PC partitioned | Yes. `priv_read_boot_sector()` tries LBA 0 as a superfloppy, and on failure follows MBR partition entry 0; if that entry is the `0xEE` protective type it walks the GPT to the first Basic Data partition. Where it landed is recorded in `ra8_fs_mount_t::partition_base_lba` | Not as built here. `_fx_partition_offset_calculate` exists but nothing in the vendored tree or in `port/filex/` calls it; our media driver's `FX_DRIVER_BOOT_READ` is LBA 0 |
 | Multi-partition scanning | No -- the first partition entry only | n/a (see above) |
-| Streaming file I/O (open / seek / read / write) | Yes on FAT12/16/32. On exFAT, streaming reads yes; writes are whole-file via `ra8_fs_write_file()` (open-for-write returns `k_ra8_err_not_supported`) | Yes |
+| Streaming file I/O (open / seek / read / write) | Yes on FAT12/16/32 and on exFAT (#602). An exFAT file grows a cluster at a time out of the allocation bitmap, so its size is bounded by free space rather than by RAM, and `ValidDataLength` is tracked apart from `DataLength` so bytes past the written prefix read as zero | Yes |
 | FAT32 FSInfo free-cluster cache | Yes -- all three signatures validated at mount, then used to seed a per-mount free count and next-free hint, and written back when a file is closed or the volume unmounted. A count that cannot be trusted is written as the format's `0xFFFFFFFF` "unknown" rather than guessed. The allocator scans from the hint through a one-sector FAT cache instead of rescanning from cluster 2 | Read and validated at `fx_media_open`, written back at flush and close |
 | Fault-tolerant journaling | **No** | Yes -- 19 `fx_fault_tolerant_*` modules, opt-in behind `FX_ENABLE_FAULT_TOLERANT`, which this tree's build does not define |
 | Media check / repair | **No** | Yes (`fx_media_check`) |
@@ -49,8 +49,8 @@ project's marketing.
 | `stat` | Yes -- `ra8_fs_stat()` reads the directory entry without opening it, so a directory reports as one and no file slot is spent on a metadata query | Yes (`fx_directory_information_get`) |
 | Backends in tree | Any object with the three callbacks: SD-over-SPI, native SDHI, OSPI NOR, MRAM, SDRAM, in-RAM scratch, USB MSC, plus the host-test mock | One media driver, `port/filex/src/fx_media_driver_ra8_sdhi.c`, plus the LevelX NOR adapter used by `threadx_filex_levelx_demo` |
 | Verification | First-party. Held to the 90% per-file line-coverage floor with **no allowlist** (`scripts/checks/check_coverage_floor.py`; `ra8_fs` has no row in `.github/coverage-baseline.txt` or `.github/mcdc-baseline.txt`), MC/DC vectors on its compound decisions, MISRA via `scripts/checks/misra_check.sh` (ratcheted in `.github/misra-baseline.txt`), clang-tidy, the ASCII / Doxygen / annotation gates | SOUP. Explicitly out of scope for the coverage floor (`OUT_OF_SCOPE_PREFIXES`), for MISRA (`-ilibs/third_party`), and for the first-party style rules; compiled with `-w`. Accepted on service history, Eclipse Foundation process and pre-Eclipse SGS-TUV Saar pre-certifications -- see [`docs/SOUP/filex.md`](../../docs/SOUP/filex.md). Byte-identity against the upstream pin is re-verified every CI run |
-| Host tests | 38 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`) | None. SOUP is not re-tested here |
-| Size | 18 `.c` files | 212 `.c` files in `common/src` |
+| Host tests | 42 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`) | None. SOUP is not re-tested here |
+| Size | 21 `.c` files | 212 `.c` files in `common/src` |
 | Apps using it | 29 example `CMakeLists.txt` reference it | 2 enable `RA8_USE_FILEX`: `threadx_filex_demo` and `threadx_filex_levelx_demo` |
 
 ## When to use which
@@ -78,9 +78,9 @@ symbol: fx_media_format
 symbol: fx_directory_delete
 users: ra8_fs = 29
 users: RA8_USE_FILEX = 2
-files: libs/ra8_fs/src/*.c = 19
+files: libs/ra8_fs/src/*.c = 21
 files: libs/third_party/filex/common/src/*.c = 212
-files: tests/test_ra8_fs*.c = 38
+files: tests/test_ra8_fs*.c = 42
 files: libs/third_party/filex/common/src/fx_fault_tolerant_*.c = 19
 files: libs/third_party/filex/common/src/fx_unicode_*.c = 13
 -->

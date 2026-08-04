@@ -493,9 +493,15 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
 RA8_INTERNAL
 static ra8_err_t priv_close_stamp(ra8_fs_file_t* file)
 {
-  ra8_fs_mount_t* m                              = file->mount;
-  uint8_t         sec[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t       err                            = priv_read_sector(m, file->dir_entry_lba, sec);
+  ra8_fs_mount_t* m = file->mount;
+  /* exFAT keeps its metadata in a checksummed entry set, not one 32-byte
+   * directory entry, so the close flush is the same commit every write already
+   * performs -- stamp, patch, checksum, write (#602). */
+  if (m->type == k_ra8_fs_type_exfat) {
+    return priv_exfat_flush_set(file);
+  }
+  uint8_t   sec[k_ra8_fs_bytes_per_sector] = {};
+  ra8_err_t err                            = priv_read_sector(m, file->dir_entry_lba, sec);
   if (err != k_ra8_ok) {
     return err;
   }
