@@ -18,11 +18,11 @@
  *     plain text the reader word-wraps; the cover is a compressed JPEG/PNG
  *     decoded via ra8_img_decode_blit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <string.h>

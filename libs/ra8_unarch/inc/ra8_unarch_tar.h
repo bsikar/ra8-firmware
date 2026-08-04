@@ -47,10 +47,10 @@
  * @see ra8_decomp_limits.h  The policy every walk is charged against.
  * @see ra8_unarch_io.h      The seek+read seam the walker consumes.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

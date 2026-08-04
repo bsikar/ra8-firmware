@@ -20,10 +20,10 @@
  * second wrapper layer (gzip-in-gzip, xz-in-gzip, ...) is rejected as a
  * ::k_ra8_err_decomp_depth bomb before any inner decode starts.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include <stddef.h>
 #include <stdint.h>

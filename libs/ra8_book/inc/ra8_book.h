@@ -63,10 +63,10 @@
  * @see tools/epub_compile  Host compiler that emits `.rabook` blobs.
  * @see ra8_reflow.h         Renderer that consumes the walked DOM.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

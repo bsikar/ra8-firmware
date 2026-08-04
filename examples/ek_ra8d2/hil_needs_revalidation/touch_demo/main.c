@@ -20,11 +20,11 @@
  * out and reports `pts=0`, but `open=OK` still holds -- so `hil.conf` asserts
  * only the bring-up substring, which is stable either way.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

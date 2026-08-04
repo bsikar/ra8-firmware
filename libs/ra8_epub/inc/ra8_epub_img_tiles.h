@@ -40,11 +40,11 @@
  *      is reported unavailable rather than blowing the budget (the tile
  *      binder is the path for those).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @see ra8_jof.h          The JOF atlas format + reader.
  * @see ra8_jof_produce.h  The import-time transcode producer.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

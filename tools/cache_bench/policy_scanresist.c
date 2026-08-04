@@ -17,11 +17,11 @@
  *   re-referenced ones; a hit predicts immediate re-reference (RRPV = 0).
  *   Eviction picks an RRPV == max frame, aging all frames until one appears.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <stdlib.h>

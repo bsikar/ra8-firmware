@@ -9,11 +9,11 @@
  * Page turns advance within a chapter and cross chapter boundaries in either
  * direction, so the whole book reads continuously -- not just one chapter.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <string.h>

@@ -33,12 +33,12 @@
  * @note Not thread-safe.
  * @see ra8_rabook_compile.h  Builder back-end this feeds into.
  * @see ra8_book_image_t      On-disk descriptor stored in the RABOOK1 blob.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  *
  * [Ring 4 / EPUB Compiler] {World: NS}
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

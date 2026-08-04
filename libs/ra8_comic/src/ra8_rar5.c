@@ -32,10 +32,10 @@
  * free RAR compressor exists) and comic JPEG/PNG pages never carry these filters,
  * so that last equivalence is left to an owner-supplied real archive.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include "ra8_rar5.h"
 

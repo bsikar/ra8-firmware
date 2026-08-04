@@ -8,11 +8,11 @@
  * policies (2Q / Segmented-LRU, CLOCK-Pro, CAR) live in their own TUs and are
  * appended to ::g_cb_policies.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <stdlib.h>

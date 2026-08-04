@@ -20,11 +20,11 @@
  * at once. That arena is carved only for pages that really are WebP, so JPEG
  * and PNG pages do not pay a whole-frame cost for a format they do not use.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

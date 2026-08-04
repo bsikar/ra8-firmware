@@ -14,13 +14,13 @@
  * `LX_NOR_FLASH` control block over the same backing to simulate a power cycle.
  *
  * @note Single global instance; single-threaded host tests only.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  * @par Tag
  * [Ring 4 / Storage] {World: NS}
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

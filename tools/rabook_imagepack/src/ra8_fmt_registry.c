@@ -15,11 +15,11 @@
  * not produced from a user file, and dumping them from a general-purpose media
  * tool would invite treating signed artifacts as convertible data.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

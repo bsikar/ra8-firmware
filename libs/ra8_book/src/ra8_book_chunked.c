@@ -11,10 +11,10 @@
  * ::ra8_book_chunked_read stages one compressed stream and inflates it into
  * the caller's frame.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include "ra8_book_chunked.h"
 

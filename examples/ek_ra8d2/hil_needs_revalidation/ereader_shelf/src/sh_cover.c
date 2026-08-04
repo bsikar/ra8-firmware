@@ -8,11 +8,11 @@
  * book" and "Table of Contents" -- on the right. Tapping the cover or the read
  * button starts the reader; the contents button opens the TOC.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include "ra8_gfx.h"

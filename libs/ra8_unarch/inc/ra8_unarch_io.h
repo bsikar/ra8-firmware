@@ -23,10 +23,10 @@
  * @see ra8_unarch_gzip.h The gzip member decoder driven through this seam.
  * @see ra8_unarch_xz.h   The XZ stream decoder driven through this seam.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

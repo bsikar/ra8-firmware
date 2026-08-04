@@ -14,12 +14,12 @@
  * ::ra8_widget_paint_t backend, so the widget carries no `ra8_gfx` dependency and
  * is host-testable. It is display-only, so its vtable leaves `on_input` NULL.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -36,10 +36,10 @@
  * @see ra8_unarch_io.h      The seek+read seam the unwrap consumes.
  * @see docs/SOUP/xz_embedded.md  Qualification record for the vendored tree.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

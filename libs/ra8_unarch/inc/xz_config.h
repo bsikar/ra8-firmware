@@ -43,10 +43,10 @@
  * @see ra8_unarch_xz.h      The bounded decode wrapper over the SOUP.
  * @see docs/SOUP/xz_embedded.md Qualification record for the vendored tree.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

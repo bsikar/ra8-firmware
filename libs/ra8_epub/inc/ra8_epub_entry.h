@@ -18,13 +18,13 @@
  * header. A translation unit that needs the entry cursor includes this header
  * directly (`ra8_epub.h` alone is not sufficient for the entry API).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}
  *
  * @see ra8_epub.h
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

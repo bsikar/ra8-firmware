@@ -25,11 +25,11 @@
  * on a FAIL banner before reaching the PASS line, so the gate is exact.
  * The banner is identical on host, ra8_emulator, and silicon.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

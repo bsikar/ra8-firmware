@@ -62,8 +62,6 @@
  * error rather than a partial atlas being trusted. Zero heap: the producer
  * allocates nothing -- every byte of state lives in caller buffers.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * The band accumulator is always full-width, so streaming does not depend on
  * `tile_w`: narrow tiles are cut out of the same band. `tile_w == width`
@@ -76,6 +74,8 @@
  *      implementation are **normative** for the producer memory contract
  *      (carve set, arena sizing, fail-closed conditions); section 5.1 of the
  *      spec is the explanatory companion and defers to this file.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

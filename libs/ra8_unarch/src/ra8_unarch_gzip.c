@@ -15,10 +15,10 @@
  * than the stack (single-client, zero heap -- the same idiom as the XZ
  * pool), so the reader task's stack budget is untouched.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include "ra8_unarch_gzip.h"
 
