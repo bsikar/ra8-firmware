@@ -302,22 +302,40 @@ def _rule_max_stack(sym: AnnotatedSymbol, arg: str, _ctx: RuleCtx) -> list[Viola
 
 
 def _rule_expects_lock(sym: AnnotatedSymbol, arg: str, ctx: RuleCtx) -> list[Violation]:
-    """RA8_EXPECTS_LOCK: each caller must take the named lock first."""
+    """RA8_EXPECTS_LOCK: every caller must already hold the named lock.
+
+    There are exactly two ways to hold it and the tree has vocabulary for
+    both.  A caller that ACQUIRES the lock for the length of its own body says
+    so with ``RA8_OWNS_RESOURCE(name)`` -- which :func:`_rule_owns_resource`
+    separately requires to reach a matching ``RA8_RELEASES_RESOURCE(name)``,
+    so the pair is what makes "held across this call" checkable rather than
+    asserted.  A caller that was itself entered under the lock propagates the
+    contract upward by carrying ``RA8_EXPECTS_LOCK(name)`` too, exactly as the
+    macro documents.
+
+    This used to look for a call to ``RA8_TAKE_LOCK`` preceding the call site.
+    Nothing named that has ever existed in this tree -- not a function, not a
+    macro -- and callee names are resolved AFTER macro expansion, so no
+    spelling of it could have satisfied the rule.  The annotation was
+    therefore unusable, and it had zero uses tree-wide: an unsatisfiable rule
+    is not a strict rule, it is a rule nobody can adopt.
+    """
+    holds = {f"ra8_owns_resource:{arg}", f"ra8_expects_lock:{arg}"}
     out: list[Violation] = []
     for cs in ctx.callers_of(sym):
-        body = ctx.calls_by_caller.get(cs.caller_usr, [])
-        has_take = any(
-            c.callee_name == "RA8_TAKE_LOCK" and c.caller_line < cs.caller_line for c in body
-        )
-        if not has_take:
-            out.append(
-                _at_call(
-                    cs,
-                    "ra8_expects_lock",
-                    f"call to '{sym.name}' (expects lock '{arg}') missing "
-                    f'preceding RA8_TAKE_LOCK("{arg}")',
-                )
+        caller = ctx.symbols.get(cs.caller_usr)
+        if caller is not None and holds.intersection(caller.annotations):
+            continue
+        out.append(
+            _at_call(
+                cs,
+                "ra8_expects_lock",
+                f"call to '{sym.name}' (expects lock '{arg}') from "
+                f"'{cs.caller_name}', which neither takes it "
+                f'(RA8_OWNS_RESOURCE("{arg}")) nor declares it already held '
+                f'(RA8_EXPECTS_LOCK("{arg}"))',
             )
+        )
     return out
 
 

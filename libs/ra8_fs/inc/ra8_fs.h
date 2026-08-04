@@ -50,6 +50,21 @@
  *   - Sector size: 512 bytes (the only size we test against; BPB is
  *     validated to enforce this).
  *
+ * ## Concurrency
+ * The library owns three pieces of shared mutable state -- the file-handle
+ * table, the mount table and one static scratch sector -- so every public
+ * entry point is serialised against every other one, not merely against
+ * itself. With no lock installed (the default) that serialisation is the
+ * caller's job and the library behaves exactly as it always has: bare metal
+ * pays nothing, not even a branch worth measuring.
+ *
+ * An RTOS-world caller installs a lock instead of duplicating that discipline
+ * at every call site -- see ::ra8_fs_lock_t and ::ra8_fs_set_lock(). The lock
+ * is taken at the public boundary and released on every return path, including
+ * error returns; no internal helper takes it, so there is no lock-ordering
+ * graph and no recursion. It serialises the *library*: it does not make one
+ * open ::ra8_fs_file_t safe to drive from two threads at once.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -189,6 +204,117 @@ typedef struct {
 } ra8_fs_backend_t;
 
 /* =============================================================================
+ * Optional lock seam
+ * =============================================================================
+ */
+
+/**
+ * @struct ra8_fs_lock_t
+ * @brief Dependency-injection seam for mutual exclusion around the public API.
+ *
+ * @details
+ * Two function pointers and a cookie. `ra8_fs` never creates, destroys or names
+ * a lock primitive: the caller owns one and hands over the two operations that
+ * drive it, exactly as ::ra8_fs_backend_t hands over the two operations that
+ * drive a block device. A ThreadX consumer binds `tx_mutex_get` /
+ * `tx_mutex_put` over a `TX_MUTEX*`; a bare-metal-with-interrupts consumer
+ * binds a PRIMASK save / restore pair. Neither adapter belongs in this library
+ * and neither is present in it.
+ *
+ * Both callbacks are invoked with @ref ctx as their only argument, and neither
+ * may fail: a lock whose acquire can return an error is not a lock this seam
+ * can express, and swallowing that error would be worse than not offering the
+ * seam. Wrap such a primitive in an adapter that blocks until it succeeds.
+ *
+ * The pair must be *re-entrant-free*: `acquire` is never called twice without
+ * an intervening `release`, so a plain non-recursive mutex is the right shape.
+ *
+ * @invariant `acquire` and `release` are both non-NULL, or the whole struct is
+ *            never installed (::ra8_fs_set_lock rejects a half-filled one).
+ * @invariant `ctx` may be NULL; it is passed through untouched.
+ *
+ * @par Example:
+ * @code
+ * static void tx_acquire(void* ctx) { (void)tx_mutex_get((TX_MUTEX*)ctx, TX_WAIT_FOREVER); }
+ * static void tx_release(void* ctx) { (void)tx_mutex_put((TX_MUTEX*)ctx); }
+ *
+ * static TX_MUTEX s_fs_mutex;
+ * const ra8_fs_lock_t lock = {.acquire = tx_acquire, .release = tx_release, .ctx = &s_fs_mutex};
+ * (void)ra8_fs_set_lock(&lock);
+ * @endcode
+ *
+ * @see ra8_fs_set_lock()  Installs (or removes) the binding.
+ * @since 0.1.0
+ */
+typedef struct {
+  /**
+   * @brief Take the lock; must block until it is held.
+   * @param[in] ctx The @ref ctx cookie, passed through unmodified.
+   */
+  void (*acquire)(void* ctx);
+
+  /**
+   * @brief Release the lock taken by the matching `acquire` call.
+   * @param[in] ctx The @ref ctx cookie, passed through unmodified.
+   */
+  void (*release)(void* ctx);
+
+  /** @brief Caller-owned cookie handed back to both callbacks. */
+  void* ctx;
+} ra8_fs_lock_t;
+
+/**
+ * @brief Install (or remove) the lock taken around every public `ra8_fs` call.
+ *
+ * @details
+ * There is one lock for the whole library, not one per mount: the state that
+ * needs serialising -- the file-handle table, the mount table and the static
+ * scratch sector -- is shared by every mount. Installing a lock therefore
+ * serialises every public entry point against every other one.
+ *
+ * Passing NULL removes the binding and restores the default: no lock, no call,
+ * and the caller is once again responsible for serialising access. That is the
+ * state the library powers up in, so a bare-metal consumer never calls this
+ * function at all and pays nothing for its existence.
+ *
+ * The binding is copied, so the caller's ::ra8_fs_lock_t need not outlive the
+ * call; the object @ref ra8_fs_lock_t::ctx points at must, however, outlive
+ * every subsequent `ra8_fs` call.
+ *
+ * Call this before the first `ra8_fs` call and before any other thread can
+ * reach the library: swapping the binding while a call is in flight would
+ * release a lock the caller never took.
+ *
+ * @param[in] lock Lock binding to install, or NULL to remove the current one.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok              Binding installed (or removed for a NULL @p lock).
+ * @retval k_ra8_err_invalid_arg @p lock is non-NULL but `acquire` or `release`
+ *                               is NULL -- a half-filled binding would leave
+ *                               the library holding a lock it cannot drop.
+ *
+ * @pre No `ra8_fs` call is in flight on any thread.
+ * @pre When @p lock is non-NULL, both of its callbacks are non-NULL.
+ * @post On ::k_ra8_ok with a non-NULL @p lock, every subsequent public call
+ *       brackets itself with `acquire` / `release`.
+ * @post On ::k_ra8_ok with a NULL @p lock, no callback is invoked again.
+ * @post On ::k_ra8_err_invalid_arg the previous binding is unchanged.
+ *
+ * @note Not thread-safe with respect to itself; this is an init-time call.
+ * @warning Installing a lock does not make one open ::ra8_fs_file_t shareable
+ *          between threads. It serialises the library, not a handle: two
+ *          threads reading the same handle still race on its offset.
+ *
+ * @par MC/DC:
+ * Decision: `if (lock->acquire == nullptr || lock->release == nullptr)`
+ * -- vectors live in `tests/test_ra8_fs_lock.c`.
+ *
+ * @see ra8_fs_lock_t  The binding this installs.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_fs_set_lock(const ra8_fs_lock_t* lock);
+
+/* =============================================================================
  * Format (mkfs) options
  * =============================================================================
  */
@@ -277,6 +403,39 @@ typedef struct {
   uint8_t         in_use;             /**< 0 = slot free, 1 = open.                   */
   uint8_t         no_fat_chain;       /**< exFAT contiguous file (no FAT walk).       */
 } ra8_fs_file_t;
+
+/**
+ * @struct ra8_fs_stat_t
+ * @brief What ::ra8_fs_stat() read out of a directory entry.
+ *
+ * @details
+ * The on-disk facts about one name, reported without opening it. That
+ * distinction is the point of the struct: a directory has no file handle to
+ * open and a metadata query must not consume one of the four file slots, so
+ * everything here comes from the directory entry itself.
+ *
+ * @invariant `is_directory` is exactly `(attr & k_ra8_fs_attr_directory) != 0`.
+ * @invariant `size_bytes` is 0 whenever `is_directory` is true -- a FAT
+ *            directory's `DIR_FileSize` is defined to be 0, and its real extent
+ *            is its cluster chain.
+ *
+ * @par Example:
+ * @code
+ * ra8_fs_stat_t st = {};
+ * if (ra8_fs_stat(mnt, "/books", &st) == k_ra8_ok && st.is_directory) {
+ *   (void)ra8_fs_listdir(mnt, "/books", on_entry, nullptr);
+ * }
+ * @endcode
+ *
+ * @see ra8_fs_stat()  Fills this in.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t size_bytes;    /**< File length in bytes; 0 for a directory.        */
+  uint32_t first_cluster; /**< Head of the entry's cluster chain (0 if empty). */
+  uint8_t  attr;          /**< The entry's own FAT attribute byte.             */
+  bool     is_directory;  /**< true => the ATTR_DIRECTORY bit is set.          */
+} ra8_fs_stat_t;
 
 /* =============================================================================
  * Listdir callback
@@ -375,7 +534,8 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  *       FAT, and an empty root directory.
  * @post On `k_ra8_err_invalid_size` / argument errors, the backend is untouched.
  *
- * @note Not thread-safe. Destroys all data on the device.
+ * @note Not thread-safe unless a lock is installed (see ::ra8_fs_set_lock()).
+ * @warning Destroys all data on the device.
  *
  * @par Example:
  * @code
@@ -423,7 +583,7 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  * @post On success, `out_handle->in_use == 1` and `type != unknown`.
  * @post On failure, `*out_handle` is left untouched.
  *
- * @note Not thread-safe.
+ * @note Not thread-safe unless a lock is installed (see ::ra8_fs_set_lock()).
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_fs_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_handle);
@@ -573,6 +733,60 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
 [[nodiscard]] ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint32_t* out_bytes);
 
 /* =============================================================================
+ * Public API -- metadata
+ * =============================================================================
+ */
+
+/**
+ * @brief Report what a path names -- file or directory -- without opening it.
+ *
+ * @details
+ * Resolves @p path the same way ::ra8_fs_open() does (parent walk, 8.3 lookup,
+ * VFAT long-name fallback on FAT; root-directory entry-set scan on exFAT) but
+ * stops at the directory entry and reads the answer straight out of it. Nothing
+ * is opened, so no file-table slot is consumed and a directory is reported as a
+ * directory rather than as a zero-byte file -- which is what opening one would
+ * have made it look like, `DIR_FileSize` being 0 by definition.
+ *
+ * A path naming the volume root (`""`, `"/"`) is answered from the mount
+ * geometry: it always exists and is always a directory.
+ *
+ * @param[in]  handle Mount handle.
+ * @param[in]  path   NUL-terminated path. Nested paths resolve on FAT12/16/32;
+ *                    exFAT resolves root-level names only.
+ * @param[out] out    Receives the entry's metadata on success.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Entry found; @p out populated.
+ * @retval k_ra8_err_null_ptr      Any pointer argument was NULL.
+ * @retval k_ra8_err_invalid_state Mount is not in use.
+ * @retval k_ra8_err_not_found     Nothing at @p path (or an intermediate
+ *                                 component is missing).
+ * @retval k_ra8_err_invalid_arg   A path component is not a valid 8.3 name.
+ * @retval k_ra8_err_*             Backend read failure.
+ *
+ * @pre `handle`, `path` and `out` are non-NULL.
+ * @pre Mount is in use.
+ * @post On ::k_ra8_ok, `out->is_directory` matches the entry's ATTR_DIRECTORY
+ *       bit and `out->size_bytes` is 0 whenever it is set.
+ * @post No volume state is modified and no file slot is consumed, on any path.
+ *
+ * @note Not thread-safe unless a lock is installed (see ::ra8_fs_set_lock()).
+ *
+ * @par Example:
+ * @code
+ * ra8_fs_stat_t st = {};
+ * const ra8_err_t e = ra8_fs_stat(mnt, "/README.TXT", &st);
+ * // e == k_ra8_err_not_found means "no such name", not "I/O failed".
+ * @endcode
+ *
+ * @see ra8_fs_listdir()  Enumerate a directory this reported.
+ * @see ra8_fs_open()     Same resolution, but takes a handle.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_fs_stat(ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out);
+
+/* =============================================================================
  * Public API -- directory ops
  * =============================================================================
  */
@@ -681,7 +895,7 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * @post On success an empty directory exists at @p path.
  * @post On failure the volume is unchanged.
  *
- * @note Not thread-safe; callers serialise.
+ * @note Not thread-safe unless a lock is installed (see ::ra8_fs_set_lock()).
  *
  * @since 0.1.0
  */

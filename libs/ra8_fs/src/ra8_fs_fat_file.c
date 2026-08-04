@@ -429,40 +429,11 @@ static ra8_err_t priv_create_new(ra8_fs_mount_t*  handle,
   return k_ra8_ok;
 }
 
-/**
- * @brief Open a file by path on a mounted FAT volume.
- *
- * @details Resolves the path to an 8.3 name, searches the root
- *          directory, and either opens an existing entry or creates a
- *          new one (write/append modes).
- *
- * @param[in]  handle   Mount handle.
- * @param[in]  path     NUL-terminated path; only flat root names supported.
- * @param[in]  mode     Open mode.
- * @param[out] out_file Receives the open file handle.
- *
- * @return Error code.
- * @retval k_ra8_ok                File opened.
- * @retval k_ra8_err_null_ptr      Any pointer argument was NULL.
- * @retval k_ra8_err_invalid_state Mount is not currently in use.
- * @retval k_ra8_err_invalid_arg   Path is not a valid 8.3 name, or it resolves
- *                                 to a directory (any mode).
- * @retval k_ra8_err_not_found     Read-only open of a missing file.
- * @retval k_ra8_err_no_mem        File or directory table full.
- * @retval k_ra8_err_*             Backend error.
- *
- * @pre `handle`, `path`, and `out_file` are non-NULL.
- * @pre Mount is in use.
- * @post On success, `*out_file` is a valid open handle.
- * @post On failure, no file slot is marked in use.
- * @post A path naming a directory leaves the volume untouched.
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-ra8_err_t
-ra8_fs_open(ra8_fs_mount_t* handle, const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file)
+/* `priv_open_locked()`: see header for the documented contract. */
+ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
+                           const char*     path,
+                           ra8_fs_mode_t   mode,
+                           ra8_fs_file_t** out_file)
 {
   if (handle == nullptr || path == nullptr || out_file == nullptr) {
     return k_ra8_err_null_ptr;
@@ -511,28 +482,8 @@ ra8_fs_open(ra8_fs_mount_t* handle, const char* path, ra8_fs_mode_t mode, ra8_fs
   return priv_create_new(handle, &parent, name83, mode, out_file);
 }
 
-/**
- * @brief Close an open file handle.
- *
- * @details Marks the slot free; the driver does not buffer writes so
- *          there is nothing to flush.
- *
- * @param[in] file Handle from `ra8_fs_open()`.
- *
- * @return Error code.
- * @retval k_ra8_ok           File closed.
- * @retval k_ra8_err_null_ptr `file` was NULL.
- *
- * @pre `file` is non-NULL.
- * @pre All pending writes have already been issued.
- * @post File slot is marked free for reuse.
- * @post `file->mount` is reset to NULL.
- *
- * @note Idempotent on a freshly-closed handle.
- *
- * @since 0.1.0
- */
-ra8_err_t ra8_fs_close(ra8_fs_file_t* file)
+/* `priv_close_locked()`: see header for the documented contract. */
+ra8_err_t priv_close_locked(ra8_fs_file_t* file)
 {
   if (file == nullptr) {
     return k_ra8_err_null_ptr;
@@ -540,4 +491,28 @@ ra8_err_t ra8_fs_close(ra8_fs_file_t* file)
   file->in_use = 0;
   file->mount  = nullptr;
   return k_ra8_ok;
+}
+
+/* =============================================================================
+ * Public entry points -- the lock brackets
+ * =============================================================================
+ */
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t
+ra8_fs_open(ra8_fs_mount_t* handle, const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_open_locked(handle, path, mode, out_file);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_close(ra8_fs_file_t* file)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_close_locked(file);
+  priv_lock_release();
+  return err;
 }

@@ -64,11 +64,19 @@ typedef enum : uint8_t {
  *          but the file is absent, so callers can probe without treating a miss
  *          as an error.
  *
+ *          `attr` and `is_directory` are read out of the on-disk directory
+ *          entry, so a folder reports as a folder. Anything built over this --
+ *          a file browser, a USB/MTP gateway, an importer -- can tell the two
+ *          apart, which it could not when both fields were hardcoded.
+ *
+ * @invariant `is_directory` equals `(attr & k_ra8_fs_attr_directory) != 0`.
+ * @invariant `size_bytes` is 0 whenever `is_directory` is true.
+ *
  * @since 0.1.0
  */
 typedef struct {
   uint32_t size_bytes;   /**< File size in bytes (0 for directories). */
-  uint8_t  attr;         /**< FAT attribute byte (::ra8_fs_attr_t).   */
+  uint8_t  attr;         /**< The entry's own FAT attribute byte.     */
   bool     is_directory; /**< true => path names a directory.         */
   bool     exists;       /**< true => the path resolves to an entry.  */
 } ra8_io_vfs_stat_t;
@@ -210,22 +218,34 @@ ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file);
 /**
  * @brief Query metadata for `"name:/path"`.
  *
+ * @details Delegates to ::ra8_fs_stat(), which reads the directory entry
+ *          without opening it. A directory therefore reports
+ *          `is_directory == true` and `size_bytes == 0`, and `attr` is the
+ *          entry's real attribute byte -- read-only, hidden and system all
+ *          survive the trip. A missing name is ::k_ra8_ok with
+ *          `exists == false`, not an error: absence is an answer.
+ *
+ *          `"name:/"` names the volume root, which always exists and is
+ *          always a directory.
+ *
  * @param[in]  path `"name:/path"` string.
  * @param[out] out  Metadata snapshot (`exists` reflects presence).
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok              Metadata resolved (`exists` may be false).
  * @retval k_ra8_err_null_ptr    `path` or `out` was NULL.
- * @retval k_ra8_err_invalid_arg `path` has no `name:` prefix.
+ * @retval k_ra8_err_invalid_arg `path` has no `name:` prefix, or a component
+ *                               is not a valid 8.3 name.
  * @retval k_ra8_err_not_found   The mount name is absent.
  *
  * @pre The named volume is mounted.
  * @pre `out` is writable.
  * @post On success `*out` describes the entry (or `exists == false`).
- * @post No volume state is mutated.
+ * @post No volume state is mutated and no file handle is consumed.
  *
- * @note Not thread-safe.
+ * @note Not thread-safe unless a lock is installed (see ::ra8_fs_set_lock()).
  *
+ * @see ra8_fs_stat()  The primitive this reports.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_io_vfs_stat(const char* path, ra8_io_vfs_stat_t* out);

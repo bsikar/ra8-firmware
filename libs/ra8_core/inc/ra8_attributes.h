@@ -411,21 +411,39 @@ extern "C" {
  * @brief The function expects the named thread/IRQ lock to be held on entry.
  *
  * @details
- * Documents the lock contract so the libclang checker can verify every
- * caller wraps the call in a matching `RA8_TAKE_LOCK(name)` /
- * `RA8_RELEASE_LOCK(name)` pair (or itself carries the same
- * `RA8_EXPECTS_LOCK(name)` annotation, propagating the contract upward).
+ * Documents the lock contract so the libclang checker can verify that every
+ * caller already holds `name`. A caller proves it in one of exactly two ways:
+ *
+ *  1. it TAKES the lock for the length of its own body, and says so with
+ *     `RA8_OWNS_RESOURCE(name)` -- which is separately required to reach a
+ *     matching `RA8_RELEASES_RESOURCE(name)` on every return path, so the
+ *     pair is what makes "held across this call" checkable; or
+ *  2. it was itself entered under the lock, and propagates the contract
+ *     upward by carrying the same `RA8_EXPECTS_LOCK(name)`.
+ *
+ * Anything else is a violation reported at the call site.
  *
  * @param[in] name String literal naming the lock (e.g. `"i2c0_bus"`,
- *                 `"global_irq"`).
+ *                 `"global_irq"`). It must be spelled identically on the
+ *                 `RA8_OWNS_RESOURCE` / `RA8_RELEASES_RESOURCE` pair that
+ *                 discharges it.
  *
  * @par Enforcement:
- * libclang call-graph walk verifies caller has acquired `name` first.
+ * libclang call-graph walk verifies every caller holds `name`.
  *
  * @par Example:
  * @code
  * RA8_EXPECTS_LOCK("i2c0_bus")
  * ra8_err_t ra8_i2c0_write_locked(const uint8_t* buf, uint32_t len);
+ *
+ * RA8_OWNS_RESOURCE("i2c0_bus")
+ * ra8_err_t ra8_i2c0_write(const uint8_t* buf, uint32_t len)
+ * {
+ *   ra8_i2c0_lock();                              // takes "i2c0_bus"
+ *   const ra8_err_t e = ra8_i2c0_write_locked(buf, len);
+ *   ra8_i2c0_unlock();                            // RA8_RELEASES_RESOURCE
+ *   return e;
+ * }
  * @endcode
  *
  * Callers of `ra8_i2c0_write_locked` must hold the `"i2c0_bus"` lock.

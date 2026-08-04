@@ -155,7 +155,7 @@ priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint3
 }
 
 /**
- * @brief Read bytes from an open file.
+ * @brief Read bytes -- the guarded body of ::ra8_fs_read().
  *
  * @details Loops on `priv_read_one_chunk`, advancing `file->offset`
  *          after each chunk. Stops at EOF or when `max_len` met.
@@ -171,6 +171,7 @@ priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint3
  * @retval k_ra8_err_invalid_state File is not open.
  * @retval k_ra8_err_*             Backend error.
  *
+ * @pre The library lock is held (or none is installed).
  * @pre `file`, `buf`, and `got_len` are non-NULL.
  * @pre File is in use.
  * @post On success, `*got_len` bytes were placed in `buf` and the
@@ -181,7 +182,10 @@ priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint3
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_len)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t
+priv_read_locked(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_len)
 {
   if (file == nullptr || buf == nullptr || got_len == nullptr) {
     return k_ra8_err_null_ptr;
@@ -388,7 +392,7 @@ static ra8_err_t priv_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint
 }
 
 /**
- * @brief Write bytes to an open file.
+ * @brief Write bytes -- the guarded body of ::ra8_fs_write().
  *
  * @details Forwards to `priv_write_stream`, then patches the on-disk
  *          dir entry with the updated first-cluster and file size.
@@ -403,6 +407,7 @@ static ra8_err_t priv_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint
  * @retval k_ra8_err_invalid_state File not open or opened read-only.
  * @retval k_ra8_err_*             Backend, FAT, or no-mem error.
  *
+ * @pre The library lock is held (or none is installed).
  * @pre `file` and `buf` are non-NULL.
  * @pre `file->mode != k_ra8_fs_mode_read`.
  * @post On success, the file's dir entry on disk reflects new size.
@@ -412,7 +417,9 @@ static ra8_err_t priv_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_fs_write(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
   if (file == nullptr || buf == nullptr) {
     return k_ra8_err_null_ptr;
@@ -437,8 +444,40 @@ ra8_err_t ra8_fs_write(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
   return priv_write_sector(m, file->dir_entry_lba, dirsec);
 }
 
-ra8_err_t
-ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data, uint32_t len)
+/**
+ * @brief Create a whole file -- the guarded body of ::ra8_fs_write_file().
+ *
+ * @details Dispatches to the exFAT contiguous creator, or drives the FAT path
+ *          through the *unlocked* open / write / close bodies -- taking the
+ *          library lock again here would deadlock a non-recursive mutex. The
+ *          public ::ra8_fs_write_file() is the wrapper that holds the lock
+ *          across all three, so the whole creation is one atomic operation
+ *          rather than three.
+ *
+ * @param[in,out] handle Mounted volume.
+ * @param[in]     path   Root-level file name (ASCII).
+ * @param[in]     data   File contents.
+ * @param[in]     len    Byte count.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                File created and written.
+ * @retval k_ra8_err_null_ptr      Any pointer argument was NULL.
+ * @retval k_ra8_err_invalid_state Mount is not in use.
+ * @retval k_ra8_err_*             As documented for ::ra8_fs_write_file().
+ *
+ * @pre The library lock is held (or none is installed).
+ * @pre `handle`, `path` and `data` are non-NULL.
+ * @post On success @p path resolves to @p len bytes of @p data.
+ * @post No file slot stays in use on any return path.
+ *
+ * @note Never call this from outside `ra8_fs`; it is the unlocked half.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t
+priv_write_file_locked(ra8_fs_mount_t* handle, const char* path, const uint8_t* data, uint32_t len)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -456,12 +495,12 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
     return priv_exfat_create(handle, path, data, len);
   }
   ra8_fs_file_t* f = nullptr;
-  ra8_err_t      e = ra8_fs_open(handle, path, k_ra8_fs_mode_write, &f);
+  ra8_err_t      e = priv_open_locked(handle, path, k_ra8_fs_mode_write, &f);
   if (e != k_ra8_ok) {
     return e;
   }
-  e                    = ra8_fs_write(f, data, len);
-  const ra8_err_t cerr = ra8_fs_close(f);
+  e                    = priv_write_locked(f, data, len);
+  const ra8_err_t cerr = priv_close_locked(f);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -469,7 +508,7 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
 }
 
 /**
- * @brief Move the file's read/write cursor.
+ * @brief Move the cursor -- the guarded body of ::ra8_fs_seek().
  *
  * @details Clamps the requested offset to the current file size; the
  *          driver does not implement sparse files.
@@ -482,7 +521,7 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
  * @retval k_ra8_err_null_ptr      `file` was NULL.
  * @retval k_ra8_err_invalid_state File not open.
  *
- * @pre `file` is non-NULL.
+ * @pre The library lock is held (or none is installed).
  * @pre File is in use.
  * @post `file->offset == min(offset_bytes, file->size_bytes)`.
  * @post No on-disk state modified.
@@ -491,7 +530,9 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint32_t offset_bytes)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t priv_seek_locked(ra8_fs_file_t* file, uint32_t offset_bytes)
 {
   if (file == nullptr) {
     return k_ra8_err_null_ptr;
@@ -508,7 +549,7 @@ ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint32_t offset_bytes)
 }
 
 /**
- * @brief Report the file's current cursor position.
+ * @brief Report the cursor -- the guarded body of ::ra8_fs_tell().
  *
  * @details Reads `file->offset`.
  *
@@ -520,6 +561,7 @@ ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint32_t offset_bytes)
  * @retval k_ra8_err_null_ptr      Any pointer was NULL.
  * @retval k_ra8_err_invalid_state File not open.
  *
+ * @pre The library lock is held (or none is installed).
  * @pre `file` and `out_offset` are non-NULL.
  * @pre File is in use.
  * @post `*out_offset == file->offset`.
@@ -529,7 +571,9 @@ ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint32_t offset_bytes)
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint32_t* out_offset)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t priv_tell_locked(const ra8_fs_file_t* file, uint32_t* out_offset)
 {
   if (file == nullptr || out_offset == nullptr) {
     return k_ra8_err_null_ptr;
@@ -542,7 +586,7 @@ ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint32_t* out_offset)
 }
 
 /**
- * @brief Report the file's size in bytes.
+ * @brief Report the size -- the guarded body of ::ra8_fs_size().
  *
  * @details Reads `file->size_bytes`.
  *
@@ -554,6 +598,7 @@ ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint32_t* out_offset)
  * @retval k_ra8_err_null_ptr      Any pointer was NULL.
  * @retval k_ra8_err_invalid_state File not open.
  *
+ * @pre The library lock is held (or none is installed).
  * @pre `file` and `out_bytes` are non-NULL.
  * @pre File is in use.
  * @post `*out_bytes == file->size_bytes`.
@@ -563,7 +608,9 @@ ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint32_t* out_offset)
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint32_t* out_bytes)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t priv_size_locked(const ra8_fs_file_t* file, uint32_t* out_bytes)
 {
   if (file == nullptr || out_bytes == nullptr) {
     return k_ra8_err_null_ptr;
@@ -573,4 +620,64 @@ ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint32_t* out_bytes)
   }
   *out_bytes = file->size_bytes;
   return k_ra8_ok;
+}
+
+/* =============================================================================
+ * Public entry points -- the lock brackets
+ * =============================================================================
+ */
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_len)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_read_locked(file, buf, max_len, got_len);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_write(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_write_locked(file, buf, len);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t
+ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data, uint32_t len)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_write_file_locked(handle, path, data, len);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint32_t offset_bytes)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_seek_locked(file, offset_bytes);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint32_t* out_offset)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_tell_locked(file, out_offset);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint32_t* out_bytes)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_size_locked(file, out_bytes);
+  priv_lock_release();
+  return err;
 }

@@ -628,7 +628,7 @@ static void test_mcdc_format_fat32_band_lower(void)
  * @test test_mcdc_format_type_unsupported
  * @par MC/DC:
  * Decision: `if (opts->type != FAT12 && != FAT16 && != FAT32 && != exFAT)` in
- * `libs/ra8_fs/src/ra8_fs_fat_mount.c@ra8_fs_format` (4 conditions). The guard
+ * `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_format_locked` (4 conditions). The guard
  * rejects with not_supported only when the type is NONE of the four writable
  * variants -- i.e. all four inequalities are TRUE.
  * - V1 unknown (0): A=T(!=12), B=T(!=16), C=T(!=32), D=T(!=exFAT) -> rejected.
@@ -667,7 +667,7 @@ static ra8_err_t cap_bad_block_size(void* ctx, uint32_t* block_count, uint32_t* 
  * @test test_mcdc_format_block_size_guard
  * @par MC/DC:
  * Decision: `if (block_size != 512 || block_count == 0U)` in
- * `libs/ra8_fs/src/ra8_fs_fat_mount.c@ra8_fs_format` (2 conditions), after
+ * `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_format_locked` (2 conditions), after
  * `get_capacity`.
  * - control: a valid 512-byte card -> C1=F, C2=F -> the format proceeds (the
  *   FAT16 round-trips in sibling tests). Re-asserted here as the both-false leg.
