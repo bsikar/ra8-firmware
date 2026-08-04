@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_gpt_pwm_dma.c
  * @brief DMA, runtime-PWM, and three-phase tests for ra8_gpt.c
@@ -12,6 +8,9 @@
  * runtime PWM duty/period/counter and dead-time tests, the three-phase
  * open/set/close tests, and the MC/DC vector tests; the basic start / stop /
  * read / init / dispatch contract tests stay in test_ra8_gpt.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

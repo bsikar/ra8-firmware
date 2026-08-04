@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_jof.c
  * @brief JOF atlas reader: parse/validate + bounded per-tile decode (#231).
@@ -13,6 +9,8 @@
  * zero-heap `ra8_io_decompress()`; raw tiles are a single positioned read.
  * The memstore helpers give tests and apps a RAM-backed sink/pread pair.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain]
  * {World: NS}

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_usb_cdc_echo.c
  * @brief Integration test: ThreadX + USBX CDC ACM echo bring-up
@@ -29,6 +25,8 @@
  *   - ra8_board_ek_ra8d2 (LED bring-up)
  *   - ra8_usb_pal (device-side controller bridge)
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_spi_bus.c
  * @brief SPI-bus dispatcher -- forwards each public call into the bound
@@ -16,6 +12,9 @@
  * whose `ctx` is the ::ra8_io_spi_bus_t itself, mirroring the
  * `ra8_io_blockdev_as_fs_backend()` idiom. No MMIO is touched here; the
  * wrapped drivers carry every HUM citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_spi_bus.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_dmac.c
  * @brief DMAC0 transfer peripheral-block model for the board emulator
@@ -40,6 +36,8 @@
  * the per-channel transfer state and the shared registers all reset together
  * from the channel descriptor's reset hook.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

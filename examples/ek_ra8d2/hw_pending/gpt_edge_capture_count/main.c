@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/gpt_edge_capture_count/main.c
  * @brief GPT hardware input-capture + external event/pulse counting demo
@@ -44,6 +40,8 @@
  * Manual pin tables); see the TODO on the pin table below. Until a
  * carrier board or jumper wiring exists this app is not bench-validated.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

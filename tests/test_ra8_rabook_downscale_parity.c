@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rabook_downscale_parity.c
  * @brief Host-vs-device byte-identity gate for the opt-in image downscale (#213).
@@ -31,6 +27,8 @@
  * test_ra8_rabook_gray4.c and are unchanged by this gate.
  *
  * @since Version 0.1.0
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB_Compiler] {World: NS}
  */

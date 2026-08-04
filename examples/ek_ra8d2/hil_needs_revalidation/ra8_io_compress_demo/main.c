@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_compress_demo/main.c
  * @brief Transparent compress-on-write / decompress-on-read over the VFS (#161).
@@ -34,6 +30,9 @@
  * ra8_emulator captures the SCI8 console, so the PASS line is observable
  * headlessly: a successful run ends with
  * `ra8_io_compress_demo: ram+dr 4096 -> N bytes -> 4096 round-trip PASS`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

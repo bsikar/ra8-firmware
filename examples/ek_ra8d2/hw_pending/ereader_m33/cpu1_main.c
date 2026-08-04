@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_m33/cpu1_main.c
  * @brief CPU1 (Cortex-M33 secondary core) image: render a held e-reader page
@@ -57,6 +53,8 @@
  *       the GLCDC scan-out plane; wiring the held plane to the live panel + the
  *       display-plane handoff is a later increment (#150).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

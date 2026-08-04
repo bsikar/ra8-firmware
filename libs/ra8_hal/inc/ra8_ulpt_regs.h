@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ulpt_regs.h
  * @brief Ultra-Low-Power Timer (ULPT) register layout for the Renesas RA8D2
@@ -29,6 +25,9 @@
  *
  * Register offsets tracked against HUM Ch 25 "Ultra-Low-Power
  * Timer (ULPT)" p 1187.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

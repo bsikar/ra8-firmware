@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_c6link_wire.c
  * @brief Unit tests for the three pure layers under `ra8_c6link` (#490).
@@ -15,6 +11,9 @@
  *
  * Every decision in these layers is exercised with N+1 vectors; the blocks
  * below name them.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

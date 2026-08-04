@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_pal_internal.h
  * @brief Test-access surface for ra8_usb_pal internal helpers (MC/DC).
@@ -9,6 +5,9 @@
  *
  * @par Tag
  * [Ring 3 / PAL] {World: NS}
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

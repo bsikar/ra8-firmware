@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_view_stub.c
  * @brief Headless no-op board view for non-Apple builds (Linux CI)
@@ -18,6 +14,8 @@
  * of board_view.m (APPLE) or this file (non-APPLE), so the two never coexist in
  * a link.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

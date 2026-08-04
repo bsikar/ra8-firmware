@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ipc_ring.c
  * @brief Unit tests for the ra8_ipc shared-memory ring buffer plus the
@@ -10,6 +6,9 @@
  * @details Split from test_ra8_ipc.c along the test-group seam. Shared
  * fixture state (ring backing memory, stub callbacks, prep()) lives in
  * support/ipc_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

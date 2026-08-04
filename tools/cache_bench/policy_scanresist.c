@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file policy_scanresist.c
  * @brief Scan-resistant eviction policies for the #147 benchmark: Segmented-LRU
@@ -21,6 +17,8 @@
  *   re-referenced ones; a hit predicts immediate re-reference (RRPV = 0).
  *   Eviction picks an RRPV == max frame, aging all frames until one appears.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

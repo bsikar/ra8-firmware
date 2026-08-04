@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_clock_check.c
  * @brief Integration test: CGC bring-up + clock readback + LED blink for clock_check
@@ -17,6 +13,8 @@
  *   - ra8_time           (SysTick init at the post-PLL clock)
  *   - ra8_board_ek_ra8d2 (LED bring-up + toggle)
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

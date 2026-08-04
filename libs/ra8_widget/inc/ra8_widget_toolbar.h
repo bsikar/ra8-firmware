@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_widget_toolbar.h
  * @brief Toolbar leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -19,6 +15,8 @@
  * optional `on_search` callback; a tap on the count chip (or a button event) is
  * declined so it keeps routing.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

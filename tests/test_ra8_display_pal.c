@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_display_pal.c
  * @brief Host unit tests for the display PAL (ra8_display_pal).
@@ -20,6 +16,9 @@
  *     conversion the flush path relies on.
  *   - Busy-rejection on a second ``display_init`` without a
  *     preceding ``display_deinit``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

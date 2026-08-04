@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_widget_book_grid.c
  * @brief Unit tests for the ra8_widget book-grid leaf (#145 Phase 2).
@@ -20,6 +16,8 @@
  * the sibling widget suites, this translation unit shares no state with them:
  * the recording backend below is its own.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

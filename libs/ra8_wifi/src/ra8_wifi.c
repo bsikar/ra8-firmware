@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file ra8_wifi.c
  * @brief The Wi-Fi facade state machine, dispatched over a backend vtable.
@@ -20,8 +14,9 @@
  * ra8_c6link header, which is exactly what makes it host-testable against a mock
  * backend.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

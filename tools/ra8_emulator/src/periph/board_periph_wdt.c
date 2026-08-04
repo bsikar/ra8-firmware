@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_wdt.c
  * @brief Window Watchdog Timer (WDT0 / WWDT) model for ra8_emulator
@@ -36,6 +32,8 @@
  * fires exactly once). With RSTIRQS clear (NMI / IRQ mode), the underflow latches
  * UNDFF but does not reboot -- the board emulator does not route the WDT NMI.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

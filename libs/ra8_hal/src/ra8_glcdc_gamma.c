@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_glcdc_gamma.c
  * @brief GLCDC piecewise-linear gamma correction driver
@@ -20,6 +16,9 @@
  * shared OUT block at k_ra8_glcdc_off_out_gamsw.
  *
  * Every register access is preceded by a HUM Ch 63 citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

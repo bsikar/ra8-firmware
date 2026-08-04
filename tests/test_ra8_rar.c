@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rar.c
  * @brief Tests for the clean-room RAR reader (ra8_rar) and the CBR comic backend.
@@ -21,6 +17,9 @@
  * The archive builders here are a legitimate STORE-only writer of the public
  * format; they vendor no `unrar` code (that license restriction is on RARLAB's
  * decompressor source, which this reader does not use).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

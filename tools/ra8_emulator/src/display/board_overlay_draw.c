@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_overlay_draw.c
  * @brief Overlay draw primitives + embedded 5x7 font
@@ -11,6 +7,8 @@
  * ASCII font every overlay panel draws with -- moved verbatim out of
  * board_overlay.c.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

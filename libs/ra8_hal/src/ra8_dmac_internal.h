@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dmac_internal.h
  * @brief Test-access surface for ra8_dmac internal helpers (MC/DC).
@@ -12,6 +8,9 @@
  * header to drive compound boolean decisions that sit in TU-private
  * helpers behind the public ra8_dmac facade. See CLAUDE.md
  * "Test access to internal symbols (MC/DC scope)".
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

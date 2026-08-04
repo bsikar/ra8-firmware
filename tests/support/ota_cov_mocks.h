@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ota_cov_mocks.h
  * @brief Shared mock harness for the ra8_ota coverage-gap test suite.
@@ -13,6 +9,9 @@
  * knobs, plus the priv_* fixture builders (image, manifest, config). The
  * mock state is file-scope static, so every including test binary gets an
  * independent copy.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_unarch_gzip.h
  * @brief Clean-room gzip member decoder (RFC 1952) over the miniz DEFLATE core.
@@ -41,6 +37,9 @@
  * @see ra8_unarch_tar.h     The tar walker layered over unwrapped bytes.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

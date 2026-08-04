@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_report.c
  * @brief Banner, resolved pin map and side-band reporting for the bring-up.
@@ -30,6 +26,8 @@
  * than the GPIO HAL: that is the seam the vendored SPI driver uses, so a
  * level printed here is the level the driver would act on.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

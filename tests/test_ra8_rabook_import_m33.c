@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rabook_import_m33.c
  * @brief Host test for the M33-offload import adapter (ra8_rabook_import, #149).
@@ -52,6 +48,8 @@
  * single-condition `if (err ...)` or `RA8_CHECK_NULL_PTR` guard, covered by driving
  * its one condition both ways across the cases above.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Import] {World: NS}
  *

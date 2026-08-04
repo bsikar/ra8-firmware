@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sdhi.h
  * @brief SD/MMC Host Interface (SDHI) driver scaffold
@@ -30,6 +26,9 @@
  * - ``ra8_sdhi_set_bus_width`` -- program SD_OPTION.WIDTH / WIDTH8
  * - ``ra8_sdhi_set_bus_width_4bit`` -- ACMD6 negotiate 4-bit bus (SD)
  * - ``ra8_sdhi_set_bus_width_8bit`` -- CMD6 SWITCH negotiate 8-bit bus (eMMC)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

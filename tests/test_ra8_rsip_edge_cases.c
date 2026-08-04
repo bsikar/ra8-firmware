@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rsip_edge_cases.c
  * @brief Edge-case + stress unit tests for the Renesas Secure IP (RSIP-E50D).
@@ -23,6 +19,9 @@
  *     RND_DATA with a constant sentinel, so the byte-distribution is
  *     deterministic; we still assert the output buffer is not all-zero
  *     (the most common silent-failure mode).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

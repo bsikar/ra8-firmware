@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/touch_cal/main.c
  * @brief N-point affine touch-calibration demo + HIL gate (#262).
@@ -56,6 +52,8 @@
  * the EIL gate. This mirrors `touch_demo`, which likewise gates the finger-free
  * bring-up and lets the fake inject the touch.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

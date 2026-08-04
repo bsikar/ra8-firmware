@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/c6_join.h
  * @brief Shared contract for the C6 Wi-Fi join + DHCP + reachability app.
@@ -31,6 +27,8 @@
  * neither set the image builds but refuses at runtime, so a credential is never
  * committed and the aggregate cross-build stays green.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

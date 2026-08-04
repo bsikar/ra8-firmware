@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_nsc_cgc.c
  * @brief NSC veneers for the Clock Generation Circuit driver
@@ -16,6 +12,9 @@
  * register block (System Control) is permanently Secure on the
  * RA8D2; this file is the only TZ-safe path for Non-Secure code to
  * request clock-tree changes.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_nsc_cgc.h"

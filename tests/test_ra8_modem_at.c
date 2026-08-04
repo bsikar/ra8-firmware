@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_modem_at.c
  * @brief Unit tests for ra8_modem_at.c (cellular modem AT command driver)
@@ -14,6 +10,9 @@
  * plus the value the public API returned. This sibling owns the
  * public-API contract tests; the MC/DC vector tests live in
  * test_ra8_modem_at_mcdc.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dtc_transfer_demo/main.c
  * @brief 1 KB DTC SRAM-to-SRAM block-copy + verify demo for the EK-RA8D2
@@ -50,6 +46,8 @@
  * leaves the DTC-complete IRQ masked so its ISR cannot race the transfer.
  * See ``README.md`` for details.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

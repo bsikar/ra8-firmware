@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_i2c_bus_i3c_compat.c
  * @brief I3C I2C-compatibility backend for the ra8_io I2C-bus facade --
@@ -22,6 +18,9 @@
  * negates accordingly. `ra8_i3c_read` gets `restart = false` because the
  * facade read always releases the bus, matching `ra8_i2c_read`. No raw
  * MMIO is touched here; the driver carries every HUM citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_i2c_bus_i3c_compat.h"

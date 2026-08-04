@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_epaper_refresh.c
  * @brief Integration test: epaper_refresh demo logic (pure)
@@ -19,6 +15,8 @@
  *
  * No MMIO is required, so this test runs in-process.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

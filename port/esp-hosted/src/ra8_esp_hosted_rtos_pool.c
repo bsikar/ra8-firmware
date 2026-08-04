@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
  * @brief Memory and queue half of the esp-hosted OS-abstraction vtable.
@@ -18,6 +14,8 @@
  * state; that is what the ``RA8_ESP_HOSTED_TX_SHIM_IMPL`` define below
  * selects.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

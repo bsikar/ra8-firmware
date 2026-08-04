@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_types.h
  * @brief Reflow-engine data model: enums, structs, typedefs, and the handle.
@@ -15,6 +11,8 @@
  * the umbrella `ra8_reflow.h` so that header stays small; consumers still
  * include `ra8_reflow.h` and never reference this file directly.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

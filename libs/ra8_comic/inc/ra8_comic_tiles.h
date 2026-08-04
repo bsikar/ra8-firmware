@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_comic_tiles.h
  * @brief Tile an oversized comic page through the JOF atlas + ra8_tile_cache so
@@ -77,6 +73,9 @@
  * @see ra8_comic.h              The CBZ/CBR page reader that supplies the bytes.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

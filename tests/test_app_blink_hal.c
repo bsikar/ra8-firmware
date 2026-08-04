@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_blink_hal.c
  * @brief Integration test: HAL-driven LED bring-up + toggle loop for blink_hal
@@ -16,6 +12,8 @@
  *   - ra8_board_ek_ra8d2 (LED bring-up + toggle)
  *   - ra8_time           (SysTick init at the reset-default MOCO clock)
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/_unsupported/audio_loopback/main.c
  * @brief BSP-driven I2S audio playback demo for EK-RA8D2 (DA7212 CODEC)
@@ -41,6 +37,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-04-29
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

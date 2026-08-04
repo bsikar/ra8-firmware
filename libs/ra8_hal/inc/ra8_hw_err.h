@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_hw_err.h
  * @brief Bounded wait-flag primitives for RA8D2 HAL drivers
@@ -57,6 +53,9 @@
  * that belong in the calling driver. The barrier here is just
  * the ``volatile`` qualifier on the register pointer, which is
  * sufficient to keep the compiler from hoisting the load.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

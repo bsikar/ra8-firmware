@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_dual_core_cov.c
  * @brief Coverage-lift tests for libs/ra8_hal/src/ra8_dual_core.c
@@ -40,6 +36,8 @@
  *
  *   Three vectors {A, B, C} provide N+1 = 3 for N=2 conditions: minimal MC/DC.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

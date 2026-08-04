@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_box.c
  * @brief Implementation of the bounded box-model layout engine.
@@ -14,6 +10,8 @@
  * for the contract. The engine computes geometry only; colours/tags are
  * carried through untouched for the renderer.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

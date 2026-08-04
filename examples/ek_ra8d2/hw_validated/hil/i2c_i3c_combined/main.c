@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/i2c_i3c_combined/main.c
  * @brief RIIC + I3C(I2C-mode) coexistence self-test for the EK-RA8D2
@@ -24,6 +20,8 @@
  * ``combo: i2c ack=1 i3c initok`` -- emitted only when RIIC ACKed U15
  * AND the I3C controller initialised (init failure panic-halts first).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

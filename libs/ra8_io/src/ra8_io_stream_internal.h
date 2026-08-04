@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_stream_internal.h
  * @brief Internal vtable type for the ra8_io byte-stream facade.
@@ -19,6 +15,8 @@
  * and binds into a caller-owned ::ra8_io_stream_t. It is forward declared opaque
  * in `ra8_io_stream.h`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

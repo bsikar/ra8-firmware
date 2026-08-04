@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_cache_store.c
  * @brief ra8_cache_store runtime path: put / get / read / evict / pin / checkpoint
@@ -18,6 +14,9 @@
  * only releases sectors -- write-once entries are always re-derivable, so
  * nothing is ever written back. The mount / recovery path lives in
  * `ra8_cache_store_mount.c`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_cache_store.h"

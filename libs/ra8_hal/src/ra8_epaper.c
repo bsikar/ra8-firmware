@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_epaper.c
  * @brief IT8951 e-paper SPI driver implementation
@@ -26,6 +22,9 @@
  * processing the previous request. The driver polls HRDY through
  * ``ra8_gpio_read`` with a bounded retry budget to satisfy NASA
  * Power-of-10 Rule 2.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_epaper.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ui.c
  * @brief Unit tests for the ra8_ui interaction core (hit-test, nav, paging).
@@ -12,6 +8,9 @@
  * entry point plus MC/DC vector sets for the three compound decisions:
  * ``ra8_ui_rect_contains`` (4-condition AND), ``ra8_ui_pager_next`` and
  * ``ra8_ui_pager_goto`` (2-condition ANDs).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

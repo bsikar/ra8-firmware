@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_compress.c
  * @brief Raw-DEFLATE compress / decompress over miniz, heap-free.
@@ -14,6 +10,9 @@
  * miniz's SOUP stack, no heap). Compression drives the low-level `tdefl` engine
  * with a caller-provided `tdefl_compressor` scratch and a put-buffer callback
  * that appends into the bounded output -- so no allocator is touched.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_compress.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_csi.c
  * @brief MIPI CSI-2 receiver HAL driver implementation
@@ -44,6 +40,9 @@
  *   Idle -> Gated [label="deinit()"];
  * }
  * @enddot
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_mipi_csi.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_adc.h
  * @brief Full-featured ADC_B driver
@@ -16,6 +12,9 @@
  * stub with: descriptor-based init, deinit, runtime resolution
  * reconfigure (ADDOPCRCn.ADPRC per-channel data-format), status +
  * clear, interrupt-mode attach / dispatch, power transition.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

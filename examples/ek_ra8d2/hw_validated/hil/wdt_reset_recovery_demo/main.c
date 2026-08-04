@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/wdt_reset_recovery_demo/main.c
  * @brief WWDT reset + recovery HIL demo for EK-RA8D2
@@ -27,6 +23,8 @@
  * appears inside the boot timeout, which only happens once the
  * stage-A reset has actually fired and the chip has rebooted.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

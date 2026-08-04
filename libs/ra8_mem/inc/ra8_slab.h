@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_slab.h
  * @brief Fixed-cell slab allocator -- O(1), zero-fragmentation, zero-heap.
@@ -37,6 +33,8 @@
  *
  * @note Not thread-safe; callers serialise (single-threaded reader / IRQs masked).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

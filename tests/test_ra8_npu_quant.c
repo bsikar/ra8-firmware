@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_npu_quant.c
  * @brief Unit tests for ra8_npu_quant.c (affine INT8 / UINT8 tensor quantization)
@@ -13,6 +9,9 @@
  * affine mapping (round-half-away-from-zero, zero-point offset, saturation, and
  * the pre-cast magnitude clamp) plus the argument-validation guards, and confirm
  * a quantize -> dequantize round trip is exact for integer-representable inputs.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

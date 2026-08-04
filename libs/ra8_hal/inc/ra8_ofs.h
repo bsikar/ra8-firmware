@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ofs.h
  * @brief Option Function Select (OFS) boot-map inventory for the active RA8 device
@@ -47,6 +43,8 @@
  * @see ra8_device.h  RA8D2/RA8P1 compile-time device switch.
  * @see ra8_ofs.c     Emits the writable option-setting words into flash.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

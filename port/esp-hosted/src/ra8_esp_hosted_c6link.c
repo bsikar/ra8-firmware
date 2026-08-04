@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_c6link.c
  * @brief The three trampolines that put `ra8_c6link` on this board's wire.
@@ -16,6 +12,8 @@
  * result from the facade a bench result about the port: if the two used
  * different paths, a passing facade would say nothing about the driver.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

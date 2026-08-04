@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ipc.c
  * @brief Inter-Processor Communication (IPC) HAL driver implementation
@@ -24,6 +20,9 @@
  * ``ra8_isr_register``, and a producer/consumer ring buffer protocol
  * that uses an IPCSEM for mutual exclusion + the FIFO IRQ lines for
  * cross-core notification.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_ipc.h"

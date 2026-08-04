@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ble.c
  * @brief Unit tests for ra8_ble.c (RA8D2 BLE controller / HCI driver)
@@ -12,6 +8,9 @@
  * sequencing is asserted indirectly: ``ra8_ble_open`` must be called
  * before any HCI command will be accepted, and ``ra8_ble_close`` must
  * release the controller back into reset.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

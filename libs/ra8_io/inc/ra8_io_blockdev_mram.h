@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_mram.h
  * @brief ra8_io block-device backend over the on-chip extra/data MRAM region.
@@ -31,6 +27,8 @@
  * change a bit from 0 to 1, so the reported capabilities advertise
  * `must_erase_before_write = true` and `erase_value = 0xFF`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

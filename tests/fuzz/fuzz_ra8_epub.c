@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fuzz_ra8_epub.c
  * @brief libFuzzer harness for ra8_epub_open() (zip / EPUB parser).
@@ -13,6 +9,9 @@
  * `ra8_epub_mem_media_t` and tries to open it. The parser must reject
  * every malformed input without crashing, leaking, or reading out of
  * bounds. ASan / UBSan diagnose any violation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

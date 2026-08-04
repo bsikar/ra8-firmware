@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_usb_host.c
  * @brief Non-Secure USBHS polled HOST ladder: enumerate + bulk echo (#96).
@@ -27,6 +23,8 @@
  * ns_usb_internal.h. The ThreadX-backed ::ra8_delay_ms / ::ra8_time_ms this ladder
  * uses are likewise defined in ns_usb.c (ra8_time.c is intentionally not linked).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

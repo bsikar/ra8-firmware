@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/usbx/inc/ux_dcd_ra8_usb.h
  * @brief USBX device-controller-driver (DCD) bridge to ra8_usb.
@@ -48,6 +44,8 @@
  * ``UX_SLAVE_TRANSFER`` semaphore that ``ux_dcd_ra8_usb_irq`` posts on
  * BRDY completion.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

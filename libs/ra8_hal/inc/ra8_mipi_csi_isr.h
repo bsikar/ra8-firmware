@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_csi_isr.h
  * @brief MIPI CSI-2 receiver HAL driver -- FIFO, ISR dispatch, framing, power
@@ -17,6 +13,8 @@
  * out of ``ra8_mipi_csi.h`` to keep each header within the per-file line
  * budget; consumers continue to include ``ra8_mipi_csi.h``.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

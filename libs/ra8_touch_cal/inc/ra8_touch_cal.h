@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_touch_cal.h
  * @brief Resistive/capacitive touch-screen calibration utility
@@ -75,6 +71,9 @@
  *   ------  ----  ------------------------------------------------
  *   36 total bytes (::k_ra8_touch_cal_blob_size)
  * @endverbatim
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

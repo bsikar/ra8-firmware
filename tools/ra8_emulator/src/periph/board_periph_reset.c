@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_reset.c
  * @brief Reset-cause status register (RSTSRn) model for ra8_emulator
@@ -33,6 +29,8 @@
  * to record the new cause (clearing PORF, setting SWRF for a software reset or
  * WDTRF / IWDTRF for a watchdog reset) just before it re-enters the firmware.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

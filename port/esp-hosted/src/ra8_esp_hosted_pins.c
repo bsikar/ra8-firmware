@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_pins.c
  * @brief ICU external-interrupt routing table for the esp-hosted link pins.
@@ -24,6 +20,8 @@
  * side-band nets only P006 has a channel. As the harness is wired that is
  * HANDSHAKE, and DATA_READY on P402 is polled.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

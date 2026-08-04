@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/gpt_three_phase_demo/main.c
  * @brief GPT three-phase complementary PWM HIL demo for EK-RA8D2
@@ -26,6 +22,8 @@
  *   - Loop: sample GPT0 counter every step_ms; verify it advanced;
  *     bump bench-readable counters.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

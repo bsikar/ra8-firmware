@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_canfd_tdc.c
  * @brief Unit tests for ra8_canfd_set_tdc (CANFD Transmitter Delay Compensation).
@@ -18,6 +14,9 @@
  *  - Null @p cfg pointer: returns ::k_ra8_err_null_ptr.
  *  - Out-of-range @p channel: returns ::k_ra8_err_null_ptr.
  *  - Offset overflow (@p offset = 128): returns ::k_ra8_err_invalid_arg.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_canfd.h"

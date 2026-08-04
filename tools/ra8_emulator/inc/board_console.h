@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_console.h
  * @brief Multi-channel console log store backing the board view's tabbed console.
@@ -24,6 +20,8 @@
  * ring buffers (no malloc after init), so it builds and tests on any host and the
  * tabbed console stays deterministic / headlessly verifiable.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

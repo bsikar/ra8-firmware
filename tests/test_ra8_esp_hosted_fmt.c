@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_esp_hosted_fmt.c
  * @brief Unit tests for the esp-hosted port's bounded printf-subset formatter.
@@ -30,6 +26,9 @@
  * property that actually matters (the two agree) without pinning an address.
  *
  * No hardware registers are touched; no ``ra8_fake_mmap`` window is required.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <limits.h>

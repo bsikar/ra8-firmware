@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_eth_gptp.c
  * @brief Ethernet Generic PTP Timer driver implementation
@@ -14,6 +10,9 @@
  * (GPTP)" p 1925-1964. Every register touched here appears in HUM
  * Table 35.3 p 1926 and carries the citation of its own subsection, not
  * the chapter-opening page.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_eth_gptp.h"

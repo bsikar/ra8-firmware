@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up -- MPU map via the ra8_mpu HAL (#576)
@@ -33,6 +29,9 @@
  *    I-cache / D-cache / branch predictor.
  * 6. Programme NVIC priority grouping to 4 bits preempt / 0 bits sub.
  * 7. Disable interrupts until the application is ready.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

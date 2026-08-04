@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_iwdt_demo.c
  * @brief Integration test: IWDT window-mode refresh demo
@@ -14,6 +10,8 @@
  * demo, so this test re-implements the same predicate and exhausts
  * its MC/DC vectors.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

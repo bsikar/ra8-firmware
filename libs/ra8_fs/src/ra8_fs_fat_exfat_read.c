@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_exfat_read.c
  * @brief exFAT directory scan and read-path open.
@@ -10,6 +6,8 @@
  * Linear cursor over 32-byte exFAT directory entries plus name matching
  * and the read-side open path.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

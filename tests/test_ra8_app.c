@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_app.c
  * @brief Unit tests for the ra8_app app framework (#146).
@@ -12,6 +8,8 @@
  * A recording mock app vtable proves which callbacks fire. No framebuffer, so
  * this runs in-process.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

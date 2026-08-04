@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_widget_internal.h
  * @brief Module-private paint helpers shared by the concrete leaf-widget TUs.
@@ -22,6 +18,8 @@
  * Not part of the public surface: production callers use the widget vtables;
  * the only out-of-TU consumers are the sibling widget TUs and the host tests.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

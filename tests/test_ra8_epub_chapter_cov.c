@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_epub_chapter_cov.c
  * @brief Coverage-boost tests for libs/ra8_epub/src/ra8_epub_chapter.c.
@@ -39,6 +35,9 @@
  *           for any glyph in a well-formed font that passed stbtt_InitFont,
  *           so negative dimensions that would trigger the guard are
  *           unreachable with any standard TrueType face.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

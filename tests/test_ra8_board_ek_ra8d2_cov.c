@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_board_ek_ra8d2_cov.c
  * @brief Coverage-boosting unit tests for the EK-RA8D2 v1 board-support layer
@@ -28,6 +24,9 @@
  *
  * Lines marked GCOVR_EXCL_LINE in the source (HW-only paths):
  *   187, 213, 487, 558, 634, 721
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

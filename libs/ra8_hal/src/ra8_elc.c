@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_elc.c
  * @brief Event Link Controller driver implementation
@@ -15,6 +11,9 @@
  * and the ELSEGR three-step write-protect sequence are
  * cross-verified against FSP `r_elc.c` and FSP `R_ELC_Type` in
  * `R7KA8D2KF_core0.h`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_elc.h"

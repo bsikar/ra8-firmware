@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file libs/ra8_board_ra8p1/boot/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
@@ -59,6 +55,9 @@
  * - **Denies:** any access from NS code to the registers programmed
  * here -- the entire SAU register window lives in the secure
  * region by definition.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "trustzone_init.h"

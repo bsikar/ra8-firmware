@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_prcr_internal.h
  * @brief Module-private PRCR unlock state shared with the protected blocks
@@ -19,6 +15,8 @@
  * before accepting a write, so the emulator drops exactly the writes the
  * silicon drops. This header is the seam between them.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_psa_real_kat.c
  * @brief External NIST/RFC known-answer tests against the REAL crypto backend.
@@ -27,6 +23,9 @@
  * fail every one, which is precisely the placeholder-vs-production distinction
  * the audit asked the build to make. The test is self-contained (psa_* + libc
  * only) and does not link the fake'd ``ra8_core_hal``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

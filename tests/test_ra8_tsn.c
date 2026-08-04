@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_tsn.c
  * @brief Unit tests for ra8_tsn.c (on-chip temperature sensor driver)
@@ -11,6 +7,9 @@
  * two-point calibration math (HUM Ch 55.3.1 p 3499-3500). These
  * tests stub the calibration words and the raw ADC code by
  * writing directly to the fake MMIO backing store.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

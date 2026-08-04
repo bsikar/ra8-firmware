@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/i2c_peripheral_responder/main.c
  * @brief RIIC (ra8_i2c) target/peripheral responder driven by an external controller
@@ -39,6 +35,8 @@
  * (SDA1/SCL1) with bus pull-ups. hw_pending: the on-wire target role is
  * UNVERIFIED on silicon -- ra8_emulator models RIIC only as a controller.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rsip_devsec_failclosed.c
  * @brief Production fail-closed test for the RSIP device-security path (issue #216)
@@ -33,6 +29,9 @@
  * fail. This is the host-side companion to
  * ``scripts/checks/check_stub_crypto_guarded.py`` (which enforces the guard at
  * gate time) and the ARM cross-build (which compiles the ``#else``).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

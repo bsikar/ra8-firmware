@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_mipi_csi_init.c
  * @brief Unit tests for MIPI CSI-2 receiver init, config setters and power
@@ -20,6 +16,9 @@
  *
  * Sibling suite: test_ra8_mipi_csi_events.c (per-lane / per-VC / PM
  * status paths, short-packet FIFO, ISR dispatch, error handler).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

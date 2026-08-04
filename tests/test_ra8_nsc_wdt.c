@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_nsc_wdt.c
  * @brief Unit tests for the secure-side watchdog NSC veneers (ra8_nsc_wdt.c).
@@ -19,6 +15,9 @@
  * ``ra8_fake_mmap_reset``: it proves the arm veneer configures and arms cleanly
  * (its fixed 1024-cycle / div-4 config is a legal encoding) and that the refresh
  * veneer leaves 0xFF -- the final unlock byte -- in WDTRR.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

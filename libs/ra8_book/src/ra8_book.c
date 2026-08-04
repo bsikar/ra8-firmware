@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_book.c
  * @brief Implementation of the `.rabook` blob validator.
@@ -11,6 +7,9 @@
  * a validated blob is pure offset arithmetic and lives entirely in the header.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "ra8_book.h"
 

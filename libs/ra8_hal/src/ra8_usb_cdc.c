@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_cdc.c
  * @brief Native USB CDC ACM class layer implementation
@@ -24,6 +20,9 @@
  *  - Persistent line-coding shadow (default 9600/8/N/1).
  *  - DTR / RTS shadow.
  *  - Bulk byte pipe via `ra8_usb_queue_in` / `ra8_usb_queue_out`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_cdc.h"

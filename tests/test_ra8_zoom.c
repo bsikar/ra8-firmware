@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_zoom.c
  * @brief Host unit tests for the tap-to-zoom viewport engine (#478).
@@ -21,6 +17,9 @@
  *     failure propagation, and a one-source-read-per-distinct-row guarantee,
  *   - the pan-stability property the whole coordinate model exists for: the
  *     dithered output of a pixel does not change when the viewport moves.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

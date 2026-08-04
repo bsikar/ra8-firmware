@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file main.c
  * @brief CPU0 (M85) Secure world fallback for the trustzone_threadx_demo.
@@ -15,6 +11,8 @@
  *
  * If the transition fails, main() serves as a fallback.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

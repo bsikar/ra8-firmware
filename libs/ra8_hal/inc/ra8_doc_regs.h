@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_doc_regs.h
  * @brief Data Operation Circuit (DOC) register layout for the Renesas RA8D2
@@ -34,6 +30,9 @@
  * The block lives at base `0x40311000` (peripheral bus). Layout
  * cross-verified against HUM Ch 57 "Data Operation Circuit (DOC)"
  * p 3518-3522.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

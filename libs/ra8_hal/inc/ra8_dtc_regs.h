@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dtc_regs.h
  * @brief DTC (Data Transfer Controller) register layout for the RA8D2
@@ -41,6 +37,9 @@
  * number; `r_dtc_xfer_info_t` models one such 16-byte TI block, which
  * a call site places (16-byte-aligned) wherever it likes and whose
  * address it stores into `DTCVBR + vector_number*4`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

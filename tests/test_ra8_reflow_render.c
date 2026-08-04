@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_reflow_render.c
  * @brief MC/DC vectors for libs/ra8_reflow/src/ra8_reflow_render.c
@@ -27,6 +23,9 @@
  *      * ``priv_render_images``'s ``if (loader == NULL || arena == NULL)`` both
  *        ways -- a bound image loader (false -> blits an image box) and the
  *        unbound default (true -> early return).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

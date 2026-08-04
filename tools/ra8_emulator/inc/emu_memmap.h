@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_memmap.h
  * @brief Emulated RA8D2 memory map: regions, alias backings, MMIO windows
@@ -19,6 +15,8 @@
  *
  * Split out of the ra8_emulator main translation unit; behaviour unchanged.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

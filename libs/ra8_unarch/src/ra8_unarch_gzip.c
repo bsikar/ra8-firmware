@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_unarch_gzip.c
  * @brief RFC 1952 gzip member decoder over the vendored miniz tinfl core.
@@ -20,6 +16,9 @@
  * pool), so the reader task's stack budget is untouched.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "ra8_unarch_gzip.h"
 

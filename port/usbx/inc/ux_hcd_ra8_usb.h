@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/usbx/inc/ux_hcd_ra8_usb.h
  * @brief USBX host-controller-driver (HCD) bridge to ra8_usb.
@@ -37,6 +33,8 @@
  *   - ``UX_HCD_DISABLE_PORT``       -> ra8_usb_host_set_uact(false)
  *   - ``UX_HCD_GET_PORT_STATUS``    -> read SYSSTS0
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

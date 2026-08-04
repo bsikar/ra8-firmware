@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dac_waveform/main.c
  * @brief 12-bit DAC_B triangle-wave generator for EK-RA8D2
@@ -30,6 +26,8 @@
  *      then back down. ``ra8_dac_b_write`` updates the channel
  *      every iteration; ``ra8_delay_us`` paces the step.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

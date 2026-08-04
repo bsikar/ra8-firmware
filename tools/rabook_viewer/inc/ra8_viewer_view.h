@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_viewer_view.h
  * @brief Plain-C ABI for the viewer's desktop reader window (Cocoa on macOS).
@@ -20,6 +16,8 @@
  * is Objective-C (ra8_viewer_view.m); this header stays pure C so the C reader and
  * `main` need no Objective-C.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

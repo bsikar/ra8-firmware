@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_gfx_dither.c
  * @brief Unit tests for ra8_gfx_dither -- void-and-cluster blue-noise dithering (#477).
@@ -17,6 +13,9 @@
  * compound guards, and a pinned rendered-framebuffer golden (FNV-1a). The render
  * is pure integer arithmetic over a `const` table, so this host golden is the
  * byte value ra8_emulator and silicon also produce (the EIL==HIL rule).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file main.c
  * @brief Entry point for the RA8 desktop reader viewer (direct-call, no emulation).
@@ -19,6 +15,8 @@
  * ra8_viewer <file> --headless --dump-ppm P [--page N | --dump-tile N]
  * @endcode
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

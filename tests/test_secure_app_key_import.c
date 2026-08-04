@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_secure_app_key_import.c
  * @brief Unit + MC/DC tests for src/secure_app/key_import.c
@@ -12,6 +8,9 @@
  * key-authentication key (KAK). Covers the happy path, CMAC tamper rejection,
  * blob truncation rejection, the missing-KAK path, and the targeted MC/DC
  * vector set for the compound decision in ``ra8_key_import_resolve``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

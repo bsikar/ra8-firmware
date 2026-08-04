@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/watchdog_demo/main.c
  * @brief IWDT watchdog + reset-cause demo for EK-RA8D2
@@ -33,6 +29,8 @@
  * returns; on real silicon it never returns. The app's ``while`` loop
  * is the IWDT-stop stage, terminated only by the chip resetting.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

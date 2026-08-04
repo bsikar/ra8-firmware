@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file tests/test_ra8_esp_hosted_port.c
  * @brief Host tests for the esp-hosted port's bring-up validation.
@@ -24,6 +20,8 @@
  * promoted for the same reason as the two predicates, so it is driven
  * directly rather than left to a board.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

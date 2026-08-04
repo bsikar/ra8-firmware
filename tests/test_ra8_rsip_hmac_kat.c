@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rsip_hmac_kat.c
  * @brief External RFC 4231 known-answer test for the RSIP HMAC-SHA-256 backend.
@@ -18,6 +14,9 @@
  * wrong ipad/opad, key-block preparation, or SHA-256 cannot satisfy. It covers a
  * short key, a text key, a block-sized key, a shorter-than-block key, and the two
  * larger-than-block keys that must be hashed first (TC1-4, TC6-7).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

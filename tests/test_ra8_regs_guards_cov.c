@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_regs_guards_cov.c
  * @brief Coverage top-up for the out-of-range nullptr guards in the RA8D2
@@ -28,6 +24,9 @@
  *   - ra8_port()     (ra8_port_regs.h)   -- IOPORT port 0..14.
  *   - ra8_ssie()     (ra8_ssie_regs.h)   -- SSIE channel 0..1.
  *   - ra8_ulpt()     (ra8_ulpt_regs.h)   -- ULPT channel 0..1.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/can_classic_loopback/main.c
  * @brief CAN 2.0B (classic, non-FD) internal-loopback HIL test
@@ -21,6 +17,8 @@
  *
  * Bare EK-RA8D2 only -- no transceiver required.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

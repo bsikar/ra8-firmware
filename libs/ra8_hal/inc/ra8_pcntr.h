@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT */
-/* Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file ra8_pcntr.h
  * @brief CPU1-safe combined direction+level PORT primitive over PCNTR1/PCNTR2
@@ -53,6 +47,8 @@
  * primitive is safe to reuse on a shared port while remaining a drop-in
  * substitute at the single-pin CPU1 call sites (their ports carry no other
  * driven pins, so the observable pin state is identical).
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

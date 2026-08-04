@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rabook_import.c
  * @brief Host test for the on-import EPUB -> .rabook cache manager (#151).
@@ -27,6 +23,8 @@
  *     still a miss) and never touches the source.
  *   - NULL-argument / capacity guards.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB_Import] {World: NS}
  */

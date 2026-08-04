@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_console.c
  * @brief Emulator console surfaces implementation (see emu_console.h)
@@ -28,6 +24,8 @@
  * echo the bytes as `[itm] <line>` on stdout. This surfaces ra8_log for every
  * app, not just the TrustZone e-reader.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

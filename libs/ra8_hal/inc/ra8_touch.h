@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_touch.h
  * @brief Multi-touch input driver -- GoodIX GT911 backend
@@ -44,6 +40,9 @@
  * Static-allocation footprint:
  *   - One ``ra8_touch_state_t`` slot (driver-private, file-scope).
  *   - No runtime allocation; ``out_points`` is caller-provided.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

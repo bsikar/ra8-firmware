@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_riic.c
  * @brief RIIC (IIC) controller + PI4IOE5V6408 I/O-expander + OV5640 SCCB model
@@ -34,6 +30,8 @@
  * Self-registers its descriptor (address range + read / write / reset /
  * report) with the board_periph core from a file-scope constructor.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_vsource.h
  * @brief Thin adapter exposing an ra8_io block device as an ra8_vsource reader.
@@ -51,6 +47,8 @@
  *                            0U, file_size_bytes, &oid);
  * @endcode
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

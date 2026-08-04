@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file c6_proto.h
  * @brief The esp-hosted SPI full-duplex wire format, hand-decoded.
@@ -30,6 +26,8 @@
  *   - `host/drivers/transport/spi/spi_drv.c` -- reference host pacing and
  *     receive validation.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: S}
  *

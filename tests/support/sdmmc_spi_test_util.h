@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file sdmmc_spi_test_util.h
  * @brief Shared fixture for the test_ra8_sdmmc_spi* suite: the mock SPI
@@ -13,6 +9,9 @@
  * state; the tests/CMakeLists.txt auto-glob stays free of non-test .c
  * files. Split out of test_ra8_sdmmc_spi.c when the suite was divided
  * into core / read / write binaries.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

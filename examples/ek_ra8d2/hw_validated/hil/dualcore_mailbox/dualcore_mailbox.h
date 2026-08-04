@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/dualcore_mailbox.h
  * @brief Shared-SRAM mailbox layout for the M85 <-> M33 dual-core demo
@@ -44,6 +40,8 @@
  * reply proves the M33 actually executed arithmetic, not merely echoed a
  * byte.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

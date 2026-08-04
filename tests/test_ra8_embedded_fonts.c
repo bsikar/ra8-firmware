@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_embedded_fonts.c
  * @brief #109 foundation: enumerate + extract an EPUB-embedded font (ra8_epub)
@@ -21,6 +17,8 @@
  *      measure a laid-out glyph (proving the embedded face is active), and
  *      exercise the validation decision (MC/DC) + graceful fallback.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB] {World: NS}
  *

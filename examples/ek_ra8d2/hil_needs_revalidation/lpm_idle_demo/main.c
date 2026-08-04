@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/lpm_idle_demo/main.c
  * @brief Sleep-mode wake-count demo for the bare EK-RA8D2
@@ -30,6 +26,8 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

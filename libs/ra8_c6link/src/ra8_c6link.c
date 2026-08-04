@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_c6link.c
  * @brief Link lifecycle, frame routing and the identity round-trip.
@@ -25,6 +21,8 @@
  * framing, checksum, envelope, protobuf encode, protobuf decode and UID
  * correlation in one call.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

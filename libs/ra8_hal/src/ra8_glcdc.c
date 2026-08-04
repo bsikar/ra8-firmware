@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_glcdc.c
  * @brief Graphics LCD Controller driver implementation
@@ -19,6 +15,8 @@
  * ``R_GLCDC_ColorPaletteUpdate``. Every register access carries a
  * HUM Ch 63 citation.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @param[in] mode See header declaration for direction and constraints.
  * @return ``ra8_err_t`` error code (or void if the signature returns void).

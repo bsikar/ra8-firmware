@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_cli.h
  * @brief Command-line parsing for the media_dl CLI.
@@ -11,6 +7,8 @@
  * ::mdl_args_t, and the cross-cutting security/politeness knobs are folded into
  * ::mdl_run_opts_t for the run entry points. Numeric fields stay as strings so
  * `main` owns their conversion and defaulting.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

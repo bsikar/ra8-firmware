@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_phy_regs.h
  * @brief MIPI D-PHY register layout for the RA8D2
@@ -43,6 +39,9 @@
  * ``ra8_glcdc_regs.h`` as part of the ``ra8_display_addr_t``
  * enum that groups the GLCDC + MIPI + CEU bases. This header
  * uses that constant rather than redefining it.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

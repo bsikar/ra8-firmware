@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_lfn.c
  * @brief VFAT long-filename (LFN) read support for ra8_fs (#101).
@@ -13,6 +9,9 @@
  * long name *and* by its 8.3 alias, that a wrong name still misses, and that
  * ra8_fs_listdir reports the long name. The 8.3-only behaviour is unchanged
  * (covered by tests/test_ra8_fs_fat.c).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sdhi.c
  * @brief SD/MMC Host Interface driver implementation
@@ -39,6 +35,9 @@
  * Every register access carries a HUM Ch 47 "SD/MMC Host Interface
  * (SDHI)" citation (HUM pages 3122-3179, Chapter 47 covers the full
  * SDHI block).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sdhi.h"

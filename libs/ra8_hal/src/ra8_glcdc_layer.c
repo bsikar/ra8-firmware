@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_glcdc_layer.c
  * @brief Graphics LCD Controller driver -- layer composition and CLUT
@@ -20,6 +16,8 @@
  * FSP's ``R_GLCDC_ClutEdit`` / ``R_GLCDC_ColorPaletteUpdate``. Every
  * register access carries a HUM Ch 63 citation.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

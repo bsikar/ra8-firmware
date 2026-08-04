@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_board_ek_ra8d2_audio_usb_cov.c
  * @brief Coverage-boosting unit tests for the EK-RA8D2 audio + USB BSP layer
@@ -69,6 +65,8 @@
  * the file clears the 90% line-coverage bar without them and the shared
  * source is left untouched.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/idf_compat/esp_mac.h
  * @brief ESP-IDF MAC-address-type compatibility for the esp-hosted port.
@@ -21,6 +17,8 @@
  * then address the wrong interface on the far end, so the upstream
  * ordering is reproduced exactly.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_widget_status_bar.h
  * @brief Status-bar leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -18,6 +14,8 @@
  * ::ra8_widget_paint_t backend, so the widget carries no `ra8_gfx` dependency and
  * is host-testable. It is display-only, so its vtable leaves `on_input` NULL.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

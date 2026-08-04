@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ceu_regs.h
  * @brief Capture Engine Unit (CEU) register layout for the RA8D2
@@ -69,6 +65,9 @@
  * `ra8_glcdc_regs.h` (`k_ra8_ceu_base_addr` in the
  * `ra8_display_addr_t` enum), so this header pulls that header in
  * rather than redeclaring the constant.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

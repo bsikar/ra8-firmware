@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_state.h
  * @brief Persistent per-series library state for the media downloader.
@@ -44,6 +40,8 @@
  * kill mid-write cannot corrupt it, and a file that fails to parse degrades to a
  * clear ::k_ra8_err_invalid_state so the caller can rebuild rather than crash or
  * silently refetch everything.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

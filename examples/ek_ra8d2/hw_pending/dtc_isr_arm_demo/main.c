@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT */
-/* Copyright (c) 2026 Brighton Sikarskie */
 
 /**
  * @file examples/ek_ra8d2/hw_pending/dtc_isr_arm_demo/main.c
@@ -53,6 +47,8 @@
  * primitive performs the exact same ``IELSRn.DTCE`` write), so promotion to
  * ``hw_validated/hil/`` needs only a bench run. See ``README.md``.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

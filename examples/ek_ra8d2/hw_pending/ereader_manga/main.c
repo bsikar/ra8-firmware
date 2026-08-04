@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_manga/main.c
  * @brief Viewable manga reader: pan/zoom a page larger than the panel (Demo B).
@@ -35,6 +31,8 @@
  *   ``ereader-manga: page 1536x2048 tiles=48 atlas=<N> view=0,0 zoom=1:1
  *   crc=<8hex> ok``
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

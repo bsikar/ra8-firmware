@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dfu_boot.c
  * @brief Pure boot logic for the USB-DFU MRAM bootloader core.
@@ -15,6 +11,9 @@
  * decision. No MMIO and no USB -- every function is a pure transform of
  * its arguments, exercised directly by `tests/test_ra8_dfu_boot.c` with
  * MC/DC vectors for each compound decision.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dfu.h"

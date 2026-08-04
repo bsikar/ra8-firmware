@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_book.h
  * @brief Flat, execute-in-place container for a build-time "compiled" e-book.
@@ -68,6 +64,9 @@
  * @see ra8_reflow.h         Renderer that consumes the walked DOM.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

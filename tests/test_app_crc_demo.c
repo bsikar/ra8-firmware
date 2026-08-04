@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_crc_demo.c
  * @brief Integration test: CRC-32 hardware engine vs software ref
@@ -13,6 +9,8 @@
  * the demo. Tests cover the bring-up, compute, and inner-loop branches
  * with MC/DC vectors.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

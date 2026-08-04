@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fuzz_ra8_decomp_limits.c
  * @brief libFuzzer harness for the unified decompression-limits seam.
@@ -16,6 +12,9 @@
  * through `ra8_decomp_check_declared`, and a charge sequence
  * (output / entry / iteration / depth) against the fuzz policy. UBSan
  * diagnoses any overflow the saturation guards were supposed to absorb.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

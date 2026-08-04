@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_jpeg_sw.c
  * @brief Pure-software baseline JPEG codec: shared entropy/DSP
@@ -40,6 +36,9 @@
  *     Cortex-M85 target. The fallback scalar implementation is
  *     bit-exact with the vector version and is the path the host unit
  *     tests exercise.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_jpeg_sw.h"

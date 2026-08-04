@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rabook_color_parity.c
  * @brief Host-vs-device byte-identity gate for the default colour raster path (#337).
@@ -38,6 +34,8 @@
  * (ra8_rabook_gray4_encode) live in test_ra8_rabook_gray4.c and are unchanged.
  *
  * @since Version 0.1.0
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB_Compiler] {World: NS}
  */

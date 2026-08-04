@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_c6link_wifi_sta.c
  * @brief Station credentials, association, and what the radio reports back.
@@ -24,6 +20,8 @@
  * missing. Sending them costs a handful of bytes and removes a class of failure
  * this host cannot debug from its side of the wire.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

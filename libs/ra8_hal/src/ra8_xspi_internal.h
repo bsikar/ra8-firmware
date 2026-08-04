@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_xspi_internal.h
  * @brief Module-private seam shared between the ra8_xspi translation units.
@@ -29,6 +25,8 @@
  *   ``ra8_xspi_flash.c`` but also called from the lifecycle surface in
  *   ``ra8_xspi.c`` (suspend / resume / software-reset).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

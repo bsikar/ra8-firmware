@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_mcdc_hal.c
  * @brief MC/DC floor vectors for compound decisions in ra8_gfx / ra8_i2c /
@@ -23,6 +19,9 @@
  *    `((icsr2 & rdrf) != 0) && (count < capacity)`.
  *  - dec_dispatch_marker: the unsupported-SOFn classifier
  *    `mk >= sof1 && mk <= sof_hi && mk != dht && mk != jpg`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

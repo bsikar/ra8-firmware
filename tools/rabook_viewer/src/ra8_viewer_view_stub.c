@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_viewer_view_stub.c
  * @brief Headless stand-in for the Cocoa reader window on non-Apple hosts.
@@ -29,6 +25,8 @@
  * @see ra8_viewer_view.h  The contract both backends implement.
  * @see ra8_viewer_view.m  The Cocoa backend this replaces off the APPLE path.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

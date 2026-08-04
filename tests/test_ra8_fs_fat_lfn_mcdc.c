@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_fat_lfn_mcdc.c
  * @brief MC/DC vectors for the compound decisions in ra8_fs_fat_lfn.c.
@@ -23,6 +19,9 @@
  *
  * The in-memory block-device harness and the LFN-image planters mirror
  * `tests/test_ra8_fs_fat_mcdc.c`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

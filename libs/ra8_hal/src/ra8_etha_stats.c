@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_etha_stats.c
  * @brief ETHA per-port statistics, descriptor-ring sizing, and PHY open -- HUM Ch 32
@@ -24,6 +20,9 @@
  * predicate live in ra8_etha_internal.h and are defined in ra8_etha.c.
  *
  * Every register access carries a HUM Ch 32 citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_pprn.h
  * @brief Native USB device-side Printer class layer
@@ -29,6 +25,9 @@
  *
  * Reference: USB Device Class Definition for Printing Devices revision
  * 1.1 (USB-IF, 2000-01-25).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

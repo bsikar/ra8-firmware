@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_longstrip.c
  * @brief Continuous vertical-scroll (longstrip) engine over a JOF atlas (#289).
@@ -13,6 +9,8 @@
  *          and `ra8_jof` (per-band decode) -- no MMIO, so it runs
  *          identically on the target, in ra8_emulator and on the unit-test host.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

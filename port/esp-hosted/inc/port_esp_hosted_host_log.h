@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_log.h
  * @brief esp-hosted port header: the per-file log tag the core expects.
@@ -29,6 +25,8 @@
  * the contract, not an implementation detail, and it must be a file-scope
  * ``const char*`` in every translation unit that logs.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

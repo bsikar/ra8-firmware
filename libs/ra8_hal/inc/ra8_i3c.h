@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_i3c.h
  * @brief I3C Bus Interface driver -- unified native-I3C + I2C-compat modes
@@ -39,6 +35,9 @@
  *
  * See HUM Ch 40 "I3C Bus Interface (I3C)" pp 2445-2701 for the
  * register-level reference.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

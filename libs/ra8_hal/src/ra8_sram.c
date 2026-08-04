@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sram.c
  * @brief SRAM (with ECC) HAL driver implementation
@@ -31,6 +27,9 @@
  * shape (PRCR unlock, mode set, error status, ISR trampoline) but with
  * RA8D2's per-bank registers and the ``0xA5`` key code, plus the
  * additions above to satisfy the full HUM Ch 58 surface.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sram.h"

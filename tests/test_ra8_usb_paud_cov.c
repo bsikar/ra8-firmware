@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_usb_paud_cov.c
  * @brief Line-coverage top-up for the native USB device-side Audio (UAC1)
@@ -22,6 +18,9 @@
  * CFIFOCTR / CFIFO). `internal_wait_frdy` converges on its first poll
  * via the unarmed ra8_fake_mmio seam, so no timing/SIGALRM injection is
  * used.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

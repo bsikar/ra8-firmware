@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_usb_loop.c
  * @brief Self-loop (loop-cable) transport (see board_usb_internal.h)
@@ -11,6 +7,8 @@
  * when the firmware itself is the bus host (self-loop bench), plus the
  * latch/reset state -- moved verbatim out of board_usb.c.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

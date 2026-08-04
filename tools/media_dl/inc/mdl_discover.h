@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_discover.h
  * @brief Search / browse discovery: governed fetch of a results page, parse,
@@ -20,6 +16,8 @@
  * When a 1-based pick index is supplied it also copies the chosen series URL out
  * for the caller to feed straight into a download -- the combined
  * search-and-select flow that removes the copy-paste step.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

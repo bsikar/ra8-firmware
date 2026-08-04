@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_run_report.c
  * @brief Run-end report + finalize (see emu_run_internal.h)
@@ -15,6 +11,8 @@
  * pre-split report's. The run_report / run_write_outputs / run_hold_view /
  * run_cleanup contracts live on their declarations in emu_run_internal.h.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

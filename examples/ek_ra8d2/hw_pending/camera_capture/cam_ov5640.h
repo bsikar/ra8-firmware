@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/camera_capture/cam_ov5640.h
  * @brief OV5640 sensor bring-up over SCCB (reset, chip-ID probe, DVP config).
@@ -18,6 +14,8 @@
  * and the OV5640 register enums live in `src/cam_ov5640.c`; only the sensor
  * lifecycle entry points and the shared SCCB bus channel are exported here.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

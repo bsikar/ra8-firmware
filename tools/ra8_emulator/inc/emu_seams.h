@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_seams.h
  * @brief Armv8.1-M instruction-emulation seams (M85 ops on Unicorn's M33)
@@ -28,6 +24,8 @@
  *
  * Split out of the ra8_emulator main translation unit; behaviour unchanged.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

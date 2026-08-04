@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_poeg_safe_shutoff.c
  * @brief Integration test: POEG safe-shutoff demo logic + model semantics
@@ -19,6 +15,8 @@
  *    ra8_fake_mmap host MMIO shim (SSF set on trigger, cleared on ack), and that
  *    the GPT descriptor the app arms is accepted.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

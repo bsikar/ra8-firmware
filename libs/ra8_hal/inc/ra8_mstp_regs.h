@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mstp_regs.h
  * @brief Module Stop Control (MSTP) register layout for the Renesas RA8D2
@@ -49,6 +45,9 @@
  * does not poke the DMAC channel registers.
  * - **MSTPCR is NOT PRCR-protected**. The CGC, LVD and LPM groups
  * sit behind PRCR; the module-stop block does not.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_ram.c
  * @brief RAM block-device backend -- a flat buffer as 512-byte logical blocks.
@@ -13,6 +9,9 @@
  * Reference implementation of ::ra8_io_blockdev_iface. Reads and writes are
  * bounds-checked `memcpy`s into the caller-owned buffer; erase zero-fills.
  * Pure memory access, so it runs identically on host and target.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_blockdev_ram.h"

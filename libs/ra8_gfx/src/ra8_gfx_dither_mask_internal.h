@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_gfx_dither_mask_internal.h
  * @brief Void-and-cluster blue-noise threshold mask for the e-ink dither (#477).
@@ -21,6 +17,8 @@
  * continuous mask phase and never seam. Included by exactly one translation
  * unit (ra8_gfx_dither.c); ``static`` keeps it a single private definition.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_chrome/main.c
  * @brief Headless on-silicon HIL gate for the e-reader chrome render pipeline.
@@ -30,6 +26,8 @@
  * silicon. Deterministic: integer layout + a fixed bitmap font + a zeroed
  * static framebuffer give the same hash every boot.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

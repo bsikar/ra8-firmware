@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dtc.c
  * @brief Data Transfer Controller driver implementation
@@ -33,6 +29,9 @@
  * documented as "reserved -- write 1, read 1" (HUM 18.2.1 p 786),
  * so the RRS-disable / RRS-enable values are 0x08 / 0x18 not
  * 0x00 / 0x10.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dtc.h"

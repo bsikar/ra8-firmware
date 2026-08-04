@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_gpio.c
  * @brief The eight side-band GPIO slots of the esp-hosted OS-abstraction vtable.
@@ -25,6 +21,8 @@
  * per-pin state retention across deep sleep, which this HAL does not yet
  * expose; it reports that honestly rather than pretending.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

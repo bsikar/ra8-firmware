@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_layer3_switch.c
  * @brief Layer-3 Ethernet switch driver -- placeholder implementation
@@ -13,6 +9,9 @@
  * Host-testable stand-in for the FSP `r_layer3_switch` driver. The
  * RA8D2 silicon does not include a Layer-3 switch; this TU exists
  * so portable networking code keeps compiling.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_layer3_switch.h"

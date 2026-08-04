@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sci_dma_isr.c
  * @brief SCI_B DMA TX/RX descriptors + TXI/RXI/ERI ISR dispatch
@@ -23,6 +19,8 @@
  * ``ra8_sci.h`` for the public API contract and ``ra8_sci_regs.h`` for
  * the register layout.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

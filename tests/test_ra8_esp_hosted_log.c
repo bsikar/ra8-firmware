@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_esp_hosted_log.c
  * @brief Unit tests for the esp-hosted logging bridge onto `ra8_log`.
@@ -35,6 +31,9 @@
  * is always the correct one.
  *
  * No hardware registers are touched; no ``ra8_fake_mmap`` window is required.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdarg.h>

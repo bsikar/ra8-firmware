@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ota.c
  * @brief Phase-5 OTA firmware-update orchestration -- implementation.
@@ -27,6 +23,9 @@
  * the host test build provides empty stubs in this same TU so the
  * module links cleanly on Linux x86_64. A target-side adapter
  * lives outside this module.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_ota.h"

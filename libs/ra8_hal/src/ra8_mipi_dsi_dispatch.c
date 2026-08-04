@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_dsi_dispatch.c
  * @brief MIPI DSI-2 host driver -- video mode, status, IRQ dispatch, and
@@ -34,6 +30,8 @@
  *
  *   /\* HUM Ch 65.X "name", p NNNN *\/
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

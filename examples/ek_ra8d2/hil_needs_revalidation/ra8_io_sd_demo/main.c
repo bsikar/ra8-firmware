@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/main.c
  * @brief Prove the ra8_io fabric's swappable backend (#155/#156) over a microSD.
@@ -34,6 +30,8 @@
  * Under ra8_emulator attach a blank card with `--sd-new 64:fat16` (the firmware
  * reformats it FAT32 regardless of the seed type; only the capacity matters).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

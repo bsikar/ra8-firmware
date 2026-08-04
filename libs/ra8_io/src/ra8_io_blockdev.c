@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev.c
  * @brief Block-device dispatcher -- forwards each public call into the bound
@@ -15,6 +11,9 @@
  * bound ::ra8_io_blockdev_iface. A NULL optional callback maps to a defined
  * result (no erase => not-supported, no sync => success). The bridge installs
  * static trampolines whose `ctx` is the ::ra8_io_blockdev_t itself.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_blockdev.h"

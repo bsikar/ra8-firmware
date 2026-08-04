@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/fault_crashlog_hil/main.c
  * @brief Prove the cross-reset crash-log + reset-loop guard (T2-03, #191).
@@ -41,6 +37,8 @@
  * `fault_div0_hil` provokes the real CPU fault this app deliberately does
  * not.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

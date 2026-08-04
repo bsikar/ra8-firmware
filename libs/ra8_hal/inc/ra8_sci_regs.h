@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sci_regs.h
  * @brief SCI_B (Serial Communication Interface, B variant) register layout
@@ -59,6 +55,9 @@
  *
  * Citations are to the HUM Rev 1.30 (Feb 2026), section 38 starting
  * at PDF page 2174.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

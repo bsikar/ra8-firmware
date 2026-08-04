@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_spi_b_target_cov.c
  * @brief Coverage tests for the SPI_B target-mode SPCMD encoding paths.
@@ -36,6 +32,9 @@
  *             in the companion suite).
  * - Vector 2: lsb_first=true  -> branch taken (test_target_spcmd_lsb_first, here).
  * V1 and V2 together prove lsb_first independently affects the outcome.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

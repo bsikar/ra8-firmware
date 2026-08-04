@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_drw.c
  * @brief Bench-validated DRW ("D/AVE 2D") rasterizer model for ra8_emulator
@@ -85,6 +81,8 @@
  *    guess. The corrected driver leaves the framebuffer cache exactly as
  *    ::ra8_drw_init configured it and no in-tree app enables it.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

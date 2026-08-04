@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_dsi.h
  * @brief MIPI DSI-2 host driver -- public API (full HUM Ch 65 surface)
@@ -52,6 +48,9 @@
  * `ra8_mipi_dsi_types.h` (enums / structs / typedefs) and
  * `ra8_mipi_dsi_api.h` (function prototypes). Consumers keep including
  * `ra8_mipi_dsi.h` unchanged; everything is re-exported below.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

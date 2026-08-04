@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph.h
  * @brief Register-accurate peripheral-model framework for the board emulator
@@ -29,6 +25,8 @@
  * emulated memory / pend an NVIC line, so board_periph stays plain C and the
  * exception delivery stays in the one place that already models it.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file lx_nor_ram.c
  * @brief RAM-backed standalone-LevelX NOR driver -- implementation.
@@ -21,6 +17,9 @@
  * (4 bytes on the arm-none-eabi ILP32 target, 8 bytes on the LP64 test host).
  * The erased pattern is written as `(ULONG)0xFFFFFFFF` (== LevelX's
  * `LX_ALL_ONES`), matching how LevelX compares words against `0xFFFFFFFF`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "lx_nor_ram.h"

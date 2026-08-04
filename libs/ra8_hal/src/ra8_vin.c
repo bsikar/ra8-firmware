@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_vin.c
  * @brief Video Input Module (VIN) driver implementation
@@ -30,6 +26,9 @@
  * is enabled. The driver therefore routes power transitions through
  * the existing `ra8_mstp` enum rather than opening up MSTPCRC for
  * direct access.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_vin.h"

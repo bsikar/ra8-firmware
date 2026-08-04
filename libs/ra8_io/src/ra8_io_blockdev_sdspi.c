@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_sdspi.c
  * @brief Micro-SD-over-SPI block-device backend -- thin shim over ra8_sdmmc_spi.
@@ -17,6 +13,9 @@
  * verified-zero CMD32/CMD33/CMD38 sequence, and capabilities are derived from
  * the driver's reported block count. No raw MMIO is touched here; the driver
  * carries every HUM citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_blockdev_sdspi.h"

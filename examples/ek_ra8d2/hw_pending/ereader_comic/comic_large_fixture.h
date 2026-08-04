@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file comic_large_fixture.h
  * @brief Baked oversized single-page CBZ for the ereader_comic tile self-check
@@ -11,6 +7,9 @@
  *          decoded size far exceeds the reader's whole-decode arena, so it can only
  *          be opened through the JOF tile path (ra8_comic_tiles). Flat-shaded art
  *          keeps the baked array tiny while the decoded image is multiple MiB.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

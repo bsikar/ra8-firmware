@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_icu_regs.h
  * @brief Interrupt Control Unit (ICU) register layout for the Renesas RA8D2
@@ -35,6 +31,9 @@
  * @note The Cortex-M85 core has 480 NVIC interrupts, but only the
  *       first N are wired to the ICU -- N depends on MCU variant.
  *       The Cortex-M33 on RA8D2 sees its own disjoint set.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

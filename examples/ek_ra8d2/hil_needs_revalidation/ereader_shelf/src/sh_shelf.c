@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_shelf.c
  * @brief Bookshelf screen: a grid of book cards with cover thumbnails.
@@ -14,6 +10,8 @@
  * demand-paged source, so the shelf paints without holding any book in RAM.
  * The selected card is highlighted.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_reflow_tokenize_scan_mcdc.c
  * @brief MC/DC tests for the XHTML tokenizer's scanning decision families.
@@ -16,6 +12,9 @@
  * and the raw-text `<style>` / `<script>` body handling. Every test drives
  * the real tokenizer over crafted byte strings; the shared engine fixture
  * lives in tests/support/reflow_tokenize_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

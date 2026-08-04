@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_dsi_internal.h
  * @brief Module-private link seam shared between the MIPI DSI-2 host
@@ -31,6 +27,8 @@
  * Read-only constants (the log tag) are intentionally NOT shared: each
  * TU keeps its own ``static`` copy with an identical initialiser.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

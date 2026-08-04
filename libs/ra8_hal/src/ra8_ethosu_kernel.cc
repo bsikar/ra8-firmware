@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ethosu_kernel.cc
  * @brief First-party TFLite-micro Ethos-U55 custom operator over `ra8_ethosu_shim`
@@ -49,6 +45,8 @@
  * dominated by the SOUP TFLite include tree; it stays pure 7-bit ASCII and fully
  * documented like every other first-party TU.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

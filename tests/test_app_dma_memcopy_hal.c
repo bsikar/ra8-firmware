@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_dma_memcopy_hal.c
  * @brief Integration test: DMAC0 1 KB copy bring-up via the ra8_dmac HAL
@@ -23,6 +19,8 @@
  *  - ``ra8_dmac_wait_idle`` returns ok when ACT is clear and times out
  *    when ACT is stuck.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

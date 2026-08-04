@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/inc/usb_selftest_ospi_rw_steps.h
  * @brief Shared tunables + host-side worker seam for the writable-OSPI self-loop
@@ -26,6 +22,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-06-13
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

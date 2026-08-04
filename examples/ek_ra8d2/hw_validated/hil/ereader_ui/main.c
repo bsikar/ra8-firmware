@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_ui/main.c
  * @brief E-reader device chrome -- Library + Reading screens
@@ -37,6 +33,8 @@
  * boot, the app-framework screen dispatch, and the main loop. See
  * ``src/ereader_ui_steps.h`` for the shared contract.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

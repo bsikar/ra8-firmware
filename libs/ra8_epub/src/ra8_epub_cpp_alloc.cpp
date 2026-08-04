@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_epub_cpp_alloc.cpp
  * @brief Arena-backed global `operator new` / `operator delete` for firmware.
@@ -38,6 +34,8 @@
  * `operator new` forms are also provided so any future `new(std::nothrow)` site
  * is covered.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

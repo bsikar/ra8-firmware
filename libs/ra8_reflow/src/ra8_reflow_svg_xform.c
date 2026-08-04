@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_svg_xform.c
  * @brief Coordinate transform + 2x3 affine `transform=` parsing for SVG (#112).
@@ -13,6 +9,8 @@
  * ::ra8_svgp_map_point used by the shape and path stages. No DOM, no heap. See
  * ra8_reflow_svg_internal.h for the shared geometry types and helper contracts.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ssie_audio_loop/main.c
  * @brief SSIE I2S internal-loopback audio integrity demo for EK-RA8D2
@@ -26,6 +22,8 @@
  *   4. Push the 16-sample sine pattern into TX, log status.
  *   5. ``ra8_ssie_stop(0)`` + ``ra8_ssie_deinit(0)`` then idle.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

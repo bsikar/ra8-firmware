@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_psa_crypto.h
  * @brief Application-level PSA Crypto facade over tf-psa-crypto
@@ -59,6 +55,9 @@
  *
  * - PSA Crypto API specification, ARM IHI 0086 v1.1.0, Sections 9-12
  *   (key management, hash, AEAD, asymmetric signature).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

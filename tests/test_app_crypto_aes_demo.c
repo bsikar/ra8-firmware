@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_crypto_aes_demo.c
  * @brief Integration test: AES-128-GCM encrypt + decrypt round-trip
@@ -14,6 +10,8 @@
  * destroy succeed end to end, plus the negative paths (NULL handle,
  * tampered ciphertext).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

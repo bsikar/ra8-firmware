@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_decomp_retrofit.c
  * @brief Tests for the decompression-limits retrofit on the ZIP + RAR paths.
@@ -23,6 +19,9 @@
  *   3. the comic CBR backend: a block-flood RAR4 and a lying-size RAR4
  *      member reject the archive at `ra8_comic_open`,
  *   4. honest archives still open after every hostile probe.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

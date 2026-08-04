@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/nimble/inc/nimble/nimble_npl_os_log.h
  * @brief NPL logging hook for the ThreadX port (compiled out)
@@ -22,6 +18,9 @@
  * same include path, giving translation units a ``struct ble_npl_event``
  * of ``{ int dummy; }`` while the port's own TUs saw the real
  * ThreadX-backed layout.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

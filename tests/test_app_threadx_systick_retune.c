@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_threadx_systick_retune.c
  * @brief Unit tests for the ThreadX SysTick retune (issue #287)
@@ -23,6 +19,8 @@
  *     ra8_hal SysTick primitive (ra8_systick_set_reload), whose writes land in
  *     the fake MMIO map on host, so the retune runs end-to-end here.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_keyboard.c
  * @brief Host unit tests + MC/DC for the iOS-style keyboard widget (#105).
@@ -11,6 +7,9 @@
  * drives the typing model: lowercase, one-shot SHIFT (uppercase), the 123/ABC
  * layer toggle (digits + symbols), BACKSPACE, SPACE, RETURN. Plus MC/DC vectors
  * for the compound frame-rejection decision in ra8_kbd_layout_init.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

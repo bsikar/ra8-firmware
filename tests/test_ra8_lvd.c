@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_lvd.c
  * @brief Unit tests for ra8_lvd.c (Programmable Voltage Detection driver)
@@ -13,6 +9,9 @@
  * fake mmap. This sibling owns the init / deinit and single-bit setter
  * contract tests; the runtime-control, dispatch, threshold-sweep, and
  * MC/DC vector tests live in test_ra8_lvd_ctrl.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

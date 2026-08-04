@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_blockdev_vsource.c
  * @brief Unit tests for the block-device -> ra8_vsource read adapter (#147/#155).
@@ -14,6 +10,9 @@
  * multi-sector unaligned span -- and compared with memcmp. Also exercises the
  * validation guards and the end-to-end wiring into ::ra8_vsource_add_paged so the
  * registry's read callback resolves to the adapter.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

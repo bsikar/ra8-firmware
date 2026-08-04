@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_urlname.h
  * @brief Pure URL-to-name helpers shared by the CLI and the fetch orchestrator.
@@ -17,6 +13,8 @@
  * The last-segment helper runs its result through ::mdl_sanitize_segment, so a
  * chapter identifier or slug it returns can never be `..`, absolute, or contain
  * a path separator -- the same guarantee the download paths already rely on.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

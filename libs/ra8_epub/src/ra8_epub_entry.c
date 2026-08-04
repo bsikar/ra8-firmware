@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_epub_entry.c
  * @brief Bounded-RAM streaming + windowed extraction of a single ZIP entry (#231).
@@ -28,6 +24,8 @@
  * (`ra8_epub_open_streamed`); in the streamed case every compressed / stored byte
  * is fetched on demand through the book's seek+read backing.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

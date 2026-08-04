@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_mmio.c
  * @brief Sparse MMIO model implementation (see emu_mmio.h)
@@ -12,6 +8,8 @@
  * unit. Modelled board_periph blocks always answer first; this model is the
  * fallback for addresses no block owns.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

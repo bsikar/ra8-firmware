@@ -1,11 +1,9 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_discover.c
  * @brief Governed search/browse: build the query URL, fetch it politely, parse
  *        the hits, and present them honestly (with optional select-for-download).
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_discover.h"
 

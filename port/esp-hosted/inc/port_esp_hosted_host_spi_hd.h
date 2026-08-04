@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_spi_hd.h
  * @brief esp-hosted port header: half-duplex SPI transport buffer size.
@@ -16,6 +12,8 @@
  * chain evaluated inside shared vendored files, so the half-duplex header
  * must exist with its upstream name and its one upstream macro.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ethosu_kernel.h
  * @brief First-party TFLite-micro Ethos-U custom-op registration probe (RA8P1-only)
@@ -34,6 +30,8 @@
  * and the matching kernel's `Register_ETHOSU()` returns `nullptr` (the CPU-only
  * TFLite path), so nothing here applies.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

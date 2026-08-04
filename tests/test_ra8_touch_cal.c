@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_touch_cal.c
  * @brief Unit tests for the ra8_touch_cal calibration utility
@@ -16,6 +12,9 @@
  *   3. ``ra8_touch_cal_run`` driven by stub LCD/touch shims.
  *   4. ``ra8_touch_cal_save`` / ``ra8_touch_cal_load`` byte-identical
  *      round-trip plus CRC corruption rejection.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

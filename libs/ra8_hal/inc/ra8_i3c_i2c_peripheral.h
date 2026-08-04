@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_i3c_i2c_peripheral.h
  * @brief IIC_B (I3C in I2C-only mode) peripheral driver -- mirrors FSP ``r_iic_b_peripheral``
@@ -23,6 +19,9 @@
  *   - ``internal_i3c_i2c_peripheral_send`` -- respond to a controller-read
  *   - ``internal_i3c_i2c_peripheral_receive`` -- consume a controller-write
  *   - ``internal_i3c_i2c_peripheral_status``
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_wifi_config.h
  * @brief esp-hosted port header: which Wi-Fi and supplicant features exist.
@@ -38,6 +34,8 @@
  * RSSI adjustment, the SAE extension, the VHT beamformee bits). v5.5.4 is at
  * or past both, so both are on and the host mirrors the full structure.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

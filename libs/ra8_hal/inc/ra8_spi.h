@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_spi.h
  * @brief SPI_B controller driver (RA8D2 Type-B SPI peripheral)
@@ -37,6 +33,9 @@
  *       includes this header, runs the internal-loopback path, and prints
  *       ``spi: pass``). A separate ``spi_b_loopback`` example would link the
  *       same ``.c`` and duplicate ``spi_loopback`` verbatim, so none exists.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

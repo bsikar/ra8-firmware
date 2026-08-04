@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_gfx_font.h
  * @brief Bitmap font descriptor + bundled font handles for ra8_gfx.
@@ -26,6 +22,8 @@
  * Only ASCII 0x20..0x7E (95 glyphs) are bundled to keep the binary
  * footprint at 95 * 16 = 1520 bytes.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

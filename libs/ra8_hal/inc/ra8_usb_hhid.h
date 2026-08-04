@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_hhid.h
  * @brief Native USB host-side HID (Human Interface Device) class layer
@@ -40,6 +36,9 @@
  *
  * Reference: USB Device Class Definition for Human Interface Devices
  * (HID) revision 1.11 (USB-IF, 2001-06-27).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

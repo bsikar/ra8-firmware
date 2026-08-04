@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_etha_tas.c
  * @brief Unit tests for ra8_etha_tas.c (802.1Qbv time-aware shaper flows)
@@ -16,6 +12,9 @@
  * EATASGL0 (the entry ADDRESS register) and a cut-through flag into
  * EATASGL1.TASGSL (the gate STATE bit), and every call still returned
  * k_ra8_ok (#539).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

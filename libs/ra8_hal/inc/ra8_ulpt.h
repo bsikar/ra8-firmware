@@ -1,11 +1,10 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ulpt.h
  * @brief Ultra-Low-Power Timer (ULPT) driver header
  * @ingroup grp_hal_timers
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

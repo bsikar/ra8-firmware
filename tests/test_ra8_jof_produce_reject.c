@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_jof_produce_reject.c
  * @brief Producer entry-point rejection vectors: format sniff, pull failure,
@@ -24,6 +20,8 @@
  * decoded pixels against an oracle. Following the sibling suites, the fixture
  * is self-contained: this translation unit shares no state with them.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

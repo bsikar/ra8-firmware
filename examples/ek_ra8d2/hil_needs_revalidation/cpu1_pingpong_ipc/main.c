@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/main.c
  * @brief CPU0 (M85) Secure fallback entry for the TZ ping-pong demo.
@@ -26,6 +22,8 @@
  * the CPU in a NOP loop so it cannot accidentally touch the
  * NS-attributed IPC channels (which would BusFault in S state).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

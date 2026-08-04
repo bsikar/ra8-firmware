@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_psa_crypto_api.c
  * @brief Unit tests for the ra8_psa_crypto facade public-API contract
@@ -23,6 +19,9 @@
  * Sibling suites: test_ra8_psa_crypto_guards.c (non-AEAD MC/DC
  * vectors + single-condition error legs) and
  * test_ra8_psa_crypto_aead_mcdc.c (AEAD MC/DC vectors).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

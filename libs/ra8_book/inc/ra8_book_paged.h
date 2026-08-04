@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_book_paged.h
  * @brief Paged (demand-fetched) accessor mode for ra8_book over ra8_vmem (#163).
@@ -32,6 +28,9 @@
  * @see ra8_vsource.h     The backing-object registry the cache loads from.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

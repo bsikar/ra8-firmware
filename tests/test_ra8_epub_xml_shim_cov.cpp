@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_epub_xml_shim_cov.cpp
  * @brief White-box line-coverage tests for libs/ra8_epub/src/ra8_epub_xml_shim.cpp.
@@ -35,6 +31,8 @@
  * The same white-box `#include`-the-source pattern is used by
  * `test_ra8_usb_hmsc_enum_cov.c`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_tile_cache.c
  * @brief Fixed-budget image-tile cache -- implementation (Layer 3b, #147).
@@ -18,6 +14,9 @@
  * descriptor) so the production stb_image-backed decoder and the test stubs are
  * unchanged. All cache mechanics -- the single LRU list, pinned-cell skip, hash
  * chaining, eviction -- live in ::ra8_keycache.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_tile_cache.h"

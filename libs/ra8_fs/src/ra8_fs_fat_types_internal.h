@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_types_internal.h
  * @brief Cross-TU on-disk-layout enums and typedefs for the FAT/exFAT adapter.
@@ -18,6 +14,8 @@
  * This header aggregates the module's on-disk-layout enums shared across the
  * FAT translation units.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

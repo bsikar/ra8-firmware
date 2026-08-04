@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sdcard.c
  * @brief SD card driver implementation -- SD Physical Layer state machine
@@ -29,6 +25,9 @@
  * (SDHI)" (HUM pages 3122-3179). SD command numbers and response
  * formats follow the SD Physical Layer Specification v6.00 -- HUM
  * Ch 47.1 "Overview" pins SDHI to that document directly.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sdcard.h"

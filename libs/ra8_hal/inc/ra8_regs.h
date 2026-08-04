@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_regs.h
  * @brief Top-level peripheral register header for the Renesas RA8D2
@@ -43,6 +39,9 @@
  *   the Hardware User's Manual is trivial).
  * - Accessor: lowercase peripheral name (`sci0()`, `port6()`, `cgc()`).
  * - Typed-enum values: `k_ra8_<domain>_<name>`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

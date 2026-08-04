@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fake_irq.h
  * @brief Host-test interrupt-injection shim
@@ -38,6 +34,9 @@
  * The stub lives here so that + drivers can call
  * it the moment they grow interrupt paths; today only a handful
  * of trivial use-cases exercise it.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

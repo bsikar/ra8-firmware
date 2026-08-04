@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rand_stub.c
  * @brief Unit tests for libs/ra8_core/src/ra8_rand_stub.c
@@ -21,6 +17,9 @@
  * reproducible and therefore assertable. The per-call NOLINTs below waive the
  * weak-PRNG and constant-seed checks for that reason; nothing in this file
  * uses rand() for anything security-relevant.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_book_image_rect.c
  * @brief Sub-rect image addressing tests for ra8_book_src_image / _rect (#342).
@@ -27,6 +23,9 @@
  * (`base + off`) and a paged source (an ::ra8_vmem cache over an ::ra8_vsource
  * object), and the two must produce byte-for-byte identical gray8, so the loupe /
  * cover / thumbnail renderers stay pixel-identical after the move.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,8 +1,4 @@
 /*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/*
  * GNU ld linker script for ra8-firmware
  *
  * Target: Renesas R7KA8P1KF (RA8P1), R7KA8P1KFLCAC 289-BGA
@@ -27,6 +23,9 @@
  * brick-safety policy -- program them only through the explicit path
  * documented there.
  * =====================================================================
+ *
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 ENTRY(Reset_Handler)

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_input.c
  * @brief Host-side keystroke FIFO implementation (see board_input.h)
@@ -11,6 +7,8 @@
  * both push through ::board_input_push_key; the run loop drains via
  * ::board_input_pop_key into the console UART RX. Single-threaded harness use.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

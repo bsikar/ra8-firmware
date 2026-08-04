@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sdcard.h
  * @brief SD card driver layered on top of the RA8D2 SDHI peripheral
@@ -38,6 +34,9 @@
  * indices and response formats are from the SD Physical Layer
  * Specification v6.00 (open-access) -- the manual cites that spec
  * directly in 47.1 "SDHI Overview".
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

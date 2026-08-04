@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_reflow_v2.cpp
  * @brief Host-side unit tests for the LiteHTML-backed ra8_reflow v2 engine.
@@ -14,6 +10,8 @@
  * (``libs/ra8_reflow/v2/ra8_reflow_v2.cpp``). Built only when
  * ``-DRA8_REFLOW_USE_LITEHTML=ON``.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

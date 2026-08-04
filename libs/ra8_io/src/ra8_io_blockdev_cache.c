@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_cache.c
  * @brief Caching block device -- LRU sector cache + write-through over a backend.
@@ -14,6 +10,9 @@
  * least-recently-used slot); writes go straight through to the wrapped backend
  * and update the cache. Capabilities and sync delegate to the backend. Every
  * predicate is a single condition, so no MC/DC vectors are due.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_blockdev_cache.h"

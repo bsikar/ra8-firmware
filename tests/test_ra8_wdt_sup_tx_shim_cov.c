@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_wdt_sup_tx_shim_cov.c
  * @brief Coverage-lift tests for libs/ra8_wdt_supervisor/src/ra8_wdt_sup_tx_shim_internal.h
@@ -34,6 +30,9 @@
  * sibling test executables.
  *
  * No hardware registers are touched; no ra8_fake_mmap window is required.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

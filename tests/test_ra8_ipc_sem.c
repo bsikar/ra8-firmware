@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ipc_sem.c
  * @brief Unit tests for the ra8_ipc hardware-semaphore family
@@ -11,6 +7,9 @@
  * spin (with a poll-hook releasing the semaphore mid-spin), and
  * is-locked queries. Shared fixture state lives in
  * support/ipc_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

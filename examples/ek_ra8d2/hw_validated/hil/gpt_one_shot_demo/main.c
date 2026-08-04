@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/gpt_one_shot_demo/main.c
  * @brief GPT one-shot (saw-wave one-shot) HIL demo for EK-RA8D2
@@ -23,6 +19,8 @@
  *   - ``ra8_gpt_attach_handler`` to count overflows.
  *   - Loop: ``ra8_gpt_start_free_run`` -> wait for IRQ -> repeat.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

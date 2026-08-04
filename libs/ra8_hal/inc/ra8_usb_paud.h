@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_paud.h
  * @brief Native USB device-side Audio (UAC) class layer
@@ -32,6 +28,9 @@
  *   - sec 4.3.2.5 "Class-Specific AS Interface Descriptor"
  *   - sec 5.2.1 "Request Layout" (SET_CUR / GET_CUR / GET_MIN / ...)
  *   - sec A.9 "Audio Class-Specific Request Codes"
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

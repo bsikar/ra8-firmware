@@ -1,11 +1,10 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mpu_regs.h
  * @brief Memory Protection Unit register layout for the Renesas RA8D2
  * @ingroup grp_hal_system
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

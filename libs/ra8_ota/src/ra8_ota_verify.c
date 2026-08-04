@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ota_verify.c
  * @brief Phase-5 OTA signature-verification cluster -- implementation.
@@ -28,6 +24,8 @@
  * No malloc anywhere (NASA Rule 3); every loop has a static upper bound
  * (NASA Rule 2).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

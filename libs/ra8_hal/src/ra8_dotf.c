@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dotf.c
  * @brief Decryption On The Fly (DOTF) HAL driver implementation
@@ -27,6 +23,9 @@
  *  - per-channel IV cache so ``ra8_dotf_rotate_key`` can re-stage the
  *    same IV without forcing the caller to remember it;
  *  - shared callback slot for IRQ glue.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dotf.h"

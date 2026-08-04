@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/threadx_blink/main.c
  * @brief Eclipse ThreadX bring-up HIL test on the EK-RA8D2
@@ -41,6 +37,8 @@
  * Both threads run at the same priority; ThreadX round-robins them on
  * each `tx_thread_sleep` wake.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

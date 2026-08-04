@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_epub_miniz_alloc.c
  * @brief First-fit free-list allocator over a static pool for miniz.
@@ -14,6 +10,9 @@
  * with split; free coalesces every run of adjacent free blocks, so the pool
  * never fragments permanently and is reusable across unbounded alloc/free
  * cycles (miniz allocates and frees a decompressor per chapter extract).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_epub_miniz_alloc.h"

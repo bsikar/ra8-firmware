@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_rng_demo.c
  * @brief Integration test: ra8_psa_crypto_random round-trip from rng_demo
@@ -12,6 +8,8 @@
  * test exercises a distinct branch in the demo's emit-one-line path so
  * MC/DC for the four-condition compound decision is fully covered.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

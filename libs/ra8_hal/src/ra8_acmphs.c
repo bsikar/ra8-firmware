@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_acmphs.c
  * @brief High-Speed Analog Comparator driver implementation
@@ -16,6 +12,9 @@
  * input selection, status get/clear, async dispatch, and power
  * transition. Every register access carries a HUM Ch 56
  * citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_acmphs.h"

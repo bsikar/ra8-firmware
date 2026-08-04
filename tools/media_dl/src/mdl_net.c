@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_net.c
  * @brief Backend-agnostic dispatchers for the ::mdl_net_iface_t vtable seam.
@@ -13,6 +9,8 @@
  * links into the host unit tests alongside a scripted fake exactly as it links
  * into the production tool alongside the libcurl backend -- which is what makes
  * the argument-validation decisions here testable without a network.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_net.h"
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_reflow_render_cov.c
  * @brief Line-coverage (gcovr) tests for libs/ra8_reflow/src/ra8_reflow_render.c.
@@ -26,6 +22,9 @@
  *
  * Assertions are robust (return code + a framebuffer pixel differing from the
  * zeroed background), not exact pixel values: the point is execution.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

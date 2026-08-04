@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/main.c
  * @brief The same Wi-Fi join as c6_wifi_join, the HAL way, through ra8_wifi.
@@ -26,8 +20,9 @@
  * (``RA8_C6_WIFI_SSID`` / ``RA8_C6_WIFI_PSK``); with neither set the image
  * builds but prints a FAIL and stops, so no credential is committed.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

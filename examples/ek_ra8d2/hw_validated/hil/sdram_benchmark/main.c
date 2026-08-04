@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/sdram_benchmark/main.c
  * @brief External SDRAM bring-up + 64 KB write/read benchmark on EK-RA8D2
@@ -31,6 +27,8 @@
  *
  * Bare EK-RA8D2 only -- the SDRAM is on-board.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

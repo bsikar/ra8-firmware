@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_sram.c
  * @brief SRAM controller ECC self-test / error-status model (SRAMCRn / SRAMESR)
@@ -30,6 +26,8 @@
  * SRAMECCRGNn / SRAMEARnm) read back exactly as written, and @c SRAMESCLR
  * writes clear the matching @c SRAMESR / @c SRAMEAR slots.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

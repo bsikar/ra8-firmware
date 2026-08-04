@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c
  * @brief The example's join+DHCP journey, hardware-free so it is host-testable.
@@ -20,8 +14,9 @@
  * (bound to a mock backend and a canned provider). No ``printf``, no ThreadX, no
  * board.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_comic/main.c
  * @brief Viewable page-turn comic reader -- baked CBZ decoded to the 1024x600
@@ -36,6 +32,8 @@
  *
  *   ``ereader-comic: pages=<N> <W>x<H> page=1 crc=<8hex> ok``
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

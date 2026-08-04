@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_link.c
  * @brief Page tap-target queries: link + image hit-test, anchor lookup, href split.
@@ -17,6 +13,8 @@
  *  - ra8_reflow_find_anchor(): `#fragment` id -> page.
  *  - ra8_reflow_href_split(): pure classification of an href string.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

@@ -1,11 +1,10 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_drw_internal.h
  * @brief Test-access surface for ra8_drw internal helpers (MC/DC).
  * @ingroup grp_hal_display
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

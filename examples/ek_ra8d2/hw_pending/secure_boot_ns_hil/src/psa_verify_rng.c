@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/psa_verify_rng.c
  * @brief Fail-closed PSA external-RNG hook for the verify-only secure boot (#172).
@@ -30,6 +26,8 @@
  *          signing step, a key exchange), wire a real hardware TRNG here. Do NOT
  *          relax this to a deterministic generator.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

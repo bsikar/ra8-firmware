@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fmt_jof_verify.c
  * @brief JOF round-trip verification: banded encode versus untiled reference.
@@ -19,6 +15,8 @@
  * `verify` passes, the bytes on disk are right and a wrong render is the
  * reader's fault.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

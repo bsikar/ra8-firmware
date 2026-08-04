@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ssie_mcdc.c
  * @brief MC/DC vector tests for the compound boolean decisions in
@@ -11,6 +7,9 @@
  * test_mcdc_<short_name>() per compound decision, each using minimal
  * N+1 vectors (Chilenski masking-MC/DC). Shared fixture state lives in
  * support/ssie_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dmac.h"

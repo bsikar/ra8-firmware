@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_i2c_i3c_combined.c
  * @brief Integration test: RIIC + I3C coexistence mirrors i2c_i3c_combined main
@@ -12,6 +8,8 @@
  * I2C-compat mode) in one firmware. Here we drive both inits + their scan
  * reject paths through the host tests/mocks/ra8_fake_mmap.c shim.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

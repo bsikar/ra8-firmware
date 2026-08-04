@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_touch.c
  * @brief Unit tests for the ra8_touch (GT911) driver
@@ -20,6 +16,9 @@
  * the product-id VALUE check and the exact status-byte read legs run on
  * the host (#234). The wire-format parser tests live in
  * ``test_ra8_touch_decode.c``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_gpt_edge_capture_count.c
  * @brief Integration test for examples/.../hw_pending/gpt_edge_capture_count.
@@ -15,6 +11,8 @@
  *      external pulse counting (``ra8_gpt_event_count_configure`` +
  *      ``ra8_gpt_read``) -- observed through the fake MMIO window.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_extract.h
  * @brief Extract image URLs and anchor links from an HTML page (v1 scanner).
@@ -13,6 +9,8 @@
  * this is replaced by litehtml (already vendored) behind these signatures, and
  * the per-site match strings come from the config descriptor -- neither change
  * touches callers.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

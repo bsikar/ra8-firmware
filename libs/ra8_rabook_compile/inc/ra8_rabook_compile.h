@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rabook_compile.h
  * @brief Zero-heap builder that emits a RABOOK1 blob (the #149 compiler back-end).
@@ -43,6 +39,9 @@
  * @see ra8_book.h  The format definition + the reader this emitter targets.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/eth_loopback/main.c
  * @brief ETHA per-port internal loopback bring-up demo for EK-RA8D2
@@ -34,6 +30,8 @@
  *   6. ``ra8_etha_get_stats(port_0, &stats)`` -> log counts.
  *   7. ``ra8_etha_deinit(port_0)`` then idle-spin.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

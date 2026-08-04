@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_i3c.c
  * @brief I3C Bus Interface driver implementation
@@ -22,6 +18,9 @@
  * RSTCTL.INTLRST, clear PRTS, release RSTCTL.  Primary dynamic
  * address (MSDVAD.MDYAD) is programmed before BCTL.BUSE is set per
  * HUM Ch 40 BCTL description (pp 2445-2701).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_i3c.h"

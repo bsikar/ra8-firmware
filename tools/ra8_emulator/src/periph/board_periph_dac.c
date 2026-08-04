@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_dac.c
  * @brief DAC_B (12-bit D/A) peripheral-block model for the board emulator
@@ -24,6 +20,8 @@
  * Self-registers its descriptor with the board_periph core from a file-scope
  * constructor; the core keeps no central block list -- see board_periph_block.h.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

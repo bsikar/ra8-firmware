@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_net_pal.h
  * @brief Network Platform Abstraction Layer for the RA8D2 ESWM block
@@ -61,6 +57,9 @@
  * by the GWCA descriptor engine; in host tests it is a plain
  * contiguous RAM buffer. The stack-facing contract is identical
  * in either case, so NetX Duo's driver talks to the same API.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

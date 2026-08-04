@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_box.c
  * @brief Unit tests for the ra8_box layout engine (stack / grid / sizing).
@@ -12,6 +8,9 @@
  * (padding, gap, fixed vs flex), plus MC/DC vector sets for the three
  * functions that carry compound decisions: ``internal_iter_live`` (the
  * shared child-walk guard), ``ra8_box_add`` and ``ra8_box_layout``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file reflow_tokenize_test_util.h
  * @brief Shared engine fixture for the test_ra8_reflow_tokenize_*_mcdc.c siblings.
@@ -17,6 +13,9 @@
  * The walk is reached font-free: `priv_reflow_xml_walk` populates the token /
  * text pools without any glyph layout, so no font fixture is needed for the
  * markup-dispatch decisions.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

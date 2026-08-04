@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_lvd_regs.h
  * @brief Programmable Voltage Detection (PVD / LVD) register layout for the RA8D2
@@ -36,6 +32,9 @@
  * The Programmable Voltage Detection Security Attribution Register
  * (PVDSAR) lives in the CPSCU window at 0x4000_8000 base; it carries
  * NONSEC0 / NONSEC1 attribution bits for PVD1 / PVD2.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

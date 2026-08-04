@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_unarch_xz.h
  * @brief Bounded, fail-closed XZ/LZMA2 decoding over the vendored xz-embedded.
@@ -41,6 +37,9 @@
  * @see docs/SOUP/xz_embedded.md  Qualification record for the vendored tree.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

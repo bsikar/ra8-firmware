@@ -1,82 +1,63 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: one canonical copyright + SPDX preamble, same place in every file.
+"""Gate: one canonical copyright + SPDX attribution, same place in every file.
 
-The preamble is the first content of every first-party file: an
-``SPDX-License-Identifier`` line immediately followed by a ``Copyright`` line,
-sitting right after the shebang when there is one and ahead of the descriptive
-comment block / docstring.  One order, one text, one position -- so the header
-reads the same whether you open a shell script, a firmware ``.c``, or a
-``CMakeLists.txt``.
+Two forms, because this tree has two comment conventions and the attribution
+belongs where each convention already puts its metadata.
 
-Why the check grew placement teeth
-----------------------------------
-The old form of this checker asked only whether the two strings appeared
-*somewhere* in the file.  That let the tree drift into three different
-conventions at once: scripts carried ``SPDX`` then ``Copyright`` right after
-the shebang; the C tree carried ``@copyright`` then ``SPDX`` buried at the END
-of the ``@file`` Doxygen block; and one shell gate (``scripts/emu/matrix.sh``)
-had the pair stranded sixty lines deep, in the middle of its header comment.
-Every one of those passed a presence-only check.  "Present somewhere" is not a
-standard, so this gate now fixes the ORDER, the POSITION and the exact TEXT.
+C family (a Doxygen ``@file`` block)
+------------------------------------
+The attribution lives INSIDE the file-header block, as its closing tag group,
+never in a separate comment above it::
 
-The canonical form, by comment syntax
--------------------------------------
-Hash-comment files (``.sh`` ``.py`` ``.cmake`` ``.mk`` ``.yml`` ``.yaml``
-``CMakeLists.txt`` ``Makefile``), immediately after the shebang if present::
+    /**
+     * @file foo.c
+     * @brief ...
+     * @details ...
+     *
+     * @author Brighton Sikarskie          <- kept when present
+     * @date 2026-04-29                    <- kept when present
+     * @copyright Copyright (c) 2026 Brighton Sikarskie
+     * SPDX-License-Identifier: MIT
+     * @since 0.1.0                        <- kept when present
+     */
+
+``@copyright`` immediately followed by the SPDX line is the invariant this
+gate enforces, placed as the closing group of the block (before ``@since``
+when the file carries one). ``@author`` / ``@date`` / ``@since`` are PRESERVED
+exactly as written and are never invented: 2190 of the 2297 C-family files
+have never carried ``@author`` or ``@date``, and manufacturing them would be
+fabricated provenance, not a header standard.
+
+A standalone ``/* SPDX ... */`` block above the ``@file`` block is a
+violation, and ``--fix`` merges it back into the block rather than leaving the
+attribution split across two comments.
+
+Linker scripts use a plain (non-Doxygen) leading block, so they carry the bare
+``Copyright`` line followed by the SPDX line at the end of that block.
+
+Hash-comment files (shell, python, cmake, make, yaml)
+-----------------------------------------------------
+No doc-comment convention to live inside, so the attribution leads the file,
+immediately after the shebang when there is one::
 
     #!/usr/bin/env bash
     # SPDX-License-Identifier: MIT
     # Copyright (c) 2026 Brighton Sikarskie
-    #
-    # ... the descriptive block / module docstring follows ...
 
-Block-comment files (``.c`` ``.h`` ``.cpp`` ``.hpp`` ``.ld``), as the very
-first lines, ahead of the ``@file`` Doxygen block::
-
-    /*
-     * SPDX-License-Identifier: MIT
-     * Copyright (c) 2026 Brighton Sikarskie
-     */
-    /**
-     * @file ...
-     */
-
-Order + position, and why
--------------------------
-``SPDX-License-Identifier`` leads because that is the SPDX / REUSE / Linux-
-kernel convention -- a licence scanner expects it as the first line -- and the
-copyright line pairs directly beneath it.  Both lead the file so the preamble
-is found at a fixed offset (0, or 1 when a shebang occupies line 0) instead of
-wherever a given file's header prose happens to end.  The text is taken
-verbatim from ``LICENSE.txt`` (MIT; ``Copyright (c) 2026 Brighton Sikarskie``).
-
-Scope
------
-First-party code and build files only, enumerated from ``git ls-files`` via
-``lint_targets`` so a new top-level directory is covered the day it lands.
-Vendored SOUP (``libs/third_party/``), generated tables (``libs/ra8_fonts/``,
-generated font fixtures) and build output are out of scope, matching the
-sibling gates.  ``.md`` is documentation, not code, and is not judged.
-
-Non-vacuity
------------
-``--selftest`` asserts BOTH directions over crafted strings -- every wrong
-shape (missing, reversed order, buried, wrong text) must fire and the canonical
-shape must stay silent -- and ``--all`` refuses to report a clean tree when the
-scan collapses below a floor.
+Scope is derived from ``lint_targets`` (``git ls-files``), so a new top-level
+directory is covered the day it lands. Vendored SOUP, generated tables and
+build output are out of scope; ``.md`` is documentation, not code.
 
 Run::
 
-    check-copyright.py FILE [FILE ...]   # check named files (pre-commit hook)
-    check-copyright.py --all             # check every first-party file (gate)
-    check-copyright.py --fix [FILE ...]  # rewrite headers to canonical form
-    check-copyright.py --fix --all       # ... across the whole tree
+    check-copyright.py FILE [FILE ...]   # named files (pre-commit hook)
+    check-copyright.py --all             # every first-party file (gate)
+    check-copyright.py --fix --all       # rewrite headers to canonical form
     check-copyright.py --selftest        # prove the rules fire and stay quiet
 
-Exit 0 clean, 1 on a violation or a failing selftest, 2 on a collapsed scan or
-a usage error.
+Exit 0 clean, 1 on a violation or failing selftest, 2 on a collapsed scan.
 """
 
 from __future__ import annotations
@@ -94,20 +75,17 @@ EXIT_OK = 0
 EXIT_FAIL = 1
 EXIT_CONFIG = 2
 
-# The canonical preamble text -- verbatim from LICENSE.txt.
+COPY_TEXT = "Copyright (c) 2026 Brighton Sikarskie"
+COPY_TAG = f"@copyright {COPY_TEXT}"
 SPDX_TEXT = "SPDX-License-Identifier: MIT"
-COPYRIGHT_TEXT = "Copyright (c) 2026 Brighton Sikarskie"
 
-# The two comment syntaxes this tree uses for a file header.
-STYLE_HASH = "hash"  # `# ...`   -- shell, python, cmake, make
-STYLE_BLOCK = "block"  # `/* ... */` -- C family, linker scripts
+STYLE_HASH = "hash"
+STYLE_DOXY = "doxy"  # C family: attribution inside the @file block
+STYLE_PLAIN = "plain"  # linker scripts: bare lines in the leading block
 
-# lint_targets language -> comment style. Markdown is deliberately absent: it
-# is documentation, not code. YAML carries the same hash-comment preamble as a
-# shell script (minus the shebang).
 LANG_STYLE = {
-    "c": STYLE_BLOCK,
-    "ld": STYLE_BLOCK,
+    "c": STYLE_DOXY,
+    "ld": STYLE_PLAIN,
     "shell": STYLE_HASH,
     "python": STYLE_HASH,
     "cmake": STYLE_HASH,
@@ -116,18 +94,16 @@ LANG_STYLE = {
 }
 ENFORCED_LANGS = tuple(LANG_STYLE)
 
-# Suffix / basename -> comment style, for the argv (pre-commit) path where a
-# file is judged directly rather than enumerated by language.
 _SUFFIX_STYLE = {
-    ".c": STYLE_BLOCK,
-    ".h": STYLE_BLOCK,
-    ".cpp": STYLE_BLOCK,
-    ".hpp": STYLE_BLOCK,
-    ".cc": STYLE_BLOCK,
-    ".cxx": STYLE_BLOCK,
-    ".hh": STYLE_BLOCK,
-    ".hxx": STYLE_BLOCK,
-    ".ld": STYLE_BLOCK,
+    ".c": STYLE_DOXY,
+    ".h": STYLE_DOXY,
+    ".cpp": STYLE_DOXY,
+    ".hpp": STYLE_DOXY,
+    ".cc": STYLE_DOXY,
+    ".cxx": STYLE_DOXY,
+    ".hh": STYLE_DOXY,
+    ".hxx": STYLE_DOXY,
+    ".ld": STYLE_PLAIN,
     ".py": STYLE_HASH,
     ".sh": STYLE_HASH,
     ".bash": STYLE_HASH,
@@ -142,274 +118,244 @@ _BASENAME_STYLE = {
     "GNUmakefile": STYLE_HASH,
 }
 
-# Generated data that is not hand-authored, so exempt like libs/ra8_fonts.
-_GENERATED_SUFFIXES_BASENAMES = ("font_fixture.h", "fixture_ahem.h")
+_GENERATED = ("font_fixture.h", "fixture_ahem.h", "epub_fixture.h")
 
-# A tree this size cannot legitimately collapse to a handful of files. A scan
-# that enumerates almost nothing reports a clean tree because it looked at
-# almost nothing -- the same trip-wire the sibling gates carry. Measured
-# 2026-08-02: ~3060 first-party header-bearing files in the enforced languages.
 FILE_FLOOR = 1500
 
-# Smallest closing-``*/`` index that still has a line above it worth tidying.
-_CLOSE_NEEDS_BODY = 1
-
 
 # ---------------------------------------------------------------------------
-# The canonical form, as text and as a classifier.
+# Comment-frame helpers
 # ---------------------------------------------------------------------------
-
-
-def canonical_lines(style: str, shebang: str | None = None) -> list[str]:
-    """Return the canonical preamble lines for a comment `style`.
-
-    Args:
-        style: ``STYLE_HASH`` or ``STYLE_BLOCK``.
-        shebang: A shebang line to place first (hash style only), or None.
-
-    Returns:
-        The preamble as a list of lines without trailing newlines.
-    """
-    if style == STYLE_BLOCK:
-        return ["/*", f" * {SPDX_TEXT}", f" * {COPYRIGHT_TEXT}", " */"]
-    head = [shebang] if shebang else []
-    return [*head, f"# {SPDX_TEXT}", f"# {COPYRIGHT_TEXT}"]
 
 
 def _hashless(line: str) -> str:
-    """Strip a leading ``#`` (and one space) from a hash-comment line."""
     return line.lstrip().removeprefix("#").strip()
 
 
 def _starless(line: str) -> str:
-    """Strip a block-comment ``*`` / ``/*`` / ``*/`` frame from a line."""
     body = line.strip()
-    for lead in ("/*", "*/", "*"):
+    for lead in ("/**", "/*", "*/", "*"):
         if body.startswith(lead):
             body = body[len(lead) :]
             break
-    return body.strip()
+    return body.removesuffix("*/").strip()
 
 
-def _is_copyright(body: str) -> bool:
-    """True when comment-stripped `body` is the copyright line.
+def _block_span(lines: list[str], *, doxygen: bool) -> tuple[int, int] | None:
+    """Span of the file-header comment block, or None.
 
-    Accepts the bare form and the C ``@copyright`` Doxygen-tag prefix, so the
-    fixer recognises the old in-``@file`` spelling it is replacing.
+    ``doxygen`` selects the first ``/**`` block -- the ``@file`` header -- and
+    is what the C family uses. A one-line ``/* SPDX ... */`` above that block
+    is NOT the header: treating it as one is what once inserted the tag pair
+    outside any comment and left dangling ``* @copyright`` lines at file
+    scope. Linker scripts have no Doxygen block, so they take the first
+    MULTI-line ``/*`` block instead, single-line comments skipped for the same
+    reason.
     """
-    return body in {COPYRIGHT_TEXT, f"@copyright {COPYRIGHT_TEXT}"}
+    start = None
+    for i, ln in enumerate(lines):
+        stripped = ln.strip()
+        if start is None:
+            if doxygen:
+                if stripped.startswith("/**"):
+                    start = i
+                    if "*/" in stripped[3:]:
+                        return start, i
+                continue
+            if stripped.startswith("/*"):
+                if "*/" in stripped[2:]:
+                    continue  # a one-line comment is not the header block
+                start = i
+            continue
+        if "*/" in ln:
+            return start, i
+    return None
 
 
-def _is_spdx(body: str) -> bool:
-    """True when comment-stripped `body` is the SPDX line."""
-    return body == SPDX_TEXT
+def _attribution_outside(lines: list[str], span: tuple[int, int]) -> list[int]:
+    """Indices of attribution lines living OUTSIDE the header block.
 
-
-def classify(lines: list[str], style: str) -> str | None:
-    """Judge a file's leading lines, returning a violation reason or None.
-
-    Args:
-        lines: The file's lines (trailing newlines already stripped is fine;
-            they are ignored).
-        style: ``STYLE_HASH`` or ``STYLE_BLOCK``.
-
-    Returns:
-        None when the preamble is canonical; otherwise a short reason.
+    Covers both rejected shapes: the standalone ``/* SPDX ... */`` block V1
+    added above the ``@file`` block, and the pair of one-line ``/* ... */``
+    comments some headers carried above it.
     """
-    stripped = [ln.rstrip("\r\n") for ln in lines]
-    if style == STYLE_BLOCK:
-        return _classify_block(stripped)
-    return _classify_hash(stripped)
-
-
-def _classify_hash(lines: list[str]) -> str | None:
-    """Judge a hash-comment file (shell / python / cmake / make)."""
-    idx = 1 if lines and lines[0].startswith("#!") else 0
-    want_spdx = f"# {SPDX_TEXT}"
-    want_copy = f"# {COPYRIGHT_TEXT}"
-    if len(lines) >= idx + 2 and lines[idx] == want_spdx and lines[idx + 1] == want_copy:
-        return None
-    return _diagnose(lines, idx)
-
-
-def _classify_block(lines: list[str]) -> str | None:
-    """Judge a block-comment file (C family / linker script)."""
-    want = canonical_lines(STYLE_BLOCK)
-    if [ln.rstrip() for ln in lines[:4]] == want:
-        return None
-    return _diagnose(lines, 0)
-
-
-def _diagnose(lines: list[str], start: int) -> str:
-    """Explain why a non-canonical header is wrong, for the error message.
-
-    Args:
-        lines: The file's leading lines.
-        start: The index the preamble was expected at (after any shebang).
-
-    Returns:
-        A short human reason.
-    """
-    head = lines[: max(80, start + 2)]
-    copy_at = spdx_at = None
-    for i, ln in enumerate(head):
-        body = _hashless(ln) if not ln.strip().startswith(("/*", "*")) else _starless(ln)
-        if _is_copyright(body):
-            copy_at = i
-        elif _is_spdx(body):
-            spdx_at = i
-    if copy_at is None and spdx_at is None:
-        return "missing the SPDX + copyright preamble entirely"
-    if copy_at is None:
-        return "missing the copyright line"
-    if spdx_at is None:
-        return "missing the SPDX-License-Identifier line"
-    if spdx_at > copy_at:
-        return (
-            f"wrong order: copyright at line {copy_at + 1}, SPDX at line "
-            f"{spdx_at + 1} -- SPDX must come first"
-        )
-    return (
-        f"preamble is not the canonical leading block (SPDX at line "
-        f"{spdx_at + 1}, copyright at line {copy_at + 1}; expected them at "
-        f"line {start + 1})"
-    )
+    start, end = span
+    out = []
+    for i, ln in enumerate(lines):
+        if start <= i <= end:
+            continue
+        body = _starless(ln)
+        if body in {SPDX_TEXT, COPY_TEXT, COPY_TAG}:
+            out.append(i)
+    return out
 
 
 # ---------------------------------------------------------------------------
-# The fixer.
+# Classification
+# ---------------------------------------------------------------------------
+
+
+def classify(lines: list[str], style: str) -> str | None:
+    """Judge a file's header, returning a violation reason or None."""
+    stripped = [ln.rstrip("\r\n") for ln in lines]
+    if style == STYLE_HASH:
+        return _classify_hash(stripped)
+    return _classify_block(stripped, style)
+
+
+def _classify_hash(lines: list[str]) -> str | None:
+    idx = 1 if lines and lines[0].startswith("#!") else 0
+    want = [f"# {SPDX_TEXT}", f"# {COPY_TEXT}"]
+    if lines[idx : idx + 2] == want:
+        return None
+    joined = "\n".join(lines[:60])
+    if SPDX_TEXT not in joined and COPY_TEXT not in joined:
+        return "missing the SPDX + copyright preamble entirely"
+    if SPDX_TEXT not in joined:
+        return "missing the SPDX-License-Identifier line"
+    if COPY_TEXT not in joined:
+        return "missing the copyright line"
+    return (
+        f"preamble is not the canonical leading pair (expected '# {SPDX_TEXT}' "
+        f"then '# {COPY_TEXT}' at line {idx + 1})"
+    )
+
+
+def _classify_block(lines: list[str], style: str) -> str | None:
+    doxygen = style == STYLE_DOXY
+    span = _block_span(lines, doxygen=doxygen)
+    if span is None:
+        return (
+            "no @file Doxygen block to carry the attribution"
+            if doxygen
+            else "no leading comment block to carry the attribution"
+        )
+    if _attribution_outside(lines, span):
+        return (
+            "attribution sits in a comment outside the file-header block; it "
+            "belongs INSIDE that block as its closing tag group"
+        )
+    start, end = span
+    want_copy = COPY_TAG if style == STYLE_DOXY else COPY_TEXT
+    body = [_starless(x) for x in lines[start : end + 1]]
+    ci = si = None
+    for i, b in enumerate(body):
+        if b == want_copy:
+            ci = i
+        elif b == SPDX_TEXT:
+            si = i
+    return _pair_verdict(ci, si, style)
+
+
+def _pair_verdict(ci: int | None, si: int | None, style: str) -> str | None:
+    if ci is None and si is None:
+        return "the file-header block carries no copyright or SPDX line"
+    if ci is None:
+        kind = "@copyright" if style == STYLE_DOXY else "copyright"
+        return f"the file-header block has no {kind} line"
+    if si is None:
+        return "the file-header block has no SPDX-License-Identifier line"
+    if si != ci + 1:
+        return (
+            f"copyright and SPDX are not adjacent in the file-header block "
+            f"(copyright at block line {ci + 1}, SPDX at {si + 1})"
+        )
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Fixer
 # ---------------------------------------------------------------------------
 
 
 def _rewrite(text: str, style: str) -> str | None:
-    """Return `text` with a canonical preamble, or None when already canonical.
-
-    Removes any existing SPDX / copyright lines from the leading comment region
-    (including the C ``@copyright`` in-``@file`` spelling), tidies an emptied
-    frame, and prepends the canonical preamble after any shebang.
-    """
     lines = text.splitlines()
     if classify(lines, style) is None:
         return None
-    fixed = _rewrite_hash(lines) if style == STYLE_HASH else _rewrite_block(lines)
+    fixed = _rewrite_hash(lines) if style == STYLE_HASH else _rewrite_block(lines, style)
+    if fixed is None:
+        return None
     trailing = "\n" if text.endswith("\n") else ""
     return "\n".join(fixed) + trailing
 
 
 def _rewrite_hash(lines: list[str]) -> list[str]:
-    """Rewrite a hash-comment file's header.
-
-    Removes any SPDX / copyright comment line found anywhere in the LEADING
-    comment region -- the contiguous run of comment / blank lines before the
-    first code line -- not only a pair that already leads the file. That is
-    what catches a preamble stranded mid-header, the ``scripts/emu/matrix.sh``
-    case, rather than leaving a duplicate behind.
-    """
     shebang = None
     body = lines
     if lines and lines[0].startswith("#!"):
-        shebang = lines[0]
-        body = lines[1:]
+        shebang, body = lines[0], lines[1:]
     kept: list[str] = []
     in_region = True
     for line in body:
-        strip = line.strip()
-        if in_region and (strip == "" or strip.startswith("#")):
-            if strip.startswith("#") and (
-                _is_spdx(_hashless(line)) or _is_copyright(_hashless(line))
-            ):
+        s = line.strip()
+        if in_region and (s == "" or s.startswith("#")):
+            if s.startswith("#") and _hashless(line) in {SPDX_TEXT, COPY_TEXT}:
                 continue
             kept.append(line)
             continue
         in_region = False
         kept.append(line)
-    return [*canonical_lines(STYLE_HASH, shebang), *kept]
+    head = [shebang] if shebang else []
+    return [*head, f"# {SPDX_TEXT}", f"# {COPY_TEXT}", *kept]
 
 
-def _rewrite_block(lines: list[str]) -> list[str]:
-    """Rewrite a block-comment file's header.
-
-    Two shapes are repaired: a dedicated leading ``/* ... */`` licence block
-    (replaced wholesale) and the old in-``@file`` spelling where ``@copyright``
-    and ``SPDX`` sit at the tail of the first Doxygen block (those two lines
-    removed, plus a now-dangling blank ``*`` line, and the canonical block
-    prepended).
-    """
-    body = list(lines)
-    # Case 1: an existing dedicated top licence block `/* ... */` whose only
-    # payload is the SPDX/copyright pair -- drop it whole.
-    if body and body[0].strip() == "/*":
-        end = _find_block_end(body)
-        if end is not None:
-            inner = [_starless(x) for x in body[1:end]]
-            if all(v == "" or _is_spdx(v) or _is_copyright(v) for v in inner):
-                body = body[end + 1 :]
-    # Case 2: strip SPDX/copyright lines anywhere in the FIRST comment block
-    # (the @file block), then remove a trailing blank `*` left behind.
-    body = _strip_preamble_from_first_block(body)
-    return [*canonical_lines(STYLE_BLOCK), *body]
-
-
-def _find_block_end(lines: list[str]) -> int | None:
-    """Index of the line closing the first ``/* ... */`` block, or None."""
-    for i, ln in enumerate(lines):
-        if i > 0 and "*/" in ln:
-            return i
-    return None
-
-
-def _strip_preamble_from_first_block(lines: list[str]) -> list[str]:
-    """Strip SPDX / copyright lines and a stranded blank star from the first block."""
-    end = _find_block_end(lines) if lines and lines[0].strip().startswith("/*") else None
-    if end is None:
-        return lines
-    kept: list[str] = []
-    for i, ln in enumerate(lines):
-        if 0 < i < end:
-            body = _starless(ln)
-            if _is_spdx(body) or _is_copyright(body):
-                continue
-        kept.append(ln)
-    # Drop a blank ` *` immediately before the closing ` */` if the removal
-    # left one stranded (need a line before the close to inspect at all).
-    new_end = _find_block_end(kept)
-    if new_end is not None and new_end > _CLOSE_NEEDS_BODY and kept[new_end - 1].strip() == "*":
-        kept.pop(new_end - 1)
-    return kept
+def _rewrite_block(lines: list[str], style: str) -> list[str] | None:
+    """Merge the attribution INTO the file-header block, in canonical order."""
+    doxygen = style == STYLE_DOXY
+    span = _block_span(lines, doxygen=doxygen)
+    if span is None:
+        return None
+    want_copy = COPY_TAG if doxygen else COPY_TEXT
+    # Drop every attribution line, wherever it lives -- inside the block, or
+    # in the standalone/one-line comments above it -- then re-insert the pair
+    # inside the block. That repairs the split, reversed and outside-the-block
+    # shapes alike, and keeps the fixer idempotent. Blank comment lines left
+    # stranded by removing an outside comment are dropped with it.
+    drop = set(_attribution_outside(lines, span))
+    start, end = span
+    for i in range(start + 1, end):
+        if _starless(lines[i]) in {want_copy, COPY_TEXT, COPY_TAG, SPDX_TEXT}:
+            drop.add(i)
+    kept = [ln for i, ln in enumerate(lines) if i not in drop]
+    span = _block_span(kept, doxygen=doxygen)
+    if span is None:
+        return None
+    start, end = span
+    pair = [f" * {want_copy}", f" * {SPDX_TEXT}"]
+    # Insert before @since when the block has one, else just before the close.
+    insert_at = end
+    for i in range(start + 1, end):
+        if _starless(kept[i]).startswith("@since"):
+            insert_at = i
+            break
+    return kept[:insert_at] + pair + kept[insert_at:]
 
 
 # ---------------------------------------------------------------------------
-# Scope + file enumeration.
+# Scope
 # ---------------------------------------------------------------------------
 
 
 def _style_for(path: Path) -> str | None:
-    """Comment style for a path judged directly (argv path), or None."""
     if path.name in _BASENAME_STYLE:
         return _BASENAME_STYLE[path.name]
     return _SUFFIX_STYLE.get(path.suffix.lower())
 
 
 def _is_generated(rel: str) -> bool:
-    """True for generated data files that are exempt like libs/ra8_fonts."""
-    return rel.endswith(_GENERATED_SUFFIXES_BASENAMES)
+    return rel.endswith(_GENERATED)
 
 
 def enumerate_all() -> list[tuple[str, str]]:
-    """Every first-party enforced file as ``(rel_path, style)`` pairs."""
-    grouped = files_for(ENFORCED_LANGS)
+    """Enumerate every enforced (relative-path, style) pair, sorted."""
     out: list[tuple[str, str]] = []
-    for lang, rels in grouped.items():
+    for lang, rels in files_for(ENFORCED_LANGS).items():
         style = LANG_STYLE[lang]
-        for rel in rels:
-            if _is_generated(rel):
-                continue
-            out.append((rel, style))
+        out.extend((rel, style) for rel in rels if not _is_generated(rel))
     return sorted(out)
 
 
 def _check_one(rel: str, style: str) -> str | None:
-    """Read and classify one file; returns a reason or None."""
     path = REPO_ROOT / rel if not Path(rel).is_absolute() else Path(rel)
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -419,153 +365,168 @@ def _check_one(rel: str, style: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Selftest -- both directions, over crafted strings. Nothing is written into
-# the tree: a bad fixture stored as a real file would be found by the scan.
+# Selftest -- both directions, in-memory only.
 # ---------------------------------------------------------------------------
 
-_GOOD_HASH = ["#!/usr/bin/env bash", f"# {SPDX_TEXT}", f"# {COPYRIGHT_TEXT}", "#", "# body"]
-_GOOD_HASH_NOSB = [f"# {SPDX_TEXT}", f"# {COPYRIGHT_TEXT}", "", "x = 1"]
-_GOOD_BLOCK = ["/*", f" * {SPDX_TEXT}", f" * {COPYRIGHT_TEXT}", " */", "/**", " * @file x.c", " */"]
+_GOOD_DOXY = [
+    "/**",
+    " * @file x.c",
+    " * @brief y",
+    " *",
+    " * @author Brighton Sikarskie",
+    " * @date 2026-04-29",
+    f" * {COPY_TAG}",
+    f" * {SPDX_TEXT}",
+    " * @since 0.1.0",
+    " */",
+]
+_GOOD_DOXY_MINIMAL = ["/**", " * @file x.c", f" * {COPY_TAG}", f" * {SPDX_TEXT}", " */"]
+_GOOD_PLAIN = ["/*", " * linker script", f" * {COPY_TEXT}", f" * {SPDX_TEXT}", " */"]
+_GOOD_HASH = ["#!/usr/bin/env bash", f"# {SPDX_TEXT}", f"# {COPY_TEXT}", "#", "# body"]
+_GOOD_HASH_NOSB = [f"# {SPDX_TEXT}", f"# {COPY_TEXT}", "", "x = 1"]
 
 MUST_STAY_QUIET: tuple[tuple[str, str, list[str]], ...] = (
+    ("doxy full tag group", STYLE_DOXY, _GOOD_DOXY),
+    ("doxy minimal pair", STYLE_DOXY, _GOOD_DOXY_MINIMAL),
+    ("plain linker block", STYLE_PLAIN, _GOOD_PLAIN),
     ("hash with shebang", STYLE_HASH, _GOOD_HASH),
     ("hash without shebang", STYLE_HASH, _GOOD_HASH_NOSB),
-    ("block comment", STYLE_BLOCK, _GOOD_BLOCK),
 )
 
 MUST_FIRE: tuple[tuple[str, str, list[str]], ...] = (
     (
-        "hash reversed order",
-        STYLE_HASH,
-        ["#!/usr/bin/env bash", f"# {COPYRIGHT_TEXT}", f"# {SPDX_TEXT}"],
+        "V1 standalone block above @file",
+        STYLE_DOXY,
+        ["/*", f" * {SPDX_TEXT}", f" * {COPY_TEXT}", " */", "/**", " * @file x.c", " */"],
     ),
-    ("hash missing spdx", STYLE_HASH, ["#!/usr/bin/env bash", f"# {COPYRIGHT_TEXT}", "# body"]),
-    ("hash missing both", STYLE_HASH, ["#!/usr/bin/env bash", "# just a description", "echo hi"]),
     (
-        "hash buried after prose",
-        STYLE_HASH,
+        # The shape that once broke 12 files: a one-line /* ... */ comment
+        # above the block is NOT the header block. Treating it as one put the
+        # tag pair outside any comment, leaving ` * @copyright` at file scope.
+        "one-line attribution comments above @file",
+        STYLE_DOXY,
         [
-            "#!/usr/bin/env bash",
-            "# matrix.sh -- long",
-            "# more prose",
-            f"# {SPDX_TEXT}",
-            f"# {COPYRIGHT_TEXT}",
-        ],
-    ),
-    (
-        "hash preamble one line late",
-        STYLE_HASH,
-        ["#!/usr/bin/env bash", "#", f"# {SPDX_TEXT}", f"# {COPYRIGHT_TEXT}"],
-    ),
-    ("block reversed order", STYLE_BLOCK, ["/*", f" * {COPYRIGHT_TEXT}", f" * {SPDX_TEXT}", " */"]),
-    (
-        "block at tail of @file",
-        STYLE_BLOCK,
-        [
+            f"/* {SPDX_TEXT} */",
+            f"/* {COPY_TEXT} */",
             "/**",
             " * @file x.c",
-            " * @brief y",
-            f" * @copyright {COPYRIGHT_TEXT}",
-            f" * {SPDX_TEXT}",
             " */",
         ],
     ),
-    ("block missing both", STYLE_BLOCK, ["/**", " * @file x.c", " */"]),
+    (
+        "doxy reversed pair",
+        STYLE_DOXY,
+        ["/**", " * @file x.c", f" * {SPDX_TEXT}", f" * {COPY_TAG}", " */"],
+    ),
+    (
+        "doxy split pair",
+        STYLE_DOXY,
+        ["/**", " * @file x.c", f" * {COPY_TAG}", " * @since 0.1.0", f" * {SPDX_TEXT}", " */"],
+    ),
+    ("doxy missing spdx", STYLE_DOXY, ["/**", " * @file x.c", f" * {COPY_TAG}", " */"]),
+    ("doxy missing both", STYLE_DOXY, ["/**", " * @file x.c", " * @brief y", " */"]),
+    ("plain missing spdx", STYLE_PLAIN, ["/*", " * ld", f" * {COPY_TEXT}", " */"]),
+    (
+        "hash reversed",
+        STYLE_HASH,
+        ["#!/usr/bin/env bash", f"# {COPY_TEXT}", f"# {SPDX_TEXT}"],
+    ),
+    (
+        "hash buried",
+        STYLE_HASH,
+        ["#!/usr/bin/env bash", "# prose", f"# {SPDX_TEXT}", f"# {COPY_TEXT}"],
+    ),
+    ("hash missing both", STYLE_HASH, ["#!/usr/bin/env bash", "# just prose", "echo hi"]),
 )
 
 
 def _selftest_fix() -> list[str]:
-    """Assert the fixer turns each must-fire shape canonical and is idempotent."""
-    failures: list[str] = []
+    out: list[str] = []
     for label, style, lines in MUST_FIRE:
         text = "\n".join(lines) + "\n"
         fixed = _rewrite(text, style)
         if fixed is None:
-            failures.append(f"  fix: {label} was already canonical (unexpected)")
+            out.append(f"  fix: {label} was already canonical (unexpected)")
             continue
         if classify(fixed.splitlines(), style) is not None:
-            failures.append(f"  fix: {label} still non-canonical after --fix:\n{fixed}")
+            out.append(f"  fix: {label} still non-canonical:\n{fixed}")
             continue
-        if fixed.count(SPDX_TEXT) != 1 or fixed.count(COPYRIGHT_TEXT) != 1:
-            failures.append(f"  fix: {label} left a duplicate preamble line:\n{fixed}")
+        if fixed.count(SPDX_TEXT) != 1 or fixed.count(COPY_TEXT) != 1:
+            out.append(f"  fix: {label} left a duplicate:\n{fixed}")
             continue
         if _rewrite(fixed, style) is not None:
-            failures.append(f"  fix: {label} is not idempotent under --fix")
-    return failures
+            out.append(f"  fix: {label} is not idempotent")
+    # Preservation: @author/@date/@since must survive a fix untouched.
+    src = "\n".join(
+        [
+            "/**",
+            " * @file x.c",
+            " * @author Someone Else",
+            " * @date 2020-01-02",
+            f" * {SPDX_TEXT}",
+            f" * {COPY_TAG}",
+            " * @since 0.1.0",
+            " */",
+        ]
+    )
+    fixed = _rewrite(src + "\n", STYLE_DOXY) or ""
+    out.extend(
+        f"  fix: dropped '{needle}' -- provenance must be preserved"
+        for needle in ("@author Someone Else", "@date 2020-01-02", "@since 0.1.0")
+        if needle not in fixed
+    )
+    if f"{COPY_TAG}\n * {SPDX_TEXT}" not in fixed:
+        out.append(f"  fix: pair not adjacent in order after repair:\n{fixed}")
+    return out
 
 
 def selftest() -> int:
-    """Prove every wrong shape fires and the canonical shape stays silent."""
+    """Assert the classifier and fixer both ways; 0 on success."""
     failures = [
-        f"  must-stay-quiet: {label} was rejected ({classify(lines, style)})"
+        f"  must-stay-quiet: {label} rejected ({classify(lines, style)})"
         for label, style, lines in MUST_STAY_QUIET
         if classify(lines, style) is not None
     ]
     failures += [
-        f"  must-fire: {label} was accepted as canonical"
+        f"  must-fire: {label} accepted as canonical"
         for label, style, lines in MUST_FIRE
         if classify(lines, style) is None
     ]
     failures += _selftest_fix()
-
     if failures:
         sys.stderr.write("check-copyright.py --selftest: FAILED\n\n")
         sys.stderr.write("\n".join(failures) + "\n")
         return EXIT_FAIL
-
     total = len(MUST_FIRE) + len(MUST_STAY_QUIET)
     print(
-        f"check-copyright.py --selftest: OK ({total} cases: {len(MUST_FIRE)} must "
-        f"fire, {len(MUST_STAY_QUIET)} must stay quiet; fixer canonicalises and is "
-        "idempotent)."
+        f"check-copyright.py --selftest: OK ({total} cases: {len(MUST_FIRE)} must fire, "
+        f"{len(MUST_STAY_QUIET)} must stay quiet; fixer merges, preserves "
+        "@author/@date/@since, and is idempotent)."
     )
     return EXIT_OK
 
 
 # ---------------------------------------------------------------------------
-# Drivers.
+# Drivers
 # ---------------------------------------------------------------------------
 
 
-def _run_all(fix: bool) -> int:
-    """Check (or fix) every first-party file. The gate's entry point."""
-    targets = enumerate_all()
-    if len(targets) < FILE_FLOOR:
-        sys.stderr.write(
-            f"check-copyright.py: FATAL -- only {len(targets)} file(s) in scope, "
-            f"floor is {FILE_FLOOR}. A collapsed scan reports a clean tree because "
-            "it scanned nothing.\n"
-        )
-        return EXIT_CONFIG
-    return _process(targets, fix)
-
-
-def _run_files(paths: list[str], fix: bool) -> int:
-    """Check (or fix) the files named on argv. The pre-commit entry point."""
-    targets: list[tuple[str, str]] = []
-    for raw in paths:
-        path = Path(raw)
-        rel = raw
-        if path.is_absolute() and path.is_relative_to(REPO_ROOT):
-            rel = str(path.relative_to(REPO_ROOT))
-        if is_build_output_path(rel) or _is_generated(rel):
-            continue
-        style = _style_for(path)
-        if style is None:
-            continue
-        targets.append((rel, style))
-    return _process(targets, fix)
-
-
 def _process(targets: list[tuple[str, str]], fix: bool) -> int:
-    """Shared body: check every target, or fix it, and report."""
     if fix:
-        return _fix_targets(targets)
-    failures = []
-    for rel, style in targets:
-        reason = _check_one(rel, style)
-        if reason is not None:
-            failures.append((rel, reason))
+        changed = 0
+        for rel, style in targets:
+            path = REPO_ROOT / rel if not Path(rel).is_absolute() else Path(rel)
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            fixed = _rewrite(text, style)
+            if fixed is not None and fixed != text:
+                path.write_text(fixed, encoding="utf-8")
+                changed += 1
+        print(f"check-copyright.py --fix: {changed} file(s) rewritten.")
+        return EXIT_OK
+    failures = [(rel, r) for rel, style in targets if (r := _check_one(rel, style)) is not None]
     if not failures:
         print(f"check-copyright.py: {len(targets)} file(s) scanned, all headers canonical.")
         return EXIT_OK
@@ -573,48 +534,46 @@ def _process(targets: list[tuple[str, str]], fix: bool) -> int:
     for rel, reason in sorted(failures):
         sys.stderr.write(f"  {rel}: {reason}\n")
     sys.stderr.write(
-        "\nThe preamble must be, right after the shebang if any:\n"
-        f"    # {SPDX_TEXT}\n    # {COPYRIGHT_TEXT}\n"
-        "  (block-comment files use the /* * */ form at the very top.)\n"
+        "\nC family: the attribution lives INSIDE the @file block as its closing\n"
+        f"group -- '{COPY_TAG}' then '{SPDX_TEXT}'.\n"
+        f"Hash files: '# {SPDX_TEXT}' then '# {COPY_TEXT}' after any shebang.\n"
         "  Run:  python3 scripts/checks/check-copyright.py --fix --all\n"
     )
     return EXIT_FAIL
 
 
-def _fix_targets(targets: list[tuple[str, str]]) -> int:
-    """Rewrite each non-canonical target in place."""
-    changed = 0
-    for rel, style in targets:
-        path = REPO_ROOT / rel if not Path(rel).is_absolute() else Path(rel)
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        fixed = _rewrite(text, style)
-        if fixed is not None and fixed != text:
-            path.write_text(fixed, encoding="utf-8")
-            print(f"  fixed {rel}")
-            changed += 1
-    print(f"check-copyright.py --fix: {changed} file(s) rewritten.")
-    return EXIT_OK
-
-
 def main(argv: list[str]) -> int:
-    """Dispatch on the flags described in the module docstring."""
+    """CLI entry: --selftest, --fix, --all, or explicit file arguments."""
     args = argv[1:]
     if "--selftest" in args:
         return selftest()
     fix = "--fix" in args
-    do_all = "--all" in args
+    if "--all" in args:
+        targets = enumerate_all()
+        if len(targets) < FILE_FLOOR:
+            sys.stderr.write(
+                f"check-copyright.py: FATAL -- only {len(targets)} file(s) in scope, "
+                f"floor is {FILE_FLOOR}. A collapsed scan reports a clean tree "
+                "because it scanned nothing.\n"
+            )
+            return EXIT_CONFIG
+        return _process(targets, fix)
     files = [a for a in args if not a.startswith("-")]
-    if do_all:
-        return _run_all(fix)
-    if files:
-        return _run_files(files, fix)
-    sys.stderr.write(
-        "usage: check-copyright.py FILE [FILE ...] | --all | --fix [...] | --selftest\n"
-    )
-    return EXIT_CONFIG
+    if not files:
+        sys.stderr.write("usage: check-copyright.py FILE ... | --all | --fix --all | --selftest\n")
+        return EXIT_CONFIG
+    targets = []
+    for raw in files:
+        path = Path(raw)
+        rel = raw
+        if path.is_absolute() and path.is_relative_to(REPO_ROOT):
+            rel = str(path.relative_to(REPO_ROOT))
+        if is_build_output_path(rel) or _is_generated(rel):
+            continue
+        style = _style_for(path)
+        if style is not None:
+            targets.append((rel, style))
+    return _process(targets, fix)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_flash_irq.c
  * @brief MRAM IRQ enables + dispatcher and FSP r_mram parity surface -- DANGEROUS
@@ -26,6 +22,8 @@
  * live in ``ra8_flash_internal.h``. Every register access carries a HUM
  * Ch 59 citation.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

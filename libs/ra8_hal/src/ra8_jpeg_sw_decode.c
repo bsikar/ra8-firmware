@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_jpeg_sw_decode.c
  * @brief Pure-software baseline JPEG decoder: marker parser and scan.
@@ -27,6 +23,8 @@
  * Spec citations are tagged `T.81 sec X.Y "..."` and refer to
  * ITU-T Recommendation T.81 (1992) | ISO/IEC 10918-1.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

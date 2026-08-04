@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_jof.h
  * @brief JOF band-tile atlas: the display-native normalized image format
@@ -112,6 +108,8 @@
  * and every per-tile offset/length/decoded-size are validated before any
  * pixel is trusted.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @see @ref md_docs_2formats_2JOF -- the full JOF wire-format specification
  *      (rationale, algorithms, worked example, failure modes).

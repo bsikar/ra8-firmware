@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_tls.h
  * @brief Tiny TLS facade over the vendored Mbed TLS 4.x stack
@@ -69,6 +65,9 @@
  *   struct that lives inside the same static pool, so callers cannot
  *   construct one out of thin air; the only legal source is
  *   ``ra8_tls_session_open``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_comic_cbt.c
  * @brief Tests for the CBT (tar) comic backend and the wrapped (gz/xz) open.
@@ -22,6 +18,9 @@
  *      gzip-of-xz) are rejected as `k_ra8_err_decomp_depth`,
  *   5. the wrapped-open argument guards (alignment, arena size, NULL XZ
  *      scratch) fail closed.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

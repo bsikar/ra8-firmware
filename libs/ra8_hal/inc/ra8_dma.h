@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dma.h
  * @brief Generic DMA transfer substrate (DMAC engine)
@@ -42,6 +38,9 @@
  *
  * Single-threaded init context only. Completion callbacks run in
  * ISR context and must not call back into ``ra8_dma_request``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

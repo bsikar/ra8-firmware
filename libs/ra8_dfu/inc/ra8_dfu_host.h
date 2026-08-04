@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dfu_host.h
  * @brief Polled on-board USB-DFU host driver, bound to either controller.
@@ -18,6 +14,9 @@
  * `ra8_usb_host_control_xfer` primitives and parameterized by `ra8_usb_speed_t`,
  * so the same driver runs as the HS host in Config A and the FS host in
  * Config B. Firmware-only (the host test build has no USB controller).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

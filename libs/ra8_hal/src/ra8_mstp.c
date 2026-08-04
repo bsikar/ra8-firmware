@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mstp.c
  * @brief Ref-counted Module Stop Control implementation
@@ -18,6 +14,9 @@
  *
  * The ref-count table lives entirely in this file -- no other
  * compilation unit may write to ``MSTPCRA..MSTPCRE``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_mstp.h"

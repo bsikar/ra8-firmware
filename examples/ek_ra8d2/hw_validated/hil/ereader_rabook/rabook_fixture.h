@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file rabook_fixture.h
  * @brief Baked, INFLATED .rabook flat blob for the ereader_rabook gate.
@@ -13,6 +9,9 @@
  * .rabook would mz_uncompress() the container first (see README). Generated.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ether_phy.c
  * @brief Generic Ethernet PHY abstraction (MDIO Clause-22)
@@ -17,6 +13,9 @@
  * a single static control block; only one PHY is tracked at a time
  * because the underlying MAC ports each use their own driver
  * instance (ra8_ethercat_phy / ra8_rmac_phy).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_ether_phy.h"

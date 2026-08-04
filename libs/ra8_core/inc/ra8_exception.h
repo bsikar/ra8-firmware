@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_exception.h
  * @brief Cortex-M85 CPU exception diagnostic helpers
@@ -34,6 +30,9 @@
  * user plugs in a J-Link, attaches, and can read the stack frame +
  * CFSR bits from the log backend ring buffer instead of having to
  * reproduce the fault in a debugger session.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

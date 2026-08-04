@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_csi_regs.h
  * @brief MIPI CSI-2 Receiver register layout for the RA8D2 (HUM Ch 66)
@@ -61,6 +57,9 @@
  * GLCDC, MIPI DSI, MIPI PHY, CEU) so all four display peripherals
  * share one address enum. We re-use ``k_ra8_mipi_csi_base_addr``
  * from there rather than redefining it.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

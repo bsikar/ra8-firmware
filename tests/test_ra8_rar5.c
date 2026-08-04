@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rar5.c
  * @brief Tests for the clean-room RAR5 decompressor (ra8_rar5) and the CBR
@@ -25,6 +21,9 @@
  * scaffolding; it vendors no `unrar` code (that license restriction is on
  * RARLAB's decompressor, which this codec does not use). Tests are
  * magic-number exempt, so byte offsets and bit widths appear as literals.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

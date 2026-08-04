@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file libs/ra8_board_ra8p1/inc/trustzone_init.h
  * @brief Cortex-M85 TrustZone-M SAU bring-up entry point
@@ -9,6 +5,9 @@
  *
  * @par Tag
  * [Ring 1 / Boot] {World: S}
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

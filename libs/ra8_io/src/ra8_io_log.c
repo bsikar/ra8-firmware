@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_log.c
  * @brief Adapter that forwards `ra8_log` bytes into an ra8_io stream.
@@ -13,6 +9,9 @@
  * Installs a ::ra8_log_byte_sink_fn_t that writes each log byte to a bound
  * ::ra8_io_stream_t. The dependency runs the right way: `ra8_core` defines the
  * sink callback type, `ra8_io` implements it.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_log.h"

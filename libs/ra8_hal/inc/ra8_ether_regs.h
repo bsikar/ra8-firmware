@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ether_regs.h
  * @brief Ethernet controller base addresses for the Renesas RA8D2
@@ -11,6 +7,9 @@
  * RA8D2 has a gigabit Ethernet subsystem composed of several blocks
  * (GMAC A/B, MII forwarder, TSNSW, GPTP). Base addresses below come
  * from R7KA8D2KF. Drivers land with a real network stack.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

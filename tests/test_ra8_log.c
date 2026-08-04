@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_log.c
  * @brief Unit tests for ra8_log.c (log backend + ra8_err_to_str table)
@@ -15,6 +11,9 @@
  *
  * This file also walks every `k_ra8_err_*` value through `ra8_err_to_str`
  * so the big switch in the same translation unit is fully exercised.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

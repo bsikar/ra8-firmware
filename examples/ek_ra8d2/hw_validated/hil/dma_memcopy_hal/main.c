@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dma_memcopy_hal/main.c
  * @brief 1 KB DMAC SRAM-to-SRAM copy demo driven by the ra8_dmac HAL
@@ -37,6 +33,8 @@
  * ALONGSIDE the raw-poke ``dma_memcopy_demo`` so the two paths can be
  * diffed on the same bench.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

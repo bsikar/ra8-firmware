@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/main.c
  * @brief LSM6DSO 6-DoF IMU bring-up demo over IIC_B
@@ -40,6 +36,8 @@
  *   7. Loop: every 250 ms read accel + gyro + temperature and print
  *      ``"lsm6dso: ax=.. ay=.. az=.. gx=.. gy=.. gz=.. temp=..\r\n"``.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

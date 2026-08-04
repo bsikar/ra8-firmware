@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_glyph_atlas.c
  * @brief Unit tests for the ra8_mem glyph atlas (Layer 3, #147).
@@ -10,6 +6,9 @@
  * Exercises render-on-miss + hit (with rendered content + dimensions), LRU
  * eviction past capacity, the pin/unpin contract (a fully-pinned atlas cannot
  * evict), and the validation guards.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

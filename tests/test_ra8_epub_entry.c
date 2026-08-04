@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_epub_entry.c
  * @brief #231 bounded-RAM ZIP-entry extraction: forward streaming cursor +
@@ -24,6 +20,9 @@
  *     (uncompressed) entry: several windows are read and byte-checked against the
  *     source, a tail window returns short, a past-EOF window returns zero, and a
  *     DEFLATE entry is rejected.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

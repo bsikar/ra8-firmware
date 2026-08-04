@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_reflow_cache.c
  * @brief Host unit tests for the import-time pagination cache
@@ -20,6 +16,9 @@
  * The layout is populated synthetically -- the cache serialises whatever
  * is in `engine->glyphs[]` / `pages[]`, independent of how it got there
  * -- so the test is hermetic (no font rasterisation, no filesystem).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

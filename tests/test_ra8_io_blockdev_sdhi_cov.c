@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_blockdev_sdhi_cov.c
  * @brief Coverage-boost tests for ra8_io_blockdev_sdhi.c.
@@ -56,6 +52,9 @@
  * gcovr with the sibling tests so the newly hit lines count toward the
  * global ra8_io_blockdev_sdhi.c coverage total without touching the
  * sibling test file.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

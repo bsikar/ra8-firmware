@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_check.h
  * @brief Validation and Error-Checking Macros for ra8-firmware
@@ -53,6 +49,9 @@
  * - **Rule 8**: macros exist only because the alternative (inline
  *   function + return code) is strictly worse. There are no macros here
  *   that could be a function.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

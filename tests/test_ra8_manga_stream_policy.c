@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_manga_stream_policy.c
  * @brief #232 manga-scale streaming gate (part 2): SLRU scan resistance + the
@@ -24,6 +20,8 @@
  * The bounded-residency + byte-correctness gate lives in the companion
  * `test_ra8_manga_stream.c`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

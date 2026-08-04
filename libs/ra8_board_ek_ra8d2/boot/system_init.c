@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file libs/ra8_board_ek_ra8d2/boot/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
@@ -41,6 +37,9 @@
  * calling `SystemInit()`, so the stack is fine; BSS is zeroed only
  * *after* `SystemInit()` returns but `SystemInit()` writes to no
  * BSS or data-section variables, so the ordering is safe.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

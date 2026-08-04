@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file lx_nor_ram.h
  * @brief RAM-backed standalone-LevelX NOR driver (the ra8_cache_store DIP seam).
@@ -28,6 +24,9 @@
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

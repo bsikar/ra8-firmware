@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_eth_gptp.c
  * @brief Unit tests for ra8_eth_gptp.c (HUM Ch 35 GPTP timer driver)
@@ -28,6 +24,9 @@
  * ``test_increment`` are the ones carrying real weight here: they prove the
  * driver reaches the HUM offsets rather than an invented window, which is the
  * defect this file exists to prevent recurring (#498).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

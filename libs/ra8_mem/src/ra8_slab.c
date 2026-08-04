@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_slab.c
  * @brief Fixed-cell slab allocator implementation (Layer 0, #147).
@@ -14,6 +10,9 @@
  * index of the next free cell (::k_ra8_slab_nil terminates). `memcpy` is used to
  * read/write that index so the access is alignment- and aliasing-safe regardless
  * of the cell's payload type.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_slab.h"

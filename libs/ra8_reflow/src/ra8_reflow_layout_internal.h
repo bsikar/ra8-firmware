@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_layout_internal.h
  * @brief Cross-TU shared declarations for the ra8_reflow layout engine.
@@ -20,6 +16,8 @@
  * of layout helpers that one unit calls across the file boundary. Symbols
  * used by a single unit stay private (`static`) in that unit.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

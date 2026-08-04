@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_unarch_xz_pool.c
  * @brief Bump-arena implementation behind xz-embedded's allocator seam.
@@ -17,6 +13,9 @@
  * so the vendored decoder's `uint64_t`-bearing structs are always aligned.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "ra8_unarch_xz_pool.h"
 

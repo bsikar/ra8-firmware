@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_acmphs_compare.c
  * @brief Integration test: ACMPHS channel-0 polling demo bring-up
@@ -12,6 +8,8 @@
  * ra8_acmphs_read_output. Host shim returns deterministic values so
  * the golden path always succeeds.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

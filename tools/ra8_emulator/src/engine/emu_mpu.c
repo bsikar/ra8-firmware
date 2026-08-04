@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_mpu.c
  * @brief Armv8-M MPU enforcement implementation (see emu_mpu.h)
@@ -11,6 +7,8 @@
  * CTRL.ENABLE edges, and the MemManage synthesis -- moved verbatim out of
  * the ra8_emulator main translation unit.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

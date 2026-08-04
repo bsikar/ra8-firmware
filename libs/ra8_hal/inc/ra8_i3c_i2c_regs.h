@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_i3c_i2c_regs.h
  * @brief IIC_B (I3C-based I2C) register layout for the Renesas RA8D2
@@ -25,6 +21,9 @@
  * are typed here -- the full I3C dynamic-address table, IBI queue,
  * and high-priority command queue are stubbed as ``volatile uint32_t``
  * holes so the struct still has the correct overall size.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

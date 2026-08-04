@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dual_core_job.h
  * @brief Cross-core compile-job dispatch seam + status contract (#149)
@@ -27,6 +23,8 @@
  * handshake) is owned by the transport (the compile_on_m33 example); only the
  * dispatch contract and the job-status vocabulary are shared here.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

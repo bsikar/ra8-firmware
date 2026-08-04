@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_etha_mcdc.c
  * @brief MC/DC vector tests for ra8_etha.c compound decisions + the
@@ -11,6 +7,9 @@
  * binary owns the `@par MC/DC:` vector suites for the driver's compound
  * boolean guards and the shared Ethernet-frame fixture parser; the
  * sibling test_ra8_etha.c owns the public-API contract tests.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

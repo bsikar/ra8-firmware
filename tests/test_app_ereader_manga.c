@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_ereader_manga.c
  * @brief Host twin of examples/ek_ra8d2/hw_pending/ereader_manga: the viewable
@@ -22,6 +18,8 @@
  * apart silently. The app's `src/mg_reader.c` is compiled into this target (see
  * tests/CMakeLists.txt), so the tested render IS the production render.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

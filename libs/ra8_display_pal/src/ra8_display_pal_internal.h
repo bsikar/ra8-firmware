@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_display_pal_internal.h
  * @brief Internal vtable + handle types for the display PAL
@@ -25,6 +21,8 @@
  *     ``ra8_display_pal.h`` forward-declares as opaque. Holds the
  *     bound iface and the backend's private context pointer.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

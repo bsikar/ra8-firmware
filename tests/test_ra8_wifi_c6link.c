@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file test_ra8_wifi_c6link.c
  * @brief The ra8_wifi facade over the real ESP32-C6 backend and ra8_c6link.
@@ -31,8 +25,9 @@
  * The IP provider is a canned lease: NetX Duo is not present in a host build, so
  * the seam the facade calls is a local function, exactly as the design intends.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

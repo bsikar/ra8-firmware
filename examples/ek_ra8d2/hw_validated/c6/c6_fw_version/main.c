@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_fw_version/main.c
  * @brief Complete an esp-hosted RPC round-trip against the ESP32-C6.
@@ -44,6 +40,8 @@
  * it wrong the board and the co-processor both look healthy and the link
  * simply does not exist.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

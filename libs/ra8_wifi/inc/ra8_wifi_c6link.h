@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file ra8_wifi_c6link.h
  * @brief The ESP32-C6 backend for the ::ra8_wifi facade, over ``ra8_c6link``.
@@ -47,8 +41,9 @@
  * @see ra8_wifi.h
  * @see ra8_c6link.h
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

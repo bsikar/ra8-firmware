@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rsip_key_injection.h
  * @brief RSIP key-injection HAL -- wrap raw key material into the
@@ -34,6 +30,9 @@
  *
  * @see ra8_rsip.h  Underlying RSIP HAL surface.
  * @see ra8_rsip_protected.h  Crypto operations driven by wrapped keys.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

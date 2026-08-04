@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_timer.c
  * @brief GPT + AGT timer peripheral-block model for the board emulator
@@ -24,6 +20,8 @@
  * preserved. Counter events are pended through the core's ICU -> NVIC path via
  * ::board_periph_icu_raise_event.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

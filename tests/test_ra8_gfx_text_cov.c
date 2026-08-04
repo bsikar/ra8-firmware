@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_gfx_text_cov.c
  * @brief Line-coverage tests for libs/ra8_gfx/src/ra8_gfx_text.c
@@ -37,6 +33,9 @@
  *   833      ra8_gfx_circle not-initialised guard
  *   1002     ra8_gfx_text_out not-initialised guard
  *   1049     ra8_gfx_blit not-initialised guard
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

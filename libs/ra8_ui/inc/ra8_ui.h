@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ui.h
  * @brief Bounded UI interaction core: hit-testing, screen stack, paging.
@@ -27,6 +23,8 @@
  * RA8D2. It is deliberately renderer-agnostic: callers pair it with
  * `ra8_gfx` today and `ra8_reflow` box rectangles later.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

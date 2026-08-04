@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_tsn_regs.h
  * @brief Temperature Sensor (TSN) register layout for the Renesas RA8D2
@@ -37,6 +33,9 @@
  * | TSN_CAL  | 0x00   | TSCDR  | 32    | Reference code @ T_ref  |
  *
  * @note `TSCDR` is a single-cell memory-mapped value, not a struct.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_atomic.c
  * @brief Implementation of the write-to-temp-then-rename helpers.
@@ -11,6 +7,8 @@
  * @ref mdl_atomic.h. Deliberately free of any "write the destination anyway"
  * fallback -- the failure mode this file removes is precisely a writer
  * deciding it may open the destination when the careful path is inconvenient.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_atomic.h"
 

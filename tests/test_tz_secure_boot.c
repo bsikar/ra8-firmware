@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_tz_secure_boot.c
  * @brief Host unit tests for the TrustZone secure-boot library
@@ -19,6 +15,9 @@
  *
  * Each compound boolean decision used in production source carries
  * its MC/DC test vector pattern in the relevant ``@par MC/DC:`` block.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

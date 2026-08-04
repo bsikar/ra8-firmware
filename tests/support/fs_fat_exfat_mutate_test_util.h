@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fs_fat_exfat_mutate_test_util.h
  * @brief Shared fixture for test_ra8_fs_fat_exfat_mutate_cov.c.
@@ -12,6 +8,9 @@
  * used by the exFAT mutate (unlink / rename / listdir corruption) coverage
  * suite. Everything here has internal linkage, so the including test
  * executable owns a private copy of the fixture state.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

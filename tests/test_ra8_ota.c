@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ota.c
  * @brief Unit tests for the Phase-5 OTA module (libs/ra8_ota).
@@ -25,6 +21,9 @@
  *                                       manifest digest.
  *   - ``test_happy_path``            -- end-to-end success including
  *                                       the system-reset hook.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

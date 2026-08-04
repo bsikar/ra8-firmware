@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_c6link_wifi.h
  * @brief Wi-Fi station bring-up and association over the C6 link.
@@ -48,6 +44,8 @@
  *
  * @see ra8_c6link.h  The link this sits on
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

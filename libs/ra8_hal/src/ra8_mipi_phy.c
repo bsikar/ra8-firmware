@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_phy.c
  * @brief MIPI D-PHY driver implementation
@@ -37,6 +33,9 @@
  * decode every documented status edge (PWRSF / PLLSF rising and
  * falling) into a typed ``ra8_mipi_phy_event_t`` rather than handing
  * the consumer a raw register dump.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_mipi_phy.h"

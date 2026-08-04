@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_reflow.c
  * @brief Unit tests for libs/ra8_reflow (HTML+CSS reflow + paginate).
@@ -27,6 +23,8 @@
  * split sibling test_ra8_reflow_api_mcdc.c; the shared Literata fixture is
  * tests/support/reflow_v1_test_util.h.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

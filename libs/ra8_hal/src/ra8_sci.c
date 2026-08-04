@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sci.c
  * @brief Full-featured SCI_B driver implementation
@@ -59,6 +55,9 @@
  *     at 0 and the peripheral wedged. Since this driver never sets
  *     FM=1, the workaround is unnecessary and `ra8_sci_deinit` writes
  *     CCR0=0 directly.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sci.h"

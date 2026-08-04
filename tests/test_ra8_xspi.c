@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_xspi.c
  * @brief Unit tests for the xSPI driver (ra8_xspi.c)
@@ -11,6 +7,9 @@
  * sibling test_ra8_xspi_program.c and the controller lifecycle +
  * XIP/DTR/DQS + MC/DC suites in test_ra8_xspi_ctrl.c; shared fixture
  * constants and prep_flash() live in support/xspi_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

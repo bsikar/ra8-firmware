@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_nsc_io.h
  * @brief NSC veneers for the I/O drivers
@@ -25,6 +21,9 @@
  * remaining surface is straightforward to add by following the
  * same pattern; deferred to land alongside the first NS
  * consumer.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

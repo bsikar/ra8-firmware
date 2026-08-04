@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rar5_internal.h
  * @brief Cross-TU seam between the RAR5 entropy front-end and the LZ decoder.
@@ -29,6 +25,9 @@
  * the public ::ra8_rar5_decompress surface (`ra8_rar5.h`).
  *
  * @note Not thread-safe; the single-threaded reader loop serialises access.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

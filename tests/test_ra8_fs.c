@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs.c
  * @brief Host-side unit tests for the FAT12/16/32 adapter `libs/ra8_fs`.
@@ -14,6 +10,9 @@
  *
  * No real hardware is touched; the backend is a `mem_disk_t` struct that
  * just memcpy()s in/out of a static byte array.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdlib.h>

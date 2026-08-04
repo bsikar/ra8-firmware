@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_fat_guards_mcdc.c
  * @brief MC/DC vectors for the public `ra8_fs_*` entry-point argument guards.
@@ -27,6 +23,9 @@
  * exactly one argument (or, for the write state guard, by a slot whose
  * in-use/mode fields are set directly). Citations name the enclosing function
  * as `libs/ra8_fs/src/<file>.c@<function>`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

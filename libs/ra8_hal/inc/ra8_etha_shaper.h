@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_etha_shaper.h
  * @brief Per-port ETHA VLAN / shaper / stats / ring / PHY API -- HUM Ch 32 (p 1627-1702)
@@ -22,6 +18,8 @@
  * types these functions take live in ra8_etha_types.h, the register enums
  * in ra8_etha_regs.h, and the PHY link type in ra8_rmac.h.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

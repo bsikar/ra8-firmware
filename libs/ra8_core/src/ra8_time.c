@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_time.c
  * @brief SysTick tick counter implementation
@@ -15,6 +11,9 @@
  * tick counter, the SysTick IRQ body, and the delay policy; every raw SysTick /
  * DWT register access now lives in the primitive (which is in `ra8_core`, so
  * this Ring-1 consumer includes it without an upward layering dependency).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_time.h"

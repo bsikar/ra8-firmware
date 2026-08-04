@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rmac_phy_cov.c
  * @brief Line-coverage top-up for ra8_rmac_phy.c
@@ -30,6 +26,9 @@
  *   478  LPA reports 100BASE-TX full-duplex
  *   482  LPA reports 10BASE-T full-duplex
  *   483,484,485  LPA reports 10BASE-T half-duplex
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

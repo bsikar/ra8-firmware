@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_canfd.c
  * @brief CAN with Flexible Data-rate driver implementation
@@ -31,6 +27,9 @@
  * Data-rate (CANFD)" citation (pages 2702..2867, chapter map row 41)
  * or an FSP `r_canfd.c` line citation when the bit semantics come
  * from the reference driver.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_canfd.h"

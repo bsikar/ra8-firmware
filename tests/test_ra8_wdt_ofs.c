@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_wdt_ofs.c
  * @brief Unit tests for the OFSm option-setting decode in ra8_wdt.c
@@ -25,6 +21,9 @@
  * driver asks for and raises ::s_ofs_saw_unknown for any address it was not
  * explicitly programmed with, so a constant that drifts fails the suite
  * instead of being quietly serviced.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

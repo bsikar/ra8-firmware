@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rabook_pipeline_err.c
  * @brief EPUB -> RABOOK1 pipeline: image-transform and error-path tests.
@@ -15,6 +11,8 @@
  * test_ra8_rabook_pipeline.c. The synthetic-EPUB builders live in
  * tests/support/rabook_pipeline_fixture.h.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB_Compiler] {World: NS}
  */

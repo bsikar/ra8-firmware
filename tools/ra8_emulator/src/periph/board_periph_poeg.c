@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_poeg.c
  * @brief Port Output Enable for GPT (POEG) safe-shutoff register model
@@ -39,6 +35,8 @@
  * the register-observable ST transition (assert -> high-Z -> clear -> enabled),
  * which is precisely what ra8_emulator can verify with no physical pin to scope.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

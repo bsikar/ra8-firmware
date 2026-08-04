@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_jof_internal.h
  * @brief Module-private seams shared by the producer translation units.
@@ -26,6 +22,8 @@
  * instead), and the producer-state / prefix-pull seams the WebP arm shares
  * with the dispatcher.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

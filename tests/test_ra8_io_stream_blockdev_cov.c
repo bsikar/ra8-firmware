@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_stream_blockdev_cov.c
  * @brief Coverage-boost tests for ra8_io_stream_blockdev.c.
@@ -27,6 +23,9 @@
  * This file is auto-discovered by the tests/CMakeLists.txt GLOB so no manual
  * list entry is required. gcovr merges its .gcda counters with sibling tests,
  * so newly executed lines accumulate toward the module coverage total.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

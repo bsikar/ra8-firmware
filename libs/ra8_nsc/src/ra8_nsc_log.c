@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_nsc_log.c
  * @brief NSC veneer: secure-side logging
@@ -14,6 +10,9 @@
  * ``ra8_log_info`` after copying both strings into a small
  * secure-side scratch area to make sure the secure code never
  * dereferences NS pointers directly.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ceu_internal.h
  * @brief Cross-TU surface for the ra8_ceu driver split.
@@ -16,6 +12,9 @@
  * ``ra8_ceu_program_*`` helpers declared below; everything else stays
  * file-local. See CLAUDE.md "Test access to internal symbols (MC/DC
  * scope)".
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_book_xhtml.c
  * @brief MC/DC unit tests for the compiled-book XHTML/text serializer
@@ -14,6 +10,9 @@
  * by capping the output buffer at graded lengths), the whitespace-class test in
  * the text collapser, the paragraph-break trimming, and the recursion-free
  * walk's iteration guard (driven to exhaustion with a self-cyclic node).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

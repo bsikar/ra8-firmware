@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_nsc_periph_init.c
  * @brief NSC veneer: secure peripheral substrate bring-up
@@ -16,6 +12,9 @@
  *
  * The function is idempotent: callers can fire it more than once
  * and get ``k_ra8_ok`` for every call after the first.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

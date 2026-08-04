@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_jof_produce.c
  * @brief Host tests for the import-time transcode producer: JPEG/PNG ->
@@ -28,6 +24,8 @@
  * PNG IHDR malformations, starved budgets) live in the sibling
  * `test_ra8_jof_produce_reject.c`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

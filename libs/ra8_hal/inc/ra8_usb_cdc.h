@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_cdc.h
  * @brief Native USB CDC ACM (Communications Device Class - Abstract
@@ -24,6 +20,9 @@
  *  - EP1 IN, bulk, 64 bytes (data IN).
  *  - EP2 OUT, bulk, 64 bytes (data OUT).
  *  - EP3 IN, interrupt, 8 bytes (notification, unused but required).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

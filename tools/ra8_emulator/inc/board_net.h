@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_net.h
  * @brief Virtual network peer for ra8_emulator -- talks TCP/IP to the firmware
@@ -16,6 +12,8 @@
  * setup. main.c marshals guest memory to/from the plain byte buffers here, so
  * this code is portable, AppKit-free C.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_svg.c
  * @brief Scan / attribute / colour-parsing core of the minimal SVG subset (#112).
@@ -14,6 +10,8 @@
  * ra8_reflow_svg.h for the public scope and ra8_reflow_svg_internal.h for the
  * shared geometry types and cross-TU helper contracts.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

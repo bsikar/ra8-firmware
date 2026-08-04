@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_book_xhtml.c
  * @brief Serialize a compiled-book chapter DOM back to XHTML for the renderer.
@@ -20,6 +16,9 @@
  * this XHTML round-trip; until then the bridge keeps the renderer untouched.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <string.h>
 

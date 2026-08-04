@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fpu_probe.c
  * @brief Double-precision FPU probe implementation (see ra8_fpu_probe.h)
@@ -13,6 +9,8 @@
  * RA8D2 SP-FPU build (`-mfpu=fpv5-sp-d16`). The authoritative contract lives on
  * the declaration in `ra8_fpu_probe.h`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

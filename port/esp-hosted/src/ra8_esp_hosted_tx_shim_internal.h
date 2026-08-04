@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h
  * @brief Recording, injectable ThreadX model for the esp-hosted RTOS port.
@@ -36,6 +32,8 @@
  * and works on that single object, so the port sources and the tests observe
  * the same fake kernel.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

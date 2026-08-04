@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_zoom_tiles.h
  * @brief Bind a tiled gray8 atlas behind an ra8_tile_cache as a ra8_zoom source (#478).
@@ -35,6 +31,8 @@
  * @see ra8_zoom.h       The viewport engine this feeds.
  * @see ra8_zoom_book.h  The `.rabook` figure source, for EPUB.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

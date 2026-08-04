@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_ulpt.c
  * @brief Ultra-Low-Power Timer (ULPT) peripheral-block model for ra8_emulator
@@ -41,6 +37,8 @@
  * Window: ULPT0 @ 0x40220000, ULPT1 @ 0x40220100 (stride 0x100), a single
  * 0x200-byte block (HUM Ch 25.1 "Ultra-Low-Power Timer (ULPT)" p 1187).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

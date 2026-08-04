@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fmt_jof_inspect.c
  * @brief JOF structure dump, duplicate detection and round-trip verification.
@@ -18,6 +14,8 @@
  * compares it against a single-tile encode of the same source -- the reference
  * decode -- so a mismatch localises the defect to the tiling path.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

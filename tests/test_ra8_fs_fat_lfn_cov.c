@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_fat_lfn_cov.c
  * @brief Coverage booster for libs/ra8_fs/src/ra8_fs_fat_lfn.c.
@@ -28,6 +24,9 @@
  * condition requires pos >= k_lfn_name_cap-1 = 255, but with
  * k_lfn_max_entries=19 the maximum reachable pos is
  * (19-1)*13+12 = 246 < 255; no host input can trigger it.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

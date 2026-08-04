@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/eth_gptp_timestamp_demo/main.c
  * @brief GPTP hardware-timer demo -- proves the HUM Ch 35 counter really runs
@@ -46,6 +42,8 @@
  * asserted on every CI run through the ``emulator-smoke`` gate as well as on the
  * bench.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

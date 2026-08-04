@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file unity_minimal.h
  * @brief Minimal Unity-style test macros for the ra8-firmware test build
@@ -30,6 +26,9 @@
  * the caller, so the metrics measure the test that was written rather
  * than the macro that was expanded. The runtime behaviour (print the
  * failure with the caller's file/line, flush, `exit(1)`) is unchanged.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

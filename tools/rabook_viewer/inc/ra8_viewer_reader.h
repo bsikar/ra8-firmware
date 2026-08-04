@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_viewer_reader.h
  * @brief Host-side direct-call reader: open an e-book/comic and rasterise pages.
@@ -20,6 +16,8 @@
  * core shares nothing with it but plain buffers, so it stays testable and
  * dumpable without a display.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

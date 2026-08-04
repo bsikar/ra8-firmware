@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ftl_cov.c
  * @brief Branch coverage supplement for the Flash Translation Layer (ra8_ftl.c).
@@ -39,6 +35,9 @@
  * Line 194 (defensive ftl_alloc_blank guard) is marked GCOVR_EXCL_LINE in
  * the source: ftl_pick_free with non-null arguments returns only k_ra8_ok or
  * k_ra8_err_no_data, so the guard is provably unreachable.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

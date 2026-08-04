@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_exfat_write.c
  * @brief exFAT allocation-bitmap and whole-file write path.
@@ -10,6 +6,8 @@
  * Allocation-bitmap scan/mark, cluster data writes, directory-set
  * construction, and the one-shot provisioning create path.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

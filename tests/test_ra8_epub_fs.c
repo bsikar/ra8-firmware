@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_epub_fs.c
  * @brief End-to-end host test for the ra8_fs -> ra8_epub bridge (#71).
@@ -16,6 +12,9 @@
  * and every ZIP entry is seek+read on demand, with no whole-file buffer. On
  * target the only difference is the block backend (`ra8_sdmmc_spi` over the SD
  * card instead of RAM), which is independently bench-validated.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_face_select.c
  * @brief #109 (items 2-3): per-run embedded `@font-face` selection in ra8_reflow.
@@ -21,6 +17,9 @@
  * face index packed into each glyph's `style`), not distinct render bitmaps: the
  * same blob is registered under two `(family, weight)` keys and the bold vs
  * regular runs must resolve to *distinct* registry slots.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

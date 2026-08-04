@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_sdcard.c
  * @brief Unit tests for ra8_sdcard.c (SD card high-level driver)
@@ -20,6 +16,9 @@
  * overwrites SD_CMD with a sentinel (> 63) so each command is served
  * exactly once; the next real SD_CMD write re-arms it. The response is
  * driven by the driver's own command write, never by elapsed time.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

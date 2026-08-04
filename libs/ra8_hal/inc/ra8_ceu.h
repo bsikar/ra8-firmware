@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ceu.h
  * @brief Capture Engine Unit (CEU) camera-capture driver
@@ -105,6 +101,9 @@
  *    register-bundle structs, status snapshot, event-callback typedef.
  *  - @ref ra8_ceu_api.h -- lifecycle, status/IRQ, power, capture,
  *    live-reconfig setters, and DMA-coupling function prototypes.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

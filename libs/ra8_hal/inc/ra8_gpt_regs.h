@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_gpt_regs.h
  * @brief General PWM Timer (GPT) register layout for the Renesas RA8D2
@@ -16,6 +12,9 @@
  *
  * The per-channel struct below models the most frequently touched
  * registers; extend as drivers need.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

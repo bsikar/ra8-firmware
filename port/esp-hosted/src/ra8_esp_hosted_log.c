@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_log.c
  * @brief Bridge from the esp-hosted logging surface onto ``ra8_log``.
@@ -32,6 +28,8 @@
  * otherwise -- a per-tag table would need dynamic registration this image
  * has no allocator for.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

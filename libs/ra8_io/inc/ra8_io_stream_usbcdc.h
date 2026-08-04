@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_stream_usbcdc.h
  * @brief ra8_io byte-stream sink over a USB-CDC endpoint.
@@ -16,6 +12,8 @@
  * brought the USB device stack and the CDC class up first. The data path is
  * exercised on ra8_emulator / HIL; on the host this sink binds and validates only.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

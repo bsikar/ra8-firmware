@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_epub_xml_shim.cpp
  * @brief C++ -> C shim that wraps tinyxml2 for the ra8_epub parser.
@@ -44,6 +40,8 @@
  * should expect to see allocations charged to this TU at runtime; the
  * rest of `libs/ra8_epub` is alloc-free.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

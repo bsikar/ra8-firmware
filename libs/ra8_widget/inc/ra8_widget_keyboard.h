@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_widget_keyboard.h
  * @brief On-screen-keyboard leaf widget for the ra8_widget tree (#145 Phase 2).
@@ -22,6 +18,8 @@
  * `ra8_kbd_key_glyph`, keeping the key-drawing + routing logic host-testable with
  * a recording mock seam while the layout logic stays in `ra8_keyboard`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

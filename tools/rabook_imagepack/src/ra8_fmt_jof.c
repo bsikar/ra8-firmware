@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fmt_jof.c
  * @brief JOF band-tile atlas verbs for `ra8_fmt`: convert, inspect, verify.
@@ -29,6 +25,8 @@
  * The single-tile encode is the reference decode of the source image (no tiling
  * involved), so any mismatch is the tiling path's fault and nothing else's.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

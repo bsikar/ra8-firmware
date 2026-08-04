@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_nsc.h
  * @brief Non-Secure Callable veneer scaffold
@@ -54,6 +50,9 @@
  * - **No secure-side state leaks.** Read paths copy only the
  * bytes asked for. Status veneers return packed bit-masks,
  * not addresses or pointers.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

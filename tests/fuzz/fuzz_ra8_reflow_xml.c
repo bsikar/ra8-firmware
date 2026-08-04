@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fuzz_ra8_reflow_xml.c
  * @brief libFuzzer harness for the tinyxml2-backed EPUB manifest parsers.
@@ -23,6 +19,9 @@
  *
  * Build via tests/fuzz/CMakeLists.txt with -DRA8_FUZZ=ON.
  * Run for a longer fuzz session via scripts/checks/run_fuzz.sh.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_nsc_cgc.h
  * @brief NSC veneers for the Clock Generation Circuit (CGC) driver
@@ -23,6 +19,9 @@
  * that simply forwards to the matching ``ra8_cgc_*`` API, with pointer
  * arguments (where present) range-checked to ensure they live in NS
  * memory before the secure driver dereferences them.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

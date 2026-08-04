@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_tokenize.c
  * @brief No-heap streaming XHTML tokenizer for ra8_reflow (replaces the
@@ -25,6 +21,8 @@
  * propagates down a bounded explicit stack -- no recursion (NASA P10
  * Rule 1) and bounded loops (Rule 2).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

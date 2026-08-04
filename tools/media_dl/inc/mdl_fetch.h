@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_fetch.h
  * @brief State-aware chapter/page download orchestrator for the media
@@ -31,6 +27,8 @@
  *
  * The loop only puts page bytes on disk and maintains state; packaging (archive
  * export) is left to the caller, which reads the resulting directories.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

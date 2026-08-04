@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rsip_asym_internal.h
  * @brief Cross-TU surface shared by the RSIP asymmetric + RSA split.
@@ -29,6 +25,8 @@
  * contract lives here at the shared declaration site. See CLAUDE.md
  * "Test access to internal symbols (MC/DC scope)".
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

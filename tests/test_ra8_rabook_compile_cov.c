@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rabook_compile_cov.c
  * @brief Line-coverage top-up for the RABOOK1 builder error / guard legs (#149).
@@ -34,6 +30,8 @@
  * gcovr merges this executable's `.gcda` with the sibling test's for the same
  * source file, so this file adds coverage without duplicating the happy path.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

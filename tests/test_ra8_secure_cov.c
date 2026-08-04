@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_secure_cov.c
  * @brief Coverage + behaviour tests for the constant-time compare (ra8_secure.c).
@@ -15,6 +11,9 @@
  * outcomes at each difference position (first, middle, last byte -- to confirm
  * the accumulator scans the whole buffer with no early-out), the zero-length
  * vacuous-equal case, and both NULL-pointer guards.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

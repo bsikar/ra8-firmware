@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_app/main.c
  * @brief On-silicon HIL: ra8_widget compositor + ra8_app framework (#145/#146).
@@ -32,6 +28,8 @@
  * the ra8_emulator banner is the regression net. Any failure prints a FAIL banner
  * and halts on a BKPT before PASS.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *

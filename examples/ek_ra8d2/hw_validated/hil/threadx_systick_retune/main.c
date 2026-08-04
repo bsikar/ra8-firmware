@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/threadx_systick_retune/main.c
  * @brief Eclipse ThreadX SysTick retune-to-live-CPUCLK0 demo (issue #287)
@@ -45,6 +41,8 @@
  * |:-----------|:---------|:----------------|:---------------------------|
  * | `retune`   | 4        | 250 ms loop     | Toggle LED1, bump tick     |
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/idf_compat/esp_idf_version.h
  * @brief The ESP-IDF API level the co-processor image was built against.
@@ -43,6 +39,8 @@
  * here in the same change. They are the host-side half of one decision, not two
  * independent settings.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

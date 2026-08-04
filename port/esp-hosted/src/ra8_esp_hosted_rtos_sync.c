@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_rtos_sync.c
  * @brief Mutex and semaphore vtable slots.
@@ -22,6 +18,8 @@
  * so any definition, including zero, would switch them on and make the struct
  * layout depend on include order.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_etha.c
  * @brief Unit tests for ra8_etha.c (per-port Ethernet Agent driver)
@@ -9,6 +5,9 @@
  * @details Public-API contract tests (lifecycle, status, queueing, VLAN,
  * CBS/TAS, stats, open). The MC/DC vector suites for the driver's
  * compound decisions live in the sibling test_ra8_etha_mcdc.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

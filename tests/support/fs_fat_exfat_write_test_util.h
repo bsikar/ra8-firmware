@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fs_fat_exfat_write_test_util.h
  * @brief Shared fixture for the test_ra8_fs_fat_exfat_write_*_cov.c siblings.
@@ -31,6 +27,8 @@
  *   R4-R131  find_dir_space reads entries 0-127 (128 reads)
  *   R132     priv_fat_get reads the FAT sector
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

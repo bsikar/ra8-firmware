@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_xspi.h
  * @brief ra8_io block-device backend over OSPI NOR flash via ra8_xspi.
@@ -23,6 +19,8 @@
  * goes through `ra8_xspi_flash_read`/`_program`/`_erase_sector`, which carry the
  * Hardware User's Manual citations.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

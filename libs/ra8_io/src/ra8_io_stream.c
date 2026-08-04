@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_stream.c
  * @brief Byte-stream dispatcher + no-varargs formatted-output primitives.
@@ -14,6 +10,9 @@
  * formatted helpers (`puts` / `put_u32` / `put_hex`) render into a small bounded
  * stack buffer and call ::ra8_io_stream_write -- no varargs, no allocation, so
  * the `_sbrk` trap and the bounded-stack budget stay intact.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_stream.h"

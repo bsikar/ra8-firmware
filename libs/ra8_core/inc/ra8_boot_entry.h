@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_boot_entry.h
  * @brief Boot entry points shared between a vector table and its startup code
@@ -24,6 +20,9 @@
  * files. Twenty-four copies of a prototype are twenty-four chances for a
  * signature to drift with nothing to catch it, so this header holds the
  * one copy.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

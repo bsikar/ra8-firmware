@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_i2c_bus_riic.c
  * @brief RIIC backend for the ra8_io I2C-bus facade -- thin shim over ra8_i2c.
@@ -17,6 +13,9 @@
  * validation (channel range, NULL buffers, zero lengths) stays with the
  * wrapped driver, which also carries every HUM citation -- no raw MMIO is
  * touched here.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_i2c_bus_riic.h"

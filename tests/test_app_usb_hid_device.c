@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_usb_hid_device.c
  * @brief Integration test: USB device PAL bring-up + HID interrupt-IN flow
@@ -23,6 +19,8 @@
  *   5. ra8_usb_pal_ep_open(EP1 IN intr) -- HID report endpoint
  *   6. ra8_usb_pal_ep_send(report)      -- first INT-IN report
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

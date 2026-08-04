@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file libs/ra8_board_ek_ra8d2/boot/nmi_exception.c
  * @brief RA8D2 NMI handler -- record the ICU cause instead of a bare trap
@@ -37,6 +33,9 @@
  * NMISR is deliberately NOT acknowledged (no NMICLR write): the
  * handler never returns, and leaving the status latched preserves the
  * evidence for a post-mortem debugger attach.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

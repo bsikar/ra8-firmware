@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_spi_b_target.c
  * @brief SPI_B peripheral (target) mode driver -- polling single-byte xfer
@@ -53,6 +49,9 @@
  *  - CS (Chip Select) = SSL pin, asserted by the external controller
  *  - COPI (Controller Out Peripheral In) = SDI data received from the controller
  *  - CIPO (Controller In Peripheral Out) = SDO data this peripheral drives out
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

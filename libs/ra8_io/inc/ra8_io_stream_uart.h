@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_stream_uart.h
  * @brief ra8_io byte-stream sink over a UART/SCI channel.
@@ -16,6 +12,8 @@
  * up with `ra8_sci_init` first. The data path is exercised on ra8_emulator / HIL;
  * on the host this sink binds and validates only.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

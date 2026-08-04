@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/threadx_filex_levelx_demo/main.c
  * @brief ThreadX + FileX-on-LevelX-on-OSPI wear-levelled FAT demo for EK-RA8D2
@@ -37,6 +33,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-04-29
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

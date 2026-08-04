@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/i3c_loopback/main.c
  * @brief I3C (ra8_i3c) controller bring-up self-test for the EK-RA8D2
@@ -34,6 +30,8 @@
  *
  * Hardware: bare EK-RA8D2 v1. Attach an I2C device to J27 to see ack=1.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

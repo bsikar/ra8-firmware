@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_cgc.c
  * @brief Clock Generation Circuit driver -- RA8D2 PLL bring-up
@@ -48,6 +44,8 @@
  * Every protected-register write is wrapped in `RA8_PROTECTED_WRITE` so
  * the PRCR re-lock always happens, even on early-return paths.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

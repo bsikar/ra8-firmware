@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ceu_cov.c
  * @brief Additional line-coverage tests for ra8_ceu.c.
@@ -33,6 +29,9 @@
  * Builds as an independent test executable (auto-discovered by the
  * GLOB in tests/CMakeLists.txt); its gcda file merges with the one
  * from test_ra8_ceu so gcovr sees combined coverage.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dfu_antirollback.c
  * @brief DFU anti-rollback (downgrade protection) -- policy + storage seam.
@@ -21,6 +17,9 @@
  * only the link-free declarations from ``ra8_dfu_antirollback.h`` -- so the
  * default build is byte-for-byte unchanged and pulls in no extra link
  * dependency.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dfu_antirollback.h"

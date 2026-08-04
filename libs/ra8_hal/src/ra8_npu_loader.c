@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_npu_loader.c
  * @brief On-target `.npub` Vela blob loader over `ra8_npu` (RA8P1-only)
@@ -19,6 +15,8 @@
  * loader adds no MC/DC obligation; the host test pins the happy path and each
  * rejection.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

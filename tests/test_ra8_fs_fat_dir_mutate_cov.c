@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_fat_dir_mutate_cov.c
  * @brief Coverage booster for libs/ra8_fs/src/ra8_fs_fat_dir.c -- unlink + rename.
@@ -18,6 +14,9 @@
  * The listdir / mkdir half of the suite lives in the split sibling
  * test_ra8_fs_fat_dir_list_cov.c. The shared block-device backends and volume
  * builders live in tests/support/fs_fat_dir_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

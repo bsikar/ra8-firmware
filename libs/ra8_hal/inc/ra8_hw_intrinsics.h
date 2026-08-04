@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_hw_intrinsics.h
  * @brief Shared CPU-intrinsic seam for the HAL drivers (host/target split)
@@ -34,6 +30,8 @@
  *       RA8D2 peripheral registers, so no Hardware User's Manual citation
  *       applies to them.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

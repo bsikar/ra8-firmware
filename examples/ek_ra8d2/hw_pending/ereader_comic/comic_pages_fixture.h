@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file comic_pages_fixture.h
  * @brief Baked multi-page CBZ fixture for the viewable ereader_comic demo
@@ -12,6 +8,9 @@
  *          panel layout, and a huge 7-segment page number, so a page turn on the
  *          1024x600 panel is unmistakable. Pure 7-bit ASCII byte array, like the
  *          bundled font / cover blobs.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

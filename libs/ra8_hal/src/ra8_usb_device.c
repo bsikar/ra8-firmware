@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_device.c
  * @brief USB device-mode lifecycle, status, and endpoint configuration
@@ -20,6 +16,8 @@
  * declared in ``ra8_usb_internal.h``. Modelled on FSP ``r_usb_pdriver.c``
  * / ``r_usb_preg_abs.c``; no FSP source ships in this tree.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

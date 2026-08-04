@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ipc_sem_ring.c
  * @brief IPC HAL -- hardware semaphores, NMI surface, and ring buffers
@@ -20,6 +16,8 @@
  * a HUM Ch 3 citation -- IPC is not power-gated by MSTPCR so the driver
  * does not call ``ra8_mstp_*``.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_etha_ops.h
  * @brief Per-port ETHA lifecycle / IRQ / mode / queue API -- HUM Ch 32 (p 1627-1702)
@@ -19,6 +15,8 @@
  * of the original declarations. The data types these functions take live
  * in ra8_etha_types.h, and the register enums in ra8_etha_regs.h.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

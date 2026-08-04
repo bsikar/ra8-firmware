@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rsip.c
  * @brief Renesas Secure IP (RSIP-E50D) HAL driver implementation
@@ -43,6 +39,9 @@
  * to drive the timeout / continuation legs of the real loop. The
  * driver itself runs the identical register sequence on every build
  * and never forges an engine-side status bit.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_rsip.h"

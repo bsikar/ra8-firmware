@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_gfx_blit_gray4.c
  * @brief Unit tests for ra8_gfx_blit_gray4_zoom() -- the reader-loupe sub-rect blit.
@@ -12,6 +8,9 @@
  * exact 1:1 reproduction, integer 2x magnification (block replication), odd-width
  * nibble-parity handling (the high/low nibble staggers per row), clamping at the
  * source image edges, clipping at the framebuffer edges, and argument validation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

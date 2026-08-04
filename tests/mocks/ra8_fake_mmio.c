@@ -1,13 +1,12 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fake_mmio.c
  * @brief Host-side programmable MMIO fault seam
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S} (host test-only)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_fake_mmio.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io.h
  * @brief ra8_io -- unified peripheral-agnostic I/O fabric (umbrella header).
@@ -39,6 +35,8 @@
  *
  * Include this single header to pull in the whole facade.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

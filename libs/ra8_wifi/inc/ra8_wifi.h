@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file ra8_wifi.h
  * @brief A small, uniform Wi-Fi facade: init, connect, get an IP, disconnect.
@@ -56,8 +50,9 @@
  * @see ra8_wifi_c6link.h  The ESP32-C6 backend that fills the seam
  * @see ra8_wifi_backend.h  The seam a backend implements
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

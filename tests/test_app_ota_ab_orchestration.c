@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_ota_ab_orchestration.c
  * @brief Integration test: A/B OTA orchestration demo logic + ra8_ota flow.
@@ -25,6 +21,8 @@
  * The crypto backend is the real software SHA-256 (``ra8_rsip_sha256*``), so the
  * integrity check that triggers the rollback is exercised for real, host-side.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev.h
  * @brief ra8_io block-device fabric -- one LBA vtable across every storage medium.
@@ -54,6 +50,8 @@
  * exposes a bound block device as a `ra8_vsource_read_fn` so it can be wired into
  * the page cache via `ra8_vsource_add_paged`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

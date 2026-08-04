@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_flash_config.c
  * @brief MRAM configuration-set, ARC counters + extra-MRAM programming -- DANGEROUS
@@ -31,6 +27,8 @@
  * ``ra8_flash_internal.h``. Every register access carries a HUM Ch 7 or
  * Ch 59 citation.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

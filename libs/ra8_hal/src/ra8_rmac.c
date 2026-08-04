@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rmac.c
  * @brief Per-port Ethernet MAC (RMAC) driver implementation -- HUM Ch 33
@@ -54,6 +50,9 @@
  *   RUN -> STOPPED [label="ra8_rmac_deinit()"];
  * }
  * @enddot
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_rmac.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_fetch_internal.h
  * @brief Module-private fetch-loop decisions promoted for host unit tests and
@@ -16,6 +12,8 @@
  * public API in `mdl_fetch.h`; production callers inside the tool reach them by
  * name, and no code outside the media_dl tool ever does.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

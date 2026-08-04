@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/netxduo/inc/nx_ether_driver_ra8_eth.h
  * @brief NetX Duo network driver shim that bridges onto the RA8 ``ra8_eth`` HAL
@@ -34,6 +30,9 @@
  *
  * Every other command returns ``NX_NOT_SUCCESSFUL`` -- the firmware
  * does not support multicast filtering, IP-level offload, or 6LowPAN.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

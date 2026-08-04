@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_display_pal_animation.c
  * @brief Integration test mirroring the display_pal_animation example's main()
@@ -20,6 +16,8 @@
  *   - ra8_display_pal (LCD backend)
  *   - ra8_glcdc, ra8_board_ek_ra8d2 (reached through the LCD backend)
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

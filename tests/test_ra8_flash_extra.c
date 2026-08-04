@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_flash_extra.c
  * @brief Unit tests for the ra8_flash configuration-set / extra-MRAM
@@ -14,6 +10,9 @@
  * extra-MRAM counter pages segfault on host, so only validation paths
  * run here). Shared fixture constants live in
  * support/flash_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

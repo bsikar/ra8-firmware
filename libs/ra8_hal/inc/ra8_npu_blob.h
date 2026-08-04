@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_npu_blob.h
  * @brief `.npub` linkable-blob container for a Vela-compiled Ethos-U55 model
@@ -57,6 +53,8 @@
  * @see @ref md_docs_2formats_2NPU1 -- the full NPU1 wire-format specification
  *      (rationale, algorithms, worked example, failure modes).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

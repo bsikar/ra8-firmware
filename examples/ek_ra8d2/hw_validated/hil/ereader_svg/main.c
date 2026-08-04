@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_svg/main.c
  * @brief On-silicon HIL: SVG vector-art render-at-size + CRC gate (#143).
@@ -30,6 +26,8 @@
  * and silicon. Any failure prints a FAIL banner and halts on a BKPT before the
  * PASS line, so the gate is exact.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

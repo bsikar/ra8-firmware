@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_dsi_api.h
  * @brief MIPI DSI-2 host driver -- public function surface (full HUM Ch 65)
@@ -18,6 +14,8 @@
  * `ra8_mipi_dsi.h` so the umbrella stays a thin include shim; consumers
  * keep including `ra8_mipi_dsi.h` unchanged.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

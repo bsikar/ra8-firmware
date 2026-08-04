@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_timer_capture_demo.c
  * @brief Integration test: GPT free-run + counter snapshot delta
@@ -12,6 +8,8 @@
  * delta helper handles wrap so both the no-wrap and wrap branches
  * are exercised.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

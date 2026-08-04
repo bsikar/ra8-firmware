@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ulpt.c
  * @brief Ultra-Low-Power Timer driver implementation
@@ -20,6 +16,9 @@
  * stop, deinit, runtime period change, status read, IRQ
  * dispatch, and power transition. Every register access carries
  * a HUM Ch 25 citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_ulpt.h"

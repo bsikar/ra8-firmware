@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fuzz_ra8_tls.c
  * @brief libFuzzer harness for the ra8_tls Mbed TLS facade.
@@ -22,6 +18,9 @@
  * global_init -> session_open -> handshake -> send(input) -> recv ->
  * close, all inside a single iteration so libFuzzer can isolate any
  * state corruption to a minimal reproducer.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

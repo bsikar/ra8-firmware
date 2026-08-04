@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_cache.c
  * @brief Unit tests for ra8_cache.c (Cortex-M85 L1 D-cache maintenance).
@@ -11,6 +7,9 @@
  * tests seed CTR / CCSIDR and read back the maintenance registers (DCCMVAC /
  * DCIMVAC / DCCIMVAC / DCISW) to verify the line-size decode, the by-address
  * line span, the validation guards, and the set/way invalidate-all.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_protos_a_internal.h
  * @brief Cross-TU helper prototypes for the FAT/exFAT adapter (part A of 2).
@@ -17,6 +13,8 @@
  *
  * This header aggregates each cross-TU helper's full Doxygen contract.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

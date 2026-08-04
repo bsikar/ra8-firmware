@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file epub_probe.c
  * @brief Host EPUB-probe harness -- report what the ra8_epub pipeline extracts.
@@ -11,6 +7,9 @@
  * parse result, spine length, TOC kind/length and cover path, then loads the
  * first chapter so the miniz inflate + XHTML path is exercised too. Built and
  * run by `tests/fixtures/epub/run_probe.sh`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <stdint.h>
 #include <stdio.h>

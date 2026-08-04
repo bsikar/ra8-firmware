@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_osi.c
  * @brief The esp-hosted OS-abstraction vtable and its non-RTOS slots.
@@ -35,6 +31,8 @@
  * saying it loudly is what a caller needs. Leaving the rows null would
  * turn the same mistake into a null-pointer fault with no diagnosis.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

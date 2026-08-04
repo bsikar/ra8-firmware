@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_npu.h
  * @brief Arm Ethos-U55 NPU command/queue driver foundation (RA8P1-only)
@@ -39,6 +35,8 @@
  * serialisation. Call from a single-threaded context or with the NPU IRQ
  * masked.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

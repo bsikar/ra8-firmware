@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file test_ra8_wifi.c
  * @brief The ra8_wifi facade against a mock backend and a mock IP provider.
@@ -20,8 +14,9 @@
  * condition -- so there is no MC/DC vector table here; the tests instead drive
  * both directions of every guard and every backend-failure path.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

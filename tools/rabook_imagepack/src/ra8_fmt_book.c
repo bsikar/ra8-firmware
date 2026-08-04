@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fmt_book.c
  * @brief RBKC (`.rabook`) container inspector for `ra8_fmt`.
@@ -19,6 +15,8 @@
  * `tools/epub_compile` remain the producers. See the report note in
  * ra8_fmt_registry.c.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

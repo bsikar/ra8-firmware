@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dfu.h
  * @brief Controller-agnostic USB-DFU MRAM bootloader core for the RA8D2.
@@ -65,6 +61,9 @@
  * so the older valid slot is chosen automatically -- brick-safe by
  * construction, and SWD recovery is always available because the
  * bootloader region is never written.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

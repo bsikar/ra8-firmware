@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_pdg_ctrl.c
  * @brief Runtime-control tests for ra8_pdg.c (PWM Delay Generation Circuit)
@@ -12,6 +8,9 @@
  * bypass, pin disable, status, frange, GPT bind, constraint-check, capture,
  * dispatch, deinit, and MC/DC vector tests; the init / auto-tune / delay
  * setter contract tests stay in test_ra8_pdg.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

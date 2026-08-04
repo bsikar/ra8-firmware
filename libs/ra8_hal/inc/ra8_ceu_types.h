@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ceu_types.h
  * @brief Capture Engine Unit (CEU) configuration descriptors and types
@@ -20,6 +16,8 @@
  * `ra8_ceu.h`. See that umbrella for the full driver overview and
  * state machine.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_args.c
  * @brief CLI parsing implementation (see emu_args.h)
@@ -11,6 +7,8 @@
  * ra8_emulator main translation unit. The contract lives on the declaration of
  * emu_args_parse() in emu_args.h.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

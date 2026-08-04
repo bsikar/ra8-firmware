@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_rtt_log_demo.c
  * @brief Integration test for examples/ek_ra8d2/rtt_log_demo/main.c
@@ -13,6 +9,8 @@
  * coverage of the wrap, full, and null-pointer branches is exercised
  * on the host.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

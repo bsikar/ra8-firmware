@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/main.c
  * @brief Bring the RA8D2 + ThreadX esp-hosted port up against the ESP32-C6.
@@ -51,6 +47,8 @@
  * The idle filler is now a pass in its own right -- see
  * ``src/c6_hosted_frame.c``.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

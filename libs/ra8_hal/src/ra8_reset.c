@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reset.c
  * @brief Reset cause introspection + software-reset trigger
@@ -20,6 +16,9 @@
  * **not** unlock PRCR -- the RSTSRn registers are R/W with no PRCR
  * gate (HUM Ch 6.2.2 p 257 "PRCR write enable" column is absent), and
  * RSTSAR is read-only from this driver's perspective.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_reset.h"

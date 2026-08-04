@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_sdcard_cov.c
  * @brief Coverage-extension tests for ra8_sdcard.c -- targets 26 uncovered lines
@@ -36,6 +32,9 @@
  * command index.  Fail-mode tests
  * skip RSPEND for the failing command; the driver's bounded spin budget
  * then expires naturally.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

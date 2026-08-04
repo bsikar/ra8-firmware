@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_console.c
  * @brief Bounded console formatters for the HAL Wi-Fi join application.
@@ -18,8 +12,9 @@
  * image that has no heap at all. Every loop here is bounded by a constant from
  * ``wifi_hal_join.h`` (NASA Power of 10 Rule 2).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

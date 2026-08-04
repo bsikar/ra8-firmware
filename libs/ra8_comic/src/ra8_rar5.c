@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rar5.c
  * @brief RAR 5.0 LZ decoder driver: token loop, data filters, public entry.
@@ -37,6 +33,9 @@
  * so that last equivalence is left to an owner-supplied real archive.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "ra8_rar5.h"
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_mipi_dsi_cmd.c
  * @brief Unit tests for MIPI DSI-2 init, IRQ dispatch and command-mode packets
@@ -21,6 +17,9 @@
  * Sibling suites: test_ra8_mipi_dsi_video.c (video mode + sweep-6
  * command shorthands) and test_ra8_mipi_dsi_mcdc.c (MC/DC vectors).
  * Shared fixtures live in support/mipi_dsi_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

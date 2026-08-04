@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_bkup.c
  * @brief Battery Backup Function (VBATT) driver -- core lifecycle and storage
@@ -61,6 +57,9 @@
  * rather than per register, which matches the HUM's usage model and
  * keeps the relock on every exit path (``RA8_PROTECTED_WRITE`` relocks
  * from its loop-increment clause, including on an early ``return``).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_bkup.h"

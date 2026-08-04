@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_epub_tile_prefetch.c
  * @brief Pan-direction tile prefetch through the EPUB tile binder (#341).
@@ -16,6 +12,8 @@
  * book, or codec machinery; residency (not pixel content) is the property under
  * test, so the tiles carry arbitrary deterministic fill.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_display_pal_policy.c
  * @brief Implementation of the e-ink page-turn refresh-cadence policy.
@@ -11,6 +7,8 @@
  * The application owns a ::display_policy_t, feeds page-transition events in, and
  * applies the returned ::display_policy_decision_t through ``display_flush``.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Display] {World: NS}
  *

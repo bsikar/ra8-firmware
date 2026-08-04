@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_canfd_timing.c
  * @brief CANFD bit-timing solver + bitrate / BRS configuration
@@ -31,6 +27,8 @@
  * or an FSP ``r_canfd.c`` line citation when the bit semantics come
  * from the reference driver.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

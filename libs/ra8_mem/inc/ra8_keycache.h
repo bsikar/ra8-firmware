@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_keycache.h
  * @brief The one reusable hash + pin + evict cache engine (#147, #345).
@@ -67,6 +63,8 @@
  *
  * @note Not thread-safe; the renderer and the cache are single-threaded.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

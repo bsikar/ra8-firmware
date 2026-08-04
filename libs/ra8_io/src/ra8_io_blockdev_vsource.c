@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_vsource.c
  * @brief Block-device -> ra8_vsource read adapter (LBA<->byte translation).
@@ -17,6 +13,9 @@
  * context's one-sector bounce buffer so only the bytes actually requested reach
  * the caller. Pure block-device access plus memcpy, so it runs identically on
  * host and target.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_blockdev_vsource.h"

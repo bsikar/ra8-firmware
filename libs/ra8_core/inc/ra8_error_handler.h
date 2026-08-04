@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_error_handler.h
  * @brief Centralised fatal-error sink
@@ -22,6 +18,9 @@
  * that erases the state the developer needs to diagnose the fault.
  * Field deployments can override `internal_ra8_fatal_error()` with a
  * weak symbol to add a watchdog reset.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

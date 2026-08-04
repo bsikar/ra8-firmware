@@ -1,13 +1,12 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fake_world.c
  * @brief Host-side TrustZone partition mock
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_fake_world.h"

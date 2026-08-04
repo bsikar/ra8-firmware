@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_hcdc.c
  * @brief Native USB host-side CDC ACM class layer implementation
@@ -29,6 +25,9 @@
  * (production) or directly via `ra8_usb_hcdc_step` (tests). Each step
  * issues exactly one chapter-9 SETUP request via
  * `ra8_usb_host_setup_request`; the next CTRT advances the step.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_hcdc.h"

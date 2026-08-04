@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_stream_ram.c
  * @brief RAM byte-stream sink -- append into a caller-owned buffer.
@@ -13,6 +9,9 @@
  * Reference sink implementation of ::ra8_io_stream_iface. Writes are a
  * bounds-checked `memcpy` into the caller buffer; a full buffer reports
  * ::k_ra8_err_no_mem. Pure memory access -- identical on host and target.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_stream_ram.h"

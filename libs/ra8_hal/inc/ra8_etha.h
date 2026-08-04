@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_etha.h
  * @brief Per-port Ethernet Agent (ETHA) driver -- HUM Ch 32 (p 1627-1702)
@@ -72,6 +68,9 @@
  * grouped by concern into self-contained sub-headers and pulled in
  * below so existing consumers that ``#include "ra8_etha.h"`` are
  * unaffected.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

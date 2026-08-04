@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dma_memcopy_demo/main.c
  * @brief 1 KB DMAC SRAM-to-SRAM copy + verify demo for the EK-RA8D2
@@ -27,6 +23,8 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

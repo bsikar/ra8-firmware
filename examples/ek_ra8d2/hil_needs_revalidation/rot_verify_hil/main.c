@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/rot_verify_hil/main.c
  * @brief On-silicon root-of-trust image verify (ECDSA-P256 via tf-psa-crypto)
@@ -22,6 +18,8 @@
  * Reports "rot verify: PASS" (genuine accepted AND tamper rejected) or
  * "rot verify: FAIL" over SCI8 (115200 8N1).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

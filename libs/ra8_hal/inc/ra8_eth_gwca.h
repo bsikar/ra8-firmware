@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_eth_gwca.h
  * @brief Ethernet CPU Agent (GWCA) driver
@@ -17,6 +13,9 @@
  * covers lifecycle + status + IRQ + power transition; the
  * descriptor-ring programming surface lands with the first
  * NIC consumer.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/main.c
  * @brief Secure side: authenticate the NS image, then BLXNS -- the TrustZone RoT proof (#172).
@@ -52,6 +48,8 @@
  * All diagnostics are ALSO latched into Secure ``.bss`` globals a J-Link halt
  * can read when the debug connection does not disturb the boot.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

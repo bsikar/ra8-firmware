@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_i3c_i2c_peripheral_cov.c
  * @brief Coverage-extension tests for the IIC_B peripheral driver.
@@ -20,6 +16,9 @@
  *
  * gcovr merges the .gcda produced by this executable with the one from
  * test_ra8_i3c_i2c_peripheral, so coverage from both binaries accumulates.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

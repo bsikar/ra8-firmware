@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_vin_types.h
  * @brief Video Input Module (VIN) configuration descriptors and types
@@ -21,6 +17,8 @@
  * by the thin umbrella `ra8_vin.h`. See that umbrella for the full
  * driver overview and state machine.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

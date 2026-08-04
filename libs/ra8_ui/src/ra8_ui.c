@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ui.c
  * @brief Implementation of the bounded UI interaction core.
@@ -14,6 +10,8 @@
  * logic. See ra8_ui.h for the contract. Every entry point validates its
  * pointer arguments and leaves caller state untouched on error.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

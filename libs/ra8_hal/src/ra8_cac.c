@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_cac.c
  * @brief Clock Frequency Accuracy Measurement Circuit driver
@@ -16,6 +12,9 @@
  * the result is out of bounds. This driver exposes lifecycle,
  * polled measurement, async event dispatch, and power transition.
  * Every register write below carries a HUM Ch 10 citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_cac.h"

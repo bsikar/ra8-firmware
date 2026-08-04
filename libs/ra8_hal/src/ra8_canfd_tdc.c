@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_canfd_tdc.c
  * @brief CANFD Transmitter Delay Compensation (TDC) configuration
@@ -21,6 +17,8 @@
  * Every register access carries a HUM Ch 41 "CAN with Flexible
  * Data-rate (CANFD)" citation (pages 2702..2867, chapter map row 41).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */
