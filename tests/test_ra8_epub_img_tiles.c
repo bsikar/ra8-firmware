@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epub_img_tiles.c
  * @brief #231 bounded-RAM tile paging of JOF atlases through ra8_tile_cache,
@@ -20,9 +24,6 @@
  * memstore and pages back byte-identically, while an entry that already is a
  * stored atlas registers in place with zero store writes. The real reflow
  * `<img>` loader keeps its existing contract gates.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

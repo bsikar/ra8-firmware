@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/drw_blend_demo/main.c
  * @brief DRW 2D-engine blit + per-pixel alpha-blend headless CRC demo (EK-RA8D2)
@@ -39,8 +43,6 @@
  * because that zero-framebuffer result is confirmed on silicon; the demo will
  * only report a genuinely composited CRC once #247 brings the engine to life.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

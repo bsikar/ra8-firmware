@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_reflow -- HTML/CSS reflow + paginate engine for the ereader.
 #
@@ -22,8 +24,6 @@
 # this convention and ships them through the ra8_core_hal OBJECT
 # library; ra8_reflow is wired in next to ra8_epub there.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # =============================================================================

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/main.c
  * @brief Hybrid baked + SD e-reader: shelf, cover, TOC, full-book reader.
@@ -20,8 +24,6 @@
  * `--click X Y` drives it, `--sd img` attaches the card, and `--ppm` captures
  * a frame.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *

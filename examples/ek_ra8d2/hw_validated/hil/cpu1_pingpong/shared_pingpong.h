@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/shared_pingpong.h
  * @brief Shared-SRAM message layout for the CPU0 <-> CPU1 ping-pong demo
@@ -38,9 +42,6 @@
  * ``(void)internal_enable_dcache;`` so the function isn't actually
  * invoked), so no cache-clean / invalidate dance is needed across the
  * two CPUs.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

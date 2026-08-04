@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sdmmc_spi.h
  * @brief SD card driver in SPI-mode (PMOD-attached cards)
@@ -43,9 +47,6 @@
  * (``ra8_sdmmc_spi_bind_fs_backend``) that plugs the SD card straight
  * into the ``ra8_fs`` FAT filesystem layer without any extra glue in
  * the application.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

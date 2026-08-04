@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fs_fat_file.c
  * @brief FAT open / close path and directory resolution.
@@ -6,8 +10,6 @@
  * Directory resolution (parent/dir), file creation, and the public
  * open/close entry points for the `ra8_fs` FAT adapter.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

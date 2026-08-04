@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # hil_bench role defaults -- provisions the hardware-in-the-loop bench host
 # (the Raspberry Pi with the EK-RA8D2 + J-Link attached) to a known, current,

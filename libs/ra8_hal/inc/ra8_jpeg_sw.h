@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_jpeg_sw.h
  * @brief Pure-software baseline JPEG (ISO/IEC 10918-1 / ITU-T T.81) codec
@@ -30,9 +34,6 @@
  *
  * Spec citations are formatted as `T.81 sec X.Y "..."` and refer to
  * ITU-T Recommendation T.81 (1992) | ISO/IEC 10918-1.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

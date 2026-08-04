@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ns_main.c
  * @brief Non-Secure main entry point: launches ThreadX and demo worker threads.
@@ -11,8 +15,6 @@
  * leveraging ThreadX for multitasking and calling Secure services via
  * NSC veneers.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

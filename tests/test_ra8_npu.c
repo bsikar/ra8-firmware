@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_npu.c
  * @brief Unit tests for ra8_npu.c (Arm Ethos-U55 NPU command/queue foundation)
@@ -9,9 +13,6 @@
  * peripheral region, so register writes land in RAM and the tests assert the
  * exact QBASE / QSIZE / BASEPn / CMD sequence the Ethos-U55 submission protocol
  * requires -- no silicon, no real inference.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

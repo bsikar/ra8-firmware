@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_spi_b_target.c
  * @brief Unit tests for the SPI_B target (peripheral) mode driver.
@@ -38,9 +42,6 @@
  *    -> V1: rx non-NULL (test 2) / V2: rx NULL (test 6).
  *  - ``ra8_spi_b_target_xfer``: timeout early-return true leg (tests 7, 8);
  *    happy-path false leg (tests 2, 6).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

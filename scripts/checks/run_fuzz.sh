@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/checks/run_fuzz.sh -- run libFuzzer harnesses for an arbitrary
 # wall-clock budget. Configures the fuzz build directory on first use,
@@ -70,8 +72,6 @@
 # function precisely so --selftest can drive every one of its branches -- a
 # check nobody has watched fail is a check nobody knows still works.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 set -euo pipefail

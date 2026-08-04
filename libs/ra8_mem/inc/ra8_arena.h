@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_arena.h
  * @brief Init-time bump arena -- carves per-tier slab backing, zero-heap.
@@ -27,8 +31,6 @@
  *
  * @note Not thread-safe; bring-up runs single-threaded.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/report/coverage_report.sh -- statement + branch coverage report.
 #
@@ -35,8 +37,6 @@
 #   bash scripts/report/coverage_report.sh
 #   make coverage
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

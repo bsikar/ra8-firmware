@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_layout_table.c
  * @brief `<table>` equal-column grid layout for the ra8_reflow engine (#107).
@@ -15,8 +19,6 @@
  * core inline-flow helpers it reuses (line height, glyph advance/push, line
  * wrap, page flush) are shared via `ra8_reflow_layout_internal.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

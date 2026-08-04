@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_drw_regs.h
  * @brief 2D Drawing Engine (DRW / D/AVE 2D) register layout for the RA8D2
@@ -67,9 +71,6 @@
  *  | 0xE4    | TEXCLOFFSET  |              | CLUT index offset        |
  *  | 0xE8    | COLKEY       |              | Color key value          |
  *  | 0x100   | DBWER        | DBWER        | Bufferable write enable  |
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

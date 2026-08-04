@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_device_cov.c
  * @brief Coverage top-up for the USB device-mode lifecycle (ra8_usb_device.c)
@@ -22,9 +26,6 @@
  * pointer-null check, all reachable from the host fake -- so this
  * file adds NO ``GCOVR_EXCL`` markers and ``ra8_usb_device.c`` is not
  * modified.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/pdm_mic_demo/main.c
  * @brief PDM MEMS microphone capture + plausibility demo (SPH0690 / ch 2)
@@ -33,8 +37,6 @@
  *      and publish it in the J-Link-probable ::g_pdm_mic_result.
  *   7. Keep streaming live windows so a tap near the mic is visible.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jof_probe_dims.c
  * @brief Geometry-probe vectors for `ra8_jof_probe_dims()` (#290).
@@ -15,8 +19,6 @@
  * unrecognised-magic fallthrough, the "RIFF but not WEBP" half of the WebP
  * fourCC pair, and both halves of the zero / over-cap dimension check.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

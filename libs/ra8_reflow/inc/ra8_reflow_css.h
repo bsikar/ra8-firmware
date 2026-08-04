@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_css.h
  * @brief Minimal content-CSS cascade for the ra8_reflow ereader engine (#111).
@@ -36,8 +40,6 @@
  * ::ra8_reflow_html_tag_t, ::ra8_reflow_align_t, ::ra8_reflow_font_style_t) so this
  * header stays free of a circular include back into `ra8_reflow.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

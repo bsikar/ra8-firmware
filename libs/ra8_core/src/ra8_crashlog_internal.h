@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_crashlog_internal.h
  * @brief Cross-TU surface for ra8_crashlog (host-test white-box access only).
@@ -14,9 +18,6 @@
  * CRC) through both of its conditions independently -- the MC/DC obligation
  * for `ra8_crashlog_is_valid`. See CLAUDE.md "Test access to internal
  * symbols (MC/DC scope)".
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

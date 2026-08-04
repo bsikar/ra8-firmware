@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dfu_host.c
  * @brief Polled on-board USB-DFU host driver (factored from usb_selftest_dfu).
@@ -10,9 +14,6 @@
  * controller the caller names via `ra8_usb_speed_t`. Built entirely on the
  * first-party polled `ra8_usb_host_*` + `ra8_usb_host_control_xfer` primitives,
  * with no USBX on the host side. Firmware-only (`RA8_OFF_TARGET` skips it).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dfu_host.h"

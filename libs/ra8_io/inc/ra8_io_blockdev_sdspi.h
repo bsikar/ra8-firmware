@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_blockdev_sdspi.h
  * @brief ra8_io block-device backend over the micro-SD-in-SPI-mode driver.
@@ -20,8 +24,6 @@
  * before binding or using this device; the bind helper only wires the vtable
  * and does not touch the bus.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

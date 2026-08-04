@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_systick.h
  * @brief Cortex-M85 SysTick + DWT cycle-counter timebase primitive.
@@ -35,8 +39,6 @@
  *       `ra8_core` -> `ra8_hal` layering dependency. Higher-ring code (the
  *       ThreadX port, apps) includes it by filename just the same.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

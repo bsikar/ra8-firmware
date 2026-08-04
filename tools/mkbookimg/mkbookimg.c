@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file mkbookimg.c
  * @brief Host tool: pack compiled .rabook files into a FAT32 SD-card image.
@@ -11,9 +15,6 @@
  * from the .rabook header, so the 8.3 names need carry no metadata.
  *
  * Usage: mkbookimg <out.img> <book1.rabook> [book2.rabook ...]
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #include <stdint.h>
 #include <stdio.h>

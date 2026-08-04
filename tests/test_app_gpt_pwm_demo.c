@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_gpt_pwm_demo.c
  * @brief Integration test: GPT PWM duty-cycle LED demo
@@ -9,8 +13,6 @@
  * GTPR / GTCCRA so the writes succeed and the test verifies both the
  * acceptance path and the documented rejection paths.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

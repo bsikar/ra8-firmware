@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h
  * @brief Synchronisation, thread, timer and tick half of the ThreadX model.
@@ -17,8 +21,6 @@
  * Including this header is always sufficient on its own -- it pulls in the
  * base header, so no translation unit has to remember the ordering.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

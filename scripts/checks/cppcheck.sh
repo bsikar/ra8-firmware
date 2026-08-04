@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # ra8-firmware - cppcheck Static Analysis Script
 #
 # Runs cppcheck across libs/ and examples/ (excluding libs/third_party/) with
@@ -17,8 +19,6 @@
 #   cppcheck >= 2.10 (macOS: brew install cppcheck;
 #                     Ubuntu: sudo apt-get install cppcheck)
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 set +H

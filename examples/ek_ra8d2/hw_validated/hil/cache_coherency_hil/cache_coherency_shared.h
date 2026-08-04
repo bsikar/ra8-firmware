@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/cache_coherency_shared.h
  * @brief Shared-SRAM message layout for the M85<->M33 cache-coherency HIL test
@@ -43,9 +47,6 @@
  * out of its own dirty/clean line (or hide its ``ping_payload`` write
  * from the cacheless M33), and the test would log a mismatch. The
  * non-cacheable region is exactly what removes that hazard.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

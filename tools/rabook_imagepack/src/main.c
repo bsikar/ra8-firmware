@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file main.c
  * @brief `ra8_fmt` command-line entry: parse the verb + options, then dispatch.
@@ -15,8 +19,6 @@
  * only required where the input is a source file rather than a container
  * (`convert`, `verify`).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

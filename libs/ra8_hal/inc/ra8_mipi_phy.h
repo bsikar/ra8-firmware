@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mipi_phy.h
  * @brief MIPI D-PHY driver -- physical layer shared by DSI and CSI
@@ -52,9 +56,6 @@
  * - ``ra8_mipi_phy_ops.h`` -- runtime operations prototypes.
  *
  * Consumers continue to ``#include "ra8_mipi_phy.h"`` unchanged.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

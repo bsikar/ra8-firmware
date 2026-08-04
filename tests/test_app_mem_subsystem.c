@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_mem_subsystem.c
  * @brief Integration test: mirrors the mem_subsystem example (#263).
@@ -21,8 +25,6 @@
  * values the EIL / HIL gate pins (EIL == HIL). Two compound decisions carry
  * MC/DC vectors.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

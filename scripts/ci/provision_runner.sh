@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/ci/provision_runner.sh -- bring a bare-metal self-hosted CI runner
 # up to the pinned host toolchain, then prove it with the same check the
@@ -25,8 +27,6 @@
 #   sudo bash scripts/ci/provision_runner.sh          # install + verify
 #   bash scripts/ci/provision_runner.sh --check-only  # verify only, no install
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

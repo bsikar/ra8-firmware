@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_css.c
  * @brief Content-CSS primitives + declaration-body parsing (#111).
@@ -11,8 +15,6 @@
  * public inline-declaration entry point ::ra8_css_parse_inline. No MMIO, no heap;
  * every buffer is a fixed-size field of the caller-owned ::ra8_css_sheet_t.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

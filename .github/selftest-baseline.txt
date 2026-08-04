@@ -13,9 +13,8 @@
 #
 # Closing this out means this file reaching zero rows and being
 # DELETED -- never regenerated larger.
-# Rows at this baseline: 24
+# Rows at this baseline: 23
 
-scripts/checks/check-copyright.py
 scripts/checks/check_assert_casts.py
 scripts/checks/check_core_layering.py
 scripts/checks/check_coverage.py

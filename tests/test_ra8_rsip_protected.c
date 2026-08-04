@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_rsip_protected.c
  * @brief Unit tests for ra8_rsip_protected.c (RSIP wrapped-key crypto)
@@ -21,9 +25,6 @@
  * - protected RSA decrypt: round-trips through ra8_rsip_rsa_sign;
  * - protected ECDSA sign rebuilds an ECC handle and dispatches;
  * - NULL-argument rejection on every entry point.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

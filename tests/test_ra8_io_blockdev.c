@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_io_blockdev.c
  * @brief Unit tests for the ra8_io block-device fabric (Phase 1, issue #156).
@@ -7,9 +11,6 @@
  * (NULL erase / NULL sync), the capability query, and the end-to-end
  * `ra8_fs_backend_t` bridge by formatting + mounting a real FAT volume on a
  * RAM block device and round-tripping a file.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

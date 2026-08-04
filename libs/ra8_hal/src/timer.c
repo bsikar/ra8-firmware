@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file timer.c
  * @brief Thin SysTick-based timer wrapper
@@ -7,9 +11,6 @@
  * a shorter name so driver code can use `ra8_now_ms()` and
  * `ra8_sleep_ms()` without importing the longer header chain. Pure
  * wrapper, zero additional state.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

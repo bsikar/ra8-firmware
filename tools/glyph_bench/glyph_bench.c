@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file glyph_bench.c
  * @brief #147/#162/#164 glyph-cache workload sweep: drive the real
@@ -21,8 +25,6 @@
  * glyph bitmap (2 * max font px squared, ~36 KiB), so the RAM cost of a budget is
  * `cells * ~36 KiB`; the table prints that so the knee is easy to read.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

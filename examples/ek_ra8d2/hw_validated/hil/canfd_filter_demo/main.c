@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/canfd_filter_demo/main.c
  * @brief CAN-FD acceptance-filter demo for EK-RA8D2
@@ -21,8 +25,6 @@
  *      via ``ra8_canfd_set_test_mode`` (HUM Ch 41 "CFDCnCTR" p 2710).
  *   6. Loop forever transmitting + checking RX FIFO.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

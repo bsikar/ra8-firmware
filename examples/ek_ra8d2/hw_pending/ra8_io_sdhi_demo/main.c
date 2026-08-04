@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/main.c
  * @brief Prove the ra8_io fabric's swappable backend (#155/#156) over native SDHI.
@@ -33,8 +37,6 @@
  * slot. THIS APP ERASES THE CARD. Under ra8_emulator attach a blank card with
  * `--sd-new 64:fat16`; the native-SDHI host-controller model serves it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ofs.c
  * @brief RA boot-ROM Option Function Select register defaults
@@ -65,8 +69,6 @@
  * `used` attribute prevents the linker from discarding the constants
  * even though nothing references them from C.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_canfd_loopback.c
  * @brief Integration test: CANFD0 init + bitrate + loopback round-trip
@@ -8,8 +12,6 @@
  * transmit + receive cycle. All MMIO is via the host
  * tests/mocks/ra8_fake_mmap.c shim.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

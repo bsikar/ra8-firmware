@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_pdg_regs.h
  * @brief PWM Delay Generation Circuit (PDG) register layout for the Renesas RA8D2
@@ -49,9 +53,6 @@
  * The struct laid out below uses an array of two 16-bit cells per
  * channel grouped by edge so the formula collapses to a clean
  * `dly_rise[n].A` / `dly_fall[n].B` index.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

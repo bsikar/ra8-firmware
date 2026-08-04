@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # build_books.sh -- regenerate the compiled e-book library.
 #
@@ -34,8 +36,6 @@
 #                                 library.h is the only generated header the app
 #                                 needs, and it derives from just three epubs).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 set -euo pipefail
 

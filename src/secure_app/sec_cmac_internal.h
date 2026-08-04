@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file sec_cmac_internal.h
  * @brief Secure-side AES-CMAC seam (real PSA backend / in-tree reference)
@@ -32,9 +36,6 @@
  * is guarded by the ``RA8_INSECURE_STUB_CRYPTO`` fail-closed fence: an
  * AES-CMAC forgery requires recovering the KAK, so there is no insecure
  * placeholder to hide behind a production stub.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

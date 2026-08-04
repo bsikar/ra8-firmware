@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_usb.c
  * @brief Non-Secure image: full ThreadX + USBX CDC self-loop inside TrustZone NS (#96).
@@ -35,8 +39,6 @@
  * The looped device identifies as ``1209:000a``; an external host (macOS) on
  * J11 would also enumerate it as ``/dev/cu.usbmodem*``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

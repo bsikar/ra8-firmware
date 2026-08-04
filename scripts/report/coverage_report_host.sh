@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/report/coverage_report_host.sh -- generate an HTML coverage report for the
 # host unit-test suite via lcov + genhtml.
@@ -25,8 +27,6 @@
 # Usage:
 #   ./scripts/report/coverage_report_host.sh
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

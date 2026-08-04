@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_devcfg.c
  * @brief Unit tests for the per-device configuration record (``ra8_devcfg``).
@@ -22,9 +26,6 @@
  *   - Null-argument guards on every public entry point.
  *   - The extra-MRAM backend: blank shadow resolves to UNPROVISIONED, a
  *     round-trip persists, and out-of-range / null accesses are refused.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

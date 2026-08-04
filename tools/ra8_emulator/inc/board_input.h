@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_input.h
  * @brief Host-side keystroke FIFO: window / CLI key source -> UART RX sink
@@ -14,8 +18,6 @@
  * keyboard path is verifiable headlessly and in CI -- not only by typing into a
  * window. Single-threaded harness use; not thread-safe.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file trace.h
  * @brief Reader access-trace generation + loading for the #147 cache benchmark.
@@ -10,8 +14,6 @@
  * loads real traces captured from the reader (ra8_emulator or the EK-RA8D2 over
  * UART) as `<object> <page>` lines.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

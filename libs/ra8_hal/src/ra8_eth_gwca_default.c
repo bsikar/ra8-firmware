@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_eth_gwca_default.c
  * @brief Ethernet CPU Agent driver -- one-call default-state API
@@ -13,8 +17,6 @@
  * (plus the RX-drain and queue-rearm helpers). Every register access
  * carries a HUM Ch 34 citation.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

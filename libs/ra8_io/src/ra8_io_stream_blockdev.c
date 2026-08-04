@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_stream_blockdev.c
  * @brief Block-device byte-stream sink -- buffer bytes into 512-byte sectors.
@@ -10,9 +14,6 @@
  * ::ra8_io_blockdev_write and the LBA advances. A flush zero-pads and commits the
  * partial trailing sector. The sector buffer lives in the caller-owned state, so
  * there is no allocation.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_stream_blockdev.h"

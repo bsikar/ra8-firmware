@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_zoom_internal.h
  * @brief Module-private seam shared by the ra8_zoom state machine and its render.
@@ -13,8 +17,6 @@
  * Nothing in this header is public API. It is not installed, it is not reachable
  * from `inc/`, and production code outside `libs/ra8_zoom` must never call it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

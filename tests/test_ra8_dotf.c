@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_dotf.c
  * @brief Unit tests for ra8_dotf.c (Decryption On The Fly driver)
@@ -6,9 +10,6 @@
  * disable, and status tests. The control surface (SCA/key-size/self
  * test/dispatch/power/open-close/windows) and the MC/DC vectors live
  * in the sibling test_ra8_dotf_ctrl.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dotf.h"

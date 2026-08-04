@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/glcdc_render/main.c
  * @brief Headless on-silicon HIL gate for the GLCDC layer-1 render path.
@@ -41,8 +45,6 @@
  * pattern -- independent confirmation that the GR1 registers point at the
  * buffer. The same FNV-1a-32 globals are exported for `--dump-sym` memprobe.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

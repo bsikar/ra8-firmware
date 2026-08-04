@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Bake the ereader_manga demo page fixture.
 
 Emits examples/ek_ra8d2/hw_pending/ereader_manga/mg_page_fixture.h: one large

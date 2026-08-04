@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file reflow_layout_test_util.h
  * @brief Shared engine fixture for the test_ra8_reflow_layout_*_mcdc.c siblings.
@@ -12,9 +16,6 @@
  * geometry (column fill, wrap points, page overflow) is deterministic.
  * Everything here has internal linkage, so each including test executable
  * owns a private engine.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

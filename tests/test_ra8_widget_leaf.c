@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_widget_leaf.c
  * @brief Unit tests for the ra8_widget concrete leaf widgets (label / button / kit).
@@ -10,8 +14,6 @@
  * panel tests stay in test_ra8_widget.c. Pure logic with a recording
  * ::ra8_widget_paint_t mock backend -- no framebuffer.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

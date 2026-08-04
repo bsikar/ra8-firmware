@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_cache_store_mount.c
  * @brief ra8_cache_store mount/recovery path + shared on-flash helpers (#201).
@@ -11,9 +15,6 @@
  * replays after an unclean shutdown. Also defines the low-level helpers
  * (CRC-32, LevelX sector read/write/release, index find/add) shared with the
  * runtime TU. Runs LevelX through its public `lx_nor_flash_*` API only.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

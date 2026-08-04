@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_lvd.c
  * @brief LVD / PVD voltage-monitor status model for ra8_emulator
@@ -26,8 +30,6 @@
  * (@c ra8_lvd_get_status reading @c PVD1SR.MON / .DET) sees exactly what a
  * healthy 3.3 V supply yields on silicon.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

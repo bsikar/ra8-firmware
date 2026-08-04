@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file epub_fixture.h
  * @brief Baked known-good EPUB3 fixture (tests/fuzz/corpus/fuzz_ra8_epub/seed_two_chapters.epub).
@@ -7,9 +11,6 @@
  * 2-chapter spine + two XHTML chapters), byte-identical to the fuzzer corpus
  * seed. Baked as a C array so the HIL opens it through the real ra8_epub parse
  * path (miniz ZIP inflate via the ra8_epub_miniz_alloc static arena). Pure ASCII.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

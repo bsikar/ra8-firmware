@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_hmsc_internal.h
  * @brief Cross-TU surface shared between the host-MSC class layer
@@ -18,8 +22,6 @@
  * public contract lives in `ra8_usb_hmsc.h`, and the shadow-state singleton
  * `s_usb_hmsc_state` is shared through `ra8_hal_internal.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

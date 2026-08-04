@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # emu_handoff_gate.sh -- ra8_emulator gate for the #150 ereader_m33 MODE-SWITCH.
 #
@@ -27,8 +29,6 @@
 #
 # Exit status: 0 = PASS (all banners seen, no fault), 1 = FAIL.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 set -euo pipefail
 

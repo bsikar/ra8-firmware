@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_pmsc.c
  * @brief Native USB device-side MSC (Mass Storage Class) class layer
@@ -36,9 +40,6 @@
  * On invalid CBW signature the spec mandates phase-error CSW, which
  * the starter emits by transitioning straight to CSW_TX with status
  * `k_ra8_pmsc_csw_status_phase_error`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_pmsc.h"

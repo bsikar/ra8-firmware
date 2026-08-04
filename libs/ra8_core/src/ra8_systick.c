@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_systick.c
  * @brief Cortex-M85 SysTick + DWT cycle-counter timebase implementation.
@@ -15,8 +19,6 @@
  * range logic runs exactly as on silicon -- there is no `RA8_OFF_TARGET` guard
  * around the accesses here, unlike a driver that reaches a real peripheral bus.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

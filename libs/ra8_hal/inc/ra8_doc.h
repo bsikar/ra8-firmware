@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_doc.h
  * @brief Data Operation Circuit (DOC) driver header
@@ -8,9 +12,6 @@
  * hardware add / subtract / compare operations. Useful for cheap
  * running checksums and threshold compares without burning CPU
  * cycles.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

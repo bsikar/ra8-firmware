@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_cgc_eswclk_cov.c
  * @brief Coverage-raising tests for ra8_cgc_eswclk.c.
@@ -25,8 +29,6 @@
  *    stuck, ESWCKCR/ESWPCKCR CKSRDY handshakes), driven through the
  *    ra8_fake_mmio fault seam now that the fake short-circuits are gone.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

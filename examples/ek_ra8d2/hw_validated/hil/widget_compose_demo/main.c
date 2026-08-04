@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/main.c
  * @brief Nested ra8_widget tree composited on the live GLCDC panel (#145).
@@ -43,8 +47,6 @@
  * advances the frame counter and partial-composes the status bar live, so the
  * panel visibly updates only its top band (the damage-tracked A2 path).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / APP] {World: S}
  *

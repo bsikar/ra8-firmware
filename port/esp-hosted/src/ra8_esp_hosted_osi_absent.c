@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_osi_absent.c
  * @brief Vtable rows for transports this board does not carry.
@@ -29,8 +33,6 @@
  * moment the vendored core first reaches for a transport that was never
  * configured.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

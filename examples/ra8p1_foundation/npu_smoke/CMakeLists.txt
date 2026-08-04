@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `npu_smoke` -- the RA8P1 Ethos-U55 NPU foundation app.
 #
@@ -17,8 +19,6 @@
 # layer, so this app doubles as the "does the NPU driver compile + link for
 # R7KA8P1KFLCAC" proof.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

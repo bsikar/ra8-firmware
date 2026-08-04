@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epub_open_cov.c
  * @brief Coverage-boost tests for libs/ra8_epub/src/ra8_epub_open.c.
@@ -47,9 +51,6 @@
  *   227 -- priv_zip_destroy(NULL): the only call site passes
  *           (mz_zip_archive*)&out_book->zip_archive_storage[0] which is
  *           always non-NULL.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

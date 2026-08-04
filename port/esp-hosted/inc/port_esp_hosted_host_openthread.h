@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_openthread.h
  * @brief esp-hosted port header: OpenThread host support switch.
@@ -21,8 +25,6 @@
  * defining it would mean shipping a radio configuration no bench has ever
  * exercised.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

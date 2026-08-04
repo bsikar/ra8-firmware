@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_img_arena.c
  * @brief Caller-bound bump arena with refcount auto-reset for stb_image.
@@ -9,8 +13,6 @@
  * ra8_img_arena_bind(), and these hooks bump-allocate out of it. The reference
  * count drives an auto-reset so the arena fully drains after each decode.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

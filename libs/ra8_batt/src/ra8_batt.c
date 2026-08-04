@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_batt.c
  * @brief Implementation of the low-battery nag policy.
@@ -9,8 +13,6 @@
  * Edge-triggered band detection with hysteresis. See ra8_batt.h for the
  * contract. Pure logic: no loop, no recursion, no allocation, no MMIO.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_unarch_xz.c
  * @brief Tests for the bounded XZ decoder wrapper (ra8_unarch_xz + pool + io).
@@ -18,9 +22,6 @@
  *   3. the tightened-policy axes each fire (output cap, iteration budget),
  *   4. the zero-heap pool arena and the flat-memory read seam behave at
  *      every edge (alignment, exhaustion, double-install, clamping).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

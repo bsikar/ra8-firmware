@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/kint_demo/main.c
  * @brief Key-interrupt (KINT / IRQ pin) input demo for EK-RA8D2
@@ -21,8 +25,6 @@
  *   4. ``ra8_icu_configure_irq_pin(13, falling-edge + filter)``.
  *   5. Loop: poll ``ra8_board_sw_read``; log on press, debounce, repeat.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

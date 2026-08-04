@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_smbus.c
  * @brief Unit tests for the SMBus 3.2 protocol layer.
@@ -14,9 +18,6 @@
  * PEC correctness is validated against the SMBus 3.2 section 5.4
  * reference vectors -- a Smart Battery 1.1 ``ManufacturerName`` query
  * (and its inverse) is the canonical sanity check.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

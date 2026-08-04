@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_pvnd_cov.c
  * @brief Coverage top-up for the native USB device-Vendor class layer
@@ -34,9 +38,6 @@
  * justification: that helper only fails on an invalid endpoint argument,
  * and the class layer feeds it compile-time-constant, always-valid pipe
  * / endpoint / packet parameters, so no host input can make it fail.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

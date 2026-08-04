@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/hal_timebase_demo/main.c
  * @brief HAL SysTick + DWT timebase demo for EK-RA8D2 (SCI8 @ 115200)
@@ -38,8 +42,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-08-02
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

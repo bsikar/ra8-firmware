@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dmac.c
  * @brief DMAC0 channel driver implementation
@@ -28,9 +32,6 @@
  *    minimum the project uses today).
  *  - No `DMOFR` (offset-addition mode) -- always written 0.
  *  - No 64-bit transfer width.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dmac.h"

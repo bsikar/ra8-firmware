@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/shared_libs/CMakeLists.txt -- build the universal first-party static
 # archive ONCE for the CI cross-build fast path.
@@ -20,8 +22,6 @@
 #
 # scripts/builders/all_examples.sh drives this automatically.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

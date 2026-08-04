@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_vmem.c
  * @brief Byte-range page cache with SLRU eviction -- implementation (Layer 2).
@@ -15,9 +19,6 @@
  * protected SLRU lists, the pinned-frame skip, hash chaining -- live in
  * ::ra8_keycache. What this file adds is the pointer-handle API, frame-boundary
  * alignment, and the ::ra8_vmem_prefetch read-ahead helper.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_vmem.h"

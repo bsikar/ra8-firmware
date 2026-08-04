@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jof_png_hostile.c
  * @brief Hostile-stream corpus for the streaming PNG decoder: every
@@ -14,8 +18,6 @@
  * seam `ra8_jof_priv_png_rows()` directly (the CLAUDE.md "test access to
  * internal symbols" allowance).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

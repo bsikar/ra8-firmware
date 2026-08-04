@@ -1,11 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `ereader_cover`. ra8_epub pulls in the vendored miniz
 # (ZIP) + tinyxml2 (XML) via the ra8_epub special-case in ra8_add_app.cmake;
 # ra8_reflow supplies the stb_truetype glyph glue ra8_epub links against, and
 # ra8_gfx backs ra8_reflow's render path.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

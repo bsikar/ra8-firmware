@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epub_fs.h
  * @brief `ra8_fs` -> `ra8_epub` bridge: open a `.epub` straight off a filesystem.
@@ -19,9 +23,6 @@
  * Keeping the bridge in its own translation unit (and behind
  * `__has_include("ra8_fs.h")`) means the pure `ra8_epub` core stays free of any
  * `ra8_fs` dependency for hosts/apps that only use the in-memory media path.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

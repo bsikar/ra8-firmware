@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file gpio.c
  * @brief High-level GPIO driver on top of PORT + PFS
@@ -16,9 +20,6 @@
  * register, and the per-port PCNTR1 only exposes the direction +
  * output-latch bits. For the direction/level setup to be consistent
  * with any later peripheral routing we do all of it through PFS.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

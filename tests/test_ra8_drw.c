@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_drw.c
  * @brief Unit tests for ra8_drw.c (2D Drawing Engine driver)
@@ -8,9 +12,6 @@
  * and HWREVISION readback tests. The texture / CLUT, fill rect, textured
  * rect blit, line, triangle, display-list trigger, performance-counter,
  * and MC/DC vector tests live in test_ra8_drw_render.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_drw.h"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # media_dl end-to-end integration harness. For EVERY export format it runs the
 # full pipeline the reader depends on -- package a folder of pages into that

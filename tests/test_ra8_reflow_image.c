@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reflow_image.c
  * @brief Host unit tests + MC/DC for libs/ra8_reflow/src/ra8_reflow_image.c (#106).
@@ -13,9 +17,6 @@
  *  - MC/DC for the new compound decisions: the public argument-precondition
  *    (3-condition OR, driven through the real API) plus mirror helpers for the
  *    two TU-private decisions (fit-box branch, decode-failure classify).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reflow_svg_scan_mcdc.c
  * @brief MC/DC tests for the SVG scanner primitives in libs/ra8_reflow.
@@ -12,9 +16,6 @@
  * keyword compare, and the leading-number classifier. Every test drives the
  * real public SVG API with crafted byte strings; the shared framebuffer
  * fixture lives in tests/support/reflow_svg_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

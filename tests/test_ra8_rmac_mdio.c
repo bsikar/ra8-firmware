@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_rmac_mdio.c
  * @brief Unit tests for the ra8_rmac PHY management side: MDIO C22/C45
@@ -9,9 +13,6 @@
  * station (including the wait-loop timeout legs and the MC/DC vectors
  * threaded through the PHY helpers); the sibling test_ra8_rmac.c owns
  * the MAC-core public-API contract tests.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

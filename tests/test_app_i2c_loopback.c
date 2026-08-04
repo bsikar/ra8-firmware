@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_i2c_loopback.c
  * @brief Integration test: RIIC (ra8_i2c) init + scan path mirrors i2c_loopback main
@@ -10,8 +14,6 @@
  * tests/mocks/ra8_fake_mmap.c shim; the board-side pin/pull-up bring-up is
  * covered by the board library's own tests.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

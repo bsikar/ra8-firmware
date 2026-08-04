@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_fmt_internal.h
  * @brief Bounded, heap-free printf-subset formatter for the esp-hosted port.
@@ -33,8 +37,6 @@
  * unhandled specifier shows up in the log as itself rather than silently
  * consuming an argument and desynchronising every later one.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

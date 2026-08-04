@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_flash.c
  * @brief Code-MRAM + Extra-MRAM + Option-Setting driver implementation -- DANGEROUS
@@ -29,9 +33,6 @@
  * driver does not own any global state beyond the registered IRQ
  * callback and a one-shot init flag; the controller itself holds
  * every meaningful state bit.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_flash.h"

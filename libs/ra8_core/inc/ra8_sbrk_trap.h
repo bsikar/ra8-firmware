@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sbrk_trap.h
  * @brief The newlib heap syscall, replaced by a halting trap
@@ -18,9 +22,6 @@
  * at all. This header exists so the definition and the host death-test
  * that drives it agree on one prototype instead of restating it: they had
  * a copy each, and nothing checked them against each other.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_comic.h
  * @brief Unified demand-paged reader for comic-book archives -- CBZ (ZIP) and CBR (RAR).
@@ -55,9 +59,6 @@
  * @see ra8_reflow_image.h       `ra8_img_decode_blit`, the page rasteriser.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

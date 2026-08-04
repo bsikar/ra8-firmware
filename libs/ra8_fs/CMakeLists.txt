@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_fs -- minimal FAT12/FAT16/FAT32 filesystem adapter on top of
 # block-device backends (ra8_sdhi, ra8_usb_pmsc).
@@ -8,8 +10,6 @@
 # ra8_fs, wire up an OBJECT or INTERFACE library here following the
 # pattern in libs/ra8_tls/CMakeLists.txt.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

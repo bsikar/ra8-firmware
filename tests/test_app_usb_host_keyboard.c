@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_usb_host_keyboard.c
  * @brief Integration test: USB host HID boot-keyboard bring-up
@@ -17,8 +21,6 @@
  * init, ra8_usb_hhid init/attach/configure/get_input_report) under
  * mocked MMIO.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

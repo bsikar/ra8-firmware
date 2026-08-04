@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_tz_secure_boot.h
  * @brief FSP-style TrustZone secure-boot for the Cortex-M85 (CPU0)
@@ -40,9 +44,6 @@
  *
  * @see @ref md_docs_2formats_2NSR1 -- the full NSR1 wire-format specification
  *      (rationale, algorithms, worked example, failure modes).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

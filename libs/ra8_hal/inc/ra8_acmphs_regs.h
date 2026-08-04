@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_acmphs_regs.h
  * @brief High-Speed Analog Comparator (ACMPHS) register layout for the RA8D2
@@ -22,9 +26,6 @@
  *
  * Register offsets tracked against HUM Ch 56 "High-Speed Analog
  * Comparator (ACMPHS)" p 3508.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

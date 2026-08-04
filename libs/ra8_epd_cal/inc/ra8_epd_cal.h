@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epd_cal.h
  * @brief Per-device e-paper panel calibration (VCOM) -- record, storage seam,
@@ -136,8 +140,6 @@
  * ``ra8_epaper_get_vcom`` / ``ra8_epaper_set_vcom`` and an extra-MRAM
  * store; host tests bind mocks and drive every branch.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_pal.h
  * @brief USB device-mode Platform Abstraction Layer
@@ -53,9 +57,6 @@
  * FIFOs; in host tests it is a plain RAM buffer. The stack-facing
  * contract is identical in both paths, so CherryUSB's
  * ``usb_dc_ra8d2_*.c`` port talks to the same API.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epaper_cov.c
  * @brief White-box line-coverage tests for the IT8951 e-paper SPI driver
@@ -37,9 +41,6 @@
  * @par Tag
  * [Ring 3 / HAL]
  * {World: NS}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

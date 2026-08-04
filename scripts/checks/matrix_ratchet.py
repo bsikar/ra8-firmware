@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """matrix_ratchet.py -- ra8_emulator example-matrix ratchet (compare vs baseline).
 
 `scripts/emu/matrix.sh` boots EVERY example under `examples/ek_ra8d2/` on the

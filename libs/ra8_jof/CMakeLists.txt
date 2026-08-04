@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_jof -- JOF band-tile atlas: format reader + import-time
 # transcode producer (#231; the normalized image format shared with the
@@ -24,8 +26,6 @@
 # apps list `ra8_jof` in their ra8_add_app(... LIBS ...) (see the
 # special-case block in cmake/ra8_add_app.cmake for the miniz/ra8_io wiring).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

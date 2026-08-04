@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_lpm.c
  * @brief Low Power Mode (LPM) HAL driver implementation
@@ -34,9 +38,6 @@
  * unchanged on every build: the fake mmap backs the Cortex-M System
  * Control Space window (core region at 0xE0000000), so host tests
  * stage and assert the real toggle sequence.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_lpm.h"

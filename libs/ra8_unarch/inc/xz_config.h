@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file xz_config.h
  * @brief First-party porting header for the vendored xz-embedded decoder.
@@ -44,9 +48,6 @@
  * @see docs/SOUP/xz_embedded.md Qualification record for the vendored tree.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

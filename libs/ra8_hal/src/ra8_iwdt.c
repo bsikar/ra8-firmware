@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_iwdt.c
  * @brief Independent Watchdog Timer driver implementation
@@ -20,9 +24,6 @@
  *  - ``ra8_iwdt_get_status``       <-> ``R_IWDT_StatusGet``
  *  - ``ra8_iwdt_clear_status``     <-> ``R_IWDT_StatusClear``
  *  - ``ra8_iwdt_get_counter``      <-> ``R_IWDT_CounterGet``
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_iwdt.h"

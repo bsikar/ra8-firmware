@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_tz.c
  * @brief TrustZone S/NS seam implementation (see emu_tz.h)
@@ -7,8 +11,6 @@
  * SAU_TYPE seed + BLXNS scan installer, and the cmse_check_address_range
  * BX-LR patch -- moved verbatim out of the ra8_emulator main translation unit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

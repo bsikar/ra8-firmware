@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bkup_security.c
  * @brief Battery Backup Function (VBATT) driver -- TrustZone partitioning
@@ -27,9 +31,6 @@
  * ``RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)`` window below is what
  * makes those writes land; do not separate it from the stores it
  * guards. See the ``ra8_bkup.c`` file comment for the bench evidence.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

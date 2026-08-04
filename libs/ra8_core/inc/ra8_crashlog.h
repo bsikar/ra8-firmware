@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_crashlog.h
  * @brief Cross-reset crash-log: persist the last fault + a reset-loop guard.
@@ -59,9 +63,6 @@
  * VBATT-backed / MRAM persistence across power loss is out of scope here
  * (VBATT `ra8_bkup` is silicon-blocked -- see issue #131) and is the named
  * follow-up for surviving a cold power cycle.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_ipc.c
  * @brief Inter-Processor Communication (IPC) peripheral-block model for ra8_emulator
@@ -42,8 +46,6 @@
  *
  * The IPC has no time-based behaviour, so the block carries no @c tick.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file key_import.c
  * @brief Secure-side sealed-key import implementation
@@ -28,9 +32,6 @@
  * ``ra8_key_vault_load_mac_key`` -- it lives in vault storage that
  * is separate from the NS-importable slot array, so nothing the
  * Non-Secure world can reach ever keys the MAC.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

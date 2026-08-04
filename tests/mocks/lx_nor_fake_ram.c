@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file lx_nor_fake_ram.c
  * @brief RAM-backed LevelX NOR driver for host tests -- implementation.
@@ -15,9 +19,6 @@
  * ULONG width note: on the LP64 test host `ULONG` is 8 bytes, so the erased
  * pattern is written as `(ULONG)0xFFFFFFFF` (== LevelX's `LX_ALL_ONES`) rather
  * than all-ones, matching how LevelX compares words against `0xFFFFFFFF`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "lx_nor_fake_ram.h"

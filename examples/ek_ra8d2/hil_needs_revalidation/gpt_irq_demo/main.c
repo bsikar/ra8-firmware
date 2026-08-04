@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/main.c
  * @brief GPT0 overflow interrupt -> NVIC -> ISR demo for EK-RA8D2
@@ -22,8 +26,6 @@
  *   3. ``ra8_gpt_init`` (saw PWM) + ``ra8_gpt_start_free_run``.
  *   4. Loop: ``ra8_delay_ms`` -- all work happens in the ISR.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_spi_bus.h
  * @brief ra8_io SPI-bus facade -- one controller-transfer vtable over the
@@ -46,8 +50,6 @@
  * (void)ra8_io_spi_bus_xfer8(&bus, 0xA5U, &rx);
  * @endcode
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

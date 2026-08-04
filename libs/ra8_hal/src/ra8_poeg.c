@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_poeg.c
  * @brief Port Output Enable for GPT (POEG) driver implementation
@@ -6,9 +10,6 @@
  * new driver. See ``libs/ra8_hal/inc/ra8_poeg.h`` for the
  * public surface and HUM Ch 21 "Port Output Enable for GPT
  * (POEG)" (p 871..877) for register semantics.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_poeg.h"

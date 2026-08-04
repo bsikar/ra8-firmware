@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ospi_regs.h
  * @brief xSPI / Octo-SPI controller register layout for the Renesas RA8D2
@@ -69,9 +73,6 @@
  * setting ``CDCTL0.TRREQ`` to kick the transfer and polling
  * ``INTS.CMDCMP`` for completion. ``INTC.CMDCMPC`` clears the
  * pending status.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

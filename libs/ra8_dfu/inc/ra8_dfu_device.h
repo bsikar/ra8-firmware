@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dfu_device.h
  * @brief USBX DFU device class wired to real MRAM, bound to either controller.
@@ -19,9 +23,6 @@
  * ::ra8_dfu_device_worker_step (the code-MRAM program loop must not run in an
  * ISR or from MRAM); `dfu_write` only stages a block and the host's
  * DFU_GETSTATUS sees dfuDNBUSY until the worker catches up.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

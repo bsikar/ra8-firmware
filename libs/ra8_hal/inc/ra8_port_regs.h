@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_port_regs.h
  * @brief IOPORT (GPIO) register layout for the Renesas RA8D2
@@ -39,9 +43,6 @@
  * Always prefer POSR / PORR over PODR when the intent is "set this
  * one bit" -- otherwise two ISRs editing the same port race on the
  * read-modify-write.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

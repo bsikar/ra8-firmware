@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_display_pal_eink.c
  * @brief E-ink (IT8951) backend for the display PAL, wired to ra8_epaper.
@@ -28,9 +32,6 @@
  * unbounded allocation). On-panel HIL validation needs an IT8951 panel on
  * the bench; the vtable + conversion are host-verified against the
  * fake-backed ``ra8_epaper`` (see tests/test_ra8_display_pal.c).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_display_pal_eink.h"

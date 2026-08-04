@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_css.c
  * @brief Host unit tests + MC/DC for the minimal content-CSS cascade (#111).
@@ -9,9 +13,6 @@
  * selector matching, and the full cascade (specificity, source order,
  * inheritance, inline override). MC/DC vectors cover the compound decisions in
  * rule matching and the cascade entry guard.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

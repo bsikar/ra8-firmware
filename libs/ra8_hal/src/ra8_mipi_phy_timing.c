@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mipi_phy_timing.c
  * @brief MIPI D-PHY driver -- HUM timing tables and table-driven setup.
@@ -25,8 +29,6 @@
  * ``ra8_mipi_phy.c`` (``internal_mipi_phy_write_timing``) and is reached
  * through ``ra8_mipi_phy_internal.h``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

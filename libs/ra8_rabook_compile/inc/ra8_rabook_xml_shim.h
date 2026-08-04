@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rabook_xml_shim.h
  * @brief C-callable interface to the XHTML -> ra8_rabook DOM parser (#149).
@@ -17,9 +21,6 @@
  * @since Version 0.1.0
  *
  * [Ring 4 / EPUB Compiler] {World: NS}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

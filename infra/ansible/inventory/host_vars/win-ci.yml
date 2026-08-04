@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # win-ci -- the Windows/WSL2 build host.
 #

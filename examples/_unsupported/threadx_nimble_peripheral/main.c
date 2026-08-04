@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/_unsupported/threadx_nimble_peripheral/main.c
  * @brief NimBLE-based Battery Service peripheral on top of ThreadX (RA8D2)
@@ -39,8 +43,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-04-29
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

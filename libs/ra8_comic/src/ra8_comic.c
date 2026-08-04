@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_comic.c
  * @brief Facade for the comic-archive reader: magic detect, page index, dispatch.
@@ -18,9 +22,6 @@
  * MC/DC obligation of its own.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #include "ra8_comic.h"
 

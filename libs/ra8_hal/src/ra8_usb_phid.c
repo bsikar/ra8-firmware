@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_phid.c
  * @brief Native USB device-side HID class layer implementation
@@ -24,9 +28,6 @@
  * initiating them: the host enumerates, walks GET_DESCRIPTOR(HID) and
  * GET_DESCRIPTOR(Report) over EP0, may issue SET_IDLE / SET_PROTOCOL,
  * and then keeps polling the interrupt-IN pipe for input reports.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_phid.h"

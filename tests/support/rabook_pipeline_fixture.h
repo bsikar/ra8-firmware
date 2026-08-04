@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file rabook_pipeline_fixture.h
  * @brief Shared test fixture for the EPUB -> RABOOK1 pipeline suites.
@@ -10,9 +14,6 @@
  * image, nav TOC variants), and the shared no-op log sink. Every function
  * is `static inline`, so each including test binary gets an independent
  * copy and unused builders compile away; the static pools are per-binary.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

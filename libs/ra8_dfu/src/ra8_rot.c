@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rot.c
  * @brief Root-of-trust signed-image verifier -- SHA-256 + ECDSA-P256 gate.
@@ -22,9 +26,6 @@
  * -- so an app that links ``ra8_dfu`` but not ``ra8_psa_crypto`` / the RSIP HAL
  * does not break, and the launch boundaries skip verification (existing
  * unsigned apps are unchanged). See ``ra8_rot.h`` for the enable contract.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_rot.h"

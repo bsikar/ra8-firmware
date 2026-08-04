@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/main.c
  * @brief Drives each ra8_mem (#147) memory-hierarchy layer in isolation (#263).
@@ -33,8 +37,6 @@
  * layer prints a FAIL banner and traps on a BKPT before the PASS line, so the
  * EIL / HIL gate is exact.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

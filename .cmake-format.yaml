@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # cmake-format / cmake-lint configuration -- cmakelang 0.6.13, the pin the
 # lint-cmake gate, the devcontainer image and the CI runners all install.
 #

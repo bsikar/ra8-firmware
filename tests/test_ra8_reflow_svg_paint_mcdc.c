@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reflow_svg_paint_mcdc.c
  * @brief MC/DC tests for the SVG gradient / document-structure arms.
@@ -13,9 +17,6 @@
  * image href reader, and the unterminated-document guards. Every test
  * drives the real public SVG API with crafted byte strings; the shared
  * framebuffer fixture lives in tests/support/reflow_svg_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

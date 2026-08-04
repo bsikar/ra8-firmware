@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rsip_regs_fields.h
  * @brief RSIP-E50D register field/value enums and the reg32 accessor
@@ -19,8 +23,6 @@
  * primitives that touch ``REG_xxxxH`` in
  * ``crypto_procedures_protected/.../ra8_rsip_e50d``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

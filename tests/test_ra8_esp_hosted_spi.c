@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_esp_hosted_spi.c
  * @brief Unit tests for the esp-hosted full-duplex SPI transport slots
@@ -27,9 +31,6 @@
  *   - the open/close state machine and its argument rejections;
  *   - ``_h_bus_init`` before an open, and ``_h_bus_deinit`` with a foreign
  *     handle.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

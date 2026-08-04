@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/emu/smoke.sh -- boot each display example on the board emulator
 # and assert it runs to its main loop without faulting.
@@ -15,8 +17,6 @@
 #   scripts/emu/smoke.sh                 # default display apps
 #   scripts/emu/smoke.sh blink lcd_draw_x  # explicit app list
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 set -euo pipefail
 

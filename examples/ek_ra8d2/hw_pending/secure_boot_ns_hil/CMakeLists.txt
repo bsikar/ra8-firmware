@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake for `secure_boot_ns_hil` -- the TrustZone BLXNS root-of-trust
 # proof (#172). A TWO-PROJECT TrustZone build:
@@ -14,7 +16,6 @@
 # two flashable artifacts -- a genuine one (NS runs) and a one-byte-tampered one
 # (NS denied). Signing degrades gracefully when the RoT key is absent (see
 # sign_and_merge.py). Copyright (c) 2026 Brighton Sikarskie.
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

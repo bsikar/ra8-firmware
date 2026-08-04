@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ssie.h
  * @brief Serial Sound Interface Enhanced (SSIE / I2S audio) driver
@@ -79,9 +83,6 @@
  *   Idle -> Closed [label="deinit()"];
  * }
  * @enddot
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

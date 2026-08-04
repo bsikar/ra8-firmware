@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_infrastructure.c
  * @brief Application-layer bring-up (called from main() after SystemInit)
@@ -15,8 +19,6 @@
  * Anything that depends on a peripheral clock lives in a driver
  * `_init()` entry point, not here.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

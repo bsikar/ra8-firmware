@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_io_fsfmt.c
  * @brief Unit tests for the ra8_io filesystem-format registry (issue #159).
@@ -7,9 +11,6 @@
  * the bridge), registers a foreign stub format and probes a volume bearing its
  * magic byte, checks capability flags + registry validation, and confirms a
  * no-signature volume yields not_found.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

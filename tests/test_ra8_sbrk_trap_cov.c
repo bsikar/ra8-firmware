@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sbrk_trap_cov.c
  * @brief Line-coverage + death test for the newlib `_sbrk()` trap
@@ -25,9 +29,6 @@
  * exact policy call, or, inside a forked child, halts via `abort()` so a classic
  * death test proves the trap never returns to its caller. No hardware line is
  * bypassed by an exclusion marker.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <setjmp.h>

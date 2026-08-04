@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_composite.c
  * @brief Native USB device-side composite-class layer implementation
@@ -38,9 +42,6 @@
  * "Standard Device Requests"; Interface Association Descriptor ECN
  * (USB-IF, 2003-07-23) for the IAD type identifier (0x0B) used in
  * composite configuration descriptors.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_composite.h"

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_rmac.c
  * @brief Unit tests for ra8_rmac.c (per-port Ethernet MAC driver, full coverage)
@@ -5,9 +9,6 @@
  * @details MAC-core public-API contract tests (init, filters, link
  * modes, pause/PFC, stats, dispatch, lifecycle). The MDIO/PHY tests and
  * their MC/DC vector suites live in the sibling test_ra8_rmac_mdio.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

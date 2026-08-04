@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file cache_bench.c
  * @brief #147 eviction-policy benchmark harness: replay + sweep + report.
@@ -14,8 +18,6 @@
  * frame / chunk SIZE in bytes through the real ::ra8_vmem stack (see
  * sweep_block.h) rather than the capacity in frames.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

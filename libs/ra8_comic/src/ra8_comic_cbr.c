@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_comic_cbr.c
  * @brief CBR backend: walk a RAR archive (ra8_rar.h) and index its page images.
@@ -21,9 +25,6 @@
  * through the comic's caller-owned RAR5 scratch pool.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #include <stddef.h>
 #include <stdint.h>

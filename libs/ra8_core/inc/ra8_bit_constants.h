@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bit_constants.h
  * @brief Named Bit Positions and Masks for Register Manipulation
@@ -24,9 +28,6 @@
  *
  * The second version is searchable (`grep k_ra8_bit_7` tells you every
  * place bit 7 is touched), self-documenting, and compile-time type-safe.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

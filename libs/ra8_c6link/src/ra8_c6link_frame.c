@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_c6link_frame.c
  * @brief The twelve-byte esp-hosted payload header: build it, believe it or not.
@@ -33,8 +37,6 @@
  * variable for cosmetic parity is how a working link acquires an unexplained
  * failure, so it stays as it was measured.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

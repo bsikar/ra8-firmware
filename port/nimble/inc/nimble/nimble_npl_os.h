@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/nimble/inc/nimble/nimble_npl_os.h
  * @brief ThreadX-backed OS types for the NimBLE Native Porting Layer
@@ -34,9 +38,6 @@
  *
  * Tick rate matches the project ``tx_user.h``
  * (``TX_TIMER_TICKS_PER_SECOND = 1000``), so 1 NPL tick == 1 ms.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_ota -- Phase-5 OTA firmware-update orchestration.
 #
@@ -17,8 +19,6 @@
 # side firmware example currently links it directly, so this file
 # documents scope and lets a future example wire it up via target_*.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

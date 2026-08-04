@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_cgc_usb_cov.c
  * @brief White-box line-coverage tests for the PLL2 + USB clock driver
@@ -41,8 +45,6 @@
  * requires the first SRDY wait to succeed first, which needs a stateful
  * register model that toggles SRDY -- out of scope for this poll-helper mock.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

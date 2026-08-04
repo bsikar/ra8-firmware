@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_gfx_internal.h
  * @brief Module-private declarations shared across the ra8_gfx software rasteriser TUs.
@@ -12,8 +16,6 @@
  * Read-only colour/format enum constants are intentionally NOT declared here:
  * each TU keeps its own private copy of those compile-time literals.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

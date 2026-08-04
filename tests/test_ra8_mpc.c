@@ -1,9 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_mpc.c
  * @brief Unit tests for the pin-mux facade (libs/ra8_hal/src/ra8_mpc.c).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

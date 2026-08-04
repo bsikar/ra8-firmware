@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file cover_fixture.h
  * @brief Baked 120x90 RGB PNG test cover for the ereader_image gate.
@@ -6,9 +10,6 @@
  * once and committed so the decode+scale+blit pipeline has a deterministic
  * input; the rendered framebuffer hash in hil.conf pins the result. Pure
  * 7-bit ASCII (a C array of the PNG bytes), like the bundled font blobs.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/cpu1_main.c
  * @brief CPU1 (Cortex-M33) ping-pong responder
@@ -11,8 +15,6 @@
  *          pong_seq. No IPC peripheral is used -- see
  *          ``shared_pingpong.h`` for the rationale.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

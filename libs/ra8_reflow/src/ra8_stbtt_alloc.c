@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_stbtt_alloc.c
  * @brief Fixed bump arena with refcount auto-reset for stb_truetype.
@@ -10,8 +14,6 @@
  * within a single rasterisation. The arena is provisioned at 3x that so a
  * heavier face or a larger glyph still fits with margin.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

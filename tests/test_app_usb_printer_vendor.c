@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_usb_printer_vendor.c
  * @brief Host unit test for the usb_printer_vendor example chapter-9 router (#265).
@@ -20,8 +24,6 @@
  * the firmware advertises stay in lock-step with the enumeration ra8_emulator
  * validates.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

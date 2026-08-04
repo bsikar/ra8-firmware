@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_config_transports.h
  * @brief esp-hosted port header: constants for the transports not in use.
@@ -29,8 +33,6 @@
  * and the same queue depth. They are not aspirational defaults copied from
  * an Espressif development kit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

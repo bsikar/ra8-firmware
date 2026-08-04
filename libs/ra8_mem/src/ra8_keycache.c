@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_keycache.c
  * @brief The one reusable hash + pin + evict cache engine -- impl (#147, #345).
@@ -16,9 +20,6 @@
  * stored out-of-line in a caller-supplied array and compared byte-wise; the hash
  * is injectable (NULL selects FNV-1a); an optional per-cell user descriptor lets
  * a typed facade recover its dimensions.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_keycache.h"

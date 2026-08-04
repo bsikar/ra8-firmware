@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_wdt.h
  * @brief Software Watchdog Timer (WDT) driver header
@@ -93,9 +97,6 @@
  *   RefreshErr -> Running [label="WDTRCR.RSTIRQS == 0 && NMI\nhandled"];
  * }
  * @enddot
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

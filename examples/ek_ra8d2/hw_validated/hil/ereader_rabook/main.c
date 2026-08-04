@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_rabook/main.c
  * @brief Headless HIL gate: load a compiled `.rabook` and render it (small to large).
@@ -28,8 +32,6 @@
  *
  *   `ereader-rabook-hil: chapters=<N> ch0 p=<P> crc=<8hex> ch1 p=<P> crc=<8hex> img <W>x<H> gray8 ok`
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

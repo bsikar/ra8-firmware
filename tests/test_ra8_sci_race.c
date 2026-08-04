@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sci_race.c
  * @brief Concurrency-race regression tests for the SCI_B driver.
@@ -14,9 +18,6 @@
  * teardown must clear CCR0 plus every per-channel descriptor field so a
  * late ISR dispatch is a harmless no-op. Register state is observed
  * through the fake MMIO window provided by ``ra8_fake_mmap``.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

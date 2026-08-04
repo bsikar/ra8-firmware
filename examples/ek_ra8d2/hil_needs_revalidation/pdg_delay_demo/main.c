@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/pdg_delay_demo/main.c
  * @brief PWM Delay Generation (PDG) bring-up + delay-program demo (EK-RA8D2)
@@ -33,8 +37,6 @@
  * as plain R/W, which is why a delay read-back appears to work there but not on
  * silicon.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ecc_monitor_demo/main.c
  * @brief SRAM ECC bring-up + error-status monitor demo (EK-RA8D2)
@@ -37,8 +41,6 @@
  * error-injection register). The detection half therefore lives in
  * ``hw_pending/``. See ``README.md`` for the bench plan.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

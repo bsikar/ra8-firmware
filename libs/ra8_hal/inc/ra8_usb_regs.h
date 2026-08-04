@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_regs.h
  * @brief USB Full-Speed + High-Speed controller layout for the Renesas RA8D2
@@ -61,9 +65,6 @@
  * | 0x06C  | PIPEMAXP  | 16    | Selected pipe Max Packet             |
  * | 0x06E  | PIPEPERI  | 16    | Selected pipe Period                 |
  * | 0x070  | PIPECTR[9]| 16x9  | PIPE1..PIPE9 Control                 |
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

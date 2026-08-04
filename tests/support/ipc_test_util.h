@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ipc_test_util.h
  * @brief Shared fixture for the test_ra8_ipc* suite: test constants,
@@ -9,9 +13,6 @@
  * state; the tests/CMakeLists.txt auto-glob stays free of non-test .c
  * files. Split out of test_ra8_ipc.c when the suite was divided into
  * core / irq / sem / ring binaries.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_viewer_ppm.c
  * @brief RGB565 <-> 8-bit RGB conversion and the shared binary-PPM (P6) writer.
@@ -13,8 +17,6 @@
  * (`(v << 3) | (v >> 2)`), which maps 0x1F to 0xFF exactly -- a plain shift would
  * cap white at 0xF8 and tint every dump.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

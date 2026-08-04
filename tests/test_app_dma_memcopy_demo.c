@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_dma_memcopy_demo.c
  * @brief Integration test: DMAC0 1 KB SRAM->SRAM copy bring-up
@@ -14,8 +18,6 @@
  * Each test exercises one branch of the demo's compound decisions
  * for MC/DC coverage.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

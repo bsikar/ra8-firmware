@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_wdt_supervisor.c
  * @brief ThreadX-aware watchdog supervisor implementation
@@ -9,9 +13,6 @@
  * Static-allocation registry with a TX_MUTEX guard and a single TX_THREAD
  * that wakes every ``refresh_period_ms``. See ``ra8_wdt_supervisor.h`` for
  * the design rationale.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_wdt_supervisor.h"

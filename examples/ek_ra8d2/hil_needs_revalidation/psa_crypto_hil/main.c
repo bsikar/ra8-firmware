@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/psa_crypto_hil/main.c
  * @brief On-silicon NIST/RFC known-answer test for the REAL crypto backend
@@ -18,8 +22,6 @@
  * hardware is non-functional; see libs/ra8_hal/src/ra8_rsip.c). Reports
  * "psa crypto: KAT OK" / "psa crypto: KAT FAIL" over SCI8 (115200 8N1).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

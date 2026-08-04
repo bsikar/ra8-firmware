@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_sdhi.c
  * @brief Native 4-bit SDHI host-controller model for ra8_emulator (SDHI0).
@@ -30,8 +34,6 @@
  * page is claimed (SDHI registers are SDHI-only, so no clock-setup register that
  * ra8_cgc_init polls is intercepted).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/threadx_ipc_demo/main.c
  * @brief ThreadX inter-thread queue (TX_QUEUE) demo on the EK-RA8D2
@@ -57,8 +61,6 @@
  * | ``producer``   | 5        | 1000ms | tx_queue_send("ping") + log "-> ping" |
  * | ``consumer``   | 4        | block  | tx_queue_receive() + log "<- pong"    |
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Generate the baked multi-page CBZ fixture for the viewable ereader_comic demo.
 
 Emits a pure 7-bit-ASCII C header (comic_pages_fixture.h) holding one CBZ

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/inc/usb_selftest_ospi_steps.h
  * @brief Shared constants + step prototypes for the OSPI USB self-loop app
@@ -24,8 +28,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-06-13
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

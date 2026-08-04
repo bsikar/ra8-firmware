@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_exception.c
  * @brief Cortex-M85 CPU exception diagnostic implementation
@@ -28,9 +32,6 @@
  * The trampoline picks the stack pointer the fault was taken on
  * (MSP if EXC_RETURN[2]=0, PSP otherwise) and tail-calls
  * `ra8_exception_report()` with a pointer to the stacked frame.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_exception.h"

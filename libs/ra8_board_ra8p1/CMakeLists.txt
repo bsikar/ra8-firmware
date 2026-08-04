@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # ra8_board_ra8p1 -- board-support layer for the Renesas RA8P1 (R7KA8P1KFLCAC)
 #
@@ -13,8 +15,6 @@
 # board layer is ever compiled into a given app, so the shared symbol names
 # never collide. See issue #226.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

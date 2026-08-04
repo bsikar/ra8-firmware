@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_panel.h
  * @brief Active display-panel descriptor for the EK-RA8D2 (ER-TFT070-6)
@@ -23,8 +27,6 @@
  * Self-contained (no MCU / FSP includes) so host-side previews include it
  * unchanged.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

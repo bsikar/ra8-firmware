@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epub_miniz_alloc.h
  * @brief Static-arena allocator for miniz on the zero-heap firmware target.
@@ -32,9 +36,6 @@
  * @note On the host unit-test build (``RA8_OFF_TARGET``) `ra8_epub` leaves
  *       miniz on its default `malloc`; these callbacks are wired only into the
  *       firmware build. They are still compiled and unit-tested everywhere.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

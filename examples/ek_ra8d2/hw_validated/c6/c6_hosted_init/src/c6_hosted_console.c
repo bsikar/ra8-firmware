@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_console.c
  * @brief Bounded console formatters for the esp-hosted port bring-up app.
@@ -17,8 +21,6 @@
  * EK-RA8D2 pin number: both decode whatever the port's pin table and the
  * ``H_GPIO_*`` macro pairs resolve to at run time.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

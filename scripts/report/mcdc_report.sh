@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/report/mcdc_report.sh -- DO-178C Level B MC/DC report.
 #
@@ -33,8 +35,6 @@
 #   RA8_MCDC_REPORT_DIR      -- report dir (default: build/mcdc-report)
 #   RA8_MCDC_THRESHOLD       -- minimum percent (default: 100)
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

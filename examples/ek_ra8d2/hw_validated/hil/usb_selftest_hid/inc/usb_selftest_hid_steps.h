@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/inc/usb_selftest_hid_steps.h
  * @brief Shared contract for the USB HID self-loop console + host clusters
@@ -22,8 +26,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-06-13
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

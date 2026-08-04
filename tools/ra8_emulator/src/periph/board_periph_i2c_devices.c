@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_i2c_devices.c
  * @brief LSM6DSO IMU + MAX17048 fuel-gauge device models on the I2C bus
@@ -8,8 +12,6 @@
  * battery state) -- moved verbatim out of board_periph_i2c.c. They register
  * themselves on the modelled bus through the module-internal registry.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

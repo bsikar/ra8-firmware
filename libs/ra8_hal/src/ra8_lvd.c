@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_lvd.c
  * @brief Programmable Voltage Detection (PVD / LVD) driver implementation
@@ -16,9 +20,6 @@
  * PRCR.PRC3 = 1; the driver does NOT take the lock itself (callers
  * must wrap each call), but the host-side fake mmap has no lock
  * so unit tests still see writes land.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_lvd.h"

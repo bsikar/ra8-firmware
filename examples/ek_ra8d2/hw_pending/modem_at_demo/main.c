@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/modem_at_demo/main.c
  * @brief Cellular AT-modem bring-up + query demo over the MikroBUS UART (SCI7)
@@ -41,8 +45,6 @@
  * expected outcome, overall verdict) are host-tested with MC/DC in
  * ``tests/test_app_modem_at_demo.c``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

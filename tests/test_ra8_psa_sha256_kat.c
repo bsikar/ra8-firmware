@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_psa_sha256_kat.c
  * @brief External known-answer test (KAT) for the PSA SHA-256 facade.
@@ -17,9 +21,6 @@
  *   "abc"                                -> ba7816bf...f20015ad
  *   448-bit two-block message            -> 248d6a61...19db06c1
  *   1,000,000 x 'a'                       -> cdc76e5c...c7112cd0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

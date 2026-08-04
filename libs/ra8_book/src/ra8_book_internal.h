@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_book_internal.h
  * @brief ra8_book DOM-walk helpers shared across the library's translation units.
@@ -15,8 +19,6 @@
  * in-firmware definition. Not part of the public ra8_book API; consumers use
  * ra8_book.h / ra8_book_paged.h / ra8_book_chunked.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since Version 0.1.0
  */

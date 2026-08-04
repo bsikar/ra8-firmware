@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # ad2_tools role defaults -- provisions the Digilent Analog Discovery 2 logic
 # analyzer attached to the HIL bench Pi.

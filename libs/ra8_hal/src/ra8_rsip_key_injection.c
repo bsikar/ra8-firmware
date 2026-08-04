@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rsip_key_injection.c
  * @brief RSIP key-injection HAL implementation
@@ -16,9 +20,6 @@
  * meaningful and a real backend will replace this entirely.
  *
  * @warning Stub backend; NOT cryptographically secure.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_rsip_key_injection.h"

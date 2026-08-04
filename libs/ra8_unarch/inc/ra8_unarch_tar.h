@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_unarch_tar.h
  * @brief Clean-room, read-only streaming tar walker (POSIX ustar + pax + GNU).
@@ -48,9 +52,6 @@
  * @see ra8_unarch_io.h      The seek+read seam the walker consumes.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

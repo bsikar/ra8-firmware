@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file main.c
  * @brief CPU0 (M85) Secure world bootloader/fallback for the e-reader.
@@ -14,8 +18,6 @@
  * main() runs as a fallback, increments a diagnostic counter, and parks
  * the CPU safely.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

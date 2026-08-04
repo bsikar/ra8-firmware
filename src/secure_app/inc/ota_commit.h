@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ota_commit.h
  * @brief Secure-side OTA bank commit + flash-bank-config write
@@ -29,9 +33,6 @@
  * against an in-memory shadow so the unit tests can verify the masking and
  * re-entry guards without touching real flash. The real ``ra8_flash_*`` call
  * sites are marked ``TODO`` at each fail-closed branch in the implementation.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

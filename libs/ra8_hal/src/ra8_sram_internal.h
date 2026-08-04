@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sram_internal.h
  * @brief src/-local shared surface for the SRAM HAL driver split.
@@ -20,9 +24,6 @@
  * ``ra8_sram.c`` only so ``ra8_sram_deinit`` can clear it on teardown.
  * These ``extern`` declarations give that one cross-TU reference a
  * single, documented home instead of a stray forward declaration.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/inc/idf_compat/esp_check.h
  * @brief ESP-IDF-compatible check surface: the include, and nothing it does not need.
@@ -36,8 +40,6 @@
  * For an ``ESP_GOTO_*``, restructure the call site instead: Rule 1 is not
  * negotiable for a convenience macro.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_iwdt.h
  * @brief Independent Watchdog driver header
@@ -19,9 +23,6 @@
  *  - ``ra8_iwdt_get_status``       <-> FSP ``R_IWDT_StatusGet``
  *  - ``ra8_iwdt_clear_status``     <-> FSP ``R_IWDT_StatusClear``
  *  - ``ra8_iwdt_get_counter``      <-> FSP ``R_IWDT_CounterGet``
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

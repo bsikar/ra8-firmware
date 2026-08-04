@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # tests/build_tests.sh -- configure + build the host unit-test suite.
 #
@@ -23,8 +25,6 @@
 #                auto-selected (see pick below); a bare `cc` is often an
 #                older gcc that rejects `typedef enum : uint8_t`.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

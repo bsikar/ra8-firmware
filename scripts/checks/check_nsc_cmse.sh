@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/checks/check_nsc_cmse.sh -- verify every Non-Secure-Callable veneer in
 # libs/ra8_nsc compiles under -mcmse with TrustZone enabled (#54).
@@ -22,8 +24,6 @@
 # OTHER caller -- a developer running it directly, a future gate -- can no
 # longer receive a clean bill of health from a run that compiled nothing.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 set -euo pipefail
 

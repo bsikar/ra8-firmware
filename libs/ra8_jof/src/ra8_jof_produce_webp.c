@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_jof_produce_webp.c
  * @brief Transcode producer: whole-frame WebP arm (#290 normalize-on-import).
@@ -18,8 +22,6 @@
  * allocates nothing on the heap (libwebp scratch is drawn from `webp_work`
  * through the `ra8_webp` bump arena).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain]
  * {World: NS}

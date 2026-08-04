@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_port_utils.h
  * @brief High-level GPIO helpers on top of the PORT + PFS register layer
@@ -21,9 +25,6 @@
  * `ra8_pin_validator_claim()` under the tag `"GPIO"`. If a different
  * driver later tries to claim the same pin, it gets
  * `k_ra8_err_gpio_conflict`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

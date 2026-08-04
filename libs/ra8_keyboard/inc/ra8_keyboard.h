@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_keyboard.h
  * @brief On-screen keyboard widget -- iOS-style layers, shift, hit-test.
@@ -26,9 +30,6 @@
  * The caller owns rendering (draw each key + its glyph) and tap routing; this
  * is the deterministic model underneath, unit-testable and HIL-gateable with
  * synthetic taps.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

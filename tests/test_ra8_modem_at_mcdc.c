@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_modem_at_mcdc.c
  * @brief MC/DC vector tests for ra8_modem_at.c (AT command driver)
@@ -8,9 +12,6 @@
  * stand in for a real UART. This sibling owns the MC/DC vector tests for
  * the compound boolean decisions in ra8_modem_at.c; the public-API contract
  * tests stay in test_ra8_modem_at.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

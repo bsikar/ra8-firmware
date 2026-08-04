@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_lpm_deep_sleep_demo.c
  * @brief Integration test: LPM init + Deep-Sleep entry round-trip
@@ -9,8 +13,6 @@
  * register state can be checked. Each test exercises one branch of
  * the bring-up / wake compound decisions for MC/DC coverage.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_crashlog.c
  * @brief Unit tests for the cross-reset crash-log + reset-loop guard.
@@ -15,9 +19,6 @@
  * proves the genuine `ra8_exception_report` -> persist-hook -> record path,
  * using the same longjmp-based fatal-hook override as test_ra8_exception.c
  * so the `noreturn` reporter can be called without aborting the process.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <setjmp.h>

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/ra8_webp_vendor.cmake -- single source of truth for the WebP decode stack.
 #
@@ -40,8 +42,6 @@
 # Consumers that assemble their own source lists (ra8_add_app, tests) call the
 # granular accessors; a standalone host tool calls ra8_webp_attach() and is done.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # The vendored libwebp decoder (SOUP). Only the decode-only subset is vendored --

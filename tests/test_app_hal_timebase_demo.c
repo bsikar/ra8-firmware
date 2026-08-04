@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_hal_timebase_demo.c
  * @brief Integration test: the hal_timebase_demo example's timebase logic.
@@ -15,8 +19,6 @@
  * the demo's cycles-to-microseconds conversion (its own copy of the helper,
  * exercised across the divisor-floor branch).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the `wifi_hal_join` firmware -- the HAL-way twin of
 # c6_wifi_join, driving the same join+DHCP through the ra8_wifi facade.
@@ -14,8 +16,6 @@
 # sources automatically. With neither set the image still builds -- it prints a
 # FAIL at runtime instead of baking a blank credential.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

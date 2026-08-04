@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/dualcore_background.h
  * @brief Shared-SRAM control block for the M33 autonomous counter demo
@@ -36,8 +40,6 @@
  *   5. M85 polls `done` until it is 1 (M33 finished).
  *   6. M85 reads `counter` and logs the result.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

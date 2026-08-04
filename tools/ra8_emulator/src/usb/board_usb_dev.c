@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_usb_dev.c
  * @brief USBFS register + CFIFO model (see board_usb_internal.h)
@@ -7,8 +11,6 @@
  * CFIFO port/CFIFOCTR staging model and the MMIO window entry points --
  * moved verbatim out of board_usb.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

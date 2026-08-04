@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/cpu1_main.c
  * @brief CPU1 (Cortex-M33 secondary core) autonomous counter image
@@ -29,8 +33,6 @@
  *       logs both on the M33's behalf, which is honest in both the emulator
  *       and on silicon.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

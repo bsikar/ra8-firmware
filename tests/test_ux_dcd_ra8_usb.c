@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ux_dcd_ra8_usb.c
  * @brief MC/DC vector tests for port/usbx/src/ux_dcd_ra8_usb.c
@@ -25,9 +29,6 @@
  *
  * [Ring 4 / USBX_port]
  * {World: NS}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

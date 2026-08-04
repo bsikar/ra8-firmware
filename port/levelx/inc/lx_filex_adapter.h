@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/levelx/inc/lx_filex_adapter.h
  * @brief FileX <-> LevelX adapter so FAT can ride a wear-levelled NOR partition
@@ -56,9 +60,6 @@
  *   raw LevelX-managed window. Call
  *   ``lx_filex_adapter_get_total_sectors()`` to learn the safe total
  *   to pass to ``fx_media_format()``.
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

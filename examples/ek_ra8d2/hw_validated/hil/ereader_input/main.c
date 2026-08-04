@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_input/main.c
  * @brief Headless on-silicon HIL gate for e-reader interaction / hit-test (#118).
@@ -18,8 +22,6 @@
  * Pure logic (no peripheral state), so the banner is identical every boot and
  * matches the host / ra8_emulator run.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

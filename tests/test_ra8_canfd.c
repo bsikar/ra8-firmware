@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_canfd.c
  * @brief Unit tests for ra8_canfd.c (RA8D2 CANFD driver)
@@ -12,9 +16,6 @@
  * Covers init/bitrate/transmit/receive/error-state; the control
  * surface (status, dispatch, power, filters, BRS/ISO, timeout legs,
  * MC/DC vectors) lives in the sibling test_ra8_canfd_ctrl.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

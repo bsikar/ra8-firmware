@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rsip_regs_offsets.h
  * @brief RSIP-E50D register base address, byte offsets, and layout asserts
@@ -18,8 +22,6 @@
  * to the FSP primitive register file
  * ``crypto_procedures_protected/.../ra8_rsip_e50d/r_rsip_reg.h``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

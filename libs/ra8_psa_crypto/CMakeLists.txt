@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_psa_crypto -- application-level PSA Crypto facade over the
 # vendored TF-PSA-Crypto 1.x library.
@@ -19,8 +21,6 @@
 # add_library() call is skipped so the file is safe to include from
 # both build trees.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

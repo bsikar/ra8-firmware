@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/main.c
  * @brief CPU0 (M85) Secure fallback entry for the single-core S->NS demo.
@@ -31,8 +35,6 @@
  * ``NS_MRAM`` and the USB-FS peripheral has been NS-attributed via an
  * extra SAU region. See issue #55.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

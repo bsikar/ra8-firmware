@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget.h
  * @brief Zero-heap composable widget layer (dwm-style) over ra8_box + ra8_ui.
@@ -30,8 +34,6 @@
  * globals, no allocation), so the same composition runs identically on the
  * host test harness and on the board.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

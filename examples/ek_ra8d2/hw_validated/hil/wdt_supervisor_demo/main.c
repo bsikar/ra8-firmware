@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/wdt_supervisor_demo/main.c
  * @brief WDT supervisor abstraction HIL demo for EK-RA8D2
@@ -19,8 +23,6 @@
  * worker A each time it checks in; ``hil_jlink_memprobe.sh`` asserts
  * the counter advances over the bench sample window.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

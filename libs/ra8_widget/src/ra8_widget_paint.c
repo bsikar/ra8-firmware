@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_paint.c
  * @brief Shared geometry helpers for the concrete leaf widgets (#145 Phase 2).
@@ -16,8 +20,6 @@
  * the geometry selectors -- which keeps every branch reachable from the host
  * tests through the public render path.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

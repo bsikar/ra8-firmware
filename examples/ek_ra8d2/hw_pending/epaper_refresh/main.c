@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/epaper_refresh/main.c
  * @brief IT8951 e-paper full + partial refresh demo through the display PAL
@@ -39,8 +43,6 @@
  * modelled controller completes instantly, so the numbers are near zero. The
  * PASS verdict never depends on a timing value.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

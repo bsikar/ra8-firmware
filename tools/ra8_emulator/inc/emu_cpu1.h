@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_cpu1.h
  * @brief Second-core (cpu1, Cortex-M33) engine: release watch, boot, stepping
@@ -14,8 +18,6 @@
  *
  * Split out of the ra8_emulator main translation unit; behaviour unchanged.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

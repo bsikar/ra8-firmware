@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_hmsc.c
  * @brief Unit tests for the native USB host-side MSC class layer
@@ -12,9 +16,6 @@
  * validated ladders at FS and HS), the pre-init/pre-attach guards on
  * every entry point, and the pure protocol units (CBW build / CSW
  * decode) byte-for-byte against USB MSC BBB rev 1.0.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

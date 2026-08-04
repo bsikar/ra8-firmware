@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # RA8D2 board emulator -- companion dev tool.
 #
@@ -14,8 +16,6 @@
 #   Linux: libunicorn-dev + libcapstone-dev (or a source install) -- found via
 #          pkg-config, so the emulator smoke gate runs on the Linux CI runner.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

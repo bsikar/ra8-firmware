@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_glyph_atlas.c
  * @brief Fixed-budget glyph cache -- implementation (Layer 3, #147).
@@ -13,9 +17,6 @@
  * seam (user descriptor) so the production rasteriser and the test stubs are
  * unchanged. All cache mechanics -- the single LRU list, pinned-cell skip, hash
  * chaining, eviction -- live in ::ra8_keycache.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_glyph_atlas.h"

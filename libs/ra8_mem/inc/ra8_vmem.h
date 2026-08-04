@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_vmem.h
  * @brief Byte-range page cache with SLRU eviction (Layer 2, #147).
@@ -67,8 +71,6 @@
  *
  * @note Not thread-safe; the reader is single-threaded (or serialises access).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

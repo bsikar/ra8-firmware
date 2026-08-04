@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_doc.c
  * @brief Data Operation Circuit (DOC) peripheral-block model for ra8_emulator
@@ -24,8 +28,6 @@
  * and DOSCR clears it. Only the add path is exercised by an in-tree example
  * (doc_demo); subtract and compare use their documented semantics.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

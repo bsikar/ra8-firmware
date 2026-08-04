@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # iwyu.sh -- Run include-what-you-use over the host unit-test build.
 #
@@ -35,8 +37,6 @@
 #     CMAKE -- cmake binary (default: cmake on PATH)
 #     IWYU  -- IWYU binary  (default: include-what-you-use on PATH)
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -uo pipefail
 

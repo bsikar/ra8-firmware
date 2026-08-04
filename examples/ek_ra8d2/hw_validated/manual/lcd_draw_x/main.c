@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/manual/lcd_draw_x/main.c
  * @brief Draw a coloured X to a SRAM-backed GR1 layer on the EK-RA8D2 panel
@@ -22,8 +26,6 @@
  * smaller 512 x 512 (0.5 MiB) layer in SRAM and lets the BG plane
  * paint the rest.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

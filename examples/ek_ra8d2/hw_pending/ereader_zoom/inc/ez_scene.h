@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_zoom/inc/ez_scene.h
  * @brief Tap-to-zoom demo scene: tiled 12 MP page, zoom viewport, loupe (#478).
@@ -37,8 +41,6 @@
  * @note Not thread-safe; single-threaded reader loop only.
  * @see ra8_zoom.h
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_drw_render.c
  * @brief Texture / draw-op tests for ra8_drw.c (DRW 2D engine driver)
@@ -8,9 +12,6 @@
  * fill-rect, blit, line, triangle, display-list, performance-counter, and
  * MC/DC vector tests; the lifecycle / status / IRQ / power / render-state
  * contract tests stay in test_ra8_drw.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_drw.h"

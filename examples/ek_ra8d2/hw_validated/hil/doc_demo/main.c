@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/doc_demo/main.c
  * @brief Data Operation Circuit (DOC) hardware vs software check
@@ -17,8 +21,6 @@
  * the add path -- it is sufficient to prove DOC bring-up + register
  * access + result readback. Bare EK-RA8D2; no expansion board.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # ra8_emulator_fb_crc.sh -- ra8_emulator GLCDC framebuffer-CRC gate for glcdc_render.
 #
@@ -23,8 +25,6 @@
 #
 #   examples/.../glcdc_render/ra8_emulator_fb_crc.sh
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 set -euo pipefail
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epd_cal.c
  * @brief Unit tests for per-device e-paper VCOM calibration (``ra8_epd_cal.c``)
@@ -21,9 +25,6 @@
  *     ``k_ra8_epd_cal_src_none``, and ``apply`` refuses that result.
  *   - Provisioning writes a record a later resolve accepts, and refuses
  *     out-of-range values.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

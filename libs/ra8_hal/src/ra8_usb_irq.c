@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_irq.c
  * @brief USB IRQ dispatch / event callbacks / power + host-mode bring-up
@@ -22,8 +26,6 @@
  * declared in ``ra8_usb_internal.h``. Modelled on FSP
  * ``r_usb_hreg_access.c``; no FSP source ships in this tree.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

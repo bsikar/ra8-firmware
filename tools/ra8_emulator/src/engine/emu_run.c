@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_run.c
  * @brief Chunked run loop + report implementation (see emu_run.h)
@@ -9,8 +13,6 @@
  * unit (the loop body is unchanged; the former main() locals it consumed now
  * arrive through ::emu_run_cfg_t).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_i2c.c
  * @brief Unit tests for the I2C (RIIC) controller driver.
@@ -9,8 +13,6 @@
  * through immediately. ICCR2.BBSY is left clear (= bus free) so the
  * bus-busy gate accepts each transaction.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
