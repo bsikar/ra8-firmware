@@ -131,6 +131,7 @@ RA8_GATE_REGISTRY=(
   "annotations|fast|RA8_* annotation attributes (libclang)"
   "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
   "tests-readme|fast|tests/README.md documents every tests/ subdir, none stale"
+  "disambig-readmes|fast|disambiguation READMEs: every machine-checked claim still holds"
   "init-order-freshness|fast|committed docs/INIT_ORDER_AUDIT.md matches a fresh regenerate"
   "roadmap-dashboard-freshness|fast|committed docs/ROADMAP_DASHBOARD.md matches a fresh regenerate"
   "lint-py-shell|fast|ruff + shellcheck + shfmt"

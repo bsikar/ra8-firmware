@@ -407,6 +407,7 @@ jobs:
       - run: bash scripts/ci.sh --gate pre-commit-checks
       - run: bash scripts/ci.sh --gate shebangs
       - run: bash scripts/ci.sh --gate tests-readme
+      - run: bash scripts/ci.sh --gate disambig-readmes
       - run: bash scripts/ci.sh --gate init-order-freshness
       - run: bash scripts/ci.sh --gate roadmap-dashboard-freshness
       - run: bash scripts/ci.sh --gate bench-lock
