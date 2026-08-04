@@ -28,8 +28,9 @@
 typedef enum : uint8_t {
   k_jpeg_marker_soi = 0xD8U, /**< 0xD8: the Start Of Image marker code. */
   k_jpeg_out_small =
-    64, /**< Output buffer smaller than a decoded image, so a truncation is reported rather than overrun. */
-  k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
+    64, /**< Output buffer smaller than decoded image, so truncation is reported, not overrun. */
+  /** Low-byte mask used to split the connection handle little-endian. */
+  k_byte_mask = 0xFFU,
 } jpeg_sw_hdr_mcdc_fixture_t;
 
 /**

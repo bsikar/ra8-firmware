@@ -102,16 +102,16 @@ static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w
  * @brief Flipped document view: one vertical strip of fit-to-width tiles.
  */
 @interface ReaderDocumentView : NSView {
-  ra8_viewer_reader_t*                      _reader;  /**< Borrowed tile source.               */
-  uint32_t                                  _count;   /**< Tile count.                         */
-  uint32_t*                                 _tw;      /**< Native tile widths (_count).        */
-  uint32_t*                                 _th;      /**< Native tile heights (_count).       */
-  CGFloat*                                  _yTop;    /**< Laid-out top y per tile (_count).   */
-  CGFloat*                                  _onH;     /**< Laid-out on-screen height per tile. */
+  ra8_viewer_reader_t*                      _reader;  /**< Borrowed tile source.                  */
+  uint32_t                                  _count;   /**< Tile count.                            */
+  uint32_t*                                 _tw;      /**< Native tile widths (_count).           */
+  uint32_t*                                 _th;      /**< Native tile heights (_count).          */
+  CGFloat*                                  _yTop;    /**< Laid-out top y per tile (_count).      */
+  CGFloat*                                  _onH;     /**< Laid-out on-screen height per tile.    */
   CGFloat                                   _layoutW; /**< Width the current layout was made for. */
-  CGFloat                                   _totalH;  /**< Laid-out document height. */
-  NSMutableDictionary<NSNumber*, NSImage*>* _cache;   /**< tile -> rendered image.   */
-  NSMutableIndexSet*                        _failed;  /**< tiles that won't render.  */
+  CGFloat                                   _totalH;  /**< Laid-out document height.              */
+  NSMutableDictionary<NSNumber*, NSImage*>* _cache;   /**< tile -> rendered image.                */
+  NSMutableIndexSet*                        _failed;  /**< tiles that won't render.               */
 }
 @end
 

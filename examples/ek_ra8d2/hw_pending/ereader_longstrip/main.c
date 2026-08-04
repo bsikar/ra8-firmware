@@ -106,11 +106,11 @@ typedef enum : uint32_t {
   k_ls_canvas_w = (uint32_t)k_panel_width_px,                   /**< Strip width, pixels. */
   k_ls_canvas_h = (uint32_t)k_ls_bands * (uint32_t)k_ls_band_h, /**< 4480 px.             */
   k_ls_bpp      = 3U,                                           /**< RGB888 strip pixels. */
-  k_ls_band_bytes =
-    (uint32_t)k_panel_width_px * (uint32_t)k_ls_band_h * 3U, /**< One band payload, bytes. */
-  k_ls_cells    = 6U,  /**< Tile-cache cells (< 16 bands -> LRU eviction). */
-  k_ls_buckets  = 16U, /**< Tile-cache hash buckets.                       */
-  k_ls_image_id = 1U,  /**< Tile-cache key namespace for this strip.       */
+  /** One band payload, bytes. */
+  k_ls_band_bytes = (uint32_t)k_panel_width_px * (uint32_t)k_ls_band_h * 3U,
+  k_ls_cells      = 6U,  /**< Tile-cache cells (< 16 bands -> LRU eviction). */
+  k_ls_buckets    = 16U, /**< Tile-cache hash buckets.                       */
+  k_ls_image_id   = 1U,  /**< Tile-cache key namespace for this strip.       */
   k_ls_scroll_page =
     ((uint32_t)k_panel_height_px * 9U) / 10U, /**< Page-scroll step (~90% of a viewport), pixels. */
 } ls_size_t;

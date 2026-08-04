@@ -39,12 +39,15 @@
  */
 typedef enum : uint8_t {
   k_flash_probe_end =
-    64U, /**< One past the last block probed; the loop starts at 32, so it spans the upper half of the region. */
-  k_flash_core_clock_mhz   = 200U, /**< Core clock the flash configuration declares, in MHz. */
-  k_flash_periph_clock_mhz = 100U, /**< Its peripheral clock, half the core clock.           */
+    64U, /**< One past the last block probed; the loop starts at 32, spanning the upper half. */
+  /** Core clock the flash configuration declares, in MHz. */
+  k_flash_core_clock_mhz = 200U,
+  /** Its peripheral clock, half the core clock. */
+  k_flash_periph_clock_mhz = 100U,
   k_flash_written_byte =
-    0x5AU, /**< Byte written into the region, distinct from the erased state so a failed write is visible. */
-  k_flash_erased_byte = 0xFFU, /**< The erased state of MRAM: all ones. */
+    0x5AU, /**< Byte written into the region, distinct from erased so a failed write is visible. */
+  /** The erased state of MRAM: all ones. */
+  k_flash_erased_byte = 0xFFU,
 } flash_edge_cases_fixture_t;
 
 typedef enum : uint32_t {

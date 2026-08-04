@@ -30,7 +30,7 @@
  */
 typedef enum : uint32_t {
   k_fatal_error_code =
-    0xDEADBEEFUL, /**< Error code handed to the fatal handler and read back from the record, proving it is stored rather than discarded. */
+    0xDEADBEEFUL, /**< Error code sent to the fatal handler and read back, proving it persists. */
 } error_handler_fixture_t;
 
 static sigjmp_buf s_trap_jmp;

@@ -292,6 +292,10 @@ export_tools_cache() {
 # ra8_emulator will link and exits non-zero -- with remediation -- when it is not
 # the pin, rather than letting a fossil produce an unreproducible green run.
 require_pinned_unicorn() {
+  # The pin check is a detector, so prove it still detects before believing it:
+  # a version comparison that silently stopped comparing would wave every
+  # Unicorn through and hand back exactly the unreproducible green run above.
+  bash scripts/checks/check_unicorn_version.sh --selftest
   bash scripts/checks/check_unicorn_version.sh
 }
 

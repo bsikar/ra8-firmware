@@ -31,7 +31,7 @@
  */
 typedef enum : uint8_t {
   k_cnecc_counter_seed =
-    9U, /**< Seed planted in every ECC counter, so a read that returned the wrong counter still matches and only a cleared counter fails. */
+    9U, /**< Seed in every ECC counter; only a cleared counter differs from a wrong one. */
 } cnecc_fixture_t;
 
 /**
@@ -40,7 +40,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_cnecc_addr_high_bits =
-    0xFFFFFC00UL, /**< High address bits ORed into the fault address, pushing it past the monitored region so the range check rejects it. */
+    0xFFFFFC00UL, /**< High bits ORed in, pushing the address outside the monitored range. */
 } cnecc_addr_t;
 
 /**

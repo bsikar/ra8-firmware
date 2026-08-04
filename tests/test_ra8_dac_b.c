@@ -28,7 +28,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_dac_dacr0_all_ones =
-    0xFFFFFFFFUL, /**< Every DACR0 bit set, so a configure that clears the wrong field leaves evidence in the rest. */
+    0xFFFFFFFFUL, /**< Every DACR0 bit set, so a wrong-field clear leaves evidence in the rest. */
 } dac_b_fixture2_t;
 
 typedef enum : uint8_t {

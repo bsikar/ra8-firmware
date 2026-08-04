@@ -27,7 +27,7 @@
  */
 typedef enum : uint8_t {
   k_pageturn_poison_out =
-    9U, /**< Poison written into the chapter and page out-parameters, so a call that set neither is detectable. */
+    9U, /**< Poison in the chapter/page out-parameters; a call setting neither is detectable. */
 } ereader_pageturn_fixture_t;
 
 /**

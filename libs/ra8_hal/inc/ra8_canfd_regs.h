@@ -139,11 +139,11 @@ typedef struct {
  */
 typedef struct {
   volatile uint32_t DCFG;                                        /**< +0x000 Data Bitrate Config. */
-  volatile uint32_t FDCFG;                                       /**< +0x004 CAN-FD Config.  */
-  volatile uint32_t FDCTR;                                       /**< +0x008 CAN-FD Control. */
-  volatile uint32_t FDSTS;                                       /**< +0x00C CAN-FD Status.  */
-  volatile uint32_t FDCRC;                                       /**< +0x010 CAN-FD CRC.     */
-  volatile uint8_t  _reserved[k_ra8_canfd_pad_cfdc2_tail_bytes]; /**< Reserved.              */
+  volatile uint32_t FDCFG;                                       /**< +0x004 CAN-FD Config.       */
+  volatile uint32_t FDCTR;                                       /**< +0x008 CAN-FD Control.      */
+  volatile uint32_t FDSTS;                                       /**< +0x00C CAN-FD Status.       */
+  volatile uint32_t FDCRC;                                       /**< +0x010 CAN-FD CRC.          */
+  volatile uint8_t  _reserved[k_ra8_canfd_pad_cfdc2_tail_bytes]; /**< Reserved.                   */
 } r_canfd_cfdc2_t;
 
 /* =============================================================================
@@ -255,38 +255,38 @@ typedef struct {
   volatile uint32_t
     CFDRFSTS[k_ra8_canfd_rx_fifo_count]; /**< CFDRFSTS register (offset 0x044..0x04B). */
   volatile uint32_t
-    CFDRFPCTR[k_ra8_canfd_rx_fifo_count];          /**< CFDRFPCTR register (offset 0x04C..0x053). */
-  volatile uint32_t CFDCFCC[k_ra8_canfd_cf_count]; /**< CFDCFCC register (offset 0x054). */
-  volatile uint32_t CFDCFSTS[k_ra8_canfd_cf_count];    /**< CFDCFSTS register (offset 0x058).    */
-  volatile uint32_t CFDCFPCTR[k_ra8_canfd_cf_count];   /**< CFDCFPCTR register (offset 0x05C).   */
-  volatile uint32_t CFDFESTS;                          /**< CFDFESTS register (offset 0x060).    */
-  volatile uint32_t CFDFFSTS;                          /**< CFDFFSTS register (offset 0x064).    */
-  volatile uint32_t CFDFMSTS;                          /**< CFDFMSTS register (offset 0x068).    */
-  volatile uint32_t CFDRFISTS;                         /**< CFDRFISTS register (offset 0x06C).   */
-  volatile uint8_t  CFDTMC[k_ra8_canfd_tx_mb_count];   /**< CFDTMC register (offset 0x070).      */
-  volatile uint8_t  CFDTMSTS[k_ra8_canfd_tx_mb_count]; /**< CFDTMSTS register (offset 0x074).    */
-  volatile uint32_t CFDTMTRSTS[1];                     /**< CFDTMTRSTS register (offset 0x078).  */
-  volatile uint32_t CFDTMTARSTS[1];                    /**< CFDTMTARSTS register (offset 0x07C). */
-  volatile uint32_t CFDTMTCSTS[1];                     /**< CFDTMTCSTS register (offset 0x080).  */
-  volatile uint32_t CFDTMTASTS[1];                     /**< CFDTMTASTS register (offset 0x084).  */
-  volatile uint32_t CFDTMIEC[1];                       /**< CFDTMIEC register (offset 0x088).    */
-  volatile uint32_t CFDTXQCC0[1];                      /**< CFDTXQCC0 register (offset 0x08C).   */
-  volatile uint32_t CFDTXQSTS0[1];                     /**< CFDTXQSTS0 register (offset 0x090).  */
-  volatile uint32_t CFDTXQPCTR0[1];                    /**< CFDTXQPCTR0 register (offset 0x094). */
-  volatile uint32_t CFDTHLCC[1];                       /**< CFDTHLCC register (offset 0x098).    */
-  volatile uint32_t CFDTHLSTS[1];                      /**< CFDTHLSTS register (offset 0x09C).   */
-  volatile uint32_t CFDTHLPCTR[1];                     /**< CFDTHLPCTR register (offset 0x0A0).  */
+    CFDRFPCTR[k_ra8_canfd_rx_fifo_count];              /**< CFDRFPCTR reg (offset 0x04C..0x053).  */
+  volatile uint32_t CFDCFCC[k_ra8_canfd_cf_count];     /**< CFDCFCC register (offset 0x054).      */
+  volatile uint32_t CFDCFSTS[k_ra8_canfd_cf_count];    /**< CFDCFSTS register (offset 0x058).     */
+  volatile uint32_t CFDCFPCTR[k_ra8_canfd_cf_count];   /**< CFDCFPCTR register (offset 0x05C).    */
+  volatile uint32_t CFDFESTS;                          /**< CFDFESTS register (offset 0x060).     */
+  volatile uint32_t CFDFFSTS;                          /**< CFDFFSTS register (offset 0x064).     */
+  volatile uint32_t CFDFMSTS;                          /**< CFDFMSTS register (offset 0x068).     */
+  volatile uint32_t CFDRFISTS;                         /**< CFDRFISTS register (offset 0x06C).    */
+  volatile uint8_t  CFDTMC[k_ra8_canfd_tx_mb_count];   /**< CFDTMC register (offset 0x070).       */
+  volatile uint8_t  CFDTMSTS[k_ra8_canfd_tx_mb_count]; /**< CFDTMSTS register (offset 0x074).     */
+  volatile uint32_t CFDTMTRSTS[1];                     /**< CFDTMTRSTS register (offset 0x078).   */
+  volatile uint32_t CFDTMTARSTS[1];                    /**< CFDTMTARSTS register (offset 0x07C).  */
+  volatile uint32_t CFDTMTCSTS[1];                     /**< CFDTMTCSTS register (offset 0x080).   */
+  volatile uint32_t CFDTMTASTS[1];                     /**< CFDTMTASTS register (offset 0x084).   */
+  volatile uint32_t CFDTMIEC[1];                       /**< CFDTMIEC register (offset 0x088).     */
+  volatile uint32_t CFDTXQCC0[1];                      /**< CFDTXQCC0 register (offset 0x08C).    */
+  volatile uint32_t CFDTXQSTS0[1];                     /**< CFDTXQSTS0 register (offset 0x090).   */
+  volatile uint32_t CFDTXQPCTR0[1];                    /**< CFDTXQPCTR0 register (offset 0x094).  */
+  volatile uint32_t CFDTHLCC[1];                       /**< CFDTHLCC register (offset 0x098).     */
+  volatile uint32_t CFDTHLSTS[1];                      /**< CFDTHLSTS register (offset 0x09C).    */
+  volatile uint32_t CFDTHLPCTR[1];                     /**< CFDTHLPCTR register (offset 0x0A0).   */
   volatile uint32_t CFDGTINTSTS0;                      /**< CFDGTINTSTS0 register (offset 0x0A4). */
-  volatile uint32_t CFDGTSTCFG;                        /**< CFDGTSTCFG register (offset 0x0A8). */
-  volatile uint32_t CFDGTSTCTR;                        /**< CFDGTSTCTR register (offset 0x0AC). */
-  volatile uint32_t CFDGFDCFG;                         /**< CFDGFDCFG register (offset 0x0B0).  */
-  volatile uint32_t _r_after_gfdcfg;                   /**< Reserved (offset 0x0B4).            */
-  volatile uint32_t CFDGLOCKK;                         /**< CFDGLOCKK register (offset 0x0B8).  */
-  volatile uint32_t _r_after_glockk;                   /**< Reserved (offset 0x0BC).            */
-  volatile uint32_t CFDGAFLIGNENT; /**< CFDGAFLIGNENT register (offset 0x0C0). */
-  volatile uint32_t CFDGAFLIGNCTR; /**< CFDGAFLIGNCTR register (offset 0x0C4). */
-  volatile uint32_t CFDCDTCT;      /**< CFDCDTCT register (offset 0x0C8).      */
-  volatile uint32_t CFDCDTSTS;     /**< CFDCDTSTS register (offset 0x0CC).     */
+  volatile uint32_t CFDGTSTCFG;                        /**< CFDGTSTCFG register (offset 0x0A8).   */
+  volatile uint32_t CFDGTSTCTR;                        /**< CFDGTSTCTR register (offset 0x0AC).   */
+  volatile uint32_t CFDGFDCFG;                         /**< CFDGFDCFG register (offset 0x0B0).    */
+  volatile uint32_t _r_after_gfdcfg;                   /**< Reserved (offset 0x0B4).              */
+  volatile uint32_t CFDGLOCKK;                         /**< CFDGLOCKK register (offset 0x0B8).    */
+  volatile uint32_t _r_after_glockk;                   /**< Reserved (offset 0x0BC).              */
+  volatile uint32_t CFDGAFLIGNENT;                     /**< CFDGAFLIGNENT reg (offset 0x0C0).     */
+  volatile uint32_t CFDGAFLIGNCTR;                     /**< CFDGAFLIGNCTR reg (offset 0x0C4).     */
+  volatile uint32_t CFDCDTCT;                          /**< CFDCDTCT register (offset 0x0C8).     */
+  volatile uint32_t CFDCDTSTS;                         /**< CFDCDTSTS register (offset 0x0CC).    */
   volatile uint32_t
     _r_before_grstc[k_ra8_canfd_pad_before_grstc]; /**< Reserved (offset 0x0D0..0x0D7).   */
   volatile uint32_t CFDGRSTC;                      /**< CFDGRSTC register (offset 0x0D8). */

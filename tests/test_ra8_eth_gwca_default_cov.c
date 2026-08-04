@@ -43,17 +43,19 @@ typedef enum : uint8_t {
   k_gwca_desc_size_lo =
     0xFFU, /**< Its low byte; together they give the largest size the field can express. */
   k_gwca_drain_attempts =
-    255U, /**< Poll attempts when draining the chain: more than it can hold, so the empty arm is reached. */
+    255U, /**< Poll attempts when draining the chain: more than it holds, reaching the empty arm. */
   k_gwca_linkfix_over_max =
     33U, /**< A link-fix count above the 32-entry maximum, which bring_up must reject. */
   k_gwca_slot_bytes_valid =
-    128U, /**< A slot size the driver accepts, used for both directions so a rejection can only come from the field under test. */
+    128U, /**< An accepted slot size, both directions, so only the tested field can reject. */
   k_gwca_queue_index_over_max =
-    40U, /**< A queue index at or past the 32-queue maximum, which reload and configure_queue must both reject. */
+    40U, /**< A queue index >= the 32-queue max; reload and configure_queue must both reject. */
   k_gwca_slot_bytes_small =
     64U, /**< A smaller accepted slot size, proving the check is a bound and not an equality. */
-  k_gwca_tx_pool_bytes = 128, /**< TX pool capacity: one slot's worth. */
-  k_gwca_frame_bytes   = 64,  /**< Staging frame capacity.             */
+  /** TX pool capacity: one slot's worth. */
+  k_gwca_tx_pool_bytes = 128,
+  /** Staging frame capacity. */
+  k_gwca_frame_bytes = 64,
 } eth_gwca_default_cov_fixture_t;
 
 /**
@@ -62,7 +64,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_gwca_desc_ptr_lo =
-    0x100U, /**< A non-zero buffer pointer in the descriptor, so a walker that ignored the chain is visible. */
+    0x100U, /**< A non-zero descriptor buffer pointer, so an ignoring walker is visible. */
   k_gwca_slot_bytes_over_max =
     4096U, /**< A slot size above the 2048-byte maximum, which the extended TX init must reject. */
   k_gwca_out_bytes =

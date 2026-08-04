@@ -138,7 +138,7 @@ static void test_validation(void)
                  ra8_slab_init(&slab, s_pool, sizeof(s_pool), 2U)); /* < 4 */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_slab_init(&slab, s_pool, sizeof(s_pool), 6U));              /* not 4-aligned */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_slab_init(&slab, s_pool, 8U, 16U)); /* zero cells */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_slab_init(&slab, s_pool, 8U, 16U)); /* zero cells    */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_slab_init(&slab, s_pool, sizeof(s_pool), k_t_cell_bytes));
   /* alloc/free/stats null guards */

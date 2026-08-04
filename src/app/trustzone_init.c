@@ -154,8 +154,8 @@ typedef enum : uint16_t {
     ((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0,                  /**< P5_00 FS role. */
   k_tz_usb_pin_dp = ((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14, /**< P8_14 FS D+.   */
   k_tz_usb_pin_dm = ((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15, /**< P8_15 FS D-.   */
-  k_tz_usb_pin_hs_vbus =
-    ((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8, /**< P4_08 HS VBUS. */
+  /** P4_08 HS VBUS. */
+  k_tz_usb_pin_hs_vbus = ((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8,
   k_tz_usb_pin_hs_pwr = ((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7, /**< PD07 J7 pwr. */
 } tz_usb_pin_t;
 

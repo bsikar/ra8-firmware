@@ -580,8 +580,10 @@ static void hs_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
   const uint16_t v16 = (uint16_t)value;
   switch ((uint16_t)off) {
     case (uint16_t)k_ra8_usb_off_cfifo:
-    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_h):  /* CFIFOH tail. */
-    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_hh): /* CFIFOHH tail. */
+    /* CFIFOH tail. */
+    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_h):
+    /* CFIFOHH tail. */
+    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_hh):
       hs_cfifo_write((uint32_t)value, size); /* full width: HS CFIFO is 32-bit (MBW=32). */
       return;
     case (uint16_t)k_ra8_usb_off_cfifoctr:

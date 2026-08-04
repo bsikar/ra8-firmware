@@ -169,7 +169,8 @@ ra8_err_t ra8_flash_set_irq_enable(ra8_flash_irq_src_t src, bool enable)
     /* Unreachable: the src >= k_ra8_flash_irq_count guard at line 135 rejects
      * every value that could reach this arm, including k_ra8_flash_irq_count
      * itself. */
-    case k_ra8_flash_irq_count: /* fallthrough -- unreachable, validated above. */ /* GCOVR_EXCL_LINE */
+    /* fallthrough -- unreachable, validated above. */
+    case k_ra8_flash_irq_count:     /* GCOVR_EXCL_LINE */
     default:                        /* GCOVR_EXCL_LINE */
       return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE */
   }

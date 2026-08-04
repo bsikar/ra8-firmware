@@ -30,21 +30,21 @@ typedef enum : uint8_t {
 } test_xspi_inst_t;
 
 typedef enum : uint32_t {
-  k_test_xspi_flash_addr_start    = 0U,           /**< Test XSPI flash address start.       */
-  k_test_xspi_flash_addr_middle   = 128U,         /**< Test XSPI flash address middle.      */
-  k_test_xspi_flash_addr_pagetail = 250U,         /**< 6 bytes below the 256-byte page end. */
-  k_test_xspi_flash_addr_overflow = 0x10000000UL, /**< Past 2^24 (3-byte space).            */
-  k_test_xspi_flash_addr_near_top = 0xFFFFF8UL,   /**< 8 bytes below 2^24.                  */
-  k_test_xspi_len_zero            = 0U,           /**< Forces C1=T (short-circuits).        */
-  k_test_xspi_len_small           = 16U,          /**< Test XSPI length small.              */
-  k_test_xspi_len_multipage       = 320U,  /**< > 256-byte page; crosses a page from addr 128. */
-  k_test_xspi_len_too_big         = 8192U, /**< Test XSPI length too big.                      */
-  k_test_xspi_expected_jedec      = 0x9D5A1AUL, /**< ISSI IS25LX512M (on-board).      */
-  k_test_xspi_expected_status     = 0x02U,      /**< WEL=1 (model's implicit latch).  */
-  k_test_xspi_wip_busy_polls      = 3U,         /**< RDSR busy polls for the retry.   */
-  k_test_xspi_nth_wren            = 0U,         /**< 1st INTS wait: the WREN command. */
-  k_test_xspi_nth_pp_or_se        = 1U,         /**< 2nd INTS wait: the PP / SE.      */
-  k_test_xspi_nth_rdsr            = 2U,         /**< 3rd INTS wait: the WIP RDSR.     */
+  k_test_xspi_flash_addr_start    = 0U,           /**< Test XSPI flash address start.          */
+  k_test_xspi_flash_addr_middle   = 128U,         /**< Test XSPI flash address middle.         */
+  k_test_xspi_flash_addr_pagetail = 250U,         /**< 6 bytes below the 256-byte page end.    */
+  k_test_xspi_flash_addr_overflow = 0x10000000UL, /**< Past 2^24 (3-byte space).               */
+  k_test_xspi_flash_addr_near_top = 0xFFFFF8UL,   /**< 8 bytes below 2^24.                     */
+  k_test_xspi_len_zero            = 0U,           /**< Forces C1=T (short-circuits).           */
+  k_test_xspi_len_small           = 16U,          /**< Test XSPI length small.                 */
+  k_test_xspi_len_multipage       = 320U,         /**< > 256-byte page; crosses from addr 128. */
+  k_test_xspi_len_too_big         = 8192U,        /**< Test XSPI length too big.               */
+  k_test_xspi_expected_jedec      = 0x9D5A1AUL,   /**< ISSI IS25LX512M (on-board).             */
+  k_test_xspi_expected_status     = 0x02U,        /**< WEL=1 (model's implicit latch).         */
+  k_test_xspi_wip_busy_polls      = 3U,           /**< RDSR busy polls for the retry.          */
+  k_test_xspi_nth_wren            = 0U,           /**< 1st INTS wait: the WREN command.        */
+  k_test_xspi_nth_pp_or_se        = 1U,           /**< 2nd INTS wait: the PP / SE.             */
+  k_test_xspi_nth_rdsr            = 2U,           /**< 3rd INTS wait: the WIP RDSR.            */
 } test_xspi_vals_t;
 
 /**

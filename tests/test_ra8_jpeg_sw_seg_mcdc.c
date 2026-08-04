@@ -27,8 +27,9 @@
  */
 typedef enum : uint8_t {
   k_jpeg_out_small =
-    64, /**< Output buffer smaller than a decoded image, so a truncation is reported rather than overrun. */
-  k_byte_mask = 0xFFU, /**< Truncates each generated RGB channel back into a byte. */
+    64, /**< Output buffer smaller than the decoded image, so truncation is reported not overrun. */
+  /** Truncates each generated RGB channel back into a byte. */
+  k_byte_mask = 0xFFU,
 } jpeg_sw_seg_mcdc_fixture_t;
 
 /**

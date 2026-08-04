@@ -65,43 +65,42 @@ typedef enum : uintptr_t {
  */
 
 typedef enum : uint16_t {
-  k_ra8_sys_off_vscr         = 0x014U, /**< VSCR voltage scaling control (32-bit).          */
-  k_ra8_sys_off_sckdivcr     = 0x020U, /**< SCKDIVCR  (32-bit).                             */
-  k_ra8_sys_off_sckdivcr2    = 0x024U, /**< SCKDIVCR2 (16-bit).                             */
-  k_ra8_sys_off_sckscr       = 0x026U, /**< SCKSCR    (8-bit).                              */
-  k_ra8_sys_off_pllcr        = 0x02AU, /**< PLLCR     (8-bit).                              */
-  k_ra8_sys_off_moscr        = 0x032U, /**< MOSCCR    (8-bit).                              */
-  k_ra8_sys_off_hococr       = 0x036U, /**< HOCOCR    (8-bit).                              */
-  k_ra8_sys_off_oscsf        = 0x03CU, /**< OSCSF     (8-bit).                              */
-  k_ra8_sys_off_pll2cr       = 0x04AU, /**< PLL2CR   -- PLL2 stop control (8-bit).          */
-  k_ra8_sys_off_pllccr2      = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit).       */
-  k_ra8_sys_off_pll2ccr2     = 0x04EU, /**< PLL2CCR2 -- PLL2 output dividers (16-bit).      */
-  k_ra8_sys_off_scickdivcr   = 0x054U, /**< SCICKDIVCR (8-bit).                             */
-  k_ra8_sys_off_scickcr      = 0x055U, /**< SCICKCR    (8-bit).                             */
-  k_ra8_sys_off_eswckdivcr   = 0x0D5U, /**< ESWCKDIVCR  (8-bit) -- ESWM module clock div.   */
-  k_ra8_sys_off_eswpckdivcr  = 0x0D6U, /**< ESWPCKDIVCR (8-bit) -- ESWM-PHY clock div.      */
-  k_ra8_sys_off_eswckcr      = 0x0DBU, /**< ESWCKCR     (8-bit) -- ESWM clock source.       */
-  k_ra8_sys_off_eswpckcr     = 0x0DCU, /**< ESWPCKCR    (8-bit) -- ESWM-PHY clock source.   */
-  k_ra8_sys_off_usbckdivcr   = 0x06CU, /**< USBCKDIVCR  (8-bit) -- USB-FS clock divider.    */
-  k_ra8_sys_off_octackdivcr  = 0x06DU, /**< OCTACKDIVCR (8-bit) -- HUM Ch 9.2.40 p 357.     */
-  k_ra8_sys_off_canfdckdivcr = 0x06EU, /**< CANFDCKDIVCR (8-bit) -- HUM Ch 9.2.41 p 363.    */
-  k_ra8_sys_off_usb60ckdivcr = 0x06FU, /**< USB60CKDIVCR (8-bit) -- USBHS 60MHz divider.    */
-  k_ra8_sys_off_usbckcr      = 0x074U, /**< USBCKCR     (8-bit) -- USB-FS clock src.        */
-  k_ra8_sys_off_octackcr     = 0x075U, /**< OCTACKCR    (8-bit) -- HUM Ch 9.2.45 p 360.     */
-  k_ra8_sys_off_canfdckcr    = 0x076U, /**< CANFDCKCR   (8-bit) -- HUM Ch 9.2.46 p 366.     */
-  k_ra8_sys_off_usb60ckcr    = 0x077U, /**< USB60CKCR   (8-bit) -- USBHS 60MHz src.         */
-  k_ra8_sys_off_moscwtcr     = 0x0A2U, /**< MOSCWTCR  (8-bit).                              */
-  k_ra8_sys_off_pdctreswm    = 0x118U, /**< PDCTRESWM (8-bit) -- ESWM power-domain control. */
-  k_ra8_sys_off_pllccr       = 0x0ACU, /**< PLLCCR    (32-bit).                             */
-  k_ra8_sys_off_rstsr1       = 0x0C0U, /**< RSTSR1    (32-bit).                             */
-  k_ra8_sys_off_pll2ccr =
-    0x0C8U, /**< PLL2CCR  -- PLL2 input/mul/source (32-bit, RA8D2 HUM Ch 9.2.9). */
-  k_ra8_sys_off_prcr   = 0x3FAU, /**< PRCR      (16-bit).                       */
-  k_ra8_sys_off_rstsr0 = 0xA40U, /**< RSTSR0    (8-bit).                        */
-  k_ra8_sys_off_rstsr2 = 0xA44U, /**< RSTSR2    (8-bit).                        */
-  k_ra8_sys_off_lococr = 0x400U, /**< LOCOCR    (8-bit) -- HUM Ch 9.2.15 p 339. */
-  k_ra8_sys_off_sosccr = 0xC00U, /**< SOSCCR    (8-bit) -- HUM Ch 9.2.14 p 339. */
-  k_ra8_sys_off_somcr  = 0xC01U, /**< SOMCR     (8-bit) -- HUM Ch 9.2.29 p 351. */
+  k_ra8_sys_off_vscr         = 0x014U, /**< VSCR voltage scaling control (32-bit).              */
+  k_ra8_sys_off_sckdivcr     = 0x020U, /**< SCKDIVCR  (32-bit).                                 */
+  k_ra8_sys_off_sckdivcr2    = 0x024U, /**< SCKDIVCR2 (16-bit).                                 */
+  k_ra8_sys_off_sckscr       = 0x026U, /**< SCKSCR    (8-bit).                                  */
+  k_ra8_sys_off_pllcr        = 0x02AU, /**< PLLCR     (8-bit).                                  */
+  k_ra8_sys_off_moscr        = 0x032U, /**< MOSCCR    (8-bit).                                  */
+  k_ra8_sys_off_hococr       = 0x036U, /**< HOCOCR    (8-bit).                                  */
+  k_ra8_sys_off_oscsf        = 0x03CU, /**< OSCSF     (8-bit).                                  */
+  k_ra8_sys_off_pll2cr       = 0x04AU, /**< PLL2CR   -- PLL2 stop control (8-bit).              */
+  k_ra8_sys_off_pllccr2      = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit).           */
+  k_ra8_sys_off_pll2ccr2     = 0x04EU, /**< PLL2CCR2 -- PLL2 output dividers (16-bit).          */
+  k_ra8_sys_off_scickdivcr   = 0x054U, /**< SCICKDIVCR (8-bit).                                 */
+  k_ra8_sys_off_scickcr      = 0x055U, /**< SCICKCR    (8-bit).                                 */
+  k_ra8_sys_off_eswckdivcr   = 0x0D5U, /**< ESWCKDIVCR  (8-bit) -- ESWM module clock div.       */
+  k_ra8_sys_off_eswpckdivcr  = 0x0D6U, /**< ESWPCKDIVCR (8-bit) -- ESWM-PHY clock div.          */
+  k_ra8_sys_off_eswckcr      = 0x0DBU, /**< ESWCKCR     (8-bit) -- ESWM clock source.           */
+  k_ra8_sys_off_eswpckcr     = 0x0DCU, /**< ESWPCKCR    (8-bit) -- ESWM-PHY clock source.       */
+  k_ra8_sys_off_usbckdivcr   = 0x06CU, /**< USBCKDIVCR  (8-bit) -- USB-FS clock divider.        */
+  k_ra8_sys_off_octackdivcr  = 0x06DU, /**< OCTACKDIVCR (8-bit) -- HUM Ch 9.2.40 p 357.         */
+  k_ra8_sys_off_canfdckdivcr = 0x06EU, /**< CANFDCKDIVCR (8-bit) -- HUM Ch 9.2.41 p 363.        */
+  k_ra8_sys_off_usb60ckdivcr = 0x06FU, /**< USB60CKDIVCR (8-bit) -- USBHS 60MHz divider.        */
+  k_ra8_sys_off_usbckcr      = 0x074U, /**< USBCKCR     (8-bit) -- USB-FS clock src.            */
+  k_ra8_sys_off_octackcr     = 0x075U, /**< OCTACKCR    (8-bit) -- HUM Ch 9.2.45 p 360.         */
+  k_ra8_sys_off_canfdckcr    = 0x076U, /**< CANFDCKCR   (8-bit) -- HUM Ch 9.2.46 p 366.         */
+  k_ra8_sys_off_usb60ckcr    = 0x077U, /**< USB60CKCR   (8-bit) -- USBHS 60MHz src.             */
+  k_ra8_sys_off_moscwtcr     = 0x0A2U, /**< MOSCWTCR  (8-bit).                                  */
+  k_ra8_sys_off_pdctreswm    = 0x118U, /**< PDCTRESWM (8-bit) -- ESWM power-domain control.     */
+  k_ra8_sys_off_pllccr       = 0x0ACU, /**< PLLCCR    (32-bit).                                 */
+  k_ra8_sys_off_rstsr1       = 0x0C0U, /**< RSTSR1    (32-bit).                                 */
+  k_ra8_sys_off_pll2ccr      = 0x0C8U, /**< PLL2CCR -- input/mul/source (32-bit, HUM Ch 9.2.9). */
+  k_ra8_sys_off_prcr         = 0x3FAU, /**< PRCR      (16-bit).                                 */
+  k_ra8_sys_off_rstsr0       = 0xA40U, /**< RSTSR0    (8-bit).                                  */
+  k_ra8_sys_off_rstsr2       = 0xA44U, /**< RSTSR2    (8-bit).                                  */
+  k_ra8_sys_off_lococr       = 0x400U, /**< LOCOCR    (8-bit) -- HUM Ch 9.2.15 p 339.           */
+  k_ra8_sys_off_sosccr       = 0xC00U, /**< SOSCCR    (8-bit) -- HUM Ch 9.2.14 p 339.           */
+  k_ra8_sys_off_somcr        = 0xC01U, /**< SOMCR     (8-bit) -- HUM Ch 9.2.29 p 351.           */
 } ra8_system_offset_t;
 
 /**

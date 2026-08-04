@@ -58,7 +58,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_pal_width_over_max =
-    4097U, /**< A panel width one past the largest the controller supports, so configuration must reject it. */
+    4097U, /**< A panel width one past the controller's largest, so configuration must reject it. */
 } display_pal_fixture2_t;
 
 /* =============================================================================
@@ -73,7 +73,7 @@ typedef enum : uint16_t {
 
 typedef enum : uint32_t {
   k_test_fb_pixels = (uint32_t)k_test_fb_width * (uint32_t)k_test_fb_height, /**< Test fb pixels. */
-  k_test_fb_bytes  = k_test_fb_pixels * 2U,                                  /**< Test fb bytes. */
+  k_test_fb_bytes  = k_test_fb_pixels * 2U,                                  /**< Test fb bytes.  */
 } test_fb_size_t;
 
 /* Static framebuffer the LCD and e-ink backends share -- one test

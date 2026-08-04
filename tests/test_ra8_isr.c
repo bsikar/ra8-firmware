@@ -23,9 +23,9 @@ typedef enum : uint16_t {
   k_isr_handler_marker =
     0xBEEF, /**< Value the test handler writes, proving the dispatch actually ran it. */
   k_isr_slot_out_of_range =
-    500U, /**< A vector slot past the last real one; dispatch must ignore it rather than index off the table. */
+    500U, /**< Past the last real vector slot; dispatch must ignore it, not index off the table. */
   k_isr_slot_poison =
-    0xFFFFU, /**< Poison slot written before a registration, so a register call that fails without assigning one is detectable. */
+    0xFFFFU, /**< Poison slot before registration, so a failing register call is detectable. */
 } isr_fixture_t;
 
 static int32_t  s_call_count   = 0;

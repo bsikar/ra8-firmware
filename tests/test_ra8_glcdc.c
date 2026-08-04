@@ -138,7 +138,7 @@ typedef enum : uint32_t {
   k_test_exp_bg_hsize          = ((uint32_t)k_test_pgeb1_h_back_plus_1 << 16) |
                                  (uint32_t)k_test_glcdc_width, /**< Test exp bg hsize. */
   k_test_exp_bg_vsize          = ((uint32_t)k_test_pgeb1_v_back_plus_1 << 16) |
-                                 (uint32_t)k_test_glcdc_height, /**< Test exp bg vsize. */
+                                 (uint32_t)k_test_glcdc_height,            /**< Exp bg vsize.     */
   k_test_exp_gr1_fmt           = ((uint32_t)k_ra8_glcdc_fmt_rgb565 << 28), /**< Test exp gr1 fmt. */
   k_test_exp_gr1_line_bytes    = (uint32_t)k_test_glcdc_width *
                                  (uint32_t)k_test_glcdc_bpp_rgb565, /**< Test exp gr1 line bytes. */

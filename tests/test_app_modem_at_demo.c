@@ -42,7 +42,8 @@ typedef enum : uint8_t {
     7U, /**< A single-digit response value, the shortest the parser can see. */
   k_modem_line_cap =
     128, /**< Capacity of the end-to-end response line buffer, over the longest fixture response. */
-  k_modem_capture_cap = 64, /**< Capacity of the captured-command buffer. */
+  /** Capacity of the captured-command buffer. */
+  k_modem_capture_cap = 64,
 } app_modem_at_demo_fixture_t;
 
 /* ------------------------------------------------------------------------- */

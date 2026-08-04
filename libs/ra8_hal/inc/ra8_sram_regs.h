@@ -509,9 +509,9 @@ typedef struct {
    * as a contiguous uint8_t array. Model them as one 32-bit word per
    * bank instead -- the public API only writes the low byte. */
   volatile uint8_t
-    _r3[k_ra8_sram_pad_cr_sparse_bytes]; /**< +0x14..+0x1F Padding for sparse CR slots. */
-  volatile uint8_t _r4[16];              /**< +0x20..+0x2F Reserved.                    */
-  volatile uint8_t SRAMECCRGN[k_ra8_sram_bank_count]; /**< +0x30..+0x33 (sparse, see _r5). */
+    _r3[k_ra8_sram_pad_cr_sparse_bytes];              /**< +0x14..+0x1F Pad for sparse CR slots. */
+  volatile uint8_t _r4[16];                           /**< +0x20..+0x2F Reserved.                */
+  volatile uint8_t SRAMECCRGN[k_ra8_sram_bank_count]; /**< +0x30..+0x33 (sparse, see _r5).       */
   volatile uint8_t
     _r5[k_ra8_sram_pad_eccrgn_sparse]; /**< +0x34..+0x3F Padding for sparse RGN slots. */
   volatile uint16_t SRAMESR;           /**< +0x40 ECC error status.                    */

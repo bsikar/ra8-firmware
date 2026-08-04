@@ -49,7 +49,7 @@
  */
 typedef enum : uint32_t {
   k_io_poison_written =
-    0xFFFFFFFFU, /**< Poison written into the bytes-written out-parameter, so a call that fails without setting it is detectable. */
+    0xFFFFFFFFU, /**< Poison in the bytes-written out-param; a call skipping it is detectable. */
 } io_stream_uart_cov_fixture_t;
 
 /* =========================================================================

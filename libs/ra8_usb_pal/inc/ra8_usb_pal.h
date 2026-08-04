@@ -85,12 +85,12 @@ extern "C" {
  * extensions land.
  */
 typedef enum : uint16_t {
-  k_ra8_usb_pal_ep_max         = 10U,   /**< Maximum endpoint number.       */
-  k_ra8_usb_pal_ep0_max_packet = 64U,   /**< EP0 max packet on FS / HS-FS.  */
-  k_ra8_usb_pal_bulk_max_fs    = 64U,   /**< Bulk max packet at full-speed. */
-  k_ra8_usb_pal_bulk_max_hs    = 512U,  /**< Bulk max packet at high-speed. */
-  k_ra8_usb_pal_xfer_max       = 1024U, /**< Single-shot xfer cap.          */
-  k_ra8_usb_pal_ep_addr_mask = 0x7FU, /**< Strip USB-IN dir bit (bit 7) from descriptor ep_addr. */
+  k_ra8_usb_pal_ep_max         = 10U,   /**< Maximum endpoint number.                   */
+  k_ra8_usb_pal_ep0_max_packet = 64U,   /**< EP0 max packet on FS / HS-FS.              */
+  k_ra8_usb_pal_bulk_max_fs    = 64U,   /**< Bulk max packet at full-speed.             */
+  k_ra8_usb_pal_bulk_max_hs    = 512U,  /**< Bulk max packet at high-speed.             */
+  k_ra8_usb_pal_xfer_max       = 1024U, /**< Single-shot xfer cap.                      */
+  k_ra8_usb_pal_ep_addr_mask   = 0x7FU, /**< Strip USB-IN dir bit (bit 7) from ep_addr. */
 } ra8_usb_pal_limits_t;
 
 /**

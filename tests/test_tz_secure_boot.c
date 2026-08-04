@@ -303,10 +303,10 @@ static void test_tz_ns_signed_body_len_header(void)
   /* Header sits at ns_base + 0x40 == word index 16. */
   enum : uint32_t {
     k_hdr_word_magic =
-      (uint32_t)k_ra8_tz_ns_rot_header_offset / (uint32_t)sizeof(uint32_t), /**< Hdr word magic. */
+      (uint32_t)k_ra8_tz_ns_rot_header_offset / (uint32_t)sizeof(uint32_t), /**< Hdr word magic.  */
     k_hdr_word_len  = k_hdr_word_magic + 1U,                                /**< Hdr word length. */
-    k_img_words     = k_hdr_word_len + 1U,                                  /**< Img words. */
-    k_test_body_len = 0x1234U, /**< Test body length. */
+    k_img_words     = k_hdr_word_len + 1U,                                  /**< Img words.       */
+    k_test_body_len = 0x1234U,                                              /**< Body length.     */
   };
   uint32_t img[k_img_words];
   for (uint32_t i = 0U; i < (uint32_t)k_img_words; ++i) {

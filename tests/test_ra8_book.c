@@ -21,11 +21,13 @@
 typedef enum : uint8_t {
   k_book_img0_bytes = 10, /**< Bytes of image 0 in the pool, which is also where image 1 begins. */
   k_book_img1_bytes =
-    20, /**< Bytes of image 1; a different length from image 0 so a swapped entry fails the size check. */
+    20, /**< Bytes of image 1; differs from image 0 so a swapped entry fails the size check. */
   k_book_img1_raw_bytes =
     50, /**< Image 1's decoded size, larger than its stored size as a compressed image must be. */
-  k_book_strings_cap    = 128, /**< String-pool capacity, also used as image 0's decoded size. */
-  k_book_image_pool_cap = 64,  /**< Image-pool capacity, and the read-back buffer sized to match. */
+  /** String-pool capacity, also used as image 0's decoded size. */
+  k_book_strings_cap = 128,
+  /** Image-pool capacity, and the read-back buffer sized to match. */
+  k_book_image_pool_cap = 64,
 } book_fixture_t;
 
 /**
@@ -43,7 +45,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   k_book_pixfmt_unknown =
-    2, /**< One past k_ra8_book_pixfmt_gray8: a depth no reader can unpack, so validate must reject it. */
+    2, /**< One past k_ra8_book_pixfmt_gray8: unpackable depth, so validate must reject it. */
 } book_pixfmt_fixture_t;
 
 /**
@@ -52,9 +54,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_book_crc_flip_mask =
-    0xFFFFFFFF, /**< XORed into a valid CRC to corrupt every bit of it, so the integrity check cannot pass by chance. */
-  k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
-  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial.             */
+    0xFFFFFFFF, /**< Flips every bit of a valid CRC so the check cannot pass by chance. */
+  /** CRC-32 initial value, and the final XOR-out. */
+  k_crc32_init = 0xFFFFFFFFU,
+  /** The reflected CRC-32 polynomial. */
+  k_crc32_poly_reflected = 0xEDB88320U,
 } book_fixture3_t;
 
 static uint32_t compute_crc32(const uint8_t* data, size_t len)

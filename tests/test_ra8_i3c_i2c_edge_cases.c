@@ -35,7 +35,7 @@
  */
 typedef enum : uint8_t {
   k_i2c_probe_rounds =
-    5U, /**< Back-to-back transfers driven over one bus, proving the edge case is repeatable and not a first-call artefact. */
+    5U, /**< Back-to-back transfers on one bus, proving repeatability, not a first-call artefact. */
 } i3c_i2c_edge_cases_fixture_t;
 
 /**
@@ -44,7 +44,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_i2c_oversize_bytes =
-    1000000, /**< A transfer length far past any real buffer, so the length guard fires before any access. */
+    1000000, /**< Transfer length far past any real buffer; length guard fires before access. */
 } i3c_i2c_edge_cases_fixture2_t;
 
 typedef enum : uint8_t {

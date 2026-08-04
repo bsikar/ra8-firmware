@@ -96,7 +96,8 @@ typedef struct {
   uint64_t         total;    /**< Entry uncompressed size, bytes.                               */
   uint64_t         consumed; /**< Bytes delivered to the caller so far.                         */
   uint8_t          done;     /**< 1 once EOF has been reached / reported.                       */
-  uint8_t          reserved[k_ra8_epub_entry_reader_reserved_bytes]; /**< Padding; keep zero. */
+  /** Padding; keep zero. */
+  uint8_t reserved[k_ra8_epub_entry_reader_reserved_bytes];
 } ra8_epub_entry_reader_t;
 
 /**

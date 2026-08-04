@@ -796,7 +796,8 @@ static void test_scan_rejects_bad_headers(void)
               k_cs_plant_sector_overrun,
               k_cs_plant_count_past_media,
               true); /* run runs past the media */
-  t_plant_hdr(&st, k_cs_plant_sector_bad_crc, k_cs_plant_sector_bad_crc, 2U, false); /* bad CRC */
+  /* bad CRC */
+  t_plant_hdr(&st, k_cs_plant_sector_bad_crc, k_cs_plant_sector_bad_crc, 2U, false);
 
   /* Crash: leave st open (unclosed) and reopen a fresh block over the media. */
   ra8_cache_store_t     st2  = {};

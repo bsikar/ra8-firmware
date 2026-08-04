@@ -58,7 +58,7 @@ static size_t priv_fs_stream_read(void* ctx, uint64_t offset, void* buf, size_t 
     return 0U; /* GCOVR_EXCL_LINE -- open binds a live ctx+file; miniz never reads a NULL buf */
   }
   if (offset > (uint64_t)UINT32_MAX) {
-    return 0U; /* GCOVR_EXCL_LINE -- ra8_fs is 32-bit; a > 4 GiB single .epub is rejected before here */
+    return 0U; /* GCOVR_EXCL_LINE -- ra8_fs is 32-bit; a >4 GiB .epub is rejected before here */
   }
   if (ra8_fs_seek(io->file, (uint32_t)offset) != k_ra8_ok) {
     return 0U; /* GCOVR_EXCL_LINE -- seek clamps to size and cannot fail on a live handle */

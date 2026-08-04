@@ -100,7 +100,8 @@ typedef enum : uint64_t {
     0x9E3779B97F4A7C15ULL, /**< MAGIC-OK: Fibonacci golden-ratio seed (random trace) */
   k_rng_seed_reread =
     0xD1B54A32D192ED03ULL, /**< MAGIC-OK: fixed arbitrary seed (reread-locality trace) */
-  k_rng_seed_toc = 0x2545F4914F6CDD1DULL, /**< MAGIC-OK: fixed arbitrary seed (toc-jumps trace) */
+  /** MAGIC-OK: fixed arbitrary seed (toc-jumps trace) */
+  k_rng_seed_toc = 0x2545F4914F6CDD1DULL,
   k_rng_seed_mixed_a =
     0x9E3779B97F4A7C15ULL, /**< MAGIC-OK: Fibonacci golden-ratio seed (mixed trace base) */
   k_rng_seed_mixed_b =

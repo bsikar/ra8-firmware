@@ -347,8 +347,8 @@ uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char* label
   sd_put32(&fsi[k_fsi_off_lead], (uint32_t)k_fsi_lead_sig);
   sd_put32(&fsi[k_fsi_off_struc], (uint32_t)k_fsi_struc_sig);
   sd_put32(&fsi[k_fsi_off_free],
-           (clusters > 0U) ? (clusters - 1U) : (uint32_t)k_fsi_free_unknown); /* free clusters */
-  sd_put32(&fsi[k_fsi_off_nxtfree], (uint32_t)k_fsi_nxt_free); /* next free cluster */
+           (clusters > 0U) ? (clusters - 1U) : (uint32_t)k_fsi_free_unknown); /* free clusters    */
+  sd_put32(&fsi[k_fsi_off_nxtfree], (uint32_t)k_fsi_nxt_free);                /* nxt free cluster */
   sd_put32(&fsi[k_fsi_off_trail], (uint32_t)k_fsi_trail_sig);
   /* Backup boot copy at sector 6. */
   (void)memcpy(&img[(size_t)(uint32_t)k_fat32_bkboot_sec * (uint32_t)k_fmt_sec_bytes],

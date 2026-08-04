@@ -53,8 +53,9 @@
  */
 typedef enum : uint16_t {
   k_epub_poison_chapter =
-    0xFFFFU, /**< Poison chapter index written before a lookup, so a lookup that fails without setting it is detectable. */
-  k_epub_poison_len = 999U, /**< Poison length written before a read, for the same reason. */
+    0xFFFFU, /**< Poison chapter index before a lookup; a lookup that skips it is detectable. */
+  /** Poison length written before a read, for the same reason. */
+  k_epub_poison_len = 999U,
 } epub_fixture_t;
 
 /* --------------------------------------------------------------------- */

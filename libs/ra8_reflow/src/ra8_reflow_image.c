@@ -323,7 +323,7 @@ ra8_err_t ra8_img_decode_blit(ra8_img_arena_t* arena,
   internal_fit_box((int32_t)sx, (int32_t)sy, box_w, box_h, &fit_w, &fit_h);
   internal_blit_scaled(pixels, (int32_t)sx, (int32_t)sy, fit_w, fit_h, dst_x, dst_y);
   // clang-format off: the allocation opt-out comment must stay on the flagged call line.
-  stbi_image_free(pixels); /* drains the arena (live -> 0 -> offset reset) -- alloc-allow: stb is backed by the fixed ra8_img_arena (zero-heap), not malloc */
+  stbi_image_free(pixels); /* alloc-allow: ra8_img_arena-backed (zero-heap), not malloc */
   // clang-format on
   internal_arena_release(arena);
 

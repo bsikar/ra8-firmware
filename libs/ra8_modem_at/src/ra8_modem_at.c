@@ -86,11 +86,12 @@ typedef struct {
  * @invariant ``initialized == 1`` implies ``cfg.line_buf != NULL``.
  */
 typedef struct {
-  uint8_t                 initialized; /**< 1 after ``ra8_modem_at_init``.     */
-  ra8_modem_at_cfg_t      cfg;         /**< Cached caller configuration.       */
-  uint16_t                line_len;    /**< Bytes pending in ``cfg.line_buf``. */
-  ra8_modem_at_state_t    state;       /**< FSM state.                         */
-  ra8_modem_at_urc_slot_t urcs[k_ra8_modem_at_max_unsolicited]; /**< URC table. */
+  uint8_t              initialized; /**< 1 after ``ra8_modem_at_init``.     */
+  ra8_modem_at_cfg_t   cfg;         /**< Cached caller configuration.       */
+  uint16_t             line_len;    /**< Bytes pending in ``cfg.line_buf``. */
+  ra8_modem_at_state_t state;       /**< FSM state.                         */
+  /** URC table. */
+  ra8_modem_at_urc_slot_t urcs[k_ra8_modem_at_max_unsolicited];
 } ra8_modem_at_module_t;
 
 /**

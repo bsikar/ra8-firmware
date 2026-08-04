@@ -62,7 +62,7 @@
  */
 typedef enum : uint16_t {
   k_epaper_dimension_over_max =
-    0xFFFFU, /**< A panel dimension past the largest the driver supports, used for both width and height so each guard is reached. */
+    0xFFFFU, /**< Past the largest supported dimension; used for width/height, firing each guard. */
 } epaper_cov_fixture_t;
 
 /**

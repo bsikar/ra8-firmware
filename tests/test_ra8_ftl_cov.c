@@ -108,7 +108,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t  store[(size_t)k_cov_phys * (size_t)k_cov_block]; /**< Backing store. */
+  /** Backing store. */
+  uint8_t  store[(size_t)k_cov_phys * (size_t)k_cov_block];
   uint32_t erases;           /**< Running erase count.                          */
   bool     fail_erase;       /**< Return k_ra8_err_invalid_state from erase.    */
   bool     fail_write;       /**< Return k_ra8_err_invalid_state from write.    */

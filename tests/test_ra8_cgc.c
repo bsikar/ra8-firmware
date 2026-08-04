@@ -22,7 +22,7 @@
  */
 typedef enum : uint16_t {
   k_cgc_ctx_token =
-    0xCAFE, /**< Token handed to the callback and checked on the way back, proving the context pointer survives. */
+    0xCAFE, /**< Token handed to the callback and checked on return, proving context survives. */
 } cgc_fixture_t;
 
 typedef enum : uint8_t {
