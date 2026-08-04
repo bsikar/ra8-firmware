@@ -154,18 +154,16 @@ static void priv_entry_to_stat(const uint8_t* entry, ra8_fs_stat_t* out)
 RA8_INTERNAL
 static ra8_err_t priv_stat_exfat(const ra8_fs_mount_t* m, const char* path, ra8_fs_stat_t* out)
 {
-  uint32_t        first = 0U;
-  uint32_t        size  = 0U;
-  uint8_t         nofat = 0U;
-  uint8_t         attr  = 0U;
-  const ra8_err_t err   = priv_exfat_find(m, path, &first, &size, &nofat, &attr);
+  uint8_t         strm[k_exfat_entry_bytes] = {};
+  uint8_t         attr                      = 0U;
+  const ra8_err_t err                       = priv_exfat_find(m, path, strm, &attr);
   if (err != k_ra8_ok) {
     return err;
   }
   out->attr          = attr;
   out->is_directory  = (attr & (uint8_t)k_ra8_fs_attr_directory) != 0U;
-  out->first_cluster = first;
-  out->size_bytes    = size;
+  out->first_cluster = priv_rd32(&strm[k_exfat_strm_off_clus]);
+  out->size_bytes    = priv_rd32(&strm[k_exfat_strm_off_dlen]);
   if (out->is_directory) {
     out->size_bytes = 0U;
   }

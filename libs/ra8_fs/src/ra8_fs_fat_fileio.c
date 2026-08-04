@@ -155,6 +155,63 @@ priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint3
 }
 
 /**
+ * @brief Read one span, serving zeros past exFAT's ValidDataLength.
+ *
+ * @details exFAT spec sec 7.4.5 splits a file in two: the prefix below
+ *          `ValidDataLength` was written, and everything from there to
+ *          `DataLength` was never initialised. Those bytes must read as zero,
+ *          and the clusters behind them still hold whatever the previous
+ *          tenant left, so serving them raw would hand a caller another file's
+ *          data. A FAT handle has no such split -- `DIR_FileSize` IS the
+ *          written length -- so it takes the same path with the two bounds
+ *          equal and never reaches the hole arm.
+ *
+ * @param[in,out] file      Open file handle.
+ * @param[out]    buf       Destination of the span.
+ * @param[in]     remaining Maximum bytes the caller can accept.
+ * @param[out]    out_take  Number of bytes actually produced.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    Span produced; `*out_take > 0`.
+ * @retval k_ra8_err_* Backend or FAT error.
+ *
+ * @pre All pointers are non-NULL; the file is in use.
+ * @pre `file->offset < file->size_bytes` and `remaining > 0`.
+ * @post On success `*out_take <= remaining`.
+ * @post `file->offset` is NOT advanced -- the caller does that.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @note Two single-condition decisions, nested rather than joined. The first
+ *       sends an exFAT handle positioned past the written prefix to the zero
+ *       arm; every other read falls through. The second clips a read that
+ *       would cross OUT of the prefix, so the next span is served zeros
+ *       instead of the raw cluster tail.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t
+priv_read_span(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* out_take)
+{
+  const uint32_t valid =
+    (file->mount->type == k_ra8_fs_type_exfat) ? file->valid_bytes : file->size_bytes;
+  if (file->offset >= valid) {
+    for (uint32_t i = 0U; i < remaining; i++) {
+      buf[i] = 0U;
+    }
+    *out_take = remaining;
+    return k_ra8_ok;
+  }
+  uint32_t       want = remaining;
+  const uint32_t cap  = valid - file->offset;
+  if (want > cap) {
+    want = cap;
+  }
+  return priv_read_one_chunk(file, buf, want, out_take);
+}
+
+/**
  * @brief Read bytes -- the guarded body of ::ra8_fs_read().
  *
  * @details Loops on `priv_read_one_chunk`, advancing `file->offset`
@@ -204,7 +261,7 @@ priv_read_locked(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* 
   uint32_t produced = 0;
   while (remaining > 0U) {
     uint32_t  take = 0;
-    ra8_err_t err  = priv_read_one_chunk(file, &buf[produced], remaining, &take);
+    ra8_err_t err  = priv_read_span(file, &buf[produced], remaining, &take);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -279,38 +336,12 @@ priv_walk_grow(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* 
   return k_ra8_ok;
 }
 
-/**
- * @brief Write `put` bytes into one sector at `lba` starting at `off_in_sector`.
- *
- * @details Read-modify-write of a single sector. Used by the write
- *          path so partial-sector updates do not destroy neighbouring
- *          file data.
- *
- * @param[in] m             Mount providing the backend.
- * @param[in] lba           Sector to update.
- * @param[in] off_in_sector Byte offset within the sector.
- * @param[in] src           Source bytes.
- * @param[in] put           Number of bytes to write.
- *
- * @return Error code.
- * @retval k_ra8_ok    Sector updated.
- * @retval k_ra8_err_* Backend read or write failure.
- *
- * @pre `m` and `src` are non-NULL.
- * @pre `off_in_sector + put <= k_ra8_fs_bytes_per_sector`.
- * @post On success, the sector reflects the merged content.
- * @post On failure, the sector content is implementation-defined.
- *
- * @note Thread-safety inherited from the backend.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
-                                        uint32_t              lba,
-                                        uint32_t              off_in_sector,
-                                        const uint8_t*        src,
-                                        uint32_t              put)
+/** @brief Implementation of `priv_write_into_sector()` -- one read-modify-write. */
+ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
+                                 uint32_t              lba,
+                                 uint32_t              off_in_sector,
+                                 const uint8_t*        src,
+                                 uint32_t              put)
 {
   uint8_t   sec[k_ra8_fs_bytes_per_sector] = {};
   ra8_err_t err                            = priv_read_sector(m, lba, sec);
@@ -495,6 +526,14 @@ static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint
   if (len == 0U) {
     return k_ra8_ok;
   }
+  if (file->mount->type == k_ra8_fs_type_exfat) {
+    const ra8_err_t xe = priv_exfat_write_stream(file, buf, len);
+    if (xe != k_ra8_ok) {
+      return xe;
+    }
+    file->dirty = 1U;
+    return priv_exfat_flush_set(file);
+  }
   ra8_err_t err = priv_write_stream(file, buf, len);
   if (err != k_ra8_ok) {
     return err;
@@ -518,12 +557,17 @@ static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint
 /**
  * @brief Create a whole file -- the guarded body of ::ra8_fs_write_file().
  *
- * @details Dispatches to the exFAT contiguous creator, or drives the FAT path
- *          through the *unlocked* open / write / close bodies -- taking the
+ * @details Drives the *unlocked* open / write / close bodies -- taking the
  *          library lock again here would deadlock a non-recursive mutex. The
  *          public ::ra8_fs_write_file() is the wrapper that holds the lock
  *          across all three, so the whole creation is one atomic operation
  *          rather than three.
+ *
+ *          There is no longer a second, exFAT-only path here: exFAT streams
+ *          through the same three calls now that ::ra8_fs_open accepts a
+ *          writing mode on it (#602), which is the point -- two
+ *          implementations of one verb are two places for it to mean
+ *          different things.
  *
  * @param[in,out] handle Mounted volume.
  * @param[in]     path   Root-level file name (ASCII).
@@ -561,9 +605,6 @@ priv_write_file_locked(ra8_fs_mount_t* handle, const char* path, const uint8_t* 
   }
   if (handle->in_use == 0U) {
     return k_ra8_err_invalid_state;
-  }
-  if (handle->type == k_ra8_fs_type_exfat) {
-    return priv_exfat_create(handle, path, data, len);
   }
   ra8_fs_file_t* f = nullptr;
   ra8_err_t      e = priv_open_locked(handle, path, k_ra8_fs_mode_write, &f);

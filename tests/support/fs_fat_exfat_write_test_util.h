@@ -58,7 +58,7 @@ typedef enum : uint32_t {
   k_wc_blocks_exfat  = 131072U,     /**< 64 MiB exFAT volume in sectors.        */
   k_wc_entry_bytes   = 32U,         /**< Directory entry size in bytes.         */
   k_wc_per_cluster   = 128U,        /**< Directory entries per 4 KiB cluster.   */
-  k_wc_entry_inuse   = 0x85U,       /**< exFAT File entry type (in-use, bit 7). */
+  k_wc_entry_inuse   = 0xC1U,       /**< exFAT Name entry type (in-use, bit 7). */
   k_wc_entry_eod     = 0x00U,       /**< exFAT end-of-directory type.           */
   k_wc_fat_eoc       = 0xFFFFFFFFU, /**< exFAT end-of-chain FAT value.          */
   k_wc_patch_start   = 3U,          /**< First root entry to mark in-use.       */
@@ -390,6 +390,10 @@ static inline void disk_set_u32le(uint32_t off, uint32_t val)
  */
 static inline void patch_root_full(const ra8_fs_mount_t* h, uint32_t start)
 {
+  /* A NAME entry (0xC1), not a File entry: bit 7 is set either way, so every
+   * slot reads as occupied to `priv_exfat_find_dir_space`, but the name lookup
+   * skips it instead of trying to parse 125 orphan File sets whose secondary
+   * counts come from whatever the pre-fill left there. */
   for (uint32_t i = start; i < (uint32_t)k_wc_per_cluster; i++) {
     s_disk.bytes[root_entry_off(h, i)] = (uint8_t)k_wc_entry_inuse;
   }

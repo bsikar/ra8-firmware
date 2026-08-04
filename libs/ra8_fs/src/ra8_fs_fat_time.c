@@ -423,6 +423,18 @@ void priv_exfat_file_stamp_create(uint8_t* file_entry)
   file_entry[k_exfat_off_file_autc]  = s.utc;
 }
 
+/* `priv_exfat_file_stamp_write()`: see header for the documented contract. */
+void priv_exfat_file_stamp_write(uint8_t* file_entry)
+{
+  exfat_stamp_t s = {};
+  priv_exfat_stamp_now(&s);
+  priv_wr32(&file_entry[k_exfat_off_file_mtime], s.stamp);
+  priv_wr32(&file_entry[k_exfat_off_file_atime], s.stamp);
+  file_entry[k_exfat_off_file_m10ms] = s.inc10;
+  file_entry[k_exfat_off_file_mutc]  = s.utc;
+  file_entry[k_exfat_off_file_autc]  = s.utc;
+}
+
 /* `priv_exfat_file_stamp_access()`: see header for the documented contract. */
 void priv_exfat_file_stamp_access(uint8_t* file_entry)
 {
