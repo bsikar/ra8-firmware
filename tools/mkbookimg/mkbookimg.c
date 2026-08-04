@@ -8,7 +8,9 @@
  * first-party `ra8_fs` formatter/writer the firmware reads with, so the emulator
  * (`ra8_emulator --sd image.img`) and the on-device ra8_sdmmc_spi -> ra8_fs path see
  * a byte-identical layout. The firmware reads each book's title/author/cover
- * from the .rabook header, so the 8.3 names need carry no metadata.
+ * from the .rabook header, so the 8.3 names need carry no metadata -- which is
+ * why they are still 8.3 now that `ra8_fs` can write long ones (#600). #633
+ * revisits that.
  *
  * Usage: mkbookimg <out.img> <book1.rabook> [book2.rabook ...]
  *

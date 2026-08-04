@@ -458,7 +458,8 @@ static void test_write_zero_length(void)
  * - path=NULL               -> 442.
  * - data=NULL               -> 445.
  * - mount->in_use == 0      -> 448 (snapshot copy with in_use cleared).
- * - open fails (bad 8.3)    -> 456 (leading-dot path rejected by open).
+ * - open fails (illegal name) -> 456 (a `*` is illegal in a long name too, so
+ *   the create path refuses it rather than generating an alias for it).
  */
 static void test_write_file_guards(void)
 {
@@ -479,7 +480,8 @@ static void test_write_file_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
                  ra8_fs_write_file(&closed_mount, "F.TXT", data, sizeof(data))); /* 448 */
 
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_write_file(h, ".TXT", data, sizeof(data))); /* 456 */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_fs_write_file(h, "BAD*NAME.TXT", data, sizeof(data))); /* 456 */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();

@@ -566,7 +566,7 @@ static void test_ncov_83_to_str_kanji_restore(void)
     in11[i] = ' ';
   }
   char out12[k_ncov_sfn_str_cap] = {};
-  priv_83_to_str(in11, out12);
+  priv_83_to_str(in11, 0U, out12);
   /* out12[0] is a signed char; read the restored 0xE5 marker in the
    * unsigned byte domain so it compares as 229, not -27. */
   const uint8_t out12_marker = (uint8_t)out12[0];
@@ -600,7 +600,7 @@ static void test_ncov_83_to_str_ext_trailing_space(void)
   /* "AA      TX " packed: base='A','A',' '...' '; ext='T','X',' ' */
   const uint8_t in11[11]                  = {'A', 'A', ' ', ' ', ' ', ' ', ' ', ' ', 'T', 'X', ' '};
   char          out12[k_ncov_sfn_str_cap] = {};
-  priv_83_to_str(in11, out12);
+  priv_83_to_str(in11, 0U, out12);
   TEST_ASSERT_EQ(0, strcmp(out12, "AA.TX"));
   TEST_END("priv_83_to_str: extension trailing-space break (line 170)");
 }

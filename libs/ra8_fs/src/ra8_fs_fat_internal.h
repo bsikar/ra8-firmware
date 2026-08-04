@@ -22,12 +22,15 @@
  * - `ra8_fs_fat_alloc_internal.h`    -- the per-mount allocator state: next-free
  *                             hint, free-cluster count, FAT sector cache, and
  *                             the FAT32 FSInfo seed/writeback.
+ * - `ra8_fs_fat_lfn_write_internal.h` -- the VFAT long-name WRITE seam: name
+ *                             classification, alias generation, and the
+ *                             reserve / commit / erase directory verbs.
  *
- * The last two are split by THEME rather than alphabetically, because each
+ * The last three are split by THEME rather than alphabetically, because each
  * owns a self-contained mechanism with its own on-disk vocabulary. Folding
  * them into the alphabetical `protos_a` / `protos_b` pair would scatter one
- * mechanism's constants across two files and push both past the 1000-line
- * source cap.
+ * mechanism's constants across two files and push all of them past the
+ * 1000-line source cap.
  *
  * This header is included by every `ra8_fs_fat*.c` file and by nothing outside
  * this module.
@@ -40,6 +43,7 @@
 #pragma once
 
 #include "ra8_fs_fat_alloc_internal.h"
+#include "ra8_fs_fat_lfn_write_internal.h"
 #include "ra8_fs_fat_protos_a_internal.h"
 #include "ra8_fs_fat_protos_b_internal.h"
 #include "ra8_fs_fat_time_internal.h"

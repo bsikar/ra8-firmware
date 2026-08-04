@@ -528,7 +528,7 @@ static void test_rmdir_refuses_a_file(void)
 
 /**
  * @test test_rmdir_argument_guards
- * @brief NULL arguments, an unmounted handle, the root, bad names, missing names.
+ * @brief NULL arguments, an unmounted handle, the root, and missing names.
  *
  * @details Each is an independent single-condition guard; grouping them keeps
  *          one volume build for the whole set. The root cases matter most: "/"
@@ -557,7 +557,9 @@ static void test_rmdir_argument_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_rmdir(h, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rmdir(h, "/"));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rmdir(h, ""));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rmdir(h, "/VERYLONGNAME.TXT"));
+  /* A name too long for 8.3 is no longer a bad name -- since #600 it is a name
+   * that could exist -- so the honest answer is that it does not (#600). */
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/VERYLONGNAME.TXT"));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/NOPE"));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/NOPE/X"));
 
