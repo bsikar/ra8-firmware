@@ -226,6 +226,15 @@ static void test_backend_direct_guards(void)
   /* Opening an already-open link is refused by ra8_c6link, surfaced by open. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, b->open(&s_c6));
 
+  /* The pacing row returns nothing, so its guards are proved by it declining to
+   * reach a transport that is not there: neither call may fault, and neither
+   * may reach the model's clock. */
+  const uint32_t before = ra8_c6_model()->delays;
+  b->idle(nullptr, 1U);
+  ra8_wifi_c6link_t no_transport = {};
+  b->idle(&no_transport, 1U);
+  TEST_ASSERT_EQ(before, ra8_c6_model()->delays);
+
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&s_wifi));
   TEST_END("wifi-c6 backend guards");
 }
@@ -254,9 +263,55 @@ static void test_backend_ops(void)
   /* Group B: join (Req_WifiSetConfig/WifiConnect) -- two RPCs, fresh reset. */
   TEST_ASSERT_EQ(k_ra8_ok, t_up());
   TEST_ASSERT_EQ(k_ra8_ok, b->join(&s_c6, "ra8-bench", "hunter2hunter2"));
+
+  /* Group C: the pacing row reaches the transport's own clock, which is the
+   * only clock this backend has and the one the facade's wait is paced by. */
+  const uint32_t before = ra8_c6_model()->delays;
+  b->idle(&s_c6, (uint16_t)k_ra8_wifi_poll_gap_ms);
+  TEST_ASSERT_EQ(before + 1U, ra8_c6_model()->delays);
+  TEST_ASSERT_EQ(k_ra8_wifi_poll_gap_ms, ra8_c6_model()->last_delay_ms);
+
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&s_wifi));
 
   TEST_END("wifi-c6 backend operations");
+}
+
+/* --- a quiet co-processor is not an absent one --------------------------- */
+
+/**
+ * @test a quiet HANDSHAKE line is what `service` reports as a timeout
+ *
+ * The premise of #586's fix. While the co-processor is busy on the air it arms
+ * nothing, the pump clocks no transaction, and this backend's `service` reports
+ * ::k_ra8_err_hw_timeout -- an entirely routine reading mid-association. The
+ * facade must therefore never treat one as the end of its wait, and the
+ * corresponding facade-side case is `test_connect_rides_out_a_quiet_radio` in
+ * test_ra8_wifi.c.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it exercises the
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_service_reports_a_quiet_line(void)
+{
+  TEST_BEGIN("wifi-c6 quiet line");
+  const ra8_wifi_backend_t* b = &k_ra8_wifi_backend_c6link;
+
+  TEST_ASSERT_EQ(k_ra8_ok, t_up());
+  ra8_wifi_link_t link = k_ra8_wifi_link_up;
+
+  ra8_c6_model()->handshake = false;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, b->service(&s_c6, &link));
+
+  /* Re-armed, the same call is fine again: the reading above described a
+   * moment, not a broken link. */
+  ra8_c6_model()->handshake = true;
+  TEST_ASSERT_EQ(k_ra8_ok, b->service(&s_c6, &link));
+  TEST_ASSERT_EQ(k_ra8_wifi_link_down, link);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&s_wifi));
+  TEST_END("wifi-c6 quiet line");
 }
 
 /* --- the three service readings + the event kinds ------------------------ */
@@ -420,6 +475,7 @@ int main(void)
   test_init_open_fail();
   test_backend_direct_guards();
   test_backend_ops();
+  test_service_reports_a_quiet_line();
   test_service_transitions();
   test_journey_to_ip();
   test_operation_failures();

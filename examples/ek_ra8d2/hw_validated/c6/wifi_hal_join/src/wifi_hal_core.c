@@ -53,13 +53,17 @@ bool wifi_hal_join_run(const wifi_hal_run_cfg_t* cfg, wifi_hal_result_t* out)
   if (out == nullptr) {
     return false;
   }
-  *out = (wifi_hal_result_t){};
+  *out             = (wifi_hal_result_t){};
+  out->init_err    = k_ra8_err_not_initialized;
+  out->connect_err = k_ra8_err_not_initialized;
+  out->ip_err      = k_ra8_err_not_initialized;
   if ((cfg == nullptr) || (cfg->wifi == nullptr) || (cfg->wifi_cfg == nullptr) ||
       (cfg->ssid == nullptr)) {
     return false;
   }
 
-  if (ra8_wifi_init(cfg->wifi, cfg->wifi_cfg) != k_ra8_ok) {
+  out->init_err = ra8_wifi_init(cfg->wifi, cfg->wifi_cfg);
+  if (out->init_err != k_ra8_ok) {
     return false;
   }
   out->init_ok = true;
@@ -68,8 +72,8 @@ bool wifi_hal_join_run(const wifi_hal_run_cfg_t* cfg, wifi_hal_result_t* out)
     return false; /* no credentials compiled in */
   }
 
-  (void)ra8_wifi_connect(cfg->wifi, cfg->ssid, cfg->psk);
-  out->associated = wifi_hal_settle(cfg->wifi, cfg->poll_budget);
+  out->connect_err = ra8_wifi_connect(cfg->wifi, cfg->ssid, cfg->psk);
+  out->associated  = wifi_hal_settle(cfg->wifi, cfg->poll_budget);
   if (!out->associated) {
     return false;
   }
@@ -77,7 +81,8 @@ bool wifi_hal_join_run(const wifi_hal_run_cfg_t* cfg, wifi_hal_result_t* out)
   (void)ra8_wifi_get_mac(cfg->wifi, &out->mac);
   (void)ra8_wifi_get_ap(cfg->wifi, &out->ap);
 
-  if ((ra8_wifi_wait_ip(cfg->wifi, &out->lease) != k_ra8_ok) || !out->lease.bound) {
+  out->ip_err = ra8_wifi_wait_ip(cfg->wifi, &out->lease);
+  if ((out->ip_err != k_ra8_ok) || !out->lease.bound) {
     return false;
   }
   out->ip_bound = true;
