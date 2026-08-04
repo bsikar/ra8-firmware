@@ -376,6 +376,35 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_get_ap(void* ctx, ra8_wifi_ap_t
 }
 
 /**
+ * @brief Idle for the requested milliseconds, on the transport's own clock.
+ * @details The facade counts attempts and has no clock of its own; this is the
+ *          seam through which it paces one. The delay used is the transport's
+ *          ``delay_ms`` -- the same one ``ra8_c6link``'s pump waits on -- so the
+ *          facade's association wait is paced by exactly the mechanism the
+ *          bench proved, and a co-processor model can make it free.
+ * @param[in,out] ctx The ::ra8_wifi_c6link_t for this backend; may be null.
+ * @param[in] ms Milliseconds to idle for.
+ * @return Nothing.
+ * @pre The transport in @p ctx is bound, or @p ctx is null and this is a no-op.
+ * @pre The caller is not holding a lock the delay would extend.
+ * @post At least @p ms elapsed, unless there was no transport to wait on.
+ * @post No link or backend state was touched.
+ * @note Blocks the calling context; it is a delay, not a yield.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void ra8_wifi_c6link_op_idle(void* ctx, uint16_t ms)
+{
+  ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
+  if (self == nullptr) {
+    return;
+  }
+  if (self->transport.delay_ms == nullptr) {
+    return;
+  }
+  self->transport.delay_ms(self->transport.ctx, ms);
+}
+
+/**
  * @var k_ra8_wifi_backend_c6link
  * @brief The one ESP32-C6 backend table; see the header for the contract.
  * @details Every row points at a translation-unit-local mapping above.
@@ -392,6 +421,7 @@ const ra8_wifi_backend_t k_ra8_wifi_backend_c6link = {
   .service    = ra8_wifi_c6link_op_service,
   .get_mac    = ra8_wifi_c6link_op_get_mac,
   .get_ap     = ra8_wifi_c6link_op_get_ap,
+  .idle       = ra8_wifi_c6link_op_idle,
 };
 
 ra8_err_t ra8_wifi_c6link_setup(ra8_wifi_c6link_t*           self,
